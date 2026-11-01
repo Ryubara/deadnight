@@ -61,12 +61,16 @@ or at the type's telegraph with the same 0.75 s of recovery after it, and only i
   vector by 0.001 and threw the pair 66 m in one tick; the old test offset the zombies by 0.01 m and never reached it.
 - **A hit needs a zombie the sim holds.** `take_hit` rejects an id that is still waiting for room (the rules know it,
   the sim does not): no damage, no kill, no points.
-- **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death, and `Tear_Boards` from the
-  extra clips' file) built once from the model and added to every model's player (the rig-sharing recipe); one
-  `AnimationTree` per zombie with a state machine (move = Idle/Walk/Run blended by speed, attack, stagger, die, tear).
+- **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death, and `Tear_Boards` and `Sprint`
+  from the extra clips' file) built once from the model and added to every model's player (the rig-sharing recipe); one
+  `AnimationTree` per zombie with a state machine (move = Idle/Walk/Run/Sprint blended by speed, attack, stagger, die, tear).
   Every tree is advanced by hand by `AnimationThrottle` (every frame within 14 m, every 3rd to 24 m, every 6th beyond,
   every 12th off screen). A view starts its walk at a
   phase taken from its id, so a crowd does not step together.
+- **Warm-up:** the library is built when the horde is set up (`ZombieRig.warm_up`, at the night's start), not when
+  the first zombie appears: it loads the walker's model and the extra clips' file and holds them until the horde
+  leaves. Headless, the first zombie's view took 22.3 ms cold and 0.7 ms after the warm-up (10 ms at the start)
+  (`test_zombie_warm_up`); the barricades capture had a 31 ms frame at the first spawns (#245).
 - **Crowd budget:** no zombie shadows, one mesh per zombie (the eyelid mesh is freed: the kit zombie has no eyelids
   here until a crowd variant merges them), sim at 30 Hz independent of the physics rate.
 - **Light:** the sim asks a `lit_probe` callable at each repath and applies the rules' `speed_on_ground` (a zombie off lit

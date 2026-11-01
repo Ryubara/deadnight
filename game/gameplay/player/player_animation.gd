@@ -46,6 +46,22 @@ const HOLD_CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
 const SHOULDER_RATE := 14.0
 ## Recoil of a shot dies away at this rate (per second, exponential).
 const RECOIL_RATE := 16.0
+## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount.
+## Its hold file sizes it (a tool, larger than the size rule: docs/design/weapon-hold.md); the
+## grip is the melee one tipped 20 degrees in the hammer's swing plane (about its Z), so the face
+## meets the board square on the blow (docs/design/animation.md, Repair).
+const HAMMER_HOLD := "res://gameplay/player/holds/hammer.tres"
+const HOLD_HAMMER := Transform3D(
+	Basis(
+		Vector3(-0.719030, -0.694337, 0.029881),
+		Vector3(-0.694842, 0.717368, -0.050778),
+		Vector3(0.013822, -0.057274, -0.998263)
+	),
+	Vector3(-0.004282, 0.175673, -0.062554)
+)
+## The node the hammer model carries at the centre of its striking face, -Z out of the face
+## (docs/design/style.md, "Attachment points").
+const HAMMER_FACE := "Face"
 const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Pistol", &"Melee"]
 const DEFAULT_CLASS := &"Rifle"
 ## Where Walk sits on the move blend (0 = Idle, 1 = Run).
@@ -55,8 +71,12 @@ const WALK_POINT := 0.45
 const REPAIR_GLB := "res://assets/characters/soldier/repair/soldier_repair.glb"
 const REPAIR_SPEC := "res://assets/characters/soldier/repair/clips.json"
 const REPAIR_CLIP := &"Repair_Board"
-## The event the board lands on: each `board_repaired` of this player seeks the clip here.
+## The event the board lands on: the blow that knocks a board home. Each `board_repaired` of this
+## player puts the clip `REPAIR_KNOCK` seconds before it, and the loop emits it once per board.
 const REPAIR_SET_EVENT := "board_set"
+## A board put back slides in and knocks home this long after its `board_repaired` (the
+## barricade's mend): the fist comes down on it then, not at the event (#245).
+const REPAIR_KNOCK := Barricade.MEND_SECONDS
 ## How many repair intervals the clip keeps going after the last board went up: a held `use`
 ## mends the next one an interval later, so it only stops once one is missed.
 const REPAIR_HOLD := 1.5
@@ -86,6 +106,7 @@ var _action_node: AnimationNodeAnimation
 var _full_node: AnimationNodeAnimation
 var _mount: BoneAttachment3D
 var _weapon: Node3D
+var _hammer: Node3D
 var _hold: WeaponHold
 var _hands: WeaponHandsIK
 var _shoulder_blend := 0.0
@@ -99,6 +120,8 @@ var _repair_left := 0.0
 var _repair_time := 0.0
 var _repair_scale := 1.0
 var _repair_blend := 0.0
+## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
+var _boards_due := 0
 
 
 func _ready() -> void:
@@ -114,6 +137,12 @@ func _ready() -> void:
 	_mount.bone_name = HAND_BONE
 	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
 	skeleton.add_child(_mount)
+	var hammer_hold := load(HAMMER_HOLD) as WeaponHold
+	_hammer = (load(hammer_hold.scene) as PackedScene).instantiate() as Node3D
+	_hammer.name = "Hammer"
+	_hammer.transform = HOLD_HAMMER.scaled_local(Vector3.ONE * hammer_hold.model_scale)
+	_hammer.visible = false
+	_mount.add_child(_hammer)
 	_hands = WeaponHandsIK.new()
 	_hands.name = "WeaponHandsIK"
 	_hands.hand_hold = HOLD_GUN
@@ -163,6 +192,11 @@ func weapon() -> Node3D:
 	return _weapon
 
 
+## The repair hammer on the hand mount, shown only while the repair holds the arms.
+func hammer() -> Node3D:
+	return _hammer
+
+
 ## The muzzle point of the weapon in the hand (its `-Z` points down the barrel), or null when the
 ## class shows no weapon. The muzzle flash hangs on it. It is the `Muzzle` node the weapon's own
 ## model carries (the convention: docs/design/weapon-hold.md), or, for a model that has none yet,
@@ -205,18 +239,27 @@ func play_full_body(clip: StringName) -> void:
 
 
 ## A board this player put back has just gone up (the rules' `board_repaired`, which come one
-## `interval` apart while `use` is held): the repair loop plays, or keeps playing, from the frame
-## the board lands on, at the pace of one loop per interval. The weapon is put away meanwhile.
-## Driven by the events alone: nothing here reads the clock.
+## `interval` apart while `use` is held): the repair loop plays, or keeps playing, at the pace of
+## one loop per interval, from `REPAIR_KNOCK` seconds before the blow, so the fist comes down as
+## the board knocks home (on the first board too: it rises and lands). The weapon is put away
+## and the hammer is in the hand meanwhile. Driven by the events alone: nothing here reads the
+## clock.
 func board_repaired(interval: float) -> void:
 	interval = maxf(interval, 0.05)
 	_repair_scale = _clip_seconds(REPAIR_CLIP) / interval
 	_repair_left = interval * REPAIR_HOLD
-	_repair_time = _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
+	_repair_time = repair_lead(interval)
+	_boards_due += 1
 	set(REPAIR_SCALE_PARAMETER, _repair_scale)
 	set(REPAIR_SEEK_PARAMETER, _repair_time)
-	_weapon_visible(false)
-	_emit_events(REPAIR_CLIP, _repair_time - 0.001, _repair_time)
+	_hands_on_repair(true)
+
+
+## Where a board's `board_repaired` puts the repair clip, in its own seconds: the blow less the
+## knock's delay at the pace of `interval` (never before the clip's start).
+func repair_lead(interval: float) -> float:
+	var scale := _clip_seconds(REPAIR_CLIP) / maxf(interval, 0.05)
+	return maxf(_event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT) - REPAIR_KNOCK * scale, 0.0)
 
 
 ## Whether the repair loop holds the arms.
@@ -228,7 +271,8 @@ func is_repairing() -> bool:
 func stop_repair() -> void:
 	if _repair_left > 0.0:
 		_repair_left = 0.0
-		_weapon_visible(true)
+		_boards_due = 0
+		_hands_on_repair(false)
 
 
 ## The repair layer's weight now (0: the weapon arms, 1: the repair arms), for tests.
@@ -282,6 +326,7 @@ func _set_class(new_class: StringName) -> void:
 		_weapon.name = "Weapon"
 		var grip := HOLD_MELEE if new_class == &"Melee" else HOLD_GUN
 		_weapon.transform = grip.scaled_local(Vector3.ONE * _hold.model_scale)
+		_weapon.visible = not is_repairing()
 		if _weapon.find_child(MUZZLE_NODE, true, false) == null:
 			_weapon.add_child(_make_muzzle(_hold))
 		_mount.add_child(_weapon)
@@ -318,11 +363,21 @@ func _advance_shoulder(delta: float) -> void:
 	if absf(_shoulder_blend - target) < 0.001:
 		_shoulder_blend = target
 	_hands.influence = _shoulder_blend
+	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
+	# so the clips that move them (the repair, Reload, Swing) never showed in a running game.
+	_hands.active = _shoulder_blend > 0.0
 
 
+## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible
+## event (an Equip) does not bring the weapon back over the hammer.
 func _weapon_visible(shown: bool) -> void:
 	if _weapon != null:
-		_weapon.visible = shown
+		_weapon.visible = shown and not is_repairing()
+
+
+func _hands_on_repair(repairing: bool) -> void:
+	_hammer.visible = repairing
+	_weapon_visible(not repairing)
 
 
 func _advance_events(delta: float) -> void:
@@ -336,18 +391,17 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
-## Moves the repair loop on by `delta` seconds: its events (but the board_set frame: that one is
-## the rules' event, sent by `board_repaired`) and the fade in or out of its layer.
+## Moves the repair loop on by `delta` seconds: its events (`board_set` only for a board that is
+## due: one per `board_repaired`, never the loop's own) and the fade in or out of its layer.
 func _advance_repair(delta: float) -> void:
 	if _repair_left > 0.0:
 		var length := _clip_seconds(REPAIR_CLIP)
 		var before := _repair_time
 		_repair_time += delta * _repair_scale
-		var set_at := _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
-		_emit_events(REPAIR_CLIP, before, minf(_repair_time, length), set_at)
+		_advance_repair_events(before, minf(_repair_time, length))
 		if _repair_time > length:
 			_repair_time -= length
-			_emit_events(REPAIR_CLIP, -1.0, _repair_time, set_at)
+			_advance_repair_events(-1.0, _repair_time)
 		if _repair_left > delta:
 			_repair_left -= delta
 		else:
@@ -357,6 +411,14 @@ func _advance_repair(delta: float) -> void:
 	if absf(_repair_blend - target) < 0.001:
 		_repair_blend = target
 	set(REPAIR_BLEND_PARAMETER, _repair_blend)
+
+
+func _advance_repair_events(from: float, to: float) -> void:
+	_emit_events(REPAIR_CLIP, from, to, REPAIR_SET_EVENT)
+	var set_at := _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
+	if _boards_due > 0 and set_at > from and set_at <= to:
+		_boards_due -= 1
+		clip_event.emit(REPAIR_CLIP, StringName(REPAIR_SET_EVENT))
 
 
 func _event_frames(clip: StringName, event: String) -> Array:
@@ -382,15 +444,17 @@ func _clip_seconds(clip: StringName) -> float:
 	return seconds
 
 
-## Emits every event of `clip` whose time lies in (from, to], except those at `skip_at` seconds.
-func _emit_events(clip: StringName, from: float, to: float, skip_at: float = -1.0) -> void:
+## Emits every event of `clip` whose time lies in (from, to], except the one named `skip`.
+func _emit_events(clip: StringName, from: float, to: float, skip: String = "") -> void:
 	var fps: float = _spec["fps"]
 	var events := clip_events(clip)
 	for event: String in events:
+		if event == skip:
+			continue
 		var frames: Array = events[event] if events[event] is Array else [events[event]]
 		for frame: float in frames:
 			var at := frame / fps
-			if at > from and at <= to and not is_equal_approx(at, skip_at):
+			if at > from and at <= to:
 				if event == "weapon_visible":
 					_weapon_visible(true)
 				elif event == "weapon_hidden":

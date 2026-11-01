@@ -11,6 +11,11 @@ const DIR := "res://assets/characters/soldier_parts/"
 const CATALOG := DIR + "parts.json"
 const MODEL := DIR + "soldier_parts.glb"
 const ATLAS := DIR + "soldier_parts_atlas.png"
+## Each part has a far level of detail, `<slot>__<part>__far` (#139): the near mesh shows up to
+## this many metres from the camera and the far one beyond, by visibility ranges (the zombies'
+## distance, `ZombieModels.FAR_FROM`). Same material, so nothing changes colour at the swap.
+const FAR_SUFFIX := "__far"
+const FAR_FROM := 18.0
 
 static var _catalog: Dictionary = {}
 static var _atlas: Image
@@ -68,14 +73,26 @@ static func instantiate() -> Node3D:
 	var model: Node3D = (load(MODEL) as PackedScene).instantiate()
 	for mesh in part_meshes(model).values():
 		(mesh as MeshInstance3D).visible = false
+	for mesh in far_meshes(model).values():
+		(mesh as MeshInstance3D).visible = false
 	return model
 
 
-## Mesh node name (`<slot>__<part>`) -> MeshInstance3D for every part in the model.
+## Mesh node name (`<slot>__<part>`) -> MeshInstance3D for every part in the model (the near
+## meshes; `far_meshes` has the far ones).
 static func part_meshes(model: Node) -> Dictionary:
 	var out := {}
 	for node in model.find_children("*__*", "MeshInstance3D", true, false):
-		out[String(node.name)] = node
+		if not String(node.name).ends_with(FAR_SUFFIX):
+			out[String(node.name)] = node
+	return out
+
+
+## Near mesh name (`<slot>__<part>`) -> the MeshInstance3D of its far level of detail.
+static func far_meshes(model: Node) -> Dictionary:
+	var out := {}
+	for node in model.find_children("*" + FAR_SUFFIX, "MeshInstance3D", true, false):
+		out[String(node.name).trim_suffix(FAR_SUFFIX)] = node
 	return out
 
 
@@ -94,17 +111,34 @@ static func visible_meshes(look: Dictionary) -> Array[String]:
 
 
 ## Shows the look's parts, hides the rest and gives every part one material with the look's
-## colours. Returns the triangle count of what is shown.
+## colours; each shown part swaps to its far mesh past `FAR_FROM`. Returns the triangle count of
+## what is shown up close (`far_triangles` counts the far ones).
 static func apply(model: Node, look: Dictionary) -> int:
 	var lk := normalized(look)
 	var show := visible_meshes(lk)
 	var material := make_material(lk.colours)
 	var tris := 0
 	var meshes := part_meshes(model)
+	var far := far_meshes(model)
 	for mesh_name: String in meshes:
 		var mi: MeshInstance3D = meshes[mesh_name]
 		mi.visible = show.has(mesh_name)
 		mi.material_override = material
+		if mi.visible:
+			tris += triangles(mi.mesh)
+		var fi: MeshInstance3D = far.get(mesh_name)
+		if fi != null:
+			fi.visible = mi.visible
+			fi.material_override = material
+			mi.visibility_range_end = FAR_FROM
+			fi.visibility_range_begin = FAR_FROM
+	return tris
+
+
+## The triangles a dressed model shows past `FAR_FROM`.
+static func far_triangles(model: Node) -> int:
+	var tris := 0
+	for mi: MeshInstance3D in far_meshes(model).values():
 		if mi.visible:
 			tris += triangles(mi.mesh)
 	return tris

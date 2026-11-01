@@ -46,6 +46,16 @@ SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--igno
 # Console errors that are about the browser, not the game, and are fine. Keep this list short and say why.
 IGNORED: tuple[str, ...] = ()
 
+# One mouse motion of `dx` pixels, sent to the canvas as the browser would while the pointer is locked (Godot's web
+# runtime listens for `pointermove` on the window).
+SYNTHETIC_MOUSE_MOVE_JS = """
+(dx) => {
+  const canvas = document.querySelector('canvas');
+  const init = { movementX: dx, movementY: 0, bubbles: true, cancelable: true };
+  canvas.dispatchEvent(new PointerEvent('pointermove', init));
+}
+"""
+
 # Measures frame times in the page: requestAnimationFrame deltas for a number of seconds.
 FRAME_TIMES_JS = """
 (seconds) => new Promise((resolve) => {
@@ -65,7 +75,7 @@ PROBE_JS = """
 () => {
   const d = window.deadnight;
   return d ? {screen: d.screen, night: d.night, running: d.running, over: d.over,
-              round: d.round, remaining: d.remaining, alive: d.alive} : null;
+              round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw} : null;
 }
 """
 
@@ -196,7 +206,9 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     page.screenshot(path=out / "menu.png")
     result["menu_frames"] = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
 
-    # The wardrobe reads parts.json, which only reaches the build through the export filter.
+    # The wardrobe reads parts.json, which only reaches the build through the export filter. It is the
+    # third item, after Play and Join.
+    press(page, "ArrowDown")
     press(page, "ArrowDown")
     press(page, "Enter")
     wait_for(page, "the wardrobe", lambda s: s.get("screen") == "customize_screen", SCREEN_TIMEOUT_S)
@@ -208,15 +220,44 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     page.screenshot(path=out / "menu_back.png")
 
     # Back on the menu nothing has focus until a key asks for it (that key is spent doing so); then Up walks
-    # to the first item, Play.
+    # to the first item, Play (focus stops at the ends, so an Up too many is harmless).
     press(page, "ArrowDown")
-    press(page, "ArrowUp")
-    press(page, "ArrowUp")
+    for _ in range(4):
+        press(page, "ArrowUp")
     page.screenshot(path=out / "menu_focus.png")
     press(page, "Enter")
     wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), SCREEN_TIMEOUT_S)
     page.wait_for_timeout(1500)
     page.screenshot(path=out / "night.png")
+
+    # The mouse turns the view: a full-screen control that catches the mouse once ate every motion
+    # (desktop and web alike), and only a real browser run sees that.
+    page.mouse.move(640, 360)
+    page.wait_for_timeout(500)
+    yaw_before = probe(page).get("yaw", 0.0)
+    for step in range(1, 21):
+        page.mouse.move(640 + step * 15, 360)
+        page.wait_for_timeout(20)
+    page.wait_for_timeout(600)
+    yaw_after = probe(page).get("yaw", 0.0)
+    result["mouse_look_via"] = "playwright mouse"
+    if abs(yaw_after - yaw_before) < 0.1:
+        # Chromium on Linux (the CI runner) answers every synthetic move under pointer lock with a motion and then
+        # the opposite motion (+15 px, -15 px), which cancel; Windows does not. Send the motion as the page's own
+        # mouse events instead: Godot reads them the same way, and a control eating the mouse still fails.
+        yaw_before = probe(page).get("yaw", 0.0)
+        for _ in range(20):
+            page.evaluate(SYNTHETIC_MOUSE_MOVE_JS, 15)
+            page.wait_for_timeout(20)
+        page.wait_for_timeout(600)
+        yaw_after = probe(page).get("yaw", 0.0)
+        result["mouse_look_via"] = "page mouse events"
+    result["mouse_look_turn_rad"] = round(abs(yaw_after - yaw_before), 3)
+    if result["mouse_look_turn_rad"] < 0.1:
+        lock = page.evaluate("() => document.pointerLockElement ? document.pointerLockElement.tagName : null")
+        raise RuntimeError(
+            f"moving the mouse did not turn the view (yaw {yaw_before} -> {yaw_after}, pointer lock {lock})"
+        )
 
     # Walk a square and fire for the rest of the time, so the night is played, not only started.
     page.mouse.move(640, 360)

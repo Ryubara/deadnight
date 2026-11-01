@@ -1,7 +1,8 @@
 class_name HumanController
 extends RefCounted
 ## Turns a person's controls into the same `NightCommand` the autopilot sends: the player node
-## samples movement and look, this adds the trigger, reload and use, and the camera ray.
+## samples movement and look, this adds the trigger, reload and use (the press, and whether it is
+## still down: a held use keeps repairing), and the camera ray.
 
 const ACTION_FIRE := &"fire"
 const ACTION_RELOAD := &"reload"
@@ -19,10 +20,11 @@ func command(player: Player, player_id: int) -> NightCommand:
 		result.fire = Input.is_action_pressed(ACTION_FIRE)
 		result.reload = _edge(ACTION_RELOAD)
 		result.use = _edge(ACTION_USE)
+		result.use_held = Input.is_action_pressed(ACTION_USE)
 		result.swap = _edge(ACTION_SWAP)
 	# The aim ray is the view without the shot shake: a shake moves the picture, never the shot.
-	result.origin = player.camera_rig.aim_origin()
-	result.dir = player.camera_rig.aim_direction()
+	result.origin = player.camera_rig.aim_transform().origin
+	result.dir = (-player.camera_rig.aim_transform().basis.z)
 	return result
 
 

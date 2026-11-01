@@ -77,13 +77,15 @@ count and each preset's total are in `parts.json` (`tris`); the build fails if a
 
 | Measured | Tris |
 | --- | --- |
-| Presets | 4,408 (Greaser) to 5,080 (Projectionist); the kit Soldier is 5,828 |
+| Presets | 4,490 (Lifeguard) to 5,080 (Projectionist); the kit Soldier is 5,828 |
+| Far presets | 1,515 (Greaser) to 1,812 (Projectionist) against the 2,000 far budget; each part's `<slot>__<part>__far` shows past 18 m |
 | Torso | 2,288 (jacket, shirt, tank) to 2,754 (vest, with the kit's shoulder pads); letterman 2,344, rolled 2,520 |
 | Head, legs, feet | 736, 500, 702 (the kit Soldier's own faces, recoloured) |
 | Helmet | 1,136 (the kit's, eyes and brows moved to the head); original hats 88-292, hair 44-278, eyewear 220-436, scarf 152, bow tie 84, armband 92 |
 
-Draw calls: one per visible part (5-7) with one shared material per character. No far level of detail yet: the
-style bible's 2k far budget is a follow-up.
+Draw calls: one per visible part (5-7) with one shared material per character, near or far. The far level of detail
+(#139) is a copy of every part in the same file: `SoldierLook.apply` shows the far mesh of each shown part with the
+same material and swaps them by visibility ranges at `SoldierLook.FAR_FROM` (18 m, the zombies' distance).
 
 ## The eight starting looks
 

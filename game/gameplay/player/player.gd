@@ -22,6 +22,7 @@ const ACTION_SPRINT := &"sprint"
 const ACTION_CROUCH := &"crouch"
 const ACTION_JUMP := &"jump"
 const ACTION_AIM := &"aim"
+const ACTION_FIRE := &"fire"
 const ACTION_SWAP_SHOULDER := &"swap_shoulder"
 const ACTION_THROW_GRENADE := &"throw_grenade"
 const ACTION_TOSS_GRENADE := &"toss_grenade"
@@ -58,6 +59,7 @@ func _ready() -> void:
 	_model.scale = Vector3.ONE * tuning.model_scale
 	state.position = global_position
 	state.facing = rotation.y
+	dress(CharacterLook.default_look())
 	camera_rig.setup(self, tuning)
 	camera_rig.body_hidden_changed.connect(_on_body_hidden_changed)
 	camera_rig.yaw = rotation.y
@@ -97,6 +99,12 @@ func refresh_settings() -> void:
 	camera_rig.shake.scale = PlayerSettings.camera_shake(get_tree())
 
 
+## Puts a look and the armband of a seat on the body's Soldier (`CharacterAssembler.dress`). A body
+## wears the default look until the night says otherwise.
+func dress(look: CharacterLook, seat := 0) -> void:
+	CharacterAssembler.dress(_model, look, seat)
+
+
 ## The lens is too close to the head (or clear again): draw or hide the body.
 func _on_body_hidden_changed(hidden: bool) -> void:
 	_model.visible = not hidden
@@ -128,6 +136,7 @@ func sample_command() -> PlayerCommand:
 		command.sprint = Input.is_action_pressed(ACTION_SPRINT)
 		command.crouch = Input.is_action_pressed(ACTION_CROUCH)
 		command.aim = Input.is_action_pressed(ACTION_AIM)
+		command.fire = Input.is_action_pressed(ACTION_FIRE)
 		command.jump = _pressed_edge(ACTION_JUMP)
 		command.swap_shoulder = _pressed_edge(ACTION_SWAP_SHOULDER)
 		command.throw_over = Input.is_action_pressed(ACTION_THROW_GRENADE)
@@ -169,6 +178,7 @@ func tick(command: PlayerCommand) -> void:
 	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time())
 	rotation.y = state.facing
 	camera_rig.aiming = state.aiming
+	camera_rig.hip_firing = state.fire_age < tuning.hip_fire_zoom_delay
 	camera_rig.side = state.shoulder_side
 	camera_rig.sprinting = state.sprinting
 	camera_rig.track(global_position)
@@ -187,6 +197,8 @@ func teleport(position: Vector3) -> void:
 	state.velocity = Vector3.ZERO
 	state.on_floor = false
 	global_position = position
+	# Drawn here from the next frame on, not slid in from where it stood.
+	reset_physics_interpolation()
 	camera_rig.snap_to(position)
 
 

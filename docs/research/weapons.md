@@ -21,6 +21,7 @@ Built by `tools/blender/build_weapons.py` (helpers in `tools/blender/weaponlib.p
 | Baseball bat | 920 | 218 | 18 | 1.11 m | Wood, Black, Grey |
 | Fire axe | 432 | 108 | 14 | 1.24 m | Red, Grey, Wood, Black |
 | Grenade | 1,172 | 374 | 25 | 0.61 m tall | Green, Yellow, DarkGrey, Grey2, Grey |
+| Claw hammer (a tool, not a weapon) | 508 | 168 | 15 | 0.73 m | Grey, Wood, DarkGrey |
 
 All are within the budgets (world 1.5k, far 500) and in the kit's range (guns 1.0-1.45k, melee 660-760; the axe is
 lighter, flat parts need few triangles).
@@ -40,6 +41,33 @@ Drawn at 0.5 m and fattened 1.2x to the kit grenade's 0.6 m (kit grenades: 0.56-
 - **Proof:** a turntable with the kit grenades (`render_turntable.py --upright` keeps it standing) and the Godot
   capture of the clips with the grenade in hand, attached to the pull request.
 
+## The hammer
+
+The claw hammer the player nails boards back with while repairing a breach (#297's hold to repair). It is a tool,
+not in the catalogue: nobody buys or swings it, and it shows only while the repair clip holds the arms
+([Animation](../design/animation.md#repair)). Built by `hammer()` in `build_weapons.py`, like the others.
+
+- **Shape:** a wood handle, wider in the swing plane than across it, swelling at the grip and flaring at the butt
+  (one prism, 12 mm chamfer, as the axe's haft); a Grey steel head: a chamfered eye block, a tapering neck, a round
+  face (12 sides) with a DarkGrey worn disc, and a split claw curling back toward the handle (two prongs of four
+  tapering prisms each, a V between them); a wood wedge and a steel one in the top of the eye.
+- **Size:** drawn at 0.56 m and enlarged 1.3 times (1.5 across) to 0.73 m, 2.2 times a real 16 oz hammer (0.33 m):
+  the kit draws its small things large (its knife is 1.35-1.41 m, longer than its 1.11 m shovel). Beside the bat
+  (1.11 m) and the axe (1.24 m) it reads as the smaller tool. In the hand its hold file scales it to 0.50 m, above
+  the size rule's 0.29 m, which the Soldier's fist hides ([the exception](../design/weapon-hold.md#the-size-rule)).
+- **Axes and grip:** the melee frame: standing up along +Z (glTF +Y), the face along -X (the axe's blade side), the
+  claw along +X, thin across Y. The origin is the grip, 15 % up from the butt (0.11 m). The model carries a `Face`
+  empty at the centre of the striking face, (-0.2145, 0.5395, 0) in the glTF, its -Z out of the face, added by
+  `FACES` in `build_weapons.py` beside `MUZZLES` ([attachment points](../design/style.md#attachment-points)): the
+  test reads the blow from it, and a nail spark or a knock can start there. Head top (0, 0.62, 0), butt (0, -0.11, 0).
+- **Far level:** 168 tris (33 %): no chamfers, the face 6-sided, the worn disc, the claw tips and the wedges left out.
+- **Held:** `game/gameplay/player/holds/hammer.tres` (size and ends) on `PlayerAnimation.HOLD_HAMMER`, the melee
+  grip tipped 20 degrees about the hammer's Z, chosen by tracing the face through the repair loop for turns about the
+  handle (-30 to 30 degrees) and tips (-60 to 60): the turn the bat uses already points the face at the board, and
+  the tip brings it square to the downward blow.
+- **Proof:** the turntable beside the bat, the axe and the kit Shovel and Knife, and a Movie Maker capture of the
+  `repair_hold` scene from the player's camera, attached to the pull request.
+
 ## Holding them: grip origin and axes
 
 The kit Soldier carries every kit weapon as a mesh parented to the `Index1.R` bone, origin on the bone. The copy in
@@ -57,6 +85,32 @@ the same transform. Use the kit **Shotgun** hold for long guns and the **Shovel*
 by eye. The AK and Sniper copies in the Soldier file carry rescaled mesh data (object scale 0.21-0.42), so their
 transform does not carry over to a weapon at true size. In Godot: a `BoneAttachment3D` on `Index1.R` with the
 Shotgun's (or Shovel's) local transform, then any of our weapon scenes as its child.
+
+## The muzzle
+
+Every firearm has a `Muzzle` empty under its root ([the rule](../design/style.md#attachment-points)), added by
+`MUZZLES` in `build_weapons.py` (drawing units, scaled by the weapon's `chunk` like the `NODES` pivots), so the flash
+and the shot leave the barrel instead of a fixed offset from the body. In the glTF and in Godot (Y up, origin the grip):
+
+| Weapon | `Muzzle` position (m) | -Z (forward) | Front face of the bounds | Note |
+| --- | --- | --- | --- | --- |
+| Lever rifle | (-1.220, 0.0675, 0) | (-1, 0, 0) | -1.224 held, -1.220 far | the barrel's end face; the black bore disc stands 4 mm proud on the held level |
+| Double shotgun | (-1.080, 0.0525, 0) | (-1, 0, 0) | -1.084 held, -1.080 far | centred between the two barrels (0.05 m either side) |
+
+- **Turned so -Z is forward:** in Blender the empty is turned 90 degrees about Z (`rotation_euler = (0, 0, pi/2)`), so
+  its local +Y points along -X, out of the barrel. The glTF export turns Blender +Y into -Z, so the node arrives in
+  Godot turned 90 degrees about Y (quaternion `(0, 0.7071, 0, 0.7071)`), with -Z along the barrel's -X.
+- **Both levels agree:** the far level uses the same point (it has no bore disc, so its front face is the barrel's).
+- **The test:** `game/tests/art/test_weapon_muzzle.gd` loads both levels of every firearm and checks the `Muzzle`
+  exists once, sits within 1 cm of the bounds' front face along the barrel with mesh within 6 cm across it, points
+  within 1 degree of the barrel and has unit scale; melee weapons and the grenade must have none, and every weapon
+  folder must be listed as a firearm or not.
+- **The capture:** `tools/blender/render_muzzle.py` draws a red ball and arrow at each `Muzzle` (side view and
+  barrel close-up).
+- **Rebuilding is safe but not byte-identical:** two runs of `build_weapons.py` give the same vertices and the same
+  triangles in a different order (the fire axe differs between two runs of one script). Compare a rebuilt file with
+  the old one by its nodes, vertex buffers and triangle set, not its bytes. Rebuilding the four older weapons also
+  brings the shared palette's `Yellow` swatch (added with the grenade) into their embedded copy.
 
 ## How to build in the kit style
 

@@ -207,11 +207,11 @@ func test_a_shot_does_not_move_the_aim_ray_of_the_next_command() -> void:
 	var view := _view(state)
 	var rig := _player.camera_rig
 	rig.step(TICK, 1.0)
-	var before := rig.aim_direction()
+	var before := -rig.aim_transform().basis.z
 	view._on_event(_shot_event(&"shotgun"))
 	for i in 10:
 		rig.step(TICK, 1.0)
-	assert_vector(rig.aim_direction()).is_equal_approx(before, Vector3.ONE * 0.0001)
+	assert_vector(-rig.aim_transform().basis.z).is_equal_approx(before, Vector3.ONE * 0.0001)
 
 
 # --- the Muzzle convention: the flash is on the held weapon's own muzzle ---

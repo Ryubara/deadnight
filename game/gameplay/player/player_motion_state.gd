@@ -5,6 +5,9 @@ extends RefCounted
 ## This is what a server sends to correct a client, and what a client rewinds to before replaying
 ## its unacknowledged commands. The camera, animation and audio read it; they never change it.
 
+## `fire_age` before the trigger was ever held: far past any hold.
+const NEVER_FIRED := 1.0e6
+
 var position := Vector3.ZERO
 var velocity := Vector3.ZERO
 ## Which way the body faces, radians around Y (0 faces -Z).
@@ -13,6 +16,9 @@ var on_floor := false
 var sprinting := false
 var aiming := false
 var crouching := false
+## Seconds since the trigger was last held (the body faces the view, and the camera zooms a little,
+## while this is short). A huge number until the first shot.
+var fire_age := NEVER_FIRED
 ## +1 camera over the right shoulder, -1 over the left.
 var shoulder_side := 1.0
 var view_yaw := 0.0

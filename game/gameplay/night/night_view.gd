@@ -4,19 +4,6 @@ extends Node3D
 ## from each frame's snapshot, flashes, impacts and damage numbers from the weapons' events, and
 ## the sounds. It holds no game state and never asks the server anything.
 
-## The sound of each weapon's shot and reload; a weapon with no entry is silent for now.
-const SHOT_SOUNDS := {
-	&"pistol": &"shot_pistol",
-	&"smg": &"shot_smg",
-	&"rifle": &"shot_rifle",
-	&"shotgun": &"shot_shotgun",
-}
-const RELOAD_SOUNDS := {
-	&"pistol": &"reload_pistol",
-	&"smg": &"reload_smg",
-	&"rifle": &"reload_rifle",
-	&"shotgun": &"reload_shotgun",
-}
 ## Lifts a burst of splinters to the middle of the boards.
 const BOARD_LIFT := Vector3(0.0, 1.3, 0.0)
 ## Lifts a damage number off the wound.
@@ -24,19 +11,24 @@ const NUMBER_LIFT := Vector3(0.0, 0.3, 0.0)
 
 var horde: ZombieHorde
 var effects: ShotEffects
-## Maps a player id to the `Player` that draws it, or null (`Night` sets it): a shot's flash hangs
-## on that body's weapon muzzle, and the local player's view shakes with the shot.
-var bodies := Callable()
 ## Where each breach's boards stand (`NightWorld`): a board torn or mended shows a burst there.
 var barricade_points: Dictionary[StringName, Vector3] = {}
 ## The lot's lamps, drawn from the generator's events (`show_lamps`).
 var lamps: LotLamps
+## The prize crane (`show_crane`).
+var crane: CraneView
 ## The night's sounds besides the guns (`hear`).
 var sounds: NightSounds
 ## The dead's voices and feet, made from the frames (`ZombieVoices`).
 var voices: ZombieVoices
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
+## The drawn body of a player by id (a `Node3D` with a `PlayerAnimation` child named
+## `AnimationTree`, or null), for the actions only events tell (the repair). In one process it is
+## the server's body; a client on another machine gives its own drawn avatars here.
+var bodies: Callable = func(_player_id: int) -> Node3D: return null
+## The night's repair interval (s): the pace each player's repair clip is played at.
+var repair_interval: Callable = func() -> float: return 1.0
 
 var _state: ClientState
 
@@ -60,6 +52,15 @@ func setup(
 	state.event_received.connect(_on_event)
 
 
+## The player who put a board back hammers it home: their repair clip lands on the event, whoever
+## they are (every client draws every player's repair from the same event).
+func show_repair(player_id: int) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.board_repaired(repair_interval.call())
+
+
 ## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
 ## begins (the circuits on, the tank full), and following every circuit, the tank and the frames.
 func show_lamps(lot: Node, fuel: FuelTuning) -> void:
@@ -68,12 +69,32 @@ func show_lamps(lot: Node, fuel: FuelTuning) -> void:
 	lamps.refresh(0)
 
 
+## Draws the prize crane at the spot the rules say it stands on (`CraneView`).
+func show_crane(world: NightWorld, tuning: RulesTuning) -> void:
+	crane = CraneView.new()
+	add_child(crane)
+	var item := tuning.economy.item(&"crane_play")
+	crane.setup(_state, world.shop_spots(), tuning.crane, item.pool if item != null else [])
+
+
 ## Starts the night's ambience and the sounds of its boards, doors, blows, till and voices, placed
 ## in `world`.
 func hear(world: NightWorld) -> void:
 	sounds = NightSounds.new()
 	add_child(sounds)
 	sounds.setup(_state, world)
+
+
+## The flash on the shooter's muzzle point (or at the server's muzzle when the weapon has no model),
+## the impacts, and the shake of the local player's own view.
+func _show_shot(event: Dictionary) -> void:
+	var def := WeaponCatalog.get_def(event["weapon_id"])
+	var body := bodies.call(event["shooter_id"]) as Player
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
+	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
+	if body != null and event["shooter_id"] == _state.player_id:
+		body.camera_rig.add_shake(def.shake_trauma)
 
 
 func _on_event(event: Dictionary) -> void:
@@ -86,16 +107,10 @@ func _on_event(event: Dictionary) -> void:
 			voices.update(_state.zombies, step)
 		&"shot_fired":
 			_show_shot(event)
-			_sound(SHOT_SOUNDS, event["weapon_id"], event["muzzle"])
 		&"damage_dealt":
 			effects.number(
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
-		&"reload_started":
-			_sound(RELOAD_SOUNDS, event["weapon_id"], null)
-		&"fire_rejected":
-			if event["reason"] == &"empty":
-				Audio.play(&"dry_fire")
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":
@@ -107,24 +122,8 @@ func _on_event(event: Dictionary) -> void:
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
+			else:
+				show_repair(event["player_id"])
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
-
-
-## The flash on the shooter's muzzle point (or at the server's muzzle when the weapon has no model),
-## the impacts, and the shake of the local player's own view.
-func _show_shot(event: Dictionary) -> void:
-	var def := WeaponCatalog.get_def(event["weapon_id"])
-	var body := bodies.call(event["shooter_id"]) as Player if bodies.is_valid() else null
-	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
-	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
-	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
-	if body != null and event["shooter_id"] == _state.player_id:
-		body.camera_rig.add_shake(def.shake_trauma)
-
-
-func _sound(table: Dictionary, weapon_id: StringName, at: Variant) -> void:
-	var id: StringName = table.get(weapon_id, &"")
-	if id != &"":
-		Audio.play(id, at)

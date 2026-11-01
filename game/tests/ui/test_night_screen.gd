@@ -6,6 +6,11 @@ const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 
 
+func after_test() -> void:
+	# The way out leads back to the menu, which would stay on the shared router for the next suite.
+	await RouterFixture.clear(get_tree())
+
+
 func _enter_night() -> NightScreen:
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
@@ -54,6 +59,31 @@ func test_the_hud_is_on_the_night_and_hears_it() -> void:
 	await _leave(screen)
 
 
+func test_a_left_hand_flips_the_hud_corners_with_the_touch_layout_and_keeps_them_in_a_menu(
+) -> void:
+	var settings: SettingsService = get_tree().root.get_node("Settings")
+	var before: Variant = settings.get_value(SettingsService.LEFT_HANDED)
+	TouchMode.device_is_touch = true
+	settings.set_value(SettingsService.LEFT_HANDED, true)
+	var screen := await _enter_night()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var hud := screen.find_children("*", "Hud", true, false)[0] as Hud
+	assert_bool(hud.mirrored).is_true()
+	assert_float(hud.ammo.get_global_rect().get_center().x).is_less(hud.size.x * 0.5)
+	assert_float(hud.health.get_global_rect().get_center().x).is_greater(hud.size.x * 0.5)
+	await _press_escape()
+	assert_bool(hud.mirrored).is_true()
+	settings.set_value(SettingsService.LEFT_HANDED, false)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_bool(hud.mirrored).is_false()
+	assert_float(hud.ammo.get_global_rect().get_center().x).is_greater(hud.size.x * 0.5)
+	TouchMode.device_is_touch = null
+	settings.set_value(SettingsService.LEFT_HANDED, before)
+	await _leave(screen)
+
+
 func test_escape_pauses_and_resume_goes_on() -> void:
 	var screen := await _enter_night()
 	await _press_escape()
@@ -67,6 +97,18 @@ func test_escape_pauses_and_resume_goes_on() -> void:
 	resume.pressed.emit()
 	assert_bool(screen.night.is_paused()).is_false()
 	assert_bool(screen.night.running).is_true()
+	await _leave(screen)
+
+
+func test_the_reticle_hides_under_the_pause_card_and_returns_on_resume() -> void:
+	var screen := await _enter_night()
+	var hud := screen.find_children("*", "Hud", true, false)[0] as Hud
+	await get_tree().physics_frame
+	assert_bool(hud.reticle.visible).is_true()
+	await _press_escape()
+	assert_bool(hud.reticle.visible).is_false()
+	await _press_escape()
+	assert_bool(hud.reticle.visible).is_true()
 	await _leave(screen)
 
 

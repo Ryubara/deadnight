@@ -138,10 +138,18 @@ func shop_spots() -> Array[Dictionary]:
 					"shop_id": StringName(marker.get_meta("shop_id")),
 					"position": (marker as Node3D).global_position,
 					"crane_spot": int(marker.get_meta("crane_spot", 0)),
+					"yaw": _yaw_of(marker as Node3D),
 				}
 			)
 		)
 	return spots
+
+
+## The turn of a marker about the up axis, from where its +Z axis points (an Euler angle is not
+## reliable at a quarter turn).
+func _yaw_of(marker: Node3D) -> float:
+	var forward := marker.global_basis.z
+	return atan2(forward.x, forward.z)
 
 
 ## Where boards can be put back: the gaps in the field's fence.

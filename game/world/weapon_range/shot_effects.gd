@@ -35,6 +35,12 @@ func _ready() -> void:
 	add_child(impacts)
 
 
+func _init() -> void:
+	# Tweens on the drawn frame move these, not the physics tick: the engine's physics
+	# interpolation (docs/research/physics-interpolation.md) would blend them a tick late.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+
 ## The look of one shot of `def` from `muzzle` that ended at each of `ends` (one per pellet): the
 ## muzzle flash (on `anchor`, the weapon's muzzle point, when there is one), then a small puff on
 ## every zombie hit at `flesh` and a spark, puff and mark at every end that stopped short of the

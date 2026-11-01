@@ -1,0 +1,71 @@
+# Keeps two status labels true on every open pull request, so a glance at the list shows which ones need attention:
+#   S-conflict    GitHub reports the pull request cannot be merged because it conflicts with its base.
+#   S-ci-failing  a required check (merge.required_checks in .github/conventions.yml) failed on the latest head commit.
+# A label is added when its condition holds and removed as soon as it stops holding. The logic is
+# .github/scripts/pr_status.py (tested in python/tests/test_pr_status.py); this file only says when to run it:
+#   - a pull request is opened, pushed to or reopened (both labels);
+#   - a workflow that carries a required check finishes (S-ci-failing, for the pull requests whose head it ran on);
+#   - the default branch moves (every merge can create a conflict in any other pull request, so all are looked at);
+#   - by hand, for a sweep.
+# GitHub computes a pull request's `mergeable` lazily, so the script asks again until it has an answer, within a bound.
+#
+# It runs on `pull_request_target`, like pr.yml, so a pull request from a fork gets its labels too (a `pull_request`
+# token is read-only there). That is safe only because pr.yml's four rules hold here as well: the checkout is the
+# default branch (no `ref`), so what runs is the repository's own script; nothing from the pull request is run or
+# built; the only inputs are a number or a sha from the event, validated by the script; the token is limited to
+# labelling pull requests and reading checks, and no secret is used. The workflow that runs is the default branch's,
+# so an edit to this file takes effect once it merges. Actions are pinned to a full commit SHA.
+name: pr-status
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  # The workflows that carry the required checks; they must be the `name:` of each workflow file.
+  workflow_run:
+    workflows: [ci, conventions, docs, pr]
+    types: [completed]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+
+# One run at a time per pull request (or per commit, for a finished workflow; per branch, for a sweep). Runs never
+# cancel each other: each one reads GitHub's current answers, so a queued run only ever replaces an older queued run
+# for the same target.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.workflow_run.head_sha || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  labels:
+    # A workflow that ran on a push to the default branch has no pull request to label; the push event sweeps instead.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.event == 'pull_request' ||
+      github.event.workflow_run.event == 'pull_request_target'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Set and clear the status labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          case "$EVENT" in
+            pull_request_target) target=(--pr "$PR_NUMBER") ;;
+            workflow_run) target=(--sha "$HEAD_SHA") ;;
+            *) target=(--all) ;;
+          esac
+          uv run --with pyyaml python .github/scripts/pr_status.py "${target[@]}"

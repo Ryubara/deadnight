@@ -38,7 +38,7 @@ func _render(seconds: float) -> void:
 ## The angle in degrees between where the lens looks and where the aim looks.
 func _view_error() -> float:
 	var look := -_rig.camera().global_transform.basis.z
-	return rad_to_deg(look.angle_to(_rig.aim_direction()))
+	return rad_to_deg(look.angle_to(-_rig.aim_transform().basis.z))
 
 
 func _def(id: StringName) -> WeaponDef:
@@ -69,15 +69,19 @@ func test_the_aim_ray_does_not_move_with_the_shake() -> void:
 	_rig.yaw = 0.6
 	_rig.pitch = 0.1
 	_render(0.3)
-	var rest_origin := _rig.aim_origin()
-	var rest_direction := _rig.aim_direction()
+	var rest_origin := _rig.aim_transform().origin
+	var rest_direction := -_rig.aim_transform().basis.z
 	_rig.add_shake(1.0)
 	var worst := 0.0
 	for i in 30:
 		_render(TICK)
 		worst = maxf(worst, _view_error())
-		assert_vector(_rig.aim_origin()).is_equal_approx(rest_origin, Vector3.ONE * 0.0001)
-		assert_vector(_rig.aim_direction()).is_equal_approx(rest_direction, Vector3.ONE * 0.0001)
+		assert_vector(_rig.aim_transform().origin).is_equal_approx(
+			rest_origin, Vector3.ONE * 0.0001
+		)
+		assert_vector(-_rig.aim_transform().basis.z).is_equal_approx(
+			rest_direction, Vector3.ONE * 0.0001
+		)
 	# The picture did shake, so the test has something to prove.
 	assert_float(worst).is_greater(0.1)
 
@@ -88,8 +92,8 @@ func test_the_human_controller_aims_with_the_unshaken_view() -> void:
 	_rig.add_shake(1.0)
 	_render(0.05)
 	var command := HumanController.new().command(_player, 1)
-	assert_vector(command.dir).is_equal_approx(_rig.aim_direction(), Vector3.ONE * 0.0001)
-	assert_vector(command.origin).is_equal_approx(_rig.aim_origin(), Vector3.ONE * 0.0001)
+	assert_vector(command.dir).is_equal_approx(-_rig.aim_transform().basis.z, Vector3.ONE * 0.0001)
+	assert_vector(command.origin).is_equal_approx(_rig.aim_transform().origin, Vector3.ONE * 0.0001)
 	assert_float(_view_error()).is_greater(0.0)
 
 

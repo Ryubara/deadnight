@@ -220,9 +220,7 @@ func _close_camera(view: String, from: Vector3, dir: Vector3) -> void:
 func _aim_rig() -> void:
 	var rig := _night.player().camera_rig
 	# The crosshair is on the target from the lens, which sits over the shoulder: aim from there.
-	var lens: Vector3 = (
-		rig.call("aim_origin") if rig.has_method("aim_origin") else rig.camera().global_position
-	)
+	var lens: Vector3 = rig.aim_transform().origin
 	var d := (_target - lens).normalized()
 	_yaw = atan2(-d.x, -d.z)
 	_pitch = asin(d.y)
@@ -233,13 +231,8 @@ func _aim_rig() -> void:
 	command.motion.yaw = rig.yaw
 	command.motion.pitch = rig.pitch
 	command.fire = _firing
-	if rig.has_method("aim_direction"):
-		command.origin = rig.call("aim_origin")
-		command.dir = rig.call("aim_direction")
-	else:
-		var camera := rig.camera()
-		command.origin = camera.global_position
-		command.dir = -camera.global_transform.basis.z
+	command.origin = rig.aim_transform().origin
+	command.dir = -rig.aim_transform().basis.z
 	_night.link.send(command.to_dict())
 
 
