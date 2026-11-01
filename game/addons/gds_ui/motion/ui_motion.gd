@@ -89,6 +89,8 @@ static func shake(control: Control) -> Tween:
 	var rest := control.position
 	var tween := control.create_tween()
 	if reduced:
+		# A tween with no step is an engine error when it starts; give it one empty step.
+		tween.tween_interval(0.0)
 		return tween
 	apply_ease(tween, UITokens.Ease.EXIT)
 	for offset in [10.0, -8.0, 5.0, -2.0, 0.0]:
