@@ -41,7 +41,24 @@ equal (`test_night_environment.gd`).
 
 ## Frame time
 
-(Filled from the browser run below.)
+Measured in Chrome 156 on an RTX 5080 (ANGLE D3D11, WebGL2), 1280 x 720, the web export of `main` against the export
+of this branch, with the smoke run (`tools/web_smoke/smoke.py --gpu`), each twice, one shared machine:
+
+| Run | Night frame mean / p50 / p95 | Worst second p95 | Console errors |
+| --- | --- | --- | --- |
+| Paced (display 180 Hz), `main`, 2 runs | 5.9 / 5.6 / 6.5 ms and 5.8 / 5.6 / 6.5 ms | 12.1 and 10.7 ms | 0 |
+| Paced, this branch, 2 runs | 6.1 / 5.6 / 10.2 ms and 5.7 / 5.6 / 6.3 ms | 11.8 and 6.7 ms | 0 |
+| Unpaced (`--disable-gpu-vsync --disable-frame-rate-limit`), `main`, 2 runs | 3.3 / 2.8 / 6.1 ms and 3.2 / 2.7 / 5.2 ms | 10.7 and 10.8 ms | 0 |
+| Unpaced, this branch, 2 runs | 3.0 / 2.6 / 5.0 ms and 3.8 / 2.9 / 7.1 ms | 9.4 and 13.7 ms | 0 |
+
+The medians of the two builds are within the run-to-run spread of the same build (2.6 to 2.9 ms against 2.7 to
+2.8 ms): no measurable cost on a desktop GPU. The paced run says nothing on its own (every frame waits for the display);
+the unpaced run is the one that shows GPU time. A weak laptop GPU is not measured (see #82); the costs there would be the
+sky shader (a full-screen pass over the sky pixels, drawn once per frame, a dozen instructions and one hash per
+star cell) and the fog (a few instructions in every material), so glow, SSAO and the other post passes stay off.
+
+An unpaced run needs Chrome's own GPU: the headless Chromium shell is always software-rendered, and on SwiftShader the
+numbers measure the CPU.
 
 ## Capturing it
 
