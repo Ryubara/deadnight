@@ -1107,15 +1107,27 @@ font_size = 110
 [node name="Concession" type="Node3D" parent="."]
 
 [node name="Floor0_0" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.200, -1.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.000, -0.200, -1.500)
 use_collision = true
-size = Vector3(20, 0.4, 6)
+size = Vector3(6, 0.4, 5)
 material = ExtResource("concession_ground")
 
 [node name="Floor0_1" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.200, 5.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.000, -0.200, 4.500)
 use_collision = true
-size = Vector3(20, 0.4, 6)
+size = Vector3(6, 0.4, 7)
+material = ExtResource("concession_ground")
+
+[node name="Floor1_0" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.000, -0.200, -1.500)
+use_collision = true
+size = Vector3(14, 0.4, 5)
+material = ExtResource("concession_ground")
+
+[node name="Floor1_1" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.000, -0.200, 4.500)
+use_collision = true
+size = Vector3(14, 0.4, 7)
 material = ExtResource("concession_ground")
 
 [node name="WallN0" type="CSGBox3D" parent="Concession"]
@@ -1214,23 +1226,29 @@ use_collision = true
 size = Vector3(0.4, 4, 12)
 material = ExtResource("concession_wall")
 
-[node name="RoofN" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.150, -1.200)
+[node name="Roof0_0" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.200, 4.150, -1.700)
 use_collision = true
-size = Vector3(20.8, 0.3, 6.4)
+size = Vector3(6.4, 0.3, 5.4)
 material = ExtResource("concession_roof")
 
-[node name="RoofS" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.150, 5.200)
+[node name="Roof0_1" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.200, 4.150, 4.700)
 use_collision = true
-size = Vector3(20.8, 0.3, 6.4)
+size = Vector3(6.4, 0.3, 7.4)
 material = ExtResource("concession_roof")
 
-[node name="PrizeCrane" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 1.200, 5.000)
+[node name="Roof1_0" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.200, 4.150, -1.700)
 use_collision = true
-size = Vector3(2, 2.4, 2)
-material = ExtResource("concession_prop")
+size = Vector3(14.4, 0.3, 5.4)
+material = ExtResource("concession_roof")
+
+[node name="Roof1_1" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.200, 4.150, 4.700)
+use_collision = true
+size = Vector3(14.4, 0.3, 7.4)
+material = ExtResource("concession_roof")
 
 [node name="SodaFountain" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.200, 0.800, 4.900)
@@ -2409,15 +2427,6 @@ outline_modulate = Color(1, 0.9, 0.6, 1)
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 0.000, 20.400)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_rifle"
-
-[node name="CraneSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -7.300, 2.000, 5.000)
-pixel_size = 0.006
-text = "PRIZE CRANE"
-font_size = 60
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotCrane" type="Marker3D" parent="ShopSpots"]
 transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, -6.400, 0.000, 5.000)

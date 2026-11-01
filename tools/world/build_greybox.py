@@ -86,7 +86,10 @@ FUEL_ITEM = "fuel_can"
 # muzzle flash and a blast. The flanks, which few lights reach, stay in wide tiles.
 FIELD_CORE_X = (-16, -6, 6, 16)
 FIELD_CORE_Z = (-52, -38, -22, -10, -4)
-STAND_CUT = 2  # where the stand's floor and roof are cut in two (z), between the counter and the back wall
+# Where the stand's floor and roof are cut into four (x, z): the prize crane's lamp, the stand's three lamps, the sign
+# and the field's posts all reach it, and these are the only cuts (searched on a 0.5 m grid) that leave each piece at 6.
+STAND_CUT_X = -4
+STAND_CUT = 1
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
@@ -712,10 +715,10 @@ def build() -> None:
 
     # --- Concession stand ----------------------------------------------------------------------------------------
     con = group("Concession", ".")
-    # The floor and the roof are each two boxes, front (the counter's side) and back, cut at the same line: the field's
-    # posts, the sign and the three lamps inside reach the front, the midway's court lamp reaches the back, and no one
-    # box is reached by all of them (Compatibility lights a mesh with at most 8 lights, 2 of them left for a fight).
-    cut_tiles(con, "Floor", (-10, 10), (-4, STAND_CUT, 8), "concession_ground")
+    # The floor and the roof are each four boxes, cut at the same lines: the field's posts, the sign, the stand's three
+    # lamps, the midway's court lamp and the prize crane's lamp (it stands beside the west wall) reach the stand, and no
+    # one box is reached by all of them (Compatibility lights a mesh with at most 8 lights, 2 of them left for a fight).
+    cut_tiles(con, "Floor", (-10, STAND_CUT_X, 10), (-4, STAND_CUT, 8), "concession_ground")
     wall(
         con, "WallN", "x", -4, -10, 10, 4.0, "concession_wall",
         [(0, 3, 0, 2.6), (-6, 2.2, 1.0, 2.4), (6, 2.2, 1.0, 2.4)],
@@ -723,10 +726,11 @@ def build() -> None:
     wall(con, "WallS", "x", 8, -10, 10, 4.0, "concession_wall", [(-5, REAR_EXIT, 0, 2.4), (5, REAR_EXIT, 0, 2.4)])
     wall(con, "WallW", "z", -10, -4, 8, 4.0, "concession_wall")
     wall(con, "WallE", "z", 10, -4, 8, 4.0, "concession_wall")
-    box(con, "RoofN", (20.8, 0.3, STAND_CUT + 4.4), (0, 4.15, (STAND_CUT - 4.4) / 2), "concession_roof")
-    box(con, "RoofS", (20.8, 0.3, 8.4 - STAND_CUT), (0, 4.15, (STAND_CUT + 8.4) / 2), "concession_roof")
+    for i, (xa, xb) in enumerate(itertools.pairwise((-10.4, STAND_CUT_X, 10.4))):
+        for j, (za, zb) in enumerate(itertools.pairwise((-4.4, STAND_CUT, 8.4))):
+            box(con, f"Roof{i}_{j}", (xb - xa, 0.3, zb - za), ((xa + xb) / 2, 4.15, (za + zb) / 2), "concession_roof")
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
-    block(con, "PrizeCrane", -9.4, -7.4, 4, 6, 2.4, "concession_prop")
+    # The prize crane is not part of the scene: it moves between four places, so `CraneView` draws it.
     block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop")
     cl = lamps(con, "concession")
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
@@ -935,7 +939,6 @@ def build() -> None:
     sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)
     shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
-    sign("ShopProps", "CraneSign", "PRIZE CRANE", (-7.3, 2.0, 5.0), 90, 60)
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)
     # The crane's other places (rules: `crane.spot_doors`): the midway, the open field and the yard. A breakdown moves
     # the crane to one of the spots whose door is open; the prize crane stands on only one at a time.
