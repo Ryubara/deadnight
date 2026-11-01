@@ -27,14 +27,7 @@ script = ExtResource("3_anim")
 [node name="CameraRig" type="Node3D" parent="."]
 script = ExtResource("4_camera")
 
-[node name="Pitch" type="Node3D" parent="CameraRig"]
-
-[node name="SpringArm3D" type="SpringArm3D" parent="CameraRig/Pitch"]
-spring_length = 2.8
-
-[node name="Shoulder" type="Node3D" parent="CameraRig/Pitch/SpringArm3D"]
-
-[node name="Camera3D" type="Camera3D" parent="CameraRig/Pitch/SpringArm3D/Shoulder"]
-fov = 75.0
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+fov = 70.0
 near = 0.05
 current = true
