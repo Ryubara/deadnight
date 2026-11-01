@@ -1,0 +1,81 @@
+class_name ZombieDirector
+extends RefCounted
+## Joins the rules to the zombie simulation, on the server. Spawn requests and removals come from
+## the rules' events; hits go back through `ZombieRulesPort`. The director owns no health and no
+## clock.
+##
+## The rules may ask for more zombies than the crowd budget allows (their alive cap grows with the
+## player count): requests wait here until a zombie falls, in the order they came.
+
+signal player_struck(player_id: int, zombie_id: int, damage: float)
+
+var rules: GameRules
+var sim: ZombieSim
+var port: ZombieRulesPort
+## Where zombies appear: ground positions. A request picks one with its `point_roll`.
+var spawn_points: Array[Vector3] = []
+
+var _waiting: Array[Dictionary] = []
+
+
+func _init(p_rules: GameRules, p_sim: ZombieSim, p_spawn_points: Array[Vector3]) -> void:
+	rules = p_rules
+	sim = p_sim
+	spawn_points = p_spawn_points
+	port = ZombieRulesPort.new(p_rules)
+	rules.event_emitted.connect(_on_rules_event)
+
+
+## Requests waiting for room in the crowd.
+func waiting_count() -> int:
+	return _waiting.size()
+
+
+## The seam for weapons: a hit on a zombie. `zone` is a Hitbox zone name, `damage` the final
+## amount after falloff and zone multipliers. The rules decide the outcome; the zombie reacts.
+func take_hit(
+	zombie_id: int, zone: StringName, damage: float, shooter_id: int = -1, melee: bool = false
+) -> Dictionary:
+	var result := port.deal_damage(shooter_id, zombie_id, zone, damage, melee)
+	if result["accepted"] and not result["killed"]:
+		sim.react_to_hit(zombie_id)
+	return result
+
+
+## One fixed step: lets waiting requests in, moves the zombies, and reports blows on players.
+## `targets` maps player id to position, the players a zombie may chase.
+func tick(delta: float, targets: Dictionary) -> void:
+	_admit_waiting()
+	for event in sim.tick(delta, targets):
+		if event["type"] == &"zombie_struck":
+			player_struck.emit(event["target_id"], event["zombie_id"], event["damage"])
+
+
+func _on_rules_event(event: Dictionary) -> void:
+	match event["type"]:
+		&"zombie_spawn_requested":
+			port.note_spawn(event["zombie_id"], event["health"])
+			_waiting.append(event)
+			_admit_waiting()
+		&"zombie_removed":
+			port.note_removed(event["zombie_id"])
+			_remove(event["zombie_id"], event["killer_id"])
+
+
+func _remove(zombie_id: int, killer_id: int) -> void:
+	var index := _waiting.find_custom(
+		func(e: Dictionary) -> bool: return e["zombie_id"] == zombie_id
+	)
+	if index != -1:
+		_waiting.remove_at(index)
+	elif killer_id >= 0:
+		sim.begin_death(zombie_id)
+	else:
+		sim.despawn(zombie_id)
+
+
+func _admit_waiting() -> void:
+	while not _waiting.is_empty() and sim.has_room() and not spawn_points.is_empty():
+		var request: Dictionary = _waiting.pop_front()
+		var point := spawn_points[request["point_roll"] % spawn_points.size()]
+		sim.spawn(request["zombie_id"], request["speed"], point)
