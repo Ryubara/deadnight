@@ -69,6 +69,50 @@ func advance(seconds: float) -> void:
 		left -= step
 
 
+## The longest content the game allows, all on screen at once: names at the name limit, a
+## three-digit round, the largest points and ammo, a long weapon, equipment and prompt, a busy
+## party.
+## The fixture must have four players (`make(host, 4)`) and round one running.
+func fill_worst_case() -> void:
+	var state := hud.state
+	var names := [
+		"Maximiliana Rosewood",
+		"Bartholomew Okonkwo",
+		"Wolfgang Amadeus Zed",
+		"Persephone Q-Laneway"
+	]
+	for i in names.size():
+		state.set_player_name(i + 1, names[i])
+	state.apply_event({"type": &"round_started", "round": 123, "zombie_count": 999})
+	state.apply_event({"type": &"points_changed", "player_id": 1, "total": 99999999, "delta": 0})
+	state.set_health(100.0, 100.0)
+	state.set_ammo(999, 9999, "Double-Barrel Coach Gun")
+	state.set_equipment("Molotov Cocktail", 12)
+	state.apply_event({"type": &"grenade_count_changed", "player_id": 1, "count": 5})
+	state.set_area(
+		"The Concession Stand", "Light the booth to open the back lot and the lot beyond"
+	)
+	state.set_prompt(
+		&"buy_weapon",
+		"Double-Barrel Coach Gun",
+		99999,
+		"Two barrels, one very loud night in the back lot"
+	)
+	act(RulesAction.set_downed(2, true))
+	act(RulesAction.set_downed(3, true))
+	hud.banner.show_banner("ROUND 123 SURVIVED", "CATCH YOUR BREATH", HudBanner.Rank.ROUND)
+	for text in [
+		"MAXIMILIANA ROSEWOOD OPENED THE PROJECTION BOOTH",
+		"LIGHTS OFF: THE CONCESSION STAND",
+		"BARTHOLOMEW OKONKWO IS DOWN",
+	]:
+		hud.events_feed.push(text)
+	hud.notices.push("PERSEPHONE Q-LANEWAY CONNECTED")
+	for amount in [100, 60, 130, 60]:
+		hud.gains.add_gain(&"headshot_kill", amount)
+	advance(HudBanner.IN_TIME + 0.1)
+
+
 static func hurt(direction: float, health: float) -> Dictionary:
 	return {
 		"type": HudState.PLAYER_HURT,

@@ -28,7 +28,8 @@ extends RefCounted
 ##   zombie_removed: zombie_id, cause (killed or gone), killer_id (-1 when no player), zone, melee
 ##   zombie_crippled: zombie_id, player_id, cause (legs or wounded), health, speed_scale
 ##   grenade_count_changed: player_id, count, reason (thrown, refill, purchase)
-##   player_added, player_removed, player_downed, player_revived: player_id
+##   player_added: player_id, grenades (the count they start with)
+##   player_removed, player_downed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
@@ -56,7 +57,7 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-const SNAPSHOT_VERSION := 3
+const SNAPSHOT_VERSION := 4
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -70,6 +71,7 @@ const SNAPSHOT_KEYS := {
 	"round": TYPE_INT,
 	"break_left": TYPE_FLOAT,
 	"spawn_left": TYPE_INT,
+	"round_total": TYPE_INT,
 	"spawn_timer": TYPE_FLOAT,
 	"round_players": TYPE_INT,
 	"next_zombie_id": TYPE_INT,
@@ -98,6 +100,8 @@ var doors_open: Array[StringName] = []
 
 var _break_left: float = 0.0
 var _spawn_left: int = 0
+## Zombies the round began with (`round_started`'s `zombie_count`); kept after it ends.
+var _round_total: int = 0
 var _spawn_timer: float = 0.0
 var _round_players: int = 1
 var _next_zombie_id: int = 1
@@ -199,6 +203,7 @@ func to_dict() -> Dictionary:
 		"round": round_number,
 		"break_left": _break_left,
 		"spawn_left": _spawn_left,
+		"round_total": _round_total,
 		"spawn_timer": _spawn_timer,
 		"round_players": _round_players,
 		"next_zombie_id": _next_zombie_id,
@@ -252,6 +257,7 @@ func from_dict(data: Dictionary) -> StringName:
 	round_number = data["round"]
 	_break_left = data["break_left"]
 	_spawn_left = data["spawn_left"]
+	_round_total = data["round_total"]
 	_spawn_timer = data["spawn_timer"]
 	_round_players = data["round_players"]
 	_next_zombie_id = data["next_zombie_id"]
@@ -374,6 +380,7 @@ func _begin_round() -> void:
 	round_number += 1
 	_round_players = maxi(players.size(), 1)
 	_spawn_left = tuning.rounds.zombies_for_round(round_number, _round_players)
+	_round_total = _spawn_left
 	_spawn_timer = tuning.rounds.first_spawn_delay
 	for player: PlayerState in players.values():
 		player.repair_points_this_round = 0
@@ -487,7 +494,7 @@ func _add_player(player_id: int) -> void:
 	var added := PlayerState.new(player_id, tuning.economy.start_points)
 	added.grenades = tuning.explosives.start_grenades
 	players[player_id] = added
-	_emit(&"player_added", {"player_id": player_id})
+	_emit(&"player_added", {"player_id": player_id, "grenades": added.grenades})
 	_emit(
 		&"points_changed",
 		{

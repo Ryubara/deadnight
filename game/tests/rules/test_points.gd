@@ -19,6 +19,8 @@ func test_a_player_joins_with_the_starting_points() -> void:
 	var fresh := GameRules.new(RulesFixture.tuning(), 1)
 	var events := fresh.apply(RulesAction.add_player(7))
 	assert_str(events[0]["type"]).is_equal("player_added")
+	# The event says how many grenades they start with, so a client need not know the tuning.
+	assert_int(events[0]["grenades"]).is_equal(fresh.grenades_of(7))
 	assert_int(events[1]["total"]).is_equal(200)
 	assert_str(events[1]["reason"]).is_equal("start")
 

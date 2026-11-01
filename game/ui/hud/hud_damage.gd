@@ -25,6 +25,10 @@ func _process(delta: float) -> void:
 	advance(delta)
 
 
+func topics() -> Array[StringName]:
+	return [HudState.HEALTH, HudState.TEAM]
+
+
 func refresh() -> void:
 	_update_frame()
 
