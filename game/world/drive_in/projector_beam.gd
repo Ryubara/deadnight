@@ -5,7 +5,7 @@ extends LightFollower
 ## thins towards the screen and fades at the silhouette so no edge shows. It burns with the screen's
 ## lamp (`light_path`), flicker and all.
 
-const BEAM_ENERGY := 0.09
+const BEAM_ENERGY := 0.14
 const SEGMENTS := 28
 const HALO_ENERGY := 1.5
 ## The haze's brightness at the lens and at the screen.
