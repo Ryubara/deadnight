@@ -144,7 +144,7 @@ are estimates until the weapons and the controller exist. Retune doors, tonics a
 - **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, only fuel
   absorbs points. Ammo and weapon upgrades (the re-cut in the projection booth) are the intended
   sinks; they need their own issue.
-- **Weapon damage, ammo and the weapon limit** belong to the weapon work; the health curve assumes
-  the damage tiers above.
+- **Weapon damage, ammo and the weapon limit**: the weapons and their numbers are in
+  [Weapons](weapons.md) (shots to kill per round are tabled there); ammo for sale and the carry limit are still open.
 - **Downed players and revives** are only modelled as down and up; the revive action, bleed-out and
   the exact penalty are for the player work to settle.
