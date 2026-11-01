@@ -108,6 +108,7 @@ func _set_labels_visible(on: bool) -> void:
 func _flood_light() -> void:
 	var env := ($DriveInGreybox/Lighting/WorldEnvironment as WorldEnvironment).environment
 	env.ambient_light_energy = 2.2
+	env.fog_enabled = false  # from 100 m up the night's fog hides the plan
 	var moon := _lighting.get_node("Moon") as DirectionalLight3D
 	moon.light_energy = 1.0
 	for light in get_tree().get_nodes_in_group("powered_light"):
