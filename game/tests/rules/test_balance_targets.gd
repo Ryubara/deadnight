@@ -1,0 +1,75 @@
+extends GdUnitTestSuite
+## The balance gate: seeded nights through the real rules with modelled players, held against the
+## ranges of `BalanceTargets`. If a tuning change moves the game out of range this fails and says
+## which number, so balance is a build result and not an opinion. Read docs/design/rounds.md
+## ("Balance targets") before changing a range.
+
+## Nights per cell in CI. Seeds are fixed, so the result is the same every run on every machine.
+const NIGHTS := 60
+const SEED := 4000
+const CELLS := [
+	["weak", 1],
+	["average", 1],
+	["average", 2],
+	["average", 4],
+	["strong", 1],
+]
+
+
+func _batch(tuning: RulesTuning, nights: int = NIGHTS) -> Dictionary:
+	var cells := {}
+	for spec: Array in CELLS:
+		cells["%s:%d" % spec] = BalanceBatch.run_cell(
+			tuning, StringName(spec[0]), spec[1], nights, SEED
+		)
+	return cells
+
+
+func test_the_shipped_tuning_meets_every_balance_target() -> void:
+	var misses := BalanceTargets.check(_batch(RulesFixture.tuning()))
+	assert_array(misses).override_failure_message("\n".join(misses)).is_empty()
+
+
+func test_better_players_and_more_players_go_further() -> void:
+	var cells := _batch(RulesFixture.tuning(), 60)
+	var weak := BalanceBatch.mean_round(cells["weak:1"])
+	var average := BalanceBatch.mean_round(cells["average:1"])
+	var strong := BalanceBatch.mean_round(cells["strong:1"])
+	assert_float(weak).is_less(average)
+	assert_float(average).is_less(strong)
+	assert_float(BalanceBatch.mean_round(cells["average:2"])).is_greater(average)
+	assert_float(BalanceBatch.mean_round(cells["average:4"])).is_greater(
+		BalanceBatch.mean_round(cells["average:2"])
+	)
+
+
+func test_the_gate_fails_when_the_tuning_drifts() -> void:
+	# Health that compounds at 25% a round is far out of any range: the gate must say so.
+	var harsh := RulesFixture.tuning()
+	harsh.rounds.health_growth = 1.25
+	harsh.rounds.health_knee_round = 2
+	var misses := BalanceTargets.check(_batch(harsh, 20))
+	assert_array(misses).is_not_empty()
+	var easy := RulesFixture.tuning()
+	easy.rounds.health_base = 6.0
+	easy.rounds.health_step = 1.0
+	easy.rounds.count_base = 2.0
+	easy.rounds.count_linear = 0.3
+	easy.rounds.count_quadratic = 0.0
+	assert_array(BalanceTargets.check(_batch(easy, 20))).is_not_empty()
+
+
+func test_a_night_is_the_same_every_time() -> void:
+	var tuning := RulesFixture.tuning()
+	var first := BalanceBatch.run_cell(tuning, &"average", 2, 5, 77)
+	var second := BalanceBatch.run_cell(tuning, &"average", 2, 5, 77)
+	assert_array(first["reached"]).is_equal(second["reached"])
+	assert_array(first["pressure"]).is_equal(second["pressure"])
+
+
+func test_the_simulator_ends_nights_and_plays_a_boss_night_and_every_type() -> void:
+	var cell := BalanceBatch.run_cell(RulesFixture.tuning(), &"strong", 1, 10, 3)
+	assert_int(BalanceBatch.median_round(cell)).is_greater(5)
+	assert_bool(cell["special"].values().has("double_feature")).is_true()
+	for type_id in ["walker", "runner", "crawler", "brute", "headliner"]:
+		assert_bool(cell["ttk"].has(type_id)).override_failure_message(type_id).is_true()
