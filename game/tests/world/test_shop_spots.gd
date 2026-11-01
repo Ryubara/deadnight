@@ -1,0 +1,97 @@
+# The lot's shop spots (docs/design/map.md): wall weapons, the prize crane and ammunition lockers
+# are markers the night reads; each names a real shop item, stands on ground a player can reach and
+# sits clear of every door and of the other spots, so one press never means two things.
+extends GdUnitTestSuite
+
+const KINDS: Array[StringName] = [&"wall", &"crane", &"ammo"]
+## The night's reach for a use (NightTuning.use_reach): spots of different kinds must be farther
+## apart than twice this, so no place is in reach of two of them.
+const REACH := 3.2
+
+var _world: NightWorld
+var _spots: Array[Dictionary]
+
+
+func before_test() -> void:
+	_world = NightWorld.new()
+	add_child(_world)
+	_world.greybox = load(LotFixture.SCENE).instantiate() as Node3D
+	_world.add_child(_world.greybox)
+	_spots = _world.shop_spots()
+
+
+func after_test() -> void:
+	_world.queue_free()
+
+
+func test_the_lot_has_two_wall_weapons_a_crane_and_lockers() -> void:
+	var kinds := {}
+	for spot in _spots:
+		kinds[spot["kind"]] = kinds.get(spot["kind"], 0) + 1
+	assert_int(kinds[&"wall"]).is_equal(2)
+	assert_int(kinds[&"crane"]).is_equal(1)
+	assert_int(kinds[&"ammo"]).is_greater_equal(4)
+
+
+func test_every_spot_has_a_known_kind_and_wall_and_crane_name_shop_items() -> void:
+	var economy := RulesFixture.tuning().economy
+	for spot in _spots:
+		assert_bool(KINDS.has(spot["kind"])).is_true()
+		if spot["kind"] == &"ammo":
+			assert_str(String(spot["shop_id"])).is_empty()
+			continue
+		var item := economy.item(spot["shop_id"])
+		assert_object(item).override_failure_message(String(spot["shop_id"])).is_not_null()
+		var expected := ShopItem.Kind.WEAPON if spot["kind"] == &"wall" else ShopItem.Kind.CRANE
+		assert_int(item.kind).is_equal(expected)
+
+
+func test_every_weapon_the_shop_sells_by_the_wall_hangs_on_one() -> void:
+	var on_walls: Array[StringName] = []
+	for spot in _spots:
+		if spot["kind"] == &"wall":
+			on_walls.append(spot["shop_id"])
+	for item in RulesFixture.tuning().economy.items:
+		if item.kind == ShopItem.Kind.WEAPON:
+			assert_array(on_walls).contains([item.id])
+
+
+func test_no_spot_is_within_reach_of_a_door_slab_or_of_another_kind_of_spot() -> void:
+	var doors := _world.greybox.get_node("Doors")
+	for spot in _spots:
+		var at: Vector3 = spot["position"]
+		for door in doors.get_children():
+			for slab in door.get_children():
+				if slab is CSGShape3D and (slab as CSGShape3D).use_collision:
+					var apart := _flat(at, (slab as Node3D).global_position)
+					(
+						assert_float(apart)
+						. override_failure_message(
+							"%s is %.1f m from %s" % [spot["shop_id"], apart, door.name]
+						)
+						. is_greater(REACH)
+					)
+		for other in _spots:
+			if other["kind"] != spot["kind"]:
+				assert_float(_flat(at, other["position"])).is_greater(REACH)
+
+
+func test_every_spot_stands_inside_the_lot() -> void:
+	for spot in _spots:
+		var at: Vector3 = spot["position"]
+		assert_float(absf(at.x)).is_less(62.0)
+		assert_float(at.z).is_between(-52.0, 64.0)
+		assert_float(at.y).is_equal(0.0)
+
+
+func test_the_wall_weapons_hang_in_the_two_places_the_design_gives_them() -> void:
+	# The shotgun in the open before any door; the rifle past the concession, on the booth's wall.
+	for spot in _spots:
+		if spot["shop_id"] == &"weapon_shotgun":
+			assert_float(spot["position"].z).is_less(-4.0)
+		if spot["shop_id"] == &"weapon_rifle":
+			assert_float(spot["position"].z).is_between(8.0, 22.0)
+
+
+static func _flat(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()

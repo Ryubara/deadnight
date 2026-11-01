@@ -30,12 +30,26 @@ const BOSS_HIT_SECONDS := 32.0 / 24.0
 ## Planar speed (m/s) at which the boss's move state is fully walking.
 const BOSS_WALK_AT := 0.6
 
+## Clips authored for Deadnight on the same rig, in a file of their own
+## (`tools/blender/build_zombie_clips.py`): added to both libraries.
+const EXTRA_CLIPS_FILE := "res://assets/characters/zombies/clips/zombie_clips.glb"
+## Pulling a board off the fence: reach, grab, strain, yank. It loops while a zombie stands at its
+## boards; `TEAR_YANK_SECONDS` is the moment the board leaves the hands (frame 22 of 29 at 24 fps,
+## `clips.json` beside the file), which the view puts on the rules' tear moment.
+const TEAR_CLIP := &"Tear_Boards"
+const TEAR_YANK_SECONDS := 22.0 / 24.0
+const TEAR_SECONDS := 29.0 / 24.0
+
 const STATE_MOVE := &"move"
 const STATE_ROAR := &"roar"
 const STATE_CRAWL := &"crawl"
 const STATE_ATTACK := &"attack"
 const STATE_STAGGER := &"stagger"
 const STATE_DIE := &"die"
+const STATE_TEAR := &"tear"
+## The tear state is the clip behind a seek and a time scale: their parameters.
+const TEAR_SEEK_PARAMETER := &"parameters/tear/seek/seek_request"
+const TEAR_SCALE_PARAMETER := &"parameters/tear/scale/scale"
 const BLEND_PARAMETER := &"parameters/move/blend_position"
 const PLAYBACK_PARAMETER := &"parameters/playback"
 ## The attack state of the boss is a clip behind a time scale: this is the scale's parameter.
@@ -92,7 +106,19 @@ static func _build_library(
 		var animation := player.get_animation(clip).duplicate(true) as Animation
 		animation.loop_mode = Animation.LOOP_LINEAR if clip in looping else Animation.LOOP_NONE
 		library.add_animation(clip, animation)
+	var tear := _extra_clip(TEAR_CLIP)
+	tear.loop_mode = Animation.LOOP_LINEAR
+	library.add_animation(TEAR_CLIP, tear)
 	return library
+
+
+## A clip from the extra clips' file (the same rig and track paths as every zombie model).
+static func _extra_clip(clip: StringName) -> Animation:
+	var scene := (load(EXTRA_CLIPS_FILE) as PackedScene).instantiate()
+	var player := scene.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	var animation := player.get_animation(clip).duplicate(true) as Animation
+	scene.free()
+	return animation
 
 
 static func _build_state_machine() -> AnimationNodeStateMachine:
@@ -109,6 +135,7 @@ static func _build_state_machine() -> AnimationNodeStateMachine:
 	machine.add_node(STATE_ATTACK, _clip_node(&"Punch"))
 	machine.add_node(STATE_STAGGER, _clip_node(&"HitReact"))
 	machine.add_node(STATE_DIE, _clip_node(&"Death"))
+	machine.add_node(STATE_TEAR, _tear_node(LIBRARY))
 	return machine
 
 
@@ -124,7 +151,20 @@ static func _build_boss_machine() -> AnimationNodeStateMachine:
 	machine.add_node(STATE_ATTACK, _scaled_clip(&"Boss_Attack"))
 	machine.add_node(STATE_STAGGER, _clip_node(&"Boss_Stagger", BOSS_LIBRARY))
 	machine.add_node(STATE_DIE, _clip_node(&"Boss_Death", BOSS_LIBRARY))
+	machine.add_node(STATE_TEAR, _tear_node(BOSS_LIBRARY))
 	return machine
+
+
+## The tear clip behind a seek (to put the yank on a tear) and a time scale (to fit a type's pace).
+static func _tear_node(library: StringName) -> AnimationNodeBlendTree:
+	var tree := AnimationNodeBlendTree.new()
+	tree.add_node(&"clip", _clip_node(TEAR_CLIP, library))
+	tree.add_node(&"seek", AnimationNodeTimeSeek.new())
+	tree.add_node(&"scale", AnimationNodeTimeScale.new())
+	tree.connect_node(&"seek", 0, &"clip")
+	tree.connect_node(&"scale", 0, &"seek")
+	tree.connect_node(&"output", 0, &"scale")
+	return tree
 
 
 ## A clip behind a time scale (the scale is `BOSS_ATTACK_SCALE_PARAMETER`).

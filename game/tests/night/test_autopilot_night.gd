@@ -8,6 +8,8 @@ extends GdUnitTestSuite
 const TICKS_PER_FRAME := 40
 ## A door the bot can afford in round two, so spending shows without a long run.
 const CHEAP_DOOR := 250
+## The wall shotgun priced so that the bot can buy it in the first rounds.
+const CHEAP_SHOTGUN := 150
 const ROUNDS := 3
 ## Game seconds after which a run gives up (a bot that stops advancing fails the test).
 const GIVE_UP_SECONDS := 900.0
@@ -15,18 +17,27 @@ const GIVE_UP_SECONDS := 900.0
 var _prompts_seen: Array[Dictionary] = []
 var _feed_at_purchase: Array[String] = []
 var _points_at_purchase := -1
+var _weapons_fired: Array[StringName] = []
 
 
 func test_the_bot_plays_rounds_earns_and_spends() -> void:
 	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
 	tuning.economy.item(&"door_concession").price = CHEAP_DOOR
+	tuning.economy.item(&"weapon_shotgun").price = CHEAP_SHOTGUN
 	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	add_child(hud)
 	var night := await NightFixture.start(self, Night.Mode.AUTOPILOT, tuning, 7, hud)
 	night.ticks_per_frame = TICKS_PER_FRAME
 	var state := night.state
+	# The pistol starts with nothing in reserve: the bot has to find rounds, as it will in round three.
+	night.server.combat.state_of(1, &"pistol").reserve = 0
 	night.ticked.connect(func() -> void: _watch_prompt(hud))
 	state.event_received.connect(func(event: Dictionary) -> void: _watch_purchase(hud, event))
+	state.event_received.connect(
+		func(event: Dictionary) -> void:
+			if event["type"] == &"shot_fired" and not _weapons_fired.has(event["weapon_id"]):
+				_weapons_fired.append(event["weapon_id"])
+	)
 	var ticks := 0
 	while state.rounds_started < ROUNDS and not state.over and ticks < GIVE_UP_SECONDS / Night.STEP:
 		await get_tree().physics_frame
@@ -38,6 +49,9 @@ func test_the_bot_plays_rounds_earns_and_spends() -> void:
 	assert_int(state.points_spent).is_greater_equal(CHEAP_DOOR)
 	assert_int(state.doors_bought).is_greater_equal(1)
 	assert_bool(night.server.rules.is_door_open(&"door_concession")).is_true()
+	assert_int(state.bought.get(&"ammo_pistol", 0)).is_greater_equal(1)
+	assert_int(state.bought.get(&"weapon_shotgun", 0)).is_equal(1)
+	assert_array(_weapons_fired).contains([&"pistol", &"shotgun"])
 	_assert_the_hud_shows_the_night(hud, night)
 	_assert_the_door_was_offered_then_bought(hud)
 	night.queue_free()

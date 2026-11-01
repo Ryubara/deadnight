@@ -108,12 +108,11 @@ func test_swap_changes_the_weapon_in_hand_and_the_frame_lists_the_arms() -> void
 	NightFixture.run(night, 2)
 	assert_str(String(night.state.me()["weapon"])).is_equal("rifle")
 	var arms: Dictionary = night.state.me()["arms"]
-	assert_array(arms.keys()).contains_exactly([&"pistol", &"rifle"])
+	assert_array(arms.keys()).contains_exactly_in_any_order([&"crowbar", &"pistol", &"rifle"])
 	assert_array(arms[&"pistol"]).is_equal([10, 40])
-	_swap(night)
-	assert_str(String(night.state.me()["weapon"])).is_equal("pistol")
-	_swap(night)
-	assert_str(String(night.state.me()["weapon"])).is_equal("rifle")
+	for expected in ["crowbar", "pistol", "rifle"]:
+		_swap(night)
+		assert_str(String(night.state.me()["weapon"])).is_equal(expected)
 	night.queue_free()
 
 

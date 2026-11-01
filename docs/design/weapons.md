@@ -163,6 +163,8 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 
 ## Open questions
 
+- **Shop weapons are no step up.** The numbers behind a proposal to raise the rifle and the shotgun are in
+  [Rounds](rounds.md#open-questions); nothing here changed.
 - **The carry limit** (two or three weapons) needs the player work; today a player may carry every weapon, and
   the swap button (F, d-pad up) takes the next one carried in hand.
 - **Friendly blast.** The flare's blast hurts zombies only; whether it hurts players (and whether a zombie on fire

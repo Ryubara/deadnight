@@ -67,6 +67,60 @@ func test_a_sting_ducks_the_effects_bus_then_lets_it_back() -> void:
 	assert_float(_audio.duck_db).is_equal(0.0)
 
 
+func _has_duck_effect(bus_name: StringName) -> bool:
+	var bus := AudioServer.get_bus_index(bus_name)
+	for i in AudioServer.get_bus_effect_count(bus):
+		if AudioServer.get_bus_effect(bus, i) is AudioEffectAmplify:
+			return true
+	return false
+
+
+func test_the_sting_ducks_the_ambience_with_the_effects_and_leaves_the_rest() -> void:
+	assert_bool(_has_duck_effect(&"Effects")).is_true()
+	assert_bool(_has_duck_effect(&"Ambience")).is_true()
+	for untouched: StringName in [&"Music", &"Voice", &"UI"]:
+		assert_bool(_has_duck_effect(untouched)).override_failure_message(untouched).is_false()
+	for bus_name: StringName in AudioService.DUCK_BUSES:
+		var bus := AudioServer.get_bus_index(bus_name)
+		var before := AudioServer.get_bus_volume_db(bus)
+		_audio.play(&"round_start")
+		_audio.advance(0.2)
+		# The player's own volume setting is untouched; the duck lives in the effect.
+		assert_float(AudioServer.get_bus_volume_db(bus)).is_equal(before)
+		_audio.stop_all()
+		_audio.advance(5.0)
+
+
+func test_every_catalog_sound_is_on_a_bus_of_its_kind() -> void:
+	var expected := {
+		&"bed_crickets": &"Ambience",
+		&"bed_highway": &"Ambience",
+		&"bed_projector": &"Ambience",
+		&"bed_score": &"Music",
+		&"player_hurt": &"Voice",
+		&"player_downed": &"Voice",
+		&"board_tear": &"Effects",
+		&"round_start": &"Music",
+		&"ui_press": &"UI",
+	}
+	for id: StringName in expected:
+		assert_str(SoundCatalog.get_def(id).bus).override_failure_message(id).is_equal(expected[id])
+
+
+func test_the_layout_has_a_bus_for_every_kind_of_sound_and_each_has_a_volume_setting() -> void:
+	for bus_name: StringName in [&"Master", &"Music", &"Effects", &"Voice", &"Ambience", &"UI"]:
+		(
+			assert_int(AudioServer.get_bus_index(bus_name))
+			. override_failure_message(bus_name)
+			. is_greater_equal(0)
+		)
+		(
+			assert_bool(SettingsService.BUSES.values().has(bus_name))
+			. override_failure_message(bus_name)
+			. is_true()
+		)
+
+
 func test_a_sting_does_not_duck_the_ui() -> void:
 	var bus := AudioServer.get_bus_index(&"UI")
 	var before := AudioServer.get_bus_volume_db(bus)

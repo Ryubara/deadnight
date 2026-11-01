@@ -181,8 +181,8 @@ def place(instance, group, node, lines, car_slots, gaps, screen_c, lamps) -> int
     put("Concession", "PopcornMachine", "popcorn_machine", (-2.6, 0.96, 2.05), 180)
     put("Concession", "MenuBoard", "menu_board", (0, 2.2, 7.72), 180)
     # The midway behind it: tables and cans by the stand's rear exits.
-    put("Midway", "PicnicTableW", "picnic_table", (-11, 0, 11.5))
-    put("Midway", "PicnicTableE", "picnic_table", (11, 0, 11.5))
+    put("Midway", "PicnicTableW", "picnic_table", (-10, 0, 11.5))
+    put("Midway", "PicnicTableE", "picnic_table", (10, 0, 11.5))
     put("Midway", "CanW", "trash_can", (-8.4, 0, 9.3))
     put("Midway", "CanE", "trash_can", (8.4, 0, 9.3))
     # The booth's projector (the greybox's block), its lens at the port.

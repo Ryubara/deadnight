@@ -69,6 +69,9 @@
 [ext_resource type="Material" path="res://assets/lot/materials/roadblock.tres" id="roadblock"]
 [ext_resource type="Material" path="res://assets/lot/materials/breach_ground.tres" id="breach_ground"]
 [ext_resource type="Material" path="res://assets/lot/materials/line_paint.tres" id="line_paint"]
+[ext_resource type="Material" path="res://assets/lot/materials/plaque.tres" id="plaque"]
+[ext_resource type="Material" path="res://assets/lot/materials/ammo_crate.tres" id="ammo_crate"]
+[ext_resource type="Material" path="res://assets/lot/materials/ammo_band.tres" id="ammo_band"]
 
 [sub_resource type="ShaderMaterial" id="night_sky_material"]
 shader = ExtResource("night_sky")
@@ -2141,10 +2144,10 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -2.600
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 2.200, 7.720)
 
 [node name="PicnicTableW" parent="Midway" instance=ExtResource("fx_picnic_table")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -11.000, 0.000, 11.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.000, 0.000, 11.500)
 
 [node name="PicnicTableE" parent="Midway" instance=ExtResource("fx_picnic_table")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, 0.000, 11.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.000, 0.000, 11.500)
 
 [node name="CanW" parent="Midway" instance=ExtResource("fx_trash_can")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 0.000, 9.300)
@@ -2169,6 +2172,187 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 
 
 [node name="CanE" parent="Road" instance=ExtResource("fx_trash_can")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.400, 0.000, 43.400)
+
+[node name="ShopSpots" type="Node3D" parent="."]
+
+[node name="ShopProps" type="Node3D" parent="."]
+
+[node name="ShotgunPlaque" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.200, 1.600, -4.260)
+size = Vector3(1.7, 0.9, 0.12)
+material = ExtResource("plaque")
+
+[node name="ShotgunSign" type="Label3D" parent="ShopProps"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -8.200, 1.600, -4.340)
+pixel_size = 0.006
+text = "SHOTGUN"
+font_size = 72
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotShotgun" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -8.200, 0.000, -5.600)
+metadata/kind = "wall"
+metadata/shop_id = "weapon_shotgun"
+
+[node name="RiflePlaque" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.000, 1.600, 21.740)
+size = Vector3(1.7, 0.9, 0.12)
+material = ExtResource("plaque")
+
+[node name="RifleSign" type="Label3D" parent="ShopProps"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 1.600, 21.660)
+pixel_size = 0.006
+text = "RIFLE"
+font_size = 72
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotRifle" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 0.000, 20.400)
+metadata/kind = "wall"
+metadata/shop_id = "weapon_rifle"
+
+[node name="CraneSign" type="Label3D" parent="ShopProps"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -7.300, 2.000, 5.000)
+pixel_size = 0.006
+text = "PRIZE CRANE"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotCrane" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, -6.400, 0.000, 5.000)
+metadata/kind = "crane"
+metadata/shop_id = "crane_play"
+
+[node name="LockerField" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 3.100, 0.500, -31.000)
+use_collision = true
+size = Vector3(1.2, 1, 0.7)
+material = ExtResource("ammo_crate")
+
+[node name="LockerFieldBand" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 3.100, 0.820, -31.000)
+size = Vector3(1.24, 0.18, 0.74)
+material = ExtResource("ammo_band")
+
+[node name="LockerFieldSign" type="Label3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 2.730, 0.500, -31.000)
+pixel_size = 0.006
+text = "AMMO"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotLockerField" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 2.000, 0.000, -31.000)
+metadata/kind = "ammo"
+metadata/shop_id = ""
+
+[node name="LockerStand" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 9.200, 0.500, 1.800)
+use_collision = true
+size = Vector3(1.2, 1, 0.7)
+material = ExtResource("ammo_crate")
+
+[node name="LockerStandBand" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 9.200, 0.820, 1.800)
+size = Vector3(1.24, 0.18, 0.74)
+material = ExtResource("ammo_band")
+
+[node name="LockerStandSign" type="Label3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 8.830, 0.500, 1.800)
+pixel_size = 0.006
+text = "AMMO"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotLockerStand" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 8.100, 0.000, 1.800)
+metadata/kind = "ammo"
+metadata/shop_id = ""
+
+[node name="LockerMidway" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 14.600, 0.500, 12.000)
+use_collision = true
+size = Vector3(1.2, 1, 0.7)
+material = ExtResource("ammo_crate")
+
+[node name="LockerMidwayBand" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 14.600, 0.820, 12.000)
+size = Vector3(1.24, 0.18, 0.74)
+material = ExtResource("ammo_band")
+
+[node name="LockerMidwaySign" type="Label3D" parent="ShopProps"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 14.230, 0.500, 12.000)
+pixel_size = 0.006
+text = "AMMO"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotLockerMidway" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 13.500, 0.000, 12.000)
+metadata/kind = "ammo"
+metadata/shop_id = ""
+
+[node name="LockerYard" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 31.000, 0.500, 20.000)
+use_collision = true
+size = Vector3(1.2, 1, 0.7)
+material = ExtResource("ammo_crate")
+
+[node name="LockerYardBand" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 31.000, 0.820, 20.000)
+size = Vector3(1.24, 0.18, 0.74)
+material = ExtResource("ammo_band")
+
+[node name="LockerYardSign" type="Label3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 31.000, 0.500, 20.370)
+pixel_size = 0.006
+text = "AMMO"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotLockerYard" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 31.000, 0.000, 21.100)
+metadata/kind = "ammo"
+metadata/shop_id = ""
+
+[node name="LockerBackLot" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 0.500, 18.000)
+use_collision = true
+size = Vector3(1.2, 1, 0.7)
+material = ExtResource("ammo_crate")
+
+[node name="LockerBackLotBand" type="CSGBox3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 0.820, 18.000)
+size = Vector3(1.24, 0.18, 0.74)
+material = ExtResource("ammo_band")
+
+[node name="LockerBackLotSign" type="Label3D" parent="ShopProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 0.500, 18.370)
+pixel_size = 0.006
+text = "AMMO"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotLockerBackLot" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 0.000, 19.100)
+metadata/kind = "ammo"
+metadata/shop_id = ""
 
 [node name="Dressing" type="Node3D" parent="Field"]
 

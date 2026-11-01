@@ -74,7 +74,7 @@ func bind(rules: GameRules) -> void:
 	_generator = rules.generator
 	switches.show_all(_generator)
 	for id: StringName in _barricades:
-		_barricades[id].set_boards(rules.barricades.boards_of(id))
+		_barricades[id].set_boards(rules.barricades.boards_of(id), false)
 	rules.event_emitted.connect(_on_rules_event)
 
 
@@ -115,6 +115,28 @@ func spawn_points() -> Array[Vector3]:
 			for marker in markers.get_children():
 				points.append((marker as Marker3D).global_position)
 	return points
+
+
+## Where a player buys without a door: the weapons on the walls, the prize crane and the ammunition
+## lockers, as `{kind, shop_id, position}` (`kind` is `wall`, `crane` or `ammo`; a locker has no
+## shop id and sells the rounds of the weapon in hand).
+func shop_spots() -> Array[Dictionary]:
+	var spots: Array[Dictionary] = []
+	var group := greybox.get_node_or_null("ShopSpots")
+	if group == null:
+		return spots
+	for marker in group.get_children():
+		(
+			spots
+			. append(
+				{
+					"kind": StringName(marker.get_meta("kind")),
+					"shop_id": StringName(marker.get_meta("shop_id")),
+					"position": (marker as Node3D).global_position,
+				}
+			)
+		)
+	return spots
 
 
 ## Where boards can be put back: the gaps in the field's fence.
@@ -165,7 +187,7 @@ func _on_rules_event(event: Dictionary) -> void:
 		&"board_torn", &"board_repaired":
 			var barricade: Barricade = _barricades.get(StringName(event["barricade_id"]))
 			if barricade != null:
-				barricade.set_boards(event["boards"])
+				barricade.set_boards(event["boards"])  # torn or mended: the count says which
 
 
 func player_spawn(index: int) -> Vector3:
