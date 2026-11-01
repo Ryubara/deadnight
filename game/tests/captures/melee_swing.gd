@@ -3,7 +3,7 @@ extends Node
 ## attack button goes in as a real mouse event, held for a few blows; a zombie stands in reach.
 ## Not part of the game. Run with Movie Maker (a swing is under a second, so 20 frames a second):
 ## `godot --path game res://tests/captures/melee_swing.tscn --fixed-fps 20 --write-movie out.png
-## --quit-after 140`. It prints the blows, the hurt and the swing it saw.
+## --quit-after 600`. It prints the blows, the hurt and the swing it saw.
 
 const SECOND := 60
 const REACH_AHEAD := 1.1
@@ -29,6 +29,11 @@ func _ready() -> void:
 	player.camera_rig.yaw = PI
 	player.camera_rig.snap_to(player.global_position)
 	_night.state.event_received.connect(func(e: Dictionary) -> void: _heard.append(e["type"]))
+	# The revolver first, at the hip and aimed, then the crowbar.
+	await _wait(SECOND * 2)
+	Input.action_press("aim")
+	await _wait(SECOND * 2)
+	Input.action_release("aim")
 	_night.server.combat.apply(CombatAction.equip(_night.PLAYER_ID, &"crowbar"))
 	var zombie := await _first_zombie()
 	var animation := player.get_node("AnimationTree") as PlayerAnimation
@@ -50,6 +55,11 @@ func _ready() -> void:
 		)
 	)
 	get_tree().quit()
+
+
+func _wait(ticks: int) -> void:
+	for _i in ticks:
+		await get_tree().physics_frame
 
 
 func _first_zombie() -> ZombieBody:

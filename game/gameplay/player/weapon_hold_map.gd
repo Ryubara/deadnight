@@ -6,7 +6,7 @@ extends RefCounted
 ## A melee weapon (`WeaponDef.Kind.MELEE`: the crowbar, a bat, a fire axe) is always `Melee`.
 
 ## The class of each firearm in the catalogue: the clips it is held with. Its model and size are
-## its own hold file (`holds/<id>.tres`, `PlayerAnimation.hold_for`), never a class's.
+## its own hold file (`holds/<id>.tres`, `hold_for`), never a class's.
 const CLASS_OF := {
 	&"rifle": &"Rifle",
 	&"shotgun": &"Shotgun",
@@ -31,6 +31,18 @@ static func class_of(weapon_id: StringName) -> StringName:
 static func no_model() -> Array[StringName]:
 	var ids: Array[StringName] = []
 	for id in WeaponCatalog.IDS:
-		if PlayerAnimation.hold_for(id) == null:
+		if hold_for(id) == null:
 			ids.append(id)
 	return ids
+
+
+## The hold of a catalogue weapon: its own file `holds/<id>.tres` (its own model, size and grip),
+## or null when it has none or its model has not arrived (`WeaponHold.has_model`): the hand
+## stays empty rather than showing another weapon's model. A weapon with no file of its own
+## is held as its class (`hold_of`), which is how a future bat or axe gets in.
+static func hold_for(weapon_id: StringName) -> WeaponHold:
+	var path := PlayerAnimation.HOLDS_DIR + String(weapon_id) + ".tres"
+	if ResourceLoader.exists(path):
+		var own := load(path) as WeaponHold
+		return own if own != null and own.has_model() else null
+	return PlayerAnimation.hold_of(class_of(weapon_id))

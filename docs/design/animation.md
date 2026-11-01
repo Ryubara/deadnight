@@ -26,7 +26,9 @@ come from one script, so this page and the file cannot drift:
   would break the other kit characters that share the library.
 
 Which weapon is which class: lever rifle is Rifle, double shotgun is Shotgun, baseball bat and fire axe are Melee.
-A future handgun is Pistol.
+The revolver and the flare gun are Pistol, the Tommy gun Rifle, the crowbar Melee
+([Weapons in the hands](weapon-hold.md#which-weapon-is-which)). The night plays `Swing` or `Fire` on every
+`shot_fired` ([attacks](weapon-hold.md#attacks-on-the-soldier)).
 
 ## Clips
 

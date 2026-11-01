@@ -146,3 +146,15 @@ func test_a_swap_to_the_next_carried_weapon_changes_the_view() -> void:
 	assert_str(String(night.state.me()["weapon"])).is_equal("crowbar")
 	await _check(night.player(), &"crowbar")
 	night.queue_free()
+
+
+func test_an_attack_straight_after_equipping_does_not_leave_the_hand_empty() -> void:
+	var night := await _start()
+	await _equip(night, 1, &"rifle")
+	var animation := _animation(night.player())
+	# Taken in hand and fired within the same frame: the Equip clip never reaches its frame.
+	animation.equip(&"shotgun")
+	assert_bool(animation.weapon().visible).is_false()
+	animation.play_action(&"Fire")
+	assert_bool(animation.weapon().visible).is_true()
+	night.queue_free()

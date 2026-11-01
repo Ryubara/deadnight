@@ -261,21 +261,18 @@ func hammer() -> Node3D:
 	return _hammer
 
 
-## Switches to a weapon class: Equip_<Class> plays and the weapon appears on its weapon_visible
-## frame; the upper body then holds Aim_<Class>.
-func equip(new_class: StringName) -> void:
-	if new_class not in CLASSES:
-		push_error("PlayerAnimation: no weapon class %s" % new_class)
+## Switches to a weapon: a class (`&"Rifle"`) or a weapon of the catalogue (`&"pistol"`).
+## Equip_<Class> plays and the weapon appears on its weapon_visible frame; the upper body then
+## holds Aim_<Class>. A catalogue weapon brings its own hold and model (`WeaponHoldMap.hold_for`),
+## so no two share a model; a class brings the class's hold (`hold_of`).
+func equip(weapon: StringName) -> void:
+	if weapon in CLASSES:
+		_set_class(weapon, hold_of(weapon))
+	elif weapon in WeaponCatalog.IDS:
+		_set_class(WeaponHoldMap.class_of(weapon), WeaponHoldMap.hold_for(weapon))
+	else:
+		push_error("PlayerAnimation: no weapon or class %s" % weapon)
 		return
-	_set_class(new_class, hold_of(new_class))
-	_weapon_visible(false)
-	play_action(&"Equip")
-
-
-## Takes a weapon of the catalogue in hand: its class's clips and its own hold and model
-## (`hold_for`), so no two weapons share a model (the crowbar is not the bat).
-func equip_weapon(weapon_id: StringName) -> void:
-	_set_class(WeaponHoldMap.class_of(weapon_id), hold_for(weapon_id))
 	_weapon_visible(false)
 	play_action(&"Equip")
 
@@ -283,7 +280,12 @@ func equip_weapon(weapon_id: StringName) -> void:
 ## Plays `<action>_<Class>` (Fire, Reload, Swing, Equip, Unequip) on the upper body. Returns
 ## false when the class has no such clip.
 func play_action(action: StringName) -> bool:
-	return _play_clip(StringName("%s_%s" % [action, weapon_class]))
+	var played := _play_clip(StringName("%s_%s" % [action, weapon_class]))
+	# An attack or a reload that cuts the Equip clip short must not leave the weapon hidden: its
+	# `weapon_visible` frame would never come.
+	if played and action != &"Equip" and action != &"Unequip":
+		_weapon_visible(true)
+	return played
 
 
 ## The Soldier's side of a grenade, by the server's events. `&"cook"` (`cook_started`): the pin is
@@ -377,18 +379,6 @@ static func hold_of(new_class: StringName) -> WeaponHold:
 	if new_class not in HOLD_CLASSES:
 		return null
 	return load(HOLDS_DIR + String(new_class).to_lower() + ".tres") as WeaponHold
-
-
-## The hold of a catalogue weapon: its own file `holds/<id>.tres` (its own model, size and grip),
-## or null when it has none or its model has not arrived (`WeaponHold.has_model`): the hand
-## stays empty rather than showing another weapon's model. A weapon with no file of its own
-## is held as its class (`hold_of`), which is how a future bat or axe gets in.
-static func hold_for(weapon_id: StringName) -> WeaponHold:
-	var path := HOLDS_DIR + String(weapon_id) + ".tres"
-	if ResourceLoader.exists(path):
-		var own := load(path) as WeaponHold
-		return own if own != null and own.has_model() else null
-	return hold_of(WeaponHoldMap.class_of(weapon_id))
 
 
 ## The hold data of the weapon in the hand, or null.
