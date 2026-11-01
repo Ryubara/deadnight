@@ -342,8 +342,8 @@ a spread of nights. They shoot only what they can see (view range falls with the
 at a time, revive each other in six seconds and mend between rounds, and pick the weapon with the best sustained
 damage a second. **Not modelled, because the game has none of it yet:** tonic effects (the tonics are shop
 entries that do nothing, so the modelled players do not buy them), ammunition running out (the night resupplies
-every weapon each round; #152 replaces that) and wall-buys. Grenades, repair, melee and the doors' geometry are
-not modelled either.
+every weapon each round; #152 replaces that) and wall-buys. Grenades, repair, the fence's boards (the simulator
+keeps its own six-second barrier), melee and the doors' geometry are not modelled either.
 
 **The change that made this honest** (#188). The first simulator shot a stand-in table (a rifle at 210 damage a
 second). With the real definitions and reloads the best weapon is the SMG at about 100 and the rifle comes
