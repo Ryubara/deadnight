@@ -5,6 +5,9 @@ extends GdUnitTestSuite
 ## The router is the project autoload. Every test starts from a fresh root screen "root".
 
 const SETTLE_SECONDS := 4.0
+## A transition looked at mid-way runs at this share of real speed for this many frames.
+const MID_SLIDE_TIME_SCALE := 0.02
+const MID_SLIDE_FRAMES := 3
 const ALL_KINDS: Array[UITransition.Kind] = [
 	UITransition.Kind.FADE,
 	UITransition.Kind.SLIDE,
@@ -20,6 +23,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	Engine.time_scale = 1.0
 	UIRouter.reset(_screen("end"), UITransition.Kind.CUT)
 	await _settle()
 
@@ -268,8 +272,13 @@ func test_a_slide_pop_mirrors_the_push() -> void:
 	assert_bool(await _settle()).is_true()
 	var width := card.size.x
 	assert_float(width).is_greater(0.0)
+	# The slide runs in slow motion while it is looked at, and the look waits for frames, not for
+	# milliseconds: on a loaded machine a frame can outlast 60 ms, so the look came before the slide
+	# had moved or after it had ended (#199).
+	Engine.time_scale = MID_SLIDE_TIME_SCALE
 	UIRouter.pop()
-	await await_millis(60)
+	for _i in MID_SLIDE_FRAMES:
+		await get_tree().process_frame
 	# The leaving screen is on top and travelling off to the right.
 	assert_int(card.get_index()).is_greater(below.get_index())
 	assert_bool(card.position.x > 0.0).is_true()
@@ -278,6 +287,7 @@ func test_a_slide_pop_mirrors_the_push() -> void:
 	assert_bool(below.position.x <= 0.0).is_true()
 	assert_bool(below.position.x >= -width * UITransitionSlide.PARALLAX).is_true()
 	assert_bool(below.modulate.r < 1.0).is_true()
+	Engine.time_scale = 1.0
 	assert_bool(await _settle()).is_true()
 	assert_float(below.position.x).is_equal(0.0)
 	assert_object(below.modulate).is_equal(Color.WHITE)
