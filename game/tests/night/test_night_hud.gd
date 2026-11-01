@@ -70,6 +70,61 @@ func test_a_shot_and_a_reload_move_the_ammunition_card() -> void:
 	_finish(night, hud)
 
 
+func test_a_reload_shows_while_it_runs_and_the_weapons_events_do_the_work() -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	var def := WeaponCatalog.get_def(&"pistol")
+	var target := night.state.position() + Vector3(0.0, 0.0, -8.0)
+	NightFixture.run(night, 1, NightFixture.shoot_at(night, target))
+	NightFixture.run(night, 20)
+	var command := NightCommand.new()
+	command.reload = true
+	NightFixture.run(night, 1, command)
+	NightFixture.run(night, 2)
+	assert_bool(hud.state.ammo_reloading).is_true()
+	assert_str(hud.ammo.hint_text).is_equal("RELOADING")
+	NightFixture.run(night, int(def.reload_time * 60.0) + 30)
+	assert_bool(hud.state.ammo_reloading).is_false()
+	assert_int(hud.state.ammo_magazine).is_equal(night.server.combat.weapon_of(1).ammo)
+	assert_int(hud.state.ammo_reserve).is_equal(night.server.combat.weapon_of(1).reserve)
+	_finish(night, hud)
+
+
+func test_a_new_weapon_takes_the_card_and_the_old_one_goes_to_the_equipment_slot() -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	var pistol := WeaponCatalog.get_def(&"pistol")
+	var rifle := WeaponCatalog.get_def(&"rifle")
+	assert_str(hud.health.equipment_text).is_equal("")
+	# What a purchase does: the combat server gives the weapon, its events reach the client.
+	night.state.apply_events(night.server.combat.apply(CombatAction.give_weapon(1, &"rifle")))
+	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
+	assert_int(hud.state.ammo_magazine).is_equal(rifle.magazine_size)
+	assert_str(hud.health.equipment_text).is_equal(
+		"%s x%d" % [pistol.display_name.to_upper(), pistol.magazine_size + pistol.reserve_start]
+	)
+	NightFixture.run(night, 3)
+	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
+	_finish(night, hud)
+
+
+func test_a_hud_that_joins_late_takes_the_weapon_in_hand_from_the_frame() -> void:
+	var night := await NightFixture.start(self, Night.Mode.MANUAL)
+	NightFixture.run(night, 5)
+	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	add_child(hud)
+	var binding := NightHudBinding.new(hud, night.state, night.server)
+	NightFixture.run(night, 2)
+	var held := night.server.combat.weapon_of(1)
+	assert_str(hud.state.weapon_name).is_equal(held.def.display_name)
+	assert_int(hud.state.ammo_magazine).is_equal(held.ammo)
+	assert_int(hud.state.ammo_reserve).is_equal(held.reserve)
+	assert_object(binding).is_not_null()
+	_finish(night, hud)
+
+
 func test_a_blow_lowers_health_and_the_arc_points_at_the_dead_one() -> void:
 	var made := await _start()
 	var night: Night = made["night"]

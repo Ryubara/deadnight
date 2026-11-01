@@ -66,9 +66,25 @@ see [the slice](../design/slice.md#the-hud). Things the binding taught:
 - `HudFeed.ITEM_NAMES` has no entry for `door_yard`: buying the generator yard is announced as "BOUGHT SOMETHING".
 - At 1920 x 1080 the circuit labels under the generator bar touch each other ("SCREENSNACKSBOOTBACK LOT").
 
+## Ammunition and equipment from the weapons
+
+The ammo card and the equipment slot are fed by the weapons' events (`HudLoadout`), with no change to the weapons.
+
+- The HUD never asks the weapons what a player holds; `weapon_equipped` carries `ammo` and `reserve`, and `shot_fired`
+  and `reload_finished` carry them again, so the card is the last event's numbers. Whatever the shop does to the
+  reserve (#152) reaches the card the same way, as long as the events keep those two fields.
+- **Equipment is the weapon put away last.** The design page calls it "a flare, a trap" and nothing in the game is one,
+  so the slot shows the other weapon of a swap with the rounds it has left (magazine and reserve together). A weapon
+  with no ammunition (the crowbar, known from `WeaponDef.is_melee`) shows its name and no count, and the card shows `--`.
+  With three weapons carried only the last two are in view.
+- A HUD that joins after the weapons were given has heard no event: the binding hands it the frame's weapon once, then
+  leaves the card to the events.
+- `HudState` may hold no `Object` (a test checks), so the loadout is static functions over plain fields of the state
+  (`weapon_id`, `holstered_id`, `rounds`), not a helper object kept in it.
+- The equipment row measured the name and the count apart; shaping the pair is a couple of pixels wider, so the count
+  was the part that got an ellipsis (`REVOLVER  x...`). It measures the whole text now and keeps one space.
+
 ## Left out, to do
 
-- Ammo comes from the frame (the held weapon), reload and equipment are not shown; the weapons' own events do not
-  feed the HUD (#133).
 - Markers are given in screen space; projecting world points (and hiding those behind walls) is the camera's job.
 - The prompt looks only at one interaction; two in reach at once needs a choice rule from the player controller.

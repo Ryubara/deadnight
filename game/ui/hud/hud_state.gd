@@ -46,6 +46,17 @@ var max_health := 100.0
 var weapon_name := ""
 var ammo_magazine := 0
 var ammo_reserve := 0
+## The held weapon is being reloaded; false for a weapon that uses no ammunition.
+var ammo_reloading := false
+var ammo_used := true
+## The weapon in hand and the one put away last, with the rounds of each weapon heard of (id ->
+## {"ammo", "reserve"}), from the weapons' events (see `HudLoadout`). The names and the ids of the
+## weapons that use no ammunition are known from the shared definitions: the client sets them.
+var weapon_id: StringName = &""
+var holstered_id: StringName = &""
+var rounds: Dictionary[StringName, Dictionary] = {}
+var weapon_names: Dictionary[StringName, String] = {}
+var ammo_free: Array[StringName] = []
 var points := 0
 ## The local player's grenades.
 var grenades := 0
@@ -71,7 +82,8 @@ var prompt: Dictionary = {}
 var game_over_reason := &""
 ## The name of the player who left last (their entry is gone from `team` by the time you hear).
 var left_name := ""
-## A small piece of equipment (a flare, a trap) and how many are left; "" for none.
+## A small piece of equipment (a flare, a trap) and how many are left; "" for none. A negative
+## count (`HudLoadout.NO_COUNT`) is a piece with nothing to count.
 var equipment_name := ""
 var equipment_count := 0
 ## Where the player is, and what to do next, as two lines under the round.
@@ -143,9 +155,11 @@ func set_health(value: float, maximum: float = -1.0) -> void:
 	_flush()
 
 
-func set_ammo(magazine: int, reserve: int, weapon := "") -> void:
+func set_ammo(magazine: int, reserve: int, weapon := "", reloading := false, used := true) -> void:
 	_assign(&"ammo_magazine", magazine, AMMO)
 	_assign(&"ammo_reserve", reserve, AMMO)
+	_assign(&"ammo_reloading", reloading, AMMO)
+	_assign(&"ammo_used", used, AMMO)
 	if weapon != "":
 		_assign(&"weapon_name", weapon, AMMO)
 	_flush()
@@ -325,6 +339,8 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_purchase_made
 		&"player_hurt":
 			handler = _on_player_hurt
+		&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished":
+			handler = func(e: Dictionary) -> void: HudLoadout.apply(e, self)
 	return handler
 
 
