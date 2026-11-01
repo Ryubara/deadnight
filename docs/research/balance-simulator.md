@@ -61,7 +61,8 @@ then the charts; `--compare <folder>` draws a before and after).
   prediction of a person's night; rerun it when the weapons, the player's health (#151) or the shop change.
 - **Finite ammunition changes who is hard pressed, not how the ranges look.** Free reloads hid that a weapon holds
   few rounds against a horde: with reserves the game gives (a revolver 90 at most, a shotgun 54) the average solo
-  player lost a round and the weak one's boss night went from three deaths in four to five in six. What decides it is
+  player lost a round and the weak one's boss night went from three deaths in four to five in six (the headliner went
+  from 15 to 13 times a walker's health to bring it back to seven in ten). What decides it is
   the player's policy more than the price: ammunition at half price moved the median by nothing, filling up before
   the announced special round moved the weak boss night by eight points. Write the policy down (`SimSkill`
   `ammo_floor_mags`, `ammo_topoff`, `swaps`) and test it against the game's own reload (`SimArm.reload` is compared

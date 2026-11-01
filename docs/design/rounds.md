@@ -214,7 +214,7 @@ round's own value, so every type grows with the night. The look is a variant fro
 | runner | runner | x0.55 | x1.7 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 4.5 m/s |
 | crawler | crawler | x0.7 | x0.5 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
 | brute | brute | x2.5 | x0.6 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
-| headliner (boss) | its own, from the artist | x15, +100% per extra player | x0.8 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
+| headliner (boss) | its own, from the artist | x13, +100% per extra player | x0.8 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
 **One at a time.** A type's first round brings an exact number (`intro_count`), so every player meets
 each one on the same round and never "maybe": the runner on round 4, the crawler on 6, the brute on 8.
@@ -387,53 +387,58 @@ medians of the gate's cells (1 player unless noted):
 | Stand-in table, old tuning (as merged in #166) | 5 | 11 | 13 / 15 | 14 |
 | Real weapons, lit circuits that cost fuel, old tuning | 3 | 4 | 8 / 9 | 10 |
 | Real weapons, retuned, ammunition free (as merged in #197) | 5 | 12 | 14 / 15 | 15 |
-| Finite ammunition bought at the shop's prices (#152, the tables on this page) | 5 | 11 | 13 / 14 | 14 |
+| Finite ammunition bought at the shop's prices, the boss retuned (#152, the tables on this page) | 5 | 11 | 12 / 14 | 14 |
 
-Finite ammunition cost the average solo player one round and the others up to one, and needed no retune: the
-gate's ranges hold. What it changes is who is hard pressed: reserves are small (a revolver holds 90 rounds at most,
+Finite ammunition cost the average solo player one round and the others up to one: the gate's ranges hold for
+every median. It did fail one target, the first boss night's toll on weak players (84% die at 300 nights, 90% on the
+gate's 60 at seed 4000, limit 85%), and the one retune is the headliner's health, **15 to 13 times a walker's**: a
+weak player has the revolver and what they could pay for, so the boss costs them more than it did when every reserve
+was full. At 14 it kills 80%, at 13 72% (74% before), at 12 63%; the average solo player's boss night is 8% either
+way. What it changes is who is hard pressed: reserves are small (a revolver holds 90 rounds at most,
 a shotgun 54) against a round-10 horde of 21 that takes some 150 revolver rounds, so the late rounds are fought
 from the lockers.
 
 The retune made the dead fewer, softer, slower to arrive and fewer at once: counts `4 + 1.3(r-1) + 0.07(r-1)²`
 (were 5, 2.2, 0.12), health 50 plus 8 a round (were 60 and 14), spawns every 3.2 s decaying 4% a round (2.4 s,
-5%), 6 alive at once rising 0.8 a round (10 and 1.5). The headliner has 15 times a walker's health (was 16)
+5%), 6 alive at once rising 0.8 a round (10 and 1.5). The headliner has 13 times a walker's health (was 16; 15
+until finite ammunition, see below)
 and the stampede is 140% of a round (was 120%). No type's blow changed.
 
 **Survival by round** (share of nights that reach the round; 50% is the median):
 
 | Players | Skill | Median round | Reach round 10 | Reach round 15 |
 | ---: | --- | ---: | ---: | ---: |
-| 1 | weak / average / strong | 5 / 11 / 14 | 0% / 76% / 100% | 0% / 0% / 19% |
-| 2 | weak / average / strong | 5 / 13 / 15 | 4% / 93% / 100% | 0% / 1% / 80% |
-| 4 | weak / average / strong | 5 / 14 / 15 | 6% / 92% / 100% | 0% / 20% / 99% |
+| 1 | weak / average / strong | 5 / 11 / 14 | 0% / 80% / 100% | 0% / 0% / 19% |
+| 2 | weak / average / strong | 5 / 12 / 15 | 6% / 97% / 100% | 0% / 2% / 78% |
+| 4 | weak / average / strong | 5 / 14 / 16 | 9% / 96% / 100% | 0% / 19% / 99% |
 
 An average solo player reaches round 11 (the target is 10 to 14: inside its range, a round from the low edge),
 company adds two or three rounds, skill adds three. Rounds 1 to 4 are safe for nearly everyone; the first deaths are the
-first boss night, and a weak player's median of 5 is that night: they reach it and about five in six do not
-leave it (it was three in four with free ammunition: a weak player enters the night with a revolver and the rounds
-they could pay for, and the headliner is the first thing that takes them all; the gate's limit of 85% is close).
+first boss night, and a weak player's median of 5 is that night: they reach it and about seven in ten do not
+leave it (it was three in four before ammunition was sold; with finite ammunition and the boss at 15 times a
+walker's health it was five in six, over the gate's limit, which is why the boss is at 13).
 
-**Economy.** An average solo night earns about 13,900 points and spends about 7,000 of them (50%), 2,600 of that on
-ammunition (18% of what it earns); a strong one earns 26,500, spends 9,200 and 3,300 on ammunition. Before
+**Economy.** An average solo night earns about 14,400 points and spends about 7,300 of them (51%), 2,700 of that on
+ammunition (19% of what it earns); a strong one earns 26,600, spends 9,200 and 3,300 on ammunition. Before
 ammunition was sold the same player spent 4,700 of 16,800 (28%). The shop still runs out (doors, two wall weapons,
 the crane, rounds and fuel are all there is to buy; tonics do nothing), so the points glut in "Open questions"
 remains, smaller. Earnings per round climb from 350 in round 1 to 1,700 in round 5 and 3,500 in the stampede round.
 Light costs fuel: the average player buys cans for about 260 points a night.
 
-**Time to kill** (seconds under fire from the first hit, solo average): walker 1.5, runner 0.8, crawler 2.2,
-brute 5.3, headliner 18.
+**Time to kill** (seconds under fire from the first hit, solo average): walker 1.5, runner 0.8, crawler 2.1,
+brute 5.4, headliner 16.
 
 **How hard each special round is.** The measure is how close a round came to downing a player (the lowest
 health reached, 0 to 1), and the spike is that over the mean of the rounds either side (each plus 0.05):
 
 | Round | Kind | Solo average | 2 players average | 4 players average | Weak solo | Strong solo |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 5 | Double Feature | x3.6, 12% die | x3.7, 6% die | x9.0, 8% die | x2.5, 84% die | x1.3, 0% die |
-| 10 | Midnight Stampede | x0.8, 14% die | x0.7, 1% die | x1.0, 0% die | not reached | x0.9, 0% die |
-| 15 | Double Feature | not reached | the wall by then | x1.3, 100% die | not reached | x1.0, 77% die |
+| 5 | Double Feature | x3.0, 8% die | x2.8, 3% die | x6.6, 4% die | x2.2, 72% die | x1.2, 0% die |
+| 10 | Midnight Stampede | x0.9, 16% die | x0.5, 0% die | x1.0, 0% die | not reached | x0.8, 0% die |
+| 15 | Double Feature | not reached | the wall by then | x1.1, 90% die | not reached | x0.8, 54% die |
 
-The first boss night is a spike for the players it was tuned for: three to nine times the pressure of
-the rounds around it, about one night in eight lost solo, one in sixteen in company. The first report's
+The first boss night is a spike for the players it was tuned for: three to seven times the pressure of
+the rounds around it, about one night in twelve lost solo, one in thirty in company. The first report's
 two findings, and what was decided:
 
 - **A strong player barely feels the first boss night** (x1.1). It stays that way, on purpose. Raising the
@@ -442,7 +447,7 @@ two findings, and what was decided:
   rate falls off a cliff. The boss is tuned to leave weak players a chance; making strong players feel it
   needs a boss that answers the player (its telegraph and weak spot, which need the headliner's own behaviour,
   #181), not another number.
-- **The stampede is a mild spike** (x0.8 solo average now: the rounds around it are harder with finite
+- **The stampede is a mild spike** (x0.9 solo average now: the rounds around it are harder with finite
   ammunition): it was brought up from 120% of a round to 140% at 1.8
   times the spawn rate, which kills 14% of average solo nights, under the gate's 40%; at 170% and 2.2
   times it killed 81% of them. Strong players pass it untouched: runners are fragile and they see them coming at
