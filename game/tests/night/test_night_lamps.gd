@@ -1,5 +1,5 @@
 # The lamps in a night: the rules switch a circuit or run the tank dry, the events reach the
-# client, the lamps change, and the dead move at full speed on ground that is no longer lit.
+# client, the lamps change, and the dead speed up on ground that is no longer lit.
 extends GdUnitTestSuite
 
 const CONCESSION_FLOOR := Vector3(0.0, 0.0, 3.0)
@@ -34,38 +34,37 @@ func test_switching_a_circuit_changes_its_lamps_and_the_dead_speed_on_its_ground
 	var night := await _start()
 	var rules := night.server.rules
 	var interior := _lamp(night, "Concession/Lamps/InteriorW")
-	var lit_speed := ZOMBIE_SPEED * rules.tuning.rounds.lit_speed_multiplier
+	var dark_speed := ZOMBIE_SPEED * rules.tuning.rounds.dark_speed_multiplier
 	assert_bool(interior.visible).is_false()
 	assert_bool(night.world.is_lit(CONCESSION_FLOOR)).is_false()
-	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(ZOMBIE_SPEED, 0.01)
+	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(dark_speed, 0.01)
 
 	night.state.apply_events(rules.apply(RulesAction.set_circuit(&"concession", true)))
 	assert_bool(interior.visible).is_true()
 	assert_bool(night.world.is_lit(CONCESSION_FLOOR)).is_true()
-	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(lit_speed, 0.01)
+	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(ZOMBIE_SPEED, 0.01)
 
 	night.state.apply_events(rules.apply(RulesAction.set_circuit(&"concession", false)))
 	assert_bool(interior.visible).is_false()
 	assert_bool(night.world.is_lit(CONCESSION_FLOOR)).is_false()
-	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(ZOMBIE_SPEED, 0.01)
+	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(dark_speed, 0.01)
 	night.queue_free()
 
 
-func test_the_field_starts_lit_and_the_dead_are_slowed_there() -> void:
+func test_the_field_starts_lit_and_the_dead_keep_their_pace_there() -> void:
 	var night := await _start()
-	var lit_speed := ZOMBIE_SPEED * night.server.rules.tuning.rounds.lit_speed_multiplier
 	assert_bool(_lamp(night, "Field/Lamps/Lamp1/Light").visible).is_true()
-	assert_float(_speed_on(night, FIELD_LAMP)).is_equal_approx(lit_speed, 0.01)
+	assert_float(_speed_on(night, FIELD_LAMP)).is_equal_approx(ZOMBIE_SPEED, 0.01)
 	night.queue_free()
 
 
-func test_a_dry_tank_darkens_the_lamps_and_frees_the_dead_and_a_can_brings_it_back() -> void:
+func test_a_dry_tank_darkens_the_lamps_and_speeds_the_dead_up_and_a_can_brings_it_back() -> void:
 	var night := await _start()
 	var rules := night.server.rules
 	var post_light := _lamp(night, "Field/Lamps/Lamp1/Light")
 	var yard_light := _lamp(night, "GeneratorYard/Lamps/WorkLamp1/Light")
 	var headlight := _lamp(night, "Road/Headlights/WreckHeadlightL")
-	var lit_speed := ZOMBIE_SPEED * rules.tuning.rounds.lit_speed_multiplier
+	var dark_speed := ZOMBIE_SPEED * rules.tuning.rounds.dark_speed_multiplier
 	night.state.apply_events(rules.apply(RulesAction.skip_break()))
 	rules.generator.fuel = 0.05
 	NightFixture.run(night, 90)
@@ -74,7 +73,7 @@ func test_a_dry_tank_darkens_the_lamps_and_frees_the_dead_and_a_can_brings_it_ba
 	assert_bool(yard_light.visible).is_false()
 	assert_bool(headlight.visible).is_true()
 	assert_bool(night.world.is_lit(FIELD_LAMP)).is_false()
-	assert_float(_speed_on(night, FIELD_LAMP)).is_equal_approx(ZOMBIE_SPEED, 0.01)
+	assert_float(_speed_on(night, FIELD_LAMP)).is_equal_approx(dark_speed, 0.01)
 
 	night.state.apply_events(rules.apply(RulesAction.grant_points(1, 5000)))
 	night.state.apply_events(rules.apply(RulesAction.buy(1, &"fuel_can")))
@@ -82,7 +81,7 @@ func test_a_dry_tank_darkens_the_lamps_and_frees_the_dead_and_a_can_brings_it_ba
 	assert_bool(post_light.visible).is_true()
 	assert_bool(yard_light.visible).is_true()
 	assert_bool(night.world.is_lit(FIELD_LAMP)).is_true()
-	assert_float(_speed_on(night, FIELD_LAMP)).is_equal_approx(lit_speed, 0.01)
+	assert_float(_speed_on(night, FIELD_LAMP)).is_equal_approx(ZOMBIE_SPEED, 0.01)
 	night.queue_free()
 
 

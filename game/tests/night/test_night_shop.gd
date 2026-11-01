@@ -32,6 +32,8 @@ func test_every_crane_prize_reaches_the_players_hands() -> void:
 	var item := night.server.rules.tuning.economy.item(&"crane_play")
 	for _i in item.pool.size():
 		night.server.buy(1, &"crane_play")
+		NightFixture.run(night, 300)
+		night.server.rules.apply(RulesAction.crane_take(1))
 	NightFixture.run(night, 2)
 	for shop_id in item.pool:
 		assert_array(night.server.combat.carried(1)).contains([WeaponCatalog.catalog_id(shop_id)])

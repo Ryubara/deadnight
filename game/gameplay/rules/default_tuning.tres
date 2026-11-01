@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
 [ext_resource type="Script" path="res://gameplay/rules/barricade_tuning.gd" id="10_barr1"]
 [ext_resource type="Script" path="res://gameplay/rules/health_tuning.gd" id="10_ptune"]
+[ext_resource type="Script" path="res://gameplay/rules/crane_tuning.gd" id="11_crane1"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -65,7 +66,7 @@ pool_weights = PackedFloat32Array()
 script = ExtResource("1_skww1")
 id = &"crane_play"
 kind = 2
-price = 500
+price = 550
 pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun"])
 pool_weights = PackedFloat32Array(4, 3, 2, 1)
 
@@ -203,11 +204,11 @@ health_base = 50.0
 health_step = 8.0
 health_knee_round = 8
 health_growth = 1.05
-speed_base = 0.9
-speed_step = 0.1
-speed_cap = 4.5
+speed_base = 1.2
+speed_step = 0.16
+speed_cap = 5.0
 speed_jitter = 0.12
-lit_speed_multiplier = 0.6
+dark_speed_multiplier = 1.25
 spawn_interval_start = 3.2
 spawn_interval_decay = 0.96
 spawn_interval_min = 0.5
@@ -235,7 +236,7 @@ script = ExtResource("6_ztype")
 id = &"runner"
 looks = Array[StringName]([&"runner"])
 health_multiplier = 0.55
-speed_multiplier = 1.7
+speed_multiplier = 1.4
 damage = 12.0
 points_multiplier = 1.2
 first_round = 4
@@ -249,7 +250,7 @@ script = ExtResource("6_ztype")
 id = &"crawler"
 looks = Array[StringName]([&"crawler"])
 health_multiplier = 0.7
-speed_multiplier = 0.5
+speed_multiplier = 0.4
 hit_chance = 0.6
 damage = 12.0
 barrier_speed = 0.0
@@ -264,7 +265,7 @@ script = ExtResource("6_ztype")
 id = &"brute"
 looks = Array[StringName]([&"brute"])
 health_multiplier = 2.5
-speed_multiplier = 0.6
+speed_multiplier = 0.4
 damage = 35.0
 knockback = 2.5
 barrier_speed = 2.5
@@ -283,7 +284,7 @@ looks = Array[StringName]([&"headliner"])
 boss = true
 health_multiplier = 13.0
 health_per_extra_player = 1.0
-speed_multiplier = 0.8
+speed_multiplier = 0.45
 weak_multiplier = 2.2
 damage = 40.0
 knockback = 4.0
@@ -350,6 +351,17 @@ max_health = 100.0
 regen_delay = 5.0
 regen_per_second = 25.0
 
+[sub_resource type="Resource" id="Resource_crane1"]
+script = ExtResource("11_crane1")
+spot_doors = Array[StringName]([&"door_concession", &"door_concession", &"", &"door_yard"])
+start_spot = 0
+spin_seconds = 4.5
+grab_seconds = 12.0
+safe_plays = 3
+leave_chances = PackedFloat32Array(0.15, 0.15, 0.15, 0.15, 0.3, 0.3, 0.3, 0.3, 0.5)
+breakdown_seconds = 4.0
+refund_fraction = 1.0
+
 [resource]
 script = ExtResource("5_3ukcj")
 rounds = SubResource("Resource_1fk4k")
@@ -360,3 +372,4 @@ specials = SubResource("Specials_1")
 explosives = SubResource("Resource_expl1")
 barricades = SubResource("Resource_barr1")
 health = SubResource("Resource_ptune1")
+crane = SubResource("Resource_crane1")

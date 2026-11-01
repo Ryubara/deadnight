@@ -174,7 +174,7 @@ Shop (prices at round 1):
 | --- | ---: | --- |
 | Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
-| Crane play | 500 | random weapon the player lacks (shotgun 4, rifle 3, SMG 2, flare gun 1) |
+| Crane play | 550 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
@@ -184,6 +184,22 @@ Generator: 100 units; it burns 0.03 a second idle plus each lit circuit (screen 
 concession 0.05, booth 0.08, back lot 0.07), grows 3% a round, and burns at half rate in breaks.
 Screen lot only: 0.09 a second, about 18 minutes of tank. Everything lit: 0.29 a second, under 6
 minutes, and the draw rises every round.
+
+## The prize crane
+
+Modelled on the Call of Duty Zombies Mystery Box ([research](../research/mystery-box.md)): a play costs 550, the claw
+digs for 4.5 seconds, then the chosen weapon floats for 12 seconds and only the buyer can take it. A weapon the player
+carries is never drawn; the draw is seeded (its own stream, `crane_rng_state` in the snapshot). The first 3 plays at a
+place never break down; after that the chance is 15% for four plays, 30% for four more, then 50%. A breakdown refunds
+the whole price (not counted as earned), shows a dud prize for 4 seconds and moves the crane to one of the other
+places whose door is open ([the places](map.md#the-cranes-places)); with no other place open it cannot break down.
+The numbers are `CraneTuning` and the item `crane_play` in `default_tuning.tres`.
+
+**Why 550.** The balance simulator ([the crane's price](../research/balance-simulator.md#the-cranes-price)) was run
+with the crane from 500 to 950 (the Mystery Box's own price). The dearer the play, the later an average solo player
+has a second weapon: the balance gate's median round (the average solo cell) is 11 at 500 and 550, 10 at 600 and 650,
+9 at 750, under its floor of 10. 550 keeps the range with a round to spare and still costs under the cheaper wall
+weapon (900); a prize is worth about what the walls charge for it, and the SMG and flare gun are sold nowhere else.
 
 ## Ammunition
 
@@ -211,10 +227,10 @@ round's own value, so every type grows with the night. The look is a variant fro
 | Type | Looks | Health | Speed | Blow / knockback | Pays | From round | Share of a round | Notes |
 | --- | --- | ---: | ---: | --- | ---: | ---: | --- | --- |
 | walker | walker, greaser, usher, farmhand | x1 | x1 | 15 / none | x1 | 1 | the rest | a blast that takes its legs ([grenades](weapons.md#grenades)) turns it into a crawler, `zombie_crippled` |
-| runner | runner | x0.55 | x1.7 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 4.5 m/s |
-| crawler | crawler | x0.7 | x0.5 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
-| brute | brute | x2.5 | x0.6 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
-| headliner (boss) | its own, from the artist | x13, +100% per extra player | x0.8 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
+| runner | runner | x0.55 | x1.4 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 5.0 m/s under the lights |
+| crawler | crawler | x0.7 | x0.4 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
+| brute | brute | x2.5 | x0.4 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
+| headliner (boss) | its own, from the artist | x13, +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
 **One at a time.** A type's first round brings an exact number (`intro_count`), so every player meets
 each one on the same round and never "maybe": the runner on round 4, the crawler on 6, the brute on 8.
@@ -273,11 +289,15 @@ the pillars.
   feel like they are slipping away), tougher zombies (straight early so the first rounds teach,
   compounding after round 8 so a starting weapon stops being enough and the shop matters), and
   darker (ambient falls from 0.60 to 0.15 by round 14).
-- **Fast ones are rare and capped.** A zombie never exceeds 4.5 m/s, below a sprinting player
-  (the controller's sprint is 7.0 m/s, its run 4.8; how that compares with the original games is in
-  [movement speeds](../research/movement-speeds.md)). The runner (the old
-  sprinter, now a type) arrives on round 4 and settles at three in ten, fragile enough that a
-  good shot ends it, so late rounds pressure positioning instead of simple running.
+- **The dead are fast under the lights, faster in the dark.** The walker's pace follows the original games'
+  speed tiers ([movement speeds](../research/movement-speeds.md)): `1.2 + 0.16 (round - 1)` m/s, about 1.8 on round 5,
+  2.6 on round 10 and 3.4 on round 15, a little under the pace the games' run tier has there (BO3: 1.9, 2.8, 3.9);
+  the runner (the games' sprint tier, now a type, x1.4) arrives on round 4 at 2.4 and passes the player's run speed
+  (4.8) from round 15. Under the lights
+  nothing exceeds 5.0 m/s, a hair above the player's run, so running alone no longer shakes the fastest while a
+  sprint (7.0) still gains 2 m/s. Ground that is not lit (a circuit off, the generator dry) makes every zombie 25%
+  faster (`dark_speed_multiplier`), at most 6.25 m/s, still under the sprint. The brute, crawler and headliner keep
+  their old pace in metres per second (x0.4, x0.4, x0.45): they are slow by design, not by round.
 - **The lot cap protects the web build and the player.** At most 6 alive in round 1, rising 0.8 a round to 28;
   each extra player adds 6. Zombies wait their turn, so a big round is a long fight, not a
   wall of bodies.
@@ -292,12 +312,12 @@ the pillars.
   by far the most, hits little, so spraying is not worth more than aiming; melee pays double the
   risk. Repair pays a fixed trickle, capped, so board-sitting cannot become the economy. The crane
   at 500 is a gamble: the average weapon is worth more than the play, with a spread.
-- **Fuel is the light pillar's price.** Lit ground slows the dead to 60% of their speed, so
-  every lit circuit buys safety and costs fuel. Each circuit has its own draw, so *which* parts of
-  the lot stay lit is the decision, not whether the lights are on. The table is the simulator's average
-  solo player, who keeps two circuits lit (screen lot and concession, 0.14 a second with the idle draw), measured
-  in [the report](#the-balance-simulator): round length is what it took, the burn counts the break after it
-  at half rate, the cost is the can's price for that many units:
+- **Fuel is the light pillar's price.** The light does not slow the dead: it keeps them at their round's pace,
+  and ground that is not lit makes them 25% faster, so every lit circuit holds the line and costs fuel. Each
+  circuit has its own draw, so *which* parts of the lot stay lit is the decision, not whether the lights are on.
+  The table is the simulator's average solo player, who keeps two circuits lit (screen lot and concession, 0.14 a
+  second with the idle draw), measured in [the report](#the-balance-simulator): round length is what it took, the burn
+  counts the break after it at half rate, the cost is the can's price for that many units:
 
   | Round | Round earns (solo) | Round length | Fuel burnt | Fuel cost | Fuel / earnings |
   | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -311,7 +331,14 @@ the pillars.
   points a night on cans. The draw grows 3% a round, the rounds run longer and the can's price rises
   20 a round, so fuel takes a growing share of income as the night goes on (round 12 is already
   8%): the generator is always one decision away from running dry. When it does, the lights fade (the
-  last tenth of the tank), every circuit goes dark, and the dead move at full speed.
+  last tenth of the tank), every circuit goes dark, and the dead speed up by a quarter everywhere.
+- **An empty tank is not the end.** The circuits keep their switches (a circuit can be thrown dry and lights when fuel
+  comes), nothing burns, and the only way back is a fuel can: a player walks to a can stand (one in the concession
+  stand, one by the generator's cage in the yard; [the lot](map.md#the-fuel-cans)), presses `use` and pays the can's
+  price. The card shows the price and the units it adds (only the room that is left, for a part price); a full tank
+  refuses. The tank rises at once, `fuel_restored` fires, the lamps and the lit pace come back, and the generator's card
+  shows. The yard's stand needs the yard's door and the stand's the concession's, so before the first door there is no
+  fuel to buy: the starter tank has to last until the concession is bought.
 
 When the doors open, per player (200 starting points, a player's share of the round's zombies at about 85 points
 each, the round bonus), the first round whose end covers the running total of the doors so far. "All in" spends
@@ -350,7 +377,7 @@ from the game:
 | A flare's blast on its neighbours | the definition's `splash_*`, on the zombies on the same side within its radius |
 | Health, regeneration delay and rate | `HealthTuning` in the rules' table (100, 5 s, 25 a second) |
 | A zombie's blow and swing | the type's `damage` (the night reads the same since #191), `ZombieTuning.swing_seconds` |
-| Lit ground | `GeneratorState`: a circuit slows the dead only while it is on and the tank has fuel, and every circuit burns fuel |
+| Lit ground | `GeneratorState`: a circuit keeps the dead at their round's pace (off it they are faster) only while it is on and the tank has fuel, and every circuit burns fuel |
 | Everything else (where zombies are, whether a shot lands, who buys what) | the model: `SimSkill` and `NightSim` |
 
 **The players.** Three levels of `SimSkill`: how many shots land and where (head, limb, a boss's weak spot),

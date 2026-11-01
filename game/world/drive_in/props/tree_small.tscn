@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/props/tree_small.gltf" id="model"]
+
+[node name="TreeSmall" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Blocker" type="CSGCylinder3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.200, 0)
+visible = false
+use_collision = true
+radius = 0.300
+height = 2.400
+sides = 12

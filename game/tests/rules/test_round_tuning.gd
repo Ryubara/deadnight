@@ -53,8 +53,8 @@ func test_health_never_falls() -> void:
 
 
 func test_walking_speed_rises_and_stops_at_the_cap() -> void:
-	assert_float(_t.speed_for_round(1)).is_equal_approx(0.9, 0.0001)
-	assert_float(_t.speed_for_round(11)).is_equal_approx(1.9, 0.0001)
+	assert_float(_t.speed_for_round(1)).is_equal_approx(1.2, 0.0001)
+	assert_float(_t.speed_for_round(11)).is_equal_approx(2.8, 0.0001)
 	assert_float(_t.speed_for_round(500)).is_equal(_t.speed_cap)
 
 
@@ -87,9 +87,16 @@ func test_rolled_speeds_follow_the_seed() -> void:
 		assert_float(_t.roll_speed(9, first)).is_equal(_t.roll_speed(9, second))
 
 
-func test_lit_ground_slows_the_dead() -> void:
-	assert_float(_t.speed_on_ground(2.0, false)).is_equal(2.0)
-	assert_float(_t.speed_on_ground(2.0, true)).is_equal_approx(1.2, 0.0001)
+func test_the_dead_are_faster_off_lit_ground_and_keep_their_pace_on_it() -> void:
+	assert_float(_t.speed_on_ground(2.0, true)).is_equal(2.0)
+	assert_float(_t.speed_on_ground(2.0, false)).is_equal_approx(2.5, 0.0001)
+
+
+func test_the_fastest_dead_in_the_dark_still_lose_to_a_sprint() -> void:
+	var sprint: float = (
+		(preload("res://gameplay/player/player_tuning_default.tres") as PlayerTuning).sprint_speed
+	)
+	assert_float(_t.speed_cap * _t.dark_speed_multiplier).is_less(sprint)
 
 
 func test_spawns_get_faster_then_hold_at_the_floor() -> void:

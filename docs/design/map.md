@@ -84,8 +84,25 @@ plaque only names the weapon).
 | --- | --- | --- | --- |
 | Shotgun, on the wall | the concession's front wall, field side, left of the door | `weapon_shotgun`; once owned, its rounds | in the open before any door: the first weapon a player can save for, bought under the dead's eyes |
 | Rifle, on the wall | the booth's front wall, midway side | `weapon_rifle`; once owned, its rounds | past the concession: the long gun waits for the middle rounds and the player who has opened the lot |
-| Prize crane | inside the stand, beside the cabinet that was there | `crane_play`, a weapon the player lacks, until the pool is empty | the stand is the first door; a gamble to spend the first thousand on |
+| Prize crane | one of four places (below); it starts inside the stand, beside the cabinet that was there | `crane_play`: a play, a spin, then a weapon the player lacks that only the buyer can take; it can break down and move | the stand is the first door; a gamble to spend the first thousand on |
 | Ammunition lockers (5) | the avenue (field), the stand, the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
+
+### The crane's places
+
+The crane stands on one place at a time (`crane.spot` in the rules, a marker with the metadata `crane_spot` here) and
+moves when a play breaks it down ([the Mystery Box research](../research/mystery-box.md)). It moves only to a place
+whose door is already open (`crane.spot_doors` in the tuning), so it is never somewhere nobody can reach. A light
+beam over the current place says where it is.
+
+| Index | Place | Door it needs | Why there |
+| ---: | --- | --- | --- |
+| 0 | inside the stand, `(-6.4, 5)` | the concession | where it starts; the first thing the first door buys |
+| 1 | the midway, `(6, 14)`, on the open ground between the stand and the booth | the concession | a place to run to from the stand, with the booth's rifle wall and a locker near |
+| 2 | the field, `(-24, -14)`, clear ground west of the avenue | none | the one place the open field has, so the crane is sometimes out in the dead's path |
+| 3 | the yard, `(40, 10)` | the yard | late, with the generator: a reason to go there that is not fuel |
+
+A play can only break down while another place is open to move to. The tests (`test_shop_spots.gd`) hold the markers to
+one for each index and to the rules above.
 
 A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
 real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one
@@ -227,14 +244,14 @@ Each `Lamps` group carries `metadata/circuit`, and every light below it takes th
 | `mains` | the yard's four work lamps and the generator's glow: wired straight to the generator with no switch, so lit while the tank has fuel and black when it is dry |
 | `battery` | the wreck's headlights on the road: not the generator's, they burn all night |
 
-The rules decide, the lamps follow. The zombies' slowdown asks `GeneratorState` (`NightWorld.is_lit` ->
+The rules decide, the lamps follow. The zombies' lit pace asks `GeneratorState` (`NightWorld.is_lit` ->
 `LotLamps.lit_at`: a lamp within 6 m whose circuit is on and whose tank has fuel), never a light node, so a server
 that draws nothing agrees with every client. The client's `LotLamps` mirrors `circuit_changed`, `fuel_empty`,
 `fuel_restored` and each frame's `fuel`: a circuit that goes off hides its lights and darkens its posts' bulbs; in the
 tank's last tenth (`brownout_fraction`) the lights sag and drop out in a flicker that is a function of the frame's
 tick and the lamp's number (no clock, no random draw), so a recording and a test see the same lights; at an empty tank
 they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it lights no ground for the
-dead. The flicker is only the picture: the slowdown stays whole until the tank is empty.
+dead. The flicker is only the picture: the lit pace stays whole until the tank is empty.
 
 ![The lot from above: the start, every circuit on, a dry tank](map-circuits.png)
 
@@ -262,8 +279,31 @@ lights. A circuit can be thrown with the tank dry: it lights when fuel comes. Th
 never a `powered_light`, so a post is no lamp of the lot.
 
 The autopilot (`AutopilotSwitches`) lights the circuit of an area as soon as its door is bought, because the dead now
-spawn there and lit ground slows them; keeps the field's circuit on; and when the tank falls below the low line puts
-every other circuit out (in a break) and keeps them out until the tank is back 15 points above it.
+spawn there and they are faster off lit ground; keeps the field's circuit on; and when the tank falls below the low
+line puts every other circuit out (in a break) and keeps them out until the tank is back 15 points above it.
+
+### The fuel cans
+
+The generator's tank only goes down, so the lot sells fuel: two **can stands** (`FuelSpots/*`, a crate of red cans with
+a yellow band and a FUEL sign in `FuelProps`), each in an area behind its door. A player buys from the spot 1.1 m in
+front of a stand, within `fuel_reach` (2 m, less than `use_reach`, so nobody buys through a wall):
+
+| Stand | Where | Needs |
+| --- | --- | --- |
+| `SpotStand` | inside the concession, behind the counter, on the soda side (2.5, 3.7) | the concession's door |
+| `SpotYard` | outside the generator cage's west wall, facing the yard's gate (35.4, 15.9) | the yard's door |
+
+The concession's is where the design put fuel (the stand), the yard's is for the player who has fought to the generator
+and finds it dry: the yard is `mains` and goes black with the tank. Each spot is a marker with the shop item
+(`metadata/shop_id`, the rules' `fuel_can`) and the door (`metadata/door`); `LotFuel` reads them and the night asks it
+which spot is in reach. Using one (`use`) sends `RulesAction.buy` for the item through the night server and the same
+prompt path as the doors and the breaker posts; the rules price it (`ShopItem.fuel_offer`: a whole can at 100 + 20 per
+round, or only the room left at its share of the price, nothing when the tank is full), and a hand buys at most every
+`fuel_interval` (0.5 s). The HUD's card reads `FUEL CAN`, `+25 UNITS OF FUEL` (or `FILLS UP: +10 UNITS`, or `THE TANK IS
+FULL`) and the price, and a refill shows the generator's card (`fuel_changed` with a positive delta).
+
+The autopilot (`AutopilotFuel`) goes to the nearest open stand when the tank is at the low line and it can pay for a
+can, and buys until the tank is back above 40%.
 
 ## The greybox
 
@@ -283,7 +323,14 @@ and the field's stalls have painted lines.
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator |
 | `*/Lamps` | the lights of an area, `metadata/circuit` naming the circuit they hang on ([above](#which-lamps-hang-on-which-circuit)); `LotLamps` reads them |
+| `FuelSpots`, `FuelProps` | the fuel can spots (`metadata/shop_id`, `metadata/door`; [above](#the-fuel-cans)) and the crates, cans and signs; `LotFuel` reads the spots |
 | `Switches` | the breaker posts (`metadata/circuit`, and `metadata/door` for the area's shop door; [above](#the-breaker-posts)); `LotSwitches` reads them |
+
+The drive-in's own props (speaker posts, the counter, popcorn machine and menu board, the projector, the ticket booths
+and the marquee, the screen's frame, picnic tables, trash cans) are placed by `tools/world/drivein_props.py`. A speaker
+post stands in front of every other parked car's nose, towards the screen, never on a gap between cars nor within 1.4 m
+of the line the shoulder camera takes through one nor within 1.5 m of a lamp post; a prop that replaces a greybox block
+(the counter, projector, kiosks, screen frame) keeps that block's collision box exactly.
 
 `game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`, `lot_lamps.gd`), the capture rig and
 `camera_probe.gd` (the player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
@@ -300,6 +347,10 @@ a change to a constant or coordinate there, not hand edits to a 380-node scene. 
 - the breaker posts: one per generator circuit, each naming its door, clear of every door's slabs, showing the
   circuit (`test_lot_switches.gd`); in a night the prompt, the throw, the held key, a downed player, a dry tank and
   the HUD (`tests/night/test_night_switches.gd`);
+- the fuel cans: a spot per stand, each selling a shop fuel item behind a shop door, on its area's ground, clear of the
+  doors and posts, walkable with every door open (`test_lot_fuel.gd`); in a night the prompt, the purchase, a dry tank
+  refilled with the lamps and the dead's speed following, the held key, a full tank, a poor player, the HUD card and the
+  generator's card (`tests/night/test_night_fuel.gd`); the rules' offer (`tests/rules/test_fuel_refill.gd`);
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 
@@ -317,19 +368,19 @@ size where it stands in the way).
 
 | Where | What |
 | --- | --- |
-| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; a broken pallet by the playground, cones by the shelter |
+| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
 | Midway | a dumpster at the end of each alley, cartons where crate stack A was, a small container where B was, cones at the road gate |
-| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence |
+| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
 | Back lot | the wreck rows are the kit's Broken Car (`wreck.tscn`); tyres, debris, a spilt drum |
-| Road | the two wrecks are Broken Cars (the battery headlights sit at the west one's front); barriers and cones before the roadblock; crates by the kiosks |
+| Road | the two wrecks are Broken Cars (the battery headlights sit at the west one's front); barriers and cones before the roadblock; crates by the kiosks; queue barriers to the kiosks, a tree in each of the plaza's north corners, street lights on its side walls (models only, no light); hoardings at the road's west end, junk on its north verge, a skip, cones on the centre line |
 
 Rules the placement keeps, all checked by the world tests:
 
 - **Solid props are CSG.** The zombies' mesh is baked only from CSG shapes with collision (`navmesh_baker.gd`), so a
   prop that blocks has a hidden `CSGBox3D` or `CSGCylinder3D` with `use_collision`; a hidden CSG root still collides
   and bakes. A `StaticBody3D` would be solid for the player and invisible to the dead.
-- **Clutter has no collision**: cones, pallets, planks, debris, a lone carton, a spilt drum, a gas can. It never closes
-  a path or makes a slot.
+- **Clutter has no collision**: cones, pallets, planks, debris, papers, signs, a lone carton, a spilt drum, a gas can,
+  the street lights. It never closes a path or makes a slot. A tree is solid only at its trunk (0.3 m, 2.4 m tall).
 - **No stairs out.** A prop a player can jump onto (a crate 0.63 m, a drum 0.82 m, tyres 0.87 m, a barrier 0.5 m) is
   kept away from anything taller and from low walls: a barrier by the road's 1.6 m end walls, or a climbable wreck
   beside them, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box 1.3 m tall (no step at the bonnet),

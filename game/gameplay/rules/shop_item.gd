@@ -7,6 +7,9 @@ extends Resource
 
 enum Kind { DOOR, WEAPON, CRANE, TONIC, FUEL, GRENADES, AMMO }
 
+## A fuel purchase needs at least this much room in the tank.
+const MIN_FUEL_SPACE := 1.0
+
 @export var id: StringName = &""
 @export var kind: Kind = Kind.DOOR
 ## Points at round 1.
@@ -32,6 +35,16 @@ func price_at(round_number: int) -> int:
 ## AMMO: what `rounds` rounds cost this round (one whole purchase at most), rounded up to a point.
 func ammo_price(round_number: int, rounds: int) -> int:
 	return ceili(float(price_at(round_number)) * mini(rounds, int(amount)) / amount)
+
+
+## FUEL: what a purchase puts in a tank with `space` units of room this round: `{price, units}`. A
+## part fill pays only for the room; with less than `MIN_FUEL_SPACE` of room (or for an item that
+## is no fuel) nothing is sold: `units` and `price` are 0.
+func fuel_offer(round_number: int, space: float) -> Dictionary:
+	if kind != Kind.FUEL or space < MIN_FUEL_SPACE:
+		return {"price": 0, "units": 0.0}
+	var units := minf(amount, space)
+	return {"price": ceili(float(price_at(round_number)) * units / amount), "units": units}
 
 
 ## The crane's weapons not in `owned`.

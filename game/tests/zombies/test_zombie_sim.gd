@@ -120,7 +120,7 @@ func test_a_dying_zombie_is_still_then_cleared_and_never_stands_again() -> void:
 	assert_bool(sim.zombies.has(1)).is_false()
 
 
-func test_lit_ground_slows_a_zombie_to_the_rules_fraction() -> void:
+func test_dark_ground_speeds_a_zombie_up_by_the_rules_factor() -> void:
 	var rounds := load("res://gameplay/rules/default_tuning.tres").rounds as RoundTuning
 	var dark := ZombieFixture.sim()
 	var lit := ZombieFixture.sim()
@@ -130,8 +130,10 @@ func test_lit_ground_slows_a_zombie_to_the_rules_fraction() -> void:
 	lit.lit_probe = func(_p: Vector3) -> bool: return true
 	ZombieFixture.run(dark, 2.0, {1: Vector3(40, 0, 0)})
 	ZombieFixture.run(lit, 2.0, {1: Vector3(40, 0, 0)})
-	assert_float(lit.zombies[1].move_speed).is_equal_approx(2.0 * rounds.lit_speed_multiplier, 0.01)
-	assert_float(dark.zombies[1].move_speed).is_equal_approx(2.0, 0.01)
+	assert_float(lit.zombies[1].move_speed).is_equal_approx(2.0, 0.01)
+	assert_float(dark.zombies[1].move_speed).is_equal_approx(
+		2.0 * rounds.dark_speed_multiplier, 0.01
+	)
 
 
 func test_a_crowd_on_one_spot_spreads_out_and_none_stays_stacked() -> void:

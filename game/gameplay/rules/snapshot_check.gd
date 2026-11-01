@@ -50,6 +50,7 @@ static func insides_fit(data: Dictionary, tuning: RulesTuning) -> bool:
 		and _entries_fit(data["players"], PlayerState.SNAPSHOT_KEYS, _player_fits)
 		and _generator_fits(data["generator"])
 		and BarricadeState.new(tuning.barricades).fits(data["barricades"])
+		and CraneState.new().fits(data["crane"], tuning.crane.spot_count())
 	)
 
 

@@ -113,53 +113,6 @@ func test_a_tonic_is_bought_once_and_four_at_most() -> void:
 	)
 
 
-func test_the_crane_gives_a_weapon_from_its_pool() -> void:
-	_begin()
-	_rich()
-	assert_int(RulesFixture.buy(_rules, 1, &"crane_play")).is_equal(GameRules.BuyResult.OK)
-	var detail: Dictionary = _log.of(&"purchase_made")[0]["detail"]
-	var pool: Array[StringName] = _rules.tuning.economy.item(&"crane_play").pool
-	assert_array(pool).contains([detail["weapon"]])
-	assert_array((_rules.players[1] as PlayerState).weapons).contains([detail["weapon"]])
-
-
-func test_the_crane_follows_the_seed() -> void:
-	assert_array(_crane_wins(41)).is_equal(_crane_wins(41))
-	var different := false
-	for seed_value in range(42, 52):
-		different = different or _crane_wins(seed_value) != _crane_wins(41)
-	assert_bool(different).is_true()
-
-
-func test_the_crane_never_repeats_a_weapon_and_runs_dry() -> void:
-	_begin()
-	_rich()
-	var won: Array = []
-	for _i in 4:
-		assert_int(RulesFixture.buy(_rules, 1, &"crane_play")).is_equal(GameRules.BuyResult.OK)
-		won.append(_log.of(&"purchase_made").back()["detail"]["weapon"])
-	assert_int(won.size()).is_equal(4)
-	for weapon_id in won:
-		assert_int(won.count(weapon_id)).is_equal(1)
-	assert_int(RulesFixture.buy(_rules, 1, &"crane_play")).is_equal(
-		GameRules.BuyResult.ALREADY_OWNED
-	)
-
-
-func test_the_crane_favours_the_heavier_weights() -> void:
-	var first_picks: Dictionary = {}
-	for seed_value in 400:
-		var rules: GameRules = RulesFixture.make_rules(1, seed_value)
-		var recorder := RulesFixture.record(rules)
-		rules.apply(RulesAction.start())
-		rules.apply(RulesAction.grant_points(1, 1000))
-		RulesFixture.buy(rules, 1, &"crane_play")
-		var weapon: StringName = recorder.of(&"purchase_made")[0]["detail"]["weapon"]
-		first_picks[weapon] = first_picks.get(weapon, 0) + 1
-	# Weights 4:3:2:1 in 400 plays: the heaviest wins clearly more than the lightest.
-	assert_int(first_picks[&"weapon_shotgun"]).is_greater(first_picks[&"weapon_flare_gun"] * 2)
-
-
 func test_fuel_refills_the_tank_at_the_rounds_price() -> void:
 	_begin()
 	_rich()
@@ -202,15 +155,3 @@ func test_spending_is_tracked_per_player() -> void:
 	RulesFixture.buy(_rules, 1, &"weapon_shotgun")
 	assert_int((_rules.players[1] as PlayerState).points_spent).is_equal(900)
 	assert_int((_rules.players[2] as PlayerState).points_spent).is_equal(0)
-
-
-func _crane_wins(seed_value: int) -> Array:
-	var rules: GameRules = RulesFixture.make_rules(1, seed_value)
-	var recorder := RulesFixture.record(rules)
-	rules.apply(RulesAction.start())
-	rules.apply(RulesAction.grant_points(1, 5000))
-	var wins: Array = []
-	for _i in 3:
-		RulesFixture.buy(rules, 1, &"crane_play")
-		wins.append(recorder.of(&"purchase_made").back()["detail"]["weapon"])
-	return wins

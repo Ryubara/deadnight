@@ -29,6 +29,8 @@ const REVIVE_HEALTH := 0.5
 const STUN_PER_METRE := 0.3
 ## Players mend fully between rounds. A player buys a fuel can when the tank is below this.
 const FUEL_BUY_BELOW := 35.0
+## Seconds per tick while the shopper waits at the crane in a break.
+const CRANE_STEP := 0.25
 ## Seconds to put a dry weapon away and take another.
 const SWAP_SECONDS := 0.6
 ## A dry player with points to spend runs to a locker: the walk there, the purchase and the walk
@@ -136,10 +138,10 @@ func _step() -> void:
 ## Moves every zombie, lands blows, and returns how many zombies are in reach of each player.
 func _move_zombies() -> Dictionary:
 	var engaged := {}
-	var lit := 1.0 - _lit_share() * (1.0 - rules.tuning.rounds.lit_speed_multiplier)
+	var pace := 1.0 + (1.0 - _lit_share()) * (rules.tuning.rounds.dark_speed_multiplier - 1.0)
 	for zombie: SimZombie in _zombies.values():
 		if zombie.distance > 0.0:
-			zombie.distance -= zombie.speed * lit * step
+			zombie.distance -= zombie.speed * pace * step
 			continue
 		if zombie.barrier > 0.0:
 			zombie.barrier -= step * zombie.barrier_speed
@@ -496,8 +498,9 @@ func _total(field: String) -> int:
 
 
 ## Puts the circuits the modelled player keeps on, on, and every other off, as a player at the
-## switches would. The generator burns for each one and the dead slow on lit ground only while it
-## has fuel, so the light costs what it costs in the game.
+## switches would. The generator burns for each one and the dead keep their round's pace on lit
+## ground only while it has fuel (off it they are faster), so the light costs what it costs in the
+## game.
 func _set_lights() -> void:
 	for circuit_id: StringName in rules.tuning.fuel.circuit_drain:
 		rules.apply(RulesAction.set_circuit(circuit_id, skill.circuits.has(circuit_id)))
@@ -636,8 +639,31 @@ func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
 		if event["type"] == &"purchase_made":
 			var spent: Dictionary = _result["spent_on"]
 			spent[item_id] = spent.get(item_id, 0) + event["price"]
+			if item_id == &"crane_play":
+				return 1 if _play_crane(player, event["price"]) else 0
 			return int(event["detail"].get("rounds", 1))
 	return 0
+
+
+## Spins the crane out in the break (the shopper stands at the glass, so the weapon is taken the
+## moment it is held out). False when the crane broke down: the price is back and the player tries
+## again at the next break.
+func _play_crane(player: SimPlayer, price: int) -> bool:
+	var won := false
+	var broke := false
+	while not rules.crane.is_ready() and rules.phase == GameRules.Phase.BREAK:
+		var caused := rules.apply(RulesAction.tick(CRANE_STEP))
+		for event in caused:
+			if event["type"] == &"crane_prize_ready":
+				rules.apply(RulesAction.crane_take(player.id))
+				won = true
+			elif event["type"] == &"crane_breakdown":
+				broke = true
+		_handle(caused)
+	if broke:
+		var spent: Dictionary = _result["spent_on"]
+		spent[&"crane_play"] -= price
+	return won
 
 
 class SimPlayer:

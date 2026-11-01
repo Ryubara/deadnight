@@ -5,7 +5,7 @@ extends Node
 ## `spot * HOLD_FRAMES + HOLD_FRAMES - 1` (from 0) is the settled shot of that spot:
 ##
 ##     godot --path game res://tests/captures/night_look_tour.tscn --write-movie <abs>/look.png \
-##         --fixed-fps 10 --quit-after 85
+##         --fixed-fps 10 --quit-after 110
 ## Arguments after `--`: `--hud` (draw the real HUD over the night).
 ## Prints SPOT <name> <frame> as each spot starts.
 
@@ -13,7 +13,8 @@ const HOLD_FRAMES := 10
 const SEED := 5
 ## Where the player stands (lot metres), the camera's yaw and pitch (degrees; yaw 0 looks at the
 ## screen, 180 at the road; positive pitch looks up) and, when above 0, the distance at which the
-## live dead are lined up in front of the camera.
+## live dead are lined up in front of the camera. A spot may also switch circuits (`circuits`: id to
+## on or off) as it starts; they stay as set for the spots after it.
 const SPOTS := [
 	{"name": "up_at_screen", "at": Vector3(0, 0, -30), "yaw": 0.0, "pitch": 32.0, "dead": 0.0},
 	{"name": "across_the_lot", "at": Vector3(0, 0, -40), "yaw": 180.0, "pitch": 4.0, "dead": 0.0},
@@ -22,6 +23,30 @@ const SPOTS := [
 	{"name": "flank", "at": Vector3(36, 0, -20), "yaw": 300.0, "pitch": 8.0, "dead": 0.0},
 	{"name": "yard", "at": Vector3(22, 0, 13), "yaw": 270.0, "pitch": 20.0, "dead": 0.0},
 	{"name": "back_lot", "at": Vector3(-20, 0, 34), "yaw": 170.0, "pitch": 18.0, "dead": 0.0},
+	{
+		"name": "concession_powered",
+		"at": Vector3(0, 0, -14),
+		"yaw": 180.0,
+		"pitch": 8.0,
+		"dead": 0.0,
+		"circuits": {&"concession": true},
+	},
+	{
+		"name": "screen_circuit_off",
+		"at": Vector3(0, 0, -30),
+		"yaw": 0.0,
+		"pitch": 32.0,
+		"dead": 0.0,
+		"circuits": {&"screen_lot": false},
+	},
+	{
+		"name": "entrance_marquee",
+		"at": Vector3(9, 0, 57),
+		"yaw": 0.0,
+		"pitch": 12.0,
+		"dead": 0.0,
+		"circuits": {&"screen_lot": true, &"back_lot": true},
+	},
 ]
 const DEAD_SPACING := 2.2
 
@@ -58,6 +83,10 @@ func _process(_delta: float) -> void:
 	if spot != _spot:
 		_spot = spot
 		print("SPOT ", SPOTS[spot]["name"], " ", _frame - 1)
+		var circuits: Dictionary = SPOTS[spot].get("circuits", {})
+		for circuit_id: StringName in circuits:
+			var action := RulesAction.set_circuit(circuit_id, circuits[circuit_id])
+			_night.state.apply_events(_night.server.rules.apply(action))
 
 
 func _pose() -> void:

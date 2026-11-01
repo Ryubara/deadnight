@@ -1,0 +1,146 @@
+{
+  "alert_4.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A zombie noticing prey: a short rising rasping snarl, hungry and angry, no music",
+    "seconds": 1.0,
+    "influence": 0.6
+  },
+  "alert_5.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A zombie noticing prey: a short rising rasping snarl, hungry and angry, no music",
+    "seconds": 1.0,
+    "influence": 0.6
+  },
+  "alert_6.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, an undead man's short rising rasping snarl as he spots prey, guttural, close-mic, dry, no reverb",
+    "seconds": 1.0,
+    "influence": 0.45
+  },
+  "attack_4.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a zombie lunging to bite: a short guttural growl and snarl, aggressive, close-mic, dry, no reverb",
+    "seconds": 1.0,
+    "influence": 0.45
+  },
+  "attack_5.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a zombie lunging to bite: a short guttural growl and snarl, aggressive, close-mic, dry, no reverb",
+    "seconds": 1.0,
+    "influence": 0.45
+  },
+  "attack_6.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a zombie lunging to bite: a short guttural growl and snarl, aggressive, close-mic, dry, no reverb",
+    "seconds": 1.0,
+    "influence": 0.45
+  },
+  "death_3.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A zombie dying: a rattling last groan that falls away into a wet breath, no music",
+    "seconds": 1.5,
+    "influence": 0.6
+  },
+  "death_4.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a zombie dying, a rattling last groan falling away into a wet breath, close-mic, dry, no reverb",
+    "seconds": 1.5,
+    "influence": 0.45
+  },
+  "death_5.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A zombie dying: a rattling last groan that falls away into a wet breath, no music",
+    "seconds": 1.5,
+    "influence": 0.6
+  },
+  "groan_5.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A single slow low zombie groan from a dead man's rasping throat, wet and breathy, no music",
+    "seconds": 2.0,
+    "influence": 0.6
+  },
+  "groan_6.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a dead man's low guttural groan, wet throat rattle, slow and breathy, close-mic, dry, no reverb, no music",
+    "seconds": 2.0,
+    "influence": 0.45
+  },
+  "groan_7.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A single slow low zombie groan from a dead man's rasping throat, wet and breathy, no music",
+    "seconds": 2.0,
+    "influence": 0.6
+  },
+  "groan_brute_4.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A huge hulking zombie groaning very low and deep, heavy chest, rumbling, no music",
+    "seconds": 2.0,
+    "influence": 0.6
+  },
+  "groan_brute_5.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a huge hulking zombie's deep rumbling groan from a heavy chest, very low, close-mic, dry, no reverb",
+    "seconds": 2.0,
+    "influence": 0.45
+  },
+  "groan_crawler_4.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a weak pained zombie moan, thin reedy voice, short of breath, close-mic, dry, no reverb, no music",
+    "seconds": 1.5,
+    "influence": 0.45
+  },
+  "groan_crawler_5.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A weak pained zombie moan, thin reedy voice, short of breath, no music",
+    "seconds": 1.5,
+    "influence": 0.6
+  },
+  "hurt_4.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a zombie shot by a bullet, a short pained raspy grunt and gasp, close-mic, dry, no reverb",
+    "seconds": 0.8,
+    "influence": 0.45
+  },
+  "hurt_5.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A zombie hit by a bullet: a short pained grunt and gasp, raspy, no music",
+    "seconds": 0.8,
+    "influence": 0.6
+  },
+  "hurt_6.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A zombie hit by a bullet: a short pained grunt and gasp, raspy, no music",
+    "seconds": 0.8,
+    "influence": 0.6
+  },
+  "roar_3.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A gigantic monstrous zombie boss roaring, deep distorted growl rising to a roar, cinematic, no music",
+    "seconds": 3.0,
+    "influence": 0.6
+  },
+  "roar_4.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A gigantic monstrous zombie boss roaring, deep distorted growl rising to a roar, cinematic, no music",
+    "seconds": 3.0,
+    "influence": 0.6
+  },
+  "shriek_3.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a fast undead runner screaming a shrill raspy shriek as it charges, high, close-mic, dry, no reverb",
+    "seconds": 1.2,
+    "influence": 0.45
+  },
+  "shriek_4.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A fast zombie screaming a shrill raspy shriek as it charges, high and terrifying, no music",
+    "seconds": 1.2,
+    "influence": 0.6
+  },
+  "shriek_5.ogg": {
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, a fast undead runner screaming a shrill raspy shriek as it charges, high, close-mic, dry, no reverb",
+    "seconds": 1.2,
+    "influence": 0.45
+  }
+}

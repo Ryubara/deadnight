@@ -7,7 +7,8 @@ extends RefCounted
 ## dry, walks to the next door when it can afford it and buys it, buys rounds when the gun in hand
 ## is nearly out, buys the weapons on the walls and the crane with points to spare, swaps to a gun
 ## that has rounds, and puts boards back when it is standing at one with nothing to shoot. It throws
-## the breaker of an area it has bought (`AutopilotSwitches`), and back off when the tank runs low.
+## the breaker of an area it has bought (`AutopilotSwitches`), and back off when the tank runs low;
+## and it buys a can of fuel when the tank is low and it has the points (`AutopilotFuel`).
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -44,17 +45,19 @@ var door_goals: Dictionary = {}
 var order: Array[StringName] = []
 ## The shop spots (`NightWorld.shop_spots`: kind, shop_id, position); the price of each weapon on a
 ## wall and of the crane by shop id; the price of a whole ammunition purchase by weapon; the shop
-## ids it wants, cheapest first, and how many crane prizes there are.
+## ids it wants, cheapest first, and the crane's prizes (shop ids).
 var spots: Array[Dictionary] = []
 var prices_of_goods: Dictionary = {}
 var ammo_prices: Dictionary = {}
 var wanted: Array[StringName] = []
-var crane_prizes := 0
+var crane_pool: Array[StringName] = []
 ## Where to stand to put boards back across each breach, by id, and how many a whole one holds.
 var repair_goals: Dictionary = {}
 var whole_boards: int = 1
 ## The breaker posts and when to use them.
 var switches := AutopilotSwitches.new()
+## The fuel can spots and when to buy at them.
+var fuel := AutopilotFuel.new()
 
 var _yaw := 0.0
 var _sidestep := 0.0
@@ -95,7 +98,7 @@ func decide(delta: float) -> NightCommand:
 	elif melee and not near.is_empty():
 		wish = _toward(here, near["position"])
 	elif kind != &"door":
-		wish = _toward(here, _goal())
+		wish = _toward(here, _destination())
 	wish = _unstuck(wish, here, delta)
 	if wish != Vector3.ZERO:
 		_yaw = atan2(-wish.x, -wish.z)
@@ -113,6 +116,8 @@ func decide(delta: float) -> NightCommand:
 	command.reload = dry and not state.me().get("reloading", false)
 	if kind == &"door":
 		command.use = state.points() >= int(prompt.get("price", BIG_PRICE))
+	elif kind == &"crane_take":
+		command.use = true
 	elif kind == &"weapon" or kind == &"crane":
 		command.use = _wants(prompt) and state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"ammo":
@@ -121,6 +126,8 @@ func decide(delta: float) -> NightCommand:
 		command.use = target.is_empty()
 	elif kind == &"circuit":
 		command.use = switches.wants_use(prompt, state.frame)
+	elif kind == &"fuel":
+		command.use = fuel.wants_use(prompt, state.frame, state.points())
 	return command
 
 
@@ -199,9 +206,45 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 				and _low_on_rounds(held)
 				and points >= int(ammo_prices.get(weapon, BIG_PRICE))
 			)
-	if kind == &"crane" and state.bought.get(id, 0) >= crane_prizes:
+	if kind == &"crane" and not _crane_here_with_prizes(spot):
 		return false
 	return wanted.has(id) and points >= int(prices_of_goods.get(id, BIG_PRICE)) + AMMO_MONEY
+
+
+## Whether this crane spot is where the crane stands now and a prize is left that the bot lacks.
+func _crane_here_with_prizes(spot: Dictionary) -> bool:
+	if spot.get("crane_spot", 0) != state.frame.get("crane", {}).get("spot", 0):
+		return false
+	var arms: Dictionary = state.me().get("arms", {})
+	for prize in crane_pool:
+		if not arms.has(WeaponCatalog.catalog_id(prize)):
+			return true
+	return false
+
+
+## Where the crane stands now, or `Vector3.INF` when the lot has no spot for it.
+func _crane_position() -> Vector3:
+	var at: int = state.frame.get("crane", {}).get("spot", 0)
+	for spot in spots:
+		if spot["kind"] == &"crane" and spot.get("crane_spot", 0) == at:
+			return spot["position"]
+	return Vector3.INF
+
+
+## Where to walk: the glass of its own crane play while that runs, else `_goal`.
+func _destination() -> Vector3:
+	var crane_at := _crane_position()
+	return crane_at if _waiting_on_crane() and crane_at != Vector3.INF else _goal()
+
+
+## Whether the bot's own crane play is running (the dig, or the prize held out): it waits at the
+## glass for it.
+func _waiting_on_crane() -> bool:
+	var crane: Dictionary = state.frame.get("crane", {})
+	return (
+		crane.get("buyer", -1) == state.player_id
+		and crane.get("stage", 0) in [CraneState.Stage.SPIN, CraneState.Stage.GRAB]
+	)
 
 
 func _reachable(here: Vector3, goal: Vector3) -> bool:
@@ -209,12 +252,23 @@ func _reachable(here: Vector3, goal: Vector3) -> bool:
 	return not path.is_empty() and _flat(path[path.size() - 1], goal) < REACHABLE
 
 
-## Where to go: the standing place of the next door it can afford; a breaker post it wants thrown;
-## in a break the nearest breach with a board down; else home.
-func _goal() -> Vector3:
-	# A gun nearly out of rounds comes before a door.
+## What comes before a door: a fuel can when the tank is low and it can pay for one, then rounds
+## for a gun nearly out. `Vector3.INF` when nothing is that urgent.
+func _urgent_goal() -> Vector3:
+	var cans := fuel.next_goal(state.frame, state.position(), state.points())
+	if cans != Vector3.INF:
+		return cans
 	if not _shopping.is_empty() and _low_on_rounds(_held()):
 		return _shopping["position"]
+	return Vector3.INF
+
+
+## Where to go: what is urgent; the standing place of the next door it can afford; a breaker post it
+## wants thrown; in a break the nearest breach with a board down; else home.
+func _goal() -> Vector3:
+	var urgent := _urgent_goal()
+	if urgent != Vector3.INF:
+		return urgent
 	for door_id in order:
 		if state.frame.get("doors", []).has(door_id):
 			continue

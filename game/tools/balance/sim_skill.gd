@@ -25,8 +25,9 @@ var dodge: float = 0.3
 ## How well a telegraphed blow is read: the chance a blow lands is multiplied by
 ## `exp(-telegraph_seconds * read)`.
 var read: float = 0.5
-## Share of the approach spent on lit ground (the zombies slow to the lit speed there) when every
-## circuit the player keeps on has fuel. Each circuit burns fuel, so this is bought, not free.
+## Share of the approach spent on lit ground (the zombies keep their round's pace there, and on the
+## rest of the approach they are faster) when every circuit the player keeps on has fuel. Each
+## circuit burns fuel, so this is bought, not free.
 var light_use: float = 0.35
 ## The generator circuits the player keeps switched on for the whole night.
 var circuits: Array[StringName] = [&"screen_lot", &"concession"]
