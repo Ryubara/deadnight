@@ -64,13 +64,13 @@ func _third_person(probe_name: String, camera: Camera3D) -> void:
 	camera.global_transform = Transform3D(Basis(Vector3.UP, yaw), rig["camera"])
 	var body := MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
-	capsule.radius = CameraProbe.BODY_RADIUS
-	capsule.height = CameraProbe.BODY_HEIGHT
+	capsule.radius = CameraProbe.body_radius()
+	capsule.height = CameraProbe.body_height()
 	var paint := StandardMaterial3D.new()
 	paint.albedo_color = Color(0.95, 0.55, 0.15)
 	capsule.material = paint
 	body.mesh = capsule
-	body.position = feet + Vector3(0.0, CameraProbe.BODY_HEIGHT / 2.0, 0.0)
+	body.position = feet + Vector3(0.0, CameraProbe.body_height() / 2.0, 0.0)
 	add_child(body)
 	print("camera: arm %.2f m, free %s" % [rig["arm"], rig["free"]])
 
