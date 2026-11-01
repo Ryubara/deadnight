@@ -19,6 +19,7 @@ const DENIED_TEXT := {
 	GameRules.BuyResult.LOCKED: "NOT YET: OPEN THE ONE BEFORE",
 	GameRules.BuyResult.LIMIT_REACHED: "YOU CANNOT CARRY MORE",
 	GameRules.BuyResult.TANK_FULL: "THE TANK IS FULL",
+	GameRules.BuyResult.AMMO_FULL: "YOUR RESERVE IS FULL",
 	GameRules.BuyResult.WRONG_PHASE: "NOT RIGHT NOW",
 }
 const DENIED_SECONDS := 1.8

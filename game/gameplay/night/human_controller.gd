@@ -6,6 +6,7 @@ extends RefCounted
 const ACTION_FIRE := &"fire"
 const ACTION_RELOAD := &"reload"
 const ACTION_USE := &"interact"
+const ACTION_SWAP := &"swap_weapon"
 
 var _was_down := {}
 
@@ -18,6 +19,7 @@ func command(player: Player, player_id: int) -> NightCommand:
 		result.fire = Input.is_action_pressed(ACTION_FIRE)
 		result.reload = _edge(ACTION_RELOAD)
 		result.use = _edge(ACTION_USE)
+		result.swap = _edge(ACTION_SWAP)
 	var camera := player.camera_rig.camera()
 	result.origin = camera.global_position
 	result.dir = -camera.global_transform.basis.z
