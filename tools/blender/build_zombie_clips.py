@@ -17,12 +17,14 @@ the elbow. On the spine X pitches forward, Y yaws (the chest turns), Z rolls.
 """
 
 import argparse
+import itertools
 import json
+import math
 import sys
 from pathlib import Path
 
 import bpy
-from mathutils import Euler, Vector
+from mathutils import Euler, Quaternion, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_zombies as bz
@@ -33,6 +35,32 @@ import soldier_clips as sc
 # slower so that `yank` lands on that moment (docs/design/zombies.md, "Tearing boards").
 TEAR = "Tear_Boards"
 TEAR_EVENTS = {"reach": 0, "grab": 9, "yank": 22, "end": 29}
+
+# Sprint (Deadnight #278): the fastest dead's gait. Built from the kit Run frame by frame on the Run's own timing (16
+# frames), so the two clips stay in step and the game blends them linearly by speed (ZombieRig). The kit Run already
+# plants its feet as far as these short legs reach (thigh 0.24 m and shin 0.26 m at kit scale, hips 0.4 m up), so the
+# sprint keeps the kit's contact length and shortens the contact instead: each foot (the IK targets `Foot.L/R`, which
+# the boots are weighted to) sweeps back along the ground at one steady speed, `SPRINT_SPEED`, and the kit's swing
+# path is replayed in the rest of the cycle with a higher kick. A steady sweep also makes the ground speed well
+# defined: the kit's planted foot barely moves at touchdown and then sweeps fast, so its median foot speed jumps
+# with small changes (the Run reads 4.4 in Godot, 5.7 in Blender). The hips drop, the legs are solved to meet the
+# feet, the trunk leans in and the arms pump wider with more bend. `measure_gait` reads it back the way
+# docs/research/zombie-gait.md measures the Run.
+SPRINT = "Sprint"
+SPRINT_SPEED = 7.0  # m/s at the walker's size (GAIT_SCALE): the planted foot's sweep
+SPRINT_STRIDE = 1.0  # the contact length along the walk, times the kit Run's (0.6 m at kit scale)
+SPRINT_LIFT = 1.25  # the foot's height above its lowest point, times the Run's (a higher back kick)
+SWING_EASE = 0.15  # share of the swing at each end over which the foot comes down to the ground
+SPRINT_DROP = 0.05  # metres (kit scale) the hips sit lower
+SPRINT_ARMS = 1.6  # the arm swing (Shoulder, UpperArm, LowerArm) about its cycle mean, times the Run's
+SPRINT_ELBOW = 18  # degrees more elbow bend (LowerArm X)
+# The lean (local Euler degrees; X pitches forward on Body and the spine, measured): the head comes back up to look
+# ahead.
+SPRINT_LEAN = {"Body": (6, 0, 0), "Abdomen": (9, 0, 0), "Torso": (7, 0, 0), "Neck": (-9, 0, 0), "Head": (-10, 0, 0)}
+GAIT_SCALE = 1.3  # the walker's size in the game (ZombieModels): the speeds below are at that size
+REACH_USE = 0.97  # the furthest a foot may be from the hip, of the thigh and shin together (a knee never locks)
+LEGS = (("UpperLeg.L", "LowerLeg.L", "Foot.L"), ("UpperLeg.R", "LowerLeg.R", "Foot.R"))
+ARM_BONES = ("Shoulder.L", "Shoulder.R", "UpperArm.L", "UpperArm.R", "LowerArm.L", "LowerArm.R")
 
 
 def filled(arm, pose):
@@ -47,6 +75,208 @@ def arms(raise_=0, spread=0, elbow=0, right=None):
     r = right or (raise_, spread, elbow)
     return {"UpperArm_L": (raise_, 0, spread), "UpperArm_R": (r[0], 0, -r[1]),
             "LowerArm_L": (elbow, 0, 0), "LowerArm_R": (r[2], 0, 0)}  # fmt: skip
+
+
+def mean_rotation(qs):
+    """The normalised average of a bone's rotations over a cycle (signs aligned with the first)."""
+    acc = Quaternion((0, 0, 0, 0))
+    for q in qs:
+        acc += q if q.dot(qs[0]) >= 0 else -q
+    return acc.normalized()
+
+
+def scaled_turn(mean, q, k):
+    """`q` as a turn away from `mean`, `k` times as far (same axis)."""
+    d = mean.inverted() @ q
+    if d.w < 0:
+        d.negate()
+    axis, angle = d.to_axis_angle()
+    return mean @ Quaternion(axis, angle * k)
+
+
+def apply_pose(arm, pose):
+    """Put `pose` on the pose bones and evaluate (no action, NLA muted: the clean-up leaves every clip on a track,
+    and an unmuted track overrides the pose bones), to read the posed bone matrices."""
+    ad = arm.animation_data
+    ad.action = None
+    for t in ad.nla_tracks:
+        t.mute = True
+    for b, v in pose.items():
+        pb = arm.pose.bones[b]
+        pb.rotation_mode = "QUATERNION"
+        pb.rotation_quaternion = v["rot"]
+        pb.location = v["loc"]
+    bpy.context.view_layer.update()
+
+
+def leg_shape(arm, run_poses):
+    """The kit Run's leg geometry: thigh length, and the ankle (the Foot bone's head) in the lower leg's frame.
+    Measured, not taken from the bones: the imported bones' tails are arbitrary (every leg bone is 0.518 long), which
+    is also why Blender's IK constraint cannot solve these legs."""
+    shape = {}
+    for upper, lower, foot in LEGS:
+        thigh, ankle, spread = [], Vector(), []
+        for pose in run_poses:
+            apply_pose(arm, pose)
+            hip, knee = arm.pose.bones[upper].head, arm.pose.bones[lower].head
+            local = arm.pose.bones[lower].matrix.to_3x3().inverted() @ (arm.pose.bones[foot].head - knee)
+            thigh.append((knee - hip).length)
+            ankle += local
+            spread.append(local)
+        ankle /= len(run_poses)
+        shape[lower] = {"thigh": sum(thigh) / len(thigh), "ankle": ankle,
+                        "ankle_spread": max((v - ankle).length for v in spread)}  # fmt: skip
+    return shape
+
+
+def solve_leg(arm, pose, upper, lower, foot, shape):
+    """Turn `upper` and `lower` so the ankle meets the Foot bone (a two-bone solve in the plane of the kit's knee). A
+    foot out of the leg's reach is pulled back along the line to the hip until it is in reach (`REACH_USE` of the
+    leg), so the boot never stretches away from the shin. Returns how far it was pulled (kit metres)."""
+    apply_pose(arm, pose)
+    pu, pl = arm.pose.bones[upper], arm.pose.bones[lower]
+    hip, knee, target = pu.head.copy(), pl.head.copy(), arm.pose.bones[foot].head.copy()
+    l1, ankle = shape["thigh"], shape["ankle"]
+    l2 = ankle.length
+    to = target - hip
+    reach = (l1 + l2) * REACH_USE
+    miss = max(0.0, to.length - reach)
+    dist = min(to.length, reach)
+    d = to.normalized()
+    if miss:
+        pose[foot]["loc"] = arm.data.bones[foot].matrix_local.inverted() @ (hip + d * dist)  # Root holds still
+    bend = (knee - hip) - d * (knee - hip).dot(d)  # the kit knee's side of the hip-foot line
+    bend.normalize()
+    a = (l1 * l1 - l2 * l2 + dist * dist) / (2 * dist)
+    new_knee = hip + d * a + bend * math.sqrt(max(l1 * l1 - a * a, 0.0))
+    r1 = (knee - hip).rotation_difference(new_knee - hip).to_matrix()
+    mu_new = r1 @ pu.matrix.to_3x3()
+    ml_turned = r1 @ pl.matrix.to_3x3()
+    r2 = (ml_turned @ ankle).rotation_difference(hip + d * dist - new_knee).to_matrix()
+    ml_new = r2 @ ml_turned
+    # Back to each bone's own rotation: posed = parent_posed @ (parent_rest^-1 @ rest) @ local.
+    bu, bl = arm.data.bones[upper], arm.data.bones[lower]
+    rest_u = (bu.parent.matrix_local.inverted() @ bu.matrix_local).to_3x3()
+    rest_l = (bu.matrix_local.inverted() @ bl.matrix_local).to_3x3()
+    pose[upper]["rot"] = ((pu.parent.matrix.to_3x3() @ rest_u).inverted() @ mu_new).to_quaternion()
+    pose[lower]["rot"] = ((mu_new @ rest_l).inverted() @ ml_new).to_quaternion()
+    return miss
+
+
+def contact(path, n, planted=0.2, step=0.01):
+    """A foot's contact on the kit clip: (touchdown, lift-off) times around its lowest frame, where its height crosses
+    `planted` of its lift (the measure's planted share), and that height. `path(t)` is the foot's world position."""
+    zs = [path(i * step).z for i in range(round(n / step))]
+    low, high = min(zs), max(zs)
+    limit = low + (high - low) * planted
+    mid = zs.index(low) * step
+    t_on = mid
+    while path(t_on % n).z <= limit:
+        t_on -= step
+    t_off = mid
+    while path(t_off % n).z <= limit:
+        t_off += step
+    return t_on + step, t_off - step, low, limit
+
+
+def foot_path(path, n, t, plan):
+    """Where a sprinting foot is at frame `t` (world, kit scale) and the kit time its rotation is read at: the kit's
+    contact span swept at a steady speed in `plan["frames"]`, and the kit's swing replayed in the rest of the cycle,
+    stretched to the new contact's ends and lifted `SPRINT_LIFT` times as high."""
+    on, off, low, limit = plan["kit"]
+    y_on, y_off, frames, mid = plan["y_on"], plan["y_off"], plan["frames"], plan["mid"]
+    u = (t - mid + n / 2) % n - n / 2  # frames from mid-contact, -n/2..n/2
+    if abs(u) <= frames / 2:
+        k = (u + frames / 2) / frames
+        return Vector((plan["x"], y_on + (y_off - y_on) * k, low)), on + (off - on) * k
+    swing = (u - frames / 2) % n / (n - frames)  # 0 at lift-off, 1 at touchdown
+    kit_t = off + (on + n - off) * swing
+    p = path(kit_t % n)
+    ky_on, ky_off = plan["ky_on"], plan["ky_off"]
+    y = y_off + (p.y - ky_off) / (ky_on - ky_off) * (y_on - y_off)
+    # Within SWING_EASE of either end the foot comes onto the sweep's line: it touches down and lifts off already
+    # moving back at ground speed, and the kit's planted height is taken off, so it meets the ground where the sweep
+    # starts and ends. Elsewhere it is lifted as the kit lifts it, times SPRINT_LIFT.
+    ease = max(0.0, 1.0 - min(swing, 1.0 - swing) / SWING_EASE)
+    y += ease * (y_on + (y_off - y_on) * (u + frames / 2) / frames - y)
+    z = low + SPRINT_LIFT * (p.z - low) - ease * SPRINT_LIFT * (limit - low)
+    return Vector((plan["x"], y, max(z, low))), kit_t % n
+
+
+def sprint(arm, run, every):
+    """The Sprint clip from the kit Run (see SPRINT above); returns (largest reach miss, leg shape), kit metres."""
+    n = int(run.frame_range[1])
+    base = [filled(arm, sc.sample(run, f)) for f in range(n + 1)]
+    shape = leg_shape(arm, base)
+    mw = arm.matrix_world
+    per_frame = SPRINT_SPEED / GAIT_SCALE / sc.FPS  # kit metres a frame
+    plans = {}
+    for _u, _l, foot in LEGS:
+        rest = mw @ arm.data.bones[foot].matrix_local
+
+        def path(t, rest=rest, foot=foot):
+            return rest @ sc.sample(run, t)[foot]["loc"]
+
+        on, off, low, limit = contact(path, n)
+        ky_on, ky_off = path(on % n).y, path(off % n).y
+        centre, half = (ky_on + ky_off) / 2, (ky_off - ky_on) / 2 * SPRINT_STRIDE
+        plans[foot] = {"rest": rest, "path": path, "kit": (on, off, low, limit), "ky_on": ky_on, "ky_off": ky_off,
+                       "y_on": centre - half, "y_off": centre + half, "frames": 2 * half / per_frame,
+                       "mid": (on + off) / 2, "x": path(0).x}  # fmt: skip
+    means = {b: mean_rotation([p[b]["rot"] for p in base[:-1]]) for b in ARM_BONES}
+    keys, worst = [], 0.0  # worst: the furthest a foot was pulled back into reach
+    for f in range(n + 1):
+        pose = sc.offset(base[f], **{k.replace(".", "_"): v for k, v in SPRINT_LEAN.items()})
+        for b in ARM_BONES:
+            pose[b]["rot"] = scaled_turn(means[b], base[f][b]["rot"], SPRINT_ARMS)
+        pose = sc.offset(pose, LowerArm_L=(SPRINT_ELBOW, 0, 0), LowerArm_R=(SPRINT_ELBOW, 0, 0))
+        pose["Body"]["loc"] = pose["Body"]["loc"] + Vector((0, 0, SPRINT_DROP))  # Body's local +Z is down
+        for _u, _l, foot in LEGS:
+            plan = plans[foot]
+            at, kit_t = foot_path(plan["path"], n, f % n, plan)
+            pose[foot] = {"rot": sc.sample(run, kit_t)[foot]["rot"], "loc": plan["rest"].inverted() @ at}
+        for upper, lower, foot in LEGS:
+            worst = max(worst, solve_leg(arm, pose, upper, lower, foot, shape[lower]))
+        keys.append((f, pose))
+    events = {f"step_{side}": round(plans[foot]["mid"] - plans[foot]["frames"] / 2) % n
+              for side, (_u, _l, foot) in (("left", LEGS[0]), ("right", LEGS[1]))}  # fmt: skip
+    print("SPRINT_CONTACT", {f: (round(p["frames"], 2), round(p["mid"], 2)) for f, p in plans.items()})
+    sc.write(arm, SPRINT, keys, every, "full", True, events=dict(sorted(events.items(), key=lambda kv: kv[1])))
+    return worst, shape
+
+
+def measure_gait(arm, action, scale=GAIT_SCALE, hz=60, planted=0.2, settle=0.5, seconds=5.0):
+    """The ground speed (m/s at `scale`) a clip's planted feet cover at its authored rate, as the game's test measures
+    it (game/tests/zombies/test_zombie_gait.gd, docs/research/zombie-gait.md): from `settle` seconds in, `seconds`
+    of the feet sampled at `hz`, linearly between frames; a foot is planted within `planted` of its own lift from its
+    lowest point; the median of its backward speed over the planted samples of both feet."""
+    n = int(action.frame_range[1])
+    ad = arm.animation_data
+    for t in ad.nla_tracks:
+        t.mute = True
+    ad.action = action
+    if hasattr(ad, "action_slot") and action.slots:
+        ad.action_slot = action.slots[0]
+    track = {foot: [] for _u, _l, foot in LEGS}
+    for f in range(n + 1):
+        bpy.context.scene.frame_set(f)
+        for foot, points in track.items():
+            points.append(arm.matrix_world @ arm.pose.bones[foot].head * scale)
+    ad.action = None
+    speeds, step = [], 1 / hz
+    for pts in track.values():
+        samples = []
+        for i in range(round(seconds * hz) + 1):
+            t = ((settle + i * step) * sc.FPS) % n
+            k = int(t)
+            samples.append(pts[k].lerp(pts[k + 1], t - k))
+        low, high = min(p.z for p in samples), max(p.z for p in samples)
+        limit = low + (high - low) * planted
+        for a, b in itertools.pairwise(samples):
+            if a.z <= limit and b.z <= limit:
+                speeds.append(abs(b.y - a.y) / step)
+    speeds.sort()
+    return speeds[len(speeds) // 2]
 
 
 def build(arm, probe=False):
@@ -76,6 +306,15 @@ def build(arm, probe=False):
             (f["yank"], yank), (25, fling), (27, settle), (f["end"], idle)]  # fmt: skip
     sc.write(arm, TEAR, keys, every, "full", True, events=dict(f))
 
+    miss, shape = sprint(arm, acts["Run"], every)
+    print("SPRINT_LEGS", {k: (round(v["thigh"], 3), round(v["ankle"].length, 3), round(v["ankle_spread"], 4))
+                          for k, v in shape.items()}, "reach miss", round(miss, 4))  # fmt: skip
+    for clip in ("Walk", "Run", SPRINT):
+        speed = round(measure_gait(arm, bpy.data.actions[clip]), 2)
+        print("GAIT", clip, speed)
+        if clip == SPRINT:
+            sc.CLIPS[SPRINT]["ground_speed"] = speed
+
     if probe:  # the spine and arm axes, one bone turned per frame, for reading off a sheet
         keys, n = [(0, idle)], 1
         for bone in ("Abdomen", "Torso", "UpperArm_R", "LowerArm_R"):
@@ -86,7 +325,7 @@ def build(arm, probe=False):
                 n += 1
         sc.write(arm, "Probe", keys, every, "full", False)
         sc.CLIPS.pop("Probe")
-    return [TEAR, *(["Probe"] if probe else [])]
+    return [TEAR, SPRINT, *(["Probe"] if probe else [])]
 
 
 def add_tracks(arm, names):
@@ -122,7 +361,10 @@ def main():
     spec = {
         "fps": sc.FPS,
         "bones": len(arm.data.bones),
-        "clips": {n: {k: c[k] for k in ("loop", "frames", "seconds", "events")} for n, c in sc.CLIPS.items()},
+        "clips": {
+            n: {k: c[k] for k in ("loop", "frames", "seconds", "events", "ground_speed") if k in c}
+            for n, c in sc.CLIPS.items()
+        },
     }
     (args.out / "clips.json").write_text(json.dumps(spec, indent=1) + "\n", newline="\n")
     print("ZOMBIE_CLIPS", spec)

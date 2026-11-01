@@ -67,7 +67,12 @@ func test_the_voice_table_gives_every_look_real_sounds() -> void:
 	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 6.0)).is_equal_approx(
 		ZombieVoiceTable.RUN_CYCLE / fast, 0.001
 	)
-	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 6.0)).is_less(
+	# From the run to the sprint the cadence holds and the stride lengthens (#278); past the
+	# sprint's own speed the steps come faster.
+	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 6.0)).is_equal_approx(
+		ZombieVoiceTable.cycle_seconds(&"walker", 4.4), 0.001
+	)
+	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 8.0)).is_less(
 		ZombieVoiceTable.cycle_seconds(&"walker", 4.4)
 	)
 	assert_float(ZombieVoiceTable.cycle_seconds(&"crawler", 1.1)).is_equal_approx(

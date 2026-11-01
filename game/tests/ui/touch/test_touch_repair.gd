@@ -21,6 +21,11 @@ func before_test() -> void:
 	tuning.rounds.intro_seconds = 60.0
 	_night = await NightFixture.start(self, Night.Mode.MANUAL, tuning)
 	NightFixture.run(_night, SETTLE)
+	# The starting pistol has no model yet (docs/design/weapon-hold.md), so a rifle is put in the hand:
+	# the hammer takes the place of a weapon that is shown.
+	_night.server.combat.apply(CombatAction.give_weapon(Night.PLAYER_ID, &"rifle"))
+	_night.server.combat.apply(CombatAction.equip(Night.PLAYER_ID, &"rifle"))
+	NightFixture.run(_night, 3)
 	for _i in tuning.barricades.boards:
 		_night.server.rules.barricades.tear(BREACH)
 	_night.world.barricade(BREACH).set_boards(_boards())
