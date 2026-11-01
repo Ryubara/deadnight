@@ -121,6 +121,16 @@ func test_there_is_no_sway_while_walking_standing_or_aiming() -> void:
 	assert_float(_rig.sway.amount()).is_equal(0.0)
 
 
+func test_the_sprint_sways_a_bit_more_than_a_rifle_shot_and_still_under_half_a_degree() -> void:
+	# The maintainer: more shake than firing, but very subtle, like other games.
+	_sprint(true, _tuning.sprint_speed)
+	_render(_tuning.sprint_sway_ease_in + 0.2)
+	var rifle := _tuning.shake_max_degrees * pow(0.45, _tuning.shake_exponent)
+	assert_float(_rig.sway.peak_degrees()).is_greater(rifle)
+	assert_float(_rig.sway.peak_degrees()).is_greater(0.4)
+	assert_float(_rig.sway.peak_degrees()).is_less(SUBTLE_DEGREES)
+
+
 func test_sprinting_sways_within_its_bounds_and_is_never_more_than_subtle() -> void:
 	_sprint(true, _tuning.sprint_speed)
 	_render(_tuning.sprint_sway_ease_in + 0.2)
@@ -134,7 +144,7 @@ func test_sprinting_sways_within_its_bounds_and_is_never_more_than_subtle() -> v
 	assert_float(worst_look).is_less_equal(_rig.sway.peak_degrees() + 0.0001)
 	assert_float(worst_pitch).is_greater(_tuning.sprint_sway_pitch_degrees * 0.9)
 	assert_float(worst_pitch).is_less_equal(_tuning.sprint_sway_pitch_degrees + 0.0001)
-	assert_float(_tuning.sprint_sway_pitch_degrees).is_between(0.2, 0.4)
+	assert_float(_tuning.sprint_sway_pitch_degrees).is_between(0.2, 0.45)
 	for angle in [
 		_tuning.sprint_sway_pitch_degrees,
 		_tuning.sprint_sway_yaw_degrees,

@@ -124,9 +124,9 @@ extends Resource
 ## `step_distance` metres of travel, so the rate follows ground speed like the Run clip does.
 ## Subtle on purpose: the peaks are under half a degree. The camera shake setting scales it and
 ## Reduced motion turns it off. Amounts are degrees.
-@export var sprint_sway_pitch_degrees := 0.3
-@export var sprint_sway_yaw_degrees := 0.15
-@export var sprint_sway_roll_degrees := 0.2
+@export var sprint_sway_pitch_degrees := 0.4
+@export var sprint_sway_yaw_degrees := 0.2
+@export var sprint_sway_roll_degrees := 0.28
 ## Footfalls for one full bob (1: the head dips on every foot) and for one full roll and yaw (2:
 ## once per left and right stride).
 @export var sprint_sway_bob_steps := 1.0

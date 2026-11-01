@@ -84,9 +84,9 @@ every tick.
 
 | `PlayerTuning` (group Sprint sway) | Value |
 | --- | --- |
-| `sprint_sway_pitch_degrees` | 0.3 |
-| `sprint_sway_yaw_degrees` | 0.15 |
-| `sprint_sway_roll_degrees` | 0.2 |
+| `sprint_sway_pitch_degrees` | 0.4 (was 0.3) |
+| `sprint_sway_yaw_degrees` | 0.2 (was 0.15) |
+| `sprint_sway_roll_degrees` | 0.28 (was 0.2) |
 | `sprint_sway_bob_steps` / `sprint_sway_sway_steps` | 1 / 2 footfalls to a cycle |
 | `sprint_sway_phase_degrees` | 0 |
 | `sprint_sway_ease_in` / `_ease_out` | 0.4 s / 0.3 s |
@@ -94,6 +94,8 @@ every tick.
 | `sprint_sway_fire_duck` | 0.5 |
 
 Why so small: Godot's field of view is the vertical one, so 70 degrees over 1080 pixels is about 15 pixels a degree
-(14 at the sprint's wider lens): 0.3 degrees of bob moves the picture about 4 pixels up and down, and 0.2 degrees of
-roll about 3 pixels at the edge of the screen. That is felt as life in the picture and not read as a wobble, and it
-stays under the shotgun's 0.45. A test keeps every amplitude under half a degree. Captures: the pull request.
+(14 at the sprint's wider lens): 0.4 degrees of bob moves the picture about 6 pixels up and down, and 0.28 degrees of
+roll about 4 pixels at the edge of the screen. That is felt as life in the picture and not read as a wobble. The
+maintainer asked for a sprint that shakes a bit more than walking or a shot, like other games, and still very subtle:
+the largest turn of the look direction is now 0.45 degrees (pitch and yaw together, 0.2 above 0.3 before), level with
+the shotgun's peak (0.45) and under the half degree the test keeps every amplitude below. Captures: the pull request.
