@@ -8,15 +8,15 @@ func before_test() -> void:
 	_t = RulesFixture.tuning().rounds
 
 
-func test_zombie_count_starts_at_five_for_one_player() -> void:
-	assert_int(_t.zombies_for_round(1, 1)).is_equal(5)
+func test_zombie_count_starts_at_four_for_one_player() -> void:
+	assert_int(_t.zombies_for_round(1, 1)).is_equal(4)
 
 
 func test_zombie_count_matches_the_documented_table() -> void:
-	# 5 + 2.2 (r-1) + 0.12 (r-1)^2, rounded.
-	assert_int(_t.zombies_for_round(5, 1)).is_equal(16)
-	assert_int(_t.zombies_for_round(10, 1)).is_equal(35)
-	assert_int(_t.zombies_for_round(20, 1)).is_equal(90)
+	# 4 + 1.3 (r-1) + 0.07 (r-1)^2, rounded.
+	assert_int(_t.zombies_for_round(5, 1)).is_equal(10)
+	assert_int(_t.zombies_for_round(10, 1)).is_equal(21)
+	assert_int(_t.zombies_for_round(20, 1)).is_equal(54)
 
 
 func test_zombie_count_only_grows() -> void:
@@ -38,10 +38,10 @@ func test_more_players_bring_more_zombies_but_not_proportionally() -> void:
 
 
 func test_health_climbs_straight_to_the_knee_then_compounds() -> void:
-	assert_float(_t.health_for_round(1)).is_equal(60.0)
-	assert_float(_t.health_for_round(8)).is_equal(158.0)
-	assert_float(_t.health_for_round(9)).is_equal_approx(158.0 * 1.05, 0.001)
-	assert_float(_t.health_for_round(18)).is_equal_approx(158.0 * pow(1.05, 10.0), 0.01)
+	assert_float(_t.health_for_round(1)).is_equal(50.0)
+	assert_float(_t.health_for_round(8)).is_equal(106.0)
+	assert_float(_t.health_for_round(9)).is_equal_approx(106.0 * 1.05, 0.001)
+	assert_float(_t.health_for_round(18)).is_equal_approx(106.0 * pow(1.05, 10.0), 0.01)
 
 
 func test_health_never_falls() -> void:
@@ -93,16 +93,16 @@ func test_lit_ground_slows_the_dead() -> void:
 
 
 func test_spawns_get_faster_then_hold_at_the_floor() -> void:
-	assert_float(_t.spawn_interval(1, 1)).is_equal_approx(2.4, 0.0001)
-	assert_float(_t.spawn_interval(2, 1)).is_equal_approx(2.4 * 0.95, 0.0001)
+	assert_float(_t.spawn_interval(1, 1)).is_equal_approx(3.2, 0.0001)
+	assert_float(_t.spawn_interval(2, 1)).is_equal_approx(3.2 * 0.96, 0.0001)
 	assert_float(_t.spawn_interval(80, 1)).is_equal(0.5)
 	assert_float(_t.spawn_interval(1, 3)).is_less(_t.spawn_interval(1, 1))
 
 
 func test_the_living_cap_rises_then_holds_and_grows_with_players() -> void:
-	assert_int(_t.alive_cap(1, 1)).is_equal(10)
+	assert_int(_t.alive_cap(1, 1)).is_equal(6)
 	assert_int(_t.alive_cap(50, 1)).is_equal(28)
-	assert_int(_t.alive_cap(1, 3)).is_equal(22)
+	assert_int(_t.alive_cap(1, 3)).is_equal(18)
 
 
 func test_the_night_gets_darker_to_a_floor() -> void:

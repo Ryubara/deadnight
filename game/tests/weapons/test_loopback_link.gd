@@ -42,7 +42,7 @@ func test_an_action_goes_over_and_its_events_come_back() -> void:
 	assert_array(WeaponsFixture.of(_received, &"damage_dealt")).has_size(1)
 	assert_bool(_server.is_target_alive(1)).is_true()
 	assert_float(WeaponsFixture.of(_received, &"damage_dealt")[0]["health"]).is_equal_approx(
-		36.0, 0.01
+		RulesFixture.round_health(1) - 24.0, 0.01
 	)
 
 

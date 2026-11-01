@@ -36,12 +36,12 @@ func test_a_blast_takes_health_off_and_names_the_blast_zone() -> void:
 	var events := _blast(20.0, 0.0)
 	var damaged := events.filter(func(e: Dictionary) -> bool: return e["type"] == &"zombie_damaged")
 	assert_float(damaged[0]["damage"]).is_equal(20.0)
-	assert_float(damaged[0]["health"]).is_equal(40.0)
+	assert_float(damaged[0]["health"]).is_equal(RulesFixture.round_health(1) - 20.0)
 	assert_str(damaged[0]["zone"]).is_equal("blast")
 
 
 func test_enough_damage_on_the_legs_cripples_the_zombie() -> void:
-	# Full health 60, a quarter of it (15) on the legs is enough.
+	# A quarter of a round 1 zombie's health (12.5) on the legs is enough.
 	var events := _blast(25.0, 20.0)
 	var crippled := events.filter(
 		func(e: Dictionary) -> bool: return e["type"] == &"zombie_crippled"

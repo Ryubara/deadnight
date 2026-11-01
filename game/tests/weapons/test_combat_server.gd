@@ -23,7 +23,7 @@ func test_a_body_shot_hurts_and_a_headshot_kills() -> void:
 	var body := _fire(BODY, 1)
 	var hurt := WeaponsFixture.of(body, &"damage_dealt")[0]
 	assert_float(hurt["damage"]).is_equal_approx(24.0, 0.01)
-	assert_float(hurt["health"]).is_equal_approx(36.0, 0.01)
+	assert_float(hurt["health"]).is_equal_approx(RulesFixture.round_health(1) - 24.0, 0.01)
 	assert_bool(hurt["headshot"]).is_false()
 	WeaponsFixture.step(_server, {1: Vector3.ZERO}, 30)
 	var head := _fire(HEAD, 2)

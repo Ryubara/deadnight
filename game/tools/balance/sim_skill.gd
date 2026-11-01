@@ -25,8 +25,11 @@ var dodge: float = 0.3
 ## How well a telegraphed blow is read: the chance a blow lands is multiplied by
 ## `exp(-telegraph_seconds * read)`.
 var read: float = 0.5
-## Share of the approach spent on lit ground (the zombies slow to the lit speed there).
+## Share of the approach spent on lit ground (the zombies slow to the lit speed there) when every
+## circuit the player keeps on has fuel. Each circuit burns fuel, so this is bought, not free.
 var light_use: float = 0.35
+## The generator circuits the player keeps switched on for the whole night.
+var circuits: Array[StringName] = [&"screen_lot", &"concession"]
 ## What the player buys, first to last.
 var shopping: Array[StringName] = []
 
@@ -37,6 +40,7 @@ func jittered(rng: RandomNumberGenerator, spread: float) -> SimSkill:
 	var copy := SimSkill.new()
 	copy.id = id
 	copy.shopping = shopping
+	copy.circuits = circuits
 	copy.accuracy = _wobble(accuracy, rng, spread)
 	copy.head_rate = _wobble(head_rate, rng, spread)
 	copy.limb_rate = limb_rate
@@ -65,6 +69,7 @@ static func named(skill_id: StringName) -> SimSkill:
 			skill.dodge = 0.12
 			skill.read = 0.25
 			skill.light_use = 0.1
+			skill.circuits.assign([&"screen_lot"])
 			(
 				skill
 				. shopping
@@ -74,13 +79,9 @@ static func named(skill_id: StringName) -> SimSkill:
 						&"crane_play",
 						&"weapon_shotgun",
 						&"door_booth",
-						&"tonic_hearty",
 						&"crane_play",
 						&"weapon_rifle",
-						&"tonic_second_wind",
 						&"door_back_lot",
-						&"tonic_fleet",
-						&"tonic_quick_hands",
 					]
 				)
 			)
@@ -93,17 +94,14 @@ static func named(skill_id: StringName) -> SimSkill:
 			skill.dodge = 0.5
 			skill.read = 0.9
 			skill.light_use = 0.55
+			skill.circuits.assign([&"screen_lot", &"concession", &"booth"])
 			(
 				skill
 				. shopping
 				. assign(
 					[
 						&"weapon_shotgun",
-						&"tonic_hearty",
 						&"weapon_rifle",
-						&"tonic_quick_hands",
-						&"tonic_second_wind",
-						&"tonic_fleet",
 						&"door_concession",
 						&"door_booth",
 						&"crane_play",
@@ -119,13 +117,9 @@ static func named(skill_id: StringName) -> SimSkill:
 					[
 						&"weapon_shotgun",
 						&"door_concession",
-						&"tonic_hearty",
 						&"weapon_rifle",
-						&"tonic_second_wind",
 						&"door_booth",
 						&"crane_play",
-						&"tonic_quick_hands",
-						&"tonic_fleet",
 						&"door_back_lot",
 					]
 				)

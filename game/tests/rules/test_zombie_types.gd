@@ -2,6 +2,9 @@ extends GdUnitTestSuite
 ## Zombie types as data: the mix of a round, what a spawn carries, the weak spot, the crawler, what
 ## each type pays and that the shipped table hangs together.
 
+## Seconds of a round to collect spawns over: most of its zombies (the alive cap holds the rest).
+const SPAWN_WINDOW := 40.0
+
 var _t: RulesTuning
 
 
@@ -34,7 +37,7 @@ func _spawn_in_round(rules: GameRules, round_number: int) -> Array[Dictionary]:
 			if rules.phase == GameRules.Phase.ACTIVE and rules.zombies_remaining() > 0:
 				continue
 	spawned.clear()
-	RulesFixture.run(rules, 3.0)
+	RulesFixture.run(rules, SPAWN_WINDOW)
 	return spawned
 
 

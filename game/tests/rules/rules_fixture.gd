@@ -17,6 +17,15 @@ static func tuning() -> RulesTuning:
 	return (load(TUNING_PATH) as RulesTuning).duplicate(true)
 
 
+## What the shipped tuning says a round holds: the zombies for `players`, and each one's health.
+static func round_count(round_number: int, players: int = 1) -> int:
+	return tuning().rounds.zombies_for_round(round_number, players)
+
+
+static func round_health(round_number: int) -> float:
+	return tuning().rounds.health_for_round(round_number)
+
+
 ## A night with `player_count` players (ids 1..n), not started.
 static func make_rules(
 	player_count: int = 1, seed_value: int = 1234, t: RulesTuning = null
