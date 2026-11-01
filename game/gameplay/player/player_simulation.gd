@@ -25,6 +25,10 @@ static func simulate(
 	state.view_pitch = command.pitch
 	state.crouching = command.crouch
 	state.aiming = command.aim
+	if command.fire:
+		state.fire_age = 0.0
+	else:
+		state.fire_age = minf(state.fire_age + delta, PlayerMotionState.NEVER_FIRED)
 	if command.swap_shoulder:
 		state.shoulder_side = -state.shoulder_side
 
@@ -48,6 +52,9 @@ static func _face(
 ) -> void:
 	if command.aim:
 		state.facing = rotate_toward(state.facing, command.yaw, tuning.aim_turn_speed * delta)
+	elif state.fire_age < tuning.hip_fire_hold:
+		# Firing from the hip: the body faces where the shots go, whichever way it walks.
+		state.facing = rotate_toward(state.facing, command.yaw, tuning.hip_fire_turn_speed * delta)
 	elif wish.length_squared() > 0.01:
 		state.facing = rotate_toward(
 			state.facing, atan2(-wish.x, -wish.z), tuning.turn_speed * delta

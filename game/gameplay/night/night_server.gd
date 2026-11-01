@@ -170,6 +170,8 @@ func _move_players() -> void:
 			motion.pitch = command.motion.pitch
 			if not _is_downed(player_id):
 				motion = command.motion
+				# The trigger is the command's own, whoever made the motion.
+				motion.fire = command.fire
 		_bodies[player_id].tick(motion)
 
 

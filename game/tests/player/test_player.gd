@@ -530,6 +530,7 @@ func test_a_command_survives_serialization() -> void:
 	command.sprint = true
 	command.jump = true
 	command.aim = true
+	command.fire = true
 	command.swap_shoulder = true
 	var copy := PlayerCommand.from_bytes(command.to_bytes())
 	assert_dict(copy.to_dict()).is_equal(command.to_dict())
@@ -547,6 +548,7 @@ func test_replaying_the_same_commands_from_the_same_state_gives_the_same_result(
 		command.sprint = i > 30 and i < 80
 		command.jump = i == 60 or i == 110
 		command.aim = i > 120
+		command.fire = i > 40 and i < 90
 		recorded.append(command.to_bytes())
 		_player.submit_command(command)
 		await get_tree().physics_frame

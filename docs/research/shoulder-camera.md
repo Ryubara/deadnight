@@ -108,6 +108,40 @@ What changed in the way it works, not only the numbers:
 - **Steady-state lag matters more than settle time.** Choosing a follow rate by "95 percent in 0.3 s" gave 0.5 m of
   lag at a run, which read as a floaty camera; the rate was raised until the lag at a run is about 0.4 m.
 
+## Hip fire
+
+Firing without aiming (maintainer feedback, 2026-11-01, #300): the shot already lands on the reticle, but the body kept
+its walking facing and the view stayed wide, unlike other third-person shooters. Now, while the trigger is held without
+the aim button, and for a short time after, **the body turns to the view** and **the camera eases part of the way into
+the aim view**. What other games do, and what is and is not sourced, is in [hip fire](hip-fire.md). The numbers are
+on `PlayerTuning` (the *Hip fire* group), so they are editable in the Godot editor:
+
+| Value | Number | Why |
+| --- | --- | --- |
+| Turn speed | 22 rad/s | Just under the aim turn (24): a 180 degree swing takes 0.14 s (9 ticks), so the first shot of a burst leaves from a body that already faces the target, and the turn is still visible. Not an instant snap: the soldier's shoulders would pop. |
+| Hold | 0.6 s | The body keeps facing the view this long after the trigger is let go. The slowest weapon fires every 0.9 s, the rifle every 0.55 s, so single shots inside a fight do not swing the body back to the run direction between them; two seconds would look stuck. |
+| Zoom share | 0.5 | Halfway between the hip view and the full aim view: arm 2.3 to 2.05 m, FOV 70 to 65, shoulder 0.60 to 0.625 m. Enough to read as settling in; the aim view (arm 1.8 m, FOV 60) stays the precise one. |
+| Zoom delay | 0.8 s | After the last shot before the zoom lets go. Longer than the 0.55 s rifle interval, so a rifle fired steadily never pulses the view in and out; the slowest weapon (0.9 s) lets go a little between shots and re-zooms, which reads as a shotgun kick. |
+| Zoom in, out | 14, 7 rad/s | Springs: 95 % in 0.34 s in and 0.68 s out. The way out is half as quick, so the view does not snap back between two bursts; the way in is a little slower than the aim's 24 (0.2 s), because a shot is not a decision to aim. |
+
+How it works:
+
+- **The trigger is part of the player's command** (`PlayerCommand.fire`), because the body's facing is simulated state
+  the server owns and a replay must agree on. `NightServer` sets it from the `NightCommand`'s own `fire` (a human, the
+  autopilot and a remote client all send that), and a downed player's trigger does nothing. `PlayerMotionState.fire_age`
+  is the seconds since the trigger was last held; the simulation turns the body to `command.yaw` at the hip-fire speed
+  while `fire_age < hip_fire_hold` (aiming keeps its own, faster turn and wins). The muzzle of a shot is rotated by this
+  facing, so it now leaves from a body that faces the target.
+- **Shots are still the camera ray.** The camera's yaw and pitch are the input as before, the zoom only moves the lens
+  along its arm, and `AimResolver` aims the muzzle at what the camera ray hits; a test checks the camera's forward
+  vector equals the view's yaw and pitch while zoomed.
+- **The camera** keeps a separate spring (`_hip`, 0 or 1) next to the aim spring; the placement reads
+  `zoom_amount() = aim + (1 - aim) * hip * hip_fire_zoom`, so pressing aim during a burst continues smoothly to the
+  full aim view, and releasing everything goes back to the hip view. The look sensitivity still reads only the aim
+  amount: a burst from the hip does not slow the view.
+- **Sprint** is not cancelled by firing (the bots flee and shoot together, and the balance gate does not move): the
+  sprint pull-back and the hip-fire zoom add.
+
 ## Things found the hard way
 
 - `PhysicsDirectSpaceState3D.cast_motion` ignores a body the sweep already starts inside, so every sweep must start

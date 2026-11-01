@@ -70,6 +70,18 @@ func test_escape_pauses_and_resume_goes_on() -> void:
 	await _leave(screen)
 
 
+func test_the_reticle_hides_under_the_pause_card_and_returns_on_resume() -> void:
+	var screen := await _enter_night()
+	var hud := screen.find_children("*", "Hud", true, false)[0] as Hud
+	await get_tree().physics_frame
+	assert_bool(hud.reticle.visible).is_true()
+	await _press_escape()
+	assert_bool(hud.reticle.visible).is_false()
+	await _press_escape()
+	assert_bool(hud.reticle.visible).is_true()
+	await _leave(screen)
+
+
 func test_b_crouches_in_the_night_it_neither_pauses_nor_leaves() -> void:
 	var screen := await _enter_night()
 	await _press_escape(&"ui_cancel")
