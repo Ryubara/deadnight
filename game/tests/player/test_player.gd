@@ -264,18 +264,28 @@ func test_no_double_jump() -> void:
 
 
 func test_distance_is_the_same_at_30_60_and_120_ticks_per_second() -> void:
-	# move_and_slide steps by the engine's physics delta, so change the engine's tick rate.
+	# move_and_slide steps by the engine's physics delta, so change the engine's tick rate. The
+	# ticks are stepped by hand (the same two seconds of forward at every rate), so a late frame
+	# on a loaded machine cannot change how many of them the press covers.
+	_player.set_physics_process(false)
+	var forward := PlayerCommand.new()
+	forward.move = Vector2(0.0, -1.0)
 	var distances: Array[float] = []
 	for hz in [30, 60, 120]:
 		Engine.physics_ticks_per_second = hz
+		# The engine reads the new rate when it plans a step: let two steps run so the delta the
+		# simulation reads is the new one.
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		assert_float(_player.get_physics_process_delta_time()).is_equal_approx(1.0 / hz, 0.0001)
 		_player.teleport(START)
-		await _ticks(hz / 6)
+		for i in hz / 6:
+			_player.tick(PlayerCommand.new())  # settle onto the floor
 		var start := _player.global_position
-		_runner.simulate_action_press("move_forward")
-		await _ticks(hz * 2)
-		_runner.simulate_action_release("move_forward")
+		for i in hz * 2:
+			_player.tick(forward)
 		distances.append(_plane_distance(start))
-		await _ticks(hz)
+	assert_float(distances[1]).is_greater(5.0)  # it walked, so the comparison below means something
 	assert_float(distances[0]).is_equal_approx(distances[1], 0.1)
 	assert_float(distances[2]).is_equal_approx(distances[1], 0.1)
 
