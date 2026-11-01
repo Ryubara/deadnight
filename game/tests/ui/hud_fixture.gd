@@ -113,10 +113,14 @@ func fill_worst_case() -> void:
 	advance(HudBanner.IN_TIME + 0.1)
 
 
-static func hurt(direction: float, health: float) -> Dictionary:
+## The rules' `player_hurt` for the local player: a blow from `bearing`, `health` left of 100.
+static func hurt(bearing: float, health: float) -> Dictionary:
 	return {
 		"type": HudState.PLAYER_HURT,
 		"player_id": 1,
+		"damage": 10.0,
 		"health": health,
-		"direction": direction,
+		"max_health": 100.0,
+		"bearing": bearing,
+		"source_id": 1,
 	}

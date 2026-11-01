@@ -54,10 +54,10 @@ func test_only_a_flare_has_a_blast() -> void:
 func test_players_have_the_nights_health_whatever_they_buy() -> void:
 	var sim := NightSim.new(RulesFixture.tuning(), SimSkill.named(SimSkill.STRONG), 1, 9, 0.25)
 	sim.run(6)
-	var night := NightTuning.new()
+	var health := RulesFixture.tuning().health
 	for player: NightSim.SimPlayer in sim._players.values():
-		assert_float(player.max_health).is_equal(night.max_health)
-		assert_float(player.regen_delay).is_equal(night.regen_delay)
+		assert_float(player.max_health).is_equal(health.max_health)
+		assert_float(player.regen_delay).is_equal(health.regen_delay)
 
 
 func test_the_light_a_player_keeps_on_costs_fuel() -> void:
