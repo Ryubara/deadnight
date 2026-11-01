@@ -161,6 +161,22 @@ func test_stop_all_frees_every_voice() -> void:
 	assert_int(_audio.active_voices()).is_equal(0)
 
 
+func test_waiting_for_the_mixer_lets_the_audio_server_drop_a_stopped_voice() -> void:
+	# A stopped voice's playback stays in the audio server, holding the stream, until its mixer
+	# thread has taken a few steps; quitting before that is reported as a leak.
+	var stream := load(SoundCatalog.get_def(&"round_end").path_for(1)) as AudioStream
+	await _audio.wait_for_mixer()
+	var held := stream.get_reference_count()
+	var player := auto_free(AudioStreamPlayer.new()) as AudioStreamPlayer
+	add_child(player)
+	player.stream = stream
+	player.play()
+	player.stop()
+	player.stream = null
+	await _audio.wait_for_mixer()
+	assert_int(stream.get_reference_count()).is_equal(held)
+
+
 ## Plays a fixed run of sounds with the given seed and returns each one's file and pitch.
 func _run_sequence(seed_value: int) -> Array:
 	_audio.stop_all()
