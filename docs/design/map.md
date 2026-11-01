@@ -147,6 +147,10 @@ only dead ends are deliberate: the midway's two alleys (6 m by 12 m, dark, for a
 The generator powers every `powered_light` (a node group): the field's lamps, the stand and booth, the yard, the
 projector beam, the neon in the back lot. The moon is dim and blue, so unlit ground is dark, not black.
 
+The night's look is the `Lighting` node: a near-black blue sky with stars and a moon hanging over the screen, fog
+that thickens past 25 m, a dim cool ambient and a cool moon light, so the screen is the brightest thing on the lot and
+the lamps are the warm pools in it ([night environment](../research/night-environment.md)).
+
 ![Where the lights fall](map-lights.png)
 
 | Area | Lit (by eye, from the capture) | What lights it |
@@ -175,7 +179,7 @@ x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
-| `Lighting` | the night environment and the moon |
+| `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator |
 
 `game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`), the capture rig and `camera_probe.gd` (the
 player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
