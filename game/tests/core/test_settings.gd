@@ -14,6 +14,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	# Put the engine back the way the suite found it.
+	get_tree().paused = false
 	_settings.reset_defaults()
 	_settings.apply_all()
 	_remove_file()
@@ -141,6 +142,24 @@ func test_startup_applies_the_saved_file() -> void:
 		linear_to_db(0.2), 0.01
 	)
 	assert_bool(UIMotion.reduced).is_true()
+
+
+func test_the_debounced_write_runs_while_the_tree_is_paused() -> void:
+	_settings.set_value(SettingsService.VOLUME_MUSIC, 33)
+	get_tree().paused = true
+	# A timer that ignores the pause: the test runner's own waits would stall with the tree.
+	await get_tree().create_timer(SettingsService.SAVE_DELAY + 0.5, true).timeout
+	var file := ConfigFile.new()
+	assert_int(file.load(TEST_PATH)).is_equal(OK)
+	assert_int(file.get_value("audio", "music")).is_equal(33)
+
+
+func test_losing_focus_flushes_a_pending_change() -> void:
+	_settings.set_value(SettingsService.VOLUME_UI, 12)
+	_settings.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	var file := ConfigFile.new()
+	assert_int(file.load(TEST_PATH)).is_equal(OK)
+	assert_int(file.get_value("audio", "ui")).is_equal(12)
 
 
 ## A service on the test file, in the tree so it can reach the root window.

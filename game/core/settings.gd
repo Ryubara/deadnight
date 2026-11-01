@@ -69,16 +69,22 @@ var path := DEFAULT_PATH
 var _values := {}
 var _dirty := false
 var _idle := 0.0
+## Kept so the browser keeps the page-hide callback alive.
+var _page_hide_callback: JavaScriptObject
 
 
 func _init() -> void:
 	_values = DEFAULTS.duplicate()
+	# The settings screen is opened from a pause menu: the debounced write has to run while the
+	# tree is paused, or a change made there is lost on a crash or a closed browser tab.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_process(false)
 
 
 func _ready() -> void:
 	load_from_disk()
 	apply_all()
+	_flush_when_the_page_hides()
 
 
 func _process(delta: float) -> void:
@@ -88,9 +94,14 @@ func _process(delta: float) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
-		if _dirty:
-			save()
+	# A browser has no close request: losing focus or hiding the tab is the last chance to write.
+	var last_chance := (
+		what == NOTIFICATION_WM_CLOSE_REQUEST
+		or what == NOTIFICATION_PREDELETE
+		or what == NOTIFICATION_APPLICATION_FOCUS_OUT
+	)
+	if last_chance and _dirty:
+		save()
 
 
 func get_value(key: StringName) -> Variant:
@@ -152,6 +163,23 @@ func apply_all() -> void:
 ## The volume as a linear 0 to 1 factor, for code that mixes by hand.
 func volume_linear(key: StringName) -> float:
 	return float(get_value(key)) / 100.0
+
+
+## On the web, `visibilitychange` (tab hidden, app switched, page closing on mobile) is the one
+## event a page reliably gets before it can vanish, so it flushes a pending write.
+func _flush_when_the_page_hides() -> void:
+	if not OS.has_feature("web"):
+		return
+	_page_hide_callback = JavaScriptBridge.create_callback(_on_visibility_change)
+	JavaScriptBridge.get_interface("document").addEventListener(
+		"visibilitychange", _page_hide_callback
+	)
+	JavaScriptBridge.get_interface("window").addEventListener("pagehide", _page_hide_callback)
+
+
+func _on_visibility_change(_args: Array) -> void:
+	if _dirty:
+		save()
 
 
 func _sanitize(key: StringName, value: Variant) -> Variant:
