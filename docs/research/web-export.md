@@ -37,7 +37,9 @@ SwiftShader on CI), and:
    cannot see inside a Godot canvas), screenshots it and measures frame times;
 2. opens the wardrobe (reads `parts.json`) and goes back;
 3. starts a night with the keyboard, walks a square and fires for a while, sampling the crowd and frame times each second;
-4. fails on any console `error`, uncaught page error, failed request or HTTP status 400 or more, and writes screenshots,
+4. counts the GL programs linked in each page frame between Play and a running night and fails when one frame links
+   more than 12 (a loading screen that stops for seconds; `first-use-hitches.md`);
+5. fails on any console `error`, uncaught page error, failed request or HTTP status 400 or more, and writes screenshots,
    `console.txt` and `result.json`.
 
 Things that were not obvious:
