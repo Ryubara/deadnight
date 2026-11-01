@@ -33,6 +33,8 @@ var aiming := false
 var hip_firing := false
 ## True while the body sprints (not just the key: `PlayerMotionState.sprinting`).
 var sprinting := false
+## True while the body is crouched (`PlayerMotionState.crouching`): the pivot sits lower.
+var crouching := false
 
 var _tuning: PlayerTuning
 var _target: CharacterBody3D
@@ -83,7 +85,7 @@ func track(position: Vector3) -> void:
 func snap_to(position: Vector3) -> void:
 	_previous = position
 	_current = position
-	var head := position + Vector3(0.0, _tuning.pivot_height, 0.0)
+	var head := position + Vector3(0.0, _pivot_height(), 0.0)
 	_pivot.snap(head)
 	_aim.snap(1.0 if aiming else 0.0)
 	_hip.snap(0.0)
@@ -208,7 +210,7 @@ func step(delta: float, fraction: float) -> void:
 	)
 	_sprint.step(1.0 if sprinting and not aiming else 0.0, _tuning.sprint_frequency, delta)
 	_side.step(side, _tuning.swap_frequency, delta)
-	var head := _previous.lerp(_current, fraction) + Vector3(0.0, _tuning.pivot_height, 0.0)
+	var head := _previous.lerp(_current, fraction) + Vector3(0.0, _pivot_height(), 0.0)
 	var follow := lerpf(_tuning.follow_frequency, _tuning.sprint_follow_frequency, sprint_amount())
 	_pivot.step(head, Vector3(follow, _tuning.follow_frequency_vertical, follow), delta)
 	_place(head, delta)
@@ -233,6 +235,12 @@ func _bodies() -> Array[RID]:
 		if node is CollisionObject3D:
 			bodies.append((node as CollisionObject3D).get_rid())
 	return bodies
+
+
+## Height of the pivot over the feet now: lower while the body crouches. The head target moves at
+## once and the pivot's own vertical spring eases it.
+func _pivot_height() -> float:
+	return _tuning.crouch_pivot_height if crouching else _tuning.pivot_height
 
 
 func _look_scale() -> float:

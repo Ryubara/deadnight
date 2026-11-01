@@ -108,6 +108,20 @@ extends Resource
 ## about 0.2 s to see (95 percent in 3 / rate) instead of a pop of the step height.
 @export var step_view_frequency := 14.0
 
+@export_group("Crouch")
+## The capsule's height while crouched (the standing one is `height`); its feet stay where they are.
+@export var crouch_height := 1.2
+## Walking speed while crouched; every pace (run, aim) is scaled by this over `run_speed`.
+@export var crouch_speed := 2.4
+## Height of the camera pivot above the feet while crouched (standing: `pivot_height`); the
+## pivot's vertical spring eases the change.
+@export var crouch_pivot_height := 1.1
+## How much of the Walk clip's stepping is laid over the held Duck pose while crouch-walking, at the
+## crouch speed (0 slides in the pose, 1 is a standing walk).
+@export_range(0.0, 1.0, 0.05) var crouch_walk_blend := 0.6
+## The room the stand-up test leaves under a ceiling and around the walls, in metres.
+@export var crouch_probe_skin := 0.02
+
 @export_group("Body")
 @export var height := 1.8
 @export var radius := 0.35
