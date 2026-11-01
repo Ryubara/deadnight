@@ -274,7 +274,8 @@ the pillars.
   compounding after round 8 so a starting weapon stops being enough and the shop matters), and
   darker (ambient falls from 0.60 to 0.15 by round 14).
 - **Fast ones are rare and capped.** A zombie never exceeds 4.5 m/s, below a sprinting player
-  (the controller's sprint is assumed near 6 m/s; revisit with the controller). The runner (the old
+  (the controller's sprint is 7.0 m/s, its run 4.8; how that compares with the original games is in
+  [movement speeds](../research/movement-speeds.md)). The runner (the old
   sprinter, now a type) arrives on round 4 and settles at three in ten, fragile enough that a
   good shot ends it, so late rounds pressure positioning instead of simple running.
 - **The lot cap protects the web build and the player.** At most 6 alive in round 1, rising 0.8 a round to 28;
