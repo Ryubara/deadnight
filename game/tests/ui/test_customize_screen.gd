@@ -73,14 +73,11 @@ func _key(keycode: Key) -> void:
 
 
 func _pad(button: JoyButton) -> void:
-	# Press and release in one frame: a press that stays down across a slow, loaded frame repeats
-	# (the viewport echoes a held direction), so focus would move two rows instead of one.
 	for pressed in [true, false]:
 		var event := InputEventJoypadButton.new()
 		event.button_index = button
 		event.pressed = pressed
-		get_viewport().push_input(event)
-	await get_tree().process_frame
+		await _send(event)
 
 
 func _click(control: Control, at_local: Vector2) -> void:
