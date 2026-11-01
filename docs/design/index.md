@@ -28,4 +28,5 @@ A downed player can be revived until the round ends.
 ## Starting art
 
 The Quaternius Toon Shooter Game Kit (CC0) is the starting style; it may change. Its characters share one rig with
-the Quaternius zombie, so animations are shared by bone name.
+the Quaternius zombie, so animations are shared by bone name. The measured rules (proportions, bevels, triangle
+budgets, palette) are in the [style bible](style.md).
