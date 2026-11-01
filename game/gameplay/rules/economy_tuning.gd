@@ -39,5 +39,13 @@ func item(item_id: StringName) -> ShopItem:
 	return null
 
 
+## The ammunition item of a weapon (a catalogue id), or null when the shop sells none for it.
+func ammo_item_for(weapon_id: StringName) -> ShopItem:
+	for candidate in items:
+		if candidate.kind == ShopItem.Kind.AMMO and candidate.weapon == weapon_id:
+			return candidate
+	return null
+
+
 func round_bonus(round_number: int) -> int:
 	return round_bonus_base + round_bonus_per_round * round_number

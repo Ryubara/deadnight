@@ -198,6 +198,20 @@ func _make_autopilot() -> void:
 		if item.kind == ShopItem.Kind.DOOR:
 			autopilot.prices[item.id] = item.price
 			autopilot.order.append(item.id)
+	autopilot.spots = world.shop_spots()
+	for item in tuning.economy.items:
+		match item.kind:
+			ShopItem.Kind.WEAPON, ShopItem.Kind.CRANE:
+				autopilot.prices_of_goods[item.id] = item.price
+				autopilot.wanted.append(item.id)
+				if item.kind == ShopItem.Kind.CRANE:
+					autopilot.crane_prizes = item.pool.size()
+			ShopItem.Kind.AMMO:
+				autopilot.ammo_prices[item.weapon] = item.price
+	autopilot.wanted.sort_custom(
+		func(a: StringName, b: StringName) -> bool:
+			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
+	)
 	autopilot.whole_boards = tuning.barricades.boards
 	autopilot.switches.capacity = tuning.fuel.capacity
 	autopilot.switches.save_below = tuning.fuel.low_fraction

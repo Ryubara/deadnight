@@ -23,6 +23,11 @@ const ITEM_NAMES := {
 	&"weapon_shotgun": "BOUGHT THE SHOTGUN",
 	&"weapon_rifle": "BOUGHT THE RIFLE",
 	&"crane_play": "PLAYED THE CRANE",
+	&"ammo_pistol": "BOUGHT AMMUNITION",
+	&"ammo_smg": "BOUGHT AMMUNITION",
+	&"ammo_shotgun": "BOUGHT AMMUNITION",
+	&"ammo_rifle": "BOUGHT AMMUNITION",
+	&"ammo_flare_gun": "BOUGHT AMMUNITION",
 	&"fuel_can": "FILLED THE GENERATOR",
 }
 const CIRCUIT_WORDS := {
