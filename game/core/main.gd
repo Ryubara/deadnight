@@ -6,5 +6,6 @@ const MENU := "res://ui/screens/main_menu.tscn"
 
 
 func _ready() -> void:
+	add_child(WebProbe.new())
 	await get_tree().process_frame
 	UIRouter.reset(MENU, UITransition.Kind.FADE)

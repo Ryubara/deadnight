@@ -79,6 +79,6 @@ rig's axes are; the `arm: armband` part of the look is a separate, cosmetic armb
 colour, and the two are never confused because only the seat's is emissive and fixed.
 
 Saved and sent looks refer to parts by index (wire) or by id (save). Parts and palette entries are only ever added at
-the end, as the catalogue page says. A web export must include `*.json` in its export filter, or `parts.json` is
-missing in the browser. What a locked entry asks for is `LookCatalog.PALETTE_GATES` and `PART_GATES` until
-progression exists.
+the end, as the catalogue page says. The web preset includes `*.json` in its export filter, and CI opens the wardrobe
+in a browser ([web export](../research/web-export.md)). What a locked entry asks for is `LookCatalog.PALETTE_GATES`
+and `PART_GATES` until progression exists.
