@@ -113,6 +113,11 @@ for the dead's slowdown (`LotLamps.lit_at`).
   they are fixed. Another test reads every script and scene of the project for a light and fails on one that is not
   in its table, and checks that each weapon's shot, a blast and a grenade add exactly one light.
   The first run of the stronger test found 8 on two ground tiles, 7 on four more; no prop or car is above 6.
+- **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 5 m) is counted at each crane spot by
+  `test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget`: a crane is built at every spot, its lamp joins
+  the lot's and its own meshes join the lit ones. Beside the stand it adds a light to `Concession/Floor0_0` and
+  `Concession/Roof`, which are already over the fight budget (issue #318): they reach 8, the renderer's cap, so the
+  test lets a known mesh be one over its entry and no more. A smaller range (3 m) did not help: the stand is that close.
 - **Pools are quads, not light range.** Raising the lamp range to 14 m to get a bigger pool put 12 lights on one tile.
   The pool is now the quad, the light stays at 11 m.
 - **The screen shows the circuit.** With `screen_lot` off the face keeps the 0.3 afterglow of its lamp and the posts,
