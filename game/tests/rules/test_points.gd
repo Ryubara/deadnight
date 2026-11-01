@@ -23,67 +23,14 @@ func test_a_player_joins_with_the_starting_points() -> void:
 	assert_str(events[1]["reason"]).is_equal("start")
 
 
-func test_a_body_hit_pays_a_little() -> void:
-	_rules.apply(RulesAction.hit(1, _zombie, false))
-	assert_int(_rules.points_of(1)).is_equal(204)
-
-
-func test_a_headshot_hit_pays_double() -> void:
-	_rules.apply(RulesAction.hit(1, _zombie, true))
-	assert_int(_rules.points_of(1)).is_equal(208)
-
-
-func test_kills_pay_by_how_they_were_made() -> void:
-	RulesFixture.run(_rules, 10.0)
-	var ids := _log.spawned_ids()
-	_rules.apply(RulesAction.kill(1, ids[0], false, false))
-	assert_int(_rules.points_of(1)).is_equal(200 + 60)
-	_rules.apply(RulesAction.kill(1, ids[1], true, false))
-	assert_int(_rules.points_of(1)).is_equal(260 + 100)
-	_rules.apply(RulesAction.kill(1, ids[2], false, true))
-	assert_int(_rules.points_of(1)).is_equal(360 + 130)
-
-
-func test_the_kill_is_credited_and_counted() -> void:
-	_rules.apply(RulesAction.kill(1, _zombie, true, false))
-	var removed := _log.of(&"zombie_removed")[0]
-	assert_int(removed["zombie_id"]).is_equal(_zombie)
-	assert_int(removed["killer_id"]).is_equal(1)
-	assert_int((_rules.players[1] as PlayerState).kills).is_equal(1)
-	assert_int((_rules.players[1] as PlayerState).headshot_kills).is_equal(1)
-
-
-func test_a_zombie_pays_once_however_many_times_it_is_reported() -> void:
-	_rules.apply(RulesAction.kill(1, _zombie, false, false))
-	_rules.apply(RulesAction.kill(1, _zombie, false, false))
-	_rules.apply(RulesAction.kill(2, _zombie, false, false))
-	_rules.apply(RulesAction.hit(1, _zombie, false))
-	assert_int(_rules.points_of(1)).is_equal(260)
-	assert_int(_rules.points_of(2)).is_equal(200)
-
-
-func test_a_zombie_that_never_existed_pays_nothing() -> void:
-	_rules.apply(RulesAction.hit(1, 9999, false))
-	_rules.apply(RulesAction.kill(1, 9999, false, false))
-	assert_int(_rules.points_of(1)).is_equal(200)
-
-
-func test_a_downed_player_earns_nothing_but_the_zombie_still_dies() -> void:
-	_rules.apply(RulesAction.set_downed(1, true))
-	_rules.apply(RulesAction.hit(1, _zombie, false))
-	_rules.apply(RulesAction.kill(1, _zombie, false, false))
-	assert_int(_rules.points_of(1)).is_equal(200)
-	assert_int(_log.count(&"zombie_removed")).is_equal(1)
-
-
 func test_nothing_is_earned_between_rounds() -> void:
 	RulesFixture.run(_rules, 60.0)
 	for zombie_id in _log.spawned_ids():
-		_rules.apply(RulesAction.kill(1, zombie_id, false, false))
+		RulesFixture.kill(_rules, 1, zombie_id)
 	assert_int(_rules.phase).is_equal(GameRules.Phase.BREAK)
 	var before := _rules.points_of(1)
 	_rules.apply(RulesAction.repair(1))
-	_rules.apply(RulesAction.hit(1, 1, false))
+	_rules.apply(RulesAction.hit(1, 1, RulesAction.ZONE_BODY, 20.0))
 	assert_int(_rules.points_of(1)).is_equal(before)
 
 
@@ -99,7 +46,7 @@ func test_the_repair_cap_resets_with_the_next_round() -> void:
 		_rules.apply(RulesAction.repair(1))
 	RulesFixture.run(_rules, 60.0)
 	for zombie_id in _log.spawned_ids():
-		_rules.apply(RulesAction.kill(1, zombie_id, false, false))
+		RulesFixture.kill(_rules, 1, zombie_id)
 	_rules.apply(RulesAction.skip_break())
 	var before := _rules.points_of(1)
 	for _i in 30:

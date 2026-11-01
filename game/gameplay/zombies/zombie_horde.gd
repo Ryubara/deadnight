@@ -22,6 +22,12 @@ func setup(p_director: ZombieDirector, camera: Camera3D) -> void:
 	add_child(throttle)
 
 
+func _exit_tree() -> void:
+	ZombieRig.release()
+	if director != null:
+		director.close()
+
+
 func view_count() -> int:
 	return _views.size()
 

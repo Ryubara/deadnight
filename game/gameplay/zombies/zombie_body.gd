@@ -1,4 +1,4 @@
-class_name ZombieState
+class_name ZombieBody
 extends RefCounted
 ## One zombie as plain data. It has no health: the rules own that (a zombie lives until the rules
 ## say it is removed). Everything a client needs to draw it is `view_entry()`.

@@ -34,7 +34,7 @@ func test_a_view_stands_where_the_entry_says() -> void:
 	if not ResourceLoader.exists(MODEL):
 		return
 	var view := _view()
-	view.apply(_entry(ZombieState.Mode.CHASE, 1.0), 0.033)
+	view.apply(_entry(ZombieBody.Mode.CHASE, 1.0), 0.033)
 	assert_vector(view.position).is_equal(Vector3(3, 0, 4))
 	assert_float(view.rotation.y).is_equal_approx(1.0, 0.001)
 
@@ -43,13 +43,13 @@ func test_the_mode_picks_the_animation_state() -> void:
 	if not ResourceLoader.exists(MODEL):
 		return
 	var view := _view()
-	view.apply(_entry(ZombieState.Mode.CHASE, 2.0), 0.033)
+	view.apply(_entry(ZombieBody.Mode.CHASE, 2.0), 0.033)
 	assert_str(_state(view)).is_equal(ZombieRig.STATE_MOVE)
-	view.apply(_entry(ZombieState.Mode.ATTACK, 0.0, 2), 0.033)
+	view.apply(_entry(ZombieBody.Mode.ATTACK, 0.0, 2), 0.033)
 	assert_str(_state(view)).is_equal(ZombieRig.STATE_ATTACK)
-	view.apply(_entry(ZombieState.Mode.STAGGER, 0.0, 3), 0.033)
+	view.apply(_entry(ZombieBody.Mode.STAGGER, 0.0, 3), 0.033)
 	assert_str(_state(view)).is_equal(ZombieRig.STATE_STAGGER)
-	view.apply(_entry(ZombieState.Mode.DYING, 0.0, 4), 0.033)
+	view.apply(_entry(ZombieBody.Mode.DYING, 0.0, 4), 0.033)
 	assert_str(_state(view)).is_equal(ZombieRig.STATE_DIE)
 
 
@@ -57,12 +57,12 @@ func test_a_zombie_rises_from_the_ground_while_emerging() -> void:
 	if not ResourceLoader.exists(MODEL):
 		return
 	var view := _view()
-	view.apply(_entry(ZombieState.Mode.EMERGING), 0.0)
+	view.apply(_entry(ZombieBody.Mode.EMERGING), 0.0)
 	var model := view.get_child(0) as Node3D
 	assert_float(model.position.y).is_less(-1.0)
-	view.apply(_entry(ZombieState.Mode.EMERGING), 0.35)
+	view.apply(_entry(ZombieBody.Mode.EMERGING), 0.35)
 	assert_float(model.position.y).is_between(-1.0, 0.0)
-	view.apply(_entry(ZombieState.Mode.CHASE, 1.0, 2), 0.033)
+	view.apply(_entry(ZombieBody.Mode.CHASE, 1.0, 2), 0.033)
 	assert_float(model.position.y).is_equal(0.0)
 
 

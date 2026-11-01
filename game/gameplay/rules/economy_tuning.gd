@@ -9,6 +9,9 @@ extends Resource
 @export var hit: int = 4
 ## A hit to the head that does not kill.
 @export var headshot_hit: int = 8
+## Hits that do not kill pay for at most this many per zombie, so one zombie is a bounded purse
+## (4 headshot hits and the kill are worth 132 at most) however many shots it soaks up.
+@export var max_paid_hits: int = 4
 ## The killing blow (shot, not a headshot, not melee).
 @export var kill: int = 60
 @export var headshot_kill: int = 100

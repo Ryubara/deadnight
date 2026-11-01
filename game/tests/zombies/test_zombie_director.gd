@@ -36,7 +36,7 @@ func test_a_spawn_request_puts_a_zombie_at_the_rolled_spawn_point() -> void:
 	_begin()
 	_run(2.0)
 	assert_int(_sim.zombies.size()).is_greater(0)
-	var zombie: ZombieState = _sim.zombies.values()[0]
+	var zombie: ZombieBody = _sim.zombies.values()[0]
 	assert_float(absf(zombie.position.x)).is_greater(25.0)
 
 
@@ -46,7 +46,7 @@ func test_a_killing_hit_goes_through_the_rules_and_the_zombie_falls() -> void:
 	var zombie_id: int = _sim.zombies.keys()[0]
 	var result := _director.take_hit(zombie_id, &"head", 1000.0, 1, false)
 	assert_bool(result["killed"]).is_true()
-	assert_int(_sim.zombies[zombie_id].mode).is_equal(ZombieState.Mode.DYING)
+	assert_int(_sim.zombies[zombie_id].mode).is_equal(ZombieBody.Mode.DYING)
 	assert_int(_rules.players[1].kills).is_equal(1)
 	assert_int(_rules.players[1].headshot_kills).is_equal(1)
 
@@ -56,11 +56,11 @@ func test_a_hit_that_does_not_kill_pays_staggers_and_leaves_it_standing() -> voi
 	_run(2.0)
 	var zombie_id: int = _sim.zombies.keys()[0]
 	var points := _rules.points_of(1)
-	_sim.zombies[zombie_id].enter(ZombieState.Mode.CHASE)
+	_sim.zombies[zombie_id].enter(ZombieBody.Mode.CHASE)
 	var result := _director.take_hit(zombie_id, &"body", 1.0, 1)
 	assert_bool(result["accepted"]).is_true()
 	assert_bool(result["killed"]).is_false()
-	assert_int(_sim.zombies[zombie_id].mode).is_equal(ZombieState.Mode.STAGGER)
+	assert_int(_sim.zombies[zombie_id].mode).is_equal(ZombieBody.Mode.STAGGER)
 	assert_int(_rules.points_of(1)).is_greater(points)
 
 
@@ -79,7 +79,7 @@ func test_a_removal_without_a_killer_just_takes_the_zombie_away() -> void:
 	_begin()
 	_run(2.0)
 	var zombie_id: int = _sim.zombies.keys()[0]
-	_rules.apply({"type": RulesAction.ZOMBIE_GONE, "zombie_id": zombie_id})
+	_rules.apply(RulesAction.zombie_gone(zombie_id))
 	assert_bool(_sim.zombies.has(zombie_id)).is_false()
 
 
@@ -119,7 +119,7 @@ func test_the_wire_format_round_trips_what_a_client_needs() -> void:
 	assert_int(entry["id"]).is_equal(300)
 	assert_vector(entry["position"]).is_equal_approx(zombie.position, Vector3.ONE * 0.006)
 	assert_float(entry["yaw"]).is_equal_approx(wrapf(-2.0, 0.0, TAU), 0.02)
-	assert_int(entry["mode"]).is_equal(ZombieState.Mode.EMERGING)
+	assert_int(entry["mode"]).is_equal(ZombieBody.Mode.EMERGING)
 	assert_float(entry["speed"]).is_equal_approx(3.0, 0.03)
 
 

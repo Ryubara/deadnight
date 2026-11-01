@@ -7,10 +7,10 @@ func test_a_zombie_rises_before_it_chases() -> void:
 	var sim := ZombieFixture.sim()
 	var zombie := sim.spawn(1, 2.0, Vector3.ZERO)
 	ZombieFixture.run(sim, 0.3, {1: Vector3(20, 0, 0)})
-	assert_int(zombie.mode).is_equal(ZombieState.Mode.EMERGING)
+	assert_int(zombie.mode).is_equal(ZombieBody.Mode.EMERGING)
 	assert_float(zombie.position.x).is_equal(0.0)
 	ZombieFixture.run(sim, 0.6, {1: Vector3(20, 0, 0)})
-	assert_int(zombie.mode).is_equal(ZombieState.Mode.CHASE)
+	assert_int(zombie.mode).is_equal(ZombieBody.Mode.CHASE)
 
 
 func test_a_zombie_walks_to_a_player_at_its_speed() -> void:
@@ -64,7 +64,7 @@ func test_in_reach_it_swings_and_the_blow_lands_once_at_the_windup() -> void:
 	var zombie := ZombieFixture.standing(sim, 1, Vector3.ZERO)
 	var targets := {7: Vector3(1.0, 0, 0)}
 	var before := ZombieFixture.run(sim, tuning.windup_seconds - 0.1, targets)
-	assert_int(zombie.mode).is_equal(ZombieState.Mode.ATTACK)
+	assert_int(zombie.mode).is_equal(ZombieBody.Mode.ATTACK)
 	assert_int(ZombieFixture.count(before, &"zombie_struck")).is_equal(0)
 	var landing := ZombieFixture.run(sim, 0.2, targets)
 	assert_int(ZombieFixture.count(landing, &"zombie_struck")).is_equal(1)
@@ -81,7 +81,7 @@ func test_a_player_who_steps_away_during_the_windup_is_missed() -> void:
 	var sim := ZombieFixture.sim()
 	var zombie := ZombieFixture.standing(sim, 1, Vector3.ZERO)
 	ZombieFixture.run(sim, 0.2, {7: Vector3(1.0, 0, 0)})
-	assert_int(zombie.mode).is_equal(ZombieState.Mode.ATTACK)
+	assert_int(zombie.mode).is_equal(ZombieBody.Mode.ATTACK)
 	var events := ZombieFixture.run(sim, 0.5, {7: Vector3(4.0, 0, 0)})
 	assert_int(ZombieFixture.count(events, &"zombie_struck")).is_equal(0)
 
@@ -92,12 +92,12 @@ func test_a_hit_during_the_windup_staggers_and_cancels_the_blow() -> void:
 	var targets := {7: Vector3(1.0, 0, 0)}
 	ZombieFixture.run(sim, 0.3, targets)
 	sim.react_to_hit(1)
-	assert_int(zombie.mode).is_equal(ZombieState.Mode.STAGGER)
+	assert_int(zombie.mode).is_equal(ZombieBody.Mode.STAGGER)
 	var events := ZombieFixture.run(sim, 0.3, targets)
 	assert_int(ZombieFixture.count(events, &"zombie_struck")).is_equal(0)
 	assert_vector(zombie.velocity).is_equal(Vector3.ZERO)
 	ZombieFixture.run(sim, 0.3, targets)
-	assert_int(zombie.mode).is_not_equal(ZombieState.Mode.STAGGER)
+	assert_int(zombie.mode).is_not_equal(ZombieBody.Mode.STAGGER)
 
 
 func test_a_dying_zombie_is_still_then_cleared_and_never_stands_again() -> void:
@@ -105,10 +105,10 @@ func test_a_dying_zombie_is_still_then_cleared_and_never_stands_again() -> void:
 	var zombie := ZombieFixture.standing(sim, 1, Vector3.ZERO)
 	sim.begin_death(1)
 	sim.react_to_hit(1)
-	assert_int(zombie.mode).is_equal(ZombieState.Mode.DYING)
+	assert_int(zombie.mode).is_equal(ZombieBody.Mode.DYING)
 	assert_int(sim.standing_count()).is_equal(0)
 	var events := ZombieFixture.run(sim, 1.0, {7: Vector3(1, 0, 0)})
-	assert_int(zombie.mode).is_equal(ZombieState.Mode.DYING)
+	assert_int(zombie.mode).is_equal(ZombieBody.Mode.DYING)
 	assert_int(ZombieFixture.count(events, &"zombie_struck")).is_equal(0)
 	events = ZombieFixture.run(sim, sim.tuning.death_seconds, {7: Vector3(1, 0, 0)})
 	assert_int(ZombieFixture.count(events, &"zombie_cleared")).is_equal(1)
@@ -135,8 +135,8 @@ func test_a_crowd_on_one_spot_spreads_out_and_none_stays_stacked() -> void:
 		ZombieFixture.standing(sim, i + 1, Vector3(0.01 * i, 0, 0.0), 0.0)
 	ZombieFixture.run(sim, 3.0, {})
 	var closest := INF
-	for a: ZombieState in sim.zombies.values():
-		for b: ZombieState in sim.zombies.values():
+	for a: ZombieBody in sim.zombies.values():
+		for b: ZombieBody in sim.zombies.values():
 			if a != b:
 				closest = minf(closest, a.position.distance_to(b.position))
 	assert_float(closest).is_greater(sim.tuning.separation_radius * 0.5)

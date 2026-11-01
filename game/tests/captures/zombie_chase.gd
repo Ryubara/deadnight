@@ -198,7 +198,7 @@ func _shoot() -> void:
 	var sim := _horde.director.sim
 	var best_id := -1
 	var best := 9.0
-	for zombie: ZombieState in sim.zombies.values():
+	for zombie: ZombieBody in sim.zombies.values():
 		var d := zombie.position.distance_to(_positions[2])
 		if zombie.is_alive() and d < best:
 			best = d

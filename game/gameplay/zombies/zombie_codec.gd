@@ -15,12 +15,12 @@ const ENTRY_BYTES := 12
 const SPEED_STEP := 0.05
 
 
-static func encode(zombies: Dictionary[int, ZombieState]) -> PackedByteArray:
+static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
 	var bytes := PackedByteArray()
 	bytes.resize(HEADER_BYTES + ENTRY_BYTES * zombies.size())
 	bytes.encode_u16(0, zombies.size())
 	var at := HEADER_BYTES
-	for zombie: ZombieState in zombies.values():
+	for zombie: ZombieBody in zombies.values():
 		bytes.encode_u16(at, zombie.id)
 		bytes.encode_s16(at + 2, roundi(zombie.position.x * 100.0))
 		bytes.encode_s16(at + 4, roundi(zombie.position.y * 100.0))
@@ -33,7 +33,7 @@ static func encode(zombies: Dictionary[int, ZombieState]) -> PackedByteArray:
 	return bytes
 
 
-## The entries, in the form of `ZombieState.view_entry()`. A packet that is too short for what
+## The entries, in the form of `ZombieBody.view_entry()`. A packet that is too short for what
 ## it says gives an empty list: it is dropped, not guessed at.
 static func decode(bytes: PackedByteArray) -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []

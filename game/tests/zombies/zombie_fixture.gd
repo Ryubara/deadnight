@@ -26,9 +26,7 @@ static func count(events: Array[Dictionary], type: StringName) -> int:
 
 
 ## A zombie that has finished emerging, at `at`.
-static func standing(
-	sim: ZombieSim, zombie_id: int, at: Vector3, speed: float = 2.0
-) -> ZombieState:
+static func standing(sim: ZombieSim, zombie_id: int, at: Vector3, speed: float = 2.0) -> ZombieBody:
 	var zombie := sim.spawn(zombie_id, speed, at)
-	zombie.enter(ZombieState.Mode.CHASE)
+	zombie.enter(ZombieBody.Mode.CHASE)
 	return zombie

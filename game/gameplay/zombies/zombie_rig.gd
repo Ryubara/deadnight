@@ -42,6 +42,11 @@ static func attach(model: Node) -> AnimationTree:
 	return tree
 
 
+## Lets go of the shared library (a static holds its clips, which Godot reports as leaked at exit).
+static func release() -> void:
+	_library = null
+
+
 static func _build_library(player: AnimationPlayer) -> AnimationLibrary:
 	var library := AnimationLibrary.new()
 	for clip in CLIPS:

@@ -26,6 +26,13 @@ func _init(p_rules: GameRules, p_sim: ZombieSim, p_spawn_points: Array[Vector3])
 	rules.event_emitted.connect(_on_rules_event)
 
 
+## Ends the match's hold on the rules (the rules' signal holds this object, and this object holds
+## the rules: a cycle that is never freed otherwise). Call it when the match is over.
+func close() -> void:
+	if rules.event_emitted.is_connected(_on_rules_event):
+		rules.event_emitted.disconnect(_on_rules_event)
+
+
 ## Requests waiting for room in the crowd.
 func waiting_count() -> int:
 	return _waiting.size()
@@ -54,21 +61,19 @@ func tick(delta: float, targets: Dictionary) -> void:
 func _on_rules_event(event: Dictionary) -> void:
 	match event["type"]:
 		&"zombie_spawn_requested":
-			port.note_spawn(event["zombie_id"], event["health"])
 			_waiting.append(event)
 			_admit_waiting()
 		&"zombie_removed":
-			port.note_removed(event["zombie_id"])
-			_remove(event["zombie_id"], event["killer_id"])
+			_remove(event["zombie_id"], event["cause"])
 
 
-func _remove(zombie_id: int, killer_id: int) -> void:
+func _remove(zombie_id: int, cause: StringName) -> void:
 	var index := _waiting.find_custom(
 		func(e: Dictionary) -> bool: return e["zombie_id"] == zombie_id
 	)
 	if index != -1:
 		_waiting.remove_at(index)
-	elif killer_id >= 0:
+	elif cause == &"killed":
 		sim.begin_death(zombie_id)
 	else:
 		sim.despawn(zombie_id)

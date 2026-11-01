@@ -20,3 +20,6 @@ game/reports/
 
 # Third-party zombie model for local runs: a maintainer decides whether to commit it
 /game/assets/zombie_kit/
+
+# Python bytecode
+__pycache__/

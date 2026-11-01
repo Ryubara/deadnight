@@ -48,7 +48,7 @@ func apply(entry: Dictionary, delta: float) -> void:
 	if step != _speed_step:
 		_speed_step = step
 		tree.set(ZombieRig.BLEND_PARAMETER, entry["speed"])
-	_emerge_left = maxf(_emerge_left - delta, 0.0) if mode == ZombieState.Mode.EMERGING else 0.0
+	_emerge_left = maxf(_emerge_left - delta, 0.0) if mode == ZombieBody.Mode.EMERGING else 0.0
 	_model.position.y = -EMERGE_DEPTH * _emerge_left / _emerge_seconds
 
 
@@ -61,13 +61,13 @@ func advance_animation() -> void:
 func _enter(mode: int) -> void:
 	var state := ZombieRig.STATE_MOVE
 	match mode:
-		ZombieState.Mode.ATTACK:
+		ZombieBody.Mode.ATTACK:
 			state = ZombieRig.STATE_ATTACK
-		ZombieState.Mode.STAGGER:
+		ZombieBody.Mode.STAGGER:
 			state = ZombieRig.STATE_STAGGER
-		ZombieState.Mode.DYING:
+		ZombieBody.Mode.DYING:
 			state = ZombieRig.STATE_DIE
-		ZombieState.Mode.EMERGING:
+		ZombieBody.Mode.EMERGING:
 			_emerge_left = _emerge_seconds
 	_playback.start(state, true)
 

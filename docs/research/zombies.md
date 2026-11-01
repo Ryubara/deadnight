@@ -14,12 +14,12 @@ and rig-sharing recipe (`docs/godot/rig-sharing.md`). Code: `game/gameplay/zombi
 
 | Part | Does | Knows nothing of |
 | --- | --- | --- |
-| `ZombieState` | one zombie as data: position, yaw, mode, target, timers (no health) | rules, nodes |
+| `ZombieBody` | one zombie as data: position, yaw, mode, target, timers (no health) | rules, nodes |
 | `ZombieBrain` | the state machine for one tick (static functions) | paths, nodes |
 | `ZombieSim` | all zombies at a fixed 30 Hz step: targets, repaths, separation, clearing the dead | the rules, drawing |
 | `ZombiePathing`, `NavmeshPathing` | a path from A to B: straight, or `NavigationServer3D.map_get_path` | zombies |
 | `ZombieDirector` | rules events in (spawn, removal), the crowd cap, the `take_hit` seam | animation |
-| `ZombieRulesPort` | the one place a hit reaches `GameRules` | everything else |
+| `ZombieRulesPort` | the one place a hit reaches `GameRules` (the rules own `ZombieState`, the health) | everything else |
 | `ZombieCodec` | the zombies as 12 bytes each | the sim's internals |
 | `ZombieHorde`, `ZombieView`, `ZombieRig`, `AnimationThrottle` | the client: views from decoded entries, animation | the sim |
 
@@ -30,11 +30,10 @@ and only if the player is still within 1.8 m), `STAGGER` (0.4 s, from any hit th
 ## What was decided
 
 - **Health is the rules' business.** The sim has no health. A zombie is created by `zombie_spawn_requested`, falls on
-  `zombie_removed` with a killer, and vanishes on a removal without one. `ZombieDirector.take_hit(zombie_id, zone,
-  damage, shooter_id, melee)` is the seam for weapons: it asks the rules and the zombie only reacts to the answer.
-  **Interim:** the rules do not yet track health (issue #60), so `ZombieRulesPort` keeps the remaining health per id
-  and turns a hit into the `hit` or `kill` action. When #60 lands, delete that ledger and send its damage action; no
-  caller changes.
+  `zombie_removed` with cause `killed`, and vanishes on cause `gone`. `ZombieDirector.take_hit(zombie_id, zone, damage,
+  shooter_id, melee)` is the seam for weapons: it sends `RulesAction.hit` through `ZombieRulesPort`, the rules take the
+  damage off the zombie's health, pay and decide the kill (#60, merged), and the zombie only reacts to the answer
+  (`zombie_damaged` staggers it, `zombie_removed` drops it).
 - **No physics bodies, no `NavigationAgent3D` nodes.** The server sim is node-free, so it asks `NavigationServer3D`
   for paths directly (every 0.25 s, each zombie at its own phase) and walks them. A zombie's body for shooting is the
   analytic `Hitbox` shapes, not a collider. Avoidance is a spatial-hash push (0.8 m radius), not RVO: it is
