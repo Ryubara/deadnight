@@ -142,9 +142,16 @@ func test_the_face_leads_the_blow() -> void:
 	# The hammer rides the hand bone: over one loop its face swings down from the raise onto the
 	# board, face first. Read from the bone (a BoneAttachment3D follows only on a processed frame).
 	assert_object(_animation.hammer().get_parent()).is_same(_animation.weapon_mount())
-	(
-		assert_bool(_animation.hammer().transform.is_equal_approx(PlayerAnimation.HOLD_HAMMER))
-		. is_true()
+	# The hold file's size on the tipped melee grip.
+	var grip := _animation.hammer().transform
+	var hold := load(PlayerAnimation.HAMMER_HOLD) as WeaponHold
+	assert_float(grip.basis.get_scale().x).is_equal_approx(hold.model_scale, 0.001)
+	assert_bool(grip.orthonormalized().is_equal_approx(PlayerAnimation.HOLD_HAMMER)).is_true()
+	var face_node := _animation.hammer().find_child(PlayerAnimation.HAMMER_FACE) as Node3D
+	assert_object(face_node).is_not_null()
+	# The face in the hammer scene's own space (the model carries it, not the code).
+	var face_local := (
+		_animation.hammer().global_transform.affine_inverse() * face_node.global_transform
 	)
 	var skeleton := _player.find_child("Skeleton3D", true, false) as Skeleton3D
 	var hand := skeleton.find_bone(PlayerAnimation.HAND_BONE)
@@ -156,13 +163,10 @@ func test_the_face_leads_the_blow() -> void:
 	var grips: Array[Vector3] = []
 	for _i in 60:
 		_step(1)
-		var held := (
-			skeleton.global_transform
-			* skeleton.get_bone_global_pose(hand)
-			* PlayerAnimation.HOLD_HAMMER
-		)
-		faces.append(held * PlayerAnimation.HAMMER_FACE)
-		dirs.append(-held.basis.x.normalized())
+		var held := skeleton.global_transform * skeleton.get_bone_global_pose(hand) * grip
+		var face := held * face_local
+		faces.append(face.origin)
+		dirs.append(-face.basis.z.normalized())
 		grips.append(held.origin)
 	var low := 0
 	var high := 0

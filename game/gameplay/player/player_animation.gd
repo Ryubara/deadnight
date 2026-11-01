@@ -36,16 +36,19 @@ const HOLD_MELEE := Transform3D(
 	),
 	Vector3(-0.004282, 0.175673, -0.062554)
 )
-## The weapon each class shows (Pistol has no model yet: the hand stays empty).
-const WEAPON_SCENES := {
-	&"Rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
-	&"Shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
-	&"Melee": "res://assets/weapons/baseball_bat/baseball_bat.glb",
-}
-## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount:
-## the melee hold tipped 20 degrees in the hammer's swing plane (about its Z), so the face meets
-## the board square on the blow (docs/design/animation.md, Repair).
-const HAMMER_SCENE := "res://assets/weapons/hammer/hammer.glb"
+## The hold of each class that shows a weapon (Pistol has no model yet: the hand stays empty):
+## the model, its size and where it rests (holds/*.tres, docs/design/weapon-hold.md).
+const HOLDS_DIR := "res://gameplay/player/holds/"
+const HOLD_CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
+## How fast the arms go to and from the shouldered pose (per second, exponential).
+const SHOULDER_RATE := 14.0
+## Recoil of a shot dies away at this rate (per second, exponential).
+const RECOIL_RATE := 16.0
+## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount.
+## Its hold file sizes it (a tool, larger than the size rule: docs/design/weapon-hold.md); the
+## grip is the melee one tipped 20 degrees in the hammer's swing plane (about its Z), so the face
+## meets the board square on the blow (docs/design/animation.md, Repair).
+const HAMMER_HOLD := "res://gameplay/player/holds/hammer.tres"
 const HOLD_HAMMER := Transform3D(
 	Basis(
 		Vector3(-0.719030, -0.694337, 0.029881),
@@ -54,8 +57,9 @@ const HOLD_HAMMER := Transform3D(
 	),
 	Vector3(-0.004282, 0.175673, -0.062554)
 )
-## The centre of the hammer's striking face, in the model's own units (origin the grip).
-const HAMMER_FACE := Vector3(-0.22, 0.54, 0.0)
+## The node the hammer model carries at the centre of its striking face, -Z out of the face
+## (docs/design/style.md, "Attachment points").
+const HAMMER_FACE := "Face"
 const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Pistol", &"Melee"]
 const DEFAULT_CLASS := &"Rifle"
 ## Where Walk sits on the move blend (0 = Idle, 1 = Run).
@@ -97,6 +101,10 @@ var _full_node: AnimationNodeAnimation
 var _mount: BoneAttachment3D
 var _weapon: Node3D
 var _hammer: Node3D
+var _hold: WeaponHold
+var _hands: WeaponHandsIK
+var _shoulder_blend := 0.0
+var _recoil := 0.0
 var _action_time := 0.0
 var _move_blend := 0.0
 var _was_on_floor := true
@@ -119,12 +127,19 @@ func _ready() -> void:
 	_mount = BoneAttachment3D.new()
 	_mount.name = "WeaponMount"
 	_mount.bone_name = HAND_BONE
-	model.find_child("Skeleton3D", true, false).add_child(_mount)
-	_hammer = (load(HAMMER_SCENE) as PackedScene).instantiate() as Node3D
+	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
+	skeleton.add_child(_mount)
+	var hammer_hold := load(HAMMER_HOLD) as WeaponHold
+	_hammer = (load(hammer_hold.scene) as PackedScene).instantiate() as Node3D
 	_hammer.name = "Hammer"
-	_hammer.transform = HOLD_HAMMER
+	_hammer.transform = HOLD_HAMMER.scaled_local(Vector3.ONE * hammer_hold.model_scale)
 	_hammer.visible = false
 	_mount.add_child(_hammer)
+	_hands = WeaponHandsIK.new()
+	_hands.name = "WeaponHandsIK"
+	_hands.hand_hold = HOLD_GUN
+	_hands.influence = 0.0
+	skeleton.add_child(_hands)
 	self.anim_player = get_path_to(anim_player)
 	tree_root = _build_tree(_skeleton_track_path(anim_player))
 	set(&"parameters/split/blend_amount", 1.0)
@@ -151,6 +166,7 @@ func _process(delta: float) -> void:
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
 	_advance_events(delta)
 	_advance_repair(delta)
+	_advance_shoulder(delta)
 
 
 ## Name of the body state machine's current state, for tests and debugging.
@@ -248,18 +264,69 @@ func clip_events(clip: StringName) -> Dictionary:
 	return entry.get("events", {})
 
 
+## The hold data of a weapon class, or null when the class shows no weapon.
+static func hold_of(new_class: StringName) -> WeaponHold:
+	if new_class not in HOLD_CLASSES:
+		return null
+	return load(HOLDS_DIR + String(new_class).to_lower() + ".tres") as WeaponHold
+
+
+## The hold data of the weapon in the hand, or null.
+func weapon_hold() -> WeaponHold:
+	return _hold
+
+
+## The arm pose that puts the weapon at the shoulder, for tests and debugging.
+func hands() -> WeaponHandsIK:
+	return _hands
+
+
+## How far the arms are on the shouldered pose, 0 to 1.
+func shoulder_blend() -> float:
+	return _shoulder_blend
+
+
 func _set_class(new_class: StringName) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
-	if WEAPON_SCENES.has(new_class):
-		_weapon = (load(WEAPON_SCENES[new_class]) as PackedScene).instantiate() as Node3D
+	_hold = hold_of(new_class)
+	_hands.hold = _hold
+	if _hold != null:
+		_weapon = (load(_hold.scene) as PackedScene).instantiate() as Node3D
 		_weapon.name = "Weapon"
-		_weapon.transform = HOLD_MELEE if new_class == &"Melee" else HOLD_GUN
+		var grip := HOLD_MELEE if new_class == &"Melee" else HOLD_GUN
+		_weapon.transform = grip.scaled_local(Vector3.ONE * _hold.model_scale)
 		_weapon.visible = not is_repairing()
 		_mount.add_child(_weapon)
+
+
+## Eases the arms onto the shouldered pose while the weapon is up and the clip does not use the
+## hands (Reload, Equip, Unequip, Swing and the repair do), and gives the pose the camera's aim.
+func _advance_shoulder(delta: float) -> void:
+	var up := _hold != null and _hold.shouldered and _weapon != null and _weapon.visible
+	var hands_free := (
+		(action_clip == &"" or String(action_clip).begins_with("Fire_")) and not is_repairing()
+	)
+	var rig := _player.camera_rig
+	_hands.aim_yaw = rig.yaw if _player.state.aiming else _player.rotation.y
+	_hands.aim_pitch = rig.pitch
+	_hands.converging = _player.state.aiming
+	var lens := rig.get_node("Camera3D") as Camera3D
+	_hands.converge_on = (
+		lens.global_position - lens.global_basis.z * WeaponHandsIK.CONVERGE_DISTANCE
+	)
+	if String(action_clip).begins_with("Fire_") and _action_time < delta * 1.5:
+		_recoil = 1.0
+	_recoil *= exp(-RECOIL_RATE * delta)
+	_hands.recoil = _recoil
+	var target := 1.0 if up and hands_free else 0.0
+	_shoulder_blend = lerpf(_shoulder_blend, target, 1.0 - exp(-SHOULDER_RATE * delta))
+	if absf(_shoulder_blend - target) < 0.001:
+		_shoulder_blend = target
+	_hands.influence = _shoulder_blend
 
 
 ## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible

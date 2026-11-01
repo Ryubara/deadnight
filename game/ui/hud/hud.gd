@@ -17,9 +17,9 @@ const SCENE := "res://ui/hud/hud.tscn"
 ## The parts keep to bands so that none overlaps another on a 1536 x 864 canvas (the smallest:
 ## 720p at UI scale 1.25): the side columns are `HudStyle.COLUMN` wide, the cards in the middle
 ## `HudStyle.CARD`, the gains `HudGains.WIDTH`; the right column ends above the gains, the gains
-## above the prompt. Each part shrinks or ellipsizes its text instead of growing. Every card shares
-## the text grid of `HudStyle` (`PAD_LEFT` in, `PAD` in from the right) and every column the same
-## `GAP` between its parts.
+## above the prompt. Each part shrinks or ellipsizes its text instead of growing (the prompt wraps
+## onto more lines instead). Every card shares the text grid of `HudStyle` (`PAD_LEFT` in, `PAD` in
+## from the right) and every column the same `GAP` between its parts.
 const GAINS_OFFSET := Vector2(48.0, 4.0)
 ## Space kept between the gains and the ammo card they must stay clear of.
 const GAINS_GAP := 9.0

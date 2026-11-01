@@ -39,7 +39,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"over": false,
 		"round": 0,
 		"remaining": 0,
-		"alive": 0
+		"alive": 0,
+		"touch": false
 	}
 	if top == null:
 		return data
@@ -51,6 +52,7 @@ static func snapshot(top: Control) -> Dictionary:
 	data["night"] = true
 	data["running"] = night_screen.night.running
 	data["over"] = state.over
+	data["touch"] = night_screen.touch_active()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)

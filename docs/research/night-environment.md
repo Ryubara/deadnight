@@ -98,10 +98,21 @@ the screen's afterglow reach the glow with no second path to keep in step. The f
 `advance` and gets the same light. A lamp that is only seen (the sign's) carries `metadata/decor` and lights no ground
 for the dead's slowdown (`LotLamps.lit_at`).
 
-- **The cap per mesh is tested** (`test_lot_lighting.gd`): with every circuit on, no CSG box of the lot is reached by more
-  than 8 lights (omni by sphere, spot by its cone's box). The first run found 11 on one 24 m field tile; the field's
-  ground is now tiled at 16 m, as `floor_tiles` already says it must be. The 320 m `Outskirts` slab is exempt: every
-  lamp reaches it and it is near-black.
+- **The cap per mesh is tested** (`test_lot_light_cap.gd`, helpers in `light_cap.gd`): with every circuit on, every
+  mesh a light shades is reached by at most 8 lights (the project's `max_lights_per_object`; omni by sphere, spot by
+  its cone's box), and by at most 6 so a fight has room. Counted: the root of every CSG tree and every
+  `MeshInstance3D` or `MultiMeshInstance3D` with a surface that is not unshaded (a standard material set to unshaded,
+  or a shader with `unshaded` in it), so the kit's props, the cars and the lot's boxes are all in; the pool and halo
+  quads, which ignore lights, are not. A failing run names the mesh and its lights. The 320 m `Outskirts` slab is
+  exempt: every lamp reaches it and it is near-black.
+- **Room for a fight**: a muzzle flash (`ShotEffects`, 5 m), a blast (`BlastEffect`, 1.6 x the blast radius) and a
+  grenade's lamp (`GrenadeView`, 3 m) are `OmniLight3D` nodes made at run time. A mesh near a fight gains one flash and
+  one blast or lamp, so the lot's own lights may reach a mesh with `limit - 2` (`DYNAMIC_HEADROOM`). Meshes over that
+  today are listed in `KNOWN_OVER` (the field's four middle ground tiles and the stand's floor and roof, issue #318;
+  the test fails on one that grows or no longer needs its entry) and a skipped twin without the list takes over once
+  they are fixed. Another test reads every script and scene of the project for a light and fails on one that is not
+  in its table, and checks that each weapon's shot, a blast and a grenade add exactly one light.
+  The first run of the stronger test found 8 on two ground tiles, 7 on four more; no prop or car is above 6.
 - **Pools are quads, not light range.** Raising the lamp range to 14 m to get a bigger pool put 12 lights on one tile.
   The pool is now the quad, the light stays at 11 m.
 - **The screen shows the circuit.** With `screen_lot` off the face keeps the 0.3 afterglow of its lamp and the posts,
