@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://world/drive_in/circuit_switch.gd" id="1_switch"]
+[ext_resource type="Shader" path="res://world/drive_in/glow.gdshader" id="2_glow"]
 
 [sub_resource type="StandardMaterial3D" id="Steel"]
 albedo_color = Color(0.22, 0.24, 0.27, 1)
@@ -19,6 +20,17 @@ albedo_color = Color(0.55, 0.08, 0.06, 1)
 emission_enabled = true
 emission = Color(0.55, 0.08, 0.06, 1)
 emission_energy_multiplier = 0.5
+
+[sub_resource type="ShaderMaterial" id="HaloMaterial"]
+render_priority = 1
+shader = ExtResource("2_glow")
+shader_parameter/tint = Color(0.55, 0.08, 0.06, 1)
+shader_parameter/energy = 0.5
+shader_parameter/falloff = 2.2
+shader_parameter/billboard = true
+
+[sub_resource type="QuadMesh" id="HaloMesh"]
+size = Vector2(1.1, 1.1)
 
 [sub_resource type="BoxMesh" id="PostMesh"]
 material = SubResource("Steel")
@@ -65,3 +77,9 @@ mesh = SubResource("LeverMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0.31)
 mesh = SubResource("LampMesh")
 material_override = SubResource("LampGlow")
+
+[node name="Halo" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0.4)
+mesh = SubResource("HaloMesh")
+material_override = SubResource("HaloMaterial")
+cast_shadow = 0
