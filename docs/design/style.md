@@ -30,6 +30,7 @@ What the numbers say:
 | Hands | oversized mitts with three-joint fingers and a thumb; after the head, the second read of the silhouette |
 | Rig | one `CharacterArmature`: 43 bones on the kit characters (`Root`, `Body`, `Hips`, `Abdomen`, `Torso`, `Neck`, `Head`, shoulders, arms, three-joint fingers, legs, IK pole targets); the zombie has the same 43 plus `Tongue1-5`, `Eyelid.L/R` |
 | Clips | shared by bone name: Idle, Run, Jump (three parts), HitReact, Death, Punch, Wave, Yes, No on all; Walk on all but the Soldier; Run_Gun, Idle_Shoot, Duck on the kit characters; Crawl, Run_Arms, Run_Attack, Idle_Attack on the zombie |
+| Animation | 24 fps, in place (no root motion); the kit clips key only the bones they move (7-19 of 43), the rest hold the file's standing pose; new clips start from the kit's poses (`Idle_Shoot` frame 0 for every weapon hold) and split at `Abdomen` (32 upper bones, 11 lower): [Animation](animation.md) |
 | Meshes | a skinned body plus a bone-parented head piece (helmet, hood, visor) and, on the Soldier, two 44-tri shoulder pads |
 | Strays | every rigged file carries an unparented 80-tri `Icosphere`; strip it on import |
 | Zombie scale | the zombie file is 0.59 the kit characters' size (1.36 against 2.31 m at rest) |

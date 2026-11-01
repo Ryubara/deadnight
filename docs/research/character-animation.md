@@ -1,0 +1,73 @@
+# Character animation
+
+What we learned authoring the Soldier's weapon clips in the pinned Blender (5.2.3) and playing them in Godot 4.7.2
+(Deadnight #42). The clip spec is [Animation](../design/animation.md); the kit-wide recipe this builds on is the kit's
+rig-sharing pages (Blender and Godot).
+
+## The kit clips key few bones; the rest sit at the file's static pose
+
+The kit Soldier's clips key 7 (`Idle`) to 19 (`Run_Gun`) of the 43 bones. Every other bone sits at its glTF node
+transform: arms down, fingers curled. Blender's rest pose is different (arms out, fingers straight).
+
+- The importer writes the node transforms into the pose bones; the first clip evaluation overwrites them. Read them
+  right after the import (`soldier_clips.capture_static`), before any frame change.
+- The kit recipe clears the pose bones before export, and the exporter's `export_reset_pose_bones=True` resets them
+  between clips: every bone a clip leaves out is then sampled at Blender's rest. In the recipe's export, `Idle` keys
+  `UpperArm.L` at exactly the rest rotation (arms out); in ours, at the static pose. Checked by reading both files'
+  `Idle` channel.
+- The fix: key the static pose into every clip for the bones it leaves out (`bake_static`), and pose the static pose
+  before exporting with `export_reset_pose_bones=False`.
+- Godot's skeleton rest stays Blender's rest (the exporter writes the joints' rest, not the pose): a Soldier with no
+  clip playing stands in a T-pose. Something must always play.
+- Godot's `remove_immutable_tracks` import option keeps a constant track whose value is not the rest: the baked
+  `UpperArm.L` track survives in every clip (41 tracks per clip after import).
+
+## Quaternion keys must keep one sign
+
+`q` and `-q` are the same rotation, and the kit stores some bones with `w < 0` (`UpperArm.L` at -0.911). Blender
+interpolates each quaternion component separately, so two neighbouring keys of opposite sign swing the bone through a
+wild path: mid-equip, the gun went behind the Soldier's head. The exporter samples that path, so Godot plays it too.
+Fix: flip each key to the sign of the one before it (`dot < 0` then negate), and flip the target before a slerp.
+
+## The boots follow the IK foot bones
+
+The kit legs are IK-baked: `UpperLeg` and `LowerLeg` carry rotations, and `Foot.L`/`Foot.R` (children of `Root`, not of
+the shin) carry location keys, and the boots are weighted to them. A derived clip that keys only rotations (and
+`Body`) leaves the feet at the static place while the shins swing: the first `Walk` stretched the boots into black
+sticks. Key location on every bone a clip writes.
+
+## Weapon holds measured in Godot
+
+Leaving the kit Shotgun and Shovel in the hand of a measuring copy (`build_soldier.py --keep-held`) and dividing their
+transform under the `Index1.R` BoneAttachment3D by the kit files' own node transform (the kit files store the mesh at
+1/100 with a 100x, -90-degree node) gives the transform our weapon scenes take: [Animation](../design/animation.md#weapons-in-the-hand).
+The offset is 0.2 m from the bone in metres, the "about 2 mm" the weapons page measured in the kit file's units.
+
+## Bone axes on the kit rig
+
+Measured with a probe sheet (40-degree offsets on each axis), TEMPERANCE import, local rotations on the pose:
+
+| Bones | X | Y | Z |
+| --- | --- | --- | --- |
+| Abdomen, Torso, Neck | pitch, positive bends forward | yaw, positive turns the chest to his right | roll |
+| UpperArm.R | raises the arm toward the head | twists and lifts it forward | swings it forward and out |
+| LowerArm.R | small | twists | tips the hand: muzzle up |
+
+Large yaw on the spine leans the body sideways as well (the spine bones are already pitched in the static pose): the
+first horizontal melee swing bent the Soldier over at its midpoint. The swing became an overhead chop driven by the
+arm raise and spine pitch.
+
+## The kit gun hold is one-handed
+
+In `Idle_Shoot` the right hand holds the weapon on `Index1.R` and the left arm hangs. Our clips keep that and leave the
+left arm free for an IK target per weapon; the pistol stays one-handed.
+
+## Godot headless
+
+An `AnimationTree` built in a `SceneTree` script's `_init` does not process: `advance()` leaves the bones where they
+were. Build it from a deferred call (`_run.call_deferred()`), once the root is running.
+
+## Evidence
+
+Contact sheets (four moments of each clip per class, the Body clips, and upper clips over Run and Walk) and the probe
+sheet are attached to the pull request; `game/tests/art/check_soldier_clips.gd` prints the numbers above.
