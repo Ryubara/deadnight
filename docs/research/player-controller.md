@@ -10,7 +10,7 @@ the server in-process. So movement is a function of data, and everything else on
 
 ```text
 controls --sample--> PlayerCommand --\
-                                      >-- PlayerSimulation.simulate(body, state, command, tuning, delta) --> PlayerState
+                                      >-- PlayerSimulation.simulate(body, state, command, tuning, delta) --> PlayerMotionState
 network / replay ---> PlayerCommand --/                                                                       |
                                                               camera rig, animation tree, audio hooks <-- read-only
 ```
@@ -18,7 +18,7 @@ network / replay ---> PlayerCommand --/                                         
 | Piece | File | Rule |
 | --- | --- | --- |
 | `PlayerCommand` | `player_command.gd` | One physics tick of input: move vector, view yaw and pitch, sprint, crouch, jump, aim, swap shoulder. Serializable (`to_bytes` / `from_bytes`). `jump` and `swap_shoulder` are edges (true on the tick the key goes down), the rest are levels. |
-| `PlayerState` | `player_state.gd` | Everything carried between ticks: position, velocity, facing, floor flag, sprint and aim flags, shoulder side, coyote and jump-buffer timers, footstep distance. Plus what happened in the tick (`jumped`, `landed`, `footstep`). `copy_from` rewinds it. |
+| `PlayerMotionState` | `player_motion_state.gd` | Everything carried between ticks: position, velocity, facing, floor flag, sprint and aim flags, shoulder side, coyote and jump-buffer timers, footstep distance. Plus what happened in the tick (`jumped`, `landed`, `footstep`). `copy_from` rewinds it. |
 | `PlayerSimulation` | `player_simulation.gd` | `simulate()` reads only its arguments and the physics world, never `Input`, the camera, the animation tree or the clock. |
 | `Player` | `player.gd` | The glue: `sample_command()` reads the controls, `tick(command)` runs the simulation and shows the result. `submit_command()` feeds a command from elsewhere. |
 | `ThirdPersonCamera` | `third_person_camera.gd` | Holds the view (mouse and stick look), eases aim and shoulder, follows the body. Its yaw and pitch are sampled into the command. |
@@ -33,6 +33,12 @@ Known limits to settle when the net work lands: `move_and_slide` integrates with
 `delta` must equal it (tests change `physics_ticks_per_second`, not the argument); the floor flag is carried in the
 state but `move_and_slide` keeps its own contact cache, which a rewind does not restore; floats are not quantized for
 the wire yet; crouch is carried in the command and state but nothing acts on it.
+
+## Settings
+
+Sensitivity and invert Y come from the `Settings` autoload (`controls/mouse_sensitivity`, `controls/invert_y`, through
+`get_value(key)`; the player refreshes on its `changed` signal). `PlayerSettings` falls back to 1.0 and off when the
+autoload is missing or answers something odd, so the test room runs on its own.
 
 ## Tuning values
 
@@ -74,6 +80,8 @@ The tree is built in `player_animation.gd` from the Soldier's own clips (prefix 
 - GdUnit4 in `--headless` does not transport input events: actions work (`simulate_action_press`), mouse motion does
   not. Call `_unhandled_input` with an event, or `PlayerCommand`s, instead. `push_unhandled_input` is deprecated and
   scaled the motion unpredictably.
+- Two scripts both called `PlayerState` (this one and the round rules') broke the whole project at merge time as a
+  global class clash; this one is `PlayerMotionState`. Check `grep -r "class_name X"` before naming a global class.
 - A test room crate in the run lane made speed tests read zero; keep the lane clear.
 - Movie Maker's PNG encode is the slow part (about 0.25 s a frame at 1080p); 10 fps captures are enough to judge motion.
 

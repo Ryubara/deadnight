@@ -2,16 +2,16 @@ class_name PlayerSettings
 extends RefCounted
 ## Reads the look settings the player cares about from the game's settings service.
 ##
-## The settings screen is built elsewhere, so this asks a tiny interface: an autoload named
-## "Settings" that has `get_value(key: StringName, default: Variant) -> Variant`. Until that
-## exists (or when it answers nothing) the defaults below apply, so the player always works.
+## Asks the game's `Settings` autoload (`core/settings.gd`): `get_value(key)` and the
+## `changed(key, value)` signal. Without it (a test room run on its own) or with an odd answer,
+## the defaults below apply, so the player always works.
 
 const SERVICE_PATH := ^"/root/Settings"
-const KEY_SENSITIVITY := &"look_sensitivity"
-const KEY_INVERT_Y := &"look_invert_y"
+const KEY_SENSITIVITY := &"controls/mouse_sensitivity"
+const KEY_INVERT_Y := &"controls/invert_y"
 const DEFAULT_SENSITIVITY := 1.0
 const DEFAULT_INVERT_Y := false
-const MIN_SENSITIVITY := 0.05
+const MIN_SENSITIVITY := 0.1
 
 
 static func sensitivity(tree: SceneTree) -> float:
@@ -32,4 +32,5 @@ static func _read(tree: SceneTree, key: StringName, default: Variant) -> Variant
 	var service := tree.root.get_node_or_null(SERVICE_PATH)
 	if service == null or not service.has_method(&"get_value"):
 		return default
-	return service.call(&"get_value", key, default)
+	var value: Variant = service.call(&"get_value", key)
+	return default if value == null else value

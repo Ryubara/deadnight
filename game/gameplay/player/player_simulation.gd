@@ -10,7 +10,7 @@ extends RefCounted
 
 static func simulate(
 	body: CharacterBody3D,
-	state: PlayerState,
+	state: PlayerMotionState,
 	command: PlayerCommand,
 	tuning: PlayerTuning,
 	delta: float
@@ -40,7 +40,11 @@ static func simulate(
 
 
 static func _face(
-	state: PlayerState, wish: Vector3, command: PlayerCommand, tuning: PlayerTuning, delta: float
+	state: PlayerMotionState,
+	wish: Vector3,
+	command: PlayerCommand,
+	tuning: PlayerTuning,
+	delta: float
 ) -> void:
 	if command.aim:
 		state.facing = rotate_toward(state.facing, command.yaw, tuning.aim_turn_speed * delta)
@@ -52,7 +56,7 @@ static func _face(
 
 static func _move(
 	body: CharacterBody3D,
-	state: PlayerState,
+	state: PlayerMotionState,
 	wish: Vector3,
 	command: PlayerCommand,
 	tuning: PlayerTuning,

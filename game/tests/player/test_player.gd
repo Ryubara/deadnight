@@ -10,6 +10,7 @@ var _runner: GdUnitSceneRunner
 var _player: Player
 var _rig: ThirdPersonCamera
 var _tuning: PlayerTuning
+var _real_settings: Node
 
 
 func before_test() -> void:
@@ -27,8 +28,27 @@ func after_test() -> void:
 		ProjectSettings.get_setting("physics/common/physics_ticks_per_second")
 	)
 	var service := get_tree().root.get_node_or_null(PlayerSettings.SERVICE_PATH)
-	if service != null:
+	if service is _FakeSettings:
 		service.free()
+	if _real_settings != null and _real_settings.get_parent() == null:
+		get_tree().root.add_child(_real_settings)
+	_real_settings = null
+
+
+## Take the game's Settings autoload out of the tree so a test can run without one or with a fake.
+func _detach_settings() -> void:
+	_real_settings = get_tree().root.get_node_or_null(PlayerSettings.SERVICE_PATH)
+	if _real_settings != null:
+		get_tree().root.remove_child(_real_settings)
+
+
+func _install_fake_settings(values: Dictionary) -> void:
+	_detach_settings()
+	var service := _FakeSettings.new()
+	service.name = "Settings"
+	service.values = values
+	get_tree().root.add_child(service)
+	_player.refresh_settings()
 
 
 func _ticks(count: int) -> void:
@@ -48,6 +68,10 @@ func _plane_distance(from: Vector3) -> float:
 # --- input map ---
 
 
+func _is_gamepad_event(event: InputEvent) -> bool:
+	return event is InputEventJoypadButton or event is InputEventJoypadMotion
+
+
 func test_input_map_has_every_action_with_keyboard_and_gamepad() -> void:
 	for action in [
 		"move_forward",
@@ -59,22 +83,10 @@ func test_input_map_has_every_action_with_keyboard_and_gamepad() -> void:
 		"jump",
 		"swap_shoulder"
 	]:
-		(
-			assert_bool(InputMap.has_action(action))
-			. override_failure_message("missing action " + action)
-			. is_true()
-		)
+		assert_bool(InputMap.has_action(action)).is_true()
 		var events := InputMap.action_get_events(action)
 		assert_bool(events.any(func(e: InputEvent) -> bool: return e is InputEventKey)).is_true()
-		(
-			assert_bool(
-				events.any(
-					func(e: InputEvent) -> bool:
-						return e is InputEventJoypadButton or e is InputEventJoypadMotion
-				)
-			)
-			. is_true()
-		)
+		assert_bool(events.any(_is_gamepad_event)).is_true()
 	var aim := InputMap.action_get_events("aim")
 	assert_bool(aim.any(func(e: InputEvent) -> bool: return e is InputEventMouseButton)).is_true()
 	assert_bool(aim.any(func(e: InputEvent) -> bool: return e is InputEventJoypadMotion)).is_true()
@@ -277,16 +289,14 @@ func test_gamepad_stick_turns_at_the_tuned_rate() -> void:
 
 
 func test_defaults_apply_without_a_settings_service() -> void:
+	_detach_settings()
+	_player.refresh_settings()
 	assert_float(_rig.sensitivity).is_equal(PlayerSettings.DEFAULT_SENSITIVITY)
 	assert_bool(_rig.invert_y).is_equal(PlayerSettings.DEFAULT_INVERT_Y)
 
 
 func test_settings_service_sets_sensitivity_and_invert_y() -> void:
-	var service := _FakeSettings.new()
-	service.name = "Settings"
-	service.values = {PlayerSettings.KEY_SENSITIVITY: 2.0, PlayerSettings.KEY_INVERT_Y: true}
-	get_tree().root.add_child(service)
-	_player.refresh_settings()
+	_install_fake_settings({PlayerSettings.KEY_SENSITIVITY: 2.0, PlayerSettings.KEY_INVERT_Y: true})
 	assert_float(_rig.sensitivity).is_equal(2.0)
 	assert_bool(_rig.invert_y).is_true()
 	_rig.look_mouse(Vector2(0.0, 10.0))  # mouse down, inverted: looks up
@@ -294,13 +304,18 @@ func test_settings_service_sets_sensitivity_and_invert_y() -> void:
 
 
 func test_a_broken_settings_service_falls_back_to_defaults() -> void:
-	var service := _FakeSettings.new()
-	service.name = "Settings"
-	service.values = {PlayerSettings.KEY_SENSITIVITY: "loud", PlayerSettings.KEY_INVERT_Y: 3}
-	get_tree().root.add_child(service)
-	_player.refresh_settings()
+	_install_fake_settings({PlayerSettings.KEY_SENSITIVITY: "loud", PlayerSettings.KEY_INVERT_Y: 3})
 	assert_float(_rig.sensitivity).is_equal(PlayerSettings.DEFAULT_SENSITIVITY)
 	assert_bool(_rig.invert_y).is_equal(PlayerSettings.DEFAULT_INVERT_Y)
+
+
+func test_the_real_settings_autoload_drives_the_look() -> void:
+	var settings := get_tree().root.get_node_or_null(PlayerSettings.SERVICE_PATH)
+	assert_object(settings).is_not_null()
+	var old_sensitivity: Variant = settings.call("get_value", PlayerSettings.KEY_SENSITIVITY)
+	settings.call("set_value", PlayerSettings.KEY_SENSITIVITY, 2.5)
+	assert_float(_rig.sensitivity).is_equal_approx(2.5, 0.001)  # via the changed signal
+	settings.call("set_value", PlayerSettings.KEY_SENSITIVITY, old_sensitivity)
 
 
 func test_disabled_controls_ignore_input() -> void:
@@ -453,5 +468,5 @@ class _FakeSettings:
 	extends Node
 	var values := {}
 
-	func get_value(key: StringName, default: Variant) -> Variant:
-		return values.get(key, default)
+	func get_value(key: StringName) -> Variant:
+		return values.get(key)

@@ -1,4 +1,4 @@
-class_name PlayerState
+class_name PlayerMotionState
 extends RefCounted
 ## Everything the simulation needs to carry from one tick to the next, and nothing else.
 ##
@@ -32,13 +32,13 @@ func ground_speed() -> float:
 	return Vector2(velocity.x, velocity.z).length()
 
 
-func copy_from(other: PlayerState) -> void:
+func copy_from(other: PlayerMotionState) -> void:
 	for property: Dictionary in get_property_list():
 		if property.usage & PROPERTY_USAGE_SCRIPT_VARIABLE:
 			set(property.name, other.get(property.name))
 
 
-func duplicate_state() -> PlayerState:
-	var copy := PlayerState.new()
+func duplicate_state() -> PlayerMotionState:
+	var copy := PlayerMotionState.new()
 	copy.copy_from(self)
 	return copy

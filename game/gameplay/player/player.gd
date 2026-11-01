@@ -4,8 +4,8 @@ extends CharacterBody3D
 ## simulation, and shows the result (body facing, camera, signals).
 ##
 ## Movement lives in PlayerSimulation, not here. This node is the boundary: input goes in as a
-## PlayerCommand, state comes out as a PlayerState. The camera rig and the animation tree read the
-## state; they never move the character. To drive the player from a server or a replay, set
+## PlayerCommand, state comes out as a PlayerMotionState. The camera rig and the animation tree
+## read the state; they never move the character. To drive the player from a server or a replay, set
 ## `local_input` to false and call `submit_command()` before each tick (or call `tick()`).
 
 ## A foot has landed. Hook footstep audio here.
@@ -39,7 +39,7 @@ const HIDE_MODEL_BELOW := 0.7
 @export var capture_mouse := true
 
 ## The authoritative-looking result of the last tick. Read-only for everything but `tick()`.
-var state := PlayerState.new()
+var state := PlayerMotionState.new()
 var last_command := PlayerCommand.new()
 
 var _controls_enabled := true
@@ -65,7 +65,7 @@ func _ready() -> void:
 	refresh_settings()
 	var service := get_tree().root.get_node_or_null(PlayerSettings.SERVICE_PATH)
 	if service != null and service.has_signal(&"changed"):
-		service.connect(&"changed", refresh_settings)
+		service.connect(&"changed", _on_setting_changed)
 	set_controls_enabled(true)
 
 
@@ -94,6 +94,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func refresh_settings() -> void:
 	camera_rig.sensitivity = PlayerSettings.sensitivity(get_tree())
 	camera_rig.invert_y = PlayerSettings.invert_y(get_tree())
+
+
+func _on_setting_changed(_key: StringName, _value: Variant) -> void:
+	refresh_settings()
 
 
 ## Turn movement and look on or off (menus, death, cutscenes); also captures or frees the mouse.
