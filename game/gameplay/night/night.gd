@@ -36,6 +36,8 @@ var hud: Hud
 ## Ticks run in each physics frame: 1 is real time; a test turns it up to play faster.
 ## (Engine.time_scale would scale the step itself, which is not the same night.)
 var ticks_per_frame := 1
+## Autopilot only: film the bot through its own shoulder camera, as a player sees it.
+var shoulder_camera := false
 ## False before the night starts, while paused and after it is over.
 var running := false
 
@@ -67,7 +69,10 @@ func start(
 	link.pump()
 	var player := server.body_of(PLAYER_ID)
 	var camera := player.camera_rig.camera()
-	if mode == Mode.AUTOPILOT:
+	if mode == Mode.AUTOPILOT and shoulder_camera:
+		camera.make_current()
+		_make_autopilot()
+	elif mode == Mode.AUTOPILOT:
 		_spectator = Camera3D.new()
 		_spectator.fov = 60.0
 		add_child(_spectator)
@@ -139,7 +144,10 @@ func tick() -> void:
 	link.broadcast(server.step(STEP))
 	match mode:
 		Mode.AUTOPILOT:
-			link.send(autopilot.decide(STEP).to_dict())
+			var command := autopilot.decide(STEP)
+			if shoulder_camera:
+				_aim_rig(command)
+			link.send(command.to_dict())
 		Mode.HUMAN:
 			link.send(_human_command().to_dict())
 	if mode == Mode.AUTOPILOT:
@@ -172,6 +180,16 @@ func _make_autopilot() -> void:
 		var points := world.door_points(door_id)
 		if not points.is_empty():
 			autopilot.door_goals[door_id] = points[0]
+
+
+## The shoulder camera looks where the bot looks.
+func _aim_rig(command: NightCommand) -> void:
+	var rig := player().camera_rig
+	var pitch := 0.0
+	if command.fire:
+		pitch = asin(clampf(command.dir.y, -1.0, 1.0))
+	rig.yaw = lerp_angle(rig.yaw, command.motion.yaw, 0.2)
+	rig.pitch = lerpf(rig.pitch, pitch, 0.2)
 
 
 ## The bot's camera stays above and behind it, so a recording reads.
