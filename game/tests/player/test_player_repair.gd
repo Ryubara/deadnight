@@ -7,6 +7,8 @@ const TEST_ROOM := "res://world/test_room.tscn"
 const TICK := 1.0 / 60.0
 ## Repair_Board's board_set frame (18 of 24, at 24 fps), in the clip's seconds.
 const BOARD_SET := 18.0 / 24.0
+## Where a board's event puts the clip at the 1 s interval: the blow less the board's mend (#245).
+const LEAD := BOARD_SET - Barricade.MEND_SECONDS
 
 var _runner: GdUnitSceneRunner
 var _player: Player
@@ -50,22 +52,29 @@ func test_the_clip_is_in_the_library_and_loops() -> void:
 	assert_float(_animation.repair_weight()).is_equal(0.0)
 
 
-func test_a_repaired_board_starts_the_clip_on_its_board_set_frame() -> void:
+func test_a_repaired_board_lands_the_blow_as_the_board_knocks_home() -> void:
+	# The board slides in for the barricade's mend time; the clip starts that long before its blow,
+	# so the first board gets a lead-in (the fist rises and comes down) instead of a fist already down.
 	_animation.board_repaired(1.0)
 	assert_bool(_animation.is_repairing()).is_true()
-	assert_float(_animation.repair_time()).is_equal_approx(BOARD_SET, 0.001)
-	assert_array(_events).contains_exactly_in_any_order([&"hammer", &"board_set"])
+	assert_float(_animation.repair_time()).is_equal_approx(LEAD, 0.001)
+	assert_float(_animation.repair_lead(1.0)).is_equal_approx(LEAD, 0.001)
+	assert_array(_events).is_empty()
 	assert_bool(_animation.weapon().visible).is_false()  # the hands are on the board
+	_step(roundi(Barricade.MEND_SECONDS * 60.0) - 2)
+	assert_array(_events).is_empty()
+	_step(4)
+	assert_array(_events).contains_exactly_in_any_order([&"hammer", &"board_set"])
 	_step(12)
 	assert_float(_animation.repair_weight()).is_greater(0.9)
 
 
 func test_a_held_repair_keeps_the_pace_of_the_rules() -> void:
 	# The night repairs one board each `repair_interval` while use is held: the loop comes round
-	# to board_set just as the next event arrives, so the seek is a no-op, not a jump.
+	# to the lead just as the next event arrives, so the seek is a no-op, not a jump.
 	for board in 4:
 		if board > 0:
-			assert_float(_animation.repair_time()).is_equal_approx(BOARD_SET, 0.02)
+			assert_float(_animation.repair_time()).is_equal_approx(LEAD, 0.02)
 		_animation.board_repaired(1.0)
 		_step(60)
 		assert_bool(_animation.is_repairing()).is_true()
@@ -76,8 +85,9 @@ func test_a_held_repair_keeps_the_pace_of_the_rules() -> void:
 func test_a_shorter_interval_plays_the_clip_faster() -> void:
 	_animation.board_repaired(0.5)
 	_step(30)
-	assert_float(_animation.repair_time()).is_equal_approx(BOARD_SET, 0.02)
+	assert_float(_animation.repair_time()).is_equal_approx(_animation.repair_lead(0.5), 0.02)
 	_animation.board_repaired(0.5)
+	_step(30)
 	assert_int(_count(&"board_set")).is_equal(2)
 
 

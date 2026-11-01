@@ -48,6 +48,7 @@ func setup_client(
 	throttle = AnimationThrottle.new()
 	throttle.camera = camera
 	add_child(throttle)
+	ZombieRig.warm_up()
 
 
 func _exit_tree() -> void:
