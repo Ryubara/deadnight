@@ -8,16 +8,16 @@ extends Control
 ## the corners hold the always-on readouts, the centre stays clear for the view.
 
 const SCENE := "res://ui/hud/hud.tscn"
-## Vertical position (0..1 of the screen) of the banner, and the gap beside the crosshair where
-## point gains list. The prompt sits on the bottom margin between the health and ammo cards. Join
-## and leave notices sit under the event list on the right: the left column is full with four
-## players on a small screen.
+## The gap beside the crosshair where point gains list. The banner sits on the top margin, level
+## with the cards at the corners, so it ends above the event list that reaches under it (its rows
+## are wider than the column). The prompt sits on the bottom margin between the health and ammo
+## cards. Join and leave notices sit under the event list on the right: the left column is full
+## with four players on a small screen.
 ##
 ## The parts keep to bands so that none overlaps another on a 1536 x 864 canvas (the smallest:
 ## 720p at UI scale 1.25): the side columns are `HudStyle.COLUMN` wide, the cards in the middle
 ## `HudStyle.CARD`, the gains `HudGains.WIDTH`; the right column ends above the gains, the gains
 ## above the prompt. Each part shrinks or ellipsizes its text instead of growing.
-const BANNER_AT := 0.1
 const GAINS_OFFSET := Vector2(64.0, 6.0)
 ## Space kept between the gains and the ammo card they must stay clear of.
 const GAINS_GAP := 12.0
@@ -76,7 +76,7 @@ func _ready() -> void:
 	_stack([fuel, events_feed, notices], 1.0, 0.0, -margin, margin, gap)
 	_stack([points, health], 0.0, 1.0, margin, -margin, gap)
 	_stack([ammo], 1.0, 1.0, -margin, -margin, gap)
-	_stack([banner], 0.5, BANNER_AT, 0.0, 0.0, gap)
+	_stack([banner], 0.5, 0.0, 0.0, margin, gap)
 	_stack([prompt], 0.5, 1.0, 0.0, -margin, gap)
 	_stack([gains], 0.5, 0.5, GAINS_OFFSET.x, GAINS_OFFSET.y, gap)
 	(gains.get_parent() as Control).grow_horizontal = Control.GROW_DIRECTION_END

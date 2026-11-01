@@ -22,6 +22,14 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
   HUD, drawn strings included, asks `tokens.display_font()` and `text_font()`. A capture loads the recommended pair from
   outside the repository, so the committed HUD runs and tests without a font file.
 
+- **Test the ordinary as well as the worst.** The worst-case suite proves nothing overlaps because text gives way, so
+  it passes while everyday text is cut (#170: at 1080p `SNACKS` and "PLAYER 1 OPENED THE CONCESSION STAND" ended in
+  ellipses). A second suite holds the typical values at the common canvases to "no ellipsis"; a label counts as cut when
+  its text is wider than its box (a trimmed label's `text` still holds the whole string). Fix the layout (a grid, a
+  wider row) before reaching for abbreviations.
+- A part's own width is not its neighbours' room: the event rows are wider than the column because the space left of it
+  is empty. The overlap test found the one neighbour (the banner, at a fraction of the screen height) at once.
+
 ## Godot behaviour worth knowing
 
 - `Control.set_anchors_preset(PRESET_FULL_RECT)` on a Control made in code leaves it 0 x 0 (the offsets keep the old
