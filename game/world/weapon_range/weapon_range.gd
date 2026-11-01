@@ -83,15 +83,6 @@ func _exit_tree() -> void:
 	server.detach()
 	rules.event_emitted.disconnect(_on_rules_event)
 	link.delivered.disconnect(_on_events)
-	_release(rules.generator)
-
-
-## `GameRules` connects lambdas that capture itself to its generator, a reference cycle that
-## Godot reports as leaked resources at exit. Cutting those connections ends the cycle.
-func _release(emitter: Object) -> void:
-	for signal_info in emitter.get_signal_list():
-		for connection in emitter.get_signal_connection_list(signal_info["name"]):
-			emitter.disconnect(signal_info["name"], connection["callable"])
 
 
 func _physics_process(_delta: float) -> void:

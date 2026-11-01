@@ -11,9 +11,11 @@ const SKIP_BREAK := &"skip_break"
 const ADD_PLAYER := &"add_player"
 const REMOVE_PLAYER := &"remove_player"
 const SET_DOWNED := &"set_downed"
+const BLOW := &"blow"
 const HIT := &"hit"
 const ZOMBIE_GONE := &"zombie_gone"
 const REPAIR := &"repair"
+const TEAR_BOARD := &"tear_board"
 const BUY := &"buy"
 const SET_CIRCUIT := &"set_circuit"
 const GRANT_POINTS := &"grant_points"
@@ -52,10 +54,12 @@ const REQUIRED := {
 	ADD_PLAYER: {"player_id": TYPE_INT},
 	REMOVE_PLAYER: {"player_id": TYPE_INT},
 	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
+	BLOW: {"player_id": TYPE_INT, "damage": TYPE_FLOAT},
 	HIT:
 	{"player_id": TYPE_INT, "zombie_id": TYPE_INT, "zone": TYPE_STRING_NAME, "damage": TYPE_FLOAT},
 	ZOMBIE_GONE: {"zombie_id": TYPE_INT},
-	REPAIR: {"player_id": TYPE_INT},
+	REPAIR: {"player_id": TYPE_INT, "barricade_id": TYPE_STRING_NAME},
+	TEAR_BOARD: {"barricade_id": TYPE_STRING_NAME, "zombie_id": TYPE_INT},
 	BUY: {"player_id": TYPE_INT, "item_id": TYPE_STRING_NAME},
 	SET_CIRCUIT: {"circuit_id": TYPE_STRING_NAME, "on": TYPE_BOOL},
 	GRANT_POINTS: {"player_id": TYPE_INT, "amount": TYPE_INT},
@@ -65,6 +69,7 @@ const REQUIRED := {
 ## Fields that may be left out; when present they must have the type.
 const OPTIONAL := {
 	HIT: {"melee": TYPE_BOOL},
+	BLOW: {"bearing": TYPE_FLOAT, "source_id": TYPE_INT},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
 	BUY: {"rounds": TYPE_INT},
 }
@@ -95,6 +100,22 @@ static func set_downed(player_id: int, downed: bool) -> Dictionary:
 	return {"type": SET_DOWNED, "player_id": player_id, "downed": downed}
 
 
+## One blow on a player (a zombie's swing). `damage` is what it does; `bearing` is where it came
+## from, radians clockwise from -z seen from above (0 when unknown), and `source_id` the zombie
+## that dealt it (-1 for none). The rules take it off the player's health, restart the wait before
+## health mends, and down the player at zero.
+static func blow(
+	player_id: int, damage: float, bearing: float = 0.0, source_id: int = -1
+) -> Dictionary:
+	return {
+		"type": BLOW,
+		"player_id": player_id,
+		"damage": damage,
+		"bearing": bearing,
+		"source_id": source_id,
+	}
+
+
 ## One hit on a zombie. `damage` is what the weapon dealt, zone multiplier included; the rules take
 ## it off the zombie's health, pay for it, and decide whether it killed.
 static func hit(
@@ -115,9 +136,16 @@ static func zombie_gone(zombie_id: int) -> Dictionary:
 	return {"type": ZOMBIE_GONE, "zombie_id": zombie_id}
 
 
-## One barricade board put back.
-static func repair(player_id: int) -> Dictionary:
-	return {"type": REPAIR, "player_id": player_id}
+## One board put back across the breach `barricade_id`. The rules refuse it for a breach that is
+## unknown or already whole, so a client cannot be paid for boards that were never down.
+static func repair(player_id: int, barricade_id: StringName) -> Dictionary:
+	return {"type": REPAIR, "player_id": player_id, "barricade_id": barricade_id}
+
+
+## A zombie has pulled one board off the breach `barricade_id`. Server only: the zombie simulation
+## sends it when its work at the boards is done.
+static func tear_board(barricade_id: StringName, zombie_id: int) -> Dictionary:
+	return {"type": TEAR_BOARD, "barricade_id": barricade_id, "zombie_id": zombie_id}
 
 
 ## A purchase. `rounds` is only for ammunition: how many rounds the weapon's reserve has room for
@@ -199,6 +227,11 @@ static func _out_of_range_field(type: StringName, action: Dictionary) -> StringN
 				return &"damage"
 			if not ZONES.has(StringName(action["zone"])):
 				return &"zone"
+		BLOW:
+			if not _within(action["damage"], 0.0, MAX_DAMAGE) or action["damage"] <= 0.0:
+				return &"damage"
+			if action.has("bearing") and not is_finite(action["bearing"]):
+				return &"bearing"
 		GRANT_POINTS:
 			if action["amount"] <= 0 or action["amount"] > MAX_GRANT:
 				return &"amount"

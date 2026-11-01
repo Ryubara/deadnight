@@ -110,25 +110,10 @@ func _fight() -> void:
 ## Blows land from several sides, health falls into the red.
 func _hurt() -> void:
 	_mark("hurt")
-	var health := 100.0
 	for angle in [0.9, -1.6, 3.0, 0.2]:
-		health -= 21.0
-		(
-			_hud
-			. state
-			. apply_event(
-				{
-					"type": HudState.PLAYER_HURT,
-					"player_id": 1,
-					"health": health,
-					"direction": angle,
-					"amount": 21.0,
-				}
-			)
-		)
+		_do(RulesAction.blow(1, 21.0, angle))
 		await _wait(0.35)
 	await _wait(1.2)
-	_hud.state.set_health(60.0)
 
 
 ## The prompt: out of reach of the price, then paid, the key held, a door refused and one opened.
@@ -178,11 +163,10 @@ func _down() -> void:
 	await _wait(0.8)
 	_do(RulesAction.remove_player(4))
 	await _wait(0.8)
-	_hud.state.set_health(0.0)
-	_do(RulesAction.set_downed(1, true))
+	_do(RulesAction.blow(1, 99999.0, 1.0))
 	await _wait(1.6)
 	_do(RulesAction.set_downed(1, false))
-	_hud.state.set_health(40.0)
+	_do(RulesAction.blow(1, 60.0, -0.5))
 	await _wait(0.8)
 
 

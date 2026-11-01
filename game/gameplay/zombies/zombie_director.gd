@@ -17,6 +17,9 @@ var sim: ZombieSim
 var port: ZombieRulesPort
 ## Where zombies appear: ground positions. A request picks one with its `point_roll`.
 var spawn_points: Array[Vector3] = []
+## The breach (`ZombieGate.id`) a spawn point lies outside, by point; a zombie spawned there comes
+## in through its boards. A point not in it is already inside.
+var spawn_gates: Dictionary[Vector3, StringName] = {}
 
 var _waiting: Array[Dictionary] = []
 
@@ -61,8 +64,11 @@ func take_hit(
 func tick(delta: float, targets: Dictionary) -> void:
 	_admit_waiting()
 	for event in sim.tick(delta, targets):
-		if event["type"] == &"zombie_struck":
-			player_struck.emit(event["target_id"], event["zombie_id"], event["damage"])
+		match event["type"]:
+			&"zombie_struck":
+				player_struck.emit(event["target_id"], event["zombie_id"], event["damage"])
+			&"zombie_tore":
+				port.tear_board(event["gate_id"], event["zombie_id"])
 
 
 func _on_rules_event(event: Dictionary) -> void:
@@ -107,4 +113,6 @@ func _admit_waiting() -> void:
 		var profile := ZombieProfile.from_event(request, sim.tuning)
 		var type := rules.tuning.roster.type_of(profile.type)
 		profile.weak = type != null and type.weak_multiplier > 1.0
-		sim.spawn(request["zombie_id"], request["speed"], point, 0.0, profile)
+		sim.spawn(
+			request["zombie_id"], request["speed"], point, 0.0, profile, spawn_gates.get(point, &"")
+		)
