@@ -89,10 +89,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		set_controls_enabled(true)
 
 
-## Re-read sensitivity and invert Y from the settings service (defaults when there is none).
+## Re-read sensitivity, invert Y and camera shake from the settings service (defaults when there
+## is none).
 func refresh_settings() -> void:
 	camera_rig.sensitivity = PlayerSettings.sensitivity(get_tree())
 	camera_rig.invert_y = PlayerSettings.invert_y(get_tree())
+	camera_rig.shake.scale = PlayerSettings.camera_shake(get_tree())
 
 
 ## The lens is too close to the head (or clear again): draw or hide the body.

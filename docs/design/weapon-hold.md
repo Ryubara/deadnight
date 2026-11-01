@@ -55,6 +55,23 @@ the `AimResolver`'s, from the muzzle to what the camera ray is on.
 `muzzle` and `butt` (the ends of the model, origin the grip) are in every hold so the tests, and later the muzzle flash
 and the aim correction, read the same points.
 
+## The `Muzzle` node
+
+**Every firearm model carries a node named `Muzzle` at the tip of its barrel, `-Z` pointing out of the barrel** (a
+Blender empty exported into the glb, so it is a `Node3D` in Godot). It is where everything that leaves the gun starts:
+the muzzle flash today ([Shot feedback](shot-feedback.md)), a tracer or smoke later. Never a fixed offset from the body
+(`NightTuning.muzzle_offset` only places the shot's ray for the server, not what is drawn).
+
+- `PlayerAnimation.muzzle_point()` finds the `Muzzle` in the weapon in the hand, through the weapon mount. A model
+  that has none yet gets one made at the hold's `muzzle` point (the model's units, turned so `-Z` is the barrel), so a
+  model without the node needs no code change and nothing is logged. A class with no model at all (the pistol, the flare
+  gun) has no point: its flash is at the server's muzzle, 0.6 m along the barrel, where the fist is.
+- Every view reads it the same way: the local player, remote players and the bots (`NightView` maps the shooter's id to
+  the body that draws it).
+- `test_shot_feedback.gd` checks, for every firearm in the catalogue, that the flash's global position equals the held
+  weapon's `Muzzle`, that a model's own `Muzzle` is preferred over the made one, and that another player's shot flashes
+  on their weapon.
+
 ## Which weapon is which
 
 The class of each weapon id is one table, `WeaponHoldMap` (`game/gameplay/player/weapon_hold_map.gd`): lever rifle is

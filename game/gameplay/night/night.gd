@@ -88,6 +88,7 @@ func start(
 	view = NightView.new()
 	add_child(view)
 	view.setup(state, camera, _telegraphs(), _board_seconds())
+	view.bodies = server.body_of
 	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
 	view.hear(world)

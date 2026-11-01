@@ -12,6 +12,10 @@ extends Node3D
 ## moves smoothly at any frame rate (physics interpolation done by hand, since the camera is a
 ## free node). `step()` takes the time step and the blend as arguments, so a test drives it with
 ## fixed numbers and no wall time.
+##
+## A shot shakes the view (`shake`, docs/design/camera-shake.md) but never the aim: the lens node
+## turns by the shake, while `aim_transform()` stays the unshaken view the crosshair ray and the
+## weapon's aim are taken from.
 
 ## The body is hidden or shown (the lens is too close to the head, or clear of it again).
 signal body_hidden_changed(hidden: bool)
@@ -31,7 +35,11 @@ var aiming := false
 ## True while the body sprints (not just the key: `PlayerMotionState.sprinting`).
 var sprinting := false
 
+## The shot shake of the view (trauma, scale); null before `setup`.
+var shake: CameraShake
+
 var _tuning: PlayerTuning
+var _aim_transform := Transform3D.IDENTITY
 var _target: CharacterBody3D
 var _previous := Vector3.ZERO
 var _current := Vector3.ZERO
@@ -57,6 +65,7 @@ var _steer_velocity := Vector2.ZERO
 func setup(target: CharacterBody3D, tuning: PlayerTuning) -> void:
 	_target = target
 	_tuning = tuning
+	shake = CameraShake.new(tuning)
 	top_level = true
 	target.add_to_group(BODY_GROUP)
 	_side.snap(side)
@@ -145,6 +154,28 @@ func camera() -> Camera3D:
 	return _camera
 
 
+## Adds a shot's trauma to the view shake (`WeaponDef.shake_trauma`); the player's setting scales
+## it.
+func add_shake(trauma: float) -> void:
+	if shake != null:
+		shake.add(trauma)
+
+
+## The view the crosshair sees, without the shake: the lens place and turn the aim ray, the
+## weapon's aim and the shot are taken from.
+func aim_transform() -> Transform3D:
+	return _aim_transform
+
+
+## Where the aim ray starts and which way it goes (-Z of `aim_transform()`).
+func aim_origin() -> Vector3:
+	return _aim_transform.origin
+
+
+func aim_direction() -> Vector3:
+	return -_aim_transform.basis.z
+
+
 ## Distance from the player's head (the pivot height) to the lens, after the walls.
 func lens_distance() -> float:
 	return _lens_distance
@@ -177,6 +208,7 @@ func step(delta: float, fraction: float) -> void:
 		apply_look(stick.x * rate, stick.y * rate)
 	if _steering:
 		_steer_view(delta)
+	shake.step(delta)
 	_aim.step(1.0 if aiming else 0.0, _tuning.aim_frequency, delta)
 	_sprint.step(1.0 if sprinting and not aiming else 0.0, _tuning.sprint_frequency, delta)
 	_side.step(side, _tuning.swap_frequency, delta)
@@ -245,7 +277,9 @@ func _place(head: Vector3, delta: float) -> void:
 	_arm_cap = _let_out(_arm_cap, placed["raw_arm"], delta)
 	_line_cap = _let_out(_line_cap, placed["raw_line"], delta)
 	var lens: Vector3 = placed["camera"]
-	_camera.global_transform = Transform3D(basis, lens)
+	_aim_transform = Transform3D(basis, lens)
+	# The lens turns where it stands; the aim keeps the unshaken view.
+	_camera.global_transform = Transform3D(basis * shake.rotation(), lens)
 	_camera.fov = lerpf(_tuning.fov, _tuning.fov_aim, aim) + _tuning.sprint_fov_kick * sprint
 	global_transform = Transform3D(Basis(Vector3.UP, yaw), pivot)
 	_lens_distance = lens.distance_to(head)

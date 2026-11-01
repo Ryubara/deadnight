@@ -9,6 +9,9 @@ extends RefCounted
 const SERVICE_PATH := ^"/root/Settings"
 const KEY_SENSITIVITY := &"controls/mouse_sensitivity"
 const KEY_INVERT_Y := &"controls/invert_y"
+const KEY_CAMERA_SHAKE := &"accessibility/camera_shake"
+const KEY_REDUCED_MOTION := &"accessibility/reduced_motion"
+const DEFAULT_CAMERA_SHAKE := 100
 const DEFAULT_SENSITIVITY := 1.0
 const DEFAULT_INVERT_Y := false
 const MIN_SENSITIVITY := 0.1
@@ -19,6 +22,17 @@ static func sensitivity(tree: SceneTree) -> float:
 	if value is float or value is int:
 		return maxf(float(value), MIN_SENSITIVITY)
 	return DEFAULT_SENSITIVITY
+
+
+## How much of the shot shake the player wants, 0 to 1: the camera shake setting (a percent),
+## and none at all while reduced motion is on.
+static func camera_shake(tree: SceneTree) -> float:
+	if _read(tree, KEY_REDUCED_MOTION, false) == true:
+		return 0.0
+	var value: Variant = _read(tree, KEY_CAMERA_SHAKE, DEFAULT_CAMERA_SHAKE)
+	if value is float or value is int:
+		return clampf(float(value) / 100.0, 0.0, 1.0)
+	return DEFAULT_CAMERA_SHAKE / 100.0
 
 
 static func invert_y(tree: SceneTree) -> bool:
