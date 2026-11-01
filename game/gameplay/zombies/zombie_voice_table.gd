@@ -60,13 +60,10 @@ const LOOKS := {
 ## The animation clips' lengths in seconds (clips.json beside each model, docs/design/zombies.md):
 ## a footstep falls at every half of a cycle (a foot plants twice in a walk, run, crawl or boss
 ## walk), so the cadence is a clip's length over two.
-const WALK_CYCLE := 1.3333
-const RUN_CYCLE := 0.6667
+const WALK_CYCLE := ZombieRig.WALK_CYCLE
+const RUN_CYCLE := ZombieRig.RUN_CYCLE
 const CRAWL_CYCLE := 1.6667
 const BOSS_CYCLE := 1.6667
-## The move blend: walk below `WALK_AT` m/s, fully run at `RUN_AT` (`ZombieRig`).
-const WALK_AT := 1.0
-const RUN_AT := 3.0
 ## Slower than this a zombie is standing, and its feet are silent.
 const MOVING_FROM := 0.3
 
@@ -77,14 +74,15 @@ static func get_role(look: StringName, key: String) -> Variant:
 	return own[key] if own.has(key) else WALKER[key]
 
 
-## Seconds of one cycle of the clip that plays at `speed` for `look`.
+## Seconds of one cycle of the clip that plays at `speed` for `look`: the clip's length over the
+## rate it is played at (`ZombieRig.gait_rate`), so the steps keep the feet's cadence.
 static func cycle_seconds(look: StringName, speed: float) -> float:
+	var rate := ZombieRig.gait_rate(look, speed)
 	if ZombieModels.crawls(look):
-		return CRAWL_CYCLE
+		return CRAWL_CYCLE / rate
 	if ZombieModels.is_boss(look):
-		return BOSS_CYCLE
-	var run := clampf((speed - WALK_AT) / (RUN_AT - WALK_AT), 0.0, 1.0)
-	return lerpf(WALK_CYCLE, RUN_CYCLE, run)
+		return BOSS_CYCLE / rate
+	return lerpf(WALK_CYCLE, RUN_CYCLE, ZombieRig.run_weight(look, speed)) / rate
 
 
 ## The step sound a zombie of `look` makes at `speed`.
