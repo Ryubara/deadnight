@@ -35,6 +35,11 @@ import kitlib
 import soldier_clips as sc
 
 BUDGET = 6000  # style bible: player character, gameplay LOD
+FAR_BUDGET = 2000  # style bible: player character, far LOD (#139); the build fails if a preset is over it
+FAR_AIM = 1950  # what the far ratio is solved for, under the budget (a collapse lands within a few triangles)
+FAR_KEEP = 260  # parts this small keep every triangle in the far LOD (caps, glasses, a bow tie): little to save, and a
+# collapse turns them to slivers (the ball cap at 0.36 lost its peak)
+FAR_MIN_RATIO = 0.2  # no part is cut below this share of its triangles (it would lose its shape)
 SWATCH_PX = 16
 ATLAS_W, ATLAS_H = 256, 64
 SHADE = 0.75
@@ -978,6 +983,49 @@ def join(base, extra):
 # --- export ----------------------------------------------------------------------------------------------------------
 
 
+def far_copy(o, ratio):
+    """The part's far level of detail: a copy (same skeleton, same atlas UVs, same skin) collapse-decimated to
+    `ratio` of its triangles. The Armature modifier stays; the Decimate goes first in the stack and is applied, so
+    the rest-pose mesh is what is cut, and the cut interpolates the skin weights."""
+    far = o.copy()
+    far.data = o.data.copy()
+    far.name = far.data.name = o.name + "__far"
+    bpy.context.collection.objects.link(far)
+    if ratio < 1.0:
+        mod = far.modifiers.new("far", "DECIMATE")
+        mod.decimate_type = "COLLAPSE"
+        mod.ratio = ratio
+        select(far)
+        bpy.ops.object.modifier_move_to_index(modifier=mod.name, index=0)
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+        # A collapse can leave zero-area triangles and folded n-gons, which the glTF round trip drops or splits
+        # its own way: triangulate here and drop the zero-area ones, so the catalog counts what Godot draws.
+        bm = bmesh.new()
+        bm.from_mesh(far.data)
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_area() < 1e-10], context="FACES_ONLY")
+        bm.to_mesh(far.data)
+        bm.free()
+    return far
+
+
+def far_parts(parts, presets_of):
+    """A far copy of every part, with one decimation ratio for every part bigger than FAR_KEEP, solved so the
+    heaviest preset's far parts come to FAR_AIM (`presets_of(tris)` gives each preset's sum for a {mesh: tris})."""
+    near = {f"{s}__{p}": kitlib.tris(o) for (s, p), o in parts.items()}
+    big = {k: v for k, v in near.items() if v > FAR_KEEP}
+    ratio = 1.0
+    for _ in range(6):
+        guess = {k: (v * ratio if k in big else v) for k, v in near.items()}
+        worst = max(presets_of(guess).values())
+        if worst <= FAR_AIM:
+            break
+        small = max(presets_of({k: (0 if k in big else v) for k, v in near.items()}).values())
+        ratio = min(ratio, max((FAR_AIM - small) / max(worst - small, 1) * ratio, FAR_MIN_RATIO)) * 0.99
+    far = {key: far_copy(o, ratio if f"{key[0]}__{key[1]}" in big else 1.0) for key, o in parts.items()}
+    return far, ratio
+
+
 def finish_pose(arm, factor):
     arm.data.pose_position = "POSE"
     for pb in arm.pose.bones:
@@ -1072,14 +1120,23 @@ def main():
         hide_hair = lk["parts"]["headwear"] in HIDES_HAIR
         return sum(tris.get(f"{s}__{p}", 0) for s, p in lk["parts"].items() if not (s == "hair" and hide_hair))
 
+    def look_sum(lk, counts):
+        hide_hair = lk["parts"]["headwear"] in HIDES_HAIR
+        return sum(counts.get(f"{s}__{p}", 0) for s, p in lk["parts"].items() if not (s == "hair" and hide_hair))
+
+    far, far_ratio = far_parts(parts, lambda counts: {pid: look_sum(lk, counts) for pid, _n, lk in PRESETS})
+    tris_far = {f"{s}__{p}": kitlib.tris(o) for (s, p), o in far.items()}
+
     presets = []
     for pid, name, lk in PRESETS:
         t = look_tris(lk)
         assert t <= BUDGET, f"{pid}: {t} tris over the {BUDGET} budget"
-        presets.append({"id": pid, "name": name, **lk, "tris": t})
+        t_far = look_sum(lk, tris_far)
+        assert t_far <= FAR_BUDGET, f"{pid}: {t_far} far tris over the {FAR_BUDGET} budget"
+        presets.append({"id": pid, "name": name, **lk, "tris": t, "tris_far": t_far})
 
     finish_pose(arm, factor)
-    meshes = list(parts.values())
+    meshes = list(parts.values()) + list(far.values())
     export(out / "soldier_parts.glb", arm, meshes, images=False)
 
     catalog = {
@@ -1097,6 +1154,8 @@ def main():
         "palettes": PALETTES,
         "palette_names": PALETTE_NAMES,
         "budget": BUDGET,
+        "far_budget": FAR_BUDGET,
+        "far_ratio": round(far_ratio, 3),
         "clips": sorted(a.name for a in bpy.data.actions),
         "weapon_clips": {c: [n for n in sc.CLIPS if n.endswith("_" + c)] for c in sc.CLASSES},
         "slots": {
@@ -1107,6 +1166,8 @@ def main():
                         "label": label,
                         "mesh": None if p == "none" else f"{s}__{p}",
                         "tris": tris.get(f"{s}__{p}", 0),
+                        "mesh_far": None if p == "none" else f"{s}__{p}__far",
+                        "tris_far": tris_far.get(f"{s}__{p}", 0),
                         **({"hides_hair": True} if s == "headwear" and p in HIDES_HAIR else {}),
                     }
                     for p, label in spec["parts"].items()
@@ -1119,6 +1180,8 @@ def main():
     (out / "parts.json").write_text(json.dumps(catalog, indent=1) + "\n", encoding="utf-8", newline="\n")
     print("PARTS", json.dumps({"clips": n_clips, "bones": len(arm.data.bones), "tris": tris}))
     print("PRESETS", json.dumps({p["id"]: p["tris"] for p in presets}))
+    print("FAR", json.dumps({"ratio": round(far_ratio, 3), "presets": {p["id"]: p["tris_far"] for p in presets},
+                             "parts": tris_far}))  # fmt: skip
 
     if args.preview:
         args.preview.mkdir(parents=True, exist_ok=True)
@@ -1130,6 +1193,10 @@ def main():
                 parts[s, pid] for s, pid in p["parts"].items() if (s, pid) in parts and not (s == "hair" and hide_hair)
             ]
             export(args.preview / f"{p['id']}.glb", arm, keep, images=True)
+            keep_far = [
+                far[s, pid] for s, pid in p["parts"].items() if (s, pid) in far and not (s == "hair" and hide_hair)
+            ]
+            export(args.preview / f"{p['id']}_far.glb", arm, keep_far, images=True)
         mat.node_tree.nodes["Image Texture"].image = atlas
 
 
