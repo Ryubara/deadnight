@@ -36,6 +36,15 @@ func test_the_manifest_names_every_zombie_look_and_weapon() -> void:
 	assert_bool(paths.has(ZombieRig.EXTRA_CLIPS_FILE)).is_true()
 
 
+func test_the_manifest_has_the_repair_hammer_and_its_model() -> void:
+	var paths := WarmupManifest.resource_paths()
+	assert_bool(paths.has(PlayerAnimation.HAMMER_HOLD)).is_true()
+	var hold := load(PlayerAnimation.HAMMER_HOLD) as WeaponHold
+	assert_bool(paths.has(hold.scene)).is_true()
+	var drawn := WarmupManifest.drawable_dependencies(WarmupManifest.definition_paths())
+	assert_bool(drawn.has(hold.scene)).is_true()
+
+
 func test_the_manifest_follows_a_definition_to_its_scenes() -> void:
 	# A definition that points at a model brings the model: dependencies are read, not listed.
 	var dependencies := WarmupManifest.dependencies_of("res://gameplay/weapons/defs/pistol.tres")
@@ -98,6 +107,16 @@ func test_a_night_draws_nothing_the_warm_up_did_not() -> void:
 		)
 		. is_empty()
 	)
+	night.queue_free()
+
+
+func test_the_warm_up_draws_the_crane_in_every_stage_and_keeps_its_materials() -> void:
+	# The night's own crane is hidden until the server's first frame, so the warm-up draws a copy:
+	# whatever the real one is made of (cabinet, glass, beam, sparks) is in the ledger.
+	var night := await _warmed_night()
+	var crane_strings := DrawLedger.strings_of(night.view.crane.crane)
+	assert_int(crane_strings.size()).is_greater(3)
+	assert_array(night.warmup.ledger.missing(crane_strings)).is_empty()
 	night.queue_free()
 
 

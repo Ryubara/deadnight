@@ -15,10 +15,11 @@ extends Node
 ##      programs of a mesh differ with the lights that reach it, and the generator can fail);
 ##   4. on a stage high above the lot, in each of four light conditions (the moon alone, an omni
 ##      light, a spot light, both): every zombie look near and far, every weapon's and grenade's
-##      scene, and the night view's own effects, replayed from sample events (a shot of each weapon,
-##      damage numbers with every digit, a blast), and keeps the materials those effects made, so
-##      the shaders they own are not freed with the short-lived nodes (a shader goes with the last
-##      material that uses it, and would be built again at every shot).
+##      scene, the repair hammer, the prize crane in each of its stages, and the night view's own
+##      effects, replayed from sample events (a shot of each weapon, damage numbers with every
+##      digit, a blast), and keeps the materials those effects made, so the shaders they own are
+##      not freed with the short-lived nodes (a shader goes with the last material that uses it,
+##      and would be built again at every shot).
 ## The night's lights, environment and fog are used as they are: the stage is in the same world,
 ## seen through a camera of its own that is current for the warm-up.
 
@@ -34,6 +35,8 @@ const ROW_SPACING := 1.9
 const NEAR_SHOT := 9.0
 const FAR_SHOT := 34.0
 const SHOT_FOV := 75.0
+## How far behind the row of zombies the stage crane stands.
+const CRANE_BEHIND := -6.0
 ## The light conditions every thing is drawn under: whether an omni and a spot light reach it.
 const LIGHT_CELLS: Array[Dictionary] = [
 	{"label": "moonlight", "omni": false, "spot": false},
@@ -180,16 +183,22 @@ func _stage_pass() -> void:
 		_say(_step("stage", float(i) / LIGHT_CELLS.size()), "Setting the scene: %s" % cell["label"])
 		var rig := _light_rig(cell)
 		var props := _stage_row()
+		var crane := _stage_crane()
+		_show_crane(crane, CraneState.Stage.SPIN)
 		await _shot_at(NEAR_SHOT)
+		_show_crane(crane, CraneState.Stage.GRAB)
 		await _shot_at(FAR_SHOT)
+		_show_crane(crane, CraneState.Stage.LEAVING)
 		_say(_step("stage", (i + 0.5) / LIGHT_CELLS.size()), "Firing: %s" % cell["label"])
 		_replay_effects()
 		await _shot_at(NEAR_SHOT)
 		_keep_materials(_night.view)
+		_keep_materials(crane)
 		# The next condition starts clean: a flash left over would put an omni light on it.
 		for effect in _night.view.effects.get_children():
 			effect.free()
 		props.free()
+		crane.free()
 		rig.free()
 		await get_tree().process_frame
 	_finish("stage")
@@ -246,6 +255,27 @@ func _stage_row() -> Node3D:
 			item.position = Vector3(-6.0 + at * 1.2, 1.0, 1.5)
 			at += 1
 	return row
+
+
+## A prize crane behind the row, a copy of the night's own (its cabinet, beam, light and sparks, a
+## prize on its stage), since the night's is hidden until the server's first frame says where it
+## stands.
+func _stage_crane() -> PrizeCrane:
+	var tuning := _night.rules_tuning
+	var item := tuning.economy.item(&"crane_play")
+	var crane := PrizeCrane.new()
+	_stage.add_child(crane)
+	crane.configure(tuning.crane, item.pool if item != null else [])
+	crane.position = Vector3(0.0, 0.0, CRANE_BEHIND)
+	return crane
+
+
+## One frame of `stage` of the crane (every stage draws something the others do not: the cycling
+## prize, the held one, the dud with its sparks and the failing beam).
+func _show_crane(crane: PrizeCrane, stage: CraneState.Stage) -> void:
+	var item := _night.rules_tuning.economy.item(&"crane_play")
+	var weapon := item.pool[0] if item != null and not item.pool.is_empty() else &""
+	crane.show_state({"stage": stage, "left": 1.0, "weapon": String(weapon)}, 0.1)
 
 
 func _instance_of(path: String) -> Node3D:
