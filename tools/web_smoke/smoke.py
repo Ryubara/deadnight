@@ -46,11 +46,13 @@ SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--igno
 # Console errors that are about the browser, not the game, and are fine. Keep this list short and say why.
 IGNORED: tuple[str, ...] = ()
 
-# One mouse motion of `dx` pixels, sent to the canvas as the browser would while the pointer is locked.
+# One mouse motion of `dx` pixels, sent to the canvas as the browser would while the pointer is locked (Godot's web
+# runtime listens for `pointermove` on the window).
 SYNTHETIC_MOUSE_MOVE_JS = """
 (dx) => {
   const canvas = document.querySelector('canvas');
-  canvas.dispatchEvent(new MouseEvent('mousemove', { movementX: dx, movementY: 0, bubbles: true, cancelable: true }));
+  const init = { movementX: dx, movementY: 0, bubbles: true, cancelable: true };
+  canvas.dispatchEvent(new PointerEvent('pointermove', init));
 }
 """
 
