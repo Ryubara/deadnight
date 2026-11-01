@@ -174,7 +174,7 @@ Shop (prices at round 1):
 | --- | ---: | --- |
 | Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
-| Crane play | 500 | random weapon the player lacks (shotgun 4, rifle 3, SMG 2, flare gun 1) |
+| Crane play | 750 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
@@ -184,6 +184,22 @@ Generator: 100 units; it burns 0.03 a second idle plus each lit circuit (screen 
 concession 0.05, booth 0.08, back lot 0.07), grows 3% a round, and burns at half rate in breaks.
 Screen lot only: 0.09 a second, about 18 minutes of tank. Everything lit: 0.29 a second, under 6
 minutes, and the draw rises every round.
+
+## The prize crane
+
+Modelled on the Call of Duty Zombies Mystery Box ([research](../research/mystery-box.md)): a play costs 750, the claw
+digs for 4.5 seconds, then the chosen weapon floats for 12 seconds and only the buyer can take it. A weapon the player
+carries is never drawn; the draw is seeded (its own stream, `crane_rng_state` in the snapshot). The first 3 plays at a
+place never break down; after that the chance is 15% for four plays, 30% for four more, then 50%. A breakdown refunds
+the whole price (not counted as earned), shows a dud prize for 4 seconds and moves the crane to one of the other
+places whose door is open ([the places](map.md#the-cranes-places)); with no other place open it cannot break down.
+The numbers are `CraneTuning` and the item `crane_play` in `default_tuning.tres`.
+
+**Why 750.** The balance simulator ([the crane's price](../research/balance-simulator.md#the-cranes-price)) was run
+with the crane at 500, 750 and 950 (the Mystery Box's own price). A prize is worth about what the walls charge for it
+(the draw's average is near 900 points of wall weapons, and the SMG and flare gun are sold nowhere else). At 950 a weak
+player falls a round sooner; at 500 the average player buys three plays a night; at 750 the median rounds do not move
+and the crane is about one and a half plays, a tenth of what an average solo night spends.
 
 ## Ammunition
 

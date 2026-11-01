@@ -205,7 +205,7 @@ func _make_autopilot() -> void:
 				autopilot.prices_of_goods[item.id] = item.price
 				autopilot.wanted.append(item.id)
 				if item.kind == ShopItem.Kind.CRANE:
-					autopilot.crane_prizes = item.pool.size()
+					autopilot.crane_pool.assign(item.pool)
 			ShopItem.Kind.AMMO:
 				autopilot.ammo_prices[item.weapon] = item.price
 	autopilot.wanted.sort_custom(

@@ -29,7 +29,7 @@ func test_the_lot_has_two_wall_weapons_a_crane_and_lockers() -> void:
 	for spot in _spots:
 		kinds[spot["kind"]] = kinds.get(spot["kind"], 0) + 1
 	assert_int(kinds[&"wall"]).is_equal(2)
-	assert_int(kinds[&"crane"]).is_equal(1)
+	assert_int(kinds[&"crane"]).is_equal(CraneTuning.new().spot_count())
 	assert_int(kinds[&"ammo"]).is_greater_equal(4)
 
 
@@ -44,6 +44,19 @@ func test_every_spot_has_a_known_kind_and_wall_and_crane_name_shop_items() -> vo
 		assert_object(item).override_failure_message(String(spot["shop_id"])).is_not_null()
 		var expected := ShopItem.Kind.WEAPON if spot["kind"] == &"wall" else ShopItem.Kind.CRANE
 		assert_int(item.kind).is_equal(expected)
+
+
+func test_every_place_the_crane_can_stand_has_one_marker() -> void:
+	var seen: Array[int] = []
+	for spot in _spots:
+		if spot["kind"] == &"crane":
+			seen.append(spot["crane_spot"])
+	seen.sort()
+	var count := RulesFixture.tuning().crane.spot_count()
+	var all: Array[int] = []
+	for index in count:
+		all.append(index)
+	assert_array(seen).is_equal(all)
 
 
 func test_every_weapon_the_shop_sells_by_the_wall_hangs_on_one() -> void:

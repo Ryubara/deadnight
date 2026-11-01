@@ -230,6 +230,8 @@ func _on_rules_event(event: Dictionary) -> void:
 	match event["type"]:
 		&"purchase_made":
 			_deliver(event["player_id"], event["detail"])
+		&"crane_prize_taken":
+			_deliver(event["player_id"], {"weapon": event["weapon"]})
 
 
 # --- Weapons and hands ---
@@ -388,15 +390,31 @@ func _offer_at(player_id: int, spot: Dictionary) -> Dictionary:
 				"price": rules.price_of(spot["shop_id"]),
 			}
 		&"crane":
-			var item := rules.tuning.economy.item(spot["shop_id"])
-			var owned: Array[StringName] = rules.players[player_id].weapons
-			if item == null or item.pool_without(owned).is_empty():
-				return {}
-			return {"kind": &"crane", "id": item.id, "price": rules.price_of(item.id)}
+			return _crane_offer(player_id, spot)
 		&"ammo":
 			var held := combat.weapon_of(player_id)
 			return _ammo_offer(player_id, held.def.id) if held != null else {}
 	return {}
+
+
+## The crane at its current spot: a play to buy while it is free, the prize to take for the buyer
+## while it is held out, and for anyone else "only the buyer" (`kind` `crane_busy`, with `buyer`).
+## Nothing at a spot the crane is not standing on, and nothing once the pool is empty for you.
+func _crane_offer(player_id: int, spot: Dictionary) -> Dictionary:
+	var crane := rules.crane
+	if spot["crane_spot"] != crane.spot:
+		return {}
+	var item := rules.tuning.economy.item(spot["shop_id"])
+	var owned: Array[StringName] = rules.players[player_id].weapons
+	if item == null:
+		return {}
+	if crane.is_ready():
+		if item.pool_without(owned).is_empty():
+			return {}
+		return {"kind": &"crane", "id": item.id, "price": rules.price_of(item.id)}
+	if crane.buyer_id == player_id and crane.stage == CraneState.Stage.GRAB:
+		return {"kind": &"crane_take", "id": item.id, "weapon": crane.weapon, "left": crane.left}
+	return {"kind": &"crane_busy", "id": item.id, "buyer": crane.buyer_id}
 
 
 ## Rounds for a weapon, as many as fit (one purchase at most), or `{}` when none do or are sold.
@@ -421,6 +439,8 @@ func _use(player_id: int) -> void:
 	match target.get("kind"):
 		&"door", &"weapon", &"ammo", &"crane":
 			buy(player_id, target["id"])
+		&"crane_take":
+			rules.apply(RulesAction.crane_take(player_id))
 		&"repair":
 			if _hand_wait[player_id] <= 0.0:
 				_hand_wait[player_id] = tuning.repair_interval
@@ -461,9 +481,23 @@ func _frame() -> Dictionary:
 		"fuel": rules.generator.fuel,
 		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),
+		"crane": _crane_frame(),
 		"barricades": rules.barricades.to_dict(),
 		"zombies": ZombieCodec.encode(sim.zombies),
 		"players": players,
+	}
+
+
+## The crane for the picture: where it stands, which stage it is in, whose play it is, the prize
+## held out (a shop id) and the seconds left in the stage.
+func _crane_frame() -> Dictionary:
+	var crane := rules.crane
+	return {
+		"spot": crane.spot,
+		"stage": crane.stage,
+		"buyer": crane.buyer_id,
+		"weapon": crane.weapon,
+		"left": crane.left,
 	}
 
 

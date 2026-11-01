@@ -1944,6 +1944,25 @@ outline_modulate = Color(1, 0.9, 0.6, 1)
 transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, -6.400, 0.000, 5.000)
 metadata/kind = "crane"
 metadata/shop_id = "crane_play"
+metadata/crane_spot = 0
+
+[node name="SpotCraneMidway" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 6.000, 0.000, 14.000)
+metadata/kind = "crane"
+metadata/shop_id = "crane_play"
+metadata/crane_spot = 1
+
+[node name="SpotCraneField" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 0.000, -14.000)
+metadata/kind = "crane"
+metadata/shop_id = "crane_play"
+metadata/crane_spot = 2
+
+[node name="SpotCraneYard" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 40.000, 0.000, 10.000)
+metadata/kind = "crane"
+metadata/shop_id = "crane_play"
+metadata/crane_spot = 3
 
 [node name="LockerField" type="CSGBox3D" parent="ShopProps"]
 transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 3.100, 0.500, -31.000)

@@ -468,10 +468,13 @@ def door(name: str, label_at) -> None:
     label(f"Doors/{name}", "Label", f"{cost}", label_at, 100)
 
 
-def shop_spot(name: str, kind: str, shop_id: str, pos, yaw: float = 0.0) -> None:
+def shop_spot(name: str, kind: str, shop_id: str, pos, yaw: float = 0.0, crane_spot: int | None = None) -> None:
     """Where a player stands to buy: a marker in `ShopSpots`. `kind` is wall, crane or ammo; `shop_id` is the shop item
-    (empty for ammunition: the lot sells the rounds of the weapon in hand)."""
+    (empty for ammunition: the lot sells the rounds of the weapon in hand). A crane marker names its place in the
+    rules' list of crane spots (`crane_spot`, an index into `spot_doors` of the tuning's crane)."""
     props = {"transform": xform(pos, yaw), "metadata/kind": f'"{kind}"', "metadata/shop_id": f'"{shop_id}"'}
+    if crane_spot is not None:
+        props["metadata/crane_spot"] = str(crane_spot)
     node(name, "Marker3D", "ShopSpots", props)
 
 
@@ -819,7 +822,12 @@ def build() -> None:
     shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
     sign("ShopProps", "CraneSign", "PRIZE CRANE", (-7.3, 2.0, 5.0), 90, 60)
-    shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270)
+    shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)
+    # The crane's other places (rules: `crane.spot_doors`): the midway, the open field and the yard. A breakdown moves
+    # the crane to one of the spots whose door is open; the prize crane stands on only one at a time.
+    shop_spot("SpotCraneMidway", "crane", "crane_play", (6.0, 0, 14.0), 90, crane_spot=1)
+    shop_spot("SpotCraneField", "crane", "crane_play", (-24.0, 0, -14.0), 0, crane_spot=2)
+    shop_spot("SpotCraneYard", "crane", "crane_play", (40.0, 0, 10.0), 270, crane_spot=3)
     # Lockers: the avenue (the first one, in the open), the stand, the midway, the yard and the back lot.
     ammo_locker("LockerField", (3.1, -31.0), 270)
     ammo_locker("LockerStand", (9.2, 1.8), 270)

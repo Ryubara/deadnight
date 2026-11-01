@@ -29,6 +29,8 @@ const REVIVE_HEALTH := 0.5
 const STUN_PER_METRE := 0.3
 ## Players mend fully between rounds. A player buys a fuel can when the tank is below this.
 const FUEL_BUY_BELOW := 35.0
+## Seconds per tick while the shopper waits at the crane in a break.
+const CRANE_STEP := 0.25
 ## Seconds to put a dry weapon away and take another.
 const SWAP_SECONDS := 0.6
 ## A dry player with points to spend runs to a locker: the walk there, the purchase and the walk
@@ -629,8 +631,31 @@ func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
 		if event["type"] == &"purchase_made":
 			var spent: Dictionary = _result["spent_on"]
 			spent[item_id] = spent.get(item_id, 0) + event["price"]
+			if item_id == &"crane_play":
+				return 1 if _play_crane(player, event["price"]) else 0
 			return int(event["detail"].get("rounds", 1))
 	return 0
+
+
+## Spins the crane out in the break (the shopper stands at the glass, so the weapon is taken the
+## moment it is held out). False when the crane broke down: the price is back and the player tries
+## again at the next break.
+func _play_crane(player: SimPlayer, price: int) -> bool:
+	var won := false
+	var broke := false
+	while not rules.crane.is_ready() and rules.phase == GameRules.Phase.BREAK:
+		var caused := rules.apply(RulesAction.tick(CRANE_STEP))
+		for event in caused:
+			if event["type"] == &"crane_prize_ready":
+				rules.apply(RulesAction.crane_take(player.id))
+				won = true
+			elif event["type"] == &"crane_breakdown":
+				broke = true
+		_handle(caused)
+	if broke:
+		var spent: Dictionary = _result["spent_on"]
+		spent[&"crane_play"] -= price
+	return won
 
 
 class SimPlayer:

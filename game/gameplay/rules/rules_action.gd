@@ -17,6 +17,7 @@ const ZOMBIE_GONE := &"zombie_gone"
 const REPAIR := &"repair"
 const TEAR_BOARD := &"tear_board"
 const BUY := &"buy"
+const CRANE_TAKE := &"crane_take"
 const SET_CIRCUIT := &"set_circuit"
 const GRANT_POINTS := &"grant_points"
 const USE_GRENADE := &"use_grenade"
@@ -61,6 +62,7 @@ const REQUIRED := {
 	REPAIR: {"player_id": TYPE_INT, "barricade_id": TYPE_STRING_NAME},
 	TEAR_BOARD: {"barricade_id": TYPE_STRING_NAME, "zombie_id": TYPE_INT},
 	BUY: {"player_id": TYPE_INT, "item_id": TYPE_STRING_NAME},
+	CRANE_TAKE: {"player_id": TYPE_INT},
 	SET_CIRCUIT: {"circuit_id": TYPE_STRING_NAME, "on": TYPE_BOOL},
 	GRANT_POINTS: {"player_id": TYPE_INT, "amount": TYPE_INT},
 	USE_GRENADE: {"player_id": TYPE_INT},
@@ -155,6 +157,12 @@ static func buy(player_id: int, item_id: StringName, rounds: int = -1) -> Dictio
 	if rounds >= 0:
 		action["rounds"] = rounds
 	return action
+
+
+## The buyer takes the weapon the crane is holding out. Anyone else, or nobody's, is answered with
+## `crane_take_denied`.
+static func crane_take(player_id: int) -> Dictionary:
+	return {"type": CRANE_TAKE, "player_id": player_id}
 
 
 static func set_circuit(circuit_id: StringName, on: bool) -> Dictionary:

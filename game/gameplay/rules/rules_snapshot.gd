@@ -34,9 +34,11 @@ static func take(rules: GameRules) -> Dictionary:
 		"doors_open": rules.doors_open.duplicate(),
 		"generator": rules.generator.to_dict(),
 		"barricades": rules.barricades.to_dict(),
+		"crane": rules.crane.to_dict(),
 		"spawn_rng_state": rules._spawn_rng.state,
 		"shop_rng_state": rules._shop_rng.state,
 		"cripple_rng_state": rules._cripple_rng.state,
+		"crane_rng_state": rules._crane_rng.state,
 	}
 
 
@@ -73,6 +75,7 @@ static func restore(rules: GameRules, data: Dictionary) -> StringName:
 	rules.doors_open.assign(data["doors_open"])
 	rules.generator.restore(data["generator"])
 	rules.barricades.restore(data["barricades"])
+	rules.crane.restore(data["crane"])
 	rules._fuel_announced = floori(rules.generator.fuel)
 	rules._spawn_rng.seed = rules.rng_seed ^ GameRules.SPAWN_STREAM
 	rules._spawn_rng.state = data["spawn_rng_state"]
@@ -80,4 +83,6 @@ static func restore(rules: GameRules, data: Dictionary) -> StringName:
 	rules._shop_rng.state = data["shop_rng_state"]
 	rules._cripple_rng.seed = rules.rng_seed ^ GameRules.CRIPPLE_STREAM
 	rules._cripple_rng.state = data["cripple_rng_state"]
+	rules._crane_rng.seed = rules.rng_seed ^ GameRules.CRANE_STREAM
+	rules._crane_rng.state = data["crane_rng_state"]
 	return &""

@@ -119,7 +119,8 @@ func spawn_points() -> Array[Vector3]:
 
 ## Where a player buys without a door: the weapons on the walls, the prize crane and the ammunition
 ## lockers, as `{kind, shop_id, position}` (`kind` is `wall`, `crane` or `ammo`; a locker has no
-## shop id and sells the rounds of the weapon in hand).
+## shop id and sells the rounds of the weapon in hand). A crane spot also has `crane_spot`: its
+## place in the rules' list of crane places (metadata `crane_spot`, 0 when not set).
 func shop_spots() -> Array[Dictionary]:
 	var spots: Array[Dictionary] = []
 	var group := greybox.get_node_or_null("ShopSpots")
@@ -133,6 +134,7 @@ func shop_spots() -> Array[Dictionary]:
 					"kind": StringName(marker.get_meta("kind")),
 					"shop_id": StringName(marker.get_meta("shop_id")),
 					"position": (marker as Node3D).global_position,
+					"crane_spot": int(marker.get_meta("crane_spot", 0)),
 				}
 			)
 		)

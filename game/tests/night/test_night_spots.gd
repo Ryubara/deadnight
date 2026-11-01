@@ -119,13 +119,30 @@ func test_the_crane_plays_until_it_has_nothing_left_to_give() -> void:
 	var at := _spot(night, &"crane_play")
 	var prompt := _stand_at(night, at)
 	assert_str(String(prompt["kind"])).is_equal("crane")
-	assert_int(prompt["price"]).is_equal(500)
+	assert_int(prompt["price"]).is_equal(night.server.rules.price_of(&"crane_play"))
 	var pool := night.server.rules.tuning.economy.item(&"crane_play").pool.size()
 	for _i in pool:
 		night.server.rules.apply(RulesAction.grant_points(1, 500))
 		_use(night)
+		# The claw digs, then the weapon is held out for the buyer to take.
+		assert_str(String(night.state.me()["prompt"]["kind"])).is_equal("crane_busy")
+		NightFixture.run(night, 300)
+		assert_str(String(night.state.me()["prompt"]["kind"])).is_equal("crane_take")
+		_use(night)
 	assert_int(night.server.combat.carried(1).size()).is_equal(2 + pool)
 	assert_dict(_stand_at(night, at)).is_empty()
+	night.queue_free()
+
+
+func test_the_crane_shows_only_where_it_stands() -> void:
+	var night := await _start()
+	night.server.rules.crane.spot = 2
+	assert_dict(_stand_at(night, _spot(night, &"crane_play"))).is_empty()
+	var field := Vector3.INF
+	for spot in night.world.shop_spots():
+		if spot["kind"] == &"crane" and spot["crane_spot"] == 2:
+			field = spot["position"]
+	assert_str(String(_stand_at(night, field)["kind"])).is_equal("crane")
 	night.queue_free()
 
 
