@@ -91,6 +91,14 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
 - Two scripts both called `PlayerState` (this one and the round rules') broke the whole project at merge time as a
   global class clash; this one is `PlayerMotionState`. Check `grep -r "class_name X"` before naming a global class.
 - A test room crate in the run lane made speed tests read zero; keep the lane clear.
+- The camera ease (`ThirdPersonCamera._process`) and the animation (`PlayerAnimation._process`, the AnimationTree) run
+  on the frame delta, which is wall time, while `await physics_frame` counts fixed ticks. On a loaded machine the two
+  drift apart and tests that wait N ticks and then read the fov, the shoulder offset or the animation state failed
+  once in a while. `test_player.gd` therefore turns both off and steps them by hand, one tick per physics frame
+  (`_ticks`); read the camera and animation only after `_ticks`/`_seconds`, never after a plain `process_frame` wait.
+- `clips.json` rounds `seconds` (Fire_Rifle is 0.333 for 8 frames at 24 fps), shorter than its last event
+  (`can_fire_again` at 8/24). A frame step ending in between ended the clip and skipped the event, so the rifle never
+  fired again. `PlayerAnimation` now holds an action until its last event (`_clip_seconds`).
 - Movie Maker's PNG encode is the slow part (about 0.25 s a frame at 1080p); 10 fps captures are enough to judge motion.
 
 ## Sources

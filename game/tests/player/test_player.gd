@@ -9,6 +9,7 @@ const START := Vector3(0.0, 0.05, 10.0)
 var _runner: GdUnitSceneRunner
 var _player: Player
 var _rig: ThirdPersonCamera
+var _animation: PlayerAnimation
 var _tuning: PlayerTuning
 var _real_settings: Node
 
@@ -19,6 +20,13 @@ func before_test() -> void:
 	_player.capture_mouse = false
 	_rig = _player.camera_rig
 	_tuning = _player.tuning
+	_animation = _player.get_node("AnimationTree") as PlayerAnimation
+	# The camera's ease and the animation advance by the frame delta, which is wall time: a loaded
+	# machine gives long, uneven frames. The tests step them by hand, one fixed tick per physics
+	# frame (see _ticks), so the same ticks always give the same result.
+	_rig.set_process(false)
+	_animation.set_process(false)
+	_animation.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	_player.teleport(START)
 	await _ticks(20)  # settle onto the floor
 
@@ -51,22 +59,31 @@ func _install_fake_settings(values: Dictionary) -> void:
 	_player.refresh_settings()
 
 
+## Waits `count` physics ticks and steps the frame-driven nodes (camera ease, animation) by the
+## same fixed time after each, so game time never depends on how fast the machine renders.
 func _ticks(count: int) -> void:
 	for i in count:
 		await get_tree().physics_frame
+		_step_frame_nodes(TICK)
+
+
+func _step_frame_nodes(delta: float) -> void:
+	_rig._process(delta)
+	_animation._process(delta)
+	_animation.advance(delta)
 
 
 func _seconds(seconds: float) -> void:
 	await _ticks(roundi(seconds / TICK))
 
 
-## Waits (process frames, which advance the animation) until the upper one-shot has finished.
-func _until_idle(animation: PlayerAnimation, limit: float) -> void:
+## Waits, in fixed ticks, until the upper one-shot has finished (or `limit` seconds of game time).
+func _until_idle(limit: float) -> void:
 	var waited := 0.0
-	while animation.action_clip != &"" and waited < limit:
-		await get_tree().process_frame
-		waited += get_process_delta_time()
-	await get_tree().process_frame
+	while _animation.action_clip != &"" and waited < limit:
+		await _ticks(1)
+		waited += TICK
+	await _ticks(1)
 
 
 func _plane_distance(from: Vector3) -> float:
@@ -379,34 +396,32 @@ func test_camera_pulls_in_instead_of_clipping_a_wall() -> void:
 
 
 func test_idle_then_run_then_jump_states() -> void:
-	var animation := _player.get_node("AnimationTree") as PlayerAnimation
 	await _seconds(0.8)  # let the landing from the spawn drop finish
-	assert_str(str(animation.current_state())).is_equal("locomotion")
+	assert_str(str(_animation.current_state())).is_equal("locomotion")
 	_runner.simulate_action_press("move_forward")
 	await _seconds(1.0)
-	assert_float(animation.get(PlayerAnimation.MOVE_PARAMETER)).is_greater(0.95)
+	assert_float(_animation.get(PlayerAnimation.MOVE_PARAMETER)).is_greater(0.95)
 	# Feet stay planted: the Run clip's speed follows the ground speed.
-	assert_float(animation.get(PlayerAnimation.RUN_SPEED_PARAMETER)).is_equal_approx(
+	assert_float(_animation.get(PlayerAnimation.RUN_SPEED_PARAMETER)).is_equal_approx(
 		_player.ground_speed() / _tuning.run_clip_speed, 0.02
 	)
 	_runner.simulate_action_press("jump")
 	await _ticks(2)
 	_runner.simulate_action_release("jump")
-	assert_str(str(animation.current_state())).is_equal("jump")
+	assert_str(str(_animation.current_state())).is_equal("jump")
 	await _seconds(0.6)
-	assert_str(str(animation.current_state())).is_not_equal("locomotion")
+	assert_str(str(_animation.current_state())).is_not_equal("locomotion")
 	await _seconds(1.0)
-	assert_str(animation.current_state()).is_equal("locomotion")
+	assert_str(_animation.current_state()).is_equal("locomotion")
 
 
 func test_the_weapon_rides_the_right_hand() -> void:
-	var animation := _player.get_node("AnimationTree") as PlayerAnimation
-	var mount := animation.weapon_mount()
+	var mount := _animation.weapon_mount()
 	assert_object(mount).is_not_null()
 	assert_str(mount.bone_name).is_equal(PlayerAnimation.HAND_BONE)
 	assert_int(mount.get_child_count()).is_equal(1)
-	assert_bool(animation.weapon().is_visible_in_tree()).is_true()
-	assert_str(animation.weapon_class).is_equal("Rifle")
+	assert_bool(_animation.weapon().is_visible_in_tree()).is_true()
+	assert_str(_animation.weapon_class).is_equal("Rifle")
 	# The grip follows the hand bone, so it sits beside the Soldier at about hand height.
 	var hand := mount.global_position - _player.global_position
 	assert_float(hand.y).is_between(0.4, 1.6)
@@ -421,43 +436,55 @@ func test_loops_come_from_the_clip_spec() -> void:
 
 
 func test_equip_swaps_the_weapon_on_its_event_frame() -> void:
-	var animation := _player.get_node("AnimationTree") as PlayerAnimation
 	var events: Array[StringName] = []
-	animation.clip_event.connect(
+	_animation.clip_event.connect(
 		func(_clip: StringName, event: StringName) -> void: events.append(event)
 	)
-	animation.equip(&"Melee")
-	assert_str(animation.weapon_class).is_equal("Melee")
-	assert_str(animation.action_clip).is_equal("Equip_Melee")
-	assert_bool(animation.weapon().visible).is_false()
-	await _until_idle(animation, 2.0)  # Equip is 10 frames at 24 fps; weapon_visible is frame 2
-	assert_bool(animation.weapon().visible).is_true()
+	_animation.equip(&"Melee")
+	assert_str(_animation.weapon_class).is_equal("Melee")
+	assert_str(_animation.action_clip).is_equal("Equip_Melee")
+	assert_bool(_animation.weapon().visible).is_false()
+	await _until_idle(2.0)  # Equip is 10 frames at 24 fps; weapon_visible is frame 2
+	assert_bool(_animation.weapon().visible).is_true()
 	assert_array(events).contains_exactly([&"weapon_visible", &"ready"])
-	assert_str(animation.action_clip).is_equal("")
-	assert_str(animation.weapon().scene_file_path).ends_with("baseball_bat.glb")
+	assert_str(_animation.action_clip).is_equal("")
+	assert_str(_animation.weapon().scene_file_path).ends_with("baseball_bat.glb")
 
 
 func test_fire_and_reload_emit_their_event_frames() -> void:
-	var animation := _player.get_node("AnimationTree") as PlayerAnimation
 	var events: Array[StringName] = []
-	animation.clip_event.connect(
+	_animation.clip_event.connect(
 		func(_clip: StringName, event: StringName) -> void: events.append(event)
 	)
-	assert_bool(animation.play_action(&"Fire")).is_true()
+	assert_bool(_animation.play_action(&"Fire")).is_true()
 	assert_array(events).contains_exactly([&"muzzle"])  # frame 0: the shot has no delay
-	await _until_idle(animation, 2.0)
+	await _until_idle(2.0)
 	assert_array(events).contains_exactly([&"muzzle", &"can_fire_again"])
 	events.clear()
-	animation.play_action(&"Reload")
-	await _until_idle(animation, 6.0)
+	_animation.play_action(&"Reload")
+	await _until_idle(6.0)
 	assert_array(events).contains_exactly(
 		[&"round_in", &"round_in", &"round_in", &"lever", &"can_fire_again"]
 	)
-	assert_bool(animation.play_action(&"Swing")).is_false()  # a rifle does not swing
+	assert_bool(_animation.play_action(&"Swing")).is_false()  # a rifle does not swing
+
+
+func test_a_step_past_the_rounded_clip_length_still_emits_the_last_event() -> void:
+	# Fire_Rifle is 0.333 s in clips.json but its last event is frame 8 of 24 (0.3333 s). A frame
+	# step that ends between the two used to end the clip and drop can_fire_again for good.
+	var events: Array[StringName] = []
+	_animation.clip_event.connect(
+		func(_clip: StringName, event: StringName) -> void: events.append(event)
+	)
+	assert_bool(_animation.play_action(&"Fire")).is_true()
+	_animation._advance_events(0.3331)
+	assert_str(_animation.action_clip).is_equal("Fire_Rifle")  # not over until its last event
+	_animation._advance_events(0.01)
+	assert_array(events).contains_exactly([&"muzzle", &"can_fire_again"])
+	assert_str(_animation.action_clip).is_equal("")
 
 
 func test_the_arms_aim_while_the_legs_run() -> void:
-	var animation := _player.get_node("AnimationTree") as PlayerAnimation
 	var skeleton := _player.find_child("Skeleton3D", true, false) as Skeleton3D
 	var arm := skeleton.find_bone("UpperArm.R")
 	var leg := skeleton.find_bone("UpperLeg.L")
@@ -469,7 +496,7 @@ func test_the_arms_aim_while_the_legs_run() -> void:
 	# The upper bones hold Aim_Rifle; the legs follow the run.
 	assert_float(skeleton.get_bone_pose_rotation(arm).angle_to(arm_still)).is_less(0.15)
 	assert_float(skeleton.get_bone_pose_rotation(leg).angle_to(leg_still)).is_greater(0.05)
-	assert_str(animation.current_state()).is_equal("locomotion")
+	assert_str(_animation.current_state()).is_equal("locomotion")
 
 
 func test_footsteps_follow_distance_run() -> void:
