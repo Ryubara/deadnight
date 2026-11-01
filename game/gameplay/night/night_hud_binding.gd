@@ -3,10 +3,11 @@ extends RefCounted
 ## Joins the HUD (`game/ui/hud/`) to a night. The HUD reads a `HudState` and nothing else; this
 ## feeds that state from what a client hears and nothing more: `ClientState.event_received`. The
 ## rules' events (round, points, party, fuel, purchases, and the player's health: `player_added`,
-## `player_hurt`, `player_healed`, `player_downed`) go in as they are; each `frame` carries what
-## the rules do not announce, which way the local player faces, the held weapon's ammunition
-## (until the weapons' events feed it, #133) and what the hand would do (the prompt at a door or a
-## breach).
+## `player_hurt`, `player_healed`, `player_downed`) go in as they are, and so do the weapons' events
+## the ammo card and the equipment slot read (`HudLoadout.EVENTS`: equipped, shot, reload). Each
+## `frame` carries what neither announces: which way the local player faces, what the hand would
+## do (the prompt at a door or a breach), and, once, the weapon in hand for a HUD that joined after
+## its events.
 
 ## What the player is told at each door: the name on the card (the shop ids are the shop's).
 const DOOR_NAMES := {
@@ -28,8 +29,13 @@ var _weapon_names: Dictionary[StringName, String] = {}
 func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
 	_hud = hud
 	_state = state
+	var ammo_free: Array[StringName] = []
 	for def in WeaponCatalog.all():
 		_weapon_names[def.id] = def.display_name
+		if def.is_melee():
+			ammo_free.append(def.id)
+	hud.state.weapon_names = _weapon_names
+	hud.state.ammo_free = ammo_free
 	var fuel: FuelTuning = server.rules.tuning.fuel
 	hud.state.local_player_id = state.player_id
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
@@ -41,7 +47,10 @@ func _on_event(event: Dictionary) -> void:
 		&"frame":
 			_on_frame()
 		_:
-			if not NightServer.COMBAT_EVENTS.has(event["type"]):
+			if (
+				HudLoadout.EVENTS.has(event["type"])
+				or not NightServer.COMBAT_EVENTS.has(event["type"])
+			):
 				_hud.state.apply_event(event)
 
 
@@ -51,14 +60,11 @@ func _on_frame() -> void:
 	if me.is_empty():
 		return
 	state.facing = me["facing"]
+	# The weapons' events set the ammunition; a HUD that joined late has heard none, so the frame
+	# gives it the weapon in hand once.
 	var weapon: StringName = me["weapon"]
-	var weapon_name: String = _weapon_names.get(weapon, str(weapon))
-	if (
-		me["ammo"] != state.ammo_magazine
-		or me["reserve"] != state.ammo_reserve
-		or weapon_name != state.weapon_name
-	):
-		state.set_ammo(me["ammo"], me["reserve"], weapon_name)
+	if state.weapon_id == &"" and weapon != &"":
+		HudLoadout.equip(weapon, me["ammo"], me["reserve"], state)
 	_set_prompt(me["prompt"])
 
 
