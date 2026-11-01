@@ -47,6 +47,12 @@ const OCCLUSION_LOUDNESS := 0.5
 ## Ducking: how fast the Effects bus drops and recovers, in dB per second.
 const DUCK_ATTACK_DB_PER_S := 80.0
 const DUCK_RELEASE_DB_PER_S := 14.0
+## Mix steps the audio thread must take after voices are stopped before it has let go of their
+## playbacks (the first fades them out, a later one removes them), and the most polls (with a short
+## sleep each) `wait_for_mixer` makes before it gives up.
+const DRAIN_MIX_STEPS := 4
+const DRAIN_MAX_POLLS := 4000
+const DRAIN_POLL_MS := 2
 ## The buses a sting ducks (the guns and the dead, and the ambience under them). The voice of the
 ## player, the music and the interface are left alone.
 const DUCK_BUSES: Array[StringName] = [&"Effects", &"Ambience"]
@@ -319,6 +325,27 @@ func stop_all() -> void:
 	_loops.clear()
 	_duck_until = 0.0
 	_duck_target = 0.0
+
+
+## Waits until the audio thread has taken the stopped voices off, so that quitting leaves no stream
+## held by the audio server (reported at exit as `ObjectDB instances were leaked` and `resources
+## still in use`). A voice stopped on the main thread stays in the server until its mixer takes a
+## few steps, which a loaded machine delays by any amount of real time, so this counts the steps
+## themselves (`get_time_since_last_mix` falls when one lands) instead of waiting a set time. Call
+## it after `stop_all`, from a coroutine, before quitting.
+func wait_for_mixer() -> void:
+	var steps := 0
+	var last := AudioServer.get_time_since_last_mix()
+	for _i in DRAIN_MAX_POLLS:
+		if steps >= DRAIN_MIX_STEPS:
+			return
+		OS.delay_msec(DRAIN_POLL_MS)
+		await get_tree().process_frame
+		var now := AudioServer.get_time_since_last_mix()
+		if now < last:
+			steps += 1
+		last = now
+	push_warning("Audio: the mixer took %d of %d steps in time" % [steps, DRAIN_MIX_STEPS])
 
 
 func _play_3d(
