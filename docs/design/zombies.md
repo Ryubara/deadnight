@@ -36,10 +36,10 @@ Rules for adding one:
   on the one zombie atlas; never a second material.
 - **Budget**: 4,000 tris gameplay, 1,500 far, one material, one skinned mesh per level of detail.
 
-The runner rule (a type: one on round 4, then 6% of a round growing 4% a round to 30%, at 1.7 times the walk and
-never above 4.5 m/s) makes the runner the variant that has to be
-seen early: it is the tallest of the commons and the only one in blue, so a player can tell it in a crowd before it
-starts to run.
+The runner rule (a type: one on round 4, then 6% of a round growing 4% a round to 30%, at 1.4 times the walk and
+never above 5.0 m/s under the lights, 6.25 in the dark; [rounds](rounds.md#zombie-types)) makes the runner the variant
+that has to be seen early: it is the tallest of the commons and the only one in blue, so a player can tell it in a
+crowd before it starts to run.
 
 ## Crowd budget
 
@@ -150,7 +150,7 @@ A crowd must never march in step. Per zombie, chosen by the seeded random of the
 | Play speed | ground speed / the gait's own speed (`ZombieRig.gait_rate`, 0.5 to 1.6) | feet keep up with the ground; the throttle's drift breaks sync between zombies at the same speed ([gait](../research/zombie-gait.md)) |
 | Walk to run | `Walk` below 1.4 m/s, blended into `Run` to 3.0 m/s, `Run` above (played faster past 4.4 m/s) | round 1 shambles at 1.2 m/s, round 10 jogs at 2.6, round 20 sprints at 4.2 and more in the dark |
 | Runner run | `Run` or `Run_Arms`, half each | two run silhouettes in one wave |
-| Light | a zombie off lit ground is 25 % faster; the blend follows the speed it really moves at | the dark makes the dead run: the player sees the light hold them back |
+| Light | a zombie off lit ground is 25 % faster; the blend follows the speed it really moves at | the dark makes the dead run: under the lights they keep their round's pace, and the player sees the dark speed them up |
 | Hit | `HitReact` added over the walk, not replacing it | the walk never stops mid-stride |
 | Death | one of three deaths | a cleared wave does not fall the same way |
 

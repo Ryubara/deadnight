@@ -1,9 +1,24 @@
 # Sound
 
-How Deadnight sounds, and the rules the audio service plays by. The sounds are original: every file in
-`game/assets/audio/` is synthesised by the scripts in `tools/audio/` (how: [research](../research/audio.md)), so they
-are committed and can be changed by editing a number. The code is `game/core/audio/`; the sounds' table, with every
-level and limit, is `sound_catalog.gd`.
+How Deadnight sounds, and the rules the audio service plays by. The code is `game/core/audio/`; the sounds' table, with
+every level and limit, is `sound_catalog.gd`.
+
+## Where the sounds come from
+
+Almost every sound is original: it is synthesised by the scripts in `tools/audio/` (how:
+[research](../research/audio.md)), so it is committed and can be changed by editing a number. The folders under
+`game/assets/audio/` with no licence file hold only such files; nothing in them is third-party.
+
+The exception is 24 files in `game/assets/audio/zombie/` (extra groans, snarls, hurts, deaths, shrieks and roars),
+generated with ElevenLabs Sound Effects on the free tier. They are third-party output: attribution required, not
+licensed for commercial use, to be relicensed or replaced before a commercial release
+([#252](https://github.com/Ryubara/deadnight/issues/252)). Their licence entry, with every prompt, is
+[`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), and the
+Credits screen names ElevenLabs. Pull request #277 (open) adds ElevenLabs takes for the weapons and the lot, with a
+licence file of their own.
+
+The licence file records the choice to use the takes as relayed by the coordinator. The maintainer's own first-hand
+confirmation is still pending ([#292](https://github.com/Ryubara/deadnight/issues/292)).
 
 ## Direction
 
@@ -51,19 +66,22 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Group | Ids | Notes |
 | --- | --- | --- |
 | UI | `ui_hover`, `ui_focus`, `ui_tick`, `ui_press`, `ui_back`, `ui_push`, `ui_pop` | relay clacks and a rising or falling film whoosh; hover and focus together make one sound |
-| Guns | `shot_pistol`, `shot_smg`, `shot_rifle`, `shot_shotgun`, `dry_fire` | three variants each; crack, blast, thump and the echo off the screen tower |
-| Reloads | `reload_pistol`, `reload_smg`, `reload_rifle`, `reload_shotgun` | magazine out, in and the bolt; the shotgun's three shells and pump |
+| Guns | `shot_<gun>`, `blast_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap` | see [The guns](#the-guns) |
+| Impacts | `impact_flesh`, `impact_head`, `impact_world` | a wet thump, the same with a crack and a knock, and a round on asphalt or sheet metal with a ricochet's whine |
+| Reloads | `reload_pistol_mag_out/_in`, `reload_smg_mag_out/_in`, `reload_rifle_round/_lever`, `reload_shotgun_open/_shells/_shut` | one sound for each event frame of the reload clip |
 | Steps | `step_asphalt`, `step_gravel` | four variants each; gravel is a spray of tiny grains |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the first four also have ElevenLabs takes as extra variants |
 | Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
-| The lot | `generator_hum` (loops), `generator_start` | the hum is a whole number of cycles, so it never clicks at the seam |
+| The lot | `generator_hum` (loops), `generator_engine` (loops), `generator_start`, `generator_up`, `generator_sputter`, `generator_down`, `generator_down_air`, `breaker_on`, `breaker_off` | see [The lot's machines](#the-lots-machines) |
+| The shop | `door_unlock`, `door_buy`, `buy_weapon`, `buy_ammo`, `buy_fuel`, `buy_tonic`, `deny`, `points_tick`, `points_kill` | what each purchase sounds like (besides `till_ring`), the refusal's buzzer and the points |
+| The crane | `crane_spin`, `crane_claw_drop`, `crane_claw_lift`, `crane_prize`, `crane_break`, `crane_move` | the prize crane's play, from the rules' `crane_*` events, at the crane: `crane_spin_started` is the claw going down and a carnival jingle that slows down (5.4 s, a bell at 4.6 s as the 4.5 s spin ends), `crane_prize_ready` the claw hauling up and, 0.35 s later, the prize ding, `crane_prize_taken` the rack's clack, `crane_breakdown` sputter, sparks and power-down, `crane_moved` a whoosh and a clunk, and a refused take the buzzer |
 | Boards | `board_tear`, `board_last`, `board_repair` | at the breach, from `board_torn` and `board_repaired`: a creak then a crack for each board pulled off, a bigger crack, a low thump and the board clattering for the last one, three knocks for one hammered back |
 | Doors | `door_open` | a bolt thrown, a rusty creak, the weight settling; from `door_opened`, at the door |
 | Melee | `melee_swing`, `melee_hit` | a crowbar through the air from `shot_fired` of a melee weapon; the thud of iron on the dead from a melee `damage_dealt` |
 | The till | `till_ring` | the shop's cash register (key thump, ratchet, bell) from `purchase_made`, where the buyer stands |
 | The player | `player_hurt`, `player_downed` | a grunt, and a falling groan with the body hitting the ground; the player's own are flat (in their head), a teammate's are where they stand |
 | Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
-| Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score` | loops under everything, see below |
+| Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension` | loops under everything, see below |
 
 ### The beds
 
@@ -81,6 +99,52 @@ footstep (14 to 22 dB), so they are felt when they stop rather than heard.
 All four are built to loop: every event that runs past the end wraps to the start and every filter is applied to the
 whole loop at once, so the seam is smaller than the largest step inside the file (measured in
 [research](../research/audio.md)).
+
+### The guns
+
+Every shot of a firearm is **three voices**, each with its own random variant, pitch (within 0.6 to 1 semitone) and
+level (plus or minus 1.2 dB), so repeats do not machine-gun: the **report** (`shot_*`: a high-passed crack and a falling
+chest thump, five variants, 0.05 to 0.35 s, synthesised), the **blast** (`blast_*`: the body and the roll of the shot,
+three variants, generated with ElevenLabs, see [research](../research/audio.md)) and the **tail** (`tail_*`: the lot
+rolling the shot away and one slap off the screen tower, three variants, started 40 to 70 ms late). An automatic gun's
+blast and tail have a cooldown (the SMG's 0.14 s and 0.22 s), so twelve shots a second are twelve reports over one roll.
+The hitscan weapons have no tracer, so the report has to sell the shot. The flare gun is a hollow pop and a rising hiss;
+its burst sizzles where it lands (`projectile_burst`).
+
+- **Impacts.** A `damage_dealt` (not melee) thumps where the round hit; a headshot cracks. A hitscan pellet that ended
+  short of the weapon's range and was not claimed by a hit in the same batch ricochets where it struck the lot, at most
+  three times for a shotgun's eight pellets.
+- **Reloads** sound on the reload clip's event frames from `clips.json` (`ClipEvents`), the same frames the player's
+  animation emits: the revolver and SMG on `mag_out` (6) and `mag_in` (22), the rifle on `round_in` (20, 32, 44) and
+  `lever` (56), the shotgun and flare gun on `break_open` (6), `shells_in` (26) and `snap_shut` (34), at 24 frames a
+  second. Putting the weapon away abandons them.
+- **Empty and swap.** A `fire_rejected` for an empty magazine clicks where the shooter stands; a `weapon_equipped`
+  rustles.
+- The crowbar's swing and blow are the melee sounds above.
+
+### The lot's machines
+
+- **Generator.** Two loops play from the generator: the synthesised hum and a generated engine. Their level follows the
+  **load** (the draw of the lit circuits over the draw of all of them: hum -15 to -7 dB, engine -22 to -9 dB) and their
+  pitch rises 0.94 to 1.05. Below the tank's low line the engine **sputters** (a cough every 4 s, every 1 s when nearly
+  dry) and its pitch wobbles; when it runs dry (`fuel_empty`) it winds down (`generator_down`, with a generated
+  layer) and the loops fade out; on a refuel (`fuel_restored`) the pull-cord start and a generated roar play and the
+  loops come back.
+- **Breakers.** A circuit thrown plays a heavy clunk with a zap for on and a dry drop for off, at its post.
+- **The shop.** Every `purchase_made` plays its item's sound at the buyer (a door: the padlock and then, 0.2 s later, a
+  generated chain-and-hinge, under `door_open`; the till is `till_ring`). A refused buy (`purchase_denied`) buzzes for
+  the player who was refused. Own points ticking up (`points_changed`) ticks for a hit and rings for a kill.
+- **Tension.** `bed_tension` (8 s, Music) fades in 2.4 s after a round starts, once the sting's front is over, and out
+  when it ends. It is a low drone of two close notes beating, a tritone that breathes and a slow double heartbeat, 20 dB
+  under the file's level; the breaks belong to the score.
+
+- **Grenades.** `GrenadeSounds` plays the throw at the hand, a tick while a player cooks one (every 0.5 s at the start of
+  the fuse, every 0.1 s at the end, so a cook can be timed by ear), each bounce (louder when it hits harder, -9 to 0 dB)
+  and the blast where it goes off. The night does not run the grenade server yet (#239), so these hear nothing in a
+  real night until it does; the capture tells them the events the server will send.
+
+The code is `gameplay/night/weapon_sounds.gd`, `grenade_sounds.gd` and `world_sounds.gd`, each listening to the client
+state's events like `NightSounds`, on a `SoundSchedule` clock they step themselves.
 
 ### The dead, per type
 
@@ -116,8 +180,8 @@ rules' `zombie_damaged` events. Who sounds like what is one table, `ZombieVoiceT
 - **Behind you.** Every dead sound has `rear_cue`: a sound behind the listener is low-passed (from 5 kHz at the side
   to 1.8 kHz straight behind), because panning alone cannot tell front from back on two speakers.
 
-Not played by the night yet (their files and catalog entries exist): the generator's hum and the grenades, which the
-capture scenes play by hand (an open issue).
+Not heard in a real night yet: the grenades, because the night does not run the grenade server (#239); `GrenadeSounds`
+is ready for its events.
 
 ## The service's rules
 
@@ -135,6 +199,10 @@ capture scenes play by hand (an open issue).
 - **Distance.** Each sound has a `max_distance` beyond which it is not started at all (a groan carries 40 m, a step
   30 m, a shot 90 m) and a `unit_size`; the engine does the attenuation, and its built-in distance low-pass dulls far
   sounds.
+- **Near level.** The engine boosts a 3D sound by `unit_size / distance` as it comes close and stops only at the player's
+  `max_db` (+3 dB over the file), so up close every sound sits at the same ceiling whatever its trim and a gun's three
+  layers sum past full scale. A sound with a `near_cap_db` (the arms and the lot's sounds have 0) sets the player's
+  `max_db` to its own level plus that, so close up the trim is the level and far away nothing changes.
 - **Rear cue.** A sound with `rear_cue` is low-passed by how far behind the listener it is (`rear_amount`, from the
   listener node or the camera): 0 in front and at the side, 1 straight behind, where the cutoff is 1.8 kHz.
 - **Occlusion.** A probe (`occlusion_probe`, or a physics ray against `occluder_mask`, off until the map has walls on

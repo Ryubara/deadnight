@@ -101,6 +101,9 @@ upper (Aim_<Class>; OneShots Fire, Reload, Swing, Equip, Unequip) ──┘   (H
 
 ## Weapons in the hand
 
+How they are sized, shouldered and aimed (the size rule, the per-weapon numbers, the arm IK) is in
+[Weapons in the hands](weapon-hold.md); this section is the kit hold they ride on.
+
 - **Attach** each weapon to the `Index1.R` bone (a `BoneAttachment3D`), the bone the kit Soldier carries his weapons
   on. A weapon's origin is its grip; its transform on the bone is the kit **Shotgun** hold for guns and the kit
   **Shovel** hold for melee (weapons follow `game/assets/weapons/`, the kit's [weapons page](https://github.com/Ryubara/gdstudio/blob/main/docs/blender/weapons.md)
@@ -123,9 +126,9 @@ With these, the lever rifle, double shotgun and bat sit in the Soldier's hand in
 Godot capture in the pull request).
 
 - **Left hand:** the kit hold is one-handed (in `Idle_Shoot` the left arm hangs), and so are the clips: the left arm
-  is free. Each two-handed weapon scene carries a `Marker3D` named `LeftHand` on its fore-end (the handle below the
-  grip for the bat and axe). The controller runs a two-bone IK on `UpperArm.L` and `LowerArm.L` toward it with the
-  weight below; the clips move the left arm themselves where the weight is 0.
+  is free. `WeaponHandsIK` ([Weapons in the hands](weapon-hold.md)) reaches both hands to the weapon with a two-bone
+  IK, the left to the hold's `support` point on the fore-end (data in the hold, not a marker node in the scene), with
+  the weight below; the clips move the arms themselves where the weight is 0. The bat and axe stay one-handed for now.
 
 | Class | LeftHand IK weight |
 | --- | --- |
@@ -192,7 +195,8 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   the right fist taps it from chin height (frame 3), rises above the helmet (15) and drives it home (18). The weapon is
   hidden while the clip holds the arms and shown again when it lets go.
 - **Timing comes from the rules, not the clock.** The night repairs one board every `repair_interval` (night tuning,
-  1.0 s) while `use` is held, and each repair is a `board_repaired` event naming the player. On each one,
+  1.0 s) while `use` is held ([hold to repair](rounds.md#the-fences-boards), #297), and each repair is a
+  `board_repaired` event naming the player. On each one,
   `PlayerAnimation.board_repaired(interval)` seeks the clip to `board_set` and plays it at `1 s / interval`, so the
   loop comes round to the blow just as the next board goes up (the seek is then a no-op, not a jump). With no event for
   1.5 intervals the layer fades out (18 per second).
