@@ -8,7 +8,9 @@ extends RefCounted
 ## `start_night`, and one `command` (a `NightCommand`) per player per tick; the latest one is
 ## used. `step(delta)` runs one fixed tick and returns the events for every client: the rules
 ## events, the weapons events (`CombatServer`), `player_damaged` (with `from`, where the blow came
-## from), and last a `frame`. A frame carries the whole picture a client or a HUD draws from.
+## from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded for
+## the player's own motion to apply), and last a `frame`. A frame carries the whole picture a client
+## or a HUD draws from.
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, doors (open ids), zombies (`ZombieCodec`
 ## bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve, reloading, points,
@@ -183,6 +185,7 @@ func _on_player_struck(player_id: int, zombie_id: int, damage: float) -> void:
 		return
 	_health[player_id] = maxf(_health[player_id] - damage, 0.0)
 	_since_hit[player_id] = 0.0
+	var zombie: ZombieBody = sim.zombies.get(zombie_id)
 	(
 		_outbox
 		. append(
@@ -192,6 +195,9 @@ func _on_player_struck(player_id: int, zombie_id: int, damage: float) -> void:
 				"damage": damage,
 				"health": _health[player_id],
 				"from": _position_of_zombie(zombie_id),
+				"zombie_id": zombie_id,
+				"zombie_type": zombie.profile.type if zombie != null else &"",
+				"knockback": zombie.profile.knockback if zombie != null else 0.0,
 			}
 		)
 	)
@@ -266,7 +272,17 @@ func _target_list() -> Array:
 	var list: Array = []
 	for zombie: ZombieBody in sim.zombies.values():
 		if zombie.is_alive():
-			list.append({"id": zombie.id, "pos": zombie.position, "yaw": zombie.yaw})
+			(
+				list
+				. append(
+					{
+						"id": zombie.id,
+						"pos": zombie.position,
+						"yaw": zombie.yaw,
+						"scale": zombie.profile.hit_scale(),
+					}
+				)
+			)
 	return list
 
 

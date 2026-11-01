@@ -7,8 +7,10 @@ extends RefCounted
 
 const LIBRARY := &"zombie"
 ## Clips the library carries, and which of them loop.
-const CLIPS: Array[StringName] = [&"Idle", &"Walk", &"Run", &"Punch", &"HitReact", &"Death"]
-const LOOPING: Array[StringName] = [&"Idle", &"Walk", &"Run"]
+const CLIPS: Array[StringName] = [
+	&"Idle", &"Walk", &"Run", &"Crawl", &"Punch", &"HitReact", &"Death"
+]
+const LOOPING: Array[StringName] = [&"Idle", &"Walk", &"Run", &"Crawl"]
 ## Planar speed (m/s) at which the move state plays each clip.
 const IDLE_AT := 0.0
 const WALK_AT := 1.0
@@ -16,6 +18,7 @@ const RUN_AT := 3.0
 const MAX_SPEED := 4.5
 
 const STATE_MOVE := &"move"
+const STATE_CRAWL := &"crawl"
 const STATE_ATTACK := &"attack"
 const STATE_STAGGER := &"stagger"
 const STATE_DIE := &"die"
@@ -66,6 +69,7 @@ static func _build_state_machine() -> AnimationNodeStateMachine:
 	move.add_blend_point(_clip_node(&"Walk"), WALK_AT, -1, &"walk")
 	move.add_blend_point(_clip_node(&"Run"), RUN_AT, -1, &"run")
 	machine.add_node(STATE_MOVE, move)
+	machine.add_node(STATE_CRAWL, _clip_node(&"Crawl"))
 	machine.add_node(STATE_ATTACK, _clip_node(&"Punch"))
 	machine.add_node(STATE_STAGGER, _clip_node(&"HitReact"))
 	machine.add_node(STATE_DIE, _clip_node(&"Death"))

@@ -6,7 +6,8 @@ extends RefCounted
 ## `world_ray(from: Vector3, to: Vector3) -> float` answers the distance from `from` to the first
 ## world surface on the segment, or -1.0 when it is clear. The server builds one from the physics
 ## space (`WorldProbe`); a test builds one from a box. An invalid Callable means an empty world.
-## `targets` is `{id: {"pos": Vector3, "yaw": float}}`, the shape `LagCompensator.rewind` returns.
+## `targets` is `{id: {"pos": Vector3, "yaw": float, "scale": float}}` (`scale`, the size of the
+## target's hit zones, may be left out for 1), the shape `LagCompensator.rewind` returns.
 ##
 ## The third-person aim correction: the camera sits over the shoulder, the muzzle does not.
 ## 1) a ray from the camera finds what the crosshair is on; 2) the shot then leaves the muzzle
@@ -59,7 +60,7 @@ static func aim_direction(
 	if wall >= 0.0:
 		aim_dist = wall
 	for id in targets:
-		var hit := Hitbox.ray(start, dir, aim_dist, targets[id]["pos"], targets[id]["yaw"])
+		var hit := _ray(start, dir, aim_dist, targets[id], 0.0)
 		if not hit.is_empty():
 			aim_dist = hit["distance"]
 	var to_aim := start + dir * aim_dist - muzzle
@@ -132,13 +133,23 @@ static func _along(
 ) -> Array[Dictionary]:
 	var found: Array[Dictionary] = []
 	for id in targets:
-		var hit := Hitbox.ray(origin, dir, limit, targets[id]["pos"], targets[id]["yaw"], inflate)
+		var hit := _ray(origin, dir, limit, targets[id], inflate)
 		if not hit.is_empty():
 			found.append({"target_id": id, "zone": hit["zone"], "distance": hit["distance"]})
 	found.sort_custom(
 		func(a: Dictionary, b: Dictionary) -> bool: return a["distance"] < b["distance"]
 	)
 	return found
+
+
+## The ray against one target: `{"pos", "yaw"}` and, when its zones are not the walker's size,
+## `"scale"` (`Hitbox.shapes`).
+static func _ray(
+	origin: Vector3, dir: Vector3, limit: float, target: Dictionary, inflate: float
+) -> Dictionary:
+	return Hitbox.ray(
+		origin, dir, limit, target["pos"], target["yaw"], inflate, target.get("scale", 1.0)
+	)
 
 
 static func _world_distance(

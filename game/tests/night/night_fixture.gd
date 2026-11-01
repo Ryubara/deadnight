@@ -47,3 +47,43 @@ static func first_zombie(night: Night) -> int:
 		if not night.server.sim.zombies.is_empty():
 			return night.server.sim.zombies.keys()[0]
 	return -1
+
+
+## The shipped table with round 1 a round of only `type_id`, so a night shows one type at once.
+static func only_tuning(type_id: StringName) -> RulesTuning:
+	var tuning := RulesFixture.tuning()
+	var special := SpecialRound.new()
+	special.id = StringName("only_%s" % type_id)
+	special.title = "Only %s" % type_id
+	special.kind = SpecialRound.Kind.ONLY
+	special.only_type = type_id
+	special.count_fraction = 1.0
+	special.spawn_rate = 2.0
+	_make_round_one_special(tuning, special)
+	return tuning
+
+
+## The shipped table with round 1 the shipped boss night (a headliner among escorts).
+static func boss_tuning() -> RulesTuning:
+	var tuning := RulesFixture.tuning()
+	_make_round_one_special(tuning, tuning.specials.rounds[0])
+	return tuning
+
+
+static func _make_round_one_special(tuning: RulesTuning, special: SpecialRound) -> void:
+	var rounds: Array[SpecialRound] = [special]
+	tuning.specials.rounds = rounds
+	tuning.specials.first_round = 1
+	tuning.specials.every = 1
+
+
+## Ends the break and runs until a zombie of `type_id` is on the lot; returns its id (-1 if none).
+static func first_of_type(night: Night, type_id: StringName, max_ticks: int = 3000) -> int:
+	night.server.rules.apply(RulesAction.skip_break())
+	for _i in max_ticks:
+		night.tick()
+		for zombie_id: int in night.server.sim.zombies:
+			var body: ZombieBody = night.server.sim.zombies[zombie_id]
+			if body.profile.type == type_id:
+				return zombie_id
+	return -1
