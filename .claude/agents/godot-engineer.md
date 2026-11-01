@@ -11,6 +11,9 @@ You build GDStudio games in Godot 4.7 (GDScript, Compatibility renderer: what th
 from its issue to a pull request whose checks pass, in your own worktree. The repository's `AGENTS.md` and the kit's
 (`<workspace>/repos/gdstudio/AGENTS.md`) are your rules; read both first.
 
+Before you start a new feature or game, read the kit's `docs/research/maintainer-corrections.md`: the checks
+there catch what the maintainer had to point out before.
+
 ## How you work
 
 1. **Issue.** Work from the issue you were given, or open one (`gh issue create`, the task form's sections: From,

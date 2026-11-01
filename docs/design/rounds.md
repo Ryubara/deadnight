@@ -55,7 +55,7 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
-| `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request; the server fills in `rounds` ([ammunition](#ammunition)) |
+| `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
@@ -248,8 +248,9 @@ and start again:
 **Announced.** The break before a special round is 10 s longer (`break_bonus_seconds`), and starts with
 `special_round_announced` (round, kind, title, `boss_type`, `boss_count`, `seconds`), the cue for the HUD
 marquee, the sting and the flickering lights. `round_started` repeats the `special_id` and `boss_count`
-for a client that is there at the time. A client that joins late has no `round_started`: it gets a snapshot with
-the `special_id` in it, which the HUD does not read yet (#182).
+for a client that is there at the time. A client that joins late gets a snapshot, not these events: its HUD reads
+`special_id` and the bosses' health from the snapshot and the schedule from the shared tuning, so it shows the
+banner, the boss bar and, in a break, the marquee too ([HUD](hud.md)).
 
 **Paid.** Clearing it pays every player on their feet a reward on top of the round bonus
 (`special_reward`: 200 + 40 per round for a boss night, 150 + 40 per round for the others) and sends
@@ -273,7 +274,8 @@ the pillars.
   compounding after round 8 so a starting weapon stops being enough and the shop matters), and
   darker (ambient falls from 0.60 to 0.15 by round 14).
 - **Fast ones are rare and capped.** A zombie never exceeds 4.5 m/s, below a sprinting player
-  (the controller's sprint is assumed near 6 m/s; revisit with the controller). The runner (the old
+  (the controller's sprint is 7.0 m/s, its run 4.8; how that compares with the original games is in
+  [movement speeds](../research/movement-speeds.md)). The runner (the old
   sprinter, now a type) arrives on round 4 and settles at three in ten, fragile enough that a
   good shot ends it, so late rounds pressure positioning instead of simple running.
 - **The lot cap protects the web build and the player.** At most 6 alive in round 1, rising 0.8 a round to 28;

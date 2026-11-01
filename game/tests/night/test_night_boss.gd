@@ -134,3 +134,25 @@ func test_the_boss_bar_follows_its_health_and_goes_with_it() -> void:
 	night.state.apply_events(night.server.rules.apply(kill))
 	assert_bool(hud.boss_bar.visible).is_false()
 	night.queue_free()
+
+
+func test_the_marquee_and_the_banner_follow_the_real_night_into_its_special_round() -> void:
+	var host := auto_free(Control.new()) as Control
+	host.size = Vector2(1920, 1080)
+	add_child(host)
+	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	host.add_child(hud)
+	var night := await NightFixture.start(
+		self, Night.Mode.MANUAL, NightFixture.boss_tuning(), 7, hud
+	)
+	NightFixture.run(night, 5)
+	# The intro break before round 1 is the announcement: the marquee is up and says what comes.
+	assert_bool(hud.marquee.visible).is_true()
+	assert_str(hud.marquee.title_text).is_equal("DOUBLE FEATURE")
+	assert_str(hud.marquee.detail_text).is_equal("THE HEADLINER ARRIVES")
+	night.state.apply_events(night.server.rules.apply(RulesAction.skip_break()))
+	NightFixture.run(night, 5)
+	assert_bool(hud.marquee.visible).is_false()
+	assert_str(String(hud.state.special_id)).is_equal("double_feature")
+	assert_str(hud.banner.title).is_equal("DOUBLE FEATURE")
+	night.queue_free()

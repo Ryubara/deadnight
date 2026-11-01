@@ -5,7 +5,8 @@ extends RefCounted
 ## the latest frame, its points and the prompt the server shows for what is in reach. It keeps
 ## its distance from the nearest zombie, turns to it and shoots, reloads when the magazine runs
 ## dry, walks to the next door when it can afford it and buys it, and puts boards back when it is
-## standing at one with nothing to shoot.
+## standing at one with nothing to shoot. It throws the breaker of an area it has bought
+## (`AutopilotSwitches`), and back off when the tank runs low.
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -34,6 +35,8 @@ var order: Array[StringName] = []
 ## Where to stand to put boards back across each breach, by id, and how many a whole one holds.
 var repair_goals: Dictionary = {}
 var whole_boards: int = 1
+## The breaker posts and when to use them.
+var switches := AutopilotSwitches.new()
 
 var _yaw := 0.0
 var _sidestep := 0.0
@@ -79,11 +82,13 @@ func decide(delta: float) -> NightCommand:
 		command.use = state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"repair":
 		command.use = target.is_empty()
+	elif kind == &"circuit":
+		command.use = switches.wants_use(prompt, state.frame)
 	return command
 
 
-## Where to go: the standing place of the next door it can afford; in a break the nearest breach
-## with a board down; else home.
+## Where to go: the standing place of the next door it can afford; a breaker post it wants thrown;
+## in a break the nearest breach with a board down; else home.
 func _goal() -> Vector3:
 	for door_id in order:
 		if state.frame.get("doors", []).has(door_id):
@@ -91,6 +96,11 @@ func _goal() -> Vector3:
 		if state.points() >= prices.get(door_id, BIG_PRICE) and door_goals.has(door_id):
 			return door_goals[door_id]
 		break
+	var post := switches.next_goal(
+		state.frame, state.position(), state.phase() == GameRules.Phase.BREAK
+	)
+	if post != Vector3.INF:
+		return post
 	if state.phase() == GameRules.Phase.BREAK:
 		var spot := _nearest_broken()
 		if spot != Vector3.INF:

@@ -8,7 +8,7 @@ extends HudTicket
 const LOW_FRACTION := 0.25
 ## What the numbers read for a weapon that uses no ammunition.
 const NO_AMMO_MARK := "--"
-const WIDTH := 330.0
+const WIDTH := 250.0
 ## The smallest the magazine and reserve scale to, as a fraction of their usual sizes.
 const SMALLEST_SCALE := 0.5
 const SCALE_STEP := 0.05
@@ -34,6 +34,8 @@ var _bar_fill := StyleBoxFlat.new()
 var _magazine := HudStyle.clip(HudStyle.label("0", HudStyle.NUMERAL, tokens.ink, true))
 var _reserve := HudStyle.clip(HudStyle.label("/ 0", HudStyle.MEDIUM, tokens.ink_muted, true))
 var _hint := HudStyle.label("", HudStyle.SMALL, tokens.hot, false, HudStyle.TRACK_CAPTION)
+## Holds the reserve above the card's bottom by what puts its baseline on the magazine's.
+var _reserve_lift := MarginContainer.new()
 var _magazine_size := 0
 
 
@@ -41,16 +43,18 @@ func _init() -> void:
 	super()
 	var line := HBoxContainer.new()
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	line.add_theme_constant_override(&"separation", tokens.space_md)
+	line.add_theme_constant_override(&"separation", HudStyle.MD)
 	line.alignment = BoxContainer.ALIGNMENT_END
 	line.add_child(_magazine)
-	line.add_child(_reserve)
-	_reserve.size_flags_vertical = Control.SIZE_SHRINK_END
+	_reserve_lift.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_reserve_lift.size_flags_vertical = Control.SIZE_SHRINK_END
+	_reserve_lift.add_child(_reserve)
+	line.add_child(_reserve_lift)
 	body.add_child(line)
 	body.add_child(_hint)
 	_bar_fill.bg_color = tokens.accent
-	_bar_fill.set_content_margin_all(tokens.space_xs)
-	_bar_fill.content_margin_left = tokens.space_md
+	_bar_fill.set_content_margin_all(HudStyle.XS)
+	_bar_fill.content_margin_left = HudStyle.MD
 	_bar.add_theme_stylebox_override(&"panel", _bar_fill)
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_weapon.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -89,16 +93,16 @@ func refresh() -> void:
 
 ## The room inside the card (its padding off), and what is left of it on the weapon's bar.
 func _line_room() -> float:
-	return WIDTH - float(tokens.space_md * 2 + 10)
+	return WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT)
 
 
 func _bar_room() -> float:
-	return _line_room() - float(tokens.space_md + tokens.space_xs)
+	return _line_room() - float(HudStyle.MD + HudStyle.XS)
 
 
 ## Writes the magazine and the reserve, both scaled down together until the pair fits the card.
 func _fit_numbers(magazine: String, reserve: String) -> void:
-	var gap := float(tokens.space_md)
+	var gap := float(HudStyle.MD)
 	var big := _magazine.get_theme_font(&"font")
 	var small := _reserve.get_theme_font(&"font")
 	var scale := 1.0
@@ -126,5 +130,10 @@ func _fit_numbers(magazine: String, reserve: String) -> void:
 	_reserve.custom_minimum_size.x = small_wide
 	_magazine.add_theme_font_size_override(&"font_size", big_px)
 	_reserve.add_theme_font_size_override(&"font_size", small_px)
+	# Both numbers stand on one baseline: the smaller one is lifted by the difference of the
+	# descents below it.
+	_reserve_lift.add_theme_constant_override(
+		&"margin_bottom", maxi(roundi(big.get_descent(big_px) - small.get_descent(small_px)), 0)
+	)
 	HudStyle.set_text(_magazine, magazine)
 	HudStyle.set_text(_reserve, reserve)
