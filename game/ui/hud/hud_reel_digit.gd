@@ -4,8 +4,8 @@ extends Control
 ## tile with a split line. When the digit changes the old one rolls out downward and the new one
 ## rolls in from above; with reduced motion it just changes.
 
-const TILE := Vector2(68.0, 96.0)
-const FONT_SIZE := 80
+const TILE := Vector2(52.0, 72.0)
+const FONT_SIZE := 60
 const ROLL_SECONDS := 0.35
 
 var digit := "0"

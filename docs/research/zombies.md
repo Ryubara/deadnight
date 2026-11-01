@@ -111,7 +111,9 @@ How a zombie is held at a breach, and what we learned making it (#155):
   that plays a night headless) printed its report and then died with `corrupted size vs. prev_size in fastbins` (exit
   134, a segmentation fault locally) whenever the bot had just bought a door: the bake is on a worker thread and the
   quit does not wait for it. It is older than the boards (on `main`, `--rounds=3` does it too); the boards only moved
-  the bot's purchase into round 1. The capture now waits for `DoorNavigation.is_busy()` to clear before it quits.
+  the bot's purchase into round 1. The capture now waits for `DoorNavigation.is_busy()` to clear before it quits. A
+  GdUnit4 suite does the same when its night buys a door and is freed at once (a segmentation fault after "PASSED"):
+  `NightFixture.settle_bake` waits for the bake first.
 - **Separation can push a zombie across the line**, so the clamp also runs after the crowd push. A test packs twelve
   zombies against the boards and none gets through.
 - **A zombie in reach of a player strikes them** through the boards: standing at them is a risk, which is the point.

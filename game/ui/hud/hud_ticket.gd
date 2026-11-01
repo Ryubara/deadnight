@@ -17,13 +17,12 @@ var _pad := MarginContainer.new()
 
 func _init() -> void:
 	super()
-	var pad := tokens.space_md
 	_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_pad.add_theme_constant_override(&"margin_left", pad + 10)
-	_pad.add_theme_constant_override(&"margin_right", pad)
-	_pad.add_theme_constant_override(&"margin_top", pad)
-	_pad.add_theme_constant_override(&"margin_bottom", pad)
+	_pad.add_theme_constant_override(&"margin_left", HudStyle.PAD_LEFT)
+	_pad.add_theme_constant_override(&"margin_right", HudStyle.PAD)
+	_pad.add_theme_constant_override(&"margin_top", HudStyle.PAD)
+	_pad.add_theme_constant_override(&"margin_bottom", HudStyle.PAD)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_theme_constant_override(&"separation", 0)
 	_pad.add_child(body)

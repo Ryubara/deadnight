@@ -4,34 +4,49 @@ extends RefCounted
 ## Sizes are canvas units (the project stretches the canvas to 1920 x 1080 and up), taken from
 ## the token type scale where there is a matching step.
 
+## The HUD's scale against the first draft (#218 scaled it down): every length below is the old
+## one times this, so the whole HUD is retuned by one number. Type is scaled less, so it stays
+## readable: its floor is `MIN_TEXT`.
+const UNIT := 0.75
 ## Type sizes in canvas units. `NUMERAL` and `BIG` are for the display face; the rest for text.
-const NUMERAL := 120
-const BIG := 84
-## Points readout: big, but the bottom-left stack must leave room for the party above it.
-const POINTS := 72
-const MEDIUM := 44
-const TEXT := 30
-const SMALL := 24
-## The smallest text the HUD draws, canvas units; at 720p it is still 16 px.
-const MIN_TEXT := 24
-## Screen margin and the gap between HUD parts, in token steps.
-const MARGIN_STEPS := 1.2
+const NUMERAL := 84
+const BIG := 64
+## Your points in the player's container; a teammate's use `MEDIUM`.
+const POINTS := 44
+const MEDIUM := 32
+const TEXT := 24
+const SMALL := 20
+## The smallest text the HUD draws, canvas units: 13 px at 720p, 20 px at 1080p.
+const MIN_TEXT := 20
+## Spacing steps, in canvas units (the tokens' steps times `UNIT`): a part's own padding and the
+## gaps between rows, so everything sits on the same few distances.
+const XS := 3
+const SM := 6
+const MD := 12
+const LG := 18
+## Screen margin: the gap between a corner card and the screen's edge, and between HUD parts.
+const MARGIN := 36
+const GAP := SM
 ## Hard shadow offset of a ticket, canvas units.
-const SHADOW := Vector2(6.0, 6.0)
-## Corner cut of a ticket.
-const NOTCH := 14.0
-const TRACK_CAPTION := 3.0
+const SHADOW := Vector2(4.0, 4.0)
+## Corner cut of a ticket, and the width of the accent stripe down its left side.
+const NOTCH := 10.0
+const STRIPE := 4.0
+## A ticket's padding: the text starts `PAD_LEFT` from the card's left edge and ends `PAD` from its
+## right edge, so every card's content shares two vertical lines (the text grid).
+const PAD := MD
+const PAD_LEFT := MD + 8
+const TRACK_CAPTION := 2.0
 ## The longest display name the HUD shows, in characters: the state keeps no more, and a name that
 ## is still too wide for its place is ellipsized there.
 const NAME_LIMIT := 20
-## Width of the columns at the screen's sides (the party, the health and points stack, the generator
-## and the lists), and of the cards in the middle (banner, prompt). On the smallest canvas
-## (1536 x 864) the three leave a gap between them; a part never grows past its width, it shrinks
-## or ellipsizes.
-const COLUMN := 420.0
-const CARD := 560.0
+## Width of the columns at the screen's sides (round, objective, the players, the generator and the
+## lists), and of the cards in the middle (banner, prompt). On the smallest canvas (1536 x 864) the
+## three leave a gap between them; a part never grows past its width, it shrinks or ellipsizes.
+const COLUMN := 316.0
+const CARD := 420.0
 ## Dark outline round every letter, so text holds on a lit ground at night.
-const OUTLINE := 4
+const OUTLINE := 3
 
 
 ## A label in the display face (big numbers, banners) or the text face, upper case by habit.
@@ -120,7 +135,7 @@ static func set_text(node: Label, text: String) -> void:
 
 
 static func margin() -> int:
-	return int(UITokens.active().space_xl * MARGIN_STEPS)
+	return MARGIN
 
 
 ## The outline of a ticket: a rectangle with its top-left and bottom-right corners cut.
@@ -152,5 +167,6 @@ static func draw_ticket(item: CanvasItem, rect: Rect2, accent: Color, lit := 0.0
 	closed.append(outline[0])
 	item.draw_polyline(closed, tokens.outline.lightened(lit * 0.4), float(tokens.border))
 	item.draw_rect(
-		Rect2(rect.position + Vector2(0.0, NOTCH), Vector2(6.0, rect.size.y - 2.0 * NOTCH)), accent
+		Rect2(rect.position + Vector2(0.0, NOTCH), Vector2(STRIPE, rect.size.y - 2.0 * NOTCH)),
+		accent
 	)
