@@ -1,8 +1,8 @@
 # Networking comparison: own protocol, Godot MultiplayerAPI, netfox
 
 **Status:** measured on one machine, for the maintainer to decide (issue #38). Nothing here chooses; it reports.
-Every number is labelled **measured** (we ran it, the log is attached to the pull request), **cited** (a vendor page,
-linked) or **estimated** (reasoned, not run).
+Every number is labelled **measured** (we ran it; the raw lines are in
+`spikes/net-compare/results/measurements.txt`), **cited** (a vendor page, linked) or **estimated** (reasoned, not run).
 
 Fixed whichever way we go: authoritative headless Godot server on a 30 Hz tick, client prediction and reconciliation,
 interpolation of others, single-player through the same path, web export, Docker hosting, a separate platform
@@ -221,7 +221,7 @@ players with any of them, but netfox leaves the least headroom for the real game
 
 | | Own protocol | MultiplayerAPI, server-owned | netfox |
 | --- | --- | --- | --- |
-| Bandwidth per client (4 + 24) | **lowest, measured**: 2.4 to 2.9 KB/s | 6 to 9 times more, measured; 4 to 5 times with packing | 10 to 15 times more, measured (not tuned further) |
+| Bandwidth per client (4 + 24) | **lowest, measured**: 2.4 to 2.9 KB/s | 7 to 10 times more, measured; 6 to 7 times with packing | 12 to 15 times more, measured (not tuned further) |
 | Server CPU (4 + 24) | 2 to 4 % | 2.5 to 5 % | 26 to 28 % |
 | Feel under delay and TCP stalls | good; stalls unavoidable on TCP | same range, measured | not comparable; larger visible jumps; test before relying |
 | Single-player | loopback, measured | needs a local shortcut | upstream example, not run |
@@ -233,7 +233,7 @@ players with any of them, but netfox leaves the least headroom for the real game
 
 **Reading of the evidence (the maintainer decides).** The quadratic-traffic claim does not hold against a careful
 use of the MultiplayerAPI: it is a property of client-owned synchronizers. A careful MultiplayerAPI setup is
-therefore a real option, with about half the code and cheaper new entity kinds, at 6 to 9 times the bandwidth of our
+therefore a real option, with about half the code and cheaper new entity kinds, at 7 to 10 times the bandwidth of our
 deltas and no ready single-player path. Our protocol is the cheapest on the wire and in testability and the most
 code to own. netfox solves prediction for us but cost the most bandwidth and server CPU in our setup, has no
 stated Godot 4.7 support or web claim, and is a third-party commit. If bandwidth, mobile data and a node-free
