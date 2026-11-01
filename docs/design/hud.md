@@ -38,7 +38,7 @@ local player) into the direction on screen.
 | `HudMarquee` | top centre, under the banner | in the break before a special round, `COMING UP - ROUND 5 - IN 24` over the round's name in big letters that flicker like a failing neon sign (steady with reduced motion) over what it brings, between two rows of bulbs (the banner's); gone as the round starts. A HUD that joins in the break reads it from the schedule |
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card, three lines high: the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
-| `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows |
+| `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows; rows slide into their slots (see Decisions) |
 | `HudCrosshair` | centre | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
 | `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
 | `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
@@ -115,6 +115,13 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   the column into the empty space under the banner (the banner moved from 10 % of the screen height to the top margin so
   it ends above them at every canvas). Wrapping to two lines was rejected: three events of two lines reach the gains.
   `test_hud_typical_text.gd` holds the line: no ellipsis for the values of an ordinary night at 1080p and 1440p.
+- **Lines slide, they never jump.** The point gains and the two feed lists stack their rows in a `HudRowStack`: every
+  row has a slot under the rows above it, and each frame it covers the same fraction of its distance to the slot
+  (95% in 0.18 s, whatever the frame rate), so when a line above expires, or the cap drops one, the lines below slide
+  up instead of teleporting. A new line starts a row below its slot (never above the row before it, so lines arriving
+  in one frame cannot overlap) and fades in as it rises. The height the stack reports eases too, so the notices under
+  the event list follow. It is the view's motion: `advance(delta)` steps it with the fade (tests and captures pass the
+  seconds), `HudState` knows nothing of it, and with reduced motion every line is in its slot at once.
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
 - **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with four players, an
