@@ -13,13 +13,16 @@ otherwise. [Scale](#scale) gives the factor to Deadnight's game scale.
 
 Measured without the 14 weapons every kit character file carries in its right hand, in the rest pose (a T-pose)
 unless the column says Idle (the first frame of the Idle clip, standing).
+The zombie's Idle is measured on our built walker (`zombie_walker.glb`, whose Idle holds the arms the kit's lacks, see
+[what broke](../research/zombie-variants.md#what-broke)), not on the kit file, where the Idle keeps part of the Crawl
+pose.
 
 | Character | Tris | Rest height | Idle height | T-pose span | Heads tall | Head % of height | Head width | Hips % | Neck % | Bones | Clips |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Soldier | 5,828 | 2.31 | 2.15 | 2.73 | 2.8 | 36 | 1.07 | 40 | 64 | 43 | 14 |
 | Hazmat | 5,462 | 2.14 | 1.99 | 2.72 | 3.3 | 31 | 0.98 | 43 | 69 | 43 | 17 |
 | Enemy | 4,594 | 2.30 | 2.18 | 2.72 | 2.8 | 36 | 0.92 | 40 | 64 | 43 | 17 |
-| Zombie | 7,822 | 1.36 | 1.06 | 1.89 | 2.8 | 36 | 0.83 | 38 | 65 | 50 | 16 |
+| Zombie | 7,822 | 1.36 | 1.25 | 1.89 | 2.8 | 36 | 0.83 | 38 | 65 | 50 | 16 |
 
 What the numbers say:
 
@@ -140,7 +143,7 @@ Scale on import, the same factor for a character and what it holds:
 | Model | Rest height | Factor to 1.8 m | Proposed factor |
 | --- | --- | --- | --- |
 | Kit characters and weapons | 2.14-2.31 | 0.78-0.84 | 0.8 (keeps their height differences: 1.71-1.85 m) |
-| Zombie | 1.36 | 1.32 | 1.3 (1.77 m at rest; it hunches to 1.38 m in Idle) |
+| Zombie | 1.36 | 1.32 | 1.3 (1.77 m at rest; it stands 1.63 m in Idle, hunched) |
 
 At 0.8 a gun bevel becomes about 14 mm and the AK 1.14 m long: still toy-sized, which is the look.
 
