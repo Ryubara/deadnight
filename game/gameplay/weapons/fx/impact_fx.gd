@@ -64,6 +64,14 @@ func _init() -> void:
 	set_process(false)
 
 
+## Makes every slot ahead of the night, hidden, so no shot builds one while it is played.
+func prewarm() -> void:
+	while _slots.size() < MAX_ACTIVE:
+		var slot := _make_slot()
+		_slots.append(slot)
+		add_child(slot)
+
+
 ## Ends every impact (they are hidden, and kept for the next ones).
 func stop_all() -> void:
 	for slot in _slots:

@@ -44,6 +44,9 @@ func _night() -> Night:
 	for id: StringName in SoundCatalog.ids():
 		Audio.preload_sound(id)
 	night.view.horde.prewarm(NightWarmup.PARKED_BODIES)
+	night.view.effects.prewarm()
+	# The bot keeps its pistol (a swap puts another weapon in its hands, which is not a kill's cost).
+	night.server.combat.state_of(1, &"pistol").reserve = 99999
 	for i in 24:
 		night.view.draw_event(
 			{

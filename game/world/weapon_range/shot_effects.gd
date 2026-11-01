@@ -139,6 +139,19 @@ func number(at: Vector3, text: String, headshot: bool) -> void:
 	live.base = at.y
 
 
+## Makes every pooled node ahead of the night (the impacts' slots, the streaks, the numbers),
+## hidden, so no shot or kill builds one while it is played.
+func prewarm() -> void:
+	impacts.prewarm()
+	for kind in [Kind.TRACER, Kind.NUMBER]:
+		while _made[kind] < (TRACER_POOL if kind == Kind.TRACER else NUMBER_POOL):
+			var live := Live.new()
+			live.kind = kind
+			live.node = _make(kind)
+			_made[kind] += 1
+			_idle[kind].append(live)
+
+
 ## Ends every effect on show now (they are hidden, and kept for the next ones).
 func stop_all() -> void:
 	for live in _live:

@@ -77,9 +77,7 @@ Three frames of 36 to 78 ms, at the same moments in every run. Each is **a progr
 the first round and at the start of the second. They are unshaded and lit by no lamp, without fog, with a texture:
 the warm-up does not draw them. Also found while measuring, and not changed here: the first frames of a night, when
 the bot walks to its post, link 15 programs in 2 s (a 1.9 s frame; a person who walks the same way meets them too),
-the first door bought bakes the navigation again (a 400 ms frame, #335), and after merging the warm-up with `main`
-`test_a_night_draws_nothing_the_warm_up_did_not` fails: the prize crane's effects (its beam, sparks and plush) came
-after the warm-up's list.
+the first door bought bakes the navigation again (a 400 ms frame, #335).
 
 ## The tests
 

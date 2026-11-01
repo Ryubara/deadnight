@@ -97,6 +97,7 @@ func run(night: Night) -> void:
 	await _stage_pass()
 	_say(_done, "Rousing the dead")
 	_night.view.horde.prewarm(PARKED_BODIES)
+	_night.view.effects.prewarm()
 	await get_tree().process_frame
 	_unmute(muted)
 	if is_instance_valid(_before):
@@ -357,6 +358,8 @@ func _replay_effects() -> void:
 		)
 	)
 	view.draw_event({"type": &"projectile_burst", "point": at + Vector3(2.0, 0.0, -2.0)})
+	# A weapon that asks for a streak is not in the catalogue, but the pooled streaks are made.
+	view.effects.tracer(at + Vector3(4.0, 0.0, 0.0), at + Vector3(4.0, 0.0, -3.0))
 	for def_path in _grenade_defs():
 		var blast := BlastEffect.new()
 		view.effects.add_child(blast)
