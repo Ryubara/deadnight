@@ -7,6 +7,8 @@ extends GdUnitTestSuite
 const BREACH := &"nw"
 const SETTLE := 30
 const TEAR_ALL := 5
+## Ticks that carry the Equip clip past its weapon_visible frame.
+const EQUIP_TICKS := 60
 
 
 func _start() -> Night:
@@ -15,6 +17,15 @@ func _start() -> Night:
 	tuning.rounds.first_spawn_delay = 600.0
 	var night := await NightFixture.start(self, Night.Mode.MANUAL, tuning)
 	NightFixture.run(night, SETTLE)
+	# The starting pistol has no model yet (docs/design/weapon-hold.md), so a rifle is put in the hand:
+	# the hammer takes the place of a weapon that is shown.
+	night.server.combat.apply(CombatAction.give_weapon(Night.PLAYER_ID, &"rifle"))
+	night.server.combat.apply(CombatAction.equip(Night.PLAYER_ID, &"rifle"))
+	NightFixture.run(night, 3)
+	# The Equip clip shows the rifle on its weapon_visible frame: step the animation through it.
+	var animation := _animation(night)
+	for _i in EQUIP_TICKS:
+		animation._process(NightFixture.STEP)
 	for _i in TEAR_ALL:
 		night.server.rules.barricades.tear(BREACH)
 	night.world.barricade(BREACH).set_boards(night.server.rules.barricades.boards_of(BREACH))

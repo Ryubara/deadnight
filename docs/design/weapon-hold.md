@@ -62,12 +62,30 @@ the `AimResolver`'s, from the muzzle to what the camera ray is on.
 `muzzle` and `butt` (the ends of the model, origin the grip) are in every hold so the tests, and later the muzzle flash
 and the aim correction, read the same points.
 
+## Which weapon is which
+
+The class of each weapon id is one table, `WeaponHoldMap` (`game/gameplay/player/weapon_hold_map.gd`): lever rifle is
+Rifle, double shotgun Shotgun, every melee weapon (crowbar, bat, fire axe) Melee. `WeaponEquipSync`
+(`game/gameplay/night/weapon_equip_sync.gd`) reads the `weapon` of every player in each frame the server sends and, when
+it changes, calls `PlayerAnimation.equip` on that player's body: the local player and the others take the same line,
+and a player who joins late shows the weapon of his first frame. The test is `game/tests/night/test_weapon_equip.gd`
+(each id taken in hand through the real combat action, for the local player and a second one, and by a swap).
+
 ## What has no model yet
 
-The catalogue has six weapons (pistol, SMG, shotgun, rifle, flare gun, crowbar) and three models. The Soldier
-shows the lever rifle for every gun today (the class follows no weapon id yet) and the bat for melee; the pistol, SMG
-and flare gun, and the fire axe, have no hold. Adding one is a model with its origin on the grip and a `.tres` here;
-see the open issue for the pistol, SMG and flare gun.
+The catalogue has six weapons (pistol, SMG, shotgun, rifle, flare gun, crowbar) and three models. Three have none and are
+listed in `WeaponHoldMap.NO_MODEL`, each held as the nearest class until its own model and hold file land (see the open
+issue for the pistol, SMG and flare gun):
+
+| Weapon | Held as | Shows |
+| --- | --- | --- |
+| SMG | Rifle | the lever rifle model, two-handed |
+| Pistol | Pistol (the one-handed clips) | the arm out toward the aim, the hand empty |
+| Flare gun | Pistol | the same |
+
+The fire axe has a model but no id in the catalogue yet; it is Melee as soon as it has a melee `WeaponDef`. Adding a
+weapon's model is a glb with its origin on the grip and a `.tres` here; then take its id off `NO_MODEL` and out of the
+table above.
 
 ## Proof
 
