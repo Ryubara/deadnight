@@ -2,7 +2,7 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { timingSafeEqual } from "node:crypto";
 import type { Config } from "./config.ts";
-import type { DiscordClient } from "./discord.ts";
+import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { type Lobby, LobbyFailure, LobbyService } from "./lobbies.ts";
 import { GameServerRegistry } from "./servers.ts";
 import { RevisionConflict, type Store } from "./store.ts";
@@ -97,7 +97,8 @@ export function buildApp(deps: Deps): FastifyInstance {
       try {
         signIn = await discord.exchangeCode(request.body.code);
       } catch (error) {
-        request.log.warn({ err: (error as Error).message }, "discord sign-in rejected");
+        request.log.warn({ err: (error as Error).message }, "discord sign-in failed");
+        if (error instanceof DiscordUnavailable) return reply.code(502).send({ error: "discord_unavailable" });
         return reply.code(401).send({ error: "invalid_code" });
       }
       const user = await store.upsertUser(signIn.user.id, signIn.user.username);

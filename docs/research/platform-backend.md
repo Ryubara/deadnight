@@ -38,8 +38,10 @@ $5 of usage. Cost does not decide this; the game servers will dominate the bill.
 `spikes/backend/` (Fastify 5, Node 24, Postgres, `ws`; TypeScript run with Node's type stripping, built by `tsc` for the
 image):
 
-- `POST /auth/discord {code}` signs a user in. `DISCORD_MODE=stub` accepts `stub:<id>:<name>` (refused when
-  `NODE_ENV=production`); `live` does the real exchange. Returns a one-hour session token and the Discord
+- `POST /auth/discord {code}` signs a user in. `DISCORD_MODE` has no default: `live` does the real exchange (Discord
+  calls time out after 5 s: a stalled or failing Discord answers 502 `discord_unavailable`, a rejected code 401);
+  `stub` accepts `stub:<id>:<name>`, stores the user as `stub:<id>` in `discord_id`, needs `ALLOW_STUB_SIGN_IN=1` and
+  is refused when `NODE_ENV=production`. Returns a one-hour session token and the Discord
   `access_token` (the Embedded App SDK needs it for `authenticate()`).
 - `POST /lobbies` creates a lobby (or joins the open one of the same Activity `instanceId`),
   `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/start` (host only; allocates a game server).
@@ -51,11 +53,12 @@ image):
   code and tokens is configured as a backstop); `/health` and `/ready` (checks the database); graceful shutdown on
   `SIGTERM`.
 
-Run it: `npm ci && npm test` in `spikes/backend/` (11 tests: sign-in, lobbies, handoff, forged and expired tickets,
-capacity, saves, config, the live Discord client). `scripts/dev-compose.sh up --build -d` starts Postgres, the backend
-and the stub game server with throwaway secrets made for that run, then `npm run e2e` has two players sign in, share a
-lobby, start it and connect to the game server. Measured on the compose stack: the e2e run passed, a save survived a
-backend restart (Postgres), and `docker compose stop` took 0.7 s because the process closes on `SIGTERM`.
+Run it: `npm ci && npm test` in `spikes/backend/` (sign-in, lobbies, handoff, forged and expired tickets, capacity,
+saves, config that fails closed, the live Discord client and its timeout). `scripts/dev-compose.sh up --build -d`
+starts Postgres, the backend and the stub game server with throwaway secrets made for that run, then `npm run e2e`
+has two players sign in, share a lobby, start it and connect to the game server. Measured on the compose stack: the e2e
+run passed, a save survived a backend restart (Postgres), and `docker compose stop` took 0.7 s because the process
+closes on `SIGTERM`.
 
 ## Join flow: from the Activity to a running match
 
@@ -124,9 +127,10 @@ sequenceDiagram
 
 Nothing was deployed or created. To do it: a Railway project with a Postgres service and the backend (root directory
 `spikes/backend` until it moves), variables `SESSION_SECRET`, `TICKET_SECRET`, `GAME_SERVER_SECRET` (random, 32+
-characters), `DISCORD_MODE=live`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DATABASE_URL`, `NODE_ENV=production`;
-health check path `/health`. In the Discord Developer Portal: an application, the redirect URL, and URL mappings for
-the backend and each game server.
+characters, all three different), `DISCORD_MODE=live` (no default: unset refuses to start), `DISCORD_CLIENT_ID`,
+`DISCORD_CLIENT_SECRET`, `DATABASE_URL`, `NODE_ENV=production`; health check path `/health`. In the Discord Developer
+Portal: an application, the redirect URL, and URL
+mappings for the backend and each game server.
 
 ## Gotchas found while building it
 

@@ -19,9 +19,10 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # Stub sign-in is for local runs only: the backend refuses it when NODE_ENV=production.
+      # Stub sign-in is for local runs only: it needs the explicit opt-in and is refused when NODE_ENV=production.
       NODE_ENV: development
       DISCORD_MODE: stub
+      ALLOW_STUB_SIGN_IN: "1"
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
       TICKET_SECRET: ${TICKET_SECRET:?set TICKET_SECRET}
       GAME_SERVER_SECRET: ${GAME_SERVER_SECRET:?set GAME_SERVER_SECRET}
