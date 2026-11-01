@@ -54,7 +54,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Guns | `shot_pistol`, `shot_smg`, `shot_rifle`, `shot_shotgun`, `dry_fire` | three variants each; crack, blast, thump and the echo off the screen tower |
 | Reloads | `reload_pistol`, `reload_smg`, `reload_rifle`, `reload_shotgun` | magazine out, in and the bolt; the shotgun's three shells and pump |
 | Steps | `step_asphalt`, `step_gravel` | four variants each; gravel is a spray of tiny grains |
-| The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` | one throat model, different pitch curves, vowels, rasp and growl |
+| The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the first four also have ElevenLabs takes as extra variants |
 | Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_start` | the hum is a whole number of cycles, so it never clicks at the seam |
 | Boards | `board_tear`, `board_last`, `board_repair` | at the breach, from `board_torn` and `board_repaired`: a creak then a crack for each board pulled off, a bigger crack, a low thump and the board clattering for the last one, three knocks for one hammered back |
@@ -82,8 +82,42 @@ All four are built to loop: every event that runs past the end wraps to the star
 whole loop at once, so the seam is smaller than the largest step inside the file (measured in
 [research](../research/audio.md)).
 
-Still not played by the night (their files and catalog entries exist): the dead's voices, the footsteps, the generator's
-hum and the grenades, which the capture scenes play by hand (an open issue).
+### The dead, per type
+
+`ZombieVoices` (`game/gameplay/zombies/`) plays them from what a client hears: each frame's decoded zombies and the
+rules' `zombie_damaged` events. Who sounds like what is one table, `ZombieVoiceTable`.
+
+| Look | Idles with | Noticed | Swing | Feet |
+| --- | --- | --- | --- | --- |
+| walker, greaser, usher, farmhand | `zombie_groan` | `zombie_alert`, a rising snarl | `zombie_grunt`, a short chesty effort | `zombie_step_shuffle` (a dragging scuff), `zombie_step_run` from 2.2 m/s |
+| runner | `zombie_groan` | `zombie_shriek`, thin and high | `zombie_grunt` | `zombie_step_run`: a hard slap and scuff |
+| brute | `zombie_breath_brute` (a big chest working), `zombie_groan_brute` | `zombie_groan_brute` | `zombie_attack` | `zombie_step_stomp`: a deep thump |
+| crawler | `zombie_groan_crawler`, a reedy moan | `zombie_alert` | `zombie_grunt` | `zombie_drag`, a body hauled over asphalt |
+| headliner | `zombie_groan_brute` | none (the roar is its announcement) | `zombie_growl_boss`, climbing to its peak on the blow | `zombie_step_stomp`; `zombie_roar` when it rises and, quieter, when it falls |
+
+- **Rationed idles.** Every zombie has a random timer (5 to 11 s) and the whole horde one gate: at most one idle voice
+  every 0.6 to 1.6 s, picked at random from the nearest three that are due. Twenty-eight zombies due in one frame start
+  one groan, not twenty-eight. Idles are heard to 36 m.
+- **Noticed.** A snapshot carries no target, so a chasing zombie snarls once, the first time it comes within 22 m,
+  and no two snarls start within 0.35 s of each other.
+- **Timed to the blow.** The swing sound is started `windup - lead` after the swing begins, `lead` being how far into
+  its file the effort peaks (0.07 s for the grunt, 0.92 s for the headliner's growl), so the peak lands on the blow:
+  at 0.45 s for a walker, 1.2 s for the headliner. A swing that repeats (at the boards) repeats the cue every 1.2 s.
+- **Feet in the clips' cadence.** A foot plants twice per cycle of the clip that plays at the zombie's speed (walk
+  1.33 s, run 0.67 s, crawl and boss walk 1.67 s; the blend runs from 1 m/s to 3 m/s as in `ZombieRig`), starting from
+  the per-id phase the view starts the clip at. Standing zombies and those past 28 m are silent. The plant being at
+  0 and half the cycle is an assumption; the clips carry no foot events.
+- **Voice cap and priority.** Voices share the service's groups: `zombie_voice` (6; groan 30, breath 25, hurt 50,
+  death 55, grunt 62, alert 65, shriek 66), `zombie_boss` (2; growl 86, roar 88, so the headliner is always heard) and
+  `zombie_step` (5, priority 15, below the player's own steps and in a group of their own so a horde's feet never
+  take the player's). Nearer sounds beat farther ones at the same priority.
+- **Bus.** The dead play on Effects, not Voice: Voice is the player's own pain, which is never ducked, while the
+  dead duck under a sting like every other sound in the lot.
+- **Behind you.** Every dead sound has `rear_cue`: a sound behind the listener is low-passed (from 5 kHz at the side
+  to 1.8 kHz straight behind), because panning alone cannot tell front from back on two speakers.
+
+Not played by the night yet (their files and catalog entries exist): the generator's hum and the grenades, which the
+capture scenes play by hand (an open issue).
 
 ## The service's rules
 
@@ -101,6 +135,8 @@ hum and the grenades, which the capture scenes play by hand (an open issue).
 - **Distance.** Each sound has a `max_distance` beyond which it is not started at all (a groan carries 40 m, a step
   30 m, a shot 90 m) and a `unit_size`; the engine does the attenuation, and its built-in distance low-pass dulls far
   sounds.
+- **Rear cue.** A sound with `rear_cue` is low-passed by how far behind the listener it is (`rear_amount`, from the
+  listener node or the camera): 0 in front and at the side, 1 straight behind, where the cutoff is 1.8 kHz.
 - **Occlusion.** A probe (`occlusion_probe`, or a physics ray against `occluder_mask`, off until the map has walls on
   their own layer) returns 0 to 1. A fully blocked sound is 9 dB quieter and low-passed at 1.1 kHz, and counts as half as
   loud when the budget compares it. Measured in a capture: a rifle shot behind a wall was 10 dB down and its centre of

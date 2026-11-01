@@ -312,6 +312,13 @@ the pillars.
   20 a round, so fuel takes a growing share of income as the night goes on (round 12 is already
   8%): the generator is always one decision away from running dry. When it does, the lights fade (the
   last tenth of the tank), every circuit goes dark, and the dead move at full speed.
+- **An empty tank is not the end.** The circuits keep their switches (a circuit can be thrown dry and lights when fuel
+  comes), nothing burns, and the only way back is a fuel can: a player walks to a can stand (one in the concession
+  stand, one by the generator's cage in the yard; [the lot](map.md#the-fuel-cans)), presses `use` and pays the can's
+  price. The card shows the price and the units it adds (only the room that is left, for a part price); a full tank
+  refuses. The tank rises at once, `fuel_restored` fires, the lamps and the slowdown come back, and the generator's card
+  shows. The yard's stand needs the yard's door and the stand's the concession's, so before the first door there is no
+  fuel to buy: the starter tank has to last until the concession is bought.
 
 When the doors open, per player (200 starting points, a player's share of the round's zombies at about 85 points
 each, the round bonus), the first round whose end covers the running total of the doors so far. "All in" spends

@@ -7,7 +7,8 @@ extends RefCounted
 ## dry, walks to the next door when it can afford it and buys it, buys rounds when the gun in hand
 ## is nearly out, buys the weapons on the walls and the crane with points to spare, swaps to a gun
 ## that has rounds, and puts boards back when it is standing at one with nothing to shoot. It throws
-## the breaker of an area it has bought (`AutopilotSwitches`), and back off when the tank runs low.
+## the breaker of an area it has bought (`AutopilotSwitches`), and back off when the tank runs low;
+## and it buys a can of fuel when the tank is low and it has the points (`AutopilotFuel`).
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -55,6 +56,8 @@ var repair_goals: Dictionary = {}
 var whole_boards: int = 1
 ## The breaker posts and when to use them.
 var switches := AutopilotSwitches.new()
+## The fuel can spots and when to buy at them.
+var fuel := AutopilotFuel.new()
 
 var _yaw := 0.0
 var _sidestep := 0.0
@@ -121,6 +124,8 @@ func decide(delta: float) -> NightCommand:
 		command.use = target.is_empty()
 	elif kind == &"circuit":
 		command.use = switches.wants_use(prompt, state.frame)
+	elif kind == &"fuel":
+		command.use = fuel.wants_use(prompt, state.frame, state.points())
 	return command
 
 
@@ -209,12 +214,23 @@ func _reachable(here: Vector3, goal: Vector3) -> bool:
 	return not path.is_empty() and _flat(path[path.size() - 1], goal) < REACHABLE
 
 
-## Where to go: the standing place of the next door it can afford; a breaker post it wants thrown;
-## in a break the nearest breach with a board down; else home.
-func _goal() -> Vector3:
-	# A gun nearly out of rounds comes before a door.
+## What comes before a door: a fuel can when the tank is low and it can pay for one, then rounds
+## for a gun nearly out. `Vector3.INF` when nothing is that urgent.
+func _urgent_goal() -> Vector3:
+	var cans := fuel.next_goal(state.frame, state.position(), state.points())
+	if cans != Vector3.INF:
+		return cans
 	if not _shopping.is_empty() and _low_on_rounds(_held()):
 		return _shopping["position"]
+	return Vector3.INF
+
+
+## Where to go: what is urgent; the standing place of the next door it can afford; a breaker post it
+## wants thrown; in a break the nearest breach with a board down; else home.
+func _goal() -> Vector3:
+	var urgent := _urgent_goal()
+	if urgent != Vector3.INF:
+		return urgent
 	for door_id in order:
 		if state.frame.get("doors", []).has(door_id):
 			continue

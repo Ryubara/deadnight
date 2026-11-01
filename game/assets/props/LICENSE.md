@@ -6,9 +6,9 @@ The kit's environment props, from the Toon Shooter Game Kit by Quaternius.
 - Licence: CC0 1.0 Universal (public domain), <https://creativecommons.org/publicdomain/zero/1.0/>
 - Source: the kit's models on Poly Pizza, one page per model (below)
 - Changes: built by `tools/blender/build_props.py` from the kit files: meshes joined, scaled by 0.8, every flat
-  material collapsed onto a swatch of one shared palette (`props_palette.png`, Deadnight's own, the kit's colours),
-  stood on the middle of their footprint; the Tires cut to the props triangle budget and the Broken Car to 2,400
-  for the web (docs/design/style.md)
+  material collapsed onto a swatch of one shared palette (`props_palette.png`, Deadnight's own, the kit's colours;
+  the barriers' chain-link texture becomes a grey panel), stood on the middle of their footprint; the Tires cut to
+  the props triangle budget and the Broken Car to 2,400 for the web (docs/design/style.md)
 
 | File | Kit model | Source | Kit tris | Tris |
 | --- | --- | --- | ---: | ---: |
@@ -31,6 +31,26 @@ The kit's environment props, from the Toon Shooter Game Kit by Quaternius.
 | `planks.gltf` | "Wood Planks" | <https://poly.pizza/m/hwQ1Fx5P8U> | 150 | 150 |
 | `gas_tank.gltf` | "Gas Tank" | <https://poly.pizza/m/RoCvKBGkoC> | 1,004 | 1,004 |
 | `water_tank.gltf` | "Water Tank" | <https://poly.pizza/m/XVB8vUbnZb> | 872 | 872 |
+| `water_tank_floor.gltf` | "Water Tank Floor" | <https://poly.pizza/m/xgsh3kWbAM> | 784 | 784 |
+| `tree.gltf` | "Tree" | <https://poly.pizza/m/b0boebSV1r> | 1,044 | 1,044 |
+| `tree_tall.gltf` | "Tree" | <https://poly.pizza/m/i4QMw4L64D> | 2,412 | 2,412 |
+| `tree_small.gltf` | "Tree" | <https://poly.pizza/m/QeYQEpgPcC> | 1,652 | 1,652 |
+| `tree_pine.gltf` | "Tree" | <https://poly.pizza/m/1BkD9JnKrE> | 2,504 | 2,504 |
+| `trash_open.gltf` | "Trash Container Open" | <https://poly.pizza/m/IvvdNqXmAW> | 1,374 | 1,374 |
+| `sofa.gltf` | "Sofa" | <https://poly.pizza/m/lmePppSu8a> | 416 | 416 |
+| `sofa_small.gltf` | "Sofa Small" | <https://poly.pizza/m/vRMLQC5Dfg> | 264 | 264 |
+| `sign.gltf` | "Sign" | <https://poly.pizza/m/4MSsNFk5fc> | 284 | 284 |
+| `pipes.gltf` | "Pipes" | <https://poly.pizza/m/GB6AFkoiZb> | 688 | 688 |
+| `fence.gltf` | "Fence" | <https://poly.pizza/m/JfSPlkPhRD> | 424 | 424 |
+| `fence_long.gltf` | "Fence Long" | <https://poly.pizza/m/Wbz6joYBJG> | 424 | 424 |
+| `brick_wall.gltf` | "Brick Wall" | <https://poly.pizza/m/GhSmk5IA5i> | 216 | 216 |
+| `brick_wall_low.gltf` | "Brick Wall" | <https://poly.pizza/m/7uEf9KAU9q> | 108 | 108 |
+| `barrier_large.gltf` | "Barrier Large" | <https://poly.pizza/m/gLbBiYwt7l> | 624 | 624 |
+| `barrier_fixed.gltf` | "Barrier Fixed" | <https://poly.pizza/m/Fg3Nimfcfg> | 1,208 | 1,208 |
+| `papers.gltf` | "Debris Papers" | <https://poly.pizza/m/CCRSdAJxsD> | 6 | 6 |
+| `papers_b.gltf` | "Debris Papers" | <https://poly.pizza/m/MujITy1NRR> | 16 | 16 |
+| `papers_c.gltf` | "Debris Papers" | <https://poly.pizza/m/PTvW67lIoU> | 12 | 12 |
+| `street_light.gltf` | "Street Light" | <https://poly.pizza/m/nFwrlcLvM5> | 324 | 324 |
 
 Not from the kit: the parked cars (`car_red.gltf`, `car_blue.gltf`, `car_green.gltf`, `car_yellow.gltf`,
 `car_cream.gltf`) are Deadnight's own, built by the same script from boxes on the same palette, and

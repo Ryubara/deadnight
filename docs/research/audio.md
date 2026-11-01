@@ -85,6 +85,40 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
 - **A bed never goes quiet**, so an onset detector on the raw level finds nothing: `analyze.py` compares the short-term
   level with its own median over a second either side.
 
+## The dead (#248)
+
+- **The voices.** `tools/audio/zombie_recipes.py` makes the per-type sounds with the same throat model as the first
+  four (`recipes._voice`): a runner's shriek (380 to 940 Hz), a brute's groan an octave under the walkers' and its
+  breath (noise in two bands over a 58 Hz rumble), a crawler's moan and drag (low-passed band noise with a grain),
+  the headliner's roar (a sub sine at half the pitch under a growling voice, the echo off the screen) and growl, and
+  three feet (shuffle, run, stomp). The grunt and the growl peak at known times into the file (0.07 s, 0.92 s), a
+  constant in the recipe and in `ZombieVoiceTable`, which is how the game times them to the blow.
+- **ElevenLabs takes.** `tools/audio/elevenlabs_zombies.py` asks the Sound Effects API for extra takes of the
+  groans, snarls, hurts, deaths, shrieks and the roar (24 calls, 35.5 s requested, which is 1,420 credits at 40 a
+  second; the account counted 444 used). It reads `ELEVENLABS_API_KEY` from the environment, trims the silence, fades
+  and normalises each take, encodes it, and skips a take whose file exists, so a rerun costs nothing. There is no
+  seed: variety comes from asking again. The files are licensed per
+  `game/assets/audio/zombie/LICENSE.md` (free tier, attribution, relicense before a commercial release, #252). Their
+  spectrograms show more hiss above 5 kHz than the synthesised ones (centroids of 3 to 5 kHz against about 1 kHz),
+  which the rear cue and the distance low-pass soften; whether they sound right is a human's call.
+- **Unit size is not a size.** `AudioStreamPlayer3D`'s inverse attenuation is `unit_size / distance`, which is above 1
+  inside `unit_size`: a boss with `unit_size` 14 at 3 m was 13 dB over its file, held by `max_db` (3 dB) only, and its
+  roar and growl clipped the mix. `unit_size` 7 and -6 to -7 dB trims fixed it. Keep `unit_size` near the distance
+  at which a sound should start to fall away, not larger.
+- **Lambdas copy plain variables.** A capture or test that updates an `int` from inside a `Callable` passed to a
+  helper changes its own copy; use a dictionary or array both sides share.
+- **Measured** (`audio_dead_horde`, a horde of twelve closing from 24 m at 1.2 to 4.2 m/s, four directions, then the
+  headliner; the mix of `--write-movie`, analysed in numpy):
+
+| What | Result |
+| --- | --- |
+| Left against right, seconds 1 to 10 of the horde from the left / from the right | +5.9 dB / -5.8 dB (the pan law's ear) |
+| Left against right, horde from the front / from behind | +0.9 dB / -0.6 dB: centred |
+| Centre of energy of the approach, from the front / from behind | about 1.2 kHz / 0.7 kHz: the rear cue |
+| Voices held at once: zombie voices / feet / all | 6 of 6 / 5 of 5 / 10 of 32 |
+| Sounds started / culled over 54 s | 934 / 31 |
+| Mix peak, clipped samples | -0.4 dBFS, 0 (before the boss levels were trimmed: 0 dBFS, 268 clipped) |
+
 ## Godot facts
 
 - **Movie Maker records audio.** `--write-movie out.png` also writes `out.wav` next to the frames: the master mix at the
