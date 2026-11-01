@@ -1,0 +1,92 @@
+{
+ "concession_counter": {
+  "budget": 5000,
+  "size_xyz_blender": [
+   10.24,
+   2.04,
+   1.2
+  ],
+  "tris": 564
+ },
+ "marquee": {
+  "budget": 5000,
+  "size_xyz_blender": [
+   6.2,
+   0.6,
+   6.29
+  ],
+  "tris": 980
+ },
+ "menu_board": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   4.2,
+   0.16,
+   1.6
+  ],
+  "tris": 416
+ },
+ "picnic_table": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   1.8,
+   1.5,
+   0.8
+  ],
+  "tris": 316
+ },
+ "popcorn_machine": {
+  "budget": 800,
+  "size_xyz_blender": [
+   0.74,
+   0.54,
+   1.03
+  ],
+  "tris": 344
+ },
+ "projector": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   0.9,
+   1.72,
+   2.04
+  ],
+  "tris": 416
+ },
+ "screen_frame": {
+  "budget": 5000,
+  "size_xyz_blender": [
+   33.6,
+   9.65,
+   16.8
+  ],
+  "tris": 1448
+ },
+ "speaker_post": {
+  "budget": 800,
+  "size_xyz_blender": [
+   0.83,
+   0.32,
+   1.46
+  ],
+  "tris": 328
+ },
+ "ticket_booth": {
+  "budget": 1500,
+  "size_xyz_blender": [
+   2.6,
+   2.72,
+   3.64
+  ],
+  "tris": 628
+ },
+ "trash_can": {
+  "budget": 800,
+  "size_xyz_blender": [
+   0.59,
+   0.62,
+   1.04
+  ],
+  "tris": 240
+ }
+}

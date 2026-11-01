@@ -26,6 +26,18 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/props/planks.tscn" id="prop_planks"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/tires.tscn" id="prop_tires"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/water_tank.tscn" id="prop_water_tank"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/speaker_post.tscn" id="fx_speaker_post"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/trash_can.tscn" id="fx_trash_can"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/picnic_table.tscn" id="fx_picnic_table"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/popcorn_machine.tscn" id="fx_popcorn_machine"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/menu_board.tscn" id="fx_menu_board"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/ticket_booth.tscn" id="fx_ticket_booth"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/concession_counter.tscn" id="fx_concession_counter"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/projector.tscn" id="fx_projector"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/screen_frame.tscn" id="fx_screen_frame"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/marquee.tscn" id="fx_marquee"]
+[ext_resource type="ArrayMesh" path="res://assets/drivein/speaker_post.obj" id="speaker_mesh"]
+[ext_resource type="Texture2D" path="res://assets/drivein/drivein_palette.png" id="drivein_palette"]
 
 [ext_resource type="Material" path="res://assets/lot/materials/outskirts.tres" id="outskirts"]
 [ext_resource type="Material" path="res://assets/lot/materials/field_ground.tres" id="field_ground"]
@@ -85,6 +97,17 @@ fog_enabled = true
 fog_light_color = Color(0.086, 0.133, 0.290, 1)
 fog_density = 0.013
 fog_sky_affect = 0
+
+[sub_resource type="StandardMaterial3D" id="drivein_mat"]
+albedo_texture = ExtResource("drivein_palette")
+roughness = 0.415
+texture_filter = 0
+
+[sub_resource type="MultiMesh" id="speaker_posts"]
+transform_format = 1
+instance_count = 28
+mesh = ExtResource("speaker_mesh")
+buffer = PackedFloat32Array(0.9848, 0, 0.1736, -11.0298, 0, 1, 0, 0, -0.1736, 0, 0.9848, -50.0551, 0.7628, 0, 0.6466, -8.5438, 0, 1, 0, 0, -0.6466, 0, 0.7628, -44.7582, 0.3327, 0, 0.943, -3.7258, 0, 1, 0, 0, -0.943, 0, 0.3327, -41.4379, -0.6579, 0, 0.7531, 7.3684, 0, 1, 0, 0, -0.7531, 0, -0.6579, -43.5652, -0.9479, 0, 0.3186, 10.6165, 0, 1, 0, 0, -0.3186, 0, -0.9479, -48.4322, 0.7628, 0, 0.6466, -13.8837, 0, 1, 0, 0, -0.6466, 0, 0.7628, -40.2321, 0.3327, 0, 0.943, -6.0544, 0, 1, 0, 0, -0.943, 0, 0.3327, -34.8365, -0.3575, 0, 0.9339, 6.5074, 0, 1, 0, 0, -0.9339, 0, -0.3575, -35.0031, -0.6579, 0, 0.7531, 11.9737, 0, 1, 0, 0, -0.7531, 0, -0.6579, -38.2934, 0.9848, 0, 0.1736, -24.8172, 0, 1, 0, 0, -0.1736, 0, 0.9848, -47.6241, 0.5675, 0, 0.8234, -14.2998, 0, 1, 0, 0, -0.8234, 0, 0.5675, -31.2501, 0.3327, 0, 0.943, -8.383, 0, 1, 0, 0, -0.943, 0, 0.3327, -28.2352, -0.1883, 0, 0.9821, 4.7457, 0, 1, 0, 0, -0.9821, 0, -0.1883, -27.2509, -0.9816, 0, 0.1909, 24.7367, 0, 1, 0, 0, -0.1909, 0, -0.9816, -47.1898, 0.9848, 0, 0.1736, -31.7108, 0, 1, 0, 0, -0.1736, 0, 0.9848, -46.4085, 0.7628, 0, 0.6466, -24.5634, 0, 1, 0, 0, -0.6466, 0, 0.7628, -31.1798, 0.1273, 0, 0.9919, -4.1005, 0, 1, 0, 0, -0.9919, 0, 0.1273, -20.0622, -0.3902, 0, 0.9207, 12.5653, 0, 1, 0, 0, -0.9207, 0, -0.3902, -22.3529, -0.8013, 0, 0.5983, 25.8016, 0, 1, 0, 0, -0.5983, 0, -0.8013, -32.7356, 0.9848, 0, 0.1736, -38.6045, 0, 1, 0, 0, -0.1736, 0, 0.9848, -45.193, 0.8644, 0, 0.5029, -33.883, 0, 1, 0, 0, -0.5029, 0, 0.8644, -32.2876, 0.7628, 0, 0.6466, -29.9033, 0, 1, 0, 0, -0.6466, 0, 0.7628, -26.6537, 0.6377, 0, 0.7703, -24.9976, 0, 1, 0, 0, -0.7703, 0, 0.6377, -21.8047, 0.3327, 0, 0.943, -13.0402, 0, 1, 0, 0, -0.943, 0, 0.3327, -15.0325, -0.1012, 0, 0.9949, 3.9663, 0, 1, 0, 0, -0.9949, 0, -0.1012, -13.0012, -0.274, 0, 0.9617, 10.7407, 0, 1, 0, 0, -0.9617, 0, -0.274, -14.3002, -0.4383, 0, 0.8988, 17.1824, 0, 1, 0, 0, -0.8988, 0, -0.4383, -16.7664, -0.7216, 0, 0.6923, 28.2869, 0, 1, 0, 0, -0.6923, 0, -0.7216, -24.8616)
 
 [sub_resource type="BoxMesh" id="ParkingLines_mesh"]
 material = ExtResource("line_paint")
@@ -203,36 +226,6 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1
 use_collision = true
 size = Vector3(32, 12, 1.2)
 material = ExtResource("screen_face")
-
-[node name="ScreenFrame" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 10.000, -48.700)
-use_collision = true
-size = Vector3(33.6, 13.6, 0.8)
-material = ExtResource("field_struct")
-
-[node name="ScreenLegN10" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.000, 2.100, -48.000)
-use_collision = true
-size = Vector3(1.4, 4.2, 1.6)
-material = ExtResource("field_struct")
-
-[node name="ScreenLeg10" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.000, 2.100, -48.000)
-use_collision = true
-size = Vector3(1.4, 4.2, 1.6)
-material = ExtResource("field_struct")
-
-[node name="ScreenStayN14" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.000, 3.000, -52.800)
-use_collision = true
-size = Vector3(0.8, 0.8, 7)
-material = ExtResource("field_struct")
-
-[node name="ScreenStay14" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.000, 3.000, -52.800)
-use_collision = true
-size = Vector3(0.8, 0.8, 7)
-material = ExtResource("field_struct")
 
 [node name="FenceN0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.000, 1.500, -52.000)
@@ -869,12 +862,6 @@ use_collision = true
 size = Vector3(0.4, 3.2, 0.4)
 material = ExtResource("field_struct")
 
-[node name="PicnicTable" type="CSGBox3D" parent="Field/Props"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 48.000, 0.450, -31.000)
-use_collision = true
-size = Vector3(4, 0.9, 2)
-material = ExtResource("field_struct")
-
 [node name="Wreck1" parent="Field/Props" instance=ExtResource("wreck")]
 transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, -52.000, 0.000, -14.000)
 
@@ -1092,12 +1079,6 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4
 use_collision = true
 size = Vector3(20.8, 0.3, 12.8)
 material = ExtResource("concession_roof")
-
-[node name="Counter" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.500, 2.000)
-use_collision = true
-size = Vector3(10, 1, 2)
-material = ExtResource("concession_prop")
 
 [node name="PrizeCrane" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 1.200, 5.000)
@@ -1353,12 +1334,6 @@ material = ExtResource("booth_prop")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.200, 1.100, 30.800)
 use_collision = true
 size = Vector3(2.4, 2.2, 1.6)
-material = ExtResource("booth_prop")
-
-[node name="Projector" type="CSGBox3D" parent="ProjectionBooth"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.700, 25.250)
-use_collision = true
-size = Vector3(2, 1.3, 1.5)
 material = ExtResource("booth_prop")
 
 [node name="Lamps" type="Node3D" parent="ProjectionBooth"]
@@ -1786,18 +1761,6 @@ use_collision = true
 size = Vector3(8, 2.6, 3)
 material = ExtResource("roadblock")
 
-[node name="KioskW" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 1.200, 45.200)
-use_collision = true
-size = Vector3(2.4, 2.4, 2.4)
-material = ExtResource("road_kiosk")
-
-[node name="KioskE" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 1.200, 45.200)
-use_collision = true
-size = Vector3(2.4, 2.4, 2.4)
-material = ExtResource("road_kiosk")
-
 [node name="Canopy" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 3.600, 45.200)
 use_collision = true
@@ -1888,6 +1851,327 @@ outline_modulate = Color(0, 0, 0, 1)
 outline_size = 48
 text = "TICKET PLAZA"
 font_size = 90
+
+[node name="ScreenFrame" parent="Field" instance=ExtResource("fx_screen_frame")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.000, -48.000)
+
+[node name="SpeakerPosts" type="Node3D" parent="Field"]
+
+[node name="Post01" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.030, 0.725, -50.055)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post02" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.544, 0.725, -44.758)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post03" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.726, 0.725, -41.438)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post04" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.368, 0.725, -43.565)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post05" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.617, 0.725, -48.432)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post06" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.884, 0.725, -40.232)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post07" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.054, 0.725, -34.837)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post08" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.507, 0.725, -35.003)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post09" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.974, 0.725, -38.293)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post10" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.817, 0.725, -47.624)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post11" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.300, 0.725, -31.250)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post12" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.383, 0.725, -28.235)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post13" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.746, 0.725, -27.251)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post14" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.737, 0.725, -47.190)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post15" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31.711, 0.725, -46.409)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post16" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.563, 0.725, -31.180)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post17" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.101, 0.725, -20.062)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post18" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.565, 0.725, -22.353)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post19" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.802, 0.725, -32.736)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post20" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -38.604, 0.725, -45.193)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post21" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33.883, 0.725, -32.288)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post22" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -29.903, 0.725, -26.654)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post23" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.998, 0.725, -21.805)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post24" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.040, 0.725, -15.033)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post25" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.966, 0.725, -13.001)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post26" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.741, 0.725, -14.300)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post27" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.182, 0.725, -16.766)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post28" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.287, 0.725, -24.862)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Speakers" type="MultiMeshInstance3D" parent="Field/SpeakerPosts"]
+cast_shadow = 0
+material_override = SubResource("drivein_mat")
+multimesh = SubResource("speaker_posts")
+
+[node name="PicnicTableA" parent="Field/Props" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 46.400, 0.000, -31.000)
+
+[node name="PicnicTableB" parent="Field/Props" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 49.400, 0.000, -31.000)
+
+[node name="TrashCans" type="Node3D" parent="Field"]
+
+[node name="Can1" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.400, 0.000, -4.800)
+
+[node name="Can2" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.400, 0.000, -4.800)
+
+[node name="Can3" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 43.200, 0.000, -29.200)
+
+[node name="Can4" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -42.400, 0.000, -29.600)
+
+[node name="Counter" parent="Concession" instance=ExtResource("fx_concession_counter")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 0.000, 2.000)
+
+[node name="PopcornMachine" parent="Concession" instance=ExtResource("fx_popcorn_machine")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -2.600, 0.960, 2.050)
+
+[node name="MenuBoard" parent="Concession" instance=ExtResource("fx_menu_board")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 2.200, 7.720)
+
+[node name="PicnicTableW" parent="Midway" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.000, 0.000, 11.500)
+
+[node name="PicnicTableE" parent="Midway" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.000, 0.000, 11.500)
+
+[node name="CanW" parent="Midway" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 0.000, 9.300)
+
+[node name="CanE" parent="Midway" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.400, 0.000, 9.300)
+
+[node name="Projector" parent="ProjectionBooth" instance=ExtResource("fx_projector")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.050, 25.250)
+
+[node name="TicketBoothW" parent="Road" instance=ExtResource("fx_ticket_booth")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 0.000, 45.200)
+
+[node name="TicketBoothE" parent="Road" instance=ExtResource("fx_ticket_booth")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 0.000, 45.200)
+
+[node name="Marquee" parent="Road" instance=ExtResource("fx_marquee")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.400, 0.000, 50.600)
+
+[node name="CanW" parent="Road" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 0.000, 43.400)
+
+[node name="CanE" parent="Road" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.400, 0.000, 43.400)
 
 [node name="ShopSpots" type="Node3D" parent="."]
 

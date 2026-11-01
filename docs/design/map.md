@@ -309,6 +309,12 @@ and the field's stalls have painted lines.
 | `FuelSpots`, `FuelProps` | the fuel can spots (`metadata/shop_id`, `metadata/door`; [above](#the-fuel-cans)) and the crates, cans and signs; `LotFuel` reads the spots |
 | `Switches` | the breaker posts (`metadata/circuit`, and `metadata/door` for the area's shop door; [above](#the-breaker-posts)); `LotSwitches` reads them |
 
+The drive-in's own props (speaker posts, the counter, popcorn machine and menu board, the projector, the ticket booths
+and the marquee, the screen's frame, picnic tables, trash cans) are placed by `tools/world/drivein_props.py`. A speaker
+post stands in front of every other parked car's nose, towards the screen, never on a gap between cars nor within 1.4 m
+of the line the shoulder camera takes through one nor within 1.5 m of a lamp post; a prop that replaces a greybox block
+(the counter, projector, kiosks, screen frame) keeps that block's collision box exactly.
+
 `game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`, `lot_lamps.gd`), the capture rig and
 `camera_probe.gd` (the player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
 (run it from the repository root and commit what it writes; the run must leave `git diff` empty), so a layout change is
