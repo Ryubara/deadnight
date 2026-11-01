@@ -40,6 +40,9 @@ jobs:
         with:
           path: cache/downloads
           key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Every committed script has its committed uid
+        # Before the import: an import writes missing uids to disk, and the check reads the git index anyway.
+        run: python3 repos/deadnight/tools/check_gd_uids.py --root repos/deadnight
       - name: Make the workspace and fetch the pinned Godot and GdUnit4
         run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project

@@ -61,6 +61,14 @@ repos:
         additional_dependencies: [pyyaml]
         entry: python .github/scripts/groundwork.py check-message
         stages: [commit-msg]
+      # Godot writes `<script>.gd.uid` beside every script; one that is not committed shows up untracked in every
+      # checkout (issue #144). Reads the git index, so it also sees uids that an import created on disk only.
+      - id: gd-uids
+        name: every committed .gd has its committed .gd.uid
+        language: python
+        entry: python tools/check_gd_uids.py
+        pass_filenames: false
+        files: \.gd(\.uid)?$
       - id: conventions-render
         name: generated files match the conventions
         language: python
