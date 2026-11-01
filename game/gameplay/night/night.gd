@@ -213,6 +213,7 @@ func _finish_start(camera: Camera3D) -> void:
 	view.setup(state, camera, _telegraphs(), _board_seconds())
 	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, rules_tuning.fuel)
+	view.show_crane(world, rules_tuning)
 	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
