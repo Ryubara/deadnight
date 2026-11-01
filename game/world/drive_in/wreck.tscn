@@ -5,6 +5,7 @@
 [node name="Wreck" type="Node3D"]
 
 [node name="Model" parent="." instance=ExtResource("model")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
 
 [node name="Body" type="CSGBox3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
