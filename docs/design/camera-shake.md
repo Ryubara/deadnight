@@ -1,8 +1,9 @@
 # Camera shake
 
-A shot gives the view a small kick: "very subtle, but there". It is the player's own view only, per weapon, trauma
-style, and it never moves the aim. The code is `game/gameplay/player/camera_shake.gd` and `third_person_camera.gd`;
-`game/tests/player/test_camera_shake.gd` pins the behaviour. Why trauma and how others do it:
+A shot gives the view a small kick, and a sprint a gentle sway: "very subtle, but there". Both are the player's own
+view only and neither moves the aim. The code is `game/gameplay/player/camera_shake.gd` (the shot),
+`sprint_sway.gd` (the sprint) and `third_person_camera.gd`; `game/tests/player/test_camera_shake.gd` and
+`test_sprint_sway.gd` pin the behaviour. Why trauma and how others do it:
 [Shot feedback research](../research/shot-feedback.md).
 
 ## How it works
@@ -23,7 +24,7 @@ The lens node (`Camera3D`) turns by the shake; the rig keeps the unshaken view a
 aims reads that: `HumanController` (the ray sent with each shot), the weapon's converge point in `PlayerAnimation`.
 A test shakes with trauma 1 for half a second and checks the aim origin and direction do not change in the fifth
 decimal while the lens is off by more than a tenth of a degree. The crosshair is the middle of the *shaken* picture, so
-for the two frames the picture is off by up to 0.6 degrees the reticle sits that far from where the shot goes; that is
+for the two frames the picture is off by up to 0.5 degrees the reticle sits that far from where the shot goes; that is
 the price of a shake you can see, and it is under the spread of the weapons that shake most.
 
 ## The numbers
@@ -33,7 +34,7 @@ All are exports on `PlayerTuning` (group Shake) or `WeaponDef` (group Feel), edi
 | Number | Value | Why |
 | --- | --- | --- |
 | `shake_max_degrees` | 1.5 | the turn at trauma 1: the ceiling, reached only by stacking |
-| `shake_decay` | 2.6 per second | a shotgun blast (0.65) is over in 0.25 s, a pistol shot (0.30) in 0.12 s |
+| `shake_decay` | 2.6 per second | a shotgun blast (0.55) is over in 0.21 s, a pistol shot (0.30) in 0.12 s |
 | `shake_exponent` | 2 | the classic trauma curve |
 | `shake_frequency` | 14 per second | a quick tremor, not a sway |
 | `shake_roll_fraction` | 0.4 | |
@@ -43,11 +44,12 @@ All are exports on `PlayerTuning` (group Shake) or `WeaponDef` (group Feel), edi
 | Pistol | 0.30 | 0.14 |
 | SMG | 0.20 | 0.06 (a whole magazine stacks to about 0.2) |
 | Rifle | 0.45 | 0.30 |
-| Shotgun | 0.65 | 0.63 |
+| Shotgun | 0.55 | 0.45 |
 | Flare gun | 0.40 | 0.24 |
 | Crowbar | 0 | none |
 
-A test keeps every weapon under one degree and orders the guns (shotgun above rifle above pistol above SMG).
+A test keeps every weapon under half a degree (the shotgun was 0.63 and was brought down to 0.45) and
+orders the guns (shotgun above rifle above pistol above SMG).
 
 ## The player's setting
 
@@ -55,3 +57,43 @@ Settings, Accessibility, **Camera shake**: 0 to 100 percent in steps of 10, defa
 `PlayerSettings.camera_shake` scales the shake (`CameraShake.scale`); 0 turns it off and trauma is not even kept. It is
 also **off while Reduced motion is on**, so one switch quiets the screens and the camera. The player re-reads it when
 any setting changes.
+
+## The sprint sway
+
+While the body sprints the lens bobs and rolls a hair, in step with the feet. It is rotation only about the lens, like
+the shot shake, so the aim ray, the walls sweep and the weapon's aim never see it. `ThirdPersonCamera.sway`
+(`SprintSway`) is stepped by the rig each frame from `sprinting` and `ground_speed`, which the player sets after
+every tick.
+
+- **Locked to the feet.** The phase counts footfalls: ground speed times the step over `step_distance` (1.9 m, the
+  metres per footstep event, and half the 3.9 m the Run clip covers in one cycle at its planted speed of 5.5 m/s).
+  So a faster run sways faster (3.7 footfalls a second at 7 m/s), the same stride the animation and the footstep audio
+  keep, and a body held against a wall stands still in the picture. No wall time is read.
+- **Bob and sway.** Pitch goes through one cycle per footfall (`sprint_sway_bob_steps` 1), roll and yaw through one per
+  two footfalls (`sprint_sway_sway_steps` 2), yaw a quarter of a cycle behind roll. `sprint_sway_phase_degrees` slides
+  where in the stride a foot lands.
+- **Only while sprinting.** `sprinting` and not aiming, and ground speed at least `sprint_sway_min_speed` (3 m/s): none
+  while walking, aiming, standing, in the air, or downed (a downed body is ticked with an empty command, so it does not
+  sprint). It eases in over `sprint_sway_ease_in` (0.4 s) and out over `sprint_sway_ease_out` (0.3 s), a linear ramp
+  through a smoothstep, so the turn never jumps; the phase restarts at zero when the sway is fully out.
+- **With the shot shake.** The two turns multiply into one lens turn (the shake first). While trauma is up the sway
+  gives way by up to `sprint_sway_fire_duck` (0.5) of itself, so a kick is not buried in the bob and the two never add
+  to more than their bounds.
+- **The setting.** The same Camera shake slider scales it, and Reduced motion turns it off: the sway reads
+  `CameraShake.scale`.
+
+| `PlayerTuning` (group Sprint sway) | Value |
+| --- | --- |
+| `sprint_sway_pitch_degrees` | 0.3 |
+| `sprint_sway_yaw_degrees` | 0.15 |
+| `sprint_sway_roll_degrees` | 0.2 |
+| `sprint_sway_bob_steps` / `sprint_sway_sway_steps` | 1 / 2 footfalls to a cycle |
+| `sprint_sway_phase_degrees` | 0 |
+| `sprint_sway_ease_in` / `_ease_out` | 0.4 s / 0.3 s |
+| `sprint_sway_min_speed` | 3 m/s |
+| `sprint_sway_fire_duck` | 0.5 |
+
+Why so small: Godot's field of view is the vertical one, so 70 degrees over 1080 pixels is about 15 pixels a degree
+(14 at the sprint's wider lens): 0.3 degrees of bob moves the picture about 4 pixels up and down, and 0.2 degrees of
+roll about 3 pixels at the edge of the screen. That is felt as life in the picture and not read as a wobble, and it
+stays under the shotgun's 0.45. A test keeps every amplitude under half a degree. Captures: the pull request.

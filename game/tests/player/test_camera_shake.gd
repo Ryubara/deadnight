@@ -8,7 +8,7 @@ const TEST_ROOM := "res://world/test_room.tscn"
 const TICK := 1.0 / 60.0
 const START := Vector3(0.0, 0.05, 10.0)
 ## "Very subtle": the strongest weapon's peak turn of the view stays under this many degrees.
-const SUBTLE_DEGREES := 1.0
+const SUBTLE_DEGREES := 0.5
 
 var _player: Player
 var _rig: ThirdPersonCamera
