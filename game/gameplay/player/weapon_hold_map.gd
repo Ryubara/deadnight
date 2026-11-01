@@ -5,9 +5,8 @@ extends RefCounted
 ## One table, so the catalogue and the animation do not drift apart (docs/design/weapon-hold.md).
 ## A melee weapon (`WeaponDef.Kind.MELEE`: the crowbar, a bat, a fire axe) is always `Melee`.
 
-## The class of each firearm in the catalogue. The ids in `NO_MODEL` have no model of their own
-## yet and borrow the nearest class: the SMG the lever rifle's, the pistol and the flare gun the
-## one-handed Pistol class (its clips; the hand stays empty until the model exists).
+## The class of each firearm in the catalogue: the clips it is held with. Its model and size are
+## its own hold file (`holds/<id>.tres`, `PlayerAnimation.hold_for`), never a class's.
 const CLASS_OF := {
 	&"rifle": &"Rifle",
 	&"shotgun": &"Shotgun",
@@ -15,9 +14,6 @@ const CLASS_OF := {
 	&"pistol": &"Pistol",
 	&"flare_gun": &"Pistol",
 }
-## The weapons shown with a class that is not theirs, or with no model at all: listed here and
-## in the docs, and gone from the list when their model and hold file land.
-const NO_MODEL: Array[StringName] = [&"pistol", &"smg", &"flare_gun"]
 const MELEE_CLASS := &"Melee"
 
 
@@ -27,3 +23,14 @@ static func class_of(weapon_id: StringName) -> StringName:
 	if def != null and def.is_melee():
 		return MELEE_CLASS
 	return CLASS_OF.get(weapon_id, PlayerAnimation.DEFAULT_CLASS)
+
+
+## The catalogue weapons whose model has not landed (their hold file names it, the glb is not
+## there yet): the hand is empty for them, never another weapon's model. Gone from this list the
+## moment the glb is in `assets/weapons/`.
+static func no_model() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for id in WeaponCatalog.IDS:
+		if PlayerAnimation.hold_for(id) == null:
+			ids.append(id)
+	return ids

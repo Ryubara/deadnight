@@ -38,5 +38,5 @@ func _sync(player_id: int, weapon: StringName) -> void:
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 	if animation == null:
 		return
-	animation.equip(WeaponHoldMap.class_of(weapon))
+	animation.equip_weapon(weapon)
 	_shown[player_id] = weapon

@@ -177,7 +177,7 @@ func _ready() -> void:
 	set(&"parameters/split/blend_amount", 1.0)
 	active = true
 	_playback = get(&"parameters/body/playback") as AnimationNodeStateMachinePlayback
-	_set_class(DEFAULT_CLASS)
+	_set_class(DEFAULT_CLASS, hold_of(DEFAULT_CLASS))
 	_player.jumped.connect(_on_jumped)
 	_player.landed.connect(_on_landed)
 
@@ -253,7 +253,15 @@ func equip(new_class: StringName) -> void:
 	if new_class not in CLASSES:
 		push_error("PlayerAnimation: no weapon class %s" % new_class)
 		return
-	_set_class(new_class)
+	_set_class(new_class, hold_of(new_class))
+	_weapon_visible(false)
+	play_action(&"Equip")
+
+
+## Takes a weapon of the catalogue in hand: its class's clips and its own hold and model
+## (`hold_for`), so no two weapons share a model (the crowbar is not the bat).
+func equip_weapon(weapon_id: StringName) -> void:
+	_set_class(WeaponHoldMap.class_of(weapon_id), hold_for(weapon_id))
 	_weapon_visible(false)
 	play_action(&"Equip")
 
@@ -338,6 +346,18 @@ static func hold_of(new_class: StringName) -> WeaponHold:
 	return load(HOLDS_DIR + String(new_class).to_lower() + ".tres") as WeaponHold
 
 
+## The hold of a catalogue weapon: its own file `holds/<id>.tres` (its own model, size and grip),
+## or null when it has none or its model has not arrived (`WeaponHold.has_model`): the hand
+## stays empty rather than showing another weapon's model. A weapon with no file of its own
+## is held as its class (`hold_of`), which is how a future bat or axe gets in.
+static func hold_for(weapon_id: StringName) -> WeaponHold:
+	var path := HOLDS_DIR + String(weapon_id) + ".tres"
+	if ResourceLoader.exists(path):
+		var own := load(path) as WeaponHold
+		return own if own != null and own.has_model() else null
+	return hold_of(WeaponHoldMap.class_of(weapon_id))
+
+
 ## The hold data of the weapon in the hand, or null.
 func weapon_hold() -> WeaponHold:
 	return _hold
@@ -353,13 +373,13 @@ func shoulder_blend() -> float:
 	return _shoulder_blend
 
 
-func _set_class(new_class: StringName) -> void:
+func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
-	_hold = hold_of(new_class)
+	_hold = hold
 	_hands.hold = _hold
 	if _hold != null:
 		_weapon = (load(_hold.scene) as PackedScene).instantiate() as Node3D

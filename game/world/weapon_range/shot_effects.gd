@@ -35,13 +35,16 @@ func _init() -> void:
 ## puff of dust). A streak only when the weapon asks for one. A projectile weapon draws nothing
 ## here: its body flies and bursts.
 func shot(def: WeaponDef, muzzle: Vector3, ends: Array) -> void:
+	# A blow has no muzzle: no flash, no impact (a hit shows as a spark, `NightView`).
+	if def.is_melee():
+		return
 	muzzle_flash(muzzle)
 	if def.is_projectile():
 		return
 	for end: Vector3 in ends:
 		if def.tracer:
 			tracer(muzzle, end)
-		if not def.is_melee() and muzzle.distance_to(end) < def.max_range - RANGE_SLACK:
+		if muzzle.distance_to(end) < def.max_range - RANGE_SLACK:
 			impact(end)
 
 

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WeaponHold" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/weapon_hold.gd" id="1_hold"]
+
+[resource]
+script = ExtResource("1_hold")
+weapon_class = &"Melee"
+scene = "res://assets/weapons/crowbar/crowbar.glb"
+model_scale = 0.88
+real_length = 0.6
+model_length = 0.6
+shouldered = false
+grip_offset = Vector3(0, 0, 0)
+support = Vector3(0, 0, 0)
+muzzle = Vector3(0, 0.48, 0)
+butt = Vector3(0, -0.12, 0)
+pitch_offset_deg = 0.0
