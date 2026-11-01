@@ -89,12 +89,19 @@ func hear(world: NightWorld) -> void:
 ## the impacts, and the shake of the local player's own view.
 func _show_shot(event: Dictionary) -> void:
 	var def := WeaponCatalog.get_def(event["weapon_id"])
-	var body := bodies.call(event["shooter_id"]) as Player
+	var shooter: int = event.get("shooter_id", -1)  # the warm-up's sample shot has none
+	var body := bodies.call(shooter) as Player
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
 	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
-	if body != null and event["shooter_id"] == _state.player_id:
+	if body != null and shooter == _state.player_id:
 		body.camera_rig.add_shake(def.shake_trauma)
+
+
+## Draws and sounds one event as if the server had sent it (the warm-up replays samples of each
+## kind before the night starts, `NightWarmup`).
+func draw_event(event: Dictionary) -> void:
+	_on_event(event)
 
 
 func _on_event(event: Dictionary) -> void:
