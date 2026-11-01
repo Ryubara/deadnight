@@ -3398,6 +3398,90 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -35.50
 metadata/circuit = "back_lot"
 metadata/door = "door_back_lot"
 
+[node name="FuelSpots" type="Node3D" parent="."]
+
+[node name="FuelProps" type="Node3D" parent="."]
+
+[node name="Stand" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 0.450, 3.700)
+use_collision = true
+size = Vector3(1.2, 0.9, 0.7)
+material = ExtResource("field_fence")
+
+[node name="StandBand" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 0.600, 3.700)
+size = Vector3(1.24, 0.14, 0.74)
+material = ExtResource("road_line")
+
+[node name="StandCan1" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.120, 1.150, 3.700)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="StandCan2" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 1.150, 3.700)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="StandCan3" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.880, 1.150, 3.700)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="StandSign" type="Label3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 0.500, 4.070)
+pixel_size = 0.006
+text = "FUEL"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotStand" type="Marker3D" parent="FuelSpots"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 0.000, 4.800)
+metadata/shop_id = "fuel_can"
+metadata/door = "door_concession"
+
+[node name="Yard" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 0.450, 15.900)
+use_collision = true
+size = Vector3(1.2, 0.9, 0.7)
+material = ExtResource("field_fence")
+
+[node name="YardBand" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 0.600, 15.900)
+size = Vector3(1.24, 0.14, 0.74)
+material = ExtResource("road_line")
+
+[node name="YardCan1" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 1.150, 15.520)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="YardCan2" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 1.150, 15.900)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="YardCan3" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 1.150, 16.280)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="YardSign" type="Label3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.030, 0.500, 15.900)
+pixel_size = 0.006
+text = "FUEL"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotYard" type="Marker3D" parent="FuelSpots"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 34.300, 0.000, 15.900)
+metadata/shop_id = "fuel_can"
+metadata/door = "door_yard"
+
 [node name="CameraProbes" type="Node3D" parent="."]
 
 [node name="CarGap_R1a" type="Marker3D" parent="CameraProbes"]

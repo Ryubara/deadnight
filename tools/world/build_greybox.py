@@ -67,6 +67,13 @@ SWITCHES = [
     ("booth", "door_booth", (4.6, 0.0, 21.5), (0.0, -1.0)),  # on the booth's north wall, midway side
     ("back_lot", "door_back_lot", (-35.5, 0.0, -4.6), (0.0, -1.0)),  # on the field's south fence, by the gate
 ]
+# The fuel can stands: (name, the shop door of the area, where, the way its front faces in degrees of yaw). A player
+# buys a can (the shop's `fuel_can`) from the spot 1.1 m in front of one (docs/design/map.md, The fuel cans).
+FUEL_STANDS = [
+    ("Stand", "door_concession", (2.5, 3.7), 0.0),  # behind the stand's counter, on the shelf by the soda
+    ("Yard", "door_yard", (35.4, 15.9), -90.0),  # outside the generator cage's west wall, facing the yard's gate
+]
+FUEL_ITEM = "fuel_can"
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
@@ -504,6 +511,27 @@ def ammo_locker(name: str, centre: tuple[float, float], yaw: float = 0.0) -> Non
     shop_spot(f"Spot{name}", "ammo", "", (x + fx * 1.1, 0, z + fz * 1.1), yaw)
 
 
+def fuel_stand(name: str, door_id: str, centre: tuple[float, float], yaw: float) -> None:
+    """A crate of red fuel cans with a yellow band and a FUEL sign; the spot a player buys from is a marker 1.1 m in
+    front of it (`FuelSpots`, read by `LotFuel`), and the shop item and the door of its area are its metadata."""
+    x, z = centre
+    rad = math.radians(yaw)
+    fx, fz = math.sin(rad), math.cos(rad)  # the front (+Z at yaw 0)
+    rx, rz = math.cos(rad), -math.sin(rad)  # the right (+X at yaw 0)
+    box("FuelProps", name, (1.2, 0.9, 0.7), (x, 0.45, z), "field_fence", yaw)
+    box("FuelProps", f"{name}Band", (1.24, 0.14, 0.74), (x, 0.6, z), "road_line", yaw, collide=False)
+    for i, offset in enumerate((-0.38, 0.0, 0.38), start=1):
+        at = (x + rx * offset, 1.15, z + rz * offset)
+        box("FuelProps", f"{name}Can{i}", (0.34, 0.5, 0.22), at, "yard_prop", yaw, collide=False)
+    sign("FuelProps", f"{name}Sign", "FUEL", (x + fx * 0.37, 0.5, z + fz * 0.37), yaw, 60)
+    spot = {
+        "transform": xform((x + fx * 1.1, 0, z + fz * 1.1), yaw),
+        "metadata/shop_id": f'"{FUEL_ITEM}"',
+        "metadata/door": f'"{door_id}"',
+    }
+    node(f"Spot{name}", "Marker3D", "FuelSpots", spot)
+
+
 def slab(door_name: str, tag: str, centre, width: float, height: float, axis: str) -> None:
     size = (width, height, 0.3) if axis == "x" else (0.3, height, width)
     box(f"Doors/{door_name}", tag, size, (centre[0], height / 2, centre[1]), "door")
@@ -869,6 +897,14 @@ def build() -> None:
         lines.append(f'metadata/circuit = "{circuit}"')
         lines.append(f'metadata/door = "{door_id}"')
         lines.append("")
+
+    # --- Fuel cans: where a player buys fuel for the generator ----------------------------------------------------------
+    # One in the stand (the map doc's place for fuel) and one by the generator's cage in the yard; each only in an area
+    # whose door is bought. Each spot is a marker with the shop item and the door as metadata (`LotFuel`).
+    group("FuelSpots", ".")
+    group("FuelProps", ".")
+    for name, door_id, centre, yaw in FUEL_STANDS:
+        fuel_stand(name, door_id, centre, yaw)
 
     # --- Camera probes: every narrow place the over-the-shoulder camera has to get through -----------------------
     # Each marker faces the way a player walks through; the tests sweep the spring arm from it, both ways round.

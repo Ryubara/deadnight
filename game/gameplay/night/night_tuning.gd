@@ -17,6 +17,12 @@ extends Resource
 ## Seconds before the same hand can throw a breaker again (a held key does not flicker the lights).
 @export var switch_interval: float = 0.5
 
+## Metres from a fuel can spot that a can can be bought from: the spot is stood at, so a wall's far
+## side is out of reach.
+@export var fuel_reach: float = 2.0
+## Seconds before the same hand can buy another can (a held key does not empty the purse).
+@export var fuel_interval: float = 0.5
+
 @export_group("Shots")
 ## The barrel, relative to the player's feet and facing (x right, -z forward).
 @export var muzzle_offset: Vector3 = Vector3(0.3, 1.45, -0.4)
