@@ -55,6 +55,9 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(_tokens.bg)
 	_stage = Control.new()
 	_stage.name = "Stage"
+	# The stage only holds screens and lets the mouse through: a screen over a game world (a
+	# night) must not eat the mouse motion the world's look reads in `_unhandled_input`.
+	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.theme = UIThemeBuilder.build(_tokens)
 	_stage.clip_contents = true
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

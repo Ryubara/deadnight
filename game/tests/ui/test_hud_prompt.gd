@@ -9,7 +9,7 @@ var _hud: Hud
 
 func before_test() -> void:
 	UIMotion.reduced = false
-	UIInputMode.gamepad = false
+	UIInputMode.reset()
 	_host = auto_free(Control.new())
 	_host.size = Vector2(1920, 1080)
 	add_child(_host)
@@ -17,7 +17,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	UIMotion.reduced = false
-	UIInputMode.gamepad = false
+	UIInputMode.reset()
 	Input.action_release(&"interact")
 
 

@@ -4,15 +4,26 @@ extends RefCounted
 
 const PHONE := Vector2(2340.0, 1080.0)
 const ACTIONS: Array[StringName] = [
-	&"fire", &"jump", &"aim", &"reload", &"interact", &"swap_weapon", &"throw_grenade", &"sprint"
+	&"fire",
+	&"jump",
+	&"aim",
+	&"reload",
+	&"interact",
+	&"swap_weapon",
+	&"throw_grenade",
+	&"sprint",
+	&"swap_shoulder"
 ]
 
 var controls: TouchControls
 var host: Control
 var _suite: GdUnitTestSuite
+var _hand_before: Variant = null
 
 
-static func make(suite: GdUnitTestSuite, canvas := PHONE, state: HudState = null) -> TouchFixture:
+static func make(
+	suite: GdUnitTestSuite, canvas := PHONE, state: HudState = null, persist_hints := false
+) -> TouchFixture:
 	var fixture := TouchFixture.new()
 	fixture._suite = suite
 	TouchMode.device_is_touch = true
@@ -22,17 +33,33 @@ static func make(suite: GdUnitTestSuite, canvas := PHONE, state: HudState = null
 	suite.add_child(fixture.host)
 	fixture.controls = TouchControls.new()
 	fixture.controls.state = state
+	# The hints would write what a test used into the player's own settings file.
+	fixture.controls.persist_hints = persist_hints
 	fixture.host.add_child(fixture.controls)
 	fixture.controls.size = canvas
 	fixture.controls.refresh()
 	return fixture
 
 
+## The player's hand: true flips the layout (through the setting, as the Settings screen does).
+func left_handed(on := true) -> void:
+	var settings := _suite.get_tree().root.get_node("Settings")
+	if _hand_before == null:
+		_hand_before = settings.get_value(SettingsService.LEFT_HANDED)
+	settings.set_value(SettingsService.LEFT_HANDED, on)
+
+
 func free_all() -> void:
+	if _hand_before != null:
+		_suite.get_tree().root.get_node("Settings").set_value(
+			SettingsService.LEFT_HANDED, _hand_before
+		)
+		_hand_before = null
 	TouchMode.device_is_touch = null
 	if is_instance_valid(host):
 		host.free()
 	Input.emulate_mouse_from_touch = true
+	UIInputMode.reset()
 	for action in ACTIONS:
 		Input.action_release(action)
 
