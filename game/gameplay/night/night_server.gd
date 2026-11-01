@@ -328,7 +328,9 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 ## What `use` would do for a player right now: `{}`, a door to buy, a weapon on a wall, the crane
 ## or rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id",
 ## "boards"}` for a breach with a board down that the player stands inside, in reach of, or
-## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now).
+## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or
+## `{"kind": &"fuel", "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell
+## now: `units` is 0 and `price` 0 when the tank is full).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -357,7 +359,25 @@ func use_target(player_id: int) -> Dictionary:
 	if post != null:
 		var on: bool = rules.generator.circuits.get(post.circuit_id, false)
 		return {"kind": &"circuit", "id": post.circuit_id, "on": on}
-	return {}
+	return _fuel_offer(here)
+
+
+## The can stand within reach of `here`: what the rules would sell and for how much, or `{}`.
+func _fuel_offer(here: Vector3) -> Dictionary:
+	var spot := world.fuel.within_reach(here, tuning.fuel_reach)
+	if spot == &"":
+		return {}
+	var item := world.fuel.item_of(spot)
+	var offer := rules.tuning.economy.item(item).fuel_offer(
+		rules.round_number, rules.generator.space()
+	)
+	return {
+		"kind": &"fuel",
+		"id": spot,
+		"item": item,
+		"price": offer["price"],
+		"units": offer["units"],
+	}
 
 
 ## The offer of the nearest shop spot in reach that has one, or `{}`.
@@ -449,6 +469,10 @@ func _use(player_id: int) -> void:
 			if _hand_wait[player_id] <= 0.0:
 				_hand_wait[player_id] = tuning.switch_interval
 				rules.apply(RulesAction.set_circuit(target["id"], not target["on"]))
+		&"fuel":
+			if _hand_wait[player_id] <= 0.0:
+				_hand_wait[player_id] = tuning.fuel_interval
+				buy(player_id, target["item"])
 
 
 # --- The picture clients draw ---
