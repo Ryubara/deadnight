@@ -102,9 +102,14 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	# A playing bed still holds its decoded stream when the engine shuts down, which it reports as
-	# a leak: stop them (and every other voice) first.
+	# A stream still held by a playing voice when the engine shuts down is reported as a leaked
+	# resource: stop every voice and let go of every stream (the players' and the cache's).
 	stop_all()
+	for player in _players_3d:
+		player.stream = null
+	for player in _players_2d:
+		player.stream = null
+	_streams.clear()
 	_remove_duck_effect()
 	if UIAudio.handler == play_ui:
 		UIAudio.handler = Callable()
