@@ -55,7 +55,7 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
-| `repair` (`barricade_id`), `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
+| `repair` (`barricade_id`), `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request (`set_circuit` carries none: the night server sends it when a player uses a breaker post, [map](map.md#the-breaker-posts)) |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |

@@ -23,6 +23,9 @@ const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
 const SEED := 1958
 const SPECTATOR_OFFSET := Vector3(0.0, 11.0, 8.0)
+## How far past the low-tank line (a fraction of a full tank) the bot waits before it lights an
+## area again.
+const SWITCH_RESUME_MARGIN := 0.15
 
 var mode := Mode.HUMAN
 var world: NightWorld
@@ -166,6 +169,12 @@ func _make_autopilot() -> void:
 			autopilot.prices[item.id] = item.price
 			autopilot.order.append(item.id)
 	autopilot.whole_boards = tuning.barricades.boards
+	autopilot.switches.capacity = tuning.fuel.capacity
+	autopilot.switches.save_below = tuning.fuel.low_fraction
+	autopilot.switches.resume_above = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN
+	for circuit_id in world.switches.circuit_ids():
+		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
+		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
 	for id in world.barricade_ids():
 		autopilot.repair_goals[id] = world.repair_spot(id)
 	for door_id in autopilot.order:

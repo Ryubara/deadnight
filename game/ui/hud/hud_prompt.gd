@@ -11,6 +11,7 @@ const DETAILS := {
 	&"buy_weapon": "A NEW GUN FOR THE NIGHT",
 	&"fill_fuel": "TOPS UP THE GENERATOR",
 	&"repair": "NAIL THE BOARDS BACK UP",
+	&"circuit": "SWITCH THE LIGHTS",
 	&"revive": "PULL THEM BACK TO THEIR FEET",
 }
 const DENIED_TEXT := {
