@@ -18,6 +18,7 @@ const DOOR_NAMES := {
 	&"door_road": "The road",
 }
 const BREACH_NAME := "Broken fence"
+const FUEL_NAME := "Fuel can"
 const CRANE_NAME := "Prize crane"
 ## What the player is told at each breaker post: the lights it switches.
 const CIRCUIT_NAMES := {
@@ -31,6 +32,8 @@ var _hud: Hud
 var _state: ClientState
 var _weapon_names: Dictionary[StringName, String] = {}
 var _fuel: FuelTuning
+## Units a whole can adds, by shop item: what the card says a can is worth.
+var _can_units: Dictionary[StringName, int] = {}
 
 
 ## `hud` is in the tree or about to be; `state` is the client's; `server` is read once, for the
@@ -47,6 +50,9 @@ func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
 	hud.state.ammo_free = ammo_free
 	var fuel: FuelTuning = server.rules.tuning.fuel
 	_fuel = fuel
+	for item in server.rules.tuning.economy.items:
+		if item.kind == ShopItem.Kind.FUEL:
+			_can_units[item.id] = int(item.amount)
 	hud.state.local_player_id = state.player_id
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(server.rules.tuning.specials)
@@ -101,6 +107,8 @@ func _set_prompt(prompt: Dictionary) -> void:
 			)
 		&"circuit":
 			_set_circuit_prompt(prompt["id"], prompt["on"])
+		&"fuel":
+			_set_fuel_prompt(prompt)
 		_:
 			state.clear_prompt()
 
@@ -132,3 +140,15 @@ func _set_circuit_prompt(circuit_id: StringName, on: bool) -> void:
 	var state := _hud.state
 	if state.prompt.get("kind") != &"circuit" or state.prompt.get("label") != label:
 		state.set_prompt(&"circuit", label, 0, detail % share)
+
+
+## The fuel can: what it adds to the tank (a whole can, or only the room left) and its price. A full
+## tank has nothing to sell: the card says so and shows no price.
+func _set_fuel_prompt(prompt: Dictionary) -> void:
+	var units := roundi(prompt["units"])
+	var detail := "THE TANK IS FULL"
+	if units > 0:
+		detail = "+%d UNITS OF FUEL" % units
+		if units < _can_units.get(prompt["item"], units):
+			detail = "FILLS UP: +%d UNITS" % units
+	_hud.state.set_prompt(&"fill_fuel", FUEL_NAME, prompt["price"], detail)

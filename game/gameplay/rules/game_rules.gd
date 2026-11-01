@@ -105,8 +105,6 @@ const SNAPSHOT_KEYS := {
 	"shop_rng_state": TYPE_INT,
 	"cripple_rng_state": TYPE_INT,
 }
-## A fuel purchase needs at least this much room in the tank.
-const MIN_FUEL_SPACE := 1.0
 ## Offsets so the spawn and shop generators never share a stream.
 const SPAWN_STREAM := 0x5A17
 const SHOP_STREAM := 0x70C3
@@ -930,11 +928,12 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 				quote.ammo_added = fit
 				quote.price = item.ammo_price(round_number, fit)
 		ShopItem.Kind.FUEL:
-			if generator.space() < MIN_FUEL_SPACE:
+			var offer := item.fuel_offer(round_number, generator.space())
+			if offer["units"] <= 0.0:
 				result = BuyResult.TANK_FULL
 			else:
-				quote.fuel_added = minf(item.amount, generator.space())
-				quote.price = ceili(float(quote.price) * quote.fuel_added / item.amount)
+				quote.fuel_added = offer["units"]
+				quote.price = offer["price"]
 	return result
 
 

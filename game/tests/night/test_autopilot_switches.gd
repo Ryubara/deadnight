@@ -150,6 +150,8 @@ func test_the_bot_puts_the_stand_out_when_the_tank_runs_low_and_keeps_the_field_
 	rules.apply(RulesAction.grant_points(1, 500))
 	rules.apply(RulesAction.buy(1, DOOR))
 	rules.apply(RulesAction.set_circuit(CIRCUIT, true))
+	# A bot with points would buy a can of fuel instead (`AutopilotFuel`): this one cannot pay.
+	rules.players[1].points = 0
 	rules.generator.fuel = rules.tuning.fuel.capacity * rules.tuning.fuel.low_fraction * 0.5
 	var ticks := 0
 	while rules.generator.circuits[CIRCUIT] and ticks < GIVE_UP_TICKS:

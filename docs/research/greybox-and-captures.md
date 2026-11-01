@@ -43,6 +43,20 @@ Where they stand and how they work is in [the lot](../design/map.md#the-breaker-
 - **The bot's `use` is an edge, so it needs the circuit it sees**: frames carry `circuits`, and the bot only presses
   when the post is thrown the wrong way; the server also refuses a second throw within `switch_interval`.
 
+### The fuel cans
+
+Where they stand and what they sell is in [the lot](../design/map.md#the-fuel-cans); what building them taught:
+
+- **The prompt's card has room for about 22 letters on its detail line**; `ADDS 25 UNITS TO THE TANK` came out as
+  `ADDS 25 UNITS TO THE TA...` in the capture. Say it shorter (`+25 UNITS OF FUEL`) and look at the frame.
+- **The price is the rules'**, asked through `ShopItem.fuel_offer`, so the card, the bot and the purchase read one
+  number: a part fill's price is a share of the can's, and a full tank offers nothing instead of a price.
+- **A bought door's new mesh is live a few physics frames after the bake ends.** A bot that must walk through the
+  new doorway in a test waits for `settle_bake` and then a few physics frames; `night.tick()` alone does not step
+  the navigation server, and the path ends at the wall.
+- **The stand in the yard stands outside the cage**, so the camera does not have to push through the 2 m opening
+  past a crate; its 2 m reach does not reach a player on the cage's far side.
+
 ## CSG
 
 - A scene of plain `CSGBox3D` roots (no combiners, no subtraction) builds fast: 350 nodes load in well under a
