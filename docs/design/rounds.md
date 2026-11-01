@@ -23,11 +23,17 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   owns. Replays and tests do not need a clock.
 - **Seeded randomness only.** The seed picks every speed, spawn point roll and crane prize. Same seed
   and same actions give the same night.
-- **Snapshots.** `to_dict()` returns everything (Variant data, safe for `var_to_bytes`; the tuning
-  is left out because both sides load the same table) and `from_dict()` restores it, random streams
-  and each living zombie's health included, without emitting events. A restored copy continues
-  exactly like the original (tested), so a late joiner or a restarted server can pick up mid-night.
-  Random states are 64-bit integers: convert them before sending as JSON.
+- **Snapshots.** `to_dict()` returns everything (the tuning table is left out because both sides
+  load the same one; its fingerprint, `tuning_id`, and the snapshot `version` are in) and restoring
+  brings back the random streams and each living zombie's health without emitting events. A restored
+  copy continues exactly like the original (tested), so a late joiner or a restarted server can pick
+  up mid-night. **Which form to use:** the dictionary is exact only as Variant data; through plain JSON
+  the integer player keys become strings, the 64-bit random states lose bits and some floats change.
+  So a save file or a binary message uses `to_bytes()` / `from_bytes()` (`var_to_bytes`), and anything
+  inside JSON uses `to_wire()` / `from_wire()` (the same bytes as a base64 string); both restore
+  exactly (tested through `JSON.stringify`). A restore returns `""` on success, else `bad_version`,
+  `wrong_tuning` (another table: a server deploy that retunes mid-night must not resume old saves) or
+  `malformed`, and leaves the night as it was.
 - **Reads change nothing.** `points_of`, `price_of`, `is_door_open` and `zombies_remaining` are
   queries; clients may call them on their mirror.
 
@@ -56,6 +62,7 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `zombie_spawn_requested` | `zombie_id`, `health`, `speed`, `point_roll` | build the zombie; pick the spawn point with `point_roll % count` |
 | `zombie_damaged` | `zombie_id`, `player_id`, `zone`, `damage` (taken off), `health` (left) | play the hit reaction; drive the health bar |
 | `zombie_removed` | `zombie_id`, `cause` (`killed` or `gone`), `killer_id`, `zone`, `melee` | play the death for `killed` (by `zone`, `melee`), vanish quietly for `gone` |
+| `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
 | `action_rejected` | `reason`, `action`, optional `field` | tell only the sender; never broadcast |
 
 A `hit` is rejected (`reason`) as `wrong_phase` (not in an active round), `unknown_player`,
@@ -75,9 +82,11 @@ ammo). The server checks that when it builds the `hit`, and the network layer ra
 
 The night starts with a 12 s wait, then rounds run back to back: **active** (zombies spawn until the
 round's count is out, the round ends when the last one falls), then a 20 s **break** (spend, switch
-lights, reposition), then the next round. Everyone down at once is game over. A player still down
-when a round ends gets up, minus a tenth of their points, so being downed hurts but never locks you
-out.
+lights, reposition), then the next round. The night ends (`game_over`) when everyone still in it is
+down (`all_down`) or when the last player leaves during the wait or a round (`no_players`), so a
+server can free the match; `start` with nobody in the lot is rejected. Leaving before the start is
+not an end. A player still down when a round ends gets up, minus a tenth of their points, so being
+downed hurts but never locks you out.
 
 ## The tuning table
 
@@ -111,7 +120,7 @@ Shop (prices at round 1):
 
 | Item | Points | Notes |
 | --- | ---: | --- |
-| Door: concession stand / booth / back lot | 350 / 750 / 1250 | opens for everyone; each needs the one before |
+| Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 500 | random weapon the player lacks (shotgun 4, rifle 3, SMG 2, flare gun 1) |
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
@@ -169,6 +178,21 @@ the pillars.
   grows with the round, the rounds run long, and the can price rises, so fuel climbs toward a quarter of
   income: the generator is always one decision away from running dry. When it does, the lights fade
   (the last tenth of the tank), every circuit goes dark, and the dead move at full speed.
+
+When the doors open, per player (200 starting points, a player's share of the round's zombies at about 85 points
+each, the round bonus), the first round whose end covers the running total of the doors so far. "All in" spends
+everything on doors; "half" is the plan's pace, the other half going to weapons, fuel and tonics:
+
+| Door | Price | Running total | All in, 1 / 2 / 4 players | Half, 1 / 2 / 4 players |
+| --- | ---: | ---: | --- | --- |
+| Concession stand | 350 | 350 | 1 / 1 / 1 | 1 / 2 / 2 |
+| Generator yard | 500 | 850 | 2 / 2 / 2 | 3 / 3 / 3 |
+| Projection booth | 750 | 1,600 | 3 / 3 / 3 | 4 / 5 / 5 |
+| Back lot | 1,250 | 2,850 | 4 / 4 / 5 | 6 / 6 / 7 |
+| The road | 2,000 | 4,850 | 5 / 6 / 6 | 8 / 9 / 9 |
+
+More players come out a round or so later (less per head), as intended. The map reads these prices from
+`default_tuning.tres`, so changing one is one edit there and a rerun of `tools/world/build_greybox.py`.
 
 These tables are computed from the tuning by a script from assumed weapon damage (20, then 45 from
 round 6, then 90 from round 12), 30% headshot kills and 4 seconds of fighting per zombie, so they

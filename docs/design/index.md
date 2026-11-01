@@ -22,8 +22,12 @@ A downed player can be revived until the round ends.
 | --- | --- | --- |
 | The screen and parked cars | start | the first lit ground |
 | Concession stand | early | the prize crane (random weapons), soda-fountain tonics (perks) |
+| Generator yard | early | the generator and the fuel; the safest ground, and the most to lose |
 | Projection booth | mid | the projector's beam; the re-cut (weapon upgrades) |
-| Back lot and the road | late | the generator yard, the way into town |
+| Back lot | mid to late | dark, wrecks and long lanes |
+| The road | late | the way into town |
+
+The order, prices and layout are in [the lot](map.md).
 
 ## Between nights
 
