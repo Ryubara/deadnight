@@ -1,7 +1,8 @@
 extends Node3D
 ## Places the camera for a greybox capture. Pick the view with a user argument after `--`:
 ## `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`, and the
-## props' views `yard_drums|yard_east|backlot_rows|road_block|alley|midway_court`.
+## props' views `yard_drums|yard_east|backlot_rows|road_block|alley|midway_court|field_west|`
+## `field_east|screen_apron|road_west`.
 ## Not used in the game.
 ##
 ## Third-person views (`--view=tp:<CameraProbes marker>`) put the camera where the player's shoulder
@@ -26,6 +27,10 @@ const VIEWS := {
 	"road_block": [Vector3(38, 1.7, 55), Vector3(54, 1.0, 56)],
 	"alley": [Vector3(-12.5, 1.7, 6), Vector3(-13.5, 0.8, -3)],
 	"midway_court": [Vector3(14, 1.7, 17), Vector3(9, 1.0, 29)],
+	"field_west": [Vector3(-42, 1.7, -18), Vector3(-60, 1.0, -30)],
+	"field_east": [Vector3(46, 1.7, -16), Vector3(60, 1.0, -34)],
+	"screen_apron": [Vector3(30, 1.7, -40), Vector3(48, 1.0, -51)],
+	"road_west": [Vector3(-30, 1.7, 54), Vector3(-58, 1.0, 57)],
 }
 const TOP_SIZE := 128.0  # orthographic size (the vertical extent in metres) of the whole-lot view
 const TOP_CENTRE := Vector3(0, 0, 6)

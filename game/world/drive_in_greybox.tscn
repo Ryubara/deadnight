@@ -1946,6 +1946,45 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -17.500,
 [node name="TreeSmall3" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 17.500, 0.000, -50.000)
 
+[node name="Tree4" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -59.300, 0.000, -51.000)
+
+[node name="TreeTall3" parent="Field/Dressing" instance=ExtResource("prop_tree_tall")]
+transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, -59.300, 0.000, -41.000)
+
+[node name="TreeSmall4" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -56.500, 0.000, -30.500)
+
+[node name="Tree5" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(-0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, -0.7660, -59.500, 0.000, -16.000)
+
+[node name="TreePine3" parent="Field/Dressing" instance=ExtResource("prop_tree_pine")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -53.000, 0.000, -49.000)
+
+[node name="Tree6" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(-0.9397, 0, -0.3420, 0, 1, 0, 0.3420, 0, -0.9397, -50.500, 0.000, -44.000)
+
+[node name="TreeTall4" parent="Field/Dressing" instance=ExtResource("prop_tree_tall")]
+transform = Transform3D(-0.3420, 0, -0.9397, 0, 1, 0, 0.9397, 0, -0.3420, 59.300, 0.000, -42.000)
+
+[node name="TreeSmall5" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 56.500, 0.000, -30.500)
+
+[node name="Tree7" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, 0.5000, 59.500, 0.000, -16.000)
+
+[node name="TreePine4" parent="Field/Dressing" instance=ExtResource("prop_tree_pine")]
+transform = Transform3D(-0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, -0.1736, 53.000, 0.000, -49.000)
+
+[node name="Tree8" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(0.7660, 0, -0.6428, 0, 1, 0, 0.6428, 0, 0.7660, 50.500, 0.000, -44.000)
+
+[node name="TreeSmall6" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 0.000, -50.500)
+
+[node name="TreeSmall7" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 24.000, 0.000, -50.500)
+
 [node name="Tires1" parent="Field/Dressing" instance=ExtResource("prop_tires")]
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -61.050, 0.000, -40.000)
 
