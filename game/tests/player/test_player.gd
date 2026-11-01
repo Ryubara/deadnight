@@ -456,6 +456,22 @@ func test_fire_and_reload_emit_their_event_frames() -> void:
 	assert_bool(animation.play_action(&"Swing")).is_false()  # a rifle does not swing
 
 
+func test_a_step_past_the_rounded_clip_length_still_emits_the_last_event() -> void:
+	# Fire_Rifle is 0.333 s in clips.json but its last event is frame 8 of 24 (0.3333 s). A frame
+	# step that ends between the two used to end the clip and drop can_fire_again for good.
+	var animation := _player.get_node("AnimationTree") as PlayerAnimation
+	var events: Array[StringName] = []
+	animation.clip_event.connect(
+		func(_clip: StringName, event: StringName) -> void: events.append(event)
+	)
+	assert_bool(animation.play_action(&"Fire")).is_true()
+	animation._advance_events(0.3331)
+	assert_str(animation.action_clip).is_equal("Fire_Rifle")  # not over until its last event
+	animation._advance_events(0.01)
+	assert_array(events).contains_exactly([&"muzzle", &"can_fire_again"])
+	assert_str(animation.action_clip).is_equal("")
+
+
 func test_the_arms_aim_while_the_legs_run() -> void:
 	var animation := _player.get_node("AnimationTree") as PlayerAnimation
 	var skeleton := _player.find_child("Skeleton3D", true, false) as Skeleton3D

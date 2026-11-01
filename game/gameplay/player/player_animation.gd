@@ -185,9 +185,22 @@ func _advance_events(delta: float) -> void:
 	_action_time += delta
 	var clip := action_clip
 	_emit_events(clip, before, _action_time)
-	var seconds: float = _spec["clips"][String(clip)]["seconds"]
-	if _action_time >= seconds and action_clip == clip:
+	if _action_time >= _clip_seconds(clip) and action_clip == clip:
 		action_clip = &""
+
+
+## How long an action holds the upper body: the clip's length, but never before its last event.
+## clips.json rounds `seconds` (0.333 for 8 frames at 24 fps), so a frame step landing between
+## the rounded length and the last event (8/24) would end the clip and skip that event for good.
+func _clip_seconds(clip: StringName) -> float:
+	var seconds: float = _spec["clips"][String(clip)]["seconds"]
+	var fps: float = _spec["fps"]
+	var events := clip_events(clip)
+	for event: String in events:
+		var frames: Array = events[event] if events[event] is Array else [events[event]]
+		for frame: float in frames:
+			seconds = maxf(seconds, frame / fps)
+	return seconds
 
 
 ## Emits every event of `clip` whose time lies in (from, to].

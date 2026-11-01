@@ -91,6 +91,10 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
 - Two scripts both called `PlayerState` (this one and the round rules') broke the whole project at merge time as a
   global class clash; this one is `PlayerMotionState`. Check `grep -r "class_name X"` before naming a global class.
 - A test room crate in the run lane made speed tests read zero; keep the lane clear.
+- `clips.json` rounds `seconds` (Fire_Rifle is 0.333 for 8 frames at 24 fps), shorter than its last event
+  (`can_fire_again` at 8/24). A frame step ending in between ended the clip and skipped the event, so the rifle never
+  fired again; it showed as a test that passed or failed with frame timing. `PlayerAnimation` now holds an action
+  until its last event (`_clip_seconds`).
 - Movie Maker's PNG encode is the slow part (about 0.25 s a frame at 1080p); 10 fps captures are enough to judge motion.
 
 ## Sources
