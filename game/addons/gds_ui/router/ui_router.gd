@@ -7,14 +7,24 @@ extends CanvasLayer
 ##
 ## A screen can be freed at any time (a game-over handler, a disconnect). A freed screen leaves
 ## the stack at once, a transition that loses a screen still ends, and the queue keeps draining.
+## When the top screen is freed while the router is idle, the screen below is shown, resumed and
+## focused. If nothing is left, the stack is empty (`depth() == 0`) and the stage is blank until
+## the next `push` or `reset`; `screen_changed(0)` says so.
+##
+## A request the router cannot honour (a source it cannot show, a pop or reset that lost its
+## screen) logs one error and emits `error_reported` with the same text.
 
 signal idle
 signal screen_changed(depth: int)
+signal error_reported(message: String)
 
 const BURN_SHADER := preload("res://addons/gds_ui/shaders/film_burn.gdshader")
 const IRIS_SHADER := preload("res://addons/gds_ui/shaders/projector_iris.gdshader")
 const LAYER := 100
 const NOT_SHOWN := "UIRouter: cannot show %s (need a scene, its path or a Control)"
+const ALREADY_SHOWN := "UIRouter: cannot show %s (it is already on the stack or in the tree)"
+const LOST_POP_TARGET := "UIRouter: pop lost the screen below it; the stack is empty"
+const LOST_RESET_SCREEN := "UIRouter: reset lost its new screen; the stack is empty"
 const FOCUS_ACTIONS: Array[StringName] = [
 	&"ui_up", &"ui_down", &"ui_left", &"ui_right", &"ui_accept"
 ]
@@ -28,6 +38,7 @@ var _stack: Array[Control] = []
 var _queue: Array[Callable] = []
 ## How each stacked screen was pushed, so a pop plays the same transition backwards.
 var _kinds := {}
+var _reveal_pending := false
 
 
 func _ready() -> void:
@@ -173,8 +184,10 @@ func _do_pop(requested: int) -> void:
 	if is_instance_valid(outgoing):
 		outgoing.queue_free()
 	if top() != null:
-		_show_top()
-		_finish(top(), true)
+		_reveal_top()
+	else:
+		_report(LOST_POP_TARGET)
+		screen_changed.emit(0)
 
 
 func _do_reset(source: Variant, kind: UITransition.Kind, params: Dictionary) -> void:
@@ -189,6 +202,8 @@ func _do_reset(source: Variant, kind: UITransition.Kind, params: Dictionary) -> 
 	_stack.clear()
 	_kinds.clear()
 	if not is_instance_valid(incoming):
+		_report(LOST_RESET_SCREEN)
+		screen_changed.emit(0)
 		return
 	_adopt(incoming, kind)
 	_finish(incoming, false)
@@ -241,6 +256,10 @@ func _focus_origin() -> Vector2:
 
 
 func _instance(source: Variant, params: Dictionary) -> Control:
+	# A freed object is rejected before any `is` test, which raises a script error on one.
+	if typeof(source) == TYPE_OBJECT and not is_instance_valid(source):
+		_report(NOT_SHOWN % str(source))
+		return null
 	var node: Node = null
 	if source is PackedScene:
 		node = (source as PackedScene).instantiate()
@@ -250,17 +269,27 @@ func _instance(source: Variant, params: Dictionary) -> Control:
 			scene = load(str(source))
 		if scene is PackedScene:
 			node = (scene as PackedScene).instantiate()
-	elif source is Control and is_instance_valid(source):
-		node = source
+	elif source is Control:
+		# The caller owns a ready-made screen: it is never freed here, and it must stand alone.
+		var given := source as Control
+		if given in _stack or given.get_parent() != null:
+			_report(ALREADY_SHOWN % given.name)
+			return null
+		node = given
 	var screen := node as Control
 	if screen == null:
 		if node != null:
 			node.free()
-		push_error(NOT_SHOWN % str(source))
+		_report(NOT_SHOWN % str(source))
 		return null
 	if screen is UIScreen:
 		(screen as UIScreen).params = params
 	return screen
+
+
+func _report(message: String) -> void:
+	push_error(message)
+	error_reported.emit(message)
 
 
 ## Puts a shown screen on the stack. It leaves the stack by itself when it is freed.
@@ -271,8 +300,30 @@ func _adopt(screen: Control, kind: UITransition.Kind) -> void:
 
 
 func _forget(screen: Control) -> void:
+	var was_top: bool = not _stack.is_empty() and _stack.back() == screen
 	_stack.erase(screen)
 	_kinds.erase(screen)
+	# Freed on top while nothing runs: no transition will show the screen below, so do it here.
+	# A running job (a pop, a replace) finishes the stack itself.
+	if was_top and not busy and not _reveal_pending:
+		_reveal_pending = true
+		_reveal_idle_top.call_deferred()
+
+
+func _reveal_idle_top() -> void:
+	_reveal_pending = false
+	if busy or not is_inside_tree():
+		return
+	if _stack.is_empty():
+		screen_changed.emit(0)
+	else:
+		_reveal_top()
+
+
+## Makes the top screen visible, enabled, at rest and focused: where every pop ends.
+func _reveal_top() -> void:
+	_show_top()
+	_finish(top(), true)
 
 
 ## Makes the screen on top of the stack visible and at rest, whatever a transition left on it.
