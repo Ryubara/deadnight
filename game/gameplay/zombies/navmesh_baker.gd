@@ -2,7 +2,8 @@ class_name NavmeshBaker
 extends RefCounted
 ## Bakes a navigation mesh from a scene built of CSG boxes (the greybox lot). The standard parser
 ## ignores CSG nodes, so their meshes are handed to the baker directly. The world owner should
-## bake once in the editor and ship the saved mesh; this is for greybox scenes and tests.
+## bake once and ship the saved mesh (`LotNavmeshes`, found by `key`); this is for the tool that
+## bakes them, for the door sets nothing was saved for, and for tests.
 
 ## A multiple of the cell sizes (the baker warns and disconnects regions otherwise).
 const CELL_SIZE := 0.25
@@ -33,6 +34,19 @@ static func bake_async(root: Node3D, done: Callable) -> void:
 	)
 
 
+## What a saved mesh is found by: a hash of the baker's input (the boxes to a millimetre) and of the
+## cell and agent sizes, so a lot that changed, or a changed size, finds no saved mesh.
+static func key(data: NavigationMeshSourceGeometryData3D) -> String:
+	var millimetres := PackedInt32Array()
+	for value in data.get_vertices():
+		millimetres.append(roundi(value * 1000.0))
+	var context := HashingContext.new()
+	context.start(HashingContext.HASH_SHA256)
+	context.update(var_to_bytes(new_navmesh_settings()))
+	context.update(millimetres.to_byte_array())
+	return context.finish().hex_encode()
+
+
 ## The collision boxes of `root`'s CSG shapes, as the baker's input.
 static func source_data(root: Node3D) -> NavigationMeshSourceGeometryData3D:
 	var data := NavigationMeshSourceGeometryData3D.new()
@@ -41,6 +55,11 @@ static func source_data(root: Node3D) -> NavigationMeshSourceGeometryData3D:
 		if shape.use_collision:
 			data.add_faces(_box_faces(_size_of(shape)), shape.global_transform)
 	return data
+
+
+## The sizes `new_navmesh` bakes with.
+static func new_navmesh_settings() -> Array[float]:
+	return [CELL_SIZE, AGENT_HEIGHT, AGENT_RADIUS, AGENT_MAX_CLIMB, AGENT_MAX_SLOPE]
 
 
 static func new_navmesh() -> NavigationMesh:

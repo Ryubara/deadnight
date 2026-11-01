@@ -8,6 +8,14 @@ extends Node3D
 const BOARD_LIFT := Vector3(0.0, 1.3, 0.0)
 ## Lifts a damage number off the wound.
 const NUMBER_LIFT := Vector3(0.0, 0.3, 0.0)
+## A grenade is drawn this many times its real size, with a trail: a hand grenade at real size
+## is lost from the shoulder camera by the time it lands.
+const GRENADE_SCALE := 2.0
+## Lifts a blast's damage number over the zombie's head.
+const BLAST_NUMBER_LIFT := Vector3(0.0, 2.0, 0.0)
+## Where the gibs of a zombie a blast killed start, and how hard they are thrown up.
+const GIB_LIFT := Vector3(0.0, 1.0, 0.0)
+const GIB_THROW := 2.0
 
 var horde: ZombieHorde
 var effects: ShotEffects
@@ -31,6 +39,12 @@ var bodies: Callable = func(_player_id: int) -> Node3D: return null
 var repair_interval: Callable = func() -> float: return 1.0
 
 var _state: ClientState
+## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
+## the same code on every frame, so it lands where the server's lands (`show_grenades`).
+var _grenade_views: Dictionary[int, GrenadeView] = {}
+var _grenade_def: GrenadeDef
+## Held here: a Callable does not keep its RefCounted alive.
+var _cast: WorldCast
 
 
 ## `telegraphs` maps a look to the seconds its blow takes to land, `board_seconds` to the seconds
@@ -77,12 +91,30 @@ func show_crane(world: NightWorld, tuning: RulesTuning) -> void:
 	crane.setup(_state, world.shop_spots(), tuning.crane, item.pool if item != null else [])
 
 
+## Draws the grenades the server throws, from its events (`GrenadeView`, `BlastEffect`): a copy of
+## each flies through the same world and goes off where the server's does.
+func show_grenades(def: GrenadeDef) -> void:
+	_grenade_def = def
+	_cast = WorldCast.new(get_world_3d().direct_space_state)
+
+
+## How many grenades are in the air on this client.
+func grenades_in_flight() -> int:
+	return _grenade_views.size()
+
+
 ## Starts the night's ambience and the sounds of its boards, doors, blows, till and voices, placed
 ## in `world`.
 func hear(world: NightWorld) -> void:
 	sounds = NightSounds.new()
 	add_child(sounds)
 	sounds.setup(_state, world)
+
+
+## Draws and sounds one event as if the server had sent it (the warm-up replays samples of each
+## kind before the night starts, `NightWarmup`).
+func draw_event(event: Dictionary) -> void:
+	_on_event(event)
 
 
 func _on_event(event: Dictionary) -> void:
@@ -93,6 +125,15 @@ func _on_event(event: Dictionary) -> void:
 		&"frame":
 			horde.apply_snapshot(event["zombies"], step)
 			voices.update(_state.zombies, step)
+			_step_grenades()
+		&"grenade_thrown", &"grenade_dropped":
+			_launch_grenade(event)
+		&"grenade_exploded":
+			_blast(event)
+		&"blast_hit":
+			_show_blast_hit(event)
+		&"zombie_removed":
+			_gib(event)
 		&"shot_fired":
 			effects.shot(WeaponCatalog.get_def(event["weapon_id"]), event["muzzle"], event["ends"])
 		&"damage_dealt":
@@ -115,3 +156,65 @@ func _on_event(event: Dictionary) -> void:
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
+
+
+func _launch_grenade(event: Dictionary) -> void:
+	if _grenade_def == null:
+		return
+	var view := GrenadeView.new()
+	view.visual_scale = GRENADE_SCALE
+	view.trail = true
+	view.state = GrenadeState.new(
+		event["grenade_id"],
+		event["thrower_id"],
+		_grenade_def,
+		event["position"],
+		event["velocity"],
+		event["fuse_left"]
+	)
+	add_child(view)
+	view.follow(0.0)
+	_grenade_views[event["grenade_id"]] = view
+
+
+func _step_grenades() -> void:
+	for view in _grenade_views.values():
+		view.state.step(step, _cast.callable())
+		view.follow(step)
+
+
+func _blast(event: Dictionary) -> void:
+	var view: GrenadeView = _grenade_views.get(event["grenade_id"])
+	if view != null:
+		view.queue_free()
+		_grenade_views.erase(event["grenade_id"])
+	var blast := BlastEffect.new()
+	add_child(blast)
+	blast.play(event["point"], _grenade_def)
+
+
+## What a blast did to one zombie, as a number over it, as a shot's does.
+func _show_blast_hit(event: Dictionary) -> void:
+	var at := _zombie_position(event["target_id"])
+	if at != Vector3.ZERO:
+		effects.number(at + BLAST_NUMBER_LIFT, str(roundi(event["damage"])), false)
+
+
+## A zombie a blast killed bursts into gibs where it stood.
+func _gib(event: Dictionary) -> void:
+	if event.get("zone", &"") != RulesAction.ZONE_BLAST:
+		return
+	var at := _zombie_position(event["zombie_id"])
+	if at == Vector3.ZERO:
+		return
+	var gibs := BlastEffect.new()
+	add_child(gibs)
+	gibs.gibs(at + GIB_LIFT, Vector3.UP * GIB_THROW, event["zombie_id"])
+
+
+## Where the last frame had a zombie, or the origin when it had none by that id.
+func _zombie_position(zombie_id: int) -> Vector3:
+	for entry in _state.zombies:
+		if entry["id"] == zombie_id:
+			return entry["position"]
+	return Vector3.ZERO
