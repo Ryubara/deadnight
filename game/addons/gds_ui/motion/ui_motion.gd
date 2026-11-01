@@ -58,15 +58,22 @@ static func fade_in(control: Control, delay := 0.0) -> Tween:
 	return tween
 
 
-## Fade up from below, one control after another (`gap` seconds apart).
+## Fade up from below, one control after another (`gap` seconds apart). Waits a frame so a
+## container has placed its children first; the controls are hidden until then.
 static func stagger_in(controls: Array[Control], gap := -1.0) -> void:
+	if controls.is_empty():
+		return
 	var tokens := UITokens.active()
 	var step := tokens.stagger if gap < 0.0 else gap
 	var rise := 0.0 if reduced else float(tokens.space_lg)
+	for control in controls:
+		control.modulate.a = 0.0
+	await controls[0].get_tree().process_frame
 	for i in controls.size():
 		var control := controls[i]
+		if not is_instance_valid(control):
+			continue
 		var rest := control.position
-		control.modulate.a = 0.0
 		control.position = rest + Vector2(0.0, rise)
 		var tween := control.create_tween().set_parallel(true)
 		apply_ease(tween, UITokens.Ease.ENTER)

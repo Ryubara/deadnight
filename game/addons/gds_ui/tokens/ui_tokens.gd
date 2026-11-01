@@ -20,7 +20,7 @@ static var _active: UITokens
 @export var outline := Color("3b3350")
 @export var ink := Color("f4ead2")
 @export var ink_muted := Color("b6a98f")
-@export var ink_disabled := Color("6d6556")
+@export var ink_disabled := Color("8a806d")
 @export var ink_on_accent := Color("1a1209")
 @export var accent := Color("ffb347")
 @export var accent_bright := Color("ffd98a")

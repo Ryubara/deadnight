@@ -43,4 +43,6 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Design: design/index.md
-  - Research: research/index.md
+  - Research:
+      - research/index.md
+      - UI foundation: research/ui-foundation.md
