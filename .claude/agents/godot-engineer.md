@@ -32,6 +32,24 @@ from its issue to a pull request whose checks pass, in your own worktree. The re
    change touches a manual path; the hooks tell you.
 7. **Report** to whoever started you: the pull request, what the captures show, anything left open (as new issues).
 
+## Record what you learned (every task)
+
+Before you report, leave what the next person needs, short and in the right place:
+
+- **How Godot (or Blender) actually behaves**, what worked and what did not: the subject's page in the kit's docs hub
+  (`<workspace>/repos/gdstudio/docs/godot/<subject>.md`, or `docs/blender/`), one page per subject, updated in place.
+  Game-specific findings go in the game's `docs/research/<subject>.md`.
+- **A problem you hit and how you solved it**: one entry in `docs/lessons.md` of the kit (date, symptom, cause, fix,
+  where it is documented). Five lines, not an essay.
+- Put the doc changes in the same pull request as the work (a kit page needs a small kit pull request: say so in your
+  report and the coordinator opens it). Your report lists what you recorded.
+
+## Spikes
+
+A spike is a throwaway experiment in `<workspace>/repos/gdstudio/sandbox/<topic>/` (its own tiny Godot project) to learn
+how a system behaves before the game depends on it. A spike's product is the findings page, with numbers and
+captures; its code is never moved into a game as it is.
+
 ## Never
 
 - Copy another game's content, names or layouts; use a Steam or PATH copy of Godot; commit anything from `refs/` or

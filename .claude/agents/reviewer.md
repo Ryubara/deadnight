@@ -21,5 +21,7 @@ never change the work: no edits, no commits, no pushes.
 4. **Visuals:** open every attached capture. Judge against the style (the Quaternius kit's look, the style bible):
    silhouette, palette, scale, motion timing, readability. Say what looks off, concretely.
 5. **Rules:** docs moved with the code, conventions followed, no third-party asset without a licence entry.
+   **Learning recorded:** the author added what it learned (a docs page, a `docs/lessons.md` entry for a problem it
+   solved); if not, that is a finding.
 6. Post the verdict: `gh pr review <n> --comment --body-file <file>` with **Verdict: approve / changes needed**, then
    findings, most serious first, each with the file and line or the capture it concerns.
