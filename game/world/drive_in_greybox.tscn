@@ -2713,7 +2713,7 @@ transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 10.750, 
 transform = Transform3D(-0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, -0.5000, 12.600, 0.000, 1.200)
 
 [node name="Boxes2" parent="Midway/Dressing" instance=ExtResource("prop_boxes")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.500, 0.000, 8.900)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -9.350, 0.000, 8.900)
 
 [node name="Crate4" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
 transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -6.950, 0.000, 8.750)

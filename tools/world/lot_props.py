@@ -99,7 +99,7 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("tires", 10.75, 6.4, 90),
         ("debris", 12.6, 1.2, 120),
         # Behind the stand, between and beside its rear exits (x -5 and 5 stay clear).
-        ("boxes", -8.5, 8.9, 0),
+        ("boxes", -9.35, 8.9, 0),  # beside the trash can of #264
         ("crate", -6.95, 8.75, 10),
         ("barrel", -9.6, 9.7, 0),
         ("gas_can", -8.2, 10.2, 300),
