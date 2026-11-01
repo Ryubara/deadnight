@@ -162,7 +162,7 @@ every canvas: shared edges, gaps, text lines, no label leaving its part),
 Marquee pair), `test_hud_layout.gd` (sizes, overlap, readability, reduced motion: the busiest HUD and the longest
 content the game allows, in the fallback face, a synthetic wide face and, when `refs/fonts` is there, the Marquee
 pair, at every canvas). The capture `game/tests/captures/hud_worst_case.tscn` renders the longest content at one canvas
-(`-- --out=<png> [--size=1536x864] [--face=fallback|wide|marquee] [--busy|--night] [--players=N]
+(`-- --out=<png> [--size=1536x864] [--face=fallback|wide|marquee] [--busy|--night] [--quiet] [--players=N]
 [--window=WxH]`: `--window` renders at that many pixels with the canvas stretched, so
 `--size=1920x1080 --window=1280x720` is a 720p window). The capture
 `game/tests/captures/hud_tour.tscn` plays a real `GameRules` night over the drive-in greybox:

@@ -4,7 +4,8 @@ extends Node
 ## be smaller than the window (1536 x 864 is a 720p or 1080p window at UI scale 1.25).
 ##
 ## `godot --path game res://tests/captures/hud_worst_case.tscn -- --out=<png> [--size=1536x864]
-## [--face=fallback|wide|marquee] [--busy|--night] [--players=N] [--window=1280x720]`. `marquee`
+## [--face=fallback|wide|marquee] [--busy|--night [--quiet]] [--players=N]
+## [--window=WxH]`. `marquee`
 ## reads the files from `refs/fonts` (see `HudFonts`); `--busy` shows the layout test's own busy
 ## HUD, not the longest content; `--night` shows an ordinary night (the typical values). `--window`
 ## renders at that many pixels with the canvas stretched from `--size` the way the project's
@@ -39,7 +40,7 @@ func _ready() -> void:
 	)
 	fixture.into_round_one()
 	if args.has("night"):
-		_night(fixture)
+		_night(fixture, args.has("quiet"), clampi(int(str(args.get("players", "4"))), 1, 4))
 	elif args.has("busy"):
 		_busy(fixture)
 	else:
@@ -54,21 +55,28 @@ func _ready() -> void:
 
 
 ## An ordinary moment: a few points, a hurt player, a weapon swap, the lot's feed and a hit or two.
-func _night(fixture: HudFixture) -> void:
+func _night(fixture: HudFixture, quiet: bool, players: int) -> void:
 	var hud := fixture.hud
 	var state := hud.state
+	if quiet:
+		# The night's own start lit the lamps and showed the card; let it leave, then show the rest.
+		fixture.advance(HudFuel.IN_TIME + HudFuel.HOLD_TIME + HudFuel.OUT_TIME + 0.5)
+		hud.banner.show_banner("ROUND 1", "THE NIGHT BEGINS", HudBanner.Rank.ROUND)
 	state.set_ammo(18, 90, "Rifle")
 	state.set_equipment("Revolver", 6)
 	state.set_health(70.0, 100.0)
 	state.set_area("The Lot", "Open the concession stand")
-	for id in range(1, 5):
+	for id in range(1, players + 1):
 		state.apply_event(
 			{"type": &"points_changed", "player_id": id, "total": 1250 * id, "delta": 0}
 		)
 	hud.events_feed.push("RUBY OPENED THE CONCESSION STAND")
+	if players > 1:
+		hud.notices.push("%s CONNECTED" % ["", "MOE", "DEE", "CAL"][players - 1])
 	for amount in [100, 60]:
 		hud.gains.add_gain(&"kill", amount)
-	hud.state.apply_event({"type": &"fuel_changed", "fuel": 62.0, "delta": 8.0})
+	# The generator card only shows for progress: `--quiet` leaves it away, as most of a night is.
+	state.apply_event({"type": &"fuel_changed", "fuel": 62.0, "delta": 0.0 if quiet else 8.0})
 	fixture.advance(HudFuel.IN_TIME + 0.5)
 
 

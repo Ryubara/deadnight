@@ -5,6 +5,8 @@ extends HudTicket
 ## it, the equipment (the weapon put away last, by name, cut with an ellipsis when long; its rounds
 ## are not shown, the ammo card says the rounds). The grenade count sits at the right of the label.
 
+## Letter spacing of the top row: tighter than a caption, so it fits HEALTH 100 and the grenades.
+const TRACKING := 1.0
 const BAR_HEIGHT := 20.0
 const TICKS := 10
 const TICK_GAP := 4.0
@@ -25,7 +27,7 @@ var down_text: String:
 		return _down.text
 
 var _label := HudStyle.clip(
-	HudStyle.label("HEALTH", HudStyle.SMALL, tokens.accent, false, HudStyle.TRACK_CAPTION)
+	HudStyle.label("HEALTH", HudStyle.SMALL, tokens.accent, false, TRACKING)
 )
 var _bar := Control.new()
 var _down := HudStyle.label("DOWN", HudStyle.MEDIUM, tokens.danger, true)
@@ -33,7 +35,7 @@ var _hint := HudStyle.label("HOLD ON FOR A REVIVE", HudStyle.SMALL, tokens.ink_m
 var _equipment := HudStyle.clip(
 	HudStyle.label("", HudStyle.SMALL, tokens.ink, false, HudStyle.TRACK_CAPTION)
 )
-var _grenades := HudStyle.label("", HudStyle.SMALL, tokens.ink, false, HudStyle.TRACK_CAPTION)
+var _grenades := HudStyle.label("", HudStyle.SMALL, tokens.ink, false, TRACKING)
 var _top := HBoxContainer.new()
 
 
