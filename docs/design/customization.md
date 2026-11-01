@@ -47,6 +47,14 @@ On join the server gives the player the lowest free **seat** (0 to 3), tells eve
 already there; until the newcomer's own look arrives they wear the preset of their seat. Every client keeps a
 `LookRegistry` and builds each player's model from it with the same assembler the wardrobe uses.
 
+In the night (`Night`, `NightServer`) the same path runs over the loopback link: after `join`, the client sends a
+`look` message carrying `LookWire.look` of the look saved in the wardrobe (`LookStore`); the server's `LookServer`
+accepts it and answers every client with `look_packet` events (the `PLAYER_LOOK` bytes); the client's `LookRegistry`
+takes them and `Night` dresses each body from the resolved table (`Player.dress`, which is
+`CharacterAssembler.dress` on the body's own Soldier). The HUD portraits hear the same table as `player_look` events.
+The player scene's Model is the modular Soldier (`soldier_parts.glb`, the kit Soldier's rig and clips), so the
+animation tree and the weapon mount work as before; until a look arrives a body wears the default look.
+
 ## Rules that keep a lot readable
 
 - **The armband is the seat's, not the look's.** Four fixed colours (red, cyan, yellow, green), emissive so they read in
