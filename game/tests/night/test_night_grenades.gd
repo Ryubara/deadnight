@@ -36,8 +36,12 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	# A night left to the next frames keeps flying its grenades: they must not reach the next test.
+	# A night left standing keeps flying its grenades into the next test, and its player's body
+	# holds the next night's player up where the spawn is: free it before the next one is built.
 	_night.state.event_received.disconnect(_hear)
+	_night.queue_free()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	_key(KEY_G, false)
 	_key(KEY_H, false)
 

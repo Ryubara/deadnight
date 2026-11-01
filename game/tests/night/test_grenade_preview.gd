@@ -24,7 +24,10 @@ func before_test() -> void:
 
 
 func after() -> void:
+	# Gone before the next suite builds its night: its player would stand on this one's body.
 	_night.queue_free()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 
 
 ## A command holding the overarm button, looking `pitch` radians up from along +Z (into the lot,
