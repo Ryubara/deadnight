@@ -10,6 +10,8 @@ const DEFAULT_MAX_ROUNDS := 30
 const SPIKE_FLOOR := 0.05
 
 
+## `shopping`, when given, replaces what the skill buys (an item the shop lacks buys nothing): the
+## way to ask what a weapon is worth.
 ## Runs `nights` nights with seeds `seed_start`, `seed_start + 1`, ... and returns the cell.
 ## `reached[r]` is how many nights started round r; `died_in[r]` how many ended in it; the other
 ## per-round lists are sums over the nights that reached the round (divide by `reached`).
@@ -20,7 +22,8 @@ static func run_cell(
 	nights: int,
 	seed_start: int,
 	step: float = DEFAULT_STEP,
-	max_rounds: int = DEFAULT_MAX_ROUNDS
+	max_rounds: int = DEFAULT_MAX_ROUNDS,
+	shopping: Array = []
 ) -> Dictionary:
 	var cell := {
 		"skill": skill_id,
@@ -40,8 +43,13 @@ static func run_cell(
 		"spent_on": {},
 		"spent_total": 0.0,
 		"earned_total": 0.0,
+		"dry_rounds": 0,
+		"runs": 0,
 	}
 	var skill := SimSkill.named(skill_id)
+	if not shopping.is_empty():
+		# An experiment: the player buys these, in this order, instead of their usual list.
+		skill.shopping.assign(shopping)
 	for n in nights:
 		var sim := NightSim.new(tuning, skill, players, seed_start + n, step)
 		_add(cell, sim.run(max_rounds), sim.rules)
@@ -58,6 +66,8 @@ static func _add(cell: Dictionary, night: Dictionary, rules: GameRules) -> void:
 		cell["earned"][r] += record.get("earned", 0.0)
 		cell["duration"][r] += record.get("duration", 0.0)
 		cell["special"][r] = String(record["special"])
+	cell["dry_rounds"] += night["dry_rounds"]
+	cell["runs"] += night["runs"]
 	if night["died"]:
 		cell["died_in"][night["rounds_reached"]] += 1
 	for type_id: StringName in night["ttk"]:
@@ -101,6 +111,15 @@ static func hazard(cell: Dictionary, r: int) -> float:
 static func threat(cell: Dictionary, r: int) -> float:
 	var reached: float = cell["reached"][r]
 	return float(cell["pressure"][r]) / reached if reached > 0.0 else 0.0
+
+
+## Of the rounds played, the share in which a player ran out of every firearm and fought with the
+## crowbar (per player: two that both ran dry in one round count twice, of twice the rounds).
+static func dry_share(cell: Dictionary) -> float:
+	var played := 0.0
+	for r in range(1, cell["reached"].size()):
+		played += float(cell["reached"][r])
+	return float(cell["dry_rounds"]) / maxf(played * float(cell["players"]), 1.0)
 
 
 ## The mean of the last round a night started (the round it ended in, or the cap).

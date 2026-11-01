@@ -3,7 +3,7 @@ extends SceneTree
 ##
 ##   godot --headless --path game -s res://tools/balance/balance_cli.gd -- \
 ##     --skill=average --players=1 --nights=200 --seed=1 --out=cell.json [--step=0.25] [--rounds=30]
-##     [--set=rounds.health_growth=1.05 ...]
+##     [--set=rounds.health_growth=1.05 ...] [--shopping=door_concession,weapon_rifle | none]
 ##
 ## `tools/balance/run_report.py` runs all nine cells in parallel and draws the charts.
 
@@ -24,7 +24,8 @@ func _init() -> void:
 		int(args.get("nights", "100")),
 		int(args.get("seed", "1")),
 		float(args.get("step", str(BalanceBatch.DEFAULT_STEP))),
-		int(args.get("rounds", str(BalanceBatch.DEFAULT_MAX_ROUNDS)))
+		int(args.get("rounds", str(BalanceBatch.DEFAULT_MAX_ROUNDS))),
+		_shopping(args.get("shopping", ""))
 	)
 	cell["seconds"] = float(Time.get_ticks_msec() - started) / 1000.0
 	var out: String = args.get("out", "")
@@ -64,6 +65,17 @@ func _absolute(path: String) -> String:
 		return path
 	var base := OS.get_environment("PWD")
 	return path if base.is_empty() else base.path_join(path)
+
+
+## The items a run buys instead of the skill's list: names separated by commas, or `none`.
+func _shopping(text: String) -> Array:
+	var items: Array = []
+	if text == "":
+		return items
+	for name in text.split(","):
+		if name != "none":
+			items.append(StringName(name))
+	return items if not items.is_empty() else [&"none_at_all"]
 
 
 func _specs(raw: PackedStringArray) -> PackedStringArray:

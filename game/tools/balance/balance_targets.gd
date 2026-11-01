@@ -34,9 +34,15 @@ const TIME_TO_KILL := {
 	"headliner": [8.0, 30.0],
 }
 ## Points spent over points earned, solo average: players spend a good part, never all. The floor is
-## low because there is little to buy yet (doors, two wall weapons, the crane, fuel; tonics do
-## nothing and ammunition is not sold): the points glut of docs/design/rounds.md, not a model fault.
+## low because there is little to buy (doors, two wall weapons, the crane, fuel and ammunition;
+## tonics do nothing): the points glut of docs/design/rounds.md, not a model fault.
 const SPEND_SHARE := [0.2, 0.9]
+## Ammunition is a real cost and not the whole economy: the share of what the average solo player
+## earns that goes on rounds.
+const AMMO_SHARE := [0.08, 0.35]
+## A player who runs out of every firearm fights with the crowbar. Rounds on it are a hard moment
+## and not the way the night is played: at most this share of the average solo player's rounds.
+const MAX_DRY_SHARE := 0.1
 
 
 ## `cells` maps "skill:players" to a cell of `BalanceBatch.run_cell`. Returns what is out of range,
@@ -122,6 +128,28 @@ static func check(cells: Dictionary) -> PackedStringArray:
 					% [type_id, seconds, bounds[0], bounds[1]]
 				)
 			)
+	var ammo := 0.0
+	for item_id: String in solo["spent_on"]:
+		if item_id.begins_with("ammo_"):
+			ammo += float(solo["spent_on"][item_id]) / float(solo["players"])
+	var ammo_share := ammo / maxf(solo["earned_total"], 1.0)
+	if ammo_share < AMMO_SHARE[0] or ammo_share > AMMO_SHARE[1]:
+		misses.append(
+			(
+				"average solo spends %.0f%% of what it earns on ammunition, wanted %.0f to %.0f%%"
+				% [ammo_share * 100.0, AMMO_SHARE[0] * 100.0, AMMO_SHARE[1] * 100.0]
+			)
+		)
+	if BalanceBatch.dry_share(solo) > MAX_DRY_SHARE:
+		(
+			misses
+			. append(
+				(
+					"average solo runs out of every firearm in %.0f%% of its rounds, wanted at most %.0f%%"
+					% [BalanceBatch.dry_share(solo) * 100.0, MAX_DRY_SHARE * 100.0]
+				)
+			)
+		)
 	var share: float = solo["spent_total"] / maxf(solo["earned_total"], 1.0)
 	if share < SPEND_SHARE[0] or share > SPEND_SHARE[1]:
 		misses.append(
