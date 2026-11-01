@@ -150,6 +150,52 @@ const TABS := [
 			},
 		],
 	},
+	{
+		"title": "Touch",
+		"rows":
+		[
+			{
+				"key": SettingsService.TOUCH_CONTROLS,
+				"title": "Touch controls",
+				"hint": "Auto shows them on a phone or tablet.",
+				"kind": "option",
+				"labels": ["Auto", "On", "Off"],
+				"values": [0, 1, 2],
+			},
+			{
+				"key": SettingsService.TOUCH_SCALE,
+				"title": "Touch button size",
+				"kind": "slider",
+				"min": 0.8,
+				"max": 1.4,
+				"step": 0.05,
+				"format": "%.2fx",
+			},
+			{
+				"key": SettingsService.TOUCH_OPACITY,
+				"title": "Touch button opacity",
+				"hint": "How faint the buttons are when your thumb is off them.",
+				"kind": "slider",
+				"min": 0.3,
+				"max": 1.0,
+				"step": 0.05,
+				"format": "%.2f",
+			},
+			{
+				"key": SettingsService.LEFT_HANDED,
+				"title": "Left-handed layout",
+				"hint":
+				"Flips the touch layout: the stick on the right, Fire and its buttons on the left.",
+				"kind": "toggle",
+			},
+			{
+				"key": SettingsService.HAPTICS,
+				"title": "Vibration on touch",
+				"hint": "A short buzz when a button is pressed, where the device allows it.",
+				"kind": "toggle",
+			},
+		],
+	},
 ]
 
 ## True in a browser. Set before the screen enters the tree to test the web layout.

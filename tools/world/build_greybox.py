@@ -8,6 +8,7 @@ Metres, Y up, x east, z south (the screen is at the north, z -48). Every area is
 Cars are placed from a fixed seed so the scene does not change from one run to the next.
 """
 
+import itertools
 import math
 import random
 import re
@@ -79,6 +80,16 @@ FUEL_STANDS = [
     ("Yard", "door_yard", (35.4, 15.9), -90.0),  # outside the generator cage's west wall, facing the yard's gate
 ]
 FUEL_ITEM = "fuel_can"
+# The middle of the field, where the lamp rows, the screen's glow and the stand's lights overlap, is tiled along these
+# lines (found by searching the cuts that keep every tile within 6 lights, docs/research/night-environment.md): a tile
+# a light can reach is a mesh it lights, and Compatibility lights a mesh with at most 8 lights, 2 of them left for a
+# muzzle flash and a blast. The flanks, which few lights reach, stay in wide tiles.
+FIELD_CORE_X = (-16, -6, 6, 16)
+FIELD_CORE_Z = (-52, -38, -22, -10, -4)
+# Where the stand's floor and roof are cut into four (x, z): the prize crane's lamp, the stand's three lamps, the sign
+# and the field's posts all reach it, and these are the only cuts (searched on a 0.5 m grid) that leave each piece at 6.
+STAND_CUT_X = -4
+STAND_CUT = 1
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
@@ -248,6 +259,13 @@ def floor_tiles(parent: str, prefix: str, x0: float, x1: float, z0: float, z1: f
         for j in range(nz):
             xa, xb = x0 + (x1 - x0) * i / nx, x0 + (x1 - x0) * (i + 1) / nx
             za, zb = z0 + (z1 - z0) * j / nz, z0 + (z1 - z0) * (j + 1) / nz
+            box(parent, f"{prefix}{i}_{j}", (xb - xa, 0.4, zb - za), ((xa + xb) / 2, -0.2, (za + zb) / 2), mat)
+
+
+def cut_tiles(parent: str, prefix: str, xs, zs, mat: str):
+    """Ground in tiles between the cuts `xs` and `zs` (each sorted, the outer ones the edges)."""
+    for i, (xa, xb) in enumerate(itertools.pairwise(xs)):
+        for j, (za, zb) in enumerate(itertools.pairwise(zs)):
             box(parent, f"{prefix}{i}_{j}", (xb - xa, 0.4, zb - za), ((xa + xb) / 2, -0.2, (za + zb) / 2), mat)
 
 
@@ -592,7 +610,9 @@ def build() -> None:
 
     # --- Field: the screen, the car rows, the first lit ground --------------------------------------------------
     field = group("Field", ".")
-    floor_tiles(field, "Ground", -62, 62, -52, -4, "field_ground", 16)
+    floor_tiles(field, "GroundW", -62, FIELD_CORE_X[0], -52, -4, "field_ground", 16)
+    cut_tiles(field, "GroundC", FIELD_CORE_X, FIELD_CORE_Z, "field_ground")
+    floor_tiles(field, "GroundE", FIELD_CORE_X[-1], 62, -52, -4, "field_ground", 16)
     screen_c = (0.0, -52.0)
     box(field, "ScreenPanel", (32, 12, 1.2), (0, 10, -48), "screen_face")
     box(field, "ScreenFrame", (33.6, 13.6, 0.8), (0, 10, -48.7), "field_struct")
@@ -695,7 +715,10 @@ def build() -> None:
 
     # --- Concession stand ----------------------------------------------------------------------------------------
     con = group("Concession", ".")
-    floor_tiles(con, "Floor", -10, 10, -4, 8, "concession_ground", 24)
+    # The floor and the roof are each four boxes, cut at the same lines: the field's posts, the sign, the stand's three
+    # lamps, the midway's court lamp and the prize crane's lamp (it stands beside the west wall) reach the stand, and no
+    # one box is reached by all of them (Compatibility lights a mesh with at most 8 lights, 2 of them left for a fight).
+    cut_tiles(con, "Floor", (-10, STAND_CUT_X, 10), (-4, STAND_CUT, 8), "concession_ground")
     wall(
         con, "WallN", "x", -4, -10, 10, 4.0, "concession_wall",
         [(0, 3, 0, 2.6), (-6, 2.2, 1.0, 2.4), (6, 2.2, 1.0, 2.4)],
@@ -703,9 +726,11 @@ def build() -> None:
     wall(con, "WallS", "x", 8, -10, 10, 4.0, "concession_wall", [(-5, REAR_EXIT, 0, 2.4), (5, REAR_EXIT, 0, 2.4)])
     wall(con, "WallW", "z", -10, -4, 8, 4.0, "concession_wall")
     wall(con, "WallE", "z", 10, -4, 8, 4.0, "concession_wall")
-    box(con, "Roof", (20.8, 0.3, 12.8), (0, 4.15, 2), "concession_roof")
+    for i, (xa, xb) in enumerate(itertools.pairwise((-10.4, STAND_CUT_X, 10.4))):
+        for j, (za, zb) in enumerate(itertools.pairwise((-4.4, STAND_CUT, 8.4))):
+            box(con, f"Roof{i}_{j}", (xb - xa, 0.3, zb - za), ((xa + xb) / 2, 4.15, (za + zb) / 2), "concession_roof")
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
-    block(con, "PrizeCrane", -9.4, -7.4, 4, 6, 2.4, "concession_prop")
+    # The prize crane is not part of the scene: it moves between four places, so `CraneView` draws it.
     block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop")
     cl = lamps(con, "concession")
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
@@ -914,7 +939,6 @@ def build() -> None:
     sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)
     shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
-    sign("ShopProps", "CraneSign", "PRIZE CRANE", (-7.3, 2.0, 5.0), 90, 60)
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)
     # The crane's other places (rules: `crane.spot_doors`): the midway, the open field and the yard. A breakdown moves
     # the crane to one of the spots whose door is open; the prize crane stands on only one at a time.

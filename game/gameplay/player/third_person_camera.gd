@@ -62,6 +62,9 @@ func setup(target: CharacterBody3D, tuning: PlayerTuning) -> void:
 	_target = target
 	_tuning = tuning
 	top_level = true
+	# The rig and its lens are placed every drawn frame from the body's last two ticks (`step`):
+	# the engine's physics interpolation would blend that a second time and lag it.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	target.add_to_group(BODY_GROUP)
 	_side.snap(side)
 	snap_to(target.global_position)

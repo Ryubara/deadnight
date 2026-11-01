@@ -49,6 +49,16 @@ func test_file_uses_the_documented_sections() -> void:
 	assert_bool(file.has_section_key("controls", "invert_y")).is_true()
 
 
+func test_the_touch_hints_seen_mask_round_trips_and_a_wild_value_is_clamped() -> void:
+	_settings.set_value(SettingsService.TOUCH_HINTS_SEEN, 5)
+	_settings.save()
+	assert_int(_make().get_value(SettingsService.TOUCH_HINTS_SEEN)).is_equal(5)
+	_settings.set_value(SettingsService.TOUCH_HINTS_SEEN, 9000)
+	assert_int(_settings.get_value(SettingsService.TOUCH_HINTS_SEEN)).is_equal(255)
+	_settings.reset_defaults()
+	assert_int(_settings.get_value(SettingsService.TOUCH_HINTS_SEEN)).is_equal(0)
+
+
 func test_bad_entries_fall_back_or_clamp() -> void:
 	var file := ConfigFile.new()
 	file.set_value("audio", "master", 900)

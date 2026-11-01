@@ -27,7 +27,7 @@ A `StyleBox` cannot ease between states, so the theme gives the button's states 
 | Focus ring | gap 6 px, closes in from 16 px, 3 px stroke | The ring "lands" on the button |
 | Spring | stiffness 360, damping 24, fixed 1/240 s step | Settles in about 0.3 s, no visible overshoot; the fixed step makes captures repeat |
 | Screen fade | 0.14 s out (cubic in), 0.40 s in (quart out, rise and settle) | Leave fast, arrive gently |
-| Slide | 0.5 s, expo out, old screen at 1/3 distance and dimmed | Parallax shows depth; a pop plays the push backwards |
+| Slide | 0.5 s, expo out, old screen at 1/3 distance and dimmed | Parallax shows depth; a pop mirrors the push with the popped screen on top |
 | Shader transitions | 1.2 x 0.5 s per half | One sweep to cover, one to reveal |
 
 No easing is linear. Reduced motion (`UIMotion.reduced`, project setting `gds_ui/accessibility/reduced_motion`) makes
@@ -58,9 +58,9 @@ old screen, the router swaps the screens behind it, then it opens on the new one
 ## Router
 
 `UIRouter` is an autoload (the plugin adds and removes it) on a `CanvasLayer`. Calls are queued while a transition runs
-and input is blocked. A pop repeats the transition the screen arrived with, reversed. Tweens must not be created on a
-screen whose `process_mode` is disabled (paused screens are), or they never run: the router restores the mode before
-each transition.
+and input is blocked. A pop mirrors the push it undoes ([below](#a-pop-mirrors-the-push)), not a plain reversal: for the
+slide, the layering differs. Tweens must not be created on a screen whose `process_mode` is disabled (paused screens
+are), or they never run: the router restores the mode before each transition.
 
 ### A pop mirrors the push
 
@@ -97,6 +97,24 @@ draining:
   path a pop ends with), `screen_changed` emitted. If it was the last screen the stack is empty (`depth() == 0`, a
   blank stage, `screen_changed(0)`) until the next `push` or `reset`. A pop or reset that loses its screen mid-way ends
   the same way, with one `push_error` and `error_reported`. While a job runs it finishes the stack itself.
+
+### Found by review
+
+Review of the router (#12, fixed in #51) found two things that no unit test had asked about; both are in the sections
+above, and both came from looking at the behaviour, not the code:
+
+- **The slide pop drew the leaving screen underneath.** Playing the push backwards kept the stage's child order, so the
+  popped screen slid off behind the one it revealed. The fix raises the right screen itself and does not rely on child
+  order ([a pop mirrors the push](#a-pop-mirrors-the-push)); the test is `test_a_slide_pop_mirrors_the_push`.
+- **A freed screen stalled the router for good** ([the rules](#a-freed-screen-must-not-stall-the-router)); the kit has
+  it as a [lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-01-a-screen-freed-mid-transition-locked-the-router-for-good.md).
+
+The general findings (a script `_draw` on a `Button` paints over its text, tweens on a node with disabled processing
+never run, `hint_screen_texture` needs a back-buffer copy, set the default clear colour) are in the kit's
+[UI controls page](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/ui-controls.md). The router sets the clear
+colour from the token `bg` (`UIRouter._ready`), so a fade never passes through the engine's grey. What to check when
+adding a transition is the [checklist](https://github.com/Ryubara/deadnight/blob/main/game/addons/gds_ui/README.md#adding-a-router-transition)
+next to the code.
 
 ### Tests
 

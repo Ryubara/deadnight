@@ -58,14 +58,25 @@ func test_the_voice_table_gives_every_look_real_sounds() -> void:
 				)
 		for sound: StringName in ZombieVoiceTable.get_role(look, "idle"):
 			assert_object(SoundCatalog.get_def(sound)).is_not_null()
-	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 0.5)).is_equal(
-		ZombieVoiceTable.WALK_CYCLE
+	# A step falls with the foot: the clip's length over the rate it is played at.
+	var slow := ZombieRig.gait_rate(&"walker", 0.7)
+	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 0.7)).is_equal_approx(
+		ZombieVoiceTable.WALK_CYCLE / slow, 0.001
 	)
-	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 3.5)).is_equal(
-		ZombieVoiceTable.RUN_CYCLE
+	var fast := ZombieRig.gait_rate(&"walker", 6.0)
+	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 6.0)).is_equal_approx(
+		ZombieVoiceTable.RUN_CYCLE / fast, 0.001
 	)
-	assert_float(ZombieVoiceTable.cycle_seconds(&"crawler", 3.0)).is_equal(
-		ZombieVoiceTable.CRAWL_CYCLE
+	# From the run to the sprint the cadence holds and the stride lengthens (#278); past the
+	# sprint's own speed the steps come faster.
+	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 6.0)).is_equal_approx(
+		ZombieVoiceTable.cycle_seconds(&"walker", 4.4), 0.001
+	)
+	assert_float(ZombieVoiceTable.cycle_seconds(&"walker", 8.0)).is_less(
+		ZombieVoiceTable.cycle_seconds(&"walker", 4.4)
+	)
+	assert_float(ZombieVoiceTable.cycle_seconds(&"crawler", 1.1)).is_equal_approx(
+		ZombieVoiceTable.CRAWL_CYCLE, 0.001
 	)
 
 

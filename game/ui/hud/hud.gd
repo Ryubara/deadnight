@@ -17,9 +17,9 @@ const SCENE := "res://ui/hud/hud.tscn"
 ## The parts keep to bands so that none overlaps another on a 1536 x 864 canvas (the smallest:
 ## 720p at UI scale 1.25): the side columns are `HudStyle.COLUMN` wide, the cards in the middle
 ## `HudStyle.CARD`, the gains `HudGains.WIDTH`; the right column ends above the gains, the gains
-## above the prompt. Each part shrinks or ellipsizes its text instead of growing. Every card shares
-## the text grid of `HudStyle` (`PAD_LEFT` in, `PAD` in from the right) and every column the same
-## `GAP` between its parts.
+## above the prompt. Each part shrinks or ellipsizes its text instead of growing (the prompt wraps
+## onto more lines instead). Every card shares the text grid of `HudStyle` (`PAD_LEFT` in, `PAD` in
+## from the right) and every column the same `GAP` between its parts.
 const GAINS_OFFSET := Vector2(48.0, 4.0)
 ## Space kept between the gains and the ammo card they must stay clear of.
 const GAINS_GAP := 9.0
@@ -49,6 +49,18 @@ const PART_NAMES := {
 @export var reticle_style: ReticleStyle = preload("res://ui/hud/reticle_style.tres")
 
 var state := HudState.new()
+## The corner columns swapped left for right (left-handed touch: Fire and its buttons take the
+## left corner and the stick the right, so the cards that stay clear of them move too). The
+## columns in the middle stay.
+var mirrored := false:
+	set(value):
+		if value != mirrored:
+			mirrored = value
+			for column in _columns:
+				if column[&"ax"] != 0.5:
+					_place(column)
+			if is_node_ready():
+				_fit_gains()
 var round_part := HudRound.new()
 var objective := HudObjective.new()
 var fuel := HudFuel.new()
@@ -68,6 +80,8 @@ var damage := HudDamage.new()
 var markers := HudMarkers.new()
 
 var _tokens := UITokens.active()
+## Each stacked column: {node, parts, ax, ay, dx, dy}, kept so a mirror can place it again.
+var _columns: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -104,12 +118,13 @@ func _input(event: InputEvent) -> void:
 	UIInputMode.track(event)
 
 
-## The gains list takes the width from its start (beside the crosshair) to the ammo card's left
-## edge: 314 units on the smallest canvas, more on a wider one, so a big gain keeps its big type.
+## The gains list takes the width from its start (beside the crosshair) to the left edge of whatever
+## holds the bottom right corner: the ammo card (314 units on the smallest canvas, more on a wider
+## one, so a big gain keeps its big type), or for a left hand the points and health column, which
+## is wider.
 func _fit_gains() -> void:
-	gains.set_room(
-		size.x * 0.5 - float(HudStyle.margin()) - HudAmmo.WIDTH - GAINS_GAP - GAINS_OFFSET.x
-	)
+	var corner := HudStyle.COLUMN if mirrored else HudAmmo.WIDTH
+	gains.set_room(size.x * 0.5 - float(HudStyle.margin()) - corner - GAINS_GAP - GAINS_OFFSET.x)
 
 
 ## Mirrors a batch of rules events (what `GameRules.apply` returned, or what a server broadcast).
@@ -167,24 +182,41 @@ func _stack(parts: Array, ax: float, ay: float, dx: float, dy: float, gap: int) 
 	column.alignment = BoxContainer.ALIGNMENT_END if ay == 1.0 else BoxContainer.ALIGNMENT_BEGIN
 	for part in parts:
 		column.add_child(part)
+	add_child(column)
+	var entry := {&"node": column, &"parts": parts, &"ax": ax, &"ay": ay, &"dx": dx, &"dy": dy}
+	_columns.append(entry)
+	_place(entry)
+
+
+## Anchors a column, flipped to the other side when `mirrored` (only the side columns flip).
+func _place(entry: Dictionary) -> void:
+	var column: VBoxContainer = entry[&"node"]
+	var ax: float = entry[&"ax"]
+	var ay: float = entry[&"ay"]
+	var dx: float = entry[&"dx"]
+	var flip := mirrored and ax != 0.5
+	var at := 1.0 - ax if flip else ax
+	var offset := -dx if flip else dx
+	for part: Control in entry[&"parts"]:
 		if ax == 1.0:
-			(part as Control).size_flags_horizontal = Control.SIZE_SHRINK_END
+			part.size_flags_horizontal = (
+				Control.SIZE_SHRINK_BEGIN if flip else Control.SIZE_SHRINK_END
+			)
 		elif ax == 0.5:
-			(part as Control).size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	column.anchor_left = ax
-	column.anchor_right = ax
+			part.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.anchor_left = at
+	column.anchor_right = at
 	column.anchor_top = ay
 	column.anchor_bottom = ay
-	column.offset_left = dx
-	column.offset_right = dx
-	column.offset_top = dy
-	column.offset_bottom = dy
+	column.offset_left = offset
+	column.offset_right = offset
+	column.offset_top = entry[&"dy"]
+	column.offset_bottom = entry[&"dy"]
 	column.grow_horizontal = (
 		Control.GROW_DIRECTION_BEGIN
-		if ax == 1.0
-		else (Control.GROW_DIRECTION_BOTH if ax == 0.5 else Control.GROW_DIRECTION_END)
+		if at == 1.0
+		else (Control.GROW_DIRECTION_BOTH if at == 0.5 else Control.GROW_DIRECTION_END)
 	)
 	column.grow_vertical = (
 		Control.GROW_DIRECTION_BEGIN if ay == 1.0 else Control.GROW_DIRECTION_END
 	)
-	add_child(column)
