@@ -1857,109 +1857,73 @@ transform = Transform3D(-0.6579, 0, 0.7531, 0, 1, 0, -0.7531, 0, -0.6579, 7.368,
 transform = Transform3D(-0.9479, 0, 0.3186, 0, 1, 0, -0.3186, 0, -0.9479, 10.617, 0.000, -48.432)
 
 [node name="Post06" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(0.9391, 0, 0.3436, 0, 1, 0, -0.3436, 0, 0.9391, -17.092, 0.000, -45.747)
-
-[node name="Post07" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.7628, 0, 0.6466, 0, 1, 0, -0.6466, 0, 0.7628, -13.884, 0.000, -40.232)
 
-[node name="Post08" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post07" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.3327, 0, 0.9430, 0, 1, 0, -0.9430, 0, 0.3327, -6.054, 0.000, -34.837)
 
-[node name="Post09" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post08" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.3575, 0, 0.9339, 0, 1, 0, -0.9339, 0, -0.3575, 6.507, 0.000, -35.003)
 
-[node name="Post10" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post09" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.6579, 0, 0.7531, 0, 1, 0, -0.7531, 0, -0.6579, 11.974, 0.000, -38.293)
 
-[node name="Post11" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(-0.8774, 0, 0.4798, 0, 1, 0, -0.4798, 0, -0.8774, 15.969, 0.000, -43.268)
-
-[node name="Post12" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post10" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -24.817, 0.000, -47.624)
 
-[node name="Post13" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(0.9053, 0, 0.4249, 0, 1, 0, -0.4249, 0, 0.9053, -22.812, 0.000, -41.293)
-
-[node name="Post14" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post11" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.5675, 0, 0.8234, 0, 1, 0, -0.8234, 0, 0.5675, -14.300, 0.000, -31.250)
 
-[node name="Post15" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post12" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.3327, 0, 0.9430, 0, 1, 0, -0.9430, 0, 0.3327, -8.383, 0.000, -28.235)
 
-[node name="Post16" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post13" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.1883, 0, 0.9821, 0, 1, 0, -0.9821, 0, -0.1883, 4.746, 0.000, -27.251)
 
-[node name="Post17" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(-0.5529, 0, 0.8332, 0, 1, 0, -0.8332, 0, -0.5529, 13.934, 0.000, -31.003)
-
-[node name="Post18" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(-0.8977, 0, 0.4407, 0, 1, 0, -0.4407, 0, -0.8977, 22.621, 0.000, -40.895)
-
-[node name="Post19" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post14" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.9816, 0, 0.1909, 0, 1, 0, -0.1909, 0, -0.9816, 24.737, 0.000, -47.190)
 
-[node name="Post20" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post15" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -31.711, 0.000, -46.409)
 
-[node name="Post21" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(0.9264, 0, 0.3765, 0, 1, 0, -0.3765, 0, 0.9264, -29.831, 0.000, -39.878)
-
-[node name="Post22" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post16" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.7628, 0, 0.6466, 0, 1, 0, -0.6466, 0, 0.7628, -24.563, 0.000, -31.180)
 
-[node name="Post23" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post17" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.1273, 0, 0.9919, 0, 1, 0, -0.9919, 0, 0.1273, -4.101, 0.000, -20.062)
 
-[node name="Post24" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post18" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.3902, 0, 0.9207, 0, 1, 0, -0.9207, 0, -0.3902, 12.565, 0.000, -22.353)
 
-[node name="Post25" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post19" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.8013, 0, 0.5983, 0, 1, 0, -0.5983, 0, -0.8013, 25.802, 0.000, -32.736)
 
-[node name="Post26" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(-0.9090, 0, 0.4168, 0, 1, 0, -0.4168, 0, -0.9090, 29.270, 0.000, -38.579)
-
-[node name="Post27" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(-0.9762, 0, 0.2168, 0, 1, 0, -0.2168, 0, -0.9762, 31.434, 0.000, -45.021)
-
-[node name="Post28" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post20" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -38.604, 0.000, -45.193)
 
-[node name="Post29" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(0.9391, 0, 0.3436, 0, 1, 0, -0.3436, 0, 0.9391, -36.814, 0.000, -38.532)
-
-[node name="Post30" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post21" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.8644, 0, 0.5029, 0, 1, 0, -0.5029, 0, 0.8644, -33.883, 0.000, -32.288)
 
-[node name="Post31" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post22" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.7628, 0, 0.6466, 0, 1, 0, -0.6466, 0, 0.7628, -29.903, 0.000, -26.654)
 
-[node name="Post32" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post23" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.6377, 0, 0.7703, 0, 1, 0, -0.7703, 0, 0.6377, -24.998, 0.000, -21.805)
 
-[node name="Post33" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post24" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(0.3327, 0, 0.9430, 0, 1, 0, -0.9430, 0, 0.3327, -13.040, 0.000, -15.033)
 
-[node name="Post34" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post25" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.1012, 0, 0.9949, 0, 1, 0, -0.9949, 0, -0.1012, 3.966, 0.000, -13.001)
 
-[node name="Post35" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post26" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.2740, 0, 0.9617, 0, 1, 0, -0.9617, 0, -0.2740, 10.741, 0.000, -14.300)
 
-[node name="Post36" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post27" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.4383, 0, 0.8988, 0, 1, 0, -0.8988, 0, -0.4383, 17.182, 0.000, -16.766)
 
-[node name="Post37" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+[node name="Post28" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
 transform = Transform3D(-0.7216, 0, 0.6923, 0, 1, 0, -0.6923, 0, -0.7216, 28.287, 0.000, -24.862)
-
-[node name="Post38" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(-0.8318, 0, 0.5551, 0, 1, 0, -0.5551, 0, -0.8318, 32.606, 0.000, -30.240)
-
-[node name="Post39" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(-0.9162, 0, 0.4007, 0, 1, 0, -0.4007, 0, -0.9162, 35.915, 0.000, -36.292)
-
-[node name="Post40" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
-transform = Transform3D(-0.9723, 0, 0.2339, 0, 1, 0, -0.2339, 0, -0.9723, 38.112, 0.000, -42.830)
 
 [node name="PicnicTableA" parent="Field/Props" instance=ExtResource("fx_picnic_table")]
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 46.400, 0.000, -31.000)

@@ -216,7 +216,7 @@ in `game/world/drive_in/fixtures/` with hidden CSG collision (what the navigatio
 
 | Prop | Tris | Budget | Size (m, w x d x h) |
 | --- | ---: | ---: | --- |
-| Speaker post | 328 | 800 | 0.83 x 0.32 x 1.46 |
+| Speaker post (player-only collision) | 328 | 800 | 0.83 x 0.32 x 1.46 |
 | Trash can | 240 | 800 | 0.6 x 0.6 x 1.04 |
 | Popcorn machine (counter top) | 344 | 800 | 0.74 x 0.54 x 1.03 |
 | Picnic table | 316 | 1,500 | 1.8 x 1.5 x 0.8 |

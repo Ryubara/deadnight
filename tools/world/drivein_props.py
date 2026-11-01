@@ -50,6 +50,10 @@ REPLACED = {"Counter", "Projector", "KioskW", "KioskE", "PicnicTable", "ScreenFr
 
 SPEAKER_AHEAD = 0.55  # metres from a car's nose to its speaker post, towards the screen
 SPEAKER_CLEAR = 1.5  # no post this close to a lamp post
+# The shoulder camera goes through every gap between two cars along the gap's line, and its arm reaches 2.8 m on into
+# the next lane; a post stays this far to the side of that line (shoulder 0.75 + arm margin 0.25 + air) within reach.
+GAP_LINE_CLEAR = 1.4
+GAP_LINE_REACH = 4.6
 
 
 def _scene_name(name: str) -> str:
@@ -89,9 +93,10 @@ def ext_resources() -> list[str]:
     ]
 
 
-def place(instance, group, car_slots, screen_c, lamps) -> int:
+def place(instance, group, car_slots, gaps, screen_c, lamps) -> int:
     """Put the props in the lot. `car_slots` is (row, radius, angle) of every parked car on the field, `lamps` the
-    field's lamp posts (x, z). Returns the number of speaker posts."""
+    field's lamp posts (x, z), `gaps` the middles (x, z) of every gap between two
+    neighbouring cars, by row. Returns the number of speaker posts."""
 
     def put(parent, name, fx, pos, rot=0.0):
         instance(parent, name, f"fx_{fx}", pos, rot)
@@ -105,6 +110,17 @@ def place(instance, group, car_slots, screen_c, lamps) -> int:
     by_row: dict[int, list[tuple[float, float]]] = {}
     for ri, radius, a in car_slots:
         by_row.setdefault(ri, []).append((radius, a))
+    gap_polar = [
+        (math.hypot(gx - screen_c[0], gz - screen_c[1]), math.atan2(gx - screen_c[0], gz - screen_c[1]))
+        for found in gaps.values()
+        for gx, gz in found
+    ]
+
+    def on_gap_line(r, a_rad):
+        return any(
+            abs(r - rg) < GAP_LINE_REACH and abs(r * math.sin(a_rad - ag)) < GAP_LINE_CLEAR for rg, ag in gap_polar
+        )
+
     for ri, slots in sorted(by_row.items()):
         for k, (radius, a) in enumerate(slots):
             if k % 2:
@@ -112,7 +128,7 @@ def place(instance, group, car_slots, screen_c, lamps) -> int:
             r = radius - 2.25 - SPEAKER_AHEAD
             x = screen_c[0] + r * math.sin(math.radians(a))
             z = screen_c[1] + r * math.cos(math.radians(a))
-            if any(math.hypot(x - lx, z - lz) < SPEAKER_CLEAR for lx, lz in lamps):
+            if any(math.hypot(x - lx, z - lz) < SPEAKER_CLEAR for lx, lz in lamps) or on_gap_line(r, math.radians(a)):
                 continue
             n += 1
             put(posts, f"Post{n:02d}", "speaker_post", (x, 0, z), a + 90)
