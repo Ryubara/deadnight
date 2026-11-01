@@ -1,9 +1,9 @@
 class_name NightCommand
 extends RefCounted
 ## Everything one player asks of the server in one tick: how to move (a `PlayerCommand`), whether
-## the trigger is held, the camera ray and barrel the shot would leave from, and the two edges
-## `reload` and `use`. A human's controls and the autopilot both produce exactly this, and it
-## travels as plain data (`to_dict`), so the server cannot tell them apart.
+## the trigger is held, the camera ray and barrel the shot would leave from, and the three edges
+## `reload`, `use` and `swap`. A human's controls and the autopilot both produce exactly this, and
+## it travels as plain data (`to_dict`), so the server cannot tell them apart.
 
 var player_id := 1
 var motion := PlayerCommand.new()
@@ -12,6 +12,8 @@ var fire := false
 var reload := false
 ## Pressed this tick: buy what is in reach (a door), else put a board back.
 var use := false
+## Pressed this tick: take the next weapon carried in hand.
+var swap := false
 ## The camera ray a shot follows, and where the barrel is.
 var origin := Vector3.ZERO
 var dir := Vector3.FORWARD
@@ -26,6 +28,7 @@ func to_dict() -> Dictionary:
 		"fire": fire,
 		"reload": reload,
 		"use": use,
+		"swap": swap,
 		"origin": origin,
 		"dir": dir,
 		"muzzle": muzzle,
@@ -39,6 +42,7 @@ static func from_dict(data: Dictionary) -> NightCommand:
 	command.fire = data.get("fire", false)
 	command.reload = data.get("reload", false)
 	command.use = data.get("use", false)
+	command.swap = data.get("swap", false)
 	command.origin = data.get("origin", Vector3.ZERO)
 	command.dir = data.get("dir", Vector3.FORWARD)
 	command.muzzle = data.get("muzzle", Vector3.ZERO)

@@ -114,6 +114,51 @@ price_per_round = 5
 amount = 2.0
 pool_weights = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_ammo_pistol"]
+script = ExtResource("1_skww1")
+id = &"ammo_pistol"
+kind = 6
+price = 50
+amount = 20.0
+weapon = &"pistol"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_smg"]
+script = ExtResource("1_skww1")
+id = &"ammo_smg"
+kind = 6
+price = 90
+amount = 60.0
+weapon = &"smg"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_shotgun"]
+script = ExtResource("1_skww1")
+id = &"ammo_shotgun"
+kind = 6
+price = 80
+amount = 8.0
+weapon = &"shotgun"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_rifle"]
+script = ExtResource("1_skww1")
+id = &"ammo_rifle"
+kind = 6
+price = 100
+amount = 8.0
+weapon = &"rifle"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_flare_gun"]
+script = ExtResource("1_skww1")
+id = &"ammo_flare_gun"
+kind = 6
+price = 120
+amount = 2.0
+weapon = &"flare_gun"
+pool_weights = PackedFloat32Array()
+
 [sub_resource type="Resource" id="Resource_6sif2"]
 script = ExtResource("2_tud1d")
 start_points = 200
@@ -129,7 +174,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut"), SubResource("Resource_gren1")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")

@@ -8,6 +8,8 @@ const FIRE := &"fire"
 const RELOAD := &"reload"
 const GIVE_WEAPON := &"give_weapon"
 const EQUIP := &"equip"
+const SWAP := &"swap"
+const ADD_AMMO := &"add_ammo"
 const TICK := &"tick"
 const TARGETS := &"targets"
 const TRACK_TARGET := &"track_target"
@@ -42,6 +44,17 @@ static func give_weapon(player_id: int, weapon_id: StringName) -> Dictionary:
 
 static func equip(player_id: int, weapon_id: StringName) -> Dictionary:
 	return {"type": EQUIP, "player_id": player_id, "weapon_id": weapon_id}
+
+
+## Puts away the weapon in hand and takes the next one the player carries (in the order they were
+## given; the last goes round to the first).
+static func swap(player_id: int) -> Dictionary:
+	return {"type": SWAP, "player_id": player_id}
+
+
+## Puts up to `rounds` into the reserve of a weapon the player carries (never past its limit).
+static func add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> Dictionary:
+	return {"type": ADD_AMMO, "player_id": player_id, "weapon_id": weapon_id, "rounds": rounds}
 
 
 ## One fixed step of the combat clock: cooldowns, reloads, projectiles in flight.
