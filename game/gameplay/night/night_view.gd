@@ -4,19 +4,6 @@ extends Node3D
 ## from each frame's snapshot, flashes, impacts and damage numbers from the weapons' events, and
 ## the sounds. It holds no game state and never asks the server anything.
 
-## The sound of each weapon's shot and reload; a weapon with no entry is silent for now.
-const SHOT_SOUNDS := {
-	&"pistol": &"shot_pistol",
-	&"smg": &"shot_smg",
-	&"rifle": &"shot_rifle",
-	&"shotgun": &"shot_shotgun",
-}
-const RELOAD_SOUNDS := {
-	&"pistol": &"reload_pistol",
-	&"smg": &"reload_smg",
-	&"rifle": &"reload_rifle",
-	&"shotgun": &"reload_shotgun",
-}
 ## Lifts a burst of splinters to the middle of the boards.
 const BOARD_LIFT := Vector3(0.0, 1.3, 0.0)
 ## Lifts a damage number off the wound.
@@ -83,16 +70,10 @@ func _on_event(event: Dictionary) -> void:
 			voices.update(_state.zombies, step)
 		&"shot_fired":
 			effects.shot(WeaponCatalog.get_def(event["weapon_id"]), event["muzzle"], event["ends"])
-			_sound(SHOT_SOUNDS, event["weapon_id"], event["muzzle"])
 		&"damage_dealt":
 			effects.number(
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
-		&"reload_started":
-			_sound(RELOAD_SOUNDS, event["weapon_id"], null)
-		&"fire_rejected":
-			if event["reason"] == &"empty":
-				Audio.play(&"dry_fire")
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":
@@ -107,9 +88,3 @@ func _on_event(event: Dictionary) -> void:
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
-
-
-func _sound(table: Dictionary, weapon_id: StringName, at: Variant) -> void:
-	var id: StringName = table.get(weapon_id, &"")
-	if id != &"":
-		Audio.play(id, at)
