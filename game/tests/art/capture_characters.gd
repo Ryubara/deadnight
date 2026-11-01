@@ -23,6 +23,9 @@ const PLAYER_AT := Vector3(4.0, 0.05, 14.0)
 # [seconds, action, pressed]
 const TIMELINE := [
 	[0.8, "aim", true],
+	[1.3, "Fire", true],
+	[1.9, "Fire", true],
+	[2.4, "Melee", true],
 	[2.6, "aim", false],
 	[3.0, "move_right", true],
 	[3.7, "move_right", false],
@@ -42,6 +45,7 @@ var _ticks := 0
 var _next := 0
 var _camera: Camera3D
 var _shot := -1
+var _animation: PlayerAnimation
 
 
 func _ready() -> void:
@@ -50,6 +54,7 @@ func _ready() -> void:
 	var player := room.get_node("Player") as Player
 	player.capture_mouse = false
 	player.teleport(PLAYER_AT)
+	_animation = player.get_node("AnimationTree") as PlayerAnimation
 	for pillar in ["PillarA", "PillarB", "PillarC"]:  # they stand between the far camera and the row
 		room.get_node("Geometry/" + pillar).queue_free()
 	for i in ROW.size():
@@ -83,6 +88,12 @@ func _physics_process(_delta: float) -> void:
 		if entry[1] == "end":
 			get_tree().quit()
 			return
+		if entry[1] == "Fire":
+			_animation.play_action(&"Fire")
+			continue
+		if entry[1] == "Melee":
+			_animation.equip(&"Melee")
+			continue
 		if entry[2]:
 			Input.action_press(entry[1])
 		else:
