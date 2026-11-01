@@ -108,6 +108,18 @@ slide pop mirroring the push. Run: `godot --headless --path game -s res://addons
 res://tests -c --ignoreHeadlessMode`. Do not add `-d`: the debugger then stops at the first script error and waits for
 input forever.
 
+### The router is shared by every suite
+
+`UIRouter` is an autoload, so one run of all the suites has one router. A screen a suite leaves on it keeps running,
+and a `create_timer` it started (the main menu's entrance, `MainMenu.ITEMS_DELAY`, 0.55 s of wall time) ends in
+whichever test is running by then and calls `focus_initial()`. `test_main_scene.gd` runs just before
+`test_customize_screen.gd`: on an idle machine the timer ended a few tests earlier, on a loaded one (many suites
+at once) it ended in `test_the_gamepad_walks_down_the_rows_and_back_up` and took the focus from the `hair` row
+(#178). Traced with a print in the menu's `screen_enter` and the test's `before_test`. A suite that shows the real
+menu through the router, or the main scene, clears the router when it is done, and a suite that builds its own
+screen clears it before (`RouterFixture.clear` in `game/tests/ui/router_fixture.gd`). The pair `test_main_scene.gd`
+plus `test_customize_screen.gd` (about 6 s) reproduces it under load without the 5-minute full run.
+
 ## Left out
 
 Settings widgets (slider, toggle, option selector) came with the settings screen: see [Settings](settings.md).

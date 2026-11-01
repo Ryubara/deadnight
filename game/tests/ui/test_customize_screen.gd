@@ -10,9 +10,9 @@ var _screen: CustomizeScreen
 
 
 func before_test() -> void:
-	# Another suite may have left the router in a transition, which swallows input.
-	if UIRouter.busy:
-		await UIRouter.idle
+	# Another suite may have left the router in a transition, which swallows input, or a screen
+	# whose timers take the focus from ours whenever they end.
+	await RouterFixture.clear(get_tree())
 	UIInputMode.pointer = false
 	_release_pad()
 	_saved_path = Settings.path
@@ -27,6 +27,7 @@ func after_test() -> void:
 	Settings.path = _saved_path
 	UIMotion.reduced = false
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+	await RouterFixture.clear(get_tree())
 
 
 ## Releases every pad button the tests use, so a press another suite left held cannot swallow ours.
@@ -135,9 +136,6 @@ func test_the_gamepad_dpad_moves_along_a_strip() -> void:
 	strip.grab_focus()
 	var start: int = _screen.look.colours[&"secondary"]
 	for i in 3:
-		# The game's own menu, still in the router under the test, takes focus back after a press
-		# when the whole project runs in one process; the strip claims it again each time.
-		strip.grab_focus()
 		await _pad(JOY_BUTTON_DPAD_RIGHT)
 	assert_int(_screen.look.colours[&"secondary"]).is_equal(start + 3)
 	strip.grab_focus()
