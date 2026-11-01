@@ -151,7 +151,7 @@ func test_interact_shows_only_next_to_something_usable_and_names_it() -> void:
 	await _fixture.lift(0)
 	state.set_prompt(&"repair", "Boarded window", 0)
 	await get_tree().process_frame
-	assert_str(_fixture.controls.interact_verb()).is_equal("REPAIR")
+	assert_str(_fixture.controls.interact_verb()).is_equal("HOLD")
 	await _fixture.touch(0, _fixture.at(TouchLayout.INTERACT))
 	assert_bool(Input.is_action_pressed(&"interact")).is_true()
 	await _fixture.lift(0)

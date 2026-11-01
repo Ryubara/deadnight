@@ -74,7 +74,7 @@ func _guns() -> void:
 	_say("Reloads: pistol and shotgun, a dry click")
 	Audio.play(&"dry_fire", at)
 	await _wait(0.5)
-	Audio.play(&"reload_pistol", at)
+	Audio.play(&"reload_pistol_mag_in", at)
 	await _wait(1.6)
 	Audio.play(&"reload_shotgun", at)
 	await _wait(2.0)

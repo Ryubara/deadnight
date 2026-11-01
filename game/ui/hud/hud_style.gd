@@ -81,6 +81,15 @@ static func clip(node: Label) -> Label:
 	return node
 
 
+## Lets a label wrap onto more lines instead of ending in an ellipsis: for text that must be read in
+## full and whose card may grow in height (a prompt). Fill it with `set_wrapped`. The lines sit with
+## no extra gap, so the height `set_wrapped` reserves is the label's own.
+static func wrap(node: Label) -> Label:
+	node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	node.add_theme_constant_override(&"line_spacing", 0)
+	return node
+
+
 ## How wide `text` is at `size_px` in `font`.
 static func text_width(font: Font, text: String, size_px: int) -> float:
 	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x
@@ -112,6 +121,27 @@ static func set_fitted(
 	if node.get_theme_font_size(&"font_size") != size_px:
 		node.add_theme_font_size_override(&"font_size", size_px)
 	set_text(node, text)
+
+
+## Writes `text` into a label made by `label` and `wrap`: the type shrinks from `wanted` toward
+## `floor_size` while the text is wider than `width`, then what is still too wide wraps onto more
+## lines, and the label reserves their height at once (a label learns its wrapped height a frame
+## late). Nothing is cut.
+static func set_wrapped(
+	node: Label, text: String, wanted: int, width: float, floor_size := MIN_TEXT
+) -> void:
+	var font := node.get_theme_font(&"font")
+	var size_px := fit_size(font, text, wanted, width, floor_size)
+	if node.get_theme_font_size(&"font_size") != size_px:
+		node.add_theme_font_size_override(&"font_size", size_px)
+	set_text(node, text)
+	var flags := (
+		TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	)
+	var block := font.get_multiline_string_size(
+		text, HORIZONTAL_ALIGNMENT_LEFT, width, size_px, -1, flags
+	)
+	node.custom_minimum_size.y = block.y
 
 
 ## `text` cut with an ellipsis to fit `width` at `size_px`: for a name that is followed by words

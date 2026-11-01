@@ -49,6 +49,7 @@ const F_FIRE := 1 << 7
 const F_RELOAD := 1 << 8
 const F_USE := 1 << 9
 const F_SWAP := 1 << 10
+const F_USE_HELD := 1 << 11
 
 
 static func hello() -> PackedByteArray:
@@ -135,6 +136,7 @@ static func command(value: NightCommand) -> PackedByteArray:
 	flags |= F_RELOAD if value.reload else 0
 	flags |= F_USE if value.use else 0
 	flags |= F_SWAP if value.swap else 0
+	flags |= F_USE_HELD if value.use_held else 0
 	out.encode_u16(21, flags)
 	_put_vector(out, 23, value.origin)
 	_put_vector(out, 35, value.dir)
@@ -168,6 +170,7 @@ static func read_command(data: PackedByteArray) -> NightCommand:
 	result.reload = flags & F_RELOAD != 0
 	result.use = flags & F_USE != 0
 	result.swap = flags & F_SWAP != 0
+	result.use_held = flags & F_USE_HELD != 0
 	result.origin = _get_vector(data, 23)
 	result.dir = _get_vector(data, 35)
 	if result.dir.length() < 0.001:

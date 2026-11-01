@@ -24,10 +24,16 @@ sys.path.insert(0, str(Path(__file__).parent))
 import dsp
 import night_recipes
 import recipes
+import weapon_recipes
 import zombie_recipes
 from recipes import Entry
 
-REGISTRY: list[Entry] = [*recipes.REGISTRY, *night_recipes.REGISTRY, *zombie_recipes.REGISTRY]
+REGISTRY: list[Entry] = [
+    *recipes.REGISTRY,
+    *night_recipes.REGISTRY,
+    *weapon_recipes.REGISTRY,
+    *zombie_recipes.REGISTRY,
+]
 
 
 def seed_of(name: str, variant: int) -> int:

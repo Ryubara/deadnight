@@ -20,7 +20,7 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 183 degrees at sensitivity 1, a fast flick gains up to 1.6 times |
 | Fire | big, right thumb | `fire` held; a drag that starts on it also looks |
 | Aim, Jump, Reload, Swap, Grenade | an arc round Fire | `aim` (held), `jump`, `reload`, `swap_weapon`, `throw_grenade` |
-| Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, REPAIR, FUEL, SWITCH, TAKE, REVIVE) |
+| Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
 | Pause | top, beside the round card | `pause` |
 
 Everything presses the game's own input actions, so the player and the night read touch like a key. Look goes out as mouse

@@ -47,7 +47,7 @@ const VERBS := {
 	&"buy_crane": "PLAY",
 	&"crane_take": "TAKE",
 	&"fill_fuel": "FUEL",
-	&"repair": "REPAIR",
+	&"repair": "HOLD",
 	&"circuit": "SWITCH",
 	&"revive": "REVIVE",
 }

@@ -13,6 +13,7 @@ func _command() -> NightCommand:
 	command.motion.swap_shoulder = true
 	command.fire = true
 	command.use = true
+	command.use_held = true
 	command.origin = Vector3(3.0, 1.5, -7.25)
 	command.dir = Vector3(0.0, 0.0, -1.0)
 	return command
@@ -34,6 +35,7 @@ func test_a_command_is_47_bytes_and_comes_back_whole() -> void:
 	assert_bool(back.motion.jump).is_false()
 	assert_bool(back.fire).is_true()
 	assert_bool(back.use).is_true()
+	assert_bool(back.use_held).is_true()
 	assert_bool(back.reload).is_false()
 	assert_float(back.origin.distance_to(Vector3(3.0, 1.5, -7.25))).is_less(0.001)
 

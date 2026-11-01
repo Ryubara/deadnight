@@ -3,8 +3,9 @@ extends HudTicket
 ## What you can do where you stand, as a concession menu card: the button to press at its left, a
 ## keycap or a gamepad button by the last device used, and beside it the object's name, one line on
 ## what it does and the price (amber when you can pay, hot when you cannot). A refused purchase
-## shakes the card and says why on the price line. The card is a fixed width and three lines high:
-## each line shrinks to its room, then ends in an ellipsis, so no content makes it grow.
+## shakes the card and says why on the price line. The card is a fixed width and as high as its
+## words need: each line shrinks to its room (the name down to `HudStyle.TEXT`), then wraps onto
+## another line, so nothing is ever cut and the card grows upward from the bottom margin.
 
 const DETAILS := {
 	&"buy_door": "OPENS THE NEXT PART OF THE LOT",
@@ -14,7 +15,7 @@ const DETAILS := {
 	&"crane_take": "TAKE IT BEFORE IT FADES",
 	&"crane_busy": "ONLY THE BUYER CAN TAKE IT",
 	&"fill_fuel": "TOPS UP THE GENERATOR",
-	&"repair": "NAIL THE BOARDS BACK UP",
+	&"repair": "HOLD TO NAIL BOARDS UP",
 	&"circuit": "SWITCH THE LIGHTS",
 	&"revive": "PULL THEM BACK TO THEIR FEET",
 }
@@ -57,11 +58,11 @@ var glyph_caption: String:
 	get:
 		return _glyph.caption()
 
-var _title := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, tokens.ink, true))
-var _detail := HudStyle.clip(
+var _title := HudStyle.wrap(HudStyle.label("", HudStyle.MEDIUM, tokens.ink, true))
+var _detail := HudStyle.wrap(
 	HudStyle.label("", HudStyle.SMALL, tokens.ink_muted, false, HudStyle.TRACK_CAPTION)
 )
-var _price := HudStyle.clip(
+var _price := HudStyle.wrap(
 	HudStyle.label("", HudStyle.TEXT, tokens.accent_bright, false, HudStyle.TRACK_CAPTION)
 )
 var _glyph := HudGlyph.new()
@@ -106,11 +107,11 @@ func refresh() -> void:
 		denied_left = 0.0
 		return
 	var kind: StringName = prompt["kind"]
-	HudStyle.set_fitted(
+	HudStyle.set_wrapped(
 		_title, str(prompt["label"]).to_upper(), HudStyle.MEDIUM, _room(), HudStyle.TEXT
 	)
 	var detail := str(prompt.get("detail", ""))
-	HudStyle.set_fitted(
+	HudStyle.set_wrapped(
 		_detail,
 		detail.to_upper() if detail != "" else DETAILS.get(kind, ""),
 		HudStyle.SMALL,
@@ -148,4 +149,4 @@ func _room() -> float:
 
 
 func _say_price(text: String) -> void:
-	HudStyle.set_fitted(_price, text, HudStyle.TEXT, _room())
+	HudStyle.set_wrapped(_price, text, HudStyle.TEXT, _room())
