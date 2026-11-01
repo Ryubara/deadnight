@@ -26,20 +26,20 @@ static func step(
 	var strike := {}
 	match zombie.mode:
 		ZombieBody.Mode.EMERGING:
-			if zombie.mode_time >= tuning.emerge_seconds:
+			if zombie.mode_time >= zombie.profile.emerge:
 				zombie.enter(ZombieBody.Mode.CHASE)
 		ZombieBody.Mode.CHASE:
 			_chase(zombie, tuning, delta, has_target, target_pos, waypoint, move_speed)
 		ZombieBody.Mode.ATTACK:
 			strike = _attack(zombie, tuning, delta, has_target, target_pos)
 		ZombieBody.Mode.STAGGER:
-			if zombie.mode_time >= tuning.stagger_seconds:
+			if zombie.mode_time >= zombie.profile.stagger:
 				zombie.enter(ZombieBody.Mode.CHASE)
 	zombie.move_speed = zombie.velocity.length()
 	return strike
 
 
-## A hit that did not kill: the zombie stops and loses its swing.
+## A hit that did not kill: the zombie stops and loses its swing for the profile's stagger time.
 static func stagger(zombie: ZombieBody) -> void:
 	if zombie.mode == ZombieBody.Mode.CHASE or zombie.mode == ZombieBody.Mode.ATTACK:
 		zombie.enter(ZombieBody.Mode.STAGGER)

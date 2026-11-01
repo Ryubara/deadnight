@@ -4,10 +4,11 @@ extends RefCounted
 ## they at time T" so a shot is judged against what the shooter saw, not against the present.
 ##
 ## Plain data in, plain data out. A frame is `record(time, targets)` with `targets` a list of
-## `{"id": int, "pos": Vector3, "yaw": float, "scale": float}` (`scale`, the size of the
-## hit zones, defaults to 1); `rewind(view_time, now)` answers
-## `{"time", "rewound_by", "clamped", "targets": {id: {"pos", "yaw", "scale"}}}`. No node, no peer,
-## no clock of its own: `time` is whatever seconds the caller counts (the server's tick clock).
+## `{"id": int, "pos": Vector3, "yaw": float, "scale": float, "weak": bool}` (`scale`, the size of
+## the hit zones, defaults to 1; `weak`, whether it has a weak spot, to false); `rewind(view_time,
+## now)` answers `{"time", "rewound_by", "clamped", "targets": {id: {"pos", "yaw", "scale",
+## "weak"}}}`. No node, no peer, no clock of its own: `time` is whatever seconds the caller counts
+## (the server's tick clock).
 ##
 ## The rewind is capped at `max_rewind` seconds, so a laggy or lying client cannot make the server
 ## judge a shot against the distant past: past the cap, the shot is judged at the cap and the
@@ -37,6 +38,7 @@ func record(time: float, targets: Array) -> void:
 			"pos": target["pos"],
 			"yaw": target.get("yaw", 0.0),
 			"scale": target.get("scale", 1.0),
+			"weak": target.get("weak", false),
 		}
 	_frames.append({"time": time, "targets": placed})
 	var oldest := time - max_rewind - HISTORY_MARGIN
@@ -87,6 +89,7 @@ func _blend(earlier: Dictionary, later: Dictionary, weight: float) -> Dictionary
 				"pos": (a["pos"] as Vector3).lerp(b["pos"], weight),
 				"yaw": lerp_angle(a["yaw"], b["yaw"], weight),
 				"scale": lerpf(a["scale"], b["scale"], weight),
+				"weak": b["weak"],
 			}
 		elif weight < 0.5:
 			blended[id] = earlier[id]

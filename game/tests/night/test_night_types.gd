@@ -132,10 +132,10 @@ func test_a_boss_night_brings_the_headliner_among_its_escorts() -> void:
 			types[event["zombie_type"]] = true
 	assert_bool(types.has(&"headliner")).is_true()
 	assert_bool(types.has(&"walker")).is_true()
-	# The headliner stands taller than anything else on the lot, drawn in its look.
+	# The headliner is drawn in the Projectionist's model.
 	var view := night.view.horde.view_of(met["id"])
 	assert_str(String(view.look)).is_equal("headliner")
-	assert_float(view.model().scale.y).is_greater(1.0)
+	assert_str(view.model().scene_file_path).ends_with("zombie_boss.glb")
 	var special := night.server.rules.special_id()
 	assert_bool(special != &"").is_true()
 	night.queue_free()

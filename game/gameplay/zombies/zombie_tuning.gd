@@ -44,6 +44,14 @@ extends Resource
 @export var emerge_seconds: float = 0.7
 ## Seconds a hit staggers a zombie (it stops and loses its swing).
 @export var stagger_seconds: float = 0.4
+## Seconds a boss stands roaring where it appeared before it comes (its entrance; the length of
+## the `Boss_Roar` clip, assets/characters/zombie_boss/clips.json).
+@export var boss_entrance_seconds: float = 2.75
+## Seconds a hit on a boss's weak spot staggers it (the length of `Boss_Stagger`).
+@export var boss_stagger_seconds: float = 1.42
+## Seconds after a stagger in which another weak-spot hit does not stagger it again: a rifle that
+## hits the lamp every shot must not hold the boss still for ever.
+@export var boss_stagger_cooldown: float = 6.0
 ## Seconds a dead zombie stays down before it is cleared.
 @export var death_seconds: float = 2.5
 

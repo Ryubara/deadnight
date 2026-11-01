@@ -27,6 +27,7 @@ const AMMO := &"ammo"
 const POINTS := &"points"
 const PROMPT := &"prompt"
 const MARKERS := &"markers"
+const BOSS := &"boss"
 
 ## The tank counts as low at or under this fraction (the fuel tuning's `low_fraction`).
 const LOW_FRACTION := 0.25
@@ -76,6 +77,9 @@ var objective := ""
 ## (0..1 of the screen, outside that range when off-screen), "distance" in metres, "label",
 ## "important" (pinned to the screen edge with an arrow when off-screen)}.
 var markers: Array[Dictionary] = []
+## The bosses on the lot, each {"id", "type", "health", "max_health"}, in the order they came
+## (from `zombie_spawn_requested` with `boss`, `zombie_damaged`, `zombie_removed`).
+var bosses: Array[Dictionary] = []
 
 ## What changed since the parts last heard, and what they are being told about right now.
 var _dirty: Dictionary[StringName, bool] = {}
@@ -275,6 +279,10 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_round_started
 		&"round_ended":
 			handler = _on_round_ended
+		&"zombie_spawn_requested":
+			handler = _on_zombie_spawn_requested
+		&"zombie_damaged":
+			handler = _on_zombie_damaged
 		&"zombie_removed":
 			handler = _on_zombie_removed
 		&"player_added":
@@ -326,10 +334,49 @@ func _on_round_started(event: Dictionary) -> void:
 
 func _on_round_ended(_event: Dictionary) -> void:
 	_assign(&"zombies_left", 0, ROUND)
+	if not bosses.is_empty():
+		bosses.clear()
+		_mark(BOSS)
 
 
-func _on_zombie_removed(_event: Dictionary) -> void:
+func _on_zombie_removed(event: Dictionary) -> void:
 	_assign(&"zombies_left", maxi(zombies_left - 1, 0), ROUND)
+	var index := _boss_index(int(event.get("zombie_id", -1)))
+	if index != -1:
+		bosses.remove_at(index)
+		_mark(BOSS)
+
+
+func _on_zombie_spawn_requested(event: Dictionary) -> void:
+	if bool(event.get("boss", false)):
+		(
+			bosses
+			. append(
+				{
+					"id": int(event.get("zombie_id", -1)),
+					"type": StringName(event.get("zombie_type", &"")),
+					"health": float(event["health"]),
+					"max_health": float(event["health"]),
+				}
+			)
+		)
+		_mark(BOSS)
+
+
+func _on_zombie_damaged(event: Dictionary) -> void:
+	var index := _boss_index(int(event.get("zombie_id", -1)))
+	if index != -1:
+		bosses[index]["health"] = float(event["health"])
+		if event.has("max_health"):
+			bosses[index]["max_health"] = float(event["max_health"])
+		_mark(BOSS)
+
+
+func _boss_index(zombie_id: int) -> int:
+	for index in bosses.size():
+		if bosses[index]["id"] == zombie_id:
+			return index
+	return -1
 
 
 func _on_player_added(event: Dictionary) -> void:

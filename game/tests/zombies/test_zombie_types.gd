@@ -99,35 +99,29 @@ func test_a_plain_spawn_still_hits_like_the_tuning() -> void:
 
 func test_the_look_travels_in_the_wire_format() -> void:
 	var sim := ZombieFixture.sim()
-	for index in ZombieModels.LOOKS.size():
-		var look := ZombieModels.LOOKS[index]
+	for index in ZombieModels.VARIANTS.size():
 		var profile := ZombieProfile.plain(sim.tuning)
-		profile.look = look
+		profile.look = ZombieModels.VARIANTS[index]
 		sim.spawn(index + 1, 1.0, Vector3(index, 0, 0), 0.0, profile)
 	var entries := ZombieCodec.decode(ZombieCodec.encode(sim.zombies))
-	assert_int(entries.size()).is_equal(ZombieModels.LOOKS.size())
+	assert_int(entries.size()).is_equal(ZombieModels.VARIANTS.size())
 	for index in entries.size():
-		assert_str(String(entries[index]["look"])).is_equal(String(ZombieModels.LOOKS[index]))
+		assert_str(String(entries[index]["look"])).is_equal(String(ZombieModels.VARIANTS[index]))
 
 
-func test_every_look_is_a_variant_or_a_stand_in_with_a_model() -> void:
-	for look in ZombieModels.LOOKS:
-		var scene := ZombieModels.scene(look)
-		assert_object(scene).is_not_null()
+func test_every_look_has_a_model_and_a_height() -> void:
+	for look in ZombieModels.VARIANTS:
+		assert_object(ZombieModels.scene(look)).is_not_null()
 		assert_bool(ZombieModels.HEIGHTS.has(look)).is_true()
-	# The variants come first and in the same order: an index is a look's wire id.
-	for index in ZombieModels.VARIANTS.size():
-		assert_str(String(ZombieModels.LOOKS[index])).is_equal(String(ZombieModels.VARIANTS[index]))
-	# A stand-in names a variant that exists.
-	for look: StringName in ZombieModels.STAND_INS:
-		assert_bool(ZombieModels.STAND_INS[look]["variant"] in ZombieModels.VARIANTS).is_true()
+	assert_str(ZombieModels.scene(&"headliner").resource_path).ends_with("zombie_boss.glb")
+	assert_str(ZombieModels.scene(&"brute").resource_path).ends_with("zombie_brute.glb")
 
 
-func test_every_look_the_rules_name_has_a_model_or_a_stand_in() -> void:
+func test_every_look_the_rules_name_is_one_the_artists_made() -> void:
 	var roster := RulesFixture.tuning().roster
 	for type in roster.types:
 		for look in type.looks:
-			assert_bool(look in ZombieModels.LOOKS).is_true()
+			assert_bool(look in ZombieModels.VARIANTS).is_true()
 
 
 func test_an_unknown_look_on_the_wire_is_a_walker() -> void:
