@@ -38,6 +38,19 @@ What building the server-side grenades (`game/gameplay/grenades/`) taught us. Th
   The leg rule needs the legs to carry more than their natural share: with legs at 30% of the blast a zombie could not
   take a quarter of its health on the legs and live, so the legs carry half of a low blast.
 
+- **The client's numbers are hints.** The first server took the hand and the velocity of a throw as sent: a hand 60 m
+  away dropped the blast there, 2000 m/s launched at 1015 m/s, and a NaN hand made `maxf(NaN - r, 0)` zero, so every
+  zombie in sight stood at the centre. Now the server derives the hand from its own player position (kept within
+  1 m of it), clamps the carried speed, refuses non-finite input, and `falloff` / `BlastModel` give no damage for a
+  distance that is not finite. Each probe of the review is a test in `test_authority.gd`.
+- **State that can be asked of the rules is not copied.** The server's own list of living zombies (learned from spawn
+  events) was empty for a server made mid-night; it asks `GameRules.has_zombie` now, so nothing is missed on a restore.
+  What only the grenade server knows (cooks, grenades in flight, the clock, the next id, the last positions it was
+  given) is `to_dict` / `from_dict` / `to_bytes` beside the rules' snapshot (restore the rules first), in
+  `test_snapshot.gd`.
+- **A missing `world_cast` is said once.** The constructor reports it (`push_error`) and the flight then runs over open
+  ground instead of failing on every tick.
+
 ## Things that bit
 
 - **A script error stalls a GdUnit run.** The runner is started with `-d`, so any runtime error (a test indexing a

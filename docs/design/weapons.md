@@ -100,6 +100,18 @@ throw. The server owns the fuse and the flight (`GrenadeState`, stepped on the f
 rest); the client draws its own copy the moment the button is released and the server's `grenade_thrown` corrects it.
 The same stepping gives the arc preview, so the preview, the prediction and the server land on one point.
 
+**The server believes itself.** The host tells the server where every player stands; a grenade leaves from 1.45 m above
+those feet, and the hand the client reports is kept only within 1 m of that point (a hand claimed further out is pulled
+in, so lag does not refuse a real throw). The client's own speed adds at most 7.5 m/s, the sprint with a little slack. A
+hand or velocity that is not a finite number is refused (`bad_hand`, `bad_velocity`) and a cook that was refused costs no
+grenade. A grenade held while walking goes with the player, so one that goes off in the hand goes off where they are.
+Which zombies a blast can hit is the rules' answer, never a list the server keeps.
+
+**Down with the pin out.** A player who is downed (or leaves) while cooking **drops the grenade at their feet and its
+fuse keeps running**: it is spent, it is not given back, and it hurts whoever is near, the downed player included (40%),
+which makes a revive during a cook a risk the team can see. The throw that follows is refused (`player_downed`); a
+revived player starts again with a fresh pin.
+
 | Thing | Number |
 | --- | --- |
 | Fuse | 3.0 s from the pin; cooking spends it in the hand; held to the end it goes off in the hand |
@@ -111,6 +123,7 @@ The same stepping gives the arc preview, so the preview, the prediction and the 
 | Shares of the blast | legs 25% each, body 25%, arms 10% each, head 5% (a blast goes off low) |
 | Knockback, stun | up to 7 m/s along the ground and 3 m/s up, 1.6 s stun, both falling off like the damage |
 | Thrower | takes 40% of what a zombie would at that spot, cover included; other players take nothing (a server flag turns friendly fire on) |
+| Authority | hand within 1 m of 1.45 m above the server's feet; client speed at most 7.5 m/s; a dropped grenade starts 0.3 m above the feet |
 | Carry | start with 2, every round start tops up to 3, at most 5; the shop sells 2 for 150 (+5 a round) |
 | Kill points | 40 for a zombie the blast kills (a hit that does not kill pays the usual 4) |
 
