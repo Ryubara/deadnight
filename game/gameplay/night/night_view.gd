@@ -83,6 +83,8 @@ func _on_event(event: Dictionary) -> void:
 			Audio.play(&"round_start")
 		&"round_ended":
 			Audio.play(&"round_end")
+		&"special_round_announced":
+			Audio.play(&"special_round")
 		&"projectile_burst":
 			effects.spark(event["point"])
 		&"board_torn", &"board_repaired":

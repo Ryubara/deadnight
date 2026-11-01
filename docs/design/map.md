@@ -11,8 +11,9 @@ and no area whose only way on is back through the last.
 
 ![The lot, top-down, evenly lit](map-plan.png)
 
-North is up, the screen at the top. The numbers are the opening order; the red slabs are the purchase doors, with
-their cost.
+North is up, the screen at the top. The numbers are the opening order; the yellow roller shutters are the purchase
+doors, with their cost. The boards across the field's six breaches are wood, and the roadblock at the town end of the
+road is a concrete block, not a door.
 
 ## Areas and opening order
 
@@ -246,8 +247,10 @@ every other circuit out (in a break) and keeps them out until the tank is back 1
 
 ## The greybox
 
-`game/world/drive_in_greybox.tscn`: CSG boxes, one flat colour per area, one script (on `Doors`). Metres, Y up,
-x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
+`game/world/drive_in_greybox.tscn`: CSG boxes, one script (on `Doors`). Metres, Y up, x east, z south; the screen is
+at z = -48 and the road at z = 52 to 64. Each surface has a material from `game/assets/lot/` (asphalt, gravel,
+concrete, planks, corrugated sheet, blocks, diner tiles, the doors' shutters: [style bible](style.md#lot-surfaces)),
+and the field's stalls have painted lines.
 
 | Node | Holds |
 | --- | --- |
@@ -255,6 +258,7 @@ x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 | `Field/Breach*`, `Field/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it; each field spawn marker carries the `barricade_id` of the breach it lies outside |
 | `Field/PlayerSpawns` | four markers on the apron below the screen |
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
+| `Field/ParkingLines`, `Road/RoadDashes` | the painted lines between the stalls and down the road: one `MultiMesh` each, no collision |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator |
@@ -279,7 +283,7 @@ a change to a constant or coordinate there, not hand edits to a 380-node scene. 
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 
-To capture: `capture_rig.tscn` takes `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza`,
+To capture: `capture_rig.tscn` takes `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`,
 or `--view=tp:<probe>` for the shoulder camera at a probe (`--offset`, `--turn`, `--side`, `--y`, `--doors=closed`,
 `--flood`; see the script's header).
 
