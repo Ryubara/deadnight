@@ -70,6 +70,15 @@ How they are built:
 | Colours | 3-4 flat materials: Grey `#818491` or `#8f92a0`, DarkGrey `#414141`, Black `#252525`, Wood `#95703d`; red or green only as an accent |
 | Handedness | every held copy is parented to the right hand's `Index1.R` bone |
 
+### Attachment points
+
+Where an effect or a hand meets a model is part of the model, placed by the modeller who owns it, never an offset
+typed into gameplay code. **Every firearm carries an empty named `Muzzle`**, a child of the weapon's root, at the
+centre of the barrel's open end, turned so its **-Z points out of the barrel** (Godot's forward; in Blender that is the
+empty's local +Y, because the glTF export turns Z up into Y up). A gun with two barrels side by side gets one `Muzzle`
+centred between them. Melee weapons and grenades get none. The held and far levels carry it at the same place. The
+flash and the shot leave from it; the numbers and the test are in [Weapons](../research/weapons.md#the-muzzle).
+
 ## Bevels
 
 Bevel width is the short side of narrow quads (at least 3:1) folded 15-75 degrees against both long neighbours,

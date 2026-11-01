@@ -58,6 +58,32 @@ by eye. The AK and Sniper copies in the Soldier file carry rescaled mesh data (o
 transform does not carry over to a weapon at true size. In Godot: a `BoneAttachment3D` on `Index1.R` with the
 Shotgun's (or Shovel's) local transform, then any of our weapon scenes as its child.
 
+## The muzzle
+
+Every firearm has a `Muzzle` empty under its root ([the rule](../design/style.md#attachment-points)), added by
+`MUZZLES` in `build_weapons.py` (drawing units, scaled by the weapon's `chunk` like the `NODES` pivots), so the flash
+and the shot leave the barrel instead of a fixed offset from the body. In the glTF and in Godot (Y up, origin the grip):
+
+| Weapon | `Muzzle` position (m) | -Z (forward) | Front face of the bounds | Note |
+| --- | --- | --- | --- | --- |
+| Lever rifle | (-1.220, 0.0675, 0) | (-1, 0, 0) | -1.224 held, -1.220 far | the barrel's end face; the black bore disc stands 4 mm proud on the held level |
+| Double shotgun | (-1.080, 0.0525, 0) | (-1, 0, 0) | -1.084 held, -1.080 far | centred between the two barrels (0.05 m either side) |
+
+- **Turned so -Z is forward:** in Blender the empty is turned 90 degrees about Z (`rotation_euler = (0, 0, pi/2)`), so
+  its local +Y points along -X, out of the barrel. The glTF export turns Blender +Y into -Z, so the node arrives in
+  Godot turned 90 degrees about Y (quaternion `(0, 0.7071, 0, 0.7071)`), with -Z along the barrel's -X.
+- **Both levels agree:** the far level uses the same point (it has no bore disc, so its front face is the barrel's).
+- **The test:** `game/tests/art/test_weapon_muzzle.gd` loads both levels of every firearm and checks the `Muzzle`
+  exists once, sits within 1 cm of the bounds' front face along the barrel with mesh within 6 cm across it, points
+  within 1 degree of the barrel and has unit scale; melee weapons and the grenade must have none, and every weapon
+  folder must be listed as a firearm or not.
+- **The capture:** `tools/blender/render_muzzle.py` draws a red ball and arrow at each `Muzzle` (side view and
+  barrel close-up).
+- **Rebuilding is safe but not byte-identical:** two runs of `build_weapons.py` give the same vertices and the same
+  triangles in a different order (the fire axe differs between two runs of one script). Compare a rebuilt file with
+  the old one by its nodes, vertex buffers and triangle set, not its bytes. Rebuilding the four older weapons also
+  brings the shared palette's `Yellow` swatch (added with the grenade) into their embedded copy.
+
 ## How to build in the kit style
 
 | Lesson | Detail |

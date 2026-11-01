@@ -11,6 +11,10 @@ weaponlib.py.
 
 Axes are the kit's: 1 unit = 1 m, up is +Z, a gun's muzzle points along -X and a melee weapon stands up along +Z, thin
 across Y. The origin is the grip, where the hand bone holds the weapon with no offset.
+
+Every firearm also carries an empty named `Muzzle` (`MUZZLES`), parented to the weapon at the centre of its barrel's
+open end (between the barrels of a double gun), turned so its local +Y points out of the barrel: after the glTF's Y-up
+conversion that is the node's -Z in Godot, the engine's forward. The flash and the shot leave from it.
 """
 
 import argparse
@@ -188,6 +192,29 @@ NODES = {
 }
 
 
+# Firearms: the centre of the barrel's open end, in drawing units (before `chunk`, like the NODES pivots). A gun with
+# two barrels side by side gets one muzzle centred between them. Melee weapons and the grenade have none.
+MUZZLES = {
+    "lever_rifle": (-1.22, 0.0, 0.045),  # the barrel's front face (the bore disc stands 4 mm proud on the held level)
+    "double_shotgun": (-1.08, 0.0, 0.035),  # between the two barrels' front faces
+}
+MUZZLE = "Muzzle"
+
+
+def add_muzzle(o, name, chunk):
+    """The `Muzzle` empty under the weapon: at the barrel end, local +Y out of the barrel (-X), so Godot's -Z."""
+    if name not in MUZZLES:
+        return None
+    m = bpy.data.objects.new(MUZZLE, None)
+    m.empty_display_type = "ARROWS"
+    m.empty_display_size = 0.05
+    bpy.context.scene.collection.objects.link(m)
+    m.parent = o
+    m.location = Vector(MUZZLES[name]) * Vector(chunk)
+    m.rotation_euler = (0.0, 0.0, math.pi / 2)  # +Y -> -X
+    return m
+
+
 # name: (builder, chunk). Guns fatten across Y and Z (their length runs along X); melee across X and Y.
 WEAPONS = {
     "lever_rifle": (lever_rifle, (1.0, 1.5, 1.5)),
@@ -228,7 +255,7 @@ def stats(o, offset=(0.0, 0.0, 0.0)):
 def export(o, path):
     bpy.ops.object.select_all(action="DESELECT")
     o.select_set(True)
-    for k in o.children:  # pin, spoon: separate nodes under the weapon
+    for k in o.children:  # pin, spoon, muzzle: separate nodes under the weapon
         k.select_set(True)
     bpy.context.view_layer.objects.active = o
     bpy.ops.export_scene.gltf(
@@ -271,6 +298,7 @@ def main():
                 k.parent = o
                 k.location = pivot
                 kids.append(k)
+            muzzle = add_muzzle(o, name, chunk)
             tris, parts, mn, mx = stats(o)
             for k in kids:
                 kt, kp, kmn, kmx = stats(k, offset=k.location)
@@ -284,9 +312,15 @@ def main():
             size = [round(mx[i] - mn[i], 3) for i in range(3)]
             report[f"{name}/{lod}"] = {"tris": tris, "parts": parts, "min": mn, "max": mx, "size": size}
             nodes = f", nodes {[k.name for k in kids]}" if kids else ""
+            if muzzle:
+                at = [round(c, 4) for c in muzzle.location]
+                report[f"{name}/{lod}"]["muzzle"] = at
+                nodes += f", muzzle {at}"
             print(f"WEAPON {name} {lod}: {tris} tris, {parts} parts, size {size}{nodes}, file {path}")
             for k in kids:
                 bpy.data.objects.remove(k)
+            if muzzle:
+                bpy.data.objects.remove(muzzle)
             bpy.data.objects.remove(o)
     print("REPORT " + json.dumps(report))
 
