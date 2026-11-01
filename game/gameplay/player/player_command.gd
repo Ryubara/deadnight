@@ -17,6 +17,10 @@ var crouch := false
 var jump := false
 var aim := false
 var swap_shoulder := false
+## The grenade buttons, as levels: holding one cooks the grenade, letting go throws it (overarm for
+## `throw_over`, the short underarm toss for `throw_under`). `GrenadeThrower` makes actions of them.
+var throw_over := false
+var throw_under := false
 
 
 func to_dict() -> Dictionary:
@@ -29,6 +33,8 @@ func to_dict() -> Dictionary:
 		&"jump": jump,
 		&"aim": aim,
 		&"swap_shoulder": swap_shoulder,
+		&"throw_over": throw_over,
+		&"throw_under": throw_under,
 	}
 
 
@@ -42,6 +48,8 @@ static func from_dict(data: Dictionary) -> PlayerCommand:
 	command.jump = data.get(&"jump", false)
 	command.aim = data.get(&"aim", false)
 	command.swap_shoulder = data.get(&"swap_shoulder", false)
+	command.throw_over = data.get(&"throw_over", false)
+	command.throw_under = data.get(&"throw_under", false)
 	return command
 
 

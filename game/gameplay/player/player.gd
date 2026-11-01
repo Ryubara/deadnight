@@ -23,6 +23,8 @@ const ACTION_CROUCH := &"crouch"
 const ACTION_JUMP := &"jump"
 const ACTION_AIM := &"aim"
 const ACTION_SWAP_SHOULDER := &"swap_shoulder"
+const ACTION_THROW_GRENADE := &"throw_grenade"
+const ACTION_TOSS_GRENADE := &"toss_grenade"
 const ACTION_LOOK_LEFT := &"look_left"
 const ACTION_LOOK_RIGHT := &"look_right"
 const ACTION_LOOK_UP := &"look_up"
@@ -124,6 +126,8 @@ func sample_command() -> PlayerCommand:
 		command.aim = Input.is_action_pressed(ACTION_AIM)
 		command.jump = _pressed_edge(ACTION_JUMP)
 		command.swap_shoulder = _pressed_edge(ACTION_SWAP_SHOULDER)
+		command.throw_over = Input.is_action_pressed(ACTION_THROW_GRENADE)
+		command.throw_under = Input.is_action_pressed(ACTION_TOSS_GRENADE)
 		camera_rig.set_stick(
 			Input.get_vector(
 				ACTION_LOOK_LEFT,

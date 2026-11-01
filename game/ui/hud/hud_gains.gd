@@ -1,0 +1,114 @@
+class_name HudGains
+extends HudPart
+## Your point gains as a short list beside the crosshair: "+100 HEADSHOT KILL". Rows stack (never
+## overlap), the oldest fades first, and a run of small hit payments merges into one row so a
+## 28-zombie round cannot flood the screen.
+
+const MAX_ROWS := 3
+const LIFE := 2.4
+const FADE := 0.5
+## Hits within this many seconds of the last row of the same kind add to it.
+const MERGE_WINDOW := 0.7
+## What each rules reason is called on screen. Reasons not listed are shown as their own name.
+const REASON_TEXT := {
+	&"kill": "KILL",
+	&"headshot_kill": "HEADSHOT KILL",
+	&"melee_kill": "MELEE KILL",
+	&"hit": "HITS",
+	&"headshot_hit": "HEADSHOT HITS",
+	&"repair": "REPAIR",
+	&"round_bonus": "ROUND BONUS",
+	&"purchase": "BOUGHT",
+	&"down_penalty": "DOWN PENALTY",
+}
+const MERGES := [&"hit", &"headshot_hit", &"repair"]
+
+## Rows alive, oldest first: {"reason", "amount", "age", "label"}.
+var rows: Array[Dictionary] = []
+
+var _box := VBoxContainer.new()
+
+
+func _init() -> void:
+	super()
+	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_box.add_theme_constant_override(&"separation", tokens.space_xs)
+	add_child(_box)
+	_box.minimum_size_changed.connect(update_minimum_size)
+
+
+func _get_minimum_size() -> Vector2:
+	return _box.get_combined_minimum_size()
+
+
+func _process(delta: float) -> void:
+	advance(delta)
+
+
+## The texts shown, oldest first, for tests.
+func texts() -> Array[String]:
+	var list: Array[String] = []
+	for row in rows:
+		list.append((row["label"] as Label).text)
+	return list
+
+
+func on_event(event: Dictionary) -> void:
+	if event.get("type") != &"points_changed":
+		return
+	if int(event["player_id"]) != state.local_player_id or int(event["delta"]) == 0:
+		return
+	add_gain(StringName(event.get("reason", &"")), int(event["delta"]))
+
+
+func add_gain(reason: StringName, amount: int) -> void:
+	if reason == &"start" or reason == &"grant":
+		return
+	var last: Dictionary = rows.back() if not rows.is_empty() else {}
+	if MERGES.has(reason) and last.get("reason") == reason and float(last["age"]) < MERGE_WINDOW:
+		last["amount"] = int(last["amount"]) + amount
+		last["age"] = 0.0
+		_write(last)
+		return
+	var gain := {"reason": reason, "amount": amount, "age": 0.0}
+	var big := amount >= 60
+	gain["label"] = HudStyle.label(
+		"", HudStyle.MEDIUM if big else HudStyle.TEXT, _colour(reason, amount), big
+	)
+	rows.append(gain)
+	_box.add_child(gain["label"])
+	_write(gain)
+	while rows.size() > MAX_ROWS:
+		_drop(rows[0])
+
+
+## Ages the rows by `delta` seconds and fades or removes them.
+func advance(delta: float) -> void:
+	for row in rows.duplicate():
+		row["age"] = float(row["age"]) + delta
+		var left := LIFE - float(row["age"])
+		(row["label"] as Label).modulate.a = clampf(left / FADE, 0.0, 1.0)
+		if left <= 0.0:
+			_drop(row)
+
+
+func _write(row: Dictionary) -> void:
+	var amount := int(row["amount"])
+	var words: String = REASON_TEXT.get(row["reason"], String(row["reason"]).to_upper())
+	var sign_text := "+%d" if amount > 0 else "%d"
+	(row["label"] as Label).text = (sign_text % amount) + "  " + words
+	(row["label"] as Label).modulate.a = 1.0
+
+
+func _drop(row: Dictionary) -> void:
+	rows.erase(row)
+	_box.remove_child(row["label"])
+	(row["label"] as Label).queue_free()
+
+
+func _colour(reason: StringName, amount: int) -> Color:
+	if amount < 0:
+		return tokens.ink_muted
+	if reason == &"headshot_kill" or reason == &"headshot_hit":
+		return tokens.accent_bright
+	return tokens.accent if reason == &"melee_kill" else tokens.ink

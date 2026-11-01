@@ -78,9 +78,10 @@ until it is.
 
 - Browser and weak-machine measurement of the full scene (the spike's follow-up still stands).
 - Client interpolation between 30 Hz snapshots: views jump to each decoded position. It belongs with the net client.
-- The model: the kit zombie is third-party (CC0) and not committed here (a maintainer decides); `ZombieView` needs it
-  at `game/assets/zombie_kit/zombie.glb` (git-ignored). Variants (#40) bring bodies with the same bones, which play
-  the same library; a body with other bone names needs the rig-sharing retarget player.
+- The model: done in #90. The views wear the committed variants (`ZombieModels`, walker by default; `ZombieHorde.variant`
+  or `ZombieModels.scene(name)` picks another). Each variant has a near and a far mesh; `ZombieView` swaps them with
+  visibility ranges at 18 m, so one mesh is drawn per zombie. Choosing a variant per zombie (by round or role) is
+  the director's, still open. A body with other bone names needs the rig-sharing retarget player.
 - Hit reactions by zone, crawlers, window break-ins: the animation set is #40's.
 - The navmesh is baked at load from the greybox's CSG boxes (`NavmeshBaker`); the world owner should bake once in the
   editor. Heights are flat: a zombie keeps the height it spawned at.
