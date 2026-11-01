@@ -4,10 +4,11 @@ extends RefCounted
 ## client sees (`ClientState`, and the level's navigation map): its own position, the zombies in
 ## the latest frame, its points and the prompt the server shows for what is in reach. It keeps
 ## its distance from the nearest zombie, turns to it and shoots, reloads when the magazine runs
-## dry, walks to the next door when it can afford it and buys it, and puts boards back when it is
-## standing at one with nothing to shoot. It throws the breaker of an area it has bought
-## (`AutopilotSwitches`), and back off when the tank runs low; and it buys a can of fuel when the
-## tank is low and it has the points (`AutopilotFuel`).
+## dry, walks to the next door when it can afford it and buys it, buys rounds when the gun in hand
+## is nearly out, buys the weapons on the walls and the crane with points to spare, swaps to a gun
+## that has rounds, and puts boards back when it is standing at one with nothing to shoot. It throws
+## the breaker of an area it has bought (`AutopilotSwitches`), and back off when the tank runs low;
+## and it buys a can of fuel when the tank is low and it has the points (`AutopilotFuel`).
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -24,6 +25,15 @@ const ARRIVED := 1.5
 const STUCK_AFTER := 0.5
 const SIDESTEP_FOR := 0.6
 const BIG_PRICE := 1 << 30
+## Points it keeps back for rounds when it saves for a weapon.
+const AMMO_MONEY := 120
+## Ticks between two looks at where to shop (a path query per spot), and between two swaps.
+const PLAN_EVERY := 30
+const SWAP_EVERY := 20
+## Metres a path may end short of a spot for the spot to count as reachable.
+const REACHABLE := 2.5
+## It melees a zombie this close.
+const MELEE_RANGE := 1.9
 
 var state: ClientState
 var map: RID
@@ -33,6 +43,14 @@ var sight: Callable = Callable()
 var prices: Dictionary = {}
 var door_goals: Dictionary = {}
 var order: Array[StringName] = []
+## The shop spots (`NightWorld.shop_spots`: kind, shop_id, position); the price of each weapon on a
+## wall and of the crane by shop id; the price of a whole ammunition purchase by weapon; the shop
+## ids it wants, cheapest first, and how many crane prizes there are.
+var spots: Array[Dictionary] = []
+var prices_of_goods: Dictionary = {}
+var ammo_prices: Dictionary = {}
+var wanted: Array[StringName] = []
+var crane_prizes := 0
 ## Where to stand to put boards back across each breach, by id, and how many a whole one holds.
 var repair_goals: Dictionary = {}
 var whole_boards: int = 1
@@ -45,6 +63,9 @@ var _yaw := 0.0
 var _sidestep := 0.0
 var _stuck_for := 0.0
 var _last_pos := Vector3.ZERO
+var _ticks := 0
+var _swap_wait := 0
+var _shopping: Dictionary = {}
 
 
 func _init(p_state: ClientState, p_map: RID) -> void:
@@ -65,9 +86,17 @@ func decide(delta: float) -> NightCommand:
 	var prompt: Dictionary = state.me().get("prompt", {})
 	var kind: StringName = prompt.get("kind", &"")
 	var wish := Vector3.ZERO
-	var fleeing := not near.is_empty() and _flat(here, near["position"]) < KEEP_AWAY
+	_ticks += 1
+	_swap_wait = maxi(_swap_wait - 1, 0)
+	if _ticks % PLAN_EVERY == 1:
+		_shopping = _plan_shopping(here)
+	var held := _held()
+	var melee := held != null and held.is_melee()
+	var fleeing := not near.is_empty() and _flat(here, near["position"]) < KEEP_AWAY and not melee
 	if fleeing:
 		wish = _flee(here, near["position"])
+	elif melee and not near.is_empty():
+		wish = _toward(here, near["position"])
 	elif kind != &"door":
 		wish = _toward(here, _goal())
 	wish = _unstuck(wish, here, delta)
@@ -78,11 +107,19 @@ func decide(delta: float) -> NightCommand:
 	command.motion.yaw = _yaw
 	if not target.is_empty():
 		_aim(command, here, target["position"], target.get("look", ZombieModels.DEFAULT))
-		command.fire = not state.me().get("reloading", false)
+		var close := _flat(here, target["position"]) < MELEE_RANGE
+		command.fire = not state.me().get("reloading", false) and (close or not melee)
+	if _swap_wait == 0 and _wants_swap(held):
+		command.swap = true
+		_swap_wait = SWAP_EVERY
 	var dry: bool = state.me().get("ammo", 0) <= 0 and state.me().get("reserve", 0) > 0
 	command.reload = dry and not state.me().get("reloading", false)
 	if kind == &"door":
 		command.use = state.points() >= int(prompt.get("price", BIG_PRICE))
+	elif kind == &"weapon" or kind == &"crane":
+		command.use = _wants(prompt) and state.points() >= int(prompt.get("price", BIG_PRICE))
+	elif kind == &"ammo":
+		command.use = _low_on_rounds(held) and state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"repair":
 		command.use = target.is_empty()
 	elif kind == &"circuit":
@@ -92,19 +129,116 @@ func decide(delta: float) -> NightCommand:
 	return command
 
 
-## Where to go: a fuel can when the tank is low and it can pay for one; the standing place of the
-## next door it can afford; a breaker post it wants thrown;
-## in a break the nearest breach with a board down; else home.
-func _goal() -> Vector3:
+## The weapon in hand, or null.
+func _held() -> WeaponDef:
+	var id: StringName = state.me().get("weapon", &"")
+	return WeaponCatalog.get_def(id) if id != &"" else null
+
+
+## Rounds a carried weapon has, magazine and reserve.
+func _rounds_of(weapon_id: StringName) -> int:
+	var arms: Dictionary = state.me().get("arms", {})
+	var counts: Array = arms.get(weapon_id, [0, 0])
+	return int(counts[0]) + int(counts[1])
+
+
+## A firearm down to its last magazine: worth a trip for rounds.
+func _low_on_rounds(held: WeaponDef) -> bool:
+	return held != null and not held.is_melee() and _rounds_of(held.id) <= held.magazine_size
+
+
+## Swap away from a melee weapon or an empty gun to one that can shoot; from an empty gun to the
+## melee weapon when nothing else can.
+func _wants_swap(held: WeaponDef) -> bool:
+	if held == null:
+		return false
+	if not held.is_melee() and _rounds_of(held.id) > 0:
+		return false
+	var arms: Dictionary = state.me().get("arms", {})
+	if arms.size() < 2:
+		return false
+	var other_has_rounds := false
+	for id: StringName in arms:
+		if id != held.id and not WeaponCatalog.get_def(id).is_melee() and _rounds_of(id) > 0:
+			other_has_rounds = true
+	if held.is_melee():
+		return other_has_rounds
+	return true
+
+
+## Whether it wants to buy what the prompt offers: a weapon or a crane prize it can afford with
+## rounds to spare.
+func _wants(prompt: Dictionary) -> bool:
+	var id: StringName = prompt.get("id", &"")
+	return wanted.has(id) and state.points() >= int(prompt.get("price", BIG_PRICE)) + AMMO_MONEY
+
+
+## Where to shop next: `{}`, or the nearest shop spot worth the walk that a path reaches.
+func _plan_shopping(here: Vector3) -> Dictionary:
+	var held := _held()
+	var best := {}
+	var best_apart := INF
+	for spot in spots:
+		if not _is_goal(spot, held):
+			continue
+		var apart := _flat(here, spot["position"])
+		if apart < best_apart and _reachable(here, spot["position"]):
+			best = spot
+			best_apart = apart
+	return best
+
+
+func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
+	var kind: StringName = spot["kind"]
+	var points := state.points()
+	if kind == &"ammo":
+		return _low_on_rounds(held) and points >= int(ammo_prices.get(held.id, BIG_PRICE))
+	var id: StringName = spot["shop_id"]
+	if kind == &"wall":
+		var weapon := WeaponCatalog.catalog_id(id)
+		if state.me().get("arms", {}).has(weapon):
+			# Owned: the wall sells its rounds, but only when that is the gun in hand.
+			return (
+				held != null
+				and held.id == weapon
+				and _low_on_rounds(held)
+				and points >= int(ammo_prices.get(weapon, BIG_PRICE))
+			)
+	if kind == &"crane" and state.bought.get(id, 0) >= crane_prizes:
+		return false
+	return wanted.has(id) and points >= int(prices_of_goods.get(id, BIG_PRICE)) + AMMO_MONEY
+
+
+func _reachable(here: Vector3, goal: Vector3) -> bool:
+	var path := NavigationServer3D.map_get_path(map, here, goal, true)
+	return not path.is_empty() and _flat(path[path.size() - 1], goal) < REACHABLE
+
+
+## What comes before a door: a fuel can when the tank is low and it can pay for one, then rounds
+## for a gun nearly out. `Vector3.INF` when nothing is that urgent.
+func _urgent_goal() -> Vector3:
 	var cans := fuel.next_goal(state.frame, state.position(), state.points())
 	if cans != Vector3.INF:
 		return cans
+	if not _shopping.is_empty() and _low_on_rounds(_held()):
+		return _shopping["position"]
+	return Vector3.INF
+
+
+## Where to go: what is urgent; the standing place of the next door it can afford; a breaker post it
+## wants thrown; in a break the nearest breach with a board down; else home.
+func _goal() -> Vector3:
+	var urgent := _urgent_goal()
+	if urgent != Vector3.INF:
+		return urgent
 	for door_id in order:
 		if state.frame.get("doors", []).has(door_id):
 			continue
 		if state.points() >= prices.get(door_id, BIG_PRICE) and door_goals.has(door_id):
 			return door_goals[door_id]
 		break
+	if not _shopping.is_empty():
+		return _shopping["position"]
 	var post := switches.next_goal(
 		state.frame, state.position(), state.phase() == GameRules.Phase.BREAK
 	)

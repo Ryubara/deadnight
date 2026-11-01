@@ -43,7 +43,7 @@ page says what is in, and what is next.
 | Rounds, break, points for hits and kills, the round bonus | `gameplay/rules/` | unchanged |
 | Doors: `interact` next to a slab buys the door; `LotDoors` frees its slabs, `DoorNavigation` rebakes the mesh, its area joins the spawns | `NightWorld` (binds the lot to the rules), `NightServer` | one path, the lot's own ([Doors](../research/zombies.md#doors)); the prompt shows the price |
 | Boards at the fence breaches: the dead tear them off, `interact` from the field side puts one back for the rules' repair points | `Barricade`, `NightWorld`, `NightServer`, `ZombieSim` | [the fence's boards](rounds.md#the-fences-boards); the prompt shows only at a breach with a board down |
-| A supply drop at the end of each round refills ammunition | `NightServer._resupply` | stands in for an ammunition shop |
+| The shop spots: the shotgun and the rifle on walls, the prize crane, ammunition lockers; the crowbar is always carried, `swap` changes the weapon in hand | `NightServer` (`use_target`, `buy`), `NightWorld.shop_spots` | the supply drop is gone: rounds are bought ([the lot](map.md#shop-spots), [ammunition](rounds.md#ammunition)) |
 | The lamps follow the generator: a circuit off or a dry tank darkens its lamps and posts, a failing tank flickers them, and the dead are slowed only on ground a lit circuit lights | `LotLamps`, `NightView`, `NightWorld.is_lit` | [the lot's lamps](map.md#which-lamps-hang-on-which-circuit) |
 | Sound: shots, reloads, dry fire, round stings | `NightView` | through the `Audio` autoload |
 | The HUD: round, points, health, ammunition, the prompt at a door or breach, the party, the generator | `NightHudBinding`, `ui/hud/` | below |
@@ -89,7 +89,7 @@ Each of these is an issue.
 - **Grenades** (#99) and **boss nights** (#97) join through `NightServer` and the rules.
 - **Real transport.** `LoopbackLink` becomes the network protocol; the player bodies split into server bodies and
   drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
-- **Ammunition, weapons and the crane in the shop**, tonics, the re-cut. (A breaker post for each circuit is in:
+- **Tonics**, the re-cut. (A breaker post for each circuit is in:
   the lamps follow `circuit_changed` and the tank, and a player or the bot throws the switch.)
 - **Revive** by a teammate. (The boards at the breaches are in; their sounds are the audio's next.)
 - **Performance** of the server tick in late rounds (profile with `autopilot_night.tscn --speed`).

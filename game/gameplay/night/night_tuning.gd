@@ -6,8 +6,8 @@ extends Resource
 
 @export_group("Player")
 @export var start_weapon: StringName = &"pistol"
-## Magazines of ammunition each carried weapon gets when a round ends (the supply drop).
-@export var resupply_magazines: int = 8
+## Carried from the start and never out of rounds: what a player falls back on with a dry gun.
+@export var start_melee: StringName = &"crowbar"
 
 @export_group("Hands")
 ## Metres from the player's feet to a door slab (or a board) that it can be used from.
