@@ -45,6 +45,8 @@ nav:
   - Design:
       - Overview: design/index.md
       - Style bible: design/style.md
+      - The lot: design/map.md
   - Research:
       - research/index.md
       - UI foundation: research/ui-foundation.md
+      - Greybox and captures: research/greybox-and-captures.md
