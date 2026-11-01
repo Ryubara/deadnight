@@ -44,11 +44,16 @@ image):
   is refused when `NODE_ENV=production`. Returns a one-hour session token and the Discord
   `access_token` (the Embedded App SDK needs it for `authenticate()`).
 - `POST /lobbies` creates a lobby (or joins the open one of the same Activity `instanceId`),
-  `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/start` (host only; allocates a game server).
-- `POST /lobbies/:id/ticket` returns `{address: {url, activityPath}, ticket}` for the caller's seat.
+  `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/leave`, `POST /lobbies/:id/start` (host only;
+  allocates a game server). A user is in at most one open lobby (409 `already_in_lobby`).
+- `POST /lobbies/:id/ticket` returns `{address: {url, activityPath}, ticket}` for the caller's seat. The ticket names
+  the game server it is for (`serverId`) and has a unique id (`jti`); see [the ticket](#the-game-server-ticket).
 - `PUT/GET /saves/:slot` with a revision number, so a stale write is a 409 instead of lost progress.
-- `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, capacity and load.
-- `src/stub-gameserver.ts` stands in for headless Godot: it heartbeats, and admits only a valid, unexpired ticket.
+- `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, its capacity and the ids of the
+  matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free.
+  How lobbies and capacity end: [Lobby and match lifecycle](#lobby-and-match-lifecycle).
+- `src/stub-gameserver.ts` stands in for headless Godot: it heartbeats, and admits only a valid ticket
+  that is unexpired, for this server and unused (`jti`), sent as the first WebSocket message.
 - Configuration only from environment variables; JSON logs that never include headers or bodies (redaction of the
   code and tokens is configured as a backstop); `/health` and `/ready` (checks the database); graceful shutdown on
   `SIGTERM`.
@@ -72,7 +77,7 @@ sequenceDiagram
     participant X as Discord API
     participant G as Game server (headless Godot)
 
-    G->>B: heartbeat every 5 s (url, activityPath, capacity, matches)
+    G->>B: heartbeat every 5 s (url, activityPath, capacity, matchIds)
     A->>D: sdk.ready()
     A->>D: sdk.commands.authorize(client_id, code, identify)
     D-->>A: authorization code
@@ -92,10 +97,67 @@ sequenceDiagram
     B-->>A: lobby started, matchId
     A->>B: POST /lobbies/:id/ticket (every player)
     B-->>A: address {url, activityPath} + 60 s HMAC ticket
-    A->>G: WebSocket wss://client_id.discordsays.com/activityPath?ticket=...
-    G->>G: verify ticket signature, expiry and matchId
+    A->>G: WebSocket wss://client_id.discordsays.com/activityPath (no ticket in the URL)
+    A->>G: first message {type: join, ticket}
+    G->>G: verify signature, expiry, serverId = me, matchId, jti not seen before
     G-->>A: welcome, then the simulation ticks
 ```
+
+## Lobby and match lifecycle
+
+Nothing in memory grows without bound. Times are constants in `src/lobbies.ts` and `src/servers.ts`, and tests move an
+injected clock.
+
+| What | Ends when |
+| --- | --- |
+| Open lobby | Idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity), or its last member leaves. |
+| Started lobby | The game server calls `POST /internal/matches/:id/end`, or its heartbeat stops listing the match, or it is 2 hours old, or its last member leaves. |
+| A user's place | A user is in one open lobby; starting the lobby, leaving it or its end frees them. The host role passes to the next member when the host leaves. |
+
+A sweep every 30 s drops expired lobbies, and a lookup of an expired one answers `not_found` at once.
+
+**Capacity counts what the backend assigned.** `allocate(matchId)` records the match against a server, so two quick
+starts cannot both take the last slot even though no player has reached the game server yet. A slot comes back when the
+lobby ends (any of the cases above) or when the server stops listing the match in its heartbeat after a 5 minute grace
+(time to join; it also drops a match nobody ever joined). A heartbeat that lists a match the backend does not know (it
+restarted since) adopts it, so a restart does not hide running matches from the count. The game server reports what it
+runs; it does not report a load number.
+
+**After a backend restart** every lobby is gone: `GET /lobbies/:id`, `POST /lobbies/:id/ticket` and `leave` answer 404
+`not_found`. What a client does:
+
+1. A client already connected to its game server keeps playing; the match belongs to the game server, not the backend.
+2. A client that polls the lobby (waiting room) or asks for a ticket and gets `not_found` shows "this lobby is gone" and
+   returns to the menu, where it can create or join again (its old membership is gone with the lobby, so it is not
+   blocked by `already_in_lobby`). The same happens when a lobby expired or the match ended.
+3. A client that lost its game-server connection after a restart cannot get a new ticket for that match. The match
+   keeps running on the server and is counted again from the next heartbeat, but this backend cannot rejoin a player to
+   it. Persisting lobbies in Postgres is the fix and is not built.
+
+## The game-server ticket
+
+The ticket is an HS256 token (header pinned, constant-time compare). `verifyToken` rejects one without a numeric `exp`
+and `iat`, of another kind, or expired. What a game server (the stub, and the Godot server later) must do:
+
+1. Take the ticket from the **first WebSocket message** (`{"type": "join", "ticket": "..."}`), never from the URL,
+   which proxies and access logs record. Read at most a few KiB before a socket is admitted, and close one that stays
+   silent (the stub: 5 s, close code 4408).
+2. Verify the signature and expiry, then that `serverId` is its own id. Another server's ticket is refused even though
+   it holds the same secret.
+3. Remember each `jti` until the ticket's `exp` and refuse a second use. A refusal before this step does not spend it.
+4. Keep one live socket per seat (`matchId` and `sub`): a newer join closes the older one (code 4409).
+
+Every refusal is close code 4401 with the reason as text (`bad ticket`, `ticket is for another server`, `ticket already
+used`), so a client log says why. A client that wants a second connection asks `POST /lobbies/:id/ticket` again.
+
+**Trust model.** `TICKET_SECRET` on a game server means that server can mint a valid ticket for any server, match and
+user, so a compromised game server can enter any match. The `serverId` check stops a ticket meant for one server being
+replayed on another (a rogue server that is handed a ticket cannot use it elsewhere); it does not stop a server that
+holds the secret. `GAME_SERVER_SECRET` is also shared: its holder can register any `url` in the heartbeat (the backend
+only checks it is a `ws://` or `wss://` URL) and so receive players and their tickets. What limits the damage later:
+a ticket key per game server, derived as `HMAC(TICKET_SECRET, serverId)` so a server holds only its own and the
+backend signs with the target's, or Ed25519 tickets (the game server then holds only a public key, but Godot needs an
+extension for it). Neither is built; until then game servers are trusted and run only by us.
 
 ## What is not decided or not proven
 
@@ -114,10 +176,12 @@ sequenceDiagram
   Whether Railway offers one on our plan was not checked.
 - **`instanceId` is a client claim.** Discord says to treat client data as unverified, so the lobby-per-instance
   shortcut only decides which lobby a signed-in user lands in; it grants nothing.
-- **Lobbies live in memory** of one backend replica, and clients poll. More than one replica needs lobbies in
-  Postgres or Redis; push updates need a WebSocket or SSE channel. Both are next steps, not blockers.
+- **Lobbies live in memory** of one backend replica (lifetimes: [lifecycle](#lobby-and-match-lifecycle)), and clients
+  poll. More than one replica needs lobbies in Postgres or Redis; push updates need a WebSocket or SSE channel. Both
+  are next steps, not blockers.
 - **Ticket signature.** HS256 on purpose: Godot can verify it with `Crypto.hmac_digest`; Ed25519 would need an
-  extension. The ticket secret is shared between backend and game servers, so it is an environment variable on both.
+  extension. The ticket secret is shared between backend and game servers, so it is an environment variable on both
+  (trust model: [the ticket](#the-game-server-ticket)).
 - **Not done:** rate limiting on `/auth/discord`, match results flowing back to the backend, telemetry, migrations
   (the spike creates its two tables on start).
 - **Nakama was only measured idle and read, not built.** The custom-auth path through a before hook is what its docs

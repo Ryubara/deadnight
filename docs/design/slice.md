@@ -91,6 +91,26 @@ door open, with a HUD on the night that must show the same round and points, hav
 price before the purchase, and listed the purchase when it happened. `tests/captures/autopilot_night.tscn` plays it
 for captures and prints a report (`-- --rounds=5 --speed=30`, `--trace`, `--log`).
 
+## Recording the night at 60 frames a second
+
+`tests/tours/night_tour.tscn` plays the first round the way a person does, with the real input actions and the
+shipped tuning, and ends at the pause menu: Play on the main menu, turn to face the field, wait for the first of
+the dead (they come in after the 12 s intro and walk in from the fence), aim and shoot (a hit with its damage
+number and tracer, a kill and its points), walk to the concession door when the round is over, read its prompt
+and buy it with `interact`. The stand-in for the person reads only what a screen shows (the dead's places from
+the client's state) and answers with key presses and mouse look at a limited turning speed; it prints
+`TOUR <stage> <seconds>` as each stage begins. One frame is one physics tick:
+
+```text
+godot --path game res://tests/tours/night_tour.tscn --no-window --write-movie <abs>/fight.avi --fixed-fps 60 --quit-after 9000
+```
+
+The recording attached to the pull request that added the tour (#164) is from `main` at `32dca4b`: the first of
+the dead is up at 16 s, round 1 lasts 53 s of fighting (four kills, the points 200 to 502, one reload), the
+player is at the door 7 s later and buys it for 350 (points 152). It shows what the 10 frames a second
+recordings of #158 could not: the hit marker, the numbers and the points rising, the reload, and the sprint
+and run. [How to film without a window, and why the mouse look must be off](../research/greybox-and-captures.md#captures).
+
 ## What is next
 
 Each of these is an issue.

@@ -125,9 +125,9 @@ def main():
     ap.add_argument(
         "--view",
         default="front",
-        choices=("front", "back"),
+        choices=("front", "back", "side", "top"),
         help="front: from the Soldier's front right (the default); back: from behind his right shoulder, the way the "
-        "third-person camera sees him",
+        "third-person camera sees him; side: from his right; top: from above and behind (feet on a strafe)",
     )
     args = ap.parse_args(argv)
     args.out = args.out.resolve()
@@ -171,7 +171,8 @@ def main():
     scene.camera = cam
     # The Soldier faces -Y; his right is -X. Camera in front, to his right, a little above the chest.
     target = Vector((0, 0, 0.92))
-    pos = target + Vector((-0.55, -1.0 if args.view == "front" else 1.0, 0.25)).normalized() * 20
+    view = {"front": (-0.55, -1.0, 0.25), "back": (-0.55, 1.0, 0.25), "side": (-1.0, 0.0, 0.05), "top": (0, 0.55, 1.0)}
+    pos = target + Vector(view[args.view]).normalized() * 20
     cam.location = pos
     cam.rotation_euler = (target - pos).to_track_quat("-Z", "Y").to_euler()
     label_mat = bpy.data.materials.new("label")
@@ -196,6 +197,8 @@ def main():
                        ("Reload_Rifle", "Walk", "Rifle"), ("Swing_Melee", "Run", "Melee")]  # fmt: skip
     sheets["GrenadeSplit"] = [(n, "Run", "Grenade") for n in sc.CLIPS if n.startswith("Grenade_")]
     sheets["RepairSplit"] = [(n, "Walk", "Repair") for n in sc.CLIPS if n.startswith("Repair_")]
+    # Moving while aiming: the kit Run for reference, then the four aim-move clips, every third frame of the cycle.
+    sheets["AimMove"] = [(n, None, "Rifle") for n in ("Run", *sc.AIM_MOVES)]
     only = {s for s in args.only.split(",") if s}
     tmp = args.out.parent / "_tiles"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -208,11 +211,12 @@ def main():
             for n, o in held.items():
                 set_hidden(o, n != weapon)
             row = []
-            frames = (
-                key_moments(acts[name], sc.CLIPS[name]["events"])
-                if sheet.startswith(("Grenade", "Repair"))
-                else moments(name)
-            )
+            if sheet == "AimMove":
+                frames = list(range(0, sc.CLIPS[name]["frames"], 3))
+            elif sheet.startswith(("Grenade", "Repair")):
+                frames = key_moments(acts[name], sc.CLIPS[name]["events"])
+            else:
+                frames = moments(name)
             for i, f in enumerate(frames):
                 layer = sc.CLIPS[name]["layer"]
                 if base:  # base clip at the same moment of its own cycle

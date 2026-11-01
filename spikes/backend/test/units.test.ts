@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { test } from "node:test";
 import { buildApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
@@ -22,6 +23,27 @@ test("tokens verify, and expire, and cannot be forged or used as another kind", 
   const tampered = `${head}.${Buffer.from('{"sub":"admin","kind":"session","iat":1,"exp":9999999999}').toString("base64url")}.${sig}`;
   assert.equal(verifyToken(secret, "session", tampered, 1030), null);
   assert.equal(verifyToken(secret, "session", "garbage", 1030), null);
+});
+
+/** A token with exactly these claims, correctly signed: what a bug or a compromised issuer could produce. */
+function signedWith(claims: unknown, key = secret): string {
+  const b64 = (value: string) => Buffer.from(value).toString("base64url");
+  const input = `${b64(JSON.stringify({ alg: "HS256", typ: "JWT" }))}.${b64(JSON.stringify(claims))}`;
+  return `${input}.${createHmac("sha256", key).update(input).digest("base64url")}`;
+}
+
+test("a correctly signed token still needs numeric exp and iat", () => {
+  const good = { sub: "u1", kind: "ticket", iat: 1000, exp: 2000 };
+  assert.equal(verifyToken(secret, "ticket", signedWith(good), 1500)?.sub, "u1"); // the helper itself is sound
+  const { exp: _exp, ...noExp } = good;
+  const { iat: _iat, ...noIat } = good;
+  assert.equal(verifyToken(secret, "ticket", signedWith(noExp), 1500), null); // never expires
+  assert.equal(verifyToken(secret, "ticket", signedWith(noIat), 1500), null);
+  assert.equal(verifyToken(secret, "ticket", signedWith({ ...good, exp: "9999999999" }), 1500), null); // a string
+  assert.equal(verifyToken(secret, "ticket", signedWith({ ...good, iat: null }), 1500), null);
+  assert.equal(verifyToken(secret, "ticket", signedWith({ ...good, exp: 1e999 }), 1500), null); // Infinity, as JSON null
+  assert.equal(verifyToken(secret, "ticket", signedWith(null), 1500), null);
+  assert.equal(verifyToken(secret, "ticket", signedWith(good), 2000), null); // expired exactly now
 });
 
 test("configuration comes from the environment and fails closed", () => {
@@ -72,12 +94,25 @@ test("stub users get a stub: prefix in discord_id, so they cannot collide with r
 test("the registry allocates the least loaded live server and forgets silent ones", () => {
   let now = 0;
   const registry = new GameServerRegistry(1000, () => now);
-  registry.heartbeat({ id: "a", url: "ws://a", activityPath: "/a", capacity: 4, matches: 3 });
-  registry.heartbeat({ id: "b", url: "ws://b", activityPath: "/b", capacity: 4, matches: 1 });
-  assert.equal(registry.allocate()?.id, "b");
+  const beat = (id: string, matchIds: string[]) =>
+    registry.heartbeat({ id, url: `ws://${id}`, activityPath: `/${id}`, capacity: 4, matchIds });
+  beat("a", ["m1", "m2", "m3"]);
+  beat("b", ["m4"]);
+  assert.equal(registry.allocate("m5")?.id, "b");
+  assert.equal(registry.allocate("m6")?.id, "b"); // b now has 3, a has 3: the tie goes to the first
   now = 1500;
-  registry.heartbeat({ id: "a", url: "ws://a", activityPath: "/a", capacity: 4, matches: 3 });
+  beat("a", ["m1", "m2", "m3"]);
   assert.deepEqual(registry.alive().map((s) => s.id), ["a"]); // b went silent
+});
+
+test("the registry counts what it assigned, not what a server reports, and release frees the slot", () => {
+  const registry = new GameServerRegistry(1000, () => 0);
+  registry.heartbeat({ id: "a", url: "ws://a", activityPath: "/a", capacity: 1, matchIds: [] });
+  assert.equal(registry.allocate("m1")?.id, "a");
+  assert.equal(registry.allocate("m2"), null); // the only slot is taken although "a" lists nothing yet
+  assert.equal(registry.release("m1"), true);
+  assert.equal(registry.release("m1"), false); // already free
+  assert.equal(registry.allocate("m2")?.id, "a");
 });
 
 test("the live Discord client exchanges the code and reads the user (fetch stubbed)", async () => {

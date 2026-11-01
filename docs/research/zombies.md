@@ -210,11 +210,47 @@ server:
 
 - `LotDoors` (on the greybox's `Doors` node, `bind(rules)`) frees the door's slabs and label. The player walks
   through, shots pass.
-- `DoorNavigation` rebakes the mesh. `NavmeshBaker.bake_async` reads the CSG boxes at once and bakes on the
-  navigation server's worker threads (about a second for the lot); the finished mesh replaces the region's, and
-  zombies walk the old mesh until it lands. Doors bought while a bake runs mark it stale and one more bake follows,
-  so the mesh always ends up matching the last door. The first mesh is baked synchronously in `setup(lot, doors)`,
+- `DoorNavigation` puts the mesh of the lot as it now stands into the region (below: a saved one).
+  Only for a lot nothing was saved for it falls back to `NavmeshBaker.bake_async`, which reads the CSG boxes at once
+  and bakes on the navigation server's worker threads (about a second for the lot); the finished mesh replaces the
+  region's, and zombies walk the old mesh until it lands. Doors bought while a bake runs mark it stale and one more
+  bake follows, so the mesh always ends up matching the last door. The first mesh is set in `setup(lot, doors)`,
   with the doors as they stand, so a restored night starts with the right mesh.
+
+### The meshes are baked ahead of time (#335)
+
+Baking the lot (0.25 m cells over 140 x 125 m) takes about half a second, on a desktop and in the browser alike
+(measured in Chrome: 470 to 630 ms). The web export has no worker threads (`thread_support=false`), so an "async" bake
+runs on the main thread: one half-second frame at the start of the night and another at every door bought. Issue #335
+blamed an 11 to 13 s freeze on it; it was not the bake (see [what the long frame was](#what-the-long-frame-was)). So
+nothing is baked while the game runs:
+
+- `tools/world/bake_lot_navmeshes.gd` (`godot --headless --path game -s res://tools/world/bake_lot_navmeshes.gd`)
+  builds the lot the way the night does, opens each set of doors the shop can sell (nine: the concession first, then
+  the booth, back lot and road in a chain, and the yard beside them) and bakes each. The nine meshes (about 2,500
+  polygons each, 210 KB together, compressed) are `world/drive_in/lot_navmeshes.res`, a `LotNavmeshes` resource.
+- A mesh is found by the **key of the geometry** it was baked from, not by door names: `NavmeshBaker.key` is a SHA-256
+  of the baker's input (the boxes' faces to the millimetre) and the cell and agent sizes. `DoorNavigation` hashes the
+  lot as it stands, at `setup` and at each `door_opened`, and swaps the saved mesh in at once (`baked` is emitted, no
+  worker, `is_busy` stays false). A lot that changed finds nothing and is baked at run time as before, with a warning.
+- Doors need no obstacles or links: the saved meshes are the very meshes a rebake makes, so the path the dead walk
+  after a purchase is the one they walked (`test_lot_navmeshes.gd` compares every vertex and polygon).
+- **After any change to the lot's collision boxes (a prop, a wall, a door) run the tool and commit the .res.**
+  `tests/zombies/test_lot_navmeshes.gd` fails until you do (it names the tool). Changing the baker's sizes
+  (`CELL_SIZE`, `AGENT_*`) does the same.
+
+### What the long frame was
+
+- **The wait for the map.** `NightWorld.build` waited for the navigation map's iteration id to move two steps. In
+  the browser it stays at 1 while the map already answers, so the wait ran out its 600 frames: 10 s of the loading
+  screen before every night. It now waits until the map finds a way across the field (`_map_answers`). Play to a
+  running night went from 23.6 to 24.0 s to 10.8 to 11.3 s (Chrome, GPU, three fresh profiles each).
+- **The first draw of the lot.** The 9 to 12 s frame that remains (10.9 to 11.2 s before, 9.0 to 9.4 s after, 11 to
+  12 s with the warm-up of #339 on top) is the first frame in which the night's 3D scene is drawn: the browser
+  compiles every shader of the lot at its first draw call, in that one frame. Found by timing the `await
+  process_frame` in the warm-up's sound loop (11.7 s for one frame) and the bake (0.5 s). The warm-up's own lot pass
+  afterwards costs about a second, so the programs are built by the time it starts. The loading bar cannot move in
+  that frame; drawing the lot in pieces over several frames is the way to shorten it.
 
 What was tried first: a disabled `NavigationLink3D` across each slab, switched on when the door opens. It joins the
 two sides, but the baked mesh leaves a band without mesh round a closed slab (the slab and the agent radius on each
@@ -251,8 +287,8 @@ last in the mesh; and the control: a slab freed without a rebake leaves the dead
   visibility ranges at 18 m, so one mesh is drawn per zombie. Choosing a variant per zombie (by round or role) is
   the director's, still open. A body with other bone names needs the rig-sharing retarget player.
 - Hit reactions by zone, crawlers, window break-ins: the animation set is #40's.
-- The navmesh is baked at load from the greybox's CSG boxes (`NavmeshBaker`) and again for each door bought
-  ([Doors](#doors)); the first bake could be shipped from the editor, the rebakes cannot. Heights are flat: a zombie
+- The navmesh is baked ahead of time from the greybox's CSG boxes, one for each set of doors ([Doors](#doors)); only a
+  lot nothing was saved for is baked at run time (half a second in the browser). Heights are flat: a zombie
   keeps the height it spawned at.
 - Spawn point choice ignores whether an area is open (the rules' design): `spawn_points` is whatever the caller gives.
 
