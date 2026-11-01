@@ -202,6 +202,8 @@ func _hud_on(canvas: Vector2) -> Hud:
 	hud.state.set_ammo(30, 150, "Double-Barrel Coach Gun")
 	hud.state.apply_event({"type": &"points_changed", "player_id": 1, "total": 99999, "delta": 0})
 	hud.state.set_area("The Concession Stand", "Light the booth to open the back lot")
+	for amount in [100, 60, 130, 60]:
+		hud.gains.add_gain(&"kill", amount)
 	return hud
 
 

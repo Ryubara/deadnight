@@ -46,6 +46,12 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
 - A `Label` takes its text's width as its minimum unless it may trim: with `clip_text` or an ellipsis overrun its minimum
   width is 0, so give it a `custom_minimum_size.x` or an expanding parent. Containers then stay the width you chose.
   Autowrap labels in rows inflate the row (a wrapped feed row doubled the column until it was made one line).
+- A card whose words must all be read wraps instead of ellipsizing (#308): `HudStyle.wrap` turns autowrap on with no extra
+  line gap and `HudStyle.set_wrapped` shrinks the type, then sets `custom_minimum_size.y` from
+  `Font.get_multiline_string_size` at the room it has. An autowrap `Label` learns its wrapped height a frame after it is
+  resized, so reserving the height at once keeps the card from jumping. `test_hud_prompt_fit.gd` walks every prompt the
+  night makes (through `NightHudBinding.show_prompt`), every refusal and every card kind at desktop and phone-landscape
+  canvases and fails on an ellipsis, a line wider or taller than its label, or a card off the screen or over a part.
 - `Font.get_string_size` shapes the string, which is the cost of fitting text: guess the size from one measurement
   (size x room / width) and step down from there. Looping down 4 units at a time made one banner take 6 ms.
 - Count node creation with `get_tree().node_added` filtered to a subtree (`is_ancestor_of`): it needs no engine hook and
