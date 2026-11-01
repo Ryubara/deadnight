@@ -18,6 +18,8 @@ const UI_SCALES: Array[float] = [0.8, 1.0, 1.25]
 ## Smallest text height in screen pixels: at the default UI scale, and at the smallest setting.
 const READABLE_PX := 13.0
 const READABLE_SMALL_PX := 10.0
+## The most the prompt card grows taller than a short prompt's, canvas units: two more lines.
+const PROMPT_GROWTH := 80.0
 
 
 ## The canvas the window gives the UI: stretch "canvas_items", aspect "expand", then the UI scale.
@@ -151,11 +153,13 @@ func test_the_cards_keep_their_size_whatever_they_say() -> void:
 		await await_idle_frame()
 		await await_idle_frame()
 		var label := "%s" % face
-		# Width is the card's own; the prompt and the ammo card never grow with their content.
+		# Width is the card's own; the prompt and the ammo card never grow wider with their content.
+		# The prompt wraps onto more lines instead of cutting a word (#308), so it may grow taller,
+		# by a couple of lines at most.
 		assert_float(long.hud.prompt.size.x).override_failure_message(label).is_equal(HudStyle.CARD)
 		assert_float(long.hud.ammo.size.x).override_failure_message(label).is_equal(HudAmmo.WIDTH)
-		assert_float(long.hud.prompt.size.y).override_failure_message(label).is_equal_approx(
-			short.hud.prompt.size.y, 40.0
+		assert_float(long.hud.prompt.size.y).override_failure_message(label).is_between(
+			short.hud.prompt.size.y, short.hud.prompt.size.y + PROMPT_GROWTH
 		)
 		assert_float(long.hud.points.size.x).override_failure_message(label).is_less_equal(
 			HudStyle.COLUMN
