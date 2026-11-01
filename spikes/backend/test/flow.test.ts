@@ -14,7 +14,7 @@ const secrets = {
   TICKET_SECRET: "t".repeat(32),
   GAME_SERVER_SECRET: "g".repeat(32),
 };
-const config = loadConfig({ ...secrets, DISCORD_MODE: "stub" });
+const config = loadConfig({ ...secrets, DISCORD_MODE: "stub", ALLOW_STUB_SIGN_IN: "1" });
 
 describe("platform backend, end to end", () => {
   const app = buildApp({ config, store: new MemoryStore(), discord: new StubDiscord(), registry: new GameServerRegistry() });

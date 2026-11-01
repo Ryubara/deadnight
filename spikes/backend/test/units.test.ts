@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { buildApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
-import { LiveDiscord } from "../src/discord.ts";
+import { LiveDiscord, StubDiscord } from "../src/discord.ts";
 import { GameServerRegistry } from "../src/servers.ts";
+import { MemoryStore } from "../src/store.ts";
 import { signToken, verifyToken } from "../src/tokens.ts";
 
 const secret = "k".repeat(32);
+const base = { SESSION_SECRET: secret, TICKET_SECRET: "t".repeat(32), GAME_SERVER_SECRET: "g".repeat(32) };
+const stubEnv = { ...base, DISCORD_MODE: "stub", ALLOW_STUB_SIGN_IN: "1" };
+const liveEnv = { ...base, DISCORD_MODE: "live", DISCORD_CLIENT_ID: "1", DISCORD_CLIENT_SECRET: "2" };
 
 test("tokens verify, and expire, and cannot be forged or used as another kind", () => {
   const token = signToken(secret, "session", "u1", 60, { name: "a" }, 1000);
@@ -20,12 +25,48 @@ test("tokens verify, and expire, and cannot be forged or used as another kind", 
 });
 
 test("configuration comes from the environment and fails closed", () => {
-  const base = { SESSION_SECRET: secret, TICKET_SECRET: secret, GAME_SERVER_SECRET: secret };
-  assert.throws(() => loadConfig({}), /SESSION_SECRET/);
-  assert.throws(() => loadConfig({ ...base, SESSION_SECRET: "short" }), /SESSION_SECRET/);
-  assert.throws(() => loadConfig({ ...base, NODE_ENV: "production" }), /stub is refused/);
+  assert.throws(() => loadConfig({ DISCORD_MODE: "stub", ALLOW_STUB_SIGN_IN: "1" }), /SESSION_SECRET/);
+  assert.throws(() => loadConfig({ ...stubEnv, SESSION_SECRET: "short" }), /SESSION_SECRET/);
   assert.throws(() => loadConfig({ ...base, DISCORD_MODE: "live" }), /DISCORD_CLIENT_ID/);
-  assert.equal(loadConfig({ ...base, DISCORD_MODE: "live", DISCORD_CLIENT_ID: "1", DISCORD_CLIENT_SECRET: "2" }).discordMode, "live");
+  assert.equal(loadConfig(liveEnv).discordMode, "live");
+  assert.equal(loadConfig(stubEnv).discordMode, "stub");
+});
+
+test("the stub sign-in is never the default: mode unset, no opt-in and production all fail", () => {
+  assert.throws(() => loadConfig(base), /DISCORD_MODE is required/); // a deploy that forgot the variable
+  assert.throws(() => loadConfig({ ...base, DISCORD_MODE: "Stub" }), /DISCORD_MODE is required/);
+  assert.throws(() => loadConfig({ ...base, DISCORD_MODE: "stub" }), /ALLOW_STUB_SIGN_IN/);
+  assert.throws(() => loadConfig({ ...base, DISCORD_MODE: "stub", ALLOW_STUB_SIGN_IN: "true" }), /ALLOW_STUB_SIGN_IN/);
+  assert.throws(() => loadConfig({ ...stubEnv, NODE_ENV: "production" }), /refused when NODE_ENV=production/);
+  assert.equal(loadConfig({ ...liveEnv, NODE_ENV: "production" }).production, true);
+});
+
+test("PORT must be an integer in range and the three secrets must differ", () => {
+  assert.equal(loadConfig(stubEnv).port, 3000);
+  assert.equal(loadConfig({ ...stubEnv, PORT: "8080" }).port, 8080);
+  for (const bad of ["abc", "", "0", "65536", "-1", "80.5", "8080abc", "1e3"]) {
+    assert.throws(() => loadConfig({ ...stubEnv, PORT: bad }), /PORT/, `PORT=${JSON.stringify(bad)}`);
+  }
+  assert.throws(() => loadConfig({ ...stubEnv, TICKET_SECRET: base.SESSION_SECRET }), /must all differ/);
+  assert.throws(() => loadConfig({ ...stubEnv, GAME_SERVER_SECRET: base.SESSION_SECRET }), /must all differ/);
+  assert.throws(() => loadConfig({ ...stubEnv, GAME_SERVER_SECRET: base.TICKET_SECRET }), /must all differ/);
+});
+
+test("stub users get a stub: prefix in discord_id, so they cannot collide with real ones", async () => {
+  const store = new MemoryStore();
+  const app = buildApp({
+    config: loadConfig(stubEnv),
+    store,
+    discord: new StubDiscord(),
+    registry: new GameServerRegistry(),
+  });
+  const response = await app.inject({ method: "POST", url: "/auth/discord", payload: { code: "stub:42:zed" } });
+  assert.equal(response.statusCode, 200);
+  const user = await store.getUser(response.json().user.id);
+  assert.equal(user?.discordId, "stub:42");
+  // A real Discord user whose snowflake is also 42 is a different user.
+  assert.notEqual((await store.upsertUser("42", "real")).id, user?.id);
+  await app.close();
 });
 
 test("the registry allocates the least loaded live server and forgets silent ones", () => {
@@ -49,4 +90,35 @@ test("the live Discord client exchanges the code and reads the user (fetch stubb
   const result = await new LiveDiscord("cid", "csecret", fetchStub).exchangeCode("the-code");
   assert.deepEqual(result, { accessToken: "tok", user: { id: "42", username: "zed", avatar: null } });
   assert.deepEqual(calls, ["POST https://discord.com/api/oauth2/token", "GET https://discord.com/api/users/@me"]);
+});
+
+/** A fetch that never answers on its own and rejects when its signal fires, like the real one. */
+const hangingFetch = ((_url: string, init?: RequestInit) =>
+  new Promise((_resolve, reject) => {
+    init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+  })) as unknown as typeof fetch;
+
+async function signInVia(fetchFn: typeof fetch, timeoutMs?: number): Promise<number> {
+  const app = buildApp({
+    config: loadConfig(liveEnv),
+    store: new MemoryStore(),
+    discord: new LiveDiscord("1", "2", fetchFn, timeoutMs),
+    registry: new GameServerRegistry(),
+  });
+  const response = await app.inject({ method: "POST", url: "/auth/discord", payload: { code: "any" } });
+  await app.close();
+  return response.statusCode;
+}
+
+test("a stalled Discord fails the sign-in promptly with 502 instead of holding the request open", async () => {
+  const started = Date.now();
+  assert.equal(await signInVia(hangingFetch, 50), 502);
+  assert.ok(Date.now() - started < 2000, "the call must give up near its timeout");
+});
+
+test("Discord saying the code is bad is a 401; Discord failing is a 502", async () => {
+  const answering = (status: number) => (async () => new Response("{}", { status })) as unknown as typeof fetch;
+  assert.equal(await signInVia(answering(400)), 401);
+  assert.equal(await signInVia(answering(500)), 502);
+  assert.equal(await signInVia(answering(429)), 502);
 });
