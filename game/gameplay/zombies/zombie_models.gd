@@ -52,12 +52,17 @@ static func look_at(index: int) -> StringName:
 	return VARIANTS[index] if index >= 0 and index < VARIANTS.size() else DEFAULT
 
 
+## Where the look's file is.
+static func path_of(look: StringName) -> String:
+	return PATHS.get(look, DIR + "zombie_%s.glb" % look)
+
+
 ## The look's scene; an unknown name reports an error and gives the walker.
 static func scene(look: StringName = DEFAULT) -> PackedScene:
 	if look not in VARIANTS:
 		push_error("ZombieModels: no variant %s, using %s" % [look, DEFAULT])
 		look = DEFAULT
-	return load(PATHS.get(look, DIR + "zombie_%s.glb" % look)) as PackedScene
+	return load(path_of(look)) as PackedScene
 
 
 static func height_of(look: StringName) -> float:

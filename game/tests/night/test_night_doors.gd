@@ -1,6 +1,7 @@
 # A door bought in the night: the lot's own `LotDoors` and `DoorNavigation` carry it out, so
 # the whole door goes (slabs and price label) and the server tick that sells it does not stall
-# on a bake.
+# on a bake: the mesh for the new set of doors is a saved one (`LotNavmeshes`, #335) swapped in at
+# once, or, for a lot nothing was saved for, baked on a worker thread.
 extends GdUnitTestSuite
 
 const DOOR := &"door_concession"
@@ -36,11 +37,25 @@ func test_a_bought_door_loses_its_slabs_and_its_price_label() -> void:
 	night.queue_free()
 
 
+func test_a_saved_mesh_is_in_the_region_in_the_tick_that_sells_the_door() -> void:
+	var night := await _start()
+	var command := NightCommand.new()
+	command.use = true
+	night.link.send(command.to_dict())
+	for _i in 5:
+		night.tick()
+	assert_bool(night.server.rules.is_door_open(DOOR)).is_true()
+	assert_bool(night.world.navigation.is_busy()).is_false()
+	assert_int(night.world.navigation.bake_count).is_equal(2)
+	night.queue_free()
+
+
 func test_the_tick_that_sells_a_door_does_not_wait_for_the_bake() -> void:
 	# No clock: a bake lands on a later frame, and these ticks run without yielding one, so a tick
 	# that returned with the bake still pending did not wait for it (a wall-time budget failed
-	# under load, #198).
+	# under load, #198). The saved meshes are left out: this is the bake's path.
 	var night := await _start()
+	night.world.navigation.saved = null
 	var command := NightCommand.new()
 	command.use = true
 	night.link.send(command.to_dict())
@@ -54,6 +69,7 @@ func test_the_tick_that_sells_a_door_does_not_wait_for_the_bake() -> void:
 
 func test_the_mesh_follows_the_door_a_moment_later() -> void:
 	var night := await _start()
+	night.world.navigation.saved = null
 	var command := NightCommand.new()
 	command.use = true
 	NightFixture.run(night, 1, command)

@@ -5,7 +5,8 @@ extends Node3D
 ##
 ## `bind` listens to the rules; a `door_opened` event removes the door's slabs and label, so the
 ## player walks through and shots pass. The zombies' navigation mesh is baked from the slabs, so it
-## is out of date the moment a door opens: `DoorNavigation` listens to `door_opened` and rebakes.
+## is out of date the moment a door opens: `DoorNavigation` listens to `door_opened` and swaps in
+## the mesh saved for the new set of doors.
 ## Nothing else opens a door.
 
 ## A door was opened (its shop id, e.g. `door_concession`).
