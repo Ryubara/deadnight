@@ -45,4 +45,6 @@ nav:
   - Design:
       - Overview: design/index.md
       - Style bible: design/style.md
-  - Research: research/index.md
+  - Research:
+      - research/index.md
+      - UI foundation: research/ui-foundation.md

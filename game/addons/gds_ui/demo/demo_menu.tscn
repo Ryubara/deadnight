@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/gds_ui/demo/demo_menu.gd" id="1"]
+
+[node name="DemoMenu" type="Control"]
+script = ExtResource("1")
