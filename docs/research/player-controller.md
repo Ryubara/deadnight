@@ -29,10 +29,22 @@ state with `copy_from`, `teleport`-style, and call `simulate` again for the comm
 (`test_replaying_the_same_commands_from_the_same_state_gives_the_same_result`): record 150 commands as bytes, rewind,
 replay, and the position matches within 1 mm.
 
-Known limits to settle when the net work lands: `move_and_slide` integrates with the engine's physics delta, so
-`delta` must equal it (tests change `physics_ticks_per_second`, not the argument); the floor flag is carried in the
-state but `move_and_slide` keeps its own contact cache, which a rewind does not restore; floats are not quantized for
-the wire yet; crouch is carried in the command and state but nothing acts on it.
+Replaying is safe in **any callback**, physics frame or not (`tests/player/test_player_reconcile.gd`: 150 commands
+re-simulated in one callback, from the air and from a slope, in a physics frame and in an idle frame, match within
+1 mm). Two things made that false, and `PlayerSimulation._slide` fixes both:
+
+- `CharacterBody3D.move_and_slide()` ignores the caller's delta: it steps by the physics delta in a physics frame and
+  by the *frame* delta (wall time) anywhere else, which is where a `SceneMultiplayer` handler runs. The measured error
+  was 5.7 m over 150 commands. `_slide` scales the velocity by `delta / engine_delta` before the call and back after,
+  so the step is exactly `delta` in every frame (sliding only projects the velocity, so the scaling is exact). It
+  also means `delta` is honoured: a double step moves twice as far.
+- The body's own "was I on the floor last call" cache (what its floor snap reads) is not restored by `copy_from`, so
+  the first replayed tick snapped to a slope or not depending on where the previous run had ended (3 mm, then more).
+  `_slide` turns the body's snap off for the call and snaps afterwards from the carried `state.on_floor`, the engine's
+  rule (`was_on_floor`, not moving up, no floor after the slide) on data a rewind does restore.
+
+Still open for the net work: floats are not quantized for the wire yet; and `_slide` cannot scale when the engine has
+no delta yet (the very first frame), where it reports an error.
 
 ## Settings
 
