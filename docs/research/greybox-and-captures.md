@@ -52,7 +52,9 @@ Used by `game/tests/world/lot_navigation.gd`; it proves which areas of the lot a
 ## Sweeping the shoulder camera
 
 `game/world/drive_in/camera_probe.gd` is the player's camera rig as a function (pivot 1.55 m, arm 2.8 m with a 0.25 m
-sphere, shoulder 0.75 m after the sweep). What it found:
+sphere, shoulder 0.75 m after the sweep). Those numbers are read from `player_tuning_default.tres`, not copied, so
+a tuning change moves the sweep. Read them through `CameraProbe.tuning()`: GDScript folds `CONST_RESOURCE.property`
+into the script when it compiles, so a value changed afterwards (by a test) is not seen. What it found:
 
 - The spring arm only collides along the arm. The shoulder offset comes after, so in a 1.4 m gap between cars the
   camera ends up inside the car's glass (at 1.55 m the cabin, 0.95 to 1.65 m, is what it hits, not the 1.0 m body).

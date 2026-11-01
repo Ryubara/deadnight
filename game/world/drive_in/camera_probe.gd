@@ -3,37 +3,63 @@ extends RefCounted
 ## Sweeps the player's over-the-shoulder camera rig through the world, without a player in the
 ## scene.
 ##
-## The numbers are the player's (`PlayerTuning`: pivot 1.55 m up, shoulder 0.75 m, arm 2.8 m, a 0.25
-## m sphere on the arm). The rig sweeps the arm straight back from the pivot, then moves the camera
-## sideways by the shoulder offset WITHOUT a second sweep, so a narrow place is not only about the
-## arm: the shoulder camera can end up inside the wall. `docs/research/greybox-and-captures.md` has
-## the measurements. Used by the world tests and the capture rig.
+## The numbers are the player's, read from `player_tuning_default.tres` (`PlayerTuning`: pivot
+## 1.55 m up, shoulder 0.75 m, arm 2.8 m, a 0.25 m sphere on the arm, as shipped), so a change of
+## tuning moves the sweep too. The rig sweeps the arm straight back from the pivot, then moves the
+## camera sideways by the shoulder offset WITHOUT a second sweep, so a narrow place is not only
+## about the arm: the shoulder camera can end up inside the wall.
+## `docs/research/greybox-and-captures.md` has the measurements. Used by the world tests and the
+## capture rig.
 
-const PIVOT_HEIGHT := 1.55
-const SHOULDER := 0.75
-const ARM_LENGTH := 2.8
-const ARM_MARGIN := 0.25
 ## Air the camera needs around it: the near plane (0.05 m) and a little more.
 const CAMERA_CLEAR := 0.1
 const PLAYER_TUNING: PlayerTuning = preload("res://gameplay/player/player_tuning_default.tres")
 
 
+## The player's tuning. Read through this function, never as `PLAYER_TUNING.x` in an expression:
+## the compiler folds a property of a constant resource into the script, and a value changed after
+## that (a test's, or a reloaded tuning) would not be seen.
+static func tuning() -> PlayerTuning:
+	return PLAYER_TUNING
+
+
+## Height of the camera pivot above the feet.
+static func pivot_height() -> float:
+	return tuning().pivot_height
+
+
+## Sideways offset of the shoulder camera.
+static func shoulder_offset() -> float:
+	return tuning().shoulder_offset
+
+
+## Length of the arm when nothing is in the way.
+static func arm_length() -> float:
+	return tuning().arm_length
+
+
+## Radius of the sphere swept along the arm.
+static func arm_margin() -> float:
+	return tuning().arm_margin
+
+
 ## The player's body, read from its tuning: `Player` builds its capsule from the same two numbers.
 static func body_radius() -> float:
-	return PLAYER_TUNING.radius
+	return tuning().radius
 
 
 static func body_height() -> float:
-	return PLAYER_TUNING.height
+	return tuning().height
 
 
 ## How high a full jump lifts the feet.
 static func jump_height() -> float:
-	return PLAYER_TUNING.jump_height
+	return tuning().jump_height
 
 
 ## The rig for a player standing at `feet` and looking along `yaw` (radians, 0 looks down -Z),
-## camera over the right shoulder when `side` is 1 and the left when -1. Returns {arm, camera,
+## camera over the right shoulder when `side` is 1 and the left when -1. `arm_length` below zero
+## means the tuning's own. Returns {arm, camera,
 ## pivot, free}: `arm` is the arm's length after the sweep, `camera` where the camera sits, `free`
 ## whether the camera has air around it and sees the pivot.
 static func rig(
@@ -42,20 +68,21 @@ static func rig(
 	yaw: float,
 	side: float = 1.0,
 	pitch: float = 0.0,
-	arm_length: float = ARM_LENGTH,
+	p_arm_length: float = -1.0,
 ) -> Dictionary:
 	var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)
-	var pivot := feet + Vector3(0.0, PIVOT_HEIGHT, 0.0)
+	var arm_max := p_arm_length if p_arm_length >= 0.0 else arm_length()
+	var pivot := feet + Vector3(0.0, pivot_height(), 0.0)
 	var sphere := SphereShape3D.new()
-	sphere.radius = ARM_MARGIN
+	sphere.radius = arm_margin()
 	var sweep := PhysicsShapeQueryParameters3D.new()
 	sweep.shape = sphere
 	sweep.transform = Transform3D(Basis.IDENTITY, pivot)
-	sweep.motion = basis.z * arm_length
+	sweep.motion = basis.z * arm_max
 	var fractions := space.cast_motion(sweep)
-	var arm := arm_length * (fractions[0] if fractions.size() == 2 else 0.0)
+	var arm := arm_max * (fractions[0] if fractions.size() == 2 else 0.0)
 	var arm_end := pivot + basis.z * arm
-	var camera := arm_end + basis.x * (SHOULDER * side)
+	var camera := arm_end + basis.x * (shoulder_offset() * side)
 	return {
 		"arm": arm,
 		"camera": camera,
