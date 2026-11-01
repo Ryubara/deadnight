@@ -37,7 +37,7 @@ describe("platform backend, end to end", () => {
     await fetch(`${base}/internal/servers/heartbeat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.gameServerSecret}` },
-      body: JSON.stringify({ id: "gs-test", url: `ws://127.0.0.1:${gameServer.port}`, activityPath: "/gs/test", capacity: 3, matches: 0 }),
+      body: JSON.stringify({ id: "gs-test", url: `ws://127.0.0.1:${gameServer.port}`, activityPath: "/gs/test", capacity: 3, matchIds: [] }),
     });
   });
   after(async () => {
@@ -210,17 +210,17 @@ describe("platform backend, end to end", () => {
   });
 
   test("a start fails with 503 when no game server has capacity", async () => {
-    // gs-test has capacity 3 and the first test used one slot; use up the rest, then ask for one more.
-    const host = await signIn(base, "stub:4001:hana");
+    // gs-test has capacity 3 and the earlier tests used two slots; use up the rest, then ask for one more.
     const results: number[] = [];
     for (let i = 0; i < 3; i++) {
+      const host = await signIn(base, `stub:${4001 + i}:hana${i}`);
       const lobby = await api.createLobby(base, host, {});
       await api.start(base, host, lobby.id).then(
         () => results.push(200),
         (error: Error) => results.push(Number(/-> (\d+)/.exec(error.message)?.[1])),
       );
     }
-    assert.ok(results.includes(503), `expected a 503 in ${results.join(",")}`);
+    assert.deepEqual(results, [200, 503, 503]);
   });
 
   test("saves are per user, versioned and reject stale writes", async () => {
@@ -248,7 +248,7 @@ describe("platform backend, end to end", () => {
       fetch(`${base}/internal/servers/heartbeat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.gameServerSecret}` },
-        body: JSON.stringify({ id: "gs-evil", url, activityPath, capacity: 1, matches: 0 }),
+        body: JSON.stringify({ id: "gs-evil", url, activityPath, capacity: 1, matchIds: [] }),
       });
     assert.equal((await beat("javascript:alert(1)", "/x")).status, 400);
     assert.equal((await beat("https://evil.example", "/x")).status, 400);
@@ -260,7 +260,7 @@ describe("platform backend, end to end", () => {
     const heartbeat = await fetch(`${base}/internal/servers/heartbeat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer wrong" },
-      body: JSON.stringify({ id: "x", url: "ws://x", activityPath: "/x", capacity: 1, matches: 0 }),
+      body: JSON.stringify({ id: "x", url: "ws://x", activityPath: "/x", capacity: 1, matchIds: [] }),
     });
     assert.equal(heartbeat.status, 401);
     assert.equal((await fetch(`${base}/health`)).status, 200);

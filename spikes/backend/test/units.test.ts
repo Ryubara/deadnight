@@ -94,12 +94,25 @@ test("stub users get a stub: prefix in discord_id, so they cannot collide with r
 test("the registry allocates the least loaded live server and forgets silent ones", () => {
   let now = 0;
   const registry = new GameServerRegistry(1000, () => now);
-  registry.heartbeat({ id: "a", url: "ws://a", activityPath: "/a", capacity: 4, matches: 3 });
-  registry.heartbeat({ id: "b", url: "ws://b", activityPath: "/b", capacity: 4, matches: 1 });
-  assert.equal(registry.allocate()?.id, "b");
+  const beat = (id: string, matchIds: string[]) =>
+    registry.heartbeat({ id, url: `ws://${id}`, activityPath: `/${id}`, capacity: 4, matchIds });
+  beat("a", ["m1", "m2", "m3"]);
+  beat("b", ["m4"]);
+  assert.equal(registry.allocate("m5")?.id, "b");
+  assert.equal(registry.allocate("m6")?.id, "b"); // b now has 3, a has 3: the tie goes to the first
   now = 1500;
-  registry.heartbeat({ id: "a", url: "ws://a", activityPath: "/a", capacity: 4, matches: 3 });
+  beat("a", ["m1", "m2", "m3"]);
   assert.deepEqual(registry.alive().map((s) => s.id), ["a"]); // b went silent
+});
+
+test("the registry counts what it assigned, not what a server reports, and release frees the slot", () => {
+  const registry = new GameServerRegistry(1000, () => 0);
+  registry.heartbeat({ id: "a", url: "ws://a", activityPath: "/a", capacity: 1, matchIds: [] });
+  assert.equal(registry.allocate("m1")?.id, "a");
+  assert.equal(registry.allocate("m2"), null); // the only slot is taken although "a" lists nothing yet
+  assert.equal(registry.release("m1"), true);
+  assert.equal(registry.release("m1"), false); // already free
+  assert.equal(registry.allocate("m2")?.id, "a");
 });
 
 test("the live Discord client exchanges the code and reads the user (fetch stubbed)", async () => {

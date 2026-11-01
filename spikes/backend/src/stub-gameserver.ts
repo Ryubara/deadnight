@@ -26,6 +26,7 @@ export interface StubGameServerOptions {
 export const CLOSE_BAD_TICKET = 4401;
 export const CLOSE_NO_TICKET = 4408;
 export const CLOSE_REPLACED = 4409;
+export const CLOSE_MATCH_ENDED = 4410;
 /** A join message is a few hundred bytes; nothing larger is read from a socket that has not been admitted yet. */
 const MAX_PAYLOAD_BYTES = 4096;
 
@@ -78,18 +79,20 @@ export async function startStubGameServer(options: StubGameServerOptions) {
     });
   });
 
+  const backendHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${options.gameServerSecret}` };
+
   const beat = async (): Promise<void> => {
     if (!options.backendUrl) return;
     try {
       await fetch(`${options.backendUrl}/internal/servers/heartbeat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${options.gameServerSecret}` },
+        headers: backendHeaders,
         body: JSON.stringify({
           id: options.id,
           url: options.publicUrl,
           activityPath: options.activityPath,
           capacity: options.capacity ?? 10,
-          matches: matches.size,
+          matchIds: [...matches],
         }),
       });
     } catch {
@@ -101,6 +104,17 @@ export async function startStubGameServer(options: StubGameServerOptions) {
 
   return {
     port: (wss.address() as { port: number }).port,
+    /** The match is over (the real server does this when the game concludes): tell the backend, free the slot. */
+    async endMatch(matchId: string): Promise<void> {
+      matches.delete(matchId);
+      for (const [seat, socket] of seats) if (seat.startsWith(`${matchId}/`)) socket.close(CLOSE_MATCH_ENDED, "match ended");
+      if (options.backendUrl) {
+        await fetch(`${options.backendUrl}/internal/matches/${encodeURIComponent(matchId)}/end`, {
+          method: "POST",
+          headers: backendHeaders,
+        });
+      }
+    },
     async close(): Promise<void> {
       clearInterval(timer);
       for (const client of wss.clients) client.terminate();
