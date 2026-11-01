@@ -70,20 +70,28 @@ const BUSES := {
 
 ## Where the file lives. Tests point this somewhere else.
 var path := DEFAULT_PATH
+## True in a browser, which owns its window (window mode is not ours to set). Tests inject it.
+var is_web := OS.has_feature("web")
 
 var _values := {}
 var _dirty := false
 var _idle := 0.0
+## Kept so the browser keeps the page-hide callback alive.
+var _page_hide_callback: JavaScriptObject
 
 
 func _init() -> void:
 	_values = DEFAULTS.duplicate()
+	# The settings screen is opened from a pause menu: the debounced write has to run while the
+	# tree is paused, or a change made there is lost on a crash or a closed browser tab.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_process(false)
 
 
 func _ready() -> void:
 	load_from_disk()
 	apply_all()
+	_flush_when_the_page_hides()
 
 
 func _process(delta: float) -> void:
@@ -93,9 +101,14 @@ func _process(delta: float) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
-		if _dirty:
-			save()
+	# A browser has no close request: losing focus or hiding the tab is the last chance to write.
+	var last_chance := (
+		what == NOTIFICATION_WM_CLOSE_REQUEST
+		or what == NOTIFICATION_PREDELETE
+		or what == NOTIFICATION_APPLICATION_FOCUS_OUT
+	)
+	if last_chance and _dirty:
+		save()
 
 
 func get_value(key: StringName) -> Variant:
@@ -159,6 +172,23 @@ func volume_linear(key: StringName) -> float:
 	return float(get_value(key)) / 100.0
 
 
+## On the web, `visibilitychange` (tab hidden, app switched, page closing on mobile) is the one
+## event a page reliably gets before it can vanish, so it flushes a pending write.
+func _flush_when_the_page_hides() -> void:
+	if not OS.has_feature("web"):
+		return
+	_page_hide_callback = JavaScriptBridge.create_callback(_on_visibility_change)
+	JavaScriptBridge.get_interface("document").addEventListener(
+		"visibilitychange", _page_hide_callback
+	)
+	JavaScriptBridge.get_interface("window").addEventListener("pagehide", _page_hide_callback)
+
+
+func _on_visibility_change(_args: Array) -> void:
+	if _dirty:
+		save()
+
+
 func _sanitize(key: StringName, value: Variant) -> Variant:
 	var fallback: Variant = DEFAULTS[key]
 	match typeof(fallback):
@@ -172,7 +202,7 @@ func _sanitize(key: StringName, value: Variant) -> Variant:
 
 
 func _sanitize_number(key: StringName, value: Variant, fallback: Variant) -> Variant:
-	if typeof(value) != TYPE_INT and typeof(value) != TYPE_FLOAT:
+	if not _is_finite_number(value):
 		return fallback
 	var bounds: Vector2 = RANGES.get(key, Vector2(-INF, INF))
 	if typeof(fallback) == TYPE_INT:
@@ -184,6 +214,17 @@ func _sanitize_text(value: Variant, fallback: String) -> String:
 	if typeof(value) != TYPE_STRING or String(value).length() > MAX_TEXT:
 		return fallback
 	return value
+
+
+## A number a ConfigFile can hold that is neither `nan` nor infinite, which would pass a clamp
+## (nan) or become a limit (inf) and be applied as if it were a choice.
+func _is_finite_number(value: Variant) -> bool:
+	match typeof(value):
+		TYPE_INT:
+			return true
+		TYPE_FLOAT:
+			return is_finite(value)
+	return false
 
 
 func _apply(key: StringName) -> void:
@@ -210,13 +251,18 @@ func _apply(key: StringName) -> void:
 
 func _apply_window_mode(mode: int) -> void:
 	# A browser owns its window: the page (or Discord) decides, so there is nothing to set.
-	if OS.has_feature("web"):
+	if is_web:
 		return
 	var target := DisplayServer.WINDOW_MODE_WINDOWED
 	if mode == WindowMode.FULLSCREEN:
 		target = DisplayServer.WINDOW_MODE_FULLSCREEN
 	elif mode == WindowMode.EXCLUSIVE:
 		target = DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+	_set_window_mode(target)
+
+
+## The one call that touches the real window, so a test can stand in for it.
+func _set_window_mode(target: DisplayServer.WindowMode) -> void:
 	DisplayServer.window_set_mode(target)
 
 

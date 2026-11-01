@@ -3,6 +3,8 @@ shader_type canvas_item;
 // all of it, with the projector's beam crossing the dark. One procedural pass; no textures and
 // no screen reads, so it is the same in the Compatibility renderer and on the web.
 
+#include "res://addons/gds_ui/shaders/gds_hash.gdshaderinc"
+
 uniform vec4 sky_top : source_color = vec4(0.02, 0.02, 0.05, 1.0);
 uniform vec4 sky_horizon : source_color = vec4(0.12, 0.08, 0.16, 1.0);
 uniform vec4 light_color : source_color = vec4(0.62, 0.76, 1.0, 1.0);
@@ -16,14 +18,6 @@ const float HORIZON = 0.7;
 const vec2 SCREEN_CENTRE = vec2(0.83, 0.545);  // x is a fraction of the width
 const vec2 SCREEN_HALF = vec2(0.22, 0.078);   // in heights
 const vec2 BEAM_FROM = vec2(0.10, 1.2);       // x is a fraction of the width
-
-float hash11(float p) {
-	return fract(sin(p * 127.1) * 43758.5453);
-}
-
-float hash21(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
 
 float vnoise(vec2 p) {
 	vec2 i = floor(p);
@@ -83,7 +77,9 @@ void fragment() {
 	vec3 ground_col = mix(sky_horizon.rgb * 0.8, vec3(0.02, 0.018, 0.04), smoothstep(HORIZON, 1.2, UV.y));
 	ground_col += light_color.rgb * exp(-max(sd, 0.0) * 2.6) * level * 0.32 * (1.0 - smoothstep(HORIZON, 1.0, UV.y) * 0.4);
 	// A bright streak of the screen reflected in the lot's wet gravel.
-	float streak = exp(-pow((p.x - sc.x) / 0.22, 2.0)) * smoothstep(HORIZON, HORIZON + 0.25, UV.y);
+	// (A squared product, not pow(): pow of a negative base is undefined in GLSL ES 3.0.)
+	float streak_x = (p.x - sc.x) / 0.22;
+	float streak = exp(-streak_x * streak_x) * smoothstep(HORIZON, HORIZON + 0.25, UV.y);
 	ground_col += light_color.rgb * streak * level * 0.16 * (0.6 + 0.4 * vnoise(vec2(p.x * 40.0, UV.y * 6.0 + t)));
 	col = mix(col, ground_col, ground);
 
@@ -139,7 +135,8 @@ void fragment() {
 	float along = dot(v, along_dir);
 	float across = abs(v.x * along_dir.y - v.y * along_dir.x);
 	float beam_len = length(sc - from);
-	float spread = along * 0.17;
+	// Behind the projector `along` is negative: keep the spread positive so the edges stay ordered.
+	float spread = max(along * 0.17, 0.001);
 	float inside_beam = (1.0 - smoothstep(spread * 0.25, spread, across)) * smoothstep(0.1, 0.5, along) * (1.0 - smoothstep(beam_len - 0.45, beam_len, along));
 	float dust = vnoise(p * 28.0 + vec2(t * 0.12, -t * 0.4));
 	dust = smoothstep(0.55, 0.95, dust);

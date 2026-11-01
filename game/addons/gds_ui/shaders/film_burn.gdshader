@@ -4,6 +4,8 @@ shader_type canvas_item;
 // screen shows through. Procedural noise only; it never samples the screen, so it is safe in the
 // Compatibility renderer and WebGL2.
 
+#include "res://addons/gds_ui/shaders/gds_hash.gdshaderinc"
+
 uniform float progress : hint_range(0.0, 1.0) = 0.0;
 uniform float reveal : hint_range(0.0, 1.0) = 0.0;
 uniform vec2 origin = vec2(0.5, 0.5);
@@ -17,17 +19,13 @@ const vec3 AMBER = vec3(1.0, 0.62, 0.16);
 const vec3 EMBER = vec3(0.78, 0.2, 0.05);
 const vec3 CHAR = vec3(0.04, 0.03, 0.03);
 
-float hash(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
 float value_noise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
 	f = f * f * (3.0 - 2.0 * f);
 	return mix(
-		mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
-		mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+		mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x),
+		mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x),
 		f.y);
 }
 

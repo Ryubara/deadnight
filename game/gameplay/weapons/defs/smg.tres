@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/weapon_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"smg"
+display_name = "Tommy gun"
+kind = 0
+automatic = true
+damage = 14
+pellets = 1
+spread_deg = 2.2
+falloff_start = 10
+falloff_end = 30
+min_damage_fraction = 0.5
+max_range = 50
+penetration = 0
+penetration_falloff = 0.6
+zone_multipliers = Dictionary[StringName, float]({
+&"body": 1.0,
+&"head": 2,
+&"limb": 0.6
+})
+fire_interval = 0.075
+magazine_size = 30
+reserve_start = 120
+reserve_max = 180
+reload_time = 1.9
+projectile_speed = 30
+projectile_gravity = 0
+projectile_radius = 0.1
+projectile_lifetime = 3
+splash_radius = 0
+splash_damage = 0
+splash_min_fraction = 0.25
+melee_range = 1.8
+melee_radius = 0.35
+melee_max_targets = 1
