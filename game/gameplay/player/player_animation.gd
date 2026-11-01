@@ -119,6 +119,13 @@ const GRENADE_TOSS := &"Grenade_Toss"
 const GRENADE_TAKEN_EVENT := "grenade_visible"
 ## The throw clips' last event: the arm is back, the gun comes up again.
 const GRENADE_DONE_EVENT := "done"
+## The throw clips' release frame: the grenade leaves the hand.
+const GRENADE_RELEASE_EVENT := "release"
+## How long the cook clip holds its last frame while the button is down (more than any fuse).
+const GRENADE_COOK_HOLD := 30.0
+## The grenade in the hand: the placeholder shell, drawn this much of its flight size, in the grip
+## of the melee hold (the fist closed on something short).
+const GRENADE_HELD_SCALE := 0.55
 
 const STATE_LOCOMOTION := &"locomotion"
 const STATE_JUMP := &"jump"
@@ -141,6 +148,7 @@ var _full_node: AnimationNodeAnimation
 var _mount: BoneAttachment3D
 var _weapon: Node3D
 var _hammer: Node3D
+var _grenade: Node3D
 var _hold: WeaponHold
 var _hands: WeaponHandsIK
 var _shoulder_blend := 0.0
@@ -183,6 +191,14 @@ func _ready() -> void:
 	_hammer.transform = HOLD_HAMMER.scaled_local(Vector3.ONE * hammer_hold.model_scale)
 	_hammer.visible = false
 	_mount.add_child(_hammer)
+	_grenade = Node3D.new()
+	_grenade.name = "Grenade"
+	_grenade.transform = Transform3D(
+		Basis.from_scale(Vector3.ONE * GRENADE_HELD_SCALE), HOLD_MELEE.origin
+	)
+	_grenade.visible = false
+	GrenadeView.add_placeholder(_grenade)
+	_mount.add_child(_grenade)
 	_hands = WeaponHandsIK.new()
 	_hands.name = "WeaponHandsIK"
 	_hands.hand_hold = HOLD_GUN
@@ -291,9 +307,11 @@ func play_action(action: StringName) -> bool:
 
 
 ## The Soldier's side of a grenade, by the server's events. `&"cook"` (`cook_started`): the pin is
-## out, the cook clip plays and the gun goes down. `&"throw"` (`grenade_thrown`): the throw clip,
-## or for the short underarm toss the toss clip (`underarm` is the event's own flag). `&"gone"`
-## (it went off in the hand, or the player was downed): the gun comes back.
+## out, the cook clip plays and the gun goes down. `&"throw"` (`throw_started`, the button came up):
+## the throw clip, or for the short underarm toss the toss clip (`underarm` is the event's own
+## flag); the grenade leaves the hand at the clip's release frame, which is where the server lets
+## go of it. `&"gone"` (it went off in the hand, or the player was downed): the hand is empty and
+## the gun comes back.
 func grenade(stage: StringName, underarm: bool = false) -> void:
 	match stage:
 		&"cook":
@@ -301,6 +319,10 @@ func grenade(stage: StringName, underarm: bool = false) -> void:
 		&"throw":
 			_play_clip(GRENADE_TOSS if underarm else GRENADE_THROW)
 		&"gone":
+			_grenade.visible = false
+			if action_clip == GRENADE_COOK:
+				action_clip = &""
+				set(&"parameters/action/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FADE_OUT)
 			_weapon_visible(true)
 
 
@@ -310,6 +332,13 @@ func _play_clip(clip: StringName) -> bool:
 	if not _spec["clips"].has(String(clip)):
 		return false
 	_action_node.animation = clip
+	# The cook pose is kept for as long as the button stays down: the node's timeline runs past
+	# the clip, which holds its last frame.
+	_action_node.use_custom_timeline = clip == GRENADE_COOK
+	if clip == GRENADE_COOK:
+		_action_node.timeline_length = GRENADE_COOK_HOLD
+		_action_node.stretch_time_scale = false
+		_action_node.loop_mode = Animation.LOOP_NONE
 	action_clip = clip
 	_action_time = 0.0
 	set(&"parameters/action/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
@@ -472,7 +501,9 @@ func _advance_events(delta: float) -> void:
 	_action_time += delta
 	var clip := action_clip
 	_emit_events(clip, before, _action_time)
-	if _action_time >= _clip_seconds(clip) and action_clip == clip:
+	if _action_time >= _clip_seconds(clip) and action_clip == clip and clip != GRENADE_COOK:
+		action_clip = &""
+	elif clip == GRENADE_COOK and _action_time >= GRENADE_COOK_HOLD:
 		action_clip = &""
 
 
@@ -556,8 +587,13 @@ func _emit_events(clip: StringName, from: float, to: float, skip: String = "") -
 			if at > from and at <= to:
 				if event == "weapon_visible":
 					_weapon_visible(true)
-				elif event == "weapon_hidden" or event == GRENADE_TAKEN_EVENT:
+				elif event == "weapon_hidden":
 					_weapon_visible(false)
+				elif event == GRENADE_TAKEN_EVENT:
+					_weapon_visible(false)
+					_grenade.visible = true
+				elif event == GRENADE_RELEASE_EVENT:
+					_grenade.visible = false
 				elif event == GRENADE_DONE_EVENT:
 					_weapon_visible(true)
 				clip_event.emit(clip, StringName(event))
