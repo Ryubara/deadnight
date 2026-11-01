@@ -111,7 +111,22 @@ func _build() -> void:
 	body.add_child(_build_stage())
 	body.add_child(_build_pickers())
 	column.add_child(_build_footer())
+	_link_focus()
 	_building = false
+
+
+## Up and down walk the pickers row by row, then on to the footer; left to the engine, the nearest
+## control in that direction could be a footer button on the other side of the screen.
+func _link_focus() -> void:
+	var chain: Array[Control] = [_preset_selector]
+	for slot in LookCatalog.choosable_part_slots():
+		chain.append(_strips[PART_PREFIX + slot])
+	for slot in LookCatalog.colour_slots():
+		chain.append(_strips[COLOUR_PREFIX + slot])
+	chain.append(_save_button)
+	for i in chain.size() - 1:
+		chain[i].focus_neighbor_bottom = chain[i].get_path_to(chain[i + 1])
+		chain[i + 1].focus_neighbor_top = chain[i + 1].get_path_to(chain[i])
 
 
 func _build_stage() -> Control:

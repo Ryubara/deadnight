@@ -30,10 +30,12 @@ func test_every_preset_assembles_with_its_palette() -> void:
 		)
 		assert_that(_surface_colour(model, "Body", "Pants")).is_equal(look.colour(&"secondary"))
 		assert_that(_surface_colour(model, "Body", "Black")).is_equal(look.colour(&"hair"))
-		assert_that(_surface_colour(model, "Head", "Character_Main")).is_equal(
-			look.colour(&"primary")
-		)
-		assert_that(_surface_colour(model, "Head", "Grey")).is_equal(look.colour(&"accent"))
+		# The helmet's own surfaces are only there on a head that wears one.
+		if look.parts[&"headwear"] == &"helmet":
+			assert_that(_surface_colour(model, "Head", "Character_Main")).is_equal(
+				look.colour(&"primary")
+			)
+			assert_that(_surface_colour(model, "Head", "Grey")).is_equal(look.colour(&"accent"))
 
 
 func test_the_helmet_follows_the_headwear_part() -> void:

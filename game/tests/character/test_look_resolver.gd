@@ -22,9 +22,11 @@ func test_the_later_player_of_two_identical_looks_is_shifted() -> void:
 	assert_int(out[3].shift).is_equal(0)
 	assert_int(out[8].shift).is_equal(1)
 	assert_bool(out[3].equals(out[8])).is_false()
-	# Only the main colour moved, by one palette place.
+	# Only the main colour moved, by one step.
 	var original := CharacterLook.from_preset(1)
-	assert_int(out[8].colours[&"primary"]).is_equal(original.colours[&"primary"] + 1)
+	assert_int(out[8].colours[&"primary"]).is_equal(
+		original.colours[&"primary"] + LookResolver.SHIFT_STEP
+	)
 	for slot in LookCatalog.colour_slots():
 		if slot != &"primary":
 			assert_int(out[8].colours[slot]).is_equal(original.colours[slot])
@@ -56,7 +58,7 @@ func test_the_answer_does_not_depend_on_the_order_players_arrived_in() -> void:
 func test_a_shift_never_lands_on_a_look_somebody_else_already_wears() -> void:
 	var looks := _table([1, 3])
 	var taken := CharacterLook.from_preset(1)
-	taken.shift_colour(&"primary", 1)
+	taken.shift_colour(&"primary", LookResolver.SHIFT_STEP)
 	looks[2] = taken
 	var out := LookResolver.resolve(looks)
 	var keys := {}

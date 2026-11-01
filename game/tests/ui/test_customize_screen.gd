@@ -10,6 +10,11 @@ var _screen: CustomizeScreen
 
 
 func before_test() -> void:
+	# Another suite may have left the router in a transition, which swallows input.
+	if UIRouter.busy:
+		await UIRouter.idle
+	UIInputMode.pointer = false
+	_release_pad()
 	_saved_path = Settings.path
 	Settings.path = TEST_PATH
 	Settings.reset_defaults()
@@ -22,6 +27,18 @@ func after_test() -> void:
 	Settings.path = _saved_path
 	UIMotion.reduced = false
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+
+
+## Releases every pad button the tests use, so a press another suite left held cannot swallow ours.
+func _release_pad() -> void:
+	for button: JoyButton in [
+		JOY_BUTTON_DPAD_UP, JOY_BUTTON_DPAD_DOWN, JOY_BUTTON_DPAD_LEFT, JOY_BUTTON_DPAD_RIGHT
+	]:
+		var event := InputEventJoypadButton.new()
+		event.button_index = button
+		event.pressed = false
+		Input.parse_input_event(event)
+	Input.flush_buffered_events()
 
 
 func _open(params := {}) -> CustomizeScreen:
@@ -40,7 +57,9 @@ func _open(params := {}) -> CustomizeScreen:
 
 
 func _send(event: InputEvent) -> void:
-	Input.parse_input_event(event)
+	# Straight into the viewport, the way a device event arrives: the `Input` singleton keeps its own
+	# idea of which buttons are held, and a press another suite left held made it swallow ours.
+	get_viewport().push_input(event)
 	await get_tree().process_frame
 
 
@@ -115,10 +134,13 @@ func test_the_gamepad_dpad_moves_along_a_strip() -> void:
 	var strip := _screen.strip("colour:secondary")
 	strip.grab_focus()
 	var start: int = _screen.look.colours[&"secondary"]
-	await _pad(JOY_BUTTON_DPAD_RIGHT)
-	await _pad(JOY_BUTTON_DPAD_RIGHT)
-	await _pad(JOY_BUTTON_DPAD_RIGHT)
+	for i in 3:
+		# The game's own menu, still in the router under the test, takes focus back after a press
+		# when the whole project runs in one process; the strip claims it again each time.
+		strip.grab_focus()
+		await _pad(JOY_BUTTON_DPAD_RIGHT)
 	assert_int(_screen.look.colours[&"secondary"]).is_equal(start + 3)
+	strip.grab_focus()
 	await _pad(JOY_BUTTON_DPAD_LEFT)
 	assert_int(_screen.look.colours[&"secondary"]).is_equal(start + 2)
 
