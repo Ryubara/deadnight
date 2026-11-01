@@ -1,7 +1,7 @@
 class_name NightView
 extends Node3D
 ## What the player sees and hears of the night, made only from what the server sent: the zombies
-## from each frame's snapshot, tracers, flashes and damage numbers from the weapons' events, and
+## from each frame's snapshot, flashes, impacts and damage numbers from the weapons' events, and
 ## the sounds. It holds no game state and never asks the server anything.
 
 ## The sound of each weapon's shot and reload; a weapon with no entry is silent for now.
@@ -62,9 +62,7 @@ func _on_event(event: Dictionary) -> void:
 		&"frame":
 			horde.apply_snapshot(event["zombies"], step)
 		&"shot_fired":
-			effects.muzzle_flash(event["muzzle"])
-			for end: Vector3 in event["ends"]:
-				effects.tracer(event["muzzle"], end)
+			effects.shot(WeaponCatalog.get_def(event["weapon_id"]), event["muzzle"], event["ends"])
 			_sound(SHOT_SOUNDS, event["weapon_id"], event["muzzle"])
 		&"damage_dealt":
 			effects.number(

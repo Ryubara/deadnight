@@ -11,6 +11,10 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export var kind: Kind = Kind.HITSCAN
 ## Holding the trigger keeps firing (the client repeats; the server's fire interval is the limit).
 @export var automatic: bool = false
+## Draws a streak from the muzzle to where the shot ended. Off by default: a hitscan shot is
+## instant and shows a flash and an impact, never a visible bullet. A launcher or a ray gun is a
+## `PROJECTILE` weapon instead; this flag is for the rare hitscan weapon whose beam should show.
+@export var tracer: bool = false
 
 @export_group("Damage")
 ## Per pellet (hitscan), on a direct hit (projectile) or per swing (melee), on the body zone and
