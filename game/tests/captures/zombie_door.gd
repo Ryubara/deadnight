@@ -38,7 +38,8 @@ func _ready() -> void:
 	add_child(lot)
 	_doors = lot.get_node("Doors")
 	# The stand's roof would hide the inside from this camera.
-	lot.get_node("Concession/Roof").visible = false
+	lot.get_node("Concession/RoofN").visible = false
+	lot.get_node("Concession/RoofS").visible = false
 	var tuning := _tuning()
 	_rules = GameRules.new(tuning, 5)
 	_rules.apply(RulesAction.add_player(1))

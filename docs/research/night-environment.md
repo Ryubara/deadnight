@@ -107,12 +107,32 @@ for the dead's slowdown (`LotLamps.lit_at`).
   exempt: every lamp reaches it and it is near-black.
 - **Room for a fight**: a muzzle flash (`ShotEffects`, 5 m), a blast (`BlastEffect`, 1.6 x the blast radius) and a
   grenade's lamp (`GrenadeView`, 3 m) are `OmniLight3D` nodes made at run time. A mesh near a fight gains one flash and
-  one blast or lamp, so the lot's own lights may reach a mesh with `limit - 2` (`DYNAMIC_HEADROOM`). Meshes over that
-  today are listed in `KNOWN_OVER` (the field's four middle ground tiles and the stand's floor and roof, issue #318;
-  the test fails on one that grows or no longer needs its entry) and a skipped twin without the list takes over once
-  they are fixed. Another test reads every script and scene of the project for a light and fails on one that is not
+  one blast or lamp, so the lot's own lights may reach a mesh with `limit - 2` (`DYNAMIC_HEADROOM`), and no mesh is
+  excused from it. Another test reads every script and scene of the project for a light and fails on one that is not
   in its table, and checks that each weapon's shot, a blast and a grenade add exactly one light.
   The first run of the stronger test found 8 on two ground tiles, 7 on four more; no prop or car is above 6.
+- **Tiles are sized to the lights** (issue #318). Compatibility counts lights per mesh, so a big ground box is reached
+  by every lamp near any part of it, and the field's middle (eight lamps, the screen's 34 m glow, the stand's three
+  inside lamps and its sign all overlap there) had tiles reached by 7 and 8. A search over cuts of the middle
+  (`tools/world/build_greybox.py`, `FIELD_CORE_X` and `FIELD_CORE_Z`) found the fewest tiles that keep each at 6 or
+  fewer: 12 tiles between x -16 and 16 in rows at z -38, -22 and -10 (the lamp rows), where 16 m tiles had been, and
+  the dark flanks stay wide. 5 was not reachable by any cut searched: ScreenGlow and the sign reach every tile of the
+  middle. The stand's floor and roof are each cut in two at z 2 (`STAND_CUT`): the field's posts and the stand's own
+  lamps reach the front, the midway's court lamp the back, none all of it. Lamps, ranges and energies are untouched, so
+  the picture and the rules' lit ground (`LotLamps.lit_at`, which counts lamp positions) did not change.
+  Rejected: moving the midway's court lamp 4 m south (it drops out of the stand's floor and roof but takes 4 m2 of the
+  midway's lit ground), shorter interior and sign ranges (the light would still reach through the wall: there are no
+  shadows), and pool quads in place of lamp posts (a post is a lamp for the rules).
+  Cost: 8 more CSG boxes (the field 24 to 30 tiles, the stand's floor and roof one more each) is 8 more draw calls
+  of about 1,100 lit meshes. Chrome on an RTX 5080, `smoke.py --gpu --unpaced`, 1280 x 720, a 45 s night, the web
+  export of `main` against this branch, three runs each, alternating, on a shared machine:
+
+  | Build | Night frame mean | p50 | p95 (median second) | Worst second p95 |
+  | --- | --- | --- | --- | --- |
+  | `main`, 3 runs | 4.0 / 4.4 / 2.8 ms | 3.8 / 4.3 / 2.4 ms | 8.0 / 8.1 / 4.0 ms | 15.1 / 11.4 / 9.7 ms |
+  | this branch, 3 runs | 4.1 / 2.9 / 2.7 ms | 3.8 / 2.5 / 2.4 ms | 8.1 / 4.4 / 4.0 ms | 13.4 / 10.7 / 7.3 ms |
+
+  No difference beyond the run-to-run spread (the spread of one build is larger than the gap between the two).
 - **Pools are quads, not light range.** Raising the lamp range to 14 m to get a bigger pool put 12 lights on one tile.
   The pool is now the quad, the light stays at 11 m.
 - **The screen shows the circuit.** With `screen_lot` off the face keeps the 0.3 afterglow of its lamp and the posts,
