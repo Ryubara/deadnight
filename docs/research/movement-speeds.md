@@ -185,6 +185,54 @@ generator on, and gets worse when the lights fail. Two things to keep an eye on.
 (6.25) is 0.89 of the sprint, so the dark leaves the player almost no room; and with no sprint limit there is still no
 stamina cost to running away (the follow-up issue #236).
 
+### What the chase clips show
+
+Each clip puts a walker and a runner of round 8 on the same player in the shoulder camera: the player stands, backs
+away at the run (4.8 m/s) when the nearer is 6 m off, for 4.5 s, then stops and waits to be caught. The same lane
+(the field's avenue, lit end to end except one row) is filmed with the lamps on and with every circuit off, on the
+build before the rework (`a78af93~1`) and on `main`. The dead are placed by hand at the speeds the tuning gives (the
+caption prints them; the log measures them from the positions: 0.96 / 1.63 before, 2.32 / 3.25 after, lit; 1.60 /
+2.72 and 2.90 / 4.06 in the dark), the player is the real one driven by the input actions.
+`game/tests/captures/speed_chase.tscn` makes the clips, `gait_at_speeds.tscn` measures the gait. The clips are
+attached to the pull request that added them; here are four frames of each, in order: lit before, lit after, dark
+before, dark after, and the worst case last (round 20, dark, the player sprinting).
+
+![Four frames each of the lit and dark chase before and after the rework, and the round 20 dark sprint](movement-speeds-chase.jpg)
+
+- **The pace reads.** Before, the pair walked up to a player who had to wait for them: the gap was still 6 m after
+  5 s, and a player who ran 4.5 s opened it to 17 m (lit) and 12.6 m (dark) and was found again after 9.5 s lit and 4 s
+  in the dark. After, the gap opens to 11.2 m lit and 7.8 m dark and closes in 3.5 s and 1.7 s. The gap the player
+  earns running away is the run minus the runner: 3.2 m/s before, 1.55 m/s lit and **0.74 m/s dark** after (the
+  logged gap went 5.9 to 7.8 m over three seconds). A dark runner at round 8 is 0.85 of the run, the pace a lit
+  runner has at round 12; it is already a threat to anyone who does not move.
+- **The margin to the sprint holds.** The last row is the worst case, the round 20 dark runner at the cap (6.25)
+  against a sprint (7.0): the gap went 5.4 to 6.8 m in two seconds, 0.75 m/s, as the numbers say. It reads as "just
+  ahead" in the frames: the runner is in the middle distance the whole time. With no sprint limit this is a
+  stalemate the player wins as long as the lane lasts (#236).
+- **Lit and dark read apart.** With the circuit off the lamps and the screen are out and the lot is a dark blue
+  with no pools, so the player can tell which half of the lot they are in without a number; and the dead are the
+  quarter faster there. The dead's own look does not change between the two: nothing but the lot says "faster".
+- **Foot sliding** (`gait_at_speeds`, the gait test's measure: ground speed over the planted foot's backward speed,
+  1.0 is a foot that stays put, above 1 it skates, below 1 it over-steps):
+
+  | Round 8 | Pace | Before | After |
+  | --- | ---: | ---: | ---: |
+  | Walker, lit | 0.96 before, 2.32 after | 1.17 | 0.65 |
+  | Walker, dark | 1.60, 2.90 | 1.60 | 0.99 |
+  | Runner, lit | 1.63, 3.25 | 1.01 | 1.00 |
+  | Runner, dark | 2.72, 4.06 | 0.65 | 0.90 |
+
+  Before, the dark walker's feet moved at 1.00 m/s on ground going by at 1.60 (1.6, a skate you can see in the
+  clip), and the dark runner's moved at 4.2 against 2.72. After, `main`'s gait (#280) is within 10% in three of the
+  four cells; the lit walker at 2.32 m/s is the exception: it is in the crossover from the walk to the run (1.4 to
+  3.0 m/s), where the feet move at 3.6 m/s on ground at 2.3, an over-step of 1.5 (0.65; the gait test checks rounds
+  1, 10 and 20 and allows 0.7 to 1.8, so round 8 falls between its cases). At round 20 the cells are 0.96 to 1.20.
+  The frames at this size do not show a foot well; the table does. Whether to tighten the crossover is a decision
+  for the gait's owner: it is noted here and in [zombie gait](zombie-gait.md#left-open), not a new issue.
+- **What the clips cannot say.** The player's body differs between the two builds (an older soldier before), and the
+  dead stand in a lane with the player backing away in a line; a player who turns and runs sees none of this,
+  because the camera is behind. The dark's 1.25 is still a number a person should feel in a real night.
+
 ### Balance gate
 
 The shipped numbers pass the five-cell gate (60 nights, seed 4000, `BalanceTargets.check`: medians, the first
@@ -210,7 +258,7 @@ target with the dark at x1.25 (a dark of x1.15, or x1.2 with the headliner at x0
 1. **A sprint limit** (#236): in Call of Duty it is what makes the sprint tier a threat; here it would make the
    dark's 6.25 m/s runner one.
 2. **A playtest of the dark.** The 1.25 is a number a person should feel; the movement bots of #226 can then chase a
-   moving player.
+   moving player. [The chase clips](#what-the-chase-clips-show) filmed the pace; they are not a playtest.
 3. **Do not add a super sprinter.** Cold War needs one at round 51; our nights end at round 10 to 18.
 
 ## Where each number comes from

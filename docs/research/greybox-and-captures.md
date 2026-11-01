@@ -74,6 +74,14 @@ Where they stand and what they sell is in [the lot](../design/map.md#the-fuel-ca
 - A top-down plan is an orthographic `Camera3D` with `size` set to the vertical extent in metres, looking down with
   `up = -Z` so north stays up. A `Label3D` lies flat when its basis columns are x, -z (up), y (forward) and
   `no_depth_test` is on; with the opposite sign it reads mirrored.
+- **Capture without a window**: `--no-window --write-movie <abs>/clip.avi --fixed-fps 30` renders normally, steals no
+  focus, and an `.avi` (MJPEG) is a third the size of the PNG frames; `ffmpeg -crf 29` makes the mp4. But a real mouse
+  still reaches the game: the pointer of the person using the machine turned a `Night` camera by up to 65 degrees
+  between two runs of the same script. A capture that drives the real player sets `player.local_input = false` after
+  `Night.start` (mouse look off; the input actions still drive the controls) and gets the same clip every time.
+- A capture that needs the dead without a round: give the night a tuning with `rounds.intro_seconds` very large and
+  `ZombieSim.spawn` the dead by hand (`tests/captures/speed_chase.gd`); rules events applied outside the server
+  (`rules.apply(set_circuit)`) never reach the client, so pass them to `night.state.apply_events` or the lamps stay lit.
 - One rig scene and a user argument (`-- --view=top`) give every view from one command, so a layout change is
   re-captured by rerunning the same list.
 
