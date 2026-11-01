@@ -59,4 +59,4 @@ each transition.
 
 ## Left out
 
-Settings widgets (slider, toggle, option) are issue #4.
+Settings widgets (slider, toggle, option selector) came with the settings screen: see [Settings](settings.md).
