@@ -14,7 +14,7 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 | --- | --- | --- |
 | The weapons' events | the same `apply_event`, for `weapon_equipped`, `shot_fired`, `reload_started`, `reload_finished` (`HudLoadout.EVENTS`; the binding forwards these and no other weapon event) | the ammo card and the equipment slot: the weapon in hand, its magazine and reserve as the events carry them, whether it is reloading, and the weapon put away last |
 | The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, **your health** (`player_added`, `player_hurt`, `player_healed`, `player_downed`), purchases, hits and kills, game over |
-| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, your health, the generator. Names, seats and looks are not in the rules, so the ones set before stay |
+| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, your health, the generator, the special round running and the bosses on the lot with their health (a boss whose spawn event was already in flight is not counted twice). Names, seats and looks are not in the rules, so the ones set before stay |
 | The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events fill them), `set_prompt`, `set_area`, `set_markers`, `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
 | HUD additions to the rules' events | optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a hit point into these; there is no world position in the HUD |
 
@@ -30,11 +30,12 @@ local player) into the direction on screen.
 | `HudRound` | top left | the round on a row of **reel digits** (a projector drum counter that rolls to the next number), zombies left or the break countdown |
 | `HudObjective` | top left, under the round | a card with the area you are in and one line of what to do next (two lines at most) |
 | `HudFuel` | top right, **only for a moment** | the generator card: the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit with its sign's word beside it, in two columns (`SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`). Slides down into the column and fades in when the night makes progress at the generator, holds 4 s, leaves (see below) |
-| `HudFeed` | top right, under the generator card (at the top while it is away) | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left; one line each, 480 units wide (wider than the column), ending on the cards' right text line: a long line shrinks toward 20, then ends in an ellipsis |
+| `HudFeed` | top right, under the generator card (at the top while it is away) | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left; one line each, 480 units wide (wider than the column), ending on the cards' right text line: a long line shrinks toward 20, then ends in an ellipsis (a cleared special round adds `DOUBLE FEATURE CLEARED  +440 EACH`) |
 | `HudPoints` | bottom left | **a container per player**, `[portrait][points]` (see below), you first, then the others by id |
 | `HudHealth` | bottom left, under the players | a card: `HEALTH n` and the grenade count on one row, a bar of ten ticks (or `DOWN` and what to hope for), then the equipment: the weapon put away last, by name (no rounds; the ammo card says the rounds), cut to the room |
 | `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it on the same baseline, the weapon name on a coloured bar; hot orange when low; `RELOADING` while a reload runs; `--` for a weapon with no ammunition (the crowbar) |
-| `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner) |
+| `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner). A special round starts with its name (`DOUBLE FEATURE`) over what it brings (`THE HEADLINER ARRIVES`, `2 HEADLINERS ARRIVE`, `ONLY RUNNERS`); clearing one puts `DOUBLE FEATURE CLEARED  +440` under `ROUND 5 SURVIVED`; a late joiner into one sees its banner once |
+| `HudMarquee` | top centre, under the banner | in the break before a special round, `COMING UP - ROUND 5 - IN 24` over the round's name in big letters that flicker like a failing neon sign (steady with reduced motion) over what it brings, between two rows of bulbs (the banner's); gone as the round starts. A HUD that joins in the break reads it from the schedule |
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card, three lines high: the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows |
@@ -152,8 +153,9 @@ chasing bulbs, no pulsing (the low-health frame and low-fuel tank hold steady); 
 
 ## Tests and captures
 
-`game/tests/ui/test_hud_state.gd` (the mirror, from real rules events; topics; names), `test_hud_snapshot.gd` (a late
-joiner against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
+`game/tests/ui/test_hud_state.gd` (the mirror, from real rules events; topics; names), `test_hud_special.gd` (the
+marquee, the banner, the reward line and a late joiner into a special round), `test_hud_snapshot.gd` (a late joiner
+against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
 `test_hud_players.gd` (a container per player, one to four: colours, local first, down, the portrait),
 `test_hud_generator_panel.gd` (when the card shows and its stepped timing), `test_hud_grid.gd` (the grid, measured at
