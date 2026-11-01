@@ -50,7 +50,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` | one throat model, different pitch curves, vowels, rasp and growl |
 | Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_start` | the hum is a whole number of cycles, so it never clicks at the seam |
-| Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`) 9 dB for 2.2 s |
+| Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
 
 Not made yet (open issues): the ambient night bed (crickets, distant highway, the projector), melee swings, doors and
 boards, the shop's till, the player's hurt and downed voices, a score.

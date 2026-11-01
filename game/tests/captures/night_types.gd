@@ -18,7 +18,7 @@ extends Node
 const SPACING := 1.5
 const ROW_Z := -4.0
 const SECONDS := {
-	"types": 7.0, "boss": 9.0, "cripple": 6.0, "bossfight": 17.0, "specials": 18.0, "latejoin": 13.0
+	"types": 7.0, "boss": 9.0, "cripple": 6.0, "bossfight": 17.0, "specials": 21.0, "latejoin": 13.0
 }
 ## The bossfight's timeline, in seconds of the night.
 const FIGHT_SHOOT_FROM := 6.0
@@ -26,7 +26,7 @@ const FIGHT_SHOOT_UNTIL := 7.2
 const FIGHT_KILL_AT := 12.5
 const FIGHT_DISTANCE := 7.5
 ## When the specials capture kills what is left, so the round is cleared and pays.
-const SPECIALS_CLEAR_AT := 12.0
+const SPECIALS_CLEAR_AT := 14.0
 
 var _args := {}
 var _night: Night

@@ -42,3 +42,44 @@ func test_the_announcement_plays_it_once() -> void:
 	rules.event_emitted.emit({"type": &"special_round_announced", "round": 5})
 	assert_int(_audio.active_voices()).is_equal(1)
 	assert_int(announced.of(&"special_round_announced").size()).is_equal(1)
+
+
+func _sting_playing() -> StringName:
+	var budget := _audio.budget_2d()
+	for slot in budget.slot_count:
+		if (
+			budget.is_active(slot)
+			and budget.sound_at(slot) in [&"round_start", &"round_end", &"special_round"]
+		):
+			return budget.sound_at(slot)
+	return &""
+
+
+func test_the_announcement_takes_over_from_the_round_end_sting_that_is_still_sounding() -> void:
+	# The rules end the round and announce the next one in the same moment, so the round's own sting
+	# is playing when the announcement arrives; only one sting sounds at a time.
+	var rules := RulesFixture.make_rules(1, 3, RulesFixture.tuning())
+	_audio.connect_rules(rules)
+	rules.event_emitted.emit({"type": &"round_ended", "round": 4})
+	assert_str(String(_sting_playing())).is_equal("round_end")
+	rules.event_emitted.emit({"type": &"special_round_announced", "round": 5})
+	assert_str(String(_sting_playing())).is_equal("special_round")
+	assert_int(_audio.budget_2d().group_count(&"sting")).is_equal(1)
+
+
+func test_a_round_start_sting_does_not_cut_the_announcement_off() -> void:
+	var rules := RulesFixture.make_rules(1, 3, RulesFixture.tuning())
+	_audio.connect_rules(rules)
+	rules.event_emitted.emit({"type": &"special_round_announced", "round": 5})
+	rules.event_emitted.emit({"type": &"round_started", "round": 5})
+	assert_str(String(_sting_playing())).is_equal("special_round")
+
+
+func test_the_announcement_takes_over_even_from_a_round_start_sting_of_a_very_short_round() -> void:
+	# Same loudness as the announcement: only its priority lets it through.
+	var rules := RulesFixture.make_rules(1, 3, RulesFixture.tuning())
+	_audio.connect_rules(rules)
+	rules.event_emitted.emit({"type": &"round_started", "round": 4})
+	rules.event_emitted.emit({"type": &"round_ended", "round": 4})
+	rules.event_emitted.emit({"type": &"special_round_announced", "round": 5})
+	assert_str(String(_sting_playing())).is_equal("special_round")
