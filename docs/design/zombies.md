@@ -147,8 +147,8 @@ A crowd must never march in step. Per zombie, chosen by the seeded random of the
 | What | Range | Why |
 | --- | --- | --- |
 | Start phase | 0 to the clip length | no two zombies plant the same foot together |
-| Play speed | none yet: the clips play at their authored rate (the start phase is the only variety) | the feet slide on fast zombies (a dark runner moves at up to 6.25 m/s on a `Run` clip that covers about 4.4); the gait that follows the ground speed is open work (#280), not on `main` yet |
-| Walk to run | the move state blends `Idle` at 0 m/s, `Walk` at 1.0, `Run` at 3.0, and stops at 4.5 m/s (`ZombieRig`: `WALK_AT`, `RUN_AT`, `MAX_SPEED`) | round 1 walks at 1.2 m/s, round 10 at 2.6, round 20 at 4.2: late walkers run |
+| Play speed | ground speed / the gait's own speed (`ZombieRig.gait_rate`, 0.5 to 1.6) | feet keep up with the ground; the throttle's drift breaks sync between zombies at the same speed ([gait](../research/zombie-gait.md)) |
+| Walk to run | `Walk` below 1.4 m/s, blended into `Run` to 3.0 m/s, `Run` above (played faster past 4.4 m/s) | round 1 shambles at 1.2 m/s, round 10 jogs at 2.6, round 20 sprints at 4.2 and more in the dark |
 | Runner run | `Run` or `Run_Arms`, half each | two run silhouettes in one wave |
 | Light | a zombie off lit ground is 25 % faster; the blend follows the speed it really moves at | the dark makes the dead run: under the lights they keep their round's pace, and the player sees the dark speed them up |
 | Hit | `HitReact` added over the walk, not replacing it | the walk never stops mid-stride |

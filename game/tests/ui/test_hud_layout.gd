@@ -18,6 +18,8 @@ const UI_SCALES: Array[float] = [0.8, 1.0, 1.25]
 ## Smallest text height in screen pixels: at the default UI scale, and at the smallest setting.
 const READABLE_PX := 13.0
 const READABLE_SMALL_PX := 10.0
+## The most the prompt card grows taller than a short prompt's, canvas units: two more lines.
+const PROMPT_GROWTH := 80.0
 
 
 ## The canvas the window gives the UI: stretch "canvas_items", aspect "expand", then the UI scale.
@@ -36,12 +38,13 @@ func before_test() -> void:
 
 ## A HUD showing everything at once, as in the worst moment of a four-player night. With `worst` it
 ## also holds the longest content the game allows (see `HudFixture.fill_worst_case`).
-func _busy_hud(canvas: Vector2, worst := false) -> HudFixture:
+func _busy_hud(canvas: Vector2, worst := false, mirrored := false) -> HudFixture:
 	var host: Control = auto_free(Control.new())
 	host.size = canvas
 	add_child(host)
 	var fixture := HudFixture.make(host, 4)
 	var hud := fixture.hud
+	hud.mirrored = mirrored
 	fixture.into_round_one()
 	var state := hud.state
 	state.set_ammo(30, 150, "Shotgun")
@@ -99,13 +102,15 @@ func _canvases() -> Array[Vector2]:
 	return list
 
 
-func _fits_everywhere(face: StringName, worst: bool) -> void:
+func _fits_everywhere(face: StringName, worst: bool, mirrored := false) -> void:
 	if not HudFonts.apply(face):
 		return
 	var problems: Array[String] = []
 	for canvas in _canvases():
-		var fixture := _busy_hud(canvas, worst)
+		var fixture := _busy_hud(canvas, worst, mirrored)
 		var label := "%s, %s, canvas %s" % [face, "worst case" if worst else "busy", canvas]
+		if mirrored:
+			label += ", mirrored"
 		problems.append_array(await _problems(fixture, canvas, label))
 		fixture.hud.get_parent().queue_free()
 	HudFonts.reset()
@@ -119,6 +124,30 @@ func after_test() -> void:
 
 func test_the_busiest_hud_fits_every_canvas_without_overlap() -> void:
 	await _fits_everywhere(HudFonts.FALLBACK, false)
+
+
+func test_the_busiest_hud_fits_every_canvas_mirrored_for_a_left_hand() -> void:
+	await _fits_everywhere(HudFonts.FALLBACK, false, true)
+
+
+func test_the_longest_content_fits_every_canvas_mirrored_for_a_left_hand() -> void:
+	await _fits_everywhere(HudFonts.FALLBACK, true, true)
+
+
+func test_the_gains_list_gives_room_to_the_wider_corner_column_for_a_left_hand() -> void:
+	var canvas := Vector2(1920.0, 1080.0)
+	var right := await _busy_hud_room(canvas, false)
+	var left := await _busy_hud_room(canvas, true)
+	assert_float(right - left).is_equal_approx(HudStyle.COLUMN - HudAmmo.WIDTH, 0.01)
+
+
+func _busy_hud_room(canvas: Vector2, mirrored: bool) -> float:
+	var fixture := _busy_hud(canvas, false, mirrored)
+	await await_idle_frame()
+	await await_idle_frame()
+	var room := fixture.hud.gains.room
+	fixture.hud.get_parent().queue_free()
+	return room
 
 
 func test_the_busiest_hud_fits_in_a_wide_typeface() -> void:
@@ -151,11 +180,13 @@ func test_the_cards_keep_their_size_whatever_they_say() -> void:
 		await await_idle_frame()
 		await await_idle_frame()
 		var label := "%s" % face
-		# Width is the card's own; the prompt and the ammo card never grow with their content.
+		# Width is the card's own; the prompt and the ammo card never grow wider with their content.
+		# The prompt wraps onto more lines instead of cutting a word (#308), so it may grow taller,
+		# by a couple of lines at most.
 		assert_float(long.hud.prompt.size.x).override_failure_message(label).is_equal(HudStyle.CARD)
 		assert_float(long.hud.ammo.size.x).override_failure_message(label).is_equal(HudAmmo.WIDTH)
-		assert_float(long.hud.prompt.size.y).override_failure_message(label).is_equal_approx(
-			short.hud.prompt.size.y, 40.0
+		assert_float(long.hud.prompt.size.y).override_failure_message(label).is_between(
+			short.hud.prompt.size.y, short.hud.prompt.size.y + PROMPT_GROWTH
 		)
 		assert_float(long.hud.points.size.x).override_failure_message(label).is_less_equal(
 			HudStyle.COLUMN

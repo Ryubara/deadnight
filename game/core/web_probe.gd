@@ -30,7 +30,8 @@ func _process(delta: float) -> void:
 
 
 ## What the top screen shows: its scene name, and for a night the round, the zombies still to
-## kill and the zombies alive on the lot. Plain values only, so a page can read them.
+## kill, the zombies alive on the lot and the camera's yaw (radians). Plain values only, so a page
+## can read them.
 static func snapshot(top: Control) -> Dictionary:
 	var data := {
 		"screen": "none",
@@ -40,6 +41,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"round": 0,
 		"remaining": 0,
 		"alive": 0,
+		"yaw": 0.0,
 		"touch": false
 	}
 	if top == null:
@@ -51,6 +53,9 @@ static func snapshot(top: Control) -> Dictionary:
 	var state := night_screen.night.state
 	data["night"] = true
 	data["running"] = night_screen.night.running
+	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
+	if player != null:
+		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
 	data["over"] = state.over
 	data["touch"] = night_screen.touch_active()
 	if state.has_frame():

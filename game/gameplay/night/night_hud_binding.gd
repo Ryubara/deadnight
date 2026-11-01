@@ -104,10 +104,11 @@ func _on_frame() -> void:
 	# server holds, every tick, so rounds that came by any road show now, and a HUD that joined
 	# late (it heard no event) takes the weapon in hand.
 	HudLoadout.sync(me, state)
-	_set_prompt(me["prompt"])
+	show_prompt(me["prompt"])
 
 
-func _set_prompt(prompt: Dictionary) -> void:
+## Puts what `NightServer.use_target` found on the HUD's prompt card, or clears it.
+func show_prompt(prompt: Dictionary) -> void:
 	var state := _hud.state
 	var kind: StringName = prompt.get("kind", &"")
 	match kind:
@@ -123,7 +124,7 @@ func _set_prompt(prompt: Dictionary) -> void:
 		&"crane":
 			_offer(&"buy_crane", CRANE_NAME, prompt["price"], "")
 		&"crane_take":
-			_offer(&"crane_take", _weapon_name(prompt["weapon"]), 0, "")
+			_offer(&"crane_take", _weapon_name(WeaponCatalog.catalog_id(prompt["weapon"])), 0, "")
 		&"crane_busy":
 			var own: bool = prompt["buyer"] == _state.player_id
 			_offer(&"crane_busy", CRANE_NAME, 0, "YOUR PRIZE IS COMING" if own else "")

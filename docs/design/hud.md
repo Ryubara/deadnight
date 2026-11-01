@@ -5,6 +5,10 @@ What a player sees during a night: where each readout sits, what feeds it, and w
 (flat paper and signs, hard shadows, notched corners, amber and hot orange, two faces) and the tokens of the
 `gds_ui` addon. Round, points, fuel and shop numbers are in [Rounds, points and fuel](rounds.md).
 
+A left-handed touch layout mirrors the corner columns (`Hud.mirrored`, set by the night screen): round and objective swap
+with the fuel, event and notice lists, points and health with ammo, so the buttons that flip sides still miss every card
+([touch controls](touch-controls.md#left-handed-layout)). Parts in the middle stay.
+
 ## Network-first
 
 The HUD reads one object, `HudState` (plain numbers, strings, arrays and dictionaries; a test checks that it holds no
@@ -41,15 +45,19 @@ local player) into the direction on screen.
 | `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner). A special round starts with its name (`DOUBLE FEATURE`) over what it brings (`THE HEADLINER ARRIVES`, `2 HEADLINERS ARRIVE`, `ONLY RUNNERS`); clearing one puts `DOUBLE FEATURE CLEARED  +440` under `ROUND 5 SURVIVED`; a late joiner into one sees its banner once |
 | `HudMarquee` | top centre, under the banner | in the break before a special round, `COMING UP - ROUND 5 - IN 24` over the round's name in big letters that flicker like a failing neon sign (steady with reduced motion) over what it brings, between two rows of bulbs (the banner's); gone as the round starts. A HUD that joins in the break reads it from the schedule |
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
-| `HudPrompt` | bottom centre, between the two cards | a concession-menu card, three lines high: the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
+| `HudPrompt` | bottom centre, between the two cards | a concession-menu card as high as its words need (a long name or line wraps, never cut; it grows upward): the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows; rows slide into their slots (see Decisions) |
 | `HudCrosshair` | centre | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
 | `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
 | `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
 
 The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad Y), so a rebound key shows
-the new key, and the glyph is a square keycap or a round button by the **last device used** (`UIInputMode.gamepad`). It
-sinks while the action is held. A refused purchase shakes the card and says why in place of the price.
+the new key. The glyph follows the **last device used**: a square keycap, a round gamepad button
+(`UIInputMode.gamepad`) or, after a touch, a round tap mark with no letter (`UIInputMode.touch`,
+[touch controls](touch-controls.md#first-run-and-key-hints)). It sinks while the action is held. A refused purchase
+shakes the card and says why in place of the price. The breach's card
+says "HOLD TO NAIL BOARDS UP": holding the button keeps putting boards back
+([rules](rounds.md#the-fences-boards)).
 
 ## Players' points
 

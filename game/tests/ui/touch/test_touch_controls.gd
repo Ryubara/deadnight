@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 # The touch controls driven by real touch events: each finger has one job, and the game's own
 # input actions follow.
 extends GdUnitTestSuite
@@ -151,7 +152,7 @@ func test_interact_shows_only_next_to_something_usable_and_names_it() -> void:
 	await _fixture.lift(0)
 	state.set_prompt(&"repair", "Boarded window", 0)
 	await get_tree().process_frame
-	assert_str(_fixture.controls.interact_verb()).is_equal("REPAIR")
+	assert_str(_fixture.controls.interact_verb()).is_equal("HOLD")
 	await _fixture.touch(0, _fixture.at(TouchLayout.INTERACT))
 	assert_bool(Input.is_action_pressed(&"interact")).is_true()
 	await _fixture.lift(0)
@@ -227,6 +228,68 @@ func test_the_setting_forces_the_controls_on_or_off() -> void:
 	settings.set_value(SettingsService.TOUCH_CONTROLS, TouchMode.Choice.OFF)
 	assert_bool(TouchMode.wanted(get_tree())).is_false()
 	settings.set_value(SettingsService.TOUCH_CONTROLS, before)
+
+
+# --- The shoulder button and the left hand ---
+
+
+func test_the_shoulder_button_presses_swap_shoulder_and_a_quick_tap_still_lasts() -> void:
+	assert_str(TouchControls.LABELS[TouchLayout.SHOULDER]).is_equal("SIDE")
+	await _fixture.touch(0, _fixture.at(TouchLayout.SHOULDER))
+	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_true()
+	await _fixture.lift(0)
+	await _fixture.tap(_fixture.at(TouchLayout.SHOULDER))
+	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_true()
+	await await_millis(200)
+	assert_bool(Input.is_action_pressed(&"swap_shoulder")).is_false()
+
+
+func test_a_left_handed_layout_puts_the_stick_on_the_right_and_fire_on_the_left() -> void:
+	var mirrored: Array[bool] = []
+	_fixture.controls.mirrored_changed.connect(func(on: bool) -> void: mirrored.append(on))
+	_fixture.left_handed()
+	assert_bool(_fixture.controls.is_mirrored()).is_true()
+	assert_array(mirrored).is_equal([true])
+	var canvas := TouchFixture.PHONE
+	# Fire is on the left half now, and a finger on it presses `fire`.
+	assert_float(_fixture.at(TouchLayout.FIRE).x).is_less(canvas.x * 0.25)
+	await _fixture.touch(0, _fixture.at(TouchLayout.FIRE))
+	assert_bool(Input.is_action_pressed(&"fire")).is_true()
+	await _fixture.lift(0)
+	# The stick starts on the right and walks the player; the same spot on the left is not a stick.
+	var start := Vector2(canvas.x - 330.0, 760.0)
+	await _fixture.touch(1, start)
+	assert_bool(_fixture.controls.is_stick_down()).is_true()
+	await _fixture.drag(1, start + Vector2(90.0, 0.0), Vector2(90.0, 0.0))
+	assert_float(_move().x).is_greater(0.6)
+	await _fixture.lift(1)
+	await _fixture.touch(2, Vector2(300.0, 900.0))
+	assert_bool(_fixture.controls.is_stick_down()).is_false()
+	await _fixture.lift(2)
+	# A drag on the left of the screen's middle still looks (the look area is what no button covers).
+	var looks: Array[Vector2] = []
+	_fixture.controls.looked.connect(func(relative: Vector2) -> void: looks.append(relative))
+	var spot := Vector2(canvas.x * 0.5, 300.0)
+	await _fixture.touch(3, spot)
+	await _fixture.drag(3, spot + Vector2(50.0, 0.0), Vector2(50.0, 0.0))
+	await _fixture.lift(3)
+	assert_int(looks.size()).is_equal(1)
+	_fixture.left_handed(false)
+	assert_bool(_fixture.controls.is_mirrored()).is_false()
+	assert_array(mirrored).is_equal([true, false])
+	assert_float(_fixture.at(TouchLayout.FIRE).x).is_greater(canvas.x * 0.75)
+
+
+func test_the_hand_flips_only_where_touch_controls_are_wanted_and_stays_under_a_menu() -> void:
+	TouchMode.device_is_touch = false
+	_fixture.controls.refresh()
+	_fixture.left_handed()
+	assert_bool(_fixture.controls.is_mirrored()).is_false()
+	TouchMode.device_is_touch = true
+	_fixture.controls.refresh()
+	assert_bool(_fixture.controls.is_mirrored()).is_true()
+	_fixture.controls.live = false
+	assert_bool(_fixture.controls.is_mirrored()).is_true()
 
 
 ## Counts the pause action presses that reach the game.

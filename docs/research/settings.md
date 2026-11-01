@@ -25,6 +25,8 @@ cannot break anything. The file is `user://settings.cfg`
 | `accessibility/ui_scale` | 1.0 | root `Window.content_scale_factor` (0.8, 1.0, 1.25) |
 | `controls/mouse_sensitivity`, `invert_y` | 1.0, off | nothing: gameplay reads them and listens to `changed` |
 | `controls/touch_controls` (0 auto, 1 on, 2 off), `touch_scale`, `touch_opacity`, `haptics` | 0, 1.0, 0.7, on | nothing: `TouchControls` reads them and listens to `changed` (the Touch tab) |
+| `controls/left_handed` | off | nothing: `TouchControls` flips the layout and the night screen flips the HUD's corner columns (the Touch tab) |
+| `controls/touch_hints_seen` | 0 | nothing: a bit per first-run hint that was used (`TouchHints`); no row on the screen, the defaults button clears it |
 
 ## The screen
 

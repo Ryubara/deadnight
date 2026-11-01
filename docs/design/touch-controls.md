@@ -20,7 +20,8 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 183 degrees at sensitivity 1, a fast flick gains up to 1.6 times |
 | Fire | big, right thumb | `fire` held; a drag that starts on it also looks |
 | Aim, Jump, Reload, Swap, Grenade | an arc round Fire | `aim` (held), `jump`, `reload`, `swap_weapon`, `throw_grenade` |
-| Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, REPAIR, FUEL, SWITCH, TAKE, REVIVE) |
+| Shoulder swap ("SIDE") | small, above Swap, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
+| Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
 | Pause | top, beside the round card | `pause` |
 
 Everything presses the game's own input actions, so the player and the night read touch like a key. Look goes out as mouse
@@ -28,14 +29,43 @@ motion in mouse pixels, so the sensitivity setting, the ADS slow-down and invert
 a quick tap is still seen by the next physics tick. Sizes and places are in `TouchLayout`; a test checks every button
 against the safe area, a thumb-sized hit area, each other and the HUD cards that stay (ammo, prompt, health, points, round).
 
+## Left-handed layout
+
+The setting `controls/left_handed` (Settings, Touch tab, off by default) flips the layout left to right. It is a mirror,
+not a second layout: `TouchLayout.buttons(safe, scale, mirrored)` measures every offset from the bottom left corner
+instead of the bottom right, the stick zone is the right 45 percent and its resting ring is bottom right, and Pause moves
+to the right of the HUD's round card. The look area is still the rest of the screen. The HUD flips with it
+(`Hud.mirrored`): the corner columns swap sides (round and objective, the fuel, event and notice lists, points and health,
+ammo), so the cards that stay clear of the buttons still do; the banner, the prompt and the gains stay in the middle. The
+night screen sets it from `TouchControls.mirrored_changed`, which holds while touch controls are wanted and the setting
+is on (the HUD does not jump back under a pause menu), never on a keyboard and mouse. The first-run labels mirror too.
+Tests check every rule of the layout for both hands: safe area, thumb-sized hit areas, no two buttons touching, none over
+the kept HUD cards, the mirror equal to the flipped original, and the busiest and the longest HUD fit every canvas
+mirrored without overlap.
+
+## First run and key hints
+
+- **No keycap on a phone.** `UIInputMode.touch` is true while a finger was the last input (and when the layer comes up
+  with nothing else used yet); the prompt card's glyph then draws a round tap mark (rings round a dot) and no letter
+  ([HUD prompt](hud.md)). A key or a gamepad button brings the keycap back, and so does a real mouse click; mouse
+  *motion* does not, because the layer sends its look as motion, and the engine's touch copies are marked as emulated.
+- **Hints once per control** (`TouchHints`, a child of the layer): "DRAG TO MOVE" over the stick's resting ring, "DRAG TO
+  LOOK" in the upper right of the look area and "TAP TO USE" ("HOLD TO REPAIR" at a fence) beside the Interact button
+  while it shows. Each goes the moment its control is used: a finger on the stick, the first look drag (also one that
+  started on Fire), a press of Interact. The Interact hint waits for the first prompt, and a prompt that goes unused
+  brings it back with the next one. What was used is a bit in the setting `controls/touch_hints_seen`, so a player sees
+  each hint once ever; restoring the defaults in Settings shows them again. A test checks the labels against the safe
+  area, the buttons and the HUD cards on every phone canvas.
+
 ## Settings
 
-Touch controls (Auto, On, Off), button size (0.8 to 1.4), opacity at rest (0.3 to 1.0) and vibration on touch.
+Touch controls (Auto, On, Off), button size (0.8 to 1.4), opacity at rest (0.3 to 1.0), left-handed layout and vibration
+on touch.
 
 ## Not done yet
 
-Crouch and shoulder swap (not on the screen), a left-handed layout, aim assist, gyro, first-run hints, hiding the keyboard
-glyph in the prompt card on touch, and asking Discord for landscape. Each is an open question on the research page.
+Crouch (the simulation does not act on `crouch` yet, issue #73, so there is no button), aim assist, gyro, a layout
+editor and asking Discord for landscape. Each is an open question on the research page.
 
 ## Gotchas found while building it
 
@@ -45,6 +75,8 @@ glyph in the prompt card on touch, and asking Discord for landscape. Each is an 
   in canvas units is scaled by the window-to-canvas ratio; the layer multiplies by the final transform first. Tests state
   canvas units and convert the same way (`TouchFixture`), because the headless window is 64 x 36.
 - **A full-screen `Control` with the default mouse filter eats injected mouse motion.** The test host sets Ignore.
+- **The layer takes touches before the HUD.** It sits later in the tree, so its `_input` runs first and marks them
+  handled: the HUD's `UIInputMode.track` never sees a finger. The layer feeds each touch to `UIInputMode.track` itself.
 - **Under a `CanvasLayer` a `Control` has size zero.** `TouchControls` and the rotate prompt fall back to the viewport size.
 - **The scene runner changes how input arrives**, so the suite that uses it (`test_touch_player`) is its own file.
 - **A web `eval` may return a bool or a number**: `TouchMode.detect` asks for `1` or `0` and reads it with `int()`;
