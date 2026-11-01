@@ -15,8 +15,21 @@ const ARM_LENGTH := 2.8
 const ARM_MARGIN := 0.25
 ## Air the camera needs around it: the near plane (0.05 m) and a little more.
 const CAMERA_CLEAR := 0.1
-const BODY_RADIUS := 0.35
-const BODY_HEIGHT := 1.8
+const PLAYER_TUNING: PlayerTuning = preload("res://gameplay/player/player_tuning_default.tres")
+
+
+## The player's body, read from its tuning: `Player` builds its capsule from the same two numbers.
+static func body_radius() -> float:
+	return PLAYER_TUNING.radius
+
+
+static func body_height() -> float:
+	return PLAYER_TUNING.height
+
+
+## How high a full jump lifts the feet.
+static func jump_height() -> float:
+	return PLAYER_TUNING.jump_height
 
 
 ## The rig for a player standing at `feet` and looking along `yaw` (radians, 0 looks down -Z),
@@ -53,16 +66,16 @@ static func rig(
 
 ## True when a standing body (the player or a zombie) can stand at `feet`.
 static func body_fits(
-	space: PhysicsDirectSpaceState3D, feet: Vector3, radius: float = BODY_RADIUS
+	space: PhysicsDirectSpaceState3D, feet: Vector3, radius: float = -1.0
 ) -> bool:
 	var capsule := CapsuleShape3D.new()
-	capsule.radius = radius
-	capsule.height = BODY_HEIGHT
+	capsule.radius = body_radius() if radius < 0.0 else radius
+	capsule.height = body_height()
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = capsule
 	# Lifted a little so the capsule does not graze the ground slab.
 	query.transform = Transform3D(
-		Basis.IDENTITY, feet + Vector3(0.0, BODY_HEIGHT / 2.0 + 0.05, 0.0)
+		Basis.IDENTITY, feet + Vector3(0.0, body_height() / 2.0 + 0.05, 0.0)
 	)
 	return space.intersect_shape(query, 1).is_empty()
 
