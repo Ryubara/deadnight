@@ -1,0 +1,55 @@
+# Applies the area label an issue form chose: the task form's Area dropdown names one `A-<area>` label, and this
+# workflow gives the issue that label and removes any other `A-` label, so the label always matches the form. An issue
+# without the dropdown (filed by hand or by a tool) is left alone. The checkout is the default branch's (an `issues`
+# event never runs the issue's text as code), the token is limited to `issues: write`, the body reaches the checker
+# only through an environment variable and a file written from it, and the label it prints is matched against a strict
+# pattern before it is used.
+name: issue-area
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  area-label:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Give the issue the area label its form chose
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          set -euo pipefail
+          [[ "$NUMBER" =~ ^[0-9]+$ ]] || { echo "unexpected issue number" >&2; exit 1; }
+          printf '%s\n' "$ISSUE_BODY" > "$RUNNER_TEMP/issue-body.md"
+          area="$(uv run --with pyyaml python .github/scripts/groundwork.py issue-area --body "$RUNNER_TEMP/issue-body.md")"
+          if [ -z "$area" ]; then
+            echo "no area chosen in the form; nothing to do"
+            exit 0
+          fi
+          [[ "$area" =~ ^A-[a-z0-9-]+$ ]] || { echo "unexpected area label" >&2; exit 1; }
+          mapfile -t have < <(gh api "repos/$REPO/issues/$NUMBER/labels" --paginate --jq '.[].name | select(startswith("A-"))')
+          for label in "${have[@]}"; do
+            [[ "$label" =~ ^A-[A-Za-z0-9-]+$ ]] || { echo "skipping unexpected label name" >&2; continue; }
+            if [ "$label" != "$area" ]; then
+              gh api --method DELETE "repos/$REPO/issues/$NUMBER/labels/$label" --silent
+              echo "removed $label from #$NUMBER"
+            fi
+          done
+          gh api --method POST "repos/$REPO/issues/$NUMBER/labels" -f "labels[]=$area" --silent
+          echo "added $area to #$NUMBER"

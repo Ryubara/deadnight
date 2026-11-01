@@ -6,7 +6,7 @@ extends Node
 
 const INTERP_TICKS_DEFAULT := 3.0  # 100 ms at 30 Hz
 const SNAP_DISTANCE_TICKS := 6.0
-const PING_EVERY_TICKS := 15
+const PING_EVERY_TICKS := 6  # 5 pings a second: enough round-trip samples to see jitter
 const REPORT_EVERY_TICKS := GameSim.TICK_RATE * 2
 const SAMPLE_LIMIT := 16
 const HISTORY_LIMIT := 64
@@ -30,7 +30,7 @@ var _history: Dictionary[int, Dictionary] = {}
 var _latest_tick := 0
 var _render_tick := 0.0
 var _remotes: Dictionary[int, Array] = {}  # id -> [[tick, Vector2 metres], ...]
-var _pings: Dictionary[int, bool] = {}
+var _pings: Dictionary[int, int] = {}  # client tick -> send time, microseconds
 var _stats := ClientStats.new()
 
 
@@ -80,11 +80,13 @@ func _physics_process(delta: float) -> void:
 	if _playing:
 		_send_input()
 	if _welcomed and _tick % PING_EVERY_TICKS == 0:
-		_pings[_tick] = true
+		_pings[_tick] = Time.get_ticks_usec()
 		_send(Protocol.ping(_tick))
 	if _tick % REPORT_EVERY_TICKS == 0:
 		print(_report_line())
 		_stats.roll_window()
+		if OS.has_feature("web"):  # the console is the only output a page has: make it scrapeable
+			JavaScriptBridge.eval("window.netResult = %s" % JSON.stringify(final_report()))
 
 
 func _exit_tree() -> void:
@@ -121,8 +123,10 @@ func _on_packet(data: PackedByteArray) -> void:
 			if message["kind"] == Protocol.EventKind.LEFT:
 				_forget(message["player_id"])
 		Protocol.Type.PONG:
-			if _pings.erase(message["client_tick"]):
-				_stats.add_rtt_ticks(_tick - message["client_tick"])
+			if _pings.has(message["client_tick"]):
+				var sent_usec: int = _pings[message["client_tick"]]
+				_pings.erase(message["client_tick"])
+				_stats.add_rtt_ms((Time.get_ticks_usec() - sent_usec) / 1000.0)
 
 
 func _send_input() -> void:
@@ -144,6 +148,7 @@ func _on_snapshot(message: Dictionary) -> void:
 	if state.is_empty() and message["baseline_tick"] != 0:
 		return  # a delta against a snapshot we no longer have: wait for a full one
 	_stats.snapshots += 1
+	_stats.add_snapshot_arrival(Time.get_ticks_usec())
 	_history[tick] = state
 	for old in _history.keys():
 		if old < tick - HISTORY_LIMIT:
@@ -211,6 +216,7 @@ func _sync_render_clock(tick: int) -> void:
 func _sample_remote(samples: Array) -> Vector2:
 	if samples.is_empty():
 		return Vector2.ZERO
+	_stats.remote_draws += 1
 	for i in range(samples.size() - 1, 0, -1):
 		var a: Array = samples[i - 1]
 		var b: Array = samples[i]
@@ -218,6 +224,8 @@ func _sample_remote(samples: Array) -> Vector2:
 			return a[1].lerp(b[1], (_render_tick - a[0]) / float(b[0] - a[0]))
 	var last: Array = samples.back()
 	var first: Array = samples.front()
+	if _render_tick > last[0]:
+		_stats.remote_starved += 1  # the buffer ran dry: the remote freezes until the next snapshot
 	return last[1] if _render_tick > last[0] else first[1]
 
 
