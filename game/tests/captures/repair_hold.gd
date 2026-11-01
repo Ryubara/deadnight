@@ -5,7 +5,9 @@ extends Node
 ## comes up. Not part of the game. Run with Movie Maker:
 ## `godot --path game res://tests/captures/repair_hold.tscn --fixed-fps 10
 ## --write-movie out.png --quit-after 150`.
-## Each stage prints its name and the movie frame it began on.
+## Each stage prints its name and the movie frame it began on. `-- --side` films from beside the
+## fence instead, with the player's back half turned to the boards at the start (#245: the body
+## turns to the boards, and the fist lands as each board knocks home).
 
 const BREACH := &"nw"
 ## Physics ticks in a second of game time.
@@ -39,6 +41,8 @@ func _ready() -> void:
 	player.teleport(_night.world.repair_spot(BREACH))
 	player.camera_rig.yaw = atan2(inward.x, inward.z)
 	player.camera_rig.snap_to(player.global_position)
+	if OS.get_cmdline_user_args().has("--side"):
+		_side_view(player, barricade)
 	await _hold(SECOND * 2)
 	_stage("standing at the broken fence")
 	Input.action_press(&"interact")
@@ -50,6 +54,22 @@ func _ready() -> void:
 	await _hold(SECOND * 3)
 	_stage("end, %d boards up" % barricade.boards())
 	get_tree().quit()
+
+
+## A camera on the field side of the fence, off to one side of the player, looking at him and the
+## boards; his back half turned to them.
+func _side_view(player: Player, barricade: Barricade) -> void:
+	var inward := barricade.inward()
+	var along := Vector3.UP.cross(inward).normalized()
+	var camera := Camera3D.new()
+	camera.fov = 45.0
+	add_child(camera)
+	camera.global_position = player.global_position + inward * 3.2 + along * 3.4 + Vector3.UP * 1.9
+	camera.look_at(player.global_position.lerp(barricade.global_position, 0.4) + Vector3.UP * 1.0)
+	camera.make_current()
+	var away := player.global_position + inward + along
+	var to := away - player.global_position
+	player.state.facing = atan2(-to.x, -to.z)
 
 
 func _stage(stage: String) -> void:

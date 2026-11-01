@@ -58,6 +58,22 @@ const BOSS_ATTACK_SCALE_PARAMETER := &"parameters/attack/scale/scale"
 ## The one library every zombie shares. Built from the first model, then reused.
 static var _library: AnimationLibrary
 static var _boss_library: AnimationLibrary
+## The files the warm-up loaded, held so they stay in the resource cache until `release`.
+static var _warm: Array[Resource] = []
+
+
+## Loads the walker's model and the extra clips' file and builds the shared library now, at the
+## night's start, instead of when the first zombie appears (#245: the first spawns cost a frame of
+## 31 ms in the barricades capture). Does nothing when the library is built already.
+static func warm_up() -> void:
+	if _library != null:
+		return
+	var scene := ZombieModels.scene(ZombieModels.DEFAULT)
+	_warm.append(scene)
+	_warm.append(load(EXTRA_CLIPS_FILE))
+	var model := scene.instantiate()
+	_library = _build_library(model.find_child("AnimationPlayer", true, false) as AnimationPlayer)
+	model.free()
 
 
 ## Adds the shared library to `model`'s AnimationPlayer and builds its tree; returns the tree
@@ -96,6 +112,7 @@ static func _tree(
 static func release() -> void:
 	_library = null
 	_boss_library = null
+	_warm.clear()
 
 
 static func _build_library(
@@ -114,6 +131,7 @@ static func _build_library(
 
 ## A clip from the extra clips' file (the same rig and track paths as every zombie model).
 static func _extra_clip(clip: StringName) -> Animation:
+	# The warm-up holds the file, so this does not read it from disk again.
 	var scene := (load(EXTRA_CLIPS_FILE) as PackedScene).instantiate()
 	var player := scene.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	var animation := player.get_animation(clip).duplicate(true) as Animation

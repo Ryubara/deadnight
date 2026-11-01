@@ -53,8 +53,12 @@ const WALK_POINT := 0.45
 const REPAIR_GLB := "res://assets/characters/soldier/repair/soldier_repair.glb"
 const REPAIR_SPEC := "res://assets/characters/soldier/repair/clips.json"
 const REPAIR_CLIP := &"Repair_Board"
-## The event the board lands on: each `board_repaired` of this player seeks the clip here.
+## The event the board lands on: the blow that knocks a board home. Each `board_repaired` of this
+## player puts the clip `REPAIR_KNOCK` seconds before it, and the loop emits it once per board.
 const REPAIR_SET_EVENT := "board_set"
+## A board put back slides in and knocks home this long after its `board_repaired` (the
+## barricade's mend): the fist comes down on it then, not at the event (#245).
+const REPAIR_KNOCK := Barricade.MEND_SECONDS
 ## How many repair intervals the clip keeps going after the last board went up: a held `use`
 ## mends the next one an interval later, so it only stops once one is missed.
 const REPAIR_HOLD := 1.5
@@ -97,6 +101,8 @@ var _repair_left := 0.0
 var _repair_time := 0.0
 var _repair_scale := 1.0
 var _repair_blend := 0.0
+## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
+var _boards_due := 0
 
 
 func _ready() -> void:
@@ -193,18 +199,26 @@ func play_full_body(clip: StringName) -> void:
 
 
 ## A board this player put back has just gone up (the rules' `board_repaired`, which come one
-## `interval` apart while `use` is held): the repair loop plays, or keeps playing, from the frame
-## the board lands on, at the pace of one loop per interval. The weapon is put away meanwhile.
-## Driven by the events alone: nothing here reads the clock.
+## `interval` apart while `use` is held): the repair loop plays, or keeps playing, at the pace of
+## one loop per interval, from `REPAIR_KNOCK` seconds before the blow, so the fist comes down as
+## the board knocks home (on the first board too: it rises and lands). The weapon is put away
+## meanwhile. Driven by the events alone: nothing here reads the clock.
 func board_repaired(interval: float) -> void:
 	interval = maxf(interval, 0.05)
 	_repair_scale = _clip_seconds(REPAIR_CLIP) / interval
 	_repair_left = interval * REPAIR_HOLD
-	_repair_time = _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
+	_repair_time = repair_lead(interval)
+	_boards_due += 1
 	set(REPAIR_SCALE_PARAMETER, _repair_scale)
 	set(REPAIR_SEEK_PARAMETER, _repair_time)
 	_weapon_visible(false)
-	_emit_events(REPAIR_CLIP, _repair_time - 0.001, _repair_time)
+
+
+## Where a board's `board_repaired` puts the repair clip, in its own seconds: the blow less the
+## knock's delay at the pace of `interval` (never before the clip's start).
+func repair_lead(interval: float) -> float:
+	var scale := _clip_seconds(REPAIR_CLIP) / maxf(interval, 0.05)
+	return maxf(_event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT) - REPAIR_KNOCK * scale, 0.0)
 
 
 ## Whether the repair loop holds the arms.
@@ -216,6 +230,7 @@ func is_repairing() -> bool:
 func stop_repair() -> void:
 	if _repair_left > 0.0:
 		_repair_left = 0.0
+		_boards_due = 0
 		_weapon_visible(true)
 
 
@@ -315,18 +330,17 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
-## Moves the repair loop on by `delta` seconds: its events (but the board_set frame: that one is
-## the rules' event, sent by `board_repaired`) and the fade in or out of its layer.
+## Moves the repair loop on by `delta` seconds: its events (`board_set` only for a board that is
+## due: one per `board_repaired`, never the loop's own) and the fade in or out of its layer.
 func _advance_repair(delta: float) -> void:
 	if _repair_left > 0.0:
 		var length := _clip_seconds(REPAIR_CLIP)
 		var before := _repair_time
 		_repair_time += delta * _repair_scale
-		var set_at := _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
-		_emit_events(REPAIR_CLIP, before, minf(_repair_time, length), set_at)
+		_advance_repair_events(before, minf(_repair_time, length))
 		if _repair_time > length:
 			_repair_time -= length
-			_emit_events(REPAIR_CLIP, -1.0, _repair_time, set_at)
+			_advance_repair_events(-1.0, _repair_time)
 		if _repair_left > delta:
 			_repair_left -= delta
 		else:
@@ -336,6 +350,14 @@ func _advance_repair(delta: float) -> void:
 	if absf(_repair_blend - target) < 0.001:
 		_repair_blend = target
 	set(REPAIR_BLEND_PARAMETER, _repair_blend)
+
+
+func _advance_repair_events(from: float, to: float) -> void:
+	_emit_events(REPAIR_CLIP, from, to, REPAIR_SET_EVENT)
+	var set_at := _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
+	if _boards_due > 0 and set_at > from and set_at <= to:
+		_boards_due -= 1
+		clip_event.emit(REPAIR_CLIP, StringName(REPAIR_SET_EVENT))
 
 
 func _event_frames(clip: StringName, event: String) -> Array:
@@ -361,15 +383,17 @@ func _clip_seconds(clip: StringName) -> float:
 	return seconds
 
 
-## Emits every event of `clip` whose time lies in (from, to], except those at `skip_at` seconds.
-func _emit_events(clip: StringName, from: float, to: float, skip_at: float = -1.0) -> void:
+## Emits every event of `clip` whose time lies in (from, to], except the one named `skip`.
+func _emit_events(clip: StringName, from: float, to: float, skip: String = "") -> void:
 	var fps: float = _spec["fps"]
 	var events := clip_events(clip)
 	for event: String in events:
+		if event == skip:
+			continue
 		var frames: Array = events[event] if events[event] is Array else [events[event]]
 		for frame: float in frames:
 			var at := frame / fps
-			if at > from and at <= to and not is_equal_approx(at, skip_at):
+			if at > from and at <= to:
 				if event == "weapon_visible":
 					_weapon_visible(true)
 				elif event == "weapon_hidden":
