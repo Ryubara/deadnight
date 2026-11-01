@@ -20,6 +20,12 @@ const GROUP_LIMITS := {
 	&"generator": 2,
 	&"grenade": 8,
 	&"sting": 1,
+	&"board": 4,
+	&"door": 2,
+	&"melee": 4,
+	&"till": 2,
+	&"player_voice": 3,
+	&"bed": 4,
 }
 
 ## What `UIAudio` cues play (the gds_ui addon names the cues and ships no sounds).
@@ -48,6 +54,12 @@ static func ids() -> Array:
 	return _defs.keys()
 
 
+## `base` with `overrides` laid over it: an override wins. (`Dictionary.merged` keeps the base's
+## value unless its second argument is true, which silently dropped overrides: issue #135.)
+static func _with(base: Dictionary, overrides: Dictionary) -> Dictionary:
+	return base.merged(overrides, true)
+
+
 static func _add(id: StringName, path: String, count: int, options: Dictionary = {}) -> void:
 	_defs[id] = SoundDef.make(id, ROOT + path, count, options)
 
@@ -57,11 +69,11 @@ static func _build() -> void:
 	var hint := {"bus": BUS_UI, "group": &"ui_hint", "pitch_semitones": 0.0, "cooldown": 0.05}
 	_add(&"ui_hover", "ui/hover_%d.ogg", 1, hint)
 	_add(&"ui_focus", "ui/focus_%d.ogg", 1, hint)
-	_add(&"ui_tick", "ui/tick_%d.ogg", 1, hint.merged({"cooldown": 0.02, "pitch_semitones": 1.0}))
-	_add(&"ui_press", "ui/press_%d.ogg", 1, ui.merged({"pitch_semitones": 0.3}))
+	_add(&"ui_tick", "ui/tick_%d.ogg", 1, _with(hint, {"cooldown": 0.02, "pitch_semitones": 1.0}))
+	_add(&"ui_press", "ui/press_%d.ogg", 1, _with(ui, {"pitch_semitones": 0.3}))
 	_add(&"ui_back", "ui/back_%d.ogg", 1, ui)
-	_add(&"ui_push", "ui/push_%d.ogg", 1, ui.merged({"volume_db": -3.0}))
-	_add(&"ui_pop", "ui/pop_%d.ogg", 1, ui.merged({"volume_db": -3.0}))
+	_add(&"ui_push", "ui/push_%d.ogg", 1, _with(ui, {"volume_db": -3.0}))
+	_add(&"ui_pop", "ui/pop_%d.ogg", 1, _with(ui, {"volume_db": -3.0}))
 
 	var gun := {
 		"group": &"gun",
@@ -70,20 +82,20 @@ static func _build() -> void:
 		"max_distance": 90.0,
 		"unit_size": 14.0
 	}
-	_add(&"shot_pistol", "guns/shot_pistol_%d.ogg", 3, gun.merged({"volume_db": -2.0}))
+	_add(&"shot_pistol", "guns/shot_pistol_%d.ogg", 3, _with(gun, {"volume_db": -2.0}))
 	_add(
 		&"shot_smg",
 		"guns/shot_smg_%d.ogg",
 		3,
-		gun.merged({"volume_db": -4.0, "pitch_semitones": 0.8})
+		_with(gun, {"volume_db": -4.0, "pitch_semitones": 0.8})
 	)
 	_add(&"shot_rifle", "guns/shot_rifle_%d.ogg", 3, gun)
-	_add(&"shot_shotgun", "guns/shot_shotgun_%d.ogg", 3, gun.merged({"volume_db": 1.0}))
+	_add(&"shot_shotgun", "guns/shot_shotgun_%d.ogg", 3, _with(gun, {"volume_db": 1.0}))
 	_add(
 		&"dry_fire",
 		"guns/dry_fire_%d.ogg",
 		1,
-		gun.merged({"priority": 70, "max_distance": 20.0, "cooldown": 0.12})
+		_with(gun, {"priority": 70, "max_distance": 20.0, "cooldown": 0.12})
 	)
 	var reload := {
 		"group": &"reload",
@@ -106,10 +118,10 @@ static func _build() -> void:
 		&"step_asphalt",
 		"steps/asphalt_%d.ogg",
 		4,
-		step.merged({"volume_db": -5.0, "cooldown": 0.12})
+		_with(step, {"volume_db": -5.0, "cooldown": 0.12})
 	)
 	_add(
-		&"step_gravel", "steps/gravel_%d.ogg", 4, step.merged({"volume_db": -6.0, "cooldown": 0.12})
+		&"step_gravel", "steps/gravel_%d.ogg", 4, _with(step, {"volume_db": -6.0, "cooldown": 0.12})
 	)
 
 	var zombie := {"group": &"zombie_voice", "pitch_semitones": 1.5, "unit_size": 6.0}
@@ -117,25 +129,25 @@ static func _build() -> void:
 		&"zombie_groan",
 		"zombie/groan_%d.ogg",
 		4,
-		zombie.merged({"priority": 30, "max_distance": 40.0, "volume_db": -4.0})
+		_with(zombie, {"priority": 30, "max_distance": 40.0, "volume_db": -4.0})
 	)
 	_add(
 		&"zombie_attack",
 		"zombie/attack_%d.ogg",
 		3,
-		zombie.merged({"priority": 60, "max_distance": 30.0})
+		_with(zombie, {"priority": 60, "max_distance": 30.0})
 	)
 	_add(
 		&"zombie_hurt",
 		"zombie/hurt_%d.ogg",
 		3,
-		zombie.merged({"priority": 50, "max_distance": 35.0, "volume_db": -2.0})
+		_with(zombie, {"priority": 50, "max_distance": 35.0, "volume_db": -2.0})
 	)
 	_add(
 		&"zombie_death",
 		"zombie/death_%d.ogg",
 		2,
-		zombie.merged({"priority": 55, "max_distance": 40.0, "volume_db": -2.0})
+		_with(zombie, {"priority": 55, "max_distance": 40.0, "volume_db": -2.0})
 	)
 
 	var generator := {
@@ -149,10 +161,10 @@ static func _build() -> void:
 		&"generator_hum",
 		"world/generator_hum_%d.ogg",
 		1,
-		generator.merged({"volume_db": -8.0, "loop": true})
+		_with(generator, {"volume_db": -8.0, "loop": true})
 	)
 	_add(
-		&"generator_start", "world/generator_start_%d.ogg", 1, generator.merged({"volume_db": -3.0})
+		&"generator_start", "world/generator_start_%d.ogg", 1, _with(generator, {"volume_db": -3.0})
 	)
 
 	var grenade := {"group": &"grenade", "max_distance": 70.0, "unit_size": 10.0}
@@ -160,30 +172,32 @@ static func _build() -> void:
 		&"grenade_tick",
 		"grenade/tick_%d.ogg",
 		1,
-		grenade.merged(
-			{"priority": 75, "pitch_semitones": 0.0, "max_distance": 30.0, "volume_db": -2.0}, true
+		_with(
+			grenade,
+			{"priority": 75, "pitch_semitones": 0.0, "max_distance": 30.0, "volume_db": -2.0}
 		)
 	)
 	_add(
 		&"grenade_throw",
 		"grenade/throw_%d.ogg",
 		2,
-		grenade.merged({"priority": 70, "pitch_semitones": 0.5, "max_distance": 30.0}, true)
+		_with(grenade, {"priority": 70, "pitch_semitones": 0.5, "max_distance": 30.0})
 	)
 	_add(
 		&"grenade_bounce",
 		"grenade/bounce_%d.ogg",
 		3,
-		grenade.merged(
-			{"priority": 40, "pitch_semitones": 1.0, "cooldown": 0.05, "volume_db": -4.0}
+		_with(
+			grenade, {"priority": 40, "pitch_semitones": 1.0, "cooldown": 0.05, "volume_db": -4.0}
 		)
 	)
 	_add(
 		&"grenade_blast",
 		"grenade/blast_%d.ogg",
 		2,
-		grenade.merged(
-			{"priority": 95, "pitch_semitones": 0.8, "max_distance": 120.0, "unit_size": 20.0}, true
+		_with(
+			grenade,
+			{"priority": 95, "pitch_semitones": 0.8, "max_distance": 120.0, "unit_size": 20.0}
 		)
 	)
 
@@ -192,11 +206,95 @@ static func _build() -> void:
 		&"round_start",
 		"stings/round_start_%d.ogg",
 		1,
-		sting.merged({"volume_db": -3.0, "duck_db": -9.0, "duck_hold": 1.6})
+		_with(sting, {"volume_db": -3.0, "duck_db": -9.0, "duck_hold": 1.6})
 	)
 	_add(
 		&"round_end",
 		"stings/round_end_%d.ogg",
 		1,
-		sting.merged({"volume_db": -5.0, "duck_db": -5.0, "duck_hold": 0.8})
+		_with(sting, {"volume_db": -5.0, "duck_db": -5.0, "duck_hold": 0.8})
 	)
+
+	_build_night()
+
+
+## The night's own sounds: the boards, doors, blows, the till, the player's voice, and the beds
+## (ambience and score) that loop under it all.
+static func _build_night() -> void:
+	var board := {
+		"group": &"board",
+		"priority": 65,
+		"pitch_semitones": 0.8,
+		"max_distance": 70.0,
+		"unit_size": 9.0,
+		"volume_db": 2.0
+	}
+	_add(&"board_tear", "world/board_tear_%d.ogg", 3, board)
+	_add(
+		&"board_last",
+		"world/board_last_%d.ogg",
+		2,
+		_with(board, {"priority": 75, "max_distance": 90.0, "unit_size": 12.0, "volume_db": 4.0})
+	)
+	_add(
+		&"board_repair",
+		"world/board_repair_%d.ogg",
+		3,
+		_with(board, {"max_distance": 40.0, "unit_size": 7.0, "volume_db": 0.0})
+	)
+	_add(
+		&"door_open",
+		"world/door_open_%d.ogg",
+		2,
+		{
+			"group": &"door",
+			"priority": 70,
+			"pitch_semitones": 0.6,
+			"max_distance": 60.0,
+			"unit_size": 10.0,
+			"volume_db": -2.0
+		}
+	)
+	var melee := {
+		"group": &"melee",
+		"priority": 70,
+		"pitch_semitones": 1.0,
+		"max_distance": 30.0,
+		"unit_size": 5.0
+	}
+	_add(&"melee_swing", "melee/swing_%d.ogg", 3, _with(melee, {"volume_db": -3.0}))
+	_add(&"melee_hit", "melee/hit_%d.ogg", 2, _with(melee, {"priority": 72, "max_distance": 35.0}))
+	_add(
+		&"till_ring",
+		"shop/till_%d.ogg",
+		2,
+		{
+			"group": &"till",
+			"priority": 65,
+			"pitch_semitones": 0.4,
+			"max_distance": 30.0,
+			"unit_size": 8.0,
+			"volume_db": -4.0
+		}
+	)
+	var voice := {
+		"group": &"player_voice", "pitch_semitones": 1.0, "max_distance": 45.0, "unit_size": 7.0
+	}
+	_add(
+		&"player_hurt",
+		"player/grunt_%d.ogg",
+		3,
+		_with(voice, {"priority": 85, "volume_db": -2.0, "cooldown": 0.15})
+	)
+	_add(&"player_downed", "player/down_%d.ogg", 2, _with(voice, {"priority": 88}))
+
+	var bed := {"group": &"bed", "loop": true, "pitch_semitones": 0.0, "priority": 10}
+	_add(&"bed_crickets", "ambience/crickets_%d.ogg", 1, _with(bed, {"volume_db": -16.0}))
+	_add(&"bed_highway", "ambience/highway_%d.ogg", 1, _with(bed, {"volume_db": -18.0}))
+	_add(
+		&"bed_projector",
+		"ambience/projector_%d.ogg",
+		1,
+		_with(bed, {"volume_db": -14.0, "max_distance": 35.0, "unit_size": 4.0})
+	)
+	_add(&"bed_score", "music/score_%d.ogg", 1, _with(bed, {"bus": BUS_MUSIC, "volume_db": -22.0}))
