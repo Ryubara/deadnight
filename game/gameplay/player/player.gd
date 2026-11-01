@@ -184,6 +184,10 @@ func teleport(position: Vector3) -> void:
 	global_position = position
 
 
+func controls_enabled() -> bool:
+	return _controls_enabled
+
+
 func is_sprinting() -> bool:
 	return state.sprinting
 
