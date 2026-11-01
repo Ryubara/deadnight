@@ -37,21 +37,9 @@ markdown_extensions:
   - tables
   - toc: {permalink: true}
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed: {alternate_style: true}
-
-nav:
-  - Home: index.md
-  - Design:
-      - Overview: design/index.md
-      - Style bible: design/style.md
-      - The lot: design/map.md
-      - Rounds, points and fuel: design/rounds.md
-      - Typography: design/typography.md
-  - Research:
-      - research/index.md
-      - UI foundation: research/ui-foundation.md
-      - Greybox and captures: research/greybox-and-captures.md
-      - Settings: research/settings.md
-      - Type specimens: research/type-specimens.md
-      - Rules engine: research/rules-engine.md

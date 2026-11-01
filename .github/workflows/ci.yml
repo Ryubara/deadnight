@@ -25,6 +25,7 @@ jobs:
         with:
           path: repos/deadnight
           persist-credentials: false
+          lfs: true # models, textures and sounds are LFS objects: without them Godot imports pointer files
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Ryubara/gdstudio
