@@ -103,7 +103,9 @@ func test_ticks_must_be_finite_and_within_bounds() -> void:
 	_assert_rejected(RulesAction.tick(-INF), "out_of_range", "delta")
 	_assert_rejected(RulesAction.tick(RulesAction.MAX_TICK + 0.01), "out_of_range", "delta")
 	_assert_rejected(RulesAction.tick(1000000.0), "out_of_range", "delta")
-	assert_array(_rules.apply(RulesAction.tick(RulesAction.MAX_TICK))).is_not_empty()
+	var fuel := _rules.generator.fuel
+	_rules.apply(RulesAction.tick(RulesAction.MAX_TICK))
+	assert_float(_rules.generator.fuel).is_less(fuel)
 
 
 func test_a_negative_tick_no_longer_refunds_fuel() -> void:

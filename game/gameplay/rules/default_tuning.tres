@@ -26,6 +26,20 @@ price = 1250
 requires = &"door_booth"
 pool_weights = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_yard1"]
+script = ExtResource("1_skww1")
+id = &"door_yard"
+price = 500
+requires = &"door_concession"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_road1"]
+script = ExtResource("1_skww1")
+id = &"door_road"
+price = 2000
+requires = &"door_back_lot"
+pool_weights = PackedFloat32Array()
+
 [sub_resource type="Resource" id="Resource_fw883"]
 script = ExtResource("1_skww1")
 id = &"weapon_shotgun"
@@ -99,7 +113,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")

@@ -2,7 +2,8 @@
 
 The drive-in map: seven areas, what opens in what order for how many points, where the dead can be kited, where the
 light falls. The greybox that proves it is `game/world/drive_in_greybox.tscn`, at true scale (the player capsule is
-0.35 m by 1.8 m; see the [style bible](style.md#scale)).
+0.35 m by 1.8 m; see the [style bible](style.md#scale)). The player is third person, so widths are sized for the
+shoulder camera, not the capsule ([Widths and the camera](#widths-and-the-camera)).
 
 The layout is our own. The genre's map-flow principles were studied for understanding only: a first area that is
 safe to learn in, doors that show what they will open before they are bought, every purchased area adding a loop,
@@ -15,45 +16,80 @@ their cost.
 
 ## Areas and opening order
 
-The round economy is not written yet (`rounds.md` is another engineer's page). These costs rest on assumptions, and
-every cost is one number on its door (`metadata/cost`), so changing them is a one-line edit.
+The prices are the shop's: each door is a shop item in the rules' tuning (`default_tuning.tres`, see
+[rounds](rounds.md#the-tuning-table)), and the generator reads price and prerequisite from it, so the economy has one
+source. A test fails when the scene and the tuning disagree.
 
-**Assumed economy:** a hit pays 10, a kill 60; round N brings the team about 6 + 3N dead, so a team earns about 630
-points in round 1 and 100 more in each next round (cumulative: 1.5k by round 2, 5.3k by round 5, 15.8k by round 10).
-Doors should take about half of everything earned; the rest buys weapons, fuel and tonics.
+| Plan | Area | Shop item | Cost | Needs | Affordable (round, 1 / 2 / 4 players)* |
+| --- | --- | --- | ---: | --- | --- |
+| 1 | Screen field | start | free | - | - |
+| 2 | Concession stand, then the midway behind it | `door_concession` | 350 | field | 1 / 2 / 2 |
+| 5 | Generator yard | `door_yard` | 500 | concession | 3 / 3 / 3 |
+| 4 | Projection booth | `door_booth` | 750 | concession | 4 / 5 / 5 |
+| 6 | Back lot | `door_back_lot` | 1250 | booth | 6 / 6 / 7 |
+| 7 | The road | `door_road` | 2000 | back lot | 8 / 9 / 9 |
 
-| Plan | Area | Opens | Cost | Needs | Cumulative door spend (round it fits) |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Screen field | start | free | - | 0 |
-| 2 | Concession stand, then the midway behind it | round 2 | 750 | field | 750 (round 2) |
-| 5 | Generator yard | round 4 | 1000 | concession | 1,750 (round 4) |
-| 4 | Projection booth | round 5 | 1250 | concession | 3,000 (round 5-6) |
-| 6 | Back lot | round 7 | 1750 | concession | 4,750 (round 7-8) |
-| 7 | The road | round 10 | 2500 | concession | 7,250 (round 9-10) |
+\* The first round at whose end one player's points, half of them spent on doors (the rest buys weapons, fuel and
+tonics), cover the running total of every door so far. About 85 points a zombie, per-player share of the round's
+zombies (rounds.md has the curve). The same numbers, spending everything, are in rounds.md.
 
 Where this departs from the [overview](index.md): the generator yard opens before the booth and the back lot, not
 with them. Light is the first pillar, and the generator's starter tank has to be refuelled (fuel is bought at the
-concession) before it runs dry, which this plan puts around round 4. The overview's table should follow.
+concession) before it runs dry, which this plan puts around round 3 to 4.
 
 `Plan` is the number on the plan above; the table is in opening order.
 
 Rules the greybox is built to:
 
-- A door opens an area; areas open outward. Zombies spawn only in open areas, and always in the field.
-- A doorway between two open areas is a link and needs no purchase. The midway's links to the yard and back lot are
-  plain gaps in the greybox; they only matter once both sides are open.
+- **Every area is entered only through its door.** A door is a group of slabs (`Doors/Door_*`), one slab for each way
+  into the area, and one purchase removes them all. The yard and the back lot each have two ways in (a gate in the
+  field's south fence and a link from the midway), so each has one door with two slabs; nothing else leads in.
+- **The order is the shop's.** The greybox cannot stop someone who bought the yard from walking field, yard, link,
+  midway: both sides of the link are inside the yard's door. What stops it is that the shop will not sell a door
+  before its prerequisite (`requires`, also metadata on the door group), so the concession is always sold first. The
+  opening-order test bakes a navigation mesh for each of the nine sets of doors the shop can have sold and checks that
+  the reachable areas are exactly the field, plus the stand and midway once the concession is sold, plus each sold
+  door's area.
+- Zombies spawn only in open areas, and always in the field.
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
+
+## Widths and the camera
+
+The first draft sized passages for the 0.7 m capsule and a 1.7 m first-person eye. The player is over the shoulder
+(`PlayerTuning`: pivot 1.55 m up, spring arm 2.8 m with a 0.25 m sphere, camera 0.75 m to one side). The arm is swept
+straight back from the pivot, and the shoulder offset is applied after the sweep, so the camera is not collision
+tested sideways: in a narrow place it ends up inside the wall. A passage therefore needs the shoulder offset plus a
+little air on each side, `2 x (0.75 + 0.1) = 1.7 m`, so every passage the camera must go through is at least 1.8 m.
+
+| Passage | First draft | Now | Why |
+| --- | --- | --- | --- |
+| Gaps between cars | 1.4 m | 1.8 m | the 1.4 m gap put the camera in the car's glass at cabin height (measured: every car gap probe failed) |
+| Rear exits of the stand, the generator cage's openings | 1.8 m | 2.0 m | 1.8 m only just clears; the camera sits 0.05 m from the jamb |
+| Booth ramp | 1.6 m | 2.0 m | the camera cleared it (a wall on one side, an edge on the other); the real fault was the landing, which sat at the foot of the ramp, 3.75 m up, and cut the arm to 0.98 m. It is now at the top. Widened so the ramp is as wide as the other passages; the camera on the wall-side shoulder is still only 0.25 m off the wall, so the player swaps shoulder |
+| Doors and gates | 3 to 4 m | unchanged | pass with room to spare |
+
+A zombie is about the player's width (0.7 m), so two come through 1.4 m side by side: **nothing on the map is single
+file**. The earlier claims ("a pack does not fit a 1.4 m gap", "the ramp is one at a time") were wrong for a capsule
+too. The car rows are a funnel that spreads a pack two across, not a wall; the booth is a roost because of the climb
+and the one way up, not because of the ramp's width. The ramp's east side is open on purpose: jumping off the edge is
+a 3.6 m drop into the booth, a way down that costs health once fall damage exists (not yet). Everywhere the camera
+has to pass, the test sweeps it (`game/tests/world/test_drive_in_camera.gd`, from the `CameraProbes` markers the
+generator writes), and a navigation agent as wide as the shoulder camera must reach every area
+(`test_drive_in_opening_order.gd`).
+
+Where the arm shortens (the generator cage, which is 2.4 m deep between its opening and the generator; the ramp's
+foot, 2.3 m from the north wall) the spring arm pulls the camera in: that is the arm doing its job, not clipping.
 
 ## Choke points
 
 | Where | Width | What it does |
 | --- | --- | --- |
 | Concession front door | 3 m | the first door; the dead queue on the field side |
-| Yard gate, back lot gate, road gate | 4 m | one pack wide; a good place to hold, a bad place to stand |
-| Concession rear exits | 1.8 m | single file; the stand empties into the midway slowly |
-| Midway links to the yard and back lot | 4.5 m | the joints of the two long loops |
-| Gaps between cars | about 1.4 m | a player fits (0.7 m wide), a pack does not; the rows are a funnel, not a wall |
-| Booth ramp | 1.6 m | one at a time; a roost with no second way down |
+| Yard gate, back lot gate, road gate | 4 m | two zombies abreast with room; a good place to hold, a bad place to stand |
+| Concession rear exits | 2.0 m | two abreast; the stand empties into the midway at a trickle, not a flood |
+| Midway links to the yard and back lot | 4.5 m | the joints of the two long loops, each with its own door slab |
+| Gaps between cars | 1.8 m | the camera fits; a pair of zombies fits; the rows are a funnel, not a wall |
+| Booth ramp | 2.0 m | two abreast, a 25 degree climb; the roost's one way up |
 
 ## Loops for kiting
 
@@ -77,8 +113,11 @@ only dead ends are deliberate: the midway's two alleys (6 m by 12 m, dark, for a
   rounds are shot down it.
 - **The field's flanks**: open ground beyond the outer rows, with the playground and the picnic shelter as the only
   cover. The dead are seen coming from far off, but only the head and shoulders show over the cars.
-- **Behind the car rows**: cars are 1.65 m tall, about eye height (1.7 m): a standing player sees over them, a pack
-  hides its legs. Crouching breaks the line.
+- **Behind the car rows**: cars are 1.65 m tall. The shoulder camera at a level view sits 1.55 m up, below a roof, so
+  it looks through the gaps, not over the cars; tilted down about 8 degrees (the arm swings the camera up by
+  `2.8 x sin(pitch)`) it clears the roofs and sees the aisle behind. A standing player's head and shoulders show above
+  the cars to the dead, a pack's legs are hidden. Crouching (carried by the controller, not simulated yet) is not
+  designed against until it exists.
 - **The booth window** looks 70 m down the field at the screen and over the stand's roof. Nothing there is lit but the
   projector, so the roost sees the whole night and is seen by none of it.
 - **The stand's windows** let light out onto the field, and let the dead see in; they are 2.2 m wide with a 1 m sill.
@@ -115,21 +154,31 @@ the screen is at z = -48 and the road at z = 52 to 64.
 | --- | --- |
 | `Field`, `Concession`, `Midway`, `ProjectionBooth`, `GeneratorYard`, `BackLot`, `Road` | an area: ground, walls, props, `Lamps`, `ZombieSpawns`, a hidden `Label` |
 | `Field/PlayerSpawns` | four markers on the apron below the screen |
-| `Doors` | the five purchase slabs; `metadata/cost` is the price. Hide or delete it to walk everywhere |
+| `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. Free a group to sell that door; free `Doors` to walk everywhere |
+| `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night environment and the moon |
 
-`game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`) and the capture rig. The scene is written by
-`tools/world/build_greybox.py` (run it from the repository root and commit what it writes), so a layout change is a
-change to a coordinate there, not hand edits to a 350-node scene. `game/tests/world/` checks the areas, the door
-costs, and that a player-sized capsule passes every doorway and is stopped by every door.
+`game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`), the capture rig and `camera_probe.gd` (the
+player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
+(run it from the repository root and commit what it writes; the run must leave `git diff` empty), so a layout change is
+a change to a constant or coordinate there, not hand edits to a 380-node scene. `game/tests/world/` checks:
 
-To capture: `capture_rig.tscn` takes `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza`.
+- the areas and that the doors' prices and prerequisites equal the shop's (`test_drive_in_greybox.gd`);
+- reachability: a navigation mesh baked per set of sold doors, each area reached only through its door
+  (`test_drive_in_opening_order.gd`), and that an agent as wide as the shoulder camera still reaches every area;
+- the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
+  (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
+
+To capture: `capture_rig.tscn` takes `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza`,
+or `--view=tp:<probe>` for the shoulder camera at a probe (`--offset`, `--turn`, `--side`, `--y`, `--doors=closed`,
+`--flood`; see the script's header).
 
 ## Not yet decided
 
 - The ramps: drive-in rows sit on shallow berms so rear cars see over front ones. The greybox is flat; berms are
   dressing, and a 0.3 m step needs the player controller's step height first.
-- How zombies path: link doors and breaches need a navigation mesh, and "spawn only in open areas" needs the rules
-  code.
+- How zombies path: the tests bake a navigation mesh of the lot; a runtime mesh that opens and closes with the doors,
+  and "spawn only in open areas", need the rules code.
 - What the road is for: the end of the night, an escape, or just the last door.
-- Solo scaling of the door costs, which belongs in the round economy.
+- Solo scaling of the door costs, which belongs in the round economy (the affordability table above shows one, two
+  and four players at the same prices).
