@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/drivein/speaker_post.gltf" id="model"]
+
+[node name="SpeakerPost" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Blocker" type="CSGCylinder3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.725, 0)
+visible = false
+use_collision = true
+radius = 0.08
+height = 1.45
+sides = 8

@@ -7,6 +7,16 @@
 [ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]
 [ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]
 [ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/speaker_post.tscn" id="fx_speaker_post"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/trash_can.tscn" id="fx_trash_can"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/picnic_table.tscn" id="fx_picnic_table"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/popcorn_machine.tscn" id="fx_popcorn_machine"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/menu_board.tscn" id="fx_menu_board"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/ticket_booth.tscn" id="fx_ticket_booth"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/concession_counter.tscn" id="fx_concession_counter"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/projector.tscn" id="fx_projector"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/screen_frame.tscn" id="fx_screen_frame"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/marquee.tscn" id="fx_marquee"]
 
 [sub_resource type="StandardMaterial3D" id="outskirts"]
 albedo_color = Color(0.078, 0.086, 0.110, 1)
@@ -242,36 +252,6 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1
 use_collision = true
 size = Vector3(32, 12, 1.2)
 material = SubResource("screen_face")
-
-[node name="ScreenFrame" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 10.000, -48.700)
-use_collision = true
-size = Vector3(33.6, 13.6, 0.8)
-material = SubResource("field_struct")
-
-[node name="ScreenLegN10" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.000, 2.100, -48.000)
-use_collision = true
-size = Vector3(1.4, 4.2, 1.6)
-material = SubResource("field_struct")
-
-[node name="ScreenLeg10" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.000, 2.100, -48.000)
-use_collision = true
-size = Vector3(1.4, 4.2, 1.6)
-material = SubResource("field_struct")
-
-[node name="ScreenStayN14" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.000, 3.000, -52.800)
-use_collision = true
-size = Vector3(0.8, 0.8, 7)
-material = SubResource("field_struct")
-
-[node name="ScreenStay14" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.000, 3.000, -52.800)
-use_collision = true
-size = Vector3(0.8, 0.8, 7)
-material = SubResource("field_struct")
 
 [node name="FenceN0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.000, 1.500, -52.000)
@@ -905,12 +885,6 @@ use_collision = true
 size = Vector3(0.4, 3.2, 0.4)
 material = SubResource("field_struct")
 
-[node name="PicnicTable" type="CSGBox3D" parent="Field/Props"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 48.000, 0.450, -31.000)
-use_collision = true
-size = Vector3(4, 0.9, 2)
-material = SubResource("field_struct")
-
 [node name="Wreck1" parent="Field/Props" instance=ExtResource("car")]
 transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, -52.000, 0.000, -14.000)
 
@@ -1128,12 +1102,6 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4
 use_collision = true
 size = Vector3(20.8, 0.3, 12.8)
 material = SubResource("concession_wall")
-
-[node name="Counter" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.500, 2.000)
-use_collision = true
-size = Vector3(10, 1, 2)
-material = SubResource("concession_prop")
 
 [node name="PrizeCrane" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 1.200, 5.000)
@@ -1413,12 +1381,6 @@ material = SubResource("booth_prop")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.200, 1.100, 30.800)
 use_collision = true
 size = Vector3(2.4, 2.2, 1.6)
-material = SubResource("booth_prop")
-
-[node name="Projector" type="CSGBox3D" parent="ProjectionBooth"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.700, 25.250)
-use_collision = true
-size = Vector3(2, 1.3, 1.5)
 material = SubResource("booth_prop")
 
 [node name="Lamps" type="Node3D" parent="ProjectionBooth"]
@@ -1870,18 +1832,6 @@ use_collision = true
 size = Vector3(8, 2.6, 3)
 material = SubResource("door")
 
-[node name="KioskW" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 1.200, 45.200)
-use_collision = true
-size = Vector3(2.4, 2.4, 2.4)
-material = SubResource("road_wall")
-
-[node name="KioskE" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 1.200, 45.200)
-use_collision = true
-size = Vector3(2.4, 2.4, 2.4)
-material = SubResource("road_wall")
-
 [node name="Canopy" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 3.600, 45.200)
 use_collision = true
@@ -1975,6 +1925,190 @@ outline_modulate = Color(0, 0, 0, 1)
 outline_size = 48
 text = "TICKET PLAZA"
 font_size = 90
+
+[node name="ScreenFrame" parent="Field" instance=ExtResource("fx_screen_frame")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.000, -48.000)
+
+[node name="SpeakerPosts" type="Node3D" parent="Field"]
+
+[node name="Post01" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -11.030, 0.000, -50.055)
+
+[node name="Post02" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.7628, 0, 0.6466, 0, 1, 0, -0.6466, 0, 0.7628, -8.544, 0.000, -44.758)
+
+[node name="Post03" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.3327, 0, 0.9430, 0, 1, 0, -0.9430, 0, 0.3327, -3.726, 0.000, -41.438)
+
+[node name="Post04" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.6579, 0, 0.7531, 0, 1, 0, -0.7531, 0, -0.6579, 7.368, 0.000, -43.565)
+
+[node name="Post05" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.9479, 0, 0.3186, 0, 1, 0, -0.3186, 0, -0.9479, 10.617, 0.000, -48.432)
+
+[node name="Post06" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.9391, 0, 0.3436, 0, 1, 0, -0.3436, 0, 0.9391, -17.092, 0.000, -45.747)
+
+[node name="Post07" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.7628, 0, 0.6466, 0, 1, 0, -0.6466, 0, 0.7628, -13.884, 0.000, -40.232)
+
+[node name="Post08" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.3327, 0, 0.9430, 0, 1, 0, -0.9430, 0, 0.3327, -6.054, 0.000, -34.837)
+
+[node name="Post09" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.3575, 0, 0.9339, 0, 1, 0, -0.9339, 0, -0.3575, 6.507, 0.000, -35.003)
+
+[node name="Post10" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.6579, 0, 0.7531, 0, 1, 0, -0.7531, 0, -0.6579, 11.974, 0.000, -38.293)
+
+[node name="Post11" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.8774, 0, 0.4798, 0, 1, 0, -0.4798, 0, -0.8774, 15.969, 0.000, -43.268)
+
+[node name="Post12" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -24.817, 0.000, -47.624)
+
+[node name="Post13" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.9053, 0, 0.4249, 0, 1, 0, -0.4249, 0, 0.9053, -22.812, 0.000, -41.293)
+
+[node name="Post14" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.5675, 0, 0.8234, 0, 1, 0, -0.8234, 0, 0.5675, -14.300, 0.000, -31.250)
+
+[node name="Post15" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.3327, 0, 0.9430, 0, 1, 0, -0.9430, 0, 0.3327, -8.383, 0.000, -28.235)
+
+[node name="Post16" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.1883, 0, 0.9821, 0, 1, 0, -0.9821, 0, -0.1883, 4.746, 0.000, -27.251)
+
+[node name="Post17" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.5529, 0, 0.8332, 0, 1, 0, -0.8332, 0, -0.5529, 13.934, 0.000, -31.003)
+
+[node name="Post18" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.8977, 0, 0.4407, 0, 1, 0, -0.4407, 0, -0.8977, 22.621, 0.000, -40.895)
+
+[node name="Post19" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.9816, 0, 0.1909, 0, 1, 0, -0.1909, 0, -0.9816, 24.737, 0.000, -47.190)
+
+[node name="Post20" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -31.711, 0.000, -46.409)
+
+[node name="Post21" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.9264, 0, 0.3765, 0, 1, 0, -0.3765, 0, 0.9264, -29.831, 0.000, -39.878)
+
+[node name="Post22" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.7628, 0, 0.6466, 0, 1, 0, -0.6466, 0, 0.7628, -24.563, 0.000, -31.180)
+
+[node name="Post23" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.1273, 0, 0.9919, 0, 1, 0, -0.9919, 0, 0.1273, -4.101, 0.000, -20.062)
+
+[node name="Post24" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.3902, 0, 0.9207, 0, 1, 0, -0.9207, 0, -0.3902, 12.565, 0.000, -22.353)
+
+[node name="Post25" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.8013, 0, 0.5983, 0, 1, 0, -0.5983, 0, -0.8013, 25.802, 0.000, -32.736)
+
+[node name="Post26" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.9090, 0, 0.4168, 0, 1, 0, -0.4168, 0, -0.9090, 29.270, 0.000, -38.579)
+
+[node name="Post27" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.9762, 0, 0.2168, 0, 1, 0, -0.2168, 0, -0.9762, 31.434, 0.000, -45.021)
+
+[node name="Post28" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -38.604, 0.000, -45.193)
+
+[node name="Post29" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.9391, 0, 0.3436, 0, 1, 0, -0.3436, 0, 0.9391, -36.814, 0.000, -38.532)
+
+[node name="Post30" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.8644, 0, 0.5029, 0, 1, 0, -0.5029, 0, 0.8644, -33.883, 0.000, -32.288)
+
+[node name="Post31" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.7628, 0, 0.6466, 0, 1, 0, -0.6466, 0, 0.7628, -29.903, 0.000, -26.654)
+
+[node name="Post32" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.6377, 0, 0.7703, 0, 1, 0, -0.7703, 0, 0.6377, -24.998, 0.000, -21.805)
+
+[node name="Post33" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(0.3327, 0, 0.9430, 0, 1, 0, -0.9430, 0, 0.3327, -13.040, 0.000, -15.033)
+
+[node name="Post34" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.1012, 0, 0.9949, 0, 1, 0, -0.9949, 0, -0.1012, 3.966, 0.000, -13.001)
+
+[node name="Post35" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.2740, 0, 0.9617, 0, 1, 0, -0.9617, 0, -0.2740, 10.741, 0.000, -14.300)
+
+[node name="Post36" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.4383, 0, 0.8988, 0, 1, 0, -0.8988, 0, -0.4383, 17.182, 0.000, -16.766)
+
+[node name="Post37" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.7216, 0, 0.6923, 0, 1, 0, -0.6923, 0, -0.7216, 28.287, 0.000, -24.862)
+
+[node name="Post38" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.8318, 0, 0.5551, 0, 1, 0, -0.5551, 0, -0.8318, 32.606, 0.000, -30.240)
+
+[node name="Post39" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.9162, 0, 0.4007, 0, 1, 0, -0.4007, 0, -0.9162, 35.915, 0.000, -36.292)
+
+[node name="Post40" parent="Field/SpeakerPosts" instance=ExtResource("fx_speaker_post")]
+transform = Transform3D(-0.9723, 0, 0.2339, 0, 1, 0, -0.2339, 0, -0.9723, 38.112, 0.000, -42.830)
+
+[node name="PicnicTableA" parent="Field/Props" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 46.400, 0.000, -31.000)
+
+[node name="PicnicTableB" parent="Field/Props" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 49.400, 0.000, -31.000)
+
+[node name="TrashCans" type="Node3D" parent="Field"]
+
+[node name="Can1" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.400, 0.000, -4.800)
+
+[node name="Can2" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.400, 0.000, -4.800)
+
+[node name="Can3" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 43.200, 0.000, -29.200)
+
+[node name="Can4" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -42.400, 0.000, -29.600)
+
+[node name="Counter" parent="Concession" instance=ExtResource("fx_concession_counter")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 0.000, 2.000)
+
+[node name="PopcornMachine" parent="Concession" instance=ExtResource("fx_popcorn_machine")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -2.600, 0.960, 2.050)
+
+[node name="MenuBoard" parent="Concession" instance=ExtResource("fx_menu_board")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 2.200, 7.720)
+
+[node name="PicnicTableW" parent="Midway" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -11.000, 0.000, 11.500)
+
+[node name="PicnicTableE" parent="Midway" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, 0.000, 11.500)
+
+[node name="CanW" parent="Midway" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 0.000, 9.300)
+
+[node name="CanE" parent="Midway" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.400, 0.000, 9.300)
+
+[node name="Projector" parent="ProjectionBooth" instance=ExtResource("fx_projector")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.050, 25.250)
+
+[node name="TicketBoothW" parent="Road" instance=ExtResource("fx_ticket_booth")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 0.000, 45.200)
+
+[node name="TicketBoothE" parent="Road" instance=ExtResource("fx_ticket_booth")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 0.000, 45.200)
+
+[node name="Marquee" parent="Road" instance=ExtResource("fx_marquee")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.400, 0.000, 50.600)
+
+[node name="CanW" parent="Road" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 0.000, 43.400)
+
+[node name="CanE" parent="Road" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.400, 0.000, 43.400)
 
 [node name="Doors" type="Node3D" parent="."]
 script = ExtResource("doors")

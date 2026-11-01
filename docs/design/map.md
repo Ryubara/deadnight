@@ -250,6 +250,12 @@ x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 | `*/Lamps` | the lights of an area, `metadata/circuit` naming the circuit they hang on ([above](#which-lamps-hang-on-which-circuit)); `LotLamps` reads them |
 | `Switches` | the breaker posts (`metadata/circuit`, and `metadata/door` for the area's shop door; [above](#the-breaker-posts)); `LotSwitches` reads them |
 
+The drive-in's own props (speaker posts, the counter, popcorn machine and menu board, the projector, the ticket booths
+and the marquee, the screen's frame, picnic tables, trash cans) are placed by `tools/world/drivein_props.py`. A speaker
+post stands in front of every other parked car's nose, towards the screen, never on a gap between cars (the camera's way
+through) nor within 1.5 m of a lamp post; a prop that replaces a greybox block (the counter, projector, kiosks, screen
+frame) keeps that block's collision box exactly.
+
 `game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`, `lot_lamps.gd`), the capture rig and
 `camera_probe.gd` (the player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
 (run it from the repository root and commit what it writes; the run must leave `git diff` empty), so a layout change is

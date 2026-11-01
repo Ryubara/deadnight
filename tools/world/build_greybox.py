@@ -13,6 +13,8 @@ import random
 import re
 from pathlib import Path
 
+import drivein_props
+
 OUT = Path("game/world/drive_in_greybox.tscn")
 TUNING = Path("game/gameplay/rules/default_tuning.tres")
 
@@ -226,6 +228,8 @@ def box(
     rot_y: float = 0.0,
     collide: bool = True,
 ) -> None:
+    if name in drivein_props.REPLACED:  # a drive-in prop stands here, with this block's collision
+        return
     props = {"transform": xform(pos, rot_y)}
     if collide:
         props["use_collision"] = "true"
@@ -464,6 +468,7 @@ def build() -> None:
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
+    lines.extend(drivein_props.ext_resources())
     lines.append("")
     for mid, (albedo, emis) in MATS.items():
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
@@ -523,6 +528,7 @@ def build() -> None:
     rows = group("Rows", field)
     rng = random.Random(1958)
     n_cars = 0
+    car_slots: list[tuple[int, float, float]] = []  # (row, radius, angle) of every parked car, for the speaker posts
     gaps: dict[int, list[tuple[float, float]]] = {}  # row -> (x, z) midpoints of two neighbouring cars' gap
     for ri, radius in enumerate((14.0, 21.0, 28.0, 35.0, 42.0), start=1):
         row = group(f"Row{ri}", rows)
@@ -536,6 +542,7 @@ def build() -> None:
             if not aisle and abs(x) < 56 and z < -9 and rng.random() > 0.12:
                 n_cars += 1
                 instance(row, f"Car{n_cars:02d}", "car", (x, 0, z), a)
+                car_slots.append((ri, radius, a))
                 if last_placed is not None and abs(a - last_placed - step) < 1e-6:
                     am = math.radians(a - step / 2)
                     gaps.setdefault(ri, []).append(
@@ -555,9 +562,8 @@ def build() -> None:
     for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
         instance(props, f"Wreck{i}", "car", (px, 0, pz), ry)
     lamps_f = lamps(field, "screen_lot")
-    for i, (lx, lz) in enumerate(
-        [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)], start=1
-    ):
+    field_lamps = [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)]
+    for i, (lx, lz) in enumerate(field_lamps, start=1):
         instance(lamps_f, f"Lamp{i}", "lamp", (lx, 0, lz))
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     spawns = group("PlayerSpawns", field)
@@ -739,6 +745,10 @@ def build() -> None:
     label(road, "Label", "7  THE ROAD", (0, 0.6, 58), 150)
     label(road, "LabelPlaza", "TICKET PLAZA", (0, 0.6, 41), 90)
 
+    # --- The drive-in's own props (tools/world/drivein_props.py): speaker posts, the counter, booths, the marquee ---
+    drivein_props.write_scenes()
+    n_posts = drivein_props.place(instance, group, car_slots, screen_c, field_lamps)
+
     # --- Purchase doors: a group per door, a coloured slab per way in; the cost and the prerequisite are metadata ---
     # The lot opens outward from the stand: every other door needs the concession, so the midway is open before any
     # of them can be bought. An area with two ways in (the yard and the back lot, from the field and from the midway)
@@ -790,7 +800,7 @@ def build() -> None:
     probe("CageE", (44, 0, 18), 1, 0)
 
     OUT.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8", newline="\n")
-    print(f"wrote {OUT}: {len(node_names)} nodes, {n_cars} field cars")
+    print(f"wrote {OUT}: {len(node_names)} nodes, {n_cars} field cars, {n_posts} speaker posts")
 
 
 if __name__ == "__main__":
