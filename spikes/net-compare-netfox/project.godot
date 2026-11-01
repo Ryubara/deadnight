@@ -1,0 +1,32 @@
+; Engine configuration file.
+; A throwaway comparison project: the same scenario as ../net-compare, on netfox. The netfox addon and the
+; shared scripts are not committed: run tools/setup_netfox.sh to fetch them (see docs/research).
+
+config_version=5
+
+[application]
+
+config/name="Deadnight Net Compare (netfox)"
+run/main_scene="res://scripts/nf_main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+NetworkTime="*res://addons/netfox/network-time.gd"
+NetworkTimeSynchronizer="*res://addons/netfox/network-time-synchronizer.gd"
+NetworkRollback="*res://addons/netfox/rollback/network-rollback.gd"
+NetworkEvents="*res://addons/netfox/network-events.gd"
+NetworkPerformance="*res://addons/netfox/network-performance.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/netfox.internals/plugin.cfg", "res://addons/netfox/plugin.cfg")
+
+[physics]
+
+common/physics_ticks_per_second=30
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
