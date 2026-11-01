@@ -28,6 +28,10 @@ const REDUCED_MOTION := &"accessibility/reduced_motion"
 const UI_SCALE := &"accessibility/ui_scale"
 const MOUSE_SENSITIVITY := &"controls/mouse_sensitivity"
 const INVERT_Y := &"controls/invert_y"
+## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
+const CHARACTER_LOOK := &"character/look"
+## The longest saved text accepted, so a damaged file cannot fill memory.
+const MAX_TEXT := 4096
 
 const DEFAULTS := {
 	WINDOW_MODE: WindowMode.WINDOWED,
@@ -41,6 +45,7 @@ const DEFAULTS := {
 	UI_SCALE: 1.0,
 	MOUSE_SENSITIVITY: 1.0,
 	INVERT_Y: false,
+	CHARACTER_LOOK: "",
 }
 
 ## Allowed range of each numeric value.
@@ -189,17 +194,26 @@ func _sanitize(key: StringName, value: Variant) -> Variant:
 	match typeof(fallback):
 		TYPE_BOOL:
 			return value if typeof(value) == TYPE_BOOL else fallback
-		TYPE_INT:
-			if not _is_finite_number(value):
-				return fallback
-			var bounds: Vector2 = RANGES.get(key, Vector2(-INF, INF))
-			return clampi(roundi(float(value)), int(bounds.x), int(bounds.y))
-		TYPE_FLOAT:
-			if not _is_finite_number(value):
-				return fallback
-			var bounds: Vector2 = RANGES.get(key, Vector2(-INF, INF))
-			return clampf(float(value), bounds.x, bounds.y)
+		TYPE_INT, TYPE_FLOAT:
+			return _sanitize_number(key, value, fallback)
+		TYPE_STRING:
+			return _sanitize_text(value, fallback)
 	return fallback
+
+
+func _sanitize_number(key: StringName, value: Variant, fallback: Variant) -> Variant:
+	if not _is_finite_number(value):
+		return fallback
+	var bounds: Vector2 = RANGES.get(key, Vector2(-INF, INF))
+	if typeof(fallback) == TYPE_INT:
+		return clampi(roundi(float(value)), int(bounds.x), int(bounds.y))
+	return clampf(float(value), bounds.x, bounds.y)
+
+
+func _sanitize_text(value: Variant, fallback: String) -> String:
+	if typeof(value) != TYPE_STRING or String(value).length() > MAX_TEXT:
+		return fallback
+	return value
 
 
 ## A number a ConfigFile can hold that is neither `nan` nor infinite, which would pass a clamp

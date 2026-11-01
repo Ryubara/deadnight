@@ -53,6 +53,8 @@ func test_dpad_moves_focus_and_stops_at_the_ends() -> void:
 	await _tap(JOY_BUTTON_DPAD_UP)
 	assert_str(_focused_name()).is_equal("Play")
 	await _tap(JOY_BUTTON_DPAD_DOWN)
+	assert_str(_focused_name()).is_equal("Customize")
+	await _tap(JOY_BUTTON_DPAD_DOWN)
 	assert_str(_focused_name()).is_equal("Settings")
 	await _tap(JOY_BUTTON_DPAD_DOWN)
 	assert_str(_focused_name()).is_equal("Credits")
@@ -60,6 +62,7 @@ func test_dpad_moves_focus_and_stops_at_the_ends() -> void:
 
 func test_a_opens_credits_and_b_returns() -> void:
 	var menu := UIRouter.top()
+	await _tap(JOY_BUTTON_DPAD_DOWN)
 	await _tap(JOY_BUTTON_DPAD_DOWN)
 	await _tap(JOY_BUTTON_DPAD_DOWN)
 	await _tap(JOY_BUTTON_A)
