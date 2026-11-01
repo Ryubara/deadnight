@@ -4,7 +4,15 @@ extends RefCounted
 
 const PHONE := Vector2(2340.0, 1080.0)
 const ACTIONS: Array[StringName] = [
-	&"fire", &"jump", &"aim", &"reload", &"interact", &"swap_weapon", &"throw_grenade", &"sprint"
+	&"fire",
+	&"jump",
+	&"aim",
+	&"reload",
+	&"interact",
+	&"swap_weapon",
+	&"throw_grenade",
+	&"sprint",
+	&"swap_shoulder"
 ]
 
 var controls: TouchControls
