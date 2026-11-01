@@ -1,0 +1,91 @@
+# HUD
+
+What a player sees during a night: where each readout sits, what feeds it, and why. The code is
+`game/ui/hud/` (scene `hud.tscn`, one script per part); the look follows the [UI look](style.md#ui-look) rules
+(flat paper and signs, hard shadows, notched corners, amber and hot orange, two faces) and the tokens of the
+`gds_ui` addon. Round, points, fuel and shop numbers are in [Rounds, points and fuel](rounds.md).
+
+## Network-first
+
+The HUD reads one object, `HudState` (plain numbers, strings, arrays and dictionaries; a test checks that it holds no
+`Object`). It never sees `GameRules`, a node or a body:
+
+| Fed by | How | Carries |
+| --- | --- | --- |
+| The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, purchases, hits and kills, game over |
+| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed |
+| The local player's readings | `set_health`, `set_ammo`, `set_equipment`, `set_prompt`, `set_area`, `set_markers`, `set_player_name` | what the rules do not own: health, the weapon in hand, what is in reach, where the player stands |
+| HUD events beside the rules' own | `player_hurt` (`player_id`, `health`, `direction` in radians clockwise from straight ahead); optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a blow or a hit point into these; there is no world position in the HUD |
+
+Events for other players change their row in the party list and leave your own readings alone. Unknown events are
+ignored, so the rules can grow events without breaking the HUD. Open: the rules have no player health or blow event
+yet (issue to follow), so `player_hurt` is defined here until they do.
+
+## Parts
+
+| Part | Where | Shows |
+| --- | --- | --- |
+| `HudRound` | top left | the round on a row of **reel digits** (a projector drum counter that rolls to the next number), zombies left or the break countdown |
+| `HudObjective` | top left, under the round | the area you are in and one line of what to do next (two lines at most) |
+| `HudTeam` | top left | one ticket for the other players: name and `UP` or `DOWN` (2 to 4 players; hidden when alone) |
+| `HudFuel` | top right | the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit named as on the lot's signs |
+| `HudFeed` | top right, under the tank | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left |
+| `HudPoints`, `HudHealth` | bottom left | your name and points; a bar of ten ticks, or `DOWN` and what to hope for; the equipment slot with its count |
+| `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it, the weapon name on a coloured bar; hot orange when low |
+| `HudBanner` | top centre | a marquee board with chasing bulbs: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner) |
+| `HudPrompt` | centre, low | a concession-menu card: the object, one line on what it does, the price (amber, or hot `NEED 350 POINTS`), then the key |
+| `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows |
+| `HudCrosshair` | centre | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
+| `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
+| `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
+
+The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad X), so a rebound key shows
+the new key, and the glyph is a square keycap or a round button by the **last device used** (`UIInputMode.gamepad`). It
+sinks while the action is held. A refused purchase shakes the card and says why in place of the price.
+
+## Decisions
+
+- **Typeface through a token.** `UITokens.font_display` and `font_text` (null keeps the engine's fallback font) feed
+  `display_font()` and `text_font()`; every HUD label and drawn string asks those. The pick in [typography](typography.md)
+  (issue #31) drops in by setting two resources; nothing here names a font. Captures load Bungee Inline and Barlow
+  Condensed from a folder outside the repository (`--fonts=`). No font file is committed.
+- **No compass bar, no minimap.** The lot is one small, lit area seen from a third-person camera; the lit circuits
+  already show where to go, and a minimap would add a second picture to read at 720p. The waypoint diamonds carry
+  distance and an edge arrow for the one thing that matters (the next door), and teammates get names over their heads.
+  Revisit if the map grows past the lot.
+- **A reel counter, not tally marks.** The round is a drum counter in the style of a projector's reels (two digits,
+  three from round 100); it is the only place the hot red is a big numeral.
+- **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
+  notice at a time; the oldest goes first.
+- **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with four players, an
+  objective and a downed health stack, the left column is full on a 1536 x 864 canvas.
+- **Outlined text.** Every label has a dark outline and a hard shadow so it holds on the lit lot and on the dark.
+- **Colour means something.** Amber is points and light, hot orange or red is danger and low (round numeral, low
+  ammo, no power, a price you cannot pay), cream is plain information.
+
+## Scale
+
+The project stretches the canvas to 1920 x 1080 (and wider or taller for other window shapes); the UI scale setting
+divides it (0.8 to 1.25). The HUD lays out in canvas units with anchors, no scale of its own. A test builds the busiest
+HUD (four players, you down, a long prompt, a banner, full lists) at every window from 1024 x 768 to 4K at each UI scale
+and checks that every part is inside the screen and none overlaps another. The smallest text is 24 canvas units: 16 px
+at 720p, 12.8 px at 720p with the smallest UI scale.
+
+## Motion and reduced motion
+
+Everything time-driven advances by the frame's delta (`advance(delta)` on each part), so a capture or a test replays
+exactly. With `UIMotion.reduced`: no reel roll, no banner growth, no rising numbers or popups, no swinging arcs, no
+chasing bulbs, no pulsing (the low-health frame and low-fuel tank hold steady); fades and the information stay.
+
+## Tests and captures
+
+`game/tests/ui/test_hud_state.gd` (the mirror, from real rules events and a snapshot), `test_hud_parts.gd` (every part,
+the prompt with simulated input and device switching), `test_hud_layout.gd` (sizes, overlap, readability, reduced
+motion). The capture `game/tests/captures/hud_tour.tscn` plays a real `GameRules` night over the drive-in greybox:
+
+```text
+godot --path game res://tests/captures/hud_tour.tscn --write-movie out.png --fixed-fps 10 -- --view=concession --fonts=<fonts folder> [--reduced]
+```
+
+To record at a window size, put `window/size/window_width_override` and `window_height_override` in an uncommitted
+`game/override.cfg`; `--resolution` is ignored by Movie Maker.

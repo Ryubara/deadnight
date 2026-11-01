@@ -16,7 +16,7 @@ and rig-sharing recipe (`docs/godot/rig-sharing.md`). Code: `game/gameplay/zombi
 | --- | --- | --- |
 | `ZombieBody` | one zombie as data: position, yaw, mode, target, timers (no health) | rules, nodes |
 | `ZombieBrain` | the state machine for one tick (static functions) | paths, nodes |
-| `ZombieSim` | all zombies at a fixed 30 Hz step: targets, repaths, separation, clearing the dead | the rules, drawing |
+| `ZombieSim` | all zombies at a fixed 30 Hz step (whatever deltas `tick` is given): targets, repaths, separation, clearing the dead | the rules, drawing |
 | `ZombiePathing`, `NavmeshPathing` | a path from A to B: straight, or `NavigationServer3D.map_get_path` | zombies |
 | `ZombieDirector` | rules events in (spawn, removal), the crowd cap, the `take_hit` seam | animation |
 | `ZombieRulesPort` | the one place a hit reaches `GameRules` (the rules own `ZombieState`, the health) | everything else |
@@ -43,7 +43,21 @@ and only if the player is still within 1.8 m), `STAGGER` (0.4 s, from any hit th
 - **Clients draw from bytes.** `ZombieCodec` is 2 + 12 bytes a zombie (id, position in cm, yaw, mode, episode, speed
   in 0.05 m/s steps): 482 B for 40 zombies. The demo scene runs every tick through encode and decode, so what is
   drawn is what a remote client would draw. The message type and rate belong to the net protocol (`spikes/net`) and
-  are not chosen here.
+  are not chosen here. What the fields cannot hold is under [Snapshot limits](#snapshot-limits).
+- **The client never reads the server's objects.** `ZombieHorde.apply_snapshot(bytes, delta)` draws from bytes alone; the
+  one number the views need from the tuning (the emerge time) is passed to `setup`. `publish` is the server half
+  (encode) joined to that, for single-player.
+- **A fixed step the caller cannot change.** `ZombieSim.tick(delta)` adds `delta` to a pending time and runs whole
+  1/30 s steps; time that is not a positive number is ignored and a stall catches up by at most 8 steps. So a 60 Hz or
+  uneven caller gives the same zombies as a 30 Hz one (before this, a 1/60 step put zombies inside solid boxes: the
+  push and the path-following are tuned for 1/30). Determinism is tested on a real navigation mesh with a wall
+  (`test_zombie_determinism.gd`): the same seed gives the same state hash on every one of 600 ticks, another seed does
+  not, and slicing the time finer does not change it.
+- **Coincident zombies part along a direction taken from their two ids** (not a random draw, not the clock) and the
+  pushes on one zombie add up to at most `separation_max_speed` (4 m/s). Before, an exact overlap divided a unit
+  vector by 0.001 and threw the pair 66 m in one tick; the old test offset the zombies by 0.01 m and never reached it.
+- **A hit needs a zombie the sim holds.** `take_hit` rejects an id that is still waiting for room (the rules know it,
+  the sim does not): no damage, no kill, no points.
 - **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death) built once from the model
   and added to every model's player (the rig-sharing recipe); one `AnimationTree` per zombie with a state machine
   (move = Idle/Walk/Run blended by speed, attack, stagger, die). Every tree is advanced by hand by `AnimationThrottle`
@@ -52,6 +66,20 @@ and only if the player is still within 1.8 m), `STAGGER` (0.4 s, from any hit th
 - **Crowd budget:** no zombie shadows, one mesh per zombie (the eyelid mesh is freed: the kit zombie has no eyelids
   here until a crowd variant merges them), sim at 30 Hz independent of the physics rate.
 - **Light:** the sim asks a `lit_probe` callable at each repath and applies the rules' `speed_on_ground`.
+
+## Snapshot limits
+
+`ZombieCodec` fits 40 zombies in 482 bytes by spending few bits on each field. What a field cannot hold is pinned by
+a test (`test_zombie_director.gd`); the encoder clamps only the speed.
+
+| Field | Range | Past it |
+| --- | --- | --- |
+| id (u16) | 0 to 65535 | aliases: 65536 reads back as 0, 70000 as 4464. The rules never reuse an id, so a match would need 65 536 zombies; widen the field before a mode that gets near |
+| position per axis (s16, cm) | -327.68 to 327.67 m from the world origin | wraps: 328 m reads back as -327.36 m. The lot's areas are about 120 m across ([the map](../design/map.md)); a bigger map moves its origin or widens the field |
+| yaw (u8) | 256 steps of 1.4 degrees | rounds |
+| speed (u8) | 0 to 12.75 m/s in 0.05 steps | capped |
+| episode (u8) | 0 to 255 | wraps on purpose: only a change matters |
+| count (u16) | 65535 | a packet that says more than it holds is dropped |
 
 ## Numbers
 
@@ -78,9 +106,10 @@ until it is.
 
 - Browser and weak-machine measurement of the full scene (the spike's follow-up still stands).
 - Client interpolation between 30 Hz snapshots: views jump to each decoded position. It belongs with the net client.
-- The model: the kit zombie is third-party (CC0) and not committed here (a maintainer decides); `ZombieView` needs it
-  at `game/assets/zombie_kit/zombie.glb` (git-ignored). Variants (#40) bring bodies with the same bones, which play
-  the same library; a body with other bone names needs the rig-sharing retarget player.
+- The model: done in #90. The views wear the committed variants (`ZombieModels`, walker by default; `ZombieHorde.variant`
+  or `ZombieModels.scene(name)` picks another). Each variant has a near and a far mesh; `ZombieView` swaps them with
+  visibility ranges at 18 m, so one mesh is drawn per zombie. Choosing a variant per zombie (by round or role) is
+  the director's, still open. A body with other bone names needs the rig-sharing retarget player.
 - Hit reactions by zone, crawlers, window break-ins: the animation set is #40's.
 - The navmesh is baked at load from the greybox's CSG boxes (`NavmeshBaker`); the world owner should bake once in the
   editor. Heights are flat: a zombie keeps the height it spawned at.

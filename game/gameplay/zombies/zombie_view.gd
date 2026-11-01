@@ -72,11 +72,13 @@ func _enter(mode: int) -> void:
 	_playback.start(state, true)
 
 
-## Crowd budget (kit docs godot/crowds.md): no shadows, and one mesh per zombie (the eyelid mesh
-## is a second draw call; the kit zombie loses its eyelids until a crowd variant merges them).
+## Crowd budget (kit docs godot/crowds.md): no shadows, and one mesh drawn per zombie (the
+## variants' near and far meshes by visibility range; the kit zombie's eyelid mesh, if a model
+## still has one, is a second draw call and goes).
 func _strip_for_crowd(model: Node) -> void:
 	var eyelid := model.find_child("Eyelid", true, false)
 	if eyelid != null:
 		eyelid.free()
+	ZombieModels.set_detail_ranges(model)
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		(node as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
