@@ -202,7 +202,9 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 | The road | a fifth | the ticket kiosk, and a wreck's headlights |
 
 The dead come in at the field's breaches ([below](#the-fences-breaches)), 30 to 40 m from the nearest lamp: they
-arrive out of the dark and are slowed when they reach the light, which is the design. When the generator dies the
+arrive out of the dark 25% faster than their round's pace, and under a lit lamp they drop back to it: the light does not
+slow the dead, it only withholds the speed-up, which is why every lamp costs fuel
+([rounds](rounds.md#why-these-numbers)). When the generator dies the
 lamps go with it: the field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
 
 ## The fence's breaches
