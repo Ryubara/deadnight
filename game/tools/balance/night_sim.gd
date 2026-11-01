@@ -39,6 +39,8 @@ const RUN_BELOW := 0.75
 ## A player who reads the fight takes another loaded weapon in hand when it does at least this much
 ## more damage a second to the target in front of them than the one they hold (it costs a swap).
 const SWITCH_GAIN := 1.4
+## Magazines of reserve a player buys for each weapon before a special round, points permitting.
+const PREPARED_MAGS := 6
 ## A weapon is worth buying rounds for when its sustained damage is at least this share of the best
 ## one the player carries.
 const USEFUL_SHARE := 0.5
@@ -549,9 +551,12 @@ func _refresh(player: SimPlayer) -> void:
 func _shop(player: SimPlayer) -> void:
 	if rules.generator.fuel < FUEL_BUY_BELOW:
 		_buy(player, &"fuel_can")
+	# The marquee announces a special round: everyone fills up for it, whatever else they save for.
+	var prepared := rules.tuning.specials.special_for(rules.round_number + 1) != null
+	var floor_mags := PREPARED_MAGS if prepared else skill.ammo_floor_mags
 	for weapon_id in _useful(player):
 		var arm: SimArm = player.arms[weapon_id]
-		_restock(player, weapon_id, arm.def().magazine_size * skill.ammo_floor_mags)
+		_restock(player, weapon_id, arm.def().magazine_size * floor_mags)
 	var wanted := skill.shopping.duplicate()
 	var bought := true
 	while bought:
@@ -563,8 +568,9 @@ func _shop(player: SimPlayer) -> void:
 				_refresh(player)
 				break
 	var keep := rules.price_of(wanted[0]) if not wanted.is_empty() else 0
+	var topoff := 1.0 if prepared else skill.ammo_topoff
 	for weapon_id in _useful(player):
-		var top := int(float(player.arms[weapon_id].def().reserve_max) * skill.ammo_topoff)
+		var top := int(float(player.arms[weapon_id].def().reserve_max) * topoff)
 		_restock(player, weapon_id, top, keep)
 
 

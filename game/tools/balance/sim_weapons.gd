@@ -6,8 +6,8 @@ extends RefCounted
 ## simulator adds is only timing: a trigger pull every `fire_interval`, a reload when the magazine
 ## is empty.
 ##
-## Not modelled: ammunition left (the night resupplies every round and #152 will replace that),
-## penetration, and the flare gun's splash on a crowd beyond the zombies on the same side.
+## Not modelled: penetration, and the flare gun's splash on a crowd beyond the zombies on the same
+## side.
 
 const START := &"pistol"
 ## Carried from the first moment: the revolver in hand and the crowbar, which never runs dry.
