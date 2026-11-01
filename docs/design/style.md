@@ -173,3 +173,33 @@ a kit asset is a palette remap: each flat material becomes a swatch in the famil
 Import kit files with `bone_heuristic="TEMPERANCE"` (the scripts do, in `kitlib.gltf_import`): Blender's default
 re-orients the bones and puts every bone-parented mesh in the wrong place (the Soldier's shoulder pads float beside
 his helmet).
+
+## UI look
+
+The UI is a 1958 drive-in at night: lit signs, painted lettering, ticket and poster print. It must not read as default
+Godot or as generated UI. Type candidates and the maintainer's choice are in [typography](typography.md).
+
+| Reads as default or AI UI | Deadnight does instead |
+| --- | --- |
+| Inter, Poppins, Montserrat, Bebas Neue, Orbitron; one family at one weight | A signage display face plus a condensed text face, both with a drawn or printed character |
+| Frosted glass panels, blur, soft inner glow | Flat, opaque paper and sign surfaces with a hard offset shadow, as on a printed poster |
+| Purple-to-blue gradients, aurora blobs | A near-black night with one warm light source (the screen's glow) and the token amber and hot orange |
+| Pill buttons and rounded cards on every screen | Rectangles with square or notched corners: marquee boards, tickets with tear lines and notches |
+| Evenly spaced, centred cards in a grid | Left-aligned stacks on a strong margin, one big title, uneven scale (huge number, small caption) |
+| Wide, airy letter-spacing on bold type | Tight tracking on condensed capitals; wide tracking only on tiny overlines |
+| Even neon glow on everything | Neon only on the sign (title, focused item): a layered glow with a hot edge; the rest is unlit |
+| Emoji or stock icon sets as decoration | Drawn marks: the focus arrow, bulbs, stars, ticket numbers |
+| Sparkle or gradient on every number | Plain, large numerals in the display or text face; colour carries meaning (round in hot orange, points in amber) |
+| A glow on every hovered card | The focus mark (a lit arrow) moves to the item and the item brightens; nothing else changes |
+
+Rules:
+
+- **Two faces** (display and text); a third only as one accent (a script on the lit sign).
+- **Hierarchy by scale and case.** The title and big numbers are several times the size of menu text; captions are
+  small capitals with wide tracking.
+- **Paper and light.** Cream (`ink`) and ticket paper for print, amber and hot orange for light, the night background
+  for everything else; no new hues.
+- **Layout.** Align to a left margin; put settings and the HUD on a separate axis from the menu so the screen is not
+  one centred column; leave the lower fifth to the dark lot and its parked cars.
+- **Motion** keeps to the [UI foundation](../research/ui-foundation.md) values: no easing is linear, reduced motion
+  snaps.
