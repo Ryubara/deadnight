@@ -118,7 +118,8 @@ func test_the_headliner_hits_for_forty_after_its_telegraph() -> void:
 	assert_float(blow["event"]["knockback"]).is_equal(4.0)
 	# Not after the walker's 0.45 s: after the 1.2 s the player is shown it coming.
 	assert_float(blow["into_swing"]).is_between(1.2, 1.2 + STEP_SLACK)
-	assert_float(night.server.health_of(1)).is_equal(night.server.tuning.max_health - 40.0)
+	var full := night.server.rules.tuning.health.max_health
+	assert_float(night.server.health_of(1)).is_equal(full - 40.0)
 	night.queue_free()
 
 

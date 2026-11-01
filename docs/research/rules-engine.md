@@ -84,3 +84,17 @@ What building the round, points and fuel rules (`game/gameplay/rules/`) taught u
 - **One builder per event.** `zombie_damaged` is built by `GameRules._emit_damaged` for a shot and a
   blast alike; `test_event_shapes.gd` plays every cause and compares each zombie event with the
   documented fields, so a new emitter that forgets one fails there.
+
+## Player health (#132)
+
+- **Health is the rules'.** A zombie's swing reaches the rules as a `blow` action (`damage`, `bearing`, `source_id`) and
+  the answer is `player_hurt`, then `player_downed` at zero; mending is the rules' tick (`player_healed`, one event
+  per whole unit, as the fuel does). The numbers are `HealthTuning` in the table (a second `PlayerTuning` already
+  names the movement tuning, so a class of that name "hides a global script class" and the import fails with a
+  misleading `Invalid access to property or key` everywhere).
+- **A bearing, not a position.** The rules know no world, so the blow carries `bearing` (radians clockwise from -z)
+  and the client turns it by its own facing; the HUD arc is `bearing + facing`.
+- **The 1000-line file lint is real.** `game_rules.gd` crossed it with the health code; the health functions went to
+  `PlayerHealth` (static, return the events they caused) and the snapshot to `RulesSnapshot`, leaving the rules room
+  for the shop. The HUD state's "no Object" test forbids a helper object held in it: `HudLoadout` is static over its
+  fields.

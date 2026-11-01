@@ -49,6 +49,9 @@ var prices_of_goods: Dictionary = {}
 var ammo_prices: Dictionary = {}
 var wanted: Array[StringName] = []
 var crane_prizes := 0
+## Where to stand to put boards back across each breach, by id, and how many a whole one holds.
+var repair_goals: Dictionary = {}
+var whole_boards: int = 1
 
 var _yaw := 0.0
 var _sidestep := 0.0
@@ -201,7 +204,8 @@ func _reachable(here: Vector3, goal: Vector3) -> bool:
 	return not path.is_empty() and _flat(path[path.size() - 1], goal) < REACHABLE
 
 
-## Where to go: the standing place of the next door it can afford, else home.
+## Where to go: the standing place of the next door it can afford; in a break the nearest breach
+## with a board down; else home.
 func _goal() -> Vector3:
 	# A gun nearly out of rounds comes before a door.
 	if not _shopping.is_empty() and _low_on_rounds(_held()):
@@ -214,7 +218,27 @@ func _goal() -> Vector3:
 		break
 	if not _shopping.is_empty():
 		return _shopping["position"]
+	if state.phase() == GameRules.Phase.BREAK:
+		var spot := _nearest_broken()
+		if spot != Vector3.INF:
+			return spot
 	return HOME
+
+
+## The standing place at the nearest breach with a board down, or `Vector3.INF` when all are whole.
+func _nearest_broken() -> Vector3:
+	var here := state.position()
+	var best := Vector3.INF
+	var best_d := INF
+	var boards: Dictionary = state.frame.get("barricades", {})
+	for id: StringName in repair_goals:
+		if boards.get(id, whole_boards) >= whole_boards:
+			continue
+		var d := _flat(here, repair_goals[id])
+		if d < best_d:
+			best_d = d
+			best = repair_goals[id]
+	return best
 
 
 ## The nearest zombie that is up and about; with `shootable`, the nearest one in range and in sight.

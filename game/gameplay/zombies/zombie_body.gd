@@ -31,6 +31,11 @@ var repath_left: float = 0.0
 var retarget_left: float = 0.0
 ## Seconds until a weak-spot hit may stagger it again (a boss).
 var stagger_cooldown_left: float = 0.0
+## The breach it came in by and has not yet walked through (`ZombieGate.id`), or none: it stands
+## outside the fence tearing boards off until the way is open.
+var gate_id: StringName = &""
+## Seconds of work spent on the board it is pulling at.
+var tear_progress: float = 0.0
 
 
 func enter(new_mode: Mode) -> void:

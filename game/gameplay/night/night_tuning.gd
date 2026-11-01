@@ -1,13 +1,10 @@
 class_name NightTuning
 extends Resource
-## The numbers of the night that belong to neither the rules, the zombies nor the weapons: how
-## hard a player is to kill, how far a hand reaches, where the barrel is.
+## The numbers of the night that belong to neither the rules, the zombies nor the weapons: what a
+## player starts with, how far a hand reaches, where the barrel is. (Health and how it mends are
+## the rules': `PlayerTuning`.)
 
 @export_group("Player")
-@export var max_health: float = 100.0
-## Seconds without a blow before health comes back.
-@export var regen_delay: float = 5.0
-@export var regen_per_second: float = 25.0
 @export var start_weapon: StringName = &"pistol"
 ## Carried from the start and never out of rounds: what a player falls back on with a dry gun.
 @export var start_melee: StringName = &"crowbar"
