@@ -7,6 +7,9 @@ crowd the game reports through `window.deadnight` (game/core/web_probe.gd).
 
     uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py build/web build/smoke
 
+The first argument can also be a URL (https://...): the run then opens the deployed game instead of serving a folder,
+and `load_to_menu_s` is the time over that connection.
+
 Frame times depend on the machine: on a CI runner Chromium draws with a software renderer, so they are recorded,
 never gated. Pass --gpu to leave Chromium's own GPU choice alone (a desktop with a graphics card).
 """
@@ -138,7 +141,9 @@ def main() -> int:
         if message.type == "error" and not any(text in message.text for text in IGNORED):
             problems.append(console[-1])
 
-    server, port = serve(args.build)
+    deployed = args.build.startswith(("http://", "https://"))
+    server, port = (None, 0) if deployed else serve(Path(args.build))
+    url = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
     with sync_playwright() as p:
         if args.gpu:  # the installed Chrome, which has the machine's GPU; the headless shell is always software
             browser = p.chromium.launch(channel="chrome", headless=True)
@@ -150,7 +155,7 @@ def main() -> int:
         page.on("requestfailed", lambda r: problems.append(f"[requestfailed] {r.url} {r.failure}"))
         page.on("response", lambda r: problems.append(f"[http {r.status}] {r.url}") if r.status >= 400 else None)
         try:
-            run(page, f"http://127.0.0.1:{port}/index.html", out, result, args.night_seconds)
+            run(page, url, out, result, args.night_seconds)
         except (TimeoutError, PlaywrightError) as error:
             problems.append(f"[run] {error}")
             try:
@@ -160,7 +165,8 @@ def main() -> int:
         finally:
             result["gl"] = gl_info(page)
             browser.close()
-            server.shutdown()
+            if server:
+                server.shutdown()
 
     (out / "console.txt").write_text("\n".join(console) + "\n", encoding="utf-8")
     result["console_lines"] = len(console)
@@ -250,7 +256,7 @@ def gl_info(page: Page) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("build", type=Path, help="folder with the exported index.html")
+    parser.add_argument("build", help="folder with the exported index.html, or the URL of a deployed build")
     parser.add_argument("out", type=Path, help="folder for screenshots, console.txt and result.json")
     parser.add_argument("--night-seconds", type=float, default=NIGHT_SECONDS, help="how long to play the night")
     parser.add_argument("--gpu", action="store_true", help="use the machine's GPU instead of a software renderer")
