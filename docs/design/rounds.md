@@ -528,6 +528,15 @@ pay for. A change to a range
 is a change to this table in the same pull request. To try a number: `tools/balance/run_report.py --set
 rounds.health_growth=1.06` (see the research page).
 
+## Retune after the speed rework and the crane (#265)
+
+The speed rework (#260, faster dead in the dark) and #271 (the crane at 550 points) turned the gate red: an average
+solo median of 9 and
+the weak boss night at 94% deaths. The retune is the shop weapons of #254 (rifle 95 damage, 0.5 s; shotgun 19 a pellet,
+0.8 s) with the simulator choosing weapons by what they kill, not by damage a second ([round
+scaling](../research/round-scaling.md)).
+The ranges and the health, count and spawn curves are unchanged.
+
 ## Open questions
 
 - **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, fuel and rounds absorb
@@ -554,7 +563,9 @@ rounds.health_growth=1.06` (see the research page).
 
   The shotgun at 900 points is no step up at all (it is 14% better than the revolver at point blank, 98 a second
   against 86 before reloads, and worse beyond 5 m), the rifle at 1,200 is worth a round. The finite ammunition does
-  not change that, it only adds a price to every shot. For a proposal, not applied here: **the rifle** to 95 damage
+  not change that, it only adds a price to every shot. Applied in #265 (see
+  [round scaling](../research/round-scaling.md)), after the simulator's weapon choice learnt about overkill: **the
+  rifle** to 95 damage
   (a round-5 zombie falls to one body shot, a round-10 one to two), a shot every 0.5 s, and a reserve of 40 to 80
   (was 70, 0.55 s, 32 to 64); **the shotgun** to 19 a pellet, a shot every 0.8 s, full damage out to 8 m and sliding
   to 35% at 22 m, a reserve of 30 to 60 (was 11, 0.9 s, 5 m, 18 m and 25%, 24 to 48). With both, the average solo
