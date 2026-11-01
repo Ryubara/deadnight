@@ -50,6 +50,7 @@ nav:
       - Overview: design/index.md
       - Style bible: design/style.md
       - The lot: design/map.md
+      - Rounds, points and fuel: design/rounds.md
       - Typography: design/typography.md
   - Research:
       - research/index.md
@@ -58,3 +59,4 @@ nav:
       - Settings: research/settings.md
       - Type specimens: research/type-specimens.md
       - Platform backend: research/platform-backend.md
+      - Rules engine: research/rules-engine.md
