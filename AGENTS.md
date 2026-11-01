@@ -15,8 +15,6 @@ the repositories: `docs/` of the kit.
 
 - Godot (pinned, never a Steam copy): `$(uv run --project ../gdstudio/python gds tool path godot)`.
 - Import and smoke run: `godot --headless --path game --import`, then `godot --headless --path game --quit-after 30`.
-- Tests (GdUnit4, installed untracked by the kit's bootstrap): `godot --headless --path game -s -d
-  res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests --ignoreHeadlessMode -c`; one suite per subject in `game/tests/`.
 - Before committing: `uvx pre-commit run --all-files` (installed once with `uvx pre-commit install`).
 - Docs: `uvx --with-requirements requirements-docs.txt mkdocs build --strict`.
 
