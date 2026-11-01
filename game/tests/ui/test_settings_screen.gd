@@ -26,8 +26,8 @@ func after_test() -> void:
 
 
 func test_has_a_page_per_tab() -> void:
-	assert_int(_screen._pages.size()).is_equal(4)
-	assert_int(_screen._tab_buttons.size()).is_equal(4)
+	assert_int(_screen._pages.size()).is_equal(5)
+	assert_int(_screen._tab_buttons.size()).is_equal(5)
 
 
 func test_controls_start_at_the_saved_values() -> void:
@@ -236,3 +236,10 @@ func _toggle(tab: int, row: int) -> UIToggle:
 
 func _selector(tab: int, row: int) -> UIOptionSelector:
 	return _row(tab, row).control as UIOptionSelector
+
+
+func test_the_touch_tab_sets_the_touch_mode_and_size() -> void:
+	_selector(4, 0).select(TouchMode.Choice.OFF, true)
+	assert_int(Settings.get_value(SettingsService.TOUCH_CONTROLS)).is_equal(TouchMode.Choice.OFF)
+	_slider(4, 1).value = 1.2
+	assert_float(Settings.get_value(SettingsService.TOUCH_SCALE)).is_equal_approx(1.2, 0.001)

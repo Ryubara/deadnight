@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://gameplay/player/player.gd" id="1_player"]
-[ext_resource type="PackedScene" path="res://assets/characters/soldier/soldier.glb" id="2_soldier"]
+[ext_resource type="PackedScene" path="res://assets/characters/soldier_parts/soldier_parts.glb" id="2_soldier"]
 [ext_resource type="Script" path="res://gameplay/player/player_animation.gd" id="3_anim"]
 [ext_resource type="Script" path="res://gameplay/player/third_person_camera.gd" id="4_camera"]
 
