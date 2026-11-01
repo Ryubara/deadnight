@@ -44,6 +44,8 @@ static func text_for(state: ClientState) -> String:
 static func _headline(state: ClientState) -> String:
 	match state.phase():
 		GameRules.Phase.BREAK:
+			if state.round_number() == 0:
+				return "The first round is coming"
 			return "Round %d done. Next one soon." % state.round_number()
 		GameRules.Phase.OVER:
 			return "NIGHT OVER at round %d" % state.round_reached
