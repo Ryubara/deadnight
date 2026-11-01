@@ -6,6 +6,11 @@ const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 
 
+func after_test() -> void:
+	# The way out leads back to the menu, which would stay on the shared router for the next suite.
+	await RouterFixture.clear(get_tree())
+
+
 func _enter_night() -> NightScreen:
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle

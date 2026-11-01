@@ -8,6 +8,9 @@ var _fixture: TouchFixture
 
 
 func before_test() -> void:
+	# A screen an earlier suite left on the router (a main menu, say) takes the mouse motion the
+	# touch look sends before the player's `_unhandled_input` sees it, and the drag turns nothing.
+	await RouterFixture.clear(get_tree())
 	_fixture = TouchFixture.make(self)
 
 

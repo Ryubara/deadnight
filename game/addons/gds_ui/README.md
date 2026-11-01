@@ -25,3 +25,10 @@ attach the captures to the pull request.
    copy); the colour behind the fade is the token `bg`, set as the default clear colour by the router.
 8. **A paused screen still animates.** The router restores a screen's `process_mode` before the transition; do not
    create tweens on a node whose mode is disabled.
+
+## Animating the children of a container
+
+`UIMotion.stagger_in` tweens `position`, which a container owns. It waits until the container has sorted (two
+`process_frame`s: the sort is a deferred call that runs after the signal, and an input event is handled before it in
+the same frame), stops an earlier rise of the same control, and asks the container to sort again when the rise ends.
+Do the same for any tween of a container child's position: never read `position` in the frame the child was shown.

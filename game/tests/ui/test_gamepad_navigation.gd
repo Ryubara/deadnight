@@ -20,8 +20,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	UIMotion.reduced = _was_reduced
-	UIRouter.reset(MENU, UITransition.Kind.CUT)
-	await UIRouter.idle
+	await RouterFixture.clear(get_tree())
 
 
 ## Presses and releases a joypad button the way a device would: through the input system.
