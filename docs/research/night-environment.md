@@ -107,12 +107,39 @@ for the dead's slowdown (`LotLamps.lit_at`).
   exempt: every lamp reaches it and it is near-black.
 - **Room for a fight**: a muzzle flash (`ShotEffects`, 5 m), a blast (`BlastEffect`, 1.6 x the blast radius) and a
   grenade's lamp (`GrenadeView`, 3 m) are `OmniLight3D` nodes made at run time. A mesh near a fight gains one flash and
-  one blast or lamp, so the lot's own lights may reach a mesh with `limit - 2` (`DYNAMIC_HEADROOM`). Meshes over that
-  today are listed in `KNOWN_OVER` (the field's four middle ground tiles and the stand's floor and roof, issue #318;
-  the test fails on one that grows or no longer needs its entry) and a skipped twin without the list takes over once
-  they are fixed. Another test reads every script and scene of the project for a light and fails on one that is not
+  one blast or lamp, so the lot's own lights may reach a mesh with `limit - 2` (`DYNAMIC_HEADROOM`), and no mesh is
+  excused from it. Another test reads every script and scene of the project for a light and fails on one that is not
   in its table, and checks that each weapon's shot, a blast and a grenade add exactly one light.
   The first run of the stronger test found 8 on two ground tiles, 7 on four more; no prop or car is above 6.
+- **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 5 m) is counted at each crane spot by
+  `test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget`: a crane is built at every spot, its lamp joins
+  the lot's and its own meshes join the lit ones, and no mesh is over the fight budget. Beside the stand the lamp is one
+  more light on the stand's floor and roof, which is why they are cut in four (below): each piece stays at 6 or fewer.
+- **Tiles are sized to the lights** (issue #318). Compatibility counts lights per mesh, so a big ground box is reached
+  by every lamp near any part of it, and the field's middle (eight lamps, the screen's 34 m glow, the stand's three
+  inside lamps and its sign all overlap there) had tiles reached by 7 and 8. A search over cuts of the middle
+  (`tools/world/build_greybox.py`, `FIELD_CORE_X` and `FIELD_CORE_Z`) found the fewest tiles that keep each at 6 or
+  fewer: 12 tiles between x -16 and 16 in rows at z -38, -22 and -10 (the lamp rows), where 16 m tiles had been, and
+  the dark flanks stay wide. 5 was not reachable by any cut searched: ScreenGlow and the sign reach every tile of the
+  middle. The stand's floor and roof are each cut in four at x -4 and z 1 (`STAND_CUT_X`, `STAND_CUT`): the field's
+  posts, the sign and the stand's own lamps reach the front, the midway's court lamp the back, the prize crane's lamp
+  (beside the west wall) the west back, and no piece gets all of them. Cut in two it was 6 until the crane arrived
+  (#274) and 7 with it; on a 0.5 m grid x -4, z 1 is the one cut that leaves floor and roof both at 6. Lamps, ranges
+  and energies are untouched, so the picture and the rules' lit ground (`LotLamps.lit_at`, which counts lamp
+  positions) did not change.
+  Rejected: moving the midway's court lamp 4 m south (it drops out of the stand's floor and roof but takes 4 m2 of the
+  midway's lit ground), shorter interior and sign ranges (the light would still reach through the wall: there are no
+  shadows), and pool quads in place of lamp posts (a post is a lamp for the rules).
+  Cost: 12 more CSG boxes (the field 24 to 30 tiles, the stand's floor and roof three more each) is 12 more draw calls
+  of about 1,100 lit meshes. Chrome on an RTX 5080, `smoke.py --gpu --unpaced`, 1280 x 720, a 45 s night, the web
+  export of `main` against this branch, three runs each, alternating, on a shared machine:
+
+  | Build | Night frame mean | p50 | p95 (median second) | Worst second p95 |
+  | --- | --- | --- | --- | --- |
+  | `main`, 3 runs | 2.8 / 2.9 / 2.5 ms | 2.5 / 2.6 / 2.2 ms | 3.9 / 4.0 / 3.5 ms | 6.5 / 9.1 / 5.9 ms |
+  | this branch, 3 runs | 2.7 / 2.9 / 2.7 ms | 2.5 / 2.7 / 2.3 ms | 3.7 / 4.1 / 3.7 ms | 5.3 / 6.4 / 5.6 ms |
+
+  No difference beyond the run-to-run spread (the spread of one build is larger than the gap between the two).
 - **Pools are quads, not light range.** Raising the lamp range to 14 m to get a bigger pool put 12 lights on one tile.
   The pool is now the quad, the light stays at 11 m.
 - **The screen shows the circuit.** With `screen_lot` off the face keeps the 0.3 afterglow of its lamp and the posts,

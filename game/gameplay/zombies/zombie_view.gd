@@ -32,6 +32,7 @@ var _episode: int = -1
 var _speed_step: int = -1
 var _emerge_left: float = 0.0
 var _emerge_seconds: float = 0.7
+var _placed := false
 
 
 ## `phase` (0 to 1) starts the walk part-way through its cycle so a crowd does not march in step.
@@ -80,6 +81,10 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 func apply(entry: Dictionary, delta: float) -> void:
 	position = entry["position"]
 	rotation.y = entry["yaw"]
+	if not _placed:
+		# The first entry is where it appears: drawn there, not slid in from the origin.
+		_placed = true
+		reset_physics_interpolation()
 	var mode: int = entry["mode"]
 	var tearing: bool = entry.get("tearing", false)
 	if tearing:
@@ -95,10 +100,22 @@ func apply(entry: Dictionary, delta: float) -> void:
 	var step := roundi(entry["speed"] * 10.0)
 	if step != _speed_step:
 		_speed_step = step
-		tree.set(ZombieRig.BLEND_PARAMETER, entry["speed"])
+		_set_gait(entry["speed"])
 	_emerge_left = maxf(_emerge_left - delta, 0.0) if mode == ZombieBody.Mode.EMERGING else 0.0
 	if not _boss:
 		_model.position.y = -EMERGE_DEPTH * _emerge_left / _emerge_seconds
+
+
+## The gait for the speed it moves at: which clips are blended and how fast they are played, so
+## the feet keep up with the ground (`ZombieRig.gait_rate`).
+func _set_gait(speed: float) -> void:
+	tree.set(ZombieRig.BLEND_PARAMETER, ZombieRig.blend_position(look, speed))
+	var rate_parameter := (
+		ZombieRig.CRAWL_RATE_PARAMETER
+		if ZombieModels.crawls(look)
+		else ZombieRig.MOVE_RATE_PARAMETER
+	)
+	tree.set(rate_parameter, ZombieRig.gait_rate(look, speed))
 
 
 ## A board this zombie was pulling at came off (the rules' `board_torn`): the clip jumps to its

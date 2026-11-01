@@ -104,6 +104,7 @@ the rig-sharing recipe as they are, "new" ones have to be made.
 | Walk variant: limp | `Walk_Limp` | | **new** | for the farmhand and anyone hit in the leg |
 | Walk variant: upright | Enemy's `Walk` | | kit character | shared through the recipe with rebased position keys; a fresher dead |
 | Run | `Run`, `Run_Arms` | 0.67 s | kit | runners; `Run_Arms` (arms reaching) for half of them |
+| Sprint | `Sprint` | 0.67 s | **made** (#278) | the fastest dead (6.5 m/s): the Run's cycle with a shorter ground contact, a deeper lean, lower hips and pumping arms; in step with `Run` ([gait](../research/zombie-gait.md#the-sprint)) |
 | Crawl | `Crawl` | 1.67 s | kit | crawlers; legless bodies play it as is. The rules emit `zombie_crippled` (`speed_scale` 0.35) when a [grenade blast](weapons.md#grenades) takes the legs: the zombie drops to the ground, plays `Crawl` at the scaled speed, and swaps to the Crawler variant's legless mesh |
 | Attack | `Punch`, `Idle_Attack`, `Run_Attack` | 0.75, 1.67, 0.67 s | kit | swipe in reach; a grab-and-bite at a downed player; a lunge at run speed |
 | Crawler attack | `Crawl_Attack` | | **new** | a grab at the ankles |
@@ -147,8 +148,8 @@ A crowd must never march in step. Per zombie, chosen by the seeded random of the
 | What | Range | Why |
 | --- | --- | --- |
 | Start phase | 0 to the clip length | no two zombies plant the same foot together |
-| Play speed | none yet: the clips play at their authored rate (the start phase is the only variety) | the feet slide on fast zombies (a dark runner moves at up to 6.25 m/s on a `Run` clip that covers about 4.4); the gait that follows the ground speed is open work (#280), not on `main` yet |
-| Walk to run | the move state blends `Idle` at 0 m/s, `Walk` at 1.0, `Run` at 3.0, and stops at 4.5 m/s (`ZombieRig`: `WALK_AT`, `RUN_AT`, `MAX_SPEED`) | round 1 walks at 1.2 m/s, round 10 at 2.6, round 20 at 4.2: late walkers run |
+| Play speed | ground speed / the gait's own speed (`ZombieRig.gait_rate`, 0.5 to 1.6) | feet keep up with the ground; the throttle's drift breaks sync between zombies at the same speed ([gait](../research/zombie-gait.md)) |
+| Walk to run to sprint | `Walk` below 1.4 m/s, blended into `Run` to 3.0 m/s, `Run` to 4.4, blended into `Sprint` to 6.5 at its own rate, played faster past it (speeds of a walker's size) | round 1 shambles at 1.2 m/s, round 10 jogs at 2.6, round 20 runs at 4.2 and a runner sprints in the dark at 6.25 |
 | Runner run | `Run` or `Run_Arms`, half each | two run silhouettes in one wave |
 | Light | a zombie off lit ground is 25 % faster; the blend follows the speed it really moves at | the dark makes the dead run: under the lights they keep their round's pace, and the player sees the dark speed them up |
 | Hit | `HitReact` added over the walk, not replacing it | the walk never stops mid-stride |

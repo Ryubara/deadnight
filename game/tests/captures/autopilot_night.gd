@@ -6,8 +6,6 @@ extends Node
 ## `--shoulder` (film through the bot's own shoulder camera), `--cheap` (a cheap door and shotgun
 ## and no rounds in the pistol's reserve, so a short run shows the bot shopping).
 
-## Real seconds the audio mixer gets to drop stopped voices before the program quits.
-const QUIT_SETTLE_SECONDS := 0.3
 ## Frames the program waits for the navigation bake a door started before it quits.
 const BAKE_WAIT_FRAMES := 600
 
@@ -123,10 +121,15 @@ func _report() -> void:
 		if not _night.world.navigation.is_busy():
 			break
 		await get_tree().process_frame
+	# The night's sound players keep scheduled sounds (a shot's tail, a reload's steps) that start
+	# a moment later: free the night first, so nothing starts a voice after the audio is stopped.
+	_night.queue_free()
+	await _night.tree_exited
 	# A voice stopped in the same moment the engine quits is still queued in the audio server, and
-	# its stream is reported as a leak at exit; let the mixer take the stopped voices off first.
+	# its stream is reported as a leak at exit; wait for the mixer to take the stopped voices off,
+	# counting its steps (a loaded machine delays them by any amount of real time).
 	Audio.stop_all()
-	await get_tree().create_timer(QUIT_SETTLE_SECONDS).timeout
+	await Audio.wait_for_mixer()
 	get_tree().quit()
 
 

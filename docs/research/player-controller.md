@@ -46,9 +46,9 @@ All in `player_tuning_default.tres` (a `PlayerTuning` resource); metres, seconds
 
 | Group | Value | Why |
 | --- | --- | --- |
-| Speed | run 4.8, sprint 7.0, aim 2.6 m/s | The default pace is a run; Walk plays only on the way up to it (and when aiming slows the player); aiming is a deliberate shuffle. |
-| Acceleration | 38 m/s2 on the ground (full run speed in 0.13 s), 44 friction, 6 in the air | Snappy but not instant; a reversal takes about a quarter second. |
-| Facing | 14 rad/s toward the run direction, 24 rad/s toward the aim direction | The body visibly turns instead of snapping; aiming catches up fast so shots go where the camera points. |
+| Speed | run 4.8, sprint 7.0 (every direction), aim 2.6 m/s (0.75 of that backing away) | The default pace is a run; Walk plays only on the way up to it (and when aiming slows the player); aiming is a deliberate shuffle. |
+| Acceleration | 38 m/s2 up to the run (0.13 s), 18 above it to the sprint (0.25 s in all), friction 44 from a run and 30 above it, 30 easing down to a lower pace, 6 in the air | Snappy but not instant; a sprint builds and carries on a little. [Character controller](character-controller.md) has the curves. |
+| Facing | 14 rad/s toward the run direction, 9 while sprinting, 22 in a pivot (a turn wider than 100 degrees), 24 toward the aim direction | The body visibly turns instead of snapping, and the velocity turns with it; aiming catches up fast so shots go where the camera points. |
 | Jump | 1.1 m height, gravity x1.7, coyote 0.1 s, buffer 0.1 s | Short, snappy arc; a late or early press still counts. |
 | Body | capsule 1.8 m by 0.35 m radius, model scaled x0.8 | `docs/design/style.md`: the kit's characters are 2.31 m, x0.8 gives 1.85 m. |
 | Look | 0.0022 rad per mouse pixel (about 0.126 degrees), stick 170 degrees per second with a squared response, pitch -60 to +50 degrees, x0.7 while aiming | Settings multiply sensitivity; the squared stick curve gives fine control near the centre. |
@@ -71,7 +71,9 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
   paths take the skeleton path from the clips' own tracks, so a rebuild that moves the skeleton does not break them.
 - `full`: a OneShot over both for HitReact and Death (`play_full_body`).
 - **No foot sliding:** the Run end of the blend plays at ground speed / 5.5 (the Run clip's planted-foot speed at scale
-  1, estimated from the foot bone's travel); Idle and Walk play at their own pace. Sprint plays Run 1.27x.
+  1, estimated from the foot bone's travel); Idle and Walk play at their own pace. Sprint plays Run 1.27x, in every
+  direction: the body faces where it goes, so one clip serves them all
+  ([character controller](character-controller.md)).
 - Loops and event frames come from `clips.json` (glTF has no loop flag and no events); only Jump_Idle, a kit clip the
   spec does not list, is looped by name. Events are a frame check on the playing upper clip: `clip_event(clip,
   event)` fires for muzzle, can_fire_again, round_in, weapon_visible and the rest, and the weapon shows and hides on
@@ -79,7 +81,7 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
 - **Weapons:** `equip(class)` attaches the class's weapon scene (lever rifle, double shotgun, bat; Pistol has none yet)
   to a `BoneAttachment3D` on `Index1.R` with `HOLD_GUN` or `HOLD_MELEE`. The default is Rifle.
 - `clips.json` is read with `FileAccess`: the web preset includes `*.json` in its filter ([web export](web-export.md)).
-- No strafe or Walk_Shoot clips yet: moving sideways plays Walk or Run forward under the aim (#74).
+- No strafe or Walk_Shoot clips yet (they wait in PR #330): moving sideways plays Walk or Run forward under the aim (#74).
 
 ## Things found the hard way
 

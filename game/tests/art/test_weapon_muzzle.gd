@@ -7,7 +7,7 @@ extends GdUnitTestSuite
 const DIR := "res://assets/weapons/"
 ## Every weapon folder is listed in one of the two, so a new model has to say whether it shoots.
 const FIREARMS: Array[String] = ["lever_rifle", "double_shotgun"]
-const NOT_FIREARMS: Array[String] = ["baseball_bat", "fire_axe", "grenade"]
+const NOT_FIREARMS: Array[String] = ["baseball_bat", "fire_axe", "grenade", "hammer"]
 const MUZZLE := "Muzzle"
 ## How far the marker may sit from the bounding box's front face along the barrel (metres).
 const FACE_TOLERANCE := 0.01
@@ -183,3 +183,22 @@ func test_melee_weapons_and_the_grenade_have_no_muzzle() -> void:
 				. override_failure_message("%s has a Muzzle" % path)
 				. is_null()
 			)
+
+
+func test_the_hammer_carries_its_face_on_both_levels() -> void:
+	# A tool's striking point is a node too: the repair hammer's `Face`, at the centre of the face
+	# (the far end of the bounds along -X), its -Z out of the face, the same on both levels.
+	var at: Array[Vector3] = []
+	for file in ["hammer.glb", "hammer_far.glb"]:
+		var hammer := _instance(DIR + "hammer/" + file)
+		var face := hammer.find_child("Face", true, false) as Node3D
+		assert_object(face).is_not_null()
+		var local := hammer.global_transform.affine_inverse() * face.global_transform
+		var box := _bounds(hammer)
+		assert_float(local.origin.x).is_less(0.0)
+		assert_float(absf(local.origin.x - box.position.x)).is_less(0.01)
+		var forward := -local.basis.z.normalized()
+		assert_float(rad_to_deg(forward.angle_to(Vector3.LEFT))).is_less(ANGLE_TOLERANCE)
+		assert_object(hammer.find_child(MUZZLE, true, false)).is_null()
+		at.append(local.origin)
+	assert_float(at[0].distance_to(at[1])).is_less(LOD_TOLERANCE)

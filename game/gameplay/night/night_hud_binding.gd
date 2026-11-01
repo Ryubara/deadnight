@@ -37,10 +37,10 @@ var _fuel: FuelTuning
 var _can_units: Dictionary[StringName, int] = {}
 
 
-## `hud` is in the tree or about to be; `state` is the client's; `server` is read once, for the
+## `hud` is in the tree or about to be; `state` is the client's; `tuning` is read once, for the
 ## numbers both sides know from the shared tuning (the fuel tank), and not after.
 ## `looks` is the client's table of looks: the HUD shows each player's portrait from it.
-func _init(hud: Hud, state: ClientState, server: NightServer, looks: LookRegistry = null) -> void:
+func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistry = null) -> void:
 	_hud = hud
 	_state = state
 	var ammo_free: Array[StringName] = []
@@ -50,14 +50,14 @@ func _init(hud: Hud, state: ClientState, server: NightServer, looks: LookRegistr
 			ammo_free.append(def.id)
 	hud.state.weapon_names = _weapon_names
 	hud.state.ammo_free = ammo_free
-	var fuel: FuelTuning = server.rules.tuning.fuel
+	var fuel: FuelTuning = tuning.fuel
 	_fuel = fuel
-	for item in server.rules.tuning.economy.items:
+	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
 	hud.state.local_player_id = state.player_id
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
-	hud.state.special_schedule = HudSpecials.schedule_of(server.rules.tuning.specials)
+	hud.state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.event_received.connect(_on_event)
 	if looks != null:
 		looks.changed.connect(_on_look.bind(looks))
@@ -124,7 +124,7 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"crane":
 			_offer(&"buy_crane", CRANE_NAME, prompt["price"], "")
 		&"crane_take":
-			_offer(&"crane_take", _weapon_name(prompt["weapon"]), 0, "")
+			_offer(&"crane_take", _weapon_name(WeaponCatalog.catalog_id(prompt["weapon"])), 0, "")
 		&"crane_busy":
 			var own: bool = prompt["buyer"] == _state.player_id
 			_offer(&"crane_busy", CRANE_NAME, 0, "YOUR PRIZE IS COMING" if own else "")

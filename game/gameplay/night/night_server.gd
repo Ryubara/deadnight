@@ -6,19 +6,24 @@ extends RefCounted
 ##
 ## Messages in (`apply`, plain dictionaries): `join` {player_id, local}, `leave` {player_id},
 ## `look` {player_id, packet} (a client's look, once after it joins), `start_night`, and one
-## `command` (a `NightCommand`) per player per tick; the latest one is used. The look server
-## answers a join and a look with `look_packet` events (`LOOK_PACKET`). `step(delta)` runs one fixed
-## tick and returns the events for every client: the rules
-## events (a zombie's blow is a `blow` action, answered by the rules' `player_hurt`), the weapons
-## events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it came
-## from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
+## `command` (a `NightCommand`) per player per tick; the latest one is used, except that a pressed
+## edge (use, reload, swap, jump) of a command the step has not met yet is kept. A command is the
+## sender's: `apply` takes the player from its caller (`from_id`, the connection) and ignores the
+## one the message names. A command that is not renewed for `NightTuning.command_ticks` steps is
+## replaced by a neutral one that keeps only the view angles (a client that stalled or left stops
+## walking and shooting). The look server answers a join and a look with `look_packet` events
+## (`LOOK_PACKET`). `step(delta)` runs one fixed tick and returns the events for every client: the
+## rules events (a zombie's blow is a `blow` action, answered by the rules' `player_hurt`), the
+## weapons events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it
+## came from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
 ## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
 ## client or a HUD draws from.
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
 ## barricades ({id: boards up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health,
 ## downed, weapon, ammo, reserve, reloading, arms (every weapon carried: id to [ammo, reserve]),
-## points, prompt}}.
+## points, prompt, ack (the `seq` of the command this step used: a predicting client replays from
+## it)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -60,6 +65,10 @@ var tuning: NightTuning
 var tick_count := 0
 
 var _pending: Dictionary[int, NightCommand] = {}
+## Steps since each player's last command arrived.
+var _silent: Dictionary[int, int] = {}
+## The `seq` of the command each player's last step used.
+var _acked: Dictionary[int, int] = {}
 var _bodies: Dictionary[int, Player] = {}
 var _shot_seq: Dictionary[int, int] = {}
 var _hand_wait: Dictionary[int, float] = {}
@@ -67,6 +76,11 @@ var _hand_wait: Dictionary[int, float] = {}
 ## breach and ends when the button comes up, the breach is whole or out of reach, or the player
 ## fires, reloads, swaps, is hit or goes down.
 var _repairing: Dictionary[int, StringName] = {}
+## The breach each player last put a board back across, and how long (s) the body still turns to
+## face it (#245): a repair is allowed by place, not by facing, so the body turns to the boards
+## while the repair clip hammers them. Walking or aiming turns it the player's way as before.
+var _facing_breach: Dictionary[int, StringName] = {}
+var _face_left: Dictionary[int, float] = {}
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
 
@@ -105,12 +119,15 @@ func close() -> void:
 	director.close()
 	if rules.event_emitted.is_connected(_on_rules_event):
 		rules.event_emitted.disconnect(_on_rules_event)
-	if world.doors.door_opened.is_connected(_on_door_opened):
+	# The lot may already be gone when the whole scene is freed together.
+	if is_instance_valid(world) and world.doors.door_opened.is_connected(_on_door_opened):
 		world.doors.door_opened.disconnect(_on_door_opened)
 
 
-## The one way in. Returns the events the message caused.
-func apply(action: Dictionary) -> Array[Dictionary]:
+## The one way in. Returns the events the message caused. `from_id` is the player whose
+## connection the message came in on (0 when there is only one, as in single-player): a command is
+## always that player's.
+func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 	_outbox = []
 	match action.get("type"):
 		JOIN:
@@ -122,8 +139,28 @@ func apply(action: Dictionary) -> Array[Dictionary]:
 		LOOK:
 			looks.receive(action["player_id"], action["packet"])
 		COMMAND:
-			_pending[action.get("player_id", 1)] = NightCommand.from_dict(action)
+			submit(
+				from_id if from_id > 0 else action.get("player_id", 1),
+				NightCommand.from_dict(action)
+			)
 	return _outbox
+
+
+## Keeps the newest command of a player, with the pressed edges of the one it replaces if no step
+## has used that one yet.
+func submit(player_id: int, command: NightCommand) -> void:
+	if not _bodies.has(player_id):
+		return
+	command.player_id = player_id
+	var old: NightCommand = _pending.get(player_id)
+	if old != null:
+		command.reload = command.reload or old.reload
+		command.use = command.use or old.use
+		command.swap = command.swap or old.swap
+		command.motion.jump = command.motion.jump or old.motion.jump
+		command.motion.swap_shoulder = command.motion.swap_shoulder or old.motion.swap_shoulder
+	_pending[player_id] = command
+	_silent[player_id] = 0
 
 
 func body_of(player_id: int) -> Player:
@@ -171,7 +208,11 @@ func _leave(player_id: int) -> void:
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
 		_pending.erase(player_id)
+		_silent.erase(player_id)
+		_acked.erase(player_id)
 		_repairing.erase(player_id)
+		_facing_breach.erase(player_id)
+		_face_left.erase(player_id)
 		looks.leave(player_id)
 		rules.apply(RulesAction.remove_player(player_id))
 
@@ -188,14 +229,38 @@ func _is_downed(player_id: int) -> bool:
 
 func _move_players() -> void:
 	for player_id in _bodies:
+		_silent[player_id] = _silent.get(player_id, 0) + 1
 		var command := _pending.get(player_id) as NightCommand
+		if command != null and _silent[player_id] > tuning.command_ticks:
+			command = _neutral_after(command)
+			_pending[player_id] = command
 		var motion := PlayerCommand.new()
 		if command != null:
+			_acked[player_id] = command.seq
 			motion.yaw = command.motion.yaw
 			motion.pitch = command.motion.pitch
 			if not _is_downed(player_id):
 				motion = command.motion
+				# The trigger is the command's own, whoever made the motion.
+				motion.fire = command.fire
 		_bodies[player_id].tick(motion)
+		if command != null:
+			# Pressed edges are used once.
+			command.motion.jump = false
+			command.motion.swap_shoulder = false
+
+
+## What a command that was not renewed becomes: standing still with the trigger released, looking
+## where it looked.
+func _neutral_after(old: NightCommand) -> NightCommand:
+	var command := NightCommand.new()
+	command.player_id = old.player_id
+	command.seq = old.seq
+	command.motion.yaw = old.motion.yaw
+	command.motion.pitch = old.motion.pitch
+	command.dir = old.dir
+	command.origin = old.origin
+	return command
 
 
 func _chase_targets() -> Dictionary:
@@ -337,6 +402,7 @@ func _act(player_id: int, delta: float) -> void:
 	if command.use:
 		_use(player_id)
 	_hold_repair(player_id, command)
+	_face_breach(player_id, delta)
 	# Edges are used once.
 	command.reload = false
 	command.use = false
@@ -510,6 +576,24 @@ func _repair(player_id: int, breach: StringName) -> void:
 	if _hand_wait[player_id] <= 0.0:
 		_hand_wait[player_id] = tuning.repair_interval
 		rules.apply(RulesAction.repair(player_id, breach))
+		_facing_breach[player_id] = breach
+		_face_left[player_id] = tuning.repair_interval
+
+
+## Turns the body toward the breach it is putting boards back across, at the body's own turn speed,
+## for an interval after each board.
+func _face_breach(player_id: int, delta: float) -> void:
+	var left: float = _face_left.get(player_id, 0.0)
+	if left <= 0.0:
+		return
+	_face_left[player_id] = left - delta
+	var body := _bodies[player_id]
+	var to := world.barricade(_facing_breach[player_id]).global_position - body.global_position
+	if Vector2(to.x, to.z).length() < 0.01:
+		return
+	body.state.facing = rotate_toward(
+		body.state.facing, atan2(-to.x, -to.z), body.tuning.turn_speed * delta
+	)
 
 
 ## The held `use`: goes on with the breach the press began at while the button stays down and the
@@ -551,6 +635,7 @@ func _frame() -> Dictionary:
 			"arms": _arms_of(player_id),
 			"points": rules.points_of(player_id),
 			"prompt": use_target(player_id),
+			"ack": _acked.get(player_id, 0),
 		}
 	return {
 		"type": &"frame",

@@ -1,17 +1,22 @@
 class_name Night
 extends Node3D
-## One playable night on the drive-in lot, for one player, run as a server and a client in this
-## process, joined by a loopback link (`docs/design/networking.md`). Each physics tick: the link
-## delivers what the client sent and what the server answered last tick, the server steps, and the
-## client reads its controls (or the autopilot decides) and sends the next `NightCommand`.
+## One playable night on the drive-in lot. `start` runs it for one player as a server and a client
+## in this process, joined by a loopback link (`docs/design/networking.md`). Each physics tick: the
+## link delivers what the client sent and what the server answered last tick, the server steps, and
+## the client reads its controls (or the autopilot decides) and sends the next `NightCommand`.
+## `start_remote` joins a night on a game server instead (`docs/research/testing-multiplayer.md`):
+## the same client over a `WebSocketLink`, with no server here.
 ##
 ## The server owns the rules, the zombies, the weapons and the bodies; the client state and the
-## view are made from events only. In this single-process shortcut the world and the players'
-## bodies are one scene shared by both; with a second machine the bodies split into server bodies
-## and drawn avatars.
+## view are made from events only. In the single-process shortcut the world and the players'
+## bodies are one scene shared by both. Online, this machine has its own copy of the lot: a human's
+## own body moves here at once and the server corrects it (`Reconciler`), and the other players are
+## `RemoteAvatars` drawn from frames.
 
 signal ready_to_play
 signal night_over(round_reached: int)
+## `start_remote` could not join: why, in words for the player.
+signal connect_failed(reason: String)
 ## After every tick of the night, whatever drove it.
 signal ticked
 
@@ -30,7 +35,15 @@ const SWITCH_RESUME_MARGIN := 0.15
 var mode := Mode.HUMAN
 var world: NightWorld
 var server: NightServer
-var link: LoopbackLink
+var link: GameLink
+## The rules' numbers the client needs (the server's own, or the shipped table online).
+var rules_tuning: RulesTuning
+## True when the night runs on a game server (`start_remote`).
+var remote := false
+## Online: the other players, drawn from frames.
+var avatars: RemoteAvatars
+## Online: how far the server's answers have disagreed with this client's own body.
+var reconciler := Reconciler.new()
 var state: ClientState
 ## Every player's look and seat as this client heard them from the server; the bodies are dressed
 ## from it.
@@ -52,9 +65,16 @@ var running := false
 
 var _human := HumanController.new()
 var _spectator: Camera3D
+## Online with a human: the body this client moves itself.
+var _body: Player
+var _mirror: WorldMirror
+var _seq := 0
+var _repair_interval := NightTuning.new().repair_interval
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
 var _hud_binding: NightHudBinding
+## Held here: it listens to the client state and nothing else keeps it alive.
+var _equip_sync: WeaponEquipSync
 var _paused := false
 
 
@@ -67,16 +87,19 @@ func start(
 	add_child(world)
 	await world.build()
 	server = NightServer.new(world, p_seed, null, p_rules_tuning)
-	link = LoopbackLink.new(server)
+	rules_tuning = server.rules.tuning
+	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, server, looks)
+		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+	_equip_sync = WeaponEquipSync.new(state, server.body_of)
 	link.delivered.connect(_on_delivered)
 	looks.changed.connect(_dress_bodies)
 	link.send({"type": NightServer.JOIN, "player_id": PLAYER_ID, "local": mode == Mode.HUMAN})
-	var wanted := own_look if own_look != null else LookStore.load_look()
-	link.send({"type": NightServer.LOOK, "player_id": PLAYER_ID, "packet": LookWire.look(wanted)})
+	link.send(
+		{"type": NightServer.LOOK, "player_id": PLAYER_ID, "packet": LookWire.look(_wanted_look())}
+	)
 	link.send({"type": NightServer.START_NIGHT})
 	link.pump()
 	var player := server.body_of(PLAYER_ID)
@@ -85,23 +108,138 @@ func start(
 		camera.make_current()
 		_make_autopilot()
 	elif mode == Mode.AUTOPILOT:
-		_spectator = Camera3D.new()
-		_spectator.fov = 60.0
-		add_child(_spectator)
-		_spectator.make_current()
-		camera = _spectator
+		camera = _make_spectator()
 		_make_autopilot()
+	_finish_start(camera)
+
+
+## Joins the night of a game server at `url` (`ws://host:port`): builds the lot, connects, and
+## starts once the server has welcomed us and sent its first frame. Returns false, after
+## `connect_failed`, when it could not (nothing there, the server full or of another version, or no
+## answer within `seconds`). `p_link` is the connection to use (a new `WebSocketLink` by default).
+## The night is the server's: it began when the first player came, and goes on whatever this
+## client does, including pausing.
+func start_remote(
+	url: String, p_mode: Mode = Mode.HUMAN, seconds: float = 10.0, p_link: WebSocketLink = null
+) -> bool:
+	mode = p_mode
+	remote = true
+	world = NightWorld.new()
+	add_child(world)
+	await world.build()
+	rules_tuning = load(GameRules.DEFAULT_TUNING_PATH)
+	var online := p_link if p_link != null else WebSocketLink.new()
+	link = online
+	state = ClientState.new()
+	var failure := {"reason": ""}
+	var welcome := {}
+	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
+	online.refused.connect(func(why: int) -> void: failure["reason"] = _refusal_text(why))
+	online.closed.connect(func() -> void: failure["reason"] = "The server closed the connection.")
+	# Until the view exists, what the server says waits here.
+	var early: Array = []
+	var keep := func(events: Array) -> void: early.append_array(events)
+	online.delivered.connect(keep)
+	var started := online.connect_to(url)
+	if started != OK:
+		return _fail("Not a server address: %s" % url)
+	var began := Time.get_ticks_msec()
+	while failure["reason"] == "" and not (welcome.has("snapshot") and _has_frame(early)):
+		if (Time.get_ticks_msec() - began) / 1000.0 > seconds:
+			failure["reason"] = "No answer from %s." % url
+			break
+		online.pump()
+		await get_tree().physics_frame
+	if failure["reason"] != "":
+		online.close()
+		return _fail(failure["reason"])
+	state.player_id = online.player_id
+	var camera: Camera3D
+	var has_body := mode == Mode.HUMAN or (mode == Mode.AUTOPILOT and shoulder_camera)
+	if has_body:
+		var spawn: Vector3 = _last_frame(early)["players"][state.player_id]["pos"]
+		_body = world.add_body(spawn, mode == Mode.HUMAN)
+		camera = _body.camera_rig.camera()
+		if mode == Mode.AUTOPILOT:
+			camera.make_current()
+	else:
+		camera = _make_spectator()
+	if mode == Mode.AUTOPILOT:
+		_make_autopilot()
+	if hud != null:
+		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+		hud.state.load_snapshot(welcome["snapshot"])
+	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
+	_equip_sync = WeaponEquipSync.new(state, _body_of)
+	online.delivered.disconnect(keep)
+	_finish_start(camera)
+	view.step = Night.STEP * NightHost.SEND_EVERY
+	_mirror = WorldMirror.new(world, view)
+	avatars = RemoteAvatars.new()
+	add_child(avatars)
+	avatars.setup(looks, state.player_id if has_body else 0, Night.STEP)
+	online.delivered.connect(_on_delivered)
+	state.event_received.connect(_on_remote_event)
+	looks.changed.connect(_dress_bodies)
+	online.send({"type": NightServer.LOOK, "packet": LookWire.look(_wanted_look())})
+	_on_delivered(early)
+	return true
+
+
+func _fail(reason: String) -> bool:
+	connect_failed.emit(reason)
+	return false
+
+
+func _refusal_text(reason: int) -> String:
+	match reason:
+		NetWire.Refusal.FULL:
+			return "The night is full."
+		NetWire.Refusal.VERSION:
+			return "The server speaks another version of the game."
+	return "The server turned us away."
+
+
+func _has_frame(events: Array) -> bool:
+	return not _last_frame(events).is_empty()
+
+
+func _last_frame(events: Array) -> Dictionary:
+	for i in range(events.size() - 1, -1, -1):
+		if events[i].get("type") == &"frame":
+			return events[i]
+	return {}
+
+
+## The view, the sounds and the first tick, once there is a camera to look through.
+func _finish_start(camera: Camera3D) -> void:
 	view = NightView.new()
 	add_child(view)
 	view.setup(state, camera, _telegraphs(), _board_seconds())
 	view.barricade_points = _barricade_points()
-	view.show_lamps(world.greybox, server.rules.tuning.fuel)
+	view.bodies = _body_of
+	view.repair_interval = _repair_seconds
+	view.show_lamps(world.greybox, rules_tuning.fuel)
+	view.show_crane(world, rules_tuning)
 	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
 	running = true
 	ready_to_play.emit()
+
+
+## The look this client wears: the one a test or `--look` set, else the saved one.
+func _wanted_look() -> CharacterLook:
+	return own_look if own_look != null else LookStore.load_look()
+
+
+func _make_spectator() -> Camera3D:
+	_spectator = Camera3D.new()
+	_spectator.fov = 60.0
+	add_child(_spectator)
+	_spectator.make_current()
+	return _spectator
 
 
 ## The guns, the grenades and the lot's machines and shop sound from the same events as the view.
@@ -117,7 +255,7 @@ func _add_sounds() -> void:
 	var lot := WorldSounds.new()
 	lot.name = "WorldSounds"
 	add_child(lot)
-	var tuning: RulesTuning = server.rules.tuning
+	var tuning: RulesTuning = rules_tuning
 	var generator := world.greybox.get_node_or_null("GeneratorYard/Generator") as Node3D
 	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
 
@@ -139,7 +277,7 @@ func _post_point(circuit_id: StringName) -> Variant:
 ## Seconds each look's blow takes to land, for the looks of the types that telegraph it.
 func _telegraphs() -> Dictionary[StringName, float]:
 	var telegraphs: Dictionary[StringName, float] = {}
-	for type in server.rules.tuning.roster.types:
+	for type in rules_tuning.roster.types:
 		if type.telegraph_seconds > 0.0:
 			for look in type.looks:
 				telegraphs[look] = type.telegraph_seconds
@@ -149,8 +287,8 @@ func _telegraphs() -> Dictionary[StringName, float]:
 ## Seconds each look's type takes to pull one board off, for its tear clip (`ZombieView`).
 func _board_seconds() -> Dictionary[StringName, float]:
 	var seconds: Dictionary[StringName, float] = {}
-	var per_board := server.rules.tuning.barricades.seconds_per_board
-	for type in server.rules.tuning.roster.types:
+	var per_board := rules_tuning.barricades.seconds_per_board
+	for type in rules_tuning.roster.types:
 		if type.barrier_speed > 0.0:
 			for look in type.looks:
 				seconds[look] = per_board / type.barrier_speed
@@ -165,7 +303,11 @@ func _barricade_points() -> Dictionary[StringName, Vector3]:
 	return points
 
 
+## The body this client moves: the shared one in the single-process night, its own copy online
+## (null for an autopilot or a hand-driven client, which have no body of their own).
 func player() -> Player:
+	if remote:
+		return _body
 	return server.body_of(PLAYER_ID)
 
 
@@ -176,14 +318,18 @@ func is_paused() -> bool:
 ## Freezes the night and frees the mouse, or resumes.
 func set_paused(paused: bool) -> void:
 	_paused = paused
-	running = not paused and not state.over
+	# Online the night goes on without us: the link keeps being read and the body stands still.
+	running = (remote or not paused) and not state.over
 	if mode == Mode.HUMAN and player() != null:
 		player().set_controls_enabled(not paused)
 
 
 func _exit_tree() -> void:
+	running = false
 	if server != null:
 		server.close()
+	if remote and link != null:
+		link.close()
 	if mode == Mode.HUMAN:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
@@ -197,6 +343,9 @@ func _physics_process(_delta: float) -> void:
 
 ## One fixed tick of the night.
 func tick() -> void:
+	if remote:
+		_tick_remote()
+		return
 	link.pump()
 	link.broadcast(server.step(STEP))
 	match mode:
@@ -212,8 +361,49 @@ func tick() -> void:
 	ticked.emit()
 
 
+## One fixed tick of a client on a game server: read what arrived, move the body we own (the
+## server will check it), and send the next command.
+func _tick_remote() -> void:
+	link.pump()
+	var command: NightCommand = null
+	match mode:
+		Mode.HUMAN:
+			command = _human_command()
+		Mode.AUTOPILOT:
+			command = autopilot.decide(STEP)
+			if _body != null:
+				_aim_rig(command)
+	if command != null:
+		if _body != null:
+			_body.tick(command.motion)
+		_seq += 1
+		command.seq = _seq
+		command.player_id = state.player_id
+		if _body != null:
+			reconciler.record(_seq, _body.state.position)
+		link.send(command.to_dict())
+	if _body == null:
+		_follow(STEP)
+	ticked.emit()
+
+
+## A frame from the server: the lot, the other players, and our own body's correction.
+func _on_remote_event(event: Dictionary) -> void:
+	if event["type"] != &"frame":
+		return
+	_mirror.follow(event)
+	avatars.apply_frame(event)
+	var me: Dictionary = event["players"].get(state.player_id, {})
+	if _body == null or me.is_empty():
+		return
+	var shift := reconciler.correction(me["ack"], me["pos"])
+	if shift != Vector3.ZERO:
+		_body.state.position += shift
+		_body.global_position = _body.state.position
+
+
 func _human_command() -> NightCommand:
-	return _human.command(player(), PLAYER_ID)
+	return _human.command(player(), state.player_id)
 
 
 ## What the server answered: the look server's packets go to the look table, the rest to the
@@ -222,7 +412,7 @@ func _on_delivered(events: Array) -> void:
 	var rest := []
 	for event: Dictionary in events:
 		if event["type"] == NightServer.LOOK_PACKET:
-			if event["to"] == PLAYER_ID:
+			if event["to"] == state.player_id:
 				looks.receive(event["packet"])
 		else:
 			rest.append(event)
@@ -234,31 +424,33 @@ func _on_delivered(events: Array) -> void:
 func _dress_bodies(_player_id: int) -> void:
 	var resolved := looks.resolved()
 	for id: int in resolved:
-		var body := server.body_of(id)
+		var body := _body_of(id)
 		if body != null:
 			body.dress(resolved[id], looks.seats[id])
+
+
+## The body of a player in this process: the server's, or (online) our own.
+func _body_of(player_id: int) -> Player:
+	if remote:
+		return _body if player_id == state.player_id else null
+	return server.body_of(player_id)
 
 
 func _on_event(event: Dictionary) -> void:
 	if event["type"] == &"game_over":
 		night_over.emit(event["round_reached"])
-	elif event["type"] == &"board_repaired":
-		_show_repair(event["player_id"])
 
 
-## The player who put a board back hammers it home: the repair clip lands on this event.
-func _show_repair(player_id: int) -> void:
-	var body := server.body_of(player_id)
-	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
-	if animation != null:
-		animation.board_repaired(server.tuning.repair_interval)
+## The seconds between boards: the server's in this process, else the shared default.
+func _repair_seconds() -> float:
+	return server.tuning.repair_interval if server != null else _repair_interval
 
 
 func _make_autopilot() -> void:
 	autopilot = Autopilot.new(state, world.map())
 	_sight = WorldProbe.new(get_world_3d().direct_space_state)
 	autopilot.sight = _sight.callable()
-	var tuning: RulesTuning = server.rules.tuning
+	var tuning: RulesTuning = rules_tuning
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.DOOR:
 			autopilot.prices[item.id] = item.price
