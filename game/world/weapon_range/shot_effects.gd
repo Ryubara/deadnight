@@ -109,7 +109,7 @@ func muzzle_flash(
 		flash = MuzzleFlash.on(anchor)
 		barrel = -anchor.global_basis.z
 	else:
-		if _flash == null:
+		if not is_instance_valid(_flash):  # the warm-up frees what it drew
 			_flash = MuzzleFlash.new()
 			add_child(_flash)
 		flash = _flash
