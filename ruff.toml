@@ -1,0 +1,3 @@
+# Python in this repository (Blender scripts, spikes, hooks) follows the GDStudio kit's settings.
+line-length = 120
+target-version = "py311"
