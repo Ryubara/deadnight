@@ -3,7 +3,8 @@ extends Node
 ## game. Arguments after `--`: `--rounds=N` (stop once round N has started, default 3),
 ## `--speed=N` (ticks per frame), `--seed=N`, `--seconds=S` (stop after S game seconds),
 ## `--log` (print every event), `--fast` (quick dead for a recording), `--trace`,
-## `--shoulder` (film through the bot's own shoulder camera).
+## `--shoulder` (film through the bot's own shoulder camera), `--cheap` (a cheap door and shotgun
+## and no rounds in the pistol's reserve, so a short run shows the bot shopping).
 
 ## Real seconds the audio mixer gets to drop stopped voices before the program quits.
 const QUIT_SETTLE_SECONDS := 0.3
@@ -29,6 +30,8 @@ func _ready() -> void:
 	_night.ticks_per_frame = int(_args.get("speed", 1))
 	_night.shoulder_camera = _args.has("shoulder")
 	await _night.start(Night.Mode.AUTOPILOT, int(_args.get("seed", Night.SEED)), _tuning())
+	if _args.has("cheap"):
+		_night.server.combat.state_of(1, &"pistol").reserve = 0
 	_night.ticked.connect(_on_tick)
 	if _args.has("log"):
 		_night.state.event_received.connect(_print_event)
@@ -36,12 +39,16 @@ func _ready() -> void:
 
 ## `--fast`: the dead walk faster, so a short recording meets them.
 func _tuning() -> RulesTuning:
-	if not _args.has("fast"):
+	if not _args.has("fast") and not _args.has("cheap"):
 		return null
 	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
-	tuning.rounds.speed_base = 2.2
-	tuning.rounds.first_spawn_delay = 0.5
-	tuning.rounds.intro_seconds = 3.0
+	if _args.has("fast"):
+		tuning.rounds.speed_base = 2.2
+		tuning.rounds.first_spawn_delay = 0.5
+		tuning.rounds.intro_seconds = 3.0
+	if _args.has("cheap"):
+		tuning.economy.item(&"door_concession").price = 250
+		tuning.economy.item(&"weapon_shotgun").price = 150
 	return tuning
 
 

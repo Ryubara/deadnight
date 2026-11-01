@@ -1,0 +1,17 @@
+{
+ "fps": 24,
+ "bones": 50,
+ "clips": {
+  "Tear_Boards": {
+   "loop": true,
+   "frames": 29,
+   "seconds": 1.208,
+   "events": {
+    "reach": 0,
+    "grab": 9,
+    "yank": 22,
+    "end": 29
+   }
+  }
+ }
+}

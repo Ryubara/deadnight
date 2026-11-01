@@ -23,6 +23,11 @@ const ITEM_NAMES := {
 	&"weapon_shotgun": "BOUGHT THE SHOTGUN",
 	&"weapon_rifle": "BOUGHT THE RIFLE",
 	&"crane_play": "PLAYED THE CRANE",
+	&"ammo_pistol": "BOUGHT AMMUNITION",
+	&"ammo_smg": "BOUGHT AMMUNITION",
+	&"ammo_shotgun": "BOUGHT AMMUNITION",
+	&"ammo_rifle": "BOUGHT AMMUNITION",
+	&"ammo_flare_gun": "BOUGHT AMMUNITION",
 	&"fuel_can": "FILLED THE GENERATOR",
 }
 const CIRCUIT_WORDS := {
@@ -36,18 +41,17 @@ const CIRCUIT_WORDS := {
 ## Rows alive, oldest first: {"label", "age"}.
 var rows: Array[Dictionary] = []
 
-var _box := VBoxContainer.new()
+var _stack := HudRowStack.new()
 var _pad := MarginContainer.new()
 
 
 func _init() -> void:
 	super()
-	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box.add_theme_constant_override(&"separation", HudStyle.GAP)
+	_stack.gap = HudStyle.GAP
 	# The rows end where the cards' text does, on the same right line.
 	_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pad.add_theme_constant_override(&"margin_right", HudStyle.PAD)
-	_pad.add_child(_box)
+	_pad.add_child(_stack)
 	add_child(_pad)
 	_pad.minimum_size_changed.connect(update_minimum_size)
 
@@ -82,7 +86,7 @@ func push(text: String, colour := Color.TRANSPARENT) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	label.custom_minimum_size.x = ROW_WIDTH
 	rows.append({"label": label, "age": 0.0})
-	_box.add_child(label)
+	_stack.add_row(label)
 	while rows.size() > (MAX_EVENTS if kind == Kind.EVENTS else MAX_NOTICES):
 		_drop(rows[0])
 
@@ -94,12 +98,12 @@ func advance(delta: float) -> void:
 		(row["label"] as Label).modulate.a = clampf(left / FADE, 0.0, 1.0)
 		if left <= 0.0:
 			_drop(row)
+	_stack.advance(delta)
 
 
 func _drop(row: Dictionary) -> void:
 	rows.erase(row)
-	_box.remove_child(row["label"])
-	(row["label"] as Label).queue_free()
+	_stack.remove_row(row["label"])
 
 
 func _text_for(event: Dictionary) -> String:

@@ -6,10 +6,12 @@ extends RefCounted
 ## simulator adds is only timing: a trigger pull every `fire_interval`, a reload when the magazine
 ## is empty.
 ##
-## Not modelled: ammunition left (the night resupplies every round and #152 will replace that),
-## penetration, and the flare gun's splash on a crowd beyond the zombies on the same side.
+## Not modelled: penetration, and the flare gun's splash on a crowd beyond the zombies on the same
+## side.
 
 const START := &"pistol"
+## Carried from the first moment: the revolver in hand and the crowbar, which never runs dry.
+const START_ARMS: Array[StringName] = [&"pistol", &"crowbar"]
 
 static var _defs: Dictionary[StringName, WeaponDef] = {}
 
@@ -58,6 +60,25 @@ static func sustained_dps(weapon_id: StringName) -> float:
 	var weapon := def(weapon_id)
 	var cycle := float(weapon.magazine_size) * weapon.fire_interval + weapon.reload_time
 	return damage(weapon_id, &"body", 0.0) * float(weapon.magazine_size) / cycle
+
+
+static func is_melee(weapon_id: StringName) -> bool:
+	return def(weapon_id).is_melee()
+
+
+## The weapon to take in hand from those carried (`NightSim.SimArm`): the best firearm by
+## sustained damage that has any rounds left, else the crowbar.
+static func best_armed(arms: Dictionary) -> StringName:
+	var best_id: StringName = &"crowbar"
+	var best_dps := -1.0
+	for weapon_id: StringName in arms:
+		if is_melee(weapon_id) or arms[weapon_id].mag + arms[weapon_id].reserve <= 0:
+			continue
+		var dps := sustained_dps(weapon_id)
+		if dps > best_dps:
+			best_dps = dps
+			best_id = weapon_id
+	return best_id
 
 
 ## The best weapon among those owned, by sustained damage per second.
