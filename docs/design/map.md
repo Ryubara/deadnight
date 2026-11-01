@@ -231,8 +231,8 @@ lights. A circuit can be thrown with the tank dry: it lights when fuel comes. Th
 never a `powered_light`, so a post is no lamp of the lot.
 
 The autopilot (`AutopilotSwitches`) lights the circuit of an area as soon as its door is bought, because the dead now
-spawn there and lit ground slows them; keeps the field's circuit on; and when the tank falls below the low line puts
-every other circuit out (in a break) and keeps them out until the tank is back 15 points above it.
+spawn there and they are faster off lit ground; keeps the field's circuit on; and when the tank falls below the low
+line puts every other circuit out (in a break) and keeps them out until the tank is back 15 points above it.
 
 ## The greybox
 

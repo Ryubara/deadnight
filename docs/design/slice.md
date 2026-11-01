@@ -70,8 +70,8 @@ It backs away from the nearest zombie inside 7 m (sprinting), shoots the nearest
 (from the camera and from the barrel, the third-person corner problem), reloads on an empty magazine, walks to the
 next door when its points cover the price and buys it, goes to the nearest broken breach in a break and puts
 the boards back, and puts one back at a breach it stands at when nothing is in sight. It also throws the breaker of an
-area it has bought (the dead spawn there; lit ground slows them) and puts the extra circuits out when the tank runs
-low ([map](map.md#the-breaker-posts)); `tests/night/test_autopilot_switches.gd` checks the rule on frames and the bot
+area it has bought (the dead spawn there; they are faster off lit ground) and puts the extra circuits out when the tank
+runs low ([map](map.md#the-breaker-posts)); `tests/night/test_autopilot_switches.gd` checks the rule on frames and the bot
 doing it in a night.
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first

@@ -129,7 +129,7 @@ nets out against its cost. Examples (illustrative; the real weapons are the art 
 | Shotgun | even spread | **Wide**: loose pattern, forgiving | short reach; hits fewer of a far pack |
 | Submachine gun | steady | **Drum**: bigger magazine | slow reload; heavier; you commit |
 | Rifle | steady | **Tracer**: shots paint the target for the whole team for 1.5 s | fewer rounds per reload; the team sees it, you do not hit harder |
-| Flare gun | one bright flare | **Slow burn**: dimmer flare that lasts twice as long | covers a gap but slows the dead less |
+| Flare gun | one bright flare | **Slow burn**: dimmer flare that lasts twice as long | covers a gap but holds the dead off less |
 | Sidearm | quick draw | **Lamp-hand**: aims with the flashlight on | draws slower; light stays on you |
 
 The **audit**: a seeded headless bot night with each weapon-trim pair (the kit's test mode already needs fixed
