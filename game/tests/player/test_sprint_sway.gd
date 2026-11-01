@@ -56,7 +56,7 @@ func _sprint(on: bool, speed: float) -> void:
 ## The angle in degrees between where the lens looks and where the aim looks.
 func _view_error() -> float:
 	var look := -_rig.camera().global_transform.basis.z
-	return rad_to_deg(look.angle_to(_rig.aim_direction()))
+	return rad_to_deg(look.angle_to(-_rig.aim_transform().basis.z))
 
 
 ## The whole angle of the lens against the aim (roll included), in degrees.
@@ -219,8 +219,8 @@ func test_the_aim_ray_does_not_move_with_the_sway() -> void:
 	_rig.yaw = 0.6
 	_rig.pitch = 0.1
 	_render(0.3)
-	var rest_origin := _rig.aim_origin()
-	var rest_direction := _rig.aim_direction()
+	var rest_origin := _rig.aim_transform().origin
+	var rest_direction := -_rig.aim_transform().basis.z
 	# Not the sprint pull-back (that moves the lens by design): the sprint state stays off here, the
 	# sway is stepped on its own and the lens turned by it.
 	_rig.sway.level = 1.0
@@ -231,8 +231,12 @@ func test_the_aim_ray_does_not_move_with_the_sway() -> void:
 		_rig.sway.level = 1.0
 		_rig.step(TICK, 1.0)
 		worst = maxf(worst, _view_error())
-		assert_vector(_rig.aim_origin()).is_equal_approx(rest_origin, Vector3.ONE * 0.0001)
-		assert_vector(_rig.aim_direction()).is_equal_approx(rest_direction, Vector3.ONE * 0.0001)
+		assert_vector(_rig.aim_transform().origin).is_equal_approx(
+			rest_origin, Vector3.ONE * 0.0001
+		)
+		assert_vector(-_rig.aim_transform().basis.z).is_equal_approx(
+			rest_direction, Vector3.ONE * 0.0001
+		)
 	# The picture did sway, so the test has something to prove.
 	assert_float(worst).is_greater(0.05)
 	var command := HumanController.new().command(_player, 1)
