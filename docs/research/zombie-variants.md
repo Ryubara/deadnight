@@ -89,7 +89,7 @@ seven).
 
 ## Next
 
-- Measure each clip's ground speed (stride per cycle) so play speed can follow move speed (zombies page).
+- ~~Measure each clip's ground speed~~ done: [zombie gait](zombie-gait.md).
 - Author the seven new clips on the kit rig.
 - Import clips from one file only: the six other variants can skip their animations at import and take the walker's
   library, saving about 1.3 MB each in the web build (to measure).
