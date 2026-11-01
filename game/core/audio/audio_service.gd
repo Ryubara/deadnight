@@ -22,6 +22,11 @@ extends Node
 ## A sound started: `id` and its position (null when flat). For tests and a debug overlay.
 signal played(id: StringName, position: Variant)
 
+## A sound that cannot start this frame (`starts_per_frame`) waits at most this long, then is
+## dropped: a step or a hurt cry that late would be heard as a mistake.
+const DEFER_MAX_SECONDS := 0.12
+## Sounds that may wait at once; past it the quietest waiting one is dropped.
+const DEFER_MAX := 16
 ## Pooled players for sounds with a place, and for sounds without one.
 const POOL_3D := 32
 const POOL_2D := 12
@@ -60,6 +65,10 @@ var occlusion_probe := Callable()
 var occluder_mask := 0
 ## The Effects bus's current ducking in dB (0 or negative).
 var duck_db := 0.0
+## How many sounds may start in one frame; 0 is no limit. Starting a sound costs about a millisecond
+## in the web build, and a kill starts six: the rest start in the next frames (the highest priority
+## first), a frame or two late, which no one hears. The night turns it on.
+var starts_per_frame := 0
 ## Counters for tests and the debug overlay.
 var started := 0
 var culled := 0
@@ -67,6 +76,11 @@ var culled := 0
 var _rng := RandomNumberGenerator.new()
 var _now := 0.0
 var _streams := {}
+## Short sounds decoded to samples (`PcmStream`) by file path, played instead of the Ogg.
+var _pcm := {}
+var _starts_frame := -1
+var _starts_now := 0
+var _deferred: Array[Dictionary] = []
 var _last_variant := {}
 var _players_3d: Array[AudioStreamPlayer3D] = []
 var _players_2d: Array[AudioStreamPlayer] = []
@@ -120,6 +134,7 @@ func _exit_tree() -> void:
 	for player in _players_2d:
 		player.stream = null
 	_streams.clear()
+	_pcm.clear()
 	_remove_duck_effect()
 	if UIAudio.handler == play_ui:
 		UIAudio.handler = Callable()
@@ -132,6 +147,7 @@ func _process(delta: float) -> void:
 ## Moves the service's clock: frees finished voices and steps the ducking.
 func advance(delta: float) -> void:
 	_now += delta
+	_start_deferred()
 	_budget_3d.expire(_now)
 	_budget_2d.expire(_now)
 	_duck_target = _duck_target if _now < _duck_until else 0.0
@@ -172,11 +188,74 @@ func seed_random(value: int) -> void:
 ## the player it started on, or null when the sound was dropped (too far, over its limit, too
 ## soon, missing).
 func play(id: StringName, position: Variant = null, extra_db := 0.0) -> Node:
+	var began := PerfProbe.begin()
+	var player: Node = null
+	if _may_start_now():
+		player = _start(id, position, extra_db)
+	else:
+		_defer(id, position, extra_db)
+	PerfProbe.end(&"audio.play", began)
+	if PerfProbe.enabled:
+		PerfProbe.end(StringName("snd.%s" % id), began)
+		PerfProbe.count(&"sounds")
+	return player
+
+
+## Whether another sound may start in this frame; counts it if so.
+func _may_start_now() -> bool:
+	if starts_per_frame <= 0:
+		return true
+	var frame := Engine.get_process_frames()
+	if frame != _starts_frame:
+		_starts_frame = frame
+		_starts_now = 0
+	if _starts_now >= starts_per_frame:
+		return false
+	_starts_now += 1
+	return true
+
+
+func _defer(id: StringName, position: Variant, extra_db: float) -> void:
+	var def := SoundCatalog.get_def(id)
+	if def == null:
+		return
+	_deferred.append(
+		{"id": id, "position": position, "extra_db": extra_db, "at": _now, "priority": def.priority}
+	)
+	if _deferred.size() > DEFER_MAX:
+		var quietest := 0
+		for i in _deferred.size():
+			if _deferred[i]["priority"] < _deferred[quietest]["priority"]:
+				quietest = i
+		_deferred.remove_at(quietest)
+	PerfProbe.count(&"sounds_deferred")
+
+
+## Starts the waiting sounds the frame has room for, highest priority first (the oldest of equals).
+func _start_deferred() -> void:
+	if _deferred.is_empty():
+		return
+	_deferred = _deferred.filter(
+		func(s: Dictionary) -> bool: return _now - s["at"] <= DEFER_MAX_SECONDS
+	)
+	_deferred.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			return (
+				a["priority"] > b["priority"]
+				or (a["priority"] == b["priority"] and a["at"] < b["at"])
+			)
+	)
+	while not _deferred.is_empty() and _may_start_now():
+		var sound: Dictionary = _deferred.pop_front()
+		_start(sound["id"], sound["position"], sound["extra_db"])
+
+
+func _start(id: StringName, position: Variant, extra_db: float) -> Node:
 	var def := SoundCatalog.get_def(id)
 	if def == null:
 		_warn_once("unknown sound '%s'" % id)
 		return null
-	var stream := _pick_stream(def)
+	var stream := _pick_stream(def, true)
 	if stream == null:
 		return null
 	var pitch := _random_pitch(def)
@@ -198,6 +277,8 @@ func preload_sound(id: StringName) -> int:
 		if not _streams.has(path):
 			_streams[path] = load(path) if ResourceLoader.exists(path) else null
 			loaded += 1
+		if not def.loop and not _pcm.has(path) and PcmStream.fits(_streams[path]):
+			_pcm[path] = PcmStream.decode(_streams[path], int(AudioServer.get_mix_rate()))
 	return loaded
 
 
@@ -351,13 +432,16 @@ func _play_3d(
 	if distance > def.max_distance:
 		culled += 1
 		return null
+	var began := PerfProbe.begin()
 	var occlusion := occlusion_between(from, at)
+	PerfProbe.end(&"audio.occlusion", began)
 	var loudness := def.linear_gain() * def.unit_size / (def.unit_size + distance)
 	loudness *= 1.0 - OCCLUSION_LOUDNESS * occlusion
 	var slot := _budget_3d.acquire(def, loudness, _now, duration)
 	if slot < 0:
 		return null
 	var player := _players_3d[slot]
+	began = PerfProbe.begin()
 	player.stop()
 	player.stream = stream
 	player.bus = def.bus
@@ -371,7 +455,10 @@ func _play_3d(
 		cutoff = minf(cutoff, lerpf(OPEN_CUTOFF_HZ, REAR_CUTOFF_HZ, rear_amount(at)))
 	player.attenuation_filter_cutoff_hz = cutoff
 	player.global_position = at
+	PerfProbe.end(&"audio.setup3d", began)
+	began = PerfProbe.begin()
 	player.play()
+	PerfProbe.end(&"audio.player_play", began)
 	_after_start(def, at)
 	return player
 
@@ -383,12 +470,14 @@ func _play_2d(
 	if slot < 0:
 		return null
 	var player := _players_2d[slot]
+	var began := PerfProbe.begin()
 	player.stop()
 	player.stream = stream
 	player.bus = def.bus
 	player.volume_db = def.volume_db + extra_db
 	player.pitch_scale = pitch
 	player.play()
+	PerfProbe.end(&"audio.player_play", began)
 	_after_start(def, null)
 	return player
 
@@ -430,7 +519,9 @@ func _after_start(def: SoundDef, position: Variant) -> void:
 		_duck_until = maxf(_duck_until, _now + def.duck_hold)
 
 
-func _pick_stream(def: SoundDef) -> AudioStream:
+## One variant of the sound (never the one played last). `samples` asks for its decoded copy when it
+## has one (`PcmStream`): a loop or a bed needs the Ogg, which it can loop.
+func _pick_stream(def: SoundDef, samples := false) -> AudioStream:
 	var variant := 1
 	if def.variants > 1:
 		var last: int = _last_variant.get(def.id, 0)
@@ -443,6 +534,8 @@ func _pick_stream(def: SoundDef) -> AudioStream:
 		_streams[path] = load(path) if ResourceLoader.exists(path) else null
 	if _streams[path] == null:
 		_warn_once("missing file %s" % path)
+	if samples and _pcm.has(path):
+		return _pcm[path]
 	return _streams[path]
 
 

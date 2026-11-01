@@ -138,14 +138,26 @@ func health_of(player_id: int) -> float:
 func step(delta: float) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
+	var began := PerfProbe.begin()
 	_move_players()
+	PerfProbe.end(&"server.move", began)
+	began = PerfProbe.begin()
 	director.tick(delta, _chase_targets())
+	PerfProbe.end(&"server.zombies", began)
+	began = PerfProbe.begin()
 	rules.apply(RulesAction.tick(delta))
+	PerfProbe.end(&"server.rules", began)
+	began = PerfProbe.begin()
 	_combat(CombatAction.targets(_target_list()))
 	_combat(CombatAction.tick(delta))
+	PerfProbe.end(&"server.combat", began)
+	began = PerfProbe.begin()
 	for player_id in _bodies:
 		_act(player_id, delta)
+	PerfProbe.end(&"server.act", began)
+	began = PerfProbe.begin()
 	_outbox.append(_frame())
+	PerfProbe.end(&"server.frame", began)
 	return _outbox
 
 

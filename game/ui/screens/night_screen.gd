@@ -14,6 +14,12 @@ const DIM := Color(0.0, 0.0, 0.0, 0.55)
 ## without a renderer, so a headless run skips it.
 static var warm_up_enabled := DisplayServer.get_name() != "headless"
 
+## How the next night starts, for a run that is not a person's (`KillBench`): the bot plays, filmed
+## from its shoulder, under this tuning (the defaults when null).
+static var start_mode := Night.Mode.HUMAN
+static var start_tuning: RulesTuning = null
+static var shoulder_camera := false
+
 var night: Night
 
 var _hud: Hud
@@ -32,6 +38,7 @@ func _ready() -> void:
 	allow_back = false
 	night = Night.new()
 	night.warm_up = warm_up_enabled
+	night.shoulder_camera = shoulder_camera
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
@@ -56,7 +63,7 @@ func touch_active() -> bool:
 
 
 func screen_enter() -> void:
-	await night.start(Night.Mode.HUMAN)
+	await night.start(start_mode, Night.SEED, start_tuning)
 
 
 func screen_pause() -> void:

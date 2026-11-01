@@ -5,6 +5,9 @@ extends Node3D
 ## wire format (`ZombieCodec`) and updates the views from what comes out, so what is drawn is
 ## exactly what a remote client would draw.
 
+## Views kept for each look; a view past it is freed.
+const PARKED_PER_LOOK := 12
+
 ## Every zombie wears the body its `look` names (`ZombieModels`), as the snapshot says; setting
 ## `model_scene` puts every zombie in that one body instead (a test or a capture).
 @export var model_scene: PackedScene
@@ -15,6 +18,9 @@ var throttle: AnimationThrottle
 var last_snapshot_bytes: int = 0
 
 var _views: Dictionary[int, ZombieView] = {}
+## Views of zombies that left, kept by look for the ones that come (a body is a model, a skeleton
+## and an animation tree, a hundred nodes: not made again at every spawn nor freed at every kill).
+var _parked: Dictionary[StringName, Array] = {}
 var _emerge_seconds: float = 0.0
 ## Seconds each look's wind-up lasts, for the looks whose attack is timed to it (the boss's).
 var _telegraphs: Dictionary[StringName, float] = {}
@@ -81,7 +87,10 @@ func publish(delta: float) -> void:
 func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 	last_snapshot_bytes = bytes.size()
 	var seen: Dictionary[int, bool] = {}
-	for entry in ZombieCodec.decode(bytes):
+	var began := PerfProbe.begin()
+	var entries := ZombieCodec.decode(bytes)
+	PerfProbe.end(&"horde.decode", began)
+	for entry in entries:
 		var zombie_id: int = entry["id"]
 		seen[zombie_id] = true
 		if not _views.has(zombie_id):
@@ -107,8 +116,12 @@ func _scene_for(look: StringName) -> PackedScene:
 
 
 func _add_view(zombie_id: int, look: StringName) -> void:
-	var view := ZombieView.new()
-	add_child(view)
+	var began := PerfProbe.begin()
+	PerfProbe.count(&"view_added")
+	var view := _take_parked(look)
+	if view == null:
+		view = ZombieView.new()
+		add_child(view)
 	# The same id always gives the same phase, so every client agrees without being told.
 	var phase := fposmod(float(zombie_id) * 0.618034, 1.0)
 	var telegraph: float = _telegraphs.get(look, ZombieRig.BOSS_HIT_SECONDS)
@@ -116,10 +129,25 @@ func _add_view(zombie_id: int, look: StringName) -> void:
 	view.setup(_scene_for(look), zombie_id, phase, _emerge_seconds, look, telegraph, board)
 	_views[zombie_id] = view
 	throttle.add_view(view)
+	PerfProbe.end(&"horde.add_view", began)
+
+
+## A parked view of `look`, or null.
+func _take_parked(look: StringName) -> ZombieView:
+	var parked: Array = _parked.get(look, [])
+	return parked.pop_back() if not parked.is_empty() else null
 
 
 func _remove_view(zombie_id: int) -> void:
+	var began := PerfProbe.begin()
+	PerfProbe.count(&"view_removed")
 	var view := _views[zombie_id]
 	_views.erase(zombie_id)
 	throttle.remove_view(view)
-	view.queue_free()
+	var parked: Array = _parked.get_or_add(view.look, [])
+	if parked.size() < PARKED_PER_LOOK:
+		view.park()
+		parked.append(view)
+	else:
+		view.queue_free()
+	PerfProbe.end(&"horde.remove_view", began)

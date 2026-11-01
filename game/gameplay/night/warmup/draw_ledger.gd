@@ -6,6 +6,8 @@ extends RefCounted
 ## the same string cost nothing more once one of them has been drawn (the measurements are in
 ## `docs/research/first-use-hitches.md`).
 ##
+## Hidden nodes are not counted: they draw nothing.
+##
 ## The warm-up records its own tree frame after frame; a test records a night being played and
 ## fails when the night drew something the warm-up never did.
 
@@ -62,6 +64,9 @@ static func strings_of(root: Node) -> Dictionary[String, int]:
 	var nodes: Array[Node] = [root]
 	nodes.append_array(root.find_children("*", "", true, false))
 	for node in nodes:
+		# A parked zombie or a spent effect is hidden and draws nothing.
+		if node is Node3D and not (node as Node3D).is_visible_in_tree():
+			continue
 		if node is Light3D:
 			found[_light(node as Light3D)] = 1
 		elif node is GeometryInstance3D:

@@ -3,6 +3,15 @@ extends Node3D
 ## The instant, client-side look of a shot: muzzle flash, impact spark and puff, damage number, and
 ## a tracer only for a weapon that asks for one (`WeaponDef.tracer`). All of it is predicted from
 ## the shooter's own view and needs no answer from the server.
+##
+## Nothing here is made or freed while a night is played. Each kind of effect has a small pool of
+## nodes, made the first time they are wanted (the night's warm-up asks for every kind) and then
+## lent out: a finished effect is hidden and waits for the next. The meshes and materials are
+## shared or belong to one pooled node for good, so no shader is built again after a shot (a shader
+## goes with the last material that uses it) and no shot or kill allocates, frees or builds
+## anything. Animation is by `_process`, from the effect's age, not by tweens and timers.
+
+enum Kind { FLASH, BURST, PUFF, TRACER, NUMBER }
 
 const TRACER_COLOUR := Color(1.0, 0.86, 0.45)
 const TRACER_RADIUS := 0.02
@@ -19,9 +28,27 @@ const PUFF_GROWTH := 2.6
 const PUFF_SECONDS := 0.35
 ## A shot that ended within this many metres of its range hit something.
 const RANGE_SLACK := 0.1
+## How many of each effect can be alive at once; past it the oldest of its kind is taken over.
+const FLASH_POOL := 8
+const BURST_POOL := 24
+const PUFF_POOL := 16
+const TRACER_POOL := 8
+const NUMBER_POOL := 16
 
 ## Streaks drawn so far, for tests.
 var tracers_drawn := 0
+
+## Idle effects by kind, ready to lend.
+var _idle: Array[Array] = [[], [], [], [], []]
+var _made: Array[int] = [0, 0, 0, 0, 0]
+var _live: Array[Live] = []
+var _unit_sphere: SphereMesh
+var _unit_tube: CylinderMesh
+var _glow: StandardMaterial3D
+
+
+func _init() -> void:
+	set_process(false)
 
 
 ## The look of one shot of `def` from `muzzle` that ended at each of `ends` (one per pellet): the
@@ -47,22 +74,10 @@ func impact(at: Vector3) -> void:
 
 ## Dust that swells and fades.
 func puff(at: Vector3) -> void:
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = PUFF_COLOUR
-	var mesh := SphereMesh.new()
-	mesh.radius = PUFF_RADIUS
-	mesh.height = PUFF_RADIUS * 2.0
-	mesh.material = material
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	instance.position = at
-	add_child(instance)
-	var tween := create_tween().set_parallel()
-	tween.tween_property(instance, "scale", Vector3.ONE * PUFF_GROWTH, PUFF_SECONDS)
-	tween.tween_property(material, "albedo_color:a", 0.0, PUFF_SECONDS)
-	tween.chain().tween_callback(instance.queue_free)
+	var live := _lend(Kind.PUFF, PUFF_SECONDS)
+	live.node.position = at
+	(live.node as MeshInstance3D).scale = Vector3.ONE * PUFF_RADIUS
+	_puff_material(live.node).albedo_color = PUFF_COLOUR
 
 
 func tracer(from: Vector3, to: Vector3, radius: float = TRACER_RADIUS) -> void:
@@ -70,29 +85,19 @@ func tracer(from: Vector3, to: Vector3, radius: float = TRACER_RADIUS) -> void:
 	if length < 0.01:
 		return
 	tracers_drawn += 1
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius
-	mesh.bottom_radius = radius
-	mesh.height = length
-	mesh.radial_segments = 6
-	mesh.material = _glow(TRACER_COLOUR)
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	add_child(instance)
+	var live := _lend(Kind.TRACER, TRACER_SECONDS)
+	var instance := live.node as MeshInstance3D
 	var up := Vector3.UP if absf((to - from).normalized().y) < 0.99 else Vector3.RIGHT
+	instance.scale = Vector3.ONE
 	instance.look_at_from_position((from + to) / 2.0, to, up)
 	instance.rotate_object_local(Vector3.RIGHT, PI / 2.0)
-	_free_after(instance, TRACER_SECONDS)
+	# The unit tube is 1 m long and 1 m round: stretched to the streak.
+	instance.scale = Vector3(radius, length, radius)
 
 
 func muzzle_flash(at: Vector3) -> void:
-	var light := OmniLight3D.new()
-	light.light_energy = FLASH_ENERGY
-	light.omni_range = 5.0
-	light.light_color = TRACER_COLOUR
-	light.position = at
-	add_child(light)
-	_free_after(light, FLASH_SECONDS)
+	var live := _lend(Kind.FLASH, FLASH_SECONDS)
+	live.node.position = at
 	_burst(at, 0.12)
 
 
@@ -101,39 +106,191 @@ func spark(at: Vector3) -> void:
 
 
 func number(at: Vector3, text: String, headshot: bool) -> void:
-	var label := Label3D.new()
+	var live := _lend(Kind.NUMBER, NUMBER_SECONDS)
+	var label := live.node as Label3D
 	label.text = text
-	label.font_size = 56
-	label.pixel_size = 0.006
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.no_depth_test = true
 	label.modulate = HEAD_COLOUR if headshot else BODY_COLOUR
-	label.outline_size = 12
 	label.position = at
-	add_child(label)
-	var tween := create_tween()
-	tween.tween_property(label, "position:y", at.y + NUMBER_RISE, NUMBER_SECONDS)
-	tween.tween_callback(label.queue_free)
+	live.base = at.y
+
+
+## Effects on show now, for tests.
+func live_count() -> int:
+	return _live.size()
+
+
+## Effects on show of one kind, for tests.
+func live_of(kind: Kind) -> int:
+	var count := 0
+	for live in _live:
+		if live.kind == kind:
+			count += 1
+	return count
+
+
+## Nodes made so far, for tests: it stops growing once every kind has met its busiest moment.
+func nodes_made() -> int:
+	var total := 0
+	for made in _made:
+		total += made
+	return total
+
+
+func _process(delta: float) -> void:
+	var i := _live.size() - 1
+	while i >= 0:
+		var live := _live[i]
+		live.age += delta
+		if live.age >= live.seconds:
+			_release(live)
+			_live.remove_at(i)
+		else:
+			_animate(live)
+		i -= 1
+	if _live.is_empty():
+		set_process(false)
 
 
 func _burst(at: Vector3, radius: float) -> void:
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.material = _glow(TRACER_COLOUR)
+	var live := _lend(Kind.BURST, FLASH_SECONDS)
+	live.node.position = at
+	live.node.scale = Vector3.ONE * radius
+
+
+func _animate(live: Live) -> void:
+	var t := live.age / live.seconds
+	match live.kind:
+		Kind.PUFF:
+			(live.node as MeshInstance3D).scale = (
+				Vector3.ONE * PUFF_RADIUS * lerpf(1.0, PUFF_GROWTH, t)
+			)
+			_puff_material(live.node).albedo_color.a = PUFF_COLOUR.a * (1.0 - t)
+		Kind.NUMBER:
+			live.node.position.y = live.base + NUMBER_RISE * t
+
+
+## An effect of `kind` shown for `seconds`: an idle one, a new one while the pool has room, or the
+## oldest live one of its kind taken over.
+func _lend(kind: Kind, seconds: float) -> Live:
+	var live: Live = null
+	if not _idle[kind].is_empty():
+		live = _idle[kind].pop_back()
+	elif _made[kind] < _pool_size(kind):
+		live = Live.new()
+		live.kind = kind
+		live.node = _make(kind)
+		_made[kind] += 1
+	else:
+		for old in _live:
+			if old.kind == kind:
+				live = old
+				break
+		_live.erase(live)
+	live.age = 0.0
+	live.seconds = seconds
+	live.node.visible = true
+	_live.append(live)
+	set_process(true)
+	return live
+
+
+func _release(live: Live) -> void:
+	live.node.visible = false
+	_idle[live.kind].append(live)
+
+
+func _pool_size(kind: Kind) -> int:
+	match kind:
+		Kind.FLASH:
+			return FLASH_POOL
+		Kind.BURST:
+			return BURST_POOL
+		Kind.PUFF:
+			return PUFF_POOL
+		Kind.TRACER:
+			return TRACER_POOL
+	return NUMBER_POOL
+
+
+func _make(kind: Kind) -> Node3D:
+	var node: Node3D
+	match kind:
+		Kind.FLASH:
+			var light := OmniLight3D.new()
+			light.light_energy = FLASH_ENERGY
+			light.omni_range = 5.0
+			light.light_color = TRACER_COLOUR
+			node = light
+		Kind.BURST:
+			node = _mesh_instance(_sphere(), _glow_material())
+		Kind.PUFF:
+			var material := StandardMaterial3D.new()
+			material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			material.albedo_color = PUFF_COLOUR
+			node = _mesh_instance(_sphere(), null)
+			(node as MeshInstance3D).material_override = material
+		Kind.TRACER:
+			node = _mesh_instance(_tube(), _glow_material())
+		Kind.NUMBER:
+			var label := Label3D.new()
+			label.font_size = 56
+			label.pixel_size = 0.006
+			label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			label.no_depth_test = true
+			label.outline_size = 12
+			node = label
+	node.visible = false
+	add_child(node)
+	return node
+
+
+func _mesh_instance(mesh: Mesh, material: Material) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
-	instance.position = at
-	add_child(instance)
-	_free_after(instance, FLASH_SECONDS)
+	instance.material_override = material
+	return instance
 
 
-func _glow(colour: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = colour
-	return material
+func _puff_material(node: Node3D) -> StandardMaterial3D:
+	return (node as MeshInstance3D).material_override as StandardMaterial3D
 
 
-func _free_after(node: Node, seconds: float) -> void:
-	get_tree().create_timer(seconds).timeout.connect(node.queue_free)
+## A sphere of radius 1 m, scaled to the size wanted.
+func _sphere() -> SphereMesh:
+	if _unit_sphere == null:
+		_unit_sphere = SphereMesh.new()
+		_unit_sphere.radius = 1.0
+		_unit_sphere.height = 2.0
+	return _unit_sphere
+
+
+## A tube 1 m long and of radius 1 m, along y, scaled to the streak.
+func _tube() -> CylinderMesh:
+	if _unit_tube == null:
+		_unit_tube = CylinderMesh.new()
+		_unit_tube.top_radius = 1.0
+		_unit_tube.bottom_radius = 1.0
+		_unit_tube.height = 1.0
+		_unit_tube.radial_segments = 6
+	return _unit_tube
+
+
+## The glowing material of the sparks and the streaks, one for all.
+func _glow_material() -> StandardMaterial3D:
+	if _glow == null:
+		_glow = StandardMaterial3D.new()
+		_glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_glow.albedo_color = TRACER_COLOUR
+	return _glow
+
+
+## One effect on show: its node, how long it has lived and how long it lasts.
+class Live:
+	extends RefCounted
+	var kind := Kind.FLASH
+	var node: Node3D
+	var age := 0.0
+	var seconds := 0.0
+	## Where it started, in metres: the height a number rises from, the size a burst keeps.
+	var base := 0.0

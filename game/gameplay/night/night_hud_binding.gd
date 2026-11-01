@@ -91,7 +91,9 @@ func _on_event(event: Dictionary) -> void:
 				HudLoadout.EVENTS.has(event["type"])
 				or not NightServer.COMBAT_EVENTS.has(event["type"])
 			):
+				var began := PerfProbe.begin()
 				_hud.state.apply_event(event)
+				PerfProbe.end(&"hud.event", began)
 
 
 func _on_frame() -> void:

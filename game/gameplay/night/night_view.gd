@@ -77,19 +77,29 @@ func draw_event(event: Dictionary) -> void:
 
 
 func _on_event(event: Dictionary) -> void:
+	var began := PerfProbe.begin()
 	if lamps != null:
 		lamps.apply_event(event)
 	voices.on_event(event)
+	PerfProbe.end(&"view.lamps_voices", began)
 	match event["type"]:
 		&"frame":
+			began = PerfProbe.begin()
 			horde.apply_snapshot(event["zombies"], step)
+			PerfProbe.end(&"view.horde", began)
+			began = PerfProbe.begin()
 			voices.update(_state.zombies, step)
+			PerfProbe.end(&"view.voices", began)
 		&"shot_fired":
+			began = PerfProbe.begin()
 			effects.shot(WeaponCatalog.get_def(event["weapon_id"]), event["muzzle"], event["ends"])
+			PerfProbe.end(&"fx.shot", began)
 		&"damage_dealt":
+			began = PerfProbe.begin()
 			effects.number(
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
+			PerfProbe.end(&"fx.number", began)
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":

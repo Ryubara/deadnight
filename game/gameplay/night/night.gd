@@ -20,6 +20,9 @@ signal ticked
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
 
+## Sounds that may start in one frame during the night (`AudioService.starts_per_frame`): the
+## frame of a kill starts six, and each costs about a millisecond in the browser.
+const SOUND_STARTS_PER_FRAME := 3
 ## Share of the loading bar the lot's own build takes, before the warm-up starts.
 const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
@@ -124,6 +127,7 @@ func start(
 				loading.emit(lerpf(BUILD_SHARE, 1.0, fraction), text)
 		)
 		await warmup.run(self)
+	Audio.starts_per_frame = SOUND_STARTS_PER_FRAME
 	running = true
 	ready_to_play.emit()
 
@@ -206,6 +210,7 @@ func set_paused(paused: bool) -> void:
 
 
 func _exit_tree() -> void:
+	Audio.starts_per_frame = 0
 	if server != null:
 		server.close()
 	if mode == Mode.HUMAN:
@@ -221,11 +226,20 @@ func _physics_process(_delta: float) -> void:
 
 ## One fixed tick of the night.
 func tick() -> void:
+	var began := PerfProbe.begin()
 	link.pump()
-	link.broadcast(server.step(STEP))
+	PerfProbe.end(&"tick.pump", began)
+	began = PerfProbe.begin()
+	var events := server.step(STEP)
+	PerfProbe.end(&"tick.server", began)
+	began = PerfProbe.begin()
+	link.broadcast(events)
+	PerfProbe.end(&"tick.client", began)
 	match mode:
 		Mode.AUTOPILOT:
+			began = PerfProbe.begin()
 			var command := autopilot.decide(STEP)
+			PerfProbe.end(&"tick.bot", began)
 			if shoulder_camera:
 				_aim_rig(command)
 			link.send(command.to_dict())
