@@ -31,6 +31,8 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	UIMotion.load_settings()
 	_tokens = UITokens.active()
+	# A fade passes through the background colour, not the engine's grey.
+	RenderingServer.set_default_clear_color(_tokens.bg)
 	_stage = Control.new()
 	_stage.name = "Stage"
 	_stage.theme = UIThemeBuilder.build(_tokens)
