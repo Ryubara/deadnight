@@ -33,6 +33,9 @@ from playwright.sync_api import Error as PlaywrightError
 VIEWPORT = {"width": 1280, "height": 720}
 LOAD_TIMEOUT_S = 150
 SCREEN_TIMEOUT_S = 40
+# Play builds the lot and warms up everything the night draws before it runs (docs/research/first-use-hitches.md):
+# about 31 s in Chrome with a GPU, far more with a software renderer.
+NIGHT_LOAD_TIMEOUT_S = 150
 NIGHT_SECONDS = 45
 WALK_LEG_S = 4.0
 WALK_KEYS = ("w", "d", "s", "a")  # a square, so the player does not stand facing one wall
@@ -226,7 +229,7 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
         press(page, "ArrowUp")
     page.screenshot(path=out / "menu_focus.png")
     press(page, "Enter")
-    wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), SCREEN_TIMEOUT_S)
+    wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
     page.wait_for_timeout(1500)
     page.screenshot(path=out / "night.png")
 
