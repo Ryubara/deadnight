@@ -370,6 +370,41 @@ def round_start(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(_stereo(rng, dry, 1.4, 0.5), 0.002, 0.2)
 
 
+def special_round(rng: np.random.Generator) -> np.ndarray:
+    """A marquee switching on: bulbs ticking on faster and faster, a reel whirring up, two low organ stabs, a gong."""
+    seconds = 3.2
+    n = dsp.samples(seconds)
+    dry = np.zeros(n)
+    at, gap = 0.0, 0.24
+    for i in range(11):
+        tick_n = dsp.samples(0.05)
+        click = dsp.filt(dsp.white(rng, 0.05), "band", 3400 + 90 * i, 1800) * dsp.decay(tick_n, 0.008)
+        blip = dsp.sine(1500 + 110 * i, tick_n) * dsp.decay(tick_n, 0.012)
+        dry = dsp.place(dry, click + 0.5 * blip, at, 3.0)
+        at += gap
+        gap *= 0.84
+    whirr_n = dsp.samples(1.5)
+    whirr = dsp.filt(dsp.white(rng, 1.5), "band", np.geomspace(350, 3200, whirr_n), 600)
+    whirr *= dsp.curve([(0, 0), (0.7, 0.8), (0.9, 1), (1, 0)], whirr_n)
+    flutter = 0.6 + 0.4 * np.abs(np.sin(2 * np.pi * np.geomspace(6, 24, whirr_n).cumsum() / SAMPLE_RATE))
+    dry = dsp.place(dry, whirr * flutter, 0.9, 0.9)
+    for when, base in ((1.95, 1.0), (2.35, 0.84)):
+        stab_n = dsp.samples(1.6)
+        stab = np.zeros(stab_n)
+        cutoff = dsp.curve([(0, 400), (0.06, 2400), (0.3, 700), (1, 300)], stab_n)
+        for hz in (55.0, 82.4, 110.0, 164.8):
+            for detune in (0.995, 1.0, 1.005):
+                stab += dsp.filt(dsp.saw(hz * base * detune, stab_n), "low", cutoff) * 0.12
+        dry = dsp.place(dry, stab * dsp.attack_decay(stab_n, 0.02, 1.0), when, 0.6)
+    gong_n = dsp.samples(2.4)
+    gong = np.zeros(gong_n)
+    for ratio, level in ((1.0, 1.0), (1.51, 0.6), (2.37, 0.4), (3.1, 0.25)):
+        mod = dsp.sine(147.0 * ratio * 2.01, gong_n) * dsp.decay(gong_n, 0.6) * 1.4
+        gong += level * np.sin(2 * np.pi * dsp.phase_of(np.full(gong_n, 147.0 * ratio)) + mod)
+    dry = dsp.place(dry, gong * dsp.attack_decay(gong_n, 0.004, 1.8), 1.95, 0.16)
+    return dsp.fade(_stereo(rng, dry, 1.5, 0.5), 0.002, 0.25)
+
+
 def round_end(rng: np.random.Generator) -> np.ndarray:
     """A relieved, bell-like resolve: three FM tones climbing over a soft low tom."""
     n = dsp.samples(2.2)
@@ -471,6 +506,7 @@ REGISTRY: list[Entry] = [
     Entry("world", "generator_start", 1, generator_start, -4.0),
     Entry("stings", "round_start", 1, round_start, -2.0),
     Entry("stings", "round_end", 1, round_end, -3.0),
+    Entry("stings", "special_round", 1, special_round, -2.0),
     Entry("grenade", "tick", 1, grenade_tick, -6.0),
     Entry("grenade", "throw", 2, grenade_throw, -5.0),
     Entry("grenade", "bounce", 3, grenade_bounce, -6.0),

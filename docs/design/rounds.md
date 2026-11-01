@@ -248,8 +248,9 @@ and start again:
 **Announced.** The break before a special round is 10 s longer (`break_bonus_seconds`), and starts with
 `special_round_announced` (round, kind, title, `boss_type`, `boss_count`, `seconds`), the cue for the HUD
 marquee, the sting and the flickering lights. `round_started` repeats the `special_id` and `boss_count`
-for a client that is there at the time. A client that joins late has no `round_started`: it gets a snapshot with
-the `special_id` in it, which the HUD does not read yet (#182).
+for a client that is there at the time. A client that joins late gets a snapshot, not these events: its HUD reads
+`special_id` and the bosses' health from the snapshot and the schedule from the shared tuning, so it shows the
+banner, the boss bar and, in a break, the marquee too ([HUD](hud.md)).
 
 **Paid.** Clearing it pays every player on their feet a reward on top of the round bonus
 (`special_reward`: 200 + 40 per round for a boss night, 150 + 40 per round for the others) and sends

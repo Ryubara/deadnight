@@ -69,18 +69,18 @@ func test_the_break_countdown_wakes_the_hud_once_a_second_and_makes_no_nodes() -
 func test_the_party_rows_are_made_once_for_the_roster_not_per_change() -> void:
 	var fixture := _in_break(4)
 	var hud := fixture.hud
-	assert_array(hud.team.shown).has_size(3)
+	assert_array(hud.points.shown).has_size(4)
 	await await_idle_frame()
-	_watch(hud, hud.team)
+	_watch(hud, hud.points)
 	fixture.act(RulesAction.set_downed(2, true))
 	fixture.act(RulesAction.set_downed(2, false))
 	hud.state.set_player_name(2, "Moe the Second")
 	# A down state or a name rewrites a row's text; no row is made or freed.
 	assert_int(_nodes_made).is_equal(0)
-	assert_str(hud.team.shown[0][0]).is_equal("Moe the Second")
+	assert_str(hud.points.shown[1]["name"]).is_equal("Moe the Second")
 	fixture.act(RulesAction.remove_player(3))
-	assert_array(hud.team.shown).has_size(2)
-	assert_int(hud.team._rows.get_child_count()).is_equal(2)
+	assert_array(hud.points.shown).has_size(3)
+	assert_int(hud.points._column.get_child_count()).is_equal(3)
 
 
 func test_readings_that_did_not_change_announce_nothing() -> void:
@@ -123,7 +123,7 @@ func test_a_batch_of_events_is_announced_once_and_costs_little() -> void:
 	var batch := _kill_batch(fixture)
 	assert_int(batch.size()).is_greater_equal(BATCH_EVENTS)
 	await await_idle_frame()
-	_watch(hud, hud.team)
+	_watch(hud, hud.points)
 	var started := Time.get_ticks_usec()
 	hud.feed(batch)
 	var took_ms := float(Time.get_ticks_usec() - started) / 1000.0
@@ -142,7 +142,7 @@ func test_events_fed_one_at_a_time_never_rebuild_the_party() -> void:
 	var hud := fixture.hud
 	var batch := _kill_batch(fixture)
 	await await_idle_frame()
-	_watch(hud, hud.team)
+	_watch(hud, hud.points)
 	for event in batch:
 		hud.state.apply_event(event)
 	assert_int(_changes).is_less_equal(batch.size())

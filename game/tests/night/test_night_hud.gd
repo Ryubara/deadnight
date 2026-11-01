@@ -102,9 +102,7 @@ func test_a_new_weapon_takes_the_card_and_the_old_one_goes_to_the_equipment_slot
 	night.state.apply_events(night.server.combat.apply(CombatAction.give_weapon(1, &"rifle")))
 	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
 	assert_int(hud.state.ammo_magazine).is_equal(rifle.magazine_size)
-	assert_str(hud.health.equipment_text).is_equal(
-		"%s x%d" % [pistol.display_name.to_upper(), pistol.magazine_size + pistol.reserve_start]
-	)
+	assert_str(hud.health.equipment_text).is_equal(pistol.display_name.to_upper())
 	NightFixture.run(night, 3)
 	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
 	_finish(night, hud)
@@ -188,5 +186,5 @@ func test_the_round_and_the_party_come_from_the_rules_events() -> void:
 	night.link.send({"type": NightServer.JOIN, "player_id": 2, "local": false})
 	NightFixture.run(night, 2)
 	assert_bool(hud.state.team.has(2)).is_true()
-	assert_array(hud.team.shown).has_size(1)
+	assert_array(hud.points.shown).has_size(2)
 	_finish(night, hud)

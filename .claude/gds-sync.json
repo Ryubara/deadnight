@@ -1,9 +1,9 @@
 {
   "note": "Written by `gds sync` from the GDStudio kit; edit the kit, not these files.",
   "files": {
-    ".claude/agents/backend-engineer.md": "f666da01f08fc2cffd48493b559acf24a1d105fbfdfc72df9f7848a185dedb44",
-    ".claude/agents/blender-artist.md": "2e9c76b2b1998964760d4e803c823e0b9325a81e61c6a5d9a0ca6cffb90ad557",
-    ".claude/agents/godot-engineer.md": "746f4e22665209ed12294147fba2b2a3859ae5d77aa469595af8e7807f1b3d8d",
+    ".claude/agents/backend-engineer.md": "a6913130065855b1bf93b95f0d7b444fc67f2796fb99296e04ba5c0d2fd2903a",
+    ".claude/agents/blender-artist.md": "83b7ae3bc4d6190e8fdaa810fd364c35fba6a03f0ab659582f94c1e5ba9adf82",
+    ".claude/agents/godot-engineer.md": "364a0a812ca2fe40af9f7dd4f78867929f7dc26f55703c7c17b59a8845a9b0c5",
     ".claude/agents/reviewer.md": "92c8393b092c29e66da965765e4e36095d86bf470be3e92fc325fb1fa4052cfa",
     ".claude/hooks/launch.py": "74bd821e242ccc840b1d1c4f9eb84bf6e8bc4731d1322cf688896e30fd0452fe",
     ".claude/settings.json": "38fe52834088f32b03d77e0dd6154a6b1026a5c313f5b47ccb09acabfbcf97fd"

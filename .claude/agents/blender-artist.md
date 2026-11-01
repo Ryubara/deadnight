@@ -11,6 +11,9 @@ You make GDStudio's 3D assets with the pinned Blender (`$(uv run --project <work
 path blender)`, run headless with `-b -P script.py` for anything repeatable) and bring them into Godot. You own one
 task, from its issue to a pull request, in your own worktree. Read the repository's `AGENTS.md` and the kit's first.
 
+Before you start a new feature or game, read the kit's `docs/research/maintainer-corrections.md`: the checks
+there catch what the maintainer had to point out before.
+
 ## How you work
 
 1. **Issue and worktree** as every GDStudio task: open or take the issue, `git worktree add

@@ -29,6 +29,7 @@ const POINTS := &"points"
 const PROMPT := &"prompt"
 const MARKERS := &"markers"
 const BOSS := &"boss"
+const SPECIAL := &"special"
 
 ## The tank counts as low at or under this fraction (the fuel tuning's `low_fraction`).
 const LOW_FRACTION := 0.25
@@ -74,8 +75,10 @@ var fuel_low := false
 var fuel_empty := false
 ## Circuit id -> lit, in the order the generator lists them.
 var circuits: Dictionary[StringName, bool] = {}
-## Player id -> {"name": String, "downed": bool, "points": int, "grenades": int}, the local player
-## included.
+## Player id -> {"name": String, "downed": bool, "points": int, "grenades": int, "seat": int,
+## "look": Dictionary}, the local player included. The seat (0 to 3) picks the player's colour (the
+## armband's); the server gives the lowest free one, so the state does too until it is told
+## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
 var team: Dictionary[int, Dictionary] = {}
 ## The interaction in reach: {} for none, else {"kind", "label", "cost"} (see `set_prompt`).
 var prompt: Dictionary = {}
@@ -96,6 +99,24 @@ var markers: Array[Dictionary] = []
 ## The bosses on the lot, each {"id", "type", "health", "max_health"}, in the order they came
 ## (from `zombie_spawn_requested` with `boss`, `zombie_damaged`, `zombie_removed`).
 var bosses: Array[Dictionary] = []
+## The special round running now (a kind's id), or `&""` in a normal round.
+var special_id := &""
+## The special round announced for the next round, as `special_round_announced` sent it (round,
+## special_id, title, kind, boss_type, boss_count, seconds), or {} for none. Set by the event, or
+## from the schedule for a HUD that joined in the break; gone once the round starts.
+var announced: Dictionary = {}
+## What the last special round paid when it was cleared: {"special_id", "reward"}; {} until then,
+## and again from the next round's start.
+var special_cleared: Dictionary = {}
+## Counts every snapshot that restored a special round in progress, so a part that shows it (the
+## banner) shows it once per restore.
+var special_restored := 0
+## The special rounds and when they come, as plain data from the shared tuning (`HudSpecials`).
+var special_schedule: Dictionary = {}:
+	set(value):
+		special_schedule = value
+		_mark(SPECIAL)
+		_flush()
 
 ## What changed since the parts last heard, and what they are being told about right now.
 var _dirty: Dictionary[StringName, bool] = {}
@@ -263,16 +284,18 @@ func load_snapshot(data: Dictionary) -> void:
 	zombies_total = int(data.get("round_total", 0))
 	var alive: Dictionary = data.get("zombies", {})
 	zombies_left = alive.size() + int(data.get("spawn_left", 0))
-	var names := {}
+	_restore_special(data, alive)
+	var kept := {}
 	for player_id in team:
-		names[player_id] = team[player_id]["name"]
+		kept[player_id] = team[player_id]
 	team.clear()
 	var players: Dictionary = data.get("players", {})
 	for player_id in players:
 		var saved: Dictionary = players[player_id]
 		var member := _member(int(player_id))
-		if names.has(int(player_id)):
-			member["name"] = names[int(player_id)]
+		if kept.has(int(player_id)):
+			for field in ["name", "seat", "look"]:
+				member[field] = kept[int(player_id)][field]
 		member["downed"] = bool(saved.get("downed", false))
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
@@ -292,6 +315,35 @@ func load_snapshot(data: Dictionary) -> void:
 	release()
 
 
+## The special round running and the bosses on the lot, from a snapshot. The announcement is not in
+## it: a HUD that joins in the break gets the marquee from the schedule (`HudSpecials.coming`).
+func _restore_special(data: Dictionary, alive: Dictionary) -> void:
+	special_id = StringName(data.get("special_id", ""))
+	announced = {}
+	special_cleared = {}
+	if special_id != &"":
+		special_restored += 1
+	bosses.clear()
+	var boss_types := HudSpecials.boss_types(self)
+	for zombie_id in alive:
+		var zombie: Dictionary = alive[zombie_id]
+		if boss_types.has(StringName(zombie.get("type", ""))):
+			(
+				bosses
+				. append(
+					{
+						"id": int(zombie_id),
+						"type": StringName(zombie["type"]),
+						"health": float(zombie.get("health", 0.0)),
+						"max_health": float(zombie.get("max_health", zombie.get("health", 0.0))),
+					}
+				)
+			)
+	bosses.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["id"] < b["id"])
+	_mark(BOSS)
+	_mark(SPECIAL)
+
+
 func _handler(type: StringName) -> Callable:
 	var handler := Callable()
 	match type:
@@ -303,6 +355,10 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_round_started
 		&"round_ended":
 			handler = _on_round_ended
+		&"special_round_announced":
+			handler = _on_special_announced
+		&"special_round_cleared":
+			handler = _on_special_cleared
 		&"zombie_spawn_requested":
 			handler = _on_zombie_spawn_requested
 		&"zombie_damaged":
@@ -337,6 +393,8 @@ func _handler(type: StringName) -> Callable:
 				game_over_reason = StringName(e.get("reason", ""))
 		&"purchase_made":
 			handler = _on_purchase_made
+		&"player_look":
+			handler = _on_player_look
 		&"player_hurt":
 			handler = _on_player_hurt
 		&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished":
@@ -353,7 +411,25 @@ func _on_break_started(event: Dictionary) -> void:
 	_assign(&"break_left", float(event["seconds"]), ROUND)
 
 
+func _on_special_announced(event: Dictionary) -> void:
+	announced = event.duplicate()
+	_mark(SPECIAL)
+
+
+func _on_special_cleared(event: Dictionary) -> void:
+	special_cleared = {
+		"special_id": StringName(event.get("special_id", &"")),
+		"reward": int(event.get("reward", 0)),
+	}
+	_mark(SPECIAL)
+
+
 func _on_round_started(event: Dictionary) -> void:
+	_assign(&"special_id", StringName(event.get("special_id", &"")), SPECIAL)
+	if not announced.is_empty() or not special_cleared.is_empty():
+		announced = {}
+		special_cleared = {}
+		_mark(SPECIAL)
 	_assign(&"phase", PHASE_ACTIVE, ROUND)
 	_assign(&"round_number", int(event["round"]), ROUND)
 	_assign(&"zombies_total", int(event["zombie_count"]), ROUND)
@@ -362,6 +438,7 @@ func _on_round_started(event: Dictionary) -> void:
 
 func _on_round_ended(_event: Dictionary) -> void:
 	_assign(&"zombies_left", 0, ROUND)
+	_assign(&"special_id", &"", SPECIAL)
 	if not bosses.is_empty():
 		bosses.clear()
 		_mark(BOSS)
@@ -376,7 +453,8 @@ func _on_zombie_removed(event: Dictionary) -> void:
 
 
 func _on_zombie_spawn_requested(event: Dictionary) -> void:
-	if bool(event.get("boss", false)):
+	# A boss a snapshot already restored is not added twice when its spawn event was in flight.
+	if bool(event.get("boss", false)) and _boss_index(int(event.get("zombie_id", -1))) == -1:
 		(
 			bosses
 			. append(
@@ -418,6 +496,17 @@ func _on_player_added(event: Dictionary) -> void:
 			_assign(&"grenades", int(event["grenades"]), HEALTH)
 
 
+## The server's word on where a player sits and what they wear: `player_id`, `seat`, `look` (a
+## `CharacterLook.to_dict`). Not a rules event: the look is the lot's, sent once on join.
+func _on_player_look(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	var look: Dictionary = event.get("look", {})
+	if member["seat"] != int(event["seat"]) or member["look"] != look:
+		member["seat"] = int(event["seat"])
+		member["look"] = look
+		_mark(TEAM)
+
+
 func _on_grenade_count_changed(event: Dictionary) -> void:
 	var player_id := int(event["player_id"])
 	_member(player_id)["grenades"] = int(event["count"])
@@ -430,6 +519,8 @@ func _on_points_changed(event: Dictionary) -> void:
 	_member(player_id)["points"] = int(event["total"])
 	if player_id == local_player_id:
 		_assign(&"points", int(event["total"]), POINTS)
+	else:
+		_mark(TEAM)
 
 
 func _on_purchase_made(event: Dictionary) -> void:
@@ -495,10 +586,26 @@ func _set_circuit(circuit_id: StringName, on: bool) -> void:
 func _member(player_id: int) -> Dictionary:
 	if not team.has(player_id):
 		team[player_id] = {
-			"name": "PLAYER %d" % player_id, "downed": false, "points": 0, "grenades": 0
+			"name": "PLAYER %d" % player_id,
+			"downed": false,
+			"points": 0,
+			"grenades": 0,
+			"seat": _free_seat(),
+			"look": {},
 		}
 		_mark(TEAM)
 	return team[player_id]
+
+
+## The lowest seat no one in the party has, as the server gives it (0 when all four are taken).
+func _free_seat() -> int:
+	var taken: Array = []
+	for member: Dictionary in team.values():
+		taken.append(member["seat"])
+	for seat in 4:
+		if not taken.has(seat):
+			return seat
+	return 0
 
 
 ## Sets a field and marks `topic`, only when the value is not the one already held.

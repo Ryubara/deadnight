@@ -6,8 +6,8 @@ extends HudTicket
 ## prompt and the banner so nothing around it moves.
 
 const WIDTH := HudStyle.CARD
-const BAR_HEIGHT := 22.0
-const BAR_GAP := 8.0
+const BAR_HEIGHT := 16.0
+const BAR_GAP := 6.0
 ## At most this many bars; the caption counts the rest.
 const MAX_BARS := 3
 ## A type id to the name the bar shows; one without an entry shows its id in capitals.
@@ -30,7 +30,7 @@ var _bars := Control.new()
 func _init() -> void:
 	super()
 	accent = tokens.hot
-	body.custom_minimum_size.x = WIDTH - float(tokens.space_md * 2 + 10)
+	body.custom_minimum_size.x = WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT)
 	body.add_child(_caption)
 	_bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bars.draw.connect(_draw_bars)
