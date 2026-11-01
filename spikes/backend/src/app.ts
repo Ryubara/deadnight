@@ -5,6 +5,7 @@ import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService } from "./lobbies.ts";
 import { GameServerRegistry } from "./servers.ts";
+import { checkSave, SaveRejected } from "./saves.ts";
 import { RevisionConflict, type Store } from "./store.ts";
 import { signToken, verifyToken } from "./tokens.ts";
 
@@ -87,6 +88,7 @@ export function buildApp(deps: Deps): FastifyInstance {
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof LobbyFailure) return reply.code(LOBBY_STATUS[error.reason] ?? 400).send({ error: error.reason });
+    if (error instanceof SaveRejected) return reply.code(422).send({ error: error.reason, ...error.detail });
     if (error instanceof RevisionConflict) return reply.code(409).send({ error: "revision_conflict", revision: error.currentRevision });
     const status = (error as { statusCode?: number }).statusCode ?? 500;
     if (status >= 500) app.log.error({ err: error }, "unhandled error");
@@ -203,25 +205,41 @@ export function buildApp(deps: Deps): FastifyInstance {
   });
 
   // ---- saves
-  app.get<{ Params: { slot: string } }>("/saves/:slot", { onRequest: requireUser }, async (request, reply) => {
-    const save = await store.getSave(request.userId, request.params.slot);
-    return save ?? reply.code(404).send({ error: "not_found" });
-  });
+  // A save is `{revision, schemaVersion, data}`. `revision` is for concurrency, `schemaVersion` says how to read
+  // `data` (the game migrates; the backend only refuses versions it does not know), `data` is opaque to the backend.
+  const slotParams = { type: "object", properties: { slot: { type: "string", pattern: "^[a-z0-9_-]{1,32}$" } } };
 
-  app.put<{ Params: { slot: string }; Body: { revision: number; data: Record<string, unknown> } }>(
+  app.get<{ Params: { slot: string } }>(
+    "/saves/:slot",
+    { onRequest: requireUser, schema: { params: slotParams } },
+    async (request, reply) => {
+      const save = await store.getSave(request.userId, request.params.slot);
+      return save ?? reply.code(404).send({ error: "not_found" });
+    },
+  );
+
+  app.put<{ Params: { slot: string }; Body: { revision: number; schemaVersion: number; data: Record<string, unknown> } }>(
     "/saves/:slot",
     {
       onRequest: requireUser,
       schema: {
-        params: { type: "object", properties: { slot: { type: "string", pattern: "^[a-z0-9_-]{1,32}$" } } },
+        params: slotParams,
         body: {
           type: "object",
-          required: ["revision", "data"],
-          properties: { revision: { type: "integer", minimum: 0 }, data: { type: "object" } },
+          required: ["revision", "schemaVersion", "data"],
+          properties: {
+            revision: { type: "integer", minimum: 0 },
+            schemaVersion: { type: "integer", minimum: 1 },
+            data: { type: "object" },
+          },
         },
       },
     },
-    async (request) => store.putSave(request.userId, request.params.slot, request.body.data, request.body.revision),
+    async (request) => {
+      const { revision, schemaVersion, data } = request.body;
+      checkSave(schemaVersion, data);
+      return store.putSave(request.userId, request.params.slot, { schemaVersion, data }, revision);
+    },
   );
 
   // ---- game servers (called by the headless Godot servers, never by players)
