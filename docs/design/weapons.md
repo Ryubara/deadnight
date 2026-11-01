@@ -8,7 +8,7 @@ feeds is in [Rounds, points and fuel](rounds.md); how it was built is in [Weapon
 
 The server decides every hit. The client shows the shot at once and the server's events correct it.
 
-- **Client, at once:** muzzle flash, tracer, impact spark and the sound request, drawn from the shooter's own view with
+- **Client, at once:** muzzle flash, impact spark and puff, and the sound request, drawn from the shooter's own view with
   the same `AimResolver` code the server runs, and the same spread (the pellet pattern comes from a seed of the match,
   the shooter and the shot number, so both sides scatter alike).
 - **Server, on arrival:** the `fire` action is checked (cooldown, magazine, reload), then judged against the targets as
@@ -23,6 +23,19 @@ The server decides every hit. The client shows the shot at once and the server's
   gains nothing beyond a quarter second.
 - **Projectiles are not rewound.** They fly in the present, stepped on the server's fixed step; clients draw a copy that
   follows the same code and end it on the server's `projectile_burst`.
+
+## Hitscan and projectile weapons
+
+`WeaponDef.kind` says how a weapon's shot travels, and the look follows from it (`ShotEffects.shot`):
+
+- **`HITSCAN`** (revolver, Tommy gun, shotgun, rifle): the shot lands the instant the trigger is pulled. The
+  player sees a muzzle flash, then a spark and a puff of dust where it ended (when it ended short of its range),
+  and no bullet and no streak. A weapon may set `WeaponDef.tracer` (off by default) to draw a streak from the
+  muzzle to each end, for a future beam-like hitscan weapon; none of the shipped weapons does.
+- **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
+  `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
+  so a travelling shot is always a real body with its own flight, not a drawn line.
+- **`MELEE`** (crowbar): a sweep; no streak, no impact puff.
 
 ## The shoulder camera
 
@@ -150,6 +163,8 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 
 ## Open questions
 
+- **Shop weapons are no step up.** The numbers behind a proposal to raise the rifle and the shotgun are in
+  [Rounds](rounds.md#open-questions); nothing here changed.
 - **The carry limit** (two or three weapons) needs the player work; today a player may carry every weapon, and
   the swap button (F, d-pad up) takes the next one carried in hand.
 - **Friendly blast.** The flare's blast hurts zombies only; whether it hurts players (and whether a zombie on fire

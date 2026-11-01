@@ -36,6 +36,8 @@ var stagger_cooldown_left: float = 0.0
 var gate_id: StringName = &""
 ## Seconds of work spent on the board it is pulling at.
 var tear_progress: float = 0.0
+## True while it stands at its boards working one loose this tick (a client plays the tear clip).
+var tearing: bool = false
 
 
 func enter(new_mode: Mode) -> void:
@@ -64,4 +66,5 @@ func view_entry() -> Dictionary:
 		"episode": episode,
 		"speed": move_speed,
 		"look": look(),
+		"tearing": tearing,
 	}
