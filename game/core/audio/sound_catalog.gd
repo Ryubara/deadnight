@@ -200,3 +200,11 @@ static func _build() -> void:
 		1,
 		sting.merged({"volume_db": -5.0, "duck_db": -5.0, "duck_hold": 0.8})
 	)
+	_add(
+		&"special_round",
+		"stings/special_round_%d.ogg",
+		1,
+		# Above the other stings: the announcement comes the moment the last round ends, while its
+		# `round_end` sting still sounds, and one sting at a time (`GROUP_LIMITS`) must give way.
+		sting.merged({"volume_db": -3.0, "duck_db": -9.0, "duck_hold": 2.2, "priority": 98}, true)
+	)
