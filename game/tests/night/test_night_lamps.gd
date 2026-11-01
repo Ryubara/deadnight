@@ -1,5 +1,5 @@
 # The lamps in a night: the rules switch a circuit or run the tank dry, the events reach the
-# client, the lamps change, and the dead move at full speed on ground that is no longer lit.
+# client, the lamps change, and the dead speed up on ground that is no longer lit.
 extends GdUnitTestSuite
 
 const CONCESSION_FLOOR := Vector3(0.0, 0.0, 3.0)

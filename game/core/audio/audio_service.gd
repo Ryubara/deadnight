@@ -37,6 +37,11 @@ const BED_FADE_OUT_DB_PER_S := 30.0
 const OCCLUSION_DB := -9.0
 const OCCLUDED_CUTOFF_HZ := 1100.0
 const OPEN_CUTOFF_HZ := 5000.0
+## A `rear_cue` sound directly behind the listener is low-passed here (fading in from the side), so
+## the dead heard behind the player sound muffled against those in front.
+const REAR_CUTOFF_HZ := 1800.0
+## The rear cue starts here: the cosine of the angle from straight ahead (negative is behind).
+const REAR_FROM_COS := 0.15
 ## The budget treats a fully occluded sound as this much quieter.
 const OCCLUSION_LOUDNESS := 0.5
 ## Ducking: how fast the Effects bus drops and recovers, in dB per second.
@@ -256,6 +261,24 @@ func listener_position() -> Vector3:
 	return camera.global_position if camera != null else Vector3.ZERO
 
 
+## How far behind the listener a point is, 0 (in front or beside) to 1 (straight behind). Without a
+## listener node or camera there is no facing, so 0.
+func rear_amount(at: Vector3) -> float:
+	var node: Node3D = listener if listener != null and listener.is_inside_tree() else null
+	if node == null and is_inside_tree():
+		node = get_viewport().get_camera_3d()
+	if node == null:
+		return 0.0
+	var to := at - node.global_position
+	to.y = 0.0
+	var forward := -node.global_transform.basis.z
+	forward.y = 0.0
+	if to.length_squared() < 0.01 or forward.length_squared() < 0.0001:
+		return 0.0
+	var cosine := forward.normalized().dot(to.normalized())
+	return clampf((REAR_FROM_COS - cosine) / (REAR_FROM_COS + 1.0), 0.0, 1.0)
+
+
 ## How blocked the path from the listener to a point is, 0 to 1.
 func occlusion_between(from: Vector3, to: Vector3) -> float:
 	if occlusion_probe.is_valid():
@@ -320,7 +343,10 @@ func _play_3d(
 	player.pitch_scale = pitch
 	player.unit_size = def.unit_size
 	player.max_distance = def.max_distance
-	player.attenuation_filter_cutoff_hz = lerpf(OPEN_CUTOFF_HZ, OCCLUDED_CUTOFF_HZ, occlusion)
+	var cutoff := lerpf(OPEN_CUTOFF_HZ, OCCLUDED_CUTOFF_HZ, occlusion)
+	if def.rear_cue:
+		cutoff = minf(cutoff, lerpf(OPEN_CUTOFF_HZ, REAR_CUTOFF_HZ, rear_amount(at)))
+	player.attenuation_filter_cutoff_hz = cutoff
 	player.global_position = at
 	player.play()
 	_after_start(def, at)

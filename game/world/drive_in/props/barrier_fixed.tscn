@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/props/barrier_fixed.gltf" id="model"]
+
+[node name="BarrierFixed" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Blocker" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.274, 0)
+visible = false
+use_collision = true
+size = Vector3(3.044, 2.547, 0.533)

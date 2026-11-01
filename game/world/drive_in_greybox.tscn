@@ -11,6 +11,8 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrel.tscn" id="prop_barrel"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrel_spill.tscn" id="prop_barrel_spill"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrier.tscn" id="prop_barrier"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/barrier_fixed.tscn" id="prop_barrier_fixed"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/barrier_large.tscn" id="prop_barrier_large"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/box.tscn" id="prop_box"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/boxes.tscn" id="prop_boxes"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/cone.tscn" id="prop_cone"]
@@ -19,13 +21,39 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/props/crate.tscn" id="prop_crate"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/debris.tscn" id="prop_debris"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/dumpster.tscn" id="prop_dumpster"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/fence_long.tscn" id="prop_fence_long"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/gas_can.tscn" id="prop_gas_can"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/gas_tank.tscn" id="prop_gas_tank"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/pallet.tscn" id="prop_pallet"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/pallet_broken.tscn" id="prop_pallet_broken"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/papers.tscn" id="prop_papers"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/papers_b.tscn" id="prop_papers_b"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/papers_c.tscn" id="prop_papers_c"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/pipes.tscn" id="prop_pipes"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/planks.tscn" id="prop_planks"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/sign.tscn" id="prop_sign"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/sofa.tscn" id="prop_sofa"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/sofa_small.tscn" id="prop_sofa_small"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/street_light.tscn" id="prop_street_light"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/tires.tscn" id="prop_tires"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/trash_open.tscn" id="prop_trash_open"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/tree.tscn" id="prop_tree"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/tree_pine.tscn" id="prop_tree_pine"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/tree_small.tscn" id="prop_tree_small"]
+[ext_resource type="PackedScene" path="res://world/drive_in/props/tree_tall.tscn" id="prop_tree_tall"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/water_tank.tscn" id="prop_water_tank"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/speaker_post.tscn" id="fx_speaker_post"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/trash_can.tscn" id="fx_trash_can"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/picnic_table.tscn" id="fx_picnic_table"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/popcorn_machine.tscn" id="fx_popcorn_machine"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/menu_board.tscn" id="fx_menu_board"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/ticket_booth.tscn" id="fx_ticket_booth"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/concession_counter.tscn" id="fx_concession_counter"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/projector.tscn" id="fx_projector"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/screen_frame.tscn" id="fx_screen_frame"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/marquee.tscn" id="fx_marquee"]
+[ext_resource type="ArrayMesh" path="res://assets/drivein/speaker_post.obj" id="speaker_mesh"]
+[ext_resource type="Texture2D" path="res://assets/drivein/drivein_palette.png" id="drivein_palette"]
 
 [ext_resource type="Material" path="res://assets/lot/materials/outskirts.tres" id="outskirts"]
 [ext_resource type="Material" path="res://assets/lot/materials/field_ground.tres" id="field_ground"]
@@ -85,6 +113,17 @@ fog_enabled = true
 fog_light_color = Color(0.086, 0.133, 0.290, 1)
 fog_density = 0.013
 fog_sky_affect = 0
+
+[sub_resource type="StandardMaterial3D" id="drivein_mat"]
+albedo_texture = ExtResource("drivein_palette")
+roughness = 0.415
+texture_filter = 0
+
+[sub_resource type="MultiMesh" id="speaker_posts"]
+transform_format = 1
+instance_count = 28
+mesh = ExtResource("speaker_mesh")
+buffer = PackedFloat32Array(0.9848, 0, 0.1736, -11.0298, 0, 1, 0, 0, -0.1736, 0, 0.9848, -50.0551, 0.7628, 0, 0.6466, -8.5438, 0, 1, 0, 0, -0.6466, 0, 0.7628, -44.7582, 0.3327, 0, 0.943, -3.7258, 0, 1, 0, 0, -0.943, 0, 0.3327, -41.4379, -0.6579, 0, 0.7531, 7.3684, 0, 1, 0, 0, -0.7531, 0, -0.6579, -43.5652, -0.9479, 0, 0.3186, 10.6165, 0, 1, 0, 0, -0.3186, 0, -0.9479, -48.4322, 0.7628, 0, 0.6466, -13.8837, 0, 1, 0, 0, -0.6466, 0, 0.7628, -40.2321, 0.3327, 0, 0.943, -6.0544, 0, 1, 0, 0, -0.943, 0, 0.3327, -34.8365, -0.3575, 0, 0.9339, 6.5074, 0, 1, 0, 0, -0.9339, 0, -0.3575, -35.0031, -0.6579, 0, 0.7531, 11.9737, 0, 1, 0, 0, -0.7531, 0, -0.6579, -38.2934, 0.9848, 0, 0.1736, -24.8172, 0, 1, 0, 0, -0.1736, 0, 0.9848, -47.6241, 0.5675, 0, 0.8234, -14.2998, 0, 1, 0, 0, -0.8234, 0, 0.5675, -31.2501, 0.3327, 0, 0.943, -8.383, 0, 1, 0, 0, -0.943, 0, 0.3327, -28.2352, -0.1883, 0, 0.9821, 4.7457, 0, 1, 0, 0, -0.9821, 0, -0.1883, -27.2509, -0.9816, 0, 0.1909, 24.7367, 0, 1, 0, 0, -0.1909, 0, -0.9816, -47.1898, 0.9848, 0, 0.1736, -31.7108, 0, 1, 0, 0, -0.1736, 0, 0.9848, -46.4085, 0.7628, 0, 0.6466, -24.5634, 0, 1, 0, 0, -0.6466, 0, 0.7628, -31.1798, 0.1273, 0, 0.9919, -4.1005, 0, 1, 0, 0, -0.9919, 0, 0.1273, -20.0622, -0.3902, 0, 0.9207, 12.5653, 0, 1, 0, 0, -0.9207, 0, -0.3902, -22.3529, -0.8013, 0, 0.5983, 25.8016, 0, 1, 0, 0, -0.5983, 0, -0.8013, -32.7356, 0.9848, 0, 0.1736, -38.6045, 0, 1, 0, 0, -0.1736, 0, 0.9848, -45.193, 0.8644, 0, 0.5029, -33.883, 0, 1, 0, 0, -0.5029, 0, 0.8644, -32.2876, 0.7628, 0, 0.6466, -29.9033, 0, 1, 0, 0, -0.6466, 0, 0.7628, -26.6537, 0.6377, 0, 0.7703, -24.9976, 0, 1, 0, 0, -0.7703, 0, 0.6377, -21.8047, 0.3327, 0, 0.943, -13.0402, 0, 1, 0, 0, -0.943, 0, 0.3327, -15.0325, -0.1012, 0, 0.9949, 3.9663, 0, 1, 0, 0, -0.9949, 0, -0.1012, -13.0012, -0.274, 0, 0.9617, 10.7407, 0, 1, 0, 0, -0.9617, 0, -0.274, -14.3002, -0.4383, 0, 0.8988, 17.1824, 0, 1, 0, 0, -0.8988, 0, -0.4383, -16.7664, -0.7216, 0, 0.6923, 28.2869, 0, 1, 0, 0, -0.6923, 0, -0.7216, -24.8616)
 
 [sub_resource type="BoxMesh" id="ParkingLines_mesh"]
 material = ExtResource("line_paint")
@@ -203,36 +242,6 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1
 use_collision = true
 size = Vector3(32, 12, 1.2)
 material = ExtResource("screen_face")
-
-[node name="ScreenFrame" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 10.000, -48.700)
-use_collision = true
-size = Vector3(33.6, 13.6, 0.8)
-material = ExtResource("field_struct")
-
-[node name="ScreenLegN10" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.000, 2.100, -48.000)
-use_collision = true
-size = Vector3(1.4, 4.2, 1.6)
-material = ExtResource("field_struct")
-
-[node name="ScreenLeg10" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.000, 2.100, -48.000)
-use_collision = true
-size = Vector3(1.4, 4.2, 1.6)
-material = ExtResource("field_struct")
-
-[node name="ScreenStayN14" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.000, 3.000, -52.800)
-use_collision = true
-size = Vector3(0.8, 0.8, 7)
-material = ExtResource("field_struct")
-
-[node name="ScreenStay14" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.000, 3.000, -52.800)
-use_collision = true
-size = Vector3(0.8, 0.8, 7)
-material = ExtResource("field_struct")
 
 [node name="FenceN0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.000, 1.500, -52.000)
@@ -869,12 +878,6 @@ use_collision = true
 size = Vector3(0.4, 3.2, 0.4)
 material = ExtResource("field_struct")
 
-[node name="PicnicTable" type="CSGBox3D" parent="Field/Props"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 48.000, 0.450, -31.000)
-use_collision = true
-size = Vector3(4, 0.9, 2)
-material = ExtResource("field_struct")
-
 [node name="Wreck1" parent="Field/Props" instance=ExtResource("wreck")]
 transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, -52.000, 0.000, -14.000)
 
@@ -1092,12 +1095,6 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4
 use_collision = true
 size = Vector3(20.8, 0.3, 12.8)
 material = ExtResource("concession_roof")
-
-[node name="Counter" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.500, 2.000)
-use_collision = true
-size = Vector3(10, 1, 2)
-material = ExtResource("concession_prop")
 
 [node name="PrizeCrane" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 1.200, 5.000)
@@ -1353,12 +1350,6 @@ material = ExtResource("booth_prop")
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.200, 1.100, 30.800)
 use_collision = true
 size = Vector3(2.4, 2.2, 1.6)
-material = ExtResource("booth_prop")
-
-[node name="Projector" type="CSGBox3D" parent="ProjectionBooth"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.700, 25.250)
-use_collision = true
-size = Vector3(2, 1.3, 1.5)
 material = ExtResource("booth_prop")
 
 [node name="Lamps" type="Node3D" parent="ProjectionBooth"]
@@ -1786,18 +1777,6 @@ use_collision = true
 size = Vector3(8, 2.6, 3)
 material = ExtResource("roadblock")
 
-[node name="KioskW" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 1.200, 45.200)
-use_collision = true
-size = Vector3(2.4, 2.4, 2.4)
-material = ExtResource("road_kiosk")
-
-[node name="KioskE" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 1.200, 45.200)
-use_collision = true
-size = Vector3(2.4, 2.4, 2.4)
-material = ExtResource("road_kiosk")
-
 [node name="Canopy" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 3.600, 45.200)
 use_collision = true
@@ -1888,6 +1867,327 @@ outline_modulate = Color(0, 0, 0, 1)
 outline_size = 48
 text = "TICKET PLAZA"
 font_size = 90
+
+[node name="ScreenFrame" parent="Field" instance=ExtResource("fx_screen_frame")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.000, -48.000)
+
+[node name="SpeakerPosts" type="Node3D" parent="Field"]
+
+[node name="Post01" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.030, 0.725, -50.055)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post02" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.544, 0.725, -44.758)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post03" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.726, 0.725, -41.438)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post04" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.368, 0.725, -43.565)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post05" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.617, 0.725, -48.432)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post06" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.884, 0.725, -40.232)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post07" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.054, 0.725, -34.837)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post08" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.507, 0.725, -35.003)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post09" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.974, 0.725, -38.293)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post10" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.817, 0.725, -47.624)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post11" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.300, 0.725, -31.250)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post12" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.383, 0.725, -28.235)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post13" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.746, 0.725, -27.251)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post14" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.737, 0.725, -47.190)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post15" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31.711, 0.725, -46.409)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post16" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.563, 0.725, -31.180)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post17" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.101, 0.725, -20.062)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post18" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.565, 0.725, -22.353)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post19" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.802, 0.725, -32.736)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post20" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -38.604, 0.725, -45.193)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post21" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33.883, 0.725, -32.288)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post22" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -29.903, 0.725, -26.654)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post23" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.998, 0.725, -21.805)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post24" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.040, 0.725, -15.033)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post25" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.966, 0.725, -13.001)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post26" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.741, 0.725, -14.300)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post27" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.182, 0.725, -16.766)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Post28" type="CSGCylinder3D" parent="Field/SpeakerPosts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.287, 0.725, -24.862)
+visible = false
+use_collision = true
+collision_layer = 2
+radius = 0.08
+height = 1.45
+sides = 8
+
+[node name="Speakers" type="MultiMeshInstance3D" parent="Field/SpeakerPosts"]
+cast_shadow = 0
+material_override = SubResource("drivein_mat")
+multimesh = SubResource("speaker_posts")
+
+[node name="PicnicTableA" parent="Field/Props" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 46.400, 0.000, -31.000)
+
+[node name="PicnicTableB" parent="Field/Props" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 49.400, 0.000, -31.000)
+
+[node name="TrashCans" type="Node3D" parent="Field"]
+
+[node name="Can1" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.400, 0.000, -4.800)
+
+[node name="Can2" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.400, 0.000, -4.800)
+
+[node name="Can3" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 43.200, 0.000, -29.200)
+
+[node name="Can4" parent="Field/TrashCans" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -42.400, 0.000, -29.600)
+
+[node name="Counter" parent="Concession" instance=ExtResource("fx_concession_counter")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 0.000, 2.000)
+
+[node name="PopcornMachine" parent="Concession" instance=ExtResource("fx_popcorn_machine")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -2.600, 0.960, 2.050)
+
+[node name="MenuBoard" parent="Concession" instance=ExtResource("fx_menu_board")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 0.000, 2.200, 7.720)
+
+[node name="PicnicTableW" parent="Midway" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.000, 0.000, 11.500)
+
+[node name="PicnicTableE" parent="Midway" instance=ExtResource("fx_picnic_table")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.000, 0.000, 11.500)
+
+[node name="CanW" parent="Midway" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 0.000, 9.300)
+
+[node name="CanE" parent="Midway" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.400, 0.000, 9.300)
+
+[node name="Projector" parent="ProjectionBooth" instance=ExtResource("fx_projector")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.050, 25.250)
+
+[node name="TicketBoothW" parent="Road" instance=ExtResource("fx_ticket_booth")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 0.000, 45.200)
+
+[node name="TicketBoothE" parent="Road" instance=ExtResource("fx_ticket_booth")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 0.000, 45.200)
+
+[node name="Marquee" parent="Road" instance=ExtResource("fx_marquee")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.400, 0.000, 50.600)
+
+[node name="CanW" parent="Road" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.400, 0.000, 43.400)
+
+[node name="CanE" parent="Road" instance=ExtResource("fx_trash_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.400, 0.000, 43.400)
 
 [node name="ShopSpots" type="Node3D" parent="."]
 
@@ -2083,6 +2383,207 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 50.000, 
 
 [node name="Debris1" parent="Field/Dressing" instance=ExtResource("prop_debris")]
 transform = Transform3D(0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, 0.5000, 56.000, 0.000, -10.000)
+
+[node name="Tree1" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -57.000, 0.000, -36.000)
+
+[node name="TreePine1" parent="Field/Dressing" instance=ExtResource("prop_tree_pine")]
+transform = Transform3D(0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, 0.7660, -58.500, 0.000, -26.000)
+
+[node name="TreeTall1" parent="Field/Dressing" instance=ExtResource("prop_tree_tall")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, -57.500, 0.000, -9.000)
+
+[node name="Tree2" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, -47.000, 0.000, -6.500)
+
+[node name="Tree3" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 57.000, 0.000, -38.000)
+
+[node name="TreePine2" parent="Field/Dressing" instance=ExtResource("prop_tree_pine")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, 58.500, 0.000, -12.000)
+
+[node name="TreeTall2" parent="Field/Dressing" instance=ExtResource("prop_tree_tall")]
+transform = Transform3D(-0.9397, 0, -0.3420, 0, 1, 0, 0.3420, 0, -0.9397, 47.000, 0.000, -6.500)
+
+[node name="TreeSmall1" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 57.500, 0.000, -49.500)
+
+[node name="TreeSmall2" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -17.500, 0.000, -50.000)
+
+[node name="TreeSmall3" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 17.500, 0.000, -50.000)
+
+[node name="Tree4" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -59.300, 0.000, -51.000)
+
+[node name="TreeTall3" parent="Field/Dressing" instance=ExtResource("prop_tree_tall")]
+transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, -59.300, 0.000, -41.000)
+
+[node name="TreeSmall4" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -56.500, 0.000, -30.500)
+
+[node name="Tree5" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(-0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, -0.7660, -59.500, 0.000, -16.000)
+
+[node name="TreePine3" parent="Field/Dressing" instance=ExtResource("prop_tree_pine")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -53.000, 0.000, -49.000)
+
+[node name="Tree6" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(-0.9397, 0, -0.3420, 0, 1, 0, 0.3420, 0, -0.9397, -50.500, 0.000, -44.000)
+
+[node name="TreeTall4" parent="Field/Dressing" instance=ExtResource("prop_tree_tall")]
+transform = Transform3D(-0.3420, 0, -0.9397, 0, 1, 0, 0.9397, 0, -0.3420, 59.300, 0.000, -42.000)
+
+[node name="TreeSmall5" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 56.500, 0.000, -30.500)
+
+[node name="Tree7" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, 0.5000, 59.500, 0.000, -16.000)
+
+[node name="TreePine4" parent="Field/Dressing" instance=ExtResource("prop_tree_pine")]
+transform = Transform3D(-0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, -0.1736, 53.000, 0.000, -49.000)
+
+[node name="Tree8" parent="Field/Dressing" instance=ExtResource("prop_tree")]
+transform = Transform3D(0.7660, 0, -0.6428, 0, 1, 0, 0.6428, 0, 0.7660, 50.500, 0.000, -44.000)
+
+[node name="TreeSmall6" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 0.000, -50.500)
+
+[node name="TreeSmall7" parent="Field/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 24.000, 0.000, -50.500)
+
+[node name="Tires1" parent="Field/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -61.050, 0.000, -40.000)
+
+[node name="Sofa1" parent="Field/Dressing" instance=ExtResource("prop_sofa")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -61.200, 0.000, -31.000)
+
+[node name="TrashOpen1" parent="Field/Dressing" instance=ExtResource("prop_trash_open")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -60.750, 0.000, -14.000)
+
+[node name="Barrel1" parent="Field/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -61.400, 0.000, -6.000)
+
+[node name="Barrel2" parent="Field/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -60.770, 0.000, -6.000)
+
+[node name="Tires2" parent="Field/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 61.050, 0.000, -40.000)
+
+[node name="SofaSmall1" parent="Field/Dressing" instance=ExtResource("prop_sofa_small")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 61.200, 0.000, -30.000)
+
+[node name="Pipes1" parent="Field/Dressing" instance=ExtResource("prop_pipes")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 61.400, 0.000, -12.000)
+
+[node name="SofaSmall2" parent="Field/Dressing" instance=ExtResource("prop_sofa_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 48.000, 0.000, -26.000)
+
+[node name="Barrier1" parent="Field/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.000, 0.000, -51.300)
+
+[node name="Barrier2" parent="Field/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -45.520, 0.000, -51.300)
+
+[node name="Barrier3" parent="Field/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -47.040, 0.000, -51.300)
+
+[node name="Barrier4" parent="Field/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 44.000, 0.000, -51.300)
+
+[node name="Barrier5" parent="Field/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 45.520, 0.000, -51.300)
+
+[node name="Barrier6" parent="Field/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 47.040, 0.000, -51.300)
+
+[node name="Pallet1" parent="Field/Dressing" instance=ExtResource("prop_pallet")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -22.000, 0.000, -5.600)
+
+[node name="Box1" parent="Field/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -21.000, 0.000, -5.200)
+
+[node name="Barrel3" parent="Field/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -28.000, 0.000, -4.700)
+
+[node name="Barrel4" parent="Field/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -28.630, 0.000, -4.700)
+
+[node name="BarrelSpill1" parent="Field/Dressing" instance=ExtResource("prop_barrel_spill")]
+transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, -31.000, 0.000, -6.200)
+
+[node name="PalletBroken2" parent="Field/Dressing" instance=ExtResource("prop_pallet_broken")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, 24.000, 0.000, -5.800)
+
+[node name="Crate1" parent="Field/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.000, 0.000, -4.600)
+
+[node name="Crate2" parent="Field/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.630, 0.000, -4.600)
+
+[node name="Cone3" parent="Field/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.500, 0.000, -6.000)
+
+[node name="Cone4" parent="Field/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 43.500, 0.000, -6.000)
+
+[node name="Sign1" parent="Field/Dressing" instance=ExtResource("prop_sign")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -43.500, 0.000, -5.500)
+
+[node name="Sign2" parent="Field/Dressing" instance=ExtResource("prop_sign")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 43.500, 0.000, -5.200)
+
+[node name="Cone5" parent="Field/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.000, 0.000, -46.500)
+
+[node name="Cone6" parent="Field/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 0.000, -46.500)
+
+[node name="Debris2" parent="Field/Dressing" instance=ExtResource("prop_debris")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, -50.000, 0.000, -49.500)
+
+[node name="Debris3" parent="Field/Dressing" instance=ExtResource("prop_debris")]
+transform = Transform3D(-0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, -0.9397, 50.000, 0.000, -50.000)
+
+[node name="Planks1" parent="Field/Dressing" instance=ExtResource("prop_planks")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -56.000, 0.000, -44.000)
+
+[node name="Papers1" parent="Field/Dressing" instance=ExtResource("prop_papers")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.000, -30.000)
+
+[node name="PapersB1" parent="Field/Dressing" instance=ExtResource("prop_papers_b")]
+transform = Transform3D(0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, 0.7660, 1.500, 0.000, -20.000)
+
+[node name="PapersC1" parent="Field/Dressing" instance=ExtResource("prop_papers_c")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -22.500, 0.000, -35.000)
+
+[node name="Papers2" parent="Field/Dressing" instance=ExtResource("prop_papers")]
+transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, 22.000, 0.000, -18.000)
+
+[node name="PapersB2" parent="Field/Dressing" instance=ExtResource("prop_papers_b")]
+transform = Transform3D(-0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, -0.5000, -45.000, 0.000, -20.000)
+
+[node name="PapersC2" parent="Field/Dressing" instance=ExtResource("prop_papers_c")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, 48.000, 0.000, -20.000)
+
+[node name="Papers3" parent="Field/Dressing" instance=ExtResource("prop_papers")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -10.000, 0.000, -45.000)
+
+[node name="PapersB3" parent="Field/Dressing" instance=ExtResource("prop_papers_b")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, 12.000, 0.000, -44.000)
+
+[node name="PapersC3" parent="Field/Dressing" instance=ExtResource("prop_papers_c")]
+transform = Transform3D(0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, 0.5000, -30.000, 0.000, -8.000)
+
+[node name="Papers4" parent="Field/Dressing" instance=ExtResource("prop_papers")]
+transform = Transform3D(-0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, -0.7660, 32.000, 0.000, -8.000)
+
+[node name="PapersB4" parent="Field/Dressing" instance=ExtResource("prop_papers_b")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, -55.000, 0.000, -30.000)
+
+[node name="PapersC4" parent="Field/Dressing" instance=ExtResource("prop_papers_c")]
+transform = Transform3D(0.2588, 0, 0.9659, 0, 1, 0, -0.9659, 0, 0.2588, 55.000, 0.000, -44.000)
 
 [node name="Dressing" type="Node3D" parent="Concession"]
 
@@ -2407,6 +2908,63 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 38.000, 
 [node name="Cone2" parent="GeneratorYard/Dressing" instance=ExtResource("prop_cone")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 42.000, 0.000, -1.600)
 
+[node name="Pipes1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_pipes")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 50.000, 0.000, -3.400)
+
+[node name="TrashOpen1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_trash_open")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 60.750, 0.000, 9.000)
+
+[node name="BarrierLarge1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_barrier_large")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.000, 0.000, 37.500)
+
+[node name="BarrierLarge2" parent="GeneratorYard/Dressing" instance=ExtResource("prop_barrier_large")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 43.050, 0.000, 37.500)
+
+[node name="Barrel7" parent="GeneratorYard/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 46.500, 0.000, 37.450)
+
+[node name="Barrel8" parent="GeneratorYard/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 47.130, 0.000, 37.450)
+
+[node name="Barrel9" parent="GeneratorYard/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 46.820, 0.000, 36.830)
+
+[node name="Crate1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, 0.000, 21.520)
+
+[node name="Crate2" parent="GeneratorYard/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.630, 0.000, 21.520)
+
+[node name="GasCan2" parent="GeneratorYard/Dressing" instance=ExtResource("prop_gas_can")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, 41.000, 0.000, 13.900)
+
+[node name="TreeSmall1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 59.500, 0.000, 33.000)
+
+[node name="Sign1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_sign")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 17.600, 0.000, 16.600)
+
+[node name="Debris1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_debris")]
+transform = Transform3D(0.6428, 0, 0.7660, 0, 1, 0, -0.7660, 0, 0.6428, 33.000, 0.000, 31.000)
+
+[node name="Planks1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_planks")]
+transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, 54.000, 0.000, 18.500)
+
+[node name="Box1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, 30.500, 0.000, 9.600)
+
+[node name="Papers1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_papers")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 24.000, 0.000, 15.000)
+
+[node name="PapersB1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_papers_b")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, 48.000, 0.000, 8.000)
+
+[node name="PapersC1" parent="GeneratorYard/Dressing" instance=ExtResource("prop_papers_c")]
+transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, 36.000, 0.000, 30.000)
+
+[node name="PapersB2" parent="GeneratorYard/Dressing" instance=ExtResource("prop_papers_b")]
+transform = Transform3D(-0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, -0.3420, 22.000, 0.000, 26.000)
+
 [node name="Dressing" type="Node3D" parent="BackLot"]
 
 [node name="Tires1" parent="BackLot/Dressing" instance=ExtResource("prop_tires")]
@@ -2609,6 +3167,90 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.600, 0
 [node name="Crate2" parent="Road/Dressing" instance=ExtResource("prop_crate")]
 transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, 9.600, 0.000, 45.640)
 
+[node name="FenceLong1" parent="Road/Dressing" instance=ExtResource("prop_fence_long")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -3.000, 0.000, 42.000)
+
+[node name="FenceLong2" parent="Road/Dressing" instance=ExtResource("prop_fence_long")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 3.000, 0.000, 42.000)
+
+[node name="TreeSmall1" parent="Road/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.000, 0.000, 40.000)
+
+[node name="TreeSmall2" parent="Road/Dressing" instance=ExtResource("prop_tree_small")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 14.000, 0.000, 40.000)
+
+[node name="StreetLight1" parent="Road/Dressing" instance=ExtResource("prop_street_light")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.400, 0.000, 46.000)
+
+[node name="StreetLight2" parent="Road/Dressing" instance=ExtResource("prop_street_light")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.400, 0.000, 46.000)
+
+[node name="Sign1" parent="Road/Dressing" instance=ExtResource("prop_sign")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.600, 0.000, 39.000)
+
+[node name="Papers1" parent="Road/Dressing" instance=ExtResource("prop_papers")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, -5.000, 0.000, 49.000)
+
+[node name="PapersC1" parent="Road/Dressing" instance=ExtResource("prop_papers_c")]
+transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, 6.000, 0.000, 50.500)
+
+[node name="BarrierFixed1" parent="Road/Dressing" instance=ExtResource("prop_barrier_fixed")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -59.000, 0.000, 55.000)
+
+[node name="BarrierLarge1" parent="Road/Dressing" instance=ExtResource("prop_barrier_large")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -59.000, 0.000, 61.000)
+
+[node name="Sofa1" parent="Road/Dressing" instance=ExtResource("prop_sofa")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -48.000, 0.000, 53.200)
+
+[node name="Tires1" parent="Road/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.500, 0.000, 53.000)
+
+[node name="Barrier3" parent="Road/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, 0.000, 55.000)
+
+[node name="Barrier4" parent="Road/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.490, 0.000, 55.000)
+
+[node name="Pipes1" parent="Road/Dressing" instance=ExtResource("prop_pipes")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 10.000, 0.000, 53.300)
+
+[node name="TrashOpen1" parent="Road/Dressing" instance=ExtResource("prop_trash_open")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.000, 0.000, 53.400)
+
+[node name="Crate3" parent="Road/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.000, 0.000, 53.000)
+
+[node name="Crate4" parent="Road/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.630, 0.000, 53.000)
+
+[node name="StreetLight3" parent="Road/Dressing" instance=ExtResource("prop_street_light")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -20.000, 0.000, 52.600)
+
+[node name="StreetLight4" parent="Road/Dressing" instance=ExtResource("prop_street_light")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 20.000, 0.000, 52.600)
+
+[node name="Cone4" parent="Road/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.000, 0.000, 58.000)
+
+[node name="Cone5" parent="Road/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.000, 0.000, 58.000)
+
+[node name="Cone6" parent="Road/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.000, 0.000, 58.000)
+
+[node name="Planks1" parent="Road/Dressing" instance=ExtResource("prop_planks")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, 49.000, 0.000, 57.500)
+
+[node name="PapersB1" parent="Road/Dressing" instance=ExtResource("prop_papers_b")]
+transform = Transform3D(0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, 0.7660, -26.000, 0.000, 61.000)
+
+[node name="Papers2" parent="Road/Dressing" instance=ExtResource("prop_papers")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.000, 0.000, 60.000)
+
+[node name="Debris2" parent="Road/Dressing" instance=ExtResource("prop_debris")]
+transform = Transform3D(-0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, -0.5000, -8.000, 0.000, 62.000)
+
 [node name="Doors" type="Node3D" parent="."]
 script = ExtResource("doors")
 
@@ -2755,6 +3397,90 @@ metadata/door = "door_booth"
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -35.500, 0.000, -4.600)
 metadata/circuit = "back_lot"
 metadata/door = "door_back_lot"
+
+[node name="FuelSpots" type="Node3D" parent="."]
+
+[node name="FuelProps" type="Node3D" parent="."]
+
+[node name="Stand" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 0.450, 3.700)
+use_collision = true
+size = Vector3(1.2, 0.9, 0.7)
+material = ExtResource("field_fence")
+
+[node name="StandBand" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 0.600, 3.700)
+size = Vector3(1.24, 0.14, 0.74)
+material = ExtResource("road_line")
+
+[node name="StandCan1" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.120, 1.150, 3.700)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="StandCan2" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 1.150, 3.700)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="StandCan3" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.880, 1.150, 3.700)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="StandSign" type="Label3D" parent="FuelProps"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 0.500, 4.070)
+pixel_size = 0.006
+text = "FUEL"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotStand" type="Marker3D" parent="FuelSpots"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.500, 0.000, 4.800)
+metadata/shop_id = "fuel_can"
+metadata/door = "door_concession"
+
+[node name="Yard" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 0.450, 15.900)
+use_collision = true
+size = Vector3(1.2, 0.9, 0.7)
+material = ExtResource("field_fence")
+
+[node name="YardBand" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 0.600, 15.900)
+size = Vector3(1.24, 0.14, 0.74)
+material = ExtResource("road_line")
+
+[node name="YardCan1" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 1.150, 15.520)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="YardCan2" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 1.150, 15.900)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="YardCan3" type="CSGBox3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.400, 1.150, 16.280)
+size = Vector3(0.34, 0.5, 0.22)
+material = ExtResource("yard_prop")
+
+[node name="YardSign" type="Label3D" parent="FuelProps"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 35.030, 0.500, 15.900)
+pixel_size = 0.006
+text = "FUEL"
+font_size = 60
+outline_size = 24
+modulate = Color(0.1, 0.07, 0.02, 1)
+outline_modulate = Color(1, 0.9, 0.6, 1)
+
+[node name="SpotYard" type="Marker3D" parent="FuelSpots"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 34.300, 0.000, 15.900)
+metadata/shop_id = "fuel_can"
+metadata/door = "door_yard"
 
 [node name="CameraProbes" type="Node3D" parent="."]
 

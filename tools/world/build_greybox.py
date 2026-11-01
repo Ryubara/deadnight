@@ -13,6 +13,7 @@ import random
 import re
 from pathlib import Path
 
+import drivein_props
 import lot_props
 
 OUT = Path("game/world/drive_in_greybox.tscn")
@@ -66,6 +67,13 @@ SWITCHES = [
     ("booth", "door_booth", (4.6, 0.0, 21.5), (0.0, -1.0)),  # on the booth's north wall, midway side
     ("back_lot", "door_back_lot", (-35.5, 0.0, -4.6), (0.0, -1.0)),  # on the field's south fence, by the gate
 ]
+# The fuel can stands: (name, the shop door of the area, where, the way its front faces in degrees of yaw). A player
+# buys a can (the shop's `fuel_can`) from the spot 1.1 m in front of one (docs/design/map.md, The fuel cans).
+FUEL_STANDS = [
+    ("Stand", "door_concession", (2.5, 3.7), 0.0),  # behind the stand's counter, on the shelf by the soda
+    ("Yard", "door_yard", (35.4, 15.9), -90.0),  # outside the generator cage's west wall, facing the yard's gate
+]
+FUEL_ITEM = "fuel_can"
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
@@ -213,6 +221,8 @@ def box(
     rot_y: float = 0.0,
     collide: bool = True,
 ) -> None:
+    if name in drivein_props.REPLACED:  # a drive-in prop stands here, with this block's collision
+        return
     props = {"transform": xform(pos, rot_y)}
     if collide:
         props["use_collision"] = "true"
@@ -501,6 +511,27 @@ def ammo_locker(name: str, centre: tuple[float, float], yaw: float = 0.0) -> Non
     shop_spot(f"Spot{name}", "ammo", "", (x + fx * 1.1, 0, z + fz * 1.1), yaw)
 
 
+def fuel_stand(name: str, door_id: str, centre: tuple[float, float], yaw: float) -> None:
+    """A crate of red fuel cans with a yellow band and a FUEL sign; the spot a player buys from is a marker 1.1 m in
+    front of it (`FuelSpots`, read by `LotFuel`), and the shop item and the door of its area are its metadata."""
+    x, z = centre
+    rad = math.radians(yaw)
+    fx, fz = math.sin(rad), math.cos(rad)  # the front (+Z at yaw 0)
+    rx, rz = math.cos(rad), -math.sin(rad)  # the right (+X at yaw 0)
+    box("FuelProps", name, (1.2, 0.9, 0.7), (x, 0.45, z), "field_fence", yaw)
+    box("FuelProps", f"{name}Band", (1.24, 0.14, 0.74), (x, 0.6, z), "road_line", yaw, collide=False)
+    for i, offset in enumerate((-0.38, 0.0, 0.38), start=1):
+        at = (x + rx * offset, 1.15, z + rz * offset)
+        box("FuelProps", f"{name}Can{i}", (0.34, 0.5, 0.22), at, "yard_prop", yaw, collide=False)
+    sign("FuelProps", f"{name}Sign", "FUEL", (x + fx * 0.37, 0.5, z + fz * 0.37), yaw, 60)
+    spot = {
+        "transform": xform((x + fx * 1.1, 0, z + fz * 1.1), yaw),
+        "metadata/shop_id": f'"{FUEL_ITEM}"',
+        "metadata/door": f'"{door_id}"',
+    }
+    node(f"Spot{name}", "Marker3D", "FuelSpots", spot)
+
+
 def slab(door_name: str, tag: str, centre, width: float, height: float, axis: str) -> None:
     size = (width, height, 0.3) if axis == "x" else (0.3, height, width)
     box(f"Doors/{door_name}", tag, size, (centre[0], height / 2, centre[1]), "door")
@@ -519,6 +550,7 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
     lines.append(f'[ext_resource type="PackedScene" path="{lot_props.WRECK}" id="wreck"]')
     lines.extend(lot_props.ext_resources())
+    lines.extend(drivein_props.ext_resources())
     lines.append("")
     for mid in MATS:
         lines.append(f'[ext_resource type="Material" path="res://assets/lot/materials/{mid}.tres" id="{mid}"]')
@@ -573,6 +605,7 @@ def build() -> None:
     rows = group("Rows", field)
     rng = random.Random(1958)
     n_cars = 0
+    car_slots: list[tuple[int, float, float]] = []  # (row, radius, angle) of every parked car, for the speaker posts
     gaps: dict[int, list[tuple[float, float]]] = {}  # row -> (x, z) midpoints of two neighbouring cars' gap
     stall_lines: set[tuple[float, float]] = set()  # (row radius, angle) of a painted line beside a stall
     for ri, radius in enumerate((14.0, 21.0, 28.0, 35.0, 42.0), start=1):
@@ -590,6 +623,7 @@ def build() -> None:
             if not aisle and abs(x) < 56 and z < -9 and rng.random() > 0.12:
                 n_cars += 1
                 instance(row, f"Car{n_cars:02d}", "car", (x, 0, z), a)
+                car_slots.append((ri, radius, a))
                 if last_placed is not None and abs(a - last_placed - step) < 1e-6:
                     am = math.radians(a - step / 2)
                     gaps.setdefault(ri, []).append(
@@ -619,9 +653,8 @@ def build() -> None:
     for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
         instance(props, f"Wreck{i}", "wreck", (px, 0, pz), ry)
     lamps_f = lamps(field, "screen_lot")
-    for i, (lx, lz) in enumerate(
-        [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)], start=1
-    ):
+    field_lamps = [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)]
+    for i, (lx, lz) in enumerate(field_lamps, start=1):
         instance(lamps_f, f"Lamp{i}", "lamp", (lx, 0, lz))
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     spawns = group("PlayerSpawns", field)
@@ -803,6 +836,10 @@ def build() -> None:
     label(road, "Label", "7  THE ROAD", (0, 0.6, 58), 150)
     label(road, "LabelPlaza", "TICKET PLAZA", (0, 0.6, 41), 90)
 
+    # --- The drive-in's own props (tools/world/drivein_props.py): speaker posts, the counter, booths, the marquee ---
+    drivein_props.write_scenes()
+    n_posts = drivein_props.place(instance, group, node, lines, car_slots, gaps, screen_c, field_lamps)
+
     # --- Shop spots: wall weapons, the prize crane and the ammunition lockers ---------------------------------------
     # The weapons on the walls sell what the rules' tuning prices (weapon_shotgun, weapon_rifle); the crane is
     # crane_play inside the stand; a locker sells the rounds of the weapon in hand. Each spot is a marker with the
@@ -861,6 +898,14 @@ def build() -> None:
         lines.append(f'metadata/door = "{door_id}"')
         lines.append("")
 
+    # --- Fuel cans: where a player buys fuel for the generator ----------------------------------------------------------
+    # One in the stand (the map doc's place for fuel) and one by the generator's cage in the yard; each only in an area
+    # whose door is bought. Each spot is a marker with the shop item and the door as metadata (`LotFuel`).
+    group("FuelSpots", ".")
+    group("FuelProps", ".")
+    for name, door_id, centre, yaw in FUEL_STANDS:
+        fuel_stand(name, door_id, centre, yaw)
+
     # --- Camera probes: every narrow place the over-the-shoulder camera has to get through -----------------------
     # Each marker faces the way a player walks through; the tests sweep the spring arm from it, both ways round.
     group("CameraProbes", ".")
@@ -885,7 +930,7 @@ def build() -> None:
     root = lines.index('[node name="DriveInGreybox" type="Node3D"]')
     lines[root:root] = resources
     OUT.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8", newline="\n")
-    print(f"wrote {OUT}: {len(node_names)} nodes, {n_cars} field cars")
+    print(f"wrote {OUT}: {len(node_names)} nodes, {n_cars} field cars, {n_posts} speaker posts")
 
 
 if __name__ == "__main__":

@@ -68,7 +68,7 @@ func _ticks(count: int) -> void:
 
 
 func _step_frame_nodes(delta: float) -> void:
-	_rig._process(delta)
+	_rig.step(delta, 1.0)
 	_animation._process(delta)
 	_animation.advance(delta)
 
@@ -364,32 +364,43 @@ func test_aim_zooms_in_with_an_eased_fov_and_shorter_arm() -> void:
 	assert_float(camera.fov).is_between(_tuning.fov_aim + 0.5, _tuning.fov - 0.2)
 	await _seconds(0.8)
 	assert_float(camera.fov).is_equal_approx(_tuning.fov_aim, 0.3)
-	assert_float(_rig.arm_hit_length()).is_equal_approx(_tuning.arm_length_aim, 0.1)
+	assert_float(_rig.lens_distance()).is_equal_approx(_aim_lens_distance(), 0.05)
 	_runner.simulate_action_release("aim")
 	await _seconds(0.8)
 	assert_float(camera.fov).is_equal_approx(_tuning.fov, 0.3)
 
 
 func test_shoulder_swap_moves_the_camera_smoothly_to_the_other_side() -> void:
-	var shoulder := _rig.get_node("Pitch/SpringArm3D/Shoulder") as Node3D
-	await _seconds(0.3)
-	assert_float(shoulder.position.x).is_equal_approx(_tuning.shoulder_offset, 0.01)
+	var camera := _rig.camera()
+	await _seconds(0.5)
+	assert_float(_lateral(camera)).is_equal_approx(_tuning.shoulder_offset, 0.02)
 	_runner.simulate_action_press("swap_shoulder")
 	await _ticks(1)
 	_runner.simulate_action_release("swap_shoulder")
 	assert_float(_player.state.shoulder_side).is_equal(-1.0)
 	await _ticks(3)
-	assert_float(shoulder.position.x).is_between(
+	assert_float(_lateral(camera)).is_between(
 		-_tuning.shoulder_offset + 0.05, _tuning.shoulder_offset - 0.05
 	)
 	await _seconds(1.0)
-	assert_float(shoulder.position.x).is_equal_approx(-_tuning.shoulder_offset, 0.01)
+	assert_float(_lateral(camera)).is_equal_approx(-_tuning.shoulder_offset, 0.02)
 
 
 func test_camera_pulls_in_instead_of_clipping_a_wall() -> void:
 	_player.teleport(Vector3(0.0, 0.05, 19.7))  # the south wall is right behind the camera
 	await _seconds(0.5)
-	assert_float(_rig.arm_hit_length()).is_less(_tuning.arm_length - 1.0)
+	assert_float(_rig.lens_distance()).is_less(_tuning.arm_length - 1.0)
+
+
+## Sideways distance of the lens from the player's vertical axis, along the view's right.
+func _lateral(camera: Camera3D) -> float:
+	var offset := camera.global_position - _player.global_position
+	return offset.dot(camera.global_transform.basis.x)
+
+
+## Distance from the head to the lens when the aim zoom is in and the camera is over the shoulder.
+func _aim_lens_distance() -> float:
+	return Vector2(_tuning.shoulder_offset_aim, _tuning.arm_length_aim).length()
 
 
 # --- animation ---

@@ -104,7 +104,7 @@ func test_a_post_moves_its_lever_and_lamp_and_does_not_share_them() -> void:
 
 
 func test_a_post_is_no_lamp_of_the_lot() -> void:
-	# The lamps the dead's slowdown asks about are the `powered_light` group: a post adds none.
+	# The lamps the dead's lit pace asks about are the `powered_light` group: a post adds none.
 	var posts := _lot.get_node("Switches")
 	for lamp in _lot.get_tree().get_nodes_in_group(&"powered_light"):
 		assert_bool(posts.is_ancestor_of(lamp)).is_false()

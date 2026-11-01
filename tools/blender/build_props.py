@@ -53,6 +53,26 @@ PROPS = {
     "planks": ("hwQ1Fx5P8U", 1500),  # Wood Planks
     "gas_tank": ("RoCvKBGkoC", 1500),  # Gas Tank: a yellow gas bottle
     "water_tank": ("XVB8vUbnZb", 1500),  # Water Tank
+    "water_tank_floor": ("xgsh3kWbAM", 1500),  # Water Tank Floor: the tank on the ground
+    "tree": ("b0boebSV1r", 5000),  # Tree (round)
+    "tree_tall": ("i4QMw4L64D", 5000),  # Tree (tall)
+    "tree_small": ("QeYQEpgPcC", 5000),  # Tree (slim)
+    "tree_pine": ("1BkD9JnKrE", 5000),  # Tree (pine)
+    "trash_open": ("IvvdNqXmAW", 1500),  # Trash Container Open
+    "sofa": ("lmePppSu8a", 1500),  # Sofa: dumped by the fence
+    "sofa_small": ("vRMLQC5Dfg", 1500),  # Sofa Small
+    "sign": ("4MSsNFk5fc", 1500),  # Sign: a hazard sign on a post
+    "pipes": ("GB6AFkoiZb", 5000),  # Pipes
+    "fence": ("JfSPlkPhRD", 1500),  # Fence
+    "fence_long": ("Wbz6joYBJG", 1500),  # Fence Long
+    "brick_wall": ("GhSmk5IA5i", 1500),  # Brick Wall
+    "brick_wall_low": ("7uEf9KAU9q", 1500),  # Brick Wall (the short one)
+    "barrier_large": ("gLbBiYwt7l", 5000),  # Barrier Large
+    "barrier_fixed": ("Fg3Nimfcfg", 5000),  # Barrier Fixed
+    "papers": ("CCRSdAJxsD", 800),  # Debris Papers
+    "papers_b": ("MujITy1NRR", 800),  # Debris Papers
+    "papers_c": ("PTvW67lIoU", 800),  # Debris Papers
+    "street_light": ("nFwrlcLvM5", 1500),  # Street Light: the model only, no light (the lamps are lamp_post.tscn)
 }
 
 # Props the lot repeats many times, cut below their class budget for the web (WebGL2 in a software renderer is
@@ -80,9 +100,11 @@ PALETTE = {
     "Oil": "#684d37",
     "Rust": "#5f4b35",
     "Rust2": "#6d6150",
+    "TreeGreen": "#6b7f26",
+    "Brick": "#7e4323",
 }
 # Kit material names whose colour is wrong in the file, and the swatch they take instead.
-OVERRIDES = {"DarkRed": "DarkRed", "Light": "White"}
+OVERRIDES = {"DarkRed": "DarkRed", "Light": "White", "Texture_Fence": "Grey"}
 GRID = 5  # swatches per side
 SWATCH_PX = 8  # the atlas is 40 x 40
 
