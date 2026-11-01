@@ -1,0 +1,98 @@
+{
+  "source": "Quaternius Toon Shooter Game Kit, Soldier (CC0); clips authored by tools/blender/soldier_clips.py",
+  "fps": 24,
+  "upper_bones": [
+    "Abdomen",
+    "Torso",
+    "Neck",
+    "Shoulder.L",
+    "Shoulder.R",
+    "Head",
+    "UpperArm.L",
+    "UpperArm.R",
+    "LowerArm.L",
+    "LowerArm.R",
+    "Pinky1.L",
+    "Middle1.L",
+    "Index1.L",
+    "Thumb1.L",
+    "Pinky1.R",
+    "Middle1.R",
+    "Index1.R",
+    "Thumb1.R",
+    "Pinky2.L",
+    "Middle2.L",
+    "Index2.L",
+    "Thumb2.L",
+    "Pinky2.R",
+    "Middle2.R",
+    "Index2.R",
+    "Thumb2.R",
+    "Pinky3.L",
+    "Middle3.L",
+    "Index3.L",
+    "Pinky3.R",
+    "Middle3.R",
+    "Index3.R"
+  ],
+  "classes": {
+    "Rifle": "Shotgun",
+    "Shotgun": "Shotgun",
+    "Pistol": "Pistol",
+    "Melee": "Shovel"
+  },
+  "clips": {
+    "Walk_Shoot": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {
+        "step_right": 1,
+        "step_left": 11
+      },
+      "ground_speed": 2.6,
+      "direction": 0
+    },
+    "Strafe_Right": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {
+        "step_right": 1,
+        "step_left": 11
+      },
+      "ground_speed": 2.6,
+      "direction": 90
+    },
+    "Walk_Back": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {
+        "step_right": 1,
+        "step_left": 11
+      },
+      "ground_speed": 2.6,
+      "direction": 180
+    },
+    "Strafe_Left": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {
+        "step_right": 1,
+        "step_left": 11
+      },
+      "ground_speed": 2.6,
+      "direction": -90
+    }
+  }
+}
