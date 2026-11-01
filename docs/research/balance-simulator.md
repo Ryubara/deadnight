@@ -95,13 +95,29 @@ the points). The price is **550**: under the cheaper wall weapon (900), a round 
 950 cell was lost when a file was moved mid-run; the other cells are as above. The numbers are medians of a model of a
 player, not a promise: rerun with `--set=economy.items:crane_play.price=<n>`.
 
+- **Pick the weapon by what it kills, not by damage a second.** Shots land whole: a 95 damage rifle against 117 health
+  needs two, and does no better than a 60 damage gun. Choosing by sustained damage sent the average solo median from 11
+  to 9 when the shop weapons were stepped up (#254), because the model held a slow rifle and a pump shotgun in a
+  stampede
+  instead of the submachine gun. `SimWeapons.sustained_dps(id, health)` and `kill_rate_at` count the shots against the
+  walker the round sends; with them the same weapons raise the share of average solo nights that reach round 10 from 59%
+  to 83%. Rerun the step-up of any weapon through the model before believing its median.
+
+- **The gate went red after #260 and #271, and the retune was weapons.** The faster dead (#260) and the dearer crane
+  (#271) took the average solo median to 9 (wanted 10 to 14) and the weak boss night to 94% deaths (limit 85%). Nothing
+  in the ranges was loosened: the shop weapons were stepped up (#254, #265) and the simulator's weapon choice fixed,
+  which brought the medians to 5, 10, 11, 13 and 12 (weak solo, average 1, 2 and 4 players, strong solo). Health growth,
+  steps and counts were tried and left alone (see [round
+  scaling](round-scaling.md#7-what-the-simulator-showed-and-what-is-applied)).
+
 ## Using it
 
 ```text
 uv run --with matplotlib python tools/balance/run_report.py --out <folder> --nights 500
 ... --set rounds.health_growth=1.06 --set roster.types:brute.share_max=0.04   (try a number, no file edit)
 ... --brief                                                                   (tables only, no charts)
-... --jobs 3                                                                   (cells at once; the default 9 is a lot on a shared machine)
+... --jobs 3                                                                   (cells at once; the default 9 is a lot
+on a shared machine)
 balance_cli.gd --shopping=weapon_rifle --set=economy.start_points=20000       (what a weapon is worth, price out of it)
 ```
 
