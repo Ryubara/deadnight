@@ -32,16 +32,40 @@ func test_a_weapons_timing_is_the_definitions() -> void:
 		assert_float(SimWeapons.reload_seconds(id)).is_equal(weapon.reload_time)
 
 
-func test_sustained_damage_counts_the_reload_and_picks_the_smg_over_the_rifle() -> void:
+func test_sustained_damage_counts_the_reload_and_the_health_the_blows_must_beat() -> void:
 	var pistol := SimWeapons.def(&"pistol")
 	var cycle := float(pistol.magazine_size) * pistol.fire_interval + pistol.reload_time
 	assert_float(SimWeapons.sustained_dps(&"pistol")).is_equal_approx(
 		pistol.damage * float(pistol.magazine_size) / cycle, 0.001
 	)
 	var owned: Array[StringName] = [&"weapon_rifle", &"weapon_smg", &"weapon_shotgun"]
-	assert_str(SimWeapons.best(owned)).is_equal("weapon_smg")
+	# Without a health it is raw damage a second. The shop weapons were stepped up (#254: the rifle
+	# is 95 and the shotgun 152 a pull), so on raw damage alone they now beat the submachine gun.
+	assert_str(SimWeapons.best(owned)).is_equal("weapon_shotgun")
 	var none: Array[StringName] = []
 	assert_str(SimWeapons.best(none)).is_equal("pistol")
+
+
+func test_a_blow_that_overshoots_the_health_is_worth_no_more_than_the_health() -> void:
+	# Shots land whole: 95 damage kills a 95 walker in one, a 96 one in two, so the second walker
+	# is killed at half the rate (what the player really gets, and what the pick must count).
+	assert_float(SimWeapons.sustained_dps(&"rifle", 96.0)).is_less(
+		SimWeapons.sustained_dps(&"rifle", 95.0) * 0.6
+	)
+	# Against a round-1 walker (50) the rifle's 95 is mostly wasted and the submachine gun, with
+	# its rate, is the better pick; against round 10's (117) the shotgun's whole blast beats both.
+	var rounds := RulesFixture.tuning().rounds
+	var owned: Array[StringName] = [&"weapon_rifle", &"weapon_smg", &"weapon_shotgun"]
+	for spec: Array in [[1, &"weapon_smg"], [10, &"weapon_shotgun"]]:
+		var health := rounds.health_for_round(spec[0])
+		var best := &""
+		var best_rate := -1.0
+		for id in owned:
+			var rate := SimWeapons.sustained_dps(id, health)
+			if rate > best_rate:
+				best_rate = rate
+				best = id
+		assert_str(best).is_equal(spec[1])
 
 
 func test_only_a_flare_has_a_blast() -> void:
