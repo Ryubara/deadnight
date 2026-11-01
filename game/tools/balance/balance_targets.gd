@@ -33,8 +33,10 @@ const TIME_TO_KILL := {
 	"brute": [3.0, 12.0],
 	"headliner": [8.0, 30.0],
 }
-## Points spent over points earned, solo average: players spend a good part, never all.
-const SPEND_SHARE := [0.3, 0.9]
+## Points spent over points earned, solo average: players spend a good part, never all. The floor is
+## low because there is little to buy yet (doors, two wall weapons, the crane, fuel; tonics do
+## nothing and ammunition is not sold): the points glut of docs/design/rounds.md, not a model fault.
+const SPEND_SHARE := [0.2, 0.9]
 
 
 ## `cells` maps "skill:players" to a cell of `BalanceBatch.run_cell`. Returns what is out of range,

@@ -35,7 +35,7 @@ func test_start_waits_out_the_intro_then_round_one_begins() -> void:
 	assert_int(_rules.phase).is_equal(GameRules.Phase.ACTIVE)
 	assert_int(_rules.round_number).is_equal(1)
 	assert_int(_log.of(&"round_started")[0]["round"]).is_equal(1)
-	assert_int(_log.of(&"round_started")[0]["zombie_count"]).is_equal(5)
+	assert_int(_log.of(&"round_started")[0]["zombie_count"]).is_equal(RulesFixture.round_count(1))
 
 
 func test_the_first_spawn_waits_for_its_delay() -> void:
@@ -50,8 +50,9 @@ func test_the_first_spawn_waits_for_its_delay() -> void:
 func test_spawns_are_paced_by_the_interval() -> void:
 	_begin()
 	RulesFixture.into_round_one(_rules)
-	# Spawns at 1.5, 3.9, 6.3 ... so by 7 seconds there are three.
-	RulesFixture.run(_rules, 7.0)
+	# The first spawn comes after its delay, then one every interval: three by two intervals and a bit.
+	var rounds := RulesFixture.tuning().rounds
+	RulesFixture.run(_rules, rounds.first_spawn_delay + 2.0 * rounds.spawn_interval(1, 1) + 0.5)
 	assert_int(_log.count(&"zombie_spawn_requested")).is_equal(3)
 
 
@@ -60,13 +61,13 @@ func test_a_round_sends_exactly_its_count_with_the_rounds_health() -> void:
 	RulesFixture.into_round_one(_rules)
 	RulesFixture.run(_rules, 60.0)
 	var orders := _log.of(&"zombie_spawn_requested")
-	assert_int(orders.size()).is_equal(5)
+	assert_int(orders.size()).is_equal(RulesFixture.round_count(1))
 	var ids: Dictionary = {}
 	for order in orders:
 		ids[order["zombie_id"]] = true
-		assert_float(order["health"]).is_equal(60.0)
+		assert_float(order["health"]).is_equal(RulesFixture.round_health(1))
 		assert_float(order["speed"]).is_greater(0.0)
-	assert_int(ids.size()).is_equal(5)
+	assert_int(ids.size()).is_equal(RulesFixture.round_count(1))
 
 
 func test_no_more_than_the_cap_are_alive_and_a_kill_lets_the_next_in() -> void:
@@ -115,10 +116,10 @@ func test_after_the_break_the_next_round_is_bigger_and_tougher() -> void:
 	_kill_everything()
 	RulesFixture.run(_rules, 20.5)
 	assert_int(_rules.round_number).is_equal(2)
-	assert_int(_log.of(&"round_started")[1]["zombie_count"]).is_equal(7)
+	assert_int(_log.of(&"round_started")[1]["zombie_count"]).is_equal(RulesFixture.round_count(2))
 	RulesFixture.run(_rules, 60.0)
-	var second_round_first := _log.of(&"zombie_spawn_requested")[5]
-	assert_float(second_round_first["health"]).is_equal(74.0)
+	var second_round_first := _log.of(&"zombie_spawn_requested")[RulesFixture.round_count(1)]
+	assert_float(second_round_first["health"]).is_equal(RulesFixture.round_health(2))
 
 
 func test_a_skipped_break_starts_the_next_round_at_once() -> void:
@@ -134,7 +135,9 @@ func test_a_skipped_break_starts_the_next_round_at_once() -> void:
 func test_more_players_mean_a_bigger_round() -> void:
 	_begin(2)
 	RulesFixture.into_round_one(_rules)
-	assert_int(_log.of(&"round_started")[0]["zombie_count"]).is_equal(8)
+	assert_int(_log.of(&"round_started")[0]["zombie_count"]).is_equal(
+		RulesFixture.round_count(1, 2)
+	)
 
 
 func test_a_zombie_lost_to_the_world_still_counts_toward_the_round() -> void:

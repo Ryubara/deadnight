@@ -31,7 +31,14 @@ func _init() -> void:
 	if out.is_empty():
 		print(JSON.stringify(cell))
 	else:
-		var file := FileAccess.open(out, FileAccess.WRITE)
+		# A relative path is the caller's: `--path` moves the working directory into the project.
+		var file := FileAccess.open(_absolute(out), FileAccess.WRITE)
+		if file == null:
+			push_error(
+				"cannot write %s: %s" % [_absolute(out), error_string(FileAccess.get_open_error())]
+			)
+			quit(1)
+			return
 		file.store_string(JSON.stringify(cell))
 		file.close()
 	print(
@@ -47,6 +54,16 @@ func _init() -> void:
 		)
 	)
 	quit()
+
+
+## `path` as an absolute path. Godot starts a `--path` run inside the project, so a relative path
+## would land there; the shell's own directory (`PWD`, which POSIX shells and Git Bash export) is
+## the one the caller meant. Without it the path is taken as given.
+func _absolute(path: String) -> String:
+	if path.is_absolute_path() or path.contains("://"):
+		return path
+	var base := OS.get_environment("PWD")
+	return path if base.is_empty() else base.path_join(path)
 
 
 func _specs(raw: PackedStringArray) -> PackedStringArray:

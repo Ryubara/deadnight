@@ -172,6 +172,44 @@ def chart_survival(cells, out: Path, plt) -> None:
     plt.close(fig)
 
 
+def chart_compare(cells, before, out: Path, plt) -> None:
+    """Survival of the same nine cells before (dashed) and after (solid) a change to model or tuning."""
+    fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharey=True)
+    for ax, players in zip(axes, PLAYERS):
+        rounds = range(1, 31)
+        for skill in SKILLS:
+            for cell, style_, label in (
+                (before[(skill, players)], "--", "before"),
+                (cells[(skill, players)], "-", "after"),
+            ):
+                ys = [survival(cell, r) * 100 for r in rounds]
+                ax.plot(
+                    rounds,
+                    ys,
+                    color=SERIES[skill],
+                    lw=2 if style_ == "-" else 1.5,
+                    ls=style_,
+                    label=f"{skill}, {label}",
+                )
+        ax.set_title(f"{players} player{'s' if players > 1 else ''}")
+        ax.set_xlabel("round")
+        ax.set_xlim(1, 24)
+        ax.set_ylim(0, 102)
+        ax.axhline(50, color=INK_2, lw=0.8, ls=":")
+    axes[0].set_ylabel("nights that reach the round (%)")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=6, fontsize=9)
+    fig.suptitle(
+        "Survival by round, before (dashed) and after (solid). The median is where a line crosses 50%.",
+        x=0.01,
+        ha="left",
+        color=INK,
+    )
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    fig.savefig(out / "compare.png", dpi=130)
+    plt.close(fig)
+
+
 def chart_spike(cells, out: Path, plt) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharey=True)
     for ax, players in zip(axes, PLAYERS):
@@ -321,8 +359,10 @@ def main() -> None:
         "--set", action="append", default=[], help="a tuning override, path=value (see TuningOverrides)"
     )
     parser.add_argument("--brief", action="store_true", help="no charts, only the tables")
+    parser.add_argument("--compare", type=Path, help="a report folder to draw as 'before' in compare.png")
     parser.add_argument("--reuse", action="store_true", help="draw from the cells already in --out")
     args = parser.parse_args()
+    args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=True)
     import matplotlib
 
@@ -345,6 +385,9 @@ def main() -> None:
     if not args.brief:
         for chart in (chart_survival, chart_spike, chart_economy, chart_ttk):
             chart(cells, args.out, plt)
+    if args.compare and not args.brief:
+        before = {k: json.loads((args.compare.resolve() / "cells" / f"{k[0]}_{k[1]}.json").read_text()) for k in keys}
+        chart_compare(cells, before, args.out, plt)
     print(summary(cells, args.out, nights))
 
 

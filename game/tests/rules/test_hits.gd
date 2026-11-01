@@ -4,9 +4,12 @@ extends GdUnitTestSuite
 var _rules: GameRules
 var _log: RulesFixture
 var _zombie: int
+## A round 1 zombie's health: what the tests below take off.
+var _first_health: float
 
 
 func before_test() -> void:
+	_first_health = RulesFixture.tuning().rounds.health_for_round(1)
 	_rules = RulesFixture.make_rules(2)
 	_log = RulesFixture.record(_rules)
 	RulesFixture.into_round_one(_rules)
@@ -28,9 +31,9 @@ func _health_left(zombie_id: int) -> float:
 func test_a_body_hit_pays_a_little_and_takes_health_off() -> void:
 	var events := _hit(RulesAction.ZONE_BODY, 20.0)
 	assert_int(_rules.points_of(1)).is_equal(204)
-	assert_float(_health_left(_zombie)).is_equal(40.0)
+	assert_float(_health_left(_zombie)).is_equal(_first_health - 20.0)
 	assert_str(events[0]["type"]).is_equal("zombie_damaged")
-	assert_float(events[0]["health"]).is_equal(40.0)
+	assert_float(events[0]["health"]).is_equal(_first_health - 20.0)
 	assert_float(events[0]["damage"]).is_equal(20.0)
 	assert_str(events[0]["zone"]).is_equal("body")
 
@@ -41,8 +44,8 @@ func test_a_headshot_hit_pays_double() -> void:
 
 
 func test_the_hit_that_empties_the_health_is_the_kill() -> void:
-	_hit(RulesAction.ZONE_BODY, 30.0)
-	_hit(RulesAction.ZONE_BODY, 29.0)
+	_hit(RulesAction.ZONE_BODY, _first_health - 21.0)
+	_hit(RulesAction.ZONE_BODY, 20.0)
 	assert_int(_log.count(&"zombie_removed")).is_equal(0)
 	var events := _hit(RulesAction.ZONE_BODY, 1.0)
 	assert_int(_log.count(&"zombie_removed")).is_equal(1)
@@ -77,7 +80,7 @@ func test_the_kill_is_credited_and_counted() -> void:
 
 func test_overkill_pays_one_kill_and_damages_only_what_was_left() -> void:
 	var events := RulesFixture.kill(_rules, 1, _zombie)
-	assert_float(events[0]["damage"]).is_equal(60.0)
+	assert_float(events[0]["damage"]).is_equal(_first_health)
 	assert_float(events[0]["health"]).is_equal(0.0)
 	assert_int(_rules.points_of(1)).is_equal(260)
 
@@ -98,7 +101,7 @@ func test_farming_one_zombie_with_many_small_hits_pays_a_bounded_purse() -> void
 		_hit(RulesAction.ZONE_HEAD, 0.01)
 	# Four paid hits at 8, then nothing; the zombie is still alive.
 	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 8)
-	assert_float(_health_left(_zombie)).is_between(49.0, 51.0)
+	assert_float(_health_left(_zombie)).is_between(_first_health - 11.0, _first_health - 9.0)
 	RulesFixture.kill(_rules, 1, _zombie, RulesAction.ZONE_HEAD)
 	assert_int(_rules.points_of(1)).is_equal(200 + 4 * 8 + 100)
 

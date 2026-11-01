@@ -28,7 +28,7 @@ func _fire(to: Vector3, seq: int = 1) -> Array[Dictionary]:
 func test_a_spawned_zombie_becomes_a_target() -> void:
 	assert_bool(_server.is_target_alive(_zombie)).is_true()
 	var spawn := _log.of(&"zombie_spawn_requested")[0]
-	assert_float(spawn["health"]).is_equal(60.0)
+	assert_float(spawn["health"]).is_equal(RulesFixture.round_health(1))
 
 
 func test_a_hit_that_does_not_kill_pays_the_hit_points() -> void:
