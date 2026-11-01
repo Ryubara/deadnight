@@ -9,6 +9,40 @@ The Compatibility renderer lights each mesh with at most 8 omni and 8 spot light
 25 lamps is one mesh, so most of its lamps would not light it. The greybox tiles every floor into slabs of at most
 24 m, so no slab sees more than a handful. Shadows are off: they are among the web build's most expensive features.
 
+## Switching lights with the generator
+
+How the lot's lamps follow the rules is in [the lot](../design/map.md#which-lamps-hang-on-which-circuit); what building
+it taught:
+
+- A scene instanced many times shares its sub-resources: the lamp post's bulb material is one resource for every post,
+  so setting its emission darkens them all. `LampPost` duplicates the material in `_ready`, one per post.
+- A light is `visible = false` only when its level is zero; a flicker moves `light_energy` and never hides it, so the
+  count of lights that touch a mesh (the cap above) does not change on every flicker step. (A choice to keep the web
+  build's shaders steady, not a measurement.)
+- The flicker is a function of the frame's tick and the lamp's number (a golden-ratio sequence), not of `Time` or a
+  random draw, so Movie Maker and a test see the same lights. The night's link delivers a tick late: a test that
+  watches the lights waits a few ticks after changing the tank.
+- Whether ground is lit is asked of the rules' `GeneratorState`, never of a `Light3D`, so a headless server that draws
+  nothing gives the same answer as a client.
+- `metadata/circuit = "name"` in a `.tscn` is a plain String; read it with `StringName(...)` and look up the tree for
+  the first node that has it.
+- A fresh git worktree has no `addons/gdUnit4` (it is ignored): copy it from the main checkout before running tests.
+
+### The breaker posts
+
+Where they stand and how they work is in [the lot](../design/map.md#the-breaker-posts); what building them taught:
+
+- **Anything solid near a car-row gap fails the camera test.** The first post for the field's circuit stood at (8, -45),
+  inside the first car row, and `test_the_arm_keeps_its_full_length_in_corridors` failed on `CarGap_R1c`: the arm runs
+  2.8 m back from a probe toward the screen and the post was in it. The post moved to the avenue, away from every probe.
+- **A post is a `StaticBody3D`, not CSG**, so it does not need the navigation bake's care; the dead path round it. Its
+  lamp is an emissive mesh with its own material (shared sub-resources would light every post together) and is no
+  `powered_light`, so it never lights ground for the dead.
+- **The prompt's winner is the first match**: door, then breach, then post. A post stands more than `use_reach` from
+  every slab of every door (a test checks it), so the order never decides between two things a player stands at.
+- **The bot's `use` is an edge, so it needs the circuit it sees**: frames carry `circuits`, and the bot only presses
+  when the post is thrown the wrong way; the server also refuses a second throw within `switch_interval`.
+
 ## CSG
 
 - A scene of plain `CSGBox3D` roots (no combiners, no subtraction) builds fast: 350 nodes load in well under a
@@ -52,7 +86,9 @@ Used by `game/tests/world/lot_navigation.gd`; it proves which areas of the lot a
 ## Sweeping the shoulder camera
 
 `game/world/drive_in/camera_probe.gd` is the player's camera rig as a function (pivot 1.55 m, arm 2.8 m with a 0.25 m
-sphere, shoulder 0.75 m after the sweep). What it found:
+sphere, shoulder 0.75 m after the sweep). Those numbers are read from `player_tuning_default.tres`, not copied, so
+a tuning change moves the sweep. Read them through `CameraProbe.tuning()`: GDScript folds `CONST_RESOURCE.property`
+into the script when it compiles, so a value changed afterwards (by a test) is not seen. What it found:
 
 - The spring arm only collides along the arm. The shoulder offset comes after, so in a 1.4 m gap between cars the
   camera ends up inside the car's glass (at 1.55 m the cabin, 0.95 to 1.65 m, is what it hits, not the 1.0 m body).

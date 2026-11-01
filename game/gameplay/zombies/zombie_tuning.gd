@@ -26,6 +26,12 @@ extends Resource
 ## Radians per second a zombie turns toward where it is going.
 @export var turn_rate: float = 9.0
 
+@export_group("Fence")
+## Metres short of the boards at which a zombie stops and starts tearing them off.
+@export var board_stop: float = 0.9
+## A zombie this close to the stop line (metres) is at the boards and works on them.
+@export var board_slack: float = 0.25
+
 @export_group("Attack")
 ## Metres from the zombie's feet to the player's at which it starts a swing.
 @export var reach: float = 1.4

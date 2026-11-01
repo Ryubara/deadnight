@@ -3,6 +3,31 @@
 Problems we hit and how we solved them, newest first. Five lines each: date, symptom, cause, fix, where it is
 documented.
 
+## 2026-11-01: a test that bought a door crashed the engine after it printed PASSED
+
+- **Symptom:** a GdUnit4 suite whose autopilot bought the concession passed every case, then the run ended with
+  `Segmentation fault` (shell status 139); a wait for the lamps failed one tick early in the same suite (#206).
+- **Cause:** the door starts a navigation bake on a worker thread, and the test freed the night and quit under it (the
+  same fault as the autopilot capture's, `docs/research/zombies.md`). The lamps failed early because a command's events
+  reach the client a tick after the server applies it: the loop that waits on the rules does not wait for the client.
+- **Fix:** `NightFixture.settle_bake` before `queue_free` in a test that buys a door; after a wait on the rules, run two
+  more ticks before asserting on what the client draws.
+- **Documented:** [zombies research](research/zombies.md).
+
+## 2026-11-01: GameRules leaked at exit through lambdas that capture self
+
+- **Symptom:** every run that built `GameRules` ended with `ERROR: N resources still in use at exit` and
+  `ObjectDB instances were leaked`, and agents learned to skip the line (#159).
+- **Cause:** `GameRules` connected lambdas that use `self` to its own generator's signals. Such a lambda holds the
+  `RefCounted` strongly, so the rules, the generator and the lambdas kept each other alive. A method `Callable` or
+  `bind` stores only the object id, so rules and servers that connect methods to each other's signals are no cycle.
+  A second, separate cause: a run that quits in the same moment a sound plays leaves that voice queued in the audio
+  server, reported as leaked `AudioStreamOggVorbis`.
+- **Fix:** connect methods (`_emit.bind(&"fuel_low")`, `_on_circuit_changed`), and remove the disconnect loops that
+  worked around it; the night harness stops the audio and waits a moment before it quits. `test_rules_lifetime`
+  fails on a cycle, and the CI `godot` job plays a night and fails on any leak line.
+- **Documented:** [weapon firing research](research/weapon-firing.md).
+
 ## 2026-11-01: the HUD layout test passed while real values overlapped
 
 - **Symptom:** the HUD's layout test was green, yet a four-player night with long names, round 123, a big score and the

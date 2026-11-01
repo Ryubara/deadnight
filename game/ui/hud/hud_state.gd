@@ -13,8 +13,9 @@ extends RefCounted
 signal changed
 signal event_applied(event: Dictionary)
 
-## Events that exist only for the HUD, sent beside the rules' own: the network layer turns a
-## zombie's blow into this (`direction` is radians clockwise from straight ahead of the player).
+## The rules' event for a blow on a player (`health` left, `max_health`, `bearing` radians
+## clockwise from -z where it came from); the arc turns the bearing toward where the local player
+## faces (`facing`).
 const PLAYER_HURT := &"player_hurt"
 
 ## The parts of the state a HUD part can depend on (see `HudPart.topics`).
@@ -38,11 +39,25 @@ const PHASE_ACTIVE := 2
 const PHASE_OVER := 3
 
 var local_player_id := 1
+## Which way the local player faces, radians (their yaw): the frame sets it, a blow's bearing is
+## turned by it. Not a topic: nothing redraws for it.
+var facing := 0.0
 var health := 100.0
 var max_health := 100.0
 var weapon_name := ""
 var ammo_magazine := 0
 var ammo_reserve := 0
+## The held weapon is being reloaded; false for a weapon that uses no ammunition.
+var ammo_reloading := false
+var ammo_used := true
+## The weapon in hand and the one put away last, with the rounds of each weapon heard of (id ->
+## {"ammo", "reserve"}), from the weapons' events (see `HudLoadout`). The names and the ids of the
+## weapons that use no ammunition are known from the shared definitions: the client sets them.
+var weapon_id: StringName = &""
+var holstered_id: StringName = &""
+var rounds: Dictionary[StringName, Dictionary] = {}
+var weapon_names: Dictionary[StringName, String] = {}
+var ammo_free: Array[StringName] = []
 var points := 0
 ## The local player's grenades.
 var grenades := 0
@@ -60,15 +75,18 @@ var fuel_low := false
 var fuel_empty := false
 ## Circuit id -> lit, in the order the generator lists them.
 var circuits: Dictionary[StringName, bool] = {}
-## Player id -> {"name": String, "downed": bool, "points": int, "grenades": int}, the local player
-## included.
+## Player id -> {"name": String, "downed": bool, "points": int, "grenades": int, "seat": int,
+## "look": Dictionary}, the local player included. The seat (0 to 3) picks the player's colour (the
+## armband's); the server gives the lowest free one, so the state does too until it is told
+## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
 var team: Dictionary[int, Dictionary] = {}
 ## The interaction in reach: {} for none, else {"kind", "label", "cost"} (see `set_prompt`).
 var prompt: Dictionary = {}
 var game_over_reason := &""
 ## The name of the player who left last (their entry is gone from `team` by the time you hear).
 var left_name := ""
-## A small piece of equipment (a flare, a trap) and how many are left; "" for none.
+## A small piece of equipment (a flare, a trap) and how many are left; "" for none. A negative
+## count (`HudLoadout.NO_COUNT`) is a piece with nothing to count.
 var equipment_name := ""
 var equipment_count := 0
 ## Where the player is, and what to do next, as two lines under the round.
@@ -149,6 +167,8 @@ func release() -> void:
 # --- The local player's own readings ---
 
 
+## Health is the rules' (`player_added`, `player_hurt`, `player_healed`, a snapshot); this sets it
+## by hand for a tool or a capture.
 func set_health(value: float, maximum: float = -1.0) -> void:
 	if maximum > 0.0:
 		_assign(&"max_health", maximum, HEALTH)
@@ -156,9 +176,11 @@ func set_health(value: float, maximum: float = -1.0) -> void:
 	_flush()
 
 
-func set_ammo(magazine: int, reserve: int, weapon := "") -> void:
+func set_ammo(magazine: int, reserve: int, weapon := "", reloading := false, used := true) -> void:
 	_assign(&"ammo_magazine", magazine, AMMO)
 	_assign(&"ammo_reserve", reserve, AMMO)
+	_assign(&"ammo_reloading", reloading, AMMO)
+	_assign(&"ammo_used", used, AMMO)
 	if weapon != "":
 		_assign(&"weapon_name", weapon, AMMO)
 	_flush()
@@ -202,9 +224,9 @@ func set_player_name(player_id: int, display_name: String) -> void:
 	_flush()
 
 
-## An interaction the player stands at. `kind` is `buy_door`, `buy_weapon`, `fill_fuel`, `repair` or
-## `revive`; `cost` is points (0 for free); `label` names the thing and `detail` is the one line
-## on what it does (a default per kind when empty).
+## An interaction the player stands at. `kind` is `buy_door`, `buy_weapon`, `fill_fuel`, `repair`,
+## `circuit` or `revive`; `cost` is points (0 for free); `label` names the thing and `detail` is the
+## one line on what it does (a default per kind when empty).
 func set_prompt(kind: StringName, label: String, cost := 0, detail := "") -> void:
 	var next := {"kind": kind, "label": label, "cost": cost, "detail": detail}
 	if prompt != next:
@@ -263,22 +285,27 @@ func load_snapshot(data: Dictionary) -> void:
 	var alive: Dictionary = data.get("zombies", {})
 	zombies_left = alive.size() + int(data.get("spawn_left", 0))
 	_restore_special(data, alive)
-	var names := {}
+	var kept := {}
 	for player_id in team:
-		names[player_id] = team[player_id]["name"]
+		kept[player_id] = team[player_id]
 	team.clear()
 	var players: Dictionary = data.get("players", {})
 	for player_id in players:
 		var saved: Dictionary = players[player_id]
 		var member := _member(int(player_id))
-		if names.has(int(player_id)):
-			member["name"] = names[int(player_id)]
+		if kept.has(int(player_id)):
+			for field in ["name", "seat", "look"]:
+				member[field] = kept[int(player_id)][field]
 		member["downed"] = bool(saved.get("downed", false))
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
 	var local: Dictionary = team.get(local_player_id, {})
 	points = int(local.get("points", 0))
 	grenades = int(local.get("grenades", 0))
+	var mine: Dictionary = players.get(local_player_id, {})
+	if mine.has("max_health"):
+		_assign(&"max_health", float(mine["max_health"]), HEALTH)
+		_assign(&"health", float(mine.get("health", max_health)), HEALTH)
 	var generator: Dictionary = data.get("generator", {})
 	_set_fuel(float(generator.get("fuel", fuel)))
 	for circuit_id in generator.get("circuits", {}):
@@ -345,7 +372,9 @@ func _handler(type: StringName) -> Callable:
 		&"player_removed":
 			handler = _on_player_removed
 		&"player_downed":
-			handler = func(e: Dictionary) -> void: _set_downed(int(e["player_id"]), true)
+			handler = _on_player_downed
+		&"player_healed":
+			handler = _on_player_healed
 		&"player_revived":
 			handler = func(e: Dictionary) -> void: _set_downed(int(e["player_id"]), false)
 		&"points_changed":
@@ -364,8 +393,12 @@ func _handler(type: StringName) -> Callable:
 				game_over_reason = StringName(e.get("reason", ""))
 		&"purchase_made":
 			handler = _on_purchase_made
+		&"player_look":
+			handler = _on_player_look
 		&"player_hurt":
 			handler = _on_player_hurt
+		&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished":
+			handler = func(e: Dictionary) -> void: HudLoadout.apply(e, self)
 	return handler
 
 
@@ -455,10 +488,23 @@ func _boss_index(zombie_id: int) -> int:
 func _on_player_added(event: Dictionary) -> void:
 	var player_id := int(event["player_id"])
 	var member := _member(player_id)
+	if player_id == local_player_id:
+		_set_local_health(event)
 	if event.has("grenades"):
 		member["grenades"] = int(event["grenades"])
 		if player_id == local_player_id:
 			_assign(&"grenades", int(event["grenades"]), HEALTH)
+
+
+## The server's word on where a player sits and what they wear: `player_id`, `seat`, `look` (a
+## `CharacterLook.to_dict`). Not a rules event: the look is the lot's, sent once on join.
+func _on_player_look(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	var look: Dictionary = event.get("look", {})
+	if member["seat"] != int(event["seat"]) or member["look"] != look:
+		member["seat"] = int(event["seat"])
+		member["look"] = look
+		_mark(TEAM)
 
 
 func _on_grenade_count_changed(event: Dictionary) -> void:
@@ -473,6 +519,8 @@ func _on_points_changed(event: Dictionary) -> void:
 	_member(player_id)["points"] = int(event["total"])
 	if player_id == local_player_id:
 		_assign(&"points", int(event["total"]), POINTS)
+	else:
+		_mark(TEAM)
 
 
 func _on_purchase_made(event: Dictionary) -> void:
@@ -481,7 +529,27 @@ func _on_purchase_made(event: Dictionary) -> void:
 
 
 func _on_player_hurt(event: Dictionary) -> void:
-	if int(event.get("player_id", -1)) == local_player_id and event.has("health"):
+	if int(event.get("player_id", -1)) == local_player_id:
+		_set_local_health(event)
+
+
+func _on_player_healed(event: Dictionary) -> void:
+	if int(event.get("player_id", -1)) == local_player_id:
+		_set_local_health(event)
+
+
+func _on_player_downed(event: Dictionary) -> void:
+	var player_id := int(event["player_id"])
+	_set_downed(player_id, true)
+	if player_id == local_player_id:
+		_assign(&"health", 0.0, HEALTH)
+
+
+## Takes the local player's `health` (and `max_health`, when the event has it) off an event.
+func _set_local_health(event: Dictionary) -> void:
+	if event.has("max_health"):
+		_assign(&"max_health", float(event["max_health"]), HEALTH)
+	if event.has("health"):
 		_assign(&"health", clampf(float(event["health"]), 0.0, max_health), HEALTH)
 
 
@@ -518,10 +586,26 @@ func _set_circuit(circuit_id: StringName, on: bool) -> void:
 func _member(player_id: int) -> Dictionary:
 	if not team.has(player_id):
 		team[player_id] = {
-			"name": "PLAYER %d" % player_id, "downed": false, "points": 0, "grenades": 0
+			"name": "PLAYER %d" % player_id,
+			"downed": false,
+			"points": 0,
+			"grenades": 0,
+			"seat": _free_seat(),
+			"look": {},
 		}
 		_mark(TEAM)
 	return team[player_id]
+
+
+## The lowest seat no one in the party has, as the server gives it (0 when all four are taken).
+func _free_seat() -> int:
+	var taken: Array = []
+	for member: Dictionary in team.values():
+		taken.append(member["seat"])
+	for seat in 4:
+		if not taken.has(seat):
+			return seat
+	return 0
 
 
 ## Sets a field and marks `topic`, only when the value is not the one already held.

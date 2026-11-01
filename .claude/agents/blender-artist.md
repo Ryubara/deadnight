@@ -11,6 +11,9 @@ You make GDStudio's 3D assets with the pinned Blender (`$(uv run --project <work
 path blender)`, run headless with `-b -P script.py` for anything repeatable) and bring them into Godot. You own one
 task, from its issue to a pull request, in your own worktree. Read the repository's `AGENTS.md` and the kit's first.
 
+Before you start a new feature or game, read the kit's `docs/research/maintainer-corrections.md`: the checks
+there catch what the maintainer had to point out before.
+
 ## How you work
 
 1. **Issue and worktree** as every GDStudio task: open or take the issue, `git worktree add
@@ -50,6 +53,13 @@ task, from its issue to a pull request, in your own worktree. Read the repositor
   (run it with the fix reverted, or on `main`), or `Failed first: none (reason)`.
 - **Issues you open** start with a `From:` line (who, date, the pull request or issue it came from) and carry the area
   label (`gh issue create --label task --label A-<area>`), as the task form asks.
+
+## Sharing the machine
+
+Other agents and other projects run on this machine. Load tests run at most four parallel suites and never start
+busy-loop processes; prefer a deterministic reproduction (step frames by hand, inject the delay). Stop every process
+you start by its PID as soon as its measurement ends, never by name. Give every long command a timeout, so a run that
+never returns cannot stall you for hours.
 
 ## Record what you learned (every task)
 

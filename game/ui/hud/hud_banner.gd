@@ -13,11 +13,11 @@ const OUT_TIME := 0.5
 ## The board grows from this scale to full size as it appears (movement: skipped when reduced).
 const POP_FROM := 0.92
 ## Fixed width: a long title shrinks to fit instead of widening the board into the readouts.
-const WIDTH := 560.0
+const WIDTH := HudStyle.CARD
 ## Title size of a round banner ("ROUND 12" must fit the width).
-const ROUND_SIZE := 96
-const BULB_GAP := 36.0
-const BULB_RADIUS := 5.0
+const ROUND_SIZE := 72
+const BULB_GAP := 27.0
+const BULB_RADIUS := 4.0
 const CHASE := 5.0
 
 var title := ""
@@ -31,7 +31,7 @@ var subtitle_width: float:
 		)
 var subtitle_room: float:
 	get:
-		return WIDTH - float(tokens.space_md * 2 + 10)
+		return WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT)
 
 var _title := HudStyle.label("", ROUND_SIZE, tokens.accent_bright, true)
 var _subtitle := HudStyle.label("", HudStyle.MEDIUM, tokens.ink, false)
@@ -136,7 +136,7 @@ func show_banner(main: String, sub: String, rank: Rank, hold := HOLD_TIME) -> vo
 ## The largest size, at most `wanted`, at which `text` fits the board on one line.
 func _fit_size(text: String, wanted: int) -> int:
 	var font := tokens.display_font(tokens.embolden_display * 0.5)
-	var room := WIDTH - float(tokens.space_md * 2 + 10)
+	var room := WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT)
 	return HudStyle.fit_size(font, text, wanted, room, HudStyle.MEDIUM)
 
 
@@ -176,7 +176,7 @@ func _draw() -> void:
 	super()
 	var count := int(size.x / BULB_GAP)
 	var phase := 0 if UIMotion.reduced else int(_clock * CHASE)
-	for row in [10.0, size.y - 10.0]:
+	for row in [8.0, size.y - 8.0]:
 		for i in count:
 			var lit := (i + phase) % 3 == 0
 			var at := Vector2((i + 0.5) * size.x / float(count), row)

@@ -12,8 +12,10 @@ var hud: Hud
 
 
 ## A HUD inside `host` (any Control the test owns) over a fresh night with `players` players, named
-## Ruby, Moe, Dee and Cal, the first being the local one. Not started.
-static func make(host: Control, players := 1, seed_value := 1958) -> HudFixture:
+## Ruby, Moe, Dee and Cal, the first being the local one. Not started. The portraits build no 3D
+## world unless `portraits` (a suite about them says so): the picture does not change a layout.
+static func make(host: Control, players := 1, seed_value := 1958, portraits := false) -> HudFixture:
+	HudPortrait.live = portraits
 	var fixture := HudFixture.new()
 	var tuning := (load(TUNING) as RulesTuning).duplicate(true)
 	fixture.rules = GameRules.new(tuning, seed_value)
@@ -63,7 +65,7 @@ func advance(seconds: float) -> void:
 	while left > 0.0:
 		var step := minf(STEP, left)
 		for part in [
-			hud.gains, hud.crosshair, hud.damage, hud.banner, hud.events_feed, hud.notices
+			hud.gains, hud.crosshair, hud.damage, hud.banner, hud.events_feed, hud.notices, hud.fuel
 		]:
 			part.advance(step)
 		hud.state.tick(step)
@@ -111,13 +113,18 @@ func fill_worst_case() -> void:
 	hud.notices.push("PERSEPHONE Q-LANEWAY CONNECTED")
 	for amount in [100, 60, 130, 60]:
 		hud.gains.add_gain(&"headshot_kill", amount)
+	hud.fuel.peek()
 	advance(HudBanner.IN_TIME + 0.1)
 
 
-static func hurt(direction: float, health: float) -> Dictionary:
+## The rules' `player_hurt` for the local player: a blow from `bearing`, `health` left of 100.
+static func hurt(bearing: float, health: float) -> Dictionary:
 	return {
 		"type": HudState.PLAYER_HURT,
 		"player_id": 1,
+		"damage": 10.0,
 		"health": health,
-		"direction": direction,
+		"max_health": 100.0,
+		"bearing": bearing,
+		"source_id": 1,
 	}

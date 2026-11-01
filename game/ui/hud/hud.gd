@@ -17,16 +17,17 @@ const SCENE := "res://ui/hud/hud.tscn"
 ## The parts keep to bands so that none overlaps another on a 1536 x 864 canvas (the smallest:
 ## 720p at UI scale 1.25): the side columns are `HudStyle.COLUMN` wide, the cards in the middle
 ## `HudStyle.CARD`, the gains `HudGains.WIDTH`; the right column ends above the gains, the gains
-## above the prompt. Each part shrinks or ellipsizes its text instead of growing.
-const GAINS_OFFSET := Vector2(64.0, 6.0)
+## above the prompt. Each part shrinks or ellipsizes its text instead of growing. Every card shares
+## the text grid of `HudStyle` (`PAD_LEFT` in, `PAD` in from the right) and every column the same
+## `GAP` between its parts.
+const GAINS_OFFSET := Vector2(48.0, 4.0)
 ## Space kept between the gains and the ammo card they must stay clear of.
-const GAINS_GAP := 12.0
+const GAINS_GAP := 9.0
 
 ## Scene-tree names of the parts, by the variable that holds each.
 const PART_NAMES := {
 	&"round_part": "Round",
 	&"objective": "Objective",
-	&"team": "Team",
 	&"fuel": "Fuel",
 	&"events_feed": "Events",
 	&"notices": "Notices",
@@ -46,7 +47,6 @@ const PART_NAMES := {
 var state := HudState.new()
 var round_part := HudRound.new()
 var objective := HudObjective.new()
-var team := HudTeam.new()
 var fuel := HudFuel.new()
 var events_feed := HudFeed.new()
 var notices := HudFeed.new()
@@ -75,8 +75,8 @@ func _ready() -> void:
 		add_child(overlay)
 		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var margin := float(HudStyle.margin())
-	var gap := _tokens.space_sm
-	_stack([round_part, objective, team], 0.0, 0.0, margin, margin, gap)
+	var gap := HudStyle.GAP
+	_stack([round_part, objective], 0.0, 0.0, margin, margin, gap)
 	_stack([fuel, events_feed, notices], 1.0, 0.0, -margin, margin, gap)
 	_stack([points, health], 0.0, 1.0, margin, -margin, gap)
 	_stack([ammo], 1.0, 1.0, -margin, -margin, gap)
@@ -119,7 +119,6 @@ func all_parts() -> Array[HudPart]:
 		crosshair,
 		round_part,
 		objective,
-		team,
 		fuel,
 		events_feed,
 		notices,
@@ -139,7 +138,6 @@ func boxed_parts() -> Array[Control]:
 	return [
 		round_part,
 		objective,
-		team,
 		fuel,
 		events_feed,
 		notices,

@@ -22,6 +22,7 @@ extends RefCounted
 ##   reload_finished: shooter_id, weapon_id, ammo, reserve
 ##   reload_rejected: shooter_id, reason
 ##   weapon_equipped: player_id, weapon_id, ammo, reserve
+##   ammo_added: player_id, weapon_id, added (rounds that fitted), ammo, reserve
 ##   projectile_spawned: projectile_id, shooter_id, weapon_id, position, velocity
 ##   projectile_burst: projectile_id, shooter_id, weapon_id, point, radius, kind
 ##   action_rejected: reason
@@ -62,8 +63,7 @@ func _init(
 		rules.event_emitted.connect(_on_rules_event)
 
 
-## Lets go of the rules (they hold a connection back to this server, a reference cycle). Call
-## when the night is over.
+## Stops listening to the rules. Call when the night is over.
 func detach() -> void:
 	if rules != null and rules.event_emitted.is_connected(_on_rules_event):
 		rules.event_emitted.disconnect(_on_rules_event)
@@ -92,6 +92,11 @@ func weapon_of(player_id: int) -> WeaponState:
 	return held.get(_current.get(player_id, &""))
 
 
+## One carried weapon's state, or null when the player does not carry it.
+func state_of(player_id: int, weapon_id: StringName) -> WeaponState:
+	return _loadouts.get(player_id, {}).get(weapon_id)
+
+
 ## The ids of the weapons a player carries.
 func carried(player_id: int) -> Array:
 	return _loadouts.get(player_id, {}).keys()
@@ -114,6 +119,10 @@ func _dispatch(action: Dictionary) -> void:
 			_give(action["player_id"], action["weapon_id"])
 		CombatAction.EQUIP:
 			_equip(action["player_id"], action["weapon_id"])
+		CombatAction.SWAP:
+			_swap(action["player_id"])
+		CombatAction.ADD_AMMO:
+			_add_ammo(action["player_id"], action["weapon_id"], action["rounds"])
 		CombatAction.TICK:
 			_tick(action["delta"])
 		CombatAction.TARGETS:
@@ -160,6 +169,35 @@ func _equip(player_id: int, weapon_id: StringName) -> void:
 		{
 			"player_id": player_id,
 			"weapon_id": weapon_id,
+			"ammo": state.ammo,
+			"reserve": state.reserve,
+		}
+	)
+
+
+func _swap(player_id: int) -> void:
+	var held: Dictionary = _loadouts.get(player_id, {})
+	if held.size() < 2:
+		return
+	var ids := held.keys()
+	var at := ids.find(_current.get(player_id, &""))
+	_equip(player_id, ids[(at + 1) % ids.size()])
+
+
+## Rounds into a carried weapon's reserve; says how many fitted (maybe none).
+func _add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> void:
+	var held: Dictionary = _loadouts.get(player_id, {})
+	if not held.has(weapon_id):
+		_emit(&"action_rejected", {"reason": &"not_carried"})
+		return
+	var state: WeaponState = held[weapon_id]
+	var added := state.add_reserve(rounds) if state.uses_ammo() else 0
+	_emit(
+		&"ammo_added",
+		{
+			"player_id": player_id,
+			"weapon_id": weapon_id,
+			"added": added,
 			"ammo": state.ammo,
 			"reserve": state.reserve,
 		}

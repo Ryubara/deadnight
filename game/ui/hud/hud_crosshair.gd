@@ -9,13 +9,13 @@ enum Kind { HIT, HEAD, KILL }
 const MARKER_LIFE := 0.22
 const NUMBER_LIFE := 0.9
 const MAX_NUMBERS := 8
-const NUMBER_RISE := 44.0
-const TICK_NEAR := 12.0
-const TICK_LENGTH := 14.0
-const TICK_POP := 8.0
-const MARKER_WIDTH := 5.0
+const NUMBER_RISE := 33.0
+const TICK_NEAR := 9.0
+const TICK_LENGTH := 11.0
+const TICK_POP := 6.0
+const MARKER_WIDTH := 4.0
 ## Horizontal nudges, cycled, so quick hits do not print on top of each other.
-const NUDGES: Array[float] = [0.0, 26.0, -26.0, 52.0, -52.0]
+const NUDGES: Array[float] = [0.0, 20.0, -20.0, 40.0, -40.0]
 
 ## Markers alive: {"kind", "age"}; numbers alive: {"text", "at", "colour", "size", "age"}.
 var markers: Array[Dictionary] = []
@@ -54,7 +54,7 @@ func advance(delta: float) -> void:
 func _hit(kind: Kind, event: Dictionary) -> void:
 	markers.append({"kind": kind, "age": 0.0})
 	var damage := float(event.get("damage", 0.0))
-	var at := size * 0.5 + Vector2(NUDGES[_count % NUDGES.size()], -tokens.space_xl)
+	var at := size * 0.5 + Vector2(NUDGES[_count % NUDGES.size()], -float(HudStyle.MARGIN))
 	if event.has("screen_x") and event.has("screen_y"):
 		at = Vector2(float(event["screen_x"]) * size.x, float(event["screen_y"]) * size.y)
 		at.x += NUDGES[_count % NUDGES.size()]

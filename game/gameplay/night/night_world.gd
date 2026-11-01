@@ -13,8 +13,8 @@ const SETTLE_FRAMES := 4
 const NAV_ITERATIONS := 2
 ## Frames given to the first mesh before the lot is used anyway.
 const NAV_WAIT_FRAMES := 600
-## Metres within which a lamp lights the ground.
-const LAMP_REACH := 6.0
+## Metres into the field, from the boards, that a player puts them back from.
+const REPAIR_SPOT := 1.4
 ## The areas whose zombie spawns open with a door (the field's are always open).
 const DOOR_AREAS := {
 	&"door_concession": ["Midway"],
@@ -29,8 +29,14 @@ var greybox: Node3D
 var doors: LotDoors
 var navigation: DoorNavigation
 
+## The lot's breaker posts, one for each circuit a player can switch.
+var switches: LotSwitches
+
 var _door_nodes: Dictionary[StringName, Node3D] = {}
-var _lamps: Array[Node] = []
+var _barricades: Dictionary[StringName, Barricade] = {}
+var _lamps: LotLamps
+## The rules' generator, which says which circuits are lit; without one every lamp is.
+var _generator: GeneratorState
 
 
 ## Builds the lot and waits until its collision and navigation are live.
@@ -40,6 +46,9 @@ func build() -> void:
 	doors = greybox.get_node("Doors") as LotDoors
 	for door in doors.get_children():
 		_door_nodes[StringName(door.get_meta("shop_id"))] = door
+	for node in greybox.find_children("*", "Barricade", true, false):
+		var barricade := node as Barricade
+		_barricades[StringName(barricade.get_meta(&"barricade_id"))] = barricade
 	for _i in SETTLE_FRAMES:
 		await get_tree().physics_frame
 	navigation = DoorNavigation.new()
@@ -50,16 +59,23 @@ func build() -> void:
 		if NavigationServer3D.map_get_iteration_id(map()) >= before + NAV_ITERATIONS:
 			break
 		await get_tree().physics_frame
-	_lamps = get_tree().get_nodes_in_group("powered_light")
+	_lamps = LotLamps.new(greybox)
+	switches = LotSwitches.new(greybox)
 
 
 func map() -> RID:
 	return get_world_3d().navigation_map
 
 
-## Follows the rules: the lot opens the doors they sell (and any they already have open).
+## Follows the rules: the lot opens the doors they sell (and any they already have open), the
+## boards across each breach are as many as the rules say, and each breaker post shows its circuit.
 func bind(rules: GameRules) -> void:
 	doors.bind(rules)
+	_generator = rules.generator
+	switches.show_all(_generator)
+	for id: StringName in _barricades:
+		_barricades[id].set_boards(rules.barricades.boards_of(id))
+	rules.event_emitted.connect(_on_rules_event)
 
 
 func door_ids() -> Array[StringName]:
@@ -104,10 +120,52 @@ func spawn_points() -> Array[Vector3]:
 ## Where boards can be put back: the gaps in the field's fence.
 func repair_points() -> Array[Vector3]:
 	var points: Array[Vector3] = []
-	for node in greybox.get_node("Field").get_children():
-		if node.name.begins_with("Breach"):
-			points.append((node as Node3D).global_position)
+	for barricade in _barricades.values():
+		points.append(barricade.centre())
 	return points
+
+
+## The breaches' ids (the rules' `BarricadeTuning.ids`).
+func barricade_ids() -> Array[StringName]:
+	return _barricades.keys()
+
+
+func barricade(id: StringName) -> Barricade:
+	return _barricades.get(id)
+
+
+## Where to stand in the field to put boards back across `id`.
+func repair_spot(id: StringName) -> Vector3:
+	return _barricades[id].standing_point(REPAIR_SPOT)
+
+
+## The breaches as the zombie simulation sees them.
+func gates() -> Dictionary[StringName, ZombieGate]:
+	var found: Dictionary[StringName, ZombieGate] = {}
+	for id: StringName in _barricades:
+		var barricade := _barricades[id]
+		found[id] = ZombieGate.new(id, barricade.centre(), barricade.inward())
+	return found
+
+
+## The breach each zombie spawn point lies outside, by point (the field's; the other areas'
+## spawns are already inside).
+func spawn_gates() -> Dictionary[Vector3, StringName]:
+	var found: Dictionary[Vector3, StringName] = {}
+	for marker in greybox.get_node("Field/ZombieSpawns").get_children():
+		var id := StringName(marker.get_meta(&"barricade_id", ""))
+		if id != &"":
+			found[(marker as Marker3D).global_position] = id
+	return found
+
+
+func _on_rules_event(event: Dictionary) -> void:
+	switches.follow(event)
+	match event["type"]:
+		&"board_torn", &"board_repaired":
+			var barricade: Barricade = _barricades.get(StringName(event["barricade_id"]))
+			if barricade != null:
+				barricade.set_boards(event["boards"])
 
 
 func player_spawn(index: int) -> Vector3:
@@ -115,11 +173,11 @@ func player_spawn(index: int) -> Vector3:
 	return (markers[index % markers.size()] as Marker3D).global_position
 
 
+## Whether the ground at `point` is lit: a lamp within reach whose circuit the rules' generator
+## has lit (switched on, and the tank not dry). Never reads a light node, so it is the same on a
+## server that draws nothing.
 func is_lit(point: Vector3) -> bool:
-	for lamp: Light3D in _lamps:
-		if lamp.visible and _flat(point, lamp.global_position) < LAMP_REACH:
-			return true
-	return false
+	return _lamps.lit_at(point, _generator)
 
 
 ## A body for one player, driven by the server (its own physics step is off).
@@ -131,7 +189,3 @@ func add_body(spawn: Vector3, local_input: bool) -> Player:
 	body.teleport(spawn)
 	body.set_physics_process(false)
 	return body
-
-
-static func _flat(a: Vector3, b: Vector3) -> float:
-	return Vector2(a.x - b.x, a.z - b.z).length()

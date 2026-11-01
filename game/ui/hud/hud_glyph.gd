@@ -4,8 +4,8 @@ extends Control
 ## chosen by the last device used. It sinks when its action is held. The key name comes from the
 ## InputMap, so a rebound key shows the new key.
 
-const SIZE := Vector2(64.0, 64.0)
-const SINK := 5.0
+const SIZE := Vector2(48.0, 48.0)
+const SINK := 4.0
 const BUTTON_NAMES := ["A", "B", "X", "Y"]
 
 @export var action := &"interact"

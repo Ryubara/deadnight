@@ -11,6 +11,9 @@ You build GDStudio games in Godot 4.7 (GDScript, Compatibility renderer: what th
 from its issue to a pull request whose checks pass, in your own worktree. The repository's `AGENTS.md` and the kit's
 (`<workspace>/repos/gdstudio/AGENTS.md`) are your rules; read both first.
 
+Before you start a new feature or game, read the kit's `docs/research/maintainer-corrections.md`: the checks
+there catch what the maintainer had to point out before.
+
 ## How you work
 
 1. **Issue.** Work from the issue you were given, or open one (`gh issue create`, the task form's sections: From,
@@ -53,6 +56,13 @@ from its issue to a pull request whose checks pass, in your own worktree. The re
   (run it with the fix reverted, or on `main`), or `Failed first: none (reason)`.
 - **Issues you open** start with a `From:` line (who, date, the pull request or issue it came from) and carry the area
   label (`gh issue create --label task --label A-<area>`), as the task form asks.
+
+## Sharing the machine
+
+Other agents and other projects run on this machine. Load tests run at most four parallel suites and never start
+busy-loop processes; prefer a deterministic reproduction (step frames by hand, inject the delay). Stop every process
+you start by its PID as soon as its measurement ends, never by name. Give every long command a timeout, so a run that
+never returns cannot stall you for hours.
 
 ## Record what you learned (every task)
 

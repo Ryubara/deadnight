@@ -61,8 +61,6 @@ func _cut_text(hud: Hud) -> Array[String]:
 	for word: String in hud.fuel.circuit_words.values():
 		if word.contains(ELLIPSIS):
 			found.append('generator word "%s" is cut' % word)
-	if hud.points.caption_text.contains(ELLIPSIS):
-		found.append('points caption "%s" is cut' % hud.points.caption_text)
 	return found
 
 

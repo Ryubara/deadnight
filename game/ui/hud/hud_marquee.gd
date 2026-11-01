@@ -8,10 +8,13 @@ extends HudTicket
 ## bulbs hold still.
 
 const WIDTH := HudStyle.CARD
+## The text line of the board: the card's text grid (`PAD_LEFT` in, `PAD` in from the right).
+const TEXT_WIDTH := WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT)
 ## The name's size; a long one shrinks to fit the board.
-const TITLE_SIZE := 64
-const BULB_GAP := 30.0
-const BULB_RADIUS := 4.0
+const TITLE_SIZE := HudStyle.BIG
+## The bulbs are the banner's, so the two boards read as one family.
+const BULB_GAP := HudBanner.BULB_GAP
+const BULB_RADIUS := HudBanner.BULB_RADIUS
 const CHASE := 3.0
 ## How bright the letters are, step by step, once every `FLICKER_STEP` seconds, round and round:
 ## mostly steady, with two stutters.
@@ -43,7 +46,7 @@ var _clock := 0.0
 func _init() -> void:
 	super()
 	accent = tokens.hot
-	body.custom_minimum_size.x = WIDTH - float(tokens.space_md * 2 + 10)
+	body.custom_minimum_size.x = TEXT_WIDTH
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -67,8 +70,7 @@ func refresh() -> void:
 	if not visible:
 		return
 	var title := String(coming["title"]).to_upper()
-	var room := WIDTH - float(tokens.space_md * 2 + 10)
-	HudStyle.set_fitted(_title, title, TITLE_SIZE, room, HudStyle.MEDIUM)
+	HudStyle.set_fitted(_title, title, TITLE_SIZE, TEXT_WIDTH, HudStyle.MEDIUM)
 	HudStyle.set_text(
 		_caption,
 		"%s  -  ROUND %d  -  IN %d" % [CAPTION, int(coming["round"]), ceili(state.break_left)]

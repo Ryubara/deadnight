@@ -49,10 +49,10 @@ What building the server-side shooting (`game/gameplay/weapons/`) taught us. The
   with "Identifier not declared in the current scope" and the `-d` run loops on the parser error until the timeout.
 - **`:=` on a value read from an untyped `Dictionary` is a parse error** ("cannot infer the type"); write
   `var weight: float = ...`.
-- **A `RefCounted` that connects a lambda to itself is a reference cycle.** `GameRules` does this with its generator;
-  at exit Godot prints "resources still in use" (an `ERROR` line, though the game is fine). `CombatServer.detach()`
-  breaks the server's side, and the range disconnects the generator's lambdas on `_exit_tree`; the proper fix is a
-  `dispose()` on the rules.
+- **A lambda that uses `self` holds its `RefCounted` strongly; a method `Callable` does not.** `GameRules` used to
+  connect lambdas to its generator, a cycle that Godot reported at exit as "resources still in use" (an `ERROR`
+  line, though the game is fine). It connects methods and `_emit.bind(...)` now, so rules and servers free
+  themselves with no `dispose()`; `test_rules_lifetime` holds a `weakref` to prove it.
 - **A projectile's events come from the tick, not from a request.** Only answers to requests flow back on a request
   path; what the server causes alone (a burst, a finished reload, the rules' round events) must be broadcast
   (`LoopbackLink.broadcast`), or the client never learns of the kill.
@@ -67,3 +67,17 @@ one shot (70 and 42), the SMG kills in five hits (every 0.1 s), the crowbar kill
 shot at the corner is stopped by the wall and the same shot from 1.6 m to the right hits, and the flare kills with a
 direct hit (90) and ends the round (+60 kill, +30 round bonus). The tests check each of those against the rules' point
 table.
+
+## Selling rounds, giving the weapon (#152)
+
+- **Shop ids are not weapon ids.** The shop sells `weapon_shotgun` and the crane's pool lists `weapon_smg`; the weapons
+  are `shotgun`, `smg`. The night's `purchase_made` handler passed the shop id to `CombatAction.give_weapon`, which
+  answered `unknown_weapon` (a rejection the night filters out), so a bought weapon was never carried and nothing
+  failed loudly. `WeaponCatalog.catalog_id` is the one translation; `NightServer._deliver` is the one place that uses
+  it. A test buys through the rules and asks the combat server what is carried.
+- **Whoever owns the number prices it.** The reserve is the combat server's, so the rules cannot know the room in it;
+  the server passes the room as `rounds` on the `buy` action and the rules price exactly that (fuel and grenades work
+  the same way, their room is in the rules). A missing `rounds` buys the whole purchase, which keeps the action valid
+  for a caller that does not know (the simulator).
+- **Events from a direct call are not delivered.** `NightServer.buy` outside a `step` fills the outbox that the next
+  `apply` or `step` resets; a test that wants the rules' events reads the array `buy` returns.
