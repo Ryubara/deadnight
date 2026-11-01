@@ -168,6 +168,13 @@ server needed 1.7 to 3.9 s (Numbers, above), so the network adds little on this 
 needs about 3 s for the 7.9 MB wasm on top of that. Frame times come from the machine that opens the page, not from the
 server.
 
+## Frame times at the start of a night
+
+`tools/web_smoke/first_use.py` records every frame and every GL program linked in the first 20 s of a night, in a fresh
+Chrome profile, with the machine's GPU. Play now builds the lot and warms up everything the night draws behind a loading
+screen, which takes about 31 s there (24 s before): `smoke.py` waits up to 150 s for it. The numbers are in
+[First-use hitches](first-use-hitches.md).
+
 ## Sources
 
 - [Exporting for the Web](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)

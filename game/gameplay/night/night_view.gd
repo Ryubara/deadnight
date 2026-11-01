@@ -73,6 +73,12 @@ func hear(world: NightWorld) -> void:
 	sounds.setup(_state, world)
 
 
+## Draws and sounds one event as if the server had sent it (the warm-up replays samples of each
+## kind before the night starts, `NightWarmup`).
+func draw_event(event: Dictionary) -> void:
+	_on_event(event)
+
+
 func _on_event(event: Dictionary) -> void:
 	if lamps != null:
 		lamps.apply_event(event)
