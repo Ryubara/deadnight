@@ -21,6 +21,14 @@ var windup: float = 0.0
 var barrier_speed: float = 1.0
 ## How hard it is to land a shot on it, against a walker's 1. Scales the hit zones.
 var hit_chance: float = 1.0
+## Seconds it spends rising (a boss: roaring) before it chases.
+var emerge: float = 0.0
+## Seconds a stagger holds it, and the seconds after one in which a weak-spot hit does not stagger
+## it again.
+var stagger: float = 0.0
+var stagger_cooldown: float = 0.0
+## Whether it has a weak spot: a hit zone of its own that the weapons can reach.
+var weak: bool = false
 
 
 ## The plain zombie of `tuning`: the numbers a zombie has when the rules say nothing more.
@@ -28,6 +36,8 @@ static func plain(tuning: ZombieTuning) -> ZombieProfile:
 	var profile := ZombieProfile.new()
 	profile.damage = tuning.strike_damage
 	profile.windup = tuning.windup_seconds
+	profile.emerge = tuning.emerge_seconds
+	profile.stagger = tuning.stagger_seconds
 	return profile
 
 
@@ -43,12 +53,16 @@ static func from_event(event: Dictionary, tuning: ZombieTuning) -> ZombieProfile
 	var telegraph: float = event.get("telegraph_seconds", 0.0)
 	if telegraph > 0.0:
 		profile.windup = telegraph
+	if event.get("boss", false):
+		profile.emerge = tuning.boss_entrance_seconds
+		profile.stagger = tuning.boss_stagger_seconds
+		profile.stagger_cooldown = tuning.boss_stagger_cooldown
 	return profile
 
 
 ## From a type, for a zombie that changed into it (a walker whose legs went becomes a crawler).
 static func from_type(type: ZombieType, look: StringName, tuning: ZombieTuning) -> ZombieProfile:
-	return from_event(
+	var profile := from_event(
 		{
 			"zombie_type": type.id,
 			"look": look,
@@ -57,9 +71,12 @@ static func from_type(type: ZombieType, look: StringName, tuning: ZombieTuning) 
 			"telegraph_seconds": type.telegraph_seconds,
 			"barrier_speed": type.barrier_speed,
 			"hit_chance": type.hit_chance,
+			"boss": type.boss,
 		},
 		tuning
 	)
+	profile.weak = type.weak_multiplier > 1.0
+	return profile
 
 
 ## The size of its hit zones against the walker's: its hit chance, and how tall its model stands.

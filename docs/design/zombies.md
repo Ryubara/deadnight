@@ -85,7 +85,8 @@ clips are added beside them (`clips.json` next to the model has lengths, loops a
 | `Boss_Stagger` | 1.42 s | no | hit 0 | a lamp hit: thrown back, then folded over the lamp with the hands at it, back up at 1.4 s |
 | `Boss_Death` | 2.17 s | no | fall 20 | the stagger's recoil and fold, then the kit Death slowed 2.5x: a heavy fall onto the back |
 
-Rules for the behaviour code: loop `Boss_Walk`; time the attack's damage on `hit` and let the dodge window run from
+In the night all of this is wired ([research](../research/zombies.md#the-headliner-in-the-night)). Rules for the behaviour
+code: loop `Boss_Walk`; time the attack's damage on `hit` and let the dodge window run from
 `telegraph`; the lamp goes dark on `Boss_Death` (set the material's emission off); the reel clips the ground in the
 last frames of the death, which the dark hides.
 

@@ -50,7 +50,8 @@ static func tick(delta: float) -> Dictionary:
 
 
 ## Where every target is this step: a list of `{"id": int, "pos": Vector3, "yaw": float}` and,
-## for a target whose hit zones are not the walker's size, `"scale"`. Also the
+## for a target whose hit zones are not the walker's size, `"scale"`, and for one with a weak spot,
+## `"weak": true`. Also the
 ## frame the lag compensation remembers.
 static func targets(list: Array) -> Dictionary:
 	return {"type": TARGETS, "list": list}

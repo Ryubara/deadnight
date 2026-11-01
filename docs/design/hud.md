@@ -33,6 +33,7 @@ yet (issue to follow), so `player_hurt` is defined here until they do.
 | `HudPoints`, `HudHealth` | bottom left | your name and points; a bar of ten ticks, or `DOWN` and what to hope for; one row for the equipment with its count and the grenade count |
 | `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it, the weapon name on a coloured bar; hot orange when low |
 | `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner) |
+| `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card, three lines high: the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows |
 | `HudCrosshair` | centre | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
