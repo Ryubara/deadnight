@@ -71,6 +71,27 @@ is 8.
 See the section "The crane's price" in [the balance simulator](balance-simulator.md): the cost is the one number
 the simulator chose.
 
+## How it looks and how to film it
+
+`PrizeCrane` (`game/world/crane/prize_crane.gd`) is built from boxes and spheres, no asset: a red cabinet with a glass
+case, a pile of plush prizes, a claw on a gantry, a lit marquee. `CraneView` (`game/gameplay/night/crane_view.gd`)
+stands it at the spot the server's frame names, set back 1.5 m from that spot's marker, and the crane is a function of
+the frame's `crane` ({spot, stage, left, weapon}), so a late joiner sees the same crane:
+
+- **Spin.** The claw sweeps over the pile, drops, closes and lifts; weapon models cycle above the glass, one every
+  0.07 s at first and 0.46 s at the end (the Mystery Box slows the same way). The rifle and the shotgun use the lot's
+  models; the SMG and the flare gun, which have none yet, are plain silhouettes.
+- **Grab.** The chosen weapon rises from the claw to the stage and floats, blinking for the last 3 seconds.
+- **Breakdown.** A moth-eaten plush (our dud) shows on the stage, sparks fly, the marquee and the light flicker and the
+  power goes; the crane then sinks where it stood and rises at the next spot.
+- **Beam.** A cheap additive cone (a ten-line shader: bright at the foot, fading up, blended additively, no depth
+  write) stands over the crane's spot, so the way to it is a column of light in the night.
+
+`tests/captures/crane_tour.tscn` films it from the player's shoulder camera (physics ticks, 60 a second):
+`godot --path game res://tests/captures/crane_tour.tscn --fixed-fps 10 --write-movie out.png --quit-after 700`, with
+`-- --breakdown` for the breakdown and `-- --beam` for the crane on the open field. `test_crane_view.gd` checks the
+placement, the cycling and its slowing, the chosen weapon, the dud and the move without a window.
+
 ## Open
 
 - Time the real thing in a capture to replace every **estimated** above (spin length, cycle speeds, the window).

@@ -205,6 +205,7 @@ func start_loop(id: StringName, parent: Node3D) -> AudioStreamPlayer3D:
 	player.stream = looped
 	player.bus = def.bus
 	player.volume_db = def.volume_db
+	cap_near_level(player, def)
 	player.unit_size = def.unit_size
 	player.max_distance = def.max_distance
 	parent.add_child(player)
@@ -258,6 +259,12 @@ func is_bed_running(id: StringName) -> bool:
 ## A bed's fade in dB: -60 is silent, 0 is its own level.
 func bed_fade_db(id: StringName) -> float:
 	return _beds[id]["fade_db"] if _beds.has(id) else BED_SILENT_DB
+
+
+## Applies the sound's `near_cap_db` to `player`: re-call after changing its `volume_db`.
+static func cap_near_level(player: AudioStreamPlayer3D, def: SoundDef) -> void:
+	if def.near_cap_db < INF:
+		player.max_db = player.volume_db + def.near_cap_db
 
 
 func listener_position() -> Vector3:
@@ -367,6 +374,7 @@ func _play_3d(
 	player.stream = stream
 	player.bus = def.bus
 	player.volume_db = def.volume_db + extra_db + OCCLUSION_DB * occlusion
+	cap_near_level(player, def)
 	player.pitch_scale = pitch
 	player.unit_size = def.unit_size
 	player.max_distance = def.max_distance

@@ -92,6 +92,73 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
 - **A bed never goes quiet**, so an onset detector on the raw level finds nothing: `analyze.py` compares the short-term
   level with its own median over a second either side.
 
+## Weapons and the lot (#250)
+
+Added in `tools/audio/weapon_recipes.py` (synthesised) and `tools/audio/elevenlabs.py` (generated), listened to by
+`WeaponSounds`, `GrenadeSounds` and `WorldSounds` in `game/gameplay/night/`. The design is
+[Sound](../design/audio.md); this is what was learned.
+
+- **Hitscan has no tracer, so the report sells the shot.** The old shot was one file: a crack, a roar and a 120 Hz sine
+  that rang for 0.3 s like a struck pipe (the spectrogram's bright line at the bottom). Each shot is now three voices
+  (report, blast, tail) with their own variants, pitch and level, so the same shot is a different sound each time
+  (5 x 3 x 3 combinations per gun) and the report's transient is the loudest thing in the first 10 ms. Before and
+  after, rifle: `rifle_before` against `rifle_after` in the pull request's spectrogram.
+- **Variation costs voices, so the groups have limits.** Blasts 5, tails 4, impacts 6; the SMG's blast and tail have a
+  0.14 s and a 0.22 s cooldown. Twelve SMG shots a second still start the report every time.
+- **Reload steps from the clip's frames.** `clips.json` lists the events in frames at 24 a second (the revolver and
+  SMG's `mag_out` 6 and `mag_in` 22; the rifle's `round_in` 20, 32, 44 and `lever` 56; the shotgun's `break_open` 6,
+  `shells_in` 26, `snap_shut` 34). The sounds read those frames (`ClipEvents`) on a `SoundSchedule` the node steps, so a
+  test checks every step 1 ms either side of its frame with no wall time. Not scaled to the weapon's `reload_time`: the
+  animation plays at its own speed, and the rifle's lever (2.33 s) lands after the simulation's 2.2 s reload ends, as the
+  picture does.
+- **World impact versus flesh.** The server sends the pellets' end points in `shot_fired` and the zombie hits in a
+  `damage_dealt` right after, so a pellet that ended short of the weapon's range is held until the next step and each
+  hit claims the nearest end within 1.5 m; what is left struck the lot. A shotgun's eight pellets ricochet at most
+  three times.
+- **The generator follows its load.** The load is the draw of the lit circuits over all of them (`GeneratorLoad`,
+  built from `fuel_changed`, `circuit_changed`, `fuel_empty`, `fuel_restored`); level and pitch are lerped by it and
+  slew at 24 dB/s, so a breaker thrown is a change you hear take a second. A dry tank stops the loops; they restart
+  on a refuel.
+- **Generated clips (ElevenLabs Sound Effects, free tier).** Used for the shots' blasts (3 variants a gun), the
+  generator's engine loop, power-down and power-up, and the door purchase; 17 clips, 33 seconds, billed 40 credits a
+  second (about 1,300 credits of the 3,500 allowed). Every file's prompt is in `game/assets/audio/eleven/LICENSE.md`
+  with its licence: attribution required, not licensed for commercial use, to be replaced or relicensed before any
+  commercial release (#252). Model `eleven_text_to_sound_v2` was used (the v3 model was not tried, to spare credits).
+  What the files needed: levels from -22 to +4 dBFS once decoded (several above full scale), a lead-in of up to 0.3 s,
+  and no seed, so a bad take is a new request. `elevenlabs.py` trims the silence before the sound, levels to -1 dBFS,
+  fades the end and encodes Ogg; a file that exists is never fetched again, and `--reprocess` redoes only the levelling.
+- **Layering over them.** The generated blast sits 9 dB under the synthesised report and the synthesised tail 10 dB,
+  so the report's transient stays the front and the generated clip is the body and the roll. Nobody could listen to it:
+  this is balanced by the numbers below and wants a pair of ears.
+
+### Measured in the capture
+
+Run with `game/tests/captures/audio_arms_tour.tscn` under Movie Maker (480 x 270, 30 frames a second); the mix is
+analysed with `tools/audio/analyze.py capture`.
+
+| What | Result |
+| --- | --- |
+| The tour (buys, a fight with five weapons, a grenade, the generator running low, dry and refuelled) | 70.3 s; 53 kinds of sound, 200 voices started, 21 culled by distance |
+| Mix peak, clipped samples | -2.7 dBFS, 0; RMS -26.1 dBFS |
+| The same tour with the first trims | 0.0 dBFS, 1,754 and then 3,401 clipped samples: see the next point |
+| Reload steps against the clip's frames (15 steps, five weapons) | worst error 0.017 s (a movie frame is 0.033 s); the rifle's four steps exact |
+| Sounds found within 0.3 s of the event that caused them | 13 of 19 spot-checked; the others are present but have slow attacks (the sputter, the power-up, the tonic's gulp) or sit under another sound, so the onset detector places them 0.3 to 0.5 s off |
+| A lone shot (report, blast, tail) at 1.7 m, peak in the mix | pistol -6.1, SMG -11.7, shotgun -2.4, rifle -3.4 dBFS |
+
+- **Why the first trims clipped.** Cutting every gun's `volume_db` by 8 dB changed little. `AudioStreamPlayer3D`
+  boosts a sound by `unit_size / distance` and the only ceiling is `max_db`, +3 dB over the file: at 1.7 m with a
+  `unit_size` of 14 that is 18 dB, so everything close sat at the ceiling and three layers per shot stacked past full
+  scale. A shotgun trimmed to -23 dB still peaked at -5 dBFS. The fix is `SoundDef.near_cap_db` (0 for the arms and
+  the lot), which sets the player's `max_db` to its own level, so the trim is what you hear up close; far away nothing
+  changes. The generator's loops move their `max_db` with their level. Measured by playing each gun alone at 1.7 m at
+  three offsets (`game/tests/captures/audio_gun_levels.tscn`): the peaks follow the offsets once the cap is on.
+- **No flesh hits at the fence.** Most of the tour's shots (38 ricochets against 3 impacts on a zombie) hit the boards
+  or the lot: the dead stand behind the fence. The flesh and headshot impacts are covered by the tests; a capture in the
+  open field would show more.
+- **The generator's power-down** arrived 3 s after the tank was emptied in the tour, because a tick of the rules was
+  needed to raise the event (events a test raises outside `GameRules.apply` are dropped: `apply` starts with a fresh
+  list).
+
 ## The dead (#248)
 
 - **The voices.** `tools/audio/zombie_recipes.py` makes the per-type sounds with the same throat model as the first
