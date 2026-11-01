@@ -44,7 +44,7 @@ page says what is in, and what is next.
 | Doors: `interact` next to a slab buys the door; `LotDoors` frees its slabs, `DoorNavigation` rebakes the mesh, its area joins the spawns | `NightWorld` (binds the lot to the rules), `NightServer` | one path, the lot's own ([Doors](../research/zombies.md#doors)); the prompt shows the price |
 | Boards at the fence breaches: the dead tear them off, `interact` from the field side puts one back for the rules' repair points | `Barricade`, `NightWorld`, `NightServer`, `ZombieSim` | [the fence's boards](rounds.md#the-fences-boards); the prompt shows only at a breach with a board down |
 | The shop spots: the shotgun and the rifle on walls, the prize crane, ammunition lockers; the crowbar is always carried, `swap` changes the weapon in hand | `NightServer` (`use_target`, `buy`), `NightWorld.shop_spots` | the supply drop is gone: rounds are bought ([the lot](map.md#shop-spots), [ammunition](rounds.md#ammunition)) |
-| The lamps follow the generator: a circuit off or a dry tank darkens its lamps and posts, a failing tank flickers them, and the dead are slowed only on ground a lit circuit lights | `LotLamps`, `NightView`, `NightWorld.is_lit` | [the lot's lamps](map.md#which-lamps-hang-on-which-circuit) |
+| The lamps follow the generator: a circuit off or a dry tank darkens its lamps and posts, a failing tank flickers them, and the dead are 25% faster on ground no lit circuit lights | `LotLamps`, `NightView`, `NightWorld.is_lit` | [the lot's lamps](map.md#which-lamps-hang-on-which-circuit) |
 | Sound: shots, reloads, dry fire, round stings | `NightView` | through the `Audio` autoload |
 | The HUD: round, points, health, ammunition, the prompt at a door or breach, the party, the generator | `NightHudBinding`, `ui/hud/` | below |
 | The autopilot | `gameplay/night/autopilot.gd` | below |
@@ -75,6 +75,12 @@ tank runs low ([map](map.md#the-breaker-posts)); `tests/night/test_autopilot_swi
 and the bot doing it in a night. When the tank is at the low line and it can pay for a can it walks to the nearest
 open can stand and buys until the tank is back above 40% ([map](map.md#the-fuel-cans),
 `tests/night/test_autopilot_fuel.gd`).
+
+Three traps cost time while it was written. Its sight check is a `Callable` of a `WorldProbe`, and a `Callable` does not
+keep a `RefCounted` alive: `Night` holds the probe in `_sight`, because one made from a temporary object was freed at
+once and silently answered "clear". A shot leaves the barrel, so `Autopilot._clear` tests the line from the eye and from
+the barrel. And a faster run is more fixed ticks per physics frame (`Night.ticks_per_frame`), never `Engine.time_scale`,
+which scales the step each tick gets and plays a different night. Each is in [lessons](../lessons.md).
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a

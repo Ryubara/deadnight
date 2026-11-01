@@ -32,6 +32,12 @@ var world: NightWorld
 var server: NightServer
 var link: LoopbackLink
 var state: ClientState
+## Every player's look and seat as this client heard them from the server; the bodies are dressed
+## from it.
+var looks := LookRegistry.new()
+## The look the local player sends on join, set before `start`; without one, the look saved in the
+## wardrobe (`LookStore`).
+var own_look: CharacterLook
 var view: NightView
 var autopilot: Autopilot
 ## The HUD to feed, set before `start`: it hears the night from its first event.
@@ -65,9 +71,12 @@ func start(
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, server)
-	link.delivered.connect(state.apply_events)
+		_hud_binding = NightHudBinding.new(hud, state, server, looks)
+	link.delivered.connect(_on_delivered)
+	looks.changed.connect(_dress_bodies)
 	link.send({"type": NightServer.JOIN, "player_id": PLAYER_ID, "local": mode == Mode.HUMAN})
+	var wanted := own_look if own_look != null else LookStore.load_look()
+	link.send({"type": NightServer.LOOK, "player_id": PLAYER_ID, "packet": LookWire.look(wanted)})
 	link.send({"type": NightServer.START_NIGHT})
 	link.pump()
 	var player := server.body_of(PLAYER_ID)
@@ -205,6 +214,29 @@ func tick() -> void:
 
 func _human_command() -> NightCommand:
 	return _human.command(player(), PLAYER_ID)
+
+
+## What the server answered: the look server's packets go to the look table, the rest to the
+## client's state.
+func _on_delivered(events: Array) -> void:
+	var rest := []
+	for event: Dictionary in events:
+		if event["type"] == NightServer.LOOK_PACKET:
+			if event["to"] == PLAYER_ID:
+				looks.receive(event["packet"])
+		else:
+			rest.append(event)
+	state.apply_events(rest)
+
+
+## A look arrived or changed: every body of this process wears what the table says (a lookalike
+## has its main colour moved on, so a change of one look can change another's).
+func _dress_bodies(_player_id: int) -> void:
+	var resolved := looks.resolved()
+	for id: int in resolved:
+		var body := server.body_of(id)
+		if body != null:
+			body.dress(resolved[id], looks.seats[id])
 
 
 func _on_event(event: Dictionary) -> void:
