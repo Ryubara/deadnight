@@ -1,0 +1,46 @@
+# Optional: the documentation site (copy to the repository root with docs.yml and requirements-docs.txt).
+site_name: Deadnight
+site_description: "Round-based co-op zombie survival at a 1958 drive-in theater: design and what we learned building it."
+docs_dir: docs
+# Every warning fails the build: a broken link, a missing anchor, a page left out of the nav.
+strict: true
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: {icon: material/brightness-7, name: Dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: {icon: material/brightness-4, name: Light mode}
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - tables
+  - toc: {permalink: true}
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed: {alternate_style: true}
+
+nav:
+  - Home: index.md
+  - Design: design/index.md
+  - Research: research/index.md

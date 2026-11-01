@@ -1,0 +1,70 @@
+# Formatting and hygiene on every commit, before CI sees it. Install once with `uvx pre-commit install`; run on
+# everything with `uvx pre-commit run --all-files`. Add the language's hooks from the commented blocks below.
+
+# Never rewritten by a hook: licence texts stay verbatim.
+exclude: ^(LICENSE|CODE_OF_CONDUCT\.md)$
+
+# `pre-commit install` sets up both: the file checks on commit and the message checks at the commit-msg stage.
+default_install_hook_types: [pre-commit, commit-msg]
+
+# markdownlint's Node, pinned to an LTS release: an unpinned one is whatever is newest in Node's index, pre-releases
+# included, which has broken installs on Windows.
+default_language_version:
+  node: 24.22.2
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--unsafe"]              # syntax only: mkdocs.yml may use tags a safe load rejects
+      - id: check-toml
+      - id: check-merge-conflict
+      # The same limit as paths.large_file_kb. --enforce-all checks every file given, not only newly staged ones, so
+      # `run --all-files` and CI see files that are already committed.
+      - id: check-added-large-files
+        args: ["--maxkb=512", "--enforce-all"]
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.2
+    hooks:
+      - id: markdownlint-cli2
+  # The rev matches the ruff that python/uv.lock pins.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+        files: ^(python|\.claude/hooks)/
+      - id: ruff-format
+        files: ^(python|\.claude/hooks)/
+  # GDScript formatting and lint (gdtoolkit; its 4.x line follows Godot 4's syntax).
+  - repo: https://github.com/Scony/godot-gdscript-toolkit
+    rev: 4.5.0
+    hooks:
+      - id: gdformat
+      - id: gdlint
+  - repo: local
+    hooks:
+      # The rules of .github/conventions.yml, before the commit exists: a title the squash would keep must follow
+      # commits.title (tool-written titles such as `fixup!` pass), and the trailers follow commits.trailers.
+      - id: commit-title
+        name: commit title follows the conventions
+        language: python
+        additional_dependencies: [pyyaml]
+        entry: python .github/scripts/groundwork.py check-title --commit-msg
+        stages: [commit-msg]
+      - id: commit-trailers
+        name: commit trailers follow the conventions
+        language: python
+        additional_dependencies: [pyyaml]
+        entry: python .github/scripts/groundwork.py check-message
+        stages: [commit-msg]
+      - id: conventions-render
+        name: generated files match the conventions
+        language: python
+        additional_dependencies: [pyyaml]
+        entry: python .github/scripts/groundwork.py render --check
+        pass_filenames: false
+        files: ^(\.github/|AGENTS\.md|CONTRIBUTING\.md)

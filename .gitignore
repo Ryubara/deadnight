@@ -1,0 +1,16 @@
+# Godot caches and per-machine files
+.godot/
+*.translation
+export_presets.cfg.local
+/build/
+
+# MkDocs build output
+site/
+
+# Session state, never committed
+HANDOFF.md
+.tether/
+
+# OS
+.DS_Store
+Thumbs.db

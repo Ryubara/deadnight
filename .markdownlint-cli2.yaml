@@ -1,0 +1,5 @@
+# Which files markdownlint-cli2 reads; the rules are in .markdownlint.yaml.
+gitignore: true    # skip everything .gitignore keeps out of the repository
+ignores:
+  - "CODE_OF_CONDUCT.md"     # the Contributor Covenant's text, kept as published
+  - ".github/pull_request_template.md"   # generated; a pull request body starts at the second heading level
