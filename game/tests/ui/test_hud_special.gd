@@ -56,6 +56,29 @@ func test_the_marquee_comes_up_in_the_break_before_a_special_round() -> void:
 	assert_str(marquee.detail_text).is_equal("THE HEADLINER ARRIVES")
 
 
+func test_the_announcement_of_a_round_of_one_type_names_the_type() -> void:
+	# The rules' announcement carries no `only_type`; the marquee takes it from the schedule.
+	var fx := HudFixture.make(_host)
+	var state := fx.hud.state
+	state.apply_event({"type": &"break_started", "next_round": 10, "seconds": 30.0})
+	(
+		state
+		. apply_event(
+			{
+				"type": &"special_round_announced",
+				"round": 10,
+				"special_id": &"stampede",
+				"title": "Midnight Stampede",
+				"kind": &"only",
+				"boss_type": &"",
+				"boss_count": 0,
+				"seconds": 30.0,
+			}
+		)
+	)
+	assert_str(fx.hud.marquee.detail_text).is_equal("ONLY RUNNERS")
+
+
 func test_the_break_before_an_ordinary_round_has_no_marquee() -> void:
 	var fx := HudFixture.make(_host)
 	_to_break_before(fx, 3)
@@ -96,6 +119,24 @@ func test_the_round_banner_names_the_special_round() -> void:
 	assert_bool(fx.hud.banner.showing).is_true()
 	assert_str(fx.hud.banner.title).is_equal("DOUBLE FEATURE")
 	assert_str(fx.hud.banner.subtitle).is_equal("THE HEADLINER ARRIVES")
+
+
+func test_the_line_under_the_name_stays_on_one_line() -> void:
+	var fx := HudFixture.make(_host)
+	for special in fx.rules.tuning.specials.rounds:
+		fx.hud.state.apply_event(
+			{"type": &"round_started", "round": 5, "zombie_count": 9, "special_id": special.id}
+		)
+		var banner := fx.hud.banner
+		assert_float(banner.subtitle_width).is_less_equal(banner.subtitle_room)
+		fx.hud.state.apply_event({"type": &"round_ended", "round": 5, "special_id": special.id})
+		fx.hud.state.apply_event(
+			{"type": &"special_round_cleared", "special_id": special.id, "reward": 1440}
+		)
+		banner.show_banner(
+			"ROUND 5 SURVIVED", "%s CLEARED  +1440" % special.title.to_upper(), HudBanner.Rank.ROUND
+		)
+		assert_float(banner.subtitle_width).is_less_equal(banner.subtitle_room)
 
 
 func test_clearing_the_round_shows_the_reward() -> void:
@@ -160,6 +201,30 @@ func test_a_late_joiner_mid_boss_night_sees_the_banner_the_bar_and_the_round() -
 	# What the HUD that saw every event shows.
 	assert_str(late.banner.title).is_equal(fx.hud.banner.title)
 	assert_int(late.state.bosses.size()).is_equal(fx.hud.state.bosses.size())
+
+
+func test_a_boss_spawn_in_flight_when_the_snapshot_was_taken_gets_no_second_bar() -> void:
+	var fx := HudFixture.make(_host)
+	_to_break_before(fx, 5)
+	_until_boss(fx)
+	var late := _late_hud(fx)
+	for zombie_id in fx.rules.zombie_ids():
+		if fx.rules.zombie_type(zombie_id) == &"headliner":
+			(
+				late
+				. state
+				. apply_event(
+					{
+						"type": &"zombie_spawn_requested",
+						"zombie_id": zombie_id,
+						"zombie_type": &"headliner",
+						"boss": true,
+						"health": fx.rules.zombie_health(zombie_id),
+					}
+				)
+			)
+	assert_int(late.state.bosses.size()).is_equal(1)
+	assert_str(late.boss_bar.caption_text).is_equal("THE PROJECTIONIST")
 
 
 func test_a_late_joiner_sees_a_wounded_boss_wounded() -> void:

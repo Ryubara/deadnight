@@ -21,6 +21,7 @@ const REASON_TEXT := {
 	&"headshot_hit": "HEADSHOT HITS",
 	&"repair": "REPAIR",
 	&"round_bonus": "ROUND BONUS",
+	&"special_reward": "SPECIAL ROUND REWARD",
 	&"purchase": "BOUGHT",
 	&"down_penalty": "DOWN PENALTY",
 }

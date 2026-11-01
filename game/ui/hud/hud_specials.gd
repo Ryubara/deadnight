@@ -40,10 +40,22 @@ static func title(state: HudState, id: StringName) -> String:
 ## schedule says follows the round just played, for a HUD that joined during the break.
 static func coming(state: HudState) -> Dictionary:
 	if not state.announced.is_empty():
-		return state.announced
+		return _announced(state)
 	if state.phase != HudState.PHASE_BREAK:
 		return {}
 	return _describe(state, _kind_for(state, state.round_number + 1), state.round_number + 1)
+
+
+## The announcement with what the event leaves out (the type a round of one type is made of)
+## filled in from the schedule.
+static func _announced(state: HudState) -> Dictionary:
+	var described := state.announced.duplicate()
+	var kinds: Dictionary = state.special_schedule.get("kinds", {})
+	var kind: Dictionary = kinds.get(described.get("special_id", &""), {})
+	for key in ["only_type", "players_per_extra_boss"]:
+		if not described.has(key) and kind.has(key):
+			described[key] = kind[key]
+	return described
 
 
 ## The running special round as the marquee describes it ({} in a normal round).

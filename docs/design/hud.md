@@ -13,7 +13,7 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 | Fed by | How | Carries |
 | --- | --- | --- |
 | The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, purchases, hits and kills, game over |
-| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, the generator. Names are not in the rules, so the ones set before stay |
+| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, the generator, the special round running and the bosses on the lot with their health (a boss whose spawn event was already in flight is not counted twice). Names are not in the rules, so the ones set before stay |
 | The local player's readings | `set_health`, `set_ammo`, `set_equipment`, `set_prompt`, `set_area`, `set_markers`, `set_player_name` | what the rules do not own: health, the weapon in hand, what is in reach, where the player stands |
 | HUD events beside the rules' own | `player_hurt` (`player_id`, `health`, `direction` in radians clockwise from straight ahead); optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a blow or a hit point into these; there is no world position in the HUD |
 
@@ -109,8 +109,9 @@ chasing bulbs, no pulsing (the low-health frame and low-fuel tank hold steady); 
 
 ## Tests and captures
 
-`game/tests/ui/test_hud_state.gd` (the mirror, from real rules events; topics; names), `test_hud_snapshot.gd` (a late
-joiner against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
+`game/tests/ui/test_hud_state.gd` (the mirror, from real rules events; topics; names), `test_hud_special.gd` (the
+marquee, the banner, the reward line and a late joiner into a special round), `test_hud_snapshot.gd` (a late joiner
+against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
 `test_hud_typical_text.gd` (the ordinary night's values show in full at 1080p and 1440p, in the fallback face and the
 Marquee pair), `test_hud_layout.gd` (sizes, overlap, readability, reduced motion: the busiest HUD and the longest

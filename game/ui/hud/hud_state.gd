@@ -420,7 +420,8 @@ func _on_zombie_removed(event: Dictionary) -> void:
 
 
 func _on_zombie_spawn_requested(event: Dictionary) -> void:
-	if bool(event.get("boss", false)):
+	# A boss a snapshot already restored is not added twice when its spawn event was in flight.
+	if bool(event.get("boss", false)) and _boss_index(int(event.get("zombie_id", -1))) == -1:
 		(
 			bosses
 			. append(

@@ -8,31 +8,40 @@ extends Node
 ## boss: the shipped boss night as round 1: a headliner among walkers.
 ## cripple: a walker takes a grenade blast on the legs and becomes a crawler.
 ## specials: the HUD through a boss night: the marquee in the break before it, the banner as it
-## starts, the boss bar once the headliner is on the lot.
+## starts, the boss bar once the headliner is on the lot, and the reward line once every zombie is
+## dead.
+## latejoin: the same night, but a HUD that missed the first minute takes over from a snapshot of
+## the rules when the headliner has appeared: the banner, the bar and the round come from it alone.
 ## bossfight: the headliner alone, played by the real night: it roars where it appears, walks, is
 ## shot in the lamp (and staggers), swings, and dies.
 
 const SPACING := 1.5
 const ROW_Z := -4.0
-const SECONDS := {"types": 7.0, "boss": 9.0, "cripple": 6.0, "bossfight": 17.0, "specials": 15.0}
+const SECONDS := {
+	"types": 7.0, "boss": 9.0, "cripple": 6.0, "bossfight": 17.0, "specials": 18.0, "latejoin": 13.0
+}
 ## The bossfight's timeline, in seconds of the night.
 const FIGHT_SHOOT_FROM := 6.0
 const FIGHT_SHOOT_UNTIL := 7.2
 const FIGHT_KILL_AT := 12.5
 const FIGHT_DISTANCE := 7.5
+## When the specials capture kills what is left, so the round is cleared and pays.
+const SPECIALS_CLEAR_AT := 12.0
 
 var _args := {}
 var _night: Night
 var _ticks := 0
 var _victim := -1
 var _boss: ZombieBody
+var _joined := false
+var _late_binding: NightHudBinding
 
 
 func _ready() -> void:
 	_args = _parse_args()
 	var scene := String(_args.get("scene", "types"))
 	_night = Night.new()
-	if scene == "bossfight" or scene == "specials":
+	if scene in ["bossfight", "specials", "latejoin"]:
 		var layer := CanvasLayer.new()
 		add_child(layer)
 		var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
@@ -60,7 +69,7 @@ func _tuning(scene: String) -> RulesTuning:
 	if scene == "cripple":
 		tuning.rounds.count_base = 3.0
 		return tuning
-	if scene == "specials":
+	if scene == "specials" or scene == "latejoin":
 		tuning.specials.first_round = 1
 		tuning.specials.every = 1
 		tuning.specials.break_bonus_seconds = 3.0
@@ -84,7 +93,7 @@ func _tuning(scene: String) -> RulesTuning:
 
 func _on_tick() -> void:
 	_ticks += 1
-	if String(_args.get("scene", "")) in ["bossfight", "specials"]:
+	if String(_args.get("scene", "")) in ["bossfight", "specials", "latejoin"]:
 		_fight()
 		return
 	var zombies: Array[ZombieBody] = []
@@ -123,6 +132,8 @@ func _fight() -> void:
 				_boss = body
 				_boss.position = _night.state.position() + Vector3(0.0, 0.0, -FIGHT_DISTANCE)
 				_boss.yaw = 0.0
+	if _boss != null and String(_args.get("scene", "")) == "latejoin" and not _joined:
+		_join_late()
 	var command := NightCommand.new()
 	if _boss != null and _boss.is_alive():
 		var fighting := String(_args.get("scene", "")) == "bossfight"
@@ -138,12 +149,33 @@ func _fight() -> void:
 			_victim = _boss.id
 			var kill := RulesAction.hit(1, _victim, RulesAction.ZONE_BODY, 99999.0)
 			_night.state.apply_events(_night.server.rules.apply(kill))
+	if (
+		String(_args.get("scene", "")) == "specials"
+		and seconds >= SPECIALS_CLEAR_AT
+		and _victim == -1
+	):
+		_victim = 0
+		for zombie_id: int in _night.server.rules.zombie_ids():
+			var kill := RulesAction.hit(1, zombie_id, RulesAction.ZONE_BODY, 99999.0)
+			_night.state.apply_events(_night.server.rules.apply(kill))
 	_night.link.send(command.to_dict())
 	var at := _night.state.position()
 	var camera: Camera3D = _night.get("_spectator")
 	camera.look_at_from_position(at + Vector3(4.5, 3.0, 3.0), at + Vector3(0.0, 1.5, -4.5))
 	if seconds >= float(SECONDS[String(_args.get("scene", "bossfight"))]):
 		get_tree().quit()
+
+
+## Swaps the HUD for a new one that knows only a snapshot of the rules, as a late joiner's would.
+func _join_late() -> void:
+	_joined = true
+	var old: Hud = _night.hud
+	var layer := old.get_parent()
+	var late := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	old.hide()
+	layer.add_child(late)
+	_late_binding = NightHudBinding.new(late, _night.state, _night.server)
+	late.state.load_snapshot(_night.server.rules.to_dict())
 
 
 func _cripple(zombies: Array[ZombieBody]) -> void:

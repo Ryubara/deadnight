@@ -23,6 +23,15 @@ const CHASE := 5.0
 var title := ""
 var subtitle := ""
 var showing := false
+## How wide the line under the title is as drawn, and the room it has, for tests.
+var subtitle_width: float:
+	get:
+		return HudStyle.text_width(
+			_subtitle.get_theme_font(&"font"), subtitle, _subtitle.get_theme_font_size(&"font_size")
+		)
+var subtitle_room: float:
+	get:
+		return WIDTH - float(tokens.space_md * 2 + 10)
 
 var _title := HudStyle.label("", ROUND_SIZE, tokens.accent_bright, true)
 var _subtitle := HudStyle.label("", HudStyle.MEDIUM, tokens.ink, false)
@@ -117,7 +126,9 @@ func show_banner(main: String, sub: String, rank: Rank, hold := HOLD_TIME) -> vo
 		&"font_color", tokens.hot if rank == Rank.END else tokens.accent_bright
 	)
 	HudStyle.set_text(_title, main)
-	HudStyle.set_text(_subtitle, sub)
+	# The line under the title shrinks to stay on one line ("THE HEADLINER ARRIVES"), down to a
+	# small size; beyond that it wraps.
+	HudStyle.set_fitted(_subtitle, sub, HudStyle.MEDIUM, subtitle_room, HudStyle.SMALL)
 	visible = true
 	_apply()
 
