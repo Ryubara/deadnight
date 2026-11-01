@@ -30,6 +30,11 @@ const REDUCED_MOTION := &"accessibility/reduced_motion"
 const UI_SCALE := &"accessibility/ui_scale"
 const MOUSE_SENSITIVITY := &"controls/mouse_sensitivity"
 const INVERT_Y := &"controls/invert_y"
+## Touch controls: 0 follows the device (a phone shows them), 1 always, 2 never (`TouchMode`).
+const TOUCH_CONTROLS := &"controls/touch_controls"
+const TOUCH_SCALE := &"controls/touch_scale"
+const TOUCH_OPACITY := &"controls/touch_opacity"
+const HAPTICS := &"controls/haptics"
 ## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
 const CHARACTER_LOOK := &"character/look"
 ## The longest saved text accepted, so a damaged file cannot fill memory.
@@ -49,6 +54,10 @@ const DEFAULTS := {
 	UI_SCALE: 1.0,
 	MOUSE_SENSITIVITY: 1.0,
 	INVERT_Y: false,
+	TOUCH_CONTROLS: 0,
+	TOUCH_SCALE: 1.0,
+	TOUCH_OPACITY: 0.7,
+	HAPTICS: true,
 	CHARACTER_LOOK: "",
 }
 
@@ -64,6 +73,9 @@ const RANGES := {
 	VOLUME_UI: Vector2(0, 100),
 	UI_SCALE: Vector2(0.8, 1.25),
 	MOUSE_SENSITIVITY: Vector2(0.1, 3.0),
+	TOUCH_CONTROLS: Vector2(0, 2),
+	TOUCH_SCALE: Vector2(0.8, 1.4),
+	TOUCH_OPACITY: Vector2(0.3, 1.0),
 }
 
 ## The audio bus each volume drives (the layout is `res://default_bus_layout.tres`).
