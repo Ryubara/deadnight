@@ -12,6 +12,11 @@ signal idle
 signal screen_changed(depth: int)
 
 const BURN_SHADER := preload("res://addons/gds_ui/shaders/film_burn.gdshader")
+## The burn covers the whole screen from about this progress, and shows nothing new before the
+## reveal reaches `BURN_REVEAL_FROM`: both ends of the hold on char are cut (measured in
+## docs/research/main-menu.md).
+const BURN_CLOSE_TO := 0.97
+const BURN_REVEAL_FROM := 0.27
 const IRIS_SHADER := preload("res://addons/gds_ui/shaders/projector_iris.gdshader")
 const LAYER := 100
 const NOT_SHOWN := "UIRouter: cannot show %s (need a scene, its path or a Control)"
@@ -225,7 +230,7 @@ func _make(kind: UITransition.Kind) -> UITransition:
 		UITransition.Kind.SLIDE:
 			return UITransitionSlide.new()
 		UITransition.Kind.BURN:
-			return UITransitionShader.new(BURN_SHADER)
+			return UITransitionShader.new(BURN_SHADER, BURN_CLOSE_TO, BURN_REVEAL_FROM)
 		UITransition.Kind.IRIS:
 			return UITransitionShader.new(IRIS_SHADER)
 	return UITransition.new()
