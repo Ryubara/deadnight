@@ -201,6 +201,9 @@ labels:
     - {name: S-in-progress, color: 5319e7, description: "Status: someone is working on it"}
     - {name: S-pending-review, color: 1d76db, description: "Status: a pull request is open"}
     - {name: S-blocked, color: "000000", description: "Status: waiting for another issue or a decision"}
+    # Set and cleared on open pull requests only, by the pr-status workflow (never by hand, never on an issue).
+    - {name: S-conflict, color: d93f0b, description: "Status: the pull request conflicts with its base; rebase it"}
+    - {name: S-ci-failing, color: e99695, description: "Status: a required check failed on the latest commit"}
     - {name: good first issue, color: 7057ff, description: "Good for newcomers"}
     - {name: help wanted, color: "008672", description: "Extra attention is needed"}
     - {name: duplicate, color: cfd3d7, description: "This already exists"}

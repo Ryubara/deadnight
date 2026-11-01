@@ -13,8 +13,12 @@ the same simulation code as the client) plus a platform backend on Railway. The 
 kit's (`<workspace>/repos/gdstudio/AGENTS.md`) are your rules; read both first, then the game's
 `docs/research/multiplayer.md` and `docs/research/platform-backend.md`.
 
-Before you start a new feature or game, read the kit's `docs/research/maintainer-corrections.md`: the checks
-there catch what the maintainer had to point out before.
+Before you start, read what the team already learned: the checks in the kit's
+`docs/research/maintainer-corrections.md` that touch your task (they are what the maintainer had to point out
+before, by area) and a search of `docs/lessons/index.md` for the problem you are about to solve. A hook reminds you
+at start. If your task came from a maintainer correction, put the row's text in your final report (the maintainer's
+words, the concept missed, the detail missed, the check for next time) and any general cause you found: the
+coordinator publishes it, so you do not edit that table yourself (many agents editing one table conflict).
 
 ## How you work
 

@@ -13,9 +13,31 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project --python \">=3.12\" python \"$CLAUDE_PROJECT_DIR/.claude/hooks/launch.py\" || exit 0",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project --python \">=3.12\" python \"$CLAUDE_PROJECT_DIR/.claude/hooks/launch.py\" || exit 0",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
-        "matcher": "startup|resume|clear",
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",

@@ -31,6 +31,12 @@ var sounds: NightSounds
 var voices: ZombieVoices
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
+## The drawn body of a player by id (a `Node3D` with a `PlayerAnimation` child named
+## `AnimationTree`, or null), for the actions only events tell (the repair). In one process it is
+## the server's body; a client on another machine gives its own drawn avatars here.
+var bodies: Callable = func(_player_id: int) -> Node3D: return null
+## The night's repair interval (s): the pace each player's repair clip is played at.
+var repair_interval: Callable = func() -> float: return 1.0
 
 var _state: ClientState
 ## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
@@ -58,6 +64,15 @@ func setup(
 	voices = ZombieVoices.new(Audio, 1)
 	voices.windups = telegraphs
 	state.event_received.connect(_on_event)
+
+
+## The player who put a board back hammers it home: their repair clip lands on the event, whoever
+## they are (every client draws every player's repair from the same event).
+func show_repair(player_id: int) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.board_repaired(repair_interval.call())
 
 
 ## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
@@ -130,6 +145,8 @@ func _on_event(event: Dictionary) -> void:
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
+			else:
+				show_repair(event["player_id"])
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)

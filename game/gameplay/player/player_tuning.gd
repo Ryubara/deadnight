@@ -6,23 +6,59 @@ extends Resource
 
 @export_group("Speed")
 @export var run_speed := 4.8
+## Sprint is available in every direction while not aiming; the body turns to face the way it goes,
+## so a sprint toward the camera is a sprint like any other.
 @export var sprint_speed := 7.0
-## Speed while aiming; slow enough to feel deliberate.
+## Speed while aiming (the body strafes, facing the view); slow enough to feel deliberate.
 @export var aim_speed := 2.6
+## The share of the aim speed kept while backing away from the view (1 is no slower than forward).
+@export_range(0.3, 1.0, 0.05) var aim_backpedal_scale := 0.75
+## The stick or keys must be pushed at least this far (0 to 1) for the sprint key to count, so a
+## nudge of the stick does not start a sprint (and its camera pull-back and sway).
+@export_range(0.0, 1.0, 0.05) var sprint_min_input := 0.5
 
 @export_group("Acceleration")
-## Speed gained per second while on the ground and steering. 4.8 m/s is reached in about 0.13 s.
+## Speed gained per second on the ground while steering below the run speed, and while aiming.
+## 4.8 m/s is reached in about 0.13 s.
 @export var ground_acceleration := 38.0
-## Speed lost per second while on the ground with no input.
+## Speed gained per second above the run speed on the way to a sprint: 7 m/s takes about 0.25 s
+## from a standstill (0.13 s to the run, then this), so a sprint builds up instead of starting
+## at once.
+@export var sprint_acceleration := 18.0
+## Speed lost per second on the ground with no input, from a run or slower.
 @export var ground_friction := 44.0
+## The same above the run speed, gentler: a sprint carries on for about 0.7 m after the keys are
+## let go (a run for 0.26 m).
+@export var sprint_friction := 30.0
+## Speed lost per second while input is held but the target is slower (a sprint let go to a run,
+## or an aim from a sprint), so the change of pace is eased, not snapped.
+@export var ground_deceleration := 30.0
 ## Steering authority in the air; low so a jump commits you to its direction.
 @export var air_acceleration := 6.0
 
 @export_group("Facing")
-## Radians per second the body turns toward the way it is moving.
+## Radians per second the body turns toward the way it is moving when not aiming. The velocity
+## turns at the same rate, so the body always faces where it goes (no skating) and a change of
+## direction is an arc of radius speed / turn_speed (0.34 m at a run).
 @export var turn_speed := 14.0
+## The same while sprinting: a wider arc (0.78 m at a sprint), more weight.
+@export var sprint_turn_speed := 9.0
 ## Radians per second the body turns to face the aim direction while aiming.
 @export var aim_turn_speed := 24.0
+
+@export_group("Pivot")
+## A change of direction wider than this (degrees) is a pivot, not an arc: the body plants,
+## sheds its speed, turns on the spot, and goes the other way.
+@export_range(45.0, 170.0, 5.0) var pivot_angle_degrees := 100.0
+## Radians per second the body turns during a pivot (180 degrees in 0.14 s).
+@export var pivot_turn_speed := 22.0
+## Speed lost per second along the old heading while planting for a pivot (7 m/s in 0.15 s).
+@export var pivot_brake := 40.0
+## While the body has not yet turned to face a wide change of direction, it moves no faster than
+## this (m/s), so it does not moonwalk out of a turn on the spot.
+@export var pivot_walk_speed := 1.5
+## Below this speed (m/s) the velocity does not steer along an arc: it simply accelerates.
+@export var steer_min_speed := 1.0
 
 @export_group("Jump")
 ## Height of a full jump, in metres.
@@ -90,13 +126,15 @@ extends Resource
 @export var follow_frequency := 22.0
 @export var follow_frequency_vertical := 10.0
 @export var sprint_follow_frequency := 16.0
-## Aim zoom, shoulder swap and sprint pull-back.
+## Aim zoom, shoulder swap and sprint pull-back. The sprint pull-back settles in 0.35 s (it was
+## 0.53 s at 9 rad/s: 1.5 times as fast).
 @export var aim_frequency := 24.0
 @export var swap_frequency := 16.0
-@export var sprint_frequency := 9.0
-## Sprint widens the view by this many degrees and lets the camera out by this many metres.
+@export var sprint_frequency := 13.5
+## Sprint widens the view by this many degrees and lets the camera out by this many metres (the
+## pull-back was 0.3 m; now half that).
 @export var sprint_fov_kick := 6.0
-@export var sprint_arm_extra := 0.3
+@export var sprint_arm_extra := 0.15
 ## A wall pulls the camera in at once; this is the rate (per second) it lets out again.
 @export var release_frequency := 6.0
 ## The view turns toward a steered yaw and pitch (the autopilot's) with this spring.
