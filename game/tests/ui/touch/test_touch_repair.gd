@@ -90,3 +90,25 @@ func test_lifting_the_finger_stops_the_boards() -> void:
 	await await_millis(200)
 	_play(roundi(interval * TICKS_PER_SECOND * 3.0))
 	assert_int(_boards()).is_equal(held)
+
+
+func test_the_hammer_is_in_the_hand_while_the_finger_holds() -> void:
+	# The repair clip and the hammer follow the rules' board_repaired, whatever pressed interact.
+	var animation := _night.player().get_node(^"AnimationTree") as PlayerAnimation
+	animation.set_process(false)
+	var step := func(ticks: int) -> void:
+		for _i in ticks:
+			_play(1)
+			animation._process(NightFixture.STEP)
+	await _with_prompt()
+	var interval := _night.server.tuning.repair_interval
+	await _fixture.touch(0, _fixture.at(TouchLayout.INTERACT))
+	step.call(roundi(interval * TICKS_PER_SECOND * 1.5))
+	assert_int(_boards()).is_greater(1)
+	assert_bool(animation.hammer().visible).is_true()
+	assert_bool(animation.weapon().visible).is_false()
+	await _fixture.lift(0)
+	await await_millis(200)
+	step.call(roundi(interval * TICKS_PER_SECOND * (PlayerAnimation.REPAIR_HOLD + 0.5)))
+	assert_bool(animation.hammer().visible).is_false()
+	assert_bool(animation.weapon().visible).is_true()

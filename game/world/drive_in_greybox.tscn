@@ -170,148 +170,184 @@ material = ExtResource("outskirts")
 
 [node name="Field" type="Node3D" parent="."]
 
-[node name="Ground0_0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -54.250, -0.200, -44.000)
+[node name="GroundW0_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -54.333, -0.200, -44.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground0_1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -54.250, -0.200, -28.000)
+[node name="GroundW0_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -54.333, -0.200, -28.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground0_2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -54.250, -0.200, -12.000)
+[node name="GroundW0_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -54.333, -0.200, -12.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground1_0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -38.750, -0.200, -44.000)
+[node name="GroundW1_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -39.000, -0.200, -44.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground1_1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -38.750, -0.200, -28.000)
+[node name="GroundW1_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -39.000, -0.200, -28.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground1_2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -38.750, -0.200, -12.000)
+[node name="GroundW1_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -39.000, -0.200, -12.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground2_0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -23.250, -0.200, -44.000)
+[node name="GroundW2_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -23.667, -0.200, -44.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground2_1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -23.250, -0.200, -28.000)
+[node name="GroundW2_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -23.667, -0.200, -28.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground2_2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -23.250, -0.200, -12.000)
+[node name="GroundW2_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -23.667, -0.200, -12.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground3_0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.750, -0.200, -44.000)
+[node name="GroundC0_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -11.000, -0.200, -45.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(10, 0.4, 14)
 material = ExtResource("field_ground")
 
-[node name="Ground3_1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.750, -0.200, -28.000)
+[node name="GroundC0_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -11.000, -0.200, -30.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(10, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground3_2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.750, -0.200, -12.000)
+[node name="GroundC0_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -11.000, -0.200, -16.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(10, 0.4, 12)
 material = ExtResource("field_ground")
 
-[node name="Ground4_0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.750, -0.200, -44.000)
+[node name="GroundC0_3" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -11.000, -0.200, -7.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(10, 0.4, 6)
 material = ExtResource("field_ground")
 
-[node name="Ground4_1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.750, -0.200, -28.000)
+[node name="GroundC1_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.200, -45.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(12, 0.4, 14)
 material = ExtResource("field_ground")
 
-[node name="Ground4_2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.750, -0.200, -12.000)
+[node name="GroundC1_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.200, -30.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(12, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground5_0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.250, -0.200, -44.000)
+[node name="GroundC1_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.200, -16.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(12, 0.4, 12)
 material = ExtResource("field_ground")
 
-[node name="Ground5_1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.250, -0.200, -28.000)
+[node name="GroundC1_3" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.200, -7.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(12, 0.4, 6)
 material = ExtResource("field_ground")
 
-[node name="Ground5_2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.250, -0.200, -12.000)
+[node name="GroundC2_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, -0.200, -45.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(10, 0.4, 14)
 material = ExtResource("field_ground")
 
-[node name="Ground6_0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 38.750, -0.200, -44.000)
+[node name="GroundC2_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, -0.200, -30.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(10, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground6_1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 38.750, -0.200, -28.000)
+[node name="GroundC2_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, -0.200, -16.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(10, 0.4, 12)
 material = ExtResource("field_ground")
 
-[node name="Ground6_2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 38.750, -0.200, -12.000)
+[node name="GroundC2_3" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 11.000, -0.200, -7.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(10, 0.4, 6)
 material = ExtResource("field_ground")
 
-[node name="Ground7_0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 54.250, -0.200, -44.000)
+[node name="GroundE0_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.667, -0.200, -44.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground7_1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 54.250, -0.200, -28.000)
+[node name="GroundE0_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.667, -0.200, -28.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
-[node name="Ground7_2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 54.250, -0.200, -12.000)
+[node name="GroundE0_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 23.667, -0.200, -12.000)
 use_collision = true
-size = Vector3(15.5, 0.4, 16)
+size = Vector3(15.3333, 0.4, 16)
+material = ExtResource("field_ground")
+
+[node name="GroundE1_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, -44.000)
+use_collision = true
+size = Vector3(15.3333, 0.4, 16)
+material = ExtResource("field_ground")
+
+[node name="GroundE1_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, -28.000)
+use_collision = true
+size = Vector3(15.3333, 0.4, 16)
+material = ExtResource("field_ground")
+
+[node name="GroundE1_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, -12.000)
+use_collision = true
+size = Vector3(15.3333, 0.4, 16)
+material = ExtResource("field_ground")
+
+[node name="GroundE2_0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 54.333, -0.200, -44.000)
+use_collision = true
+size = Vector3(15.3333, 0.4, 16)
+material = ExtResource("field_ground")
+
+[node name="GroundE2_1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 54.333, -0.200, -28.000)
+use_collision = true
+size = Vector3(15.3333, 0.4, 16)
+material = ExtResource("field_ground")
+
+[node name="GroundE2_2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 54.333, -0.200, -12.000)
+use_collision = true
+size = Vector3(15.3333, 0.4, 16)
 material = ExtResource("field_ground")
 
 [node name="ScreenPanel" type="CSGBox3D" parent="Field"]
@@ -1071,9 +1107,27 @@ font_size = 110
 [node name="Concession" type="Node3D" parent="."]
 
 [node name="Floor0_0" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.200, 2.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.000, -0.200, -1.500)
 use_collision = true
-size = Vector3(20, 0.4, 12)
+size = Vector3(6, 0.4, 5)
+material = ExtResource("concession_ground")
+
+[node name="Floor0_1" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.000, -0.200, 4.500)
+use_collision = true
+size = Vector3(6, 0.4, 7)
+material = ExtResource("concession_ground")
+
+[node name="Floor1_0" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.000, -0.200, -1.500)
+use_collision = true
+size = Vector3(14, 0.4, 5)
+material = ExtResource("concession_ground")
+
+[node name="Floor1_1" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.000, -0.200, 4.500)
+use_collision = true
+size = Vector3(14, 0.4, 7)
 material = ExtResource("concession_ground")
 
 [node name="WallN0" type="CSGBox3D" parent="Concession"]
@@ -1172,10 +1226,28 @@ use_collision = true
 size = Vector3(0.4, 4, 12)
 material = ExtResource("concession_wall")
 
-[node name="Roof" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.150, 2.000)
+[node name="Roof0_0" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.200, 4.150, -1.700)
 use_collision = true
-size = Vector3(20.8, 0.3, 12.8)
+size = Vector3(6.4, 0.3, 5.4)
+material = ExtResource("concession_roof")
+
+[node name="Roof0_1" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.200, 4.150, 4.700)
+use_collision = true
+size = Vector3(6.4, 0.3, 7.4)
+material = ExtResource("concession_roof")
+
+[node name="Roof1_0" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.200, 4.150, -1.700)
+use_collision = true
+size = Vector3(14.4, 0.3, 5.4)
+material = ExtResource("concession_roof")
+
+[node name="Roof1_1" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.200, 4.150, 4.700)
+use_collision = true
+size = Vector3(14.4, 0.3, 7.4)
 material = ExtResource("concession_roof")
 
 [node name="SodaFountain" type="CSGBox3D" parent="Concession"]
