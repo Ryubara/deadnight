@@ -28,6 +28,8 @@ var effects: ShotEffects
 var barricade_points: Dictionary[StringName, Vector3] = {}
 ## The lot's lamps, drawn from the generator's events (`show_lamps`).
 var lamps: LotLamps
+## The prize crane (`show_crane`).
+var crane: CraneView
 ## The night's sounds besides the guns (`hear`).
 var sounds: NightSounds
 ## Seconds between frames, for the views' animation.
@@ -59,6 +61,14 @@ func show_lamps(lot: Node, fuel: FuelTuning) -> void:
 	lamps = LotLamps.new(lot)
 	lamps.configure(fuel)
 	lamps.refresh(0)
+
+
+## Draws the prize crane at the spot the rules say it stands on (`CraneView`).
+func show_crane(world: NightWorld, tuning: RulesTuning) -> void:
+	crane = CraneView.new()
+	add_child(crane)
+	var item := tuning.economy.item(&"crane_play")
+	crane.setup(_state, world.shop_spots(), tuning.crane, item.pool if item != null else [])
 
 
 ## Starts the night's ambience and the sounds of its boards, doors, blows, till and voices, placed
