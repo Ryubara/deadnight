@@ -1,0 +1,51 @@
+# Touch controls
+
+Deadnight is played on a phone held sideways. The research and the reasons are in
+[mobile controls](../research/mobile-controls.md); this page is what the game does.
+
+## What shows
+
+The layer (`game/ui/touch/`) shows when the setting `controls/touch_controls` says so: **Auto** (a phone or tablet in a
+browser, an Android or iOS build), **On** or **Off** (Settings, Touch tab). To try it on a desktop pass `--touch`
+after `--` on the command line, set `DEADNIGHT_TOUCH=1`, or open the page with `?touch=1`. Held upright, a "turn your
+phone" screen covers the game and the controls wait. The HUD keeps inside the safe area (a notch, rounded corners).
+
+## The controls
+
+Each finger has one job until it lifts, tracked by its touch index, so move, look and a button work at once.
+
+| Control | Where | Does |
+| --- | --- | --- |
+| Move | anywhere on the left, below the top fifth | a stick that floats under the thumb and follows it past the rim; the rim is a sprint |
+| Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 183 degrees at sensitivity 1, a fast flick gains up to 1.6 times |
+| Fire | big, right thumb | `fire` held; a drag that starts on it also looks |
+| Aim, Jump, Reload, Swap, Grenade | an arc round Fire | `aim` (held), `jump`, `reload`, `swap_weapon`, `throw_grenade` |
+| Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, REPAIR, FUEL, SWITCH, TAKE, REVIVE) |
+| Pause | top, beside the round card | `pause` |
+
+Everything presses the game's own input actions, so the player and the night read touch like a key. Look goes out as mouse
+motion in mouse pixels, so the sensitivity setting, the ADS slow-down and invert Y apply. A press lasts at least 90 ms so
+a quick tap is still seen by the next physics tick. Sizes and places are in `TouchLayout`; a test checks every button
+against the safe area, a thumb-sized hit area, each other and the HUD cards that stay (ammo, prompt, health, points, round).
+
+## Settings
+
+Touch controls (Auto, On, Off), button size (0.8 to 1.4), opacity at rest (0.3 to 1.0) and vibration on touch.
+
+## Not done yet
+
+Crouch and shoulder swap (not on the screen), a left-handed layout, aim assist, gyro, first-run hints, hiding the keyboard
+glyph in the prompt card on touch, and asking Discord for landscape. Each is an open question on the research page.
+
+## Gotchas found while building it
+
+- **Touch-to-mouse emulation clicks Fire.** The engine turns every touch into a left click, which is `fire`, and into
+  mouse motion, so the layer turns `Input.emulate_mouse_from_touch` off while it is up and back on for menus.
+- **Injected events are in window pixels.** `Input.parse_input_event` runs the viewport's stretch backwards, so a look sent
+  in canvas units is scaled by the window-to-canvas ratio; the layer multiplies by the final transform first. Tests state
+  canvas units and convert the same way (`TouchFixture`), because the headless window is 64 x 36.
+- **A full-screen `Control` with the default mouse filter eats injected mouse motion.** The test host sets Ignore.
+- **Under a `CanvasLayer` a `Control` has size zero.** `TouchControls` and the rotate prompt fall back to the viewport size.
+- **The scene runner changes how input arrives**, so the suite that uses it (`test_touch_player`) is its own file.
+- **The web page** needs `viewport-fit=cover` for safe-area insets, `touch-action: none`, `overscroll-behavior: none`,
+  no text selection and no context menu: the export preset's head include sets them.
