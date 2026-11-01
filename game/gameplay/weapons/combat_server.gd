@@ -62,8 +62,7 @@ func _init(
 		rules.event_emitted.connect(_on_rules_event)
 
 
-## Lets go of the rules (they hold a connection back to this server, a reference cycle). Call
-## when the night is over.
+## Stops listening to the rules. Call when the night is over.
 func detach() -> void:
 	if rules != null and rules.event_emitted.is_connected(_on_rules_event):
 		rules.event_emitted.disconnect(_on_rules_event)

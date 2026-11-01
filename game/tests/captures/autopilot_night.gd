@@ -4,6 +4,9 @@ extends Node
 ## `--speed=N` (ticks per frame), `--seed=N`, `--seconds=S` (stop after S game seconds),
 ## `--log` (print every event), `--fast` (quick dead for a recording), `--trace`.
 
+## Real seconds the audio mixer gets to drop stopped voices before the program quits.
+const QUIT_SETTLE_SECONDS := 0.3
+
 var _args := {}
 var _night: Night
 var _ticks := 0
@@ -103,6 +106,10 @@ func _report() -> void:
 		)
 	)
 	_night.running = false
+	# A voice stopped in the same moment the engine quits is still queued in the audio server, and
+	# its stream is reported as a leak at exit; let the mixer take the stopped voices off first.
+	Audio.stop_all()
+	await get_tree().create_timer(QUIT_SETTLE_SECONDS).timeout
 	get_tree().quit()
 
 
