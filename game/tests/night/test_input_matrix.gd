@@ -86,6 +86,11 @@ func after_test() -> void:
 		_fixture.free_all()
 		_fixture = null
 	TouchMode.device_is_touch = null
+	# A night left standing holds the next night's player up on its own body (no jump from there)
+	# and keeps ticking into the next test's events: free it before the next one is built.
+	_night.queue_free()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 
 
 ## What the human controller must have read into the night's command while `action` was held.
