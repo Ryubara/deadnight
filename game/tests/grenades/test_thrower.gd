@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 
 const HAND := Vector3(0, 1.5, 0)
 const AIM := Vector3(0, 0, -1)
+const STEP := 1.0 / 60.0
 
 var _thrower: GrenadeThrower
 
@@ -143,3 +144,73 @@ func test_the_player_samples_the_grenade_buttons_into_the_command() -> void:
 	assert_bool(held.throw_over).is_true()
 	assert_bool(held.throw_under).is_false()
 	assert_bool(player.sample_command().throw_over).is_false()
+
+
+func _winding(release: float = 0.25) -> GrenadeThrower:
+	var thrower := GrenadeThrower.new(1, GrenadesFixture.def())
+	thrower.release_over = release
+	thrower.release_under = release
+	return thrower
+
+
+func _step_of(thrower: GrenadeThrower, over: bool) -> Array[Dictionary]:
+	var command := PlayerCommand.new()
+	command.throw_over = over
+	return thrower.step(command, HAND, AIM, Vector3.ZERO, STEP)
+
+
+func test_with_a_release_delay_the_grenade_leaves_after_the_swing_not_at_the_button() -> void:
+	var thrower := _winding()
+	_step_of(thrower, true)
+	for _i in 10:
+		_step_of(thrower, true)
+	assert_array(_step_of(thrower, false)).is_empty()
+	assert_str(String(thrower.swing_began())).is_equal("over")
+	assert_bool(thrower.is_winding_up()).is_true()
+	assert_bool(thrower.is_cooking()).is_true()
+	var waited := 0
+	var thrown: Array[Dictionary] = []
+	while thrown.is_empty() and waited < 60:
+		thrown = _step_of(thrower, false)
+		waited += 1
+		assert_str(String(thrower.swing_began())).is_equal("")
+	assert_str(thrown[0]["type"]).is_equal("throw")
+	assert_float(waited * STEP).is_equal_approx(0.25, STEP * 2.0)
+	assert_bool(thrower.is_winding_up()).is_false()
+	assert_bool(thrower.is_cooking()).is_false()
+
+
+func test_the_buttons_do_nothing_while_the_arm_swings() -> void:
+	var thrower := _winding()
+	_step_of(thrower, true)
+	_step_of(thrower, false)
+	for _i in 5:
+		assert_array(_step_of(thrower, true)).is_empty()
+	assert_bool(thrower.is_winding_up()).is_true()
+
+
+func test_a_grenade_that_went_off_in_the_hand_cancels_the_swing() -> void:
+	var thrower := _winding()
+	_step_of(thrower, true)
+	_step_of(thrower, false)
+	thrower.abandon()
+	assert_bool(thrower.is_winding_up()).is_false()
+	for _i in 30:
+		assert_array(_step_of(thrower, false)).is_empty()
+
+
+func test_a_swing_survives_a_snapshot() -> void:
+	var thrower := _winding()
+	_step_of(thrower, true)
+	_step_of(thrower, false)
+	for _i in 5:
+		_step_of(thrower, false)
+	var copy := _winding()
+	copy.restore(thrower.snapshot())
+	var from_original: Array[Dictionary] = []
+	var from_copy: Array[Dictionary] = []
+	for _i in 30:
+		from_original.append_array(_step_of(thrower, false))
+		from_copy.append_array(_step_of(copy, false))
+	assert_array(from_original).has_size(1)
+	assert_dict(from_copy[0]).is_equal(from_original[0])

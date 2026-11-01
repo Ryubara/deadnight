@@ -6,8 +6,10 @@ extends GdUnitTestSuite
 
 const DIR := "res://assets/weapons/"
 ## Every weapon folder is listed in one of the two, so a new model has to say whether it shoots.
-const FIREARMS: Array[String] = ["lever_rifle", "double_shotgun"]
-const NOT_FIREARMS: Array[String] = ["baseball_bat", "fire_axe", "grenade", "hammer"]
+const FIREARMS: Array[String] = [
+	"lever_rifle", "double_shotgun", "revolver", "tommy_gun", "flare_gun"
+]
+const NOT_FIREARMS: Array[String] = ["baseball_bat", "fire_axe", "grenade", "hammer", "crowbar"]
 const MUZZLE := "Muzzle"
 ## How far the marker may sit from the bounding box's front face along the barrel (metres).
 const FACE_TOLERANCE := 0.01

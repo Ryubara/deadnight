@@ -14,6 +14,9 @@ signal jumped
 ## Back on the ground after a fall or jump; `impact_speed` is the downward speed in m/s.
 signal landed(impact_speed: float)
 
+## Below this the model counts as level with the body again.
+const STEP_LAG_REST := 0.0005
+
 const ACTION_FORWARD := &"move_forward"
 const ACTION_BACK := &"move_back"
 const ACTION_LEFT := &"move_left"
@@ -44,6 +47,9 @@ var last_command := PlayerCommand.new()
 var _controls_enabled := true
 var _was_down := {}
 var _submitted: PlayerCommand
+## Metres the drawn model is still below the body after a step up (it eases up, the body does not).
+var _step_lag := 0.0
+var _model_rest := Vector3.ZERO
 
 @onready var camera_rig: ThirdPersonCamera = $CameraRig
 @onready var _model: Node3D = $Model
@@ -57,6 +63,7 @@ func _ready() -> void:
 	_shape.shape = capsule
 	_shape.position.y = tuning.height * 0.5
 	_model.scale = Vector3.ONE * tuning.model_scale
+	_model_rest = _model.position
 	state.position = global_position
 	state.facing = rotation.y
 	dress(CharacterLook.default_look())
@@ -177,6 +184,7 @@ func tick(command: PlayerCommand) -> void:
 	last_command = command
 	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time())
 	rotation.y = state.facing
+	_ease_step(state.stepped_up, get_physics_process_delta_time())
 	camera_rig.aiming = state.aiming
 	camera_rig.hip_firing = state.fire_age < tuning.hip_fire_zoom_delay
 	camera_rig.side = state.shoulder_side
@@ -191,6 +199,21 @@ func tick(command: PlayerCommand) -> void:
 		footstep.emit(state.ground_speed(), state.sprinting)
 
 
+## The body is lifted onto a ledge in one tick (the simulation's business), the model it carries
+## eases up after it: it starts the step as low as it was and gains it back at
+## `PlayerTuning.step_view_frequency`. The camera's own vertical spring does the same for the view.
+func _ease_step(rise: float, delta: float) -> void:
+	_step_lag = (_step_lag + rise) * exp(-tuning.step_view_frequency * delta)
+	if _step_lag < STEP_LAG_REST:
+		_step_lag = 0.0
+	_model.position = _model_rest - Vector3(0.0, _step_lag, 0.0)
+
+
+## The model's drop below the body, in metres, while it eases up a ledge (0 when level).
+func step_lag() -> float:
+	return _step_lag
+
+
 ## Put the player somewhere, at rest. Use this instead of setting global_position, which the
 ## simulation would overwrite from `state`.
 func teleport(position: Vector3) -> void:
@@ -198,6 +221,8 @@ func teleport(position: Vector3) -> void:
 	state.velocity = Vector3.ZERO
 	state.on_floor = false
 	global_position = position
+	_step_lag = 0.0
+	_model.position = _model_rest
 	# Drawn here from the next frame on, not slid in from where it stood.
 	reset_physics_interpolation()
 	camera_rig.snap_to(position)
