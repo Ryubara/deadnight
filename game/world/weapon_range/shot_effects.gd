@@ -24,6 +24,12 @@ const RANGE_SLACK := 0.1
 var tracers_drawn := 0
 
 
+func _init() -> void:
+	# Tweens on the drawn frame move these, not the physics tick: the engine's physics
+	# interpolation (docs/research/physics-interpolation.md) would blend them a tick late.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+
 ## The look of one shot of `def` from `muzzle` that ended at each of `ends` (one per pellet): the
 ## muzzle flash, then at every end that stopped short of the weapon's range an impact (a spark and a
 ## puff of dust). A streak only when the weapon asks for one. A projectile weapon draws nothing

@@ -101,7 +101,9 @@ What changed in the way it works, not only the numbers:
 - **Interpolation by hand.** The rig records the body after each physics tick and draws the blend of the last two at
   the render frame's fraction. A test drives it at 30, 75, 144 and 240 Hz over a 60 Hz run: the frame-to-frame travel
   is perfectly even with the blend; without it the spring still hides most of the tick, but 2.7 percent of the travel
-  is uneven at 144 Hz.
+  is uneven at 144 Hz. The body is blended by the engine's own physics
+  interpolation (on since #344), and the rig is switched off for it so the two do not stack:
+  [physics interpolation](physics-interpolation.md).
 - **The sweeps.** From the true head (never from the lagging pivot, which can be behind a corner): a sphere to the
   shoulder, then back along the view, then a straight sweep to the lens so the head is always in sight. A wall at the
   shoulder slides the camera in behind the player (issue #76); a wall behind brings it forward until the body hides.
