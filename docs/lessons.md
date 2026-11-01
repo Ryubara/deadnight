@@ -3,6 +3,53 @@
 Problems we hit and how we solved them, newest first. Five lines each: date, symptom, cause, fix, where it is
 documented.
 
+## 2026-11-01: a left-handed mirror of the buttons alone lands Fire on the HUD's points card
+
+- **Symptom:** mirroring only the buttons would draw the Fire arc over the points and health cards and the stick's
+  ring over the ammo card (#284; seen in the layout numbers before building it).
+- **Cause:** the buttons were placed to miss the cards in the right corner; the cards are in fixed corners, so flipping
+  only the buttons dropped them on the cards.
+- **Fix:** the HUD's corner columns flip with the layout (`Hud.mirrored`); the layout test runs both hands against the
+  HUD in the same state.
+- **Documented:** [touch controls](design/touch-controls.md#left-handed-layout).
+
+## 2026-11-01: the HUD's input tracker never saw a touch, and the layer's own look would have ended touch mode
+
+- **Symptom:** the prompt card kept its keycap on a phone though the touch controls were up (#283).
+- **Cause:** `TouchControls` sits after the HUD in the tree, so its `_input` runs first and marks every touch handled;
+  `Hud._input`, which feeds `UIInputMode`, never got one. And the look it sends is `InputEventMouseMotion`, which the
+  tracker read as a mouse being picked up.
+- **Fix:** the layer calls `UIInputMode.track` on each touch itself and sets `UIInputMode.touch` when it comes up; mouse
+  motion never ends touch mode, a real mouse click (not the engine's emulated copy) does.
+- **Documented:** [touch controls](design/touch-controls.md#first-run-and-key-hints).
+
+## 2026-11-01: a bot fired a magazine into a car the camera could see past
+
+- **Symptom:** the autopilot emptied a magazine into a car cabin five metres away and killed nothing, though its line of
+  sight to the zombie was clear (#158).
+- **Cause:** in third person a shot leaves the barrel, which sits beside and below the camera; a corner can block the
+  barrel and not the camera ray, and the bot only checked the camera's.
+- **Fix:** the bot fires only when the line to the target is open from the eye **and** from the barrel
+  (`Autopilot._clear`).
+- **Documented:** [the autopilot](design/slice.md#the-autopilot).
+
+## 2026-11-01: `Engine.time_scale` made a faster headless bot play a different night
+
+- **Symptom:** an autopilot run at `Engine.time_scale = 10` started round 1 after 1 s of ticks instead of 12 s (#158).
+- **Cause:** `time_scale` scales the delta each `_physics_process` receives, so the "fixed" step grows and the rules
+  see a different night than the one at normal speed.
+- **Fix:** leave `time_scale` at 1 and run several fixed ticks in each physics frame (`Night.ticks_per_frame`), each
+  with the constant step: about 1,500 ticks a second, the same night.
+- **Documented:** [the autopilot](design/slice.md#the-autopilot).
+
+## 2026-11-01: a `Callable` from a temporary object went invalid and the bot's sight said "clear"
+
+- **Symptom:** the bot's line-of-sight check answered "clear" for every shot, so it fired through walls (#158).
+- **Cause:** `WorldProbe.new(space).callable()` holds the `RefCounted` by id, not by reference; the temporary object was
+  freed at once and `Callable.is_valid()` was false (the check treated an invalid callable as open).
+- **Fix:** keep the object in a member (`Night._sight`) and hand out `_sight.callable()`.
+- **Documented:** [the autopilot](design/slice.md#the-autopilot).
+
 ## 2026-11-01: catalog overrides were silently ignored by `Dictionary.merged`
 
 - **Symptom:** sounds played with their group's defaults: a UI press at the wrong pitch, `dry_fire` carrying 50 m
@@ -140,3 +187,12 @@ documented.
 - **Fix:** derive each minimum length from the layout comment in `protocol.gd`, and print a counter for dropped packets
   while developing. A guard that fails closed hides its own bug.
 - **Documented:** [Multiplayer research](research/multiplayer.md#protocol).
+
+## 2026-11-01: a card that shrinks and ellipsizes still cut a prompt in half
+
+- **Symptom:** the locker prompt read `20 ROUNDS FOR YOUR RES...`; the layout suites were green.
+- **Cause:** the prompt's lines shrank to a 20-unit floor then ended in an ellipsis, and the tests only fed short,
+  hand-picked prompts and accepted an ellipsis in the worst case.
+- **Fix:** the card wraps its lines and grows upward (`HudStyle.set_wrapped`), and a suite walks every prompt the night
+  can make through the real binding at desktop and phone-landscape canvases, failing on any cut line.
+- **Documented:** [HUD research](research/hud.md).

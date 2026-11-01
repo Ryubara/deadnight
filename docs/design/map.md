@@ -1,9 +1,10 @@
 # The lot
 
 The drive-in map: seven areas, what opens in what order for how many points, where the dead can be kited, where the
-light falls. The greybox that proves it is `game/world/drive_in_greybox.tscn`, at true scale (the player capsule is
-0.35 m by 1.8 m; see the [style bible](style.md#scale)). The player is third person, so widths are sized for the
-shoulder camera, not the capsule ([Widths and the camera](#widths-and-the-camera)).
+light falls, how the night closes in on it and how it plays for four. The greybox that proves it is
+`game/world/drive_in_greybox.tscn`, at true scale (the player capsule is 0.35 m by 1.8 m; see the
+[style bible](style.md#scale)). The player is third person, so widths are sized for the shoulder camera, not the
+capsule ([Widths and the camera](#widths-and-the-camera)).
 
 The layout is our own. The genre's map-flow principles were studied for understanding only: a first area that is
 safe to learn in, doors that show what they will open before they are bought, every purchased area adding a loop,
@@ -191,18 +192,26 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 
 ![Where the lights fall](map-lights.png)
 
-| Area | Lit (by eye, from the capture) | What lights it |
-| --- | --- | --- |
-| Screen field | the avenue and the apron, about a third | eight lamp posts and the screen's glow; the rim is dark |
-| Concession | all inside | three warm lights; window spill on the field |
-| Midway | a fifth | two dim lamps; the alleys dark |
-| Booth | inside | two lights, and the projector beam (the brightest thing on the map) |
-| Generator yard | four fifths | four work lamps and the generator's glow: the safest ground, and the most to lose |
-| Back lot | a tenth | one flickering neon sign |
-| The road | a fifth | the ticket kiosk, and a wreck's headlights |
+| Area | Floor | Lit by the rules, every circuit on | What lights it |
+| --- | ---: | ---: | --- |
+| Screen field | 5,952 m² | 975 m² (16%) | eight lamp posts and the screen's glow: a strip 21 m wide and 36 m long down the avenue, and a disc at each flank post; the rim is dark |
+| Concession | 240 m² | 217 m² (90%) | three warm lights; window spill on the field |
+| Midway | 1,104 m² | 373 m² (34%) | two dim lamps and the booth's front light; the alleys dark |
+| Booth | 120 m² | 110 m² (92%) | two lights, and the projector beam (the brightest thing on the map) |
+| Generator yard | 1,932 m² | 451 m² (23%) | four work lamps and the generator's glow, a block in the middle of the ground: lit while the tank has fuel, and the most to lose |
+| Back lot | 1,932 m² | 104 m² (5%) | one flickering neon sign |
+| The road | 1,936 m² | 264 m² (14%) | the ticket kiosk, and a wreck's headlights (120 m², the only ground lit with the tank dry) |
 
-The dead come in at the field's breaches ([below](#the-fences-breaches)), 30 to 40 m from the nearest lamp: they
-arrive out of the dark and are slowed when they reach the light, which is the design. When the generator dies the
+"Lit" is the rules' word, not the eye's: ground within 6 m (`LotLamps.LAMP_REACH`) of a lamp whose circuit is on, counted
+on a 0.5 m grid over each floor. It is the ground where the dead keep their round's pace, and
+`game/tools/lot/lot_report.gd` prints this table and the ones in the two sections below. The glow in the capture above
+reaches further than 6 m, so the picture looks lighter than the rule is; the table replaces the shares that were read
+off that capture by eye (a third of the field, four fifths of the yard), which the measurement did not bear out.
+
+The dead come in at the field's breaches ([below](#the-fences-breaches)), 31 to 47 m from the nearest lamp: they
+arrive out of the dark 25% faster than their round's pace, and under a lit lamp they drop back to it: the light does not
+slow the dead, it only withholds the speed-up, which is why every lamp costs fuel
+([rounds](rounds.md#why-these-numbers)). When the generator dies the
 lamps go with it: the field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
 
 ## The fence's breaches
@@ -305,6 +314,154 @@ FULL`) and the price, and a refill shows the generator's card (`fuel_changed` wi
 The autopilot (`AutopilotFuel`) goes to the nearest open stand when the tank is at the low line and it can pay for a
 can, and buys until the tank is back above 40%.
 
+## A night that closes in
+
+The second pillar. What the night does to the lot as the rounds go by, from the rules' tuning and the measured
+greybox (`game/tools/lot/lot_report.gd`).
+
+**The lot itself does not change with the round.** No lamp fails or dims because a round was reached, no breach moves,
+and the world's `Lighting` is fixed. The rules' `ambient_for_round` (0.60 falling to 0.15 by round 14, the "Light"
+column of [the tuning table](rounds.md#the-tuning-table)) is read by the balance simulator only. What closes in is the
+pressure on the same ground, and the tank that feeds its lamps:
+
+| Round | What arrives | Zombies 1p / 4p | Spawn every 1p / 4p | Alive cap 1p / 4p | Pace, lit to dark (m/s) | Generator draw | Doors a solo player can afford |
+| ---: | --- | --- | --- | --- | --- | ---: | --- |
+| 1 | walkers | 4 / 11 | 3.20 / 1.28 s | 6 / 24 | 1.20 to 1.50 | x1.00 | none (the concession at 2) |
+| 4 | the first runner | 9 / 24 | 2.83 / 1.13 s | 8 / 26 | 1.68 to 2.10 | x1.09 | concession, yard |
+| 6 | the first crawler | 12 / 34 | 2.61 / 1.04 s | 10 / 28 | 2.00 to 2.50 | x1.15 | and the booth |
+| 8 | the first brute | 17 / 46 | 2.40 / 0.96 s | 12 / 30 | 2.32 to 2.90 | x1.21 | and the back lot |
+| 10 | Midnight Stampede (runners only) | 21 / 60 | 2.22 / 0.89 s | 13 / 31 | 2.64 to 3.30 | x1.27 | and the road: all five |
+| 15 | Double Feature, a boss | 36 / 101 | 1.81 / 0.72 s | 17 / 35 | 3.44 to 4.30 | x1.42 | all |
+| 20 | Crawl Space (crawlers only) | 54 / 151 | 1.47 / 0.59 s | 21 / 39 | 4.24 to 5.30 | x1.57 | all |
+| 30 | | 101 / 282 | 0.98 / 0.39 s | 28 / 46 | 5.00 to 6.25 | x1.87 | all |
+
+The columns are the rules' functions (`zombies_for_round`, `spawn_interval`, `alive_cap`, `speed_for_round`) and the
+fuel tuning's `round_strain`; the doors column is [the affordability column above](#areas-and-opening-order). The pace
+is the walker's: dark is x1.25 and never above 6.25. Three things close in: the dead come faster and in greater number,
+the doors a player has bought put spawns inside the lot, and the generator burns more fuel for the same lamps.
+
+### What darkens, and in what order
+
+The rounds do not say; the tank and the player do. A circuit goes dark when someone throws its breaker, and all of them
+go dark when the tank runs dry. A player choosing what to give up wants the ground each unit of fuel buys:
+
+| Circuit | Lights | Ground it lights | Draw a minute, round 1 / 30 | Ground per unit of draw |
+| --- | --- | --- | --- | ---: |
+| `screen_lot` | the field's posts and the screen's glow | 969 m² of the field | 3.6 / 6.7 | 269 m² |
+| `concession` | the stand, the midway's two lamps | 217 m² in the stand, 206 m² in the midway, 69 m² outside them | 3.0 / 5.6 | 164 m² |
+| `booth` | the booth and the projector beam | 110 m² in the booth, 168 m² in the midway | 4.8 / 9.0 | 58 m² |
+| `back_lot` | the neon sign, the ticket kiosk | 104 m² in the back lot, 112 m² on the road | 4.2 / 7.9 | 51 m² |
+| `mains` | the yard's four work lamps and the generator's glow | 447 m² of the yard | none: the idle draw (1.8 / 3.4) | |
+| `battery` | the wreck's headlights | 120 m² of the road | none: not the generator's | |
+
+So the back lot and the booth go dark first, and the field's circuit last, and a team that does it that way keeps most
+of the ground it can use. A tank with only the field's circuit on lasts 18.5 minutes of full-rate burn at round 1 and
+9.9 at round 30; with every circuit on, 5.7 and 3.1 (the breaks burn half). When it runs low (the last tenth,
+`brownout_fraction`) the lamps sag and flicker, and when it is empty every generator lamp is out: the screen keeps an
+afterglow for the eye but lights no ground for the rules, the yard goes black, and the road's headlights are the only
+lit ground on the lot, 60 m south of the field's fence. Every zombie is then 25% faster, everywhere.
+
+### Where the dead come from as the lot opens
+
+A new door adds its area's spawns to the pool, and a spawn is chosen by an equal roll over the open ones
+(`ZombieDirector`, `NightWorld.spawn_points`):
+
+| Area | Spawns | Metres from the nearest lamp | Boards to tear |
+| --- | ---: | --- | --- |
+| Field (the six aprons) | 6 | 31 to 47 | yes, five at each breach |
+| Midway (with the concession) | 2 | 3 and 16 | no |
+| Generator yard | 3 | 14 to 21 | no |
+| Back lot | 3 | 13 to 38 | no |
+| Road | 3 | 15 to 38 | no |
+
+| Doors bought | Spawns in the pool | At the field's breaches |
+| --- | ---: | ---: |
+| none | 6 | 100% |
+| concession | 8 | 75% |
+| and the yard (the booth adds none) | 11 | 55% |
+| and the back lot | 14 | 43% |
+| and the road | 17 | 35% |
+
+So buying a door moves the dead toward the light, and off the boards: a spawn inside an area has nothing to tear, and
+it is 3 to 21 m from a lamp where a breach is 31 to 47 m. A team that opens every area has the field's breaches as a
+third of the pressure. That is the closing in: the lot opens outward and the dead open with it.
+
+### Proposed, not built
+
+- **Wire the light to the round.** Apply `ambient_for_round` to the `Lighting` node's ambient and fog, so the night
+  darkens as the "Light" column promises and the lamps' pools read stronger. It needs no new rule or number, and it is
+  the one thing in this section that is only a promise today (#314).
+- **Nothing else is proposed.** A lamp that fails at a round, or a breach that moves, would be a new rule on top of a
+  tank and a pace that already close in; a four-player capture at rounds 10, 20 and 30 should show whether the curve
+  needs it before anyone adds one.
+
+## Played together
+
+The third pillar, for two to four players. The rules' scaling is in [rounds](rounds.md#the-tuning-table); this is what
+it means on the ground.
+
+### Where four stand to buy a door
+
+A door opens for everyone and the buyer's points pay for it. The prompt shows within 3.2 m (`use_reach`) of a slab, on
+the side the player arrives from, and four capsules abreast need 2.8 m (2 x 0.35 m each), so they fit the 3 m doors with
+0.2 m to spare and the open ground in front holds them all in reach. Where each door is, from the greybox:
+
+| Door | Slab | Opening | Nearest lamp of the circuit that serves it | Nearest field breach spawn |
+| --- | --- | ---: | --- | ---: |
+| Concession (350) | the stand's front, (0, -3.6) | 3 m | 1.6 m (the stand's light): bought in the light | 64 m |
+| Generator yard (500) | the gate in the field's south fence, (40, -4) | 4 m | 17 m (the work lamps): bought in the dark | 32 m |
+| Booth (750) | the booth's front, (0, 22.2), in the midway | 3 m | 0.1 m (the booth's light) | 79 m |
+| Back lot (1250) | the gate in the field's south fence, (-40, -4) | 4 m | 38 m (the neon sign): bought in the dark | 32 m |
+| Road (2000) | the plaza's gate, (0, 38) | 4 m | 6.0 m (the kiosk): at the edge of lit | 89 m |
+
+The yard's and the back lot's gates are the odd ones. They stand in the field's far south fence, 30 m from the nearest
+field lamp and 32 m from the nearest breach, so buying them is a team move into the dark where the dead are 25% faster,
+not an errand for one. The start is no closer to danger: the players spawn 33 to 36 m from the nearest breach.
+
+### Where a downed player can be revived
+
+Not built: the rules only get a downed player up at the end of the round, for a tenth of their points, and have no
+revive action yet ([rounds](rounds.md#open-questions)); the balance simulator assumes six seconds. The places to design
+it for are the lit ground at least 30 m from every spawn that is open, which is little:
+
+| Pocket | Size | Where | When |
+| --- | ---: | --- | --- |
+| The avenue | 858 m² | centre (0, -25), the lit strip below the screen | always, while the field's circuit is on |
+| The stand | 192 m² | centre (0, 2) | after the concession, while its circuit is on |
+
+There is none in the yard, the booth, the back lot or the road: the yard's door puts three spawns in the safest ground,
+14 to 21 m from its lamps. A team that goes deeper than the stand has nowhere to put a downed player down safely.
+
+### How the team shares the loops
+
+A loop under about 40 m is too short for a pack to string out, and each pursuer needs a loop of its own to be led
+round. The loops [above](#loops-for-kiting) arrive with the doors: only the car rows and the counter's 45 m before the
+yard, then two loops of 110 m and 50 m with it. Four players can split across two loops from the yard, which they can
+afford at round 5 (one player at round 4), and have none to spare for the first four rounds, when the dead number 11 to
+24 for them: the early rounds are fought on the avenue and the rows, with the breaches' boards as the only wall.
+
+### One player to four
+
+| Round | Zombies 1p / 2p / 4p | Each player's share 1p / 2p / 4p | Spawn every 1p / 2p / 4p | Alive cap 1p / 2p / 4p |
+| ---: | --- | --- | --- | --- |
+| 1 | 4 / 6 / 11 | 4.0 / 3.0 / 2.8 | 3.20 / 2.13 / 1.28 s | 6 / 12 / 24 |
+| 10 | 21 / 34 / 60 | 21 / 17 / 15 | 2.22 / 1.48 / 0.89 s | 13 / 19 / 31 |
+| 20 | 54 / 86 / 151 | 54 / 43 / 38 | 1.47 / 0.98 / 0.59 s | 21 / 27 / 39 |
+| 30 | 101 / 161 / 282 | 101 / 81 / 71 | 0.98 / 0.65 / 0.39 s | 28 / 34 / 46 |
+
+Four face 2.8 times the dead of one, each of them faces 30% fewer, and they come 2.5 times as fast, through six breaches
+(one and a half each). The cap of 46 alive at round 30 is above the 40 the crowds spike holds as the ceiling
+([zombies](zombies.md#crowd-budget)) and is #315.
+
+### Is the lot too empty for four?
+
+The numbers do not say so. The field's 5,952 m² has 76 cars on 650 m² of it, and the ground that matters is its lit
+975 m²: 244 m² a head for four, a room 16 m on a side each. The four-player alive cap of 24 to 46 over the field is one
+dead to 130 to 250 m², but they come through six gaps to the same strip. The yard and the back lot, at 1,932 m² each, are
+twice the lit pool and 23% and 5% lit: a team of four there is at the edge of a flickering sign, which is the late
+night's intent. Nobody has watched four players on it with the shoulder camera, so this is a reading of numbers and not
+a verdict: a four-player capture (bots in a `Night` of four) at rounds 1, 10 and 20 is the evidence still owed.
+
 ## The greybox
 
 `game/world/drive_in_greybox.tscn`: CSG boxes, one script (on `Doors`). Metres, Y up, x east, z south; the screen is
@@ -395,8 +552,7 @@ Capture views for the props, at the player's eye height (`--view=`): `yard_drums
 
 - The ramps: drive-in rows sit on shallow berms so rear cars see over front ones. The greybox is flat; berms are
   dressing, and a 0.3 m step needs the player controller's step height first.
-- "Spawn only in open areas" needs the rules code: `ZombieDirector` is given its spawn points and does not ask which
-  areas are open yet.
 - What the road is for: the end of the night, an escape, or just the last door.
-- Solo scaling of the door costs, which belongs in the round economy (the affordability table above shows one, two
-  and four players at the same prices).
+- Whether the door prices should scale with the party. They do not (a four-player team earns a little less a head
+  and buys the yard a round later: [the affordability column](#areas-and-opening-order)), and the balance report has
+  not asked for it.

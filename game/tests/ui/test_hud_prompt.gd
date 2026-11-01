@@ -9,7 +9,7 @@ var _hud: Hud
 
 func before_test() -> void:
 	UIMotion.reduced = false
-	UIInputMode.gamepad = false
+	UIInputMode.reset()
 	_host = auto_free(Control.new())
 	_host.size = Vector2(1920, 1080)
 	add_child(_host)
@@ -17,7 +17,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	UIMotion.reduced = false
-	UIInputMode.gamepad = false
+	UIInputMode.reset()
 	Input.action_release(&"interact")
 
 
@@ -41,7 +41,7 @@ func test_the_prompt_names_the_thing_and_its_price() -> void:
 	_fixture.act(RulesAction.grant_points(1, 200))
 	assert_str(prompt.price_text).is_equal("350 POINTS")
 	_hud.state.set_prompt(&"repair", "Boards", 0)
-	assert_str(prompt.detail_text).is_equal("NAIL THE BOARDS BACK UP")
+	assert_str(prompt.detail_text).is_equal("HOLD TO NAIL BOARDS UP")
 	_hud.state.clear_prompt()
 	assert_bool(prompt.visible).is_false()
 
