@@ -2,7 +2,7 @@
 
 The dead of the drive-in: which kinds there are, how they look at a distance, and what they play. Built from the kit
 zombie (Quaternius "Zombie", CC0) within the [style bible](style.md); how the variants are made and what was measured
-is in [zombie variants (research)](../research/zombie-variants.md). The rules that pick them (speeds, sprinters, light)
+is in [zombie variants (research)](../research/zombie-variants.md). The rules that pick them (speeds, the runner type, light)
 are in [rounds](rounds.md).
 
 ## Variants
@@ -17,7 +17,7 @@ library plays on all of them.
 | Greaser | common, every round | short-sleeved tee | 1.02 | pale skin, cream tee, denim, black belt | 4,000 / 1,500 |
 | Usher | common, every round | long sleeves, pillbox cap | 0.97 | drive-in uniform: red jacket and cap, gold belt and band, black trousers | 3,999 / 1,500 |
 | Farmhand | common, every round | left forearm gone | 1.00 | tan shirt, olive trousers | 3,999 / 1,500 |
-| Runner | the sprinter (round 4 on) | lean limbs, taller, vest | 1.07 | bright skin, blue vest, grey shorts | 3,999 / 1,500 |
+| Runner | the runner type (round 4 on) | lean limbs, taller, vest | 1.07 | bright skin, blue vest, grey shorts | 3,999 / 1,500 |
 | Brute | rare and tough (proposal: from round 10, one at a time) | broad torso and arms, tallest | 1.18 | dark skin, bare chest, blue-grey work trousers | 3,999 / 1,500 |
 | Crawler | a walker whose legs are shot off, or a spawn from round 6 | no lower legs; on the ground | 1.00 | pale grey skin, rag vest, brown trousers | 3,999 / 1,500 |
 
@@ -36,7 +36,8 @@ Rules for adding one:
   on the one zombie atlas; never a second material.
 - **Budget**: 4,000 tris gameplay, 1,500 far, one material, one skinned mesh per level of detail.
 
-The sprinter rule (round 4 on, at most one in two, never above 4.5 m/s) makes the runner the variant that has to be
+The runner rule (a type: one on round 4, then 6% of a round growing 4% a round to 30%, at 1.7 times the walk and
+never above 4.5 m/s) makes the runner the variant that has to be
 seen early: it is the tallest of the commons and the only one in blue, so a player can tell it in a crowd before it
 starts to run.
 
@@ -102,7 +103,7 @@ the rig-sharing recipe as they are, "new" ones have to be made.
 | Walk | `Walk` | 1.33 s | kit | the arms-forward shamble |
 | Walk variant: limp | `Walk_Limp` | | **new** | for the farmhand and anyone hit in the leg |
 | Walk variant: upright | Enemy's `Walk` | | kit character | shared through the recipe with rebased position keys; a fresher dead |
-| Run | `Run`, `Run_Arms` | 0.67 s | kit | sprinters; `Run_Arms` (arms reaching) for half of them |
+| Run | `Run`, `Run_Arms` | 0.67 s | kit | runners; `Run_Arms` (arms reaching) for half of them |
 | Crawl | `Crawl` | 1.67 s | kit | crawlers; legless bodies play it as is. The rules emit `zombie_crippled` (`speed_scale` 0.35) when a [grenade blast](weapons.md#grenades) takes the legs: the zombie drops to the ground, plays `Crawl` at the scaled speed, and swaps to the Crawler variant's legless mesh |
 | Attack | `Punch`, `Idle_Attack`, `Run_Attack` | 0.75, 1.67, 0.67 s | kit | swipe in reach; a grab-and-bite at a downed player; a lunge at run speed |
 | Crawler attack | `Crawl_Attack` | | **new** | a grab at the ankles |
@@ -127,8 +128,8 @@ A crowd must never march in step. Per zombie, chosen by the seeded random of the
 | Start phase | 0 to the clip length | no two zombies plant the same foot together |
 | Play speed | ground speed / clip speed, then times 0.9 to 1.1 | feet keep up with the ground; the jitter breaks sync between zombies at the same speed |
 | Walk to run | `Walk` below 1.6 m/s, blended into `Run` to 2.6 m/s, `Run` above | round 1 walks at 0.9 m/s, round 30 at 3.8: late walkers jog |
-| Sprinter run | `Run` or `Run_Arms`, half each | two run silhouettes in one wave |
-| Light | lit ground slows a zombie to 60 %; the blend follows the slowed speed | a sprinter drops into a walk in the light: the player sees the light work |
+| Runner run | `Run` or `Run_Arms`, half each | two run silhouettes in one wave |
+| Light | lit ground slows a zombie to 60 %; the blend follows the slowed speed | a runner drops into a walk in the light: the player sees the light work |
 | Hit | `HitReact` added over the walk, not replacing it | the walk never stops mid-stride |
 | Death | one of three deaths | a cleared wave does not fall the same way |
 

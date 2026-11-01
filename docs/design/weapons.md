@@ -65,20 +65,26 @@ distance down to the floor and holds there to the range.
 
 Shots to kill at close range (head / body), against the health in [the rounds table](rounds.md#the-tuning-table):
 
-| Weapon | Round 1 (60) | Round 5 (132) | Round 10 (213) | Damage a second (body) |
-| --- | --- | --- | --- | ---: |
-| Revolver | 1 / 3 | 3 / 6 | 4 / 9 | 86 |
-| Tommy gun | 3 / 5 | 5 / 10 | 8 / 16 | 187 |
-| Pump shotgun | 1 / 1 | 1 / 2 | 2 / 3 | 98 |
-| Hunting rifle | 1 / 1 | 1 / 2 | 2 / 4 | 127 |
-| Flare gun | 1 / 1 | 2 / 2 | 3 / 3 | 112 + blast |
-| Crowbar | 1 / 2 | 2 / 3 | 3 / 5 | 82 |
+| Weapon | Round 1 (50) | Round 5 (82) | Round 10 (117) | Damage a second (body) | With reloads |
+| --- | --- | --- | --- | ---: | ---: |
+| Revolver | 1 / 3 | 2 / 4 | 2 / 5 | 86 | 59 |
+| Tommy gun | 2 / 4 | 3 / 6 | 5 / 9 | 187 | 101 |
+| Pump shotgun | 1 / 1 | 1 / 1 | 1 / 2 | 98 | 68 |
+| Hunting rifle | 1 / 1 | 1 / 2 | 1 / 2 | 127 | 85 |
+| Flare gun | 1 / 1 | 1 / 1 | 2 / 2 | 112 + blast | 32 + blast |
+| Crowbar | 1 / 2 | 1 / 2 | 2 / 3 | 82 | 82 |
+
+The shots are the health of the zombie (the table in the page above; `rounds.md` is the source) over the weapon's
+damage, rounded up. "With reloads" is the sustained rate over a whole magazine and its reload, the number the
+[balance simulator](rounds.md#the-balance-simulator) picks weapons by.
 
 ## Why these numbers
 
-- **The starter is a revolver with a one-shot headshot.** At 24 damage and x2.5 on the head, a round-1 zombie (60)
-  falls to one headshot or three body shots, so aiming pays from the first minute, and by round 5 (132) it takes three
-  headshots, so a starting weapon stops being enough and the shop matters (as [the economy](rounds.md) assumes).
+- **The starter is a revolver with a one-shot headshot.** At 24 damage and x2.5 on the head, a round-1 zombie (50)
+  falls to one headshot or three body shots, so aiming pays from the first minute; by round 5 (82) it takes two
+  headshots or four body shots and by round 10 (117) five body shots. The health curve was lowered to the weapons
+  that exist (rounds.md, the balance simulator): no shop weapon is a big step up from the revolver, which is an open
+  question there, not a design.
 - **Each weapon has one job.** The SMG is volume at short range (the most damage a second, a short magazine of
   patience before the reload); the shotgun is a close wall; the rifle is the precision and the line (it passes through
   two zombies, each blow 40% weaker, which rewards lining the dead up); the flare gun is crowd control with a risk of
@@ -86,7 +92,7 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
   crowbar never runs dry and pays the melee kill bonus (130 points) for the risk of being in reach.
 - **The shotgun cannot farm points.** Pellets add up to one hit for the rules, and its damage falls to a quarter by 18
   m, so it is a close weapon by its own numbers, not by a rule.
-- **Ammo is the other economy.** Reserves are small on purpose (a round-10 zombie is 9 revolver body shots), so
+- **Ammo is the other economy.** Reserves are small on purpose (a round-10 zombie is 5 revolver body shots), so
   headshots and melee are worth more than the points they pay. Ammo for sale and the weapon carry limit are not decided
   here; see the open questions.
 
@@ -129,8 +135,8 @@ revived player starts again with a fresh pin.
 | Carry | start with 2, every round start tops up to 3, at most 5; the shop sells 2 for 150 (+5 a round) |
 | Kill points | 40 for a zombie the blast kills (a hit that does not kill pays the usual 4) |
 
-A grenade is never a sure kill: at 150 it kills a round-1 zombie (60) out to 5.6 m, a round-5 one (132) out to 2.7 m, and
-no round-10 one (213) at all.
+A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m, a round-5 one (82) out to
+4.7 m, a round-10 one (117) out to 3.3 m, a round-15 one (149) only within 2 m, and no round-20 one (190) at all.
 
 **Crippling.** The rules (`explosion` action) decide, never the world. A zombie that survives loses its legs and
 becomes a crawler (once; one `zombie_crippled` event, speed times 0.35) when either:
