@@ -21,16 +21,20 @@ UIRouter="*res://addons/gds_ui/router/ui_router.gd"
 Settings="*res://core/settings.gd"
 Audio="*res://core/audio/audio_service.gd"
 
-[gds_ui]
-
-tokens="res://ui/skin/deadnight_tokens.tres"
-
 [display]
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gds_ui/plugin.cfg")
+
+[gds_ui]
+
+tokens="res://ui/skin/deadnight_tokens.tres"
 
 [input]
 
@@ -189,7 +193,3 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=1
-
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/gds_ui/plugin.cfg")

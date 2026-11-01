@@ -39,7 +39,6 @@ const HURT_GAP := 0.4
 const SWING_REPEAT := 1.2
 ## The headliner's fall is the roar, this much quieter than its entrance.
 const BOSS_DEATH_DB := -8.0
-const BOSS_STEP_DB := 3.0
 ## Seconds a blow takes to land for a look with no telegraph (`ZombieTuning.windup_seconds`).
 const DEFAULT_WINDUP := 0.45
 
@@ -210,8 +209,7 @@ func _walk(state: ZState, delta: float, distance: float) -> void:
 	state.clip_phase += delta / cycle
 	if floorf(state.clip_phase * 2.0) == before or distance > STEP_RANGE:
 		return
-	var boost := BOSS_STEP_DB if ZombieModels.is_boss(state.look) else 0.0
-	_play(ZombieVoiceTable.step_sound(state.look, state.speed), state.position, boost)
+	_play(ZombieVoiceTable.step_sound(state.look, state.speed), state.position)
 
 
 func _fire_pending() -> void:

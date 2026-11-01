@@ -239,19 +239,19 @@ static func _build_dead() -> void:
 		"unit_size": 6.0,
 		"rear_cue": true,
 	}
-	var calls := {"priority": 65, "max_distance": 45.0, "volume_db": 0.0}
+	var calls := {"priority": 65, "max_distance": 45.0, "volume_db": -2.0}
 	_add(&"zombie_alert", "zombie/alert_%d.ogg", 6, _with(voice, calls))
 	_add(
 		&"zombie_grunt",
 		"zombie/grunt_%d.ogg",
 		3,
-		_with(voice, {"priority": 62, "max_distance": 30.0, "volume_db": -1.0})
+		_with(voice, {"priority": 62, "max_distance": 30.0, "volume_db": -3.0})
 	)
 	_add(
 		&"zombie_shriek",
 		"zombie/shriek_%d.ogg",
 		5,
-		_with(voice, {"priority": 66, "max_distance": 50.0, "volume_db": -3.0})
+		_with(voice, {"priority": 66, "max_distance": 50.0, "volume_db": -5.0})
 	)
 	_add(
 		&"zombie_breath_brute",
@@ -274,16 +274,16 @@ static func _build_dead() -> void:
 	var boss := {
 		"group": &"zombie_boss",
 		"pitch_semitones": 0.4,
-		"unit_size": 14.0,
+		"unit_size": 7.0,
 		"max_distance": 90.0,
 		"rear_cue": true,
 	}
-	_add(&"zombie_roar", "zombie/roar_%d.ogg", 4, _with(boss, {"priority": 88}))
+	_add(&"zombie_roar", "zombie/roar_%d.ogg", 4, _with(boss, {"priority": 88, "volume_db": -7.0}))
 	_add(
 		&"zombie_growl_boss",
 		"zombie/growl_boss_%d.ogg",
 		2,
-		_with(boss, {"priority": 86, "max_distance": 70.0})
+		_with(boss, {"priority": 86, "max_distance": 70.0, "volume_db": -6.0})
 	)
 	var foot := {
 		"group": &"zombie_step",
@@ -293,19 +293,19 @@ static func _build_dead() -> void:
 		"max_distance": 28.0,
 		"rear_cue": true,
 	}
-	_add(&"zombie_step_shuffle", "zombie/step_shuffle_%d.ogg", 4, _with(foot, {"volume_db": -4.0}))
-	_add(&"zombie_step_run", "zombie/step_run_%d.ogg", 4, _with(foot, {"volume_db": -4.0}))
+	_add(&"zombie_step_shuffle", "zombie/step_shuffle_%d.ogg", 4, _with(foot, {"volume_db": -6.0}))
+	_add(&"zombie_step_run", "zombie/step_run_%d.ogg", 4, _with(foot, {"volume_db": -6.0}))
 	_add(
 		&"zombie_step_stomp",
 		"zombie/step_stomp_%d.ogg",
 		3,
-		_with(foot, {"volume_db": 0.0, "max_distance": 40.0, "unit_size": 6.0})
+		_with(foot, {"volume_db": -3.0, "max_distance": 40.0, "unit_size": 6.0})
 	)
 	_add(
 		&"zombie_drag",
 		"zombie/drag_%d.ogg",
 		4,
-		_with(foot, {"priority": 18, "volume_db": -3.0, "max_distance": 24.0})
+		_with(foot, {"priority": 18, "volume_db": -5.0, "max_distance": 24.0})
 	)
 
 	_build_night()
