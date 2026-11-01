@@ -1,6 +1,12 @@
 extends Node3D
 ## Places the camera for a greybox capture. Pick the view with a user argument after `--`:
-## `-- --view=top|night_top|start|concession|booth|yard|backlot|road`. Not used in the game.
+## `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`.
+## Not used in the game.
+##
+## Third-person views (`--view=tp:<CameraProbes marker>`) put the camera where the player's shoulder
+## camera would be, with a capsule for the player. Options: `--offset=<m along the passage>`,
+## `--turn=<degrees>` (180 walks the other way), `--side=1|-1` (the shoulder), `--y=<feet height>`,
+## `--doors=closed` (default open), `--flood`.
 
 ## Camera spots for the player-height views: position, then the point looked at (metres).
 const VIEWS := {
@@ -29,11 +35,53 @@ func _ready() -> void:
 		_set_labels_visible(true)
 		if view == "top":
 			_flood_light()
+	elif view.begins_with("tp:"):
+		_third_person(view.trim_prefix("tp:"), camera)
 	elif VIEWS.has(view):
 		camera.fov = 80.0
 		camera.look_at_from_position(VIEWS[view][0], VIEWS[view][1])
 	else:
 		push_error("unknown view '%s'" % view)
+
+
+func _third_person(probe_name: String, camera: Camera3D) -> void:
+	if _arg("doors", "open") != "closed":
+		$DriveInGreybox/Doors.queue_free()
+	if _arg("flood", "") != "":
+		_flood_light()
+	camera.fov = 75.0
+	camera.near = 0.05
+	# The collision of the CSG boxes is not in the physics world until a few ticks in.
+	for i in 4:
+		await get_tree().physics_frame
+	var marker := $DriveInGreybox/CameraProbes.get_node(probe_name) as Marker3D
+	var yaw := marker.global_transform.basis.get_euler().y + deg_to_rad(float(_arg("turn", "0")))
+	var feet := marker.global_position - Basis(Vector3.UP, yaw).z * float(_arg("offset", "0"))
+	feet.y = float(_arg("y", str(marker.global_position.y)))
+	var rig := CameraProbe.rig(
+		get_world_3d().direct_space_state, feet, yaw, float(_arg("side", "1"))
+	)
+	camera.global_transform = Transform3D(Basis(Vector3.UP, yaw), rig["camera"])
+	var body := MeshInstance3D.new()
+	var capsule := CapsuleMesh.new()
+	capsule.radius = CameraProbe.BODY_RADIUS
+	capsule.height = CameraProbe.BODY_HEIGHT
+	var paint := StandardMaterial3D.new()
+	paint.albedo_color = Color(0.95, 0.55, 0.15)
+	capsule.material = paint
+	body.mesh = capsule
+	body.position = feet + Vector3(0.0, CameraProbe.BODY_HEIGHT / 2.0, 0.0)
+	add_child(body)
+	print("camera: arm %.2f m, free %s" % [rig["arm"], rig["free"]])
+
+
+func _arg(key: String, fallback: String) -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--" + key:
+			return "1"
+		if arg.begins_with("--%s=" % key):
+			return arg.trim_prefix("--%s=" % key)
+	return fallback
 
 
 func _view_from_args() -> String:
