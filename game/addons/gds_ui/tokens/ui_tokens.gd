@@ -57,6 +57,14 @@ static var _active: UITokens
 @export var focus_border := 3
 @export var focus_gap := 6
 
+@export_group("Controls")
+## Height of a slider, toggle or option selector, and the width a form row gives its control.
+@export var control_height := 52
+@export var control_width := 440
+@export var track_height := 10
+## Gap between a knob or thumb and the edge of its track.
+@export var knob_inset := 6
+
 @export_group("Elevation")
 @export var shadow_flat := 0
 @export var shadow_raised := 14
