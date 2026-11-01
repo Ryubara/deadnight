@@ -20,7 +20,7 @@ func test_a_bed_loops_on_its_bus_and_starts_silent() -> void:
 	var player := _audio.start_bed(&"bed_crickets")
 	assert_object(player).is_not_null()
 	assert_bool(player.playing).is_true()
-	assert_str(player.bus).is_equal("Effects")
+	assert_str(player.bus).is_equal("Ambience")
 	assert_bool((player.stream as AudioStreamOggVorbis).loop).is_true()
 	assert_float(_audio.bed_fade_db(&"bed_crickets")).is_equal(AudioService.BED_SILENT_DB)
 	assert_float(player.volume_db).is_less(-70.0)
