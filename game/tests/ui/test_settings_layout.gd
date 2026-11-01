@@ -30,9 +30,8 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	# The router is an autoload: leave it holding nothing that takes a click.
-	UIRouter.reset(Control.new(), UITransition.Kind.CUT)
-	await UIRouter.idle
+	# The router is an autoload shared by every suite: leave it holding nothing.
+	await RouterFixture.clear(get_tree())
 	var window := get_tree().root
 	window.size = _saved_size
 	Engine.physics_ticks_per_second = _saved_ticks
@@ -235,6 +234,7 @@ func _set_physics_rate(ticks: int) -> void:
 ## The screen as the game shows it: on the router's stage, above whatever an earlier suite left on
 ## the stack (a leftover main menu there takes every click aimed at a screen added anywhere else).
 func _recreate_screen() -> void:
+	await RouterFixture.clear(get_tree())
 	UIRouter.reset(SCREEN, UITransition.Kind.CUT)
 	await UIRouter.idle
 	_screen = UIRouter.top() as SettingsScreen
