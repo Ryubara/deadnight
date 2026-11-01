@@ -80,7 +80,8 @@ typed into gameplay code. **Every firearm carries an empty named `Muzzle`**, a c
 centre of the barrel's open end, turned so its **-Z points out of the barrel** (Godot's forward; in Blender that is the
 empty's local +Y, because the glTF export turns Z up into Y up). A gun with two barrels side by side gets one `Muzzle`
 centred between them. Melee weapons and grenades get none. The held and far levels carry it at the same place. The
-flash and the shot leave from it; the numbers and the test are in [Weapons](../research/weapons.md#the-muzzle).
+flash and the shot leave from it; the numbers and the test are in [Weapons](../research/weapons.md#the-muzzle). A
+tool carries the point it strikes with the same way: the repair hammer's `Face`, -Z out of the face.
 
 ## Bevels
 

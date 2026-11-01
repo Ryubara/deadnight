@@ -19,10 +19,17 @@ const LOOPING: Array[StringName] = [&"Idle", &"Walk", &"Run", &"Crawl"]
 const IDLE_AT := 0.0
 const WALK_AT := 0.97
 const RUN_AT := 4.4
+## The authored sprint (`SPRINT_CLIP`, tools/blender/build_zombie_clips.py): the Run's cycle with a
+## shorter ground contact, a deeper lean and pumping arms, measured the same way (its clips.json
+## `ground_speed` is Blender's reading of the same measure, which reads the Run at 5.74).
+const SPRINT_AT := 6.5
 const CRAWL_SPEED := 1.1
 ## The clips' lengths in seconds (clips.json beside each model).
 const WALK_CYCLE := 1.3333
 const RUN_CYCLE := 0.6667
+## The sprint is built on the Run's 16 frames, so the two stay in step: between `RUN_AT` and
+## `SPRINT_AT` the blend is linear in ground speed and plays at its authored rate.
+const SPRINT_CYCLE := RUN_CYCLE
 ## The walk gives way to the run between these speeds (of a walker's pace): each is played within
 ## its band of rates (walk up to 1.45x, run down to 0.7x), so that no blend of the two, whose
 ## steps are not in phase, is held for long and the cadences at the crossing are alike.
@@ -55,6 +62,8 @@ const EXTRA_CLIPS_FILE := "res://assets/characters/zombies/clips/zombie_clips.gl
 const TEAR_CLIP := &"Tear_Boards"
 const TEAR_YANK_SECONDS := 22.0 / 24.0
 const TEAR_SECONDS := 29.0 / 24.0
+## The fastest dead's gait (#278), from the same file: the move state's last blend point.
+const SPRINT_CLIP := &"Sprint"
 
 const STATE_MOVE := &"move"
 const STATE_ROAR := &"roar"
@@ -132,12 +141,22 @@ static func blend_position(look: StringName, speed: float) -> float:
 		return BOSS_WALK_AT * minf(s / IDLE_FADE, 1.0)
 	if s < IDLE_FADE:
 		return WALK_AT * s / IDLE_FADE
+	var sprint := sprint_weight(look, speed)
+	if sprint > 0.0:
+		return lerpf(RUN_AT, SPRINT_AT, sprint)
 	return lerpf(WALK_AT, RUN_AT, run_weight(look, speed))
 
 
 ## How much of the gait is moving rather than standing, 0 to 1.
 static func moving_weight(look: StringName, speed: float) -> float:
 	return clampf(speed / clip_scale(look) / IDLE_FADE, 0.0, 1.0)
+
+
+## The run-to-sprint blend (0 running, 1 sprinting) at `speed`: linear, the two are in step.
+static func sprint_weight(look: StringName, speed: float) -> float:
+	if ZombieModels.crawls(look) or ZombieModels.is_boss(look):
+		return 0.0
+	return clampf((speed / clip_scale(look) - RUN_AT) / (SPRINT_AT - RUN_AT), 0.0, 1.0)
 
 
 ## The walk-to-run blend (0 walking, 1 running) at `speed`.
@@ -148,8 +167,11 @@ static func run_weight(look: StringName, speed: float) -> float:
 
 
 ## The ground speed the walk-run blend at weight `run` covers at its authored rate: the strides of
-## the two clips weighted, over the weighted length of the cycle they play in.
-static func blend_speed(run: float) -> float:
+## the two clips weighted, over the weighted length of the cycle they play in. Past the run, the
+## run-sprint blend at weight `sprint`: the clips share a cycle, so it is the speeds weighted.
+static func blend_speed(run: float, sprint: float = 0.0) -> float:
+	if sprint > 0.0:
+		return lerpf(RUN_AT, SPRINT_AT, sprint)
 	var stride := lerpf(WALK_AT * WALK_CYCLE, RUN_AT * RUN_CYCLE, run)
 	return stride / lerpf(WALK_CYCLE, RUN_CYCLE, run)
 
@@ -163,7 +185,7 @@ static func gait_rate(look: StringName, speed: float) -> float:
 	if ZombieModels.is_boss(look):
 		native = BOSS_WALK_AT
 	elif not ZombieModels.crawls(look):
-		native = blend_speed(run_weight(look, speed))
+		native = blend_speed(run_weight(look, speed), sprint_weight(look, speed))
 	var moving := clampf(s / native, MIN_RATE, MAX_RATE)
 	return lerpf(1.0, moving, moving_weight(look, speed))
 
@@ -176,9 +198,10 @@ static func _build_library(
 		var animation := player.get_animation(clip).duplicate(true) as Animation
 		animation.loop_mode = Animation.LOOP_LINEAR if clip in looping else Animation.LOOP_NONE
 		library.add_animation(clip, animation)
-	var tear := _extra_clip(TEAR_CLIP)
-	tear.loop_mode = Animation.LOOP_LINEAR
-	library.add_animation(TEAR_CLIP, tear)
+	for extra in [TEAR_CLIP, SPRINT_CLIP]:
+		var animation := _extra_clip(extra)
+		animation.loop_mode = Animation.LOOP_LINEAR
+		library.add_animation(extra, animation)
 	return library
 
 
@@ -195,11 +218,12 @@ static func _build_state_machine() -> AnimationNodeStateMachine:
 	var machine := AnimationNodeStateMachine.new()
 	var move := AnimationNodeBlendSpace1D.new()
 	move.min_space = IDLE_AT
-	move.max_space = RUN_AT
+	move.max_space = SPRINT_AT
 	move.sync = true  # walk and run have different lengths: keep their steps in phase
 	move.add_blend_point(_clip_node(&"Idle"), IDLE_AT, -1, &"idle")
 	move.add_blend_point(_clip_node(&"Walk"), WALK_AT, -1, &"walk")
 	move.add_blend_point(_clip_node(&"Run"), RUN_AT, -1, &"run")
+	move.add_blend_point(_clip_node(SPRINT_CLIP), SPRINT_AT, -1, &"sprint")
 	machine.add_node(STATE_MOVE, _scaled(move, &"space"))
 	machine.add_node(STATE_CRAWL, _scaled(_clip_node(&"Crawl"), &"clip"))
 	machine.add_node(STATE_ATTACK, _clip_node(&"Punch"))
