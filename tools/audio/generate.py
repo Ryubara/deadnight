@@ -22,7 +22,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent))
 
 import dsp
-from recipes import REGISTRY, Entry
+import zombie_recipes
+from recipes import REGISTRY as BASE_REGISTRY
+from recipes import Entry
+
+REGISTRY: list[Entry] = [*BASE_REGISTRY, *zombie_recipes.REGISTRY]
 
 LOOPING = {"generator_hum"}  # not trimmed: its length is its loop
 

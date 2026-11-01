@@ -28,6 +28,8 @@ var effects: ShotEffects
 var barricade_points: Dictionary[StringName, Vector3] = {}
 ## The lot's lamps, drawn from the generator's events (`show_lamps`).
 var lamps: LotLamps
+## The dead's voices and feet, made from the frames (`ZombieVoices`).
+var voices: ZombieVoices
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
 
@@ -44,6 +46,8 @@ func setup(
 	horde = ZombieHorde.new()
 	add_child(horde)
 	horde.setup_client(camera, ZombieTuning.new().emerge_seconds, telegraphs)
+	voices = ZombieVoices.new(Audio, 1)
+	voices.windups = telegraphs
 	state.event_received.connect(_on_event)
 
 
@@ -58,9 +62,11 @@ func show_lamps(lot: Node, fuel: FuelTuning) -> void:
 func _on_event(event: Dictionary) -> void:
 	if lamps != null:
 		lamps.apply_event(event)
+	voices.on_event(event)
 	match event["type"]:
 		&"frame":
 			horde.apply_snapshot(event["zombies"], step)
+			voices.update(_state.zombies, step)
 		&"shot_fired":
 			effects.muzzle_flash(event["muzzle"])
 			for end: Vector3 in event["ends"]:

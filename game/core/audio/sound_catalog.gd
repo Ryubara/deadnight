@@ -17,6 +17,8 @@ const GROUP_LIMITS := {
 	&"reload": 3,
 	&"step": 8,
 	&"zombie_voice": 6,
+	&"zombie_boss": 2,
+	&"zombie_step": 5,
 	&"generator": 2,
 	&"grenade": 8,
 	&"sting": 1,
@@ -112,31 +114,35 @@ static func _build() -> void:
 		&"step_gravel", "steps/gravel_%d.ogg", 4, step.merged({"volume_db": -6.0, "cooldown": 0.12})
 	)
 
-	var zombie := {"group": &"zombie_voice", "pitch_semitones": 1.5, "unit_size": 6.0}
+	var zombie := {
+		"group": &"zombie_voice", "pitch_semitones": 1.5, "unit_size": 6.0, "rear_cue": true
+	}
 	_add(
 		&"zombie_groan",
 		"zombie/groan_%d.ogg",
-		4,
-		zombie.merged({"priority": 30, "max_distance": 40.0, "volume_db": -4.0})
+		7,
+		zombie.merged({"priority": 30, "max_distance": 40.0, "volume_db": -4.0}, true)
 	)
 	_add(
 		&"zombie_attack",
 		"zombie/attack_%d.ogg",
-		3,
-		zombie.merged({"priority": 60, "max_distance": 30.0})
+		6,
+		zombie.merged({"priority": 60, "max_distance": 30.0}, true)
 	)
 	_add(
 		&"zombie_hurt",
 		"zombie/hurt_%d.ogg",
-		3,
-		zombie.merged({"priority": 50, "max_distance": 35.0, "volume_db": -2.0})
+		6,
+		zombie.merged({"priority": 50, "max_distance": 35.0, "volume_db": -2.0}, true)
 	)
 	_add(
 		&"zombie_death",
 		"zombie/death_%d.ogg",
-		2,
-		zombie.merged({"priority": 55, "max_distance": 40.0, "volume_db": -2.0})
+		5,
+		zombie.merged({"priority": 55, "max_distance": 40.0, "volume_db": -2.0}, true)
 	)
+
+	_build_dead()
 
 	var generator := {
 		"group": &"generator",
@@ -207,4 +213,88 @@ static func _build() -> void:
 		# Above the other stings: the announcement comes the moment the last round ends, while its
 		# `round_end` sting still sounds, and one sting at a time (`GROUP_LIMITS`) must give way.
 		sting.merged({"volume_db": -3.0, "duck_db": -9.0, "duck_hold": 2.2, "priority": 98}, true)
+	)
+
+
+## The dead's voices and feet, per type (`ZombieVoiceTable` says which look uses which). Each has
+## `rear_cue`: heard from behind it is darker, so the side it comes from can be told.
+static func _build_dead() -> void:
+	var voice := {
+		"group": &"zombie_voice",
+		"pitch_semitones": 1.2,
+		"unit_size": 6.0,
+		"rear_cue": true,
+	}
+	var calls := {"priority": 65, "max_distance": 45.0, "volume_db": 0.0}
+	_add(&"zombie_alert", "zombie/alert_%d.ogg", 6, voice.merged(calls, true))
+	_add(
+		&"zombie_grunt",
+		"zombie/grunt_%d.ogg",
+		3,
+		voice.merged({"priority": 62, "max_distance": 30.0, "volume_db": -1.0}, true)
+	)
+	_add(
+		&"zombie_shriek",
+		"zombie/shriek_%d.ogg",
+		5,
+		voice.merged({"priority": 66, "max_distance": 50.0, "volume_db": -3.0}, true)
+	)
+	_add(
+		&"zombie_breath_brute",
+		"zombie/breath_brute_%d.ogg",
+		3,
+		voice.merged({"priority": 25, "max_distance": 26.0, "volume_db": -3.0}, true)
+	)
+	_add(
+		&"zombie_groan_brute",
+		"zombie/groan_brute_%d.ogg",
+		5,
+		voice.merged({"priority": 32, "max_distance": 40.0, "volume_db": -3.0}, true)
+	)
+	_add(
+		&"zombie_groan_crawler",
+		"zombie/groan_crawler_%d.ogg",
+		5,
+		voice.merged({"priority": 30, "max_distance": 30.0, "volume_db": -4.0}, true)
+	)
+	var boss := {
+		"group": &"zombie_boss",
+		"pitch_semitones": 0.4,
+		"unit_size": 14.0,
+		"max_distance": 90.0,
+		"rear_cue": true,
+	}
+	_add(&"zombie_roar", "zombie/roar_%d.ogg", 4, boss.merged({"priority": 88}, true))
+	_add(
+		&"zombie_growl_boss",
+		"zombie/growl_boss_%d.ogg",
+		2,
+		boss.merged({"priority": 86, "max_distance": 70.0}, true)
+	)
+	var foot := {
+		"group": &"zombie_step",
+		"priority": 15,
+		"pitch_semitones": 1.5,
+		"unit_size": 4.0,
+		"max_distance": 28.0,
+		"rear_cue": true,
+	}
+	_add(
+		&"zombie_step_shuffle",
+		"zombie/step_shuffle_%d.ogg",
+		4,
+		foot.merged({"volume_db": -4.0}, true)
+	)
+	_add(&"zombie_step_run", "zombie/step_run_%d.ogg", 4, foot.merged({"volume_db": -4.0}, true))
+	_add(
+		&"zombie_step_stomp",
+		"zombie/step_stomp_%d.ogg",
+		3,
+		foot.merged({"volume_db": 0.0, "max_distance": 40.0, "unit_size": 6.0}, true)
+	)
+	_add(
+		&"zombie_drag",
+		"zombie/drag_%d.ogg",
+		4,
+		foot.merged({"priority": 18, "volume_db": -3.0, "max_distance": 24.0}, true)
 	)
