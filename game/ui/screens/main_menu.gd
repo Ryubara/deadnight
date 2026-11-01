@@ -6,7 +6,7 @@ extends UIScreen
 ## gate, Settings slides in, Credits burns in like a reel). Quit is left out on the web, where a
 ## page cannot close itself.
 
-const PLAY_SCREEN := "res://ui/screens/play_screen.tscn"
+const PLAY_SCREEN := "res://ui/screens/night_screen.tscn"
 const CUSTOMIZE_SCREEN := "res://ui/screens/customize_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"

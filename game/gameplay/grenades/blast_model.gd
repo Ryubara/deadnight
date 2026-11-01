@@ -29,7 +29,10 @@ static func against_zombie(
 		var shape: Dictionary = shapes[index]
 		var a: Vector3 = shape["a"]
 		var b: Vector3 = shape["b"]
-		var distance := maxf(HitShapes.distance_to_segment(point, a, b) - float(shape["r"]), 0.0)
+		var gap := HitShapes.distance_to_segment(point, a, b)
+		if not is_finite(gap):
+			continue
+		var distance := maxf(gap - float(shape["r"]), 0.0)
 		result["distance"] = minf(result["distance"], distance)
 		var reach := def.falloff(distance)
 		if reach <= 0.0:
