@@ -4,6 +4,10 @@ extends RefCounted
 ## a mouse user sees hover, not a ring. A finger is a third kind: it is a pointer too, and it
 ## hides the key hints (a keycap on a phone points at nothing).
 
+## A mouse that moves less than this (screen pixels) in one event is a bumped desk, not a player
+## taking the mouse: it leaves a gamepad player's glyphs alone.
+const MOUSE_NOISE_PIXELS := 3.0
+
 static var pointer := true
 ## Whether the last input was a finger (or the touch controls are up and nothing else was used).
 static var touch := false
@@ -17,7 +21,13 @@ static func track(event: InputEvent) -> void:
 		pointer = true
 		gamepad = false
 		touch = true
-	elif event is InputEventMouseButton or event is InputEventMouseMotion:
+	elif (
+		event is InputEventMouseButton
+		or (
+			event is InputEventMouseMotion
+			and (event as InputEventMouseMotion).screen_relative.length() >= MOUSE_NOISE_PIXELS
+		)
+	):
 		pointer = true
 		gamepad = false
 		# Mouse motion does not end touch: the touch layer sends its look as motion, and a finger
