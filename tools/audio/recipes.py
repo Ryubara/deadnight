@@ -80,47 +80,6 @@ def ui_pop(rng: np.random.Generator) -> np.ndarray:
 # ---- guns -------------------------------------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class Gun:
-    crack_hp: float  # high-pass of the supersonic crack
-    crack_len: float
-    blast_len: float  # the roar's length
-    blast_dark: float  # where the roar's low-pass ends
-    body_hz: tuple[float, float]  # the thump's sweep
-    body_len: float
-    tail: float  # open-air reverb length
-    echo: float  # delay of the slap off the screen tower
-    gain_crack: float = 1.0
-    gain_blast: float = 0.9
-    gain_body: float = 1.0
-    drive: float = 3.0
-
-
-GUNS = {
-    "pistol": Gun(1800, 0.012, 0.07, 600, (210, 90), 0.09, 0.7, 0.21, gain_blast=0.8),
-    "smg": Gun(2400, 0.008, 0.045, 900, (260, 130), 0.05, 0.45, 0.19, gain_crack=1.1, gain_body=0.7),
-    "rifle": Gun(1500, 0.016, 0.16, 420, (150, 55), 0.16, 1.3, 0.27, gain_crack=1.2, gain_body=1.1),
-    "shotgun": Gun(1000, 0.02, 0.26, 260, (120, 42), 0.24, 1.2, 0.24, gain_crack=0.8, gain_blast=1.2, gain_body=1.3),
-}
-
-
-def gunshot(rng: np.random.Generator, gun: Gun) -> np.ndarray:
-    """Crack (bright, instant) + blast (noise roar, darkening) + body (a falling thump), drive, slap echo, open air."""
-    n = dsp.samples(gun.tail)
-    crack = dsp.filt(dsp.white(rng, gun.tail), "high", _jv(rng, gun.crack_hp)) * dsp.decay(n, gun.crack_len)
-    sweep = np.linspace(_jv(rng, 6000), gun.blast_dark, n)
-    blast = dsp.filt(dsp.white(rng, gun.tail), "low", sweep) * dsp.decay(n, gun.blast_len)
-    f0, f1 = (_jv(rng, f) for f in gun.body_hz)
-    body_n = dsp.samples(gun.body_len * 3)
-    body = dsp.sine(np.geomspace(f0, f1, body_n)) * dsp.decay(body_n, gun.body_len)
-    body = np.pad(body, (0, n - body_n))
-    shot = gun.gain_crack * crack + gun.gain_blast * blast + gun.gain_body * body
-    shot = dsp.drive(shot, gun.drive)
-    shot = dsp.echo(shot, _jv(rng, gun.echo, 0.1), 0.22)
-    shot = dsp.room_tail(rng, shot, gun.tail * 0.8, wet=0.5, dark=5000)
-    return dsp.fade(shot, 0.0005, 0.05)
-
-
 def dry_fire(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(_metal_click(rng, 1400, 0.05), 0.0005, 0.01) * 0.7
 
@@ -153,39 +112,6 @@ def _rasp(rng: np.random.Generator, seconds: float, lo: float, hi: float) -> np.
     noise = dsp.filt(dsp.white(rng, seconds), "band", centre, centre * 0.6)
     bumps = np.abs(0.6 + 0.4 * dsp.filt(dsp.white(rng, seconds), "low", 90))
     return dsp.fade(noise * bumps * np.sin(np.linspace(0, np.pi, n)) ** 0.7, 0.01, 0.02) * 1.6
-
-
-def _magazine_reload(rng: np.random.Generator, pitch: float, bolt: float) -> np.ndarray:
-    mix = dsp.place(None, _metal_click(rng, 900 * pitch), 0.0, 0.8)
-    mix = dsp.place(mix, _thud(rng, 120 * pitch, 0.14), 0.09, 0.6)
-    mix = dsp.place(mix, _metal_click(rng, 700 * pitch), 0.78, 0.8)
-    mix = dsp.place(mix, _thud(rng, 200 * pitch), 0.8, 0.7)
-    mix = dsp.place(mix, _rasp(rng, bolt, 1500, 3500), 1.15, 0.7)
-    return dsp.place(mix, _metal_click(rng, 1100 * pitch), 1.15 + bolt, 0.9)
-
-
-def reload_pistol(rng: np.random.Generator) -> np.ndarray:
-    return _magazine_reload(rng, 1.15, 0.08)
-
-
-def reload_smg(rng: np.random.Generator) -> np.ndarray:
-    return _magazine_reload(rng, 1.0, 0.1)
-
-
-def reload_rifle(rng: np.random.Generator) -> np.ndarray:
-    return _magazine_reload(rng, 0.8, 0.16)
-
-
-def reload_shotgun(rng: np.random.Generator) -> np.ndarray:
-    mix = None
-    for i, at in enumerate((0.0, 0.34, 0.66)):
-        shell = _thud(rng, 260 + 20 * i, 0.07) * 0.8 + _metal_click(rng, 1900 - 80 * i, 0.02)[: dsp.samples(0.07)] * 0.5
-        mix = dsp.place(mix, shell, at, 0.9)
-    mix = dsp.place(mix, _rasp(rng, 0.12, 700, 2200), 1.05, 0.6)
-    mix = dsp.place(mix, _metal_click(rng, 500, 0.06), 1.17, 1.0)
-    mix = dsp.place(mix, _thud(rng, 150, 0.1), 1.17, 0.7)
-    mix = dsp.place(mix, _rasp(rng, 0.1, 700, 2000), 1.38, 0.6)
-    return dsp.place(mix, _metal_click(rng, 650, 0.06), 1.48, 1.0)
 
 
 # ---- footsteps --------------------------------------------------------------------------------------------------
@@ -478,10 +404,6 @@ def grenade_blast(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(blast, 0.0005, 0.12)
 
 
-def _gun(name: str) -> Recipe:
-    return lambda rng: gunshot(rng, GUNS[name])
-
-
 REGISTRY: list[Entry] = [
     Entry("ui", "hover", 1, ui_hover, -12.0),
     Entry("ui", "focus", 1, ui_focus, -10.0),
@@ -490,12 +412,7 @@ REGISTRY: list[Entry] = [
     Entry("ui", "push", 1, ui_push, -6.0),
     Entry("ui", "pop", 1, ui_pop, -6.0),
     Entry("ui", "tick", 1, ui_tick, -12.0),
-    *(Entry("guns", f"shot_{name}", 3, _gun(name), -1.0) for name in GUNS),
     Entry("guns", "dry_fire", 1, dry_fire, -6.0),
-    Entry("guns", "reload_pistol", 2, reload_pistol, -4.0),
-    Entry("guns", "reload_smg", 2, reload_smg, -4.0),
-    Entry("guns", "reload_rifle", 2, reload_rifle, -4.0),
-    Entry("guns", "reload_shotgun", 2, reload_shotgun, -4.0),
     Entry("steps", "asphalt", 4, step_asphalt, -6.0),
     Entry("steps", "gravel", 4, step_gravel, -6.0),
     Entry("zombie", "groan", 4, zombie_groan, -3.0),
