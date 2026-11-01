@@ -44,9 +44,10 @@ extends RefCounted
 ##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow)
 ##   player_removed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
-##   purchase_made: player_id, item_id, price, detail (a weapon bought: `weapon`; ammunition:
-##     `ammo`, the catalogue weapon, and `rounds`, how many went into its reserve)
+##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
+##     catalogue weapon, and `rounds` into its reserve; a crane play: `crane_spot`, see CranePlay)
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
+##   crane_*: the prize crane's play, see `CranePlay`
 ##   door_opened: door_id
 ##   board_torn: barricade_id, boards (left), zombie_id (the one that pulled it off)
 ##   board_repaired: barricade_id, boards (now up), player_id
@@ -71,13 +72,14 @@ enum BuyResult {
 	LIMIT_REACHED,
 	TANK_FULL,
 	AMMO_FULL,
+	CRANE_BUSY,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 7 added the fence's `barricades`, 6 each player's health, 5 the plan, special round and a
-## zombie's type, health, speed. Two older layouts both called themselves 4; every older snapshot
-## is refused as `bad_version`.
-const SNAPSHOT_VERSION := 7
+## 8 added the prize crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's
+## health, 5 the plan, special round and a zombie's type, health, speed. Two older layouts both
+## called themselves 4; every older snapshot is refused as `bad_version`.
+const SNAPSHOT_VERSION := 8
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -101,14 +103,17 @@ const SNAPSHOT_KEYS := {
 	"doors_open": TYPE_ARRAY,
 	"generator": TYPE_DICTIONARY,
 	"barricades": TYPE_DICTIONARY,
+	"crane": TYPE_DICTIONARY,
 	"spawn_rng_state": TYPE_INT,
 	"shop_rng_state": TYPE_INT,
 	"cripple_rng_state": TYPE_INT,
+	"crane_rng_state": TYPE_INT,
 }
 ## Offsets so the spawn and shop generators never share a stream.
 const SPAWN_STREAM := 0x5A17
 const SHOP_STREAM := 0x70C3
 const CRIPPLE_STREAM := 0xC21B
+const CRANE_STREAM := 0xC4A7
 
 var tuning: RulesTuning
 var rng_seed: int = 0
@@ -116,6 +121,7 @@ var phase: Phase = Phase.IDLE
 var round_number: int = 0
 var generator: GeneratorState
 var barricades: BarricadeState
+var crane: CraneState
 var players: Dictionary[int, PlayerState] = {}
 var doors_open: Array[StringName] = []
 
@@ -133,6 +139,7 @@ var _zombies: Dictionary[int, ZombieState] = {}
 var _spawn_rng := RandomNumberGenerator.new()
 var _shop_rng := RandomNumberGenerator.new()
 var _cripple_rng := RandomNumberGenerator.new()
+var _crane_rng := RandomNumberGenerator.new()
 var _events: Array[Dictionary] = []
 ## The whole-unit fuel value the last `fuel_changed` event announced.
 var _fuel_announced: int = 0
@@ -145,6 +152,8 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 	_spawn_rng.seed = p_seed ^ SPAWN_STREAM
 	_shop_rng.seed = p_seed ^ SHOP_STREAM
 	_cripple_rng.seed = p_seed ^ CRIPPLE_STREAM
+	_crane_rng.seed = p_seed ^ CRANE_STREAM
+	crane = CraneState.new(tuning.crane.start_spot)
 	generator = GeneratorState.new(tuning.fuel)
 	barricades = BarricadeState.new(tuning.barricades)
 	_fuel_announced = floori(generator.fuel)
@@ -306,6 +315,7 @@ func _dispatch(action: Dictionary) -> void:
 			_add_player(action["player_id"])
 		RulesAction.REMOVE_PLAYER:
 			if players.erase(action["player_id"]):
+				CranePlay.buyer_left(self, action["player_id"])
 				_emit(&"player_removed", {"player_id": action["player_id"]})
 				_check_game_over()
 		RulesAction.SET_DOWNED:
@@ -325,6 +335,8 @@ func _dispatch(action: Dictionary) -> void:
 			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
 			_buy(action["player_id"], action["item_id"], action.get("rounds", -1))
+		RulesAction.CRANE_TAKE:
+			CranePlay.take(self, action["player_id"])
 		RulesAction.SET_CIRCUIT:
 			if not generator.set_circuit(action["circuit_id"], action["on"]):
 				_reject(&"unknown_circuit", RulesAction.SET_CIRCUIT)
@@ -374,12 +386,14 @@ func _tick(delta: float) -> void:
 	match phase:
 		Phase.BREAK:
 			generator.tick(delta, round_number, true)
+			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
 			_break_left -= delta
 			if _break_left <= 0.0:
 				_begin_round()
 		Phase.ACTIVE:
 			generator.tick(delta, round_number, false)
+			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
 			_tick_spawning(delta)
 
@@ -865,6 +879,16 @@ func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
 		&"purchase_made",
 		{"player_id": player_id, "item_id": item_id, "price": quote.price, "detail": detail}
 	)
+	if quote.item.kind == ShopItem.Kind.CRANE:
+		_emit(
+			&"crane_spin_started",
+			{
+				"player_id": player_id,
+				"spot": crane.spot,
+				"seconds": tuning.crane.spin_seconds,
+				"plays": crane.plays,
+			}
+		)
 
 
 func _quote(player_id: int, item_id: StringName, rounds: int = -1) -> Quote:
@@ -904,6 +928,8 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 		ShopItem.Kind.CRANE:
 			if item.pool_without(player.weapons).is_empty():
 				result = BuyResult.ALREADY_OWNED
+			elif not crane.is_ready():
+				result = BuyResult.CRANE_BUSY
 		ShopItem.Kind.TONIC:
 			if player.tonics.has(item.id):
 				result = BuyResult.ALREADY_OWNED
@@ -948,9 +974,7 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 			player.weapons.append(item.id)
 			return {"weapon": item.id}
 		ShopItem.Kind.CRANE:
-			var won := item.roll(player.weapons, _shop_rng)
-			player.weapons.append(won)
-			return {"weapon": won}
+			return CranePlay.start(self, player, quote.price)
 		ShopItem.Kind.TONIC:
 			player.tonics.append(item.id)
 		ShopItem.Kind.FUEL:

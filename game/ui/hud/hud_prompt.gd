@@ -11,6 +11,8 @@ const DETAILS := {
 	&"buy_weapon": "A NEW GUN FOR THE NIGHT",
 	&"buy_ammo": "ROUNDS FOR YOUR RESERVE",
 	&"buy_crane": "A RANDOM GUN YOU LACK",
+	&"crane_take": "TAKE IT BEFORE IT FADES",
+	&"crane_busy": "ONLY THE BUYER CAN TAKE IT",
 	&"fill_fuel": "TOPS UP THE GENERATOR",
 	&"repair": "NAIL THE BOARDS BACK UP",
 	&"circuit": "SWITCH THE LIGHTS",
@@ -24,6 +26,14 @@ const DENIED_TEXT := {
 	GameRules.BuyResult.TANK_FULL: "THE TANK IS FULL",
 	GameRules.BuyResult.AMMO_FULL: "YOUR RESERVE IS FULL",
 	GameRules.BuyResult.WRONG_PHASE: "NOT RIGHT NOW",
+	GameRules.BuyResult.CRANE_BUSY: "THE CRANE IS BUSY",
+}
+## Why the crane would not hand the weapon over (`crane_take_denied`'s reason).
+const TAKE_DENIED_TEXT := {
+	&"not_buyer": "ONLY THE BUYER CAN TAKE IT",
+	&"nothing_to_take": "NOTHING TO TAKE",
+	&"downed": "GET UP FIRST",
+	&"already_owned": "YOU ALREADY HAVE THAT",
 }
 const DENIED_SECONDS := 1.8
 const WIDTH := HudStyle.CARD
@@ -117,13 +127,17 @@ func refresh() -> void:
 
 
 func on_event(event: Dictionary) -> void:
-	if event.get("type") != &"purchase_denied":
+	var type: StringName = event.get("type", &"")
+	if type != &"purchase_denied" and type != &"crane_take_denied":
 		return
 	if int(event.get("player_id", -1)) != state.local_player_id or state.prompt.is_empty():
 		return
 	denied_left = DENIED_SECONDS
 	_price.visible = true
-	_say_price(DENIED_TEXT.get(int(event["result"]), "NOT POSSIBLE"))
+	if type == &"crane_take_denied":
+		_say_price(TAKE_DENIED_TEXT.get(event["reason"], "NOT POSSIBLE"))
+	else:
+		_say_price(DENIED_TEXT.get(int(event["result"]), "NOT POSSIBLE"))
 	_price.add_theme_color_override(&"font_color", tokens.hot)
 	UIMotion.shake(self)
 

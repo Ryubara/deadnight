@@ -195,7 +195,27 @@ func _stand_at(night: Night, shop_id: StringName, kind: StringName = &"") -> voi
 	for spot in night.world.shop_spots():
 		if (shop_id == &"" or spot["shop_id"] == shop_id) and (kind == &"" or spot["kind"] == kind):
 			night.player().teleport(spot["position"] + Vector3(0.0, 0.1, 0.0))
+			break
 	NightFixture.run(night, 3)
+
+
+func test_the_crane_card_follows_the_play_from_the_price_to_the_take() -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	_act(night, RulesAction.grant_points(1, 5000))
+	_stand_at(night, &"crane_play")
+	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_crane")
+	var command := NightCommand.new()
+	command.use = true
+	NightFixture.run(night, 1, command)
+	NightFixture.run(night, 3)
+	assert_str(String(hud.state.prompt["kind"])).is_equal("crane_busy")
+	assert_str(hud.prompt.detail_text).contains("YOUR PRIZE")
+	NightFixture.run(night, 300)
+	assert_str(String(hud.state.prompt["kind"])).is_equal("crane_take")
+	assert_str(hud.prompt.title_text).is_not_equal("PRIZE CRANE")
+	_finish(night, hud)
 
 
 func test_the_wall_weapon_the_crane_and_a_locker_each_have_a_card() -> void:

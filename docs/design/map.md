@@ -84,8 +84,25 @@ plaque only names the weapon).
 | --- | --- | --- | --- |
 | Shotgun, on the wall | the concession's front wall, field side, left of the door | `weapon_shotgun`; once owned, its rounds | in the open before any door: the first weapon a player can save for, bought under the dead's eyes |
 | Rifle, on the wall | the booth's front wall, midway side | `weapon_rifle`; once owned, its rounds | past the concession: the long gun waits for the middle rounds and the player who has opened the lot |
-| Prize crane | inside the stand, beside the cabinet that was there | `crane_play`, a weapon the player lacks, until the pool is empty | the stand is the first door; a gamble to spend the first thousand on |
+| Prize crane | one of four places (below); it starts inside the stand, beside the cabinet that was there | `crane_play`: a play, a spin, then a weapon the player lacks that only the buyer can take; it can break down and move | the stand is the first door; a gamble to spend the first thousand on |
 | Ammunition lockers (5) | the avenue (field), the stand, the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
+
+### The crane's places
+
+The crane stands on one place at a time (`crane.spot` in the rules, a marker with the metadata `crane_spot` here) and
+moves when a play breaks it down ([the Mystery Box research](../research/mystery-box.md)). It moves only to a place
+whose door is already open (`crane.spot_doors` in the tuning), so it is never somewhere nobody can reach. A light
+beam over the current place says where it is.
+
+| Index | Place | Door it needs | Why there |
+| ---: | --- | --- | --- |
+| 0 | inside the stand, `(-6.4, 5)` | the concession | where it starts; the first thing the first door buys |
+| 1 | the midway, `(6, 14)`, on the open ground between the stand and the booth | the concession | a place to run to from the stand, with the booth's rifle wall and a locker near |
+| 2 | the field, `(-24, -14)`, clear ground west of the avenue | none | the one place the open field has, so the crane is sometimes out in the dead's path |
+| 3 | the yard, `(40, 10)` | the yard | late, with the generator: a reason to go there that is not fuel |
+
+A play can only break down while another place is open to move to. The tests (`test_shop_spots.gd`) hold the markers to
+one for each index and to the rules above.
 
 A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
 real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one

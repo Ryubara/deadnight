@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
 [ext_resource type="Script" path="res://gameplay/rules/barricade_tuning.gd" id="10_barr1"]
 [ext_resource type="Script" path="res://gameplay/rules/health_tuning.gd" id="10_ptune"]
+[ext_resource type="Script" path="res://gameplay/rules/crane_tuning.gd" id="11_crane1"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -65,7 +66,7 @@ pool_weights = PackedFloat32Array()
 script = ExtResource("1_skww1")
 id = &"crane_play"
 kind = 2
-price = 500
+price = 550
 pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun"])
 pool_weights = PackedFloat32Array(4, 3, 2, 1)
 
@@ -350,6 +351,17 @@ max_health = 100.0
 regen_delay = 5.0
 regen_per_second = 25.0
 
+[sub_resource type="Resource" id="Resource_crane1"]
+script = ExtResource("11_crane1")
+spot_doors = Array[StringName]([&"door_concession", &"door_concession", &"", &"door_yard"])
+start_spot = 0
+spin_seconds = 4.5
+grab_seconds = 12.0
+safe_plays = 3
+leave_chances = PackedFloat32Array(0.15, 0.15, 0.15, 0.15, 0.3, 0.3, 0.3, 0.3, 0.5)
+breakdown_seconds = 4.0
+refund_fraction = 1.0
+
 [resource]
 script = ExtResource("5_3ukcj")
 rounds = SubResource("Resource_1fk4k")
@@ -360,3 +372,4 @@ specials = SubResource("Specials_1")
 explosives = SubResource("Resource_expl1")
 barricades = SubResource("Resource_barr1")
 health = SubResource("Resource_ptune1")
+crane = SubResource("Resource_crane1")

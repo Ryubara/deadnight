@@ -42,6 +42,38 @@ static func run(rules: GameRules, seconds: float) -> void:
 		rules.apply(RulesAction.tick(STEP))
 
 
+## Ticks `seconds` in steps of `step` and returns every event they caused.
+static func advance(rules: GameRules, seconds: float, step: float = STEP) -> Array[Dictionary]:
+	var caused: Array[Dictionary] = []
+	for _i in ceili(seconds / step - 0.0001):
+		caused.append_array(rules.apply(RulesAction.tick(step)))
+	return caused
+
+
+## The first event of `type` in `events`, or an empty dictionary.
+static func first(events: Array[Dictionary], type: StringName) -> Dictionary:
+	for event in events:
+		if event["type"] == type:
+			return event
+	return {}
+
+
+## Buys a crane play for `player_id` and spins it out. Returns the events from the purchase to the
+## end of the spin: the prize is in `crane_prize_ready`, a breakdown in `crane_breakdown`.
+static func play_crane(rules: GameRules, player_id: int) -> Array[Dictionary]:
+	var caused := rules.apply(RulesAction.buy(player_id, &"crane_play"))
+	var spin := rules.tuning.crane.spin_seconds
+	caused.append_array(advance(rules, spin + 0.1, 0.1))
+	return caused
+
+
+## A tuning where the crane never breaks down (the odds are not what the suite tests).
+static func steady_crane_tuning() -> RulesTuning:
+	var t := tuning()
+	t.crane.leave_chances = PackedFloat32Array([0.0])
+	return t
+
+
 ## Starts the night and plays through the intro so round 1 is active.
 static func into_round_one(rules: GameRules) -> void:
 	rules.apply(RulesAction.start())
