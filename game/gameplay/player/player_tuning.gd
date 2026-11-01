@@ -192,3 +192,17 @@ extends Resource
 @export var steer_frequency := 18.0
 ## A body that moves farther than this in one tick (a spawn, a correction) is not eased to.
 @export var snap_distance := 4.0
+
+@export_group("Shake")
+## The view shake of a shot, trauma style (`CameraShake`; the amount per weapon is its
+## `WeaponDef.shake_trauma`). Trauma drains at this much per second (1 is a full second from the
+## top), and the shake is `max_degrees x trauma^exponent x noise`. Subtle on purpose: a shotgun
+## blast turns the view by well under a degree. The player scales all of it, or turns it off, in
+## the settings (Accessibility).
+@export var shake_max_degrees := 1.5
+@export var shake_decay := 2.6
+@export var shake_exponent := 2.0
+## How fast the noise moves, in noise units per second (about this many wobbles a second).
+@export var shake_frequency := 14.0
+## The roll about the view axis, as a fraction of the pitch and yaw (roll reads as nausea).
+@export_range(0.0, 1.0) var shake_roll_fraction := 0.4

@@ -188,6 +188,36 @@ class Builder:
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
         return self._finish(bm, colour, 0, detail)
 
+    def tube(self, points, radius, colour, segs=6, y=0.0, detail=False):
+        """A bent round (or hex, `segs=6`) bar swept through side-view points [(x, z), ...]: one closed part, a ring
+        at every point, mitred at the bends so the bar keeps its thickness. Smoother than `bar` for a bend that is
+        seen up close (the crowbar's gooseneck); the far level keeps every third point."""
+        if not self.near and len(points) > 4:
+            points = [points[0], *points[1:-1:3], points[-1]]
+        pts = [Vector((x, y, z)) for x, z in points]
+        side = Vector((0, 1, 0))
+        bm = bmesh.new()
+        rings = []
+        for i, p in enumerate(pts):
+            t0 = (p - pts[i - 1]).normalized() if i > 0 else None
+            t1 = (pts[i + 1] - p).normalized() if i + 1 < len(pts) else None
+            t = (t0 + t1).normalized() if t0 and t1 else (t0 or t1)
+            mitre = 1.0 / max(0.5, t.dot(t1 or t0))
+            n = t.cross(side).normalized()
+            ring = []
+            for k in range(segs):
+                a = 2 * math.pi * (k + 0.5) / segs
+                ring.append(bm.verts.new(p + radius * (math.cos(a) * n * mitre + math.sin(a) * side)))
+            rings.append(ring)
+        for a, b in itertools.pairwise(rings):
+            for i in range(segs):
+                j = (i + 1) % segs
+                bm.faces.new((a[i], a[j], b[j], b[i]))
+        bm.faces.new(list(reversed(rings[0])))
+        bm.faces.new(rings[-1])
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        return self._finish(bm, colour, 0, detail)
+
     def bar(self, points, width, thick, colour, y=0.0, bevel=0.0, detail=False):
         """A bent bar through side-view points [(x, z), ...]: one box per segment, overlapping at the joints."""
         for (x0, z0), (x1, z1) in itertools.pairwise(points):

@@ -48,3 +48,8 @@ budgets, palette) are in the [style bible](style.md).
 
 How big a weapon is, where the stock, the grip and the support hand sit, and where the barrel points: [Weapons in the
 hands](weapon-hold.md).
+
+## Shots on screen
+
+What a shot looks like and how the view answers it: [Shot feedback](shot-feedback.md) (the toon muzzle flash and the
+small pooled impacts) and [Camera shake](camera-shake.md) (the light, per-weapon kick of the view, and its setting).

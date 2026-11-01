@@ -1,13 +1,15 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 1), one message to a WebSocket frame: a type
-## byte, then the fields. `LookWire` continues the numbering with types 8 and 9.
+## The bytes of a night's connection (protocol version 2; version 1 sent a command as 47 bytes of
+## floats), one message to a WebSocket frame: a type byte, then the fields. `LookWire` continues the
+## numbering with types 8 and 9.
 ##
 ## HELLO    C->S  u8 type=1, u8 version                    the first message of a client
 ## WELCOME  S->C  u8 type=2, u8 version, u8 player_id, u8 tick_rate, then a packed variable: the
 ##                rules' snapshot (`GameRules.to_dict()`), for a HUD that joins in the middle
-## COMMAND  C->S  u8 type=3, u32 seq, f32 move x/y, f32 yaw, f32 pitch, u16 flags, f32 origin x/y/z,
-##                f32 dir x/y/z (fixed, `COMMAND_SIZE` = 47 bytes in all)
+## COMMAND  C->S  u8 type=3, u32 seq, s8 move x/y, u16 yaw, s16 pitch, u16 flags, s16 origin x/y/z
+##                (centimetres), u16 shot yaw, s16 shot pitch (fixed, `COMMAND_SIZE` = 23 bytes in
+##                all; the steps are `CommandCodec`'s)
 ## TICK     S->C  u8 type=4, u32 server step, then a packed variable: the array of events since the
 ##                last TICK, the frame last; a frame after the first only carries what changed
 ##                (`FrameDelta`)
@@ -25,11 +27,11 @@ extends RefCounted
 enum Type { HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10 }
 enum Refusal { VERSION = 1, FULL = 2 }
 
-const VERSION := 1
+const VERSION := 2
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
-const COMMAND_SIZE := 47
+const COMMAND_SIZE := 23
 const WELCOME_HEADER := 4
 const TICK_HEADER := 5
 ## What a packed variable may be once unpacked, so a hostile length cannot ask for gigabytes.
@@ -120,10 +122,11 @@ static func command(value: NightCommand) -> PackedByteArray:
 	out[0] = Type.COMMAND
 	out.encode_u32(1, value.seq & 0xFFFFFFFF)
 	var motion := value.motion
-	out.encode_float(5, motion.move.x)
-	out.encode_float(9, motion.move.y)
-	out.encode_float(13, motion.yaw)
-	out.encode_float(17, motion.pitch)
+	var push := CommandCodec.move_bytes(motion.move)
+	out.encode_s8(5, push.x)
+	out.encode_s8(6, push.y)
+	out.encode_u16(7, CommandCodec.yaw_step(motion.yaw))
+	out.encode_s16(9, CommandCodec.look_step(motion.pitch))
 	var flags := 0
 	flags |= F_SPRINT if motion.sprint else 0
 	flags |= F_CROUCH if motion.crouch else 0
@@ -137,28 +140,29 @@ static func command(value: NightCommand) -> PackedByteArray:
 	flags |= F_USE if value.use else 0
 	flags |= F_SWAP if value.swap else 0
 	flags |= F_USE_HELD if value.use_held else 0
-	out.encode_u16(21, flags)
-	_put_vector(out, 23, value.origin)
-	_put_vector(out, 35, value.dir)
+	out.encode_u16(11, flags)
+	out.encode_s16(13, CommandCodec.point_step(value.origin.x))
+	out.encode_s16(15, CommandCodec.point_step(value.origin.y))
+	out.encode_s16(17, CommandCodec.point_step(value.origin.z))
+	var aim := CommandCodec.direction_angles(value.dir)
+	out.encode_u16(19, CommandCodec.yaw_step(aim.x))
+	out.encode_s16(21, CommandCodec.look_step(aim.y))
 	return out
 
 
-## The command in a packet from a client, or null when the packet is not exactly one. Numbers a
-## client could poison the simulation with (not-a-number, infinity, a move longer than 1, a
-## direction of no length) are made harmless here.
+## The command in a packet from a client, or null when the packet is not exactly one. Every field
+## is an integer step, so nothing a client sends is not-a-number or infinite; a move longer than 1
+## is shortened, and a direction is always a unit vector.
 static func read_command(data: PackedByteArray) -> NightCommand:
 	if data.size() != COMMAND_SIZE or data[0] != Type.COMMAND:
 		return null
 	var result := NightCommand.new()
 	result.seq = data.decode_u32(1)
 	var motion := result.motion
-	motion.move = Vector2(data.decode_float(5), data.decode_float(9))
-	if not motion.move.is_finite():
-		motion.move = Vector2.ZERO
-	motion.move = motion.move.limit_length(1.0)
-	motion.yaw = _finite(data.decode_float(13))
-	motion.pitch = _finite(data.decode_float(17))
-	var flags := data.decode_u16(21)
+	motion.move = CommandCodec.move_from_bytes(data.decode_s8(5), data.decode_s8(6))
+	motion.yaw = CommandCodec.yaw_from_step(data.decode_u16(7))
+	motion.pitch = CommandCodec.look_from_step(data.decode_s16(9))
+	var flags := data.decode_u16(11)
 	motion.sprint = flags & F_SPRINT != 0
 	motion.crouch = flags & F_CROUCH != 0
 	motion.jump = flags & F_JUMP != 0
@@ -167,15 +171,30 @@ static func read_command(data: PackedByteArray) -> NightCommand:
 	motion.throw_over = flags & F_THROW_OVER != 0
 	motion.throw_under = flags & F_THROW_UNDER != 0
 	result.fire = flags & F_FIRE != 0
+	motion.fire = result.fire
 	result.reload = flags & F_RELOAD != 0
 	result.use = flags & F_USE != 0
 	result.swap = flags & F_SWAP != 0
 	result.use_held = flags & F_USE_HELD != 0
-	result.origin = _get_vector(data, 23)
-	result.dir = _get_vector(data, 35)
-	if result.dir.length() < 0.001:
-		result.dir = Vector3.FORWARD
-	result.dir = result.dir.normalized()
+	result.origin = Vector3(
+		CommandCodec.point_from_step(data.decode_s16(13)),
+		CommandCodec.point_from_step(data.decode_s16(15)),
+		CommandCodec.point_from_step(data.decode_s16(17))
+	)
+	result.dir = CommandCodec.direction_from_angles(
+		CommandCodec.yaw_from_step(data.decode_u16(19)),
+		CommandCodec.look_from_step(data.decode_s16(21))
+	)
+	return result
+
+
+## The command as the server will read it: what a predicting client moves its own body with, so its
+## prediction and the server's run use the same numbers. Only what travels is kept (the player id
+## the server takes from the connection and the muzzle are carried over untouched).
+static func quantize(value: NightCommand) -> NightCommand:
+	var result := read_command(command(value))
+	result.player_id = value.player_id
+	result.muzzle = value.muzzle
 	return result
 
 
@@ -212,20 +231,3 @@ static func unpack_var(data: PackedByteArray, offset: int) -> Variant:
 	if raw.is_empty():
 		return null
 	return bytes_to_var(raw)
-
-
-static func _put_vector(out: PackedByteArray, at: int, value: Vector3) -> void:
-	out.encode_float(at, value.x)
-	out.encode_float(at + 4, value.y)
-	out.encode_float(at + 8, value.z)
-
-
-static func _get_vector(data: PackedByteArray, at: int) -> Vector3:
-	var value := Vector3(
-		data.decode_float(at), data.decode_float(at + 4), data.decode_float(at + 8)
-	)
-	return value if value.is_finite() else Vector3.ZERO
-
-
-static func _finite(value: float) -> float:
-	return value if is_finite(value) else 0.0

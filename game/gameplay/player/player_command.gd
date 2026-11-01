@@ -27,6 +27,16 @@ var throw_over := false
 var throw_under := false
 
 
+## Snaps the numbers to what the wire carries (`CommandCodec`), in place: a predicting client moves
+## its body with the command the server will read, so the two simulations get the same input. The
+## turn comes out in [-PI, PI).
+func quantize() -> PlayerCommand:
+	move = CommandCodec.snap_move(move)
+	yaw = CommandCodec.snap_yaw(yaw)
+	pitch = CommandCodec.snap_pitch(pitch)
+	return self
+
+
 func to_dict() -> Dictionary:
 	return {
 		&"move": move,

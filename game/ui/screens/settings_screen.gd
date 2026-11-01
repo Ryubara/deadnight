@@ -127,6 +127,16 @@ const TABS := [
 				"labels": ["Small", "Normal", "Large"],
 				"values": [0.8, 1.0, 1.25],
 			},
+			{
+				"key": SettingsService.CAMERA_SHAKE,
+				"title": "Camera shake",
+				"hint": "How much a shot shakes the view. 0 turns it off.",
+				"kind": "slider",
+				"min": 0,
+				"max": 100,
+				"step": 10,
+				"format": PERCENT,
+			},
 		],
 	},
 	{

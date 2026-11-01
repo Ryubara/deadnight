@@ -41,7 +41,7 @@ func _ready() -> void:
 	if model != null:
 		add_child(model.instantiate())
 	else:
-		_build_placeholder()
+		add_placeholder(self)
 	_build_lamp()
 
 
@@ -61,21 +61,22 @@ func follow(delta: float) -> void:
 		rotation += state.velocity.normalized().cross(Vector3.UP) * delta * 6.0
 
 
-func _build_placeholder() -> void:
+## Adds the placeholder shell and spoon to `parent` (the Soldier's hand shows the same one).
+static func add_placeholder(parent: Node3D) -> void:
 	var shell := SphereMesh.new()
 	shell.radius = SHELL_RADIUS
 	shell.height = SHELL_RADIUS * 2.0
 	shell.material = _material(SHELL_COLOUR)
 	var body := MeshInstance3D.new()
 	body.mesh = shell
-	add_child(body)
+	parent.add_child(body)
 	var spoon := BoxMesh.new()
 	spoon.size = Vector3(0.025, 0.11, 0.045)
 	spoon.material = _material(SPOON_COLOUR)
 	var lever := MeshInstance3D.new()
 	lever.mesh = spoon
 	lever.position = Vector3(0.0, SHELL_RADIUS * 0.9, 0.0)
-	add_child(lever)
+	parent.add_child(lever)
 
 
 func _build_lamp() -> void:
@@ -98,7 +99,7 @@ func _build_lamp() -> void:
 	add_child(_light)
 
 
-func _material(colour: Color) -> StandardMaterial3D:
+static func _material(colour: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = colour
 	material.roughness = 0.7

@@ -61,11 +61,14 @@ static var _bus := Bus.new()
 @export_range(0.0, 1.0) var star_band := 0.6
 
 @export_group("Type faces")
-## The display face (title, big numbers) and the text face (captions, menus, small print). Null
-## keeps the engine's fallback font, so a game that has not picked a typeface still runs; setting
-## these two resources restyles everything that asks `UITokens.display_font` or `text_font`.
+## The display face (the sign, title and display type, big numbers), the text face (headings,
+## buttons, captions, menus, small print) and the mono face (code, keys, tabular numbers). Null
+## keeps the engine's fallback font (the mono slot falls back to the text face with tabular
+## figures), so a game that has not picked a typeface still runs; setting these resources restyles
+## everything that asks `UITokens.display_font`, `text_font` or `mono_font`.
 @export var font_display: Font
 @export var font_text: Font
+@export var font_mono: Font
 
 @export_group("Type scale")
 @export var size_display := 104
@@ -165,6 +168,16 @@ func text_font(embolden := 0.0, tracking := 0.0) -> FontVariation:
 	return _variation(font_text, embolden, tracking)
 
 
+## The mono face, same arguments. Without one it is the text face with tabular figures (every digit
+## the same width, so a column of numbers lines up).
+func mono_font(embolden := 0.0, tracking := 0.0) -> FontVariation:
+	if font_mono != null:
+		return _variation(font_mono, embolden, tracking)
+	var font := _variation(font_text, embolden, tracking)
+	font.opentype_features = {"tnum": 1}
+	return font
+
+
 ## Makes `tokens` the look: screens built afterwards take it, and everything that listens to
 ## `active_changed()` (the router and every addon component) restyles at once. Passing null returns
 ## to the project setting's resource. Call it before the first screen to avoid any restyle at all.
@@ -194,6 +207,9 @@ static func _configured() -> UITokens:
 static func _variation(face: Font, embolden: float, tracking: float) -> FontVariation:
 	var font := FontVariation.new()
 	font.base_font = face if face != null else ThemeDB.fallback_font
+	if face != null:
+		# A glyph the chosen face lacks comes from the engine's font, not as an empty box.
+		font.fallbacks = [ThemeDB.fallback_font]
 	font.variation_embolden = embolden
 	font.spacing_glyph = int(tracking)
 	return font

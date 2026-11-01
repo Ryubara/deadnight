@@ -8,7 +8,8 @@ feeds is in [Rounds, points and fuel](rounds.md); how it was built is in [Weapon
 
 The server decides every hit. The client shows the shot at once and the server's events correct it.
 
-- **Client, at once:** muzzle flash, impact spark and puff, and the sound request, drawn from the shooter's own view with
+- **Client, at once:** muzzle flash, small impacts (dust on a wall, red on a zombie), a light view shake for the
+  shooter, and the sound request, drawn from the shooter's own view with
   the same `AimResolver` code the server runs, and the same spread (the pellet pattern comes from a seed of the match,
   the shooter and the shot number, so both sides scatter alike).
 - **Server, on arrival:** the `fire` action is checked (cooldown, magazine, reload), then judged against the targets as
@@ -29,9 +30,10 @@ The server decides every hit. The client shows the shot at once and the server's
 `WeaponDef.kind` says how a weapon's shot travels, and the look follows from it (`ShotEffects.shot`):
 
 - **`HITSCAN`** (revolver, Tommy gun, shotgun, rifle): the shot lands the instant the trigger is pulled. The
-  player sees a muzzle flash, then a spark and a puff of dust where it ended (when it ended short of its range),
-  and no bullet and no streak. A weapon may set `WeaponDef.tracer` (off by default) to draw a streak from the
-  muzzle to each end, for a future beam-like hitscan weapon; none of the shipped weapons does.
+  player sees a muzzle flash on the weapon, then a small spark, puff and mark where it ended on something (when it
+  ended short of its range) or a small red puff on a zombie, and no bullet and no streak ([Shot
+  feedback](shot-feedback.md), [Camera shake](camera-shake.md)). A weapon may set `WeaponDef.tracer` (off by default) to
+  draw a streak from the muzzle to each end, for a future beam-like hitscan weapon; none of the shipped weapons does.
 - **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
   `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
   so a travelling shot is always a real body with its own flight, not a drawn line.
