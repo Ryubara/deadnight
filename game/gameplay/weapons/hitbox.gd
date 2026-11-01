@@ -7,6 +7,14 @@ extends RefCounted
 const HEAD := &"head"
 const BODY := &"body"
 const LIMB := &"limb"
+## The boss's lamp (the `WeakSpot` of the headliner model, a lit lens on its belly): a sphere that
+## only a zombie with a weak spot has. In a walker's units like the rest, so `scale` sizes it with
+## the body: at the headliner's 1.45 it is a 0.22 m ball 1.68 m up and 0.42 m ahead of its feet,
+## where the lens sits in the model's walk (measured at game scale; docs/research/zombies.md).
+const WEAK := &"weak"
+const WEAK_ZONE := {
+	"zone": &"weak", "a": Vector3(0, 1.16, 0.29), "b": Vector3(0, 1.16, 0.29), "r": 0.15
+}
 
 ## Each zone: its name, two end points relative to the feet (x is the target's right, z its
 ## forward) and a radius. A sphere has equal end points.
@@ -24,11 +32,15 @@ const BOUND_RADIUS := 1.1
 
 
 ## The zone shapes in the world: `[{zone, a, b, r}]`. `scale` sizes the whole set about the feet:
-## a tall zombie's zones are larger, and a hard-to-hit one's (a crawler) smaller and lower.
-static func shapes(position: Vector3, yaw: float, scale: float = 1.0) -> Array[Dictionary]:
+## a tall zombie's zones are larger, and a hard-to-hit one's (a crawler) smaller and lower. `weak`
+## adds the weak spot, last, so the indices of the other zones stay.
+static func shapes(
+	position: Vector3, yaw: float, scale: float = 1.0, weak: bool = false
+) -> Array[Dictionary]:
 	var basis := Basis(Vector3.UP, yaw)
 	var placed: Array[Dictionary] = []
-	for zone in ZONES:
+	var zones := ZONES + [WEAK_ZONE] if weak else ZONES
+	for zone in zones:
 		var shape := {
 			"zone": zone["zone"],
 			"a": position + basis * (zone["a"] as Vector3) * scale,
@@ -41,7 +53,7 @@ static func shapes(position: Vector3, yaw: float, scale: float = 1.0) -> Array[D
 
 ## The nearest zone a ray reaches within `max_distance`, as `{zone, distance}`, or `{}`. `inflate`
 ## fattens every shape by that many metres, which turns the ray into a sweep of a sphere; `scale`
-## sizes the zombie's zones (`shapes`).
+## sizes the zombie's zones and `weak` adds its weak spot (`shapes`).
 static func ray(
 	origin: Vector3,
 	dir: Vector3,
@@ -49,7 +61,8 @@ static func ray(
 	position: Vector3,
 	yaw: float,
 	inflate: float = 0.0,
-	scale: float = 1.0
+	scale: float = 1.0,
+	weak: bool = false
 ) -> Dictionary:
 	var bound := position + BOUND_CENTRE * scale
 	var reach := BOUND_RADIUS * scale + inflate
@@ -57,7 +70,7 @@ static func ray(
 		return {}
 	var best := {}
 	var best_t := max_distance
-	for shape in shapes(position, yaw, scale):
+	for shape in shapes(position, yaw, scale, weak):
 		var t := HitShapes.ray_capsule(origin, dir, shape["a"], shape["b"], shape["r"] + inflate)
 		if t >= 0.0 and t <= best_t:
 			best_t = t

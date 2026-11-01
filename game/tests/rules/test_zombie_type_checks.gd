@@ -2,10 +2,6 @@ extends GdUnitTestSuite
 ## What the zombie types promise beyond their mix: the speed cap, a look for every type, and a
 ## blast paying by type like a bullet.
 
-## Looks that have no model in the game yet. A type may name one only if it is listed here with the
-## issue that adds it; the entry goes when the model lands (the test below fails until it does).
-const LOOKS_WITHOUT_A_MODEL := {&"headliner": "#181, needs the model of #127"}
-
 var _t: RulesTuning
 
 
@@ -42,8 +38,6 @@ func test_no_type_outruns_the_speed_cap_even_with_the_jitter_at_its_top() -> voi
 func test_every_type_has_a_look_that_has_a_model() -> void:
 	for type in _t.roster.types:
 		for look in type.looks:
-			if LOOKS_WITHOUT_A_MODEL.has(look):
-				continue
 			(
 				assert_bool(ZombieModels.VARIANTS.has(look))
 				. override_failure_message(
@@ -51,16 +45,6 @@ func test_every_type_has_a_look_that_has_a_model() -> void:
 				)
 				. is_true()
 			)
-
-
-func test_the_looks_without_a_model_are_still_missing_and_still_used() -> void:
-	# A stale exception would hide a real check: when a model lands, delete its entry above.
-	for look in LOOKS_WITHOUT_A_MODEL:
-		assert_bool(ZombieModels.VARIANTS.has(look)).is_false()
-		var used := false
-		for type in _t.roster.types:
-			used = used or type.looks.has(look)
-		assert_bool(used).override_failure_message("%s is used by no type" % look).is_true()
 
 
 func test_a_blast_pays_by_the_type_like_a_bullet() -> void:

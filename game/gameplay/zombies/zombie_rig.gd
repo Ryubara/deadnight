@@ -3,7 +3,8 @@ extends RefCounted
 ## The animation side of a zombie model: one shared AnimationLibrary built from the model's own
 ## clips (the rig-sharing recipe, kit docs godot/rig-sharing.md), added to each model's player, and
 ## one AnimationTree per zombie with the same state machine. A body with the same bone names
-## (a zombie variant, another character) plays the same library unchanged.
+## (a zombie variant, another character) plays the same library unchanged. The headliner has five
+## clips of its own (`Boss_*`, in its file only) and its own machine over them (`attach_boss`).
 
 const LIBRARY := &"zombie"
 ## Clips the library carries, and which of them loop.
@@ -17,16 +18,32 @@ const WALK_AT := 1.0
 const RUN_AT := 3.0
 const MAX_SPEED := 4.5
 
+## The boss's clips, in a library of their own (`BOSS_LIBRARY`), and which of them loop.
+const BOSS_LIBRARY := &"boss"
+const BOSS_CLIPS: Array[StringName] = [
+	&"Idle", &"Boss_Walk", &"Boss_Attack", &"Boss_Roar", &"Boss_Stagger", &"Boss_Death"
+]
+const BOSS_LOOPING: Array[StringName] = [&"Idle", &"Boss_Walk"]
+## Seconds into `Boss_Attack` at which the blow lands (frame 32 at 24 fps, `clips.json` beside the
+## model): the clip is played faster or slower so that this is the type's telegraph.
+const BOSS_HIT_SECONDS := 32.0 / 24.0
+## Planar speed (m/s) at which the boss's move state is fully walking.
+const BOSS_WALK_AT := 0.6
+
 const STATE_MOVE := &"move"
+const STATE_ROAR := &"roar"
 const STATE_CRAWL := &"crawl"
 const STATE_ATTACK := &"attack"
 const STATE_STAGGER := &"stagger"
 const STATE_DIE := &"die"
 const BLEND_PARAMETER := &"parameters/move/blend_position"
 const PLAYBACK_PARAMETER := &"parameters/playback"
+## The attack state of the boss is a clip behind a time scale: this is the scale's parameter.
+const BOSS_ATTACK_SCALE_PARAMETER := &"parameters/attack/scale/scale"
 
 ## The one library every zombie shares. Built from the first model, then reused.
 static var _library: AnimationLibrary
+static var _boss_library: AnimationLibrary
 
 
 ## Adds the shared library to `model`'s AnimationPlayer and builds its tree; returns the tree
@@ -36,8 +53,24 @@ static func attach(model: Node) -> AnimationTree:
 	if _library == null:
 		_library = _build_library(player)
 	player.add_animation_library(LIBRARY, _library)
+	return _tree(model, player, _build_state_machine())
+
+
+## The same for the headliner: its five clips and its own machine (`STATE_MOVE` walks or stands,
+## `STATE_ROAR` is its entrance, the others as for any zombie).
+static func attach_boss(model: Node) -> AnimationTree:
+	var player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if _boss_library == null:
+		_boss_library = _build_library(player, BOSS_CLIPS, BOSS_LOOPING)
+	player.add_animation_library(BOSS_LIBRARY, _boss_library)
+	return _tree(model, player, _build_boss_machine())
+
+
+static func _tree(
+	model: Node, player: AnimationPlayer, machine: AnimationNodeStateMachine
+) -> AnimationTree:
 	var tree := AnimationTree.new()
-	tree.tree_root = _build_state_machine()
+	tree.tree_root = machine
 	model.add_child(tree)  # a sibling of the player: the clips' track paths resolve against ".."
 	tree.anim_player = tree.get_path_to(player)
 	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
@@ -48,13 +81,16 @@ static func attach(model: Node) -> AnimationTree:
 ## Lets go of the shared library (a static holds its clips, which Godot reports as leaked at exit).
 static func release() -> void:
 	_library = null
+	_boss_library = null
 
 
-static func _build_library(player: AnimationPlayer) -> AnimationLibrary:
+static func _build_library(
+	player: AnimationPlayer, clips: Array[StringName] = CLIPS, looping: Array[StringName] = LOOPING
+) -> AnimationLibrary:
 	var library := AnimationLibrary.new()
-	for clip in CLIPS:
+	for clip in clips:
 		var animation := player.get_animation(clip).duplicate(true) as Animation
-		animation.loop_mode = Animation.LOOP_LINEAR if clip in LOOPING else Animation.LOOP_NONE
+		animation.loop_mode = Animation.LOOP_LINEAR if clip in looping else Animation.LOOP_NONE
 		library.add_animation(clip, animation)
 	return library
 
@@ -76,7 +112,32 @@ static func _build_state_machine() -> AnimationNodeStateMachine:
 	return machine
 
 
-static func _clip_node(clip: StringName) -> AnimationNodeAnimation:
+static func _build_boss_machine() -> AnimationNodeStateMachine:
+	var machine := AnimationNodeStateMachine.new()
+	var move := AnimationNodeBlendSpace1D.new()
+	move.min_space = IDLE_AT
+	move.max_space = BOSS_WALK_AT
+	move.add_blend_point(_clip_node(&"Idle", BOSS_LIBRARY), IDLE_AT, -1, &"idle")
+	move.add_blend_point(_clip_node(&"Boss_Walk", BOSS_LIBRARY), BOSS_WALK_AT, -1, &"walk")
+	machine.add_node(STATE_MOVE, move)
+	machine.add_node(STATE_ROAR, _clip_node(&"Boss_Roar", BOSS_LIBRARY))
+	machine.add_node(STATE_ATTACK, _scaled_clip(&"Boss_Attack"))
+	machine.add_node(STATE_STAGGER, _clip_node(&"Boss_Stagger", BOSS_LIBRARY))
+	machine.add_node(STATE_DIE, _clip_node(&"Boss_Death", BOSS_LIBRARY))
+	return machine
+
+
+## A clip behind a time scale (the scale is `BOSS_ATTACK_SCALE_PARAMETER`).
+static func _scaled_clip(clip: StringName) -> AnimationNodeBlendTree:
+	var tree := AnimationNodeBlendTree.new()
+	tree.add_node(&"clip", _clip_node(clip, BOSS_LIBRARY))
+	tree.add_node(&"scale", AnimationNodeTimeScale.new())
+	tree.connect_node(&"scale", 0, &"clip")
+	tree.connect_node(&"output", 0, &"scale")
+	return tree
+
+
+static func _clip_node(clip: StringName, library: StringName = LIBRARY) -> AnimationNodeAnimation:
 	var node := AnimationNodeAnimation.new()
-	node.animation = StringName("%s/%s" % [LIBRARY, clip])
+	node.animation = StringName("%s/%s" % [library, clip])
 	return node

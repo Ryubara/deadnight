@@ -76,11 +76,21 @@ func start(
 		_make_autopilot()
 	view = NightView.new()
 	add_child(view)
-	view.setup(state, camera)
+	view.setup(state, camera, _telegraphs())
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
 	running = true
 	ready_to_play.emit()
+
+
+## Seconds each look's blow takes to land, for the looks of the types that telegraph it.
+func _telegraphs() -> Dictionary[StringName, float]:
+	var telegraphs: Dictionary[StringName, float] = {}
+	for type in server.rules.tuning.roster.types:
+		if type.telegraph_seconds > 0.0:
+			for look in type.looks:
+				telegraphs[look] = type.telegraph_seconds
+	return telegraphs
 
 
 func player() -> Player:

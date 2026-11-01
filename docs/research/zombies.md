@@ -81,13 +81,44 @@ The rules say what a zombie is (`ZombieType`, carried by `zombie_spawn_requested
   its first frame and a change shows: a walker crippled by a blast (`zombie_crippled`) becomes a crawler in the sim
   (its type's numbers, `speed_scale` of its speed, once) and the horde swaps the view's body. A crawler plays the kit's
   `Crawl` clip (the legless mesh is made for it); every look has one body in `zombie_<look>.glb`.
-- **Stand-ins.** A look with no model of its own draws another variant, scaled (`ZombieModels.STAND_INS`). None remains
-  once the headliner has its model.
+- **Game scale.** Every body is drawn at `ZombieModels.GAME_SCALE` (1.3, the style bible's), on top of its variant's
+  height: the walker stands 1.77 m, the brute 2.09 m, the headliner 2.56 m, which is what the hit zones are sized for.
+  Until the headliner's pull request the night drew them at the file's size (about 1.36 m for a walker), so the zones
+  stood a third above the bodies; the captures had always applied the scale and hid it.
 - **Hit zones take the zombie's size.** `Hitbox.shapes(position, yaw, scale)` sizes the whole set about the feet; the
   scale is the look's height (brute 1.18, runner 1.07) times the type's `hit_chance` (the crawler's 0.6 makes it low
   and small). The server sends it with each target (`"scale"`), the lag compensator keeps it, and the bot aims at the
   height the look stands at. Grenade blasts still use the walker's zones.
 - `barrier_speed` is carried on the profile; the night has no barrier yet to read it.
+
+## The headliner in the night
+
+The Projectionist (`zombie_boss.glb`, `docs/design/zombies.md#boss-the-projectionist`) is the look `headliner`, the last
+of `ZombieModels.VARIANTS`. What the night does with it:
+
+- **Clips.** `ZombieRig.attach_boss` gives it its own library (`Boss_*` and its own `Idle`) and machine: `Idle` and
+  `Boss_Walk` blended by speed, `Boss_Roar` for the entrance, `Boss_Attack`, `Boss_Stagger`, `Boss_Death`. It does not
+  sink into the ground: it appears roaring for `ZombieTuning.boss_entrance_seconds` (2.75 s, the clip's length) and
+  chases after.
+- **The blow lands on the telegraph.** The sim strikes `telegraph_seconds` (1.2 s) into the swing; the clip's `hit`
+  event is at frame 32 (1.33 s), so the view plays `Boss_Attack` at 1.33 / 1.2 the speed through an
+  `AnimationNodeTimeScale`. The client is told the telegraph per look (`NightView.setup`, from the roster), like the
+  emerge time.
+- **The lamp.** The model's emission map lights the lens. It is one material shared by every instance of the file, so
+  each boss view gives itself a copy (near and far mesh) and puts it out at `Boss_Death`. No light node: the lot has
+  lamps enough for the Compatibility renderer's budget.
+- **The weak spot is a hit zone.** `Hitbox.WEAK_ZONE`: a 0.22 m ball (0.15 in a walker's units) 1.68 m up and 0.42 m
+  ahead of its feet at the boss's size, where the lens is in the walk (measured with the model at game scale: the lens
+  is 1.56 to 1.80 m up and 0.44 to 0.56 m ahead through `Boss_Walk`, higher with the arms raised, lower in the
+  stagger). It is added only for a target with `"weak": true` (the director sets it from the roster's
+  `weak_multiplier`), last in the shape list so the blast model's indices do not move. It sits ahead of the body
+  capsule, so a shot from the front finds it first and one from behind never does. The weapons send `weak`, the
+  rules take x2.2 and pay it as a headshot.
+- **Stagger.** A weak hit that does not kill staggers the boss (`Boss_Stagger`, 1.42 s) and costs it its swing, once
+  every `boss_stagger_cooldown` (6 s): a rifle that hits the lamp every shot must not hold it still for ever. No other
+  hit staggers it (nor, in the night, any other zombie: the night never called the sim's `react_to_hit`).
+- **The boss bar** (`HudBossBar`) follows `zombie_spawn_requested` (boss), `zombie_damaged` and `zombie_removed` in
+  `HudState.bosses`, one bar a boss, under the banner.
 
 ## Snapshot limits
 
@@ -152,6 +183,13 @@ The night uses exactly this path: `NightWorld.build` bakes the first mesh throug
 spawns from the doors that are open. The night's own rebake (a synchronous bake per door, which stalled the tick)
 was removed. A night that ends while a bake runs is harmless: `NavmeshBaker.bake_async` skips a callback whose object
 is gone. The autopilot's own path follows the mesh, so for the second after a purchase it walks the old one.
+
+A finished bake is in the region at once but reaches the map over the next physics ticks (the server iterates the map
+on a thread): 3 to 12 ticks after the `baked` signal on a loaded machine, so a test that waits a fixed few frames after
+a bake races the machine. #192: with 8 suites at once next to 40 busy loops, 16 of 16 runs failed the each-bought-door
+test, 13 the quick-succession one and 12 the on-its-way one. `map_force_update` does not shorten it, and the iteration
+id counts changes, not readiness (a bake moved it by one here). The suite waits for the answer it is about:
+`_map_current` polls the physics frames until the points the new mesh opens are reachable.
 
 Proof: `game/tests/zombies/test_door_navigation.gd` (for each of the nine sets of doors a zombie reaches every sample
 point of every open area and no path enters the footprint of a closed one; the doors bought one after the other

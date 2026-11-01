@@ -74,6 +74,9 @@ func _on_rules_event(event: Dictionary) -> void:
 			_remove(event["zombie_id"], event["cause"])
 		&"zombie_crippled":
 			_cripple(event)
+		&"zombie_damaged":
+			if event["zone"] == RulesAction.ZONE_WEAK:
+				sim.weak_hit(event["zombie_id"])
 
 
 ## A blast took its legs: the zombie becomes the type the rules say (a crawler), in its look.
@@ -102,4 +105,6 @@ func _admit_waiting() -> void:
 		var request: Dictionary = _waiting.pop_front()
 		var point := spawn_points[request["point_roll"] % spawn_points.size()]
 		var profile := ZombieProfile.from_event(request, sim.tuning)
+		var type := rules.tuning.roster.type_of(profile.type)
+		profile.weak = type != null and type.weak_multiplier > 1.0
 		sim.spawn(request["zombie_id"], request["speed"], point, 0.0, profile)
