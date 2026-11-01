@@ -1,9 +1,24 @@
 # Sound
 
-How Deadnight sounds, and the rules the audio service plays by. The sounds are original: every file in
-`game/assets/audio/` is synthesised by the scripts in `tools/audio/` (how: [research](../research/audio.md)), so they
-are committed and can be changed by editing a number. The code is `game/core/audio/`; the sounds' table, with every
-level and limit, is `sound_catalog.gd`.
+How Deadnight sounds, and the rules the audio service plays by. The code is `game/core/audio/`; the sounds' table, with
+every level and limit, is `sound_catalog.gd`.
+
+## Where the sounds come from
+
+Almost every sound is original: it is synthesised by the scripts in `tools/audio/` (how:
+[research](../research/audio.md)), so it is committed and can be changed by editing a number. The folders under
+`game/assets/audio/` with no licence file hold only such files; nothing in them is third-party.
+
+The exception is 24 files in `game/assets/audio/zombie/` (extra groans, snarls, hurts, deaths, shrieks and roars),
+generated with ElevenLabs Sound Effects on the free tier. They are third-party output: attribution required, not
+licensed for commercial use, to be relicensed or replaced before a commercial release
+([#252](https://github.com/Ryubara/deadnight/issues/252)). Their licence entry, with every prompt, is
+[`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), and the
+Credits screen names ElevenLabs. Pull request #277 (open) adds ElevenLabs takes for the weapons and the lot, with a
+licence file of their own.
+
+The licence file records the choice to use the takes as relayed by the coordinator. The maintainer's own first-hand
+confirmation is still pending ([#292](https://github.com/Ryubara/deadnight/issues/292)).
 
 ## Direction
 
