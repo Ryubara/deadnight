@@ -17,11 +17,16 @@ static var _defs: Dictionary[StringName, WeaponDef] = {}
 
 ## The definition behind a shop or crane id (`weapon_rifle`) or a catalogue id (`rifle`).
 static func def(weapon_id: StringName) -> WeaponDef:
-	if not _defs.has(weapon_id):
-		_defs[weapon_id] = WeaponCatalog.get_def(
-			StringName(String(weapon_id).trim_prefix(SHOP_PREFIX))
-		)
-	return _defs[weapon_id]
+	var key := StringName(String(weapon_id).trim_prefix(SHOP_PREFIX))
+	if not _defs.has(key):
+		_defs[key] = WeaponCatalog.get_def(key)
+	return _defs[key]
+
+
+## Loads every definition now, so batches run on several threads only ever read the cache.
+static func warm() -> void:
+	for id in WeaponCatalog.IDS:
+		def(id)
 
 
 ## Damage of one trigger pull that lands in `zone` at `distance` metres: every pellet, with the

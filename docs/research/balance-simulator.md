@@ -43,10 +43,10 @@ then the charts; `--compare <folder>` draws a before and after).
 - **Free things hide decisions.** The model gave tonics effects the game does not have and slowed the dead on lit
   ground without ever lighting a circuit, so the light never cost fuel ("fuel was never short enough to buy").
   With circuits switched through `RulesAction.set_circuit` and lit ground applied only while the tank has fuel
-  (`GeneratorState.is_lit`, `power_level`), the average solo player buys about 250 points of cans a night.
-- **A weak player's boss night is a cliff.** Boss health 16 and 22 times a walker's killed 78% and 95 to 100% of
-  weak solo nights at it: they never land the weak spot, so their kill rate stops covering the
-  boss's arrival all at once. A number that makes strong players feel the boss walls the weak ones.
+  (`GeneratorState.is_lit`, `power_level`), the average solo player buys about 260 points of cans a night.
+- **A weak player's boss night is a cliff.** Boss health 15, 16 and 22 times a walker's killed about 75%, 90% and 95 to
+  100% of weak solo nights at it: they never land the weak spot, so their kill rate stops covering the boss's
+  arrival all at once. A number that makes strong players feel the boss walls the weak ones.
 - **No weapon is a big step.** Sustained damage a second: flare gun 54 (plus a 3 m blast), pistol 59, shotgun 68,
   rifle 85, SMG 101. Health that compounds against weapons that barely grow set the whole curve; the retune of #188
   had to lower health, counts and the alive cap, not raise anything.
