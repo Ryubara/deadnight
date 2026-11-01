@@ -273,7 +273,8 @@ func test_a_slide_pop_mirrors_the_push() -> void:
 	var width := card.size.x
 	assert_float(width).is_greater(0.0)
 	# The slide runs in slow motion while it is looked at, and the look waits for frames, not for
-	# milliseconds: on a loaded machine 60 ms of real time was the whole slide (#199).
+	# milliseconds: on a loaded machine a frame can outlast 60 ms, so the look came before the slide
+	# had moved or after it had ended (#199).
 	Engine.time_scale = MID_SLIDE_TIME_SCALE
 	UIRouter.pop()
 	for _i in MID_SLIDE_FRAMES:
