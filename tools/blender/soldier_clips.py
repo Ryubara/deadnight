@@ -21,9 +21,14 @@ location keys (Body and the IK feet carry them), which are written in file units
 """
 
 import math
+import sys
+from pathlib import Path
 
 import bpy
 from mathutils import Euler, Quaternion, Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gaitlib as gl
 
 FPS = 24
 
@@ -285,6 +290,7 @@ def build(arm):
 
     grenade(arm, up, idle, idle_mid, aim)
     repair(arm, up, aim)
+    aim_moves(arm, acts, aim, every)
     return CLIPS
 
 
@@ -354,3 +360,94 @@ def repair(arm, up, aim):
     keys = [(0, lifted), (3, struck), (6, struck), (10, lifted), (15, raised), (18, struck), (21, struck),
             (24, lifted)]  # fmt: skip
     write(arm, "Repair_Board", keys, up, "upper", True, "Repair", {"hammer": [3, 18], "board_set": 18})
+
+
+# Moving while aiming (Deadnight #74): the player keeps facing the camera and moves at `aim_speed` (2.6 m/s) in any
+# direction, so the legs need a clip per direction, played under the aim (the upper bones come from Aim_<Class>
+# through the bone filter). The four are one gait turned four ways, so they blend in step in a 2D blend space and
+# cover the same ground speed in every direction. Name -> direction of travel, degrees clockwise from ahead.
+AIM_MOVES = {"Walk_Shoot": 0, "Strafe_Right": 90, "Walk_Back": 180, "Strafe_Left": -90}
+AIM_MOVE_SPEED = 2.6  # m/s in the game: PlayerTuning.aim_speed
+GAME_SCALE = 0.8  # the Soldier's size in the game (style bible)
+AIM_MOVE_LENGTH = 0.85  # a planted foot's sweep, times the kit Run's contact (0.45 m at kit scale)
+AIM_MOVE_LIFT = 0.55  # the swing's height, times the kit Run's (a low, careful jog that keeps the gun level)
+AIM_MOVE_BOB = 0.45  # the hips' rise and fall, times the kit Run's, vertical only
+AIM_MOVE_DROP = 0.05  # metres (kit scale) the hips sit lower: knees bent under the aim
+AIM_MOVE_STAGGER = 0.16  # metres (kit scale) the feet's lanes move ahead and behind on a strafe, so they pass
+AIM_MOVE_TURN = 0.35  # how far the knees and toes turn toward a sideways step, of the step's angle
+AIM_MOVE_FLAT = 0.65  # how much of the kit Run's toe pitch is taken out on a strafe (all of it going backward)
+AIM_MOVE_ARC = 0.16  # metres (kit scale): off the forward direction the swing is an even arc this high at mid-swing
+
+
+def aim_moves(arm, acts, aim, every):
+    """Walk_Shoot, Walk_Back, Strafe_Left and Strafe_Right (full body: the gun hold of Idle_Shoot frame 0 above the
+    hips, which the game replaces with Aim_<Class>; a steady Body, so the aim does not sway).
+
+    The legs come from the kit Run on its own 17 frames: each foot's path is the Run's, turned toward the direction
+    of travel about its lane (gaitlib.sweep_plan, swept_foot): the planted foot sweeps the ground at the aim speed
+    over 0.85 of the Run's contact, and the Run's swing fills the rest of the cycle, lower. On a strafe the lanes
+    are staggered ahead and behind so the feet pass instead of colliding, and the knees and toes turn a third of
+    the way toward the step. The legs are solved to meet the feet (gaitlib.solve_leg).
+    """
+    run = acts["Run"]
+    n = int(run.frame_range[1])
+    base = [full(arm, sample(run, f)) for f in range(n + 1)]
+    shape = gl.leg_shape(arm, base)
+    mw = arm.matrix_world
+    unit = mw.to_scale()[0]  # armature units to metres (the Soldier is authored under a 100x object scale)
+    per_frame = AIM_MOVE_SPEED / GAME_SCALE / FPS
+    plans = {}
+    for leg in gl.LEGS:
+        foot = leg[2]
+        rest = mw @ arm.data.bones[foot].matrix_local
+
+        def path(t, rest=rest, foot=foot):
+            return rest @ sample(run, t)[foot]["loc"]
+
+        plans[foot] = dict(gl.sweep_plan(path, n, per_frame, AIM_MOVE_LENGTH), rest=rest, path=path)
+    # The hips' bob: the Run's Body location about its mean, its vertical part only, in Body's own space.
+    up = gl.up_axis(arm)
+    body_rest = arm.data.bones["Body"].matrix_local.to_3x3()
+    mean = sum((p["Body"]["loc"] for p in base[:-1]), Vector()) / (len(base) - 1)
+
+    def vertical(local):
+        return body_rest.inverted() @ (up * up.dot(body_rest @ local))
+
+    drop = body_rest.inverted() @ (-up * AIM_MOVE_DROP / unit)
+    report = {}
+    for name, angle in AIM_MOVES.items():
+        theta = math.radians(angle)
+        side = math.sin(theta)
+        turn = -AIM_MOVE_TURN * math.degrees(math.asin(side))  # about world up: clockwise (to his right) is negative
+        ahead = max(math.cos(theta), 0.0)
+        flat = AIM_MOVE_FLAT * abs(side) + max(-math.cos(theta), 0.0)
+        arc = 1.0 - ahead  # forward keeps the kit's swing; sideways and backward an even arc
+        travel = Quaternion((0, 0, 1), -theta)  # turns "backward along the walk" (+Y) into "against the travel"
+        keys, pulled = [], 0.0
+        for f in range(n + 1):
+            pose = {b: {"rot": v["rot"].copy(), "loc": v["loc"].copy()} for b, v in aim.items()}
+            pose["Body"]["loc"] = aim["Body"]["loc"] + vertical(base[f]["Body"]["loc"] - mean) * AIM_MOVE_BOB + drop
+            for leg in gl.LEGS:
+                foot = leg[2]
+                plan = plans[foot]
+                along, height, kit_t = gl.swept_foot(plan["path"], n, f % n, plan, AIM_MOVE_LIFT, arc=arc,
+                                                     arc_height=AIM_MOVE_ARC)  # fmt: skip
+                lead = -1.0 if foot.endswith(".R") else 1.0
+                lane = Vector((plan["x"], plan["centre"] + lead * AIM_MOVE_STAGGER * side, plan["kit"][2]))
+                at = lane + travel @ Vector((0, along, 0)) + Vector((0, 0, height))
+                pose[foot]["loc"] = plan["rest"].inverted() @ at
+                toe = aim[foot]["rot"].slerp(sample(run, kit_t)[foot]["rot"], 1.0 - flat)
+                pose[foot]["rot"] = gl.turned_about_up(arm, foot, toe, turn)
+            for leg in gl.LEGS:
+                pulled = max(pulled, gl.solve_leg(arm, pose, leg, shape[leg[1]], turn) * unit)
+            keys.append((f, pose))
+        events = {f"step_{s}": round(plans[f"Foot.{s[0].upper()}"]["mid"] - plans[f"Foot.{s[0].upper()}"]["frames"] / 2) % n
+                  for s in ("left", "right")}  # fmt: skip
+        write(arm, name, keys, every, "full", True, None, dict(sorted(events.items(), key=lambda kv: kv[1])))
+        report[name] = round(pulled, 4)
+    for name, angle in AIM_MOVES.items():
+        CLIPS[name]["ground_speed"] = round(gl.measure_gait(arm, bpy.data.actions[name], GAME_SCALE), 2)
+        CLIPS[name]["direction"] = angle
+    print("AIM_MOVES", {k: (CLIPS[k]["ground_speed"], report[k]) for k in AIM_MOVES},
+          {k: (round(v["thigh"] * unit, 3), round(v["ankle"].length * unit, 3), round(v["spread"] * unit, 4))
+           for k, v in shape.items()})  # fmt: skip

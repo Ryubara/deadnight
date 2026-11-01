@@ -285,7 +285,7 @@ func test_a_slide_pop_mirrors_the_push() -> void:
 	# The screen underneath is visible, a third of the way out to the left at most, and dimmed.
 	assert_bool(below.visible).is_true()
 	assert_bool(below.position.x <= 0.0).is_true()
-	assert_bool(below.position.x >= -width * UITransitionSlide.PARALLAX).is_true()
+	assert_bool(below.position.x >= -width * UITokens.active().slide_parallax).is_true()
 	assert_bool(below.modulate.r < 1.0).is_true()
 	Engine.time_scale = 1.0
 	assert_bool(await _settle()).is_true()

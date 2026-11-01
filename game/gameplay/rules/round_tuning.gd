@@ -62,7 +62,7 @@ extends Resource
 @export var break_seconds: float = 20.0
 
 @export_group("Night")
-## Ambient light level in round 1 (0 dark, 1 day), read by the world.
+## Ambient light level in round 1 (0 dark, 1 day), read by the world (`NightLight`).
 @export var ambient_start: float = 0.6
 @export var ambient_step: float = 0.035
 @export var ambient_min: float = 0.15

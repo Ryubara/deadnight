@@ -226,6 +226,7 @@ func _finish_start(camera: Camera3D) -> void:
 	view.show_lamps(world.greybox, rules_tuning.fuel)
 	view.show_crane(world, rules_tuning)
 	view.show_grenades(load(NightServer.GRENADE_DEF) as GrenadeDef)
+	add_child(NightLight.new(world.greybox.get_node("Lighting"), rules_tuning.rounds, state))
 	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
@@ -458,14 +459,14 @@ func _show_grenade(event: Dictionary) -> void:
 		return
 	match event["type"]:
 		&"cook_started":
-			animation.grenade_cooking()
+			animation.grenade(&"cook")
 		&"grenade_thrown":
-			animation.grenade_thrown(event["underarm"])
+			animation.grenade(&"throw", event["underarm"])
 		&"grenade_dropped":
-			animation.grenade_gone()
+			animation.grenade(&"gone")
 		&"grenade_exploded":
 			if event["in_hand"]:
-				animation.grenade_gone()
+				animation.grenade(&"gone")
 
 
 func _animation_of(player_id: int) -> PlayerAnimation:

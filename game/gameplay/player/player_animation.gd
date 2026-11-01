@@ -4,7 +4,9 @@ extends AnimationTree
 ##
 ## The tree is built here, in code, so the clip names live in one place:
 ##   body:  locomotion (Idle / Walk / Run blended by speed; the Run end plays at ground speed /
-##          run_clip_speed so the feet do not slide), and jump -> fall -> land -> locomotion.
+##          run_clip_speed so the feet do not slide; while aiming, Walk_Shoot / Walk_Back /
+##          Strafe_Left / Strafe_Right blended by the direction of travel, from their own file),
+##          and jump -> fall -> land -> locomotion.
 ##   upper: the class's Aim_<Class> loop with a OneShot on top (Fire, Reload, Swing, Equip,
 ##          Unequip), laid over the body by a Blend2 filtered to the upper bones.
 ##   repair: Repair_Board looping over the upper layer while the player puts boards back at a
@@ -83,6 +85,25 @@ const REPAIR_BLEND_RATE := 18.0
 const REPAIR_SEEK_PARAMETER := &"parameters/repair_seek/seek_request"
 const REPAIR_SCALE_PARAMETER := &"parameters/repair_scale/scale"
 const REPAIR_BLEND_PARAMETER := &"parameters/repair/blend_amount"
+## Moving while aiming (#74): one gait turned four ways, built into its own file
+## (docs/design/animation.md, Moving while aiming) and added to the Soldier's library. Each clip's
+## direction of travel in the blend space: x to the Soldier's right, y ahead.
+const AIM_MOVE_GLB := "res://assets/characters/soldier/aim_move/soldier_aim_move.glb"
+const AIM_MOVE_SPEC := "res://assets/characters/soldier/aim_move/clips.json"
+const AIM_MOVES := {
+	&"Walk_Shoot": Vector2(0.0, 1.0),
+	&"Walk_Back": Vector2(0.0, -1.0),
+	&"Strafe_Left": Vector2(-1.0, 0.0),
+	&"Strafe_Right": Vector2(1.0, 0.0),
+}
+## The aim gait is fully in by this share of its clips' ground speed (Idle blends in below it).
+const AIM_MOVE_FULL := 0.4
+## How slow or fast the aim gait is played to fit the ground (outside it the feet slide).
+const AIM_RATE_MIN := 0.5
+const AIM_RATE_MAX := 1.6
+const AIM_MOVE_PARAMETER := &"parameters/body/locomotion/aim_move/blend_position"
+const AIM_RATE_PARAMETER := &"parameters/body/locomotion/aim_rate/scale"
+const AIM_BLEND_PARAMETER := &"parameters/body/locomotion/aim_blend/blend_amount"
 
 ## The grenade's clips, a file of their own on the same rig (`docs/design/animation.md`, Grenade):
 ## the pin and the cooking hold, the overarm throw and the underarm toss. Upper body, so the legs
@@ -131,6 +152,10 @@ var _repair_left := 0.0
 var _repair_time := 0.0
 var _repair_scale := 1.0
 var _repair_blend := 0.0
+## The aim gait's weight over the free locomotion (0 free, 1 aiming), and its clips' ground speed.
+var _aim_blend := 0.0
+var _aim_move_speed := 2.6
+var _aim_move := Vector2.ZERO
 ## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
 var _boards_due := 0
 
@@ -143,6 +168,7 @@ func _ready() -> void:
 	var anim_player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_add_repair_clip(anim_player)
 	_add_grenade_clips(anim_player)
+	_add_aim_move_clips(anim_player)
 	_loop_clips(anim_player)
 	_mount = BoneAttachment3D.new()
 	_mount.name = "WeaponMount"
@@ -184,9 +210,35 @@ func _process(delta: float) -> void:
 	var run_scale := maxf(speed / _tuning.run_clip_speed, 0.4)
 	var run_part := clampf((_move_blend - WALK_POINT) / (0.95 - WALK_POINT), 0.0, 1.0)
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
+	_advance_aim_move(follow)
 	_advance_events(delta)
 	_advance_repair(delta)
 	_advance_shoulder(delta)
+
+
+## The aim gait for the player's velocity in the frame of its facing: where it sits in the 2D
+## blend (x to the right, y ahead; its length is how far it has left the Idle in the middle), and
+## how fast it plays so the feet keep up (ground speed over the clips' own).
+static func aim_move_for(velocity: Vector3, facing: float, clip_speed: float) -> Dictionary:
+	var ahead := Vector3(-sin(facing), 0.0, -cos(facing))
+	var right := Vector3(cos(facing), 0.0, -sin(facing))
+	var local := Vector2(velocity.dot(right), velocity.dot(ahead))
+	var share := local.length() / clip_speed
+	if share < 0.001:
+		return {"position": Vector2.ZERO, "rate": 1.0}
+	var weight := clampf(share / AIM_MOVE_FULL, 0.0, 1.0)
+	var rate := lerpf(1.0, clampf(share, AIM_RATE_MIN, AIM_RATE_MAX), weight)
+	return {"position": local.normalized() * weight, "rate": rate}
+
+
+## The aim gait's place in its blend space now, for tests.
+func aim_move() -> Vector2:
+	return _aim_move
+
+
+## The aim gait's weight over the free locomotion now (0 free, 1 aiming), for tests.
+func aim_weight() -> float:
+	return _aim_blend
 
 
 ## Name of the body state machine's current state, for tests and debugging.
@@ -226,21 +278,18 @@ func play_action(action: StringName) -> bool:
 	return _play_clip(StringName("%s_%s" % [action, weapon_class]))
 
 
-## The pin is out (the server's `cook_started`): the cook clip plays and the gun goes down.
-func grenade_cooking() -> void:
-	_play_clip(GRENADE_COOK)
-
-
-## The grenade left the hand (`grenade_thrown`): the throw, or for the short underarm toss the toss
-## clip; `underarm` is the event's own flag.
-func grenade_thrown(underarm: bool) -> void:
-	_play_clip(GRENADE_TOSS if underarm else GRENADE_THROW)
-
-
-## The grenade is not in the hand any more without a throw (it went off there, or the player was
-## downed): the gun comes back.
-func grenade_gone() -> void:
-	_weapon_visible(true)
+## The Soldier's side of a grenade, by the server's events. `&"cook"` (`cook_started`): the pin is
+## out, the cook clip plays and the gun goes down. `&"throw"` (`grenade_thrown`): the throw clip,
+## or for the short underarm toss the toss clip (`underarm` is the event's own flag). `&"gone"`
+## (it went off in the hand, or the player was downed): the gun comes back.
+func grenade(stage: StringName, underarm: bool = false) -> void:
+	match stage:
+		&"cook":
+			_play_clip(GRENADE_COOK)
+		&"throw":
+			_play_clip(GRENADE_TOSS if underarm else GRENADE_THROW)
+		&"gone":
+			_weapon_visible(true)
 
 
 ## Plays a clip of the spec on the upper body, in place of whatever action it was playing. Returns
@@ -406,6 +455,20 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
+## Follows the aim: while aiming the legs take the aim gait for the direction of travel (the body
+## keeps facing the camera, so moving sideways or back is a strafe or a backpedal).
+func _advance_aim_move(follow: float) -> void:
+	var target := 1.0 if _player.state.aiming else 0.0
+	_aim_blend = lerpf(_aim_blend, target, follow)
+	if absf(_aim_blend - target) < 0.001:
+		_aim_blend = target
+	set(AIM_BLEND_PARAMETER, _aim_blend)
+	var gait := aim_move_for(_player.state.velocity, _player.state.facing, _aim_move_speed)
+	_aim_move = _aim_move.lerp(gait["position"], follow)
+	set(AIM_MOVE_PARAMETER, _aim_move)
+	set(AIM_RATE_PARAMETER, gait["rate"])
+
+
 ## Moves the repair loop on by `delta` seconds: its events (`board_set` only for a board that is
 ## due: one per `board_repaired`, never the loop's own) and the fade in or out of its layer.
 func _advance_repair(delta: float) -> void:
@@ -515,6 +578,23 @@ func _add_grenade_clips(anim_player: AnimationPlayer) -> void:
 	holder.free()
 
 
+## Adds the aim-move clips to the Soldier's own library (the repair clip's recipe) and their
+## entries to the clip spec; their ground speed comes from the same spec.
+func _add_aim_move_clips(anim_player: AnimationPlayer) -> void:
+	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(AIM_MOVE_SPEC))
+	for clip: StringName in AIM_MOVES:
+		_spec["clips"][String(clip)] = spec["clips"][String(clip)]
+	_aim_move_speed = spec["clips"]["Walk_Shoot"]["ground_speed"]
+	var library := anim_player.get_animation_library(&"")
+	if library.has_animation(&"Walk_Shoot"):
+		return
+	var holder := (load(AIM_MOVE_GLB) as PackedScene).instantiate()
+	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	for clip: StringName in AIM_MOVES:
+		library.add_animation(clip, source.get_animation(clip))
+	holder.free()
+
+
 func _loop_clips(anim_player: AnimationPlayer) -> void:
 	var clips: Dictionary = _spec["clips"]
 	for clip: String in clips:
@@ -618,5 +698,20 @@ func _build_locomotion() -> AnimationNodeBlendTree:
 	tree.add_node(&"move", move)
 	tree.add_node(&"run_speed", AnimationNodeTimeScale.new())
 	tree.connect_node(&"run_speed", 0, &"move")
-	tree.connect_node(&"output", 0, &"run_speed")
+	# Aiming: the four directions around Idle; the clips share their length and step together,
+	# so a diagonal is two of them in phase.
+	var aim_move := AnimationNodeBlendSpace2D.new()
+	aim_move.sync = true
+	aim_move.add_blend_point(_clip(&"Idle"), Vector2.ZERO, -1, &"idle")
+	for clip: StringName in AIM_MOVES:
+		aim_move.add_blend_point(
+			_clip(clip), AIM_MOVES[clip], -1, StringName(String(clip).to_snake_case())
+		)
+	tree.add_node(&"aim_move", aim_move)
+	tree.add_node(&"aim_rate", AnimationNodeTimeScale.new())
+	tree.connect_node(&"aim_rate", 0, &"aim_move")
+	tree.add_node(&"aim_blend", AnimationNodeBlend2.new())
+	tree.connect_node(&"aim_blend", 0, &"run_speed")
+	tree.connect_node(&"aim_blend", 1, &"aim_rate")
+	tree.connect_node(&"output", 0, &"aim_blend")
 	return tree

@@ -14,20 +14,38 @@ var _ring: UIFocusRing
 
 
 func _init() -> void:
-	_on = UISpring.new(_tokens.spring_stiffness, _tokens.spring_damping * 0.7)
-	_hover = UISpring.new(_tokens.spring_stiffness, _tokens.spring_damping)
-	_focus = UISpring.new(_tokens.spring_stiffness * 0.7, _tokens.spring_damping * 0.8)
-	_ring = UIFocusRing.new(_tokens, _tokens.control_height)
+	_on = UISpring.new()
+	_hover = UISpring.new()
+	_focus = UISpring.new()
 	toggle_mode = true
 	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	theme_type_variation = UIThemeBuilder.TOGGLE_STYLE
+	_apply_tokens()
+
+
+## Reads the active tokens into everything this control caches: spring tuning and size.
+func _apply_tokens() -> void:
+	_tokens = UITokens.active()
+	_on.stiffness = _tokens.spring_stiffness
+	_on.damping = _tokens.spring_damping * 0.7
+	_hover.stiffness = _tokens.spring_stiffness
+	_hover.damping = _tokens.spring_damping
+	_focus.stiffness = _tokens.spring_stiffness * 0.7
+	_focus.damping = _tokens.spring_damping * 0.8
+	_ring = UIFocusRing.new(_tokens, _tokens.control_height)
 	custom_minimum_size = Vector2(_tokens.control_height * WIDTH_RATIO, _tokens.control_height)
+	queue_redraw()
+
+
+func _on_tokens_changed(_next: UITokens) -> void:
+	_apply_tokens()
 
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
+	UITokens.active_changed().connect(_on_tokens_changed)
 	mouse_entered.connect(_on_mouse_entered)
 	focus_entered.connect(UIAudio.play.bind(&"focus"))
 	toggled.connect(_on_toggled)
@@ -74,7 +92,7 @@ func _draw() -> void:
 	track.set_corner_radius_all(int(radius))
 	track.set_border_width_all(_tokens.border)
 	var off_fill := _tokens.surface_raised.lerp(
-		_tokens.surface_raised.lightened(0.14), _hover.value
+		_tokens.surface_raised.lightened(_tokens.tint_hover), _hover.value
 	)
 	track.bg_color = off_fill.lerp(
 		_tokens.accent.lerp(_tokens.accent_bright, _hover.value), _on.value

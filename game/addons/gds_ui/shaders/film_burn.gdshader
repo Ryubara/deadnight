@@ -14,10 +14,12 @@ uniform float max_dist = 1.2;
 uniform float edge_width : hint_range(0.02, 0.4) = 0.16;
 uniform float noise_scale = 5.0;
 
-const vec3 WHITE_HOT = vec3(1.0, 0.96, 0.78);
-const vec3 AMBER = vec3(1.0, 0.62, 0.16);
-const vec3 EMBER = vec3(0.78, 0.2, 0.05);
-const vec3 CHAR = vec3(0.04, 0.03, 0.03);
+// The colours are the tokens burn_hot, burn_flame, burn_ember and burn_char; UITransitionShader
+// sets them, and these defaults only cover a shader previewed on its own.
+uniform vec3 burn_hot = vec3(1.0, 0.96, 0.78);
+uniform vec3 burn_flame = vec3(1.0, 0.62, 0.16);
+uniform vec3 burn_ember = vec3(0.78, 0.2, 0.05);
+uniform vec3 burn_char = vec3(0.04, 0.03, 0.03);
 
 float value_noise(vec2 p) {
 	vec2 i = floor(p);
@@ -42,9 +44,9 @@ float fbm(vec2 p) {
 
 vec3 fire_ramp(float t) {
 	// t = 0 at the burn front, 1 at the inner edge of the burning band.
-	vec3 c = mix(WHITE_HOT, AMBER, smoothstep(0.0, 0.3, t));
-	c = mix(c, EMBER, smoothstep(0.25, 0.7, t));
-	return mix(c, CHAR, smoothstep(0.65, 1.0, t));
+	vec3 c = mix(burn_hot, burn_flame, smoothstep(0.0, 0.3, t));
+	c = mix(c, burn_ember, smoothstep(0.25, 0.7, t));
+	return mix(c, burn_char, smoothstep(0.65, 1.0, t));
 }
 
 void fragment() {
@@ -57,7 +59,7 @@ void fragment() {
 	vec4 colour = vec4(0.0);
 	if (m >= edge_width) {
 		// Behind the band: char while closing, burned through (clear) while revealing.
-		colour = vec4(CHAR, reveal > 0.5 ? 0.0 : 1.0);
+		colour = vec4(burn_char, reveal > 0.5 ? 0.0 : 1.0);
 	} else if (m >= 0.0) {
 		float t = m / edge_width;
 		float flicker = 0.85 + 0.15 * value_noise(UV * 60.0);
@@ -66,9 +68,9 @@ void fragment() {
 	} else {
 		// Ahead of the front: untouched paper (reveal) or clear with a heat glow (close).
 		float glow = smoothstep(-0.14, 0.0, m);
-		colour = reveal > 0.5 ? vec4(CHAR, 1.0) : vec4(AMBER, glow * 0.35);
+		colour = reveal > 0.5 ? vec4(burn_char, 1.0) : vec4(burn_flame, glow * 0.35);
 		if (reveal > 0.5) {
-			colour.rgb = mix(CHAR, EMBER, glow * 0.6);
+			colour.rgb = mix(burn_char, burn_ember, glow * 0.6);
 		}
 	}
 	COLOR = colour;
