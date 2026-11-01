@@ -67,6 +67,11 @@ var _hand_wait: Dictionary[int, float] = {}
 ## breach and ends when the button comes up, the breach is whole or out of reach, or the player
 ## fires, reloads, swaps, is hit or goes down.
 var _repairing: Dictionary[int, StringName] = {}
+## The breach each player last put a board back across, and how long (s) the body still turns to
+## face it (#245): a repair is allowed by place, not by facing, so the body turns to the boards
+## while the repair clip hammers them. Walking or aiming turns it the player's way as before.
+var _facing_breach: Dictionary[int, StringName] = {}
+var _face_left: Dictionary[int, float] = {}
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
 
@@ -172,6 +177,8 @@ func _leave(player_id: int) -> void:
 		_bodies.erase(player_id)
 		_pending.erase(player_id)
 		_repairing.erase(player_id)
+		_facing_breach.erase(player_id)
+		_face_left.erase(player_id)
 		looks.leave(player_id)
 		rules.apply(RulesAction.remove_player(player_id))
 
@@ -339,6 +346,7 @@ func _act(player_id: int, delta: float) -> void:
 	if command.use:
 		_use(player_id)
 	_hold_repair(player_id, command)
+	_face_breach(player_id, delta)
 	# Edges are used once.
 	command.reload = false
 	command.use = false
@@ -512,6 +520,24 @@ func _repair(player_id: int, breach: StringName) -> void:
 	if _hand_wait[player_id] <= 0.0:
 		_hand_wait[player_id] = tuning.repair_interval
 		rules.apply(RulesAction.repair(player_id, breach))
+		_facing_breach[player_id] = breach
+		_face_left[player_id] = tuning.repair_interval
+
+
+## Turns the body toward the breach it is putting boards back across, at the body's own turn speed,
+## for an interval after each board.
+func _face_breach(player_id: int, delta: float) -> void:
+	var left: float = _face_left.get(player_id, 0.0)
+	if left <= 0.0:
+		return
+	_face_left[player_id] = left - delta
+	var body := _bodies[player_id]
+	var to := world.barricade(_facing_breach[player_id]).global_position - body.global_position
+	if Vector2(to.x, to.z).length() < 0.01:
+		return
+	body.state.facing = rotate_toward(
+		body.state.facing, atan2(-to.x, -to.z), body.tuning.turn_speed * delta
+	)
 
 
 ## The held `use`: goes on with the breach the press began at while the button stays down and the

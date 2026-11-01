@@ -76,7 +76,7 @@ func test_a_strafing_player_faces_the_view_while_firing_then_turns_back_after_th
 	assert_float(_player.rotation.y).is_equal_approx(_rig.yaw, 0.02)
 	await _seconds(0.7)
 	assert_float(_player.rotation.y).is_less(-1.0)
-	_runner.simulate_action_release("move_right")
+	_runner.simulate_action_release("move_back")
 
 
 func test_firing_eases_the_camera_part_of_the_way_into_the_aim_view() -> void:
@@ -190,3 +190,14 @@ func test_the_same_commands_give_the_same_turn_and_trigger_age() -> void:
 		await get_tree().physics_frame
 	assert_float(_player.state.facing).is_equal_approx(first.facing, 0.0001)
 	assert_float(_player.state.fire_age).is_equal_approx(first.fire_age, 0.0001)
+
+
+func test_firing_while_backing_away_keeps_the_run_speed() -> void:
+	# The body faces the view while firing, so backing away is a turn of 180 degrees from its
+	# heading: the pivot rules (a slow walk until the body faces the way) must not apply to it.
+	_runner.simulate_action_press("fire")
+	_runner.simulate_action_press("move_back")
+	await _seconds(1.0)
+	var speed := Vector2(_player.velocity.x, _player.velocity.z).length()
+	assert_float(speed).is_greater(_tuning.run_speed * 0.9)
+	_runner.simulate_action_release("move_back")

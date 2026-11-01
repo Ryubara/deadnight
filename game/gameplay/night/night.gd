@@ -98,6 +98,8 @@ func start(
 	add_child(view)
 	view.setup(state, camera, _telegraphs(), _board_seconds())
 	view.barricade_points = _barricade_points()
+	view.bodies = server.body_of
+	view.repair_interval = func() -> float: return server.tuning.repair_interval
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
 	view.show_crane(world, server.rules.tuning)
 	_add_sounds()
@@ -246,16 +248,6 @@ func _dress_bodies(_player_id: int) -> void:
 func _on_event(event: Dictionary) -> void:
 	if event["type"] == &"game_over":
 		night_over.emit(event["round_reached"])
-	elif event["type"] == &"board_repaired":
-		_show_repair(event["player_id"])
-
-
-## The player who put a board back hammers it home: the repair clip lands on this event.
-func _show_repair(player_id: int) -> void:
-	var body := server.body_of(player_id)
-	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
-	if animation != null:
-		animation.board_repaired(server.tuning.repair_interval)
 
 
 func _make_autopilot() -> void:

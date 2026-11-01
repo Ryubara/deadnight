@@ -32,6 +32,10 @@ document is the *mechanism*, and it is the same everywhere:
   note says it should; `AimResolver` already aimed the muzzle at that point.
 - **The server turns the body**: facing is simulated state and the muzzle is rotated by it, so the trigger travels in
   the player's command and the server decides the turn (no client-only rotation that a replay would disagree with).
+- **Firing is a strafe for the movement**: once the movement turned the body to its heading with pivot rules (#354),
+  a body facing the view looked like one that must turn before it hurries, so a player backing away while shooting
+  crawled. While the trigger is held (and for the hold after) the velocity goes straight to the input, as when aiming
+  (`test_firing_while_backing_away_keeps_the_run_speed`).
 
 ## Open
 
