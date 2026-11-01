@@ -52,7 +52,8 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"fire_rejected",
 ]
 ## What the grenade server answers that is worth sending on (its answer also repeats the rules'
-## events, which ride the rules signal).
+## events, which ride the rules signal). The night adds `throw_started` (player_id, underarm): the
+## button came up and the arm swings; the grenade leaves a moment later (`grenade_thrown`).
 const GRENADE_EVENTS: Array[StringName] = [
 	&"cook_started",
 	&"cook_rejected",
@@ -223,7 +224,10 @@ func _join(player_id: int, local: bool) -> void:
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
 	_repairing[player_id] = &""
-	_throwers[player_id] = GrenadeThrower.new(player_id, grenades.def)
+	var thrower := GrenadeThrower.new(player_id, grenades.def)
+	thrower.release_over = tuning.grenade_release_over
+	thrower.release_under = tuning.grenade_release_under
+	_throwers[player_id] = thrower
 	rules.apply(RulesAction.add_player(player_id))
 	# The melee weapon first, so the firearm is the one in hand.
 	_combat(CombatAction.give_weapon(player_id, tuning.start_melee))
@@ -367,11 +371,11 @@ func _throw_grenades(delta: float) -> void:
 	_grenade(GrenadeAction.players(standing))
 	_grenade(GrenadeAction.targets(_target_list()))
 	for player_id in _bodies:
-		_throw_of(player_id)
+		_throw_of(player_id, delta)
 	_grenade(GrenadeAction.tick(delta))
 
 
-func _throw_of(player_id: int) -> void:
+func _throw_of(player_id: int, delta: float) -> void:
 	var thrower: GrenadeThrower = _throwers[player_id]
 	var command := _pending.get(player_id) as NightCommand
 	var motion := PlayerCommand.new()
@@ -390,7 +394,19 @@ func _throw_of(player_id: int) -> void:
 		+ Vector3.UP * grenades.def.hand_height
 		+ flat * tuning.grenade_hand_reach
 	)
-	for action in thrower.step(motion, hand, aim, body.state.velocity):
+	var actions := thrower.step(motion, hand, aim, body.state.velocity, delta)
+	if thrower.swing_began() != &"":
+		(
+			_outbox
+			. append(
+				{
+					"type": &"throw_started",
+					"player_id": player_id,
+					"underarm": thrower.swing_began() == &"under",
+				}
+			)
+		)
+	for action in actions:
 		_grenade(action)
 
 
@@ -410,7 +426,7 @@ func _grenade(action: Dictionary) -> void:
 				if event["in_hand"]:
 					_throwers[event["thrower_id"]].abandon()
 			&"blast_hit":
-				sim.react_to_hit(event["target_id"])
+				sim.blast(event["target_id"], event["impulse"], event["stun"])
 			&"player_blasted":
 				_blast_player(event, blast_at)
 

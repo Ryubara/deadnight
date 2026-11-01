@@ -33,7 +33,7 @@ const SPECTATOR_OFFSET := Vector3(0.0, 11.0, 8.0)
 const SWITCH_RESUME_MARGIN := 0.15
 ## The server's events that move the Soldier's grenade clips.
 const GRENADE_CLIP_EVENTS: Array[StringName] = [
-	&"cook_started", &"grenade_thrown", &"grenade_dropped", &"grenade_exploded"
+	&"cook_started", &"throw_started", &"grenade_dropped", &"grenade_exploded"
 ]
 
 var mode := Mode.HUMAN
@@ -459,7 +459,7 @@ func _show_grenade(event: Dictionary) -> void:
 	match event["type"]:
 		&"cook_started":
 			animation.grenade_cooking()
-		&"grenade_thrown":
+		&"throw_started":
 			animation.grenade_thrown(event["underarm"])
 		&"grenade_dropped":
 			animation.grenade_gone()

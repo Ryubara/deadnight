@@ -58,6 +58,10 @@ extends Resource
 ## Seconds after a stagger in which another weak-spot hit does not stagger it again: a rifle that
 ## hits the lamp every shot must not hold the boss still for ever.
 @export var boss_stagger_cooldown: float = 6.0
+## The fastest a blast may throw a zombie (m/s), and how fast the throw slows down (m/s per second):
+## at the grenade's 7 m/s a zombie in the middle of a blast slides 1.75 m.
+@export var push_max_speed: float = 8.0
+@export var push_decay: float = 14.0
 ## Seconds a dead zombie stays down before it is cleared.
 @export var death_seconds: float = 2.5
 

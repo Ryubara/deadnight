@@ -10,6 +10,8 @@ const SETTLE := 30
 ## Time for the first zombie to finish rising before the throw.
 const EMERGE_TICKS := 150
 const COOK_TICKS := 20
+## From the button coming up to the grenade leaving the hand (0.375 s of the clip) and a little.
+const WIND_TICKS := 30
 const FLIGHT_LIMIT := 600
 ## The break before round one: long enough to throw in, short enough to wait out.
 const INTRO_SECONDS := 1.0
@@ -29,13 +31,19 @@ func before_test() -> void:
 	var tuning := RulesFixture.tuning()
 	tuning.rounds.intro_seconds = INTRO_SECONDS
 	_night = await NightFixture.start(self, Night.Mode.MANUAL, tuning, 7, _hud)
-	_night.state.event_received.connect(func(event: Dictionary) -> void: _heard.append(event))
+	_night.state.event_received.connect(_hear)
 	NightFixture.run(_night, SETTLE)
 
 
 func after_test() -> void:
+	# A night left to the next frames keeps flying its grenades: they must not reach the next test.
+	_night.state.event_received.disconnect(_hear)
 	_key(KEY_G, false)
 	_key(KEY_H, false)
+
+
+func _hear(event: Dictionary) -> void:
+	_heard.append(event)
 
 
 func _key(code: Key, pressed: bool) -> void:
@@ -48,8 +56,12 @@ func _key(code: Key, pressed: bool) -> void:
 
 ## `ticks` ticks of the night, each sending what the human controller reads from the input now.
 func _play(ticks: int) -> void:
+	var animation := _night.player().get_node("AnimationTree") as PlayerAnimation
 	for _i in ticks:
 		NightFixture.run(_night, 1, _controller.command(_night.player(), 1))
+		# The Soldier follows frames, which a hand-run night has none of: step him by the tick.
+		animation._process(Night.STEP)
+		animation.advance(Night.STEP)
 
 
 func _count(type: StringName) -> int:
@@ -110,7 +122,7 @@ func test_letting_go_throws_it_and_it_flies() -> void:
 	_key(KEY_G, true)
 	_play(COOK_TICKS)
 	_key(KEY_G, false)
-	_play(5)
+	_play(WIND_TICKS)
 	assert_int(_count(&"grenade_thrown")).is_equal(1)
 	assert_int(_night.server.grenades.grenades_in_flight()).is_equal(1)
 
@@ -120,7 +132,7 @@ func test_the_underarm_key_tosses_a_grenade_too() -> void:
 	_key(KEY_H, true)
 	_play(COOK_TICKS)
 	_key(KEY_H, false)
-	_play(5)
+	_play(WIND_TICKS)
 	assert_bool(_first(&"grenade_thrown").get("underarm", false)).is_true()
 
 
@@ -130,7 +142,7 @@ func test_the_grenade_goes_off_and_kills_a_zombie_beside_it() -> void:
 	_key(KEY_G, true)
 	_play(COOK_TICKS)
 	_key(KEY_G, false)
-	_play(3)
+	_play(WIND_TICKS)
 	var thrown := _first(&"grenade_thrown")
 	assert_bool(thrown.is_empty()).is_false()
 	if thrown.is_empty():
@@ -153,7 +165,7 @@ func test_the_view_draws_the_grenade_while_it_flies() -> void:
 	_key(KEY_G, true)
 	_play(COOK_TICKS)
 	_key(KEY_G, false)
-	_play(5)
+	_play(WIND_TICKS)
 	assert_int(_night.view.grenades_in_flight()).is_equal(1)
 	assert_int(_night.view.find_children("*", "GrenadeView", true, false).size()).is_equal(1)
 
@@ -178,7 +190,7 @@ func test_a_grenade_held_until_it_goes_off_hurts_the_thrower_once() -> void:
 	# The key is still down: it does not pull another pin until it is let go.
 	assert_int(_count(&"cook_started")).is_equal(1)
 	_key(KEY_G, false)
-	_play(5)
+	_play(WIND_TICKS)
 	_key(KEY_G, true)
 	_play(COOK_TICKS)
 	assert_int(_count(&"cook_started")).is_equal(2)
@@ -191,7 +203,7 @@ func test_with_none_left_the_key_throws_nothing_and_says_so_once() -> void:
 		_key(KEY_G, true)
 		_play(COOK_TICKS)
 		_key(KEY_G, false)
-		_play(5)
+		_play(WIND_TICKS)
 	assert_int(_count(&"grenade_thrown")).is_equal(carried)
 	assert_int(_night.server.rules.grenades_of(1)).is_equal(0)
 	_key(KEY_G, true)
@@ -220,8 +232,107 @@ func test_the_soldier_plays_the_pin_and_the_throw() -> void:
 	_key(KEY_G, false)
 	_play(3)
 	assert_str(String(animation.action_clip)).is_equal("Grenade_Throw")
+	_play(WIND_TICKS)
 	_key(KEY_H, true)
 	_play(COOK_TICKS)
 	_key(KEY_H, false)
 	_play(3)
 	assert_str(String(animation.action_clip)).is_equal("Grenade_Toss")
+
+
+## The tick (counted from the start of the play) at which `event` is first heard, or -1.
+func _tick_of(type: StringName) -> int:
+	for index in _heard.size():
+		if _heard[index]["type"] == type:
+			return index
+	return -1
+
+
+func test_the_grenade_leaves_the_hand_as_the_throw_clip_lets_go() -> void:
+	_into_the_round()
+	var animation := _night.player().get_node("AnimationTree") as PlayerAnimation
+	var released: Array[float] = []
+	var thrown_at: Array[float] = []
+	var clock := [0.0]
+	animation.clip_event.connect(
+		func(_clip: StringName, event: StringName) -> void:
+			if event == &"release":
+				released.append(clock[0])
+	)
+	_night.state.event_received.connect(
+		func(event: Dictionary) -> void:
+			if event["type"] == &"grenade_thrown":
+				thrown_at.append(clock[0])
+	)
+	_key(KEY_G, true)
+	_play(COOK_TICKS)
+	_key(KEY_G, false)
+	for _i in WIND_TICKS * 2:
+		_play(1)
+		clock[0] += 1.0 / TICKS_PER_SECOND
+	assert_array(thrown_at).has_size(1)
+	assert_array(released).has_size(1)
+	assert_float(released[0]).is_equal_approx(thrown_at[0], 0.07)
+	# Not at the button: the throw takes the clip's time to reach its release frame.
+	assert_float(thrown_at[0]).is_greater(0.3)
+
+
+func test_the_swing_is_announced_when_the_button_comes_up() -> void:
+	_into_the_round()
+	_key(KEY_G, true)
+	_play(COOK_TICKS)
+	_key(KEY_G, false)
+	_play(2)
+	assert_int(_count(&"throw_started")).is_equal(1)
+	assert_int(_count(&"grenade_thrown")).is_equal(0)
+	assert_bool(_first(&"throw_started")["underarm"]).is_false()
+	_play(WIND_TICKS)
+	assert_int(_count(&"grenade_thrown")).is_equal(1)
+	assert_int(_tick_of(&"throw_started")).is_less(_tick_of(&"grenade_thrown"))
+
+
+func test_a_long_cook_holds_the_cook_pose_until_the_button_comes_up() -> void:
+	_into_the_round()
+	var animation := _night.player().get_node("AnimationTree") as PlayerAnimation
+	_key(KEY_G, true)
+	_play(TICKS_PER_SECOND / 2)
+	var held_at := _upper_arm_angle(animation)
+	_play(TICKS_PER_SECOND * 2)
+	assert_str(String(animation.action_clip)).is_equal("Grenade_Cook")
+	assert_bool(animation.get("parameters/action/active")).is_true()
+	assert_float(_upper_arm_angle(animation)).is_equal_approx(held_at, 0.01)
+	_key(KEY_G, false)
+	_play(2)
+	assert_str(String(animation.action_clip)).is_equal("Grenade_Throw")
+
+
+func test_the_grenade_is_in_the_hand_from_the_pin_to_the_release() -> void:
+	_into_the_round()
+	var animation := _night.player().get_node("AnimationTree") as PlayerAnimation
+	var grenade := animation.weapon_mount().get_node("Grenade") as Node3D
+	assert_bool(grenade.visible).is_false()
+	_key(KEY_G, true)
+	_play(COOK_TICKS)
+	assert_bool(grenade.visible).is_true()
+	_key(KEY_G, false)
+	_play(WIND_TICKS)
+	assert_int(_count(&"grenade_thrown")).is_equal(1)
+	assert_bool(grenade.visible).is_false()
+
+
+func test_a_grenade_that_goes_off_in_the_hand_leaves_the_hand_empty_and_the_gun_back() -> void:
+	_into_the_round()
+	var animation := _night.player().get_node("AnimationTree") as PlayerAnimation
+	var grenade := animation.weapon_mount().get_node("Grenade") as Node3D
+	_key(KEY_G, true)
+	_play(roundi(_night.server.grenades.def.fuse * TICKS_PER_SECOND) + 20)
+	assert_bool(_first(&"grenade_exploded").get("in_hand", false)).is_true()
+	assert_bool(grenade.visible).is_false()
+	assert_str(String(animation.action_clip)).is_equal("")
+
+
+## How far the right upper arm is turned from straight, from the skeleton as it stands now.
+func _upper_arm_angle(animation: PlayerAnimation) -> float:
+	var skeleton := animation.weapon_mount().get_parent() as Skeleton3D
+	var bone := skeleton.find_bone("UpperArm.R")
+	return skeleton.get_bone_pose_rotation(bone).get_angle()
