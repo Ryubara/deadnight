@@ -82,10 +82,11 @@ func _on_frame() -> void:
 	var weapon: StringName = me["weapon"]
 	if state.weapon_id == &"" and weapon != &"":
 		HudLoadout.equip(weapon, me["ammo"], me["reserve"], state)
-	_set_prompt(me["prompt"])
+	show_prompt(me["prompt"])
 
 
-func _set_prompt(prompt: Dictionary) -> void:
+## Puts what `NightServer.use_target` found on the HUD's prompt card, or clears it.
+func show_prompt(prompt: Dictionary) -> void:
 	var state := _hud.state
 	var kind: StringName = prompt.get("kind", &"")
 	match kind:
