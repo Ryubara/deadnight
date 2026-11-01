@@ -1,6 +1,6 @@
 class_name PlayerAnimation
 extends AnimationTree
-## Drives the Soldier's built-in clips from the player's movement.
+## Drives the Soldier's clips (bare names, docs/design/animation.md) from the player's movement.
 ##
 ## The tree is built here, in code, so the clip names live in one place:
 ##   locomotion: Idle <-> Run blended by speed, and the same pair in an aiming pose (Idle_Shoot held
@@ -8,26 +8,19 @@ extends AnimationTree
 ##   jump -> fall -> land -> locomotion for leaving the ground and coming back.
 ## The Run clips play at a time scale of ground speed / run_clip_speed so the feet do not slide.
 
-const CLIP_PREFIX := "CharacterArmature|"
 const LOOPED := ["Idle", "Run", "Run_Gun", "Jump_Idle", "Idle_Shoot"]
-## The Soldier carries every weapon on its right hand; show exactly one.
-const WEAPON := "AK"
-const WEAPONS := [
-	"Revolver",
-	"Sniper",
-	"Revolver_Small",
-	"Pistol",
-	"SMG",
-	"GrenadeLauncher",
-	"ShortCannon",
-	"Shotgun",
-	"Sniper_2",
-	"RocketLauncher",
-	"AK",
-	"Shovel",
-	"Knife_2",
-	"Knife_1",
-]
+## The Soldier's file carries no weapon: one is attached to the hand bone with the measured gun hold
+## (docs/design/animation.md, "Weapons in the hand").
+const WEAPON_SCENE := preload("res://assets/weapons/lever_rifle/lever_rifle.glb")
+const HAND_BONE := "Index1.R"
+const HOLD_GUN := Transform3D(
+	Basis(
+		Vector3(-0.062527, -0.997926, -0.015303),
+		Vector3(0.118606, -0.022655, 0.992683),
+		Vector3(-0.990971, 0.060254, 0.119776)
+	),
+	Vector3(-0.039563, 0.197228, -0.070351)
+)
 
 const STATE_LOCOMOTION := &"locomotion"
 const STATE_JUMP := &"jump"
@@ -48,7 +41,7 @@ func _ready() -> void:
 	var model := _player.get_node("Model")
 	var anim_player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_loop_clips(anim_player)
-	_show_one_weapon(model)
+	_attach_weapon(model)
 	self.anim_player = get_path_to(anim_player)
 	tree_root = _build_tree()
 	active = true
@@ -90,19 +83,29 @@ func _on_landed(_impact_speed: float) -> void:
 
 func _loop_clips(anim_player: AnimationPlayer) -> void:
 	for clip: String in LOOPED:
-		anim_player.get_animation(CLIP_PREFIX + clip).loop_mode = Animation.LOOP_LINEAR
+		anim_player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
 
 
-func _show_one_weapon(model: Node) -> void:
-	for weapon: String in WEAPONS:
-		var mesh := model.find_child(weapon, true, false) as Node3D
-		if mesh != null:
-			mesh.visible = weapon == WEAPON
+## The BoneAttachment3D that carries the weapon, for tests and debugging.
+func weapon_mount() -> BoneAttachment3D:
+	return _player.get_node("Model").find_child("WeaponMount", true, false) as BoneAttachment3D
+
+
+func _attach_weapon(model: Node) -> void:
+	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
+	var mount := BoneAttachment3D.new()
+	mount.name = "WeaponMount"
+	mount.bone_name = HAND_BONE
+	skeleton.add_child(mount)
+	var weapon := WEAPON_SCENE.instantiate() as Node3D
+	weapon.name = "Weapon"
+	weapon.transform = HOLD_GUN
+	mount.add_child(weapon)
 
 
 func _clip(clip_name: String) -> AnimationNodeAnimation:
 	var node := AnimationNodeAnimation.new()
-	node.animation = StringName(CLIP_PREFIX + clip_name)
+	node.animation = StringName(clip_name)
 	return node
 
 

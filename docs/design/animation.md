@@ -152,5 +152,8 @@ godot --headless --path game --import
 godot --headless --path game -s res://tests/art/check_soldier_clips.gd   # CLIPS/POSE/SPLIT lines, exit 0
 ```
 
-`<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is a third-party-derived file: committing it and
-its licence entry is a maintainer decision.
+`<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is third-party-derived (CC0); it is committed with
+its licence entry (`game/assets/characters/soldier/LICENSE.md`, approved by the maintainer in issue #90).
+
+The player controller (`game/gameplay/player/player_animation.gd`) plays the clips by these bare names and attaches
+the lever rifle to `Index1.R` with `HOLD_GUN`; the file itself carries no weapon.

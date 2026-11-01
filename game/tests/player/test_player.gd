@@ -390,12 +390,17 @@ func test_idle_then_run_then_jump_states() -> void:
 	assert_str(animation.current_state()).is_equal("locomotion")
 
 
-func test_only_one_weapon_is_visible() -> void:
-	var visible := 0
-	for weapon: String in PlayerAnimation.WEAPONS:
-		if (_player.find_child(weapon, true, false) as Node3D).visible:
-			visible += 1
-	assert_int(visible).is_equal(1)
+func test_the_weapon_rides_the_right_hand() -> void:
+	var animation := _player.get_node("AnimationTree") as PlayerAnimation
+	var mount := animation.weapon_mount()
+	assert_object(mount).is_not_null()
+	assert_str(mount.bone_name).is_equal(PlayerAnimation.HAND_BONE)
+	assert_int(mount.get_child_count()).is_equal(1)
+	var weapon := mount.get_child(0) as Node3D
+	assert_bool(weapon.is_visible_in_tree()).is_true()
+	# The grip follows the hand bone, so it sits beside the Soldier at about hand height.
+	var hand := mount.global_position - _player.global_position
+	assert_float(hand.y).is_between(0.4, 1.6)
 
 
 func test_footsteps_follow_distance_run() -> void:
