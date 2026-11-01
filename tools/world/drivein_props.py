@@ -13,6 +13,11 @@ from pathlib import Path
 SCENES = Path("game/world/drive_in/fixtures")
 MODELS = "res://assets/drivein"
 
+# Props on the boards' layer (world/drive_in/barricade.gd BOARD_LAYER): solid for players only, so a thin pole never
+# pulls the shoulder camera in nor stops a shot; the walking mesh still goes round them.
+PLAYER_ONLY = {"speaker_post"}
+BOARD_LAYER = 2
+
 # name -> collision shapes in the prop's own frame: ("box", size, centre) or ("cyl", (radius, height), centre).
 FIXTURES = {
     "speaker_post": [("cyl", (0.08, 1.45), (0, 0.725, 0))],
@@ -64,15 +69,17 @@ def write_scenes() -> None:
             '[node name="Model" parent="." instance=ExtResource("model")]',
             "",
         ]
+        layer = [f"collision_layer = {BOARD_LAYER}"] if name in PLAYER_ONLY else []
         for i, (kind, size, (x, y, z)) in enumerate(shapes, start=1):
             t = f"Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {x:g}, {y:g}, {z:g})"
             node = "Blocker" if len(shapes) == 1 else f"Blocker{i}"
+            head = [f"transform = {t}", "visible = false", "use_collision = true", *layer]
             if kind == "box":
-                out += [f'[node name="{node}" type="CSGBox3D" parent="."]', f"transform = {t}", "visible = false",
-                        "use_collision = true", "size = Vector3({:g}, {:g}, {:g})".format(*size), ""]  # fmt: skip
+                out += [f'[node name="{node}" type="CSGBox3D" parent="."]', *head,
+                        "size = Vector3({:g}, {:g}, {:g})".format(*size), ""]  # fmt: skip
             else:
-                out += [f'[node name="{node}" type="CSGCylinder3D" parent="."]', f"transform = {t}", "visible = false",
-                        "use_collision = true", f"radius = {size[0]:g}", f"height = {size[1]:g}", "sides = 8", ""]  # fmt: skip
+                out += [f'[node name="{node}" type="CSGCylinder3D" parent="."]', *head,
+                        f"radius = {size[0]:g}", f"height = {size[1]:g}", "sides = 8", ""]  # fmt: skip
         (SCENES / f"{name}.tscn").write_text("\n".join(out).rstrip() + "\n", encoding="utf-8", newline="\n")
 
 

@@ -163,6 +163,38 @@ zombie's pattern, instead of the kit's 2-4 flat materials per asset. Faces colla
 look stays flat and the colours above stay the palette, and a whole family batches into fewer draw calls. Converting
 a kit asset is a palette remap: each flat material becomes a swatch in the family atlas.
 
+## Lot surfaces
+
+The lot's CSG boxes are painted, not modelled: `tools/world/build_lot_textures.py` writes eight greyscale patterns,
+the 30 materials that tint them and the small shader that draws them (`game/assets/lot/`). The kit has no textures,
+so a pattern only says what a surface is, in two to four flat tones with hard edges; the colour is the material's
+tint, from the palette above.
+
+| Rule | Value |
+| --- | --- |
+| Textures | 256 x 256 greyscale PNG, lossless, mipmapped (set in the `.import`: a headless import leaves mipmaps off), 0.4-4.6 KB each |
+| Patterns and tile | asphalt 4 m (three blotch tones, chips, cracks), gravel 2 m, concrete 4 m (2 m slabs), planks 2 m (0.25 m boards), corrugated 2 m (0.125 m ribs), blocks 3.2 m (0.4 x 0.2 m, running bond), diner tiles 2 m (0.5 m), shutter 2 m (0.125 m slats) |
+| Tones | the lightest tone is 250 of 255, so the tint is the surface's colour; seams and gaps 100-150, never black |
+| Projection | the lot shader (`game/assets/lot/lot_surface.gdshader`) projects the pattern in world space onto each face's own plane: a box of any size keeps its pattern at true scale and needs no UVs. One texture read a pixel; Godot's triplanar (three reads) cost about 10 ms a night frame in the software-rendered web build |
+| Shading | matte: Lambert diffuse, no specular term (cheaper per light), metallic 0; the kit's 0.4 metallic only darkens a surface with nothing to reflect |
+| Tints | ground: asphalt `#5a5d66` (field) and `#4a4c54` (road), gravel `#7a705a` (yard), `#544c3c` (back lot); walls: blocks `#d8b67a` (stand), `#9a9ca6` (booth); corrugated Grey (midway), Tree_Green (yard), Blue (containers); planks `#7d6446` (fence) |
+| Doors | the purchase doors are Yellow `#d1ab46` shutters, and nothing else is: no surface keeps the greybox's debug red |
+| Paint | parking lines `#d8d2bc`, 0.12 x 5 m, between every two stalls of a row; the road's centre line Yellow, 3 m dashes every 6 m; each set one `MultiMesh` (one draw call) |
+
+## Props
+
+The lot's props (`tools/blender/build_props.py`, [the lot](map.md#props)) follow these numbers:
+
+| Rule | Value |
+| --- | --- |
+| Scale | 0.8, the kit's factor: a Broken Car is 4.4 m long (the lot's cars are 4.5 m), a shipping container 3.5 x 1.7 x 1.7 m (the kit's container is shorter than its characters; kept, it is the kit's look) |
+| Origin | the middle of the footprint, on the ground |
+| Atlas | one family palette, 40 x 40, 8 px swatches: the kit's 17 prop colours and a DarkRed for the Gas Can's default grey; each kit material takes the nearest swatch; roughness 0.415, metallic 0 (the kit's 0.4 reads dark at night with nothing to reflect) |
+| Files | `.gltf` + `.bin` per prop, all pointing at one `props_palette.png`, so the texture is loaded once |
+| Triangles | 108-1,454 for props under 3 m (budget 800 / 1.5k), Shipping Container 1,336 (budget 5k); the Tires (1,776) are cut with a collapse decimation to just under the budget, and the Broken Car (5,432) to 2,327, because the lot has 19 wrecks; the far level is Godot's generated LOD |
+| Web cost | the field the night starts on went from 164 draw calls and 2k triangles to 109 and 28k (a car is one model over two hidden blocks, where it was two drawn boxes). On a GPU (Chrome, no frame cap) the night's frame p50 stayed at about 3 ms; in Chromium's software renderer (SwiftShader, CI) it went from 83 to 100 ms, one 60 Hz frame |
+| Parked car | the lot's own sedan, 424 tris, five paints: chamfers of 80 mm on body and cabin (the big-prop rule), the rest hard; 76 of them stand on the field, so every part is a plain box or an 8-sided wheel |
+
 ## Modular characters
 
 The Soldier's parts (`tools/blender/build_soldier_parts.py`, [characters](characters.md)) follow these numbers:

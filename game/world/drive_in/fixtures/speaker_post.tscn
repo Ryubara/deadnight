@@ -10,6 +10,7 @@
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.725, 0)
 visible = false
 use_collision = true
+collision_layer = 2
 radius = 0.08
 height = 1.45
 sides = 8

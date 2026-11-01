@@ -4,7 +4,7 @@ extends Node3D
 ## over-the-shoulder camera and a stand-in player. A scripted demo (`RangeDemo`) fires every weapon.
 ##
 ## It is a client of the server code, wired the way the game will be: the client predicts the
-## tracer and flash at once, sends a `CombatAction.fire` through a `LoopbackLink` (plain bytes), and
+## flash and impact at once, sends a `CombatAction.fire` through a `LoopbackLink` (plain bytes), and
 ## the answer, damage numbers, kills, points, comes back as events. Not part of the game; there is
 ## no controller here (#14), only the camera offsets a controller will need.
 
@@ -150,17 +150,17 @@ func zombie_position(slot: int) -> Vector3:
 
 ## The look of a shot, drawn from the client's own copy of the world before the server answers.
 func _predict(def: WeaponDef, origin: Vector3, dir: Vector3, muzzle: Vector3) -> void:
-	effects.muzzle_flash(muzzle)
 	if def.is_projectile():
+		effects.muzzle_flash(muzzle)
 		return
 	var seed_value := AimResolver.shot_seed(SEED, PLAYER_ID, _seq)
 	var shot := AimResolver.trace_hitscan(
 		def, origin, dir, muzzle, _client_targets(), _probe.callable(), seed_value
 	)
+	var ends: Array = []
 	for pellet: Dictionary in shot["pellets"]:
-		effects.tracer(muzzle, pellet["end"])
-		if pellet["hits"].is_empty() and muzzle.distance_to(pellet["end"]) < def.max_range - 0.1:
-			effects.spark(pellet["end"])
+		ends.append(pellet["end"])
+	effects.shot(def, muzzle, ends)
 
 
 func _client_targets() -> Dictionary:
