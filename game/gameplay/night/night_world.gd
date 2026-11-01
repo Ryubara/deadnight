@@ -74,7 +74,7 @@ func bind(rules: GameRules) -> void:
 	_generator = rules.generator
 	switches.show_all(_generator)
 	for id: StringName in _barricades:
-		_barricades[id].set_boards(rules.barricades.boards_of(id))
+		_barricades[id].set_boards(rules.barricades.boards_of(id), false)
 	rules.event_emitted.connect(_on_rules_event)
 
 
@@ -187,7 +187,7 @@ func _on_rules_event(event: Dictionary) -> void:
 		&"board_torn", &"board_repaired":
 			var barricade: Barricade = _barricades.get(StringName(event["barricade_id"]))
 			if barricade != null:
-				barricade.set_boards(event["boards"])
+				barricade.set_boards(event["boards"])  # torn or mended: the count says which
 
 
 func player_spawn(index: int) -> Vector3:

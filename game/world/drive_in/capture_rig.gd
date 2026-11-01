@@ -1,6 +1,7 @@
 extends Node3D
 ## Places the camera for a greybox capture. Pick the view with a user argument after `--`:
-## `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`.
+## `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`, and the
+## props' views `yard_drums|yard_east|backlot_rows|road_block|alley|midway_court`.
 ## Not used in the game.
 ##
 ## Third-person views (`--view=tp:<CameraProbes marker>`) put the camera where the player's shoulder
@@ -18,6 +19,13 @@ const VIEWS := {
 	"backlot": [Vector3(-20, 1.7, 34), Vector3(-46, 2.0, 12)],
 	"road": [Vector3(8, 1.7, 56), Vector3(-34, 1.2, 57)],
 	"plaza": [Vector3(0, 1.7, 58), Vector3(0, 2.5, 40)],
+	# The props (tools/world/lot_props.py), at the player's eye height.
+	"yard_drums": [Vector3(25, 1.7, 15), Vector3(23, 0.8, 4)],
+	"yard_east": [Vector3(45, 1.7, 21), Vector3(56, 1.0, 24)],
+	"backlot_rows": [Vector3(-19, 1.7, 9), Vector3(-45, 1.0, 13)],
+	"road_block": [Vector3(38, 1.7, 55), Vector3(54, 1.0, 56)],
+	"alley": [Vector3(-12.5, 1.7, 6), Vector3(-13.5, 0.8, -3)],
+	"midway_court": [Vector3(14, 1.7, 17), Vector3(9, 1.0, 29)],
 }
 const TOP_SIZE := 128.0  # orthographic size (the vertical extent in metres) of the whole-lot view
 const TOP_CENTRE := Vector3(0, 0, 6)
@@ -100,6 +108,7 @@ func _set_labels_visible(on: bool) -> void:
 func _flood_light() -> void:
 	var env := ($DriveInGreybox/Lighting/WorldEnvironment as WorldEnvironment).environment
 	env.ambient_light_energy = 2.2
+	env.fog_enabled = false  # from 100 m up the night's fog hides the plan
 	var moon := _lighting.get_node("Moon") as DirectionalLight3D
 	moon.light_energy = 1.0
 	for light in get_tree().get_nodes_in_group("powered_light"):

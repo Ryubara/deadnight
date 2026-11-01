@@ -178,7 +178,7 @@ Shop (prices at round 1):
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
-| Ammunition: revolver / tommy gun / shotgun / rifle / flare gun | 50 / 90 / 80 / 100 / 120 | rounds added: 20 / 60 / 8 / 8 / 2 (see [ammunition](#ammunition)) |
+| Ammunition: revolver / tommy gun / shotgun / rifle / flare gun | 50 / 90 / 80 / 80 / 90 | rounds added: 20 / 60 / 8 / 8 / 2 (see [ammunition](#ammunition)) |
 
 Generator: 100 units; it burns 0.03 a second idle plus each lit circuit (screen lot 0.06,
 concession 0.05, booth 0.08, back lot 0.07), grows 3% a round, and burns at half rate in breaks.
@@ -214,7 +214,7 @@ round's own value, so every type grows with the night. The look is a variant fro
 | runner | runner | x0.55 | x1.7 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 4.5 m/s |
 | crawler | crawler | x0.7 | x0.5 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
 | brute | brute | x2.5 | x0.6 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
-| headliner (boss) | its own, from the artist | x15, +100% per extra player | x0.8 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
+| headliner (boss) | its own, from the artist | x13, +100% per extra player | x0.8 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
 **One at a time.** A type's first round brings an exact number (`intro_count`), so every player meets
 each one on the same round and never "maybe": the runner on round 4, the crawler on 6, the brute on 8.
@@ -274,7 +274,8 @@ the pillars.
   compounding after round 8 so a starting weapon stops being enough and the shop matters), and
   darker (ambient falls from 0.60 to 0.15 by round 14).
 - **Fast ones are rare and capped.** A zombie never exceeds 4.5 m/s, below a sprinting player
-  (the controller's sprint is assumed near 6 m/s; revisit with the controller). The runner (the old
+  (the controller's sprint is 7.0 m/s, its run 4.8; how that compares with the original games is in
+  [movement speeds](../research/movement-speeds.md)). The runner (the old
   sprinter, now a type) arrives on round 4 and settles at three in ten, fragile enough that a
   good shot ends it, so late rounds pressure positioning instead of simple running.
 - **The lot cap protects the web build and the player.** At most 6 alive in round 1, rising 0.8 a round to 28;
@@ -360,9 +361,22 @@ the booth), and what they buy, in order. Each night draws its own skill within 2
 a spread of nights. They shoot only what they can see (view range falls with the light), face one of four sides
 at a time, revive each other in six seconds and mend between rounds, and pick the weapon with the best sustained
 damage a second. **Not modelled, because the game has none of it yet:** tonic effects (the tonics are shop
-entries that do nothing, so the modelled players do not buy them), ammunition running out (the night resupplies
-every weapon each round; #152 replaces that) and wall-buys. Grenades, repair, the fence's boards (the simulator
-keeps its own six-second barrier), melee and the doors' geometry are not modelled either.
+entries that do nothing, so the modelled players do not buy them). Grenades, repair, the fence's boards (the
+simulator keeps its own six-second barrier) and the doors' and spots' geometry (they only cost points) are not
+modelled either.
+
+**Ammunition and the shop** (#152). The players carry the revolver and the crowbar from the start and every weapon
+they buy or win with the reserve the weapon gives; rounds only come from the shop, at the shop's price for the
+rounds that fit (`NightSim` asks the rules the same `buy` the night does). Between rounds a player, in order: buys
+fuel, buys rounds up to a reserve of `ammo_floor_mags` magazines for each weapon worth shooting (at least half the
+best one's sustained damage), buys the things they are saving for, and with what is left over (keeping the price of
+the next goal) tops the reserves up (weak players to half, the others to full). Before a special round, which the
+marquee announces, everyone fills up first. In a round a player takes another loaded weapon in hand when it does 40%
+more damage a second to the target in front of them (a shotgun for what is at the door, the rifle for what is far;
+weak players do not); a weapon that runs dry is put away for the next; when what is left is worth less than three
+quarters of the best weapon carried and the player has points, they run to a locker (8 s without shooting) and buy
+rounds; with nothing to shoot and nothing to pay with they swing the crowbar (130 points a kill, at arm's length
+only). Reserves, reloads and prices are the game's own numbers.
 
 **The change that made this honest** (#188). The first simulator shot a stand-in table (a rifle at 210 damage a
 second). With the real definitions and reloads the best weapon is the SMG at about 100 and the rifle comes
@@ -374,47 +388,59 @@ medians of the gate's cells (1 player unless noted):
 | --- | ---: | ---: | ---: | ---: |
 | Stand-in table, old tuning (as merged in #166) | 5 | 11 | 13 / 15 | 14 |
 | Real weapons, lit circuits that cost fuel, old tuning | 3 | 4 | 8 / 9 | 10 |
-| Real weapons, retuned (the tables on this page) | 5 | 12 | 14 / 15 | 15 |
+| Real weapons, retuned, ammunition free (as merged in #197) | 5 | 12 | 14 / 15 | 15 |
+| Finite ammunition bought at the shop's prices, the boss retuned (#152, the tables on this page) | 5 | 11 | 12 / 14 | 14 |
+
+Finite ammunition cost the average solo player one round and the others up to one: the gate's ranges hold for
+every median. It did fail one target, the first boss night's toll on weak players (84% die at 300 nights, 90% on the
+gate's 60 at seed 4000, limit 85%), and the one retune is the headliner's health, **15 to 13 times a walker's**: a
+weak player has the revolver and what they could pay for, so the boss costs them more than it did when every reserve
+was full. At 14 it kills 80%, at 13 72% (74% before), at 12 63%; the average solo player's boss night is 8% either
+way. What it changes is who is hard pressed: reserves are small (a revolver holds 90 rounds at most,
+a shotgun 54) against a round-10 horde of 21 that takes some 150 revolver rounds, so the late rounds are fought
+from the lockers.
 
 The retune made the dead fewer, softer, slower to arrive and fewer at once: counts `4 + 1.3(r-1) + 0.07(r-1)²`
 (were 5, 2.2, 0.12), health 50 plus 8 a round (were 60 and 14), spawns every 3.2 s decaying 4% a round (2.4 s,
-5%), 6 alive at once rising 0.8 a round (10 and 1.5). The headliner has 15 times a walker's health (was 16)
+5%), 6 alive at once rising 0.8 a round (10 and 1.5). The headliner has 13 times a walker's health (was 16; 15
+until finite ammunition, see below)
 and the stampede is 140% of a round (was 120%). No type's blow changed.
 
 **Survival by round** (share of nights that reach the round; 50% is the median):
 
 | Players | Skill | Median round | Reach round 10 | Reach round 15 |
 | ---: | --- | ---: | ---: | ---: |
-| 1 | weak / average / strong | 5 / 12 / 15 | 8% / 85% / 100% | 0% / 2% / 72% |
-| 2 | weak / average / strong | 5 / 14 / 15 | 21% / 96% / 100% | 0% / 34% / 98% |
-| 4 | weak / average / strong | 5 / 15 / 18 | 15% / 96% / 100% | 0% / 79% / 100% |
+| 1 | weak / average / strong | 5 / 11 / 14 | 0% / 80% / 100% | 0% / 0% / 19% |
+| 2 | weak / average / strong | 5 / 12 / 15 | 6% / 97% / 100% | 0% / 2% / 78% |
+| 4 | weak / average / strong | 5 / 14 / 16 | 9% / 96% / 100% | 0% / 19% / 99% |
 
-An average solo player reaches round 12 (the target is 10 to 14: the middle of its range, not an edge), company
-adds two or three rounds, skill adds three. Rounds 1 to 4 are safe for nearly everyone; the first deaths are the
-first boss night, and a weak player's median of 5 is that night: they reach it and about three in four do not
-leave it.
+An average solo player reaches round 11 (the target is 10 to 14: inside its range, a round from the low edge),
+company adds two or three rounds, skill adds three. Rounds 1 to 4 are safe for nearly everyone; the first deaths are the
+first boss night, and a weak player's median of 5 is that night: they reach it and about seven in ten do not
+leave it (it was three in four before ammunition was sold; with finite ammunition and the boss at 15 times a
+walker's health it was five in six, over the gate's limit, which is why the boss is at 13).
 
-**Economy.** An average solo night earns about 16,800 points and spends about 4,700 of them (28%); a strong one
-earns 31,000 and spends 6,400. The shop runs out early (doors, two wall weapons, the crane and fuel are all
-there is to buy; tonics do nothing and ammunition is not sold), so the points glut in "Open questions" is real
-and the spend share is low until ammunition and upgrades exist. Earnings per round climb from 350 in round 1 to
-1,700 in round 5 and 3,500 in the stampede round. Light costs fuel now: the average player buys cans for about
-260 points a night.
+**Economy.** An average solo night earns about 14,400 points and spends about 7,300 of them (51%), 2,700 of that on
+ammunition (19% of what it earns); a strong one earns 26,600, spends 9,200 and 3,300 on ammunition. Before
+ammunition was sold the same player spent 4,700 of 16,800 (28%). The shop still runs out (doors, two wall weapons,
+the crane, rounds and fuel are all there is to buy; tonics do nothing), so the points glut in "Open questions"
+remains, smaller. Earnings per round climb from 350 in round 1 to 1,700 in round 5 and 3,500 in the stampede round.
+Light costs fuel: the average player buys cans for about 260 points a night.
 
-**Time to kill** (seconds under fire from the first hit, solo average): walker 1.6, runner 0.9, crawler 2.4,
-brute 5.7, headliner 17.
+**Time to kill** (seconds under fire from the first hit, solo average): walker 1.5, runner 0.8, crawler 2.1,
+brute 5.4, headliner 16.
 
 **How hard each special round is.** The measure is how close a round came to downing a player (the lowest
 health reached, 0 to 1), and the spike is that over the mean of the rounds either side (each plus 0.05):
 
 | Round | Kind | Solo average | 2 players average | 4 players average | Weak solo | Strong solo |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 5 | Double Feature | x3.4, 11% die | x3.6, 4% die | x7.3, 4% die | x5.9, 74% die | x1.1, 0% die |
-| 10 | Midnight Stampede | x1.5, 14% die | x1.0, 0% die | x1.0, 0% die | not reached | x0.9, 0% die |
-| 15 | Double Feature | not reached | the wall by then | x3.6, 94% die | not reached | x2.0, 87% die |
+| 5 | Double Feature | x3.0, 8% die | x2.8, 3% die | x6.6, 4% die | x2.2, 72% die | x1.2, 0% die |
+| 10 | Midnight Stampede | x0.9, 16% die | x0.5, 0% die | x1.0, 0% die | not reached | x0.8, 0% die |
+| 15 | Double Feature | not reached | the wall by then | x1.1, 90% die | not reached | x0.8, 54% die |
 
 The first boss night is a spike for the players it was tuned for: three to seven times the pressure of
-the rounds around it, about one night in nine lost solo, one in twenty-five in company. The first report's
+the rounds around it, about one night in twelve lost solo, one in thirty in company. The first report's
 two findings, and what was decided:
 
 - **A strong player barely feels the first boss night** (x1.1). It stays that way, on purpose. Raising the
@@ -423,7 +449,8 @@ two findings, and what was decided:
   rate falls off a cliff. The boss is tuned to leave weak players a chance; making strong players feel it
   needs a boss that answers the player (its telegraph and weak spot, which need the headliner's own behaviour,
   #181), not another number.
-- **The stampede is a mild spike** (x1.5 solo average): it was brought up from 120% of a round to 140% at 1.8
+- **The stampede is a mild spike** (x0.9 solo average now: the rounds around it are harder with finite
+  ammunition): it was brought up from 120% of a round to 140% at 1.8
   times the spawn rate, which kills 14% of average solo nights, under the gate's 40%; at 170% and 2.2
   times it killed 81% of them. Strong players pass it untouched: runners are fragile and they see them coming at
   range.
@@ -443,24 +470,51 @@ cells (seed 4000, the same on every machine) and fails, naming the number, if a 
 | The first boss night against its neighbours (average solo) | at least x1.5 |
 | The first boss night kills weak solo players | at most 85% |
 | Time to kill, average solo, seconds: walker / runner / brute / headliner | 0.5 to 3 / 0.2 to 2 / 3 to 12 / 8 to 30 |
-| Points spent over points earned, average solo | 20% to 90% (30% before the real weapons: see the economy) |
+| Points spent over points earned, average solo | 20% to 90% |
+| Points spent on ammunition over points earned, average solo | 8% to 35% |
+| Rounds in which an average solo player runs out of every firearm | at most 10% |
 
 The suite also checks that better and more players always go further, that a night repeats exactly for its
-seed, and that the gate itself fails on a tuning that is far too hard or far too easy. A change to a range
+seed, and that the gate itself fails on a tuning that is far too hard or far too easy, or whose ammunition nobody can
+pay for. A change to a range
 is a change to this table in the same pull request. To try a number: `tools/balance/run_report.py --set
 rounds.health_growth=1.06` (see the research page).
 
 ## Open questions
 
-- **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, only fuel
-  absorbs points. Ammo and weapon upgrades (the re-cut in the projection booth) are the intended
-  sinks; they need their own issue.
-- **Weapon damage, ammo and the weapon limit**: the weapons and their numbers are in
-  [Weapons](weapons.md) (shots to kill per round are tabled there); ammo for sale and the carry limit are still open.
+- **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, fuel and rounds absorb
+  points (a fifth of an average night's earnings goes on rounds), but upgrades (the re-cut in the projection booth)
+  are the sink that is still missing; they need their own issue.
+- **The weapon limit** (two or three weapons) is still open: the weapons and their numbers are in
+  [Weapons](weapons.md) (shots to kill per round are tabled there).
 - **The shop's weapons are barely better than the pistol.** Sustained, reloads included, the pistol does about 59
   damage a second, the shotgun 68, the rifle 85, the SMG 101 and the flare gun 32 (plus its blast). With health
-  that compounds against weapons that do not grow, this is why the health curve had to come down (#188). A real
-  step up (upgrades, ammunition types, the re-cut) would let the health curve climb again; that is weapon and
-  shop work (#152), and the report should be run again when it lands.
+  that compounds against weapons that do not grow, this is why the health curve had to come down (#188). The
+  shop now sells them (#152) and the simulator can say what each is worth, so the question has numbers.
+  Average solo players with 20,000 points (so price is no object and only the weapon counts), buying nothing but
+  the weapon and its rounds, 300 nights each:
+
+  | Weapon bought | Median round | Reach round 10 | Strong solo: median, reach round 12 |
+  | --- | ---: | ---: | --- |
+  | none (the revolver) | 8 | 2% | 10, 6% |
+  | shotgun, as shipped | 8 | 6% | 10, 7% |
+  | rifle, as shipped | 9 | 29% | 10, 37% |
+  | shotgun and rifle, as shipped | 9 | 29% | 10, 37% |
+  | **proposed** shotgun | 9 | 26% | 10, 1% |
+  | **proposed** rifle | 10 | 62% | 13, 63% |
+  | both proposed | 10 | 58% | 10, 17% |
+
+  The shotgun at 900 points is no step up at all (it is 14% better than the revolver at point blank, 98 a second
+  against 86 before reloads, and worse beyond 5 m), the rifle at 1,200 is worth a round. The finite ammunition does
+  not change that, it only adds a price to every shot. For a proposal, not applied here: **the rifle** to 95 damage
+  (a round-5 zombie falls to one body shot, a round-10 one to two), a shot every 0.5 s, and a reserve of 40 to 80
+  (was 70, 0.55 s, 32 to 64); **the shotgun** to 19 a pellet, a shot every 0.8 s, full damage out to 8 m and sliding
+  to 35% at 22 m, a reserve of 30 to 60 (was 11, 0.9 s, 5 m, 18 m and 25%, 24 to 48). With both, the average solo
+  player buying one reaches round 10 in about six nights in ten against two in a hundred with the revolver, and a
+  strong one gains three rounds from the rifle. Ammunition prices follow the weapon's damage per round (about 0.1
+  point of ammunition per point of damage) and would not change. Applying it moves the weapon table, the shots to
+  kill and the gate's cells, so it is a decision for the maintainer with the weapon work, and the health curve could
+  climb again behind it. `tools/balance/run_report.py` and `balance_cli.gd --shopping=...` reproduce the table (see
+  the research page).
 - **Downed players and revives** are only modelled as down and up; the revive action, bleed-out and
   the exact penalty are for the player work to settle.

@@ -23,7 +23,7 @@ What building the server-side shooting (`game/gameplay/weapons/`) taught us. The
   it (the camera is behind the shooter, so anything between would otherwise eat the shot), then aim the muzzle at what
   it found. Corner and penetration cases fall out for free because the muzzle ray is an ordinary ray.
 - **Spread is a function of a seed, not of an RNG stream.** `shot_seed(match, shooter, shot number)` makes the pattern
-  identical on the client and the server for the same shot, so the predicted tracer lands where the authoritative one
+  identical on the client and the server for the same shot, so the predicted impact lands where the authoritative one
   does, and a replay of a night scatters the same way.
 - **Per-target damage, not per-pellet.** A shot's pellets add up per zombie before the rules hear about it: one `hit`
   per target per shot. The rules pay by event, so this keeps points honest.
@@ -33,7 +33,7 @@ What building the server-side shooting (`game/gameplay/weapons/`) taught us. The
   `zombie_removed`, which the server turns into `damage_dealt` and `target_killed`. The server keeps no health of its
   own, only a set of zombies still alive (from the rules' spawn and removal events) so a rewound shot cannot hit a
   corpse.
-- **Client prediction is the same code.** The test range's client runs `AimResolver` on its own view for the tracer
+- **Client prediction is the same code.** The test range's client runs `AimResolver` on its own view for the impact
   and keeps a `WeaponState` to gate the flash; the server's `weapon_equipped` and `shot_fired` events overwrite its
   ammo. The client's state must be ticked each step or its cooldown never ends (the first capture showed one shot per
   weapon).
@@ -59,6 +59,9 @@ What building the server-side shooting (`game/gameplay/weapons/`) taught us. The
 - **`AABB.intersects_segment` returns `Variant`** (a point or `null`), and tests built on it need the `null` check.
 - **Movie Maker advances the world 1/fps per frame**; a tracer that lives 0.1 s is gone between two frames at 10 fps,
   so effects in a capture live 0.2 to 0.3 s.
+- **No bullets for hitscan (#241).** A streak from the muzzle read as a visible bullet, so `ShotEffects.shot` draws a flash
+  and an impact (spark and dust puff) and a streak only for a def with `tracer = true`. A shot that ended at its full range
+  (a miss into the open, a round that pierced everything) has no impact: there is nothing to see it land on.
 
 ## What the numbers say
 

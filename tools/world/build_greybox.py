@@ -13,6 +13,8 @@ import random
 import re
 from pathlib import Path
 
+import lot_props
+
 OUT = Path("game/world/drive_in_greybox.tscn")
 TUNING = Path("game/gameplay/rules/default_tuning.tres")
 
@@ -81,40 +83,22 @@ TONEMAP_EXPOSURE = 1.0
 FOG = "#16224a"
 FOG_DENSITY = 0.013
 
-# Materials per area: id -> (albedo, emission or None). Colours read in the top-down capture, not in the style bible.
-MATS = {
-    "outskirts": ("#14161c", None),
-    "field_ground": ("#46563a", None),
-    "field_struct": ("#b9c1b0", None),
-    "field_fence": ("#5d6068", None),
-    "screen_face": ("#dfe8f5", "#8fa4c8"),
-    "concession_ground": ("#9c6a3a", None),
-    "concession_wall": ("#d98a3d", None),
-    "concession_prop": ("#f0c27a", None),
-    "midway_ground": ("#8a7f6a", None),
-    "midway_wall": ("#b0a48a", None),
-    "booth_ground": ("#5d4a7a", None),
-    "booth_wall": ("#8d6fc0", None),
-    "booth_prop": ("#c4a8f0", None),
-    "yard_ground": ("#7a6a26", None),
-    "yard_wall": ("#d1ab46", None),
-    "yard_prop": ("#a8321f", None),
-    "yard_gen": ("#f0e26a", "#c8b030"),
-    "backlot_ground": ("#2c5252", None),
-    "backlot_wall": ("#4f8f8f", None),
-    "backlot_prop": ("#6b6f58", None),
-    "neon": ("#ff4a5a", "#ff2a40"),
-    "road_ground": ("#474b57", None),
-    "road_wall": ("#7a86b8", None),
-    "road_line": ("#d1ab46", None),
-    "door": ("#d0302c", "#6a1210"),
-    "plaque": ("#e8c37a", "#8a6414"),
-    "ammo_crate": ("#4a6a34", None),
-    "ammo_band": ("#f0e26a", "#7a6a10"),
-    "breach_ground": ("#3d3829", None),
-}
+# Materials per surface: game/assets/lot/materials/<id>.tres, written by tools/world/build_lot_textures.py (the
+# style bible's palette tinting a flat-toned pattern, projected in world space). Every id used below is listed here.
+MATS = [
+    "outskirts", "field_ground", "field_struct", "field_fence", "screen_face",
+    "concession_ground", "concession_wall", "concession_roof", "concession_prop",
+    "midway_ground", "midway_wall", "booth_ground", "booth_wall", "booth_prop",
+    "yard_ground", "yard_wall", "yard_prop", "yard_gen", "backlot_ground", "backlot_wall", "backlot_prop", "neon",
+    "road_ground", "road_wall", "road_kiosk", "road_line", "door", "roadblock", "breach_ground", "line_paint",
+    "plaque", "ammo_crate", "ammo_band",
+]  # fmt: skip
+# Parking lines: a painted stripe between neighbouring stalls of a row, as long as a stall (one MultiMesh, one draw).
+LINE_WIDTH = 0.12
+LINE_LENGTH = 5.0
 
 lines: list[str] = []
+resources: list[str] = []  # sub-resources made while the nodes are written, put before the first node
 node_names: set[str] = set()
 
 
@@ -233,7 +217,7 @@ def box(
     if collide:
         props["use_collision"] = "true"
     props["size"] = vec(size)
-    props["material"] = f'SubResource("{mat}")'
+    props["material"] = f'ExtResource("{mat}")'
     node(name, "CSGBox3D", parent, props)
 
 
@@ -354,6 +338,39 @@ def heading(dx: float, dz: float) -> float:
 def probe(name: str, pos, dx: float, dz: float) -> None:
     """A place the camera must get through: a marker facing the way a player walks through it."""
     marker("CameraProbes", name, pos, heading(dx, dz))
+
+
+def painted_lines(parent: str, name: str, mat: str, size: tuple[float, float], at: list[tuple[float, float, float]]):
+    """Stripes of paint on the ground, (x, z, yaw) each, drawn as one MultiMesh: one draw call, no collision."""
+    mesh_id, multi_id = f"{name}_mesh", f"{name}_multi"
+    floats: list[str] = []
+    for x, z, yaw in at:
+        c, s = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+        floats += [
+            f"{c:.4f}",
+            "0",
+            f"{s:.4f}",
+            f"{x:.3f}",
+            "0",
+            "1",
+            "0",
+            "0.012",
+            f"{-s:.4f}",
+            "0",
+            f"{c:.4f}",
+            f"{z:.3f}",
+        ]
+    resources.append(f'[sub_resource type="BoxMesh" id="{mesh_id}"]')
+    resources.append(f'material = ExtResource("{mat}")')
+    resources.append(f"size = Vector3({size[0]:g}, 0.02, {size[1]:g})")
+    resources.append("")
+    resources.append(f'[sub_resource type="MultiMesh" id="{multi_id}"]')
+    resources.append("transform_format = 1")
+    resources.append(f"instance_count = {len(at)}")
+    resources.append(f'mesh = SubResource("{mesh_id}")')
+    resources.append(f"buffer = PackedFloat32Array({', '.join(floats)})")
+    resources.append("")
+    node(name, "MultiMeshInstance3D", parent, {"multimesh": f'SubResource("{multi_id}")'})
 
 
 def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0) -> None:
@@ -500,15 +517,12 @@ def build() -> None:
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
+    lines.append(f'[ext_resource type="PackedScene" path="{lot_props.WRECK}" id="wreck"]')
+    lines.extend(lot_props.ext_resources())
     lines.append("")
-    for mid, (albedo, emis) in MATS.items():
-        lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
-        lines.append(f"albedo_color = {color(albedo)}")
-        lines.append("roughness = 1.0")
-        if emis:
-            lines.append("emission_enabled = true")
-            lines.append(f"emission = {color(emis)}")
-        lines.append("")
+    for mid in MATS:
+        lines.append(f'[ext_resource type="Material" path="res://assets/lot/materials/{mid}.tres" id="{mid}"]')
+    lines.append("")
     lines.extend(night_environment_resources())
     node("DriveInGreybox", "Node3D", None)
     lines.pop()  # drop the blank line so the root gets its metadata below
@@ -560,6 +574,7 @@ def build() -> None:
     rng = random.Random(1958)
     n_cars = 0
     gaps: dict[int, list[tuple[float, float]]] = {}  # row -> (x, z) midpoints of two neighbouring cars' gap
+    stall_lines: set[tuple[float, float]] = set()  # (row radius, angle) of a painted line beside a stall
     for ri, radius in enumerate((14.0, 21.0, 28.0, 35.0, 42.0), start=1):
         row = group(f"Row{ri}", rows)
         step = math.degrees((CAR_WIDTH + CAR_GAP) / radius)
@@ -569,6 +584,9 @@ def build() -> None:
             x = screen_c[0] + radius * math.sin(math.radians(a))
             z = screen_c[1] + radius * math.cos(math.radians(a))
             aisle = abs(x) < 3.6 or 20.0 < abs(x) < 25.0
+            if not aisle and abs(x) < 56 and z < -9:
+                for edge in (a - step / 2, a + step / 2):
+                    stall_lines.add((round(radius, 3), round(edge, 6)))
             if not aisle and abs(x) < 56 and z < -9 and rng.random() > 0.12:
                 n_cars += 1
                 instance(row, f"Car{n_cars:02d}", "car", (x, 0, z), a)
@@ -579,6 +597,16 @@ def build() -> None:
                     )
                 last_placed = a
             a += step
+    painted_lines(
+        field,
+        "ParkingLines",
+        "line_paint",
+        (LINE_WIDTH, LINE_LENGTH),
+        [
+            (screen_c[0] + r * math.sin(math.radians(ang)), screen_c[1] + r * math.cos(math.radians(ang)), ang)
+            for r, ang in sorted(stall_lines)
+        ],
+    )
     # Cover on the open flanks: a playground to the west, a picnic shelter to the east, a few wrecks.
     props = group("Props", field)
     block(props, "JungleGymA", -53, -47, -40, -36, 2.4, "field_struct")
@@ -589,7 +617,7 @@ def build() -> None:
         block(props, f"ShelterPost{i}", px - 0.2, px + 0.2, pz - 0.2, pz + 0.2, 3.2, "field_struct")
     block(props, "PicnicTable", 46, 50, -32, -30, 0.9, "field_struct")
     for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
-        instance(props, f"Wreck{i}", "car", (px, 0, pz), ry)
+        instance(props, f"Wreck{i}", "wreck", (px, 0, pz), ry)
     lamps_f = lamps(field, "screen_lot")
     for i, (lx, lz) in enumerate(
         [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)], start=1
@@ -622,7 +650,7 @@ def build() -> None:
     wall(con, "WallS", "x", 8, -10, 10, 4.0, "concession_wall", [(-5, REAR_EXIT, 0, 2.4), (5, REAR_EXIT, 0, 2.4)])
     wall(con, "WallW", "z", -10, -4, 8, 4.0, "concession_wall")
     wall(con, "WallE", "z", 10, -4, 8, 4.0, "concession_wall")
-    box(con, "Roof", (20.8, 0.3, 12.8), (0, 4.15, 2), "concession_wall")
+    box(con, "Roof", (20.8, 0.3, 12.8), (0, 4.15, 2), "concession_roof")
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
     block(con, "PrizeCrane", -9.4, -7.4, 4, 6, 2.4, "concession_prop")
     block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop")
@@ -641,10 +669,7 @@ def build() -> None:
     wall(mid, "FenceE", "z", 16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
     wall(mid, "AlleyEndW", "x", -4, -16, -10, 2.6, "midway_wall")
     wall(mid, "AlleyEndE", "x", -4, 10, 16, 2.6, "midway_wall")
-    block(mid, "DumpsterW", -15.2, -12.4, -3.2, -1.4, 1.5, "midway_wall")
-    block(mid, "DumpsterE", 12.4, 15.2, -3.2, -1.4, 1.5, "midway_wall")
-    block(mid, "CrateStackA", -12, -9.4, 14, 16.4, 1.8, "midway_wall")
-    block(mid, "CrateStackB", 9.4, 12, 28, 30.4, 1.8, "midway_wall")
+    # Dumpsters, crate stacks: the kit's props (lot_props.DRESSING).
     ml = lamps(mid, "concession")
     omni(ml, "Court", (-10, 3.6, 14), 1.2, 9, "#ffd9a0")
     omni(ml, "Court2", (11, 3.6, 36), 1.0, 9, "#ffd9a0")
@@ -673,7 +698,7 @@ def build() -> None:
     ramp = f"Transform3D(1, 0, 0, 0, {cp:.4f}, {sp:.4f}, 0, {-sp:.4f}, {cp:.4f}, {RAMP_X}, 1.75, 27)"
     node(
         "Ramp", "CSGBox3D", booth,
-        {"transform": ramp, "use_collision": "true", "size": vec((RAMP_WIDTH, 0.3, ramp_len)), "material": 'SubResource("booth_prop")'},
+        {"transform": ramp, "use_collision": "true", "size": vec((RAMP_WIDTH, 0.3, ramp_len)), "material": 'ExtResource("booth_prop")'},
     )  # fmt: skip
     block(booth, "ReCutMachine", 2, 5, 27, 29.4, 1.8, "booth_prop")
     block(booth, "FilmRacks", -3.4, -1, 30, 31.6, 2.2, "booth_prop")
@@ -699,12 +724,9 @@ def build() -> None:
         node(
             f"FuelTank{i + 1}", "CSGCylinder3D", yard,
             {"transform": xform((55, 1.7, ty)), "use_collision": "true", "radius": "1.4", "height": "3.4",
-             "sides": "16", "material": 'SubResource("yard_prop")'},
+             "sides": "16", "material": 'ExtResource("yard_prop")'},
         )  # fmt: skip
-    block(yard, "ContainerA", 24, 30, 6, 8.6, 2.6, "yard_prop")
-    block(yard, "ContainerB", 50, 56, 26, 28.6, 2.6, "yard_prop")
-    block(yard, "Pallets", 26, 29, 28, 31, 1.2, "yard_wall")
-    block(yard, "DrumRow", 20, 22, 2, 9, 1.0, "yard_prop")
+    # Containers, pallets, the drum row: the kit's props (lot_props.DRESSING).
     yl = lamps(yard, "mains")
     for i, (lx, lz) in enumerate([(35, 12), (45, 12), (35, 24), (45, 24)], start=1):
         instance(yl, f"WorkLamp{i}", "lamp", (lx, 0, lz))
@@ -728,7 +750,11 @@ def build() -> None:
             if rng.random() > 0.35:
                 n += 1
                 instance(
-                    wrecks, f"Wreck{n:02d}", "car", (x + rng.uniform(-0.4, 0.4), 0, row_z), 90 + rng.choice((-6, 0, 6))
+                    wrecks,
+                    f"Wreck{n:02d}",
+                    "wreck",
+                    (x + rng.uniform(-0.4, 0.4), 0, row_z),
+                    90 + rng.choice((-6, 0, 6)),
                 )
             x += 5.6
     block(back, "Bus", -44, -32, 20.5, 23.3, 3.0, "backlot_prop")
@@ -753,16 +779,18 @@ def build() -> None:
     wall(road, "BarrierS", "x", 64, -62, 62, 1.6, "road_wall")
     wall(road, "EndW", "z", -62, 52, 64, 1.6, "road_wall")
     wall(road, "EndE", "z", 62, 52, 64, 1.6, "road_wall")
-    box(road, "RoadblockTown", (8, 2.6, 3), (58, 1.3, 58), "door")
+    box(road, "RoadblockTown", (8, 2.6, 3), (58, 1.3, 58), "roadblock")
     for sx in (-1, 1):
         tag = "W" if sx < 0 else "E"
-        block(road, f"Kiosk{tag}", sx * 6 - 1.2, sx * 6 + 1.2, 44, 46.4, 2.4, "road_wall")
-    box(road, "Canopy", (18, 0.3, 5), (0, 3.6, 45.2), "road_wall")
+        block(road, f"Kiosk{tag}", sx * 6 - 1.2, sx * 6 + 1.2, 44, 46.4, 2.4, "road_kiosk")
+    box(road, "Canopy", (18, 0.3, 5), (0, 3.6, 45.2), "concession_roof")
     for i, px in enumerate((-9, 9)):
         box(road, f"CanopyPost{i}", (0.4, 3.6, 0.4), (px, 1.8, 47.8), "road_wall")
     box(road, "CentreLine", (0.3, 0.02, 12), (0, 0.01, 46), "road_line", collide=False)
-    block(road, "Wreck", -34, -29.4, 56.4, 58.4, 1.6, "road_wall")
-    block(road, "WreckB", 20, 24.6, 59, 61, 1.6, "road_wall")
+    # The road's broken centre line: 3 m dashes every 6 m.
+    painted_lines(road, "RoadDashes", "road_line", (0.15, 3.0), [(x + 1.5, 58.0, 90.0) for x in range(-60, 60, 6)])
+    instance(road, "Wreck", "wreck", (-32.0, 0, 58.0), 0)  # its headlights (below) are at its front, z 55.8
+    instance(road, "WreckB", "wreck", (22.3, 0, 60.0), 90)
     rl = lamps(road, "back_lot")
     omni(rl, "Kiosk", (0, 3.0, 44), 1.0, 8, "#a8c4ff")
     hl = lamps(road, "battery", "Headlights")
@@ -798,6 +826,11 @@ def build() -> None:
     ammo_locker("LockerMidway", (14.6, 12.0), 270)
     ammo_locker("LockerYard", (31.0, 20.0), 0)
     ammo_locker("LockerBackLot", (-24.0, 18.0), 0)
+
+    # --- Dressing: the kit's props, from tools/world/lot_props.py ------------------------------------------------
+    lot_props.write_scenes()
+    for area in ("Field", "Midway", "GeneratorYard", "BackLot", "Road"):
+        lot_props.dress(area, group, instance)
 
     # --- Purchase doors: a group per door, a coloured slab per way in; the cost and the prerequisite are metadata ---
     # The lot opens outward from the stand: every other door needs the concession, so the midway is open before any
@@ -849,6 +882,8 @@ def build() -> None:
     probe("CageW", (36, 0, 18), 1, 0)
     probe("CageE", (44, 0, 18), 1, 0)
 
+    root = lines.index('[node name="DriveInGreybox" type="Node3D"]')
+    lines[root:root] = resources
     OUT.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {OUT}: {len(node_names)} nodes, {n_cars} field cars")
 

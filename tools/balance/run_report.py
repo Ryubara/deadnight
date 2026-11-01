@@ -301,17 +301,33 @@ def chart_ttk(cells, out: Path, plt) -> None:
     plt.close(fig)
 
 
+def ammo_spent(cell) -> float:
+    """Points spent on ammunition, per player, over all the cell's nights."""
+    return sum(v for k, v in cell["spent_on"].items() if k.startswith("ammo_")) / cell["players"]
+
+
+def dry_share(cell) -> float:
+    """The share of rounds (per player) in which a player ran out of every firearm and fought with the crowbar."""
+    played = sum(cell["reached"][1:]) * cell["players"]
+    return cell.get("dry_rounds", 0) / max(played, 1)
+
+
 def summary(cells, out: Path, nights: int) -> str:
     lines = [f"# Balance report ({nights} nights per cell, 9 cells)", ""]
-    lines += ["| skill | players | median round | mean round | reach r10 | reach r15 | points earned | points spent |"]
-    lines += ["| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
+    header = (
+        "| skill | players | median round | mean round | reach r10 | reach r15 | points earned | points spent "
+        "| spent on ammo | rounds with a dry player |"
+    )
+    lines += [header]
+    lines += ["| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
     for skill in SKILLS:
         for players in PLAYERS:
             c = cells[(skill, players)]
             mean = sum(c["reached"][1:]) / c["nights"]
             lines.append(
                 f"| {skill} | {players} | {median_round(c)} | {mean:.1f} | {survival(c, 10):.0%} | "
-                f"{survival(c, 15):.0%} | {c['earned_total'] / c['nights']:.0f} | {c['spent_total'] / c['nights']:.0f} |"
+                f"{survival(c, 15):.0%} | {c['earned_total'] / c['nights']:.0f} | {c['spent_total'] / c['nights']:.0f} | "
+                f"{ammo_spent(c) / c['nights']:.0f} | {dry_share(c):.0%} |"
             )
     lines += ["", "## Special rounds", ""]
     lines += [
@@ -361,6 +377,7 @@ def main() -> None:
     parser.add_argument("--brief", action="store_true", help="no charts, only the tables")
     parser.add_argument("--compare", type=Path, help="a report folder to draw as 'before' in compare.png")
     parser.add_argument("--reuse", action="store_true", help="draw from the cells already in --out")
+    parser.add_argument("--jobs", type=int, default=9, help="Godot processes at once (a shared machine: 3)")
     args = parser.parse_args()
     args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -375,7 +392,7 @@ def main() -> None:
     if args.reuse:
         cells = {k: json.loads((args.out / "cells" / f"{k[0]}_{k[1]}.json").read_text()) for k in keys}
     else:
-        with ThreadPoolExecutor(max_workers=len(keys)) as pool:
+        with ThreadPoolExecutor(max_workers=max(1, min(args.jobs, len(keys)))) as pool:
             futures = {
                 k: pool.submit(run_cell, godot, args.out, k[0], k[1], args.nights, args.seed, args.step, args.set)
                 for k in keys
