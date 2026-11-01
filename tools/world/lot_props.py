@@ -142,6 +142,18 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("boxes", -12.5, 25.0, 0),
         ("pallet", 12.0, 33.4, 70),
         ("box", 11.0, 34.8, 30),
+        # The east pass's models: a pile of pipes by the west fence, a sign by the
+        # road gate and loose papers over the court.
+        ("pipes", -12.0, 31.5, 0),
+        ("sign", 4.2, 36.2, 200),
+        ("papers", -3.0, 14.0, 0),
+        ("papers_b", 5.0, 13.0, 40),
+        ("papers_c", -8.0, 19.0, 110),
+        ("papers", 8.0, 20.5, 70),
+        ("papers_b", -1.0, 34.0, 200),
+        ("papers_c", 12.0, 10.5, 15),
+        ("papers", -13.0, 2.5, 300),
+        ("papers_b", 12.5, -1.0, 90),
     ],
     "Concession": [
         # Behind the counter (its south side; the kiting lane behind it stays 3.8 m wide): cartons and crates of stock.
@@ -158,6 +170,9 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("box", -9.35, -3.3, 340),
         ("crate", -9.4, 0.5, 0),
         ("crate", -9.4, 1.15, 10),
+        ("papers", -6.0, -1.0, 30),
+        ("papers_b", 6.0, 0.5, 120),
+        ("papers_c", 0.0, 6.0, 250),
     ],
     "ProjectionBooth": [
         # Film crates under the upper floor, in the corners away from the door and the ramp's foot.
@@ -168,6 +183,7 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("box", 1.9, 24.0, 20),
         ("barrel", 0.0, 31.3, 0),
         ("box", 0.9, 31.3, 15),
+        ("papers_b", 3.0, 26.0, 60),
     ],
     "GeneratorYard": [
         # Container A: a shipping container and a small one, end to end.
@@ -282,6 +298,20 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("pallet_broken", -20.5, 31.5, 10),
         ("crate", -18.5, 26.0, 0),
         ("crate", -18.5, 26.65, 10),
+        # The east pass's models: sofas and pipes dumped in the lanes, a fallen sign, papers everywhere.
+        ("sofa", -52.0, 32.5, 10),
+        ("sofa_small", -21.0, 25.5, 90),
+        ("pipes", -46.0, 3.0, 90),
+        ("pipes", -27.0, 32.6, 90),
+        ("sign", -59.5, 15.0, 90),
+        ("papers", -50.0, 12.0, 0),
+        ("papers_b", -40.0, 9.0, 80),
+        ("papers_c", -30.0, 15.5, 160),
+        ("papers", -48.0, 27.0, 20),
+        ("papers_b", -36.0, 33.0, 300),
+        ("papers_c", -22.0, 7.0, 45),
+        ("papers", -55.0, 1.0, 210),
+        ("papers_b", -33.0, 21.0, 10),
     ],
     "Road": [
         # Barriers before the roadblock to town, cones leading to them; kept off the road's low end walls (1.6 m), which
