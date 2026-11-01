@@ -1,0 +1,44 @@
+class_name PlayerState
+extends RefCounted
+## Everything the simulation needs to carry from one tick to the next, and nothing else.
+##
+## This is what a server sends to correct a client, and what a client rewinds to before replaying
+## its unacknowledged commands. The camera, animation and audio read it; they never change it.
+
+var position := Vector3.ZERO
+var velocity := Vector3.ZERO
+## Which way the body faces, radians around Y (0 faces -Z).
+var facing := 0.0
+var on_floor := false
+var sprinting := false
+var aiming := false
+var crouching := false
+## +1 camera over the right shoulder, -1 over the left.
+var shoulder_side := 1.0
+var view_yaw := 0.0
+var view_pitch := 0.0
+var coyote := 0.0
+var jump_buffer := 0.0
+var step_travelled := 0.0
+
+# What happened during the last simulated tick; reset every tick.
+var jumped := false
+var landed := false
+var landed_speed := 0.0
+var footstep := false
+
+
+func ground_speed() -> float:
+	return Vector2(velocity.x, velocity.z).length()
+
+
+func copy_from(other: PlayerState) -> void:
+	for property: Dictionary in get_property_list():
+		if property.usage & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			set(property.name, other.get(property.name))
+
+
+func duplicate_state() -> PlayerState:
+	var copy := PlayerState.new()
+	copy.copy_from(self)
+	return copy
