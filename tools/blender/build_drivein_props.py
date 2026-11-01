@@ -433,7 +433,9 @@ def main():
         report[name] = info
         if not args.blend:
             bpy.data.objects.remove(o, do_unlink=True)
-    (out / "drivein_props.json").write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    (out / "drivein_props.json").write_text(
+        json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+    )
     if args.blend:
         bpy.ops.wm.save_as_mainfile(filepath=str(Path(args.blend).resolve()))
 
