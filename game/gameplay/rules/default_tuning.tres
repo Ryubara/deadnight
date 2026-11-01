@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/fuel_tuning.gd" id="3_bgcg8"]
 [ext_resource type="Script" path="res://gameplay/rules/round_tuning.gd" id="4_468ln"]
 [ext_resource type="Script" path="res://gameplay/rules/rules_tuning.gd" id="5_3ukcj"]
+[ext_resource type="Script" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -98,6 +99,15 @@ price_per_round = 20
 amount = 25.0
 pool_weights = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_gren1"]
+script = ExtResource("1_skww1")
+id = &"grenades"
+kind = 5
+price = 150
+price_per_round = 5
+amount = 2.0
+pool_weights = PackedFloat32Array()
+
 [sub_resource type="Resource" id="Resource_6sif2"]
 script = ExtResource("2_tud1d")
 start_points = 200
@@ -113,7 +123,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut"), SubResource("Resource_gren1")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")
@@ -166,8 +176,21 @@ ambient_start = 0.6
 ambient_step = 0.035
 ambient_min = 0.15
 
+[sub_resource type="Resource" id="Resource_expl1"]
+script = ExtResource("6_expl1")
+start_grenades = 2
+refill_to = 3
+max_grenades = 5
+explosion_kill = 40
+leg_fraction = 0.3
+band_low = 0.05
+band_high = 0.4
+band_chance = 0.6
+crawler_speed_fraction = 0.35
+
 [resource]
 script = ExtResource("5_3ukcj")
 rounds = SubResource("Resource_1fk4k")
 economy = SubResource("Resource_6sif2")
 fuel = SubResource("Resource_df3qj")
+explosives = SubResource("Resource_expl1")
