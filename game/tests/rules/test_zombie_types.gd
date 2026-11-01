@@ -175,33 +175,31 @@ func test_a_weak_spot_hit_on_an_ordinary_zombie_is_plain_damage() -> void:
 	assert_float(before - rules.zombie_health(zombie_id)).is_equal_approx(10.0, 0.001)
 
 
-func test_a_limb_hit_that_hurts_enough_brings_a_walker_down_to_crawl() -> void:
+func test_a_blast_that_takes_the_legs_turns_a_walker_into_a_crawler() -> void:
 	var rules := _rules_with_one_living(&"walker")
 	var log := RulesFixture.record(rules)
 	var zombie_id: int = rules.zombie_ids()[0]
 	var health := rules.zombie_health(zombie_id)
-	var speed_before := 0.0
-	rules.apply(RulesAction.hit(1, zombie_id, RulesAction.ZONE_LIMB, health * 0.3))
-	assert_int(log.count(&"zombie_changed")).is_equal(0)
-	assert_str(rules.zombie_type(zombie_id)).is_equal("walker")
-	rules.apply(RulesAction.hit(1, zombie_id, RulesAction.ZONE_LIMB, health * 0.3))
-	var changed := log.of(&"zombie_changed")
-	assert_int(changed.size()).is_equal(1)
-	assert_str(changed[0]["zombie_type"]).is_equal("crawler")
+	var victim := {"zombie_id": zombie_id, "damage": health * 0.3, "leg_damage": health * 0.3}
+	rules.apply(RulesAction.explosion(1, [victim]))
+	var crippled := log.of(&"zombie_crippled")
+	assert_int(crippled.size()).is_equal(1)
+	assert_str(crippled[0]["zombie_type"]).is_equal("crawler")
+	assert_str(String(crippled[0]["look"])).is_equal("crawler")
 	assert_str(rules.zombie_type(zombie_id)).is_equal("crawler")
-	assert_float(changed[0]["speed"]).is_greater(speed_before)
-	# It keeps the health it had and dies as itself.
-	assert_float(changed[0]["health"]).is_equal_approx(health * 0.4, 0.001)
+	# It dies as what it became, and the snapshot remembers.
+	var copy := GameRules.new(_t, 11)
+	assert_str(copy.from_wire(rules.to_wire())).is_equal("")
+	assert_str(copy.zombie_type(zombie_id)).is_equal("crawler")
 	RulesFixture.kill(rules, 1, zombie_id)
 	assert_str(log.of(&"zombie_removed")[0]["zombie_type"]).is_equal("crawler")
 
 
-func test_a_body_hit_never_brings_a_walker_down() -> void:
+func test_a_blast_that_does_not_cripple_leaves_the_type_alone() -> void:
 	var rules := _rules_with_one_living(&"walker")
 	var zombie_id: int = rules.zombie_ids()[0]
-	rules.apply(
-		RulesAction.hit(1, zombie_id, RulesAction.ZONE_BODY, rules.zombie_health(zombie_id) * 0.9)
-	)
+	var victim := {"zombie_id": zombie_id, "damage": 1.0, "leg_damage": 0.0}
+	rules.apply(RulesAction.explosion(1, [victim]))
 	assert_str(rules.zombie_type(zombie_id)).is_equal("walker")
 
 

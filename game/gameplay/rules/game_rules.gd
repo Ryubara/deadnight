@@ -31,10 +31,11 @@ extends RefCounted
 ##     point = point_roll % count), damage, knockback, telegraph_seconds, barrier_speed, hit_chance
 ##   zombie_damaged: zombie_id, zombie_type, player_id, zone, damage (what was taken off), health
 ##     (left), max_health
-##   zombie_changed: zombie_id, zombie_type, look, speed, health (a limb hit brought it to the
-##     ground)
 ##   zombie_removed: zombie_id, zombie_type, boss, cause (killed or gone), killer_id (-1 when no
 ##     player), zone, melee
+##   zombie_crippled: zombie_id, zombie_type (the crawler it became), player_id, cause (legs or
+##     wounded), health, speed_scale
+##   grenade_count_changed: player_id, count, reason (thrown, refill, purchase)
 ##   player_added, player_removed, player_downed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail
@@ -63,7 +64,7 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-const SNAPSHOT_VERSION := 3
+const SNAPSHOT_VERSION := 4
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -87,12 +88,14 @@ const SNAPSHOT_KEYS := {
 	"generator": TYPE_DICTIONARY,
 	"spawn_rng_state": TYPE_INT,
 	"shop_rng_state": TYPE_INT,
+	"cripple_rng_state": TYPE_INT,
 }
 ## A fuel purchase needs at least this much room in the tank.
 const MIN_FUEL_SPACE := 1.0
 ## Offsets so the spawn and shop generators never share a stream.
 const SPAWN_STREAM := 0x5A17
 const SHOP_STREAM := 0x70C3
+const CRIPPLE_STREAM := 0xC21B
 
 var tuning: RulesTuning
 var rng_seed: int = 0
@@ -113,6 +116,7 @@ var _next_zombie_id: int = 1
 var _zombies: Dictionary[int, ZombieState] = {}
 var _spawn_rng := RandomNumberGenerator.new()
 var _shop_rng := RandomNumberGenerator.new()
+var _cripple_rng := RandomNumberGenerator.new()
 var _events: Array[Dictionary] = []
 ## The whole-unit fuel value the last `fuel_changed` event announced.
 var _fuel_announced: int = 0
@@ -124,6 +128,7 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 	rng_seed = p_seed
 	_spawn_rng.seed = p_seed ^ SPAWN_STREAM
 	_shop_rng.seed = p_seed ^ SHOP_STREAM
+	_cripple_rng.seed = p_seed ^ CRIPPLE_STREAM
 	generator = GeneratorState.new(tuning.fuel)
 	_fuel_announced = floori(generator.fuel)
 	generator.fuel_changed.connect(_on_fuel_changed)
@@ -166,6 +171,17 @@ func is_door_open(door_id: StringName) -> bool:
 func price_of(item_id: StringName) -> int:
 	var item := tuning.economy.item(item_id)
 	return item.price_at(round_number) if item != null else -1
+
+
+func grenades_of(player_id: int) -> int:
+	var player := players.get(player_id) as PlayerState
+	return player.grenades if player != null else 0
+
+
+## Whether a living zombie has lost its legs (false for one that is gone).
+func is_crippled(zombie_id: int) -> bool:
+	var zombie := _zombies.get(zombie_id) as ZombieState
+	return zombie != null and zombie.crippled
 
 
 ## Zombies still to spawn plus those alive: the round ends at zero.
@@ -227,6 +243,7 @@ func to_dict() -> Dictionary:
 		"generator": generator.to_dict(),
 		"spawn_rng_state": _spawn_rng.state,
 		"shop_rng_state": _shop_rng.state,
+		"cripple_rng_state": _cripple_rng.state,
 	}
 
 
@@ -287,6 +304,8 @@ func from_dict(data: Dictionary) -> StringName:
 	_spawn_rng.state = data["spawn_rng_state"]
 	_shop_rng.seed = rng_seed ^ SHOP_STREAM
 	_shop_rng.state = data["shop_rng_state"]
+	_cripple_rng.seed = rng_seed ^ CRIPPLE_STREAM
+	_cripple_rng.state = data["cripple_rng_state"]
 	return &""
 
 
@@ -331,6 +350,10 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.SET_CIRCUIT:
 			if not generator.set_circuit(action["circuit_id"], action["on"]):
 				_reject(&"unknown_circuit", RulesAction.SET_CIRCUIT)
+		RulesAction.USE_GRENADE:
+			_use_grenade(action["player_id"])
+		RulesAction.EXPLOSION:
+			_explosion(action["player_id"], action["victims"])
 		RulesAction.GRANT_POINTS:
 			if players.has(action["player_id"]):
 				_award(action["player_id"], action["amount"], action.get("reason", &"grant"))
@@ -408,6 +431,7 @@ func _begin_round() -> void:
 	_spawn_timer = tuning.rounds.first_spawn_delay
 	for player: PlayerState in players.values():
 		player.repair_points_this_round = 0
+		_refill_grenades(player)
 	_set_phase(Phase.ACTIVE)
 	_emit(
 		&"round_started",
@@ -585,7 +609,9 @@ func _set_phase(new_phase: Phase) -> void:
 func _add_player(player_id: int) -> void:
 	if players.has(player_id):
 		return
-	players[player_id] = PlayerState.new(player_id, tuning.economy.start_points)
+	var added := PlayerState.new(player_id, tuning.economy.start_points)
+	added.grenades = tuning.explosives.start_grenades
+	players[player_id] = added
 	_emit(&"player_added", {"player_id": player_id})
 	_emit(
 		&"points_changed",
@@ -661,7 +687,6 @@ func _hit(action: Dictionary) -> void:
 		}
 	)
 	if zombie.health > 0.0:
-		_maybe_crawl(zombie, type, zone)
 		var paid_limit := (
 			type.max_paid_hits if type.max_paid_hits > 0 else tuning.economy.max_paid_hits
 		)
@@ -685,30 +710,6 @@ func _scaled(points: int, type: ZombieType) -> int:
 	return roundi(float(points) * type.points_multiplier)
 
 
-## A limb hit that leaves a zombie hurt enough takes its legs: it keeps its health and goes on as
-## its type's crawler.
-func _maybe_crawl(zombie: ZombieState, type: ZombieType, zone: StringName) -> void:
-	if zone != RulesAction.ZONE_LIMB or type.crawls_at <= 0.0 or type.crawls_into == &"":
-		return
-	if zombie.health > type.crawls_at * zombie.max_health:
-		return
-	var crawler := tuning.roster.type_of(type.crawls_into)
-	if crawler == null:
-		return
-	zombie.speed *= crawler.speed_multiplier / maxf(type.speed_multiplier, 0.001)
-	zombie.type = crawler.id
-	_emit(
-		&"zombie_changed",
-		{
-			"zombie_id": zombie.id,
-			"zombie_type": crawler.id,
-			"look": crawler.look_for(zombie.id << 8),
-			"speed": zombie.speed,
-			"health": zombie.health,
-		}
-	)
-
-
 ## Why this hit cannot land, or an empty name when it can.
 func _hit_problem(player_id: int, zombie_id: int) -> StringName:
 	var player := players.get(player_id) as PlayerState
@@ -720,6 +721,113 @@ func _hit_problem(player_id: int, zombie_id: int) -> StringName:
 		return &"player_downed"
 	if not _zombies.has(zombie_id):
 		return &"unknown_zombie"
+	return &""
+
+
+# --- Grenades ---
+
+
+## One grenade leaves the hand. Refused when the player has none (or the night is not on).
+func _use_grenade(player_id: int) -> void:
+	var player := players.get(player_id) as PlayerState
+	if player == null:
+		_reject(&"unknown_player", RulesAction.USE_GRENADE)
+	elif phase != Phase.ACTIVE:
+		_reject(&"wrong_phase", RulesAction.USE_GRENADE)
+	elif player.downed:
+		_reject(&"player_downed", RulesAction.USE_GRENADE)
+	elif player.grenades <= 0:
+		_reject(&"no_grenades", RulesAction.USE_GRENADE)
+	else:
+		_set_grenades(player, player.grenades - 1, &"thrown")
+
+
+func _refill_grenades(player: PlayerState) -> void:
+	var target := mini(tuning.explosives.refill_to, tuning.explosives.max_grenades)
+	if player.grenades < target:
+		_set_grenades(player, target, &"refill")
+
+
+func _set_grenades(player: PlayerState, count: int, reason: StringName) -> void:
+	player.grenades = clampi(count, 0, tuning.explosives.max_grenades)
+	_emit(
+		&"grenade_count_changed",
+		{"player_id": player.id, "count": player.grenades, "reason": reason}
+	)
+
+
+## One blast: what it did to each zombie, in the order given. Each takes its damage off its health
+## and pays like a hit (the blast that kills pays `explosion_kill`); a zombie that lives may then
+## lose its legs. A zombie already gone is skipped, so a blast racing a gunshot is harmless.
+func _explosion(player_id: int, victims: Array) -> void:
+	if phase != Phase.ACTIVE:
+		_reject(&"wrong_phase", RulesAction.EXPLOSION)
+		return
+	if not players.has(player_id):
+		_reject(&"unknown_player", RulesAction.EXPLOSION)
+		return
+	for victim: Dictionary in victims:
+		var zombie := _zombies.get(int(victim["zombie_id"])) as ZombieState
+		if zombie != null:
+			_blast_one(player_id, zombie, float(victim["damage"]), float(victim["leg_damage"]))
+
+
+func _blast_one(player_id: int, zombie: ZombieState, damage: float, leg_damage: float) -> void:
+	var dealt := minf(damage, zombie.health)
+	zombie.health -= dealt
+	zombie.leg_damage += minf(leg_damage, dealt)
+	_emit(
+		&"zombie_damaged",
+		{
+			"zombie_id": zombie.id,
+			"player_id": player_id,
+			"zone": RulesAction.ZONE_BLAST,
+			"damage": dealt,
+			"health": zombie.health,
+		}
+	)
+	if zombie.health <= 0.0:
+		_award(player_id, tuning.explosives.explosion_kill, &"explosion_kill")
+		players[player_id].kills += 1
+		_remove_zombie(zombie.id, &"killed", player_id, RulesAction.ZONE_BLAST, false)
+		return
+	if zombie.paid_hits < tuning.economy.max_paid_hits:
+		zombie.paid_hits += 1
+		_award(player_id, tuning.economy.hit, &"hit")
+	var cause := _cripple_cause(zombie)
+	if cause != &"":
+		zombie.crippled = true
+		var crawler := tuning.roster.type_of(_type(zombie.type).crawls_into)
+		if crawler != null:
+			zombie.type = crawler.id
+		_emit(
+			&"zombie_crippled",
+			{
+				"zombie_id": zombie.id,
+				"zombie_type": zombie.type,
+				"look": _type(zombie.type).look_for(zombie.id << 8),
+				"player_id": player_id,
+				"cause": cause,
+				"health": zombie.health,
+				"speed_scale": tuning.explosives.crawler_speed_fraction,
+			}
+		)
+
+
+## Why a zombie that survived a blast loses its legs, or an empty name. Its legs go when enough of
+## the blast landed on them; failing that, a zombie left badly hurt (inside the band) may lose them
+## on a seeded roll. The roll is drawn only for a zombie in the band, so the stream is a function
+## of the blasts alone.
+func _cripple_cause(zombie: ZombieState) -> StringName:
+	if zombie.crippled:
+		return &""
+	var x := tuning.explosives
+	if zombie.leg_damage >= x.leg_fraction * zombie.max_health:
+		return &"legs"
+	var fraction := zombie.health / zombie.max_health
+	if fraction >= x.band_low and fraction <= x.band_high:
+		if _cripple_rng.randf() < x.band_chance:
+			return &"wounded"
 	return &""
 
 
@@ -804,6 +912,13 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 				result = BuyResult.ALREADY_OWNED
 			elif player.tonics.size() >= tuning.economy.max_tonics:
 				result = BuyResult.LIMIT_REACHED
+		ShopItem.Kind.GRENADES:
+			var room := tuning.explosives.max_grenades - player.grenades
+			if room <= 0:
+				result = BuyResult.LIMIT_REACHED
+			else:
+				quote.grenades_added = mini(int(item.amount), room)
+				quote.price = ceili(float(quote.price) * quote.grenades_added / item.amount)
 		ShopItem.Kind.FUEL:
 			if generator.space() < MIN_FUEL_SPACE:
 				result = BuyResult.TANK_FULL
@@ -831,6 +946,9 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 			player.tonics.append(item.id)
 		ShopItem.Kind.FUEL:
 			return {"fuel": generator.add_fuel(quote.fuel_added)}
+		ShopItem.Kind.GRENADES:
+			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
+			return {"grenades": quote.grenades_added}
 	return {}
 
 
@@ -868,3 +986,4 @@ class Quote:
 	var item: ShopItem
 	var price: int = 0
 	var fuel_added: float = 0.0
+	var grenades_added: int = 0

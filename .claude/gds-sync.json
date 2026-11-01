@@ -1,0 +1,11 @@
+{
+  "note": "Written by `gds sync` from the GDStudio kit; edit the kit, not these files.",
+  "files": {
+    ".claude/agents/backend-engineer.md": "29267bf5b9ee133386f4212dc541a0491161a92253319b6e422d4644dfadcb66",
+    ".claude/agents/blender-artist.md": "3d170320dbd414c8317e71ae81bf807ed598cad52c84e016f79f6c030a7de828",
+    ".claude/agents/godot-engineer.md": "1fdce7a7e2dc2c2f7a556753c99eda0a19d7003345b4896c23b3029f20edd87c",
+    ".claude/agents/reviewer.md": "92c8393b092c29e66da965765e4e36095d86bf470be3e92fc325fb1fa4052cfa",
+    ".claude/hooks/launch.py": "74bd821e242ccc840b1d1c4f9eb84bf6e8bc4731d1322cf688896e30fd0452fe",
+    ".claude/settings.json": "38fe52834088f32b03d77e0dd6154a6b1026a5c313f5b47ccb09acabfbcf97fd"
+  }
+}

@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/zombie_roster.gd" id="7_roster"]
 [ext_resource type="Script" path="res://gameplay/rules/special_round.gd" id="8_sround"]
 [ext_resource type="Script" path="res://gameplay/rules/special_tuning.gd" id="9_stune"]
+[ext_resource type="Script" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -28,6 +29,20 @@ script = ExtResource("1_skww1")
 id = &"door_back_lot"
 price = 1250
 requires = &"door_booth"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_yard1"]
+script = ExtResource("1_skww1")
+id = &"door_yard"
+price = 500
+requires = &"door_concession"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_road1"]
+script = ExtResource("1_skww1")
+id = &"door_road"
+price = 2000
+requires = &"door_back_lot"
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_fw883"]
@@ -88,6 +103,15 @@ price_per_round = 20
 amount = 25.0
 pool_weights = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_gren1"]
+script = ExtResource("1_skww1")
+id = &"grenades"
+kind = 5
+price = 150
+price_per_round = 5
+amount = 2.0
+pool_weights = PackedFloat32Array()
+
 [sub_resource type="Resource" id="Resource_6sif2"]
 script = ExtResource("2_tud1d")
 start_points = 200
@@ -103,7 +127,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut"), SubResource("Resource_gren1")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")
@@ -156,7 +180,6 @@ ambient_min = 0.15
 script = ExtResource("6_ztype")
 id = &"walker"
 looks = Array[StringName]([&"walker", &"greaser", &"usher", &"farmhand"])
-crawls_at = 0.5
 crawls_into = &"crawler"
 damage = 15.0
 
@@ -240,7 +263,7 @@ title = "Midnight Stampede"
 kind = 1
 only_type = &"runner"
 count_fraction = 1.2
-spawn_rate = 2.0
+spawn_rate = 1.8
 reward_base = 150
 
 [sub_resource type="Resource" id="Special_crawl_space"]
@@ -256,6 +279,17 @@ reward_base = 150
 [sub_resource type="Resource" id="Specials_1"]
 script = ExtResource("9_stune")
 rounds = Array[ExtResource("8_sround")]([SubResource("Special_double_feature"), SubResource("Special_stampede"), SubResource("Special_double_feature"), SubResource("Special_crawl_space")])
+[sub_resource type="Resource" id="Resource_expl1"]
+script = ExtResource("6_expl1")
+start_grenades = 2
+refill_to = 3
+max_grenades = 5
+explosion_kill = 40
+leg_fraction = 0.25
+band_low = 0.05
+band_high = 0.4
+band_chance = 0.6
+crawler_speed_fraction = 0.35
 
 [resource]
 script = ExtResource("5_3ukcj")
@@ -264,3 +298,4 @@ economy = SubResource("Resource_6sif2")
 fuel = SubResource("Resource_df3qj")
 roster = SubResource("Roster_1")
 specials = SubResource("Specials_1")
+explosives = SubResource("Resource_expl1")

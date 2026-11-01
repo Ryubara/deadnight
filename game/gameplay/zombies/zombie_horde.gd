@@ -1,0 +1,84 @@
+class_name ZombieHorde
+extends Node3D
+## The client's view of the zombies, and in single-player the server beside it. `step` is one
+## fixed tick of the server side (director and simulation); `publish` sends the state through the
+## wire format (`ZombieCodec`) and updates the views from what comes out, so what is drawn is
+## exactly what a remote client would draw.
+
+## The body every zombie wears: a ZombieModels variant, unless `model_scene` is set.
+@export var variant: StringName = ZombieModels.DEFAULT
+@export var model_scene: PackedScene
+
+var director: ZombieDirector
+var throttle: AnimationThrottle
+## Size in bytes of the last snapshot.
+var last_snapshot_bytes: int = 0
+
+var _views: Dictionary[int, ZombieView] = {}
+var _emerge_seconds: float = 0.0
+
+
+## `p_emerge_seconds` is the one number the client needs from the zombies' tuning: how long a
+## zombie takes to rise. The server owns the tuning; the views are told what they need.
+func setup(p_director: ZombieDirector, camera: Camera3D, p_emerge_seconds: float) -> void:
+	_emerge_seconds = p_emerge_seconds
+	director = p_director
+	if model_scene == null:
+		model_scene = ZombieModels.scene(variant)
+	throttle = AnimationThrottle.new()
+	throttle.camera = camera
+	add_child(throttle)
+
+
+func _exit_tree() -> void:
+	ZombieRig.release()
+	if director != null:
+		director.close()
+
+
+func view_count() -> int:
+	return _views.size()
+
+
+## One server tick of the zombies; then the views follow.
+func step(delta: float, targets: Dictionary) -> void:
+	director.tick(delta, targets)
+	publish(delta)
+
+
+## The server side sends its zombies through the wire format and the client side draws them.
+func publish(delta: float) -> void:
+	apply_snapshot(ZombieCodec.encode(director.sim.zombies), delta)
+
+
+## The client side: the views follow one snapshot's bytes and nothing else. `delta` is the time
+## since the previous snapshot.
+func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
+	last_snapshot_bytes = bytes.size()
+	var seen: Dictionary[int, bool] = {}
+	for entry in ZombieCodec.decode(bytes):
+		var zombie_id: int = entry["id"]
+		seen[zombie_id] = true
+		if not _views.has(zombie_id):
+			_add_view(zombie_id)
+		_views[zombie_id].apply(entry, delta)
+	for zombie_id in _views.keys():
+		if not seen.has(zombie_id):
+			_remove_view(zombie_id)
+
+
+func _add_view(zombie_id: int) -> void:
+	var view := ZombieView.new()
+	add_child(view)
+	# The same id always gives the same phase, so every client agrees without being told.
+	var phase := fposmod(float(zombie_id) * 0.618034, 1.0)
+	view.setup(model_scene, zombie_id, phase, _emerge_seconds)
+	_views[zombie_id] = view
+	throttle.add_view(view)
+
+
+func _remove_view(zombie_id: int) -> void:
+	var view := _views[zombie_id]
+	_views.erase(zombie_id)
+	throttle.remove_view(view)
+	view.queue_free()

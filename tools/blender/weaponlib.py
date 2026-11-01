@@ -29,6 +29,7 @@ PALETTE = {
     "Red": "#8c3735",
     "DarkWood": "#6b4f2c",
     "Green": "#496321",
+    "Yellow": "#d1ab46",  # the kit Yellow: the grenade's explosive band
 }
 GRID = 4  # swatches per side
 SWATCH_PX = 8  # pixels per swatch side: the atlas is 32 x 32

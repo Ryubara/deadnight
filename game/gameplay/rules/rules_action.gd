@@ -17,6 +17,8 @@ const REPAIR := &"repair"
 const BUY := &"buy"
 const SET_CIRCUIT := &"set_circuit"
 const GRANT_POINTS := &"grant_points"
+const USE_GRENADE := &"use_grenade"
+const EXPLOSION := &"explosion"
 
 ## Where a hit landed. `ZONE_HEAD` and `ZONE_WEAK` change what the rules pay; the weapon has already
 ## applied its zone multiplier to the damage, and the rules add the type's own `weak_multiplier` for
@@ -33,6 +35,10 @@ const MAX_TICK := 1.0
 const MAX_DAMAGE := 100000.0
 ## The most one `grant_points` may carry.
 const MAX_GRANT := 100000
+## The most zombies one `explosion` may name.
+const MAX_VICTIMS := 128
+## The zone a blast reports (`zombie_damaged`, `zombie_removed`): a blast is not a head or a limb.
+const ZONE_BLAST := &"blast"
 
 ## Required fields of every action type, with the type each must have. `TYPE_FLOAT` also takes an
 ## int and `TYPE_STRING_NAME` also takes a String (JSON has no StringName). Extra fields are
@@ -51,6 +57,8 @@ const REQUIRED := {
 	BUY: {"player_id": TYPE_INT, "item_id": TYPE_STRING_NAME},
 	SET_CIRCUIT: {"circuit_id": TYPE_STRING_NAME, "on": TYPE_BOOL},
 	GRANT_POINTS: {"player_id": TYPE_INT, "amount": TYPE_INT},
+	USE_GRENADE: {"player_id": TYPE_INT},
+	EXPLOSION: {"player_id": TYPE_INT, "victims": TYPE_ARRAY},
 }
 ## Fields that may be left out; when present they must have the type.
 const OPTIONAL := {
@@ -122,6 +130,20 @@ static func grant_points(player_id: int, amount: int, reason: StringName = &"gra
 	return {"type": GRANT_POINTS, "player_id": player_id, "amount": amount, "reason": reason}
 
 
+## A grenade leaves the player's hand (or goes off in it): one fewer. The rules refuse it when the
+## player has none, so a client cannot throw what it does not carry.
+static func use_grenade(player_id: int) -> Dictionary:
+	return {"type": USE_GRENADE, "player_id": player_id}
+
+
+## One blast, already turned into what it did to each zombie: `victims` is a list of
+## `{"zombie_id": int, "damage": float, "leg_damage": float}` (total blast damage, and the part of
+## it that landed on the legs), in a fixed order (the server sorts by id). The rules take the
+## damage off each, pay, kill, and decide who loses their legs.
+static func explosion(player_id: int, victims: Array) -> Dictionary:
+	return {"type": EXPLOSION, "player_id": player_id, "victims": victims}
+
+
 ## Checks an action against `REQUIRED` and `OPTIONAL` and the value bounds. Returns `{}` when it is
 ## well formed, else `{"reason": StringName, "field": StringName}` with the reason one of
 ## `unknown_action`, `missing_field`, `wrong_type`, `out_of_range`. Whether the ids it names exist
@@ -172,6 +194,34 @@ static func _out_of_range_field(type: StringName, action: Dictionary) -> StringN
 		GRANT_POINTS:
 			if action["amount"] <= 0 or action["amount"] > MAX_GRANT:
 				return &"amount"
+		EXPLOSION:
+			return _bad_victims(action["victims"])
+	return &""
+
+
+static func _bad_victims(victims: Array) -> StringName:
+	if victims.size() > MAX_VICTIMS:
+		return &"victims"
+	for victim: Variant in victims:
+		if typeof(victim) != TYPE_DICTIONARY:
+			return &"victims"
+		var entry: Dictionary = victim
+		for field: String in ["zombie_id", "damage", "leg_damage"]:
+			if not entry.has(field):
+				return &"victims"
+		if not _has_type(entry["zombie_id"], TYPE_INT):
+			return &"victims"
+		if (
+			not _has_type(entry["damage"], TYPE_FLOAT)
+			or not _has_type(entry["leg_damage"], TYPE_FLOAT)
+		):
+			return &"victims"
+		var damage := float(entry["damage"])
+		var legs := float(entry["leg_damage"])
+		if not _within(damage, 0.0, MAX_DAMAGE) or damage <= 0.0:
+			return &"victims"
+		if not _within(legs, 0.0, damage):
+			return &"victims"
 	return &""
 
 

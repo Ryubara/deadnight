@@ -6,9 +6,14 @@ extends RefCounted
 var id: int = 0
 var type: StringName = &"walker"
 var health: float = 0.0
+## The health it spawned with: the crippling bands are fractions of it.
 var max_health: float = 0.0
-## Metres per second it was given at spawn (kept so a change of type can rescale it).
+## Metres per second it was given at spawn.
 var speed: float = 0.0
+## Blast damage that landed on its legs so far.
+var leg_damage: float = 0.0
+## Its legs are gone: it is a crawler now (once, never undone).
+var crippled: bool = false
 ## Non-lethal hits on this zombie that already paid points (capped: a zombie is a bounded purse).
 var paid_hits: int = 0
 
@@ -30,6 +35,8 @@ func to_dict() -> Dictionary:
 		"health": health,
 		"max_health": max_health,
 		"speed": speed,
+		"leg_damage": leg_damage,
+		"crippled": crippled,
 		"paid_hits": paid_hits,
 	}
 
@@ -37,5 +44,7 @@ func to_dict() -> Dictionary:
 static func from_dict(data: Dictionary) -> ZombieState:
 	var zombie := ZombieState.new(data["id"], data["health"], data["type"], data["speed"])
 	zombie.max_health = data["max_health"]
+	zombie.leg_damage = data["leg_damage"]
+	zombie.crippled = data["crippled"]
 	zombie.paid_hits = data["paid_hits"]
 	return zombie

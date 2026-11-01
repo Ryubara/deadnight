@@ -262,12 +262,6 @@ func _handle(events: Array[Dictionary]) -> void:
 		match event["type"]:
 			&"zombie_spawn_requested":
 				_spawned(event)
-			&"zombie_changed":
-				var zombie: SimZombie = _zombies.get(event["zombie_id"])
-				if zombie != null:
-					zombie.speed = event["speed"]
-					zombie.hit_chance = rules.tuning.roster.type_of(event["zombie_type"]).hit_chance
-					zombie.barrier = 0.0
 			&"zombie_removed":
 				_removed(event)
 			&"round_started":

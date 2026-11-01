@@ -13,8 +13,8 @@ from its issue to a pull request whose checks pass, in your own worktree. The re
 
 ## How you work
 
-1. **Issue.** Work from the issue you were given, or open one (`gh issue create`, the task form's sections: Summary,
-   What "done" means). Label it `S-in-progress`.
+1. **Issue.** Work from the issue you were given, or open one (`gh issue create`, the task form's sections: From,
+   Summary, Area, What "done" means). Label it `S-in-progress`.
 2. **Worktree.** `git -C <workspace>/repos/<repo> worktree add <workspace>/worktrees/<repo>/<branch> -b <branch>`; work
    only there. Never commit on `main` (the hooks refuse it).
 3. **Research while working.** Read the Godot docs and the code you touch before changing it. When you learn something
@@ -26,11 +26,16 @@ from its issue to a pull request whose checks pass, in your own worktree. The re
    headless import and run must print no `ERROR`. For anything visible, capture it with Movie Maker into
    `<workspace>/scratch/<repo>/<branch>/` (`--write-movie <folder>/<name>.png --fixed-fps 10 --quit-after N`), then
    **look at the frames** (Read the PNG) and fix what looks wrong before you report.
+   **Test it yourself, never hand testing to a person**: simulate input (keys, mouse, `InputEventJoypadButton`) in
+   GdUnit4, drive playtests with headless bots or an autopilot that sends the same commands a player would, check
+   audio by analysis (peaks, loudness, spectra), and run web builds in Chrome. "Nobody has tried it" is unfinished.
 6. **Pull request.** `uvx pre-commit run --all-files`, commit (`area: Verb the rest`, the Co-Authored-By trailer),
    push the branch, open the pull request from the template with `Fixes #N`, and attach your captures
    (`gh pr create --body-file <file> --attach <png>`). Turn on auto-merge (`gh pr merge --squash --auto`) unless the
    change touches a manual path; the hooks tell you.
 7. **Report** to whoever started you: the pull request, what the captures show, anything left open (as new issues).
+   **Screenshots on issues too**: every issue you open (a follow-up, a bug, a finding) carries a capture of what it is
+   about when there is anything to see (`gh issue create --attach <png>` or `gh issue comment --attach`).
 
 ## Pull request rules the checks enforce
 
@@ -40,6 +45,14 @@ from its issue to a pull request whose checks pass, in your own worktree. The re
 - **Description:** from the template; no paths on this machine (no `C:\`, no `../../`, no `scratch/`): name places in
   words or as repository-relative paths. The model line names the model in your commits' trailer.
 - **Never force-push** (refused): after a conflict, `git merge origin/main` and push a normal commit.
+- **Issues affected:** list every other open issue your change partly fixes or makes out of date, one line each
+  (`- #N: its step 2 is done`), or `None (reason)`; look through `gh issue list` first. `Fixes #N` stays in Summary.
+- **Screenshots:** a visual pull request uploads a `Before:` and an `After:` capture (`Before: none (new)` for
+  something that did not exist); `Screenshots: none (reason)` only when nothing visible changed.
+- **Fix pull requests:** a `Failed first:` line in Testing names the test that failed before the fix and passes after
+  (run it with the fix reverted, or on `main`), or `Failed first: none (reason)`.
+- **Issues you open** start with a `From:` line (who, date, the pull request or issue it came from) and carry the area
+  label (`gh issue create --label task --label A-<area>`), as the task form asks.
 
 ## Record what you learned (every task)
 
@@ -48,8 +61,9 @@ Before you report, leave what the next person needs, short and in the right plac
 - **How Godot (or Blender) actually behaves**, what worked and what did not: the subject's page in the kit's docs hub
   (`<workspace>/repos/gdstudio/docs/godot/<subject>.md`, or `docs/blender/`), one page per subject, updated in place.
   Game-specific findings go in the game's `docs/research/<subject>.md`.
-- **A problem you hit and how you solved it**: one entry in `docs/lessons.md` of the kit (date, symptom, cause, fix,
-  where it is documented). Five lines, not an essay.
+- **A problem you hit and how you solved it**: one file in the kit's `docs/lessons/<yyyy-mm-dd>-<slug>.md` (format in
+  its `index.md`: symptom, cause, fix, where it is documented). Five lines, not an essay. Never edit `mkdocs.yml`'s
+  nav or a page list: the navigation is built from the folders.
 - Put the doc changes in the same pull request as the work (a kit page needs a small kit pull request: say so in your
   report and the coordinator opens it). Your report lists what you recorded.
 

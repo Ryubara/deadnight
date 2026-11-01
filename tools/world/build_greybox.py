@@ -10,9 +10,39 @@ Cars are placed from a fixed seed so the scene does not change from one run to t
 
 import math
 import random
+import re
 from pathlib import Path
 
 OUT = Path("game/world/drive_in_greybox.tscn")
+TUNING = Path("game/gameplay/rules/default_tuning.tres")
+
+# The map's purchase doors and the shop items (the rules' tuning) that price them. The price and the prerequisite
+# are read from the tuning, so the economy has one source and the map follows it.
+DOOR_ITEMS = {
+    "Door_Concession": "door_concession",
+    "Door_GeneratorYard": "door_yard",
+    "Door_ProjectionBooth": "door_booth",
+    "Door_BackLot": "door_back_lot",
+    "Door_Road": "door_road",
+}
+
+# Bodies and the camera rig, mirrored from the player (PlayerTuning: pivot 1.55, shoulder 0.75, arm 2.8, margin 0.25).
+# A passage is sized for the camera, not the capsule: the shoulder offset is applied after the spring arm, so the
+# camera sits SHOULDER m to one side of the player and needs CAMERA_CLEAR m of air beyond that.
+BODY_RADIUS = 0.35  # the player and a zombie
+SHOULDER = 0.75
+CAMERA_CLEAR = 0.1
+MIN_PASSAGE = 2 * (SHOULDER + CAMERA_CLEAR)  # 1.7 m: a centred player keeps both shoulder views free
+
+# Widths of the places the camera has to get through (metres). The first draft had 1.4 / 1.6 / 1.8.
+CAR_LENGTH = 4.5
+CAR_WIDTH = 1.9
+CAR_GAP = 1.8  # between the cars of a row
+REAR_EXIT = 2.0  # the stand's rear exits, the generator cage's openings
+RAMP_WIDTH = 2.0
+RAMP_X = -4.8  # the ramp's centre line, along the booth's west wall (x -6)
+MIDWAY_LINK = 4.5  # the midway's links to the yard and the back lot
+MIDWAY_LINK_Z = 20.0
 
 # Materials per area: id -> (albedo, emission or None). Colours read in the top-down capture, not in the style bible.
 MATS = {
@@ -45,6 +75,18 @@ MATS = {
 
 lines: list[str] = []
 node_names: set[str] = set()
+
+
+def shop_doors() -> dict[str, tuple[int, str]]:
+    """Shop id -> (price, the door it requires or "") for every item in the rules' tuning that has a price."""
+    found: dict[str, tuple[int, str]] = {}
+    for block_text in re.split(r"\n\n", TUNING.read_text(encoding="utf-8")):
+        item = re.search(r'^id = &"(door_\w+)"$', block_text, re.MULTILINE)
+        price = re.search(r"^price = (\d+)$", block_text, re.MULTILINE)
+        needs = re.search(r'^requires = &"(\w+)"$', block_text, re.MULTILINE)
+        if item and price:
+            found[item.group(1)] = (int(price.group(1)), needs.group(1) if needs else "")
+    return found
 
 
 def vec(v: tuple[float, float, float]) -> str:
@@ -202,8 +244,18 @@ def label(parent: str, name: str, text: str, pos, size: int = 220, pixel: float 
     node(name, "Label3D", parent, props, ' groups=["area_labels"]')
 
 
-def marker(parent: str, name: str, pos) -> None:
-    node(name, "Marker3D", parent, {"transform": xform(pos)})
+def marker(parent: str, name: str, pos, yaw: float = 0.0) -> None:
+    node(name, "Marker3D", parent, {"transform": xform(pos, yaw)})
+
+
+def heading(dx: float, dz: float) -> float:
+    """The yaw in degrees that makes a node face (dx, dz) with its -Z axis, as Godot does."""
+    return math.degrees(math.atan2(-dx, -dz))
+
+
+def probe(name: str, pos, dx: float, dz: float) -> None:
+    """A place the camera must get through: a marker facing the way a player walks through it."""
+    marker("CameraProbes", name, pos, heading(dx, dz))
 
 
 def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0) -> None:
@@ -213,13 +265,22 @@ def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0) -> None:
     node_names.add(f"{parent}/{name}")
 
 
-def door(name: str, cost: int, centre, width: float, height: float, axis: str) -> None:
+def door(name: str, label_at) -> None:
+    """A purchase door: a group that holds its slabs; the shop item, its price and the item it needs are metadata.
+
+    One purchase removes every slab of the group, so an area with two ways in (a gate in the field's fence and a
+    link from the midway) still has exactly one door.
+    """
+    item = DOOR_ITEMS[name]
+    cost, requires = shop_doors()[item]
+    props = {"metadata/cost": str(cost), "metadata/shop_id": f'"{item}"', "metadata/requires": f'"{requires}"'}
+    node(name, "Node3D", "Doors", props)
+    label(f"Doors/{name}", "Label", f"{cost}", label_at, 100)
+
+
+def slab(door_name: str, tag: str, centre, width: float, height: float, axis: str) -> None:
     size = (width, height, 0.3) if axis == "x" else (0.3, height, width)
-    box("Doors", name, size, (centre[0], height / 2, centre[1]), "door")
-    node_meta[name] = cost
-
-
-node_meta: dict[str, int] = {}
+    box(f"Doors/{door_name}", tag, size, (centre[0], height / 2, centre[1]), "door")
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -293,10 +354,12 @@ def build() -> None:
     rows = group("Rows", field)
     rng = random.Random(1958)
     n_cars = 0
+    gaps: dict[int, list[tuple[float, float]]] = {}  # row -> (x, z) midpoints of two neighbouring cars' gap
     for ri, radius in enumerate((14.0, 21.0, 28.0, 35.0, 42.0), start=1):
         row = group(f"Row{ri}", rows)
-        step = math.degrees(3.3 / radius)
+        step = math.degrees((CAR_WIDTH + CAR_GAP) / radius)
         a = -80.0
+        last_placed = None
         while a <= 80.0:
             x = screen_c[0] + radius * math.sin(math.radians(a))
             z = screen_c[1] + radius * math.cos(math.radians(a))
@@ -304,6 +367,12 @@ def build() -> None:
             if not aisle and abs(x) < 56 and z < -9 and rng.random() > 0.12:
                 n_cars += 1
                 instance(row, f"Car{n_cars:02d}", "car", (x, 0, z), a)
+                if last_placed is not None and abs(a - last_placed - step) < 1e-6:
+                    am = math.radians(a - step / 2)
+                    gaps.setdefault(ri, []).append(
+                        (screen_c[0] + radius * math.sin(am), screen_c[1] + radius * math.cos(am))
+                    )
+                last_placed = a
             a += step
     # Cover on the open flanks: a playground to the west, a picnic shelter to the east, a few wrecks.
     props = group("Props", field)
@@ -338,7 +407,7 @@ def build() -> None:
         con, "WallN", "x", -4, -10, 10, 4.0, "concession_wall",
         [(0, 3, 0, 2.6), (-6, 2.2, 1.0, 2.4), (6, 2.2, 1.0, 2.4)],
     )  # fmt: skip
-    wall(con, "WallS", "x", 8, -10, 10, 4.0, "concession_wall", [(-5, 1.8, 0, 2.4), (5, 1.8, 0, 2.4)])
+    wall(con, "WallS", "x", 8, -10, 10, 4.0, "concession_wall", [(-5, REAR_EXIT, 0, 2.4), (5, REAR_EXIT, 0, 2.4)])
     wall(con, "WallW", "z", -10, -4, 8, 4.0, "concession_wall")
     wall(con, "WallE", "z", 10, -4, 8, 4.0, "concession_wall")
     box(con, "Roof", (20.8, 0.3, 12.8), (0, 4.15, 2), "concession_wall")
@@ -356,8 +425,8 @@ def build() -> None:
     floor_tiles(mid, "Ground", -16, 16, 8, 38, "midway_ground")
     floor_tiles(mid, "AlleyW", -16, -10, -4, 8, "midway_ground")
     floor_tiles(mid, "AlleyE", 10, 16, -4, 8, "midway_ground")
-    wall(mid, "FenceW", "z", -16, -4, 38, 2.6, "midway_wall", [(20, 4.5, 0, 2.6)])
-    wall(mid, "FenceE", "z", 16, -4, 38, 2.6, "midway_wall", [(20, 4.5, 0, 2.6)])
+    wall(mid, "FenceW", "z", -16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
+    wall(mid, "FenceE", "z", 16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
     wall(mid, "AlleyEndW", "x", -4, -16, -10, 2.6, "midway_wall")
     wall(mid, "AlleyEndE", "x", -4, 10, 16, 2.6, "midway_wall")
     block(mid, "DumpsterW", -15.2, -12.4, -3.2, -1.4, 1.5, "midway_wall")
@@ -382,16 +451,17 @@ def build() -> None:
     wall(booth, "WallN", "x", 22, -6, 6, 3.6, "booth_wall", [(0, 3, 0, 2.6)])
     wall(booth, "WallNUpper", "x", 22, -6, 6, 3.8, "booth_wall", [(0, 5, 1.0, 2.6)], y0=3.6)
     box(booth, "UpperFloor", (9.8, 0.3, 10), (1.1, 3.75, 27), "booth_wall")
-    box(booth, "Landing", (2.0, 0.3, 1.4), (-5.0, 3.75, 22.7), "booth_wall")
+    # The ramp climbs to the south and ends at its top beside the upper floor; the landing joins the two.
+    box(booth, "Landing", (2.4, 0.3, 1.4), (RAMP_X, 3.65, 31.2), "booth_wall")
     box(booth, "Roof", (12.8, 0.3, 10.8), (0, 7.55, 27), "booth_wall")
-    # The ramp up: 1.6 m wide along the west wall, rising 3.6 m over 7.6 m.
+    # The ramp up: RAMP_WIDTH wide along the west wall, rising 3.6 m over 7.6 m.
     ramp_len = math.hypot(7.6, 3.6)
     ramp_pitch = math.degrees(math.atan2(3.6, 7.6))
     cp, sp = math.cos(math.radians(ramp_pitch)), math.sin(math.radians(ramp_pitch))
-    ramp = f"Transform3D(1, 0, 0, 0, {cp:.4f}, {sp:.4f}, 0, {-sp:.4f}, {cp:.4f}, -4.8, 1.75, 27)"
+    ramp = f"Transform3D(1, 0, 0, 0, {cp:.4f}, {sp:.4f}, 0, {-sp:.4f}, {cp:.4f}, {RAMP_X}, 1.75, 27)"
     node(
         "Ramp", "CSGBox3D", booth,
-        {"transform": ramp, "use_collision": "true", "size": vec((1.6, 0.3, ramp_len)), "material": 'SubResource("booth_prop")'},
+        {"transform": ramp, "use_collision": "true", "size": vec((RAMP_WIDTH, 0.3, ramp_len)), "material": 'SubResource("booth_prop")'},
     )  # fmt: skip
     block(booth, "ReCutMachine", 2, 5, 27, 29.4, 1.8, "booth_prop")
     block(booth, "FilmRacks", -3.4, -1, 30, 31.6, 2.2, "booth_prop")
@@ -410,8 +480,8 @@ def build() -> None:
     # The generator cage: 8 x 6 m, open on the west and east sides, roofless.
     wall(yard, "CageN", "x", 15, 36, 44, 3.0, "yard_wall")
     wall(yard, "CageS", "x", 21, 36, 44, 3.0, "yard_wall")
-    wall(yard, "CageW", "z", 36, 15, 21, 3.0, "yard_wall", [(18, 1.8, 0, 2.4)])
-    wall(yard, "CageE", "z", 44, 15, 21, 3.0, "yard_wall", [(18, 1.8, 0, 2.4)])
+    wall(yard, "CageW", "z", 36, 15, 21, 3.0, "yard_wall", [(18, REAR_EXIT, 0, 2.4)])
+    wall(yard, "CageE", "z", 44, 15, 21, 3.0, "yard_wall", [(18, REAR_EXIT, 0, 2.4)])
     box(yard, "Generator", (3.2, 1.8, 1.6), (40, 0.9, 18), "yard_gen")
     for i, ty in enumerate((6, 12)):
         node(
@@ -470,6 +540,7 @@ def build() -> None:
     wall(road, "SideE", "z", 16, 38, 52, 2.6, "road_wall")
     wall(road, "BarrierS", "x", 64, -62, 62, 1.6, "road_wall")
     wall(road, "EndW", "z", -62, 52, 64, 1.6, "road_wall")
+    wall(road, "EndE", "z", 62, 52, 64, 1.6, "road_wall")
     box(road, "RoadblockTown", (8, 2.6, 3), (58, 1.3, 58), "door")
     for sx in (-1, 1):
         tag = "W" if sx < 0 else "E"
@@ -491,39 +562,44 @@ def build() -> None:
     label(road, "Label", "7  THE ROAD", (0, 0.6, 58), 150)
     label(road, "LabelPlaza", "TICKET PLAZA", (0, 0.6, 41), 90)
 
-    # --- Purchase doors: a coloured slab per door; the cost is metadata ------------------------------------------
+    # --- Purchase doors: a group per door, a coloured slab per way in; the cost and the prerequisite are metadata ---
+    # The lot opens outward from the stand: every other door needs the concession, so the midway is open before any
+    # of them can be bought. An area with two ways in (the yard and the back lot, from the field and from the midway)
+    # has one door with a slab in each, so there is no way in that is not the door.
     group("Doors", ".")
-    door("Door_Concession_750", 750, (0, -3.6), 3.0, 2.6, "x")
-    door("Gate_GeneratorYard_1000", 1000, (40, -4), 4.0, 2.6, "x")
-    door("Door_ProjectionBooth_1250", 1250, (0, 22.2), 3.0, 2.6, "x")
-    door("Gate_BackLot_1750", 1750, (-40, -4), 4.0, 2.6, "x")
-    door("Gate_Road_2500", 2500, (0, 38), 4.0, 2.6, "x")
-    for name, cost in node_meta.items():
-        label("Doors", f"Label_{name}", f"{cost}", (0, 3.2, 0), 100)
-    # Door labels need the door positions: patch their transforms.
-    patch = {
-        "Door_Concession_750": (0, 3.3, -6.0),
-        "Gate_GeneratorYard_1000": (40, 3.3, -6.5),
-        "Door_ProjectionBooth_1250": (0, 3.3, 19.5),
-        "Gate_BackLot_1750": (-40, 3.3, -6.5),
-        "Gate_Road_2500": (0, 3.3, 35.5),
-    }
-    for i, ln in enumerate(lines):
-        if ln.startswith('[node name="Label_'):
-            door_name = ln.split('"')[1][len("Label_") :]
-            px, py, pz = patch[door_name]
-            lines[i + 1] = f"transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, {px:g}, {py:g}, {pz:g})"
-    # Metadata on the door slabs.
-    out: list[str] = []
-    current = None
-    for ln in lines:
-        if ln.startswith("[node name="):
-            current = ln.split('"')[1]
-        out.append(ln)
-        if current in node_meta and ln.startswith("material = "):
-            out.append(f"metadata/cost = {node_meta[current]}")
-            current = None
-    lines[:] = out
+    door("Door_Concession", (0, 3.3, -6.0))
+    slab("Door_Concession", "Front", (0, -3.6), 3.0, 2.6, "x")
+    door("Door_GeneratorYard", (40, 3.3, -6.5))
+    slab("Door_GeneratorYard", "Field", (40, -4), 4.0, 2.6, "x")
+    slab("Door_GeneratorYard", "Midway", (16, MIDWAY_LINK_Z), MIDWAY_LINK, 2.6, "z")
+    door("Door_ProjectionBooth", (0, 3.3, 19.5))
+    slab("Door_ProjectionBooth", "Front", (0, 22.2), 3.0, 2.6, "x")
+    door("Door_BackLot", (-40, 3.3, -6.5))
+    slab("Door_BackLot", "Field", (-40, -4), 4.0, 2.6, "x")
+    slab("Door_BackLot", "Midway", (-16, MIDWAY_LINK_Z), MIDWAY_LINK, 2.6, "z")
+    door("Door_Road", (0, 3.3, 35.5))
+    slab("Door_Road", "Front", (0, 38), 4.0, 2.6, "x")
+
+    # --- Camera probes: every narrow place the over-the-shoulder camera has to get through -----------------------
+    # Each marker faces the way a player walks through; the tests sweep the spring arm from it, both ways round.
+    group("CameraProbes", ".")
+    for ri, found in sorted(gaps.items()):
+        for tag, (gx, gz) in zip(
+            "abc", (found[len(found) // 4], found[len(found) // 2], found[3 * len(found) // 4]), strict=True
+        ):
+            probe(f"CarGap_R{ri}{tag}", (gx, 0, gz), gx - screen_c[0], gz - screen_c[1])
+    probe("Ramp", (RAMP_X, 1.8, 27), 0, 1)
+    probe("ConcessionFront", (0, 0, -4), 0, 1)
+    probe("ConcessionRearW", (-5, 0, 8), 0, 1)
+    probe("ConcessionRearE", (5, 0, 8), 0, 1)
+    probe("LinkYard", (16, 0, MIDWAY_LINK_Z), 1, 0)
+    probe("LinkBackLot", (-16, 0, MIDWAY_LINK_Z), -1, 0)
+    probe("GateYard", (40, 0, -4), 0, 1)
+    probe("GateBackLot", (-40, 0, -4), 0, 1)
+    probe("BoothDoor", (0, 0, 22), 0, 1)
+    probe("RoadGate", (0, 0, 38), 0, 1)
+    probe("CageW", (36, 0, 18), 1, 0)
+    probe("CageE", (44, 0, 18), 1, 0)
 
     OUT.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {OUT}: {len(node_names)} nodes, {n_cars} field cars")

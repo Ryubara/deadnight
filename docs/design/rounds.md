@@ -48,6 +48,8 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | Action | Fields | Who sends it |
 | --- | --- | --- |
 | `hit` | `player_id`, `zombie_id`, `zone` (`head`, `body`, `limb`, `weak`), `damage` (float, `> 0`), optional `melee` | the weapon code, from a player's shot or swing |
+| `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
+| `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `repair`, `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
@@ -61,12 +63,13 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | --- | --- | --- |
 | `zombie_spawn_requested` | `zombie_id`, `zombie_type`, `look`, `boss`, `health`, `speed`, `point_roll`, `damage`, `knockback`, `telegraph_seconds`, `barrier_speed`, `hit_chance` | build the zombie in its `look`; pick the spawn point with `point_roll % count`; its attack, knockback and barrier work come from the same event |
 | `zombie_damaged` | `zombie_id`, `zombie_type`, `player_id`, `zone`, `damage` (taken off), `health` (left), `max_health` | play the hit reaction; drive the health bar (a boss's bar is `health / max_health`) |
-| `zombie_changed` | `zombie_id`, `zombie_type`, `look`, `speed`, `health` | a limb hit brought a walker to the ground: swap to the crawler look and slow it |
 | `zombie_removed` | `zombie_id`, `zombie_type`, `boss`, `cause` (`killed` or `gone`), `killer_id`, `zone`, `melee` | play the death for `killed` (by `zone`, `melee`), vanish quietly for `gone` |
 | `special_round_announced` | `round`, `special_id`, `title`, `kind` (`boss` or `only`), `boss_type`, `boss_count`, `seconds` | in the break before a special round: the HUD marquee, the sting, the lights flicker. `seconds` is the whole break, 10 s longer than usual |
 | `round_started` | `round`, `zombie_count`, `special_id` (`""` in a normal round), `boss_count` | show the round; a non-empty `special_id` keeps the marquee lit |
 | `special_round_cleared` | `round`, `special_id`, `reward` | the reward line; `reward` was paid to each player on their feet as `points_changed` with reason `special_reward` |
 | `round_ended` | `round`, `special_id` | |
+| `zombie_crippled` | `zombie_id`, `zombie_type` (the crawler it became), `look`, `player_id`, `cause` (`legs` or `wounded`), `health` (left), `speed_scale` | switch the zombie to a crawler (lower, slower by `speed_scale`); sent once per zombie, after its `zombie_damaged` |
+| `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
 | `action_rejected` | `reason`, `action`, optional `field` | tell only the sender; never broadcast |
 
@@ -99,7 +102,7 @@ being downed hurts but never locks you out.
 ## The tuning table
 
 Defaults as shipped. Zombie counts show one, two and four players. "Light" is the ambient level the
-world reads (1 is day). Counts follow `5 + 2.2(r-1) + 0.12(r-1)²`, times `1 + 0.6` for each extra
+world reads (1 is day). Counts follow `5 + 2.2(r-1) + 0.12(r-1)Â²`, times `1 + 0.6` for each extra
 player. Health climbs 14 a round to round 8, then compounds by 5% a round. The runner, crawler and
 brute columns are each type's share of the round (the first round of a type brings an exact number
 instead: see the types below); special rounds replace the mix.
@@ -125,6 +128,7 @@ Points (everything is per player):
 | Starting points | 200 |
 | Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
 | Kill / headshot kill / melee kill | 60 / 100 / 130 |
+| Kill by a grenade blast | 40 |
 | Repair one board (at most 120 a round) | 12 |
 | Round survived, standing | 20 + 10 per round |
 | Special round cleared, standing | 150 or 200 + 40 per round (by kind, see below) |
@@ -133,11 +137,12 @@ Shop (prices at round 1):
 
 | Item | Points | Notes |
 | --- | ---: | --- |
-| Door: concession stand / booth / back lot | 350 / 750 / 1250 | opens for everyone; each needs the one before |
+| Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 500 | random weapon the player lacks (shotgun 4, rifle 3, SMG 2, flare gun 1) |
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
+| Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
 
 Generator: 100 units; it burns 0.03 a second idle plus each lit circuit (screen lot 0.06,
 concession 0.05, booth 0.08, back lot 0.07), grows 3% a round, and burns at half rate in breaks.
@@ -152,9 +157,9 @@ round's own value, so every type grows with the night. The look is a variant fro
 
 | Type | Looks | Health | Speed | Blow / knockback | Pays | From round | Share of a round | Notes |
 | --- | --- | ---: | ---: | --- | ---: | ---: | --- | --- |
-| walker | walker, greaser, usher, farmhand | x1 | x1 | 15 / none | x1 | 1 | the rest | a limb hit that leaves it half its health or less brings it down to a crawler |
+| walker | walker, greaser, usher, farmhand | x1 | x1 | 15 / none | x1 | 1 | the rest | a blast that takes its legs ([grenades](weapons.md#grenades)) turns it into a crawler, `zombie_crippled` |
 | runner | runner | x0.55 | x1.7 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 4.5 m/s |
-| crawler | crawler | x0.7 | x0.5 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0) |
+| crawler | crawler | x0.7 | x0.5 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
 | brute | brute | x2.5 | x0.6 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
 | headliner (boss) | its own, from the artist | x16, +100% per extra player | x0.8 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
@@ -179,7 +184,7 @@ and start again:
 | Round | Kind | What it is |
 | ---: | --- | --- |
 | 5 | **Double Feature** (boss) | 40% of a normal round's zombies as escorts, and the headliner walks in after the first 30% of them; one more headliner for every 3 players beyond the first (four players meet two) |
-| 10 | **Midnight Stampede** | nothing but runners, 120% of the normal count, spawning twice as often |
+| 10 | **Midnight Stampede** | nothing but runners, 120% of the normal count, spawning 1.8 times as often |
 | 15 | Double Feature | the same kind again, with the round's health |
 | 20 | **Crawl Space** | nothing but crawlers, 110% of the count, spawning 1.5 times as often |
 
@@ -246,16 +251,107 @@ the pillars.
   income: the generator is always one decision away from running dry. When it does, the lights fade
   (the last tenth of the tank), every circuit goes dark, and the dead move at full speed.
 
+When the doors open, per player (200 starting points, a player's share of the round's zombies at about 85 points
+each, the round bonus), the first round whose end covers the running total of the doors so far. "All in" spends
+everything on doors; "half" is the plan's pace, the other half going to weapons, fuel and tonics:
+
+| Door | Price | Running total | All in, 1 / 2 / 4 players | Half, 1 / 2 / 4 players |
+| --- | ---: | ---: | --- | --- |
+| Concession stand | 350 | 350 | 1 / 1 / 1 | 1 / 2 / 2 |
+| Generator yard | 500 | 850 | 2 / 2 / 2 | 3 / 3 / 3 |
+| Projection booth | 750 | 1,600 | 3 / 3 / 3 | 4 / 5 / 5 |
+| Back lot | 1,250 | 2,850 | 4 / 4 / 5 | 6 / 6 / 7 |
+| The road | 2,000 | 4,850 | 5 / 6 / 6 | 8 / 9 / 9 |
+
+More players come out a round or so later (less per head), as intended. The map reads these prices from
+`default_tuning.tres`, so changing one is one edit there and a rerun of `tools/world/build_greybox.py`.
+
 These tables are computed from the tuning by a script from assumed weapon damage (20, then 45 from
 round 6, then 90 from round 12), 30% headshot kills and 4 seconds of fighting per zombie, so they
-are estimates until the weapons and the controller exist. Retune doors, tonics and fuel together.
+are estimates until the weapons and the controller exist; the simulator above is the measured version.
+Retune doors, tonics and fuel together.
+
+## The balance simulator
+
+Balance is measured, not guessed. `game/tools/balance/` plays thousands of seeded nights through the real
+`GameRules` (the rules are node-free, so it runs headless and fast) with modelled players, and
+`tools/balance/run_report.py` turns nine cells (weak, average and strong players, by 1, 2 and 4 players) into
+tables and four charts. The research page [balance simulator](../research/balance-simulator.md) has the speeds,
+the traps and how to run it; the numbers below are its report for 500 nights per cell (seed 1000).
+
+**The players.** Three levels of `SimSkill`: how many shots land and where (head, limb, a boss's weak spot),
+how much of the time they shoot, how often a blow misses them, how well they read a telegraphed blow, how much
+of the walk to them is on lit ground, and what they buy, in order. Each night draws its own skill within 20% of
+the level's, so a level is a spread of nights. They shoot only what they can see (view range falls with the
+light), face one of four sides at a time, revive each other in six seconds and mend between rounds. The weapons
+are a stand-in table until the weapon work owns one; grenades, repair, melee and the circuits are not modelled.
+
+**Survival by round** (share of nights that reach the round; 50% is the median):
+
+| Players | Skill | Median round | Reach round 10 | Reach round 15 |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | weak / average / strong | 5 / 11 / 14 | 3% / 74% / 100% | 0% / 0% / 47% |
+| 2 | weak / average / strong | 8 / 13 / 16 | 22% / 98% / 100% | 0% / 14% / 92% |
+| 4 | weak / average / strong | 5 / 15 / 18 | 36% / 99% / 100% | 0% / 51% / 100% |
+
+An average solo player reaches round 10 to 14 (the target), company adds two or three rounds, skill adds
+three. Rounds 1 to 3 are safe for everyone; the first deaths are the first boss night. A weak player's
+median of 5 is that boss night: they reach it and about half of them (39 to 59%) do not leave it.
+
+**Economy.** An average solo night earns about 18,500 points and spends about 8,300 of them (45%); a strong
+one earns 41,000 and spends 10,500, because the shop is empty by round 11 (the points glut in "Open
+questions" is real: ammunition and upgrades are the intended sinks). Earnings per round climb from 400 in
+round 1 to 1,700 in round 5 and 4,400 in the stampede round, which pays more than its neighbours (a runner
+pays 1.2 times and there are many); fuel was never short enough to buy.
+
+**Time to kill** (seconds under fire from the first hit, solo average): walker 1.1, runner 0.5, crawler 1.4,
+brute 3.5, headliner 20. A strong player takes half as long as a weak one on every type; the boss is the one
+where it matters (12 s against 22 s).
+
+**How hard each special round is.** The measure is how close a round came to downing a player (the lowest
+health reached, 0 to 1), and the spike is that over the mean of the rounds either side (each plus 0.05):
+
+| Round | Kind | Solo average | 2 players average | 4 players average | Weak solo | Strong solo |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 5 | Double Feature | x4.0, 20% die | x2.0, 2% die | x3.5, 1% die | x7.6, 59% die | x1.1, 0% die |
+| 10 | Midnight Stampede | x1.7, 21% die | x1.3, 4% die | x1.0, 0% die | not reached | x1.1, 0% die |
+| 15 | Double Feature | not reached | the wall by then | x1.6, 80% die | not reached | x0.95, 42% die |
+
+The first boss night is a spike for the players it was tuned for (average, any number): two to four times the
+pressure of the rounds around it, one night in five lost solo, almost none lost in company. Two findings to
+act on: a **strong player barely feels the first boss night** (x1.1; they kill it in 12 s at range), and the
+**stampede is a mild spike** (it was a wall at faster spawns: 56% of average solo nights died at 2.4 times the
+spawn rate and 24% at 2.0, so it ships at 1.8). By the third boss night (round 15) the ordinary rounds are the
+wall for average players, so that night only reads as a spike for strong ones (x2.9 and x5.3 with 2 and 4).
+
+## Balance targets
+
+`BalanceTargets` holds these ranges and the GdUnit4 suite `test_balance_targets.gd` runs 60 nights of five
+cells (seed 4000, the same on every machine) and fails, naming the number, if a tuning change leaves one:
+
+| Target | Range |
+| --- | --- |
+| Median round, average solo (the design target) | 10 to 14 |
+| Median round, average 2 / 4 players | 11 to 16 / 12 to 17 |
+| Median round, weak solo / strong solo | 4 to 9 / 12 to 18 |
+| Average solo nights that clear round 4 | at least 85% |
+| A special round up to round 10 kills (average players) | at most 40% of the nights that reach it |
+| The first boss night against its neighbours (average solo) | at least x1.5 |
+| The first boss night kills weak solo players | at most 85% |
+| Time to kill, average solo, seconds: walker / runner / brute / headliner | 0.5 to 3 / 0.2 to 2 / 3 to 12 / 8 to 30 |
+| Points spent over points earned, average solo | 30% to 90% |
+
+The suite also checks that better and more players always go further, that a night repeats exactly for its
+seed, and that the gate itself fails on a tuning that is far too hard or far too easy. A change to a range
+is a change to this table in the same pull request. To try a number: `tools/balance/run_report.py --set
+rounds.health_growth=1.06` (see the research page).
 
 ## Open questions
 
 - **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, only fuel
   absorbs points. Ammo and weapon upgrades (the re-cut in the projection booth) are the intended
   sinks; they need their own issue.
-- **Weapon damage, ammo and the weapon limit** belong to the weapon work; the health curve assumes
-  the damage tiers above.
+- **Weapon damage, ammo and the weapon limit**: the weapons and their numbers are in
+  [Weapons](weapons.md) (shots to kill per round are tabled there); ammo for sale and the carry limit are still open.
 - **Downed players and revives** are only modelled as down and up; the revive action, bleed-out and
   the exact penalty are for the player work to settle.

@@ -25,9 +25,8 @@ extends Resource
 @export var hit_chance: float = 1.0
 ## A hit in the `weak` zone (the lit bulb of the headliner) does this many times the damage.
 @export var weak_multiplier: float = 1.0
-## A `limb` hit that leaves this fraction of its health or less turns the zombie into
-## `crawls_into`. 0 means never.
-@export var crawls_at: float = 0.0
+## What a zombie of this type becomes when a blast takes its legs (`zombie_crippled`); empty
+## means it is only slowed.
 @export var crawls_into: StringName = &""
 
 @export_group("Attack")
