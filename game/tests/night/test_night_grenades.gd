@@ -36,6 +36,12 @@ func before_test() -> void:
 func after_test() -> void:
 	_key(KEY_G, false)
 	_key(KEY_H, false)
+	# A night left standing keeps flying its grenades into the next test, and its player's body
+	# holds the next night's player up where the spawn is (the blast in the hand then misses): free
+	# it before the next one is built.
+	_night.queue_free()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 
 
 func _key(code: Key, pressed: bool) -> void:
