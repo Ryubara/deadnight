@@ -21,6 +21,7 @@ const GAMEPLAY: Array[StringName] = [
 	&"fire",
 	&"reload",
 	&"interact",
+	&"swap_weapon",
 	&"pause",
 	&"throw_grenade",
 	&"toss_grenade",

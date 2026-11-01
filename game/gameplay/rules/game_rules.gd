@@ -39,7 +39,8 @@ extends RefCounted
 ##   player_added: player_id, grenades (the count they start with)
 ##   player_removed, player_downed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
-##   purchase_made: player_id, item_id, price, detail
+##   purchase_made: player_id, item_id, price, detail (a weapon bought: `weapon`; ammunition:
+##     `ammo`, the catalogue weapon, and `rounds`, how many went into its reserve)
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   door_opened: door_id
 ##   fuel_changed: fuel (exact), delta (whole units since the last one); only when the whole-unit
@@ -62,6 +63,7 @@ enum BuyResult {
 	LOCKED,
 	LIMIT_REACHED,
 	TANK_FULL,
+	AMMO_FULL,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
@@ -362,7 +364,7 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.REPAIR:
 			_repair(action["player_id"])
 		RulesAction.BUY:
-			_buy(action["player_id"], action["item_id"])
+			_buy(action["player_id"], action["item_id"], action.get("rounds", -1))
 		RulesAction.SET_CIRCUIT:
 			if not generator.set_circuit(action["circuit_id"], action["on"]):
 				_reject(&"unknown_circuit", RulesAction.SET_CIRCUIT)
@@ -848,8 +850,8 @@ func _repair(player_id: int) -> void:
 # --- The shop ---
 
 
-func _buy(player_id: int, item_id: StringName) -> void:
-	var quote := _quote(player_id, item_id)
+func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
+	var quote := _quote(player_id, item_id, rounds)
 	if quote.result != BuyResult.OK:
 		_emit(
 			&"purchase_denied", {"player_id": player_id, "item_id": item_id, "result": quote.result}
@@ -874,7 +876,7 @@ func _buy(player_id: int, item_id: StringName) -> void:
 	)
 
 
-func _quote(player_id: int, item_id: StringName) -> Quote:
+func _quote(player_id: int, item_id: StringName, rounds: int = -1) -> Quote:
 	var quote := Quote.new()
 	var player := players.get(player_id) as PlayerState
 	var item := tuning.economy.item(item_id)
@@ -887,6 +889,7 @@ func _quote(player_id: int, item_id: StringName) -> Quote:
 	else:
 		quote.item = item
 		quote.price = item.price_at(round_number)
+		quote.rounds_offered = rounds
 		quote.result = _check_item(player, quote)
 	if quote.result == BuyResult.OK and player.points < quote.price:
 		quote.result = BuyResult.NOT_ENOUGH_POINTS
@@ -908,7 +911,7 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 			if player.weapons.has(item.id):
 				result = BuyResult.ALREADY_OWNED
 		ShopItem.Kind.CRANE:
-			if _crane_pool(player, item).is_empty():
+			if item.crane_pool(player.weapons).is_empty():
 				result = BuyResult.ALREADY_OWNED
 		ShopItem.Kind.TONIC:
 			if player.tonics.has(item.id):
@@ -922,6 +925,17 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 			else:
 				quote.grenades_added = mini(int(item.amount), room)
 				quote.price = ceili(float(quote.price) * quote.grenades_added / item.amount)
+		ShopItem.Kind.AMMO:
+			# The weapon's reserve is the combat server's: the buyer says how many rounds fit
+			# (none given: all of them) and the rules price exactly those.
+			var fit := int(item.amount)
+			if quote.rounds_offered >= 0:
+				fit = mini(quote.rounds_offered, fit)
+			if fit <= 0:
+				result = BuyResult.AMMO_FULL
+			else:
+				quote.ammo_added = fit
+				quote.price = item.ammo_price(round_number, fit)
 		ShopItem.Kind.FUEL:
 			if generator.space() < MIN_FUEL_SPACE:
 				result = BuyResult.TANK_FULL
@@ -952,34 +966,22 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 		ShopItem.Kind.GRENADES:
 			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
 			return {"grenades": quote.grenades_added}
+		ShopItem.Kind.AMMO:
+			return {"ammo": item.weapon, "rounds": quote.ammo_added}
 	return {}
 
 
-## The crane's weapons this player does not own yet.
-func _crane_pool(player: PlayerState, item: ShopItem) -> Array[StringName]:
-	var pool: Array[StringName] = []
-	for weapon_id in item.pool:
-		if not player.weapons.has(weapon_id):
-			pool.append(weapon_id)
-	return pool
-
-
 func _roll_crane(player: PlayerState, item: ShopItem) -> StringName:
-	var pool := _crane_pool(player, item)
+	var pool := item.crane_pool(player.weapons)
 	var total := 0.0
 	for weapon_id in pool:
-		total += _weight(item, weapon_id)
+		total += item.weight_of(weapon_id)
 	var pick := _shop_rng.randf() * total
 	for weapon_id in pool:
-		pick -= _weight(item, weapon_id)
+		pick -= item.weight_of(weapon_id)
 		if pick < 0.0:
 			return weapon_id
 	return pool[pool.size() - 1]
-
-
-func _weight(item: ShopItem, weapon_id: StringName) -> float:
-	var index := item.pool.find(weapon_id)
-	return item.pool_weights[index] if index < item.pool_weights.size() else 1.0
 
 
 ## A priced, checked purchase that has not happened yet.
@@ -990,3 +992,5 @@ class Quote:
 	var price: int = 0
 	var fuel_added: float = 0.0
 	var grenades_added: int = 0
+	var rounds_offered: int = -1
+	var ammo_added: int = 0

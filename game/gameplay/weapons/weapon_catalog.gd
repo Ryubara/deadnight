@@ -6,6 +6,14 @@ extends RefCounted
 const DIR := "res://gameplay/weapons/defs/"
 const IDS: Array[StringName] = [&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun", &"crowbar"]
 
+## The shop sells weapons as `weapon_<id>` (the crane's pool too); the catalogue knows `<id>`.
+const SHOP_PREFIX := "weapon_"
+
+
+## The catalogue id behind a shop or crane id (`weapon_rifle`), or the id itself (`rifle`).
+static func catalog_id(shop_or_catalog_id: StringName) -> StringName:
+	return StringName(String(shop_or_catalog_id).trim_prefix(SHOP_PREFIX))
+
 
 static func get_def(id: StringName) -> WeaponDef:
 	return load(DIR + String(id) + ".tres") as WeaponDef

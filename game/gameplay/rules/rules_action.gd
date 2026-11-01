@@ -35,6 +35,8 @@ const MAX_TICK := 1.0
 const MAX_DAMAGE := 100000.0
 ## The most one `grant_points` may carry.
 const MAX_GRANT := 100000
+## The most rounds one ammunition purchase may name.
+const MAX_ROUNDS := 1000
 ## The most zombies one `explosion` may name.
 const MAX_VICTIMS := 128
 ## The zone a blast reports (`zombie_damaged`, `zombie_removed`): a blast is not a head or a limb.
@@ -64,6 +66,7 @@ const REQUIRED := {
 const OPTIONAL := {
 	HIT: {"melee": TYPE_BOOL},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
+	BUY: {"rounds": TYPE_INT},
 }
 
 
@@ -117,8 +120,13 @@ static func repair(player_id: int) -> Dictionary:
 	return {"type": REPAIR, "player_id": player_id}
 
 
-static func buy(player_id: int, item_id: StringName) -> Dictionary:
-	return {"type": BUY, "player_id": player_id, "item_id": item_id}
+## A purchase. `rounds` is only for ammunition: how many rounds the weapon's reserve has room for
+## (the combat server counts them, the rules price them); left out, the whole purchase.
+static func buy(player_id: int, item_id: StringName, rounds: int = -1) -> Dictionary:
+	var action := {"type": BUY, "player_id": player_id, "item_id": item_id}
+	if rounds >= 0:
+		action["rounds"] = rounds
+	return action
 
 
 static func set_circuit(circuit_id: StringName, on: bool) -> Dictionary:
@@ -194,6 +202,9 @@ static func _out_of_range_field(type: StringName, action: Dictionary) -> StringN
 		GRANT_POINTS:
 			if action["amount"] <= 0 or action["amount"] > MAX_GRANT:
 				return &"amount"
+		BUY:
+			if action.has("rounds") and (action["rounds"] < 0 or action["rounds"] > MAX_ROUNDS):
+				return &"rounds"
 		EXPLOSION:
 			return _bad_victims(action["victims"])
 	return &""
