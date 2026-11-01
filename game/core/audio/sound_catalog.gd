@@ -18,6 +18,7 @@ const GROUP_LIMITS := {
 	&"step": 8,
 	&"zombie_voice": 6,
 	&"generator": 2,
+	&"grenade": 8,
 	&"sting": 1,
 }
 
@@ -152,6 +153,38 @@ static func _build() -> void:
 	)
 	_add(
 		&"generator_start", "world/generator_start_%d.ogg", 1, generator.merged({"volume_db": -3.0})
+	)
+
+	var grenade := {"group": &"grenade", "max_distance": 70.0, "unit_size": 10.0}
+	_add(
+		&"grenade_tick",
+		"grenade/tick_%d.ogg",
+		1,
+		grenade.merged(
+			{"priority": 75, "pitch_semitones": 0.0, "max_distance": 30.0, "volume_db": -2.0}, true
+		)
+	)
+	_add(
+		&"grenade_throw",
+		"grenade/throw_%d.ogg",
+		2,
+		grenade.merged({"priority": 70, "pitch_semitones": 0.5, "max_distance": 30.0}, true)
+	)
+	_add(
+		&"grenade_bounce",
+		"grenade/bounce_%d.ogg",
+		3,
+		grenade.merged(
+			{"priority": 40, "pitch_semitones": 1.0, "cooldown": 0.05, "volume_db": -4.0}
+		)
+	)
+	_add(
+		&"grenade_blast",
+		"grenade/blast_%d.ogg",
+		2,
+		grenade.merged(
+			{"priority": 95, "pitch_semitones": 0.8, "max_distance": 120.0, "unit_size": 20.0}, true
+		)
 	)
 
 	var sting := {"bus": BUS_MUSIC, "group": &"sting", "priority": 95, "pitch_semitones": 0.0}

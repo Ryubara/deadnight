@@ -100,7 +100,7 @@ func test_a_rolling_grenade_runs_off_a_ledge_and_falls() -> void:
 			if at.z > -3.0:
 				return {"distance": length * t, "normal": Vector3.UP}
 		return {}
-	var state := GrenadeState.new(1, 1, _def, Vector3(0, _def.radius, 0), Vector3(0, 0, -3), 99.0)
+	var state := GrenadeState.new(1, 1, _def, Vector3(0, _def.radius, 0), Vector3(0, 0, -7), 99.0)
 	state.grounded = true
 	_fly(state, ledge, 1.0)
 	assert_bool(state.grounded).is_false()

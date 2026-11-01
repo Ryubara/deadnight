@@ -19,7 +19,7 @@ extends Resource
 @export_group("Crippling")
 ## Blast damage that landed on the legs, as a fraction of the zombie's full health, past which the
 ## legs go (the zombie lives on as a crawler).
-@export_range(0.0, 2.0) var leg_fraction: float = 0.3
+@export_range(0.0, 2.0) var leg_fraction: float = 0.25
 ## A zombie a blast leaves alive with health between these fractions of its full health may lose
 ## its legs too: "hurt badly but not dead".
 @export_range(0.0, 1.0) var band_low: float = 0.05

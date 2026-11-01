@@ -45,10 +45,10 @@ extends Resource
 @export_group("Blast")
 ## Full damage inside the core radius, sliding to nothing at the radius.
 @export var core_radius: float = 2.0
-@export var blast_radius: float = 6.5
+@export var blast_radius: float = 8.0
 ## Damage to a fully exposed zombie at the centre. Direct impact is not a kill by default: a
-## round-5 zombie (132) dies inside about 3 m, a round-10 one (213) never to one grenade.
-@export var damage: float = 180.0
+## round-5 zombie (132) dies inside about 2.7 m, a round-10 one (213) never to one grenade.
+@export var damage: float = 150.0
 ## How high above the grenade the blast "stands", so a grenade lying on the floor does not
 ## shadow itself with it.
 @export var blast_lift: float = 0.25

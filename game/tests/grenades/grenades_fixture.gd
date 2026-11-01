@@ -51,7 +51,7 @@ static func night(
 	fixture.log = RulesFixture.record(fixture.rules)
 	fixture.server = GrenadeServer.new(def(), fixture.rules, world, ray)
 	RulesFixture.into_round_one(fixture.rules)
-	RulesFixture.run(fixture.rules, 6.0)
+	RulesFixture.run(fixture.rules, 20.0)
 	fixture.zombies = fixture.log.spawned_ids()
 	return fixture
 

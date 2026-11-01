@@ -159,7 +159,7 @@ func _throw(action: Dictionary) -> void:
 	if not aim.is_finite() or aim.length_squared() < 0.5:
 		_emit(&"throw_rejected", {"player_id": player_id, "seq": seq, "reason": &"bad_aim"})
 		return
-	var cooked := now - _cooks[player_id]["started"]
+	var cooked: float = now - _cooks[player_id]["started"]
 	_cooks.erase(player_id)
 	var underarm: bool = action["underarm"]
 	var velocity := def.launch_velocity(aim, underarm, action["velocity"])

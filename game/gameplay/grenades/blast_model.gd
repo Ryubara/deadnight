@@ -5,11 +5,12 @@ extends RefCounted
 ## A zombie is its six hit parts (`Hitbox`: head, body, two arms, two legs). Each part takes its
 ## share of the damage by how far the blast is from it and whether anything solid stands between
 ## the two, so a zombie half behind a barrier is half hurt and one fully behind it is not hurt.
-## The legs' share is reported apart: it is what the rules weigh to decide a crawler.
+## A blast goes off low, so the legs carry half of it. The legs' share is reported apart: it is
+## what the rules weigh to decide a crawler.
 
 ## The share of the damage each part of `Hitbox.ZONES` carries (they add up to one):
 ## head, body, right arm, left arm, right leg, left leg.
-const PART_WEIGHTS: Array[float] = [0.10, 0.35, 0.125, 0.125, 0.15, 0.15]
+const PART_WEIGHTS: Array[float] = [0.05, 0.25, 0.10, 0.10, 0.25, 0.25]
 ## Indexes into the parts that are legs.
 const LEG_PARTS: Array[int] = [4, 5]
 
