@@ -1,9 +1,9 @@
 # Typography
 
 Six display + text pairings for Deadnight's UI, shown on the same mock main menu, with licences, sources and a
-recommendation. **The maintainer chooses** ([issue #11](https://github.com/Ryubara/deadnight/issues/11)); until then
-no font file is in the repository. The visual rules the pairings must serve are in the
-[UI look](style.md#ui-look) section of the style bible.
+recommendation. **Decided (issue #11, maintainer 2026-11-01): Marquee, Bungee Inline + Barlow Condensed SemiBold**,
+both OFL and committed under `game/assets/fonts` with their licence entry ([the decision](#decision)). The visual
+rules the pairings must serve are in the [UI look](style.md#ui-look) section of the style bible.
 
 ## What the era used
 
@@ -74,8 +74,9 @@ the licence text and a notice. The credits screen lists each font used. Licence 
 - **Inline faces need size.** Bungee Inline's inline stroke fills in at small sizes; use it for the title and big
   numbers only, and plain Bungee (OFL, 116 KB) or Barlow below that.
 - **Web budget.** Pairing 1 as static files is about 250 KB (Bungee Inline plus two Barlow weights).
-- `UIThemeBuilder` takes its fonts from `ThemeDB.fallback_font`; adopting a pairing means a font slot per type style
-  in `UITokens`, a follow-up for issue #11.
+- `UITokens` has the slots `font_display`, `font_text` and `font_mono`; `UIThemeBuilder` applies them (display face to
+  the display and title styles, text face to everything else, mono to `UILabelMono`), the neon sign takes the display
+  slot, and a glyph a chosen face lacks falls back to the engine's font.
 
 ## Recommendation
 
@@ -92,10 +93,40 @@ title card.
 
 The comparison sheet is attached to the pull request; the maintainer's pick closes issue #11.
 
+## Decision
+
+The maintainer asked for the open-licence pair that best matches the game, starting from the recommendation and
+checking it on the game's own screens. Captures of the real main menu, settings and HUD at 1280 x 720, 844 x 390 and
+932 x 430 (true window pixels, `game/tests/captures/menu_fonts.tscn`), with the three finalists:
+
+| Pair | Sign (the neon tube outline of each letter) | Menu, settings, HUD text | Verdict |
+| --- | --- | --- | --- |
+| **Bungee Inline + Barlow Condensed SemiBold** | The inline cut makes a double channel, so the tube reads as a lit marquee letter; 9 letters, G and I clear | Tall and narrow: "Open the concession stand" is one line in the HUD card | **Chosen** |
+| Big Shoulders + Courier Prime Bold | A thin single tube, elegant more than loud, narrow | Courier is wide and light: HUD numbers go thin on the player rows, the prompt wraps | Rejected: not lit, and weak small |
+| Bowlby One + Archivo (width 75) | A fat blob: the glyph outline fills solid, no tube is visible | Archivo wraps "Open the concession stand" onto two lines in the same card | Rejected: the neon effect is lost |
+
+- **Bungee Inline is for the sign, display and title type only** (`UILabelDisplay`, `UILabelTitle`, the HUD's big
+  numerals). Headings, buttons, captions and the settings use Barlow Condensed: the inline stroke fills in below about
+  40 px on screen, and at the 40 px of the Settings title it already reads as a plain heavy face, which is acceptable
+  there.
+- **Barlow Condensed reads smaller than the engine's Open Sans at the same size**, so the game's tokens raise the scale
+  (heading 38 to 44, body 26 to 32, button 28 to 34, caption 20 to 26, overline 18 to 26) and set the synthetic weight
+  to 0.1 (the faces are already bold, and 0.5 filled the inline). The HUD's own sizes are unchanged.
+- **Footer** (the line over the parked cars): caption size at full ink on a plate of the surface colour at 78 percent.
+  At 720p the type went from 13 px to 17 px high and the contrast went from about 6:1 to about 15:1 (measured on the
+  captures); a test holds at least 7:1 against the lightest possible ground (`test_menu_type.gd`).
+- **Credits** list both faces and the engine's Open Sans (SIL OFL 1.1, still the fallback for a missing glyph); the
+  names went to caption size so the list still fits one 1080-unit canvas.
+- **Web budget.** The two imported font files add 60 KB (Barlow) and 87 KB (Bungee Inline) to the pack; one Barlow
+  weight is used, the other weights stay out.
+- **Phone landscape** (932 x 430, canvas scale 0.4): the sign, buttons and settings read; caption and HUD small text
+  are about 10 px or less, a limit of the HUD's own sizes and the mobile plan, not of the face.
+
 ## Reproducing
 
-Download the font files into `refs/fonts/<family>/` beside the repositories (nothing third-party is committed), then
-run the specimen scene with Movie Maker:
+The two chosen fonts are committed; the other candidates are not. To render a candidate, download its files into
+`refs/fonts/<family>/` beside the repositories, then run the specimen scene with Movie Maker (or the real screens with
+`menu_fonts.tscn`, whose `--face=pair:<id>` loads a pairing from that folder):
 
 ```text
 godot --path game res://ui/specimens/typography_specimen.tscn --write-movie <out>.png --fixed-fps 10 --quit-after 3 -- --pairing=<id> --fonts=<fonts folder>
