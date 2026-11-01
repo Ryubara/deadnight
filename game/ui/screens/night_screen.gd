@@ -22,6 +22,8 @@ var _quit: UIButton
 
 func _ready() -> void:
 	super._ready()
+	# B (`ui_cancel`) crouches in the night: it must not take the player back to the menu.
+	allow_back = false
 	night = Night.new()
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
@@ -52,7 +54,10 @@ func _draw() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if night.state == null or night.state.over:
 		return
-	if event.is_action_pressed(&"ui_cancel") or event.is_action_pressed(&"pause"):
+	# Only `pause` (Esc, Start) pauses: `ui_cancel` is also B, which crouches. B resumes a paused
+	# night, where it has nothing else to do.
+	var resumes := night.is_paused() and event.is_action_pressed(&"ui_cancel")
+	if event.is_action_pressed(&"pause") or resumes:
 		if night.is_paused():
 			_resume_night()
 		else:

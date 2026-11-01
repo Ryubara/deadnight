@@ -84,7 +84,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion and _controls_enabled:
 		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
-	elif event.is_action_pressed(&"ui_cancel") and capture_mouse and _controls_enabled:
+	elif event.is_action_pressed(&"pause") and capture_mouse and _controls_enabled:
 		set_controls_enabled(false)
 	elif (
 		event is InputEventMouseButton and event.pressed and capture_mouse and not _controls_enabled

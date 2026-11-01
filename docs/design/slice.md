@@ -37,7 +37,7 @@ page says what is in, and what is next.
 | Part | Where | Notes |
 | --- | --- | --- |
 | Main menu Play starts the night; Esc pauses; Back to the menu | `ui/screens/night_screen.gd`, `main_menu.gd` | the pause freezes the clock and frees the mouse |
-| Move, look, sprint, jump, shoot, reload | `gameplay/night/` | `fire`, `reload`, `interact` are input actions (mouse, R, E; gamepad right trigger, X, Y) |
+| Move, look, sprint, jump, shoot, reload | `gameplay/night/` | `fire`, `reload`, `interact`, `pause` are input actions (mouse, R, E, Esc; gamepad right trigger, X, Y, Start), each defined once and none sharing a pad button with another gameplay action (`tests/ui/test_input_actions.gd`); B crouches and neither pauses nor leaves the night |
 | Zombies spawn from the rules, chase through the navigation mesh, strike | `gameplay/zombies/` | spawns only in the field and in areas whose door is bought |
 | Player health: 100, regenerates after 5 s unhurt, a down at zero | `NightServer`, `NightTuning` | all down ends the night |
 | Rounds, break, points for hits and kills, the round bonus | `gameplay/rules/` | unchanged |

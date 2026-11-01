@@ -78,7 +78,7 @@ func test_the_glyph_follows_the_last_device_used() -> void:
 	UIInputMode.track(pad)
 	await await_idle_frame()
 	await await_idle_frame()
-	assert_str(_hud.prompt.glyph_caption).is_equal("X")
+	assert_str(_hud.prompt.glyph_caption).is_equal("Y")
 	var key := InputEventKey.new()
 	key.keycode = KEY_W
 	key.pressed = true

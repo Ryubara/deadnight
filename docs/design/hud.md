@@ -39,7 +39,7 @@ yet (issue to follow), so `player_hurt` is defined here until they do.
 | `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
 | `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
 
-The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad X), so a rebound key shows
+The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad Y), so a rebound key shows
 the new key, and the glyph is a square keycap or a round button by the **last device used** (`UIInputMode.gamepad`). It
 sinks while the action is held. A refused purchase shakes the card and says why in place of the price.
 
