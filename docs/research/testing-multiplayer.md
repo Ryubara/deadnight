@@ -89,6 +89,14 @@ disappears for the others and the seat is reused, that a fifth player is turned 
 gives a reason instead of a hang. `test_net_wire.gd` covers the bytes (a hostile command is made harmless) and
 `test_night_commands.gd` the server's handling of commands.
 
+`game/tests/captures/online_heights.tscn` renders two clients of one night side by side in one window, each with the
+other player standing beside their own at the same lamp post (so the two screens show the same player's size, look and
+facing together):
+
+```text
+$godot --path game res://tests/captures/online_heights.tscn --resolution 1280x720 -- --out=<abs>/heights.png
+```
+
 To use a server in your own test: add a `NightHost` (`port = 0` picks a free port, read back from
 `host.listener.port()`) and join with `Night.start_remote(url, Night.Mode.MANUAL)`; in `MANUAL` the test sends the
 commands through `night.link`.

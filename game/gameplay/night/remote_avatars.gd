@@ -20,9 +20,9 @@ const RUN_SPEED := 3.6
 const IDLE := "Idle"
 const WALK := "Walk"
 const RUN := "Run"
-## The size of every character in the lot: the player scene scales its model by this
-## (`Player._ready`), so a drawn avatar is scaled by the same number and a player is as tall on
-## every screen as on their own.
+## The size of every character in the lot: the player scene stands its model turned half way round
+## and scaled by this (`player.tscn` and `Player._ready`), so a drawn avatar is made the same way
+## and a player is as tall, and faces the same way, on every screen as on their own.
 const PLAYER_TUNING := preload("res://gameplay/player/player_tuning_default.tres")
 ## A player on the ground is turned over to lie there.
 const DOWNED_TILT := -1.4
@@ -180,7 +180,10 @@ class Avatar:
 		if _model != null:
 			_model.queue_free()
 		_model = model
-		model.scale = Vector3.ONE * RemoteAvatars.PLAYER_TUNING.model_scale
+		model.basis = (
+			Basis(Vector3.UP, PI)
+			* Basis.from_scale(Vector3.ONE * RemoteAvatars.PLAYER_TUNING.model_scale)
+		)
 		add_child(model)
 		_animation = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 		for clip in [RemoteAvatars.IDLE, RemoteAvatars.WALK, RemoteAvatars.RUN]:

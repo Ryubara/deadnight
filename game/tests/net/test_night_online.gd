@@ -201,7 +201,11 @@ func _stature(model: Node3D) -> Dictionary:
 	for bone in skeleton.get_bone_count():
 		var at := skeleton.global_transform * skeleton.get_bone_global_rest(bone).origin
 		top = maxf(top, at.y)
-	return {"height": top - model.global_position.y, "scale": model.global_basis.get_scale()}
+	return {
+		"height": top - model.global_position.y,
+		"scale": model.global_basis.get_scale(),
+		"basis": model.global_basis,
+	}
 
 
 func test_a_player_is_as_tall_on_every_screen() -> void:
@@ -229,6 +233,9 @@ func test_a_player_is_as_tall_on_every_screen() -> void:
 			assert_float(scale.x).is_equal_approx(want.x, 0.001)
 			assert_float(scale.y).is_equal_approx(want.y, 0.001)
 			assert_float(scale.z).is_equal_approx(want.z, 0.001)
+			# Turned the same way too: the model of a drawn avatar faces where its player faces.
+			var turned: Basis = stature["basis"]
+			assert_bool(turned.is_equal_approx(on_own_screen["basis"])).is_true()
 	# And the two players are as tall as each other (one skeleton, one scale).
 	var tall_1 := _stature(a._body.get_node("Model"))
 	var tall_2 := _stature(b._body.get_node("Model"))
