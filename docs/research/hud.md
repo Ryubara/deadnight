@@ -68,7 +68,6 @@ see [the slice](../design/slice.md#the-hud). Things the binding taught:
 
 ## Left out, to do
 
-- Player health and blows are not rules events; `player_hurt` is a HUD event until the rules own them.
 - Ammo comes from the frame (the held weapon), reload and equipment are not shown; the weapons' own events do not
   feed the HUD (#133).
 - Markers are given in screen space; projecting world points (and hiding those behind walls) is the camera's job.

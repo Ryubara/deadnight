@@ -89,6 +89,37 @@ func test_a_blow_lowers_health_and_the_arc_points_at_the_dead_one() -> void:
 	_finish(night, hud)
 
 
+func test_health_is_the_rules_and_reaches_the_hud_by_events_alone() -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	NightFixture.first_zombie(night)
+	# A blow from outside the server's tick: no frame is sent after it, only the rules' events.
+	_act(night, RulesAction.blow(1, 30.0, 0.0))
+	assert_float(night.server.rules.health_of(1)).is_equal(70.0)
+	assert_float(hud.state.health).is_equal(70.0)
+	assert_float(hud.state.max_health).is_equal(100.0)
+	# The server mends it with the rules' clock, and the HUD follows each step.
+	NightFixture.run(night, 60 * 8)
+	assert_float(night.server.rules.health_of(1)).is_greater(70.0)
+	assert_float(hud.state.health).is_equal_approx(night.server.health_of(1), 1.0)
+	_finish(night, hud)
+
+
+func test_going_down_shows_in_the_hud_and_getting_up_restores_the_bar() -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	NightFixture.first_zombie(night)
+	_act(night, RulesAction.blow(1, 500.0, 1.0))
+	assert_bool(hud.state.is_local_downed()).is_true()
+	assert_float(hud.state.health).is_equal(0.0)
+	_act(night, RulesAction.set_downed(1, false))
+	assert_bool(hud.state.is_local_downed()).is_false()
+	assert_float(hud.state.health).is_equal(100.0)
+	_finish(night, hud)
+
+
 func test_the_round_and_the_party_come_from_the_rules_events() -> void:
 	var made := await _start()
 	var night: Night = made["night"]

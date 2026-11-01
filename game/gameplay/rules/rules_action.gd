@@ -11,6 +11,7 @@ const SKIP_BREAK := &"skip_break"
 const ADD_PLAYER := &"add_player"
 const REMOVE_PLAYER := &"remove_player"
 const SET_DOWNED := &"set_downed"
+const BLOW := &"blow"
 const HIT := &"hit"
 const ZOMBIE_GONE := &"zombie_gone"
 const REPAIR := &"repair"
@@ -50,6 +51,7 @@ const REQUIRED := {
 	ADD_PLAYER: {"player_id": TYPE_INT},
 	REMOVE_PLAYER: {"player_id": TYPE_INT},
 	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
+	BLOW: {"player_id": TYPE_INT, "damage": TYPE_FLOAT},
 	HIT:
 	{"player_id": TYPE_INT, "zombie_id": TYPE_INT, "zone": TYPE_STRING_NAME, "damage": TYPE_FLOAT},
 	ZOMBIE_GONE: {"zombie_id": TYPE_INT},
@@ -63,6 +65,7 @@ const REQUIRED := {
 ## Fields that may be left out; when present they must have the type.
 const OPTIONAL := {
 	HIT: {"melee": TYPE_BOOL},
+	BLOW: {"bearing": TYPE_FLOAT, "source_id": TYPE_INT},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
 }
 
@@ -90,6 +93,22 @@ static func remove_player(player_id: int) -> Dictionary:
 
 static func set_downed(player_id: int, downed: bool) -> Dictionary:
 	return {"type": SET_DOWNED, "player_id": player_id, "downed": downed}
+
+
+## One blow on a player (a zombie's swing). `damage` is what it does; `bearing` is where it came
+## from, radians clockwise from -z seen from above (0 when unknown), and `source_id` the zombie
+## that dealt it (-1 for none). The rules take it off the player's health, restart the wait before
+## health mends, and down the player at zero.
+static func blow(
+	player_id: int, damage: float, bearing: float = 0.0, source_id: int = -1
+) -> Dictionary:
+	return {
+		"type": BLOW,
+		"player_id": player_id,
+		"damage": damage,
+		"bearing": bearing,
+		"source_id": source_id,
+	}
 
 
 ## One hit on a zombie. `damage` is what the weapon dealt, zone multiplier included; the rules take
@@ -191,6 +210,11 @@ static func _out_of_range_field(type: StringName, action: Dictionary) -> StringN
 				return &"damage"
 			if not ZONES.has(StringName(action["zone"])):
 				return &"zone"
+		BLOW:
+			if not _within(action["damage"], 0.0, MAX_DAMAGE) or action["damage"] <= 0.0:
+				return &"damage"
+			if action.has("bearing") and not is_finite(action["bearing"]):
+				return &"bearing"
 		GRANT_POINTS:
 			if action["amount"] <= 0 or action["amount"] > MAX_GRANT:
 				return &"amount"

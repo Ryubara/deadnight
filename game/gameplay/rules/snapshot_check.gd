@@ -81,7 +81,20 @@ static func _zombie_fits(zombie: Dictionary, tuning: RulesTuning) -> bool:
 
 
 static func _player_fits(player: Dictionary) -> bool:
-	return all_names(player["weapons"]) and all_names(player["tonics"])
+	return (
+		all_names(player["weapons"])
+		and all_names(player["tonics"])
+		and _health_fits(player["health"], player["max_health"])
+		and is_finite(player["since_blow"])
+		and player["since_blow"] >= 0.0
+	)
+
+
+## Health is a number from nothing to the player's most, which is something.
+static func _health_fits(health: float, max_health: float) -> bool:
+	if not is_finite(health) or not is_finite(max_health):
+		return false
+	return max_health > 0.0 and health >= 0.0 and health <= max_health
 
 
 static func _generator_fits(generator: Dictionary) -> bool:

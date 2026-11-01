@@ -12,14 +12,15 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 
 | Fed by | How | Carries |
 | --- | --- | --- |
-| The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, purchases, hits and kills, game over |
-| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, the generator. Names are not in the rules, so the ones set before stay |
-| The local player's readings | `set_health`, `set_ammo`, `set_equipment`, `set_prompt`, `set_area`, `set_markers`, `set_player_name` | what the rules do not own: health, the weapon in hand, what is in reach, where the player stands |
-| HUD events beside the rules' own | `player_hurt` (`player_id`, `health`, `direction` in radians clockwise from straight ahead); optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a blow or a hit point into these; there is no world position in the HUD |
+| The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, **your health** (`player_added`, `player_hurt`, `player_healed`, `player_downed`), purchases, hits and kills, game over |
+| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, your health, the generator. Names are not in the rules, so the ones set before stay |
+| The local player's readings | `facing` (a property), `set_ammo`, `set_equipment`, `set_prompt`, `set_area`, `set_markers`, `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, the weapon in hand, what is in reach, where the player stands |
+| HUD additions to the rules' events | optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a hit point into these; there is no world position in the HUD |
 
 Events for other players change their row in the party list and leave your own readings alone. Unknown events are
-ignored, so the rules can grow events without breaking the HUD. Open: the rules have no player health or blow event
-yet (issue to follow), so `player_hurt` is defined here until they do.
+ignored, so the rules can grow events without breaking the HUD. A blow is the rules' `player_hurt`: it carries a
+`bearing` in the world (radians clockwise from -z), and the damage arc turns it by `facing` (the frame's yaw of the
+local player) into the direction on screen.
 
 ## Parts
 

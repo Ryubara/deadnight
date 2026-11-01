@@ -13,8 +13,9 @@ extends RefCounted
 signal changed
 signal event_applied(event: Dictionary)
 
-## Events that exist only for the HUD, sent beside the rules' own: the network layer turns a
-## zombie's blow into this (`direction` is radians clockwise from straight ahead of the player).
+## The rules' event for a blow on a player (`health` left, `max_health`, `bearing` radians
+## clockwise from -z where it came from); the arc turns the bearing toward where the local player
+## faces (`facing`).
 const PLAYER_HURT := &"player_hurt"
 
 ## The parts of the state a HUD part can depend on (see `HudPart.topics`).
@@ -37,6 +38,9 @@ const PHASE_ACTIVE := 2
 const PHASE_OVER := 3
 
 var local_player_id := 1
+## Which way the local player faces, radians (their yaw): the frame sets it, a blow's bearing is
+## turned by it. Not a topic: nothing redraws for it.
+var facing := 0.0
 var health := 100.0
 var max_health := 100.0
 var weapon_name := ""
@@ -130,6 +134,8 @@ func release() -> void:
 # --- The local player's own readings ---
 
 
+## Health is the rules' (`player_added`, `player_hurt`, `player_healed`, a snapshot); this sets it
+## by hand for a tool or a capture.
 func set_health(value: float, maximum: float = -1.0) -> void:
 	if maximum > 0.0:
 		_assign(&"max_health", maximum, HEALTH)
@@ -259,6 +265,10 @@ func load_snapshot(data: Dictionary) -> void:
 	var local: Dictionary = team.get(local_player_id, {})
 	points = int(local.get("points", 0))
 	grenades = int(local.get("grenades", 0))
+	var mine: Dictionary = players.get(local_player_id, {})
+	if mine.has("max_health"):
+		_assign(&"max_health", float(mine["max_health"]), HEALTH)
+		_assign(&"health", float(mine.get("health", max_health)), HEALTH)
 	var generator: Dictionary = data.get("generator", {})
 	_set_fuel(float(generator.get("fuel", fuel)))
 	for circuit_id in generator.get("circuits", {}):
@@ -292,7 +302,9 @@ func _handler(type: StringName) -> Callable:
 		&"player_removed":
 			handler = _on_player_removed
 		&"player_downed":
-			handler = func(e: Dictionary) -> void: _set_downed(int(e["player_id"]), true)
+			handler = _on_player_downed
+		&"player_healed":
+			handler = _on_player_healed
 		&"player_revived":
 			handler = func(e: Dictionary) -> void: _set_downed(int(e["player_id"]), false)
 		&"points_changed":
@@ -382,6 +394,8 @@ func _boss_index(zombie_id: int) -> int:
 func _on_player_added(event: Dictionary) -> void:
 	var player_id := int(event["player_id"])
 	var member := _member(player_id)
+	if player_id == local_player_id:
+		_set_local_health(event)
 	if event.has("grenades"):
 		member["grenades"] = int(event["grenades"])
 		if player_id == local_player_id:
@@ -408,7 +422,27 @@ func _on_purchase_made(event: Dictionary) -> void:
 
 
 func _on_player_hurt(event: Dictionary) -> void:
-	if int(event.get("player_id", -1)) == local_player_id and event.has("health"):
+	if int(event.get("player_id", -1)) == local_player_id:
+		_set_local_health(event)
+
+
+func _on_player_healed(event: Dictionary) -> void:
+	if int(event.get("player_id", -1)) == local_player_id:
+		_set_local_health(event)
+
+
+func _on_player_downed(event: Dictionary) -> void:
+	var player_id := int(event["player_id"])
+	_set_downed(player_id, true)
+	if player_id == local_player_id:
+		_assign(&"health", 0.0, HEALTH)
+
+
+## Takes the local player's `health` (and `max_health`, when the event has it) off an event.
+func _set_local_health(event: Dictionary) -> void:
+	if event.has("max_health"):
+		_assign(&"max_health", float(event["max_health"]), HEALTH)
+	if event.has("health"):
 		_assign(&"health", clampf(float(event["health"]), 0.0, max_health), HEALTH)
 
 

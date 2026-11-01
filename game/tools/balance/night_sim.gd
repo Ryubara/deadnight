@@ -33,9 +33,8 @@ const FUEL_BUY_BELOW := 35.0
 var rules: GameRules
 var skill: SimSkill
 var step: float
-## The numbers the night (not the rules) owns: the player's health and mending, a zombie's swing.
-## The shipped defaults, as the real night loads them.
-var night := NightTuning.new()
+## The numbers the night (not the rules) owns: a zombie's swing. The shipped defaults, as the real
+## night loads them. The player's health and mending are the rules' (`tuning.player`).
 var zombies_tuning := ZombieTuning.new()
 
 var _rng := RandomNumberGenerator.new()
@@ -66,9 +65,9 @@ func _init(
 		player.id = id
 		player.weapon = SimWeapons.START
 		player.ammo = SimWeapons.magazine(SimWeapons.START)
-		player.health = night.max_health
-		player.max_health = night.max_health
-		player.regen_delay = night.regen_delay
+		player.health = p_tuning.health.max_health
+		player.max_health = p_tuning.health.max_health
+		player.regen_delay = p_tuning.health.regen_delay
 		_players[id] = player
 
 
@@ -180,7 +179,8 @@ func _mend(player: SimPlayer, engaged: Dictionary) -> void:
 		return
 	player.stun = maxf(player.stun - step, 0.0)
 	if _clock - player.last_hit >= player.regen_delay:
-		player.health = minf(player.health + night.regen_per_second * step, player.max_health)
+		var mended := rules.tuning.health.regen_per_second * step
+		player.health = minf(player.health + mended, player.max_health)
 
 
 # --- Shooting ---
