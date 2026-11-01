@@ -4,10 +4,11 @@ extends RefCounted
 ## feeds that state from what a client hears and nothing more: `ClientState.event_received`. The
 ## rules' events (round, points, party, fuel, purchases, and the player's health: `player_added`,
 ## `player_hurt`, `player_healed`, `player_downed`) go in as they are, and so do the weapons' events
-## the ammo card and the equipment slot read (`HudLoadout.EVENTS`: equipped, shot, reload). Each
-## `frame` carries what neither announces: which way the local player faces, what the hand would
-## do (the prompt at a door, a breach or a breaker post), and, once, the weapon in hand for a HUD
-## that joined after its events.
+## the ammo card and the equipment slot read (`HudLoadout.EVENTS`: equipped, shot, reload, rounds
+## added). Each `frame` carries what neither announces: which way the local player faces, what the
+## hand would do (the prompt at a door, a breach or a breaker post), and the weapons' state, which
+## `HudLoadout.sync` reads every tick, so the ammo card is the server's whatever changed it (a HUD
+## that joined after the events needs no replay).
 
 ## What the player is told at each door: the name on the card (the shop ids are the shop's).
 const DOOR_NAMES := {
@@ -77,11 +78,10 @@ func _on_frame() -> void:
 	if me.is_empty():
 		return
 	state.facing = me["facing"]
-	# The weapons' events set the ammunition; a HUD that joined late has heard none, so the frame
-	# gives it the weapon in hand once.
-	var weapon: StringName = me["weapon"]
-	if state.weapon_id == &"" and weapon != &"":
-		HudLoadout.equip(weapon, me["ammo"], me["reserve"], state)
+	# The weapons' events set the ammunition the moment they are heard; the frame says what the
+	# server holds, every tick, so rounds that came by any road show now, and a HUD that joined
+	# late (it heard no event) takes the weapon in hand.
+	HudLoadout.sync(me, state)
 	_set_prompt(me["prompt"])
 
 

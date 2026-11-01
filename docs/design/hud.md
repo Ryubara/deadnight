@@ -12,11 +12,15 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 
 | Fed by | How | Carries |
 | --- | --- | --- |
-| The weapons' events | the same `apply_event`, for `weapon_equipped`, `shot_fired`, `reload_started`, `reload_finished` (`HudLoadout.EVENTS`; the binding forwards these and no other weapon event) | the ammo card and the equipment slot: the weapon in hand, its magazine and reserve as the events carry them, whether it is reloading, and the weapon put away last |
+| The weapons' events | the same `apply_event`, for `weapon_equipped`, `shot_fired`, `reload_started`, `reload_finished`, `ammo_added` (`HudLoadout.EVENTS`; the binding forwards these and no other weapon event) | the ammo card and the equipment slot: the weapon in hand, its magazine and reserve as the events carry them, whether it is reloading, and the weapon put away last |
+| The frame's weapons | `HudLoadout.sync`, every frame, from the local player's `weapon`, `ammo`, `reserve`, `reloading` and `arms` | the same readings, as the server holds them: rounds that came by any road (a locker, a wall buy of a weapon already carried, a pickup) show on the tick they arrive, and a HUD that joined late needs no replay. The frame wins over the events; matching it announces nothing |
 | The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, **your health** (`player_added`, `player_hurt`, `player_healed`, `player_downed`), purchases, hits and kills, game over |
 | A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, your health, the generator, the special round running and the bosses on the lot with their health (a boss whose spawn event was already in flight is not counted twice). Names, seats and looks are not in the rules, so the ones set before stay |
-| The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events fill them), `set_prompt`, `set_area`, `set_markers`, `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
+| The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events and the frame fill them), `set_prompt`, `set_area`, `set_markers`, `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
 | HUD additions to the rules' events | optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a hit point into these; there is no world position in the HUD |
+
+The ammo card and the equipment slot are the local player's only: another player's `ammo_added`, shot or reload leaves
+them alone (a teammate's rounds are not shown anywhere).
 
 Events for other players change their container (points, down state) and leave your own readings alone. Unknown events are
 ignored, so the rules can grow events without breaking the HUD. A blow is the rules' `player_hurt`: it carries a
