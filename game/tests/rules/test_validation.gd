@@ -15,6 +15,13 @@ const SAMPLES := {
 	&"buy": {"type": &"buy", "player_id": 1, "item_id": &"fuel_can"},
 	&"set_circuit": {"type": &"set_circuit", "circuit_id": &"screen_lot", "on": false},
 	&"grant_points": {"type": &"grant_points", "player_id": 1, "amount": 10},
+	&"use_grenade": {"type": &"use_grenade", "player_id": 1},
+	&"explosion":
+	{
+		"type": &"explosion",
+		"player_id": 1,
+		"victims": [{"zombie_id": 1, "damage": 20.0, "leg_damage": 5.0}],
+	},
 }
 
 var _rules: GameRules
@@ -58,6 +65,8 @@ func test_the_builders_make_well_formed_actions() -> void:
 		RulesAction.buy(1, &"fuel_can"),
 		RulesAction.set_circuit(&"screen_lot", true),
 		RulesAction.grant_points(1, 5, &"pickup"),
+		RulesAction.use_grenade(1),
+		RulesAction.explosion(1, [{"zombie_id": 2, "damage": 5.0, "leg_damage": 1.0}]),
 	]:
 		assert_dict(RulesAction.validate(action)).is_empty()
 

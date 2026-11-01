@@ -88,12 +88,52 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
   headshots and melee are worth more than the points they pay. Ammo for sale and the weapon carry limit are not decided
   here; see the open questions.
 
+## Grenades
+
+Hold the throw button to cook, let go to throw; the second button tosses underarm. Code in
+`game/gameplay/grenades/`, numbers in `defs/frag.tres` (the pineapple) and the rules' `ExplosiveTuning`; the tests are
+in `game/tests/grenades/`. How it was built: [Grenades](../research/grenades.md).
+
+**Server first.** The pin and the throw are two actions (`cook`, `throw`) that a `GrenadeThrower` makes from the
+`throw_over` and `throw_under` levels of each `PlayerCommand`, so a replay of the commands replays the cook and the
+throw. The server owns the fuse and the flight (`GrenadeState`, stepped on the fixed tick: gravity, bounce, roll,
+rest); the client draws its own copy the moment the button is released and the server's `grenade_thrown` corrects it.
+The same stepping gives the arc preview, so the preview, the prediction and the server land on one point.
+
+| Thing | Number |
+| --- | --- |
+| Fuse | 3.0 s from the pin; cooking spends it in the hand; held to the end it goes off in the hand |
+| Overarm | 15 m/s, lifted 8 degrees; keeps half of the thrower's speed |
+| Underarm | 7 m/s, lifted 22 degrees; it rolls |
+| Flight | gravity 16 m/s2; floor bounce keeps 42%, wall bounce 50%, 20% lost along the surface; under 1.4 m/s it rolls, 3.5 m/s2 of friction, stops under 0.2 m/s |
+| Blast | 150 at the centre and out to 2 m, sliding to 0 at 8 m |
+| Cover | a line from the blast (0.25 m up) to each of the six hit parts; a part with something solid in the way takes nothing |
+| Shares of the blast | legs 25% each, body 25%, arms 10% each, head 5% (a blast goes off low) |
+| Knockback, stun | up to 7 m/s along the ground and 3 m/s up, 1.6 s stun, both falling off like the damage |
+| Thrower | takes 40% of what a zombie would at that spot, cover included; other players take nothing (a server flag turns friendly fire on) |
+| Carry | start with 2, every round start tops up to 3, at most 5; the shop sells 2 for 150 (+5 a round) |
+| Kill points | 40 for a zombie the blast kills (a hit that does not kill pays the usual 4) |
+
+A grenade is never a sure kill: at 150 it kills a round-1 zombie (60) out to 5.6 m, a round-5 one (132) out to 2.7 m, and
+no round-10 one (213) at all.
+
+**Crippling.** The rules (`explosion` action) decide, never the world. A zombie that survives loses its legs and
+becomes a crawler (once; one `zombie_crippled` event, speed times 0.35) when either:
+
+- the blast damage on its **legs** adds up to a quarter of its full health (the blast was low and close), or
+- the blast leaves it with **5% to 40%** of its health and a seeded roll (60%) says so: hurt badly but not dead.
+
+So the ring just outside the kill radius makes crawlers, and in late rounds a grenade cripples everything near it
+instead of killing it. The roll has its own stream in the rules' seed and is drawn only for a zombie in the band, so
+every machine agrees. Gibs, decals and the fireball are client only and decide nothing.
+
 ## Open questions
 
 - **Ammo as a shop item and the carry limit** (two or three weapons) need the shop and the player work; today a player
   may carry every weapon.
 - **Friendly blast.** The flare's blast hurts zombies only; whether it hurts players (and whether a zombie on fire
-  keeps burning) is a design call.
+  keeps burning) is a design call. A grenade hurts the thrower only (`player_blasted`); player health is not built yet,
+  so that event is the seam for it.
 - **Sound.** The shot sound request exists as a signal on the client; no audio is shipped yet.
 - **Reload as a skill.** A magazine swap that rewards a timed second press, and cancelling a reload by sprinting, wait
   for the controller (#14).
