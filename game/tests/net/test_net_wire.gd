@@ -19,46 +19,61 @@ func _command() -> NightCommand:
 	return command
 
 
-func test_a_command_is_47_bytes_and_comes_back_whole() -> void:
+func test_a_command_is_23_bytes_and_comes_back_whole() -> void:
 	var bytes := NetWire.command(_command())
 	assert_int(bytes.size()).is_equal(NetWire.COMMAND_SIZE)
+	assert_int(NetWire.COMMAND_SIZE).is_equal(23)
 	var back := NetWire.read_command(bytes)
 	assert_int(back.seq).is_equal(4_000_000_000)
-	# A move longer than 1 is shortened on the way in.
+	# A move longer than 1 is shortened on the way in; a stick axis is a byte (1/127).
 	var shortened := Vector2(0.5, -1.0).limit_length(1.0)
-	assert_float(back.motion.move.x).is_equal_approx(shortened.x, 0.001)
-	assert_float(back.motion.move.y).is_equal_approx(shortened.y, 0.001)
-	assert_float(back.motion.yaw).is_equal_approx(1.25, 0.0001)
-	assert_float(back.motion.pitch).is_equal_approx(-0.4, 0.0001)
+	assert_float(back.motion.move.x).is_equal_approx(shortened.x, 0.008)
+	assert_float(back.motion.move.y).is_equal_approx(shortened.y, 0.008)
+	assert_float(back.motion.yaw).is_equal_approx(1.25, CommandCodec.YAW_STEP)
+	assert_float(back.motion.pitch).is_equal_approx(-0.4, CommandCodec.LOOK_STEP)
 	assert_bool(back.motion.sprint).is_true()
 	assert_bool(back.motion.swap_shoulder).is_true()
 	assert_bool(back.motion.jump).is_false()
 	assert_bool(back.fire).is_true()
+	assert_bool(back.motion.fire).is_true()
 	assert_bool(back.use).is_true()
 	assert_bool(back.use_held).is_true()
 	assert_bool(back.reload).is_false()
-	assert_float(back.origin.distance_to(Vector3(3.0, 1.5, -7.25))).is_less(0.001)
+	assert_float(back.origin.distance_to(Vector3(3.0, 1.5, -7.25))).is_less(0.01)
+	assert_float(back.dir.distance_to(Vector3(0.0, 0.0, -1.0))).is_less(0.0002)
 
 
-func test_a_command_with_poison_numbers_is_made_harmless() -> void:
+func test_a_command_with_hostile_bytes_is_made_harmless() -> void:
+	# Integers cannot be not-a-number or infinite; the bytes that could still hurt are a move
+	# longer than a full push and a look past straight up.
 	var bytes := NetWire.command(_command())
-	bytes.encode_float(5, NAN)
-	bytes.encode_float(13, INF)
-	bytes.encode_float(35, 0.0)
-	bytes.encode_float(39, 0.0)
-	bytes.encode_float(43, 0.0)
+	bytes.encode_s8(5, 127)
+	bytes.encode_s8(6, 127)
+	bytes.encode_s16(9, -32768)
+	bytes.encode_s16(21, 32767)
 	var back := NetWire.read_command(bytes)
-	assert_vector(back.motion.move).is_equal(Vector2.ZERO)
-	assert_float(back.motion.yaw).is_equal(0.0)
-	assert_vector(back.dir).is_equal(Vector3.FORWARD)
-	bytes.encode_float(5, 90.0)
-	bytes.encode_float(9, 0.0)
-	assert_float(NetWire.read_command(bytes).motion.move.length()).is_less_equal(1.0001)
+	assert_float(back.motion.move.length()).is_less_equal(1.0001)
+	assert_float(back.motion.pitch).is_greater_equal(-PI / 2.0 - 0.0001)
+	assert_float(back.dir.length()).is_equal_approx(1.0, 0.0001)
+	# A command asked to carry poison numbers sends a harmless one.
+	var poison := _command()
+	poison.motion.move = Vector2(NAN, INF)
+	poison.motion.yaw = INF
+	poison.motion.pitch = NAN
+	poison.dir = Vector3.ZERO
+	poison.origin = Vector3(NAN, 1.0e9, -1.0e9)
+	var clean := NetWire.read_command(NetWire.command(poison))
+	assert_vector(clean.motion.move).is_equal(Vector2.ZERO)
+	assert_float(clean.motion.yaw).is_equal(0.0)
+	assert_float(clean.motion.pitch).is_equal(0.0)
+	assert_vector(clean.dir).is_equal(Vector3.FORWARD)
+	assert_bool(clean.origin.is_finite()).is_true()
+	assert_float(absf(clean.origin.y)).is_less_equal(327.68)
 
 
 func test_wrong_sized_or_unknown_packets_read_as_nothing() -> void:
 	var bytes := NetWire.command(_command())
-	assert_object(NetWire.read_command(bytes.slice(0, 46))).is_null()
+	assert_object(NetWire.read_command(bytes.slice(0, NetWire.COMMAND_SIZE - 1))).is_null()
 	bytes.append(0)
 	assert_object(NetWire.read_command(bytes)).is_null()
 	assert_object(NetWire.read_command(PackedByteArray())).is_null()

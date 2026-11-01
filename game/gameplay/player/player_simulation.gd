@@ -10,6 +10,9 @@ extends RefCounted
 ## the floor snap is done here from the carried `on_floor` instead of the body's own contact cache,
 ## which a rewind does not restore (docs/research/player-controller.md).
 
+## How far (metres) the probe of `restore` presses into the floor to find it again.
+const FLOOR_PROBE := 0.02
+
 
 static func simulate(
 	body: CharacterBody3D,
@@ -45,6 +48,25 @@ static func simulate(
 
 	state.position = body.global_position
 	state.velocity = body.velocity
+
+
+## Puts `body` where `state` says, ready to simulate the next tick from it as if it had got there
+## by `simulate`: the position and velocity, and the floor contact `move_and_slide` keeps between
+## calls (whether there was a floor, and its slope), which a body moved by hand does not have. Use
+## it before replaying commands from an older state and after moving the body to a server's answer;
+## without it the first tick of the replay snaps to (or misses) the floor by the contact the body
+## had at the end of the run being replaced, up to a few decimetres off on a slope.
+static func restore(body: CharacterBody3D, state: PlayerMotionState, delta: float) -> void:
+	var snap_length := body.floor_snap_length
+	# Snapping would pull a body in the air onto a floor within reach, and it is the contact being
+	# set that decides a snap in the next tick.
+	body.floor_snap_length = 0.0
+	body.global_position = state.position
+	body.velocity = Vector3.DOWN * (FLOOR_PROBE / delta) if state.on_floor else Vector3.ZERO
+	body.move_and_slide()
+	body.floor_snap_length = snap_length
+	body.global_position = state.position
+	body.velocity = state.velocity
 
 
 ## Sprint works in every direction while not aiming: the body turns to face the way it goes, so a
