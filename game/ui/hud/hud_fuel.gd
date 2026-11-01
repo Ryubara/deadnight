@@ -7,8 +7,19 @@ const SEGMENTS := 20
 const SEGMENT_SIZE := Vector2(14.0, 34.0)
 const SEGMENT_GAP := 4.0
 const BULB_RADIUS := 11.0
+## The bulbs sit in a grid, a bulb with its word beside it (not under it), so a word has half the
+## gauge's width to itself instead of a quarter: "SCREEN" and "BACK LOT" are never cut.
+const BULB_COLUMNS := 2
+## Distance between the rows of bulbs, and from the segments to the first row's centre.
+const BULB_ROW_PITCH := 34.0
+const BULB_ROWS_TOP := 24.0
+## Room kept between a bulb and its word, and from a cell's left edge to the bulb's centre.
+const BULB_WORD_GAP := 8.0
+const BULB_INSET := BULB_RADIUS + 2.0
+## How far a lit bulb's glow reaches, in bulb radii.
+const GLOW_REACH := 1.7
 const PULSE_RATE := 5.0
-## Room kept between two words under the bulbs.
+## Room kept between a word and the next cell.
 const WORD_GAP := 2.0
 ## Extra space between the letters of those words; none, so the longest still fits its slot.
 const WORD_TRACKING := 0.0
@@ -22,8 +33,8 @@ const CIRCUIT_NAMES := {
 
 var lit_segments := 0
 var lit_circuits: Array[StringName] = []
-## The word under each bulb as drawn: cut with an ellipsis when the typeface makes it wider than
-## the bulb's slot, so neighbouring words never run together.
+## The word beside each bulb as drawn: cut with an ellipsis only when the typeface makes it wider
+## than its slot, so neighbouring words never run together.
 var circuit_words: Dictionary[StringName, String] = {}
 var status_text: String:
 	get:
@@ -47,7 +58,8 @@ func _init() -> void:
 	body.add_child(top)
 	_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_gauge.custom_minimum_size = Vector2(
-		SEGMENTS * (SEGMENT_SIZE.x + SEGMENT_GAP) - SEGMENT_GAP, SEGMENT_SIZE.y + 76.0
+		SEGMENTS * (SEGMENT_SIZE.x + SEGMENT_GAP) - SEGMENT_GAP,
+		SEGMENT_SIZE.y + BULB_ROWS_TOP + BULB_ROW_PITCH + 18.0
 	)
 	_gauge.draw.connect(_draw_gauge)
 	body.add_child(_gauge)
@@ -79,14 +91,18 @@ func refresh() -> void:
 
 func _cut_circuit_words() -> void:
 	circuit_words.clear()
-	var count := state.circuits.size()
-	if count == 0:
+	if state.circuits.is_empty():
 		return
 	var font := tokens.text_font(0.0, WORD_TRACKING)
-	var slot := _gauge.custom_minimum_size.x / float(count) - WORD_GAP
+	var slot := word_slot(_gauge.custom_minimum_size.x)
 	for circuit_id in state.circuits:
 		var word: String = CIRCUIT_NAMES.get(circuit_id, String(circuit_id).to_upper())
 		circuit_words[circuit_id] = HudStyle.trimmed(font, word, HudStyle.MIN_TEXT, slot)
+
+
+## The width a word may take: its cell less the bulb, the gap after it and the gap to the next cell.
+func word_slot(gauge_width: float) -> float:
+	return gauge_width / float(BULB_COLUMNS) - BULB_INSET - BULB_RADIUS - BULB_WORD_GAP - WORD_GAP
 
 
 func _status_word() -> String:
@@ -111,24 +127,26 @@ func _draw_gauge() -> void:
 
 
 func _draw_bulbs() -> void:
-	var count := state.circuits.size()
-	if count == 0:
+	if state.circuits.is_empty():
 		return
 	var font := tokens.text_font(0.0, WORD_TRACKING)
-	var column := _gauge.size.x / float(count)
+	var cell_width := _gauge.size.x / float(BULB_COLUMNS)
+	# Centres the capitals on the bulb: half the height between the baseline's ascent and descent.
+	var lift := (font.get_ascent(HudStyle.MIN_TEXT) - font.get_descent(HudStyle.MIN_TEXT)) * 0.5
 	var index := 0
 	for circuit_id in _ordered_circuits():
 		var on := lit_circuits.has(circuit_id)
-		var centre := Vector2(column * (index + 0.5), SEGMENT_SIZE.y + 28.0)
+		var centre := Vector2(
+			cell_width * (index % BULB_COLUMNS) + BULB_INSET,
+			SEGMENT_SIZE.y + BULB_ROWS_TOP + BULB_ROW_PITCH * (index / BULB_COLUMNS)
+		)
 		if on:
-			_gauge.draw_circle(centre, BULB_RADIUS * 2.0, Color(tokens.accent, 0.2))
+			_gauge.draw_circle(centre, BULB_RADIUS * GLOW_REACH, Color(tokens.accent, 0.2))
 		_gauge.draw_circle(centre, BULB_RADIUS, tokens.accent_bright if on else tokens.outline)
-		var word: String = circuit_words.get(circuit_id, "")
-		var width := HudStyle.text_width(font, word, HudStyle.MIN_TEXT)
 		_gauge.draw_string(
 			font,
-			Vector2(centre.x - width * 0.5, centre.y + BULB_RADIUS + 28.0),
-			word,
+			Vector2(centre.x + BULB_RADIUS + BULB_WORD_GAP, centre.y + lift),
+			circuit_words.get(circuit_id, ""),
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
 			HudStyle.MIN_TEXT,
