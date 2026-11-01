@@ -46,6 +46,7 @@ var _clock := 0.0
 ## Seconds each hint has been showing, and seconds a used one has left to fade.
 var _age := {}
 var _leaving := {}
+var _painted := false
 
 
 func _ready() -> void:
@@ -70,6 +71,11 @@ func showing() -> Array[StringName]:
 			continue
 		found.append(id)
 	return found
+
+
+## True while the last frame drawn had a label in it, fading out included.
+func is_painted() -> bool:
+	return _painted
 
 
 func is_seen(id: StringName) -> bool:
@@ -140,8 +146,11 @@ func _process(delta: float) -> void:
 		_leaving[id] = float(_leaving[id]) - delta
 		if float(_leaving[id]) <= 0.0:
 			_leaving.erase(id)
-	if not now.is_empty() or not _leaving.is_empty():
+	var painting := not now.is_empty() or not _leaving.is_empty()
+	# One more redraw after the last label goes, or its last, faint frame stays on the screen.
+	if painting or _painted:
 		queue_redraw()
+	_painted = painting
 
 
 func _draw() -> void:
