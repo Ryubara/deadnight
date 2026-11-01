@@ -72,7 +72,7 @@ func _init(
 	sim.pathing = NavmeshPathing.new(world.map())
 	sim.lit_probe = world.is_lit
 	sim.gates = world.gates()
-	sim.boards_probe = rules.barricades.boards_of
+	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()

@@ -30,9 +30,9 @@ var pathing: ZombiePathing = ZombiePathing.new()
 var lit_probe: Callable = Callable()
 ## The fence's breaches by id. A zombie spawned for one (`spawn`'s `gate_id`) stops at its boards.
 var gates: Dictionary[StringName, ZombieGate] = {}
-## `Callable(gate_id: StringName) -> int`: boards standing across that breach (the rules' count).
-## Without it no board stands anywhere.
-var boards_probe: Callable = Callable()
+## The boards across each breach: the rules' own state, read here and never changed. (A `Callable`
+## to its method crashed Godot at exit, so the sim holds the object.) Without it none stand.
+var barricades: BarricadeState
 ## Seconds of work one board takes a walker (a type's `barrier_speed` makes it quicker).
 var board_seconds: float = 1.2
 var zombies: Dictionary[int, ZombieBody] = {}
@@ -224,9 +224,9 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 
 ## Whether boards stand across `gate` that this zombie has to tear down.
 func _boards_hold(zombie: ZombieBody, gate: ZombieGate) -> bool:
-	if zombie.profile.barrier_speed <= 0.0 or not boards_probe.is_valid():
+	if zombie.profile.barrier_speed <= 0.0 or barricades == null:
 		return false
-	return int(boards_probe.call(gate.id)) > 0
+	return barricades.boards_of(gate.id) > 0
 
 
 ## What the separation push moved across the line goes back: the crowd cannot shove a zombie

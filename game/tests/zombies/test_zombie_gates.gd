@@ -6,17 +6,22 @@ extends GdUnitTestSuite
 const GATE := &"nw"
 const TARGETS := {1: Vector3(20.0, 0.0, 0.0)}
 
-var _boards: Array[int] = [3]
+var _barricades: BarricadeState
 
 
 func before_test() -> void:
-	_boards[0] = 3
+	_barricades = BarricadeState.new(BarricadeTuning.new())
+	_set_boards(3)
+
+
+func _set_boards(count: int) -> void:
+	_barricades.boards[GATE] = count
 
 
 func _sim() -> ZombieSim:
 	var sim := ZombieFixture.sim()
 	sim.gates[GATE] = ZombieGate.new(GATE, Vector3.ZERO, Vector3.RIGHT)
-	sim.boards_probe = func(_id: StringName) -> int: return _boards[0]
+	sim.barricades = _barricades
 	sim.board_seconds = 1.2
 	return sim
 
@@ -61,7 +66,7 @@ func test_a_stronger_zombie_tears_faster() -> void:
 
 
 func test_with_no_boards_left_it_walks_in_and_the_gate_is_behind_it() -> void:
-	_boards[0] = 0
+	_set_boards(0)
 	var sim := _sim()
 	var zombie := _gated(sim, 1, Vector3(-4.0, 0.0, 0.0))
 	var events := ZombieFixture.run(sim, 4.0, TARGETS)
@@ -71,12 +76,12 @@ func test_with_no_boards_left_it_walks_in_and_the_gate_is_behind_it() -> void:
 
 
 func test_boards_that_go_up_again_hold_the_next_zombie() -> void:
-	_boards[0] = 0
+	_set_boards(0)
 	var sim := _sim()
 	var zombie := _gated(sim, 1, Vector3(-4.0, 0.0, 0.0))
 	ZombieFixture.run(sim, 1.0, TARGETS)
 	assert_float(zombie.position.x).is_less(0.0)
-	_boards[0] = 2
+	_set_boards(2)
 	ZombieFixture.run(sim, 6.0, TARGETS)
 	assert_float(zombie.position.x).is_less(0.0)
 

@@ -97,11 +97,19 @@ How a zombie is held at a breach, and what we learned making it (#155):
 
 - **The gate is the simulation's, not physics'.** Zombies are not bodies, so nothing "blocks" them: a zombie
   spawned at a field marker outside a breach carries the breach's id (`ZombieBody.gate_id`), and `ZombieSim` clamps
-  its walk to 0.9 m short of the boards while the rules' count (`boards_probe`) is above 0. It tears while it stands
+  its walk to 0.9 m short of the boards while the rules' count (`ZombieSim.barricades`) is above 0. It tears while it stands
   there, by entering the `ATTACK` mode again at the end of each swing (the client already animates that: the design's
   interim for `Tear_Boards` is `Idle_Attack` looped at the barrier), and adds `delta * barrier_speed` to its progress; every
   `seconds_per_board` it reports `zombie_tore`, and the director turns that into the `tear_board` action. Two zombies
   at one breach both work on it, so a crowd is quicker.
+- **The sim reads the rules' `BarricadeState`**, the plain data of how many boards stand at each breach, and never
+  changes it: only the `tear_board` action does. It holds the object, not a `Callable` into the rules, so it needs no
+  engine and a test hands it a state with the boards set.
+- **Quitting while a door's navigation bake runs kills the engine.** `autopilot_night.tscn --rounds=1` (the CI step
+  that plays a night headless) printed its report and then died with `corrupted size vs. prev_size in fastbins` (exit
+  134, a segmentation fault locally) whenever the bot had just bought a door: the bake is on a worker thread and the
+  quit does not wait for it. It is older than the boards (on `main`, `--rounds=3` does it too); the boards only moved
+  the bot's purchase into round 1. The capture now waits for `DoorNavigation.is_busy()` to clear before it quits.
 - **Separation can push a zombie across the line**, so the clamp also runs after the crowd push. A test packs twelve
   zombies against the boards and none gets through.
 - **A zombie in reach of a player strikes them** through the boards: standing at them is a risk, which is the point.

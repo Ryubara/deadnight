@@ -3,7 +3,7 @@ extends RefCounted
 ## One breach of the fence as the zombie simulation sees it: a line across the gap and the way into
 ## the field. A zombie that came for this gate stops short of the line while boards stand across it
 ## and tears them off one at a time; with none up it walks through. Pure data: how many boards stand
-## is the rules' (`ZombieSim.boards_probe`).
+## is the rules' (`ZombieSim.barricades`).
 
 var id: StringName = &""
 ## The middle of the gap, on the fence line.
