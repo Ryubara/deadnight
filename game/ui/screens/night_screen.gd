@@ -13,6 +13,7 @@ const DIM := Color(0.0, 0.0, 0.0, 0.55)
 var night: Night
 
 var _hud: Hud
+var _touch: TouchControls
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
@@ -29,8 +30,18 @@ func _ready() -> void:
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
 	night.hud = _hud
+	# Over the HUD, under the pause overlay; it shows only on a touch device (or when forced).
+	_touch = TouchControls.new()
+	_touch.state = _hud.state
+	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
+	add_child(_touch)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
+
+
+## True while the touch controls are on screen and taking touches.
+func touch_active() -> bool:
+	return _touch != null and _touch.is_active()
 
 
 func screen_enter() -> void:
@@ -65,6 +76,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## The HUD keeps inside the notch and the rounded corners.
+func _on_safe_insets_changed(insets: Vector4) -> void:
+	_hud.offset_left = insets.x
+	_hud.offset_top = insets.y
+	_hud.offset_right = -insets.z
+	_hud.offset_bottom = -insets.w
+
+
 func _pause() -> void:
 	night.set_paused(true)
 	_show_overlay("Paused", "The dead wait.", true)
@@ -72,6 +91,7 @@ func _pause() -> void:
 
 func _resume_night() -> void:
 	_overlay.hide()
+	_touch.live = true
 	night.set_paused(false)
 
 
@@ -85,6 +105,7 @@ func _on_night_over(round_reached: int) -> void:
 
 func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_touch.live = false
 	_title.text = title
 	_note.text = note
 	_resume.visible = can_resume

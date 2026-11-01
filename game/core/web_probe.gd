@@ -41,7 +41,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"round": 0,
 		"remaining": 0,
 		"alive": 0,
-		"yaw": 0.0
+		"yaw": 0.0,
+		"touch": false
 	}
 	if top == null:
 		return data
@@ -56,6 +57,7 @@ static func snapshot(top: Control) -> Dictionary:
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
 	data["over"] = state.over
+	data["touch"] = night_screen.touch_active()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)

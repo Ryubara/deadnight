@@ -1,12 +1,7 @@
 # The lot's lighting pass (docs/research/night-environment.md, Lamps and glow): what glows
-# follows the circuit of the lamp it hangs on, the lot's lights stay under the Compatibility
-# renderer's cap per mesh, and what is only decoration lights no ground for the dead.
+# follows the circuit of the lamp it hangs on, and what is only decoration lights no ground for
+# the dead. The cap of lights per mesh is `test_lot_light_cap.gd`.
 extends GdUnitTestSuite
-
-## `rendering/limits/opengl/max_lights_per_object`: a mesh lit by more lights drops the rest.
-const LIGHT_CAP := 8
-## The 320 m near-black ground under the lot: every lamp reaches it, and what it drops is unseen.
-const EXEMPT := ["Outskirts"]
 
 var _lot: Node3D
 var _lamps: LotLamps
@@ -134,52 +129,3 @@ func test_decor_lights_light_no_ground_for_the_dead() -> void:
 	for lamp in _lamps.lamps:
 		if lamp != sign_lamp:
 			assert_bool(lamp.decor).is_false()
-
-
-func test_no_mesh_of_the_lot_is_lit_by_more_lights_than_the_renderer_allows() -> void:
-	# Everything on: the worst case for the cap.
-	for circuit_id in _fuel.circuit_drain:
-		_switch(circuit_id, true)
-	var lights: Array[Light3D] = []
-	for node in _lot.get_tree().get_nodes_in_group(&"powered_light"):
-		if node is Light3D and _lot.is_ancestor_of(node) and (node as Light3D).visible:
-			lights.append(node)
-	assert_int(lights.size()).is_greater(20)
-	var worst := 0
-	var worst_name := ""
-	for box: CSGBox3D in _lot.find_children("*", "CSGBox3D", true, false):
-		if EXEMPT.has(box.name):
-			continue
-		var bounds := box.global_transform * AABB(-box.size * 0.5, box.size)
-		var names: Array[String] = []
-		for light in lights:
-			if _reaches(light, bounds):
-				names.append(str(_lot.get_path_to(light)))
-		var count := names.size()
-		if count > worst:
-			worst = count
-			worst_name = "%s (%s)" % [_lot.get_path_to(box), ", ".join(names)]
-	(
-		assert_int(worst)
-		. override_failure_message("%s is lit by %d lights" % [worst_name, worst])
-		. is_less_equal(LIGHT_CAP)
-	)
-
-
-## Whether `light` can touch `bounds`: an omni's sphere, a spot's cone (by its box).
-func _reaches(light: Light3D, bounds: AABB) -> bool:
-	if light is OmniLight3D:
-		var at := light.global_position
-		var nearest := at.clamp(bounds.position, bounds.end)
-		return at.distance_to(nearest) <= (light as OmniLight3D).omni_range
-	var spot := light as SpotLight3D
-	var forward := -spot.global_basis.z
-	var centre := light.global_position + forward * spot.spot_range
-	var radius := spot.spot_range * tan(deg_to_rad(spot.spot_angle))
-	var extent := Vector3(
-		radius * sqrt(1.0 - forward.x * forward.x),
-		radius * sqrt(1.0 - forward.y * forward.y),
-		radius * sqrt(1.0 - forward.z * forward.z)
-	)
-	var cone := AABB(light.global_position, Vector3.ZERO).merge(AABB(centre - extent, extent * 2.0))
-	return cone.intersects(bounds)
