@@ -221,6 +221,7 @@ func _finish_start(camera: Camera3D) -> void:
 	view.repair_interval = _repair_seconds
 	view.show_lamps(world.greybox, rules_tuning.fuel)
 	view.show_crane(world, rules_tuning)
+	add_child(NightLight.new(world.greybox.get_node("Lighting"), rules_tuning.rounds, state))
 	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)

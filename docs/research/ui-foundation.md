@@ -1,15 +1,57 @@
 # UI foundation
 
 Decisions behind the `gds_ui` addon (`game/addons/gds_ui/`), written while building it. The addon names no Deadnight
-content, so it can move to the GDStudio kit unchanged.
+content, so it can move to the GDStudio kit unchanged; its own `README.md` is the reference for the tokens, the project
+settings, the audio cues, the router calls and how to restyle.
 
 ## Tokens and theme
 
-`UITokens` (a `Resource`) holds every colour, type size, spacing, radius, duration and spring value. Nothing else reads
-a literal. `UIThemeBuilder.build(tokens)` generates the `Theme`: label type variations (`UILabelDisplay` ... `Overline`),
+`UITokens` (a `Resource`) holds every colour, type size, spacing, radius, duration, tint, shader palette and spring
+value. Nothing else in the addon reads a literal of those kinds ([below](#every-literal-is-a-token-21)).
+`UIThemeBuilder.build(tokens)` generates the `Theme`: label type variations (`UILabelDisplay` ... `Overline`),
 button variations (`UIButtonPrimary/Secondary/Ghost`) and panel variations, plus a usable look for plain `Button`,
 `Label` and `PanelContainer`. A game restyles everything by saving a `UITokens` resource and pointing the project
 setting `gds_ui/tokens` at it. Only the engine's fallback font is used: a licensed font is a maintainer decision.
+
+### Every literal is a token (#21)
+
+Review (#21) found that the first version still hid its drive-in look in literals, so a second game could not restyle
+it through tokens. They are now tokens, with the old values as defaults (a capture of the default look before and after
+is the same picture, apart from the stars' places):
+
+- **Shader colours** are uniforms (`burn_hot`, `burn_flame`, `burn_ember`, `burn_char`, `iris_shade`, `iris_rim`,
+  `iris_rim_hot`) named like the tokens; `UITransitionShader.feed_tokens` sets every shader uniform that has a colour
+  token of the same name, so a game's own shader gets a palette by naming a uniform. A test lists each `vec3` uniform
+  of both shaders and fails when one is not a token. The uniforms carry no `source_color` hint: the colours are the
+  raw values that were constants, and the Compatibility renderer draws them unchanged.
+- **Slide** dim and parallax (`slide_dim`, `slide_parallax`), the **shader half length** (`shader_half_scale`),
+  **button tints** (`tint_hover` 0.14, `tint_press` 0.18, `ghost_hover_alpha` 0.85, `disabled_alpha` 0.9), the
+  **marquee** chase (`bulb_spacing`, `bulb_radius`, `chase_speed`, `chase_period`) and the **emboldening** ratios
+  (`embolden_heading_ratio`, `embolden_button_ratio`, `embolden_option_ratio`).
+  One drift: the toggle, option selector and plain `Button` used 0.14, 0.1, 0.12 and 0.2 for their hover and press tint;
+  they now share `tint_hover` and `tint_press`, so their tints moved by at most 0.04.
+- **The star backdrop** is `star_count` (0 draws none), `star_seed` and `star_band` on the tokens plus `UIScreen.stars`
+  per screen. The old seed was the year of the game's setting; the default seed is now 1, so the demo's stars sit
+  elsewhere.
+- The demo says "UI DEMO" and tints its detail screens from tokens (the old fixed browns made a light palette look
+  half-restyled in the first capture).
+
+### Changing tokens at runtime (#21)
+
+`UITokens.set_active(tokens)` emits `UITokens.active_changed()`. The router listens (stage theme, clear colour) and so
+does every addon component (springs, radii, minimum sizes, stars); `set_active(null)` returns to the project setting.
+Before this, `set_active` after the router's `_ready` did nothing, because the router and each component cached the
+tokens. The pattern for a component is one `_apply_tokens()` that reads the active tokens into everything the node
+cached, called from `_init` and from the signal handler; game nodes outside the addon (the HUD, the skin) still cache
+`UITokens.active()` and need the same two lines to follow a swap, which no screen does today.
+`UIMotion.reduced` already followed live (a setter emitting `changed()`); the marquee panel did not: it decided in
+`_ready` whether to run its chase. It now follows `changed()`.
+
+A light palette (`game/addons/gds_ui/demo/light_tokens.tres`) restyles the demo menu, the component sheet and the film
+burn with no change to a screen (captured at startup and swapped live while the menu showed;
+`test_ui_tokens_restyle.gd` asserts the same on the instances). Two lessons from making it: hover *lightens* a raised
+fill, so a light palette needs `surface_raised` darker than `surface`; and the default `shadow` (black at 55%) is a
+dark-skin value, so a light palette sets its own, softer one.
 
 ## Components are drawn, not styled
 
@@ -28,10 +70,10 @@ A `StyleBox` cannot ease between states, so the theme gives the button's states 
 | Spring | stiffness 360, damping 24, fixed 1/240 s step | Settles in about 0.3 s, no visible overshoot; the fixed step makes captures repeat |
 | Screen fade | 0.14 s out (cubic in), 0.40 s in (quart out, rise and settle) | Leave fast, arrive gently |
 | Slide | 0.5 s, expo out, old screen at 1/3 distance and dimmed | Parallax shows depth; a pop mirrors the push with the popped screen on top |
-| Shader transitions | 1.2 x 0.5 s per half | One sweep to cover, one to reveal |
+| Shader transitions | `shader_half_scale` 1.2 x `dur_screen` 0.5 s per half | One sweep to cover, one to reveal |
 
-No easing is linear. Reduced motion (`UIMotion.reduced`, project setting `gds_ui/accessibility/reduced_motion`) makes
-movement snap and swaps slide, burn and iris for the fade.
+No easing is linear. Reduced motion (`UIMotion.reduced = value` at any time; project setting `gds_ui/accessibility/reduced_motion`
+gives the start value) makes movement snap and swaps slide, burn and iris for the fade.
 
 The focus ring shows only after keyboard or gamepad input (`UIInputMode.pointer` is false); a mouse user sees hover.
 Hovering also moves focus, so the two never disagree.

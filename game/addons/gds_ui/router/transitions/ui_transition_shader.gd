@@ -1,13 +1,11 @@
 class_name UITransitionShader
 extends UITransition
-## A drive-in transition drawn by a shader on the overlay: it closes over the old screen,
-## the screens swap behind it, then it opens on the new one.
+## A transition drawn by a shader on the overlay (the shipped ones are a film burn and a projector
+## iris): it closes over the old screen, the screens swap behind it, then it opens on the new one.
+## The shader's colours come from the tokens (`feed_tokens`).
 ##
 ## The shaders are procedural and never read the screen, so they work the same in the
 ## Compatibility renderer and in a web build.
-
-## Each half runs this long relative to the token `dur_screen`.
-const HALF_SCALE := 1.2
 
 var shader: Shader
 ## Where the closing half stops, 0 to 1 of the shader's `progress`. A shader that already covers
@@ -26,6 +24,7 @@ func _init(shader_resource: Shader = null, close_end := 1.0, reveal_start := 0.0
 func play(ctx: UITransitionContext) -> void:
 	var material := ShaderMaterial.new()
 	material.shader = shader
+	feed_tokens(material, ctx.tokens)
 	var aspect := ctx.stage.size.x / maxf(ctx.stage.size.y, 1.0)
 	material.set_shader_parameter(&"origin", ctx.origin)
 	material.set_shader_parameter(&"aspect", aspect)
@@ -53,9 +52,22 @@ func _sweep(ctx: UITransitionContext, material: ShaderMaterial, reveal: bool) ->
 		func(value: float) -> void: material.set_shader_parameter(&"progress", value),
 		from,
 		to,
-		ctx.tokens.dur_screen * HALF_SCALE * (to - from)
+		ctx.tokens.dur_screen * ctx.tokens.shader_half_scale * (to - from)
 	)
 	await tween.finished
+
+
+## Sets every uniform of the material's shader that is named like a colour token (`burn_flame`,
+## `iris_rim`, ...) to that token's value, so a shader takes its palette from the tokens and a
+## game's own shader does the same by naming a uniform after a token. Other uniforms are left alone.
+static func feed_tokens(material: ShaderMaterial, tokens: UITokens) -> void:
+	if material.shader == null or tokens == null:
+		return
+	for uniform in material.shader.get_shader_uniform_list():
+		var uniform_name := StringName(uniform["name"])
+		var value: Variant = tokens.get(uniform_name)
+		if value is Color:
+			material.set_shader_parameter(uniform_name, value)
 
 
 static func _farthest_corner(origin: Vector2, aspect: float) -> float:

@@ -319,9 +319,11 @@ can, and buys until the tank is back above 40%.
 The second pillar. What the night does to the lot as the rounds go by, from the rules' tuning and the measured
 greybox (`game/tools/lot/lot_report.gd`).
 
-**The lot itself does not change with the round.** No lamp fails or dims because a round was reached, no breach moves,
-and the world's `Lighting` is fixed. The rules' `ambient_for_round` (0.60 falling to 0.15 by round 14, the "Light"
-column of [the tuning table](rounds.md#the-tuning-table)) is read by the balance simulator only. What closes in is the
+**The lot itself does not change with the round.** No lamp fails or dims because a round was reached and no breach
+moves. The night around it does darken: the world reads the rules' `ambient_for_round` (0.60 falling to 0.15 by round
+14, the "Light" column of [the tuning table](rounds.md#the-tuning-table)) and dims its ambient, moon, sky and fog with
+it, so the lamps' pools stand out more each round (`NightLight`, see [the night's
+environment](../research/night-environment.md#the-night-closes-in-with-the-round)). What also closes in is the
 pressure on the same ground, and the tank that feeds its lamps:
 
 | Round | What arrives | Zombies 1p / 4p | Spawn every 1p / 4p | Alive cap 1p / 4p | Pace, lit to dark (m/s) | Generator draw | Doors a solo player can afford |
@@ -388,9 +390,6 @@ third of the pressure. That is the closing in: the lot opens outward and the dea
 
 ### Proposed, not built
 
-- **Wire the light to the round.** Apply `ambient_for_round` to the `Lighting` node's ambient and fog, so the night
-  darkens as the "Light" column promises and the lamps' pools read stronger. It needs no new rule or number, and it is
-  the one thing in this section that is only a promise today (#314).
 - **Nothing else is proposed.** A lamp that fails at a round, or a breach that moves, would be a new rule on top of a
   tank and a pace that already close in; a four-player capture at rounds 10, 20 and 30 should show whether the curve
   needs it before anyone adds one.
@@ -478,7 +477,7 @@ and the field's stalls have painted lines.
 | `Field/ParkingLines`, `Road/RoadDashes` | the painted lines between the stalls and down the road: one `MultiMesh` each, no collision |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
-| `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator |
+| `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator, the round dims them (`NightLight`) |
 | `*/Lamps` | the lights of an area, `metadata/circuit` naming the circuit they hang on ([above](#which-lamps-hang-on-which-circuit)); `LotLamps` reads them |
 | `FuelSpots`, `FuelProps` | the fuel can spots (`metadata/shop_id`, `metadata/door`; [above](#the-fuel-cans)) and the crates, cans and signs; `LotFuel` reads the spots |
 | `Switches` | the breaker posts (`metadata/circuit`, and `metadata/door` for the area's shop door; [above](#the-breaker-posts)); `LotSwitches` reads them |
