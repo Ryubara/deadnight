@@ -62,7 +62,7 @@ func topics() -> Array[StringName]:
 
 
 func refresh() -> void:
-	var coming := state.coming_special()
+	var coming := HudSpecials.coming(state)
 	visible = state.phase == HudState.PHASE_BREAK and not coming.is_empty()
 	if not visible:
 		return
@@ -73,7 +73,7 @@ func refresh() -> void:
 		_caption,
 		"%s  -  ROUND %d  -  IN %d" % [CAPTION, int(coming["round"]), ceili(state.break_left)]
 	)
-	HudStyle.set_text(_detail, state.special_brings(coming))
+	HudStyle.set_text(_detail, HudSpecials.brings(coming))
 	queue_redraw()
 
 

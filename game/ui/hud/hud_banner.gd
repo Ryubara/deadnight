@@ -30,6 +30,8 @@ var _age := 0.0
 var _hold := HOLD_TIME
 var _rank := Rank.AREA
 var _clock := 0.0
+## The last restore of a special round the banner showed (`HudState.special_restored`).
+var _restored_shown := 0
 
 
 func _init() -> void:
@@ -51,18 +53,53 @@ func on_event(event: Dictionary) -> void:
 	match StringName(event.get("type", &"")):
 		&"round_started":
 			var count := int(event["zombie_count"])
+			if StringName(event.get("special_id", &"")) != &"":
+				_show_special(count)
+				return
 			show_banner(
 				"ROUND %d" % int(event["round"]),
 				"THE NIGHT BEGINS" if int(event["round"]) == 1 else "%d COMING" % count,
 				Rank.ROUND
 			)
 		&"round_ended":
-			show_banner("ROUND %d SURVIVED" % int(event["round"]), "CATCH YOUR BREATH", Rank.ROUND)
+			show_banner(
+				"ROUND %d SURVIVED" % int(event["round"]),
+				_cleared_line() if not state.special_cleared.is_empty() else "CATCH YOUR BREATH",
+				Rank.ROUND
+			)
 		&"game_over":
 			var reached := int(event.get("round_reached", state.round_number))
 			show_banner("THE LIGHTS GO OUT", "YOU LASTED TO ROUND %d" % reached, Rank.END, INF)
 		&"area_entered":
 			show_banner(str(event["area"]).to_upper(), "NOW ENTERING", Rank.AREA, 1.6)
+
+
+func topics() -> Array[StringName]:
+	return [HudState.SPECIAL]
+
+
+## A special round restored from a snapshot (a late joiner, a reconnect) shows its banner once,
+## the one the others saw when it began.
+func refresh() -> void:
+	if state.special_restored != _restored_shown:
+		_restored_shown = state.special_restored
+		if state.special_id != &"":
+			_show_special(state.zombies_total)
+
+
+## The banner of a special round: its name, then what it brings (the round is on the round part).
+func _show_special(count: int) -> void:
+	var info := HudSpecials.running(state)
+	var title := HudSpecials.title(state, state.special_id)
+	var brings := HudSpecials.brings(info) if not info.is_empty() else "%d COMING" % count
+	show_banner(title.to_upper(), brings, Rank.ROUND)
+
+
+## What the special round just cleared paid, as the line under the round survived.
+func _cleared_line() -> String:
+	var cleared := state.special_cleared
+	var title := HudSpecials.title(state, cleared["special_id"])
+	return "%s CLEARED  +%d" % [title.to_upper(), int(cleared["reward"])]
 
 
 func show_banner(main: String, sub: String, rank: Rank, hold := HOLD_TIME) -> void:

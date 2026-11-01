@@ -120,6 +120,9 @@ func _text_for(event: Dictionary) -> String:
 			text = "GENERATOR DEAD"
 		&"fuel_restored":
 			text = "GENERATOR IS BACK"
+		&"special_round_cleared":
+			var title := HudSpecials.title(state, StringName(event.get("special_id", &"")))
+			text = "%s CLEARED  +%d EACH" % [title.to_upper(), int(event.get("reward", 0))]
 	return text
 
 

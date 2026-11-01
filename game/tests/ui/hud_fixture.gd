@@ -20,6 +20,7 @@ static func make(host: Control, players := 1, seed_value := 1958) -> HudFixture:
 	fixture.hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	host.add_child(fixture.hud)
 	var state := fixture.hud.state
+	state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.configure(
 		tuning.fuel.capacity, tuning.fuel.circuit_drain.keys(), tuning.fuel.start_circuits
 	)

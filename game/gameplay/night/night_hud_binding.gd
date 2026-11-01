@@ -34,6 +34,7 @@ func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
 	var fuel: FuelTuning = server.rules.tuning.fuel
 	hud.state.local_player_id = state.player_id
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
+	hud.state.special_schedule = HudSpecials.schedule_of(server.rules.tuning.specials)
 	hud.state.set_health(server.tuning.max_health, server.tuning.max_health)
 	state.event_received.connect(_on_event)
 

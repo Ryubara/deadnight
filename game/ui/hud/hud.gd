@@ -35,6 +35,7 @@ const PART_NAMES := {
 	&"ammo": "Ammo",
 	&"banner": "Banner",
 	&"boss_bar": "BossBar",
+	&"marquee": "Marquee",
 	&"prompt": "Prompt",
 	&"gains": "Gains",
 	&"crosshair": "Crosshair",
@@ -54,6 +55,7 @@ var health := HudHealth.new()
 var ammo := HudAmmo.new()
 var banner := HudBanner.new()
 var boss_bar := HudBossBar.new()
+var marquee := HudMarquee.new()
 var prompt := HudPrompt.new()
 var gains := HudGains.new()
 var crosshair := HudCrosshair.new()
@@ -78,7 +80,7 @@ func _ready() -> void:
 	_stack([fuel, events_feed, notices], 1.0, 0.0, -margin, margin, gap)
 	_stack([points, health], 0.0, 1.0, margin, -margin, gap)
 	_stack([ammo], 1.0, 1.0, -margin, -margin, gap)
-	_stack([banner, boss_bar], 0.5, 0.0, 0.0, margin, gap)
+	_stack([banner, marquee, boss_bar], 0.5, 0.0, 0.0, margin, gap)
 	_stack([prompt], 0.5, 1.0, 0.0, -margin, gap)
 	_stack([gains], 0.5, 0.5, GAINS_OFFSET.x, GAINS_OFFSET.y, gap)
 	(gains.get_parent() as Control).grow_horizontal = Control.GROW_DIRECTION_END
@@ -125,6 +127,7 @@ func all_parts() -> Array[HudPart]:
 		health,
 		ammo,
 		banner,
+		marquee,
 		boss_bar,
 		prompt,
 		gains
@@ -144,6 +147,7 @@ func boxed_parts() -> Array[Control]:
 		health,
 		ammo,
 		banner,
+		marquee,
 		boss_bar,
 		prompt,
 		gains
