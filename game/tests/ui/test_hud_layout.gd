@@ -38,12 +38,13 @@ func before_test() -> void:
 
 ## A HUD showing everything at once, as in the worst moment of a four-player night. With `worst` it
 ## also holds the longest content the game allows (see `HudFixture.fill_worst_case`).
-func _busy_hud(canvas: Vector2, worst := false) -> HudFixture:
+func _busy_hud(canvas: Vector2, worst := false, mirrored := false) -> HudFixture:
 	var host: Control = auto_free(Control.new())
 	host.size = canvas
 	add_child(host)
 	var fixture := HudFixture.make(host, 4)
 	var hud := fixture.hud
+	hud.mirrored = mirrored
 	fixture.into_round_one()
 	var state := hud.state
 	state.set_ammo(30, 150, "Shotgun")
@@ -101,13 +102,15 @@ func _canvases() -> Array[Vector2]:
 	return list
 
 
-func _fits_everywhere(face: StringName, worst: bool) -> void:
+func _fits_everywhere(face: StringName, worst: bool, mirrored := false) -> void:
 	if not HudFonts.apply(face):
 		return
 	var problems: Array[String] = []
 	for canvas in _canvases():
-		var fixture := _busy_hud(canvas, worst)
+		var fixture := _busy_hud(canvas, worst, mirrored)
 		var label := "%s, %s, canvas %s" % [face, "worst case" if worst else "busy", canvas]
+		if mirrored:
+			label += ", mirrored"
 		problems.append_array(await _problems(fixture, canvas, label))
 		fixture.hud.get_parent().queue_free()
 	HudFonts.reset()
@@ -121,6 +124,30 @@ func after_test() -> void:
 
 func test_the_busiest_hud_fits_every_canvas_without_overlap() -> void:
 	await _fits_everywhere(HudFonts.FALLBACK, false)
+
+
+func test_the_busiest_hud_fits_every_canvas_mirrored_for_a_left_hand() -> void:
+	await _fits_everywhere(HudFonts.FALLBACK, false, true)
+
+
+func test_the_longest_content_fits_every_canvas_mirrored_for_a_left_hand() -> void:
+	await _fits_everywhere(HudFonts.FALLBACK, true, true)
+
+
+func test_the_gains_list_gives_room_to_the_wider_corner_column_for_a_left_hand() -> void:
+	var canvas := Vector2(1920.0, 1080.0)
+	var right := await _busy_hud_room(canvas, false)
+	var left := await _busy_hud_room(canvas, true)
+	assert_float(right - left).is_equal_approx(HudStyle.COLUMN - HudAmmo.WIDTH, 0.01)
+
+
+func _busy_hud_room(canvas: Vector2, mirrored: bool) -> float:
+	var fixture := _busy_hud(canvas, false, mirrored)
+	await await_idle_frame()
+	await await_idle_frame()
+	var room := fixture.hud.gains.room
+	fixture.hud.get_parent().queue_free()
+	return room
 
 
 func test_the_busiest_hud_fits_in_a_wide_typeface() -> void:

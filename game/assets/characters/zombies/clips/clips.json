@@ -12,6 +12,16 @@
     "yank": 22,
     "end": 29
    }
+  },
+  "Sprint": {
+   "loop": true,
+   "frames": 16,
+   "seconds": 0.667,
+   "events": {
+    "step_right": 2,
+    "step_left": 10
+   },
+   "ground_speed": 6.6
   }
  }
 }

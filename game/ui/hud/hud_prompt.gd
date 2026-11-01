@@ -57,6 +57,10 @@ var glyph_pressed: bool:
 var glyph_caption: String:
 	get:
 		return _glyph.caption()
+## True while the glyph is the finger's tap mark, not a keycap or a gamepad button.
+var glyph_is_tap_mark: bool:
+	get:
+		return _glyph.touch
 
 var _title := HudStyle.wrap(HudStyle.label("", HudStyle.MEDIUM, tokens.ink, true))
 var _detail := HudStyle.wrap(

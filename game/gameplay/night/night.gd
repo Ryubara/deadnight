@@ -55,6 +55,8 @@ var _spectator: Camera3D
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
 var _hud_binding: NightHudBinding
+## Held here: it listens to the client state and nothing else keeps it alive.
+var _equip_sync: WeaponEquipSync
 var _paused := false
 
 
@@ -72,6 +74,7 @@ func start(
 	state.player_id = PLAYER_ID
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, server, looks)
+	_equip_sync = WeaponEquipSync.new(state, server.body_of)
 	link.delivered.connect(_on_delivered)
 	looks.changed.connect(_dress_bodies)
 	link.send({"type": NightServer.JOIN, "player_id": PLAYER_ID, "local": mode == Mode.HUMAN})
@@ -96,6 +99,7 @@ func start(
 	view.setup(state, camera, _telegraphs(), _board_seconds())
 	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
+	view.show_crane(world, server.rules.tuning)
 	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)

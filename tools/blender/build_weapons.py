@@ -14,7 +14,8 @@ across Y. The origin is the grip, where the hand bone holds the weapon with no o
 
 Every firearm also carries an empty named `Muzzle` (`MUZZLES`), parented to the weapon at the centre of its barrel's
 open end (between the barrels of a double gun), turned so its local +Y points out of the barrel: after the glTF's Y-up
-conversion that is the node's -Z in Godot, the engine's forward. The flash and the shot leave from it.
+conversion that is the node's -Z in Godot, the engine's forward. The flash and the shot leave from it. The hammer
+carries a `Face` the same way, at the centre of its striking face, -Z out of the face.
 """
 
 import argparse
@@ -151,6 +152,32 @@ def fire_axe(b):
             b.box((-0.02, y, z), (0.016, 0.006, 0.016), G, bevel=0, detail=True)  # rivets
 
 
+def hammer(b):
+    """A claw hammer for nailing boards back (the repair, #297): a wood handle that swells at the grip and flares at
+    the butt, a steel head with a round striking face on -X (the axe's blade side) and a split claw curling down on
+    +X. Drawn at 0.56 m and enlarged 1.3 times to 0.73 m (2.2 times a real 16 oz hammer), as the kit draws its small
+    things large (its knife is 1.4 m) and the Soldier's fist would hide a smaller one; the grip (the origin) is 15 %
+    up from the butt."""
+    # Handle: one prism, wider in the swing plane than across it, as a real hammer handle is.
+    b.prism([(-0.046, -0.085), (0.046, -0.085), (0.05, -0.06), (0.04, 0.0), (0.03, 0.25), (0.027, 0.40),
+             (0.027, 0.43), (-0.027, 0.43), (-0.027, 0.40), (-0.03, 0.25), (-0.04, 0.0), (-0.05, -0.06)],
+            -0.026, 0.026, W, bevel=0.012)  # fmt: skip
+    # Head: the eye block round the handle's top, the neck and the bell out to the face, the claw back.
+    b.box((0, 0, 0.415), (0.09, 0.07, 0.105), G)
+    b.cyl((-0.04, 0, 0.415), (-0.115, 0, 0.415), 0.034, G, segs=10, bevel=0, radius1=0.04)  # neck
+    b.cyl((-0.115, 0, 0.415), (-0.165, 0, 0.415), 0.052, G, segs=12, bevel=0.01)  # face
+    b.cyl((-0.165, 0, 0.415), (-0.169, 0, 0.415), 0.04, D, segs=12, bevel=0, detail=True)  # worn striking face
+    # The claw: two prongs, each a run of tapering pieces curling down toward the handle, a V between them.
+    for y0, y1 in ((-0.035, -0.006), (0.006, 0.035)):
+        b.prism([(0.035, 0.37), (0.09, 0.385), (0.09, 0.455), (0.035, 0.467)], y0, y1, G, bevel=0.006)
+        b.prism([(0.085, 0.385), (0.135, 0.365), (0.15, 0.43), (0.085, 0.458)], y0, y1, G, bevel=0)
+        b.prism([(0.13, 0.367), (0.165, 0.325), (0.19, 0.36), (0.145, 0.433)], y0, y1, G, bevel=0)
+        b.prism([(0.16, 0.33), (0.18, 0.29), (0.195, 0.298), (0.188, 0.364)], y0, y1, G, bevel=0, detail=True)
+    # A wedge in the handle's top and two steel ones across it, as on the axe.
+    b.box((0, 0, 0.471), (0.054, 0.036, 0.01), W, bevel=0, detail=True)
+    b.box((0, 0, 0.477), (0.006, 0.04, 0.006), D, bevel=0, detail=True)
+
+
 def grenade(b):
     """A 1950s-flavoured hand grenade: an olive egg ringed by three raised bands, a yellow band under the fuze
     (the period marking for a high-explosive filler) and a squat grey fuze. The spoon and the pin are their own nodes
@@ -199,18 +226,24 @@ MUZZLES = {
     "double_shotgun": (-1.08, 0.0, 0.035),  # between the two barrels' front faces
 }
 MUZZLE = "Muzzle"
+# Tools: the centre of the striking face, facing -X like a muzzle (the far level's face, without the worn disc).
+FACES = {
+    "hammer": (-0.165, 0.0, 0.415),
+}
+FACE = "Face"
 
 
-def add_muzzle(o, name, chunk):
-    """The `Muzzle` empty under the weapon: at the barrel end, local +Y out of the barrel (-X), so Godot's -Z."""
-    if name not in MUZZLES:
+def add_muzzle(o, name, chunk, table=MUZZLES, node=MUZZLE):
+    """The `Muzzle` (or a tool's `Face`) empty under the weapon: at the barrel end or the striking face, local +Y
+    out of it (-X), so Godot's -Z."""
+    if name not in table:
         return None
-    m = bpy.data.objects.new(MUZZLE, None)
+    m = bpy.data.objects.new(node, None)
     m.empty_display_type = "ARROWS"
     m.empty_display_size = 0.05
     bpy.context.scene.collection.objects.link(m)
     m.parent = o
-    m.location = Vector(MUZZLES[name]) * Vector(chunk)
+    m.location = Vector(table[name]) * Vector(chunk)
     m.rotation_euler = (0.0, 0.0, math.pi / 2)  # +Y -> -X
     return m
 
@@ -222,6 +255,7 @@ WEAPONS = {
     "baseball_bat": (baseball_bat, (1.35, 1.35, 1.0)),
     "fire_axe": (fire_axe, (1.0, 1.5, 1.0)),
     "grenade": (grenade, (1.2, 1.2, 1.2)),  # drawn at 0.5 m, held at the kit grenade's 0.6 m
+    "hammer": (hammer, (1.3, 1.5, 1.3)),  # drawn at 0.56 m, enlarged 1.3x (and 1.15x more across)
 }
 
 
@@ -298,7 +332,7 @@ def main():
                 k.parent = o
                 k.location = pivot
                 kids.append(k)
-            muzzle = add_muzzle(o, name, chunk)
+            muzzle = add_muzzle(o, name, chunk) or add_muzzle(o, name, chunk, FACES, FACE)
             tris, parts, mn, mx = stats(o)
             for k in kids:
                 kt, kp, kmn, kmx = stats(k, offset=k.location)
@@ -314,8 +348,8 @@ def main():
             nodes = f", nodes {[k.name for k in kids]}" if kids else ""
             if muzzle:
                 at = [round(c, 4) for c in muzzle.location]
-                report[f"{name}/{lod}"]["muzzle"] = at
-                nodes += f", muzzle {at}"
+                report[f"{name}/{lod}"][muzzle.name.lower()] = at
+                nodes += f", {muzzle.name.lower()} {at}"
             print(f"WEAPON {name} {lod}: {tris} tris, {parts} parts, size {size}{nodes}, file {path}")
             for k in kids:
                 bpy.data.objects.remove(k)
