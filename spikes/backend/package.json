@@ -1,0 +1,27 @@
+{
+  "name": "deadnight-backend-spike",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Spike: platform backend for Deadnight (sign-in, lobbies, game-server handoff, saves). Not shipped as is.",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/main.js",
+    "start:gameserver": "node dist/stub-gameserver.js",
+    "test": "node --test \"test/*.test.ts\"",
+    "e2e": "node scripts/e2e.ts"
+  },
+  "dependencies": {
+    "fastify": "5.12.7",
+    "pg": "8.23.1",
+    "ws": "8.22.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/pg": "8.23.1",
+    "@types/ws": "8.18.2",
+    "typescript": "5.9.3"
+  }
+}

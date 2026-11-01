@@ -1,0 +1,178 @@
+class_name RulesAction
+extends RefCounted
+## Everything that can change the night, as plain dictionaries: `{"type": StringName, ...fields}`.
+##
+## A client sends one of these to the server; the server hands it to `GameRules.apply`. A dictionary
+## of numbers, strings and booleans needs no node, no object and no Godot multiplayer to travel.
+
+const START := &"start"
+const TICK := &"tick"
+const SKIP_BREAK := &"skip_break"
+const ADD_PLAYER := &"add_player"
+const REMOVE_PLAYER := &"remove_player"
+const SET_DOWNED := &"set_downed"
+const HIT := &"hit"
+const ZOMBIE_GONE := &"zombie_gone"
+const REPAIR := &"repair"
+const BUY := &"buy"
+const SET_CIRCUIT := &"set_circuit"
+const GRANT_POINTS := &"grant_points"
+
+## Where a hit landed. Only `ZONE_HEAD` changes what the rules pay; the weapon has already applied
+## its zone multiplier to the damage.
+const ZONE_HEAD := &"head"
+const ZONE_BODY := &"body"
+const ZONE_LIMB := &"limb"
+const ZONES: Array[StringName] = [ZONE_HEAD, ZONE_BODY, ZONE_LIMB]
+
+## The longest step one tick may take, seconds. A caller with more time to pass sends more ticks.
+const MAX_TICK := 1.0
+## The most damage one hit may carry (a sanity bound, far above any weapon and any zombie).
+const MAX_DAMAGE := 100000.0
+## The most one `grant_points` may carry.
+const MAX_GRANT := 100000
+
+## Required fields of every action type, with the type each must have. `TYPE_FLOAT` also takes an
+## int and `TYPE_STRING_NAME` also takes a String (JSON has no StringName). Extra fields are
+## ignored.
+const REQUIRED := {
+	START: {},
+	TICK: {"delta": TYPE_FLOAT},
+	SKIP_BREAK: {},
+	ADD_PLAYER: {"player_id": TYPE_INT},
+	REMOVE_PLAYER: {"player_id": TYPE_INT},
+	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
+	HIT:
+	{"player_id": TYPE_INT, "zombie_id": TYPE_INT, "zone": TYPE_STRING_NAME, "damage": TYPE_FLOAT},
+	ZOMBIE_GONE: {"zombie_id": TYPE_INT},
+	REPAIR: {"player_id": TYPE_INT},
+	BUY: {"player_id": TYPE_INT, "item_id": TYPE_STRING_NAME},
+	SET_CIRCUIT: {"circuit_id": TYPE_STRING_NAME, "on": TYPE_BOOL},
+	GRANT_POINTS: {"player_id": TYPE_INT, "amount": TYPE_INT},
+}
+## Fields that may be left out; when present they must have the type.
+const OPTIONAL := {
+	HIT: {"melee": TYPE_BOOL},
+	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
+}
+
+
+static func start() -> Dictionary:
+	return {"type": START}
+
+
+## One fixed step of the clock. The only way time passes.
+static func tick(delta: float) -> Dictionary:
+	return {"type": TICK, "delta": delta}
+
+
+static func skip_break() -> Dictionary:
+	return {"type": SKIP_BREAK}
+
+
+static func add_player(player_id: int) -> Dictionary:
+	return {"type": ADD_PLAYER, "player_id": player_id}
+
+
+static func remove_player(player_id: int) -> Dictionary:
+	return {"type": REMOVE_PLAYER, "player_id": player_id}
+
+
+static func set_downed(player_id: int, downed: bool) -> Dictionary:
+	return {"type": SET_DOWNED, "player_id": player_id, "downed": downed}
+
+
+## One hit on a zombie. `damage` is what the weapon dealt, zone multiplier included; the rules take
+## it off the zombie's health, pay for it, and decide whether it killed.
+static func hit(
+	player_id: int, zombie_id: int, zone: StringName, damage: float, melee: bool = false
+) -> Dictionary:
+	return {
+		"type": HIT,
+		"player_id": player_id,
+		"zombie_id": zombie_id,
+		"zone": zone,
+		"damage": damage,
+		"melee": melee,
+	}
+
+
+## A zombie died to something that is not a player (a trap, a fall): no points.
+static func zombie_gone(zombie_id: int) -> Dictionary:
+	return {"type": ZOMBIE_GONE, "zombie_id": zombie_id}
+
+
+## One barricade board put back.
+static func repair(player_id: int) -> Dictionary:
+	return {"type": REPAIR, "player_id": player_id}
+
+
+static func buy(player_id: int, item_id: StringName) -> Dictionary:
+	return {"type": BUY, "player_id": player_id, "item_id": item_id}
+
+
+static func set_circuit(circuit_id: StringName, on: bool) -> Dictionary:
+	return {"type": SET_CIRCUIT, "circuit_id": circuit_id, "on": on}
+
+
+## Points from outside the rules (a pickup, a scripted reward).
+static func grant_points(player_id: int, amount: int, reason: StringName = &"grant") -> Dictionary:
+	return {"type": GRANT_POINTS, "player_id": player_id, "amount": amount, "reason": reason}
+
+
+## Checks an action against `REQUIRED` and `OPTIONAL` and the value bounds. Returns `{}` when it is
+## well formed, else `{"reason": StringName, "field": StringName}` with the reason one of
+## `unknown_action`, `missing_field`, `wrong_type`, `out_of_range`. Whether the ids it names exist
+## is for `GameRules`. The server and the tests share this one definition.
+static func validate(action: Dictionary) -> Dictionary:
+	var type: Variant = action.get("type")
+	if (
+		(typeof(type) != TYPE_STRING_NAME and typeof(type) != TYPE_STRING)
+		or not REQUIRED.has(StringName(type))
+	):
+		return {"reason": &"unknown_action", "field": &"type"}
+	var key := StringName(type)
+	for field: String in REQUIRED[key]:
+		if not action.has(field):
+			return {"reason": &"missing_field", "field": StringName(field)}
+		if not _has_type(action[field], REQUIRED[key][field]):
+			return {"reason": &"wrong_type", "field": StringName(field)}
+	for field: String in OPTIONAL.get(key, {}):
+		if action.has(field) and not _has_type(action[field], OPTIONAL[key][field]):
+			return {"reason": &"wrong_type", "field": StringName(field)}
+	var bad_field := _out_of_range_field(key, action)
+	if bad_field != &"":
+		return {"reason": &"out_of_range", "field": bad_field}
+	return {}
+
+
+static func _has_type(value: Variant, expected: int) -> bool:
+	var actual := typeof(value)
+	match expected:
+		TYPE_FLOAT:
+			return actual == TYPE_FLOAT or actual == TYPE_INT
+		TYPE_STRING_NAME:
+			return actual == TYPE_STRING_NAME or actual == TYPE_STRING
+	return actual == expected
+
+
+## The first field whose value is outside its bounds, or an empty name.
+static func _out_of_range_field(type: StringName, action: Dictionary) -> StringName:
+	match type:
+		TICK:
+			if not _within(action["delta"], 0.0, MAX_TICK):
+				return &"delta"
+		HIT:
+			if not _within(action["damage"], 0.0, MAX_DAMAGE) or action["damage"] <= 0.0:
+				return &"damage"
+			if not ZONES.has(StringName(action["zone"])):
+				return &"zone"
+		GRANT_POINTS:
+			if action["amount"] <= 0 or action["amount"] > MAX_GRANT:
+				return &"amount"
+	return &""
+
+
+## Finite and between the bounds (NaN and infinity are not).
+static func _within(value: float, low: float, high: float) -> bool:
+	return is_finite(value) and value >= low and value <= high
