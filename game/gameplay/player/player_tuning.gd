@@ -90,6 +90,24 @@ extends Resource
 @export var jump_buffer_time := 0.1
 @export var terminal_velocity := 40.0
 
+@export_group("Step up")
+## The highest ledge the body climbs on its own when it walks into it, in metres. Anything higher
+## stays a wall (jump it); a slope is not a ledge and keeps the engine's floor rules.
+@export var step_height := 0.3
+## Metres of air the lifted body keeps over the ledge's top and over a ceiling, so the tests that
+## decide a step do not mistake a touch for a hit. Small against the step height.
+@export var step_clearance := 0.02
+## A rise below this (metres) is left to the capsule's rounded foot, which rides it by itself.
+@export var step_min_rise := 0.02
+## Metres of walking after a step during which the body counts as on the floor without touching
+## one: the lifted body's rounded foot is still over the ledge's edge for about one body radius,
+## and without this it would fall a few centimetres, play the fall and landing, and bounce.
+@export var step_settle_distance := 0.5
+## The body is lifted onto a ledge in one tick (the simulation, which a server replays), but the
+## drawn model eases up: the lag it carries decays at this rate per second (exp), so a climb takes
+## about 0.2 s to see (95 percent in 3 / rate) instead of a pop of the step height.
+@export var step_view_frequency := 14.0
+
 @export_group("Body")
 @export var height := 1.8
 @export var radius := 0.35
