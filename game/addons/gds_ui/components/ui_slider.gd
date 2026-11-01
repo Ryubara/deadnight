@@ -17,21 +17,42 @@ var _held := false
 
 
 func _init() -> void:
-	_shown = UISpring.new(_tokens.spring_stiffness * 2.0, _tokens.spring_damping * 1.4)
-	_hover = UISpring.new(_tokens.spring_stiffness, _tokens.spring_damping)
-	_press = UISpring.new(_tokens.spring_stiffness * 1.4, _tokens.spring_damping)
-	_focus = UISpring.new(_tokens.spring_stiffness * 0.7, _tokens.spring_damping * 0.8)
-	_ring = UIFocusRing.new(_tokens, _tokens.control_height)
+	_shown = UISpring.new()
+	_hover = UISpring.new()
+	_press = UISpring.new()
+	_focus = UISpring.new()
 	focus_mode = Control.FOCUS_ALL
 	scrollable = false
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	theme_type_variation = UIThemeBuilder.SLIDER_STYLE
+	_apply_tokens()
+
+
+## Reads the active tokens into everything this control caches: spring tuning and size. The thumb's
+## hit area is an icon in the theme, which the router rebuilds from the same tokens.
+func _apply_tokens() -> void:
+	_tokens = UITokens.active()
+	_shown.stiffness = _tokens.spring_stiffness * 2.0
+	_shown.damping = _tokens.spring_damping * 1.4
+	_hover.stiffness = _tokens.spring_stiffness
+	_hover.damping = _tokens.spring_damping
+	_press.stiffness = _tokens.spring_stiffness * 1.4
+	_press.damping = _tokens.spring_damping
+	_focus.stiffness = _tokens.spring_stiffness * 0.7
+	_focus.damping = _tokens.spring_damping * 0.8
+	_ring = UIFocusRing.new(_tokens, _tokens.control_height)
 	custom_minimum_size = Vector2(0.0, _tokens.control_height)
+	queue_redraw()
+
+
+func _on_tokens_changed(_next: UITokens) -> void:
+	_apply_tokens()
 
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
+	UITokens.active_changed().connect(_on_tokens_changed)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	focus_entered.connect(UIAudio.play.bind(&"focus"))

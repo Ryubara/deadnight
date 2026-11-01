@@ -5,13 +5,16 @@ extends Control
 ## A screen scene also runs on its own (as a main scene): when its parent is not a Control it
 ## applies the theme and fills the window itself.
 
-const STAR_COUNT := 70
-const STAR_SEED := 1958
-
 ## The node that takes focus when the screen appears.
 @export var initial_focus: NodePath
 ## Whether Esc / gamepad B pops this screen.
 @export var allow_back := true
+## Whether this screen draws the token stars (`UITokens.star_count`); turn it off for a screen that
+## covers the sky, or leave the count at 0 in the tokens for a game with none.
+@export var stars := true:
+	set(value):
+		stars = value
+		_build_stars()
 ## Overrides the bottom colour of the backdrop gradient (transparent keeps the token).
 @export var glow := Color.TRANSPARENT
 
@@ -29,6 +32,12 @@ func _ready() -> void:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_stars()
 	resized.connect(_build_stars)
+	UITokens.active_changed().connect(_on_tokens_changed)
+
+
+## How many stars the backdrop draws now: `UITokens.star_count`, or none when `stars` is off.
+func star_count() -> int:
+	return _stars.size()
 
 
 ## Called when the screen has become the visible top of the stack.
@@ -63,6 +72,13 @@ func focus_initial() -> void:
 		target.grab_focus()
 
 
+func _on_tokens_changed(_next: UITokens) -> void:
+	_tokens = UITokens.active()
+	if theme != null and not get_parent() is Control:
+		theme = UIThemeBuilder.build(_tokens)
+	_build_stars()
+
+
 func _draw() -> void:
 	var bottom := glow if glow.a > 0.0 else _tokens.bg_glow
 	var top := _tokens.bg
@@ -75,11 +91,11 @@ func _draw() -> void:
 
 
 func _build_stars() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = STAR_SEED
 	_stars.clear()
-	for i in STAR_COUNT:
-		var at := Vector2(rng.randf() * size.x, rng.randf() * size.y * 0.6)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _tokens.star_seed
+	for i in _tokens.star_count if stars else 0:
+		var at := Vector2(rng.randf() * size.x, rng.randf() * size.y * _tokens.star_band)
 		_stars.append(Vector3(at.x, at.y, 1.0 + rng.randf() * 1.6))
 	queue_redraw()
 

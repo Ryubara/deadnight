@@ -20,15 +20,16 @@ var _tokens := UITokens.active()
 var _title_label := UILabel.new()
 var _hint_label := UILabel.new()
 var _value_label := UILabel.new()
+var _text_column: VBoxContainer
+var _slot: HBoxContainer
 
 
 func _init() -> void:
-	add_theme_constant_override(&"separation", _tokens.space_lg)
 	var text := VBoxContainer.new()
+	_text_column = text
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	text.add_theme_constant_override(&"separation", 0)
-	text.custom_minimum_size.x = _tokens.control_width * 0.5
 	_title_label.style = UILabel.Style.BODY
 	_hint_label.style = UILabel.Style.CAPTION
 	# Wrapping labels report a tall minimum while a container is still sizing them, which can leave
@@ -41,15 +42,35 @@ func _init() -> void:
 	add_child(text)
 	_value_label.style = UILabel.Style.BODY
 	_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_value_label.custom_minimum_size.x = _tokens.control_height * 1.5
 	_value_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	add_child(_value_label)
+	_apply_tokens()
+
+
+func _ready() -> void:
+	if not Engine.is_editor_hint():
+		UITokens.active_changed().connect(_on_tokens_changed)
+
+
+## Reads the active tokens into the row's spacing and column widths.
+func _apply_tokens() -> void:
+	_tokens = UITokens.active()
+	add_theme_constant_override(&"separation", _tokens.space_lg)
+	_text_column.custom_minimum_size.x = _tokens.control_width * 0.5
+	_value_label.custom_minimum_size.x = _tokens.control_height * 1.5
+	if _slot != null:
+		_slot.custom_minimum_size.x = _tokens.control_width
+
+
+func _on_tokens_changed(_next: UITokens) -> void:
+	_apply_tokens()
 
 
 ## Puts `node` in the control column, `UITokens.control_width` wide. A switch keeps its own width.
 func set_control(node: Control) -> void:
 	control = node
 	var slot := HBoxContainer.new()
+	_slot = slot
 	slot.custom_minimum_size.x = _tokens.control_width
 	slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	node.size_flags_horizontal = (

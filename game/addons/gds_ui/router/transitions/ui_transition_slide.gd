@@ -5,9 +5,6 @@ extends UITransition
 ## off to the right over the old one, which moves in from a third of the way left and brightens.
 ## The entering screen is on top for a push and the leaving screen for a pop.
 
-const PARALLAX := 0.33
-const DIM := Color(0.45, 0.45, 0.5)
-
 
 func play(ctx: UITransitionContext) -> void:
 	var t := ctx.tokens
@@ -17,8 +14,8 @@ func play(ctx: UITransitionContext) -> void:
 	UIMotion.apply_ease(tween, UITokens.Ease.EMPHASIZED)
 	ctx.incoming.show()
 	if ctx.reverse:
-		ctx.incoming.position.x = -width * PARALLAX
-		ctx.incoming.modulate = DIM
+		ctx.incoming.position.x = -width * t.slide_parallax
+		ctx.incoming.modulate = t.slide_dim
 		tween.tween_property(ctx.incoming, "position:x", 0.0, t.dur_screen)
 		tween.tween_property(ctx.incoming, "modulate", Color.WHITE, t.dur_screen)
 		if has_outgoing:
@@ -28,8 +25,10 @@ func play(ctx: UITransitionContext) -> void:
 		ctx.incoming.position.x = width
 		tween.tween_property(ctx.incoming, "position:x", 0.0, t.dur_screen)
 		if has_outgoing:
-			tween.tween_property(ctx.outgoing, "position:x", -width * PARALLAX, t.dur_screen)
-			tween.tween_property(ctx.outgoing, "modulate", DIM, t.dur_screen)
+			tween.tween_property(
+				ctx.outgoing, "position:x", -width * t.slide_parallax, t.dur_screen
+			)
+			tween.tween_property(ctx.outgoing, "modulate", t.slide_dim, t.dur_screen)
 		ctx.raise(ctx.incoming)
 	await tween.finished
 	ctx.swap()
