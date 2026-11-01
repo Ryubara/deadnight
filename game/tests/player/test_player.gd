@@ -60,6 +60,15 @@ func _seconds(seconds: float) -> void:
 	await _ticks(roundi(seconds / TICK))
 
 
+## Waits (process frames, which advance the animation) until the upper one-shot has finished.
+func _until_idle(animation: PlayerAnimation, limit: float) -> void:
+	var waited := 0.0
+	while animation.action_clip != &"" and waited < limit:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+	await get_tree().process_frame
+
+
 func _plane_distance(from: Vector3) -> float:
 	var d := _player.global_position - from
 	return Vector2(d.x, d.z).length()
@@ -421,7 +430,7 @@ func test_equip_swaps_the_weapon_on_its_event_frame() -> void:
 	assert_str(animation.weapon_class).is_equal("Melee")
 	assert_str(animation.action_clip).is_equal("Equip_Melee")
 	assert_bool(animation.weapon().visible).is_false()
-	await _seconds(0.5)  # Equip is 10 frames at 24 fps; weapon_visible is frame 2
+	await _until_idle(animation, 2.0)  # Equip is 10 frames at 24 fps; weapon_visible is frame 2
 	assert_bool(animation.weapon().visible).is_true()
 	assert_array(events).contains_exactly([&"weapon_visible", &"ready"])
 	assert_str(animation.action_clip).is_equal("")
@@ -436,11 +445,11 @@ func test_fire_and_reload_emit_their_event_frames() -> void:
 	)
 	assert_bool(animation.play_action(&"Fire")).is_true()
 	assert_array(events).contains_exactly([&"muzzle"])  # frame 0: the shot has no delay
-	await _seconds(0.5)
+	await _until_idle(animation, 2.0)
 	assert_array(events).contains_exactly([&"muzzle", &"can_fire_again"])
 	events.clear()
 	animation.play_action(&"Reload")
-	await _seconds(2.8)
+	await _until_idle(animation, 6.0)
 	assert_array(events).contains_exactly(
 		[&"round_in", &"round_in", &"round_in", &"lever", &"can_fire_again"]
 	)

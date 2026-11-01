@@ -4,4 +4,4 @@
 
 [resource]
 script = ExtResource("1")
-lines = PackedStringArray("# Made by", "Ryubara - design and direction", "Built by agents on the GDStudio kit", "# Art", "Quaternius - Soldier and Zombie models (CC0)", "# Made with", "Godot Engine - MIT licence", "GdUnit4 - MIT licence", "# Thanks", "Everyone who parked for the late show")
+lines = PackedStringArray("# Made by", "Ryubara - design and direction", "Built by agents on the GDStudio kit", "# Art", "Quaternius - Soldier (Toon Shooter Game Kit) and Zombie models, CC0", "# Made with", "Godot Engine - MIT licence", "GdUnit4 - MIT licence", "# Thanks", "Everyone who parked for the late show")
