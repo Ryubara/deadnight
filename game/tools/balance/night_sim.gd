@@ -110,10 +110,10 @@ func _step() -> void:
 ## Moves every zombie, lands blows, and returns how many zombies are in reach of each player.
 func _move_zombies() -> Dictionary:
 	var engaged := {}
-	var lit := 1.0 - _lit_share() * (1.0 - rules.tuning.rounds.lit_speed_multiplier)
+	var pace := 1.0 + (1.0 - _lit_share()) * (rules.tuning.rounds.dark_speed_multiplier - 1.0)
 	for zombie: SimZombie in _zombies.values():
 		if zombie.distance > 0.0:
-			zombie.distance -= zombie.speed * lit * step
+			zombie.distance -= zombie.speed * pace * step
 			continue
 		if zombie.barrier > 0.0:
 			zombie.barrier -= step * zombie.barrier_speed
@@ -379,8 +379,9 @@ func _total(field: String) -> int:
 
 
 ## Puts the circuits the modelled player keeps on, on, and every other off, as a player at the
-## switches would. The generator burns for each one and the dead slow on lit ground only while it
-## has fuel, so the light costs what it costs in the game.
+## switches would. The generator burns for each one and the dead keep their round's pace on lit
+## ground only while it has fuel (off it they are faster), so the light costs what it costs in the
+## game.
 func _set_lights() -> void:
 	for circuit_id: StringName in rules.tuning.fuel.circuit_drain:
 		rules.apply(RulesAction.set_circuit(circuit_id, skill.circuits.has(circuit_id)))

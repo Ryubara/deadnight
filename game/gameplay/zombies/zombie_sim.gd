@@ -23,7 +23,7 @@ const _PAIR_ANGLE_A := 0.7548776662
 const _PAIR_ANGLE_B := 0.5698402910
 
 var tuning: ZombieTuning
-## Used for the speed of a zombie on lit ground; without it light changes nothing.
+## Used for the speed of a zombie off lit ground; without it light changes nothing.
 var rounds: RoundTuning
 var pathing: ZombiePathing = ZombiePathing.new()
 ## `Callable(position: Vector3) -> bool`: whether that ground is lit. Asked at each repath.

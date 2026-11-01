@@ -69,11 +69,11 @@ func test_use_at_a_post_switches_the_circuit_and_the_lot_follows() -> void:
 	var night := await _start()
 	var rules := night.server.rules
 	var interior: Light3D = night.world.greybox.get_node("Concession/Lamps/InteriorW")
-	var lit_speed := ZOMBIE_SPEED * rules.tuning.rounds.lit_speed_multiplier
+	var dark_speed := ZOMBIE_SPEED * rules.tuning.rounds.dark_speed_multiplier
 	var post := night.world.switches.post(CIRCUIT)
 	assert_bool(interior.visible).is_false()
 	assert_bool(post.is_on()).is_false()
-	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(ZOMBIE_SPEED, 0.01)
+	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(dark_speed, 0.01)
 	var before := rules.generator.drain_per_second(1, false)
 	_stand_at(night, CIRCUIT)
 
@@ -87,7 +87,7 @@ func test_use_at_a_post_switches_the_circuit_and_the_lot_follows() -> void:
 	assert_bool(interior.visible).is_true()
 	assert_bool(night.state.me()["prompt"]["on"]).is_true()
 	assert_bool(night.state.frame["circuits"][CIRCUIT]).is_true()
-	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(lit_speed, 0.01)
+	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(ZOMBIE_SPEED, 0.01)
 	# The switch costs what the circuit draws.
 	var draw := rules.tuning.fuel.circuit_drain[CIRCUIT]
 	assert_float(rules.generator.drain_per_second(1, false) - before).is_equal_approx(draw, 0.0001)
@@ -98,7 +98,7 @@ func test_use_at_a_post_switches_the_circuit_and_the_lot_follows() -> void:
 	assert_bool(rules.generator.circuits[CIRCUIT]).is_false()
 	assert_bool(post.is_on()).is_false()
 	assert_bool(interior.visible).is_false()
-	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(ZOMBIE_SPEED, 0.01)
+	assert_float(_speed_on(night, CONCESSION_FLOOR)).is_equal_approx(dark_speed, 0.01)
 	night.queue_free()
 
 
