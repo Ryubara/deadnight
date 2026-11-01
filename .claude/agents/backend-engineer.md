@@ -22,7 +22,9 @@ kit's (`<workspace>/repos/gdstudio/AGENTS.md`) are your rules; read both first, 
 3. **Build it to run unattended**: configuration from environment variables, never secrets in files or logs; health
    checks; structured logs; graceful shutdown; a local `docker compose` (or equivalent) that runs the whole stack.
 4. **Prove it**: automated tests for the API; an end-to-end check that a test client signs in, joins a lobby and is
-   handed a game-server address; numbers (latency, memory) where they matter.
-5. **Never deploy or create cloud resources yourself**: deploying to Railway, creating projects, databases or Discord
-   applications are maintainer decisions. Make it ready and write the steps.
+   handed a game-server address; numbers (latency, memory) where they matter. Test it yourself against a real
+   deployment; never hand testing to a person.
+5. **Deploy to test it**: you may create and deploy GDStudio projects, services and databases on Railway with the
+   logged-in `railway` CLI, local and remote. Never touch the account's other projects, never commit tokens, and scale
+   down what is not in use. Creating Discord applications stays the maintainer's: make it ready and write the steps.
 6. **Pull request** with `Fixes #N`, test output, and a diagram where a flow is involved.
