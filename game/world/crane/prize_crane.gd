@@ -46,16 +46,16 @@ var leave_seconds := 4.0
 
 var _pool: Array[StringName] = []
 var _models: Dictionary = {}
-var _stage_node := Node3D.new()
-var _dud := Node3D.new()
-var _carriage := Node3D.new()
-var _cable := MeshInstance3D.new()
-var _claw := Node3D.new()
+var _stage_node: Node3D
+var _dud: Node3D
+var _carriage: Node3D
+var _cable: MeshInstance3D
+var _claw: Node3D
 var _prongs: Array[Node3D] = []
 var _marquee: MeshInstance3D
 var _beam: MeshInstance3D
-var _light := OmniLight3D.new()
-var _sparks := CPUParticles3D.new()
+var _light: OmniLight3D
+var _sparks: CPUParticles3D
 var _glow_material := StandardMaterial3D.new()
 var _beam_material := ShaderMaterial.new()
 var _clock := 0.0

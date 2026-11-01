@@ -26,7 +26,7 @@ func setup(
 ) -> void:
 	for spot in spots:
 		if spot["kind"] == &"crane":
-			_spots[spot["crane_spot"]] = _stand_at(spot["position"], spot["yaw"])
+			_spots[spot["crane_spot"]] = stand_at(spot["position"], spot["yaw"])
 	crane = PrizeCrane.new()
 	add_child(crane)
 	crane.configure(tuning, pool)
@@ -36,7 +36,7 @@ func setup(
 
 ## The crane's place for a marker at `marker` facing `yaw`: set back along it, turned to face the
 ## marker.
-func _stand_at(marker: Vector3, yaw: float) -> Transform3D:
+static func stand_at(marker: Vector3, yaw: float) -> Transform3D:
 	var toward := Vector3(sin(yaw), 0.0, cos(yaw))
 	return Transform3D(Basis(Vector3.UP, yaw + PI), marker + toward * SET_BACK)
 
