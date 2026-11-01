@@ -9,4 +9,5 @@ its sources linked; findings that apply to every game move to the GDStudio docs 
 - [Type specimens](type-specimens.md): rendering fonts we do not commit; variable fonts, tracking, layered neon.
 - [Platform backend](platform-backend.md): custom Node vs Nakama vs Colyseus, and the join flow to a match.
 - [Rules engine](rules-engine.md): the round, points and fuel rules as a server-first `RefCounted`: actions, events, snapshots.
+- [Main menu and the drive-in skin](main-menu.md): the neon sign, the night sky, film grain, the menu screens.
 - [Multiplayer](multiplayer.md): the WebSocket server and web client spike, with measured latency and bandwidth.
