@@ -121,7 +121,7 @@ func _sweep(space: PhysicsDirectSpaceState3D, probe: Marker3D, full_arm: bool) -
 				continue
 			for side in [1.0, -1.0]:
 				var rig := CameraProbe.rig(space, ground["position"], yaw + turn, side)
-				var short: bool = full_arm and rig["arm"] < CameraProbe.ARM_LENGTH - 0.05
+				var short: bool = full_arm and rig["arm"] < CameraProbe.arm_length() - 0.05
 				if not rig["free"] or short:
 					failures.append(
 						(
