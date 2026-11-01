@@ -214,9 +214,10 @@ The Soldier's parts (`tools/blender/build_soldier_parts.py`, [characters](charac
 | Rule | Value |
 | --- | --- |
 | Head landmarks (kit metres, at rest, front is -Y) | hood x +-0.35, y -0.36..0.32, top z 2.20; eyes z 1.75-1.89 at x +-0.12..0.23; face front y -0.37; collar ring z 1.40-1.68, r 0.36 |
-| Added pieces | primitives with a 20 mm one-segment chamfer (10-15 mm on small rims), 44-436 tris each, skinned 100 % to one bone |
+| Added pieces | primitives with a 20 mm one-segment chamfer (10-15 mm on small rims), 44-436 tris each, skinned 100 % to one bone; hair is rounded (spheres and domes, no chamfer) in the crown's `hair` swatch, `hair_shade` only on faces that point down, never a box (a box on the crown read as a cap) |
+| Painted bands | a stripe or band on a kit-body part is cut into the mesh between two planes (`cut_stripe`: the Usher's trouser stripe, 2 x 45 mm at kit scale), never painted by face centre (that leaves sawtooth edges) |
 | Atlas | 256 x 64, 16 px swatches: row 0 the five look channels and their shades (x 0.75), row 1 eleven fixed colours |
-| Assembled presets | 4,408-5,080 tris against the 6k player budget, one material, 5-7 meshes |
+| Assembled presets | 4,490-5,080 tris against the 6k player budget, one material, 5-7 meshes |
 
 ## Drive-in props
 
