@@ -1,0 +1,108 @@
+extends Node
+## The prize crane from the player's shoulder camera, for captures: the player stands at the
+## crane, pays, watches the claw dig and the weapons cycle, takes the prize. With `--breakdown` the
+## play breaks the crane down instead (a dud, sparks, the power goes, the crane is gone) and with
+## `--beam` the camera looks along the lot to show the light beam. Not part of the game.
+## Run it with Movie Maker: `godot --path game res://tests/captures/crane_tour.tscn --fixed-fps 10
+## --write-movie out.png --quit-after 260 -- [--breakdown] [--beam]`.
+
+## Frames are physics ticks, 60 a second.
+const HOLD := 90
+const SHOULDER_PITCH := 0.16
+
+var _night: Night
+var _yaw := 0.0
+var _use := false
+var _args := {}
+
+
+func _ready() -> void:
+	for arg in OS.get_cmdline_user_args():
+		_args[arg.trim_prefix("--").get_slice("=", 0)] = (
+			arg.get_slice("=", 1) if "=" in arg else "1"
+		)
+	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	var layer := CanvasLayer.new()
+	layer.add_child(hud)
+	add_child(layer)
+	var tuning := (
+		(load(GameRules.DEFAULT_TUNING_PATH) as RulesTuning).duplicate(true) as RulesTuning
+	)
+	if _args.has("breakdown"):
+		tuning.crane.safe_plays = 0
+		tuning.crane.leave_chances = PackedFloat32Array([1.0])
+	_night = Night.new()
+	_night.hud = hud
+	add_child(_night)
+	await _night.start(Night.Mode.MANUAL, 7, tuning)
+	_night.ticked.connect(_send)
+	_night.state.apply_events(_night.server.rules.apply(RulesAction.grant_points(1, 5000)))
+	# The concession is open, so the crane in the stand can be reached and the others can be moved to.
+	_night.state.apply_events(_night.server.rules.apply(RulesAction.buy(1, &"door_concession")))
+	if _args.has("beam"):
+		# The crane on the open field, so the beam stands against the sky.
+		_night.server.rules.crane.spot = 2
+		await _hold(10)
+	_night.player().camera_rig.camera().make_current()
+	await _play()
+	get_tree().quit()
+
+
+func _play() -> void:
+	await _hold(5)
+	var at := _crane_marker()
+	var crane_at: Vector3 = _night.view.crane.crane.global_position
+	var standing := at["position"] as Vector3
+	var toward := crane_at - standing
+	# Two metres back from the glass, still in reach of the spot, so the whole crane is in frame.
+	var flat := Vector3(toward.x, 0.0, toward.z).normalized()
+	var side := Vector3(flat.z, 0.0, -flat.x) * 1.2
+	_night.player().teleport(standing - flat * 1.6 + side + Vector3(0.0, 0.1, 0.0))
+	_yaw = atan2(-toward.x, -toward.z)
+	_night.player().camera_rig.yaw = _yaw
+	_night.player().camera_rig.pitch = SHOULDER_PITCH
+	if _args.has("beam"):
+		await _beam()
+		return
+	await _hold(HOLD)
+	_use = true
+	await _hold(1)
+	_use = false
+	if _args.has("breakdown"):
+		# The spin, the dud, the sparks and the power-down, then the crane is gone.
+		await _hold(300 + 330 + 120)
+	else:
+		# The spin, then the weapon floats for a moment before it is taken.
+		await _hold(300 + 120)
+		_use = true
+		await _hold(1)
+		_use = false
+		await _hold(120)
+
+
+## From the shoulder camera, turned to look down the lot from the stand toward the crane's beam.
+func _beam() -> void:
+	var rig := _night.player().camera_rig
+	rig.pitch = 0.5
+	await _hold(120)
+
+
+func _crane_marker() -> Dictionary:
+	for spot in _night.world.shop_spots():
+		if spot["kind"] == &"crane" and spot["crane_spot"] == _night.server.rules.crane.spot:
+			return spot
+	return {}
+
+
+func _send() -> void:
+	var command := NightCommand.new()
+	command.motion.yaw = _yaw
+	command.use = _use
+	_night.link.send(command.to_dict())
+	var rig := _night.player().camera_rig
+	rig.yaw = _yaw
+
+
+func _hold(frames: int) -> void:
+	for _i in frames:
+		await get_tree().physics_frame
