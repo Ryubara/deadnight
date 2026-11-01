@@ -46,6 +46,7 @@ nav:
       - Overview: design/index.md
       - Style bible: design/style.md
       - The lot: design/map.md
+      - Rounds, points and fuel: design/rounds.md
       - Typography: design/typography.md
   - Research:
       - research/index.md
@@ -53,3 +54,4 @@ nav:
       - Greybox and captures: research/greybox-and-captures.md
       - Settings: research/settings.md
       - Type specimens: research/type-specimens.md
+      - Rules engine: research/rules-engine.md
