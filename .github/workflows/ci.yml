@@ -65,7 +65,7 @@ jobs:
         run: |
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
-          "$godot" --headless --path repos/deadnight/game res://tests/captures/autopilot_night.tscn -- --rounds=1 --speed=40 2>&1 | tee night.log
+          "$godot" --headless --verbose --path repos/deadnight/game res://tests/captures/autopilot_night.tscn -- --rounds=1 --speed=40 2>&1 | tee night.log
           grep -q "^REPORT" night.log
           ! grep -E "^(SCRIPT )?ERROR|leaked at exit|still in use" night.log
 
