@@ -39,6 +39,11 @@ func _ready() -> void:
 	night.night_over.connect(_on_night_over)
 
 
+## True while the touch controls are on screen and taking touches.
+func touch_active() -> bool:
+	return _touch != null and _touch.is_active()
+
+
 func screen_enter() -> void:
 	await night.start(Night.Mode.HUMAN)
 

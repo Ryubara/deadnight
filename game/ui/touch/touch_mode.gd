@@ -39,8 +39,10 @@ static func detect() -> bool:
 	if device_is_touch != null:
 		return device_is_touch
 	if OS.has_feature("web"):
-		var script := "(navigator.maxTouchPoints > 0) && window.matchMedia('(pointer: coarse)').matches"
-		return JavaScriptBridge.eval(script, true) == true
+		# A number, not a boolean: the bridge hands back whichever it likes, `int()` reads both.
+		var script := "(navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches) ? 1 : 0"
+		var answer: Variant = JavaScriptBridge.eval(script, true)
+		return answer != null and int(answer) == 1
 	return OS.has_feature("android") or OS.has_feature("ios")
 
 

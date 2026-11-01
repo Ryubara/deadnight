@@ -47,5 +47,8 @@ glyph in the prompt card on touch, and asking Discord for landscape. Each is an 
 - **A full-screen `Control` with the default mouse filter eats injected mouse motion.** The test host sets Ignore.
 - **Under a `CanvasLayer` a `Control` has size zero.** `TouchControls` and the rotate prompt fall back to the viewport size.
 - **The scene runner changes how input arrives**, so the suite that uses it (`test_touch_player`) is its own file.
+- **A web `eval` may return a bool or a number**: `TouchMode.detect` asks for `1` or `0` and reads it with `int()`;
+  comparing the answer with `true` was false in Chromium and hid the controls on every phone. `window.deadnight.touch`
+  (the web probe) says whether the layer is up, for a browser run.
 - **The web page** needs `viewport-fit=cover` for safe-area insets, `touch-action: none`, `overscroll-behavior: none`,
   no text selection and no context menu: the export preset's head include sets them.
