@@ -6,6 +6,12 @@ extends RefCounted
 ## and written into the state's readings (`set_ammo`, `set_equipment`). The data lives in the
 ## state (`weapon_id`, `holstered_id`, `rounds`, `weapon_names`, `ammo_free`), so it stays plain.
 ##
+## Two sources keep it true. The weapons' events set the rounds at once (a shot, a reload, a weapon
+## taken, and rounds added: a locker, a wall buy of a weapon already carried, a pickup). The frame
+## then says what the server holds (`sync`: the weapon in hand, its rounds, whether it reloads, and
+## the rounds of everything carried), so a change that sent no event, or one the HUD missed, shows
+## on the same tick all the same.
+##
 ## The ammo card reads the held weapon: magazine, reserve, name, and whether it is reloading. The
 ## equipment slot reads the weapon put away last, with the rounds it has left (magazine and
 ## reserve together); a weapon that uses no ammunition (the crowbar) has no count.
@@ -16,7 +22,7 @@ extends RefCounted
 
 ## The weapons' events this reads; the binding forwards these and no other weapon event.
 const EVENTS: Array[StringName] = [
-	&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished"
+	&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished", &"ammo_added"
 ]
 ## The equipment count of a weapon that has no rounds to count.
 const NO_COUNT := -1
@@ -38,6 +44,31 @@ static func apply(event: Dictionary, state: HudState) -> void:
 		&"reload_started":
 			if weapon_id == state.weapon_id:
 				_show(state, true)
+		&"ammo_added":
+			# Rounds for the weapon in hand move the card; for one put away, the equipment slot.
+			_count(state, weapon_id, int(event["ammo"]), int(event["reserve"]))
+			_show(state, state.ammo_reloading)
+
+
+## Reads the local player's entry of a frame (`NightServer` frame: `weapon`, `ammo`, `reserve`,
+## `reloading`, `arms`, the id of each weapon carried to `[ammo, reserve]`) into the state. The
+## frame is the server's own word, so it wins over what the events said; a state it already
+## matches announces nothing.
+static func sync(me: Dictionary, state: HudState) -> void:
+	var weapon := StringName(me.get("weapon", &""))
+	if weapon == &"":
+		return
+	state.hold()
+	var arms: Dictionary = me.get("arms", {})
+	for carried: StringName in arms:
+		var rounds: Array = arms[carried]
+		_count(state, carried, int(rounds[0]), int(rounds[1]))
+	if weapon != state.weapon_id and state.weapon_id != &"":
+		state.holstered_id = state.weapon_id
+	state.weapon_id = weapon
+	_count(state, weapon, int(me["ammo"]), int(me["reserve"]))
+	_show(state, bool(me.get("reloading", false)))
+	state.release()
 
 
 ## Takes `weapon_id` in hand with these rounds; the weapon that was in hand is put away. A late
