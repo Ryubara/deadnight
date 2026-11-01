@@ -18,6 +18,10 @@ const BUTTON_STYLES: Array[StringName] = [
 ]
 const PANEL_STYLES: Array[StringName] = [&"UIPanelFlat", &"UIPanelRaised", &"UIPanelMarquee"]
 
+const TOGGLE_STYLE := &"UIToggle"
+const SLIDER_STYLE := &"UISlider"
+const OPTION_TYPE := &"UIOptionSelector"
+
 const BUTTON_STATES: Array[StringName] = [
 	&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled", &"focus"
 ]
@@ -31,6 +35,7 @@ static func build(tokens: UITokens = null) -> Theme:
 	_add_labels(theme, t)
 	_add_buttons(theme, t)
 	_add_panels(theme, t)
+	_add_controls(theme, t)
 	_add_plain_controls(theme, t)
 	return theme
 
@@ -96,6 +101,23 @@ static func _add_panels(theme: Theme, t: UITokens) -> void:
 	for type in PANEL_STYLES:
 		theme.set_type_variation(type, &"PanelContainer")
 		theme.set_stylebox(&"panel", type, _margins(StyleBoxEmpty.new(), t.space_lg, t.space_xl))
+
+
+## The settings controls draw themselves; the theme gives them type, and the slider an invisible
+## grabber of the thumb's size so the engine's hit-testing matches the drawing.
+static func _add_controls(theme: Theme, t: UITokens) -> void:
+	theme.set_type_variation(TOGGLE_STYLE, &"Button")
+	for state in BUTTON_STATES:
+		theme.set_stylebox(state, TOGGLE_STYLE, StyleBoxEmpty.new())
+	theme.set_type_variation(SLIDER_STYLE, &"HSlider")
+	for part in [&"slider", &"grabber_area", &"grabber_area_highlight"]:
+		theme.set_stylebox(part, SLIDER_STYLE, StyleBoxEmpty.new())
+	var blank := Image.create_empty(t.control_height, t.control_height, false, Image.FORMAT_RGBA8)
+	var thumb := ImageTexture.create_from_image(blank)
+	for icon in [&"grabber", &"grabber_highlight", &"grabber_disabled"]:
+		theme.set_icon(icon, SLIDER_STYLE, thumb)
+	theme.set_font(&"font", OPTION_TYPE, _font(t.embolden_display * 0.2, 0.0))
+	theme.set_font_size(&"font_size", OPTION_TYPE, t.size_body)
 
 
 static func _add_plain_controls(theme: Theme, t: UITokens) -> void:
