@@ -63,6 +63,10 @@ var _pending: Dictionary[int, NightCommand] = {}
 var _bodies: Dictionary[int, Player] = {}
 var _shot_seq: Dictionary[int, int] = {}
 var _hand_wait: Dictionary[int, float] = {}
+## The breach each player's held `use` is repairing (`&""`: none). A hold begins with a press at a
+## breach and ends when the button comes up, the breach is whole or out of reach, or the player
+## fires, reloads, swaps, is hit or goes down.
+var _repairing: Dictionary[int, StringName] = {}
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
 
@@ -155,6 +159,7 @@ func _join(player_id: int, local: bool) -> void:
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
+	_repairing[player_id] = &""
 	rules.apply(RulesAction.add_player(player_id))
 	# The melee weapon first, so the firearm is the one in hand.
 	_combat(CombatAction.give_weapon(player_id, tuning.start_melee))
@@ -166,6 +171,7 @@ func _leave(player_id: int) -> void:
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
 		_pending.erase(player_id)
+		_repairing.erase(player_id)
 		looks.leave(player_id)
 		rules.apply(RulesAction.remove_player(player_id))
 
@@ -247,6 +253,8 @@ func _on_door_opened(_door_id: StringName) -> void:
 func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
 	match event["type"]:
+		&"player_hurt":
+			_repairing[event["player_id"]] = &""
 		&"purchase_made":
 			_deliver(event["player_id"], event["detail"])
 		&"crane_prize_taken":
@@ -316,6 +324,7 @@ func _act(player_id: int, delta: float) -> void:
 	_hand_wait[player_id] = maxf(_hand_wait[player_id] - delta, 0.0)
 	var command := _pending.get(player_id) as NightCommand
 	if command == null or _is_downed(player_id):
+		_repairing[player_id] = &""
 		return
 	if command.reload:
 		_combat(CombatAction.reload_weapon(player_id))
@@ -323,8 +332,11 @@ func _act(player_id: int, delta: float) -> void:
 		_shoot(player_id, command)
 	if command.swap:
 		_combat(CombatAction.swap(player_id))
+	if command.swap or command.fire or command.reload:
+		_repairing[player_id] = &""
 	if command.use:
 		_use(player_id)
+	_hold_repair(player_id, command)
 	# Edges are used once.
 	command.reload = false
 	command.use = false
@@ -481,9 +493,8 @@ func _use(player_id: int) -> void:
 		&"crane_take":
 			rules.apply(RulesAction.crane_take(player_id))
 		&"repair":
-			if _hand_wait[player_id] <= 0.0:
-				_hand_wait[player_id] = tuning.repair_interval
-				rules.apply(RulesAction.repair(player_id, target["id"]))
+			_repairing[player_id] = target["id"]
+			_repair(player_id, target["id"])
 		&"circuit":
 			if _hand_wait[player_id] <= 0.0:
 				_hand_wait[player_id] = tuning.switch_interval
@@ -492,6 +503,32 @@ func _use(player_id: int) -> void:
 			if _hand_wait[player_id] <= 0.0:
 				_hand_wait[player_id] = tuning.fuel_interval
 				buy(player_id, target["item"])
+
+
+## One board back if this hand is free: the first at the press, then one every `repair_interval`.
+func _repair(player_id: int, breach: StringName) -> void:
+	if _hand_wait[player_id] <= 0.0:
+		_hand_wait[player_id] = tuning.repair_interval
+		rules.apply(RulesAction.repair(player_id, breach))
+
+
+## The held `use`: goes on with the breach the press began at while the button stays down and the
+## player is still in reach of it with a board missing; anything else lets go, and the next board
+## needs a new press. (The pay and the cap are the rules': this only paces the boards.)
+func _hold_repair(player_id: int, command: NightCommand) -> void:
+	var breach := _repairing[player_id]
+	if breach == &"":
+		return
+	var target := use_target(player_id) if command.use_held and tuning.repair_hold else {}
+	if target.get("kind") != &"repair" or target["id"] != breach:
+		_repairing[player_id] = &""
+		return
+	_repair(player_id, breach)
+
+
+## Whether this player's held `use` is putting boards back now (for tests and the picture).
+func is_repairing(player_id: int) -> bool:
+	return _repairing.get(player_id, &"") != &""
 
 
 # --- The picture clients draw ---

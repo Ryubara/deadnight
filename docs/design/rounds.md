@@ -118,6 +118,27 @@ only through two actions:
   `unknown_barricade`, `player_downed` or `wrong_phase`. The pay stops at the cap (120 from one round's end to the
   next, so a break's repairs count against the next round's), but the board goes up either way.
 
+**Hold to repair** (#297). The player does not press once a board: a press of `interact` at a breach puts the first
+board up at once, and the button held down keeps putting boards up, one every `repair_interval` (night tuning, 1.0 s),
+at the rules' pay per board (12; nothing else changes). The rules know nothing of it: each `repair` is the same action
+a press sends, and the server paces them. The client sends the press (`use`, an edge) and whether the button is still
+down (`use_held`, a level) in every command, so it works the same from the keyboard, any gamepad and the touch button,
+which all press the `interact` action. The server lets go of the hold, and the next board needs a new press, when:
+
+| Ends with | Because |
+| --- | --- |
+| the button comes up | that is what holding means |
+| the breach is whole | nothing to put back (no `barricade_full` refusal is sent, the hold simply ends) |
+| the player is out of reach of the breach, or behind its boards | `use_target` no longer names it; walking back in while still holding does not resume |
+| the player is hit (`player_hurt`) | a blow knocks the hammer out of their hand |
+| the player fires, reloads or swaps | the hands are busy: a hold is not a thing to do while shooting |
+| the player goes down | downed players do nothing |
+
+A board torn off while the player holds is put back too (the hold names the breach, not a count). Nothing else repeats
+on a held `interact`: a door, a gun, the crane, a breaker and a fuel can stay one press each. `NightTuning.repair_hold`
+(off: one board a press, as before) and `repair_interval` are exported on the night tuning resource. A command that
+never arrives is not expired by the server (#163): a stalled client keeps its last level, as it does for `fire`.
+
 Whether a zombie is held at the boards is the simulation's, not the rules': every zombie spawned outside a breach
 stops short of its boards while any stand and works on them at its `barrier_speed` (a walker takes 1.2 s a board, the
 tuning's `seconds_per_board`: one swing); with none up it walks in; a type with `barrier_speed` 0 (a crawler) goes

@@ -14,7 +14,7 @@ const DETAILS := {
 	&"crane_take": "TAKE IT BEFORE IT FADES",
 	&"crane_busy": "ONLY THE BUYER CAN TAKE IT",
 	&"fill_fuel": "TOPS UP THE GENERATOR",
-	&"repair": "NAIL THE BOARDS BACK UP",
+	&"repair": "HOLD TO NAIL BOARDS UP",
 	&"circuit": "SWITCH THE LIGHTS",
 	&"revive": "PULL THEM BACK TO THEIR FEET",
 }
