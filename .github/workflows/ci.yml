@@ -35,8 +35,8 @@ jobs:
         with:
           path: cache/downloads
           key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
-      - name: Make the workspace and fetch the pinned Godot
-        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --fetch godot
+      - name: Make the workspace and fetch the pinned Godot and GdUnit4
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project
         run: |
           set -o pipefail
@@ -49,6 +49,11 @@ jobs:
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           "$godot" --headless --path repos/deadnight/game --quit-after 60 2>&1 | tee run.log
           ! grep -E "^(SCRIPT )?ERROR" run.log
+
+      - name: Run the tests (GdUnit4)
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game -s -d res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests --ignoreHeadlessMode -c
 
   build-ok:
     if: always()
