@@ -111,6 +111,8 @@ rules' `zombie_damaged` events. Who sounds like what is one table, `ZombieVoiceT
   death 55, grunt 62, alert 65, shriek 66), `zombie_boss` (2; growl 86, roar 88, so the headliner is always heard) and
   `zombie_step` (5, priority 15, below the player's own steps and in a group of their own so a horde's feet never
   take the player's). Nearer sounds beat farther ones at the same priority.
+- **Bus.** The dead play on Effects, not Voice: Voice is the player's own pain, which is never ducked, while the
+  dead duck under a sting like every other sound in the lot.
 - **Behind you.** Every dead sound has `rear_cue`: a sound behind the listener is low-passed (from 5 kHz at the side
   to 1.8 kHz straight behind), because panning alone cannot tell front from back on two speakers.
 
