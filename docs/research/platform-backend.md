@@ -61,7 +61,8 @@ image):
 
 Run it: `npm ci && npm test` in `spikes/backend/` (sign-in, lobbies, handoff, forged and expired tickets, capacity,
 saves, config that fails closed, the live Discord client and its timeout). `scripts/dev-compose.sh up --build -d`
-starts Postgres, the backend and the stub game server with throwaway secrets made for that run, then `npm run e2e`
+starts Postgres, the backend and the stub game server with development secrets kept in the workspace `scratch/` folder
+for the life of the stack (a second `up`, `restart` and `down` keep the data, `down -v` wipes both), then `npm run e2e`
 has two players sign in, share a lobby, start it and connect to the game server. Measured on the compose stack: the e2e
 run passed, a save survived a backend restart (Postgres), and `docker compose stop` took 0.7 s because the process
 closes on `SIGTERM`.
@@ -224,8 +225,11 @@ mappings for the backend and each game server.
   signature) and enums fail at runtime. `erasableSyntaxOnly` in `tsconfig.json` catches them in `tsc`.
 - Fastify answers 400 to a request that sets `Content-Type: application/json` with an empty body, and validates the
   body before a `preHandler` runs. Authenticate in `onRequest` so a missing session is a 401, not a 400.
-- Log every request except health checks and heartbeats (`disableRequestLogging` takes a function in Fastify 5), or
-  the log is mostly heartbeats.
+- Log every request except health checks and heartbeats, or the log is mostly heartbeats. In Fastify 5.12 the
+  function form of the top-level `disableRequestLogging` is deprecated (removed in Fastify 6); pass
+  `logController: new LogController({ disableRequestLogging: fn })` instead.
+- A compose stack needs its secrets to stay the same for as long as its Postgres volume lives: the database keeps the
+  first `POSTGRES_PASSWORD` and a recreated backend with a new one fails with `auth_failed`.
 
 ## Sources
 
