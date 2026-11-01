@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/screens/placeholder_screen.gd" id="screen"]
+[ext_resource type="Script" path="res://ui/skin/night_sky.gd" id="sky"]
+
+[node name="PlayScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("screen")
+overline = "NOW BOARDING"
+title = "Pick a lot"
+note = "Host a night for your friends, or join one that is already running. Lobbies arrive with the multiplayer work."
+actions = PackedStringArray("Host a night", "Join a night")
+
+[node name="Sky" type="ColorRect" parent="."]
+script = ExtResource("sky")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

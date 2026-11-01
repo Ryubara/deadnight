@@ -46,12 +46,14 @@ static func to(
 
 
 ## Fade a control in with a small settle (scale 0.97 to 1), the default way a card appears.
-static func fade_in(control: Control, delay := 0.0) -> Tween:
+## The tween belongs to `owner` (default: the control); pass a node that outlives the control
+## when the control may be freed meanwhile, or `finished` never fires.
+static func fade_in(control: Control, delay := 0.0, owner: Node = null) -> Tween:
 	var tokens := UITokens.active()
 	control.modulate.a = 0.0
 	control.pivot_offset = control.size * 0.5
 	control.scale = Vector2.ONE * (1.0 if reduced else 0.97)
-	var tween := control.create_tween().set_parallel(true)
+	var tween := (owner if owner != null else control).create_tween().set_parallel(true)
 	apply_ease(tween, UITokens.Ease.ENTER)
 	tween.tween_property(control, "modulate:a", 1.0, tokens.dur_base).set_delay(delay)
 	tween.tween_property(control, "scale", Vector2.ONE, tokens.dur_slow).set_delay(delay)

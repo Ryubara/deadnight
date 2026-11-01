@@ -1,0 +1,157 @@
+# Platform backend
+
+Deadnight has two server layers (maintainer decision, issue #25). The **game server** is headless Godot running the
+same simulation as the client. The **platform backend** is everything else: Discord sign-in, lobbies and matchmaking,
+telling a player which game server to connect to, saved progress. This page compares three ways to build the
+backend, recommends one, and describes the prototype in `spikes/backend/`. The game server itself and its protocol are
+in the multiplayer research page (issue #6, not landed when this was written).
+
+## Recommendation
+
+**Build it ourselves in TypeScript on Node (Fastify) with Postgres.** The surface we need is small (sign-in, lobbies,
+one handoff call, saves: about 900 lines including the Discord client, with tests), the one hard part is starting or
+choosing a headless Godot server, and neither Nakama nor Colyseus does that on Railway for us. What both frameworks
+are best at (realtime state, authoritative matches) is what we explicitly keep in Godot. Revisit if we need friends,
+parties, chat, leaderboards or tournaments: that is Nakama's territory, and the small API surface keeps the swap
+cheap.
+
+## Comparison
+
+| | Custom TypeScript/Node | Nakama | Colyseus |
+| --- | --- | --- | --- |
+| **What it gives** | Only what we write. Spike: sign-in, lobbies, handoff, versioned saves, health, logs. | Accounts and sessions, storage, matchmaker, parties, chat, leaderboards, console, runtime hooks and RPCs. | Rooms with filtering and queueing, delta-compressed state sync, reconnection, presence, load-balancer and Redis scaling. |
+| **Discord sign-in** | One route: the Activity sends the `authorize()` code, the backend swaps it at `oauth2/token` and reads `users/@me`. Written and tested (live client with a stubbed `fetch`). | Not built in; the docs say to validate the provider token yourself in a before hook on custom authentication. Needs our code in its runtime. | Official Discord Activity template and guide; the server reads `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`. Identity inside a room comes from `onAuth`. |
+| **Handing a player a game server** | Our code: a registry of game servers (heartbeats), `allocate()`, a 60 s HMAC ticket. Built and tested. | Nothing for Railway. The docs list fleet guides for GameLift, Edgegap and i3D.net only. We would write the allocation as an RPC or matchmaker hook. | A room is the match and runs the simulation in Node, which is the layer we keep in Godot. We would use a room only as a lobby and still write the allocation. |
+| **Runs on Railway** | Two services (backend, Postgres) plus the game servers. Plain `Dockerfile`, `PORT`, `/health`. | Official image plus Postgres; a community Railway template exists (3.41.0 with Postgres). Three ports (7349 to 7351); migrations before each start. | One Node service. Community guides only; room state is per process, so one replica until Redis is added. Colyseus Cloud (from $15 a month) is a different host. |
+| **Idle cost on Railway** | Measured: backend 35 MiB, Postgres 33 MiB. | Measured: Nakama 13 MiB, Postgres 35 MiB, image 225 MB. | Not measured; a Node process, like the backend. |
+| **Licence** | Ours (Fastify MIT, `ws` MIT, `pg` MIT). | Apache-2.0. | MIT. |
+| **Extending it** | TypeScript with the full npm ecosystem. | TypeScript compiled to ES5 on the goja VM; no Node or browser APIs and no packages that need them; Go plugins as the escape hatch. | TypeScript on Node. |
+| **What we own** | All the code and the schema; also all the upkeep. | Our hooks and RPCs; Nakama owns the data model and upgrades. | Our rooms; Colyseus owns the room lifecycle and wire format. |
+| **Main risk** | We build and maintain every feature we add later. | Two runtimes and a second language model to learn for a small amount of logic. | A framework whose centre (rooms with state) is the part we do not use. |
+
+All three cost the same order of magnitude on Railway: at $10 per GB of RAM a month and $20 per vCPU a month
+([pricing](https://docs.railway.com/reference/pricing/plans)) a 35 MiB service is cents, and the $5 Hobby plan includes
+$5 of usage. Cost does not decide this; the game servers will dominate the bill.
+
+## What the prototype does
+
+`spikes/backend/` (Fastify 5, Node 24, Postgres, `ws`; TypeScript run with Node's type stripping, built by `tsc` for the
+image):
+
+- `POST /auth/discord {code}` signs a user in. `DISCORD_MODE=stub` accepts `stub:<id>:<name>` (refused when
+  `NODE_ENV=production`); `live` does the real exchange. Returns a one-hour session token and the Discord
+  `access_token` (the Embedded App SDK needs it for `authenticate()`).
+- `POST /lobbies` creates a lobby (or joins the open one of the same Activity `instanceId`),
+  `POST /lobbies/join-by-code`, `GET /lobbies/:id`, `POST /lobbies/:id/start` (host only; allocates a game server).
+- `POST /lobbies/:id/ticket` returns `{address: {url, activityPath}, ticket}` for the caller's seat.
+- `PUT/GET /saves/:slot` with a revision number, so a stale write is a 409 instead of lost progress.
+- `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, capacity and load.
+- `src/stub-gameserver.ts` stands in for headless Godot: it heartbeats, and admits only a valid, unexpired ticket.
+- Configuration only from environment variables; JSON logs that never include headers or bodies (redaction of the
+  code and tokens is configured as a backstop); `/health` and `/ready` (checks the database); graceful shutdown on
+  `SIGTERM`.
+
+Run it: `npm ci && npm test` in `spikes/backend/` (11 tests: sign-in, lobbies, handoff, forged and expired tickets,
+capacity, saves, config, the live Discord client). `scripts/dev-compose.sh up --build -d` starts Postgres, the backend
+and the stub game server with throwaway secrets made for that run, then `npm run e2e` has two players sign in, share a
+lobby, start it and connect to the game server. Measured on the compose stack: the e2e run passed, a save survived a
+backend restart (Postgres), and `docker compose stop` took 0.7 s because the process closes on `SIGTERM`.
+
+## Join flow: from the Activity to a running match
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Activity (Godot web build)
+    participant D as Discord client
+    participant B as Backend
+    participant P as Postgres
+    participant X as Discord API
+    participant G as Game server (headless Godot)
+
+    G->>B: heartbeat every 5 s (url, activityPath, capacity, matches)
+    A->>D: sdk.ready()
+    A->>D: sdk.commands.authorize(client_id, code, identify)
+    D-->>A: authorization code
+    A->>B: POST /auth/discord {code} (through the Activity proxy)
+    B->>X: POST oauth2/token (client secret stays here)
+    X-->>B: access_token
+    B->>X: GET users/@me
+    X-->>B: id, username
+    B->>P: upsert user
+    B-->>A: session token + access_token
+    A->>D: sdk.commands.authenticate(access_token)
+    A->>B: POST /lobbies {instanceId} (friends in the same Activity land in one lobby)
+    B-->>A: lobby
+    Note over A,B: the other players do the same and poll GET /lobbies/:id
+    A->>B: POST /lobbies/:id/start (host)
+    B->>B: allocate the least loaded live game server
+    B-->>A: lobby started, matchId
+    A->>B: POST /lobbies/:id/ticket (every player)
+    B-->>A: address {url, activityPath} + 60 s HMAC ticket
+    A->>G: WebSocket wss://client_id.discordsays.com/activityPath?ticket=...
+    G->>G: verify ticket signature, expiry and matchId
+    G-->>A: welcome, then the simulation ticks
+```
+
+## What is not decided or not proven
+
+- **Starting game servers on demand.** The spike uses a static pool that announces itself. Creating a Railway service
+  or deployment per match goes through Railway's API and creates cloud resources: a maintainer decision, not made here.
+  A single headless Godot process can host several matches; the capacity number in the heartbeat is what the backend
+  respects.
+- **URL mappings are static.** The Developer Portal maps a prefix to a host, so the address given to a player inside
+  Discord is a path under `<client_id>.discordsays.com`, one mapping per game server (or one mapping to a small
+  gateway). Prefix stripping and mapping limits were not verified on the live proxy; check on the first real deploy.
+  WebSockets work through the proxy; WebRTC and WebTransport do not
+  ([networking guide](https://docs.discord.com/developers/activities/development-guides/networking)).
+- **Outbound IP.** Discord warns that a changing egress IP (common on cloud functions) can be banned by Cloudflare
+  for up to an hour and recommends a static one for all server traffic
+  ([production readiness](https://docs.discord.com/developers/activities/development-guides/production-readiness)).
+  Whether Railway offers one on our plan was not checked.
+- **`instanceId` is a client claim.** Discord says to treat client data as unverified, so the lobby-per-instance
+  shortcut only decides which lobby a signed-in user lands in; it grants nothing.
+- **Lobbies live in memory** of one backend replica, and clients poll. More than one replica needs lobbies in
+  Postgres or Redis; push updates need a WebSocket or SSE channel. Both are next steps, not blockers.
+- **Ticket signature.** HS256 on purpose: Godot can verify it with `Crypto.hmac_digest`; Ed25519 would need an
+  extension. The ticket secret is shared between backend and game servers, so it is an environment variable on both.
+- **Not done:** rate limiting on `/auth/discord`, match results flowing back to the backend, telemetry, migrations
+  (the spike creates its two tables on start).
+- **Nakama was only measured idle and read, not built.** The custom-auth path through a before hook is what its docs
+  describe; it was not prototyped.
+
+## Deploying it (for a maintainer)
+
+Nothing was deployed or created. To do it: a Railway project with a Postgres service and the backend (root directory
+`spikes/backend` until it moves), variables `SESSION_SECRET`, `TICKET_SECRET`, `GAME_SERVER_SECRET` (random, 32+
+characters), `DISCORD_MODE=live`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DATABASE_URL`, `NODE_ENV=production`;
+health check path `/health`. In the Discord Developer Portal: an application, the redirect URL, and URL mappings for
+the backend and each game server.
+
+## Gotchas found while building it
+
+- Node 24 runs `.ts` by stripping types only: constructor parameter properties (`private readonly x` in the
+  signature) and enums fail at runtime. `erasableSyntaxOnly` in `tsconfig.json` catches them in `tsc`.
+- Fastify answers 400 to a request that sets `Content-Type: application/json` with an empty body, and validates the
+  body before a `preHandler` runs. Authenticate in `onRequest` so a missing session is a 401, not a 400.
+- Log every request except health checks and heartbeats (`disableRequestLogging` takes a function in Fastify 5), or
+  the log is mostly heartbeats.
+
+## Sources
+
+- Discord: [networking](https://docs.discord.com/developers/activities/development-guides/networking),
+  [building an Activity](https://docs.discord.com/developers/activities/building-an-activity),
+  [Embedded App SDK](https://docs.discord.com/developers/developer-tools/embedded-app-sdk),
+  [production readiness](https://docs.discord.com/developers/activities/development-guides/production-readiness).
+- Railway: [pricing](https://docs.railway.com/reference/pricing/plans),
+  [health checks](https://docs.railway.com/deployments/healthchecks),
+  [private networking](https://docs.railway.com/networking/private-networking),
+  [Nakama template](https://railway.com/deploy/nakama-1).
+- Nakama: [authentication](https://heroiclabs.com/docs/nakama/concepts/authentication/),
+  [server framework](https://heroiclabs.com/docs/nakama/server-framework/introduction/),
+  [TypeScript runtime](https://heroiclabs.com/docs/nakama/server-framework/typescript-runtime/),
+  [Docker install](https://heroiclabs.com/docs/nakama/getting-started/install/docker/),
+  [repository (Apache-2.0)](https://github.com/heroiclabs/nakama).
+- Colyseus: [Discord Activity guide](https://docs.colyseus.io/getting-started/discord-activity),
+  [rooms](https://docs.colyseus.io/room), [repository (MIT)](https://github.com/colyseus/colyseus),
+  [pricing](https://www.colyseus.io/pricing).
