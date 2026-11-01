@@ -73,3 +73,14 @@ What building the round, points and fuel rules (`game/gameplay/rules/`) taught u
   are not throttled.
 - **"Nobody is left" is a game over too.** Without it a server keeps a match nobody is in. The check
   runs on `remove_player` in a break or a round; `start` with no players is rejected.
+- **A snapshot version is one number for one layout.** Two branches that each changed the layout
+  both made it 4 (#161 and #166), so a restore could not tell them apart and the old one looked
+  `malformed`. Check the version before the keys, bump it in the pull request that changes the layout
+  and merge `main` first so a second bump is seen. A restore also checks the insides (each zombie's
+  keys and types, the plan's names against the roster, the special round, players, generator) before
+  it changes anything: `ZombieState.from_dict` on an entry without `type` used to raise a script error
+  and leave the night half restored. The shape checks are `SnapshotCheck` and each state's
+  `SNAPSHOT_KEYS`.
+- **One builder per event.** `zombie_damaged` is built by `GameRules._emit_damaged` for a shot and a
+  blast alike; `test_event_shapes.gd` plays every cause and compares each zombie event with the
+  documented fields, so a new emitter that forgets one fails there.
