@@ -29,6 +29,8 @@ var path := PackedVector3Array()
 var path_index: int = 0
 var repath_left: float = 0.0
 var retarget_left: float = 0.0
+## Seconds until a weak-spot hit may stagger it again (a boss).
+var stagger_cooldown_left: float = 0.0
 
 
 func enter(new_mode: Mode) -> void:

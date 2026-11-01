@@ -193,6 +193,7 @@ func _set_targets(list: Array) -> void:
 			"pos": target["pos"],
 			"yaw": target.get("yaw", 0.0),
 			"scale": target.get("scale", 1.0),
+			"weak": target.get("weak", false),
 		}
 	lag.record(now, list)
 

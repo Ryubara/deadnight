@@ -2,26 +2,40 @@ extends Node
 ## A line-up of the zombie types in the real night, for captures. Not part of the game. The night
 ## is the real one (the rules' spawn requests, the director, the codec, the horde); only the
 ## zombies' positions are held in a row in front of the camera so every type is in frame at once.
-## Arguments after `--`: `--scene=types|boss|cripple`, `--seed=N`.
+## Arguments after `--`: `--scene=types|boss|cripple|bossfight`, `--seed=N`.
 ##
 ## types: round 1 with every type in it (walker, runner, brute, crawler).
 ## boss: the shipped boss night as round 1: a headliner among walkers.
 ## cripple: a walker takes a grenade blast on the legs and becomes a crawler.
+## bossfight: the headliner alone, played by the real night: it roars where it appears, walks, is
+## shot in the lamp (and staggers), swings, and dies.
 
 const SPACING := 1.5
 const ROW_Z := -4.0
-const SECONDS := {"types": 7.0, "boss": 9.0, "cripple": 6.0}
+const SECONDS := {"types": 7.0, "boss": 9.0, "cripple": 6.0, "bossfight": 17.0}
+## The bossfight's timeline, in seconds of the night.
+const FIGHT_SHOOT_FROM := 6.0
+const FIGHT_SHOOT_UNTIL := 7.2
+const FIGHT_KILL_AT := 12.5
+const FIGHT_DISTANCE := 7.5
 
 var _args := {}
 var _night: Night
 var _ticks := 0
 var _victim := -1
+var _boss: ZombieBody
 
 
 func _ready() -> void:
 	_args = _parse_args()
 	var scene := String(_args.get("scene", "types"))
 	_night = Night.new()
+	if scene == "bossfight":
+		var layer := CanvasLayer.new()
+		add_child(layer)
+		var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+		layer.add_child(hud)
+		_night.hud = hud
 	add_child(_night)
 	await _night.start(Night.Mode.AUTOPILOT, int(_args.get("seed", 5)), _tuning(scene))
 	# The line-up is posed, not played: the bot sends nothing and the camera stays where it is.
@@ -43,6 +57,12 @@ func _tuning(scene: String) -> RulesTuning:
 	if scene == "cripple":
 		tuning.rounds.count_base = 3.0
 		return tuning
+	if scene == "bossfight":
+		tuning.specials.first_round = 1
+		tuning.specials.every = 1
+		tuning.specials.rounds[0].escort_fraction = 0.0
+		tuning.rounds.speed_base = 1.1
+		return tuning
 	tuning.rounds.count_base = 6.0
 	for type in tuning.roster.types:
 		if type.id in [&"runner", &"crawler", &"brute"]:
@@ -53,6 +73,9 @@ func _tuning(scene: String) -> RulesTuning:
 
 func _on_tick() -> void:
 	_ticks += 1
+	if String(_args.get("scene", "")) == "bossfight":
+		_fight()
+		return
 	var zombies: Array[ZombieBody] = []
 	for body: ZombieBody in _night.server.sim.zombies.values():
 		if body.is_alive():
@@ -78,6 +101,36 @@ func _on_tick() -> void:
 		_cripple(zombies)
 	_follow_camera()
 	if _ticks / 60.0 >= float(SECONDS[String(_args.get("scene", "types"))]):
+		get_tree().quit()
+
+
+func _fight() -> void:
+	var seconds := float(_ticks) / 60.0
+	if _boss == null:
+		for body: ZombieBody in _night.server.sim.zombies.values():
+			if body.profile.type == &"headliner":
+				_boss = body
+				_boss.position = _night.state.position() + Vector3(0.0, 0.0, -FIGHT_DISTANCE)
+				_boss.yaw = 0.0
+	var command := NightCommand.new()
+	if _boss != null and _boss.is_alive():
+		if seconds >= FIGHT_SHOOT_FROM and seconds < FIGHT_SHOOT_UNTIL:
+			var scale := _boss.profile.hit_scale()
+			var lamp := Hitbox.WEAK_ZONE["a"] as Vector3
+			var aim := _boss.position + Basis(Vector3.UP, _boss.yaw) * lamp * scale
+			var eye := _night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
+			command.origin = eye
+			command.dir = (aim - eye).normalized()
+			command.fire = true
+		if seconds >= FIGHT_KILL_AT and _victim == -1:
+			_victim = _boss.id
+			var kill := RulesAction.hit(1, _victim, RulesAction.ZONE_BODY, 99999.0)
+			_night.state.apply_events(_night.server.rules.apply(kill))
+	_night.link.send(command.to_dict())
+	var at := _night.state.position()
+	var camera: Camera3D = _night.get("_spectator")
+	camera.look_at_from_position(at + Vector3(4.5, 3.0, 3.0), at + Vector3(0.0, 1.5, -4.5))
+	if seconds >= float(SECONDS["bossfight"]):
 		get_tree().quit()
 
 
