@@ -13,13 +13,25 @@ extends Node
 ##   and occlusion (a muffled, quieter sound when `occlusion_probe` says a wall is between);
 ## - ducking: a sting lowers the Effects bus for a moment, in an `AudioEffectAmplify` this node
 ##   adds, so the player's own volume settings (which own the buses' volumes) are never touched;
+## - beds: a few players for the looping ambience and score, which fade in and out in dB per second
+##   of the service's own clock (`start_bed`, `stop_bed`);
 ## - the hook for the UI: `UIAudio.handler` is pointed at `play_ui` when the service is ready.
 ##
 ## Time is the service's own: `_process` calls `advance(delta)`, and tests call it directly.
 
+## A sound started: `id` and its position (null when flat). For tests and a debug overlay.
+signal played(id: StringName, position: Variant)
+
 ## Pooled players for sounds with a place, and for sounds without one.
 const POOL_3D := 32
 const POOL_2D := 12
+## Players for beds (looping ambience and score), which are outside the voice budget.
+const POOL_BEDS := 4
+## A bed fades between this and its own level, at these rates (dB per second), so it comes in over
+## about three seconds and goes out over about two.
+const BED_SILENT_DB := -60.0
+const BED_FADE_IN_DB_PER_S := 20.0
+const BED_FADE_OUT_DB_PER_S := 30.0
 ## What a fully occluded sound loses, and the low-pass it gets (the engine's per-player distance
 ## filter).
 const OCCLUSION_DB := -9.0
@@ -51,6 +63,11 @@ var _streams := {}
 var _last_variant := {}
 var _players_3d: Array[AudioStreamPlayer3D] = []
 var _players_2d: Array[AudioStreamPlayer] = []
+var _bed_players: Array[AudioStreamPlayer] = []
+## Each running bed by id: {"player", "def", "fade_db" (now), "target_db"}.
+var _beds := {}
+## The looping players `start_loop` made, so `stop_all` can stop those too.
+var _loops: Array[AudioStreamPlayer3D] = []
 var _budget_3d: VoiceBudget
 var _budget_2d: VoiceBudget
 var _duck_until := 0.0
@@ -77,11 +94,24 @@ func _ready() -> void:
 		player.name = "Voice2D%d" % i
 		add_child(player)
 		_players_2d.append(player)
+	for i in POOL_BEDS:
+		var player := AudioStreamPlayer.new()
+		player.name = "Bed%d" % i
+		add_child(player)
+		_bed_players.append(player)
 	_add_duck_effect()
 	install_ui_hook()
 
 
 func _exit_tree() -> void:
+	# A stream still held by a playing voice when the engine shuts down is reported as a leaked
+	# resource: stop every voice and let go of every stream (the players' and the cache's).
+	stop_all()
+	for player in _players_3d:
+		player.stream = null
+	for player in _players_2d:
+		player.stream = null
+	_streams.clear()
 	_remove_duck_effect()
 	if UIAudio.handler == play_ui:
 		UIAudio.handler = Callable()
@@ -101,6 +131,7 @@ func advance(delta: float) -> void:
 	duck_db = move_toward(duck_db, _duck_target, rate * delta)
 	if _duck_effect != null:
 		_duck_effect.volume_db = duck_db
+	_step_beds(delta)
 
 
 ## Makes every gds_ui control and the router sound through the catalog's `ui_*` sounds.
@@ -164,7 +195,55 @@ func start_loop(id: StringName, parent: Node3D) -> AudioStreamPlayer3D:
 	player.max_distance = def.max_distance
 	parent.add_child(player)
 	player.play()
+	_loops = _loops.filter(is_instance_valid)
+	_loops.append(player)
 	return player
+
+
+## Starts a looping flat sound (a bed: the night's ambience, the score) that fades in from
+## silence. Starting one that already runs only turns it back up. Returns its player, or null when
+## the sound is unknown or every bed player is busy.
+func start_bed(id: StringName) -> AudioStreamPlayer:
+	if _beds.has(id):
+		_beds[id]["target_db"] = 0.0
+		return _beds[id]["player"]
+	var def := SoundCatalog.get_def(id)
+	var stream := _pick_stream(def) if def != null else null
+	var player := _free_bed_player()
+	if stream == null or player == null:
+		return null
+	var looped := stream.duplicate() as AudioStreamOggVorbis
+	looped.loop = true
+	player.stream = looped
+	player.bus = def.bus
+	player.volume_db = def.volume_db + BED_SILENT_DB
+	player.play()
+	_beds[id] = {"player": player, "def": def, "fade_db": BED_SILENT_DB, "target_db": 0.0}
+	return player
+
+
+## Fades a bed out and frees its player when it is silent. Nothing happens for a bed not running.
+func stop_bed(id: StringName) -> void:
+	if _beds.has(id):
+		_beds[id]["target_db"] = BED_SILENT_DB
+
+
+## Fades every bed out (`immediately` stops them now: a scene change or a test reset).
+func stop_beds(immediately := false) -> void:
+	for id: StringName in _beds.keys():
+		if immediately:
+			_release_bed(id)
+		else:
+			stop_bed(id)
+
+
+func is_bed_running(id: StringName) -> bool:
+	return _beds.has(id)
+
+
+## A bed's fade in dB: -60 is silent, 0 is its own level.
+func bed_fade_db(id: StringName) -> float:
+	return _beds[id]["fade_db"] if _beds.has(id) else BED_SILENT_DB
 
 
 func listener_position() -> Vector3:
@@ -206,6 +285,12 @@ func stop_all() -> void:
 		player.stop()
 	_budget_3d.release_all()
 	_budget_2d.release_all()
+	stop_beds(true)
+	for loop in _loops:
+		if is_instance_valid(loop):
+			loop.stop()
+			loop.stream = null
+	_loops.clear()
 	_duck_until = 0.0
 	_duck_target = 0.0
 
@@ -235,7 +320,7 @@ func _play_3d(
 	player.attenuation_filter_cutoff_hz = lerpf(OPEN_CUTOFF_HZ, OCCLUDED_CUTOFF_HZ, occlusion)
 	player.global_position = at
 	player.play()
-	_after_start(def)
+	_after_start(def, at)
 	return player
 
 
@@ -252,12 +337,42 @@ func _play_2d(
 	player.volume_db = def.volume_db + extra_db
 	player.pitch_scale = pitch
 	player.play()
-	_after_start(def)
+	_after_start(def, null)
 	return player
 
 
-func _after_start(def: SoundDef) -> void:
+func _step_beds(delta: float) -> void:
+	for id: StringName in _beds.keys():
+		var bed: Dictionary = _beds[id]
+		var rate := (
+			BED_FADE_IN_DB_PER_S if bed["target_db"] > bed["fade_db"] else BED_FADE_OUT_DB_PER_S
+		)
+		bed["fade_db"] = move_toward(bed["fade_db"], bed["target_db"], rate * delta)
+		(bed["player"] as AudioStreamPlayer).volume_db = (
+			(bed["def"] as SoundDef).volume_db + bed["fade_db"]
+		)
+		if bed["target_db"] <= BED_SILENT_DB and bed["fade_db"] <= BED_SILENT_DB:
+			_release_bed(id)
+
+
+func _release_bed(id: StringName) -> void:
+	var player := _beds[id]["player"] as AudioStreamPlayer
+	player.stop()
+	player.stream = null
+	_beds.erase(id)
+
+
+func _free_bed_player() -> AudioStreamPlayer:
+	var taken := _beds.values().map(func(bed: Dictionary) -> Node: return bed["player"])
+	for player in _bed_players:
+		if not taken.has(player):
+			return player
+	return null
+
+
+func _after_start(def: SoundDef, position: Variant) -> void:
 	started += 1
+	played.emit(def.id, position)
 	if def.duck_db < 0.0:
 		_duck_target = minf(_duck_target if _now < _duck_until else 0.0, def.duck_db)
 		_duck_until = maxf(_duck_until, _now + def.duck_hold)

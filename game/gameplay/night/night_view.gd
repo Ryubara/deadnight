@@ -28,6 +28,8 @@ var effects: ShotEffects
 var barricade_points: Dictionary[StringName, Vector3] = {}
 ## The lot's lamps, drawn from the generator's events (`show_lamps`).
 var lamps: LotLamps
+## The night's sounds besides the guns (`hear`).
+var sounds: NightSounds
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
 
@@ -53,6 +55,14 @@ func show_lamps(lot: Node, fuel: FuelTuning) -> void:
 	lamps = LotLamps.new(lot)
 	lamps.configure(fuel)
 	lamps.refresh(0)
+
+
+## Starts the night's ambience and the sounds of its boards, doors, blows, till and voices, placed
+## in `world`.
+func hear(world: NightWorld) -> void:
+	sounds = NightSounds.new()
+	add_child(sounds)
+	sounds.setup(_state, world)
 
 
 func _on_event(event: Dictionary) -> void:
