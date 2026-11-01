@@ -24,7 +24,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
 | Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 1 (the layout is in its header); a command is a fixed 47 bytes; a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 2 (the layout is in its header); a command is a fixed 23 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
@@ -37,7 +37,8 @@ management and a tighter packing of zombies (#57), server bodies without models 
 (#52).
 
 The first numbers from the real thing, loopback on one loaded machine: 222 bytes a `TICK` with two players and four
-zombies (6.6 KB/s down), a command 47 bytes (2.8 KB/s up), a round trip of 2 to 18 ms. They are in
+zombies (6.6 KB/s down), a command 47 bytes (2.8 KB/s up; 23 and 1.4 KB/s since protocol 2), a round trip of
+2 to 18 ms. They are in
 [Testing multiplayer](testing-multiplayer.md#numbers-from-a-local-run) with how to repeat them.
 
 ## The decision
@@ -157,6 +158,26 @@ the server has not acknowledged. When a snapshot arrives it takes the server's p
 `ack_seq`, **replays** the remaining ones on top, and that becomes the predicted position. The distance between the old
 and the new predicted position is the **correction**. The capsule is drawn at the predicted position, smoothed
 (25/s) to hide the 30 Hz steps; a white ring marks the last authoritative position.
+
+### Command quantization and rewinding the body
+
+Protocol 2 (#77) sends a command in 23 bytes instead of 47: a stick axis is a signed byte (1/127), the view turn a
+`u16` (65536 steps, 0.0055 degrees), the look a `s16` over a quarter turn either way, the shot origin centimetres in
+three `s16` (good to 327 m from the origin) and the shot direction as a turn and a look. `CommandCodec` holds the steps;
+every `snap_*` is the decode of the encode, so a number is only ever one of the wire's values. A client that predicts
+moves its body with `NetWire.quantize(command)`, the command as the server will read it: without that, a 600-tick run
+with turns and jumps over a ramp ended 1.9 to 2 cm from the server's (`test_prediction_numbers.gd`), with it the two end
+within 0.2 mm (what is left is the physics engine's own contact memory). Version 1 clients are refused (`Refusal.VERSION`).
+
+A body moved by hand does not have the floor contact `CharacterBody3D.move_and_slide` keeps between calls (whether there
+was a floor, its normal). Rewinding the body to an older state and replaying commands from it without setting that
+contact left a replay up to 0.28 m off the run it replaces on a ramp (the body remembered "in the air" while the state
+stood on the ramp); `PlayerSimulation.restore(body, state, delta)` presses the body into the floor with the snap turned
+off (or lets it hang, for a state in the air), then puts it back, and the same replays end within 3 mm (the rest is the
+seam where the ramp meets the floor). The game's `Reconciler` still does not replay, but takes the server's answer by
+moving the body and calls `restore` for the move, so a snap over 2.5 m (a respawn) lands with the right contact. A
+replaying client, when one is built, rewinds with the same call. The tests are `test_rewind_replay.gd` (from the ramp,
+from mid-air above it, from every 13th tick of a run).
 
 ## Interpolation (everyone else)
 

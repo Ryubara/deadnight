@@ -107,7 +107,7 @@ One Windows machine, loopback, server and clients in one process (`test_the_numb
 
 - a **tick to a client** (every 2nd step, 30 a second) is about **220 bytes** with two players and four zombies, as a
   difference against the previous frame, compressed when large; about 6.6 KB/s down. A command up is a fixed
-  **47 bytes**, 60 a second, 2.8 KB/s.
+  **23 bytes** (47 before protocol 2), 60 a second, 1.4 KB/s.
 - the **round trip** (client ping, server pong, read on the client's 60 Hz tick) is 2 to 18 ms on this loaded machine;
   it is the sum of two tick waits, not the network.
 

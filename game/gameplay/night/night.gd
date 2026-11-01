@@ -375,6 +375,8 @@ func _tick_remote() -> void:
 			if _body != null:
 				_aim_rig(command)
 	if command != null:
+		# The body moves with the command as the server will read it, not as it was sampled.
+		command = NetWire.quantize(command)
 		if _body != null:
 			_body.tick(command.motion)
 		_seq += 1
@@ -400,7 +402,7 @@ func _on_remote_event(event: Dictionary) -> void:
 	var shift := reconciler.correction(me["ack"], me["pos"])
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
-		_body.global_position = _body.state.position
+		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
 
 
 func _human_command() -> NightCommand:
