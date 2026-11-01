@@ -86,7 +86,8 @@ func _tuning() -> RulesTuning:
 	rounds.first_spawn_delay = 0.5
 	rounds.speed_base = 2.2
 	rounds.speed_jitter = 0.0
-	rounds.sprinter_from_round = 99
+	tuning.roster.type_of(&"runner").first_round = 99
+	tuning.specials.every = 0
 	return tuning
 
 
