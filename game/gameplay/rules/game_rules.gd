@@ -177,6 +177,11 @@ func is_crippled(zombie_id: int) -> bool:
 	return zombie != null and zombie.crippled
 
 
+## Whether this zombie is alive right now (spawned and not yet gone).
+func has_zombie(zombie_id: int) -> bool:
+	return _zombies.has(zombie_id)
+
+
 func zombies_remaining() -> int:
 	return _spawn_left + _zombies.size()
 

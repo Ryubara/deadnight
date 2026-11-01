@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://world/drive_in/car.tscn" id="car"]
 [ext_resource type="PackedScene" path="res://world/drive_in/lamp_post.tscn" id="lamp"]
+[ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]
 
 [sub_resource type="StandardMaterial3D" id="outskirts"]
 albedo_color = Color(0.078, 0.086, 0.110, 1)
@@ -248,57 +249,57 @@ size = Vector3(0.8, 0.8, 7)
 material = SubResource("field_struct")
 
 [node name="FenceN0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.200, -52.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, -52.000)
 use_collision = true
-size = Vector3(124, 2.4, 0.4)
+size = Vector3(124, 3, 0.4)
 material = SubResource("field_fence")
 
 [node name="FenceW0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.200, -28.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -28.000)
 use_collision = true
-size = Vector3(0.4, 2.4, 48)
+size = Vector3(0.4, 3, 48)
 material = SubResource("field_fence")
 
 [node name="FenceE0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.200, -28.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -28.000)
 use_collision = true
-size = Vector3(0.4, 2.4, 48)
+size = Vector3(0.4, 3, 48)
 material = SubResource("field_fence")
 
 [node name="BreachNW" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.200, -46.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -46.000)
 use_collision = true
-size = Vector3(0.6, 2.4, 4)
+size = Vector3(0.6, 3, 4)
 material = SubResource("door")
 
 [node name="BreachNE" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.200, -46.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -46.000)
 use_collision = true
-size = Vector3(0.6, 2.4, 4)
+size = Vector3(0.6, 3, 4)
 material = SubResource("door")
 
 [node name="BreachW" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.200, -22.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -22.000)
 use_collision = true
-size = Vector3(0.6, 2.4, 4)
+size = Vector3(0.6, 3, 4)
 material = SubResource("door")
 
 [node name="BreachE" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.200, -22.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -22.000)
 use_collision = true
-size = Vector3(0.6, 2.4, 4)
+size = Vector3(0.6, 3, 4)
 material = SubResource("door")
 
 [node name="BreachN" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 1.200, -52.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 1.500, -52.000)
 use_collision = true
-size = Vector3(4, 2.4, 0.6)
+size = Vector3(4, 3, 0.6)
 material = SubResource("door")
 
 [node name="BreachN2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 1.200, -52.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 1.500, -52.000)
 use_collision = true
-size = Vector3(4, 2.4, 0.6)
+size = Vector3(4, 3, 0.6)
 material = SubResource("door")
 
 [node name="FenceS_W0" type="CSGBox3D" parent="Field"]
@@ -1180,9 +1181,9 @@ size = Vector3(23, 0.4, 21)
 material = SubResource("yard_ground")
 
 [node name="FenceE0" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.200, 17.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, 17.000)
 use_collision = true
-size = Vector3(0.4, 2.4, 42)
+size = Vector3(0.4, 3, 42)
 material = SubResource("yard_wall")
 
 [node name="FenceS0" type="CSGBox3D" parent="GeneratorYard"]
@@ -1354,9 +1355,9 @@ size = Vector3(23, 0.4, 21)
 material = SubResource("backlot_ground")
 
 [node name="FenceW0" type="CSGBox3D" parent="BackLot"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.200, 17.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, 17.000)
 use_collision = true
-size = Vector3(0.4, 2.4, 42)
+size = Vector3(0.4, 3, 42)
 material = SubResource("backlot_wall")
 
 [node name="FenceS0" type="CSGBox3D" parent="BackLot"]
@@ -1670,6 +1671,7 @@ text = "TICKET PLAZA"
 font_size = 90
 
 [node name="Doors" type="Node3D" parent="."]
+script = ExtResource("doors")
 
 [node name="Door_Concession" type="Node3D" parent="Doors"]
 metadata/cost = 350

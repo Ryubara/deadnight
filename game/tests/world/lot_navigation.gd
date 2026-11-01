@@ -3,30 +3,37 @@ extends RefCounted
 ## A navigation mesh baked over the greybox for one agent size, to ask where that agent can walk.
 ##
 ## The mesh is baked from the scene's own CSG boxes, so closed door slabs are walls and removed ones
-## are not. The agent is a vertical capsule: the player (0.35 m), or the player plus the shoulder
-## camera (0.9 m).
+## are not. The agent is a vertical capsule: the player (read from `PlayerTuning`), or the player
+## plus the shoulder camera (0.9 m). `max_climb` is how high a step the agent takes: the default is
+## walking, the player's jump height asks where a jump could land.
 
 const CELL_SIZE := 0.05
 const AGENT_HEIGHT := 1.8
-## The server takes a new region in over two map iterations, a few physics ticks each; give up after
-## this many.
+## The server takes a new region in over a few map iterations, and links on the map count as
+## iterations too, so the iteration id says nothing: `settle` waits until the map answers for the
+## mesh's own first vertex, then a few frames more for the links to join. Give up after this many
+## frames.
 const SETTLE_FRAMES := 120
+const LINK_FRAMES := 3
+## More polygons than the lot's mesh has.
+const SEARCH_POLYGONS := 1000000
 ## The lot is 124 m by 116 m; the outskirts slab is below y = -0.3 and left out.
 const BAKE_BOX := AABB(Vector3(-66.0, -0.3, -56.0), Vector3(132.0, 9.0, 124.0))
 
+const WALK_CLIMB := 0.3
+
 var navmesh: NavigationMesh
 var _map: RID
-var _first_iteration := 0
 
 
 ## Bakes `lot` (already in the tree, its CSG built) for an agent of `agent_radius` metres.
-func _init(lot: Node3D, agent_radius: float) -> void:
+func _init(lot: Node3D, agent_radius: float, max_climb: float = WALK_CLIMB) -> void:
 	var mesh := NavigationMesh.new()
 	mesh.cell_size = CELL_SIZE
 	mesh.cell_height = CELL_SIZE
 	mesh.agent_radius = agent_radius
 	mesh.agent_height = AGENT_HEIGHT
-	mesh.agent_max_climb = 0.3
+	mesh.agent_max_climb = max_climb
 	mesh.agent_max_slope = 40.0
 	mesh.filter_baking_aabb = BAKE_BOX
 	var source := NavigationMeshSourceGeometryData3D.new()
@@ -43,28 +50,53 @@ func _init(lot: Node3D, agent_radius: float) -> void:
 	_map = lot.get_world_3d().navigation_map
 	NavigationServer3D.map_set_cell_size(_map, CELL_SIZE)
 	NavigationServer3D.map_set_cell_height(_map, CELL_SIZE)
-	_first_iteration = NavigationServer3D.map_get_iteration_id(_map)
 
 
 ## Waits until the navigation server has the new mesh. Call it once after `new`, before asking
 ## anything.
 func settle(tree: SceneTree) -> void:
+	var vertices := navmesh.get_vertices()
 	for i in SETTLE_FRAMES:
 		await tree.physics_frame
-		if NavigationServer3D.map_get_iteration_id(_map) >= _first_iteration + 2:
+		if vertices.is_empty():
 			return
+		# A query before the map's first synchronisation is an engine error.
+		if NavigationServer3D.map_get_iteration_id(_map) == 0:
+			continue
+		if (
+			NavigationServer3D.map_get_closest_point(_map, vertices[0]).distance_to(vertices[0])
+			< 0.5
+		):
+			break
+	for i in LINK_FRAMES:
+		await tree.physics_frame
+
+
+## The polygon corners of the way from `from` to the nearest reachable point to `to`. The plain
+## `map_get_path` stops its search after 4096 polygons, which a 0.05 m mesh of the whole lot exceeds
+## when the target cannot be reached (an engine error, and a wrong answer): search without a limit.
+func path(from: Vector3, to: Vector3) -> PackedVector3Array:
+	var query := NavigationPathQueryParameters3D.new()
+	query.map = _map
+	query.start_position = from
+	query.target_position = to
+	query.path_postprocessing = NavigationPathQueryParameters3D.PATH_POSTPROCESSING_EDGECENTERED
+	query.path_search_max_polygons = SEARCH_POLYGONS
+	var result := NavigationPathQueryResult3D.new()
+	NavigationServer3D.query_path(query, result)
+	return result.path
 
 
 ## True when the agent can walk from `from` to within `within` metres of `to`.
 func can_reach(from: Vector3, to: Vector3, within: float = 1.0) -> bool:
-	var path := NavigationServer3D.map_get_path(_map, from, to, false)
-	return not path.is_empty() and path[path.size() - 1].distance_to(to) <= within
+	var way := path(from, to)
+	return not way.is_empty() and way[way.size() - 1].distance_to(to) <= within
 
 
 ## How close the agent gets to `to` starting at `from`, in metres.
 func nearest_approach(from: Vector3, to: Vector3) -> float:
-	var path := NavigationServer3D.map_get_path(_map, from, to, false)
-	return INF if path.is_empty() else path[path.size() - 1].distance_to(to)
+	var way := path(from, to)
+	return INF if way.is_empty() else way[way.size() - 1].distance_to(to)
 
 
 func _add_csg_faces(source: NavigationMeshSourceGeometryData3D, node: Node) -> void:

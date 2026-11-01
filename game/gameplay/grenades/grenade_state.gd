@@ -15,6 +15,20 @@ const SKIN := 0.002
 ## Floor normals this upright (y) count as ground a grenade can land on.
 const FLOOR_Y := 0.7
 
+## The keys of `to_dict`, each with the type it must have.
+const SNAPSHOT_KEYS := {
+	"id": TYPE_INT,
+	"thrower_id": TYPE_INT,
+	"position": TYPE_VECTOR3,
+	"velocity": TYPE_VECTOR3,
+	"fuse_left": TYPE_FLOAT,
+	"age": TYPE_FLOAT,
+	"bounces": TYPE_INT,
+	"grounded": TYPE_BOOL,
+	"ground_normal": TYPE_VECTOR3,
+	"at_rest": TYPE_BOOL,
+}
+
 var id: int = 0
 var thrower_id: int = 0
 var def: GrenadeDef
@@ -46,6 +60,35 @@ func _init(
 	position = p_position
 	velocity = p_velocity
 	fuse_left = p_fuse_left
+
+
+## Everything that makes this grenade fly on exactly as it would have (the def is not in it).
+func to_dict() -> Dictionary:
+	return {
+		"id": id,
+		"thrower_id": thrower_id,
+		"position": position,
+		"velocity": velocity,
+		"fuse_left": fuse_left,
+		"age": age,
+		"bounces": bounces,
+		"grounded": grounded,
+		"ground_normal": ground_normal,
+		"at_rest": at_rest,
+	}
+
+
+## A grenade from `to_dict` data that has every key of `SNAPSHOT_KEYS` with its type.
+static func from_dict(p_def: GrenadeDef, data: Dictionary) -> GrenadeState:
+	var restored := GrenadeState.new(
+		data["id"], data["thrower_id"], p_def, data["position"], data["velocity"], data["fuse_left"]
+	)
+	restored.age = data["age"]
+	restored.bounces = data["bounces"]
+	restored.grounded = data["grounded"]
+	restored.ground_normal = data["ground_normal"]
+	restored.at_rest = data["at_rest"]
+	return restored
 
 
 func is_spent() -> bool:

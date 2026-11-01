@@ -21,8 +21,13 @@ var _emerge_seconds: float = 0.0
 ## `p_emerge_seconds` is the one number the client needs from the zombies' tuning: how long a
 ## zombie takes to rise. The server owns the tuning; the views are told what they need.
 func setup(p_director: ZombieDirector, camera: Camera3D, p_emerge_seconds: float) -> void:
-	_emerge_seconds = p_emerge_seconds
 	director = p_director
+	setup_client(camera, p_emerge_seconds)
+
+
+## A horde that only draws, with no director: it is fed with `apply_snapshot`.
+func setup_client(camera: Camera3D, p_emerge_seconds: float) -> void:
+	_emerge_seconds = p_emerge_seconds
 	if model_scene == null:
 		model_scene = ZombieModels.scene(variant)
 	throttle = AnimationThrottle.new()
