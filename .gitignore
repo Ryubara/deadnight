@@ -14,3 +14,6 @@ HANDOFF.md
 # OS
 .DS_Store
 Thumbs.db
+
+# GdUnit4 reports
+/game/reports/

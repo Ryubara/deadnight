@@ -4,3 +4,4 @@ What we learned while building Deadnight, written by whoever learned it, while w
 its sources linked; findings that apply to every game move to the GDStudio docs hub.
 
 - [UI foundation](ui-foundation.md): the `gds_ui` addon: tokens, motion values, drawn components, shader transitions.
+- [Main menu and the drive-in skin](main-menu.md): the neon sign, the night sky, film grain, the menu screens.
