@@ -186,6 +186,21 @@ func play(id: StringName, position: Variant = null, extra_db := 0.0) -> Node:
 	return _play_2d(def, stream, pitch, duration, extra_db)
 
 
+## Loads every variant of a sound into the cache, so its first play has nothing to read. Returns
+## how many files it loaded (0 for an unknown sound or one already cached).
+func preload_sound(id: StringName) -> int:
+	var def := SoundCatalog.get_def(id)
+	if def == null:
+		return 0
+	var loaded := 0
+	for variant in range(1, def.variants + 1):
+		var path := def.path_for(variant)
+		if not _streams.has(path):
+			_streams[path] = load(path) if ResourceLoader.exists(path) else null
+			loaded += 1
+	return loaded
+
+
 ## A looping sound that lives on `parent` (the generator's hum). The caller frees it with the
 ## parent.
 func start_loop(id: StringName, parent: Node3D) -> AudioStreamPlayer3D:

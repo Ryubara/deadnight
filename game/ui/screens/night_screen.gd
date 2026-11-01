@@ -10,10 +10,15 @@ extends UIScreen
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
 
+## Whether the night warms up behind a loading screen before it starts. There is nothing to warm up
+## without a renderer, so a headless run skips it.
+static var warm_up_enabled := DisplayServer.get_name() != "headless"
+
 var night: Night
 
 var _hud: Hud
 var _touch: TouchControls
+var _loading: LoadingOverlay
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
@@ -26,6 +31,7 @@ func _ready() -> void:
 	# B (`ui_cancel`) crouches in the night: it must not take the player back to the menu.
 	allow_back = false
 	night = Night.new()
+	night.warm_up = warm_up_enabled
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
@@ -37,6 +43,11 @@ func _ready() -> void:
 	add_child(_touch)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
+	if night.warm_up:
+		_loading = LoadingOverlay.new()
+		add_child(_loading)
+		night.loading.connect(_loading.show_progress)
+		night.ready_to_play.connect(_loading.finish)
 
 
 ## True while the touch controls are on screen and taking touches.

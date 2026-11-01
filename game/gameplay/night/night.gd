@@ -11,6 +11,8 @@ extends Node3D
 ## and drawn avatars.
 
 signal ready_to_play
+## How far the night has got in getting ready (0 to 1) and what it is doing, for a loading screen.
+signal loading(fraction: float, text: String)
 signal night_over(round_reached: int)
 ## After every tick of the night, whatever drove it.
 signal ticked
@@ -18,6 +20,8 @@ signal ticked
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
 
+## Share of the loading bar the lot's own build takes, before the warm-up starts.
+const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
 const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
@@ -49,6 +53,11 @@ var ticks_per_frame := 1
 var shoulder_camera := false
 ## False before the night starts, while paused and after it is over.
 var running := false
+## Draw and load everything the night uses once before it starts (`NightWarmup`), behind a loading
+## screen. The game turns it on; a test that needs no pictures leaves it off, which saves seconds.
+var warm_up := false
+## The warm-up, once it ran: it holds what it loaded for as long as the night lasts.
+var warmup: NightWarmup
 
 var _human := HumanController.new()
 var _spectator: Camera3D
@@ -63,9 +72,15 @@ func start(
 	p_mode: Mode = Mode.HUMAN, p_seed: int = SEED, p_rules_tuning: RulesTuning = null
 ) -> void:
 	mode = p_mode
+	loading.emit(0.0, "Building the lot")
+	if warm_up:
+		# The build takes the main thread for seconds: let the loading screen be drawn first.
+		await get_tree().process_frame
+		await get_tree().process_frame
 	world = NightWorld.new()
 	add_child(world)
 	await world.build()
+	loading.emit(BUILD_SHARE, "Setting up")
 	server = NightServer.new(world, p_seed, null, p_rules_tuning)
 	link = LoopbackLink.new(server)
 	state = ClientState.new()
@@ -101,6 +116,14 @@ func start(
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
+	if warm_up:
+		warmup = NightWarmup.new()
+		add_child(warmup)
+		warmup.progress.connect(
+			func(fraction: float, text: String) -> void:
+				loading.emit(lerpf(BUILD_SHARE, 1.0, fraction), text)
+		)
+		await warmup.run(self)
 	running = true
 	ready_to_play.emit()
 
