@@ -72,6 +72,15 @@ New tokens (`UITokens`, group Controls): `control_height`, `control_width`, `tra
   with an ellipsis instead, and a test round-trips the scale.
 - `content_scale_factor` does resize the router's stage and every anchored control. With `canvas_items` stretch the
   visible area is 1920 / scale wide, so at Large (1.25) a screen has 1536 x 864 to fit in.
+- **Rows collapsed onto one line, sometimes.** `UIMotion.stagger_in` read each row's `position` one `process_frame`
+  after the tab was shown and tweened back to it. A container sorts its children in a deferred call that runs
+  *after* `process_frame` is emitted; a click arrives earlier in the same frame, and only a physics step in that frame
+  flushes the deferred calls first. On a fast display about every other frame has no step, so a page never shown before
+  (its rows still at 0, 0 since hidden pages are not sorted) was read as "rest" and the rise ended there. `stagger_in`
+  now waits two frames (the second is after the flush), stops an earlier rise of the same row, and has the container
+  re-sort when the rise ends. `test_settings_layout.gd` clicks through every tab with real mouse events and one physics
+  step a second, which makes the bad frames the common case; `settings_click_tour.tscn` captures it. Pointer-moving
+  scripts in tests need window pixels: `viewport.get_final_transform() * control.get_global_transform_with_canvas()`.
 - Movie Maker writes frame N after the scripted code for that moment ran: to see the state before a change, read N - 1.
 
 ## Proof
@@ -80,6 +89,8 @@ New tokens (`UITokens`, group Controls): `control_height`, `control_width`, `tra
 reduced motion, both scales, startup apply), `game/tests/core/test_settings_hardening.gd` (a write while paused,
 focus-loss flush, `nan`/`inf`, the web skip) and `game/tests/ui/test_settings_screen.gd` (controls bound both ways,
 wrapping, reset, tabs, the scale round trip, focus after a tab switch, shoulder buttons, focus links, off-grid scale,
-the web layout). Run them with GdUnit4 (`--ignoreHeadlessMode` for the headless command
-line). `game/tests/captures/settings_tour.tscn` is the scripted capture of every tab; `settings_navigation.tscn`
+the web layout), `game/tests/ui/test_settings_layout.gd` (every tab clicked in every order, fast and slow, at three
+window sizes and scales, rows apart and inside the panel, one selected tab, no stale hover) and
+`game/tests/ui/test_stagger_in.gd` (the entrance itself). Run them with GdUnit4 (`--ignoreHeadlessMode` for the
+headless command line). `game/tests/captures/settings_tour.tscn` is the scripted capture of every tab; `settings_navigation.tscn`
 drives the screen with key and gamepad events only and prints the focus owner at each step.

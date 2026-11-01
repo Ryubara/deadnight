@@ -114,7 +114,7 @@ func test_a_hud_that_joins_late_takes_the_weapon_in_hand_from_the_frame() -> voi
 	NightFixture.run(night, 5)
 	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	add_child(hud)
-	var binding := NightHudBinding.new(hud, night.state, night.server)
+	var binding := NightHudBinding.new(hud, night.state, night.rules_tuning)
 	NightFixture.run(night, 2)
 	var held := night.server.combat.weapon_of(1)
 	assert_str(hud.state.weapon_name).is_equal(held.def.display_name)

@@ -43,10 +43,26 @@ everywhere), and reads the balls' centres out of each rendered frame. Frame-to-f
 camera at 2.5 m/s at 144 Hz: 3.1 before, 0.16 after.
 
 The test (`tests/player/test_side_on_smoothness.gd`) reads where the renderer draws the chest
-(`get_global_transform_interpolated()`) against the camera, in frames that run many to a tick. The soldier must stay
-within 2 px of one place on a 1920x1080 view while strafing at a steady pace. On `main` it wanders 47 px; with the
-rig left interpolated, 11 px; now below 0.6. It skips frames around a long one (a loaded machine), where the body and
-camera really do move together and the camera's spring takes half a second to follow.
+(`get_global_transform_interpolated()`) against the camera, over 60 ticks of steady strafing. The soldier must stay
+within 2 px of one place on a 1920x1080 view at 100, 144 and 165 frames a second. With the project setting off it
+wanders 38 to 44 px; with the rig left interpolated, 10 to 11 px; now below 0.002.
+
+## Why the test runs the game in a child process
+
+The first version ran the frames in the test's own process and failed on a loaded machine (11.7 px on CI, 55 px on a
+busy desktop) with nothing wrong in the blend. Two things come from the real clock there and a script cannot set
+either: the length of each frame, and `Engine.get_physics_interpolation_fraction()`. The camera follows the body with a
+spring that samples the body once per frame, so it trails by half a frame's length; uneven frames therefore move the
+soldier on the screen by pixels (a 3 ms jitter in the loop was enough for 3 px). Waiting for a stretch of calm frames
+only moved the failure to the machines that never had one.
+
+`--fixed-fps N` fixes the length of every frame and so which fraction of a tick each one falls on, but it is a
+command-line option. The test therefore starts a second Godot (`OS.execute(OS.get_executable_path(), ...)`) on
+`tests/player/side_on_probe.tscn` with `--headless --fixed-fps N`, which prints one `WANDER` line, and reads it back.
+The same frames come out on every machine (the second run prints the same number), and it needs no window: the screen
+position is `Camera3D.unproject_position`. Two control cases run the probe with the body not interpolated and with the
+rig interpolated twice, and must show more than 5 px, so the measure is known to see the faults on every run.
+Reverting either part of #352 fails the main case at all three rates.
 
 ## Rules that came out of it
 

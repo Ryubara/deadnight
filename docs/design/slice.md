@@ -23,7 +23,10 @@ page says what is in, and what is next.
   its events and one `frame` go back; the client reads its controls (or the autopilot decides) and sends the next
   command.
 - A `NightCommand` is a `PlayerCommand` plus the trigger, reload, use and the camera ray. A person and the bot
-  produce exactly this; the server cannot tell them apart.
+  produce exactly this; the server cannot tell them apart. The player is the connection's, never what the message
+  says. A pressed edge (use, reload, swap, jump) is kept until a step uses it, even when a newer command arrives in
+  the same tick, and a command that is not renewed for `NightTuning.command_ticks` steps (30, half a second at the
+  60 Hz step) is replaced by one that stands still, keeps the view angles and releases the trigger.
 - A `frame` is the whole picture a client or a HUD draws from: phase, round, zombies left, fuel, open doors, the
   zombies as `ZombieCodec` bytes, and for each player their position, health, weapon, ammunition, points and the
   prompt for what `use` would do. The HUD binds to `ClientState.event_received` and these frames
@@ -80,7 +83,7 @@ Three traps cost time while it was written. Its sight check is a `Callable` of a
 keep a `RefCounted` alive: `Night` holds the probe in `_sight`, because one made from a temporary object was freed at
 once and silently answered "clear". A shot leaves the barrel, so `Autopilot._clear` tests the line from the eye and from
 the barrel. And a faster run is more fixed ticks per physics frame (`Night.ticks_per_frame`), never `Engine.time_scale`,
-which scales the step each tick gets and plays a different night. Each is in [lessons](../lessons.md).
+which scales the step each tick gets and plays a different night. Each is in [lessons](../lessons/index.md).
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
@@ -94,8 +97,9 @@ Each of these is an issue.
 
 - **Characters** (#90): the player model carries no weapon in hand yet; hit and death reactions.
 - **Grenades** (#99) and **boss nights** (#97) join through `NightServer` and the rules.
-- **Real transport.** `LoopbackLink` becomes the network protocol; the player bodies split into server bodies and
-  drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
+- **Real transport.** Done for one machine (#302, [Testing multiplayer](../research/testing-multiplayer.md)): the night
+  runs on a headless `NightHost` over WebSocket, clients draw the others as avatars and follow the doors from the
+  frames. What is left: the player bodies on the server still have models (#153), Railway and Discord.
 - **Tonics**, the re-cut. (A breaker post for each circuit is in:
   the lamps follow `circuit_changed` and the tank, and a player or the bot throws the switch.)
 - **Revive** by a teammate. (The boards at the breaches are in; their sounds are the audio's next.)

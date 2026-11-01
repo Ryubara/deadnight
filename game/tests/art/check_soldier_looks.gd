@@ -2,10 +2,13 @@
 ## with SoldierLook and checks that the right parts show and are skinned to the skeleton, that the
 ## triangle count matches the catalog and the player budget, that the look's colours reach the
 ## atlas, and that every clip is in the file and the weapon clips move the bones on each preset.
+## The far level of detail (#139): every shown part's far mesh shows with it, is skinned to the same
+## skeleton, shares its material and takes over at `SoldierLook.FAR_FROM`; the far triangles match
+## the catalog and stay within the far budget.
 ## Build the .glb first (docs/design/characters.md, Rebuilding).
 ##
 ##     godot --headless --path game -s res://tests/art/check_soldier_looks.gd
-## Prints LOOK:/CLIPS:/WEAPON: lines and exits 1 on any failure.
+## Prints LOOK:/FAR:/CLIPS:/WEAPON: lines and exits 1 on any failure.
 extends SceneTree
 
 ## Bones the weapon clips must move: the spine and both arms carry recoil, sway and the swing.
@@ -80,6 +83,7 @@ func _check_preset(cat: Dictionary, p: Dictionary) -> void:
 			_fail("%s: no mesh %s in the model" % [p.id, part.mesh])
 	if tris != int(p.tris) or tris > int(cat.budget):
 		_fail("%s: %d tris (catalog %d, budget %d)" % [p.id, tris, p.tris, cat.budget])
+	_check_far(cat, p, model, meshes, sk)
 	# The look's primary colour sits in the primary swatch of the material the parts share.
 	var mi0: MeshInstance3D = meshes[want[0]]
 	var img := (mi0.material_override as StandardMaterial3D).albedo_texture.get_image()
@@ -129,6 +133,41 @@ func _check_preset(cat: Dictionary, p: Dictionary) -> void:
 				moved_all += 1
 	print("WEAPON: %-13s %d/%d weapon clips move the spine and arms" % [p.id, moved_all, total])
 	model.queue_free()
+
+
+func _check_far(
+	cat: Dictionary, p: Dictionary, model: Node, meshes: Dictionary, sk: Skeleton3D
+) -> void:
+	var far := SoldierLook.far_meshes(model)
+	for mesh_name: String in meshes:
+		var mi: MeshInstance3D = meshes[mesh_name]
+		var fi: MeshInstance3D = far.get(mesh_name)
+		if fi == null:
+			_fail("%s: %s has no far mesh" % [p.id, mesh_name])
+			continue
+		if fi.visible != mi.visible:
+			_fail("%s: %s far mesh shown %s, near %s" % [p.id, mesh_name, fi.visible, mi.visible])
+		if not mi.visible:
+			continue
+		if fi.skin == null or fi.get_node_or_null(fi.skeleton) != sk:
+			_fail("%s: %s far mesh is not skinned to the skeleton" % [p.id, mesh_name])
+		elif fi.skin.get_bind_count() > 0 and sk.find_bone(fi.skin.get_bind_name(0)) < 0:
+			_fail("%s: %s far mesh binds a missing bone" % [p.id, mesh_name])
+		if fi.material_override != mi.material_override:
+			_fail("%s: %s far mesh has another material" % [p.id, mesh_name])
+		if (
+			not is_equal_approx(mi.visibility_range_end, SoldierLook.FAR_FROM)
+			or not is_equal_approx(fi.visibility_range_begin, SoldierLook.FAR_FROM)
+		):
+			_fail("%s: %s does not swap at %s m" % [p.id, mesh_name, SoldierLook.FAR_FROM])
+		if SoldierLook.triangles(fi.mesh) > SoldierLook.triangles(mi.mesh):
+			_fail("%s: %s far mesh is heavier than the near one" % [p.id, mesh_name])
+	var tris_far := SoldierLook.far_triangles(model)
+	if tris_far != int(p.tris_far) or tris_far > int(cat.far_budget):
+		_fail(
+			"%s: %d far tris (catalog %d, budget %d)" % [p.id, tris_far, p.tris_far, cat.far_budget]
+		)
+	print("FAR:  %-13s %d tris (near %d)" % [p.id, tris_far, p.tris])
 
 
 ## The largest rotation (degrees) of any probe bone away from its pose at the clip's first frame.
