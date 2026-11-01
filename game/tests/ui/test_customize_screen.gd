@@ -110,7 +110,7 @@ func test_the_first_focus_is_the_preset_selector() -> void:
 
 func test_every_choosable_slot_has_a_strip() -> void:
 	for slot in LookCatalog.choosable_part_slots():
-		assert_object(_screen.strip("part:" + slot)).is_not_null()
+		assert_object(_screen.selector(slot)).is_not_null()
 	for slot in LookCatalog.colour_slots():
 		assert_int(_screen.strip("colour:" + slot).entries.size()).is_equal(
 			LookCatalog.palette(slot).size()
@@ -146,12 +146,11 @@ func test_the_gamepad_dpad_moves_along_a_strip() -> void:
 
 
 func test_the_gamepad_walks_down_the_rows_and_back_up() -> void:
-	var first := _screen.strip("part:headwear")
+	await await_idle_frame()
+	var first := _screen.selector(&"head")
 	first.grab_focus()
 	await _pad(JOY_BUTTON_DPAD_DOWN)
-	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(
-		_screen.strip("colour:skin")
-	)
+	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(_screen.selector(&"hair"))
 	await _pad(JOY_BUTTON_DPAD_UP)
 	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(first)
 
@@ -159,13 +158,20 @@ func test_the_gamepad_walks_down_the_rows_and_back_up() -> void:
 func test_the_mouse_clicks_a_swatch_and_a_text_chip() -> void:
 	await await_idle_frame()
 	var skin := _screen.strip("colour:skin")
+	# The colour rows are below the fold of the scrolling list.
+	for scroll in _screen.find_children("*", "ScrollContainer", true, false):
+		(scroll as ScrollContainer).ensure_control_visible(skin)
+	await await_idle_frame()
 	await _click(skin, skin.chip_rect(3).get_center())
 	assert_int(_screen.look.colours[&"skin"]).is_equal(3)
-	var shoulders := _screen.strip("part:headwear")
-	await _click(shoulders, shoulders.chip_rect(1).get_center())
+	# The right half of a part selector steps to the next part.
+	var headwear := _screen.selector(&"headwear")
+	await _click(headwear, Vector2(headwear.size.x - 20.0, headwear.size.y * 0.5))
 	assert_str(String(_screen.look.parts[&"headwear"])).is_equal("helmet")
-	var head := _screen.preview().model.find_child("Head", true, false) as MeshInstance3D
-	assert_float((head.get_active_material(1) as BaseMaterial3D).albedo_color.a).is_equal(1.0)
+	(
+		assert_bool(_screen.preview().model.find_child("headwear__helmet", true, false).visible)
+		. is_true()
+	)
 
 
 func test_a_locked_option_can_be_looked_at_but_not_chosen() -> void:

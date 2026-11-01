@@ -4,20 +4,22 @@ What building the wardrobe taught us. The design is in [Customization](../design
 
 ## Findings
 
-- **The kit Soldier's material names do not say what they cover.** `Black` is the hood, mask, eyes, belt and boots (so it
-  is the hair channel), `Character_Main` is the vest and the helmet shell, `Grey` is the helmet band and the pads, `Skin`
-  is every bare patch including the head and face. Tinting is per material name on the body, head and pad meshes only;
-  the weapons share `Grey` and are left alone. Surfaces get their own copies of the material
-  (`set_surface_override_material`), never a change to the shared one, or every character on screen changes colour.
-- **The armature is scaled by 100.** `CharacterArmature` has scale 100 and the bones are in Z-up units, so anything
-  parented to a `BoneAttachment3D` is sized in hundredths of a metre (an armband of radius 0.0015). The bone's Y axis
-  runs down the limb, so a torus parented there rings the arm.
-- **A bare head is two hidden surfaces.** The helmet is the `Character_Main` and `Grey` surfaces of the `Head` mesh; an
-  invisible override material on those two leaves the face, eyes and hood.
+- **The parts model rests in a T-pose with bone axes that do not follow the limbs.** `UpperArm.R` has Y pointing up in
+  the rest pose while the arm runs sideways, so a ring cannot assume "bone Y is the arm". The armband takes the
+  direction to the next bone (`LowerArm.R`) in the bone's own space and turns the torus (whose axis is Y) onto it; a
+  test checks the two agree. The armature is at scale 1 and in metres here (the older kit Soldier file is scaled by
+  100).
+- **Without a clip the model stands in its T-pose.** The assembler plays `Idle` (looping) so a preview and a lot of
+  players look alive; a `BoneAttachment3D` under the skeleton then follows the arm.
+- **`SoldierLook` paints one material per character**: it copies the atlas and fills the channel swatches, so tests read
+  the colour back from the material's image at the swatch cell instead of reading material properties.
 - **A 3D preview inside a menu** is a `SubViewportContainer` with a `SubViewport` that has `own_world_3d` and
   `transparent_bg`, and a `WorldEnvironment` whose background is `BG_CLEAR_COLOR`. A warm `SpotLight3D` and a cold
   `OmniLight3D` behind read well on the dark menu sky and run in the Compatibility renderer. `look_at` needs the node
   in the tree: use `look_at_from_position` while building.
+- **Fifteen rows do not fit a screen.** Nine part slots, five colour channels and the preset are scrolled in a
+  `ScrollContainer` with `follow_focus` on, and the focus neighbours are linked by hand: left to the engine, "down"
+  from a selector once jumped to a footer button on the other side.
 - **Parsing a damaged save without an engine error:** `JSON.parse_string` logs an `ERROR` for bad text, so a damaged
   settings file would turn the smoke run red; `JSON.new().parse(text)` returns an error code instead.
 - **Godot rewrites `project.godot` when it imports** (it reorders the sections). Restore it before committing.

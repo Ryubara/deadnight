@@ -30,9 +30,9 @@ func _run() -> void:
 	_press(&"ui_right")
 	await _beat("preset-mechanic", 0.8)
 	# Headwear, then along the main colour strip as a gamepad would.
-	_screen.strip("part:headwear").grab_focus()
+	_screen.selector(&"headwear").grab_focus()
 	_pad(JOY_BUTTON_DPAD_RIGHT)
-	await _beat("helmet", 0.8)
+	await _beat("headwear", 0.8)
 	_screen.choose("colour:primary", 8)
 	_screen.strip("colour:primary").grab_focus()
 	for i in 2:

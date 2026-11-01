@@ -146,6 +146,17 @@ static func from_dict(data: Variant) -> CharacterLook:
 	return look
 
 
+## The look as `SoldierLook` takes it: `{parts: {slot: id}, colours: {channel: index}}`.
+func to_soldier_look() -> Dictionary:
+	var named_parts := {}
+	for slot in LookCatalog.part_slots():
+		named_parts[String(slot)] = String(parts[slot])
+	var indices := {}
+	for slot in LookCatalog.colour_slots():
+		indices[String(slot)] = int(colours[slot])
+	return {"parts": named_parts, "colours": indices}
+
+
 func to_json() -> String:
 	return JSON.stringify(to_dict())
 

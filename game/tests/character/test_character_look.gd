@@ -49,7 +49,7 @@ func test_the_wire_form_is_small() -> void:
 
 func test_a_saved_look_with_unknown_or_wrong_entries_falls_back_slot_by_slot() -> void:
 	var data := CharacterLook.from_preset(1).to_dict()
-	assert_str(data["parts"]["headwear"]).is_equal("helmet")
+	assert_str(data["parts"]["headwear"]).is_equal("pillbox")
 	data["parts"]["headwear"] = "jetpack"
 	data["colours"]["skin"] = "not_a_colour"
 	data["colours"]["secondary"] = 7

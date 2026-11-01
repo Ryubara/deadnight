@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## The assembly of every preset: the right parts on, the palette on the right materials, the
+## The assembly of every preset: the right parts on, the palette on the atlas, the idle pose, the
 ## seat's armband, and no material shared between two characters.
 
 
@@ -10,52 +10,55 @@ func _assemble(look: CharacterLook, seat := 0) -> Node3D:
 	return model
 
 
-## The colour of the surface of `mesh_name` whose source material is called `material`.
-func _surface_colour(model: Node3D, mesh_name: String, material: String) -> Color:
-	var mesh := model.find_child(mesh_name, true, false) as MeshInstance3D
-	for i in mesh.mesh.get_surface_count():
-		if mesh.mesh.surface_get_material(i).resource_name == material:
-			return (mesh.get_active_material(i) as BaseMaterial3D).albedo_color
-	return Color.TRANSPARENT
+## The names of the part meshes the model shows.
+func _shown(model: Node3D) -> Array[String]:
+	var out: Array[String] = []
+	var meshes := SoldierLook.part_meshes(model)
+	for mesh_name: String in meshes:
+		if (meshes[mesh_name] as MeshInstance3D).visible:
+			out.append(mesh_name)
+	out.sort()
+	return out
 
 
-func test_every_preset_assembles_with_its_palette() -> void:
+## The colour painted into the atlas of the model for `channel`.
+func _atlas_colour(model: Node3D, channel: String) -> Color:
+	var mesh: MeshInstance3D = SoldierLook.part_meshes(model).values()[0]
+	var material := mesh.material_override as StandardMaterial3D
+	var image := material.albedo_texture.get_image()
+	var cell: Array = SoldierLook.catalog()["atlas"]["cells"][channel]
+	var swatch: int = SoldierLook.catalog()["atlas"]["swatch_px"]
+	return image.get_pixel(int(cell[0]) * swatch + swatch / 2, int(cell[1]) * swatch + swatch / 2)
+
+
+func test_every_preset_assembles_with_its_parts_and_palette() -> void:
 	for i in LookCatalog.presets().size():
 		var look := CharacterLook.from_preset(i)
 		var model := _assemble(look, i)
-		assert_object(model.find_child("Body", true, false)).is_not_null()
-		assert_that(_surface_colour(model, "Body", "Skin")).is_equal(look.colour(&"skin"))
-		assert_that(_surface_colour(model, "Body", "Character_Main")).is_equal(
-			look.colour(&"primary")
-		)
-		assert_that(_surface_colour(model, "Body", "Pants")).is_equal(look.colour(&"secondary"))
-		assert_that(_surface_colour(model, "Body", "Black")).is_equal(look.colour(&"hair"))
-		# The helmet's own surfaces are only there on a head that wears one.
-		if look.parts[&"headwear"] == &"helmet":
-			assert_that(_surface_colour(model, "Head", "Character_Main")).is_equal(
-				look.colour(&"primary")
-			)
-			assert_that(_surface_colour(model, "Head", "Grey")).is_equal(look.colour(&"accent"))
+		var expected: Array[String] = SoldierLook.visible_meshes(look.to_soldier_look())
+		expected.sort()
+		assert_array(_shown(model)).is_equal(expected)
+		for channel in LookCatalog.colour_slots():
+			var want := look.colour(channel)
+			var got := _atlas_colour(model, String(channel))
+			assert_float(got.r).is_equal_approx(want.r, 0.01)
+			assert_float(got.g).is_equal_approx(want.g, 0.01)
+			assert_float(got.b).is_equal_approx(want.b, 0.01)
 
 
-func test_the_helmet_follows_the_headwear_part() -> void:
-	for i in LookCatalog.presets().size():
-		var look := CharacterLook.from_preset(i)
-		var model := _assemble(look)
-		var wearing: bool = look.parts[&"headwear"] == &"helmet"
-		var shell := _surface_colour(model, "Head", "Character_Main")
-		assert_float(shell.a).is_equal(1.0 if wearing else 0.0)
-		# The face features stay either way.
-		assert_float(_surface_colour(model, "Head", "Black").a).is_equal(1.0)
+func test_headwear_and_neckwear_follow_the_look() -> void:
+	var look := CharacterLook.from_preset(1)
+	assert_str(String(look.parts[&"headwear"])).is_equal("pillbox")
+	assert_array(_shown(_assemble(look))).contains(["headwear__pillbox", "neck__bowtie"])
+	look.parts[&"headwear"] = &"none"
+	assert_bool(_shown(_assemble(look)).has("headwear__pillbox")).is_false()
 
 
-func test_only_one_weapon_is_shown() -> void:
+func test_the_character_stands_in_its_idle_pose() -> void:
 	var model := _assemble(CharacterLook.new())
-	var shown: Array[String] = []
-	for weapon in model.find_child("Index1_R", true, false).get_children():
-		if weapon is MeshInstance3D and (weapon as MeshInstance3D).visible:
-			shown.append(weapon.name)
-	assert_array(shown).contains_exactly([CharacterAssembler.SHOWN_WEAPON])
+	var player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	assert_str(player.current_animation).is_equal(CharacterAssembler.IDLE)
+	assert_bool(player.is_playing()).is_true()
 
 
 func test_the_armband_colour_comes_from_the_seat_never_the_look() -> void:
@@ -67,6 +70,17 @@ func test_the_armband_colour_comes_from_the_seat_never_the_look() -> void:
 		var material := (band.mesh as TorusMesh).material as StandardMaterial3D
 		assert_that(material.albedo_color).is_equal(LookCatalog.ARMBAND_COLOURS[seat])
 		assert_bool(material.emission_enabled).is_true()
+
+
+func test_the_armband_ring_runs_along_the_arm() -> void:
+	var model := _assemble(CharacterLook.new())
+	var skeleton := model.find_child(CharacterAssembler.SKELETON, true, false) as Skeleton3D
+	var band := model.find_child(CharacterAssembler.ARMBAND_NAME, true, false) as MeshInstance3D
+	# The ring's axis (its local Y) in the bone's space is the direction to the next bone.
+	var rest := skeleton.get_bone_global_rest(skeleton.find_bone(CharacterAssembler.ARMBAND_BONE))
+	var next := skeleton.get_bone_global_rest(skeleton.find_bone(CharacterAssembler.ARMBAND_NEXT))
+	var arm := (rest.basis.inverse() * (next.origin - rest.origin)).normalized()
+	assert_float(band.basis.y.normalized().dot(arm)).is_greater(0.99)
 
 
 func test_the_four_armband_colours_are_clearly_different() -> void:
@@ -81,12 +95,6 @@ func test_the_four_armband_colours_are_clearly_different() -> void:
 func test_two_characters_do_not_share_materials() -> void:
 	var first := _assemble(CharacterLook.from_preset(0))
 	var second := _assemble(CharacterLook.from_preset(2))
-	assert_that(_surface_colour(first, "Body", "Character_Main")).is_not_equal(
-		_surface_colour(second, "Body", "Character_Main")
-	)
-	# And the file's own material was never changed.
-	var plain := (load(CharacterAssembler.SOLDIER) as PackedScene).instantiate()
-	add_child(plain)
-	auto_free(plain)
-	var body := plain.find_child("Body", true, false) as MeshInstance3D
-	assert_bool(body.get_surface_override_material(0) == null).is_true()
+	var a: MeshInstance3D = SoldierLook.part_meshes(first).values()[0]
+	var b: MeshInstance3D = SoldierLook.part_meshes(second).values()[0]
+	assert_bool(a.material_override != b.material_override).is_true()

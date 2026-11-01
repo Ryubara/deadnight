@@ -14,6 +14,8 @@ const PANEL_WIDTH := 1500
 const PICKER_WIDTH := 900
 ## The width of every picker strip: sixteen compact swatches.
 const STRIP_WIDTH := 540
+## Height of the scrolling list of pickers.
+const SCROLL_HEIGHT := 640
 ## The keys of the strips: a prefix and the slot name.
 const PART_PREFIX := "part:"
 const COLOUR_PREFIX := "colour:"
@@ -28,6 +30,7 @@ var saved: CharacterLook
 
 var _rng := RandomNumberGenerator.new()
 var _strips := {}
+var _selectors := {}
 var _preset_selector: UIOptionSelector
 var _preview: LookPreview
 var _hint: UILabel
@@ -64,9 +67,12 @@ func randomize() -> void:
 	_sync_all()
 
 
-## Picks entry `index` of the strip `key` ("part:<slot>" or "colour:<slot>"), as the cursor would.
+## Picks entry `index` of the picker `key` ("part:<slot>" or "colour:<slot>"), as the player would.
 func choose(key: String, index: int) -> void:
-	(_strips[key] as ChoiceStrip).move_to(index)
+	if key.begins_with(PART_PREFIX):
+		(_selectors[StringName(key.trim_prefix(PART_PREFIX))] as UIOptionSelector).select(index)
+	else:
+		(_strips[key] as ChoiceStrip).move_to(index)
 
 
 ## Writes the working look to the settings file.
@@ -78,8 +84,14 @@ func save() -> void:
 	UIAudio.play(&"press")
 
 
+## The swatch strip of a colour channel, by key ("colour:<channel>").
 func strip(key: String) -> ChoiceStrip:
 	return _strips[key]
+
+
+## The selector of a part slot.
+func selector(slot: StringName) -> UIOptionSelector:
+	return _selectors[slot]
 
 
 func preview() -> LookPreview:
@@ -120,7 +132,7 @@ func _build() -> void:
 func _link_focus() -> void:
 	var chain: Array[Control] = [_preset_selector]
 	for slot in LookCatalog.choosable_part_slots():
-		chain.append(_strips[PART_PREFIX + slot])
+		chain.append(_selectors[slot])
 	for slot in LookCatalog.colour_slots():
 		chain.append(_strips[COLOUR_PREFIX + slot])
 	chain.append(_save_button)
@@ -148,9 +160,21 @@ func _build_pickers() -> Control:
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.RAISED
 	panel.custom_minimum_size.x = PICKER_WIDTH
+	var holder := VBoxContainer.new()
+	holder.add_theme_constant_override(&"separation", _tokens.space_sm)
+	panel.add_child(holder)
+	# Every part slot and colour channel is a row; there are more than fit, so the rows scroll and
+	# the scroll follows the focus.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	scroll.custom_minimum_size.y = SCROLL_HEIGHT
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	holder.add_child(scroll)
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override(&"separation", _tokens.space_md)
-	panel.add_child(rows)
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(rows)
 
 	var preset_row := UIRow.new()
 	preset_row.title = "Preset"
@@ -172,24 +196,23 @@ func _build_pickers() -> Control:
 
 	_hint = _label("", UILabel.Style.CAPTION)
 	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	rows.add_child(_hint)
+	holder.add_child(_hint)
 	return panel
 
 
 func _build_part_row(slot: StringName) -> UIRow:
-	var entries: Array[Dictionary] = []
+	var row := UIRow.new()
+	row.title = LookCatalog.PART_TITLES[slot]
+	var chooser := UIOptionSelector.new()
+	var names := PackedStringArray()
 	for option: Dictionary in LookCatalog.options(slot):
-		(
-			entries
-			. append(
-				{
-					"label": option["label"],
-					"locked": not unlocks.is_unlocked(slot, option["id"], option["gate"]),
-					"hint": option["label"] + _gate_text(option["gate"], slot, option["id"]),
-				}
-			)
-		)
-	return _build_strip_row(PART_PREFIX + slot, LookCatalog.PART_TITLES[slot], entries)
+		var locked := not unlocks.is_unlocked(slot, option["id"], option["gate"])
+		names.append(option["label"] + (" (locked)" if locked else ""))
+	chooser.options = names
+	chooser.selected_changed.connect(_on_part_selected.bind(slot))
+	row.set_control(chooser)
+	_selectors[slot] = chooser
+	return row
 
 
 func _build_colour_row(slot: StringName) -> UIRow:
@@ -253,8 +276,8 @@ func _build_footer() -> HBoxContainer:
 func _sync_all() -> void:
 	_building = true
 	for slot in LookCatalog.choosable_part_slots():
-		(_strips[PART_PREFIX + slot] as ChoiceStrip).select(
-			LookCatalog.option_index(slot, look.parts[slot])
+		(_selectors[slot] as UIOptionSelector).select(
+			LookCatalog.option_index(slot, look.parts[slot]), false
 		)
 	for slot in LookCatalog.colour_slots():
 		(_strips[COLOUR_PREFIX + slot] as ChoiceStrip).select(int(look.colours[slot]))
@@ -294,14 +317,31 @@ func _on_preset_selected(index: int) -> void:
 	apply_preset(index)
 
 
+func _on_part_selected(index: int, slot: StringName) -> void:
+	if _building:
+		return
+	var option: Dictionary = LookCatalog.options(slot)[index]
+	if not unlocks.is_unlocked(slot, option["id"], option["gate"]):
+		# Looked at, not worn: back to the part the look has, and say how to get this one.
+		(_selectors[slot] as UIOptionSelector).select(
+			LookCatalog.option_index(slot, look.parts[slot]), false
+		)
+		_hint.text = (
+			"Locked: %s%s" % [option["label"], _gate_text(option["gate"], slot, option["id"])]
+		)
+		UIMotion.shake(_selectors[slot])
+		return
+	look.parts[slot] = option["id"]
+	_sync_preset_selector()
+	_refresh_preview()
+	_refresh_status()
+	_hint.text = option["label"]
+
+
 func _on_chosen(index: int, key: String) -> void:
 	if _building:
 		return
-	if key.begins_with(PART_PREFIX):
-		var slot := StringName(key.trim_prefix(PART_PREFIX))
-		look.parts[slot] = LookCatalog.options(slot)[index]["id"]
-	else:
-		look.colours[StringName(key.trim_prefix(COLOUR_PREFIX))] = index
+	look.colours[StringName(key.trim_prefix(COLOUR_PREFIX))] = index
 	_sync_preset_selector()
 	_refresh_preview()
 	_refresh_status()

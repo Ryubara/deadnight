@@ -66,13 +66,26 @@ func _gui_input(event: InputEvent) -> void:
 
 ## Puts the character with `look` on the turntable, wearing the armband of `seat`.
 func show_look(look: CharacterLook, seat := 0) -> void:
-	if model != null:
-		_turntable.remove_child(model)
-		model.queue_free()
+	var previous := model
 	model = CharacterAssembler.assemble(look, seat)
 	model.scale = Vector3.ONE * MODEL_SCALE
 	model.position.y = PLATE_HEIGHT
+	# A new model stands in its T-pose for the first frame, before its clip first runs, so it is
+	# kept hidden for a frame and the old one stays until then.
 	_turntable.add_child(model)
+	if not is_inside_tree():
+		_reveal(model, previous)
+		return
+	model.visible = false
+	var fresh := model
+	get_tree().process_frame.connect(func() -> void: _reveal(fresh, previous), CONNECT_ONE_SHOT)
+
+
+func _reveal(fresh: Node3D, previous: Node3D) -> void:
+	if is_instance_valid(fresh):
+		fresh.visible = true
+	if is_instance_valid(previous):
+		previous.queue_free()
 
 
 func _build_world() -> void:

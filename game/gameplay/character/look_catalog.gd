@@ -3,18 +3,17 @@ extends RefCounted
 ## Every choice a player can make about how their character looks: the part options of each slot,
 ## the colours of each palette, and the eight presets. Plain data, no nodes.
 ##
-## The data is a catalogue file in the schema of `parts.json` from the modular Soldier parts
-## (docs/design/characters.md): slots with their parts, colour channels with their palettes, and
-## presets. Until those parts land the file is `look_catalog.json`, a stand-in with the same
-## slots, palettes and presets but only the parts the kit Soldier can show; then `CATALOG_PATH`
-## points at the real `parts.json` and nothing else changes.
+## The data is `parts.json` of the modular Soldier parts (docs/design/characters.md), written by
+## the build script beside the model: slots with their parts, colour channels with their
+## palettes, and the presets. Nothing about a part is repeated here except what the file does not
+## know: the titles of the screen's rows and what a locked entry asks for.
 ##
 ## The catalogue is append-only for a given `CharacterLook.VERSION`: the wire format sends a part
 ## as its index in its slot and a colour as its index in its palette, so entries are added at the
 ## end and never reordered or removed. A change that cannot follow that rule bumps the version.
 ## A slot with fewer than two parts is not shown on the customization screen.
 
-const CATALOG_PATH := "res://gameplay/character/look_catalog.json"
+const CATALOG_PATH := "res://assets/characters/soldier_parts/parts.json"
 
 ## Screen titles of the part slots.
 const PART_TITLES := {
@@ -35,16 +34,6 @@ const COLOUR_TITLES := {
 	&"primary": "Main colour",
 	&"secondary": "Second colour",
 	&"accent": "Trim colour",
-}
-
-## The Soldier's materials that each colour channel tints (by material name in `soldier.glb`),
-## for the stand-in assembly.
-const MATERIAL_CHANNELS := {
-	&"Skin": &"skin",
-	&"Black": &"hair",
-	&"Character_Main": &"primary",
-	&"Pants": &"secondary",
-	&"Grey": &"accent",
 }
 
 ## The fixed armband colour of each seat in the lot. Never part of the look: a teammate stays
