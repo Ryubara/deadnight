@@ -6,12 +6,22 @@ extends UIScreen
 ## gate, Settings slides in, Credits burns in like a reel). Quit is left out on the web, where a
 ## page cannot close itself.
 
+## The items have risen, or were brought in early because another screen covered the menu.
+signal entered
+
 const PLAY_SCREEN := "res://ui/screens/night_screen.tscn"
 const CUSTOMIZE_SCREEN := "res://ui/screens/customize_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"
 ## Seconds after the screen appears before the items rise, so the sign is catching first.
 const ITEMS_DELAY := 0.55
+
+## The delay the next menu waits before its items rise: a test sets a short one; `ITEMS_DELAY` is
+## the design value.
+static var items_delay := ITEMS_DELAY
+
+var _entrance: Timer
+var _entered := false
 
 @onready var _sign: NeonSign = %Sign
 @onready var _overline: Label = %Overline
@@ -48,9 +58,42 @@ func screen_enter() -> void:
 	_sign.ignite()
 	UIMotion.fade_in(_overline, ITEMS_DELAY * 0.5)
 	UIMotion.fade_in(_footer, ITEMS_DELAY + 0.4)
-	await get_tree().create_timer(0.0 if UIMotion.reduced else ITEMS_DELAY).timeout
+	if UIMotion.reduced or items_delay <= 0.0:
+		finish_entrance.call_deferred()
+		return
+	# A child Timer, not `SceneTree.create_timer`: it stops while the router disables this screen
+	# under another one, and it is freed with the screen.
+	_entrance = Timer.new()
+	_entrance.one_shot = true
+	_entrance.timeout.connect(finish_entrance)
+	add_child(_entrance)
+	_entrance.start(items_delay)
+
+
+## A covered menu brings its items in at once (they must be there when the player comes back)
+## and takes no focus: the screen over it owns it.
+func screen_pause() -> void:
+	finish_entrance()
+
+
+## Whether the items have risen.
+func has_entered() -> bool:
+	return _entered
+
+
+## Brings the items in, and takes the focus only while the menu is the screen the player is on.
+## Does nothing the second time.
+func finish_entrance() -> void:
+	if _entered or not is_inside_tree():
+		return
+	_entered = true
+	if _entrance != null:
+		_entrance.queue_free()
+		_entrance = null
 	UIMotion.stagger_in(_visible_items())
-	focus_initial()
+	if UIRouter.top() == self:
+		focus_initial()
+	entered.emit()
 
 
 func _hide_for_entrance() -> void:
