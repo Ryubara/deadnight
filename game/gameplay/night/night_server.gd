@@ -5,17 +5,18 @@ extends RefCounted
 ## `NightCommand`s and draws the events and frames that come back.
 ##
 ## Messages in (`apply`, plain dictionaries): `join` {player_id, local}, `leave` {player_id},
-## `start_night`, and one `command` (a `NightCommand`) per player per tick; the latest one is
-## used, except that a pressed edge (use, reload, swap, jump) of a command the step has not met yet
-## is kept. A command is the sender's: `apply` takes the player from its caller (`from_id`, the
-## connection) and ignores the one the message names. A command that is not renewed for
-## `NightTuning.command_ticks` steps is replaced by a neutral one that keeps only the view angles
-## (a client that stalled or left stops walking and shooting). `step(delta)` runs one fixed tick and
-## returns the events for every client: the rules events (a zombie's blow is a `blow` action,
-## answered by the rules' `player_hurt`), the weapons events (`CombatServer`), `player_damaged`
-## (the blow as the world saw it: `from`, where it came from, and the zombie's id, type and
-## `knockback`: metres the blow throws the player, recorded for the player's own motion to apply),
-## and last a `frame`. A frame carries the whole picture a
+## `look` {player_id, packet} (a client's look, once after it joins), `start_night`, and one
+## `command` (a `NightCommand`) per player per tick; the latest one is used, except that a pressed
+## edge (use, reload, swap, jump) of a command the step has not met yet is kept. A command is the
+## sender's: `apply` takes the player from its caller (`from_id`, the connection) and ignores the
+## one the message names. A command that is not renewed for `NightTuning.command_ticks` steps is
+## replaced by a neutral one that keeps only the view angles (a client that stalled or left stops
+## walking and shooting). The look server answers a join and a look with `look_packet` events
+## (`LOOK_PACKET`). `step(delta)` runs one fixed tick and returns the events for every client: the
+## rules events (a zombie's blow is a `blow` action, answered by the rules' `player_hurt`), the
+## weapons events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it
+## came from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
+## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
 ## client or a HUD draws from.
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
@@ -30,6 +31,11 @@ const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
 const START_NIGHT := &"start_night"
+## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
+const LOOK := &"look"
+## What the look server answers, as an event for one client: `look_packet` {to, packet}, the bytes
+## of a `LookWire.player_look`.
+const LOOK_PACKET := &"look_packet"
 ## The weapons events worth sending on (the rules events ride the rules signal; the weapons
 ## answer repeats them).
 const COMBAT_EVENTS: Array[StringName] = [
@@ -53,6 +59,8 @@ var combat: CombatServer
 var sim: ZombieSim
 var director: ZombieDirector
 var world: NightWorld
+## Every player's accepted look and seat (`docs/design/customization.md`, On the network).
+var looks: LookServer
 var tuning: NightTuning
 var tick_count := 0
 
@@ -75,6 +83,7 @@ func _init(
 	p_rules_tuning: RulesTuning = null
 ) -> void:
 	world = p_world
+	looks = LookServer.new(_send_look)
 	tuning = p_tuning if p_tuning != null else NightTuning.new()
 	rules = GameRules.new(p_rules_tuning, p_seed)
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
@@ -118,6 +127,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_leave(action["player_id"])
 		START_NIGHT:
 			rules.apply(RulesAction.start())
+		LOOK:
+			looks.receive(action["player_id"], action["packet"])
 		COMMAND:
 			submit(
 				from_id if from_id > 0 else action.get("player_id", 1),
@@ -173,6 +184,7 @@ func _join(player_id: int, local: bool) -> void:
 	if _bodies.has(player_id):
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local)
+	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
 	rules.apply(RulesAction.add_player(player_id))
@@ -188,7 +200,13 @@ func _leave(player_id: int) -> void:
 		_pending.erase(player_id)
 		_silent.erase(player_id)
 		_acked.erase(player_id)
+		looks.leave(player_id)
 		rules.apply(RulesAction.remove_player(player_id))
+
+
+## The look server's way to reach one client: an event for it, carried like any other.
+func _send_look(player_id: int, packet: PackedByteArray) -> void:
+	_outbox.append({"type": LOOK_PACKET, "to": player_id, "packet": packet})
 
 
 func _is_downed(player_id: int) -> bool:

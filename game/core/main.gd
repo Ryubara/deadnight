@@ -4,7 +4,9 @@ extends Control
 ##
 ## Options after `--` on the command line (or in the page address on the web, `?connect=...`):
 ## `--server [--port N] [--seed N]` runs a game server instead of the game (headless, no menu), and
-## `--connect [ws://host:port]` goes from the menu straight into the night of that server.
+## `--connect [ws://host:port]` goes from the menu straight into the night of that server, and
+## `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of the saved
+## one, so two windows of one machine can differ.
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
@@ -15,7 +17,14 @@ func _ready() -> void:
 	if args.has("server"):
 		_serve(args)
 		return
+	if args.has("look"):
+		NightScreen.own_look = NightScreen.look_from_flag(args.get_string("look"))
 	add_child(WebProbe.new())
+	# Above the router, below the film: "turn your phone" when a touch device is held upright.
+	var prompt_layer := CanvasLayer.new()
+	prompt_layer.layer = TouchRotatePrompt.LAYER
+	prompt_layer.add_child(TouchRotatePrompt.new())
+	add_child(prompt_layer)
 	await get_tree().process_frame
 	UIRouter.reset(MENU, UITransition.Kind.FADE)
 	if args.has("connect"):

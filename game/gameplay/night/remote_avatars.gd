@@ -20,6 +20,10 @@ const RUN_SPEED := 3.6
 const IDLE := "Idle"
 const WALK := "Walk"
 const RUN := "Run"
+## The size of every character in the lot: the player scene scales its model by this
+## (`Player._ready`), so a drawn avatar is scaled by the same number and a player is as tall on
+## every screen as on their own.
+const PLAYER_TUNING := preload("res://gameplay/player/player_tuning_default.tres")
 ## A player on the ground is turned over to lie there.
 const DOWNED_TILT := -1.4
 
@@ -168,10 +172,15 @@ class Avatar:
 	var _clip := ""
 	var _speed := 0.0
 
+	## The character as it stands, for a test to read the parts and colours it wears.
+	func model() -> Node3D:
+		return _model
+
 	func wear(model: Node3D) -> void:
 		if _model != null:
 			_model.queue_free()
 		_model = model
+		model.scale = Vector3.ONE * RemoteAvatars.PLAYER_TUNING.model_scale
 		add_child(model)
 		_animation = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 		for clip in [RemoteAvatars.IDLE, RemoteAvatars.WALK, RemoteAvatars.RUN]:

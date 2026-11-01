@@ -6,8 +6,9 @@ extends GameLink
 ##
 ## After `connect_to(url)` it says hello when the socket opens; `welcomed` follows the server's
 ## WELCOME (with the player id and the rules' snapshot), then ticks arrive as `delivered` events
-## with the frame whole (a delta is put together with `FrameDelta`). The looks of the lot reach
-## `looks`. `refused` or `closed` say why the link is no more.
+## with the frame whole (a delta is put together with `FrameDelta`). The look packets for this
+## player come in those events (`look_packet`), as over the loopback. `refused` or `closed` say why
+## the link is no more.
 
 ## The server accepted us: `snapshot` is the rules' state now (`GameRules.to_dict()`).
 signal welcomed(snapshot: Dictionary)
@@ -19,8 +20,6 @@ const PING_EVERY := 0.5
 
 var player_id := 0
 var tick_rate := 60
-## Every player's look and seat, as the server announces them.
-var looks := LookRegistry.new()
 
 # The numbers of this connection.
 var bytes_in := 0
@@ -58,17 +57,14 @@ func close() -> void:
 	_ws.close()
 
 
-## Only commands travel from a client; joining and leaving are the connection's, and the night
-## starts when the first player arrives.
+## Only commands and the player's look travel from a client; joining and leaving are the
+## connection's, and the night starts when the first player arrives.
 func send(action: Dictionary) -> void:
 	match action.get("type"):
 		NightServer.COMMAND:
 			_send(NetWire.command(NightCommand.from_dict(action)))
-
-
-## Tells the lot how this player looks (once, after the welcome).
-func send_look(look: CharacterLook) -> void:
-	_send(LookWire.look(look))
+		NightServer.LOOK:
+			_send(action["packet"])
 
 
 func pump() -> void:
@@ -123,8 +119,6 @@ func _receive(data: PackedByteArray) -> void:
 			if data.size() == 2:
 				refused.emit(data[1])
 				close()
-		_:
-			looks.receive(data)
 
 
 func _on_tick(data: PackedByteArray) -> void:

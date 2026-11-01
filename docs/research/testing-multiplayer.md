@@ -21,11 +21,17 @@ Open three terminals.
 $godot --headless --path game -- --server
 
 # 2. Player one.
-$godot --path game --resolution 960x540 --position 0,0 -- --connect ws://127.0.0.1:8910
+$godot --path game --resolution 960x540 --position 0,0 -- --connect ws://127.0.0.1:8910 --look 2
 
 # 3. Player two.
-$godot --path game --resolution 960x540 --position 960,0 -- --connect ws://127.0.0.1:8910
+$godot --path game --resolution 960x540 --position 960,0 -- --connect ws://127.0.0.1:8910 --look 5
 ```
+
+Both windows of one machine read the same saved look (`user://settings.cfg`), so without `--look` they would wear the
+same one. `--look N` wears the preset N for this run only (it is sent to the server like a saved look, never saved);
+`--look seed:N` wears a random look made from seed N. A look is sent once after joining; the server tells everyone
+(a player who joins later is told everyone's), and every screen dresses each player, your own body included, from the
+same table, so a player looks the same on every screen.
 
 The first player to arrive starts the night; the second joins it where it is. Move with WASD and the mouse, shoot,
 buy and repair as in single-player. Each window shows the other player (their own look and the armband of their
@@ -41,6 +47,7 @@ Without the command line: start the game, choose **Join** on the main menu, type
 | `--port N` | server: the port to listen on (else `$PORT`, which Railway sets, else 8910) |
 | `--seed N` | server: the night's seed (else a new one for each night) |
 | `--connect [URL]` | client: go from the menu straight into the night of that server (default `ws://localhost:8910`) |
+| `--look N`, `--look seed:N` | client (and single-player): wear the preset N, or a random look from seed N, instead of the saved look |
 | `--bot` | client: let the autopilot play this player (it uses the shoulder camera, like a person's) |
 
 Port 9080 is not used: the Godot editor's MCP bridge listens there on the maintainer's machine, and Windows lets a
@@ -72,12 +79,15 @@ headless process: each of them lives in its own `SubViewport` world, so each has
 $godot --headless --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/net -c --ignoreHeadlessMode
 ```
 
-It checks that two clients see each other walk (what one hears is what the server has), that a look reaches the
-other client, that the zombies on every client are the server's and a shot is heard by both with the right shooter and
-paid to the right player, that a player who joins in the middle gets the doors, the round and the points as they are,
-that a player who leaves disappears for the others and the seat is reused, that a fifth player is turned away, and
-that a server nobody is on gives a reason instead of a hang. `test_net_wire.gd` covers the bytes (a hostile command
-is made harmless) and `test_night_commands.gd` the server's handling of commands.
+It checks that two clients see each other walk (what one hears is what the server has), that each player's parts and
+colours are the same on both clients and in the server's table, that each client's own body wears its saved look, that
+a late joiner is told the looks already there and a new connection in a seat replaces the old look, that a player is
+as tall (skeleton height and global scale, to a millimetre) on every client and on the server, that the zombies on
+every client are the server's and a shot is heard by both with the right shooter and paid to the right player, that a
+player who joins in the middle gets the doors, the round and the points as they are, that a player who leaves
+disappears for the others and the seat is reused, that a fifth player is turned away, and that a server nobody is on
+gives a reason instead of a hang. `test_net_wire.gd` covers the bytes (a hostile command is made harmless) and
+`test_night_commands.gd` the server's handling of commands.
 
 To use a server in your own test: add a `NightHost` (`port = 0` picks a free port, read back from
 `host.listener.port()`) and join with `Night.start_remote(url, Night.Mode.MANUAL)`; in `MANUAL` the test sends the

@@ -70,7 +70,6 @@ func _client() -> Night:
 	night.ticked.connect(
 		func() -> void: night.link.send((_commands[night] as NightCommand).to_dict())
 	)
-	night.link.send_look(CharacterLook.from_preset(night.state.player_id + 3))
 	return night
 
 
@@ -104,29 +103,155 @@ func test_two_clients_join_one_night_and_see_each_other_move() -> void:
 	assert_bool(b.avatars.ids().has(2)).is_true()
 
 
-func test_a_clients_look_reaches_the_other_client() -> void:
+## The part meshes a model shows, sorted.
+func _shown(model: Node) -> Array[String]:
+	var out: Array[String] = []
+	var meshes := SoldierLook.part_meshes(model)
+	for mesh_name: String in meshes:
+		if (meshes[mesh_name] as MeshInstance3D).visible:
+			out.append(mesh_name)
+	out.sort()
+	return out
+
+
+## The colour painted into the model's atlas for `channel`.
+func _atlas_colour(model: Node, channel: StringName) -> Color:
+	var mesh: MeshInstance3D = SoldierLook.part_meshes(model).values()[0]
+	var material := mesh.material_override as StandardMaterial3D
+	var image := material.albedo_texture.get_image()
+	var cell: Array = SoldierLook.catalog()["atlas"]["cells"][String(channel)]
+	var swatch: int = SoldierLook.catalog()["atlas"]["swatch_px"]
+	return image.get_pixel(int(cell[0]) * swatch + swatch / 2, int(cell[1]) * swatch + swatch / 2)
+
+
+## A human client that wears `look`, whatever the settings file says.
+func _wearing(look: CharacterLook) -> Night:
+	var night := Night.new()
+	night.own_look = look
+	_world().add_child(night)
+	var joined := await night.start_remote(_url(), Night.Mode.HUMAN, 30.0)
+	assert_bool(joined).is_true()
+	_nights.append(night)
+	return night
+
+
+## Whether `night`'s table has `look` for player `id`.
+func _sees_look(night: Night, id: int, look: CharacterLook) -> bool:
+	return night.looks.looks.has(id) and (night.looks.looks[id] as CharacterLook).equals(look)
+
+
+## Waits until `night` has heard that player `id` wears `look`.
+func _until_sees(night: Night, id: int, look: CharacterLook) -> bool:
+	for _i in 600:
+		if _sees_look(night, id, look):
+			return true
+		await get_tree().physics_frame
+	return false
+
+
+func test_every_player_looks_the_same_on_every_screen() -> void:
 	await _server()
-	var a := await _client()
-	var b := await _client()
+	var look_a := CharacterLook.from_preset(2)
+	var look_b := CharacterLook.from_preset(5)
+	var a := await _wearing(look_a)
+	var b := await _wearing(look_b)
+	assert_bool(await _until_sees(a, 2, look_b)).is_true()
+	assert_bool(await _until_sees(b, 1, look_a)).is_true()
+	assert_bool(await _until_sees(a, 1, look_a)).is_true()
+	assert_bool(await _until_sees(b, 2, look_b)).is_true()
+	# The server's table is the truth; every client's table has the same two looks and seats.
+	var server_looks: Dictionary = _host.server.looks.looks
+	assert_bool((server_looks[1] as CharacterLook).equals(look_a)).is_true()
+	assert_bool((server_looks[2] as CharacterLook).equals(look_b)).is_true()
+	for night: Night in [a, b]:
+		for id in [1, 2]:
+			assert_bool((night.looks.looks[id] as CharacterLook).equals(server_looks[id])).is_true()
+			assert_int(night.looks.seats[id]).is_equal(_host.server.looks.seats[id])
+	await _ticks(10)
+	var resolved := LookResolver.resolve(server_looks)
+	# Each client's own body wears its saved look; the other player's avatar wears theirs.
+	var models := {
+		[1, 1]: a._body.get_node("Model"),
+		[1, 2]: (a.avatars.avatar(2) as RemoteAvatars.Avatar).model(),
+		[2, 2]: b._body.get_node("Model"),
+		[2, 1]: (b.avatars.avatar(1) as RemoteAvatars.Avatar).model(),
+	}
+	for key: Array in models:
+		var shown_id: int = key[1]
+		var look: CharacterLook = resolved[shown_id]
+		var model: Node = models[key]
+		var expected: Array[String] = SoldierLook.visible_meshes(look.to_soldier_look())
+		expected.sort()
+		assert_array(_shown(model)).is_equal(expected)
+		for slot: StringName in LookCatalog.colour_slots():
+			var want := look.colour(slot)
+			assert_bool(_atlas_colour(model, slot).is_equal_approx(want)).is_true()
+	# So player 1 is the same on both screens, and different from player 2.
+	assert_array(_shown(models[[1, 1]])).is_equal(_shown(models[[2, 1]]))
+	var on_a := _atlas_colour(models[[1, 1]], &"primary")
+	var on_b := _atlas_colour(models[[2, 1]], &"primary")
+	assert_bool(on_a.is_equal_approx(on_b)).is_true()
+
+
+## How tall the character is in the world: the highest bone of its skeleton at rest above the
+## model's own origin (the feet), and its global scale.
+func _stature(model: Node3D) -> Dictionary:
+	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
+	var top := -INF
+	for bone in skeleton.get_bone_count():
+		var at := skeleton.global_transform * skeleton.get_bone_global_rest(bone).origin
+		top = maxf(top, at.y)
+	return {"height": top - model.global_position.y, "scale": model.global_basis.get_scale()}
+
+
+func test_a_player_is_as_tall_on_every_screen() -> void:
+	await _server()
+	var a := await _wearing(CharacterLook.from_preset(2))
+	var b := await _wearing(CharacterLook.from_preset(5))
 	(
 		assert_bool(
-			await _until(
-				func() -> bool: return b.link.looks.looks.has(1) and a.link.looks.looks.has(2)
-			)
+			await _until(func() -> bool: return a.avatars.ids().has(2) and b.avatars.ids().has(1))
 		)
 		. is_true()
 	)
-	var sent := CharacterLook.from_preset(a.state.player_id + 3)
-	(
-		assert_bool(
-			await _until(
-				func() -> bool: return (b.link.looks.looks[1] as CharacterLook).equals(sent)
-			)
-		)
-		. is_true()
-	)
-	assert_int(b.link.looks.seats[1]).is_equal(0)
-	assert_int(b.link.looks.seats[2]).is_equal(1)
+	await _ticks(10)
+	for id in [1, 2]:
+		var own: Night = a if id == 1 else b
+		var other: Night = b if id == 1 else a
+		var on_own_screen := _stature(own._body.get_node("Model"))
+		var on_other_screen := _stature((other.avatars.avatar(id) as RemoteAvatars.Avatar).model())
+		var on_server := _stature(_host.server.body_of(id).get_node("Model"))
+		assert_float(on_other_screen["height"]).is_equal_approx(on_own_screen["height"], 0.001)
+		assert_float(on_server["height"]).is_equal_approx(on_own_screen["height"], 0.001)
+		for stature: Dictionary in [on_other_screen, on_server]:
+			var scale: Vector3 = stature["scale"]
+			var want: Vector3 = on_own_screen["scale"]
+			assert_float(scale.x).is_equal_approx(want.x, 0.001)
+			assert_float(scale.y).is_equal_approx(want.y, 0.001)
+			assert_float(scale.z).is_equal_approx(want.z, 0.001)
+	# And the two players are as tall as each other (one skeleton, one scale).
+	var tall_1 := _stature(a._body.get_node("Model"))
+	var tall_2 := _stature(b._body.get_node("Model"))
+	assert_float(tall_1["height"]).is_equal_approx(tall_2["height"], 0.001)
+
+
+func test_a_player_who_joins_late_sees_the_looks_already_there() -> void:
+	await _server()
+	var look_a := CharacterLook.from_preset(3)
+	var look_late := CharacterLook.from_preset(6)
+	var a := await _wearing(look_a)
+	await _ticks(20)
+	var late := await _wearing(look_late)
+	assert_bool(await _until_sees(late, 1, look_a)).is_true()
+	assert_bool(await _until_sees(late, 2, look_late)).is_true()
+	assert_bool(await _until_sees(a, 2, look_late)).is_true()
+	# A new connection says again how it looks: a different look in the same seat replaces the old.
+	late.link.close()
+	assert_bool(await _until(func() -> bool: return _host.player_count() == 1)).is_true()
+	var look_again := CharacterLook.from_preset(7)
+	var again := await _wearing(look_again)
+	assert_int(again.state.player_id).is_equal(2)
+	assert_bool(await _until_sees(a, 2, look_again)).is_true()
 
 
 func test_shots_and_zombies_agree_on_both_clients() -> void:

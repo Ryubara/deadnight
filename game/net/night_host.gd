@@ -34,7 +34,6 @@ var log_enabled := true
 var listener := WsListener.new()
 var world: NightWorld
 var server: NightServer
-var looks: LookServer
 ## False while a night is being built.
 var serving := false
 ## Steps taken, and milliseconds spent in them (the work, not the waiting), for the stats.
@@ -112,7 +111,6 @@ func _build_night() -> void:
 	await world.build()
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning)
-	looks = LookServer.new(_send_look)
 	_events.clear()
 	nights += 1
 	serving = true
@@ -145,7 +143,6 @@ func _on_disconnected(transport_id: int) -> void:
 	_by_player.erase(peer.player_id)
 	if server != null:
 		_collect(server.apply({"type": NightServer.LEAVE, "player_id": peer.player_id}))
-		looks.leave(peer.player_id)
 	_log("left", {"player": peer.player_id, "players": _by_player.size()})
 	player_left.emit(peer.player_id)
 
@@ -167,8 +164,9 @@ func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 		NetWire.Type.PING:
 			if data.size() == 5:
 				listener.send(transport_id, NetWire.pong(data.decode_u32(1), server.tick_count))
-		_:
-			looks.receive(peer.player_id, data)
+		LookWire.Type.LOOK:
+			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
+			_collect(server.apply(action, peer.player_id))
 
 
 func _hello(peer: HostPeer, data: PackedByteArray) -> void:
@@ -187,7 +185,6 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
 	listener.send(peer.transport_id, NetWire.welcome(player_id, _hz(), server.rules.to_dict()))
-	looks.join(player_id)
 	_log("joined", {"player": player_id, "players": _by_player.size()})
 	player_joined.emit(player_id)
 
@@ -213,12 +210,6 @@ func _free_player_id() -> int:
 	return 0
 
 
-func _send_look(player_id: int, packet: PackedByteArray) -> void:
-	var peer: HostPeer = _by_player.get(player_id)
-	if peer != null:
-		listener.send(peer.transport_id, packet)
-
-
 # --- Ticks ---
 
 
@@ -227,9 +218,16 @@ func _collect(events: Array) -> void:
 		_events.append(event)
 
 
+## Every event goes to every client, except a look packet, which is for one.
+func _is_for(event: Dictionary, player_id: int) -> bool:
+	return event["type"] != NightServer.LOOK_PACKET or event["to"] == player_id
+
+
 func _send_ticks(frame: Dictionary) -> void:
 	for peer: HostPeer in _by_player.values():
-		var out: Array = _events.duplicate()
+		var out: Array = _events.filter(
+			func(event: Dictionary) -> bool: return _is_for(event, peer.player_id)
+		)
 		out.append(FrameDelta.diff(peer.last_frame, frame))
 		peer.last_frame = frame
 		listener.send(peer.transport_id, NetWire.tick(server.tick_count, out))
