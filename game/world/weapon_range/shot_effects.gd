@@ -114,6 +114,26 @@ func number(at: Vector3, text: String, headshot: bool) -> void:
 	live.base = at.y
 
 
+## Ends every effect on show now (they are hidden, and kept for the next ones).
+func stop_all() -> void:
+	for live in _live:
+		_release(live)
+	_live.clear()
+	set_process(false)
+
+
+## Whether `node` is one of the pooled effects (the warm-up frees only what is not).
+func owns(node: Node) -> bool:
+	for kind in _idle.size():
+		for live: Live in _idle[kind]:
+			if live.node == node:
+				return true
+	for live in _live:
+		if live.node == node:
+			return true
+	return false
+
+
 ## Effects on show now, for tests.
 func live_count() -> int:
 	return _live.size()

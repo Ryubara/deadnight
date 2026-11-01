@@ -187,8 +187,10 @@ func _stage_pass() -> void:
 		await _shot_at(NEAR_SHOT)
 		_keep_materials(_night.view)
 		# The next condition starts clean: a flash left over would put an omni light on it.
+		_night.view.effects.stop_all()
 		for effect in _night.view.effects.get_children():
-			effect.free()
+			if not _night.view.effects.owns(effect):
+				effect.free()
 		props.free()
 		rig.free()
 		await get_tree().process_frame
