@@ -9,6 +9,7 @@ const SAMPLES := {
 	&"add_player": {"type": &"add_player", "player_id": 9},
 	&"remove_player": {"type": &"remove_player", "player_id": 1},
 	&"set_downed": {"type": &"set_downed", "player_id": 1, "downed": true},
+	&"blow": {"type": &"blow", "player_id": 1, "damage": 12.0, "bearing": 1.0, "source_id": 3},
 	&"hit": {"type": &"hit", "player_id": 1, "zombie_id": 1, "zone": &"head", "damage": 20.0},
 	&"zombie_gone": {"type": &"zombie_gone", "zombie_id": 1},
 	&"repair": {"type": &"repair", "player_id": 1},
@@ -59,6 +60,7 @@ func test_the_builders_make_well_formed_actions() -> void:
 		RulesAction.add_player(3),
 		RulesAction.remove_player(3),
 		RulesAction.set_downed(3, true),
+		RulesAction.blow(1, 12.0, 0.5, 3),
 		RulesAction.hit(1, 2, RulesAction.ZONE_LIMB, 5.0, true),
 		RulesAction.zombie_gone(2),
 		RulesAction.repair(1),
@@ -132,6 +134,21 @@ func test_hit_damage_and_zone_are_checked() -> void:
 	var action := base.duplicate()
 	action["zone"] = &"toe"
 	_assert_rejected(action, "out_of_range", "zone")
+
+
+func test_blow_damage_and_bearing_are_checked() -> void:
+	var base: Dictionary = SAMPLES[&"blow"]
+	for bad_damage: float in [0.0, -5.0, NAN, INF, RulesAction.MAX_DAMAGE + 1.0]:
+		var action := base.duplicate()
+		action["damage"] = bad_damage
+		_assert_rejected(action, "out_of_range", "damage")
+	for bad_bearing: float in [NAN, INF, -INF]:
+		var action := base.duplicate()
+		action["bearing"] = bad_bearing
+		_assert_rejected(action, "out_of_range", "bearing")
+	var action := base.duplicate()
+	action["source_id"] = "zombie"
+	_assert_rejected(action, "wrong_type", "source_id")
 
 
 func test_grant_points_amount_is_bounded() -> void:

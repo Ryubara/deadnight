@@ -31,3 +31,10 @@ kit's (`<workspace>/repos/gdstudio/AGENTS.md`) are your rules; read both first, 
    (each other open issue it partly fixes or makes out of date, `- #N: how`, or `None (reason)`); a `Fix` pull
    request adds a `Failed first:` line naming the test that failed before the fix and passes after. Issues you open
    start with a `From:` line and carry the area label (`--label A-<area>`).
+
+## Sharing the machine
+
+Other agents and other projects run on this machine. Load tests run at most four parallel suites and never start
+busy-loop processes; prefer a deterministic reproduction (step frames by hand, inject the delay). Stop every process
+you start by its PID as soon as its measurement ends, never by name. Give every long command a timeout, so a run that
+never returns cannot stall you for hours.

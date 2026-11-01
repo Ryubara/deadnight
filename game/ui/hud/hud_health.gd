@@ -8,6 +8,8 @@ const BAR_SIZE := Vector2(420.0, 30.0)
 const TICKS := 10
 const TICK_GAP := 6.0
 const LOW_FRACTION := 0.33
+## Room kept between a trimmed name and its count, for the join the shaping adds.
+const JOIN_SLACK := 6.0
 
 var shown_downed := false
 var equipment_text: String:
@@ -79,18 +81,23 @@ func refresh() -> void:
 
 
 ## The equipment and its count, the name cut to the room the grenade count leaves (the count stays).
+## The whole text is measured, not its two halves: shaping the pair is a little wider than the
+## parts added up, and the count must not be the part that is cut.
 func _gear_text() -> String:
 	if state.equipment_name == "":
 		return ""
 	var font := _equipment.get_theme_font(&"font")
-	var count := "  x%d" % state.equipment_count
+	var count := "" if state.equipment_count < 0 else " x%d" % state.equipment_count
+	var title := state.equipment_name.to_upper()
 	var room := (
 		BAR_SIZE.x
 		- float(tokens.space_md)
 		- HudStyle.text_width(font, _grenades.text, HudStyle.SMALL)
-		- HudStyle.text_width(font, count, HudStyle.SMALL)
 	)
-	return HudStyle.trimmed(font, state.equipment_name.to_upper(), HudStyle.SMALL, room) + count
+	if HudStyle.text_width(font, title + count, HudStyle.SMALL) <= room:
+		return title + count
+	var name_room := room - HudStyle.text_width(font, count, HudStyle.SMALL) - JOIN_SLACK
+	return HudStyle.trimmed(font, title, HudStyle.SMALL, name_room) + count
 
 
 func fraction() -> float:

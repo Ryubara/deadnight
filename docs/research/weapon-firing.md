@@ -49,10 +49,10 @@ What building the server-side shooting (`game/gameplay/weapons/`) taught us. The
   with "Identifier not declared in the current scope" and the `-d` run loops on the parser error until the timeout.
 - **`:=` on a value read from an untyped `Dictionary` is a parse error** ("cannot infer the type"); write
   `var weight: float = ...`.
-- **A `RefCounted` that connects a lambda to itself is a reference cycle.** `GameRules` does this with its generator;
-  at exit Godot prints "resources still in use" (an `ERROR` line, though the game is fine). `CombatServer.detach()`
-  breaks the server's side, and the range disconnects the generator's lambdas on `_exit_tree`; the proper fix is a
-  `dispose()` on the rules.
+- **A lambda that uses `self` holds its `RefCounted` strongly; a method `Callable` does not.** `GameRules` used to
+  connect lambdas to its generator, a cycle that Godot reported at exit as "resources still in use" (an `ERROR`
+  line, though the game is fine). It connects methods and `_emit.bind(...)` now, so rules and servers free
+  themselves with no `dispose()`; `test_rules_lifetime` holds a `weakref` to prove it.
 - **A projectile's events come from the tick, not from a request.** Only answers to requests flow back on a request
   path; what the server causes alone (a burst, a finished reload, the rules' round events) must be broadcast
   (`LoopbackLink.broadcast`), or the client never learns of the kill.
