@@ -11,8 +11,9 @@ and no area whose only way on is back through the last.
 
 ![The lot, top-down, evenly lit](map-plan.png)
 
-North is up, the screen at the top. The numbers are the opening order; the red slabs are the purchase doors, with
-their cost.
+North is up, the screen at the top. The numbers are the opening order; the yellow roller shutters are the purchase
+doors, with their cost. The boards across the field's six breaches are wood, and the roadblock at the town end of the
+road is a concrete block, not a door.
 
 ## Areas and opening order
 
@@ -235,8 +236,10 @@ every other circuit out (in a break) and keeps them out until the tank is back 1
 
 ## The greybox
 
-`game/world/drive_in_greybox.tscn`: CSG boxes, one flat colour per area, one script (on `Doors`). Metres, Y up,
-x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
+`game/world/drive_in_greybox.tscn`: CSG boxes, one script (on `Doors`). Metres, Y up, x east, z south; the screen is
+at z = -48 and the road at z = 52 to 64. Each surface has a material from `game/assets/lot/` (asphalt, gravel,
+concrete, planks, corrugated sheet, blocks, diner tiles, the doors' shutters: [style bible](style.md#lot-surfaces)),
+and the field's stalls have painted lines.
 
 | Node | Holds |
 | --- | --- |
@@ -244,6 +247,7 @@ x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 | `Field/Breach*`, `Field/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it; each field spawn marker carries the `barricade_id` of the breach it lies outside |
 | `Field/PlayerSpawns` | four markers on the apron below the screen |
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
+| `Field/ParkingLines`, `Road/RoadDashes` | the painted lines between the stalls and down the road: one `MultiMesh` each, no collision |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator |
@@ -268,9 +272,42 @@ a change to a constant or coordinate there, not hand edits to a 380-node scene. 
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 
-To capture: `capture_rig.tscn` takes `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza`,
+To capture: `capture_rig.tscn` takes `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`,
 or `--view=tp:<probe>` for the shoulder camera at a probe (`--offset`, `--turn`, `--side`, `--y`, `--doors=closed`,
 `--flood`; see the script's header).
+
+### Props
+
+The lot is dressed with the starting kit's props (the Quaternius Toon Shooter Game Kit, CC0), brought in by
+`tools/blender/build_props.py` (scale 0.8, one shared palette, [style](style.md#props)) and placed by
+`tools/world/lot_props.py`, which the generator calls: each area's props go under `<Area>/Dressing`, from the
+`DRESSING` table there, and each prop is a scene in `world/drive_in/props/` (the model, plus a hidden CSG block of its
+size where it stands in the way).
+
+| Where | What |
+| --- | --- |
+| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; a broken pallet by the playground, cones by the shelter |
+| Midway | a dumpster at the end of each alley, cartons where crate stack A was, a small container where B was, cones at the road gate |
+| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence |
+| Back lot | the wreck rows are the kit's Broken Car (`wreck.tscn`); tyres, debris, a spilt drum |
+| Road | the two wrecks are Broken Cars (the battery headlights sit at the west one's front); barriers and cones before the roadblock; crates by the kiosks |
+
+Rules the placement keeps, all checked by the world tests:
+
+- **Solid props are CSG.** The zombies' mesh is baked only from CSG shapes with collision (`navmesh_baker.gd`), so a
+  prop that blocks has a hidden `CSGBox3D` or `CSGCylinder3D` with `use_collision`; a hidden CSG root still collides
+  and bakes. A `StaticBody3D` would be solid for the player and invisible to the dead.
+- **Clutter has no collision**: cones, pallets, planks, debris, a lone carton, a spilt drum, a gas can. It never closes
+  a path or makes a slot.
+- **No stairs out.** A prop a player can jump onto (a crate 0.63 m, a drum 0.82 m, tyres 0.87 m, a barrier 0.5 m) is
+  kept away from anything taller and from low walls: a barrier by the road's 1.6 m end walls, or a climbable wreck
+  beside them, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box 1.3 m tall (no step at the bonnet),
+  so it cannot be climbed from the ground.
+- **No slots.** Props stand against a wall or touch each other, or leave at least a passage's width: nothing on the
+  map is single file, and no prop stands in a door, a breach or its apron, a camera passage or a shop spot.
+
+Capture views for the props, at the player's eye height (`--view=`): `yard_drums`, `yard_east`, `backlot_rows`,
+`road_block`, `alley`, `midway_court`.
 
 ## Not yet decided
 

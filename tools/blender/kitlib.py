@@ -103,14 +103,17 @@ def tris(o):
 
 
 def gltf_base_colours(path):
-    """Material name -> linear baseColorFactor, read from the .glb's JSON chunk.
+    """Material name -> linear baseColorFactor, read from the .glb's JSON chunk (or the .gltf itself).
 
     Read from the file, not the Blender material: where a mesh carries a COLOR_0 attribute the importer feeds Base
     Color through a vertex-colour node and leaves the socket at its 0.8 default.
     """
     data = Path(path).read_bytes()
-    n = struct.unpack("<I", data[12:16])[0]
-    doc = json.loads(data[20 : 20 + n])
+    if Path(path).suffix.lower() == ".gltf":  # a separate glTF: the file is the JSON
+        doc = json.loads(data)
+    else:
+        n = struct.unpack("<I", data[12:16])[0]
+        doc = json.loads(data[20 : 20 + n])
     return {
         m.get("name", ""): m.get("pbrMetallicRoughness", {}).get("baseColorFactor", [1, 1, 1, 1])
         for m in doc.get("materials", [])

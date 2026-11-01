@@ -157,6 +157,7 @@ func test_the_hud_names_the_lights_and_what_they_cost() -> void:
 	add_child(hud)
 	var night := await _start(hud)
 	assert_bool(hud.prompt.visible).is_false()
+	assert_bool(hud.fuel.showing).is_false()
 	_stand_at(night, CIRCUIT)
 	assert_bool(hud.prompt.visible).is_true()
 	assert_str(hud.prompt.title_text).is_equal("CONCESSION LIGHTS: OFF")
@@ -166,5 +167,7 @@ func test_the_hud_names_the_lights_and_what_they_cost() -> void:
 	NightFixture.run(night, 2)
 	assert_str(hud.prompt.title_text).is_equal("CONCESSION LIGHTS: ON")
 	assert_str(hud.prompt.detail_text).is_equal("SAVES 3% FUEL A MINUTE")
+	# Throwing the breaker is progress at the generator: the card shows.
+	assert_bool(hud.fuel.showing).is_true()
 	night.queue_free()
 	hud.queue_free()
