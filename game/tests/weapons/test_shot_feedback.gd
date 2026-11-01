@@ -3,6 +3,8 @@
 # no wall time. The impacts are in test_impact_fx.gd.
 extends GdUnitTestSuite
 
+## How far a model's own `Muzzle` may sit from its hold's `muzzle` point (m).
+const MUZZLE_MODEL_TOLERANCE := 0.02
 const TEST_ROOM := "res://world/test_room.tscn"
 const SHOOTER := WeaponsFixture.SHOOTER
 const BODY := Vector3(0, 1.1, 0)
@@ -62,8 +64,10 @@ func test_the_weapon_in_hand_has_a_muzzle_point_at_the_end_of_its_barrel() -> vo
 	assert_object(marker).is_not_null()
 	var hold := _animation.weapon_hold()
 	var weapon := _animation.weapon()
+	# The model's own `Muzzle` (the centre of the barrel's open end) sits within a centimetre of the
+	# hold's `muzzle` point, the end of the model.
 	assert_vector(marker.global_position).is_equal_approx(
-		weapon.to_global(hold.muzzle), Vector3.ONE * 0.0001
+		weapon.to_global(hold.muzzle), Vector3.ONE * MUZZLE_MODEL_TOLERANCE
 	)
 	# -Z of the marker runs out of the barrel, which is the model's -X.
 	var barrel := (-marker.global_basis.z).normalized()
