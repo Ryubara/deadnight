@@ -49,6 +49,11 @@ old screen, the router swaps the screens behind it, then it opens on the new one
 - The burn front is `mix(-edge, 1 + edge, progress) - (0.72 * distance + 0.28 * noise)`, so the fire is always fully
   closed at `progress = 1` and fully clear at the end of the reveal.
 - The iris origin and the burn origin are the focused control's centre, so the transition grows from the button pressed.
+- Tested: the burn, the iris and the slide ran in a web export (Chrome, WebGL2, Compatibility) with no console error;
+  not yet on Firefox or a mobile GPU. The burn stops its close at `BURN_CLOSE_TO` and starts its reveal at
+  `BURN_REVEAL_FROM` so the screen is not held on char; the hash is the shared sine-free `gds_hash.gdshaderinc`
+  and the iris `atan` is defined at the origin. Details in [Main menu](main-menu.md).
+- `UIMotion.changed()` signals a change of `reduced`; skins listen to it instead of reading the flag once.
 
 ## Router
 
