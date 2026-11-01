@@ -78,6 +78,7 @@ func start(
 	add_child(view)
 	view.setup(state, camera, _telegraphs())
 	view.barricade_points = _barricade_points()
+	view.show_lamps(world.greybox, server.rules.tuning.fuel)
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
 	running = true

@@ -40,6 +40,9 @@ jobs:
         with:
           path: cache/downloads
           key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Every committed script has its committed uid
+        # Before the import: an import writes missing uids to disk, and the check reads the git index anyway.
+        run: python3 repos/deadnight/tools/check_gd_uids.py --root repos/deadnight
       - name: Make the workspace and fetch the pinned Godot and GdUnit4
         run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project
@@ -54,6 +57,16 @@ jobs:
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           "$godot" --headless --path repos/deadnight/game --quit-after 60 2>&1 | tee run.log
           ! grep -E "^(SCRIPT )?ERROR" run.log
+
+      - name: Play a night headless and look for leaks at exit
+        # A night builds the rules, the servers and the sounds; Godot prints a leak as a warning and an ERROR at exit,
+        # after the game itself has finished, so only the log shows it.
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game res://tests/captures/autopilot_night.tscn -- --rounds=1 --speed=40 2>&1 | tee night.log
+          grep -q "^REPORT" night.log
+          ! grep -E "^(SCRIPT )?ERROR|leaked at exit|still in use" night.log
 
       - name: Run the tests (GdUnit4)
         # No `-d`: with the debugger attached, the first script error stops the engine at a prompt and the job hangs.

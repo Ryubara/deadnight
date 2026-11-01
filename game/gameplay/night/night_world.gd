@@ -15,8 +15,6 @@ const NAV_ITERATIONS := 2
 const NAV_WAIT_FRAMES := 600
 ## Metres into the field, from the boards, that a player puts them back from.
 const REPAIR_SPOT := 1.4
-## Metres within which a lamp lights the ground.
-const LAMP_REACH := 6.0
 ## The areas whose zombie spawns open with a door (the field's are always open).
 const DOOR_AREAS := {
 	&"door_concession": ["Midway"],
@@ -33,7 +31,9 @@ var navigation: DoorNavigation
 
 var _door_nodes: Dictionary[StringName, Node3D] = {}
 var _barricades: Dictionary[StringName, Barricade] = {}
-var _lamps: Array[Node] = []
+var _lamps: LotLamps
+## The rules' generator, which says which circuits are lit; without one every lamp is.
+var _generator: GeneratorState
 
 
 ## Builds the lot and waits until its collision and navigation are live.
@@ -56,7 +56,7 @@ func build() -> void:
 		if NavigationServer3D.map_get_iteration_id(map()) >= before + NAV_ITERATIONS:
 			break
 		await get_tree().physics_frame
-	_lamps = get_tree().get_nodes_in_group("powered_light")
+	_lamps = LotLamps.new(greybox)
 
 
 func map() -> RID:
@@ -67,6 +67,7 @@ func map() -> RID:
 ## boards across each breach are as many as the rules say.
 func bind(rules: GameRules) -> void:
 	doors.bind(rules)
+	_generator = rules.generator
 	for id: StringName in _barricades:
 		_barricades[id].set_boards(rules.barricades.boards_of(id))
 	rules.event_emitted.connect(_on_rules_event)
@@ -166,11 +167,11 @@ func player_spawn(index: int) -> Vector3:
 	return (markers[index % markers.size()] as Marker3D).global_position
 
 
+## Whether the ground at `point` is lit: a lamp within reach whose circuit the rules' generator
+## has lit (switched on, and the tank not dry). Never reads a light node, so it is the same on a
+## server that draws nothing.
 func is_lit(point: Vector3) -> bool:
-	for lamp: Light3D in _lamps:
-		if lamp.visible and _flat(point, lamp.global_position) < LAMP_REACH:
-			return true
-	return false
+	return _lamps.lit_at(point, _generator)
 
 
 ## A body for one player, driven by the server (its own physics step is off).
@@ -182,7 +183,3 @@ func add_body(spawn: Vector3, local_input: bool) -> Player:
 	body.teleport(spawn)
 	body.set_physics_process(false)
 	return body
-
-
-static func _flat(a: Vector3, b: Vector3) -> float:
-	return Vector2(a.x - b.x, a.z - b.z).length()

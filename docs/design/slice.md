@@ -44,6 +44,7 @@ page says what is in, and what is next.
 | Doors: `interact` next to a slab buys the door; `LotDoors` frees its slabs, `DoorNavigation` rebakes the mesh, its area joins the spawns | `NightWorld` (binds the lot to the rules), `NightServer` | one path, the lot's own ([Doors](../research/zombies.md#doors)); the prompt shows the price |
 | Boards at the fence breaches: the dead tear them off, `interact` from the field side puts one back for the rules' repair points | `Barricade`, `NightWorld`, `NightServer`, `ZombieSim` | [the fence's boards](rounds.md#the-fences-boards); the prompt shows only at a breach with a board down |
 | A supply drop at the end of each round refills ammunition | `NightServer._resupply` | stands in for an ammunition shop |
+| The lamps follow the generator: a circuit off or a dry tank darkens its lamps and posts, a failing tank flickers them, and the dead are slowed only on ground a lit circuit lights | `LotLamps`, `NightView`, `NightWorld.is_lit` | [the lot's lamps](map.md#which-lamps-hang-on-which-circuit) |
 | Sound: shots, reloads, dry fire, round stings | `NightView` | through the `Audio` autoload |
 | The HUD: round, points, health, ammunition, the prompt at a door or breach, the party, the generator | `NightHudBinding`, `ui/hud/` | below |
 | The autopilot | `gameplay/night/autopilot.gd` | below |
@@ -85,7 +86,7 @@ Each of these is an issue.
   drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
 - **Player health in the rules.** It lives in `NightServer` for now; it belongs beside the downed state in
   `GameRules`, with its snapshot.
-- **Ammunition, weapons and the crane in the shop**, tonics, the generator and its circuits (the lamps do not yet
-  follow `circuit_changed`), the re-cut.
+- **Ammunition, weapons and the crane in the shop**, tonics, a switch for each of the generator's circuits (the lamps
+  follow `circuit_changed` and the tank, but nobody can switch a circuit in the night yet), the re-cut.
 - **Revive** by a teammate. (The boards at the breaches are in; their sounds are the audio's next.)
 - **Performance** of the server tick in late rounds (profile with `autopilot_night.tscn --speed`).

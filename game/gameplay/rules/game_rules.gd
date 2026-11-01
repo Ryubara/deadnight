@@ -142,14 +142,14 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 	generator = GeneratorState.new(tuning.fuel)
 	barricades = BarricadeState.new(tuning.barricades)
 	_fuel_announced = floori(generator.fuel)
+	# Methods and `bind`, never a lambda: a lambda that uses `self` holds a strong reference to
+	# the rules, the rules hold the generator, and the generator holds the lambda, so none of
+	# them is ever freed (the "resources still in use at exit" error).
 	generator.fuel_changed.connect(_on_fuel_changed)
-	generator.fuel_low.connect(func() -> void: _emit(&"fuel_low"))
-	generator.fuel_empty.connect(func() -> void: _emit(&"fuel_empty"))
-	generator.fuel_restored.connect(func() -> void: _emit(&"fuel_restored"))
-	generator.circuit_changed.connect(
-		func(circuit_id: StringName, on: bool) -> void:
-			_emit(&"circuit_changed", {"circuit_id": circuit_id, "on": on})
-	)
+	generator.fuel_low.connect(_emit.bind(&"fuel_low"))
+	generator.fuel_empty.connect(_emit.bind(&"fuel_empty"))
+	generator.fuel_restored.connect(_emit.bind(&"fuel_restored"))
+	generator.circuit_changed.connect(_on_circuit_changed)
 
 
 ## The one way in. Returns the events the action caused, in order.
@@ -408,6 +408,10 @@ func _on_fuel_changed(fuel: float, _delta: float) -> void:
 		return
 	_emit(&"fuel_changed", {"fuel": fuel, "delta": float(whole - _fuel_announced)})
 	_fuel_announced = whole
+
+
+func _on_circuit_changed(circuit_id: StringName, on: bool) -> void:
+	_emit(&"circuit_changed", {"circuit_id": circuit_id, "on": on})
 
 
 # --- Rounds ---
@@ -916,7 +920,7 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 			if player.weapons.has(item.id):
 				result = BuyResult.ALREADY_OWNED
 		ShopItem.Kind.CRANE:
-			if _crane_pool(player, item).is_empty():
+			if item.pool_without(player.weapons).is_empty():
 				result = BuyResult.ALREADY_OWNED
 		ShopItem.Kind.TONIC:
 			if player.tonics.has(item.id):
@@ -950,7 +954,7 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 			player.weapons.append(item.id)
 			return {"weapon": item.id}
 		ShopItem.Kind.CRANE:
-			var won := _roll_crane(player, item)
+			var won := item.roll(player.weapons, _shop_rng)
 			player.weapons.append(won)
 			return {"weapon": won}
 		ShopItem.Kind.TONIC:
@@ -961,33 +965,6 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
 			return {"grenades": quote.grenades_added}
 	return {}
-
-
-## The crane's weapons this player does not own yet.
-func _crane_pool(player: PlayerState, item: ShopItem) -> Array[StringName]:
-	var pool: Array[StringName] = []
-	for weapon_id in item.pool:
-		if not player.weapons.has(weapon_id):
-			pool.append(weapon_id)
-	return pool
-
-
-func _roll_crane(player: PlayerState, item: ShopItem) -> StringName:
-	var pool := _crane_pool(player, item)
-	var total := 0.0
-	for weapon_id in pool:
-		total += _weight(item, weapon_id)
-	var pick := _shop_rng.randf() * total
-	for weapon_id in pool:
-		pick -= _weight(item, weapon_id)
-		if pick < 0.0:
-			return weapon_id
-	return pool[pool.size() - 1]
-
-
-func _weight(item: ShopItem, weapon_id: StringName) -> float:
-	var index := item.pool.find(weapon_id)
-	return item.pool_weights[index] if index < item.pool_weights.size() else 1.0
 
 
 ## A priced, checked purchase that has not happened yet.

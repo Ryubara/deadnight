@@ -26,6 +26,8 @@ var horde: ZombieHorde
 var effects: ShotEffects
 ## Where each breach's boards stand (`NightWorld`): a board torn or mended shows a burst there.
 var barricade_points: Dictionary[StringName, Vector3] = {}
+## The lot's lamps, drawn from the generator's events (`show_lamps`).
+var lamps: LotLamps
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
 
@@ -45,7 +47,17 @@ func setup(
 	state.event_received.connect(_on_event)
 
 
+## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
+## begins (the circuits on, the tank full), and following every circuit, the tank and the frames.
+func show_lamps(lot: Node, fuel: FuelTuning) -> void:
+	lamps = LotLamps.new(lot)
+	lamps.configure(fuel)
+	lamps.refresh(0)
+
+
 func _on_event(event: Dictionary) -> void:
+	if lamps != null:
+		lamps.apply_event(event)
 	match event["type"]:
 		&"frame":
 			horde.apply_snapshot(event["zombies"], step)
