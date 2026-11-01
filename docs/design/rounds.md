@@ -33,7 +33,10 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   inside JSON uses `to_wire()` / `from_wire()` (the same bytes as a base64 string); both restore
   exactly (tested through `JSON.stringify`). A restore returns `""` on success, else `bad_version`,
   `wrong_tuning` (another table: a server deploy that retunes mid-night must not resume old saves) or
-  `malformed`, and leaves the night as it was.
+  `malformed`, and leaves the night as it was. The version is checked first, so a snapshot of any older
+  layout answers `bad_version`; the insides are checked before anything changes (a plan naming no type,
+  a zombie without a `type`, a player or the generator missing a field answer `malformed`). The
+  version is 5; 4 named two different layouts and is never used again.
 - **Reads change nothing.** `points_of`, `price_of`, `is_door_open` and `zombies_remaining` are
   queries; clients may call them on their mirror.
 
@@ -128,7 +131,7 @@ Points (everything is per player):
 | Starting points | 200 |
 | Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
 | Kill / headshot kill / melee kill | 60 / 100 / 130 |
-| Kill by a grenade blast | 40 |
+| Kill by a grenade blast | 40 (times the type's pay, like a bullet's) |
 | Repair one board (at most 120 a round) | 12 |
 | Round survived, standing | 20 + 10 per round |
 | Special round cleared, standing | 150 or 200 + 40 per round (by kind, see below) |

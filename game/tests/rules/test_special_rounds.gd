@@ -198,6 +198,49 @@ func test_a_snapshot_in_the_middle_of_a_boss_night_carries_on_the_same() -> void
 	assert_dict(rules.to_dict()).is_equal(copy.to_dict())
 
 
+## Restores a copy of `rules` and ticks both for `ticks` steps: every event must match, and the
+## states at the end too.
+func _assert_copy_carries_on_the_same(rules: GameRules, ticks: int = 400) -> void:
+	var copy := GameRules.new(_t, 9)
+	assert_str(copy.from_wire(rules.to_wire())).is_equal("")
+	assert_str(copy.special_id()).is_equal(rules.special_id())
+	assert_dict(copy.to_dict()).is_equal(rules.to_dict())
+	for _i in ticks:
+		var a := rules.apply(RulesAction.tick(RulesFixture.STEP))
+		var b := copy.apply(RulesAction.tick(RulesFixture.STEP))
+		assert_array(a).is_equal(b)
+	assert_dict(rules.to_dict()).is_equal(copy.to_dict())
+
+
+func test_a_snapshot_in_the_middle_of_each_special_kind_carries_on_the_same() -> void:
+	# The boss night (5), a round of one type (10, 20: runners, crawlers), two players, with spawns
+	# still to come, and again once some of the round's dead have been killed.
+	for round_number in [5, 10, 20]:
+		var rules := RulesFixture.make_rules(2, 40 + round_number, _t)
+		_to_break_before(rules, round_number)
+		rules.apply(RulesAction.skip_break())
+		RulesFixture.run(rules, 6.0)
+		assert_bool(_t.specials.is_special(rules.round_number)).is_true()
+		assert_str(rules.special_id()).is_not_empty()
+		assert_int(rules.to_dict()["plan"].size()).is_greater(0)
+		_assert_copy_carries_on_the_same(rules)
+		for zombie_id in rules.zombie_ids().slice(0, 2):
+			RulesFixture.kill(rules, 1, zombie_id)
+		_assert_copy_carries_on_the_same(rules)
+
+
+func test_a_snapshot_in_the_break_before_a_special_round_carries_on_the_same() -> void:
+	for round_number in [5, 10]:
+		var rules := RulesFixture.make_rules(2, 60 + round_number, _t)
+		_to_break_before(rules, round_number)
+		assert_int(rules.phase).is_equal(GameRules.Phase.BREAK)
+		RulesFixture.run(rules, 2.0)
+		# Through the rest of the break and into the round it announced.
+		_assert_copy_carries_on_the_same(rules, 60 * 40)
+		assert_int(rules.round_number).is_equal(round_number)
+		assert_str(rules.special_id()).is_not_empty()
+
+
 func test_the_same_seed_gives_the_same_boss_night() -> void:
 	var first := _boss_night_types(31)
 	assert_array(first).is_equal(_boss_night_types(31))
