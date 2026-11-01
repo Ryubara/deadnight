@@ -5,7 +5,7 @@ extends Node
 ## `spot * HOLD_FRAMES + HOLD_FRAMES - 1` (from 0) is the settled shot of that spot:
 ##
 ##     godot --path game res://tests/captures/night_look_tour.tscn --write-movie <abs>/look.png \
-##         --fixed-fps 10 --quit-after 100
+##         --fixed-fps 10 --quit-after 110
 ## Arguments after `--`: `--hud` (draw the real HUD over the night).
 ## Prints SPOT <name> <frame> as each spot starts.
 
@@ -38,6 +38,14 @@ const SPOTS := [
 		"pitch": 32.0,
 		"dead": 0.0,
 		"circuits": {&"screen_lot": false},
+	},
+	{
+		"name": "entrance_marquee",
+		"at": Vector3(9, 0, 57),
+		"yaw": 0.0,
+		"pitch": 12.0,
+		"dead": 0.0,
+		"circuits": {&"screen_lot": true, &"back_lot": true},
 	},
 ]
 const DEAD_SPACING := 2.2

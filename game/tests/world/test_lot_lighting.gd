@@ -80,6 +80,30 @@ func test_the_concession_windows_glow_only_while_the_stand_is_powered() -> void:
 	assert_bool((window.get_node("Pane") as MeshInstance3D).visible).is_false()
 
 
+func test_the_marquee_and_its_bulbs_burn_with_the_back_lots_circuit() -> void:
+	var glow := _lot.get_node("Road/Lamps/MarqueeGlow") as ModelGlow
+	glow.advance(0.0)
+	assert_float(glow.level).is_equal(0.0)
+	var marquee_mesh := ModelGlow._first_mesh(_lot.get_node("Road/Marquee"))
+	var material := marquee_mesh.get_surface_override_material(0) as StandardMaterial3D
+	assert_float(material.emission_energy_multiplier).is_equal(0.0)
+	_switch(&"back_lot", true)
+	assert_float(glow.level).is_equal_approx(1.0, 0.001)
+	assert_float(material.emission_energy_multiplier).is_greater(1.0)
+	# The shared props of the lot keep their own material: only the marquee glows.
+	var booth_mesh := ModelGlow._first_mesh(_lot.get_node("Road/TicketBoothW"))
+	assert_object(booth_mesh.get_surface_override_material(0)).is_not_same(material)
+
+
+func test_the_beam_starts_at_the_projector_lens_and_ends_on_the_screen() -> void:
+	var beam := _lot.get_node("ProjectionBooth/BeamFx") as ProjectorBeam
+	var lens := beam.global_position
+	assert_vector(lens).is_equal_approx(Vector3(0.0, 5.11, 24.37), Vector3.ONE * 0.01)
+	var target := lens + beam.target_centre
+	assert_float(target.z).is_equal_approx(-47.4, 0.01)
+	assert_float(target.y).is_equal_approx(10.0, 0.01)
+
+
 func test_the_screen_flicker_is_slow_bounded_and_a_function_of_the_phase() -> void:
 	var lowest := 10.0
 	var highest := 0.0

@@ -63,12 +63,12 @@ numbers measure the CPU.
 ## Capturing it
 
 `game/tests/captures/night_look_tour.tscn` runs the real night in the manual mode and puts the player's own shoulder
-camera at nine spots (looking up at the screen, across the lot, up the avenue, over the flank, in the yard and the
-back lot, then the stand powered and the screen's circuit off), with the dead lined up 25 m away at one. Each spot
-holds ten frames, so frame `10 * spot + 9` is the settled shot:
+camera at ten spots (looking up at the screen, across the lot, up the avenue, over the flank, in the yard and the
+back lot, then the stand powered, the screen's circuit off and the entrance's marquee), with the dead lined up 25 m
+away at one. Each spot holds ten frames, so frame `10 * spot + 9` is the settled shot:
 
 ```text
-godot --path game res://tests/captures/night_look_tour.tscn --write-movie <abs>/look.png --fixed-fps 10 --quit-after 100
+godot --path game res://tests/captures/night_look_tour.tscn --write-movie <abs>/look.png --fixed-fps 10 --quit-after 110
 ```
 
 Add `-- --hud` to draw the real HUD over the night.
@@ -106,9 +106,9 @@ for the dead's slowdown (`LotLamps.lit_at`).
   The pool is now the quad, the light stays at 11 m.
 - **The screen shows the circuit.** With `screen_lot` off the face keeps the 0.3 afterglow of its lamp and the posts,
   halos and pools go dark: the lit and dark halves of the lot read apart at a glance (capture `screen_circuit_off`).
-- **Capturing it**: `night_look_tour.tscn` now has nine spots; the last two throw a breaker (`circuits` in the spot's
+- **Capturing it**: `night_look_tour.tscn` now has ten spots; the last three throw a breaker (`circuits` in the spot's
   dictionary: the stand on, then the screen's circuit off), through `NightState.apply_events` so the client sees the
-  event as it does in play. `--quit-after 100`.
+  event as it does in play. `--quit-after 110`.
 
 ### Frame time of the lighting pass
 
