@@ -43,3 +43,8 @@ Every player dresses their own character: the [customization screen and how each
 The Quaternius Toon Shooter Game Kit (CC0) is the starting style; it may change. Its characters share one rig with
 the Quaternius zombie, so animations are shared by bone name. The measured rules (proportions, bevels, triangle
 budgets, palette) are in the [style bible](style.md).
+
+## Weapons in hand
+
+How big a weapon is, where the stock, the grip and the support hand sit, and where the barrel points: [Weapons in the
+hands](weapon-hold.md).
