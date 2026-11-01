@@ -11,16 +11,52 @@ body:
     value: 'A task is written so that someone with no other context can do it: start with the problem.
 
       '
+- type: input
+  id: from
+  attributes:
+    label: From
+    description: Who filed it and when, and the pull request or issue it came from (say whether that is merged).
+    placeholder: 'From: the coordinator, 2026-11-01, review of #12 (merged)'
+  validations:
+    required: true
 - type: textarea
   id: summary
   attributes:
     label: Summary
   validations:
     required: true
+- type: dropdown
+  id: area
+  attributes:
+    label: Area
+    description: The part of the project; the matching A- label is applied from it.
+    options:
+    - A-core
+    - A-gameplay
+    - A-ui
+    - A-net
+    - A-world
+    - A-art
+    - A-audio
+    - A-build
+    - A-ci
+    - A-agents
+    - A-docs
+    - A-tests
+  validations:
+    required: true
+- type: input
+  id: design-page
+  attributes:
+    label: Design page
+    description: The design or research page (and section) under docs/design or docs/research that covers this,
+      as a link, or none yet.
+    placeholder: docs/design/zombies.md#spawning
 - type: textarea
   id: done
   attributes:
     label: What "done" means
+    description: 'The acceptance test. For a bug fix: a test that fails before the fix and passes after it.'
   validations:
     required: true
 - type: textarea
