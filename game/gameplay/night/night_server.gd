@@ -15,7 +15,7 @@ extends RefCounted
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, doors (open ids), barricades ({id: boards
 ## up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo,
-## reserve, reloading, points, prompt}}.
+## reserve, reloading, arms (every weapon carried: id to [ammo, reserve]), points, prompt}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -33,6 +33,7 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"reload_finished",
 	&"reload_rejected",
 	&"weapon_equipped",
+	&"ammo_added",
 	&"projectile_spawned",
 	&"projectile_burst",
 	&"fire_rejected",
@@ -225,14 +226,40 @@ func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
 	match event["type"]:
 		&"purchase_made":
-			var weapon: StringName = event["detail"].get("weapon", &"")
-			if weapon != &"":
-				_combat(CombatAction.give_weapon(event["player_id"], weapon))
+			_deliver(event["player_id"], event["detail"])
 		&"round_ended":
 			_resupply()
 
 
 # --- Weapons and hands ---
+
+
+## A purchase for a player, as the shop sells it. Items in the shop: `weapon_shotgun`, the crane's
+## `weapon_smg`; the weapons know `shotgun`, `smg`. This is the one place that translates.
+## Ammunition: the rules priced exactly the rounds that fitted. Returns the rules' events.
+func buy(player_id: int, item_id: StringName) -> Array[Dictionary]:
+	var item := rules.tuning.economy.item(item_id)
+	var rounds := -1
+	if item != null and item.kind == ShopItem.Kind.AMMO:
+		rounds = ammo_room(player_id, item.weapon)
+	return rules.apply(RulesAction.buy(player_id, item_id, rounds))
+
+
+## Rounds the player's reserve of this weapon has room for; 0 for a weapon not carried.
+func ammo_room(player_id: int, weapon_id: StringName) -> int:
+	var state := combat.state_of(player_id, weapon_id)
+	if state == null or not state.uses_ammo():
+		return 0
+	return state.def.reserve_max - state.reserve
+
+
+func _deliver(player_id: int, detail: Dictionary) -> void:
+	var weapon: StringName = detail.get("weapon", &"")
+	if weapon != &"":
+		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(weapon)))
+	var ammo: StringName = detail.get("ammo", &"")
+	if ammo != &"":
+		_combat(CombatAction.add_ammo(player_id, ammo, detail["rounds"]))
 
 
 func _combat(action: Dictionary) -> void:
@@ -285,11 +312,14 @@ func _act(player_id: int, delta: float) -> void:
 		_combat(CombatAction.reload_weapon(player_id))
 	if command.fire:
 		_shoot(player_id, command)
+	if command.swap:
+		_combat(CombatAction.swap(player_id))
 	if command.use:
 		_use(player_id)
 	# Edges are used once.
 	command.reload = false
 	command.use = false
+	command.swap = false
 
 
 func _shoot(player_id: int, command: NightCommand) -> void:
@@ -359,6 +389,7 @@ func _frame() -> Dictionary:
 			"ammo": weapon.ammo if weapon != null else 0,
 			"reserve": weapon.reserve if weapon != null else 0,
 			"reloading": weapon != null and weapon.is_reloading(),
+			"arms": _arms_of(player_id),
 			"points": rules.points_of(player_id),
 			"prompt": use_target(player_id),
 		}
@@ -374,6 +405,15 @@ func _frame() -> Dictionary:
 		"zombies": ZombieCodec.encode(sim.zombies),
 		"players": players,
 	}
+
+
+## Every weapon the player carries: its id to [ammo in the magazine, rounds in reserve].
+func _arms_of(player_id: int) -> Dictionary:
+	var arms := {}
+	for weapon_id: StringName in combat.carried(player_id):
+		var state := combat.state_of(player_id, weapon_id)
+		arms[weapon_id] = [state.ammo, state.reserve]
+	return arms
 
 
 static func _flat(a: Vector3, b: Vector3) -> float:
