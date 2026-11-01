@@ -9,6 +9,8 @@ export interface User {
 
 export interface Save {
   revision: number;
+  /** The format of `data` (see saves.ts); the backend checks it is a known one and never changes it. */
+  schemaVersion: number;
   data: Record<string, unknown>;
 }
 
@@ -26,7 +28,12 @@ export interface Store {
   getUser(id: string): Promise<User | null>;
   getSave(userId: string, slot: string): Promise<Save | null>;
   /** Optimistic concurrency: `expectedRevision` is the revision the client last read (0 for a new slot). */
-  putSave(userId: string, slot: string, data: Record<string, unknown>, expectedRevision: number): Promise<Save>;
+  putSave(
+    userId: string,
+    slot: string,
+    incoming: { schemaVersion: number; data: Record<string, unknown> },
+    expectedRevision: number,
+  ): Promise<Save>;
   /** Throws when the store cannot be reached (readiness check). */
   ping(): Promise<void>;
   close(): Promise<void>;
@@ -49,17 +56,25 @@ export class MemoryStore implements Store {
     return this.users.get(id) ?? null;
   }
 
+  // Saves go through a JSON round trip, as they do through Postgres `jsonb`: what is read back is what a database
+  // would return, and a caller cannot change a stored save by keeping a reference to it.
   async getSave(userId: string, slot: string): Promise<Save | null> {
-    return this.saves.get(`${userId}/${slot}`) ?? null;
+    const save = this.saves.get(`${userId}/${slot}`);
+    return save ? (JSON.parse(JSON.stringify(save)) as Save) : null;
   }
 
-  async putSave(userId: string, slot: string, data: Record<string, unknown>, expectedRevision: number): Promise<Save> {
+  async putSave(
+    userId: string,
+    slot: string,
+    incoming: { schemaVersion: number; data: Record<string, unknown> },
+    expectedRevision: number,
+  ): Promise<Save> {
     const key = `${userId}/${slot}`;
     const current = this.saves.get(key)?.revision ?? 0;
     if (current !== expectedRevision) throw new RevisionConflict(current);
-    const save = { revision: current + 1, data };
+    const save = JSON.parse(JSON.stringify({ revision: current + 1, ...incoming })) as Save;
     this.saves.set(key, save);
-    return save;
+    return JSON.parse(JSON.stringify(save)) as Save;
   }
 
   async ping(): Promise<void> {}
