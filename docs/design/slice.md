@@ -83,7 +83,8 @@ Each of these is an issue.
 - **Characters** (#90): the player model carries no weapon in hand yet; hit and death reactions.
 - **Grenades** (#99) and **boss nights** (#97) join through `NightServer` and the rules.
 - **Real transport.** `LoopbackLink` becomes the network protocol; the player bodies split into server bodies and
-  drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
+  drawn avatars, and the doors' and boards' look follows the `door_opened` and `board_*` events instead of the
+  shared scene.
 - **Player health in the rules.** It lives in `NightServer` for now; it belongs beside the downed state in
   `GameRules`, with its snapshot.
 - **Ammunition, weapons and the crane in the shop**, tonics, a switch for each of the generator's circuits (the lamps

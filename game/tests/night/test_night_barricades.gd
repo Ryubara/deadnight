@@ -29,6 +29,15 @@ func _count(type: StringName) -> int:
 	return _events.filter(func(event: Dictionary) -> bool: return event["type"] == type).size()
 
 
+## Boards the dead have torn off breach `id` so far.
+func _torn_at(id: StringName) -> int:
+	var torn := 0
+	for event in _events:
+		if event["type"] == &"board_torn" and event["barricade_id"] == id:
+			torn += 1
+	return torn
+
+
 func _boards_in_the_lot(night: Night, id: StringName) -> int:
 	var up := 0
 	for board in night.world.barricade(id).get_children():
@@ -124,15 +133,7 @@ func test_the_dead_tear_the_boards_off_before_they_come_in() -> void:
 				if gate.boards() > 0:
 					assert_float(gate.depth_of(zombie.position)).is_less(0.0)
 			elif came_for.has(zombie.id) and torn_when_in < 0:
-				var gate_id := came_for[zombie.id]
-				torn_when_in = (
-					_events
-					. filter(
-						func(e: Dictionary) -> bool:
-							return e["type"] == &"board_torn" and e["barricade_id"] == gate_id
-					)
-					. size()
-				)
+				torn_when_in = _torn_at(came_for[zombie.id])
 		if torn_when_in >= 0:
 			break
 	# The first one in had to have every board of its breach off first.
