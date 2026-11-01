@@ -155,12 +155,13 @@ func test_sprint_is_faster_than_run() -> void:
 	assert_float(_player.ground_speed()).is_equal_approx(_tuning.sprint_speed, 0.05)
 
 
-func test_sprint_needs_forward_movement() -> void:
+func test_sprint_works_sideways_too() -> void:
+	# It used to need forward movement; now every direction sprints (test_omni_movement.gd).
 	_runner.simulate_action_press("move_left")
 	_runner.simulate_action_press("sprint")
 	await _seconds(1.0)
-	assert_bool(_player.is_sprinting()).is_false()
-	assert_float(_player.ground_speed()).is_equal_approx(_tuning.run_speed, 0.05)
+	assert_bool(_player.is_sprinting()).is_true()
+	assert_float(_player.ground_speed()).is_equal_approx(_tuning.sprint_speed, 0.05)
 
 
 func test_diagonal_is_no_faster_than_straight() -> void:
