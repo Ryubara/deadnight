@@ -1,0 +1,8 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+resource_name = "screen_face"
+albedo_color = Color(0.875, 0.910, 0.961, 1)
+roughness = 1.0
+emission_enabled = true
+emission = Color(0.561, 0.643, 0.784, 1)

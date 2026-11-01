@@ -1,0 +1,8 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+resource_name = "yard_gen"
+albedo_color = Color(0.820, 0.671, 0.275, 1)
+roughness = 1.0
+emission_enabled = true
+emission = Color(0.541, 0.439, 0.125, 1)
