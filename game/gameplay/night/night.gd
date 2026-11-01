@@ -198,6 +198,20 @@ func _make_autopilot() -> void:
 		if item.kind == ShopItem.Kind.DOOR:
 			autopilot.prices[item.id] = item.price
 			autopilot.order.append(item.id)
+	autopilot.spots = world.shop_spots()
+	for item in tuning.economy.items:
+		match item.kind:
+			ShopItem.Kind.WEAPON, ShopItem.Kind.CRANE:
+				autopilot.prices_of_goods[item.id] = item.price
+				autopilot.wanted.append(item.id)
+				if item.kind == ShopItem.Kind.CRANE:
+					autopilot.crane_prizes = item.pool.size()
+			ShopItem.Kind.AMMO:
+				autopilot.ammo_prices[item.weapon] = item.price
+	autopilot.wanted.sort_custom(
+		func(a: StringName, b: StringName) -> bool:
+			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
+	)
 	autopilot.whole_boards = tuning.barricades.boards
 	autopilot.switches.capacity = tuning.fuel.capacity
 	autopilot.switches.save_below = tuning.fuel.low_fraction
@@ -213,14 +227,13 @@ func _make_autopilot() -> void:
 			autopilot.door_goals[door_id] = points[0]
 
 
-## The shoulder camera looks where the bot looks.
+## The shoulder camera looks where the bot looks: the bot's yaw arrives in steps, and the rig
+## turns toward it with its own spring (`PlayerTuning.steer_frequency`), as it follows a player.
 func _aim_rig(command: NightCommand) -> void:
-	var rig := player().camera_rig
 	var pitch := 0.0
 	if command.fire:
 		pitch = asin(clampf(command.dir.y, -1.0, 1.0))
-	rig.yaw = lerp_angle(rig.yaw, command.motion.yaw, 0.2)
-	rig.pitch = lerpf(rig.pitch, pitch, 0.2)
+	player().camera_rig.steer(command.motion.yaw, pitch)
 
 
 ## The bot's camera stays above and behind it, so a recording reads.

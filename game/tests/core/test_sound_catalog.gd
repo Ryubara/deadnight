@@ -70,7 +70,7 @@ func test_the_beds_loop_and_sit_under_the_effects() -> void:
 		assert_float(def.volume_db).override_failure_message(id + " too loud").is_less_equal(-12.0)
 		assert_str(def.group).is_equal("bed")
 	assert_str(SoundCatalog.get_def(&"bed_score").bus).is_equal("Music")
-	assert_str(SoundCatalog.get_def(&"bed_crickets").bus).is_equal("Effects")
+	assert_str(SoundCatalog.get_def(&"bed_crickets").bus).is_equal("Ambience")
 
 
 func test_a_board_torn_outranks_a_groan() -> void:

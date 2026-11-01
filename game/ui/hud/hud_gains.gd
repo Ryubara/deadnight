@@ -32,20 +32,19 @@ var rows: Array[Dictionary] = []
 ## How wide the list may be: a row's type shrinks to fit.
 var room := WIDTH
 
-var _box := VBoxContainer.new()
+var _stack := HudRowStack.new()
 
 
 func _init() -> void:
 	super()
-	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box.add_theme_constant_override(&"separation", HudStyle.XS)
-	_box.custom_minimum_size.x = room
-	add_child(_box)
-	_box.minimum_size_changed.connect(update_minimum_size)
+	_stack.gap = HudStyle.XS
+	_stack.custom_minimum_size.x = room
+	add_child(_stack)
+	_stack.minimum_size_changed.connect(update_minimum_size)
 
 
 func _get_minimum_size() -> Vector2:
-	return _box.get_combined_minimum_size()
+	return _stack.get_combined_minimum_size()
 
 
 func _process(delta: float) -> void:
@@ -58,7 +57,7 @@ func set_room(width: float) -> void:
 	if is_equal_approx(width, room):
 		return
 	room = width
-	_box.custom_minimum_size.x = room
+	_stack.custom_minimum_size.x = room
 	for row in rows:
 		_write(row)
 
@@ -93,7 +92,7 @@ func add_gain(reason: StringName, amount: int) -> void:
 	gain["size"] = HudStyle.MEDIUM if big else HudStyle.TEXT
 	gain["label"] = HudStyle.clip(HudStyle.label("", gain["size"], _colour(reason, amount), big))
 	rows.append(gain)
-	_box.add_child(gain["label"])
+	_stack.add_row(gain["label"])
 	_write(gain)
 	while rows.size() > MAX_ROWS:
 		_drop(rows[0])
@@ -107,6 +106,7 @@ func advance(delta: float) -> void:
 		(row["label"] as Label).modulate.a = clampf(left / FADE, 0.0, 1.0)
 		if left <= 0.0:
 			_drop(row)
+	_stack.advance(delta)
 
 
 func _write(row: Dictionary) -> void:
@@ -119,8 +119,7 @@ func _write(row: Dictionary) -> void:
 
 func _drop(row: Dictionary) -> void:
 	rows.erase(row)
-	_box.remove_child(row["label"])
-	(row["label"] as Label).queue_free()
+	_stack.remove_row(row["label"])
 
 
 func _colour(reason: StringName, amount: int) -> Color:

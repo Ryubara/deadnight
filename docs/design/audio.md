@@ -25,15 +25,22 @@ dry where you are, big and open everywhere else, and a little theatrical**.
 
 ## Buses
 
-The layout is the settings screen's (`default_bus_layout.tres`, volumes owned by `Settings`). Nothing here changes it.
+Six buses, each with its own slider in the settings screen (`default_bus_layout.tres`, volumes owned by `Settings`).
+Everything goes to Master, which is the master slider.
 
-| Bus | Carries | Ducked by the sting |
-| --- | --- | --- |
-| Music | stings (and, later, the score) | no |
-| Effects | guns, reloads, steps, the dead, the generator | yes |
-| UI | menu and widget sounds | no |
+| Bus (slider) | Carries | Ducked by the sting | Default |
+| --- | --- | --- | --- |
+| Music | stings and the score | no | 80 |
+| Effects | guns, reloads, steps, the dead, the generator, boards, doors, blows, the till | yes | 100 |
+| Voice ("Voices") | the player's own hurt and downed voices | no: what you hear of yourself is never ducked | 100 |
+| Ambience | the crickets, the highway and the projector | yes | 80 |
+| UI ("Interface sounds") | menu and widget sounds | no | 80 |
 
-Ducking never touches a bus's volume. The service adds one `AudioEffectAmplify` to Effects and moves that, so the
+The ambience sits lowest on purpose (its sounds are 14 to 22 dB under a footstep), so a player who finds the night too
+busy turns one slider and keeps the guns. A sting ducks Effects and Ambience together, so the title card is heard over the
+night; Music, Voice and UI are left alone.
+
+Ducking never touches a bus's volume. The service adds one `AudioEffectAmplify` to each ducked bus and moves those, so the
 player's own sliders and the duck do not fight.
 
 ## The sounds
@@ -132,8 +139,8 @@ capture scenes play by hand (an open issue).
   their own layer) returns 0 to 1. A fully blocked sound is 9 dB quieter and low-passed at 1.1 kHz, and counts as half as
   loud when the budget compares it. Measured in a capture: a rifle shot behind a wall was 10 dB down and its centre of
   energy fell from 3.1 kHz to 0.5 kHz.
-- **Ducking.** A sting lowers Effects by its `duck_db` (9 dB for `round_start`, 5 for `round_end`) at 80 dB/s, holds it
-  for the sting's front (1.6 s, 0.8 s) and lets go at 14 dB/s.
+- **Ducking.** A sting lowers Effects and Ambience by its `duck_db` (9 dB for `round_start`, 5 for `round_end`) at
+  80 dB/s, holds it for the sting's front (1.6 s, 0.8 s) and lets go at 14 dB/s.
 - **Seeded.** Variants and pitch come from one generator (`seed_random`); the clock is the service's own
   (`advance(delta)`), so tests and replays do not depend on real time.
 - **UI.** The service sets `UIAudio.handler` when it starts; every `gds_ui` control and every router transition then

@@ -15,6 +15,8 @@ var kills := 0
 var points_earned := 0
 var points_spent := 0
 var doors_bought := 0
+## What the local player has bought, by shop item id: how many times.
+var bought: Dictionary = {}
 var shots := 0
 var rounds_started := 0
 var damage_taken := 0.0
@@ -47,8 +49,10 @@ func _apply(event: Dictionary) -> void:
 				else:
 					points_spent -= event["delta"]
 		&"purchase_made":
-			if event["player_id"] == player_id and String(event["item_id"]).begins_with("door_"):
-				doors_bought += 1
+			if event["player_id"] == player_id:
+				bought[event["item_id"]] = bought.get(event["item_id"], 0) + 1
+				if String(event["item_id"]).begins_with("door_"):
+					doors_bought += 1
 		&"shot_fired":
 			if event["shooter_id"] == player_id:
 				shots += 1

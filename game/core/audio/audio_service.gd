@@ -47,7 +47,9 @@ const OCCLUSION_LOUDNESS := 0.5
 ## Ducking: how fast the Effects bus drops and recovers, in dB per second.
 const DUCK_ATTACK_DB_PER_S := 80.0
 const DUCK_RELEASE_DB_PER_S := 14.0
-const DUCK_BUS := &"Effects"
+## The buses a sting ducks (the guns and the dead, and the ambience under them). The voice of the
+## player, the music and the interface are left alone.
+const DUCK_BUSES: Array[StringName] = [&"Effects", &"Ambience"]
 
 ## Where the listener is when no camera exists (and what tests set).
 var listener: Node3D
@@ -77,7 +79,8 @@ var _budget_3d: VoiceBudget
 var _budget_2d: VoiceBudget
 var _duck_until := 0.0
 var _duck_target := 0.0
-var _duck_effect: AudioEffectAmplify
+## The amplify effect this service put on each ducked bus.
+var _duck_effects: Dictionary[StringName, AudioEffectAmplify] = {}
 var _warned := {}
 var _rules: GameRules
 
@@ -134,8 +137,8 @@ func advance(delta: float) -> void:
 	_duck_target = _duck_target if _now < _duck_until else 0.0
 	var rate := DUCK_ATTACK_DB_PER_S if _duck_target < duck_db else DUCK_RELEASE_DB_PER_S
 	duck_db = move_toward(duck_db, _duck_target, rate * delta)
-	if _duck_effect != null:
-		_duck_effect.volume_db = duck_db
+	for effect in _duck_effects.values():
+		effect.volume_db = duck_db
 	_step_beds(delta)
 
 
@@ -443,19 +446,20 @@ func _on_rules_event(event: Dictionary) -> void:
 
 
 func _add_duck_effect() -> void:
-	var bus := AudioServer.get_bus_index(DUCK_BUS)
-	if bus < 0:
-		return
-	_duck_effect = AudioEffectAmplify.new()
-	AudioServer.add_bus_effect(bus, _duck_effect)
+	for bus_name in DUCK_BUSES:
+		var bus := AudioServer.get_bus_index(bus_name)
+		if bus < 0:
+			continue
+		var effect := AudioEffectAmplify.new()
+		AudioServer.add_bus_effect(bus, effect)
+		_duck_effects[bus_name] = effect
 
 
 func _remove_duck_effect() -> void:
-	var bus := AudioServer.get_bus_index(DUCK_BUS)
-	if bus < 0 or _duck_effect == null:
-		return
-	for i in AudioServer.get_bus_effect_count(bus):
-		if AudioServer.get_bus_effect(bus, i) == _duck_effect:
-			AudioServer.remove_bus_effect(bus, i)
-			break
-	_duck_effect = null
+	for bus_name in _duck_effects:
+		var bus := AudioServer.get_bus_index(bus_name)
+		for i in AudioServer.get_bus_effect_count(bus) if bus >= 0 else 0:
+			if AudioServer.get_bus_effect(bus, i) == _duck_effects[bus_name]:
+				AudioServer.remove_bus_effect(bus, i)
+				break
+	_duck_effects.clear()
