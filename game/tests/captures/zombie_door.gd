@@ -69,7 +69,7 @@ func _ready() -> void:
 	_horde = ZombieHorde.new()
 	_horde.model_scene = load(ZOMBIE_MODEL)
 	add_child(_horde)
-	_horde.setup(director, camera)
+	_horde.setup(director, camera, sim.tuning.emerge_seconds)
 	_rules.apply(RulesAction.skip_break())
 
 
