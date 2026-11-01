@@ -32,7 +32,7 @@ export function signToken(
   return `${signingInput}.${b64(mac(secret, signingInput))}`;
 }
 
-/** Returns the claims, or null when the token is malformed, forged, expired or of another kind. */
+/** Returns the claims, or null when the token is malformed, forged, expired, lacks a numeric iat or exp, or is of another kind. */
 export function verifyToken(
   secret: string,
   kind: TokenKind,
@@ -47,7 +47,11 @@ export function verifyToken(
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
   try {
     const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as TokenClaims;
-    if (claims.kind !== kind || typeof claims.sub !== "string" || claims.exp <= nowSeconds) return null;
+    // A correctly signed token without a numeric exp must not live forever (`undefined <= now` is false).
+    if (claims === null || typeof claims !== "object") return null;
+    if (!Number.isFinite(claims.iat) || typeof claims.iat !== "number") return null;
+    if (!Number.isFinite(claims.exp) || typeof claims.exp !== "number" || claims.exp <= nowSeconds) return null;
+    if (claims.kind !== kind || typeof claims.sub !== "string") return null;
     return claims;
   } catch {
     return null;
