@@ -72,9 +72,18 @@ one material per character for all its parts.
 
 ## Budget
 
-The [style bible](style.md#budgets-proposed-for-the-web) gives a player 6k triangles and one material. The heaviest
-assembled preset and every part's count are in `parts.json` (`tris`) and in the pull request; the build fails if a
-preset goes over 6,000.
+The [style bible](style.md#budgets-proposed-for-the-web) gives a player 6k triangles and one material. Every part's
+count and each preset's total are in `parts.json` (`tris`); the build fails if a preset goes over 6,000.
+
+| Measured | Tris |
+| --- | --- |
+| Presets | 4,408 (Greaser) to 5,080 (Projectionist); the kit Soldier is 5,828 |
+| Torso | 2,288 (jacket, shirt, tank) to 2,754 (vest, with the kit's shoulder pads); letterman 2,344, rolled 2,520 |
+| Head, legs, feet | 736, 500, 702 (the kit Soldier's own faces, recoloured) |
+| Helmet | 1,136 (the kit's, eyes and brows moved to the head); original hats 88-292, hair 44-278, eyewear 220-436, scarf 152, bow tie 84, armband 92 |
+
+Draw calls: one per visible part (5-7) with one shared material per character. No far level of detail yet: the
+style bible's 2k far budget is a follow-up.
 
 ## The eight starting looks
 
@@ -85,12 +94,24 @@ already in use (`SoldierLook.default_preset(taken)`), so a group of up to eight 
 | --- | --- | --- | --- | --- | --- |
 | Greaser | plain, pompadour | none | black jacket | cuffed denim, boots | - |
 | Usher | plain, crew | pillbox | red jacket, gold trim | striped, shoes | bow tie |
-| Mechanic | stubble, crew | ballcap | rolled sleeves | trousers, boots | goggles |
+| Mechanic | stubble, crew | none | rolled sleeves | trousers, boots | goggles |
 | Lifeguard | plain, flattop | none | tank | shorts, sneakers | sunglasses |
 | Soda jerk | plain, ponytail | papercap | shirt | trousers, shoes | bow tie |
-| Ranger | beard, crew | ranger | shirt | trousers, boots | scarf |
-| Letterman | plain, pompadour | none | letterman | cuffed, sneakers | - |
+| Ranger | beard, crew | ranger | olive shirt | tan trousers, boots | scarf |
+| Letterman | plain, crew | ballcap | letterman | cuffed, sneakers | - |
 | Projectionist | stubble, crew | none | rolled sleeves | trousers, shoes | glasses, armband |
+
+## Assembling in Godot
+
+```gdscript
+var model := SoldierLook.instantiate()            # every part hidden
+var look := SoldierLook.default_preset(taken_ids)  # or a saved / sent look
+SoldierLook.apply(model, look)                     # shows its parts, builds its material, returns tris
+```
+
+The model carries the same `CharacterArmature` and the same clips as the Soldier (`soldier.glb`), bone for bone, so
+the player's AnimationTree and the weapon holds of [Animation](animation.md) work on it unchanged. How the parts were
+made and what broke: [Soldier parts](../research/soldier-parts.md).
 
 ## Rebuilding
 
