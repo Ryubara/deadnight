@@ -34,6 +34,7 @@ func _ready() -> void:
 	_touch = TouchControls.new()
 	_touch.state = _hud.state
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
+	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	add_child(_touch)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
@@ -74,6 +75,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_pause()
 		get_viewport().set_input_as_handled()
+
+
+## A left-handed layout swaps the HUD's corner columns with the buttons.
+func _on_mirrored_changed(mirrored: bool) -> void:
+	_hud.mirrored = mirrored
 
 
 ## The HUD keeps inside the notch and the rounded corners.

@@ -190,20 +190,34 @@ func _steps_over(seconds: float, look: StringName, speed: float, from_z := -6.0)
 	return _count(sound)
 
 
+## The steps a gait makes in `seconds`: two a cycle, at the cycle the clip is played in.
+func _expected_steps(seconds: float, look: StringName, speed: float) -> int:
+	return roundi(seconds / ZombieVoiceTable.cycle_seconds(look, speed) * 2.0)
+
+
 func test_walking_feet_fall_twice_per_walk_cycle() -> void:
 	var steps := _steps_over(20.0, &"walker", 1.0)
-	assert_int(steps).is_between(29, 31)  # 20 s / 1.3333 s * 2
+	assert_int(steps).is_between(29, 31)  # 20 s / 1.3333 s * 2, the walk played at its own pace
+	assert_int(steps).is_between(
+		_expected_steps(20.0, &"walker", 1.0) - 1, _expected_steps(20.0, &"walker", 1.0) + 1
+	)
 
 
 func test_running_feet_keep_the_runs_faster_cadence() -> void:
-	var steps := _steps_over(10.0, &"runner", 3.0)
-	assert_int(steps).is_between(29, 31)  # 10 s / 0.6667 s * 2
+	# At 3.0 m/s a runner is in the run, played at 0.7 to 0.8 times: its steps follow the feet.
+	var expected := _expected_steps(10.0, &"runner", 3.0)
+	assert_int(_steps_over(10.0, &"runner", 3.0)).is_between(expected - 1, expected + 1)
+	# At the cap the run is played faster than it was drawn, and the feet are quicker.
+	var sprint := _expected_steps(10.0, &"runner", 6.0)
+	assert_int(sprint).is_greater(expected)
 
 
 func test_the_crawler_drags_and_the_brute_stomps_at_their_own_sounds() -> void:
-	assert_int(_steps_over(10.0, &"crawler", 0.5)).is_between(11, 13)
+	var drags := _expected_steps(10.0, &"crawler", 0.5)
+	assert_int(_steps_over(10.0, &"crawler", 0.5)).is_between(drags - 1, drags + 1)
 	assert_int(_count(&"zombie_drag")).is_greater(0)
-	assert_int(_steps_over(10.0, &"brute", 0.8)).is_between(14, 16)
+	var stomps := _expected_steps(10.0, &"brute", 0.8)
+	assert_int(_steps_over(10.0, &"brute", 0.8)).is_between(stomps - 1, stomps + 1)
 	assert_int(_count(&"zombie_step_stomp")).is_greater(0)
 
 

@@ -3,6 +3,26 @@
 Problems we hit and how we solved them, newest first. Five lines each: date, symptom, cause, fix, where it is
 documented.
 
+## 2026-11-01: a left-handed mirror of the buttons alone lands Fire on the HUD's points card
+
+- **Symptom:** mirroring only the buttons would draw the Fire arc over the points and health cards and the stick's
+  ring over the ammo card (#284; seen in the layout numbers before building it).
+- **Cause:** the buttons were placed to miss the cards in the right corner; the cards are in fixed corners, so flipping
+  only the buttons dropped them on the cards.
+- **Fix:** the HUD's corner columns flip with the layout (`Hud.mirrored`); the layout test runs both hands against the
+  HUD in the same state.
+- **Documented:** [touch controls](design/touch-controls.md#left-handed-layout).
+
+## 2026-11-01: the HUD's input tracker never saw a touch, and the layer's own look would have ended touch mode
+
+- **Symptom:** the prompt card kept its keycap on a phone though the touch controls were up (#283).
+- **Cause:** `TouchControls` sits after the HUD in the tree, so its `_input` runs first and marks every touch handled;
+  `Hud._input`, which feeds `UIInputMode`, never got one. And the look it sends is `InputEventMouseMotion`, which the
+  tracker read as a mouse being picked up.
+- **Fix:** the layer calls `UIInputMode.track` on each touch itself and sets `UIInputMode.touch` when it comes up; mouse
+  motion never ends touch mode, a real mouse click (not the engine's emulated copy) does.
+- **Documented:** [touch controls](design/touch-controls.md#first-run-and-key-hints).
+
 ## 2026-11-01: a bot fired a magazine into a car the camera could see past
 
 - **Symptom:** the autopilot emptied a magazine into a car cabin five metres away and killed nothing, though its line of
