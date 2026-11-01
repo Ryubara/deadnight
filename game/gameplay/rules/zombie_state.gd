@@ -3,6 +3,18 @@ extends RefCounted
 ## What the rules know about one living zombie: its type, remaining health and how many of the hits
 ## on it have paid. Plain data; GameRules is the only thing that changes it.
 
+## The keys of `to_dict`, each with the type it must have.
+const SNAPSHOT_KEYS := {
+	"id": TYPE_INT,
+	"type": TYPE_STRING_NAME,
+	"health": TYPE_FLOAT,
+	"max_health": TYPE_FLOAT,
+	"speed": TYPE_FLOAT,
+	"leg_damage": TYPE_FLOAT,
+	"crippled": TYPE_BOOL,
+	"paid_hits": TYPE_INT,
+}
+
 var id: int = 0
 var type: StringName = &"walker"
 var health: float = 0.0

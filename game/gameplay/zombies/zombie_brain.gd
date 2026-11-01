@@ -10,7 +10,8 @@ extends RefCounted
 
 ## Advances `zombie` by `delta`. `target_pos` is where its target stands (ignored without one);
 ## `waypoint` the next point on the way there; `move_speed` its speed on the ground it stands on.
-## Returns the strike that landed this tick as `{"zombie_id", "target_id", "damage"}`, or `{}`.
+## Returns the strike that landed this tick as `{"zombie_id", "target_id", "damage", "knockback"}`
+## (the zombie's own, from its profile), or `{}`.
 static func step(
 	zombie: ZombieBody,
 	tuning: ZombieTuning,
@@ -74,19 +75,21 @@ static func _attack(
 	zombie: ZombieBody, tuning: ZombieTuning, delta: float, has_target: bool, target_pos: Vector3
 ) -> Dictionary:
 	var strike := {}
+	var profile := zombie.profile
 	if has_target:
 		var to_target := target_pos - zombie.position
 		to_target.y = 0.0
 		_turn_toward(zombie, to_target, tuning.turn_rate * delta)
-		if not zombie.struck and zombie.mode_time >= tuning.windup_seconds:
+		if not zombie.struck and zombie.mode_time >= profile.windup:
 			zombie.struck = true
 			if to_target.length() <= tuning.reach + tuning.strike_slack:
 				strike = {
 					"zombie_id": zombie.id,
 					"target_id": zombie.target_id,
-					"damage": tuning.strike_damage,
+					"damage": profile.damage,
+					"knockback": profile.knockback,
 				}
-	if zombie.mode_time >= tuning.swing_seconds:
+	if zombie.mode_time >= profile.windup + tuning.recovery_seconds():
 		zombie.enter(ZombieBody.Mode.CHASE)
 	return strike
 

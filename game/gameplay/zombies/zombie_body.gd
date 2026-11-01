@@ -6,6 +6,8 @@ extends RefCounted
 enum Mode { EMERGING, CHASE, ATTACK, STAGGER, DYING }
 
 var id: int = 0
+## What it is and how it hits: set when it spawns, changed when a blast takes its legs.
+var profile: ZombieProfile
 ## Metres per second on open ground, as the rules rolled it.
 var speed: float = 1.0
 var position := Vector3.ZERO
@@ -20,6 +22,8 @@ var struck: bool = false
 ## Planar speed it moved at last tick.
 var move_speed: float = 0.0
 var lit: bool = false
+## True once a blast took its legs.
+var crippled: bool = false
 var velocity := Vector3.ZERO
 var path := PackedVector3Array()
 var path_index: int = 0
@@ -32,6 +36,11 @@ func enter(new_mode: Mode) -> void:
 	mode_time = 0.0
 	struck = false
 	episode = (episode + 1) & 0xFF
+
+
+## The model it is drawn in.
+func look() -> StringName:
+	return profile.look if profile != null else ZombieModels.DEFAULT
 
 
 func is_alive() -> bool:
@@ -47,4 +56,5 @@ func view_entry() -> Dictionary:
 		"mode": mode,
 		"episode": episode,
 		"speed": move_speed,
+		"look": look(),
 	}

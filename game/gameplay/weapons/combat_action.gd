@@ -49,8 +49,9 @@ static func tick(delta: float) -> Dictionary:
 	return {"type": TICK, "delta": delta}
 
 
-## Where every target is this step: a list of `{"id": int, "pos": Vector3, "yaw": float}`. Also
-## the frame the lag compensation remembers.
+## Where every target is this step: a list of `{"id": int, "pos": Vector3, "yaw": float}` and,
+## for a target whose hit zones are not the walker's size, `"scale"`. Also the
+## frame the lag compensation remembers.
 static func targets(list: Array) -> Dictionary:
 	return {"type": TARGETS, "list": list}
 

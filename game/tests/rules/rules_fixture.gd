@@ -74,6 +74,21 @@ static func record(rules: GameRules) -> RulesFixture:
 	return recorder
 
 
+## A night in round 1 with one living zombie of `type_id` (spawned from a forced plan). Pass a
+## `RulesFixture.new()` as `recorder` to also get every event from the start, spawn included.
+static func with_one_living(
+	type_id: StringName, t: RulesTuning = null, recorder: RulesFixture = null
+) -> GameRules:
+	var night := make_rules(1, 11, t)
+	if recorder != null:
+		night.event_emitted.connect(func(event: Dictionary) -> void: recorder.events.append(event))
+	into_round_one(night)
+	night._plan.assign([type_id])
+	run(night, 2.0)
+	assert(night.zombie_ids().size() == 1, "expected exactly one living zombie")
+	return night
+
+
 ## The ids of the zombies the rules asked for so far.
 func spawned_ids() -> Array[int]:
 	var ids: Array[int] = []

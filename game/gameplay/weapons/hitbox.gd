@@ -23,38 +23,41 @@ const BOUND_CENTRE := Vector3(0, 0.95, 0)
 const BOUND_RADIUS := 1.1
 
 
-## The zone shapes in the world: `[{zone, a, b, r}]`.
-static func shapes(position: Vector3, yaw: float) -> Array[Dictionary]:
+## The zone shapes in the world: `[{zone, a, b, r}]`. `scale` sizes the whole set about the feet:
+## a tall zombie's zones are larger, and a hard-to-hit one's (a crawler) smaller and lower.
+static func shapes(position: Vector3, yaw: float, scale: float = 1.0) -> Array[Dictionary]:
 	var basis := Basis(Vector3.UP, yaw)
 	var placed: Array[Dictionary] = []
 	for zone in ZONES:
 		var shape := {
 			"zone": zone["zone"],
-			"a": position + basis * (zone["a"] as Vector3),
-			"b": position + basis * (zone["b"] as Vector3),
-			"r": zone["r"],
+			"a": position + basis * (zone["a"] as Vector3) * scale,
+			"b": position + basis * (zone["b"] as Vector3) * scale,
+			"r": zone["r"] * scale,
 		}
 		placed.append(shape)
 	return placed
 
 
 ## The nearest zone a ray reaches within `max_distance`, as `{zone, distance}`, or `{}`. `inflate`
-## fattens every shape by that many metres, which turns the ray into a sweep of a sphere.
+## fattens every shape by that many metres, which turns the ray into a sweep of a sphere; `scale`
+## sizes the zombie's zones (`shapes`).
 static func ray(
 	origin: Vector3,
 	dir: Vector3,
 	max_distance: float,
 	position: Vector3,
 	yaw: float,
-	inflate: float = 0.0
+	inflate: float = 0.0,
+	scale: float = 1.0
 ) -> Dictionary:
-	var bound := position + BOUND_CENTRE
-	var reach := BOUND_RADIUS + inflate
+	var bound := position + BOUND_CENTRE * scale
+	var reach := BOUND_RADIUS * scale + inflate
 	if HitShapes.distance_to_segment(bound, origin, origin + dir * max_distance) > reach:
 		return {}
 	var best := {}
 	var best_t := max_distance
-	for shape in shapes(position, yaw):
+	for shape in shapes(position, yaw, scale):
 		var t := HitShapes.ray_capsule(origin, dir, shape["a"], shape["b"], shape["r"] + inflate)
 		if t >= 0.0 and t <= best_t:
 			best_t = t

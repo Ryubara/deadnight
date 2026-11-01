@@ -31,7 +31,8 @@ extends Resource
 @export var reach: float = 1.4
 ## The blow lands this many seconds into a swing.
 @export var windup_seconds: float = 0.45
-## A whole swing, windup and recovery, in seconds.
+## A whole swing, windup and recovery, in seconds. A type with a longer windup (its telegraph)
+## keeps the same recovery after the blow.
 @export var swing_seconds: float = 1.2
 ## Metres past `reach` at which a landing blow still connects (the player may step back).
 @export var strike_slack: float = 0.4
@@ -45,3 +46,8 @@ extends Resource
 @export var stagger_seconds: float = 0.4
 ## Seconds a dead zombie stays down before it is cleared.
 @export var death_seconds: float = 2.5
+
+
+## Seconds after the blow before the zombie can swing again.
+func recovery_seconds() -> float:
+	return maxf(swing_seconds - windup_seconds, 0.0)

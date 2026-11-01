@@ -37,6 +37,7 @@ def load(title, path, pose, hide=None):
     kitlib.gltf_import(path)
     objs = [o for o in bpy.data.objects if o not in before]
     kitlib.apply_base_colours(objs, path)
+    kitlib.base_colour_active()
     arm = kitlib.armature_of(objs)
     if arm:
         action = None

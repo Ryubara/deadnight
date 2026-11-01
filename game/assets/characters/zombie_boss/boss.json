@@ -1,0 +1,34 @@
+{
+ "kit_tris": 7822,
+ "accessory_tris": 492,
+ "full_tris": 8314,
+ "tris": 8000,
+ "far_tris": 2999,
+ "height": 1.45,
+ "bones": 50,
+ "kit_clips": [
+  "Crawl",
+  "Death",
+  "HitReact",
+  "Idle",
+  "Idle_Attack",
+  "Jump",
+  "Jump_Idle",
+  "Jump_Land",
+  "No",
+  "Punch",
+  "Run",
+  "Run_Arms",
+  "Run_Attack",
+  "Walk",
+  "Wave",
+  "Yes"
+ ],
+ "boss_clips": [
+  "Boss_Walk",
+  "Boss_Attack",
+  "Boss_Roar",
+  "Boss_Stagger",
+  "Boss_Death"
+ ]
+}

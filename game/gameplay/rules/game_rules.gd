@@ -65,7 +65,9 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-const SNAPSHOT_VERSION := 4
+## 5: `plan`, `special_id`, `round_total` and a zombie's `type`, `max_health` and `speed` together.
+## Two older layouts both called themselves 4; every older snapshot is refused as `bad_version`.
+const SNAPSHOT_VERSION := 5
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -285,15 +287,20 @@ func from_wire(wire: String) -> StringName:
 
 ## Replaces this night's state with a snapshot. Emits no events: a restore is not a change.
 ## Returns `&""` when it worked, else why it did not (`RESTORE_*`) with this night left untouched:
-## a snapshot of another version, of another tuning table, or one that is not a snapshot.
+## a snapshot of another version (any older layout too), of another tuning table, or one that is
+## not a snapshot, or whose insides do not fit (a zombie without a type, a plan naming no type).
 func from_dict(data: Dictionary) -> StringName:
-	for key: String in SNAPSHOT_KEYS:
-		if not data.has(key) or not _fits(data[key], SNAPSHOT_KEYS[key]):
-			return RESTORE_MALFORMED
+	# The version first: an older layout has other keys and would otherwise look damaged.
+	if not data.has("version") or typeof(data["version"]) != TYPE_INT:
+		return RESTORE_MALFORMED
 	if data["version"] != SNAPSHOT_VERSION:
 		return RESTORE_BAD_VERSION
+	if not SnapshotCheck.fits(data, SNAPSHOT_KEYS):
+		return RESTORE_MALFORMED
 	if data["tuning_id"] != tuning.fingerprint():
 		return RESTORE_WRONG_TUNING
+	if not SnapshotCheck.insides_fit(data, tuning):
+		return RESTORE_MALFORMED
 	rng_seed = data["seed"]
 	phase = data["phase"]
 	round_number = data["round"]
@@ -320,10 +327,6 @@ func from_dict(data: Dictionary) -> StringName:
 	_cripple_rng.seed = rng_seed ^ CRIPPLE_STREAM
 	_cripple_rng.state = data["cripple_rng_state"]
 	return &""
-
-
-func _fits(value: Variant, expected: int) -> bool:
-	return typeof(value) == expected or (expected == TYPE_FLOAT and typeof(value) == TYPE_INT)
 
 
 # --- Actions ---
@@ -675,23 +678,9 @@ func _hit(action: Dictionary) -> void:
 		damage *= type.weak_multiplier
 	var dealt := minf(damage, zombie.health)
 	zombie.health -= dealt
-	_emit(
-		&"zombie_damaged",
-		{
-			"zombie_id": zombie_id,
-			"zombie_type": type.id,
-			"player_id": player_id,
-			"zone": zone,
-			"damage": dealt,
-			"health": zombie.health,
-			"max_health": zombie.max_health,
-		}
-	)
+	_emit_damaged(zombie, player_id, zone, dealt)
 	if zombie.health > 0.0:
-		var paid_limit := (
-			type.max_paid_hits if type.max_paid_hits > 0 else tuning.economy.max_paid_hits
-		)
-		if zombie.paid_hits < paid_limit:
+		if zombie.paid_hits < _paid_hit_limit(type):
 			zombie.paid_hits += 1
 			var pay := tuning.economy.headshot_hit if headshot else tuning.economy.hit
 			_award(player_id, _scaled(pay, type), &"headshot_hit" if headshot else &"hit")
@@ -705,6 +694,27 @@ func _hit(action: Dictionary) -> void:
 	else:
 		_award(player_id, _scaled(tuning.economy.kill, type), &"kill")
 	_remove_zombie(zombie_id, &"killed", player_id, zone, melee)
+
+
+## The one `zombie_damaged` event, for a shot and a blast alike, so the two cannot drift apart.
+func _emit_damaged(zombie: ZombieState, player_id: int, zone: StringName, dealt: float) -> void:
+	_emit(
+		&"zombie_damaged",
+		{
+			"zombie_id": zombie.id,
+			"zombie_type": zombie.type,
+			"player_id": player_id,
+			"zone": zone,
+			"damage": dealt,
+			"health": zombie.health,
+			"max_health": zombie.max_health,
+		}
+	)
+
+
+## How many non-lethal hits on a zombie of this type pay.
+func _paid_hit_limit(type: ZombieType) -> int:
+	return type.max_paid_hits if type.max_paid_hits > 0 else tuning.economy.max_paid_hits
 
 
 func _scaled(points: int, type: ZombieType) -> int:
@@ -774,27 +784,19 @@ func _explosion(player_id: int, victims: Array) -> void:
 
 
 func _blast_one(player_id: int, zombie: ZombieState, damage: float, leg_damage: float) -> void:
+	var type := _type(zombie.type)
 	var dealt := minf(damage, zombie.health)
 	zombie.health -= dealt
 	zombie.leg_damage += minf(leg_damage, dealt)
-	_emit(
-		&"zombie_damaged",
-		{
-			"zombie_id": zombie.id,
-			"player_id": player_id,
-			"zone": RulesAction.ZONE_BLAST,
-			"damage": dealt,
-			"health": zombie.health,
-		}
-	)
+	_emit_damaged(zombie, player_id, RulesAction.ZONE_BLAST, dealt)
 	if zombie.health <= 0.0:
-		_award(player_id, tuning.explosives.explosion_kill, &"explosion_kill")
+		_award(player_id, _scaled(tuning.explosives.explosion_kill, type), &"explosion_kill")
 		players[player_id].kills += 1
 		_remove_zombie(zombie.id, &"killed", player_id, RulesAction.ZONE_BLAST, false)
 		return
-	if zombie.paid_hits < tuning.economy.max_paid_hits:
+	if zombie.paid_hits < _paid_hit_limit(type):
 		zombie.paid_hits += 1
-		_award(player_id, tuning.economy.hit, &"hit")
+		_award(player_id, _scaled(tuning.economy.hit, type), &"hit")
 	var cause := _cripple_cause(zombie)
 	if cause != &"":
 		zombie.crippled = true

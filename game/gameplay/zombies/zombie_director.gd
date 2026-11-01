@@ -4,6 +4,9 @@ extends RefCounted
 ## the rules' events; hits go back through `ZombieRulesPort`. The director owns no health and no
 ## clock.
 ##
+## Each zombie takes its type's numbers from the spawn request (`ZombieProfile`): its blow, its
+## telegraph, its look and the size of its hit zones.
+##
 ## The rules may ask for more zombies than the crowd budget allows (their alive cap grows with the
 ## player count): requests wait here until a zombie falls, in the order they came.
 
@@ -69,6 +72,17 @@ func _on_rules_event(event: Dictionary) -> void:
 			_admit_waiting()
 		&"zombie_removed":
 			_remove(event["zombie_id"], event["cause"])
+		&"zombie_crippled":
+			_cripple(event)
+
+
+## A blast took its legs: the zombie becomes the type the rules say (a crawler), in its look.
+func _cripple(event: Dictionary) -> void:
+	var type := rules.tuning.roster.type_of(event["zombie_type"])
+	if type == null:
+		return
+	var profile := ZombieProfile.from_type(type, event.get("look", type.id), sim.tuning)
+	sim.cripple(event["zombie_id"], profile, event["speed_scale"])
 
 
 func _remove(zombie_id: int, cause: StringName) -> void:
@@ -87,4 +101,5 @@ func _admit_waiting() -> void:
 	while not _waiting.is_empty() and sim.has_room() and not spawn_points.is_empty():
 		var request: Dictionary = _waiting.pop_front()
 		var point := spawn_points[request["point_roll"] % spawn_points.size()]
-		sim.spawn(request["zombie_id"], request["speed"], point)
+		var profile := ZombieProfile.from_event(request, sim.tuning)
+		sim.spawn(request["zombie_id"], request["speed"], point, 0.0, profile)

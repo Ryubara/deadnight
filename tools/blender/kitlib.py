@@ -117,6 +117,17 @@ def gltf_base_colours(path):
     }
 
 
+def base_colour_active():
+    """Make each material's Base Color image node the active node: Workbench's texture colour shows the active one,
+    and a material with an emission map (the boss zombie) otherwise renders its black emission map."""
+    for m in bpy.data.materials:
+        if not m.use_nodes:
+            continue
+        for link in m.node_tree.links:
+            if link.to_socket.name == "Base Color" and link.from_node.type == "TEX_IMAGE":
+                m.node_tree.nodes.active = link.from_node
+
+
 def apply_base_colours(objs, path):
     """Set each material's viewport colour (what Workbench draws) to its glTF base colour."""
     factors = gltf_base_colours(path)
