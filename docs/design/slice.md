@@ -80,7 +80,7 @@ Three traps cost time while it was written. Its sight check is a `Callable` of a
 keep a `RefCounted` alive: `Night` holds the probe in `_sight`, because one made from a temporary object was freed at
 once and silently answered "clear". A shot leaves the barrel, so `Autopilot._clear` tests the line from the eye and from
 the barrel. And a faster run is more fixed ticks per physics frame (`Night.ticks_per_frame`), never `Engine.time_scale`,
-which scales the step each tick gets and plays a different night. Each is in [lessons](../lessons.md).
+which scales the step each tick gets and plays a different night. Each is in [lessons](../lessons/index.md).
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
