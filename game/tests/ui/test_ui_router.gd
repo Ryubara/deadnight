@@ -117,17 +117,142 @@ func test_a_popped_screen_freed_during_the_pop_does_not_stall_the_router() -> vo
 
 func test_a_bad_source_is_refused_and_the_router_carries_on() -> void:
 	var changes := []
+	var errors := []
 	UIRouter.screen_changed.connect(func(depth: int) -> void: changes.append(depth))
-	for bad: Variant in [
-		"res://does/not/exist.tscn", "res://project.godot", 42, null, auto_free(Node.new()), &"nope"
-	]:
-		UIRouter.push(bad, UITransition.Kind.FADE)
+	UIRouter.error_reported.connect(func(message: String) -> void: errors.append(message))
+	var freed := _screen("freed")
+	freed.free()
+	var stacked := UIRouter.top()
+	var parented := _screen("parented")
+	add_child(parented)
+	var bad: Array = [
+		"res://does/not/exist.tscn",
+		"res://project.godot",
+		42,
+		null,
+		auto_free(Node.new()),
+		&"nope",
+		freed,
+		stacked,
+		parented,
+	]
+	for source: Variant in bad:
+		UIRouter.push(source, UITransition.Kind.FADE)
 		assert_bool(await _settle()).is_true()
 		assert_array(_names()).is_equal(["root"])
 	assert_array(changes).is_empty()
+	assert_int(errors.size()).override_failure_message("one error per refused call").is_equal(
+		bad.size()
+	)
+	(
+		assert_bool(is_instance_valid(stacked))
+		. override_failure_message("a refused screen is not freed")
+		. is_true()
+	)
+	assert_object(parented.get_parent()).is_same(self)
+	parented.queue_free()
 	UIRouter.push(_screen("good"), UITransition.Kind.CUT)
 	assert_bool(await _settle()).is_true()
 	assert_array(_names()).is_equal(["root", "good"])
+
+
+func test_the_same_screen_pushed_twice_is_shown_once() -> void:
+	var errors := []
+	UIRouter.error_reported.connect(func(message: String) -> void: errors.append(message))
+	var card := _screen("card")
+	UIRouter.push(card, UITransition.Kind.CUT)
+	UIRouter.push(card, UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["root", "card"])
+	assert_int(errors.size()).is_equal(1)
+
+
+func test_freeing_the_top_screen_while_idle_reveals_the_one_below() -> void:
+	var base := UIRouter.top()
+	var card := _screen("card")
+	UIRouter.push(card, UITransition.Kind.FADE)
+	assert_bool(await _settle()).is_true()
+	assert_bool(base.visible).is_false()
+	var changes := []
+	UIRouter.screen_changed.connect(func(depth: int) -> void: changes.append(depth))
+	card.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_object(UIRouter.top()).is_same(base)
+	assert_bool(base.visible).is_true()
+	assert_int(base.process_mode).is_equal(Node.PROCESS_MODE_INHERIT)
+	assert_float(base.modulate.a).is_equal(1.0)
+	assert_array(changes).is_equal([1])
+	# The revealed screen is a live one: the router can leave and return to it.
+	UIRouter.push(_screen("again"), UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["root", "again"])
+
+
+func test_freeing_two_screens_at_once_reveals_the_right_one_once() -> void:
+	var base := UIRouter.top()
+	var middle := _screen("middle")
+	var card := _screen("card")
+	UIRouter.push(middle, UITransition.Kind.CUT)
+	UIRouter.push(card, UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	var changes := []
+	UIRouter.screen_changed.connect(func(depth: int) -> void: changes.append(depth))
+	card.queue_free()
+	middle.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_object(UIRouter.top()).is_same(base)
+	assert_bool(base.visible).is_true()
+	assert_array(changes).is_equal([1])
+
+
+func test_freeing_the_only_screen_leaves_a_reported_empty_stack() -> void:
+	var changes := []
+	UIRouter.screen_changed.connect(func(depth: int) -> void: changes.append(depth))
+	UIRouter.top().queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_int(UIRouter.depth()).is_equal(0)
+	assert_array(changes).is_equal([0])
+	UIRouter.push(_screen("next"), UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["next"])
+
+
+func test_a_pop_that_loses_its_target_is_reported() -> void:
+	var base := UIRouter.top()
+	UIRouter.push(_screen("card"), UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	var changes := []
+	var errors := []
+	UIRouter.screen_changed.connect(func(depth: int) -> void: changes.append(depth))
+	UIRouter.error_reported.connect(func(message: String) -> void: errors.append(message))
+	UIRouter.pop(UITransition.Kind.SLIDE)
+	await await_millis(60)
+	base.queue_free()
+	assert_bool(await _settle()).is_true()
+	assert_int(UIRouter.depth()).is_equal(0)
+	assert_array(errors).is_equal([UIRouter.LOST_POP_TARGET])
+	assert_array(changes).is_equal([0])
+	UIRouter.push(_screen("next"), UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["next"])
+
+
+func test_a_pop_whose_target_is_freed_shows_the_next_one_down() -> void:
+	var base := UIRouter.top()
+	var middle := _screen("middle")
+	UIRouter.push(middle, UITransition.Kind.CUT)
+	UIRouter.push(_screen("card"), UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	UIRouter.pop(UITransition.Kind.SLIDE)
+	await await_millis(60)
+	middle.queue_free()
+	assert_bool(await _settle()).is_true()
+	assert_object(UIRouter.top()).is_same(base)
+	assert_bool(base.visible).is_true()
+	assert_int(base.process_mode).is_equal(Node.PROCESS_MODE_INHERIT)
 
 
 func test_a_scene_path_is_loaded() -> void:

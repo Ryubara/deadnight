@@ -7,6 +7,7 @@ var points: int = 0
 var downed: bool = false
 var weapons: Array[StringName] = []
 var tonics: Array[StringName] = []
+var grenades: int = 0
 var repair_points_this_round: int = 0
 var kills: int = 0
 var headshot_kills: int = 0
@@ -26,6 +27,7 @@ func to_dict() -> Dictionary:
 		"downed": downed,
 		"weapons": weapons.duplicate(),
 		"tonics": tonics.duplicate(),
+		"grenades": grenades,
 		"repair_points_this_round": repair_points_this_round,
 		"kills": kills,
 		"headshot_kills": headshot_kills,
@@ -39,6 +41,7 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.downed = data["downed"]
 	player.weapons.assign(data["weapons"])
 	player.tonics.assign(data["tonics"])
+	player.grenades = data["grenades"]
 	player.repair_points_this_round = data["repair_points_this_round"]
 	player.kills = data["kills"]
 	player.headshot_kills = data["headshot_kills"]

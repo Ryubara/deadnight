@@ -28,6 +28,13 @@ static var _active: UITokens
 @export var danger := Color("e5484d")
 @export var shadow := Color(0.0, 0.0, 0.0, 0.55)
 
+@export_group("Type faces")
+## The display face (title, big numbers) and the text face (captions, menus, small print). Null
+## keeps the engine's fallback font, so a game that has not picked a typeface still runs; setting
+## these two resources restyles everything that asks `UITokens.display_font` or `text_font`.
+@export var font_display: Font
+@export var font_text: Font
+
 @export_group("Type scale")
 @export var size_display := 104
 @export var size_title := 60
@@ -90,6 +97,17 @@ static func active() -> UITokens:
 	return _active
 
 
+## The display face with a synthetic weight and extra letter spacing (pixels); the fallback font
+## when the tokens name none.
+func display_font(embolden := 0.0, tracking := 0.0) -> FontVariation:
+	return _variation(font_display, embolden, tracking)
+
+
+## The text face, same arguments.
+func text_font(embolden := 0.0, tracking := 0.0) -> FontVariation:
+	return _variation(font_text, embolden, tracking)
+
+
 static func set_active(tokens: UITokens) -> void:
 	_active = tokens
 
@@ -101,3 +119,11 @@ static func _configured() -> UITokens:
 		if loaded != null:
 			return loaded
 	return UITokens.new()
+
+
+static func _variation(face: Font, embolden: float, tracking: float) -> FontVariation:
+	var font := FontVariation.new()
+	font.base_font = face if face != null else ThemeDB.fallback_font
+	font.variation_embolden = embolden
+	font.spacing_glyph = int(tracking)
+	return font

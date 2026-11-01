@@ -46,7 +46,7 @@ All in `player_tuning_default.tres` (a `PlayerTuning` resource); metres, seconds
 
 | Group | Value | Why |
 | --- | --- | --- |
-| Speed | run 4.8, sprint 7.0, aim 2.6 m/s | The kit has no Walk clip, so the default pace is the Run clip; aiming is a deliberate shuffle. |
+| Speed | run 4.8, sprint 7.0, aim 2.6 m/s | The default pace is a run; Walk plays only on the way up to it (and when aiming slows the player); aiming is a deliberate shuffle. |
 | Acceleration | 38 m/s2 on the ground (full run speed in 0.13 s), 44 friction, 6 in the air | Snappy but not instant; a reversal takes about a quarter second. |
 | Facing | 14 rad/s toward the run direction, 24 rad/s toward the aim direction | The body visibly turns instead of snapping; aiming catches up fast so shots go where the camera points. |
 | Jump | 1.1 m height, gravity x1.7, coyote 0.1 s, buffer 0.1 s | Short, snappy arc; a late or early press still counts. |
@@ -60,17 +60,25 @@ All in `player_tuning_default.tres` (a `PlayerTuning` resource); metres, seconds
 
 ## Animation
 
-The tree is built in `player_animation.gd` from the Soldier's own clips (prefix `CharacterArmature|`):
+The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare names, no weapons in the file); the spec is
+[Animation](../design/animation.md). The tree is built in `player_animation.gd`:
 
-- `locomotion`: Idle and Run blended by speed (complete at 2.2 m/s); in parallel an aiming pair, Idle_Shoot held on its
-  first frame (time scale 0) and Run_Gun; the two pairs are mixed by how far the aim zoom has eased in.
-- `jump` (Jump, then Jump_Idle looping) then `land` (Jump_Land), back to `locomotion` at the end of the landing clip.
-- **No foot sliding:** Run and Run_Gun play at a time scale of ground speed / 5.5 (the Run clip's planted-foot speed at
-  scale 1, estimated from the foot bone's travel; checked by eye in the captures). Sprint plays the same clip 1.27x.
-- The imported clips do not loop; `LOOPED` in the script sets Idle, Run, Run_Gun, Jump_Idle and Idle_Shoot to loop.
-- The soldier carries all fourteen weapons on its right-hand bone; the script shows only the AK.
-- The kit has **no Walk, strafe or Walk_Shoot clips** (`style.md` lists Walk for the other characters only), so aiming
-  while moving sideways plays Run_Gun forward. Strafe animation needs new clips (follow-up).
+- `body`: `locomotion` blends Idle, Walk (at 0.45) and Run (complete at 2.2 m/s) by speed in a synced BlendSpace1D;
+  `jump` (Jump, then Jump_Idle looping) then `land` (Jump_Land), back to `locomotion` at the end of the landing clip.
+- `upper`: the class's `Aim_<Class>` loop with a OneShot for `<Action>_<Class>` (`play_action(&"Fire")`, Reload,
+  Swing, Equip, Unequip), laid over `body` by a Blend2 filtered to the 32 `upper_bones` of `clips.json`. The filter
+  paths take the skeleton path from the clips' own tracks, so a rebuild that moves the skeleton does not break them.
+- `full`: a OneShot over both for HitReact and Death (`play_full_body`).
+- **No foot sliding:** the Run end of the blend plays at ground speed / 5.5 (the Run clip's planted-foot speed at scale
+  1, estimated from the foot bone's travel); Idle and Walk play at their own pace. Sprint plays Run 1.27x.
+- Loops and event frames come from `clips.json` (glTF has no loop flag and no events); only Jump_Idle, a kit clip the
+  spec does not list, is looped by name. Events are a frame check on the playing upper clip: `clip_event(clip,
+  event)` fires for muzzle, can_fire_again, round_in, weapon_visible and the rest, and the weapon shows and hides on
+  its own events. Footsteps stay distance based (one source); Walk's step events are not used.
+- **Weapons:** `equip(class)` attaches the class's weapon scene (lever rifle, double shotgun, bat; Pistol has none yet)
+  to a `BoneAttachment3D` on `Index1.R` with `HOLD_GUN` or `HOLD_MELEE`. The default is Rifle.
+- `clips.json` is read with `FileAccess`: a web export must include `*.json` in its resource filter.
+- No strafe or Walk_Shoot clips yet: moving sideways plays Walk or Run forward under the aim (#74).
 
 ## Things found the hard way
 

@@ -1,0 +1,322 @@
+{
+  "source": "Quaternius Toon Shooter Game Kit, Soldier (CC0); clips authored by tools/blender/soldier_clips.py",
+  "fps": 24,
+  "upper_bones": [
+    "Abdomen",
+    "Torso",
+    "Neck",
+    "Shoulder.L",
+    "Shoulder.R",
+    "Head",
+    "UpperArm.L",
+    "UpperArm.R",
+    "LowerArm.L",
+    "LowerArm.R",
+    "Pinky1.L",
+    "Middle1.L",
+    "Index1.L",
+    "Thumb1.L",
+    "Pinky1.R",
+    "Middle1.R",
+    "Index1.R",
+    "Thumb1.R",
+    "Pinky2.L",
+    "Middle2.L",
+    "Index2.L",
+    "Thumb2.L",
+    "Pinky2.R",
+    "Middle2.R",
+    "Index2.R",
+    "Thumb2.R",
+    "Pinky3.L",
+    "Middle3.L",
+    "Index3.L",
+    "Pinky3.R",
+    "Middle3.R",
+    "Index3.R"
+  ],
+  "classes": {
+    "Rifle": "Shotgun",
+    "Shotgun": "Shotgun",
+    "Pistol": "Pistol",
+    "Melee": "Shovel"
+  },
+  "clips": {
+    "Idle": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "kit": true,
+      "frames": 40,
+      "seconds": 1.667,
+      "events": {}
+    },
+    "Run": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "kit": true,
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
+    "HitReact": {
+      "layer": "full",
+      "loop": false,
+      "class": null,
+      "kit": true,
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {}
+    },
+    "Death": {
+      "layer": "full",
+      "loop": false,
+      "class": null,
+      "kit": true,
+      "frames": 18,
+      "seconds": 0.75,
+      "events": {}
+    },
+    "Run_Gun": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "kit": true,
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
+    "Idle_Shoot": {
+      "layer": "upper",
+      "loop": false,
+      "class": null,
+      "kit": true,
+      "frames": 8,
+      "seconds": 0.333,
+      "events": {}
+    },
+    "Walk": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "frames": 24,
+      "seconds": 1.0,
+      "events": {
+        "step_left": 0,
+        "step_right": 12
+      }
+    },
+    "Downed": {
+      "layer": "full",
+      "loop": true,
+      "class": null,
+      "frames": 48,
+      "seconds": 2.0,
+      "events": {}
+    },
+    "Aim_Rifle": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Rifle",
+      "frames": 48,
+      "seconds": 2.0,
+      "events": {}
+    },
+    "Fire_Rifle": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Rifle",
+      "frames": 8,
+      "seconds": 0.333,
+      "events": {
+        "muzzle": 0,
+        "can_fire_again": 8
+      }
+    },
+    "Reload_Rifle": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Rifle",
+      "frames": 62,
+      "seconds": 2.583,
+      "events": {
+        "round_in": [
+          20,
+          32,
+          44
+        ],
+        "lever": 56,
+        "can_fire_again": 62
+      }
+    },
+    "Aim_Shotgun": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Shotgun",
+      "frames": 48,
+      "seconds": 2.0,
+      "events": {}
+    },
+    "Fire_Shotgun": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Shotgun",
+      "frames": 14,
+      "seconds": 0.583,
+      "events": {
+        "muzzle": 0,
+        "can_fire_again": 14
+      }
+    },
+    "Reload_Shotgun": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Shotgun",
+      "frames": 40,
+      "seconds": 1.667,
+      "events": {
+        "break_open": 6,
+        "shells_in": 26,
+        "snap_shut": 34,
+        "can_fire_again": 40
+      }
+    },
+    "Aim_Pistol": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Pistol",
+      "frames": 48,
+      "seconds": 2.0,
+      "events": {}
+    },
+    "Fire_Pistol": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Pistol",
+      "frames": 6,
+      "seconds": 0.25,
+      "events": {
+        "muzzle": 0,
+        "can_fire_again": 6
+      }
+    },
+    "Reload_Pistol": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Pistol",
+      "frames": 28,
+      "seconds": 1.167,
+      "events": {
+        "mag_out": 6,
+        "mag_in": 22,
+        "can_fire_again": 28
+      }
+    },
+    "Aim_Melee": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Melee",
+      "frames": 48,
+      "seconds": 2.0,
+      "events": {}
+    },
+    "Swing_Melee": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Melee",
+      "frames": 22,
+      "seconds": 0.917,
+      "events": {
+        "whoosh": 6,
+        "hit_start": 9,
+        "hit_end": 12,
+        "can_swing_again": 22
+      }
+    },
+    "Equip_Rifle": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Rifle",
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {
+        "weapon_visible": 2,
+        "ready": 10
+      }
+    },
+    "Unequip_Rifle": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Rifle",
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {
+        "weapon_hidden": 8
+      }
+    },
+    "Equip_Shotgun": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Shotgun",
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {
+        "weapon_visible": 2,
+        "ready": 10
+      }
+    },
+    "Unequip_Shotgun": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Shotgun",
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {
+        "weapon_hidden": 8
+      }
+    },
+    "Equip_Pistol": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Pistol",
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {
+        "weapon_visible": 2,
+        "ready": 10
+      }
+    },
+    "Unequip_Pistol": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Pistol",
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {
+        "weapon_hidden": 8
+      }
+    },
+    "Equip_Melee": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Melee",
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {
+        "weapon_visible": 2,
+        "ready": 10
+      }
+    },
+    "Unequip_Melee": {
+      "layer": "upper",
+      "loop": false,
+      "class": "Melee",
+      "frames": 10,
+      "seconds": 0.417,
+      "events": {
+        "weapon_hidden": 8
+      }
+    }
+  }
+}

@@ -7,7 +7,29 @@ extends RefCounted
 
 const SETTING_REDUCED := "gds_ui/accessibility/reduced_motion"
 
-static var reduced := false
+
+## Carries the `changed` signal: a static variable cannot declare one itself.
+class Bus:
+	extends RefCounted
+	signal changed(reduced: bool)
+
+
+static var _bus := Bus.new()
+
+## True when the player wants calm: no flicker, flashes or movement. Set it at any time;
+## whoever shows motion connects to `changed()` and follows it live.
+static var reduced := false:
+	set(value):
+		if value == reduced:
+			return
+		reduced = value
+		_bus.changed.emit(value)
+
+
+## Emitted with the new value whenever `reduced` changes. Connect to it in `_ready`; a freed
+## listener is disconnected on its own.
+static func changed() -> Signal:
+	return _bus.changed
 
 
 ## Reads the project setting. The router calls this once at startup.
@@ -89,6 +111,8 @@ static func shake(control: Control) -> Tween:
 	var rest := control.position
 	var tween := control.create_tween()
 	if reduced:
+		# A tween with no step is an engine error when it starts; give it one empty step.
+		tween.tween_interval(0.0)
 		return tween
 	apply_ease(tween, UITokens.Ease.EXIT)
 	for offset in [10.0, -8.0, 5.0, -2.0, 0.0]:

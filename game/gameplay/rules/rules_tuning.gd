@@ -8,6 +8,7 @@ const FINGERPRINT_LENGTH := 16
 @export var rounds: RoundTuning = RoundTuning.new()
 @export var economy: EconomyTuning = EconomyTuning.new()
 @export var fuel: FuelTuning = FuelTuning.new()
+@export var explosives: ExplosiveTuning = ExplosiveTuning.new()
 
 
 ## A short hex fingerprint of every number in the table. Two sides with the same fingerprint run the

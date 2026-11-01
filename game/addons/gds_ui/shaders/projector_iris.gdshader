@@ -19,7 +19,8 @@ void fragment() {
 	float dist = length(centred) / max_dist;
 	float open = reveal > 0.5 ? progress : 1.0 - progress;
 	// Slight wobble, like a hand-cranked iris; it fades out as the circle closes to a point.
-	float angle = atan(centred.y, centred.x);
+	// (The nudge keeps atan defined at the exact origin.)
+	float angle = atan(centred.y, centred.x + 0.00001);
 	dist += 0.006 * sin(angle * 7.0 + progress * 6.0) * smoothstep(0.0, 0.3, open);
 	// The radius runs from just inside zero to past the corners, so the rim leaves the frame.
 	float radius = open * (1.0 + rim_width * 3.0) - rim_width;

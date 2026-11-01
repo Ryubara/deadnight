@@ -133,6 +133,50 @@ Godot capture in the pull request).
 | Pistol | 0 (one-handed, as the kit holds it) |
 | Melee | 1 in Aim; 0 in Swing, Equip and Unequip |
 
+## Grenade
+
+The grenade clips (#102, for the grenades of #99) are `upper` clips like the weapon clips: the legs keep running
+under them through the same bone filter. They are named `Grenade_<Action>` (the grenade is thrown, never aimed, so it
+has no `Aim_` loop) and built by `grenade()` in `tools/blender/soldier_clips.py` into their own file,
+`game/assets/characters/soldier/grenade/soldier_grenade.glb` with its `clips.json`: same rig, same track paths, so the
+controller adds them to the Soldier's library (`AnimationLibrary.add_animation` on the default library; checked on
+the Soldier with the weapon clips, every track finds its bone).
+
+| Clip | Layer | Plays | Frames | Events |
+| --- | --- | --- | --- | --- |
+| Grenade_Cook | upper | once, hold the last frame | 20 (0.83 s) | grenade_visible 0, pin_out 14, spoon_off 18, cooked 20 |
+| Grenade_Throw | upper | once | 22 (0.92 s) | **release 9**, done 22 |
+| Grenade_Toss | upper | once | 22 (0.92 s) | **release 10**, done 22 |
+
+| Event | Gameplay does |
+| --- | --- |
+| grenade_visible | hide the weapon, show the grenade in the hand (Cook starts from the lowered arms, where `Unequip_<Class>` ends) |
+| pin_out | hide the grenade's `Pin` node (the ring leaves with the left hand); the pin sound |
+| spoon_off | hide the `Spoon` node (or throw a spoon prop off along the body's +X); the fuse may start here |
+| cooked | the hold: play the throw from here; while the button is held, stay on this frame |
+| release | spawn the projectile at the hand bone's global position, hide the grenade in the hand |
+| done | the arms are down; `Equip_<Class>` of the weapon can start |
+
+- **Hand bone:** `Index1.R`, the bone every weapon is held on. At `release` the projectile starts at that bone's
+  global position (at kit scale the hand is about 0.35 m above the head bone's origin for the throw, 0.55 m below it for
+  the toss); its velocity comes from the aim and the throw strength, not from the hand: the hand sweeps across the
+  body (it moves about 5 m/s to the left, 3.4 m/s forward at the throw's release).
+- **Hold:** the grenade's origin is the centre of its body (its grip), standing up along +Y in Godot with the spoon on
+  +X and the ring on +Z. Under a `BoneAttachment3D` on `Index1.R` it is the gun hold turned 90 degrees about its X:
+
+```gdscript
+const HOLD_GRENADE := Transform3D(  # HOLD_GUN * Basis(Vector3.RIGHT, PI / 2)
+    Basis(Vector3(-0.062527, -0.997926, -0.015303), Vector3(-0.990971, 0.060254, 0.119776),
+          Vector3(-0.118606, 0.022655, -0.992683)),
+    Vector3(-0.039563, 0.197228, -0.070351))
+```
+
+- **Left hand:** no IK in the grenade clips (weight 0): the left hand reaches for the ring in Cook and points ahead
+  in the throw by itself.
+- Checked headless (`game/tests/art/check_grenade.gd`): each clip plays, the hand moves, no leg bone turns, the hand
+  moves forward at `release`, and with a stride under the throw through the filter the arm matches the clip to 0.00
+  degrees. `game/tests/art/capture_grenade.gd` renders the clips in Godot with the grenade in the hand.
+
 ## How the clips are made
 
 From the kit's own poses, never from a blank rig: `Idle_Shoot` frame 0 (the gun hold) is the base of every weapon
@@ -150,7 +194,16 @@ blender -b --factory-startup -P tools/blender/render_clips.py -- \
     --soldier <bundle>/models/PpLF4rt4ah.glb --out <scratch>/clips        # contact sheets, one per class
 godot --headless --path game --import
 godot --headless --path game -s res://tests/art/check_soldier_clips.gd   # CLIPS/POSE/SPLIT lines, exit 0
+# The grenade clips, their own file; the grenade model; their contact sheets and checks:
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Grenade_ --out game/assets/characters/soldier/grenade/soldier_grenade.glb
+blender -b --factory-startup -P tools/blender/build_weapons.py -- --only grenade
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Grenade,GrenadeSplit --weapon Grenade=game/assets/weapons/grenade/grenade.glb=Shotgun --out <scratch>/clips
+godot --headless --path game -s res://tests/art/check_grenade.gd          # MODEL/CLIP/RELEASE/SPLIT lines, exit 0
+godot --path game -s res://tests/art/capture_grenade.gd -- --out <scratch>/godot-grenade.png
 ```
 
-`<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is a third-party-derived file: committing it and
-its licence entry is a maintainer decision.
+`<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is third-party-derived (CC0); it is committed with
+its licence entry (`game/assets/characters/soldier/LICENSE.md`, approved by the maintainer in issue #90).
+
+The player controller (`game/gameplay/player/player_animation.gd`) plays the clips by these bare names and attaches
+the lever rifle to `Index1.R` with `HOLD_GUN`; the file itself carries no weapon.

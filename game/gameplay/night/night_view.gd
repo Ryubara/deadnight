@@ -4,7 +4,6 @@ extends Node3D
 ## from each frame's snapshot, tracers, flashes and damage numbers from the weapons' events, and
 ## the sounds. It holds no game state and never asks the server anything.
 
-const ZOMBIE_MODEL := "res://assets/zombie_kit/zombie.glb"
 ## The sound of each weapon's shot and reload; a weapon with no entry is silent for now.
 const SHOT_SOUNDS := {
 	&"pistol": &"shot_pistol",
@@ -21,8 +20,7 @@ const RELOAD_SOUNDS := {
 ## Lifts a damage number off the wound.
 const NUMBER_LIFT := Vector3(0.0, 0.3, 0.0)
 
-## A `ZombieHorde` with the models, or `ZombieMarkers` without them: both take snapshots.
-var horde: Node3D
+var horde: ZombieHorde
 var effects: ShotEffects
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
@@ -34,15 +32,9 @@ func setup(state: ClientState, camera: Camera3D) -> void:
 	_state = state
 	effects = ShotEffects.new()
 	add_child(effects)
-	if ResourceLoader.exists(ZOMBIE_MODEL):
-		var models := ZombieHorde.new()
-		models.model_scene = load(ZOMBIE_MODEL)
-		add_child(models)
-		models.setup_client(camera)
-		horde = models
-	else:
-		horde = ZombieMarkers.new()
-		add_child(horde)
+	horde = ZombieHorde.new()
+	add_child(horde)
+	horde.setup_client(camera)
 	state.event_received.connect(_on_event)
 
 

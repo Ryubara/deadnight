@@ -19,10 +19,16 @@ func _ready() -> void:
 	_material.set_shader_parameter(&"sky_horizon", tokens.bg_glow)
 	_material.set_shader_parameter(&"warm_color", tokens.accent)
 	_material.set_shader_parameter(&"tail_color", tokens.hot)
-	_material.set_shader_parameter(&"motion", 0.0 if UIMotion.reduced else 1.0)
 	material = _material
+	UIMotion.changed().connect(_apply_motion)
+	_apply_motion(UIMotion.reduced)
 	resized.connect(_update_aspect)
 	_update_aspect()
+
+
+## Reduced motion stops the sky's flicker, white-outs and twinkle.
+func _apply_motion(reduced: bool) -> void:
+	_material.set_shader_parameter(&"motion", 0.0 if reduced else 1.0)
 
 
 func _update_aspect() -> void:

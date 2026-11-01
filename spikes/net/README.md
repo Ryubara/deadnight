@@ -76,13 +76,24 @@ docker run --rm -e PORT=8910 -p 8910:8910 deadnight-net
 
 The image downloads the Linux Godot binary (version and SHA-512 from the kit's `tools.toml`), imports the project at
 build time, and runs `godot --headless --path /app -- --server` as a non-root user. It listens on `$PORT` over plain
-`ws://`; Railway's edge terminates TLS, so clients use `wss://<service>.up.railway.app`. Not deployed: that is the
-maintainer's decision.
+`ws://`; Railway's edge terminates TLS, so clients use `wss://<service>.up.railway.app`. It was deployed once for the
+measurements in #52 (project `gdstudio-net-test`, service `net-server`, built from this folder with `railway up`); the
+numbers are in the research page. The server prints, every 5 s, its tick regularity (time between ticks, late and burst
+ticks, work per tick), CPU and memory.
 
 ## Measuring
 
-Clients print a line every 2 s and a `RESULT` line at the end (payload bytes each way, round trip in ticks, how far
-snapshots corrected the prediction); the server prints its own totals every 5 s. For bytes on the wire including
+Clients print a line every 2 s and a `RESULT` line at the end (payload bytes each way, round trip in milliseconds with
+percentiles, snapshot arrival gaps and stalls, how far snapshots corrected the prediction, how often the interpolation
+buffer ran dry); the server prints its own totals every 5 s. The Godot clients read their socket only on their 30 Hz
+tick, so their times are quantised to 33 ms. For round trip and snapshot gaps at microsecond resolution, join as a
+silent player from outside Godot:
+
+```text
+uv run --with websockets python tools/ws_probe.py wss://<service>.up.railway.app --seconds 60
+```
+
+For bytes on the wire including
 WebSocket framing, put `tools/byte_count_proxy.py` between them:
 
 ```text

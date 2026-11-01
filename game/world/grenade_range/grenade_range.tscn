@@ -1,0 +1,44 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://world/grenade_range/grenade_range.gd" id="1_range"]
+
+[sub_resource type="Environment" id="Environment_night"]
+background_mode = 1
+background_color = Color(0.05, 0.06, 0.1, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.6, 0.8, 1)
+ambient_light_energy = 0.8
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+radius = 0.22
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="Material_player"]
+albedo_color = Color(0.3, 0.55, 0.85, 0.7)
+transparency = 1
+
+[node name="GrenadeRange" type="Node3D"]
+script = ExtResource("1_range")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_night")
+
+[node name="Moon" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.8, 0.6, 0, -0.6, 0.8, 0, 8, 0)
+light_color = Color(0.75, 0.8, 1, 1)
+light_energy = 0.9
+
+[node name="Camera3D" type="Camera3D" parent="."]
+
+[node name="Player" type="MeshInstance3D" parent="."]
+mesh = SubResource("CapsuleMesh_player")
+surface_material_override/0 = SubResource("Material_player")
+
+[node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="Readout" type="Label" parent="Hud"]
+offset_left = 32.0
+offset_top = 24.0
+offset_right = 1100.0
+offset_bottom = 160.0
+theme_override_font_sizes/font_size = 34
