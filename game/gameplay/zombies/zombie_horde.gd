@@ -10,23 +10,24 @@ extends Node3D
 @export var model_scene: PackedScene
 
 var director: ZombieDirector
-## Seconds a zombie rises from the ground; the director's tuning sets it, or the caller does.
-var emerge_seconds := 0.7
 var throttle: AnimationThrottle
 ## Size in bytes of the last snapshot.
 var last_snapshot_bytes: int = 0
 
 var _views: Dictionary[int, ZombieView] = {}
+var _emerge_seconds: float = 0.0
 
 
-func setup(p_director: ZombieDirector, camera: Camera3D) -> void:
+## `p_emerge_seconds` is the one number the client needs from the zombies' tuning: how long a
+## zombie takes to rise. The server owns the tuning; the views are told what they need.
+func setup(p_director: ZombieDirector, camera: Camera3D, p_emerge_seconds: float) -> void:
 	director = p_director
-	emerge_seconds = p_director.sim.tuning.emerge_seconds
-	setup_client(camera)
+	setup_client(camera, p_emerge_seconds)
 
 
-## A horde that only draws: no director, it is fed with `apply_snapshot`.
-func setup_client(camera: Camera3D) -> void:
+## A horde that only draws, with no director: it is fed with `apply_snapshot`.
+func setup_client(camera: Camera3D, p_emerge_seconds: float) -> void:
+	_emerge_seconds = p_emerge_seconds
 	if model_scene == null:
 		model_scene = ZombieModels.scene(variant)
 	throttle = AnimationThrottle.new()
@@ -50,11 +51,13 @@ func step(delta: float, targets: Dictionary) -> void:
 	publish(delta)
 
 
+## The server side sends its zombies through the wire format and the client side draws them.
 func publish(delta: float) -> void:
 	apply_snapshot(ZombieCodec.encode(director.sim.zombies), delta)
 
 
-## Brings the views to the zombies a snapshot (`ZombieCodec` bytes) describes.
+## The client side: the views follow one snapshot's bytes and nothing else. `delta` is the time
+## since the previous snapshot.
 func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 	last_snapshot_bytes = bytes.size()
 	var seen: Dictionary[int, bool] = {}
@@ -74,7 +77,7 @@ func _add_view(zombie_id: int) -> void:
 	add_child(view)
 	# The same id always gives the same phase, so every client agrees without being told.
 	var phase := fposmod(float(zombie_id) * 0.618034, 1.0)
-	view.setup(model_scene, zombie_id, phase, emerge_seconds)
+	view.setup(model_scene, zombie_id, phase, _emerge_seconds)
 	_views[zombie_id] = view
 	throttle.add_view(view)
 

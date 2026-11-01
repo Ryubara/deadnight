@@ -8,6 +8,7 @@ var _args := {}
 var _night: Night
 var _ticks := 0
 var _last_round := 0
+var _readout: Label
 
 
 func _ready() -> void:
@@ -17,6 +18,14 @@ func _ready() -> void:
 	_night.ticks_per_frame = int(_args.get("speed", 1))
 	await _night.start(Night.Mode.AUTOPILOT, int(_args.get("seed", Night.SEED)), _tuning())
 	_night.ticked.connect(_on_tick)
+	var layer := CanvasLayer.new()
+	_readout = Label.new()
+	_readout.position = Vector2(32, 24)
+	_readout.add_theme_font_size_override(&"font_size", 34)
+	_readout.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	_readout.add_theme_constant_override(&"outline_size", 10)
+	layer.add_child(_readout)
+	add_child(layer)
 	if _args.has("log"):
 		_night.state.event_received.connect(_print_event)
 
@@ -44,6 +53,7 @@ func _on_tick() -> void:
 		return
 	_ticks += 1
 	var state := _night.state
+	_readout.text = NightReadout.text_for(state)
 	if _args.has("trace") and _ticks % 60 == 0:
 		var near := []
 		for z in state.zombies:

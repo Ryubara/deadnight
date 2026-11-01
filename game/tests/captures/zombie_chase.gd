@@ -107,7 +107,7 @@ func _make_zombies(greybox: Node) -> void:
 	director.player_struck.connect(func(_p: int, _z: int, _d: float) -> void: _strikes += 1)
 	_horde = ZombieHorde.new()
 	add_child(_horde)
-	_horde.setup(director, _camera)
+	_horde.setup(director, _camera, cap.emerge_seconds)
 	if not _args.has("empty"):
 		_rules.apply(RulesAction.start())
 		_rules.apply(RulesAction.skip_break())

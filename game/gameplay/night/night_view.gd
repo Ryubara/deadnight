@@ -34,7 +34,7 @@ func setup(state: ClientState, camera: Camera3D) -> void:
 	add_child(effects)
 	horde = ZombieHorde.new()
 	add_child(horde)
-	horde.setup_client(camera)
+	horde.setup_client(camera, ZombieTuning.new().emerge_seconds)
 	state.event_received.connect(_on_event)
 
 

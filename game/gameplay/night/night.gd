@@ -23,7 +23,7 @@ const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
 const SEED := 1958
 ## The seam for the HUD (#89): everything it needs arrives as `state.event_received`.
-const SPECTATOR_OFFSET := Vector3(0.0, 15.0, 11.0)
+const SPECTATOR_OFFSET := Vector3(0.0, 11.0, 8.0)
 
 var mode := Mode.HUMAN
 var world: NightWorld
