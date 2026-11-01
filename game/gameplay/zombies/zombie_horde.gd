@@ -19,7 +19,8 @@ var last_snapshot_bytes: int = 0
 
 var _views: Dictionary[int, ZombieView] = {}
 ## Views of zombies that left, kept by look for the ones that come (a body is a model, a skeleton
-## and an animation tree, a hundred nodes: not made again at every spawn nor freed at every kill).
+## and an animation tree with its state machine: not made again at every spawn nor freed at every
+## kill).
 var _parked: Dictionary[StringName, Array] = {}
 var _emerge_seconds: float = 0.0
 ## Seconds each look's wind-up lasts, for the looks whose attack is timed to it (the boss's).
@@ -102,6 +103,21 @@ func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 	for zombie_id in _views.keys():
 		if not seen.has(zombie_id):
 			_remove_view(zombie_id)
+
+
+## Makes `counts[look]` bodies of each look ahead of the night and parks them, so its first zombies
+## do not each build one in the middle of a frame (`NightWarmup`).
+func prewarm(counts: Dictionary) -> void:
+	for look: StringName in counts:
+		var parked: Array = _parked.get_or_add(look, [])
+		while parked.size() < mini(int(counts[look]), PARKED_PER_LOOK):
+			var view := ZombieView.new()
+			add_child(view)
+			var telegraph: float = _telegraphs.get(look, ZombieRig.BOSS_HIT_SECONDS)
+			var board: float = _board_seconds.get(look, _default_board_seconds)
+			view.setup(_scene_for(look), -1, 0.0, _emerge_seconds, look, telegraph, board)
+			view.park()
+			parked.append(view)
 
 
 ## A zombie tore a board off (the rules' `board_torn`): its tear clip is put on the yank.

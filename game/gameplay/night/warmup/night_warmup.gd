@@ -48,6 +48,17 @@ const SOUND_BUDGET_MSEC := 8
 ## Frames each shot is held, so the draw reaches the screen (and the renderer builds what it needs).
 const SHOT_FRAMES := 2
 ## Digits of the damage numbers: every glyph the numbers use is drawn once.
+## Zombie bodies made before the night, by look: the walkers' four looks come most (more are made
+## as the night needs them, and kept).
+const PARKED_BODIES := {
+	&"walker": 6,
+	&"greaser": 4,
+	&"usher": 4,
+	&"farmhand": 4,
+	&"runner": 3,
+	&"brute": 3,
+	&"crawler": 3
+}
 const DIGITS_NUMBER := 1234567890
 const BUSES_MUTED: Array[StringName] = [&"Effects", &"Voice"]
 
@@ -81,6 +92,9 @@ func run(night: Night) -> void:
 	await _load_sounds()
 	await _lot_pass()
 	await _stage_pass()
+	_say(_done, "Rousing the dead")
+	_night.view.horde.prewarm(PARKED_BODIES)
+	await get_tree().process_frame
 	_unmute(muted)
 	if is_instance_valid(_before):
 		_before.make_current()
@@ -180,6 +194,7 @@ func _stage_pass() -> void:
 		_say(_step("stage", float(i) / LIGHT_CELLS.size()), "Setting the scene: %s" % cell["label"])
 		var rig := _light_rig(cell)
 		var props := _stage_row()
+		_show_crane()
 		await _shot_at(NEAR_SHOT)
 		await _shot_at(FAR_SHOT)
 		_say(_step("stage", (i + 0.5) / LIGHT_CELLS.size()), "Firing: %s" % cell["label"])
@@ -191,10 +206,30 @@ func _stage_pass() -> void:
 		for effect in _night.view.effects.get_children():
 			if not _night.view.effects.owns(effect):
 				effect.free()
+		_hide_crane()
 		props.free()
 		rig.free()
 		await get_tree().process_frame
 	_finish("stage")
+
+
+## The prize crane on the stage in the state that shows the most: its dud, its sparks and its beam
+## (it stands out of sight until the night's first frame puts it on its spot).
+func _show_crane() -> void:
+	var crane := _night.view.crane.crane if _night.view.crane != null else null
+	if crane == null:
+		return
+	crane.visible = true
+	crane.global_position = _stage.global_position + Vector3(6.0, 0.0, -6.0)
+	crane.show_state({"stage": CraneState.Stage.LEAVING, "left": 1.0, "spot": 0}, 0.0)
+
+
+func _hide_crane() -> void:
+	var crane := _night.view.crane.crane if _night.view.crane != null else null
+	if crane == null:
+		return
+	crane.show_state({"stage": CraneState.Stage.READY, "left": 0.0, "spot": 0}, 0.0)
+	crane.visible = false
 
 
 func _light_rig(cell: Dictionary) -> Node3D:
@@ -272,8 +307,23 @@ func _replay_effects() -> void:
 		var ends: Array[Vector3] = []
 		for _p in maxi(def.pellets, 1):
 			ends.append(muzzle + Vector3(0.0, -0.3, -3.5))
-		view.draw_event(
-			{"type": &"shot_fired", "weapon_id": def.id, "muzzle": muzzle, "ends": ends}
+		# No shooter (no body to hang the flash on). Every other weapon's shots land on a zombie, the
+		# rest on a wall: the flash, the impact on a wall and the one on flesh are all drawn.
+		var flesh: Array[Vector3] = []
+		if i % 2 == 0:
+			flesh.append_array(ends)
+		(
+			view
+			. draw_event(
+				{
+					"type": &"shot_fired",
+					"weapon_id": def.id,
+					"shooter_id": -1,
+					"muzzle": muzzle,
+					"ends": ends,
+					"flesh": flesh,
+				}
+			)
 		)
 	(
 		view

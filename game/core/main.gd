@@ -13,12 +13,6 @@ func _ready() -> void:
 	prompt_layer.add_child(TouchRotatePrompt.new())
 	add_child(prompt_layer)
 	await get_tree().process_frame
-	if (
-		OS.has_feature("web")
-		and "audiotest" in str(JavaScriptBridge.eval("window.location.search", true))
-	):
-		add_child(load("res://tools/bench/audio_test.gd").new())
-		return
 	if KillBench.requested():
 		add_child(KillBench.new())
 		return

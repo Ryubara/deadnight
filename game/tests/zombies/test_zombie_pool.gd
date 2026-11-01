@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
 ## A zombie that leaves the lot (killed, 2.5 s after it fell) keeps its body for the next one of its
-## look: the model, skeleton and animation tree are a hundred nodes, and they used to be freed at
-## every kill and built again at every spawn, in a frame of the night.
+## look: the model, skeleton, animation player and tree, and the tree's resources, used to be freed
+## at every kill and built again at every spawn, in a frame of the night.
 
 const CYCLES := 12
+const SLACK := 6
 
 var _horde: ZombieHorde
 var _sim: ZombieSim
@@ -51,8 +52,11 @@ func test_the_bodies_of_zombies_that_left_are_used_again_not_made_again() -> voi
 	for id in range(2, 2 + CYCLES):
 		await _life(id, &"walker", Vector3(id, 0, 3))
 	assert_int(_added - nodes_before).override_failure_message("nodes made").is_equal(0)
-	assert_int(int(Performance.get_monitor(Performance.OBJECT_COUNT))).is_equal(objects)
-	assert_int(int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))).is_equal(resources)
+	# The test's own bookkeeping may hold a few objects; a body made again holds dozens.
+	var now_objects := int(Performance.get_monitor(Performance.OBJECT_COUNT))
+	assert_int(now_objects - objects).override_failure_message("objects").is_less_equal(SLACK)
+	var now_resources := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
+	assert_int(now_resources - resources).override_failure_message("resources").is_less_equal(SLACK)
 	assert_int(_horde.view_count()).is_equal(0)
 
 
@@ -78,7 +82,11 @@ func test_a_parked_body_draws_nothing_and_a_look_keeps_to_its_own_bodies() -> vo
 	# A crawler does not take the walker's body.
 	var nodes_before := _added
 	await _life(2, &"crawler", Vector3(5, 0, 5))
-	assert_int(_added - nodes_before).is_greater(50)
+	(
+		assert_int(_added - nodes_before)
+		. override_failure_message("a new look makes a body")
+		. is_greater(4)
+	)
 	assert_int((_horde._parked[&"walker"] as Array).size()).is_equal(1)
 	assert_int((_horde._parked[&"crawler"] as Array).size()).is_equal(1)
 

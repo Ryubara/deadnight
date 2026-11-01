@@ -2,7 +2,8 @@ extends GdUnitTestSuite
 ## Shots and damage numbers make and free nothing while a night is played. Each one used to build
 ## a light or a mesh, a material and a tween and free them a moment later, which cost the frame of
 ## every shot and kill in the browser and made the renderer build the same shader again (a shader
-## goes with the last material that uses it). Now the effects are lent from pools.
+## goes with the last material that uses it). Now the effects are lent from pools: the flash and
+## the impacts (`MuzzleFlash`, `ImpactFx`), the streaks and the damage numbers (`ShotEffects`).
 
 const MUZZLE := Vector3(0.0, 1.5, 4.0)
 const END := Vector3(0.0, 1.0, -2.0)
@@ -67,8 +68,7 @@ func test_effects_are_hidden_when_they_end_and_come_back_with_their_own_look() -
 	var label := _effects.find_children("*", "Label3D", true, false)[0] as Label3D
 	assert_bool(label.visible).is_true()
 	assert_str(label.text).is_equal("42")
-	for _i in 90:
-		await get_tree().process_frame
+	await get_tree().create_timer(ShotEffects.NUMBER_SECONDS + 0.3).timeout
 	assert_int(_effects.live_count()).is_equal(0)
 	assert_bool(label.visible).is_false()
 	_effects.number(END, "7", false)
@@ -77,18 +77,21 @@ func test_effects_are_hidden_when_they_end_and_come_back_with_their_own_look() -
 	assert_object(label.modulate).is_equal(ShotEffects.BODY_COLOUR)
 
 
-func test_a_number_rises_and_a_puff_swells_and_fades() -> void:
+func _is_streak(node: Node) -> bool:
+	return (node as MeshInstance3D).mesh is CylinderMesh
+
+
+func test_a_number_rises_and_a_streak_is_stretched_to_its_length() -> void:
 	_effects.number(END, "9", false)
-	_effects.puff(END)
 	var label := _effects.find_children("*", "Label3D", true, false)[0] as Label3D
-	var puff := _effects.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
-	var puff_material := puff.material_override as StandardMaterial3D
 	var start_y := label.position.y
-	for _i in 12:
-		await get_tree().process_frame
+	await get_tree().create_timer(0.2).timeout
 	assert_float(label.position.y).is_greater(start_y)
-	assert_float(puff.scale.x).is_greater(ShotEffects.PUFF_RADIUS)
-	assert_float(puff_material.albedo_color.a).is_less(ShotEffects.PUFF_COLOUR.a)
+	_effects.tracer(MUZZLE, END)
+	var streaks := _effects.find_children("*", "MeshInstance3D", true, false)
+	var streak := streaks.filter(_is_streak)[0] as MeshInstance3D
+	assert_float(streak.scale.y).is_equal_approx(MUZZLE.distance_to(END), 0.001)
+	assert_int(_effects.tracers_drawn).is_equal(1)
 
 
 func test_more_effects_than_the_pool_holds_take_over_the_oldest_and_make_no_more_nodes() -> void:

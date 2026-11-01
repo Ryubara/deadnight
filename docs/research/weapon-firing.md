@@ -62,6 +62,8 @@ What building the server-side shooting (`game/gameplay/weapons/`) taught us. The
 - **No bullets for hitscan (#241).** A streak from the muzzle read as a visible bullet, so `ShotEffects.shot` draws a flash
   and an impact (spark and dust puff) and a streak only for a def with `tracer = true`. A shot that ended at its full range
   (a miss into the open, a round that pierced everything) has no impact: there is nothing to see it land on.
+- **The flash and the impacts were redone in the toon style** (the sphere read as a yellow ball): see
+  [Shot feedback research](shot-feedback.md).
 
 ## What the numbers say
 

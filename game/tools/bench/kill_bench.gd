@@ -29,6 +29,7 @@ var _running_since := -1.0
 var _seconds := DEFAULT_SECONDS
 var _out := ""
 var _done := false
+var _fights_only := false
 
 
 ## Whether this run asked for the bench.
@@ -69,6 +70,9 @@ func _process(_delta: float) -> void:
 	var night := _night()
 	if _done or night == null or not night.running:
 		return
+	if not _fights_only:
+		_fights_only = true
+		_leave_the_shopping(night.autopilot)
 	if _since_running() < _seconds:
 		return
 	_done = true
@@ -85,6 +89,15 @@ func _since_running() -> float:
 	if _running_since < 0.0:
 		_running_since = log.seconds()
 	return log.seconds() - _running_since
+
+
+## The bot buys no door and no weapon, so what the log shows is the cost of shooting and killing
+## (a door starts a navigation bake, which is another cost, measured elsewhere). It still keeps the
+## lamps and the tank, as a player does.
+func _leave_the_shopping(bot: Autopilot) -> void:
+	bot.order.clear()
+	bot.wanted.clear()
+	bot.spots.clear()
 
 
 func _read_arguments() -> void:

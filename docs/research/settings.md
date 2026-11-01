@@ -23,6 +23,7 @@ cannot break anything. The file is `user://settings.cfg`
 | `audio/master`, `music`, `effects`, `ui` | 100, 80, 100, 80 | bus volume (`linear_to_db`), muted at 0; buses in `game/default_bus_layout.tres` |
 | `accessibility/reduced_motion` | off | `UIMotion.reduced` |
 | `accessibility/ui_scale` | 1.0 | root `Window.content_scale_factor` (0.8, 1.0, 1.25) |
+| `accessibility/camera_shake` | 100 | nothing: the player reads it (`PlayerSettings.camera_shake`, off while reduced motion is on); [Camera shake](../design/camera-shake.md) |
 | `controls/mouse_sensitivity`, `invert_y` | 1.0, off | nothing: gameplay reads them and listens to `changed` |
 | `controls/touch_controls` (0 auto, 1 on, 2 off), `touch_scale`, `touch_opacity`, `haptics` | 0, 1.0, 0.7, on | nothing: `TouchControls` reads them and listens to `changed` (the Touch tab) |
 

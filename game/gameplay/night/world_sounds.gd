@@ -85,6 +85,7 @@ func setup(
 	generator.configure(fuel)
 	_running = not generator.empty
 	_start_hum()
+	Audio.start_bed(BED, true)
 	if state.is_active():
 		Audio.start_bed(BED)
 	state.event_received.connect(_on_event)

@@ -4,9 +4,9 @@ extends Node
 ## written back shortly after. Registered as the autoload `Settings`.
 ##
 ## Values are plain data, keyed `section/name`. Every key has a default and a range, so a missing,
-## hand-edited or wrong-typed entry falls back instead of breaking anything. Controls values
-## (mouse sensitivity, invert Y) have nothing to apply here: gameplay reads them with `get_value`
-## and listens to `changed`.
+## hand-edited or wrong-typed entry falls back instead of breaking anything. Controls and shake
+## values (mouse sensitivity, invert Y, camera shake) have nothing to apply here: gameplay reads
+## them with `get_value` and listens to `changed`.
 
 ## Emitted after a value changes and has been applied.
 signal changed(key: StringName, value: Variant)
@@ -28,6 +28,9 @@ const VOLUME_AMBIENCE := &"audio/ambience"
 const VOLUME_UI := &"audio/ui"
 const REDUCED_MOTION := &"accessibility/reduced_motion"
 const UI_SCALE := &"accessibility/ui_scale"
+## How much of the shot's view shake is drawn, in percent (0 is off). Reduced motion turns it
+## off too.
+const CAMERA_SHAKE := &"accessibility/camera_shake"
 const MOUSE_SENSITIVITY := &"controls/mouse_sensitivity"
 const INVERT_Y := &"controls/invert_y"
 ## Touch controls: 0 follows the device (a phone shows them), 1 always, 2 never (`TouchMode`).
@@ -52,6 +55,7 @@ const DEFAULTS := {
 	VOLUME_UI: 80,
 	REDUCED_MOTION: false,
 	UI_SCALE: 1.0,
+	CAMERA_SHAKE: 100,
 	MOUSE_SENSITIVITY: 1.0,
 	INVERT_Y: false,
 	TOUCH_CONTROLS: 0,
@@ -72,6 +76,7 @@ const RANGES := {
 	VOLUME_AMBIENCE: Vector2(0, 100),
 	VOLUME_UI: Vector2(0, 100),
 	UI_SCALE: Vector2(0.8, 1.25),
+	CAMERA_SHAKE: Vector2(0, 100),
 	MOUSE_SENSITIVITY: Vector2(0.1, 3.0),
 	TOUCH_CONTROLS: Vector2(0, 2),
 	TOUCH_SCALE: Vector2(0.8, 1.4),

@@ -22,7 +22,7 @@ enum Mode { HUMAN, AUTOPILOT, MANUAL }
 
 ## Sounds that may start in one frame during the night (`AudioService.starts_per_frame`): the
 ## frame of a kill starts six, and each costs about a millisecond in the browser.
-const SOUND_STARTS_PER_FRAME := 3
+const SOUND_STARTS_PER_FRAME := 2
 ## Share of the loading bar the lot's own build takes, before the warm-up starts.
 const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
@@ -67,6 +67,8 @@ var _spectator: Camera3D
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
 var _hud_binding: NightHudBinding
+## Held here: it listens to the client state and nothing else keeps it alive.
+var _equip_sync: WeaponEquipSync
 var _paused := false
 
 
@@ -90,6 +92,7 @@ func start(
 	state.player_id = PLAYER_ID
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, server, looks)
+	_equip_sync = WeaponEquipSync.new(state, server.body_of)
 	link.delivered.connect(_on_delivered)
 	looks.changed.connect(_dress_bodies)
 	link.send({"type": NightServer.JOIN, "player_id": PLAYER_ID, "local": mode == Mode.HUMAN})
@@ -112,6 +115,7 @@ func start(
 	view = NightView.new()
 	add_child(view)
 	view.setup(state, camera, _telegraphs(), _board_seconds())
+	view.bodies = server.body_of
 	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
 	view.show_crane(world, server.rules.tuning)
@@ -127,7 +131,8 @@ func start(
 				loading.emit(lerpf(BUILD_SHARE, 1.0, fraction), text)
 		)
 		await warmup.run(self)
-	Audio.starts_per_frame = SOUND_STARTS_PER_FRAME
+	# Only the game limits them: a test that needs no pictures hears every sound at once.
+	Audio.starts_per_frame = SOUND_STARTS_PER_FRAME if warm_up else 0
 	running = true
 	ready_to_play.emit()
 

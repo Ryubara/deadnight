@@ -11,6 +11,9 @@ const NUMBER_LIFT := Vector3(0.0, 0.3, 0.0)
 
 var horde: ZombieHorde
 var effects: ShotEffects
+## Maps a player id to the `Player` that draws it, or null (`Night` sets it): a shot's flash hangs
+## on that body's weapon muzzle, and the local player's view shakes with the shot.
+var bodies := Callable()
 ## Where each breach's boards stand (`NightWorld`): a board torn or mended shows a burst there.
 var barricade_points: Dictionary[StringName, Vector3] = {}
 ## The lot's lamps, drawn from the generator's events (`show_lamps`).
@@ -92,7 +95,7 @@ func _on_event(event: Dictionary) -> void:
 			PerfProbe.end(&"view.voices", began)
 		&"shot_fired":
 			began = PerfProbe.begin()
-			effects.shot(WeaponCatalog.get_def(event["weapon_id"]), event["muzzle"], event["ends"])
+			_show_shot(event)
 			PerfProbe.end(&"fx.shot", began)
 		&"damage_dealt":
 			began = PerfProbe.begin()
@@ -114,3 +117,15 @@ func _on_event(event: Dictionary) -> void:
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
+
+
+## The flash on the shooter's muzzle point (or at the server's muzzle when the weapon has no model),
+## the impacts, and the shake of the local player's own view.
+func _show_shot(event: Dictionary) -> void:
+	var def := WeaponCatalog.get_def(event["weapon_id"])
+	var body := bodies.call(event["shooter_id"]) as Player if bodies.is_valid() else null
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
+	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
+	if body != null and event["shooter_id"] == _state.player_id:
+		body.camera_rig.add_shake(def.shake_trauma)

@@ -17,9 +17,9 @@ func before_test() -> void:
 	_audio = AudioService.new()
 	_audio.listener = _listener
 	_audio.seed_random(7)
+	add_child(_audio)
 	# The clock is moved by hand, so a waiting sound starts when the test says.
 	_audio.set_process(false)
-	add_child(_audio)
 
 
 func after_test() -> void:
@@ -96,3 +96,23 @@ func test_the_loudest_priority_waits_least() -> void:
 	await get_tree().process_frame
 	_audio.advance(0.016)
 	assert_array(order).is_equal([&"impact_flesh", &"points_kill"])
+
+
+func test_a_kept_bed_is_paused_when_it_fades_out_and_comes_back_without_starting_again() -> void:
+	_audio.start_bed(&"bed_score", true)
+	assert_bool(_audio.is_bed_running(&"bed_score")).is_false()
+	var player := _audio._beds[&"bed_score"]["player"] as AudioStreamPlayer
+	assert_bool(player.stream_paused).is_true()
+	assert_object(_audio.start_bed(&"bed_score")).is_same(player)
+	assert_bool(player.stream_paused).is_false()
+	assert_bool(player.playing).is_true()
+	assert_bool(_audio.is_bed_running(&"bed_score")).is_true()
+	_audio.advance(5.0)
+	assert_float(_audio.bed_fade_db(&"bed_score")).is_equal(0.0)
+	_audio.stop_bed(&"bed_score")
+	_audio.advance(5.0)
+	assert_bool(_audio.is_bed_running(&"bed_score")).is_false()
+	assert_bool(player.stream_paused).is_true()
+	assert_object(_audio.start_bed(&"bed_score")).is_same(player)
+	_audio.stop_beds(true)
+	assert_bool(player.playing).is_false()

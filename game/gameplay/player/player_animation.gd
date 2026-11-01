@@ -39,6 +39,8 @@ const HOLD_MELEE := Transform3D(
 ## The hold of each class that shows a weapon (Pistol has no model yet: the hand stays empty):
 ## the model, its size and where it rests (holds/*.tres, docs/design/weapon-hold.md).
 const HOLDS_DIR := "res://gameplay/player/holds/"
+## The node every firearm model carries at the tip of its barrel, `-Z` out of the barrel.
+const MUZZLE_NODE := "Muzzle"
 const HOLD_CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
 ## How fast the arms go to and from the shouldered pose (per second, exponential).
 const SHOULDER_RATE := 14.0
@@ -161,6 +163,16 @@ func weapon() -> Node3D:
 	return _weapon
 
 
+## The muzzle point of the weapon in the hand (its `-Z` points down the barrel), or null when the
+## class shows no weapon. The muzzle flash hangs on it. It is the `Muzzle` node the weapon's own
+## model carries (the convention: docs/design/weapon-hold.md), or, for a model that has none yet,
+## one placed at the hold's `muzzle` point.
+func muzzle_point() -> Node3D:
+	if _weapon == null:
+		return null
+	return _weapon.find_child(MUZZLE_NODE, true, false) as Node3D
+
+
 ## Switches to a weapon class: Equip_<Class> plays and the weapon appears on its weapon_visible
 ## frame; the upper body then holds Aim_<Class>.
 func equip(new_class: StringName) -> void:
@@ -270,7 +282,18 @@ func _set_class(new_class: StringName) -> void:
 		_weapon.name = "Weapon"
 		var grip := HOLD_MELEE if new_class == &"Melee" else HOLD_GUN
 		_weapon.transform = grip.scaled_local(Vector3.ONE * _hold.model_scale)
+		if _weapon.find_child(MUZZLE_NODE, true, false) == null:
+			_weapon.add_child(_make_muzzle(_hold))
 		_mount.add_child(_weapon)
+
+
+## The muzzle point of a hold: at its `muzzle` (the model's units), turned so `-Z` runs out of the
+## barrel (the model's `-X`).
+func _make_muzzle(hold: WeaponHold) -> Marker3D:
+	var marker := Marker3D.new()
+	marker.name = MUZZLE_NODE
+	marker.transform = Transform3D(Basis.looking_at(Vector3.LEFT, Vector3.UP), hold.muzzle)
+	return marker
 
 
 ## Eases the arms onto the shouldered pose while the weapon is up and the clip does not use the
@@ -284,10 +307,8 @@ func _advance_shoulder(delta: float) -> void:
 	_hands.aim_yaw = rig.yaw if _player.state.aiming else _player.rotation.y
 	_hands.aim_pitch = rig.pitch
 	_hands.converging = _player.state.aiming
-	var lens := rig.get_node("Camera3D") as Camera3D
-	_hands.converge_on = (
-		lens.global_position - lens.global_basis.z * WeaponHandsIK.CONVERGE_DISTANCE
-	)
+	var view := rig.aim_transform()
+	_hands.converge_on = view.origin - view.basis.z * WeaponHandsIK.CONVERGE_DISTANCE
 	if String(action_clip).begins_with("Fire_") and _action_time < delta * 1.5:
 		_recoil = 1.0
 	_recoil *= exp(-RECOIL_RATE * delta)

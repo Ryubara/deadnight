@@ -28,6 +28,8 @@ func setup(state: ClientState, world: NightWorld) -> void:
 	state.event_received.connect(_on_event)
 	for id in NIGHT_BEDS:
 		Audio.start_bed(id)
+	# The score comes and goes with the rounds: made ready now, behind the loading screen.
+	Audio.start_bed(SCORE, true)
 	if state.phase() != GameRules.Phase.ACTIVE:
 		Audio.start_bed(SCORE)
 	_start_projector()

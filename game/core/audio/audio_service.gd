@@ -31,7 +31,7 @@ const DEFER_MAX := 16
 const POOL_3D := 32
 const POOL_2D := 12
 ## Players for beds (looping ambience and score), which are outside the voice budget.
-const POOL_BEDS := 4
+const POOL_BEDS := 6
 ## A bed fades between this and its own level, at these rates (dB per second), so it comes in over
 ## about three seconds and goes out over about two.
 const BED_SILENT_DB := -60.0
@@ -76,6 +76,9 @@ var culled := 0
 var _rng := RandomNumberGenerator.new()
 var _now := 0.0
 var _streams := {}
+## Loops and beds ready to play, by file path: a copy of the Ogg that loops (made when the sound is
+## preloaded, not when a bed starts, where copying a minute of music took 40 ms of the frame).
+var _looped := {}
 ## Short sounds decoded to samples (`PcmStream`) by file path, played instead of the Ogg.
 var _pcm := {}
 var _starts_frame := -1
@@ -87,6 +90,8 @@ var _players_2d: Array[AudioStreamPlayer] = []
 var _bed_players: Array[AudioStreamPlayer] = []
 ## Each running bed by id: {"player", "def", "fade_db" (now), "target_db"}.
 var _beds := {}
+## Beds that come and go (`keep_bed`): at silence their player is paused, not freed.
+var _kept := {}
 ## The looping players `start_loop` made, so `stop_all` can stop those too.
 var _loops: Array[AudioStreamPlayer3D] = []
 var _budget_3d: VoiceBudget
@@ -135,6 +140,8 @@ func _exit_tree() -> void:
 		player.stream = null
 	_streams.clear()
 	_pcm.clear()
+	_looped.clear()
+	_kept.clear()
 	_remove_duck_effect()
 	if UIAudio.handler == play_ui:
 		UIAudio.handler = Callable()
@@ -235,9 +242,11 @@ func _defer(id: StringName, position: Variant, extra_db: float) -> void:
 func _start_deferred() -> void:
 	if _deferred.is_empty():
 		return
-	_deferred = _deferred.filter(
-		func(s: Dictionary) -> bool: return _now - s["at"] <= DEFER_MAX_SECONDS
-	)
+	var waiting: Array[Dictionary] = []
+	for sound in _deferred:
+		if _now - float(sound["at"]) <= DEFER_MAX_SECONDS:
+			waiting.append(sound)
+	_deferred = waiting
 	_deferred.sort_custom(
 		func(a: Dictionary, b: Dictionary) -> bool:
 			return (
@@ -279,6 +288,8 @@ func preload_sound(id: StringName) -> int:
 			loaded += 1
 		if not def.loop and not _pcm.has(path) and PcmStream.fits(_streams[path]):
 			_pcm[path] = PcmStream.decode(_streams[path], int(AudioServer.get_mix_rate()))
+		if def.loop and not _looped.has(path) and _streams[path] is AudioStreamOggVorbis:
+			_looped[path] = _loop_of(_streams[path])
 	return loaded
 
 
@@ -289,8 +300,7 @@ func start_loop(id: StringName, parent: Node3D) -> AudioStreamPlayer3D:
 	var stream := _pick_stream(def) if def != null else null
 	if stream == null:
 		return null
-	var looped := stream.duplicate() as AudioStreamOggVorbis
-	looped.loop = true
+	var looped := _loop_for(stream)
 	var player := AudioStreamPlayer3D.new()
 	player.stream = looped
 	player.bus = def.bus
@@ -308,28 +318,53 @@ func start_loop(id: StringName, parent: Node3D) -> AudioStreamPlayer3D:
 ## Starts a looping flat sound (a bed: the night's ambience, the score) that fades in from
 ## silence. Starting one that already runs only turns it back up. Returns its player, or null when
 ## the sound is unknown or every bed player is busy.
-func start_bed(id: StringName) -> AudioStreamPlayer:
+func start_bed(id: StringName, keep := false) -> AudioStreamPlayer:
+	var whole := PerfProbe.begin()
+	var bed := _start_bed(id)
+	PerfProbe.end(&"audio.start_bed", whole)
+	if keep and bed != null:
+		_keep(id)
+	return bed
+
+
+## Marks a bed that comes and goes with the night's rounds (the score between them, the tension in
+## them), and puts it away silent and paused: from here on it is only paused when it fades to
+## silence, and starting it again is a fade up. Starting a minute of music takes 40 ms in the
+## browser, which is a frame of the night when it is done at the end of a round.
+func _keep(id: StringName) -> void:
+	_kept[id] = true
+	stop_bed(id)
+	_beds[id]["fade_db"] = BED_SILENT_DB
+	advance(0.0)
+
+
+func _start_bed(id: StringName) -> AudioStreamPlayer:
 	if _beds.has(id):
-		_beds[id]["target_db"] = 0.0
-		return _beds[id]["player"]
+		var bed: Dictionary = _beds[id]
+		if bed.get("parked", false):
+			bed["parked"] = false
+			(bed["player"] as AudioStreamPlayer).stream_paused = false
+		bed["target_db"] = 0.0
+		return bed["player"]
 	var def := SoundCatalog.get_def(id)
 	var stream := _pick_stream(def) if def != null else null
 	var player := _free_bed_player()
 	if stream == null or player == null:
 		return null
-	var looped := stream.duplicate() as AudioStreamOggVorbis
-	looped.loop = true
+	var looped := _loop_for(stream)
 	player.stream = looped
 	player.bus = def.bus
 	player.volume_db = def.volume_db + BED_SILENT_DB
+	var began := PerfProbe.begin()
 	player.play()
+	PerfProbe.end(&"audio.bed_play", began)
 	_beds[id] = {"player": player, "def": def, "fade_db": BED_SILENT_DB, "target_db": 0.0}
 	return player
 
 
 ## Fades a bed out and frees its player when it is silent. Nothing happens for a bed not running.
 func stop_bed(id: StringName) -> void:
-	if _beds.has(id):
+	if _beds.has(id) and not _beds[id].get("parked", false):
 		_beds[id]["target_db"] = BED_SILENT_DB
 
 
@@ -343,7 +378,7 @@ func stop_beds(immediately := false) -> void:
 
 
 func is_bed_running(id: StringName) -> bool:
-	return _beds.has(id)
+	return _beds.has(id) and not _beds[id].get("parked", false)
 
 
 ## A bed's fade in dB: -60 is silent, 0 is its own level.
@@ -485,6 +520,8 @@ func _play_2d(
 func _step_beds(delta: float) -> void:
 	for id: StringName in _beds.keys():
 		var bed: Dictionary = _beds[id]
+		if bed.get("parked", false):
+			continue
 		var rate := (
 			BED_FADE_IN_DB_PER_S if bed["target_db"] > bed["fade_db"] else BED_FADE_OUT_DB_PER_S
 		)
@@ -493,12 +530,17 @@ func _step_beds(delta: float) -> void:
 			(bed["def"] as SoundDef).volume_db + bed["fade_db"]
 		)
 		if bed["target_db"] <= BED_SILENT_DB and bed["fade_db"] <= BED_SILENT_DB:
-			_release_bed(id)
+			if _kept.has(id):
+				bed["parked"] = true
+				(bed["player"] as AudioStreamPlayer).stream_paused = true
+			else:
+				_release_bed(id)
 
 
 func _release_bed(id: StringName) -> void:
 	var player := _beds[id]["player"] as AudioStreamPlayer
 	player.stop()
+	player.stream_paused = false
 	player.stream = null
 	_beds.erase(id)
 
@@ -521,6 +563,19 @@ func _after_start(def: SoundDef, position: Variant) -> void:
 
 ## One variant of the sound (never the one played last). `samples` asks for its decoded copy when it
 ## has one (`PcmStream`): a loop or a bed needs the Ogg, which it can loop.
+## The copy of `stream` that loops: the one made at preload, or one made now.
+func _loop_for(stream: AudioStream) -> AudioStreamOggVorbis:
+	if _looped.has(stream.resource_path):
+		return _looped[stream.resource_path]
+	return _loop_of(stream)
+
+
+func _loop_of(stream: AudioStream) -> AudioStreamOggVorbis:
+	var looped := stream.duplicate() as AudioStreamOggVorbis
+	looped.loop = true
+	return looped
+
+
 func _pick_stream(def: SoundDef, samples := false) -> AudioStream:
 	var variant := 1
 	if def.variants > 1:

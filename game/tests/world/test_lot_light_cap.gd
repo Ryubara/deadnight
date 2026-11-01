@@ -23,7 +23,9 @@ const KNOWN_OVER := {
 ## Where each script and scene that makes a light says what it is. A new light source is not in
 ## here, and the test that reads the project fails until its place in the cap is decided.
 const LIGHT_SCRIPTS := {
-	"res://world/weapon_range/shot_effects.gd": "muzzle flash",
+	"res://gameplay/weapons/fx/muzzle_flash.gd": "muzzle flash: one on the map at a time",
+	"res://gameplay/night/warmup/night_warmup.gd":
+	"the warm-up's stage, 150 m above the lot, out of reach",
 	"res://world/grenade_range/blast_effect.gd": "blast",
 	"res://world/grenade_range/grenade_view.gd": "grenade lamp",
 	"res://world/crane/prize_crane.gd": "the crane's lamp: counted at every crane spot",
@@ -257,12 +259,16 @@ func test_each_fight_effect_adds_one_light_and_the_headroom_pays_for_it() -> voi
 	var effects := auto_free(ShotEffects.new()) as ShotEffects
 	add_child(effects)
 	for def in WeaponCatalog.all():
-		var before := effects.find_children("*", "Light3D", true, false).size()
 		effects.shot(def, Vector3(0, 1.5, 0), [Vector3(0, 1.0, -6)])
-		var added := effects.find_children("*", "Light3D", true, false).size() - before
-		assert_int(added).override_failure_message("%s adds %d lights" % [def.id, added]).is_equal(
-			1
-		)
+		# The flash's light is lent from a pool of one: lit, it is the only one a shot has.
+		var lit := 0
+		for light in effects.find_children("*", "Light3D", true, false):
+			if (light as Light3D).is_visible_in_tree():
+				lit += 1
+		# A weapon with no flash (the crowbar) lights nothing: the last flash's light may still be up.
+		assert_int(lit).override_failure_message("%s lights %d" % [def.id, lit]).is_less_equal(1)
+		if def.flash_size > 0.0:
+			assert_int(lit).override_failure_message("%s lights no flash" % def.id).is_equal(1)
 	var blast := auto_free(BlastEffect.new()) as BlastEffect
 	add_child(blast)
 	blast.play(Vector3.ZERO, load("res://gameplay/grenades/defs/frag.tres") as GrenadeDef)
