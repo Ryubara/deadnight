@@ -5,7 +5,6 @@ extends Node3D
 ## `--empty` (no zombies at all, to measure the empty lot), `--frames=N` (bench length).
 
 const GREYBOX := preload("res://world/drive_in_greybox.tscn")
-const ZOMBIE_MODEL := "res://assets/zombie_kit/zombie.glb"
 const PLAYER_SPEED := 5.0
 ## Waypoints player 1 runs between (metres), then stands at the last.
 const ROUTE: Array[Vector3] = [
@@ -107,7 +106,6 @@ func _make_zombies(greybox: Node) -> void:
 	var director := ZombieDirector.new(_rules, sim, points)
 	director.player_struck.connect(func(_p: int, _z: int, _d: float) -> void: _strikes += 1)
 	_horde = ZombieHorde.new()
-	_horde.model_scene = load(ZOMBIE_MODEL)
 	add_child(_horde)
 	_horde.setup(director, _camera, cap.emerge_seconds)
 	if not _args.has("empty"):

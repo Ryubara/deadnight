@@ -5,6 +5,8 @@ extends Node3D
 ## wire format (`ZombieCodec`) and updates the views from what comes out, so what is drawn is
 ## exactly what a remote client would draw.
 
+## The body every zombie wears: a ZombieModels variant, unless `model_scene` is set.
+@export var variant: StringName = ZombieModels.DEFAULT
 @export var model_scene: PackedScene
 
 var director: ZombieDirector
@@ -21,6 +23,8 @@ var _emerge_seconds: float = 0.0
 func setup(p_director: ZombieDirector, camera: Camera3D, p_emerge_seconds: float) -> void:
 	_emerge_seconds = p_emerge_seconds
 	director = p_director
+	if model_scene == null:
+		model_scene = ZombieModels.scene(variant)
 	throttle = AnimationThrottle.new()
 	throttle.camera = camera
 	add_child(throttle)

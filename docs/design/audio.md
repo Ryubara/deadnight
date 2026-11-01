@@ -47,6 +47,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Reloads | `reload_pistol`, `reload_smg`, `reload_rifle`, `reload_shotgun` | magazine out, in and the bolt; the shotgun's three shells and pump |
 | Steps | `step_asphalt`, `step_gravel` | four variants each; gravel is a spray of tiny grains |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` | one throat model, different pitch curves, vowels, rasp and growl |
+| Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_start` | the hum is a whole number of cycles, so it never clicks at the seam |
 | Stings | `round_start`, `round_end` | stereo, on Music; `round_start` ducks Effects 9 dB |
 
