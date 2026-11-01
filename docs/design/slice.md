@@ -93,7 +93,9 @@ for captures and prints a report (`-- --rounds=5 --speed=30`, `--trace`, `--log`
 Each of these is an issue.
 
 - **Characters** (#90): the player model carries no weapon in hand yet; hit and death reactions.
-- **Grenades** (#99) and **boss nights** (#97) join through `NightServer` and the rules.
+- **Boss nights** (#97) join through `NightServer` and the rules. (Grenades did: #351.)
+- **Grenade polish** (#351): the blast's knockback and stun on the dead, the grenade model in the Soldier's hand, the
+  throw clip timed to the server's throw, and the arc preview while the button is held.
 - **Real transport.** `LoopbackLink` becomes the network protocol; the player bodies split into server bodies and
   drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
 - **Tonics**, the re-cut. (A breaker post for each circuit is in:

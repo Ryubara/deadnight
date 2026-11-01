@@ -26,6 +26,11 @@ extends Resource
 ## Seconds before the same hand can buy another can (a held key does not empty the purse).
 @export var fuel_interval: float = 0.5
 
+@export_group("Grenades")
+## Metres in front of the player, along the aim, that a grenade leaves the hand from (the server
+## keeps it within `GrenadeDef.hand_reach` of the hand it knows).
+@export var grenade_hand_reach: float = 0.35
+
 @export_group("Shots")
 ## The barrel, relative to the player's feet and facing (x right, -z forward).
 @export var muzzle_offset: Vector3 = Vector3(0.3, 1.45, -0.4)

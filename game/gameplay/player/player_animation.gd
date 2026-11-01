@@ -80,6 +80,19 @@ const REPAIR_SEEK_PARAMETER := &"parameters/repair_seek/seek_request"
 const REPAIR_SCALE_PARAMETER := &"parameters/repair_scale/scale"
 const REPAIR_BLEND_PARAMETER := &"parameters/repair/blend_amount"
 
+## The grenade's clips, a file of their own on the same rig (`docs/design/animation.md`, Grenade):
+## the pin and the cooking hold, the overarm throw and the underarm toss. Upper body, so the legs
+## keep running under them.
+const GRENADE_GLB := "res://assets/characters/soldier/grenade/soldier_grenade.glb"
+const GRENADE_SPEC := "res://assets/characters/soldier/grenade/clips.json"
+const GRENADE_COOK := &"Grenade_Cook"
+const GRENADE_THROW := &"Grenade_Throw"
+const GRENADE_TOSS := &"Grenade_Toss"
+## The cook clip's first event: the gun goes down, the grenade is in the hand.
+const GRENADE_TAKEN_EVENT := "grenade_visible"
+## The throw clips' last event: the arm is back, the gun comes up again.
+const GRENADE_DONE_EVENT := "done"
+
 const STATE_LOCOMOTION := &"locomotion"
 const STATE_JUMP := &"jump"
 const STATE_FALL := &"fall"
@@ -123,6 +136,7 @@ func _ready() -> void:
 	var model := _player.get_node("Model")
 	var anim_player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_add_repair_clip(anim_player)
+	_add_grenade_clips(anim_player)
 	_loop_clips(anim_player)
 	_mount = BoneAttachment3D.new()
 	_mount.name = "WeaponMount"
@@ -204,6 +218,36 @@ func equip(new_class: StringName) -> void:
 ## false when the class has no such clip.
 func play_action(action: StringName) -> bool:
 	var clip := StringName("%s_%s" % [action, weapon_class])
+	if not _spec["clips"].has(String(clip)):
+		return false
+	_action_node.animation = clip
+	action_clip = clip
+	_action_time = 0.0
+	set(&"parameters/action/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
+	_emit_events(clip, -1.0, 0.0)
+	return true
+
+
+## The pin is out (the server's `cook_started`): the cook clip plays and the gun goes down.
+func grenade_cooking() -> void:
+	play_clip(GRENADE_COOK)
+
+
+## The grenade left the hand (`grenade_thrown`): the throw, or for the short underarm toss the toss
+## clip; `underarm` is the event's own flag.
+func grenade_thrown(underarm: bool) -> void:
+	play_clip(GRENADE_TOSS if underarm else GRENADE_THROW)
+
+
+## The grenade is not in the hand any more without a throw (it went off there, or the player was
+## downed): the gun comes back.
+func grenade_gone() -> void:
+	_weapon_visible(true)
+
+
+## Plays a clip of the spec on the upper body, in place of whatever action it was playing. Returns
+## false when the spec has no such clip.
+func play_clip(clip: StringName) -> bool:
 	if not _spec["clips"].has(String(clip)):
 		return false
 	_action_node.animation = clip
@@ -412,8 +456,10 @@ func _emit_events(clip: StringName, from: float, to: float, skip_at: float = -1.
 			if at > from and at <= to and not is_equal_approx(at, skip_at):
 				if event == "weapon_visible":
 					_weapon_visible(true)
-				elif event == "weapon_hidden":
+				elif event == "weapon_hidden" or event == GRENADE_TAKEN_EVENT:
 					_weapon_visible(false)
+				elif event == GRENADE_DONE_EVENT:
+					_weapon_visible(true)
 				clip_event.emit(clip, StringName(event))
 
 
@@ -437,6 +483,19 @@ func _add_repair_clip(anim_player: AnimationPlayer) -> void:
 	var holder := (load(REPAIR_GLB) as PackedScene).instantiate()
 	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	library.add_animation(REPAIR_CLIP, source.get_animation(REPAIR_CLIP))
+	holder.free()
+
+
+## Adds the grenade clips to the Soldier's own library, as `_add_repair_clip` does for its clip.
+func _add_grenade_clips(anim_player: AnimationPlayer) -> void:
+	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(GRENADE_SPEC))
+	var library := anim_player.get_animation_library(&"")
+	var holder := (load(GRENADE_GLB) as PackedScene).instantiate()
+	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	for clip: StringName in [GRENADE_COOK, GRENADE_THROW, GRENADE_TOSS]:
+		_spec["clips"][String(clip)] = spec["clips"][String(clip)]
+		if not library.has_animation(clip):
+			library.add_animation(clip, source.get_animation(clip))
 	holder.free()
 
 

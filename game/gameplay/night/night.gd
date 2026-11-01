@@ -26,6 +26,10 @@ const SPECTATOR_OFFSET := Vector3(0.0, 11.0, 8.0)
 ## How far past the low-tank line (a fraction of a full tank) the bot waits before it lights an
 ## area again.
 const SWITCH_RESUME_MARGIN := 0.15
+## The server's events that move the Soldier's grenade clips.
+const GRENADE_CLIP_EVENTS: Array[StringName] = [
+	&"cook_started", &"grenade_thrown", &"grenade_dropped", &"grenade_exploded"
+]
 
 var mode := Mode.HUMAN
 var world: NightWorld
@@ -100,6 +104,7 @@ func start(
 	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
 	view.show_crane(world, server.rules.tuning)
+	view.show_grenades(server.grenades.def)
 	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
@@ -248,14 +253,40 @@ func _on_event(event: Dictionary) -> void:
 		night_over.emit(event["round_reached"])
 	elif event["type"] == &"board_repaired":
 		_show_repair(event["player_id"])
+	else:
+		_show_grenade(event)
 
 
 ## The player who put a board back hammers it home: the repair clip lands on this event.
 func _show_repair(player_id: int) -> void:
-	var body := server.body_of(player_id)
-	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	var animation := _animation_of(player_id)
 	if animation != null:
 		animation.board_repaired(server.tuning.repair_interval)
+
+
+## The Soldier's grenade clips follow the server's events: the pin, the throw, a grenade that went
+## off or was dropped in the hand.
+func _show_grenade(event: Dictionary) -> void:
+	if not GRENADE_CLIP_EVENTS.has(event["type"]):
+		return
+	var animation := _animation_of(event.get("player_id", event.get("thrower_id", -1)))
+	if animation == null:
+		return
+	match event["type"]:
+		&"cook_started":
+			animation.grenade_cooking()
+		&"grenade_thrown":
+			animation.grenade_thrown(event["underarm"])
+		&"grenade_dropped":
+			animation.grenade_gone()
+		&"grenade_exploded":
+			if event["in_hand"]:
+				animation.grenade_gone()
+
+
+func _animation_of(player_id: int) -> PlayerAnimation:
+	var body := server.body_of(player_id)
+	return body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 
 
 func _make_autopilot() -> void:
