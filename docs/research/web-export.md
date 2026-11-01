@@ -73,6 +73,101 @@ Things that were not obvious:
 - #82: WebGL2 in Chromium shows the menu, the wardrobe and the night with no shader error in the console. Firefox and a
   mobile GPU are still not run.
 
+## Playing the web build
+
+**<https://web-production-f401d1.up.railway.app>** is the head of `main`, in a browser, with no install (issue #172).
+It is a Railway-generated domain; a custom domain is the maintainer's to add (service `web`, Settings, Networking).
+
+```text
+merge to main
+   |
+   v
+ci: godot (tests) + web (export, smoke run in headless Chromium)       <- the build that is deployed is the one tested
+   |  artifact web-build
+   v
+ci: deploy   bash deploy/web/deploy.sh build/web $GITHUB_SHA
+   |  railway up (Dockerfile + Caddyfile + build/web)
+   v
+Railway project gdstudio-net-test, service `web`
+   |  image build: gzip and brotli the .wasm, .pck, .js, .html once
+   |  health check GET /healthz, then traffic moves to the new deployment
+   v
+https://web-production-f401d1.up.railway.app
+```
+
+What serves it (`deploy/web/`): a Caddy 2.11 container. `.wasm` is `application/wasm`, `.pck` is
+`application/octet-stream`, and the large files are compressed **once, when the image is built** (`index.wasm`
+39.5 MB, 10.1 MB as gzip, 7.9 MB as brotli; `index.pck` 5.3 MB, 4.8 MB gzip, 4.6 MB brotli), then picked by the
+browser's `Accept-Encoding`. Every response says `Cache-Control: no-cache`: the file names have no hash, so a browser
+asks each load whether the file changed (an ETag, so a 304 when it did not) and a deploy or a rollback is live on the
+next page load. No cross-origin isolation headers are sent, because the export has no threads.
+
+Why this way, and not another:
+
+- **CI uploads the tested build with `railway up`.** The alternative, a Railway service built from the GitHub
+  repository, would have to export the game inside the image build: the 1 GB of export templates, and Git LFS (the
+  models and textures are LFS objects, which Railway's GitHub builds do not fetch). It would also deploy a build that
+  CI never ran in a browser.
+- **A Dockerfile that downloads a build CI published** needs a public place for that build: a GitHub release is a
+  tag (a maintainer decision), and a branch holding a 50 MB binary per merge would grow the repository without end.
+- The deploy needs one secret, a Railway **project token**, which can deploy to that one project and environment and
+  nothing else.
+
+### Setting it up (once, the maintainer)
+
+A project token cannot be created by the agent's login (`projectTokenCreate` answers "Not Authorized" to the CLI's
+session), so this is a dashboard step: Railway, project `gdstudio-net-test`, Settings, Tokens, new token for the
+`production` environment, then
+
+```sh
+gh secret set RAILWAY_TOKEN --repo Ryubara/deadnight   # paste the token when asked
+```
+
+Until the secret exists the `deploy` job warns "Not deployed" and stops; it never fails the run. Afterwards,
+**Actions, ci, Run workflow** on `main` deploys the current head without a push.
+
+### Rolling back
+
+- **Fastest:** the Railway dashboard, service `web`, Deployments, the earlier deployment, Rollback. The same from a shell
+  (the CLI has no rollback command, the API has):
+
+  ```sh
+  railway deployment list --service web --json     # ids, newest first; "cliMessage" is "main <short sha>"
+  railway api 'mutation { deploymentRollback(id: "<deployment id>") }'
+  ```
+
+  Rolling back keeps the build, but the next merge to `main` deploys over it.
+- **Lasting:** revert the commit on `main`; the merge deploys the reverted build.
+- **Redo a deploy:** re-run the `deploy` job of an earlier `ci` run on `main` (`gh run rerun <id> --job <deploy job id>`);
+  it uses that run's `web-build` artifact, which GitHub keeps for 90 days.
+
+### Running it locally
+
+```sh
+bash deploy/web/deploy.sh path/to/build/web <commit> <stage folder>   # needs RAILWAY_TOKEN, or `railway link` in the shell
+docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 8080:8080 deadnight-web
+```
+
+The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
+https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
+
+### Over the internet
+
+`smoke.py` pointed at the URL (Houston, Texas, on a home connection, headless Chromium with a fresh profile, so
+nothing cached; the Railway edge answered from `iah1`): the menu, the wardrobe and a 45 s night, **no console error,
+no failed request, no HTTP status of 400 or more**, with the 4 console lines the engine prints on every start.
+
+| Measure | Value |
+| --- | --- |
+| Time to the main menu, first visit after a deploy | 5.0 s |
+| Time to the main menu, three more visits | 2.3 to 2.4 s |
+| `index.wasm` download alone (curl) | 0.39 s as brotli (7.9 MB), 0.37 s as gzip (10.1 MB), 1.3 s uncompressed (39.5 MB) |
+
+The 5.0 s is the first run after the deploy (probably a cold edge; not investigated). The local
+server needed 1.7 to 3.9 s (Numbers, above), so the network adds little on this connection; a connection of 20 Mbit/s
+needs about 3 s for the 7.9 MB wasm on top of that. Frame times come from the machine that opens the page, not from the
+server.
+
 ## Sources
 
 - [Exporting for the Web](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)
