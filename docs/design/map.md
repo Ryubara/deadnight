@@ -182,6 +182,17 @@ shots, grenades and the camera pass them (a zombie at the boards can be shot), a
 navigation mesh, which keeps the gap open, so the dead's way in is a path and what holds them is the simulation. A
 player puts boards back from the field side only, within reach of the middle of the gap.
 
+What is solid changes the moment the rules say so; only the drawing moves, with one Tween a board and nothing per frame
+(`test_barricade_motion.gd` steps them by hand, `tests/captures/board_motion.tscn` films them):
+
+| | Motion | Numbers |
+| --- | --- | --- |
+| Torn | a drawn copy of the board (pooled, at most 5 a breach, the board's own mesh, no physics) is flung out of the field toward the one pulling it: up, a turn and a half about its length so it lands flat, one end swung out 20 to 34 degrees, then it sinks into the ground and is gone | rises 0.55 m, lands 1.2 m out, gravity 20 m/s²: down in 0.5 s from the lowest slot, 0.78 s from the top; sinks in 0.22 s |
+| Mended | the board's body is in its slot at once; its mesh slides in from the field side swung up about one end (alternate ends board to board, as nailed by hand) and knocks home with a small overshoot | 0.5 m in, 55 degrees, 0.28 s, back-out easing |
+
+A jump of several boards (a late join, a snapshot catching up) moves only the last board that changed; the others snap.
+Binding to the rules at the start of a night snaps.
+
 ### Which lamps hang on which circuit
 
 Each `Lamps` group carries `metadata/circuit`, and every light below it takes that circuit. Four are the generator's

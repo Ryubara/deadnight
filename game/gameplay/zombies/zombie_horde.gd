@@ -18,6 +18,10 @@ var _views: Dictionary[int, ZombieView] = {}
 var _emerge_seconds: float = 0.0
 ## Seconds each look's wind-up lasts, for the looks whose attack is timed to it (the boss's).
 var _telegraphs: Dictionary[StringName, float] = {}
+## Seconds one board takes each look's type, for the tear clip (`ZombieView.setup`).
+var _board_seconds: Dictionary[StringName, float] = {}
+## The pace of a look missing from `_board_seconds`: a walker's.
+var _default_board_seconds := 1.2
 
 
 ## `p_emerge_seconds` is the one number the client needs from the zombies' tuning: how long a
@@ -31,10 +35,16 @@ func setup(p_director: ZombieDirector, camera: Camera3D, p_emerge_seconds: float
 ## a look to the seconds its blow takes to land, like the emerge time a number from the rules the
 ## server owns.
 func setup_client(
-	camera: Camera3D, p_emerge_seconds: float, p_telegraphs: Dictionary[StringName, float] = {}
+	camera: Camera3D,
+	p_emerge_seconds: float,
+	p_telegraphs: Dictionary[StringName, float] = {},
+	p_board_seconds: Dictionary[StringName, float] = {},
+	default_board_seconds: float = 1.2
 ) -> void:
 	_emerge_seconds = p_emerge_seconds
 	_telegraphs = p_telegraphs
+	_board_seconds = p_board_seconds
+	_default_board_seconds = default_board_seconds
 	throttle = AnimationThrottle.new()
 	throttle.camera = camera
 	add_child(throttle)
@@ -85,6 +95,13 @@ func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 			_remove_view(zombie_id)
 
 
+## A zombie tore a board off (the rules' `board_torn`): its tear clip is put on the yank.
+func tore(zombie_id: int) -> void:
+	var view: ZombieView = _views.get(zombie_id)
+	if view != null:
+		view.tore()
+
+
 func _scene_for(look: StringName) -> PackedScene:
 	return model_scene if model_scene != null else ZombieModels.scene(look)
 
@@ -95,7 +112,8 @@ func _add_view(zombie_id: int, look: StringName) -> void:
 	# The same id always gives the same phase, so every client agrees without being told.
 	var phase := fposmod(float(zombie_id) * 0.618034, 1.0)
 	var telegraph: float = _telegraphs.get(look, ZombieRig.BOSS_HIT_SECONDS)
-	view.setup(_scene_for(look), zombie_id, phase, _emerge_seconds, look, telegraph)
+	var board: float = _board_seconds.get(look, _default_board_seconds)
+	view.setup(_scene_for(look), zombie_id, phase, _emerge_seconds, look, telegraph, board)
 	_views[zombie_id] = view
 	throttle.add_view(view)
 

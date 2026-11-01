@@ -36,16 +36,20 @@ var step := 1.0 / 60.0
 var _state: ClientState
 
 
-## `telegraphs` maps a look to the seconds its blow takes to land (from the rules' roster).
+## `telegraphs` maps a look to the seconds its blow takes to land, `board_seconds` to the seconds
+## it takes to pull one board off (both from the rules' tuning).
 func setup(
-	state: ClientState, camera: Camera3D, telegraphs: Dictionary[StringName, float] = {}
+	state: ClientState,
+	camera: Camera3D,
+	telegraphs: Dictionary[StringName, float] = {},
+	board_seconds: Dictionary[StringName, float] = {}
 ) -> void:
 	_state = state
 	effects = ShotEffects.new()
 	add_child(effects)
 	horde = ZombieHorde.new()
 	add_child(horde)
-	horde.setup_client(camera, ZombieTuning.new().emerge_seconds, telegraphs)
+	horde.setup_client(camera, ZombieTuning.new().emerge_seconds, telegraphs, board_seconds)
 	state.event_received.connect(_on_event)
 
 
@@ -92,6 +96,8 @@ func _on_event(event: Dictionary) -> void:
 		&"projectile_burst":
 			effects.spark(event["point"])
 		&"board_torn", &"board_repaired":
+			if event["type"] == &"board_torn":
+				horde.tore(event.get("zombie_id", -1))
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
