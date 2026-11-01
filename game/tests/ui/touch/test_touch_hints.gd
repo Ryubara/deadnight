@@ -111,6 +111,17 @@ func test_an_unused_interact_hint_comes_back_with_the_next_prompt() -> void:
 	assert_array(_hints().showing()).contains([TouchHints.INTERACT])
 
 
+func test_a_used_hint_leaves_nothing_drawn_once_it_has_faded() -> void:
+	await _start()
+	await await_millis(100)
+	assert_bool(_hints().is_painted()).is_true()
+	for id in TouchHints.ORDER:
+		_hints().mark_used(id)
+	await await_millis(600)
+	assert_array(_hints().showing()).is_empty()
+	assert_bool(_hints().is_painted()).is_false()
+
+
 func test_no_hint_shows_while_a_menu_has_the_controls_down() -> void:
 	await _start()
 	_fixture.controls.live = false
