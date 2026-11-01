@@ -630,9 +630,11 @@ func _build_locomotion() -> AnimationNodeBlendTree:
 	# so a diagonal is two of them in phase.
 	var aim_move := AnimationNodeBlendSpace2D.new()
 	aim_move.sync = true
-	aim_move.add_blend_point(_clip(&"Idle"), Vector2.ZERO)
+	aim_move.add_blend_point(_clip(&"Idle"), Vector2.ZERO, -1, &"idle")
 	for clip: StringName in AIM_MOVES:
-		aim_move.add_blend_point(_clip(clip), AIM_MOVES[clip])
+		aim_move.add_blend_point(
+			_clip(clip), AIM_MOVES[clip], -1, StringName(String(clip).to_snake_case())
+		)
 	tree.add_node(&"aim_move", aim_move)
 	tree.add_node(&"aim_rate", AnimationNodeTimeScale.new())
 	tree.connect_node(&"aim_rate", 0, &"aim_move")
