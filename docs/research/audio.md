@@ -77,9 +77,11 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
 - **`Dictionary.merged(other)` keeps the old value** unless its second argument is `true`: the catalog's overrides on a
   base that already had the key (a UI sound's pitch, `dry_fire`'s range) were silently dropped (#135). The catalog now
   lays overrides through one helper, `_with`, and a test reads the catalog's own source and fails on any other call.
-- **A looping player at shutdown** is reported as `resources still in use at exit` (the decoded stream is still held by
-  the mixer): the headless run is clean (dummy driver), but a window that quits while a bed or the projector plays
-  prints it. The capture scene stops everything and waits three frames before quitting.
+- **Streams still held at exit** are reported as `resources still in use at exit`: a bed (or any sound) playing when the
+  engine shuts down keeps its decoded stream, and so does the service's own cache. The night's suites ended with 4 to 9
+  such lines once the beds played. The service now stops every voice, drops every player's stream and clears its cache
+  in `_exit_tree`; waiting in `_exit_tree` did not help, letting go of the streams did. A loop that lives outside the
+  service (the projector's player, under the night) is stopped by its node.
 - **A bed never goes quiet**, so an onset detector on the raw level finds nothing: `analyze.py` compares the short-term
   level with its own median over a second either side.
 
