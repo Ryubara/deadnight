@@ -1,5 +1,8 @@
 # The whole stack on one machine: Postgres, the platform backend, and a stand-in for the headless Godot server.
-# Secrets come from the environment and have no defaults: use scripts/dev-compose.sh, which makes throwaway ones.
+# Secrets come from the environment and have no defaults: use scripts/dev-compose.sh, which makes them once and keeps
+# them for the life of the stack (`down -v` clears both). Host ports: BACKEND_PORT (3000), GAMESERVER_PORT (8080).
+name: deadnight-backend-dev
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -7,6 +10,8 @@ services:
       POSTGRES_DB: deadnight
       POSTGRES_USER: deadnight
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U deadnight -d deadnight"]
       interval: 3s
@@ -28,7 +33,7 @@ services:
       GAME_SERVER_SECRET: ${GAME_SERVER_SECRET:?set GAME_SERVER_SECRET}
       DATABASE_URL: postgres://deadnight:${POSTGRES_PASSWORD}@postgres:5432/deadnight
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3000}:3000"
 
   gameserver:
     build: .
@@ -38,10 +43,13 @@ services:
     environment:
       GAME_SERVER_ID: gs-1
       PORT: "8080"
-      PUBLIC_URL: ws://localhost:8080
+      PUBLIC_URL: ws://localhost:${GAMESERVER_PORT:-8080}
       ACTIVITY_PATH: /gs/1
       BACKEND_URL: http://backend:3000
       TICKET_SECRET: ${TICKET_SECRET:?set TICKET_SECRET}
       GAME_SERVER_SECRET: ${GAME_SERVER_SECRET:?set GAME_SERVER_SECRET}
     ports:
-      - "8080:8080"
+      - "${GAMESERVER_PORT:-8080}:8080"
+
+volumes:
+  pgdata:

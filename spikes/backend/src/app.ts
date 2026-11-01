@@ -1,5 +1,5 @@
 // The HTTP API. Everything is wired through `Deps`, so tests build the same app with stubs and in-memory parts.
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest, LogController } from "fastify";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
@@ -54,8 +54,11 @@ export function buildApp(deps: Deps): FastifyInstance {
   const app = Fastify({
     logger: deps.logger ?? false,
     bodyLimit: MAX_SAVE_BYTES + 1024,
-    // Heartbeats and health checks arrive every few seconds and would drown the log.
-    disableRequestLogging: (request) => request.url === "/health" || request.url.startsWith("/internal/"),
+    // Heartbeats and health checks arrive every few seconds and would drown the log. (The top-level
+    // `disableRequestLogging` option is deprecated and goes in Fastify 6; the log controller replaces it.)
+    logController: new LogController({
+      disableRequestLogging: (request) => request.url === "/health" || request.url.startsWith("/internal/"),
+    }),
   });
   const lobbies = new LobbyService({
     allocate: (matchId) => registry.allocate(matchId),

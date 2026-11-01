@@ -116,7 +116,9 @@ and run. [How to film without a window, and why the mouse look must be off](../r
 Each of these is an issue.
 
 - **Characters** (#90): the player model carries no weapon in hand yet; hit and death reactions.
-- **Grenades** (#99) and **boss nights** (#97) join through `NightServer` and the rules.
+- **Boss nights** (#97) join through `NightServer` and the rules. (Grenades did: #351.)
+- **Grenade polish** (#357): the blast's knockback and stun on the dead, the grenade model in the Soldier's hand, the
+  throw clip timed to the server's throw, and the arc preview while the button is held.
 - **Real transport.** Done for one machine (#302, [Testing multiplayer](../research/testing-multiplayer.md)): the night
   runs on a headless `NightHost` over WebSocket, clients draw the others as avatars and follow the doors from the
   frames. What is left: the player bodies on the server still have models (#153), Railway and Discord.
