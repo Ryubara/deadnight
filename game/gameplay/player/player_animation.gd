@@ -327,6 +327,9 @@ func _advance_shoulder(delta: float) -> void:
 	if absf(_shoulder_blend - target) < 0.001:
 		_shoulder_blend = target
 	_hands.influence = _shoulder_blend
+	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
+	# so the clips that move them (the repair, Reload, Swing) never showed in a running game.
+	_hands.active = _shoulder_blend > 0.0
 
 
 ## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible

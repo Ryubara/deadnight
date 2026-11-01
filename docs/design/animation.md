@@ -202,7 +202,8 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   over the helmet onto the board and meets it square, face first (tested: a drop of more than 0.5 m, the face within
   45 degrees of both the blow and the player's forward, the head at least 0.15 m out ahead of the fist; the face is
   the model's `Face` node). An `Equip`
-  clip's `weapon_visible` frame does not bring the weapon back over it.
+  clip's `weapon_visible` frame does not bring the weapon back over it. While the clip holds the arms the hands' IK is
+  switched off, not only blended to 0: at influence 0 it still drew the arms in the gun pose, hiding the swing.
 - **Timing comes from the rules, not the clock.** The night repairs one board every `repair_interval` (night tuning,
   1.0 s) while `use` is held ([hold to repair](rounds.md#the-fences-boards), #297), and each repair is a
   `board_repaired` event naming the player. On each one,

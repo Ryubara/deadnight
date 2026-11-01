@@ -35,7 +35,8 @@ things large. It is not in `HOLD_CLASSES`: the rule's test covers the weapons th
 
 The weapon rides the right hand (`Index1.R`) on the kit's grip, as before, so the clips that move the arm (Reload,
 Equip, Unequip, Swing, the repair) still carry it. While the clip leaves the hands to the pose (standing, walking,
-running, aiming, firing) `WeaponHandsIK` takes the arms over, blended by `influence` at 14 per second:
+running, aiming, firing) `WeaponHandsIK` takes the arms over, blended by `influence` at 14 per second, and is
+switched off (`active`) once the blend reaches 0, since at influence 0 it still overrode the arms in the drawn pose:
 
 1. The weapon's world pose comes from the aim: the grip sits `grip_offset` from the right shoulder joint (right,
    up, forward is negative), the muzzle along the aim, up stays up. The stock's butt, `butt`, lands against the shoulder.

@@ -182,3 +182,17 @@ func test_the_face_leads_the_blow() -> void:
 	assert_float(dirs[low].dot(forward)).is_greater(0.7)  # square to the board in front
 	# The head out ahead of the fist.
 	assert_float((faces[low] - grips[low]).dot(forward)).is_greater(0.15)
+
+
+func test_the_arm_ik_is_off_while_the_clip_holds_the_arms() -> void:
+	# At influence 0 the IK modifier still overrode the arms in the drawn pose (only a rendered
+	# frame shows it), so the repair's swing and the hammer never showed: it is switched off.
+	_step(30)
+	assert_bool(_animation.hands().active).is_true()  # the rifle shouldered at rest
+	_animation.board_repaired(1.0)
+	_step(30)
+	assert_float(_animation.hands().influence).is_equal(0.0)
+	assert_bool(_animation.hands().active).is_false()
+	_animation.stop_repair()
+	_step(30)
+	assert_bool(_animation.hands().active).is_true()
