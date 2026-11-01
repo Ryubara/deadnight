@@ -200,3 +200,9 @@ static func _build() -> void:
 		1,
 		sting.merged({"volume_db": -5.0, "duck_db": -5.0, "duck_hold": 0.8})
 	)
+	_add(
+		&"special_round",
+		"stings/special_round_%d.ogg",
+		1,
+		sting.merged({"volume_db": -3.0, "duck_db": -9.0, "duck_hold": 2.2})
+	)

@@ -17,8 +17,9 @@ dry where you are, big and open everywhere else, and a little theatrical**.
 - **The dead are voices, not roars.** A groan is a throat (pitch, vowel, rasp, breath), not a monster growl: slow, low,
   always a little human, so a crowd reads as people and not as noise.
 - **B-movie stings.** Round start and end are title-card music from the era's instruments: low timpani, a minor stab of
-  brass, a theremin wail that rises, a cymbal swell, then a quieter, bell-like resolve when the round is survived. Era
-  film and radio were studied for instruments and timing only; nothing is copied.
+  brass, a theremin wail that rises, a cymbal swell, then a quieter, bell-like resolve when the round is survived. The
+  special-round sting is the marquee switching on: eleven bulbs ticking on faster and faster, a reel whirring up, two
+  low organ stabs and a gong. Era film and radio were studied for instruments and timing only; nothing is copied.
 - **Everything is a cue for survival.** The generator carries far and is heard through walls; a groan tells you which
   way, a reload tells the team you are exposed.
 
@@ -49,7 +50,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` | one throat model, different pitch curves, vowels, rasp and growl |
 | Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_start` | the hum is a whole number of cycles, so it never clicks at the seam |
-| Stings | `round_start`, `round_end` | stereo, on Music; `round_start` ducks Effects 9 dB |
+| Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`) 9 dB for 2.2 s |
 
 Not made yet (open issues): the ambient night bed (crickets, distant highway, the projector), melee swings, doors and
 boards, the shop's till, the player's hurt and downed voices, a score.
@@ -77,7 +78,8 @@ boards, the shop's till, the player's hurt and downed voices, a score.
   (`advance(delta)`), so tests and replays do not depend on real time.
 - **UI.** The service sets `UIAudio.handler` when it starts; every `gds_ui` control and every router transition then
   makes its sound with no screen doing anything. The cue-to-sound table is `SoundCatalog.UI_CUES`.
-- **Rules.** `Audio.connect_rules(rules)` plays the sting on the rules' `round_started` and `round_ended` events; the
+- **Rules.** `Audio.connect_rules(rules)` plays the sting on the rules' `round_started`, `round_ended` and
+  `special_round_announced` events; the
   server sends the same events to every client, so the same sting plays for everyone.
 
 ## Using it
