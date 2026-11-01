@@ -127,6 +127,7 @@ func test_the_sprint_sways_a_bit_more_than_a_rifle_shot_and_still_under_half_a_d
 	_render(_tuning.sprint_sway_ease_in + 0.2)
 	var rifle := _tuning.shake_max_degrees * pow(0.45, _tuning.shake_exponent)
 	assert_float(_rig.sway.peak_degrees()).is_greater(rifle)
+	assert_float(_rig.sway.peak_degrees()).is_greater(0.4)
 	assert_float(_rig.sway.peak_degrees()).is_less(SUBTLE_DEGREES)
 
 
