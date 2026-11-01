@@ -23,6 +23,8 @@ const VSYNC := &"video/vsync"
 const VOLUME_MASTER := &"audio/master"
 const VOLUME_MUSIC := &"audio/music"
 const VOLUME_EFFECTS := &"audio/effects"
+const VOLUME_VOICE := &"audio/voice"
+const VOLUME_AMBIENCE := &"audio/ambience"
 const VOLUME_UI := &"audio/ui"
 const REDUCED_MOTION := &"accessibility/reduced_motion"
 const UI_SCALE := &"accessibility/ui_scale"
@@ -40,6 +42,8 @@ const DEFAULTS := {
 	VOLUME_MASTER: 100,
 	VOLUME_MUSIC: 80,
 	VOLUME_EFFECTS: 100,
+	VOLUME_VOICE: 100,
+	VOLUME_AMBIENCE: 80,
 	VOLUME_UI: 80,
 	REDUCED_MOTION: false,
 	UI_SCALE: 1.0,
@@ -55,6 +59,8 @@ const RANGES := {
 	VOLUME_MASTER: Vector2(0, 100),
 	VOLUME_MUSIC: Vector2(0, 100),
 	VOLUME_EFFECTS: Vector2(0, 100),
+	VOLUME_VOICE: Vector2(0, 100),
+	VOLUME_AMBIENCE: Vector2(0, 100),
 	VOLUME_UI: Vector2(0, 100),
 	UI_SCALE: Vector2(0.8, 1.25),
 	MOUSE_SENSITIVITY: Vector2(0.1, 3.0),
@@ -65,6 +71,8 @@ const BUSES := {
 	VOLUME_MASTER: &"Master",
 	VOLUME_MUSIC: &"Music",
 	VOLUME_EFFECTS: &"Effects",
+	VOLUME_VOICE: &"Voice",
+	VOLUME_AMBIENCE: &"Ambience",
 	VOLUME_UI: &"UI",
 }
 

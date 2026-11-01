@@ -7,6 +7,8 @@ const ROOT := "res://assets/audio/"
 const BUS_MUSIC := &"Music"
 const BUS_EFFECTS := &"Effects"
 const BUS_UI := &"UI"
+const BUS_VOICE := &"Voice"
+const BUS_AMBIENCE := &"Ambience"
 
 ## How many voices a group may hold at once. Past it a louder or higher-priority sound takes the
 ## weakest voice; anything else is dropped.
@@ -286,7 +288,11 @@ static func _build_night() -> void:
 		}
 	)
 	var voice := {
-		"group": &"player_voice", "pitch_semitones": 1.0, "max_distance": 45.0, "unit_size": 7.0
+		"bus": BUS_VOICE,
+		"group": &"player_voice",
+		"pitch_semitones": 1.0,
+		"max_distance": 45.0,
+		"unit_size": 7.0
 	}
 	_add(
 		&"player_hurt",
@@ -298,7 +304,9 @@ static func _build_night() -> void:
 		&"player_downed", "player/down_%d.ogg", 2, _with(voice, {"priority": 88, "volume_db": -3.0})
 	)
 
-	var bed := {"group": &"bed", "loop": true, "pitch_semitones": 0.0, "priority": 10}
+	var bed := {
+		"bus": BUS_AMBIENCE, "group": &"bed", "loop": true, "pitch_semitones": 0.0, "priority": 10
+	}
 	_add(&"bed_crickets", "ambience/crickets_%d.ogg", 1, _with(bed, {"volume_db": -16.0}))
 	_add(&"bed_highway", "ambience/highway_%d.ogg", 1, _with(bed, {"volume_db": -18.0}))
 	_add(
