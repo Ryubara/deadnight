@@ -218,6 +218,8 @@ func _push(lot: Node3D, start: Vector3, outward: Vector3, wall: CSGBox3D) -> Str
 	shape.position.y = tuning.height * 0.5
 	body.add_child(shape)
 	body.floor_snap_length = 0.3
+	# The player's own mask: the world and the fence's boards.
+	body.collision_mask = 1 | Barricade.BOARD_LAYER
 	lot.add_child(body)
 	var state := PlayerMotionState.new()
 	state.position = start

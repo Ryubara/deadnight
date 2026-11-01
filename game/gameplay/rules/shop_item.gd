@@ -34,8 +34,8 @@ func ammo_price(round_number: int, rounds: int) -> int:
 	return ceili(float(price_at(round_number)) * mini(rounds, int(amount)) / amount)
 
 
-## CRANE: the weapons of the pool the player does not own yet.
-func crane_pool(owned: Array[StringName]) -> Array[StringName]:
+## The crane's weapons not in `owned`.
+func pool_without(owned: Array[StringName]) -> Array[StringName]:
 	var left: Array[StringName] = []
 	for weapon_id in pool:
 		if not owned.has(weapon_id):
@@ -43,7 +43,20 @@ func crane_pool(owned: Array[StringName]) -> Array[StringName]:
 	return left
 
 
-## CRANE: the weight of a weapon in the pool (1 when the table gives none).
-func weight_of(weapon_id: StringName) -> float:
+## One of the weapons not in `owned`, drawn by weight from `rng`. The pool must not be empty.
+func roll(owned: Array[StringName], rng: RandomNumberGenerator) -> StringName:
+	var left := pool_without(owned)
+	var total := 0.0
+	for weapon_id in left:
+		total += _weight(weapon_id)
+	var pick := rng.randf() * total
+	for weapon_id in left:
+		pick -= _weight(weapon_id)
+		if pick < 0.0:
+			return weapon_id
+	return left[left.size() - 1]
+
+
+func _weight(weapon_id: StringName) -> float:
 	var index := pool.find(weapon_id)
 	return pool_weights[index] if index < pool_weights.size() else 1.0
