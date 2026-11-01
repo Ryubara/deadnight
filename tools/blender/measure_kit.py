@@ -16,6 +16,7 @@ conversion (1 Blender unit = 1 m, Z up).
 import argparse
 import json
 import math
+import re
 import statistics
 import sys
 from collections import Counter
@@ -25,11 +26,19 @@ import bmesh
 import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import kitlib  # noqa: E402
+import kitlib
 
 GUNS = {
-    "Ak47", "Pistol", "Revolver", "Revolver Small", "Smg", "Shotgun", "Sniper", "Short Cannon",
-    "Grenade Launcher", "Rocket Launcher",
+    "Ak47",
+    "Pistol",
+    "Revolver",
+    "Revolver Small",
+    "Smg",
+    "Shotgun",
+    "Sniper",
+    "Short Cannon",
+    "Grenade Launcher",
+    "Rocket Launcher",
 }
 MELEE = {"Knife", "Shovel"}
 THROWN = {"Grenade", "Fire Grenade"}
@@ -62,17 +71,20 @@ def hexcol(rgb, linear=True):
     return "#" + "".join(f"{round(v * 255):02x}" for v in vals)
 
 
-def material_colour(mat):
-    """(hex, image) for a material: its flat base colour, or the image feeding the base colour."""
+def material_colour(mat, factors):
+    """(hex, image) for a material: its flat base colour from the file, or the image feeding the base colour."""
     if not mat or not mat.node_tree:
         return None, None
-    bsdf = next((n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
-    if not bsdf:
-        return None, None
-    sock = bsdf.inputs["Base Color"]
-    if sock.is_linked and sock.links[0].from_node.type == "TEX_IMAGE":
-        return None, sock.links[0].from_node.image
-    return hexcol(sock.default_value), None
+    for n in mat.node_tree.nodes:
+        if n.type == "TEX_IMAGE" and n.image:
+            return None, n.image
+    factor = factors.get(mat.name) or factors.get(re.sub(r"\.\d{3}$", "", mat.name), [0.8, 0.8, 0.8])
+    return hexcol(factor), None
+
+
+def world_area(o, poly):
+    s = o.matrix_world.to_scale()
+    return poly.area * abs(s.x * s.y * s.z) ** (2 / 3)
 
 
 def bevel_widths(o):
@@ -80,6 +92,11 @@ def bevel_widths(o):
     bm = bmesh.new()
     bm.from_mesh(o.data)
     bm.transform(o.matrix_world)
+    bm.normal_update()
+    # glTF stores triangles: rebuild the quads (bevel strips are planar quads) before looking for narrow ones.
+    bmesh.ops.join_triangles(
+        bm, faces=bm.faces[:], angle_face_threshold=math.radians(2), angle_shape_threshold=math.radians(60)
+    )
     bm.normal_update()
     widths = []
     for f in bm.faces:
@@ -132,6 +149,7 @@ def atlas_usage(meshes, image):
     w, h = image.size
     px = list(image.pixels)
     colours, texels = Counter(), []
+    cells = set()
     for o in meshes:
         me = o.data
         uv = me.uv_layers.active
@@ -144,7 +162,8 @@ def atlas_usage(meshes, image):
             x = min(w - 1, max(0, int((cu % 1.0) * w)))
             y = min(h - 1, max(0, int((cv % 1.0) * h)))
             i = (y * w + x) * 4
-            colours[hexcol(px[i : i + 3], linear=False)] += poly.area
+            colours[hexcol(px[i : i + 3], linear=False)] += world_area(o, poly)
+            cells.add((x // 8, y // 8))
             # Shoelace area of the UV polygon, in texels.
             a = 0.0
             for k in range(len(us)):
@@ -158,6 +177,8 @@ def atlas_usage(meshes, image):
         "distinct_colours": len(colours),
         "top_colours_pct": top,
         "median_uv_texels_per_face": round(statistics.median(texels), 2) if texels else None,
+        "faces_under_1_texel_pct": round(sum(t < 1 for t in texels) / len(texels) * 100, 1) if texels else None,
+        "used_8px_cells": len(cells),
     }
 
 
@@ -166,22 +187,14 @@ def character_metrics(objs, body):
     pts = [p for o in body for p in kitlib.world_verts(o)]
     mn, mx = kitlib.bbox(pts)
     height = mx.z - mn.z
-    # Head: vertices weighted mostly to the Head bone, plus meshes parented to it.
-    head_pts = []
-    for o in body:
-        wv = kitlib.world_verts(o)
-        if o.parent_type == "BONE" and o.parent_bone in ("Head", "Neck"):
-            head_pts += wv
-            continue
-        gi = {g.index: g.name for g in o.vertex_groups}
-        for v, p in zip(o.data.vertices, wv):
-            if v.groups:
-                top = max(v.groups, key=lambda g: g.weight)
-                if gi.get(top.group) in ("Head", "Eyelid.L", "Eyelid.R") or gi.get(top.group, "").startswith("Tongue"):
-                    head_pts.append(p)
-    hmn, hmx = kitlib.bbox(head_pts)
     bones = {b.name: arm.matrix_world @ b.head_local for b in arm.data.bones}
-    head_h = hmx.z - hmn.z
+    # Head: from the Neck bone (the base of the skull in this rig) to the top of the mesh. Bone-parented helmet meshes
+    # do not sit at their posed place in the rest pose, so they are not used.
+    neck = bones["Neck"].z
+    reach = abs(bones["LowerArm.L"].x)  # T-pose: keep the hands out of the head's width
+    head_pts = [p for o in body for p in kitlib.world_verts(o) if p.z >= neck and abs(p.x) < reach]
+    hmn, hmx = kitlib.bbox(head_pts)
+    head_h = mx.z - neck
     return {
         "height_m": round(height, 3),
         "span_x_m": round(mx.x - mn.x, 3),
@@ -192,15 +205,32 @@ def character_metrics(objs, body):
         "head_share_pct": round(head_h / height * 100, 1),
         "shoulder_width_m": round((bones["UpperArm.L"] - bones["UpperArm.R"]).length, 3),
         "hip_height_pct": round((bones["UpperLeg.L"].z - mn.z) / height * 100, 1),
-        "neck_height_pct": round((bones["Head"].z - mn.z) / height * 100, 1),
+        "neck_height_pct": round((neck - mn.z) / height * 100, 1),
         "bones": len(arm.data.bones),
         "bone_names": [b.name for b in arm.data.bones],
         "clips": sorted({a.name.split("|")[-1] for a in bpy.data.actions}),
+        "idle_height_m": idle_height(arm, body),
     }
 
 
+def idle_height(arm, body):
+    """Standing height at the first frame of the Idle clip (the rest pose is a T-pose)."""
+    action = next((a for a in bpy.data.actions if a.name.split("|")[-1] == "Idle"), None)
+    if not action:
+        return None
+    arm.data.pose_position = "POSE"
+    arm.animation_data.action = action
+    if hasattr(arm.animation_data, "action_slot") and action.slots:
+        arm.animation_data.action_slot = action.slots[0]
+    bpy.context.scene.frame_set(int(action.frame_range[0]))
+    mn, mx = kitlib.bbox([p for o in body for p in kitlib.world_verts(o)])
+    kitlib.rest_pose([arm])
+    return round(mx.z - mn.z, 3)
+
+
 def measure(title, path, entry):
-    objs = kitlib.import_glb(path)
+    objs = kitlib.import_glb(path, merge=True)
+    factors = kitlib.gltf_base_colours(path)
     kitlib.rest_pose(objs)
     body, held, stray = kitlib.split_parts(objs)
     pts = [p for o in body for p in kitlib.world_verts(o)]
@@ -211,12 +241,12 @@ def measure(title, path, entry):
     for o in body:
         for poly in o.data.polygons:
             m = o.data.materials[poly.material_index] if o.data.materials else None
-            colour, img = material_colour(m)
+            colour, img = material_colour(m, factors)
             if img:
                 images.add(img)
             elif colour:
-                mats[(m.name.split(".")[0], colour)] += poly.area
-    widths = [w for o in body for w in kitlib_bevels(o)]
+                mats[(re.sub(r"\.\d{3}$", "", m.name), colour)] += world_area(o, poly)
+    widths = [w for o in body for w in bevel_widths(o)]
     rec = {
         "id": entry.get("id"),
         "title": title,
@@ -224,14 +254,15 @@ def measure(title, path, entry):
         "index_tris": entry.get("tris"),
         "tris": sum(kitlib.tris(o) for o in body),
         "held_tris": sum(kitlib.tris(o) for o in held),
-        "held_items": sorted(o.name for o in held),
+        "held_items": {o.name: round(max(b - a for a, b in zip(*kitlib.bbox(kitlib.world_verts(o)))), 3) for o in held},
         "stray_tris": sum(kitlib.tris(o) for o in stray),
         "meshes": len(body),
         "dims_m": [round(d, 3) for d in dims],
         "size_m": round(size, 3),
         "materials": len(mats) + len(images),
         "colours": sorted({c for (_, c) in mats}),
-        "material_area": {f"{n} {c}": a for (n, c), a in mats.items()},
+        "material_area": {f"{n} {c}": round(a, 4) for (n, c), a in mats.items()},
+        "area_m2": round(sum(mats.values()), 3),
         "parts": sum(islands(o) for o in body),
         "bevel_median_m": round(statistics.median(widths), 4) if widths else None,
         "bevel_strips": len(widths),
@@ -249,19 +280,19 @@ def measure(title, path, entry):
     return rec
 
 
-def kitlib_bevels(o):
-    return bevel_widths(o)
-
-
 def markdown(recs):
     out = []
     chars = [r for r in recs if r["class"] == "character"]
-    out.append("| Character | Tris (body) | Held tris | Height m | Heads tall | Head % | Shoulders m | Hips % | Bones | Clips |")
-    out.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    out.append(
+        "| Character | Tris (body) | Held tris | Rest height m | Idle height m | T-pose span m | Heads tall | Head % "
+        "| Head width m | Shoulders m | Hips % | Neck % | Bones | Clips |"
+    )
+    out.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for r in chars:
         out.append(
-            f"| {r['title']} | {r['tris']} | {r['held_tris']} | {r['height_m']} | {r['heads_tall']} | "
-            f"{r['head_share_pct']} | {r['shoulder_width_m']} | {r['hip_height_pct']} | {r['bones']} | {len(r['clips'])} |"
+            f"| {r['title']} | {r['tris']} | {r['held_tris']} | {r['height_m']} | {r['idle_height_m']} | "
+            f"{r['span_x_m']} | {r['heads_tall']} | {r['head_share_pct']} | {r['head_width_m']} | "
+            f"{r['shoulder_width_m']} | {r['hip_height_pct']} | {r['neck_height_pct']} | {r['bones']} | {len(r['clips'])} |"
         )
     out.append("")
     out.append("| Class | Count | Tris min | Tris median | Tris max | Size m median | Bevel mm median | Bevel % size |")

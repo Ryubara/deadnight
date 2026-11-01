@@ -1,0 +1,175 @@
+# Style bible
+
+The look of Deadnight's 3D art, measured from our starting kit: the Quaternius Toon Shooter Game Kit (73 models,
+CC0) and the Quaternius Zombie. Every number here comes from `tools/blender/measure_kit.py`; the contact sheets come
+from `tools/blender/render_sheet.py` (both headless Blender scripts, how to run them is at the top of each) and are
+attached to the pull request that added this page; renders of the kit are not committed. New assets follow these
+numbers; when the kit and this page disagree, rerun the scripts and update the page.
+
+All sizes are in metres at the kit's own scale (1 Blender unit = 1 m after the glTF import), unless a row says
+otherwise. [Scale](#scale) gives the factor to Deadnight's game scale.
+
+## Characters
+
+Measured without the 14 weapons every kit character file carries in its right hand, in the rest pose (a T-pose)
+unless the column says Idle (the first frame of the Idle clip, standing).
+
+| Character | Tris | Rest height | Idle height | T-pose span | Heads tall | Head % of height | Head width | Hips % | Neck % | Bones | Clips |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Soldier | 5,828 | 2.31 | 2.15 | 2.73 | 2.8 | 36 | 1.07 | 40 | 64 | 43 | 14 |
+| Hazmat | 5,462 | 2.14 | 1.99 | 2.72 | 3.3 | 31 | 0.98 | 43 | 69 | 43 | 17 |
+| Enemy | 4,594 | 2.30 | 2.18 | 2.72 | 2.8 | 36 | 0.92 | 40 | 64 | 43 | 17 |
+| Zombie | 7,822 | 1.36 | 1.06 | 1.89 | 2.8 | 36 | 0.83 | 38 | 65 | 50 | 16 |
+
+What the numbers say:
+
+| Rule | Measured |
+| --- | --- |
+| Proportions | about 3 heads tall (2.8-3.3): the head is a third of the height and 0.9-1.1 m wide, three times the spacing of the shoulder joints (0.30 m) |
+| Legs | short: hips at 38-43 % of the height |
+| Hands | oversized mitts with three-joint fingers and a thumb; after the head, the second read of the silhouette |
+| Rig | one `CharacterArmature`: 43 bones on the kit characters (`Root`, `Body`, `Hips`, `Abdomen`, `Torso`, `Neck`, `Head`, shoulders, arms, three-joint fingers, legs, IK pole targets); the zombie has the same 43 plus `Tongue1-5`, `Eyelid.L/R` |
+| Clips | shared by bone name: Idle, Run, Jump (three parts), HitReact, Death, Punch, Wave, Yes, No on all; Walk on all but the Soldier; Run_Gun, Idle_Shoot, Duck on the kit characters; Crawl, Run_Arms, Run_Attack, Idle_Attack on the zombie |
+| Meshes | a skinned body plus a bone-parented head piece (helmet, hood, visor) and, on the Soldier, two 44-tri shoulder pads |
+| Strays | every rigged file carries an unparented 80-tri `Icosphere`; strip it on import |
+| Zombie scale | the zombie file is 0.59 the kit characters' size (1.36 against 2.31 m at rest) |
+
+The index lists the kit characters at 7.9-12.1k tris; 14.9k of each file is the weapons, not the body.
+
+## Weapons
+
+| Weapon | Tris | Length | Height | Loose parts | Materials | Bevel mm | Origin % (along, up) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Sniper | 1,441 | 2.05 | 0.76 | 327 | 3 | 16 | 77, 40 |
+| Sniper (2) | 1,298 | 1.74 | 0.79 | 155 | 3 | 17 | 73, 40 |
+| Shotgun | 1,264 | 1.55 | 0.33 | 74 | 4 | 16 | 81, 48 |
+| Ak47 | 1,120 | 1.42 | 0.73 | 386 | 4 | 14 | 72, 44 |
+| Rocket Launcher | 1,228 | 1.30 | 0.75 | 81 | 4 | 89 | 60, 15 |
+| Short Cannon | 462 | 1.21 | 0.31 | 62 | 3 | 17 | 75, 51 |
+| Grenade Launcher | 1,259 | 1.21 | 0.56 | 113 | 4 | 36 | 57, 51 |
+| Smg | 1,006 | 1.14 | 0.62 | 85 | 4 | 24 | 89, 42 |
+| Revolver | 1,354 | 0.99 | 0.53 | 148 | 4 | 25 | 84, 34 |
+| Pistol | 990 | 0.79 | 0.48 | 101 | 3 | 29 | 86, 26 |
+| Revolver Small | 1,350 | 0.66 | 0.51 | 85 | 4 | 16 | 81, 28 |
+| Knife | 687 | 1.41 | 0.26 | 62 | 4 | 23 | 17, 41 |
+| Knife (2) | 761 | 1.35 | 0.25 | 61 | 3 | - | 14, 50 |
+| Shovel | 662 | 1.11 | 0.35 | 19 | 3 | 16 | 40, 50 |
+| Fire Grenade | 916 | 0.85 | 0.57 | 46 | 4 | - | 61, 59 |
+| Grenade | 820 | 0.61 | 0.56 | 42 | 3 | - | 46, 59 |
+
+How they are built:
+
+| Rule | Measured |
+| --- | --- |
+| Scale | toy-like: weapons are modelled at the characters' scale and held at that size (the copies inside a character file measure the same as the standalone files). A sniper is as long as the Soldier is tall; a pistol is 0.79 m |
+| Triangles | guns 1.0-1.45k (the Short Cannon 462); melee 660-760; grenades 820-920 |
+| Parts | kitbashed from many separate closed pieces (62-386 loose parts per gun), never welded into one shell |
+| Silhouette | a side view reads first: the length runs along X, thin across (0.12-0.19 m for long guns) |
+| Origin | at the grip: guns 72-89 % along from the muzzle, 26-51 % up; blades and the shovel near the handle end (14-40 %). The hand bone holds them with no offset |
+| Colours | 3-4 flat materials: Grey `#818491` or `#8f92a0`, DarkGrey `#414141`, Black `#252525`, Wood `#95703d`; red or green only as an accent |
+| Handedness | every held copy is parented to the right hand's `Index1.R` bone |
+
+## Bevels
+
+Bevel width is the short side of narrow quads (at least 3:1) folded 15-75 degrees against both long neighbours,
+after welding the glTF's split vertices and rebuilding quads from its triangles. Medians per class:
+
+| Class | Models with bevels | Bevel width median | Bevel strips per model (median) |
+| --- | --- | --- | --- |
+| Characters | 4 of 4 | 23 mm (18-28) | 119 |
+| Guns | 11 of 11 | 17 mm (14-36; Rocket Launcher 89) | 48 |
+| Melee | 2 of 3 | 19 mm | 1 |
+| Grenades | 0 of 2 | - (round shapes, no strips) | 0 |
+| Props under 1 m | 1 of 9 | - | 0 |
+| Props 1-3 m | 6 of 24 | 30 mm | 0 |
+| Props over 3 m | 16 of 21 | 99 mm | 26 |
+
+Rule: bevel the edges that face the camera on characters and weapons, about 15-25 mm at kit scale (one segment, a
+single chamfer); small and medium props keep hard edges; buildings and large props chamfer about 100 mm. The soft
+look comes from chunky shapes and one-segment chamfers, not from smoothing.
+
+## Triangles per class
+
+| Class | Count | Min | Median | Max | Size median (m) |
+| --- | --- | --- | --- | --- | --- |
+| Character (body only) | 4 | 4,594 | 5,645 | 7,822 | 2.72 (T-pose span) |
+| Gun | 11 | 462 | 1,259 | 1,441 | 1.21 |
+| Melee | 3 | 662 | 687 | 761 | 1.35 |
+| Grenade | 2 | 820 | 868 | 916 | 0.73 |
+| Prop under 1 m | 9 | 6 | 108 | 732 | 0.86 |
+| Prop 1-3 m | 24 | 108 | 424 | 3,584 | 1.89 |
+| Prop over 3 m | 21 | 218 | 1,374 | 7,168 | 4.57 |
+
+The heavy props are repeats of one shape: Sack Trench (7,168) and Sack Trench Small (3,584) are rows of sandbags;
+Structures are 5.1-5.6k; Broken Car 5.4k.
+
+## Colour and materials
+
+| Rule | Measured |
+| --- | --- |
+| Kit characters, weapons, props | flat-colour materials, no textures: 2-4 per asset (median), at most 8 (a building) |
+| Shading values | roughness 0.415 and metallic 0.4 on every kit material |
+| Zombie | one material, `Atlas`, a 512 x 512 `Zombie_Atlas.png` palette: 100 % of faces have a UV area under one texel (each face is collapsed onto one colour swatch), 11 swatches used |
+| Kit palette | 40 distinct flat colours across the kit; the ten that cover most area are below |
+| Defaults left in | a few materials keep Blender's default 0.8 grey (`#e7e7e7`: the grenades' DarkGreen, the Gas Can's DarkRed, the Street Light's Light); do not copy them |
+| Vertex colours | some weapons carry a `COLOR_0` attribute; the colour lives in the material, not in it |
+
+| Name | sRGB | Use |
+| --- | --- | --- |
+| Grey | `#818491` | metal, concrete, the most-used colour |
+| Yellow | `#d1ab46` | hazard paint, barriers |
+| Green | `#496321` | military paint, crates |
+| Red | `#8c3735` | barrels, accents |
+| Blue | `#3b4b8c` | containers |
+| Tree_Green | `#6b7f26` | foliage |
+| Cardboard | `#9b7048` | boxes |
+| Wood | `#95703d` | stocks, pallets |
+| Grey2 | `#5f5f5f` | darker metal |
+| Black | `#252525` | rubber, grips |
+| Zombie skin | `#769751` | 71 % of the zombie's area |
+| Zombie clothes | `#3f5363`, `#664531` | trousers, belt |
+| Character skin | `#a68450`, `#b89359` | Soldier, Enemy |
+| Character mains | `#5c6d37`, `#c79b17`, `#991c22` | Soldier olive, Hazmat yellow, Enemy red |
+
+## Scale
+
+The kit is oversized for a game where players stand about 1.8 m tall, and the zombie file is smaller than the kit.
+Scale on import, the same factor for a character and what it holds:
+
+| Model | Rest height | Factor to 1.8 m | Proposed factor |
+| --- | --- | --- | --- |
+| Kit characters and weapons | 2.14-2.31 | 0.78-0.84 | 0.8 (keeps their height differences: 1.71-1.85 m) |
+| Zombie | 1.36 | 1.32 | 1.3 (1.77 m at rest; it hunches to 1.38 m in Idle) |
+
+At 0.8 a gun bevel becomes about 14 mm and the AK 1.14 m long: still toy-sized, which is the look.
+
+## Budgets (proposed for the web)
+
+The web build renders with Godot's Compatibility renderer under WebGL2, where draw calls cost more than triangles.
+
+| Class | Gameplay LOD | Far LOD | Materials | Notes |
+| --- | --- | --- | --- | --- |
+| Player character | 6k tris | 2k | 1 (atlas) | the kit bodies are 4.6-5.8k; one held weapon at a time, never the whole set |
+| Zombie | 4k | 1.5k | 1 (shared atlas) | crowds of 20 or more: 20 x 4k = 80k tris; the kit zombie (7.8k) needs about half its triangles removed |
+| First-person weapon | 3k | - | 1 | seen up close; the kit's 1.0-1.45k already reads well |
+| Third-person and world weapon | 1.5k | 500 | 1 | the kit's own range |
+| Prop under 1 m | 800 | 300 | 1 | kit median 108, max 732 |
+| Prop 1-3 m | 1.5k | 500 | 1 | kit median 424; Sack Trench Small (3.6k) would be split or rebuilt |
+| Prop over 3 m, building | 5k | 1.5k | 1-2 | kit median 1.4k; Structures 5.1-5.6k, Broken Car 5.4k |
+
+Decision: one shared palette atlas and one material per asset family (characters, zombies, weapons, props), the
+zombie's pattern, instead of the kit's 2-4 flat materials per asset. Faces collapse onto colour swatches, so the
+look stays flat and the colours above stay the palette, and a whole family batches into fewer draw calls. Converting
+a kit asset is a palette remap: each flat material becomes a swatch in the family atlas.
+
+## Measuring again
+
+| Step | Command (pinned Blender, headless) |
+| --- | --- |
+| Measure the kit | `blender -b --factory-startup -P tools/blender/measure_kit.py -- --bundle <bundle> --extra Zombie=<zombie.glb> --out <scratch>/kit.json` |
+| Character sheet | `blender -b --factory-startup -P tools/blender/render_sheet.py -- --model Soldier=<glb> ... --view front --pose Idle --out <png>` |
+| Weapon sheet | `... render_sheet.py -- --model Sniper=<glb> ... --view side --row-width 7.5 --row-height 1.25 --px-per-m 360 --out <png>` |
+
+Import kit files with `bone_heuristic="TEMPERANCE"` (the scripts do, in `kitlib.gltf_import`): Blender's default
+re-orients the bones and puts every bone-parented mesh in the wrong place (the Soldier's shoulder pads float beside
+his helmet).

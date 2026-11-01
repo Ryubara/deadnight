@@ -3,23 +3,42 @@
 Not run on its own. The scripts that use it put this folder on sys.path first.
 """
 
+import json
+import re
+import struct
+from pathlib import Path
+
 import bpy
 from mathutils import Vector
 
-# Bones whose children are part of the body (hats, helmets, shoulder pads); meshes parented to any other bone are
-# held items (the kit's character files carry every kit weapon in the hand).
-BODY_BONES = {"Head", "Neck", "Torso", "Abdomen", "Hips", "Body", "Shoulder.L", "Shoulder.R"}
+# Meshes parented to a hand bone are held items (the kit's character files carry every kit weapon in the right hand);
+# meshes parented to any other bone (helmets, shoulder pads) are part of the body.
+HAND_BONE_PREFIXES = ("LowerArm", "Hand", "Wrist", "Palm", "Index", "Middle", "Ring", "Pinky", "Thumb")
 
 
 def reset():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
-def import_glb(path):
-    """Import a glTF file into an empty scene and return the objects it created."""
+def gltf_import(path, merge=False):
+    """The one glTF import call every script uses.
+
+    `bone_heuristic="TEMPERANCE"`: with the default ("BLENDER") Blender re-orients the bones and the meshes parented
+    to a bone (the kit's helmets, vests, shoulder pads and held weapons) land in the wrong place: the Soldier's
+    shoulder pads float by his helmet on the wrong side. TEMPERANCE keeps them where the file puts them.
+    """
+    bpy.ops.import_scene.gltf(filepath=str(path), merge_vertices=merge, bone_heuristic="TEMPERANCE")
+
+
+def import_glb(path, merge=False):
+    """Import a glTF file into an empty scene and return the objects it created.
+
+    `merge` welds the vertices glTF splits at every normal seam, so faces share edges again (bevel and part counts
+    need it; it does not change the triangle count).
+    """
     reset()
     before = set(bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=str(path))
+    gltf_import(path, merge)
     return [o for o in bpy.data.objects if o not in before]
 
 
@@ -53,10 +72,10 @@ def split_parts(objs):
             stray.append(o)
         elif arm is None:
             body.append(o)
-        elif any(m.type == "ARMATURE" for m in o.modifiers) or o.parent_type != "BONE" or o.parent_bone in BODY_BONES:
-            body.append(o)
-        else:
+        elif o.parent_type == "BONE" and o.parent_bone.startswith(HAND_BONE_PREFIXES):
             held.append(o)
+        else:
+            body.append(o)
     return body, held, stray
 
 
@@ -81,3 +100,30 @@ def tris(o):
     me = o.data
     me.calc_loop_triangles()
     return len(me.loop_triangles)
+
+
+def gltf_base_colours(path):
+    """Material name -> linear baseColorFactor, read from the .glb's JSON chunk.
+
+    Read from the file, not the Blender material: where a mesh carries a COLOR_0 attribute the importer feeds Base
+    Color through a vertex-colour node and leaves the socket at its 0.8 default.
+    """
+    data = Path(path).read_bytes()
+    n = struct.unpack("<I", data[12:16])[0]
+    doc = json.loads(data[20 : 20 + n])
+    return {
+        m.get("name", ""): m.get("pbrMetallicRoughness", {}).get("baseColorFactor", [1, 1, 1, 1])
+        for m in doc.get("materials", [])
+    }
+
+
+def apply_base_colours(objs, path):
+    """Set each material's viewport colour (what Workbench draws) to its glTF base colour."""
+    factors = gltf_base_colours(path)
+    for o in objs:
+        for slot in getattr(o, "material_slots", []):
+            mat = slot.material
+            if mat:
+                f = factors.get(mat.name) or factors.get(re.sub(r"\.\d{3}$", "", mat.name))
+                if f:
+                    mat.diffuse_color = f
