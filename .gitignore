@@ -17,3 +17,6 @@ Thumbs.db
 
 # GdUnit4 reports
 game/reports/
+
+# Python bytecode
+__pycache__/

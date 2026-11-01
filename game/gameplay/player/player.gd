@@ -1,0 +1,193 @@
+class_name Player
+extends CharacterBody3D
+## Third-person player node: samples the controls into a command each physics tick, runs the
+## simulation, and shows the result (body facing, camera, signals).
+##
+## Movement lives in PlayerSimulation, not here. This node is the boundary: input goes in as a
+## PlayerCommand, state comes out as a PlayerMotionState. The camera rig and the animation tree
+## read the state; they never move the character. To drive the player from a server or a replay, set
+## `local_input` to false and call `submit_command()` before each tick (or call `tick()`).
+
+## A foot has landed. Hook footstep audio here.
+signal footstep(speed: float, sprinting: bool)
+signal jumped
+## Back on the ground after a fall or jump; `impact_speed` is the downward speed in m/s.
+signal landed(impact_speed: float)
+
+const ACTION_FORWARD := &"move_forward"
+const ACTION_BACK := &"move_back"
+const ACTION_LEFT := &"move_left"
+const ACTION_RIGHT := &"move_right"
+const ACTION_SPRINT := &"sprint"
+const ACTION_CROUCH := &"crouch"
+const ACTION_JUMP := &"jump"
+const ACTION_AIM := &"aim"
+const ACTION_SWAP_SHOULDER := &"swap_shoulder"
+const ACTION_LOOK_LEFT := &"look_left"
+const ACTION_LOOK_RIGHT := &"look_right"
+const ACTION_LOOK_UP := &"look_up"
+const ACTION_LOOK_DOWN := &"look_down"
+
+## When a wall squeezes the camera closer than this to the player, the body is hidden
+## so the lens is not inside it.
+const HIDE_MODEL_BELOW := 0.7
+
+@export var tuning: PlayerTuning = preload("res://gameplay/player/player_tuning_default.tres")
+## Sample the local keyboard, mouse and gamepad. Turn off to feed commands with `submit_command()`.
+@export var local_input := true
+## Hide and capture the mouse while controls are enabled.
+@export var capture_mouse := true
+
+## The authoritative-looking result of the last tick. Read-only for everything but `tick()`.
+var state := PlayerMotionState.new()
+var last_command := PlayerCommand.new()
+
+var _controls_enabled := true
+var _was_down := {}
+var _submitted: PlayerCommand
+
+@onready var camera_rig: ThirdPersonCamera = $CameraRig
+@onready var _model: Node3D = $Model
+@onready var _shape: CollisionShape3D = $CollisionShape3D
+
+
+func _ready() -> void:
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = tuning.radius
+	capsule.height = tuning.height
+	_shape.shape = capsule
+	_shape.position.y = tuning.height * 0.5
+	_model.scale = Vector3.ONE * tuning.model_scale
+	state.position = global_position
+	state.facing = rotation.y
+	camera_rig.setup(self, tuning)
+	camera_rig.yaw = rotation.y
+	refresh_settings()
+	var service := get_tree().root.get_node_or_null(PlayerSettings.SERVICE_PATH)
+	if service != null and service.has_signal(&"changed"):
+		service.connect(&"changed", _on_setting_changed)
+	set_controls_enabled(true)
+
+
+func _physics_process(_delta: float) -> void:
+	var command := _submitted
+	if command == null:
+		command = sample_command() if local_input else _idle_command()
+	_submitted = null
+	tick(command)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not local_input:
+		return
+	if event is InputEventMouseMotion and _controls_enabled:
+		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
+	elif event.is_action_pressed(&"ui_cancel") and capture_mouse and _controls_enabled:
+		set_controls_enabled(false)
+	elif (
+		event is InputEventMouseButton and event.pressed and capture_mouse and not _controls_enabled
+	):
+		set_controls_enabled(true)
+
+
+## Re-read sensitivity and invert Y from the settings service (defaults when there is none).
+func refresh_settings() -> void:
+	camera_rig.sensitivity = PlayerSettings.sensitivity(get_tree())
+	camera_rig.invert_y = PlayerSettings.invert_y(get_tree())
+
+
+func _on_setting_changed(_key: StringName, _value: Variant) -> void:
+	refresh_settings()
+
+
+## Turn movement and look on or off (menus, death, cutscenes); also captures or frees the mouse.
+func set_controls_enabled(enabled: bool) -> void:
+	_controls_enabled = enabled
+	if capture_mouse and local_input:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if enabled else Input.MOUSE_MODE_VISIBLE
+
+
+## Use this command for the next physics tick instead of sampling the controls.
+func submit_command(command: PlayerCommand) -> void:
+	_submitted = command
+
+
+## Read the controls into a command (also the stick look for the camera).
+func sample_command() -> PlayerCommand:
+	var command := PlayerCommand.new()
+	if not _controls_enabled:
+		camera_rig.set_stick(Vector2.ZERO)
+	else:
+		command.move = Input.get_vector(ACTION_LEFT, ACTION_RIGHT, ACTION_FORWARD, ACTION_BACK)
+		command.sprint = Input.is_action_pressed(ACTION_SPRINT)
+		command.crouch = Input.is_action_pressed(ACTION_CROUCH)
+		command.aim = Input.is_action_pressed(ACTION_AIM)
+		command.jump = _pressed_edge(ACTION_JUMP)
+		command.swap_shoulder = _pressed_edge(ACTION_SWAP_SHOULDER)
+		camera_rig.set_stick(
+			Input.get_vector(
+				ACTION_LOOK_LEFT,
+				ACTION_LOOK_RIGHT,
+				ACTION_LOOK_UP,
+				ACTION_LOOK_DOWN,
+				tuning.stick_deadzone
+			)
+		)
+	command.yaw = camera_rig.yaw
+	command.pitch = camera_rig.pitch
+	return command
+
+
+## True on the first tick an action is held. Polled once per tick rather than
+## Input.is_action_just_pressed, which can report the same press on two consecutive physics frames.
+func _pressed_edge(action: StringName) -> bool:
+	var down := Input.is_action_pressed(action)
+	var edge: bool = down and not _was_down.get(action, false)
+	_was_down[action] = down
+	return edge
+
+
+## What a remotely driven player does on a tick with no command: stand still, keep looking.
+func _idle_command() -> PlayerCommand:
+	var command := PlayerCommand.new()
+	command.yaw = last_command.yaw
+	command.pitch = last_command.pitch
+	return command
+
+
+## Run one tick of the simulation with `command` and show the result.
+func tick(command: PlayerCommand) -> void:
+	last_command = command
+	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time())
+	rotation.y = state.facing
+	camera_rig.aiming = state.aiming
+	camera_rig.side = state.shoulder_side
+	_model.visible = camera_rig.arm_hit_length() > HIDE_MODEL_BELOW
+	if state.jumped:
+		jumped.emit()
+	if state.landed:
+		landed.emit(state.landed_speed)
+	if state.footstep:
+		footstep.emit(state.ground_speed(), state.sprinting)
+
+
+## Put the player somewhere, at rest. Use this instead of setting global_position, which the
+## simulation would overwrite from `state`.
+func teleport(position: Vector3) -> void:
+	state.position = position
+	state.velocity = Vector3.ZERO
+	state.on_floor = false
+	global_position = position
+
+
+func is_sprinting() -> bool:
+	return state.sprinting
+
+
+func is_aiming() -> bool:
+	return state.aiming
+
+
+## Horizontal speed in metres per second.
+func ground_speed() -> float:
+	return state.ground_speed()

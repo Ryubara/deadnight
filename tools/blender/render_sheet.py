@@ -10,7 +10,8 @@ Each `--model` is Title=path.glb; models are laid out left to right in the given
 meshes removed, at their own world size (1 Blender unit = 1 m). The camera always looks along +Y: `--view front`
 shows models as they are (characters); `--view side` first turns each model so its long axis runs across the sheet
 and up stays up (guns), laying upright blades flat. `--row-width` wraps to a new row. `--pose` names a clip to show
-at its first frame; models without it (or `--pose rest`) show the rest pose. Workbench, flat lighting, texture colours
+at its first frame; models without it (or `--pose rest`) show the rest pose. `--hide <regex>` leaves out meshes whose
+name matches (a file with two levels of detail: `--hide Zombie_Far` shows the gameplay mesh). Workbench, flat lighting, texture colours
 (so the zombie atlas shows), orthographic, a 1 m ruler with 0.5 m and 0.1 m ticks, and a label under each model with
 its title, triangle count and size.
 """
@@ -30,7 +31,7 @@ import kitlib
 GAP = 0.25  # metres between models
 
 
-def load(title, path, pose):
+def load(title, path, pose, hide=None):
     """Import one model into a fresh collection, pose it, strip held items and strays; return (objects, tris)."""
     before = set(bpy.data.objects)
     kitlib.gltf_import(path)
@@ -52,6 +53,9 @@ def load(title, path, pose):
         else:
             kitlib.rest_pose([arm])
     body, held, stray = kitlib.split_parts(objs)
+    if hide:  # e.g. the far LOD mesh in a file that carries two levels of detail
+        held += [o for o in body if re.search(hide, o.name)]
+        body = [o for o in body if not re.search(hide, o.name)]
     gone = {o.name for o in held + stray}
     keep = [o for o in objs if o.name not in gone]
     for o in held + stray:
@@ -121,6 +125,7 @@ def main():
     ap.add_argument("--model", action="append", required=True, help="Title=path.glb")
     ap.add_argument("--view", choices=["front", "side"], default="front")
     ap.add_argument("--pose", default="rest")
+    ap.add_argument("--hide", help="leave out meshes whose name matches this regular expression")
     ap.add_argument("--px-per-m", type=int, default=400)
     ap.add_argument("--row-width", type=float, default=0.0, help="wrap to a new row past this many metres (0: one row)")
     ap.add_argument("--row-height", type=float, default=1.3, help="metres from one row's ground to the next")
@@ -136,7 +141,7 @@ def main():
     cursor, tallest, labels, base, width = 0.6, 0.0, [], 0.0, 0.0
     for spec in args.model:
         title, path = spec.split("=", 1)
-        objs, tris, body = load(title, path, args.pose)
+        objs, tris, body = load(title, path, args.pose, args.hide)
         w, h, _d = place(objs, body, args.view, cursor, base)
         if args.row_width and cursor + w > args.row_width and cursor > 0.6:
             width = max(width, cursor)

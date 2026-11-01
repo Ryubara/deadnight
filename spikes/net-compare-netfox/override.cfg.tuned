@@ -1,0 +1,4 @@
+; Copy to override.cfg for the "tuned" runs: WebSocket is reliable, so no input redundancy is needed.
+[netfox]
+
+rollback/input_redundancy=1

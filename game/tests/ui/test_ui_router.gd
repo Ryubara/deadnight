@@ -1,0 +1,199 @@
+class_name TestUIRouter
+extends GdUnitTestSuite
+## UIRouter: queued calls, back, a screen freed mid-transition, a bad source, and the slide pop.
+##
+## The router is the project autoload. Every test starts from a fresh root screen "root".
+
+const SETTLE_SECONDS := 4.0
+const ALL_KINDS: Array[UITransition.Kind] = [
+	UITransition.Kind.FADE,
+	UITransition.Kind.SLIDE,
+	UITransition.Kind.BURN,
+	UITransition.Kind.IRIS,
+]
+
+
+func before_test() -> void:
+	UIMotion.reduced = false
+	UIRouter.reset(_screen("root"), UITransition.Kind.CUT)
+	await _settle()
+
+
+func after_test() -> void:
+	UIRouter.reset(_screen("end"), UITransition.Kind.CUT)
+	await _settle()
+
+
+func test_queued_calls_run_in_order() -> void:
+	UIRouter.push(_screen("b"), UITransition.Kind.CUT)
+	UIRouter.push(_screen("c"), UITransition.Kind.CUT)
+	UIRouter.pop()
+	UIRouter.replace(_screen("d"), UITransition.Kind.CUT)
+	assert_bool(UIRouter.busy).is_true()
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["root", "d"])
+	assert_str(UIRouter.top().get_meta(&"label")).is_equal("d")
+
+
+func test_queued_calls_with_transitions_end_on_the_right_stack() -> void:
+	UIRouter.push(_screen("b"), UITransition.Kind.FADE)
+	UIRouter.push(_screen("c"), UITransition.Kind.SLIDE)
+	UIRouter.pop()
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["root", "b"])
+	assert_bool(UIRouter.top().visible).is_true()
+	assert_float(UIRouter.top().modulate.a).is_equal(1.0)
+
+
+func test_pop_at_the_root_does_nothing() -> void:
+	var changes := []
+	UIRouter.screen_changed.connect(func(depth: int) -> void: changes.append(depth))
+	UIRouter.pop()
+	assert_bool(await _settle()).is_true()
+	assert_int(UIRouter.depth()).is_equal(1)
+	assert_array(changes).is_empty()
+	assert_bool(UIRouter.top().visible).is_true()
+
+
+func test_back_pops_when_idle_and_is_ignored_while_busy() -> void:
+	UIRouter.push(_screen("b"), UITransition.Kind.FADE)
+	assert_bool(await _settle()).is_true()
+	assert_int(UIRouter.depth()).is_equal(2)
+	UIRouter.push(_screen("c"), UITransition.Kind.FADE)
+	_press_back()
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["root", "b", "c"])
+	_press_back()
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["root", "b"])
+
+
+func test_back_at_the_root_is_ignored() -> void:
+	_press_back()
+	assert_bool(await _settle()).is_true()
+	assert_int(UIRouter.depth()).is_equal(1)
+
+
+func test_a_screen_freed_during_a_transition_does_not_stall_the_router() -> void:
+	for kind in ALL_KINDS:
+		var old := _screen("old")
+		UIRouter.reset(old, UITransition.Kind.CUT)
+		await _settle()
+		UIRouter.push(_screen("next"), kind)
+		await await_millis(60)
+		old.queue_free()
+		assert_bool(await _settle()).override_failure_message("stalled on kind %d" % kind).is_true()
+		assert_array(_names()).is_equal(["next"])
+		UIRouter.push(_screen("after"), UITransition.Kind.CUT)
+		assert_bool(await _settle()).is_true()
+		assert_array(_names()).is_equal(["next", "after"])
+
+
+func test_the_incoming_screen_freed_during_a_transition_keeps_the_old_one() -> void:
+	for kind in ALL_KINDS:
+		var base := UIRouter.top()
+		var incoming := _screen("lost")
+		UIRouter.push(incoming, kind)
+		await await_millis(60)
+		incoming.queue_free()
+		assert_bool(await _settle()).override_failure_message("stalled on kind %d" % kind).is_true()
+		assert_object(UIRouter.top()).is_same(base)
+		assert_bool(base.visible).is_true()
+		assert_float(base.modulate.a).is_equal(1.0)
+		assert_float(base.position.x).is_equal(0.0)
+
+
+func test_a_popped_screen_freed_during_the_pop_does_not_stall_the_router() -> void:
+	var top := _screen("top")
+	UIRouter.push(top, UITransition.Kind.CUT)
+	await _settle()
+	UIRouter.pop(UITransition.Kind.SLIDE)
+	await await_millis(60)
+	top.queue_free()
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["root"])
+	assert_bool(UIRouter.top().visible).is_true()
+
+
+func test_a_bad_source_is_refused_and_the_router_carries_on() -> void:
+	var changes := []
+	UIRouter.screen_changed.connect(func(depth: int) -> void: changes.append(depth))
+	for bad: Variant in [
+		"res://does/not/exist.tscn", "res://project.godot", 42, null, auto_free(Node.new()), &"nope"
+	]:
+		UIRouter.push(bad, UITransition.Kind.FADE)
+		assert_bool(await _settle()).is_true()
+		assert_array(_names()).is_equal(["root"])
+	assert_array(changes).is_empty()
+	UIRouter.push(_screen("good"), UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	assert_array(_names()).is_equal(["root", "good"])
+
+
+func test_a_scene_path_is_loaded() -> void:
+	UIRouter.push("res://addons/gds_ui/demo/states_sheet.tscn", UITransition.Kind.CUT)
+	assert_bool(await _settle()).is_true()
+	assert_int(UIRouter.depth()).is_equal(2)
+
+
+func test_a_slide_pop_mirrors_the_push() -> void:
+	var below := UIRouter.top()
+	var card := _screen("card")
+	UIRouter.push(card, UITransition.Kind.SLIDE)
+	assert_bool(await _settle()).is_true()
+	var width := card.size.x
+	assert_float(width).is_greater(0.0)
+	UIRouter.pop()
+	await await_millis(60)
+	# The leaving screen is on top and travelling off to the right.
+	assert_int(card.get_index()).is_greater(below.get_index())
+	assert_bool(card.position.x > 0.0).is_true()
+	# The screen underneath is visible, a third of the way out to the left at most, and dimmed.
+	assert_bool(below.visible).is_true()
+	assert_bool(below.position.x <= 0.0).is_true()
+	assert_bool(below.position.x >= -width * UITransitionSlide.PARALLAX).is_true()
+	assert_bool(below.modulate.r < 1.0).is_true()
+	assert_bool(await _settle()).is_true()
+	assert_float(below.position.x).is_equal(0.0)
+	assert_object(below.modulate).is_equal(Color.WHITE)
+	assert_bool(below.visible).is_true()
+	assert_bool(is_instance_valid(card)).is_false()
+
+
+func test_a_slide_push_puts_the_entering_screen_on_top() -> void:
+	var below := UIRouter.top()
+	var card := _screen("card")
+	UIRouter.push(card, UITransition.Kind.SLIDE)
+	await await_millis(60)
+	assert_int(card.get_index()).is_greater(below.get_index())
+	assert_bool(card.position.x > 0.0).is_true()
+	assert_bool(below.position.x <= 0.0).is_true()
+	assert_bool(await _settle()).is_true()
+
+
+func _screen(screen_name: String) -> Control:
+	var screen := Control.new()
+	# The node name is made unique by the tree while an old screen of the same name waits to be freed.
+	screen.name = screen_name
+	screen.set_meta(&"label", screen_name)
+	return screen
+
+
+func _names() -> Array:
+	return UIRouter.screens().map(func(screen: Control) -> String: return screen.get_meta(&"label"))
+
+
+## Waits until the router has drained its queue; false when it is still busy after the limit.
+func _settle() -> bool:
+	var waited := 0.0
+	while UIRouter.busy and waited < SETTLE_SECONDS:
+		await get_tree().process_frame
+		waited += get_tree().root.get_process_delta_time()
+	return not UIRouter.busy
+
+
+func _press_back() -> void:
+	var event := InputEventAction.new()
+	event.action = &"ui_cancel"
+	event.pressed = true
+	UIRouter.get_viewport().push_input(event)

@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="CreditsList" format=3]
+
+[ext_resource type="Script" path="res://ui/credits_list.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+lines = PackedStringArray("# Made by", "Ryubara - design and direction", "Built by agents on the GDStudio kit", "# Made with", "Godot Engine - MIT licence", "GdUnit4 - MIT licence", "# Thanks", "Everyone who parked for the late show")

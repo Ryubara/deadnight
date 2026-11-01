@@ -5,6 +5,8 @@ extends RefCounted
 
 const TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
 const STEP := 1.0 / 60.0
+## More than any zombie has.
+const KILLING_DAMAGE := 99999.0
 
 ## Every event the rules emitted since `record`, in order.
 var events: Array[Dictionary] = []
@@ -43,6 +45,17 @@ static func buy(rules: GameRules, player_id: int, item_id: StringName) -> int:
 		if event["type"] == &"purchase_denied":
 			return event["result"]
 	return GameRules.BuyResult.OK
+
+
+## One hit that is sure to kill whatever it lands on (a zombie in the rules has finite health).
+static func kill(
+	rules: GameRules,
+	player_id: int,
+	zombie_id: int,
+	zone: StringName = RulesAction.ZONE_BODY,
+	melee: bool = false
+) -> Array[Dictionary]:
+	return rules.apply(RulesAction.hit(player_id, zombie_id, zone, KILLING_DAMAGE, melee))
 
 
 ## Records every event of `rules` from now on.

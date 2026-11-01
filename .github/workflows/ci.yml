@@ -20,11 +20,13 @@ concurrency:
 jobs:
   godot:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: repos/deadnight
           persist-credentials: false
+          lfs: true # models, textures and sounds are LFS objects: without them Godot imports pointer files
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Ryubara/gdstudio
@@ -35,8 +37,8 @@ jobs:
         with:
           path: cache/downloads
           key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
-      - name: Make the workspace and fetch the pinned Godot
-        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --fetch godot
+      - name: Make the workspace and fetch the pinned Godot and GdUnit4
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project
         run: |
           set -o pipefail
@@ -49,6 +51,24 @@ jobs:
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           "$godot" --headless --path repos/deadnight/game --quit-after 60 2>&1 | tee run.log
           ! grep -E "^(SCRIPT )?ERROR" run.log
+
+      - name: Run the tests (GdUnit4)
+        # No `-d`: with the debugger attached, the first script error stops the engine at a prompt and the job hangs.
+        # `--ignoreHeadlessMode` is needed because GdUnit4 otherwise refuses to run headless; the report folder is
+        # uploaded below even when a test fails.
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests -c --ignoreHeadlessMode 2>&1 | tee tests.log
+      - name: Upload the test report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gdunit4-report
+          path: |
+            repos/deadnight/game/reports
+            tests.log
+          if-no-files-found: warn
 
   build-ok:
     if: always()

@@ -1,0 +1,156 @@
+# Animation
+
+How the third-person Soldier moves and uses his weapons: the clip list, how clips are named, the upper/lower body
+split the AnimationTree wires, the event frames gameplay listens to, and how weapons attach to the hand. The clips
+come from one script, so this page and the file cannot drift:
+`tools/blender/soldier_clips.py` (it also writes `clips.json` beside the `.glb` with the same data).
+
+## The character file
+
+| | |
+| --- | --- |
+| Source | the kit Soldier (Quaternius Toon Shooter Game Kit, CC0), cleaned with the kit's rig-sharing recipe |
+| Output | `game/assets/characters/soldier/soldier.glb` and `clips.json` (built, see [Rebuilding](#rebuilding)) |
+| Rig | `CharacterArmature`, 43 bones, at `CharacterArmature/Skeleton3D` in Godot; object scale 1 |
+| Triangles | 5,828 (Body 4,388, Head 1,352, two shoulder pads 44 each): inside the 6k player budget of the [style bible](style.md#budgets-proposed-for-the-web) |
+| Clips | 35: the kit's 14, plus 21 authored here |
+| Frame rate | 24 fps; every frame number on this page is at 24 fps |
+| Root motion | none: the controller moves the body, clips play in place |
+
+## Naming
+
+- **`<Action>_<Class>`** for anything a weapon changes: `Aim_Rifle`, `Fire_Shotgun`, `Reload_Pistol`,
+  `Swing_Melee`, `Equip_Melee`. Classes: **Rifle, Shotgun, Pistol, Melee**.
+- **Bare names** for whole-body clips: `Idle`, `Walk`, `Run`, `Downed`.
+- **Kit names stay** for kit clips we use as they are: `HitReact` is the hit, `Death` is going down. Renaming them
+  would break the other kit characters that share the library.
+
+Which weapon is which class: lever rifle is Rifle, double shotgun is Shotgun, baseball bat and fire axe are Melee.
+A future handgun is Pistol.
+
+## Clips
+
+`upper` clips key the [upper-body bones](#upperlower-split) and hold the standing pose on the rest; `full` clips
+move every bone. Events are frames of the clip.
+
+| Clip | Layer | Plays | Frames | Events |
+| --- | --- | --- | --- | --- |
+| Idle | full | loop | 40 (1.67 s) | - |
+| Walk | full | loop | 24 (1.0 s) | step_left 0, step_right 12 |
+| Run | full | loop | 17 (0.71 s) | - |
+| HitReact | full | once | 10 (0.42 s) | - |
+| Death | full | once | 18 (0.75 s) | - |
+| Downed | full | loop | 48 (2.0 s) | - |
+| Aim_Rifle | upper | loop | 48 (2.0 s) | - |
+| Fire_Rifle | upper | once | 8 (0.33 s) | muzzle 0, can_fire_again 8 |
+| Reload_Rifle | upper | once | 62 (2.58 s) | round_in 20, 32, 44; lever 56; can_fire_again 62 |
+| Aim_Shotgun | upper | loop | 48 (2.0 s) | - |
+| Fire_Shotgun | upper | once | 14 (0.58 s) | muzzle 0, can_fire_again 14 |
+| Reload_Shotgun | upper | once | 40 (1.67 s) | break_open 6, shells_in 26, snap_shut 34, can_fire_again 40 |
+| Aim_Pistol | upper | loop | 48 (2.0 s) | - |
+| Fire_Pistol | upper | once | 6 (0.25 s) | muzzle 0, can_fire_again 6 |
+| Reload_Pistol | upper | once | 28 (1.17 s) | mag_out 6, mag_in 22, can_fire_again 28 |
+| Aim_Melee | upper | loop | 48 (2.0 s) | - |
+| Swing_Melee | upper | once | 22 (0.92 s) | whoosh 6, hit_start 9, hit_end 12, can_swing_again 22 |
+| Equip_<Class> | upper | once | 10 (0.42 s) | weapon_visible 2, ready 10 |
+| Unequip_<Class> | upper | once | 10 (0.42 s) | weapon_hidden 8 |
+
+Also in the file, unused for now: `Idle_Shoot` and `Run_Gun` (the kit's gun clips, which the Rifle and Shotgun clips
+start from), `Punch`, `Wave`, `Yes`, `No`, `Duck`, `Jump`, `Jump_Idle`, `Jump_Land`.
+
+What each event is for:
+
+| Event | Gameplay does |
+| --- | --- |
+| muzzle | flash, sound and the shot (fire is at frame 0: input to bang has no delay) |
+| can_fire_again | the earliest the next shot or a reload may start; the rest of the clip is settle |
+| round_in, shells_in, mag_in | the reload sound; ammo is added at the last one, so an interrupted reload keeps what went in |
+| lever, break_open, snap_shut, mag_out | sounds |
+| hit_start .. hit_end | the melee hit window: test the weapon's hit shape on these frames only |
+| whoosh | the swing sound |
+| weapon_visible, weapon_hidden | show or hide the weapon model (it appears in the hand on the way up and leaves on the way down) |
+| ready | the weapon can fire or swing |
+| step_left, step_right | footstep sounds |
+
+The glTF format has no events, so the controller adds them: a method track per clip built from `clips.json` when the
+library loads, or a frame check in the state code. The frames above are the contract.
+
+## Upper/lower split
+
+The legs run while the arms aim: an AnimationTree blends an upper-body layer over the locomotion with a bone filter.
+
+- **Upper bones (32):** `Abdomen` and everything under it: `Torso`, `Neck`, `Head`, both `Shoulder`, `UpperArm`,
+  `LowerArm` and every finger bone. The list is `upper_bones` in `clips.json`.
+- **Lower bones (11):** `Root`, `Body`, `Hips`, `UpperLeg`, `LowerLeg`, `Foot` and `PoleTarget` of each side.
+
+`Abdomen` is in the upper set so recoil and the swing bend the whole spine; the hips stay with the legs.
+
+```text
+locomotion (Idle / Walk / Run by speed) ──┐
+                                          Blend2 "split", amount 1, filter = upper bones ── full-body OneShot ── output
+upper (Aim_<Class>; OneShots Fire, Reload, Swing, Equip, Unequip) ──┘   (HitReact; Death then Downed)
+```
+
+- Standing still, the locomotion is `Idle`; the upper layer is always the class's `Aim_<Class>` loop with its
+  one-shots on top, so the Soldier never holds a weapon in the Idle arms.
+- `HitReact`, `Death` and `Downed` are full-body and override both layers (a OneShot or a state with no filter).
+- Checked headless in Godot: with `Run` under `Aim_Rifle` through a filtered Blend2, the legs follow `Run` and the
+  right arm matches `Aim_Rifle` to 0.00 degrees (`game/tests/art/check_soldier_clips.gd`).
+- Aim pitch (looking up and down) is not in the clips: the controller turns `Abdomen` or `Torso` about its pitch axis
+  (bone X, positive bends forward) after the tree, within about 40 degrees, or we author `Aim_<Class>_Up/_Down` later.
+
+## Weapons in the hand
+
+- **Attach** each weapon to the `Index1.R` bone (a `BoneAttachment3D`), the bone the kit Soldier carries his weapons
+  on. A weapon's origin is its grip; its transform on the bone is the kit **Shotgun** hold for guns and the kit
+  **Shovel** hold for melee (weapons follow `game/assets/weapons/`, the kit's [weapons page](https://github.com/Ryubara/gdstudio/blob/main/docs/blender/weapons.md)
+  and its `render_hold.py`, which prints the hold in the bone's space). Measured in Godot on the built Soldier (the
+  kit weapons left in the hand with `build_soldier.py --keep-held Shotgun,Shovel`, divided by the kit files' own
+  node transforms), the weapon scene's transform under a `BoneAttachment3D` on `Index1.R` is:
+
+```gdscript
+const HOLD_GUN := Transform3D(
+    Basis(Vector3(-0.062527, -0.997926, -0.015303), Vector3(0.118606, -0.022655, 0.992683),
+          Vector3(-0.990971, 0.060254, 0.119776)),
+    Vector3(-0.039563, 0.197228, -0.070351))
+const HOLD_MELEE := Transform3D(
+    Basis(Vector3(-0.438017, -0.897818, 0.045446), Vector3(-0.898861, 0.436628, -0.037496),
+          Vector3(0.013822, -0.057274, -0.998263)),
+    Vector3(-0.004282, 0.175673, -0.062554))
+```
+
+With these, the lever rifle, double shotgun and bat sit in the Soldier's hand in Godot through every clip (the
+Godot capture in the pull request).
+
+- **Left hand:** the kit hold is one-handed (in `Idle_Shoot` the left arm hangs), and so are the clips: the left arm
+  is free. Each two-handed weapon scene carries a `Marker3D` named `LeftHand` on its fore-end (the handle below the
+  grip for the bat and axe). The controller runs a two-bone IK on `UpperArm.L` and `LowerArm.L` toward it with the
+  weight below; the clips move the left arm themselves where the weight is 0.
+
+| Class | LeftHand IK weight |
+| --- | --- |
+| Rifle, Shotgun | 1 in Aim and Fire; 0 in Reload, Equip and Unequip (the clip moves the left hand to the belt and the gun) |
+| Pistol | 0 (one-handed, as the kit holds it) |
+| Melee | 1 in Aim; 0 in Swing, Equip and Unequip |
+
+## How the clips are made
+
+From the kit's own poses, never from a blank rig: `Idle_Shoot` frame 0 (the gun hold) is the base of every weapon
+pose, `Idle` frame 0 the lowered arms that Equip and Unequip move from and to. Recoil, sway and reloads are local
+rotations on top, mostly of the spine, so both arms and the weapon move together. `Walk` is the kit `Run` at 60 % of
+its stride, stretched to one second; `Downed` is the last frame of `Death`, breathing. What we learned on the way:
+[Character animation](../research/character-animation.md).
+
+## Rebuilding
+
+```sh
+blender -b --factory-startup -P tools/blender/build_soldier.py -- \
+    --soldier <bundle>/models/PpLF4rt4ah.glb --out game/assets/characters/soldier/soldier.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- \
+    --soldier <bundle>/models/PpLF4rt4ah.glb --out <scratch>/clips        # contact sheets, one per class
+godot --headless --path game --import
+godot --headless --path game -s res://tests/art/check_soldier_clips.gd   # CLIPS/POSE/SPLIT lines, exit 0
+```
+
+`<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is a third-party-derived file: committing it and
+its licence entry is a maintainer decision.
