@@ -5,6 +5,10 @@
 [ext_resource type="Script" path="res://gameplay/rules/fuel_tuning.gd" id="3_bgcg8"]
 [ext_resource type="Script" path="res://gameplay/rules/round_tuning.gd" id="4_468ln"]
 [ext_resource type="Script" path="res://gameplay/rules/rules_tuning.gd" id="5_3ukcj"]
+[ext_resource type="Script" path="res://gameplay/rules/zombie_type.gd" id="6_ztype"]
+[ext_resource type="Script" path="res://gameplay/rules/zombie_roster.gd" id="7_roster"]
+[ext_resource type="Script" path="res://gameplay/rules/special_round.gd" id="8_sround"]
+[ext_resource type="Script" path="res://gameplay/rules/special_tuning.gd" id="9_stune"]
 [ext_resource type="Script" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
@@ -144,25 +148,21 @@ brownout_fraction = 0.1
 
 [sub_resource type="Resource" id="Resource_1fk4k"]
 script = ExtResource("4_468ln")
-count_base = 6.0
-count_linear = 2.4
+count_base = 5.0
+count_linear = 2.2
 count_quadratic = 0.12
 count_per_extra_player = 0.6
 health_base = 60.0
-health_step = 18.0
+health_step = 14.0
 health_knee_round = 8
-health_growth = 1.07
+health_growth = 1.05
 speed_base = 0.9
 speed_step = 0.1
 speed_cap = 4.5
 speed_jitter = 0.12
-sprinter_from_round = 4
-sprinter_chance_step = 0.07
-sprinter_chance_max = 0.5
-sprinter_multiplier = 1.7
 lit_speed_multiplier = 0.6
 spawn_interval_start = 2.4
-spawn_interval_decay = 0.92
+spawn_interval_decay = 0.95
 spawn_interval_min = 0.5
 spawn_rate_per_extra_player = 0.5
 alive_cap_start = 10.0
@@ -176,6 +176,109 @@ ambient_start = 0.6
 ambient_step = 0.035
 ambient_min = 0.15
 
+[sub_resource type="Resource" id="Type_walker"]
+script = ExtResource("6_ztype")
+id = &"walker"
+looks = Array[StringName]([&"walker", &"greaser", &"usher", &"farmhand"])
+crawls_into = &"crawler"
+damage = 15.0
+
+[sub_resource type="Resource" id="Type_runner"]
+script = ExtResource("6_ztype")
+id = &"runner"
+looks = Array[StringName]([&"runner"])
+health_multiplier = 0.55
+speed_multiplier = 1.7
+damage = 12.0
+points_multiplier = 1.2
+first_round = 4
+intro_count = 1
+share_start = 0.06
+share_step = 0.04
+share_max = 0.3
+
+[sub_resource type="Resource" id="Type_crawler"]
+script = ExtResource("6_ztype")
+id = &"crawler"
+looks = Array[StringName]([&"crawler"])
+health_multiplier = 0.7
+speed_multiplier = 0.5
+hit_chance = 0.6
+damage = 12.0
+barrier_speed = 0.0
+first_round = 6
+intro_count = 2
+share_start = 0.05
+share_step = 0.02
+share_max = 0.1
+
+[sub_resource type="Resource" id="Type_brute"]
+script = ExtResource("6_ztype")
+id = &"brute"
+looks = Array[StringName]([&"brute"])
+health_multiplier = 2.5
+speed_multiplier = 0.6
+damage = 35.0
+knockback = 2.5
+barrier_speed = 2.5
+points_multiplier = 2.5
+max_paid_hits = 8
+first_round = 8
+intro_count = 1
+share_start = 0.03
+share_step = 0.01
+share_max = 0.06
+
+[sub_resource type="Resource" id="Type_headliner"]
+script = ExtResource("6_ztype")
+id = &"headliner"
+looks = Array[StringName]([&"headliner"])
+boss = true
+health_multiplier = 16.0
+health_per_extra_player = 1.0
+speed_multiplier = 0.8
+weak_multiplier = 2.2
+damage = 40.0
+knockback = 4.0
+telegraph_seconds = 1.2
+barrier_speed = 4.0
+points_multiplier = 6.0
+max_paid_hits = 20
+
+[sub_resource type="Resource" id="Roster_1"]
+script = ExtResource("7_roster")
+types = Array[ExtResource("6_ztype")]([SubResource("Type_walker"), SubResource("Type_runner"), SubResource("Type_crawler"), SubResource("Type_brute"), SubResource("Type_headliner")])
+
+[sub_resource type="Resource" id="Special_double_feature"]
+script = ExtResource("8_sround")
+id = &"double_feature"
+title = "Double Feature"
+boss_type = &"headliner"
+escort_fraction = 0.4
+
+[sub_resource type="Resource" id="Special_stampede"]
+script = ExtResource("8_sround")
+id = &"stampede"
+title = "Midnight Stampede"
+kind = 1
+only_type = &"runner"
+count_fraction = 1.2
+spawn_rate = 1.8
+reward_base = 150
+
+[sub_resource type="Resource" id="Special_crawl_space"]
+script = ExtResource("8_sround")
+id = &"crawl_space"
+title = "Crawl Space"
+kind = 1
+only_type = &"crawler"
+count_fraction = 1.1
+spawn_rate = 1.5
+reward_base = 150
+
+[sub_resource type="Resource" id="Specials_1"]
+script = ExtResource("9_stune")
+rounds = Array[ExtResource("8_sround")]([SubResource("Special_double_feature"), SubResource("Special_stampede"), SubResource("Special_double_feature"), SubResource("Special_crawl_space")])
 [sub_resource type="Resource" id="Resource_expl1"]
 script = ExtResource("6_expl1")
 start_grenades = 2
@@ -193,4 +296,6 @@ script = ExtResource("5_3ukcj")
 rounds = SubResource("Resource_1fk4k")
 economy = SubResource("Resource_6sif2")
 fuel = SubResource("Resource_df3qj")
+roster = SubResource("Roster_1")
+specials = SubResource("Specials_1")
 explosives = SubResource("Resource_expl1")

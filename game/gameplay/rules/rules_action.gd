@@ -20,12 +20,14 @@ const GRANT_POINTS := &"grant_points"
 const USE_GRENADE := &"use_grenade"
 const EXPLOSION := &"explosion"
 
-## Where a hit landed. Only `ZONE_HEAD` changes what the rules pay; the weapon has already applied
-## its zone multiplier to the damage.
+## Where a hit landed. `ZONE_HEAD` and `ZONE_WEAK` change what the rules pay; the weapon has already
+## applied its zone multiplier to the damage, and the rules add the type's own `weak_multiplier` for
+## `ZONE_WEAK` (the boss's lit bulb). A `ZONE_LIMB` hit can bring a walker to the ground.
 const ZONE_HEAD := &"head"
 const ZONE_BODY := &"body"
 const ZONE_LIMB := &"limb"
-const ZONES: Array[StringName] = [ZONE_HEAD, ZONE_BODY, ZONE_LIMB]
+const ZONE_WEAK := &"weak"
+const ZONES: Array[StringName] = [ZONE_HEAD, ZONE_BODY, ZONE_LIMB, ZONE_WEAK]
 
 ## The longest step one tick may take, seconds. A caller with more time to pass sends more ticks.
 const MAX_TICK := 1.0

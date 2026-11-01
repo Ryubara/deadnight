@@ -126,9 +126,12 @@ func _crowd_tuning() -> RulesTuning:
 	rounds.spawn_rate_per_extra_player = 0.0
 	rounds.first_spawn_delay = 0.1
 	rounds.speed_base = 1.8
-	rounds.sprinter_from_round = 1
-	rounds.sprinter_chance_step = 0.3
-	rounds.sprinter_chance_max = 0.3
+	# Three in ten run: the runner type from round 1, with no first-round exact count.
+	var runner := tuning.roster.type_of(&"runner")
+	runner.first_round = 1
+	runner.share_start = 0.3
+	runner.share_step = 0.0
+	runner.share_max = 0.3
 	return tuning
 
 

@@ -24,10 +24,10 @@ source. A test fails when the scene and the tuning disagree.
 | --- | --- | --- | ---: | --- | --- |
 | 1 | Screen field | start | free | - | - |
 | 2 | Concession stand, then the midway behind it | `door_concession` | 350 | field | 2 / 2 / 2 |
-| 5 | Generator yard | `door_yard` | 500 | concession | 3 / 3 / 4 |
-| 4 | Projection booth | `door_booth` | 750 | concession | 4 / 5 / 5 |
-| 6 | Back lot | `door_back_lot` | 1250 | booth | 6 / 7 / 7 |
-| 7 | The road | `door_road` | 2000 | back lot | 8 / 9 / 9 |
+| 5 | Generator yard | `door_yard` | 500 | concession | 3 / 4 / 4 |
+| 4 | Projection booth | `door_booth` | 750 | concession | 5 / 5 / 6 |
+| 6 | Back lot | `door_back_lot` | 1250 | booth | 6 / 7 / 8 |
+| 7 | The road | `door_road` | 2000 | back lot | 8 / 9 / 10 |
 
 \* The first round at whose end one player's points, half of them spent on doors (the rest buys weapons, fuel and
 tonics), cover the running total of every door so far. Counted: about 85 points a zombie, a per-player share of every
