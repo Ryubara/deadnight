@@ -66,6 +66,8 @@ var _players_2d: Array[AudioStreamPlayer] = []
 var _bed_players: Array[AudioStreamPlayer] = []
 ## Each running bed by id: {"player", "def", "fade_db" (now), "target_db"}.
 var _beds := {}
+## The looping players `start_loop` made, so `stop_all` can stop those too.
+var _loops: Array[AudioStreamPlayer3D] = []
 var _budget_3d: VoiceBudget
 var _budget_2d: VoiceBudget
 var _duck_until := 0.0
@@ -193,6 +195,8 @@ func start_loop(id: StringName, parent: Node3D) -> AudioStreamPlayer3D:
 	player.max_distance = def.max_distance
 	parent.add_child(player)
 	player.play()
+	_loops = _loops.filter(is_instance_valid)
+	_loops.append(player)
 	return player
 
 
@@ -282,6 +286,11 @@ func stop_all() -> void:
 	_budget_3d.release_all()
 	_budget_2d.release_all()
 	stop_beds(true)
+	for loop in _loops:
+		if is_instance_valid(loop):
+			loop.stop()
+			loop.stream = null
+	_loops.clear()
 	_duck_until = 0.0
 	_duck_target = 0.0
 

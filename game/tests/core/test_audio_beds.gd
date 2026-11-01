@@ -94,3 +94,12 @@ func test_the_beds_files_are_whole_loops() -> void:
 		var seconds := stream.get_length()
 		# Rendered as an exact number of seconds, so the loop point is the end of the file.
 		assert_float(seconds).override_failure_message(id).is_equal_approx(roundf(seconds), 0.002)
+
+
+func test_stop_all_stops_a_loop_that_lives_on_a_node() -> void:
+	var anchor := auto_free(Node3D.new()) as Node3D
+	add_child(anchor)
+	var player := _audio.start_loop(&"bed_projector", anchor)
+	assert_bool(player.playing).is_true()
+	_audio.stop_all()
+	assert_bool(player.playing).is_false()
