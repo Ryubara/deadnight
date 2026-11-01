@@ -28,13 +28,16 @@ var step := 1.0 / 60.0
 var _state: ClientState
 
 
-func setup(state: ClientState, camera: Camera3D) -> void:
+## `telegraphs` maps a look to the seconds its blow takes to land (from the rules' roster).
+func setup(
+	state: ClientState, camera: Camera3D, telegraphs: Dictionary[StringName, float] = {}
+) -> void:
 	_state = state
 	effects = ShotEffects.new()
 	add_child(effects)
 	horde = ZombieHorde.new()
 	add_child(horde)
-	horde.setup_client(camera, ZombieTuning.new().emerge_seconds)
+	horde.setup_client(camera, ZombieTuning.new().emerge_seconds, telegraphs)
 	state.event_received.connect(_on_event)
 
 

@@ -16,6 +16,8 @@ var last_snapshot_bytes: int = 0
 
 var _views: Dictionary[int, ZombieView] = {}
 var _emerge_seconds: float = 0.0
+## Seconds each look's wind-up lasts, for the looks whose attack is timed to it (the boss's).
+var _telegraphs: Dictionary[StringName, float] = {}
 
 
 ## `p_emerge_seconds` is the one number the client needs from the zombies' tuning: how long a
@@ -25,9 +27,14 @@ func setup(p_director: ZombieDirector, camera: Camera3D, p_emerge_seconds: float
 	setup_client(camera, p_emerge_seconds)
 
 
-## A horde that only draws, with no director: it is fed with `apply_snapshot`.
-func setup_client(camera: Camera3D, p_emerge_seconds: float) -> void:
+## A horde that only draws, with no director: it is fed with `apply_snapshot`. `p_telegraphs` maps
+## a look to the seconds its blow takes to land, like the emerge time a number from the rules the
+## server owns.
+func setup_client(
+	camera: Camera3D, p_emerge_seconds: float, p_telegraphs: Dictionary[StringName, float] = {}
+) -> void:
 	_emerge_seconds = p_emerge_seconds
+	_telegraphs = p_telegraphs
 	throttle = AnimationThrottle.new()
 	throttle.camera = camera
 	add_child(throttle)
@@ -87,7 +94,8 @@ func _add_view(zombie_id: int, look: StringName) -> void:
 	add_child(view)
 	# The same id always gives the same phase, so every client agrees without being told.
 	var phase := fposmod(float(zombie_id) * 0.618034, 1.0)
-	view.setup(_scene_for(look), zombie_id, phase, _emerge_seconds, look)
+	var telegraph: float = _telegraphs.get(look, ZombieRig.BOSS_HIT_SECONDS)
+	view.setup(_scene_for(look), zombie_id, phase, _emerge_seconds, look, telegraph)
 	_views[zombie_id] = view
 	throttle.add_view(view)
 

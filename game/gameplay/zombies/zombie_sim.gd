@@ -96,6 +96,19 @@ func cripple(zombie_id: int, profile: ZombieProfile, speed_scale: float) -> void
 	ZombieBrain.stagger(zombie)
 
 
+## A hit on a weak spot that did not kill: staggers a zombie that has one (a boss), unless it was
+## staggered lately. Every other zombie shrugs it off.
+func weak_hit(zombie_id: int) -> void:
+	if not zombies.has(zombie_id):
+		return
+	var zombie := zombies[zombie_id]
+	if not zombie.profile.weak or zombie.stagger_cooldown_left > 0.0:
+		return
+	if zombie.mode == ZombieBody.Mode.CHASE or zombie.mode == ZombieBody.Mode.ATTACK:
+		ZombieBrain.stagger(zombie)
+		zombie.stagger_cooldown_left = zombie.profile.stagger_cooldown
+
+
 ## A hit the rules accepted that did not kill.
 func react_to_hit(zombie_id: int) -> void:
 	if zombies.has(zombie_id):
@@ -132,6 +145,7 @@ func tick(delta: float, targets: Dictionary) -> Array[Dictionary]:
 func _step(targets: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	for zombie: ZombieBody in zombies.values():
+		zombie.stagger_cooldown_left = maxf(zombie.stagger_cooldown_left - STEP, 0.0)
 		if zombie.mode == ZombieBody.Mode.DYING:
 			zombie.mode_time += STEP
 		else:

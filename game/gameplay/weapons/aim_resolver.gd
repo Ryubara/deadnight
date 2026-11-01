@@ -143,12 +143,19 @@ static func _along(
 
 
 ## The ray against one target: `{"pos", "yaw"}` and, when its zones are not the walker's size,
-## `"scale"` (`Hitbox.shapes`).
+## `"scale"`, and when it has a weak spot, `"weak": true` (`Hitbox.shapes`).
 static func _ray(
 	origin: Vector3, dir: Vector3, limit: float, target: Dictionary, inflate: float
 ) -> Dictionary:
 	return Hitbox.ray(
-		origin, dir, limit, target["pos"], target["yaw"], inflate, target.get("scale", 1.0)
+		origin,
+		dir,
+		limit,
+		target["pos"],
+		target["yaw"],
+		inflate,
+		target.get("scale", 1.0),
+		target.get("weak", false)
 	)
 
 

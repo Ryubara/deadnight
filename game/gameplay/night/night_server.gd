@@ -280,6 +280,7 @@ func _target_list() -> Array:
 						"pos": zombie.position,
 						"yaw": zombie.yaw,
 						"scale": zombie.profile.hit_scale(),
+						"weak": zombie.profile.weak,
 					}
 				)
 			)

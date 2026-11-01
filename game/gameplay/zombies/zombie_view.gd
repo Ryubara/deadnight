@@ -16,6 +16,12 @@ var accumulated: float = 0.0
 var period: int = 1
 
 var _model: Node3D
+var _boss := false
+## The boss's lamp (its material, a copy of its own): dark once it is dead.
+var _lamp: StandardMaterial3D
+var _lamp_strength := 0.0
+## Seconds the boss's wind-up lasts: its attack clip is played to make its blow land then.
+var _telegraph := ZombieRig.BOSS_HIT_SECONDS
 var _playback: AnimationNodeStateMachinePlayback
 var _mode: int = -1
 var _episode: int = -1
@@ -30,10 +36,12 @@ func setup(
 	id: int,
 	phase: float,
 	emerge_seconds: float,
-	p_look: StringName = ZombieModels.DEFAULT
+	p_look: StringName = ZombieModels.DEFAULT,
+	telegraph_seconds: float = ZombieRig.BOSS_HIT_SECONDS
 ) -> void:
 	zombie_id = id
 	_emerge_seconds = emerge_seconds
+	_telegraph = telegraph_seconds
 	dress(model_scene, p_look)
 	accumulated = phase * 1.3333  # the walk's length
 	set_process(false)
@@ -45,11 +53,17 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 	if _model != null:
 		_model.free()
 	look = p_look
+	_lamp = null
+	_boss = ZombieModels.is_boss(look)
 	_model = model_scene.instantiate() as Node3D
-	_model.scale = Vector3.ONE * ZombieModels.scale_of(look)
+	_model.scale = Vector3.ONE * ZombieModels.GAME_SCALE
 	add_child(_model)
 	_strip_for_crowd(_model)
-	tree = ZombieRig.attach(_model)
+	if _boss:
+		tree = ZombieRig.attach_boss(_model)
+		_light_lamp(_model)
+	else:
+		tree = ZombieRig.attach(_model)
 	_playback = tree.get(ZombieRig.PLAYBACK_PARAMETER)
 	_mode = -1
 	_speed_step = -1
@@ -69,7 +83,8 @@ func apply(entry: Dictionary, delta: float) -> void:
 		_speed_step = step
 		tree.set(ZombieRig.BLEND_PARAMETER, entry["speed"])
 	_emerge_left = maxf(_emerge_left - delta, 0.0) if mode == ZombieBody.Mode.EMERGING else 0.0
-	_model.position.y = -EMERGE_DEPTH * _emerge_left / _emerge_seconds
+	if not _boss:
+		_model.position.y = -EMERGE_DEPTH * _emerge_left / _emerge_seconds
 
 
 ## The body being drawn.
@@ -88,13 +103,36 @@ func _enter(mode: int) -> void:
 	match mode:
 		ZombieBody.Mode.ATTACK:
 			state = ZombieRig.STATE_ATTACK
+			if _boss:
+				tree.set(
+					ZombieRig.BOSS_ATTACK_SCALE_PARAMETER, ZombieRig.BOSS_HIT_SECONDS / _telegraph
+				)
 		ZombieBody.Mode.STAGGER:
 			state = ZombieRig.STATE_STAGGER
 		ZombieBody.Mode.DYING:
 			state = ZombieRig.STATE_DIE
+			_light_lamp(_model, false)
 		ZombieBody.Mode.EMERGING:
 			_emerge_left = _emerge_seconds
+			if _boss:
+				state = ZombieRig.STATE_ROAR
 	_playback.start(state, true)
+
+
+## Lights the boss's lamp (the model's emission map, lit at the lens) or puts it out. The model's
+## material is shared by every instance of the file, so the first call gives this boss a copy.
+func _light_lamp(model: Node, lit: bool = true) -> void:
+	if _lamp == null:
+		var near := model.find_child(ZombieModels.NEAR_MESH, true, false) as MeshInstance3D
+		var far := model.find_child(ZombieModels.FAR_MESH, true, false) as MeshInstance3D
+		if near == null:
+			return
+		_lamp = near.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+		_lamp_strength = _lamp.emission_energy_multiplier
+		near.material_override = _lamp
+		if far != null:
+			far.material_override = _lamp
+	_lamp.emission_energy_multiplier = _lamp_strength if lit else 0.0
 
 
 ## Crowd budget (kit docs godot/crowds.md): no shadows, and one mesh drawn per zombie (the

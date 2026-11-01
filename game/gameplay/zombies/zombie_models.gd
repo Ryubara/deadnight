@@ -1,22 +1,24 @@
 class_name ZombieModels
 extends RefCounted
 ## The zombie bodies: the seven committed variants (game/assets/characters/zombies/, built by
-## tools/blender/build_zombies.py). Every variant has the kit zombie's skeleton and clip names, so
+## tools/blender/build_zombies.py) and the headliner (game/assets/characters/zombie_boss/, built by
+## tools/blender/build_boss.py). Every variant has the kit zombie's skeleton and clip names, so
 ## ZombieRig's one library plays on all of them. Each file holds two skinned meshes: `NEAR_MESH`
 ## for gameplay distances and `FAR_MESH` past `FAR_FROM` (docs/design/zombies.md).
 
 const DEFAULT := &"walker"
 const DIR := "res://assets/characters/zombies/"
+## Every look a zombie can be sent in, in the order of the wire format (`ZombieCodec`): a look's
+## index is its wire id, so the list only ever grows at its end.
 const VARIANTS: Array[StringName] = [
-	&"walker", &"greaser", &"usher", &"farmhand", &"runner", &"brute", &"crawler"
-]
-## Every look a zombie can be sent in, in the order of the wire format (`ZombieCodec`): the
-## variants, then the looks that stand in for one. Append only: an index is a look's wire id.
-const LOOKS: Array[StringName] = [
 	&"walker", &"greaser", &"usher", &"farmhand", &"runner", &"brute", &"crawler", &"headliner"
 ]
+## Where a look's file is when it is not `DIR/zombie_<look>.glb`.
+const PATHS := {&"headliner": "res://assets/characters/zombie_boss/zombie_boss.glb"}
+## Looks with their own clips (the `Boss_*` five) and state machine (`ZombieRig`).
+const BOSSES: Array[StringName] = [&"headliner"]
 ## How tall each look stands against the walker, for the hit zones (docs/design/zombies.md; the
-## model files already carry it). The headliner's is its stand-in's height times the stand-in scale.
+## model files already carry it).
 const HEIGHTS := {
 	&"walker": 1.0,
 	&"greaser": 1.02,
@@ -27,42 +29,35 @@ const HEIGHTS := {
 	&"crawler": 1.0,
 	&"headliner": 1.45,
 }
-## Looks with no model of their own yet: the variant that stands in for them, and the scale it is
-## drawn at. The headliner is a brute grown to the 2.56 m the boss model is to be, until it comes.
-const STAND_INS := {&"headliner": {"variant": &"brute", "scale": 1.23}}
 ## How tall a crawler lies against a walker standing.
 const CRAWL_HEIGHT := 0.6
 ## Looks that move on the ground on their hands: the crawl clip, not the walk.
 const CRAWLING: Array[StringName] = [&"crawler"]
 const NEAR_MESH := "Zombie_Mesh"
 const FAR_MESH := "Zombie_Far"
+## The scale every model is drawn at: the style bible's game scale (docs/design/style.md), on top
+## of each variant's height. At it the walker stands 1.77 m, the brute 2.09 m, the headliner 2.56 m,
+## which is what the hit zones (`Hitbox`) are sized for.
+const GAME_SCALE := 1.3
 ## Metres from the camera at which a zombie swaps to its far mesh.
 const FAR_FROM := 18.0
 
 
 ## The wire index of a look; an unknown look is the walker's.
 static func look_index(look: StringName) -> int:
-	return maxi(LOOKS.find(look), 0)
+	return maxi(VARIANTS.find(look), 0)
 
 
 static func look_at(index: int) -> StringName:
-	return LOOKS[index] if index >= 0 and index < LOOKS.size() else DEFAULT
+	return VARIANTS[index] if index >= 0 and index < VARIANTS.size() else DEFAULT
 
 
 ## The look's scene; an unknown name reports an error and gives the walker.
 static func scene(look: StringName = DEFAULT) -> PackedScene:
-	var variant := look
-	if STAND_INS.has(look):
-		variant = STAND_INS[look]["variant"]
-	if variant not in VARIANTS:
+	if look not in VARIANTS:
 		push_error("ZombieModels: no variant %s, using %s" % [look, DEFAULT])
-		variant = DEFAULT
-	return load(DIR + "zombie_%s.glb" % variant) as PackedScene
-
-
-## The scale the look's scene is drawn at: 1 for a model of its own.
-static func scale_of(look: StringName) -> float:
-	return STAND_INS[look]["scale"] if STAND_INS.has(look) else 1.0
+		look = DEFAULT
+	return load(PATHS.get(look, DIR + "zombie_%s.glb" % look)) as PackedScene
 
 
 static func height_of(look: StringName) -> float:
@@ -72,6 +67,10 @@ static func height_of(look: StringName) -> float:
 ## How high to aim on the look against a walker: how tall it stands, and a crawler is low.
 static func aim_scale(look: StringName) -> float:
 	return height_of(look) * (CRAWL_HEIGHT if crawls(look) else 1.0)
+
+
+static func is_boss(look: StringName) -> bool:
+	return look in BOSSES
 
 
 static func crawls(look: StringName) -> bool:
