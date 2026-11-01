@@ -157,8 +157,8 @@ def decode(src: Path, ffmpeg: str, tmp: Path) -> np.ndarray:
 
 
 def clean(x: np.ndarray, lowpass: bool) -> np.ndarray:
-    """Trim the lead-in to where it first rises within 40 dB of the peak and the tail, soften the hiss, fade."""
-    loud = np.nonzero(np.abs(x) > np.abs(x).max() * 10 ** (-40 / 20))[0]
+    """Trim the lead-in to where it first rises within 24 dB of the peak and the tail, soften the hiss, fade."""
+    loud = np.nonzero(np.abs(x) > np.abs(x).max() * 10 ** (-24 / 20))[0]
     if len(loud):
         x = x[max(loud[0] - dsp.samples(0.005), 0) :]
     x = dsp.trim_tail(x, -50.0)
@@ -176,7 +176,7 @@ def score(x: np.ndarray, short: bool) -> float:
     rms = np.sqrt(np.convolve(x**2, np.ones(win) / win, mode="same"))
     quiet = float((rms < rms.max() * 10 ** (-35 / 20)).mean())
     onset = float(np.argmax(rms > rms.max() * 10 ** (-12 / 20))) / dsp.SAMPLE_RATE
-    slow = max(onset - 0.12, 0.0) * 2.0 if short else 0.0
+    slow = max(onset - 0.12, 0.0) * 2.0 if short else max(onset - 0.15, 0.0) * 2.0
     return hiss + 0.5 * quiet + slow
 
 

@@ -12,10 +12,10 @@
     "influence": 0.6
   },
   "alert_6.ogg": {
-    "model": "eleven_text_to_sound_v2",
-    "prompt": "A zombie noticing prey: a short rising rasping snarl, hungry and angry, no music",
+    "model": "eleven_text_to_sound_v3",
+    "prompt": "One-shot, an undead man's short rising rasping snarl as he spots prey, guttural, close-mic, dry, no reverb",
     "seconds": 1.0,
-    "influence": 0.6
+    "influence": 0.45
   },
   "attack_4.ogg": {
     "model": "eleven_text_to_sound_v3",
@@ -54,22 +54,22 @@
     "influence": 0.6
   },
   "groan_5.ogg": {
-    "model": "eleven_text_to_sound_v3",
-    "prompt": "One-shot, a dead man's low guttural groan, wet throat rattle, slow and breathy, close-mic, dry, no reverb, no music",
-    "seconds": 2.0,
-    "influence": 0.45
-  },
-  "groan_6.ogg": {
     "model": "eleven_text_to_sound_v2",
     "prompt": "A single slow low zombie groan from a dead man's rasping throat, wet and breathy, no music",
     "seconds": 2.0,
     "influence": 0.6
   },
-  "groan_7.ogg": {
+  "groan_6.ogg": {
     "model": "eleven_text_to_sound_v3",
     "prompt": "One-shot, a dead man's low guttural groan, wet throat rattle, slow and breathy, close-mic, dry, no reverb, no music",
     "seconds": 2.0,
     "influence": 0.45
+  },
+  "groan_7.ogg": {
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A single slow low zombie groan from a dead man's rasping throat, wet and breathy, no music",
+    "seconds": 2.0,
+    "influence": 0.6
   },
   "groan_brute_4.ogg": {
     "model": "eleven_text_to_sound_v2",
@@ -90,10 +90,10 @@
     "influence": 0.45
   },
   "groan_crawler_5.ogg": {
-    "model": "eleven_text_to_sound_v3",
-    "prompt": "One-shot, a weak pained zombie moan, thin reedy voice, short of breath, close-mic, dry, no reverb, no music",
+    "model": "eleven_text_to_sound_v2",
+    "prompt": "A weak pained zombie moan, thin reedy voice, short of breath, no music",
     "seconds": 1.5,
-    "influence": 0.45
+    "influence": 0.6
   },
   "hurt_4.ogg": {
     "model": "eleven_text_to_sound_v3",
