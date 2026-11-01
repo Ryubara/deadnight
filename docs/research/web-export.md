@@ -163,7 +163,7 @@ no failed request, no HTTP status of 400 or more**, with the 4 console lines the
 | Time to the main menu, three more visits | 2.3 to 2.4 s |
 | `index.wasm` download alone (curl) | 0.39 s as brotli (7.9 MB), 0.37 s as gzip (10.1 MB), 1.3 s uncompressed (39.5 MB) |
 
-The 5.0 s is the first request after a deploy, when the edge has to fetch the files from the container. The local
+The 5.0 s is the first run after the deploy (probably a cold edge; not investigated). The local
 server needed 1.7 to 3.9 s (Numbers, above), so the network adds little on this connection; a connection of 20 Mbit/s
 needs about 3 s for the 7.9 MB wasm on top of that. Frame times come from the machine that opens the page, not from the
 server.
