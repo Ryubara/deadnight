@@ -39,6 +39,15 @@ var points_earned: int = 0
 var points_spent: int = 0
 
 
+## What a repair pays now, under the cap on repair pay from one round's end to the next; counts it.
+func repair_pay(economy: EconomyTuning) -> int:
+	var pay := maxi(
+		mini(economy.repair, economy.repair_cap_per_round - repair_points_this_round), 0
+	)
+	repair_points_this_round += pay
+	return pay
+
+
 func _init(p_id: int, p_points: int) -> void:
 	id = p_id
 	points = p_points

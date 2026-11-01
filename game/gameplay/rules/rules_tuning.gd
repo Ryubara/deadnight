@@ -11,6 +11,7 @@ const FINGERPRINT_LENGTH := 16
 @export var roster: ZombieRoster = ZombieRoster.new()
 @export var specials: SpecialTuning = SpecialTuning.new()
 @export var explosives: ExplosiveTuning = ExplosiveTuning.new()
+@export var barricades: BarricadeTuning = BarricadeTuning.new()
 @export var health: HealthTuning = HealthTuning.new()
 
 

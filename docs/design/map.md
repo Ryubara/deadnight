@@ -159,9 +159,23 @@ projector beam, the neon in the back lot. The moon is dim and blue, so unlit gro
 | Back lot | a tenth | one flickering neon sign |
 | The road | a fifth | the ticket kiosk, and a wreck's headlights |
 
-The dead come in at the field's breaches (`Breach*`), 30 to 40 m from the nearest lamp: they arrive out of the dark
-and are slowed when they reach the light, which is the design. When the generator dies the lamps go with it: the
-field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
+The dead come in at the field's breaches ([below](#the-fences-breaches)), 30 to 40 m from the nearest lamp: they
+arrive out of the dark and are slowed when they reach the light, which is the design. When the generator dies the
+lamps go with it: the field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
+
+## The fence's breaches
+
+The dead come in at six gaps in the field's fence, 4 m wide: two in the west fence, two in the east, two in the north
+(`Field/BreachNW`, `NE`, `W`, `E`, `N`, `N2`, the ids in the rules' tuning). Outside each gap is a walled apron 8 m
+deep and 12 m wide, closed on three sides (nobody walks off the map through a torn fence), where the dead appear out
+of the dark: the field's zombie spawns stand on the aprons, not in the field.
+
+Across each gap are five boards (a `Barricade` node, `world/drive_in/barricade.gd`, with a `Board` per child). The
+boards follow the rules' `board_torn` and `board_repaired`, one at a time from the top down and back up from the
+bottom, and while they stand they are solid for players and nothing else: they sit on their own physics layer, so
+shots, grenades and the camera pass them (a zombie at the boards can be shot), and they are not part of the
+navigation mesh, which keeps the gap open, so the dead's way in is a path and what holds them is the simulation. A
+player puts boards back from the field side only, within reach of the middle of the gap.
 
 ### Which lamps hang on which circuit
 
@@ -198,6 +212,7 @@ x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 | Node | Holds |
 | --- | --- |
 | `Field`, `Concession`, `Midway`, `ProjectionBooth`, `GeneratorYard`, `BackLot`, `Road` | an area: ground, walls, props, `Lamps`, `ZombieSpawns`, a hidden `Label` |
+| `Field/Breach*`, `Field/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it; each field spawn marker carries the `barricade_id` of the breach it lies outside |
 | `Field/PlayerSpawns` | four markers on the apron below the screen |
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |

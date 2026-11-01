@@ -47,6 +47,8 @@ extends RefCounted
 ##   purchase_made: player_id, item_id, price, detail
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   door_opened: door_id
+##   board_torn: barricade_id, boards (left), zombie_id (the one that pulled it off)
+##   board_repaired: barricade_id, boards (now up), player_id
 ##   fuel_changed: fuel (exact), delta (whole units since the last one); only when the whole-unit
 ##     value changes, so about once per unit burnt or bought, not once per tick
 ##   fuel_low, fuel_empty, fuel_restored
@@ -70,9 +72,10 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 5: `plan`, `special_id`, `round_total` and a zombie's `type`, `max_health` and `speed` together.
-## Two older layouts both called themselves 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 6
+## 7 added the fence's `barricades`, 6 each player's health, 5 the plan, special round and a
+## zombie's type, health, speed. Two older layouts both called themselves 4; every older snapshot
+## is refused as `bad_version`.
+const SNAPSHOT_VERSION := 7
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -95,6 +98,7 @@ const SNAPSHOT_KEYS := {
 	"players": TYPE_DICTIONARY,
 	"doors_open": TYPE_ARRAY,
 	"generator": TYPE_DICTIONARY,
+	"barricades": TYPE_DICTIONARY,
 	"spawn_rng_state": TYPE_INT,
 	"shop_rng_state": TYPE_INT,
 	"cripple_rng_state": TYPE_INT,
@@ -111,6 +115,7 @@ var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
 var round_number: int = 0
 var generator: GeneratorState
+var barricades: BarricadeState
 var players: Dictionary[int, PlayerState] = {}
 var doors_open: Array[StringName] = []
 
@@ -141,6 +146,7 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 	_shop_rng.seed = p_seed ^ SHOP_STREAM
 	_cripple_rng.seed = p_seed ^ CRIPPLE_STREAM
 	generator = GeneratorState.new(tuning.fuel)
+	barricades = BarricadeState.new(tuning.barricades)
 	_fuel_announced = floori(generator.fuel)
 	# Methods and `bind`, never a lambda: a lambda that uses `self` holds a strong reference to
 	# the rules, the rules hold the generator, and the generator holds the lambda, so none of
@@ -314,7 +320,9 @@ func _dispatch(action: Dictionary) -> void:
 			else:
 				_reject(&"unknown_zombie", RulesAction.ZOMBIE_GONE)
 		RulesAction.REPAIR:
-			_repair(action["player_id"])
+			_repair(action["player_id"], StringName(action["barricade_id"]))
+		RulesAction.TEAR_BOARD:
+			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
 			_buy(action["player_id"], action["item_id"])
 		RulesAction.SET_CIRCUIT:
@@ -384,18 +392,9 @@ func _enter_break(seconds: float) -> void:
 	_set_phase(Phase.BREAK)
 	_emit(&"break_started", {"next_round": round_number + 1, "seconds": seconds})
 	if coming != null:
-		var is_boss := coming.kind == SpecialRound.Kind.BOSS
 		_emit(
 			&"special_round_announced",
-			{
-				"round": round_number + 1,
-				"special_id": coming.id,
-				"title": coming.title,
-				"kind": &"boss" if is_boss else &"only",
-				"boss_type": coming.boss_type if is_boss else &"",
-				"boss_count": coming.bosses_for(maxi(players.size(), 1)) if is_boss else 0,
-				"seconds": seconds,
-			}
+			coming.announcement(round_number + 1, players.size(), seconds)
 		)
 
 
@@ -407,7 +406,6 @@ func _begin_round() -> void:
 	_round_total = _plan.size()
 	_spawn_timer = tuning.rounds.first_spawn_delay
 	for player: PlayerState in players.values():
-		player.repair_points_this_round = 0
 		_refill_grenades(player)
 	_set_phase(Phase.ACTIVE)
 	_emit(
@@ -509,6 +507,8 @@ func _remove_zombie(
 func _end_round() -> void:
 	var economy := tuning.economy
 	for player: PlayerState in players.values():
+		# The cap on repair pay runs from one round's end to the next: the break's repairs count.
+		player.repair_points_this_round = 0
 		if player.downed:
 			var penalty := floori(player.points * economy.down_penalty_fraction)
 			if penalty > 0:
@@ -528,14 +528,7 @@ func _end_round() -> void:
 			if _special != null:
 				_award(player.id, _special.reward_at(round_number), &"special_reward")
 	if _special != null:
-		_emit(
-			&"special_round_cleared",
-			{
-				"round": round_number,
-				"special_id": _special.id,
-				"reward": _special.reward_at(round_number),
-			}
-		)
+		_emit(&"special_round_cleared", _special.cleared(round_number))
 	_emit(&"round_ended", {"round": round_number, "special_id": special_id()})
 	_special = null
 	_enter_break(tuning.rounds.break_seconds)
@@ -624,11 +617,6 @@ func _blow(action: Dictionary) -> void:
 		)
 		if player.downed:
 			_check_game_over()
-
-
-func _can_earn(player_id: int) -> bool:
-	var player := players.get(player_id) as PlayerState
-	return phase == Phase.ACTIVE and player != null and not player.downed
 
 
 func _award(player_id: int, amount: int, reason: StringName) -> void:
@@ -820,15 +808,34 @@ func _cripple_cause(zombie: ZombieState) -> StringName:
 	return &""
 
 
-func _repair(player_id: int) -> void:
-	if not _can_earn(player_id):
+## A player puts one board back, in a break or a round; the board goes up whatever the cap says.
+func _repair(player_id: int, id: StringName) -> void:
+	var player := players.get(player_id) as PlayerState
+	var refusal := &""
+	if player == null:
+		refusal = &"unknown_player"
+	elif player.downed:
+		refusal = &"player_downed"
+	elif phase != Phase.ACTIVE and phase != Phase.BREAK:
+		refusal = &"wrong_phase"
+	else:
+		refusal = barricades.repair(id)
+	if refusal != &"":
+		_reject(refusal, RulesAction.REPAIR, BarricadeState.field_for(refusal))
 		return
-	var player: PlayerState = players[player_id]
-	var room := tuning.economy.repair_cap_per_round - player.repair_points_this_round
-	var pay := mini(tuning.economy.repair, room)
-	if pay > 0:
-		player.repair_points_this_round += pay
-		_award(player_id, pay, &"repair")
+	var boards := barricades.boards_of(id)
+	_emit(&"board_repaired", {"barricade_id": id, "boards": boards, "player_id": player_id})
+	_award(player_id, player.repair_pay(tuning.economy), &"repair")
+
+
+## A zombie pulled a board off (the zombie simulation's work, sent by the server).
+func _tear_board(id: StringName, zombie_id: int) -> void:
+	var refusal := barricades.tear(id) if _zombies.has(zombie_id) else &"unknown_zombie"
+	if refusal != &"":
+		_reject(refusal, RulesAction.TEAR_BOARD, BarricadeState.field_for(refusal, &"zombie_id"))
+		return
+	var boards := barricades.boards_of(id)
+	_emit(&"board_torn", {"barricade_id": id, "boards": boards, "zombie_id": zombie_id})
 
 
 # --- The shop ---
@@ -894,7 +901,7 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 			if player.weapons.has(item.id):
 				result = BuyResult.ALREADY_OWNED
 		ShopItem.Kind.CRANE:
-			if _crane_pool(player, item).is_empty():
+			if item.pool_without(player.weapons).is_empty():
 				result = BuyResult.ALREADY_OWNED
 		ShopItem.Kind.TONIC:
 			if player.tonics.has(item.id):
@@ -928,7 +935,7 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 			player.weapons.append(item.id)
 			return {"weapon": item.id}
 		ShopItem.Kind.CRANE:
-			var won := _roll_crane(player, item)
+			var won := item.roll(player.weapons, _shop_rng)
 			player.weapons.append(won)
 			return {"weapon": won}
 		ShopItem.Kind.TONIC:
@@ -939,33 +946,6 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
 			return {"grenades": quote.grenades_added}
 	return {}
-
-
-## The crane's weapons this player does not own yet.
-func _crane_pool(player: PlayerState, item: ShopItem) -> Array[StringName]:
-	var pool: Array[StringName] = []
-	for weapon_id in item.pool:
-		if not player.weapons.has(weapon_id):
-			pool.append(weapon_id)
-	return pool
-
-
-func _roll_crane(player: PlayerState, item: ShopItem) -> StringName:
-	var pool := _crane_pool(player, item)
-	var total := 0.0
-	for weapon_id in pool:
-		total += _weight(item, weapon_id)
-	var pick := _shop_rng.randf() * total
-	for weapon_id in pool:
-		pick -= _weight(item, weapon_id)
-		if pick < 0.0:
-			return weapon_id
-	return pool[pool.size() - 1]
-
-
-func _weight(item: ShopItem, weapon_id: StringName) -> float:
-	var index := item.pool.find(weapon_id)
-	return item.pool_weights[index] if index < item.pool_weights.size() else 1.0
 
 
 ## A priced, checked purchase that has not happened yet.

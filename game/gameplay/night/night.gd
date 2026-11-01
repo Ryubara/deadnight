@@ -77,6 +77,7 @@ func start(
 	view = NightView.new()
 	add_child(view)
 	view.setup(state, camera, _telegraphs())
+	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
@@ -92,6 +93,14 @@ func _telegraphs() -> Dictionary[StringName, float]:
 			for look in type.looks:
 				telegraphs[look] = type.telegraph_seconds
 	return telegraphs
+
+
+## Where each breach's boards stand, for the effects of tearing and mending them.
+func _barricade_points() -> Dictionary[StringName, Vector3]:
+	var points: Dictionary[StringName, Vector3] = {}
+	for id in world.barricade_ids():
+		points[id] = world.barricade(id).centre()
+	return points
 
 
 func player() -> Player:
@@ -156,6 +165,9 @@ func _make_autopilot() -> void:
 		if item.kind == ShopItem.Kind.DOOR:
 			autopilot.prices[item.id] = item.price
 			autopilot.order.append(item.id)
+	autopilot.whole_boards = tuning.barricades.boards
+	for id in world.barricade_ids():
+		autopilot.repair_goals[id] = world.repair_spot(id)
 	for door_id in autopilot.order:
 		var points := world.door_points(door_id)
 		if not points.is_empty():

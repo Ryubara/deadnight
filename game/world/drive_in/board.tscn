@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="Wood"]
+albedo_color = Color(0.54, 0.35, 0.17, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Plank"]
+material = SubResource("Wood")
+size = Vector3(4.1, 0.45, 0.14)
+
+[sub_resource type="BoxShape3D" id="PlankShape"]
+size = Vector3(4.1, 0.45, 0.14)
+
+[node name="Board" type="StaticBody3D"]
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("PlankShape")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("Plank")

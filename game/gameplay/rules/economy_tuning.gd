@@ -17,9 +17,9 @@ extends Resource
 @export var headshot_kill: int = 100
 ## Melee pays best: it is the riskiest.
 @export var melee_kill: int = 130
-## One barricade board put back.
+## One barricade board put back (in a break or a round).
 @export var repair: int = 12
-## Most a player can earn from repairs in one round (stops board farming).
+## Most a player can earn from repairs from one round's end to the next (stops board farming).
 @export var repair_cap_per_round: int = 120
 ## Paid to every player on their feet when a round ends: base + per_round * round.
 @export var round_bonus_base: int = 20

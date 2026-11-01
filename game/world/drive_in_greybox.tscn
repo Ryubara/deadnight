@@ -3,6 +3,8 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/car.tscn" id="car"]
 [ext_resource type="PackedScene" path="res://world/drive_in/lamp_post.tscn" id="lamp"]
 [ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]
+[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]
+[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]
 
 [sub_resource type="StandardMaterial3D" id="outskirts"]
 albedo_color = Color(0.078, 0.086, 0.110, 1)
@@ -111,6 +113,10 @@ albedo_color = Color(0.816, 0.188, 0.173, 1)
 roughness = 1.0
 emission_enabled = true
 emission = Color(0.416, 0.071, 0.063, 1)
+
+[sub_resource type="StandardMaterial3D" id="breach_ground"]
+albedo_color = Color(0.239, 0.220, 0.161, 1)
+roughness = 1.0
 
 [sub_resource type="Environment" id="night"]
 background_mode = 1
@@ -249,58 +255,322 @@ size = Vector3(0.8, 0.8, 7)
 material = SubResource("field_struct")
 
 [node name="FenceN0" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.000, 1.500, -52.000)
+use_collision = true
+size = Vector3(24, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="FenceN1" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, -52.000)
 use_collision = true
-size = Vector3(124, 3, 0.4)
+size = Vector3(68, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="FenceN2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 50.000, 1.500, -52.000)
+use_collision = true
+size = Vector3(24, 3, 0.4)
 material = SubResource("field_fence")
 
 [node name="FenceW0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -28.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -50.000)
 use_collision = true
-size = Vector3(0.4, 3, 48)
+size = Vector3(0.4, 3, 4)
+material = SubResource("field_fence")
+
+[node name="FenceW1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -34.000)
+use_collision = true
+size = Vector3(0.4, 3, 20)
+material = SubResource("field_fence")
+
+[node name="FenceW2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -12.000)
+use_collision = true
+size = Vector3(0.4, 3, 16)
 material = SubResource("field_fence")
 
 [node name="FenceE0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -28.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -50.000)
 use_collision = true
-size = Vector3(0.4, 3, 48)
+size = Vector3(0.4, 3, 4)
 material = SubResource("field_fence")
 
-[node name="BreachNW" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -46.000)
+[node name="FenceE1" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -34.000)
 use_collision = true
-size = Vector3(0.6, 3, 4)
-material = SubResource("door")
+size = Vector3(0.4, 3, 20)
+material = SubResource("field_fence")
 
-[node name="BreachNE" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -46.000)
+[node name="FenceE2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -12.000)
 use_collision = true
-size = Vector3(0.6, 3, 4)
-material = SubResource("door")
+size = Vector3(0.4, 3, 16)
+material = SubResource("field_fence")
 
-[node name="BreachW" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -22.000)
-use_collision = true
-size = Vector3(0.6, 3, 4)
-material = SubResource("door")
+[node name="BreachNW" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -46.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "nw"
 
-[node name="BreachE" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -22.000)
-use_collision = true
-size = Vector3(0.6, 3, 4)
-material = SubResource("door")
+[node name="Board1" parent="Field/BreachNW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
 
-[node name="BreachN" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 1.500, -52.000)
-use_collision = true
-size = Vector3(4, 3, 0.6)
-material = SubResource("door")
+[node name="Board2" parent="Field/BreachNW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
 
-[node name="BreachN2" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 1.500, -52.000)
+[node name="Board3" parent="Field/BreachNW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Field/BreachNW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Field/BreachNW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronNW" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, -46.000)
 use_collision = true
-size = Vector3(4, 3, 0.6)
-material = SubResource("door")
+size = Vector3(8, 0.4, 12)
+material = SubResource("breach_ground")
+
+[node name="ApronNWEnd" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -70.200, 1.500, -46.000)
+use_collision = true
+size = Vector3(0.4, 3, 12)
+material = SubResource("field_fence")
+
+[node name="ApronNWSideA" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 1.500, -52.000)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="ApronNWSideB" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 1.500, -40.000)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="BreachNE" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -46.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "ne"
+
+[node name="Board1" parent="Field/BreachNE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Field/BreachNE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Field/BreachNE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Field/BreachNE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Field/BreachNE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronNE" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, -46.000)
+use_collision = true
+size = Vector3(8, 0.4, 12)
+material = SubResource("breach_ground")
+
+[node name="ApronNEEnd" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 70.200, 1.500, -46.000)
+use_collision = true
+size = Vector3(0.4, 3, 12)
+material = SubResource("field_fence")
+
+[node name="ApronNESideA" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 1.500, -52.000)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="ApronNESideB" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 1.500, -40.000)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="BreachW" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -62.000, 0.000, -22.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "w"
+
+[node name="Board1" parent="Field/BreachW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Field/BreachW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Field/BreachW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Field/BreachW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Field/BreachW" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronW" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, -0.200, -22.000)
+use_collision = true
+size = Vector3(8, 0.4, 12)
+material = SubResource("breach_ground")
+
+[node name="ApronWEnd" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -70.200, 1.500, -22.000)
+use_collision = true
+size = Vector3(0.4, 3, 12)
+material = SubResource("field_fence")
+
+[node name="ApronWSideA" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 1.500, -28.000)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="ApronWSideB" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 1.500, -16.000)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="BreachE" type="Node3D" parent="Field"]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 62.000, 0.000, -22.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "e"
+
+[node name="Board1" parent="Field/BreachE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Field/BreachE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Field/BreachE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Field/BreachE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Field/BreachE" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronE" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, -0.200, -22.000)
+use_collision = true
+size = Vector3(8, 0.4, 12)
+material = SubResource("breach_ground")
+
+[node name="ApronEEnd" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 70.200, 1.500, -22.000)
+use_collision = true
+size = Vector3(0.4, 3, 12)
+material = SubResource("field_fence")
+
+[node name="ApronESideA" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 1.500, -28.000)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="ApronESideB" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 1.500, -16.000)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="BreachN" type="Node3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 0.000, -52.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "n"
+
+[node name="Board1" parent="Field/BreachN" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Field/BreachN" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Field/BreachN" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Field/BreachN" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Field/BreachN" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronN" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, -0.200, -56.000)
+use_collision = true
+size = Vector3(12, 0.4, 8)
+material = SubResource("breach_ground")
+
+[node name="ApronNEnd" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 1.500, -60.200)
+use_collision = true
+size = Vector3(12, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="ApronNSideA" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -42.000, 1.500, -56.000)
+use_collision = true
+size = Vector3(0.4, 3, 8)
+material = SubResource("field_fence")
+
+[node name="ApronNSideB" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -30.000, 1.500, -56.000)
+use_collision = true
+size = Vector3(0.4, 3, 8)
+material = SubResource("field_fence")
+
+[node name="BreachN2" type="Node3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 0.000, -52.000)
+script = ExtResource("barricade")
+metadata/barricade_id = "n2"
+
+[node name="Board1" parent="Field/BreachN2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.300, 0.030)
+
+[node name="Board2" parent="Field/BreachN2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.900, -0.030)
+
+[node name="Board3" parent="Field/BreachN2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 0.030)
+
+[node name="Board4" parent="Field/BreachN2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, -0.030)
+
+[node name="Board5" parent="Field/BreachN2" instance=ExtResource("board")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.700, 0.030)
+
+[node name="ApronN2" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, -0.200, -56.000)
+use_collision = true
+size = Vector3(12, 0.4, 8)
+material = SubResource("breach_ground")
+
+[node name="ApronN2End" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 1.500, -60.200)
+use_collision = true
+size = Vector3(12, 3, 0.4)
+material = SubResource("field_fence")
+
+[node name="ApronN2SideA" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 30.000, 1.500, -56.000)
+use_collision = true
+size = Vector3(0.4, 3, 8)
+material = SubResource("field_fence")
+
+[node name="ApronN2SideB" type="CSGBox3D" parent="Field"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 42.000, 1.500, -56.000)
+use_collision = true
+size = Vector3(0.4, 3, 8)
+material = SubResource("field_fence")
 
 [node name="FenceS_W0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -52.000, 1.200, -4.000)
@@ -685,22 +955,28 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 0
 [node name="ZombieSpawns" type="Node3D" parent="Field"]
 
 [node name="SpawnNW" type="Marker3D" parent="Field/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -60.140, 0.000, -46.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 0.000, -46.000)
+metadata/barricade_id = "nw"
 
 [node name="SpawnNE" type="Marker3D" parent="Field/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 60.140, 0.000, -46.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 0.000, -46.000)
+metadata/barricade_id = "ne"
 
 [node name="SpawnW" type="Marker3D" parent="Field/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -60.140, 0.000, -22.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -66.000, 0.000, -22.000)
+metadata/barricade_id = "w"
 
 [node name="SpawnE" type="Marker3D" parent="Field/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 60.140, 0.000, -22.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 66.000, 0.000, -22.000)
+metadata/barricade_id = "e"
 
 [node name="SpawnN" type="Marker3D" parent="Field/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 0.000, -50.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.000, 0.000, -56.000)
+metadata/barricade_id = "n"
 
 [node name="SpawnN2" type="Marker3D" parent="Field/ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 0.000, -50.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 0.000, -56.000)
+metadata/barricade_id = "n2"
 
 [node name="Label" type="Label3D" parent="Field" groups=["area_labels"]]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, -26, 0.6, -13)

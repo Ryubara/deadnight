@@ -42,7 +42,7 @@ page says what is in, and what is next.
 | Player health: 100, regenerates after 5 s unhurt, a down at zero | `GameRules` (`HealthTuning`); `NightServer` sends a zombie's swing as a `blow` | all down ends the night |
 | Rounds, break, points for hits and kills, the round bonus | `gameplay/rules/` | unchanged |
 | Doors: `interact` next to a slab buys the door; `LotDoors` frees its slabs, `DoorNavigation` rebakes the mesh, its area joins the spawns | `NightWorld` (binds the lot to the rules), `NightServer` | one path, the lot's own ([Doors](../research/zombies.md#doors)); the prompt shows the price |
-| Repair: `interact` at a fence breach pays the rules' repair points | `NightServer` | no boards are drawn yet |
+| Boards at the fence breaches: the dead tear them off, `interact` from the field side puts one back for the rules' repair points | `Barricade`, `NightWorld`, `NightServer`, `ZombieSim` | [the fence's boards](rounds.md#the-fences-boards); the prompt shows only at a breach with a board down |
 | A supply drop at the end of each round refills ammunition | `NightServer._resupply` | stands in for an ammunition shop |
 | The lamps follow the generator: a circuit off or a dry tank darkens its lamps and posts, a failing tank flickers them, and the dead are slowed only on ground a lit circuit lights | `LotLamps`, `NightView`, `NightWorld.is_lit` | [the lot's lamps](map.md#which-lamps-hang-on-which-circuit) |
 | Sound: shots, reloads, dry fire, round stings | `NightView` | through the `Audio` autoload |
@@ -68,7 +68,8 @@ A bot that plays the night through `NightCommand`s. It sees only what a client s
 of the latest frame, its points and the prompt, plus the level's navigation mesh and a ray test against the walls.
 It backs away from the nearest zombie inside 7 m (sprinting), shoots the nearest zombie in range and in the clear
 (from the camera and from the barrel, the third-person corner problem), reloads on an empty magazine, walks to the
-next door when its points cover the price and buys it, and puts a board back at a breach when nothing is in sight.
+next door when its points cover the price and buys it, goes to the nearest broken breach in a break and puts
+the boards back, and puts one back at a breach it stands at when nothing is in sight.
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
@@ -86,5 +87,5 @@ Each of these is an issue.
   drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
 - **Ammunition, weapons and the crane in the shop**, tonics, a switch for each of the generator's circuits (the lamps
   follow `circuit_changed` and the tank, but nobody can switch a circuit in the night yet), the re-cut.
-- **Barricades** to repair, and revive by a teammate.
+- **Revive** by a teammate. (The boards at the breaches are in; their sounds are the audio's next.)
 - **Performance** of the server tick in late rounds (profile with `autopilot_night.tscn --speed`).
