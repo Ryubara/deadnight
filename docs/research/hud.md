@@ -55,6 +55,28 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
 - A snapshot restore that calls `team.clear()` wipes what the snapshot does not carry (names). Rebuild from the snapshot
   and put back what the old state knew about the players still in it.
 
+## Alignment, scale and the player boxes (#218)
+
+- **Align by measuring rectangles, from two lines.** The left text line (`PAD_LEFT`) and the right one (`PAD`) are
+  constants of `HudStyle`; every card pads by them and the feed rows end on the right one. `test_hud_grid.gd` then
+  checks edges, gaps and first labels against them at every canvas; a one-unit nudge of either constant fails it.
+  Picking edges by eye had left the left column's text at three different lines.
+- **Baselines come from the font, not from the box.** Two labels of different sizes in one row share a baseline when
+  each is placed at `baseline - font.get_ascent(size)` (a plain `Control` with positions) or, in a container, when the
+  smaller one is lifted by the difference of the descents (`MarginContainer` bottom margin on the reserve in the ammo
+  card). `SIZE_SHRINK_END` alone aligns the bottoms of the boxes, which is not the baseline.
+- **A label is taller than its text.** At 32 units a label's line is about 45 units; a 42-unit box put its label
+  rectangle outside the box (the grid test caught it). Size a box from the line height it must hold.
+- **One scale constant.** Lengths are the old ones times `HudStyle.UNIT`, written out (GDScript constants are folded:
+  `const A := int(120 * U)` works, but plain numbers read better); type is scaled less and floored at `MIN_TEXT`.
+  The menu tokens' spacing is not the HUD's: `HudStyle.XS` to `LG` are.
+- **A portrait in a HUD costs one frame.** A `SubViewport` with its own `World3D`, the assembled Soldier and
+  `render_target_update_mode = UPDATE_ONCE` two frames after the model enters (its idle clip has to pose it) gives a
+  texture a `TextureRect` shows forever. Tests that have no use for the picture set `HudPortrait.live = false`; the
+  fixture does by default.
+- **Do not `git checkout` a file to undo an experiment** in a worktree full of uncommitted work: it reverts all of it.
+  Use `git stash` or edit the line back.
+
 ## In the night
 
 The night feeds the HUD through `NightHudBinding` (`game/gameplay/night/`), from `ClientState.event_received` alone;
@@ -74,15 +96,16 @@ The ammo card and the equipment slot are fed by the weapons' events (`HudLoadout
   and `reload_finished` carry them again, so the card is the last event's numbers. Whatever the shop does to the
   reserve (#152) reaches the card the same way, as long as the events keep those two fields.
 - **Equipment is the weapon put away last.** The design page calls it "a flare, a trap" and nothing in the game is one,
-  so the slot shows the other weapon of a swap with the rounds it has left (magazine and reserve together). A weapon
-  with no ammunition (the crowbar, known from `WeaponDef.is_melee`) shows its name and no count, and the card shows `--`.
-  With three weapons carried only the last two are in view.
+  so the slot shows the other weapon of a swap. A weapon with no ammunition (the crowbar, known from
+  `WeaponDef.is_melee`) shows `--` on the card. With three weapons carried only the last two are in view. The slot
+  first showed the rounds it has left too (`REVOLVER x6`); the maintainer called that readout redundant on 2026-11-01
+  (#218) and it is gone: the slot is the weapon's name, the state still holds `equipment_count`.
 - A HUD that joins after the weapons were given has heard no event: the binding hands it the frame's weapon once, then
   leaves the card to the events.
 - `HudState` may hold no `Object` (a test checks), so the loadout is static functions over plain fields of the state
   (`weapon_id`, `holstered_id`, `rounds`), not a helper object kept in it.
-- The equipment row measured the name and the count apart; shaping the pair is a couple of pixels wider, so the count
-  was the part that got an ellipsis (`REVOLVER  x...`). It measures the whole text now and keeps one space.
+- A count beside a name must be measured with the name (shaping the pair is wider than the two measured apart); with
+  no count in the slot this no longer applies, the name alone is cut to the card's width.
 
 ## Left out, to do
 

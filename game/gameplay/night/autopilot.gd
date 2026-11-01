@@ -6,7 +6,8 @@ extends RefCounted
 ## its distance from the nearest zombie, turns to it and shoots, reloads when the magazine runs
 ## dry, walks to the next door when it can afford it and buys it, buys rounds when the gun in hand
 ## is nearly out, buys the weapons on the walls and the crane with points to spare, swaps to a gun
-## that has rounds, and puts boards back when it is standing at one with nothing to shoot.
+## that has rounds, and puts boards back when it is standing at one with nothing to shoot. It throws
+## the breaker of an area it has bought (`AutopilotSwitches`), and back off when the tank runs low.
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -52,6 +53,8 @@ var crane_prizes := 0
 ## Where to stand to put boards back across each breach, by id, and how many a whole one holds.
 var repair_goals: Dictionary = {}
 var whole_boards: int = 1
+## The breaker posts and when to use them.
+var switches := AutopilotSwitches.new()
 
 var _yaw := 0.0
 var _sidestep := 0.0
@@ -116,6 +119,8 @@ func decide(delta: float) -> NightCommand:
 		command.use = _low_on_rounds(held) and state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"repair":
 		command.use = target.is_empty()
+	elif kind == &"circuit":
+		command.use = switches.wants_use(prompt, state.frame)
 	return command
 
 
@@ -204,8 +209,8 @@ func _reachable(here: Vector3, goal: Vector3) -> bool:
 	return not path.is_empty() and _flat(path[path.size() - 1], goal) < REACHABLE
 
 
-## Where to go: the standing place of the next door it can afford; in a break the nearest breach
-## with a board down; else home.
+## Where to go: the standing place of the next door it can afford; a breaker post it wants thrown;
+## in a break the nearest breach with a board down; else home.
 func _goal() -> Vector3:
 	# A gun nearly out of rounds comes before a door.
 	if not _shopping.is_empty() and _low_on_rounds(_held()):
@@ -218,6 +223,11 @@ func _goal() -> Vector3:
 		break
 	if not _shopping.is_empty():
 		return _shopping["position"]
+	var post := switches.next_goal(
+		state.frame, state.position(), state.phase() == GameRules.Phase.BREAK
+	)
+	if post != Vector3.INF:
+		return post
 	if state.phase() == GameRules.Phase.BREAK:
 		var spot := _nearest_broken()
 		if spot != Vector3.INF:

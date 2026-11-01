@@ -29,6 +29,15 @@ static func run(night: Night, count: int, command: NightCommand = null) -> void:
 		night.tick()
 
 
+## Waits until the navigation bake a bought door started has landed: freeing a night under a bake
+## on its worker thread can crash the engine at exit.
+static func settle_bake(night: Night, frames: int = 1800) -> void:
+	for _i in frames:
+		if not night.world.navigation.is_busy():
+			return
+		await night.get_tree().physics_frame
+
+
 ## A command that looks at `target` from the player and holds the trigger.
 static func shoot_at(night: Night, target: Vector3) -> NightCommand:
 	var command := NightCommand.new()

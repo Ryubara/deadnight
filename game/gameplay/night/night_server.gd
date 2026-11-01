@@ -13,9 +13,10 @@ extends RefCounted
 ## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
 ## client or a HUD draws from.
 ##
-## Frame fields: tick, phase, round, remaining, fuel, doors (open ids), barricades ({id: boards
-## up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo,
-## reserve, reloading, arms (every weapon carried: id to [ammo, reserve]), points, prompt}}.
+## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
+## barricades ({id: boards up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health,
+## downed, weapon, ammo, reserve, reloading, arms (every weapon carried: id to [ammo, reserve]),
+## points, prompt}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -52,7 +53,7 @@ var tick_count := 0
 var _pending: Dictionary[int, NightCommand] = {}
 var _bodies: Dictionary[int, Player] = {}
 var _shot_seq: Dictionary[int, int] = {}
-var _repair_wait: Dictionary[int, float] = {}
+var _hand_wait: Dictionary[int, float] = {}
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
 
@@ -140,7 +141,7 @@ func _join(player_id: int, local: bool) -> void:
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local)
 	_shot_seq[player_id] = 0
-	_repair_wait[player_id] = 0.0
+	_hand_wait[player_id] = 0.0
 	rules.apply(RulesAction.add_player(player_id))
 	# The melee weapon first, so the firearm is the one in hand.
 	_combat(CombatAction.give_weapon(player_id, tuning.start_melee))
@@ -291,7 +292,7 @@ func _target_list() -> Array:
 
 
 func _act(player_id: int, delta: float) -> void:
-	_repair_wait[player_id] = maxf(_repair_wait[player_id] - delta, 0.0)
+	_hand_wait[player_id] = maxf(_hand_wait[player_id] - delta, 0.0)
 	var command := _pending.get(player_id) as NightCommand
 	if command == null or _is_downed(player_id):
 		return
@@ -322,9 +323,10 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 	)
 
 
-## What `use` would do for a player right now: `{}`, a door to buy, a weapon on a wall, the crane or
-## rounds to buy (the nearest shop spot in reach), or `{"kind": &"repair", "id", "boards"}` for a
-## breach with a board down that the player stands inside, in reach of. A door wins, then a spot.
+## What `use` would do for a player right now: `{}`, a door to buy, a weapon on a wall, the crane
+## or rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id",
+## "boards"}` for a breach with a board down that the player stands inside, in reach of, or
+## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -349,6 +351,10 @@ func use_target(player_id: int) -> Dictionary:
 		var barricade := world.barricade(id)
 		if barricade.depth_of(here) > 0.0 and _flat(here, barricade.centre()) <= tuning.use_reach:
 			return {"kind": &"repair", "id": id, "boards": boards}
+	var post := world.switches.within_reach(here, tuning.use_reach)
+	if post != null:
+		var on: bool = rules.generator.circuits.get(post.circuit_id, false)
+		return {"kind": &"circuit", "id": post.circuit_id, "on": on}
 	return {}
 
 
@@ -416,9 +422,13 @@ func _use(player_id: int) -> void:
 		&"door", &"weapon", &"ammo", &"crane":
 			buy(player_id, target["id"])
 		&"repair":
-			if _repair_wait[player_id] <= 0.0:
-				_repair_wait[player_id] = tuning.repair_interval
+			if _hand_wait[player_id] <= 0.0:
+				_hand_wait[player_id] = tuning.repair_interval
 				rules.apply(RulesAction.repair(player_id, target["id"]))
+		&"circuit":
+			if _hand_wait[player_id] <= 0.0:
+				_hand_wait[player_id] = tuning.switch_interval
+				rules.apply(RulesAction.set_circuit(target["id"], not target["on"]))
 
 
 # --- The picture clients draw ---
@@ -449,6 +459,7 @@ func _frame() -> Dictionary:
 		"round": rules.round_number,
 		"remaining": rules.zombies_remaining(),
 		"fuel": rules.generator.fuel,
+		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),
 		"barricades": rules.barricades.to_dict(),
 		"zombies": ZombieCodec.encode(sim.zombies),

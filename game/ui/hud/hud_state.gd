@@ -74,8 +74,10 @@ var fuel_low := false
 var fuel_empty := false
 ## Circuit id -> lit, in the order the generator lists them.
 var circuits: Dictionary[StringName, bool] = {}
-## Player id -> {"name": String, "downed": bool, "points": int, "grenades": int}, the local player
-## included.
+## Player id -> {"name": String, "downed": bool, "points": int, "grenades": int, "seat": int,
+## "look": Dictionary}, the local player included. The seat (0 to 3) picks the player's colour (the
+## armband's); the server gives the lowest free one, so the state does too until it is told
+## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
 var team: Dictionary[int, Dictionary] = {}
 ## The interaction in reach: {} for none, else {"kind", "label", "cost"} (see `set_prompt`).
 var prompt: Dictionary = {}
@@ -203,9 +205,9 @@ func set_player_name(player_id: int, display_name: String) -> void:
 	_flush()
 
 
-## An interaction the player stands at. `kind` is `buy_door`, `buy_weapon`, `buy_ammo`, `buy_crane`,
-## `fill_fuel`, `repair` or `revive`; `cost` is points (0 for free); `label` names the thing and
-## `detail` is the one line on what it does (a default per kind when empty).
+## An interaction the player stands at. `kind` is `buy_door`, `buy_weapon`, `buy_ammo`,
+## `buy_crane`, `fill_fuel`, `repair`, `circuit` or `revive`; `cost` is points (0 for free); `label`
+## names the thing and `detail` is the one line on what it does (a default per kind when empty).
 func set_prompt(kind: StringName, label: String, cost := 0, detail := "") -> void:
 	var next := {"kind": kind, "label": label, "cost": cost, "detail": detail}
 	if prompt != next:
@@ -263,16 +265,17 @@ func load_snapshot(data: Dictionary) -> void:
 	zombies_total = int(data.get("round_total", 0))
 	var alive: Dictionary = data.get("zombies", {})
 	zombies_left = alive.size() + int(data.get("spawn_left", 0))
-	var names := {}
+	var kept := {}
 	for player_id in team:
-		names[player_id] = team[player_id]["name"]
+		kept[player_id] = team[player_id]
 	team.clear()
 	var players: Dictionary = data.get("players", {})
 	for player_id in players:
 		var saved: Dictionary = players[player_id]
 		var member := _member(int(player_id))
-		if names.has(int(player_id)):
-			member["name"] = names[int(player_id)]
+		if kept.has(int(player_id)):
+			for field in ["name", "seat", "look"]:
+				member[field] = kept[int(player_id)][field]
 		member["downed"] = bool(saved.get("downed", false))
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
@@ -337,6 +340,8 @@ func _handler(type: StringName) -> Callable:
 				game_over_reason = StringName(e.get("reason", ""))
 		&"purchase_made":
 			handler = _on_purchase_made
+		&"player_look":
+			handler = _on_player_look
 		&"player_hurt":
 			handler = _on_player_hurt
 		&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished":
@@ -418,6 +423,17 @@ func _on_player_added(event: Dictionary) -> void:
 			_assign(&"grenades", int(event["grenades"]), HEALTH)
 
 
+## The server's word on where a player sits and what they wear: `player_id`, `seat`, `look` (a
+## `CharacterLook.to_dict`). Not a rules event: the look is the lot's, sent once on join.
+func _on_player_look(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	var look: Dictionary = event.get("look", {})
+	if member["seat"] != int(event["seat"]) or member["look"] != look:
+		member["seat"] = int(event["seat"])
+		member["look"] = look
+		_mark(TEAM)
+
+
 func _on_grenade_count_changed(event: Dictionary) -> void:
 	var player_id := int(event["player_id"])
 	_member(player_id)["grenades"] = int(event["count"])
@@ -430,6 +446,8 @@ func _on_points_changed(event: Dictionary) -> void:
 	_member(player_id)["points"] = int(event["total"])
 	if player_id == local_player_id:
 		_assign(&"points", int(event["total"]), POINTS)
+	else:
+		_mark(TEAM)
 
 
 func _on_purchase_made(event: Dictionary) -> void:
@@ -495,10 +513,26 @@ func _set_circuit(circuit_id: StringName, on: bool) -> void:
 func _member(player_id: int) -> Dictionary:
 	if not team.has(player_id):
 		team[player_id] = {
-			"name": "PLAYER %d" % player_id, "downed": false, "points": 0, "grenades": 0
+			"name": "PLAYER %d" % player_id,
+			"downed": false,
+			"points": 0,
+			"grenades": 0,
+			"seat": _free_seat(),
+			"look": {},
 		}
 		_mark(TEAM)
 	return team[player_id]
+
+
+## The lowest seat no one in the party has, as the server gives it (0 when all four are taken).
+func _free_seat() -> int:
+	var taken: Array = []
+	for member: Dictionary in team.values():
+		taken.append(member["seat"])
+	for seat in 4:
+		if not taken.has(seat):
+			return seat
+	return 0
 
 
 ## Sets a field and marks `topic`, only when the value is not the one already held.

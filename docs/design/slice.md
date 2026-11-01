@@ -69,7 +69,10 @@ of the latest frame, its points and the prompt, plus the level's navigation mesh
 It backs away from the nearest zombie inside 7 m (sprinting), shoots the nearest zombie in range and in the clear
 (from the camera and from the barrel, the third-person corner problem), reloads on an empty magazine, walks to the
 next door when its points cover the price and buys it, goes to the nearest broken breach in a break and puts
-the boards back, and puts one back at a breach it stands at when nothing is in sight.
+the boards back, and puts one back at a breach it stands at when nothing is in sight. It also throws the breaker of an
+area it has bought (the dead spawn there; lit ground slows them) and puts the extra circuits out when the tank runs
+low ([map](map.md#the-breaker-posts)); `tests/night/test_autopilot_switches.gd` checks the rule on frames and the bot
+doing it in a night.
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
@@ -85,7 +88,7 @@ Each of these is an issue.
 - **Grenades** (#99) and **boss nights** (#97) join through `NightServer` and the rules.
 - **Real transport.** `LoopbackLink` becomes the network protocol; the player bodies split into server bodies and
   drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
-- **Tonics**, a switch for each of the generator's circuits (the lamps
-  follow `circuit_changed` and the tank, but nobody can switch a circuit in the night yet), the re-cut.
+- **Tonics**, the re-cut. (A breaker post for each circuit is in:
+  the lamps follow `circuit_changed` and the tank, and a player or the bot throws the switch.)
 - **Revive** by a teammate. (The boards at the breaches are in; their sounds are the audio's next.)
 - **Performance** of the server tick in late rounds (profile with `autopilot_night.tscn --speed`).

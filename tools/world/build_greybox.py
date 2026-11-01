@@ -57,6 +57,13 @@ BOARD_PITCH = 0.6
 APRON_DEPTH = 8.0
 APRON_WIDTH = 12.0
 SPAWN_OUTSIDE = 4.0  # the dead appear this far outside the fence line
+# The breaker posts: (circuit, the shop door of the area it lights, where, the way its front faces as (x, z)).
+SWITCHES = [
+    ("screen_lot", "", (0.0, 0.0, -46.2), (0.0, 1.0)),  # behind the players' spawns, in the avenue below the screen
+    ("concession", "door_concession", (8.5, 0.0, -4.6), (0.0, -1.0)),  # on the stand's front wall, field side
+    ("booth", "door_booth", (4.6, 0.0, 21.5), (0.0, -1.0)),  # on the booth's north wall, midway side
+    ("back_lot", "door_back_lot", (-35.5, 0.0, -4.6), (0.0, -1.0)),  # on the field's south fence, by the gate
+]
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
@@ -492,6 +499,7 @@ def build() -> None:
     lines.append('[ext_resource type="Shader" path="res://world/drive_in/night_sky.gdshader" id="night_sky"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
     lines.append("")
     for mid, (albedo, emis) in MATS.items():
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
@@ -808,6 +816,17 @@ def build() -> None:
     slab("Door_BackLot", "Midway", (-16, MIDWAY_LINK_Z), MIDWAY_LINK, 2.6, "z")
     door("Door_Road", (0, 3.3, 35.5))
     slab("Door_Road", "Front", (0, 38), 4.0, 2.6, "x")
+
+    # --- Circuit switches: a breaker post for each circuit a player can switch ------------------------------------------
+    # Each stands where the area's door is bought from, well clear of the door's slabs (a door's prompt is the first
+    # to win), and faces the way the player arrives. The yard's `mains` has none: it is wired to the generator.
+    group("Switches", ".")
+    for circuit, door_id, at, front in SWITCHES:
+        instance("Switches", f"Switch_{circuit}", "switch", at, math.degrees(math.atan2(front[0], front[1])))
+        lines.pop()  # the metadata joins the instance's node, so the blank line goes after it
+        lines.append(f'metadata/circuit = "{circuit}"')
+        lines.append(f'metadata/door = "{door_id}"')
+        lines.append("")
 
     # --- Camera probes: every narrow place the over-the-shoulder camera has to get through -----------------------
     # Each marker faces the way a player walks through; the tests sweep the spring arm from it, both ways round.

@@ -140,5 +140,5 @@ func test_the_health_card_shows_the_grenades() -> void:
 	fixture.into_round_one()
 	fixture.act(RulesAction.use_grenade(1))
 	assert_str(fixture.hud.health.grenade_text).is_equal(
-		"GRENADES  x%d" % fixture.rules.grenades_of(1)
+		"GRENADES x%d" % fixture.rules.grenades_of(1)
 	)
