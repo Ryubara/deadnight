@@ -21,6 +21,8 @@ extends Resource
 @export var separation_radius: float = 0.8
 ## Metres per second of push at zero distance.
 @export var separation_speed: float = 2.0
+## Metres per second the pushes on one zombie may add up to: a pile cannot throw a zombie.
+@export var separation_max_speed: float = 4.0
 ## Radians per second a zombie turns toward where it is going.
 @export var turn_rate: float = 9.0
 

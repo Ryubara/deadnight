@@ -74,3 +74,24 @@ func test_a_view_has_one_mesh_and_casts_no_shadow() -> void:
 	assert_int(meshes.size()).is_equal(1)
 	for mesh: MeshInstance3D in meshes:
 		assert_int(mesh.cast_shadow).is_equal(GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+
+
+func test_the_horde_hands_its_views_the_emerge_time_it_was_given() -> void:
+	if not ResourceLoader.exists(MODEL):
+		return
+	var rules := RulesFixture.make_rules(1, 9, RulesFixture.tuning())
+	var tuning := ZombieTuning.new()
+	tuning.emerge_seconds = 0.7
+	var sim := ZombieSim.new(tuning, 9)
+	var director := ZombieDirector.new(rules, sim, [Vector3(5, 0, 5)] as Array[Vector3])
+	var camera := auto_free(Camera3D.new()) as Camera3D
+	add_child(camera)
+	var horde := ZombieHorde.new()
+	horde.model_scene = load(MODEL)
+	add_child(auto_free(horde))
+	# The client is told 2.0 s; the server's tuning says 0.7 s and must not be consulted.
+	horde.setup(director, camera, 2.0)
+	sim.spawn(1, 1.0, Vector3(5, 0, 5))
+	horde.publish(0.5)
+	var model := horde._views[1].get_child(0) as Node3D
+	assert_float(model.position.y).is_equal_approx(-ZombieView.EMERGE_DEPTH * 1.5 / 2.0, 0.001)

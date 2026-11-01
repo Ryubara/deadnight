@@ -109,7 +109,7 @@ func _make_zombies(greybox: Node) -> void:
 	_horde = ZombieHorde.new()
 	_horde.model_scene = load(ZOMBIE_MODEL)
 	add_child(_horde)
-	_horde.setup(director, _camera)
+	_horde.setup(director, _camera, cap.emerge_seconds)
 	if not _args.has("empty"):
 		_rules.apply(RulesAction.start())
 		_rules.apply(RulesAction.skip_break())
