@@ -1,18 +1,18 @@
 class_name NightScreen
 extends UIScreen
-## The night as a screen: the 3D night underneath, a plain readout (until the HUD, #89, lands), a
-## pause menu on Esc and a result when the night is over. Both ways out lead back to the menu.
+## The night as a screen: the 3D night underneath, the HUD over it (`NightHudBinding` feeds it from
+## the night's events), a pause menu on Esc and a result when the night is over. Both ways out
+## lead back to the menu.
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/night_screen.tscn")`; the main menu's Play
 ## does.
 
-const READOUT_MARGIN := 24
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
 
 var night: Night
 
-var _readout: Label
+var _hud: Hud
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
@@ -22,9 +22,13 @@ var _quit: UIButton
 
 func _ready() -> void:
 	super._ready()
+	# B (`ui_cancel`) crouches in the night: it must not take the player back to the menu.
+	allow_back = false
 	night = Night.new()
 	add_child(night)
-	_build_readout()
+	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
+	add_child(_hud)
+	night.hud = _hud
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
 
@@ -47,15 +51,13 @@ func _draw() -> void:
 	pass
 
 
-func _process(_delta: float) -> void:
-	if night.state != null and night.state.has_frame():
-		_readout.text = NightReadout.text_for(night.state)
-
-
 func _unhandled_input(event: InputEvent) -> void:
 	if night.state == null or night.state.over:
 		return
-	if event.is_action_pressed(&"ui_cancel") or event.is_action_pressed(&"pause"):
+	# Only `pause` (Esc, Start) pauses: `ui_cancel` is also B, which crouches. B resumes a paused
+	# night, where it has nothing else to do.
+	var resumes := night.is_paused() and event.is_action_pressed(&"ui_cancel")
+	if event.is_action_pressed(&"pause") or resumes:
 		if night.is_paused():
 			_resume_night()
 		else:
@@ -92,16 +94,6 @@ func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 
 func _leave() -> void:
 	UIRouter.pop()
-
-
-func _build_readout() -> void:
-	_readout = Label.new()
-	_readout.position = Vector2(READOUT_MARGIN, READOUT_MARGIN)
-	_readout.add_theme_font_size_override(&"font_size", _tokens.size_body)
-	_readout.add_theme_color_override(&"font_outline_color", Color.BLACK)
-	_readout.add_theme_constant_override(&"outline_size", 8)
-	_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_readout)
 
 
 func _build_overlay() -> void:

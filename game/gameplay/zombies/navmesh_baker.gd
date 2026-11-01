@@ -20,11 +20,16 @@ static func bake(root: Node3D) -> NavigationMesh:
 
 ## Bakes on the server's worker threads, from the scene as it is now (the geometry is read before
 ## this returns, so the scene may change at once). `done` is called on the main thread with the
-## finished mesh. One bake of the lot takes about a second.
+## finished mesh, unless its object is gone by then (a night that ended during the bake). One bake
+## of the lot takes about a second.
 static func bake_async(root: Node3D, done: Callable) -> void:
 	var navmesh := new_navmesh()
 	NavigationServer3D.bake_from_source_geometry_data_async(
-		navmesh, source_data(root), func() -> void: done.call(navmesh)
+		navmesh,
+		source_data(root),
+		func() -> void:
+			if done.is_valid():
+				done.call(navmesh)
 	)
 
 

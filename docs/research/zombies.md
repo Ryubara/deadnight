@@ -124,6 +124,12 @@ At 3 m/s it covers 0.75 m, short of the band's far half, so it walked back and f
 it stood at the door of the concession for 30 s). Links work only for an agent that keeps its path across them. A
 rebake has no band and needs no change in the sim.
 
+The night uses exactly this path: `NightWorld.build` bakes the first mesh through `DoorNavigation.setup`,
+`NightServer` binds the lot to its rules (`NightWorld.bind` is `LotDoors.bind`) and takes the open areas for the
+spawns from the doors that are open. The night's own rebake (a synchronous bake per door, which stalled the tick)
+was removed. A night that ends while a bake runs is harmless: `NavmeshBaker.bake_async` skips a callback whose object
+is gone. The autopilot's own path follows the mesh, so for the second after a purchase it walks the old one.
+
 Proof: `game/tests/zombies/test_door_navigation.gd` (for each of the nine sets of doors a zombie reaches every sample
 point of every open area and no path enters the footprint of a closed one; the doors bought one after the other
 through `GameRules`; a walking zombie gets in once the booth is bought; doors bought in quick succession end with the

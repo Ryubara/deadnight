@@ -163,6 +163,18 @@ func test_doors_bought_in_quick_succession_end_with_the_last_one_in_the_mesh() -
 	assert_float(_gap(_pathing(lot), _spawn_point(lot), road)).is_less(LotFixture.REACHED)
 
 
+func test_a_night_that_ends_during_a_bake_ends_cleanly() -> void:
+	# A door bought in the last second of a night: the bake lands after the navigation is gone.
+	var lot := await _zombie_lot([])
+	RulesFixture.buy(lot.get_meta(&"rules"), 1, &"door_concession")
+	assert_bool((lot.get_node("DoorNavigation") as DoorNavigation).is_busy()).is_true()
+	(lot.get_node("DoorNavigation") as DoorNavigation).free()
+	for i in BAKE_FRAMES:
+		await get_tree().physics_frame
+		if i > 180:
+			break
+
+
 func test_a_door_opened_without_a_rebake_leaves_the_dead_outside() -> void:
 	# Why the mesh is rebaked: the slab goes, the baked mesh does not change, and the zombie stops at
 	# the old wall.
