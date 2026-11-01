@@ -25,6 +25,16 @@ extends Resource
 ## How much of the thrower's own velocity the grenade keeps.
 @export_range(0.0, 1.0) var inherit_velocity: float = 0.5
 
+@export_group("Authority")
+## The server decides where the grenade leaves from: the player's feet plus `hand_height`, and a
+## hand the client reports is kept within `hand_reach` of that (an arm's length and the lag).
+@export var hand_height: float = 1.45
+@export var hand_reach: float = 1.0
+## The most of the thrower's own speed the server believes, m/s: the sprint, with a little slack.
+@export var max_carrier_speed: float = 7.5
+## Where a grenade a downed player was holding starts, above the feet.
+@export var drop_height: float = 0.3
+
 @export_group("Flight")
 ## Downward acceleration, m/s^2.
 @export var gravity: float = 16.0
@@ -79,8 +89,11 @@ func launch_velocity(aim: Vector3, underarm: bool, carrier_velocity: Vector3) ->
 	return dir.rotated(axis, lift) * speed + carrier_velocity * inherit_velocity
 
 
-## 1.0 inside the core radius, sliding linearly to 0.0 at the blast radius, 0 beyond.
+## 1.0 inside the core radius, sliding linearly to 0.0 at the blast radius, 0 beyond, and 0 for a
+## distance that is not a finite number (a blast that is nowhere hurts nothing).
 func falloff(distance: float) -> float:
+	if not is_finite(distance):
+		return 0.0
 	if distance <= core_radius:
 		return 1.0
 	if distance >= blast_radius:
