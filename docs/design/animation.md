@@ -206,6 +206,36 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   and over `Walk` through the filter the arm matches the clip to 0.04 degrees. `game/tests/player/test_player_repair.gd`
   steps the controller by hand: start, pace, a faster interval, letting go.
 
+## Moving while aiming
+
+While aiming the Soldier keeps facing the camera and moves at `aim_speed` (2.6 m/s) in any direction, so the legs
+need a clip per direction (#74). Four `full` clips, one gait turned four ways, built by `aim_moves()` in
+`tools/blender/soldier_clips.py` into their own file, `game/assets/characters/soldier/aim_move/soldier_aim_move.glb`
+with its `clips.json`; `PlayerAnimation` adds them to the Soldier's library when the tree is built.
+
+| Clip | Direction | Plays | Frames | Ground speed | Events |
+| --- | --- | --- | --- | --- | --- |
+| Walk_Shoot | ahead | loop | 17 (0.71 s) | 2.6 m/s | step_right 1, step_left 11 |
+| Walk_Back | back | loop | 17 (0.71 s) | 2.6 m/s | step_right 1, step_left 11 |
+| Strafe_Left | his left | loop | 17 (0.71 s) | 2.6 m/s | step_right 1, step_left 11 |
+| Strafe_Right | his right | loop | 17 (0.71 s) | 2.6 m/s | step_right 1, step_left 11 |
+
+- **One gait, four ways.** Each foot follows the kit `Run`'s path turned toward the direction of travel: in contact
+  it sweeps the ground at the aim speed over 0.85 of the Run's contact, and the Run's swing fills the rest of the
+  cycle, 0.55 as high going ahead and an even 16 cm arc (kit scale) going sideways or back (the Run's high back-kick
+  would lift the foot in front of a backpedal). On a strafe the feet's lanes move 16 cm ahead and behind so they
+  pass instead of colliding, and the knees and toes turn a third of the way toward the step. The hips drop 5 cm and
+  bob at 0.45 of the Run's; `Body` does not turn, so the aim stays level. The legs are solved to meet the feet
+  (`tools/blender/gaitlib.py`). Above the hips each clip holds the gun hold (`Idle_Shoot` frame 0); in the game the
+  bone filter puts `Aim_<Class>` there.
+- **Blended by the direction of travel.** The body's `locomotion` has the Idle/Walk/Run blend and, over it by an
+  aim weight that follows `aiming` (`blend_rate`), a `BlendSpace2D` with Idle in the middle and the four clips at
+  ahead, back, left and right (`PlayerAnimation.aim_move_for`: the velocity in the facing's frame). The clips share
+  their length and their step frames, so a diagonal is two of them in step. The gait is fully in by 40 % of the
+  clips' speed and plays at ground speed over 2.6 (0.5 to 1.6) behind its own time scale.
+- Checked headless (`game/tests/player/test_player_aim_move.gd`): the planted foot, read off the skeleton while the
+  player moves at the aim speed, sweeps straight against the travel at 2.60 m/s in all four directions.
+
 ## How the clips are made
 
 From the kit's own poses, never from a blank rig: `Idle_Shoot` frame 0 (the gun hold) is the base of every weapon
@@ -233,6 +263,10 @@ godot --path game -s res://tests/art/capture_grenade.gd -- --out <scratch>/godot
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Repair_ --out game/assets/characters/soldier/repair/soldier_repair.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Repair,RepairSplit --view back --out <scratch>/repair
 godot --headless --path game -s res://tests/art/check_repair.gd           # LIBRARY/CLIP/LOOP/BLOW/SPLIT lines, exit 0
+# The aim-move clips, their own file (prints AIM_MOVES: ground speed and how far a foot was pulled into reach); their
+# sheet, the kit Run above them (front, side, or from above and behind to see the feet on a strafe):
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Walk_,Strafe_ --out game/assets/characters/soldier/aim_move/soldier_aim_move.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only AimMove --view top --out <scratch>/aim
 ```
 
 `<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is third-party-derived (CC0); it is committed with
