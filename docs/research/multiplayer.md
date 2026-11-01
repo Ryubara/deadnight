@@ -2,6 +2,10 @@
 
 **Status:** proposal, proven by a spike (`spikes/net/`, issue #6). The spike is throwaway; this page is its product.
 
+See also [Platform backend](platform-backend.md) (where the server runs and how a client joins a match) and
+[Rules engine](rules-engine.md) (the game rules as a server-first `RefCounted`: its actions, events and snapshots are
+what this page's `GameSim` and protocol would carry).
+
 Deadnight is a web game (a Discord Activity) with its server on Railway, and single-player must be the same game. So
 the network is not a layer added to a finished game: the game is a **server simulation** and a **client** that talks
 to it, and single-player is that same server running inside the client's process. The spike builds that shape end to

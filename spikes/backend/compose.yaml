@@ -1,0 +1,46 @@
+# The whole stack on one machine: Postgres, the platform backend, and a stand-in for the headless Godot server.
+# Secrets come from the environment and have no defaults: use scripts/dev-compose.sh, which makes throwaway ones.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: deadnight
+      POSTGRES_USER: deadnight
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deadnight -d deadnight"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Stub sign-in is for local runs only: the backend refuses it when NODE_ENV=production.
+      NODE_ENV: development
+      DISCORD_MODE: stub
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      TICKET_SECRET: ${TICKET_SECRET:?set TICKET_SECRET}
+      GAME_SERVER_SECRET: ${GAME_SERVER_SECRET:?set GAME_SERVER_SECRET}
+      DATABASE_URL: postgres://deadnight:${POSTGRES_PASSWORD}@postgres:5432/deadnight
+    ports:
+      - "3000:3000"
+
+  gameserver:
+    build: .
+    command: ["node", "dist/stub-gameserver.js"]
+    depends_on:
+      - backend
+    environment:
+      GAME_SERVER_ID: gs-1
+      PORT: "8080"
+      PUBLIC_URL: ws://localhost:8080
+      ACTIVITY_PATH: /gs/1
+      BACKEND_URL: http://backend:3000
+      TICKET_SECRET: ${TICKET_SECRET:?set TICKET_SECRET}
+      GAME_SERVER_SECRET: ${GAME_SERVER_SECRET:?set GAME_SERVER_SECRET}
+    ports:
+      - "8080:8080"
