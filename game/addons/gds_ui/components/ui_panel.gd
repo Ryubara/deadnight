@@ -5,16 +5,11 @@ extends PanelContainer
 
 enum Variant { FLAT, RAISED, MARQUEE }
 
-const BULB_SPACING := 34.0
-const BULB_RADIUS := 4.5
-const CHASE_SPEED := 2.2
-const CHASE_PERIOD := 3
-
 @export var variant := Variant.RAISED:
 	set(value):
 		variant = value
 		theme_type_variation = UIThemeBuilder.PANEL_STYLES[value]
-		set_process(value == Variant.MARQUEE and not UIMotion.reduced)
+		_update_processing()
 		queue_redraw()
 
 var _tokens := UITokens.active()
@@ -24,13 +19,36 @@ var _time := 0.0
 
 func _init() -> void:
 	_box.anti_aliasing = true
-	_box.set_corner_radius_all(_tokens.radius_lg)
-	_box.set_border_width_all(_tokens.border)
-	_box.shadow_color = _tokens.shadow
+	_apply_tokens()
 	theme_type_variation = UIThemeBuilder.PANEL_STYLES[variant]
 
 
 func _ready() -> void:
+	_update_processing()
+	if not Engine.is_editor_hint():
+		UITokens.active_changed().connect(_on_tokens_changed)
+		UIMotion.changed().connect(_on_reduced_changed)
+
+
+func _apply_tokens() -> void:
+	_tokens = UITokens.active()
+	_box.set_corner_radius_all(_tokens.radius_lg)
+	_box.set_border_width_all(_tokens.border)
+	_box.shadow_color = _tokens.shadow
+	queue_redraw()
+
+
+func _on_tokens_changed(_next: UITokens) -> void:
+	_apply_tokens()
+
+
+## The chase stands still under reduced motion, and follows the switch while the panel is shown.
+func _on_reduced_changed(_reduced: bool) -> void:
+	_update_processing()
+	queue_redraw()
+
+
+func _update_processing() -> void:
 	set_process(variant == Variant.MARQUEE and not UIMotion.reduced and not Engine.is_editor_hint())
 
 
@@ -53,15 +71,16 @@ func _draw() -> void:
 ## Bulbs along the rectangle's edge; every third one is lit, and the lit set walks around.
 func _draw_bulbs(rect: Rect2) -> void:
 	var perimeter := 2.0 * (rect.size.x + rect.size.y)
-	var count := maxi(int(perimeter / BULB_SPACING), 4)
-	var phase := int(_time * CHASE_SPEED * CHASE_PERIOD)
+	var count := maxi(int(perimeter / _tokens.bulb_spacing), 4)
+	var period := maxi(_tokens.chase_period, 1)
+	var phase := int(_time * _tokens.chase_speed * period)
 	for i in count:
 		var at := _perimeter_point(rect, perimeter * float(i) / float(count))
-		var lit := (i + phase) % CHASE_PERIOD == 0
+		var lit := (i + phase) % period == 0
 		var colour := _tokens.accent_bright if lit else _tokens.outline
 		if lit:
-			draw_circle(at, BULB_RADIUS * 2.4, Color(_tokens.accent, 0.18))
-		draw_circle(at, BULB_RADIUS, colour)
+			draw_circle(at, _tokens.bulb_radius * 2.4, Color(_tokens.accent, 0.18))
+		draw_circle(at, _tokens.bulb_radius, colour)
 
 
 static func _perimeter_point(rect: Rect2, distance: float) -> Vector2:

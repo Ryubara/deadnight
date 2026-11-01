@@ -39,24 +39,44 @@ var _fill := StyleBoxFlat.new()
 
 
 func _init() -> void:
-	_hover = UISpring.new(_tokens.spring_stiffness, _tokens.spring_damping)
-	_focus = UISpring.new(_tokens.spring_stiffness * 0.7, _tokens.spring_damping * 0.8)
-	_change = UISpring.new(_tokens.spring_stiffness, _tokens.spring_damping)
-	_left = UISpring.new(_tokens.spring_stiffness * 1.4, _tokens.spring_damping)
-	_right = UISpring.new(_tokens.spring_stiffness * 1.4, _tokens.spring_damping)
+	_hover = UISpring.new()
+	_focus = UISpring.new()
+	_change = UISpring.new()
+	_left = UISpring.new()
+	_right = UISpring.new()
 	_change.snap(1.0)
-	_ring = UIFocusRing.new(_tokens, _tokens.radius_md)
 	_fill.anti_aliasing = true
-	_fill.set_corner_radius_all(_tokens.radius_md)
-	_fill.set_border_width_all(_tokens.border)
 	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_apply_tokens()
+
+
+## Reads the active tokens into everything this control caches: spring tuning, shapes and size.
+func _apply_tokens() -> void:
+	_tokens = UITokens.active()
+	for spring in [_hover, _change]:
+		spring.stiffness = _tokens.spring_stiffness
+		spring.damping = _tokens.spring_damping
+	_focus.stiffness = _tokens.spring_stiffness * 0.7
+	_focus.damping = _tokens.spring_damping * 0.8
+	for spring in [_left, _right]:
+		spring.stiffness = _tokens.spring_stiffness * 1.4
+		spring.damping = _tokens.spring_damping
+	_ring = UIFocusRing.new(_tokens, _tokens.radius_md)
+	_fill.set_corner_radius_all(_tokens.radius_md)
+	_fill.set_border_width_all(_tokens.border)
 	custom_minimum_size = Vector2(_tokens.control_width * 0.5, _tokens.control_height)
+	queue_redraw()
+
+
+func _on_tokens_changed(_next: UITokens) -> void:
+	_apply_tokens()
 
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
+	UITokens.active_changed().connect(_on_tokens_changed)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	focus_entered.connect(UIAudio.play.bind(&"focus"))
@@ -134,7 +154,7 @@ func _draw() -> void:
 	var rect := Rect2(Vector2.ZERO, size)
 	var lit := maxf(_hover.value, _focus.value)
 	_fill.bg_color = _tokens.surface_raised.lerp(
-		_tokens.surface_raised.lightened(0.1), _hover.value
+		_tokens.surface_raised.lightened(_tokens.tint_hover), _hover.value
 	)
 	_fill.border_color = _tokens.outline.lerp(_tokens.accent, lit)
 	draw_style_box(_fill, rect)

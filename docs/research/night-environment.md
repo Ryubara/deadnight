@@ -73,6 +73,36 @@ godot --path game res://tests/captures/night_look_tour.tscn --write-movie <abs>/
 
 Add `-- --hud` to draw the real HUD over the night.
 
+## The night closes in with the round
+
+Issue #314. The rules' `RoundTuning.ambient_for_round` (0.60 in round 1, 0.035 less each round, 0.15 from round 14) is
+read by `NightLight` (`game/world/drive_in/night_light.gd`), a node the night adds beside its view. It listens to the
+client's events only (`break_started.next_round`, `round_started.round`, and the first `frame` for a client that joins
+late), so the server changes nothing and a client of any kind (loopback, or a socket) darkens the same way.
+
+| Part | Round 1 | Darkest (round 14 on) |
+| --- | --- | --- |
+| Ambient energy | the scene's own 0.24 | 0.35 of it (0.084) |
+| Moon energy | the scene's own 0.36 | 0.5 of it |
+| Sky (`background_energy_multiplier`) and fog colour (`fog_light_energy`) | 1 | 0.5, both together (the fog is matched to the horizon by hand) |
+| Fog density | the scene's own 0.013 | 1.7 times it (28 % to 42 % at 25 m) |
+
+Round 1 is the look in the table above, untouched; each round blends the scene's numbers toward the darkest by
+`(0.60 - level) / (0.60 - 0.15)`, so a change to the generator's constants moves both ends. A change of round eases
+over 12 s (`EASE_SECONDS`) from the break that announces it, so there is no pop; the lamps' lights and pool quads are
+not touched, so the pools hold while the field around them sinks. Only `Environment` energies and a fog density change,
+so nothing new for the Compatibility renderer or the web build, and the HUD (a 2D layer) is not lit by any of it.
+
+- **A scene's resources are shared by every copy of it.** The `Environment` is a sub-resource of the greybox scene, so
+  an edit through one night's node would darken every later night in the process (the menu's preview, the next
+  match, other tests). `NightLight` duplicates the environment before it changes it; a test makes a second lot after
+  round 14 and reads the original numbers.
+- **Readable at the darkest round** (`test_night_light.gd`): ambient plus moon above 0.2 (round 1 has 0.6), fog at 25 m
+  under 50 %, sky and fog still matched. The capture `night_closes_in.tscn` puts the dead 7 m and 25 m ahead of the
+  player's shoulder camera with the HUD on, one run for each round (`-- --round=N`): at round 14 the player, the dead at
+  25 m against the stand's wall, the lamp heads and their pools all still read. Mean frame luma of the 1080p capture
+  went from 45.5 (round 1, and `main`) to 33.4 (round 14).
+
 ## Lamps and glow (issue #244)
 
 The lighting pass on top of the environment above. The sky, fog, ambient and moon are untouched; this is what the

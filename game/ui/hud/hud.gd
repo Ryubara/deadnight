@@ -39,10 +39,14 @@ const PART_NAMES := {
 	&"marquee": "Marquee",
 	&"prompt": "Prompt",
 	&"gains": "Gains",
+	&"reticle": "Reticle",
 	&"crosshair": "Crosshair",
 	&"damage": "Damage",
 	&"markers": "Markers",
 }
+
+## The look of the centre reticle (`reticle_style.tres`); editable on the Hud node in the editor.
+@export var reticle_style: ReticleStyle = preload("res://ui/hud/reticle_style.tres")
 
 var state := HudState.new()
 ## The corner columns swapped left for right (left-handed touch: Fire and its buttons take the
@@ -70,6 +74,7 @@ var boss_bar := HudBossBar.new()
 var marquee := HudMarquee.new()
 var prompt := HudPrompt.new()
 var gains := HudGains.new()
+var reticle := HudReticle.new()
 var crosshair := HudCrosshair.new()
 var damage := HudDamage.new()
 var markers := HudMarkers.new()
@@ -85,7 +90,8 @@ func _ready() -> void:
 	notices.kind = HudFeed.Kind.NOTICES
 	for part_name in PART_NAMES:
 		(get(part_name) as Node).name = PART_NAMES[part_name]
-	for overlay in [damage, markers, crosshair]:
+	reticle.style = reticle_style
+	for overlay in [damage, markers, reticle, crosshair]:
 		add_child(overlay)
 		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var margin := float(HudStyle.margin())
@@ -131,6 +137,7 @@ func all_parts() -> Array[HudPart]:
 	return [
 		damage,
 		markers,
+		reticle,
 		crosshair,
 		round_part,
 		objective,

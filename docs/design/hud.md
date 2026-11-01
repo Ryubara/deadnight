@@ -47,7 +47,8 @@ local player) into the direction on screen.
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card as high as its words need (a long name or line wraps, never cut; it grows upward): the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows; rows slide into their slots (see Decisions) |
-| `HudCrosshair` | centre | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
+| `HudReticle` | centre | the reticle (see Decisions): four short ticks round a gap and a dot, cream with a dark edge, static and small; hidden under the pause card and while you are down |
+| `HudCrosshair` | centre, over the reticle | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
 | `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
 | `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
 
@@ -112,6 +113,20 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   Revisit if the map grows past the lot.
 - **A reel counter, not tally marks.** The round is a drum counter in the style of a projector's reels (two digits,
   three from round 100); it is the only place the hot red is a big numeral.
+- **The reticle (#300).** A small static mark where the shots go, drawn by `HudReticle` over the middle of the screen:
+  four ticks 9 units long and 3 wide round a 7-unit gap, and a 3-unit dot, in the light ink (`tokens.ink`, 92 %)
+  with a 1.5-unit dark edge on every shape so it holds on the lit pools and on the dark. About 32 units across, 3 % of
+  the 1080-unit canvas height (22 px at 720p). The maintainer asked for "very simple, inspired from games like Call of
+  Duty, static and small", so it does not bloom with movement or fire, does not change colour over a zombie and is
+  not an animation; the one thing it shows is the camera ray, which is where `AimResolver` sends the shot, so it
+  stays at the centre whatever the shoulder offset, the aim or the hip-fire zoom do. The hit markers are the
+  *diagonal* ticks (starting 9 units out) and sit between the reticle's, so the two never overprint. Lengths are canvas
+  units: it scales with the window and the UI scale like every other part (a test reads the viewport's stretch). It
+  is shown **while aiming too**: the aim view has no reticle of its own, and hiding the only mark where the shots go
+  at the moment of precision would be wrong. It is hidden under the pause card (the screen calls `set_shown`) and
+  while you are down. Every number is on `ReticleStyle` (`ui/hud/reticle_style.tres`, also the *Reticle Style*
+  property of the `Hud` node): arm length, gap, thickness, outline, dot size (0 for none), tint and opacity, with
+  ranges in the inspector.
 - **A part never grows past its band.** The layout test once used short values and the fallback font and passed
   while a real name, a three-digit round or the Marquee face overlapped parts at 1536 x 864. Each part now has a width
   it keeps (`HudStyle.COLUMN` for the side columns, `CARD` for the banner and prompt, `HudAmmo.WIDTH`,
@@ -177,8 +192,9 @@ marquee, the banner, the reward line and a late joiner into a special round), `t
 against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
 `test_hud_players.gd` (a container per player, one to four: colours, local first, down, the portrait),
-`test_hud_generator_panel.gd` (when the card shows and its stepped timing), `test_hud_grid.gd` (the grid, measured at
-every canvas: shared edges, gaps, text lines, no label leaving its part),
+`test_hud_reticle.gd` (the reticle: present, centred, small, scaled by the viewport stretch, hidden under a menu or
+while down, editable), `test_hud_generator_panel.gd` (when the card shows and its stepped timing),
+`test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),
 `test_hud_typical_text.gd` (the ordinary night's values show in full at 1080p and 1440p, in the fallback face and the
 Marquee pair), `test_hud_layout.gd` (sizes, overlap, readability, reduced motion: the busiest HUD and the longest
 content the game allows, in the fallback face, a synthetic wide face and, when `refs/fonts` is there, the Marquee

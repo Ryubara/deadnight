@@ -22,6 +22,7 @@ const ACTION_SPRINT := &"sprint"
 const ACTION_CROUCH := &"crouch"
 const ACTION_JUMP := &"jump"
 const ACTION_AIM := &"aim"
+const ACTION_FIRE := &"fire"
 const ACTION_SWAP_SHOULDER := &"swap_shoulder"
 const ACTION_THROW_GRENADE := &"throw_grenade"
 const ACTION_TOSS_GRENADE := &"toss_grenade"
@@ -133,6 +134,7 @@ func sample_command() -> PlayerCommand:
 		command.sprint = Input.is_action_pressed(ACTION_SPRINT)
 		command.crouch = Input.is_action_pressed(ACTION_CROUCH)
 		command.aim = Input.is_action_pressed(ACTION_AIM)
+		command.fire = Input.is_action_pressed(ACTION_FIRE)
 		command.jump = _pressed_edge(ACTION_JUMP)
 		command.swap_shoulder = _pressed_edge(ACTION_SWAP_SHOULDER)
 		command.throw_over = Input.is_action_pressed(ACTION_THROW_GRENADE)
@@ -174,6 +176,7 @@ func tick(command: PlayerCommand) -> void:
 	PlayerSimulation.simulate(self, state, command, tuning, get_physics_process_delta_time())
 	rotation.y = state.facing
 	camera_rig.aiming = state.aiming
+	camera_rig.hip_firing = state.fire_age < tuning.hip_fire_zoom_delay
 	camera_rig.side = state.shoulder_side
 	camera_rig.sprinting = state.sprinting
 	camera_rig.track(global_position)
