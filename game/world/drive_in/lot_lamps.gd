@@ -13,7 +13,7 @@ extends RefCounted
 ## The generator's circuits and the lamps' own kinds.
 const MAINS := &"mains"
 const BATTERY := &"battery"
-## Metres within which a lamp lights the ground for the dead's slowdown.
+## Metres within which a lamp lights the ground, where the dead keep to their round's pace.
 const LAMP_REACH := 6.0
 ## A failing tank changes a lamp's state every this many ticks (60 a second: about 12 times).
 const FLICKER_TICKS := 5

@@ -3,7 +3,7 @@ extends RefCounted
 ## When the bot throws a breaker. It sees what a client sees: the frame's circuits and tank, the
 ## doors open, and the prompt at a post. The rule is the one a player would use:
 ##   - a circuit that lights an area whose door is bought goes on, because the dead now spawn
-##     there and lit ground slows them;
+##     there and ground that is not lit makes them faster;
 ##   - the field's circuit stays on, because that is where it fights;
 ##   - when the tank runs low it throws off every circuit that is not the field's, and holds them
 ##     off until the tank has come back past `resume_above` (so it does not flicker at the line).

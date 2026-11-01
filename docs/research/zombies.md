@@ -69,7 +69,8 @@ or at the type's telegraph with the same 0.75 s of recovery after it, and only i
   phase taken from its id, so a crowd does not step together.
 - **Crowd budget:** no zombie shadows, one mesh per zombie (the eyelid mesh is freed: the kit zombie has no eyelids
   here until a crowd variant merges them), sim at 30 Hz independent of the physics rate.
-- **Light:** the sim asks a `lit_probe` callable at each repath and applies the rules' `speed_on_ground`.
+- **Light:** the sim asks a `lit_probe` callable at each repath and applies the rules' `speed_on_ground` (a zombie off lit
+  ground is faster).
 
 ## Types in the night
 
