@@ -53,14 +53,28 @@ func _init() -> void:
 
 func _ready() -> void:
 	custom_minimum_size = _text_size() + Vector2(0.0, 40.0)
+	UIMotion.changed().connect(_on_reduced_changed)
 	lit_from_start = UIMotion.reduced
+	set_process(not UIMotion.reduced)
 
 
 ## Starts over from dark and lights the tubes one by one.
 func ignite() -> void:
 	clock = 0.0
 	lit_from_start = UIMotion.reduced
-	set_process(true)
+	set_process(not UIMotion.reduced)
+	queue_redraw()
+
+
+## Follows the reduced-motion setting at once: every tube lit and still, nothing redrawn per
+## frame; when it is turned off again the buzz and the failing tube carry on.
+func _on_reduced_changed(reduced: bool) -> void:
+	lit_from_start = reduced
+	if not reduced:
+		# Turned off while still: carry on as a sign that has long been lit, not from dark.
+		clock = maxf(clock, _ignition_end())
+	set_process(not reduced)
+	queue_redraw()
 
 
 func _process(delta: float) -> void:
@@ -162,6 +176,10 @@ func _level(index: int) -> float:
 			if phase >= blink.x and phase < blink.y:
 				return UNLIT_LEVEL + 0.1
 	return level
+
+
+func _ignition_end() -> float:
+	return IGNITE_START + IGNITE_GAP * text.length() + IGNITE_STUTTER
 
 
 func _letter_widths() -> PackedFloat32Array:

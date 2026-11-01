@@ -17,6 +17,10 @@
 
 - ...
 
+## Screenshots
+
+<!-- Show what a player sees: captures or a short clip, attached with `gh pr create --body-file <file> --attach <png>` (never committed). When nothing visible changes, one line: `Screenshots: none (<reason>)`. -->
+
 ## AI use
 
 <!-- Who wrote the work in this pull request's commits, not who opened the pull request. -->
