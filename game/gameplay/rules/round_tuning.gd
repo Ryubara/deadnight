@@ -33,11 +33,6 @@ extends Resource
 @export var speed_cap: float = 4.5
 ## Each zombie's speed is varied by up to this fraction either way.
 @export var speed_jitter: float = 0.12
-@export var sprinter_from_round: int = 4
-## Chance of a sprinter rises by this each round from `sprinter_from_round`.
-@export var sprinter_chance_step: float = 0.07
-@export var sprinter_chance_max: float = 0.5
-@export var sprinter_multiplier: float = 1.7
 ## A zombie on lit ground moves at this fraction of its speed (the light pillar).
 @export var lit_speed_multiplier: float = 0.6
 
@@ -89,18 +84,13 @@ func speed_for_round(round_number: int) -> float:
 	return minf(walking, speed_cap)
 
 
-func sprinter_chance(round_number: int) -> float:
-	var rounds_in := maxi(round_number - sprinter_from_round + 1, 0)
-	return minf(sprinter_chance_step * float(rounds_in), sprinter_chance_max)
-
-
-## One zombie's speed: the round's walking speed, jittered, and a sprinter now and then. Draws from
-## `rng`.
-func roll_speed(round_number: int, rng: RandomNumberGenerator) -> float:
-	var speed := speed_for_round(round_number)
+## One zombie's speed: the round's walking speed times its type's multiplier, jittered. Draws from
+## `rng`. (Sprinters are the runner type now: see `ZombieType`.)
+func roll_speed(
+	round_number: int, rng: RandomNumberGenerator, type_multiplier: float = 1.0
+) -> float:
+	var speed := speed_for_round(round_number) * type_multiplier
 	speed *= 1.0 + rng.randf_range(-speed_jitter, speed_jitter)
-	if rng.randf() < sprinter_chance(round_number):
-		speed *= sprinter_multiplier
 	return minf(speed, speed_cap)
 
 

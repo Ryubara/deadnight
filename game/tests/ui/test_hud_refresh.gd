@@ -6,7 +6,8 @@ extends GdUnitTestSuite
 ## Zombies asked for in the kill batch; round one with four players has 17, and all of them dying
 ## in one tick is 58 events (hits, kills, points, the round's end).
 const KILLS := 24
-const BATCH_EVENTS := 50
+## Round one holds fewer zombies than it did, so the batch is a little smaller; it is still a crowd.
+const BATCH_EVENTS := 40
 ## Wall-clock budget for the HUD to take such a batch, headless. Measured at about 2 ms after the
 ## fix and 41 to 45 ms before it; the slack is for a slow machine.
 const BATCH_BUDGET_MS := 15.0

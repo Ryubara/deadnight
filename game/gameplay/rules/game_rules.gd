@@ -21,12 +21,20 @@ extends RefCounted
 ## Events (fields besides `type`):
 ##   phase_changed: phase
 ##   break_started: next_round, seconds
-##   round_started: round, zombie_count
-##   round_ended: round
-##   zombie_spawn_requested: zombie_id, health, speed, point_roll (spawn point = point_roll % count)
-##   zombie_damaged: zombie_id, player_id, zone, damage (what was taken off), health (left)
-##   zombie_removed: zombie_id, cause (killed or gone), killer_id (-1 when no player), zone, melee
-##   zombie_crippled: zombie_id, player_id, cause (legs or wounded), health, speed_scale
+##   special_round_announced: round (the coming one), special_id, title, kind (boss or only),
+##     boss_type, boss_count, seconds (until it starts); right after the break_started of the break
+##     before a special round
+##   round_started: round, zombie_count, special_id (&"" for a normal round), boss_count
+##   special_round_cleared: round, special_id, reward (paid to each player on their feet)
+##   round_ended: round, special_id
+##   zombie_spawn_requested: zombie_id, zombie_type, look, boss, health, speed, point_roll (spawn
+##     point = point_roll % count), damage, knockback, telegraph_seconds, barrier_speed, hit_chance
+##   zombie_damaged: zombie_id, zombie_type, player_id, zone, damage (what was taken off), health
+##     (left), max_health
+##   zombie_removed: zombie_id, zombie_type, boss, cause (killed or gone), killer_id (-1 when no
+##     player), zone, melee
+##   zombie_crippled: zombie_id, zombie_type (the crawler it became), player_id, cause (legs or
+##     wounded), health, speed_scale
 ##   grenade_count_changed: player_id, count, reason (thrown, refill, purchase)
 ##   player_added: player_id, grenades (the count they start with)
 ##   player_removed, player_downed, player_revived: player_id
@@ -70,7 +78,8 @@ const SNAPSHOT_KEYS := {
 	"phase": TYPE_INT,
 	"round": TYPE_INT,
 	"break_left": TYPE_FLOAT,
-	"spawn_left": TYPE_INT,
+	"plan": TYPE_ARRAY,
+	"special_id": TYPE_STRING,
 	"round_total": TYPE_INT,
 	"spawn_timer": TYPE_FLOAT,
 	"round_players": TYPE_INT,
@@ -99,7 +108,10 @@ var players: Dictionary[int, PlayerState] = {}
 var doors_open: Array[StringName] = []
 
 var _break_left: float = 0.0
-var _spawn_left: int = 0
+## The types still to spawn this round, in order.
+var _plan: Array[StringName] = []
+## The special round now running, or null.
+var _special: SpecialRound = null
 ## Zombies the round began with (`round_started`'s `zombie_count`); kept after it ends.
 var _round_total: int = 0
 var _spawn_timer: float = 0.0
@@ -165,7 +177,6 @@ func price_of(item_id: StringName) -> int:
 	return item.price_at(round_number) if item != null else -1
 
 
-## Zombies still to spawn plus those alive: the round ends at zero.
 func grenades_of(player_id: int) -> int:
 	var player := players.get(player_id) as PlayerState
 	return player.grenades if player != null else 0
@@ -182,8 +193,31 @@ func has_zombie(zombie_id: int) -> bool:
 	return _zombies.has(zombie_id)
 
 
+## Zombies still to spawn plus those alive: the round ends at zero.
 func zombies_remaining() -> int:
-	return _spawn_left + _zombies.size()
+	return _plan.size() + _zombies.size()
+
+
+## The ids of the zombies alive now, in the order they spawned.
+func zombie_ids() -> Array[int]:
+	return _zombies.keys()
+
+
+## What type a living zombie is, or `&""` when there is no such zombie.
+func zombie_type(zombie_id: int) -> StringName:
+	var zombie := _zombies.get(zombie_id) as ZombieState
+	return zombie.type if zombie != null else &""
+
+
+## A living zombie's health, or 0 when there is none.
+func zombie_health(zombie_id: int) -> float:
+	var zombie := _zombies.get(zombie_id) as ZombieState
+	return zombie.health if zombie != null else 0.0
+
+
+## The special round now running (a kind's id), or `&""` in a normal round and in breaks.
+func special_id() -> StringName:
+	return _special.id if _special != null else &""
 
 
 # --- Snapshot ---
@@ -207,7 +241,10 @@ func to_dict() -> Dictionary:
 		"phase": phase,
 		"round": round_number,
 		"break_left": _break_left,
-		"spawn_left": _spawn_left,
+		"plan": _plan.duplicate(),
+		# How many are still to spawn: derived from the plan, for readers that only count (the HUD).
+		"spawn_left": _plan.size(),
+		"special_id": String(_special.id) if _special != null else "",
 		"round_total": _round_total,
 		"spawn_timer": _spawn_timer,
 		"round_players": _round_players,
@@ -261,7 +298,8 @@ func from_dict(data: Dictionary) -> StringName:
 	phase = data["phase"]
 	round_number = data["round"]
 	_break_left = data["break_left"]
-	_spawn_left = data["spawn_left"]
+	_plan.assign(data["plan"])
+	_special = tuning.specials.by_id(StringName(data["special_id"]))
 	_round_total = data["round_total"]
 	_spawn_timer = data["spawn_timer"]
 	_round_players = data["round_players"]
@@ -376,30 +414,79 @@ func _tick(delta: float) -> void:
 
 
 func _enter_break(seconds: float) -> void:
+	var coming := tuning.specials.special_for(round_number + 1)
+	if coming != null:
+		seconds += tuning.specials.break_bonus_seconds
 	_break_left = seconds
 	_set_phase(Phase.BREAK)
 	_emit(&"break_started", {"next_round": round_number + 1, "seconds": seconds})
+	if coming != null:
+		var is_boss := coming.kind == SpecialRound.Kind.BOSS
+		_emit(
+			&"special_round_announced",
+			{
+				"round": round_number + 1,
+				"special_id": coming.id,
+				"title": coming.title,
+				"kind": &"boss" if is_boss else &"only",
+				"boss_type": coming.boss_type if is_boss else &"",
+				"boss_count": coming.bosses_for(maxi(players.size(), 1)) if is_boss else 0,
+				"seconds": seconds,
+			}
+		)
 
 
 func _begin_round() -> void:
 	round_number += 1
 	_round_players = maxi(players.size(), 1)
-	_spawn_left = tuning.rounds.zombies_for_round(round_number, _round_players)
-	_round_total = _spawn_left
+	_special = tuning.specials.special_for(round_number)
+	_plan = _plan_round()
+	_round_total = _plan.size()
 	_spawn_timer = tuning.rounds.first_spawn_delay
 	for player: PlayerState in players.values():
 		player.repair_points_this_round = 0
 		_refill_grenades(player)
 	_set_phase(Phase.ACTIVE)
-	_emit(&"round_started", {"round": round_number, "zombie_count": _spawn_left})
+	_emit(
+		&"round_started",
+		{
+			"round": round_number,
+			"zombie_count": _plan.size(),
+			"special_id": special_id(),
+			"boss_count": _boss_count(),
+		}
+	)
+
+
+## The types of every zombie of the round, in the order they spawn.
+func _plan_round() -> Array[StringName]:
+	var normal := tuning.rounds.zombies_for_round(round_number, _round_players)
+	if _special == null:
+		return tuning.roster.plan_for_round(round_number, normal, _spawn_rng)
+	return _special.plan(round_number, _round_players, normal, tuning.roster, _spawn_rng)
+
+
+func _boss_count() -> int:
+	if _special == null or _special.kind != SpecialRound.Kind.BOSS:
+		return 0
+	return _plan.count(_special.boss_type)
+
+
+## The type table's entry, or the common one when a table names a type it does not hold.
+func _type(type_id: StringName) -> ZombieType:
+	var found := tuning.roster.type_of(type_id)
+	return found if found != null else tuning.roster.type_of(tuning.roster.base_id)
 
 
 func _tick_spawning(delta: float) -> void:
 	_spawn_timer -= delta
 	var cap := tuning.rounds.alive_cap(round_number, _round_players)
-	while _spawn_timer <= 0.0 and _spawn_left > 0 and _zombies.size() < cap:
+	var interval := tuning.rounds.spawn_interval(round_number, _round_players)
+	if _special != null and _special.kind == SpecialRound.Kind.ONLY:
+		interval /= _special.spawn_rate
+	while _spawn_timer <= 0.0 and not _plan.is_empty() and _zombies.size() < cap:
 		_spawn_one()
-		_spawn_timer += tuning.rounds.spawn_interval(round_number, _round_players)
+		_spawn_timer += interval
 	# A full lot or an empty queue holds the next spawn ready instead of banking a burst.
 	_spawn_timer = maxf(_spawn_timer, 0.0)
 
@@ -407,18 +494,30 @@ func _tick_spawning(delta: float) -> void:
 func _spawn_one() -> void:
 	var zombie_id := _next_zombie_id
 	_next_zombie_id += 1
-	_spawn_left -= 1
-	var health := tuning.rounds.health_for_round(round_number)
-	_zombies[zombie_id] = ZombieState.new(zombie_id, health)
-	var speed := tuning.rounds.roll_speed(round_number, _spawn_rng)
+	var type := _type(_plan.pop_front())
+	var health := (
+		tuning.rounds.health_for_round(round_number)
+		* type.health_multiplier
+		* (1.0 + type.health_per_extra_player * float(_round_players - 1))
+	)
+	var speed := tuning.rounds.roll_speed(round_number, _spawn_rng, type.speed_multiplier)
 	var point_roll := _spawn_rng.randi()
+	_zombies[zombie_id] = ZombieState.new(zombie_id, health, type.id, speed)
 	_emit(
 		&"zombie_spawn_requested",
 		{
 			"zombie_id": zombie_id,
+			"zombie_type": type.id,
+			"look": type.look_for(point_roll),
+			"boss": type.boss,
 			"health": health,
 			"speed": speed,
 			"point_roll": point_roll,
+			"damage": type.damage,
+			"knockback": type.knockback,
+			"telegraph_seconds": type.telegraph_seconds,
+			"barrier_speed": type.barrier_speed,
+			"hit_chance": type.hit_chance,
 		}
 	)
 
@@ -426,18 +525,21 @@ func _spawn_one() -> void:
 func _remove_zombie(
 	zombie_id: int, cause: StringName, killer_id: int, zone: StringName = &"", melee: bool = false
 ) -> void:
+	var type := _type(_zombies[zombie_id].type)
 	_zombies.erase(zombie_id)
 	_emit(
 		&"zombie_removed",
 		{
 			"zombie_id": zombie_id,
+			"zombie_type": type.id,
+			"boss": type.boss,
 			"cause": cause,
 			"killer_id": killer_id,
 			"zone": zone,
 			"melee": melee,
 		}
 	)
-	if phase == Phase.ACTIVE and _spawn_left == 0 and _zombies.is_empty():
+	if phase == Phase.ACTIVE and _plan.is_empty() and _zombies.is_empty():
 		_end_round()
 
 
@@ -461,7 +563,19 @@ func _end_round() -> void:
 			_emit(&"player_revived", {"player_id": player.id})
 		else:
 			_award(player.id, economy.round_bonus(round_number), &"round_bonus")
-	_emit(&"round_ended", {"round": round_number})
+			if _special != null:
+				_award(player.id, _special.reward_at(round_number), &"special_reward")
+	if _special != null:
+		_emit(
+			&"special_round_cleared",
+			{
+				"round": round_number,
+				"special_id": _special.id,
+				"reward": _special.reward_at(round_number),
+			}
+		)
+	_emit(&"round_ended", {"round": round_number, "special_id": special_id()})
+	_special = null
 	_enter_break(tuning.rounds.break_seconds)
 
 
@@ -554,34 +668,47 @@ func _hit(action: Dictionary) -> void:
 	var zombie: ZombieState = _zombies[zombie_id]
 	var zone := StringName(action["zone"])
 	var melee: bool = action.get("melee", false)
-	var headshot := zone == RulesAction.ZONE_HEAD
-	var dealt := minf(float(action["damage"]), zombie.health)
+	var headshot := zone == RulesAction.ZONE_HEAD or zone == RulesAction.ZONE_WEAK
+	var type := _type(zombie.type)
+	var damage := float(action["damage"])
+	if zone == RulesAction.ZONE_WEAK:
+		damage *= type.weak_multiplier
+	var dealt := minf(damage, zombie.health)
 	zombie.health -= dealt
 	_emit(
 		&"zombie_damaged",
 		{
 			"zombie_id": zombie_id,
+			"zombie_type": type.id,
 			"player_id": player_id,
 			"zone": zone,
 			"damage": dealt,
 			"health": zombie.health,
+			"max_health": zombie.max_health,
 		}
 	)
 	if zombie.health > 0.0:
-		if zombie.paid_hits < tuning.economy.max_paid_hits:
+		var paid_limit := (
+			type.max_paid_hits if type.max_paid_hits > 0 else tuning.economy.max_paid_hits
+		)
+		if zombie.paid_hits < paid_limit:
 			zombie.paid_hits += 1
 			var pay := tuning.economy.headshot_hit if headshot else tuning.economy.hit
-			_award(player_id, pay, &"headshot_hit" if headshot else &"hit")
+			_award(player_id, _scaled(pay, type), &"headshot_hit" if headshot else &"hit")
 		return
 	player.kills += 1
 	if melee:
-		_award(player_id, tuning.economy.melee_kill, &"melee_kill")
+		_award(player_id, _scaled(tuning.economy.melee_kill, type), &"melee_kill")
 	elif headshot:
 		player.headshot_kills += 1
-		_award(player_id, tuning.economy.headshot_kill, &"headshot_kill")
+		_award(player_id, _scaled(tuning.economy.headshot_kill, type), &"headshot_kill")
 	else:
-		_award(player_id, tuning.economy.kill, &"kill")
+		_award(player_id, _scaled(tuning.economy.kill, type), &"kill")
 	_remove_zombie(zombie_id, &"killed", player_id, zone, melee)
+
+
+func _scaled(points: int, type: ZombieType) -> int:
+	return roundi(float(points) * type.points_multiplier)
 
 
 ## Why this hit cannot land, or an empty name when it can.
@@ -671,10 +798,15 @@ func _blast_one(player_id: int, zombie: ZombieState, damage: float, leg_damage: 
 	var cause := _cripple_cause(zombie)
 	if cause != &"":
 		zombie.crippled = true
+		var crawler := tuning.roster.type_of(_type(zombie.type).crawls_into)
+		if crawler != null:
+			zombie.type = crawler.id
 		_emit(
 			&"zombie_crippled",
 			{
 				"zombie_id": zombie.id,
+				"zombie_type": zombie.type,
+				"look": _type(zombie.type).look_for(zombie.id << 8),
 				"player_id": player_id,
 				"cause": cause,
 				"health": zombie.health,

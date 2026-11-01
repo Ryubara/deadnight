@@ -8,6 +8,8 @@ const FINGERPRINT_LENGTH := 16
 @export var rounds: RoundTuning = RoundTuning.new()
 @export var economy: EconomyTuning = EconomyTuning.new()
 @export var fuel: FuelTuning = FuelTuning.new()
+@export var roster: ZombieRoster = ZombieRoster.new()
+@export var specials: SpecialTuning = SpecialTuning.new()
 @export var explosives: ExplosiveTuning = ExplosiveTuning.new()
 
 
