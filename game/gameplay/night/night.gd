@@ -73,6 +73,8 @@ var _repair_interval := NightTuning.new().repair_interval
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
 var _hud_binding: NightHudBinding
+## Held here: it listens to the client state and nothing else keeps it alive.
+var _equip_sync: WeaponEquipSync
 var _paused := false
 
 
@@ -91,6 +93,7 @@ func start(
 	state.player_id = PLAYER_ID
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+	_equip_sync = WeaponEquipSync.new(state, server.body_of)
 	link.delivered.connect(_on_delivered)
 	looks.changed.connect(_dress_bodies)
 	link.send({"type": NightServer.JOIN, "player_id": PLAYER_ID, "local": mode == Mode.HUMAN})
@@ -166,6 +169,8 @@ func start_remote(
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 		hud.state.load_snapshot(welcome["snapshot"])
+	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
+	_equip_sync = WeaponEquipSync.new(state, _body_of)
 	online.delivered.disconnect(keep)
 	_finish_start(camera)
 	view.step = Night.STEP * NightHost.SEND_EVERY

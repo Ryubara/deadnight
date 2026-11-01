@@ -77,7 +77,7 @@ count and each preset's total are in `parts.json` (`tris`); the build fails if a
 
 | Measured | Tris |
 | --- | --- |
-| Presets | 4,408 (Greaser) to 5,080 (Projectionist); the kit Soldier is 5,828 |
+| Presets | 4,490 (Lifeguard) to 5,080 (Projectionist); the kit Soldier is 5,828 |
 | Torso | 2,288 (jacket, shirt, tank) to 2,754 (vest, with the kit's shoulder pads); letterman 2,344, rolled 2,520 |
 | Head, legs, feet | 736, 500, 702 (the kit Soldier's own faces, recoloured) |
 | Helmet | 1,136 (the kit's, eyes and brows moved to the head); original hats 88-292, hair 44-278, eyewear 220-436, scarf 152, bow tie 84, armband 92 |

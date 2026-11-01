@@ -547,7 +547,7 @@ def legs_rule(kind):
         if kind == "cuffed":
             return "secondary_shade" if cuff else "secondary"
         if kind == "striped":
-            return "accent" if abs(t.normal.x) > 0.8 and t.normal.x * t.centre.x > 0 else "secondary"
+            return "secondary"  # the stripe is cut in afterwards (cut_stripe): faces by centre zigzag
         if kind == "shorts":
             return "skin" if (cuff or t.centre.z < 0.56) else "secondary"
         raise ValueError(kind)
@@ -646,6 +646,44 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
     return o
 
 
+# The Usher's trouser stripe (Deadnight #140): a band down the outer side of each leg, between two vertical planes
+# STRIPE_HALF either side of the leg's outer face, cut into the mesh so its edges are straight (painting whole faces
+# by their centre left sawtooth teeth along the edges). Kit metres at rest; front is -Y.
+STRIPE_HALF = 0.045
+STRIPE_OUTER = 0.55  # a face is on the leg's outer side when its normal's X, away from the body, is at least this
+
+
+def cut_stripe(o):
+    """Cut the stripe into a `legs__striped` part and paint it `accent`."""
+    me = o.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    uv = bm.loops.layers.uv.active
+    trouser = Vector(uv_of("secondary"))
+    accent = uv_of("accent")
+
+    def outer(f, side):
+        return f.normal.x * side >= STRIPE_OUTER and f.calc_center_median().x * side > 0.05
+
+    def is_trouser(f):
+        return (Vector(f.loops[0][uv].uv) - trouser).length < 1e-4
+
+    for side in (-1, 1):
+        faces = [f for f in bm.faces if outer(f, side) and is_trouser(f)]
+        area = sum(f.calc_area() for f in faces)
+        centre_y = sum(f.calc_center_median().y * f.calc_area() for f in faces) / area
+        for y in (centre_y - STRIPE_HALF, centre_y + STRIPE_HALF):
+            faces = [f for f in bm.faces if outer(f, side) and is_trouser(f)]
+            geom = list({e for f in faces for e in f.edges}) + faces + list({v for f in faces for v in f.verts})
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, y, 0), plane_no=(0, 1, 0))
+        for f in bm.faces:
+            if outer(f, side) and is_trouser(f) and abs(f.calc_center_median().y - centre_y) < STRIPE_HALF:
+                for loop in f.loops:
+                    loop[uv].uv = accent
+    bm.to_mesh(me)
+    bm.free()
+
+
 def split_features(helmet):
     """The kit keeps the eyes and brows in the helmet mesh (Head): move them to their own mesh for the head parts.
 
@@ -698,6 +736,9 @@ def recolour(o, by_material, mat):
 BEVEL = 0.02  # style bible: 15-25 mm one-segment chamfer at kit scale
 
 
+UNDER_Z = -0.3  # a face whose normal's Z is below this points down (Piece.add's `under`)
+
+
 class Piece:
     """Collects primitive shapes, each with a swatch, into one mesh skinned to one bone."""
 
@@ -705,7 +746,8 @@ class Piece:
         self.bm = bmesh.new()
         self.uv = self.bm.loops.layers.uv.new("UVMap")
 
-    def add(self, make, swatch, at=(0, 0, 0), rot=None, scale=None, bevel=BEVEL, taper=None):
+    def add(self, make, swatch, at=(0, 0, 0), rot=None, scale=None, bevel=BEVEL, taper=None, under=None):
+        """`under`: a second swatch for the faces that point down (a shade underneath)."""
         tmp = bmesh.new()
         make(tmp)
         if taper:  # (factor_x, factor_y) for the verts above the centre: a narrower top
@@ -730,8 +772,9 @@ class Piece:
         bpy.data.meshes.remove(me)
         self.bm.faces.ensure_lookup_table()
         for f in list(self.bm.faces)[start:]:
+            colour = uv_of(under) if under and f.normal.z < UNDER_Z else u
             for loop in f.loops:
-                loop[self.uv].uv = u
+                loop[self.uv].uv = colour
         return self
 
     def build(self, name, bone, arm, mat):
@@ -803,10 +846,29 @@ def build_pieces(arm, mat):
         .add(cube((0.62, 0.58, 0.17)), "hair", at=(0, 0.0, TOP - 0.03), taper=(0.92, 0.92))
         .build("hair__flattop", "Head", arm, mat)
     )
+    # The pompadour (#140): a rounded mass swept up from the hairline into the crown, and a rolled quiff in front of
+    # it over the forehead, in the crown's own `hair`; `hair_shade` only where they turn underneath. (A box on the
+    # crown, darker than the hair, read as a cap.)
     P["hair", "pompadour"] = (
         crown()
-        .add(cube((0.52, 0.34, 0.18)), "hair", at=(0, FRONT + 0.15, TOP + 0.0), rot=rx(-18), taper=(0.9, 0.7))
-        .add(cube((0.40, 0.20, 0.12)), "hair_shade", at=(0, FRONT + 0.05, TOP + 0.06), rot=rx(-30))
+        .add(
+            sphere(0.3, 12, 8),
+            "hair",
+            at=(0, FRONT + 0.25, TOP - 0.05),
+            rot=rx(-14),
+            scale=(1.0, 1.05, 0.52),
+            bevel=0,
+            under="hair_shade",
+        )
+        .add(
+            sphere(0.22, 12, 7),
+            "hair",
+            at=(0, FRONT + 0.1, TOP - 0.02),
+            rot=rx(-28),
+            scale=(1.12, 0.78, 0.66),
+            bevel=0,
+            under="hair_shade",
+        )
         .build("hair__pompadour", "Head", arm, mat)
     )
     P["hair", "ponytail"] = (
@@ -987,6 +1049,7 @@ def main():
         bpy.context.collection.objects.link(f)
         join(parts["head", pid], f)
     bpy.data.objects.remove(features)
+    cut_stripe(parts["legs", "striped"])
     patch = letter_patch(arm, mat)
     join(parts["torso", "letterman"], patch)
     for roll in sleeve_rolls(arm, mat):

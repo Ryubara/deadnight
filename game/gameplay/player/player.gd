@@ -192,6 +192,8 @@ func teleport(position: Vector3) -> void:
 	state.velocity = Vector3.ZERO
 	state.on_floor = false
 	global_position = position
+	# Drawn here from the next frame on, not slid in from where it stood.
+	reset_physics_interpolation()
 	camera_rig.snap_to(position)
 
 

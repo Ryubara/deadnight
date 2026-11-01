@@ -134,6 +134,9 @@ which all press the `interact` action. The server lets go of the hold, and the n
 | the player fires, reloads or swaps | the hands are busy: a hold is not a thing to do while shooting |
 | the player goes down | downed players do nothing |
 
+While the boards go up the player's weapon is put away and a claw hammer is in their hand, nailing each board home
+on the rules' beat; the weapon comes back when the hold ends ([Animation](animation.md#repair)).
+
 A board torn off while the player holds is put back too (the hold names the breach, not a count). Nothing else repeats
 on a held `interact`: a door, a gun, the crane, a breaker and a fuel can stay one press each. `NightTuning.repair_hold`
 (off: one board a press, as before) and `repair_interval` are exported on the night tuning resource. A command that

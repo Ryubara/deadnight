@@ -39,3 +39,12 @@ and `soldier_clips.py`'s clips unchanged, then:
   bone (`UpperArm` against `LowerArm`) instead.
 - **Deleting the wrist cuffs opens a gap** between the sleeve and the hand; colour them skin and pull them in to the
   arm instead.
+- **A stripe painted by face centre zigzags** (#140): the trouser faces are long triangles, so colouring whole faces
+  by where their centre falls leaves sawtooth teeth along both edges of the band. `cut_stripe` bisects the outer
+  trouser faces of each leg with two planes 45 mm either side of the leg's outer face (`bmesh.ops.bisect_plane` on
+  those faces only; the cut interpolates the skin weights) and paints what lies between: one straight band at every
+  angle, 128 more triangles (Usher 4,716).
+- **A box quiff reads as a cap** (#140): from the front a flat box on the crown, darker than the hair, looked like a
+  hat. The pompadour is now two squashed spheres, a mass swept up from the hairline into the crown and a roll over
+  the forehead, in the crown's `hair` swatch with `hair_shade` only on the faces that point down (`Piece.add(...,
+  under=)`); 406 triangles (Greaser 4,632).
