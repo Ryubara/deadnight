@@ -3,6 +3,16 @@
 Problems we hit and how we solved them, newest first. Five lines each: date, symptom, cause, fix, where it is
 documented.
 
+## 2026-11-01: a left-handed mirror of the buttons alone lands Fire on the HUD's points card
+
+- **Symptom:** mirroring only the buttons would draw the Fire arc over the points and health cards and the stick's
+  ring over the ammo card (#284; seen in the layout numbers before building it).
+- **Cause:** the buttons were placed to miss the cards in the right corner; the cards are in fixed corners, so flipping
+  only the buttons dropped them on the cards.
+- **Fix:** the HUD's corner columns flip with the layout (`Hud.mirrored`); the layout test runs both hands against the
+  HUD in the same state.
+- **Documented:** [touch controls](design/touch-controls.md#left-handed-layout).
+
 ## 2026-11-01: the HUD's input tracker never saw a touch, and the layer's own look would have ended touch mode
 
 - **Symptom:** the prompt card kept its keycap on a phone though the touch controls were up (#283).

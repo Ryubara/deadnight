@@ -202,63 +202,67 @@ func test_a_key_or_a_pad_brings_the_keycap_back_and_a_finger_takes_it_again() ->
 # --- Where the labels sit ---
 
 
-func test_the_labels_keep_inside_the_safe_area_and_off_the_buttons_and_the_hud() -> void:
+func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> void:
 	var insets := Vector4(96.0, 0.0, 96.0, 24.0)
-	for canvas in CANVASES:
-		var host: Control = auto_free(Control.new())
-		host.size = canvas
-		host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(host)
-		var hud_fixture := HudFixture.make(host, 4)
-		hud_fixture.into_round_one()
-		var state := hud_fixture.hud.state
-		state.set_ammo(30, 150, "Shotgun")
-		state.set_area("The Concession Stand", "Light the booth to open the back lot")
-		state.set_prompt(&"buy_door", "Projection booth door", 750)
-		var fixture := TouchFixture.make(self, canvas, state)
-		fixture.controls.insets_override = insets
-		fixture.controls.refresh()
-		# The HUD keeps inside the notch as it does in the night screen.
-		hud_fixture.hud.offset_left = insets.x
-		hud_fixture.hud.offset_top = insets.y
-		hud_fixture.hud.offset_right = -insets.z
-		hud_fixture.hud.offset_bottom = -insets.w
-		await _frames()
-		var hints := fixture.controls.hints
-		var safe := fixture.controls.safe_rect()
-		assert_array(hints.showing()).is_equal(TouchHints.ORDER)
-		var circles := TouchLayout.buttons(safe, 1.0)
-		var rects := {}
-		for id in hints.showing():
-			var rect := hints.rect_of(id)
-			rects[id] = rect
-			var message := "%s on %s" % [id, canvas]
-			(
-				assert_bool(safe.encloses(rect))
-				. override_failure_message("%s leaves the safe area %s" % [message, safe])
-				. is_true()
-			)
-			for button: StringName in circles:
-				var centre: Vector2 = circles[button][&"centre"]
+	for mirrored in [false, true]:
+		for canvas in CANVASES:
+			var host: Control = auto_free(Control.new())
+			host.size = canvas
+			host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(host)
+			var hud_fixture := HudFixture.make(host, 4)
+			hud_fixture.hud.mirrored = mirrored
+			hud_fixture.into_round_one()
+			var state := hud_fixture.hud.state
+			state.set_ammo(30, 150, "Shotgun")
+			state.set_area("The Concession Stand", "Light the booth to open the back lot")
+			state.set_prompt(&"buy_door", "Projection booth door", 750)
+			var fixture := TouchFixture.make(self, canvas, state)
+			if mirrored:
+				fixture.left_handed()
+			fixture.controls.insets_override = insets
+			fixture.controls.refresh()
+			# The HUD keeps inside the notch as it does in the night screen.
+			hud_fixture.hud.offset_left = insets.x
+			hud_fixture.hud.offset_top = insets.y
+			hud_fixture.hud.offset_right = -insets.z
+			hud_fixture.hud.offset_bottom = -insets.w
+			await _frames()
+			var hints := fixture.controls.hints
+			var safe := fixture.controls.safe_rect()
+			assert_array(hints.showing()).is_equal(TouchHints.ORDER)
+			var circles := TouchLayout.buttons(safe, 1.0, mirrored)
+			var rects := {}
+			for id in hints.showing():
+				var rect := hints.rect_of(id)
+				rects[id] = rect
+				var message := "%s on %s (mirrored %s)" % [id, canvas, mirrored]
 				(
-					assert_float(centre.clamp(rect.position, rect.end).distance_to(centre))
-					. override_failure_message("%s covers %s" % [message, button])
-					. is_greater(float(circles[button][&"radius"]))
+					assert_bool(safe.encloses(rect))
+					. override_failure_message("%s leaves the safe area %s" % [message, safe])
+					. is_true()
 				)
-			for part_name in KEPT_PARTS:
-				var card: Rect2 = (hud_fixture.hud.get(part_name) as Control).get_global_rect()
-				(
-					assert_bool(rect.intersects(card))
-					. override_failure_message(
-						"%s covers the %s card %s" % [message, part_name, card]
+				for button: StringName in circles:
+					var centre: Vector2 = circles[button][&"centre"]
+					(
+						assert_float(centre.clamp(rect.position, rect.end).distance_to(centre))
+						. override_failure_message("%s covers %s" % [message, button])
+						. is_greater(float(circles[button][&"radius"]))
 					)
-					. is_false()
-				)
-		var ids := rects.keys()
-		for i in ids.size():
-			for j in range(i + 1, ids.size()):
-				assert_bool((rects[ids[i]] as Rect2).intersects(rects[ids[j]])).is_false()
-		fixture.free_all()
+				for part_name in KEPT_PARTS:
+					var card: Rect2 = (hud_fixture.hud.get(part_name) as Control).get_global_rect()
+					(
+						assert_bool(rect.intersects(card))
+						. override_failure_message(
+							"%s covers the %s card %s" % [message, part_name, card]
+						)
+						. is_false()
+					)
+			var ids := rects.keys()
+			for i in ids.size():
+				for j in range(i + 1, ids.size()):
+					assert_bool((rects[ids[i]] as Rect2).intersects(rects[ids[j]])).is_false()
+			fixture.free_all()
 
 
 func test_only_a_real_mouse_click_ends_touch_mode_not_motion_or_the_engine_copy_of_a_tap() -> void:

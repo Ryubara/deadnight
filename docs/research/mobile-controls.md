@@ -192,7 +192,7 @@ dp. Buttons are drawn at 50 percent opacity at rest and 90 percent while held, w
 | Grenade | 63 x 56 | 10 mm | `throw_grenade`; hidden at zero grenades |
 | Interact | 50 x 62, centre bottom | 15 mm wide pill | appears only when `HudPrompt` has a target; shows the verb and price; `interact` |
 | Pause | 50 x 4, top centre, under the banner | 9 mm | `pause`; the banner moves when a touch is held |
-| Crouch, shoulder swap | in settings | | not on the screen; shoulder swap is a camera setting |
+| Crouch, shoulder swap | in settings | | not on the screen; shoulder swap is a camera setting (see "What the build showed": a button was built) |
 
 - Keep the HUD where it is: the stick is a transient overlay under the thumb, and the point and health cards in the
   lower left are not touched. The ammo card (bottom right) and the prompt (bottom centre) sit under the Fire and
@@ -233,6 +233,9 @@ game does now:
 | Rest opacity 50 percent | 70 percent (setting 30 to 100), 100 percent while held | At 60 the Fire label was hard to read on a lit ground |
 | Grenade hidden at zero | Always shown | The HUD state has no grenade count for the local player in a shape the layer reads yet |
 | Reload also on the ammo card | Not built | The card is a read-out; a second target next to the Fire arc invites mis-taps |
+| Shoulder swap in settings, not on the screen | A small "SIDE" button above Swap, 565 units from the Fire side's edge | `swap_shoulder` is a fight verb (a corner, a wall), not a one-time choice: the camera changes shoulder in play, so it needs a button. Placed outside the middle 40 percent, clear of the arc, the look hint and the top-right feed |
+| Crouch left out | Left out, no button | The simulation does not act on `crouch` yet (#73); a button that sets a flag nothing reads is worse than none |
+| Left-handed: mirror x | A setting, `controls/left_handed`; buttons, stick and the HUD's corner columns flip | Mirroring only the buttons put Fire over the points and health cards and the stick over the ammo card, so the HUD columns swap with them (a test checks every canvas, both hands) |
 | Pause at the top centre | Top, beside the round card | The banner takes the centre; the left column is narrow and the top left corner is not reachable by the right thumb, so it cannot be hit by accident |
 
 - **Edges need a minimum press.** The player reads `reload`, `interact` and `jump` once per physics tick by polling; a
@@ -267,10 +270,11 @@ game does now:
   in all). The feed and notice columns at the top right are not checked: a long list can reach the Aim and Reload
   buttons.
 
-Still open from the questions below: 1 (auto-fire), 2 (aim assist), 3 (gyro), 4 (Discord orientation, issue #287),
-5 (left hand, issue #284). Answered by the build: 6 (haptics default is on, a setting turns it off; the web vibrates
-only on Android), 7 (keyboard glyphs hide on the first touch and return on a key, pad or real click) and 8 (auto
-detects a coarse pointer; On and Off force it).
+Still open from the questions below: 1 (auto-fire), 2 (aim assist), 3 (gyro) and 4 (Discord orientation, issue #287).
+Answered by the build: 5 (left hand: a setting from the first release, off by default, a full mirror of the buttons, the
+stick and the HUD's corner columns), 6 (haptics default is on, a setting turns it off; the web vibrates only on
+Android), 7 (keyboard glyphs hide on the first touch and return on a key, pad or real click) and 8 (auto detects a
+coarse pointer; On and Off force it).
 
 ## Sources
 

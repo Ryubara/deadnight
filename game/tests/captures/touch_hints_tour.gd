@@ -4,11 +4,12 @@ extends Node
 ## were used (the hints gone, the card still a tap mark). Not part of the game.
 ##
 ## `godot --path game res://tests/captures/touch_hints_tour.tscn -- --out=<folder>
-## [--window=844x390] [--scale=2] [--notch]` saves `first-run.png`, `door.png`,
-## `used-stick-look.png` and `used.png`. The window is sized like a phone held sideways (the
-## project's canvas, 1920 x 1080 or more, stretched to it), `--scale` times its pixels so the type
-## can be read, and the touches are real events sent to it. A Movie Maker frame is always
-## 1920 x 1080, hence stills.
+## [--window=844x390] [--scale=2] [--notch] [--left] [--used]` saves `first-run.png`, `door.png`,
+## `stick-fire.png` and `used.png`. `--left` flips the layout for a left hand (the HUD's corner
+## columns with it) and `--used` starts with every hint already used, to show the layout alone.
+## The window is sized like a phone held sideways (the project's canvas, 1920 x 1080 or more,
+## stretched to it), `--scale` times its pixels so the type can be read, and the touches are real
+## events sent to it. A Movie Maker frame is always 1920 x 1080, hence stills.
 
 const DOOR := &"door_concession"
 const AT_DOOR := Vector3(0.0, 0.1, -2.0)
@@ -37,12 +38,21 @@ func _ready() -> void:
 	if args.has("notch"):
 		_controls.insets_override = NOTCH
 	_controls.safe_insets_changed.connect(_fit_hud.bind(hud))
+	_controls.mirrored_changed.connect(func(on: bool) -> void: hud.mirrored = on)
+	if args.has("left"):
+		# Into a file of its own, so the player's real settings are left alone.
+		var settings := get_tree().root.get_node("Settings") as SettingsService
+		settings.path = "user://touch_tour_settings.cfg"
+		settings.set_value(SettingsService.LEFT_HANDED, true)
 	layer.add_child(_controls)
 	var prompt_layer := CanvasLayer.new()
 	prompt_layer.layer = TouchRotatePrompt.LAYER
 	prompt_layer.add_child(TouchRotatePrompt.new())
 	add_child(prompt_layer)
 	add_child(layer)
+	if args.has("used"):
+		for id in TouchHints.ORDER:
+			_controls.hints.mark_used(id)
 	_night = Night.new()
 	_night.hud = hud
 	add_child(_night)
@@ -54,15 +64,14 @@ func _ready() -> void:
 	_night.state.apply_events(_night.server.rules.apply(RulesAction.grant_points(1, 900)))
 	await _hold(HOLD_FRAMES)
 	await _snap(args, "door")
-	var rest := (
-		_controls.safe_rect().position + Vector2(330.0, _controls.safe_rect().size.y - 330.0)
-	)
+	var rest := TouchLayout.stick_rest(_controls.safe_rect(), 1.0, args.has("left"))
+	var fire: Vector2 = _controls.button_circle(TouchLayout.FIRE)[&"centre"]
 	_touch(0, rest)
-	_drag(0, rest + Vector2(0.0, -60.0), Vector2(0.0, -60.0))
-	_touch(1, Vector2(1700.0, 330.0))
-	_drag(1, Vector2(1760.0, 330.0), Vector2(60.0, 0.0))
+	_drag(0, rest + Vector2(0.0, -160.0), Vector2(0.0, -160.0))
+	_touch(1, fire)
+	_drag(1, fire + Vector2(40.0, 0.0), Vector2(40.0, 0.0))
 	await _hold(HOLD_FRAMES)
-	await _snap(args, "used-stick-look")
+	await _snap(args, "stick-fire")
 	_touch(0, Vector2.ZERO, false)
 	_touch(1, Vector2.ZERO, false)
 	_touch(2, _controls.button_circle(TouchLayout.INTERACT)[&"centre"])

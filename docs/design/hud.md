@@ -5,6 +5,10 @@ What a player sees during a night: where each readout sits, what feeds it, and w
 (flat paper and signs, hard shadows, notched corners, amber and hot orange, two faces) and the tokens of the
 `gds_ui` addon. Round, points, fuel and shop numbers are in [Rounds, points and fuel](rounds.md).
 
+A left-handed touch layout mirrors the corner columns (`Hud.mirrored`, set by the night screen): round and objective swap
+with the fuel, event and notice lists, points and health with ammo, so the buttons that flip sides still miss every card
+([touch controls](touch-controls.md#left-handed-layout)). Parts in the middle stay.
+
 ## Network-first
 
 The HUD reads one object, `HudState` (plain numbers, strings, arrays and dictionaries; a test checks that it holds no

@@ -54,6 +54,31 @@ func test_the_hud_is_on_the_night_and_hears_it() -> void:
 	await _leave(screen)
 
 
+func test_a_left_hand_flips_the_hud_corners_with_the_touch_layout_and_keeps_them_in_a_menu(
+) -> void:
+	var settings: SettingsService = get_tree().root.get_node("Settings")
+	var before: Variant = settings.get_value(SettingsService.LEFT_HANDED)
+	TouchMode.device_is_touch = true
+	settings.set_value(SettingsService.LEFT_HANDED, true)
+	var screen := await _enter_night()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var hud := screen.find_children("*", "Hud", true, false)[0] as Hud
+	assert_bool(hud.mirrored).is_true()
+	assert_float(hud.ammo.get_global_rect().get_center().x).is_less(hud.size.x * 0.5)
+	assert_float(hud.health.get_global_rect().get_center().x).is_greater(hud.size.x * 0.5)
+	await _press_escape()
+	assert_bool(hud.mirrored).is_true()
+	settings.set_value(SettingsService.LEFT_HANDED, false)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_bool(hud.mirrored).is_false()
+	assert_float(hud.ammo.get_global_rect().get_center().x).is_greater(hud.size.x * 0.5)
+	TouchMode.device_is_touch = null
+	settings.set_value(SettingsService.LEFT_HANDED, before)
+	await _leave(screen)
+
+
 func test_escape_pauses_and_resume_goes_on() -> void:
 	var screen := await _enter_night()
 	await _press_escape()

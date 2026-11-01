@@ -30,8 +30,9 @@ const ICON_WIDTH := 64.0
 const ICON_GAP := 14.0
 ## Distance from the stick ring, and from the interact button, to the label.
 const GAP := 26.0
-## Where the look hint sits in the safe rectangle (share of its width and height).
-const LOOK_AT := Vector2(0.7, 0.26)
+## Where the look hint sits in the safe rectangle (share of its width and height) for a right
+## hand; a left hand has it flipped.
+const LOOK_AT := Vector2(0.58, 0.24)
 const FADE_IN := 0.35
 const FADE_OUT := 0.25
 const PULSE_PERIOD := 1.6
@@ -112,19 +113,22 @@ func rect_of(id: StringName) -> Rect2:
 	var size := _pill_size(text_for(id))
 	var safe := controls.safe_rect()
 	var scale_value := controls.touch_scale
+	var mirrored := controls.left_handed
 	match id:
 		MOVE:
-			var rest := TouchLayout.stick_rest(safe, scale_value)
+			var rest := TouchLayout.stick_rest(safe, scale_value, mirrored)
 			var top := rest.y - TouchLayout.STICK_RADIUS * scale_value - GAP
 			return Rect2(Vector2(rest.x - size.x * 0.5, top - size.y), size)
 		LOOK:
-			var at := safe.position + safe.size * LOOK_AT
+			var share := Vector2(1.0 - LOOK_AT.x if mirrored else LOOK_AT.x, LOOK_AT.y)
+			var at := safe.position + safe.size * share
 			return Rect2(at - size * 0.5, size)
 		INTERACT:
 			var circle := controls.button_circle(TouchLayout.INTERACT)
 			var centre: Vector2 = circle[&"centre"]
-			var left: float = centre.x - float(circle[&"radius"]) - GAP * 0.6
-			return Rect2(Vector2(left - size.x, centre.y - size.y * 0.5), size)
+			var beside := float(circle[&"radius"]) + GAP * 0.6
+			var left: float = centre.x + beside if mirrored else centre.x - beside - size.x
+			return Rect2(Vector2(left, centre.y - size.y * 0.5), size)
 	return Rect2()
 
 

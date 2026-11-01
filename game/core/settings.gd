@@ -35,6 +35,9 @@ const TOUCH_CONTROLS := &"controls/touch_controls"
 const TOUCH_SCALE := &"controls/touch_scale"
 const TOUCH_OPACITY := &"controls/touch_opacity"
 const HAPTICS := &"controls/haptics"
+## The touch layout flipped for a left hand: the stick on the right, Fire and its buttons on the
+## left, and the HUD's corner columns swap sides with them.
+const LEFT_HANDED := &"controls/left_handed"
 ## Which first-run touch hints were used and are gone, one bit per hint (`TouchHints`). Resetting
 ## the defaults brings them back.
 const TOUCH_HINTS_SEEN := &"controls/touch_hints_seen"
@@ -61,6 +64,7 @@ const DEFAULTS := {
 	TOUCH_SCALE: 1.0,
 	TOUCH_OPACITY: 0.7,
 	HAPTICS: true,
+	LEFT_HANDED: false,
 	TOUCH_HINTS_SEEN: 0,
 	CHARACTER_LOOK: "",
 }
