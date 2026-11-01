@@ -55,7 +55,7 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
-| `repair` (`barricade_id`), `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request (`set_circuit` carries none: the night server sends it when a player uses a breaker post, [map](map.md#the-breaker-posts)) |
+| `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
@@ -178,11 +178,29 @@ Shop (prices at round 1):
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
+| Ammunition: revolver / tommy gun / shotgun / rifle / flare gun | 50 / 90 / 80 / 100 / 120 | rounds added: 20 / 60 / 8 / 8 / 2 (see [ammunition](#ammunition)) |
 
 Generator: 100 units; it burns 0.03 a second idle plus each lit circuit (screen lot 0.06,
 concession 0.05, booth 0.08, back lot 0.07), grows 3% a round, and burns at half rate in breaks.
 Screen lot only: 0.09 a second, about 18 minutes of tank. Everything lit: 0.29 a second, under 6
 minutes, and the draw rises every round.
+
+## Ammunition
+
+The reserve of every weapon is finite: the night gives a weapon its starting reserve when the player gets it
+([Weapons](weapons.md#the-arsenal)) and nothing refills it by itself. The shop sells rounds, one item per weapon
+(`ammo_pistol`, `ammo_smg`, `ammo_shotgun`, `ammo_rifle`, `ammo_flare_gun`; the crowbar needs none).
+
+- **The rules price, the combat server counts.** The reserve is the combat server's (it already owns the magazine and
+  the reload), so a purchase is `RulesAction.buy(player, item, rounds)` with `rounds` the room the weapon's reserve
+  has, filled in by the server (`NightServer.buy`). The rules charge the price for exactly the rounds that fit
+  (rounded up to a whole point, like fuel and grenades), cap them at what one purchase holds (`ShopItem.amount`), and
+  answer `purchase_denied` with `AMMO_FULL` when nothing fits, taking no points. The purchase's `detail` is
+  `{ammo: weapon, rounds: n}`, and the server turns it into a `CombatAction.add_ammo`, which never passes the
+  weapon's `reserve_max`.
+- **The magazine is not filled by a purchase**: rounds go to the reserve and a reload moves them across.
+- **Ammunition goes to the weapon the item names**, not the one in hand, so a player can top up the rifle while holding
+  the revolver. A weapon not carried takes none (the server offers `0` rounds room).
 
 ## Zombie types
 

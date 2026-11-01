@@ -10,14 +10,13 @@ extends RefCounted
 ## penetration, and the flare gun's splash on a crowd beyond the zombies on the same side.
 
 const START := &"pistol"
-const SHOP_PREFIX := "weapon_"
 
 static var _defs: Dictionary[StringName, WeaponDef] = {}
 
 
 ## The definition behind a shop or crane id (`weapon_rifle`) or a catalogue id (`rifle`).
 static func def(weapon_id: StringName) -> WeaponDef:
-	var key := StringName(String(weapon_id).trim_prefix(SHOP_PREFIX))
+	var key := WeaponCatalog.catalog_id(weapon_id)
 	if not _defs.has(key):
 		_defs[key] = WeaponCatalog.get_def(key)
 	return _defs[key]
