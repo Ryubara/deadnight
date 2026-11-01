@@ -429,6 +429,7 @@ class Entry:
     variants: int
     recipe: Recipe
     peak_db: float = -3.0  # the file's peak; the game balances loudness with the catalog's volume_db
+    loop: bool = False  # a loop keeps its length (it is a whole cycle) and is never trimmed
 
 
 # ---- grenades: a spoon's tick, a throw's whoosh, a bounce on asphalt, the blast ---------------------------------
@@ -501,7 +502,7 @@ REGISTRY: list[Entry] = [
     Entry("zombie", "attack", 3, zombie_attack, -3.0),
     Entry("zombie", "hurt", 3, zombie_hurt, -3.0),
     Entry("zombie", "death", 2, zombie_death, -3.0),
-    Entry("world", "generator_hum", 1, generator_hum, -6.0),
+    Entry("world", "generator_hum", 1, generator_hum, -6.0, loop=True),
     Entry("world", "generator_start", 1, generator_start, -4.0),
     Entry("stings", "round_start", 1, round_start, -2.0),
     Entry("stings", "round_end", 1, round_end, -3.0),
