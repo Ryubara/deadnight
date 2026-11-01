@@ -1,7 +1,8 @@
 # Audio
 
-How the original sounds are made and what the audio service taught us. The design (what it should sound like, the
-service's rules) is [Sound](../design/audio.md).
+How the synthesised sounds are made, how the few ElevenLabs ones are fetched, and what the audio service
+taught us. The design (what it should sound like, the service's rules, where every sound comes from) is
+[Sound](../design/audio.md).
 
 ## Making sounds with code
 

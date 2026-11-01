@@ -5,20 +5,23 @@ every level and limit, is `sound_catalog.gd`.
 
 ## Where the sounds come from
 
-Almost every sound is original: it is synthesised by the scripts in `tools/audio/` (how:
-[research](../research/audio.md)), so it is committed and can be changed by editing a number. The folders under
-`game/assets/audio/` with no licence file hold only such files; nothing in them is third-party.
+Of the 241 sound files in `game/assets/audio/`, **200 are synthesised** by the scripts in `tools/audio/` (how:
+[research](../research/audio.md)): original work, committed, and changed by editing a number. **41 are generated with
+ElevenLabs Sound Effects** on the free tier, which is third-party output: attribution required, not licensed for
+commercial use, to be relicensed or replaced before a commercial release
+([#252](https://github.com/Ryubara/deadnight/issues/252)). The Credits screen names ElevenLabs.
 
-The exception is 24 files in `game/assets/audio/zombie/` (extra groans, snarls, hurts, deaths, shrieks and roars),
-generated with ElevenLabs Sound Effects on the free tier. They are third-party output: attribution required, not
-licensed for commercial use, to be relicensed or replaced before a commercial release
-([#252](https://github.com/Ryubara/deadnight/issues/252)). Their licence entry, with every prompt, is
-[`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), and the
-Credits screen names ElevenLabs. Pull request #277 (open) adds ElevenLabs takes for the weapons and the lot, with a
-licence file of their own.
+| Where | Files | Source | Licence entry |
+| --- | --- | --- | --- |
+| `zombie/` `alert_4..6`, `attack_4..6`, `death_3..5`, `groan_5..7`, `groan_brute_4..5`, `groan_crawler_4..5`, `hurt_4..6`, `roar_3..4`, `shriek_3..5` | 24 | ElevenLabs (models v2 and v3), extra takes of the dead's voices | [`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), every prompt in `zombie/eleven.json` |
+| `eleven/` | 17 | ElevenLabs (model v2): the shots' blasts, the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
+| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `player/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (3, 8, 72, 5, 2, 5, 2, 8, 3, 9 and 35 files) | 200 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
 
-The licence file records the choice to use the takes as relayed by the coordinator. The maintainer's own first-hand
-confirmation is still pending ([#292](https://github.com/Ryubara/deadnight/issues/292)).
+The decision to use the ElevenLabs takes is recorded in two places, which say it differently:
+[#252](https://github.com/Ryubara/deadnight/issues/252) states a maintainer decision of 2026-11-01 to use the free tier
+for the key sounds (zombie vocals, weapon fire, generator, boss roar), and the plan to upgrade or replace them before any
+commercial release; `zombie/LICENSE.md` records "use it now, credit it" as relayed by the coordinator on the same day.
+Neither file is changed by this page.
 
 ## Direction
 
@@ -70,7 +73,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Impacts | `impact_flesh`, `impact_head`, `impact_world` | a wet thump, the same with a crack and a knock, and a round on asphalt or sheet metal with a ricochet's whine |
 | Reloads | `reload_pistol_mag_out/_in`, `reload_smg_mag_out/_in`, `reload_rifle_round/_lever`, `reload_shotgun_open/_shells/_shut` | one sound for each event frame of the reload clip |
 | Steps | `step_asphalt`, `step_gravel` | four variants each; gravel is a spray of tiny grains |
-| The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the first four also have ElevenLabs takes as extra variants |
+| The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the groans, snarls, hurts, deaths, shrieks and roars also have ElevenLabs takes as extra variants (see above) |
 | Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_engine` (loops), `generator_start`, `generator_up`, `generator_sputter`, `generator_down`, `generator_down_air`, `breaker_on`, `breaker_off` | see [The lot's machines](#the-lots-machines) |
 | The shop | `door_unlock`, `door_buy`, `buy_weapon`, `buy_ammo`, `buy_fuel`, `buy_tonic`, `deny`, `points_tick`, `points_kill` | what each purchase sounds like (besides `till_ring`), the refusal's buzzer and the points |
