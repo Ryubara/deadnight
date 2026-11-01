@@ -217,6 +217,54 @@ dp. Buttons are drawn at 50 percent opacity at rest and 90 percent while held, w
 8. **Touch detection policy:** a phone with a Bluetooth keyboard, a laptop with a touchscreen. Show touch controls on
    the first touch, hide them on the first key or mouse event, and let a setting force either?
 
+## What the build showed
+
+The first build (`game/ui/touch/`, [design page](../design/touch-controls.md), pull request #279) followed the
+recommendation, then the tests, captures and a browser run changed some of it. What the page recommended, and what the
+game does now:
+
+| Recommended | Built | Why |
+| --- | --- | --- |
+| Places in percent of the safe area, sizes in mm | Offsets from the safe area's bottom right corner and radii in canvas units (`TouchLayout`); a 1080 unit tall canvas is 60 to 70 mm on a phone, so Fire is about 12 mm across and no hit area is under about 9 mm | The HUD already lives in canvas units and the UI scale divides them; one unit system means the buttons scale with the HUD and a test can compare rectangles |
+| Interact, a pill at bottom centre | A round button left of Fire, captioned with the verb (OPEN, BUY, REPAIR, FUEL, SWITCH, TAKE, REVIVE) | The prompt card is at bottom centre and stays (it names the object and the price); the thumb reaches the button without leaving Fire |
+| Jump above Fire | Jump below and left of Fire, Reload and Aim above it | The ammo card fills the bottom right corner: the first layout put Jump 26 units into it and Fire's rim touched it, found in the captures, so the arc moved up and left (Fire 350 units up, Jump 360 left) |
+| Stick: dead zone 8 percent, sprint past 90 percent | Dead zone 10 percent, sprint on at 95 percent and off at 75 percent | Hysteresis, or sprint flickers at the rim; the base follows a thumb that goes past the rim, so travel never runs out |
+| Look: 180 degrees per screen height, no acceleration | 3.2 radians (183 degrees) per screen height at sensitivity 1, a flick gain rising from 1 to 1.6 between 450 and 2400 units per second, and the mouse sensitivity setting on top | A turn of 180 degrees in one swipe needs more than a slow drag gives; the slow range stays 1:1 for aiming. The ADS slow-down is the camera's own, not a separate 60 percent |
+| Rest opacity 50 percent | 70 percent (setting 30 to 100), 100 percent while held | At 60 the Fire label was hard to read on a lit ground |
+| Grenade hidden at zero | Always shown | The HUD state has no grenade count for the local player in a shape the layer reads yet |
+| Reload also on the ammo card | Not built | The card is a read-out; a second target next to the Fire arc invites mis-taps |
+| Pause at the top centre | Top, beside the round card | The banner takes the centre; the left column is narrow and the top left corner is not reachable by the right thumb, so it cannot be hit by accident |
+
+- **Edges need a minimum press.** The player reads `reload`, `interact` and `jump` once per physics tick by polling; a
+  tap can start and end between two ticks. A press lasts at least 90 ms, then releases.
+  `test_a_quick_tap_still_lasts...` sends press and lift in one frame and checks the action is still down.
+- **One finger, one job** held up: stick, look, Fire, Aim and Interact at the same time in the tests (three fingers)
+  and in Chromium (the stick pushed to the rim sprints while a second finger fires, the ammo counter fell 10 to 2).
+- **Touch-to-mouse emulation has to be off while playing.** The engine makes every touch a left click, which is
+  `fire`, and mouse motion, which looks a second time. The layer turns `Input.emulate_mouse_from_touch` off while it
+  is up and on for the menus, so the pause menu's buttons still take a tap.
+- **Injected events run through the stretch backwards.** A look sent with `Input.parse_input_event` is in window
+  pixels: the first look turned the view 8.8 times too far in a test window. The layer multiplies by the viewport's
+  final transform first.
+- **Detection is `pointer: coarse` plus touch points**, read as a number (a boolean `eval` answer compared equal to
+  `true` never matched in Chromium, which hid the controls on every phone until the browser run caught it). A laptop
+  with a touchscreen does not turn them on by itself; the setting and `?touch=1` do. Open question 8 stays open for
+  hybrids.
+- **The safe area** comes from CSS `env(safe-area-inset-*)` on the web (needs `viewport-fit=cover`, set in the export
+  preset's head include) and from the display server on a phone build; the HUD moves in with the controls (capture
+  with a 96 unit notch). Not yet seen on a real notched phone.
+- **Browser checks that passed** (Chromium, mobile and touch emulation, 844 x 390): no scroll (0, 0), no zoom (scale
+  1), `overscroll-behavior: none`, `touch-action: none`, no console errors, the portrait page shows the rotate prompt.
+  Not testable there: haptics, `screen.orientation.lock`, a real notch, Discord's webview.
+- **Layout test**: every button inside the safe area, hit radius at least 66 units, no two buttons touching, and none
+  over the ammo, prompt, health, points or round cards, on 16:9, 19.5:9, 20:9 and a browser with bars (25 touch tests
+  in all). The feed and notice columns at the top right are not checked: a long list can reach the Aim and Reload
+  buttons.
+
+Still open from the questions below: 1 (auto-fire), 2 (aim assist), 3 (gyro), 4 (Discord orientation, issue #287),
+5 (left hand, issue #284), 7 (keyboard glyphs, issue #283). Answered by the build: 6 (haptics default is on, a setting
+turns it off; the web vibrates only on Android) and 8 (auto detects a coarse pointer; On and Off force it).
+
 ## Sources
 
 - [Apple HIG, Layout](https://developer.apple.com/design/human-interface-guidelines/layout)
