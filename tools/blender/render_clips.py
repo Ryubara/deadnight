@@ -6,7 +6,8 @@ Run with the pinned Blender, headless:
         --soldier <bundle>/models/PpLF4rt4ah.glb --out <workspace>/scratch/deadnight/<branch>/clips
 
 Writes `<out>-<sheet>.png` for the sheets Rifle, Shotgun, Pistol, Melee, Body (full-body clips) and Split (upper
-clips over moving legs). Each tile is posed the way Godot's upper/lower blend poses the character: upper-body bones
+clips over moving legs; GrenadeSplit and RepairSplit the same for those clips; `--view back` shows them from behind,
+as the game's camera does). Each tile is posed the way Godot's upper/lower blend poses the character: upper-body bones
 from the upper clip, every other bone from the base clip (Idle, or Run/Walk on the Split sheet), so the sheet shows
 what the bone filter will. The class's kit weapon stays in the hand (Deadnight's weapons copy those holds). Moments:
 first frame, two inner frames (the clip's first event when it has one), last frame. Workbench, flat lighting, seen
@@ -121,6 +122,13 @@ def main():
         help="Class=path.glb=KitName: hold one of our weapons for a class's sheet, in the kit weapon's hold (the "
         "Grenade sheet: Grenade=game/assets/weapons/grenade/grenade.glb=Shotgun)",
     )
+    ap.add_argument(
+        "--view",
+        default="front",
+        choices=("front", "back"),
+        help="front: from the Soldier's front right (the default); back: from behind his right shoulder, the way the "
+        "third-person camera sees him",
+    )
     args = ap.parse_args(argv)
     args.out = args.out.resolve()
 
@@ -163,7 +171,7 @@ def main():
     scene.camera = cam
     # The Soldier faces -Y; his right is -X. Camera in front, to his right, a little above the chest.
     target = Vector((0, 0, 0.92))
-    pos = target + Vector((-0.55, -1.0, 0.25)).normalized() * 20
+    pos = target + Vector((-0.55, -1.0 if args.view == "front" else 1.0, 0.25)).normalized() * 20
     cam.location = pos
     cam.rotation_euler = (target - pos).to_track_quat("-Z", "Y").to_euler()
     label_mat = bpy.data.materials.new("label")
@@ -187,6 +195,7 @@ def main():
     sheets["Split"] = [("Aim_Rifle", "Run", "Rifle"), ("Fire_Shotgun", "Walk", "Shotgun"),
                        ("Reload_Rifle", "Walk", "Rifle"), ("Swing_Melee", "Run", "Melee")]  # fmt: skip
     sheets["GrenadeSplit"] = [(n, "Run", "Grenade") for n in sc.CLIPS if n.startswith("Grenade_")]
+    sheets["RepairSplit"] = [(n, "Walk", "Repair") for n in sc.CLIPS if n.startswith("Repair_")]
     only = {s for s in args.only.split(",") if s}
     tmp = args.out.parent / "_tiles"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -199,7 +208,11 @@ def main():
             for n, o in held.items():
                 set_hidden(o, n != weapon)
             row = []
-            frames = key_moments(acts[name], sc.CLIPS[name]["events"]) if sheet.startswith("Grenade") else moments(name)
+            frames = (
+                key_moments(acts[name], sc.CLIPS[name]["events"])
+                if sheet.startswith(("Grenade", "Repair"))
+                else moments(name)
+            )
             for i, f in enumerate(frames):
                 layer = sc.CLIPS[name]["layer"]
                 if base:  # base clip at the same moment of its own cycle
