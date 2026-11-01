@@ -38,7 +38,8 @@ var _can_units: Dictionary[StringName, int] = {}
 
 ## `hud` is in the tree or about to be; `state` is the client's; `server` is read once, for the
 ## numbers both sides know from the shared tuning (the fuel tank), and not after.
-func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
+## `looks` is the client's table of looks: the HUD shows each player's portrait from it.
+func _init(hud: Hud, state: ClientState, server: NightServer, looks: LookRegistry = null) -> void:
 	_hud = hud
 	_state = state
 	var ammo_free: Array[StringName] = []
@@ -57,6 +58,27 @@ func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(server.rules.tuning.specials)
 	state.event_received.connect(_on_event)
+	if looks != null:
+		looks.changed.connect(_on_look.bind(looks))
+
+
+## A look arrived or changed: the HUD hears it as the `player_look` event it knows, for every
+## player of the table (the resolved looks, as the bodies wear them).
+func _on_look(_player_id: int, looks: LookRegistry) -> void:
+	var resolved := looks.resolved()
+	for id: int in resolved:
+		(
+			_hud
+			. state
+			. apply_event(
+				{
+					"type": &"player_look",
+					"player_id": id,
+					"seat": looks.seats[id],
+					"look": (resolved[id] as CharacterLook).to_dict(),
+				}
+			)
+		)
 
 
 func _on_event(event: Dictionary) -> void:
