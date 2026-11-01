@@ -379,22 +379,16 @@ func _throw_of(player_id: int, delta: float) -> void:
 	var thrower: GrenadeThrower = _throwers[player_id]
 	var command := _pending.get(player_id) as NightCommand
 	var motion := PlayerCommand.new()
-	var aim := Vector3.ZERO
+	var look := Vector3.ZERO
 	if command != null:
-		aim = command.dir
+		look = command.dir
 		if not _is_downed(player_id):
 			motion = command.motion
 	var body := _bodies[player_id]
-	if not aim.is_finite() or aim.length_squared() < 0.5:
-		aim = Basis(Vector3.UP, body.state.facing) * Vector3.FORWARD
-	aim = aim.normalized()
-	var flat := Vector3(aim.x, 0.0, aim.z).normalized()
-	var hand := (
-		body.global_position
-		+ Vector3.UP * grenades.def.hand_height
-		+ flat * tuning.grenade_hand_reach
+	var launch := GrenadeThrower.launch(
+		grenades.def, tuning.grenade_hand_reach, body.global_position, body.state.facing, look
 	)
-	var actions := thrower.step(motion, hand, aim, body.state.velocity, delta)
+	var actions := thrower.step(motion, launch["hand"], launch["aim"], body.state.velocity, delta)
 	if thrower.swing_began() != &"":
 		(
 			_outbox

@@ -38,6 +38,22 @@ func _init(p_player_id: int, p_def: GrenadeDef) -> void:
 	def = p_def
 
 
+## Where a grenade leaves a player standing at `position` facing `facing` (radians) who looks along
+## `dir`, and along which line: `{"hand": Vector3, "aim": Vector3}`. The hand is `reach` metres out
+## along the aim on the ground and `GrenadeDef.hand_height` up. A look that is not a direction
+## (zero, not finite) is the way the player faces. The server throws from this and the client
+## previews the same throw from it.
+static func launch(
+	p_def: GrenadeDef, reach: float, position: Vector3, facing: float, dir: Vector3
+) -> Dictionary:
+	var aim := dir
+	if not aim.is_finite() or aim.length_squared() < 0.5:
+		aim = Basis(Vector3.UP, facing) * Vector3.FORWARD
+	aim = aim.normalized()
+	var flat := Vector3(aim.x, 0.0, aim.z).normalized()
+	return {"hand": position + Vector3.UP * p_def.hand_height + flat * reach, "aim": aim}
+
+
 ## Whether a grenade is in the hand right now (cooking, or on its way out of the hand).
 func is_cooking() -> bool:
 	return _style != &"" or _winding != &""

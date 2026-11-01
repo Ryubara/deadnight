@@ -56,6 +56,8 @@ var looks := LookRegistry.new()
 ## wardrobe (`LookStore`).
 var own_look: CharacterLook
 var view: NightView
+## Where the grenade in the local player's hand would go (`show_throw`).
+var preview: GrenadePreview
 var autopilot: Autopilot
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
@@ -68,6 +70,8 @@ var shoulder_camera := false
 var running := false
 
 var _human := HumanController.new()
+## Held here: a Callable does not keep its RefCounted alive.
+var _throw_cast: WorldCast
 var _spectator: Camera3D
 ## Online with a human: the body this client moves itself.
 var _body: Player
@@ -226,6 +230,7 @@ func _finish_start(camera: Camera3D) -> void:
 	view.show_lamps(world.greybox, rules_tuning.fuel)
 	view.show_crane(world, rules_tuning)
 	view.show_grenades(load(NightServer.GRENADE_DEF) as GrenadeDef)
+	_add_throw_preview(load(NightServer.GRENADE_DEF) as GrenadeDef)
 	add_child(NightLight.new(world.greybox.get_node("Lighting"), rules_tuning.rounds, state))
 	_add_sounds()
 	view.hear(world)
@@ -361,7 +366,9 @@ func tick() -> void:
 				_aim_rig(command)
 			link.send(command.to_dict())
 		Mode.HUMAN:
-			link.send(_human_command().to_dict())
+			var human := _human_command()
+			show_throw(human)
+			link.send(human.to_dict())
 	if mode == Mode.AUTOPILOT:
 		_follow(STEP)
 	ticked.emit()
@@ -375,6 +382,7 @@ func _tick_remote() -> void:
 	match mode:
 		Mode.HUMAN:
 			command = _human_command()
+			show_throw(command)
 		Mode.AUTOPILOT:
 			command = autopilot.decide(STEP)
 			if _body != null:
@@ -406,6 +414,24 @@ func _on_remote_event(event: Dictionary) -> void:
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		_body.global_position = _body.state.position
+
+
+## Shows, for the command the local player is about to send, where the grenade they are holding
+## would go if they let go now; nothing when no grenade button is held.
+func show_throw(command: NightCommand) -> void:
+	preview.follow(command, player(), STEP, state.me().get("downed", false))
+
+
+func _add_throw_preview(def: GrenadeDef) -> void:
+	preview = GrenadePreview.new()
+	preview.name = "GrenadePreview"
+	add_child(preview)
+	_throw_cast = WorldCast.new(get_world_3d().direct_space_state)
+	preview.setup(def, _throw_cast.callable())
+	var night_tuning: NightTuning = server.tuning if server != null else NightTuning.new()
+	preview.hand_reach = night_tuning.grenade_hand_reach
+	preview.release_over = night_tuning.grenade_release_over
+	preview.release_under = night_tuning.grenade_release_under
 
 
 func _human_command() -> NightCommand:
@@ -443,6 +469,12 @@ func _body_of(player_id: int) -> Player:
 
 
 func _on_event(event: Dictionary) -> void:
+	if (
+		preview != null
+		and event["type"] == &"grenade_count_changed"
+		and event["player_id"] == state.player_id
+	):
+		preview.grenades_left = event["count"]
 	if event["type"] == &"game_over":
 		night_over.emit(event["round_reached"])
 	else:
