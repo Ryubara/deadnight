@@ -2,6 +2,21 @@ class_name PlayerState
 extends RefCounted
 ## What the rules know about one player. Plain data; GameRules is the only thing that changes it.
 
+## The keys of `to_dict`, each with the type it must have.
+const SNAPSHOT_KEYS := {
+	"id": TYPE_INT,
+	"points": TYPE_INT,
+	"downed": TYPE_BOOL,
+	"weapons": TYPE_ARRAY,
+	"tonics": TYPE_ARRAY,
+	"grenades": TYPE_INT,
+	"repair_points_this_round": TYPE_INT,
+	"kills": TYPE_INT,
+	"headshot_kills": TYPE_INT,
+	"points_earned": TYPE_INT,
+	"points_spent": TYPE_INT,
+}
+
 var id: int = 0
 var points: int = 0
 var downed: bool = false

@@ -236,44 +236,11 @@ func test_the_shipped_roster_hangs_together() -> void:
 		assert_int(type.first_round).is_greater_equal(1)
 		if type.crawls_into != &"":
 			assert_object(_t.roster.type_of(type.crawls_into)).is_not_null()
-	# A type may never outrun a sprinting player (docs/design/rounds.md): the cap holds for all.
-	for type in _t.roster.types:
-		var top := _t.rounds.speed_cap
-		(
-			assert_float(minf(_t.rounds.speed_for_round(500) * type.speed_multiplier, top))
-			. is_less_equal(top)
-		)
-
-
-func test_every_type_has_a_look_the_artists_know() -> void:
-	var known: Array[StringName] = [
-		&"walker",
-		&"greaser",
-		&"usher",
-		&"farmhand",
-		&"runner",
-		&"brute",
-		&"crawler",
-		&"headliner",
-	]
-	for type in _t.roster.types:
-		for look in type.looks:
-			(
-				assert_bool(known.has(look))
-				. override_failure_message("unknown look %s" % look)
-				. is_true()
-			)
 
 
 ## A night in round 1 with one living zombie forced to `type_id` (by spawning it from a plan).
 func _rules_with_one_living(type_id: StringName) -> GameRules:
-	var rules := RulesFixture.make_rules(1, 11, _t)
-	rules.apply(RulesAction.start())
-	rules.apply(RulesAction.skip_break())
-	rules._plan.assign([type_id])
-	RulesFixture.run(rules, 2.0)
-	assert_int(rules.zombie_ids().size()).is_equal(1)
-	return rules
+	return RulesFixture.with_one_living(type_id, _t)
 
 
 func _kill_pay(rules: GameRules) -> int:

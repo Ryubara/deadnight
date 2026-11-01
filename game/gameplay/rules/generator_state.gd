@@ -11,6 +11,9 @@ signal fuel_low
 signal fuel_empty
 signal fuel_restored
 
+## The keys of `to_dict`, each with the type it must have.
+const SNAPSHOT_KEYS := {"fuel": TYPE_FLOAT, "circuits": TYPE_DICTIONARY}
+
 var fuel: float = 0.0
 var circuits: Dictionary[StringName, bool] = {}
 

@@ -1,0 +1,109 @@
+extends GdUnitTestSuite
+## What the zombie types promise beyond their mix: the speed cap, a look for every type, and a
+## blast paying by type like a bullet.
+
+## Looks that have no model in the game yet. A type may name one only if it is listed here with the
+## issue that adds it; the entry goes when the model lands (the test below fails until it does).
+const LOOKS_WITHOUT_A_MODEL := {&"headliner": "#181, needs the model of #127"}
+
+var _t: RulesTuning
+
+
+func before_test() -> void:
+	_t = RulesFixture.tuning()
+
+
+func _rng(seed_value: int = 1) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	return rng
+
+
+func test_no_type_outruns_the_speed_cap_even_with_the_jitter_at_its_top() -> void:
+	# A type may never outrun a sprinting player (docs/design/rounds.md). Late in the night every
+	# type's base speed is at or past the cap, so the jitter pushes a roll over it unless
+	# `roll_speed` holds it back: without its `minf`, this fails for every type that is not slow.
+	var cap := _t.rounds.speed_cap
+	var reached_cap := false
+	for type in _t.roster.types:
+		var rng := _rng(7)
+		for round_number in [20, 40, 500]:
+			for _i in 200:
+				var speed := _t.rounds.roll_speed(round_number, rng, type.speed_multiplier)
+				(
+					assert_float(speed)
+					. override_failure_message("%s rolled %s past the cap" % [type.id, speed])
+					. is_less_equal(cap)
+				)
+				reached_cap = reached_cap or is_equal_approx(speed, cap)
+	assert_bool(reached_cap).override_failure_message("no roll ever met the cap").is_true()
+
+
+func test_every_type_has_a_look_that_has_a_model() -> void:
+	for type in _t.roster.types:
+		for look in type.looks:
+			if LOOKS_WITHOUT_A_MODEL.has(look):
+				continue
+			(
+				assert_bool(ZombieModels.VARIANTS.has(look))
+				. override_failure_message(
+					"%s: look %s has no ZombieModels variant" % [type.id, look]
+				)
+				. is_true()
+			)
+
+
+func test_the_looks_without_a_model_are_still_missing_and_still_used() -> void:
+	# A stale exception would hide a real check: when a model lands, delete its entry above.
+	for look in LOOKS_WITHOUT_A_MODEL:
+		assert_bool(ZombieModels.VARIANTS.has(look)).is_false()
+		var used := false
+		for type in _t.roster.types:
+			used = used or type.looks.has(look)
+		assert_bool(used).override_failure_message("%s is used by no type" % look).is_true()
+
+
+func test_a_blast_pays_by_the_type_like_a_bullet() -> void:
+	var brute := _rules_with_one_living(&"brute")
+	var multiplier := _t.roster.type_of(&"brute").points_multiplier
+	var brute_id: int = brute.zombie_ids()[0]
+	var before := brute.points_of(1)
+	brute.apply(
+		RulesAction.explosion(1, [{"zombie_id": brute_id, "damage": 1.0, "leg_damage": 0.0}])
+	)
+	assert_int(brute.points_of(1) - before).is_equal(roundi(_t.economy.hit * multiplier))
+	before = brute.points_of(1)
+	brute.apply(
+		RulesAction.explosion(
+			1, [{"zombie_id": brute_id, "damage": RulesFixture.KILLING_DAMAGE, "leg_damage": 0.0}]
+		)
+	)
+	# The only zombie of the round: its death also pays the round bonus.
+	var kill_pay := brute.points_of(1) - before - _t.economy.round_bonus(brute.round_number)
+	assert_int(kill_pay).is_equal(roundi(_t.explosives.explosion_kill * multiplier))
+
+
+func test_a_blast_on_a_walker_still_pays_the_flat_amounts() -> void:
+	var walker := _rules_with_one_living(&"walker")
+	var walker_id: int = walker.zombie_ids()[0]
+	var before := walker.points_of(1)
+	walker.apply(
+		RulesAction.explosion(1, [{"zombie_id": walker_id, "damage": 1.0, "leg_damage": 0.0}])
+	)
+	assert_int(walker.points_of(1) - before).is_equal(_t.economy.hit)
+
+
+func test_blast_hits_on_a_boss_pay_up_to_its_own_limit() -> void:
+	var boss := _rules_with_one_living(&"headliner")
+	var boss_id: int = boss.zombie_ids()[0]
+	var before := boss.points_of(1)
+	for _i in 10:
+		boss.apply(
+			RulesAction.explosion(1, [{"zombie_id": boss_id, "damage": 1.0, "leg_damage": 0.0}])
+		)
+	var per_hit := roundi(_t.economy.hit * _t.roster.type_of(&"headliner").points_multiplier)
+	assert_int(boss.points_of(1) - before).is_equal(10 * per_hit)
+
+
+func _rules_with_one_living(type_id: StringName) -> GameRules:
+	return RulesFixture.with_one_living(type_id, _t)
