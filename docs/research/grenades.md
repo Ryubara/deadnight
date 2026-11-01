@@ -84,7 +84,7 @@ game looked finished and a player's throw key did nothing. The wiring, now:
   `grenade_exploded`. It is drawn at twice its size with a trail: at real size a hand grenade is lost from the shoulder
   camera by the time it lands. Gibs come from `zombie_removed` with the `blast` zone.
 - **The Soldier plays `Grenade_Cook` at the pin and `Grenade_Throw` / `Grenade_Toss` at the release**
-  (`PlayerAnimation.grenade_cooking`, `grenade_thrown`, `grenade_gone`); the gun goes down at the cook clip's
+  (`PlayerAnimation.grenade`: `cook`, `throw`, `gone`); the gun goes down at the cook clip's
   `grenade_visible` and comes back at the throw clip's `done`.
 - **Proof:** `tests/night/test_night_grenades.gd` presses the real key and follows the grenade to a dead zombie;
   `tests/night/test_input_matrix.gd` presses every gameplay action on every device (see [Input tests](input-tests.md)).

@@ -34,15 +34,19 @@ export const api = {
     call<{ matchId: string; ticket: string; address: { url: string; activityPath: string } }>(base, "POST", `/lobbies/${id}/ticket`, s.token),
 };
 
-/** Connects with the ticket and resolves with the server's first message. */
+/**
+ * Connects, sends the ticket as the first message (never in the URL, where proxies and access logs record it) and
+ * resolves with the server's first reply.
+ */
 export function connect(url: string, ticket: string): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket(`${url}?ticket=${encodeURIComponent(ticket)}`);
+    const socket = new WebSocket(url);
+    socket.once("open", () => socket.send(JSON.stringify({ type: "join", ticket })));
     socket.once("message", (data) => {
       socket.close();
       resolve(JSON.parse(data.toString()) as Record<string, unknown>);
     });
-    socket.once("close", (code) => reject(new Error(`closed ${code}`)));
+    socket.once("close", (code, reason) => reject(new Error(`closed ${code} ${reason.toString()}`.trim())));
     socket.once("error", reject);
   });
 }

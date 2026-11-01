@@ -81,7 +81,12 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
 - **Weapons:** `equip(class)` attaches the class's weapon scene (lever rifle, double shotgun, bat; Pistol has none yet)
   to a `BoneAttachment3D` on `Index1.R` with `HOLD_GUN` or `HOLD_MELEE`. The default is Rifle.
 - `clips.json` is read with `FileAccess`: the web preset includes `*.json` in its filter ([web export](web-export.md)).
-- No strafe or Walk_Shoot clips yet (they wait in PR #330): moving sideways plays Walk or Run forward under the aim (#74).
+- **Moving while aiming** plays the aim gait: `Walk_Shoot`, `Walk_Back`, `Strafe_Left`, `Strafe_Right` in a
+  `BlendSpace2D` on the velocity in the facing's frame, over the Idle/Walk/Run blend by an aim weight
+  ([Animation](../design/animation.md#moving-while-aiming)). Before, aiming at 2.6 m/s played the full Run (past the
+  1D blend's 2.2 m/s end) forward under the aim, whichever way the player went.
+- The body's state machine enters `locomotion` on the player's first landing (Start has no automatic transition): a
+  test that steps the tree with physics off starts the playback itself.
 
 ## Things found the hard way
 

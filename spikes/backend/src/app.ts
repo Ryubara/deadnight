@@ -1,6 +1,6 @@
 // The HTTP API. Everything is wired through `Deps`, so tests build the same app with stubs and in-memory parts.
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { type Lobby, LobbyFailure, LobbyService } from "./lobbies.ts";
@@ -172,11 +172,14 @@ export function buildApp(deps: Deps): FastifyInstance {
     const seat = lobby.members.find((m) => m.userId === request.userId);
     if (!seat) throw new LobbyFailure("not_member");
     if (!lobby.match) throw new LobbyFailure("not_started");
+    const { server } = lobby.match;
+    // Bound to one server (it rejects another server's ticket) and single use (`jti`).
     const ticket = signToken(config.ticketSecret, "ticket", seat.userId, TICKET_TTL_SECONDS, {
       matchId: lobby.match.id,
+      serverId: server.id,
+      jti: randomUUID(),
       name: seat.name,
     });
-    const { server } = lobby.match;
     return { matchId: lobby.match.id, address: { url: server.url, activityPath: server.activityPath }, ticket };
   });
 
@@ -213,8 +216,8 @@ export function buildApp(deps: Deps): FastifyInstance {
           required: ["id", "url", "activityPath", "capacity", "matches"],
           properties: {
             id: { type: "string", maxLength: 64 },
-            url: { type: "string", maxLength: 256 },
-            activityPath: { type: "string", maxLength: 128 },
+            url: { type: "string", maxLength: 256, pattern: "^wss?://\\S+$" },
+            activityPath: { type: "string", maxLength: 128, pattern: "^/\\S*$" },
             capacity: { type: "integer", minimum: 0 },
             matches: { type: "integer", minimum: 0 },
           },

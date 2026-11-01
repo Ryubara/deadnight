@@ -10,9 +10,11 @@ uniform float aspect = 1.7778;
 uniform float max_dist = 1.2;
 uniform float rim_width : hint_range(0.01, 0.2) = 0.05;
 
-const vec3 BLACK = vec3(0.02, 0.015, 0.02);
-const vec3 RIM_WARM = vec3(1.0, 0.72, 0.3);
-const vec3 RIM_HOT = vec3(1.0, 0.95, 0.8);
+// The colours are the tokens iris_shade, iris_rim and iris_rim_hot; UITransitionShader sets them,
+// and these defaults only cover a shader previewed on its own.
+uniform vec3 iris_shade = vec3(0.02, 0.015, 0.02);
+uniform vec3 iris_rim = vec3(1.0, 0.72, 0.3);
+uniform vec3 iris_rim_hot = vec3(1.0, 0.95, 0.8);
 
 void fragment() {
 	vec2 centred = (UV - origin) * vec2(aspect, 1.0);
@@ -25,17 +27,17 @@ void fragment() {
 	// The radius runs from just inside zero to past the corners, so the rim leaves the frame.
 	float radius = open * (1.0 + rim_width * 3.0) - rim_width;
 	float outside = dist - radius;
-	vec4 colour = vec4(BLACK, 1.0);
+	vec4 colour = vec4(iris_shade, 1.0);
 	if (outside < -rim_width) {
 		colour = vec4(0.0);
 	} else if (outside < 0.0) {
 		// Inside the edge: a soft warm glow that brightens toward the rim.
 		float t = (outside + rim_width) / rim_width;
-		colour = vec4(mix(RIM_WARM, RIM_HOT, t), smoothstep(0.0, 1.0, t) * 0.9);
+		colour = vec4(mix(iris_rim, iris_rim_hot, t), smoothstep(0.0, 1.0, t) * 0.9);
 	} else if (outside < rim_width) {
 		// Outside the edge: the hot rim cools into the black.
 		float t = outside / rim_width;
-		colour = vec4(mix(RIM_HOT, BLACK, smoothstep(0.0, 0.7, t)), 1.0);
+		colour = vec4(mix(iris_rim_hot, iris_shade, smoothstep(0.0, 0.7, t)), 1.0);
 	}
 	COLOR = colour;
 }

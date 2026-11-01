@@ -74,3 +74,6 @@ speed, 5.4 m/s and a round 20 dark runner, and the same runners from the shoulde
 
 - The walk and the run are not in phase, which is why they are not blended for long; a phase-matched pair would
   allow a smooth jog between them.
+- The crossover over-steps at some speeds between the cases the test checks: a round 8 walker under the lights
+  (2.32 m/s) has its feet at 3.6 m/s, a slide of 0.65 against the test's 0.7 floor
+  ([movement speeds](movement-speeds.md#what-the-chase-clips-show), `tests/captures/gait_at_speeds.tscn`).
