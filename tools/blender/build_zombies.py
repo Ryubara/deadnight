@@ -474,4 +474,5 @@ def main():
     (args.out / "zombies.json").write_text(json.dumps(report, indent=1))
 
 
-main()
+if __name__ == "__main__":  # build_boss.py imports this file for its helpers
+    main()

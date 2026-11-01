@@ -56,6 +56,39 @@ Every variant ships as one file with both levels of detail under one skeleton (`
 game switches them with visibility ranges (proposal: far beyond 18 m). Both meshes are skinned, so a zombie costs one
 skeleton and one draw call whichever is shown.
 
+## Boss: the Projectionist
+
+The headliner of boss nights: the drive-in's projectionist, grown huge in the booth, still wearing his pale dust coat,
+the projector's arc lamp burning in his gut and a film reel strapped across his back. Built by
+`tools/blender/build_boss.py` (pinned Blender, headless; how to run it is at the top of the file) as a variant on the
+shared rig, the way the brute is made, into `game/assets/characters/zombie_boss/`.
+
+| What | Choice | Why |
+| --- | --- | --- |
+| Height | 1.45 (armature scale): 1.97 m at kit scale, 2.56 m at game scale | a head over the brute (2.09 m): the one thing on the lot taller than a door |
+| Build | vertices pushed 60-75 mm along the normals on torso, arms and belly, 25 mm on the legs | a barrel body under the kit head |
+| Colours | pale dust coat `#bdb39a` (long sleeves), grey-green skin `#6f7f5c`, near-black trousers | the palest mass on the lot catches any light; nothing else wears it |
+| Silhouette | a film reel (0.38 m radius, kit scale) upright on the back, wider than the shoulders | from the front it is a dark disc behind the head; from the side a slab; no common has it |
+| Weak spot | the arc lamp in the belly: a dark housing, a grey rim and an amber lens `#ffd27a` that glows (emission map, strength 6) | the brightest point on the lot at night; the attack's wind-up lifts the arms and shows it fully |
+| `WeakSpot` node | an empty on the `Torso` bone at the lens; Godot makes it a `BoneAttachment3D` | the hitbox and an `OmniLight3D` hang from it and follow every clip |
+| Budget | 8,000 gameplay, 3,000 far (8,314 built: kit 7,822 plus 492 for the lamp and reel) | two walkers' worth; one boss on a 20-zombie night is 88k at gameplay LOD, inside the 80-112k crowd numbers above |
+| Material | one, its own: the zombie atlas plus the boss swatches, and a black emission map lit only at the lens | the commons' shared atlas has no emission; one boss is one extra draw call |
+
+It keeps the 50-bone skeleton and carries the kit's 16 clips, so `ZombieRig` attaches to it unchanged; its own five
+clips are added beside them (`clips.json` next to the model has lengths, loops and event frames):
+
+| Clip | Length | Loop | Events (frame at 24 fps) | What it shows |
+| --- | ---: | --- | --- | --- |
+| `Boss_Walk` | 1.67 s | yes | | the kit Walk slowed from 32 to 40 frames, hunched, arms hanging lower, the chest rolling over the planted foot |
+| `Boss_Attack` | 2.50 s | no | windup 0, telegraph 22, hit 32, recover 44 | a two-handed overhead smash: arms climb overhead and hold (0.9 s to the peak, 1.33 s to the hit), a fast slam, a slow recovery; the raised arms bare the lamp, the opening players learn |
+| `Boss_Roar` | 2.75 s | no | roar 22 | the entrance: gather, rear up with the arms flung up and out, a shaking roar, settle |
+| `Boss_Stagger` | 1.42 s | no | hit 0 | a lamp hit: thrown back, then folded over the lamp with the hands at it, back up at 1.4 s |
+| `Boss_Death` | 2.17 s | no | fall 20 | the stagger's recoil and fold, then the kit Death slowed 2.5x: a heavy fall onto the back |
+
+Rules for the behaviour code: loop `Boss_Walk`; time the attack's damage on `hit` and let the dodge window run from
+`telegraph`; the lamp goes dark on `Boss_Death` (set the material's emission off); the reel clips the ground in the
+last frames of the death, which the dark hides.
+
 ## Animation set
 
 The kit zombie has 16 clips (24 fps, no root motion). A round-based zombie needs these; "kit" clips are shared through
