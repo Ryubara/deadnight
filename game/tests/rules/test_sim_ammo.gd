@@ -90,15 +90,26 @@ func test_players_buy_ammunition_with_the_shipped_prices() -> void:
 	assert_int(ammo).is_greater(0)
 
 
-func test_without_ammunition_for_sale_the_night_runs_dry_and_ends_sooner() -> void:
-	var stocked := _night(RulesFixture.tuning())
-	var dry := _night(_no_ammo_for_sale())
-	assert_int(dry._result["dry_rounds"]).is_greater(0)
-	assert_int(dry._result["rounds_reached"]).is_less(stocked._result["rounds_reached"])
-	for player: NightSim.SimPlayer in dry._players.values():
-		# Nothing was ever bought, so a reserve can only be at or under what the weapon gave.
-		for arm: NightSim.SimArm in player.arms.values():
-			assert_int(arm.reserve).is_less_equal(arm.def().reserve_start)
+func test_a_player_with_no_rounds_and_none_to_buy_fights_with_the_crowbar() -> void:
+	var sim := NightSim.new(_no_ammo_for_sale(), SimSkill.named(SimSkill.AVERAGE), 1, 11, 0.25)
+	var player: NightSim.SimPlayer = sim._players[1]
+	player.arms[&"pistol"].mag = 2
+	player.arms[&"pistol"].reserve = 0
+	sim.run(30)
+	assert_int(sim._result["dry_rounds"]).is_greater(0)
+	assert_int(sim._result["rounds_reached"]).is_less(
+		_night(RulesFixture.tuning())._result["rounds_reached"]
+	)
+
+
+func test_the_same_player_with_ammunition_for_sale_buys_it_and_does_not_run_dry() -> void:
+	var sim := NightSim.new(RulesFixture.tuning(), SimSkill.named(SimSkill.AVERAGE), 1, 11, 0.25)
+	var player: NightSim.SimPlayer = sim._players[1]
+	player.arms[&"pistol"].mag = 2
+	player.arms[&"pistol"].reserve = 0
+	sim.run(30)
+	assert_int(sim._result["dry_rounds"]).is_equal(0)
+	assert_int(sim._result["spent_on"].get(&"ammo_pistol", 0)).is_greater(0)
 
 
 func test_a_night_with_ammunition_is_repeatable() -> void:
