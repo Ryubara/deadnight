@@ -220,6 +220,10 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
 
     # The mouse turns the view: a full-screen control that catches the mouse once ate every motion
     # (desktop and web alike), and only a real browser run sees that.
+    page.evaluate(
+        "() => { window.__moves = []; window.addEventListener('mousemove', (e) => "
+        "window.__moves.push([e.movementX, e.movementY, e.clientX, e.isTrusted]), true); }"
+    )
     page.mouse.move(640, 360)
     page.wait_for_timeout(500)
     yaw_before = probe(page).get("yaw", 0.0)
@@ -232,7 +236,8 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     if result["mouse_look_turn_rad"] < 0.1:
         lock = page.evaluate("() => document.pointerLockElement ? document.pointerLockElement.tagName : null")
         raise RuntimeError(
-            f"moving the mouse did not turn the view (yaw {yaw_before} -> {yaw_after}, pointer lock {lock})"
+            f"moving the mouse did not turn the view (yaw {yaw_before} -> {yaw_after}, pointer lock {lock}, "
+            f"page saw {page.evaluate('() => window.__moves')})"
         )
 
     # Walk a square and fire for the rest of the time, so the night is played, not only started.
