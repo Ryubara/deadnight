@@ -89,11 +89,20 @@ draining:
 - **A screen leaves the stack when it leaves the tree** (`tree_exiting`), so `depth()` and `top()` never return a freed
   instance (that is a script error in a typed getter).
 - **A source that cannot be shown** (a path that does not exist or is not a scene, a scene whose root is not a
-  `Control`, any other type) logs one `UIRouter: cannot show ...` error and the router carries on.
+  `Control`, any other type) logs one `UIRouter: cannot show ...` error and the router carries on. A freed object is
+  rejected before any `is` test (that raises a script error on a freed instance), and a `Control` that is already on
+  the stack or already has a parent is refused the same way (it is the caller's: never freed here). Every refusal also
+  emits `error_reported(message)`, which is what the tests count.
+- **A screen freed on top while the router is idle** reveals the one below it: shown, enabled, at rest and focused (the
+  path a pop ends with), `screen_changed` emitted. If it was the last screen the stack is empty (`depth() == 0`, a
+  blank stage, `screen_changed(0)`) until the next `push` or `reset`. A pop or reset that loses its screen mid-way ends
+  the same way, with one `push_error` and `error_reported`. While a job runs it finishes the stack itself.
 
 ### Tests
 
-`game/tests/ui/test_ui_router.gd` (GdUnit4): queued push, pop and replace order, pop and back at the root, back ignored
+`game/tests/ui/test_ui_router_robustness.gd` adds a reset that loses a screen, a screen that frees itself in `_ready`
+and the tree paused mid-transition. `game/tests/ui/test_ui_router.gd` (GdUnit4): queued push, pop and replace order,
+pop and back at the root, back ignored
 while busy, a screen freed mid-transition (every transition kind, outgoing, incoming and popped), a bad source, and the
 slide pop mirroring the push. Run: `godot --headless --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a
 res://tests -c --ignoreHeadlessMode`. Do not add `-d`: the debugger then stops at the first script error and waits for
