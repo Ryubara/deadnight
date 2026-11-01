@@ -160,6 +160,12 @@ the Soldier with the weapon clips, every track finds its bone).
 | release | spawn the projectile at the hand bone's global position, hide the grenade in the hand |
 | done | the arms are down; `Equip_<Class>` of the weapon can start |
 
+- **In the night (#351):** `PlayerAnimation` adds the three clips to the Soldier's library like the repair clip and
+  plays them on the upper-body action layer (`play_clip`): `Grenade_Cook` on the server's `cook_started`,
+  `Grenade_Throw` or `Grenade_Toss` on `grenade_thrown`. `grenade_visible` puts the gun away and `done` brings it back
+  (the `gone` stage when the grenade went off in the hand). The server throws at the button's release, so the release
+  frame is not yet what spawns the grenade, and the cook clip does not hold its last frame yet: both are open in
+  [Grenades](../research/grenades.md#open).
 - **Hand bone:** `Index1.R`, the bone every weapon is held on. At `release` the projectile starts at that bone's
   global position (at kit scale the hand is about 0.35 m above the head bone's origin for the throw, 0.55 m below it for
   the toss); its velocity comes from the aim and the throw strength, not from the hand: the hand sweeps across the

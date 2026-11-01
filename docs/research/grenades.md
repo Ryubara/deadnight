@@ -63,12 +63,44 @@ What building the server-side grenades (`game/gameplay/grenades/`) taught us. Th
 - **Effects shorter than a frame.** At 10 fps a frame is 0.1 s; the blast, the ring and the gibs last 0.5 to 1.4 s so a
   capture sees them.
 
+## In the night (#351)
+
+For a month grenades worked only in the test range below: `GrenadeServer` and `GrenadeThrower` were wired there and
+nowhere else, while the keys, the HUD count, the shop item, the sounds and the Soldier's clips all existed, so the
+game looked finished and a player's throw key did nothing. The wiring, now:
+
+- **`NightServer` owns a `GrenadeServer` and one `GrenadeThrower` per player.** Each tick it tells the grenade server
+  where the players and the dead stand, turns the `throw_over` / `throw_under` levels of the latest command into
+  `cook` and `throw` actions (the hand is 1.45 m up and 0.35 m forward along the aim; the aim is the command's camera
+  ray; the velocity is the body's), and steps the fuses. Its answer is filtered to `GRENADE_EVENTS`: the grenade
+  server's answer also repeats the rules' events, which already ride the rules signal, so sending both would double
+  every `grenade_count_changed` and every kill.
+- **A refused cook ends the hold.** On `cook_rejected`, a drop, or a blast in the hand the thrower is `abandon()`ed,
+  so a held key does not pull a pin every tick until it is let go (`no_grenades`, `wrong_phase`, `player_downed`).
+- **The thrower's share of the blast reaches their health** through `RulesAction.blow` (40%, cover included); the
+  zombies a blast hits are staggered through `ZombieSim.react_to_hit`.
+- **The view is a copy of the grenade.** `NightView` makes a `GrenadeView` from `grenade_thrown` / `grenade_dropped`,
+  steps its own `GrenadeState` on every `frame` event with the same `WorldCast`, and swaps it for a `BlastEffect` at
+  `grenade_exploded`. It is drawn at twice its size with a trail: at real size a hand grenade is lost from the shoulder
+  camera by the time it lands. Gibs come from `zombie_removed` with the `blast` zone.
+- **The Soldier plays `Grenade_Cook` at the pin and `Grenade_Throw` / `Grenade_Toss` at the release**
+  (`PlayerAnimation.grenade`: `cook`, `throw`, `gone`); the gun goes down at the cook clip's
+  `grenade_visible` and comes back at the throw clip's `done`.
+- **Proof:** `tests/night/test_night_grenades.gd` presses the real key and follows the grenade to a dead zombie;
+  `tests/night/test_input_matrix.gd` presses every gameplay action on every device (see [Input tests](input-tests.md)).
+
 ## Open
 
-- Player health does not exist yet; `player_blasted` carries the damage, knockback and stun for it.
+- The blast's knockback and the zombie's stun are not applied in the night (`blast_hit` carries `impulse` and `stun`;
+  the sim only staggers).
+- The Soldier's throw clip starts when the grenade leaves (the server throws at the button's release), so its
+  release frame (9) comes about 0.4 s after the grenade is gone. Either the throw waits for the clip's release frame
+  or the clip is played from that frame.
+- The cook clip holds its last frame in the design; the night plays it once, so a long cook shows the aim pose again.
+- The grenade is not drawn in the Soldier's hand (no hold data yet, #285), and there is no arc preview in the night.
 - The crawler's hit zones are the standing zombie's. A crawler is lower than its zones; a separate low `Hitbox` table
   is needed once the zombie behaviour (#17) swaps the mesh.
-- The grenade model and the Soldier's throw clip come from the artist; `GrenadeView.model` is the seam.
+- The grenade model comes from the artist; `GrenadeView.model` is the seam.
 
 ## Try it
 

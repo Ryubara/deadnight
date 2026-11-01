@@ -24,7 +24,10 @@ func _ready() -> void:
 		if section["heading"] != "":
 			box.add_child(_label(str(section["heading"]).to_upper(), UILabel.Style.OVERLINE))
 		for line in section["names"]:
-			box.add_child(_label(line, UILabel.Style.BODY))
+			var name_label := _label(line, UILabel.Style.CAPTION)
+			# Caption size keeps the whole list on one screen; the full ink keeps it readable.
+			name_label.add_theme_color_override(&"font_color", _tokens.ink)
+			box.add_child(name_label)
 	box.add_child(_gap())
 	var back := UIButton.new()
 	back.name = "Back"

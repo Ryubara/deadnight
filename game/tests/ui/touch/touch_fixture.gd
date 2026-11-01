@@ -19,6 +19,8 @@ var controls: TouchControls
 var host: Control
 var _suite: GdUnitTestSuite
 var _hand_before: Variant = null
+## False for a fixture over controls that belong to something else (`attach`).
+var _owns_host := true
 
 
 static func make(
@@ -41,6 +43,16 @@ static func make(
 	return fixture
 
 
+## A fixture over touch controls that already exist (the night screen's own), instead of a new set.
+static func attach(suite: GdUnitTestSuite, existing: TouchControls) -> TouchFixture:
+	var fixture := TouchFixture.new()
+	fixture._suite = suite
+	fixture.controls = existing
+	fixture.host = existing.get_parent() as Control
+	fixture._owns_host = false
+	return fixture
+
+
 ## The player's hand: true flips the layout (through the setting, as the Settings screen does).
 func left_handed(on := true) -> void:
 	var settings := _suite.get_tree().root.get_node("Settings")
@@ -56,7 +68,7 @@ func free_all() -> void:
 		)
 		_hand_before = null
 	TouchMode.device_is_touch = null
-	if is_instance_valid(host):
+	if _owns_host and is_instance_valid(host):
 		host.free()
 	Input.emulate_mouse_from_touch = true
 	UIInputMode.reset()
