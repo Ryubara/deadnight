@@ -31,10 +31,11 @@ extends RefCounted
 ##   purchase_made: player_id, item_id, price, detail
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   door_opened: door_id
-##   fuel_changed: fuel, delta
+##   fuel_changed: fuel (exact), delta (whole units since the last one); only when the whole-unit
+##     value changes, so about once per unit burnt or bought, not once per tick
 ##   fuel_low, fuel_empty, fuel_restored
 ##   circuit_changed: circuit_id, on
-##   game_over: reason, round_reached
+##   game_over: reason (all_down or no_players), round_reached
 ##   action_rejected: reason, action (the type), field (when one field is to blame)
 
 signal event_emitted(event: Dictionary)
@@ -54,6 +55,29 @@ enum BuyResult {
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
 const SNAPSHOT_VERSION := 2
+## A snapshot restore answers with one of these (`&""` when it worked).
+const RESTORE_BAD_VERSION := &"bad_version"
+const RESTORE_WRONG_TUNING := &"wrong_tuning"
+const RESTORE_MALFORMED := &"malformed"
+## The keys of `to_dict`, each with the type it must have.
+const SNAPSHOT_KEYS := {
+	"version": TYPE_INT,
+	"tuning_id": TYPE_STRING,
+	"seed": TYPE_INT,
+	"phase": TYPE_INT,
+	"round": TYPE_INT,
+	"break_left": TYPE_FLOAT,
+	"spawn_left": TYPE_INT,
+	"spawn_timer": TYPE_FLOAT,
+	"round_players": TYPE_INT,
+	"next_zombie_id": TYPE_INT,
+	"zombies": TYPE_DICTIONARY,
+	"players": TYPE_DICTIONARY,
+	"doors_open": TYPE_ARRAY,
+	"generator": TYPE_DICTIONARY,
+	"spawn_rng_state": TYPE_INT,
+	"shop_rng_state": TYPE_INT,
+}
 ## A fuel purchase needs at least this much room in the tank.
 const MIN_FUEL_SPACE := 1.0
 ## Offsets so the spawn and shop generators never share a stream.
@@ -77,6 +101,8 @@ var _zombies: Dictionary[int, ZombieState] = {}
 var _spawn_rng := RandomNumberGenerator.new()
 var _shop_rng := RandomNumberGenerator.new()
 var _events: Array[Dictionary] = []
+## The whole-unit fuel value the last `fuel_changed` event announced.
+var _fuel_announced: int = 0
 
 
 ## A fresh night. `p_tuning` defaults to the shipped table.
@@ -86,10 +112,8 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 	_spawn_rng.seed = p_seed ^ SPAWN_STREAM
 	_shop_rng.seed = p_seed ^ SHOP_STREAM
 	generator = GeneratorState.new(tuning.fuel)
-	generator.fuel_changed.connect(
-		func(fuel: float, delta: float) -> void:
-			_emit(&"fuel_changed", {"fuel": fuel, "delta": delta})
-	)
+	_fuel_announced = floori(generator.fuel)
+	generator.fuel_changed.connect(_on_fuel_changed)
 	generator.fuel_low.connect(func() -> void: _emit(&"fuel_low"))
 	generator.fuel_empty.connect(func() -> void: _emit(&"fuel_empty"))
 	generator.fuel_restored.connect(func() -> void: _emit(&"fuel_restored"))
@@ -139,9 +163,10 @@ func zombies_remaining() -> int:
 # --- Snapshot ---
 
 
-## Everything, as plain Variant data (numbers, strings, arrays, dictionaries), ready for
-## var_to_bytes. The tuning is not included: both sides load the same table. Random states are
-## 64-bit integers: convert before JSON.
+## Everything, as plain Variant data. The tuning table itself is not included (both sides load the
+## same one) but its fingerprint is, and a restore refuses a different table. This dictionary is
+## exact only as Variant data: through JSON the integer keys, the 64-bit random states and some
+## floats change. For a save file or the wire use `to_bytes()` or `to_wire()`.
 func to_dict() -> Dictionary:
 	var player_data := {}
 	for player_id in players:
@@ -151,6 +176,7 @@ func to_dict() -> Dictionary:
 		zombie_data[zombie_id] = _zombies[zombie_id].to_dict()
 	return {
 		"version": SNAPSHOT_VERSION,
+		"tuning_id": tuning.fingerprint(),
 		"seed": rng_seed,
 		"phase": phase,
 		"round": round_number,
@@ -168,8 +194,41 @@ func to_dict() -> Dictionary:
 	}
 
 
+## The snapshot as bytes (`var_to_bytes`), exact in every number and key. Store these, or send
+## them as a binary message.
+func to_bytes() -> PackedByteArray:
+	return var_to_bytes(to_dict())
+
+
+## The snapshot as a base64 string: the form to put inside JSON (a save, an HTTP body), exact too.
+func to_wire() -> String:
+	return Marshalls.raw_to_base64(to_bytes())
+
+
+## Restores from `to_bytes()`. Returns what `from_dict` returns.
+func from_bytes(bytes: PackedByteArray) -> StringName:
+	var data: Variant = bytes_to_var(bytes)
+	if typeof(data) != TYPE_DICTIONARY:
+		return RESTORE_MALFORMED
+	return from_dict(data)
+
+
+## Restores from `to_wire()`. Returns what `from_dict` returns.
+func from_wire(wire: String) -> StringName:
+	return from_bytes(Marshalls.base64_to_raw(wire))
+
+
 ## Replaces this night's state with a snapshot. Emits no events: a restore is not a change.
-func from_dict(data: Dictionary) -> void:
+## Returns `&""` when it worked, else why it did not (`RESTORE_*`) with this night left untouched:
+## a snapshot of another version, of another tuning table, or one that is not a snapshot.
+func from_dict(data: Dictionary) -> StringName:
+	for key: String in SNAPSHOT_KEYS:
+		if not data.has(key) or not _fits(data[key], SNAPSHOT_KEYS[key]):
+			return RESTORE_MALFORMED
+	if data["version"] != SNAPSHOT_VERSION:
+		return RESTORE_BAD_VERSION
+	if data["tuning_id"] != tuning.fingerprint():
+		return RESTORE_WRONG_TUNING
 	rng_seed = data["seed"]
 	phase = data["phase"]
 	round_number = data["round"]
@@ -186,10 +245,16 @@ func from_dict(data: Dictionary) -> void:
 		players[player_id] = PlayerState.from_dict(data["players"][player_id])
 	doors_open.assign(data["doors_open"])
 	generator.restore(data["generator"])
+	_fuel_announced = floori(generator.fuel)
 	_spawn_rng.seed = rng_seed ^ SPAWN_STREAM
 	_spawn_rng.state = data["spawn_rng_state"]
 	_shop_rng.seed = rng_seed ^ SHOP_STREAM
 	_shop_rng.state = data["shop_rng_state"]
+	return &""
+
+
+func _fits(value: Variant, expected: int) -> bool:
+	return typeof(value) == expected or (expected == TYPE_FLOAT and typeof(value) == TYPE_INT)
 
 
 # --- Actions ---
@@ -198,7 +263,9 @@ func from_dict(data: Dictionary) -> void:
 func _dispatch(action: Dictionary) -> void:
 	match action.get("type", &""):
 		RulesAction.START:
-			if phase == Phase.IDLE:
+			if players.is_empty():
+				_reject(&"no_players", RulesAction.START)
+			elif phase == Phase.IDLE:
 				_enter_break(tuning.rounds.intro_seconds)
 		RulesAction.TICK:
 			_tick(action["delta"])
@@ -246,6 +313,16 @@ func _emit(type: StringName, fields: Dictionary = {}) -> void:
 	var event := {"type": type}
 	event.merge(fields)
 	_events.append(event)
+
+
+## The generator reports every tick; the rules announce a change only when the whole-unit value
+## moves (low, empty and restored are separate events and still fire at their exact moments).
+func _on_fuel_changed(fuel: float, _delta: float) -> void:
+	var whole := floori(fuel)
+	if whole == _fuel_announced:
+		return
+	_emit(&"fuel_changed", {"fuel": fuel, "delta": float(whole - _fuel_announced)})
+	_fuel_announced = whole
 
 
 # --- Rounds ---
@@ -351,14 +428,24 @@ func _end_round() -> void:
 	_enter_break(tuning.rounds.break_seconds)
 
 
+## The night ends when nobody is left in it (a break or a round) or, in a round, everyone is down.
 func _check_game_over() -> void:
-	if phase != Phase.ACTIVE or players.is_empty():
+	if phase != Phase.ACTIVE and phase != Phase.BREAK:
+		return
+	if players.is_empty():
+		_end_night(&"no_players")
+		return
+	if phase != Phase.ACTIVE:
 		return
 	for player: PlayerState in players.values():
 		if not player.downed:
 			return
+	_end_night(&"all_down")
+
+
+func _end_night(reason: StringName) -> void:
 	_set_phase(Phase.OVER)
-	_emit(&"game_over", {"reason": &"all_down", "round_reached": round_number})
+	_emit(&"game_over", {"reason": reason, "round_reached": round_number})
 
 
 func _set_phase(new_phase: Phase) -> void:
