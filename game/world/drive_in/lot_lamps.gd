@@ -13,7 +13,7 @@ extends RefCounted
 ## The generator's circuits and the lamps' own kinds.
 const MAINS := &"mains"
 const BATTERY := &"battery"
-## Metres within which a lamp lights the ground for the dead's slowdown.
+## Metres within which a lamp lights the ground, where the dead keep to their round's pace.
 const LAMP_REACH := 6.0
 ## A failing tank changes a lamp's state every this many ticks (60 a second: about 12 times).
 const FLICKER_TICKS := 5
@@ -38,6 +38,8 @@ class Lamp:
 	var post: LampPost
 	var position: Vector3
 	var level := -1.0
+	## A lamp that is only seen (a sign's glow): it lights no ground for the dead's slowdown.
+	var decor := false
 
 
 var lamps: Array[Lamp] = []
@@ -88,6 +90,8 @@ func lamps_on(circuit: StringName) -> Array[Lamp]:
 ## reach. Without a generator everything is lit. This is the rules' word; a node is never asked.
 func lit_at(point: Vector3, generator: GeneratorState) -> bool:
 	for lamp in lamps:
+		if lamp.decor:
+			continue
 		if _flat(point, lamp.position) < LAMP_REACH and circuit_is_lit(lamp.circuit, generator):
 			return true
 	return false
@@ -183,6 +187,7 @@ func _lamp_of(light: Light3D) -> Lamp:
 	lamp.energy = light.light_energy
 	lamp.afterglow = float(light.get_meta(&"afterglow", 0.0))
 	lamp.post = light.get_parent() as LampPost
+	lamp.decor = bool(light.get_meta(&"decor", false))
 	lamp.position = light.global_position
 	return lamp
 

@@ -35,6 +35,19 @@ func test_no_type_outruns_the_speed_cap_even_with_the_jitter_at_its_top() -> voi
 	assert_bool(reached_cap).override_failure_message("no roll ever met the cap").is_true()
 
 
+func test_the_speed_cap_sits_between_the_players_run_and_sprint() -> void:
+	# The fastest zombie matches the player's run (running alone no longer shakes it) and stays well
+	# under the sprint (a sprinting player always gets away): docs/research/movement-speeds.md.
+	var player: PlayerTuning = load("res://gameplay/player/player_tuning_default.tres")
+	var cap := _t.rounds.speed_cap
+	(
+		assert_float(cap)
+		. override_failure_message("a cap below the run speed lets running outpace every zombie")
+		. is_greater(player.run_speed)
+	)
+	assert_float(cap).is_less_equal(player.sprint_speed * 0.75)
+
+
 func test_every_type_has_a_look_that_has_a_model() -> void:
 	for type in _t.roster.types:
 		for look in type.looks:

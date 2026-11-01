@@ -4,7 +4,7 @@ The game as it stands. Each subject gets one page here, updated in place as the 
 
 ## Pillars
 
-1. **Light is survival.** The generator powers the lot's lights and the projector; lit ground slows the dead. Points
+1. **Light is survival.** The generator powers the lot's lights and the projector; the dead are faster off lit ground. Points
    buy fuel, doors and weapons, so every round asks what stays powered.
 2. **A night that closes in.** Rounds grow harder and the night darker; the map opens outward from the screen to the
    road into town.

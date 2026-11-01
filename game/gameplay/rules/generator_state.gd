@@ -2,8 +2,8 @@ class_name GeneratorState
 extends RefCounted
 ## The generator's tank and circuits. Pure state with signals; GameRules ticks it.
 ##
-## A circuit is one lit part of the lot. Lit ground slows the dead, so keeping a circuit on costs
-## fuel and buys safety.
+## A circuit is one lit part of the lot. The dead move faster off lit ground, so keeping a circuit
+## on costs fuel and keeps them at their round's pace.
 
 signal fuel_changed(fuel: float, delta: float)
 signal circuit_changed(circuit_id: StringName, on: bool)

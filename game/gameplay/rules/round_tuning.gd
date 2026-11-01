@@ -26,15 +26,19 @@ extends Resource
 @export var health_growth: float = 1.07
 
 @export_group("Speed")
-## Walking speed of a zombie in round 1, metres per second.
-@export var speed_base: float = 0.9
-@export var speed_step: float = 0.1
-## No zombie is faster than this, so a sprinting player can always get away.
-@export var speed_cap: float = 4.5
+## Walking speed of a zombie in round 1, metres per second: its pace under the lights. The
+## round-by-round pace follows the original games' speed tiers (docs/research/movement-speeds.md).
+@export var speed_base: float = 1.2
+@export var speed_step: float = 0.16
+## No zombie is faster than this under the lights: a hair above the player's run, so running alone
+## does not shake the fastest, but a sprinting player can always get away.
+@export var speed_cap: float = 5.0
 ## Each zombie's speed is varied by up to this fraction either way.
 @export var speed_jitter: float = 0.12
-## A zombie on lit ground moves at this fraction of its speed (the light pillar).
-@export var lit_speed_multiplier: float = 0.6
+## A zombie on ground that is not lit (a circuit off, or the generator dry) moves at this multiple
+## of its speed: the dark makes the dead faster, and the light only keeps them at their round's
+## pace. Times `speed_cap` it must stay under the player's sprint.
+@export var dark_speed_multiplier: float = 1.25
 
 @export_group("Spawning")
 ## Seconds between spawns in round 1 for one player.
@@ -96,7 +100,7 @@ func roll_speed(
 
 ## The speed a zombie really moves at, given whether it stands on lit ground.
 func speed_on_ground(speed: float, lit: bool) -> float:
-	return speed * lit_speed_multiplier if lit else speed
+	return speed if lit else speed * dark_speed_multiplier
 
 
 func spawn_interval(round_number: int, players: int) -> float:

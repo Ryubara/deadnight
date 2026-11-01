@@ -96,6 +96,11 @@ func test_a_post_moves_its_lever_and_lamp_and_does_not_share_them() -> void:
 	var off_lever := _lever(booth)
 	var off_lamp := _lamp_colour(booth)
 	booth.set_on(true)
+	# The halo round the lamp follows the post's own state, not its neighbour's.
+	var halo := (booth.get_node("Halo") as MeshInstance3D).material_override as ShaderMaterial
+	var other := (concession.get_node("Halo") as MeshInstance3D).material_override as ShaderMaterial
+	assert_float(halo.get_shader_parameter(&"energy")).is_equal(CircuitSwitch.HALO_ON)
+	assert_float(other.get_shader_parameter(&"energy")).is_equal(CircuitSwitch.HALO_OFF)
 	assert_float(_lever(booth)).is_not_equal(off_lever)
 	assert_float(_lever(concession)).is_equal(off_lever)
 	assert_bool(_lamp_colour(booth).g > _lamp_colour(booth).r).is_true()
@@ -104,7 +109,7 @@ func test_a_post_moves_its_lever_and_lamp_and_does_not_share_them() -> void:
 
 
 func test_a_post_is_no_lamp_of_the_lot() -> void:
-	# The lamps the dead's slowdown asks about are the `powered_light` group: a post adds none.
+	# The lamps the dead's lit pace asks about are the `powered_light` group: a post adds none.
 	var posts := _lot.get_node("Switches")
 	for lamp in _lot.get_tree().get_nodes_in_group(&"powered_light"):
 		assert_bool(posts.is_ancestor_of(lamp)).is_false()

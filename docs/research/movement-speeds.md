@@ -5,7 +5,7 @@ We study it for design only: nothing here is copied, only numbers and rules are 
 [rounds](../design/rounds.md) (the speed cap, the runner); the player's numbers are on
 [the player controller](player-controller.md).
 
-![Zombie speed against the round, Call of Duty above and Deadnight below, with the player's run and sprint as lines](movement-speeds.png)
+![Zombie speed against the round: Call of Duty above; Deadnight below, before and after the rework, lit and dark, with the player's run and sprint as lines](movement-speeds.png)
 
 ## How to read the numbers
 
@@ -119,74 +119,99 @@ not 10), and BO4 and Cold War added a tier above the sprint for the very late ro
 runs out in the games that have a limit (section 3). So you can outrun a sprinter, but only for the length of a
 sprint.
 
-## 5. Deadnight today
+## 5. Deadnight before the rework
 
-Player (`player_tuning_default.tres`, defaults from `player_tuning.gd`): run 4.8 m/s (a CoD 190 u/s is 4.83: the
+Player (`player_tuning_default.tres`, defaults from `player_tuning.gd`): run 4.8 m/s (CoD's 190 u/s is 4.83: the
 numbers agree), sprint 7.0 (1.46 times run, CoD 1.5), aim 2.6 (0.54 times run). **There is no sprint limit.**
 
-Dead (`default_tuning.tres`, `RoundTuning`): walking speed `0.9 + 0.1 (round - 1)`, each zombie times its type's
-multiplier and a jitter of 12% either way, held at the **cap of 4.5**; light slows it to 60%.
+The dead were `0.9 + 0.1 (round - 1)` m/s, times the type's multiplier and a jitter of 12% either way, held at a
+cap of 4.5, and **lit ground slowed them to 60%**. That put the pace under the lights far below the games':
 
-| Round | Walker | Runner (x1.7) | Runner / run | Runner / sprint | Brute (x0.6) | Headliner (x0.8) |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 0.90 | not yet | | | | |
-| 4 | 1.20 | 2.04 | 0.43 | 0.29 | | |
-| 8 | 1.60 | 2.72 | 0.57 | 0.39 | 0.96 | |
-| 10 | 1.80 | 3.06 | 0.64 | 0.44 | 1.08 | |
-| 12 | 2.00 | 3.40 | 0.71 | 0.49 | 1.20 | |
-| 15 | 2.30 | 3.91 | 0.81 | 0.56 | 1.38 | 1.84 |
-| 18 | 2.60 | 4.42 | 0.92 | 0.63 | 1.56 | 2.08 |
-| 20 and on | 2.80 up | **4.50** | 0.94 | 0.64 | | |
+| Round | Walker lit (before) | Walker dark (before) | BO3 mean (E) | BO1 mean (E) |
+| ---: | ---: | ---: | ---: | ---: |
+| 5 | 0.78 | 1.30 | 1.9 | 2.6 |
+| 10 | 1.08 | 1.80 | 2.8 | 4.8 |
+| 15 | 1.38 | 2.30 | 3.9 | 4.8 |
 
-(Speeds in m/s.) The crawler is half a walker's speed.
+A lit walker moved at about 40% of what BO3's zombies do at the same round (and a fifth of BO1's), and a lit zombie of
+any type never exceeded 2.7 m/s. The light made the night safe instead of holding it off. Against the player, nothing could
+catch a moving one: the fastest zombie (4.5) was below even the run (4.8), and the player's sprint has no limit.
 
-**Can a player outrun each type, and from which round does it stop?**
+## 6. The rework (the maintainer's decision)
 
-- **Sprinting (7.0): always.** The fastest thing in the game is 4.5, so a sprinting player gains at least 2.5 m/s.
-  There is no round where this stops being true, and Call of Duty's does not either (sprint tier 0.67 of the
-  player's sprint). Only a super sprinter would test it, and we have none.
-- **Running (4.8): always, and that is the odd part.** The cap is below run speed, so from round 18 a runner at the
-  cap only loses 0.3 m/s a second to a player who is merely running; no zombie ever catches a moving player. In
-  Call of Duty the first sprinters, who match the player's base speed (E), arrive in round 6 to 11 and make up the
-  whole round by round 10 to 19, so a player who is not sprinting stops gaining ground; the limited sprint does the rest.
-- **Aiming (2.6): until round 8 for a runner and round 18 for a walker.** An aiming player is caught by a runner from
-  round 8 (2.72) and by a walker from round 18 (2.6): the same kind of deadline as Call of Duty's, only later.
-- **Lit ground** takes a capped runner to 2.7 m/s, the aim speed: that is the point of the light.
+**The dead are at Call of Duty's pace under the lights, and faster in the dark.** The 60% slow is gone; ground that
+is not lit (a circuit off, the generator dry) makes the dead 25% faster.
 
-**Is that the feel we want?** Partly. Our own design says "late rounds pressure positioning instead of simple
-running" ([rounds](../design/rounds.md#why-these-numbers)), and the cap below a sprint keeps "a sprinting player can
-always get away". But with no stamina and a cap below the plain run, positioning pressure comes only from crowds,
-boards and the alive cap, never from a zombie that can catch you. The balance simulator cannot tell: its players do
-not move, so tuning speed barely changes a night (below). And the median night (round 10 to 14) never sees a runner
-past 3.7 m/s, while a Call of Duty night at that round is all run or sprint tier.
+| | Before | Now |
+| --- | --- | --- |
+| Walker pace under the lights | `0.9 + 0.1 (r - 1)`, then x0.6 | `1.2 + 0.16 (r - 1)` |
+| Runner (our sprint tier) | x1.7, lit x0.6 | x1.4 |
+| Cap under the lights | 4.5 | 5.0 (1.04 of run, 0.71 of sprint) |
+| Dark | x1.0 | x1.25 (`dark_speed_multiplier`), at most 6.25 |
+| Crawler, brute, headliner | x0.5, x0.6, x0.8 of the walker | x0.4, x0.4, x0.45: about the pace they had in the dark before; they are slow by design |
+| Jitter | 12% | 12% |
 
-## 6. Recommendation
+Speeds in m/s, lit and dark (before: lit is the old x0.6 and dark the old plain speed):
 
-1. **Keep the player's numbers** (4.8, 7.0, 2.6). They agree with the 190 and 285 u/s of the games.
-2. **Raise the cap to 5.0 and the runner to x2.0** (the tuning change in this pair of pull requests). The runner is our
-   sprint tier: at the cap it should match the player's run speed, so that running alone stops being a guaranteed
-   escape (5.0 is 1.04 times run) while a sprint still wins by 2.0 m/s (0.71 of sprint, CoD's 0.67). The runner
-   arrives at round 4 at 2.4 m/s (0.50 of run, a run tier), reaches the player's run speed in round 16 and passes it
-   for the fastest rolls from round 14. Walkers and the rest do not change.
-3. **Do not add a super sprinter.** Cold War needs one at round 51; our nights end at round 10 to 18.
-4. **Decide on a sprint limit** (a follow-up issue). It is what makes a sprint-tier zombie dangerous in Call of Duty
-   and we have none. It touches the controller, the HUD and the bots, so it is not a tuning edit.
+| Round | Walker before | Walker now | Runner before | Runner now | Brute now | Headliner now |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 1 | 0.54 / 0.90 | 1.20 / 1.50 | | | | |
+| 4 | 0.72 / 1.20 | 1.68 / 2.10 | 1.22 / 2.04 | 2.35 / 2.94 | | |
+| 5 | 0.78 / 1.30 | 1.84 / 2.30 | 1.33 / 2.21 | 2.58 / 3.22 | | 0.83 / 1.03 |
+| 8 | 0.96 / 1.60 | 2.32 / 2.90 | 1.63 / 2.72 | 3.25 / 4.06 | 0.93 / 1.16 | |
+| 10 | 1.08 / 1.80 | 2.64 / 3.30 | 1.84 / 3.06 | 3.70 / 4.62 | | 1.19 / 1.48 |
+| 12 | 1.20 / 2.00 | 2.96 / 3.70 | 2.04 / 3.40 | 4.14 / 5.18 | 1.18 / 1.48 | |
+| 15 | 1.38 / 2.30 | 3.44 / 4.30 | 2.35 / 3.91 | 4.82 / 6.02 | | 1.55 / 1.94 |
+| 20 | 1.68 / 2.80 | 4.24 / 5.30 | 2.70 / 4.50 | 5.00 / 6.25 | 1.70 / 2.12 | 1.91 / 2.39 |
+
+The walker now tracks the BO3 and BO4 pace (1.9, 2.8 and 3.9 at rounds 5, 10 and 15 against our 1.84, 2.64 and 3.44;
+the runner is the faster mix that makes up the rest, and the dark adds a quarter); it is slower than WaW, BO1 and
+BO2, which have every zombie at the sprint tier by round 10.
+
+**Can a player outrun each type, and from which round does that stop?**
+
+- **Sprinting (7.0): always, in the light and in the dark.** The fastest zombie is 5.0 lit and 6.25 dark. In the
+  dark the margin is down to 0.75 m/s: a sprinting player still gets away, but only just, and for as long as the
+  sprint lasts, which is for ever (the issue linked below).
+- **Running (4.8): until round 15 in the light and round 11 in the dark** for a runner (4.82 lit, 4.82 dark); until
+  round 24 lit and round 18 dark for a walker. After that a runner who is not stopped by a bullet catches a player who
+  is only running. This is Call of Duty's rule: from round 6 to 11 the sprint tier moves at the player's base speed.
+- **Aiming (2.6): from round 6 for a runner and from round 10 for a walker** (lit). An aiming player is caught,
+  which matches the point of aiming being a commitment.
+- **Walker and runner ratios to the player's run, lit:** round 10, 0.55 and 0.77; round 15, 0.72 and 1.00.
+
+**Is that the feel we want?** It is what the maintainer asked for: a night that stays a challenge with the
+generator on, and gets worse when the lights fail. Two things to keep an eye on. A dark runner at the cap
+(6.25) is 0.89 of the sprint, so the dark leaves the player almost no room; and with no sprint limit there is still no
+stamina cost to running away (the follow-up issue #236).
 
 ### Balance gate
 
-The five cells of the gate (60 nights, seed 4000), medians against their ranges:
+The shipped numbers pass the five-cell gate (60 nights, seed 4000, `BalanceTargets.check`: medians, the first
+special rounds, time to kill, spending). Medians against their ranges:
 
-| Cell | Range | Now | Cap 5.0 | Cap 5.0, runner x2.0 | Hard (cap 6, runner x2.5, step 0.2) |
+| Cell | Range | Before (`main` now) | After | First try (base 1.2, step 0.18) | After the other work landed, step 0.18 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| weak, 1 | 4 to 9 | 5 | 5 | 5 | 5 |
-| average, 1 | 10 to 14 | 11 | 11 | 11 | 10 |
-| average, 2 | 11 to 16 | 13 | 13 | 14 | 13 |
-| average, 4 | 12 to 17 | 15 | 15 | 15 | 14 |
-| strong, 1 | 12 to 18 | 15 | 15 | 15 | 14 |
+| weak, 1 | 4 to 9 | 5 | 4 | 5 | 4 |
+| average, 1 | 10 to 14 | 11 | 10 | 8 (out) | 9 (out) |
+| average, 2 | 11 to 16 | 12 | 12 | 12 | 12 |
+| average, 4 | 12 to 17 | 14 | 13 | 13 | 13 |
+| strong, 1 | 12 to 18 | 13 | 13 | 13 | 13 |
 
-All inside. Even the hard row, with zombies about twice as fast, moves a median by one round: the simulator's bots
-shoot from where they stand, so speed only changes how long a zombie takes to arrive. **The gate guards difficulty;
-it cannot judge this feel**, which needs a person or the movement bots of #226 chasing a moving player.
+The first try kept the old type multipliers (brute x0.6, headliner x0.8, crawler x0.5, runner x1.5) on the faster
+base: the average solo median fell to 8 and the round 5 boss night killed 45% of average and 100% of weak solo nights
+(at most 40% and 85%). Keeping the special types at about their old pace in metres per second and the runner at x1.4
+fixed it. Then the health and count retune landed on `main` and the same speeds put the average solo median at 9 (and
+a dark of x1.2 left the boss night at 89% of weak solo nights): the step went from 0.18 to 0.16, which passes every
+target with the dark at x1.25 (a dark of x1.15, or x1.2 with the headliner at x0.4, also passed).
+
+## 7. What is left
+
+1. **A sprint limit** (#236): in Call of Duty it is what makes the sprint tier a threat; here it would make the
+   dark's 6.25 m/s runner one.
+2. **A playtest of the dark.** The 1.25 is a number a person should feel; the movement bots of #226 can then chase a
+   moving player.
+3. **Do not add a super sprinter.** Cold War needs one at round 51; our nights end at round 10 to 18.
 
 ## Where each number comes from
 

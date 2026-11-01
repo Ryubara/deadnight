@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/drive_in/projector_beam.gd" id="1_beam"]
+[ext_resource type="Shader" path="res://world/drive_in/glow.gdshader" id="2_glow"]
+
+[sub_resource type="ShaderMaterial" id="HaloMaterial"]
+render_priority = 1
+shader = ExtResource("2_glow")
+shader_parameter/tint = Color(0.85, 0.9, 1, 1)
+shader_parameter/energy = 1.5
+shader_parameter/falloff = 2.0
+shader_parameter/billboard = true
+
+[sub_resource type="QuadMesh" id="HaloMesh"]
+size = Vector2(4, 4)
+
+[node name="ProjectorBeam" type="Node3D"]
+script = ExtResource("1_beam")
+
+[node name="Halo" type="MeshInstance3D" parent="."]
+mesh = SubResource("HaloMesh")
+material_override = SubResource("HaloMaterial")
+cast_shadow = 0

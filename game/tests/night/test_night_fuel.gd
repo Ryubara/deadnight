@@ -88,14 +88,14 @@ func test_a_dry_tank_is_refuelled_and_the_lights_and_the_dead_follow() -> void:
 	rules.generator.fuel = 0.0
 	NightFixture.run(night, 2)
 	assert_bool(night.world.is_lit(YARD_FLOOR)).is_false()
-	assert_float(_speed_on(night, YARD_FLOOR)).is_equal_approx(ZOMBIE_SPEED, 0.01)
+	var dark_speed := ZOMBIE_SPEED * rules.tuning.rounds.dark_speed_multiplier
+	assert_float(_speed_on(night, YARD_FLOOR)).is_equal_approx(dark_speed, 0.01)
 	_stand_at(night)
 	NightFixture.run(night, 1, _use())
 	NightFixture.run(night, 2)
 	assert_bool(rules.generator.is_powered()).is_true()
 	assert_bool(night.world.is_lit(YARD_FLOOR)).is_true()
-	var lit_speed := ZOMBIE_SPEED * rules.tuning.rounds.lit_speed_multiplier
-	assert_float(_speed_on(night, YARD_FLOOR)).is_equal_approx(lit_speed, 0.01)
+	assert_float(_speed_on(night, YARD_FLOOR)).is_equal_approx(ZOMBIE_SPEED, 0.01)
 	night.queue_free()
 
 
