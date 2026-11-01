@@ -30,6 +30,13 @@ var read: float = 0.5
 var light_use: float = 0.35
 ## The generator circuits the player keeps switched on for the whole night.
 var circuits: Array[StringName] = [&"screen_lot", &"concession"]
+## Whether the player changes weapon to suit the target in front of them (a shotgun at the door, a
+## rifle at range) and not only when one runs dry.
+var swaps: bool = true
+## Magazines of reserve a player keeps for each weapon worth shooting before they spend on anything
+## else, and the share of a weapon's reserve limit they top it up to with what is left over.
+var ammo_floor_mags: int = 3
+var ammo_topoff: float = 1.0
 ## What the player buys, first to last.
 var shopping: Array[StringName] = []
 
@@ -41,6 +48,9 @@ func jittered(rng: RandomNumberGenerator, spread: float) -> SimSkill:
 	copy.id = id
 	copy.shopping = shopping
 	copy.circuits = circuits
+	copy.swaps = swaps
+	copy.ammo_floor_mags = ammo_floor_mags
+	copy.ammo_topoff = ammo_topoff
 	copy.accuracy = _wobble(accuracy, rng, spread)
 	copy.head_rate = _wobble(head_rate, rng, spread)
 	copy.limb_rate = limb_rate
@@ -69,6 +79,9 @@ static func named(skill_id: StringName) -> SimSkill:
 			skill.dodge = 0.12
 			skill.read = 0.25
 			skill.light_use = 0.1
+			skill.swaps = false
+			skill.ammo_floor_mags = 2
+			skill.ammo_topoff = 0.5
 			skill.circuits.assign([&"screen_lot"])
 			(
 				skill
@@ -94,6 +107,7 @@ static func named(skill_id: StringName) -> SimSkill:
 			skill.dodge = 0.5
 			skill.read = 0.9
 			skill.light_use = 0.55
+			skill.ammo_topoff = 1.0
 			skill.circuits.assign([&"screen_lot", &"concession", &"booth"])
 			(
 				skill

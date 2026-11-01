@@ -18,6 +18,7 @@ const DOOR_NAMES := {
 	&"door_road": "The road",
 }
 const BREACH_NAME := "Broken fence"
+const CRANE_NAME := "Prize crane"
 ## What the player is told at each breaker post: the lights it switches.
 const CIRCUIT_NAMES := {
 	&"screen_lot": "Screen field lights",
@@ -89,10 +90,35 @@ func _set_prompt(prompt: Dictionary) -> void:
 		&"repair":
 			if state.prompt.get("kind") != &"repair":
 				state.set_prompt(&"repair", BREACH_NAME)
+		&"weapon":
+			_offer(&"buy_weapon", _weapon_name(prompt["weapon"]), prompt["price"], "")
+		&"crane":
+			_offer(&"buy_crane", CRANE_NAME, prompt["price"], "")
+		&"ammo":
+			var label := "%s rounds" % _weapon_name(prompt["weapon"])
+			_offer(
+				&"buy_ammo", label, prompt["price"], "%d ROUNDS FOR YOUR RESERVE" % prompt["rounds"]
+			)
 		&"circuit":
 			_set_circuit_prompt(prompt["id"], prompt["on"])
 		_:
 			state.clear_prompt()
+
+
+func _offer(kind: StringName, label: String, cost: int, detail: String) -> void:
+	var state := _hud.state
+	var now := state.prompt
+	if (
+		now.get("kind") != kind
+		or now.get("label") != label
+		or now.get("cost") != cost
+		or now.get("detail") != detail
+	):
+		state.set_prompt(kind, label, cost, detail)
+
+
+func _weapon_name(weapon: StringName) -> String:
+	return _weapon_names.get(weapon, str(weapon))
 
 
 ## The breaker post: which lights, how they stand, and what switching them does to the tank (the

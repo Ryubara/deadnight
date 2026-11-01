@@ -84,3 +84,11 @@ table.
   for a caller that does not know (the simulator).
 - **Events from a direct call are not delivered.** `NightServer.buy` outside a `step` fills the outbox that the next
   `apply` or `step` resets; a test that wants the rules' events reads the array `buy` returns.
+- **A `use` at a shop spot is a `buy` through the server.** `NightServer.use_target` answers the prompt (`weapon`, `ammo`,
+  `crane`) and `_use` buys with `NightServer.buy`, so the card shows exactly the price and the rounds the purchase will
+  charge (`ShopItem.ammo_price`, one formula for both). With the supply drop gone and the crowbar given at join, a
+  player whose guns run dry still has something to swing and something to swap to; the autopilot swaps one edge at a
+  time (a press every 20 ticks), because a `swap` is a cycle and a held button would spin through the weapons.
+- **Movie Maker steps 6 physics ticks to a rendered frame at 10 fps.** A capture script that holds "20 frames" with
+  `physics_frame` gets 3 pictures; hold 60 to 70 ticks for a second of picture. A tour that stays in the break needs no
+  zombies and no tuning (the 12 s intro lasts more than the whole clip).

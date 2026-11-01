@@ -111,3 +111,17 @@ The ammo card and the equipment slot are fed by the weapons' events (`HudLoadout
 
 - Markers are given in screen space; projecting world points (and hiding those behind walls) is the camera's job.
 - The prompt looks only at one interaction; two in reach at once needs a choice rule from the player controller.
+
+## Stacking rows that slide (#240)
+
+- **A `VBoxContainer` teleports.** It sorts its children on every change, so a row that leaves moves every row under it
+  at once. `HudRowStack` is a plain `Control` that sets each row's `position.y` itself and eases it toward the slot.
+- **Ease by a fraction of what is left, not by a distance per frame.** `1 - exp(-delta * 3 / SETTLE_TIME)` of the
+  remaining distance gives the same place after the same time at any step (a test steps 1, 2, 4 and 8 times over 0.08 s).
+  Because every row moves by the same fraction, the gap between two rows is a blend of the old gap and the slot gap and
+  never shrinks below the slot gap: rows cannot overlap while they slide.
+- **A new row must start under the row before it.** Starting at its own slot overlapped the previous row whenever that
+  row was still on its way (six gains in one frame, the cap dropping the oldest as each came in): the first test of the
+  burst failed on it. The start is the lower of the slot plus the rise and the previous row's bottom plus the gap.
+- Fade a new row in with `self_modulate`, which multiplies with the `modulate` the owner already uses for its own fade.
+- A capture of a slide needs 30 fps: at 10 fps the 0.18 s slide is two frames.

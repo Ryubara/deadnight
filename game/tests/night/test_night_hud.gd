@@ -97,7 +97,8 @@ func test_a_new_weapon_takes_the_card_and_the_old_one_goes_to_the_equipment_slot
 	var hud: Hud = made["hud"]
 	var pistol := WeaponCatalog.get_def(&"pistol")
 	var rifle := WeaponCatalog.get_def(&"rifle")
-	assert_str(hud.health.equipment_text).is_equal("")
+	# The crowbar is carried from the start, put away behind the pistol.
+	assert_str(hud.health.equipment_text).is_equal("CROWBAR")
 	# What a purchase does: the combat server gives the weapon, its events reach the client.
 	night.state.apply_events(night.server.combat.apply(CombatAction.give_weapon(1, &"rifle")))
 	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
@@ -187,4 +188,29 @@ func test_the_round_and_the_party_come_from_the_rules_events() -> void:
 	NightFixture.run(night, 2)
 	assert_bool(hud.state.team.has(2)).is_true()
 	assert_array(hud.points.shown).has_size(2)
+	_finish(night, hud)
+
+
+func _stand_at(night: Night, shop_id: StringName, kind: StringName = &"") -> void:
+	for spot in night.world.shop_spots():
+		if (shop_id == &"" or spot["shop_id"] == shop_id) and (kind == &"" or spot["kind"] == kind):
+			night.player().teleport(spot["position"] + Vector3(0.0, 0.1, 0.0))
+	NightFixture.run(night, 3)
+
+
+func test_the_wall_weapon_the_crane_and_a_locker_each_have_a_card() -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	_stand_at(night, &"weapon_shotgun")
+	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_weapon")
+	assert_str(hud.prompt.title_text).contains("SHOTGUN")
+	_stand_at(night, &"crane_play")
+	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_crane")
+	assert_str(hud.prompt.title_text).is_equal("PRIZE CRANE")
+	night.server.combat.state_of(1, &"pistol").reserve = 0
+	_stand_at(night, &"", &"ammo")
+	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_ammo")
+	assert_str(hud.prompt.title_text).contains("ROUNDS")
+	assert_str(hud.prompt.detail_text).contains("ROUNDS FOR YOUR RESERVE")
 	_finish(night, hud)

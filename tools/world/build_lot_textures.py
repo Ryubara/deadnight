@@ -69,6 +69,9 @@ MATERIALS = {
     "roadblock": ("concrete", "#818491", None),
     "breach_ground": ("gravel", "#3d3829", None),
     "line_paint": (None, "#d8d2bc", None),
+    "plaque": (None, "#e8c37a", "#8a6414"),
+    "ammo_crate": ("planks", "#4a6a34", None),
+    "ammo_band": (None, "#f0e26a", "#7a6a10"),
 }
 
 
