@@ -27,12 +27,12 @@ func before_test() -> void:
 	_saved_ticks = Engine.physics_ticks_per_second
 	# A headless window is 64 x 64 and a click outside it reaches nothing.
 	window.size = SIZES[0]
-	_screen = (load(SCREEN) as PackedScene).instantiate() as SettingsScreen
-	add_child(_screen)
-	auto_free(_screen)
 
 
 func after_test() -> void:
+	# The router is an autoload: leave it holding nothing that takes a click.
+	UIRouter.reset(Control.new(), UITransition.Kind.CUT)
+	await UIRouter.idle
 	var window := get_tree().root
 	window.size = _saved_size
 	Engine.physics_ticks_per_second = _saved_ticks
@@ -187,7 +187,18 @@ func _click_tab(index: int) -> void:
 	await get_tree().process_frame
 	(
 		assert_int(_screen._current)
-		. override_failure_message("the click on tab %d did not select it" % index)
+		. override_failure_message(
+			(
+				"the click on tab %d did not select it (hovered %s, window %s, scale %s, mouse mode %s)"
+				% [
+					index,
+					button.get_viewport().gui_get_hovered_control(),
+					get_tree().root.size,
+					button.get_viewport().get_final_transform(),
+					Input.mouse_mode
+				]
+			)
+		)
 		. is_equal(index)
 	)
 
@@ -221,12 +232,12 @@ func _set_physics_rate(ticks: int) -> void:
 	Engine.physics_ticks_per_second = ticks
 
 
+## The screen as the game shows it: on the router's stage, above whatever an earlier suite left on
+## the stack (a leftover main menu there takes every click aimed at a screen added anywhere else).
 func _recreate_screen() -> void:
-	if is_instance_valid(_screen):
-		_screen.free()
-	_screen = (load(SCREEN) as PackedScene).instantiate() as SettingsScreen
-	add_child(_screen)
-	auto_free(_screen)
+	UIRouter.reset(SCREEN, UITransition.Kind.CUT)
+	await UIRouter.idle
+	_screen = UIRouter.top() as SettingsScreen
 	await _frames(2)
 
 
