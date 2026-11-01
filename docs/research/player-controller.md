@@ -21,7 +21,7 @@ network / replay ---> PlayerCommand --/                                         
 | `PlayerMotionState` | `player_motion_state.gd` | Everything carried between ticks: position, velocity, facing, floor flag, sprint and aim flags, shoulder side, coyote and jump-buffer timers, footstep distance. Plus what happened in the tick (`jumped`, `landed`, `footstep`). `copy_from` rewinds it. |
 | `PlayerSimulation` | `player_simulation.gd` | `simulate()` reads only its arguments and the physics world, never `Input`, the camera, the animation tree or the clock. |
 | `Player` | `player.gd` | The glue: `sample_command()` reads the controls, `tick(command)` runs the simulation and shows the result. `submit_command()` feeds a command from elsewhere. |
-| `ThirdPersonCamera` | `third_person_camera.gd` | Holds the view (mouse and stick look), eases aim and shoulder, follows the body. Its yaw and pitch are sampled into the command. |
+| `ThirdPersonCamera` | `third_person_camera.gd` | Holds the view (mouse and stick look), follows the body with critically damped springs on the interpolated body position, eases aim, sprint and shoulder, keeps the lens out of walls and the head. Its yaw and pitch are sampled into the command. See [shoulder camera](shoulder-camera.md). |
 | `PlayerAnimation` | `player_animation.gd` | Reads the state; never moves the body. |
 
 Prediction, then, is: keep a ring of (command, resulting state); when the server's state for tick N arrives, set the
@@ -52,10 +52,11 @@ All in `player_tuning_default.tres` (a `PlayerTuning` resource); metres, seconds
 | Jump | 1.1 m height, gravity x1.7, coyote 0.1 s, buffer 0.1 s | Short, snappy arc; a late or early press still counts. |
 | Body | capsule 1.8 m by 0.35 m radius, model scaled x0.8 | `docs/design/style.md`: the kit's characters are 2.31 m, x0.8 gives 1.85 m. |
 | Look | 0.0022 rad per mouse pixel (about 0.126 degrees), stick 170 degrees per second with a squared response, pitch -60 to +50 degrees, x0.7 while aiming | Settings multiply sensitivity; the squared stick curve gives fine control near the centre. |
-| Camera | pivot 1.55 m up, shoulder offset 0.75 m, arm 2.8 m, FOV 75 | Over the shoulder, the character fills about a third of the screen height. |
-| Aim zoom | arm 1.9 m, shoulder 0.6 m, FOV 62; exponential ease at 10 per second | A modest zoom, settled in about 0.3 s. |
-| Shoulder swap | exponential ease at 9 per second | About 0.35 s; the camera glides across, no cut. |
-| Camera collision | `SpringArm3D` with a 0.25 m sphere | The camera pulls in instead of entering a wall (tested with the player against the back wall). |
+| Camera | pivot 1.6 m up, shoulder 0.6 m, arm 2.3 m, FOV 70 | Over the shoulder, closer than the first draft (arm 2.8 m, FOV 75): [shoulder camera](shoulder-camera.md) has every number and the reasoning. |
+| Aim zoom | arm 1.8 m, shoulder 0.65 m, FOV 60; critically damped spring at 24 rad/s | Settled in about 0.2 s; the screen centre stays 0.2 m clear of the body. |
+| Shoulder swap | critically damped spring at 16 rad/s | About 0.3 s; the camera glides across, no cut. |
+| Camera follow | spring at 22 rad/s (10 vertically, 16 while sprinting) on the body drawn between its last two physics ticks | Smooth at any frame rate; trails a runner by 2 v / w. |
+| Camera collision | sphere sweeps (0.25 m) sideways to the shoulder, back along the view, then straight to the lens; pulled in at once, let out at 6 rad/s | The camera slides in or comes forward instead of entering a wall; the body hides when the lens is within 0.9 m of the head. |
 | Footsteps | one `footstep` signal per 1.9 m on the ground | Distance-based so it matches the animation at any speed; audio hooks onto the signal. |
 
 ## Animation
@@ -91,10 +92,12 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
 - Two scripts both called `PlayerState` (this one and the round rules') broke the whole project at merge time as a
   global class clash; this one is `PlayerMotionState`. Check `grep -r "class_name X"` before naming a global class.
 - A test room crate in the run lane made speed tests read zero; keep the lane clear.
-- The camera ease (`ThirdPersonCamera._process`) and the animation (`PlayerAnimation._process`, the AnimationTree) run
+- The camera ease (`ThirdPersonCamera.step`, called from `_process`) and the animation (`PlayerAnimation._process`,
+  the AnimationTree) run
   on the frame delta, which is wall time, while `await physics_frame` counts fixed ticks. On a loaded machine the two
   drift apart and tests that wait N ticks and then read the fov, the shoulder offset or the animation state failed
-  once in a while. `test_player.gd` therefore turns both off and steps them by hand, one tick per physics frame
+  once in a while. `test_player.gd` therefore turns both off and steps them by hand (the camera with `step(delta, 1.0)`),
+  one tick per physics frame
   (`_ticks`); read the camera and animation only after `_ticks`/`_seconds`, never after a plain `process_frame` wait.
 - `clips.json` rounds `seconds` (Fire_Rifle is 0.333 for 8 frames at 24 fps), shorter than its last event
   (`can_fire_again` at 8/24). A frame step ending in between ended the clip and skipped the event, so the rifle never
@@ -104,7 +107,8 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
 
 ## Sources
 
-- Godot docs: [SpringArm3D](https://docs.godotengine.org/en/stable/classes/class_springarm3d.html),
+- Godot docs:
+  [SpringArm3D](https://docs.godotengine.org/en/stable/classes/class_springarm3d.html) (no longer used by the camera),
   [AnimationTree](https://docs.godotengine.org/en/stable/tutorials/animation/animation_tree.html),
   [CharacterBody3D](https://docs.godotengine.org/en/stable/classes/class_characterbody3d.html).
 - Model: [Character Soldier by Quaternius](https://poly.pizza/m/PpLF4rt4ah), CC0.

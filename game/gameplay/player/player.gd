@@ -30,10 +30,6 @@ const ACTION_LOOK_RIGHT := &"look_right"
 const ACTION_LOOK_UP := &"look_up"
 const ACTION_LOOK_DOWN := &"look_down"
 
-## When a wall squeezes the camera closer than this to the player, the body is hidden
-## so the lens is not inside it.
-const HIDE_MODEL_BELOW := 0.7
-
 @export var tuning: PlayerTuning = preload("res://gameplay/player/player_tuning_default.tres")
 ## Sample the local keyboard, mouse and gamepad. Turn off to feed commands with `submit_command()`.
 @export var local_input := true
@@ -63,6 +59,7 @@ func _ready() -> void:
 	state.position = global_position
 	state.facing = rotation.y
 	camera_rig.setup(self, tuning)
+	camera_rig.body_hidden_changed.connect(_on_body_hidden_changed)
 	camera_rig.yaw = rotation.y
 	refresh_settings()
 	var service := get_tree().root.get_node_or_null(PlayerSettings.SERVICE_PATH)
@@ -96,6 +93,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func refresh_settings() -> void:
 	camera_rig.sensitivity = PlayerSettings.sensitivity(get_tree())
 	camera_rig.invert_y = PlayerSettings.invert_y(get_tree())
+
+
+## The lens is too close to the head (or clear again): draw or hide the body.
+func _on_body_hidden_changed(hidden: bool) -> void:
+	_model.visible = not hidden
 
 
 func _on_setting_changed(_key: StringName, _value: Variant) -> void:
@@ -166,7 +168,8 @@ func tick(command: PlayerCommand) -> void:
 	rotation.y = state.facing
 	camera_rig.aiming = state.aiming
 	camera_rig.side = state.shoulder_side
-	_model.visible = camera_rig.arm_hit_length() > HIDE_MODEL_BELOW
+	camera_rig.sprinting = state.sprinting
+	camera_rig.track(global_position)
 	if state.jumped:
 		jumped.emit()
 	if state.landed:
@@ -182,6 +185,7 @@ func teleport(position: Vector3) -> void:
 	state.velocity = Vector3.ZERO
 	state.on_floor = false
 	global_position = position
+	camera_rig.snap_to(position)
 
 
 func controls_enabled() -> bool:

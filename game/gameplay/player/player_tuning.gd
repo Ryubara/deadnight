@@ -64,17 +64,42 @@ extends Resource
 @export var aim_sensitivity_scale := 0.7
 
 @export_group("Camera")
-## Height of the camera pivot above the player's feet.
-@export var pivot_height := 1.55
-## Sideways offset of the shoulder camera, in metres.
-@export var shoulder_offset := 0.75
-@export var shoulder_offset_aim := 0.6
-@export var arm_length := 2.8
-@export var arm_length_aim := 1.9
-@export var fov := 75.0
-@export var fov_aim := 62.0
-## Radius of the sphere swept along the arm so the camera never clips a wall.
+## Height of the camera pivot above the player's feet (about the head).
+@export var pivot_height := 1.6
+## Sideways offset of the shoulder camera, in metres, and the same while aiming.
+@export var shoulder_offset := 0.6
+@export var shoulder_offset_aim := 0.65
+## Distance behind the pivot, in metres, and the same while aiming.
+@export var arm_length := 2.3
+@export var arm_length_aim := 1.8
+## Vertical field of view in degrees, and the same while aiming.
+@export var fov := 70.0
+@export var fov_aim := 60.0
+## Radius of the sphere swept from the pivot to the lens, so the camera never clips a wall.
 @export var arm_margin := 0.25
-## Ease rate (per second) of the shoulder swap, aim zoom and arm length.
-@export var swap_rate := 9.0
-@export var aim_rate := 10.0
+## The body is hidden when the lens is closer than this to the head, shown again beyond the
+## second (a little more, so it does not flicker at the edge).
+@export var hide_body_distance := 0.9
+@export var show_body_distance := 1.05
+
+@export_group("Camera motion")
+## Springs are critically damped: the number is the angular frequency in rad/s, and the camera
+## closes 95 percent of a step in 4.75 divided by it seconds (docs/research/shoulder-camera.md).
+## The pivot's follow of the body on the ground plane and vertically (slower, so a jump does not
+## whip the view), and the follow while sprinting (looser, so speed shows as lag).
+@export var follow_frequency := 22.0
+@export var follow_frequency_vertical := 10.0
+@export var sprint_follow_frequency := 16.0
+## Aim zoom, shoulder swap and sprint pull-back.
+@export var aim_frequency := 24.0
+@export var swap_frequency := 16.0
+@export var sprint_frequency := 9.0
+## Sprint widens the view by this many degrees and lets the camera out by this many metres.
+@export var sprint_fov_kick := 6.0
+@export var sprint_arm_extra := 0.3
+## A wall pulls the camera in at once; this is the rate (per second) it lets out again.
+@export var release_frequency := 6.0
+## The view turns toward a steered yaw and pitch (the autopilot's) with this spring.
+@export var steer_frequency := 18.0
+## A body that moves farther than this in one tick (a spawn, a correction) is not eased to.
+@export var snap_distance := 4.0

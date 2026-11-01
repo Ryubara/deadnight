@@ -73,8 +73,9 @@ func test_a_zombie_pair_fits_every_passage() -> void:
 
 
 func test_a_gap_narrower_than_the_camera_is_caught() -> void:
-	# Negative control: the first draft's 1.4 m between cars lets the arm through and puts the
-	# shoulder camera in the car, so the sweep has to report it; 1.8 m is clean.
+	# Negative control: the first draft's 1.4 m between cars is narrower than the shoulder
+	# camera's reach (offset plus the sweep's sphere): the camera has to slide in or the arm shorten,
+	# and the probe has to report it; 1.8 m is clean.
 	for gap in [1.4, 1.8]:
 		var world := auto_free(Node3D.new()) as Node3D
 		for sign in [-1.0, 1.0]:
@@ -93,7 +94,12 @@ func test_a_gap_narrower_than_the_camera_is_caught() -> void:
 		var space := world.get_world_3d().direct_space_state
 		var clipped := 0
 		for z in [-3.5, -3.0, -2.5]:  # facing -Z, the camera is 2.8 m behind: level with the cars
-			if not CameraProbe.rig(space, Vector3(0, 0, z), 0.0, 1.0)["free"]:
+			var rig := CameraProbe.rig(space, Vector3(0, 0, z), 0.0, 1.0)
+			var squeezed: bool = (
+				rig["shoulder"] < CameraProbe.shoulder_offset() - 0.01
+				or rig["arm"] < CameraProbe.arm_length() - 0.05
+			)
+			if not rig["free"] or squeezed:
 				clipped += 1
 		if gap < 1.7:
 			assert_int(clipped).is_greater(0)
