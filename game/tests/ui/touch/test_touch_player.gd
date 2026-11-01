@@ -5,14 +5,26 @@ extends GdUnitTestSuite
 const TEST_ROOM := "res://world/test_room.tscn"
 
 var _fixture: TouchFixture
+var _stage: Control
+var _stage_filter := Control.MOUSE_FILTER_STOP
 
 
 func before_test() -> void:
 	_fixture = TouchFixture.make(self)
+	# The router's stage covers the whole window and stops mouse motion: the look is injected as
+	# motion at the mouse position, so with a screen of the router on top it never reaches the
+	# player. Found on a desktop where it failed whatever the change; a test of the player lets the
+	# motion through.
+	_stage = get_tree().root.get_node_or_null("UIRouter/Stage") as Control
+	if _stage != null:
+		_stage_filter = _stage.mouse_filter
+		_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func after_test() -> void:
 	_fixture.free_all()
+	if _stage != null:
+		_stage.mouse_filter = _stage_filter
 
 
 func test_a_drag_turns_the_player_through_the_real_input_path() -> void:

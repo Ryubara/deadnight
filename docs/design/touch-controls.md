@@ -59,6 +59,8 @@ Each is an open question on the research page.
   in canvas units is scaled by the window-to-canvas ratio; the layer multiplies by the final transform first. Tests state
   canvas units and convert the same way (`TouchFixture`), because the headless window is 64 x 36.
 - **A full-screen `Control` with the default mouse filter eats injected mouse motion.** The test host sets Ignore.
+  So does the router's `Stage` (`UIRouter/Stage`): `test_touch_player` sets it to Ignore, or the look never reaches the
+  player on a desktop run (it did not on CI, by luck of what ran before).
 - **The layer takes touches before the HUD.** It sits later in the tree, so its `_input` runs first and marks them
   handled: the HUD's `UIInputMode.track` never sees a finger. The layer feeds each touch to `UIInputMode.track` itself.
 - **Under a `CanvasLayer` a `Control` has size zero.** `TouchControls` and the rotate prompt fall back to the viewport size.
