@@ -131,7 +131,8 @@ and the new predicted position is the **correction**. The capsule is drawn at th
 
 ## Interpolation (everyone else)
 
-Remote players are drawn **100 ms (3 ticks) in the past**, interpolated between the two snapshots around that moment.
+Remote players are drawn **100 ms (3 ticks) in the past** (kept after the Railway measurements: see
+[Measured on Railway](#measured-on-railway)), interpolated between the two snapshots around that moment.
 The client's render clock runs at the tick rate and is eased toward `latest_snapshot_tick − 3` on every snapshot
 (snapping if it is over 6 ticks off). A buffer of 100 ms covers one lost snapshot at 30 Hz; the price is that others
 are always 100 ms plus half the round trip old. Unchanged players have no delta entry; the client carries their value
@@ -179,13 +180,105 @@ frame header (2 bytes per server message, 6 per client message, about 60 B/s dow
   design target and costs about 0.8 KB/s down.
 - **Round trip** is measured in whole ticks (33 ms) from `PING`/`PONG`, so it carries ±33 ms of rounding, and on this
   loaded machine a localhost round trip costs 1 to 2 ticks. The artificial 100 ms each way shows up as 300 ms: 200 ms
-  of link, jitter, plus the tick quantisation on both ends. Real Railway latency is **not measured**: that needs a
-  deployment, which is the maintainer's decision.
+  of link, jitter, plus the tick quantisation on both ends. Real Railway latency is in the next section.
 - **Corrections** are zero when nothing disagrees (alone, or no collisions). They appear when the server pushes a
   capsule out of another (up to ~40 cm for one snapshot) or, with simulated loss and no redundancy, when a lost input is
   never applied (up to 61 cm). Three-fold input redundancy removes nearly all loss corrections for 117 B/s more.
 - The first version (Godot's high-level multiplayer) measured: 2 players 3.5 KB/s up and 3.8 down in total; 4 players
   15.0 / 18.0; 8 players 49 / 62 (4-second windows through the byte-counting proxy). Same bots, same game.
+
+## Measured on Railway
+
+Issue #52, Railway half. The spike's server image (`spikes/net/Dockerfile`, unchanged apart from extra logging) ran on
+Railway in a throwaway project, **region `us-west2`** (the service's `multiRegionConfig`; the default, one replica).
+The measuring machine is in Houston, Texas and enters Railway's network at the `iah1` edge (the `x-railway-edge`
+response header); a plain TCP connect to the edge takes about 20 ms, so the path is Houston, edge, California and
+back. All numbers are one machine on a home connection, 40 to 60 s per run, on the same loaded Windows box as the
+local baseline (a native Windows server on `127.0.0.1`); repeat them before trusting a decimal. The Discord Activity
+proxy half is **not measured** (it needs a Discord application, a maintainer decision) and stays open in #52.
+
+Three kinds of client, because they answer different questions:
+
+- **`tools/ws_probe.py`** joins as a silent player and reads the socket the moment bytes arrive: round trip and
+  snapshot gaps at microsecond resolution. This is the network plus the server's own tick.
+- **Headless and desktop Godot bots** are what the game does: they read the socket on their 30 Hz tick, so their
+  numbers carry up to one tick of rounding each way.
+- **The web build in Chrome** (served from `127.0.0.1`, pointed at the `wss://` URL; headless Chrome with software
+  WebGL, driven by Playwright because the browser extension was not connected).
+
+| Client (60 s, 1 player) | Server | Round trip mean / p50 / p95 / p99 / max (ms) | Snapshot gap p99 / max (ms) | Gaps over 100 ms |
+| --- | --- | --- | --- | --- |
+| probe | local | 19 / 17 / 35 / 44 / 67 | 49 / 87 | 0 |
+| probe | **Railway** | **77 / 78 / 90 / 96 / 106** (min 54) | **37 / 69** | **0** |
+| Godot headless bot | local | 36 / 34 / 60 / 98 / 189 | 63 / 189 | 1 |
+| Godot headless bot | **Railway** | **85 / 96 / 103 / 131 / 135** | 68 / 148 | 2 |
+| Godot desktop (windowed) | local | 37 / 33 / 67 / 78 / 215 | 67 / 216 | 1 |
+| Godot desktop (windowed) | **Railway** | **98 / 100 / 100 / 112 / 235** | 67 / 235 | 4 (2 over 200) |
+| Web, Chrome | local | 41 / 33 / 75 / 98 / 100 | 99 / 174 | 19 |
+| Web, Chrome | **Railway** | **96 / 99 / 112 / 130 / 136** | 73 / 212 | 1 |
+
+How to read it:
+
+- **Round trip.** The probe's Railway mean is 77 ms against 19 ms locally. The local 17 ms is the server's tick wait (a
+  ping waits on average half a 33 ms tick for the next poll), so the **network round trip is about 60 ms** (minimum
+  54 ms), Houston to `us-west2`. A game client sees **85 to 100 ms**: the 60 ms, plus the server's tick wait, plus the
+  client's own tick rounding. Plan on **about 100 ms** round trip for a player on the same continent but a different
+  region, and measure again from a player near the region (the region is a deployment setting).
+- **Jitter** is small: the probe's round-trip standard deviation is 9 ms and the snapshot arrival gap's is 3 ms
+  (33.3 ms mean, 37 ms at p99). Over the two probe runs (100 s, 3000 snapshots) the longest gap was 73 ms.
+- **Stalls (TCP head-of-line blocking): none seen on the network.** The probe, which reads the socket without waiting
+  for a frame, saw **no snapshot gap of 100 ms or more** in 100 s on Railway (nor locally). The gaps the Godot clients
+  report come from the client's own frames, not the link: the _local_ web run shows 19 of them and the local desktop
+  run one of 215 ms, on a loopback with nothing to stall. On Railway the Godot runs show 0 to 4 per minute, up to
+  235 ms, no worse than locally, and when a client frame is late the packets wait in the socket and are read together,
+  so nothing is lost. A real stall needs packet loss, which this home link did not show; the earlier simulated test
+  (100 ms each way, 5 % loss) remains the stress case, and a Discord proxy hop adds a second TCP connection to it.
+  One outlier: a ping in the probe run beside four bots took 422 ms while snapshots on the same socket kept arriving
+  (max gap 73 ms), so it is most likely the probe's own scheduling; it is mentioned only because it was seen.
+- **Bandwidth** is as predicted (payload): one client 380 B/s up and 540 B/s down; four clients 390 B/s up and 795 B/s
+  down each. The server, with five players, sends 4.4 KB/s and receives 1.6 KB/s. A 4-player hour is about 15 MB out
+  of the server.
+- **Server tick on Railway** (202 five-second windows, about 17 minutes, 0 to 5 players): the time between ticks
+  averaged 33.3 to 33.4 ms in every window; the longest was 57.6 ms, once (one tick of about 30 000 started over 50 ms
+  late; no tick ran in a catch-up burst). Work per tick averaged 0.07 to 0.3 ms with one player and 0.5 to 0.6 ms with
+  five (the worst single tick was 14.5 ms, a one-off); process CPU 1 to 1.8 % of one core with one player and 2 to
+  2.6 % with five; memory 25 to 26 MiB. The tick is nowhere near its 33 ms budget, so Railway's CPU is not what limits
+  4 players.
+- Connecting costs more than a round trip: the WebSocket upgrade over TLS took 370 to 490 ms from Houston. Show a
+  connecting state; do not block on it.
+
+### The interpolation delay and the snapshot rate
+
+Both stay at the spike's values: **100 ms (3 ticks) and a snapshot every tick (30 Hz)**. The client now counts how
+often the render clock runs ahead of a remote player's newest snapshot (the buffer is dry and the player freezes).
+Two headless bots, one measuring, 45 s each:
+
+| Interpolation delay | Starved draws, Railway | Starved draws, local |
+| --- | --- | --- |
+| 33 ms (1 tick) | 841 / 6402 (13 %) | 751 / 6450 (12 %) |
+| 67 ms (2 ticks) | 1 / 6352 | 6 / 6274 |
+| **100 ms (3 ticks)** | **0 / 6408** | **0 / 6437** |
+
+One tick is clearly too little, two nearly enough (the worst snapshot gap the probe saw was 73 ms, just over two
+ticks), three has margin for the Godot client's own frame hiccups. **67 ms is a reasonable setting if the feel of
+other players turns out to matter more than a rare freeze**; it is `--interp-ms=67`, and the next thing to test with
+real players. A lower snapshot rate would force a longer delay (15 Hz needs at least two snapshot periods, 133 ms) to
+save 270 B/s per client that nobody is short of, so 30 Hz stays.
+
+### Hosting facts (Railway)
+
+- **Inbound UDP is not offered.** Railway's documentation describes HTTP/HTTPS, WebSockets over HTTP/1.1
+  ([connections "can stay open indefinitely, even while idle"](https://docs.railway.com/networking/public-networking/specs-and-limits))
+  and a [TCP Proxy](https://docs.railway.com/networking/tcp-proxy) for raw TCP services such as databases; the pages
+  read do not mention UDP at all. A Railway moderator says it outright in the community forum (28 Mar 2026): "To my
+  knowledge, Railway has never supported UDP", "Railway only has TCP proxies", and that UDP is planned with no date
+  ([thread](https://station.railway.com/questions/udp-not-working-anymore-24a1898e)). The forum is not documentation:
+  if UDP or WebRTC data channels would decide something, ask Railway before relying on this. For #38, assume **TCP
+  only** (HTTP, WebSocket, raw TCP) for a game server on Railway; that is also all a Discord Activity can reach.
+  Private networking between Railway services is a separate matter and was not tested.
+- WebSockets work through the edge with no configuration beyond the `$PORT` the image already reads; the public URL
+  is `https://<service>-production-xxxx.up.railway.app`, so clients use `wss://`.
+- Build and deploy from the spike folder took about a minute (`railway up` builds the Dockerfile remotely).
 
 ## What the web build needs
 
@@ -199,7 +292,8 @@ frame header (2 bytes per server message, 6 per client message, about 60 B/s dow
   use `wss://`.
 - The release `.wasm` is about 39 MB uncompressed: serve it compressed (Railway static hosting, or the Discord
   Activity's own asset hosting).
-- Verified in Chrome (Playwright, software WebGL) against the local server: the web client renders, connects, and moves.
+- Verified in Chrome (Playwright, software WebGL) against the local server and against Railway over `wss://`: the web
+  client renders, connects, and moves. It also publishes its last `RESULT` line as `window.netResult`.
 
 ## Local setup
 
@@ -212,12 +306,14 @@ listener. Check a port with `netstat -ano | grep :<port>`.
 `spikes/net/Dockerfile`: Linux Godot 4.7.2 (SHA-512 from `tools.toml`), project imported at build time, runs
 `godot --headless --path /app -- --server` as a non-root user, port from `$PORT` (Railway), plain `ws://` inside (the
 edge terminates TLS). `/app` must be owned by the game user or the build-time import cannot write `.godot/`. Built and
-run locally with Docker; **not deployed** (the maintainer decides). Idle, the container used about 37 MiB and under 1 %
-of a core.
+run locally with Docker, and deployed once to Railway for the measurements above. Idle, the container used about
+37 MiB and under 1 % of a core.
 
 ## Left open (follow-up issues)
 
-- Real latency over Railway and through Discord's proxy; reconnect and resume after a dropped socket.
+- Latency through Discord's proxy (needs a Discord application, the maintainer's); reconnect and resume after a
+  dropped socket. Railway is measured above from one place only: a player near `us-west2`, or a European one, would
+  see other numbers.
 - Combat-grade rewind (lag compensation) for hit detection; the spike only has movement and collisions.
 - Binary packing of many entity kinds (zombies, projectiles): the entry layout will need a type byte and bit flags.
 - Rate limits and input validation (inputs per second, packet size), authentication, and a protocol-version policy.
