@@ -97,7 +97,7 @@ func _leave() -> void:
 func _build_readout() -> void:
 	_readout = Label.new()
 	_readout.position = Vector2(READOUT_MARGIN, READOUT_MARGIN)
-	_readout.add_theme_font_size_override(&"font_size", _tokens.font_body)
+	_readout.add_theme_font_size_override(&"font_size", _tokens.size_body)
 	_readout.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	_readout.add_theme_constant_override(&"outline_size", 8)
 	_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE

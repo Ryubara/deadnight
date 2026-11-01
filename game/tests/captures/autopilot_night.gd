@@ -2,7 +2,7 @@ extends Node
 ## Plays a night with the autopilot, for captures and for watching its numbers. Not part of the
 ## game. Arguments after `--`: `--rounds=N` (stop once round N has started, default 3),
 ## `--speed=N` (ticks per frame), `--seed=N`, `--seconds=S` (stop after S game seconds),
-## `--log` (print every event).
+## `--log` (print every event), `--fast` (quick dead for a recording), `--trace`.
 
 var _args := {}
 var _night: Night
@@ -15,10 +15,21 @@ func _ready() -> void:
 	_night = Night.new()
 	add_child(_night)
 	_night.ticks_per_frame = int(_args.get("speed", 1))
-	await _night.start(Night.Mode.AUTOPILOT, int(_args.get("seed", Night.SEED)))
+	await _night.start(Night.Mode.AUTOPILOT, int(_args.get("seed", Night.SEED)), _tuning())
 	_night.ticked.connect(_on_tick)
 	if _args.has("log"):
 		_night.state.event_received.connect(_print_event)
+
+
+## `--fast`: the dead walk faster, so a short recording meets them.
+func _tuning() -> RulesTuning:
+	if not _args.has("fast"):
+		return null
+	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
+	tuning.rounds.speed_base = 2.2
+	tuning.rounds.first_spawn_delay = 0.5
+	tuning.rounds.intro_seconds = 3.0
+	return tuning
 
 
 func _print_event(event: Dictionary) -> void:
