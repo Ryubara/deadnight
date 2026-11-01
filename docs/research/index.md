@@ -4,3 +4,4 @@ What we learned while building Deadnight, written by whoever learned it, while w
 its sources linked; findings that apply to every game move to the GDStudio docs hub.
 
 - [UI foundation](ui-foundation.md): the `gds_ui` addon: tokens, motion values, drawn components, shader transitions.
+- [Weapons](weapons.md): building weapons in the kit's style by script, the grip origin and the Soldier's hold.
