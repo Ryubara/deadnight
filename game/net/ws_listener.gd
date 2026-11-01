@@ -8,6 +8,13 @@ signal peer_connected(peer_id: int)
 signal peer_disconnected(peer_id: int)
 signal packet_received(peer_id: int, data: PackedByteArray)
 
+## What a peer may have waiting to be read: bytes, and packets. A client sends small packets (see
+## `PeerLimits.MAX_PACKET`), so a frame bigger than the buffer is a hostile one the engine refuses.
+const INBOUND_BUFFER := 4096
+const MAX_QUEUED := 256
+## Seconds a client has to answer the closing handshake before the server lets go of it.
+const CLOSE_GRACE := 1.0
+
 ## Bytes in and out, all peers, for the numbers a run prints.
 var bytes_in := 0
 var bytes_out := 0
@@ -17,6 +24,9 @@ var _tcp := TCPServer.new()
 var _handshaking: Array[WebSocketPeer] = []
 var _peers: Dictionary[int, WebSocketPeer] = {}
 var _next_id := 1
+## Peers being hung up on, and when we began (seconds): a client that does not answer the closing
+## handshake is let go after `CLOSE_GRACE`.
+var _closing: Dictionary[int, float] = {}
 
 
 func listen(port: int) -> Error:
@@ -39,6 +49,8 @@ func peer_count() -> int:
 func poll() -> void:
 	while _tcp.is_connection_available():
 		var ws := WebSocketPeer.new()
+		ws.inbound_buffer_size = INBOUND_BUFFER
+		ws.max_queued_packets = MAX_QUEUED
 		ws.accept_stream(_tcp.take_connection())
 		_handshaking.append(ws)
 	for ws in _handshaking.duplicate():
@@ -59,8 +71,13 @@ func poll() -> void:
 			var packet := ws.get_packet()
 			bytes_in += packet.size()
 			packet_received.emit(id, packet)
-		if ws.get_ready_state() == WebSocketPeer.STATE_CLOSED:
+		var now := Time.get_ticks_msec() / 1000.0
+		var gone := ws.get_ready_state() == WebSocketPeer.STATE_CLOSED
+		if _closing.has(id) and now - _closing[id] > CLOSE_GRACE:
+			gone = true
+		if gone:
 			_peers.erase(id)
+			_closing.erase(id)
 			peer_disconnected.emit(id)
 
 
@@ -76,6 +93,7 @@ func disconnect_peer(peer_id: int) -> void:
 	var ws: WebSocketPeer = _peers.get(peer_id)
 	if ws != null:
 		ws.close()
+		_closing[peer_id] = Time.get_ticks_msec() / 1000.0
 
 
 func close() -> void:

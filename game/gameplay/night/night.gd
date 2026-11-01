@@ -215,8 +215,21 @@ func _refusal_text(reason: int) -> String:
 		NetWire.Refusal.FULL:
 			return "The night is full."
 		NetWire.Refusal.VERSION:
-			return "The server speaks another version of the game."
+			return _version_text(
+				(link as WebSocketLink).server_version if link is WebSocketLink else 0
+			)
+		NetWire.Refusal.DENIED:
+			return "The server did not let us in."
 	return "The server turned us away."
+
+
+## Which side is behind: a server that speaks a newer version means this page is out of date.
+func _version_text(server_version: int) -> String:
+	if server_version > NetWire.VERSION:
+		return "This game is out of date. Reload the page to update it."
+	if server_version > 0:
+		return "The server is older than this game (it speaks version %d)." % server_version
+	return "The server speaks another version of the game."
 
 
 func _has_frame(events: Array) -> bool:

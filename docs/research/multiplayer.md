@@ -32,7 +32,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Looks | a client sends its look once after joining (`--look N` replaces the saved one for a run); `NightServer` owns the `LookServer` and answers with `look_packet` events, which the host sends only to the player they are for; every screen dresses every body, a client's own included, from the one `LookRegistry` table | |
 | Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
 
-Not in the game yet: reconnect (#53), lag compensation for shots (#54), rate limits and a version policy (#55), interest
+Not in the game yet: reconnect (#53), lag compensation for shots (#54), interest
 management and a tighter packing of zombies (#57), server bodies without models (#153), the Discord proxy and Railway
 (#52).
 
@@ -178,6 +178,37 @@ seam where the ramp meets the floor). The game's `Reconciler` still does not rep
 moving the body and calls `restore` for the move, so a snap over 2.5 m (a respawn) lands with the right contact. A
 replaying client, when one is built, rewinds with the same call. The tests are `test_rewind_replay.gd` (from the ramp,
 from mid-air above it, from every 13th tick of a run).
+
+### Limits, hostile clients and the version policy
+
+The server decodes nothing but fixed layouts from a client (`NetWire`), and since #55 it also holds each connection to a
+budget (`PeerLimits`, `TokenBucket`; `test_peer_limits.gd`, and a hostile client over a real socket in
+`test_night_hostile.gd`):
+
+| Limit | Value | Why |
+| --- | --- | --- |
+| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 5, look 13); the socket's own buffer is 4 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
+| Commands | 90 a second sustained, 240 at once | a client sends 60 a second; a 3 s stall of the connection delivers 180 together and is forgiven |
+| Pings, looks, hellos | 4/s (burst 6), 1/s (burst 3), 1/s (burst 2) | a client pings twice a second and sends one look and one hello |
+| Strikes | a packet over its rate costs 0.5, one the server cannot read (empty, too long, unknown type, wrong size, before hello, hello twice) costs 5; they wear off at 5 a second; at 100 the server hangs up | a flood of commands is cut off after about 450 packets, an honest client never gets one |
+| Connections | 16 at once (the 17th is hung up on), and one that has not said hello in 10 s is dropped | idle sockets cost memory |
+| Closing | a client that does not answer the closing handshake is let go after 1 s | a flooder's own backlog kept the old close pending forever |
+
+A packet over a rate is dropped without telling the client. Commands out of order are not refused: over TCP they cannot
+arrive out of order, and a client that lies about its `seq` only confuses its own reconciliation. The shot origin is
+already held within `NightTuning.origin_slack` of the player's head by the server.
+
+**Version policy.** `NetWire.VERSION` is the protocol of this build and `MIN_VERSION` the oldest client it takes; today
+they are equal, because the web client and the server are built from one commit and deployed together. A layout change
+(a field added, resized or reordered, a type renumbered) raises `VERSION`; new keys in events and frames do not, because
+clients ignore keys they do not know. A client of another version is sent `REFUSED(VERSION, server_version)` and hung up
+on, and the game says which side is behind: the server speaks a newer version, so reload the page; or an older one, so
+the server is not deployed yet. To support the old client for one release, lower `MIN_VERSION` and keep both layouts
+readable for that release. Nothing is negotiated.
+
+**Authentication hook.** `NightHost.admit` is called with `(transport_id, version)` after the version is accepted and
+returns 0 to let the client in or a `Refusal` (`DENIED`) to turn it away. It is unset today (everyone is let in); the
+platform backend's ticket check plugs in there (see [the backend](platform-backend.md)) once hello carries a ticket.
 
 ## Interpolation (everyone else)
 

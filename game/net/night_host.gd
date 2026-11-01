@@ -23,6 +23,10 @@ const SEND_EVERY := 2
 const REFUSAL_GRACE := 30
 ## Seconds between the log's stats lines.
 const STATS_EVERY := 10.0
+## Connections open at once, counting those that have not said hello; the next is hung up on.
+const MAX_CONNECTIONS := 16
+## Seconds a connection has to say hello before it is hung up on.
+const HELLO_WITHIN := 10.0
 
 ## Set before the node enters the tree.
 var port := NetWire.DEFAULT_PORT
@@ -30,6 +34,13 @@ var port := NetWire.DEFAULT_PORT
 var seed_value := -1
 var rules_tuning: RulesTuning
 var log_enabled := true
+## Seconds a connection has to say hello (`HELLO_WITHIN`; a test sets it shorter).
+var hello_within := HELLO_WITHIN
+## The place to say who may join: called with `(transport_id: int, version: int)` once a client
+## has said hello with a version this build takes, it returns 0 to let the client in or a
+## `NetWire.Refusal` to turn it away. Unset, everyone is let in (the platform backend's ticket check
+## plugs in here).
+var admit: Callable
 
 var listener := WsListener.new()
 var world: NightWorld
@@ -42,6 +53,8 @@ var work_ms := 0.0
 var worst_ms := 0.0
 ## The nights built so far.
 var nights := 0
+## Peers hung up on for breaking `PeerLimits`.
+var kicked_count := 0
 
 var _peers: Dictionary[int, HostPeer] = {}
 var _by_player: Dictionary[int, HostPeer] = {}
@@ -89,6 +102,7 @@ func _physics_process(_delta: float) -> void:
 	worst_ms = maxf(worst_ms, spent)
 	_stats_work += spent
 	_close_refused()
+	_close_silent()
 	_stats_steps += 1
 	_log_stats()
 	if _peers.is_empty() and nights > 0 and _night_began():
@@ -132,7 +146,11 @@ func _hz() -> int:
 
 
 func _on_connected(transport_id: int) -> void:
-	_peers[transport_id] = HostPeer.new(transport_id)
+	if _peers.size() >= MAX_CONNECTIONS:
+		_log("refused", {"reason": "CONNECTIONS"})
+		listener.disconnect_peer(transport_id)
+		return
+	_peers[transport_id] = HostPeer.new(transport_id, _now())
 
 
 func _on_disconnected(transport_id: int) -> void:
@@ -149,18 +167,27 @@ func _on_disconnected(transport_id: int) -> void:
 
 func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 	var peer: HostPeer = _peers.get(transport_id)
-	if peer == null or data.is_empty() or server == null:
+	if peer == null or server == null or peer.kicked:
+		return
+	var verdict := peer.limits.judge(data, _now())
+	if verdict == PeerLimits.Verdict.DROP:
+		return
+	if verdict == PeerLimits.Verdict.KICK:
+		_kick(peer)
 		return
 	if data[0] == NetWire.Type.HELLO:
 		_hello(peer, data)
 		return
 	if peer.player_id == 0:
+		_fault(peer)
 		return
 	match data[0]:
 		NetWire.Type.COMMAND:
 			var command := NetWire.read_command(data)
-			if command != null:
-				server.submit(peer.player_id, command)
+			if command == null:
+				_fault(peer)
+				return
+			server.submit(peer.player_id, command)
 		NetWire.Type.PING:
 			if data.size() == 5:
 				listener.send(transport_id, NetWire.pong(data.decode_u32(1), server.tick_count))
@@ -170,11 +197,17 @@ func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 
 
 func _hello(peer: HostPeer, data: PackedByteArray) -> void:
-	if peer.player_id != 0:
+	if peer.player_id != 0 or peer.refused:
+		_fault(peer)
 		return
-	if data.size() != 2 or data[1] != NetWire.VERSION:
+	if not NetWire.accepts(data[1]):
 		_refuse(peer, NetWire.Refusal.VERSION)
 		return
+	if admit.is_valid():
+		var verdict: int = admit.call(peer.transport_id, data[1])
+		if verdict != 0:
+			_refuse(peer, verdict as NetWire.Refusal)
+			return
 	var player_id := _free_player_id()
 	if player_id == 0:
 		_refuse(peer, NetWire.Refusal.FULL)
@@ -193,7 +226,43 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 func _refuse(peer: HostPeer, reason: NetWire.Refusal) -> void:
 	listener.send(peer.transport_id, NetWire.refused(reason))
 	peer.close_at = steps + REFUSAL_GRACE
+	peer.refused = true
 	_log("refused", {"reason": NetWire.Refusal.keys()[reason - 1]})
+
+
+## The peer sent something the server cannot use (and `judge` did not catch): a strike.
+func _fault(peer: HostPeer) -> void:
+	if peer.limits.fault(_now()) == PeerLimits.Verdict.KICK:
+		_kick(peer)
+
+
+## Hangs up on a peer that kept breaking the limits; its seat is freed when the socket closes.
+func _kick(peer: HostPeer) -> void:
+	peer.kicked = true
+	_log(
+		"kicked",
+		{
+			"player": peer.player_id,
+			"dropped": peer.limits.dropped,
+			"malformed": peer.limits.malformed,
+		}
+	)
+	listener.disconnect_peer(peer.transport_id)
+	kicked_count += 1
+
+
+## Connections that never said hello are not kept.
+func _close_silent() -> void:
+	var now := _now()
+	for peer: HostPeer in _peers.values():
+		if peer.player_id == 0 and not peer.kicked and now - peer.connected_at > hello_within:
+			peer.kicked = true
+			_log("refused", {"reason": "SILENT"})
+			listener.disconnect_peer(peer.transport_id)
+
+
+func _now() -> float:
+	return Time.get_ticks_msec() / 1000.0
 
 
 func _close_refused() -> void:
@@ -280,6 +349,12 @@ class HostPeer:
 	var last_frame: Dictionary = {}
 	## The step at which a refused client is hung up on, or -1.
 	var close_at := -1
+	var refused := false
+	var kicked := false
+	## When the connection opened (seconds), for the time it has to say hello.
+	var connected_at := 0.0
+	var limits := PeerLimits.new()
 
-	func _init(p_transport_id: int) -> void:
+	func _init(p_transport_id: int, now: float = 0.0) -> void:
 		transport_id = p_transport_id
+		connected_at = now

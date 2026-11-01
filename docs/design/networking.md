@@ -26,5 +26,5 @@ MultiplayerSynchronizer) and not netfox.
 
 ## Open work
 
-Reconnect and resume (#53), lag compensation for hits (#54), input validation, rate limits and a version policy (#55),
-server and bots in CI (#56), more entity kinds and interest management (#57), latency over Railway and Discord (#52).
+Reconnect and resume (#53), lag compensation for hits (#54), server and bots in CI (#56), more entity kinds and
+interest management (#57), latency over Railway and Discord (#52).
