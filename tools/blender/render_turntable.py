@@ -7,7 +7,8 @@ Run with the pinned Blender, headless:
         --model "Kit Shotgun=<bundle>/models/TyWl27dUz6.glb" --model "Kit Sniper=<bundle>/models/ZXBI8Hr3I0.glb" \
         --out <workspace>/scratch/deadnight/<branch>/turntable-lever_rifle.png
 
-Each `--model` is Title=path.glb. Every model is shown at its own world size (1 Blender unit = 1 m) in the kit's
+Each `--model` is Title=path.glb, or Title=path.glb@scale to show it scaled (a hold's `model_scale`: the size in the
+game). Every model is shown at its own world size (1 Blender unit = 1 m) times its scale, in the kit's
 weapon axes (long along X, up +Z; models that stand up along +Z, blades and handles, are laid down first, like
 render_sheet.py's side view), turned about the vertical axis by each `--turns` angle and tipped `--tilt` degrees
 toward the camera so the top reads. Workbench studio light with the texture colours (the palette atlas shows; kit
@@ -29,10 +30,13 @@ import kitlib
 LABEL_W = 0.75  # metres of label column at the left
 
 
-def load(path):
+def load(path, scale=1.0):
     before = set(bpy.data.objects)
     kitlib.gltf_import(path)
     objs = [o for o in bpy.data.objects if o not in before]
+    for r in (o for o in objs if o.parent is None):
+        r.matrix_world = Matrix.Scale(scale, 4) @ r.matrix_world
+    bpy.context.view_layer.update()
     kitlib.apply_base_colours(objs, path)
     body, held, stray = kitlib.split_parts(objs)
     for o in held + stray:
@@ -110,9 +114,13 @@ def main():
     rows = []
     for spec in args.model:
         title, path = spec.split("=", 1)
+        path, _, scale = path.partition("@")
+        scale = float(scale or 1.0)
+        if scale != 1.0:
+            title += f" (x{scale:g})"
         cells = []
         for t in turns:
-            objs, body = load(path)
+            objs, body = load(path, scale)
             mn, mx = orient(objs, body, t, args.tilt, args.upright)
             cells.append((objs, mn, mx))
         objs0, mn0, mx0 = cells[0]

@@ -22,9 +22,42 @@ Built by `tools/blender/build_weapons.py` (helpers in `tools/blender/weaponlib.p
 | Fire axe | 432 | 108 | 14 | 1.24 m | Red, Grey, Wood, Black |
 | Grenade | 1,172 | 374 | 25 | 0.61 m tall | Green, Yellow, DarkGrey, Grey2, Grey |
 | Claw hammer (a tool, not a weapon) | 508 | 168 | 15 | 0.73 m | Grey, Wood, DarkGrey |
+| Crowbar | 484 | 144 | 8 | 0.75 m | Red, Black, Grey |
+| Revolver | 760 | 280 | 30 | 0.31 m | Grey, DarkGrey, Black, Wood |
+| Tommy gun | 1,108 | 360 | 37 | 0.88 m | Grey, DarkGrey, Black, Wood |
+| Flare gun | 524 | 260 | 19 | 0.26 m | Red, Grey, Black |
 
 All are within the budgets (world 1.5k, far 500) and in the kit's range (guns 1.0-1.45k, melee 660-760; the axe is
 lighter, flat parts need few triangles).
+
+## The held weapons of #285
+
+The crowbar, the revolver (the `pistol` id), the tommy gun (the `smg` id) and the flare gun, built by `crowbar()`,
+`revolver()`, `tommy_gun()` and `flare_gun()` in `build_weapons.py` into `game/assets/weapons/<name>/`. Same setup as
+the older weapons, measured on the files: one `Weapons` material, the shared 32 x 32 palette (Closest filtering),
+roughness 0.415, metallic 0.4, every face's UVs on one swatch centre (so no texel density to match: the colours are
+flat), 11-76 KB a file.
+
+- **Drawn at their real length.** Unlike the older weapons (drawn 1.3-1.5 times real), each is its real length with
+  its chunky cross-sections already in the drawing (about 1.5-2 times real across; `chunk` 1, so round parts stay
+  round). The size rule then gives one `model_scale` for all four: the rule is 0.88 x real, the Soldier's own scale
+  is 0.8, so **`model_scale` = 1.1** (the bat's 0.86 is the same sum on a model drawn 1.29 times real).
+
+| Model | Real length (= model) | Rule in the game | Muzzle (glTF, Y up) | Grip origin from the muzzle |
+| --- | --- | --- | --- | --- |
+| Crowbar | 0.75 m (head 0.61, butt -0.14 along +Y) | 0.66 m | none (melee); the hook strikes on -X | 19 % up from the butt |
+| Revolver | 0.31 m | 0.27 m | (-0.235, 0.045, 0) | 76 % |
+| Tommy gun | 0.88 m | 0.78 m | (-0.55, 0.05, 0) | 63 % (the pistol grip; the foregrip's middle is (-0.365, -0.04, 0)) |
+| Flare gun | 0.26 m | 0.23 m | (-0.19, 0.045, 0) | 74 % |
+
+- **Bends by sweep.** A gooseneck of overlapping boxes (`bar`, `arc`) showed a saw-tooth at the bend once it was
+  0.05 m thick; `Builder.tube` sweeps one hex ring along the shaft and the bend (mitred), one closed part.
+- **Far levels** are 30-50 % of the held count (the pistols have few chamfers to drop), all under 500.
+- **Small guns in the fist.** Held on the kit's grip at the rule's size, the revolver (0.27 m) and the flare gun (0.23
+  m) show only their barrels past the Soldier's 0.15 m fist; at 1.6 times the rule they read as guns. The same case
+  as the hammer's exception ([the size rule](../design/weapon-hold.md#the-size-rule)); the hold decides.
+- **The kit Revolver's hold does not carry over:** its copy in the Soldier file is rescaled (scale 0.001 against the
+  Shotgun's 0.010), like the AK's, so the hold renders use the Shotgun's for every gun.
 
 ## The grenade
 
@@ -96,6 +129,9 @@ and the shot leave the barrel instead of a fixed offset from the body. In the gl
 | --- | --- | --- | --- | --- |
 | Lever rifle | (-1.220, 0.0675, 0) | (-1, 0, 0) | -1.224 held, -1.220 far | the barrel's end face; the black bore disc stands 4 mm proud on the held level |
 | Double shotgun | (-1.080, 0.0525, 0) | (-1, 0, 0) | -1.084 held, -1.080 far | centred between the two barrels (0.05 m either side) |
+| Revolver | (-0.235, 0.045, 0) | (-1, 0, 0) | -0.238 held, -0.235 far | the barrel's end face; the bore disc 3 mm proud |
+| Tommy gun | (-0.550, 0.050, 0) | (-1, 0, 0) | -0.554 held, -0.550 far | the compensator's front face |
+| Flare gun | (-0.190, 0.045, 0) | (-1, 0, 0) | -0.193 both | the muzzle ring's front face; the wide bore disc 3 mm proud |
 
 - **Turned so -Z is forward:** in Blender the empty is turned 90 degrees about Z (`rotation_euler = (0, 0, pi/2)`), so
   its local +Y points along -X, out of the barrel. The glTF export turns Blender +Y into -Z, so the node arrives in
