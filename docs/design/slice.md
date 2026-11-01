@@ -76,6 +76,12 @@ and the bot doing it in a night. When the tank is at the low line and it can pay
 open can stand and buys until the tank is back above 40% ([map](map.md#the-fuel-cans),
 `tests/night/test_autopilot_fuel.gd`).
 
+Three traps cost time while it was written. Its sight check is a `Callable` of a `WorldProbe`, and a `Callable` does not
+keep a `RefCounted` alive: `Night` holds the probe in `_sight`, because one made from a temporary object was freed at
+once and silently answered "clear". A shot leaves the barrel, so `Autopilot._clear` tests the line from the eye and from
+the barrel. And a faster run is more fixed ticks per physics frame (`Night.ticks_per_frame`), never `Engine.time_scale`,
+which scales the step each tick gets and plays a different night. Each is in [lessons](../lessons.md).
+
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
 door open, with a HUD on the night that must show the same round and points, have offered the door by name and
