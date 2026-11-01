@@ -15,23 +15,44 @@ const CELLS := [
 	["strong", 1],
 ]
 
+## The shipped tuning's cells, run once for the suite: the tests that read it share them.
+var _shipped: Dictionary = {}
 
+
+func before() -> void:
+	_shipped = _batch(RulesFixture.tuning())
+
+
+## Runs every cell of the gate, one per worker thread. The cells share nothing: each has its own
+## copy of the tuning and its own seeded nights, and the weapon cache is filled before the threads
+## start, so the result is the same as running them one after another (a test below says so).
 func _batch(tuning: RulesTuning, nights: int = NIGHTS) -> Dictionary:
-	var cells := {}
-	for spec: Array in CELLS:
-		cells["%s:%d" % spec] = BalanceBatch.run_cell(
-			tuning, StringName(spec[0]), spec[1], nights, SEED
+	SimWeapons.warm()
+	var tunings: Array[RulesTuning] = []
+	for _i in CELLS.size():
+		tunings.append(tuning.duplicate(true) as RulesTuning)
+	var results: Array[Dictionary] = []
+	results.resize(CELLS.size())
+	var run := func(index: int) -> void:
+		var spec: Array = CELLS[index]
+		results[index] = BalanceBatch.run_cell(
+			tunings[index], StringName(spec[0]), spec[1], nights, SEED
 		)
+	var task := WorkerThreadPool.add_group_task(run, CELLS.size(), -1, true, "balance gate cells")
+	WorkerThreadPool.wait_for_group_task_completion(task)
+	var cells := {}
+	for index in CELLS.size():
+		cells["%s:%d" % CELLS[index]] = results[index]
 	return cells
 
 
 func test_the_shipped_tuning_meets_every_balance_target() -> void:
-	var misses := BalanceTargets.check(_batch(RulesFixture.tuning()))
+	var misses := BalanceTargets.check(_shipped)
 	assert_array(misses).override_failure_message("\n".join(misses)).is_empty()
 
 
 func test_better_players_and_more_players_go_further() -> void:
-	var cells := _batch(RulesFixture.tuning(), 60)
+	var cells := _shipped
 	var weak := BalanceBatch.mean_round(cells["weak:1"])
 	var average := BalanceBatch.mean_round(cells["average:1"])
 	var strong := BalanceBatch.mean_round(cells["strong:1"])
@@ -41,6 +62,19 @@ func test_better_players_and_more_players_go_further() -> void:
 	assert_float(BalanceBatch.mean_round(cells["average:4"])).is_greater(
 		BalanceBatch.mean_round(cells["average:2"])
 	)
+
+
+func test_cells_on_threads_are_the_cells_one_after_another() -> void:
+	var threaded := _batch(RulesFixture.tuning(), 2)
+	for spec: Array in CELLS:
+		var key := "%s:%d" % spec
+		var serial := BalanceBatch.run_cell(
+			RulesFixture.tuning(), StringName(spec[0]), spec[1], 2, SEED
+		)
+		for field in ["reached", "died_in", "pressure", "earned"]:
+			assert_array(threaded[key][field]).override_failure_message(key + " " + field).is_equal(
+				serial[field]
+			)
 
 
 func test_the_gate_fails_when_the_tuning_drifts() -> void:
