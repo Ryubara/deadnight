@@ -9,6 +9,25 @@ The Compatibility renderer lights each mesh with at most 8 omni and 8 spot light
 25 lamps is one mesh, so most of its lamps would not light it. The greybox tiles every floor into slabs of at most
 24 m, so no slab sees more than a handful. Shadows are off: they are among the web build's most expensive features.
 
+## Switching lights with the generator
+
+How the lot's lamps follow the rules is in [the lot](../design/map.md#which-lamps-hang-on-which-circuit); what building
+it taught:
+
+- A scene instanced many times shares its sub-resources: the lamp post's bulb material is one resource for every post,
+  so setting its emission darkens them all. `LampPost` duplicates the material in `_ready`, one per post.
+- A light is `visible = false` only when its level is zero; a flicker moves `light_energy` and never hides it, so the
+  count of lights that touch a mesh (the cap above) does not change on every flicker step. (A choice to keep the web
+  build's shaders steady, not a measurement.)
+- The flicker is a function of the frame's tick and the lamp's number (a golden-ratio sequence), not of `Time` or a
+  random draw, so Movie Maker and a test see the same lights. The night's link delivers a tick late: a test that
+  watches the lights waits a few ticks after changing the tank.
+- Whether ground is lit is asked of the rules' `GeneratorState`, never of a `Light3D`, so a headless server that draws
+  nothing gives the same answer as a client.
+- `metadata/circuit = "name"` in a `.tscn` is a plain String; read it with `StringName(...)` and look up the tree for
+  the first node that has it.
+- A fresh git worktree has no `addons/gdUnit4` (it is ignored): copy it from the main checkout before running tests.
+
 ## CSG
 
 - A scene of plain `CSGBox3D` roots (no combiners, no subtraction) builds fast: 350 nodes load in well under a

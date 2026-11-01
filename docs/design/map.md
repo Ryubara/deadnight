@@ -163,6 +163,33 @@ The dead come in at the field's breaches (`Breach*`), 30 to 40 m from the neares
 and are slowed when they reach the light, which is the design. When the generator dies the lamps go with it: the
 field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
 
+### Which lamps hang on which circuit
+
+Each `Lamps` group carries `metadata/circuit`, and every light below it takes that circuit. Four are the generator's
+(`circuit_drain` in the fuel tuning, the HUD's `SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`); two are not.
+
+| Circuit | Lamps |
+| --- | --- |
+| `screen_lot` (on at the start) | the field's eight lamp posts, the screen's glow |
+| `concession` | the stand's three interior lights, the midway's two lamps |
+| `booth` | the projector beam, the booth's two lights |
+| `back_lot` | the neon sign, the ticket kiosk on the road |
+| `mains` | the yard's four work lamps and the generator's glow: wired straight to the generator with no switch, so lit while the tank has fuel and black when it is dry |
+| `battery` | the wreck's headlights on the road: not the generator's, they burn all night |
+
+The rules decide, the lamps follow. The zombies' slowdown asks `GeneratorState` (`NightWorld.is_lit` ->
+`LotLamps.lit_at`: a lamp within 6 m whose circuit is on and whose tank has fuel), never a light node, so a server
+that draws nothing agrees with every client. The client's `LotLamps` mirrors `circuit_changed`, `fuel_empty`,
+`fuel_restored` and each frame's `fuel`: a circuit that goes off hides its lights and darkens its posts' bulbs; in the
+tank's last tenth (`brownout_fraction`) the lights sag and drop out in a flicker that is a function of the frame's
+tick and the lamp's number (no clock, no random draw), so a recording and a test see the same lights; at an empty tank
+they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it lights no ground for the
+dead. The flicker is only the picture: the slowdown stays whole until the tank is empty.
+
+![The lot from above: the start, every circuit on, a dry tank](map-circuits.png)
+
+Left to right: the night's start (the field and the yard lit), every circuit on, the tank dry.
+
 ## The greybox
 
 `game/world/drive_in_greybox.tscn`: CSG boxes, one flat colour per area, one script (on `Doors`). Metres, Y up,
@@ -176,9 +203,10 @@ x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night environment and the moon |
+| `*/Lamps` | the lights of an area, `metadata/circuit` naming the circuit they hang on ([above](#which-lamps-hang-on-which-circuit)); `LotLamps` reads them |
 
-`game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`), the capture rig and `camera_probe.gd` (the
-player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
+`game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`, `lot_lamps.gd`), the capture rig and
+`camera_probe.gd` (the player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
 (run it from the repository root and commit what it writes; the run must leave `git diff` empty), so a layout change is
 a change to a constant or coordinate there, not hand edits to a 380-node scene. `game/tests/world/` checks:
 
@@ -187,6 +215,8 @@ a change to a constant or coordinate there, not hand edits to a 380-node scene. 
   (`test_drive_in_opening_order.gd`, with a negative control), and that an agent as wide as the shoulder camera still
   reaches every area; the doors themselves (`test_lot_doors.gd`); jumps (`test_drive_in_jump_reach.gd`); and the
   affordability column above (`test_door_affordability.gd`);
+- the lamps: each on a known circuit, ground lit only by a circuit that is on and a tank with fuel, the flicker
+  (`test_lot_lamps.gd`, and in a whole night with the dead's speed, `tests/night/test_night_lamps.gd`);
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 
