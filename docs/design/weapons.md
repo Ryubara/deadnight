@@ -93,8 +93,8 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
 - **The shotgun cannot farm points.** Pellets add up to one hit for the rules, and its damage falls to a quarter by 18
   m, so it is a close weapon by its own numbers, not by a rule.
 - **Ammo is the other economy.** Reserves are small on purpose (a round-10 zombie is 5 revolver body shots), so
-  headshots and melee are worth more than the points they pay. Ammo for sale and the weapon carry limit are not decided
-  here; see the open questions.
+  headshots and melee are worth more than the points they pay. Ammunition is sold ([Rounds](rounds.md#ammunition));
+  the weapon carry limit is not decided here; see the open questions.
 
 ## Grenades
 
@@ -150,8 +150,8 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 
 ## Open questions
 
-- **Ammo as a shop item and the carry limit** (two or three weapons) need the shop and the player work; today a player
-  may carry every weapon.
+- **The carry limit** (two or three weapons) needs the player work; today a player may carry every weapon, and
+  the swap button (F, d-pad up) takes the next one carried in hand.
 - **Friendly blast.** The flare's blast hurts zombies only; whether it hurts players (and whether a zombie on fire
   keeps burning) is a design call. A grenade hurts the thrower only (`player_blasted`); player health is not built yet,
   so that event is the seam for it.

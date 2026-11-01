@@ -44,7 +44,8 @@ extends RefCounted
 ##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow)
 ##   player_removed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
-##   purchase_made: player_id, item_id, price, detail
+##   purchase_made: player_id, item_id, price, detail (a weapon bought: `weapon`; ammunition:
+##     `ammo`, the catalogue weapon, and `rounds`, how many went into its reserve)
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   door_opened: door_id
 ##   board_torn: barricade_id, boards (left), zombie_id (the one that pulled it off)
@@ -69,6 +70,7 @@ enum BuyResult {
 	LOCKED,
 	LIMIT_REACHED,
 	TANK_FULL,
+	AMMO_FULL,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
@@ -324,7 +326,7 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.TEAR_BOARD:
 			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
-			_buy(action["player_id"], action["item_id"])
+			_buy(action["player_id"], action["item_id"], action.get("rounds", -1))
 		RulesAction.SET_CIRCUIT:
 			if not generator.set_circuit(action["circuit_id"], action["on"]):
 				_reject(&"unknown_circuit", RulesAction.SET_CIRCUIT)
@@ -841,8 +843,8 @@ func _tear_board(id: StringName, zombie_id: int) -> void:
 # --- The shop ---
 
 
-func _buy(player_id: int, item_id: StringName) -> void:
-	var quote := _quote(player_id, item_id)
+func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
+	var quote := _quote(player_id, item_id, rounds)
 	if quote.result != BuyResult.OK:
 		_emit(
 			&"purchase_denied", {"player_id": player_id, "item_id": item_id, "result": quote.result}
@@ -867,7 +869,7 @@ func _buy(player_id: int, item_id: StringName) -> void:
 	)
 
 
-func _quote(player_id: int, item_id: StringName) -> Quote:
+func _quote(player_id: int, item_id: StringName, rounds: int = -1) -> Quote:
 	var quote := Quote.new()
 	var player := players.get(player_id) as PlayerState
 	var item := tuning.economy.item(item_id)
@@ -880,6 +882,7 @@ func _quote(player_id: int, item_id: StringName) -> Quote:
 	else:
 		quote.item = item
 		quote.price = item.price_at(round_number)
+		quote.rounds_offered = rounds
 		quote.result = _check_item(player, quote)
 	if quote.result == BuyResult.OK and player.points < quote.price:
 		quote.result = BuyResult.NOT_ENOUGH_POINTS
@@ -915,6 +918,17 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 			else:
 				quote.grenades_added = mini(int(item.amount), room)
 				quote.price = ceili(float(quote.price) * quote.grenades_added / item.amount)
+		ShopItem.Kind.AMMO:
+			# The weapon's reserve is the combat server's: the buyer says how many rounds fit
+			# (none given: all of them) and the rules price exactly those.
+			var fit := int(item.amount)
+			if quote.rounds_offered >= 0:
+				fit = mini(quote.rounds_offered, fit)
+			if fit <= 0:
+				result = BuyResult.AMMO_FULL
+			else:
+				quote.ammo_added = fit
+				quote.price = item.ammo_price(round_number, fit)
 		ShopItem.Kind.FUEL:
 			if generator.space() < MIN_FUEL_SPACE:
 				result = BuyResult.TANK_FULL
@@ -945,6 +959,8 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 		ShopItem.Kind.GRENADES:
 			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
 			return {"grenades": quote.grenades_added}
+		ShopItem.Kind.AMMO:
+			return {"ammo": item.weapon, "rounds": quote.ammo_added}
 	return {}
 
 
@@ -956,3 +972,5 @@ class Quote:
 	var price: int = 0
 	var fuel_added: float = 0.0
 	var grenades_added: int = 0
+	var rounds_offered: int = -1
+	var ammo_added: int = 0
