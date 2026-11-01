@@ -45,7 +45,9 @@ local player) into the direction on screen.
 
 The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad Y), so a rebound key shows
 the new key, and the glyph is a square keycap or a round button by the **last device used** (`UIInputMode.gamepad`). It
-sinks while the action is held. A refused purchase shakes the card and says why in place of the price.
+sinks while the action is held. A refused purchase shakes the card and says why in place of the price. The breach's card
+says "HOLD TO NAIL BOARDS UP": holding the button keeps putting boards back
+([rules](rounds.md#the-fences-boards)).
 
 ## Players' points
 

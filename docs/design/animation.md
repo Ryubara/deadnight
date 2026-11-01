@@ -192,7 +192,8 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   the right fist taps it from chin height (frame 3), rises above the helmet (15) and drives it home (18). The weapon is
   hidden while the clip holds the arms and shown again when it lets go.
 - **Timing comes from the rules, not the clock.** The night repairs one board every `repair_interval` (night tuning,
-  1.0 s) while `use` is held, and each repair is a `board_repaired` event naming the player. On each one,
+  1.0 s) while `use` is held ([hold to repair](rounds.md#the-fences-boards), #297), and each repair is a
+  `board_repaired` event naming the player. On each one,
   `PlayerAnimation.board_repaired(interval)` seeks the clip to `board_set` and plays it at `1 s / interval`, so the
   loop comes round to the blow just as the next board goes up (the seek is then a no-op, not a jump). With no event for
   1.5 intervals the layer fades out (18 per second).
