@@ -55,11 +55,25 @@ static func reload_seconds(weapon_id: StringName) -> float:
 	return def(weapon_id).reload_time
 
 
-## Damage a second on the body at point blank, reloads included: what the player picks by.
-static func sustained_dps(weapon_id: StringName) -> float:
+## Damage a second on the body at point blank, reloads included: what the player picks by. With a
+## `health` (the walker the round sends) it is the health of the zombies killed a second instead:
+## shots land whole, so a blow that overshoots the health wastes the rest (a 95 damage rifle against
+## 117 health needs two, and does no better than a weapon of 60).
+static func sustained_dps(weapon_id: StringName, health: float = 0.0) -> float:
 	var weapon := def(weapon_id)
 	var cycle := float(weapon.magazine_size) * weapon.fire_interval + weapon.reload_time
-	return damage(weapon_id, &"body", 0.0) * float(weapon.magazine_size) / cycle
+	var per_shot := damage(weapon_id, &"body", 0.0)
+	if health <= 0.0:
+		return per_shot * float(weapon.magazine_size) / cycle
+	var shots := ceilf(health / maxf(per_shot, 0.001))
+	return health * float(weapon.magazine_size) / shots / cycle
+
+
+## Health of zombies a second a loaded weapon kills `distance` metres away, shots landing whole
+## against a zombie of `health` (`sustained_dps` with a health, reloads left out).
+static func kill_rate_at(weapon_id: StringName, distance: float, health: float) -> float:
+	var shots := ceilf(health / maxf(damage(weapon_id, &"body", distance), 0.001))
+	return health / (shots * interval(weapon_id))
 
 
 static func is_melee(weapon_id: StringName) -> bool:
@@ -68,13 +82,13 @@ static func is_melee(weapon_id: StringName) -> bool:
 
 ## The weapon to take in hand from those carried (`NightSim.SimArm`): the best firearm by
 ## sustained damage that has any rounds left, else the crowbar.
-static func best_armed(arms: Dictionary) -> StringName:
+static func best_armed(arms: Dictionary, health: float = 0.0) -> StringName:
 	var best_id: StringName = &"crowbar"
 	var best_dps := -1.0
 	for weapon_id: StringName in arms:
 		if is_melee(weapon_id) or arms[weapon_id].mag + arms[weapon_id].reserve <= 0:
 			continue
-		var dps := sustained_dps(weapon_id)
+		var dps := sustained_dps(weapon_id, health)
 		if dps > best_dps:
 			best_dps = dps
 			best_id = weapon_id
