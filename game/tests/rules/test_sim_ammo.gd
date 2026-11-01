@@ -51,14 +51,18 @@ func test_the_best_armed_weapon_skips_what_is_dry_and_falls_back_to_the_crowbar(
 	var arms: Dictionary[StringName, NightSim.SimArm] = {}
 	for id in [&"pistol", &"smg", &"rifle", &"crowbar"]:
 		arms[id] = NightSim.SimArm.of(id)
-	assert_str(SimWeapons.best_armed(arms)).is_equal("smg")
+	# The pick is sized against the walker the round sends. Without a health it is raw damage a
+	# second, and the stepped-up rifle (#254) would now win; against round 1's 50 health the rate
+	# of the submachine gun wins, as it does for the player.
+	var health := RulesFixture.tuning().rounds.health_for_round(1)
+	assert_str(SimWeapons.best_armed(arms, health)).is_equal("smg")
 	arms[&"smg"].mag = 0
 	arms[&"smg"].reserve = 0
-	assert_str(SimWeapons.best_armed(arms)).is_equal("rifle")
+	assert_str(SimWeapons.best_armed(arms, health)).is_equal("rifle")
 	for id in [&"pistol", &"rifle"]:
 		arms[id].mag = 0
 		arms[id].reserve = 0
-	assert_str(SimWeapons.best_armed(arms)).is_equal("crowbar")
+	assert_str(SimWeapons.best_armed(arms, health)).is_equal("crowbar")
 	assert_bool(SimWeapons.is_melee(&"crowbar")).is_true()
 
 
@@ -90,6 +94,21 @@ func test_players_buy_ammunition_with_the_shipped_prices() -> void:
 	assert_int(ammo).is_greater(0)
 
 
+## Rounds reached over `seeds` by the same player, a pistol down to two rounds, on `tuning`.
+func _mean_rounds_with_a_dry_pistol(tuning_of: Callable, seeds: Array[int]) -> float:
+	var total := 0.0
+	for seed_value in seeds:
+		var sim := NightSim.new(
+			tuning_of.call(), SimSkill.named(SimSkill.AVERAGE), 1, seed_value, 0.25
+		)
+		var player: NightSim.SimPlayer = sim._players[1]
+		player.arms[&"pistol"].mag = 2
+		player.arms[&"pistol"].reserve = 0
+		sim.run(30)
+		total += float(sim._result["rounds_reached"])
+	return total / float(seeds.size())
+
+
 func test_a_player_with_no_rounds_and_none_to_buy_fights_with_the_crowbar() -> void:
 	var sim := NightSim.new(_no_ammo_for_sale(), SimSkill.named(SimSkill.AVERAGE), 1, 11, 0.25)
 	var player: NightSim.SimPlayer = sim._players[1]
@@ -97,8 +116,12 @@ func test_a_player_with_no_rounds_and_none_to_buy_fights_with_the_crowbar() -> v
 	player.arms[&"pistol"].reserve = 0
 	sim.run(30)
 	assert_int(sim._result["dry_rounds"]).is_greater(0)
-	assert_int(sim._result["rounds_reached"]).is_less(
-		_night(RulesFixture.tuning())._result["rounds_reached"]
+	# One night's end is mostly chance (with the stepped-up weapons a single seed can go either
+	# way), so the cost of the crowbar is read from the mean of eight seeded nights: the same
+	# player with ammunition for sale goes further than the one who cannot buy any.
+	var seeds: Array[int] = [1, 2, 3, 4, 5, 6, 7, 8]
+	assert_float(_mean_rounds_with_a_dry_pistol(_no_ammo_for_sale, seeds)).is_less(
+		_mean_rounds_with_a_dry_pistol(RulesFixture.tuning, seeds)
 	)
 
 
@@ -124,6 +147,14 @@ func test_ammunition_is_bought_for_the_weapons_worth_shooting_only() -> void:
 	var player: NightSim.SimPlayer = sim._players[1]
 	for id in [&"smg", &"flare_gun"]:
 		player.arms[id] = NightSim.SimArm.of(id)
+	# Worth is sized against the round's walker. Against round 1's 50 health the pistol (24, three
+	# shots) falls under half of the submachine gun's rate, so it is no longer worth the rounds.
+	sim.rules.round_number = 1
+	var early := sim._useful(player)
+	assert_array(early).contains([&"smg"])
+	assert_bool(early.has(&"pistol")).is_false()
+	# By round 10 (117 health) the submachine gun needs nine hits too and the pistol is back in.
+	sim.rules.round_number = 10
 	var useful := sim._useful(player)
 	assert_array(useful).contains([&"smg", &"pistol"])
 	assert_bool(useful.has(&"flare_gun")).is_false()
