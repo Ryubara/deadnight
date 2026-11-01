@@ -6,8 +6,8 @@ extends RefCounted
 ## `player_hurt`, `player_healed`, `player_downed`) go in as they are, and so do the weapons' events
 ## the ammo card and the equipment slot read (`HudLoadout.EVENTS`: equipped, shot, reload). Each
 ## `frame` carries what neither announces: which way the local player faces, what the hand would
-## do (the prompt at a door or a breach), and, once, the weapon in hand for a HUD that joined after
-## its events.
+## do (the prompt at a door, a breach or a breaker post), and, once, the weapon in hand for a HUD
+## that joined after its events.
 
 ## What the player is told at each door: the name on the card (the shop ids are the shop's).
 const DOOR_NAMES := {
@@ -18,10 +18,18 @@ const DOOR_NAMES := {
 	&"door_road": "The road",
 }
 const BREACH_NAME := "Broken fence"
+## What the player is told at each breaker post: the lights it switches.
+const CIRCUIT_NAMES := {
+	&"screen_lot": "Screen field lights",
+	&"concession": "Concession lights",
+	&"booth": "Booth lights",
+	&"back_lot": "Back lot lights",
+}
 
 var _hud: Hud
 var _state: ClientState
 var _weapon_names: Dictionary[StringName, String] = {}
+var _fuel: FuelTuning
 
 
 ## `hud` is in the tree or about to be; `state` is the client's; `server` is read once, for the
@@ -37,6 +45,7 @@ func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
 	hud.state.weapon_names = _weapon_names
 	hud.state.ammo_free = ammo_free
 	var fuel: FuelTuning = server.rules.tuning.fuel
+	_fuel = fuel
 	hud.state.local_player_id = state.player_id
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	state.event_received.connect(_on_event)
@@ -79,5 +88,20 @@ func _set_prompt(prompt: Dictionary) -> void:
 		&"repair":
 			if state.prompt.get("kind") != &"repair":
 				state.set_prompt(&"repair", BREACH_NAME)
+		&"circuit":
+			_set_circuit_prompt(prompt["id"], prompt["on"])
 		_:
 			state.clear_prompt()
+
+
+## The breaker post: which lights, how they stand, and what switching them does to the tank (the
+## circuit's draw, as a share of a full tank a minute).
+func _set_circuit_prompt(circuit_id: StringName, on: bool) -> void:
+	var share := roundi(_fuel.circuit_drain.get(circuit_id, 0.0) * 60.0 / _fuel.capacity * 100.0)
+	var label: String = "%s: %s" % [CIRCUIT_NAMES.get(circuit_id, "Lights"), "ON" if on else "OFF"]
+	var detail := "COSTS %d%% FUEL A MINUTE"
+	if on:
+		detail = "SAVES %d%% FUEL A MINUTE"
+	var state := _hud.state
+	if state.prompt.get("kind") != &"circuit" or state.prompt.get("label") != label:
+		state.set_prompt(&"circuit", label, 0, detail % share)

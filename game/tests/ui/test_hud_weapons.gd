@@ -108,9 +108,10 @@ func test_switching_weapons_changes_the_card_and_puts_the_old_one_in_the_equipme
 	assert_str(state.weapon_name).is_equal(shotgun.display_name)
 	assert_int(state.ammo_magazine).is_equal(shotgun.magazine_size)
 	var pistol_rounds := pistol.magazine_size - 1 + pistol.reserve_start
-	assert_str(_fixture.hud.health.equipment_text).is_equal(
-		"%s x%d" % [pistol.display_name.to_upper(), pistol_rounds]
-	)
+	# The slot names the weapon put away; its rounds stay in the state, off the card (the ammo card
+	# says the rounds of the weapon in hand).
+	assert_str(_fixture.hud.health.equipment_text).is_equal(pistol.display_name.to_upper())
+	assert_int(state.equipment_count).is_equal(pistol_rounds)
 	# Back to the first: the slot now holds the shotgun, and the pistol's rounds are as left.
 	_do(CombatAction.equip(1, &"pistol"))
 	assert_str(state.weapon_name).is_equal(pistol.display_name)
@@ -178,15 +179,15 @@ func test_the_card_reads_whatever_rounds_the_events_carry() -> void:
 	assert_str(_ammo().hint_text).is_equal("NO AMMO")
 
 
-func test_the_equipment_slot_keeps_its_count_in_view() -> void:
-	# The count is the part that must not be cut: a real weapon's name is trimmed instead.
+func test_the_equipment_slot_names_the_weapon_and_shows_no_rounds() -> void:
+	# The rounds of the weapon put away are the ammo card's business (the maintainer's call,
+	# #218); the slot is the weapon's name, cut with an ellipsis only when it is too long.
 	_give(&"pistol")
 	_give(&"rifle")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var label: Label = _fixture.hud.health._equipment
+	assert_str(label.text).is_equal("REVOLVER")
+	assert_str(label.text).not_contains(" x")
 	var font := label.get_theme_font(&"font")
-	var wide := HudStyle.text_width(font, label.text, HudStyle.SMALL)
-	var pistol := WeaponCatalog.get_def(&"pistol")
-	assert_str(label.text).ends_with("x%d" % (pistol.magazine_size + pistol.reserve_start))
-	assert_float(wide).is_less_equal(label.size.x)
+	assert_float(HudStyle.text_width(font, label.text, HudStyle.SMALL)).is_less_equal(label.size.x)

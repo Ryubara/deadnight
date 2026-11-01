@@ -3,8 +3,10 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/car.tscn" id="car"]
 [ext_resource type="PackedScene" path="res://world/drive_in/lamp_post.tscn" id="lamp"]
 [ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]
+[ext_resource type="Shader" path="res://world/drive_in/night_sky.gdshader" id="night_sky"]
 [ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]
 [ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]
+[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]
 [ext_resource type="PackedScene" path="res://world/drive_in/wreck.tscn" id="wreck"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrel.tscn" id="prop_barrel"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrel_spill.tscn" id="prop_barrel_spill"]
@@ -137,13 +139,30 @@ emission = Color(0.416, 0.071, 0.063, 1)
 albedo_color = Color(0.239, 0.220, 0.161, 1)
 roughness = 1.0
 
+[sub_resource type="ShaderMaterial" id="night_sky_material"]
+shader = ExtResource("night_sky")
+shader_parameter/moon_direction = Vector3(0.3011, 0.6222, -0.7226)
+shader_parameter/zenith_color = Color(0.020, 0.039, 0.122, 1)
+shader_parameter/mid_color = Color(0.043, 0.086, 0.212, 1)
+shader_parameter/horizon_color = Color(0.102, 0.165, 0.353, 1)
+shader_parameter/ground_color = Color(0.039, 0.075, 0.188, 1)
+
+[sub_resource type="Sky" id="night_sky_resource"]
+sky_material = SubResource("night_sky_material")
+radiance_size = 0
+
 [sub_resource type="Environment" id="night"]
-background_mode = 1
-background_color = Color(0.015, 0.02, 0.05, 1)
+background_mode = 2
+sky = SubResource("night_sky_resource")
 ambient_light_source = 2
-ambient_light_color = Color(0.3, 0.36, 0.55, 1)
-ambient_light_energy = 0.35
+ambient_light_color = Color(0.302, 0.361, 0.549, 1)
+ambient_light_energy = 0.24
 tonemap_mode = 2
+tonemap_exposure = 1
+fog_enabled = true
+fog_light_color = Color(0.086, 0.133, 0.290, 1)
+fog_density = 0.013
+fog_sky_affect = 0
 
 [node name="DriveInGreybox" type="Node3D"]
 
@@ -153,9 +172,9 @@ tonemap_mode = 2
 environment = SubResource("night")
 
 [node name="Moon" type="DirectionalLight3D" parent="Lighting"]
-transform = Transform3D(0.866, -0.2165, 0.4495, 0, 0.9, 0.4334, -0.5, -0.375, 0.7785, 0, 20, 0)
+transform = Transform3D(-0.9231, -0.2393, 0.3011, 0.0000, 0.7828, 0.6222, -0.3846, 0.5744, -0.7226, 0, 20, 0)
 light_color = Color(0.616, 0.706, 0.910, 1)
-light_energy = 0.35
+light_energy = 0.36
 
 [node name="Outskirts" type="CSGBox3D" parent="."]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, -0.700, 0.000)
@@ -2212,6 +2231,28 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1
 use_collision = true
 size = Vector3(4, 2.6, 0.3)
 material = SubResource("door")
+
+[node name="Switches" type="Node3D" parent="."]
+
+[node name="Switch_screen_lot" parent="Switches" instance=ExtResource("switch")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.000, -46.200)
+metadata/circuit = "screen_lot"
+metadata/door = ""
+
+[node name="Switch_concession" parent="Switches" instance=ExtResource("switch")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.500, 0.000, -4.600)
+metadata/circuit = "concession"
+metadata/door = "door_concession"
+
+[node name="Switch_booth" parent="Switches" instance=ExtResource("switch")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 4.600, 0.000, 21.500)
+metadata/circuit = "booth"
+metadata/door = "door_booth"
+
+[node name="Switch_back_lot" parent="Switches" instance=ExtResource("switch")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -35.500, 0.000, -4.600)
+metadata/circuit = "back_lot"
+metadata/door = "door_back_lot"
 
 [node name="CameraProbes" type="Node3D" parent="."]
 

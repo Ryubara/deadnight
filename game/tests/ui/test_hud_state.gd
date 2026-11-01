@@ -160,12 +160,12 @@ func test_each_change_names_the_part_of_the_state_it_touched() -> void:
 		assert_array(_topics_of(state, func() -> void: state.set_health(50.0)))
 		. contains_exactly([HudState.HEALTH])
 	)
-	# A teammate's points are not on the party ticket; yours are on the points card.
+	# A teammate's points are on their box (the party), yours on yours.
 	(
 		assert_array(
 			_topics_of(state, func() -> void: fixture.act(RulesAction.grant_points(2, 10)))
 		)
-		. is_empty()
+		. contains_exactly([HudState.TEAM])
 	)
 	(
 		assert_array(

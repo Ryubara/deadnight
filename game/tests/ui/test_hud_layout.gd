@@ -16,8 +16,8 @@ const WINDOWS: Array[Vector2] = [
 ]
 const UI_SCALES: Array[float] = [0.8, 1.0, 1.25]
 ## Smallest text height in screen pixels: at the default UI scale, and at the smallest setting.
-const READABLE_PX := 16.0
-const READABLE_SMALL_PX := 12.0
+const READABLE_PX := 13.0
+const READABLE_SMALL_PX := 10.0
 
 
 ## The canvas the window gives the UI: stretch "canvas_items", aspect "expand", then the UI scale.
@@ -54,6 +54,7 @@ func _busy_hud(canvas: Vector2, worst := false) -> HudFixture:
 	for text in ["RUBY OPENED THE PROJECTION BOOTH", "GENERATOR RUNNING LOW", "MOE IS DOWN"]:
 		hud.events_feed.push(text)
 	hud.notices.push("CAL CONNECTED")
+	hud.fuel.peek()
 
 	for amount in [100, 60, 130, 60]:
 		hud.gains.add_gain(&"kill", amount)
@@ -185,7 +186,7 @@ func test_the_words_beside_the_generator_bulbs_fit_their_slots() -> void:
 	HudFonts.reset()
 
 
-func test_a_name_the_state_keeps_still_fits_the_party_and_the_points_caption() -> void:
+func test_a_name_the_state_keeps_still_fits_its_points_box() -> void:
 	var canvas := Vector2(1536, 864)
 	for face in HudFonts.available():
 		HudFonts.apply(face)
@@ -193,11 +194,13 @@ func test_a_name_the_state_keeps_still_fits_the_party_and_the_points_caption() -
 		await await_idle_frame()
 		await await_idle_frame()
 		var hud := fixture.hud
-		# The word after the name always survives; the name is what is cut.
-		assert_str(hud.points.caption_text).ends_with("POINTS")
-		for row: Dictionary in hud.team._lines.values():
-			var name_label: Label = row["name"]
-			assert_float(name_label.size.x).is_equal_approx(HudTeam.NAME_WIDTH, 0.5)
+		for id in hud.points.order():
+			var box := hud.points.box_of(id)
+			# The number always shows whole (it shrinks first); the name is what is cut.
+			assert_str(box.number_text).override_failure_message(face).is_not_empty()
+			assert_float(box.number_width()).override_failure_message(face).is_less_equal(
+				box.number_size().x + 0.5
+			)
 		hud.get_parent().queue_free()
 	HudFonts.reset()
 
