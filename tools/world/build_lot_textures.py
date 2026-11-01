@@ -48,7 +48,8 @@ MATERIALS = {
     "concession_prop": ("planks", "#95703d", None),
     "midway_ground": ("concrete", "#8f8c84", None),
     "midway_wall": ("corrugated", "#818491", None),
-    "booth_ground": ("planks", "#6e5232", None),
+    # The booth stands on the midway's ground (both floors top out at y 0): the same paint, so the overlap cannot flicker.
+    "booth_ground": ("concrete", "#8f8c84", None),
     "booth_wall": ("blocks", "#9a9ca6", None),
     "booth_prop": ("concrete", "#6f717b", None),
     "yard_ground": ("gravel", "#7a705a", None),
