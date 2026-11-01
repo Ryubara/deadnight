@@ -2,7 +2,7 @@
 site_name: Deadnight
 site_description: "Round-based co-op zombie survival at a 1958 drive-in theater: design and what we learned building it."
 docs_dir: docs
-# Every warning fails the build: a broken link, a missing anchor, a page left out of the nav.
+# Every warning fails the build: a broken link, a missing anchor.
 strict: true
 validation:
   nav:
