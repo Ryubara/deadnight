@@ -155,12 +155,13 @@ func test_sprint_is_faster_than_run() -> void:
 	assert_float(_player.ground_speed()).is_equal_approx(_tuning.sprint_speed, 0.05)
 
 
-func test_sprint_needs_forward_movement() -> void:
+func test_sprint_works_sideways_too() -> void:
+	# It used to need forward movement; now every direction sprints (test_omni_movement.gd).
 	_runner.simulate_action_press("move_left")
 	_runner.simulate_action_press("sprint")
 	await _seconds(1.0)
-	assert_bool(_player.is_sprinting()).is_false()
-	assert_float(_player.ground_speed()).is_equal_approx(_tuning.run_speed, 0.05)
+	assert_bool(_player.is_sprinting()).is_true()
+	assert_float(_player.ground_speed()).is_equal_approx(_tuning.sprint_speed, 0.05)
 
 
 func test_diagonal_is_no_faster_than_straight() -> void:
@@ -430,8 +431,10 @@ func test_the_weapon_rides_the_right_hand() -> void:
 	var mount := _animation.weapon_mount()
 	assert_object(mount).is_not_null()
 	assert_str(mount.bone_name).is_equal(PlayerAnimation.HAND_BONE)
-	assert_int(mount.get_child_count()).is_equal(1)
+	# The weapon, and the repair hammer waiting hidden until a board goes up.
+	assert_int(mount.get_child_count()).is_equal(2)
 	assert_bool(_animation.weapon().is_visible_in_tree()).is_true()
+	assert_bool(_animation.hammer().visible).is_false()
 	assert_str(_animation.weapon_class).is_equal("Rifle")
 	# The grip follows the hand bone, so it sits beside the Soldier at about hand height.
 	var hand := mount.global_position - _player.global_position

@@ -58,6 +58,7 @@ func _ready() -> void:
 	_model.scale = Vector3.ONE * tuning.model_scale
 	state.position = global_position
 	state.facing = rotation.y
+	dress(CharacterLook.default_look())
 	camera_rig.setup(self, tuning)
 	camera_rig.body_hidden_changed.connect(_on_body_hidden_changed)
 	camera_rig.yaw = rotation.y
@@ -93,6 +94,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func refresh_settings() -> void:
 	camera_rig.sensitivity = PlayerSettings.sensitivity(get_tree())
 	camera_rig.invert_y = PlayerSettings.invert_y(get_tree())
+
+
+## Puts a look and the armband of a seat on the body's Soldier (`CharacterAssembler.dress`). A body
+## wears the default look until the night says otherwise.
+func dress(look: CharacterLook, seat := 0) -> void:
+	CharacterAssembler.dress(_model, look, seat)
 
 
 ## The lens is too close to the head (or clear again): draw or hide the body.
@@ -185,6 +192,8 @@ func teleport(position: Vector3) -> void:
 	state.velocity = Vector3.ZERO
 	state.on_floor = false
 	global_position = position
+	# Drawn here from the next frame on, not slid in from where it stood.
+	reset_physics_interpolation()
 	camera_rig.snap_to(position)
 
 

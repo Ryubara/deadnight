@@ -6,6 +6,8 @@ extends RefCounted
 ## completes at once; fades stay (a fade is not motion).
 
 const SETTING_REDUCED := "gds_ui/accessibility/reduced_motion"
+## Where a control keeps the entrance it is in: {serial, tween}.
+const STAGGER_META := &"gds_ui_stagger"
 
 
 ## Carries the `changed` signal: a static variable cannot declare one itself.
@@ -15,6 +17,7 @@ class Bus:
 
 
 static var _bus := Bus.new()
+static var _stagger_serial := 0
 
 ## True when the player wants calm: no flicker, flashes or movement. Set it at any time;
 ## whoever shows motion connects to `changed()` and follows it live.
@@ -82,20 +85,33 @@ static func fade_in(control: Control, delay := 0.0, owner: Node = null) -> Tween
 	return tween
 
 
-## Fade up from below, one control after another (`gap` seconds apart). Waits a frame so a
-## container has placed its children first; the controls are hidden until then.
+## Fade up from below, one control after another (`gap` seconds apart). The controls are hidden
+## until their container has placed them, and end exactly where it put them.
+##
+## A container sorts its children in a deferred call that runs after the frame's `process_frame`
+## signal. A caller that comes from an input event (a tab click) runs before that signal in the same
+## frame, so one `process_frame` is not enough: a control that has never been laid out would still
+## read position (0, 0) and the rise would end there. Two are: the second comes after the flush.
+## An earlier entrance of the same control is stopped first, or abandoned if it has not started, so
+## two tweens never write one position.
 static func stagger_in(controls: Array[Control], gap := -1.0) -> void:
 	if controls.is_empty():
 		return
 	var tokens := UITokens.active()
 	var step := tokens.stagger if gap < 0.0 else gap
 	var rise := 0.0 if reduced else float(tokens.space_lg)
+	var tree := controls[0].get_tree()
+	_stagger_serial += 1
+	var serial := _stagger_serial
 	for control in controls:
+		_stop_stagger(control)
+		control.set_meta(STAGGER_META, {"serial": serial, "tween": null})
 		control.modulate.a = 0.0
-	await controls[0].get_tree().process_frame
+	await tree.process_frame
+	await tree.process_frame
 	for i in controls.size():
 		var control := controls[i]
-		if not is_instance_valid(control):
+		if not is_instance_valid(control) or _entrance_of(control).get("serial") != serial:
 			continue
 		var rest := control.position
 		control.position = rest + Vector2(0.0, rise)
@@ -104,6 +120,29 @@ static func stagger_in(controls: Array[Control], gap := -1.0) -> void:
 		var delay := step * i
 		tween.tween_property(control, "modulate:a", 1.0, tokens.dur_base).set_delay(delay)
 		tween.tween_property(control, "position", rest, tokens.dur_slow).set_delay(delay)
+		_entrance_of(control)["tween"] = tween
+		# The layout may have changed while the control rose (a new scale, a longer text): let the
+		# container say where it belongs once the rise is over.
+		var parent := control.get_parent()
+		if parent is Container:
+			tween.finished.connect((parent as Container).queue_sort)
+
+
+static func _entrance_of(control: Control) -> Dictionary:
+	return control.get_meta(STAGGER_META, {})
+
+
+## Stops an earlier entrance of `control`, so two tweens never write one position, and has its
+## container put it back where it belongs.
+static func _stop_stagger(control: Control) -> void:
+	var tween: Tween = _entrance_of(control).get("tween")
+	control.remove_meta(STAGGER_META)
+	if tween == null or not tween.is_valid():
+		return
+	tween.kill()
+	var parent := control.get_parent()
+	if parent is Container:
+		(parent as Container).queue_sort()
 
 
 ## A short horizontal shake for a refused action; ends where it started.

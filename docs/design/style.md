@@ -73,6 +73,16 @@ How they are built:
 | Colours | 3-4 flat materials: Grey `#818491` or `#8f92a0`, DarkGrey `#414141`, Black `#252525`, Wood `#95703d`; red or green only as an accent |
 | Handedness | every held copy is parented to the right hand's `Index1.R` bone |
 
+### Attachment points
+
+Where an effect or a hand meets a model is part of the model, placed by the modeller who owns it, never an offset
+typed into gameplay code. **Every firearm carries an empty named `Muzzle`**, a child of the weapon's root, at the
+centre of the barrel's open end, turned so its **-Z points out of the barrel** (Godot's forward; in Blender that is the
+empty's local +Y, because the glTF export turns Z up into Y up). A gun with two barrels side by side gets one `Muzzle`
+centred between them. Melee weapons and grenades get none. The held and far levels carry it at the same place. The
+flash and the shot leave from it; the numbers and the test are in [Weapons](../research/weapons.md#the-muzzle). A
+tool carries the point it strikes with the same way: the repair hammer's `Face`, -Z out of the face.
+
 ## Bevels
 
 Bevel width is the short side of narrow quads (at least 3:1) folded 15-75 degrees against both long neighbours,
@@ -205,9 +215,11 @@ The Soldier's parts (`tools/blender/build_soldier_parts.py`, [characters](charac
 | Rule | Value |
 | --- | --- |
 | Head landmarks (kit metres, at rest, front is -Y) | hood x +-0.35, y -0.36..0.32, top z 2.20; eyes z 1.75-1.89 at x +-0.12..0.23; face front y -0.37; collar ring z 1.40-1.68, r 0.36 |
-| Added pieces | primitives with a 20 mm one-segment chamfer (10-15 mm on small rims), 44-436 tris each, skinned 100 % to one bone |
+| Added pieces | primitives with a 20 mm one-segment chamfer (10-15 mm on small rims), 44-436 tris each, skinned 100 % to one bone; hair is rounded (spheres and domes, no chamfer) in the crown's `hair` swatch, `hair_shade` only on faces that point down, never a box (a box on the crown read as a cap) |
+| Painted bands | a stripe or band on a kit-body part is cut into the mesh between two planes (`cut_stripe`: the Usher's trouser stripe, 2 x 45 mm at kit scale), never painted by face centre (that leaves sawtooth edges) |
 | Atlas | 256 x 64, 16 px swatches: row 0 the five look channels and their shades (x 0.75), row 1 eleven fixed colours |
-| Assembled presets | 4,408-5,080 tris against the 6k player budget, one material, 5-7 meshes |
+| Assembled presets | 4,490-5,080 tris against the 6k player budget, one material, 5-7 meshes |
+| Far level of detail | 1,515-1,812 tris against the 2k far budget (the build fails over it): every part over 260 tris collapse-decimated to one ratio (0.333) solved for the heaviest preset, smaller pieces kept whole; same skeleton, atlas UVs and material, swapped at 18 m. In Godot at the swap 0.24 % of pixels change |
 
 ## Drive-in props
 

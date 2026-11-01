@@ -34,3 +34,4 @@ func test_a_running_night_reports_round_and_zombies() -> void:
 	assert_int(data["round"]).is_equal(3)
 	assert_int(data["remaining"]).is_equal(17)
 	assert_int(data["alive"]).is_equal(3)
+	assert_bool(data["touch"]).is_false()

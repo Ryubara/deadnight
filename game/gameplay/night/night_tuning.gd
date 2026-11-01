@@ -9,11 +9,20 @@ extends Resource
 ## Carried from the start and never out of rounds: what a player falls back on with a dry gun.
 @export var start_melee: StringName = &"crowbar"
 
+@export_group("Commands")
+## Fixed steps a player's last command stays in force without a new one. After that the player
+## stands, the trigger is released and only the view angles are kept (a stalled client does not walk
+## into the dead). Half a second at the 60 Hz step.
+@export var command_ticks: int = 30
+
 @export_group("Hands")
 ## Metres from the player's feet to a door slab (or a board) that it can be used from.
 @export var use_reach: float = 3.2
-## Seconds between two boards put back.
+## Seconds between two boards put back: the first at the press, then one every interval while the
+## button stays down.
 @export var repair_interval: float = 1.0
+## Whether holding use at a breach keeps putting boards back (off: one board a press).
+@export var repair_hold: bool = true
 ## Seconds before the same hand can throw a breaker again (a held key does not flicker the lights).
 @export var switch_interval: float = 0.5
 

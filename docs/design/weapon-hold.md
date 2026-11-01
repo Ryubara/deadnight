@@ -24,12 +24,19 @@ carries `model_scale`, the factor from the model to the rule.
 | Lever rifle (Rifle) | 1.07 m | 0.94 m | 1.65 m | 0.71 | 0.94 m | 1.32 m |
 | Double shotgun (Shotgun) | 1.12 m | 0.99 m | 1.51 m | 0.82 | 0.99 m | 1.21 m |
 | Baseball bat (Melee) | 0.86 m | 0.76 m | 1.11 m | 0.86 | 0.76 m | 0.89 m |
+| Claw hammer (the repair's tool) | 0.33 m | 0.29 m | 0.73 m | 0.85 | 0.50 m | new |
+
+**The hammer is the one exception, and a tool, not a weapon.** At the rule's 0.29 m the Soldier's chibi fist (about
+0.15 m across) hides all of the handle and half the head, and the repair clip is seen for a second at a time, so its
+hold file (`holds/hammer.tres`, class `Repair`) sizes it at 0.50 m, 1.7 times the rule, as the kit draws its own small
+things large. It is not in `HOLD_CLASSES`: the rule's test covers the weapons the player swaps between.
 
 ## How a gun is held
 
 The weapon rides the right hand (`Index1.R`) on the kit's grip, as before, so the clips that move the arm (Reload,
 Equip, Unequip, Swing, the repair) still carry it. While the clip leaves the hands to the pose (standing, walking,
-running, aiming, firing) `WeaponHandsIK` takes the arms over, blended by `influence` at 14 per second:
+running, aiming, firing) `WeaponHandsIK` takes the arms over, blended by `influence` at 14 per second, and is
+switched off (`active`) once the blend reaches 0, since at influence 0 it still overrode the arms in the drawn pose:
 
 1. The weapon's world pose comes from the aim: the grip sits `grip_offset` from the right shoulder joint (right,
    up, forward is negative), the muzzle along the aim, up stays up. The stock's butt, `butt`, lands against the shoulder.
@@ -55,12 +62,30 @@ the `AimResolver`'s, from the muzzle to what the camera ray is on.
 `muzzle` and `butt` (the ends of the model, origin the grip) are in every hold so the tests, and later the muzzle flash
 and the aim correction, read the same points.
 
+## Which weapon is which
+
+The class of each weapon id is one table, `WeaponHoldMap` (`game/gameplay/player/weapon_hold_map.gd`): lever rifle is
+Rifle, double shotgun Shotgun, every melee weapon (crowbar, bat, fire axe) Melee. `WeaponEquipSync`
+(`game/gameplay/night/weapon_equip_sync.gd`) reads the `weapon` of every player in each frame the server sends and, when
+it changes, calls `PlayerAnimation.equip` on that player's body: the local player and the others take the same line,
+and a player who joins late shows the weapon of his first frame. The test is `game/tests/night/test_weapon_equip.gd`
+(each id taken in hand through the real combat action, for the local player and a second one, and by a swap).
+
 ## What has no model yet
 
-The catalogue has six weapons (pistol, SMG, shotgun, rifle, flare gun, crowbar) and three models. The Soldier
-shows the lever rifle for every gun today (the class follows no weapon id yet) and the bat for melee; the pistol, SMG
-and flare gun, and the fire axe, have no hold. Adding one is a model with its origin on the grip and a `.tres` here;
-see the open issue for the pistol, SMG and flare gun.
+The catalogue has six weapons (pistol, SMG, shotgun, rifle, flare gun, crowbar) and three models. Three have none and are
+listed in `WeaponHoldMap.NO_MODEL`, each held as the nearest class until its own model and hold file land (see the open
+issue for the pistol, SMG and flare gun):
+
+| Weapon | Held as | Shows |
+| --- | --- | --- |
+| SMG | Rifle | the lever rifle model, two-handed |
+| Pistol | Pistol (the one-handed clips) | the arm out toward the aim, the hand empty |
+| Flare gun | Pistol | the same |
+
+The fire axe has a model but no id in the catalogue yet; it is Melee as soon as it has a melee `WeaponDef`. Adding a
+weapon's model is a glb with its origin on the grip and a `.tres` here; then take its id off `NO_MODEL` and out of the
+table above.
 
 ## Proof
 

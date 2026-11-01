@@ -87,7 +87,7 @@ estimates or design choices, none is a Battlefront measurement. The first column
 | FOV (vertical) | 75 | 70 | Less world around him; 70 vertical is about 102 horizontal at 16:9, not a fish-eye. |
 | Aim: arm, offset, FOV | 1.9 m, 0.6 m, 62 | 1.8 m, 0.65 m, 60 | The research table suggested 1.3 m, 0.4 m, 55; that puts the right pad 5 degrees from the reticle (issue #109). A test needs 0.2 m of air between the body and the centre ray. |
 | Follow spring | exponential, none | 22 rad/s on the ground plane, 10 vertically (95 percent in 0.22 s and 0.48 s) | A critically damped spring trails a steady runner by 2 v / w: 0.4 m at a run. The slower vertical follow keeps a jump from whipping the view. |
-| Sprint | none | +6 degrees FOV, +0.3 m arm, follow 16 rad/s (0.9 m of lag at 7 m/s), eased at 9 rad/s | Speed shows as the character drifting ahead on screen, then settling. |
+| Sprint | none | +6 degrees FOV, +0.15 m arm, follow 16 rad/s (0.9 m of lag at 7 m/s), eased at 13.5 rad/s (95 percent in 0.35 s) | Speed shows as the character drifting ahead on screen, then settling. The maintainer found the first pull-back (0.3 m, 9 rad/s, 0.53 s) too long and too slow: now half the distance, 1.5 times as fast ([character controller](character-controller.md)). |
 | Aim zoom, shoulder swap | exponential 10 and 9 per second | springs, 24 and 16 rad/s (0.2 s and 0.3 s) | Same duration, but they start from rest and a half-done transition keeps its velocity when reversed. |
 | Wall release | none (the arm moved with the wall) | pulled in at once, let out at 6 rad/s | A wall hit cannot wait; leaving one should not pop. |
 | Hide the body | arm below 0.7 m | lens closer than 0.9 m to the head, shown again beyond 1.05 m | Measured to the head, not along the arm, so a shoulder-side wall counts too (issue #157). |
@@ -101,7 +101,9 @@ What changed in the way it works, not only the numbers:
 - **Interpolation by hand.** The rig records the body after each physics tick and draws the blend of the last two at
   the render frame's fraction. A test drives it at 30, 75, 144 and 240 Hz over a 60 Hz run: the frame-to-frame travel
   is perfectly even with the blend; without it the spring still hides most of the tick, but 2.7 percent of the travel
-  is uneven at 144 Hz.
+  is uneven at 144 Hz. The body is blended by the engine's own physics
+  interpolation (on since #344), and the rig is switched off for it so the two do not stack:
+  [physics interpolation](physics-interpolation.md).
 - **The sweeps.** From the true head (never from the lagging pivot, which can be behind a corner): a sphere to the
   shoulder, then back along the view, then a straight sweep to the lens so the head is always in sight. A wall at the
   shoulder slides the camera in behind the player (issue #76); a wall behind brings it forward until the body hides.
