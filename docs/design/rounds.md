@@ -178,7 +178,8 @@ and `hit_chance` (the shot-landing factor for hitboxes). The rules never move a 
 is. The night reads all of them but `barrier_speed` (no barrier yet): damage, knockback, the
 telegraph, the look and `hit_chance` (which sizes the zones;
 [zombies research](../research/zombies.md#types-in-the-night)). A `weak` hit (the boss's lit bulb) is a zone like
-`head`: the weapon sends it when the ray hits that box, and the rules multiply the damage by the type's
+`head`: the weapon sends it when the ray hits that box (`Hitbox.WEAK`, only on a zombie that has a weak spot: the
+headliner), and the rules multiply the damage by the type's
 `weak_multiplier` and pay it like a headshot.
 Everything is plain numbers and names in the event, so the zombie code and the HUD never look a type up.
 
@@ -196,14 +197,15 @@ and start again:
 
 **Announced.** The break before a special round is 10 s longer (`break_bonus_seconds`), and starts with
 `special_round_announced` (round, kind, title, `boss_type`, `boss_count`, `seconds`), the cue for the HUD
-marquee, the sting and the flickering lights. A client that joins late gets a snapshot, not these events: its
-HUD reads `special_id` and the bosses' health from the snapshot and the schedule from the shared tuning, so it
-shows the banner, the boss bar and, in a break, the marquee too ([HUD](hud.md)).
+marquee, the sting and the flickering lights. `round_started` repeats the `special_id` and `boss_count`
+for a client that is there at the time. A client that joins late gets a snapshot, not these events: its HUD reads
+`special_id` and the bosses' health from the snapshot and the schedule from the shared tuning, so it shows the
+banner, the boss bar and, in a break, the marquee too ([HUD](hud.md)).
 
 **Paid.** Clearing it pays every player on their feet a reward on top of the round bonus
 (`special_reward`: 200 + 40 per round for a boss night, 150 + 40 per round for the others) and sends
-`special_round_cleared`. A boss kill pays x6 the usual kill, and up to 20 hits pay on the way down, so a
-boss night is also where the points glut of the late rounds is partly spent.
+`special_round_cleared`. A boss kill pays x6 the usual kill and up to 20 hits pay on the way down, so a
+boss night adds to the points glut of the late rounds; nothing is spent there.
 
 **A telegraphed attack, a weak spot.** The headliner's blow takes 1.2 s to arrive (`telegraph_seconds`):
 the behaviour shows it and the player can step out; the model of a player reads it with
@@ -225,7 +227,7 @@ the pillars.
   (the controller's sprint is assumed near 6 m/s; revisit with the controller). The runner (the old
   sprinter, now a type) arrives on round 4 and settles at three in ten, fragile enough that a
   good shot ends it, so late rounds pressure positioning instead of simple running.
-- **The lot cap protects the web build and the player.** At most 10 alive in round 1, rising to 28;
+- **The lot cap protects the web build and the player.** At most 6 alive in round 1, rising 0.8 a round to 28;
   each extra player adds 6. Zombies wait their turn, so a big round is a long fight, not a
   wall of bodies.
 - **More players, more zombies, less per head.** Each extra player adds 60% of the solo count, and
@@ -406,7 +408,7 @@ rounds.health_growth=1.06` (see the research page).
 - **Weapon damage, ammo and the weapon limit**: the weapons and their numbers are in
   [Weapons](weapons.md) (shots to kill per round are tabled there); ammo for sale and the carry limit are still open.
 - **The shop's weapons are barely better than the pistol.** Sustained, reloads included, the pistol does about 59
-  damage a second, the shotgun 68, the rifle 85, the SMG 101 and the flare gun 54 (plus its blast). With health
+  damage a second, the shotgun 68, the rifle 85, the SMG 101 and the flare gun 32 (plus its blast). With health
   that compounds against weapons that do not grow, this is why the health curve had to come down (#188). A real
   step up (upgrades, ammunition types, the re-cut) would let the health curve climb again; that is weapon and
   shop work (#152), and the report should be run again when it lands.

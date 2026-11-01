@@ -16,7 +16,11 @@ then the charts; `--compare <folder>` draws a before and after).
 
 - **Speed.** One solo night costs 0.05 to 0.15 s (a step of 0.25 s of game time, a few thousand `apply`
   calls); four players about 4 times that. 500 nights of all nine cells (3 skills by 1, 2, 4 players) take
-  about 3 minutes on 16 cores with nine processes; the CI gate (five cells, 60 nights, seed 4000) about 30 s.
+  about 3 minutes on 16 cores with nine processes. The CI gate (five cells, 60 nights, seed 4000) takes 40 s as a
+  whole suite in CI; it took 1 min 53 s when it ran the batch twice, one cell after another ("about 30 s" was never
+  true there). The five cells now run on worker threads (`WorkerThreadPool`), each with its own copy of the tuning,
+  and the shipped batch is run once in `before()`. Nights are node-free `RefCounted` objects, so the only shared state
+  is the weapon cache, filled first by `SimWeapons.warm()`; a test pins that threaded cells equal serial ones.
 - **Determinism.** Same seed, same night, on every run (tested). A batch is therefore reproducible, and a
   CI range that passes once passes always; only a change to the rules, the tuning or the model moves it.
 - **A fixed player is a cliff.** With one fixed skill per level, every night of a cell ended in the same
@@ -47,7 +51,7 @@ then the charts; `--compare <folder>` draws a before and after).
 - **A weak player's boss night is a cliff.** Boss health 15, 16 and 22 times a walker's killed about 75%, 90% and 95 to
   100% of weak solo nights at it: they never land the weak spot, so their kill rate stops covering the boss's
   arrival all at once. A number that makes strong players feel the boss walls the weak ones.
-- **No weapon is a big step.** Sustained damage a second: flare gun 54 (plus a 3 m blast), pistol 59, shotgun 68,
+- **No weapon is a big step.** Sustained damage a second: flare gun 32 (plus a 3 m blast), pistol 59, shotgun 68,
   rifle 85, SMG 101. Health that compounds against weapons that barely grow set the whole curve; the retune of #188
   had to lower health, counts and the alive cap, not raise anything.
 - **Where the model is thin.** Players are bots, shoot only at what they can see (view range falls with the
