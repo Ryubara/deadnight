@@ -164,7 +164,7 @@ func test_the_cards_keep_their_size_whatever_they_say() -> void:
 	HudFonts.reset()
 
 
-func test_the_words_under_the_generator_bulbs_fit_their_slots() -> void:
+func test_the_words_beside_the_generator_bulbs_fit_their_slots() -> void:
 	for face in HudFonts.available():
 		HudFonts.apply(face)
 		var host: Control = auto_free(Control.new())
@@ -173,7 +173,7 @@ func test_the_words_under_the_generator_bulbs_fit_their_slots() -> void:
 		var fixture := HudFixture.make(host, 1)
 		var fuel := fixture.hud.fuel
 		var font := UITokens.active().text_font(0.0, HudFuel.WORD_TRACKING)
-		var slot := fuel._gauge.custom_minimum_size.x / float(fuel.circuit_words.size())
+		var slot := fuel.word_slot(fuel._gauge.custom_minimum_size.x)
 		assert_int(fuel.circuit_words.size()).is_greater(0)
 		for word in fuel.circuit_words.values():
 			(

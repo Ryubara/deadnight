@@ -28,18 +28,18 @@ yet (issue to follow), so `player_hurt` is defined here until they do.
 | `HudRound` | top left | the round on a row of **reel digits** (a projector drum counter that rolls to the next number), zombies left or the break countdown |
 | `HudObjective` | top left, under the round | the area you are in and one line of what to do next (two lines at most) |
 | `HudTeam` | top left | one ticket for the other players: name and `UP` or `DOWN` (2 to 4 players; hidden when alone) |
-| `HudFuel` | top right | the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit named as on the lot's signs |
-| `HudFeed` | top right, under the tank | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left; one line each, an ellipsis at the end of a long one |
+| `HudFuel` | top right | the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit with its sign's word beside it, in two columns (`SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`) |
+| `HudFeed` | top right, under the tank | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left; one line each, 560 units wide (wider than the column): a long line shrinks toward 24, then ends in an ellipsis |
 | `HudPoints`, `HudHealth` | bottom left | your name and points; a bar of ten ticks, or `DOWN` and what to hope for; one row for the equipment with its count and the grenade count |
 | `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it, the weapon name on a coloured bar; hot orange when low |
-| `HudBanner` | top centre | a marquee board with chasing bulbs: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner) |
+| `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner) |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card, three lines high: the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows |
 | `HudCrosshair` | centre | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
 | `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
 | `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
 
-The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad X), so a rebound key shows
+The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad Y), so a rebound key shows
 the new key, and the glyph is a square keycap or a round button by the **last device used** (`UIInputMode.gamepad`). It
 sinks while the action is held. A refused purchase shakes the card and says why in place of the price.
 
@@ -63,6 +63,13 @@ sinks while the action is held. A refused purchase shakes the card and says why 
   must survive ("POINTS", "x12") is cut by `HudStyle.trimmed`. A name is kept to 20 characters by the state
   (`HudStyle.NAME_LIMIT`). Vertically the bands are: the right column ends above the gains, the gains above the
   prompt, the prompt on the bottom margin.
+- **Ordinary text is never cut; the worst case may be.** The overlap fix (#161) made every part give way with an
+  ellipsis, and at 1080p that cut the everyday values (`SCRE... SNAC...`, `PLAYER 1 OPENED THE C...`; #170). Two
+  structural fixes, no abbreviations: the generator's words sit beside their bulbs in two columns (half the gauge for a
+  word, not a quarter, so `BACK LOT` fits; the card is no taller), and the event rows are 560 units wide, hanging left of
+  the column into the empty space under the banner (the banner moved from 10 % of the screen height to the top margin so
+  it ends above them at every canvas). Wrapping to two lines was rejected: three events of two lines reach the gains.
+  `test_hud_typical_text.gd` holds the line: no ellipsis for the values of an ordinary night at 1080p and 1440p.
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
 - **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with four players, an
@@ -103,9 +110,10 @@ chasing bulbs, no pulsing (the low-health frame and low-fuel tank hold steady); 
 `game/tests/ui/test_hud_state.gd` (the mirror, from real rules events; topics; names), `test_hud_snapshot.gd` (a late
 joiner against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
-`test_hud_layout.gd` (sizes, overlap, readability, reduced motion: the busiest HUD and the longest content the game
-allows, in the fallback face, a synthetic wide face and, when `refs/fonts` is there, the Marquee pair, at every
-canvas). The capture `game/tests/captures/hud_worst_case.tscn` renders the longest content at one canvas
+`test_hud_typical_text.gd` (the ordinary night's values show in full at 1080p and 1440p, in the fallback face and the
+Marquee pair), `test_hud_layout.gd` (sizes, overlap, readability, reduced motion: the busiest HUD and the longest
+content the game allows, in the fallback face, a synthetic wide face and, when `refs/fonts` is there, the Marquee
+pair, at every canvas). The capture `game/tests/captures/hud_worst_case.tscn` renders the longest content at one canvas
 (`-- --out=<png> [--size=1536x864] [--face=fallback|wide|marquee] [--busy]`). The capture
 `game/tests/captures/hud_tour.tscn` plays a real `GameRules` night over the drive-in greybox:
 

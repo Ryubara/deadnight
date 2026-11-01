@@ -22,6 +22,14 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
   HUD, drawn strings included, asks `tokens.display_font()` and `text_font()`. A capture loads the recommended pair from
   outside the repository, so the committed HUD runs and tests without a font file.
 
+- **Test the ordinary as well as the worst.** The worst-case suite proves nothing overlaps because text gives way, so
+  it passes while everyday text is cut (#170: at 1080p `SNACKS` and "PLAYER 1 OPENED THE CONCESSION STAND" ended in
+  ellipses). A second suite holds the typical values at the common canvases to "no ellipsis"; a label counts as cut when
+  its text is wider than its box (a trimmed label's `text` still holds the whole string). Fix the layout (a grid, a
+  wider row) before reaching for abbreviations.
+- A part's own width is not its neighbours' room: the event rows are wider than the column because the space left of it
+  is empty. The overlap test found the one neighbour (the banner, at a fraction of the screen height) at once.
+
 ## Godot behaviour worth knowing
 
 - `Control.set_anchors_preset(PRESET_FULL_RECT)` on a Control made in code leaves it 0 x 0 (the offsets keep the old
@@ -47,9 +55,21 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
 - A snapshot restore that calls `team.clear()` wipes what the snapshot does not carry (names). Rebuild from the snapshot
   and put back what the old state knew about the players still in it.
 
+## In the night
+
+The night feeds the HUD through `NightHudBinding` (`game/gameplay/night/`), from `ClientState.event_received` alone;
+see [the slice](../design/slice.md#the-hud). Things the binding taught:
+
+- Rules actions applied outside the server's tick (a test granting points) are not in any client's events: the server
+  clears its outbox at each `step`. A test that needs the HUD to hear one delivers the returned events itself
+  (`night.state.apply_events(rules.apply(...))`).
+- `HudFeed.ITEM_NAMES` has no entry for `door_yard`: buying the generator yard is announced as "BOUGHT SOMETHING".
+- At 1920 x 1080 the circuit labels under the generator bar touch each other ("SCREENSNACKSBOOTBACK LOT").
+
 ## Left out, to do
 
 - Player health and blows are not rules events; `player_hurt` is a HUD event until the rules own them.
-- Ammo, reload and equipment come from the weapon code, which does not exist yet; the HUD takes them as readings.
+- Ammo comes from the frame (the held weapon), reload and equipment are not shown; the weapons' own events do not
+  feed the HUD (#133).
 - Markers are given in screen space; projecting world points (and hiding those behind walls) is the camera's job.
 - The prompt looks only at one interaction; two in reach at once needs a choice rule from the player controller.

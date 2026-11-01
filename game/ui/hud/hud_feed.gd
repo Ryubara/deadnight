@@ -9,9 +9,11 @@ enum Kind { EVENTS, NOTICES }
 ## Rows kept at once: the event list is longer than the join and leave notices.
 const MAX_EVENTS := 3
 const MAX_NOTICES := 1
-## Width of a row; a row is one line, and longer text ends in an ellipsis rather than wrapping
-## (a wrapped row doubles the column's height and reaches the point gains below it).
-const ROW_WIDTH := HudStyle.COLUMN
+## Width of a row: wider than the column it hangs from, so an ordinary line ("PLAYER 1 OPENED THE
+## CONCESSION STAND") shows in full. A row is one line (a wrapped row doubles the column's height
+## and reaches the point gains below it): a long text first shrinks toward the smallest size, then
+## ends in an ellipsis. The space left of the column under the banner is empty, so it costs nothing.
+const ROW_WIDTH := 560.0
 const LIFE := 4.5
 const FADE := 0.6
 const ITEM_NAMES := {
@@ -71,6 +73,7 @@ func push(text: String, colour := Color.TRANSPARENT) -> void:
 	var label := HudStyle.clip(
 		HudStyle.label(text, HudStyle.TEXT, colour if colour.a > 0.0 else plain, false, 1.0)
 	)
+	HudStyle.set_fitted(label, text, HudStyle.TEXT, ROW_WIDTH)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	label.custom_minimum_size.x = ROW_WIDTH
 	rows.append({"label": label, "age": 0.0})

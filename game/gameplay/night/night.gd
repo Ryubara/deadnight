@@ -22,7 +22,6 @@ enum Mode { HUMAN, AUTOPILOT, MANUAL }
 const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
 const SEED := 1958
-## The seam for the HUD (#89): everything it needs arrives as `state.event_received`.
 const SPECTATOR_OFFSET := Vector3(0.0, 11.0, 8.0)
 
 var mode := Mode.HUMAN
@@ -32,6 +31,8 @@ var link: LoopbackLink
 var state: ClientState
 var view: NightView
 var autopilot: Autopilot
+## The HUD to feed, set before `start`: it hears the night from its first event.
+var hud: Hud
 ## Ticks run in each physics frame: 1 is real time; a test turns it up to play faster.
 ## (Engine.time_scale would scale the step itself, which is not the same night.)
 var ticks_per_frame := 1
@@ -42,6 +43,7 @@ var _human := HumanController.new()
 var _spectator: Camera3D
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
+var _hud_binding: NightHudBinding
 var _paused := false
 
 
@@ -57,6 +59,8 @@ func start(
 	link = LoopbackLink.new(server)
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
+	if hud != null:
+		_hud_binding = NightHudBinding.new(hud, state, server)
 	link.delivered.connect(state.apply_events)
 	link.send({"type": NightServer.JOIN, "player_id": PLAYER_ID, "local": mode == Mode.HUMAN})
 	link.send({"type": NightServer.START_NIGHT})
