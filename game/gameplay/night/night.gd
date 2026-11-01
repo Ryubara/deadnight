@@ -96,11 +96,44 @@ func start(
 	view.setup(state, camera, _telegraphs(), _board_seconds())
 	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
+	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
 	running = true
 	ready_to_play.emit()
+
+
+## The guns, the grenades and the lot's machines and shop sound from the same events as the view.
+func _add_sounds() -> void:
+	var weapons := WeaponSounds.new()
+	weapons.name = "WeaponSounds"
+	add_child(weapons)
+	weapons.setup(state)
+	var grenades := GrenadeSounds.new()
+	grenades.name = "GrenadeSounds"
+	add_child(grenades)
+	grenades.setup(state)
+	var lot := WorldSounds.new()
+	lot.name = "WorldSounds"
+	add_child(lot)
+	var tuning: RulesTuning = server.rules.tuning
+	var generator := world.greybox.get_node_or_null("GeneratorYard/Generator") as Node3D
+	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
+
+
+## Where the prize crane stands at `spot` (the rules' list of crane places), or null.
+func _crane_point(spot: int) -> Variant:
+	for place in world.shop_spots():
+		if place["kind"] == &"crane" and place["crane_spot"] == spot:
+			return place["position"]
+	return null
+
+
+## Where a circuit's breaker post stands, or null.
+func _post_point(circuit_id: StringName) -> Variant:
+	var post := world.switches.post(circuit_id)
+	return post.global_position if post != null else null
 
 
 ## Seconds each look's blow takes to land, for the looks of the types that telegraph it.
