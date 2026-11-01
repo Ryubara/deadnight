@@ -46,6 +46,22 @@ const HOLD_CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
 const SHOULDER_RATE := 14.0
 ## Recoil of a shot dies away at this rate (per second, exponential).
 const RECOIL_RATE := 16.0
+## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount.
+## Its hold file sizes it (a tool, larger than the size rule: docs/design/weapon-hold.md); the
+## grip is the melee one tipped 20 degrees in the hammer's swing plane (about its Z), so the face
+## meets the board square on the blow (docs/design/animation.md, Repair).
+const HAMMER_HOLD := "res://gameplay/player/holds/hammer.tres"
+const HOLD_HAMMER := Transform3D(
+	Basis(
+		Vector3(-0.719030, -0.694337, 0.029881),
+		Vector3(-0.694842, 0.717368, -0.050778),
+		Vector3(0.013822, -0.057274, -0.998263)
+	),
+	Vector3(-0.004282, 0.175673, -0.062554)
+)
+## The node the hammer model carries at the centre of its striking face, -Z out of the face
+## (docs/design/style.md, "Attachment points").
+const HAMMER_FACE := "Face"
 const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Pistol", &"Melee"]
 const DEFAULT_CLASS := &"Rifle"
 ## Where Walk sits on the move blend (0 = Idle, 1 = Run).
@@ -105,6 +121,7 @@ var _action_node: AnimationNodeAnimation
 var _full_node: AnimationNodeAnimation
 var _mount: BoneAttachment3D
 var _weapon: Node3D
+var _hammer: Node3D
 var _hold: WeaponHold
 var _hands: WeaponHandsIK
 var _shoulder_blend := 0.0
@@ -138,6 +155,12 @@ func _ready() -> void:
 	_mount.bone_name = HAND_BONE
 	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
 	skeleton.add_child(_mount)
+	var hammer_hold := load(HAMMER_HOLD) as WeaponHold
+	_hammer = (load(hammer_hold.scene) as PackedScene).instantiate() as Node3D
+	_hammer.name = "Hammer"
+	_hammer.transform = HOLD_HAMMER.scaled_local(Vector3.ONE * hammer_hold.model_scale)
+	_hammer.visible = false
+	_mount.add_child(_hammer)
 	_hands = WeaponHandsIK.new()
 	_hands.name = "WeaponHandsIK"
 	_hands.hand_hold = HOLD_GUN
@@ -213,6 +236,11 @@ func weapon() -> Node3D:
 	return _weapon
 
 
+## The repair hammer on the hand mount, shown only while the repair holds the arms.
+func hammer() -> Node3D:
+	return _hammer
+
+
 ## Switches to a weapon class: Equip_<Class> plays and the weapon appears on its weapon_visible
 ## frame; the upper body then holds Aim_<Class>.
 func equip(new_class: StringName) -> void:
@@ -246,7 +274,8 @@ func play_full_body(clip: StringName) -> void:
 
 ## A board this player put back has just gone up (the rules' `board_repaired`, which come one
 ## `interval` apart while `use` is held): the repair loop plays, or keeps playing, from the frame
-## the board lands on, at the pace of one loop per interval. The weapon is put away meanwhile.
+## the board lands on, at the pace of one loop per interval. The weapon is put away and the
+## hammer is in the hand meanwhile.
 ## Driven by the events alone: nothing here reads the clock.
 func board_repaired(interval: float) -> void:
 	interval = maxf(interval, 0.05)
@@ -255,7 +284,7 @@ func board_repaired(interval: float) -> void:
 	_repair_time = _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
 	set(REPAIR_SCALE_PARAMETER, _repair_scale)
 	set(REPAIR_SEEK_PARAMETER, _repair_time)
-	_weapon_visible(false)
+	_hands_on_repair(true)
 	_emit_events(REPAIR_CLIP, _repair_time - 0.001, _repair_time)
 
 
@@ -268,7 +297,7 @@ func is_repairing() -> bool:
 func stop_repair() -> void:
 	if _repair_left > 0.0:
 		_repair_left = 0.0
-		_weapon_visible(true)
+		_hands_on_repair(false)
 
 
 ## The repair layer's weight now (0: the weapon arms, 1: the repair arms), for tests.
@@ -322,6 +351,7 @@ func _set_class(new_class: StringName) -> void:
 		_weapon.name = "Weapon"
 		var grip := HOLD_MELEE if new_class == &"Melee" else HOLD_GUN
 		_weapon.transform = grip.scaled_local(Vector3.ONE * _hold.model_scale)
+		_weapon.visible = not is_repairing()
 		_mount.add_child(_weapon)
 
 
@@ -349,11 +379,21 @@ func _advance_shoulder(delta: float) -> void:
 	if absf(_shoulder_blend - target) < 0.001:
 		_shoulder_blend = target
 	_hands.influence = _shoulder_blend
+	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
+	# so the clips that move them (the repair, Reload, Swing) never showed in a running game.
+	_hands.active = _shoulder_blend > 0.0
 
 
+## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible
+## event (an Equip) does not bring the weapon back over the hammer.
 func _weapon_visible(shown: bool) -> void:
 	if _weapon != null:
-		_weapon.visible = shown
+		_weapon.visible = shown and not is_repairing()
+
+
+func _hands_on_repair(repairing: bool) -> void:
+	_hammer.visible = repairing
+	_weapon_visible(not repairing)
 
 
 func _advance_events(delta: float) -> void:
