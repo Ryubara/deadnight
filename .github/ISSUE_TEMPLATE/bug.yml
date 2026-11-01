@@ -34,3 +34,7 @@ body:
   id: log
   attributes:
     label: Log
+- type: textarea
+  id: screenshots
+  attributes:
+    label: Screenshots

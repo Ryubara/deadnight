@@ -53,9 +53,12 @@ jobs:
       - name: Check the description against the template
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           printf '%s\n' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
-          uv run --with pyyaml python .github/scripts/groundwork.py check-body --body "$RUNNER_TEMP/pr-body.md"
+          printf '%s\n' "$PR_TITLE" > "$RUNNER_TEMP/pr-title.txt"
+          uv run --with pyyaml python .github/scripts/groundwork.py check-body --body "$RUNNER_TEMP/pr-body.md" \
+            --title "$RUNNER_TEMP/pr-title.txt"
 
   # The changed files come from the API (at most 3000; a bigger pull request is refused rather than half-checked).
   docs:

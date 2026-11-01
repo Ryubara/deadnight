@@ -20,9 +20,25 @@ Built by `tools/blender/build_weapons.py` (helpers in `tools/blender/weaponlib.p
 | Double shotgun | 1,092 | 348 | 35 | 1.51 m | Grey, DarkGrey, Black, Wood |
 | Baseball bat | 920 | 218 | 18 | 1.11 m | Wood, Black, Grey |
 | Fire axe | 432 | 108 | 14 | 1.24 m | Red, Grey, Wood, Black |
+| Grenade | 1,172 | 374 | 25 | 0.61 m tall | Green, Yellow, DarkGrey, Grey2, Grey |
 
 All are within the budgets (world 1.5k, far 500) and in the kit's range (guns 1.0-1.45k, melee 660-760; the axe is
 lighter, flat parts need few triangles).
+
+## The grenade
+
+An original 1950s-flavoured hand grenade (#102): an olive egg ringed by three raised bands (period, without copying
+any one real grenade's pattern), a yellow band under the fuze (the period marking for an explosive filler; the kit
+`Yellow` is a new swatch in the shared palette), a squat grey fuze, a long spoon down the right side and a pull ring.
+Drawn at 0.5 m and fattened 1.2x to the kit grenade's 0.6 m (kit grenades: 0.56-0.57 m, 820-916 tris, no bevels).
+
+- **Nodes:** `grenade` (the body, origin at its centre: the grip) with two children, `Spoon` (origin at its hinge on
+  the fuze, so it can swing off) and `Pin` (origin in the fuze, pulls out along glTF +Z, the ring's side). They come
+  from `NODES` in `build_weapons.py`: each node is joined on its own and parented to the weapon's main node.
+- **Held:** a grenade stands in the hand the gun hold's way only after a 90-degree turn about its X; the transform is
+  `HOLD_GRENADE` in [Animation](../design/animation.md#grenade).
+- **Proof:** a turntable with the kit grenades (`render_turntable.py --upright` keeps it standing) and the Godot
+  capture of the clips with the grenade in hand, attached to the pull request.
 
 ## Holding them: grip origin and axes
 

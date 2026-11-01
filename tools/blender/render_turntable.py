@@ -41,15 +41,15 @@ def load(path):
     return [o for o in objs if o.name not in gone], body
 
 
-def orient(objs, body, turn, tilt):
-    """Lay an upright model down, turn it about Z, tip it toward the camera; return its bbox after that."""
+def orient(objs, body, turn, tilt, upright=False):
+    """Lay an upright model down (unless `upright`), turn it about Z, tip it toward the camera; return its bbox."""
     roots = [o for o in objs if o.parent is None]
     pts = [p for o in body for p in kitlib.world_verts(o)]
     mn, mx = kitlib.bbox(pts)
     rot = Matrix.Identity(4)
     if (mx.y - mn.y) > (mx.x - mn.x):
         rot = Matrix.Rotation(math.radians(90), 4, "Z")
-    if (mx.z - mn.z) > max(mx.x - mn.x, mx.y - mn.y):
+    if not upright and (mx.z - mn.z) > max(mx.x - mn.x, mx.y - mn.y):
         rot = Matrix.Rotation(math.radians(90), 4, "Y") @ rot
     rot = Matrix.Rotation(math.radians(tilt), 4, "X") @ Matrix.Rotation(math.radians(turn), 4, "Z") @ rot
     for r in roots:
@@ -96,6 +96,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", action="append", required=True, help="Title=path.glb")
     ap.add_argument("--turns", default="0,45,90,135,180", help="degrees about the vertical axis, one column each")
+    ap.add_argument("--upright", action="store_true", help="keep models standing (grenades, props)")
     ap.add_argument("--tilt", type=float, default=20.0, help="degrees the top tips toward the camera")
     ap.add_argument("--px-per-m", type=int, default=300)
     ap.add_argument("--out", required=True, type=Path)
@@ -112,7 +113,7 @@ def main():
         cells = []
         for t in turns:
             objs, body = load(path)
-            mn, mx = orient(objs, body, t, args.tilt)
+            mn, mx = orient(objs, body, t, args.tilt, args.upright)
             cells.append((objs, mn, mx))
         objs0, mn0, mx0 = cells[0]
         tris = sum(kitlib.tris(o) for o in objs0 if o.type == "MESH")

@@ -67,7 +67,7 @@ commits:
 pull_requests:
   template: .github/pull_request_template.md
   # `##` headings of the description, in the template's order; the squash commit takes the pull request's title.
-  sections: [Summary, Checklist, Testing, AI use]
+  sections: [Summary, Issues affected, Checklist, Testing, Screenshots, AI use]
   filled: [Summary, Testing]                     # must hold text of their own, not just a comment or a placeholder
   placeholders: ["...", "<reason>"]              # template text that counts as empty when left unchanged
   local_paths: false                             # no scratch/, ../../ or C:\ in the text (images are the exception)
@@ -76,6 +76,22 @@ pull_requests:
   # Every task a pull request lists is finished: an unticked `- [ ]` item is refused. Work it does not finish lives in
   # its own issue.
   checklist: {section: Checklist, unchecked: refused}
+  # A pull request whose title area is listed shows what changed: an uploaded image or video in this section
+  # (`gh pr create|edit --attach`), or the `none` line with a reason in parentheses. Others write the none line.
+  # before_after: the section holds a `Before:` and an `After:` capture, each uploaded; `Before: none (reason)` when the
+  # thing is new. The `none` line with a reason still covers a pull request with nothing visible.
+  screenshots:
+    section: Screenshots
+    none: "Screenshots: none"
+    areas: [gameplay, ui, world, art]
+    before_after: {before: "Before:", after: "After:"}
+  # Every other open issue the change partly fixes, changes or makes out of date, one `#N: how` line each, or one line
+  # `None (reason)`. An issue the change finishes is a `Fixes #N` line in Summary instead. After the merge the
+  # coordinator updates each issue listed.
+  issues_affected: {section: Issues affected, none: "None"}
+  # A pull request whose title verb is listed (a fix) shows a test failing before the change and passing after it: a
+  # `Failed first:` line in Testing, or `Failed first: none (reason)` when no test can show it. Needs `check-body --title`.
+  failed_first: {verbs: [Fix], section: Testing, label: "Failed first:"}
   ai_use:
     section: "AI use"
     written_by:
@@ -86,8 +102,10 @@ pull_requests:
     model: {label: "Model:", none: "n/a", names_trailer_models: true}
   guidance:
     Summary: "One short paragraph: what this changes and why. If the change needs no documentation, add a line `Docs: none`. If this finishes an issue, add a line `Fixes #<number>` (one per issue)."
+    "Issues affected": "Every other open issue this partly fixes, changes or makes out of date, one line each: `- #123: its step 2 is done`. An issue this finishes is `Fixes #N` in Summary, not here. None affected: one line `None (reason)`, such as `None (one-line fix)`. After the merge the coordinator updates each issue listed."
     Checklist: "List what this pull request finishes, each item ticked. Work it does not finish is not listed here: it lives in its own issue."
-    Testing: "What was run and what came out: commands, tests added or changed, results as counts or pass/fail."
+    Testing: "What was run and what came out: commands, tests added or changed, results as counts or pass/fail. A `Fix` pull request adds a line `Failed first:` naming the test that failed before the fix and passes after (or `Failed first: none (reason)`)."
+    Screenshots: "Show what changed, before and after, as uploaded captures (`gh pr create --body-file <file> --attach <png>`, never committed): a `Before:` line and an `After:` line. Something new: `Before: none (new)`. When nothing visible changes, replace both with one line: `Screenshots: none (<reason>)`."
     "AI use": "Who wrote the work in this pull request's commits, not who opened the pull request."
 
 merge:
@@ -119,6 +137,7 @@ issues:
         expected: ["What you expected", true]
         actual: ["What happens", true]
         log: ["Log", false]
+        screenshots: ["Screenshots", false]
     task:
       name: Task
       description: A piece of work for a maintainer or an agent
@@ -127,10 +146,31 @@ issues:
       labels: [task, S-needs-triage]
       intro: "A task is written so that someone with no other context can do it: start with the problem."
       sections:
+        from:
+          heading: From
+          type: input
+          required: true
+          description: "Who filed it and when, and the pull request or issue it came from (say whether that is merged)."
+          placeholder: "From: the coordinator, 2026-11-01, review of #12 (merged)"
         summary: ["Summary", true]
-        done: ["What \"done\" means", true]
+        area:
+          heading: Area
+          type: dropdown
+          options_from: title_areas
+          required: true
+          description: "The part of the project; the matching A- label is applied from it."
+        design-page:
+          heading: Design page
+          type: input
+          description: "The design or research page (and section) under docs/design or docs/research that covers this, as a link, or none yet."
+          placeholder: "docs/design/zombies.md#spawning"
+        done:
+          heading: What "done" means
+          required: true
+          description: "The acceptance test. For a bug fix: a test that fails before the fix and passes after it."
         steps: ["Fix list or steps", false]
         blocked-by: ["Blocked by", false]
+        screenshots: ["Screenshots", true]
   # How many of each label family an open issue carries.
   labels:
     type: exactly-one
@@ -143,6 +183,9 @@ labels:
     type: {prefix: "", names: [bug, task, docs, enhancement]}
     priority: {prefix: "P-"}
     status: {prefix: "S-"}
+    # One `A-<area>` label per title area, generated (not listed below); the task form's Area dropdown offers them and
+    # the issue-area workflow applies the one chosen.
+    area: {prefix: "A-", from_title_areas: true, color: c5def5}
   list:
     - {name: bug, color: d73a4a, description: "Something is broken"}
     - {name: task, color: 0e8a16, description: "A piece of work for a maintainer or an agent"}

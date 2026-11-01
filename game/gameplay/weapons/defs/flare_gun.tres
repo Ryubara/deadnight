@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/weapon_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"flare_gun"
+display_name = "Flare gun"
+kind = 1
+automatic = false
+damage = 90
+pellets = 1
+spread_deg = 0
+falloff_start = 15
+falloff_end = 40
+min_damage_fraction = 0.5
+max_range = 40
+penetration = 0
+penetration_falloff = 0.6
+zone_multipliers = Dictionary[StringName, float]({
+&"body": 1.0,
+&"head": 1.5,
+&"limb": 0.6
+})
+fire_interval = 0.8
+magazine_size = 1
+reserve_start = 6
+reserve_max = 12
+reload_time = 2
+projectile_speed = 32
+projectile_gravity = 4
+projectile_radius = 0.12
+projectile_lifetime = 2.5
+splash_radius = 3
+splash_damage = 60
+splash_min_fraction = 0.25
+melee_range = 1.8
+melee_radius = 0.35
+melee_max_targets = 1

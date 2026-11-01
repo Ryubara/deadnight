@@ -282,4 +282,53 @@ def build(arm):
         write(arm, f"Equip_{cls}", keys, up, "upper", False, cls, {"weapon_visible": 2, "ready": 10})
         keys = [(0, target), (6, blend(target, idle_mid, 0.55)), (10, idle_mid)]
         write(arm, f"Unequip_{cls}", keys, up, "upper", False, cls, {"weapon_hidden": 8})
+
+    grenade(arm, up, idle, idle_mid, aim)
     return CLIPS
+
+
+# The grenade is held on the same bone as every weapon, so the projectile leaves from there at `release`.
+GRENADE_HAND = "Index1.R"
+
+
+def grenade(arm, up, idle, idle_mid, aim):
+    """Grenade_Cook, Grenade_Throw and Grenade_Toss (Deadnight #102, for the grenades of #99): upper body only, so the
+    legs keep running under them. Named Grenade_<Action> (the grenade is thrown, not aimed: it has no Aim loop).
+
+    Cook starts from the lowered Idle arms (where Unequip ends), brings the grenade to the chest from the gun hold's
+    right arm (`aim`), the left hand pulls the pin and the spoon flies when the cook starts; it ends on the cooked hold,
+    which is frame 0 of both throws. Throw and Toss end on the lowered arms, where Equip_<Class> starts.
+    """
+    # Arm offsets below were solved for a hand position (Index1, world metres at kit scale; the Soldier faces -Y,
+    # his right is -X) with the spine set first, then rounded: the probe is in the pull request. Measured axes from
+    # the cooked hold: on Abdomen and Torso, X pitches forward, Y leans sideways, Z turns the chest (+ to his right);
+    # on UpperArm.R, X raises the hand, Y swings it across to the left; on LowerArm.R, Z bends the hand up; on
+    # UpperArm.L, Y- swings the hand forward.
+    # The cooked hold: the grenade at the right of the chest in the gun hold's hand (x -0.16, y -0.92, z 1.17).
+    held = offset(aim, UpperArm_R=(-10, 0, 0), LowerArm_R=(0, 0, 12))
+    grab = offset(held, Torso=(0, 0, 6), UpperArm_L=(26, -100, -19), LowerArm_L=(1, 0, 16))  # left hand on the ring
+    pulled = offset(held, Torso=(0, 0, -4), UpperArm_L=(36, -22, 0), LowerArm_L=(8, 0, -37))  # ring out to the left
+    keys = [(0, idle), (5, blend(idle, held, 0.7)), (8, held), (11, grab), (14, pulled), (20, held)]
+    write(arm, "Grenade_Cook", keys, up, "upper", False, "Grenade",
+          {"grenade_visible": 0, "pin_out": 14, "spoon_off": 18, "cooked": 20})  # fmt: skip
+
+    # Overhand: the chest turns right and leans back, the hand high behind the right of the head (z 1.85) and the
+    # left hand pointing ahead; the chest whips left and forward, the arm comes over the top and lets go high in front
+    # (z 1.75), follows through across the body to the left knee; arms down.
+    cocked = offset(held, Abdomen=(-6, 0, 10), Torso=(-6, 0, 15), UpperArm_R=(35, -56, 1), LowerArm_R=(49, 0, 23),
+                    UpperArm_L=(39, -58, 0), LowerArm_L=(2, 0, 5), Head=(4, 0, -10))  # fmt: skip
+    release = offset(held, Abdomen=(6, 0, -8), Torso=(8, 0, -14), UpperArm_R=(30, 46, -40), LowerArm_R=(-4, 0, 36),
+                     UpperArm_L=(36, -22, 0), LowerArm_L=(8, 0, -37), Head=(-6, 0, 8))  # fmt: skip
+    follow = offset(held, Abdomen=(10, 0, -12), Torso=(14, 0, -18), UpperArm_R=(0, -44, -3), LowerArm_R=(-40, 0, 60),
+                    Head=(-8, 0, 10))  # fmt: skip
+    keys = [(0, held), (6, cocked), (9, release), (13, follow), (22, idle_mid)]
+    write(arm, "Grenade_Throw", keys, up, "upper", False, "Grenade", {"release": 9, "done": 22})
+
+    # Underarm: the arm swings back low behind the right hip (z 0.7) as the chest dips and turns right, then forward
+    # and up; let go in front at the waist (z 0.85), the hand rises on to the chest (z 1.35); arms down.
+    back = offset(held, Abdomen=(8, 0, 8), Torso=(8, 0, 10), UpperArm_R=(-40, -88, 0), LowerArm_R=(6, 0, -10),
+                  Head=(-6, 0, -6))  # fmt: skip
+    toss = offset(held, Abdomen=(4, 0, -5), Torso=(2, 0, -6), UpperArm_R=(0, -32, -2), LowerArm_R=(-26, 0, 4))
+    lift = offset(held, Abdomen=(-2, 0, -6), Torso=(-4, 0, -8), UpperArm_R=(-4, 9, -42), LowerArm_R=(18, 0, 5))
+    keys = [(0, held), (6, back), (10, toss), (13, lift), (22, idle_mid)]
+    write(arm, "Grenade_Toss", keys, up, "upper", False, "Grenade", {"release": 10, "done": 22})
