@@ -11,7 +11,10 @@ value. Nothing else in the addon reads a literal of those kinds ([below](#every-
 `UIThemeBuilder.build(tokens)` generates the `Theme`: label type variations (`UILabelDisplay` ... `Overline`),
 button variations (`UIButtonPrimary/Secondary/Ghost`) and panel variations, plus a usable look for plain `Button`,
 `Label` and `PanelContainer`. A game restyles everything by saving a `UITokens` resource and pointing the project
-setting `gds_ui/tokens` at it. Only the engine's fallback font is used: a licensed font is a maintainer decision.
+setting `gds_ui/tokens` at it. Fonts are three token slots (`font_display`, `font_text`, `font_mono`, #11): the theme
+applies the display face to the display and title labels, the text face to the rest and the mono face to
+`UILabelMono`; an unset slot is the engine's fallback font (mono: the text face with tabular figures). Deadnight sets
+Bungee Inline and Barlow Condensed ([typography](../design/typography.md#decision)).
 
 ### Every literal is a token (#21)
 
@@ -190,6 +193,17 @@ and focuses only if `UIRouter.top()` is the menu (`finish_entrance`). The delay 
 a test can set; `ITEMS_DELAY` is the design value) and `entered` says the items are up, so no test waits on wall
 time. No other screen waits before focusing: a screen that must (a timer, an `await`) checks the router's top
 afterwards, or uses a node timer. Capture: `game/tests/captures/menu_focus_cover.tscn`.
+
+## Self-test (#11)
+
+`game/tests/ui/test_gds_ui_self.gd` (GdUnit4, headless, in the CI job) covers the addon on its own: a spring settles
+on its target with less than 8 percent overshoot and ends in the same place at 30, 60 and 144 fps; the theme builds
+every label, button and panel style; every `UILabel.Style` has a variation; the router's depth follows push and pop;
+each face slot reaches its styles, an unset slot is the engine font, the mono slot is the text face with equal digit
+widths, a missing glyph falls back, and a token swap changes the face on a shown screen and on the neon sign.
+`test_menu_type.gd` covers the game side: the footer plate and contrast, the sign and buttons in the game's faces, the
+credits naming every committed font, a licence text and entry for each font folder, and the credits fitting one
+screen.
 
 ## Left out
 

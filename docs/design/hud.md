@@ -104,9 +104,9 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   ours.
 
 - **Typeface through a token.** `UITokens.font_display` and `font_text` (null keeps the engine's fallback font) feed
-  `display_font()` and `text_font()`; every HUD label and drawn string asks those. The pick in [typography](typography.md)
-  (issue #31) drops in by setting two resources; nothing here names a font. Captures load Bungee Inline and Barlow
-  Condensed from a folder outside the repository (`--fonts=`). No font file is committed.
+  `display_font()` and `text_font()`; every HUD label and drawn string asks those. The game's tokens set Bungee Inline
+  and Barlow Condensed ([typography](typography.md), issue #11), so the HUD, the menus and the sign share one pair;
+  nothing here names a font. The files are committed under `game/assets/fonts` with their licences.
 - **No compass bar, no minimap.** The lot is one small, lit area seen from a third-person camera; the lit circuits
   already show where to go, and a minimap would add a second picture to read at 720p. The waypoint diamonds carry
   distance and an edge arrow for the one thing that matters (the next door), and teammates get names over their heads.
@@ -197,15 +197,15 @@ while down, editable), `test_hud_generator_panel.gd` (when the card shows and it
 `test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),
 `test_hud_typical_text.gd` (the ordinary night's values show in full at 1080p and 1440p, in the fallback face and the
 Marquee pair), `test_hud_layout.gd` (sizes, overlap, readability, reduced motion: the busiest HUD and the longest
-content the game allows, in the fallback face, a synthetic wide face and, when `refs/fonts` is there, the Marquee
-pair, at every canvas). The capture `game/tests/captures/hud_worst_case.tscn` renders the longest content at one canvas
+content the game allows, in the fallback face, a synthetic wide face and the Marquee pair the game ships, at every
+canvas). The capture `game/tests/captures/hud_worst_case.tscn` renders the longest content at one canvas
 (`-- --out=<png> [--size=1536x864] [--face=fallback|wide|marquee] [--busy|--night] [--quiet] [--players=N]
 [--window=WxH]`: `--window` renders at that many pixels with the canvas stretched, so
 `--size=1920x1080 --window=1280x720` is a 720p window). The capture
 `game/tests/captures/hud_tour.tscn` plays a real `GameRules` night over the drive-in greybox:
 
 ```text
-godot --path game res://tests/captures/hud_tour.tscn --write-movie out.png --fixed-fps 10 -- --view=concession --fonts=<fonts folder> [--reduced]
+godot --path game res://tests/captures/hud_tour.tscn --write-movie out.png --fixed-fps 10 -- --view=concession [--reduced]
 ```
 
 To record at a window size, put `window/size/window_width_override` and `window_height_override` in an uncommitted
