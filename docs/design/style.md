@@ -165,17 +165,18 @@ a kit asset is a palette remap: each flat material becomes a swatch in the famil
 
 ## Lot surfaces
 
-The lot's CSG boxes are painted, not modelled: `tools/world/build_lot_textures.py` writes eight greyscale patterns
-and the 30 materials that tint them (`game/assets/lot/`). The kit has no textures, so a pattern only says what a
-surface is, in two to four flat tones with hard edges; the colour is the material's tint, from the palette above.
+The lot's CSG boxes are painted, not modelled: `tools/world/build_lot_textures.py` writes eight greyscale patterns,
+the 30 materials that tint them and the small shader that draws them (`game/assets/lot/`). The kit has no textures,
+so a pattern only says what a surface is, in two to four flat tones with hard edges; the colour is the material's
+tint, from the palette above.
 
 | Rule | Value |
 | --- | --- |
 | Textures | 256 x 256 greyscale PNG, lossless, mipmapped (set in the `.import`: a headless import leaves mipmaps off), 0.4-4.6 KB each |
 | Patterns and tile | asphalt 4 m (three blotch tones, chips, cracks), gravel 2 m, concrete 4 m (2 m slabs), planks 2 m (0.25 m boards), corrugated 2 m (0.125 m ribs), blocks 3.2 m (0.4 x 0.2 m, running bond), diner tiles 2 m (0.5 m), shutter 2 m (0.125 m slats) |
 | Tones | the lightest tone is 250 of 255, so the tint is the surface's colour; seams and gaps 100-150, never black |
-| Projection | world-space triplanar (`uv1_world_triplanar`, sharpness 4): a box of any size keeps its pattern at true scale and needs no UVs; cost is three texture reads a pixel, no extra draw calls |
-| Shading | roughness 1, metallic 0: the lot is matte under the night lights (the kit's 0.4 metallic only darkens a surface with no reflections to show) |
+| Projection | the lot shader (`game/assets/lot/lot_surface.gdshader`) projects the pattern in world space onto each face's own plane: a box of any size keeps its pattern at true scale and needs no UVs. One texture read a pixel; Godot's triplanar (three reads) cost about 10 ms a night frame in the software-rendered web build |
+| Shading | matte: Lambert diffuse, no specular term (cheaper per light), metallic 0; the kit's 0.4 metallic only darkens a surface with nothing to reflect |
 | Tints | ground: asphalt `#5a5d66` (field) and `#4a4c54` (road), gravel `#7a705a` (yard), `#544c3c` (back lot); walls: blocks `#d8b67a` (stand), `#9a9ca6` (booth); corrugated Grey (midway), Tree_Green (yard), Blue (containers); planks `#7d6446` (fence) |
 | Doors | the purchase doors are Yellow `#d1ab46` shutters, and nothing else is: no surface keeps the greybox's debug red |
 | Paint | parking lines `#d8d2bc`, 0.12 x 5 m, between every two stalls of a row; the road's centre line Yellow, 3 m dashes every 6 m; each set one `MultiMesh` (one draw call) |
