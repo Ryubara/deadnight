@@ -33,7 +33,7 @@ KNOWN: dict[str, set[str]] = {
     "paths": {"code", "docs", "generated", "large_file_kb", "pointer_files", "blocks_in"},
     "commits": {"title", "body", "trailers"},
     "pull_requests": {"template", "sections", "filled", "placeholders", "local_paths", "docs_none", "closing",
-                      "checklist", "ai_use", "guidance"},
+                      "checklist", "ai_use", "guidance", "screenshots"},
     "merge": {"methods", "squash_title", "squash_message", "auto_merge", "delete_branch_on_merge",
               "linear_history", "required_checks", "ruleset_name", "up_to_date_required", "manual_paths"},
     "issues": {"blank_issues", "placeholders", "forms", "labels"},
@@ -206,6 +206,35 @@ def body_problems(conv: dict[str, Any], body: str) -> list[str]:
             if not model or model.lower() == ai["model"]["none"]:
                 problems.append(f"'{ai['model']['label']}' must name the model when an AI took part")
     return problems
+
+
+_UPLOADED = re.compile(r"(?:!\[[^\]]*\]\(\s*|<img[^>]*src=[\"']?|^\s*)https://(?:github\.com/user-attachments/|"
+                       r"user-images\.githubusercontent\.com/|private-user-images\.githubusercontent\.com/)\S+",
+                       re.MULTILINE)
+
+
+def screenshot_problems(conv: dict[str, Any], title: str, body: str) -> list[str]:
+    """A pull request in a visual area (pull_requests.screenshots.areas) shows what changed: an uploaded image or
+    video in its Screenshots section, or the `none` line with a reason in parentheses."""
+    rule = conv["pull_requests"].get("screenshots")
+    if not rule:
+        return []
+    area = title.split(":", 1)[0].strip() if ":" in title else ""
+    if area not in rule.get("areas", []):
+        return []
+    section = rule.get("section", "Screenshots")
+    text = _COMMENT.sub("", split_sections(body).get(section, ""))
+    none = rule.get("none", "Screenshots: none")
+    for line in text.splitlines():
+        if line.strip().startswith(none):
+            reason = line.strip()[len(none):].strip()
+            if reason.startswith("(") and reason.endswith(")") and len(reason) > 2:
+                return []
+            return [f"'{none}' needs a reason in parentheses: '{none} (why nothing visible changed)'"]
+    if _UPLOADED.search(text):
+        return []
+    return [f"a `{area}` pull request shows what changed: attach a capture in ## {section} (`gh pr create|edit "
+            f"--attach`), or write '{none} (reason)'"]
 
 
 def ai_model_line(conv: dict[str, Any], body: str) -> str:
@@ -730,7 +759,12 @@ def cmd_needs_maintainer(conv: dict[str, Any], args: argparse.Namespace) -> int:
 
 
 def cmd_check_body(conv: dict[str, Any], args: argparse.Namespace) -> int:
-    return _report(body_problems(conv, _read(args.body)), "description")
+    body = _read(args.body)
+    problems = body_problems(conv, body)
+    if args.title:
+        lines = _read(args.title).splitlines()
+        problems += screenshot_problems(conv, lines[0] if lines else "", body)
+    return _report(problems, "description")
 
 
 def cmd_check_docs(conv: dict[str, Any], args: argparse.Namespace) -> int:
@@ -846,6 +880,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(run=cmd_needs_maintainer)
     p = sub.add_parser("check-body", help="check a pull request description")
     p.add_argument("--body", required=True, help="a file, or - for stdin")
+    p.add_argument("--title", help="the title (a file): enables the screenshots rule for visual areas")
     p.set_defaults(run=cmd_check_body)
     p = sub.add_parser("check-docs", help="a change to code needs a change to docs, or the escape line")
     p.add_argument("--body", required=True, help="the description: a file, or - for stdin")

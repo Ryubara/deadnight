@@ -31,3 +31,9 @@ body:
   id: blocked-by
   attributes:
     label: Blocked by
+- type: textarea
+  id: screenshots
+  attributes:
+    label: Screenshots
+  validations:
+    required: true
