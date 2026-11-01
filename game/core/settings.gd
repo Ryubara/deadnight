@@ -35,6 +35,9 @@ const TOUCH_CONTROLS := &"controls/touch_controls"
 const TOUCH_SCALE := &"controls/touch_scale"
 const TOUCH_OPACITY := &"controls/touch_opacity"
 const HAPTICS := &"controls/haptics"
+## Which first-run touch hints were used and are gone, one bit per hint (`TouchHints`). Resetting
+## the defaults brings them back.
+const TOUCH_HINTS_SEEN := &"controls/touch_hints_seen"
 ## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
 const CHARACTER_LOOK := &"character/look"
 ## The longest saved text accepted, so a damaged file cannot fill memory.
@@ -58,6 +61,7 @@ const DEFAULTS := {
 	TOUCH_SCALE: 1.0,
 	TOUCH_OPACITY: 0.7,
 	HAPTICS: true,
+	TOUCH_HINTS_SEEN: 0,
 	CHARACTER_LOOK: "",
 }
 
@@ -76,6 +80,7 @@ const RANGES := {
 	TOUCH_CONTROLS: Vector2(0, 2),
 	TOUCH_SCALE: Vector2(0.8, 1.4),
 	TOUCH_OPACITY: Vector2(0.3, 1.0),
+	TOUCH_HINTS_SEEN: Vector2(0, 255),
 }
 
 ## The audio bus each volume drives (the layout is `res://default_bus_layout.tres`).

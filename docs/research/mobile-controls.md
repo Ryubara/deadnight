@@ -246,6 +246,12 @@ game does now:
 - **Injected events run through the stretch backwards.** A look sent with `Input.parse_input_event` is in window
   pixels: the first look turned the view 8.8 times too far in a test window. The layer multiplies by the viewport's
   final transform first.
+- **Key hints and first-run labels (#283):** the prompt card now shows a tap mark when a finger was the last input and a
+  keycap again after a key, a pad or a real mouse click (the answer to question 7: hide them as soon as the touch
+  layer is up or a touch is seen, bring them back on any other device, never a timer). Hints are three short labels
+  (move, look, interact), each gone when its control is first used, remembered in the settings. Found while building:
+  the layer handles touches before the HUD sees them, and its own look is mouse motion, so mouse motion cannot be what
+  ends touch mode.
 - **Detection is `pointer: coarse` plus touch points**, read as a number (a boolean `eval` answer compared equal to
   `true` never matched in Chromium, which hid the controls on every phone until the browser run caught it). A laptop
   with a touchscreen does not turn them on by itself; the setting and `?touch=1` do. Open question 8 stays open for
@@ -262,8 +268,9 @@ game does now:
   buttons.
 
 Still open from the questions below: 1 (auto-fire), 2 (aim assist), 3 (gyro), 4 (Discord orientation, issue #287),
-5 (left hand, issue #284), 7 (keyboard glyphs, issue #283). Answered by the build: 6 (haptics default is on, a setting
-turns it off; the web vibrates only on Android) and 8 (auto detects a coarse pointer; On and Off force it).
+5 (left hand, issue #284). Answered by the build: 6 (haptics default is on, a setting turns it off; the web vibrates
+only on Android), 7 (keyboard glyphs hide on the first touch and return on a key, pad or real click) and 8 (auto
+detects a coarse pointer; On and Off force it).
 
 ## Sources
 

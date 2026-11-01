@@ -12,7 +12,9 @@ var host: Control
 var _suite: GdUnitTestSuite
 
 
-static func make(suite: GdUnitTestSuite, canvas := PHONE, state: HudState = null) -> TouchFixture:
+static func make(
+	suite: GdUnitTestSuite, canvas := PHONE, state: HudState = null, persist_hints := false
+) -> TouchFixture:
 	var fixture := TouchFixture.new()
 	fixture._suite = suite
 	TouchMode.device_is_touch = true
@@ -22,6 +24,8 @@ static func make(suite: GdUnitTestSuite, canvas := PHONE, state: HudState = null
 	suite.add_child(fixture.host)
 	fixture.controls = TouchControls.new()
 	fixture.controls.state = state
+	# The hints would write what a test used into the player's own settings file.
+	fixture.controls.persist_hints = persist_hints
 	fixture.host.add_child(fixture.controls)
 	fixture.controls.size = canvas
 	fixture.controls.refresh()
@@ -33,6 +37,7 @@ func free_all() -> void:
 	if is_instance_valid(host):
 		host.free()
 	Input.emulate_mouse_from_touch = true
+	UIInputMode.reset()
 	for action in ACTIONS:
 		Input.action_release(action)
 

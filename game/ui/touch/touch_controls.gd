@@ -13,6 +13,9 @@ extends Control
 ## The layer shows when `TouchMode.wanted`, in landscape, and while the night is live (`live`).
 ## While it is up the engine's touch-to-mouse emulation is off, or every touch would also click
 ## Fire. The interact button shows only while the HUD has a prompt: what it does is its label.
+##
+## While it is up the HUD shows no key hints (`UIInputMode.touch`), and `TouchHints` labels the
+## controls the first time each is met, until it is used.
 
 ## A look drag, in mouse pixels (also sent to the input system as mouse motion).
 signal looked(mouse_relative: Vector2)
@@ -65,6 +68,10 @@ var insets_override: Variant = null
 var touch_scale := 1.0
 var opacity := 0.7
 var insets := Vector4.ZERO
+## Whether the first-run hints remember what was used in the settings. Tests turn it off.
+var persist_hints := true
+## The first-run labels, a child that draws over the buttons.
+var hints: TouchHints
 
 var _enabled := false
 var _active := false
@@ -92,6 +99,10 @@ func _ready() -> void:
 	var service := get_tree().root.get_node_or_null(TouchMode.SETTING_PATH)
 	if service != null and service.has_signal(&"changed"):
 		service.connect(&"changed", _on_setting_changed)
+	hints = TouchHints.new()
+	hints.controls = self
+	hints.persist = persist_hints
+	add_child(hints)
 	refresh()
 
 
@@ -180,6 +191,9 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _active:
 		return
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		# This layer handles the touch before the HUD sees it: the input mode is told here.
+		UIInputMode.track(event)
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
@@ -201,7 +215,10 @@ func _touch_down(index: int, point: Vector2) -> void:
 	if button != &"":
 		_touches[index] = {&"role": &"button", &"button": button}
 		_press_button(button)
+		if button == TouchLayout.INTERACT:
+			hints.mark_used(TouchHints.INTERACT)
 	elif _stick_index < 0 and TouchLayout.stick_zone(_safe).has_point(point):
+		hints.mark_used(TouchHints.MOVE)
 		_stick_index = index
 		_stick_origin = point
 		_stick_pos = point
@@ -238,6 +255,8 @@ func _touch_drag(index: int, point: Vector2, relative: Vector2, velocity: Vector
 func _look(relative: Vector2, velocity: Vector2) -> void:
 	var look := TouchLook.mouse_equivalent(relative, velocity.length(), _canvas().y)
 	looked.emit(look)
+	if relative != Vector2.ZERO:
+		hints.mark_used(TouchHints.LOOK)
 	# Injected events are in window pixels and the viewport maps them back to canvas units, so
 	# the look is sent through the stretch in advance: the player receives exactly `look`.
 	var motion := InputEventMouseMotion.new()
@@ -351,8 +370,10 @@ func _setting(key: StringName, fallback: float) -> float:
 	return float(value) if value is float or value is int else fallback
 
 
-func _on_setting_changed(_key: StringName, _value: Variant) -> void:
-	refresh()
+func _on_setting_changed(key: StringName, _value: Variant) -> void:
+	# The hints' own bookkeeping is no reason to lay the buttons out again.
+	if key != SettingsService.TOUCH_HINTS_SEEN:
+		refresh()
 
 
 func _on_resized() -> void:
@@ -364,6 +385,10 @@ func _refresh_active() -> void:
 	var now := _enabled and live and not is_portrait() and is_inside_tree()
 	if now != _active:
 		_active = now
+		if now:
+			# Controls up and no other device used yet: the HUD shows a finger, not a keycap.
+			UIInputMode.touch = true
+			UIInputMode.gamepad = false
 		if not now:
 			_release_everything()
 		queue_redraw()
