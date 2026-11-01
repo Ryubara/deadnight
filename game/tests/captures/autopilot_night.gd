@@ -121,6 +121,10 @@ func _report() -> void:
 		if not _night.world.navigation.is_busy():
 			break
 		await get_tree().process_frame
+	# The night's sound players keep scheduled sounds (a shot's tail, a reload's steps) that start
+	# a moment later: free the night first, so nothing starts a voice after the audio is stopped.
+	_night.queue_free()
+	await _night.tree_exited
 	# A voice stopped in the same moment the engine quits is still queued in the audio server, and
 	# its stream is reported as a leak at exit; wait for the mixer to take the stopped voices off,
 	# counting its steps (a loaded machine delays them by any amount of real time).

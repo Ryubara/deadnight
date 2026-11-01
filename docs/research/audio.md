@@ -89,6 +89,10 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
   when quitting at once). `Audio.wait_for_mixer()` counts the mixer's own steps (`AudioServer.get_time_since_last_mix`
   falls when one lands) instead of waiting a set time; call it after `stop_all()` before any quit. A test reads a
   stream's reference count to see the server let go.
+  The wait alone was not enough once the guns had tails: `WeaponSounds` (and the other night sounds) hold scheduled
+  sounds (a shot's tail 40 to 70 ms later, a reload's steps) that start from `_process` after `stop_all()`, so voices
+  began again during the wait and were still playing at quit (CI: 10 objects, 4 resources, every run; 8 of 8 locally).
+  The capture now frees the night, which frees those players, before it stops the audio and waits for the mixer.
 - **A bed never goes quiet**, so an onset detector on the raw level finds nothing: `analyze.py` compares the short-term
   level with its own median over a second either side.
 
