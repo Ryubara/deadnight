@@ -56,6 +56,7 @@ Things that were not obvious:
 | --- | --- | --- | --- |
 | Chrome 156 on an RTX 5080 (ANGLE D3D11), 240 s night | 5.6 / 6.2 ms | 5.6 / 12.1 ms | 3.9 s |
 | Headless shell, SwiftShader on the same PC, 45 s night | 33 / 50 ms | 67 / 83 ms (12 to 15 fps) | 1.7 s |
+| GitHub runner (ubuntu-24.04, SwiftShader, no GPU), 45 s night | 133 / 150 ms | worst second p95 850 ms (about 1 to 2 fps) | 2.0 s |
 
 - The GPU run is paced by the display (5.6 ms is 180 Hz), so it shows no dropped frames, not the headroom. Over 183 s
   of night (31,000 frames), 6 of 181 one-second windows contained a frame over 33 ms and one a frame over 100 ms: the
@@ -66,7 +67,7 @@ Things that were not obvious:
   cannot aim. **Open:** a way to start the night in the autopilot mode from the browser (for example a `?autopilot`
   query read by the probe), to measure rounds of 20+ zombies and a weak laptop.
 - SwiftShader numbers say the build works on a machine with no GPU, not how a laptop GPU behaves. CI records them, never
-  gates on them.
+  gates on them: on the runner the night is so slow that only 3 of the 6 zombies had arrived after 45 s, yet the run passes.
 - No console errors. Console output was the three engine start-up lines, plus one "GPU stall due to ReadPixels"
   warning from SwiftShader.
 - #82: WebGL2 in Chromium shows the menu, the wardrobe and the night with no shader error in the console. Firefox and a
