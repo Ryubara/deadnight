@@ -32,6 +32,15 @@ from its issue to a pull request whose checks pass, in your own worktree. The re
    change touches a manual path; the hooks tell you.
 7. **Report** to whoever started you: the pull request, what the captures show, anything left open (as new issues).
 
+## Pull request rules the checks enforce
+
+- **Title:** `area: Verb the rest`, at most 72 characters (count them); the verb is one of Add, Fix, Update, Remove,
+  Rebuild, Rework, Improve, Document (not Merge, Lint, Let...). The same goes for every commit title, merge commits
+  included (`git merge --no-edit` keeps git's own "Merge ..." title, which passes).
+- **Description:** from the template; no paths on this machine (no `C:\`, no `../../`, no `scratch/`): name places in
+  words or as repository-relative paths. The model line names the model in your commits' trailer.
+- **Never force-push** (refused): after a conflict, `git merge origin/main` and push a normal commit.
+
 ## Record what you learned (every task)
 
 Before you report, leave what the next person needs, short and in the right place:
