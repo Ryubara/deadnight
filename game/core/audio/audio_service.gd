@@ -297,6 +297,8 @@ func _on_rules_event(event: Dictionary) -> void:
 			play(&"round_start")
 		&"round_ended":
 			play(&"round_end")
+		&"special_round_announced":
+			play(&"special_round")
 
 
 func _add_duck_effect() -> void:

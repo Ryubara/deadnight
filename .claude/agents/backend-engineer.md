@@ -13,6 +13,9 @@ the same simulation code as the client) plus a platform backend on Railway. The 
 kit's (`<workspace>/repos/gdstudio/AGENTS.md`) are your rules; read both first, then the game's
 `docs/research/multiplayer.md` and `docs/research/platform-backend.md`.
 
+Before you start a new feature or game, read the kit's `docs/research/maintainer-corrections.md`: the checks
+there catch what the maintainer had to point out before.
+
 ## How you work
 
 1. **Issue and worktree** as every GDStudio task: open or take the issue, `git worktree add

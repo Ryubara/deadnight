@@ -14,11 +14,11 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 | --- | --- | --- |
 | The weapons' events | the same `apply_event`, for `weapon_equipped`, `shot_fired`, `reload_started`, `reload_finished` (`HudLoadout.EVENTS`; the binding forwards these and no other weapon event) | the ammo card and the equipment slot: the weapon in hand, its magazine and reserve as the events carry them, whether it is reloading, and the weapon put away last |
 | The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, **your health** (`player_added`, `player_hurt`, `player_healed`, `player_downed`), purchases, hits and kills, game over |
-| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, your health, the generator. Names are not in the rules, so the ones set before stay |
+| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, your health, the generator, the special round running and the bosses on the lot with their health (a boss whose spawn event was already in flight is not counted twice). Names, seats and looks are not in the rules, so the ones set before stay |
 | The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events fill them), `set_prompt`, `set_area`, `set_markers`, `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
 | HUD additions to the rules' events | optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a hit point into these; there is no world position in the HUD |
 
-Events for other players change their row in the party list and leave your own readings alone. Unknown events are
+Events for other players change their container (points, down state) and leave your own readings alone. Unknown events are
 ignored, so the rules can grow events without breaking the HUD. A blow is the rules' `player_hurt`: it carries a
 `bearing` in the world (radians clockwise from -z), and the damage arc turns it by `facing` (the frame's yaw of the
 local player) into the direction on screen.
@@ -28,13 +28,14 @@ local player) into the direction on screen.
 | Part | Where | Shows |
 | --- | --- | --- |
 | `HudRound` | top left | the round on a row of **reel digits** (a projector drum counter that rolls to the next number), zombies left or the break countdown |
-| `HudObjective` | top left, under the round | the area you are in and one line of what to do next (two lines at most) |
-| `HudTeam` | top left | one ticket for the other players: name and `UP` or `DOWN` (2 to 4 players; hidden when alone) |
-| `HudFuel` | top right | the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit with its sign's word beside it, in two columns (`SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`) |
-| `HudFeed` | top right, under the tank | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left; one line each, 560 units wide (wider than the column): a long line shrinks toward 24, then ends in an ellipsis |
-| `HudPoints`, `HudHealth` | bottom left | your name and points; a bar of ten ticks, or `DOWN` and what to hope for; one row for the equipment (the weapon put away last, with its rounds; a name cut to the room, the count stays) and the grenade count |
-| `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it, the weapon name on a coloured bar; hot orange when low; `RELOADING` while a reload runs; `--` for a weapon with no ammunition (the crowbar) |
-| `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner) |
+| `HudObjective` | top left, under the round | a card with the area you are in and one line of what to do next (two lines at most) |
+| `HudFuel` | top right, **only for a moment** | the generator card: the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit with its sign's word beside it, in two columns (`SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`). Slides down into the column and fades in when the night makes progress at the generator, holds 4 s, leaves (see below) |
+| `HudFeed` | top right, under the generator card (at the top while it is away) | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left; one line each, 480 units wide (wider than the column), ending on the cards' right text line: a long line shrinks toward 20, then ends in an ellipsis (a cleared special round adds `DOUBLE FEATURE CLEARED  +440 EACH`) |
+| `HudPoints` | bottom left | **a container per player**, `[portrait][points]` (see below), you first, then the others by id |
+| `HudHealth` | bottom left, under the players | a card: `HEALTH n` and the grenade count on one row, a bar of ten ticks (or `DOWN` and what to hope for), then the equipment: the weapon put away last, by name (no rounds; the ammo card says the rounds), cut to the room |
+| `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it on the same baseline, the weapon name on a coloured bar; hot orange when low; `RELOADING` while a reload runs; `--` for a weapon with no ammunition (the crowbar) |
+| `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner). A special round starts with its name (`DOUBLE FEATURE`) over what it brings (`THE HEADLINER ARRIVES`, `2 HEADLINERS ARRIVE`, `ONLY RUNNERS`); clearing one puts `DOUBLE FEATURE CLEARED  +440` under `ROUND 5 SURVIVED`; a late joiner into one sees its banner once |
+| `HudMarquee` | top centre, under the banner | in the break before a special round, `COMING UP - ROUND 5 - IN 24` over the round's name in big letters that flicker like a failing neon sign (steady with reduced motion) over what it brings, between two rows of bulbs (the banner's); gone as the round starts. A HUD that joins in the break reads it from the schedule |
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card, three lines high: the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows |
@@ -46,7 +47,48 @@ The interaction prompt takes its key from the `interact` action in the InputMap 
 the new key, and the glyph is a square keycap or a round button by the **last device used** (`UIInputMode.gamepad`). It
 sinks while the action is held. A refused purchase shakes the card and says why in place of the price.
 
+## Players' points
+
+Each player in the lot has a container: a square **portrait** on the left and the **points box** on its right, in the
+colour of the player's seat (`LookCatalog.armband_colour`: red, cyan, yellow, green, the colour of the armband they wear
+in the lot, so the colour on the HUD and on the arm is one). The box carries the name small at its left and the points at
+its right, on one baseline; the number takes the dark or the light ink, whichever has the better contrast on the seat's
+colour (at least 4.5, a test checks all four). Your own container is first and larger (66 units high, a teammate's 48),
+the others follow by player id; one to four are shown, a row made when a player joins and freed when they leave. A downed
+player's portrait dims, their box darkens and the name says `DOWN`. There is no party ticket any more: the containers
+are the party list.
+
+The portrait is the Soldier as the player wears it, a head-and-shoulders render of the game's own model
+(`CharacterAssembler`, the assembler the wardrobe and the lot use) in a tiny 3D world of its own, drawn once and then left
+alone (`UPDATE_ONCE`), so it costs nothing after its first frame. The state holds each player's `seat` and `look` as plain
+data (the look as `CharacterLook.to_dict`); a join gives the lowest free seat, as the server does, and a `player_look`
+event (`player_id`, `seat`, `look`) replaces it. Until a client sends looks, the seat's own preset shows.
+
+## The generator card
+
+The generator card is not always on. `HudFuel.is_progress` is the rule: fuel added (`fuel_changed` with a positive
+`delta`), a circuit switched (`circuit_changed`, either way) and the warnings (`fuel_low`, `fuel_empty`, `fuel_restored`)
+show it; the fuel the generator burns, kills and every other event do not, and a snapshot never does. More progress
+within the hold keeps it up for a whole hold more. It slides down from above its slot while it fades in (0.3 s), holds
+(4 s) and fades and slides out (0.5 s); the feed under it follows its height, so nothing overlaps. With reduced motion it
+fades without sliding. A new step of the generator's quest (the circuit switches, #206) adds its event to
+`HudFuel.SHOW_EVENTS`. `advance(delta)` moves it, so tests and captures step it by hand.
+
 ## Decisions
+
+- **One grid.** Cards share a left edge (the margin, 36 units), a right edge, the gap between stacked parts (`GAP`, 6) and
+  the text lines inside a card: text starts `PAD_LEFT` (20) from a card's left edge and ends `PAD` (12) from its right,
+  so the round, objective, health and generator cards and the feed rows share two vertical lines. Numbers that sit
+  beside smaller text share its baseline (the magazine and the reserve; a name and its points), set from the font's own
+  ascent and descent, so another typeface keeps them. The top margin carries the round card, the generator card and the
+  banner; the bottom margin the health card, the prompt and the ammo card. A test measures all of it
+  (`test_hud_grid.gd`).
+- **Smaller.** Every length is the first draft's times `HudStyle.UNIT` (0.75); type is stepped down less so it stays
+  readable: 84 for the magazine, 44 for your points, 32 for a teammate's, 24 text, 20 for captions and the floor
+  (`MIN_TEXT`: 20 px at 1080p, 13 px at 720p, 10.7 px at 720p with the smallest UI scale). The side columns are 316
+  units (16 % of 1920), the ammo card 250, the banner and the prompt 420. Spacing comes from `HudStyle` (`XS`, `SM`,
+  `MD`, `LG`), not the menu tokens. Resembling Cold War Zombies' HUD is fine (the maintainer's decision); the look stays
+  ours.
 
 - **Typeface through a token.** `UITokens.font_display` and `font_text` (null keeps the engine's fallback font) feed
   `display_font()` and `text_font()`; every HUD label and drawn string asks those. The pick in [typography](typography.md)
@@ -62,14 +104,14 @@ sinks while the action is held. A refused purchase shakes the card and says why 
   while a real name, a three-digit round or the Marquee face overlapped parts at 1536 x 864. Each part now has a width
   it keeps (`HudStyle.COLUMN` for the side columns, `CARD` for the banner and prompt, `HudAmmo.WIDTH`,
   `HudGains` taking what is left of the screen up to the ammo card) and the text gives way: a number or a name
-  shrinks its type toward the 24-unit floor, then ends in an ellipsis (`HudStyle.set_fitted`); a name before a word that
+  shrinks its type toward the 20-unit floor, then ends in an ellipsis (`HudStyle.set_fitted`); a name before a word that
   must survive ("POINTS", "x12") is cut by `HudStyle.trimmed`. A name is kept to 20 characters by the state
   (`HudStyle.NAME_LIMIT`). Vertically the bands are: the right column ends above the gains, the gains above the
   prompt, the prompt on the bottom margin.
 - **Ordinary text is never cut; the worst case may be.** The overlap fix (#161) made every part give way with an
   ellipsis, and at 1080p that cut the everyday values (`SCRE... SNAC...`, `PLAYER 1 OPENED THE C...`; #170). Two
   structural fixes, no abbreviations: the generator's words sit beside their bulbs in two columns (half the gauge for a
-  word, not a quarter, so `BACK LOT` fits; the card is no taller), and the event rows are 560 units wide, hanging left of
+  word, not a quarter, so `BACK LOT` fits; the card is no taller), and the event rows are 480 units wide, hanging left of
   the column into the empty space under the banner (the banner moved from 10 % of the screen height to the top margin so
   it ends above them at every canvas). Wrapping to two lines was rejected: three events of two lines reach the gains.
   `test_hud_typical_text.gd` holds the line: no ellipsis for the values of an ordinary night at 1080p and 1440p.
@@ -84,12 +126,13 @@ sinks while the action is held. A refused purchase shakes the card and says why 
 ## Scale
 
 The project stretches the canvas to 1920 x 1080 (and wider or taller for other window shapes); the UI scale setting
-divides it (0.8 to 1.25). The HUD lays out in canvas units with anchors, no scale of its own. A test builds the busiest
+divides it (0.8 to 1.25). The HUD lays out in canvas units with anchors; `HudStyle.UNIT` is the one number that sizes
+it against the first draft. A test builds the busiest
 HUD (four players, you down, a long prompt, a banner, full lists), and the same with the longest content the game allows
 (20-character names, round 123, 99,999,999 points, 999 / 9999 ammo, a 23-character weapon, a long prompt and notices),
 at every window from 1024 x 768 to 4K at each UI scale, in three typefaces, and checks that every part is inside the
-screen and none overlaps another. The smallest text is 24 canvas units: 16 px
-at 720p, 12.8 px at 720p with the smallest UI scale.
+screen and none overlaps another. The smallest text is 20 canvas units: 13 px
+at 720p, 10.7 px at 720p with the smallest UI scale.
 
 ## Cost
 
@@ -98,9 +141,9 @@ Parts redraw only for what changed. `HudState` marks the topics a change touched
 it reads (`HudPart.topics`); a setter that sets what it already holds announces nothing. `apply_events` announces a
 whole batch once (`hold` / `release` do the same for a frame's events and readings), though `event_applied` still comes
 once per event for the one-shot treatments. The break countdown wakes the round part once a second, when the number
-on screen changes. The party rows are made when a player joins and freed when one leaves; a name or a down state only
-rewrites a row. A tick in which a round's 17 zombies die (58 events) takes the HUD about 2 ms headless, down from 41 to
-45 ms.
+on screen changes. The player containers are made when a player joins and freed when one leaves; a name, points or a
+down state only rewrites a box, and a portrait is drawn once. A tick in which a round's 17 zombies die (58 events)
+takes the HUD about 2 ms headless, down from 41 to 45 ms.
 
 ## Motion and reduced motion
 
@@ -110,14 +153,20 @@ chasing bulbs, no pulsing (the low-health frame and low-fuel tank hold steady); 
 
 ## Tests and captures
 
-`game/tests/ui/test_hud_state.gd` (the mirror, from real rules events; topics; names), `test_hud_snapshot.gd` (a late
-joiner against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
+`game/tests/ui/test_hud_state.gd` (the mirror, from real rules events; topics; names), `test_hud_special.gd` (the
+marquee, the banner, the reward line and a late joiner into a special round), `test_hud_snapshot.gd` (a late joiner
+against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
+`test_hud_players.gd` (a container per player, one to four: colours, local first, down, the portrait),
+`test_hud_generator_panel.gd` (when the card shows and its stepped timing), `test_hud_grid.gd` (the grid, measured at
+every canvas: shared edges, gaps, text lines, no label leaving its part),
 `test_hud_typical_text.gd` (the ordinary night's values show in full at 1080p and 1440p, in the fallback face and the
 Marquee pair), `test_hud_layout.gd` (sizes, overlap, readability, reduced motion: the busiest HUD and the longest
 content the game allows, in the fallback face, a synthetic wide face and, when `refs/fonts` is there, the Marquee
 pair, at every canvas). The capture `game/tests/captures/hud_worst_case.tscn` renders the longest content at one canvas
-(`-- --out=<png> [--size=1536x864] [--face=fallback|wide|marquee] [--busy]`). The capture
+(`-- --out=<png> [--size=1536x864] [--face=fallback|wide|marquee] [--busy|--night] [--quiet] [--players=N]
+[--window=WxH]`: `--window` renders at that many pixels with the canvas stretched, so
+`--size=1920x1080 --window=1280x720` is a 720p window). The capture
 `game/tests/captures/hud_tour.tscn` plays a real `GameRules` night over the drive-in greybox:
 
 ```text

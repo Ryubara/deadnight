@@ -13,7 +13,7 @@ const MAX_NOTICES := 1
 ## CONCESSION STAND") shows in full. A row is one line (a wrapped row doubles the column's height
 ## and reaches the point gains below it): a long text first shrinks toward the smallest size, then
 ## ends in an ellipsis. The space left of the column under the banner is empty, so it costs nothing.
-const ROW_WIDTH := 560.0
+const ROW_WIDTH := 480.0
 const LIFE := 4.5
 const FADE := 0.6
 const ITEM_NAMES := {
@@ -37,18 +37,23 @@ const CIRCUIT_WORDS := {
 var rows: Array[Dictionary] = []
 
 var _box := VBoxContainer.new()
+var _pad := MarginContainer.new()
 
 
 func _init() -> void:
 	super()
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box.add_theme_constant_override(&"separation", tokens.space_sm)
-	add_child(_box)
-	_box.minimum_size_changed.connect(update_minimum_size)
+	_box.add_theme_constant_override(&"separation", HudStyle.GAP)
+	# The rows end where the cards' text does, on the same right line.
+	_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pad.add_theme_constant_override(&"margin_right", HudStyle.PAD)
+	_pad.add_child(_box)
+	add_child(_pad)
+	_pad.minimum_size_changed.connect(update_minimum_size)
 
 
 func _get_minimum_size() -> Vector2:
-	return _box.get_combined_minimum_size()
+	return _pad.get_combined_minimum_size()
 
 
 func _process(delta: float) -> void:
@@ -120,6 +125,9 @@ func _text_for(event: Dictionary) -> String:
 			text = "GENERATOR DEAD"
 		&"fuel_restored":
 			text = "GENERATOR IS BACK"
+		&"special_round_cleared":
+			var title := HudSpecials.title(state, StringName(event.get("special_id", &"")))
+			text = "%s CLEARED  +%d EACH" % [title.to_upper(), int(event.get("reward", 0))]
 	return text
 
 
