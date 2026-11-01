@@ -107,11 +107,13 @@ func test_a_lamp_post_bulb_glows_with_its_own_light_only() -> void:
 	var bulb := near.get_node("Head") as CSGBox3D
 	var yard_bulb := yard.get_node("Head") as CSGBox3D
 	assert_object(bulb.material).is_not_same(yard_bulb.material)
-	assert_float((bulb.material as StandardMaterial3D).emission_energy_multiplier).is_equal(1.0)
+	assert_float((bulb.material as StandardMaterial3D).emission_energy_multiplier).is_equal(
+		LampPost.BULB_ENERGY
+	)
 	_lamps.apply_event({"type": &"circuit_changed", "circuit_id": &"screen_lot", "on": false})
 	assert_float((bulb.material as StandardMaterial3D).emission_energy_multiplier).is_equal(0.0)
 	assert_float((yard_bulb.material as StandardMaterial3D).emission_energy_multiplier).is_equal(
-		1.0
+		LampPost.BULB_ENERGY
 	)
 
 

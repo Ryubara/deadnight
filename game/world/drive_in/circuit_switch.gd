@@ -17,6 +17,9 @@ const LAMP_OFF := Color(0.55, 0.08, 0.06)
 ## How much of the lamp's colour glows when it is off.
 const GLOW_OFF := 0.5
 const GLOW_ON := 2.0
+## The halo round the lamp, so a post reads from across the lot: bright green on, a dull red off.
+const HALO_ON := 1.1
+const HALO_OFF := 0.45
 
 ## The circuit this post switches (`metadata/circuit`).
 var circuit_id: StringName = &""
@@ -25,9 +28,11 @@ var door_id: StringName = &""
 
 var _on := false
 var _material: StandardMaterial3D
+var _halo: ShaderMaterial
 
 @onready var _lever: Node3D = $Lever
 @onready var _lamp: MeshInstance3D = $Lamp
+@onready var _halo_node: MeshInstance3D = $Halo
 
 
 func _ready() -> void:
@@ -36,6 +41,8 @@ func _ready() -> void:
 	# The scene's material is shared by every post: each lamp gets its own.
 	_material = (_lamp.material_override as StandardMaterial3D).duplicate()
 	_lamp.material_override = _material
+	_halo = (_halo_node.material_override as ShaderMaterial).duplicate()
+	_halo_node.material_override = _halo
 	set_on(false)
 
 
@@ -50,6 +57,8 @@ func set_on(on: bool) -> void:
 	_material.albedo_color = LAMP_ON if on else LAMP_OFF
 	_material.emission = LAMP_ON if on else LAMP_OFF
 	_material.emission_energy_multiplier = GLOW_ON if on else GLOW_OFF
+	_halo.set_shader_parameter(&"tint", LAMP_ON if on else LAMP_OFF)
+	_halo.set_shader_parameter(&"energy", HALO_ON if on else HALO_OFF)
 
 
 ## Where a player stands to use it: `distance` metres out from its front.

@@ -138,10 +138,10 @@ func _step() -> void:
 ## Moves every zombie, lands blows, and returns how many zombies are in reach of each player.
 func _move_zombies() -> Dictionary:
 	var engaged := {}
-	var lit := 1.0 - _lit_share() * (1.0 - rules.tuning.rounds.lit_speed_multiplier)
+	var pace := 1.0 + (1.0 - _lit_share()) * (rules.tuning.rounds.dark_speed_multiplier - 1.0)
 	for zombie: SimZombie in _zombies.values():
 		if zombie.distance > 0.0:
-			zombie.distance -= zombie.speed * lit * step
+			zombie.distance -= zombie.speed * pace * step
 			continue
 		if zombie.barrier > 0.0:
 			zombie.barrier -= step * zombie.barrier_speed
@@ -275,24 +275,31 @@ func _switch_for(player: SimPlayer, zombie: SimZombie) -> bool:
 	return true
 
 
-## Damage a second a loaded firearm does to a body `distance` metres away (0 when it is empty).
+## The health of the walker this round sends: what the players size their weapons against.
+func _health() -> float:
+	return rules.tuning.rounds.health_for_round(rules.round_number)
+
+
+## Health a second a loaded firearm takes off a body `distance` metres away (0 when it is empty).
 func _worth_at(arm: SimArm, distance: float) -> float:
 	if SimWeapons.is_melee(arm.id) or arm.mag <= 0:
 		return 0.0
-	return SimWeapons.damage(arm.id, &"body", distance) / SimWeapons.interval(arm.id)
+	return SimWeapons.kill_rate_at(arm.id, distance, _health())
 
 
 ## The magazine and the reserve are both empty: take the best weapon that still has rounds, or the
 ## crowbar, and lose a moment doing it.
 func _out_of_rounds(player: SimPlayer) -> void:
 	var before := player.weapon
-	player.weapon = SimWeapons.best_armed(player.arms)
+	player.weapon = SimWeapons.best_armed(player.arms, _health())
 	var best := 0.0
 	for weapon_id: StringName in player.arms:
 		if not SimWeapons.is_melee(weapon_id):
-			best = maxf(best, SimWeapons.sustained_dps(weapon_id))
+			best = maxf(best, SimWeapons.sustained_dps(weapon_id, _health()))
 	var left := (
-		0.0 if SimWeapons.is_melee(player.weapon) else SimWeapons.sustained_dps(player.weapon)
+		0.0
+		if SimWeapons.is_melee(player.weapon)
+		else SimWeapons.sustained_dps(player.weapon, _health())
 	)
 	if left < best * RUN_BELOW and _resupply_run(player):
 		return
@@ -312,7 +319,7 @@ func _resupply_run(player: SimPlayer) -> bool:
 	if bought <= 0:
 		return false
 	_result["runs"] += 1
-	player.weapon = SimWeapons.best_armed(player.arms)
+	player.weapon = SimWeapons.best_armed(player.arms, _health())
 	player.stun = maxf(player.stun, RESUPPLY_SECONDS)
 	player.reload_left = 0.0
 	return true
@@ -491,8 +498,9 @@ func _total(field: String) -> int:
 
 
 ## Puts the circuits the modelled player keeps on, on, and every other off, as a player at the
-## switches would. The generator burns for each one and the dead slow on lit ground only while it
-## has fuel, so the light costs what it costs in the game.
+## switches would. The generator burns for each one and the dead keep their round's pace on lit
+## ground only while it has fuel (off it they are faster), so the light costs what it costs in the
+## game.
 func _set_lights() -> void:
 	for circuit_id: StringName in rules.tuning.fuel.circuit_drain:
 		rules.apply(RulesAction.set_circuit(circuit_id, skill.circuits.has(circuit_id)))
@@ -538,7 +546,7 @@ func _refresh(player: SimPlayer) -> void:
 	# A player reloads in the break, for free.
 	for arm: SimArm in player.arms.values():
 		arm.reload()
-	player.weapon = SimWeapons.best_armed(player.arms)
+	player.weapon = SimWeapons.best_armed(player.arms, _health())
 	player.reload_left = 0.0
 	player.carry = 0.0
 	if player.dry:
@@ -581,16 +589,16 @@ func _useful(player: SimPlayer) -> Array[StringName]:
 	var best := 0.0
 	for weapon_id: StringName in player.arms:
 		if not SimWeapons.is_melee(weapon_id):
-			best = maxf(best, SimWeapons.sustained_dps(weapon_id))
+			best = maxf(best, SimWeapons.sustained_dps(weapon_id, _health()))
 	var useful: Array[StringName] = []
 	for weapon_id: StringName in player.arms:
 		if SimWeapons.is_melee(weapon_id):
 			continue
-		if SimWeapons.sustained_dps(weapon_id) >= best * USEFUL_SHARE:
+		if SimWeapons.sustained_dps(weapon_id, _health()) >= best * USEFUL_SHARE:
 			useful.append(weapon_id)
 	useful.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
-			return SimWeapons.sustained_dps(a) > SimWeapons.sustained_dps(b)
+			return SimWeapons.sustained_dps(a, _health()) > SimWeapons.sustained_dps(b, _health())
 	)
 	return useful
 

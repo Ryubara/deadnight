@@ -67,6 +67,11 @@ SWITCHES = [
     ("booth", "door_booth", (4.6, 0.0, 21.5), (0.0, -1.0)),  # on the booth's north wall, midway side
     ("back_lot", "door_back_lot", (-35.5, 0.0, -4.6), (0.0, -1.0)),  # on the field's south fence, by the gate
 ]
+# Where the projector model's lens is (its origin (0, 4.05, 25.25), the lens 0.88 m ahead and 1.06 m up on the model)
+# and the middle of the screen's face: the beam is aimed from one to the other.
+PROJECTOR_LENS = (0.0, 5.11, 24.37)
+SCREEN_CENTRE = (0.0, 10.0)
+SCREEN_FACE_Z = -47.4
 # The fuel can stands: (name, the shop door of the area, where, the way its front faces in degrees of yaw). A player
 # buys a can (the shop's `fuel_can`) from the spot 1.1 m in front of one (docs/design/map.md, The fuel cans).
 FUEL_STANDS = [
@@ -383,9 +388,11 @@ def painted_lines(parent: str, name: str, mat: str, size: tuple[float, float], a
     node(name, "MultiMeshInstance3D", parent, {"multimesh": f'SubResource("{multi_id}")'})
 
 
-def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0) -> None:
+def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0, props: dict[str, str] | None = None) -> None:
     lines.append(f'[node name="{name}" parent="{parent}" instance=ExtResource("{res}")]')
     lines.append(f"transform = {xform(pos, rot_y)}")
+    for k, v in (props or {}).items():
+        lines.append(f"{k} = {v}")
     lines.append("")
     node_names.add(f"{parent}/{name}")
 
@@ -551,6 +558,11 @@ def build() -> None:
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lot_neon_sign.tscn" id="neon_sign"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/screen_fx.tscn" id="screen_fx"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')
+    lines.append('[ext_resource type="Script" path="res://world/drive_in/model_glow.gd" id="model_glow"]')
     lines.append(f'[ext_resource type="PackedScene" path="{lot_props.WRECK}" id="wreck"]')
     lines.extend(lot_props.ext_resources())
     lines.extend(drivein_props.ext_resources())
@@ -580,7 +592,7 @@ def build() -> None:
 
     # --- Field: the screen, the car rows, the first lit ground --------------------------------------------------
     field = group("Field", ".")
-    floor_tiles(field, "Ground", -62, 62, -52, -4, "field_ground")
+    floor_tiles(field, "Ground", -62, 62, -52, -4, "field_ground", 16)
     screen_c = (0.0, -52.0)
     box(field, "ScreenPanel", (32, 12, 1.2), (0, 10, -48), "screen_face")
     box(field, "ScreenFrame", (33.6, 13.6, 0.8), (0, 10, -48.7), "field_struct")
@@ -660,6 +672,11 @@ def build() -> None:
     for i, (lx, lz) in enumerate(field_lamps, start=1):
         instance(lamps_f, f"Lamp{i}", "lamp", (lx, 0, lz))
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
+    # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
+    instance(
+        field, "ScreenFx", "screen_fx", (0, 0, 0),
+        props={"light_path": 'NodePath("../Lamps/ScreenGlow")', "panel_path": 'NodePath("../ScreenPanel")'},
+    )  # fmt: skip
     spawns = group("PlayerSpawns", field)
     for i, sx in enumerate((-6, -2, 2, 6), start=1):
         marker(spawns, f"Player{i}", (sx, 0, -43))
@@ -694,6 +711,24 @@ def build() -> None:
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorE", (5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorN", (0, 3.3, -2), 1.4, 8, "#ffb866")
+    # The neon over the door, on the concession's circuit: dark until the stand is powered.
+    instance(
+        cl, "NeonSnacks", "neon_sign", (0, 3.35, -4.3), 180.0,
+        props={"text": '"SNACKS"', "neon_color": "Color(1, 0.3, 0.55, 1)"},
+    )  # fmt: skip
+    # The counter's prices and the popcorn machine's plate glow with the stand's lamps (ModelGlow).
+    for model in ("Counter", "PopcornMachine"):
+        node(
+            f"{model}Glow", "Node3D", cl,
+            {"script": 'ExtResource("model_glow")', "light_path": 'NodePath("../InteriorN")',
+             "model_path": f'NodePath("../../{model}")', "amber_energy": "1.6"},
+        )  # fmt: skip
+    # The two front windows glow with the stand's lamps (GlowPane).
+    for tag, wx, lamp_name in (("W", -6.0, "InteriorW"), ("E", 6.0, "InteriorE")):
+        instance(
+            cl, f"Window{tag}", "pane", (wx, 1.7, -4.05), 180.0,
+            props={"light_path": f'NodePath("../{lamp_name}")'},
+        )  # fmt: skip
     label(con, "Label", "2 CONCESSION", (0, 4.6, 2), 80)
 
     # --- Midway: the courtyard behind the stand, the hub the other areas hang off ------------------------------
@@ -743,6 +778,14 @@ def build() -> None:
     spot(bl, "ProjectorBeam", (0, 5.4, 22.3), 180, -5.0, 6.0, 100, 7, "#e8f0ff")
     omni(bl, "Lower", (0, 3.0, 27), 1.0, 8, "#c9a8ff")
     omni(bl, "Upper", (0, 6.6, 27), 0.9, 7, "#c9a8ff")
+    # The projector's beam from the port to the screen, burning with the screen's lamp.
+    instance(
+        booth, "BeamFx", "beam", PROJECTOR_LENS,
+        props={
+            "light_path": 'NodePath("../../Field/Lamps/ScreenGlow")',
+            "target_centre": f"Vector3(0, {SCREEN_CENTRE[1] - PROJECTOR_LENS[1]:g}, {SCREEN_FACE_Z - PROJECTOR_LENS[2]:g})",
+        },
+    )  # fmt: skip
     label(booth, "Label", "4 BOOTH", (0, 7.9, 27), 100)
 
     # --- Generator yard (east) ----------------------------------------------------------------------------------------
@@ -829,6 +872,19 @@ def build() -> None:
     instance(road, "WreckB", "wreck", (22.3, 0, 60.0), 90)
     rl = lamps(road, "back_lot")
     omni(rl, "Kiosk", (0, 3.0, 44), 1.0, 8, "#a8c4ff")
+    # The entrance's bulbs and lamps burn with the kiosk's lamp, on the back lot's circuit (ModelGlow): the marquee's
+    # bulbs, arrow and lit board, the ticket booths' crown lamps.
+    node(
+        "MarqueeGlow", "Node3D", rl,
+        {"script": 'ExtResource("model_glow")', "light_path": 'NodePath("../Kiosk")',
+         "model_path": 'NodePath("../../Marquee")', "amber_energy": "3.2", "cream_glow": "0.2"},
+    )  # fmt: skip
+    for tag in ("W", "E"):
+        node(
+            f"TicketBooth{tag}Glow", "Node3D", rl,
+            {"script": 'ExtResource("model_glow")', "light_path": 'NodePath("../Kiosk")',
+             "model_path": f'NodePath("../../TicketBooth{tag}")', "amber_energy": "2.5"},
+        )  # fmt: skip
     hl = lamps(road, "battery", "Headlights")
     spot(hl, "WreckHeadlightL", (-31, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
     spot(hl, "WreckHeadlightR", (-33, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")

@@ -39,6 +39,8 @@ WALK_KEYS = ("w", "d", "s", "a")  # a square, so the player does not stand facin
 SAMPLE_SECONDS = 1.0
 MENU_FRAME_SECONDS = 3.0
 KEY_HOLD_MS = 150
+# With --gpu --unpaced the page is not held to the display's refresh rate, so frame times show the GPU's work.
+UNPACED = ["--disable-gpu-vsync", "--disable-frame-rate-limit"]
 SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
 
 # Console errors that are about the browser, not the game, and are fine. Keep this list short and say why.
@@ -146,7 +148,8 @@ def main() -> int:
     url = args.build if deployed else f"http://127.0.0.1:{port}/index.html"
     with sync_playwright() as p:
         if args.gpu:  # the installed Chrome, which has the machine's GPU; the headless shell is always software
-            browser = p.chromium.launch(channel="chrome", headless=True)
+            flags = UNPACED if args.unpaced else []
+            browser = p.chromium.launch(channel="chrome", headless=True, args=flags)
         else:
             browser = p.chromium.launch(headless=True, args=SOFTWARE_GL)
         page = browser.new_page(viewport=VIEWPORT)
@@ -260,6 +263,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("out", type=Path, help="folder for screenshots, console.txt and result.json")
     parser.add_argument("--night-seconds", type=float, default=NIGHT_SECONDS, help="how long to play the night")
     parser.add_argument("--gpu", action="store_true", help="use the machine's GPU instead of a software renderer")
+    parser.add_argument("--unpaced", action="store_true", help="with --gpu: do not wait for the display's refresh")
     return parser.parse_args()
 
 

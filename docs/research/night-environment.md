@@ -63,12 +63,65 @@ numbers measure the CPU.
 ## Capturing it
 
 `game/tests/captures/night_look_tour.tscn` runs the real night in the manual mode and puts the player's own shoulder
-camera at seven spots (looking up at the screen, across the lot, up the avenue, over the flank, in the yard and the
-back lot), with the dead lined up 25 m away at one. Each spot holds ten frames, so frame `10 * spot + 9` is the
-settled shot:
+camera at ten spots (looking up at the screen, across the lot, up the avenue, over the flank, in the yard and the
+back lot, then the stand powered, the screen's circuit off and the entrance's marquee), with the dead lined up 25 m
+away at one. Each spot holds ten frames, so frame `10 * spot + 9` is the settled shot:
 
 ```text
-godot --path game res://tests/captures/night_look_tour.tscn --write-movie <abs>/look.png --fixed-fps 10 --quit-after 85
+godot --path game res://tests/captures/night_look_tour.tscn --write-movie <abs>/look.png --fixed-fps 10 --quit-after 110
 ```
 
 Add `-- --hud` to draw the real HUD over the night.
+
+## Lamps and glow (issue #244)
+
+The lighting pass on top of the environment above. The sky, fog, ambient and moon are untouched; this is what the
+lot's own lights and emissive surfaces do. Compatibility lights a mesh with at most 8 omni and 8 spot lights, has no
+cheap shadows and no volumetric fog, so what a lamp *looks* like is mostly additive quads, and the few real lights are
+kept for lighting the dead and the player.
+
+| Part | What it is | Cost |
+| --- | --- | --- |
+| Lamp light | sodium `#ffb866`-ish omni, energy 2.8, range 11, attenuation 1.4 (`lamp_post.tscn`) | one light per post, as before |
+| Pool on the asphalt | additive flat quad, 15 m, radial falloff (`glow.gdshader`) | one transparent quad per lit post, no light slot |
+| Lens and halo | emissive lens under a dark housing, plus a billboard glow quad (same shader) | two small quads |
+| Screen face | `screen.gdshader`: drifting patches of cool and warm light, vignette, grain at 12 Hz; `LotScreen` adds a slow flicker | one shader on the existing panel |
+| Projector beam | `ProjectorBeam`: a 29-vertex elliptical cone of additive haze from the booth's port to the screen (`beam.gdshader`), a halo at the lens | one draw, no light |
+| Neon | `LotNeonSign` over the concession door: tubes, `Label3D`, halo, and an omni that hangs on the concession circuit | one light, only while powered |
+| Windows | `GlowPane`: an additive pane in each front window of the stand | one quad each |
+| Breaker posts | a billboard halo round the lamp, green on and dull red off, so a post reads across the lot | one quad each |
+
+What carries the circuits: every glowing thing is a `LightFollower` that reads the **lamp it follows** (its
+`light_energy` over the energy the scene gave it, 0 when `LotLamps` hid it), so a switched circuit, a failing tank and
+the screen's afterglow reach the glow with no second path to keep in step. The flicker's phase is the frame's own delta
+(Movie Maker steps it at a fixed rate) and every flicker curve is a function of the phase alone, so a test calls
+`advance` and gets the same light. A lamp that is only seen (the sign's) carries `metadata/decor` and lights no ground
+for the dead's slowdown (`LotLamps.lit_at`).
+
+- **The cap per mesh is tested** (`test_lot_lighting.gd`): with every circuit on, no CSG box of the lot is reached by more
+  than 8 lights (omni by sphere, spot by its cone's box). The first run found 11 on one 24 m field tile; the field's
+  ground is now tiled at 16 m, as `floor_tiles` already says it must be. The 320 m `Outskirts` slab is exempt: every
+  lamp reaches it and it is near-black.
+- **Pools are quads, not light range.** Raising the lamp range to 14 m to get a bigger pool put 12 lights on one tile.
+  The pool is now the quad, the light stays at 11 m.
+- **The screen shows the circuit.** With `screen_lot` off the face keeps the 0.3 afterglow of its lamp and the posts,
+  halos and pools go dark: the lit and dark halves of the lot read apart at a glance (capture `screen_circuit_off`).
+- **Capturing it**: `night_look_tour.tscn` now has ten spots; the last three throw a breaker (`circuits` in the spot's
+  dictionary: the stand on, then the screen's circuit off), through `NightState.apply_events` so the client sees the
+  event as it does in play. `--quit-after 110`.
+
+### Frame time of the lighting pass
+
+Chrome on an RTX 5080 (ANGLE D3D11, WebGL2), 1280 x 720, `smoke.py --gpu --unpaced` (new flag: no vsync, no frame cap,
+so the frame time is the GPU's work), a 45 s night, the web export of `main` against this branch, each twice, on a shared
+machine (other agents were rendering; the run-to-run spread is as large as the difference):
+
+| Build | Night frame mean | p50 | p95 (median second) | Worst second p95 | Console errors |
+| --- | --- | --- | --- | --- | --- |
+| `main`, run 1 / 2 | 4.0 / 3.5 ms | 3.5 / 2.8 ms | 7.4 / 8.3 ms | 31.4 / 24.7 ms | 0 |
+| this branch, run 1 / 2 | 4.1 / 4.3 ms | 3.5 / 3.2 ms | 8.5 / 11.7 ms | 11.1 / 40.9 ms | 0 |
+
+The pass costs roughly 0.1 to 0.8 ms of GPU time on a desktop card: about 25 small alpha-blended quads (pools, halos), the
+screen shader (a dozen sin calls a pixel over the screen's area) and one 29-vertex cone, with no new light and no shadow.
+The pools are the part to watch on a weak GPU: each is 15 m across, so a lot seen from the avenue overdraws the asphalt
+a few times. A laptop GPU is still unmeasured (#82).
