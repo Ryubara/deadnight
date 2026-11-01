@@ -177,6 +177,32 @@ const HOLD_GRENADE := Transform3D(  # HOLD_GUN * Basis(Vector3.RIGHT, PI / 2)
   moves forward at `release`, and with a stride under the throw through the filter the arm matches the clip to 0.00
   degrees. `game/tests/art/capture_grenade.gd` renders the clips in Godot with the grenade in the hand.
 
+## Repair
+
+`Repair_Board` (#221) is the Soldier putting a board back across a breach of the fence: an `upper` clip like the
+weapon clips, so the legs keep their locomotion under it through the same bone filter. It is built by `repair()` in
+`tools/blender/soldier_clips.py` into its own file, `game/assets/characters/soldier/repair/soldier_repair.glb` with its
+`clips.json`, and `PlayerAnimation` adds it to the Soldier's library when the tree is built.
+
+| Clip | Layer | Plays | Frames | Events |
+| --- | --- | --- | --- | --- |
+| Repair_Board | upper | loop, one loop a board | 24 (1.0 s) | hammer 3, 18; **board_set 18** |
+
+- **Pose:** the left hand holds the board flat against the gap at chest height, 0.95 m in front at kit scale (no IK);
+  the right fist taps it from chin height (frame 3), rises above the helmet (15) and drives it home (18). The weapon is
+  hidden while the clip holds the arms and shown again when it lets go.
+- **Timing comes from the rules, not the clock.** The night repairs one board every `repair_interval` (night tuning,
+  1.0 s) while `use` is held, and each repair is a `board_repaired` event naming the player. On each one,
+  `PlayerAnimation.board_repaired(interval)` seeks the clip to `board_set` and plays it at `1 s / interval`, so the
+  loop comes round to the blow just as the next board goes up (the seek is then a no-op, not a jump). With no event for
+  1.5 intervals the layer fades out (18 per second).
+- `board_set` is the rules' event, so the controller emits it from `board_repaired` only, never from the loop
+  passing the frame: one `board_set` per board. `hammer` (both blows) is for the board sounds (#88).
+- Checked headless (`game/tests/art/check_repair.gd`): every track finds its bone on `soldier.glb`, the loop is
+  seamless, the fist is lowest at frame 19 (one past `board_set`) and 0.82 m below the raise, no leg bone turns,
+  and over `Walk` through the filter the arm matches the clip to 0.04 degrees. `game/tests/player/test_player_repair.gd`
+  steps the controller by hand: start, pace, a faster interval, letting go.
+
 ## How the clips are made
 
 From the kit's own poses, never from a blank rig: `Idle_Shoot` frame 0 (the gun hold) is the base of every weapon
@@ -200,6 +226,10 @@ blender -b --factory-startup -P tools/blender/build_weapons.py -- --only grenade
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Grenade,GrenadeSplit --weapon Grenade=game/assets/weapons/grenade/grenade.glb=Shotgun --out <scratch>/clips
 godot --headless --path game -s res://tests/art/check_grenade.gd          # MODEL/CLIP/RELEASE/SPLIT lines, exit 0
 godot --path game -s res://tests/art/capture_grenade.gd -- --out <scratch>/godot-grenade.png
+# The repair clip, its own file; its contact sheets (front, and from behind as the game's camera sees it); its check:
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Repair_ --out game/assets/characters/soldier/repair/soldier_repair.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Repair,RepairSplit --view back --out <scratch>/repair
+godot --headless --path game -s res://tests/art/check_repair.gd           # LIBRARY/CLIP/LOOP/BLOW/SPLIT lines, exit 0
 ```
 
 `<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is third-party-derived (CC0); it is committed with

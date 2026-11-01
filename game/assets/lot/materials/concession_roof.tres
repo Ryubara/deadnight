@@ -1,0 +1,11 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://assets/lot/lot_surface.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://assets/lot/textures/corrugated.png" id="2"]
+
+[resource]
+resource_name = "concession_roof"
+shader = ExtResource("1")
+shader_parameter/pattern = ExtResource("2")
+shader_parameter/tint = Color(0.373, 0.373, 0.373, 1)
+shader_parameter/metres_per_tile = 2
