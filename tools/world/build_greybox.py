@@ -13,6 +13,8 @@ import random
 import re
 from pathlib import Path
 
+import lot_props
+
 OUT = Path("game/world/drive_in_greybox.tscn")
 TUNING = Path("game/gameplay/rules/default_tuning.tres")
 
@@ -396,6 +398,8 @@ def build() -> None:
     lines.append('[ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
+    lines.append(f'[ext_resource type="PackedScene" path="{lot_props.WRECK}" id="wreck"]')
+    lines.extend(lot_props.ext_resources())
     lines.append("")
     for mid, (albedo, emis) in MATS.items():
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
@@ -493,7 +497,7 @@ def build() -> None:
         block(props, f"ShelterPost{i}", px - 0.2, px + 0.2, pz - 0.2, pz + 0.2, 3.2, "field_struct")
     block(props, "PicnicTable", 46, 50, -32, -30, 0.9, "field_struct")
     for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
-        instance(props, f"Wreck{i}", "car", (px, 0, pz), ry)
+        instance(props, f"Wreck{i}", "wreck", (px, 0, pz), ry)
     lamps_f = lamps(field, "screen_lot")
     for i, (lx, lz) in enumerate(
         [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)], start=1
@@ -545,10 +549,7 @@ def build() -> None:
     wall(mid, "FenceE", "z", 16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
     wall(mid, "AlleyEndW", "x", -4, -16, -10, 2.6, "midway_wall")
     wall(mid, "AlleyEndE", "x", -4, 10, 16, 2.6, "midway_wall")
-    block(mid, "DumpsterW", -15.2, -12.4, -3.2, -1.4, 1.5, "midway_wall")
-    block(mid, "DumpsterE", 12.4, 15.2, -3.2, -1.4, 1.5, "midway_wall")
-    block(mid, "CrateStackA", -12, -9.4, 14, 16.4, 1.8, "midway_wall")
-    block(mid, "CrateStackB", 9.4, 12, 28, 30.4, 1.8, "midway_wall")
+    # Dumpsters, crate stacks: the kit's props (lot_props.DRESSING).
     ml = lamps(mid, "concession")
     omni(ml, "Court", (-10, 3.6, 14), 1.2, 9, "#ffd9a0")
     omni(ml, "Court2", (11, 3.6, 36), 1.0, 9, "#ffd9a0")
@@ -605,10 +606,7 @@ def build() -> None:
             {"transform": xform((55, 1.7, ty)), "use_collision": "true", "radius": "1.4", "height": "3.4",
              "sides": "16", "material": 'SubResource("yard_prop")'},
         )  # fmt: skip
-    block(yard, "ContainerA", 24, 30, 6, 8.6, 2.6, "yard_prop")
-    block(yard, "ContainerB", 50, 56, 26, 28.6, 2.6, "yard_prop")
-    block(yard, "Pallets", 26, 29, 28, 31, 1.2, "yard_wall")
-    block(yard, "DrumRow", 20, 22, 2, 9, 1.0, "yard_prop")
+    # Containers, pallets, the drum row: the kit's props (lot_props.DRESSING).
     yl = lamps(yard, "mains")
     for i, (lx, lz) in enumerate([(35, 12), (45, 12), (35, 24), (45, 24)], start=1):
         instance(yl, f"WorkLamp{i}", "lamp", (lx, 0, lz))
@@ -632,7 +630,11 @@ def build() -> None:
             if rng.random() > 0.35:
                 n += 1
                 instance(
-                    wrecks, f"Wreck{n:02d}", "car", (x + rng.uniform(-0.4, 0.4), 0, row_z), 90 + rng.choice((-6, 0, 6))
+                    wrecks,
+                    f"Wreck{n:02d}",
+                    "wreck",
+                    (x + rng.uniform(-0.4, 0.4), 0, row_z),
+                    90 + rng.choice((-6, 0, 6)),
                 )
             x += 5.6
     block(back, "Bus", -44, -32, 20.5, 23.3, 3.0, "backlot_prop")
@@ -665,8 +667,8 @@ def build() -> None:
     for i, px in enumerate((-9, 9)):
         box(road, f"CanopyPost{i}", (0.4, 3.6, 0.4), (px, 1.8, 47.8), "road_wall")
     box(road, "CentreLine", (0.3, 0.02, 12), (0, 0.01, 46), "road_line", collide=False)
-    block(road, "Wreck", -34, -29.4, 56.4, 58.4, 1.6, "road_wall")
-    block(road, "WreckB", 20, 24.6, 59, 61, 1.6, "road_wall")
+    instance(road, "Wreck", "wreck", (-32.0, 0, 58.0), 0)  # its headlights (below) are at its front, z 55.8
+    instance(road, "WreckB", "wreck", (22.3, 0, 60.0), 90)
     rl = lamps(road, "back_lot")
     omni(rl, "Kiosk", (0, 3.0, 44), 1.0, 8, "#a8c4ff")
     hl = lamps(road, "battery", "Headlights")
@@ -678,6 +680,11 @@ def build() -> None:
     marker(rz, "SpawnPlaza", (-14, 0, 50))
     label(road, "Label", "7  THE ROAD", (0, 0.6, 58), 150)
     label(road, "LabelPlaza", "TICKET PLAZA", (0, 0.6, 41), 90)
+
+    # --- Dressing: the kit's props, from tools/world/lot_props.py ------------------------------------------------
+    lot_props.write_scenes()
+    for area in ("Field", "Midway", "GeneratorYard", "BackLot", "Road"):
+        lot_props.dress(area, group, instance)
 
     # --- Purchase doors: a group per door, a coloured slab per way in; the cost and the prerequisite are metadata ---
     # The lot opens outward from the stand: every other door needs the concession, so the midway is open before any
