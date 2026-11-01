@@ -829,7 +829,7 @@ def build() -> None:
 
     # --- Dressing: the kit's props, from tools/world/lot_props.py ------------------------------------------------
     lot_props.write_scenes()
-    for area in ("Field", "Midway", "GeneratorYard", "BackLot", "Road"):
+    for area in ("Field", "Concession", "Midway", "ProjectionBooth", "GeneratorYard", "BackLot", "Road"):
         lot_props.dress(area, group, instance)
 
     # --- Purchase doors: a group per door, a coloured slab per way in; the cost and the prerequisite are metadata ---
