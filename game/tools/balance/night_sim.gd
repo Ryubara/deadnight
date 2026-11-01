@@ -273,24 +273,31 @@ func _switch_for(player: SimPlayer, zombie: SimZombie) -> bool:
 	return true
 
 
-## Damage a second a loaded firearm does to a body `distance` metres away (0 when it is empty).
+## The health of the walker this round sends: what the players size their weapons against.
+func _health() -> float:
+	return rules.tuning.rounds.health_for_round(rules.round_number)
+
+
+## Health a second a loaded firearm takes off a body `distance` metres away (0 when it is empty).
 func _worth_at(arm: SimArm, distance: float) -> float:
 	if SimWeapons.is_melee(arm.id) or arm.mag <= 0:
 		return 0.0
-	return SimWeapons.damage(arm.id, &"body", distance) / SimWeapons.interval(arm.id)
+	return SimWeapons.kill_rate_at(arm.id, distance, _health())
 
 
 ## The magazine and the reserve are both empty: take the best weapon that still has rounds, or the
 ## crowbar, and lose a moment doing it.
 func _out_of_rounds(player: SimPlayer) -> void:
 	var before := player.weapon
-	player.weapon = SimWeapons.best_armed(player.arms)
+	player.weapon = SimWeapons.best_armed(player.arms, _health())
 	var best := 0.0
 	for weapon_id: StringName in player.arms:
 		if not SimWeapons.is_melee(weapon_id):
-			best = maxf(best, SimWeapons.sustained_dps(weapon_id))
+			best = maxf(best, SimWeapons.sustained_dps(weapon_id, _health()))
 	var left := (
-		0.0 if SimWeapons.is_melee(player.weapon) else SimWeapons.sustained_dps(player.weapon)
+		0.0
+		if SimWeapons.is_melee(player.weapon)
+		else SimWeapons.sustained_dps(player.weapon, _health())
 	)
 	if left < best * RUN_BELOW and _resupply_run(player):
 		return
@@ -310,7 +317,7 @@ func _resupply_run(player: SimPlayer) -> bool:
 	if bought <= 0:
 		return false
 	_result["runs"] += 1
-	player.weapon = SimWeapons.best_armed(player.arms)
+	player.weapon = SimWeapons.best_armed(player.arms, _health())
 	player.stun = maxf(player.stun, RESUPPLY_SECONDS)
 	player.reload_left = 0.0
 	return true
@@ -536,7 +543,7 @@ func _refresh(player: SimPlayer) -> void:
 	# A player reloads in the break, for free.
 	for arm: SimArm in player.arms.values():
 		arm.reload()
-	player.weapon = SimWeapons.best_armed(player.arms)
+	player.weapon = SimWeapons.best_armed(player.arms, _health())
 	player.reload_left = 0.0
 	player.carry = 0.0
 	if player.dry:
@@ -579,16 +586,16 @@ func _useful(player: SimPlayer) -> Array[StringName]:
 	var best := 0.0
 	for weapon_id: StringName in player.arms:
 		if not SimWeapons.is_melee(weapon_id):
-			best = maxf(best, SimWeapons.sustained_dps(weapon_id))
+			best = maxf(best, SimWeapons.sustained_dps(weapon_id, _health()))
 	var useful: Array[StringName] = []
 	for weapon_id: StringName in player.arms:
 		if SimWeapons.is_melee(weapon_id):
 			continue
-		if SimWeapons.sustained_dps(weapon_id) >= best * USEFUL_SHARE:
+		if SimWeapons.sustained_dps(weapon_id, _health()) >= best * USEFUL_SHARE:
 			useful.append(weapon_id)
 	useful.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
-			return SimWeapons.sustained_dps(a) > SimWeapons.sustained_dps(b)
+			return SimWeapons.sustained_dps(a, _health()) > SimWeapons.sustained_dps(b, _health())
 	)
 	return useful
 
