@@ -30,3 +30,31 @@ static func standing(sim: ZombieSim, zombie_id: int, at: Vector3, speed: float =
 	var zombie := sim.spawn(zombie_id, speed, at)
 	zombie.enter(ZombieBody.Mode.CHASE)
 	return zombie
+
+
+## A hash of everything the sim keeps for each zombie, folded into `running`, so a run can be
+## compared tick by tick without listing fields in every test.
+static func state_hash(sim: ZombieSim, running: int = 0) -> int:
+	var ids: Array = sim.zombies.keys()
+	ids.sort()
+	var h := running
+	for id: int in ids:
+		var z: ZombieBody = sim.zombies[id]
+		h = hash(
+			[
+				h,
+				id,
+				z.position,
+				z.yaw,
+				z.mode,
+				z.mode_time,
+				z.episode,
+				z.target_id,
+				z.path_index,
+				z.velocity,
+				z.move_speed,
+				z.repath_left,
+				z.retarget_left,
+			]
+		)
+	return h

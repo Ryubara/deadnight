@@ -7,6 +7,11 @@ extends RefCounted
 ##   u16 count, then per zombie:
 ##   u16 id, i16 x_cm, i16 y_cm, i16 z_cm, u8 yaw, u8 mode, u8 episode, u8 speed
 ##
+## Limits (more in docs/research/zombies.md): ids 0 to 65535, after which an id aliases (a match
+## would need 65 536 zombies); each position axis -327.68 to 327.67 m from the world origin, beyond
+## which it wraps; yaw to 1.4 degrees; speed to 12.75 m/s (capped). Only the speed is
+## clamped.
+##
 ## 12 bytes a zombie, so 40 zombies are 482 bytes before the transport's framing. Not yet wired to
 ## `spikes/net`'s protocol: the netcode owner picks the message type and rate.
 

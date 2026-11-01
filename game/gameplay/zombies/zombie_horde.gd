@@ -5,6 +5,8 @@ extends Node3D
 ## wire format (`ZombieCodec`) and updates the views from what comes out, so what is drawn is
 ## exactly what a remote client would draw.
 
+## The body every zombie wears: a ZombieModels variant, unless `model_scene` is set.
+@export var variant: StringName = ZombieModels.DEFAULT
 @export var model_scene: PackedScene
 
 var director: ZombieDirector
@@ -13,10 +15,16 @@ var throttle: AnimationThrottle
 var last_snapshot_bytes: int = 0
 
 var _views: Dictionary[int, ZombieView] = {}
+var _emerge_seconds: float = 0.0
 
 
-func setup(p_director: ZombieDirector, camera: Camera3D) -> void:
+## `p_emerge_seconds` is the one number the client needs from the zombies' tuning: how long a
+## zombie takes to rise. The server owns the tuning; the views are told what they need.
+func setup(p_director: ZombieDirector, camera: Camera3D, p_emerge_seconds: float) -> void:
+	_emerge_seconds = p_emerge_seconds
 	director = p_director
+	if model_scene == null:
+		model_scene = ZombieModels.scene(variant)
 	throttle = AnimationThrottle.new()
 	throttle.camera = camera
 	add_child(throttle)
@@ -38,8 +46,14 @@ func step(delta: float, targets: Dictionary) -> void:
 	publish(delta)
 
 
+## The server side sends its zombies through the wire format and the client side draws them.
 func publish(delta: float) -> void:
-	var bytes := ZombieCodec.encode(director.sim.zombies)
+	apply_snapshot(ZombieCodec.encode(director.sim.zombies), delta)
+
+
+## The client side: the views follow one snapshot's bytes and nothing else. `delta` is the time
+## since the previous snapshot.
+func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 	last_snapshot_bytes = bytes.size()
 	var seen: Dictionary[int, bool] = {}
 	for entry in ZombieCodec.decode(bytes):
@@ -58,7 +72,7 @@ func _add_view(zombie_id: int) -> void:
 	add_child(view)
 	# The same id always gives the same phase, so every client agrees without being told.
 	var phase := fposmod(float(zombie_id) * 0.618034, 1.0)
-	view.setup(model_scene, zombie_id, phase, director.sim.tuning.emerge_seconds)
+	view.setup(model_scene, zombie_id, phase, _emerge_seconds)
 	_views[zombie_id] = view
 	throttle.add_view(view)
 

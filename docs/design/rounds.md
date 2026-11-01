@@ -48,6 +48,8 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | Action | Fields | Who sends it |
 | --- | --- | --- |
 | `hit` | `player_id`, `zombie_id`, `zone` (`head`, `body`, `limb`), `damage` (float, `> 0`), optional `melee` | the weapon code, from a player's shot or swing |
+| `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
+| `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `repair`, `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
@@ -62,6 +64,8 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `zombie_spawn_requested` | `zombie_id`, `health`, `speed`, `point_roll` | build the zombie; pick the spawn point with `point_roll % count` |
 | `zombie_damaged` | `zombie_id`, `player_id`, `zone`, `damage` (taken off), `health` (left) | play the hit reaction; drive the health bar |
 | `zombie_removed` | `zombie_id`, `cause` (`killed` or `gone`), `killer_id`, `zone`, `melee` | play the death for `killed` (by `zone`, `melee`), vanish quietly for `gone` |
+| `zombie_crippled` | `zombie_id`, `player_id`, `cause` (`legs` or `wounded`), `health` (left), `speed_scale` | switch the zombie to a crawler (lower, slower by `speed_scale`); sent once per zombie, after its `zombie_damaged` |
+| `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
 | `action_rejected` | `reason`, `action`, optional `field` | tell only the sender; never broadcast |
 
@@ -113,6 +117,7 @@ Points (everything is per player):
 | Starting points | 200 |
 | Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
 | Kill / headshot kill / melee kill | 60 / 100 / 130 |
+| Kill by a grenade blast | 40 |
 | Repair one board (at most 120 a round) | 12 |
 | Round survived, standing | 20 + 10 per round |
 
@@ -125,6 +130,7 @@ Shop (prices at round 1):
 | Crane play | 500 | random weapon the player lacks (shotgun 4, rifle 3, SMG 2, flare gun 1) |
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
+| Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
 
 Generator: 100 units; it burns 0.03 a second idle plus each lit circuit (screen lot 0.06,
 concession 0.05, booth 0.08, back lot 0.07), grows 3% a round, and burns at half rate in breaks.

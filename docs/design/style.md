@@ -163,6 +163,17 @@ zombie's pattern, instead of the kit's 2-4 flat materials per asset. Faces colla
 look stays flat and the colours above stay the palette, and a whole family batches into fewer draw calls. Converting
 a kit asset is a palette remap: each flat material becomes a swatch in the family atlas.
 
+## Modular characters
+
+The Soldier's parts (`tools/blender/build_soldier_parts.py`, [characters](characters.md)) follow these numbers:
+
+| Rule | Value |
+| --- | --- |
+| Head landmarks (kit metres, at rest, front is -Y) | hood x +-0.35, y -0.36..0.32, top z 2.20; eyes z 1.75-1.89 at x +-0.12..0.23; face front y -0.37; collar ring z 1.40-1.68, r 0.36 |
+| Added pieces | primitives with a 20 mm one-segment chamfer (10-15 mm on small rims), 44-436 tris each, skinned 100 % to one bone |
+| Atlas | 256 x 64, 16 px swatches: row 0 the five look channels and their shades (x 0.75), row 1 eleven fixed colours |
+| Assembled presets | 4,408-5,080 tris against the 6k player budget, one material, 5-7 meshes |
+
 ## Measuring again
 
 | Step | Command (pinned Blender, headless) |

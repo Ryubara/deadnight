@@ -33,7 +33,7 @@ KNOWN: dict[str, set[str]] = {
     "paths": {"code", "docs", "generated", "large_file_kb", "pointer_files", "blocks_in"},
     "commits": {"title", "body", "trailers"},
     "pull_requests": {"template", "sections", "filled", "placeholders", "local_paths", "docs_none", "closing",
-                      "checklist", "ai_use", "guidance", "screenshots"},
+                      "checklist", "ai_use", "guidance", "screenshots", "issues_affected", "failed_first"},
     "merge": {"methods", "squash_title", "squash_message", "auto_merge", "delete_branch_on_merge",
               "linear_history", "required_checks", "ruleset_name", "up_to_date_required", "manual_paths"},
     "issues": {"blank_issues", "placeholders", "forms", "labels"},
@@ -80,7 +80,7 @@ def validate(data: dict[str, Any]) -> list[str]:
     title = data.get("commits", {}).get("title", {})
     if not title.get("areas") or not title.get("verbs"):
         problems.append("commits.title needs areas and verbs")
-    labels = {item["name"] for item in data.get("labels", {}).get("list", []) if isinstance(item, dict)}
+    labels = {item["name"] for item in all_labels(data)}
     names = [item.get("name") for item in data.get("labels", {}).get("list", []) if isinstance(item, dict)]
     if len(names) != len(set(names)):
         problems.append("labels.list has a duplicate name")
@@ -99,6 +99,30 @@ def validate(data: dict[str, Any]) -> list[str]:
     if pointer is not None and not (isinstance(pointer, dict) and pointer.get("files") and pointer.get("content")):
         problems.append("paths.pointer_files needs files and content")
     return problems
+
+
+def all_labels(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """labels.list plus the generated area labels: a family with `from_title_areas: true` gets one label per title
+    area (`A-<area>`), described by the area's description, so the areas live in one place."""
+    labels_rule = data.get("labels", {})
+    items = [item for item in labels_rule.get("list", []) if isinstance(item, dict)]
+    limit = labels_rule.get("description_max", 100)
+    for spec in labels_rule.get("families", {}).values():
+        if isinstance(spec, dict) and spec.get("from_title_areas"):
+            for area, about in data.get("commits", {}).get("title", {}).get("areas", {}).items():
+                text = f"Area: {about}"
+                text = text if len(text) <= limit else text[: limit - 3].rstrip() + "..."
+                items.append({"name": f"{spec['prefix']}{area}", "color": str(spec.get("color", "c5def5")),
+                              "description": text})
+    return items
+
+
+def area_options(conv: dict[str, Any]) -> list[str]:
+    """The issue form's Area choices: one `A-<area>` per title area (the generated area label family)."""
+    for spec in conv.get("labels", {}).get("families", {}).values():
+        if isinstance(spec, dict) and spec.get("from_title_areas"):
+            return [f"{spec['prefix']}{area}" for area in conv["commits"]["title"]["areas"]]
+    return list(conv["commits"]["title"]["areas"])
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -205,7 +229,46 @@ def body_problems(conv: dict[str, Any], body: str) -> list[str]:
             model = _field(text, ai["model"]["label"])
             if not model or model.lower() == ai["model"]["none"]:
                 problems.append(f"'{ai['model']['label']}' must name the model when an AI took part")
+    problems += issues_affected_problems(conv, body)
     return problems
+
+
+def _reasoned(value: str) -> bool:
+    """True when `value` is a non-empty reason in parentheses: `(why)`."""
+    value = value.strip()
+    return value.startswith("(") and value.endswith(")") and len(value.strip("() ")) > 0
+
+
+def _bullets(text: str) -> list[str]:
+    """The non-empty lines of a section without comments and list markers."""
+    lines = [re.sub(r"^[-*]\s+", "", ln.strip()) for ln in _COMMENT.sub("", text).splitlines()]
+    return [ln for ln in lines if ln]
+
+
+def issues_affected_problems(conv: dict[str, Any], body: str) -> list[str]:
+    """Every other open issue the change partly fixes or makes out of date, one `#N: how` line each, or one line
+    `None (reason)` (pull_requests.issues_affected). A missing section is reported by `body_problems`."""
+    rule = conv["pull_requests"].get("issues_affected")
+    if not rule:
+        return []
+    section = rule.get("section", "Issues affected")
+    none = rule.get("none", "None")
+    sections = split_sections(body)
+    if section not in sections:
+        return [] if section in conv["pull_requests"].get("sections", []) else [f"missing the section ## {section}"]
+    placeholders = {p.lower() for p in conv["pull_requests"].get("placeholders", ["..."])}
+    lines = [ln for ln in _bullets(sections[section]) if ln.lower() not in placeholders]
+    if not lines:
+        return [f"the section ## {section} is empty: list each other open issue this partly fixes or makes out of "
+                f"date ('#N: what changed for it'), or write '{none} (reason)'"]
+    if any(ln.startswith(none) for ln in lines):
+        if len(lines) > 1:
+            return [f"'{none} (reason)' stands alone in ## {section}; drop it or the issue lines"]
+        if not _reasoned(lines[0][len(none):]):
+            return [f"'{none}' needs a reason in parentheses: '{none} (why no open issue is affected)'"]
+        return []
+    bad = [ln for ln in lines if not re.match(r"(?:[\w.-]+/[\w.-]+)?#\d+\s*:\s*\S", ln)]
+    return [f"each line of ## {section} reads '#N: what changed for it': {ln!r}" for ln in bad]
 
 
 _UPLOADED = re.compile(r"(?:!\[[^\]]*\]\(\s*|<img[^>]*src=[\"']?|^\s*)https://(?:github\.com/user-attachments/|"
@@ -231,10 +294,74 @@ def screenshot_problems(conv: dict[str, Any], title: str, body: str) -> list[str
             if reason.startswith("(") and reason.endswith(")") and len(reason) > 2:
                 return []
             return [f"'{none}' needs a reason in parentheses: '{none} (why nothing visible changed)'"]
+    pair = rule.get("before_after")
+    if pair:
+        return _before_after_problems(text, area, section, pair)
     if _UPLOADED.search(text):
         return []
     return [f"a `{area}` pull request shows what changed: attach a capture in ## {section} (`gh pr create|edit "
             f"--attach`), or write '{none} (reason)'"]
+
+
+def _label_at(text: str, label: str) -> re.Match[str] | None:
+    """Where a `Label:` (bare, bulleted or in bold) starts a line of `text`."""
+    bare = re.escape(label.rstrip(":"))
+    return re.search(rf"^[ \t]*(?:[-*][ \t]*)?(?:\*\*{bare}:?\*\*:?|{bare}:)", text, re.MULTILINE)
+
+
+def _before_after_problems(text: str, area: str, section: str, pair: dict[str, Any]) -> list[str]:
+    """A visual pull request shows a before and an after capture; `Before: none (reason)` for something new."""
+    before_label, after_label = pair.get("before", "Before:"), pair.get("after", "After:")
+    before, after = _label_at(text, before_label), _label_at(text, after_label)
+    how = (f"a `{area}` pull request shows what changed in ## {section}: a '{before_label}' and an '{after_label}' "
+           f"capture, uploaded (`gh pr create|edit --attach`)")
+    if not before or not after or before.start() > after.start():
+        return [f"{how}; '{before_label} none (reason)' when it did not exist before"]
+    problems = []
+    before_text = text[before.end():after.start()].strip()
+    if before_text.lower().startswith("none"):
+        rest = before_text[4:].strip().splitlines()
+        if not rest or not _reasoned(rest[0]):
+            problems.append(f"'{before_label} none' needs a reason in parentheses: '{before_label} none (new screen)'")
+    elif not _UPLOADED.search(before_text):
+        problems.append(f"{how}: the '{before_label}' capture is missing")
+    if not _UPLOADED.search(text[after.end():]):
+        problems.append(f"{how}: the '{after_label}' capture is missing")
+    return problems
+
+
+def failed_first_problems(conv: dict[str, Any], title: str, body: str) -> list[str]:
+    """A pull request whose title verb is in pull_requests.failed_first.verbs (a fix) shows, in its Testing section,
+    the test that failed before the change and passes after it: a `Failed first:` line, or `Failed first: none
+    (reason)` when no test can show it."""
+    rule = conv["pull_requests"].get("failed_first")
+    match = re.match(r"\s*[a-z0-9-]+: ([A-Z][a-z]+) ", title)
+    if not rule or not match or match.group(1) not in rule.get("verbs", ["Fix"]):
+        return []
+    label, section = rule.get("label", "Failed first:"), rule.get("section", "Testing")
+    text = _COMMENT.sub("", split_sections(body).get(section, ""))
+    found = _label_at(text, label)
+    rest = text[found.end():].splitlines() if found else []
+    value = rest[0].strip() if rest else ""
+    placeholders = {p.lower() for p in conv["pull_requests"].get("placeholders", ["..."])}
+    if not value or value.lower() in placeholders:
+        return [f"a `{match.group(1)}` pull request shows its test failing first: a line '{label} <test> failed "
+                f"before the fix (<how>) and passes after' in ## {section}, or '{label} none (reason)'"]
+    if value.lower().startswith("none") and not _reasoned(value[4:]):
+        return [f"'{label} none' needs a reason in parentheses: '{label} none (why no test can show it)'"]
+    return []
+
+
+def issue_area(conv: dict[str, Any], body: str) -> str:
+    """The Area an issue form's body chose (`### Area` then the option), '' when absent or not an allowed option."""
+    label = "Area"
+    for form in conv.get("issues", {}).get("forms", {}).values():
+        for spec in form.get("sections", {}).values():
+            if isinstance(spec, dict) and spec.get("options_from") == "title_areas":
+                label = spec["heading"]
+    match = re.search(rf"^###\s+{re.escape(label)}\s*\n+\s*(\S+)\s*$", body, re.MULTILINE)
+    value = match.group(1) if match else ""
+    return value if value in area_options(conv) else ""
 
 
 def ai_model_line(conv: dict[str, Any], body: str) -> str:
@@ -414,6 +541,12 @@ def render_template(conv: dict[str, Any]) -> str:
             ai = rule["ai_use"]
             out.append(f"- **{ai['written_by']['label']}** <!-- {' / '.join(ai['written_by']['choices'])} -->")
             out.append(f"- **{ai['model']['label']}** <!-- the model that wrote them; {ai['model']['none']} when a person did -->\n")
+        elif name == rule.get("issues_affected", {}).get("section"):
+            out.append("- ...\n")
+        elif name == rule.get("screenshots", {}).get("section") and rule["screenshots"].get("before_after"):
+            pair = rule["screenshots"]["before_after"]
+            out.append(f"- **{pair.get('before', 'Before:')}** ...")
+            out.append(f"- **{pair.get('after', 'After:')}** ...\n")
         elif name in rule.get("filled", []):
             out.append("- ...\n")
     return "\n".join(out).rstrip() + "\n"
@@ -432,8 +565,11 @@ def render_form(conv: dict[str, Any], name: str) -> str:
         if isinstance(spec, dict):
             if spec.get("description"):
                 entry["attributes"]["description"] = spec["description"]
+            if spec.get("placeholder"):
+                entry["attributes"]["placeholder"] = spec["placeholder"]
             if kind == "dropdown":
-                entry["attributes"]["options"] = spec["options"]
+                entry["attributes"]["options"] = (area_options(conv) if spec.get("options_from") == "title_areas"
+                                                  else spec["options"])
         if required:
             entry["validations"] = {"required": True}
         body.append(entry)
@@ -535,7 +671,7 @@ def label_diff(conv: dict[str, Any], repo: str | None) -> tuple[list[dict], list
     have = {item["name"]: item for item in json.loads(gh("label", "list", "--json", "name,color,description", "-L", "500", *repo_args))}
     create: list[dict] = []
     change: list[dict] = []
-    wanted = {item["name"]: item for item in conv["labels"]["list"]}
+    wanted = {item["name"]: item for item in all_labels(conv)}
     for name, item in wanted.items():
         if name not in have:
             create.append(item)
@@ -763,8 +899,18 @@ def cmd_check_body(conv: dict[str, Any], args: argparse.Namespace) -> int:
     problems = body_problems(conv, body)
     if args.title:
         lines = _read(args.title).splitlines()
-        problems += screenshot_problems(conv, lines[0] if lines else "", body)
+        title = lines[0] if lines else ""
+        problems += screenshot_problems(conv, title, body)
+        problems += failed_first_problems(conv, title, body)
     return _report(problems, "description")
+
+
+def cmd_issue_area(conv: dict[str, Any], args: argparse.Namespace) -> int:
+    """Print the area label an issue form's body chose (nothing when none); the issue-area workflow applies it."""
+    area = issue_area(conv, _read(args.body))
+    if area:
+        print(area)
+    return 0
 
 
 def cmd_check_docs(conv: dict[str, Any], args: argparse.Namespace) -> int:
@@ -880,8 +1026,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(run=cmd_needs_maintainer)
     p = sub.add_parser("check-body", help="check a pull request description")
     p.add_argument("--body", required=True, help="a file, or - for stdin")
-    p.add_argument("--title", help="the title (a file): enables the screenshots rule for visual areas")
+    p.add_argument("--title", help="the title (a file): enables the screenshots and failed-first rules")
     p.set_defaults(run=cmd_check_body)
+    p = sub.add_parser("issue-area", help="print the area label an issue form's body chose")
+    p.add_argument("--body", required=True, help="the issue body: a file, or - for stdin")
+    p.set_defaults(run=cmd_issue_area)
     p = sub.add_parser("check-docs", help="a change to code needs a change to docs, or the escape line")
     p.add_argument("--body", required=True, help="the description: a file, or - for stdin")
     p.add_argument("--changed", required=True, help="a file listing the changed paths")

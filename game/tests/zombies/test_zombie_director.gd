@@ -101,6 +101,45 @@ func test_requests_past_the_crowd_cap_wait_for_a_kill() -> void:
 	assert_int(_sim.standing_count()).is_equal(_sim.tuning.hard_cap)
 
 
+func test_a_hit_on_a_queued_zombie_is_rejected_and_pays_nothing() -> void:
+	_begin(
+		func(rounds: RoundTuning) -> void:
+			rounds.alive_cap_start = 60.0
+			rounds.alive_cap_max = 60.0
+			rounds.count_base = 80.0
+			rounds.spawn_interval_start = 0.2
+			rounds.spawn_interval_min = 0.2
+	)
+	_run(30.0)
+	assert_int(_director.waiting_count()).is_greater(0)
+	var queued_id: int = _director._waiting[0]["zombie_id"]
+	assert_bool(_sim.zombies.has(queued_id)).is_false()
+	var points := _rules.points_of(1)
+	var kills: int = _rules.players[1].kills
+	var waiting := _director.waiting_count()
+	var result := _director.take_hit(queued_id, &"head", 100000.0, 1)
+	assert_bool(result["accepted"]).is_false()
+	assert_bool(result["killed"]).is_false()
+	assert_int(_rules.points_of(1)).is_equal(points)
+	assert_int(_rules.players[1].kills).is_equal(kills)
+	assert_int(_director.waiting_count()).is_equal(waiting)
+	# It is still a zombie of the match: it enters when there is room, alive.
+	var victim: int = _sim.zombies.keys()[0]
+	_director.take_hit(victim, &"body", 100000.0, 1)
+	_run(0.2)
+	assert_bool(_sim.zombies.has(queued_id)).is_true()
+	assert_bool(_sim.zombies[queued_id].is_alive()).is_true()
+
+
+func test_a_hit_on_an_id_nobody_holds_is_rejected() -> void:
+	_begin()
+	_run(2.0)
+	for bad_id in [-1, 0, 999999]:
+		var result := _director.take_hit(bad_id, &"body", 10.0, 1)
+		assert_bool(result["accepted"]).is_false()
+		assert_bool(result["killed"]).is_false()
+
+
 func test_a_zombie_that_reaches_a_player_reports_the_blow() -> void:
 	_begin()
 	_run(40.0)
@@ -130,3 +169,18 @@ func test_a_short_packet_decodes_to_nothing() -> void:
 	bytes.resize(bytes.size() - 1)
 	assert_array(ZombieCodec.decode(bytes)).is_empty()
 	assert_array(ZombieCodec.decode(PackedByteArray())).is_empty()
+
+
+func test_the_wire_format_keeps_ids_and_positions_to_its_documented_limits() -> void:
+	var sim := ZombieFixture.sim()
+	# The last id and the farthest positions that survive the trip (docs/research/zombies.md).
+	var edge := sim.spawn(65535, 1.0, Vector3(327.67, 0, -327.68))
+	var back := ZombieCodec.decode(ZombieCodec.encode(sim.zombies))[0]
+	assert_int(back["id"]).is_equal(65535)
+	assert_float(back["position"].x).is_equal_approx(327.67, 0.001)
+	assert_float(back["position"].z).is_equal_approx(-327.68, 0.001)
+	# One past the id limit comes back as id 0, which is why the limit is written down.
+	sim.zombies.erase(65535)
+	edge.id = 65536
+	sim.zombies[edge.id] = edge
+	assert_int(ZombieCodec.decode(ZombieCodec.encode(sim.zombies))[0]["id"]).is_equal(0)
