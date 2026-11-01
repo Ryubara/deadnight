@@ -5,10 +5,19 @@ extends UIScreen
 ## lead back to the menu.
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/night_screen.tscn")`; the main menu's Play
-## does.
+## does. To join a game server instead, set `join_url` first (the Join screen does): the screen
+## takes it once and joins that night.
 
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
+
+## The server to join (`ws://host:port`) the next time this screen opens; empty plays alone.
+static var join_url := ""
+## With `join_url`: the autopilot plays this player (`--bot`), seen over its own shoulder.
+static var join_as_bot := false
+## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
+## settings file); null wears the saved look.
+static var own_look: CharacterLook
 
 var night: Night
 
@@ -21,11 +30,21 @@ var _resume: UIButton
 var _quit: UIButton
 
 
+## The look a `--look` value names: `N` is the preset N, `seed:N` a random look made from seed N.
+static func look_from_flag(text: String) -> CharacterLook:
+	if text.begins_with("seed:"):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = text.trim_prefix("seed:").to_int()
+		return CharacterLook.randomized(rng)
+	return CharacterLook.from_preset(text.to_int())
+
+
 func _ready() -> void:
 	super._ready()
 	# B (`ui_cancel`) crouches in the night: it must not take the player back to the menu.
 	allow_back = false
 	night = Night.new()
+	night.own_look = own_look
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
@@ -46,7 +65,18 @@ func touch_active() -> bool:
 
 
 func screen_enter() -> void:
-	await night.start(Night.Mode.HUMAN)
+	if join_url == "":
+		await night.start(Night.Mode.HUMAN)
+		return
+	var url := join_url
+	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN
+	night.shoulder_camera = join_as_bot
+	join_url = ""
+	join_as_bot = false
+	_show_overlay("Joining", url, false)
+	night.connect_failed.connect(_on_connect_failed)
+	if await night.start_remote(url, mode):
+		_overlay.hide()
 
 
 func screen_pause() -> void:
@@ -100,6 +130,10 @@ func _resume_night() -> void:
 	_hud.reticle.set_shown(true)
 	_touch.live = true
 	night.set_paused(false)
+
+
+func _on_connect_failed(reason: String) -> void:
+	_show_overlay("Could not join", reason, false)
 
 
 func _on_night_over(round_reached: int) -> void:

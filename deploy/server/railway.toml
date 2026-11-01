@@ -1,0 +1,9 @@
+# Railway config for the Deadnight game server (picked up from the uploaded folder). No HTTP health check: the
+# server speaks WebSocket only; Railway restarts it if the process exits.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
