@@ -59,7 +59,7 @@ func test_each_item_opens_its_screen() -> void:
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
 	var expected := {
-		"Play": "res://ui/screens/play_screen.tscn",
+		"Play": "res://ui/screens/night_screen.tscn",
 		"Settings": "res://ui/screens/settings_screen.tscn",
 		"Credits": "res://ui/screens/credits_screen.tscn",
 	}
@@ -69,6 +69,9 @@ func test_each_item_opens_its_screen() -> void:
 		await UIRouter.idle
 		assert_int(UIRouter.depth()).is_equal(2)
 		assert_str(UIRouter.top().scene_file_path).is_equal(expected[item])
+		if UIRouter.top() is NightScreen:
+			# Leaving while the lot is still being built would free the night mid-start.
+			await (UIRouter.top() as NightScreen).night.ready_to_play
 		UIRouter.pop()
 		await UIRouter.idle
 		assert_object(UIRouter.top()).is_same(menu)

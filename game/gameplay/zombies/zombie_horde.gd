@@ -8,6 +8,8 @@ extends Node3D
 @export var model_scene: PackedScene
 
 var director: ZombieDirector
+## Seconds a zombie rises from the ground; the director's tuning sets it, or the caller does.
+var emerge_seconds := 0.7
 var throttle: AnimationThrottle
 ## Size in bytes of the last snapshot.
 var last_snapshot_bytes: int = 0
@@ -17,6 +19,12 @@ var _views: Dictionary[int, ZombieView] = {}
 
 func setup(p_director: ZombieDirector, camera: Camera3D) -> void:
 	director = p_director
+	emerge_seconds = p_director.sim.tuning.emerge_seconds
+	setup_client(camera)
+
+
+## A horde that only draws: no director, it is fed with `apply_snapshot`.
+func setup_client(camera: Camera3D) -> void:
 	throttle = AnimationThrottle.new()
 	throttle.camera = camera
 	add_child(throttle)
@@ -39,7 +47,11 @@ func step(delta: float, targets: Dictionary) -> void:
 
 
 func publish(delta: float) -> void:
-	var bytes := ZombieCodec.encode(director.sim.zombies)
+	apply_snapshot(ZombieCodec.encode(director.sim.zombies), delta)
+
+
+## Brings the views to the zombies a snapshot (`ZombieCodec` bytes) describes.
+func apply_snapshot(bytes: PackedByteArray, delta: float) -> void:
 	last_snapshot_bytes = bytes.size()
 	var seen: Dictionary[int, bool] = {}
 	for entry in ZombieCodec.decode(bytes):
@@ -58,7 +70,7 @@ func _add_view(zombie_id: int) -> void:
 	add_child(view)
 	# The same id always gives the same phase, so every client agrees without being told.
 	var phase := fposmod(float(zombie_id) * 0.618034, 1.0)
-	view.setup(model_scene, zombie_id, phase, director.sim.tuning.emerge_seconds)
+	view.setup(model_scene, zombie_id, phase, emerge_seconds)
 	_views[zombie_id] = view
 	throttle.add_view(view)
 
