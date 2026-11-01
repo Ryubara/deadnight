@@ -195,8 +195,10 @@ func _stage_pass() -> void:
 		_keep_materials(_night.view)
 		_keep_materials(crane)
 		# The next condition starts clean: a flash left over would put an omni light on it.
+		# The pooled impacts stay: they are the view's own, the rest is what the replay drew.
 		for effect in _night.view.effects.get_children():
-			effect.free()
+			if effect != _night.view.effects.impacts:
+				effect.free()
 		props.free()
 		crane.free()
 		rig.free()
@@ -300,8 +302,17 @@ func _replay_effects() -> void:
 		var ends: Array[Vector3] = []
 		for _p in maxi(def.pellets, 1):
 			ends.append(muzzle + Vector3(0.0, -0.3, -3.5))
-		view.draw_event(
-			{"type": &"shot_fired", "weapon_id": def.id, "muzzle": muzzle, "ends": ends}
+		(
+			view
+			. draw_event(
+				{
+					"type": &"shot_fired",
+					"weapon_id": def.id,
+					"muzzle": muzzle,
+					"ends": ends,
+					"flesh": [muzzle + Vector3(0.0, -0.3, -1.5)],
+				}
+			)
 		)
 	(
 		view

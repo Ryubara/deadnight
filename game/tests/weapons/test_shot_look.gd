@@ -56,11 +56,20 @@ func test_a_hitscan_shot_reaches_the_screen_with_a_flash_and_an_impact_but_no_tr
 		for end: Vector3 in fired["ends"]:
 			if fired["muzzle"].distance_to(end) < range_m - ShotEffects.RANGE_SLACK:
 				landed += 1
-		var before := view.effects.get_child_count()
+		# A puff on every zombie hit, and a spark, puff and mark where a pellet met something else.
+		var flesh: Array = fired["flesh"]
+		var walls := 0
+		for end: Vector3 in fired["ends"]:
+			var on_zombie := flesh.any(func(p: Vector3) -> bool: return p.distance_to(end) < 0.02)
+			if (
+				fired["muzzle"].distance_to(end) < range_m - ShotEffects.RANGE_SLACK
+				and not on_zombie
+			):
+				walls += 1
 		view._on_event(fired)
 		assert_int(view.effects.tracers_drawn).override_failure_message(String(id)).is_equal(0)
-		# The flash is a light and a burst; each pellet that landed adds a spark and a puff.
-		assert_int(view.effects.get_child_count() - before).is_equal(2 + 2 * landed)
+		var expected := mini(flesh.size() + walls, ImpactFx.MAX_ACTIVE)
+		assert_int(view.effects.impacts.active_count()).is_equal(expected)
 		if id != &"rifle":  # the rifle's round passes through the zombie and flies on
 			assert_int(landed).override_failure_message("%s hit nothing" % id).is_greater(0)
 
@@ -93,18 +102,16 @@ func test_a_weapon_that_asks_for_a_tracer_gets_one_streak_per_pellet() -> void:
 
 
 func test_a_projectile_weapon_draws_no_impact_from_the_shot_itself() -> void:
-	var before := _effects.get_child_count()
 	_effects.shot(_def(&"flare_gun"), MUZZLE, [])
-	# Only the flash (a light and a burst): the flare's body and its burst come from the flight.
-	assert_int(_effects.get_child_count()).is_equal(before + 2)
+	# Only the flash: the flare's body and its burst come from the flight.
+	assert_int(_effects.impacts.active_count()).is_equal(0)
 	assert_int(_effects.tracers_drawn).is_equal(0)
 
 
 func test_a_shot_that_flew_its_whole_range_leaves_no_impact() -> void:
 	var def := _def(&"rifle")
-	var before := _effects.get_child_count()
 	_effects.shot(def, MUZZLE, [MUZZLE + Vector3.FORWARD * def.max_range])
-	assert_int(_effects.get_child_count()).is_equal(before + 2)
+	assert_int(_effects.impacts.active_count()).is_equal(0)
 
 
 func test_a_swing_shows_no_streak() -> void:
