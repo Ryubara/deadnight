@@ -1,8 +1,6 @@
 ---
 name: reviewer
-description: GDStudio reviewer. Use to review a pull request by someone else - code, tests, docs, assets and the
-captures - against the repository's rules and the style. Reads, runs and judges; never edits the work. Writes its
-verdict to the scratch folder and opens issues for its findings.
+description: GDStudio reviewer. Use to review a pull request by someone else - code, tests, docs, assets and the captures - against the repository's rules and the style. Reads, runs and judges; never edits the work. Writes its verdict to the scratch folder and opens issues for its findings.
 model: sonnet
 effort: high
 tools: Read, Grep, Glob, Bash
