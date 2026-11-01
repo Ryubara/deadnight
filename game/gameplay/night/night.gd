@@ -14,6 +14,8 @@ extends Node3D
 ## `RemoteAvatars` drawn from frames.
 
 signal ready_to_play
+## How far the night has got in getting ready (0 to 1) and what it is doing, for a loading screen.
+signal loading(fraction: float, text: String)
 signal night_over(round_reached: int)
 ## `start_remote` could not join: why, in words for the player.
 signal connect_failed(reason: String)
@@ -23,6 +25,8 @@ signal ticked
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
 
+## Share of the loading bar the lot's own build takes, before the warm-up starts.
+const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
 const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
@@ -66,6 +70,11 @@ var ticks_per_frame := 1
 var shoulder_camera := false
 ## False before the night starts, while paused and after it is over.
 var running := false
+## Draw and load everything the night uses once before it starts (`NightWarmup`), behind a loading
+## screen. The game turns it on; a test that needs no pictures leaves it off, which saves seconds.
+var warm_up := false
+## The warm-up, once it ran: it holds what it loaded for as long as the night lasts.
+var warmup: NightWarmup
 
 var _human := HumanController.new()
 var _spectator: Camera3D
@@ -80,6 +89,8 @@ var _hud_binding: NightHudBinding
 ## Held here: it listens to the client state and nothing else keeps it alive.
 var _equip_sync: WeaponEquipSync
 var _paused := false
+## True while the warm-up runs.
+var _warming := false
 
 
 ## Builds the lot and the server, joins the player, and starts the night.
@@ -87,9 +98,15 @@ func start(
 	p_mode: Mode = Mode.HUMAN, p_seed: int = SEED, p_rules_tuning: RulesTuning = null
 ) -> void:
 	mode = p_mode
+	loading.emit(0.0, "Building the lot")
+	if warm_up:
+		# The build takes the main thread for seconds: let the loading screen be drawn first.
+		await get_tree().process_frame
+		await get_tree().process_frame
 	world = NightWorld.new()
 	add_child(world)
 	await world.build()
+	loading.emit(BUILD_SHARE, "Setting up")
 	server = NightServer.new(world, p_seed, null, p_rules_tuning)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
@@ -114,7 +131,8 @@ func start(
 	elif mode == Mode.AUTOPILOT:
 		camera = _make_spectator()
 		_make_autopilot()
-	_finish_start(camera)
+	_build_view(camera)
+	await _go()
 
 
 ## Joins the night of a game server at `url` (`ws://host:port`): builds the lot, connects, and
@@ -176,7 +194,7 @@ func start_remote(
 	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
 	_equip_sync = WeaponEquipSync.new(state, _body_of)
 	online.delivered.disconnect(keep)
-	_finish_start(camera)
+	_build_view(camera)
 	view.step = Night.STEP * NightHost.SEND_EVERY
 	_mirror = WorldMirror.new(world, view)
 	avatars = RemoteAvatars.new()
@@ -187,6 +205,7 @@ func start_remote(
 	looks.changed.connect(_dress_bodies)
 	online.send({"type": NightServer.LOOK, "packet": LookWire.look(_wanted_look())})
 	_on_delivered(early)
+	await _go()
 	return true
 
 
@@ -215,8 +234,8 @@ func _last_frame(events: Array) -> Dictionary:
 	return {}
 
 
-## The view, the sounds and the first tick, once there is a camera to look through.
-func _finish_start(camera: Camera3D) -> void:
+## The view and the sounds, once there is a camera to look through.
+func _build_view(camera: Camera3D) -> void:
 	view = NightView.new()
 	add_child(view)
 	view.setup(state, camera, _telegraphs(), _board_seconds())
@@ -231,6 +250,22 @@ func _finish_start(camera: Camera3D) -> void:
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
+
+
+## The warm-up (when asked for), then the first tick. A client on a game server goes on reading
+## what the server says meanwhile (`_physics_process`), so nothing piles up behind the loading
+## screen.
+func _go() -> void:
+	if warm_up:
+		_warming = true
+		warmup = NightWarmup.new()
+		add_child(warmup)
+		warmup.progress.connect(
+			func(fraction: float, text: String) -> void:
+				loading.emit(lerpf(BUILD_SHARE, 1.0, fraction), text)
+		)
+		await warmup.run(self)
+		_warming = false
 	running = true
 	ready_to_play.emit()
 
@@ -341,6 +376,8 @@ func _exit_tree() -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	if _warming and remote:
+		link.pump()
 	for _i in ticks_per_frame:
 		if not running:
 			return

@@ -420,3 +420,18 @@ func test_the_numbers_of_a_run_are_small() -> void:
 	# One tick to a client is a few hundred bytes: well under a kilobyte at this size.
 	assert_float(per_frame).is_less(1500.0)
 	assert_float(a.link.rtt_ms).is_less(500.0)
+
+
+func test_a_client_that_warms_up_goes_on_reading_the_server_meanwhile() -> void:
+	await _server()
+	var night := Night.new()
+	night.warm_up = true
+	_world().add_child(night)
+	var joined := await night.start_remote(_url(), Night.Mode.MANUAL, 30.0)
+	assert_bool(joined).is_true()
+	_nights.append(night)
+	assert_bool(night.running).is_true()
+	# The warm-up took many frames; what the server said meanwhile was read as it came, so the
+	# client is not seconds behind (a frame arrives every few ticks, and the lag is the last).
+	var behind: int = _host.server.tick_count - int(night.state.frame["tick"])
+	assert_int(behind).is_less(NightHost.SEND_EVERY * 4)
