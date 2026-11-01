@@ -36,10 +36,10 @@ Rules for adding one:
   on the one zombie atlas; never a second material.
 - **Budget**: 4,000 tris gameplay, 1,500 far, one material, one skinned mesh per level of detail.
 
-The runner rule (a type: one on round 4, then 6% of a round growing 4% a round to 30%, at 1.7 times the walk and
-never above 4.5 m/s) makes the runner the variant that has to be
-seen early: it is the tallest of the commons and the only one in blue, so a player can tell it in a crowd before it
-starts to run.
+The runner rule (a type: one on round 4, then 6% of a round growing 4% a round to 30%, at 1.4 times the walk and
+never above 5.0 m/s under the lights, 6.25 in the dark; [rounds](rounds.md#zombie-types)) makes the runner the variant
+that has to be seen early: it is the tallest of the commons and the only one in blue, so a player can tell it in a
+crowd before it starts to run.
 
 ## Crowd budget
 
@@ -147,10 +147,10 @@ A crowd must never march in step. Per zombie, chosen by the seeded random of the
 | What | Range | Why |
 | --- | --- | --- |
 | Start phase | 0 to the clip length | no two zombies plant the same foot together |
-| Play speed | ground speed / clip speed, then times 0.9 to 1.1 | feet keep up with the ground; the jitter breaks sync between zombies at the same speed |
-| Walk to run | `Walk` below 1.6 m/s, blended into `Run` to 2.6 m/s, `Run` above | round 1 walks at 1.2 m/s, round 10 at 2.6, round 20 at 4.2: late walkers run |
+| Play speed | none yet: the clips play at their authored rate (the start phase is the only variety) | the feet slide on fast zombies (a dark runner moves at up to 6.25 m/s on a `Run` clip that covers about 4.4); the gait that follows the ground speed is open work (#280), not on `main` yet |
+| Walk to run | the move state blends `Idle` at 0 m/s, `Walk` at 1.0, `Run` at 3.0, and stops at 4.5 m/s (`ZombieRig`: `WALK_AT`, `RUN_AT`, `MAX_SPEED`) | round 1 walks at 1.2 m/s, round 10 at 2.6, round 20 at 4.2: late walkers run |
 | Runner run | `Run` or `Run_Arms`, half each | two run silhouettes in one wave |
-| Light | a zombie off lit ground is 25 % faster; the blend follows the speed it really moves at | the dark makes the dead run: the player sees the light hold them back |
+| Light | a zombie off lit ground is 25 % faster; the blend follows the speed it really moves at | the dark makes the dead run: under the lights they keep their round's pace, and the player sees the dark speed them up |
 | Hit | `HitReact` added over the walk, not replacing it | the walk never stops mid-stride |
 | Death | one of three deaths | a cleared wave does not fall the same way |
 
