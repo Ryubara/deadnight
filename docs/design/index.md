@@ -34,6 +34,10 @@ The order, prices and layout are in [the lot](map.md).
 What carries over from one night to the next, and what never does, is in the [permanent progression
 design](progression.md): a night always starts equal, and growth is choice, mastery and identity, never strength.
 
+## Looks
+
+Every player dresses their own character: the [customization screen and how each look reaches the others](customization.md).
+
 ## Starting art
 
 The Quaternius Toon Shooter Game Kit (CC0) is the starting style; it may change. Its characters share one rig with

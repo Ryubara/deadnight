@@ -7,6 +7,7 @@ extends UIScreen
 ## page cannot close itself.
 
 const PLAY_SCREEN := "res://ui/screens/night_screen.tscn"
+const CUSTOMIZE_SCREEN := "res://ui/screens/customize_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"
 ## Seconds after the screen appears before the items rise, so the sign is catching first.
@@ -17,6 +18,7 @@ const ITEMS_DELAY := 0.55
 @onready var _items: VBoxContainer = %Items
 @onready var _footer: Label = %Footer
 @onready var _play: UIButton = %Play
+@onready var _customize: UIButton = %Customize
 @onready var _settings: UIButton = %Settings
 @onready var _credits: UIButton = %Credits
 @onready var _quit: UIButton = %Quit
@@ -33,6 +35,7 @@ func _ready() -> void:
 	_sign.tube_b = _tokens.accent
 	_quit.visible = has_quit()
 	_play.pressed.connect(_open.bind(PLAY_SCREEN, UITransition.Kind.IRIS))
+	_customize.pressed.connect(_open.bind(CUSTOMIZE_SCREEN, UITransition.Kind.SLIDE))
 	_settings.pressed.connect(_open.bind(SETTINGS_SCREEN, UITransition.Kind.SLIDE))
 	_credits.pressed.connect(_open.bind(CREDITS_SCREEN, UITransition.Kind.BURN))
 	_quit.pressed.connect(get_tree().quit)
