@@ -705,7 +705,7 @@ def build() -> None:
     wall(con, "WallE", "z", 10, -4, 8, 4.0, "concession_wall")
     box(con, "Roof", (20.8, 0.3, 12.8), (0, 4.15, 2), "concession_roof")
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
-    block(con, "PrizeCrane", -9.4, -7.4, 4, 6, 2.4, "concession_prop")
+    # The prize crane is not part of the scene: it moves between four places, so `CraneView` draws it.
     block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop")
     cl = lamps(con, "concession")
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
@@ -914,7 +914,6 @@ def build() -> None:
     sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)
     shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
-    sign("ShopProps", "CraneSign", "PRIZE CRANE", (-7.3, 2.0, 5.0), 90, 60)
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)
     # The crane's other places (rules: `crane.spot_doors`): the midway, the open field and the yard. A breakdown moves
     # the crane to one of the spots whose door is open; the prize crane stands on only one at a time.
