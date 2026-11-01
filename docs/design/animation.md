@@ -206,18 +206,27 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   switched off, not only blended to 0: at influence 0 it still drew the arms in the gun pose, hiding the swing.
 - **Timing comes from the rules, not the clock.** The night repairs one board every `repair_interval` (night tuning,
   1.0 s) while `use` is held ([hold to repair](rounds.md#the-fences-boards), #297), and each repair is a
-  `board_repaired` event naming the player. On each one,
-  `PlayerAnimation.board_repaired(interval)` seeks the clip to `board_set` and plays it at `1 s / interval`, so the
-  loop comes round to the blow just as the next board goes up (the seek is then a no-op, not a jump). With no event for
-  1.5 intervals the layer fades out (18 per second).
-- `board_set` is the rules' event, so the controller emits it from `board_repaired` only, never from the loop
-  passing the frame: one `board_set` per board. `hammer` (both blows) is for the board sounds (#88).
+  `board_repaired` event naming the player. On each one, `PlayerAnimation.board_repaired(interval)` seeks the clip
+  to `board_set` less the board's mend (`Barricade.MEND_SECONDS`, 0.28 s: the board slides in and knocks home that
+  long after the event) and plays it at `1 s / interval`, so the fist comes down as the board knocks home (#245).
+  The first board of a hold gets a lead-in this way (the fist rises from the tap and lands), where it was down
+  already; the loop comes round to the same place just as the next board goes up (the seek is then a no-op, not a
+  jump). With no event for 1.5 intervals the layer fades out (18 per second).
+- `board_set` comes once per board: each `board_repaired` makes one due, and the loop emits it when it reaches the
+  frame, with the blow's `hammer`. `hammer` (both blows) is for the board sounds (#88).
+- **Facing the boards.** A repair is allowed by place (field side, within reach), not by facing, so for an interval
+  after each board the server turns the body toward the breach at its turn speed (`NightServer._face_breach`);
+  walking or aiming turns it the player's way as before.
+- **Every player's repair.** The clip is started by the view from the event stream (`NightView.show_repair`), for
+  whichever player the event names: the view finds the drawn body through `NightView.bodies`, which a single-process
+  night fills with the server's bodies and a client on another machine with its drawn avatars.
 - Checked headless (`game/tests/art/check_repair.gd`): every track finds its bone on `soldier.glb`, the loop is
   seamless, the fist is lowest at frame 19 (one past `board_set`) and 0.82 m below the raise, no leg bone turns,
   and over `Walk` through the filter the arm matches the clip to 0.04 degrees. `game/tests/player/test_player_repair.gd`
-  steps the controller by hand: start, pace, a faster interval, letting go, the hammer shown and put away, the face
-  leading the blow; `game/tests/night/test_night_repair_hammer.gd` holds `interact` at a breach through the night and
-  checks the hammer replaces the weapon and the weapon comes back on release, and
+  steps the controller by hand: the lead and the blow on the knock, pace, a faster interval, letting go, the hammer shown
+  and put away, the face leading the blow; `game/tests/night/test_night_repair_show.gd` checks the facing and that the
+  clip reaches the named player's body; `game/tests/night/test_night_repair_hammer.gd` holds `interact` at a breach
+  through the night and checks the hammer replaces the weapon and the weapon comes back on release, and
   `game/tests/ui/touch/test_touch_repair.gd` does the same from a finger on the touch Interact button.
 
 ## How the clips are made
