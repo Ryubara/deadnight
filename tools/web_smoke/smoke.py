@@ -206,7 +206,9 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     page.screenshot(path=out / "menu.png")
     result["menu_frames"] = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
 
-    # The wardrobe reads parts.json, which only reaches the build through the export filter.
+    # The wardrobe reads parts.json, which only reaches the build through the export filter. It is the
+    # third item, after Play and Join.
+    press(page, "ArrowDown")
     press(page, "ArrowDown")
     press(page, "Enter")
     wait_for(page, "the wardrobe", lambda s: s.get("screen") == "customize_screen", SCREEN_TIMEOUT_S)
