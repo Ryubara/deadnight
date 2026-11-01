@@ -1955,6 +1955,44 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 50.000, 
 [node name="Debris1" parent="Field/Dressing" instance=ExtResource("prop_debris")]
 transform = Transform3D(0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, 0.5000, 56.000, 0.000, -10.000)
 
+[node name="Dressing" type="Node3D" parent="Concession"]
+
+[node name="Boxes1" parent="Concession/Dressing" instance=ExtResource("prop_boxes")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.000, 0.000, 3.750)
+
+[node name="Box1" parent="Concession/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -1.200, 0.000, 3.600)
+
+[node name="Crate1" parent="Concession/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.600, 0.000, 3.500)
+
+[node name="Crate2" parent="Concession/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9962, 0, 0.0872, 0, 1, 0, -0.0872, 0, 0.9962, 3.300, 0.000, 3.500)
+
+[node name="Boxes2" parent="Concession/Dressing" instance=ExtResource("prop_boxes")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.600, 0.000, 7.400)
+
+[node name="Crate3" parent="Concession/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.400, 0.000, 7.400)
+
+[node name="Crate4" parent="Concession/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, 8.750, 0.000, 7.400)
+
+[node name="GasCan1" parent="Concession/Dressing" instance=ExtResource("prop_gas_can")]
+transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, 7.600, 0.000, 7.500)
+
+[node name="Box2" parent="Concession/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, 9.350, 0.000, -3.350)
+
+[node name="Box3" parent="Concession/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9397, 0, -0.3420, 0, 1, 0, 0.3420, 0, 0.9397, -9.350, 0.000, -3.300)
+
+[node name="Crate5" parent="Concession/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -9.400, 0.000, 0.500)
+
+[node name="Crate6" parent="Concession/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -9.400, 0.000, 1.150)
+
 [node name="Dressing" type="Node3D" parent="Midway"]
 
 [node name="Dumpster1" parent="Midway/Dressing" instance=ExtResource("prop_dumpster")]
@@ -1995,6 +2033,185 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.000, 
 
 [node name="Cone2" parent="Midway/Dressing" instance=ExtResource("prop_cone")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.000, 0.000, 36.600)
+
+[node name="Barrel1" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 0.000)
+
+[node name="Barrel2" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 0.700)
+
+[node name="Barrel3" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.600, 0.000, 0.350)
+
+[node name="Crate1" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.350, 0.000, 6.000)
+
+[node name="Crate2" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, -14.700, 0.000, 6.050)
+
+[node name="Pallet2" parent="Midway/Dressing" instance=ExtResource("prop_pallet")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -10.900, 0.000, 5.400)
+
+[node name="GasCan1" parent="Midway/Dressing" instance=ExtResource("prop_gas_can")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -11.300, 0.000, 1.200)
+
+[node name="Planks2" parent="Midway/Dressing" instance=ExtResource("prop_planks")]
+transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, -12.600, 0.000, 6.900)
+
+[node name="Box3" parent="Midway/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, 15.200, 0.000, 0.600)
+
+[node name="Box4" parent="Midway/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9962, 0, -0.0872, 0, 1, 0, 0.0872, 0, 0.9962, 15.250, 0.000, 1.450)
+
+[node name="Crate3" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.300, 0.000, 6.300)
+
+[node name="Tires1" parent="Midway/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 10.750, 0.000, 6.400)
+
+[node name="Debris2" parent="Midway/Dressing" instance=ExtResource("prop_debris")]
+transform = Transform3D(-0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, -0.5000, 12.600, 0.000, 1.200)
+
+[node name="Boxes2" parent="Midway/Dressing" instance=ExtResource("prop_boxes")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.500, 0.000, 8.900)
+
+[node name="Crate4" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -6.950, 0.000, 8.750)
+
+[node name="Barrel4" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -9.600, 0.000, 9.700)
+
+[node name="GasCan2" parent="Midway/Dressing" instance=ExtResource("prop_gas_can")]
+transform = Transform3D(0.5000, 0, -0.8660, 0, 1, 0, 0.8660, 0, 0.5000, -8.200, 0.000, 10.200)
+
+[node name="Pallet3" parent="Midway/Dressing" instance=ExtResource("prop_pallet")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.000, 0.000, 9.300)
+
+[node name="Boxes3" parent="Midway/Dressing" instance=ExtResource("prop_boxes")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.600, 0.000, 8.900)
+
+[node name="Box5" parent="Midway/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, 2.000, 0.000, 8.950)
+
+[node name="Barrel5" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.200, 0.000, 8.750)
+
+[node name="Barrel6" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.850, 0.000, 8.750)
+
+[node name="Barrel7" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.500, 0.000, 9.350)
+
+[node name="Planks3" parent="Midway/Dressing" instance=ExtResource("prop_planks")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, 9.000, 0.000, 10.000)
+
+[node name="Box6" parent="Midway/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.200, 0.000, 9.300)
+
+[node name="PalletBroken2" parent="Midway/Dressing" instance=ExtResource("prop_pallet_broken")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -15.000, 0.000, 10.600)
+
+[node name="Barrel8" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 25.000)
+
+[node name="Barrel9" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 25.700)
+
+[node name="BarrelSpill2" parent="Midway/Dressing" instance=ExtResource("prop_barrel_spill")]
+transform = Transform3D(-0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, -0.1736, -14.400, 0.000, 27.400)
+
+[node name="Crate5" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 30.000)
+
+[node name="Crate6" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9962, 0, 0.0872, 0, 1, 0, -0.0872, 0, 0.9962, -15.300, 0.000, 30.650)
+
+[node name="Crate7" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, -0.1736, 0, 1, 0, 0.1736, 0, 0.9848, -14.650, 0.000, 30.300)
+
+[node name="Tires2" parent="Midway/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -15.300, 0.000, 33.000)
+
+[node name="Barrel10" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.300, 0.000, 25.000)
+
+[node name="Barrel11" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.300, 0.000, 25.700)
+
+[node name="GasTank1" parent="Midway/Dressing" instance=ExtResource("prop_gas_tank")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 15.300, 0.000, 31.600)
+
+[node name="Container1" parent="Midway/Dressing" instance=ExtResource("prop_container")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -7.150, 0.000, 27.500)
+
+[node name="Boxes4" parent="Midway/Dressing" instance=ExtResource("prop_boxes")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 7.000, 0.000, 30.600)
+
+[node name="Crate8" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.750, 0.000, 28.400)
+
+[node name="Crate9" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, 6.750, 0.000, 29.050)
+
+[node name="Barrel12" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.000, 0.000, 24.600)
+
+[node name="Barrier1" parent="Midway/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.000, 0.000, 35.600)
+
+[node name="Barrier2" parent="Midway/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 0.000, 35.600)
+
+[node name="Pallet4" parent="Midway/Dressing" instance=ExtResource("prop_pallet")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -10.500, 0.000, 33.800)
+
+[node name="Crate10" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.800, 0.000, 17.000)
+
+[node name="Crate11" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, 10.450, 0.000, 17.050)
+
+[node name="Barrel13" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.100, 0.000, 17.700)
+
+[node name="Barrel14" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.000, 0.000, 11.000)
+
+[node name="Barrel15" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -11.400, 0.000, 11.200)
+
+[node name="Boxes5" parent="Midway/Dressing" instance=ExtResource("prop_boxes")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.500, 0.000, 25.000)
+
+[node name="Pallet5" parent="Midway/Dressing" instance=ExtResource("prop_pallet")]
+transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, 12.000, 0.000, 33.400)
+
+[node name="Box7" parent="Midway/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, 11.000, 0.000, 34.800)
+
+[node name="Dressing" type="Node3D" parent="ProjectionBooth"]
+
+[node name="Crate1" parent="ProjectionBooth/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.300, 0.000, 31.300)
+
+[node name="Crate2" parent="ProjectionBooth/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9962, 0, 0.0872, 0, 1, 0, -0.0872, 0, 0.9962, 4.650, 0.000, 31.300)
+
+[node name="Crate3" parent="ProjectionBooth/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, -0.1736, 0, 1, 0, 0.1736, 0, 0.9848, 5.300, 0.000, 30.650)
+
+[node name="Boxes1" parent="ProjectionBooth/Dressing" instance=ExtResource("prop_boxes")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 5.200, 0.000, 24.600)
+
+[node name="Box1" parent="ProjectionBooth/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, 1.900, 0.000, 24.000)
+
+[node name="Barrel1" parent="ProjectionBooth/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.000, 31.300)
+
+[node name="Box2" parent="ProjectionBooth/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, 0.900, 0.000, 31.300)
 
 [node name="Dressing" type="Node3D" parent="GeneratorYard"]
 
@@ -2077,6 +2294,162 @@ transform = Transform3D(0.6428, 0, 0.7660, 0, 1, 0, -0.7660, 0, 0.6428, -29.000,
 
 [node name="Planks1" parent="BackLot/Dressing" instance=ExtResource("prop_planks")]
 transform = Transform3D(-0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, -0.5000, -54.500, 0.000, 33.000)
+
+[node name="Debris2" parent="BackLot/Dressing" instance=ExtResource("prop_debris")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, -50.000, 0.000, 10.000)
+
+[node name="PalletBroken2" parent="BackLot/Dressing" instance=ExtResource("prop_pallet_broken")]
+transform = Transform3D(0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, 0.5000, -42.500, 0.000, 9.600)
+
+[node name="Tires2" parent="BackLot/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -34.000, 0.000, 10.000)
+
+[node name="Barrel1" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -27.500, 0.000, 9.000)
+
+[node name="Barrel2" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -26.900, 0.000, 9.300)
+
+[node name="Planks2" parent="BackLot/Dressing" instance=ExtResource("prop_planks")]
+transform = Transform3D(-0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, -0.1736, -38.000, 0.000, 11.200)
+
+[node name="Cone1" parent="BackLot/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -23.000, 0.000, 10.600)
+
+[node name="Barrel3" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -43.500, 0.000, 25.400)
+
+[node name="Barrel4" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -42.900, 0.000, 25.600)
+
+[node name="Barrel5" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -43.200, 0.000, 26.200)
+
+[node name="Tires3" parent="BackLot/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -36.500, 0.000, 17.400)
+
+[node name="Box1" parent="BackLot/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -30.000, 0.000, 17.400)
+
+[node name="Crate1" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -28.200, 0.000, 25.000)
+
+[node name="Crate2" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, -28.800, 0.000, 25.300)
+
+[node name="Pallet1" parent="BackLot/Dressing" instance=ExtResource("prop_pallet")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, -38.000, 0.000, 26.000)
+
+[node name="Debris3" parent="BackLot/Dressing" instance=ExtResource("prop_debris")]
+transform = Transform3D(0.3420, 0, 0.9397, 0, 1, 0, -0.9397, 0, 0.3420, -51.000, 0.000, 28.200)
+
+[node name="GasCan1" parent="BackLot/Dressing" instance=ExtResource("prop_gas_can")]
+transform = Transform3D(0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, 0.7660, -33.500, 0.000, 26.800)
+
+[node name="Barrier1" parent="BackLot/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -38.000, 0.000, 34.000)
+
+[node name="Barrier2" parent="BackLot/Dressing" instance=ExtResource("prop_barrier")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -36.400, 0.000, 34.000)
+
+[node name="Cone2" parent="BackLot/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.000, 0.000, 33.400)
+
+[node name="Barrel6" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -55.000, 0.000, 35.000)
+
+[node name="Barrel7" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -54.400, 0.000, 35.300)
+
+[node name="Crate3" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 0.000, 34.500)
+
+[node name="Crate4" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9962, 0, 0.0872, 0, 1, 0, -0.0872, 0, 0.9962, -24.000, 0.000, 35.150)
+
+[node name="Box2" parent="BackLot/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9063, 0, 0.4226, 0, 1, 0, -0.4226, 0, 0.9063, -23.200, 0.000, 34.800)
+
+[node name="PalletBroken3" parent="BackLot/Dressing" instance=ExtResource("prop_pallet_broken")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -50.000, 0.000, -1.600)
+
+[node name="Barrel8" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -30.000, 0.000, -3.200)
+
+[node name="Barrel9" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -29.400, 0.000, -3.200)
+
+[node name="Tires4" parent="BackLot/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -25.000, 0.000, -2.600)
+
+[node name="Crate5" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.750, 0.000, 2.000)
+
+[node name="Crate6" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -16.750, 0.000, 2.650)
+
+[node name="Container1" parent="BackLot/Dressing" instance=ExtResource("prop_container")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.000, 0.000, 18.000)
+
+[node name="Barrel10" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -57.000, 0.000, 10.000)
+
+[node name="Barrel11" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -56.400, 0.000, 10.200)
+
+[node name="BarrelSpill2" parent="BackLot/Dressing" instance=ExtResource("prop_barrel_spill")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -55.000, 0.000, 11.500)
+
+[node name="Box3" parent="BackLot/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, -46.000, 0.000, 10.400)
+
+[node name="Box4" parent="BackLot/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, 0.7660, -45.300, 0.000, 10.900)
+
+[node name="Crate7" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -31.000, 0.000, 11.500)
+
+[node name="Crate8" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -30.400, 0.000, 11.600)
+
+[node name="Tires5" parent="BackLot/Dressing" instance=ExtResource("prop_tires")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -20.000, 0.000, 10.000)
+
+[node name="Pallet2" parent="BackLot/Dressing" instance=ExtResource("prop_pallet")]
+transform = Transform3D(0.7660, 0, 0.6428, 0, 1, 0, -0.6428, 0, 0.7660, -48.000, 0.000, 17.000)
+
+[node name="Planks3" parent="BackLot/Dressing" instance=ExtResource("prop_planks")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -55.000, 0.000, 16.500)
+
+[node name="GasCan2" parent="BackLot/Dressing" instance=ExtResource("prop_gas_can")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -48.500, 0.000, 16.000)
+
+[node name="Debris4" parent="BackLot/Dressing" instance=ExtResource("prop_debris")]
+transform = Transform3D(-0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, -0.5000, -40.000, 0.000, 27.800)
+
+[node name="Barrel12" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -34.000, 0.000, 27.500)
+
+[node name="Barrel13" parent="BackLot/Dressing" instance=ExtResource("prop_barrel")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -33.400, 0.000, 27.700)
+
+[node name="Cone3" parent="BackLot/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -45.000, 0.000, 32.500)
+
+[node name="Cone4" parent="BackLot/Dressing" instance=ExtResource("prop_cone")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -43.000, 0.000, 32.500)
+
+[node name="Box5" parent="BackLot/Dressing" instance=ExtResource("prop_box")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, -57.500, 0.000, 33.000)
+
+[node name="PalletBroken4" parent="BackLot/Dressing" instance=ExtResource("prop_pallet_broken")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -20.500, 0.000, 31.500)
+
+[node name="Crate9" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.500, 0.000, 26.000)
+
+[node name="Crate10" parent="BackLot/Dressing" instance=ExtResource("prop_crate")]
+transform = Transform3D(0.9848, 0, 0.1736, 0, 1, 0, -0.1736, 0, 0.9848, -18.500, 0.000, 26.650)
 
 [node name="Dressing" type="Node3D" parent="Road"]
 
