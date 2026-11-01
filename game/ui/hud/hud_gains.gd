@@ -7,7 +7,7 @@ extends HudPart
 
 const MAX_ROWS := 3
 ## The room until the `Hud` says how much the canvas leaves (see `set_room`).
-const WIDTH := 300.0
+const WIDTH := 225.0
 const LIFE := 2.4
 const FADE := 0.5
 ## Hits within this many seconds of the last row of the same kind add to it.
@@ -37,7 +37,7 @@ var _box := VBoxContainer.new()
 func _init() -> void:
 	super()
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box.add_theme_constant_override(&"separation", tokens.space_xs)
+	_box.add_theme_constant_override(&"separation", HudStyle.XS)
 	_box.custom_minimum_size.x = room
 	add_child(_box)
 	_box.minimum_size_changed.connect(update_minimum_size)

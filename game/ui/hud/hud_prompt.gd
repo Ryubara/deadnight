@@ -64,7 +64,7 @@ func _init() -> void:
 		words.add_child(label)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override(&"separation", tokens.space_md)
+	row.add_theme_constant_override(&"separation", HudStyle.MD)
 	_glyph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_glyph)
 	row.add_child(words)
@@ -126,7 +126,7 @@ func on_event(event: Dictionary) -> void:
 
 ## The width of the lines beside the button: the card less its padding, the button and the gap.
 func _room() -> float:
-	return WIDTH - float(tokens.space_md * 2 + 10 + tokens.space_md) - HudGlyph.SIZE.x
+	return WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT + HudStyle.MD) - HudGlyph.SIZE.x
 
 
 func _say_price(text: String) -> void:

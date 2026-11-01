@@ -4,8 +4,11 @@ extends Node
 ## be smaller than the window (1536 x 864 is a 720p or 1080p window at UI scale 1.25).
 ##
 ## `godot --path game res://tests/captures/hud_worst_case.tscn -- --out=<png> [--size=1536x864]
-## [--face=fallback|wide|marquee] [--busy]`. `marquee` reads the files from `refs/fonts` (see
-## `HudFonts`); `--busy` shows the layout test's own busy HUD, not the longest content.
+## [--face=fallback|wide|marquee] [--busy|--night] [--players=N] [--window=1280x720]`. `marquee`
+## reads the files from `refs/fonts` (see `HudFonts`); `--busy` shows the layout test's own busy
+## HUD, not the longest content; `--night` shows an ordinary night (the typical values). `--window`
+## renders at that many pixels with the canvas stretched from `--size` the way the project's
+## `canvas_items` stretch does (so `--size=1920x1080 --window=1280x720` is a 720p window).
 
 const GROUND := Color("2a2f3a")
 
@@ -17,6 +20,11 @@ func _ready() -> void:
 	HudFonts.apply(StringName(str(args.get("face", "fallback"))))
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(canvas)
+	if args.has("window"):
+		var window_parts := str(args["window"]).split("x")
+		viewport.size = Vector2i(int(window_parts[0]), int(window_parts[1]))
+		viewport.size_2d_override = Vector2i(canvas)
+		viewport.size_2d_override_stretch = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(viewport)
 	var ground := ColorRect.new()
@@ -26,9 +34,13 @@ func _ready() -> void:
 	var host := Control.new()
 	host.size = canvas
 	viewport.add_child(host)
-	var fixture := HudFixture.make(host, 4)
+	var fixture := HudFixture.make(
+		host, clampi(int(str(args.get("players", "4"))), 1, 4), 1958, true
+	)
 	fixture.into_round_one()
-	if args.has("busy"):
+	if args.has("night"):
+		_night(fixture)
+	elif args.has("busy"):
 		_busy(fixture)
 	else:
 		fixture.fill_worst_case()
@@ -39,6 +51,25 @@ func _ready() -> void:
 	viewport.get_texture().get_image().save_png(out)
 	print("saved ", out, " at ", canvas)
 	get_tree().quit()
+
+
+## An ordinary moment: a few points, a hurt player, a weapon swap, the lot's feed and a hit or two.
+func _night(fixture: HudFixture) -> void:
+	var hud := fixture.hud
+	var state := hud.state
+	state.set_ammo(18, 90, "Rifle")
+	state.set_equipment("Revolver", 6)
+	state.set_health(70.0, 100.0)
+	state.set_area("The Lot", "Open the concession stand")
+	for id in range(1, 5):
+		state.apply_event(
+			{"type": &"points_changed", "player_id": id, "total": 1250 * id, "delta": 0}
+		)
+	hud.events_feed.push("RUBY OPENED THE CONCESSION STAND")
+	for amount in [100, 60]:
+		hud.gains.add_gain(&"kill", amount)
+	hud.state.apply_event({"type": &"fuel_changed", "fuel": 62.0, "delta": 8.0})
+	fixture.advance(HudFuel.IN_TIME + 0.5)
 
 
 func _busy(fixture: HudFixture) -> void:

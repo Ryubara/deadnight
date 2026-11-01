@@ -27,11 +27,12 @@ func _init() -> void:
 	super()
 	accent = tokens.hot
 	_reels.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_reels.add_theme_constant_override(&"separation", tokens.space_xs)
+	_reels.add_theme_constant_override(&"separation", HudStyle.XS)
+	custom_minimum_size.x = HudStyle.COLUMN
 	body.add_child(_caption)
 	body.add_child(_reels)
 	body.add_child(_detail)
-	_detail.custom_minimum_size.y = HudStyle.TEXT + 12.0
+	_detail.custom_minimum_size.y = HudStyle.TEXT + float(HudStyle.MD)
 	_ensure_reels(MIN_DIGITS)
 
 
