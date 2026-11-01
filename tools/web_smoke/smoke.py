@@ -65,7 +65,7 @@ PROBE_JS = """
 () => {
   const d = window.deadnight;
   return d ? {screen: d.screen, night: d.night, running: d.running, over: d.over,
-              round: d.round, remaining: d.remaining, alive: d.alive} : null;
+              round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw} : null;
 }
 """
 
@@ -217,6 +217,23 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), SCREEN_TIMEOUT_S)
     page.wait_for_timeout(1500)
     page.screenshot(path=out / "night.png")
+
+    # The mouse turns the view: a full-screen control that catches the mouse once ate every motion
+    # (desktop and web alike), and only a real browser run sees that.
+    page.mouse.move(640, 360)
+    page.wait_for_timeout(500)
+    yaw_before = probe(page).get("yaw", 0.0)
+    for step in range(1, 21):
+        page.mouse.move(640 + step * 15, 360)
+        page.wait_for_timeout(20)
+    page.wait_for_timeout(600)
+    yaw_after = probe(page).get("yaw", 0.0)
+    result["mouse_look_turn_rad"] = round(abs(yaw_after - yaw_before), 3)
+    if result["mouse_look_turn_rad"] < 0.1:
+        lock = page.evaluate("() => document.pointerLockElement ? document.pointerLockElement.tagName : null")
+        raise RuntimeError(
+            f"moving the mouse did not turn the view (yaw {yaw_before} -> {yaw_after}, pointer lock {lock})"
+        )
 
     # Walk a square and fire for the rest of the time, so the night is played, not only started.
     page.mouse.move(640, 360)
