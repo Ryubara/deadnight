@@ -3,6 +3,10 @@ extends RefCounted
 ## Which kind of input was used last. The focus ring shows only for keyboard and gamepad:
 ## a mouse user sees hover, not a ring.
 
+## A mouse that moves less than this (screen pixels) in one event is a bumped desk, not a player
+## taking the mouse: it leaves a gamepad player's glyphs alone.
+const MOUSE_NOISE_PIXELS := 3.0
+
 static var pointer := true
 ## Whether the last non-pointer input came from a gamepad (button glyphs follow it).
 static var gamepad := false
@@ -12,7 +16,10 @@ static var gamepad := false
 static func track(event: InputEvent) -> void:
 	if (
 		event is InputEventMouseButton
-		or event is InputEventMouseMotion
+		or (
+			event is InputEventMouseMotion
+			and (event as InputEventMouseMotion).screen_relative.length() >= MOUSE_NOISE_PIXELS
+		)
 		or event is InputEventScreenTouch
 	):
 		pointer = true

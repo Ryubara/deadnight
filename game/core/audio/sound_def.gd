@@ -23,6 +23,13 @@ var cooldown := 0.0
 var max_distance := 50.0
 ## 3D only: how far the sound carries before it halves (the engine's `unit_size`).
 var unit_size := 8.0
+## 3D only: how far above its own level (`volume_db`) the engine may boost the sound as it comes
+## close, in dB. The engine's inverse-distance attenuation boosts by `unit_size / distance` (a
+## gun 1.7 m away with `unit_size` 14 is 18 dB up) and only stops at the player's `max_db`, +3 dB
+## over the file, whatever the trim: close sounds all end up equally hot and stack past full
+## scale. A finite value here makes `volume_db` the near level (0) or a little above; INF leaves
+## the engine's default.
+var near_cap_db := INF
 var loop := false
 ## 3D only: a sound behind the listener is darker (a low-pass), the cue by which front and back are
 ## told apart on two speakers, which panning alone cannot do.

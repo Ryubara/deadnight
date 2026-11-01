@@ -4,10 +4,11 @@ extends RefCounted
 ## feeds that state from what a client hears and nothing more: `ClientState.event_received`. The
 ## rules' events (round, points, party, fuel, purchases, and the player's health: `player_added`,
 ## `player_hurt`, `player_healed`, `player_downed`) go in as they are, and so do the weapons' events
-## the ammo card and the equipment slot read (`HudLoadout.EVENTS`: equipped, shot, reload). Each
-## `frame` carries what neither announces: which way the local player faces, what the hand would
-## do (the prompt at a door, a breach or a breaker post), and, once, the weapon in hand for a HUD
-## that joined after its events.
+## the ammo card and the equipment slot read (`HudLoadout.EVENTS`: equipped, shot, reload, rounds
+## added). Each `frame` carries what neither announces: which way the local player faces, what the
+## hand would do (the prompt at a door, a breach or a breaker post), and the weapons' state, which
+## `HudLoadout.sync` reads every tick, so the ammo card is the server's whatever changed it (a HUD
+## that joined after the events needs no replay).
 
 ## What the player is told at each door: the name on the card (the shop ids are the shop's).
 const DOOR_NAMES := {
@@ -38,7 +39,8 @@ var _can_units: Dictionary[StringName, int] = {}
 
 ## `hud` is in the tree or about to be; `state` is the client's; `server` is read once, for the
 ## numbers both sides know from the shared tuning (the fuel tank), and not after.
-func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
+## `looks` is the client's table of looks: the HUD shows each player's portrait from it.
+func _init(hud: Hud, state: ClientState, server: NightServer, looks: LookRegistry = null) -> void:
 	_hud = hud
 	_state = state
 	var ammo_free: Array[StringName] = []
@@ -57,6 +59,27 @@ func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(server.rules.tuning.specials)
 	state.event_received.connect(_on_event)
+	if looks != null:
+		looks.changed.connect(_on_look.bind(looks))
+
+
+## A look arrived or changed: the HUD hears it as the `player_look` event it knows, for every
+## player of the table (the resolved looks, as the bodies wear them).
+func _on_look(_player_id: int, looks: LookRegistry) -> void:
+	var resolved := looks.resolved()
+	for id: int in resolved:
+		(
+			_hud
+			. state
+			. apply_event(
+				{
+					"type": &"player_look",
+					"player_id": id,
+					"seat": looks.seats[id],
+					"look": (resolved[id] as CharacterLook).to_dict(),
+				}
+			)
+		)
 
 
 func _on_event(event: Dictionary) -> void:
@@ -77,15 +100,15 @@ func _on_frame() -> void:
 	if me.is_empty():
 		return
 	state.facing = me["facing"]
-	# The weapons' events set the ammunition; a HUD that joined late has heard none, so the frame
-	# gives it the weapon in hand once.
-	var weapon: StringName = me["weapon"]
-	if state.weapon_id == &"" and weapon != &"":
-		HudLoadout.equip(weapon, me["ammo"], me["reserve"], state)
-	_set_prompt(me["prompt"])
+	# The weapons' events set the ammunition the moment they are heard; the frame says what the
+	# server holds, every tick, so rounds that came by any road show now, and a HUD that joined
+	# late (it heard no event) takes the weapon in hand.
+	HudLoadout.sync(me, state)
+	show_prompt(me["prompt"])
 
 
-func _set_prompt(prompt: Dictionary) -> void:
+## Puts what `NightServer.use_target` found on the HUD's prompt card, or clears it.
+func show_prompt(prompt: Dictionary) -> void:
 	var state := _hud.state
 	var kind: StringName = prompt.get("kind", &"")
 	match kind:
@@ -101,7 +124,7 @@ func _set_prompt(prompt: Dictionary) -> void:
 		&"crane":
 			_offer(&"buy_crane", CRANE_NAME, prompt["price"], "")
 		&"crane_take":
-			_offer(&"crane_take", _weapon_name(prompt["weapon"]), 0, "")
+			_offer(&"crane_take", _weapon_name(WeaponCatalog.catalog_id(prompt["weapon"])), 0, "")
 		&"crane_busy":
 			var own: bool = prompt["buyer"] == _state.player_id
 			_offer(&"crane_busy", CRANE_NAME, 0, "YOUR PRIZE IS COMING" if own else "")
