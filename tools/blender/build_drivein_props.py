@@ -397,6 +397,28 @@ def export(o, out, name):
     )
 
 
+# Props the lot repeats many times: also written as `<name>.obj` (+ `.mtl`), which Godot imports as one Mesh, so the
+# lot draws every copy in one MultiMesh (the Compatibility renderer pays a draw, and a pass per light, for each mesh).
+MULTIMESH = {"speaker_post"}
+
+
+def export_obj(o, out, name):
+    bpy.ops.object.select_all(action="DESELECT")
+    o.select_set(True)
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.wm.obj_export(
+        filepath=str(Path(out) / f"{name}.obj"),
+        export_selected_objects=True,
+        export_materials=True,
+        path_mode="RELATIVE",
+        forward_axis="NEGATIVE_Z",
+        up_axis="Y",
+        export_triangulated_mesh=True,
+        export_normals=True,
+        export_uv=True,
+    )
+
+
 def tris(o):
     return sum(len(p.vertices) - 2 for p in o.data.polygons)
 
@@ -430,6 +452,8 @@ def main():
         if n > budget:
             raise SystemExit(f"{name}: {n} tris over its budget {budget}")
         export(o, out, name)
+        if name in MULTIMESH:
+            export_obj(o, out, name)
         report[name] = info
         if not args.blend:
             bpy.data.objects.remove(o, do_unlink=True)

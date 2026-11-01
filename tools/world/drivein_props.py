@@ -90,10 +90,34 @@ def write_scenes() -> None:
 def ext_resources() -> list[str]:
     return [
         f'[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/{n}.tscn" id="fx_{n}"]' for n in FIXTURES
+    ] + [
+        f'[ext_resource type="ArrayMesh" path="{MODELS}/speaker_post.obj" id="speaker_mesh"]',
+        f'[ext_resource type="Texture2D" path="{MODELS}/drivein_palette.png" id="drivein_palette"]',
     ]
 
 
-def place(instance, group, car_slots, gaps, screen_c, lamps) -> int:
+def _speaker_resources(xforms) -> list[str]:
+    """The speaker posts' MultiMesh (one draw for all of them) and its material: the palette, as the glTFs have it."""
+    buf = []
+    for x, z, rot in xforms:
+        c, s = math.cos(math.radians(rot)), math.sin(math.radians(rot))
+        buf += [c, 0, s, x, 0, 1, 0, 0, -s, 0, c, z]  # the basis's rows, each with its origin component
+    return [
+        '[sub_resource type="StandardMaterial3D" id="drivein_mat"]',
+        'albedo_texture = ExtResource("drivein_palette")',
+        "roughness = 0.415",
+        "texture_filter = 0",
+        "",
+        '[sub_resource type="MultiMesh" id="speaker_posts"]',
+        "transform_format = 1",
+        f"instance_count = {len(xforms)}",
+        'mesh = ExtResource("speaker_mesh")',
+        "buffer = PackedFloat32Array(" + ", ".join(f"{v:.4f}".rstrip("0").rstrip(".") for v in buf) + ")",
+        "",
+    ]
+
+
+def place(instance, group, node, lines, car_slots, gaps, screen_c, lamps) -> int:
     """Put the props in the lot. `car_slots` is (row, radius, angle) of every parked car on the field, `lamps` the
     field's lamp posts (x, z), `gaps` the middles (x, z) of every gap between two
     neighbouring cars, by row. Returns the number of speaker posts."""
@@ -106,6 +130,7 @@ def place(instance, group, car_slots, gaps, screen_c, lamps) -> int:
     # Speaker posts: one in front of every other car's nose, towards the screen, its speakers along the radius. Never
     # on a gap between two cars (the camera's way through) and never beside a lamp post.
     posts = group("SpeakerPosts", "Field")
+    xforms: list[tuple[float, float, float]] = []
     n = 0
     by_row: dict[int, list[tuple[float, float]]] = {}
     for ri, radius, a in car_slots:
@@ -131,7 +156,20 @@ def place(instance, group, car_slots, gaps, screen_c, lamps) -> int:
             if any(math.hypot(x - lx, z - lz) < SPEAKER_CLEAR for lx, lz in lamps) or on_gap_line(r, math.radians(a)):
                 continue
             n += 1
-            put(posts, f"Post{n:02d}", "speaker_post", (x, 0, z), a + 90)
+            xforms.append((x, z, a + 90))
+            # Collision only: the model is drawn by the MultiMesh below.
+            node(f"Post{n:02d}", "CSGCylinder3D", posts, {
+                "transform": f"Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {x:.3f}, 0.725, {z:.3f})", "visible": "false",
+                "use_collision": "true", "collision_layer": str(BOARD_LAYER), "radius": "0.08", "height": "1.45",
+                "sides": "8",
+            })  # fmt: skip
+    node("Speakers", "MultiMeshInstance3D", posts, {
+        "cast_shadow": "0", "material_override": 'SubResource("drivein_mat")', "multimesh": 'SubResource("speaker_posts")'
+    })  # fmt: skip
+    # The sub-resources go before the first node of the scene.
+    first = next(i for i, line in enumerate(lines) if line.startswith("[node "))
+    lines[first:first] = _speaker_resources(xforms)
+
     # The picnic shelter on the east flank: two tables under the roof.
     put("Field/Props", "PicnicTableA", "picnic_table", (46.4, 0, -31), 90)
     put("Field/Props", "PicnicTableB", "picnic_table", (49.4, 0, -31), 90)

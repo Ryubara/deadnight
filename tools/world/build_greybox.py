@@ -776,7 +776,7 @@ def build() -> None:
 
     # --- The drive-in's own props (tools/world/drivein_props.py): speaker posts, the counter, booths, the marquee ---
     drivein_props.write_scenes()
-    n_posts = drivein_props.place(instance, group, car_slots, gaps, screen_c, field_lamps)
+    n_posts = drivein_props.place(instance, group, node, lines, car_slots, gaps, screen_c, field_lamps)
 
     # --- Dressing: the kit's props, from tools/world/lot_props.py ------------------------------------------------
     lot_props.write_scenes()
