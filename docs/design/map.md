@@ -491,7 +491,10 @@ of the line the shoulder camera takes through one nor within 1.5 m of a lamp pos
 `game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`, `lot_lamps.gd`), the capture rig and
 `camera_probe.gd` (the player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
 (run it from the repository root and commit what it writes; the run must leave `git diff` empty), so a layout change is
-a change to a constant or coordinate there, not hand edits to a 380-node scene. `game/tests/world/` checks:
+a change to a constant or coordinate there, not hand edits to a 380-node scene. A change to any collision box also
+needs the zombies' navigation meshes baked again (`tools/world/bake_lot_navmeshes.gd`, see
+[the zombies](../research/zombies.md#the-meshes-are-baked-ahead-of-time-335)); a test fails until it is.
+`game/tests/world/` checks:
 
 - the areas and that the doors' prices and prerequisites equal the shop's (`test_drive_in_greybox.gd`);
 - reachability: a navigation mesh baked per set of sold doors, each area reached only through its door
