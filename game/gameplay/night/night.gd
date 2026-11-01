@@ -35,6 +35,10 @@ const SPECTATOR_OFFSET := Vector3(0.0, 11.0, 8.0)
 ## How far past the low-tank line (a fraction of a full tank) the bot waits before it lights an
 ## area again.
 const SWITCH_RESUME_MARGIN := 0.15
+## The server's events that move the Soldier's grenade clips.
+const GRENADE_CLIP_EVENTS: Array[StringName] = [
+	&"cook_started", &"grenade_thrown", &"grenade_dropped", &"grenade_exploded"
+]
 
 var mode := Mode.HUMAN
 var world: NightWorld
@@ -240,6 +244,7 @@ func _build_view(camera: Camera3D) -> void:
 	view.repair_interval = _repair_seconds
 	view.show_lamps(world.greybox, rules_tuning.fuel)
 	view.show_crane(world, rules_tuning)
+	view.show_grenades(load(NightServer.GRENADE_DEF) as GrenadeDef)
 	add_child(NightLight.new(world.greybox.get_node("Lighting"), rules_tuning.rounds, state))
 	_add_sounds()
 	view.hear(world)
@@ -477,6 +482,33 @@ func _body_of(player_id: int) -> Player:
 func _on_event(event: Dictionary) -> void:
 	if event["type"] == &"game_over":
 		night_over.emit(event["round_reached"])
+	else:
+		_show_grenade(event)
+
+
+## The Soldier's grenade clips follow the server's events: the pin, the throw, a grenade that went
+## off or was dropped in the hand.
+func _show_grenade(event: Dictionary) -> void:
+	if not GRENADE_CLIP_EVENTS.has(event["type"]):
+		return
+	var animation := _animation_of(event.get("player_id", event.get("thrower_id", -1)))
+	if animation == null:
+		return
+	match event["type"]:
+		&"cook_started":
+			animation.grenade(&"cook")
+		&"grenade_thrown":
+			animation.grenade(&"throw", event["underarm"])
+		&"grenade_dropped":
+			animation.grenade(&"gone")
+		&"grenade_exploded":
+			if event["in_hand"]:
+				animation.grenade(&"gone")
+
+
+func _animation_of(player_id: int) -> PlayerAnimation:
+	var body := _body_of(player_id)
+	return body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 
 
 ## The seconds between boards: the server's in this process, else the shared default.
