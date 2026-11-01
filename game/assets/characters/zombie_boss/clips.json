@@ -1,0 +1,55 @@
+{
+ "fps": 24,
+ "height": 1.45,
+ "weak_spot": {
+  "node": "WeakSpot",
+  "bone": "Torso"
+ },
+ "clips": {
+  "Boss_Walk": {
+   "loop": true,
+   "frames": 40,
+   "seconds": 1.667,
+   "events": {}
+  },
+  "Boss_Attack": {
+   "loop": false,
+   "frames": 60,
+   "seconds": 2.5,
+   "events": {
+    "windup": 0,
+    "telegraph": 22,
+    "hit": 32,
+    "recover": 44,
+    "end": 60
+   }
+  },
+  "Boss_Roar": {
+   "loop": false,
+   "frames": 66,
+   "seconds": 2.75,
+   "events": {
+    "roar": 22,
+    "end": 66
+   }
+  },
+  "Boss_Stagger": {
+   "loop": false,
+   "frames": 34,
+   "seconds": 1.417,
+   "events": {
+    "hit": 0,
+    "end": 34
+   }
+  },
+  "Boss_Death": {
+   "loop": false,
+   "frames": 52,
+   "seconds": 2.167,
+   "events": {
+    "fall": 20,
+    "end": 52
+   }
+  }
+ }
+}
