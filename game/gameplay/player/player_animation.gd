@@ -42,6 +42,20 @@ const WEAPON_SCENES := {
 	&"Shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"Melee": "res://assets/weapons/baseball_bat/baseball_bat.glb",
 }
+## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount:
+## the melee hold tipped 20 degrees in the hammer's swing plane (about its Z), so the face meets
+## the board square on the blow (docs/design/animation.md, Repair).
+const HAMMER_SCENE := "res://assets/weapons/hammer/hammer.glb"
+const HOLD_HAMMER := Transform3D(
+	Basis(
+		Vector3(-0.719030, -0.694337, 0.029881),
+		Vector3(-0.694842, 0.717368, -0.050778),
+		Vector3(0.013822, -0.057274, -0.998263)
+	),
+	Vector3(-0.004282, 0.175673, -0.062554)
+)
+## The centre of the hammer's striking face, in the model's own units (origin the grip).
+const HAMMER_FACE := Vector3(-0.22, 0.54, 0.0)
 const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Pistol", &"Melee"]
 const DEFAULT_CLASS := &"Rifle"
 ## Where Walk sits on the move blend (0 = Idle, 1 = Run).
@@ -82,6 +96,7 @@ var _action_node: AnimationNodeAnimation
 var _full_node: AnimationNodeAnimation
 var _mount: BoneAttachment3D
 var _weapon: Node3D
+var _hammer: Node3D
 var _action_time := 0.0
 var _move_blend := 0.0
 var _was_on_floor := true
@@ -105,6 +120,11 @@ func _ready() -> void:
 	_mount.name = "WeaponMount"
 	_mount.bone_name = HAND_BONE
 	model.find_child("Skeleton3D", true, false).add_child(_mount)
+	_hammer = (load(HAMMER_SCENE) as PackedScene).instantiate() as Node3D
+	_hammer.name = "Hammer"
+	_hammer.transform = HOLD_HAMMER
+	_hammer.visible = false
+	_mount.add_child(_hammer)
 	self.anim_player = get_path_to(anim_player)
 	tree_root = _build_tree(_skeleton_track_path(anim_player))
 	set(&"parameters/split/blend_amount", 1.0)
@@ -148,6 +168,11 @@ func weapon() -> Node3D:
 	return _weapon
 
 
+## The repair hammer on the hand mount, shown only while the repair holds the arms.
+func hammer() -> Node3D:
+	return _hammer
+
+
 ## Switches to a weapon class: Equip_<Class> plays and the weapon appears on its weapon_visible
 ## frame; the upper body then holds Aim_<Class>.
 func equip(new_class: StringName) -> void:
@@ -181,7 +206,8 @@ func play_full_body(clip: StringName) -> void:
 
 ## A board this player put back has just gone up (the rules' `board_repaired`, which come one
 ## `interval` apart while `use` is held): the repair loop plays, or keeps playing, from the frame
-## the board lands on, at the pace of one loop per interval. The weapon is put away meanwhile.
+## the board lands on, at the pace of one loop per interval. The weapon is put away and the
+## hammer is in the hand meanwhile.
 ## Driven by the events alone: nothing here reads the clock.
 func board_repaired(interval: float) -> void:
 	interval = maxf(interval, 0.05)
@@ -190,7 +216,7 @@ func board_repaired(interval: float) -> void:
 	_repair_time = _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
 	set(REPAIR_SCALE_PARAMETER, _repair_scale)
 	set(REPAIR_SEEK_PARAMETER, _repair_time)
-	_weapon_visible(false)
+	_hands_on_repair(true)
 	_emit_events(REPAIR_CLIP, _repair_time - 0.001, _repair_time)
 
 
@@ -203,7 +229,7 @@ func is_repairing() -> bool:
 func stop_repair() -> void:
 	if _repair_left > 0.0:
 		_repair_left = 0.0
-		_weapon_visible(true)
+		_hands_on_repair(false)
 
 
 ## The repair layer's weight now (0: the weapon arms, 1: the repair arms), for tests.
@@ -232,12 +258,20 @@ func _set_class(new_class: StringName) -> void:
 		_weapon = (load(WEAPON_SCENES[new_class]) as PackedScene).instantiate() as Node3D
 		_weapon.name = "Weapon"
 		_weapon.transform = HOLD_MELEE if new_class == &"Melee" else HOLD_GUN
+		_weapon.visible = not is_repairing()
 		_mount.add_child(_weapon)
 
 
+## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible
+## event (an Equip) does not bring the weapon back over the hammer.
 func _weapon_visible(shown: bool) -> void:
 	if _weapon != null:
-		_weapon.visible = shown
+		_weapon.visible = shown and not is_repairing()
+
+
+func _hands_on_repair(repairing: bool) -> void:
+	_hammer.visible = repairing
+	_weapon_visible(not repairing)
 
 
 func _advance_events(delta: float) -> void:

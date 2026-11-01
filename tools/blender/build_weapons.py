@@ -147,6 +147,32 @@ def fire_axe(b):
             b.box((-0.02, y, z), (0.016, 0.006, 0.016), G, bevel=0, detail=True)  # rivets
 
 
+def hammer(b):
+    """A claw hammer for nailing boards back (the repair, #297): a wood handle that swells at the grip and flares at
+    the butt, a steel head with a round striking face on -X (the axe's blade side) and a split claw curling down on
+    +X. Drawn at 0.56 m and enlarged 1.3 times to 0.73 m (2.2 times a real 16 oz hammer), as the kit draws its small
+    things large (its knife is 1.4 m) and the Soldier's fist would hide a smaller one; the grip (the origin) is 15 %
+    up from the butt."""
+    # Handle: one prism, wider in the swing plane than across it, as a real hammer handle is.
+    b.prism([(-0.046, -0.085), (0.046, -0.085), (0.05, -0.06), (0.04, 0.0), (0.03, 0.25), (0.027, 0.40),
+             (0.027, 0.43), (-0.027, 0.43), (-0.027, 0.40), (-0.03, 0.25), (-0.04, 0.0), (-0.05, -0.06)],
+            -0.026, 0.026, W, bevel=0.012)  # fmt: skip
+    # Head: the eye block round the handle's top, the neck and the bell out to the face, the claw back.
+    b.box((0, 0, 0.415), (0.09, 0.07, 0.105), G)
+    b.cyl((-0.04, 0, 0.415), (-0.115, 0, 0.415), 0.034, G, segs=10, bevel=0, radius1=0.04)  # neck
+    b.cyl((-0.115, 0, 0.415), (-0.165, 0, 0.415), 0.052, G, segs=12, bevel=0.01)  # face
+    b.cyl((-0.165, 0, 0.415), (-0.169, 0, 0.415), 0.04, D, segs=12, bevel=0, detail=True)  # worn striking face
+    # The claw: two prongs, each a run of tapering pieces curling down toward the handle, a V between them.
+    for y0, y1 in ((-0.035, -0.006), (0.006, 0.035)):
+        b.prism([(0.035, 0.37), (0.09, 0.385), (0.09, 0.455), (0.035, 0.467)], y0, y1, G, bevel=0.006)
+        b.prism([(0.085, 0.385), (0.135, 0.365), (0.15, 0.43), (0.085, 0.458)], y0, y1, G, bevel=0)
+        b.prism([(0.13, 0.367), (0.165, 0.325), (0.19, 0.36), (0.145, 0.433)], y0, y1, G, bevel=0)
+        b.prism([(0.16, 0.33), (0.18, 0.29), (0.195, 0.298), (0.188, 0.364)], y0, y1, G, bevel=0, detail=True)
+    # A wedge in the handle's top and two steel ones across it, as on the axe.
+    b.box((0, 0, 0.471), (0.054, 0.036, 0.01), W, bevel=0, detail=True)
+    b.box((0, 0, 0.477), (0.006, 0.04, 0.006), D, bevel=0, detail=True)
+
+
 def grenade(b):
     """A 1950s-flavoured hand grenade: an olive egg ringed by three raised bands, a yellow band under the fuze
     (the period marking for a high-explosive filler) and a squat grey fuze. The spoon and the pin are their own nodes
@@ -195,6 +221,7 @@ WEAPONS = {
     "baseball_bat": (baseball_bat, (1.35, 1.35, 1.0)),
     "fire_axe": (fire_axe, (1.0, 1.5, 1.0)),
     "grenade": (grenade, (1.2, 1.2, 1.2)),  # drawn at 0.5 m, held at the kit grenade's 0.6 m
+    "hammer": (hammer, (1.3, 1.5, 1.3)),  # drawn at 0.56 m, enlarged 1.3x (and 1.15x more across)
 }
 
 

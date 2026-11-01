@@ -114,3 +114,67 @@ func test_the_arms_follow_the_clip() -> void:
 		var have := skeleton.get_bone_pose_rotation(skeleton.find_bone("UpperArm.R"))
 		# Within a tick of the clip: the tree applies a seek on the next advance (3 degrees here).
 		assert_float(rad_to_deg(have.angle_to(want))).is_less(5.0)
+
+
+func test_the_hammer_is_in_the_hand_while_the_clip_holds_the_arms() -> void:
+	assert_bool(_animation.hammer().visible).is_false()
+	_animation.board_repaired(1.0)
+	assert_bool(_animation.hammer().visible).is_true()
+	assert_bool(_animation.weapon().visible).is_false()
+	_step(100)  # 1.5 intervals and no board: the clip lets go
+	assert_bool(_animation.hammer().visible).is_false()
+	assert_bool(_animation.weapon().visible).is_true()
+	_animation.board_repaired(1.0)
+	_animation.stop_repair()
+	assert_bool(_animation.hammer().visible).is_false()
+	assert_bool(_animation.weapon().visible).is_true()
+
+
+func test_an_equip_during_the_repair_keeps_the_hammer() -> void:
+	_animation.board_repaired(1.0)
+	_animation.equip(&"Melee")
+	_step(60)  # the Equip clip's weapon_visible frame passes
+	assert_bool(_animation.hammer().visible).is_true()
+	assert_bool(_animation.weapon().visible).is_false()
+
+
+func test_the_face_leads_the_blow() -> void:
+	# The hammer rides the hand bone: over one loop its face swings down from the raise onto the
+	# board, face first. Read from the bone (a BoneAttachment3D follows only on a processed frame).
+	assert_object(_animation.hammer().get_parent()).is_same(_animation.weapon_mount())
+	(
+		assert_bool(_animation.hammer().transform.is_equal_approx(PlayerAnimation.HOLD_HAMMER))
+		. is_true()
+	)
+	var skeleton := _player.find_child("Skeleton3D", true, false) as Skeleton3D
+	var hand := skeleton.find_bone(PlayerAnimation.HAND_BONE)
+	_animation.board_repaired(1.0)
+	_step(45)
+	_animation.board_repaired(1.0)  # the next board: the layer is at full weight from here
+	var faces: Array[Vector3] = []
+	var dirs: Array[Vector3] = []
+	var grips: Array[Vector3] = []
+	for _i in 60:
+		_step(1)
+		var held := (
+			skeleton.global_transform
+			* skeleton.get_bone_global_pose(hand)
+			* PlayerAnimation.HOLD_HAMMER
+		)
+		faces.append(held * PlayerAnimation.HAMMER_FACE)
+		dirs.append(-held.basis.x.normalized())
+		grips.append(held.origin)
+	var low := 0
+	var high := 0
+	for i in faces.size():
+		if faces[i].y < faces[low].y:
+			low = i
+		if faces[i].y > faces[high].y:
+			high = i
+	assert_float(faces[high].y - faces[low].y).is_greater(0.5)  # a real swing, not a twitch
+	var blow := (faces[low] - faces[high]).normalized()
+	assert_float(dirs[low].dot(blow)).is_greater(0.7)  # face first
+	var forward := -_player.global_transform.basis.z
+	assert_float(dirs[low].dot(forward)).is_greater(0.7)  # square to the board in front
+	# The head out ahead of the fist.
+	assert_float((faces[low] - grips[low]).dot(forward)).is_greater(0.15)
