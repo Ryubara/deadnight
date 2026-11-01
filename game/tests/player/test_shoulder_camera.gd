@@ -266,8 +266,19 @@ func test_the_character_sits_in_the_lower_left_third_over_the_right_shoulder() -
 	assert_float(screen.y / size.y).is_between(0.3, 0.6)
 
 
+func test_the_first_steer_sets_the_heading_and_later_ones_ease_to_it() -> void:
+	_rig.yaw = 2.5
+	_rig.steer(-1.0, 0.1)
+	assert_float(_rig.yaw).is_equal_approx(-1.0, 0.0001)
+	_rig.steer(-0.5, 0.1)
+	_rig.step(TICK, 1.0)
+	assert_float(_rig.yaw).is_between(-1.0, -0.9)
+	_rig.stop_steering()
+
+
 func test_a_steered_view_turns_to_the_heading_without_overshooting() -> void:
 	_rig.yaw = 0.0
+	_rig.steer(0.0, 0.0)  # the first call places the view; the next ones ease
 	_rig.steer(1.0, 0.2)
 	var highest := 0.0
 	var first_step := 0.0

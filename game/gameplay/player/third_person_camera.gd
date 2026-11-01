@@ -110,8 +110,13 @@ func set_stick(stick: Vector2) -> void:
 
 
 ## Turn the view toward `target_yaw` and `target_pitch` (radians) with a spring, every `step()`
-## until `stop_steering()`. For a driver that gives a new heading in steps (the autopilot).
+## until `stop_steering()` (the first call sets the view there at once). For a driver that gives
+## a new heading in steps (the autopilot).
 func steer(target_yaw: float, target_pitch: float) -> void:
+	if not _steering:
+		# The first heading is where the driver starts looking: no swing from wherever it was.
+		yaw = target_yaw
+		pitch = target_pitch
 	_steering = true
 	_steer_yaw = target_yaw
 	_steer_pitch = target_pitch
