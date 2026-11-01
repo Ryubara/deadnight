@@ -1,0 +1,235 @@
+=== own-clean
+scenario=own-clean mode=own players=4 zombies=24 latency_one_way=0.0ms loss=0.0 rto=300ms window=18.2s
+down_per_client=2585 B/s  up_per_client=562 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=40.7 up_pkts/s/client=42.3)
+server_cpu=7.0% of one core (whole process tree, measured window)
+rtt_ms mean=33  gap_p50=33 p95=35 p99=38 max=50 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 58/655 mean=1.20 cm max=20.8 20/655 mean=0.40 cm max=20.5 58/655 mean=1.28 cm max=20.2 160/655 mean=4.59 cm max=45.2
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== mp-clean
+scenario=mp-clean mode=mp players=4 zombies=24 latency_one_way=0.0ms loss=0.0 rto=300ms window=18.0s
+down_per_client=21498 B/s  up_per_client=775 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=39.5 up_pkts/s/client=44.4)
+server_cpu=7.1% of one core (whole process tree, measured window)
+rtt_ms mean=0  gap_p50=33 p95=35 p99=46 max=70 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 49/649 mean=1.03 cm max=20.6 8/646 mean=0.11 cm max=12.8 126/646 mean=3.05 cm max=41.6 105/647 mean=2.84 cm max=22.5
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== own-rtt100
+scenario=own-rtt100 mode=own players=4 zombies=24 latency_one_way=50.0ms loss=0.0 rto=300ms window=18.1s
+down_per_client=2595 B/s  up_per_client=562 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=48.5 up_pkts/s/client=45.1)
+server_cpu=4.8% of one core (whole process tree, measured window)
+rtt_ms mean=144  gap_p50=33 p95=46 p99=67 max=170 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 40/644 mean=0.82 cm max=40.0 36/644 mean=1.07 cm max=40.2 41/644 mean=0.85 cm max=40.6 165/644 mean=4.60 cm max=125.9
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== mp-rtt100
+scenario=mp-rtt100 mode=mp players=4 zombies=24 latency_one_way=50.0ms loss=0.0 rto=300ms window=18.1s
+down_per_client=20679 B/s  up_per_client=774 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=45.5 up_pkts/s/client=46.5)
+server_cpu=6.5% of one core (whole process tree, measured window)
+rtt_ms mean=117  gap_p50=33 p95=59 p99=75 max=87 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 42/587 mean=1.04 cm max=28.4 34/588 mean=0.65 cm max=24.0 71/629 mean=1.86 cm max=44.1 124/630 mean=4.23 cm max=74.5
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== own-rtt100-loss2
+scenario=own-rtt100-loss2 mode=own players=4 zombies=24 latency_one_way=50.0ms loss=0.02 rto=300ms window=18.1s
+down_per_client=3844 B/s  up_per_client=562 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=43.2 up_pkts/s/client=41.9)
+server_cpu=7.8% of one core (whole process tree, measured window)
+rtt_ms mean=220  gap_p50=33 p95=59 p99=333 max=337 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 41/647 mean=0.85 cm max=20.0 28/647 mean=0.77 cm max=109.3 29/647 mean=0.62 cm max=67.5 86/647 mean=2.71 cm max=121.5
+proxy_stalls=164 ERROR_lines_in_logs=0
+=== mp-rtt100-loss2
+scenario=mp-rtt100-loss2 mode=mp players=4 zombies=24 latency_one_way=50.0ms loss=0.02 rto=300ms window=18.2s
+down_per_client=20108 B/s  up_per_client=775 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=43.4 up_pkts/s/client=45.4)
+server_cpu=7.1% of one core (whole process tree, measured window)
+rtt_ms mean=219  gap_p50=33 p95=264 p99=347 max=633 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 39/441 mean=1.59 cm max=89.0 38/505 mean=1.72 cm max=119.1 92/476 mean=4.25 cm max=126.1 48/505 mean=2.61 cm max=124.0
+proxy_stalls=171 ERROR_lines_in_logs=0
+=== nf-clean
+scenario=nf-clean mode=nf players=4 zombies=24 latency_one_way=0.0ms loss=0.0 rto=300ms window=18.1s
+down_per_client=36869 B/s  up_per_client=19645 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=1025.1 up_pkts/s/client=795.8)
+server_cpu=29.6% of one core (whole process tree, measured window)
+rtt_ms mean=8  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 42/706 mean=0.82 cm max=20.0 32/707 mean=0.45 cm max=36.1 61/704 mean=1.27 cm max=28.0 57/707 mean=1.20 cm max=36.4
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== nf-rtt100
+scenario=nf-rtt100 mode=nf players=4 zombies=24 latency_one_way=50.0ms loss=0.0 rto=300ms window=18.1s
+down_per_client=37122 B/s  up_per_client=19857 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=1254.4 up_pkts/s/client=926.1)
+server_cpu=28.0% of one core (whole process tree, measured window)
+rtt_ms mean=133  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 157/692 mean=3.45 cm max=181.7 39/688 mean=0.70 cm max=85.8 27/687 mean=0.34 cm max=79.4 97/693 mean=2.77 cm max=135.5
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== nf-rtt100-loss2
+scenario=nf-rtt100-loss2 mode=nf players=4 zombies=24 latency_one_way=50.0ms loss=0.02 rto=300ms window=18.2s
+down_per_client=37311 B/s  up_per_client=19988 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=1295.9 up_pkts/s/client=1123.3)
+server_cpu=30.5% of one core (whole process tree, measured window)
+rtt_ms mean=616  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 101/659 mean=2.59 cm max=72.0 142/662 mean=3.87 cm max=141.2 115/659 mean=3.69 cm max=191.3 174/659 mean=4.98 cm max=242.0
+proxy_stalls=4153 ERROR_lines_in_logs=0
+=== nf-tuned-clean
+scenario=nf-tuned-clean mode=nf players=4 zombies=24 latency_one_way=0.0ms loss=0.0 rto=300ms window=18.2s
+down_per_client=29559 B/s  up_per_client=12044 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=866.0 up_pkts/s/client=572.3)
+server_cpu=26.4% of one core (whole process tree, measured window)
+rtt_ms mean=33  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 60/704 mean=1.08 cm max=23.0 113/692 mean=2.31 cm max=39.7 40/699 mean=0.58 cm max=20.2 44/699 mean=0.90 cm max=43.0
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== nf-tuned-rtt100-loss2
+scenario=nf-tuned-rtt100-loss2 mode=nf players=4 zombies=24 latency_one_way=50.0ms loss=0.02 rto=300ms window=18.2s
+down_per_client=30499 B/s  up_per_client=12733 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=1168.7 up_pkts/s/client=1054.1)
+server_cpu=27.3% of one core (whole process tree, measured window)
+rtt_ms mean=575  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 62/687 mean=1.74 cm max=221.1 154/671 mean=6.94 cm max=576.6 77/674 mean=2.11 cm max=278.1 128/675 mean=4.72 cm max=405.0
+proxy_stalls=3787 ERROR_lines_in_logs=0
+=== mp-pack
+scenario=mp-pack mode=mp players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.2s
+down_per_client=16820 B/s  up_per_client=776 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=37.7 up_pkts/s/client=42.5)
+server_cpu=6.0% of one core (whole process tree, measured window)
+rtt_ms mean=1  gap_p50=33 p95=42 p99=46 max=81 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 32/416 mean=1.15 cm max=20.2 23/415 mean=0.52 cm max=17.2 25/371 mean=0.80 cm max=44.4 60/411 mean=2.77 cm max=43.4
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale2-own
+scenario=scale2-own mode=own players=2 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.3s
+down_per_client=2663 B/s  up_per_client=559 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=39.0 up_pkts/s/client=37.8)
+server_cpu=6.2% of one core (whole process tree, measured window)
+rtt_ms mean=35  gap_p50=33 p95=34 p99=52 max=123 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 38/416 mean=1.41 cm max=26.4 90/417 mean=3.27 cm max=22.2
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale4-own
+scenario=scale4-own mode=own players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=2393 B/s  up_per_client=564 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=41.5 up_pkts/s/client=43.5)
+server_cpu=1.2% of one core (whole process tree, measured window)
+rtt_ms mean=41  gap_p50=32 p95=66 p99=76 max=132 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 36/413 mean=1.43 cm max=40.0 6/412 mean=0.14 cm max=8.9 114/412 mean=5.29 cm max=41.6 171/412 mean=10.30 cm max=60.4
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale8-own
+scenario=scale8-own mode=own players=8 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.2s
+down_per_client=2868 B/s  up_per_client=563 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=37.9 up_pkts/s/client=40.3)
+server_cpu=8.9% of one core (whole process tree, measured window)
+rtt_ms mean=34  gap_p50=33 p95=35 p99=47 max=67 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 87/418 mean=2.46 cm max=20.2 34/416 mean=1.09 cm max=21.0 22/415 mean=0.51 cm max=17.7 22/415 mean=0.62 cm max=20.6 34/415 mean=1.29 cm max=20.9 38/415 mean=1.25 cm max=32.0 102/415 mean=2.65 cm max=21.8 132/415 mean=3.51 cm max=20.0
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale2-mp
+scenario=scale2-mp mode=mp players=2 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.3s
+down_per_client=20200 B/s  up_per_client=775 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=38.7 up_pkts/s/client=40.5)
+server_cpu=7.6% of one core (whole process tree, measured window)
+rtt_ms mean=0  gap_p50=33 p95=34 p99=36 max=50 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 47/416 mean=1.54 cm max=20.0 42/416 mean=1.27 cm max=20.6
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale4-mp
+scenario=scale4-mp mode=mp players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.0s
+down_per_client=23293 B/s  up_per_client=777 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=41.6 up_pkts/s/client=46.3)
+server_cpu=3.0% of one core (whole process tree, measured window)
+rtt_ms mean=14  gap_p50=33 p95=68 p99=87 max=120 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 53/354 mean=2.32 cm max=38.5 29/362 mean=1.00 cm max=19.8 74/363 mean=3.99 cm max=57.6 14/352 mean=0.49 cm max=20.6
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale8-mp
+scenario=scale8-mp mode=mp players=8 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=24407 B/s  up_per_client=774 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=35.2 up_pkts/s/client=39.6)
+server_cpu=8.5% of one core (whole process tree, measured window)
+rtt_ms mean=1  gap_p50=33 p95=34 p99=42 max=67 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 72/412 mean=2.89 cm max=22.8 116/412 mean=5.19 cm max=42.3 45/414 mean=1.67 cm max=23.5 98/411 mean=4.43 cm max=73.2 12/410 mean=0.35 cm max=18.1 47/412 mean=1.23 cm max=25.7 16/410 mean=0.51 cm max=23.3 112/410 mean=3.26 cm max=28.3
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale2-mp-pack
+scenario=scale2-mp-pack mode=mp players=2 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.2s
+down_per_client=15254 B/s  up_per_client=775 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=37.4 up_pkts/s/client=39.2)
+server_cpu=5.5% of one core (whole process tree, measured window)
+rtt_ms mean=0  gap_p50=33 p95=34 p99=36 max=50 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 59/417 mean=1.84 cm max=20.0 41/416 mean=1.22 cm max=19.9
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale4-mp-pack
+scenario=scale4-mp-pack mode=mp players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.2s
+down_per_client=16570 B/s  up_per_client=775 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=36.9 up_pkts/s/client=38.9)
+server_cpu=5.2% of one core (whole process tree, measured window)
+rtt_ms mean=2  gap_p50=33 p95=37 p99=48 max=81 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 35/413 mean=1.16 cm max=20.0 39/399 mean=1.05 cm max=19.8 83/415 mean=3.10 cm max=34.7 128/414 mean=5.64 cm max=37.0
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale8-mp-pack
+scenario=scale8-mp-pack mode=mp players=8 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=18947 B/s  up_per_client=773 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=34.1 up_pkts/s/client=40.8)
+server_cpu=8.7% of one core (whole process tree, measured window)
+rtt_ms mean=0  gap_p50=33 p95=35 p99=41 max=67 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 0/414 mean=0.00 cm max=0.0 27/412 mean=0.92 cm max=19.8 122/412 mean=4.18 cm max=21.2 39/411 mean=1.04 cm max=20.6 11/411 mean=0.24 cm max=15.7 67/410 mean=2.19 cm max=21.0 40/410 mean=1.09 cm max=19.7 94/409 mean=3.05 cm max=20.2
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale2-mp-clientauth
+scenario=scale2-mp-clientauth mode=mp players=2 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.2s
+down_per_client=1994 B/s  up_per_client=2165 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=42.7 up_pkts/s/client=63.6)
+server_cpu=6.7% of one core (whole process tree, measured window)
+rtt_ms mean=0  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale4-mp-clientauth
+scenario=scale4-mp-clientauth mode=mp players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=3760 B/s  up_per_client=4624 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=100.1 up_pkts/s/client=99.9)
+server_cpu=6.3% of one core (whole process tree, measured window)
+rtt_ms mean=1  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== scale8-mp-clientauth
+scenario=scale8-mp-clientauth mode=mp players=8 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=6893 B/s  up_per_client=8572 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=169.6 up_pkts/s/client=137.2)
+server_cpu=11.8% of one core (whole process tree, measured window)
+rtt_ms mean=2  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0 0/0 mean=0.00 cm max=0.0
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu1-own
+scenario=cpu1-own mode=own players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=2596 B/s  up_per_client=563 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=38.9 up_pkts/s/client=42.0)
+server_cpu=2.2% of one core (whole process tree, measured window)
+rtt_ms mean=42  gap_p50=32 p95=58 p99=72 max=119 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 34/414 mean=1.46 cm max=62.3 111/414 mean=4.73 cm max=40.2 13/414 mean=0.35 cm max=19.7 82/414 mean=3.91 cm max=58.2
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu2-own
+scenario=cpu2-own mode=own players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=2399 B/s  up_per_client=562 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=39.8 up_pkts/s/client=44.0)
+server_cpu=2.0% of one core (whole process tree, measured window)
+rtt_ms mean=40  gap_p50=32 p95=62 p99=72 max=140 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 28/413 mean=1.16 cm max=40.0 22/413 mean=0.47 cm max=14.3 143/413 mean=5.41 cm max=61.2 62/413 mean=3.57 cm max=49.4
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu3-own
+scenario=cpu3-own mode=own players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.3s
+down_per_client=2793 B/s  up_per_client=562 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=39.6 up_pkts/s/client=41.8)
+server_cpu=4.3% of one core (whole process tree, measured window)
+rtt_ms mean=34  gap_p50=33 p95=44 p99=57 max=88 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 34/417 mean=1.19 cm max=20.2 37/417 mean=1.31 cm max=38.5 22/417 mean=0.59 cm max=26.3 92/417 mean=3.76 cm max=42.5
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu1-mp
+scenario=cpu1-mp mode=mp players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=22362 B/s  up_per_client=773 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=37.4 up_pkts/s/client=42.9)
+server_cpu=2.5% of one core (whole process tree, measured window)
+rtt_ms mean=16  gap_p50=33 p95=72 p99=86 max=108 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 32/364 mean=1.35 cm max=40.0 80/362 mean=4.14 cm max=42.1 30/362 mean=1.05 cm max=44.1 61/361 mean=3.35 cm max=83.2
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu2-mp
+scenario=cpu2-mp mode=mp players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.2s
+down_per_client=22693 B/s  up_per_client=772 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=38.7 up_pkts/s/client=42.8)
+server_cpu=4.7% of one core (whole process tree, measured window)
+rtt_ms mean=3  gap_p50=33 p95=42 p99=47 max=67 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 45/407 mean=1.61 cm max=20.0 67/407 mean=2.65 cm max=19.8 25/405 mean=0.67 cm max=20.1 44/406 mean=1.30 cm max=20.2
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu3-mp
+scenario=cpu3-mp mode=mp players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=22960 B/s  up_per_client=776 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=38.7 up_pkts/s/client=46.6)
+server_cpu=5.2% of one core (whole process tree, measured window)
+rtt_ms mean=0  gap_p50=33 p95=40 p99=52 max=70 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 39/412 mean=1.39 cm max=21.0 50/413 mean=1.36 cm max=19.9 41/408 mean=1.55 cm max=23.0 42/411 mean=1.25 cm max=19.8
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu1-nf
+scenario=cpu1-nf mode=nf players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=30594 B/s  up_per_client=12818 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=826.1 up_pkts/s/client=564.2)
+server_cpu=25.6% of one core (whole process tree, measured window)
+rtt_ms mean=33  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 12/462 mean=0.27 cm max=15.2 42/461 mean=0.99 cm max=33.6 53/461 mean=1.72 cm max=28.7 107/459 mean=3.53 cm max=20.9
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu2-nf
+scenario=cpu2-nf mode=nf players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=30254 B/s  up_per_client=12558 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=895.5 up_pkts/s/client=726.7)
+server_cpu=26.2% of one core (whole process tree, measured window)
+rtt_ms mean=8  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 37/468 mean=1.14 cm max=40.2 119/467 mean=4.59 cm max=27.7 54/468 mean=1.85 cm max=26.5 58/467 mean=2.30 cm max=52.0
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== cpu3-nf
+scenario=cpu3-nf mode=nf players=4 zombies=24 latency_one_way=0ms loss=0 rto=300ms window=10.1s
+down_per_client=28780 B/s  up_per_client=11446 B/s  (payload+WebSocket framing; add ~40 B per TCP packet: down_pkts/s/client=926.8 up_pkts/s/client=720.1)
+server_cpu=27.6% of one core (whole process tree, measured window)
+rtt_ms mean=8  gap_p50=0 p95=0 p99=0 max=0 ms  (arrival gap between updates of own state; 33 ms ideal)
+corrections>1cm: 42/467 mean=1.23 cm max=20.0 153/466 mean=6.29 cm max=25.1 71/466 mean=2.45 cm max=35.1 140/466 mean=5.07 cm max=36.9
+proxy_stalls=0 ERROR_lines_in_logs=0
+=== single-player (MultiplayerAPI)
+[mp-server] player 1 joined (peer 1), 1 in game
+RESULT player=1 seconds=4 up=0 B/s down=0 B/s rtt=0 ms corrections>1cm=0/0 mean=0.00 cm max=0.0 cm gap_p50=0 p95=0 p99=0 max=0 ms n=0
+LOCAL player=1 inputs_sent=150 applied=149 pos=(216, -579) zombies=24
