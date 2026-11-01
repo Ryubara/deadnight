@@ -80,8 +80,8 @@ func _init(
 	rules.event_emitted.connect(_on_rules_event)
 
 
-## Lets go of the cycles (the rules hold callbacks into this object and the generator holds
-## some into the rules). Call when the night is over.
+## Stops listening to the rules and the doors, so nothing calls into a finished night. Call when
+## the night is over.
 func close() -> void:
 	combat.detach()
 	director.close()
@@ -89,9 +89,6 @@ func close() -> void:
 		rules.event_emitted.disconnect(_on_rules_event)
 	if world.doors.door_opened.is_connected(_on_door_opened):
 		world.doors.door_opened.disconnect(_on_door_opened)
-	for signal_info in rules.generator.get_signal_list():
-		for connection in rules.generator.get_signal_connection_list(signal_info["name"]):
-			rules.generator.disconnect(signal_info["name"], connection["callable"])
 
 
 ## The one way in. Returns the events the message caused.

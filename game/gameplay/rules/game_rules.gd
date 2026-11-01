@@ -139,14 +139,14 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 	_cripple_rng.seed = p_seed ^ CRIPPLE_STREAM
 	generator = GeneratorState.new(tuning.fuel)
 	_fuel_announced = floori(generator.fuel)
+	# Methods and `bind`, never a lambda: a lambda that uses `self` holds a strong reference to
+	# the rules, the rules hold the generator, and the generator holds the lambda, so none of
+	# them is ever freed (the "resources still in use at exit" error).
 	generator.fuel_changed.connect(_on_fuel_changed)
-	generator.fuel_low.connect(func() -> void: _emit(&"fuel_low"))
-	generator.fuel_empty.connect(func() -> void: _emit(&"fuel_empty"))
-	generator.fuel_restored.connect(func() -> void: _emit(&"fuel_restored"))
-	generator.circuit_changed.connect(
-		func(circuit_id: StringName, on: bool) -> void:
-			_emit(&"circuit_changed", {"circuit_id": circuit_id, "on": on})
-	)
+	generator.fuel_low.connect(_emit.bind(&"fuel_low"))
+	generator.fuel_empty.connect(_emit.bind(&"fuel_empty"))
+	generator.fuel_restored.connect(_emit.bind(&"fuel_restored"))
+	generator.circuit_changed.connect(_on_circuit_changed)
 
 
 ## The one way in. Returns the events the action caused, in order.
@@ -401,6 +401,10 @@ func _on_fuel_changed(fuel: float, _delta: float) -> void:
 		return
 	_emit(&"fuel_changed", {"fuel": fuel, "delta": float(whole - _fuel_announced)})
 	_fuel_announced = whole
+
+
+func _on_circuit_changed(circuit_id: StringName, on: bool) -> void:
+	_emit(&"circuit_changed", {"circuit_id": circuit_id, "on": on})
 
 
 # --- Rounds ---

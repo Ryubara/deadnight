@@ -46,6 +46,7 @@ MIDWAY_LINK_Z = 20.0
 # The lot's outer walls are higher than the tallest platform beside them (a car roof, 1.65 m) plus a full jump (the
 # player's 1.1 m, PlayerTuning.jump_height) plus a margin, so nobody leaves the map from a roof (docs/design/map.md).
 PERIMETER_H = 3.0
+SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # Materials per area: id -> (albedo, emission or None). Colours read in the top-down capture, not in the style bible.
 MATS = {
@@ -131,6 +132,13 @@ def group(name: str, parent: str) -> str:
     return name if parent == "." else f"{parent}/{name}"
 
 
+def lamps(parent: str, circuit: str, name: str = "Lamps") -> str:
+    """A group of lamps on one circuit. Every light below it takes the circuit id from this node's metadata
+    (`LotLamps`): a generator circuit, `mains` (wired to the generator, no switch) or `battery` (not the generator's)."""
+    node(name, "Node3D", parent, {"metadata/circuit": f'"{circuit}"'})
+    return f"{parent}/{name}"
+
+
 counter = {"n": 0}
 
 
@@ -203,13 +211,19 @@ def wall(
             block(parent, f"{name}{i}", fixed - thick / 2, fixed + thick / 2, p0, p1, t - b, mat, y0 + b)
 
 
-def omni(parent: str, name: str, pos, energy: float, rng: float, col: str, powered: bool = True) -> None:
+def omni(
+    parent: str, name: str, pos, energy: float, rng: float, col: str, powered: bool = True, afterglow: float = 0.0
+) -> None:
+    """An omni light in the `powered_light` group. `afterglow` is the fraction of its energy it keeps when its circuit
+    is dark (the screen's glow); it lights nothing for the dead, it is only seen."""
     props = {
         "transform": xform(pos),
         "light_color": color(col),
         "light_energy": f"{energy:g}",
         "omni_range": f"{rng:g}",
     }
+    if afterglow:
+        props["metadata/afterglow"] = f"{afterglow:g}"
     node(name, "OmniLight3D", parent, props, ' groups=["powered_light"]' if powered else "")
 
 
@@ -426,12 +440,12 @@ def build() -> None:
     block(props, "PicnicTable", 46, 50, -32, -30, 0.9, "field_struct")
     for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
         instance(props, f"Wreck{i}", "car", (px, 0, pz), ry)
-    lamps = group("Lamps", field)
+    lamps_f = lamps(field, "screen_lot")
     for i, (lx, lz) in enumerate(
         [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)], start=1
     ):
-        instance(lamps, f"Lamp{i}", "lamp", (lx, 0, lz))
-    omni(lamps, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8")
+        instance(lamps_f, f"Lamp{i}", "lamp", (lx, 0, lz))
+    omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     spawns = group("PlayerSpawns", field)
     for i, sx in enumerate((-6, -2, 2, 6), start=1):
         marker(spawns, f"Player{i}", (sx, 0, -43))
@@ -455,7 +469,7 @@ def build() -> None:
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
     block(con, "PrizeCrane", -9.4, -7.4, 4, 6, 2.4, "concession_prop")
     block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop")
-    cl = group("Lamps", con)
+    cl = lamps(con, "concession")
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorE", (5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorN", (0, 3.3, -2), 1.4, 8, "#ffb866")
@@ -474,7 +488,7 @@ def build() -> None:
     block(mid, "DumpsterE", 12.4, 15.2, -3.2, -1.4, 1.5, "midway_wall")
     block(mid, "CrateStackA", -12, -9.4, 14, 16.4, 1.8, "midway_wall")
     block(mid, "CrateStackB", 9.4, 12, 28, 30.4, 1.8, "midway_wall")
-    ml = group("Lamps", mid)
+    ml = lamps(mid, "concession")
     omni(ml, "Court", (-10, 3.6, 14), 1.2, 9, "#ffd9a0")
     omni(ml, "Court2", (11, 3.6, 36), 1.0, 9, "#ffd9a0")
     mz = group("ZombieSpawns", mid)
@@ -507,7 +521,7 @@ def build() -> None:
     block(booth, "ReCutMachine", 2, 5, 27, 29.4, 1.8, "booth_prop")
     block(booth, "FilmRacks", -3.4, -1, 30, 31.6, 2.2, "booth_prop")
     block(booth, "Projector", -1.0, 1.0, 24.5, 26.0, 1.3, "booth_prop", 4.05)
-    bl = group("Lamps", booth)
+    bl = lamps(booth, "booth")
     spot(bl, "ProjectorBeam", (0, 5.4, 22.3), 180, -5.0, 6.0, 100, 7, "#e8f0ff")
     omni(bl, "Lower", (0, 3.0, 27), 1.0, 8, "#c9a8ff")
     omni(bl, "Upper", (0, 6.6, 27), 0.9, 7, "#c9a8ff")
@@ -534,7 +548,7 @@ def build() -> None:
     block(yard, "ContainerB", 50, 56, 26, 28.6, 2.6, "yard_prop")
     block(yard, "Pallets", 26, 29, 28, 31, 1.2, "yard_wall")
     block(yard, "DrumRow", 20, 22, 2, 9, 1.0, "yard_prop")
-    yl = group("Lamps", yard)
+    yl = lamps(yard, "mains")
     for i, (lx, lz) in enumerate([(35, 12), (45, 12), (35, 24), (45, 24)], start=1):
         instance(yl, f"WorkLamp{i}", "lamp", (lx, 0, lz))
     omni(yl, "GeneratorGlow", (40, 2.4, 18), 1.4, 8, "#f0e26a")
@@ -564,7 +578,7 @@ def build() -> None:
     block(back, "ScrapStackA", -58, -52, 20, 26, 2.6, "backlot_prop")
     block(back, "ScrapStackB", -26, -20, 22, 28, 2.6, "backlot_prop")
     block(back, "SignBoard", -50, -44, 35.2, 35.8, 4.2, "neon", 0.0)
-    bk = group("Lamps", back)
+    bk = lamps(back, "back_lot")
     omni(bk, "NeonSign", (-47, 3.5, 33.5), 1.8, 12, "#ff3a4a")
     bz = group("ZombieSpawns", back)
     marker(bz, "SpawnNW", (-60, 0, -2))
@@ -592,10 +606,11 @@ def build() -> None:
     box(road, "CentreLine", (0.3, 0.02, 12), (0, 0.01, 46), "road_line", collide=False)
     block(road, "Wreck", -34, -29.4, 56.4, 58.4, 1.6, "road_wall")
     block(road, "WreckB", 20, 24.6, 59, 61, 1.6, "road_wall")
-    rl = group("Lamps", road)
+    rl = lamps(road, "back_lot")
     omni(rl, "Kiosk", (0, 3.0, 44), 1.0, 8, "#a8c4ff")
-    spot(rl, "WreckHeadlightL", (-31, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
-    spot(rl, "WreckHeadlightR", (-33, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
+    hl = lamps(road, "battery", "Headlights")
+    spot(hl, "WreckHeadlightL", (-31, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
+    spot(hl, "WreckHeadlightR", (-33, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
     rz = group("ZombieSpawns", road)
     marker(rz, "SpawnW", (-56, 0, 58))
     marker(rz, "SpawnE", (50, 0, 62))
