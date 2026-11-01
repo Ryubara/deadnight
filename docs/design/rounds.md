@@ -120,7 +120,7 @@ Shop (prices at round 1):
 
 | Item | Points | Notes |
 | --- | ---: | --- |
-| Door: concession stand / booth / back lot | 350 / 750 / 1250 | opens for everyone; each needs the one before |
+| Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 500 | random weapon the player lacks (shotgun 4, rifle 3, SMG 2, flare gun 1) |
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
@@ -178,6 +178,21 @@ the pillars.
   grows with the round, the rounds run long, and the can price rises, so fuel climbs toward a quarter of
   income: the generator is always one decision away from running dry. When it does, the lights fade
   (the last tenth of the tank), every circuit goes dark, and the dead move at full speed.
+
+When the doors open, per player (200 starting points, a player's share of the round's zombies at about 85 points
+each, the round bonus), the first round whose end covers the running total of the doors so far. "All in" spends
+everything on doors; "half" is the plan's pace, the other half going to weapons, fuel and tonics:
+
+| Door | Price | Running total | All in, 1 / 2 / 4 players | Half, 1 / 2 / 4 players |
+| --- | ---: | ---: | --- | --- |
+| Concession stand | 350 | 350 | 1 / 1 / 1 | 1 / 2 / 2 |
+| Generator yard | 500 | 850 | 2 / 2 / 2 | 3 / 3 / 3 |
+| Projection booth | 750 | 1,600 | 3 / 3 / 3 | 4 / 5 / 5 |
+| Back lot | 1,250 | 2,850 | 4 / 4 / 5 | 6 / 6 / 7 |
+| The road | 2,000 | 4,850 | 5 / 6 / 6 | 8 / 9 / 9 |
+
+More players come out a round or so later (less per head), as intended. The map reads these prices from
+`default_tuning.tres`, so changing one is one edit there and a rerun of `tools/world/build_greybox.py`.
 
 These tables are computed from the tuning by a script from assumed weapon damage (20, then 45 from
 round 6, then 90 from round 12), 30% headshot kills and 4 seconds of fighting per zombie, so they

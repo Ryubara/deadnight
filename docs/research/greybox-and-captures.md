@@ -28,3 +28,40 @@ The Compatibility renderer lights each mesh with at most 8 omni and 8 spot light
   `no_depth_test` is on; with the opposite sign it reads mirrored.
 - One rig scene and a user argument (`-- --view=top`) give every view from one command, so a layout change is
   re-captured by rerunning the same list.
+
+## Testing a baked navigation mesh headless
+
+Used by `game/tests/world/lot_navigation.gd`; it proves which areas of the lot a body reaches with a given set of doors.
+
+- **The dummy renderer has no mesh data.** Under `--headless` the CSG visual meshes are empty, so
+  `NavigationServer3D.parse_source_geometry_data` gives an empty mesh (and a warning about reading meshes from the
+  GPU). Feed the faces yourself: `csg.bake_collision_shape().get_faces()` into
+  `NavigationMeshSourceGeometryData3D.add_faces(faces, csg.global_transform)`, for every root CSG shape.
+- **`agent_radius` is rounded up to whole cells** (a warning says so). 0.35 m needs a 0.05 m cell to be exact; the
+  bake of the 124 m by 116 m lot then takes about 1.5 s, a test of nine door sets about 20 s. Set the map's cell size
+  and cell height to the mesh's, or the polygons do not merge.
+- **A new region takes a few physics ticks.** The map iterates every other tick or so and takes a new region in after
+  about two iterations; querying before then gives an empty path and an error ("before first map synchronization").
+  Wait on `NavigationServer3D.map_get_iteration_id(map)` rising by two, not on a fixed frame count.
+- **Give each bake its own world.** Regions of earlier cases stay in a shared map and merge into the next case's
+  answers. A `SubViewport` with `own_world_3d = true` has its own physics space and navigation map; freeing it
+  frees both.
+- `map_get_path(...)` to an unreachable target ends at the nearest reachable point, so "can reach" is "the path ends
+  within a metre of the target", and "cannot" is "it ends more than two metres away".
+
+## Sweeping the shoulder camera
+
+`game/world/drive_in/camera_probe.gd` is the player's camera rig as a function (pivot 1.55 m, arm 2.8 m with a 0.25 m
+sphere, shoulder 0.75 m after the sweep). What it found:
+
+- The spring arm only collides along the arm. The shoulder offset comes after, so in a 1.4 m gap between cars the
+  camera ends up inside the car's glass (at 1.55 m the cabin, 0.95 to 1.65 m, is what it hits, not the 1.0 m body).
+  A passage needs 2 x (0.75 + 0.1) = 1.7 m for a centred player; the lot uses 1.8 m and more.
+- **A concave (trimesh) body does not report a shape whose centre is already inside it.** CSG collision is a concave
+  mesh: an overlap query with a small sphere placed inside a car box returns nothing, so "is the camera inside a wall"
+  cannot be an overlap test. Sweep a sphere from a known-clear point (the arm's end) to the camera instead
+  (`cast_motion`): it hits the face from outside. A negative control (a 1.4 m gap that must fail) caught this.
+- Stand the sample point on the ground (a ray down from above) before sweeping: a probe at a fixed height floats in
+  the ramp or sits under it, and the arm then hits the ramp itself.
+- The booth's landing was at the foot of the ramp instead of the top (the ramp climbs to the south); the arm hit it at
+  98 cm from the pivot. Moved to the top and widened to meet the upper floor.
