@@ -78,29 +78,51 @@ game looked finished and a player's throw key did nothing. The wiring, now:
 - **A refused cook ends the hold.** On `cook_rejected`, a drop, or a blast in the hand the thrower is `abandon()`ed,
   so a held key does not pull a pin every tick until it is let go (`no_grenades`, `wrong_phase`, `player_downed`).
 - **The thrower's share of the blast reaches their health** through `RulesAction.blow` (40%, cover included); the
-  zombies a blast hits are staggered through `ZombieSim.react_to_hit`.
+  zombies a blast hits are thrown and stunned through `ZombieSim.blast` (see Polish below).
 - **The view is a copy of the grenade.** `NightView` makes a `GrenadeView` from `grenade_thrown` / `grenade_dropped`,
   steps its own `GrenadeState` on every `frame` event with the same `WorldCast`, and swaps it for a `BlastEffect` at
   `grenade_exploded`. It is drawn at twice its size with a trail: at real size a hand grenade is lost from the shoulder
   camera by the time it lands. Gibs come from `zombie_removed` with the `blast` zone.
-- **The Soldier plays `Grenade_Cook` at the pin and `Grenade_Throw` / `Grenade_Toss` at the release**
+- **The Soldier plays `Grenade_Cook` at the pin and `Grenade_Throw` / `Grenade_Toss` when the arm swings**
   (`PlayerAnimation.grenade`: `cook`, `throw`, `gone`); the gun goes down at the cook clip's
   `grenade_visible` and comes back at the throw clip's `done`.
 - **Proof:** `tests/night/test_night_grenades.gd` presses the real key and follows the grenade to a dead zombie;
   `tests/night/test_input_matrix.gd` presses every gameplay action on every device (see [Input tests](input-tests.md)).
 
+## Polish (#357)
+
+- **The throw waits for the swing.** Letting go of the button does not release the grenade: `GrenadeThrower` starts a
+  swing (`throw_started`, with `underarm`) and sends the `throw` action when the clip's release frame is reached,
+  0.375 s for `Grenade_Throw` (frame 9 at 24 fps) and 0.4167 s for `Grenade_Toss` (frame 10): `NightTuning.grenade_release_over`
+  and `_under`. The Soldier's clip starts on `throw_started`, so the grenade leaves the hand at the `release` event of
+  the clip, not 0.4 s before it. The fuse burns during the swing, and a grenade that goes off in the hand cancels it
+  (`abandon`). The range and the tests that call `GrenadeThrower` directly keep the default of no delay. The thrower
+  takes the tick's `delta` for it (seconds, not ticks), so a swing is the same length at any tick rate.
+- **The cook pose holds.** `Grenade_Cook` is 0.83 s long; the action node of the animation tree runs a custom timeline
+  of 30 s (`use_custom_timeline`, `stretch_time_scale = false`, `loop_mode = LOOP_NONE`), which holds the clip's last
+  frame while the button is down, and the one-shot is faded out by `gone`. Without it the arm dropped back to the aim
+  pose after 0.8 s of a long cook.
+- **The grenade is in the hand** from the cook clip's `grenade_visible` to the throw clip's `release` (or `gone`): the
+  placeholder shell (`GrenadeView.add_placeholder`) at 0.55 scale on the same `WeaponMount` bone as the weapons, at the
+  melee grip. It stays a placeholder until the artist's model and hold data (#285).
+- **The arc preview** (`GrenadePreview`, a child of `Night`) runs `GrenadeArc.predict` from the same hand and aim as the
+  server (`GrenadeThrower.launch`, one function for both) for as long as the grenade would burn if it were let go now
+  (fuse less the cook so far less the swing), and draws it as dots with a ring of the blast's core radius where it goes
+  off. A line one pixel wide was lost from the shoulder camera, so it is dots, drawn through walls. It follows the
+  human's command in `Night.show_throw`, hides with no button held, none left or the player down, and decides nothing.
+- **The blast throws and stuns the dead.** `blast_hit` carries `impulse` and `stun`: `ZombieSim.blast` holds the zombie
+  in `STAGGER` for `stun` seconds (1.6 s for the frag grenade, against the bullet's 0.4 s) and gives it a ground speed
+  along the impulse (the lift is ignored: the lot is flat) that slows at `ZombieTuning.push_decay`
+  (14 m/s per second, capped at 8 m/s, so the 7 m/s of a blast in the core slides a zombie 1.75 m). The dying and the
+  rising are left alone. The push does not look at walls (the separation push does not either).
+
 ## Open
 
-- The blast's knockback and the zombie's stun are not applied in the night (`blast_hit` carries `impulse` and `stun`;
-  the sim only staggers).
-- The Soldier's throw clip starts when the grenade leaves (the server throws at the button's release), so its
-  release frame (9) comes about 0.4 s after the grenade is gone. Either the throw waits for the clip's release frame
-  or the clip is played from that frame.
-- The cook clip holds its last frame in the design; the night plays it once, so a long cook shows the aim pose again.
-- The grenade is not drawn in the Soldier's hand (no hold data yet, #285), and there is no arc preview in the night.
 - The crawler's hit zones are the standing zombie's. A crawler is lower than its zones; a separate low `Hitbox` table
   is needed once the zombie behaviour (#17) swaps the mesh.
-- The grenade model comes from the artist; `GrenadeView.model` is the seam.
+- The grenade model and its hold in the hand come from the artist (#285); `GrenadeView.model` is the seam, and the
+  hand's placeholder is the same shell.
+- A crawler pushed by a blast can end inside a wall: the sim has no walls to push against.
 
 ## Try it
 

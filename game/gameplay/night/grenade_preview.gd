@@ -6,8 +6,11 @@ extends Node3D
 ## (`GrenadeThrower.launch`), so what it shows is what the throw does. It decides nothing and sends
 ## nothing; the server throws when the button comes up, a swing later.
 
-const LINE_COLOUR := Color(1.0, 0.85, 0.4, 0.9)
-const RING_COLOUR := Color(1.0, 0.45, 0.25, 0.9)
+const LINE_COLOUR := Color(1.0, 0.85, 0.4)
+const RING_COLOUR := Color(1.0, 0.45, 0.25)
+## The radius of a dot of the flight line and of the ring (m).
+const LINE_DOT := 0.045
+const RING_DOT := 0.06
 const RING_SEGMENTS := 36
 ## The ring is drawn this high above the point, so it does not sink into the ground.
 const RING_LIFT := 0.05
@@ -25,17 +28,15 @@ var grenades_left := -1
 var _def: GrenadeDef
 var _cast: Callable
 var _cooked := 0.0
-var _line: MeshInstance3D
-var _ring: MeshInstance3D
-var _mesh_line := ImmediateMesh.new()
-var _mesh_ring := ImmediateMesh.new()
+var _line: MultiMeshInstance3D
+var _ring: MultiMeshInstance3D
 var _landing := Vector3.ZERO
 var _points := PackedVector3Array()
 
 
 func _ready() -> void:
-	_line = _drawn(_mesh_line, LINE_COLOUR)
-	_ring = _drawn(_mesh_ring, RING_COLOUR)
+	_line = _dots(LINE_COLOUR, LINE_DOT, 1)
+	_ring = _dots(RING_COLOUR, RING_DOT, RING_SEGMENTS)
 	visible = false
 
 
@@ -87,34 +88,38 @@ func _hide() -> void:
 
 
 func _draw() -> void:
-	_mesh_line.clear_surfaces()
-	_mesh_line.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
-	for point in _points:
-		_mesh_line.surface_add_vertex(point)
-	_mesh_line.surface_end()
-	_mesh_ring.clear_surfaces()
-	_mesh_ring.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
-	for index in RING_SEGMENTS + 1:
+	if _line.multimesh.instance_count != _points.size():
+		_line.multimesh.instance_count = _points.size()
+	for index in _points.size():
+		_line.multimesh.set_instance_transform(index, Transform3D(Basis(), _points[index]))
+	for index in RING_SEGMENTS:
 		var angle := TAU * index / RING_SEGMENTS
-		_mesh_ring.surface_add_vertex(
-			(
-				_landing
-				+ Vector3(cos(angle), 0.0, sin(angle)) * _def.core_radius
-				+ Vector3.UP * RING_LIFT
-			)
+		var on_ring := (
+			_landing
+			+ Vector3(cos(angle), 0.0, sin(angle)) * _def.core_radius
+			+ Vector3.UP * RING_LIFT
 		)
-	_mesh_ring.surface_end()
+		_ring.multimesh.set_instance_transform(index, Transform3D(Basis(), on_ring))
 
 
-func _drawn(mesh: ImmediateMesh, colour: Color) -> MeshInstance3D:
+## A string of dots (a line a pixel wide is lost from the shoulder camera), seen through walls.
+func _dots(colour: Color, radius: float, count: int) -> MultiMeshInstance3D:
+	var dot := SphereMesh.new()
+	dot.radius = radius
+	dot.height = radius * 2.0
+	dot.radial_segments = 8
+	dot.rings = 4
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = colour
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.no_depth_test = true
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	instance.material_override = material
+	dot.material = material
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = dot
+	multimesh.instance_count = count
+	var instance := MultiMeshInstance3D.new()
+	instance.multimesh = multimesh
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	instance.top_level = true
 	add_child(instance)

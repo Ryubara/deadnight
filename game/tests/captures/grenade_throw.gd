@@ -1,8 +1,9 @@
 extends Node
 ## A person throws a grenade in the night (#351), from the player's own camera with the HUD: the
 ## throw key goes in as a real key event, is held for a cook and let go; a zombie waits where the
-## grenade will go off. On `main` before the fix nothing happens (the count stays, no grenade). Not
-## part of the game. Run with Movie Maker:
+## grenade will go off. On `main` before #351 nothing happens (the count stays, no grenade); since
+## #357 the arc shows while the key is held and the grenade leaves the hand a swing after it comes
+## up. Not part of the game. Run with Movie Maker:
 ## `godot --path game res://tests/captures/grenade_throw.tscn --fixed-fps 10
 ## --write-movie out.png --quit-after 120`.
 ## Each stage prints its name and the movie frame it began on.
@@ -44,8 +45,12 @@ func _ready() -> void:
 	_stage("key down: cooking")
 	await _wait(roundi(COOK_SECONDS * SECOND))
 	_key(KEY_G, false)
-	_stage("key up: thrown")
-	await _wait(3)
+	_stage("key up: the arm swings")
+	for _i in SECOND:
+		if _heard.has(&"grenade_thrown"):
+			break
+		await get_tree().physics_frame
+	_stage("the grenade leaves the hand")
 	var spot := _blast_spot()
 	for _i in SECOND * 4:
 		if not _heard.has(&"grenade_exploded") and spot != Vector3.ZERO:
