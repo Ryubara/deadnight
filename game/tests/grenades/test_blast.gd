@@ -9,12 +9,6 @@ func before_test() -> void:
 	_def = GrenadesFixture.def()
 
 
-func after_test() -> void:
-	if _night != null:
-		_night.finish()
-		_night = null
-
-
 func _blast_at(point: Vector3, zombie_at: Vector3, ray: Callable = Callable()) -> Dictionary:
 	return BlastModel.against_zombie(_def, point, zombie_at, 0.0, ray)
 
@@ -163,10 +157,11 @@ func test_friendly_fire_can_be_turned_on() -> void:
 
 
 func test_a_wall_protects_the_thrower_too() -> void:
-	var wall := GrenadesFixture.box_ray(AABB(Vector3(-3, 0, -2.1), Vector3(6, 3, 0.2)))
+	# The hand is held out 0.9 m in front of the thrower, with a thin wall between the two.
+	var wall := GrenadesFixture.box_ray(AABB(Vector3(-3, 0, -0.5), Vector3(6, 3, 0.2)))
 	_night = GrenadesFixture.night(1, GrenadesFixture.world_cast(), wall)
-	_night.place({}, {1: Vector3(0, 0, -4)})
-	_night.server.apply(GrenadeAction.cook(1, 1, Vector3(0, 0.0, 0)))
+	_night.place({}, {1: Vector3(0, 0, -0.9)})
+	_night.server.apply(GrenadeAction.cook(1, 1, Vector3(0, 1.45, 0)))
 	var hurt := GrenadesFixture.of(_night.run_seconds(_def.fuse + 0.1), &"player_blasted")
 	assert_array(hurt).is_empty()
 

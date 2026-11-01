@@ -11,10 +11,6 @@ func before_test() -> void:
 	_night = GrenadesFixture.night(1, GrenadesFixture.world_cast())
 
 
-func after_test() -> void:
-	_night.finish()
-
-
 func _exploded(events: Array[Dictionary]) -> Array[Dictionary]:
 	return GrenadesFixture.of(events, &"grenade_exploded")
 
@@ -64,6 +60,7 @@ func test_a_grenade_held_to_the_end_goes_off_in_the_hand() -> void:
 func test_the_hand_moves_while_cooking_and_the_blast_goes_off_where_it_is() -> void:
 	_night.server.apply(GrenadeAction.cook(1, 1, HAND))
 	_night.run_seconds(1.0)
+	_night.place({}, {1: Vector3(4, 0, 0)})
 	_night.server.apply(GrenadeAction.cook(1, 1, Vector3(4, 1.5, 0)))
 	var events := _night.run_seconds(2.1)
 	assert_float(_exploded(events)[0]["point"].x).is_equal_approx(4.0, 0.001)
@@ -134,5 +131,4 @@ func _replay() -> Array[Dictionary]:
 	night.place({night.zombies[0]: Vector3(0, 0, -6)}, {1: Vector3(0, 0, 2)})
 	var events := night.cook_and_throw(1, Vector3(0, 1.4, 0), Vector3(0.1, 0.2, -1), 0.7, false)
 	events.append_array(night.run_seconds(4.0))
-	night.finish()
 	return events
