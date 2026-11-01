@@ -6,9 +6,11 @@ from facts. The game-facing description (targets, results) is in [rounds](../des
 ## What it is
 
 `game/tools/balance/` plays whole nights through the real `GameRules` with modelled players, in plain
-GDScript and no scene tree: `NightSim` (one night), `BalanceBatch` (many nights of one cell, plus the reading
-functions), `BalanceTargets` (the ranges), `balance_cli.gd` (one cell to JSON from the command line) and
-`tools/balance/run_report.py` (nine cells in parallel Godot processes, then the charts).
+GDScript and no scene tree: `NightSim` (one night), `SimWeapons` (the real weapon definitions as timing and damage),
+`BalanceBatch` (many nights of one cell, plus the reading functions), `BalanceTargets` (the ranges),
+`balance_cli.gd` (one cell to JSON from the command line; it quits with an error when `--out` cannot be written, and
+`run_report.py` makes `--out` absolute) and `tools/balance/run_report.py` (nine cells in parallel Godot processes,
+then the charts; `--compare <folder>` draws a before and after).
 
 ## Measured
 
@@ -32,11 +34,27 @@ functions), `BalanceTargets` (the ranges), `balance_cli.gd` (one cell to JSON fr
 - **A type can be the wall.** Before the brute and the crawler were capped, the first round that held all
   of them at once killed every night at once. The cap (`share_max`) per type and an exact first-round
   number are what make a type something to learn.
-- **Where the model is thin.** Players are bots on a stand-in weapon table (`SimWeapons`), shoot only at
-  what they can see (view range falls with the light), turn to one of four sides at a time, and ignore
-  barricades, repairs, circuits, grenades, melee and doors (which only cost points). The report is a
-  tool for comparing tunings, not a prediction of a person's night; rerun it when the weapons, the player's
-  health (#151) or the shop (#152) land.
+- **A stand-in weapon table hides the balance.** The first simulator shot a made-up table (a rifle at 210 damage a
+  second) and said an average solo player reaches round 11. With the real definitions (`WeaponCatalog`, `DamageModel`)
+  and reloads the same nights ended at round 4: the rifle is 85 a second sustained, the best gun (the SMG) 101, the
+  pistol 59. Read every number a model uses from the game's own data, and say in the report where each comes
+  from. Reloads are time, not a share of "uptime": with a weapon cycle explicit, `SimSkill.uptime` is only the
+  time spent moving and looking.
+- **Free things hide decisions.** The model gave tonics effects the game does not have and slowed the dead on lit
+  ground without ever lighting a circuit, so the light never cost fuel ("fuel was never short enough to buy").
+  With circuits switched through `RulesAction.set_circuit` and lit ground applied only while the tank has fuel
+  (`GeneratorState.is_lit`, `power_level`), the average solo player buys about 260 points of cans a night.
+- **A weak player's boss night is a cliff.** Boss health 15, 16 and 22 times a walker's killed about 75%, 90% and 95 to
+  100% of weak solo nights at it: they never land the weak spot, so their kill rate stops covering the boss's
+  arrival all at once. A number that makes strong players feel the boss walls the weak ones.
+- **No weapon is a big step.** Sustained damage a second: flare gun 54 (plus a 3 m blast), pistol 59, shotgun 68,
+  rifle 85, SMG 101. Health that compounds against weapons that barely grow set the whole curve; the retune of #188
+  had to lower health, counts and the alive cap, not raise anything.
+- **Where the model is thin.** Players are bots, shoot only at what they can see (view range falls with the
+  light), turn to one of four sides at a time, and ignore barricades, repairs, grenades, melee, the geometry of
+  doors (which only cost points), ammunition (the night resupplies a full reserve every round; #152) and
+  penetration. Tonics do nothing in the game and so in the model. The report is a tool for comparing tunings, not a
+  prediction of a person's night; rerun it when the weapons, the player's health (#151) or the shop (#152) change.
 
 ## Using it
 

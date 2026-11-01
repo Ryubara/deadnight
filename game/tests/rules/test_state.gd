@@ -131,8 +131,8 @@ func test_a_snapshot_carries_each_living_zombies_health() -> void:
 	rules.apply(RulesAction.hit(1, zombie_id, RulesAction.ZONE_BODY, 25.0))
 	var copy := GameRules.new(RulesFixture.tuning(), 5)
 	copy.from_dict(bytes_to_var(var_to_bytes(rules.to_dict())))
-	# 60 health - 25 = 35 left: a 40 kills it, and it pays the kill, not another hit.
+	# Round 1 health less 25 is left: a hit of 40 kills it, and it pays the kill, not another hit.
 	var events := copy.apply(RulesAction.hit(1, zombie_id, RulesAction.ZONE_BODY, 40.0))
-	assert_float(events[0]["damage"]).is_equal(35.0)
+	assert_float(events[0]["damage"]).is_equal(RulesFixture.round_health(1) - 25.0)
 	assert_str(events.back()["cause"]).is_equal("killed")
 	assert_int(copy.points_of(1)).is_equal(200 + 4 + 60)

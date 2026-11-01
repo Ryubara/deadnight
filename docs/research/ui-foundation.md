@@ -120,6 +120,17 @@ menu through the router, or the main scene, clears the router when it is done, a
 screen clears it before (`RouterFixture.clear` in `game/tests/ui/router_fixture.gd`). The pair `test_main_scene.gd`
 plus `test_customize_screen.gd` (about 6 s) reproduces it under load without the 5-minute full run.
 
+### A screen takes focus only while it is the top (#190)
+
+The cause of #178 was also a product bug: `SceneTree.create_timer` keeps running while the router disables a covered
+screen (`process_mode` disabled does not stop it), so a screen pushed over the menu inside the 0.55 s entrance lost
+its focus to the covered menu's `Play`. `MainMenu` now waits with a child `Timer` (it stops with the disabled screen
+and is freed with it), brings its items in at once when it is covered (`screen_pause`, so they are there on return)
+and focuses only if `UIRouter.top()` is the menu (`finish_entrance`). The delay is `MainMenu.items_delay` (a static
+a test can set; `ITEMS_DELAY` is the design value) and `entered` says the items are up, so no test waits on wall
+time. No other screen waits before focusing: a screen that must (a timer, an `await`) checks the router's top
+afterwards, or uses a node timer. Capture: `game/tests/captures/menu_focus_cover.tscn`.
+
 ## Left out
 
 Settings widgets (slider, toggle, option selector) came with the settings screen: see [Settings](settings.md).

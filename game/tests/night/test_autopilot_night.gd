@@ -33,7 +33,7 @@ func test_the_bot_plays_rounds_earns_and_spends() -> void:
 		ticks = night.server.tick_count
 	assert_bool(state.over).is_false()
 	assert_int(state.rounds_started).is_greater_equal(ROUNDS)
-	assert_int(state.kills).is_greater(10)
+	assert_int(state.kills).is_greater_equal(RulesFixture.round_count(1))
 	assert_int(state.points_earned).is_greater(200)
 	assert_int(state.points_spent).is_greater_equal(CHEAP_DOOR)
 	assert_int(state.doors_bought).is_greater_equal(1)

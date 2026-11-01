@@ -1,39 +1,72 @@
 class_name SimWeapons
 extends RefCounted
-## What the modelled players shoot. The rules do not own weapons (the weapon work does), so the
-## simulator carries a stand-in table: damage per landed shot and shots per second, sustained
-## (reloading included). Replace the numbers with the real weapon data when it exists; the report
-## says which table it used.
+## What the modelled players shoot: the game's own weapons. Every number is read from the
+## definitions in `gameplay/weapons/defs/` (`WeaponCatalog`) and priced with `DamageModel`, the
+## functions the combat server uses, so the simulator and the night cannot drift apart. What the
+## simulator adds is only timing: a trigger pull every `fire_interval`, a reload when the magazine
+## is empty.
+##
+## Not modelled: ammunition left (the night resupplies every round and #152 will replace that),
+## penetration, and the flare gun's splash on a crowd beyond the zombies on the same side.
 
-const ZONE_MULTIPLIER := {&"head": 2.0, &"body": 1.0, &"limb": 0.75, &"weak": 1.0}
-
-## id -> [damage, shots per second]
-const TABLE := {
-	&"pistol": [28.0, 3.0],
-	&"weapon_shotgun": [95.0, 1.3],
-	&"weapon_rifle": [50.0, 4.2],
-	&"weapon_smg": [22.0, 8.0],
-	&"weapon_flare_gun": [160.0, 0.7],
-}
 const START := &"pistol"
+const SHOP_PREFIX := "weapon_"
+
+static var _defs: Dictionary[StringName, WeaponDef] = {}
 
 
-static func damage(weapon_id: StringName) -> float:
-	return TABLE[weapon_id][0]
+## The definition behind a shop or crane id (`weapon_rifle`) or a catalogue id (`rifle`).
+static func def(weapon_id: StringName) -> WeaponDef:
+	var key := StringName(String(weapon_id).trim_prefix(SHOP_PREFIX))
+	if not _defs.has(key):
+		_defs[key] = WeaponCatalog.get_def(key)
+	return _defs[key]
 
 
-static func rate(weapon_id: StringName) -> float:
-	return TABLE[weapon_id][1]
+## Loads every definition now, so batches run on several threads only ever read the cache.
+static func warm() -> void:
+	for id in WeaponCatalog.IDS:
+		def(id)
 
 
-## The best weapon among those owned, by damage per second.
+## Damage of one trigger pull that lands in `zone` at `distance` metres: every pellet, with the
+## weapon's own falloff and zone multiplier.
+static func damage(weapon_id: StringName, zone: StringName, distance: float) -> float:
+	var weapon := def(weapon_id)
+	return float(weapon.pellets) * DamageModel.damage(weapon, distance, zone)
+
+
+## Blast damage a neighbour `apart` metres from the burst takes (0 for a weapon without a blast).
+static func splash(weapon_id: StringName, apart: float) -> float:
+	return DamageModel.splash(def(weapon_id), apart)
+
+
+## Seconds between two trigger pulls.
+static func interval(weapon_id: StringName) -> float:
+	return def(weapon_id).fire_interval
+
+
+static func magazine(weapon_id: StringName) -> int:
+	return def(weapon_id).magazine_size
+
+
+static func reload_seconds(weapon_id: StringName) -> float:
+	return def(weapon_id).reload_time
+
+
+## Damage a second on the body at point blank, reloads included: what the player picks by.
+static func sustained_dps(weapon_id: StringName) -> float:
+	var weapon := def(weapon_id)
+	var cycle := float(weapon.magazine_size) * weapon.fire_interval + weapon.reload_time
+	return damage(weapon_id, &"body", 0.0) * float(weapon.magazine_size) / cycle
+
+
+## The best weapon among those owned, by sustained damage per second.
 static func best(owned: Array[StringName]) -> StringName:
 	var best_id := START
-	var best_dps := damage(START) * rate(START)
+	var best_dps := sustained_dps(START)
 	for weapon_id in owned:
-		if not TABLE.has(weapon_id):
-			continue
-		var dps := damage(weapon_id) * rate(weapon_id)
+		var dps := sustained_dps(weapon_id)
 		if dps > best_dps:
 			best_dps = dps
 			best_id = weapon_id
