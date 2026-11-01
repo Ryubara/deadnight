@@ -4,3 +4,4 @@
 resource_name = "line_paint"
 albedo_color = Color(0.847, 0.824, 0.737, 1)
 roughness = 1.0
+specular_mode = 2

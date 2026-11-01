@@ -2,9 +2,10 @@
 
 The kit is flat colour, so a lot texture is a grey pattern in a few flat tones (planks, block courses, slabs, ribs)
 that the material tints with one palette colour: the colour stays the palette's and the pattern says what the
-surface is. Every material projects its texture in world space (triplanar), so a CSG box of any size keeps the
-pattern at its real scale, and none needs UVs. Cheap on the Compatibility renderer: one 256 x 256 greyscale
-texture a material, no normal maps, no lights beyond the scene's.
+surface is. Every patterned material is the lot shader (`lot_surface.gdshader`, written here too), which projects
+the pattern in world space onto each face's own plane, so a CSG box of any size keeps it at its real scale and none
+needs UVs. Cheap on the Compatibility renderer: one 256 x 256 greyscale texture and one texture read a pixel, no
+specular term, no normal maps, no lights beyond the scene's.
 
 Run it from the repository root and commit what it writes (a fixed seed, so a rerun changes nothing):
 
@@ -21,7 +22,7 @@ OUT = Path("game/assets/lot")
 RES = "res://assets/lot"
 SIZE = 256
 
-# Texture -> the metres one tile of it covers in the world (the material's triplanar scale is 1 / metres).
+# Texture -> the metres one tile of it covers in the world (the shader's `metres_per_tile`).
 TILES = {
     "asphalt": 4.0,
     "gravel": 2.0,
@@ -236,34 +237,72 @@ def shutter(rng: random.Random) -> Image.Image:
     return img
 
 
-def material(name: str, tex: str | None, tint: str, emission: str | None) -> str:
-    def col(h: str) -> str:
-        h = h.lstrip("#")
-        r, g, b = (int(h[i : i + 2], 16) / 255 for i in (0, 2, 4))
-        return f"Color({r:.3f}, {g:.3f}, {b:.3f}, 1)"
+# One sample of the pattern a pixel, projected on the face's own plane in world space. A CSG box face is flat, so the
+# axis is chosen per vertex and is the same across the face; the projection is linear in the position, so the
+# interpolated coordinates are exact. Lambert diffuse with no specular: the lot is matte, and skipping the specular
+# term is cheaper per light than a StandardMaterial3D at roughness 1 (the software-rendered web build measured it).
+SHADER = """shader_type spatial;
+render_mode diffuse_lambert, specular_disabled;
 
-    head = '[gd_resource type="StandardMaterial3D" format=3]\n\n'
-    body = ["[resource]", f'resource_name = "{name}"']
+// The lot's paint (tools/world/build_lot_textures.py writes this file): a greyscale pattern times a palette tint,
+// projected in world space onto the face's dominant plane, metres_per_tile metres a repeat.
+uniform sampler2D pattern : source_color, filter_linear_mipmap, repeat_enable;
+uniform vec4 tint : source_color = vec4(1.0);
+uniform float metres_per_tile = 2.0;
+
+varying vec2 world_uv;
+
+void vertex() {
+	vec3 at = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	vec3 facing = abs((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec2 plane = vec2(at.x, -at.y);
+	if (facing.y >= facing.x && facing.y >= facing.z) {
+		plane = at.xz;
+	} else if (facing.x > facing.z) {
+		plane = vec2(at.z, -at.y);
+	}
+	world_uv = plane / metres_per_tile;
+}
+
+void fragment() {
+	ALBEDO = tint.rgb * texture(pattern, world_uv).rgb;
+	ROUGHNESS = 1.0;
+}
+"""
+
+
+def col(h: str) -> str:
+    h = h.lstrip("#")
+    r, g, b = (int(h[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    return f"Color({r:.3f}, {g:.3f}, {b:.3f}, 1)"
+
+
+def material(name: str, tex: str | None, tint: str, emission: str | None) -> str:
+    """A patterned surface is a ShaderMaterial of the lot shader; flat paint is a StandardMaterial3D, matte."""
     if tex:
-        head = (
-            f'[gd_resource type="StandardMaterial3D" load_steps=2 format=3]\n\n'
-            f'[ext_resource type="Texture2D" path="{RES}/textures/{tex}.png" id="1"]\n\n'
+        assert not emission, name
+        return "\n".join(
+            [
+                '[gd_resource type="ShaderMaterial" load_steps=3 format=3]',
+                "",
+                f'[ext_resource type="Shader" path="{RES}/lot_surface.gdshader" id="1"]',
+                f'[ext_resource type="Texture2D" path="{RES}/textures/{tex}.png" id="2"]',
+                "",
+                "[resource]",
+                f'resource_name = "{name}"',
+                'shader = ExtResource("1")',
+                'shader_parameter/pattern = ExtResource("2")',
+                f"shader_parameter/tint = {col(tint)}",
+                f"shader_parameter/metres_per_tile = {TILES[tex]:g}",
+                "",
+            ]
         )
-        body.append(f"albedo_color = {col(tint)}")
-        body.append('albedo_texture = ExtResource("1")')
-    else:
-        body.append(f"albedo_color = {col(tint)}")
-    body.append("roughness = 1.0")
+    body = ["[resource]", f'resource_name = "{name}"', f"albedo_color = {col(tint)}", "roughness = 1.0"]
+    body.append("specular_mode = 2")
     if emission:
         body.append("emission_enabled = true")
         body.append(f"emission = {col(emission)}")
-    if tex:
-        s = 1.0 / TILES[tex]
-        body.append(f"uv1_scale = Vector3({s:g}, {s:g}, {s:g})")
-        body.append("uv1_triplanar = true")
-        body.append("uv1_triplanar_sharpness = 4.0")
-        body.append("uv1_world_triplanar = true")
-    return head + "\n".join(body) + "\n"
+    return '[gd_resource type="StandardMaterial3D" format=3]\n\n' + "\n".join(body) + "\n"
 
 
 def main() -> None:
@@ -275,6 +314,7 @@ def main() -> None:
     }  # fmt: skip
     for i, (name, make) in enumerate(makers.items()):
         make(random.Random(1958 + i)).save(OUT / "textures" / f"{name}.png", optimize=True)
+    (OUT / "lot_surface.gdshader").write_text(SHADER, encoding="utf-8", newline="\n")
     for name, (tex, tint, emission) in MATERIALS.items():
         (OUT / "materials" / f"{name}.tres").write_text(
             material(name, tex, tint, emission), encoding="utf-8", newline="\n"
