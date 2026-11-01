@@ -10,10 +10,17 @@ extends UITransition
 const HALF_SCALE := 1.2
 
 var shader: Shader
+## Where the closing half stops, 0 to 1 of the shader's `progress`. A shader that already covers
+## the whole screen a little before 1 (the burn) stops there, so the screen is not held black.
+var close_to := 1.0
+## Where the opening half starts, for a shader that shows nothing new before this point.
+var reveal_from := 0.0
 
 
-func _init(shader_resource: Shader = null) -> void:
+func _init(shader_resource: Shader = null, close_end := 1.0, reveal_start := 0.0) -> void:
 	shader = shader_resource
+	close_to = close_end
+	reveal_from = reveal_start
 
 
 func play(ctx: UITransitionContext) -> void:
@@ -34,7 +41,9 @@ func play(ctx: UITransitionContext) -> void:
 
 func _sweep(ctx: UITransitionContext, material: ShaderMaterial, reveal: bool) -> void:
 	material.set_shader_parameter(&"reveal", 1.0 if reveal else 0.0)
-	material.set_shader_parameter(&"progress", 0.0)
+	var from := reveal_from if reveal else 0.0
+	var to := 1.0 if reveal else close_to
+	material.set_shader_parameter(&"progress", from)
 	ctx.overlay.show()
 	# Closing starts slowly and speeds up; opening starts fast and settles. Either way the
 	# screen is never left idle (cubic tails would hold on black or on nothing for frames).
@@ -42,9 +51,9 @@ func _sweep(ctx: UITransitionContext, material: ShaderMaterial, reveal: bool) ->
 	tween.set_ease(Tween.EASE_OUT if reveal else Tween.EASE_IN)
 	tween.tween_method(
 		func(value: float) -> void: material.set_shader_parameter(&"progress", value),
-		0.0,
-		1.0,
-		ctx.tokens.dur_screen * HALF_SCALE
+		from,
+		to,
+		ctx.tokens.dur_screen * HALF_SCALE * (to - from)
 	)
 	await tween.finished
 

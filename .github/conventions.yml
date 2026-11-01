@@ -67,7 +67,7 @@ commits:
 pull_requests:
   template: .github/pull_request_template.md
   # `##` headings of the description, in the template's order; the squash commit takes the pull request's title.
-  sections: [Summary, Checklist, Testing, AI use]
+  sections: [Summary, Checklist, Testing, Screenshots, AI use]
   filled: [Summary, Testing]                     # must hold text of their own, not just a comment or a placeholder
   placeholders: ["...", "<reason>"]              # template text that counts as empty when left unchanged
   local_paths: false                             # no scratch/, ../../ or C:\ in the text (images are the exception)
@@ -76,6 +76,9 @@ pull_requests:
   # Every task a pull request lists is finished: an unticked `- [ ]` item is refused. Work it does not finish lives in
   # its own issue.
   checklist: {section: Checklist, unchecked: refused}
+  # A pull request whose title area is listed shows what changed: an uploaded image or video in this section
+  # (`gh pr create|edit --attach`), or the `none` line with a reason in parentheses. Others write the none line.
+  screenshots: {section: Screenshots, none: "Screenshots: none", areas: [gameplay, ui, world, art]}
   ai_use:
     section: "AI use"
     written_by:
@@ -88,6 +91,7 @@ pull_requests:
     Summary: "One short paragraph: what this changes and why. If the change needs no documentation, add a line `Docs: none`. If this finishes an issue, add a line `Fixes #<number>` (one per issue)."
     Checklist: "List what this pull request finishes, each item ticked. Work it does not finish is not listed here: it lives in its own issue."
     Testing: "What was run and what came out: commands, tests added or changed, results as counts or pass/fail."
+    Screenshots: "Show what a player sees: captures or a short clip, attached with `gh pr create --body-file <file> --attach <png>` (never committed). When nothing visible changes, one line: `Screenshots: none (<reason>)`."
     "AI use": "Who wrote the work in this pull request's commits, not who opened the pull request."
 
 merge:
@@ -119,6 +123,7 @@ issues:
         expected: ["What you expected", true]
         actual: ["What happens", true]
         log: ["Log", false]
+        screenshots: ["Screenshots", false]
     task:
       name: Task
       description: A piece of work for a maintainer or an agent
@@ -131,6 +136,7 @@ issues:
         done: ["What \"done\" means", true]
         steps: ["Fix list or steps", false]
         blocked-by: ["Blocked by", false]
+        screenshots: ["Screenshots", true]
   # How many of each label family an open issue carries.
   labels:
     type: exactly-one

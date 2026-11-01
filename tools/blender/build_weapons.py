@@ -21,12 +21,14 @@ from pathlib import Path
 
 import bmesh
 import bpy
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import weaponlib as wl
 
 # Palette names, short.
 G, D, K, W, R = "Grey", "DarkGrey", "Black", "Wood", "Red"
+G2, GN, Y = "Grey2", "Green", "Yellow"
 
 
 def lever_rifle(b):
@@ -145,17 +147,59 @@ def fire_axe(b):
             b.box((-0.02, y, z), (0.016, 0.006, 0.016), G, bevel=0, detail=True)  # rivets
 
 
+def grenade(b):
+    """A 1950s-flavoured hand grenade: an olive egg ringed by three raised bands, a yellow band under the fuze
+    (the period marking for a high-explosive filler) and a squat grey fuze. The spoon and the pin are their own nodes
+    (`grenade_spoon`, `grenade_pin`) so the pin pull and the spoon flying off can show. Stands up along +Z; the origin
+    (the grip) is the centre of the body, where the fist closes."""
+    # Body: one turned egg, fuller at the bottom; the bands are short steps in the radius (the chamfers are in the
+    # profile, as on the bat).
+    b.lathe([(0.0, -0.215), (0.07, -0.21), (0.118, -0.185), (0.142, -0.15), (0.142, -0.13), (0.156, -0.115),
+             (0.156, -0.085), (0.146, -0.07), (0.15, -0.045), (0.164, -0.03), (0.164, 0.0), (0.15, 0.015),
+             (0.146, 0.04), (0.156, 0.055), (0.156, 0.085), (0.138, 0.1), (0.118, 0.125), (0.09, 0.145),
+             (0.0, 0.15)], GN, segs=14)  # fmt: skip
+    b.lathe([(0.112, 0.1), (0.14, 0.094), (0.14, 0.122), (0.1, 0.14), (0.07, 0.149)], Y, segs=14)  # HE band
+    b.lathe([(0.03, -0.226), (0.06, -0.218), (0.06, -0.205), (0.03, -0.2)], D, segs=14, detail=True)  # base plug
+    # Fuze: a neck, the body with the striker hump, a lug on the right for the spoon hinge.
+    b.cyl((0, 0, 0.13), (0, 0, 0.19), 0.062, D, segs=12, bevel=0)
+    b.box((0, 0, 0.215), (0.13, 0.11, 0.07), D, bevel=0.014)
+    b.box((0.055, 0, 0.245), (0.06, 0.07, 0.03), G2, bevel=0.008)  # striker housing
+    b.box((0.075, 0, 0.21), (0.03, 0.08, 0.05), G2, bevel=0, detail=True)  # hinge lug
+    for y in (-0.059, 0.059):
+        b.cyl((0.0, y, 0.215), (0.0, y * 1.12, 0.215), 0.016, G2, segs=8, bevel=0, detail=True)  # pin bosses
+
+
+def grenade_spoon(b):
+    """The spoon (safety lever): over the fuze and down the body's right side (+X). Pivots at its hinge."""
+    b.bar([(-0.035, 0.262), (0.06, 0.268), (0.095, 0.24), (0.15, 0.16), (0.175, 0.07), (0.178, -0.02)],
+          0.07, 0.022, G)  # fmt: skip
+
+
+def grenade_pin(b):
+    """The pin through the fuze (across Y) and its pull ring, on the -Y side. Pulls out along -Y."""
+    b.cyl((0.0, 0.07, 0.215), (0.0, -0.09, 0.215), 0.01, G2, segs=6, bevel=0)
+    b.arc((0.0, 0.215), 0.055, -90, 270, 10, 0.018, 0.018, G2, y=-0.1)
+
+
+# Weapons made of more than one node: {weapon: {node: (builder, pivot)}}. Each node is joined on its own, its origin
+# at the pivot (where it turns or slides from), parented to the weapon's main node so it keeps the weapon's origin.
+NODES = {
+    "grenade": {"Spoon": (grenade_spoon, (0.075, 0.0, 0.235)), "Pin": (grenade_pin, (0.0, 0.0, 0.215))},
+}
+
+
 # name: (builder, chunk). Guns fatten across Y and Z (their length runs along X); melee across X and Y.
 WEAPONS = {
     "lever_rifle": (lever_rifle, (1.0, 1.5, 1.5)),
     "double_shotgun": (double_shotgun, (1.0, 1.4, 1.5)),
     "baseball_bat": (baseball_bat, (1.35, 1.35, 1.0)),
     "fire_axe": (fire_axe, (1.0, 1.5, 1.0)),
+    "grenade": (grenade, (1.2, 1.2, 1.2)),  # drawn at 0.5 m, held at the kit grenade's 0.6 m
 }
 
 
-def stats(o):
-    """Triangles, loose parts (after welding coincident vertices), bounding box."""
+def stats(o, offset=(0.0, 0.0, 0.0)):
+    """Triangles, loose parts (after welding coincident vertices), bounding box (moved by `offset`)."""
     me = o.data
     me.calc_loop_triangles()
     tris = len(me.loop_triangles)
@@ -175,7 +219,7 @@ def stats(o):
             seen.add(u)
             stack.extend(e.other_vert(u) for e in u.link_edges)
     bm.free()
-    xs = [v.co for v in me.vertices]
+    xs = [v.co + Vector(offset) for v in me.vertices]
     mn = [min(c[i] for c in xs) for i in range(3)]
     mx = [max(c[i] for c in xs) for i in range(3)]
     return tris, parts, mn, mx
@@ -184,6 +228,8 @@ def stats(o):
 def export(o, path):
     bpy.ops.object.select_all(action="DESELECT")
     o.select_set(True)
+    for k in o.children:  # pin, spoon: separate nodes under the weapon
+        k.select_set(True)
     bpy.context.view_layer.objects.active = o
     bpy.ops.export_scene.gltf(
         filepath=str(path),
@@ -214,14 +260,33 @@ def main():
             b = wl.Builder(name, lod, mat, chunk)
             build(b)
             o = b.join()
+            kids = []
+            for node, (part, pivot) in NODES.get(name, {}).items():
+                nb = wl.Builder(f"{name}_{node}", lod, mat, chunk)
+                part(nb)
+                k = nb.join()
+                k.name = k.data.name = node
+                pivot = Vector(pivot) * Vector(chunk)
+                k.data.transform(Matrix.Translation(-pivot))
+                k.parent = o
+                k.location = pivot
+                kids.append(k)
             tris, parts, mn, mx = stats(o)
+            for k in kids:
+                kt, kp, kmn, kmx = stats(k, offset=k.location)
+                tris, parts = tris + kt, parts + kp
+                mn = [min(mn[i], kmn[i]) for i in range(3)]
+                mx = [max(mx[i], kmx[i]) for i in range(3)]
             folder = args.out / name
             folder.mkdir(parents=True, exist_ok=True)
             path = folder / (f"{name}.glb" if lod == "near" else f"{name}_far.glb")
             export(o, path)
             size = [round(mx[i] - mn[i], 3) for i in range(3)]
             report[f"{name}/{lod}"] = {"tris": tris, "parts": parts, "min": mn, "max": mx, "size": size}
-            print(f"WEAPON {name} {lod}: {tris} tris, {parts} parts, size {size}, file {path}")
+            nodes = f", nodes {[k.name for k in kids]}" if kids else ""
+            print(f"WEAPON {name} {lod}: {tris} tris, {parts} parts, size {size}{nodes}, file {path}")
+            for k in kids:
+                bpy.data.objects.remove(k)
             bpy.data.objects.remove(o)
     print("REPORT " + json.dumps(report))
 

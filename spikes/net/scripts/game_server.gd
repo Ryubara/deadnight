@@ -20,6 +20,16 @@ var _bytes_in := 0
 var _bytes_out := 0
 var _snapshot_bytes := 0
 var _snapshots_sent := 0
+var _last_tick_usec := 0
+var _dt_sum_ms := 0.0
+var _dt_max_ms := 0.0
+var _late_ticks := 0  # ticks that started 50 ms or more after the previous one (nominal 33.3)
+var _burst_ticks := 0  # ticks that started under 15 ms after the previous one (catching up)
+var _work_sum_us := 0
+var _work_max_us := 0
+var _ticks_in_window := 0
+var _cpu_ticks_last := 0.0
+var _cpu_usec_last := 0
 
 
 func start(transport: ServerTransport, port: int, seed_value: int = 1) -> void:
@@ -49,6 +59,8 @@ func _exit_tree() -> void:
 func _physics_process(_delta: float) -> void:
 	if _transport == null:
 		return
+	var started := Time.get_ticks_usec()
+	_record_tick_start(started)
 	_transport.poll()
 	_tick += 1
 	for peer in _peers.values():
@@ -56,6 +68,9 @@ func _physics_process(_delta: float) -> void:
 	if _tick % snapshot_every == 0:
 		for peer in _peers.values():
 			_send_snapshot(peer)
+	var work := Time.get_ticks_usec() - started
+	_work_sum_us += work
+	_work_max_us = maxi(_work_max_us, work)
 	if _tick % LOG_INTERVAL_TICKS == 0:
 		_log()
 
@@ -171,15 +186,74 @@ func _free_player_id() -> int:
 	return 0
 
 
+## How regular the tick is: the time between tick starts, and how long each tick's own work takes.
+func _record_tick_start(now_usec: int) -> void:
+	if _last_tick_usec > 0:
+		var dt := (now_usec - _last_tick_usec) / 1000.0
+		_dt_sum_ms += dt
+		_dt_max_ms = maxf(_dt_max_ms, dt)
+		_ticks_in_window += 1
+		if dt >= 50.0:
+			_late_ticks += 1
+		elif dt < 15.0:
+			_burst_ticks += 1
+	_last_tick_usec = now_usec
+
+
+## This process's CPU use since the last call, in percent of one core (Linux only; 0 elsewhere).
+func _cpu_percent() -> float:
+	var file := FileAccess.open("/proc/self/stat", FileAccess.READ)
+	if file == null:
+		return 0.0
+	var text := file.get_line()  # /proc files report length 0, so get_as_text() would be empty
+	if text.is_empty():
+		return 0.0
+	var fields := text.substr(text.rfind(")") + 2).split(" ")  # after "pid (comm) "
+	var cpu_ticks := float(fields[11]) + float(fields[12])  # utime + stime, in 1/100 s
+	var now := Time.get_ticks_usec()
+	var percent := 0.0
+	if _cpu_usec_last > 0:
+		percent = (cpu_ticks - _cpu_ticks_last) * 10000.0 / maxf(now - _cpu_usec_last, 1.0) * 100.0
+	_cpu_ticks_last = cpu_ticks
+	_cpu_usec_last = now
+	return percent
+
+
 func _log() -> void:
 	var seconds := float(LOG_INTERVAL_TICKS) / GameSim.TICK_RATE
 	var average := _snapshot_bytes / maxf(_snapshots_sent, 1.0)
+	var ticks := maxf(_ticks_in_window, 1.0)
 	print(
 		(
-			"[server] tick=%d players=%d in=%.0f B/s out=%.0f B/s snapshot_avg=%.1f B"
-			% [_tick, _peers.size(), _bytes_in / seconds, _bytes_out / seconds, average]
+			(
+				"[server] tick=%d players=%d in=%.0f B/s out=%.0f B/s snapshot_avg=%.1f B"
+				+ " | dt avg=%.1f max=%.1f ms late(>=50)=%d burst(<15)=%d work avg=%.0f max=%d us"
+				+ " cpu=%.1f%% mem=%.0f MiB"
+			)
+			% [
+				_tick,
+				_peers.size(),
+				_bytes_in / seconds,
+				_bytes_out / seconds,
+				average,
+				_dt_sum_ms / ticks,
+				_dt_max_ms,
+				_late_ticks,
+				_burst_ticks,
+				_work_sum_us / ticks,
+				_work_max_us,
+				_cpu_percent(),
+				OS.get_static_memory_usage() / 1048576.0,
+			]
 		)
 	)
+	_dt_sum_ms = 0.0
+	_dt_max_ms = 0.0
+	_late_ticks = 0
+	_burst_ticks = 0
+	_work_sum_us = 0
+	_work_max_us = 0
+	_ticks_in_window = 0
 	_bytes_in = 0
 	_bytes_out = 0
 	_snapshot_bytes = 0

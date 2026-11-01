@@ -14,19 +14,34 @@ from the Soldier's front right at a third-person camera height.
 """
 
 import argparse
+import math
 import re
 import sys
 from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Euler, Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kitlib
 import soldier_clips as sc
 
 TILE_W, TILE_H = 360, 440
+
+
+def key_moments(action, events, count=6):
+    """`count` moments of a clip: its key frames and event frames, the widest gaps split until there are enough."""
+    fs = {round(k.co[0]) for fc in sc.fcurves(action) for k in fc.keyframe_points}
+    fs |= {v for v in events.values() if isinstance(v, int)}
+    fs = sorted(fs)
+    while len(fs) < count:
+        i = max(range(len(fs) - 1), key=lambda j: fs[j + 1] - fs[j])
+        fs.insert(i + 1, (fs[i] + fs[i + 1]) // 2)
+    while len(fs) > count:  # drop the frame closest to its left neighbour, never the first or last
+        i = min(range(1, len(fs) - 1), key=lambda j: fs[j] - fs[j - 1])
+        fs.pop(i)
+    return fs
 
 
 def moments(name):
@@ -37,6 +52,50 @@ def moments(name):
     if len(ev) == 1:
         inner = sorted({ev[0], round(2 * n / 3) if ev[0] < n / 2 else round(n / 3)})
     return [0, *inner, n]
+
+
+# Events after which a part of the held weapon is gone (None: the whole weapon, thrown).
+GONE_AFTER = {"pin_out": "Pin", "spoon_off": "Spoon", "release": None}
+
+
+def attach(path, kit, turn=(180, 0, 0)):
+    """Import our weapon and hold it where the kit weapon `kit` sits, turned by `turn` (degrees, XYZ, in the weapon's
+    own axes: the grenade stands in the gun hold upside down, so it turns 180 about X); return its root object. The
+    kit copy's mesh is in the armature's 1/100 units, so the child drops that scale."""
+    before = set(bpy.data.objects)
+    kitlib.gltf_import(path)
+    new = [o for o in bpy.data.objects if o not in before]
+    root = next(o for o in new if o.type == "MESH" and (o.parent is None or o.parent not in new))
+    for m in root.data.materials:  # Workbench draws the material colour, not the atlas: the body's olive
+        m.diffuse_color = (0.067, 0.122, 0.016, 1)
+    root.parent = kit
+    root.matrix_parent_inverse = Matrix.Identity(4)
+    root.matrix_basis = (
+        Matrix.Scale(1 / kit.matrix_world.to_scale()[0], 4)
+        @ Euler([math.radians(v) for v in turn]).to_matrix().to_4x4()
+    )
+    return root
+
+
+def set_hidden(o, hidden):
+    for x in (o, *o.children_recursive):
+        x.hide_render = hidden
+
+
+def show_parts(weapon, events, frame):
+    """Hide the weapon's parts whose event has passed at `frame` (the pin after pin_out, the grenade after release)."""
+    if weapon is None:
+        return
+    for ev, part in GONE_AFTER.items():
+        at = events.get(ev)
+        gone = at is not None and (frame > at if part is None else frame >= at)
+        if part is None:
+            if gone:
+                set_hidden(weapon, True)
+        else:
+            for c in weapon.children:
+                if c.name.split(".")[0] == part:
+                    c.hide_render = gone
 
 
 def apply_pose(arm, up, upper_pose, base_pose):
@@ -55,6 +114,13 @@ def main():
     ap.add_argument("--soldier", required=True)
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--only", default="", help="comma-separated sheet names")
+    ap.add_argument(
+        "--weapon",
+        action="append",
+        default=[],
+        help="Class=path.glb=KitName: hold one of our weapons for a class's sheet, in the kit weapon's hold (the "
+        "Grenade sheet: Grenade=game/assets/weapons/grenade/grenade.glb=Shotgun)",
+    )
     args = ap.parse_args(argv)
     args.out = args.out.resolve()
 
@@ -69,6 +135,9 @@ def main():
     held = {re.sub(r"\.\d+$", "", o.name): o for o in held}
     for o in [o for o in bpy.data.objects if o.type == "EMPTY" and o.name.endswith("_end")]:
         o.hide_render = True
+    for spec in args.weapon:
+        cls, path, kit = spec.split("=")
+        held[cls] = attach(path, held[kit])
     sc.build(arm)
     arm.animation_data.action = None
     for t in list(arm.animation_data.nla_tracks):
@@ -111,12 +180,13 @@ def main():
 
     idle0 = sc.full(arm, sc.sample(acts["Idle"], 0))
     sheets = {}
-    for cls in sc.CLASSES:
+    for cls in dict.fromkeys([*sc.CLASSES, *(c["class"] for c in sc.CLIPS.values() if c["class"])]):
         names = [n for n, c in sc.CLIPS.items() if c["class"] == cls]
         sheets[cls] = [(n, None, cls) for n in names]
     sheets["Body"] = [(n, None, None) for n in ("Idle", "Walk", "Run", "HitReact", "Death", "Downed")]
     sheets["Split"] = [("Aim_Rifle", "Run", "Rifle"), ("Fire_Shotgun", "Walk", "Shotgun"),
                        ("Reload_Rifle", "Walk", "Rifle"), ("Swing_Melee", "Run", "Melee")]  # fmt: skip
+    sheets["GrenadeSplit"] = [(n, "Run", "Grenade") for n in sc.CLIPS if n.startswith("Grenade_")]
     only = {s for s in args.only.split(",") if s}
     tmp = args.out.parent / "_tiles"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -125,16 +195,16 @@ def main():
             continue
         grid = []
         for name, base, cls in rows:
-            weapon = sc.CLASSES.get(cls) if cls else None
+            weapon = sc.CLASSES.get(cls, cls) if cls else None
             for n, o in held.items():
-                o.hide_render = n != weapon
+                set_hidden(o, n != weapon)
             row = []
-            frames = moments(name)
+            frames = key_moments(acts[name], sc.CLIPS[name]["events"]) if sheet.startswith("Grenade") else moments(name)
             for i, f in enumerate(frames):
                 layer = sc.CLIPS[name]["layer"]
                 if base:  # base clip at the same moment of its own cycle
                     bn = sc.CLIPS[base]["frames"]
-                    bpose = sc.full(arm, sc.sample(acts[base], round(i / 4 * bn)))
+                    bpose = sc.full(arm, sc.sample(acts[base], round(i / len(frames) * bn)))
                 else:
                     bpose = idle0
                 clip = sc.full(arm, sc.sample(acts[name], f))
@@ -144,6 +214,7 @@ def main():
                     apply_pose(arm, up, None, clip)
                 over = f" over {base}" if base else ""
                 ev = [k for k, v in sc.CLIPS[name]["events"].items() if v == f or (isinstance(v, list) and f in v)]
+                show_parts(held.get(weapon), sc.CLIPS[name]["events"], f)
                 cu.body = f"{name}{over}\nframe {f}/{frames[-1]}" + (f"\n{ev[0]}" if ev else "")
                 path = tmp / f"{sheet}_{name}_{i}.png"
                 scene.render.filepath = str(path)
