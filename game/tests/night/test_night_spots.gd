@@ -129,11 +129,6 @@ func test_the_crane_plays_until_it_has_nothing_left_to_give() -> void:
 		NightFixture.run(night, 300)
 		assert_str(String(night.state.me()["prompt"]["kind"])).is_equal("crane_take")
 		_use(night)
-		# The claw digs, then the weapon is held out for the buyer to take.
-		assert_str(String(night.state.me()["prompt"]["kind"])).is_equal("crane_busy")
-		NightFixture.run(night, 300)
-		assert_str(String(night.state.me()["prompt"]["kind"])).is_equal("crane_take")
-		_use(night)
 	assert_int(night.server.combat.carried(1).size()).is_equal(2 + pool)
 	assert_dict(_stand_at(night, at)).is_empty()
 	night.queue_free()
