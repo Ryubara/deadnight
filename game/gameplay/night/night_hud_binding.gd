@@ -41,7 +41,7 @@ func _init(hud: Hud, state: ClientState, server: NightServer) -> void:
 func _on_event(event: Dictionary) -> void:
 	match event["type"]:
 		&"frame":
-			_on_frame(event)
+			_on_frame()
 		&"player_damaged":
 			_on_damaged(event)
 		_:
@@ -49,7 +49,7 @@ func _on_event(event: Dictionary) -> void:
 				_hud.state.apply_event(event)
 
 
-func _on_frame(frame: Dictionary) -> void:
+func _on_frame() -> void:
 	var state := _hud.state
 	var me := _state.me()
 	if me.is_empty():
@@ -65,10 +65,6 @@ func _on_frame(frame: Dictionary) -> void:
 		or weapon_name != state.weapon_name
 	):
 		state.set_ammo(me["ammo"], me["reserve"], weapon_name)
-	var left: int = frame["remaining"]
-	if left != state.zombies_left and state.phase == HudState.PHASE_ACTIVE:
-		state.zombies_left = left
-		state.changed.emit()
 	_set_prompt(me["prompt"])
 
 

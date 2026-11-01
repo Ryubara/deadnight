@@ -1,6 +1,7 @@
 # A door bought in the night: the lot's own `LotDoors` and `DoorNavigation` carry it out, so
 # the whole door goes (slabs and price label) and the server tick that sells it does not stall
 # on a bake.
+extends GdUnitTestSuite
 
 const DOOR := &"door_concession"
 ## A tick that sells a door must stay far below the bake the night used to wait for (420 ms).

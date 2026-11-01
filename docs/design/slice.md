@@ -54,7 +54,7 @@ page says what is in, and what is next.
 `Night.hud` (set before `start`) is fed by `NightHudBinding`, a client-side class that reads only
 `ClientState.event_received`: the rules' events go to `HudState.apply_event` as they are (round, points, party,
 fuel, purchases, game over), and each `frame` sets what the rules do not announce, the local player's health, the
-held weapon's ammunition, the zombies left and the prompt (`use_target`: a door's name and price, or a breach).
+held weapon's ammunition and the prompt (`use_target`: a door's name and price, or a breach).
 The server's `player_damaged` (now with `from`, where the blow came from) becomes the HUD's `player_hurt` with the
 bearing of the dead one. Weapons' events are not forwarded. The night screen and the autopilot capture each put a
 `Hud` in their own tree and hand it to the night; the HUD never reads a game object. Health and ammunition move
