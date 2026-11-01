@@ -45,7 +45,9 @@ func test_the_camera_gets_everywhere_the_player_does() -> void:
 	# of air, rounded up): if a passage were narrower than 1.8 m, this agent could not cross it and
 	# an area would drop out.
 	var lot := await _lot(LotFixture.door_table().keys())
-	var nav := LotNavigation.new(lot, CameraProbe.SHOULDER + CameraProbe.CAMERA_CLEAR + 0.05)
+	var nav := LotNavigation.new(
+		lot, CameraProbe.shoulder_offset() + CameraProbe.CAMERA_CLEAR + 0.05
+	)
 	await nav.settle(get_tree())
 	_assert_all_reachable(nav, LotFixture.door_table().keys())
 
