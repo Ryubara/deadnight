@@ -19,6 +19,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 UIRouter="*res://addons/gds_ui/router/ui_router.gd"
 Settings="*res://core/settings.gd"
+Audio="*res://core/audio/audio_service.gd"
 
 [gds_ui]
 
