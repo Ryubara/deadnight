@@ -170,6 +170,22 @@ func test_every_gun_has_a_flash_and_heavier_guns_flash_bigger() -> void:
 	assert_object(_effects.get("_flash")).is_null()
 
 
+func test_a_melee_swing_draws_no_flash_no_light_and_no_impact() -> void:
+	# The server reports a swing as a shot too; only a gun has a muzzle and bullets to land.
+	var melee: Array[WeaponDef] = []
+	for def in WeaponCatalog.all():
+		if def.is_melee():
+			melee.append(def)
+	assert_array(melee).is_not_empty()
+	for def in melee:
+		var hit := Vector3(0.0, 1.0, -1.0)
+		_effects.shot(def, Vector3(0.0, 1.5, 0.0), [hit], [hit], null)
+		_effects.shot(def, Vector3(0.0, 1.5, 0.0), [hit], [], _animation.muzzle_point())
+	assert_object(_effects.get("_flash")).is_null()
+	assert_int(get_tree().get_nodes_in_group(MuzzleFlash.LIT_GROUP).size()).is_equal(0)
+	assert_int(_effects.impacts.active_count()).is_equal(0)
+
+
 # --- the shot in the night's view ---
 
 

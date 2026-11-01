@@ -45,10 +45,12 @@ func _init() -> void:
 ## muzzle flash (on `anchor`, the weapon's muzzle point, when there is one), then a small puff on
 ## every zombie hit at `flesh` and a spark, puff and mark at every end that stopped short of the
 ## weapon's range on something else. A streak only when the weapon asks for one. A projectile
-## weapon draws only the flash: its body flies and bursts.
+## weapon draws only the flash: its body flies and bursts. A melee weapon draws nothing here.
 func shot(
 	def: WeaponDef, muzzle: Vector3, ends: Array, flesh: Array = [], anchor: Node3D = null
 ) -> void:
+	if def.is_melee():  # a swing has no muzzle: no flash, no impacts of a bullet
+		return
 	var aim := Vector3.ZERO
 	if not ends.is_empty():
 		aim = (ends[0] as Vector3) - muzzle

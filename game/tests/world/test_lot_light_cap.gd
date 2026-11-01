@@ -220,6 +220,8 @@ func test_each_fight_effect_adds_one_light_and_the_headroom_pays_for_it() -> voi
 	# The flashes are pooled and only one holds its light at a time: whichever weapon fires, one
 	# lit light is what a shot has on the map.
 	for def in WeaponCatalog.all():
+		if def.is_melee():
+			continue
 		effects.shot(def, Vector3(0, 1.5, 0), [Vector3(0, 1.0, -6)])
 		var lit := 0
 		for light: Light3D in effects.find_children("*", "Light3D", true, false):
