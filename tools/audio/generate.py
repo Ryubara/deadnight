@@ -22,13 +22,12 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent))
 
 import dsp
+import night_recipes
+import recipes
 import zombie_recipes
-from recipes import REGISTRY as BASE_REGISTRY
 from recipes import Entry
 
-REGISTRY: list[Entry] = [*BASE_REGISTRY, *zombie_recipes.REGISTRY]
-
-LOOPING = {"generator_hum"}  # not trimmed: its length is its loop
+REGISTRY: list[Entry] = [*recipes.REGISTRY, *night_recipes.REGISTRY, *zombie_recipes.REGISTRY]
 
 
 def seed_of(name: str, variant: int) -> int:
@@ -38,7 +37,7 @@ def seed_of(name: str, variant: int) -> int:
 def render(entry: Entry, variant: int) -> np.ndarray:
     rng = np.random.default_rng(seed_of(entry.name, variant))
     samples = np.nan_to_num(entry.recipe(rng))
-    if entry.name not in LOOPING:
+    if not entry.loop:
         if samples.ndim == 2:
             length = max(len(dsp.trim_tail(ch)) for ch in samples)
             samples = samples[:, :length]
