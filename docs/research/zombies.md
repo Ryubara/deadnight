@@ -16,7 +16,7 @@ and rig-sharing recipe (`docs/godot/rig-sharing.md`). Code: `game/gameplay/zombi
 | --- | --- | --- |
 | `ZombieBody` | one zombie as data: position, yaw, mode, target, timers (no health) | rules, nodes |
 | `ZombieBrain` | the state machine for one tick (static functions) | paths, nodes |
-| `ZombieSim` | all zombies at a fixed 30 Hz step: targets, repaths, separation, clearing the dead | the rules, drawing |
+| `ZombieSim` | all zombies at a fixed 30 Hz step (whatever deltas `tick` is given): targets, repaths, separation, clearing the dead | the rules, drawing |
 | `ZombiePathing`, `NavmeshPathing` | a path from A to B: straight, or `NavigationServer3D.map_get_path` | zombies |
 | `ZombieDirector` | rules events in (spawn, removal), the crowd cap, the `take_hit` seam | animation |
 | `ZombieRulesPort` | the one place a hit reaches `GameRules` (the rules own `ZombieState`, the health) | everything else |
@@ -43,7 +43,21 @@ and only if the player is still within 1.8 m), `STAGGER` (0.4 s, from any hit th
 - **Clients draw from bytes.** `ZombieCodec` is 2 + 12 bytes a zombie (id, position in cm, yaw, mode, episode, speed
   in 0.05 m/s steps): 482 B for 40 zombies. The demo scene runs every tick through encode and decode, so what is
   drawn is what a remote client would draw. The message type and rate belong to the net protocol (`spikes/net`) and
-  are not chosen here.
+  are not chosen here. What the fields cannot hold is under [Snapshot limits](#snapshot-limits).
+- **The client never reads the server's objects.** `ZombieHorde.apply_snapshot(bytes, delta)` draws from bytes alone; the
+  one number the views need from the tuning (the emerge time) is passed to `setup`. `publish` is the server half
+  (encode) joined to that, for single-player.
+- **A fixed step the caller cannot change.** `ZombieSim.tick(delta)` adds `delta` to a pending time and runs whole
+  1/30 s steps; time that is not a positive number is ignored and a stall catches up by at most 8 steps. So a 60 Hz or
+  uneven caller gives the same zombies as a 30 Hz one (before this, a 1/60 step put zombies inside solid boxes: the
+  push and the path-following are tuned for 1/30). Determinism is tested on a real navigation mesh with a wall
+  (`test_zombie_determinism.gd`): the same seed gives the same state hash on every one of 600 ticks, another seed does
+  not, and slicing the time finer does not change it.
+- **Coincident zombies part along a direction taken from their two ids** (not a random draw, not the clock) and the
+  pushes on one zombie add up to at most `separation_max_speed` (4 m/s). Before, an exact overlap divided a unit
+  vector by 0.001 and threw the pair 66 m in one tick; the old test offset the zombies by 0.01 m and never reached it.
+- **A hit needs a zombie the sim holds.** `take_hit` rejects an id that is still waiting for room (the rules know it,
+  the sim does not): no damage, no kill, no points.
 - **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death) built once from the model
   and added to every model's player (the rig-sharing recipe); one `AnimationTree` per zombie with a state machine
   (move = Idle/Walk/Run blended by speed, attack, stagger, die). Every tree is advanced by hand by `AnimationThrottle`
@@ -53,6 +67,20 @@ and only if the player is still within 1.8 m), `STAGGER` (0.4 s, from any hit th
   here until a crowd variant merges them), sim at 30 Hz independent of the physics rate.
 - **Light:** the sim asks a `lit_probe` callable at each repath and applies the rules' `speed_on_ground`.
 
+## Snapshot limits
+
+`ZombieCodec` fits 40 zombies in 482 bytes by spending few bits on each field. What a field cannot hold is pinned by
+a test (`test_zombie_director.gd`); the encoder clamps only the speed.
+
+| Field | Range | Past it |
+| --- | --- | --- |
+| id (u16) | 0 to 65535 | aliases: 65536 reads back as 0, 70000 as 4464. The rules never reuse an id, so a match would need 65 536 zombies; widen the field before a mode that gets near |
+| position per axis (s16, cm) | -327.68 to 327.67 m from the world origin | wraps: 328 m reads back as -327.36 m. The lot's areas are about 120 m across ([the map](../design/map.md)); a bigger map moves its origin or widens the field |
+| yaw (u8) | 256 steps of 1.4 degrees | rounds |
+| speed (u8) | 0 to 12.75 m/s in 0.05 steps | capped |
+| episode (u8) | 0 to 255 | wraps on purpose: only a change matters |
+| count (u16) | 65535 | a packet that says more than it holds is dropped |
+
 ## Numbers
 
 Machine: Windows 11, RTX 5080, Godot 4.7.2, Compatibility; the greybox lot with 2 players, 40 zombies chasing and
@@ -61,10 +89,11 @@ the monitor's 240 Hz (4.17 ms is the floor), as in the crowds spike.
 
 | Measure | Result | Crowds spike (40 zombies, same kind of machine) |
 | --- | --- | --- |
-| Sim step alone, 40 zombies (test) | 0.40 ms per 30 Hz tick | not measured |
+| Sim step alone, 40 zombies, straight-line pathing (test) | 0.40 ms per 30 Hz tick | not measured |
+| Sim step alone, 40 zombies, `NavmeshPathing` on the lot (headless, a loaded machine) | 0.65 to 0.75 ms per tick | not measured |
 | Headless frame, whole zombie code and views | 20: 0.52, 30: 0.77, 40: 0.95 ms (empty lot: 0.02 ms) | 40: baseline 3.87, all techniques 1.47 ms |
-| Windowed frame, 40 zombies | 4.19 ms mean (at the 4.17 floor), 7.1 ms 95th percentile | 40: baseline 6.48, all techniques 2.69 ms |
-| Windowed frame, empty lot | 4.17 ms mean, 5.1 ms 95th percentile | empty scene 0.72 ms |
+| Windowed frame, 40 zombies | 4.19 ms mean (on the 240 Hz display floor, so it says nothing; read the percentile), 7.1 ms 95th percentile | 40: baseline 6.48, all techniques 2.69 ms |
+| Windowed frame, empty lot | 4.17 ms mean (the floor), 5.1 ms 95th percentile | empty scene 0.72 ms |
 | Draw calls, 40 zombies / empty lot | 126 / 92 | 84 at 40 zombies (no lot) |
 | Animation trees advanced per frame | 11 to 13 of 41 | |
 | Snapshot | 482 to 530 B | |
@@ -74,16 +103,51 @@ no physics body. The full-frame cost sits under the display floor here, so the 9
 with zombies 7.1 ms) is the number to watch; the browser was **not** measured: the spike's factor of about 3 applies
 until it is.
 
+## Doors
+
+The lot's purchase doors are CSG slabs, and the navigation mesh is baked from the CSG boxes, so a closed slab is a
+wall to the dead. It stops being one the moment the rules emit `door_opened`, and two things follow, both on the
+server:
+
+- `LotDoors` (on the greybox's `Doors` node, `bind(rules)`) frees the door's slabs and label. The player walks
+  through, shots pass.
+- `DoorNavigation` rebakes the mesh. `NavmeshBaker.bake_async` reads the CSG boxes at once and bakes on the
+  navigation server's worker threads (about a second for the lot); the finished mesh replaces the region's, and
+  zombies walk the old mesh until it lands. Doors bought while a bake runs mark it stale and one more bake follows,
+  so the mesh always ends up matching the last door. The first mesh is baked synchronously in `setup(lot, doors)`,
+  with the doors as they stand, so a restored night starts with the right mesh.
+
+What was tried first: a disabled `NavigationLink3D` across each slab, switched on when the door opens. It joins the
+two sides, but the baked mesh leaves a band without mesh round a closed slab (the slab and the agent radius on each
+side, 1.3 m), and a zombie standing in the band is snapped back to the nearer edge at its next repath, 0.25 s later.
+At 3 m/s it covers 0.75 m, short of the band's far half, so it walked back and forth on the link for ever (measured:
+it stood at the door of the concession for 30 s). Links work only for an agent that keeps its path across them. A
+rebake has no band and needs no change in the sim.
+
+The night uses exactly this path: `NightWorld.build` bakes the first mesh through `DoorNavigation.setup`,
+`NightServer` binds the lot to its rules (`NightWorld.bind` is `LotDoors.bind`) and takes the open areas for the
+spawns from the doors that are open. The night's own rebake (a synchronous bake per door, which stalled the tick)
+was removed. A night that ends while a bake runs is harmless: `NavmeshBaker.bake_async` skips a callback whose object
+is gone. The autopilot's own path follows the mesh, so for the second after a purchase it walks the old one.
+
+Proof: `game/tests/zombies/test_door_navigation.gd` (for each of the nine sets of doors a zombie reaches every sample
+point of every open area and no path enters the footprint of a closed one; the doors bought one after the other
+through `GameRules`; a walking zombie gets in once the booth is bought; doors bought in quick succession end with the
+last in the mesh; and the control: a slab freed without a rebake leaves the dead outside) and
+`game/tests/world/test_lot_doors.gd` (a purchase through the rules removes the slabs, the collision and the label).
+
 ## Left open
 
 - Browser and weak-machine measurement of the full scene (the spike's follow-up still stands).
 - Client interpolation between 30 Hz snapshots: views jump to each decoded position. It belongs with the net client.
-- The model: the kit zombie is third-party (CC0) and not committed here (a maintainer decides); `ZombieView` needs it
-  at `game/assets/zombie_kit/zombie.glb` (git-ignored). Variants (#40) bring bodies with the same bones, which play
-  the same library; a body with other bone names needs the rig-sharing retarget player.
+- The model: done in #90. The views wear the committed variants (`ZombieModels`, walker by default; `ZombieHorde.variant`
+  or `ZombieModels.scene(name)` picks another). Each variant has a near and a far mesh; `ZombieView` swaps them with
+  visibility ranges at 18 m, so one mesh is drawn per zombie. Choosing a variant per zombie (by round or role) is
+  the director's, still open. A body with other bone names needs the rig-sharing retarget player.
 - Hit reactions by zone, crawlers, window break-ins: the animation set is #40's.
-- The navmesh is baked at load from the greybox's CSG boxes (`NavmeshBaker`); the world owner should bake once in the
-  editor. Heights are flat: a zombie keeps the height it spawned at.
+- The navmesh is baked at load from the greybox's CSG boxes (`NavmeshBaker`) and again for each door bought
+  ([Doors](#doors)); the first bake could be shipped from the editor, the rebakes cannot. Heights are flat: a zombie
+  keeps the height it spawned at.
 - Spawn point choice ignores whether an area is open (the rules' design): `spawn_points` is whatever the caller gives.
 
 ## Reproduce

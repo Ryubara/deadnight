@@ -12,13 +12,14 @@ signal delivered(events: Array)
 
 var latency_ticks: int = 0
 
-var _server: CombatServer
+## Anything with `apply(action: Dictionary) -> Array` (the combat server, the night server).
+var _server: RefCounted
 var _tick: int = 0
 var _requests: Array[Dictionary] = []
 var _answers: Array[Dictionary] = []
 
 
-func _init(p_server: CombatServer, p_latency_ticks: int = 0) -> void:
+func _init(p_server: RefCounted, p_latency_ticks: int = 0) -> void:
 	_server = p_server
 	latency_ticks = p_latency_ticks
 
@@ -40,7 +41,7 @@ func pump() -> void:
 	_tick += 1
 	while not _requests.is_empty() and _requests[0]["due"] <= _tick:
 		var action: Dictionary = bytes_to_var(_requests.pop_front()["bytes"])
-		var events := _server.apply(action)
+		var events: Array = _server.apply(action)
 		_answers.append({"due": _tick + latency_ticks, "bytes": var_to_bytes(events)})
 	while not _answers.is_empty() and _answers[0]["due"] <= _tick:
 		delivered.emit(bytes_to_var(_answers.pop_front()["bytes"]))

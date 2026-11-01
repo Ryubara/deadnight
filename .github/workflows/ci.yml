@@ -1,7 +1,9 @@
 # Deadnight's build and tests with the same pinned Godot agents use: the runner's work folder becomes a GDStudio
 # workspace, the kit's `gds workspace init` fetches Godot from tools.toml (hash-checked, cached), and the project is
 # imported and run headless. Any engine or script error fails the job, since Godot itself exits 0 on most of them.
-# `build-ok` is the one required check, so the jobs above it can change freely.
+# The `web` job exports the game for the browser and runs it in headless Chromium (docs/research/web-export.md).
+# The `deploy` job, on main only, publishes that same build to Railway (docs/research/web-export.md, "Playing the web
+# build"). `build-ok` is the one required check, so the jobs above it can change freely.
 # Actions are pinned to a full commit SHA; the tag is in the comment beside it.
 name: ci
 
@@ -9,6 +11,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch: # redeploys the web build of main's head without a push
 
 permissions:
   contents: read
@@ -70,9 +73,108 @@ jobs:
             tests.log
           if-no-files-found: warn
 
+  web:
+    # The web export, in a browser. Godot exports with the pinned templates (tools.toml `godot-templates`, hash-checked by
+    # `gds workspace init`, about 1 GB, so the download cache matters), the build is served by tools/web_smoke/smoke.py,
+    # and headless Chromium (Playwright) reaches the main menu and the wardrobe, starts a night and plays it a while.
+    # Any console error, page error or failed request fails the job. The export has no threads (preset option
+    # `variant/thread_support=false`), so the page needs no cross-origin isolation headers, which a Discord Activity
+    # cannot send anyway. Frame times on a runner come from a software renderer: recorded in the artifact, never gated.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repos/deadnight
+          persist-credentials: false
+          lfs: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Ryubara/gdstudio
+          path: repos/gdstudio
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/downloads
+          key: tools-web-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Make the workspace and fetch the pinned Godot and its export templates
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,godot-templates
+      - name: Import the project
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --import 2>&1 | tee import.log
+          ! grep -E "^(SCRIPT )?ERROR" import.log
+      - name: Export the web build
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          mkdir -p repos/deadnight/build/web
+          "$godot" --headless --path repos/deadnight/game --export-release Web 2>&1 | tee export.log
+          if grep -E "ERROR" export.log; then exit 1; fi
+          test -s repos/deadnight/build/web/index.pck
+          # The JSON catalogues are read as plain files: without `*.json` in the export filter they are missing.
+          for name in parts.json clips.json zombies.json; do grep -aq "$name" repos/deadnight/build/web/index.pck; done
+      - name: Install the browser
+        run: uv run --with playwright==1.64.1 playwright install --with-deps chromium-headless-shell
+      - name: Open the build in a browser
+        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/smoke.py repos/deadnight/build/web smoke
+      - name: Upload the build
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-build
+          path: repos/deadnight/build/web
+          if-no-files-found: warn
+      - name: Upload the browser run
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-smoke
+          path: |
+            smoke
+            export.log
+          if-no-files-found: warn
+
+  deploy:
+    # Publishes the build `web` just exported and smoke-tested to the Railway service `web` (a Caddy container, see
+    # deploy/web/), so the game at its public URL is always the head of main. Only main gets here: a pull request, and
+    # a fork's run, has no secret. The project token (a Railway project token for gdstudio-net-test, environment
+    # production) is the repository secret RAILWAY_TOKEN; without it the job warns and stops, it does not fail.
+    # Railway CLI pinned to the version the deploy was tested with.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [godot, web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - name: Check the deploy token
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::warning title=Not deployed::The repository secret RAILWAY_TOKEN is not set (docs/research/web-export.md)."
+            echo "skip=true" >> "$GITHUB_ENV"
+          fi
+      - if: env.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: deploy/web
+      - if: env.skip != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: web-build
+          path: build/web
+      - if: env.skip != 'true'
+        run: npm install --global @railway/cli@5.63.1
+      - name: Deploy and wait for the health check
+        if: env.skip != 'true'
+        run: bash deploy/web/deploy.sh build/web "$GITHUB_SHA"
+
   build-ok:
     if: always()
-    needs: [godot]
+    needs: [godot, web]
     runs-on: ubuntu-24.04
     steps:
       - name: Every job passed

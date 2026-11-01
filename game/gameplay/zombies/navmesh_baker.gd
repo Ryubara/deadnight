@@ -13,11 +13,37 @@ const AGENT_MAX_SLOPE := 45.0
 
 
 static func bake(root: Node3D) -> NavigationMesh:
+	var navmesh := new_navmesh()
+	NavigationServer3D.bake_from_source_geometry_data(navmesh, source_data(root))
+	return navmesh
+
+
+## Bakes on the server's worker threads, from the scene as it is now (the geometry is read before
+## this returns, so the scene may change at once). `done` is called on the main thread with the
+## finished mesh, unless its object is gone by then (a night that ended during the bake). One bake
+## of the lot takes about a second.
+static func bake_async(root: Node3D, done: Callable) -> void:
+	var navmesh := new_navmesh()
+	NavigationServer3D.bake_from_source_geometry_data_async(
+		navmesh,
+		source_data(root),
+		func() -> void:
+			if done.is_valid():
+				done.call(navmesh)
+	)
+
+
+## The collision boxes of `root`'s CSG shapes, as the baker's input.
+static func source_data(root: Node3D) -> NavigationMeshSourceGeometryData3D:
 	var data := NavigationMeshSourceGeometryData3D.new()
 	for node in root.find_children("*", "CSGShape3D", true, false):
 		var shape := node as CSGShape3D
 		if shape.use_collision:
 			data.add_faces(_box_faces(_size_of(shape)), shape.global_transform)
+	return data
+
+
+static func new_navmesh() -> NavigationMesh:
 	var navmesh := NavigationMesh.new()
 	navmesh.cell_size = CELL_SIZE
 	navmesh.cell_height = CELL_SIZE
@@ -25,7 +51,6 @@ static func bake(root: Node3D) -> NavigationMesh:
 	navmesh.agent_radius = AGENT_RADIUS
 	navmesh.agent_max_climb = AGENT_MAX_CLIMB
 	navmesh.agent_max_slope = AGENT_MAX_SLOPE
-	NavigationServer3D.bake_from_source_geometry_data(navmesh, data)
 	return navmesh
 
 

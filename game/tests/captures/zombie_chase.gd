@@ -5,7 +5,6 @@ extends Node3D
 ## `--empty` (no zombies at all, to measure the empty lot), `--frames=N` (bench length).
 
 const GREYBOX := preload("res://world/drive_in_greybox.tscn")
-const ZOMBIE_MODEL := "res://assets/zombie_kit/zombie.glb"
 const PLAYER_SPEED := 5.0
 ## Waypoints player 1 runs between (metres), then stands at the last.
 const ROUTE: Array[Vector3] = [
@@ -107,9 +106,8 @@ func _make_zombies(greybox: Node) -> void:
 	var director := ZombieDirector.new(_rules, sim, points)
 	director.player_struck.connect(func(_p: int, _z: int, _d: float) -> void: _strikes += 1)
 	_horde = ZombieHorde.new()
-	_horde.model_scene = load(ZOMBIE_MODEL)
 	add_child(_horde)
-	_horde.setup(director, _camera)
+	_horde.setup(director, _camera, cap.emerge_seconds)
 	if not _args.has("empty"):
 		_rules.apply(RulesAction.start())
 		_rules.apply(RulesAction.skip_break())
@@ -128,9 +126,12 @@ func _crowd_tuning() -> RulesTuning:
 	rounds.spawn_rate_per_extra_player = 0.0
 	rounds.first_spawn_delay = 0.1
 	rounds.speed_base = 1.8
-	rounds.sprinter_from_round = 1
-	rounds.sprinter_chance_step = 0.3
-	rounds.sprinter_chance_max = 0.3
+	# Three in ten run: the runner type from round 1, with no first-round exact count.
+	var runner := tuning.roster.type_of(&"runner")
+	runner.first_round = 1
+	runner.share_start = 0.3
+	runner.share_step = 0.0
+	runner.share_max = 0.3
 	return tuning
 
 

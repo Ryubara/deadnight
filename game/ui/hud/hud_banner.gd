@@ -1,0 +1,137 @@
+class_name HudBanner
+extends HudTicket
+## The big announcements, one at a time, as a marquee board with a row of bulbs: the round
+## starting, the round survived, the lights going out for good, and the name of an area you walk
+## into. A round or game-over banner is never replaced by an area one. Time-driven (`advance`), so
+## captures repeat; with reduced motion the board fades but does not grow and the bulbs hold still.
+
+enum Rank { AREA, ROUND, END }
+
+const IN_TIME := 0.35
+const HOLD_TIME := 2.4
+const OUT_TIME := 0.5
+## The board grows from this scale to full size as it appears (movement: skipped when reduced).
+const POP_FROM := 0.92
+## Fixed width: a long title shrinks to fit instead of widening the board into the readouts.
+const WIDTH := 560.0
+## Title size of a round banner ("ROUND 12" must fit the width).
+const ROUND_SIZE := 96
+const BULB_GAP := 36.0
+const BULB_RADIUS := 5.0
+const CHASE := 5.0
+
+var title := ""
+var subtitle := ""
+var showing := false
+
+var _title := HudStyle.label("", ROUND_SIZE, tokens.accent_bright, true)
+var _subtitle := HudStyle.label("", HudStyle.MEDIUM, tokens.ink, false)
+var _age := 0.0
+var _hold := HOLD_TIME
+var _rank := Rank.AREA
+var _clock := 0.0
+
+
+func _init() -> void:
+	super()
+	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_child(_title)
+	body.add_child(_subtitle)
+	custom_minimum_size.x = WIDTH
+	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	visible = false
+
+
+func _process(delta: float) -> void:
+	advance(delta)
+
+
+func on_event(event: Dictionary) -> void:
+	match StringName(event.get("type", &"")):
+		&"round_started":
+			var count := int(event["zombie_count"])
+			show_banner(
+				"ROUND %d" % int(event["round"]),
+				"THE NIGHT BEGINS" if int(event["round"]) == 1 else "%d COMING" % count,
+				Rank.ROUND
+			)
+		&"round_ended":
+			show_banner("ROUND %d SURVIVED" % int(event["round"]), "CATCH YOUR BREATH", Rank.ROUND)
+		&"game_over":
+			var reached := int(event.get("round_reached", state.round_number))
+			show_banner("THE LIGHTS GO OUT", "YOU LASTED TO ROUND %d" % reached, Rank.END, INF)
+		&"area_entered":
+			show_banner(str(event["area"]).to_upper(), "NOW ENTERING", Rank.AREA, 1.6)
+
+
+func show_banner(main: String, sub: String, rank: Rank, hold := HOLD_TIME) -> void:
+	if showing and rank < _rank and _age < IN_TIME + _hold + OUT_TIME:
+		return
+	title = main
+	subtitle = sub
+	_rank = rank
+	_hold = hold
+	_age = 0.0
+	showing = true
+	var wanted := ROUND_SIZE if rank == Rank.ROUND else HudStyle.BIG
+	_title.add_theme_font_size_override(&"font_size", _fit_size(main, wanted))
+	_title.add_theme_color_override(
+		&"font_color", tokens.hot if rank == Rank.END else tokens.accent_bright
+	)
+	HudStyle.set_text(_title, main)
+	HudStyle.set_text(_subtitle, sub)
+	visible = true
+	_apply()
+
+
+## The largest size, at most `wanted`, at which `text` fits the board on one line.
+func _fit_size(text: String, wanted: int) -> int:
+	var font := tokens.display_font(tokens.embolden_display * 0.5)
+	var room := WIDTH - float(tokens.space_md * 2 + 10)
+	return HudStyle.fit_size(font, text, wanted, room, HudStyle.MEDIUM)
+
+
+## Moves the banner `delta` seconds on.
+func advance(delta: float) -> void:
+	_clock += delta
+	if not showing:
+		return
+	_age += delta
+	if _age >= IN_TIME + _hold + OUT_TIME:
+		showing = false
+		visible = false
+		return
+	_apply()
+	queue_redraw()
+
+
+## 0 to 1 how much of the banner shows: in, held, out.
+func presence() -> float:
+	if not showing:
+		return 0.0
+	if _age < IN_TIME:
+		return _age / IN_TIME
+	if _age < IN_TIME + _hold:
+		return 1.0
+	return 1.0 - (_age - IN_TIME - _hold) / OUT_TIME
+
+
+func _apply() -> void:
+	var shown := presence()
+	modulate.a = shown
+	pivot_offset = size * 0.5
+	scale = Vector2.ONE * (1.0 if UIMotion.reduced else lerpf(POP_FROM, 1.0, shown))
+
+
+func _draw() -> void:
+	super()
+	var count := int(size.x / BULB_GAP)
+	var phase := 0 if UIMotion.reduced else int(_clock * CHASE)
+	for row in [10.0, size.y - 10.0]:
+		for i in count:
+			var lit := (i + phase) % 3 == 0
+			var at := Vector2((i + 0.5) * size.x / float(count), row)
+			if lit:
+				draw_circle(at, BULB_RADIUS * 2.2, Color(tokens.accent, 0.2))
+			draw_circle(at, BULB_RADIUS, tokens.accent_bright if lit else tokens.outline)

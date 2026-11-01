@@ -9,8 +9,18 @@ extends RefCounted
 ## apart with a cheap spatial hash, and are shot at through their hit zones (`Hitbox`), which the
 ## weapon code tests analytically. That keeps 40 of them well under a millisecond of script.
 
-## The step every caller uses, so server and tests agree.
+## The step the sim advances by, whatever deltas its caller passes: server and tests agree.
 const STEP := 1.0 / 30.0
+## After a stall the sim runs at most this many steps to catch up and drops the rest of the time
+## (a long hitch must not freeze the server in a burst of ticks, nor throw zombies about).
+const MAX_CATCH_UP_STEPS := 8
+## Float sums of caller deltas land a hair under a whole step; this much counts as whole.
+const STEP_EPSILON := 1e-6
+## Two zombies closer than this (metres) have no direction between them to push along.
+const COINCIDENT_DISTANCE := 0.001
+## Multipliers of the golden-ratio family that spread a pair of ids evenly round a circle.
+const _PAIR_ANGLE_A := 0.7548776662
+const _PAIR_ANGLE_B := 0.5698402910
 
 var tuning: ZombieTuning
 ## Used for the speed of a zombie on lit ground; without it light changes nothing.
@@ -22,6 +32,8 @@ var zombies: Dictionary[int, ZombieBody] = {}
 
 var _rng := RandomNumberGenerator.new()
 var _grid: Dictionary[Vector2i, Array] = {}
+## Time handed to `tick` that has not made a whole step yet.
+var _pending: float = 0.0
 
 
 func _init(p_tuning: ZombieTuning = null, p_seed: int = 0) -> void:
@@ -80,17 +92,32 @@ func yaw_of(zombie_id: int) -> float:
 	return zombies[zombie_id].yaw if zombies.has(zombie_id) else 0.0
 
 
-## One fixed step. `targets` maps a player id to where they stand: only players a zombie may chase
-## (leave out the downed). Returns the events: `zombie_struck` (zombie_id, target_id, damage) and
-## `zombie_cleared` (zombie_id).
+## Advances the zombies by `delta` seconds in whole `STEP`s: the sim only ever steps by `STEP`, so
+## the caller's frame rate cannot change what happens (a 60 Hz caller steps every second call, a
+## 20 Hz one steps twice some calls). Time that is not a positive number is ignored, and a stall
+## is caught up by at most `MAX_CATCH_UP_STEPS`. `targets` maps a player id to where they stand:
+## only players a zombie may chase (leave out the downed). Returns the events of all the steps
+## taken: `zombie_struck` (zombie_id, target_id, damage) and `zombie_cleared` (zombie_id).
 func tick(delta: float, targets: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not is_finite(delta) or delta <= 0.0:
+		return events
+	_pending = minf(_pending + delta, MAX_CATCH_UP_STEPS * STEP)
+	while _pending >= STEP - STEP_EPSILON:
+		_pending = maxf(_pending - STEP, 0.0)
+		events.append_array(_step(targets))
+	return events
+
+
+## One fixed step.
+func _step(targets: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	for zombie: ZombieBody in zombies.values():
 		if zombie.mode == ZombieBody.Mode.DYING:
-			zombie.mode_time += delta
+			zombie.mode_time += STEP
 		else:
-			_think(zombie, delta, targets, events)
-	_separate(delta)
+			_think(zombie, STEP, targets, events)
+	_separate(STEP)
 	_clear_the_dead(events)
 	return events
 
@@ -183,19 +210,31 @@ func _push_on(zombie: ZombieBody, radius: float) -> Vector3:
 			for other: ZombieBody in _grid.get(cell + Vector2i(dx, dz), []):
 				if other != zombie:
 					push += _push_from(zombie, other, radius)
-	return push
+	# A pile of coincident zombies adds up a push from each; the sum is bounded so no tick throws one.
+	return push.limit_length(tuning.separation_max_speed)
 
 
+## The push on `zombie` from `other`, at most `separation_speed`, along the line between them.
 func _push_from(zombie: ZombieBody, other: ZombieBody, radius: float) -> Vector3:
 	var away := zombie.position - other.position
 	away.y = 0.0
 	var d := away.length()
 	if d >= radius:
 		return Vector3.ZERO
-	if d < 0.001:  # exactly on top: split by id so the pair separates, deterministically
-		away = Vector3.RIGHT if zombie.id < other.id else Vector3.LEFT
-		d = 0.001
+	if d < COINCIDENT_DISTANCE:
+		return _apart_direction(zombie.id, other.id) * tuning.separation_speed
 	return away / d * tuning.separation_speed * (1.0 - d / radius)
+
+
+## The way the lower id of a pair pushes off the higher when they stand on one point; the higher
+## goes the opposite way. A function of the two ids alone (no clock, no random draw), spread
+## round the circle so a pile does not part along one line.
+static func _apart_direction(id: int, other_id: int) -> Vector3:
+	var low := mini(id, other_id)
+	var high := maxi(id, other_id)
+	var angle := fposmod(low * _PAIR_ANGLE_A + high * _PAIR_ANGLE_B, 1.0) * TAU
+	var direction := Vector3(cos(angle), 0.0, sin(angle))
+	return direction if id < other_id else -direction
 
 
 func _clear_the_dead(events: Array[Dictionary]) -> void:

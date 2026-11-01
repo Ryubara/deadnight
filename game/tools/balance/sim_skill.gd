@@ -1,0 +1,133 @@
+class_name SimSkill
+extends RefCounted
+## How a modelled player plays. Three levels, each a handful of numbers, not a brain: the simulator
+## asks "how many of its shots land, where, how often does it avoid a blow, how well does it
+## spend", never "what would a person do". The numbers are assumptions, written down here so a
+## change is a reviewed change; docs/design/rounds.md says what they stand for.
+
+const WEAK := &"weak"
+const AVERAGE := &"average"
+const STRONG := &"strong"
+const ALL: Array[StringName] = [WEAK, AVERAGE, STRONG]
+
+var id: StringName = AVERAGE
+## Share of shots that land on a walker (before the type's own `hit_chance`).
+var accuracy: float = 0.65
+## Of the shots that land: the share that hit the head, the limbs, and (against a boss) the weak
+## spot.
+var head_rate: float = 0.15
+var limb_rate: float = 0.1
+var weak_spot_rate: float = 0.45
+## Share of time spent actually shooting (the rest is moving, reloading, looking).
+var uptime: float = 0.85
+## Chance a plain blow misses the player (kiting, backing off, a step aside).
+var dodge: float = 0.3
+## How well a telegraphed blow is read: the chance a blow lands is multiplied by
+## `exp(-telegraph_seconds * read)`.
+var read: float = 0.5
+## Share of the approach spent on lit ground (the zombies slow to the lit speed there).
+var light_use: float = 0.35
+## What the player buys, first to last.
+var shopping: Array[StringName] = []
+
+
+## The same player on another night: every number moved by up to `spread` either way (a good night,
+## a bad night), so a level is a spread of nights and not one fixed outcome.
+func jittered(rng: RandomNumberGenerator, spread: float) -> SimSkill:
+	var copy := SimSkill.new()
+	copy.id = id
+	copy.shopping = shopping
+	copy.accuracy = _wobble(accuracy, rng, spread)
+	copy.head_rate = _wobble(head_rate, rng, spread)
+	copy.limb_rate = limb_rate
+	copy.weak_spot_rate = _wobble(weak_spot_rate, rng, spread)
+	copy.uptime = _wobble(uptime, rng, spread)
+	copy.dodge = _wobble(dodge, rng, spread)
+	copy.read = _wobble(read, rng, spread)
+	copy.light_use = _wobble(light_use, rng, spread)
+	return copy
+
+
+static func _wobble(value: float, rng: RandomNumberGenerator, spread: float) -> float:
+	return minf(value * rng.randf_range(1.0 - spread, 1.0 + spread), 0.95)
+
+
+static func named(skill_id: StringName) -> SimSkill:
+	var skill := SimSkill.new()
+	skill.id = skill_id
+	match skill_id:
+		WEAK:
+			skill.accuracy = 0.45
+			skill.head_rate = 0.06
+			skill.limb_rate = 0.12
+			skill.weak_spot_rate = 0.2
+			skill.uptime = 0.75
+			skill.dodge = 0.12
+			skill.read = 0.25
+			skill.light_use = 0.1
+			(
+				skill
+				. shopping
+				. assign(
+					[
+						&"door_concession",
+						&"crane_play",
+						&"weapon_shotgun",
+						&"door_booth",
+						&"tonic_hearty",
+						&"crane_play",
+						&"weapon_rifle",
+						&"tonic_second_wind",
+						&"door_back_lot",
+						&"tonic_fleet",
+						&"tonic_quick_hands",
+					]
+				)
+			)
+		STRONG:
+			skill.accuracy = 0.82
+			skill.head_rate = 0.3
+			skill.limb_rate = 0.08
+			skill.weak_spot_rate = 0.75
+			skill.uptime = 0.92
+			skill.dodge = 0.5
+			skill.read = 0.9
+			skill.light_use = 0.55
+			(
+				skill
+				. shopping
+				. assign(
+					[
+						&"weapon_shotgun",
+						&"tonic_hearty",
+						&"weapon_rifle",
+						&"tonic_quick_hands",
+						&"tonic_second_wind",
+						&"tonic_fleet",
+						&"door_concession",
+						&"door_booth",
+						&"crane_play",
+						&"door_back_lot",
+					]
+				)
+			)
+		_:
+			(
+				skill
+				. shopping
+				. assign(
+					[
+						&"weapon_shotgun",
+						&"door_concession",
+						&"tonic_hearty",
+						&"weapon_rifle",
+						&"tonic_second_wind",
+						&"door_booth",
+						&"crane_play",
+						&"tonic_quick_hands",
+						&"tonic_fleet",
+						&"door_back_lot",
+					]
+				)
+			)
+	return skill

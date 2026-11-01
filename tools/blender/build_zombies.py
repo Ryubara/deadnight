@@ -1,11 +1,10 @@
 """Build Deadnight's zombie variants from the Quaternius Zombie (CC0), one glTF per variant and level of detail.
 
-Run with the pinned Blender, headless (the outputs are third-party-derived and stay out of the repository until a
-maintainer decides; build them into scratch):
+Run with the pinned Blender, headless (the outputs are CC0-derived and committed with their licence entry, issue #90):
 
     blender -b --factory-startup -P tools/blender/build_zombies.py -- \
         --zombie <workspace>/refs/polypizza/VlXjG0N8Eg/model.glb \
-        --out <workspace>/scratch/deadnight/<branch>/zombies
+        --out game/assets/characters/zombies
 
 Per variant it writes `zombie_<name>.glb`: one skeleton with all 16 clips and two skinned meshes, `Zombie_Mesh`
 (gameplay LOD) and `Zombie_Far` (far LOD; the game switches them with visibility ranges), plus one shared `zombie_atlas.png` and `zombies.json` (triangle counts). The design is in

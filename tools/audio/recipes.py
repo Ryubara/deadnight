@@ -396,6 +396,52 @@ class Entry:
     peak_db: float = -3.0  # the file's peak; the game balances loudness with the catalog's volume_db
 
 
+# ---- grenades: a spoon's tick, a throw's whoosh, a bounce on asphalt, the blast ---------------------------------
+
+
+def grenade_tick(rng: np.random.Generator) -> np.ndarray:
+    """The fuse's tick: a dry, short metal click with a little ring, the same pitch every time so a cook can be timed."""
+    click = _metal_click(rng, _jv(rng, 2300, 0.02), ring=0.02)
+    return dsp.fade(click * 0.9, 0.0003, 0.02)
+
+
+def grenade_throw(rng: np.random.Generator) -> np.ndarray:
+    """The pin and the spoon flying off, then a short arm whoosh."""
+    pin = _metal_click(rng, _jv(rng, 1700), ring=0.03)
+    spoon = _metal_click(rng, _jv(rng, 1100), ring=0.05)
+    mix = dsp.place(None, pin, 0.0, 0.7)
+    mix = dsp.place(mix, spoon, 0.045, 0.5)
+    mix = dsp.place(mix, _whoosh(rng, False, 0.28) * 0.5, 0.06)
+    return dsp.fade(mix, 0.001, 0.05)
+
+
+def grenade_bounce(rng: np.random.Generator) -> np.ndarray:
+    """A heavy iron shell knocking on asphalt: a low knock over a short, bright rattle."""
+    n = dsp.samples(0.3)
+    knock = dsp.sine(np.geomspace(_jv(rng, 260), 110, n)) * dsp.decay(n, 0.09)
+    rattle = _metal_click(rng, _jv(rng, 700), ring=0.08)
+    mix = dsp.place(None, knock, 0.0, 0.9)
+    mix = dsp.place(mix, rattle, 0.0, 0.6)
+    return dsp.fade(mix, 0.0005, 0.04)
+
+
+def grenade_blast(rng: np.random.Generator) -> np.ndarray:
+    """A crack, a roar that darkens, a deep falling boom and one slap off the screen tower, in open air."""
+    tail = 2.4
+    n = dsp.samples(tail)
+    crack = dsp.filt(dsp.white(rng, tail), "high", 1200) * dsp.decay(n, 0.03)
+    sweep = np.linspace(_jv(rng, 5000), 180, n)
+    roar = dsp.filt(dsp.white(rng, tail), "low", sweep) * dsp.decay(n, 0.45)
+    boom_n = dsp.samples(1.2)
+    boom = dsp.sine(np.geomspace(_jv(rng, 90), 28, boom_n)) * dsp.decay(boom_n, 0.55)
+    boom = np.pad(boom, (0, n - boom_n))
+    blast = 0.9 * crack + 1.1 * roar + 1.6 * boom
+    blast = dsp.drive(blast, 2.5)
+    blast = dsp.echo(blast, _jv(rng, 0.23, 0.1), 0.25)
+    blast = dsp.room_tail(rng, blast, 1.6, wet=0.55, dark=4000)
+    return dsp.fade(blast, 0.0005, 0.12)
+
+
 def _gun(name: str) -> Recipe:
     return lambda rng: gunshot(rng, GUNS[name])
 
@@ -424,4 +470,8 @@ REGISTRY: list[Entry] = [
     Entry("world", "generator_start", 1, generator_start, -4.0),
     Entry("stings", "round_start", 1, round_start, -2.0),
     Entry("stings", "round_end", 1, round_end, -3.0),
+    Entry("grenade", "tick", 1, grenade_tick, -6.0),
+    Entry("grenade", "throw", 2, grenade_throw, -5.0),
+    Entry("grenade", "bounce", 3, grenade_bounce, -6.0),
+    Entry("grenade", "blast", 2, grenade_blast, -1.0),
 ]

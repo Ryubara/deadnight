@@ -1,0 +1,29 @@
+# Static file server for the Deadnight web build (docs/research/web-export.md, "Playing the web build").
+# Railway sets $PORT and terminates TLS at its edge, so Caddy speaks plain HTTP inside the container.
+{
+	admin off
+	auto_https off
+	log {
+		output stdout
+		format json
+	}
+}
+
+:{$PORT:8080} {
+	root * /srv
+
+	# Railway's health check; answered here so it does not depend on the build's files.
+	respond /healthz 200
+
+	# The files have no content hash in their names, so a browser must ask each time whether they changed (the ETag
+	# makes that a 304). A deploy is then live for the next page load, and a rollback is too.
+	header Cache-Control "no-cache"
+	header X-Content-Type-Options "nosniff"
+	@pck path *.pck
+	header @pck Content-Type "application/octet-stream"
+
+	# index.wasm.br / .gz are made at image build time (the Dockerfile), so a 40 MB file is never compressed per request.
+	file_server {
+		precompressed br gzip
+	}
+}

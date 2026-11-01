@@ -8,8 +8,13 @@ the animation set, playback variety) is on [zombies](../design/zombies.md); the 
 
 `tools/blender/build_zombies.py` (pinned Blender 5.2.3, headless; how to run it is at the top of the file) builds all
 seven variants from `refs/polypizza/VlXjG0N8Eg/model.glb` in about 15 s. The outputs are derived from a third-party
-model, so they are built into the scratch folder and not committed until a maintainer decides; the script rebuilds
-them exactly.
+model; the maintainer approved committing them (issue #90), so they live in `game/assets/characters/zombies/` with
+their licence entry, built with `--out game/assets/characters/zombies`. The script rebuilds them byte for byte.
+
+In Godot the seven files share one material: each `.glb.import` maps the glTF material `Atlas` to the external
+`zombie_atlas.tres` (which uses the one `zombie_atlas.png`) and discards the embedded copy of the atlas
+(`gltf/embedded_image_handling=0`). Left at the defaults, the import extracts seven identical atlas PNGs and makes
+seven materials. Remap again if a rebuild ever renames the material.
 
 Per variant, in order:
 

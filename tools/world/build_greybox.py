@@ -43,6 +43,9 @@ RAMP_WIDTH = 2.0
 RAMP_X = -4.8  # the ramp's centre line, along the booth's west wall (x -6)
 MIDWAY_LINK = 4.5  # the midway's links to the yard and the back lot
 MIDWAY_LINK_Z = 20.0
+# The lot's outer walls are higher than the tallest platform beside them (a car roof, 1.65 m) plus a full jump (the
+# player's 1.1 m, PlayerTuning.jump_height) plus a margin, so nobody leaves the map from a roof (docs/design/map.md).
+PERIMETER_H = 3.0
 
 # Materials per area: id -> (albedo, emission or None). Colours read in the top-down capture, not in the style bible.
 MATS = {
@@ -289,6 +292,7 @@ def build() -> None:
     lines.append("")
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/car.tscn" id="car"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lamp_post.tscn" id="lamp"]')
+    lines.append('[ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]')
     lines.append("")
     for mid, (albedo, emis) in MATS.items():
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
@@ -336,17 +340,18 @@ def build() -> None:
         box(field, f"ScreenLeg{sx}".replace("-", "N"), (1.4, 4.2, 1.6), (sx, 2.1, -48), "field_struct")
     for sx in (-14, 14):
         box(field, f"ScreenStay{sx}".replace("-", "N"), (0.8, 0.8, 7), (sx, 3.0, -52.8), "field_struct")
-    # Perimeter fence (2.4 m) with the breach panels where the dead come in.
+    # Perimeter fence (PERIMETER_H) with the breach panels where the dead come in; the fence between the field and the
+    # yard and back lot is 2.4 m.
     fence_h = 2.4
-    wall(field, "FenceN", "x", -52, -62, 62, fence_h, "field_fence")
-    wall(field, "FenceW", "z", -62, -52, -4, fence_h, "field_fence")
-    wall(field, "FenceE", "z", 62, -52, -4, fence_h, "field_fence")
+    wall(field, "FenceN", "x", -52, -62, 62, PERIMETER_H, "field_fence")
+    wall(field, "FenceW", "z", -62, -52, -4, PERIMETER_H, "field_fence")
+    wall(field, "FenceE", "z", 62, -52, -4, PERIMETER_H, "field_fence")
     breaches = [("NW", -62, -46), ("NE", 62, -46), ("W", -62, -22), ("E", 62, -22), ("N", -36, -52), ("N2", 36, -52)]
     for tag, bx, bz in breaches:
         if abs(bx) == 62:
-            box(field, f"Breach{tag}", (0.6, 2.4, 4.0), (bx, 1.2, bz), "door")
+            box(field, f"Breach{tag}", (0.6, PERIMETER_H, 4.0), (bx, PERIMETER_H / 2, bz), "door")
         else:
-            box(field, f"Breach{tag}", (4.0, 2.4, 0.6), (bx, 1.2, bz), "door")
+            box(field, f"Breach{tag}", (4.0, PERIMETER_H, 0.6), (bx, PERIMETER_H / 2, bz), "door")
     # Fence between the field and the yard / back lot, with the two purchase gates (doors listed below).
     wall(field, "FenceS_W", "x", -4, -62, -10, fence_h, "field_fence", [(-40, 4, 0, 2.6)])
     wall(field, "FenceS_E", "x", -4, 10, 62, fence_h, "field_fence", [(40, 4, 0, 2.6)])
@@ -475,7 +480,7 @@ def build() -> None:
     # --- Generator yard (east) ----------------------------------------------------------------------------------------
     yard = group("GeneratorYard", ".")
     floor_tiles(yard, "Ground", 16, 62, -4, 38, "yard_ground")
-    wall(yard, "FenceE", "z", 62, -4, 38, 2.4, "yard_wall")
+    wall(yard, "FenceE", "z", 62, -4, 38, PERIMETER_H, "yard_wall")
     wall(yard, "FenceS", "x", 38, 16, 62, 2.4, "yard_wall")
     # The generator cage: 8 x 6 m, open on the west and east sides, roofless.
     wall(yard, "CageN", "x", 15, 36, 44, 3.0, "yard_wall")
@@ -506,7 +511,7 @@ def build() -> None:
     # --- Back lot (west) --------------------------------------------------------------------------------------------
     back = group("BackLot", ".")
     floor_tiles(back, "Ground", -62, -16, -4, 38, "backlot_ground")
-    wall(back, "FenceW", "z", -62, -4, 38, 2.4, "backlot_wall")
+    wall(back, "FenceW", "z", -62, -4, 38, PERIMETER_H, "backlot_wall")
     wall(back, "FenceS", "x", 38, -62, -16, 2.4, "backlot_wall")
     wrecks = group("Wrecks", back)
     n = 0
@@ -566,7 +571,7 @@ def build() -> None:
     # The lot opens outward from the stand: every other door needs the concession, so the midway is open before any
     # of them can be bought. An area with two ways in (the yard and the back lot, from the field and from the midway)
     # has one door with a slab in each, so there is no way in that is not the door.
-    group("Doors", ".")
+    node("Doors", "Node3D", ".", {"script": 'ExtResource("doors")'})
     door("Door_Concession", (0, 3.3, -6.0))
     slab("Door_Concession", "Front", (0, -3.6), 3.0, 2.6, "x")
     door("Door_GeneratorYard", (40, 3.3, -6.5))

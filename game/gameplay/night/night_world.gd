@@ -1,0 +1,137 @@
+class_name NightWorld
+extends Node3D
+## The place a night happens in: the drive-in greybox, its navigation mesh, its doors and spawn
+## markers, and the players' bodies. The server asks it where things are; it decides nothing
+## itself. A door bought is the lot's own business: `LotDoors` follows the rules (`bind`) and
+## `DoorNavigation` rebakes the zombies' mesh when one opens (`docs/research/zombies.md`, Doors).
+
+const GREYBOX := preload("res://world/drive_in_greybox.tscn")
+const PLAYER_SCENE := preload("res://gameplay/player/player.tscn")
+## Static bodies of CSG shapes reach the physics space after a few steps.
+const SETTLE_FRAMES := 4
+## A new navigation region is usable after the map's second iteration.
+const NAV_ITERATIONS := 2
+## Frames given to the first mesh before the lot is used anyway.
+const NAV_WAIT_FRAMES := 600
+## Metres within which a lamp lights the ground.
+const LAMP_REACH := 6.0
+## The areas whose zombie spawns open with a door (the field's are always open).
+const DOOR_AREAS := {
+	&"door_concession": ["Midway"],
+	&"door_yard": ["GeneratorYard"],
+	&"door_booth": ["ProjectionBooth"],
+	&"door_back_lot": ["BackLot"],
+	&"door_road": ["Road"],
+}
+
+var greybox: Node3D
+## The lot's doors: they open when the rules sell them and tell the navigation (`door_opened`).
+var doors: LotDoors
+var navigation: DoorNavigation
+
+var _door_nodes: Dictionary[StringName, Node3D] = {}
+var _lamps: Array[Node] = []
+
+
+## Builds the lot and waits until its collision and navigation are live.
+func build() -> void:
+	greybox = GREYBOX.instantiate()
+	add_child(greybox)
+	doors = greybox.get_node("Doors") as LotDoors
+	for door in doors.get_children():
+		_door_nodes[StringName(door.get_meta("shop_id"))] = door
+	for _i in SETTLE_FRAMES:
+		await get_tree().physics_frame
+	navigation = DoorNavigation.new()
+	add_child(navigation)
+	var before := NavigationServer3D.map_get_iteration_id(map())
+	navigation.setup(greybox, doors)
+	for _i in NAV_WAIT_FRAMES:
+		if NavigationServer3D.map_get_iteration_id(map()) >= before + NAV_ITERATIONS:
+			break
+		await get_tree().physics_frame
+	_lamps = get_tree().get_nodes_in_group("powered_light")
+
+
+func map() -> RID:
+	return get_world_3d().navigation_map
+
+
+## Follows the rules: the lot opens the doors they sell (and any they already have open).
+func bind(rules: GameRules) -> void:
+	doors.bind(rules)
+
+
+func door_ids() -> Array[StringName]:
+	return _door_nodes.keys()
+
+
+func door_cost(door_id: StringName) -> int:
+	return int(_door_nodes[door_id].get_meta("cost"))
+
+
+## The points a door can be used from: the middle of each of its slabs.
+func door_points(door_id: StringName) -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	var door: Node3D = _door_nodes.get(door_id)
+	if door != null:
+		for slab in door.get_children():
+			if slab is CSGShape3D and (slab as CSGShape3D).use_collision:
+				points.append((slab as Node3D).global_position)
+	return points
+
+
+## The areas the dead can come from: the field, and the area behind each door that is open.
+func open_areas() -> Array[String]:
+	var areas: Array[String] = ["Field"]
+	for door_id: StringName in _door_nodes:
+		if _door_nodes[door_id].has_meta(&"open"):
+			for area: String in DOOR_AREAS.get(door_id, []):
+				areas.append(area)
+	return areas
+
+
+func spawn_points() -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for area in open_areas():
+		var markers := greybox.get_node_or_null(area + "/ZombieSpawns")
+		if markers != null:
+			for marker in markers.get_children():
+				points.append((marker as Marker3D).global_position)
+	return points
+
+
+## Where boards can be put back: the gaps in the field's fence.
+func repair_points() -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for node in greybox.get_node("Field").get_children():
+		if node.name.begins_with("Breach"):
+			points.append((node as Node3D).global_position)
+	return points
+
+
+func player_spawn(index: int) -> Vector3:
+	var markers := greybox.get_node("Field/PlayerSpawns").get_children()
+	return (markers[index % markers.size()] as Marker3D).global_position
+
+
+func is_lit(point: Vector3) -> bool:
+	for lamp: Light3D in _lamps:
+		if lamp.visible and _flat(point, lamp.global_position) < LAMP_REACH:
+			return true
+	return false
+
+
+## A body for one player, driven by the server (its own physics step is off).
+func add_body(spawn: Vector3, local_input: bool) -> Player:
+	var body := PLAYER_SCENE.instantiate() as Player
+	body.local_input = local_input
+	body.capture_mouse = local_input
+	add_child(body)
+	body.teleport(spawn)
+	body.set_physics_process(false)
+	return body
+
+
+static func _flat(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()

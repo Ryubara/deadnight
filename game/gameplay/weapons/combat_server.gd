@@ -92,6 +92,11 @@ func weapon_of(player_id: int) -> WeaponState:
 	return held.get(_current.get(player_id, &""))
 
 
+## The ids of the weapons a player carries.
+func carried(player_id: int) -> Array:
+	return _loadouts.get(player_id, {}).keys()
+
+
 func projectiles_in_flight() -> int:
 	return _projectiles.size()
 

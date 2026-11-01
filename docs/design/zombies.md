@@ -102,7 +102,7 @@ the rig-sharing recipe as they are, "new" ones have to be made.
 | Walk variant: limp | `Walk_Limp` | | **new** | for the farmhand and anyone hit in the leg |
 | Walk variant: upright | Enemy's `Walk` | | kit character | shared through the recipe with rebased position keys; a fresher dead |
 | Run | `Run`, `Run_Arms` | 0.67 s | kit | sprinters; `Run_Arms` (arms reaching) for half of them |
-| Crawl | `Crawl` | 1.67 s | kit | crawlers; legless bodies play it as is |
+| Crawl | `Crawl` | 1.67 s | kit | crawlers; legless bodies play it as is. The rules emit `zombie_crippled` (`speed_scale` 0.35) when a [grenade blast](weapons.md#grenades) takes the legs: the zombie drops to the ground, plays `Crawl` at the scaled speed, and swaps to the Crawler variant's legless mesh |
 | Attack | `Punch`, `Idle_Attack`, `Run_Attack` | 0.75, 1.67, 0.67 s | kit | swipe in reach; a grab-and-bite at a downed player; a lunge at run speed |
 | Crawler attack | `Crawl_Attack` | | **new** | a grab at the ankles |
 | Hit reaction | `HitReact` | 0.58 s | kit | upper body; played additively over the walk |

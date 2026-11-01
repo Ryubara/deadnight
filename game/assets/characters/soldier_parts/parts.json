@@ -1,0 +1,662 @@
+{
+ "version": 1,
+ "source": "tools/blender/build_soldier_parts.py from the Quaternius Toon Shooter Game Kit Soldier (CC0)",
+ "model": "soldier_parts.glb",
+ "atlas": {
+  "image": "soldier_parts_atlas.png",
+  "size": [
+   256,
+   64
+  ],
+  "swatch_px": 16,
+  "cells": {
+   "skin": [
+    0,
+    0
+   ],
+   "skin_shade": [
+    1,
+    0
+   ],
+   "hair": [
+    2,
+    0
+   ],
+   "hair_shade": [
+    3,
+    0
+   ],
+   "primary": [
+    4,
+    0
+   ],
+   "primary_shade": [
+    5,
+    0
+   ],
+   "secondary": [
+    6,
+    0
+   ],
+   "secondary_shade": [
+    7,
+    0
+   ],
+   "accent": [
+    8,
+    0
+   ],
+   "accent_shade": [
+    9,
+    0
+   ],
+   "black": [
+    0,
+    1
+   ],
+   "darkgrey": [
+    1,
+    1
+   ],
+   "grey": [
+    2,
+    1
+   ],
+   "grey2": [
+    3,
+    1
+   ],
+   "white": [
+    4,
+    1
+   ],
+   "leather": [
+    5,
+    1
+   ],
+   "lens": [
+    6,
+    1
+   ],
+   "glass": [
+    7,
+    1
+   ],
+   "metal": [
+    8,
+    1
+   ],
+   "eye": [
+    9,
+    1
+   ],
+   "amber": [
+    10,
+    1
+   ]
+  }
+ },
+ "shade": 0.75,
+ "channels": {
+  "skin": "skin",
+  "hair": "hair",
+  "primary": "cloth",
+  "secondary": "cloth",
+  "accent": "cloth"
+ },
+ "palettes": {
+  "skin": [
+   "#f1c9a5",
+   "#d9a77a",
+   "#b89359",
+   "#a68450",
+   "#8a5a3b",
+   "#5e3b26"
+  ],
+  "hair": [
+   "#252525",
+   "#4a3221",
+   "#7a4b2a",
+   "#c9a25a",
+   "#9c3d22",
+   "#8f8f8f"
+  ],
+  "cloth": [
+   "#252525",
+   "#e9e2cf",
+   "#818491",
+   "#5f5f5f",
+   "#5c6d37",
+   "#496321",
+   "#8c3735",
+   "#991c22",
+   "#3b4b8c",
+   "#2e4466",
+   "#d1ab46",
+   "#c79b17",
+   "#9b7048",
+   "#664531",
+   "#4f8a8b",
+   "#d98a9b"
+  ]
+ },
+ "palette_names": {
+  "skin": [
+   "porcelain",
+   "peach",
+   "sand",
+   "olive",
+   "umber",
+   "cocoa"
+  ],
+  "hair": [
+   "black",
+   "dark brown",
+   "brown",
+   "blond",
+   "auburn",
+   "grey"
+  ],
+  "cloth": [
+   "black",
+   "cream",
+   "grey",
+   "charcoal",
+   "olive",
+   "green",
+   "red",
+   "cherry",
+   "blue",
+   "denim",
+   "mustard",
+   "gold",
+   "tan",
+   "brown",
+   "teal",
+   "pink"
+  ]
+ },
+ "budget": 6000,
+ "clips": [
+  "Aim_Melee",
+  "Aim_Pistol",
+  "Aim_Rifle",
+  "Aim_Shotgun",
+  "Death",
+  "Downed",
+  "Duck",
+  "Equip_Melee",
+  "Equip_Pistol",
+  "Equip_Rifle",
+  "Equip_Shotgun",
+  "Fire_Pistol",
+  "Fire_Rifle",
+  "Fire_Shotgun",
+  "HitReact",
+  "Idle",
+  "Idle_Shoot",
+  "Jump",
+  "Jump_Idle",
+  "Jump_Land",
+  "No",
+  "Punch",
+  "Reload_Pistol",
+  "Reload_Rifle",
+  "Reload_Shotgun",
+  "Run",
+  "Run_Gun",
+  "Swing_Melee",
+  "Unequip_Melee",
+  "Unequip_Pistol",
+  "Unequip_Rifle",
+  "Unequip_Shotgun",
+  "Walk",
+  "Wave",
+  "Yes"
+ ],
+ "weapon_clips": {
+  "Rifle": [
+   "Aim_Rifle",
+   "Fire_Rifle",
+   "Reload_Rifle",
+   "Equip_Rifle",
+   "Unequip_Rifle"
+  ],
+  "Shotgun": [
+   "Aim_Shotgun",
+   "Fire_Shotgun",
+   "Reload_Shotgun",
+   "Equip_Shotgun",
+   "Unequip_Shotgun"
+  ],
+  "Pistol": [
+   "Aim_Pistol",
+   "Fire_Pistol",
+   "Reload_Pistol",
+   "Equip_Pistol",
+   "Unequip_Pistol"
+  ],
+  "Melee": [
+   "Aim_Melee",
+   "Swing_Melee",
+   "Equip_Melee",
+   "Unequip_Melee"
+  ]
+ },
+ "slots": {
+  "head": {
+   "default": "plain",
+   "parts": {
+    "plain": {
+     "label": "Clean-shaven",
+     "mesh": "head__plain",
+     "tris": 736
+    },
+    "stubble": {
+     "label": "Stubble",
+     "mesh": "head__stubble",
+     "tris": 736
+    },
+    "beard": {
+     "label": "Beard",
+     "mesh": "head__beard",
+     "tris": 736
+    }
+   }
+  },
+  "hair": {
+   "default": "crew",
+   "parts": {
+    "none": {
+     "label": "Buzzed",
+     "mesh": null,
+     "tris": 0
+    },
+    "crew": {
+     "label": "Crew cut",
+     "mesh": "hair__crew",
+     "tris": 94
+    },
+    "pompadour": {
+     "label": "Pompadour",
+     "mesh": "hair__pompadour",
+     "tris": 182
+    },
+    "flattop": {
+     "label": "Flat top",
+     "mesh": "hair__flattop",
+     "tris": 44
+    },
+    "ponytail": {
+     "label": "Ponytail",
+     "mesh": "hair__ponytail",
+     "tris": 278
+    }
+   }
+  },
+  "headwear": {
+   "default": "none",
+   "parts": {
+    "none": {
+     "label": "None",
+     "mesh": null,
+     "tris": 0
+    },
+    "helmet": {
+     "label": "Helmet",
+     "mesh": "headwear__helmet",
+     "tris": 1136,
+     "hides_hair": true
+    },
+    "pillbox": {
+     "label": "Usher's cap",
+     "mesh": "headwear__pillbox",
+     "tris": 184
+    },
+    "ballcap": {
+     "label": "Ball cap",
+     "mesh": "headwear__ballcap",
+     "tris": 254,
+     "hides_hair": true
+    },
+    "papercap": {
+     "label": "Paper cap",
+     "mesh": "headwear__papercap",
+     "tris": 88
+    },
+    "ranger": {
+     "label": "Ranger hat",
+     "mesh": "headwear__ranger",
+     "tris": 292,
+     "hides_hair": true
+    }
+   }
+  },
+  "torso": {
+   "default": "jacket",
+   "parts": {
+    "vest": {
+     "label": "Field vest",
+     "mesh": "torso__vest",
+     "tris": 2754
+    },
+    "jacket": {
+     "label": "Jacket",
+     "mesh": "torso__jacket",
+     "tris": 2288
+    },
+    "shirt": {
+     "label": "Short sleeves",
+     "mesh": "torso__shirt",
+     "tris": 2288
+    },
+    "rolled": {
+     "label": "Rolled sleeves",
+     "mesh": "torso__rolled",
+     "tris": 2520
+    },
+    "tank": {
+     "label": "Tank top",
+     "mesh": "torso__tank",
+     "tris": 2288
+    },
+    "letterman": {
+     "label": "Letter jacket",
+     "mesh": "torso__letterman",
+     "tris": 2344
+    }
+   }
+  },
+  "legs": {
+   "default": "trousers",
+   "parts": {
+    "trousers": {
+     "label": "Trousers",
+     "mesh": "legs__trousers",
+     "tris": 500
+    },
+    "cuffed": {
+     "label": "Cuffed jeans",
+     "mesh": "legs__cuffed",
+     "tris": 500
+    },
+    "shorts": {
+     "label": "Shorts",
+     "mesh": "legs__shorts",
+     "tris": 500
+    },
+    "striped": {
+     "label": "Striped",
+     "mesh": "legs__striped",
+     "tris": 500
+    }
+   }
+  },
+  "feet": {
+   "default": "boots",
+   "parts": {
+    "boots": {
+     "label": "Boots",
+     "mesh": "feet__boots",
+     "tris": 702
+    },
+    "sneakers": {
+     "label": "Sneakers",
+     "mesh": "feet__sneakers",
+     "tris": 702
+    },
+    "shoes": {
+     "label": "Shoes",
+     "mesh": "feet__shoes",
+     "tris": 702
+    }
+   }
+  },
+  "eyewear": {
+   "default": "none",
+   "parts": {
+    "none": {
+     "label": "None",
+     "mesh": null,
+     "tris": 0
+    },
+    "sunglasses": {
+     "label": "Sunglasses",
+     "mesh": "eyewear__sunglasses",
+     "tris": 220
+    },
+    "glasses": {
+     "label": "Glasses",
+     "mesh": "eyewear__glasses",
+     "tris": 436
+    },
+    "goggles": {
+     "label": "Goggles",
+     "mesh": "eyewear__goggles",
+     "tris": 428
+    }
+   }
+  },
+  "neck": {
+   "default": "none",
+   "parts": {
+    "none": {
+     "label": "None",
+     "mesh": null,
+     "tris": 0
+    },
+    "scarf": {
+     "label": "Scarf",
+     "mesh": "neck__scarf",
+     "tris": 152
+    },
+    "bowtie": {
+     "label": "Bow tie",
+     "mesh": "neck__bowtie",
+     "tris": 84
+    }
+   }
+  },
+  "arm": {
+   "default": "none",
+   "parts": {
+    "none": {
+     "label": "None",
+     "mesh": null,
+     "tris": 0
+    },
+    "armband": {
+     "label": "Armband",
+     "mesh": "arm__armband",
+     "tris": 92
+    }
+   }
+  }
+ },
+ "presets": [
+  {
+   "id": "greaser",
+   "name": "Greaser",
+   "parts": {
+    "head": "plain",
+    "hair": "pompadour",
+    "headwear": "none",
+    "torso": "jacket",
+    "legs": "cuffed",
+    "feet": "boots",
+    "eyewear": "none",
+    "neck": "none",
+    "arm": "none"
+   },
+   "colours": {
+    "skin": 1,
+    "hair": 0,
+    "primary": 0,
+    "secondary": 9,
+    "accent": 0
+   },
+   "tris": 4408
+  },
+  {
+   "id": "usher",
+   "name": "Usher",
+   "parts": {
+    "head": "plain",
+    "hair": "crew",
+    "headwear": "pillbox",
+    "torso": "jacket",
+    "legs": "striped",
+    "feet": "shoes",
+    "eyewear": "none",
+    "neck": "bowtie",
+    "arm": "none"
+   },
+   "colours": {
+    "skin": 4,
+    "hair": 1,
+    "primary": 7,
+    "secondary": 0,
+    "accent": 11
+   },
+   "tris": 4588
+  },
+  {
+   "id": "mechanic",
+   "name": "Mechanic",
+   "parts": {
+    "head": "stubble",
+    "hair": "crew",
+    "headwear": "none",
+    "torso": "rolled",
+    "legs": "trousers",
+    "feet": "boots",
+    "eyewear": "goggles",
+    "neck": "none",
+    "arm": "none"
+   },
+   "colours": {
+    "skin": 2,
+    "hair": 2,
+    "primary": 14,
+    "secondary": 3,
+    "accent": 6
+   },
+   "tris": 4980
+  },
+  {
+   "id": "lifeguard",
+   "name": "Lifeguard",
+   "parts": {
+    "head": "plain",
+    "hair": "flattop",
+    "headwear": "none",
+    "torso": "tank",
+    "legs": "shorts",
+    "feet": "sneakers",
+    "eyewear": "sunglasses",
+    "neck": "none",
+    "arm": "none"
+   },
+   "colours": {
+    "skin": 0,
+    "hair": 3,
+    "primary": 6,
+    "secondary": 6,
+    "accent": 1
+   },
+   "tris": 4490
+  },
+  {
+   "id": "soda_jerk",
+   "name": "Soda jerk",
+   "parts": {
+    "head": "plain",
+    "hair": "ponytail",
+    "headwear": "papercap",
+    "torso": "shirt",
+    "legs": "trousers",
+    "feet": "shoes",
+    "eyewear": "none",
+    "neck": "bowtie",
+    "arm": "none"
+   },
+   "colours": {
+    "skin": 3,
+    "hair": 4,
+    "primary": 1,
+    "secondary": 3,
+    "accent": 15
+   },
+   "tris": 4676
+  },
+  {
+   "id": "ranger",
+   "name": "Ranger",
+   "parts": {
+    "head": "beard",
+    "hair": "crew",
+    "headwear": "ranger",
+    "torso": "shirt",
+    "legs": "trousers",
+    "feet": "boots",
+    "eyewear": "none",
+    "neck": "scarf",
+    "arm": "none"
+   },
+   "colours": {
+    "skin": 2,
+    "hair": 1,
+    "primary": 4,
+    "secondary": 12,
+    "accent": 10
+   },
+   "tris": 4670
+  },
+  {
+   "id": "letterman",
+   "name": "Letterman",
+   "parts": {
+    "head": "plain",
+    "hair": "crew",
+    "headwear": "ballcap",
+    "torso": "letterman",
+    "legs": "cuffed",
+    "feet": "sneakers",
+    "eyewear": "none",
+    "neck": "none",
+    "arm": "none"
+   },
+   "colours": {
+    "skin": 5,
+    "hair": 0,
+    "primary": 8,
+    "secondary": 9,
+    "accent": 1
+   },
+   "tris": 4536
+  },
+  {
+   "id": "projectionist",
+   "name": "Projectionist",
+   "parts": {
+    "head": "stubble",
+    "hair": "crew",
+    "headwear": "none",
+    "torso": "rolled",
+    "legs": "trousers",
+    "feet": "shoes",
+    "eyewear": "glasses",
+    "neck": "none",
+    "arm": "armband"
+   },
+   "colours": {
+    "skin": 1,
+    "hair": 5,
+    "primary": 1,
+    "secondary": 13,
+    "accent": 6
+   },
+   "tris": 5080
+  }
+ ]
+}
