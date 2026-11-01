@@ -219,6 +219,7 @@ The Soldier's parts (`tools/blender/build_soldier_parts.py`, [characters](charac
 | Painted bands | a stripe or band on a kit-body part is cut into the mesh between two planes (`cut_stripe`: the Usher's trouser stripe, 2 x 45 mm at kit scale), never painted by face centre (that leaves sawtooth edges) |
 | Atlas | 256 x 64, 16 px swatches: row 0 the five look channels and their shades (x 0.75), row 1 eleven fixed colours |
 | Assembled presets | 4,490-5,080 tris against the 6k player budget, one material, 5-7 meshes |
+| Far level of detail | 1,515-1,812 tris against the 2k far budget (the build fails over it): every part over 260 tris collapse-decimated to one ratio (0.333) solved for the heaviest preset, smaller pieces kept whole; same skeleton, atlas UVs and material, swapped at 18 m. In Godot at the swap 0.24 % of pixels change |
 
 ## Drive-in props
 

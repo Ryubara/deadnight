@@ -48,3 +48,9 @@ and `soldier_clips.py`'s clips unchanged, then:
   hat. The pompadour is now two squashed spheres, a mass swept up from the hairline into the crown and a roll over
   the forehead, in the crown's `hair` swatch with `hair_shade` only on the faces that point down (`Piece.add(...,
   under=)`); 406 triangles (Greaser 4,632).
+- **A decimated part counted one triangle more than Godot drew** (#139): a collapse leaves zero-area triangles and
+  folded n-gons, which the glTF round trip drops or splits its own way, so `parts.json` disagreed with Godot by one.
+  The far copy is triangulated in Blender and its zero-area faces removed before it is counted.
+- **Small pieces do not survive a collapse** (#139): at the far ratio (about a third) the ball cap (254 triangles)
+  turned to slivers and lost its peak. Pieces of 260 triangles or fewer keep every triangle in the far level; the
+  kit-body parts and the big pieces carry the cut.

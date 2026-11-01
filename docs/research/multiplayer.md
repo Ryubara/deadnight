@@ -1,6 +1,10 @@
 # Multiplayer: the network-first architecture
 
-**Status:** proposal, proven by a spike (`spikes/net/`, issue #6). The spike is throwaway; this page is its product.
+**Status:** decided ([Networking](../design/networking.md)) and proven by a spike (`spikes/net/`, issue #6). The spike
+is throwaway; the first real step is in the game: the night runs on a headless server over WebSocket and two or more
+players can join it ([Testing multiplayer](testing-multiplayer.md), issue #302). [The real game over
+WebSocket](#the-real-game-over-websocket) says what that is and how it differs from the spike; the rest of this page is
+the spike's design and measurements, which the game follows where it does not say otherwise.
 
 See also [Platform backend](platform-backend.md) (where the server runs and how a client joins a match) and
 [Rules engine](rules-engine.md) (the game rules as a server-first `RefCounted`: its actions, events and snapshots are
@@ -10,6 +14,31 @@ Deadnight is a web game (a Discord Activity) with its server on Railway, and sin
 the network is not a layer added to a finished game: the game is a **server simulation** and a **client** that talks
 to it, and single-player is that same server running inside the client's process. The spike builds that shape end to
 end and measures it.
+
+## The real game over WebSocket
+
+What the game has now (`game/net/`, `game/gameplay/night/`), against what the spike had.
+
+| | The game (issue #302) | Still the spike's design |
+| --- | --- | --- |
+| Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
+| Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
+| Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
+| Protocol | `NetWire`, version 1 (the layout is in its header); a command is a fixed 47 bytes; a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
+| Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
+| Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
+| The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
+| Everyone else | `RemoteAvatars`: a character in the player's look and seat armband, drawn **100 ms behind** the newest frame between two frames, walking or running by its speed. The model is stood the way `player.tscn` stands its own (turned half way round, scaled by `PlayerTuning.model_scale`, 0.8): the first version drew it at scale 1, a quarter taller than on the player's own screen and facing the camera; `test_a_player_is_as_tall_on_every_screen` holds it to a millimetre | the same delay, kept |
+| Looks | a client sends its look once after joining (`--look N` replaces the saved one for a run); `NightServer` owns the `LookServer` and answers with `look_packet` events, which the host sends only to the player they are for; every screen dresses every body, a client's own included, from the one `LookRegistry` table | |
+| Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
+
+Not in the game yet: reconnect (#53), lag compensation for shots (#54), rate limits and a version policy (#55), interest
+management and a tighter packing of zombies (#57), server bodies without models (#153), the Discord proxy and Railway
+(#52).
+
+The first numbers from the real thing, loopback on one loaded machine: 222 bytes a `TICK` with two players and four
+zombies (6.6 KB/s down), a command 47 bytes (2.8 KB/s up), a round trip of 2 to 18 ms. They are in
+[Testing multiplayer](testing-multiplayer.md#numbers-from-a-local-run) with how to repeat them.
 
 ## The decision
 
@@ -318,6 +347,7 @@ run locally with Docker, and deployed once to Railway for the measurements above
 - Binary packing of many entity kinds (zombies, projectiles): the entry layout will need a type byte and bit flags.
 - Rate limits and input validation (inputs per second, packet size), authentication, and a protocol-version policy.
 - Snapshot interest management (only what a client can see) once the world is bigger than one screen.
-- A scenario test that runs server + bots + conditioner headless in CI and asserts convergence.
+- The scenario test with a conditioner (delay, jitter, loss) in the link, in CI: today `tests/net/test_night_online.gd`
+  runs the server and its clients over a real socket on loopback without one.
 - Float determinism between client builds (wasm vs native): the shared `integrate` uses float math before rounding to
   integers; if it ever diverges, switch it to integer-only arithmetic.

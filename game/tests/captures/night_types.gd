@@ -174,7 +174,7 @@ func _join_late() -> void:
 	var late := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	old.hide()
 	layer.add_child(late)
-	_late_binding = NightHudBinding.new(late, _night.state, _night.server)
+	_late_binding = NightHudBinding.new(late, _night.state, _night.rules_tuning)
 	late.state.load_snapshot(_night.server.rules.to_dict())
 
 

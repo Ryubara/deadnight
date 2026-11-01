@@ -20,8 +20,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	UIMotion.reduced = _was_reduced
-	UIRouter.reset(MENU, UITransition.Kind.CUT)
-	await UIRouter.idle
+	await RouterFixture.clear(get_tree())
 
 
 ## Presses and releases a joypad button the way a device would: through the input system.
@@ -53,6 +52,8 @@ func test_dpad_moves_focus_and_stops_at_the_ends() -> void:
 	await _tap(JOY_BUTTON_DPAD_UP)
 	assert_str(_focused_name()).is_equal("Play")
 	await _tap(JOY_BUTTON_DPAD_DOWN)
+	assert_str(_focused_name()).is_equal("Join")
+	await _tap(JOY_BUTTON_DPAD_DOWN)
 	assert_str(_focused_name()).is_equal("Customize")
 	await _tap(JOY_BUTTON_DPAD_DOWN)
 	assert_str(_focused_name()).is_equal("Settings")
@@ -62,9 +63,8 @@ func test_dpad_moves_focus_and_stops_at_the_ends() -> void:
 
 func test_a_opens_credits_and_b_returns() -> void:
 	var menu := UIRouter.top()
-	await _tap(JOY_BUTTON_DPAD_DOWN)
-	await _tap(JOY_BUTTON_DPAD_DOWN)
-	await _tap(JOY_BUTTON_DPAD_DOWN)
+	for _i in 4:
+		await _tap(JOY_BUTTON_DPAD_DOWN)
 	await _tap(JOY_BUTTON_A)
 	await UIRouter.idle
 	assert_int(UIRouter.depth()).is_equal(2)
