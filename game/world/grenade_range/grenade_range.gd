@@ -92,8 +92,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	if server != null:
-		server.detach()
+	if rules != null:
 		rules.event_emitted.disconnect(_on_rules_event)
 		_release(rules.generator)
 
@@ -112,13 +111,12 @@ func _physics_process(_delta: float) -> void:
 		var space := get_world_3d().direct_space_state
 		_cast = WorldCast.new(space)
 		_probe = WorldProbe.new(space)
-		server.world_cast = _cast.callable()
-		server.world_ray = _probe.callable()
+		server = GrenadeServer.new(_def, rules, _cast.callable(), _probe.callable())
 	rules.apply(RulesAction.tick(STEP))
 	_run_demo()
-	_send_player_command()
 	server.apply(GrenadeAction.targets(_target_list()))
 	server.apply(GrenadeAction.players([{"id": PLAYER_ID, "pos": PLAYER_FEET}]))
+	_send_player_command()
 	_on_events(server.apply(GrenadeAction.tick(STEP)))
 	_step_predicted()
 	_play_cook_ticks()
@@ -200,6 +198,9 @@ func _on_events(events: Array) -> void:
 		match event["type"]:
 			&"grenade_thrown":
 				_adopt(event)
+			&"grenade_dropped":
+				_thrower.abandon()
+				_adopt(event)
 			&"grenade_bounced":
 				sound_requested.emit(&"grenade_bounce", event["point"])
 			&"grenade_exploded":
@@ -222,7 +223,9 @@ func _on_events(events: Array) -> void:
 
 ## The server's grenade replaces the prediction that made the same throw.
 func _adopt(event: Dictionary) -> void:
-	var view: GrenadeView = _predicted.pop_front() if not _predicted.is_empty() else _new_view()
+	# Only a throw has a prediction; a dropped grenade was never thrown by the client.
+	var predicted := event.has("seq") and not _predicted.is_empty()
+	var view: GrenadeView = _predicted.pop_front() if predicted else _new_view()
 	if view.state == null:
 		view.state = GrenadeState.new(
 			event["grenade_id"],
@@ -288,7 +291,6 @@ func _remove(event: Dictionary) -> void:
 
 func _start_night() -> void:
 	rules = GameRules.new(null, SEED)
-	server = GrenadeServer.new(_def, rules)
 	rules.event_emitted.connect(_on_rules_event)
 	rules.apply(RulesAction.add_player(PLAYER_ID))
 	rules.apply(RulesAction.start())

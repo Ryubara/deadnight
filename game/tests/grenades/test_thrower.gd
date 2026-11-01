@@ -109,7 +109,6 @@ func test_a_cooked_throw_replays_to_the_same_grenade_on_the_server() -> void:
 			night.server.apply(GrenadeAction.tick(GrenadesFixture.STEP))
 		var grenade := night.server.grenade(1)
 		landings.append(grenade.position)
-		night.finish()
 	assert_vector(landings[0]).is_equal(landings[1])
 
 

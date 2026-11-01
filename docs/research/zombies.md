@@ -89,10 +89,11 @@ the monitor's 240 Hz (4.17 ms is the floor), as in the crowds spike.
 
 | Measure | Result | Crowds spike (40 zombies, same kind of machine) |
 | --- | --- | --- |
-| Sim step alone, 40 zombies (test) | 0.40 ms per 30 Hz tick | not measured |
+| Sim step alone, 40 zombies, straight-line pathing (test) | 0.40 ms per 30 Hz tick | not measured |
+| Sim step alone, 40 zombies, `NavmeshPathing` on the lot (headless, a loaded machine) | 0.65 to 0.75 ms per tick | not measured |
 | Headless frame, whole zombie code and views | 20: 0.52, 30: 0.77, 40: 0.95 ms (empty lot: 0.02 ms) | 40: baseline 3.87, all techniques 1.47 ms |
-| Windowed frame, 40 zombies | 4.19 ms mean (at the 4.17 floor), 7.1 ms 95th percentile | 40: baseline 6.48, all techniques 2.69 ms |
-| Windowed frame, empty lot | 4.17 ms mean, 5.1 ms 95th percentile | empty scene 0.72 ms |
+| Windowed frame, 40 zombies | 4.19 ms mean (on the 240 Hz display floor, so it says nothing; read the percentile), 7.1 ms 95th percentile | 40: baseline 6.48, all techniques 2.69 ms |
+| Windowed frame, empty lot | 4.17 ms mean (the floor), 5.1 ms 95th percentile | empty scene 0.72 ms |
 | Draw calls, 40 zombies / empty lot | 126 / 92 | 84 at 40 zombies (no lot) |
 | Animation trees advanced per frame | 11 to 13 of 41 | |
 | Snapshot | 482 to 530 B | |
@@ -101,6 +102,33 @@ Script cost per zombie is about 0.024 ms against the spike's roughly 0.1 ms, whi
 no physics body. The full-frame cost sits under the display floor here, so the 95th percentile (the lot alone 5.1 ms,
 with zombies 7.1 ms) is the number to watch; the browser was **not** measured: the spike's factor of about 3 applies
 until it is.
+
+## Doors
+
+The lot's purchase doors are CSG slabs, and the navigation mesh is baked from the CSG boxes, so a closed slab is a
+wall to the dead. It stops being one the moment the rules emit `door_opened`, and two things follow, both on the
+server:
+
+- `LotDoors` (on the greybox's `Doors` node, `bind(rules)`) frees the door's slabs and label. The player walks
+  through, shots pass.
+- `DoorNavigation` rebakes the mesh. `NavmeshBaker.bake_async` reads the CSG boxes at once and bakes on the
+  navigation server's worker threads (about a second for the lot); the finished mesh replaces the region's, and
+  zombies walk the old mesh until it lands. Doors bought while a bake runs mark it stale and one more bake follows,
+  so the mesh always ends up matching the last door. The first mesh is baked synchronously in `setup(lot, doors)`,
+  with the doors as they stand, so a restored night starts with the right mesh.
+
+What was tried first: a disabled `NavigationLink3D` across each slab, switched on when the door opens. It joins the
+two sides, but the baked mesh leaves a band without mesh round a closed slab (the slab and the agent radius on each
+side, 1.3 m), and a zombie standing in the band is snapped back to the nearer edge at its next repath, 0.25 s later.
+At 3 m/s it covers 0.75 m, short of the band's far half, so it walked back and forth on the link for ever (measured:
+it stood at the door of the concession for 30 s). Links work only for an agent that keeps its path across them. A
+rebake has no band and needs no change in the sim.
+
+Proof: `game/tests/zombies/test_door_navigation.gd` (for each of the nine sets of doors a zombie reaches every sample
+point of every open area and no path enters the footprint of a closed one; the doors bought one after the other
+through `GameRules`; a walking zombie gets in once the booth is bought; doors bought in quick succession end with the
+last in the mesh; and the control: a slab freed without a rebake leaves the dead outside) and
+`game/tests/world/test_lot_doors.gd` (a purchase through the rules removes the slabs, the collision and the label).
 
 ## Left open
 
@@ -111,8 +139,9 @@ until it is.
   visibility ranges at 18 m, so one mesh is drawn per zombie. Choosing a variant per zombie (by round or role) is
   the director's, still open. A body with other bone names needs the rig-sharing retarget player.
 - Hit reactions by zone, crawlers, window break-ins: the animation set is #40's.
-- The navmesh is baked at load from the greybox's CSG boxes (`NavmeshBaker`); the world owner should bake once in the
-  editor. Heights are flat: a zombie keeps the height it spawned at.
+- The navmesh is baked at load from the greybox's CSG boxes (`NavmeshBaker`) and again for each door bought
+  ([Doors](#doors)); the first bake could be shipped from the editor, the rebakes cannot. Heights are flat: a zombie
+  keeps the height it spawned at.
 - Spawn point choice ignores whether an area is open (the rules' design): `spawn_points` is whatever the caller gives.
 
 ## Reproduce

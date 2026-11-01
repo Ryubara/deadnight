@@ -23,15 +23,18 @@ source. A test fails when the scene and the tuning disagree.
 | Plan | Area | Shop item | Cost | Needs | Affordable (round, 1 / 2 / 4 players)* |
 | --- | --- | --- | ---: | --- | --- |
 | 1 | Screen field | start | free | - | - |
-| 2 | Concession stand, then the midway behind it | `door_concession` | 350 | field | 1 / 2 / 2 |
-| 5 | Generator yard | `door_yard` | 500 | concession | 3 / 3 / 3 |
+| 2 | Concession stand, then the midway behind it | `door_concession` | 350 | field | 2 / 2 / 2 |
+| 5 | Generator yard | `door_yard` | 500 | concession | 3 / 3 / 4 |
 | 4 | Projection booth | `door_booth` | 750 | concession | 4 / 5 / 5 |
-| 6 | Back lot | `door_back_lot` | 1250 | booth | 6 / 6 / 7 |
+| 6 | Back lot | `door_back_lot` | 1250 | booth | 6 / 7 / 7 |
 | 7 | The road | `door_road` | 2000 | back lot | 8 / 9 / 9 |
 
 \* The first round at whose end one player's points, half of them spent on doors (the rest buys weapons, fuel and
-tonics), cover the running total of every door so far. About 85 points a zombie, per-player share of the round's
-zombies (rounds.md has the curve). The same numbers, spending everything, are in rounds.md.
+tonics), cover the running total of every door so far. Counted: about 85 points a zombie, a per-player share of every
+zombie of the rounds so far (`zombies_for_round` in `default_tuning.tres`, rounds.md has the curve). Not counted: the
+200 starting points and the round bonus, so this is the plan's pace with no help. `test_door_affordability.gd`
+recomputes the column from the tuning and fails when it drifts. Rounds.md spends everything and counts the starting
+points and the bonus, so its numbers differ.
 
 Where this departs from the [overview](index.md): the generator yard opens before the booth and the back lot, not
 with them. Light is the first pillar, and the generator's starter tank has to be refuelled (fuel is bought at the
@@ -41,15 +44,30 @@ concession) before it runs dry, which this plan puts around round 3 to 4.
 
 Rules the greybox is built to:
 
+- **A bought door is gone in the world and in the zombie navigation.** `LotDoors` (a script on `Doors`) follows the
+  rules' `door_opened` and frees the door's slabs and label; `DoorNavigation` then rebakes the zombies' mesh, which
+  is baked from the slabs. How, and why not links: [zombies research](../research/zombies.md#doors).
+
 - **Every area is entered only through its door.** A door is a group of slabs (`Doors/Door_*`), one slab for each way
   into the area, and one purchase removes them all. The yard and the back lot each have two ways in (a gate in the
   field's south fence and a link from the midway), so each has one door with two slabs; nothing else leads in.
 - **The order is the shop's.** The greybox cannot stop someone who bought the yard from walking field, yard, link,
   midway: both sides of the link are inside the yard's door. What stops it is that the shop will not sell a door
   before its prerequisite (`requires`, also metadata on the door group), so the concession is always sold first. The
-  opening-order test bakes a navigation mesh for each of the nine sets of doors the shop can have sold and checks that
-  the reachable areas are exactly the field, plus the stand and midway once the concession is sold, plus each sold
-  door's area.
+  opening-order test sells each of the nine sets of doors the shop can have sold through the rules (so `LotDoors`
+  opens them, the game's own path), bakes a navigation mesh for the player's body and checks that every sample point
+  (three or more) of the reachable areas is reached, and that no way towards any point of a closed area's whole
+  footprint (a grid four metres apart, and the samples) enters it: the field, plus the stand and midway once the
+  concession is sold, plus each sold door's area.
+- **Nobody leaves by jumping.** The player jumps 1.1 m and a car roof is 1.65 m, so a jump from a roof lifts the feet
+  to 2.75 m: the outer walls (the field's north, west and east fences, the yard's east and the back lot's west) are
+  3.0 m, `PERIMETER_H` in the generator, up from 2.4 m. The fences between the field and the yard and back lot stay
+  2.4 m: nothing reachable stands within a jump of them, and a door's slab is 2.6 m. The road's end is 1.6 m by
+  design and nothing reachable stands beside it. `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump
+  as its climb for each door still closed (and what needs it), finds the platforms a player can reach, checks that no
+  closed slab, closed area's wall, field fence or perimeter wall has its top within a jump of one, and runs the real
+  player body (`PlayerSimulation`, sprinting and jumping) from the middle and edges of every car roof near a perimeter
+  wall. Before the change the body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top).
 - Zombies spawn only in open areas, and always in the field.
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
 
@@ -147,14 +165,15 @@ field is dark but for the screen, the yard goes black, and the only fuel is acro
 
 ## The greybox
 
-`game/world/drive_in_greybox.tscn`: CSG boxes, one flat colour per area, no scripts. Metres, Y up, x east, z south;
-the screen is at z = -48 and the road at z = 52 to 64.
+`game/world/drive_in_greybox.tscn`: CSG boxes, one flat colour per area, one script (on `Doors`). Metres, Y up,
+x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 
 | Node | Holds |
 | --- | --- |
 | `Field`, `Concession`, `Midway`, `ProjectionBooth`, `GeneratorYard`, `BackLot`, `Road` | an area: ground, walls, props, `Lamps`, `ZombieSpawns`, a hidden `Label` |
 | `Field/PlayerSpawns` | four markers on the apron below the screen |
-| `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. Free a group to sell that door; free `Doors` to walk everywhere |
+| `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
+| `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night environment and the moon |
 
@@ -165,7 +184,9 @@ a change to a constant or coordinate there, not hand edits to a 380-node scene. 
 
 - the areas and that the doors' prices and prerequisites equal the shop's (`test_drive_in_greybox.gd`);
 - reachability: a navigation mesh baked per set of sold doors, each area reached only through its door
-  (`test_drive_in_opening_order.gd`), and that an agent as wide as the shoulder camera still reaches every area;
+  (`test_drive_in_opening_order.gd`, with a negative control), and that an agent as wide as the shoulder camera still
+  reaches every area; the doors themselves (`test_lot_doors.gd`); jumps (`test_drive_in_jump_reach.gd`); and the
+  affordability column above (`test_door_affordability.gd`);
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 
@@ -177,8 +198,8 @@ or `--view=tp:<probe>` for the shoulder camera at a probe (`--offset`, `--turn`,
 
 - The ramps: drive-in rows sit on shallow berms so rear cars see over front ones. The greybox is flat; berms are
   dressing, and a 0.3 m step needs the player controller's step height first.
-- How zombies path: the tests bake a navigation mesh of the lot; a runtime mesh that opens and closes with the doors,
-  and "spawn only in open areas", need the rules code.
+- "Spawn only in open areas" needs the rules code: `ZombieDirector` is given its spawn points and does not ask which
+  areas are open yet.
 - What the road is for: the end of the night, an escape, or just the last door.
 - Solo scaling of the door costs, which belongs in the round economy (the affordability table above shows one, two
   and four players at the same prices).

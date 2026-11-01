@@ -38,8 +38,8 @@ static func box_ray(box: AABB) -> Callable:
 		return from.distance_to(hit) if hit != null else -1.0
 
 
-## A night in round one with `count` players, a grenade server on its rules, and the zombies the
-## first seconds spawn (their ids in `zombies`).
+## A night in round one with `count` players (all standing at the origin until `place` moves them),
+## a grenade server on its rules, and the zombies the first seconds spawn (their ids in `zombies`).
 static func night(
 	players: int = 1,
 	world: Callable = Callable(),
@@ -53,19 +53,22 @@ static func night(
 	RulesFixture.into_round_one(fixture.rules)
 	RulesFixture.run(fixture.rules, 20.0)
 	fixture.zombies = fixture.log.spawned_ids()
+	var standing: Array = []
+	for player_id in range(1, players + 1):
+		standing.append({"id": player_id, "pos": Vector3.ZERO})
+	fixture.server.apply(GrenadeAction.players(standing))
 	return fixture
 
 
-func finish() -> void:
-	server.detach()
-
-
-## Places zombies (id to feet position, facing +z... yaw 0) and players for the next steps.
+## Places zombies (id to feet position, facing +z... yaw 0) and, when given, players (the players
+## listed are the only ones the server knows) for the next steps.
 func place(zombie_positions: Dictionary, player_positions: Dictionary = {}) -> void:
 	var list: Array = []
 	for id in zombie_positions:
 		list.append({"id": id, "pos": zombie_positions[id], "yaw": 0.0})
 	server.apply(GrenadeAction.targets(list))
+	if player_positions.is_empty():
+		return
 	var plist: Array = []
 	for id in player_positions:
 		plist.append({"id": id, "pos": player_positions[id]})
