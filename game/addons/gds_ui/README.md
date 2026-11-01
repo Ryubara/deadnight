@@ -40,7 +40,7 @@ behind it, with the measurements, are in the game's `docs/research/ui-foundation
 | Colour | `bg`, `bg_glow`, `surface`, `surface_raised`, `outline`, `ink`, `ink_muted`, `ink_disabled`, `ink_on_accent`, `accent`, `accent_bright`, `hot`, `danger`, `shadow` | theme, every component, the `UIScreen` backdrop |
 | Transition colours | `burn_hot`, `burn_flame`, `burn_ember`, `burn_char`, `iris_shade`, `iris_rim`, `iris_rim_hot`, `slide_dim` | the film burn and iris shaders (as uniforms), the slide |
 | Backdrop | `star_count` (0 = none), `star_seed`, `star_band` | `UIScreen` |
-| Type faces and scale | `font_display`, `font_text`, `size_*`, `embolden_display`, `embolden_heading_ratio`, `embolden_button_ratio`, `embolden_option_ratio`, `tracking_wide` | `UIThemeBuilder`, `display_font()`, `text_font()` |
+| Type faces and scale | `font_display`, `font_text`, `font_mono`, `size_*`, `embolden_display`, `embolden_heading_ratio`, `embolden_button_ratio`, `embolden_option_ratio`, `tracking_wide` | `UIThemeBuilder`, `display_font()`, `text_font()`, `mono_font()` |
 | Spacing, shape, controls | `space_*`, `radius_*`, `border`, `focus_border`, `focus_gap`, `control_height`, `control_width`, `track_height`, `knob_inset` | components, rows |
 | Elevation | `shadow_flat`, `shadow_raised`, `shadow_hover` | buttons, panels |
 | Tint | `tint_hover`, `tint_press`, `ghost_hover_alpha`, `disabled_alpha` | buttons, toggle, option selector, the theme's plain `Button` |
@@ -64,8 +64,11 @@ of a drawing (the chevron's size, the focus ring's landing distance).
 4. Do not edit a shader or a component for a colour, a factor or a count: add a token (an `@export` with a doc
    comment on `UITokens`, read where the literal was).
 5. A light palette needs a `surface_raised` darker than `surface`: hover lightens a raised fill (`tint_hover`).
-6. Fonts: the theme uses the engine's fallback face until `font_display` and `font_text` are set; a licensed face is
-   a maintainer decision.
+6. Fonts: three slots. `font_display` is for display and title labels (and a game's sign or big numbers),
+   `font_text` for headings, buttons, captions and body, `font_mono` for `UILabelMono` (unset: the text face with
+   tabular figures). An unset slot is the engine's fallback font, which is also the fallback for a glyph a chosen face
+   lacks. Use an inline or decorative display face only at large sizes. In code ask `tokens.display_font(embolden,
+   tracking)` (and `text_font`, `mono_font`); a node that caches one connects to `active_changed()`.
 
 ### Changing the tokens while the game runs
 

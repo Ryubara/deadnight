@@ -24,6 +24,12 @@ const TUBE_WIDTH := 6
 ## Letters from this index on take the second colour.
 @export var split := 4
 @export var tracking := 14.0
+## The lettering face. Null takes the display face of the tokens in force (the engine's fallback
+## font when the tokens name none); a sign that wants its own face sets this one.
+@export var font: Font:
+	set(value):
+		font = value
+		_apply_face()
 
 var tube_a := Color("ff3d4d")
 var tube_b := Color("ffb347")
@@ -36,9 +42,7 @@ var _halo: GradientTexture2D
 
 
 func _init() -> void:
-	_font = FontVariation.new()
-	_font.base_font = ThemeDB.fallback_font
-	_font.variation_embolden = 0.6
+	_apply_face()
 	_halo = GradientTexture2D.new()
 	_halo.fill = GradientTexture2D.FILL_RADIAL
 	_halo.fill_from = Vector2(0.5, 0.5)
@@ -52,10 +56,25 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	custom_minimum_size = _text_size() + Vector2(0.0, 40.0)
+	UITokens.active_changed().connect(_apply_face.unbind(1))
+	_apply_face()
 	UIMotion.changed().connect(_on_reduced_changed)
 	lit_from_start = UIMotion.reduced
 	set_process(not UIMotion.reduced)
+
+
+## Takes the lettering face from `font`, else from the display slot of the active tokens, and
+## sizes the sign to it. Runs again when the tokens change.
+func _apply_face() -> void:
+	var tokens := UITokens.active()
+	if font != null:
+		_font = FontVariation.new()
+		_font.base_font = font
+		_font.variation_embolden = tokens.embolden_display
+	else:
+		_font = tokens.display_font(tokens.embolden_display)
+	custom_minimum_size = _text_size() + Vector2(0.0, 40.0)
+	queue_redraw()
 
 
 ## Starts over from dark and lights the tubes one by one.
