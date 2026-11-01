@@ -1,0 +1,58 @@
+extends Node3D
+## Places the camera for a greybox capture. Pick the view with a user argument after `--`:
+## `-- --view=top|night_top|start|concession|booth|yard|backlot|road`. Not used in the game.
+
+## Camera spots for the player-height views: position, then the point looked at (metres).
+const VIEWS := {
+	"start": [Vector3(0, 1.7, -12), Vector3(0, 6.0, -48)],
+	"concession": [Vector3(0, 1.7, -20), Vector3(0, 2.0, -4)],
+	"concession_in": [Vector3(0, 1.7, 6.5), Vector3(0, 1.6, -3)],
+	"booth": [Vector3(0, 5.6, 24.5), Vector3(0, 3.5, -30)],
+	"yard": [Vector3(22, 1.7, 13), Vector3(40, 1.4, 18)],
+	"backlot": [Vector3(-20, 1.7, 34), Vector3(-46, 2.0, 12)],
+	"road": [Vector3(8, 1.7, 56), Vector3(-34, 1.2, 57)],
+	"plaza": [Vector3(0, 1.7, 58), Vector3(0, 2.5, 40)],
+}
+const TOP_SIZE := 128.0  # orthographic size (the vertical extent in metres) of the whole-lot view
+const TOP_CENTRE := Vector3(0, 0, 6)
+
+@onready var _lighting: Node3D = $DriveInGreybox/Lighting
+
+
+func _ready() -> void:
+	var view := _view_from_args()
+	var camera := $Camera3D as Camera3D
+	if view == "top" or view == "night_top":
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		camera.size = TOP_SIZE
+		camera.look_at_from_position(TOP_CENTRE + Vector3(0, 100, 0), TOP_CENTRE, Vector3(0, 0, -1))
+		_set_labels_visible(true)
+		if view == "top":
+			_flood_light()
+	elif VIEWS.has(view):
+		camera.fov = 80.0
+		camera.look_at_from_position(VIEWS[view][0], VIEWS[view][1])
+	else:
+		push_error("unknown view '%s'" % view)
+
+
+func _view_from_args() -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--view="):
+			return arg.trim_prefix("--view=")
+	return "start"
+
+
+func _set_labels_visible(on: bool) -> void:
+	for label in get_tree().get_nodes_in_group("area_labels"):
+		label.visible = on
+
+
+## The plan view is lit evenly so the colours read; the night view keeps the real lights.
+func _flood_light() -> void:
+	var env := ($DriveInGreybox/Lighting/WorldEnvironment as WorldEnvironment).environment
+	env.ambient_light_energy = 2.2
+	var moon := _lighting.get_node("Moon") as DirectionalLight3D
+	moon.light_energy = 1.0
+	for light in get_tree().get_nodes_in_group("powered_light"):
+		light.visible = false
