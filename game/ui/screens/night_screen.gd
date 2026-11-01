@@ -5,10 +5,16 @@ extends UIScreen
 ## lead back to the menu.
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/night_screen.tscn")`; the main menu's Play
-## does.
+## does. To join a game server instead, set `join_url` first (the Join screen does): the screen
+## takes it once and joins that night.
 
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
+
+## The server to join (`ws://host:port`) the next time this screen opens; empty plays alone.
+static var join_url := ""
+## With `join_url`: the autopilot plays this player (`--bot`), seen over its own shoulder.
+static var join_as_bot := false
 
 var night: Night
 
@@ -34,7 +40,18 @@ func _ready() -> void:
 
 
 func screen_enter() -> void:
-	await night.start(Night.Mode.HUMAN)
+	if join_url == "":
+		await night.start(Night.Mode.HUMAN)
+		return
+	var url := join_url
+	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN
+	night.shoulder_camera = join_as_bot
+	join_url = ""
+	join_as_bot = false
+	_show_overlay("Joining", url, false)
+	night.connect_failed.connect(_on_connect_failed)
+	if await night.start_remote(url, mode):
+		_overlay.hide()
 
 
 func screen_pause() -> void:
@@ -73,6 +90,10 @@ func _pause() -> void:
 func _resume_night() -> void:
 	_overlay.hide()
 	night.set_paused(false)
+
+
+func _on_connect_failed(reason: String) -> void:
+	_show_overlay("Could not join", reason, false)
 
 
 func _on_night_over(round_reached: int) -> void:

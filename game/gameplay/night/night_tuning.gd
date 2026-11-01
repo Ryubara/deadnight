@@ -9,6 +9,12 @@ extends Resource
 ## Carried from the start and never out of rounds: what a player falls back on with a dry gun.
 @export var start_melee: StringName = &"crowbar"
 
+@export_group("Commands")
+## Fixed steps a player's last command stays in force without a new one. After that the player
+## stands, the trigger is released and only the view angles are kept (a stalled client does not walk
+## into the dead). Half a second at the 60 Hz step.
+@export var command_ticks: int = 30
+
 @export_group("Hands")
 ## Metres from the player's feet to a door slab (or a board) that it can be used from.
 @export var use_reach: float = 3.2
