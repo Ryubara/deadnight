@@ -353,9 +353,11 @@ def probe(name: str, pos, dx: float, dz: float) -> None:
     marker("CameraProbes", name, pos, heading(dx, dz))
 
 
-def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0) -> None:
+def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0, props: dict[str, str] | None = None) -> None:
     lines.append(f'[node name="{name}" parent="{parent}" instance=ExtResource("{res}")]')
     lines.append(f"transform = {xform(pos, rot_y)}")
+    for k, v in (props or {}).items():
+        lines.append(f"{k} = {v}")
     lines.append("")
     node_names.add(f"{parent}/{name}")
 
@@ -464,6 +466,10 @@ def build() -> None:
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/neon_sign.tscn" id="neon_sign"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/screen_fx.tscn" id="screen_fx"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')
     lines.append("")
     for mid, (albedo, emis) in MATS.items():
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
@@ -495,7 +501,7 @@ def build() -> None:
 
     # --- Field: the screen, the car rows, the first lit ground --------------------------------------------------
     field = group("Field", ".")
-    floor_tiles(field, "Ground", -62, 62, -52, -4, "field_ground")
+    floor_tiles(field, "Ground", -62, 62, -52, -4, "field_ground", 16)
     screen_c = (0.0, -52.0)
     box(field, "ScreenPanel", (32, 12, 1.2), (0, 10, -48), "screen_face")
     box(field, "ScreenFrame", (33.6, 13.6, 0.8), (0, 10, -48.7), "field_struct")
@@ -560,6 +566,11 @@ def build() -> None:
     ):
         instance(lamps_f, f"Lamp{i}", "lamp", (lx, 0, lz))
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
+    # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
+    instance(
+        field, "ScreenFx", "screen_fx", (0, 0, 0),
+        props={"light_path": 'NodePath("../Lamps/ScreenGlow")', "panel_path": 'NodePath("../ScreenPanel")'},
+    )  # fmt: skip
     spawns = group("PlayerSpawns", field)
     for i, sx in enumerate((-6, -2, 2, 6), start=1):
         marker(spawns, f"Player{i}", (sx, 0, -43))
@@ -594,6 +605,17 @@ def build() -> None:
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorE", (5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorN", (0, 3.3, -2), 1.4, 8, "#ffb866")
+    # The neon over the door, on the concession's circuit: dark until the stand is powered.
+    instance(
+        cl, "NeonSnacks", "neon_sign", (0, 3.35, -4.3), 180.0,
+        props={"text": '"SNACKS"', "neon_color": "Color(1, 0.3, 0.55, 1)"},
+    )  # fmt: skip
+    # The two front windows glow with the stand's lamps (GlowPane).
+    for tag, wx, lamp_name in (("W", -6.0, "InteriorW"), ("E", 6.0, "InteriorE")):
+        instance(
+            cl, f"Window{tag}", "pane", (wx, 1.7, -4.05), 180.0,
+            props={"light_path": f'NodePath("../{lamp_name}")'},
+        )  # fmt: skip
     label(con, "Label", "2 CONCESSION", (0, 4.6, 2), 80)
 
     # --- Midway: the courtyard behind the stand, the hub the other areas hang off ------------------------------
@@ -646,6 +668,11 @@ def build() -> None:
     spot(bl, "ProjectorBeam", (0, 5.4, 22.3), 180, -5.0, 6.0, 100, 7, "#e8f0ff")
     omni(bl, "Lower", (0, 3.0, 27), 1.0, 8, "#c9a8ff")
     omni(bl, "Upper", (0, 6.6, 27), 0.9, 7, "#c9a8ff")
+    # The projector's beam from the port to the screen, burning with the screen's lamp.
+    instance(
+        booth, "BeamFx", "beam", (0, 5.4, 22.3),
+        props={"light_path": 'NodePath("../../Field/Lamps/ScreenGlow")'},
+    )  # fmt: skip
     label(booth, "Label", "4 BOOTH", (0, 7.9, 27), 100)
 
     # --- Generator yard (east) ----------------------------------------------------------------------------------------
