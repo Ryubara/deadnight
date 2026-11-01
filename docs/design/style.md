@@ -206,6 +206,31 @@ The Soldier's parts (`tools/blender/build_soldier_parts.py`, [characters](charac
 | Atlas | 256 x 64, 16 px swatches: row 0 the five look channels and their shades (x 0.75), row 1 eleven fixed colours |
 | Assembled presets | 4,408-5,080 tris against the 6k player budget, one material, 5-7 meshes |
 
+## Drive-in props
+
+The kit has nothing a drive-in needs, so these are ours (`tools/blender/build_drivein_props.py`, headless Blender):
+chamfered boxes and 6-12-sided cylinders at game scale (a player is 1.8 m), one material on a 5 x 5 palette atlas of
+16 px swatches (`game/assets/drivein/drivein_palette.png`: the kit colours above plus cream `#e6d8b0`, amber
+`#e8a33a`, sign red `#b8322e`, teal, chrome, glass, popcorn, concrete), roughness 0.415, metallic 0. Each has a scene
+in `game/world/drive_in/fixtures/` with hidden CSG collision (what the navigation and the camera tests read).
+
+| Prop | Tris | Budget | Size (m, w x d x h) |
+| --- | ---: | ---: | --- |
+| Speaker post (player-only collision) | 328 | 800 | 0.83 x 0.32 x 1.46 |
+| Trash can | 240 | 800 | 0.6 x 0.6 x 1.04 |
+| Popcorn machine (counter top) | 344 | 800 | 0.74 x 0.54 x 1.03 |
+| Picnic table | 316 | 1,500 | 1.8 x 1.5 x 0.8 |
+| Projector | 416 | 1,500 | 0.9 x 1.72 x 2.04 |
+| Menu board | 416 | 1,500 | 4.2 x 0.16 x 1.6 |
+| Ticket booth | 628 | 1,500 | 2.6 x 2.7 x 3.64 |
+| Concession counter | 564 | 5,000 | 10.2 x 2.0 x 1.2 |
+| Marquee | 980 | 5,000 | 6.2 x 0.6 x 6.3 |
+| Screen frame, truss, legs, stays | 1,448 | 5,000 | 33.6 x 9.7 x 16.8 |
+
+Chamfers: 30 mm on props of 1-3 m, 80 mm on the booth, the screen and the marquee; none on parts under 0.1 m. No
+emissive: the marquee's bulbs and the booth's sign are amber and cream swatches; lighting them is the lighting pass's.
+`tools/blender/render_drivein_sheet.py` renders the contact sheet beside the kit Soldier at 0.8.
+
 ## Measuring again
 
 | Step | Command (pinned Blender, headless) |
