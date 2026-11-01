@@ -29,7 +29,7 @@ extends Resource
 ## Walking speed of a zombie in round 1, metres per second: its pace under the lights. The
 ## round-by-round pace follows the original games' speed tiers (docs/research/movement-speeds.md).
 @export var speed_base: float = 1.2
-@export var speed_step: float = 0.18
+@export var speed_step: float = 0.16
 ## No zombie is faster than this under the lights: a hair above the player's run, so running alone
 ## does not shake the fastest, but a sprinting player can always get away.
 @export var speed_cap: float = 5.0

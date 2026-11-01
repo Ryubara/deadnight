@@ -274,9 +274,10 @@ the pillars.
   compounding after round 8 so a starting weapon stops being enough and the shop matters), and
   darker (ambient falls from 0.60 to 0.15 by round 14).
 - **The dead are fast under the lights, faster in the dark.** The walker's pace follows the original games'
-  speed tiers ([movement speeds](../research/movement-speeds.md)): `1.2 + 0.18 (round - 1)` m/s, about 1.9 on round 5,
-  2.8 on round 10 and 3.7 on round 15, the pace the games' run tier has there; the runner (the games' sprint tier,
-  now a type, x1.4) arrives on round 4 at 2.4 and passes the player's run speed (4.8) from round 14. Under the lights
+  speed tiers ([movement speeds](../research/movement-speeds.md)): `1.2 + 0.16 (round - 1)` m/s, about 1.8 on round 5,
+  2.6 on round 10 and 3.4 on round 15, a little under the pace the games' run tier has there (BO3: 1.9, 2.8, 3.9);
+  the runner (the games' sprint tier, now a type, x1.4) arrives on round 4 at 2.4 and passes the player's run speed
+  (4.8) from round 15. Under the lights
   nothing exceeds 5.0 m/s, a hair above the player's run, so running alone no longer shakes the fastest while a
   sprint (7.0) still gains 2 m/s. Ground that is not lit (a circuit off, the generator dry) makes every zombie 25%
   faster (`dark_speed_multiplier`), at most 6.25 m/s, still under the sprint. The brute, crawler and headliner keep

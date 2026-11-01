@@ -54,7 +54,7 @@ func test_health_never_falls() -> void:
 
 func test_walking_speed_rises_and_stops_at_the_cap() -> void:
 	assert_float(_t.speed_for_round(1)).is_equal_approx(1.2, 0.0001)
-	assert_float(_t.speed_for_round(11)).is_equal_approx(3.0, 0.0001)
+	assert_float(_t.speed_for_round(11)).is_equal_approx(2.8, 0.0001)
 	assert_float(_t.speed_for_round(500)).is_equal(_t.speed_cap)
 
 

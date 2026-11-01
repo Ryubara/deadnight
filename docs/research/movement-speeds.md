@@ -144,7 +144,7 @@ is not lit (a circuit off, the generator dry) makes the dead 25% faster.
 
 | | Before | Now |
 | --- | --- | --- |
-| Walker pace under the lights | `0.9 + 0.1 (r - 1)`, then x0.6 | `1.2 + 0.18 (r - 1)` |
+| Walker pace under the lights | `0.9 + 0.1 (r - 1)`, then x0.6 | `1.2 + 0.16 (r - 1)` |
 | Runner (our sprint tier) | x1.7, lit x0.6 | x1.4 |
 | Cap under the lights | 4.5 | 5.0 (1.04 of run, 0.71 of sprint) |
 | Dark | x1.0 | x1.25 (`dark_speed_multiplier`), at most 6.25 |
@@ -156,29 +156,29 @@ Speeds in m/s, lit and dark (before: lit is the old x0.6 and dark the old plain 
 | Round | Walker before | Walker now | Runner before | Runner now | Brute now | Headliner now |
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1 | 0.54 / 0.90 | 1.20 / 1.50 | | | | |
-| 4 | 0.72 / 1.20 | 1.74 / 2.17 | 1.22 / 2.04 | 2.44 / 3.04 | | |
-| 5 | 0.78 / 1.30 | 1.92 / 2.40 | 1.33 / 2.21 | 2.69 / 3.36 | | 0.86 / 1.08 |
-| 8 | 0.96 / 1.60 | 2.46 / 3.08 | 1.63 / 2.72 | 3.44 / 4.30 | 0.98 / 1.23 | |
-| 10 | 1.08 / 1.80 | 2.82 / 3.52 | 1.84 / 3.06 | 3.95 / 4.93 | | 1.27 / 1.59 |
-| 12 | 1.20 / 2.00 | 3.18 / 3.97 | 2.04 / 3.40 | 4.45 / 5.56 | 1.27 / 1.59 | |
-| 15 | 1.38 / 2.30 | 3.72 / 4.65 | 2.35 / 3.91 | 5.00 / 6.25 | | 1.67 / 2.09 |
-| 20 | 1.68 / 2.80 | 4.62 / 5.78 | 2.70 / 4.50 | 5.00 / 6.25 | 1.85 / 2.31 | 2.08 / 2.60 |
+| 4 | 0.72 / 1.20 | 1.68 / 2.10 | 1.22 / 2.04 | 2.35 / 2.94 | | |
+| 5 | 0.78 / 1.30 | 1.84 / 2.30 | 1.33 / 2.21 | 2.58 / 3.22 | | 0.83 / 1.03 |
+| 8 | 0.96 / 1.60 | 2.32 / 2.90 | 1.63 / 2.72 | 3.25 / 4.06 | 0.93 / 1.16 | |
+| 10 | 1.08 / 1.80 | 2.64 / 3.30 | 1.84 / 3.06 | 3.70 / 4.62 | | 1.19 / 1.48 |
+| 12 | 1.20 / 2.00 | 2.96 / 3.70 | 2.04 / 3.40 | 4.14 / 5.18 | 1.18 / 1.48 | |
+| 15 | 1.38 / 2.30 | 3.44 / 4.30 | 2.35 / 3.91 | 4.82 / 6.02 | | 1.55 / 1.94 |
+| 20 | 1.68 / 2.80 | 4.24 / 5.30 | 2.70 / 4.50 | 5.00 / 6.25 | 1.70 / 2.12 | 1.91 / 2.39 |
 
-The walker now tracks the BO3 and BO4 pace (1.9, 2.8 and 3.9 at rounds 5, 10 and 15 against our 1.92, 2.82 and 3.72;
-the runner is the faster mix that makes up the rest); it is slower than WaW, BO1 and BO2, which have every zombie at
-the sprint tier by round 10.
+The walker now tracks the BO3 and BO4 pace (1.9, 2.8 and 3.9 at rounds 5, 10 and 15 against our 1.84, 2.64 and 3.44;
+the runner is the faster mix that makes up the rest, and the dark adds a quarter); it is slower than WaW, BO1 and
+BO2, which have every zombie at the sprint tier by round 10.
 
 **Can a player outrun each type, and from which round does that stop?**
 
 - **Sprinting (7.0): always, in the light and in the dark.** The fastest zombie is 5.0 lit and 6.25 dark. In the
   dark the margin is down to 0.75 m/s: a sprinting player still gets away, but only just, and for as long as the
   sprint lasts, which is for ever (the issue linked below).
-- **Running (4.8): until round 14 in the light and round 10 in the dark** for a runner (4.96 lit, 4.93 dark); until
-  round 21 lit and round 16 dark for a walker. After that a runner who is not stopped by a bullet catches a player who
+- **Running (4.8): until round 15 in the light and round 11 in the dark** for a runner (4.82 lit, 4.82 dark); until
+  round 24 lit and round 18 dark for a walker. After that a runner who is not stopped by a bullet catches a player who
   is only running. This is Call of Duty's rule: from round 6 to 11 the sprint tier moves at the player's base speed.
-- **Aiming (2.6): from round 5 for a runner and from round 9 for a walker** (lit). An aiming player is caught,
+- **Aiming (2.6): from round 6 for a runner and from round 10 for a walker** (lit). An aiming player is caught,
   which matches the point of aiming being a commitment.
-- **Walker and runner ratios to the player's run, lit:** round 10, 0.59 and 0.82; round 15, 0.78 and 1.04.
+- **Walker and runner ratios to the player's run, lit:** round 10, 0.55 and 0.77; round 15, 0.72 and 1.00.
 
 **Is that the feel we want?** It is what the maintainer asked for: a night that stays a challenge with the
 generator on, and gets worse when the lights fail. Two things to keep an eye on. A dark runner at the cap
@@ -190,23 +190,20 @@ stamina cost to running away (the follow-up issue #236).
 The shipped numbers pass the five-cell gate (60 nights, seed 4000, `BalanceTargets.check`: medians, the first
 special rounds, time to kill, spending). Medians against their ranges:
 
-| Cell | Range | Before | Now | First try (base and step only) |
-| --- | ---: | ---: | ---: | ---: |
-| weak, 1 | 4 to 9 | 5 | 5 | 5 |
-| average, 1 | 10 to 14 | 11 | 11 | 8 (out) |
-| average, 2 | 11 to 16 | 13 | 13 | 12 |
-| average, 4 | 12 to 17 | 15 | 14 | 13 |
-| strong, 1 | 12 to 18 | 15 | 14 | 13 |
-| Misses of the other targets | none | none | none | round 5 boss night kills 45% (at most 40%); the boss night kills 100% of weak solo nights (at most 85%) |
+| Cell | Range | Before (`main` now) | After | First try (base 1.2, step 0.18) | After the other work landed, step 0.18 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| weak, 1 | 4 to 9 | 5 | 4 | 5 | 4 |
+| average, 1 | 10 to 14 | 11 | 10 | 8 (out) | 9 (out) |
+| average, 2 | 11 to 16 | 12 | 12 | 12 | 12 |
+| average, 4 | 12 to 17 | 14 | 13 | 13 | 13 |
+| strong, 1 | 12 to 18 | 13 | 13 | 13 | 13 |
 
 The first try kept the old type multipliers (brute x0.6, headliner x0.8, crawler x0.5, runner x1.5) on the faster
-base, which made the boss night's headliner and the stampede's runners much faster than before; making the special
-types keep about their old pace in metres per second and the runner x1.4 brought every target back (a runner x1.4
-with the dark at x1.2 passes too, and a dark of x1.0 passes the medians but not the boss night). A cap and a runner
-multiplier on the old base had moved no median by more than a round; a base 1.5 to 2 times higher does: the
-simulator's dead walk at their speed to a standing player, so a faster pace takes a round off the median. It
-still models only distance, not a chase or the light's geometry, so the gate tells whether the night is survivable,
-not whether it feels right.
+base: the average solo median fell to 8 and the round 5 boss night killed 45% of average and 100% of weak solo nights
+(at most 40% and 85%). Keeping the special types at about their old pace in metres per second and the runner at x1.4
+fixed it. Then the health and count retune landed on `main` and the same speeds put the average solo median at 9 (and
+a dark of x1.2 left the boss night at 89% of weak solo nights): the step went from 0.18 to 0.16, which passes every
+target with the dark at x1.25 (a dark of x1.15, or x1.2 with the headliner at x0.4, also passed).
 
 ## 7. What is left
 

@@ -148,7 +148,7 @@ A crowd must never march in step. Per zombie, chosen by the seeded random of the
 | --- | --- | --- |
 | Start phase | 0 to the clip length | no two zombies plant the same foot together |
 | Play speed | ground speed / clip speed, then times 0.9 to 1.1 | feet keep up with the ground; the jitter breaks sync between zombies at the same speed |
-| Walk to run | `Walk` below 1.6 m/s, blended into `Run` to 2.6 m/s, `Run` above | round 1 walks at 1.2 m/s, round 10 at 2.8, round 20 at 4.6: late walkers run |
+| Walk to run | `Walk` below 1.6 m/s, blended into `Run` to 2.6 m/s, `Run` above | round 1 walks at 1.2 m/s, round 10 at 2.6, round 20 at 4.2: late walkers run |
 | Runner run | `Run` or `Run_Arms`, half each | two run silhouettes in one wave |
 | Light | a zombie off lit ground is 25 % faster; the blend follows the speed it really moves at | the dark makes the dead run: the player sees the light hold them back |
 | Hit | `HitReact` added over the walk, not replacing it | the walk never stops mid-stride |
