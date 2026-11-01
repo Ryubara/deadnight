@@ -16,7 +16,7 @@ const GROUP_LIMITS := {
 	&"ui": 4,
 	&"ui_hint": 1,
 	&"gun": 12,
-	&"reload": 3,
+	&"reload": 4,
 	&"step": 8,
 	&"zombie_voice": 6,
 	&"zombie_boss": 2,
@@ -30,6 +30,14 @@ const GROUP_LIMITS := {
 	&"till": 2,
 	&"player_voice": 3,
 	&"bed": 4,
+	# The arms and the lot (`ArmsCatalog`).
+	&"gun_blast": 5,
+	&"gun_tail": 4,
+	&"impact": 6,
+	&"swap": 2,
+	&"breaker": 2,
+	&"shop": 4,
+	&"points": 2,
 }
 
 ## What `UIAudio` cues play (the gds_ui addon names the cues and ships no sounds).
@@ -79,37 +87,7 @@ static func _build() -> void:
 	_add(&"ui_push", "ui/push_%d.ogg", 1, _with(ui, {"volume_db": -3.0}))
 	_add(&"ui_pop", "ui/pop_%d.ogg", 1, _with(ui, {"volume_db": -3.0}))
 
-	var gun := {
-		"group": &"gun",
-		"priority": 80,
-		"pitch_semitones": 0.6,
-		"max_distance": 90.0,
-		"unit_size": 14.0
-	}
-	_add(&"shot_pistol", "guns/shot_pistol_%d.ogg", 3, _with(gun, {"volume_db": -2.0}))
-	_add(
-		&"shot_smg",
-		"guns/shot_smg_%d.ogg",
-		3,
-		_with(gun, {"volume_db": -4.0, "pitch_semitones": 0.8})
-	)
-	_add(&"shot_rifle", "guns/shot_rifle_%d.ogg", 3, gun)
-	_add(&"shot_shotgun", "guns/shot_shotgun_%d.ogg", 3, _with(gun, {"volume_db": 1.0}))
-	_add(
-		&"dry_fire",
-		"guns/dry_fire_%d.ogg",
-		1,
-		_with(gun, {"priority": 70, "max_distance": 20.0, "cooldown": 0.12})
-	)
-	var reload := {
-		"group": &"reload",
-		"priority": 60,
-		"max_distance": 25.0,
-		"unit_size": 5.0,
-		"volume_db": -5.0
-	}
-	for weapon: String in ["pistol", "smg", "rifle", "shotgun"]:
-		_add(StringName("reload_" + weapon), "guns/reload_%s_%%d.ogg" % weapon, 2, reload)
+	ArmsCatalog.build(_add)
 
 	var step := {
 		"group": &"step",
