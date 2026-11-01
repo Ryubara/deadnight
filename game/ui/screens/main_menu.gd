@@ -10,11 +10,14 @@ extends UIScreen
 signal entered
 
 const PLAY_SCREEN := "res://ui/screens/night_screen.tscn"
+const JOIN_SCREEN := "res://ui/screens/join_screen.tscn"
 const CUSTOMIZE_SCREEN := "res://ui/screens/customize_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"
 ## Seconds after the screen appears before the items rise, so the sign is catching first.
 const ITEMS_DELAY := 0.55
+## How opaque the plate behind the footer line is.
+const FOOTER_PLATE_ALPHA := 0.78
 
 ## The delay the next menu waits before its items rise: a test sets a short one; `ITEMS_DELAY` is
 ## the design value.
@@ -28,6 +31,7 @@ var _entered := false
 @onready var _items: VBoxContainer = %Items
 @onready var _footer: Label = %Footer
 @onready var _play: UIButton = %Play
+@onready var _join: UIButton = %Join
 @onready var _customize: UIButton = %Customize
 @onready var _settings: UIButton = %Settings
 @onready var _credits: UIButton = %Credits
@@ -44,7 +48,9 @@ func _ready() -> void:
 	_sign.tube_a = _tokens.hot
 	_sign.tube_b = _tokens.accent
 	_quit.visible = has_quit()
+	_style_footer()
 	_play.pressed.connect(_open.bind(PLAY_SCREEN, UITransition.Kind.IRIS))
+	_join.pressed.connect(_open.bind(JOIN_SCREEN, UITransition.Kind.SLIDE))
 	_customize.pressed.connect(_open.bind(CUSTOMIZE_SCREEN, UITransition.Kind.SLIDE))
 	_settings.pressed.connect(_open.bind(SETTINGS_SCREEN, UITransition.Kind.SLIDE))
 	_credits.pressed.connect(_open.bind(CREDITS_SCREEN, UITransition.Kind.BURN))
@@ -52,6 +58,22 @@ func _ready() -> void:
 	initial_focus = get_path_to(_play)
 	# Hidden until the screen has arrived; screen_enter brings them in.
 	_hide_for_entrance()
+
+
+## The footer sits on the parked cars at the bottom of the sky: it takes the full ink and a plate
+## of the surface colour behind it, so it reads at 720p over the silhouettes.
+func _style_footer() -> void:
+	var plate := StyleBoxFlat.new()
+	plate.bg_color = Color(_tokens.surface, FOOTER_PLATE_ALPHA)
+	plate.set_corner_radius_all(_tokens.radius_sm)
+	plate.content_margin_left = _tokens.space_md
+	plate.content_margin_right = _tokens.space_md
+	plate.content_margin_top = _tokens.space_xs
+	plate.content_margin_bottom = _tokens.space_xs
+	_footer.add_theme_stylebox_override(&"normal", plate)
+	_footer.add_theme_color_override(&"font_color", _tokens.ink)
+	# The label's own width, not the column's, so the plate hugs the text.
+	_footer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 
 func screen_enter() -> void:

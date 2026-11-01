@@ -73,8 +73,8 @@ distance down to the floor and holds there to the range.
 | --- | --- | ---: | ---: | --- | ---: | --- | ---: |
 | Revolver | hitscan, semi | 24 | 0.28 s | 10 / 40 (max 80) | 1.3 s | 12 to 35 m (55%) | 60 m |
 | Tommy gun | hitscan, auto | 14 | 0.075 s | 30 / 120 (max 180) | 1.9 s | 10 to 30 m (50%) | 50 m |
-| Pump shotgun | 8 pellets, 5 degrees | 11 x 8 | 0.9 s | 6 / 24 (max 48) | 2.4 s | 5 to 18 m (25%) | 30 m |
-| Hunting rifle | hitscan, pierces 2 | 70 | 0.55 s | 8 / 32 (max 64) | 2.2 s | 40 to 90 m (80%) | 120 m |
+| Pump shotgun | 8 pellets, 5 degrees | 19 x 8 | 0.8 s | 6 / 30 (max 60) | 2.4 s | 8 to 22 m (35%) | 30 m |
+| Hunting rifle | hitscan, pierces 2 | 95 | 0.5 s | 8 / 40 (max 80) | 2.2 s | 40 to 90 m (80%) | 120 m |
 | Flare gun | projectile, lobbed | 90 + blast 60 (3 m) | 0.8 s | 1 / 6 (max 12) | 2.0 s | none | 40 m |
 | Crowbar | melee sweep, 2 targets | 45 | 0.55 s | none | none | none | 1.9 m |
 
@@ -84,8 +84,8 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
 | --- | --- | --- | --- | ---: | ---: |
 | Revolver | 1 / 3 | 2 / 4 | 2 / 5 | 86 | 59 |
 | Tommy gun | 2 / 4 | 3 / 6 | 5 / 9 | 187 | 101 |
-| Pump shotgun | 1 / 1 | 1 / 1 | 1 / 2 | 98 | 68 |
-| Hunting rifle | 1 / 1 | 1 / 2 | 1 / 2 | 127 | 85 |
+| Pump shotgun | 1 / 1 | 1 / 1 | 1 / 1 | 190 | 127 |
+| Hunting rifle | 1 / 1 | 1 / 1 | 1 / 2 | 190 | 123 |
 | Flare gun | 1 / 1 | 1 / 1 | 2 / 2 | 112 + blast | 32 + blast |
 | Crowbar | 1 / 2 | 1 / 2 | 2 / 3 | 82 | 82 |
 
@@ -98,14 +98,14 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
 - **The starter is a revolver with a one-shot headshot.** At 24 damage and x2.5 on the head, a round-1 zombie (50)
   falls to one headshot or three body shots, so aiming pays from the first minute; by round 5 (82) it takes two
   headshots or four body shots and by round 10 (117) five body shots. The health curve was lowered to the weapons
-  that exist (rounds.md, the balance simulator): no shop weapon is a big step up from the revolver, which is an open
-  question there, not a design.
+  that exist (rounds.md, the balance simulator): the shop weapons were stepped up in #265 (rifle 95,
+  shotgun 19 a pellet) so that buying one is worth rounds.
 - **Each weapon has one job.** The SMG is volume at short range (the most damage a second, a short magazine of
   patience before the reload); the shotgun is a close wall; the rifle is the precision and the line (it passes through
   two zombies, each blow 40% weaker, which rewards lining the dead up); the flare gun is crowd control with a risk of
   being too close (the blast hurts anyone near the point of impact, the shooter's own party excluded for now); the
   crowbar never runs dry and pays the melee kill bonus (130 points) for the risk of being in reach.
-- **The shotgun cannot farm points.** Pellets add up to one hit for the rules, and its damage falls to a quarter by 18
+- **The shotgun cannot farm points.** Pellets add up to one hit for the rules, and its damage falls to 35% by 22
   m, so it is a close weapon by its own numbers, not by a rule.
 - **Ammo is the other economy.** Reserves are small on purpose (a round-10 zombie is 5 revolver body shots), so
   headshots and melee are worth more than the points they pay. Ammunition is sold ([Rounds](rounds.md#ammunition));
@@ -134,6 +134,12 @@ Which zombies a blast can hit is the rules' answer, never a list the server keep
 fuse keeps running**: it is spent, it is not given back, and it hurts whoever is near, the downed player included (40%),
 which makes a revive during a cook a risk the team can see. The throw that follows is refused (`player_downed`); a
 revived player starts again with a fresh pin.
+
+**In the night.** The server throws for every player on their command's grenade buttons (G, the right shoulder
+button and the touch Grenade button for the overarm throw; H and the left shoulder button for the toss), only while a
+round is on and the player is up and has one. The count drops at the pin, so a grenade cooked to the end and let go
+in the hand is spent and costs the thrower 40% of the blast. The Soldier cooks and throws with his own clips. Wired
+and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351).
 
 | Thing | Number |
 | --- | --- |
@@ -165,8 +171,9 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 
 ## Open questions
 
-- **Shop weapons are no step up.** The numbers behind a proposal to raise the rifle and the shotgun are in
-  [Rounds](rounds.md#open-questions); nothing here changed.
+- **Shop weapons: stepped up (#254, #265).** The rifle (95, 0.5 s) and the shotgun (19 a pellet, 0.8 s) are applied;
+  the reasoning and the reference are in [round scaling](../research/round-scaling.md). What is still missing is a
+  way for a weapon to keep pace with health that compounds (the original's Pack-a-Punch): an issue.
 - **The carry limit** (two or three weapons) needs the player work; today a player may carry every weapon, and
   the swap button (F, d-pad up) takes the next one carried in hand.
 - **Friendly blast.** The flare's blast hurts zombies only; whether it hurts players (and whether a zombie on fire

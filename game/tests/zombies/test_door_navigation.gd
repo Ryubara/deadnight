@@ -15,12 +15,14 @@ const BAKE_FRAMES := 1800
 
 
 ## The lot with `sold` bought through the rules, then given its zombie navigation: baked from the
-## lot as it stands and kept in step with its doors from here on.
+## lot as it stands and kept in step with its doors from here on. The suite is about the bake, so
+## the saved meshes (`LotNavmeshes`, tested in test_lot_navmeshes.gd) are left out.
 func _zombie_lot(sold: Array) -> Node3D:
 	var lot := await LotFixture.make_lot(self, sold)
 	auto_free(lot.get_parent())
 	var navigation := DoorNavigation.new()
 	navigation.name = "DoorNavigation"
+	navigation.saved = null
 	lot.add_child(navigation)
 	navigation.setup(lot, lot.get_node("Doors"))
 	await _map_ready(lot)

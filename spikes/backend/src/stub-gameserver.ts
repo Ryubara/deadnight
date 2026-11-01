@@ -1,6 +1,8 @@
 // Stand-in for the headless Godot server, so the whole handoff can be tested without Godot. It does what the real
-// one must do: announce itself to the backend, and admit only players that hold a valid, unexpired ticket.
-import { WebSocketServer } from "ws";
+// one must do: announce itself to the backend, and admit only players that hold a valid ticket: signed with the
+// ticket secret, unexpired, issued for THIS server, and not used before. The ticket arrives as the first WebSocket
+// message, never in the URL.
+import { type RawData, WebSocket, WebSocketServer } from "ws";
 import { verifyToken } from "./tokens.ts";
 
 export interface StubGameServerOptions {
@@ -16,38 +18,81 @@ export interface StubGameServerOptions {
   backendUrl?: string;
   gameServerSecret?: string;
   heartbeatMs?: number;
+  /** How long a new socket may stay silent before it is closed. */
+  joinTimeoutMs?: number;
 }
 
+/** The close code for every refused join (bad, expired, foreign or replayed ticket); the reason says which. */
 export const CLOSE_BAD_TICKET = 4401;
+export const CLOSE_NO_TICKET = 4408;
+export const CLOSE_REPLACED = 4409;
+export const CLOSE_MATCH_ENDED = 4410;
+/** A join message is a few hundred bytes; nothing larger is read from a socket that has not been admitted yet. */
+const MAX_PAYLOAD_BYTES = 4096;
 
 export async function startStubGameServer(options: StubGameServerOptions) {
   const matches = new Set<string>();
-  const wss = new WebSocketServer({ port: options.port });
+  /** Ticket ids already used, until the ticket would have expired anyway. */
+  const usedTickets = new Map<string, number>();
+  /** One live socket per seat: a new join replaces the old connection. */
+  const seats = new Map<string, WebSocket>();
+  const wss = new WebSocketServer({ port: options.port, maxPayload: MAX_PAYLOAD_BYTES });
   await new Promise<void>((resolve) => wss.once("listening", resolve));
 
-  wss.on("connection", (socket, request) => {
-    const ticket = new URL(request.url ?? "/", "http://localhost").searchParams.get("ticket") ?? "";
-    const claims = verifyToken(options.ticketSecret, "ticket", ticket);
-    if (!claims || typeof claims.matchId !== "string") {
-      socket.close(CLOSE_BAD_TICKET, "bad ticket");
-      return;
+  /** Returns the reason a join is refused, or null after admitting the socket. */
+  const admit = (socket: WebSocket, data: RawData, isBinary: boolean): string | null => {
+    let message: { type?: unknown; ticket?: unknown };
+    try {
+      if (isBinary) return "join must be text";
+      message = JSON.parse(data.toString()) as typeof message;
+    } catch {
+      return "join must be JSON";
     }
+    if (message === null || message.type !== "join" || typeof message.ticket !== "string") return "expected a join message";
+    const claims = verifyToken(options.ticketSecret, "ticket", message.ticket);
+    if (!claims || typeof claims.matchId !== "string") return "bad ticket";
+    if (claims.serverId !== options.id) return "ticket is for another server";
+    if (typeof claims.jti !== "string") return "bad ticket";
+    const now = Math.floor(Date.now() / 1000);
+    for (const [jti, exp] of usedTickets) if (exp <= now) usedTickets.delete(jti);
+    if (usedTickets.has(claims.jti)) return "ticket already used";
+    usedTickets.set(claims.jti, claims.exp);
+
     matches.add(claims.matchId);
+    const seat = `${claims.matchId}/${claims.sub}`;
+    seats.get(seat)?.close(CLOSE_REPLACED, "replaced by a newer connection");
+    seats.set(seat, socket);
+    socket.once("close", () => {
+      if (seats.get(seat) === socket) seats.delete(seat);
+    });
     socket.send(JSON.stringify({ type: "welcome", serverId: options.id, matchId: claims.matchId, userId: claims.sub, name: claims.name }));
+    return null;
+  };
+
+  wss.on("connection", (socket) => {
+    const silence = setTimeout(() => socket.close(CLOSE_NO_TICKET, "no ticket"), options.joinTimeoutMs ?? 5000);
+    socket.once("close", () => clearTimeout(silence));
+    socket.once("message", (data, isBinary) => {
+      clearTimeout(silence);
+      const refusal = admit(socket, data, isBinary);
+      if (refusal) socket.close(CLOSE_BAD_TICKET, refusal);
+    });
   });
+
+  const backendHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${options.gameServerSecret}` };
 
   const beat = async (): Promise<void> => {
     if (!options.backendUrl) return;
     try {
       await fetch(`${options.backendUrl}/internal/servers/heartbeat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${options.gameServerSecret}` },
+        headers: backendHeaders,
         body: JSON.stringify({
           id: options.id,
           url: options.publicUrl,
           activityPath: options.activityPath,
           capacity: options.capacity ?? 10,
-          matches: matches.size,
+          matchIds: [...matches],
         }),
       });
     } catch {
@@ -59,6 +104,17 @@ export async function startStubGameServer(options: StubGameServerOptions) {
 
   return {
     port: (wss.address() as { port: number }).port,
+    /** The match is over (the real server does this when the game concludes): tell the backend, free the slot. */
+    async endMatch(matchId: string): Promise<void> {
+      matches.delete(matchId);
+      for (const [seat, socket] of seats) if (seat.startsWith(`${matchId}/`)) socket.close(CLOSE_MATCH_ENDED, "match ended");
+      if (options.backendUrl) {
+        await fetch(`${options.backendUrl}/internal/matches/${encodeURIComponent(matchId)}/end`, {
+          method: "POST",
+          headers: backendHeaders,
+        });
+      }
+    },
     async close(): Promise<void> {
       clearInterval(timer);
       for (const client of wss.clients) client.terminate();

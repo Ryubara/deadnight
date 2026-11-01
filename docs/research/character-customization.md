@@ -24,6 +24,14 @@ What building the wardrobe taught us. The design is in [Customization](../design
   settings file would turn the smoke run red; `JSON.new().parse(text)` returns an error code instead.
 - **Godot rewrites `project.godot` when it imports** (it reorders the sections). Restore it before committing.
 
+- **A saved look reached no night for a long time** (#301): the wire, server, table and assembler were each tested
+  alone, and the night's player scene still held the fixed kit Soldier, so nothing ever dressed it. The night suite
+  `test_night_look.gd` now saves a look through the real settings file, enters the night through the router and reads
+  the body's shown parts, atlas colours and armband back. A component chain needs one test that runs it end to end.
+- **The modular Soldier replaces the kit Soldier on the player** without touching the animation tree: both have the
+  `CharacterArmature/Skeleton3D` rig and the same clips, and `PlayerAnimation` finds the `AnimationPlayer` by search.
+  `CharacterAssembler.dress` re-dresses a standing model (it swaps the seat armband), `assemble` builds a new one.
+
 ## Testing a menu with GdUnit4
 
 - A click only lands if the control is inside the window and nothing is over it. In a headless run the test runner has

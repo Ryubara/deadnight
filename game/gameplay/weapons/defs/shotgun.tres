@@ -8,12 +8,12 @@ id = &"shotgun"
 display_name = "Pump shotgun"
 kind = 0
 automatic = false
-damage = 11
+damage = 19
 pellets = 8
 spread_deg = 5
-falloff_start = 5
-falloff_end = 18
-min_damage_fraction = 0.25
+falloff_start = 8
+falloff_end = 22
+min_damage_fraction = 0.35
 max_range = 30
 penetration = 0
 penetration_falloff = 0.6
@@ -22,10 +22,10 @@ zone_multipliers = Dictionary[StringName, float]({
 &"head": 1.5,
 &"limb": 0.6
 })
-fire_interval = 0.9
+fire_interval = 0.8
 magazine_size = 6
-reserve_start = 24
-reserve_max = 48
+reserve_start = 30
+reserve_max = 60
 reload_time = 2.4
 shake_trauma = 0.55
 flash_size = 0.42

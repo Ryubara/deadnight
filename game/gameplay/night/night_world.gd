@@ -3,16 +3,17 @@ extends Node3D
 ## The place a night happens in: the drive-in greybox, its navigation mesh, its doors and spawn
 ## markers, and the players' bodies. The server asks it where things are; it decides nothing
 ## itself. A door bought is the lot's own business: `LotDoors` follows the rules (`bind`) and
-## `DoorNavigation` rebakes the zombies' mesh when one opens (`docs/research/zombies.md`, Doors).
+## `DoorNavigation` swaps in the zombies' mesh for the new set when one opens
+## (`docs/research/zombies.md`, Doors).
 
 const GREYBOX := preload("res://world/drive_in_greybox.tscn")
 const PLAYER_SCENE := preload("res://gameplay/player/player.tscn")
 ## Static bodies of CSG shapes reach the physics space after a few steps.
 const SETTLE_FRAMES := 4
-## A new navigation region is usable after the map's second iteration.
-const NAV_ITERATIONS := 2
 ## Frames given to the first mesh before the lot is used anyway.
 const NAV_WAIT_FRAMES := 600
+## Metres a path may end from its goal and still reach it.
+const NAV_REACHED := 1.0
 ## Metres into the field, from the boards, that a player puts them back from.
 const REPAIR_SPOT := 1.4
 ## The areas whose zombie spawns open with a door (the field's are always open).
@@ -55,10 +56,9 @@ func build() -> void:
 		await get_tree().physics_frame
 	navigation = DoorNavigation.new()
 	add_child(navigation)
-	var before := NavigationServer3D.map_get_iteration_id(map())
 	navigation.setup(greybox, doors)
 	for _i in NAV_WAIT_FRAMES:
-		if NavigationServer3D.map_get_iteration_id(map()) >= before + NAV_ITERATIONS:
+		if _map_answers():
 			break
 		await get_tree().physics_frame
 	_lamps = LotLamps.new(greybox)
@@ -68,6 +68,18 @@ func build() -> void:
 
 func map() -> RID:
 	return get_world_3d().navigation_map
+
+
+## True once the navigation map finds a way across the field, between its first two spawn points
+## (the field is never walled off). The map's iteration id is no sign of it: in the browser it
+## stays at 1 while the map already answers, and waiting for a second one cost the full
+## `NAV_WAIT_FRAMES` (10 s) before every night (#335).
+func _map_answers() -> bool:
+	var spawns := greybox.get_node("Field/ZombieSpawns").get_children()
+	var from := (spawns[0] as Marker3D).global_position
+	var to := (spawns[1] as Marker3D).global_position
+	var way := NavigationServer3D.map_get_path(map(), from, to, true)
+	return not way.is_empty() and way[way.size() - 1].distance_to(to) < NAV_REACHED
 
 
 ## Follows the rules: the lot opens the doors they sell (and any they already have open), the
@@ -138,10 +150,18 @@ func shop_spots() -> Array[Dictionary]:
 					"shop_id": StringName(marker.get_meta("shop_id")),
 					"position": (marker as Node3D).global_position,
 					"crane_spot": int(marker.get_meta("crane_spot", 0)),
+					"yaw": _yaw_of(marker as Node3D),
 				}
 			)
 		)
 	return spots
+
+
+## The turn of a marker about the up axis, from where its +Z axis points (an Euler angle is not
+## reliable at a quarter turn).
+func _yaw_of(marker: Node3D) -> float:
+	var forward := marker.global_basis.z
+	return atan2(forward.x, forward.z)
 
 
 ## Where boards can be put back: the gaps in the field's fence.

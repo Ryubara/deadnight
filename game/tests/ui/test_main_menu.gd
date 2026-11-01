@@ -90,7 +90,7 @@ func test_main_scene_starts_on_the_main_menu() -> void:
 
 func test_menu_has_every_item() -> void:
 	var menu := _menu()
-	for item in ["Play", "Settings", "Credits", "Quit"]:
+	for item in ["Play", "Join", "Settings", "Credits", "Quit"]:
 		var button := menu.find_child(item, true, false) as UIButton
 		assert_object(button).is_not_null()
 		assert_str(button.text).is_equal(item)
@@ -129,6 +129,7 @@ func test_each_item_opens_its_screen() -> void:
 	await UIRouter.idle
 	var expected := {
 		"Play": "res://ui/screens/night_screen.tscn",
+		"Join": "res://ui/screens/join_screen.tscn",
 		"Settings": "res://ui/screens/settings_screen.tscn",
 		"Credits": "res://ui/screens/credits_screen.tscn",
 	}

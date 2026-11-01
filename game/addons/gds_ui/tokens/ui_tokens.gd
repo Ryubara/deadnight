@@ -2,15 +2,26 @@ class_name UITokens
 extends Resource
 ## Design tokens: every colour, size, radius, duration and easing the UI uses.
 ##
-## Components and the theme builder read these and nothing else, so a game restyles the whole UI by
-## saving a UITokens resource and pointing the project setting `gds_ui/tokens` at it.
+## Components, shaders and the theme builder read these and nothing else, so a game restyles the
+## whole UI by saving a UITokens resource and pointing the project setting `gds_ui/tokens` at it.
+## The defaults are the shipped drive-in skin (a night sky, an amber marquee, a film burn and a
+## projector iris); every other look is another resource. See the addon's README for the order of
+## events and how to swap the tokens while the game runs (`set_active`).
 
 ## Named easings. UIMotion maps each one to a Godot transition and ease.
 enum Ease { STANDARD, EMPHASIZED, ENTER, EXIT, OVERSHOOT }
 
 const SETTING_TOKENS := "gds_ui/tokens"
 
+
+## Carries the `active_changed` signal: a static variable cannot declare one itself.
+class Bus:
+	extends RefCounted
+	signal changed(tokens: UITokens)
+
+
 static var _active: UITokens
+static var _bus := Bus.new()
 
 @export_group("Colour")
 @export var bg := Color("0d0b14")
@@ -28,12 +39,36 @@ static var _active: UITokens
 @export var danger := Color("e5484d")
 @export var shadow := Color(0.0, 0.0, 0.0, 0.55)
 
+@export_group("Transition colours")
+## The film burn runs hot, flame, ember, char from its front inward; the iris closes to
+## `iris_shade` behind a rim that cools from `iris_rim_hot` through `iris_rim`. The shaders read
+## these as uniforms, so a light or cold game recolours them here and edits no shader.
+@export var burn_hot := Color(1.0, 0.96, 0.78)
+@export var burn_flame := Color(1.0, 0.62, 0.16)
+@export var burn_ember := Color(0.78, 0.2, 0.05)
+@export var burn_char := Color(0.04, 0.03, 0.03)
+@export var iris_shade := Color(0.02, 0.015, 0.02)
+@export var iris_rim := Color(1.0, 0.72, 0.3)
+@export var iris_rim_hot := Color(1.0, 0.95, 0.8)
+## The colour a screen is dimmed to while another slides over it (white leaves it undimmed).
+@export var slide_dim := Color(0.45, 0.45, 0.5)
+
+@export_group("Backdrop")
+## Stars a `UIScreen` draws over its gradient; 0 draws none (a daytime or indoor game). They sit in
+## the top `star_band` share of the screen and `star_seed` fixes their places, so a capture repeats.
+@export var star_count := 70
+@export var star_seed := 1
+@export_range(0.0, 1.0) var star_band := 0.6
+
 @export_group("Type faces")
-## The display face (title, big numbers) and the text face (captions, menus, small print). Null
-## keeps the engine's fallback font, so a game that has not picked a typeface still runs; setting
-## these two resources restyles everything that asks `UITokens.display_font` or `text_font`.
+## The display face (the sign, title and display type, big numbers), the text face (headings,
+## buttons, captions, menus, small print) and the mono face (code, keys, tabular numbers). Null
+## keeps the engine's fallback font (the mono slot falls back to the text face with tabular
+## figures), so a game that has not picked a typeface still runs; setting these resources restyles
+## everything that asks `UITokens.display_font`, `text_font` or `mono_font`.
 @export var font_display: Font
 @export var font_text: Font
+@export var font_mono: Font
 
 @export_group("Type scale")
 @export var size_display := 104
@@ -45,6 +80,10 @@ static var _active: UITokens
 @export var size_overline := 18
 ## Synthetic weight (FontVariation.variation_embolden) for display and heading text.
 @export var embolden_display := 0.5
+## How much of `embolden_display` a heading, a button and an option selector's text take.
+@export var embolden_heading_ratio := 0.5
+@export var embolden_button_ratio := 0.4
+@export var embolden_option_ratio := 0.2
 ## Extra pixels between letters for overlines and buttons.
 @export var tracking_wide := 3.0
 
@@ -77,6 +116,23 @@ static var _active: UITokens
 @export var shadow_raised := 14
 @export var shadow_hover := 26
 
+@export_group("Tint")
+## How far a raised fill lightens on hover and darkens when pressed (Color.lightened/darkened
+## amounts), and the alpha of a ghost button's fill on hover and of any control that is disabled.
+@export_range(0.0, 1.0) var tint_hover := 0.14
+@export_range(0.0, 1.0) var tint_press := 0.18
+@export_range(0.0, 1.0) var ghost_hover_alpha := 0.85
+@export_range(0.0, 1.0) var disabled_alpha := 0.9
+
+@export_group("Marquee")
+## A marquee panel's chase of bulbs: spacing along the border and radius in pixels, the chase in
+## laps of `chase_period` steps per second (the lit bulb moves `chase_speed * chase_period` places a
+## second), and `chase_period` is also how many bulbs apart the lit ones are.
+@export var bulb_spacing := 34.0
+@export var bulb_radius := 4.5
+@export var chase_speed := 2.2
+@export var chase_period := 3
+
 @export_group("Motion")
 @export var dur_fast := 0.14
 @export var dur_base := 0.24
@@ -88,6 +144,10 @@ static var _active: UITokens
 @export var spring_damping := 24.0
 @export var hover_scale := 0.035
 @export var press_squash := 0.05
+## Each half of a shader transition (burn, iris) lasts this many `dur_screen`.
+@export var shader_half_scale := 1.2
+## How far the screen below moves, as a share of the width, while another slides over it.
+@export var slide_parallax := 0.33
 
 
 ## The tokens in force: the resource named by the project setting, else the defaults.
@@ -108,8 +168,31 @@ func text_font(embolden := 0.0, tracking := 0.0) -> FontVariation:
 	return _variation(font_text, embolden, tracking)
 
 
+## The mono face, same arguments. Without one it is the text face with tabular figures (every digit
+## the same width, so a column of numbers lines up).
+func mono_font(embolden := 0.0, tracking := 0.0) -> FontVariation:
+	if font_mono != null:
+		return _variation(font_mono, embolden, tracking)
+	var font := _variation(font_text, embolden, tracking)
+	font.opentype_features = {"tnum": 1}
+	return font
+
+
+## Makes `tokens` the look: screens built afterwards take it, and everything that listens to
+## `active_changed()` (the router and every addon component) restyles at once. Passing null returns
+## to the project setting's resource. Call it before the first screen to avoid any restyle at all.
 static func set_active(tokens: UITokens) -> void:
-	_active = tokens
+	var next := tokens if tokens != null else _configured()
+	if next == _active:
+		return
+	_active = next
+	_bus.changed.emit(next)
+
+
+## Emitted with the new tokens whenever `set_active` changes them. Connect to it in `_ready` and
+## re-read the tokens you cached; a freed listener is disconnected on its own.
+static func active_changed() -> Signal:
+	return _bus.changed
 
 
 static func _configured() -> UITokens:
@@ -124,6 +207,9 @@ static func _configured() -> UITokens:
 static func _variation(face: Font, embolden: float, tracking: float) -> FontVariation:
 	var font := FontVariation.new()
 	font.base_font = face if face != null else ThemeDB.fallback_font
+	if face != null:
+		# A glyph the chosen face lacks comes from the engine's font, not as an empty box.
+		font.fallbacks = [ThemeDB.fallback_font]
 	font.variation_embolden = embolden
 	font.spacing_glyph = int(tracking)
 	return font

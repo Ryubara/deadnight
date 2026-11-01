@@ -61,6 +61,10 @@ var _flights: Dictionary[MeshInstance3D, Tween] = {}
 
 
 func _ready() -> void:
+	# The boards' motions are tweens on the drawn frame, and the pooled copies jump when reused:
+	# the engine's physics interpolation would blend them a tick late
+	# (docs/research/physics-interpolation.md).
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	barricade_id = StringName(get_meta(&"barricade_id", ""))
 	for child in get_children():
 		if child is StaticBody3D:

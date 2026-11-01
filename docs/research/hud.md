@@ -15,12 +15,12 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
   (fit x scale), stretch `canvas_items`, aspect `expand`) found 17 overlaps at 1536 x 864. It then passed while real
   names, a three-digit round, 12,345,678 points, 999 / 9999 ammo and the Marquee typeface overlapped there (#141): it had
   short values and the fallback font. It now also runs the longest content and a wide face (a `FontVariation` of the
-  fallback stretched 1.4 times, so CI without font files still tests a wide face) and the real Marquee pair when
-  `refs/fonts` is found. The fixes are structural (a width per part, text that shrinks then ellipsizes, one line per
-  feed row, the prompt reflowed), not nudges.
-- **Fonts through two token slots.** `UITokens.font_display` and `font_text` default to null (the engine fallback). The
-  HUD, drawn strings included, asks `tokens.display_font()` and `text_font()`. A capture loads the recommended pair from
-  outside the repository, so the committed HUD runs and tests without a font file.
+  fallback stretched 1.4 times) and the Marquee pair, which is now committed (#11), so CI runs the real faces. The
+  fixes are structural (a width per part, text that shrinks then ellipsizes, one line per feed row, the prompt
+  reflowed), not nudges.
+- **Fonts through token slots.** `UITokens.font_display` and `font_text` default to null (the engine fallback); the
+  game's tokens set Bungee Inline and Barlow Condensed (#11). The HUD, drawn strings included, asks
+  `tokens.display_font()` and `text_font()`, so the pair reached it by a resource change, with no HUD file edited.
 
 - **Test the ordinary as well as the worst.** The worst-case suite proves nothing overlaps because text gives way, so
   it passes while everyday text is cut (#170: at 1080p `SNACKS` and "PLAYER 1 OPENED THE CONCESSION STAND" ended in
@@ -46,6 +46,12 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
 - A `Label` takes its text's width as its minimum unless it may trim: with `clip_text` or an ellipsis overrun its minimum
   width is 0, so give it a `custom_minimum_size.x` or an expanding parent. Containers then stay the width you chose.
   Autowrap labels in rows inflate the row (a wrapped feed row doubled the column until it was made one line).
+- A card whose words must all be read wraps instead of ellipsizing (#308): `HudStyle.wrap` turns autowrap on with no extra
+  line gap and `HudStyle.set_wrapped` shrinks the type, then sets `custom_minimum_size.y` from
+  `Font.get_multiline_string_size` at the room it has. An autowrap `Label` learns its wrapped height a frame after it is
+  resized, so reserving the height at once keeps the card from jumping. `test_hud_prompt_fit.gd` walks every prompt the
+  night makes (through `NightHudBinding.show_prompt`), every refusal and every card kind at desktop and phone-landscape
+  canvases and fails on an ellipsis, a line wider or taller than its label, or a card off the screen or over a part.
 - `Font.get_string_size` shapes the string, which is the cost of fitting text: guess the size from one measurement
   (size x room / width) and step down from there. Looping down 4 units at a time made one banner take 6 ms.
 - Count node creation with `get_tree().node_added` filtered to a subtree (`is_ancestor_of`): it needs no engine hook and
@@ -90,18 +96,24 @@ see [the slice](../design/slice.md#the-hud). Things the binding taught:
 
 ## Ammunition and equipment from the weapons
 
-The ammo card and the equipment slot are fed by the weapons' events (`HudLoadout`), with no change to the weapons.
+The ammo card and the equipment slot are fed by the weapons' events and the frame (`HudLoadout`), with no change to the
+weapons.
 
-- The HUD never asks the weapons what a player holds; `weapon_equipped` carries `ammo` and `reserve`, and `shot_fired`
-  and `reload_finished` carry them again, so the card is the last event's numbers. Whatever the shop does to the
-  reserve (#152) reaches the card the same way, as long as the events keep those two fields.
+- The HUD never asks the weapons what a player holds; `weapon_equipped`, `shot_fired`, `reload_finished` and
+  `ammo_added` carry `ammo` and `reserve`, so the card is the last event's numbers, and the frame's `weapon`, `ammo`,
+  `reserve`, `reloading` and `arms` correct it every tick (`HudLoadout.sync`).
+- **Rounds bought did not show until a swap (2026-11-01).** The card listened to equip, shot and reload only, so a
+  locker or a wall buy of a weapon already carried (`ammo_added`, which the server did send) changed the server and
+  not the card; the next `weapon_equipped` of a swap re-read it. A test that bought rounds and asserted the card,
+  instead of one that only fired and reloaded, would have caught it (`test_night_hud_ammo.gd`). The rule that
+  follows: a readout of a number the server owns reads it from the frame, and events only make it quicker.
 - **Equipment is the weapon put away last.** The design page calls it "a flare, a trap" and nothing in the game is one,
   so the slot shows the other weapon of a swap. A weapon with no ammunition (the crowbar, known from
   `WeaponDef.is_melee`) shows `--` on the card. With three weapons carried only the last two are in view. The slot
   first showed the rounds it has left too (`REVOLVER x6`); the maintainer called that readout redundant on 2026-11-01
   (#218) and it is gone: the slot is the weapon's name, the state still holds `equipment_count`.
-- A HUD that joins after the weapons were given has heard no event: the binding hands it the frame's weapon once, then
-  leaves the card to the events.
+- A HUD that joins after the weapons were given has heard no event: the frame's weapons fill the card on the first tick.
+  The frame reaches the HUD one tick after the server built it, so a change with no event shows on the second tick.
 - `HudState` may hold no `Object` (a test checks), so the loadout is static functions over plain fields of the state
   (`weapon_id`, `holstered_id`, `rounds`), not a helper object kept in it.
 - A count beside a name must be measured with the name (shaping the pair is wider than the two measured apart); with

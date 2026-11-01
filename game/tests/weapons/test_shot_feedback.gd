@@ -3,6 +3,8 @@
 # no wall time. The impacts are in test_impact_fx.gd.
 extends GdUnitTestSuite
 
+## How far a model's own `Muzzle` may sit from its hold's `muzzle` point (m).
+const MUZZLE_MODEL_TOLERANCE := 0.02
 const TEST_ROOM := "res://world/test_room.tscn"
 const SHOOTER := WeaponsFixture.SHOOTER
 const BODY := Vector3(0, 1.1, 0)
@@ -62,8 +64,10 @@ func test_the_weapon_in_hand_has_a_muzzle_point_at_the_end_of_its_barrel() -> vo
 	assert_object(marker).is_not_null()
 	var hold := _animation.weapon_hold()
 	var weapon := _animation.weapon()
+	# The model's own `Muzzle` (the centre of the barrel's open end) sits within a centimetre of the
+	# hold's `muzzle` point, the end of the model.
 	assert_vector(marker.global_position).is_equal_approx(
-		weapon.to_global(hold.muzzle), Vector3.ONE * 0.0001
+		weapon.to_global(hold.muzzle), Vector3.ONE * MUZZLE_MODEL_TOLERANCE
 	)
 	# -Z of the marker runs out of the barrel, which is the model's -X.
 	var barrel := (-marker.global_basis.z).normalized()
@@ -166,6 +170,22 @@ func test_every_gun_has_a_flash_and_heavier_guns_flash_bigger() -> void:
 	assert_object(_effects.get("_flash")).is_null()
 
 
+func test_a_melee_swing_draws_no_flash_no_light_and_no_impact() -> void:
+	# The server reports a swing as a shot too; only a gun has a muzzle and bullets to land.
+	var melee: Array[WeaponDef] = []
+	for def in WeaponCatalog.all():
+		if def.is_melee():
+			melee.append(def)
+	assert_array(melee).is_not_empty()
+	for def in melee:
+		var hit := Vector3(0.0, 1.0, -1.0)
+		_effects.shot(def, Vector3(0.0, 1.5, 0.0), [hit], [hit], null)
+		_effects.shot(def, Vector3(0.0, 1.5, 0.0), [hit], [], _animation.muzzle_point())
+	assert_object(_effects.get("_flash")).is_null()
+	assert_int(get_tree().get_nodes_in_group(MuzzleFlash.LIT_GROUP).size()).is_equal(0)
+	assert_int(_effects.impacts.active_count()).is_equal(0)
+
+
 # --- the shot in the night's view ---
 
 
@@ -207,11 +227,11 @@ func test_a_shot_does_not_move_the_aim_ray_of_the_next_command() -> void:
 	var view := _view(state)
 	var rig := _player.camera_rig
 	rig.step(TICK, 1.0)
-	var before := rig.aim_direction()
+	var before := -rig.aim_transform().basis.z
 	view._on_event(_shot_event(&"shotgun"))
 	for i in 10:
 		rig.step(TICK, 1.0)
-	assert_vector(rig.aim_direction()).is_equal_approx(before, Vector3.ONE * 0.0001)
+	assert_vector(-rig.aim_transform().basis.z).is_equal_approx(before, Vector3.ONE * 0.0001)
 
 
 # --- the Muzzle convention: the flash is on the held weapon's own muzzle ---

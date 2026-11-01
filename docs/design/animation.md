@@ -160,6 +160,12 @@ the Soldier with the weapon clips, every track finds its bone).
 | release | spawn the projectile at the hand bone's global position, hide the grenade in the hand |
 | done | the arms are down; `Equip_<Class>` of the weapon can start |
 
+- **In the night (#351):** `PlayerAnimation` adds the three clips to the Soldier's library like the repair clip and
+  plays them on the upper-body action layer (`play_clip`): `Grenade_Cook` on the server's `cook_started`,
+  `Grenade_Throw` or `Grenade_Toss` on `grenade_thrown`. `grenade_visible` puts the gun away and `done` brings it back
+  (the `gone` stage when the grenade went off in the hand). The server throws at the button's release, so the release
+  frame is not yet what spawns the grenade, and the cook clip does not hold its last frame yet: both are open in
+  [Grenades](../research/grenades.md#open).
 - **Hand bone:** `Index1.R`, the bone every weapon is held on. At `release` the projectile starts at that bone's
   global position (at kit scale the hand is about 0.35 m above the head bone's origin for the throw, 0.55 m below it for
   the toss); its velocity comes from the aim and the throw strength, not from the hand: the hand sweeps across the
@@ -194,17 +200,70 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
 - **Pose:** the left hand holds the board flat against the gap at chest height, 0.95 m in front at kit scale (no IK);
   the right fist taps it from chin height (frame 3), rises above the helmet (15) and drives it home (18). The weapon is
   hidden while the clip holds the arms and shown again when it lets go.
+- **The hammer:** while the clip holds the arms, the claw hammer
+  (`game/assets/weapons/hammer/hammer.glb`, [Weapons](../research/weapons.md#the-hammer)) is in the right fist in
+  the weapon's place, on the same `WeaponMount` (`Index1.R`), sized by its hold file (`holds/hammer.tres`, 0.50 m:
+  [the exception to the size rule](weapon-hold.md#the-size-rule)). Its grip, `HOLD_HAMMER`, is the melee one tipped 20
+  degrees in the hammer's swing plane, chosen from the clip's own motion: over a loop the face drops from the raise
+  over the helmet onto the board and meets it square, face first (tested: a drop of more than 0.5 m, the face within
+  45 degrees of both the blow and the player's forward, the head at least 0.15 m out ahead of the fist; the face is
+  the model's `Face` node). An `Equip`
+  clip's `weapon_visible` frame does not bring the weapon back over it. While the clip holds the arms the hands' IK is
+  switched off, not only blended to 0: at influence 0 it still drew the arms in the gun pose, hiding the swing.
 - **Timing comes from the rules, not the clock.** The night repairs one board every `repair_interval` (night tuning,
-  1.0 s) while `use` is held, and each repair is a `board_repaired` event naming the player. On each one,
-  `PlayerAnimation.board_repaired(interval)` seeks the clip to `board_set` and plays it at `1 s / interval`, so the
-  loop comes round to the blow just as the next board goes up (the seek is then a no-op, not a jump). With no event for
-  1.5 intervals the layer fades out (18 per second).
-- `board_set` is the rules' event, so the controller emits it from `board_repaired` only, never from the loop
-  passing the frame: one `board_set` per board. `hammer` (both blows) is for the board sounds (#88).
+  1.0 s) while `use` is held ([hold to repair](rounds.md#the-fences-boards), #297), and each repair is a
+  `board_repaired` event naming the player. On each one, `PlayerAnimation.board_repaired(interval)` seeks the clip
+  to `board_set` less the board's mend (`Barricade.MEND_SECONDS`, 0.28 s: the board slides in and knocks home that
+  long after the event) and plays it at `1 s / interval`, so the fist comes down as the board knocks home (#245).
+  The first board of a hold gets a lead-in this way (the fist rises from the tap and lands), where it was down
+  already; the loop comes round to the same place just as the next board goes up (the seek is then a no-op, not a
+  jump). With no event for 1.5 intervals the layer fades out (18 per second).
+- `board_set` comes once per board: each `board_repaired` makes one due, and the loop emits it when it reaches the
+  frame, with the blow's `hammer`. `hammer` (both blows) is for the board sounds (#88).
+- **Facing the boards.** A repair is allowed by place (field side, within reach), not by facing, so for an interval
+  after each board the server turns the body toward the breach at its turn speed (`NightServer._face_breach`);
+  walking or aiming turns it the player's way as before.
+- **Every player's repair.** The clip is started by the view from the event stream (`NightView.show_repair`), for
+  whichever player the event names: the view finds the drawn body through `NightView.bodies`, which a single-process
+  night fills with the server's bodies and a client on another machine with its drawn avatars.
 - Checked headless (`game/tests/art/check_repair.gd`): every track finds its bone on `soldier.glb`, the loop is
   seamless, the fist is lowest at frame 19 (one past `board_set`) and 0.82 m below the raise, no leg bone turns,
   and over `Walk` through the filter the arm matches the clip to 0.04 degrees. `game/tests/player/test_player_repair.gd`
-  steps the controller by hand: start, pace, a faster interval, letting go.
+  steps the controller by hand: the lead and the blow on the knock, pace, a faster interval, letting go, the hammer shown
+  and put away, the face leading the blow; `game/tests/night/test_night_repair_show.gd` checks the facing and that the
+  clip reaches the named player's body; `game/tests/night/test_night_repair_hammer.gd` holds `interact` at a breach
+  through the night and checks the hammer replaces the weapon and the weapon comes back on release, and
+  `game/tests/ui/touch/test_touch_repair.gd` does the same from a finger on the touch Interact button.
+
+## Moving while aiming
+
+While aiming the Soldier keeps facing the camera and moves at `aim_speed` (2.6 m/s) in any direction, so the legs
+need a clip per direction (#74). Four `full` clips, one gait turned four ways, built by `aim_moves()` in
+`tools/blender/soldier_clips.py` into their own file, `game/assets/characters/soldier/aim_move/soldier_aim_move.glb`
+with its `clips.json`; `PlayerAnimation` adds them to the Soldier's library when the tree is built.
+
+| Clip | Direction | Plays | Frames | Ground speed | Events |
+| --- | --- | --- | --- | --- | --- |
+| Walk_Shoot | ahead | loop | 17 (0.71 s) | 2.6 m/s | step_right 1, step_left 11 |
+| Walk_Back | back | loop | 17 (0.71 s) | 2.6 m/s | step_right 1, step_left 11 |
+| Strafe_Left | his left | loop | 17 (0.71 s) | 2.6 m/s | step_right 1, step_left 11 |
+| Strafe_Right | his right | loop | 17 (0.71 s) | 2.6 m/s | step_right 1, step_left 11 |
+
+- **One gait, four ways.** Each foot follows the kit `Run`'s path turned toward the direction of travel: in contact
+  it sweeps the ground at the aim speed over 0.85 of the Run's contact, and the Run's swing fills the rest of the
+  cycle, 0.55 as high going ahead and an even 16 cm arc (kit scale) going sideways or back (the Run's high back-kick
+  would lift the foot in front of a backpedal). On a strafe the feet's lanes move 16 cm ahead and behind so they
+  pass instead of colliding, and the knees and toes turn a third of the way toward the step. The hips drop 5 cm and
+  bob at 0.45 of the Run's; `Body` does not turn, so the aim stays level. The legs are solved to meet the feet
+  (`tools/blender/gaitlib.py`). Above the hips each clip holds the gun hold (`Idle_Shoot` frame 0); in the game the
+  bone filter puts `Aim_<Class>` there.
+- **Blended by the direction of travel.** The body's `locomotion` has the Idle/Walk/Run blend and, over it by an
+  aim weight that follows `aiming` (`blend_rate`), a `BlendSpace2D` with Idle in the middle and the four clips at
+  ahead, back, left and right (`PlayerAnimation.aim_move_for`: the velocity in the facing's frame). The clips share
+  their length and their step frames, so a diagonal is two of them in step. The gait is fully in by 40 % of the
+  clips' speed and plays at ground speed over 2.6 (0.5 to 1.6) behind its own time scale.
+- Checked headless (`game/tests/player/test_player_aim_move.gd`): the planted foot, read off the skeleton while the
+  player moves at the aim speed, sweeps straight against the travel at 2.60 m/s in all four directions.
 
 ## How the clips are made
 
@@ -233,6 +292,10 @@ godot --path game -s res://tests/art/capture_grenade.gd -- --out <scratch>/godot
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Repair_ --out game/assets/characters/soldier/repair/soldier_repair.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Repair,RepairSplit --view back --out <scratch>/repair
 godot --headless --path game -s res://tests/art/check_repair.gd           # LIBRARY/CLIP/LOOP/BLOW/SPLIT lines, exit 0
+# The aim-move clips, their own file (prints AIM_MOVES: ground speed and how far a foot was pulled into reach); their
+# sheet, the kit Run above them (front, side, or from above and behind to see the feet on a strafe):
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Walk_,Strafe_ --out game/assets/characters/soldier/aim_move/soldier_aim_move.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only AimMove --view top --out <scratch>/aim
 ```
 
 `<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is third-party-derived (CC0); it is committed with

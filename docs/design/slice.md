@@ -23,7 +23,10 @@ page says what is in, and what is next.
   its events and one `frame` go back; the client reads its controls (or the autopilot decides) and sends the next
   command.
 - A `NightCommand` is a `PlayerCommand` plus the trigger, reload, use and the camera ray. A person and the bot
-  produce exactly this; the server cannot tell them apart.
+  produce exactly this; the server cannot tell them apart. The player is the connection's, never what the message
+  says. A pressed edge (use, reload, swap, jump) is kept until a step uses it, even when a newer command arrives in
+  the same tick, and a command that is not renewed for `NightTuning.command_ticks` steps (30, half a second at the
+  60 Hz step) is replaced by one that stands still, keeps the view angles and releases the trigger.
 - A `frame` is the whole picture a client or a HUD draws from: phase, round, zombies left, fuel, open doors, the
   zombies as `ZombieCodec` bytes, and for each player their position, health, weapon, ammunition, points and the
   prompt for what `use` would do. The HUD binds to `ClientState.event_received` and these frames
@@ -42,9 +45,9 @@ page says what is in, and what is next.
 | Player health: 100, regenerates after 5 s unhurt, a down at zero | `GameRules` (`HealthTuning`); `NightServer` sends a zombie's swing as a `blow` | all down ends the night |
 | Rounds, break, points for hits and kills, the round bonus | `gameplay/rules/` | unchanged |
 | Doors: `interact` next to a slab buys the door; `LotDoors` frees its slabs, `DoorNavigation` rebakes the mesh, its area joins the spawns | `NightWorld` (binds the lot to the rules), `NightServer` | one path, the lot's own ([Doors](../research/zombies.md#doors)); the prompt shows the price |
-| Boards at the fence breaches: the dead tear them off, `interact` from the field side puts one back for the rules' repair points | `Barricade`, `NightWorld`, `NightServer`, `ZombieSim` | [the fence's boards](rounds.md#the-fences-boards); the prompt shows only at a breach with a board down |
+| Boards at the fence breaches: the dead tear them off, `interact` (held) from the field side puts boards back, one a second, for the rules' repair points | `Barricade`, `NightWorld`, `NightServer`, `ZombieSim` | [the fence's boards](rounds.md#the-fences-boards); the prompt shows only at a breach with a board down |
 | The shop spots: the shotgun and the rifle on walls, the prize crane, ammunition lockers; the crowbar is always carried, `swap` changes the weapon in hand | `NightServer` (`use_target`, `buy`), `NightWorld.shop_spots` | the supply drop is gone: rounds are bought ([the lot](map.md#shop-spots), [ammunition](rounds.md#ammunition)) |
-| The lamps follow the generator: a circuit off or a dry tank darkens its lamps and posts, a failing tank flickers them, and the dead are slowed only on ground a lit circuit lights | `LotLamps`, `NightView`, `NightWorld.is_lit` | [the lot's lamps](map.md#which-lamps-hang-on-which-circuit) |
+| The lamps follow the generator: a circuit off or a dry tank darkens its lamps and posts, a failing tank flickers them, and the dead are 25% faster on ground no lit circuit lights | `LotLamps`, `NightView`, `NightWorld.is_lit` | [the lot's lamps](map.md#which-lamps-hang-on-which-circuit) |
 | Sound: shots, reloads, dry fire, round stings | `NightView` | through the `Audio` autoload |
 | The HUD: round, points, health, ammunition, the prompt at a door or breach, the party, the generator | `NightHudBinding`, `ui/hud/` | below |
 | The autopilot | `gameplay/night/autopilot.gd` | below |
@@ -76,20 +79,49 @@ and the bot doing it in a night. When the tank is at the low line and it can pay
 open can stand and buys until the tank is back above 40% ([map](map.md#the-fuel-cans),
 `tests/night/test_autopilot_fuel.gd`).
 
+Three traps cost time while it was written. Its sight check is a `Callable` of a `WorldProbe`, and a `Callable` does not
+keep a `RefCounted` alive: `Night` holds the probe in `_sight`, because one made from a temporary object was freed at
+once and silently answered "clear". A shot leaves the barrel, so `Autopilot._clear` tests the line from the eye and from
+the barrel. And a faster run is more fixed ticks per physics frame (`Night.ticks_per_frame`), never `Engine.time_scale`,
+which scales the step each tick gets and plays a different night. Each is in [lessons](../lessons/index.md).
+
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
 door open, with a HUD on the night that must show the same round and points, have offered the door by name and
 price before the purchase, and listed the purchase when it happened. `tests/captures/autopilot_night.tscn` plays it
 for captures and prints a report (`-- --rounds=5 --speed=30`, `--trace`, `--log`).
 
+## Recording the night at 60 frames a second
+
+`tests/tours/night_tour.tscn` plays the first round the way a person does, with the real input actions and the
+shipped tuning, and ends at the pause menu: Play on the main menu, turn to face the field, wait for the first of
+the dead (they come in after the 12 s intro and walk in from the fence), aim and shoot (a hit with its damage
+number and tracer, a kill and its points), walk to the concession door when the round is over, read its prompt
+and buy it with `interact`. The stand-in for the person reads only what a screen shows (the dead's places from
+the client's state) and answers with key presses and mouse look at a limited turning speed; it prints
+`TOUR <stage> <seconds>` as each stage begins. One frame is one physics tick:
+
+```text
+godot --path game res://tests/tours/night_tour.tscn --no-window --write-movie <abs>/fight.avi --fixed-fps 60 --quit-after 9000
+```
+
+The recording attached to the pull request that added the tour (#164) is from `main` at `32dca4b`: the first of
+the dead is up at 16 s, round 1 lasts 53 s of fighting (four kills, the points 200 to 502, one reload), the
+player is at the door 7 s later and buys it for 350 (points 152). It shows what the 10 frames a second
+recordings of #158 could not: the hit marker, the numbers and the points rising, the reload, and the sprint
+and run. [How to film without a window, and why the mouse look must be off](../research/greybox-and-captures.md#captures).
+
 ## What is next
 
 Each of these is an issue.
 
 - **Characters** (#90): the player model carries no weapon in hand yet; hit and death reactions.
-- **Grenades** (#99) and **boss nights** (#97) join through `NightServer` and the rules.
-- **Real transport.** `LoopbackLink` becomes the network protocol; the player bodies split into server bodies and
-  drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
+- **Boss nights** (#97) join through `NightServer` and the rules. (Grenades did: #351.)
+- **Grenade polish** (#357): the blast's knockback and stun on the dead, the grenade model in the Soldier's hand, the
+  throw clip timed to the server's throw, and the arc preview while the button is held.
+- **Real transport.** Done for one machine (#302, [Testing multiplayer](../research/testing-multiplayer.md)): the night
+  runs on a headless `NightHost` over WebSocket, clients draw the others as avatars and follow the doors from the
+  frames. What is left: the player bodies on the server still have models (#153), Railway and Discord.
 - **Tonics**, the re-cut. (A breaker post for each circuit is in:
   the lamps follow `circuit_changed` and the tank, and a player or the bot throws the switch.)
 - **Revive** by a teammate. (The boards at the breaches are in; their sounds are the audio's next.)

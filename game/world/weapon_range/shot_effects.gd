@@ -35,14 +35,22 @@ func _ready() -> void:
 	add_child(impacts)
 
 
+func _init() -> void:
+	# Tweens on the drawn frame move these, not the physics tick: the engine's physics
+	# interpolation (docs/research/physics-interpolation.md) would blend them a tick late.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+
 ## The look of one shot of `def` from `muzzle` that ended at each of `ends` (one per pellet): the
 ## muzzle flash (on `anchor`, the weapon's muzzle point, when there is one), then a small puff on
 ## every zombie hit at `flesh` and a spark, puff and mark at every end that stopped short of the
 ## weapon's range on something else. A streak only when the weapon asks for one. A projectile
-## weapon draws only the flash: its body flies and bursts.
+## weapon draws only the flash: its body flies and bursts. A melee weapon draws nothing here.
 func shot(
 	def: WeaponDef, muzzle: Vector3, ends: Array, flesh: Array = [], anchor: Node3D = null
 ) -> void:
+	if def.is_melee():  # a swing has no muzzle: no flash, no impacts of a bullet
+		return
 	var aim := Vector3.ZERO
 	if not ends.is_empty():
 		aim = (ends[0] as Vector3) - muzzle
@@ -103,7 +111,7 @@ func muzzle_flash(
 		flash = MuzzleFlash.on(anchor)
 		barrel = -anchor.global_basis.z
 	else:
-		if _flash == null:
+		if not is_instance_valid(_flash):  # the warm-up frees what it drew
 			_flash = MuzzleFlash.new()
 			add_child(_flash)
 		flash = _flash

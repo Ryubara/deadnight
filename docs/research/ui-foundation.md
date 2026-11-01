@@ -1,15 +1,60 @@
 # UI foundation
 
 Decisions behind the `gds_ui` addon (`game/addons/gds_ui/`), written while building it. The addon names no Deadnight
-content, so it can move to the GDStudio kit unchanged.
+content, so it can move to the GDStudio kit unchanged; its own `README.md` is the reference for the tokens, the project
+settings, the audio cues, the router calls and how to restyle.
 
 ## Tokens and theme
 
-`UITokens` (a `Resource`) holds every colour, type size, spacing, radius, duration and spring value. Nothing else reads
-a literal. `UIThemeBuilder.build(tokens)` generates the `Theme`: label type variations (`UILabelDisplay` ... `Overline`),
+`UITokens` (a `Resource`) holds every colour, type size, spacing, radius, duration, tint, shader palette and spring
+value. Nothing else in the addon reads a literal of those kinds ([below](#every-literal-is-a-token-21)).
+`UIThemeBuilder.build(tokens)` generates the `Theme`: label type variations (`UILabelDisplay` ... `Overline`),
 button variations (`UIButtonPrimary/Secondary/Ghost`) and panel variations, plus a usable look for plain `Button`,
 `Label` and `PanelContainer`. A game restyles everything by saving a `UITokens` resource and pointing the project
-setting `gds_ui/tokens` at it. Only the engine's fallback font is used: a licensed font is a maintainer decision.
+setting `gds_ui/tokens` at it. Fonts are three token slots (`font_display`, `font_text`, `font_mono`, #11): the theme
+applies the display face to the display and title labels, the text face to the rest and the mono face to
+`UILabelMono`; an unset slot is the engine's fallback font (mono: the text face with tabular figures). Deadnight sets
+Bungee Inline and Barlow Condensed ([typography](../design/typography.md#decision)).
+
+### Every literal is a token (#21)
+
+Review (#21) found that the first version still hid its drive-in look in literals, so a second game could not restyle
+it through tokens. They are now tokens, with the old values as defaults (a capture of the default look before and after
+is the same picture, apart from the stars' places):
+
+- **Shader colours** are uniforms (`burn_hot`, `burn_flame`, `burn_ember`, `burn_char`, `iris_shade`, `iris_rim`,
+  `iris_rim_hot`) named like the tokens; `UITransitionShader.feed_tokens` sets every shader uniform that has a colour
+  token of the same name, so a game's own shader gets a palette by naming a uniform. A test lists each `vec3` uniform
+  of both shaders and fails when one is not a token. The uniforms carry no `source_color` hint: the colours are the
+  raw values that were constants, and the Compatibility renderer draws them unchanged.
+- **Slide** dim and parallax (`slide_dim`, `slide_parallax`), the **shader half length** (`shader_half_scale`),
+  **button tints** (`tint_hover` 0.14, `tint_press` 0.18, `ghost_hover_alpha` 0.85, `disabled_alpha` 0.9), the
+  **marquee** chase (`bulb_spacing`, `bulb_radius`, `chase_speed`, `chase_period`) and the **emboldening** ratios
+  (`embolden_heading_ratio`, `embolden_button_ratio`, `embolden_option_ratio`).
+  One drift: the toggle, option selector and plain `Button` used 0.14, 0.1, 0.12 and 0.2 for their hover and press tint;
+  they now share `tint_hover` and `tint_press`, so their tints moved by at most 0.04.
+- **The star backdrop** is `star_count` (0 draws none), `star_seed` and `star_band` on the tokens plus `UIScreen.stars`
+  per screen. The old seed was the year of the game's setting; the default seed is now 1, so the demo's stars sit
+  elsewhere.
+- The demo says "UI DEMO" and tints its detail screens from tokens (the old fixed browns made a light palette look
+  half-restyled in the first capture).
+
+### Changing tokens at runtime (#21)
+
+`UITokens.set_active(tokens)` emits `UITokens.active_changed()`. The router listens (stage theme, clear colour) and so
+does every addon component (springs, radii, minimum sizes, stars); `set_active(null)` returns to the project setting.
+Before this, `set_active` after the router's `_ready` did nothing, because the router and each component cached the
+tokens. The pattern for a component is one `_apply_tokens()` that reads the active tokens into everything the node
+cached, called from `_init` and from the signal handler; game nodes outside the addon (the HUD, the skin) still cache
+`UITokens.active()` and need the same two lines to follow a swap, which no screen does today.
+`UIMotion.reduced` already followed live (a setter emitting `changed()`); the marquee panel did not: it decided in
+`_ready` whether to run its chase. It now follows `changed()`.
+
+A light palette (`game/addons/gds_ui/demo/light_tokens.tres`) restyles the demo menu, the component sheet and the film
+burn with no change to a screen (captured at startup and swapped live while the menu showed;
+`test_ui_tokens_restyle.gd` asserts the same on the instances). Two lessons from making it: hover *lightens* a raised
+fill, so a light palette needs `surface_raised` darker than `surface`; and the default `shadow` (black at 55%) is a
+dark-skin value, so a light palette sets its own, softer one.
 
 ## Components are drawn, not styled
 
@@ -27,11 +72,11 @@ A `StyleBox` cannot ease between states, so the theme gives the button's states 
 | Focus ring | gap 6 px, closes in from 16 px, 3 px stroke | The ring "lands" on the button |
 | Spring | stiffness 360, damping 24, fixed 1/240 s step | Settles in about 0.3 s, no visible overshoot; the fixed step makes captures repeat |
 | Screen fade | 0.14 s out (cubic in), 0.40 s in (quart out, rise and settle) | Leave fast, arrive gently |
-| Slide | 0.5 s, expo out, old screen at 1/3 distance and dimmed | Parallax shows depth; a pop plays the push backwards |
-| Shader transitions | 1.2 x 0.5 s per half | One sweep to cover, one to reveal |
+| Slide | 0.5 s, expo out, old screen at 1/3 distance and dimmed | Parallax shows depth; a pop mirrors the push with the popped screen on top |
+| Shader transitions | `shader_half_scale` 1.2 x `dur_screen` 0.5 s per half | One sweep to cover, one to reveal |
 
-No easing is linear. Reduced motion (`UIMotion.reduced`, project setting `gds_ui/accessibility/reduced_motion`) makes
-movement snap and swaps slide, burn and iris for the fade.
+No easing is linear. Reduced motion (`UIMotion.reduced = value` at any time; project setting `gds_ui/accessibility/reduced_motion`
+gives the start value) makes movement snap and swaps slide, burn and iris for the fade.
 
 The focus ring shows only after keyboard or gamepad input (`UIInputMode.pointer` is false); a mouse user sees hover.
 Hovering also moves focus, so the two never disagree.
@@ -58,9 +103,9 @@ old screen, the router swaps the screens behind it, then it opens on the new one
 ## Router
 
 `UIRouter` is an autoload (the plugin adds and removes it) on a `CanvasLayer`. Calls are queued while a transition runs
-and input is blocked. A pop repeats the transition the screen arrived with, reversed. Tweens must not be created on a
-screen whose `process_mode` is disabled (paused screens are), or they never run: the router restores the mode before
-each transition.
+and input is blocked. A pop mirrors the push it undoes ([below](#a-pop-mirrors-the-push)), not a plain reversal: for the
+slide, the layering differs. Tweens must not be created on a screen whose `process_mode` is disabled (paused screens
+are), or they never run: the router restores the mode before each transition.
 
 ### A pop mirrors the push
 
@@ -98,6 +143,24 @@ draining:
   blank stage, `screen_changed(0)`) until the next `push` or `reset`. A pop or reset that loses its screen mid-way ends
   the same way, with one `push_error` and `error_reported`. While a job runs it finishes the stack itself.
 
+### Found by review
+
+Review of the router (#12, fixed in #51) found two things that no unit test had asked about; both are in the sections
+above, and both came from looking at the behaviour, not the code:
+
+- **The slide pop drew the leaving screen underneath.** Playing the push backwards kept the stage's child order, so the
+  popped screen slid off behind the one it revealed. The fix raises the right screen itself and does not rely on child
+  order ([a pop mirrors the push](#a-pop-mirrors-the-push)); the test is `test_a_slide_pop_mirrors_the_push`.
+- **A freed screen stalled the router for good** ([the rules](#a-freed-screen-must-not-stall-the-router)); the kit has
+  it as a [lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-01-a-screen-freed-mid-transition-locked-the-router-for-good.md).
+
+The general findings (a script `_draw` on a `Button` paints over its text, tweens on a node with disabled processing
+never run, `hint_screen_texture` needs a back-buffer copy, set the default clear colour) are in the kit's
+[UI controls page](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/ui-controls.md). The router sets the clear
+colour from the token `bg` (`UIRouter._ready`), so a fade never passes through the engine's grey. What to check when
+adding a transition is the [checklist](https://github.com/Ryubara/deadnight/blob/main/game/addons/gds_ui/README.md#adding-a-router-transition)
+next to the code.
+
 ### Tests
 
 `game/tests/ui/test_ui_router_robustness.gd` adds a reset that loses a screen, a screen that frees itself in `_ready`
@@ -130,6 +193,17 @@ and focuses only if `UIRouter.top()` is the menu (`finish_entrance`). The delay 
 a test can set; `ITEMS_DELAY` is the design value) and `entered` says the items are up, so no test waits on wall
 time. No other screen waits before focusing: a screen that must (a timer, an `await`) checks the router's top
 afterwards, or uses a node timer. Capture: `game/tests/captures/menu_focus_cover.tscn`.
+
+## Self-test (#11)
+
+`game/tests/ui/test_gds_ui_self.gd` (GdUnit4, headless, in the CI job) covers the addon on its own: a spring settles
+on its target with less than 8 percent overshoot and ends in the same place at 30, 60 and 144 fps; the theme builds
+every label, button and panel style; every `UILabel.Style` has a variation; the router's depth follows push and pop;
+each face slot reaches its styles, an unset slot is the engine font, the mono slot is the text face with equal digit
+widths, a missing glyph falls back, and a token swap changes the face on a shown screen and on the neon sign.
+`test_menu_type.gd` covers the game side: the footer plate and contrast, the sign and buttons in the game's faces, the
+credits naming every committed font, a licence text and entry for each font folder, and the credits fitting one
+screen.
 
 ## Left out
 

@@ -13,13 +13,16 @@ otherwise. [Scale](#scale) gives the factor to Deadnight's game scale.
 
 Measured without the 14 weapons every kit character file carries in its right hand, in the rest pose (a T-pose)
 unless the column says Idle (the first frame of the Idle clip, standing).
+The zombie's Idle is measured on our built walker (`zombie_walker.glb`, whose Idle holds the arms the kit's lacks, see
+[what broke](../research/zombie-variants.md#what-broke)), not on the kit file, where the Idle keeps part of the Crawl
+pose.
 
 | Character | Tris | Rest height | Idle height | T-pose span | Heads tall | Head % of height | Head width | Hips % | Neck % | Bones | Clips |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Soldier | 5,828 | 2.31 | 2.15 | 2.73 | 2.8 | 36 | 1.07 | 40 | 64 | 43 | 14 |
 | Hazmat | 5,462 | 2.14 | 1.99 | 2.72 | 3.3 | 31 | 0.98 | 43 | 69 | 43 | 17 |
 | Enemy | 4,594 | 2.30 | 2.18 | 2.72 | 2.8 | 36 | 0.92 | 40 | 64 | 43 | 17 |
-| Zombie | 7,822 | 1.36 | 1.06 | 1.89 | 2.8 | 36 | 0.83 | 38 | 65 | 50 | 16 |
+| Zombie | 7,822 | 1.36 | 1.25 | 1.89 | 2.8 | 36 | 0.83 | 38 | 65 | 50 | 16 |
 
 What the numbers say:
 
@@ -69,6 +72,16 @@ How they are built:
 | Origin | at the grip: guns 72-89 % along from the muzzle, 26-51 % up; blades and the shovel near the handle end (14-40 %). The hand bone holds them with no offset |
 | Colours | 3-4 flat materials: Grey `#818491` or `#8f92a0`, DarkGrey `#414141`, Black `#252525`, Wood `#95703d`; red or green only as an accent |
 | Handedness | every held copy is parented to the right hand's `Index1.R` bone |
+
+### Attachment points
+
+Where an effect or a hand meets a model is part of the model, placed by the modeller who owns it, never an offset
+typed into gameplay code. **Every firearm carries an empty named `Muzzle`**, a child of the weapon's root, at the
+centre of the barrel's open end, turned so its **-Z points out of the barrel** (Godot's forward; in Blender that is the
+empty's local +Y, because the glTF export turns Z up into Y up). A gun with two barrels side by side gets one `Muzzle`
+centred between them. Melee weapons and grenades get none. The held and far levels carry it at the same place. The
+flash and the shot leave from it; the numbers and the test are in [Weapons](../research/weapons.md#the-muzzle). A
+tool carries the point it strikes with the same way: the repair hammer's `Face`, -Z out of the face.
 
 ## Bevels
 
@@ -140,7 +153,7 @@ Scale on import, the same factor for a character and what it holds:
 | Model | Rest height | Factor to 1.8 m | Proposed factor |
 | --- | --- | --- | --- |
 | Kit characters and weapons | 2.14-2.31 | 0.78-0.84 | 0.8 (keeps their height differences: 1.71-1.85 m) |
-| Zombie | 1.36 | 1.32 | 1.3 (1.77 m at rest; it hunches to 1.38 m in Idle) |
+| Zombie | 1.36 | 1.32 | 1.3 (1.77 m at rest; it stands 1.63 m in Idle, hunched) |
 
 At 0.8 a gun bevel becomes about 14 mm and the AK 1.14 m long: still toy-sized, which is the look.
 
@@ -202,9 +215,11 @@ The Soldier's parts (`tools/blender/build_soldier_parts.py`, [characters](charac
 | Rule | Value |
 | --- | --- |
 | Head landmarks (kit metres, at rest, front is -Y) | hood x +-0.35, y -0.36..0.32, top z 2.20; eyes z 1.75-1.89 at x +-0.12..0.23; face front y -0.37; collar ring z 1.40-1.68, r 0.36 |
-| Added pieces | primitives with a 20 mm one-segment chamfer (10-15 mm on small rims), 44-436 tris each, skinned 100 % to one bone |
+| Added pieces | primitives with a 20 mm one-segment chamfer (10-15 mm on small rims), 44-436 tris each, skinned 100 % to one bone; hair is rounded (spheres and domes, no chamfer) in the crown's `hair` swatch, `hair_shade` only on faces that point down, never a box (a box on the crown read as a cap) |
+| Painted bands | a stripe or band on a kit-body part is cut into the mesh between two planes (`cut_stripe`: the Usher's trouser stripe, 2 x 45 mm at kit scale), never painted by face centre (that leaves sawtooth edges) |
 | Atlas | 256 x 64, 16 px swatches: row 0 the five look channels and their shades (x 0.75), row 1 eleven fixed colours |
-| Assembled presets | 4,408-5,080 tris against the 6k player budget, one material, 5-7 meshes |
+| Assembled presets | 4,490-5,080 tris against the 6k player budget, one material, 5-7 meshes |
+| Far level of detail | 1,515-1,812 tris against the 2k far budget (the build fails over it): every part over 260 tris collapse-decimated to one ratio (0.333) solved for the heaviest preset, smaller pieces kept whole; same skeleton, atlas UVs and material, swapped at 18 m. In Godot at the swap 0.24 % of pixels change |
 
 ## Drive-in props
 

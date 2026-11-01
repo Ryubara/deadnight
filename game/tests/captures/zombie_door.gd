@@ -6,6 +6,8 @@ extends Node3D
 ##                    the zombies walk in;
 ##   `--mode=stale`   the door's slab goes but the navigation mesh is left as baked (what the game
 ##                    did before DoorNavigation): the zombies stay at the old wall.
+##   `--saved=0`      with `rebake`, bake every mesh at run time instead of using the saved ones
+##                    (`LotNavmeshes`): the zombies walk the same paths.
 
 const GREYBOX := preload("res://world/drive_in_greybox.tscn")
 const ZOMBIE_MODEL := "res://assets/zombie_kit/zombie.glb"
@@ -38,7 +40,9 @@ func _ready() -> void:
 	add_child(lot)
 	_doors = lot.get_node("Doors")
 	# The stand's roof would hide the inside from this camera.
-	lot.get_node("Concession/Roof").visible = false
+	for piece in lot.get_node("Concession").get_children():
+		if String(piece.name).begins_with("Roof"):
+			piece.visible = false
 	var tuning := _tuning()
 	_rules = GameRules.new(tuning, 5)
 	_rules.apply(RulesAction.add_player(1))
@@ -54,6 +58,8 @@ func _ready() -> void:
 		lot.add_child(region)
 	else:
 		var navigation := DoorNavigation.new()
+		if _args.get("saved", "1") == "0":
+			navigation.saved = null
 		lot.add_child(navigation)
 		navigation.setup(lot, _doors)
 	while NavigationServer3D.map_get_path(map, SPAWNS[0], Vector3(0, 0, -30), true).is_empty():

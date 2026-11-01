@@ -8,7 +8,7 @@ id = &"rifle"
 display_name = "Hunting rifle"
 kind = 0
 automatic = false
-damage = 70
+damage = 95
 pellets = 1
 spread_deg = 0
 falloff_start = 40
@@ -22,10 +22,10 @@ zone_multipliers = Dictionary[StringName, float]({
 &"head": 2.5,
 &"limb": 0.7
 })
-fire_interval = 0.55
+fire_interval = 0.5
 magazine_size = 8
-reserve_start = 32
-reserve_max = 64
+reserve_start = 40
+reserve_max = 80
 reload_time = 2.2
 shake_trauma = 0.45
 flash_size = 0.3

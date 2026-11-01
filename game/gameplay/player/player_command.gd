@@ -16,11 +16,24 @@ var sprint := false
 var crouch := false
 var jump := false
 var aim := false
+## The trigger is held. Not read from the controls by the server: `NightServer` sets it from the
+## `NightCommand`'s own `fire`, so a human, the autopilot and a remote client all turn the same way.
+var fire := false
 var swap_shoulder := false
 ## The grenade buttons, as levels: holding one cooks the grenade, letting go throws it (overarm for
 ## `throw_over`, the short underarm toss for `throw_under`). `GrenadeThrower` makes actions of them.
 var throw_over := false
 var throw_under := false
+
+
+## Snaps the numbers to what the wire carries (`CommandCodec`), in place: a predicting client moves
+## its body with the command the server will read, so the two simulations get the same input. The
+## turn comes out in [-PI, PI).
+func quantize() -> PlayerCommand:
+	move = CommandCodec.snap_move(move)
+	yaw = CommandCodec.snap_yaw(yaw)
+	pitch = CommandCodec.snap_pitch(pitch)
+	return self
 
 
 func to_dict() -> Dictionary:
@@ -32,6 +45,7 @@ func to_dict() -> Dictionary:
 		&"crouch": crouch,
 		&"jump": jump,
 		&"aim": aim,
+		&"fire": fire,
 		&"swap_shoulder": swap_shoulder,
 		&"throw_over": throw_over,
 		&"throw_under": throw_under,
@@ -47,6 +61,7 @@ static func from_dict(data: Dictionary) -> PlayerCommand:
 	command.crouch = data.get(&"crouch", false)
 	command.jump = data.get(&"jump", false)
 	command.aim = data.get(&"aim", false)
+	command.fire = data.get(&"fire", false)
 	command.swap_shoulder = data.get(&"swap_shoulder", false)
 	command.throw_over = data.get(&"throw_over", false)
 	command.throw_under = data.get(&"throw_under", false)

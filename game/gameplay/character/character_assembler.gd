@@ -14,6 +14,7 @@ const IDLE := "Idle"
 const ARMBAND_BONE := "UpperArm.R"
 const ARMBAND_NEXT := "LowerArm.R"
 const ARMBAND_NAME := "Armband"
+const ARMBAND_BONE_NODE := "ArmbandBone"
 ## How far down the upper arm the band sits (0 the shoulder, 1 the elbow).
 const ARMBAND_ALONG := 0.5
 ## Size of the band in metres: the ring's outer radius and its thickness, stretched along the arm.
@@ -27,13 +28,24 @@ const ARMBAND_GLOW := 0.9
 ## Builds the character. `seat` is the player's place in the lot (0 to 3) and picks the armband.
 static func assemble(look: CharacterLook, seat := 0) -> Node3D:
 	var model := SoldierLook.instantiate()
-	SoldierLook.apply(model, look.to_soldier_look())
+	dress(model, look, seat)
 	var player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if player != null and player.has_animation(IDLE):
 		player.get_animation(IDLE).loop_mode = Animation.LOOP_LINEAR
 		player.play(IDLE)
-	_add_armband(model.find_child(SKELETON, true, false) as Skeleton3D, seat)
 	return model
+
+
+## Puts `look` and the armband of `seat` on a Soldier model that already stands somewhere (a
+## player's body, which has its own animation), in place of what it wore before.
+static func dress(model: Node, look: CharacterLook, seat := 0) -> void:
+	SoldierLook.apply(model, look.to_soldier_look())
+	var skeleton := model.find_child(SKELETON, true, false) as Skeleton3D
+	var worn := skeleton.get_node_or_null(ARMBAND_BONE_NODE)
+	if worn != null:
+		skeleton.remove_child(worn)
+		worn.queue_free()
+	_add_armband(skeleton, seat)
 
 
 static func _add_armband(skeleton: Skeleton3D, seat: int) -> void:
@@ -45,7 +57,7 @@ static func _add_armband(skeleton: Skeleton3D, seat: int) -> void:
 	var rest := skeleton.get_bone_global_rest(upper)
 	var along := rest.basis.inverse() * (skeleton.get_bone_global_rest(next).origin - rest.origin)
 	var attachment := BoneAttachment3D.new()
-	attachment.name = "ArmbandBone"
+	attachment.name = ARMBAND_BONE_NODE
 	skeleton.add_child(attachment)
 	attachment.bone_name = ARMBAND_BONE
 	var ring := TorusMesh.new()

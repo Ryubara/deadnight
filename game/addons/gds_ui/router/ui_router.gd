@@ -51,11 +51,11 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	UIMotion.load_settings()
 	_tokens = UITokens.active()
-	# A fade passes through the background colour, not the engine's grey.
-	RenderingServer.set_default_clear_color(_tokens.bg)
 	_stage = Control.new()
 	_stage.name = "Stage"
-	_stage.theme = UIThemeBuilder.build(_tokens)
+	# The stage only holds screens and lets the mouse through: a screen over a game world (a
+	# night) must not eat the mouse motion the world's look reads in `_unhandled_input`.
+	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.clip_contents = true
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_stage)
@@ -65,6 +65,18 @@ func _ready() -> void:
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.hide()
 	add_child(_overlay)
+	_restyle(_tokens)
+	UITokens.active_changed().connect(_restyle)
+
+
+## Applies tokens to what the router owns: the stage's theme (every screen under it inherits it) and
+## the colour behind a fade, so a fade passes through the background colour, not the engine's grey.
+## It runs at startup and again whenever `UITokens.set_active` changes the tokens; a transition that
+## is already playing keeps the tokens it started with.
+func _restyle(tokens: UITokens) -> void:
+	_tokens = tokens
+	RenderingServer.set_default_clear_color(tokens.bg)
+	_stage.theme = UIThemeBuilder.build(tokens)
 
 
 func depth() -> int:
