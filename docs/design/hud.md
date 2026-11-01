@@ -5,6 +5,10 @@ What a player sees during a night: where each readout sits, what feeds it, and w
 (flat paper and signs, hard shadows, notched corners, amber and hot orange, two faces) and the tokens of the
 `gds_ui` addon. Round, points, fuel and shop numbers are in [Rounds, points and fuel](rounds.md).
 
+A left-handed touch layout mirrors the corner columns (`Hud.mirrored`, set by the night screen): round and objective swap
+with the fuel, event and notice lists, points and health with ammo, so the buttons that flip sides still miss every card
+([touch controls](touch-controls.md#left-handed-layout)). Parts in the middle stay.
+
 ## Network-first
 
 The HUD reads one object, `HudState` (plain numbers, strings, arrays and dictionaries; a test checks that it holds no
@@ -48,8 +52,10 @@ local player) into the direction on screen.
 | `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
 
 The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad Y), so a rebound key shows
-the new key, and the glyph is a square keycap or a round button by the **last device used** (`UIInputMode.gamepad`). It
-sinks while the action is held. A refused purchase shakes the card and says why in place of the price. The breach's card
+the new key. The glyph follows the **last device used**: a square keycap, a round gamepad button
+(`UIInputMode.gamepad`) or, after a touch, a round tap mark with no letter (`UIInputMode.touch`,
+[touch controls](touch-controls.md#first-run-and-key-hints)). It sinks while the action is held. A refused purchase
+shakes the card and says why in place of the price. The breach's card
 says "HOLD TO NAIL BOARDS UP": holding the button keeps putting boards back
 ([rules](rounds.md#the-fences-boards)).
 
