@@ -25,6 +25,11 @@ A downed player can be revived until the round ends.
 | Projection booth | mid | the projector's beam; the re-cut (weapon upgrades) |
 | Back lot and the road | late | the generator yard, the way into town |
 
+## Between nights
+
+What carries over from one night to the next, and what never does, is in the [permanent progression
+design](progression.md): a night always starts equal, and growth is choice, mastery and identity, never strength.
+
 ## Starting art
 
 The Quaternius Toon Shooter Game Kit (CC0) is the starting style; it may change. Its characters share one rig with

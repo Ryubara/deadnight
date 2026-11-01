@@ -48,6 +48,7 @@ nav:
       - The lot: design/map.md
       - Rounds, points and fuel: design/rounds.md
       - Typography: design/typography.md
+      - Progression: design/progression.md
   - Research:
       - research/index.md
       - UI foundation: research/ui-foundation.md
