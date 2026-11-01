@@ -38,6 +38,27 @@ enum Kind {
 @export var reward_per_round: int = 40
 
 
+## The types of the round's zombies in the order they spawn: `normal` is the count a normal round
+## of this number has. A boss round is escorts with the bosses walked in among them; a round of one
+## type is that type.
+func plan(
+	round_number: int, players: int, normal: int, roster: ZombieRoster, rng: RandomNumberGenerator
+) -> Array[StringName]:
+	if kind == Kind.ONLY:
+		var only: Array[StringName] = []
+		only.resize(maxi(1, roundi(float(normal) * count_fraction)))
+		only.fill(only_type)
+		return only
+	var escorts := roster.plan_for_round(
+		round_number, maxi(1, roundi(float(normal) * escort_fraction)), rng
+	)
+	var bosses := bosses_for(players)
+	for i in bosses:
+		var spread := boss_arrival + (1.0 - boss_arrival) * float(i) / bosses
+		escorts.insert(floori(float(escorts.size() - i) * spread) + i, boss_type)
+	return escorts
+
+
 func reward_at(round_number: int) -> int:
 	return reward_base + reward_per_round * round_number
 

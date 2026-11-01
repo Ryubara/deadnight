@@ -2,9 +2,12 @@ class_name HudGains
 extends HudPart
 ## Your point gains as a short list beside the crosshair: "+100 HEADSHOT KILL". Rows stack (never
 ## overlap), the oldest fades first, and a run of small hit payments merges into one row so a
-## 28-zombie round cannot flood the screen.
+## 28-zombie round cannot flood the screen. The list is `WIDTH` wide: a row's type shrinks to fit
+## it, so the list never reaches the ammo card or the lists on the right.
 
 const MAX_ROWS := 3
+## The room until the `Hud` says how much the canvas leaves (see `set_room`).
+const WIDTH := 300.0
 const LIFE := 2.4
 const FADE := 0.5
 ## Hits within this many seconds of the last row of the same kind add to it.
@@ -23,8 +26,10 @@ const REASON_TEXT := {
 }
 const MERGES := [&"hit", &"headshot_hit", &"repair"]
 
-## Rows alive, oldest first: {"reason", "amount", "age", "label"}.
+## Rows alive, oldest first: {"reason", "amount", "age", "label", "size"}.
 var rows: Array[Dictionary] = []
+## How wide the list may be: a row's type shrinks to fit.
+var room := WIDTH
 
 var _box := VBoxContainer.new()
 
@@ -33,6 +38,7 @@ func _init() -> void:
 	super()
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_box.add_theme_constant_override(&"separation", tokens.space_xs)
+	_box.custom_minimum_size.x = room
 	add_child(_box)
 	_box.minimum_size_changed.connect(update_minimum_size)
 
@@ -43,6 +49,17 @@ func _get_minimum_size() -> Vector2:
 
 func _process(delta: float) -> void:
 	advance(delta)
+
+
+## Gives the list `width` to lay out in (the canvas leaves more room on a wide screen) and fits
+## the rows again.
+func set_room(width: float) -> void:
+	if is_equal_approx(width, room):
+		return
+	room = width
+	_box.custom_minimum_size.x = room
+	for row in rows:
+		_write(row)
 
 
 ## The texts shown, oldest first, for tests.
@@ -72,9 +89,8 @@ func add_gain(reason: StringName, amount: int) -> void:
 		return
 	var gain := {"reason": reason, "amount": amount, "age": 0.0}
 	var big := amount >= 60
-	gain["label"] = HudStyle.label(
-		"", HudStyle.MEDIUM if big else HudStyle.TEXT, _colour(reason, amount), big
-	)
+	gain["size"] = HudStyle.MEDIUM if big else HudStyle.TEXT
+	gain["label"] = HudStyle.clip(HudStyle.label("", gain["size"], _colour(reason, amount), big))
 	rows.append(gain)
 	_box.add_child(gain["label"])
 	_write(gain)
@@ -96,7 +112,7 @@ func _write(row: Dictionary) -> void:
 	var amount := int(row["amount"])
 	var words: String = REASON_TEXT.get(row["reason"], String(row["reason"]).to_upper())
 	var sign_text := "+%d" if amount > 0 else "%d"
-	(row["label"] as Label).text = (sign_text % amount) + "  " + words
+	HudStyle.set_fitted(row["label"], (sign_text % amount) + "  " + words, row["size"], room)
 	(row["label"] as Label).modulate.a = 1.0
 
 

@@ -36,7 +36,8 @@ extends RefCounted
 ##   zombie_crippled: zombie_id, zombie_type (the crawler it became), player_id, cause (legs or
 ##     wounded), health, speed_scale
 ##   grenade_count_changed: player_id, count, reason (thrown, refill, purchase)
-##   player_added, player_removed, player_downed, player_revived: player_id
+##   player_added: player_id, grenades (the count they start with)
+##   player_removed, player_downed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
@@ -79,6 +80,7 @@ const SNAPSHOT_KEYS := {
 	"break_left": TYPE_FLOAT,
 	"plan": TYPE_ARRAY,
 	"special_id": TYPE_STRING,
+	"round_total": TYPE_INT,
 	"spawn_timer": TYPE_FLOAT,
 	"round_players": TYPE_INT,
 	"next_zombie_id": TYPE_INT,
@@ -110,6 +112,8 @@ var _break_left: float = 0.0
 var _plan: Array[StringName] = []
 ## The special round now running, or null.
 var _special: SpecialRound = null
+## Zombies the round began with (`round_started`'s `zombie_count`); kept after it ends.
+var _round_total: int = 0
 var _spawn_timer: float = 0.0
 var _round_players: int = 1
 var _next_zombie_id: int = 1
@@ -238,7 +242,10 @@ func to_dict() -> Dictionary:
 		"round": round_number,
 		"break_left": _break_left,
 		"plan": _plan.duplicate(),
+		# How many are still to spawn: derived from the plan, for readers that only count (the HUD).
+		"spawn_left": _plan.size(),
 		"special_id": String(_special.id) if _special != null else "",
+		"round_total": _round_total,
 		"spawn_timer": _spawn_timer,
 		"round_players": _round_players,
 		"next_zombie_id": _next_zombie_id,
@@ -293,6 +300,7 @@ func from_dict(data: Dictionary) -> StringName:
 	_break_left = data["break_left"]
 	_plan.assign(data["plan"])
 	_special = tuning.specials.by_id(StringName(data["special_id"]))
+	_round_total = data["round_total"]
 	_spawn_timer = data["spawn_timer"]
 	_round_players = data["round_players"]
 	_next_zombie_id = data["next_zombie_id"]
@@ -433,6 +441,7 @@ func _begin_round() -> void:
 	_round_players = maxi(players.size(), 1)
 	_special = tuning.specials.special_for(round_number)
 	_plan = _plan_round()
+	_round_total = _plan.size()
 	_spawn_timer = tuning.rounds.first_spawn_delay
 	for player: PlayerState in players.values():
 		player.repair_points_this_round = 0
@@ -452,22 +461,9 @@ func _begin_round() -> void:
 ## The types of every zombie of the round, in the order they spawn.
 func _plan_round() -> Array[StringName]:
 	var normal := tuning.rounds.zombies_for_round(round_number, _round_players)
-	var roster := tuning.roster
 	if _special == null:
-		return roster.plan_for_round(round_number, normal, _spawn_rng)
-	if _special.kind == SpecialRound.Kind.ONLY:
-		var plan: Array[StringName] = []
-		plan.resize(maxi(1, roundi(float(normal) * _special.count_fraction)))
-		plan.fill(_special.only_type)
-		return plan
-	var escorts := roster.plan_for_round(
-		round_number, maxi(1, roundi(float(normal) * _special.escort_fraction)), _spawn_rng
-	)
-	var bosses := _special.bosses_for(_round_players)
-	for i in bosses:
-		var spread := _special.boss_arrival + (1.0 - _special.boss_arrival) * float(i) / bosses
-		escorts.insert(floori(float(escorts.size() - i) * spread) + i, _special.boss_type)
-	return escorts
+		return tuning.roster.plan_for_round(round_number, normal, _spawn_rng)
+	return _special.plan(round_number, _round_players, normal, tuning.roster, _spawn_rng)
 
 
 func _boss_count() -> int:
@@ -617,7 +613,7 @@ func _add_player(player_id: int) -> void:
 	var added := PlayerState.new(player_id, tuning.economy.start_points)
 	added.grenades = tuning.explosives.start_grenades
 	players[player_id] = added
-	_emit(&"player_added", {"player_id": player_id})
+	_emit(&"player_added", {"player_id": player_id, "grenades": added.grenades})
 	_emit(
 		&"points_changed",
 		{

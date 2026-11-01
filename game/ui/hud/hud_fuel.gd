@@ -8,6 +8,10 @@ const SEGMENT_SIZE := Vector2(14.0, 34.0)
 const SEGMENT_GAP := 4.0
 const BULB_RADIUS := 11.0
 const PULSE_RATE := 5.0
+## Room kept between two words under the bulbs.
+const WORD_GAP := 2.0
+## Extra space between the letters of those words; none, so the longest still fits its slot.
+const WORD_TRACKING := 0.0
 ## Circuit ids to the words on the lot signs.
 const CIRCUIT_NAMES := {
 	&"screen_lot": "SCREEN",
@@ -18,6 +22,9 @@ const CIRCUIT_NAMES := {
 
 var lit_segments := 0
 var lit_circuits: Array[StringName] = []
+## The word under each bulb as drawn: cut with an ellipsis when the typeface makes it wider than
+## the bulb's slot, so neighbouring words never run together.
+var circuit_words: Dictionary[StringName, String] = {}
 var status_text: String:
 	get:
 		return _status.text
@@ -52,17 +59,34 @@ func _process(delta: float) -> void:
 		_gauge.queue_redraw()
 
 
+func topics() -> Array[StringName]:
+	return [HudState.FUEL]
+
+
 func refresh() -> void:
 	lit_segments = ceili(state.fuel_fraction() * SEGMENTS)
 	lit_circuits.clear()
 	for circuit_id in state.circuits:
 		if state.circuits[circuit_id] and not state.fuel_empty:
 			lit_circuits.append(circuit_id)
+	_cut_circuit_words()
 	HudStyle.set_text(_status, _status_word())
 	accent = tokens.hot if state.fuel_low or state.fuel_empty else tokens.accent
 	lit = 1.0 if state.fuel_empty else 0.0
 	queue_redraw()
 	_gauge.queue_redraw()
+
+
+func _cut_circuit_words() -> void:
+	circuit_words.clear()
+	var count := state.circuits.size()
+	if count == 0:
+		return
+	var font := tokens.text_font(0.0, WORD_TRACKING)
+	var slot := _gauge.custom_minimum_size.x / float(count) - WORD_GAP
+	for circuit_id in state.circuits:
+		var word: String = CIRCUIT_NAMES.get(circuit_id, String(circuit_id).to_upper())
+		circuit_words[circuit_id] = HudStyle.trimmed(font, word, HudStyle.MIN_TEXT, slot)
 
 
 func _status_word() -> String:
@@ -90,7 +114,7 @@ func _draw_bulbs() -> void:
 	var count := state.circuits.size()
 	if count == 0:
 		return
-	var font := tokens.text_font(0.0, 1.0)
+	var font := tokens.text_font(0.0, WORD_TRACKING)
 	var column := _gauge.size.x / float(count)
 	var index := 0
 	for circuit_id in _ordered_circuits():
@@ -99,8 +123,8 @@ func _draw_bulbs() -> void:
 		if on:
 			_gauge.draw_circle(centre, BULB_RADIUS * 2.0, Color(tokens.accent, 0.2))
 		_gauge.draw_circle(centre, BULB_RADIUS, tokens.accent_bright if on else tokens.outline)
-		var word: String = CIRCUIT_NAMES.get(circuit_id, String(circuit_id).to_upper())
-		var width := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, HudStyle.MIN_TEXT).x
+		var word: String = circuit_words.get(circuit_id, "")
+		var width := HudStyle.text_width(font, word, HudStyle.MIN_TEXT)
 		_gauge.draw_string(
 			font,
 			Vector2(centre.x - width * 0.5, centre.y + BULB_RADIUS + 28.0),

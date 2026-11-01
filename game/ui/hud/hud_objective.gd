@@ -35,6 +35,10 @@ func _get_minimum_size() -> Vector2:
 	return _box.get_combined_minimum_size()
 
 
+func topics() -> Array[StringName]:
+	return [HudState.OBJECTIVE]
+
+
 func refresh() -> void:
 	HudStyle.set_text(_area, state.area_name.to_upper())
 	HudStyle.set_text(_objective, state.objective)
