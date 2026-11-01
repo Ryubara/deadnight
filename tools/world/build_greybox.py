@@ -485,7 +485,7 @@ def build() -> None:
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
-    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/neon_sign.tscn" id="neon_sign"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lot_neon_sign.tscn" id="neon_sign"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/screen_fx.tscn" id="screen_fx"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')

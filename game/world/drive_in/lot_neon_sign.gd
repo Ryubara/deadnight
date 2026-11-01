@@ -1,4 +1,4 @@
-class_name NeonSign
+class_name LotNeonSign
 extends LightFollower
 ## A neon sign over a door: a dark board, a lit frame, the word, a halo, and a lamp of its own
 ## (`Light`, in the `powered_light` group, so it hangs on the circuit of the `Lamps` group the sign

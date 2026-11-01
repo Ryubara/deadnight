@@ -48,7 +48,7 @@ func test_the_projector_beam_follows_the_screen_lamp() -> void:
 
 
 func test_the_neon_over_the_concession_door_is_dark_until_the_stand_is_powered() -> void:
-	var sign := _lot.get_node("Concession/Lamps/NeonSnacks") as NeonSign
+	var sign := _lot.get_node("Concession/Lamps/NeonSnacks") as LotNeonSign
 	sign.advance(0.0)
 	assert_float(sign.level).is_equal(0.0)
 	assert_bool((sign.get_node("Halo") as MeshInstance3D).visible).is_false()

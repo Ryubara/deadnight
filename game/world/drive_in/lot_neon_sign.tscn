@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://world/drive_in/neon_sign.gd" id="1_sign"]
+[ext_resource type="Script" path="res://world/drive_in/lot_neon_sign.gd" id="1_sign"]
 [ext_resource type="Shader" path="res://world/drive_in/glow.gdshader" id="2_glow"]
 
 [sub_resource type="StandardMaterial3D" id="Board"]
