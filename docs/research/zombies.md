@@ -184,6 +184,13 @@ spawns from the doors that are open. The night's own rebake (a synchronous bake 
 was removed. A night that ends while a bake runs is harmless: `NavmeshBaker.bake_async` skips a callback whose object
 is gone. The autopilot's own path follows the mesh, so for the second after a purchase it walks the old one.
 
+A finished bake is in the region at once but reaches the map over the next physics ticks (the server iterates the map
+on a thread): 3 to 12 ticks after the `baked` signal on a loaded machine, so a test that waits a fixed few frames after
+a bake races the machine. #192: with 8 suites at once next to 40 busy loops, 16 of 16 runs failed the each-bought-door
+test, 13 the quick-succession one and 12 the on-its-way one. `map_force_update` does not shorten it, and the iteration
+id counts changes, not readiness (a bake moved it by one here). The suite waits for the answer it is about:
+`_map_current` polls the physics frames until the points the new mesh opens are reachable.
+
 Proof: `game/tests/zombies/test_door_navigation.gd` (for each of the nine sets of doors a zombie reaches every sample
 point of every open area and no path enters the footprint of a closed one; the doors bought one after the other
 through `GameRules`; a walking zombie gets in once the booth is bought; doors bought in quick succession end with the

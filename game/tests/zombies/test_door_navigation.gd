@@ -43,13 +43,14 @@ func _map_ready(lot: Node3D) -> void:
 		await get_tree().physics_frame
 
 
-## Buys `item` through the rules and waits until the zombie navigation has caught up.
-func _buy_and_wait(lot: Node3D, item: StringName) -> void:
+## Buys `item` through the rules and waits until the zombie navigation has caught up: the bake is
+## done and the map answers for `expect`, the points the new mesh opens.
+func _buy_and_wait(lot: Node3D, item: StringName, expect: Array[Vector3]) -> void:
 	var navigation := lot.get_node("DoorNavigation") as DoorNavigation
 	assert_int(RulesFixture.buy(lot.get_meta(&"rules"), 1, item)).is_equal(GameRules.BuyResult.OK)
 	assert_bool(navigation.is_busy()).is_true()
 	await _bake_done(navigation)
-	await _map_ready(lot)
+	await _map_current(lot, expect)
 
 
 func _bake_done(navigation: DoorNavigation) -> void:
@@ -57,6 +58,31 @@ func _bake_done(navigation: DoorNavigation) -> void:
 		if not navigation.is_busy():
 			return
 		await get_tree().physics_frame
+
+
+## Waits until the map answers for every point of `expect`. A finished bake is in the region at
+## once but reaches the map over the next physics ticks: the server iterates the map on a thread,
+## and 3 to 12 ticks were measured under load. A fixed few frames after the bake raced the
+## machine's speed (#192); the answer the test is about is what it waits for. A mesh that never
+## lands ends the wait at `BAKE_FRAMES` and the test's own assertions then fail with their message.
+func _map_current(lot: Node3D, expect: Array[Vector3]) -> void:
+	var pathing := _pathing(lot)
+	var from := _spawn_point(lot)
+	for i in BAKE_FRAMES:
+		if expect.all(
+			func(point: Vector3) -> bool: return _gap(pathing, from, point) < LotFixture.REACHED
+		):
+			return
+		await get_tree().physics_frame
+
+
+## The sample points of every area the doors in `sold` open.
+func _open_points(sold: Array) -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for area: String in LotFixture.AREA_POINTS:
+		if LotFixture.is_open(area, sold):
+			points.append_array(LotFixture.AREA_POINTS[area])
+	return points
 
 
 func _pathing(lot: Node3D) -> NavmeshPathing:
@@ -113,8 +139,8 @@ func test_each_bought_door_lets_the_dead_into_its_area_and_no_further() -> void:
 	for item: StringName in [
 		&"door_concession", &"door_booth", &"door_yard", &"door_back_lot", &"door_road"
 	]:
-		await _buy_and_wait(lot, item)
 		sold.append(String(item))
+		await _buy_and_wait(lot, item, _open_points(sold))
 		var pathing := _pathing(lot)
 		for area: String in LotFixture.AREA_POINTS:
 			if LotFixture.is_open(area, sold):
@@ -140,7 +166,7 @@ func test_a_zombie_on_its_way_gets_in_once_the_door_is_bought() -> void:
 		sim.tick(ZombieSim.STEP, {1: booth})
 		assert_bool(LotFixture.inside(footprint, sim.zombies[1].position)).is_false()
 	assert_float(sim.zombies[1].position.distance_to(booth)).is_greater(CLOSE)
-	await _buy_and_wait(lot, &"door_booth")
+	await _buy_and_wait(lot, &"door_booth", [booth])
 	var closest := INF
 	for _i in ceili(WALK_SECONDS / ZombieSim.STEP):
 		sim.tick(ZombieSim.STEP, {1: booth})
@@ -156,7 +182,7 @@ func test_doors_bought_in_quick_succession_end_with_the_last_one_in_the_mesh() -
 		RulesFixture.buy(rules, 1, item)
 	assert_bool(navigation.is_busy()).is_true()
 	await _bake_done(navigation)
-	await _map_ready(lot)
+	await _map_current(lot, [LotFixture.AREA_POINTS["Road"][0]])
 	# One bake for the first door, one more for all the others that arrived while it ran.
 	assert_int(navigation.bake_count).is_equal(3)
 	var road: Vector3 = LotFixture.AREA_POINTS["Road"][0]
