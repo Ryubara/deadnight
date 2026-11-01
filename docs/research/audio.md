@@ -40,6 +40,51 @@ uv run --with numpy --with scipy python tools/audio/generate.py --ffmpeg <pinned
   peak levels (no clipping anywhere); the loop seam; file sizes. Whether it *sounds good* is a human's call: expect
   tuning passes on the numbers in `recipes.py`, which is why they are all in one place.
 
+## The night's sounds (#88)
+
+Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (which now takes the loops from
+`Entry.loop` and renders both files' registries). Nothing is sampled: all of it is noise, oscillators and filters.
+
+- **Loops are built circularly.** `_wrap_add` puts an event in at any time and wraps what runs past the end back to the
+  start; noise comes from `_ring_noise` (random phases between two frequencies, so it repeats exactly) and the filters
+  that touch the whole file are applied in the frequency domain. Crickets chirp a whole number of times in the loop, the
+  projector's motor is a whole number of cycles in 12 s (48, 96, 144 Hz) and its clatter is 288 frames at 24 a second.
+  Measured seam (last sample to first, against the largest step inside the file): crickets 0.0027 (0.578), highway
+  0.0000 (0.034), projector 0.011 (0.074), score 0.003 (0.020): all under the in-file steps, so no click.
+- **Crickets:** a pulse is a 16 ms Hann-windowed sine with a quiet second harmonic, three to a chirp 24 ms apart; the
+  chirp rate is rounded to a whole number per loop; each insect's loudness follows a slow wandering curve, so they
+  sing in bursts instead of droning.
+- **Highway:** a ring-filtered rumble under a slow swell, plus six passes (3.5 to 6.5 s, a sine-squared swell) of
+  band-passed noise whose centre falls from about 850 Hz to about 450 Hz (the doppler of a car going by) over a faint
+  low saw for the engine.
+- **A board pulled off:** a *creak* (a pulse train gated by a 14 to 22 Hz stick-slip and wobbled in pitch, through two
+  wooden resonances near 800 and 1650 Hz), then at 0.92 of it a *crack* (1.5 kHz high-passed noise 12 ms, a 420 Hz
+  woody ring that falls, three to six splinter ticks) and the board dropping as a short thud. The last board is the same
+  with a lower creak, a 95 to 45 Hz boom and three decaying clatters. A repair is three knocks about a fifth of a
+  second apart, each a falling sine with a nail's metal ring on top, rising in pitch as the nail goes in.
+- **The player's voice** reuses the zombie throat (`_voice`) with much less rasp and growl and more breath, pitched at
+  120 to 190 Hz, so the living and the dead are one family; the downed groan falls to 70 Hz and ends in a body thud.
+- **Measured** (`tools/audio/analyze.py report`): no file clips (peaks -1 to -5 dBFS by design, the catalog trims the
+  rest); the 13 new sounds are 125 KiB of effects and about 730 KiB of loops and score.
+- **Without ears, again:** `analyze.py sheet` draws a waveform and a log-frequency spectrogram per file; `analyze.py
+  capture` reads a Movie Maker mix and checks that every sound the scene logged starts where it was played. In the
+  real-night capture (`game/tests/captures/audio_night_tour.tscn`) every sound was found within 0.3 s of its event, the
+  mix peaked at -2.6 dBFS with no clipped sample, and the bed alone sat at about -36 dBFS RMS, 16 to 33 dB under the
+  sounds on top of it.
+
+### What went wrong
+
+- **`Dictionary.merged(other)` keeps the old value** unless its second argument is `true`: the catalog's overrides on a
+  base that already had the key (a UI sound's pitch, `dry_fire`'s range) were silently dropped (#135). The catalog now
+  lays overrides through one helper, `_with`, and a test reads the catalog's own source and fails on any other call.
+- **Streams still held at exit** are reported as `resources still in use at exit`: a bed (or any sound) playing when the
+  engine shuts down keeps its decoded stream, and so does the service's own cache. The night's suites ended with 4 to 9
+  such lines once the beds played. The service now stops every voice, drops every player's stream and clears its cache
+  in `_exit_tree`; waiting in `_exit_tree` did not help, letting go of the streams did. A loop that lives outside the
+  service (the projector's player, under the night) is stopped by its node.
+- **A bed never goes quiet**, so an onset detector on the raw level finds nothing: `analyze.py` compares the short-term
+  level with its own median over a second either side.
+
 ## Godot facts
 
 - **Movie Maker records audio.** `--write-movie out.png` also writes `out.wav` next to the frames: the master mix at the
