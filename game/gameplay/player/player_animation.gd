@@ -566,7 +566,7 @@ func _emit_events(clip: StringName, from: float, to: float, skip: String = "") -
 			if at > from and at <= to:
 				if event == "weapon_visible":
 					_weapon_visible(true)
-				elif event == "weapon_hidden" or event == GRENADE_TAKEN_EVENT:
+				elif event == "weapon_hidden":
 					_weapon_visible(false)
 				elif event == GRENADE_TAKEN_EVENT:
 					_weapon_visible(false)
