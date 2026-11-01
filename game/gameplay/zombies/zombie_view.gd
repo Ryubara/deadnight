@@ -7,6 +7,8 @@ extends Node3D
 const EMERGE_DEPTH := 1.4
 
 var zombie_id: int = 0
+## The look it is drawn in (`ZombieModels`).
+var look: StringName = ZombieModels.DEFAULT
 var tree: AnimationTree
 ## Animation time not yet advanced: the throttle spends it.
 var accumulated: float = 0.0
@@ -23,16 +25,34 @@ var _emerge_seconds: float = 0.7
 
 
 ## `phase` (0 to 1) starts the walk part-way through its cycle so a crowd does not march in step.
-func setup(model_scene: PackedScene, id: int, phase: float, emerge_seconds: float) -> void:
+func setup(
+	model_scene: PackedScene,
+	id: int,
+	phase: float,
+	emerge_seconds: float,
+	p_look: StringName = ZombieModels.DEFAULT
+) -> void:
 	zombie_id = id
 	_emerge_seconds = emerge_seconds
+	dress(model_scene, p_look)
+	accumulated = phase * 1.3333  # the walk's length
+	set_process(false)
+
+
+## Puts the zombie in another body (its look changed: the legs went). The pose starts over from
+## what the next entry says.
+func dress(model_scene: PackedScene, p_look: StringName) -> void:
+	if _model != null:
+		_model.free()
+	look = p_look
 	_model = model_scene.instantiate() as Node3D
+	_model.scale = Vector3.ONE * ZombieModels.scale_of(look)
 	add_child(_model)
 	_strip_for_crowd(_model)
 	tree = ZombieRig.attach(_model)
 	_playback = tree.get(ZombieRig.PLAYBACK_PARAMETER)
-	accumulated = phase * 1.3333  # the walk's length
-	set_process(false)
+	_mode = -1
+	_speed_step = -1
 
 
 ## Moves and animates from one decoded entry. `delta` is the time since the last entry.
@@ -52,6 +72,11 @@ func apply(entry: Dictionary, delta: float) -> void:
 	_model.position.y = -EMERGE_DEPTH * _emerge_left / _emerge_seconds
 
 
+## The body being drawn.
+func model() -> Node3D:
+	return _model
+
+
 ## Spends the accumulated animation time.
 func advance_animation() -> void:
 	tree.advance(accumulated)
@@ -59,7 +84,7 @@ func advance_animation() -> void:
 
 
 func _enter(mode: int) -> void:
-	var state := ZombieRig.STATE_MOVE
+	var state := ZombieRig.STATE_CRAWL if ZombieModels.crawls(look) else ZombieRig.STATE_MOVE
 	match mode:
 		ZombieBody.Mode.ATTACK:
 			state = ZombieRig.STATE_ATTACK

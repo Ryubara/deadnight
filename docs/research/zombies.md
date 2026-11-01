@@ -14,17 +14,19 @@ and rig-sharing recipe (`docs/godot/rig-sharing.md`). Code: `game/gameplay/zombi
 
 | Part | Does | Knows nothing of |
 | --- | --- | --- |
-| `ZombieBody` | one zombie as data: position, yaw, mode, target, timers (no health) | rules, nodes |
+| `ZombieBody` | one zombie as data: position, yaw, mode, target, timers, its profile (no health) | rules, nodes |
+| `ZombieProfile` | what the rules made of its type: blow, knockback, windup (the telegraph), look, hit chance; from `zombie_spawn_requested`, or from the crawler type when a blast takes its legs | the sim, drawing |
 | `ZombieBrain` | the state machine for one tick (static functions) | paths, nodes |
 | `ZombieSim` | all zombies at a fixed 30 Hz step (whatever deltas `tick` is given): targets, repaths, separation, clearing the dead | the rules, drawing |
 | `ZombiePathing`, `NavmeshPathing` | a path from A to B: straight, or `NavigationServer3D.map_get_path` | zombies |
 | `ZombieDirector` | rules events in (spawn, removal), the crowd cap, the `take_hit` seam | animation |
 | `ZombieRulesPort` | the one place a hit reaches `GameRules` (the rules own `ZombieState`, the health) | everything else |
-| `ZombieCodec` | the zombies as 12 bytes each | the sim's internals |
+| `ZombieCodec` | the zombies as 13 bytes each | the sim's internals |
 | `ZombieHorde`, `ZombieView`, `ZombieRig`, `AnimationThrottle` | the client: views from decoded entries, animation | the sim |
 
 Modes: `EMERGING` (rises 0.7 s) then `CHASE`, `ATTACK` when within 1.4 m (the blow lands 0.45 s into a 1.2 s swing,
-and only if the player is still within 1.8 m), `STAGGER` (0.4 s, from any hit that does not kill; it loses the swing),
+or at the type's telegraph with the same 0.75 s of recovery after it, and only if the player is still within 1.8 m),
+`STAGGER` (0.4 s, from any hit that does not kill; it loses the swing),
 `DYING` (2.5 s on the ground, then cleared). A zombie keeps its target unless another player is 2 m nearer.
 
 ## What was decided
@@ -40,8 +42,8 @@ and only if the player is still within 1.8 m), `STAGGER` (0.4 s, from any hit th
   deterministic, runs on the server, and kept 40 zombies from stacking in the capture.
 - **The crowd cap is 40 whatever the rules ask.** The rules' alive cap grows with players (up to 46 with four); spawn
   requests beyond 40 wait in the director in order and enter as zombies fall.
-- **Clients draw from bytes.** `ZombieCodec` is 2 + 12 bytes a zombie (id, position in cm, yaw, mode, episode, speed
-  in 0.05 m/s steps): 482 B for 40 zombies. The demo scene runs every tick through encode and decode, so what is
+- **Clients draw from bytes.** `ZombieCodec` is 2 + 13 bytes a zombie (id, position in cm, yaw, mode, episode, speed
+  in 0.05 m/s steps, look): 522 B for 40 zombies. The demo scene runs every tick through encode and decode, so what is
   drawn is what a remote client would draw. The message type and rate belong to the net protocol (`spikes/net`) and
   are not chosen here. What the fields cannot hold is under [Snapshot limits](#snapshot-limits).
 - **The client never reads the server's objects.** `ZombieHorde.apply_snapshot(bytes, delta)` draws from bytes alone; the
@@ -67,9 +69,29 @@ and only if the player is still within 1.8 m), `STAGGER` (0.4 s, from any hit th
   here until a crowd variant merges them), sim at 30 Hz independent of the physics rate.
 - **Light:** the sim asks a `lit_probe` callable at each repath and applies the rules' `speed_on_ground`.
 
+## Types in the night
+
+The rules say what a zombie is (`ZombieType`, carried by `zombie_spawn_requested`); the night makes it so.
+
+- **The director hands the request to the sim as a `ZombieProfile`.** The brain strikes with the profile's damage
+  after its windup (the telegraph when the type has one, else the walker's 0.45 s) and the strike carries the
+  knockback. `NightServer` puts the damage, the zombie's id and type, and the knockback into `player_damaged`; the
+  player's own motion does not apply the knockback yet, it is recorded for that work.
+- **The look travels in the frame.** One byte a zombie, so a client that joins late draws every zombie in its body from
+  its first frame and a change shows: a walker crippled by a blast (`zombie_crippled`) becomes a crawler in the sim
+  (its type's numbers, `speed_scale` of its speed, once) and the horde swaps the view's body. A crawler plays the kit's
+  `Crawl` clip (the legless mesh is made for it); every look has one body in `zombie_<look>.glb`.
+- **Stand-ins.** A look with no model of its own draws another variant, scaled (`ZombieModels.STAND_INS`). None remains
+  once the headliner has its model.
+- **Hit zones take the zombie's size.** `Hitbox.shapes(position, yaw, scale)` sizes the whole set about the feet; the
+  scale is the look's height (brute 1.18, runner 1.07) times the type's `hit_chance` (the crawler's 0.6 makes it low
+  and small). The server sends it with each target (`"scale"`), the lag compensator keeps it, and the bot aims at the
+  height the look stands at. Grenade blasts still use the walker's zones.
+- `barrier_speed` is carried on the profile; the night has no barrier yet to read it.
+
 ## Snapshot limits
 
-`ZombieCodec` fits 40 zombies in 482 bytes by spending few bits on each field. What a field cannot hold is pinned by
+`ZombieCodec` fits 40 zombies in 522 bytes by spending few bits on each field. What a field cannot hold is pinned by
 a test (`test_zombie_director.gd`); the encoder clamps only the speed.
 
 | Field | Range | Past it |
@@ -79,6 +101,7 @@ a test (`test_zombie_director.gd`); the encoder clamps only the speed.
 | yaw (u8) | 256 steps of 1.4 degrees | rounds |
 | speed (u8) | 0 to 12.75 m/s in 0.05 steps | capped |
 | episode (u8) | 0 to 255 | wraps on purpose: only a change matters |
+| look (u8) | the index in `ZombieModels.LOOKS` (append only) | an unknown index draws a walker |
 | count (u16) | 65535 | a packet that says more than it holds is dropped |
 
 ## Numbers

@@ -5,18 +5,21 @@ extends RefCounted
 ## centimetres, yaw in 256 steps, speed in 0.05 m/s steps (the walk-to-run blend needs no more).
 ##
 ##   u16 count, then per zombie:
-##   u16 id, i16 x_cm, i16 y_cm, i16 z_cm, u8 yaw, u8 mode, u8 episode, u8 speed
+##   u16 id, i16 x_cm, i16 y_cm, i16 z_cm, u8 yaw, u8 mode, u8 episode, u8 speed, u8 look
+##
+## `look` is the index in `ZombieModels.looks()`, so a client that joins late draws every zombie in
+## its type's body from the next frame, and a crippled one changes body when its look changes.
 ##
 ## Limits (more in docs/research/zombies.md): ids 0 to 65535, after which an id aliases (a match
 ## would need 65 536 zombies); each position axis -327.68 to 327.67 m from the world origin, beyond
 ## which it wraps; yaw to 1.4 degrees; speed to 12.75 m/s (capped). Only the speed is
 ## clamped.
 ##
-## 12 bytes a zombie, so 40 zombies are 482 bytes before the transport's framing. Not yet wired to
+## 13 bytes a zombie, so 40 zombies are 522 bytes before the transport's framing. Not yet wired to
 ## `spikes/net`'s protocol: the netcode owner picks the message type and rate.
 
 const HEADER_BYTES := 2
-const ENTRY_BYTES := 12
+const ENTRY_BYTES := 13
 const SPEED_STEP := 0.05
 
 
@@ -34,6 +37,7 @@ static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
 		bytes.encode_u8(at + 9, zombie.mode)
 		bytes.encode_u8(at + 10, zombie.episode)
 		bytes.encode_u8(at + 11, mini(roundi(zombie.move_speed / SPEED_STEP), 255))
+		bytes.encode_u8(at + 12, ZombieModels.look_index(zombie.look()))
 		at += ENTRY_BYTES
 	return bytes
 
@@ -55,6 +59,7 @@ static func decode(bytes: PackedByteArray) -> Array[Dictionary]:
 			"mode": bytes.decode_u8(at + 9),
 			"episode": bytes.decode_u8(at + 10),
 			"speed": bytes.decode_u8(at + 11) * SPEED_STEP,
+			"look": ZombieModels.look_at(bytes.decode_u8(at + 12)),
 		}
 		entry["position"] = Vector3(
 			bytes.decode_s16(at + 2) / 100.0,

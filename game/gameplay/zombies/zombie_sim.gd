@@ -54,9 +54,13 @@ func has_room() -> bool:
 	return standing_count() < tuning.hard_cap
 
 
-func spawn(zombie_id: int, speed: float, position: Vector3, yaw: float = 0.0) -> ZombieBody:
+## `profile` is what the rules made of the zombie's type; without one it is a plain zombie.
+func spawn(
+	zombie_id: int, speed: float, position: Vector3, yaw: float = 0.0, profile: ZombieProfile = null
+) -> ZombieBody:
 	var zombie := ZombieBody.new()
 	zombie.id = zombie_id
+	zombie.profile = profile if profile != null else ZombieProfile.plain(tuning)
 	zombie.speed = speed
 	zombie.position = position
 	zombie.yaw = yaw
@@ -78,6 +82,20 @@ func despawn(zombie_id: int) -> void:
 	zombies.erase(zombie_id)
 
 
+## A blast took its legs: it is what `profile` says now (a crawler), at `speed_scale` of the speed
+## it had, and it drops. Once only: its speed is not scaled again.
+func cripple(zombie_id: int, profile: ZombieProfile, speed_scale: float) -> void:
+	if not zombies.has(zombie_id):
+		return
+	var zombie := zombies[zombie_id]
+	if zombie.crippled or not zombie.is_alive():
+		return
+	zombie.crippled = true
+	zombie.profile = profile
+	zombie.speed *= speed_scale
+	ZombieBrain.stagger(zombie)
+
+
 ## A hit the rules accepted that did not kill.
 func react_to_hit(zombie_id: int) -> void:
 	if zombies.has(zombie_id):
@@ -97,7 +115,8 @@ func yaw_of(zombie_id: int) -> float:
 ## 20 Hz one steps twice some calls). Time that is not a positive number is ignored, and a stall
 ## is caught up by at most `MAX_CATCH_UP_STEPS`. `targets` maps a player id to where they stand:
 ## only players a zombie may chase (leave out the downed). Returns the events of all the steps
-## taken: `zombie_struck` (zombie_id, target_id, damage) and `zombie_cleared` (zombie_id).
+## taken: `zombie_struck` (zombie_id, target_id, damage, knockback) and `zombie_cleared`
+## (zombie_id).
 func tick(delta: float, targets: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not is_finite(delta) or delta <= 0.0:

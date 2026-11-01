@@ -68,7 +68,7 @@ func decide(delta: float) -> NightCommand:
 		command.motion.sprint = fleeing
 	command.motion.yaw = _yaw
 	if not target.is_empty():
-		_aim(command, here, target["position"])
+		_aim(command, here, target["position"], target.get("look", ZombieModels.DEFAULT))
 		command.fire = not state.me().get("reloading", false)
 	var dry: bool = state.me().get("ammo", 0) <= 0 and state.me().get("reserve", 0) > 0
 	command.reload = dry and not state.me().get("reloading", false)
@@ -98,17 +98,19 @@ func _nearest(here: Vector3, shootable: bool) -> Dictionary:
 		if zombie["mode"] == ZombieBody.Mode.DYING or zombie["mode"] == ZombieBody.Mode.EMERGING:
 			continue
 		var d := _flat(here, zombie["position"])
-		if d < best_d and (not shootable or (d < SHOOT_RANGE and _clear(here, zombie["position"]))):
+		var look: StringName = zombie.get("look", ZombieModels.DEFAULT)
+		var in_sight := shootable and d < SHOOT_RANGE and _clear(here, zombie["position"], look)
+		if d < best_d and (not shootable or in_sight):
 			best_d = d
 			best = zombie
 	return best
 
 
-func _clear(here: Vector3, target: Vector3) -> bool:
+func _clear(here: Vector3, target: Vector3, look: StringName) -> bool:
 	if not sight.is_valid():
 		return true
 	var eye := here + Vector3(0.0, EYE, 0.0)
-	var aim := target + Vector3(0.0, CHEST, 0.0)
+	var aim := target + Vector3(0.0, _chest(look), 0.0)
 	var barrel := here + Basis(Vector3.UP, _yaw) * MUZZLE
 	# The camera sees the target past a corner the barrel does not clear: both must be open.
 	return float(sight.call(eye, aim)) < 0.0 and float(sight.call(barrel, aim)) < 0.0
@@ -156,12 +158,17 @@ func _unstuck(wish: Vector3, here: Vector3, delta: float) -> Vector3:
 	return wish
 
 
-func _aim(command: NightCommand, here: Vector3, target: Vector3) -> void:
+func _aim(command: NightCommand, here: Vector3, target: Vector3, look: StringName) -> void:
 	var eye := here + Vector3(0.0, EYE, 0.0)
-	var to := target + Vector3(0.0, CHEST, 0.0) - eye
+	var to := target + Vector3(0.0, _chest(look), 0.0) - eye
 	command.origin = eye
 	command.dir = to.normalized()
 	command.muzzle = here + Basis(Vector3.UP, _yaw) * MUZZLE
+
+
+## Where it aims on a zombie that stands as tall as the look says (a crawler lies low).
+static func _chest(look: StringName) -> float:
+	return CHEST * ZombieModels.aim_scale(look)
 
 
 static func _flat(a: Vector3, b: Vector3) -> float:

@@ -172,8 +172,11 @@ the counts' remainders, the speed jitter and the look all come from the seeded s
 `health`, `speed`, `damage` (a landed blow), `knockback` (metres), `telegraph_seconds` (the wind-up the
 player may read and dodge; 0 is the ordinary swing), `barrier_speed` (1 is a walker; 0 skips barriers)
 and `hit_chance` (the shot-landing factor for hitboxes). The rules never move a zombie; they say what it
-is. A `weak` hit (the boss's lit bulb) is a zone like `head`: the weapon sends it when the ray hits that
-box, and the rules multiply the damage by the type's `weak_multiplier` and pay it like a headshot.
+is. The night reads all of them but `barrier_speed` (no barrier yet) and the `weak` zone: damage, knockback, the
+telegraph, the look and `hit_chance` (which sizes the zones;
+[zombies research](../research/zombies.md#types-in-the-night)). A `weak` hit (the boss's lit bulb) is a zone like
+`head`: the weapon sends it when the ray hits that box, and the rules multiply the damage by the type's
+`weak_multiplier` and pay it like a headshot.
 Everything is plain numbers and names in the event, so the zombie code and the HUD never look a type up.
 
 ## Special rounds and boss nights
