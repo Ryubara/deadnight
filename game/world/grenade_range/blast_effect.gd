@@ -18,6 +18,12 @@ const GIB_GRAVITY := 14.0
 var _gibs: Array[Dictionary] = []
 
 
+func _init() -> void:
+	# Tweens and `_process` move these on the drawn frame, not the physics tick
+	# (docs/research/physics-interpolation.md).
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+
 ## Plays a blast at `point` with the grenade's radii.
 func play(point: Vector3, def: GrenadeDef) -> void:
 	position = point
