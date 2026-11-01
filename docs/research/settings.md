@@ -24,6 +24,7 @@ cannot break anything. The file is `user://settings.cfg`
 | `accessibility/reduced_motion` | off | `UIMotion.reduced` |
 | `accessibility/ui_scale` | 1.0 | root `Window.content_scale_factor` (0.8, 1.0, 1.25) |
 | `controls/mouse_sensitivity`, `invert_y` | 1.0, off | nothing: gameplay reads them and listens to `changed` |
+| `controls/touch_controls` (0 auto, 1 on, 2 off), `touch_scale`, `touch_opacity`, `haptics` | 0, 1.0, 0.7, on | nothing: `TouchControls` reads them and listens to `changed` (the Touch tab) |
 
 ## The screen
 

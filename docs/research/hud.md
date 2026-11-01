@@ -96,18 +96,24 @@ see [the slice](../design/slice.md#the-hud). Things the binding taught:
 
 ## Ammunition and equipment from the weapons
 
-The ammo card and the equipment slot are fed by the weapons' events (`HudLoadout`), with no change to the weapons.
+The ammo card and the equipment slot are fed by the weapons' events and the frame (`HudLoadout`), with no change to the
+weapons.
 
-- The HUD never asks the weapons what a player holds; `weapon_equipped` carries `ammo` and `reserve`, and `shot_fired`
-  and `reload_finished` carry them again, so the card is the last event's numbers. Whatever the shop does to the
-  reserve (#152) reaches the card the same way, as long as the events keep those two fields.
+- The HUD never asks the weapons what a player holds; `weapon_equipped`, `shot_fired`, `reload_finished` and
+  `ammo_added` carry `ammo` and `reserve`, so the card is the last event's numbers, and the frame's `weapon`, `ammo`,
+  `reserve`, `reloading` and `arms` correct it every tick (`HudLoadout.sync`).
+- **Rounds bought did not show until a swap (2026-11-01).** The card listened to equip, shot and reload only, so a
+  locker or a wall buy of a weapon already carried (`ammo_added`, which the server did send) changed the server and
+  not the card; the next `weapon_equipped` of a swap re-read it. A test that bought rounds and asserted the card,
+  instead of one that only fired and reloaded, would have caught it (`test_night_hud_ammo.gd`). The rule that
+  follows: a readout of a number the server owns reads it from the frame, and events only make it quicker.
 - **Equipment is the weapon put away last.** The design page calls it "a flare, a trap" and nothing in the game is one,
   so the slot shows the other weapon of a swap. A weapon with no ammunition (the crowbar, known from
   `WeaponDef.is_melee`) shows `--` on the card. With three weapons carried only the last two are in view. The slot
   first showed the rounds it has left too (`REVOLVER x6`); the maintainer called that readout redundant on 2026-11-01
   (#218) and it is gone: the slot is the weapon's name, the state still holds `equipment_count`.
-- A HUD that joins after the weapons were given has heard no event: the binding hands it the frame's weapon once, then
-  leaves the card to the events.
+- A HUD that joins after the weapons were given has heard no event: the frame's weapons fill the card on the first tick.
+  The frame reaches the HUD one tick after the server built it, so a change with no event shows on the second tick.
 - `HudState` may hold no `Object` (a test checks), so the loadout is static functions over plain fields of the state
   (`weapon_id`, `holstered_id`, `rounds`), not a helper object kept in it.
 - A count beside a name must be measured with the name (shaping the pair is wider than the two measured apart); with

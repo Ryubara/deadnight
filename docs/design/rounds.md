@@ -142,19 +142,19 @@ player. Health climbs 8 a round to round 8, then compounds by 5% a round. The ru
 brute columns are each type's share of the round (the first round of a type brings an exact number
 instead: see the types below); special rounds replace the mix.
 
-| Round | Zombies 1p / 2p / 4p | Health | Walk m/s | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
+| Round | Zombies 1p / 2p / 4p | Health | Walk m/s, lit | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 4 / 6 / 11 | 50 | 0.90 | 0% | 0% | 0% | 3.20 s | 6 | 0.60 |
-| 2 | 5 / 9 / 15 | 58 | 1.00 | 0% | 0% | 0% | 3.07 s | 7 | 0.56 |
-| 3 | 7 / 11 / 19 | 66 | 1.10 | 0% | 0% | 0% | 2.95 s | 8 | 0.53 |
-| 4 | 9 / 14 / 24 | 74 | 1.20 | 6% | 0% | 0% | 2.83 s | 8 | 0.49 |
-| 5 | 10 / 17 / 29 | 82 | 1.30 | 10% | 0% | 0% | 2.72 s | 9 | 0.46 |
-| 6 | 12 / 20 / 34 | 90 | 1.40 | 14% | 5% | 0% | 2.61 s | 10 | 0.42 |
-| 8 | 17 / 26 / 46 | 106 | 1.60 | 22% | 9% | 3% | 2.40 s | 12 | 0.35 |
-| 10 | 21 / 34 / 60 | 117 | 1.80 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
-| 15 | 36 / 57 / 101 | 149 | 2.30 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
-| 20 | 54 / 86 / 151 | 190 | 2.80 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
-| 30 | 101 / 161 / 282 | 310 | 3.80 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
+| 1 | 4 / 6 / 11 | 50 | 1.20 | 0% | 0% | 0% | 3.20 s | 6 | 0.60 |
+| 2 | 5 / 9 / 15 | 58 | 1.36 | 0% | 0% | 0% | 3.07 s | 7 | 0.56 |
+| 3 | 7 / 11 / 19 | 66 | 1.52 | 0% | 0% | 0% | 2.95 s | 8 | 0.53 |
+| 4 | 9 / 14 / 24 | 74 | 1.68 | 6% | 0% | 0% | 2.83 s | 8 | 0.49 |
+| 5 | 10 / 17 / 29 | 82 | 1.84 | 10% | 0% | 0% | 2.72 s | 9 | 0.46 |
+| 6 | 12 / 20 / 34 | 90 | 2.00 | 14% | 5% | 0% | 2.61 s | 10 | 0.42 |
+| 8 | 17 / 26 / 46 | 106 | 2.32 | 22% | 9% | 3% | 2.40 s | 12 | 0.35 |
+| 10 | 21 / 34 / 60 | 117 | 2.64 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
+| 15 | 36 / 57 / 101 | 149 | 3.44 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
+| 20 | 54 / 86 / 151 | 190 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
+| 30 | 101 / 161 / 282 | 310 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
 
 Points (everything is per player):
 
@@ -507,6 +507,15 @@ pay for. A change to a range
 is a change to this table in the same pull request. To try a number: `tools/balance/run_report.py --set
 rounds.health_growth=1.06` (see the research page).
 
+## Retune after the speed rework and the crane (#265)
+
+The speed rework (#260, faster dead in the dark) and #271 (the crane at 550 points) turned the gate red: an average
+solo median of 9 and
+the weak boss night at 94% deaths. The retune is the shop weapons of #254 (rifle 95 damage, 0.5 s; shotgun 19 a pellet,
+0.8 s) with the simulator choosing weapons by what they kill, not by damage a second ([round
+scaling](../research/round-scaling.md)).
+The ranges and the health, count and spawn curves are unchanged.
+
 ## Open questions
 
 - **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, fuel and rounds absorb
@@ -533,7 +542,9 @@ rounds.health_growth=1.06` (see the research page).
 
   The shotgun at 900 points is no step up at all (it is 14% better than the revolver at point blank, 98 a second
   against 86 before reloads, and worse beyond 5 m), the rifle at 1,200 is worth a round. The finite ammunition does
-  not change that, it only adds a price to every shot. For a proposal, not applied here: **the rifle** to 95 damage
+  not change that, it only adds a price to every shot. Applied in #265 (see
+  [round scaling](../research/round-scaling.md)), after the simulator's weapon choice learnt about overkill: **the
+  rifle** to 95 damage
   (a round-5 zombie falls to one body shot, a round-10 one to two), a shot every 0.5 s, and a reserve of 40 to 80
   (was 70, 0.55 s, 32 to 64); **the shotgun** to 19 a pellet, a shot every 0.8 s, full damage out to 8 m and sliding
   to 35% at 22 m, a reserve of 30 to 60 (was 11, 0.9 s, 5 m, 18 m and 25%, 24 to 48). With both, the average solo
