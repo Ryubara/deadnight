@@ -33,6 +33,23 @@ The required checks are `title`, `body`, `docs`, `commits`, `conventions`, `buil
 `uv run --with pyyaml python .github/scripts/groundwork.py check --offline` shows whether the generated files
 still match the conventions.
 
+## Pull request labels
+
+Two status labels are kept true on every open pull request by the `pr-status` workflow
+(`.github/workflows/pr-status.yml`, logic in `.github/scripts/pr_status.py`). Nobody sets or clears them by hand:
+a hand edit is undone the next time the workflow runs.
+
+| Label | On while | Clears when |
+| --- | --- | --- |
+| `S-conflict` | GitHub reports the pull request cannot be merged because it conflicts with its base | the branch is rebased or merged with the base, or the base moves so the conflict is gone |
+| `S-ci-failing` | a required check (`merge.required_checks`) failed on the latest commit | a new commit or a re-run passes every required check |
+
+They are re-evaluated when a pull request is opened, pushed to or reopened, when a workflow that carries a required
+check finishes, and when the default branch moves (every merge can create a conflict in another pull request). GitHub
+computes mergeability lazily, so the workflow asks again for up to half a minute; if GitHub still has no answer it
+leaves `S-conflict` as it was and warns. A cancelled run is not a failure. To sweep by hand, run the `pr-status`
+workflow from the Actions tab.
+
 ## Conduct
 
 Be kind. See the [Code of Conduct](CODE_OF_CONDUCT.md).
