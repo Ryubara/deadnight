@@ -10,6 +10,7 @@ extends UIScreen
 signal entered
 
 const PLAY_SCREEN := "res://ui/screens/night_screen.tscn"
+const JOIN_SCREEN := "res://ui/screens/join_screen.tscn"
 const CUSTOMIZE_SCREEN := "res://ui/screens/customize_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"
@@ -28,6 +29,7 @@ var _entered := false
 @onready var _items: VBoxContainer = %Items
 @onready var _footer: Label = %Footer
 @onready var _play: UIButton = %Play
+@onready var _join: UIButton = %Join
 @onready var _customize: UIButton = %Customize
 @onready var _settings: UIButton = %Settings
 @onready var _credits: UIButton = %Credits
@@ -45,6 +47,7 @@ func _ready() -> void:
 	_sign.tube_b = _tokens.accent
 	_quit.visible = has_quit()
 	_play.pressed.connect(_open.bind(PLAY_SCREEN, UITransition.Kind.IRIS))
+	_join.pressed.connect(_open.bind(JOIN_SCREEN, UITransition.Kind.SLIDE))
 	_customize.pressed.connect(_open.bind(CUSTOMIZE_SCREEN, UITransition.Kind.SLIDE))
 	_settings.pressed.connect(_open.bind(SETTINGS_SCREEN, UITransition.Kind.SLIDE))
 	_credits.pressed.connect(_open.bind(CREDITS_SCREEN, UITransition.Kind.BURN))
