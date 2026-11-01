@@ -187,6 +187,10 @@ ui_tab_next={
 ]
 }
 
+[physics]
+
+common/physics_interpolation=true
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

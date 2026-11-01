@@ -5,7 +5,8 @@ extends UIScreen
 ## lead back to the menu.
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/night_screen.tscn")`; the main menu's Play
-## does.
+## does. To join a game server instead, set `join_url` first (the Join screen does): the screen
+## takes it once and joins that night.
 
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
@@ -14,8 +15,16 @@ const DIM := Color(0.0, 0.0, 0.0, 0.55)
 ## without a renderer, so a headless run skips it.
 static var warm_up_enabled := DisplayServer.get_name() != "headless"
 
-## How the next night starts, for a run that is not a person's (`KillBench`): the bot plays, filmed
-## from its shoulder, under this tuning (the defaults when null).
+## The server to join (`ws://host:port`) the next time this screen opens; empty plays alone.
+static var join_url := ""
+## With `join_url`: the autopilot plays this player (`--bot`), seen over its own shoulder.
+static var join_as_bot := false
+## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
+## settings file); null wears the saved look.
+static var own_look: CharacterLook
+
+## How a night played alone starts, for a run that is not a person's (`KillBench`): the bot plays,
+## filmed from its shoulder, under this tuning (the defaults when null).
 static var start_mode := Night.Mode.HUMAN
 static var start_tuning: RulesTuning = null
 static var shoulder_camera := false
@@ -23,13 +32,22 @@ static var shoulder_camera := false
 var night: Night
 
 var _hud: Hud
-var _touch: TouchControls
 var _loading: LoadingOverlay
+var _touch: TouchControls
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
 var _resume: UIButton
 var _quit: UIButton
+
+
+## The look a `--look` value names: `N` is the preset N, `seed:N` a random look made from seed N.
+static func look_from_flag(text: String) -> CharacterLook:
+	if text.begins_with("seed:"):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = text.trim_prefix("seed:").to_int()
+		return CharacterLook.randomized(rng)
+	return CharacterLook.from_preset(text.to_int())
 
 
 func _ready() -> void:
@@ -38,7 +56,7 @@ func _ready() -> void:
 	allow_back = false
 	night = Night.new()
 	night.warm_up = warm_up_enabled
-	night.shoulder_camera = shoulder_camera
+	night.own_look = own_look
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
@@ -47,6 +65,7 @@ func _ready() -> void:
 	_touch = TouchControls.new()
 	_touch.state = _hud.state
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
+	_touch.mirrored_changed.connect(_on_mirrored_changed)
 	add_child(_touch)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
@@ -63,7 +82,19 @@ func touch_active() -> bool:
 
 
 func screen_enter() -> void:
-	await night.start(start_mode, Night.SEED, start_tuning)
+	if join_url == "":
+		night.shoulder_camera = shoulder_camera
+		await night.start(start_mode, Night.SEED, start_tuning)
+		return
+	var url := join_url
+	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN
+	night.shoulder_camera = join_as_bot
+	join_url = ""
+	join_as_bot = false
+	_show_overlay("Joining", url, false)
+	night.connect_failed.connect(_on_connect_failed)
+	if await night.start_remote(url, mode):
+		_overlay.hide()
 
 
 func screen_pause() -> void:
@@ -94,6 +125,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## A left-handed layout swaps the HUD's corner columns with the buttons.
+func _on_mirrored_changed(mirrored: bool) -> void:
+	_hud.mirrored = mirrored
+
+
 ## The HUD keeps inside the notch and the rounded corners.
 func _on_safe_insets_changed(insets: Vector4) -> void:
 	_hud.offset_left = insets.x
@@ -109,8 +145,13 @@ func _pause() -> void:
 
 func _resume_night() -> void:
 	_overlay.hide()
+	_hud.reticle.set_shown(true)
 	_touch.live = true
 	night.set_paused(false)
+
+
+func _on_connect_failed(reason: String) -> void:
+	_show_overlay("Could not join", reason, false)
 
 
 func _on_night_over(round_reached: int) -> void:
@@ -123,6 +164,7 @@ func _on_night_over(round_reached: int) -> void:
 
 func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_hud.reticle.set_shown(false)
 	_touch.live = false
 	_title.text = title
 	_note.text = note

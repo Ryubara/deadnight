@@ -192,6 +192,13 @@ const TABS := [
 				"format": "%.2f",
 			},
 			{
+				"key": SettingsService.LEFT_HANDED,
+				"title": "Left-handed layout",
+				"hint":
+				"Flips the touch layout: the stick on the right, Fire and its buttons on the left.",
+				"kind": "toggle",
+			},
+			{
 				"key": SettingsService.HAPTICS,
 				"title": "Vibration on touch",
 				"hint": "A short buzz when a button is pressed, where the device allows it.",

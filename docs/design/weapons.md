@@ -135,6 +135,12 @@ fuse keeps running**: it is spent, it is not given back, and it hurts whoever is
 which makes a revive during a cook a risk the team can see. The throw that follows is refused (`player_downed`); a
 revived player starts again with a fresh pin.
 
+**In the night.** The server throws for every player on their command's grenade buttons (G, the right shoulder
+button and the touch Grenade button for the overarm throw; H and the left shoulder button for the toss), only while a
+round is on and the player is up and has one. The count drops at the pin, so a grenade cooked to the end and let go
+in the hand is spent and costs the thrower 40% of the blast. The Soldier cooks and throws with his own clips. Wired
+and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351).
+
 | Thing | Number |
 | --- | --- |
 | Fuse | 3.0 s from the pin; cooking spends it in the hand; held to the end it goes off in the hand |

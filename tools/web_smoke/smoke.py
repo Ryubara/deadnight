@@ -209,7 +209,9 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     page.screenshot(path=out / "menu.png")
     result["menu_frames"] = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
 
-    # The wardrobe reads parts.json, which only reaches the build through the export filter.
+    # The wardrobe reads parts.json, which only reaches the build through the export filter. It is the
+    # third item, after Play and Join.
+    press(page, "ArrowDown")
     press(page, "ArrowDown")
     press(page, "Enter")
     wait_for(page, "the wardrobe", lambda s: s.get("screen") == "customize_screen", SCREEN_TIMEOUT_S)
@@ -221,10 +223,10 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     page.screenshot(path=out / "menu_back.png")
 
     # Back on the menu nothing has focus until a key asks for it (that key is spent doing so); then Up walks
-    # to the first item, Play.
+    # to the first item, Play (focus stops at the ends, so an Up too many is harmless).
     press(page, "ArrowDown")
-    press(page, "ArrowUp")
-    press(page, "ArrowUp")
+    for _ in range(4):
+        press(page, "ArrowUp")
     page.screenshot(path=out / "menu_focus.png")
     press(page, "Enter")
     wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)

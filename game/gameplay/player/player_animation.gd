@@ -1,10 +1,13 @@
+# gdlint: disable=max-public-methods
 class_name PlayerAnimation
 extends AnimationTree
 ## Drives the Soldier's clips (docs/design/animation.md is the spec) from the player's movement.
 ##
 ## The tree is built here, in code, so the clip names live in one place:
 ##   body:  locomotion (Idle / Walk / Run blended by speed; the Run end plays at ground speed /
-##          run_clip_speed so the feet do not slide), and jump -> fall -> land -> locomotion.
+##          run_clip_speed so the feet do not slide; while aiming, Walk_Shoot / Walk_Back /
+##          Strafe_Left / Strafe_Right blended by the direction of travel, from their own file),
+##          and jump -> fall -> land -> locomotion.
 ##   upper: the class's Aim_<Class> loop with a OneShot on top (Fire, Reload, Swing, Equip,
 ##          Unequip), laid over the body by a Blend2 filtered to the upper bones.
 ##   repair: Repair_Board looping over the upper layer while the player puts boards back at a
@@ -46,6 +49,22 @@ const HOLD_CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
 const SHOULDER_RATE := 14.0
 ## Recoil of a shot dies away at this rate (per second, exponential).
 const RECOIL_RATE := 16.0
+## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount.
+## Its hold file sizes it (a tool, larger than the size rule: docs/design/weapon-hold.md); the
+## grip is the melee one tipped 20 degrees in the hammer's swing plane (about its Z), so the face
+## meets the board square on the blow (docs/design/animation.md, Repair).
+const HAMMER_HOLD := "res://gameplay/player/holds/hammer.tres"
+const HOLD_HAMMER := Transform3D(
+	Basis(
+		Vector3(-0.719030, -0.694337, 0.029881),
+		Vector3(-0.694842, 0.717368, -0.050778),
+		Vector3(0.013822, -0.057274, -0.998263)
+	),
+	Vector3(-0.004282, 0.175673, -0.062554)
+)
+## The node the hammer model carries at the centre of its striking face, -Z out of the face
+## (docs/design/style.md, "Attachment points").
+const HAMMER_FACE := "Face"
 const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Pistol", &"Melee"]
 const DEFAULT_CLASS := &"Rifle"
 ## Where Walk sits on the move blend (0 = Idle, 1 = Run).
@@ -55,8 +74,12 @@ const WALK_POINT := 0.45
 const REPAIR_GLB := "res://assets/characters/soldier/repair/soldier_repair.glb"
 const REPAIR_SPEC := "res://assets/characters/soldier/repair/clips.json"
 const REPAIR_CLIP := &"Repair_Board"
-## The event the board lands on: each `board_repaired` of this player seeks the clip here.
+## The event the board lands on: the blow that knocks a board home. Each `board_repaired` of this
+## player puts the clip `REPAIR_KNOCK` seconds before it, and the loop emits it once per board.
 const REPAIR_SET_EVENT := "board_set"
+## A board put back slides in and knocks home this long after its `board_repaired` (the
+## barricade's mend): the fist comes down on it then, not at the event (#245).
+const REPAIR_KNOCK := Barricade.MEND_SECONDS
 ## How many repair intervals the clip keeps going after the last board went up: a held `use`
 ## mends the next one an interval later, so it only stops once one is missed.
 const REPAIR_HOLD := 1.5
@@ -65,6 +88,38 @@ const REPAIR_BLEND_RATE := 18.0
 const REPAIR_SEEK_PARAMETER := &"parameters/repair_seek/seek_request"
 const REPAIR_SCALE_PARAMETER := &"parameters/repair_scale/scale"
 const REPAIR_BLEND_PARAMETER := &"parameters/repair/blend_amount"
+## Moving while aiming (#74): one gait turned four ways, built into its own file
+## (docs/design/animation.md, Moving while aiming) and added to the Soldier's library. Each clip's
+## direction of travel in the blend space: x to the Soldier's right, y ahead.
+const AIM_MOVE_GLB := "res://assets/characters/soldier/aim_move/soldier_aim_move.glb"
+const AIM_MOVE_SPEC := "res://assets/characters/soldier/aim_move/clips.json"
+const AIM_MOVES := {
+	&"Walk_Shoot": Vector2(0.0, 1.0),
+	&"Walk_Back": Vector2(0.0, -1.0),
+	&"Strafe_Left": Vector2(-1.0, 0.0),
+	&"Strafe_Right": Vector2(1.0, 0.0),
+}
+## The aim gait is fully in by this share of its clips' ground speed (Idle blends in below it).
+const AIM_MOVE_FULL := 0.4
+## How slow or fast the aim gait is played to fit the ground (outside it the feet slide).
+const AIM_RATE_MIN := 0.5
+const AIM_RATE_MAX := 1.6
+const AIM_MOVE_PARAMETER := &"parameters/body/locomotion/aim_move/blend_position"
+const AIM_RATE_PARAMETER := &"parameters/body/locomotion/aim_rate/scale"
+const AIM_BLEND_PARAMETER := &"parameters/body/locomotion/aim_blend/blend_amount"
+
+## The grenade's clips, a file of their own on the same rig (`docs/design/animation.md`, Grenade):
+## the pin and the cooking hold, the overarm throw and the underarm toss. Upper body, so the legs
+## keep running under them.
+const GRENADE_GLB := "res://assets/characters/soldier/grenade/soldier_grenade.glb"
+const GRENADE_SPEC := "res://assets/characters/soldier/grenade/clips.json"
+const GRENADE_COOK := &"Grenade_Cook"
+const GRENADE_THROW := &"Grenade_Throw"
+const GRENADE_TOSS := &"Grenade_Toss"
+## The cook clip's first event: the gun goes down, the grenade is in the hand.
+const GRENADE_TAKEN_EVENT := "grenade_visible"
+## The throw clips' last event: the arm is back, the gun comes up again.
+const GRENADE_DONE_EVENT := "done"
 
 const STATE_LOCOMOTION := &"locomotion"
 const STATE_JUMP := &"jump"
@@ -86,6 +141,7 @@ var _action_node: AnimationNodeAnimation
 var _full_node: AnimationNodeAnimation
 var _mount: BoneAttachment3D
 var _weapon: Node3D
+var _hammer: Node3D
 var _hold: WeaponHold
 var _hands: WeaponHandsIK
 var _shoulder_blend := 0.0
@@ -99,6 +155,12 @@ var _repair_left := 0.0
 var _repair_time := 0.0
 var _repair_scale := 1.0
 var _repair_blend := 0.0
+## The aim gait's weight over the free locomotion (0 free, 1 aiming), and its clips' ground speed.
+var _aim_blend := 0.0
+var _aim_move_speed := 2.6
+var _aim_move := Vector2.ZERO
+## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
+var _boards_due := 0
 
 
 func _ready() -> void:
@@ -108,12 +170,20 @@ func _ready() -> void:
 	var model := _player.get_node("Model")
 	var anim_player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_add_repair_clip(anim_player)
+	_add_grenade_clips(anim_player)
+	_add_aim_move_clips(anim_player)
 	_loop_clips(anim_player)
 	_mount = BoneAttachment3D.new()
 	_mount.name = "WeaponMount"
 	_mount.bone_name = HAND_BONE
 	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
 	skeleton.add_child(_mount)
+	var hammer_hold := load(HAMMER_HOLD) as WeaponHold
+	_hammer = (load(hammer_hold.scene) as PackedScene).instantiate() as Node3D
+	_hammer.name = "Hammer"
+	_hammer.transform = HOLD_HAMMER.scaled_local(Vector3.ONE * hammer_hold.model_scale)
+	_hammer.visible = false
+	_mount.add_child(_hammer)
 	_hands = WeaponHandsIK.new()
 	_hands.name = "WeaponHandsIK"
 	_hands.hand_hold = HOLD_GUN
@@ -143,9 +213,35 @@ func _process(delta: float) -> void:
 	var run_scale := maxf(speed / _tuning.run_clip_speed, 0.4)
 	var run_part := clampf((_move_blend - WALK_POINT) / (0.95 - WALK_POINT), 0.0, 1.0)
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
+	_advance_aim_move(follow)
 	_advance_events(delta)
 	_advance_repair(delta)
 	_advance_shoulder(delta)
+
+
+## The aim gait for the player's velocity in the frame of its facing: where it sits in the 2D
+## blend (x to the right, y ahead; its length is how far it has left the Idle in the middle), and
+## how fast it plays so the feet keep up (ground speed over the clips' own).
+static func aim_move_for(velocity: Vector3, facing: float, clip_speed: float) -> Dictionary:
+	var ahead := Vector3(-sin(facing), 0.0, -cos(facing))
+	var right := Vector3(cos(facing), 0.0, -sin(facing))
+	var local := Vector2(velocity.dot(right), velocity.dot(ahead))
+	var share := local.length() / clip_speed
+	if share < 0.001:
+		return {"position": Vector2.ZERO, "rate": 1.0}
+	var weight := clampf(share / AIM_MOVE_FULL, 0.0, 1.0)
+	var rate := lerpf(1.0, clampf(share, AIM_RATE_MIN, AIM_RATE_MAX), weight)
+	return {"position": local.normalized() * weight, "rate": rate}
+
+
+## The aim gait's place in its blend space now, for tests.
+func aim_move() -> Vector2:
+	return _aim_move
+
+
+## The aim gait's weight over the free locomotion now (0 free, 1 aiming), for tests.
+func aim_weight() -> float:
+	return _aim_blend
 
 
 ## Name of the body state machine's current state, for tests and debugging.
@@ -173,6 +269,11 @@ func muzzle_point() -> Node3D:
 	return _weapon.find_child(MUZZLE_NODE, true, false) as Node3D
 
 
+## The repair hammer on the hand mount, shown only while the repair holds the arms.
+func hammer() -> Node3D:
+	return _hammer
+
+
 ## Switches to a weapon class: Equip_<Class> plays and the weapon appears on its weapon_visible
 ## frame; the upper body then holds Aim_<Class>.
 func equip(new_class: StringName) -> void:
@@ -187,7 +288,26 @@ func equip(new_class: StringName) -> void:
 ## Plays `<action>_<Class>` (Fire, Reload, Swing, Equip, Unequip) on the upper body. Returns
 ## false when the class has no such clip.
 func play_action(action: StringName) -> bool:
-	var clip := StringName("%s_%s" % [action, weapon_class])
+	return _play_clip(StringName("%s_%s" % [action, weapon_class]))
+
+
+## The Soldier's side of a grenade, by the server's events. `&"cook"` (`cook_started`): the pin is
+## out, the cook clip plays and the gun goes down. `&"throw"` (`grenade_thrown`): the throw clip,
+## or for the short underarm toss the toss clip (`underarm` is the event's own flag). `&"gone"`
+## (it went off in the hand, or the player was downed): the gun comes back.
+func grenade(stage: StringName, underarm: bool = false) -> void:
+	match stage:
+		&"cook":
+			_play_clip(GRENADE_COOK)
+		&"throw":
+			_play_clip(GRENADE_TOSS if underarm else GRENADE_THROW)
+		&"gone":
+			_weapon_visible(true)
+
+
+## Plays a clip of the spec on the upper body, in place of whatever action it was playing. Returns
+## false when the spec has no such clip.
+func _play_clip(clip: StringName) -> bool:
 	if not _spec["clips"].has(String(clip)):
 		return false
 	_action_node.animation = clip
@@ -205,18 +325,27 @@ func play_full_body(clip: StringName) -> void:
 
 
 ## A board this player put back has just gone up (the rules' `board_repaired`, which come one
-## `interval` apart while `use` is held): the repair loop plays, or keeps playing, from the frame
-## the board lands on, at the pace of one loop per interval. The weapon is put away meanwhile.
-## Driven by the events alone: nothing here reads the clock.
+## `interval` apart while `use` is held): the repair loop plays, or keeps playing, at the pace of
+## one loop per interval, from `REPAIR_KNOCK` seconds before the blow, so the fist comes down as
+## the board knocks home (on the first board too: it rises and lands). The weapon is put away
+## and the hammer is in the hand meanwhile. Driven by the events alone: nothing here reads the
+## clock.
 func board_repaired(interval: float) -> void:
 	interval = maxf(interval, 0.05)
 	_repair_scale = _clip_seconds(REPAIR_CLIP) / interval
 	_repair_left = interval * REPAIR_HOLD
-	_repair_time = _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
+	_repair_time = repair_lead(interval)
+	_boards_due += 1
 	set(REPAIR_SCALE_PARAMETER, _repair_scale)
 	set(REPAIR_SEEK_PARAMETER, _repair_time)
-	_weapon_visible(false)
-	_emit_events(REPAIR_CLIP, _repair_time - 0.001, _repair_time)
+	_hands_on_repair(true)
+
+
+## Where a board's `board_repaired` puts the repair clip, in its own seconds: the blow less the
+## knock's delay at the pace of `interval` (never before the clip's start).
+func repair_lead(interval: float) -> float:
+	var scale := _clip_seconds(REPAIR_CLIP) / maxf(interval, 0.05)
+	return maxf(_event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT) - REPAIR_KNOCK * scale, 0.0)
 
 
 ## Whether the repair loop holds the arms.
@@ -228,7 +357,8 @@ func is_repairing() -> bool:
 func stop_repair() -> void:
 	if _repair_left > 0.0:
 		_repair_left = 0.0
-		_weapon_visible(true)
+		_boards_due = 0
+		_hands_on_repair(false)
 
 
 ## The repair layer's weight now (0: the weapon arms, 1: the repair arms), for tests.
@@ -284,6 +414,7 @@ func _set_class(new_class: StringName) -> void:
 		_weapon.transform = grip.scaled_local(Vector3.ONE * _hold.model_scale)
 		if _weapon.find_child(MUZZLE_NODE, true, false) == null:
 			_weapon.add_child(_make_muzzle(_hold))
+		_weapon.visible = not is_repairing()
 		_mount.add_child(_weapon)
 
 
@@ -318,11 +449,21 @@ func _advance_shoulder(delta: float) -> void:
 	if absf(_shoulder_blend - target) < 0.001:
 		_shoulder_blend = target
 	_hands.influence = _shoulder_blend
+	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
+	# so the clips that move them (the repair, Reload, Swing) never showed in a running game.
+	_hands.active = _shoulder_blend > 0.0
 
 
+## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible
+## event (an Equip) does not bring the weapon back over the hammer.
 func _weapon_visible(shown: bool) -> void:
 	if _weapon != null:
-		_weapon.visible = shown
+		_weapon.visible = shown and not is_repairing()
+
+
+func _hands_on_repair(repairing: bool) -> void:
+	_hammer.visible = repairing
+	_weapon_visible(not repairing)
 
 
 func _advance_events(delta: float) -> void:
@@ -336,18 +477,31 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
-## Moves the repair loop on by `delta` seconds: its events (but the board_set frame: that one is
-## the rules' event, sent by `board_repaired`) and the fade in or out of its layer.
+## Follows the aim: while aiming the legs take the aim gait for the direction of travel (the body
+## keeps facing the camera, so moving sideways or back is a strafe or a backpedal).
+func _advance_aim_move(follow: float) -> void:
+	var target := 1.0 if _player.state.aiming else 0.0
+	_aim_blend = lerpf(_aim_blend, target, follow)
+	if absf(_aim_blend - target) < 0.001:
+		_aim_blend = target
+	set(AIM_BLEND_PARAMETER, _aim_blend)
+	var gait := aim_move_for(_player.state.velocity, _player.state.facing, _aim_move_speed)
+	_aim_move = _aim_move.lerp(gait["position"], follow)
+	set(AIM_MOVE_PARAMETER, _aim_move)
+	set(AIM_RATE_PARAMETER, gait["rate"])
+
+
+## Moves the repair loop on by `delta` seconds: its events (`board_set` only for a board that is
+## due: one per `board_repaired`, never the loop's own) and the fade in or out of its layer.
 func _advance_repair(delta: float) -> void:
 	if _repair_left > 0.0:
 		var length := _clip_seconds(REPAIR_CLIP)
 		var before := _repair_time
 		_repair_time += delta * _repair_scale
-		var set_at := _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
-		_emit_events(REPAIR_CLIP, before, minf(_repair_time, length), set_at)
+		_advance_repair_events(before, minf(_repair_time, length))
 		if _repair_time > length:
 			_repair_time -= length
-			_emit_events(REPAIR_CLIP, -1.0, _repair_time, set_at)
+			_advance_repair_events(-1.0, _repair_time)
 		if _repair_left > delta:
 			_repair_left -= delta
 		else:
@@ -357,6 +511,14 @@ func _advance_repair(delta: float) -> void:
 	if absf(_repair_blend - target) < 0.001:
 		_repair_blend = target
 	set(REPAIR_BLEND_PARAMETER, _repair_blend)
+
+
+func _advance_repair_events(from: float, to: float) -> void:
+	_emit_events(REPAIR_CLIP, from, to, REPAIR_SET_EVENT)
+	var set_at := _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
+	if _boards_due > 0 and set_at > from and set_at <= to:
+		_boards_due -= 1
+		clip_event.emit(REPAIR_CLIP, StringName(REPAIR_SET_EVENT))
 
 
 func _event_frames(clip: StringName, event: String) -> Array:
@@ -382,19 +544,23 @@ func _clip_seconds(clip: StringName) -> float:
 	return seconds
 
 
-## Emits every event of `clip` whose time lies in (from, to], except those at `skip_at` seconds.
-func _emit_events(clip: StringName, from: float, to: float, skip_at: float = -1.0) -> void:
+## Emits every event of `clip` whose time lies in (from, to], except the one named `skip`.
+func _emit_events(clip: StringName, from: float, to: float, skip: String = "") -> void:
 	var fps: float = _spec["fps"]
 	var events := clip_events(clip)
 	for event: String in events:
+		if event == skip:
+			continue
 		var frames: Array = events[event] if events[event] is Array else [events[event]]
 		for frame: float in frames:
 			var at := frame / fps
-			if at > from and at <= to and not is_equal_approx(at, skip_at):
+			if at > from and at <= to:
 				if event == "weapon_visible":
 					_weapon_visible(true)
-				elif event == "weapon_hidden":
+				elif event == "weapon_hidden" or event == GRENADE_TAKEN_EVENT:
 					_weapon_visible(false)
+				elif event == GRENADE_DONE_EVENT:
+					_weapon_visible(true)
 				clip_event.emit(clip, StringName(event))
 
 
@@ -418,6 +584,36 @@ func _add_repair_clip(anim_player: AnimationPlayer) -> void:
 	var holder := (load(REPAIR_GLB) as PackedScene).instantiate()
 	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	library.add_animation(REPAIR_CLIP, source.get_animation(REPAIR_CLIP))
+	holder.free()
+
+
+## Adds the grenade clips to the Soldier's own library, as `_add_repair_clip` does for its clip.
+func _add_grenade_clips(anim_player: AnimationPlayer) -> void:
+	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(GRENADE_SPEC))
+	var library := anim_player.get_animation_library(&"")
+	var holder := (load(GRENADE_GLB) as PackedScene).instantiate()
+	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	for clip: StringName in [GRENADE_COOK, GRENADE_THROW, GRENADE_TOSS]:
+		_spec["clips"][String(clip)] = spec["clips"][String(clip)]
+		if not library.has_animation(clip):
+			library.add_animation(clip, source.get_animation(clip))
+	holder.free()
+
+
+## Adds the aim-move clips to the Soldier's own library (the repair clip's recipe) and their
+## entries to the clip spec; their ground speed comes from the same spec.
+func _add_aim_move_clips(anim_player: AnimationPlayer) -> void:
+	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(AIM_MOVE_SPEC))
+	for clip: StringName in AIM_MOVES:
+		_spec["clips"][String(clip)] = spec["clips"][String(clip)]
+	_aim_move_speed = spec["clips"]["Walk_Shoot"]["ground_speed"]
+	var library := anim_player.get_animation_library(&"")
+	if library.has_animation(&"Walk_Shoot"):
+		return
+	var holder := (load(AIM_MOVE_GLB) as PackedScene).instantiate()
+	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	for clip: StringName in AIM_MOVES:
+		library.add_animation(clip, source.get_animation(clip))
 	holder.free()
 
 
@@ -524,5 +720,20 @@ func _build_locomotion() -> AnimationNodeBlendTree:
 	tree.add_node(&"move", move)
 	tree.add_node(&"run_speed", AnimationNodeTimeScale.new())
 	tree.connect_node(&"run_speed", 0, &"move")
-	tree.connect_node(&"output", 0, &"run_speed")
+	# Aiming: the four directions around Idle; the clips share their length and step together,
+	# so a diagonal is two of them in phase.
+	var aim_move := AnimationNodeBlendSpace2D.new()
+	aim_move.sync = true
+	aim_move.add_blend_point(_clip(&"Idle"), Vector2.ZERO, -1, &"idle")
+	for clip: StringName in AIM_MOVES:
+		aim_move.add_blend_point(
+			_clip(clip), AIM_MOVES[clip], -1, StringName(String(clip).to_snake_case())
+		)
+	tree.add_node(&"aim_move", aim_move)
+	tree.add_node(&"aim_rate", AnimationNodeTimeScale.new())
+	tree.connect_node(&"aim_rate", 0, &"aim_move")
+	tree.add_node(&"aim_blend", AnimationNodeBlend2.new())
+	tree.connect_node(&"aim_blend", 0, &"run_speed")
+	tree.connect_node(&"aim_blend", 1, &"aim_rate")
+	tree.connect_node(&"output", 0, &"aim_blend")
 	return tree

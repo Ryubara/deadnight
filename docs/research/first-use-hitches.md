@@ -74,7 +74,14 @@ run skips it (nothing is drawn, so nothing is built).
    handler** from a sample of each event (`shot_fired` for each weapon in the catalogue, `damage_dealt` with every digit
    and a headshot, `projectile_burst`, a blast and gibs). Because the real handler runs, a reworked muzzle flash or
    impact is warmed without anyone editing the warm-up. The materials the effects made are **kept** for the whole
-   night (the fix for the repeats above); the stage and the effect nodes are freed.
+   night (the fix for the repeats above); the stage and the effect nodes are freed. Two things the ledger cannot see
+   by itself are put on the stage on purpose, because the night hides them until they are used: a **copy of the prize
+   crane** shown in its spin, grab and breakdown stages (the night's own crane stays invisible until the server's first
+   frame, and the ledger records hidden nodes as if they were drawn), and the **repair hammer's model** (it is on the
+   Soldier's hand mount, hidden until a repair; its path is in a hold file, not a dependency, so `WarmupManifest`
+   names it). Touch controls are UI, not 3D, and are not warmed.
+   A client that joined a game server keeps reading the link meanwhile (`Night._physics_process`), so the server's
+   frames are not seconds old when the night starts (`test_night_online`).
 5. The Effects and Voice buses are muted meanwhile, the player's camera is current again, the bar fills and the overlay
    fades.
 

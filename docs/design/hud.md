@@ -5,6 +5,10 @@ What a player sees during a night: where each readout sits, what feeds it, and w
 (flat paper and signs, hard shadows, notched corners, amber and hot orange, two faces) and the tokens of the
 `gds_ui` addon. Round, points, fuel and shop numbers are in [Rounds, points and fuel](rounds.md).
 
+A left-handed touch layout mirrors the corner columns (`Hud.mirrored`, set by the night screen): round and objective swap
+with the fuel, event and notice lists, points and health with ammo, so the buttons that flip sides still miss every card
+([touch controls](touch-controls.md#left-handed-layout)). Parts in the middle stay.
+
 ## Network-first
 
 The HUD reads one object, `HudState` (plain numbers, strings, arrays and dictionaries; a test checks that it holds no
@@ -43,13 +47,16 @@ local player) into the direction on screen.
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card as high as its words need (a long name or line wraps, never cut; it grows upward): the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows; rows slide into their slots (see Decisions) |
-| `HudCrosshair` | centre | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
+| `HudReticle` | centre | the reticle (see Decisions): four short ticks round a gap and a dot, cream with a dark edge, static and small; hidden under the pause card and while you are down |
+| `HudCrosshair` | centre, over the reticle | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
 | `HudDamage` | full screen | a red arc toward the attacker per blow; a red frame under a third health (pulses; held while down) |
 | `HudMarkers` | full screen | objective diamonds with distance, smaller as they get farther; teammates' names at constant size; the important marker pins to the edge with an arrow when off-screen |
 
 The interaction prompt takes its key from the `interact` action in the InputMap (E, gamepad Y), so a rebound key shows
-the new key, and the glyph is a square keycap or a round button by the **last device used** (`UIInputMode.gamepad`). It
-sinks while the action is held. A refused purchase shakes the card and says why in place of the price. The breach's card
+the new key. The glyph follows the **last device used**: a square keycap, a round gamepad button
+(`UIInputMode.gamepad`) or, after a touch, a round tap mark with no letter (`UIInputMode.touch`,
+[touch controls](touch-controls.md#first-run-and-key-hints)). It sinks while the action is held. A refused purchase
+shakes the card and says why in place of the price. The breach's card
 says "HOLD TO NAIL BOARDS UP": holding the button keeps putting boards back
 ([rules](rounds.md#the-fences-boards)).
 
@@ -97,15 +104,29 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   ours.
 
 - **Typeface through a token.** `UITokens.font_display` and `font_text` (null keeps the engine's fallback font) feed
-  `display_font()` and `text_font()`; every HUD label and drawn string asks those. The pick in [typography](typography.md)
-  (issue #31) drops in by setting two resources; nothing here names a font. Captures load Bungee Inline and Barlow
-  Condensed from a folder outside the repository (`--fonts=`). No font file is committed.
+  `display_font()` and `text_font()`; every HUD label and drawn string asks those. The game's tokens set Bungee Inline
+  and Barlow Condensed ([typography](typography.md), issue #11), so the HUD, the menus and the sign share one pair;
+  nothing here names a font. The files are committed under `game/assets/fonts` with their licences.
 - **No compass bar, no minimap.** The lot is one small, lit area seen from a third-person camera; the lit circuits
   already show where to go, and a minimap would add a second picture to read at 720p. The waypoint diamonds carry
   distance and an edge arrow for the one thing that matters (the next door), and teammates get names over their heads.
   Revisit if the map grows past the lot.
 - **A reel counter, not tally marks.** The round is a drum counter in the style of a projector's reels (two digits,
   three from round 100); it is the only place the hot red is a big numeral.
+- **The reticle (#300).** A small static mark where the shots go, drawn by `HudReticle` over the middle of the screen:
+  four ticks 9 units long and 3 wide round a 7-unit gap, and a 3-unit dot, in the light ink (`tokens.ink`, 92 %)
+  with a 1.5-unit dark edge on every shape so it holds on the lit pools and on the dark. About 32 units across, 3 % of
+  the 1080-unit canvas height (22 px at 720p). The maintainer asked for "very simple, inspired from games like Call of
+  Duty, static and small", so it does not bloom with movement or fire, does not change colour over a zombie and is
+  not an animation; the one thing it shows is the camera ray, which is where `AimResolver` sends the shot, so it
+  stays at the centre whatever the shoulder offset, the aim or the hip-fire zoom do. The hit markers are the
+  *diagonal* ticks (starting 9 units out) and sit between the reticle's, so the two never overprint. Lengths are canvas
+  units: it scales with the window and the UI scale like every other part (a test reads the viewport's stretch). It
+  is shown **while aiming too**: the aim view has no reticle of its own, and hiding the only mark where the shots go
+  at the moment of precision would be wrong. It is hidden under the pause card (the screen calls `set_shown`) and
+  while you are down. Every number is on `ReticleStyle` (`ui/hud/reticle_style.tres`, also the *Reticle Style*
+  property of the `Hud` node): arm length, gap, thickness, outline, dot size (0 for none), tint and opacity, with
+  ranges in the inspector.
 - **A part never grows past its band.** The layout test once used short values and the fallback font and passed
   while a real name, a three-digit round or the Marquee face overlapped parts at 1536 x 864. Each part now has a width
   it keeps (`HudStyle.COLUMN` for the side columns, `CARD` for the banner and prompt, `HudAmmo.WIDTH`,
@@ -171,19 +192,20 @@ marquee, the banner, the reward line and a late joiner into a special round), `t
 against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
 `test_hud_players.gd` (a container per player, one to four: colours, local first, down, the portrait),
-`test_hud_generator_panel.gd` (when the card shows and its stepped timing), `test_hud_grid.gd` (the grid, measured at
-every canvas: shared edges, gaps, text lines, no label leaving its part),
+`test_hud_reticle.gd` (the reticle: present, centred, small, scaled by the viewport stretch, hidden under a menu or
+while down, editable), `test_hud_generator_panel.gd` (when the card shows and its stepped timing),
+`test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),
 `test_hud_typical_text.gd` (the ordinary night's values show in full at 1080p and 1440p, in the fallback face and the
 Marquee pair), `test_hud_layout.gd` (sizes, overlap, readability, reduced motion: the busiest HUD and the longest
-content the game allows, in the fallback face, a synthetic wide face and, when `refs/fonts` is there, the Marquee
-pair, at every canvas). The capture `game/tests/captures/hud_worst_case.tscn` renders the longest content at one canvas
+content the game allows, in the fallback face, a synthetic wide face and the Marquee pair the game ships, at every
+canvas). The capture `game/tests/captures/hud_worst_case.tscn` renders the longest content at one canvas
 (`-- --out=<png> [--size=1536x864] [--face=fallback|wide|marquee] [--busy|--night] [--quiet] [--players=N]
 [--window=WxH]`: `--window` renders at that many pixels with the canvas stretched, so
 `--size=1920x1080 --window=1280x720` is a 720p window). The capture
 `game/tests/captures/hud_tour.tscn` plays a real `GameRules` night over the drive-in greybox:
 
 ```text
-godot --path game res://tests/captures/hud_tour.tscn --write-movie out.png --fixed-fps 10 -- --view=concession --fonts=<fonts folder> [--reduced]
+godot --path game res://tests/captures/hud_tour.tscn --write-movie out.png --fixed-fps 10 -- --view=concession [--reduced]
 ```
 
 To record at a window size, put `window/size/window_width_override` and `window_height_override` in an uncommitted

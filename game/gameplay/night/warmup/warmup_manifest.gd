@@ -20,14 +20,20 @@ static func resource_paths() -> Array[String]:
 		_add(paths, path)
 		for dependency in dependencies_of(path):
 			_add(paths, dependency)
+	for scene in held_scenes():
+		_add(paths, scene)
+		for dependency in dependencies_of(scene):
+			_add(paths, dependency)
 	return paths
 
 
-## The weapons' and grenades' definition files.
+## The weapons' and grenades' definition files, and the repair hammer's hold (the hammer is in no
+## catalogue: the repair puts it in the Soldier's hand).
 static func definition_paths() -> Array[String]:
 	var paths: Array[String] = []
 	for id in WeaponCatalog.IDS:
 		paths.append(WeaponCatalog.DIR + String(id) + ".tres")
+	paths.append(PlayerAnimation.HAMMER_HOLD)
 	for file in DirAccess.get_files_at(GRENADE_DEFS):
 		# An export keeps a resource behind a `.remap` file: the name without it is the one to load.
 		var name := file.trim_suffix(".remap")
@@ -50,12 +56,24 @@ static func dependencies_of(path: String) -> Array[String]:
 ## The scenes and meshes a definition file brings with it: what the stage draws for that weapon.
 static func drawable_dependencies(paths: Array[String]) -> Array[String]:
 	var found: Array[String] = []
+	for scene in held_scenes():
+		_add(found, scene)
 	for path in paths:
 		for dependency in dependencies_of(path):
 			if ResourceLoader.exists(dependency):
 				var resource := load(dependency)
 				if resource is PackedScene or resource is Mesh:
 					_add(found, dependency)
+	return found
+
+
+## The scenes a hold file names as a path (not a dependency a definition file carries): the repair
+## hammer's model.
+static func held_scenes() -> Array[String]:
+	var found: Array[String] = []
+	var hold := load(PlayerAnimation.HAMMER_HOLD) as WeaponHold
+	if hold != null:
+		_add(found, hold.scene)
 	return found
 
 

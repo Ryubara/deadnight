@@ -73,6 +73,36 @@ godot --path game res://tests/captures/night_look_tour.tscn --write-movie <abs>/
 
 Add `-- --hud` to draw the real HUD over the night.
 
+## The night closes in with the round
+
+Issue #314. The rules' `RoundTuning.ambient_for_round` (0.60 in round 1, 0.035 less each round, 0.15 from round 14) is
+read by `NightLight` (`game/world/drive_in/night_light.gd`), a node the night adds beside its view. It listens to the
+client's events only (`break_started.next_round`, `round_started.round`, and the first `frame` for a client that joins
+late), so the server changes nothing and a client of any kind (loopback, or a socket) darkens the same way.
+
+| Part | Round 1 | Darkest (round 14 on) |
+| --- | --- | --- |
+| Ambient energy | the scene's own 0.24 | 0.35 of it (0.084) |
+| Moon energy | the scene's own 0.36 | 0.5 of it |
+| Sky (`background_energy_multiplier`) and fog colour (`fog_light_energy`) | 1 | 0.5, both together (the fog is matched to the horizon by hand) |
+| Fog density | the scene's own 0.013 | 1.7 times it (28 % to 42 % at 25 m) |
+
+Round 1 is the look in the table above, untouched; each round blends the scene's numbers toward the darkest by
+`(0.60 - level) / (0.60 - 0.15)`, so a change to the generator's constants moves both ends. A change of round eases
+over 12 s (`EASE_SECONDS`) from the break that announces it, so there is no pop; the lamps' lights and pool quads are
+not touched, so the pools hold while the field around them sinks. Only `Environment` energies and a fog density change,
+so nothing new for the Compatibility renderer or the web build, and the HUD (a 2D layer) is not lit by any of it.
+
+- **A scene's resources are shared by every copy of it.** The `Environment` is a sub-resource of the greybox scene, so
+  an edit through one night's node would darken every later night in the process (the menu's preview, the next
+  match, other tests). `NightLight` duplicates the environment before it changes it; a test makes a second lot after
+  round 14 and reads the original numbers.
+- **Readable at the darkest round** (`test_night_light.gd`): ambient plus moon above 0.2 (round 1 has 0.6), fog at 25 m
+  under 50 %, sky and fog still matched. The capture `night_closes_in.tscn` puts the dead 7 m and 25 m ahead of the
+  player's shoulder camera with the HUD on, one run for each round (`-- --round=N`): at round 14 the player, the dead at
+  25 m against the stand's wall, the lamp heads and their pools all still read. Mean frame luma of the 1080p capture
+  went from 45.5 (round 1, and `main`) to 33.4 (round 14).
+
 ## Lamps and glow (issue #244)
 
 The lighting pass on top of the environment above. The sky, fog, ambient and moon are untouched; this is what the
@@ -107,17 +137,39 @@ for the dead's slowdown (`LotLamps.lit_at`).
   exempt: every lamp reaches it and it is near-black.
 - **Room for a fight**: a muzzle flash (`ShotEffects`, 5 m), a blast (`BlastEffect`, 1.6 x the blast radius) and a
   grenade's lamp (`GrenadeView`, 3 m) are `OmniLight3D` nodes made at run time. A mesh near a fight gains one flash and
-  one blast or lamp, so the lot's own lights may reach a mesh with `limit - 2` (`DYNAMIC_HEADROOM`). Meshes over that
-  today are listed in `KNOWN_OVER` (the field's four middle ground tiles and the stand's floor and roof, issue #318;
-  the test fails on one that grows or no longer needs its entry) and a skipped twin without the list takes over once
-  they are fixed. Another test reads every script and scene of the project for a light and fails on one that is not
+  one blast or lamp, so the lot's own lights may reach a mesh with `limit - 2` (`DYNAMIC_HEADROOM`), and no mesh is
+  excused from it. Another test reads every script and scene of the project for a light and fails on one that is not
   in its table, and checks that each weapon's shot, a blast and a grenade add exactly one light.
   The first run of the stronger test found 8 on two ground tiles, 7 on four more; no prop or car is above 6.
 - **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 5 m) is counted at each crane spot by
   `test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget`: a crane is built at every spot, its lamp joins
-  the lot's and its own meshes join the lit ones. Beside the stand it adds a light to `Concession/Floor0_0` and
-  `Concession/Roof`, which are already over the fight budget (issue #318): they reach 8, the renderer's cap, so the
-  test lets a known mesh be one over its entry and no more. A smaller range (3 m) did not help: the stand is that close.
+  the lot's and its own meshes join the lit ones, and no mesh is over the fight budget. Beside the stand the lamp is one
+  more light on the stand's floor and roof, which is why they are cut in four (below): each piece stays at 6 or fewer.
+- **Tiles are sized to the lights** (issue #318). Compatibility counts lights per mesh, so a big ground box is reached
+  by every lamp near any part of it, and the field's middle (eight lamps, the screen's 34 m glow, the stand's three
+  inside lamps and its sign all overlap there) had tiles reached by 7 and 8. A search over cuts of the middle
+  (`tools/world/build_greybox.py`, `FIELD_CORE_X` and `FIELD_CORE_Z`) found the fewest tiles that keep each at 6 or
+  fewer: 12 tiles between x -16 and 16 in rows at z -38, -22 and -10 (the lamp rows), where 16 m tiles had been, and
+  the dark flanks stay wide. 5 was not reachable by any cut searched: ScreenGlow and the sign reach every tile of the
+  middle. The stand's floor and roof are each cut in four at x -4 and z 1 (`STAND_CUT_X`, `STAND_CUT`): the field's
+  posts, the sign and the stand's own lamps reach the front, the midway's court lamp the back, the prize crane's lamp
+  (beside the west wall) the west back, and no piece gets all of them. Cut in two it was 6 until the crane arrived
+  (#274) and 7 with it; on a 0.5 m grid x -4, z 1 is the one cut that leaves floor and roof both at 6. Lamps, ranges
+  and energies are untouched, so the picture and the rules' lit ground (`LotLamps.lit_at`, which counts lamp
+  positions) did not change.
+  Rejected: moving the midway's court lamp 4 m south (it drops out of the stand's floor and roof but takes 4 m2 of the
+  midway's lit ground), shorter interior and sign ranges (the light would still reach through the wall: there are no
+  shadows), and pool quads in place of lamp posts (a post is a lamp for the rules).
+  Cost: 12 more CSG boxes (the field 24 to 30 tiles, the stand's floor and roof three more each) is 12 more draw calls
+  of about 1,100 lit meshes. Chrome on an RTX 5080, `smoke.py --gpu --unpaced`, 1280 x 720, a 45 s night, the web
+  export of `main` against this branch, three runs each, alternating, on a shared machine:
+
+  | Build | Night frame mean | p50 | p95 (median second) | Worst second p95 |
+  | --- | --- | --- | --- | --- |
+  | `main`, 3 runs | 2.8 / 2.9 / 2.5 ms | 2.5 / 2.6 / 2.2 ms | 3.9 / 4.0 / 3.5 ms | 6.5 / 9.1 / 5.9 ms |
+  | this branch, 3 runs | 2.7 / 2.9 / 2.7 ms | 2.5 / 2.7 / 2.3 ms | 3.7 / 4.1 / 3.7 ms | 5.3 / 6.4 / 5.6 ms |
+
+  No difference beyond the run-to-run spread (the spread of one build is larger than the gap between the two).
 - **Pools are quads, not light range.** Raising the lamp range to 14 m to get a bigger pool put 12 lights on one tile.
   The pool is now the quad, the light stays at 11 m.
 - **The screen shows the circuit.** With `screen_lot` off the face keeps the 0.3 afterglow of its lamp and the posts,

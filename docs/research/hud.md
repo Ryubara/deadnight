@@ -15,12 +15,12 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
   (fit x scale), stretch `canvas_items`, aspect `expand`) found 17 overlaps at 1536 x 864. It then passed while real
   names, a three-digit round, 12,345,678 points, 999 / 9999 ammo and the Marquee typeface overlapped there (#141): it had
   short values and the fallback font. It now also runs the longest content and a wide face (a `FontVariation` of the
-  fallback stretched 1.4 times, so CI without font files still tests a wide face) and the real Marquee pair when
-  `refs/fonts` is found. The fixes are structural (a width per part, text that shrinks then ellipsizes, one line per
-  feed row, the prompt reflowed), not nudges.
-- **Fonts through two token slots.** `UITokens.font_display` and `font_text` default to null (the engine fallback). The
-  HUD, drawn strings included, asks `tokens.display_font()` and `text_font()`. A capture loads the recommended pair from
-  outside the repository, so the committed HUD runs and tests without a font file.
+  fallback stretched 1.4 times) and the Marquee pair, which is now committed (#11), so CI runs the real faces. The
+  fixes are structural (a width per part, text that shrinks then ellipsizes, one line per feed row, the prompt
+  reflowed), not nudges.
+- **Fonts through token slots.** `UITokens.font_display` and `font_text` default to null (the engine fallback); the
+  game's tokens set Bungee Inline and Barlow Condensed (#11). The HUD, drawn strings included, asks
+  `tokens.display_font()` and `text_font()`, so the pair reached it by a resource change, with no HUD file edited.
 
 - **Test the ordinary as well as the worst.** The worst-case suite proves nothing overlaps because text gives way, so
   it passes while everyday text is cut (#170: at 1080p `SNACKS` and "PLAYER 1 OPENED THE CONCESSION STAND" ended in

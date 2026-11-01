@@ -29,10 +29,22 @@ state with `copy_from`, `teleport`-style, and call `simulate` again for the comm
 (`test_replaying_the_same_commands_from_the_same_state_gives_the_same_result`): record 150 commands as bytes, rewind,
 replay, and the position matches within 1 mm.
 
-Known limits to settle when the net work lands: `move_and_slide` integrates with the engine's physics delta, so
-`delta` must equal it (tests change `physics_ticks_per_second`, not the argument); the floor flag is carried in the
-state but `move_and_slide` keeps its own contact cache, which a rewind does not restore; floats are not quantized for
-the wire yet; crouch is carried in the command and state but nothing acts on it.
+Replaying is safe in **any callback**, physics frame or not (`tests/player/test_player_reconcile.gd`: 150 commands
+re-simulated in one callback, from the air and from a slope, in a physics frame and in an idle frame, match within
+1 mm). Two things made that false, and `PlayerSimulation._slide` fixes both:
+
+- `CharacterBody3D.move_and_slide()` ignores the caller's delta: it steps by the physics delta in a physics frame and
+  by the *frame* delta (wall time) anywhere else, which is where a `SceneMultiplayer` handler runs. The measured error
+  was 5.7 m over 150 commands. `_slide` scales the velocity by `delta / engine_delta` before the call and back after,
+  so the step is exactly `delta` in every frame (sliding only projects the velocity, so the scaling is exact). It
+  also means `delta` is honoured: a double step moves twice as far.
+- The body's own "was I on the floor last call" cache (what its floor snap reads) is not restored by `copy_from`, so
+  the first replayed tick snapped to a slope or not depending on where the previous run had ended (3 mm, then more).
+  `_slide` turns the body's snap off for the call and snaps afterwards from the carried `state.on_floor`, the engine's
+  rule (`was_on_floor`, not moving up, no floor after the slide) on data a rewind does restore.
+
+Still open for the net work: floats are not quantized for the wire yet; and `_slide` cannot scale when the engine has
+no delta yet (the very first frame), where it reports an error.
 
 ## Settings
 
@@ -46,9 +58,9 @@ All in `player_tuning_default.tres` (a `PlayerTuning` resource); metres, seconds
 
 | Group | Value | Why |
 | --- | --- | --- |
-| Speed | run 4.8, sprint 7.0, aim 2.6 m/s | The default pace is a run; Walk plays only on the way up to it (and when aiming slows the player); aiming is a deliberate shuffle. |
-| Acceleration | 38 m/s2 on the ground (full run speed in 0.13 s), 44 friction, 6 in the air | Snappy but not instant; a reversal takes about a quarter second. |
-| Facing | 14 rad/s toward the run direction, 24 rad/s toward the aim direction | The body visibly turns instead of snapping; aiming catches up fast so shots go where the camera points. |
+| Speed | run 4.8, sprint 7.0 (every direction), aim 2.6 m/s (0.75 of that backing away) | The default pace is a run; Walk plays only on the way up to it (and when aiming slows the player); aiming is a deliberate shuffle. |
+| Acceleration | 38 m/s2 up to the run (0.13 s), 18 above it to the sprint (0.25 s in all), friction 44 from a run and 30 above it, 30 easing down to a lower pace, 6 in the air | Snappy but not instant; a sprint builds and carries on a little. [Character controller](character-controller.md) has the curves. |
+| Facing | 14 rad/s toward the run direction, 9 while sprinting, 22 in a pivot (a turn wider than 100 degrees), 24 toward the aim direction | The body visibly turns instead of snapping, and the velocity turns with it; aiming catches up fast so shots go where the camera points. |
 | Jump | 1.1 m height, gravity x1.7, coyote 0.1 s, buffer 0.1 s | Short, snappy arc; a late or early press still counts. |
 | Body | capsule 1.8 m by 0.35 m radius, model scaled x0.8 | `docs/design/style.md`: the kit's characters are 2.31 m, x0.8 gives 1.85 m. |
 | Look | 0.0022 rad per mouse pixel (about 0.126 degrees), stick 170 degrees per second with a squared response, pitch -60 to +50 degrees, x0.7 while aiming | Settings multiply sensitivity; the squared stick curve gives fine control near the centre. |
@@ -71,7 +83,9 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
   paths take the skeleton path from the clips' own tracks, so a rebuild that moves the skeleton does not break them.
 - `full`: a OneShot over both for HitReact and Death (`play_full_body`).
 - **No foot sliding:** the Run end of the blend plays at ground speed / 5.5 (the Run clip's planted-foot speed at scale
-  1, estimated from the foot bone's travel); Idle and Walk play at their own pace. Sprint plays Run 1.27x.
+  1, estimated from the foot bone's travel); Idle and Walk play at their own pace. Sprint plays Run 1.27x, in every
+  direction: the body faces where it goes, so one clip serves them all
+  ([character controller](character-controller.md)).
 - Loops and event frames come from `clips.json` (glTF has no loop flag and no events); only Jump_Idle, a kit clip the
   spec does not list, is looped by name. Events are a frame check on the playing upper clip: `clip_event(clip,
   event)` fires for muzzle, can_fire_again, round_in, weapon_visible and the rest, and the weapon shows and hides on
@@ -79,7 +93,12 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
 - **Weapons:** `equip(class)` attaches the class's weapon scene (lever rifle, double shotgun, bat; Pistol has none yet)
   to a `BoneAttachment3D` on `Index1.R` with `HOLD_GUN` or `HOLD_MELEE`. The default is Rifle.
 - `clips.json` is read with `FileAccess`: the web preset includes `*.json` in its filter ([web export](web-export.md)).
-- No strafe or Walk_Shoot clips yet: moving sideways plays Walk or Run forward under the aim (#74).
+- **Moving while aiming** plays the aim gait: `Walk_Shoot`, `Walk_Back`, `Strafe_Left`, `Strafe_Right` in a
+  `BlendSpace2D` on the velocity in the facing's frame, over the Idle/Walk/Run blend by an aim weight
+  ([Animation](../design/animation.md#moving-while-aiming)). Before, aiming at 2.6 m/s played the full Run (past the
+  1D blend's 2.2 m/s end) forward under the aim, whichever way the player went.
+- The body's state machine enters `locomotion` on the player's first landing (Start has no automatic transition): a
+  test that steps the tree with physics off starts the playback itself.
 
 ## Things found the hard way
 

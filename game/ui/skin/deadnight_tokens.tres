@@ -1,12 +1,22 @@
 [gd_resource type="Resource" script_class="UITokens" format=3]
 
 [ext_resource type="Script" path="res://addons/gds_ui/tokens/ui_tokens.gd" id="1"]
+[ext_resource type="FontFile" path="res://assets/fonts/bungee_inline/BungeeInline-Regular.ttf" id="2"]
+[ext_resource type="FontFile" path="res://assets/fonts/barlow_condensed/BarlowCondensed-SemiBold.ttf" id="3"]
 
 [resource]
 script = ExtResource("1")
+font_display = ExtResource("2")
+font_text = ExtResource("3")
 bg = Color(0.035, 0.03, 0.07, 1)
 bg_glow = Color(0.16, 0.09, 0.18, 1)
 surface = Color(0.06, 0.05, 0.1, 1)
 surface_raised = Color(0.085, 0.07, 0.13, 1)
 hot = Color(1, 0.24, 0.3, 1)
 size_display = 150
+size_heading = 44
+size_body = 32
+size_button = 34
+size_caption = 26
+size_overline = 26
+embolden_display = 0.1

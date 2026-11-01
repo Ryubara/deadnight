@@ -1,3 +1,4 @@
+# gdlint: disable=max-public-methods
 class_name ThirdPersonCamera
 extends Node3D
 ## Over-the-shoulder camera rig: look (mouse and stick), spring-damped follow of the body, aim and
@@ -32,6 +33,9 @@ var sensitivity := 1.0
 ## +1 camera over the right shoulder, -1 over the left. Set from the player's state.
 var side := 1.0
 var aiming := false
+## True while the player fires from the hip (the trigger was held within the hip-fire delay): the
+## camera eases part of the way into the aim view. The player sets it from the motion state.
+var hip_firing := false
 ## True while the body sprints (not just the key: `PlayerMotionState.sprinting`).
 var sprinting := false
 
@@ -45,6 +49,7 @@ var _previous := Vector3.ZERO
 var _current := Vector3.ZERO
 var _pivot := DampedSpring3.new()
 var _aim := DampedSpring.new()
+var _hip := DampedSpring.new()
 var _sprint := DampedSpring.new()
 var _side := DampedSpring.new(1.0)
 var _shoulder_cap := 1.0
@@ -67,6 +72,9 @@ func setup(target: CharacterBody3D, tuning: PlayerTuning) -> void:
 	_tuning = tuning
 	shake = CameraShake.new(tuning)
 	top_level = true
+	# The rig and its lens are placed every drawn frame from the body's last two ticks (`step`):
+	# the engine's physics interpolation would blend that a second time and lag it.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	target.add_to_group(BODY_GROUP)
 	_side.snap(side)
 	snap_to(target.global_position)
@@ -88,6 +96,7 @@ func snap_to(position: Vector3) -> void:
 	var head := position + Vector3(0.0, _tuning.pivot_height, 0.0)
 	_pivot.snap(head)
 	_aim.snap(1.0 if aiming else 0.0)
+	_hip.snap(0.0)
 	_sprint.snap(0.0)
 	_side.snap(side)
 	_shoulder_cap = 1.0
@@ -143,6 +152,20 @@ func is_aim_zoomed() -> bool:
 ## How far the aim zoom has eased in, 0 to 1.
 func aim_amount() -> float:
 	return clampf(_aim.value, 0.0, 1.0)
+
+
+## How far the view is zoomed toward the aim view, 0 to 1: the full aim zoom, or the share
+## `PlayerTuning.hip_fire_zoom` of it while firing from the hip. Placement reads this; the look
+## sensitivity reads only `aim_amount()` (a burst from the hip does not slow the view down).
+func zoom_amount() -> float:
+	var hip := clampf(_hip.value, 0.0, 1.0) * _tuning.hip_fire_zoom
+	var aim := aim_amount()
+	return aim + (1.0 - aim) * hip
+
+
+## How far the hip-fire zoom has eased in, 0 to 1 (of its own share, not of the aim view).
+func hip_amount() -> float:
+	return clampf(_hip.value, 0.0, 1.0)
 
 
 ## How far the sprint pull-back has eased in, 0 to 1.
@@ -210,6 +233,12 @@ func step(delta: float, fraction: float) -> void:
 		_steer_view(delta)
 	shake.step(delta)
 	_aim.step(1.0 if aiming else 0.0, _tuning.aim_frequency, delta)
+	var hip_in := hip_firing and not aiming
+	_hip.step(
+		1.0 if hip_in else 0.0,
+		_tuning.hip_fire_zoom_frequency if hip_in else _tuning.hip_fire_release_frequency,
+		delta
+	)
 	_sprint.step(1.0 if sprinting and not aiming else 0.0, _tuning.sprint_frequency, delta)
 	_side.step(side, _tuning.swap_frequency, delta)
 	var head := _previous.lerp(_current, fraction) + Vector3(0.0, _tuning.pivot_height, 0.0)
@@ -246,7 +275,7 @@ func _look_scale() -> float:
 ## The lens for the current eases, swept through the world from the true `head` (never from the
 ## lagging pivot alone, which may be behind a corner): pulled in at once, let out slowly.
 func _place(head: Vector3, delta: float) -> void:
-	var aim := aim_amount()
+	var aim := zoom_amount()
 	var sprint := sprint_amount()
 	var basis := Basis.from_euler(Vector3(pitch, yaw, 0.0))
 	var space := get_world_3d().direct_space_state

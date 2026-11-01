@@ -38,9 +38,10 @@ def main():
     ap.add_argument(
         "--clips",
         default="",
-        help="export only the clips whose name starts with this (Grenade_: the grenade clips as their own file, "
-        "game/assets/characters/soldier/grenade/soldier_grenade.glb, for the controller to add to the Soldier's "
-        "library); clips.json beside it lists only those",
+        help="export only the clips whose name starts with this, or with one of these comma-separated prefixes "
+        "(Grenade_: the grenade clips as their own file, game/assets/characters/soldier/grenade/soldier_grenade.glb, "
+        "for the controller to add to the Soldier's library; Walk_,Strafe_: the aim-move clips); clips.json beside "
+        "it lists only those",
     )
     args = ap.parse_args(argv)
     out = args.out.resolve()
@@ -101,9 +102,10 @@ def main():
     for a in kit_actions:
         a.name = re.sub(r"^.*\|", "", a.name)
     if args.clips:
-        for a in [a for a in bpy.data.actions if not a.name.startswith(args.clips)]:
+        prefixes = tuple(args.clips.split(","))
+        for a in [a for a in bpy.data.actions if not a.name.startswith(prefixes)]:
             bpy.data.actions.remove(a)
-        for name in [n for n in sc.CLIPS if not n.startswith(args.clips)]:
+        for name in [n for n in sc.CLIPS if not n.startswith(prefixes)]:
             del sc.CLIPS[name]
     clips = sorted(bpy.data.actions, key=lambda a: a.name)
     for a in clips:

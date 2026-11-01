@@ -229,7 +229,7 @@ func _walk(face: StringName) -> void:
 	var checked := 0
 	for canvas in _canvases():
 		var hud := _hud_on(canvas)
-		var binding := NightHudBinding.new(hud, ClientState.new(), _night.server)
+		var binding := NightHudBinding.new(hud, ClientState.new(), _night.rules_tuning)
 		for use in uses:
 			binding.show_prompt(use)
 			await await_idle_frame()

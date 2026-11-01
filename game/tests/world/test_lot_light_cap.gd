@@ -9,17 +9,6 @@ extends GdUnitTestSuite
 const DYNAMIC_HEADROOM := 2
 ## The 320 m near-black ground under the lot: every lamp reaches it, and what it drops is unseen.
 const EXEMPT := ["Outskirts"]
-## The meshes over the budget today (path from the lot -> the most lights that may reach them), kept
-## so the rest of the lot stays guarded while these are lit better: issue #318. Remove an entry
-## when its mesh is fixed; the test fails on one that no longer needs it.
-const KNOWN_OVER := {
-	"Field/Ground3_1": 7,
-	"Field/Ground4_1": 7,
-	"Field/Ground3_2": 8,
-	"Field/Ground4_2": 8,
-	"Concession/Floor0_0": 7,
-	"Concession/Roof": 7,
-}
 ## Where each script and scene that makes a light says what it is. A new light source is not in
 ## here, and the test that reads the project fails until its place in the cap is decided.
 const LIGHT_SCRIPTS := {
@@ -29,6 +18,8 @@ const LIGHT_SCRIPTS := {
 	"res://world/grenade_range/blast_effect.gd": "blast",
 	"res://world/grenade_range/grenade_view.gd": "grenade lamp",
 	"res://world/crane/prize_crane.gd": "the crane's lamp: counted at every crane spot",
+	"res://gameplay/night/warmup/night_warmup.gd":
+	"the warm-up's stage, 150 m above the lot, out of reach",
 	"res://ui/components/look_preview.gd": "own world: a viewport of its own",
 	"res://ui/hud/hud_portrait.gd": "own world: a viewport of its own",
 }
@@ -166,41 +157,14 @@ func test_no_lit_mesh_of_the_lot_is_lit_by_more_lights_than_the_renderer_allows(
 	assert_array(over).override_failure_message("\n".join(over)).is_empty()
 
 
-func test_the_lot_leaves_room_for_the_lights_of_a_fight_but_for_the_known_meshes() -> void:
-	var budget := LightCap.limit() - DYNAMIC_HEADROOM
-	var reach := _reach_by_mesh()
-	var problems: Array[String] = []
-	for line in _over(reach, budget):
-		var path := line.get_slice(" is lit", 0)
-		var count := (reach[path] as Array).size()
-		if not KNOWN_OVER.has(path):
-			problems.append(line)
-		elif count > KNOWN_OVER[path]:
-			problems.append("%s, more than the %d it is known for" % [line, KNOWN_OVER[path]])
-	for path: String in KNOWN_OVER:
-		if not reach.has(path):
-			problems.append("%s is known as over but is not a lit mesh of the lot" % path)
-		elif (reach[path] as Array).size() <= budget:
-			problems.append("%s is now within the budget: remove it from KNOWN_OVER" % path)
-	assert_array(problems).override_failure_message("\n".join(problems)).is_empty()
-
-
-## The same walk with no meshes excused: it waits for the lamps of the field and the stand to be
-## placed so their ranges overlap less (issue #318), then it replaces the test above.
-func test_the_lot_leaves_room_for_the_lights_of_a_fight(
-	do_skip := true, skip_reason := "issue #318: six meshes of the field and the stand are over"
-) -> void:
+func test_the_lot_leaves_room_for_the_lights_of_a_fight() -> void:
 	var over := _over(_reach_by_mesh(), LightCap.limit() - DYNAMIC_HEADROOM)
 	assert_array(over).override_failure_message("\n".join(over)).is_empty()
-	# GdUnit reads the two arguments; they are not used here.
-	assert_bool(do_skip or not skip_reason.is_empty()).is_true()
 
 
 ## The prize crane stands on one of the lot's crane spots at a time and carries a lamp of its own:
 ## with that lamp in, and the crane's own meshes among the lit ones, no mesh is over the budget
-## that the lot keeps for a fight but the known ones. The crane's lamp is one more light on a known
-## one (the stand beside the crane's spot), so those may be one over their entry, never past the
-## renderer's cap itself; issue #318 takes them under the budget.
+## that the lot keeps for a fight.
 func test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget() -> void:
 	var rules: GameRules = _lot.get_meta(&"rules")
 	var budget := LightCap.limit() - DYNAMIC_HEADROOM
@@ -225,14 +189,11 @@ func test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget() -> voi
 			if EXEMPT.has(mesh.name):
 				continue
 			var count := LightCap.reaching(_lot, lights, LightCap.bounds(mesh)).size()
-			var most: int = budget
-			if KNOWN_OVER.has(path):
-				most = mini(KNOWN_OVER[path] + 1, LightCap.limit())
-			if count > most:
+			if count > budget:
 				problems.append(
 					(
 						"crane spot %s: %s is lit by %d lights, over %d"
-						% [marker.name, path, count, most]
+						% [marker.name, path, count, budget]
 					)
 				)
 		crane.free()

@@ -134,6 +134,9 @@ which all press the `interact` action. The server lets go of the hold, and the n
 | the player fires, reloads or swaps | the hands are busy: a hold is not a thing to do while shooting |
 | the player goes down | downed players do nothing |
 
+While the boards go up the player's weapon is put away and a claw hammer is in their hand, nailing each board home
+on the rules' beat; the weapon comes back when the hold ends ([Animation](animation.md#repair)).
+
 A board torn off while the player holds is put back too (the hold names the breach, not a count). Nothing else repeats
 on a held `interact`: a door, a gun, the crane, a breaker and a fuel can stay one press each. `NightTuning.repair_hold`
 (off: one board a press, as before) and `repair_interval` are exported on the night tuning resource. A command that
@@ -158,10 +161,11 @@ being downed hurts but never locks you out.
 ## The tuning table
 
 Defaults as shipped. Zombie counts show one, two and four players. "Light" is the ambient level the
-world reads (1 is day). Counts follow `4 + 1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra
-player. Health climbs 8 a round to round 8, then compounds by 5% a round. The runner, crawler and
-brute columns are each type's share of the round (the first round of a type brings an exact number
-instead: see the types below); special rounds replace the mix.
+world reads (1 is day): round 1 is the lot's night as built and round 14 the darkest it gets, with the ambient light,
+moon, sky and fog dimmed in step and eased over the break (`NightLight`). Counts follow
+`4 + 1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra player. Health climbs 8 a round to round 8, then
+compounds by 5% a round. The runner, crawler and brute columns are each type's share of the round (the first
+round of a type brings an exact number instead: see the types below); special rounds replace the mix.
 
 | Round | Zombies 1p / 2p / 4p | Health | Walk m/s, lit | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |

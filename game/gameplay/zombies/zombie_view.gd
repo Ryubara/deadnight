@@ -32,6 +32,7 @@ var _episode: int = -1
 var _speed_step: int = -1
 var _emerge_left: float = 0.0
 var _emerge_seconds: float = 0.7
+var _placed := false
 
 
 ## `phase` (0 to 1) starts the walk part-way through its cycle so a crowd does not march in step.
@@ -107,6 +108,10 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 func apply(entry: Dictionary, delta: float) -> void:
 	position = entry["position"]
 	rotation.y = entry["yaw"]
+	if not _placed:
+		# The first entry is where it appears: drawn there, not slid in from the origin.
+		_placed = true
+		reset_physics_interpolation()
 	var mode: int = entry["mode"]
 	var tearing: bool = entry.get("tearing", false)
 	if tearing:
