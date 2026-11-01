@@ -29,6 +29,9 @@ var greybox: Node3D
 var doors: LotDoors
 var navigation: DoorNavigation
 
+## The lot's breaker posts, one for each circuit a player can switch.
+var switches: LotSwitches
+
 var _door_nodes: Dictionary[StringName, Node3D] = {}
 var _barricades: Dictionary[StringName, Barricade] = {}
 var _lamps: LotLamps
@@ -57,17 +60,19 @@ func build() -> void:
 			break
 		await get_tree().physics_frame
 	_lamps = LotLamps.new(greybox)
+	switches = LotSwitches.new(greybox)
 
 
 func map() -> RID:
 	return get_world_3d().navigation_map
 
 
-## Follows the rules: the lot opens the doors they sell (and any they already have open), and the
-## boards across each breach are as many as the rules say.
+## Follows the rules: the lot opens the doors they sell (and any they already have open), the
+## boards across each breach are as many as the rules say, and each breaker post shows its circuit.
 func bind(rules: GameRules) -> void:
 	doors.bind(rules)
 	_generator = rules.generator
+	switches.show_all(_generator)
 	for id: StringName in _barricades:
 		_barricades[id].set_boards(rules.barricades.boards_of(id))
 	rules.event_emitted.connect(_on_rules_event)
@@ -155,6 +160,7 @@ func spawn_gates() -> Dictionary[Vector3, StringName]:
 
 
 func _on_rules_event(event: Dictionary) -> void:
+	switches.follow(event)
 	match event["type"]:
 		&"board_torn", &"board_repaired":
 			var barricade: Barricade = _barricades.get(StringName(event["barricade_id"]))
