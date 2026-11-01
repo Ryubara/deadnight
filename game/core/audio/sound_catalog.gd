@@ -240,7 +240,7 @@ static func _build_night() -> void:
 		&"board_repair",
 		"world/board_repair_%d.ogg",
 		3,
-		_with(board, {"max_distance": 40.0, "unit_size": 7.0, "volume_db": 0.0})
+		_with(board, {"max_distance": 40.0, "unit_size": 7.0, "volume_db": 3.0})
 	)
 	_add(
 		&"door_open",
@@ -286,7 +286,9 @@ static func _build_night() -> void:
 		3,
 		_with(voice, {"priority": 85, "volume_db": -2.0, "cooldown": 0.15})
 	)
-	_add(&"player_downed", "player/down_%d.ogg", 2, _with(voice, {"priority": 88}))
+	_add(
+		&"player_downed", "player/down_%d.ogg", 2, _with(voice, {"priority": 88, "volume_db": -3.0})
+	)
 
 	var bed := {"group": &"bed", "loop": true, "pitch_semitones": 0.0, "priority": 10}
 	_add(&"bed_crickets", "ambience/crickets_%d.ogg", 1, _with(bed, {"volume_db": -16.0}))

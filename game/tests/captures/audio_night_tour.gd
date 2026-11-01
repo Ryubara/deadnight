@@ -200,8 +200,8 @@ func _say(text: String) -> void:
 func _build_overlay() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	_label = _make_label(layer, 12.0, 20)
-	_bed = _make_label(layer, 44.0, 14)
+	_label = _make_label(layer, 12.0, 34)
+	_bed = _make_label(layer, 60.0, 24)
 
 
 func _make_label(layer: CanvasLayer, top: float, size: int) -> Label:

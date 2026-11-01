@@ -69,7 +69,7 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
 - **Without ears, again:** `analyze.py sheet` draws a waveform and a log-frequency spectrogram per file; `analyze.py
   capture` reads a Movie Maker mix and checks that every sound the scene logged starts where it was played. In the
   real-night capture (`game/tests/captures/audio_night_tour.tscn`) every sound was found within 0.3 s of its event, the
-  mix peaked at -2.3 dBFS with no clipped sample, and the bed alone sat at about -36 dBFS RMS, 15 to 25 dB under the
+  mix peaked at -2.6 dBFS with no clipped sample, and the bed alone sat at about -36 dBFS RMS, 16 to 33 dB under the
   sounds on top of it.
 
 ### What went wrong
