@@ -102,6 +102,7 @@ func start(
 	view.repair_interval = func() -> float: return server.tuning.repair_interval
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
 	view.show_crane(world, server.rules.tuning)
+	add_child(NightLight.new(world.greybox.get_node("Lighting"), server.rules.tuning.rounds, state))
 	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
