@@ -10,8 +10,8 @@ const GIVE_WEAPON := &"give_weapon"
 const EQUIP := &"equip"
 const TICK := &"tick"
 const TARGETS := &"targets"
-const REGISTER_TARGET := &"register_target"
-const REMOVE_TARGET := &"remove_target"
+const TRACK_TARGET := &"track_target"
+const UNTRACK_TARGET := &"untrack_target"
 
 
 ## The trigger. `origin` and `dir` are the camera ray, `muzzle` where the barrel is, `view_time`
@@ -55,19 +55,20 @@ static func targets(list: Array) -> Dictionary:
 	return {"type": TARGETS, "list": list}
 
 
-static func register_target(target_id: int, health: float) -> Dictionary:
-	return {"type": REGISTER_TARGET, "target_id": target_id, "health": health}
+## A zombie that may be shot. The rules own its health; the server only needs to know it is alive.
+static func track_target(target_id: int) -> Dictionary:
+	return {"type": TRACK_TARGET, "target_id": target_id}
 
 
-static func remove_target(target_id: int) -> Dictionary:
-	return {"type": REMOVE_TARGET, "target_id": target_id}
+static func untrack_target(target_id: int) -> Dictionary:
+	return {"type": UNTRACK_TARGET, "target_id": target_id}
 
 
 ## The combat action a rules event calls for (a zombie to shoot at, or one gone), or `{}`.
 static func from_rules_event(event: Dictionary) -> Dictionary:
 	match event.get("type"):
 		&"zombie_spawn_requested":
-			return register_target(event["zombie_id"], event["health"])
+			return track_target(event["zombie_id"])
 		&"zombie_removed":
-			return remove_target(event["zombie_id"])
+			return untrack_target(event["zombie_id"])
 	return {}

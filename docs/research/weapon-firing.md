@@ -26,10 +26,13 @@ What building the server-side shooting (`game/gameplay/weapons/`) taught us. The
   identical on the client and the server for the same shot, so the predicted tracer lands where the authoritative one
   does, and a replay of a night scatters the same way.
 - **Per-target damage, not per-pellet.** A shot's pellets add up per zombie before the rules hear about it: one `hit`
-  or `kill` per target per shot. The rules pay by event, so this keeps points honest.
-- **One seam to the rules** (`RulesDamage`): the rest of the code never builds a rules action. Today it keeps the
-  zombie's remaining health and sends `hit` or `kill`; when the rules own health (#60) it sends one damage action
-  carrying the target, zone and amount, and the file is the only thing that changes.
+  per target per shot. The rules pay by event, so this keeps points honest.
+- **The rules own the health; shooting only reports damage.** Each damaged zombie is one `RulesAction.hit` carrying
+  the target, the zone and the damage with the zone multiplier already applied (a head pellet makes the whole hit a
+  headshot). The rules take it off the zombie, pay, decide the kill and answer with `zombie_damaged` and
+  `zombie_removed`, which the server turns into `damage_dealt` and `target_killed`. The server keeps no health of its
+  own, only a set of zombies still alive (from the rules' spawn and removal events) so a rewound shot cannot hit a
+  corpse.
 - **Client prediction is the same code.** The test range's client runs `AimResolver` on its own view for the tracer
   and keeps a `WeaponState` to gate the flash; the server's `weapon_equipped` and `shot_fired` events overwrite its
   ammo. The client's state must be ticked each step or its cooldown never ends (the first capture showed one shot per

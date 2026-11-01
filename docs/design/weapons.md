@@ -44,8 +44,8 @@ Zombies are shot at through their zones, not their meshes: a head sphere, a body
 | Limb | x0.6 | x0.6 | x0.6 | x0.7 | x0.6 | x0.75 |
 
 Damage of one hit is `damage x falloff(distance) x zone x 0.6^(bodies already passed)`. A shot that lands on one
-zombie with several pellets is one hit for the rules (one `hit` or `kill`, headshot if any pellet struck the head), so
-a shotgun cannot farm the four-point hit payout.
+zombie with several pellets is one hit for the rules (one `hit` action carrying the damage, headshot
+if any pellet struck the head), so a shotgun cannot farm the four-point hit payout.
 
 ## The arsenal
 

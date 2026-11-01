@@ -12,7 +12,6 @@ func _x_at(time: float) -> Vector3:
 ## A server on which one zombie (id 1) has been walking along x for `seconds`.
 func _walked(seconds: float) -> CombatServer:
 	var server := WeaponsFixture.make_server()
-	server.apply(CombatAction.register_target(1, 1000.0))
 	server.apply(CombatAction.give_weapon(1, &"rifle"))
 	var steps := roundi(seconds / WeaponsFixture.STEP)
 	for _i in steps:
@@ -110,6 +109,6 @@ func test_a_shot_inside_the_cap_still_hits_at_its_edge() -> void:
 
 func test_a_dead_target_cannot_be_hit_from_the_past() -> void:
 	var server := _walked(1.0)
-	server.apply(CombatAction.remove_target(1))
+	server.apply(CombatAction.untrack_target(1))
 	var events := _shot_at_where_it_was(server, 0.1, 0.1)
 	assert_array(WeaponsFixture.of(events, &"damage_dealt")).is_empty()

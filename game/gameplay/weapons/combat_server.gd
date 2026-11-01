@@ -7,8 +7,9 @@ extends RefCounted
 ## runs this same object behind a loopback.
 ##
 ## Time is `CombatAction.tick`; the world is a `world_ray` Callable (see `AimResolver`).
-## Kills and hits go to the rules as `RulesAction.hit` and `RulesAction.kill`, and the rules'
-## events are appended to the answer after the combat events that caused them.
+## Every damaged zombie is one `RulesAction.hit` (target, zone, damage): the rules own the zombie's
+## health, pay the points and decide the kill. Their events are appended to the answer after the
+## combat events that caused them.
 ##
 ## Events (fields besides `type`):
 ##   shot_fired: shooter_id, weapon_id, seq, muzzle, ends (one point per pellet), ammo, reserve,
@@ -32,14 +33,13 @@ var now: float = 0.0
 var rng_seed: int = 0
 var world_ray: Callable
 var rules: GameRules
-## The seam to the rules for damage and health (see `RulesDamage`).
-var damage_sink: RulesDamage
 var lag: LagCompensator
 
 var _defs: Dictionary[StringName, WeaponDef] = {}
 var _loadouts: Dictionary[int, Dictionary] = {}
 var _current: Dictionary[int, StringName] = {}
 var _targets: Dictionary[int, Dictionary] = {}
+var _alive: Dictionary[int, bool] = {}
 var _projectiles: Array[ProjectileState] = []
 var _next_projectile: int = 1
 var _events: Array[Dictionary] = []
@@ -55,7 +55,6 @@ func _init(
 	for def in p_defs:
 		_defs[def.id] = def
 	rules = p_rules
-	damage_sink = RulesDamage.new(p_rules)
 	world_ray = p_world_ray
 	rng_seed = p_seed
 	lag = LagCompensator.new(max_rewind)
@@ -83,12 +82,9 @@ func apply(action: Dictionary) -> Array[Dictionary]:
 # --- Queries (read-only) ---
 
 
-func health_of(target_id: int) -> float:
-	return damage_sink.health_of(target_id)
-
-
+## Whether the server counts a target as alive: tracked, and not yet removed.
 func is_target_alive(target_id: int) -> bool:
-	return damage_sink.is_alive(target_id)
+	return _alive.has(target_id)
 
 
 func weapon_of(player_id: int) -> WeaponState:
@@ -117,10 +113,10 @@ func _dispatch(action: Dictionary) -> void:
 			_tick(action["delta"])
 		CombatAction.TARGETS:
 			_set_targets(action["list"])
-		CombatAction.REGISTER_TARGET:
-			damage_sink.register(action["target_id"], action["health"])
-		CombatAction.REMOVE_TARGET:
-			damage_sink.forget(action["target_id"])
+		CombatAction.TRACK_TARGET:
+			_alive[action["target_id"]] = true
+		CombatAction.UNTRACK_TARGET:
+			_alive.erase(action["target_id"])
 		_:
 			_emit(&"action_rejected", {"reason": &"unknown_action"})
 
@@ -281,7 +277,7 @@ func _view_at(view_time: float) -> Dictionary:
 		view["targets"] = _targets.duplicate()
 	var alive := {}
 	for id in view["targets"]:
-		if damage_sink.is_alive(id):
+		if _alive.has(id):
 			alive[id] = view["targets"][id]
 	view["targets"] = alive
 	return view
@@ -310,40 +306,54 @@ func _tally(damage: Dictionary, hits: Array) -> void:
 			entry["point"] = hit["point"]
 
 
-## Applies one target's share of a shot, through the rules seam, and reports.
+## Applies one target's share of a shot: one `hit` action to the rules, which own the zombie's
+## health, pay the points and decide the kill. A head pellet makes the whole hit a headshot.
 func _hurt(shooter_id: int, target_id: int, total: Dictionary, melee: bool) -> void:
+	if rules == null or not _alive.has(target_id):
+		return
 	var head: bool = total["head"]
-	var result := damage_sink.deal(
-		shooter_id, target_id, total["damage"], total["zone"], head, melee
+	var zone: StringName = Hitbox.HEAD if head else total["zone"]
+	var rules_events := rules.apply(
+		RulesAction.hit(shooter_id, target_id, zone, total["damage"], melee)
 	)
-	if not result["applied"]:
+	var health := 0.0
+	var killed := false
+	var applied := false
+	for event in rules_events:
+		if event["type"] == &"zombie_damaged":
+			applied = true
+			health = event["health"]
+		elif event["type"] == &"zombie_removed" and event["cause"] == &"killed":
+			killed = true
+	if not applied:
+		_events.append_array(rules_events)
 		return
 	_emit(
 		&"damage_dealt",
 		{
 			"shooter_id": shooter_id,
 			"target_id": target_id,
-			"zone": total["zone"],
+			"zone": zone,
 			"damage": total["damage"],
 			"headshot": head,
 			"melee": melee,
 			"pellets": total["pellets"],
-			"health": result["health"],
+			"health": health,
 			"point": total["point"],
 		}
 	)
-	if result["killed"]:
+	if killed:
 		_emit(
 			&"target_killed",
 			{
 				"shooter_id": shooter_id,
 				"target_id": target_id,
-				"zone": total["zone"],
+				"zone": zone,
 				"headshot": head,
 				"melee": melee,
 			}
 		)
-	_events.append_array(result["events"])
+	_events.append_array(rules_events)
 
 
 func _reject_fire(shooter_id: int, seq: int, reason: StringName) -> void:
@@ -374,7 +384,7 @@ func _launch(shooter_id: int, def: WeaponDef, muzzle: Vector3, dir: Vector3) -> 
 func _step_projectiles(delta: float) -> void:
 	var alive_targets := {}
 	for id in _targets:
-		if damage_sink.is_alive(id):
+		if _alive.has(id):
 			alive_targets[id] = _targets[id]
 	var flying: Array[ProjectileState] = []
 	for projectile in _projectiles:

@@ -4,14 +4,20 @@ extends GdUnitTestSuite
 var _server: CombatServer
 var _link: LoopbackLink
 var _received: Array[Dictionary] = []
+var _applied := 0
 
 
 func before_test() -> void:
 	_server = WeaponsFixture.make_server()
-	_server.apply(CombatAction.register_target(1, 60.0))
 	_server.apply(CombatAction.give_weapon(1, &"pistol"))
 	WeaponsFixture.step(_server, {1: Vector3.ZERO}, 2)
 	_received = []
+	_applied = 0
+	_server.event_emitted.connect(
+		func(event: Dictionary) -> void:
+			if event["type"] == &"damage_dealt":
+				_applied += 1
+	)
 
 
 func _connect(latency: int) -> void:
@@ -35,7 +41,9 @@ func test_an_action_goes_over_and_its_events_come_back() -> void:
 	_link.pump()
 	assert_array(WeaponsFixture.of(_received, &"damage_dealt")).has_size(1)
 	assert_bool(_server.is_target_alive(1)).is_true()
-	assert_float(_server.health_of(1)).is_equal_approx(36.0, 0.01)
+	assert_float(WeaponsFixture.of(_received, &"damage_dealt")[0]["health"]).is_equal_approx(
+		36.0, 0.01
+	)
 
 
 func test_latency_delays_the_request_and_the_answer() -> void:
@@ -43,9 +51,9 @@ func test_latency_delays_the_request_and_the_answer() -> void:
 	_fire()
 	for _i in 2:
 		_link.pump()
-	assert_float(_server.health_of(1)).is_equal(60.0)
+	assert_int(_applied).is_equal(0)
 	_link.pump()
-	assert_float(_server.health_of(1)).is_equal_approx(36.0, 0.01)
+	assert_int(_applied).is_equal(1)
 	for _i in 2:
 		_link.pump()
 	assert_array(_received).is_empty()

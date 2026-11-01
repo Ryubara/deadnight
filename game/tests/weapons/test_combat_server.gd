@@ -11,7 +11,6 @@ var _server: CombatServer
 
 func before_test() -> void:
 	_server = WeaponsFixture.make_server()
-	_server.apply(CombatAction.register_target(1, 60.0))
 	_server.apply(CombatAction.give_weapon(1, &"pistol"))
 	WeaponsFixture.step(_server, {1: Vector3.ZERO}, 2)
 
@@ -107,5 +106,5 @@ func test_a_nonsense_aim_is_refused() -> void:
 
 
 func test_a_dead_target_cannot_be_shot_again() -> void:
-	_server.apply(CombatAction.remove_target(1))
+	_server.apply(CombatAction.untrack_target(1))
 	assert_array(WeaponsFixture.of(_fire(BODY), &"damage_dealt")).is_empty()

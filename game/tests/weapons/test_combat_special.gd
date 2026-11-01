@@ -10,7 +10,6 @@ var _server: CombatServer
 
 func before_test() -> void:
 	_server = WeaponsFixture.make_server()
-	_server.apply(CombatAction.register_target(1, 60.0))
 	_server.apply(CombatAction.give_weapon(1, &"pistol"))
 	WeaponsFixture.step(_server, {1: Vector3.ZERO}, 2)
 
@@ -21,7 +20,6 @@ func _fire(to: Vector3, seq: int = 1, from: Vector3 = SHOOTER) -> Array[Dictiona
 
 func test_the_shotgun_hurts_a_close_target_from_many_pellets_once() -> void:
 	_server.apply(CombatAction.give_weapon(1, &"shotgun"))
-	_server.apply(CombatAction.register_target(2, 500.0))
 	WeaponsFixture.step(_server, {1: Vector3(20, 0, 0), 2: Vector3.ZERO}, 2)
 	var events := _fire(BODY, 1, Vector3(0, 1.1, 3))
 	var damage := WeaponsFixture.of(events, &"damage_dealt")
@@ -32,7 +30,6 @@ func test_the_shotgun_hurts_a_close_target_from_many_pellets_once() -> void:
 
 func test_the_same_shot_number_scatters_the_same_way_on_a_second_server() -> void:
 	var other := WeaponsFixture.make_server()
-	other.apply(CombatAction.register_target(1, 60.0))
 	WeaponsFixture.step(other, {1: Vector3.ZERO}, 2)
 	for server in [_server, other]:
 		server.apply(CombatAction.give_weapon(1, &"shotgun"))
@@ -45,8 +42,6 @@ func test_the_same_shot_number_scatters_the_same_way_on_a_second_server() -> voi
 
 func test_a_flare_flies_bursts_on_the_target_and_hurts_its_neighbour() -> void:
 	_server.apply(CombatAction.give_weapon(1, &"flare_gun"))
-	_server.apply(CombatAction.register_target(1, 300.0))
-	_server.apply(CombatAction.register_target(2, 300.0))
 	var targets := {1: Vector3(0, 0, 0), 2: Vector3(1.0, 0, 0)}
 	WeaponsFixture.step(_server, targets, 2)
 	var launch := _fire(BODY)
@@ -137,7 +132,6 @@ func test_actions_and_events_are_plain_data_that_survive_the_wire() -> void:
 
 func test_an_action_that_crossed_the_wire_does_the_same_as_the_original() -> void:
 	var twin := WeaponsFixture.make_server()
-	twin.apply(CombatAction.register_target(1, 60.0))
 	twin.apply(CombatAction.give_weapon(1, &"pistol"))
 	WeaponsFixture.step(twin, {1: Vector3.ZERO}, 2)
 	var action := WeaponsFixture.fire_at(1, 1, SHOOTER, BODY, twin.now)
