@@ -7,8 +7,8 @@ The kit's environment props, from the Toon Shooter Game Kit by Quaternius.
 - Source: the kit's models on Poly Pizza, one page per model (below)
 - Changes: built by `tools/blender/build_props.py` from the kit files: meshes joined, scaled by 0.8, every flat
   material collapsed onto a swatch of one shared palette (`props_palette.png`, Deadnight's own, the kit's colours),
-  stood on the middle of their footprint; the Broken Car and the Tires cut to the props triangle budget
-  (docs/design/style.md)
+  stood on the middle of their footprint; the Tires cut to the props triangle budget and the Broken Car to 2,400
+  for the web (docs/design/style.md)
 
 | File | Kit model | Source | Kit tris | Tris |
 | --- | --- | --- | ---: | ---: |
@@ -24,7 +24,7 @@ The kit's environment props, from the Toon Shooter Game Kit by Quaternius.
 | `pallet_broken.gltf` | "Pallet Broken" | <https://poly.pizza/m/Gp43iUyyAX> | 258 | 258 |
 | `cone.gltf` | "Traffic Cone" | <https://poly.pizza/m/lAx8JytxGD> | 168 | 168 |
 | `dumpster.gltf` | "Dumpster" | <https://poly.pizza/m/PKsbolkZSr> | 302 | 302 |
-| `broken_car.gltf` | "Broken Car" | <https://poly.pizza/m/Y67erogmR9> | 5,432 | 4,850 |
+| `broken_car.gltf` | "Broken Car" | <https://poly.pizza/m/Y67erogmR9> | 5,432 | 2,327 |
 | `gas_can.gltf` | "Gas Can" | <https://poly.pizza/m/jRymgnHTTb> | 788 | 788 |
 | `debris.gltf` | "Debris Pile" | <https://poly.pizza/m/WrIiMMxyEP> | 424 | 424 |
 | `tires.gltf` | "Tires" | <https://poly.pizza/m/mmq7GmG1AK> | 1,776 | 1,454 |

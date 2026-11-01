@@ -55,6 +55,10 @@ PROPS = {
     "water_tank": ("XVB8vUbnZb", 1500),  # Water Tank
 }
 
+# Props the lot repeats many times, cut below their class budget for the web (WebGL2 in a software renderer is
+# triangle-bound): the lot has 19 wrecks, 4 of them on the field the night starts on.
+LIGHTER = {"broken_car": 2400}
+
 # The props palette: the kit's own colours (sRGB), one swatch each. A kit material takes the swatch nearest its base
 # colour. DarkRed replaces the Gas Can's DarkRed, which the kit left at Blender's default grey (the style bible).
 PALETTE = {
@@ -184,9 +188,10 @@ def build(name, kit_id, budget, bundle, out, palette_path):
     me.transform(Matrix.Translation(-shift) @ Matrix.Scale(SCALE, 4))
     me.update()
     kit_tris = kl.tris(o)
-    if kit_tris > budget:
+    target = min(budget, LIGHTER.get(name, budget))
+    if kit_tris > target:
         dec = o.modifiers.new("Budget", "DECIMATE")
-        dec.ratio = (budget * 0.97) / kit_tris
+        dec.ratio = (target * 0.97) / kit_tris
         dec.use_collapse_triangulate = True
         bpy.ops.object.modifier_apply(modifier=dec.name)
     # Flat faces, as in the kit.
@@ -252,16 +257,16 @@ def build_car(name, paint, roof, out, palette_path):
     b.box((0, -0.3, 1.26), (1.5, 2.32, 0.4), "DarkGrey", bevel=0)  # windscreen and rear window
     b.box((0, 0, 0.78), (1.92, 3.6, 0.08), "White", bevel=0)  # the side stripe
     for y in (2.27, -2.27):
-        b.box((0, y, 0.38), (1.98, 0.16, 0.2), "Grey", bevel=0.03)  # bumpers
+        b.box((0, y, 0.38), (1.98, 0.16, 0.2), "Grey", bevel=0)  # bumpers
     b.box((0, 2.26, 0.66), (1.0, 0.04, 0.2), "DarkGrey", bevel=0)  # grille
     for x in (-0.66, 0.66):
-        b.cyl((x, 2.2, 0.72), (x, 2.27, 0.72), 0.13, "White", segs=8, bevel=0)  # headlights
-        b.box((x * 1.27, -2.0, 1.06), (0.12, 0.9, 0.16), paint, bevel=0.02)  # tail fins
+        b.box((x, 2.25, 0.72), (0.26, 0.04, 0.2), "White", bevel=0)  # headlights
+        b.box((x * 1.27, -1.82, 1.06), (0.12, 0.9, 0.16), paint, bevel=0)  # tail fins
         b.box((x * 1.27, -2.255, 0.9), (0.12, 0.04, 0.22), "Red", bevel=0)  # tail lights
     for x in (-0.84, 0.84):
         for y in (1.45, -1.45):
-            b.cyl((x * 0.95, y, 0.33), (x * 1.08, y, 0.33), 0.33, "Black", segs=10, bevel=0)  # tyres
-            b.cyl((x * 1.08, y, 0.33), (x * 1.1, y, 0.33), 0.15, "White", segs=8, bevel=0)  # hubcaps
+            b.cyl((x * 0.95, y, 0.33), (x * 1.08, y, 0.33), 0.33, "Black", segs=8, bevel=0)  # tyres
+            b.cyl((x * 1.08, y, 0.33), (x * 1.1, y, 0.33), 0.15, "White", segs=6, bevel=0)  # hubcaps
     o = b.join()
     for p in o.data.polygons:
         p.use_smooth = False

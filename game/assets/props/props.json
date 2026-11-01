@@ -187,7 +187,7 @@
  "broken_car": {
   "kit_id": "Y67erogmR9",
   "kit_tris": 5432,
-  "tris": 4850,
+  "tris": 2327,
   "budget": 5000,
   "size_xzy": [
    2.113,
@@ -297,7 +297,7 @@
  "car_red": {
   "kit_id": "",
   "kit_tris": 0,
-  "tris": 648,
+  "tris": 424,
   "budget": 1500,
   "size_xzy": [
    1.98,
@@ -309,7 +309,7 @@
  "car_blue": {
   "kit_id": "",
   "kit_tris": 0,
-  "tris": 648,
+  "tris": 424,
   "budget": 1500,
   "size_xzy": [
    1.98,
@@ -321,7 +321,7 @@
  "car_green": {
   "kit_id": "",
   "kit_tris": 0,
-  "tris": 648,
+  "tris": 424,
   "budget": 1500,
   "size_xzy": [
    1.98,
@@ -333,7 +333,7 @@
  "car_yellow": {
   "kit_id": "",
   "kit_tris": 0,
-  "tris": 648,
+  "tris": 424,
   "budget": 1500,
   "size_xzy": [
    1.98,
@@ -345,7 +345,7 @@
  "car_cream": {
   "kit_id": "",
   "kit_tris": 0,
-  "tris": 648,
+  "tris": 424,
   "budget": 1500,
   "size_xzy": [
    1.98,

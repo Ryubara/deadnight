@@ -173,8 +173,8 @@ The lot's props (`tools/blender/build_props.py`, [the lot](map.md#props)) follow
 | Origin | the middle of the footprint, on the ground |
 | Atlas | one family palette, 40 x 40, 8 px swatches: the kit's 17 prop colours and a DarkRed for the Gas Can's default grey; each kit material takes the nearest swatch; roughness 0.415, metallic 0 (the kit's 0.4 reads dark at night with nothing to reflect) |
 | Files | `.gltf` + `.bin` per prop, all pointing at one `props_palette.png`, so the texture is loaded once |
-| Triangles | 108-1,454 for props under 3 m (budget 800 / 1.5k), Broken Car 4,850 and Shipping Container 1,336 (budget 5k); the Broken Car (5,432) and the Tires (1,776) are cut with a collapse decimation to just under the budget; the far level is Godot's generated LOD |
-| Parked car | the lot's own sedan, 648 tris, five paints: chamfers of 80 mm on body and cabin (the big-prop rule), bumpers 30 mm, the rest hard |
+| Triangles | 108-1,454 for props under 3 m (budget 800 / 1.5k), Shipping Container 1,336 (budget 5k); the Tires (1,776) are cut with a collapse decimation to just under the budget, and the Broken Car (5,432) to 2,327: the lot has 19 wrecks, and the web build in a software renderer slowed by a fifth with the 4,850-tri cut; the far level is Godot's generated LOD |
+| Parked car | the lot's own sedan, 424 tris, five paints: chamfers of 80 mm on body and cabin (the big-prop rule), the rest hard; 76 of them stand on the field, so every part is a plain box or an 8-sided wheel |
 
 ## Modular characters
 
