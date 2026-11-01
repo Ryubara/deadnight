@@ -7,6 +7,8 @@ extends AnimationTree
 ##          run_clip_speed so the feet do not slide), and jump -> fall -> land -> locomotion.
 ##   upper: the class's Aim_<Class> loop with a OneShot on top (Fire, Reload, Swing, Equip,
 ##          Unequip), laid over the body by a Blend2 filtered to the upper bones.
+##   repair: Repair_Board looping over the upper layer while the player puts boards back at a
+##          breach (its own file, added to the library here), timed by the rules' events.
 ##   full:  a full-body OneShot over both (HitReact, Death).
 ## Loops, the upper bones and the event frames come from clips.json, written by the build script.
 
@@ -44,6 +46,21 @@ const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Pistol", &"Melee"]
 const DEFAULT_CLASS := &"Rifle"
 ## Where Walk sits on the move blend (0 = Idle, 1 = Run).
 const WALK_POINT := 0.45
+## The repair clip, built into its own file (docs/design/animation.md, Repair) and added to the
+## Soldier's library when the tree is built.
+const REPAIR_GLB := "res://assets/characters/soldier/repair/soldier_repair.glb"
+const REPAIR_SPEC := "res://assets/characters/soldier/repair/clips.json"
+const REPAIR_CLIP := &"Repair_Board"
+## The event the board lands on: each `board_repaired` of this player seeks the clip here.
+const REPAIR_SET_EVENT := "board_set"
+## How many repair intervals the clip keeps going after the last board went up: a held `use`
+## mends the next one an interval later, so it only stops once one is missed.
+const REPAIR_HOLD := 1.5
+## How fast the repair layer fades in and out (per second, exponential).
+const REPAIR_BLEND_RATE := 18.0
+const REPAIR_SEEK_PARAMETER := &"parameters/repair_seek/seek_request"
+const REPAIR_SCALE_PARAMETER := &"parameters/repair_scale/scale"
+const REPAIR_BLEND_PARAMETER := &"parameters/repair/blend_amount"
 
 const STATE_LOCOMOTION := &"locomotion"
 const STATE_JUMP := &"jump"
@@ -68,6 +85,12 @@ var _weapon: Node3D
 var _action_time := 0.0
 var _move_blend := 0.0
 var _was_on_floor := true
+## Seconds of repair left before the clip lets go (0: not repairing).
+var _repair_left := 0.0
+## Where the repair clip is, in its own seconds.
+var _repair_time := 0.0
+var _repair_scale := 1.0
+var _repair_blend := 0.0
 
 
 func _ready() -> void:
@@ -76,6 +99,7 @@ func _ready() -> void:
 	_spec = JSON.parse_string(FileAccess.get_file_as_string(SPEC))
 	var model := _player.get_node("Model")
 	var anim_player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	_add_repair_clip(anim_player)
 	_loop_clips(anim_player)
 	_mount = BoneAttachment3D.new()
 	_mount.name = "WeaponMount"
@@ -106,6 +130,7 @@ func _process(delta: float) -> void:
 	var run_part := clampf((_move_blend - WALK_POINT) / (0.95 - WALK_POINT), 0.0, 1.0)
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
 	_advance_events(delta)
+	_advance_repair(delta)
 
 
 ## Name of the body state machine's current state, for tests and debugging.
@@ -154,6 +179,43 @@ func play_full_body(clip: StringName) -> void:
 	set(&"parameters/full/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 
+## A board this player put back has just gone up (the rules' `board_repaired`, which come one
+## `interval` apart while `use` is held): the repair loop plays, or keeps playing, from the frame
+## the board lands on, at the pace of one loop per interval. The weapon is put away meanwhile.
+## Driven by the events alone: nothing here reads the clock.
+func board_repaired(interval: float) -> void:
+	interval = maxf(interval, 0.05)
+	_repair_scale = _clip_seconds(REPAIR_CLIP) / interval
+	_repair_left = interval * REPAIR_HOLD
+	_repair_time = _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
+	set(REPAIR_SCALE_PARAMETER, _repair_scale)
+	set(REPAIR_SEEK_PARAMETER, _repair_time)
+	_weapon_visible(false)
+	_emit_events(REPAIR_CLIP, _repair_time - 0.001, _repair_time)
+
+
+## Whether the repair loop holds the arms.
+func is_repairing() -> bool:
+	return _repair_left > 0.0
+
+
+## Lets go of the repair at once (the player went down, or walked off).
+func stop_repair() -> void:
+	if _repair_left > 0.0:
+		_repair_left = 0.0
+		_weapon_visible(true)
+
+
+## The repair layer's weight now (0: the weapon arms, 1: the repair arms), for tests.
+func repair_weight() -> float:
+	return _repair_blend
+
+
+## Where the repair clip is, in its own seconds, for tests.
+func repair_time() -> float:
+	return _repair_time
+
+
 ## Event names and frames of a clip, from clips.json: {event: frame or [frames]}.
 func clip_events(clip: StringName) -> Dictionary:
 	var entry: Dictionary = _spec["clips"].get(String(clip), {})
@@ -189,6 +251,38 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
+## Moves the repair loop on by `delta` seconds: its events (but the board_set frame: that one is
+## the rules' event, sent by `board_repaired`) and the fade in or out of its layer.
+func _advance_repair(delta: float) -> void:
+	if _repair_left > 0.0:
+		var length := _clip_seconds(REPAIR_CLIP)
+		var before := _repair_time
+		_repair_time += delta * _repair_scale
+		var set_at := _event_seconds(REPAIR_CLIP, REPAIR_SET_EVENT)
+		_emit_events(REPAIR_CLIP, before, minf(_repair_time, length), set_at)
+		if _repair_time > length:
+			_repair_time -= length
+			_emit_events(REPAIR_CLIP, -1.0, _repair_time, set_at)
+		if _repair_left > delta:
+			_repair_left -= delta
+		else:
+			stop_repair()
+	var target := 1.0 if _repair_left > 0.0 else 0.0
+	_repair_blend = lerpf(_repair_blend, target, 1.0 - exp(-REPAIR_BLEND_RATE * delta))
+	if absf(_repair_blend - target) < 0.001:
+		_repair_blend = target
+	set(REPAIR_BLEND_PARAMETER, _repair_blend)
+
+
+func _event_frames(clip: StringName, event: String) -> Array:
+	var frames: Variant = clip_events(clip).get(event, [])
+	return frames if frames is Array else [frames]
+
+
+func _event_seconds(clip: StringName, event: String) -> float:
+	return float(_event_frames(clip, event)[0]) / float(_spec["fps"])
+
+
 ## How long an action holds the upper body: the clip's length, but never before its last event.
 ## clips.json rounds `seconds` (0.333 for 8 frames at 24 fps), so a frame step landing between
 ## the rounded length and the last event (8/24) would end the clip and skip that event for good.
@@ -203,15 +297,15 @@ func _clip_seconds(clip: StringName) -> float:
 	return seconds
 
 
-## Emits every event of `clip` whose time lies in (from, to].
-func _emit_events(clip: StringName, from: float, to: float) -> void:
+## Emits every event of `clip` whose time lies in (from, to], except those at `skip_at` seconds.
+func _emit_events(clip: StringName, from: float, to: float, skip_at: float = -1.0) -> void:
 	var fps: float = _spec["fps"]
 	var events := clip_events(clip)
 	for event: String in events:
 		var frames: Array = events[event] if events[event] is Array else [events[event]]
 		for frame: float in frames:
 			var at := frame / fps
-			if at > from and at <= to:
+			if at > from and at <= to and not is_equal_approx(at, skip_at):
 				if event == "weapon_visible":
 					_weapon_visible(true)
 				elif event == "weapon_hidden":
@@ -225,6 +319,21 @@ func _on_jumped() -> void:
 
 func _on_landed(_impact_speed: float) -> void:
 	_playback.travel(STATE_LAND)
+
+
+## Adds Repair_Board to the Soldier's own library (same rig, same track paths: the grenade
+## clips' recipe) and its entry to the clip spec, so its loop and events read like any other.
+func _add_repair_clip(anim_player: AnimationPlayer) -> void:
+	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(REPAIR_SPEC))
+	_spec["clips"][String(REPAIR_CLIP)] = spec["clips"][String(REPAIR_CLIP)]
+	var library := anim_player.get_animation_library(&"")
+	if library.has_animation(REPAIR_CLIP):
+		return
+	# Not kept in a static: a static Animation outlives the scene tree and is reported leaked at exit.
+	var holder := (load(REPAIR_GLB) as PackedScene).instantiate()
+	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	library.add_animation(REPAIR_CLIP, source.get_animation(REPAIR_CLIP))
+	holder.free()
 
 
 func _loop_clips(anim_player: AnimationPlayer) -> void:
@@ -264,6 +373,10 @@ func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	action.fadein_time = 0.05
 	action.fadeout_time = 0.12
 	tree.add_node(&"action", action)
+	tree.add_node(&"repair_clip", _clip(REPAIR_CLIP))
+	tree.add_node(&"repair_seek", AnimationNodeTimeSeek.new())
+	tree.add_node(&"repair_scale", AnimationNodeTimeScale.new())
+	tree.add_node(&"repair", AnimationNodeBlend2.new())
 	var split := AnimationNodeBlend2.new()
 	split.filter_enabled = true
 	for bone: String in _spec["upper_bones"]:
@@ -277,7 +390,11 @@ func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	tree.connect_node(&"action", 0, &"aim")
 	tree.connect_node(&"action", 1, &"action_clip")
 	tree.connect_node(&"split", 0, &"body")
-	tree.connect_node(&"split", 1, &"action")
+	tree.connect_node(&"repair_seek", 0, &"repair_clip")
+	tree.connect_node(&"repair_scale", 0, &"repair_seek")
+	tree.connect_node(&"repair", 0, &"action")
+	tree.connect_node(&"repair", 1, &"repair_scale")
+	tree.connect_node(&"split", 1, &"repair")
 	tree.connect_node(&"full", 0, &"split")
 	tree.connect_node(&"full", 1, &"full_clip")
 	tree.connect_node(&"output", 0, &"full")

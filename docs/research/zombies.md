@@ -42,10 +42,11 @@ or at the type's telegraph with the same 0.75 s of recovery after it, and only i
   deterministic, runs on the server, and kept 40 zombies from stacking in the capture.
 - **The crowd cap is 40 whatever the rules ask.** The rules' alive cap grows with players (up to 46 with four); spawn
   requests beyond 40 wait in the director in order and enter as zombies fall.
-- **Clients draw from bytes.** `ZombieCodec` is 2 + 13 bytes a zombie (id, position in cm, yaw, mode, episode, speed
-  in 0.05 m/s steps, look): 522 B for 40 zombies. The demo scene runs every tick through encode and decode, so what is
-  drawn is what a remote client would draw. The message type and rate belong to the net protocol (`spikes/net`) and
-  are not chosen here. What the fields cannot hold is under [Snapshot limits](#snapshot-limits).
+- **Clients draw from bytes.** `ZombieCodec` is 2 + 13 bytes a zombie (id, position in cm, yaw, mode with a tearing
+  bit, episode, speed in 0.05 m/s steps, look): 522 B for 40 zombies. The demo scene runs every tick through encode
+  and decode, so what is drawn is what a remote client would draw. The message type and rate belong to the net
+  protocol (`spikes/net`) and are not chosen here. What the fields cannot hold is under [Snapshot
+  limits](#snapshot-limits).
 - **The client never reads the server's objects.** `ZombieHorde.apply_snapshot(bytes, delta)` draws from bytes alone; the
   one number the views need from the tuning (the emerge time) is passed to `setup`. `publish` is the server half
   (encode) joined to that, for single-player.
@@ -60,10 +61,11 @@ or at the type's telegraph with the same 0.75 s of recovery after it, and only i
   vector by 0.001 and threw the pair 66 m in one tick; the old test offset the zombies by 0.01 m and never reached it.
 - **A hit needs a zombie the sim holds.** `take_hit` rejects an id that is still waiting for room (the rules know it,
   the sim does not): no damage, no kill, no points.
-- **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death) built once from the model
-  and added to every model's player (the rig-sharing recipe); one `AnimationTree` per zombie with a state machine
-  (move = Idle/Walk/Run blended by speed, attack, stagger, die). Every tree is advanced by hand by `AnimationThrottle`
-  (every frame within 14 m, every 3rd to 24 m, every 6th beyond, every 12th off screen). A view starts its walk at a
+- **Animation:** one `AnimationLibrary` (`zombie`: Idle, Walk, Run, Punch, HitReact, Death, and `Tear_Boards` from the
+  extra clips' file) built once from the model and added to every model's player (the rig-sharing recipe); one
+  `AnimationTree` per zombie with a state machine (move = Idle/Walk/Run blended by speed, attack, stagger, die, tear).
+  Every tree is advanced by hand by `AnimationThrottle` (every frame within 14 m, every 3rd to 24 m, every 6th beyond,
+  every 12th off screen). A view starts its walk at a
   phase taken from its id, so a crowd does not step together.
 - **Crowd budget:** no zombie shadows, one mesh per zombie (the eyelid mesh is freed: the kit zombie has no eyelids
   here until a crowd variant merges them), sim at 30 Hz independent of the physics rate.
@@ -96,13 +98,13 @@ The rules say what a zombie is (`ZombieType`, carried by `zombie_spawn_requested
 
 How a zombie is held at a breach, and what we learned making it (#155):
 
-- **The gate is the simulation's, not physics'.** Zombies are not bodies, so nothing "blocks" them: a zombie
-  spawned at a field marker outside a breach carries the breach's id (`ZombieBody.gate_id`), and `ZombieSim` clamps
-  its walk to 0.9 m short of the boards while the rules' count (`ZombieSim.barricades`) is above 0. It tears while it stands
-  there, by entering the `ATTACK` mode again at the end of each swing (the client already animates that: the design's
-  interim for `Tear_Boards` is `Idle_Attack` looped at the barrier), and adds `delta * barrier_speed` to its progress; every
-  `seconds_per_board` it reports `zombie_tore`, and the director turns that into the `tear_board` action. Two zombies
-  at one breach both work on it, so a crowd is quicker.
+- **The gate is the simulation's, not physics'.** Zombies are not bodies, so nothing "blocks" them: a zombie spawned
+  at a field marker outside a breach carries the breach's id (`ZombieBody.gate_id`), and `ZombieSim` clamps its walk
+  to 0.9 m short of the boards while the rules' count (`ZombieSim.barricades`) is above 0. It tears while it stands
+  there, by entering the `ATTACK` mode again at the end of each swing, sets `tearing` (the mode byte's top bit on the
+  wire, so a client plays `Tear_Boards` and not the punch: [Tearing boards](../design/zombies.md#tearing-boards)), and
+  adds `delta * barrier_speed` to its progress; every `seconds_per_board` it reports `zombie_tore`, and the director
+  turns that into the `tear_board` action. Two zombies at one breach both work on it, so a crowd is quicker.
 - **The sim reads the rules' `BarricadeState`**, the plain data of how many boards stand at each breach, and never
   changes it: only the `tear_board` action does. It holds the object, not a `Callable` into the rules, so it needs no
   engine and a test hands it a state with the boards set.

@@ -93,6 +93,18 @@ func test_the_gate_fails_when_the_tuning_drifts() -> void:
 	assert_array(BalanceTargets.check(_batch(easy, 20))).is_not_empty()
 
 
+func test_the_gate_fails_when_ammunition_is_out_of_reach() -> void:
+	# Rounds nobody can pay for: players run dry, fight with the crowbar and spend nothing on ammo.
+	var broke := RulesFixture.tuning()
+	for item in broke.economy.items:
+		if item.kind == ShopItem.Kind.AMMO:
+			item.price = 1_000_000
+	var misses := BalanceTargets.check(_batch(broke, 20))
+	assert_array(misses).is_not_empty()
+	var said := ", ".join(misses)
+	assert_bool(said.contains("ammunition")).override_failure_message(said).is_true()
+
+
 func test_a_night_is_the_same_every_time() -> void:
 	var tuning := RulesFixture.tuning()
 	var first := BalanceBatch.run_cell(tuning, &"average", 2, 5, 77)

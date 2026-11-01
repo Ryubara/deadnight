@@ -22,6 +22,10 @@ var _lamp: StandardMaterial3D
 var _lamp_strength := 0.0
 ## Seconds the boss's wind-up lasts: its attack clip is played to make its blow land then.
 var _telegraph := ZombieRig.BOSS_HIT_SECONDS
+## Seconds one board takes this zombie's type (the rules' `seconds_per_board` over its
+## `barrier_speed`): the tear clip is played to pull one off in exactly that.
+var _board_seconds := 1.2
+var _tearing := false
 var _playback: AnimationNodeStateMachinePlayback
 var _mode: int = -1
 var _episode: int = -1
@@ -37,11 +41,13 @@ func setup(
 	phase: float,
 	emerge_seconds: float,
 	p_look: StringName = ZombieModels.DEFAULT,
-	telegraph_seconds: float = ZombieRig.BOSS_HIT_SECONDS
+	telegraph_seconds: float = ZombieRig.BOSS_HIT_SECONDS,
+	board_seconds: float = 1.2
 ) -> void:
 	zombie_id = id
 	_emerge_seconds = emerge_seconds
 	_telegraph = telegraph_seconds
+	_board_seconds = maxf(board_seconds, 0.05)
 	dress(model_scene, p_look)
 	accumulated = phase * 1.3333  # the walk's length
 	set_process(false)
@@ -67,6 +73,7 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 	_playback = tree.get(ZombieRig.PLAYBACK_PARAMETER)
 	_mode = -1
 	_speed_step = -1
+	_tearing = false
 
 
 ## Moves and animates from one decoded entry. `delta` is the time since the last entry.
@@ -74,8 +81,15 @@ func apply(entry: Dictionary, delta: float) -> void:
 	position = entry["position"]
 	rotation.y = entry["yaw"]
 	var mode: int = entry["mode"]
-	if mode != _mode or entry["episode"] != _episode:
+	var tearing: bool = entry.get("tearing", false)
+	if tearing:
+		# At the boards the simulation swings again and again (new episodes); the tear clip
+		# loops through them and only the rules' tears (`tore`) move it.
+		if not _tearing:
+			_start_tearing()
+	elif _tearing or mode != _mode or entry["episode"] != _episode:
 		_enter(mode)
+	_tearing = tearing
 	_mode = mode
 	_episode = entry["episode"]
 	var step := roundi(entry["speed"] * 10.0)
@@ -87,6 +101,25 @@ func apply(entry: Dictionary, delta: float) -> void:
 		_model.position.y = -EMERGE_DEPTH * _emerge_left / _emerge_seconds
 
 
+## A board this zombie was pulling at came off (the rules' `board_torn`): the clip jumps to its
+## yank if it is not there already, and from here takes one board's time from yank to yank.
+func tore() -> void:
+	if not _tearing:
+		return
+	tree.set(ZombieRig.TEAR_SEEK_PARAMETER, ZombieRig.TEAR_YANK_SECONDS)
+	tree.set(ZombieRig.TEAR_SCALE_PARAMETER, ZombieRig.TEAR_SECONDS / _board_seconds)
+	_take_seek()
+
+
+func is_tearing() -> bool:
+	return _tearing
+
+
+## The tear clip's playhead, in the clip's own seconds.
+func tear_position() -> float:
+	return _playback.get_current_play_position() if _tearing else 0.0
+
+
 ## The body being drawn.
 func model() -> Node3D:
 	return _model
@@ -96,6 +129,21 @@ func model() -> Node3D:
 func advance_animation() -> void:
 	tree.advance(accumulated)
 	accumulated = 0.0
+
+
+## It reached its boards: the first pull starts from the reach and is played so that its yank
+## lands one board's time later, when the rules tear the board (its work starts from nothing).
+func _start_tearing() -> void:
+	_playback.start(ZombieRig.STATE_TEAR, true)
+	tree.set(ZombieRig.TEAR_SEEK_PARAMETER, 0.0)
+	tree.set(ZombieRig.TEAR_SCALE_PARAMETER, ZombieRig.TEAR_YANK_SECONDS / _board_seconds)
+	_take_seek()
+
+
+## A seek is taken on the tree's next advance, which then moves no further: taken now, so the
+## time the throttle has saved up is played after it and not lost.
+func _take_seek() -> void:
+	tree.advance(0.0)
 
 
 func _enter(mode: int) -> void:

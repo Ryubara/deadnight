@@ -29,6 +29,21 @@ const REVIVE_HEALTH := 0.5
 const STUN_PER_METRE := 0.3
 ## Players mend fully between rounds. A player buys a fuel can when the tank is below this.
 const FUEL_BUY_BELOW := 35.0
+## Seconds to put a dry weapon away and take another.
+const SWAP_SECONDS := 0.6
+## A dry player with points to spend runs to a locker: the walk there, the purchase and the walk
+## back, all without shooting while the dead keep coming. A weapon left worth less than this share
+## of the best one carried is not worth fighting on with.
+const RESUPPLY_SECONDS := 8.0
+const RUN_BELOW := 0.75
+## A player who reads the fight takes another loaded weapon in hand when it does at least this much
+## more damage a second to the target in front of them than the one they hold (it costs a swap).
+const SWITCH_GAIN := 1.4
+## Magazines of reserve a player buys for each weapon before a special round, points permitting.
+const PREPARED_MAGS := 6
+## A weapon is worth buying rounds for when its sustained damage is at least this share of the best
+## one the player carries.
+const USEFUL_SHARE := 0.5
 
 var rules: GameRules
 var skill: SimSkill
@@ -44,7 +59,14 @@ var _clock: float = 0.0
 var _round_start_clock: float = 0.0
 var _round: Dictionary = {}
 var _result: Dictionary = {
-	"rounds": {}, "ttk": {}, "spent_on": {}, "hurt_by": {}, "rounds_reached": 0, "died": false
+	"rounds": {},
+	"ttk": {},
+	"spent_on": {},
+	"hurt_by": {},
+	"rounds_reached": 0,
+	"died": false,
+	"dry_rounds": 0,
+	"runs": 0,
 }
 var _earned_mark: int = 0
 var _spent_mark: int = 0
@@ -63,8 +85,9 @@ func _init(
 		rules.apply(RulesAction.add_player(id))
 		var player := SimPlayer.new()
 		player.id = id
+		for weapon_id in SimWeapons.START_ARMS:
+			player.arms[weapon_id] = SimArm.of(weapon_id)
 		player.weapon = SimWeapons.START
-		player.ammo = SimWeapons.magazine(SimWeapons.START)
 		player.health = p_tuning.health.max_health
 		player.max_health = p_tuning.health.max_health
 		player.regen_delay = p_tuning.health.regen_delay
@@ -85,6 +108,9 @@ func run(max_rounds: int) -> Dictionary:
 			_step()
 		else:
 			break
+	for player: SimPlayer in _players.values():
+		if player.dry:
+			_result["dry_rounds"] += 1
 	_result["died"] = rules.phase == GameRules.Phase.OVER
 	_result["rounds_reached"] = rules.round_number
 	_close_round(false)
@@ -188,12 +214,13 @@ func _mend(player: SimPlayer, engaged: Dictionary) -> void:
 
 func _shoot(player: SimPlayer) -> void:
 	var weapon := player.weapon
+	var arm: SimArm = player.arms[weapon]
 	if player.reload_left > 0.0:
 		# A reload runs on the clock, shooting or not; what is left of the step is shot time.
 		player.reload_left -= step
 		if player.reload_left > 0.0:
 			return
-		player.ammo = SimWeapons.magazine(weapon)
+		arm.reload()
 		player.carry = minf(-player.reload_left, step) * skill.uptime
 		player.reload_left = 0.0
 	else:
@@ -201,19 +228,101 @@ func _shoot(player: SimPlayer) -> void:
 	if player.stun > 0.0:
 		player.carry = 0.0
 		return
+	var melee := SimWeapons.is_melee(weapon)
 	var interval := SimWeapons.interval(weapon)
 	while player.carry >= interval and not _over:
-		var zombie := _pick_target(player)
+		var zombie := _pick_melee(player) if melee else _pick_target(player)
 		if zombie == null:
 			player.carry = 0.0
 			return
+		if skill.swaps and not melee and _switch_for(player, zombie):
+			return
 		player.carry -= interval
 		_fire_at(player, zombie)
-		player.ammo -= 1
-		if player.ammo <= 0:
-			player.reload_left = SimWeapons.reload_seconds(weapon)
+		if melee:
+			continue
+		arm.mag -= 1
+		if arm.mag <= 0:
+			if arm.reserve > 0:
+				player.reload_left = SimWeapons.reload_seconds(weapon)
+			else:
+				_out_of_rounds(player)
 			player.carry = 0.0
 			return
+
+
+## Takes the weapon that does the most to this target if it beats the one in hand by `SWITCH_GAIN`
+## (a shotgun for what is at the door, the rifle for what is far). True when it swapped, which
+## costs a moment.
+func _switch_for(player: SimPlayer, zombie: SimZombie) -> bool:
+	var distance := maxf(zombie.distance, 0.0)
+	var held := _worth_at(player.arms[player.weapon], distance)
+	var pick := player.weapon
+	var pick_worth := held * SWITCH_GAIN
+	for weapon_id: StringName in player.arms:
+		var worth := _worth_at(player.arms[weapon_id], distance)
+		if worth > pick_worth:
+			pick = weapon_id
+			pick_worth = worth
+	if pick == player.weapon:
+		return false
+	player.weapon = pick
+	player.reload_left = 0.0
+	player.stun = maxf(player.stun, SWAP_SECONDS)
+	player.carry = 0.0
+	return true
+
+
+## Damage a second a loaded firearm does to a body `distance` metres away (0 when it is empty).
+func _worth_at(arm: SimArm, distance: float) -> float:
+	if SimWeapons.is_melee(arm.id) or arm.mag <= 0:
+		return 0.0
+	return SimWeapons.damage(arm.id, &"body", distance) / SimWeapons.interval(arm.id)
+
+
+## The magazine and the reserve are both empty: take the best weapon that still has rounds, or the
+## crowbar, and lose a moment doing it.
+func _out_of_rounds(player: SimPlayer) -> void:
+	var before := player.weapon
+	player.weapon = SimWeapons.best_armed(player.arms)
+	var best := 0.0
+	for weapon_id: StringName in player.arms:
+		if not SimWeapons.is_melee(weapon_id):
+			best = maxf(best, SimWeapons.sustained_dps(weapon_id))
+	var left := (
+		0.0 if SimWeapons.is_melee(player.weapon) else SimWeapons.sustained_dps(player.weapon)
+	)
+	if left < best * RUN_BELOW and _resupply_run(player):
+		return
+	if player.weapon != before:
+		player.stun = maxf(player.stun, SWAP_SECONDS)
+		if SimWeapons.is_melee(player.weapon):
+			player.dry = true
+
+
+## The run to a locker in the middle of a round: buys what the points allow (down to the usual
+## floor of magazines), then spends the time away. False when nothing could be bought.
+func _resupply_run(player: SimPlayer) -> bool:
+	var bought := 0
+	for weapon_id in _useful(player):
+		var arm: SimArm = player.arms[weapon_id]
+		bought += _restock(player, weapon_id, arm.def().magazine_size * skill.ammo_floor_mags)
+	if bought <= 0:
+		return false
+	_result["runs"] += 1
+	player.weapon = SimWeapons.best_armed(player.arms)
+	player.stun = maxf(player.stun, RESUPPLY_SECONDS)
+	player.reload_left = 0.0
+	return true
+
+
+## A zombie within reach of a blow that is after this player: the crowbar needs no sight, only a
+## dead man at arm's length.
+func _pick_melee(player: SimPlayer) -> SimZombie:
+	for zombie: SimZombie in _zombies.values():
+		if zombie.target == player.id and zombie.distance <= 0.0 and zombie.barrier <= 0.0:
+			return zombie
+	return null
 
 
 ## The nearest zombie on the side the player faces. A player turns to another side when nothing is
@@ -265,9 +374,10 @@ func _fire_at(player: SimPlayer, zombie: SimZombie) -> void:
 		zone = &"limb"
 	if zombie.first_hit < 0.0:
 		zombie.first_hit = _clock
+	var melee := SimWeapons.is_melee(player.weapon)
 	var damage := SimWeapons.damage(player.weapon, zone, maxf(zombie.distance, 0.0))
 	_splash(player, zombie)
-	_handle(rules.apply(RulesAction.hit(player.id, zombie.id, zone, damage)))
+	_handle(rules.apply(RulesAction.hit(player.id, zombie.id, zone, damage, melee)))
 
 
 ## A bursting shot hurts the others on the same side near the one it hit (a flare); the one it hit
@@ -420,36 +530,108 @@ func _between_rounds() -> void:
 ## yet, so they change nothing here either.
 func _refresh(player: SimPlayer) -> void:
 	var owned: PlayerState = rules.players[player.id]
-	player.weapon = SimWeapons.best(owned.weapons)
-	player.ammo = SimWeapons.magazine(player.weapon)
+	for shop_id in owned.weapons:
+		var weapon_id := WeaponCatalog.catalog_id(shop_id)
+		if not player.arms.has(weapon_id):
+			player.arms[weapon_id] = SimArm.of(weapon_id)
+	# A player reloads in the break, for free.
+	for arm: SimArm in player.arms.values():
+		arm.reload()
+	player.weapon = SimWeapons.best_armed(player.arms)
 	player.reload_left = 0.0
 	player.carry = 0.0
+	if player.dry:
+		player.dry = false
+		_result["dry_rounds"] += 1
 
 
+## What a player does with their points between rounds, in order: fuel, the rounds they cannot
+## fight without (`skill.ammo_floor_mags` magazines of reserve for each weapon worth shooting), the
+## things they are saving for (doors, weapons), and last topping the reserves up with what is left
+## over once the next thing on the list is paid for.
 func _shop(player: SimPlayer) -> void:
 	if rules.generator.fuel < FUEL_BUY_BELOW:
 		_buy(player, &"fuel_can")
+	# The marquee announces a special round: everyone fills up for it, whatever else they save for.
+	var prepared := rules.tuning.specials.special_for(rules.round_number + 1) != null
+	var floor_mags := PREPARED_MAGS if prepared else skill.ammo_floor_mags
+	for weapon_id in _useful(player):
+		var arm: SimArm = player.arms[weapon_id]
+		_restock(player, weapon_id, arm.def().magazine_size * floor_mags)
 	var wanted := skill.shopping.duplicate()
 	var bought := true
 	while bought:
 		bought = false
 		for item_id: StringName in wanted:
-			if _buy(player, item_id):
+			if _buy(player, item_id) > 0:
 				wanted.erase(item_id)
 				bought = true
+				_refresh(player)
 				break
+	var keep := rules.price_of(wanted[0]) if not wanted.is_empty() else 0
+	var topoff := 1.0 if prepared else skill.ammo_topoff
+	for weapon_id in _useful(player):
+		var top := int(float(player.arms[weapon_id].def().reserve_max) * topoff)
+		_restock(player, weapon_id, top, keep)
 
 
-func _buy(player: SimPlayer, item_id: StringName) -> bool:
-	if rules.points_of(player.id) < rules.price_of(item_id):
-		return false
-	var price := rules.price_of(item_id)
-	for event in rules.apply(RulesAction.buy(player.id, item_id)):
+## The carried firearms worth buying rounds for, best first.
+func _useful(player: SimPlayer) -> Array[StringName]:
+	var best := 0.0
+	for weapon_id: StringName in player.arms:
+		if not SimWeapons.is_melee(weapon_id):
+			best = maxf(best, SimWeapons.sustained_dps(weapon_id))
+	var useful: Array[StringName] = []
+	for weapon_id: StringName in player.arms:
+		if SimWeapons.is_melee(weapon_id):
+			continue
+		if SimWeapons.sustained_dps(weapon_id) >= best * USEFUL_SHARE:
+			useful.append(weapon_id)
+	useful.sort_custom(
+		func(a: StringName, b: StringName) -> bool:
+			return SimWeapons.sustained_dps(a) > SimWeapons.sustained_dps(b)
+	)
+	return useful
+
+
+## Buys rounds for a weapon, a purchase at a time, until its reserve holds `target` rounds, it is
+## full, or the player cannot pay and still keep `keep` points. Returns the rounds bought.
+func _restock(player: SimPlayer, weapon_id: StringName, target: int, keep: int = 0) -> int:
+	var arm: SimArm = player.arms[weapon_id]
+	var item := _ammo_item(weapon_id)
+	var total := 0
+	if item == null:
+		return total
+	while arm.reserve < mini(target, arm.def().reserve_max):
+		var room := arm.def().reserve_max - arm.reserve
+		var price := item.ammo_price(rules.round_number, room)
+		if rules.points_of(player.id) - price < keep:
+			break
+		var rounds := _buy(player, item.id, room)
+		if rounds <= 0:
+			break
+		arm.reserve += rounds
+		total += rounds
+	return total
+
+
+func _ammo_item(weapon_id: StringName) -> ShopItem:
+	for item in rules.tuning.economy.items:
+		if item.kind == ShopItem.Kind.AMMO and item.weapon == weapon_id:
+			return item
+	return null
+
+
+## Buys one item; returns 0 when it did not sell, else 1 (for ammunition, the rounds that went into
+## the reserve). `rounds` is the room an ammunition purchase has (the combat server's number in the
+## game).
+func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
+	for event in rules.apply(RulesAction.buy(player.id, item_id, rounds)):
 		if event["type"] == &"purchase_made":
 			var spent: Dictionary = _result["spent_on"]
-			spent[item_id] = spent.get(item_id, 0) + price
-			return true
-	return false
+			spent[item_id] = spent.get(item_id, 0) + event["price"]
+			return int(event["detail"].get("rounds", 1))
+	return 0
 
 
 class SimPlayer:
@@ -459,9 +641,12 @@ class SimPlayer:
 	var max_health: float = 100.0
 	var downed: bool = false
 	var weapon: StringName = &"pistol"
+	## Every weapon carried (catalogue id to its magazine and reserve), the crowbar included.
+	var arms: Dictionary[StringName, SimArm] = {}
+	## Ran out of every firearm this round and fought with the crowbar.
+	var dry: bool = false
 	## Shot time banked toward the next trigger pull, in seconds.
 	var carry: float = 0.0
-	var ammo: int = 10
 	var reload_left: float = 0.0
 	var stun: float = 0.0
 	var last_hit: float = -100.0
@@ -471,6 +656,31 @@ class SimPlayer:
 	## The lowest share of health the player reached this round.
 	var lowest: float = 1.0
 	var side: int = 0
+
+
+## One weapon carried: rounds in the magazine and in reserve, as the combat server keeps them.
+class SimArm:
+	extends RefCounted
+	var id: StringName = &""
+	var mag: int = 0
+	var reserve: int = 0
+
+	static func of(weapon_id: StringName) -> SimArm:
+		var arm := SimArm.new()
+		arm.id = weapon_id
+		var def := arm.def()
+		arm.mag = def.magazine_size
+		arm.reserve = def.reserve_start
+		return arm
+
+	func def() -> WeaponDef:
+		return SimWeapons.def(id)
+
+	## A reload: the magazine fills from the reserve, as far as the reserve goes.
+	func reload() -> void:
+		var moved := mini(def().magazine_size - mag, reserve)
+		mag += moved
+		reserve -= moved
 
 
 class SimZombie:

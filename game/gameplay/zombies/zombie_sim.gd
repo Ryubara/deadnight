@@ -184,6 +184,7 @@ func _think(
 	if not strike.is_empty():
 		strike["type"] = &"zombie_struck"
 		events.append(strike)
+	zombie.tearing = false
 	if zombie.gate_id != &"":
 		_work_the_boards(zombie, delta, events)
 	# Height stays where it spawned: the lot is flat. A path point sits above the floor by a baker
@@ -216,6 +217,7 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 		zombie.enter(ZombieBody.Mode.ATTACK)
 	if zombie.mode != ZombieBody.Mode.ATTACK:
 		return
+	zombie.tearing = true
 	zombie.tear_progress += delta * zombie.profile.barrier_speed
 	if zombie.tear_progress >= board_seconds:
 		zombie.tear_progress -= board_seconds

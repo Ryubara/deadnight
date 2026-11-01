@@ -284,6 +284,7 @@ def build(arm):
         write(arm, f"Unequip_{cls}", keys, up, "upper", False, cls, {"weapon_hidden": 8})
 
     grenade(arm, up, idle, idle_mid, aim)
+    repair(arm, up, aim)
     return CLIPS
 
 
@@ -332,3 +333,24 @@ def grenade(arm, up, idle, idle_mid, aim):
     lift = offset(held, Abdomen=(-2, 0, -6), Torso=(-4, 0, -8), UpperArm_R=(-4, 9, -42), LowerArm_R=(18, 0, 5))
     keys = [(0, held), (6, back), (10, toss), (13, lift), (22, idle_mid)]
     write(arm, "Grenade_Toss", keys, up, "upper", False, "Grenade", {"release": 10, "done": 22})
+
+
+def repair(arm, up, aim):
+    """Repair_Board (Deadnight #221): the Soldier puts a board back across a breach of the fence. Upper body only, so
+    the legs keep their locomotion; one loop is one board, 24 frames (1.0 s), the night's `repair_interval`: the
+    controller plays it at 1 / interval and seeks it to `board_set` on each `board_repaired` of its player.
+
+    The left hand holds the board flat against the gap at chest height (no IK); the right fist comes down on it twice,
+    a tap from half height and a full blow from above the head that drives it home (`board_set`, the frame the
+    board lands in the game). The weapon is hidden for the length of the repair by the controller.
+    """
+    # Hand positions (Index1, world metres at kit scale; the Soldier faces -Y, his right is -X), probed: the board's
+    # face is about 0.95 m in front of him. Held: left hand (0.25, -0.92, 1.18), right fist at the board beside it
+    # (-0.25, -0.97, 1.14). Raised: the fist above the head behind the right shoulder (-0.32, -0.59, 1.93).
+    hold = offset(aim, Abdomen=(4, 0, 0), UpperArm_L=(15, -75, 0))
+    struck = offset(hold, Torso=(5, 0, -3), UpperArm_R=(-6, 0, 0), Head=(4, 0, 0))
+    lifted = offset(hold, UpperArm_R=(25, 0, 0), LowerArm_R=(0, 0, 14))
+    raised = offset(hold, Torso=(-5, 0, 5), UpperArm_R=(52, 0, 0), LowerArm_R=(0, 0, 26), Head=(-3, 0, 0))
+    keys = [(0, lifted), (3, struck), (6, struck), (10, lifted), (15, raised), (18, struck), (21, struck),
+            (24, lifted)]  # fmt: skip
+    write(arm, "Repair_Board", keys, up, "upper", True, "Repair", {"hammer": [3, 18], "board_set": 18})

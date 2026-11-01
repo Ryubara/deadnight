@@ -72,6 +72,26 @@ Rules the greybox is built to:
 - Zombies spawn only in open areas, and always in the field.
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
 
+## Shop spots
+
+Besides the doors, the lot sells at fixed spots: the markers of `ShopSpots` in the greybox, each with a `kind` and a
+`shop_id`, read by `NightWorld.shop_spots()`. A player in reach (3.2 m, `NightTuning.use_reach`) of one is offered what
+it sells on the prompt card and buys with `interact`, the same press as a door; a door in reach wins, then the nearest
+spot with something to sell. What a spot offers comes from the rules' tuning, so the price is never in the scene (the
+plaque only names the weapon).
+
+| Spot | Where | Sells | Why there |
+| --- | --- | --- | --- |
+| Shotgun, on the wall | the concession's front wall, field side, left of the door | `weapon_shotgun`; once owned, its rounds | in the open before any door: the first weapon a player can save for, bought under the dead's eyes |
+| Rifle, on the wall | the booth's front wall, midway side | `weapon_rifle`; once owned, its rounds | past the concession: the long gun waits for the middle rounds and the player who has opened the lot |
+| Prize crane | inside the stand, beside the cabinet that was there | `crane_play`, a weapon the player lacks, until the pool is empty | the stand is the first door; a gamble to spend the first thousand on |
+| Ammunition lockers (5) | the avenue (field), the stand, the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
+
+A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
+real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one
+press never means two things. The lockers are a green crate with a yellow band, the wall weapons an amber plaque, all
+lit by their own colour so they read in the dark (captures in the pull request).
+
 ## Widths and the camera
 
 The first draft sized passages for the 0.7 m capsule and a 1.7 m first-person eye. The player is over the shoulder
@@ -181,6 +201,17 @@ bottom, and while they stand they are solid for players and nothing else: they s
 shots, grenades and the camera pass them (a zombie at the boards can be shot), and they are not part of the
 navigation mesh, which keeps the gap open, so the dead's way in is a path and what holds them is the simulation. A
 player puts boards back from the field side only, within reach of the middle of the gap.
+
+What is solid changes the moment the rules say so; only the drawing moves, with one Tween a board and nothing per frame
+(`test_barricade_motion.gd` steps them by hand, `tests/captures/board_motion.tscn` films them):
+
+| | Motion | Numbers |
+| --- | --- | --- |
+| Torn | a drawn copy of the board (pooled, at most 5 a breach, the board's own mesh, no physics) is flung out of the field toward the one pulling it: up, a turn and a half about its length so it lands flat, one end swung out 20 to 34 degrees, then it sinks into the ground and is gone | rises 0.55 m, lands 1.2 m out, gravity 20 m/s²: down in 0.5 s from the lowest slot, 0.78 s from the top; sinks in 0.22 s |
+| Mended | the board's body is in its slot at once; its mesh slides in from the field side swung up about one end (alternate ends board to board, as nailed by hand) and knocks home with a small overshoot | 0.5 m in, 55 degrees, 0.28 s, back-out easing |
+
+A jump of several boards (a late join, a snapshot catching up) moves only the last board that changed; the others snap.
+Binding to the rules at the start of a night snaps.
 
 ### Which lamps hang on which circuit
 
