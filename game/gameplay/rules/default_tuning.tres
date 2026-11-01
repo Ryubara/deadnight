@@ -66,7 +66,7 @@ pool_weights = PackedFloat32Array()
 script = ExtResource("1_skww1")
 id = &"crane_play"
 kind = 2
-price = 750
+price = 550
 pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun"])
 pool_weights = PackedFloat32Array(4, 3, 2, 1)
 

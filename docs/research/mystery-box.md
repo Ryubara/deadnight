@@ -42,7 +42,7 @@ Everything is in `CraneTuning` (`game/gameplay/rules/crane_tuning.gd`) and the s
 
 | Part | Our crane | Why it differs |
 | --- | --- | --- |
-| Cost | `crane_play` price, tuned with the balance simulator (see [the economy](#the-price)) | Our points are earned at a different rate (a round pays 350 to 3,500, a wall shotgun costs 900) |
+| Cost | 550, tuned with the balance simulator (see [the price](#the-price)) | Our points are earned at a different rate (a round pays 350 to 3,500, a wall shotgun costs 900) |
 | Spin | 4.5 s (`spin_seconds`) | The middle of the reported range |
 | Grab window | 12 s (`grab_seconds`), only the buyer can take it | We chose buyer-only for every title's sake: the prompt of anyone else says so |
 | Pool | shotgun 4, rifle 3, SMG 2, flare gun 1 (`pool`, `pool_weights`), minus what the buyer carries | We have four prizes, not forty: the flare gun plays the part of the rare wonder weapon. Equal odds would make the crane a free shotgun-or-rifle choice |
