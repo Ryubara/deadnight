@@ -31,9 +31,21 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
 - Strict GDScript warnings are errors here: `var x := a if c else {}` types as `Variant`; write `var x: Dictionary =`.
 - A new worktree has no `game/addons/gdUnit4` (git-excluded): copy it from another worktree and import once.
 
+## In the night
+
+The night feeds the HUD through `NightHudBinding` (`game/gameplay/night/`), from `ClientState.event_received` alone;
+see [the slice](../design/slice.md#the-hud). Things the binding taught:
+
+- Rules actions applied outside the server's tick (a test granting points) are not in any client's events: the server
+  clears its outbox at each `step`. A test that needs the HUD to hear one delivers the returned events itself
+  (`night.state.apply_events(rules.apply(...))`).
+- `HudFeed.ITEM_NAMES` has no entry for `door_yard`: buying the generator yard is announced as "BOUGHT SOMETHING".
+- At 1920 x 1080 the circuit labels under the generator bar touch each other ("SCREENSNACKSBOOTBACK LOT").
+
 ## Left out, to do
 
 - Player health and blows are not rules events; `player_hurt` is a HUD event until the rules own them.
-- Ammo, reload and equipment come from the weapon code, which does not exist yet; the HUD takes them as readings.
+- Ammo comes from the frame (the held weapon), reload and equipment are not shown; the weapons' own events do not
+  feed the HUD (#133).
 - Markers are given in screen space; projecting world points (and hiding those behind walls) is the camera's job.
 - The prompt looks only at one interaction; two in reach at once needs a choice rule from the player controller.

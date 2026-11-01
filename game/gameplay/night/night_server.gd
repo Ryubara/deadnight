@@ -7,8 +7,8 @@ extends RefCounted
 ## Messages in (`apply`, plain dictionaries): `join` {player_id, local}, `leave` {player_id},
 ## `start_night`, and one `command` (a `NightCommand`) per player per tick; the latest one is
 ## used. `step(delta)` runs one fixed tick and returns the events for every client: the rules
-## events, the weapons events (`CombatServer`), `player_damaged`, and last a `frame`. A frame
-## carries the whole picture a client or a HUD draws from.
+## events, the weapons events (`CombatServer`), `player_damaged` (with `from`, where the blow came
+## from), and last a `frame`. A frame carries the whole picture a client or a HUD draws from.
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, doors (open ids), zombies (`ZombieCodec`
 ## bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve, reloading, points,
@@ -72,6 +72,8 @@ func _init(
 	sim.lit_probe = world.is_lit
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.player_struck.connect(_on_player_struck)
+	world.bind(rules)
+	world.doors.door_opened.connect(_on_door_opened)
 	rules.event_emitted.connect(_on_rules_event)
 
 
@@ -82,6 +84,8 @@ func close() -> void:
 	director.close()
 	if rules.event_emitted.is_connected(_on_rules_event):
 		rules.event_emitted.disconnect(_on_rules_event)
+	if world.doors.door_opened.is_connected(_on_door_opened):
+		world.doors.door_opened.disconnect(_on_door_opened)
 	for signal_info in rules.generator.get_signal_list():
 		for connection in rules.generator.get_signal_connection_list(signal_info["name"]):
 			rules.generator.disconnect(signal_info["name"], connection["callable"])
@@ -174,7 +178,7 @@ func _chase_targets() -> Dictionary:
 	return targets
 
 
-func _on_player_struck(player_id: int, _zombie_id: int, damage: float) -> void:
+func _on_player_struck(player_id: int, zombie_id: int, damage: float) -> void:
 	if not _health.has(player_id) or _is_downed(player_id):
 		return
 	_health[player_id] = maxf(_health[player_id] - damage, 0.0)
@@ -187,11 +191,18 @@ func _on_player_struck(player_id: int, _zombie_id: int, damage: float) -> void:
 				"player_id": player_id,
 				"damage": damage,
 				"health": _health[player_id],
+				"from": _position_of_zombie(zombie_id),
 			}
 		)
 	)
 	if _health[player_id] <= 0.0:
 		rules.apply(RulesAction.set_downed(player_id, true))
+
+
+## Where a zombie stands (the bearing of a blow); the player's own spot when it is gone.
+func _position_of_zombie(zombie_id: int) -> Vector3:
+	var zombie: ZombieBody = sim.zombies.get(zombie_id)
+	return zombie.position if zombie != null else Vector3.ZERO
 
 
 func _heal(delta: float) -> void:
@@ -208,12 +219,14 @@ func _heal(delta: float) -> void:
 # --- What the rules decided ---
 
 
+## The lot has opened a door (it follows the rules itself): the area behind it joins the spawns.
+func _on_door_opened(_door_id: StringName) -> void:
+	director.spawn_points = world.spawn_points()
+
+
 func _on_rules_event(event: Dictionary) -> void:
 	_outbox.append(event)
 	match event["type"]:
-		&"door_opened":
-			world.open_door(event["door_id"])
-			director.spawn_points = world.spawn_points()
 		&"purchase_made":
 			var weapon: StringName = event["detail"].get("weapon", &"")
 			if weapon != &"":

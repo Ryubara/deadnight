@@ -1,18 +1,18 @@
 class_name NightScreen
 extends UIScreen
-## The night as a screen: the 3D night underneath, a plain readout (until the HUD, #89, lands), a
-## pause menu on Esc and a result when the night is over. Both ways out lead back to the menu.
+## The night as a screen: the 3D night underneath, the HUD over it (`NightHudBinding` feeds it from
+## the night's events), a pause menu on Esc and a result when the night is over. Both ways out
+## lead back to the menu.
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/night_screen.tscn")`; the main menu's Play
 ## does.
 
-const READOUT_MARGIN := 24
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
 
 var night: Night
 
-var _readout: Label
+var _hud: Hud
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
@@ -24,7 +24,9 @@ func _ready() -> void:
 	super._ready()
 	night = Night.new()
 	add_child(night)
-	_build_readout()
+	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
+	add_child(_hud)
+	night.hud = _hud
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
 
@@ -45,11 +47,6 @@ func screen_resume() -> void:
 ## The night is the backdrop; this screen paints none of its own.
 func _draw() -> void:
 	pass
-
-
-func _process(_delta: float) -> void:
-	if night.state != null and night.state.has_frame():
-		_readout.text = NightReadout.text_for(night.state)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -92,16 +89,6 @@ func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 
 func _leave() -> void:
 	UIRouter.pop()
-
-
-func _build_readout() -> void:
-	_readout = Label.new()
-	_readout.position = Vector2(READOUT_MARGIN, READOUT_MARGIN)
-	_readout.add_theme_font_size_override(&"font_size", _tokens.size_body)
-	_readout.add_theme_color_override(&"font_outline_color", Color.BLACK)
-	_readout.add_theme_constant_override(&"outline_size", 8)
-	_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_readout)
 
 
 func _build_overlay() -> void:

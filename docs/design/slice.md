@@ -14,7 +14,7 @@ page says what is in, and what is next.
  │                            │                  │  CombatServer   weapons          │
  │ ClientState ◄── events ────┼◄─────────────────┤  ZombieSim + Director            │
  │ NightView (zombies, shots, │   events + frame │  player bodies, health           │
- │ numbers, sounds), readout  │                  │                                  │
+ │ numbers, sounds), HUD      │                  │                                  │
  └────────────────────────────┘                  └──────────────────────────────────┘
 ```
 
@@ -26,7 +26,8 @@ page says what is in, and what is next.
   produce exactly this; the server cannot tell them apart.
 - A `frame` is the whole picture a client or a HUD draws from: phase, round, zombies left, fuel, open doors, the
   zombies as `ZombieCodec` bytes, and for each player their position, health, weapon, ammunition, points and the
-  prompt for what `use` would do. The HUD (#89) binds to `ClientState.event_received` and these frames.
+  prompt for what `use` would do. The HUD binds to `ClientState.event_received` and these frames
+  (`NightHudBinding`, below).
 - All state is in the server: the rules own points, rounds and the zombies' health; the combat server owns ammunition
   and who was hit; the night server owns where the players stand and their health. The client keeps only what it has
   heard.
@@ -40,13 +41,24 @@ page says what is in, and what is next.
 | Zombies spawn from the rules, chase through the navigation mesh, strike | `gameplay/zombies/` | spawns only in the field and in areas whose door is bought |
 | Player health: 100, regenerates after 5 s unhurt, a down at zero | `NightServer`, `NightTuning` | all down ends the night |
 | Rounds, break, points for hits and kills, the round bonus | `gameplay/rules/` | unchanged |
-| Doors: `interact` next to a slab buys the door, its slabs go, the navigation mesh is rebuilt, its area joins the spawns | `NightWorld`, `NightServer` | the prompt shows the price |
+| Doors: `interact` next to a slab buys the door; `LotDoors` frees its slabs, `DoorNavigation` rebakes the mesh, its area joins the spawns | `NightWorld` (binds the lot to the rules), `NightServer` | one path, the lot's own ([Doors](../research/zombies.md#doors)); the prompt shows the price |
 | Repair: `interact` at a fence breach pays the rules' repair points | `NightServer` | no boards are drawn yet |
 | A supply drop at the end of each round refills ammunition | `NightServer._resupply` | stands in for an ammunition shop |
 | Sound: shots, reloads, dry fire, round stings | `NightView` | through the `Audio` autoload |
-| Debug readout of round, points, health, ammunition, prompt | `NightReadout` | replaced by the HUD |
+| The HUD: round, points, health, ammunition, the prompt at a door or breach, the party, the generator | `NightHudBinding`, `ui/hud/` | below |
 | The autopilot | `gameplay/night/autopilot.gd` | below |
 | Server and client in one process over the loopback link | `Night` | the same code runs 2-4 players next |
+
+## The HUD
+
+`Night.hud` (set before `start`) is fed by `NightHudBinding`, a client-side class that reads only
+`ClientState.event_received`: the rules' events go to `HudState.apply_event` as they are (round, points, party,
+fuel, purchases, game over), and each `frame` sets what the rules do not announce, the local player's health, the
+held weapon's ammunition, the zombies left and the prompt (`use_target`: a door's name and price, or a breach).
+The server's `player_damaged` (now with `from`, where the blow came from) becomes the HUD's `player_hurt` with the
+bearing of the dead one. Weapons' events are not forwarded. The night screen and the autopilot capture each put a
+`Hud` in their own tree and hand it to the night; the HUD never reads a game object. Health and ammunition move
+into the rules and the weapons' events under #132 and #133; only the binding changes then.
 
 ## The autopilot
 
@@ -58,14 +70,14 @@ next door when its points cover the price and buys it, and puts a board back at 
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
-door open. `tests/captures/autopilot_night.tscn` plays it for captures and prints a report
-(`-- --rounds=5 --speed=30`, `--trace`, `--log`).
+door open, with a HUD on the night that must show the same round and points, have offered the door by name and
+price before the purchase, and listed the purchase when it happened. `tests/captures/autopilot_night.tscn` plays it
+for captures and prints a report (`-- --rounds=5 --speed=30`, `--trace`, `--log`).
 
 ## What is next
 
 Each of these is an issue.
 
-- **HUD** (#89) in place of the readout, binding to `ClientState`.
 - **Characters** (#90): the player model carries no weapon in hand yet; hit and death reactions.
 - **Grenades** (#99) and **boss nights** (#97) join through `NightServer` and the rules.
 - **Real transport.** `LoopbackLink` becomes the network protocol; the player bodies split into server bodies and

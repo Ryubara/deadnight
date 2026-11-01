@@ -41,6 +41,19 @@ func test_play_starts_a_night_the_player_can_move_in() -> void:
 	await _leave(screen)
 
 
+func test_the_hud_is_on_the_night_and_hears_it() -> void:
+	var screen := await _enter_night()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var huds := screen.find_children("*", "Hud", true, false)
+	assert_array(huds).has_size(1)
+	var hud := huds[0] as Hud
+	assert_bool(hud.state.team.has(Night.PLAYER_ID)).is_true()
+	assert_int(hud.state.phase).is_equal(HudState.PHASE_BREAK)
+	assert_int(hud.state.points).is_equal(screen.night.state.points())
+	await _leave(screen)
+
+
 func test_escape_pauses_and_resume_goes_on() -> void:
 	var screen := await _enter_night()
 	await _press_escape()
