@@ -18,6 +18,11 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [autoload]
 
 UIRouter="*res://addons/gds_ui/router/ui_router.gd"
+Settings="*res://core/settings.gd"
+
+[gds_ui]
+
+tokens="res://ui/skin/deadnight_tokens.tres"
 
 [display]
 

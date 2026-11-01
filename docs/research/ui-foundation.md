@@ -27,7 +27,7 @@ A `StyleBox` cannot ease between states, so the theme gives the button's states 
 | Focus ring | gap 6 px, closes in from 16 px, 3 px stroke | The ring "lands" on the button |
 | Spring | stiffness 360, damping 24, fixed 1/240 s step | Settles in about 0.3 s, no visible overshoot; the fixed step makes captures repeat |
 | Screen fade | 0.14 s out (cubic in), 0.40 s in (quart out, rise and settle) | Leave fast, arrive gently |
-| Slide | 0.5 s, expo out, old screen at 1/3 distance and dimmed | Parallax shows depth; pop reverses |
+| Slide | 0.5 s, expo out, old screen at 1/3 distance and dimmed | Parallax shows depth; a pop plays the push backwards |
 | Shader transitions | 1.2 x 0.5 s per half | One sweep to cover, one to reveal |
 
 No easing is linear. Reduced motion (`UIMotion.reduced`, project setting `gds_ui/accessibility/reduced_motion`) makes
@@ -57,6 +57,43 @@ and input is blocked. A pop repeats the transition the screen arrived with, reve
 screen whose `process_mode` is disabled (paused screens are), or they never run: the router restores the mode before
 each transition.
 
+### A pop mirrors the push
+
+| Kind | Push | Pop |
+| --- | --- | --- |
+| Fade | old fades out, new rises in | the same, with the popped screen fading out |
+| Slide | new slides in from the right on top; old moves 1/3 left and dims | popped screen slides off to the right on top; old moves in from 1/3 left and brightens |
+| Burn, iris | close over old, swap behind the overlay, open on new | the same, from the focused button |
+
+Fade, burn and iris show one screen at a time (the shader overlay covers the swap), so their child order does not
+matter. Only the slide has two screens on show at once, so it raises the leaving screen (pop) or the entering one
+(push) to the top of the stage itself (`UITransitionContext.raise`); the stage's child order is never relied on.
+
+### A freed screen must not stall the router
+
+A screen can be freed while a transition runs (game over, a disconnect, a scene change). Rules that keep the queue
+draining:
+
+- **Bind a transition's tweens to the stage, never to a screen.** A tween created on a node is killed when the node is
+  freed and its `finished` signal never fires, so `await tween.finished` waits forever, `busy` stays true and `_input`
+  swallows every event. A tween on the stage whose target is freed simply ends. `UIMotion.fade_in` takes the node to
+  bind to for this reason.
+- **Check `is_instance_valid` after every await** (`UITransitionContext.has_outgoing()` and `swap()` do it for the
+  context). A freed outgoing screen is skipped; a freed incoming screen makes the push fail quietly and the screen
+  underneath stays on top, as if the push never happened.
+- **A screen leaves the stack when it leaves the tree** (`tree_exiting`), so `depth()` and `top()` never return a freed
+  instance (that is a script error in a typed getter).
+- **A source that cannot be shown** (a path that does not exist or is not a scene, a scene whose root is not a
+  `Control`, any other type) logs one `UIRouter: cannot show ...` error and the router carries on.
+
+### Tests
+
+`game/tests/ui/test_ui_router.gd` (GdUnit4): queued push, pop and replace order, pop and back at the root, back ignored
+while busy, a screen freed mid-transition (every transition kind, outgoing, incoming and popped), a bad source, and the
+slide pop mirroring the push. Run: `godot --headless --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a
+res://tests -c --ignoreHeadlessMode`. Do not add `-d`: the debugger then stops at the first script error and waits for
+input forever.
+
 ## Left out
 
-Settings widgets (slider, toggle, option) are issue #4.
+Settings widgets (slider, toggle, option selector) came with the settings screen: see [Settings](settings.md).

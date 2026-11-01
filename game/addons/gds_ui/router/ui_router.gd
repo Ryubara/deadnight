@@ -4,6 +4,9 @@ extends CanvasLayer
 ## push / replace / pop / reset take a PackedScene, a scene path or an instanced Control, and a
 ## transition kind. Calls made while a transition runs are queued. Back (`ui_cancel`) pops.
 ## Input is blocked while a transition runs.
+##
+## A screen can be freed at any time (a game-over handler, a disconnect). A freed screen leaves
+## the stack at once, a transition that loses a screen still ends, and the queue keeps draining.
 
 signal idle
 signal screen_changed(depth: int)
@@ -11,6 +14,7 @@ signal screen_changed(depth: int)
 const BURN_SHADER := preload("res://addons/gds_ui/shaders/film_burn.gdshader")
 const IRIS_SHADER := preload("res://addons/gds_ui/shaders/projector_iris.gdshader")
 const LAYER := 100
+const NOT_SHOWN := "UIRouter: cannot show %s (need a scene, its path or a Control)"
 const FOCUS_ACTIONS: Array[StringName] = [
 	&"ui_up", &"ui_down", &"ui_left", &"ui_right", &"ui_accept"
 ]
@@ -49,6 +53,11 @@ func _ready() -> void:
 
 func depth() -> int:
 	return _stack.size()
+
+
+## The stack from the root to the visible top.
+func screens() -> Array[Control]:
+	return _stack.duplicate()
 
 
 func top() -> Control:
@@ -135,15 +144,18 @@ func _do_push(
 	var outgoing := top()
 	UIAudio.play(&"push")
 	await _run(outgoing, incoming, kind, false)
-	if outgoing != null:
+	if not is_instance_valid(incoming):
+		# Lost mid-transition: the screen underneath stays, as if the push never happened.
+		_show_top()
+		return
+	if is_instance_valid(outgoing):
 		if replacing:
 			_stack.erase(outgoing)
 			_kinds.erase(outgoing)
 			outgoing.queue_free()
 		else:
 			_pause(outgoing)
-	_stack.append(incoming)
-	_kinds[incoming] = kind
+	_adopt(incoming, kind)
 	_finish(incoming, false)
 
 
@@ -158,8 +170,11 @@ func _do_pop(requested: int) -> void:
 	var incoming := top()
 	UIAudio.play(&"pop")
 	await _run(outgoing, incoming, kind, true)
-	outgoing.queue_free()
-	_finish(incoming, true)
+	if is_instance_valid(outgoing):
+		outgoing.queue_free()
+	if top() != null:
+		_show_top()
+		_finish(top(), true)
 
 
 func _do_reset(source: Variant, kind: UITransition.Kind, params: Dictionary) -> void:
@@ -169,15 +184,18 @@ func _do_reset(source: Variant, kind: UITransition.Kind, params: Dictionary) -> 
 	var old := _stack.duplicate()
 	await _run(top(), incoming, kind, false)
 	for screen in old:
-		screen.queue_free()
+		if is_instance_valid(screen):
+			screen.queue_free()
 	_stack.clear()
 	_kinds.clear()
-	_stack.append(incoming)
+	if not is_instance_valid(incoming):
+		return
+	_adopt(incoming, kind)
 	_finish(incoming, false)
 
 
 func _run(outgoing: Control, incoming: Control, kind: UITransition.Kind, reverse: bool) -> void:
-	if outgoing is UIScreen:
+	if outgoing is UIScreen and is_instance_valid(outgoing):
 		(outgoing as UIScreen).remember_focus()
 	incoming.hide()
 	incoming.process_mode = Node.PROCESS_MODE_INHERIT
@@ -227,18 +245,45 @@ func _instance(source: Variant, params: Dictionary) -> Control:
 	if source is PackedScene:
 		node = (source as PackedScene).instantiate()
 	elif source is String or source is StringName:
-		node = (load(str(source)) as PackedScene).instantiate()
-	elif source is Control:
+		var scene: Resource = null
+		if ResourceLoader.exists(str(source)):
+			scene = load(str(source))
+		if scene is PackedScene:
+			node = (scene as PackedScene).instantiate()
+	elif source is Control and is_instance_valid(source):
 		node = source
 	var screen := node as Control
 	if screen == null:
-		push_error(
-			"UIRouter: cannot show %s (need a PackedScene, a scene path or a Control)" % str(source)
-		)
+		if node != null:
+			node.free()
+		push_error(NOT_SHOWN % str(source))
 		return null
 	if screen is UIScreen:
 		(screen as UIScreen).params = params
 	return screen
+
+
+## Puts a shown screen on the stack. It leaves the stack by itself when it is freed.
+func _adopt(screen: Control, kind: UITransition.Kind) -> void:
+	_stack.append(screen)
+	_kinds[screen] = kind
+	screen.tree_exiting.connect(_forget.bind(screen), CONNECT_ONE_SHOT)
+
+
+func _forget(screen: Control) -> void:
+	_stack.erase(screen)
+	_kinds.erase(screen)
+
+
+## Makes the screen on top of the stack visible and at rest, whatever a transition left on it.
+func _show_top() -> void:
+	var screen := top()
+	if screen == null:
+		return
+	screen.show()
+	screen.position.x = 0.0
+	screen.modulate = Color.WHITE
+	screen.scale = Vector2.ONE
 
 
 func _pause(screen: Control) -> void:
