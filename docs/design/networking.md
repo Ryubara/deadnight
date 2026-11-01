@@ -17,6 +17,10 @@ MultiplayerSynchronizer) and not netfox.
 - **Where it lives:** the spike's code in `spikes/net/` (transport interface, protocol v1, server, client) is the
   starting point; game systems stay plain data in and plain data out (the rules engine, the player simulation, the
   zombie state) so the server owns them and the protocol carries them.
+- **Zombie snapshots:** `ZombieCodec` spends 12 bytes a zombie and has hard limits (u16 ids alias past 65535, positions
+  wrap past 327.67 m from the origin); they are listed with their tests in
+  [the zombie research](../research/zombies.md#snapshot-limits), and the wire protocol must either keep to them or widen
+  the fields.
 - **Hosting:** the game server runs as a Docker image on Railway (TCP and WebSockets on its HTTPS domain); the platform
   backend is separate ([research](../research/platform-backend.md)).
 

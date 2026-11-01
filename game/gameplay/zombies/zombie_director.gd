@@ -40,9 +40,13 @@ func waiting_count() -> int:
 
 ## The seam for weapons: a hit on a zombie. `zone` is a Hitbox zone name, `damage` the final
 ## amount after falloff and zone multipliers. The rules decide the outcome; the zombie reacts.
+## A zombie the sim does not hold (still waiting for room, or gone) cannot be hit: rejected, no
+## damage, no kill, no payment.
 func take_hit(
 	zombie_id: int, zone: StringName, damage: float, shooter_id: int = -1, melee: bool = false
 ) -> Dictionary:
+	if not sim.zombies.has(zombie_id):
+		return {"accepted": false, "killed": false}
 	var result := port.deal_damage(shooter_id, zombie_id, zone, damage, melee)
 	if result["accepted"] and not result["killed"]:
 		sim.react_to_hit(zombie_id)
