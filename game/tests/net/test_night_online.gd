@@ -19,6 +19,15 @@ func after_test() -> void:
 	_commands.clear()
 	if is_instance_valid(_host):
 		_host.get_parent().queue_free()
+	# A freed night only fades its beds out, and a bed still sounding at quit holds its stream:
+	# the engine reports it as "resources still in use at exit". Stop them once the nights are gone.
+	await get_tree().process_frame
+	Audio.stop_all()
+
+
+func after() -> void:
+	# A voice stopped on the main thread stays in the audio server for a few mixer steps.
+	await Audio.wait_for_mixer()
 
 
 func _world() -> SubViewport:
