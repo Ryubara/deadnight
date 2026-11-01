@@ -32,6 +32,12 @@ var world: NightWorld
 var server: NightServer
 var link: LoopbackLink
 var state: ClientState
+## Every player's look and seat as this client heard them from the server; the bodies are dressed
+## from it.
+var looks := LookRegistry.new()
+## The look the local player sends on join, set before `start`; without one, the look saved in the
+## wardrobe (`LookStore`).
+var own_look: CharacterLook
 var view: NightView
 var autopilot: Autopilot
 ## The HUD to feed, set before `start`: it hears the night from its first event.
@@ -67,10 +73,13 @@ func start(
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, server)
+		_hud_binding = NightHudBinding.new(hud, state, server, looks)
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
-	link.delivered.connect(state.apply_events)
+	link.delivered.connect(_on_delivered)
+	looks.changed.connect(_dress_bodies)
 	link.send({"type": NightServer.JOIN, "player_id": PLAYER_ID, "local": mode == Mode.HUMAN})
+	var wanted := own_look if own_look != null else LookStore.load_look()
+	link.send({"type": NightServer.LOOK, "player_id": PLAYER_ID, "packet": LookWire.look(wanted)})
 	link.send({"type": NightServer.START_NIGHT})
 	link.pump()
 	var player := server.body_of(PLAYER_ID)
@@ -90,11 +99,44 @@ func start(
 	view.setup(state, camera, _telegraphs(), _board_seconds())
 	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
+	_add_sounds()
 	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
 	running = true
 	ready_to_play.emit()
+
+
+## The guns, the grenades and the lot's machines and shop sound from the same events as the view.
+func _add_sounds() -> void:
+	var weapons := WeaponSounds.new()
+	weapons.name = "WeaponSounds"
+	add_child(weapons)
+	weapons.setup(state)
+	var grenades := GrenadeSounds.new()
+	grenades.name = "GrenadeSounds"
+	add_child(grenades)
+	grenades.setup(state)
+	var lot := WorldSounds.new()
+	lot.name = "WorldSounds"
+	add_child(lot)
+	var tuning: RulesTuning = server.rules.tuning
+	var generator := world.greybox.get_node_or_null("GeneratorYard/Generator") as Node3D
+	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
+
+
+## Where the prize crane stands at `spot` (the rules' list of crane places), or null.
+func _crane_point(spot: int) -> Variant:
+	for place in world.shop_spots():
+		if place["kind"] == &"crane" and place["crane_spot"] == spot:
+			return place["position"]
+	return null
+
+
+## Where a circuit's breaker post stands, or null.
+func _post_point(circuit_id: StringName) -> Variant:
+	var post := world.switches.post(circuit_id)
+	return post.global_position if post != null else null
 
 
 ## Seconds each look's blow takes to land, for the looks of the types that telegraph it.
@@ -175,6 +217,29 @@ func tick() -> void:
 
 func _human_command() -> NightCommand:
 	return _human.command(player(), PLAYER_ID)
+
+
+## What the server answered: the look server's packets go to the look table, the rest to the
+## client's state.
+func _on_delivered(events: Array) -> void:
+	var rest := []
+	for event: Dictionary in events:
+		if event["type"] == NightServer.LOOK_PACKET:
+			if event["to"] == PLAYER_ID:
+				looks.receive(event["packet"])
+		else:
+			rest.append(event)
+	state.apply_events(rest)
+
+
+## A look arrived or changed: every body of this process wears what the table says (a lookalike
+## has its main colour moved on, so a change of one look can change another's).
+func _dress_bodies(_player_id: int) -> void:
+	var resolved := looks.resolved()
+	for id: int in resolved:
+		var body := server.body_of(id)
+		if body != null:
+			body.dress(resolved[id], looks.seats[id])
 
 
 func _on_event(event: Dictionary) -> void:

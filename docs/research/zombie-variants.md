@@ -78,7 +78,9 @@ seven).
 - **The style bible's zombie Idle height is the Crawl pose.** `measure_kit.py` and `render_sheet.py` show a clip by
   making it active over the import's own active action (Crawl). Bones the Idle does not key keep Crawl's pose, so the
   "Idle height 1.06 m" and the hunched kit zombie on the sheets are part crawl. With the fix above the walker's Idle
-  stands 1.25 m (kit scale). The style bible row needs a re-measure with the arm fix.
+  stands 1.25 m (kit scale). Re-measured for the style bible (#70) in Blender on `zombie_walker.glb`: the gameplay mesh's
+  vertices at the first frame of each clip, extent from the lowest to the highest vertex: rest 1.36 m, Idle 1.25 m
+  (top 1.23, the feet 0.02 below the floor), Walk 1.36, Run 1.21, Crawl 0.69. At game scale (x1.3) the Idle is 1.63 m.
 - **A part-recolour by palette is not enough.** The kit swatch at column 8 (a light bone colour) is both the teeth and
   the belt buckle; recolouring it as "shirt" painted the teeth blue. Recolour by swatch only for colours that mean one
   thing (skin, trousers, belt), and by bone weights for clothing.

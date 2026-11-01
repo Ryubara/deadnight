@@ -118,6 +118,27 @@ only through two actions:
   `unknown_barricade`, `player_downed` or `wrong_phase`. The pay stops at the cap (120 from one round's end to the
   next, so a break's repairs count against the next round's), but the board goes up either way.
 
+**Hold to repair** (#297). The player does not press once a board: a press of `interact` at a breach puts the first
+board up at once, and the button held down keeps putting boards up, one every `repair_interval` (night tuning, 1.0 s),
+at the rules' pay per board (12; nothing else changes). The rules know nothing of it: each `repair` is the same action
+a press sends, and the server paces them. The client sends the press (`use`, an edge) and whether the button is still
+down (`use_held`, a level) in every command, so it works the same from the keyboard, any gamepad and the touch button,
+which all press the `interact` action. The server lets go of the hold, and the next board needs a new press, when:
+
+| Ends with | Because |
+| --- | --- |
+| the button comes up | that is what holding means |
+| the breach is whole | nothing to put back (no `barricade_full` refusal is sent, the hold simply ends) |
+| the player is out of reach of the breach, or behind its boards | `use_target` no longer names it; walking back in while still holding does not resume |
+| the player is hit (`player_hurt`) | a blow knocks the hammer out of their hand |
+| the player fires, reloads or swaps | the hands are busy: a hold is not a thing to do while shooting |
+| the player goes down | downed players do nothing |
+
+A board torn off while the player holds is put back too (the hold names the breach, not a count). Nothing else repeats
+on a held `interact`: a door, a gun, the crane, a breaker and a fuel can stay one press each. `NightTuning.repair_hold`
+(off: one board a press, as before) and `repair_interval` are exported on the night tuning resource. A command that
+never arrives is not expired by the server (#163): a stalled client keeps its last level, as it does for `fire`.
+
 Whether a zombie is held at the boards is the simulation's, not the rules': every zombie spawned outside a breach
 stops short of its boards while any stand and works on them at its `barrier_speed` (a walker takes 1.2 s a board, the
 tuning's `seconds_per_board`: one swing); with none up it walks in; a type with `barrier_speed` 0 (a crawler) goes
@@ -142,19 +163,19 @@ player. Health climbs 8 a round to round 8, then compounds by 5% a round. The ru
 brute columns are each type's share of the round (the first round of a type brings an exact number
 instead: see the types below); special rounds replace the mix.
 
-| Round | Zombies 1p / 2p / 4p | Health | Walk m/s | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
+| Round | Zombies 1p / 2p / 4p | Health | Walk m/s, lit | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 4 / 6 / 11 | 50 | 0.90 | 0% | 0% | 0% | 3.20 s | 6 | 0.60 |
-| 2 | 5 / 9 / 15 | 58 | 1.00 | 0% | 0% | 0% | 3.07 s | 7 | 0.56 |
-| 3 | 7 / 11 / 19 | 66 | 1.10 | 0% | 0% | 0% | 2.95 s | 8 | 0.53 |
-| 4 | 9 / 14 / 24 | 74 | 1.20 | 6% | 0% | 0% | 2.83 s | 8 | 0.49 |
-| 5 | 10 / 17 / 29 | 82 | 1.30 | 10% | 0% | 0% | 2.72 s | 9 | 0.46 |
-| 6 | 12 / 20 / 34 | 90 | 1.40 | 14% | 5% | 0% | 2.61 s | 10 | 0.42 |
-| 8 | 17 / 26 / 46 | 106 | 1.60 | 22% | 9% | 3% | 2.40 s | 12 | 0.35 |
-| 10 | 21 / 34 / 60 | 117 | 1.80 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
-| 15 | 36 / 57 / 101 | 149 | 2.30 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
-| 20 | 54 / 86 / 151 | 190 | 2.80 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
-| 30 | 101 / 161 / 282 | 310 | 3.80 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
+| 1 | 4 / 6 / 11 | 50 | 1.20 | 0% | 0% | 0% | 3.20 s | 6 | 0.60 |
+| 2 | 5 / 9 / 15 | 58 | 1.36 | 0% | 0% | 0% | 3.07 s | 7 | 0.56 |
+| 3 | 7 / 11 / 19 | 66 | 1.52 | 0% | 0% | 0% | 2.95 s | 8 | 0.53 |
+| 4 | 9 / 14 / 24 | 74 | 1.68 | 6% | 0% | 0% | 2.83 s | 8 | 0.49 |
+| 5 | 10 / 17 / 29 | 82 | 1.84 | 10% | 0% | 0% | 2.72 s | 9 | 0.46 |
+| 6 | 12 / 20 / 34 | 90 | 2.00 | 14% | 5% | 0% | 2.61 s | 10 | 0.42 |
+| 8 | 17 / 26 / 46 | 106 | 2.32 | 22% | 9% | 3% | 2.40 s | 12 | 0.35 |
+| 10 | 21 / 34 / 60 | 117 | 2.64 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
+| 15 | 36 / 57 / 101 | 149 | 3.44 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
+| 20 | 54 / 86 / 151 | 190 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
+| 30 | 101 / 161 / 282 | 310 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
 
 Points (everything is per player):
 
