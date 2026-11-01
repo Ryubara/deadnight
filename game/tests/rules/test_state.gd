@@ -15,10 +15,11 @@ func _play(rules: GameRules, seconds: float) -> Array[Dictionary]:
 				spawned.append(event["zombie_id"])
 		# Every 40 steps the first player kills the oldest zombie; every 200 steps they spend.
 		if step % 40 == 0 and not spawned.is_empty():
-			caused.append_array(rules.apply(RulesAction.hit(1, spawned[0], true)))
 			caused.append_array(
-				rules.apply(RulesAction.kill(1, spawned.pop_front(), step % 80 == 0, false))
+				rules.apply(RulesAction.hit(1, spawned[0], RulesAction.ZONE_HEAD, 25.0))
 			)
+			var zone := RulesAction.ZONE_HEAD if step % 80 == 0 else RulesAction.ZONE_BODY
+			caused.append_array(RulesFixture.kill(rules, 1, spawned.pop_front(), zone))
 		if step % 200 == 0:
 			caused.append_array(rules.apply(RulesAction.buy(1, &"crane_play")))
 	return caused
@@ -49,7 +50,7 @@ func test_actions_and_events_are_plain_data() -> void:
 	var rules := RulesFixture.make_rules(2)
 	rules.apply(RulesAction.start())
 	rules.apply(RulesAction.skip_break())
-	var action := RulesAction.kill(1, 3, true, false)
+	var action := RulesAction.hit(1, 3, RulesAction.ZONE_HEAD, 25.5, true)
 	assert_dict(bytes_to_var(var_to_bytes(action))).is_equal(action)
 	for event in _play(rules, 20.0):
 		assert_dict(bytes_to_var(var_to_bytes(event))).is_equal(event)
@@ -119,3 +120,19 @@ func test_state_changes_only_through_apply() -> void:
 	rules.is_door_open(&"door_concession")
 	rules.to_dict()
 	assert_dict(rules.to_dict()).is_equal(before)
+
+
+func test_a_snapshot_carries_each_living_zombies_health() -> void:
+	var rules := RulesFixture.make_rules(1)
+	var log := RulesFixture.record(rules)
+	RulesFixture.into_round_one(rules)
+	RulesFixture.run(rules, 3.0)
+	var zombie_id := log.spawned_ids()[0]
+	rules.apply(RulesAction.hit(1, zombie_id, RulesAction.ZONE_BODY, 25.0))
+	var copy := GameRules.new(RulesFixture.tuning(), 5)
+	copy.from_dict(bytes_to_var(var_to_bytes(rules.to_dict())))
+	# 60 health - 25 = 35 left: a 40 kills it, and it pays the kill, not another hit.
+	var events := copy.apply(RulesAction.hit(1, zombie_id, RulesAction.ZONE_BODY, 40.0))
+	assert_float(events[0]["damage"]).is_equal(35.0)
+	assert_str(events.back()["cause"]).is_equal("killed")
+	assert_int(copy.points_of(1)).is_equal(200 + 4 + 60)

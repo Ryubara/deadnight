@@ -25,16 +25,51 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   and same actions give the same night.
 - **Snapshots.** `to_dict()` returns everything (Variant data, safe for `var_to_bytes`; the tuning
   is left out because both sides load the same table) and `from_dict()` restores it, random streams
-  included, without emitting events. A restored copy continues exactly like the original (tested), so
-  a late joiner or a restarted server can pick up mid-night. Random states are 64-bit integers:
-  convert them before sending as JSON.
+  and each living zombie's health included, without emitting events. A restored copy continues
+  exactly like the original (tested), so a late joiner or a restarted server can pick up mid-night.
+  Random states are 64-bit integers: convert them before sending as JSON.
 - **Reads change nothing.** `points_of`, `price_of`, `is_door_open` and `zombies_remaining` are
   queries; clients may call them on their mirror.
 
-The world's side: build a zombie when `zombie_spawn_requested` arrives (choose the spawn point with
-`point_roll % count`); send `hit` for non-lethal hits and `kill` for the killing blow; send
-`zombie_gone` for a death that is not a player's; send `repair` per board; send `set_downed` as
-players go down and get up.
+## Actions and events (the seam)
+
+Both are plain dictionaries (numbers, strings, booleans), safe for any transport. `apply` checks
+every action first (`RulesAction.validate`, the one schema the server and the tests share): a
+missing field, a wrong type, a negative, NaN or oversize tick, a damage outside `0..100000`, an unknown
+zone or an unknown id is answered with one `action_rejected` event and **changes nothing**; it
+never raises. Names may arrive as Strings (JSON has no `StringName`); whole numbers must be ints.
+
+| Action | Fields | Who sends it |
+| --- | --- | --- |
+| `hit` | `player_id`, `zombie_id`, `zone` (`head`, `body`, `limb`), `damage` (float, `> 0`), optional `melee` | the weapon code, from a player's shot or swing |
+| `repair`, `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
+| `tick` | `delta` (`0..1` s) | the server's fixed step only |
+| `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
+
+**Who owns a zombie's health: the rules.** `zombie_spawn_requested` gives the id and the health the
+rules just assigned; from then on the rules track it. A `hit` takes `damage` off (`damage` is what the
+weapon dealt, zone multiplier already applied; `zone` only decides the pay), so a kill is never a
+claim: it is the hit that empties the health, decided by the server. There is no `kill` action.
+
+| Event | Fields | The world should |
+| --- | --- | --- |
+| `zombie_spawn_requested` | `zombie_id`, `health`, `speed`, `point_roll` | build the zombie; pick the spawn point with `point_roll % count` |
+| `zombie_damaged` | `zombie_id`, `player_id`, `zone`, `damage` (taken off), `health` (left) | play the hit reaction; drive the health bar |
+| `zombie_removed` | `zombie_id`, `cause` (`killed` or `gone`), `killer_id`, `zone`, `melee` | play the death for `killed` (by `zone`, `melee`), vanish quietly for `gone` |
+| `action_rejected` | `reason`, `action`, optional `field` | tell only the sender; never broadcast |
+
+A `hit` is rejected (`reason`) as `wrong_phase` (not in an active round), `unknown_player`,
+`player_downed` or `unknown_zombie`. The last one is routine, not an error: two shots land on the same
+dying zombie, and the second is rejected and pays nothing. The world sends `zombie_gone` for a death
+that is not a player's (a trap, a fall) and `set_downed` as players go down and get up.
+
+**What a zombie is worth.** The first 4 hits that do not kill pay 4 (8 to the head); the hit that
+kills pays the kill (60, head 100, melee 130) instead of a hit. Any hits after the fourth, and hits
+on a dead zombie, pay nothing, so a zombie is worth at most 4 hits and a kill (132 with the head)
+however many shots it takes; tiny hits cannot farm it. The tables below still hold.
+
+Not the rules' job: whether a client could really have fired that shot (aim, range, rate of fire,
+ammo). The server checks that when it builds the `hit`, and the network layer rate-limits.
 
 ## How rounds work
 
@@ -67,7 +102,7 @@ Points (everything is per player):
 | Source | Points |
 | --- | ---: |
 | Starting points | 200 |
-| Hit that does not kill / headshot hit | 4 / 8 |
+| Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
 | Kill / headshot kill / melee kill | 60 / 100 / 130 |
 | Repair one board (at most 120 a round) | 12 |
 | Round survived, standing | 20 + 10 per round |

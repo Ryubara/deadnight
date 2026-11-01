@@ -35,3 +35,23 @@ What building the round, points and fuel rules (`game/gameplay/rules/`) taught u
   script error may hang the job until its timeout.
 - `gdlint` limits a function to six `return`s and a line to 100 characters, comments included, and
   `gdformat` runs only on tracked files: `git add` new scripts before `pre-commit run --all-files`.
+- A new `class_name` is invisible to headless runs until `godot --headless --path game --import`
+  has rebuilt the global class cache; before that every suite fails with "Failed to compile depended
+  scripts".
+
+## Hardening after the review (#59, #60)
+
+- **The rules own the health.** The review found 1000 headshot hits on one zombie paying 8,200
+  points because `hit` was a claim, not damage. Now `ZombieState` (health, paid hits) lives in the
+  rules, `hit` carries a `zone` and `damage`, the hit that empties the health is the kill, and there
+  is no `kill` action. Nothing the client sends can end a zombie any other way.
+- **Cap paid hits per zombie, not just health.** Health alone still lets 0.01-damage hits pay
+  thousands of times before the zombie dies, so only the first `max_paid_hits` (4) non-lethal hits
+  pay. A zombie is then a bounded purse (4 hits and the kill).
+- **Validate before dispatch, with one schema.** `RulesAction.REQUIRED`/`OPTIONAL` map each type to
+  its fields and types and `validate` also bounds values (tick `0..1`, damage, grant). `apply` runs
+  it first, so no handler ever indexes a missing key. Accept `String` for names and `int` for
+  floats because JSON has neither `StringName` nor a float/int split. NaN fails a range check
+  written as `is_finite(v) and v >= low and v <= high`.
+- **Rejections go to the sender.** `action_rejected` carries `reason`, `action` and `field`. A hit on
+  a zombie that died a frame earlier is a routine `unknown_zombie`, not a fault.
