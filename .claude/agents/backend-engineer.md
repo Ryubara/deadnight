@@ -27,4 +27,7 @@ kit's (`<workspace>/repos/gdstudio/AGENTS.md`) are your rules; read both first, 
 5. **Deploy to test it**: you may create and deploy GDStudio projects, services and databases on Railway with the
    logged-in `railway` CLI, local and remote. Never touch the account's other projects, never commit tokens, and scale
    down what is not in use. Creating Discord applications stays the maintainer's: make it ready and write the steps.
-6. **Pull request** with `Fixes #N`, test output, and a diagram where a flow is involved.
+6. **Pull request** with `Fixes #N`, test output, and a diagram where a flow is involved. Fill `## Issues affected`
+   (each other open issue it partly fixes or makes out of date, `- #N: how`, or `None (reason)`); a `Fix` pull
+   request adds a `Failed first:` line naming the test that failed before the fix and passes after. Issues you open
+   start with a `From:` line and carry the area label (`--label A-<area>`).
