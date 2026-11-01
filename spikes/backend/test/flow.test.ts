@@ -229,14 +229,14 @@ describe("platform backend, end to end", () => {
       fetch(`${base}/saves/main`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${ivy.token}` },
-        body: JSON.stringify({ revision, data }),
+        body: JSON.stringify({ revision, schemaVersion: 1, data }),
       });
     assert.equal((await put(0, { night: 1 })).status, 200);
     assert.equal((await put(0, { night: 99 })).status, 409); // stale
     assert.equal((await put(1, { night: 2 })).status, 200);
 
     const read = await fetch(`${base}/saves/main`, { headers: { Authorization: `Bearer ${ivy.token}` } });
-    assert.deepEqual(await read.json(), { revision: 2, data: { night: 2 } });
+    assert.deepEqual(await read.json(), { revision: 2, schemaVersion: 1, data: { night: 2 } });
 
     const other = await signIn(base, "stub:5002:jon");
     const otherRead = await fetch(`${base}/saves/main`, { headers: { Authorization: `Bearer ${other.token}` } });

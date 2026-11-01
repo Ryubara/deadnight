@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS saves (
   data jsonb NOT NULL,
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, slot)
-);`;
+);
+-- Saves written before the format was versioned are version 1 by definition.
+ALTER TABLE saves ADD COLUMN IF NOT EXISTS schema_version integer NOT NULL DEFAULT 1;`;
 
 export class PgStore implements Store {
   private readonly pool: pg.Pool;
@@ -47,23 +49,28 @@ export class PgStore implements Store {
   }
 
   async getSave(userId: string, slot: string): Promise<Save | null> {
-    const { rows } = await this.pool.query("SELECT revision, data FROM saves WHERE user_id = $1 AND slot = $2", [
-      userId,
-      slot,
-    ]);
-    return rows[0] ? { revision: rows[0].revision, data: rows[0].data } : null;
+    const { rows } = await this.pool.query(
+      "SELECT revision, schema_version, data FROM saves WHERE user_id = $1 AND slot = $2",
+      [userId, slot],
+    );
+    return rows[0] ? { revision: rows[0].revision, schemaVersion: rows[0].schema_version, data: rows[0].data } : null;
   }
 
-  async putSave(userId: string, slot: string, data: Record<string, unknown>, expectedRevision: number): Promise<Save> {
+  async putSave(
+    userId: string,
+    slot: string,
+    { schemaVersion, data }: { schemaVersion: number; data: Record<string, unknown> },
+    expectedRevision: number,
+  ): Promise<Save> {
     const insert = expectedRevision === 0;
     const sql = insert
-      ? `INSERT INTO saves (user_id, slot, revision, data) VALUES ($1, $2, 1, $3)
+      ? `INSERT INTO saves (user_id, slot, revision, data, schema_version) VALUES ($1, $2, 1, $3, $4)
          ON CONFLICT DO NOTHING RETURNING revision`
-      : `UPDATE saves SET revision = revision + 1, data = $3, updated_at = now()
-         WHERE user_id = $1 AND slot = $2 AND revision = $4 RETURNING revision`;
-    const params = insert ? [userId, slot, data] : [userId, slot, data, expectedRevision];
+      : `UPDATE saves SET revision = revision + 1, data = $3, schema_version = $4, updated_at = now()
+         WHERE user_id = $1 AND slot = $2 AND revision = $5 RETURNING revision`;
+    const params = insert ? [userId, slot, data, schemaVersion] : [userId, slot, data, schemaVersion, expectedRevision];
     const { rows } = await this.pool.query(sql, params);
-    if (rows[0]) return { revision: rows[0].revision, data };
+    if (rows[0]) return { revision: rows[0].revision, schemaVersion, data };
     const current = await this.getSave(userId, slot);
     throw new RevisionConflict(current?.revision ?? 0);
   }

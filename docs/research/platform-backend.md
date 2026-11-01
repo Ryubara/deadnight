@@ -48,7 +48,8 @@ image):
   allocates a game server). A user is in at most one open lobby (409 `already_in_lobby`).
 - `POST /lobbies/:id/ticket` returns `{address: {url, activityPath}, ticket}` for the caller's seat. The ticket names
   the game server it is for (`serverId`) and has a unique id (`jti`); see [the ticket](#the-game-server-ticket).
-- `PUT/GET /saves/:slot` with a revision number, so a stale write is a 409 instead of lost progress.
+- `PUT/GET /saves/:slot`: a save is `{revision, schemaVersion, data}`; a stale `revision` is a 409 instead of lost
+  progress. Format rules: [Save format](#save-format).
 - `POST /internal/servers/heartbeat` (shared secret): a game server announces itself, its capacity and the ids of the
   matches it is running. `POST /internal/matches/:id/end` (shared secret): a match is over, its slot is free.
   How lobbies and capacity end: [Lobby and match lifecycle](#lobby-and-match-lifecycle).
@@ -102,6 +103,27 @@ sequenceDiagram
     G->>G: verify signature, expiry, serverId = me, matchId, jti not seen before
     G-->>A: welcome, then the simulation ticks
 ```
+
+## Save format
+
+A save is the envelope `{revision, schemaVersion, data}`. `PUT` needs all three; `GET` returns all three (404 when the
+slot is empty). Both validate the slot (`[a-z0-9_-]`, 1 to 32 characters).
+
+- **`revision`** is optimistic concurrency: write the revision you read (0 for a new slot), a stale one is 409
+  `revision_conflict`. Atomic in both stores (`INSERT ... ON CONFLICT DO NOTHING`, `UPDATE ... WHERE revision`).
+- **`schemaVersion`** says how to read `data`. The backend holds a closed list (`SAVE_SCHEMA_VERSIONS` in
+  `src/saves.ts`, now `[1]`) and refuses any other with 422 `unsupported_schema_version` and the list it knows. It
+  never looks inside `data` to migrate it: the game owns the layout. To change what a save contains: add version N+1 to
+  the list and deploy the backend first (it then accepts both), then ship the game, which reads any version it knows,
+  migrates in memory and writes back the newest with the revision it read. Drop an old version from the list only when
+  no client writes it. Rows saved before versioning count as version 1.
+- **`data`** is an object up to 64 KiB, opaque to the backend. **64-bit values never travel as JSON numbers.** A number
+  in JSON becomes a double (`JSON.parse("18446744073709551557")` gives `18446744073709552000`), and Postgres `jsonb`
+  read through Node does the same, so the backend refuses any integer of 2^53 or more with 422 `unsafe_integer` and the
+  path (`/rng/state`) instead of rounding it. Send such a value as a decimal string, or send the whole snapshot as one
+  opaque base64 string of `var_to_bytes` (the rules snapshot's `to_wire()` is exactly that, see
+  [rounds](../design/rounds.md)). Strings come back unchanged, tested through the API and against Postgres. Floats
+  below 2^53 and integers up to 2^53 - 1 are ordinary JSON numbers.
 
 ## Lobby and match lifecycle
 

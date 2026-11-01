@@ -6,6 +6,7 @@ Throwaway prototype for [the platform backend research](../../docs/research/plat
 ```sh
 npm ci
 npm test                       # no services needed
+TEST_DATABASE_URL=postgres://... npm test   # also runs the Postgres store tests (a throwaway database)
 sh scripts/dev-compose.sh up --build -d   # Postgres + backend + stub game server, throwaway secrets
 npm run e2e                    # two players sign in, share a lobby, connect to the game server
 sh scripts/dev-compose.sh down -v
