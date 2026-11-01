@@ -203,9 +203,9 @@ func set_player_name(player_id: int, display_name: String) -> void:
 	_flush()
 
 
-## An interaction the player stands at. `kind` is `buy_door`, `buy_weapon`, `fill_fuel`, `repair` or
-## `revive`; `cost` is points (0 for free); `label` names the thing and `detail` is the one line
-## on what it does (a default per kind when empty).
+## An interaction the player stands at. `kind` is `buy_door`, `buy_weapon`, `fill_fuel`, `repair`,
+## `circuit` or `revive`; `cost` is points (0 for free); `label` names the thing and `detail` is the
+## one line on what it does (a default per kind when empty).
 func set_prompt(kind: StringName, label: String, cost := 0, detail := "") -> void:
 	var next := {"kind": kind, "label": label, "cost": cost, "detail": detail}
 	if prompt != next:

@@ -28,6 +28,21 @@ it taught:
   the first node that has it.
 - A fresh git worktree has no `addons/gdUnit4` (it is ignored): copy it from the main checkout before running tests.
 
+### The breaker posts
+
+Where they stand and how they work is in [the lot](../design/map.md#the-breaker-posts); what building them taught:
+
+- **Anything solid near a car-row gap fails the camera test.** The first post for the field's circuit stood at (8, -45),
+  inside the first car row, and `test_the_arm_keeps_its_full_length_in_corridors` failed on `CarGap_R1c`: the arm runs
+  2.8 m back from a probe toward the screen and the post was in it. The post moved to the avenue, away from every probe.
+- **A post is a `StaticBody3D`, not CSG**, so it does not need the navigation bake's care; the dead path round it. Its
+  lamp is an emissive mesh with its own material (shared sub-resources would light every post together) and is no
+  `powered_light`, so it never lights ground for the dead.
+- **The prompt's winner is the first match**: door, then breach, then post. A post stands more than `use_reach` from
+  every slab of every door (a test checks it), so the order never decides between two things a player stands at.
+- **The bot's `use` is an edge, so it needs the circuit it sees**: frames carry `circuits`, and the bot only presses
+  when the post is thrown the wrong way; the server also refuses a second throw within `switch_interval`.
+
 ## CSG
 
 - A scene of plain `CSGBox3D` roots (no combiners, no subtraction) builds fast: 350 nodes load in well under a

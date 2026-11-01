@@ -14,6 +14,8 @@ extends Resource
 @export var use_reach: float = 3.2
 ## Seconds between two boards put back.
 @export var repair_interval: float = 1.0
+## Seconds before the same hand can throw a breaker again (a held key does not flicker the lights).
+@export var switch_interval: float = 0.5
 
 @export_group("Shots")
 ## The barrel, relative to the player's feet and facing (x right, -z forward).

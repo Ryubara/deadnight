@@ -57,7 +57,29 @@ BOARD_PITCH = 0.6
 APRON_DEPTH = 8.0
 APRON_WIDTH = 12.0
 SPAWN_OUTSIDE = 4.0  # the dead appear this far outside the fence line
+# The breaker posts: (circuit, the shop door of the area it lights, where, the way its front faces as (x, z)).
+SWITCHES = [
+    ("screen_lot", "", (0.0, 0.0, -46.2), (0.0, 1.0)),  # behind the players' spawns, in the avenue below the screen
+    ("concession", "door_concession", (8.5, 0.0, -4.6), (0.0, -1.0)),  # on the stand's front wall, field side
+    ("booth", "door_booth", (4.6, 0.0, 21.5), (0.0, -1.0)),  # on the booth's north wall, midway side
+    ("back_lot", "door_back_lot", (-35.5, 0.0, -4.6), (0.0, -1.0)),  # on the field's south fence, by the gate
+]
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
+
+# The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
+# a flat ambient colour and one moon light with no shadows (the web build is WebGL2).
+MOON_TOWARDS = (0.30, 0.62, -0.72)  # the direction to the moon: over the screen, so the player faces it at the start
+MOON_LIGHT = "#9db4e8"
+MOON_ENERGY = 0.36
+SKY_ZENITH = "#050a1f"
+SKY_MID = "#0b1636"
+SKY_HORIZON = "#1a2a5a"
+SKY_GROUND = "#0a1330"
+AMBIENT = "#4d5c8c"
+AMBIENT_ENERGY = 0.24
+TONEMAP_EXPOSURE = 1.0
+FOG = "#16224a"
+FOG_DENSITY = 0.013
 
 # Materials per surface: game/assets/lot/materials/<id>.tres, written by tools/world/build_lot_textures.py (the
 # style bible's palette tinting a flat-toned pattern, projected in world space). Every id used below is listed here.
@@ -87,6 +109,50 @@ def shop_doors() -> dict[str, tuple[int, str]]:
         if item and price:
             found[item.group(1)] = (int(price.group(1)), needs.group(1) if needs else "")
     return found
+
+
+def moon_transform() -> str:
+    """The Moon light's transform: it shines along -Z, so its Z axis points at the moon."""
+    z = tuple(c / math.sqrt(sum(d * d for d in MOON_TOWARDS)) for c in MOON_TOWARDS)
+    x = (z[2], 0.0, -z[0])  # up x z, then normalised
+    xl = math.hypot(x[0], x[2])
+    x = (x[0] / xl, 0.0, x[2] / xl)
+    y = (z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0])
+    rows = (x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2])
+    return "Transform3D({}, 0, 20, 0)".format(", ".join(f"{v:.4f}" for v in rows))
+
+
+def night_environment_resources() -> list[str]:
+    """The sky material, the sky and the environment (docs/research/night-environment.md): one place for the look."""
+    moon = tuple(round(c / math.sqrt(sum(d * d for d in MOON_TOWARDS)), 4) for c in MOON_TOWARDS)
+    out = [
+        '[sub_resource type="ShaderMaterial" id="night_sky_material"]',
+        'shader = ExtResource("night_sky")',
+        f"shader_parameter/moon_direction = {vec(moon)}",
+        f"shader_parameter/zenith_color = {color(SKY_ZENITH)}",
+        f"shader_parameter/mid_color = {color(SKY_MID)}",
+        f"shader_parameter/horizon_color = {color(SKY_HORIZON)}",
+        f"shader_parameter/ground_color = {color(SKY_GROUND)}",
+        "",
+        '[sub_resource type="Sky" id="night_sky_resource"]',
+        'sky_material = SubResource("night_sky_material")',
+        "radiance_size = 0",
+        "",
+        '[sub_resource type="Environment" id="night"]',
+        "background_mode = 2",
+        'sky = SubResource("night_sky_resource")',
+        "ambient_light_source = 2",
+        f"ambient_light_color = {color(AMBIENT)}",
+        f"ambient_light_energy = {AMBIENT_ENERGY:g}",
+        "tonemap_mode = 2",
+        f"tonemap_exposure = {TONEMAP_EXPOSURE:g}",
+        "fog_enabled = true",
+        f"fog_light_color = {color(FOG)}",
+        f"fog_density = {FOG_DENSITY:g}",
+        "fog_sky_affect = 0",
+        "",
+    ]
+    return out
 
 
 def vec(v: tuple[float, float, float]) -> str:
@@ -411,21 +477,15 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/car.tscn" id="car"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lamp_post.tscn" id="lamp"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]')
+    lines.append('[ext_resource type="Shader" path="res://world/drive_in/night_sky.gdshader" id="night_sky"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
     lines.append("")
     for mid in MATS:
         lines.append(f'[ext_resource type="Material" path="res://assets/lot/materials/{mid}.tres" id="{mid}"]')
     lines.append("")
-    lines.append('[sub_resource type="Environment" id="night"]')
-    lines.append("background_mode = 1")
-    lines.append("background_color = Color(0.015, 0.02, 0.05, 1)")
-    lines.append("ambient_light_source = 2")
-    lines.append("ambient_light_color = Color(0.3, 0.36, 0.55, 1)")
-    lines.append("ambient_light_energy = 0.35")
-    lines.append("tonemap_mode = 2")
-    lines.append("")
-
+    lines.extend(night_environment_resources())
     node("DriveInGreybox", "Node3D", None)
     lines.pop()  # drop the blank line so the root gets its metadata below
     lines.append("")
@@ -437,9 +497,9 @@ def build() -> None:
         "DirectionalLight3D",
         lighting,
         {
-            "transform": "Transform3D(0.866, -0.2165, 0.4495, 0, 0.9, 0.4334, -0.5, -0.375, 0.7785, 0, 20, 0)",
-            "light_color": color("#9db4e8"),
-            "light_energy": "0.35",
+            "transform": moon_transform(),
+            "light_color": color(MOON_LIGHT),
+            "light_energy": f"{MOON_ENERGY:g}",
         },
     )
 
@@ -724,6 +784,17 @@ def build() -> None:
     slab("Door_BackLot", "Midway", (-16, MIDWAY_LINK_Z), MIDWAY_LINK, 2.6, "z")
     door("Door_Road", (0, 3.3, 35.5))
     slab("Door_Road", "Front", (0, 38), 4.0, 2.6, "x")
+
+    # --- Circuit switches: a breaker post for each circuit a player can switch ------------------------------------------
+    # Each stands where the area's door is bought from, well clear of the door's slabs (a door's prompt is the first
+    # to win), and faces the way the player arrives. The yard's `mains` has none: it is wired to the generator.
+    group("Switches", ".")
+    for circuit, door_id, at, front in SWITCHES:
+        instance("Switches", f"Switch_{circuit}", "switch", at, math.degrees(math.atan2(front[0], front[1])))
+        lines.pop()  # the metadata joins the instance's node, so the blank line goes after it
+        lines.append(f'metadata/circuit = "{circuit}"')
+        lines.append(f'metadata/door = "{door_id}"')
+        lines.append("")
 
     # --- Camera probes: every narrow place the over-the-shoulder camera has to get through -----------------------
     # Each marker faces the way a player walks through; the tests sweep the spring arm from it, both ways round.

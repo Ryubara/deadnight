@@ -2,7 +2,8 @@ extends Node
 ## Plays a night with the autopilot, for captures and for watching its numbers. Not part of the
 ## game. Arguments after `--`: `--rounds=N` (stop once round N has started, default 3),
 ## `--speed=N` (ticks per frame), `--seed=N`, `--seconds=S` (stop after S game seconds),
-## `--log` (print every event), `--fast` (quick dead for a recording), `--trace`.
+## `--log` (print every event), `--fast` (quick dead for a recording), `--trace`,
+## `--shoulder` (film through the bot's own shoulder camera).
 
 ## Real seconds the audio mixer gets to drop stopped voices before the program quits.
 const QUIT_SETTLE_SECONDS := 0.3
@@ -26,6 +27,7 @@ func _ready() -> void:
 	_night.hud = _hud
 	add_child(_night)
 	_night.ticks_per_frame = int(_args.get("speed", 1))
+	_night.shoulder_camera = _args.has("shoulder")
 	await _night.start(Night.Mode.AUTOPILOT, int(_args.get("seed", Night.SEED)), _tuning())
 	_night.ticked.connect(_on_tick)
 	if _args.has("log"):
