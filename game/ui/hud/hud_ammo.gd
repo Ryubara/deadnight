@@ -6,6 +6,8 @@ extends HudTicket
 ## then an ellipsis.
 
 const LOW_FRACTION := 0.25
+## What the numbers read for a weapon that uses no ammunition.
+const NO_AMMO_MARK := "--"
 const WIDTH := 330.0
 ## The smallest the magazine and reserve scale to, as a fraction of their usual sizes.
 const SMALLEST_SCALE := 0.5
@@ -65,9 +67,16 @@ func refresh() -> void:
 	_magazine_size = maxi(_magazine_size, state.ammo_magazine)
 	is_low = state.ammo_magazine <= maxi(1, int(_magazine_size * LOW_FRACTION))
 	HudStyle.set_fitted(_weapon, state.weapon_name.to_upper(), HudStyle.SMALL, _bar_room())
-	_fit_numbers(str(state.ammo_magazine), "/ %d" % state.ammo_reserve)
+	if state.ammo_used:
+		_fit_numbers(str(state.ammo_magazine), "/ %d" % state.ammo_reserve)
+	else:
+		_fit_numbers(NO_AMMO_MARK, "/ %s" % NO_AMMO_MARK)
 	var hint := ""
-	if state.ammo_magazine == 0:
+	if not state.ammo_used:
+		is_low = false
+	elif state.ammo_reloading:
+		hint = "RELOADING"
+	elif state.ammo_magazine == 0:
 		hint = "NO AMMO" if state.ammo_reserve == 0 else "RELOAD"
 	elif is_low:
 		hint = "LOW"

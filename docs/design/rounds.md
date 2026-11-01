@@ -14,7 +14,7 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `PlayerState` per player, one `GeneratorState`, two seeded random streams) and uses no scene-tree
   node, no Godot multiplayer, no clock and no global random.
 - **Change only through actions.** `rules.apply(action)` takes a plain dictionary built by
-  `RulesAction` (`tick`, `hit`, `kill`, `repair`, `buy`, `set_circuit`, `set_downed`, `add_player`
+  `RulesAction` (`tick`, `hit`, `kill`, `repair`, `tear_board`, `buy`, `set_circuit`, `set_downed`, `add_player`
   and so on) and returns the **events** it caused, also plain dictionaries
   (`{"type": &"points_changed", "player_id": 1, "total": 260, ...}`). The same events go out through
   `event_emitted` after the state has settled. A server applies what clients ask for, broadcasts the
@@ -36,7 +36,8 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `malformed`, and leaves the night as it was. The version is checked first, so a snapshot of any older
   layout answers `bad_version`; the insides are checked before anything changes (a plan naming no type,
   a zombie without a `type`, a player or the generator missing a field answer `malformed`). The
-  version is 5; 4 named two different layouts and is never used again.
+  version is 7 (5 added the plan and the zombies' type, 6 the players' health, 7 the fence's boards); 4 named two
+  different layouts and is never used again.
 - **Reads change nothing.** `points_of`, `price_of`, `is_door_open` and `zombies_remaining` are
   queries; clients may call them on their mirror.
 
@@ -53,7 +54,9 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `hit` | `player_id`, `zombie_id`, `zone` (`head`, `body`, `limb`, `weak`), `damage` (float, `> 0`), optional `melee` | the weapon code, from a player's shot or swing |
 | `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
-| `repair`, `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
+| `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
+| `repair` (`barricade_id`), `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
+| `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
 
@@ -72,8 +75,13 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `special_round_cleared` | `round`, `special_id`, `reward` | the reward line; `reward` was paid to each player on their feet as `points_changed` with reason `special_reward` |
 | `round_ended` | `round`, `special_id` | |
 | `zombie_crippled` | `zombie_id`, `zombie_type` (the crawler it became), `look`, `player_id`, `cause` (`legs` or `wounded`), `health` (left), `speed_scale` | switch the zombie to a crawler (lower, slower by `speed_scale`); sent once per zombie, after its `zombie_damaged` |
+| `player_hurt` | `player_id`, `damage` (taken off), `health` (left), `max_health`, `bearing`, `source_id` | the HUD's damage arc toward `bearing` (turned by where the player faces), the health bar; the camera shake |
+| `player_healed` | `player_id`, `health`, `max_health`, `reason` (`regen` or `revive`) | the health bar. `regen` is sent when the whole-unit health changes (about 25 a second while mending), `revive` once with `player_revived` |
+| `player_downed` | `player_id`, `cause` (`blow` or `forced`), `bearing` | the DOWN tag and the held red frame; the night ends when every player is down |
 | `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
+| `board_torn` | `barricade_id`, `boards` (left), `zombie_id` | take the top board off that breach; a splinter burst and a sound there |
+| `board_repaired` | `barricade_id`, `boards` (now up), `player_id` | put a board back on that breach |
 | `action_rejected` | `reason`, `action`, optional `field` | tell only the sender; never broadcast |
 
 The event's own key is `type`, so a zombie's type is `zombie_type` everywhere; no field is ever called `type`.
@@ -83,6 +91,12 @@ A `hit` is rejected (`reason`) as `wrong_phase` (not in an active round), `unkno
 dying zombie, and the second is rejected and pays nothing. The world sends `zombie_gone` for a death
 that is not a player's (a trap, a fall) and `set_downed` as players go down and get up.
 
+**Who owns a player's health: the rules too.** A player starts with `HealthTuning.max_health` (it is the player's
+own `max_health`, so a tonic can raise it), a `blow` takes it off and restarts the wait, and a player at zero is
+down. After `regen_delay` seconds without a blow health mends at `regen_per_second` (in a break as well as a
+round), announced as `player_healed` whenever the whole-unit value changes. Getting up (a `set_downed` false, or the
+end of the round) restores all of it. Health, its maximum and the wait since the last blow are in the snapshot.
+
 **What a zombie is worth.** The first 4 hits that do not kill pay 4 (8 to the head); the hit that
 kills pays the kill (60, head 100, melee 130) instead of a hit. Any hits after the fourth, and hits
 on a dead zombie, pay nothing, so a zombie is worth at most 4 hits and a kill (132 with the head)
@@ -90,6 +104,24 @@ however many shots it takes; tiny hits cannot farm it. The tables below still ho
 
 Not the rules' job: whether a client could really have fired that shot (aim, range, rate of fire,
 ammo). The server checks that when it builds the `hit`, and the network layer rate-limits.
+
+## The fence's boards
+
+Six breaches in the field's fence (`barricades` in the tuning: `nw`, `ne`, `w`, `e`, `n`, `n2`) are each closed by
+5 boards. The rules keep the count (`GameRules.barricades`, `boards_of(id)`; it rides the snapshot) and change it
+only through two actions:
+
+- **`tear_board`** (server only, from the zombie simulation, for a living zombie): one board off, answered by
+  `board_torn`; `no_boards` when none are left.
+- **`repair`** (a player): one board back, in a break or a round, answered by `board_repaired` and the points
+  (`points_changed`, reason `repair`). Refused as `barricade_full` (nothing to put back, so nothing to farm),
+  `unknown_barricade`, `player_downed` or `wrong_phase`. The pay stops at the cap (120 from one round's end to the
+  next, so a break's repairs count against the next round's), but the board goes up either way.
+
+Whether a zombie is held at the boards is the simulation's, not the rules': every zombie spawned outside a breach
+stops short of its boards while any stand and works on them at its `barrier_speed` (a walker takes 1.2 s a board, the
+tuning's `seconds_per_board`: one swing); with none up it walks in; a type with `barrier_speed` 0 (a crawler) goes
+under without a stop. How the world draws and holds it is in [the map](map.md#the-fences-breaches).
 
 ## How rounds work
 
@@ -132,7 +164,7 @@ Points (everything is per player):
 | Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
 | Kill / headshot kill / melee kill | 60 / 100 / 130 |
 | Kill by a grenade blast | 40 (times the type's pay, like a bullet's) |
-| Repair one board (at most 120 a round) | 12 |
+| Repair one board (at most 120 from one round's end to the next) | 12 |
 | Round survived, standing | 20 + 10 per round |
 | Special round cleared, standing | 150 or 200 + 40 per round (by kind, see below) |
 
@@ -175,10 +207,11 @@ the counts' remainders, the speed jitter and the look all come from the seeded s
 `health`, `speed`, `damage` (a landed blow), `knockback` (metres), `telegraph_seconds` (the wind-up the
 player may read and dodge; 0 is the ordinary swing), `barrier_speed` (1 is a walker; 0 skips barriers)
 and `hit_chance` (the shot-landing factor for hitboxes). The rules never move a zombie; they say what it
-is. The night reads all of them but `barrier_speed` (no barrier yet): damage, knockback, the
-telegraph, the look and `hit_chance` (which sizes the zones;
+is. The night reads all of them: damage, knockback, the telegraph, the look, `barrier_speed` (how fast it
+tears the fence's boards, below) and `hit_chance` (which sizes the zones;
 [zombies research](../research/zombies.md#types-in-the-night)). A `weak` hit (the boss's lit bulb) is a zone like
-`head`: the weapon sends it when the ray hits that box, and the rules multiply the damage by the type's
+`head`: the weapon sends it when the ray hits that box (`Hitbox.WEAK`, only on a zombie that has a weak spot: the
+headliner), and the rules multiply the damage by the type's
 `weak_multiplier` and pay it like a headshot.
 Everything is plain numbers and names in the event, so the zombie code and the HUD never look a type up.
 
@@ -196,13 +229,14 @@ and start again:
 
 **Announced.** The break before a special round is 10 s longer (`break_bonus_seconds`), and starts with
 `special_round_announced` (round, kind, title, `boss_type`, `boss_count`, `seconds`), the cue for the HUD
-marquee, the sting and the flickering lights. `round_started` repeats the `special_id` and `boss_count`,
-so a client that joined late shows it too.
+marquee, the sting and the flickering lights. `round_started` repeats the `special_id` and `boss_count`
+for a client that is there at the time. A client that joins late has no `round_started`: it gets a snapshot with
+the `special_id` in it, which the HUD does not read yet (#182).
 
 **Paid.** Clearing it pays every player on their feet a reward on top of the round bonus
 (`special_reward`: 200 + 40 per round for a boss night, 150 + 40 per round for the others) and sends
-`special_round_cleared`. A boss kill pays x6 the usual kill, and up to 20 hits pay on the way down, so a
-boss night is also where the points glut of the late rounds is partly spent.
+`special_round_cleared`. A boss kill pays x6 the usual kill and up to 20 hits pay on the way down, so a
+boss night adds to the points glut of the late rounds; nothing is spent there.
 
 **A telegraphed attack, a weak spot.** The headliner's blow takes 1.2 s to arrive (`telegraph_seconds`):
 the behaviour shows it and the player can step out; the model of a player reads it with
@@ -224,7 +258,7 @@ the pillars.
   (the controller's sprint is assumed near 6 m/s; revisit with the controller). The runner (the old
   sprinter, now a type) arrives on round 4 and settles at three in ten, fragile enough that a
   good shot ends it, so late rounds pressure positioning instead of simple running.
-- **The lot cap protects the web build and the player.** At most 10 alive in round 1, rising to 28;
+- **The lot cap protects the web build and the player.** At most 6 alive in round 1, rising 0.8 a round to 28;
   each extra player adds 6. Zombies wait their turn, so a big round is a long fight, not a
   wall of bodies.
 - **More players, more zombies, less per head.** Each extra player adds 60% of the solo count, and
@@ -294,7 +328,7 @@ from the game:
 | --- | --- |
 | Damage, pellets, falloff, zone multipliers, fire interval, magazine, reload | the weapon definitions (`WeaponCatalog`, priced with `DamageModel`, the functions the combat server uses) |
 | A flare's blast on its neighbours | the definition's `splash_*`, on the zombies on the same side within its radius |
-| Health, regeneration delay and rate | `NightTuning` (100, 5 s, 25 a second) |
+| Health, regeneration delay and rate | `HealthTuning` in the rules' table (100, 5 s, 25 a second) |
 | A zombie's blow and swing | the type's `damage` (the night reads the same since #191), `ZombieTuning.swing_seconds` |
 | Lit ground | `GeneratorState`: a circuit slows the dead only while it is on and the tank has fuel, and every circuit burns fuel |
 | Everything else (where zombies are, whether a shot lands, who buys what) | the model: `SimSkill` and `NightSim` |
@@ -308,8 +342,8 @@ a spread of nights. They shoot only what they can see (view range falls with the
 at a time, revive each other in six seconds and mend between rounds, and pick the weapon with the best sustained
 damage a second. **Not modelled, because the game has none of it yet:** tonic effects (the tonics are shop
 entries that do nothing, so the modelled players do not buy them), ammunition running out (the night resupplies
-every weapon each round; #152 replaces that) and wall-buys. Grenades, repair, melee and the doors' geometry are
-not modelled either.
+every weapon each round; #152 replaces that) and wall-buys. Grenades, repair, the fence's boards (the simulator
+keeps its own six-second barrier), melee and the doors' geometry are not modelled either.
 
 **The change that made this honest** (#188). The first simulator shot a stand-in table (a rifle at 210 damage a
 second). With the real definitions and reloads the best weapon is the SMG at about 100 and the rifle comes
@@ -405,7 +439,7 @@ rounds.health_growth=1.06` (see the research page).
 - **Weapon damage, ammo and the weapon limit**: the weapons and their numbers are in
   [Weapons](weapons.md) (shots to kill per round are tabled there); ammo for sale and the carry limit are still open.
 - **The shop's weapons are barely better than the pistol.** Sustained, reloads included, the pistol does about 59
-  damage a second, the shotgun 68, the rifle 85, the SMG 101 and the flare gun 54 (plus its blast). With health
+  damage a second, the shotgun 68, the rifle 85, the SMG 101 and the flare gun 32 (plus its blast). With health
   that compounds against weapons that do not grow, this is why the health curve had to come down (#188). A real
   step up (upgrades, ammunition types, the re-cut) would let the health curve climb again; that is weapon and
   shop work (#152), and the report should be run again when it lands.

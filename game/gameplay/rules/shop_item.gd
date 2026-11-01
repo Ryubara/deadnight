@@ -24,3 +24,31 @@ enum Kind { DOOR, WEAPON, CRANE, TONIC, FUEL, GRENADES }
 
 func price_at(round_number: int) -> int:
 	return price + price_per_round * maxi(round_number - 1, 0)
+
+
+## The crane's weapons not in `owned`.
+func pool_without(owned: Array[StringName]) -> Array[StringName]:
+	var left: Array[StringName] = []
+	for weapon_id in pool:
+		if not owned.has(weapon_id):
+			left.append(weapon_id)
+	return left
+
+
+## One of the weapons not in `owned`, drawn by weight from `rng`. The pool must not be empty.
+func roll(owned: Array[StringName], rng: RandomNumberGenerator) -> StringName:
+	var left := pool_without(owned)
+	var total := 0.0
+	for weapon_id in left:
+		total += _weight(weapon_id)
+	var pick := rng.randf() * total
+	for weapon_id in left:
+		pick -= _weight(weapon_id)
+		if pick < 0.0:
+			return weapon_id
+	return left[left.size() - 1]
+
+
+func _weight(weapon_id: StringName) -> float:
+	var index := pool.find(weapon_id)
+	return pool_weights[index] if index < pool_weights.size() else 1.0

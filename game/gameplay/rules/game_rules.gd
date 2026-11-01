@@ -36,12 +36,19 @@ extends RefCounted
 ##   zombie_crippled: zombie_id, zombie_type (the crawler it became), player_id, cause (legs or
 ##     wounded), health, speed_scale
 ##   grenade_count_changed: player_id, count, reason (thrown, refill, purchase)
-##   player_added: player_id, grenades (the count they start with)
-##   player_removed, player_downed, player_revived: player_id
+##   player_added: player_id, grenades (the count they start with), health, max_health
+##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
+##     seen from above, where the blow came from), source_id (the zombie, -1 for none)
+##   player_healed: player_id, health, max_health, reason (regen or revive); regen sends one when
+##     the whole-unit health changes, about once per unit mended
+##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow)
+##   player_removed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   door_opened: door_id
+##   board_torn: barricade_id, boards (left), zombie_id (the one that pulled it off)
+##   board_repaired: barricade_id, boards (now up), player_id
 ##   fuel_changed: fuel (exact), delta (whole units since the last one); only when the whole-unit
 ##     value changes, so about once per unit burnt or bought, not once per tick
 ##   fuel_low, fuel_empty, fuel_restored
@@ -65,9 +72,10 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 5: `plan`, `special_id`, `round_total` and a zombie's `type`, `max_health` and `speed` together.
-## Two older layouts both called themselves 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 5
+## 7 added the fence's `barricades`, 6 each player's health, 5 the plan, special round and a
+## zombie's type, health, speed. Two older layouts both called themselves 4; every older snapshot
+## is refused as `bad_version`.
+const SNAPSHOT_VERSION := 7
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -90,6 +98,7 @@ const SNAPSHOT_KEYS := {
 	"players": TYPE_DICTIONARY,
 	"doors_open": TYPE_ARRAY,
 	"generator": TYPE_DICTIONARY,
+	"barricades": TYPE_DICTIONARY,
 	"spawn_rng_state": TYPE_INT,
 	"shop_rng_state": TYPE_INT,
 	"cripple_rng_state": TYPE_INT,
@@ -106,6 +115,7 @@ var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
 var round_number: int = 0
 var generator: GeneratorState
+var barricades: BarricadeState
 var players: Dictionary[int, PlayerState] = {}
 var doors_open: Array[StringName] = []
 
@@ -136,15 +146,16 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 	_shop_rng.seed = p_seed ^ SHOP_STREAM
 	_cripple_rng.seed = p_seed ^ CRIPPLE_STREAM
 	generator = GeneratorState.new(tuning.fuel)
+	barricades = BarricadeState.new(tuning.barricades)
 	_fuel_announced = floori(generator.fuel)
+	# Methods and `bind`, never a lambda: a lambda that uses `self` holds a strong reference to
+	# the rules, the rules hold the generator, and the generator holds the lambda, so none of
+	# them is ever freed (the "resources still in use at exit" error).
 	generator.fuel_changed.connect(_on_fuel_changed)
-	generator.fuel_low.connect(func() -> void: _emit(&"fuel_low"))
-	generator.fuel_empty.connect(func() -> void: _emit(&"fuel_empty"))
-	generator.fuel_restored.connect(func() -> void: _emit(&"fuel_restored"))
-	generator.circuit_changed.connect(
-		func(circuit_id: StringName, on: bool) -> void:
-			_emit(&"circuit_changed", {"circuit_id": circuit_id, "on": on})
-	)
+	generator.fuel_low.connect(_emit.bind(&"fuel_low"))
+	generator.fuel_empty.connect(_emit.bind(&"fuel_empty"))
+	generator.fuel_restored.connect(_emit.bind(&"fuel_restored"))
+	generator.circuit_changed.connect(_on_circuit_changed)
 
 
 ## The one way in. Returns the events the action caused, in order.
@@ -177,6 +188,17 @@ func is_door_open(door_id: StringName) -> bool:
 func price_of(item_id: StringName) -> int:
 	var item := tuning.economy.item(item_id)
 	return item.price_at(round_number) if item != null else -1
+
+
+## A player's health (0 when they are down or unknown).
+func health_of(player_id: int) -> float:
+	var player := players.get(player_id) as PlayerState
+	return player.health if player != null else 0.0
+
+
+func max_health_of(player_id: int) -> float:
+	var player := players.get(player_id) as PlayerState
+	return player.max_health if player != null else 0.0
 
 
 func grenades_of(player_id: int) -> int:
@@ -230,35 +252,7 @@ func special_id() -> StringName:
 ## exact only as Variant data: through JSON the integer keys, the 64-bit random states and some
 ## floats change. For a save file or the wire use `to_bytes()` or `to_wire()`.
 func to_dict() -> Dictionary:
-	var player_data := {}
-	for player_id in players:
-		player_data[player_id] = players[player_id].to_dict()
-	var zombie_data := {}
-	for zombie_id in _zombies:
-		zombie_data[zombie_id] = _zombies[zombie_id].to_dict()
-	return {
-		"version": SNAPSHOT_VERSION,
-		"tuning_id": tuning.fingerprint(),
-		"seed": rng_seed,
-		"phase": phase,
-		"round": round_number,
-		"break_left": _break_left,
-		"plan": _plan.duplicate(),
-		# How many are still to spawn: derived from the plan, for readers that only count (the HUD).
-		"spawn_left": _plan.size(),
-		"special_id": String(_special.id) if _special != null else "",
-		"round_total": _round_total,
-		"spawn_timer": _spawn_timer,
-		"round_players": _round_players,
-		"next_zombie_id": _next_zombie_id,
-		"zombies": zombie_data,
-		"players": player_data,
-		"doors_open": doors_open.duplicate(),
-		"generator": generator.to_dict(),
-		"spawn_rng_state": _spawn_rng.state,
-		"shop_rng_state": _shop_rng.state,
-		"cripple_rng_state": _cripple_rng.state,
-	}
+	return RulesSnapshot.take(self)
 
 
 ## The snapshot as bytes (`var_to_bytes`), exact in every number and key. Store these, or send
@@ -290,43 +284,7 @@ func from_wire(wire: String) -> StringName:
 ## a snapshot of another version (any older layout too), of another tuning table, or one that is
 ## not a snapshot, or whose insides do not fit (a zombie without a type, a plan naming no type).
 func from_dict(data: Dictionary) -> StringName:
-	# The version first: an older layout has other keys and would otherwise look damaged.
-	if not data.has("version") or typeof(data["version"]) != TYPE_INT:
-		return RESTORE_MALFORMED
-	if data["version"] != SNAPSHOT_VERSION:
-		return RESTORE_BAD_VERSION
-	if not SnapshotCheck.fits(data, SNAPSHOT_KEYS):
-		return RESTORE_MALFORMED
-	if data["tuning_id"] != tuning.fingerprint():
-		return RESTORE_WRONG_TUNING
-	if not SnapshotCheck.insides_fit(data, tuning):
-		return RESTORE_MALFORMED
-	rng_seed = data["seed"]
-	phase = data["phase"]
-	round_number = data["round"]
-	_break_left = data["break_left"]
-	_plan.assign(data["plan"])
-	_special = tuning.specials.by_id(StringName(data["special_id"]))
-	_round_total = data["round_total"]
-	_spawn_timer = data["spawn_timer"]
-	_round_players = data["round_players"]
-	_next_zombie_id = data["next_zombie_id"]
-	_zombies.clear()
-	for zombie_id in data["zombies"]:
-		_zombies[zombie_id] = ZombieState.from_dict(data["zombies"][zombie_id])
-	players.clear()
-	for player_id in data["players"]:
-		players[player_id] = PlayerState.from_dict(data["players"][player_id])
-	doors_open.assign(data["doors_open"])
-	generator.restore(data["generator"])
-	_fuel_announced = floori(generator.fuel)
-	_spawn_rng.seed = rng_seed ^ SPAWN_STREAM
-	_spawn_rng.state = data["spawn_rng_state"]
-	_shop_rng.seed = rng_seed ^ SHOP_STREAM
-	_shop_rng.state = data["shop_rng_state"]
-	_cripple_rng.seed = rng_seed ^ CRIPPLE_STREAM
-	_cripple_rng.state = data["cripple_rng_state"]
-	return &""
+	return RulesSnapshot.restore(self, data)
 
 
 # --- Actions ---
@@ -352,6 +310,8 @@ func _dispatch(action: Dictionary) -> void:
 				_check_game_over()
 		RulesAction.SET_DOWNED:
 			_set_downed(action["player_id"], action["downed"])
+		RulesAction.BLOW:
+			_blow(action)
 		RulesAction.HIT:
 			_hit(action)
 		RulesAction.ZOMBIE_GONE:
@@ -360,7 +320,9 @@ func _dispatch(action: Dictionary) -> void:
 			else:
 				_reject(&"unknown_zombie", RulesAction.ZOMBIE_GONE)
 		RulesAction.REPAIR:
-			_repair(action["player_id"])
+			_repair(action["player_id"], StringName(action["barricade_id"]))
+		RulesAction.TEAR_BOARD:
+			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
 			_buy(action["player_id"], action["item_id"])
 		RulesAction.SET_CIRCUIT:
@@ -401,6 +363,10 @@ func _on_fuel_changed(fuel: float, _delta: float) -> void:
 	_fuel_announced = whole
 
 
+func _on_circuit_changed(circuit_id: StringName, on: bool) -> void:
+	_emit(&"circuit_changed", {"circuit_id": circuit_id, "on": on})
+
+
 # --- Rounds ---
 
 
@@ -408,11 +374,13 @@ func _tick(delta: float) -> void:
 	match phase:
 		Phase.BREAK:
 			generator.tick(delta, round_number, true)
+			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
 			_break_left -= delta
 			if _break_left <= 0.0:
 				_begin_round()
 		Phase.ACTIVE:
 			generator.tick(delta, round_number, false)
+			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
 			_tick_spawning(delta)
 
 
@@ -424,18 +392,9 @@ func _enter_break(seconds: float) -> void:
 	_set_phase(Phase.BREAK)
 	_emit(&"break_started", {"next_round": round_number + 1, "seconds": seconds})
 	if coming != null:
-		var is_boss := coming.kind == SpecialRound.Kind.BOSS
 		_emit(
 			&"special_round_announced",
-			{
-				"round": round_number + 1,
-				"special_id": coming.id,
-				"title": coming.title,
-				"kind": &"boss" if is_boss else &"only",
-				"boss_type": coming.boss_type if is_boss else &"",
-				"boss_count": coming.bosses_for(maxi(players.size(), 1)) if is_boss else 0,
-				"seconds": seconds,
-			}
+			coming.announcement(round_number + 1, players.size(), seconds)
 		)
 
 
@@ -447,7 +406,6 @@ func _begin_round() -> void:
 	_round_total = _plan.size()
 	_spawn_timer = tuning.rounds.first_spawn_delay
 	for player: PlayerState in players.values():
-		player.repair_points_this_round = 0
 		_refill_grenades(player)
 	_set_phase(Phase.ACTIVE)
 	_emit(
@@ -549,6 +507,8 @@ func _remove_zombie(
 func _end_round() -> void:
 	var economy := tuning.economy
 	for player: PlayerState in players.values():
+		# The cap on repair pay runs from one round's end to the next: the break's repairs count.
+		player.repair_points_this_round = 0
 		if player.downed:
 			var penalty := floori(player.points * economy.down_penalty_fraction)
 			if penalty > 0:
@@ -562,21 +522,13 @@ func _end_round() -> void:
 						"reason": &"down_penalty",
 					}
 				)
-			player.downed = false
-			_emit(&"player_revived", {"player_id": player.id})
+			_events.append_array(PlayerHealth.revive(player, tuning.health))
 		else:
 			_award(player.id, economy.round_bonus(round_number), &"round_bonus")
 			if _special != null:
 				_award(player.id, _special.reward_at(round_number), &"special_reward")
 	if _special != null:
-		_emit(
-			&"special_round_cleared",
-			{
-				"round": round_number,
-				"special_id": _special.id,
-				"reward": _special.reward_at(round_number),
-			}
-		)
+		_emit(&"special_round_cleared", _special.cleared(round_number))
 	_emit(&"round_ended", {"round": round_number, "special_id": special_id()})
 	_special = null
 	_enter_break(tuning.rounds.break_seconds)
@@ -615,8 +567,17 @@ func _add_player(player_id: int) -> void:
 		return
 	var added := PlayerState.new(player_id, tuning.economy.start_points)
 	added.grenades = tuning.explosives.start_grenades
+	PlayerHealth.start(added, tuning.health)
 	players[player_id] = added
-	_emit(&"player_added", {"player_id": player_id, "grenades": added.grenades})
+	_emit(
+		&"player_added",
+		{
+			"player_id": player_id,
+			"grenades": added.grenades,
+			"health": added.health,
+			"max_health": added.max_health,
+		}
+	)
 	_emit(
 		&"points_changed",
 		{
@@ -632,17 +593,30 @@ func _set_downed(player_id: int, downed: bool) -> void:
 	var player := players.get(player_id) as PlayerState
 	if player == null or player.downed == downed:
 		return
-	player.downed = downed
 	if downed:
-		_emit(&"player_downed", {"player_id": player_id})
+		_events.append(PlayerHealth.down(player, &"forced", 0.0))
 		_check_game_over()
 	else:
-		_emit(&"player_revived", {"player_id": player_id})
+		_events.append_array(PlayerHealth.revive(player, tuning.health))
 
 
-func _can_earn(player_id: int) -> bool:
-	var player := players.get(player_id) as PlayerState
-	return phase == Phase.ACTIVE and player != null and not player.downed
+## A blow takes health off, restarts the wait before it mends, and downs the player at zero.
+func _blow(action: Dictionary) -> void:
+	var player := players.get(action["player_id"]) as PlayerState
+	if phase != Phase.ACTIVE:
+		_reject(&"wrong_phase", RulesAction.BLOW)
+	elif player == null:
+		_reject(&"unknown_player", RulesAction.BLOW)
+	elif player.downed:
+		_reject(&"player_downed", RulesAction.BLOW)
+	else:
+		_events.append_array(
+			PlayerHealth.hurt(
+				player, action["damage"], action.get("bearing", 0.0), action.get("source_id", -1)
+			)
+		)
+		if player.downed:
+			_check_game_over()
 
 
 func _award(player_id: int, amount: int, reason: StringName) -> void:
@@ -834,15 +808,34 @@ func _cripple_cause(zombie: ZombieState) -> StringName:
 	return &""
 
 
-func _repair(player_id: int) -> void:
-	if not _can_earn(player_id):
+## A player puts one board back, in a break or a round; the board goes up whatever the cap says.
+func _repair(player_id: int, id: StringName) -> void:
+	var player := players.get(player_id) as PlayerState
+	var refusal := &""
+	if player == null:
+		refusal = &"unknown_player"
+	elif player.downed:
+		refusal = &"player_downed"
+	elif phase != Phase.ACTIVE and phase != Phase.BREAK:
+		refusal = &"wrong_phase"
+	else:
+		refusal = barricades.repair(id)
+	if refusal != &"":
+		_reject(refusal, RulesAction.REPAIR, BarricadeState.field_for(refusal))
 		return
-	var player: PlayerState = players[player_id]
-	var room := tuning.economy.repair_cap_per_round - player.repair_points_this_round
-	var pay := mini(tuning.economy.repair, room)
-	if pay > 0:
-		player.repair_points_this_round += pay
-		_award(player_id, pay, &"repair")
+	var boards := barricades.boards_of(id)
+	_emit(&"board_repaired", {"barricade_id": id, "boards": boards, "player_id": player_id})
+	_award(player_id, player.repair_pay(tuning.economy), &"repair")
+
+
+## A zombie pulled a board off (the zombie simulation's work, sent by the server).
+func _tear_board(id: StringName, zombie_id: int) -> void:
+	var refusal := barricades.tear(id) if _zombies.has(zombie_id) else &"unknown_zombie"
+	if refusal != &"":
+		_reject(refusal, RulesAction.TEAR_BOARD, BarricadeState.field_for(refusal, &"zombie_id"))
+		return
+	var boards := barricades.boards_of(id)
+	_emit(&"board_torn", {"barricade_id": id, "boards": boards, "zombie_id": zombie_id})
 
 
 # --- The shop ---
@@ -908,7 +901,7 @@ func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
 			if player.weapons.has(item.id):
 				result = BuyResult.ALREADY_OWNED
 		ShopItem.Kind.CRANE:
-			if _crane_pool(player, item).is_empty():
+			if item.pool_without(player.weapons).is_empty():
 				result = BuyResult.ALREADY_OWNED
 		ShopItem.Kind.TONIC:
 			if player.tonics.has(item.id):
@@ -942,7 +935,7 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 			player.weapons.append(item.id)
 			return {"weapon": item.id}
 		ShopItem.Kind.CRANE:
-			var won := _roll_crane(player, item)
+			var won := item.roll(player.weapons, _shop_rng)
 			player.weapons.append(won)
 			return {"weapon": won}
 		ShopItem.Kind.TONIC:
@@ -953,33 +946,6 @@ func _grant(player: PlayerState, quote: Quote) -> Dictionary:
 			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
 			return {"grenades": quote.grenades_added}
 	return {}
-
-
-## The crane's weapons this player does not own yet.
-func _crane_pool(player: PlayerState, item: ShopItem) -> Array[StringName]:
-	var pool: Array[StringName] = []
-	for weapon_id in item.pool:
-		if not player.weapons.has(weapon_id):
-			pool.append(weapon_id)
-	return pool
-
-
-func _roll_crane(player: PlayerState, item: ShopItem) -> StringName:
-	var pool := _crane_pool(player, item)
-	var total := 0.0
-	for weapon_id in pool:
-		total += _weight(item, weapon_id)
-	var pick := _shop_rng.randf() * total
-	for weapon_id in pool:
-		pick -= _weight(item, weapon_id)
-		if pick < 0.0:
-			return weapon_id
-	return pool[pool.size() - 1]
-
-
-func _weight(item: ShopItem, weapon_id: StringName) -> float:
-	var index := item.pool.find(weapon_id)
-	return item.pool_weights[index] if index < item.pool_weights.size() else 1.0
 
 
 ## A priced, checked purchase that has not happened yet.

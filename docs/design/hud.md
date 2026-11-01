@@ -12,14 +12,16 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 
 | Fed by | How | Carries |
 | --- | --- | --- |
-| The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, purchases, hits and kills, game over |
-| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, the generator. Names are not in the rules, so the ones set before stay |
-| The local player's readings | `set_health`, `set_ammo`, `set_equipment`, `set_prompt`, `set_area`, `set_markers`, `set_player_name` | what the rules do not own: health, the weapon in hand, what is in reach, where the player stands |
-| HUD events beside the rules' own | `player_hurt` (`player_id`, `health`, `direction` in radians clockwise from straight ahead); optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a blow or a hit point into these; there is no world position in the HUD |
+| The weapons' events | the same `apply_event`, for `weapon_equipped`, `shot_fired`, `reload_started`, `reload_finished` (`HudLoadout.EVENTS`; the binding forwards these and no other weapon event) | the ammo card and the equipment slot: the weapon in hand, its magazine and reserve as the events carry them, whether it is reloading, and the weapon put away last |
+| The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, **your health** (`player_added`, `player_hurt`, `player_healed`, `player_downed`), purchases, hits and kills, game over |
+| A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, your health, the generator. Names are not in the rules, so the ones set before stay |
+| The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events fill them), `set_prompt`, `set_area`, `set_markers`, `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
+| HUD additions to the rules' events | optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a hit point into these; there is no world position in the HUD |
 
 Events for other players change their row in the party list and leave your own readings alone. Unknown events are
-ignored, so the rules can grow events without breaking the HUD. Open: the rules have no player health or blow event
-yet (issue to follow), so `player_hurt` is defined here until they do.
+ignored, so the rules can grow events without breaking the HUD. A blow is the rules' `player_hurt`: it carries a
+`bearing` in the world (radians clockwise from -z), and the damage arc turns it by `facing` (the frame's yaw of the
+local player) into the direction on screen.
 
 ## Parts
 
@@ -30,8 +32,8 @@ yet (issue to follow), so `player_hurt` is defined here until they do.
 | `HudTeam` | top left | one ticket for the other players: name and `UP` or `DOWN` (2 to 4 players; hidden when alone) |
 | `HudFuel` | top right | the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit with its sign's word beside it, in two columns (`SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`) |
 | `HudFeed` | top right, under the tank | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left; one line each, 560 units wide (wider than the column): a long line shrinks toward 24, then ends in an ellipsis |
-| `HudPoints`, `HudHealth` | bottom left | your name and points; a bar of ten ticks, or `DOWN` and what to hope for; one row for the equipment with its count and the grenade count |
-| `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it, the weapon name on a coloured bar; hot orange when low |
+| `HudPoints`, `HudHealth` | bottom left | your name and points; a bar of ten ticks, or `DOWN` and what to hope for; one row for the equipment (the weapon put away last, with its rounds; a name cut to the room, the count stays) and the grenade count |
+| `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it, the weapon name on a coloured bar; hot orange when low; `RELOADING` while a reload runs; `--` for a weapon with no ammunition (the crowbar) |
 | `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner) |
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card, three lines high: the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |

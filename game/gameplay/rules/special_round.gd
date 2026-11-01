@@ -38,6 +38,26 @@ enum Kind {
 @export var reward_per_round: int = 40
 
 
+## The fields of `special_round_announced` for this special as round `round_number`, in a break of
+## `seconds`, for `players` players.
+func announcement(round_number: int, players: int, seconds: float) -> Dictionary:
+	var is_boss := kind == Kind.BOSS
+	return {
+		"round": round_number,
+		"special_id": id,
+		"title": title,
+		"kind": &"boss" if is_boss else &"only",
+		"boss_type": boss_type if is_boss else &"",
+		"boss_count": bosses_for(maxi(players, 1)) if is_boss else 0,
+		"seconds": seconds,
+	}
+
+
+## The fields of `special_round_cleared` for round `round_number`.
+func cleared(round_number: int) -> Dictionary:
+	return {"round": round_number, "special_id": id, "reward": reward_at(round_number)}
+
+
 ## The types of the round's zombies in the order they spawn: `normal` is the count a normal round
 ## of this number has. A boss round is escorts with the bosses walked in among them; a round of one
 ## type is that type.

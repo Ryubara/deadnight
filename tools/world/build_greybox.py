@@ -46,6 +46,18 @@ MIDWAY_LINK_Z = 20.0
 # The lot's outer walls are higher than the tallest platform beside them (a car roof, 1.65 m) plus a full jump (the
 # player's 1.1 m, PlayerTuning.jump_height) plus a margin, so nobody leaves the map from a roof (docs/design/map.md).
 PERIMETER_H = 3.0
+# The breaches in the field's fence: a gap of BREACH_WIDTH closed by BOARDS boards, each BOARD_PITCH above the last (from
+# the ground to the fence's top, so nobody jumps out over the boards), and
+# an apron outside (APRON_DEPTH deep, APRON_WIDTH wide, walled in) where the dead stand before they tear the boards off.
+# The ids are the rules' (`BarricadeTuning.ids`); the number of boards is `BarricadeTuning.boards`.
+BREACH_WIDTH = 4.0
+BOARDS = 5
+BOARD_FIRST = 0.3  # the middle of the lowest board; the boards are 0.45 m tall, so five fill the gap to its top
+BOARD_PITCH = 0.6
+APRON_DEPTH = 8.0
+APRON_WIDTH = 12.0
+SPAWN_OUTSIDE = 4.0  # the dead appear this far outside the fence line
+SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
 # a flat ambient colour and one moon light with no shadows (the web build is WebGL2).
@@ -89,6 +101,7 @@ MATS = {
     "road_wall": ("#7a86b8", None),
     "road_line": ("#d1ab46", None),
     "door": ("#d0302c", "#6a1210"),
+    "breach_ground": ("#3d3829", None),
 }
 
 lines: list[str] = []
@@ -187,6 +200,13 @@ def group(name: str, parent: str) -> str:
     return name if parent == "." else f"{parent}/{name}"
 
 
+def lamps(parent: str, circuit: str, name: str = "Lamps") -> str:
+    """A group of lamps on one circuit. Every light below it takes the circuit id from this node's metadata
+    (`LotLamps`): a generator circuit, `mains` (wired to the generator, no switch) or `battery` (not the generator's)."""
+    node(name, "Node3D", parent, {"metadata/circuit": f'"{circuit}"'})
+    return f"{parent}/{name}"
+
+
 counter = {"n": 0}
 
 
@@ -259,13 +279,19 @@ def wall(
             block(parent, f"{name}{i}", fixed - thick / 2, fixed + thick / 2, p0, p1, t - b, mat, y0 + b)
 
 
-def omni(parent: str, name: str, pos, energy: float, rng: float, col: str, powered: bool = True) -> None:
+def omni(
+    parent: str, name: str, pos, energy: float, rng: float, col: str, powered: bool = True, afterglow: float = 0.0
+) -> None:
+    """An omni light in the `powered_light` group. `afterglow` is the fraction of its energy it keeps when its circuit
+    is dark (the screen's glow); it lights nothing for the dead, it is only seen."""
     props = {
         "transform": xform(pos),
         "light_color": color(col),
         "light_energy": f"{energy:g}",
         "omni_range": f"{rng:g}",
     }
+    if afterglow:
+        props["metadata/afterglow"] = f"{afterglow:g}"
     node(name, "OmniLight3D", parent, props, ' groups=["powered_light"]' if powered else "")
 
 
@@ -327,6 +353,81 @@ def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0) -> None:
     node_names.add(f"{parent}/{name}")
 
 
+def breach(field: str, tag: str, bx: float, bz: float) -> None:
+    """The boards across one gap of the fence, and the walled apron outside it where the dead gather.
+
+    The Barricade node stands in the gap on the fence line with its +Z pointing into the field (`Field/Breach*`); the
+    boards are its children. The apron is ground the navigation mesh needs (the dead walk in over it), closed on three
+    sides so nobody walks off the map through a torn fence.
+    """
+    ix, iz = (1.0, 0.0) if bx == -62 else (-1.0, 0.0) if bx == 62 else (0.0, 1.0)
+    rot = math.degrees(math.atan2(ix, iz))
+    props = {
+        "transform": xform((bx, 0, bz), rot),
+        "script": 'ExtResource("barricade")',
+        "metadata/barricade_id": f'"{tag.lower()}"',
+    }
+    node(f"Breach{tag}", "Node3D", field, props)
+    for i in range(BOARDS):
+        instance(
+            f"{field}/Breach{tag}", f"Board{i + 1}", "board", (0.0, BOARD_FIRST + i * BOARD_PITCH, 0.03 * (-1) ** i)
+        )
+    # The apron: out from the fence line along -inward.
+    ox, oz = -ix, -iz
+    half = APRON_WIDTH / 2
+    cx, cz = bx + ox * APRON_DEPTH / 2, bz + oz * APRON_DEPTH / 2
+    if ox != 0:
+        size = (APRON_DEPTH, 0.4, APRON_WIDTH)
+        box(field, f"Apron{tag}", size, (cx, -0.2, cz), "breach_ground")
+        end = bx + ox * APRON_DEPTH
+        block(
+            field,
+            f"Apron{tag}End",
+            min(end, end + ox * 0.4),
+            max(end, end + ox * 0.4),
+            bz - half,
+            bz + half,
+            PERIMETER_H,
+            "field_fence",
+        )
+        for side, dz in (("A", -half), ("B", half)):
+            block(
+                field,
+                f"Apron{tag}Side{side}",
+                min(bx, end),
+                max(bx, end),
+                bz + dz - 0.2,
+                bz + dz + 0.2,
+                PERIMETER_H,
+                "field_fence",
+            )
+    else:
+        size = (APRON_WIDTH, 0.4, APRON_DEPTH)
+        box(field, f"Apron{tag}", size, (cx, -0.2, cz), "breach_ground")
+        end = bz + oz * APRON_DEPTH
+        block(
+            field,
+            f"Apron{tag}End",
+            bx - half,
+            bx + half,
+            min(end, end + oz * 0.4),
+            max(end, end + oz * 0.4),
+            PERIMETER_H,
+            "field_fence",
+        )
+        for side, dx in (("A", -half), ("B", half)):
+            block(
+                field,
+                f"Apron{tag}Side{side}",
+                bx + dx - 0.2,
+                bx + dx + 0.2,
+                min(bz, end),
+                max(bz, end),
+                PERIMETER_H,
+                "field_fence",
+            )
+
+
 def door(name: str, label_at) -> None:
     """A purchase door: a group that holds its slabs; the shop item, its price and the item it needs are metadata.
 
@@ -353,6 +454,8 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lamp_post.tscn" id="lamp"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]')
     lines.append('[ext_resource type="Shader" path="res://world/drive_in/night_sky.gdshader" id="night_sky"]')
+    lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
     lines.append("")
     for mid, (albedo, emis) in MATS.items():
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
@@ -392,18 +495,19 @@ def build() -> None:
         box(field, f"ScreenLeg{sx}".replace("-", "N"), (1.4, 4.2, 1.6), (sx, 2.1, -48), "field_struct")
     for sx in (-14, 14):
         box(field, f"ScreenStay{sx}".replace("-", "N"), (0.8, 0.8, 7), (sx, 3.0, -52.8), "field_struct")
-    # Perimeter fence (PERIMETER_H) with the breach panels where the dead come in; the fence between the field and the
-    # yard and back lot is 2.4 m.
+    # Perimeter fence (PERIMETER_H) with a gap at each breach, where the dead come in. Boards (a Barricade) close
+    # each gap, and a walled apron outside it is where they stand before they tear the boards off. The fence between
+    # the field and the yard and back lot is 2.4 m.
     fence_h = 2.4
-    wall(field, "FenceN", "x", -52, -62, 62, PERIMETER_H, "field_fence")
-    wall(field, "FenceW", "z", -62, -52, -4, PERIMETER_H, "field_fence")
-    wall(field, "FenceE", "z", 62, -52, -4, PERIMETER_H, "field_fence")
     breaches = [("NW", -62, -46), ("NE", 62, -46), ("W", -62, -22), ("E", 62, -22), ("N", -36, -52), ("N2", 36, -52)]
+    fence_w = [(bz, BREACH_WIDTH, 0, PERIMETER_H) for (_, bx, bz) in breaches if bx == -62]
+    fence_e = [(bz, BREACH_WIDTH, 0, PERIMETER_H) for (_, bx, bz) in breaches if bx == 62]
+    fence_n = [(bx, BREACH_WIDTH, 0, PERIMETER_H) for (_, bx, bz) in breaches if bz == -52]
+    wall(field, "FenceN", "x", -52, -62, 62, PERIMETER_H, "field_fence", fence_n)
+    wall(field, "FenceW", "z", -62, -52, -4, PERIMETER_H, "field_fence", fence_w)
+    wall(field, "FenceE", "z", 62, -52, -4, PERIMETER_H, "field_fence", fence_e)
     for tag, bx, bz in breaches:
-        if abs(bx) == 62:
-            box(field, f"Breach{tag}", (0.6, PERIMETER_H, 4.0), (bx, PERIMETER_H / 2, bz), "door")
-        else:
-            box(field, f"Breach{tag}", (4.0, PERIMETER_H, 0.6), (bx, PERIMETER_H / 2, bz), "door")
+        breach(field, tag, bx, bz)
     # Fence between the field and the yard / back lot, with the two purchase gates (doors listed below).
     wall(field, "FenceS_W", "x", -4, -62, -10, fence_h, "field_fence", [(-40, 4, 0, 2.6)])
     wall(field, "FenceS_E", "x", -4, 10, 62, fence_h, "field_fence", [(40, 4, 0, 2.6)])
@@ -442,18 +546,25 @@ def build() -> None:
     block(props, "PicnicTable", 46, 50, -32, -30, 0.9, "field_struct")
     for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
         instance(props, f"Wreck{i}", "car", (px, 0, pz), ry)
-    lamps = group("Lamps", field)
+    lamps_f = lamps(field, "screen_lot")
     for i, (lx, lz) in enumerate(
         [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)], start=1
     ):
-        instance(lamps, f"Lamp{i}", "lamp", (lx, 0, lz))
-    omni(lamps, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8")
+        instance(lamps_f, f"Lamp{i}", "lamp", (lx, 0, lz))
+    omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     spawns = group("PlayerSpawns", field)
     for i, sx in enumerate((-6, -2, 2, 6), start=1):
         marker(spawns, f"Player{i}", (sx, 0, -43))
     zs = group("ZombieSpawns", field)
     for tag, bx, bz in breaches:
-        marker(zs, f"Spawn{tag}", (bx * 0.97 if abs(bx) == 62 else bx, 0, bz if abs(bx) == 62 else bz + 2))
+        # Outside the fence, on the apron: the dead come to the boards from the dark.
+        at = (bx + math.copysign(SPAWN_OUTSIDE, bx), 0, bz) if abs(bx) == 62 else (bx, 0, bz - SPAWN_OUTSIDE)
+        node(
+            f"Spawn{tag}",
+            "Marker3D",
+            zs,
+            {"transform": xform(at), "metadata/barricade_id": f'"{tag.lower()}"'},
+        )
     label(field, "Label", "1  SCREEN FIELD  (start)", (-26, 0.6, -13), 130)
     label(field, "LabelScreen", "SCREEN", (0, 0.6, -50), 110)
 
@@ -471,7 +582,7 @@ def build() -> None:
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
     block(con, "PrizeCrane", -9.4, -7.4, 4, 6, 2.4, "concession_prop")
     block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop")
-    cl = group("Lamps", con)
+    cl = lamps(con, "concession")
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorE", (5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorN", (0, 3.3, -2), 1.4, 8, "#ffb866")
@@ -490,7 +601,7 @@ def build() -> None:
     block(mid, "DumpsterE", 12.4, 15.2, -3.2, -1.4, 1.5, "midway_wall")
     block(mid, "CrateStackA", -12, -9.4, 14, 16.4, 1.8, "midway_wall")
     block(mid, "CrateStackB", 9.4, 12, 28, 30.4, 1.8, "midway_wall")
-    ml = group("Lamps", mid)
+    ml = lamps(mid, "concession")
     omni(ml, "Court", (-10, 3.6, 14), 1.2, 9, "#ffd9a0")
     omni(ml, "Court2", (11, 3.6, 36), 1.0, 9, "#ffd9a0")
     mz = group("ZombieSpawns", mid)
@@ -523,7 +634,7 @@ def build() -> None:
     block(booth, "ReCutMachine", 2, 5, 27, 29.4, 1.8, "booth_prop")
     block(booth, "FilmRacks", -3.4, -1, 30, 31.6, 2.2, "booth_prop")
     block(booth, "Projector", -1.0, 1.0, 24.5, 26.0, 1.3, "booth_prop", 4.05)
-    bl = group("Lamps", booth)
+    bl = lamps(booth, "booth")
     spot(bl, "ProjectorBeam", (0, 5.4, 22.3), 180, -5.0, 6.0, 100, 7, "#e8f0ff")
     omni(bl, "Lower", (0, 3.0, 27), 1.0, 8, "#c9a8ff")
     omni(bl, "Upper", (0, 6.6, 27), 0.9, 7, "#c9a8ff")
@@ -550,7 +661,7 @@ def build() -> None:
     block(yard, "ContainerB", 50, 56, 26, 28.6, 2.6, "yard_prop")
     block(yard, "Pallets", 26, 29, 28, 31, 1.2, "yard_wall")
     block(yard, "DrumRow", 20, 22, 2, 9, 1.0, "yard_prop")
-    yl = group("Lamps", yard)
+    yl = lamps(yard, "mains")
     for i, (lx, lz) in enumerate([(35, 12), (45, 12), (35, 24), (45, 24)], start=1):
         instance(yl, f"WorkLamp{i}", "lamp", (lx, 0, lz))
     omni(yl, "GeneratorGlow", (40, 2.4, 18), 1.4, 8, "#f0e26a")
@@ -580,7 +691,7 @@ def build() -> None:
     block(back, "ScrapStackA", -58, -52, 20, 26, 2.6, "backlot_prop")
     block(back, "ScrapStackB", -26, -20, 22, 28, 2.6, "backlot_prop")
     block(back, "SignBoard", -50, -44, 35.2, 35.8, 4.2, "neon", 0.0)
-    bk = group("Lamps", back)
+    bk = lamps(back, "back_lot")
     omni(bk, "NeonSign", (-47, 3.5, 33.5), 1.8, 12, "#ff3a4a")
     bz = group("ZombieSpawns", back)
     marker(bz, "SpawnNW", (-60, 0, -2))
@@ -608,10 +719,11 @@ def build() -> None:
     box(road, "CentreLine", (0.3, 0.02, 12), (0, 0.01, 46), "road_line", collide=False)
     block(road, "Wreck", -34, -29.4, 56.4, 58.4, 1.6, "road_wall")
     block(road, "WreckB", 20, 24.6, 59, 61, 1.6, "road_wall")
-    rl = group("Lamps", road)
+    rl = lamps(road, "back_lot")
     omni(rl, "Kiosk", (0, 3.0, 44), 1.0, 8, "#a8c4ff")
-    spot(rl, "WreckHeadlightL", (-31, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
-    spot(rl, "WreckHeadlightR", (-33, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
+    hl = lamps(road, "battery", "Headlights")
+    spot(hl, "WreckHeadlightL", (-31, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
+    spot(hl, "WreckHeadlightR", (-33, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
     rz = group("ZombieSpawns", road)
     marker(rz, "SpawnW", (-56, 0, 58))
     marker(rz, "SpawnE", (50, 0, 62))

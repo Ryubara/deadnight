@@ -4,8 +4,6 @@
 extends GdUnitTestSuite
 
 const DOOR := &"door_concession"
-## A tick that sells a door must stay far below the bake the night used to wait for (420 ms).
-const TICK_BUDGET_MS := 60.0
 
 
 func _start() -> Night:
@@ -39,17 +37,18 @@ func test_a_bought_door_loses_its_slabs_and_its_price_label() -> void:
 
 
 func test_the_tick_that_sells_a_door_does_not_wait_for_the_bake() -> void:
+	# No clock: a bake lands on a later frame, and these ticks run without yielding one, so a tick
+	# that returned with the bake still pending did not wait for it (a wall-time budget failed
+	# under load, #198).
 	var night := await _start()
 	var command := NightCommand.new()
 	command.use = true
 	night.link.send(command.to_dict())
-	var worst := 0.0
 	for _i in 5:
-		var began := Time.get_ticks_usec()
 		night.tick()
-		worst = maxf(worst, (Time.get_ticks_usec() - began) / 1000.0)
 	assert_bool(night.server.rules.is_door_open(DOOR)).is_true()
-	assert_float(worst).is_less(TICK_BUDGET_MS)
+	assert_bool(night.world.navigation.is_busy()).is_true()
+	assert_int(night.world.navigation.bake_count).is_equal(1)
 	night.queue_free()
 
 

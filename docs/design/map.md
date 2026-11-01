@@ -163,9 +163,50 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 | Back lot | a tenth | one flickering neon sign |
 | The road | a fifth | the ticket kiosk, and a wreck's headlights |
 
-The dead come in at the field's breaches (`Breach*`), 30 to 40 m from the nearest lamp: they arrive out of the dark
-and are slowed when they reach the light, which is the design. When the generator dies the lamps go with it: the
-field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
+The dead come in at the field's breaches ([below](#the-fences-breaches)), 30 to 40 m from the nearest lamp: they
+arrive out of the dark and are slowed when they reach the light, which is the design. When the generator dies the
+lamps go with it: the field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
+
+## The fence's breaches
+
+The dead come in at six gaps in the field's fence, 4 m wide: two in the west fence, two in the east, two in the north
+(`Field/BreachNW`, `NE`, `W`, `E`, `N`, `N2`, the ids in the rules' tuning). Outside each gap is a walled apron 8 m
+deep and 12 m wide, closed on three sides (nobody walks off the map through a torn fence), where the dead appear out
+of the dark: the field's zombie spawns stand on the aprons, not in the field.
+
+Across each gap are five boards (a `Barricade` node, `world/drive_in/barricade.gd`, with a `Board` per child). The
+boards follow the rules' `board_torn` and `board_repaired`, one at a time from the top down and back up from the
+bottom, and while they stand they are solid for players and nothing else: they sit on their own physics layer, so
+shots, grenades and the camera pass them (a zombie at the boards can be shot), and they are not part of the
+navigation mesh, which keeps the gap open, so the dead's way in is a path and what holds them is the simulation. A
+player puts boards back from the field side only, within reach of the middle of the gap.
+
+### Which lamps hang on which circuit
+
+Each `Lamps` group carries `metadata/circuit`, and every light below it takes that circuit. Four are the generator's
+(`circuit_drain` in the fuel tuning, the HUD's `SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`); two are not.
+
+| Circuit | Lamps |
+| --- | --- |
+| `screen_lot` (on at the start) | the field's eight lamp posts, the screen's glow |
+| `concession` | the stand's three interior lights, the midway's two lamps |
+| `booth` | the projector beam, the booth's two lights |
+| `back_lot` | the neon sign, the ticket kiosk on the road |
+| `mains` | the yard's four work lamps and the generator's glow: wired straight to the generator with no switch, so lit while the tank has fuel and black when it is dry |
+| `battery` | the wreck's headlights on the road: not the generator's, they burn all night |
+
+The rules decide, the lamps follow. The zombies' slowdown asks `GeneratorState` (`NightWorld.is_lit` ->
+`LotLamps.lit_at`: a lamp within 6 m whose circuit is on and whose tank has fuel), never a light node, so a server
+that draws nothing agrees with every client. The client's `LotLamps` mirrors `circuit_changed`, `fuel_empty`,
+`fuel_restored` and each frame's `fuel`: a circuit that goes off hides its lights and darkens its posts' bulbs; in the
+tank's last tenth (`brownout_fraction`) the lights sag and drop out in a flicker that is a function of the frame's
+tick and the lamp's number (no clock, no random draw), so a recording and a test see the same lights; at an empty tank
+they go out. Only the screen's glow outlasts the generator, at 30% (`afterglow`), and it lights no ground for the
+dead. The flicker is only the picture: the slowdown stays whole until the tank is empty.
+
+![The lot from above: the start, every circuit on, a dry tank](map-circuits.png)
+
+Left to right: the night's start (the field and the yard lit), every circuit on, the tank dry.
 
 ## The greybox
 
@@ -175,14 +216,16 @@ x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 | Node | Holds |
 | --- | --- |
 | `Field`, `Concession`, `Midway`, `ProjectionBooth`, `GeneratorYard`, `BackLot`, `Road` | an area: ground, walls, props, `Lamps`, `ZombieSpawns`, a hidden `Label` |
+| `Field/Breach*`, `Field/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it; each field spawn marker carries the `barricade_id` of the breach it lies outside |
 | `Field/PlayerSpawns` | four markers on the apron below the screen |
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator |
+| `*/Lamps` | the lights of an area, `metadata/circuit` naming the circuit they hang on ([above](#which-lamps-hang-on-which-circuit)); `LotLamps` reads them |
 
-`game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`), the capture rig and `camera_probe.gd` (the
-player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
+`game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`, `lot_lamps.gd`), the capture rig and
+`camera_probe.gd` (the player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
 (run it from the repository root and commit what it writes; the run must leave `git diff` empty), so a layout change is
 a change to a constant or coordinate there, not hand edits to a 380-node scene. `game/tests/world/` checks:
 
@@ -191,6 +234,8 @@ a change to a constant or coordinate there, not hand edits to a 380-node scene. 
   (`test_drive_in_opening_order.gd`, with a negative control), and that an agent as wide as the shoulder camera still
   reaches every area; the doors themselves (`test_lot_doors.gd`); jumps (`test_drive_in_jump_reach.gd`); and the
   affordability column above (`test_door_affordability.gd`);
+- the lamps: each on a known circuit, ground lit only by a circuit that is on and a tank with fuel, the flicker
+  (`test_lot_lamps.gd`, and in a whole night with the dead's speed, `tests/night/test_night_lamps.gd`);
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 

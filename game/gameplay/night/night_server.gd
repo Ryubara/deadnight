@@ -1,20 +1,21 @@
 class_name NightServer
 extends RefCounted
-## The authority of one night: the rules, the zombies, the weapons and the players' health, joined
+## The authority of one night: the rules, the zombies, the weapons and the players' bodies, joined
 ## and stepped together. Everything that decides anything lives here; a client only sends
 ## `NightCommand`s and draws the events and frames that come back.
 ##
 ## Messages in (`apply`, plain dictionaries): `join` {player_id, local}, `leave` {player_id},
 ## `start_night`, and one `command` (a `NightCommand`) per player per tick; the latest one is
 ## used. `step(delta)` runs one fixed tick and returns the events for every client: the rules
-## events, the weapons events (`CombatServer`), `player_damaged` (with `from`, where the blow came
-## from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded for
-## the player's own motion to apply), and last a `frame`. A frame carries the whole picture a client
-## or a HUD draws from.
+## events (a zombie's blow is a `blow` action, answered by the rules' `player_hurt`), the weapons
+## events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it came
+## from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
+## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
+## client or a HUD draws from.
 ##
-## Frame fields: tick, phase, round, remaining, fuel, doors (open ids), zombies (`ZombieCodec`
-## bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve, reloading, points,
-## prompt}}.
+## Frame fields: tick, phase, round, remaining, fuel, doors (open ids), barricades ({id: boards
+## up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo,
+## reserve, reloading, points, prompt}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -49,8 +50,6 @@ var tick_count := 0
 
 var _pending: Dictionary[int, NightCommand] = {}
 var _bodies: Dictionary[int, Player] = {}
-var _health: Dictionary[int, float] = {}
-var _since_hit: Dictionary[int, float] = {}
 var _shot_seq: Dictionary[int, int] = {}
 var _repair_wait: Dictionary[int, float] = {}
 var _outbox: Array[Dictionary] = []
@@ -72,15 +71,19 @@ func _init(
 	sim.rounds = rules.tuning.rounds
 	sim.pathing = NavmeshPathing.new(world.map())
 	sim.lit_probe = world.is_lit
+	sim.gates = world.gates()
+	sim.barricades = rules.barricades
+	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
+	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
 	world.bind(rules)
 	world.doors.door_opened.connect(_on_door_opened)
 	rules.event_emitted.connect(_on_rules_event)
 
 
-## Lets go of the cycles (the rules hold callbacks into this object and the generator holds
-## some into the rules). Call when the night is over.
+## Stops listening to the rules and the doors, so nothing calls into a finished night. Call when
+## the night is over.
 func close() -> void:
 	combat.detach()
 	director.close()
@@ -88,9 +91,6 @@ func close() -> void:
 		rules.event_emitted.disconnect(_on_rules_event)
 	if world.doors.door_opened.is_connected(_on_door_opened):
 		world.doors.door_opened.disconnect(_on_door_opened)
-	for signal_info in rules.generator.get_signal_list():
-		for connection in rules.generator.get_signal_connection_list(signal_info["name"]):
-			rules.generator.disconnect(signal_info["name"], connection["callable"])
 
 
 ## The one way in. Returns the events the message caused.
@@ -113,7 +113,7 @@ func body_of(player_id: int) -> Player:
 
 
 func health_of(player_id: int) -> float:
-	return _health.get(player_id, 0.0)
+	return rules.health_of(player_id)
 
 
 ## One fixed tick. Returns every event of it, the frame last.
@@ -125,7 +125,6 @@ func step(delta: float) -> Array[Dictionary]:
 	rules.apply(RulesAction.tick(delta))
 	_combat(CombatAction.targets(_target_list()))
 	_combat(CombatAction.tick(delta))
-	_heal(delta)
 	for player_id in _bodies:
 		_act(player_id, delta)
 	_outbox.append(_frame())
@@ -139,8 +138,6 @@ func _join(player_id: int, local: bool) -> void:
 	if _bodies.has(player_id):
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local)
-	_health[player_id] = tuning.max_health
-	_since_hit[player_id] = 0.0
 	_shot_seq[player_id] = 0
 	_repair_wait[player_id] = 0.0
 	rules.apply(RulesAction.add_player(player_id))
@@ -181,11 +178,11 @@ func _chase_targets() -> Dictionary:
 
 
 func _on_player_struck(player_id: int, zombie_id: int, damage: float) -> void:
-	if not _health.has(player_id) or _is_downed(player_id):
+	if not _bodies.has(player_id) or _is_downed(player_id):
 		return
-	_health[player_id] = maxf(_health[player_id] - damage, 0.0)
-	_since_hit[player_id] = 0.0
 	var zombie: ZombieBody = sim.zombies.get(zombie_id)
+	var from := _position_of_zombie(zombie_id)
+	rules.apply(RulesAction.blow(player_id, damage, _bearing(player_id, from), zombie_id))
 	(
 		_outbox
 		. append(
@@ -193,33 +190,27 @@ func _on_player_struck(player_id: int, zombie_id: int, damage: float) -> void:
 				"type": &"player_damaged",
 				"player_id": player_id,
 				"damage": damage,
-				"health": _health[player_id],
-				"from": _position_of_zombie(zombie_id),
+				"health": rules.health_of(player_id),
+				"from": from,
 				"zombie_id": zombie_id,
 				"zombie_type": zombie.profile.type if zombie != null else &"",
 				"knockback": zombie.profile.knockback if zombie != null else 0.0,
 			}
 		)
 	)
-	if _health[player_id] <= 0.0:
-		rules.apply(RulesAction.set_downed(player_id, true))
+
+
+## Radians clockwise from -z (seen from above) from the player to `from`: the bearing the rules
+## carry, so a client can turn it toward where its own player faces.
+func _bearing(player_id: int, from: Vector3) -> float:
+	var offset := from - _bodies[player_id].global_position
+	return atan2(offset.x, -offset.z)
 
 
 ## Where a zombie stands (the bearing of a blow); the player's own spot when it is gone.
 func _position_of_zombie(zombie_id: int) -> Vector3:
 	var zombie: ZombieBody = sim.zombies.get(zombie_id)
 	return zombie.position if zombie != null else Vector3.ZERO
-
-
-func _heal(delta: float) -> void:
-	for player_id in _health:
-		if _is_downed(player_id):
-			continue
-		_since_hit[player_id] += delta
-		if _since_hit[player_id] >= tuning.regen_delay:
-			_health[player_id] = minf(
-				_health[player_id] + tuning.regen_per_second * delta, tuning.max_health
-			)
 
 
 # --- What the rules decided ---
@@ -237,8 +228,6 @@ func _on_rules_event(event: Dictionary) -> void:
 			var weapon: StringName = event["detail"].get("weapon", &"")
 			if weapon != &"":
 				_combat(CombatAction.give_weapon(event["player_id"], weapon))
-		&"player_revived":
-			_health[event["player_id"]] = tuning.max_health
 		&"round_ended":
 			_resupply()
 
@@ -316,7 +305,8 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 	)
 
 
-## What `use` would do for a player right now: `{}`, a door to buy or a board to put back.
+## What `use` would do for a player right now: `{}`, a door to buy or `{"kind": &"repair", "id",
+## "boards"}` for a breach with a board down that the player stands inside, in reach of.
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -331,9 +321,13 @@ func use_target(player_id: int) -> Dictionary:
 		for point in world.door_points(door_id):
 			if _flat(here, point) <= tuning.use_reach:
 				return {"kind": &"door", "id": door_id, "price": rules.price_of(door_id)}
-	for point in world.repair_points():
-		if _flat(here, point) <= tuning.use_reach and _repair_wait[player_id] <= 0.0:
-			return {"kind": &"repair"}
+	for id in world.barricade_ids():
+		var boards := rules.barricades.boards_of(id)
+		if boards >= rules.tuning.barricades.boards:
+			continue
+		var barricade := world.barricade(id)
+		if barricade.depth_of(here) > 0.0 and _flat(here, barricade.centre()) <= tuning.use_reach:
+			return {"kind": &"repair", "id": id, "boards": boards}
 	return {}
 
 
@@ -343,8 +337,9 @@ func _use(player_id: int) -> void:
 		&"door":
 			rules.apply(RulesAction.buy(player_id, target["id"]))
 		&"repair":
-			_repair_wait[player_id] = tuning.repair_interval
-			rules.apply(RulesAction.repair(player_id))
+			if _repair_wait[player_id] <= 0.0:
+				_repair_wait[player_id] = tuning.repair_interval
+				rules.apply(RulesAction.repair(player_id, target["id"]))
 
 
 # --- The picture clients draw ---
@@ -358,7 +353,7 @@ func _frame() -> Dictionary:
 		players[player_id] = {
 			"pos": body.global_position,
 			"facing": body.state.facing,
-			"health": _health[player_id],
+			"health": rules.health_of(player_id),
 			"downed": _is_downed(player_id),
 			"weapon": weapon.def.id if weapon != null else &"",
 			"ammo": weapon.ammo if weapon != null else 0,
@@ -375,6 +370,7 @@ func _frame() -> Dictionary:
 		"remaining": rules.zombies_remaining(),
 		"fuel": rules.generator.fuel,
 		"doors": rules.doors_open.duplicate(),
+		"barricades": rules.barricades.to_dict(),
 		"zombies": ZombieCodec.encode(sim.zombies),
 		"players": players,
 	}

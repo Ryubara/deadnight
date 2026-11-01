@@ -28,6 +28,13 @@ var rounds: RoundTuning
 var pathing: ZombiePathing = ZombiePathing.new()
 ## `Callable(position: Vector3) -> bool`: whether that ground is lit. Asked at each repath.
 var lit_probe: Callable = Callable()
+## The fence's breaches by id. A zombie spawned for one (`spawn`'s `gate_id`) stops at its boards.
+var gates: Dictionary[StringName, ZombieGate] = {}
+## The boards across each breach: the rules' own state, read here and never changed. (A `Callable`
+## to its method crashed Godot at exit, so the sim holds the object.) Without it none stand.
+var barricades: BarricadeState
+## Seconds of work one board takes a walker (a type's `barrier_speed` makes it quicker).
+var board_seconds: float = 1.2
 var zombies: Dictionary[int, ZombieBody] = {}
 
 var _rng := RandomNumberGenerator.new()
@@ -55,8 +62,14 @@ func has_room() -> bool:
 
 
 ## `profile` is what the rules made of the zombie's type; without one it is a plain zombie.
+## `gate_id` names the breach it came to get through, or none.
 func spawn(
-	zombie_id: int, speed: float, position: Vector3, yaw: float = 0.0, profile: ZombieProfile = null
+	zombie_id: int,
+	speed: float,
+	position: Vector3,
+	yaw: float = 0.0,
+	profile: ZombieProfile = null,
+	gate_id: StringName = &""
 ) -> ZombieBody:
 	var zombie := ZombieBody.new()
 	zombie.id = zombie_id
@@ -64,6 +77,7 @@ func spawn(
 	zombie.speed = speed
 	zombie.position = position
 	zombie.yaw = yaw
+	zombie.gate_id = gate_id
 	zombie.repath_left = _rng.randf() * tuning.repath_interval
 	zombie.retarget_left = _rng.randf() * tuning.retarget_interval
 	zombie.enter(ZombieBody.Mode.EMERGING)
@@ -128,8 +142,8 @@ func yaw_of(zombie_id: int) -> float:
 ## 20 Hz one steps twice some calls). Time that is not a positive number is ignored, and a stall
 ## is caught up by at most `MAX_CATCH_UP_STEPS`. `targets` maps a player id to where they stand:
 ## only players a zombie may chase (leave out the downed). Returns the events of all the steps
-## taken: `zombie_struck` (zombie_id, target_id, damage, knockback) and `zombie_cleared`
-## (zombie_id).
+## taken: `zombie_struck` (zombie_id, target_id, damage, knockback), `zombie_tore` (zombie_id,
+## gate_id: it finished pulling a board off) and `zombie_cleared` (zombie_id).
 func tick(delta: float, targets: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not is_finite(delta) or delta <= 0.0:
@@ -151,6 +165,7 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 		else:
 			_think(zombie, STEP, targets, events)
 	_separate(STEP)
+	_keep_outside_the_boards()
 	_clear_the_dead(events)
 	return events
 
@@ -169,9 +184,64 @@ func _think(
 	if not strike.is_empty():
 		strike["type"] = &"zombie_struck"
 		events.append(strike)
+	if zombie.gate_id != &"":
+		_work_the_boards(zombie, delta, events)
 	# Height stays where it spawned: the lot is flat. A path point sits above the floor by a baker
 	# offset (twice the cell height), so using its height needs that taken off first.
 	zombie.position += zombie.velocity * delta
+
+
+## A zombie that came for a breach stops short of its boards while any stand, and once at them
+## pulls them off: a swing at a time, the work of a board adding up at its `barrier_speed`. A type
+## that cannot tear (a crawler) is not held; it goes under. Through the line, the gate is behind it.
+func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary]) -> void:
+	var gate: ZombieGate = gates.get(zombie.gate_id)
+	var depth := gate.depth_of(zombie.position) if gate != null else 0.0
+	if depth >= 0.0:
+		zombie.gate_id = &""
+		zombie.tear_progress = 0.0
+		return
+	if not _boards_hold(zombie, gate):
+		zombie.tear_progress = 0.0
+		return
+	var stop := -tuning.board_stop
+	var inward_speed := zombie.velocity.dot(gate.inward)
+	if inward_speed > 0.0 and depth + inward_speed * delta > stop:
+		var allowed := maxf(stop - depth, 0.0) / delta
+		zombie.velocity -= gate.inward * (inward_speed - allowed)
+	zombie.move_speed = zombie.velocity.length()
+	if depth < stop - tuning.board_slack:
+		return
+	if zombie.mode == ZombieBody.Mode.CHASE:
+		zombie.enter(ZombieBody.Mode.ATTACK)
+	if zombie.mode != ZombieBody.Mode.ATTACK:
+		return
+	zombie.tear_progress += delta * zombie.profile.barrier_speed
+	if zombie.tear_progress >= board_seconds:
+		zombie.tear_progress -= board_seconds
+		events.append({"type": &"zombie_tore", "zombie_id": zombie.id, "gate_id": zombie.gate_id})
+
+
+## Whether boards stand across `gate` that this zombie has to tear down.
+func _boards_hold(zombie: ZombieBody, gate: ZombieGate) -> bool:
+	if zombie.profile.barrier_speed <= 0.0 or barricades == null:
+		return false
+	return barricades.boards_of(gate.id) > 0
+
+
+## What the separation push moved across the line goes back: the crowd cannot shove a zombie
+## through boards that stand.
+func _keep_outside_the_boards() -> void:
+	for zombie: ZombieBody in zombies.values():
+		if zombie.gate_id == &"" or not zombie.is_alive():
+			continue
+		var gate: ZombieGate = gates.get(zombie.gate_id)
+		if gate == null or not _boards_hold(zombie, gate):
+			continue
+		var depth := gate.depth_of(zombie.position)
+		var stop := -tuning.board_stop
+		if depth < 0.0 and depth > stop:
+			zombie.position += gate.inward * (stop - depth)
 
 
 func _ground_speed(zombie: ZombieBody) -> float:
