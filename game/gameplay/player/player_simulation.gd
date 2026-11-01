@@ -5,7 +5,10 @@ extends RefCounted
 ## It reads only its arguments and the physics world, and writes only `state` and `body`. It does
 ## not read the Input singleton, the camera, the animation or the clock, so the same commands from
 ## the same state give the same result on a client (prediction, replay) and on the server.
-## `delta` must be the engine's physics delta because CharacterBody3D.move_and_slide uses it.
+## It can run in any callback, physics frame or not (a network handler replaying a batch in an idle
+## frame): `_slide` makes `move_and_slide` step by `delta` whatever delta the engine would use, and
+## the floor snap is done here from the carried `on_floor` instead of the body's own contact cache,
+## which a rewind does not restore (docs/research/player-controller.md).
 
 
 static func simulate(
@@ -190,7 +193,7 @@ static func _move(
 
 	var fall_speed := -velocity.y
 	body.velocity = velocity
-	body.move_and_slide()
+	_slide(body, on_floor, delta)
 
 	state.on_floor = body.is_on_floor()
 	if state.on_floor and not on_floor and fall_speed > 0.0:
@@ -203,3 +206,31 @@ static func _move(
 		if state.step_travelled >= tuning.step_distance:
 			state.step_travelled -= tuning.step_distance
 			state.footstep = true
+
+
+## `CharacterBody3D.move_and_slide` ignores its caller's time: it steps by the physics delta in a
+## physics frame and by the frame (wall time) delta anywhere else. So the velocity is scaled to make
+## the engine's step equal `delta`, and scaled back after, which is exact because sliding only
+## projects the velocity. The body's own floor snap is off for the call and done after from
+## `was_on_floor` (the carried state, the same rule as the engine's): the engine's cache of whether
+## the last call touched the floor is not restored by a rewind, so it would snap or not at random.
+static func _slide(body: CharacterBody3D, was_on_floor: bool, delta: float) -> void:
+	var engine_delta := (
+		body.get_physics_process_delta_time()
+		if Engine.is_in_physics_frame()
+		else body.get_process_delta_time()
+	)
+	var scale := 1.0
+	if engine_delta > 0.0 and delta > 0.0:
+		scale = delta / engine_delta
+	else:
+		push_error("PlayerSimulation: no engine delta to step the body by (first frame?)")
+	var snap_length := body.floor_snap_length
+	var facing_up := body.velocity.y > 0.0
+	body.floor_snap_length = 0.0
+	body.velocity *= scale
+	body.move_and_slide()
+	body.velocity /= scale
+	body.floor_snap_length = snap_length
+	if was_on_floor and not facing_up and not body.is_on_floor():
+		body.apply_floor_snap()
