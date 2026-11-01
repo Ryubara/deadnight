@@ -110,7 +110,7 @@ jobs:
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           mkdir -p repos/deadnight/build/web
           "$godot" --headless --path repos/deadnight/game --export-release Web 2>&1 | tee export.log
-          ! grep -E "ERROR" export.log
+          if grep -E "ERROR" export.log; then exit 1; fi
           test -s repos/deadnight/build/web/index.pck
           # The JSON catalogues are read as plain files: without `*.json` in the export filter they are missing.
           for name in parts.json clips.json zombies.json; do grep -aq "$name" repos/deadnight/build/web/index.pck; done
