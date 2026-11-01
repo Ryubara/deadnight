@@ -194,6 +194,16 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
 - **Pose:** the left hand holds the board flat against the gap at chest height, 0.95 m in front at kit scale (no IK);
   the right fist taps it from chin height (frame 3), rises above the helmet (15) and drives it home (18). The weapon is
   hidden while the clip holds the arms and shown again when it lets go.
+- **The hammer:** while the clip holds the arms, the claw hammer
+  (`game/assets/weapons/hammer/hammer.glb`, [Weapons](../research/weapons.md#the-hammer)) is in the right fist in
+  the weapon's place, on the same `WeaponMount` (`Index1.R`), sized by its hold file (`holds/hammer.tres`, 0.50 m:
+  [the exception to the size rule](weapon-hold.md#the-size-rule)). Its grip, `HOLD_HAMMER`, is the melee one tipped 20
+  degrees in the hammer's swing plane, chosen from the clip's own motion: over a loop the face drops from the raise
+  over the helmet onto the board and meets it square, face first (tested: a drop of more than 0.5 m, the face within
+  45 degrees of both the blow and the player's forward, the head at least 0.15 m out ahead of the fist; the face is
+  the model's `Face` node). An `Equip`
+  clip's `weapon_visible` frame does not bring the weapon back over it. While the clip holds the arms the hands' IK is
+  switched off, not only blended to 0: at influence 0 it still drew the arms in the gun pose, hiding the swing.
 - **Timing comes from the rules, not the clock.** The night repairs one board every `repair_interval` (night tuning,
   1.0 s) while `use` is held ([hold to repair](rounds.md#the-fences-boards), #297), and each repair is a
   `board_repaired` event naming the player. On each one,
@@ -205,7 +215,10 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
 - Checked headless (`game/tests/art/check_repair.gd`): every track finds its bone on `soldier.glb`, the loop is
   seamless, the fist is lowest at frame 19 (one past `board_set`) and 0.82 m below the raise, no leg bone turns,
   and over `Walk` through the filter the arm matches the clip to 0.04 degrees. `game/tests/player/test_player_repair.gd`
-  steps the controller by hand: start, pace, a faster interval, letting go.
+  steps the controller by hand: start, pace, a faster interval, letting go, the hammer shown and put away, the face
+  leading the blow; `game/tests/night/test_night_repair_hammer.gd` holds `interact` at a breach through the night and
+  checks the hammer replaces the weapon and the weapon comes back on release, and
+  `game/tests/ui/touch/test_touch_repair.gd` does the same from a finger on the touch Interact button.
 
 ## How the clips are made
 

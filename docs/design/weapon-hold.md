@@ -24,12 +24,19 @@ carries `model_scale`, the factor from the model to the rule.
 | Lever rifle (Rifle) | 1.07 m | 0.94 m | 1.65 m | 0.71 | 0.94 m | 1.32 m |
 | Double shotgun (Shotgun) | 1.12 m | 0.99 m | 1.51 m | 0.82 | 0.99 m | 1.21 m |
 | Baseball bat (Melee) | 0.86 m | 0.76 m | 1.11 m | 0.86 | 0.76 m | 0.89 m |
+| Claw hammer (the repair's tool) | 0.33 m | 0.29 m | 0.73 m | 0.85 | 0.50 m | new |
+
+**The hammer is the one exception, and a tool, not a weapon.** At the rule's 0.29 m the Soldier's chibi fist (about
+0.15 m across) hides all of the handle and half the head, and the repair clip is seen for a second at a time, so its
+hold file (`holds/hammer.tres`, class `Repair`) sizes it at 0.50 m, 1.7 times the rule, as the kit draws its own small
+things large. It is not in `HOLD_CLASSES`: the rule's test covers the weapons the player swaps between.
 
 ## How a gun is held
 
 The weapon rides the right hand (`Index1.R`) on the kit's grip, as before, so the clips that move the arm (Reload,
 Equip, Unequip, Swing, the repair) still carry it. While the clip leaves the hands to the pose (standing, walking,
-running, aiming, firing) `WeaponHandsIK` takes the arms over, blended by `influence` at 14 per second:
+running, aiming, firing) `WeaponHandsIK` takes the arms over, blended by `influence` at 14 per second, and is
+switched off (`active`) once the blend reaches 0, since at influence 0 it still overrode the arms in the drawn pose:
 
 1. The weapon's world pose comes from the aim: the grip sits `grip_offset` from the right shoulder joint (right,
    up, forward is negative), the muzzle along the aim, up stays up. The stock's butt, `butt`, lands against the shoulder.

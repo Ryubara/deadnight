@@ -21,6 +21,7 @@ Built by `tools/blender/build_weapons.py` (helpers in `tools/blender/weaponlib.p
 | Baseball bat | 920 | 218 | 18 | 1.11 m | Wood, Black, Grey |
 | Fire axe | 432 | 108 | 14 | 1.24 m | Red, Grey, Wood, Black |
 | Grenade | 1,172 | 374 | 25 | 0.61 m tall | Green, Yellow, DarkGrey, Grey2, Grey |
+| Claw hammer (a tool, not a weapon) | 508 | 168 | 15 | 0.73 m | Grey, Wood, DarkGrey |
 
 All are within the budgets (world 1.5k, far 500) and in the kit's range (guns 1.0-1.45k, melee 660-760; the axe is
 lighter, flat parts need few triangles).
@@ -39,6 +40,33 @@ Drawn at 0.5 m and fattened 1.2x to the kit grenade's 0.6 m (kit grenades: 0.56-
   `HOLD_GRENADE` in [Animation](../design/animation.md#grenade).
 - **Proof:** a turntable with the kit grenades (`render_turntable.py --upright` keeps it standing) and the Godot
   capture of the clips with the grenade in hand, attached to the pull request.
+
+## The hammer
+
+The claw hammer the player nails boards back with while repairing a breach (#297's hold to repair). It is a tool,
+not in the catalogue: nobody buys or swings it, and it shows only while the repair clip holds the arms
+([Animation](../design/animation.md#repair)). Built by `hammer()` in `build_weapons.py`, like the others.
+
+- **Shape:** a wood handle, wider in the swing plane than across it, swelling at the grip and flaring at the butt
+  (one prism, 12 mm chamfer, as the axe's haft); a Grey steel head: a chamfered eye block, a tapering neck, a round
+  face (12 sides) with a DarkGrey worn disc, and a split claw curling back toward the handle (two prongs of four
+  tapering prisms each, a V between them); a wood wedge and a steel one in the top of the eye.
+- **Size:** drawn at 0.56 m and enlarged 1.3 times (1.5 across) to 0.73 m, 2.2 times a real 16 oz hammer (0.33 m):
+  the kit draws its small things large (its knife is 1.35-1.41 m, longer than its 1.11 m shovel). Beside the bat
+  (1.11 m) and the axe (1.24 m) it reads as the smaller tool. In the hand its hold file scales it to 0.50 m, above
+  the size rule's 0.29 m, which the Soldier's fist hides ([the exception](../design/weapon-hold.md#the-size-rule)).
+- **Axes and grip:** the melee frame: standing up along +Z (glTF +Y), the face along -X (the axe's blade side), the
+  claw along +X, thin across Y. The origin is the grip, 15 % up from the butt (0.11 m). The model carries a `Face`
+  empty at the centre of the striking face, (-0.2145, 0.5395, 0) in the glTF, its -Z out of the face, added by
+  `FACES` in `build_weapons.py` beside `MUZZLES` ([attachment points](../design/style.md#attachment-points)): the
+  test reads the blow from it, and a nail spark or a knock can start there. Head top (0, 0.62, 0), butt (0, -0.11, 0).
+- **Far level:** 168 tris (33 %): no chamfers, the face 6-sided, the worn disc, the claw tips and the wedges left out.
+- **Held:** `game/gameplay/player/holds/hammer.tres` (size and ends) on `PlayerAnimation.HOLD_HAMMER`, the melee
+  grip tipped 20 degrees about the hammer's Z, chosen by tracing the face through the repair loop for turns about the
+  handle (-30 to 30 degrees) and tips (-60 to 60): the turn the bat uses already points the face at the board, and
+  the tip brings it square to the downward blow.
+- **Proof:** the turntable beside the bat, the axe and the kit Shovel and Knife, and a Movie Maker capture of the
+  `repair_hold` scene from the player's camera, attached to the pull request.
 
 ## Holding them: grip origin and axes
 

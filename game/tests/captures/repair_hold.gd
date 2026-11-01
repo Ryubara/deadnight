@@ -38,6 +38,9 @@ func _ready() -> void:
 	var player := _night.player()
 	player.teleport(_night.world.repair_spot(BREACH))
 	player.camera_rig.yaw = atan2(inward.x, inward.z)
+	# Facing the boards, as a player who walked up to them is (the teleport keeps the spawn's
+	# facing, and nothing turns the body to the breach yet: #245).
+	player.state.facing = player.camera_rig.yaw
 	player.camera_rig.snap_to(player.global_position)
 	await _hold(SECOND * 2)
 	_stage("standing at the broken fence")
