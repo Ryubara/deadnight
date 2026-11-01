@@ -28,3 +28,20 @@ func test_a_drag_turns_the_player_through_the_real_input_path() -> void:
 	# on a 1080 unit tall canvas turns 100 / 1080 of the full-height swipe, at sensitivity 1.
 	var turned := angle_difference(yaw, rig.yaw)
 	assert_float(turned).is_equal_approx(-TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0, 0.02)
+
+
+func test_the_side_button_moves_the_camera_to_the_other_shoulder() -> void:
+	var runner := scene_runner(TEST_ROOM)
+	var player := runner.find_child("Player") as Player
+	player.capture_mouse = false
+	var before := player.state.shoulder_side
+	await _fixture.touch(0, _fixture.at(TouchLayout.SHOULDER))
+	await runner.simulate_frames(6)
+	await _fixture.lift(0)
+	assert_float(player.state.shoulder_side).is_equal(-before)
+	# A second tap swaps back (once the first press has been let go: a press lasts 90 ms at least).
+	await await_millis(250)
+	await _fixture.touch(0, _fixture.at(TouchLayout.SHOULDER))
+	await runner.simulate_frames(6)
+	await _fixture.lift(0)
+	assert_float(player.state.shoulder_side).is_equal(before)
