@@ -47,7 +47,7 @@ then the charts; `--compare <folder>` draws a before and after).
 - **A weak player's boss night is a cliff.** Boss health 15, 16 and 22 times a walker's killed about 75%, 90% and 95 to
   100% of weak solo nights at it: they never land the weak spot, so their kill rate stops covering the boss's
   arrival all at once. A number that makes strong players feel the boss walls the weak ones.
-- **No weapon is a big step.** Sustained damage a second: flare gun 54 (plus a 3 m blast), pistol 59, shotgun 68,
+- **No weapon is a big step.** Sustained damage a second: flare gun 32 (plus a 3 m blast), pistol 59, shotgun 68,
   rifle 85, SMG 101. Health that compounds against weapons that barely grow set the whole curve; the retune of #188
   had to lower health, counts and the alive cap, not raise anything.
 - **Where the model is thin.** Players are bots, shoot only at what they can see (view range falls with the
