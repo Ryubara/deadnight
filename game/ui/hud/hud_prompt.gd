@@ -1,9 +1,10 @@
 class_name HudPrompt
 extends HudTicket
-## What you can do where you stand, as a concession menu card: the object's name on top, one line
-## on what it does, the price (amber when you can pay, hot when you cannot), and the button to press
-## below, a keycap or a gamepad button by the last device used. A refused purchase shakes the card
-## and says why on the price line.
+## What you can do where you stand, as a concession menu card: the button to press at its left, a
+## keycap or a gamepad button by the last device used, and beside it the object's name, one line on
+## what it does and the price (amber when you can pay, hot when you cannot). A refused purchase
+## shakes the card and says why on the price line. The card is a fixed width and three lines high:
+## each line shrinks to its room, then ends in an ellipsis, so no content makes it grow.
 
 const DETAILS := {
 	&"buy_door": "OPENS THE NEXT PART OF THE LOT",
@@ -21,6 +22,7 @@ const DENIED_TEXT := {
 	GameRules.BuyResult.WRONG_PHASE: "NOT RIGHT NOW",
 }
 const DENIED_SECONDS := 1.8
+const WIDTH := HudStyle.CARD
 
 @export var action := &"interact"
 var denied_left := 0.0
@@ -41,22 +43,33 @@ var glyph_caption: String:
 	get:
 		return _glyph.caption()
 
-var _title := HudStyle.label("", HudStyle.MEDIUM, tokens.ink, true)
-var _detail := HudStyle.label("", HudStyle.SMALL, tokens.ink_muted, false, HudStyle.TRACK_CAPTION)
-var _price := HudStyle.label("", HudStyle.TEXT, tokens.accent_bright, false, HudStyle.TRACK_CAPTION)
+var _title := HudStyle.clip(HudStyle.label("", HudStyle.MEDIUM, tokens.ink, true))
+var _detail := HudStyle.clip(
+	HudStyle.label("", HudStyle.SMALL, tokens.ink_muted, false, HudStyle.TRACK_CAPTION)
+)
+var _price := HudStyle.clip(
+	HudStyle.label("", HudStyle.TEXT, tokens.accent_bright, false, HudStyle.TRACK_CAPTION)
+)
 var _glyph := HudGlyph.new()
 
 
 func _init() -> void:
 	super()
 	_glyph.action = action
+	var words := VBoxContainer.new()
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for label in [_title, _detail, _price]:
 		(label as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		body.add_child(label)
-	_glyph.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	body.add_child(_glyph)
-	body.add_theme_constant_override(&"separation", tokens.space_sm)
-	custom_minimum_size.x = 560.0
+		words.add_child(label)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override(&"separation", tokens.space_md)
+	_glyph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_glyph)
+	row.add_child(words)
+	body.add_child(row)
+	custom_minimum_size.x = WIDTH
 	visible = false
 
 
@@ -68,6 +81,10 @@ func _process(delta: float) -> void:
 			refresh()
 
 
+func topics() -> Array[StringName]:
+	return [HudState.PROMPT, HudState.POINTS]
+
+
 func refresh() -> void:
 	var prompt := state.prompt
 	visible = not prompt.is_empty()
@@ -75,15 +92,22 @@ func refresh() -> void:
 		denied_left = 0.0
 		return
 	var kind: StringName = prompt["kind"]
-	HudStyle.set_text(_title, str(prompt["label"]).to_upper())
+	HudStyle.set_fitted(
+		_title, str(prompt["label"]).to_upper(), HudStyle.MEDIUM, _room(), HudStyle.TEXT
+	)
 	var detail := str(prompt.get("detail", ""))
-	HudStyle.set_text(_detail, detail.to_upper() if detail != "" else DETAILS.get(kind, ""))
+	HudStyle.set_fitted(
+		_detail,
+		detail.to_upper() if detail != "" else DETAILS.get(kind, ""),
+		HudStyle.SMALL,
+		_room()
+	)
 	if denied_left > 0.0:
 		return
 	var cost := int(prompt["cost"])
 	var can_pay := state.can_afford(cost)
 	_price.visible = cost > 0
-	HudStyle.set_text(_price, "%d POINTS" % cost if can_pay else "NEED %d POINTS" % cost)
+	_say_price("%d POINTS" % cost if can_pay else "NEED %d POINTS" % cost)
 	_price.add_theme_color_override(&"font_color", tokens.accent_bright if can_pay else tokens.hot)
 	accent = tokens.accent if can_pay else tokens.hot
 
@@ -95,6 +119,15 @@ func on_event(event: Dictionary) -> void:
 		return
 	denied_left = DENIED_SECONDS
 	_price.visible = true
-	HudStyle.set_text(_price, DENIED_TEXT.get(int(event["result"]), "NOT POSSIBLE"))
+	_say_price(DENIED_TEXT.get(int(event["result"]), "NOT POSSIBLE"))
 	_price.add_theme_color_override(&"font_color", tokens.hot)
 	UIMotion.shake(self)
+
+
+## The width of the lines beside the button: the card less its padding, the button and the gap.
+func _room() -> float:
+	return WIDTH - float(tokens.space_md * 2 + 10 + tokens.space_md) - HudGlyph.SIZE.x
+
+
+func _say_price(text: String) -> void:
+	HudStyle.set_fitted(_price, text, HudStyle.TEXT, _room())

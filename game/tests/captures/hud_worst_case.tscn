@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/hud_worst_case.gd" id="1"]
+
+[node name="HudWorstCase" type="Node"]
+script = ExtResource("1")

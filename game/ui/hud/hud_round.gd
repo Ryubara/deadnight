@@ -35,6 +35,10 @@ func _init() -> void:
 	_ensure_reels(MIN_DIGITS)
 
 
+func topics() -> Array[StringName]:
+	return [HudState.ROUND]
+
+
 func refresh() -> void:
 	var text := str(state.round_number).pad_zeros(MIN_DIGITS)
 	_ensure_reels(text.length())

@@ -89,12 +89,7 @@ func show_banner(main: String, sub: String, rank: Rank, hold := HOLD_TIME) -> vo
 func _fit_size(text: String, wanted: int) -> int:
 	var font := tokens.display_font(tokens.embolden_display * 0.5)
 	var room := WIDTH - float(tokens.space_md * 2 + 10)
-	var size_px := wanted
-	while size_px > HudStyle.MEDIUM:
-		if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x <= room:
-			break
-		size_px -= 4
-	return size_px
+	return HudStyle.fit_size(font, text, wanted, room, HudStyle.MEDIUM)
 
 
 ## Moves the banner `delta` seconds on.

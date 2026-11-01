@@ -107,6 +107,95 @@ func test_a_snapshot_restores_a_late_joiner() -> void:
 	assert_float(late.fuel).is_equal_approx(fixture.rules.generator.fuel, 0.001)
 
 
+func test_a_name_is_kept_to_the_limit() -> void:
+	var state := HudState.new()
+	state.set_player_name(1, "  " + "W".repeat(HudStyle.NAME_LIMIT * 3) + "  ")
+	assert_int(state.team[1]["name"].length()).is_equal(HudStyle.NAME_LIMIT)
+	state.set_player_name(2, "Ruby")
+	assert_str(state.team[2]["name"]).is_equal("Ruby")
+
+
+## The topics each change marks, read by the part that listens, so a change wakes only its readers.
+func _topics_of(state: HudState, change: Callable) -> Array[StringName]:
+	var seen: Array[StringName] = []
+	var listen := func() -> void:
+		for topic: StringName in [
+			HudState.ROUND,
+			HudState.OBJECTIVE,
+			HudState.TEAM,
+			HudState.FUEL,
+			HudState.HEALTH,
+			HudState.AMMO,
+			HudState.POINTS,
+			HudState.PROMPT,
+			HudState.MARKERS
+		]:
+			if state.is_dirty(topic) and not seen.has(topic):
+				seen.append(topic)
+	state.changed.connect(listen)
+	change.call()
+	state.changed.disconnect(listen)
+	return seen
+
+
+func test_each_change_names_the_part_of_the_state_it_touched() -> void:
+	var fixture := HudFixture.make(_host, 3)
+	fixture.act(RulesAction.start())
+	var state := fixture.hud.state
+	(
+		assert_array(_topics_of(state, func() -> void: state.tick(1.5)))
+		. contains_exactly([HudState.ROUND])
+	)
+	(
+		assert_array(
+			_topics_of(state, func() -> void: fixture.act(RulesAction.set_downed(2, true)))
+		)
+		. contains_exactly([HudState.TEAM])
+	)
+	(
+		assert_array(_topics_of(state, func() -> void: state.set_ammo(5, 20, "Rifle")))
+		. contains_exactly([HudState.AMMO])
+	)
+	(
+		assert_array(_topics_of(state, func() -> void: state.set_health(50.0)))
+		. contains_exactly([HudState.HEALTH])
+	)
+	# A teammate's points are not on the party ticket; yours are on the points card.
+	(
+		assert_array(
+			_topics_of(state, func() -> void: fixture.act(RulesAction.grant_points(2, 10)))
+		)
+		. is_empty()
+	)
+	(
+		assert_array(
+			_topics_of(state, func() -> void: fixture.act(RulesAction.grant_points(1, 10)))
+		)
+		. contains_exactly([HudState.POINTS])
+	)
+	(
+		assert_array(_topics_of(state, func() -> void: state.set_prompt(&"repair", "Boards", 0)))
+		. contains_exactly([HudState.PROMPT])
+	)
+
+
+func test_a_held_state_announces_once_and_only_what_changed() -> void:
+	var state := HudState.new()
+	var changes := [0]
+	state.changed.connect(func() -> void: changes[0] += 1)
+	state.hold()
+	state.hold()
+	state.set_ammo(3, 9, "Pistol")
+	state.set_health(10.0)
+	state.release()
+	assert_int(changes[0]).is_equal(0)
+	state.release()
+	assert_int(changes[0]).is_equal(1)
+	# A reading that did not change announces nothing at all.
+	state.set_ammo(3, 9, "Pistol")
+	assert_int(changes[0]).is_equal(1)
+
+
 func test_the_hud_state_is_plain_data_only() -> void:
 	# Network-first: the state holds numbers, strings and plain containers, never a node or the rules.
 	var state := HudFixture.make(_host).hud.state

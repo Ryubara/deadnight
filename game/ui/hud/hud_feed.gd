@@ -9,8 +9,9 @@ enum Kind { EVENTS, NOTICES }
 ## Rows kept at once: the event list is longer than the join and leave notices.
 const MAX_EVENTS := 3
 const MAX_NOTICES := 1
-## Width of a row; longer text wraps to a second line rather than reaching the middle of the screen.
-const ROW_WIDTH := 410.0
+## Width of a row; a row is one line, and longer text ends in an ellipsis rather than wrapping
+## (a wrapped row doubles the column's height and reaches the point gains below it).
+const ROW_WIDTH := HudStyle.COLUMN
 const LIFE := 4.5
 const FADE := 0.6
 const ITEM_NAMES := {
@@ -67,12 +68,11 @@ func on_event(event: Dictionary) -> void:
 
 func push(text: String, colour := Color.TRANSPARENT) -> void:
 	var plain := tokens.ink if kind == Kind.EVENTS else tokens.ink_muted
-	var label := HudStyle.label(
-		text, HudStyle.TEXT, colour if colour.a > 0.0 else plain, false, 1.0
+	var label := HudStyle.clip(
+		HudStyle.label(text, HudStyle.TEXT, colour if colour.a > 0.0 else plain, false, 1.0)
 	)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	label.custom_minimum_size.x = ROW_WIDTH
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rows.append({"label": label, "age": 0.0})
 	_box.add_child(label)
 	while rows.size() > (MAX_EVENTS if kind == Kind.EVENTS else MAX_NOTICES):

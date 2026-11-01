@@ -21,6 +21,10 @@ func _ready() -> void:
 	resized.connect(queue_redraw)
 
 
+func topics() -> Array[StringName]:
+	return [HudState.MARKERS]
+
+
 func refresh() -> void:
 	queue_redraw()
 

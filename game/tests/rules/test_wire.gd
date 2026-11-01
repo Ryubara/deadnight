@@ -68,6 +68,16 @@ func test_the_snapshot_names_its_version_and_tuning() -> void:
 	assert_int((snapshot["tuning_id"] as String).length()).is_equal(RulesTuning.FINGERPRINT_LENGTH)
 
 
+func test_the_snapshot_carries_the_zombies_the_round_began_with() -> void:
+	# A late joiner's HUD shows "left of total": the total is not derivable from what is alive.
+	var original := _midnight()
+	var snapshot := original.to_dict()
+	assert_int(snapshot["round_total"]).is_greater(original.zombies_remaining())
+	var copy := GameRules.new(RulesFixture.tuning(), 1)
+	assert_str(copy.from_dict(snapshot)).is_equal("")
+	assert_dict(copy.to_dict()).is_equal(snapshot)
+
+
 func test_a_snapshot_of_another_version_is_refused_and_changes_nothing() -> void:
 	var snapshot := _midnight().to_dict()
 	snapshot["version"] = 99

@@ -21,6 +21,15 @@ const SHADOW := Vector2(6.0, 6.0)
 ## Corner cut of a ticket.
 const NOTCH := 14.0
 const TRACK_CAPTION := 3.0
+## The longest display name the HUD shows, in characters: the state keeps no more, and a name that
+## is still too wide for its place is ellipsized there.
+const NAME_LIMIT := 20
+## Width of the columns at the screen's sides (the party, the health and points stack, the generator
+## and the lists), and of the cards in the middle (banner, prompt). On the smallest canvas
+## (1536 x 864) the three leave a gap between them; a part never grows past its width, it shrinks
+## or ellipsizes.
+const COLUMN := 420.0
+const CARD := 560.0
 ## Dark outline round every letter, so text holds on a lit ground at night.
 const OUTLINE := 4
 
@@ -47,6 +56,61 @@ static func label(
 	node.add_theme_constant_override(&"shadow_offset_x", 0)
 	node.add_theme_constant_override(&"shadow_offset_y", maxi(2, int(size * 0.05)))
 	return node
+
+
+## Makes a label take no more width than it is given: a long text ends in an ellipsis instead of
+## widening the part (a label's minimum width is its text unless it may trim).
+static func clip(node: Label) -> Label:
+	node.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	node.clip_text = true
+	return node
+
+
+## How wide `text` is at `size_px` in `font`.
+static func text_width(font: Font, text: String, size_px: int) -> float:
+	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x
+
+
+## The largest size from `wanted` down to `floor_size` at which `text` is at most `width` wide.
+static func fit_size(
+	font: Font, text: String, wanted: int, width: float, floor_size := MIN_TEXT
+) -> int:
+	var size_px := wanted
+	var natural := text_width(font, text, size_px)
+	if natural <= width or wanted <= floor_size:
+		return wanted
+	# Start from the proportional guess (shaping a string at each size is the cost), then step down
+	# until it really fits: letter spacing does not scale exactly.
+	size_px = clampi(int(float(wanted) * width / natural), floor_size, wanted)
+	while size_px > floor_size and text_width(font, text, size_px) > width:
+		size_px -= 2
+	return size_px
+
+
+## Writes `text` into `node` (a label made by `label`), shrinking the type from `wanted` toward
+## `floor_size` until it fits `width` and ellipsizing what still does not. For numbers and names
+## that must stay on one line.
+static func set_fitted(
+	node: Label, text: String, wanted: int, width: float, floor_size := MIN_TEXT
+) -> void:
+	var size_px := fit_size(node.get_theme_font(&"font"), text, wanted, width, floor_size)
+	if node.get_theme_font_size(&"font_size") != size_px:
+		node.add_theme_font_size_override(&"font_size", size_px)
+	set_text(node, text)
+
+
+## `text` cut with an ellipsis to fit `width` at `size_px`: for a name that is followed by words
+## that must survive ("RUBY  POINTS"), which a label's own ellipsis would cut.
+static func trimmed(font: Font, text: String, size_px: int, width: float) -> String:
+	if text_width(font, text, size_px) <= width:
+		return text
+	var cut := text.length()
+	while cut > 1:
+		cut -= 1
+		var candidate := text.substr(0, cut).strip_edges() + "…"
+		if text_width(font, candidate, size_px) <= width:
+			return candidate
+	return "…"
 
 
 ## Sets the text of a label made by `label` without touching its style.

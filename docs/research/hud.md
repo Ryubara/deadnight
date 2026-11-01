@@ -10,10 +10,14 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
 - **Time as a parameter.** Every moving part has `advance(delta)` and `_process` only calls it, so tests step the HUD
   by fixed amounts and Movie Maker captures repeat frame for frame. Tweens are used only where no test needs the
   mid-value (the reel roll, the prompt shake).
-- **A layout test beats looking.** Captures at 1080p and 1440p were clean; a test that builds the busiest HUD at the
-  canvas of every window from 1024 x 768 to 4K at UI scales 0.8 to 1.25 (canvas = window / (fit x scale), stretch
-  `canvas_items`, aspect `expand`) found 17 overlaps at 1536 x 864. The fixes were structural (fixed row widths, list
-  caps, one party ticket), not nudges.
+- **A layout test beats looking, if its values are the worst ones.** Captures at 1080p and 1440p were clean; a test that
+  builds the busiest HUD at the canvas of every window from 1024 x 768 to 4K at UI scales 0.8 to 1.25 (canvas = window /
+  (fit x scale), stretch `canvas_items`, aspect `expand`) found 17 overlaps at 1536 x 864. It then passed while real
+  names, a three-digit round, 12,345,678 points, 999 / 9999 ammo and the Marquee typeface overlapped there (#141): it had
+  short values and the fallback font. It now also runs the longest content and a wide face (a `FontVariation` of the
+  fallback stretched 1.4 times, so CI without font files still tests a wide face) and the real Marquee pair when
+  `refs/fonts` is found. The fixes are structural (a width per part, text that shrinks then ellipsizes, one line per
+  feed row, the prompt reflowed), not nudges.
 - **Fonts through two token slots.** `UITokens.font_display` and `font_text` default to null (the engine fallback). The
   HUD, drawn strings included, asks `tokens.display_font()` and `text_font()`. A capture loads the recommended pair from
   outside the repository, so the committed HUD runs and tests without a font file.
@@ -30,6 +34,18 @@ What building the in-game HUD (`game/ui/hud/`) taught us. The design, parts and 
   `window/size/window_width_override` and `window_height_override`.
 - Strict GDScript warnings are errors here: `var x := a if c else {}` types as `Variant`; write `var x: Dictionary =`.
 - A new worktree has no `game/addons/gdUnit4` (git-excluded): copy it from another worktree and import once.
+
+- A `Label` takes its text's width as its minimum unless it may trim: with `clip_text` or an ellipsis overrun its minimum
+  width is 0, so give it a `custom_minimum_size.x` or an expanding parent. Containers then stay the width you chose.
+  Autowrap labels in rows inflate the row (a wrapped feed row doubled the column until it was made one line).
+- `Font.get_string_size` shapes the string, which is the cost of fitting text: guess the size from one measurement
+  (size x room / width) and step down from there. Looping down 4 units at a time made one banner take 6 ms.
+- Count node creation with `get_tree().node_added` filtered to a subtree (`is_ancestor_of`): it needs no engine hook and
+  proves a part makes no nodes. `Performance` monitors count nodes waiting to be freed too.
+- Parts refreshing on every change is invisible until something changes every frame (the break countdown) or a batch
+  lands (58 events from one tick). Mark topics, announce once, and make `set_*` a no-op when the value is the same.
+- A snapshot restore that calls `team.clear()` wipes what the snapshot does not carry (names). Rebuild from the snapshot
+  and put back what the old state knew about the players still in it.
 
 ## Left out, to do
 
