@@ -1,7 +1,8 @@
 class_name ShotEffects
 extends Node3D
-## The instant, client-side look of a shot: tracer, muzzle flash, impact spark, damage number. All
-## of it is predicted from the shooter's own view and needs no answer from the server.
+## The instant, client-side look of a shot: muzzle flash, impact spark and puff, damage number, and
+## a tracer only for a weapon that asks for one (`WeaponDef.tracer`). All of it is predicted from
+## the shooter's own view and needs no answer from the server.
 
 const TRACER_COLOUR := Color(1.0, 0.86, 0.45)
 const TRACER_RADIUS := 0.02
@@ -12,12 +13,63 @@ const NUMBER_SECONDS := 1.0
 const NUMBER_RISE := 0.8
 const HEAD_COLOUR := Color(1.0, 0.45, 0.35)
 const BODY_COLOUR := Color(1.0, 1.0, 1.0)
+const PUFF_COLOUR := Color(0.78, 0.74, 0.66, 0.55)
+const PUFF_RADIUS := 0.1
+const PUFF_GROWTH := 2.6
+const PUFF_SECONDS := 0.35
+## A shot that ended within this many metres of its range hit something.
+const RANGE_SLACK := 0.1
+
+## Streaks drawn so far, for tests.
+var tracers_drawn := 0
+
+
+## The look of one shot of `def` from `muzzle` that ended at each of `ends` (one per pellet): the
+## muzzle flash, then at every end that stopped short of the weapon's range an impact (a spark and a
+## puff of dust). A streak only when the weapon asks for one. A projectile weapon draws nothing
+## here: its body flies and bursts.
+func shot(def: WeaponDef, muzzle: Vector3, ends: Array) -> void:
+	muzzle_flash(muzzle)
+	if def.is_projectile():
+		return
+	for end: Vector3 in ends:
+		if def.tracer:
+			tracer(muzzle, end)
+		if not def.is_melee() and muzzle.distance_to(end) < def.max_range - RANGE_SLACK:
+			impact(end)
+
+
+## A spark and a puff of dust where a shot landed.
+func impact(at: Vector3) -> void:
+	spark(at)
+	puff(at)
+
+
+## Dust that swells and fades.
+func puff(at: Vector3) -> void:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = PUFF_COLOUR
+	var mesh := SphereMesh.new()
+	mesh.radius = PUFF_RADIUS
+	mesh.height = PUFF_RADIUS * 2.0
+	mesh.material = material
+	var instance := MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.position = at
+	add_child(instance)
+	var tween := create_tween().set_parallel()
+	tween.tween_property(instance, "scale", Vector3.ONE * PUFF_GROWTH, PUFF_SECONDS)
+	tween.tween_property(material, "albedo_color:a", 0.0, PUFF_SECONDS)
+	tween.chain().tween_callback(instance.queue_free)
 
 
 func tracer(from: Vector3, to: Vector3, radius: float = TRACER_RADIUS) -> void:
 	var length := from.distance_to(to)
 	if length < 0.01:
 		return
+	tracers_drawn += 1
 	var mesh := CylinderMesh.new()
 	mesh.top_radius = radius
 	mesh.bottom_radius = radius

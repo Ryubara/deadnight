@@ -40,8 +40,8 @@ func _torn_at(id: StringName) -> int:
 
 func _boards_in_the_lot(night: Night, id: StringName) -> int:
 	var up := 0
-	for board in night.world.barricade(id).get_children():
-		if (board as Node3D).visible:
+	for board in night.world.barricade(id).get_children():  # boards, not the drawn torn copies
+		if board is StaticBody3D and (board as Node3D).visible:
 			up += 1
 	return up
 

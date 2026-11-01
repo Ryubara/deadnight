@@ -181,6 +181,20 @@ tint, from the palette above.
 | Doors | the purchase doors are Yellow `#d1ab46` shutters, and nothing else is: no surface keeps the greybox's debug red |
 | Paint | parking lines `#d8d2bc`, 0.12 x 5 m, between every two stalls of a row; the road's centre line Yellow, 3 m dashes every 6 m; each set one `MultiMesh` (one draw call) |
 
+## Props
+
+The lot's props (`tools/blender/build_props.py`, [the lot](map.md#props)) follow these numbers:
+
+| Rule | Value |
+| --- | --- |
+| Scale | 0.8, the kit's factor: a Broken Car is 4.4 m long (the lot's cars are 4.5 m), a shipping container 3.5 x 1.7 x 1.7 m (the kit's container is shorter than its characters; kept, it is the kit's look) |
+| Origin | the middle of the footprint, on the ground |
+| Atlas | one family palette, 40 x 40, 8 px swatches: the kit's 17 prop colours and a DarkRed for the Gas Can's default grey; each kit material takes the nearest swatch; roughness 0.415, metallic 0 (the kit's 0.4 reads dark at night with nothing to reflect) |
+| Files | `.gltf` + `.bin` per prop, all pointing at one `props_palette.png`, so the texture is loaded once |
+| Triangles | 108-1,454 for props under 3 m (budget 800 / 1.5k), Shipping Container 1,336 (budget 5k); the Tires (1,776) are cut with a collapse decimation to just under the budget, and the Broken Car (5,432) to 2,327, because the lot has 19 wrecks; the far level is Godot's generated LOD |
+| Web cost | the field the night starts on went from 164 draw calls and 2k triangles to 109 and 28k (a car is one model over two hidden blocks, where it was two drawn boxes). On a GPU (Chrome, no frame cap) the night's frame p50 stayed at about 3 ms; in Chromium's software renderer (SwiftShader, CI) it went from 83 to 100 ms, one 60 Hz frame |
+| Parked car | the lot's own sedan, 424 tris, five paints: chamfers of 80 mm on body and cabin (the big-prop rule), the rest hard; 76 of them stand on the field, so every part is a plain box or an 8-sided wheel |
+
 ## Modular characters
 
 The Soldier's parts (`tools/blender/build_soldier_parts.py`, [characters](characters.md)) follow these numbers:

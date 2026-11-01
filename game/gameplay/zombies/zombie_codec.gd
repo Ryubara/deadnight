@@ -7,6 +7,9 @@ extends RefCounted
 ##   u16 count, then per zombie:
 ##   u16 id, i16 x_cm, i16 y_cm, i16 z_cm, u8 yaw, u8 mode, u8 episode, u8 speed, u8 look
 ##
+## The mode byte's top bit (`TEARING_BIT`) says the zombie is at its boards pulling one off (the
+## modes fit in the low seven bits), so a client plays the tear clip and not the attack.
+##
 ## `look` is the index in `ZombieModels.looks()`, so a client that joins late draws every zombie in
 ## its type's body from the next frame, and a crippled one changes body when its look changes.
 ##
@@ -21,6 +24,7 @@ extends RefCounted
 const HEADER_BYTES := 2
 const ENTRY_BYTES := 13
 const SPEED_STEP := 0.05
+const TEARING_BIT := 0x80
 
 
 static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
@@ -34,7 +38,7 @@ static func encode(zombies: Dictionary[int, ZombieBody]) -> PackedByteArray:
 		bytes.encode_s16(at + 4, roundi(zombie.position.y * 100.0))
 		bytes.encode_s16(at + 6, roundi(zombie.position.z * 100.0))
 		bytes.encode_u8(at + 8, roundi(wrapf(zombie.yaw, 0.0, TAU) / TAU * 256.0) & 0xFF)
-		bytes.encode_u8(at + 9, zombie.mode)
+		bytes.encode_u8(at + 9, zombie.mode | (TEARING_BIT if zombie.tearing else 0))
 		bytes.encode_u8(at + 10, zombie.episode)
 		bytes.encode_u8(at + 11, mini(roundi(zombie.move_speed / SPEED_STEP), 255))
 		bytes.encode_u8(at + 12, ZombieModels.look_index(zombie.look()))
@@ -56,7 +60,8 @@ static func decode(bytes: PackedByteArray) -> Array[Dictionary]:
 		var entry := {
 			"id": bytes.decode_u16(at),
 			"yaw": bytes.decode_u8(at + 8) / 256.0 * TAU,
-			"mode": bytes.decode_u8(at + 9),
+			"mode": bytes.decode_u8(at + 9) & ~TEARING_BIT,
+			"tearing": (bytes.decode_u8(at + 9) & TEARING_BIT) != 0,
 			"episode": bytes.decode_u8(at + 10),
 			"speed": bytes.decode_u8(at + 11) * SPEED_STEP,
 			"look": ZombieModels.look_at(bytes.decode_u8(at + 12)),

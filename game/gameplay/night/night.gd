@@ -84,9 +84,10 @@ func start(
 		_make_autopilot()
 	view = NightView.new()
 	add_child(view)
-	view.setup(state, camera, _telegraphs())
+	view.setup(state, camera, _telegraphs(), _board_seconds())
 	view.barricade_points = _barricade_points()
 	view.show_lamps(world.greybox, server.rules.tuning.fuel)
+	view.hear(world)
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
 	running = true
@@ -101,6 +102,17 @@ func _telegraphs() -> Dictionary[StringName, float]:
 			for look in type.looks:
 				telegraphs[look] = type.telegraph_seconds
 	return telegraphs
+
+
+## Seconds each look's type takes to pull one board off, for its tear clip (`ZombieView`).
+func _board_seconds() -> Dictionary[StringName, float]:
+	var seconds: Dictionary[StringName, float] = {}
+	var per_board := server.rules.tuning.barricades.seconds_per_board
+	for type in server.rules.tuning.roster.types:
+		if type.barrier_speed > 0.0:
+			for look in type.looks:
+				seconds[look] = per_board / type.barrier_speed
+	return seconds
 
 
 ## Where each breach's boards stand, for the effects of tearing and mending them.
@@ -165,6 +177,16 @@ func _human_command() -> NightCommand:
 func _on_event(event: Dictionary) -> void:
 	if event["type"] == &"game_over":
 		night_over.emit(event["round_reached"])
+	elif event["type"] == &"board_repaired":
+		_show_repair(event["player_id"])
+
+
+## The player who put a board back hammers it home: the repair clip lands on this event.
+func _show_repair(player_id: int) -> void:
+	var body := server.body_of(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.board_repaired(server.tuning.repair_interval)
 
 
 func _make_autopilot() -> void:

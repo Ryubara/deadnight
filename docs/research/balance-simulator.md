@@ -56,9 +56,22 @@ then the charts; `--compare <folder>` draws a before and after).
   had to lower health, counts and the alive cap, not raise anything.
 - **Where the model is thin.** Players are bots, shoot only at what they can see (view range falls with the
   light), turn to one of four sides at a time, and ignore barricades, repairs, grenades, melee, the geometry of
-  doors (which only cost points), ammunition (the night resupplies a full reserve every round; #152) and
-  penetration. Tonics do nothing in the game and so in the model. The report is a tool for comparing tunings, not a
-  prediction of a person's night; rerun it when the weapons, the player's health (#151) or the shop (#152) change.
+  doors and shop spots (which only cost points), penetration and where a player stands when they shoot. Tonics
+  do nothing in the game and so in the model. The report is a tool for comparing tunings, not a
+  prediction of a person's night; rerun it when the weapons, the player's health (#151) or the shop change.
+- **Finite ammunition changes who is hard pressed, not how the ranges look.** Free reloads hid that a weapon holds
+  few rounds against a horde: with reserves the game gives (a revolver 90 at most, a shotgun 54) the average solo
+  player lost a round and the weak one's boss night went from three deaths in four to five in six (the headliner went
+  from 15 to 13 times a walker's health to bring it back to seven in ten). What decides it is
+  the player's policy more than the price: ammunition at half price moved the median by nothing, filling up before
+  the announced special round moved the weak boss night by eight points. Write the policy down (`SimSkill`
+  `ammo_floor_mags`, `ammo_topoff`, `swaps`) and test it against the game's own reload (`SimArm.reload` is compared
+  with `WeaponState` in a test), or the model quietly plays a different game.
+- **A weapon is worth what its player does with it.** The first finite-ammunition run picked the weapon by sustained
+  damage at point blank, so the shotgun went into every hand and a night with it ended three rounds earlier than
+  without. A player takes the weapon that suits the target in front of them (40% more damage a second to switch) and
+  the same shotgun became a small gain. Ask what a weapon is worth with the shopping list, not with the default
+  one: `balance_cli.gd --shopping=weapon_rifle` with `--set economy.start_points=20000` takes price out of it.
 
 ## Using it
 
@@ -66,6 +79,8 @@ then the charts; `--compare <folder>` draws a before and after).
 uv run --with matplotlib python tools/balance/run_report.py --out <folder> --nights 500
 ... --set rounds.health_growth=1.06 --set roster.types:brute.share_max=0.04   (try a number, no file edit)
 ... --brief                                                                   (tables only, no charts)
+... --jobs 3                                                                   (cells at once; the default 9 is a lot on a shared machine)
+balance_cli.gd --shopping=weapon_rifle --set=economy.start_points=20000       (what a weapon is worth, price out of it)
 ```
 
 A Godot `--import` must have run since the last new `class_name` script.

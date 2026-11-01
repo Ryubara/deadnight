@@ -1,7 +1,7 @@
 class_name NightView
 extends Node3D
 ## What the player sees and hears of the night, made only from what the server sent: the zombies
-## from each frame's snapshot, tracers, flashes and damage numbers from the weapons' events, and
+## from each frame's snapshot, flashes, impacts and damage numbers from the weapons' events, and
 ## the sounds. It holds no game state and never asks the server anything.
 
 ## The sound of each weapon's shot and reload; a weapon with no entry is silent for now.
@@ -28,22 +28,28 @@ var effects: ShotEffects
 var barricade_points: Dictionary[StringName, Vector3] = {}
 ## The lot's lamps, drawn from the generator's events (`show_lamps`).
 var lamps: LotLamps
+## The night's sounds besides the guns (`hear`).
+var sounds: NightSounds
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
 
 var _state: ClientState
 
 
-## `telegraphs` maps a look to the seconds its blow takes to land (from the rules' roster).
+## `telegraphs` maps a look to the seconds its blow takes to land, `board_seconds` to the seconds
+## it takes to pull one board off (both from the rules' tuning).
 func setup(
-	state: ClientState, camera: Camera3D, telegraphs: Dictionary[StringName, float] = {}
+	state: ClientState,
+	camera: Camera3D,
+	telegraphs: Dictionary[StringName, float] = {},
+	board_seconds: Dictionary[StringName, float] = {}
 ) -> void:
 	_state = state
 	effects = ShotEffects.new()
 	add_child(effects)
 	horde = ZombieHorde.new()
 	add_child(horde)
-	horde.setup_client(camera, ZombieTuning.new().emerge_seconds, telegraphs)
+	horde.setup_client(camera, ZombieTuning.new().emerge_seconds, telegraphs, board_seconds)
 	state.event_received.connect(_on_event)
 
 
@@ -55,6 +61,14 @@ func show_lamps(lot: Node, fuel: FuelTuning) -> void:
 	lamps.refresh(0)
 
 
+## Starts the night's ambience and the sounds of its boards, doors, blows, till and voices, placed
+## in `world`.
+func hear(world: NightWorld) -> void:
+	sounds = NightSounds.new()
+	add_child(sounds)
+	sounds.setup(_state, world)
+
+
 func _on_event(event: Dictionary) -> void:
 	if lamps != null:
 		lamps.apply_event(event)
@@ -62,9 +76,7 @@ func _on_event(event: Dictionary) -> void:
 		&"frame":
 			horde.apply_snapshot(event["zombies"], step)
 		&"shot_fired":
-			effects.muzzle_flash(event["muzzle"])
-			for end: Vector3 in event["ends"]:
-				effects.tracer(event["muzzle"], end)
+			effects.shot(WeaponCatalog.get_def(event["weapon_id"]), event["muzzle"], event["ends"])
 			_sound(SHOT_SOUNDS, event["weapon_id"], event["muzzle"])
 		&"damage_dealt":
 			effects.number(
@@ -84,6 +96,8 @@ func _on_event(event: Dictionary) -> void:
 		&"projectile_burst":
 			effects.spark(event["point"])
 		&"board_torn", &"board_repaired":
+			if event["type"] == &"board_torn":
+				horde.tore(event.get("zombie_id", -1))
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)

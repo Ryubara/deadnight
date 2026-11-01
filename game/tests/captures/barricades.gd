@@ -19,6 +19,7 @@ const GIVE_UP_FRAMES := 4000
 
 var _night: Night
 var _camera: Camera3D
+var _frame_ms: Array[float] = []
 
 
 func _ready() -> void:
@@ -45,8 +46,13 @@ func _ready() -> void:
 	await _hold(25)
 	_stage("round_started")
 	_act(RulesAction.skip_break())
+	await _until(func() -> bool: return _someone_at_the_boards())
+	_close(-1.0)
+	_stage("close_at_the_boards")
 	await _until(func() -> bool: return _boards() < _whole())
 	_stage("first_board_torn")
+	await _until(func() -> bool: return _boards() < _whole() - 1)
+	_stage("second_board_torn")
 	await _hold(8)
 	_look(APRON_VIEW_FROM, APRON_VIEW_AT)
 	_stage("from_the_apron")
@@ -65,6 +71,8 @@ func _ready() -> void:
 	_look(REPAIR_VIEW_FROM, FIELD_VIEW_AT + Vector3(0.0, 0.4, 0.0))
 	_stage("player_at_the_boards")
 	await _hold(25)
+	_close(1.0)
+	_stage("close_repair")
 	var use := NightCommand.new()
 	use.use = true
 	use.motion.yaw = PI / 2.0
@@ -77,6 +85,26 @@ func _ready() -> void:
 	_stage("mended")
 	await _hold(30)
 	get_tree().quit()
+
+
+## Close on the boards from the side: outside (`side` -1) on the dead, inside (1) on the player.
+func _close(side: float) -> void:
+	var barricade := _night.world.barricade(BREACH)
+	var inward := barricade.inward()
+	var along := inward.cross(Vector3.UP)
+	var at := barricade.centre() + inward * side * 0.8 + Vector3(0.0, 1.0, 0.0)
+	# Inside, from the side the player stands turned to (along the fence), so the hammering arm shows.
+	var out := 3.2 if side < 0.0 else 1.6
+	var across := 3.6 if side < 0.0 else -3.0
+	_look(at + inward * side * out + along * across + Vector3(0.0, 1.0, 0.0), at)
+
+
+## A zombie of this breach standing at its boards.
+func _someone_at_the_boards() -> bool:
+	for zombie: ZombieBody in _night.server.sim.zombies.values():
+		if zombie.tearing:
+			return true
+	return false
 
 
 func _boards() -> int:
@@ -108,7 +136,31 @@ func _look(from: Vector3, at: Vector3) -> void:
 
 
 func _stage(stage: String) -> void:
+	if not _frame_ms.is_empty():
+		var total := 0.0
+		for ms in _frame_ms:
+			total += ms
+		print(
+			(
+				"  frame time since the last stage: mean %.2f ms, worst %.2f ms over %d frames"
+				% [total / _frame_ms.size(), _frame_ms.max(), _frame_ms.size()]
+			)
+		)
+		_frame_ms.clear()
 	print("%s at frame %d" % [stage, Engine.get_frames_drawn()])
+
+
+## CPU time of each frame (process and physics), to show the boards' motion keeps it steady.
+func _process(_delta: float) -> void:
+	_frame_ms.append(
+		(
+			(
+				Performance.get_monitor(Performance.TIME_PROCESS)
+				+ Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
+			)
+			* 1000.0
+		)
+	)
 
 
 ## A rules action from outside the server's tick, its events delivered as the link would.

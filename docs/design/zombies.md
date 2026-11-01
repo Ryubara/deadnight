@@ -111,13 +111,34 @@ the rig-sharing recipe as they are, "new" ones have to be made.
 | Stagger | `Stagger` | | **new** | a heavy hit (melee, shotgun): a step back |
 | Death | `Death` | 0.75 s | kit | |
 | Death variants | `Death_Forward`, `Death_Crawl` | | **new** | three deaths keep a cleared wave from looking the same |
-| Barrier break-in | `Tear_Boards` | | **new** | pull boards off a window; interim: `Idle_Attack` looped at the barrier |
+| Barrier break-in | `Tear_Boards` | 1.21 s | **made** (#221) | reach, grab, strain, yank, at the fence's boards: [Tearing boards](#tearing-boards) |
 | Vault a counter or fence | `Jump`, `Jump_Idle`, `Jump_Land` | 0.33, 0.50, 0.33 s | kit | three parts for a vault over the snack-bar counter |
 | (not used) | `Wave`, `Yes`, `No` | 1.67 s | kit | left in the file, never played |
 
-Seven new clips, in the order the game needs them: `Emerge`, `Tear_Boards`, `Stagger`, `Walk_Limp`, `Crawl_Attack`,
+Six new clips still to make, in the order the game needs them: `Emerge`, `Stagger`, `Walk_Limp`, `Crawl_Attack`,
 `Death_Forward`, `Death_Crawl`. They are authored on the kit zombie's rig in Blender and exported with the same
-recipe, so they play on every variant.
+recipe, so they play on every variant. New clips go into `tools/blender/build_zombie_clips.py`: one file of their own
+(`game/assets/characters/zombies/clips/zombie_clips.glb`, kit skeleton and mesh, only the new clips, `clips.json`
+beside it) whose clips `ZombieRig` adds to the shared library and the boss's, so the variant files are not rebuilt.
+
+### Tearing boards
+
+`Tear_Boards` (29 frames, 1.21 s at 24 fps, loops, full body; the rig is the kit zombie's 50 bones, not the
+Soldier's 43): reach in with a forward lean (0-6), hands close on the board (`grab` 9), lean back and strain (14-20),
+**`yank` 22** (the chest throws back and turns, the hands come past the shoulders: the board leaves the hands here),
+fling and settle (25-29), back to the stance the next reach starts from.
+
+| What | How |
+| --- | --- |
+| When it plays | the snapshot's mode byte has a tearing bit (`ZombieCodec.TEARING_BIT`): the simulation sets `tearing` on a zombie at its boards that is working one loose this step. While it is set, the view stays in the `tear` state through the simulation's repeated swings (new episodes) |
+| Pace | a type takes `seconds_per_board / barrier_speed` a board (walker 1.2 s, brute 0.48 s); `Night` hands it per look to the views |
+| First board | the clip starts at the reach, played so the yank lands one board's time later, when the rules tear it (the work starts from nothing) |
+| Every tear | the rules' `board_torn` names the zombie: its clip is set to the yank and from there plays one full loop per board, so the next yank lands on the next tear |
+| Interrupted | a stagger leaves the tear state (the flag drops); back at the boards the clip restarts at the reach, and the next tear puts it on the yank again |
+
+Checked in `game/tests/zombies/test_zombie_tear.gd`: the simulation, the wire format and the view run together step by
+step, and at every tear the clip is at its yank (the walker to the frame, the brute within one 30 Hz simulation step).
+The board's own flight is the fence's ([map](map.md)).
 
 ## Playback variety
 
