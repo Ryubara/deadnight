@@ -323,19 +323,19 @@ size where it stands in the way).
 
 | Where | What |
 | --- | --- |
-| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; a broken pallet by the playground, cones by the shelter |
+| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
 | Midway | a dumpster at the end of each alley, cartons where crate stack A was, a small container where B was, cones at the road gate |
-| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence |
+| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
 | Back lot | the wreck rows are the kit's Broken Car (`wreck.tscn`); tyres, debris, a spilt drum |
-| Road | the two wrecks are Broken Cars (the battery headlights sit at the west one's front); barriers and cones before the roadblock; crates by the kiosks |
+| Road | the two wrecks are Broken Cars (the battery headlights sit at the west one's front); barriers and cones before the roadblock; crates by the kiosks; queue barriers to the kiosks, a tree in each of the plaza's north corners, street lights on its side walls (models only, no light); hoardings at the road's west end, junk on its north verge, a skip, cones on the centre line |
 
 Rules the placement keeps, all checked by the world tests:
 
 - **Solid props are CSG.** The zombies' mesh is baked only from CSG shapes with collision (`navmesh_baker.gd`), so a
   prop that blocks has a hidden `CSGBox3D` or `CSGCylinder3D` with `use_collision`; a hidden CSG root still collides
   and bakes. A `StaticBody3D` would be solid for the player and invisible to the dead.
-- **Clutter has no collision**: cones, pallets, planks, debris, a lone carton, a spilt drum, a gas can. It never closes
-  a path or makes a slot.
+- **Clutter has no collision**: cones, pallets, planks, debris, papers, signs, a lone carton, a spilt drum, a gas can,
+  the street lights. It never closes a path or makes a slot. A tree is solid only at its trunk (0.3 m, 2.4 m tall).
 - **No stairs out.** A prop a player can jump onto (a crate 0.63 m, a drum 0.82 m, tyres 0.87 m, a barrier 0.5 m) is
   kept away from anything taller and from low walls: a barrier by the road's 1.6 m end walls, or a climbable wreck
   beside them, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box 1.3 m tall (no step at the bonnet),

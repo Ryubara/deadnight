@@ -294,6 +294,307 @@
    "White"
   ]
  },
+ "water_tank_floor": {
+  "kit_id": "xgsh3kWbAM",
+  "kit_tris": 784,
+  "tris": 784,
+  "budget": 1500,
+  "size_xzy": [
+   1.408,
+   3.655,
+   1.527
+  ],
+  "swatches": [
+   "Grey",
+   "Grey2",
+   "White"
+  ]
+ },
+ "tree": {
+  "kit_id": "b0boebSV1r",
+  "kit_tris": 1044,
+  "tris": 1044,
+  "budget": 5000,
+  "size_xzy": [
+   2.642,
+   2.106,
+   4.061
+  ],
+  "swatches": [
+   "Rust",
+   "TreeGreen"
+  ]
+ },
+ "tree_tall": {
+  "kit_id": "i4QMw4L64D",
+  "kit_tris": 2412,
+  "tris": 2412,
+  "budget": 5000,
+  "size_xzy": [
+   3.413,
+   2.112,
+   4.471
+  ],
+  "swatches": [
+   "Rust",
+   "TreeGreen"
+  ]
+ },
+ "tree_small": {
+  "kit_id": "QeYQEpgPcC",
+  "kit_tris": 1652,
+  "tris": 1652,
+  "budget": 5000,
+  "size_xzy": [
+   1.665,
+   1.665,
+   4.976
+  ],
+  "swatches": [
+   "Rust",
+   "TreeGreen"
+  ]
+ },
+ "tree_pine": {
+  "kit_id": "1BkD9JnKrE",
+  "kit_tris": 2504,
+  "tris": 2504,
+  "budget": 5000,
+  "size_xzy": [
+   2.751,
+   2.645,
+   4.692
+  ],
+  "swatches": [
+   "Rust",
+   "TreeGreen"
+  ]
+ },
+ "trash_open": {
+  "kit_id": "IvvdNqXmAW",
+  "kit_tris": 1374,
+  "tris": 1374,
+  "budget": 1500,
+  "size_xzy": [
+   2.53,
+   2.1,
+   2.668
+  ],
+  "swatches": [
+   "Black",
+   "DarkGrey",
+   "Green",
+   "Grey",
+   "Oil"
+  ]
+ },
+ "sofa": {
+  "kit_id": "lmePppSu8a",
+  "kit_tris": 416,
+  "tris": 416,
+  "budget": 1500,
+  "size_xzy": [
+   2.68,
+   1.171,
+   1.059
+  ],
+  "swatches": [
+   "Red"
+  ]
+ },
+ "sofa_small": {
+  "kit_id": "vRMLQC5Dfg",
+  "kit_tris": 264,
+  "tris": 264,
+  "budget": 1500,
+  "size_xzy": [
+   1.626,
+   1.171,
+   1.059
+  ],
+  "swatches": [
+   "Red"
+  ]
+ },
+ "sign": {
+  "kit_id": "4MSsNFk5fc",
+  "kit_tris": 284,
+  "tris": 284,
+  "budget": 1500,
+  "size_xzy": [
+   0.456,
+   0.418,
+   0.826
+  ],
+  "swatches": [
+   "Oil",
+   "Yellow"
+  ]
+ },
+ "pipes": {
+  "kit_id": "GB6AFkoiZb",
+  "kit_tris": 688,
+  "tris": 688,
+  "budget": 5000,
+  "size_xzy": [
+   0.802,
+   3.413,
+   0.765
+  ],
+  "swatches": [
+   "Grey",
+   "Grey2"
+  ]
+ },
+ "fence": {
+  "kit_id": "JfSPlkPhRD",
+  "kit_tris": 424,
+  "tris": 424,
+  "budget": 1500,
+  "size_xzy": [
+   1.506,
+   0.493,
+   0.838
+  ],
+  "swatches": [
+   "Grey"
+  ]
+ },
+ "fence_long": {
+  "kit_id": "Wbz6joYBJG",
+  "kit_tris": 424,
+  "tris": 424,
+  "budget": 1500,
+  "size_xzy": [
+   2.131,
+   0.493,
+   0.838
+  ],
+  "swatches": [
+   "Grey"
+  ]
+ },
+ "brick_wall": {
+  "kit_id": "GhSmk5IA5i",
+  "kit_tris": 216,
+  "tris": 216,
+  "budget": 1500,
+  "size_xzy": [
+   1.79,
+   0.165,
+   0.563
+  ],
+  "swatches": [
+   "Brick"
+  ]
+ },
+ "brick_wall_low": {
+  "kit_id": "7uEf9KAU9q",
+  "kit_tris": 108,
+  "tris": 108,
+  "budget": 1500,
+  "size_xzy": [
+   1.79,
+   0.165,
+   0.271
+  ],
+  "swatches": [
+   "Brick"
+  ]
+ },
+ "barrier_large": {
+  "kit_id": "gLbBiYwt7l",
+  "kit_tris": 624,
+  "tris": 624,
+  "budget": 5000,
+  "size_xzy": [
+   3.044,
+   0.533,
+   2.547
+  ],
+  "swatches": [
+   "DarkGrey",
+   "Grey",
+   "White",
+   "Yellow"
+  ]
+ },
+ "barrier_fixed": {
+  "kit_id": "Fg3Nimfcfg",
+  "kit_tris": 1208,
+  "tris": 1208,
+  "budget": 5000,
+  "size_xzy": [
+   3.044,
+   0.533,
+   2.547
+  ],
+  "swatches": [
+   "Cardboard",
+   "DarkGrey",
+   "Grey",
+   "Red",
+   "White",
+   "Yellow"
+  ]
+ },
+ "papers": {
+  "kit_id": "CCRSdAJxsD",
+  "kit_tris": 6,
+  "tris": 6,
+  "budget": 800,
+  "size_xzy": [
+   0.356,
+   0.466,
+   0.002
+  ],
+  "swatches": [
+   "White"
+  ]
+ },
+ "papers_b": {
+  "kit_id": "MujITy1NRR",
+  "kit_tris": 16,
+  "tris": 16,
+  "budget": 800,
+  "size_xzy": [
+   0.762,
+   0.576,
+   0.002
+  ],
+  "swatches": [
+   "White"
+  ]
+ },
+ "papers_c": {
+  "kit_id": "PTvW67lIoU",
+  "kit_tris": 12,
+  "tris": 12,
+  "budget": 800,
+  "size_xzy": [
+   0.762,
+   0.695,
+   0.004
+  ],
+  "swatches": [
+   "White"
+  ]
+ },
+ "street_light": {
+  "kit_id": "nFwrlcLvM5",
+  "kit_tris": 324,
+  "tris": 324,
+  "budget": 1500,
+  "size_xzy": [
+   0.335,
+   1.669,
+   4.517
+  ],
+  "swatches": [
+   "Grey",
+   "White"
+  ]
+ },
  "car_red": {
   "kit_id": "",
   "kit_tris": 0,
