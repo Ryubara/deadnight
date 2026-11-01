@@ -24,6 +24,7 @@ static func simulate(
 	state.jumped = false
 	state.landed = false
 	state.footstep = false
+	state.stepped_up = 0.0
 	body.global_position = state.position
 	body.velocity = state.velocity
 
@@ -215,9 +216,13 @@ static func _move(
 
 	var fall_speed := -velocity.y
 	body.velocity = velocity
-	_slide(body, on_floor, delta)
+	if on_floor and velocity.y <= 0.0:
+		state.stepped_up = _step_up(body, tuning, delta)
+	# While a step settles the foot is over the ledge's edge: a snap would pull it back down.
+	_slide(body, on_floor and state.step_settle <= 0.0 and state.stepped_up <= 0.0, delta)
 
 	state.on_floor = body.is_on_floor()
+	_settle_step(body, state, tuning, delta)
 	if state.on_floor and not on_floor and fall_speed > 0.0:
 		state.landed = true
 		state.landed_speed = fall_speed
@@ -256,3 +261,68 @@ static func _slide(body: CharacterBody3D, was_on_floor: bool, delta: float) -> v
 	body.floor_snap_length = snap_length
 	if was_on_floor and not facing_up and not body.is_on_floor():
 		body.apply_floor_snap()
+
+
+## A low ledge in the way of this tick's walk: lifts the body onto its top and returns the rise in
+## metres (0 when there is no ledge to climb), and the slide that follows carries it on over the
+## top. A ledge is a wall (not a slope) the body is blocked by whose top is within `step_height`
+## above its feet, with room for the body above it and a walkable top; anything else is left to the
+## engine. Only physics queries are used, so a replay from the same state climbs the same ledges.
+static func _step_up(body: CharacterBody3D, tuning: PlayerTuning, delta: float) -> float:
+	if tuning.step_height <= 0.0:
+		return 0.0
+	var motion := Vector3(body.velocity.x, 0.0, body.velocity.z) * delta
+	if motion.length_squared() < 0.000001:
+		return 0.0
+	var origin := body.global_transform
+	var hit := KinematicCollision3D.new()
+	if not body.test_move(origin, motion, hit):
+		return 0.0
+	if hit.get_normal().angle_to(Vector3.UP) <= body.floor_max_angle:
+		return 0.0  # a slope: the engine walks it
+	# The top of the thing in the way, a hair inside its face where the body is blocked.
+	var inside := -Vector3(hit.get_normal().x, 0.0, hit.get_normal().z).normalized() * 0.03
+	var reach := hit.get_position() + inside
+	var feet := origin.origin.y
+	var query := PhysicsRayQueryParameters3D.create(
+		Vector3(reach.x, feet + tuning.step_height + tuning.step_clearance, reach.z),
+		Vector3(reach.x, feet, reach.z),
+		body.collision_mask,
+		[body.get_rid()]
+	)
+	var top := body.get_world_3d().direct_space_state.intersect_ray(query)
+	if top.is_empty():
+		return 0.0
+	var normal: Vector3 = top.normal
+	var rise: float = (top.position as Vector3).y - feet
+	if normal.angle_to(Vector3.UP) > body.floor_max_angle:
+		return 0.0
+	if rise < tuning.step_min_rise or rise > tuning.step_height:
+		return 0.0
+	# Room for the body: nothing overhead on the way up, nothing in the way once over the ledge.
+	var lifted := rise + 2.0 * body.safe_margin
+	if body.test_move(origin, Vector3.UP * lifted):
+		return 0.0
+	var over := origin.translated(Vector3.UP * lifted)
+	if body.test_move(over, motion):
+		return 0.0
+	body.global_position += Vector3.UP * lifted
+	return rise
+
+
+## Right after a step up the lifted body's rounded foot is still over the ledge's edge, not on its
+## top: the engine says "no floor" for a few ticks though the body is where it should be. For
+## `step_settle_distance` of walking the carried flag stays "on the floor" (no fall, no landing, no
+## sag); once the foot is over the top the engine's own answer is back.
+static func _settle_step(
+	body: CharacterBody3D, state: PlayerMotionState, tuning: PlayerTuning, delta: float
+) -> void:
+	if state.stepped_up > 0.0:
+		state.step_settle = tuning.step_settle_distance
+	elif state.step_settle > 0.0:
+		var walked := Vector2(body.velocity.x, body.velocity.z).length() * delta
+		state.step_settle = maxf(state.step_settle - walked, 0.0)
+	if not state.on_floor and state.step_settle > 0.0:
+		state.on_floor = true
+	elif state.on_floor:
+		state.step_settle = 0.0
