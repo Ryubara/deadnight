@@ -7,6 +7,9 @@ const SNAPSHOT_KEYS := {
 	"id": TYPE_INT,
 	"points": TYPE_INT,
 	"downed": TYPE_BOOL,
+	"health": TYPE_FLOAT,
+	"max_health": TYPE_FLOAT,
+	"since_blow": TYPE_FLOAT,
 	"weapons": TYPE_ARRAY,
 	"tonics": TYPE_ARRAY,
 	"grenades": TYPE_INT,
@@ -20,6 +23,12 @@ const SNAPSHOT_KEYS := {
 var id: int = 0
 var points: int = 0
 var downed: bool = false
+## Health left, 0 to `max_health`; a player is down at zero (and `downed` says so).
+var health: float = 0.0
+## The most `health` can be. Per player, so a tonic can raise it.
+var max_health: float = 0.0
+## Seconds since the last blow, counted up to the regeneration delay and no further.
+var since_blow: float = 0.0
 var weapons: Array[StringName] = []
 var tonics: Array[StringName] = []
 var grenades: int = 0
@@ -49,6 +58,9 @@ func to_dict() -> Dictionary:
 		"id": id,
 		"points": points,
 		"downed": downed,
+		"health": health,
+		"max_health": max_health,
+		"since_blow": since_blow,
 		"weapons": weapons.duplicate(),
 		"tonics": tonics.duplicate(),
 		"grenades": grenades,
@@ -63,6 +75,9 @@ func to_dict() -> Dictionary:
 static func from_dict(data: Dictionary) -> PlayerState:
 	var player := PlayerState.new(data["id"], data["points"])
 	player.downed = data["downed"]
+	player.health = data["health"]
+	player.max_health = data["max_health"]
+	player.since_blow = data["since_blow"]
 	player.weapons.assign(data["weapons"])
 	player.tonics.assign(data["tonics"])
 	player.grenades = data["grenades"]

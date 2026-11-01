@@ -36,8 +36,8 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `malformed`, and leaves the night as it was. The version is checked first, so a snapshot of any older
   layout answers `bad_version`; the insides are checked before anything changes (a plan naming no type,
   a zombie without a `type`, a player or the generator missing a field answer `malformed`). The
-  version is 6 (5 added the plan and the zombies' type, 6 the fence's boards); 4 named two different layouts and is
-  never used again.
+  version is 7 (5 added the plan and the zombies' type, 6 the players' health, 7 the fence's boards); 4 named two
+  different layouts and is never used again.
 - **Reads change nothing.** `points_of`, `price_of`, `is_door_open` and `zombies_remaining` are
   queries; clients may call them on their mirror.
 
@@ -54,6 +54,7 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `hit` | `player_id`, `zombie_id`, `zone` (`head`, `body`, `limb`, `weak`), `damage` (float, `> 0`), optional `melee` | the weapon code, from a player's shot or swing |
 | `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
+| `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
 | `repair` (`barricade_id`), `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
@@ -74,6 +75,9 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `special_round_cleared` | `round`, `special_id`, `reward` | the reward line; `reward` was paid to each player on their feet as `points_changed` with reason `special_reward` |
 | `round_ended` | `round`, `special_id` | |
 | `zombie_crippled` | `zombie_id`, `zombie_type` (the crawler it became), `look`, `player_id`, `cause` (`legs` or `wounded`), `health` (left), `speed_scale` | switch the zombie to a crawler (lower, slower by `speed_scale`); sent once per zombie, after its `zombie_damaged` |
+| `player_hurt` | `player_id`, `damage` (taken off), `health` (left), `max_health`, `bearing`, `source_id` | the HUD's damage arc toward `bearing` (turned by where the player faces), the health bar; the camera shake |
+| `player_healed` | `player_id`, `health`, `max_health`, `reason` (`regen` or `revive`) | the health bar. `regen` is sent when the whole-unit health changes (about 25 a second while mending), `revive` once with `player_revived` |
+| `player_downed` | `player_id`, `cause` (`blow` or `forced`), `bearing` | the DOWN tag and the held red frame; the night ends when every player is down |
 | `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
 | `board_torn` | `barricade_id`, `boards` (left), `zombie_id` | take the top board off that breach; a splinter burst and a sound there |
@@ -86,6 +90,12 @@ A `hit` is rejected (`reason`) as `wrong_phase` (not in an active round), `unkno
 `player_downed` or `unknown_zombie`. The last one is routine, not an error: two shots land on the same
 dying zombie, and the second is rejected and pays nothing. The world sends `zombie_gone` for a death
 that is not a player's (a trap, a fall) and `set_downed` as players go down and get up.
+
+**Who owns a player's health: the rules too.** A player starts with `HealthTuning.max_health` (it is the player's
+own `max_health`, so a tonic can raise it), a `blow` takes it off and restarts the wait, and a player at zero is
+down. After `regen_delay` seconds without a blow health mends at `regen_per_second` (in a break as well as a
+round), announced as `player_healed` whenever the whole-unit value changes. Getting up (a `set_downed` false, or the
+end of the round) restores all of it. Health, its maximum and the wait since the last blow are in the snapshot.
 
 **What a zombie is worth.** The first 4 hits that do not kill pay 4 (8 to the head); the hit that
 kills pays the kill (60, head 100, melee 130) instead of a hit. Any hits after the fourth, and hits
@@ -318,7 +328,7 @@ from the game:
 | --- | --- |
 | Damage, pellets, falloff, zone multipliers, fire interval, magazine, reload | the weapon definitions (`WeaponCatalog`, priced with `DamageModel`, the functions the combat server uses) |
 | A flare's blast on its neighbours | the definition's `splash_*`, on the zombies on the same side within its radius |
-| Health, regeneration delay and rate | `NightTuning` (100, 5 s, 25 a second) |
+| Health, regeneration delay and rate | `HealthTuning` in the rules' table (100, 5 s, 25 a second) |
 | A zombie's blow and swing | the type's `damage` (the night reads the same since #191), `ZombieTuning.swing_seconds` |
 | Lit ground | `GeneratorState`: a circuit slows the dead only while it is on and the tank has fuel, and every circuit burns fuel |
 | Everything else (where zombies are, whether a shot lands, who buys what) | the model: `SimSkill` and `NightSim` |

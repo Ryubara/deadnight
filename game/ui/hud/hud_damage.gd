@@ -1,7 +1,8 @@
 class_name HudDamage
 extends HudPart
 ## Where it hurts from, and how bad it is. A red arc swings in toward the attacker for each blow
-## (`player_hurt`, direction in radians clockwise from straight ahead). Low health draws a red frame
+## (`player_hurt`: its `bearing` is clockwise from -z, so it is turned by where the local player
+## faces to be clockwise from straight ahead). Low health draws a red frame
 ## round the screen that pulses (steady with reduced motion); down, the frame is held. Fills the
 ## HUD.
 
@@ -38,7 +39,8 @@ func on_event(event: Dictionary) -> void:
 		return
 	if int(event.get("player_id", -1)) != state.local_player_id:
 		return
-	arcs.append({"angle": float(event.get("direction", 0.0)), "age": 0.0})
+	var bearing := float(event.get("bearing", 0.0))
+	arcs.append({"angle": wrapf(bearing + state.facing, -PI, PI), "age": 0.0})
 	while arcs.size() > MAX_ARCS:
 		arcs.pop_front()
 	queue_redraw()
