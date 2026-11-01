@@ -43,7 +43,7 @@ page says what is in, and what is next.
 | Rounds, break, points for hits and kills, the round bonus | `gameplay/rules/` | unchanged |
 | Doors: `interact` next to a slab buys the door; `LotDoors` frees its slabs, `DoorNavigation` rebakes the mesh, its area joins the spawns | `NightWorld` (binds the lot to the rules), `NightServer` | one path, the lot's own ([Doors](../research/zombies.md#doors)); the prompt shows the price |
 | Repair: `interact` at a fence breach pays the rules' repair points | `NightServer` | no boards are drawn yet |
-| A supply drop at the end of each round refills ammunition | `NightServer._resupply` | stands in for an ammunition shop |
+| The shop spots: the shotgun and the rifle on walls, the prize crane, ammunition lockers; the crowbar is always carried, `swap` changes the weapon in hand | `NightServer` (`use_target`, `buy`), `NightWorld.shop_spots` | the supply drop is gone: rounds are bought ([the lot](map.md#shop-spots), [ammunition](rounds.md#ammunition)) |
 | Sound: shots, reloads, dry fire, round stings | `NightView` | through the `Audio` autoload |
 | The HUD: round, points, health, ammunition, the prompt at a door or breach, the party, the generator | `NightHudBinding`, `ui/hud/` | below |
 | The autopilot | `gameplay/night/autopilot.gd` | below |
@@ -84,7 +84,6 @@ Each of these is an issue.
   drawn avatars, and the doors' look follows the `door_opened` event instead of the shared scene.
 - **Player health in the rules.** It lives in `NightServer` for now; it belongs beside the downed state in
   `GameRules`, with its snapshot.
-- **Ammunition, weapons and the crane in the shop**, tonics, the generator and its circuits (the lamps do not yet
-  follow `circuit_changed`), the re-cut.
+- **Tonics**, the generator and its circuits (the lamps do not yet follow `circuit_changed`), the re-cut.
 - **Barricades** to repair, and revive by a teammate.
 - **Performance** of the server tick in late rounds (profile with `autopilot_night.tscn --speed`).

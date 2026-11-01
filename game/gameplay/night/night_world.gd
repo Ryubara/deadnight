@@ -101,6 +101,28 @@ func spawn_points() -> Array[Vector3]:
 	return points
 
 
+## Where a player buys without a door: the weapons on the walls, the prize crane and the ammunition
+## lockers, as `{kind, shop_id, position}` (`kind` is `wall`, `crane` or `ammo`; a locker has no
+## shop id and sells the rounds of the weapon in hand).
+func shop_spots() -> Array[Dictionary]:
+	var spots: Array[Dictionary] = []
+	var group := greybox.get_node_or_null("ShopSpots")
+	if group == null:
+		return spots
+	for marker in group.get_children():
+		(
+			spots
+			. append(
+				{
+					"kind": StringName(marker.get_meta("kind")),
+					"shop_id": StringName(marker.get_meta("shop_id")),
+					"position": (marker as Node3D).global_position,
+				}
+			)
+		)
+	return spots
+
+
 ## Where boards can be put back: the gaps in the field's fence.
 func repair_points() -> Array[Vector3]:
 	var points: Array[Vector3] = []

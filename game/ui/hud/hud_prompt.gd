@@ -9,6 +9,8 @@ extends HudTicket
 const DETAILS := {
 	&"buy_door": "OPENS THE NEXT PART OF THE LOT",
 	&"buy_weapon": "A NEW GUN FOR THE NIGHT",
+	&"buy_ammo": "ROUNDS FOR YOUR RESERVE",
+	&"buy_crane": "A RANDOM GUN YOU LACK",
 	&"fill_fuel": "TOPS UP THE GENERATOR",
 	&"repair": "NAIL THE BOARDS BACK UP",
 	&"revive": "PULL THEM BACK TO THEIR FEET",

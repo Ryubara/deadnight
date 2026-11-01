@@ -71,6 +71,26 @@ Rules the greybox is built to:
 - Zombies spawn only in open areas, and always in the field.
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
 
+## Shop spots
+
+Besides the doors, the lot sells at fixed spots: the markers of `ShopSpots` in the greybox, each with a `kind` and a
+`shop_id`, read by `NightWorld.shop_spots()`. A player in reach (3.2 m, `NightTuning.use_reach`) of one is offered what
+it sells on the prompt card and buys with `interact`, the same press as a door; a door in reach wins, then the nearest
+spot with something to sell. What a spot offers comes from the rules' tuning, so the price is never in the scene (the
+plaque only names the weapon).
+
+| Spot | Where | Sells | Why there |
+| --- | --- | --- | --- |
+| Shotgun, on the wall | the concession's front wall, field side, left of the door | `weapon_shotgun`; once owned, its rounds | in the open before any door: the first weapon a player can save for, bought under the dead's eyes |
+| Rifle, on the wall | the booth's front wall, midway side | `weapon_rifle`; once owned, its rounds | past the concession: the long gun waits for the middle rounds and the player who has opened the lot |
+| Prize crane | inside the stand, beside the cabinet that was there | `crane_play`, a weapon the player lacks, until the pool is empty | the stand is the first door; a gamble to spend the first thousand on |
+| Ammunition lockers (5) | the avenue (field), the stand, the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
+
+A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
+real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one
+press never means two things. The lockers are a green crate with a yellow band, the wall weapons an amber plaque, all
+lit by their own colour so they read in the dark (captures in the pull request).
+
 ## Widths and the camera
 
 The first draft sized passages for the 0.7 m capsule and a 1.7 m first-person eye. The player is over the shoulder

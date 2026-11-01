@@ -145,6 +145,8 @@ func _join(player_id: int, local: bool) -> void:
 	_shot_seq[player_id] = 0
 	_repair_wait[player_id] = 0.0
 	rules.apply(RulesAction.add_player(player_id))
+	# The melee weapon first, so the firearm is the one in hand.
+	_combat(CombatAction.give_weapon(player_id, tuning.start_melee))
 	_combat(CombatAction.give_weapon(player_id, tuning.start_weapon))
 
 
@@ -238,8 +240,6 @@ func _on_rules_event(event: Dictionary) -> void:
 			_deliver(event["player_id"], event["detail"])
 		&"player_revived":
 			_health[event["player_id"]] = tuning.max_health
-		&"round_ended":
-			_resupply()
 
 
 # --- Weapons and hands ---
@@ -280,19 +280,6 @@ func _combat(action: Dictionary) -> void:
 		if event["type"] == &"fire_rejected" and QUIET_REJECTIONS.has(event["reason"]):
 			continue
 		_outbox.append(event)
-
-
-## The supply drop between rounds: every carried weapon gets magazines, and the hand keeps
-## what it held.
-func _resupply() -> void:
-	for player_id in _bodies:
-		var held := combat.weapon_of(player_id)
-		if held == null:
-			continue
-		for weapon_id in combat.carried(player_id):
-			for _i in tuning.resupply_magazines:
-				_combat(CombatAction.give_weapon(player_id, weapon_id))
-		_combat(CombatAction.equip(player_id, held.def.id))
 
 
 func _target_list() -> Array:
@@ -346,7 +333,8 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 	)
 
 
-## What `use` would do for a player right now: `{}`, a door to buy or a board to put back.
+## What `use` would do for a player right now: `{}`, or a door, a weapon on the wall, the crane or
+## rounds to buy, or a board to put back. A door in reach wins, then the nearest shop spot.
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -361,17 +349,78 @@ func use_target(player_id: int) -> Dictionary:
 		for point in world.door_points(door_id):
 			if _flat(here, point) <= tuning.use_reach:
 				return {"kind": &"door", "id": door_id, "price": rules.price_of(door_id)}
+	var offer := _spot_offer(player_id, here)
+	if not offer.is_empty():
+		return offer
 	for point in world.repair_points():
 		if _flat(here, point) <= tuning.use_reach and _repair_wait[player_id] <= 0.0:
 			return {"kind": &"repair"}
 	return {}
 
 
+## The offer of the nearest shop spot in reach that has one, or `{}`.
+func _spot_offer(player_id: int, here: Vector3) -> Dictionary:
+	var best := {}
+	var best_apart := INF
+	for spot in world.shop_spots():
+		var apart := _flat(here, spot["position"])
+		if apart > tuning.use_reach or apart >= best_apart:
+			continue
+		var offer := _offer_at(player_id, spot)
+		if not offer.is_empty():
+			best = offer
+			best_apart = apart
+	return best
+
+
+## What one spot sells this player: a wall gives its weapon, or the rounds for it once owned; the
+## crane gives a prize while the pool lasts; a locker gives rounds for the weapon in hand.
+func _offer_at(player_id: int, spot: Dictionary) -> Dictionary:
+	match spot["kind"]:
+		&"wall":
+			var weapon := WeaponCatalog.catalog_id(spot["shop_id"])
+			if combat.state_of(player_id, weapon) != null:
+				return _ammo_offer(player_id, weapon)
+			return {
+				"kind": &"weapon",
+				"id": spot["shop_id"],
+				"weapon": weapon,
+				"price": rules.price_of(spot["shop_id"]),
+			}
+		&"crane":
+			var item := rules.tuning.economy.item(spot["shop_id"])
+			var owned: Array[StringName] = rules.players[player_id].weapons
+			if item == null or item.crane_pool(owned).is_empty():
+				return {}
+			return {"kind": &"crane", "id": item.id, "price": rules.price_of(item.id)}
+		&"ammo":
+			var held := combat.weapon_of(player_id)
+			return _ammo_offer(player_id, held.def.id) if held != null else {}
+	return {}
+
+
+## Rounds for a weapon, as many as fit (one purchase at most), or `{}` when none do or are sold.
+func _ammo_offer(player_id: int, weapon: StringName) -> Dictionary:
+	var item := rules.tuning.economy.ammo_item_for(weapon)
+	if item == null:
+		return {}
+	var rounds := mini(ammo_room(player_id, weapon), int(item.amount))
+	if rounds <= 0:
+		return {}
+	return {
+		"kind": &"ammo",
+		"id": item.id,
+		"weapon": weapon,
+		"rounds": rounds,
+		"price": item.ammo_price(rules.round_number, rounds),
+	}
+
+
 func _use(player_id: int) -> void:
 	var target := use_target(player_id)
 	match target.get("kind"):
-		&"door":
-			rules.apply(RulesAction.buy(player_id, target["id"]))
+		&"door", &"weapon", &"ammo", &"crane":
+			buy(player_id, target["id"])
 		&"repair":
 			_repair_wait[player_id] = tuning.repair_interval
 			rules.apply(RulesAction.repair(player_id))

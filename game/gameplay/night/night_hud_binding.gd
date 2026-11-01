@@ -18,6 +18,7 @@ const DOOR_NAMES := {
 	&"door_road": "The road",
 }
 const BREACH_NAME := "Broken fence"
+const CRANE_NAME := "Prize crane"
 
 var _hud: Hud
 var _state: ClientState
@@ -76,11 +77,35 @@ func _set_prompt(prompt: Dictionary) -> void:
 			var label: String = DOOR_NAMES.get(prompt["id"], "A way through")
 			if state.prompt.get("label") != label or state.prompt.get("cost") != prompt["price"]:
 				state.set_prompt(&"buy_door", label, prompt["price"])
+		&"weapon":
+			_offer(&"buy_weapon", _weapon_name(prompt["weapon"]), prompt["price"], "")
+		&"crane":
+			_offer(&"buy_crane", CRANE_NAME, prompt["price"], "")
+		&"ammo":
+			var rounds: int = prompt["rounds"]
+			var label := "%s rounds" % _weapon_name(prompt["weapon"])
+			_offer(&"buy_ammo", label, prompt["price"], "%d ROUNDS FOR YOUR RESERVE" % rounds)
 		&"repair":
 			if state.prompt.get("kind") != &"repair":
 				state.set_prompt(&"repair", BREACH_NAME)
 		_:
 			state.clear_prompt()
+
+
+func _offer(kind: StringName, label: String, cost: int, detail: String) -> void:
+	var state := _hud.state
+	var now := state.prompt
+	if (
+		now.get("kind") != kind
+		or now.get("label") != label
+		or now.get("cost") != cost
+		or now.get("detail") != detail
+	):
+		state.set_prompt(kind, label, cost, detail)
+
+
+func _weapon_name(weapon: StringName) -> String:
+	return _weapon_names.get(weapon, str(weapon))
 
 
 ## The blow as the HUD knows it: the health, and the bearing of the dead one that struck it.

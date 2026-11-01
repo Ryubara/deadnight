@@ -74,6 +74,9 @@ MATS = {
     "road_wall": ("#7a86b8", None),
     "road_line": ("#d1ab46", None),
     "door": ("#d0302c", "#6a1210"),
+    "plaque": ("#e8c37a", "#8a6414"),
+    "ammo_crate": ("#4a6a34", None),
+    "ammo_band": ("#f0e26a", "#7a6a10"),
 }
 
 lines: list[str] = []
@@ -279,6 +282,39 @@ def door(name: str, label_at) -> None:
     props = {"metadata/cost": str(cost), "metadata/shop_id": f'"{item}"', "metadata/requires": f'"{requires}"'}
     node(name, "Node3D", "Doors", props)
     label(f"Doors/{name}", "Label", f"{cost}", label_at, 100)
+
+
+def shop_spot(name: str, kind: str, shop_id: str, pos, yaw: float = 0.0) -> None:
+    """Where a player stands to buy: a marker in `ShopSpots`. `kind` is wall, crane or ammo; `shop_id` is the shop item
+    (empty for ammunition: the lot sells the rounds of the weapon in hand)."""
+    props = {"transform": xform(pos, yaw), "metadata/kind": f'"{kind}"', "metadata/shop_id": f'"{shop_id}"'}
+    node(name, "Marker3D", "ShopSpots", props)
+
+
+def sign(parent: str, name: str, text: str, pos, yaw: float, size: int = 72) -> None:
+    """Text that is always on: the name and price on a plaque or a locker. The prices are the shop's, read at run time
+    by the HUD; this is only the name."""
+    props = {
+        "transform": xform(pos, yaw),
+        "pixel_size": "0.006",
+        "text": f'"{text}"',
+        "font_size": str(size),
+        "outline_size": "24",
+        "modulate": "Color(0.1, 0.07, 0.02, 1)",
+        "outline_modulate": "Color(1, 0.9, 0.6, 1)",
+    }
+    node(name, "Label3D", parent, props)
+
+
+def ammo_locker(name: str, centre: tuple[float, float], yaw: float = 0.0) -> None:
+    """A green crate with a yellow band: the lot's ammunition. The spot is half a metre in front of it."""
+    x, z = centre
+    rad = math.radians(yaw)
+    fx, fz = math.sin(rad), math.cos(rad)  # the crate's front (+Z at yaw 0)
+    box("ShopProps", name, (1.2, 1.0, 0.7), (x, 0.5, z), "ammo_crate", yaw)
+    box("ShopProps", f"{name}Band", (1.24, 0.18, 0.74), (x, 0.82, z), "ammo_band", yaw, collide=False)
+    sign("ShopProps", f"{name}Sign", "AMMO", (x + fx * 0.37, 0.5, z + fz * 0.37), yaw, 60)
+    shop_spot(f"Spot{name}", "ammo", "", (x + fx * 1.1, 0, z + fz * 1.1), yaw)
 
 
 def slab(door_name: str, tag: str, centre, width: float, height: float, axis: str) -> None:
@@ -566,6 +602,30 @@ def build() -> None:
     marker(rz, "SpawnPlaza", (-14, 0, 50))
     label(road, "Label", "7  THE ROAD", (0, 0.6, 58), 150)
     label(road, "LabelPlaza", "TICKET PLAZA", (0, 0.6, 41), 90)
+
+    # --- Shop spots: wall weapons, the prize crane and the ammunition lockers ---------------------------------------
+    # The weapons on the walls sell what the rules' tuning prices (weapon_shotgun, weapon_rifle); the crane is
+    # crane_play inside the stand; a locker sells the rounds of the weapon in hand. Each spot is a marker with the
+    # kind and the shop id as metadata (NightWorld.shop_spots), and the plaque beside it only names it.
+    group("ShopSpots", ".")
+    group("ShopProps", ".")
+    # The shotgun, on the stand's front wall, field side: the first weapon a player can afford, in the open.
+    box("ShopProps", "ShotgunPlaque", (1.7, 0.9, 0.12), (-8.2, 1.6, -4.26), "plaque", collide=False)
+    sign("ShopProps", "ShotgunSign", "SHOTGUN", (-8.2, 1.6, -4.34), 180)
+    shop_spot("SpotShotgun", "wall", "weapon_shotgun", (-8.2, 0, -5.6), 180)
+    # The rifle, on the booth's front wall, midway side.
+    box("ShopProps", "RiflePlaque", (1.7, 0.9, 0.12), (-4.0, 1.6, 21.74), "plaque", collide=False)
+    sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)
+    shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
+    # The prize crane, inside the stand, beside the cabinet that was already there.
+    sign("ShopProps", "CraneSign", "PRIZE CRANE", (-7.3, 2.0, 5.0), 90, 60)
+    shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270)
+    # Lockers: the avenue (the first one, in the open), the stand, the midway, the yard and the back lot.
+    ammo_locker("LockerField", (3.1, -31.0), 270)
+    ammo_locker("LockerStand", (9.2, 1.8), 270)
+    ammo_locker("LockerMidway", (14.6, 12.0), 270)
+    ammo_locker("LockerYard", (31.0, 20.0), 0)
+    ammo_locker("LockerBackLot", (-24.0, 18.0), 0)
 
     # --- Purchase doors: a group per door, a coloured slab per way in; the cost and the prerequisite are metadata ---
     # The lot opens outward from the stand: every other door needs the concession, so the midway is open before any
