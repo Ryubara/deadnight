@@ -46,6 +46,17 @@ MIDWAY_LINK_Z = 20.0
 # The lot's outer walls are higher than the tallest platform beside them (a car roof, 1.65 m) plus a full jump (the
 # player's 1.1 m, PlayerTuning.jump_height) plus a margin, so nobody leaves the map from a roof (docs/design/map.md).
 PERIMETER_H = 3.0
+# The breaches in the field's fence: a gap of BREACH_WIDTH closed by BOARDS boards, each BOARD_PITCH above the last (from
+# the ground to the fence's top, so nobody jumps out over the boards), and
+# an apron outside (APRON_DEPTH deep, APRON_WIDTH wide, walled in) where the dead stand before they tear the boards off.
+# The ids are the rules' (`BarricadeTuning.ids`); the number of boards is `BarricadeTuning.boards`.
+BREACH_WIDTH = 4.0
+BOARDS = 5
+BOARD_FIRST = 0.3  # the middle of the lowest board; the boards are 0.45 m tall, so five fill the gap to its top
+BOARD_PITCH = 0.6
+APRON_DEPTH = 8.0
+APRON_WIDTH = 12.0
+SPAWN_OUTSIDE = 4.0  # the dead appear this far outside the fence line
 
 # Materials per area: id -> (albedo, emission or None). Colours read in the top-down capture, not in the style bible.
 MATS = {
@@ -74,6 +85,7 @@ MATS = {
     "road_wall": ("#7a86b8", None),
     "road_line": ("#d1ab46", None),
     "door": ("#d0302c", "#6a1210"),
+    "breach_ground": ("#3d3829", None),
 }
 
 lines: list[str] = []
@@ -268,6 +280,81 @@ def instance(parent: str, name: str, res: str, pos, rot_y: float = 0.0) -> None:
     node_names.add(f"{parent}/{name}")
 
 
+def breach(field: str, tag: str, bx: float, bz: float) -> None:
+    """The boards across one gap of the fence, and the walled apron outside it where the dead gather.
+
+    The Barricade node stands in the gap on the fence line with its +Z pointing into the field (`Field/Breach*`); the
+    boards are its children. The apron is ground the navigation mesh needs (the dead walk in over it), closed on three
+    sides so nobody walks off the map through a torn fence.
+    """
+    ix, iz = (1.0, 0.0) if bx == -62 else (-1.0, 0.0) if bx == 62 else (0.0, 1.0)
+    rot = math.degrees(math.atan2(ix, iz))
+    props = {
+        "transform": xform((bx, 0, bz), rot),
+        "script": 'ExtResource("barricade")',
+        "metadata/barricade_id": f'"{tag.lower()}"',
+    }
+    node(f"Breach{tag}", "Node3D", field, props)
+    for i in range(BOARDS):
+        instance(
+            f"{field}/Breach{tag}", f"Board{i + 1}", "board", (0.0, BOARD_FIRST + i * BOARD_PITCH, 0.03 * (-1) ** i)
+        )
+    # The apron: out from the fence line along -inward.
+    ox, oz = -ix, -iz
+    half = APRON_WIDTH / 2
+    cx, cz = bx + ox * APRON_DEPTH / 2, bz + oz * APRON_DEPTH / 2
+    if ox != 0:
+        size = (APRON_DEPTH, 0.4, APRON_WIDTH)
+        box(field, f"Apron{tag}", size, (cx, -0.2, cz), "breach_ground")
+        end = bx + ox * APRON_DEPTH
+        block(
+            field,
+            f"Apron{tag}End",
+            min(end, end + ox * 0.4),
+            max(end, end + ox * 0.4),
+            bz - half,
+            bz + half,
+            PERIMETER_H,
+            "field_fence",
+        )
+        for side, dz in (("A", -half), ("B", half)):
+            block(
+                field,
+                f"Apron{tag}Side{side}",
+                min(bx, end),
+                max(bx, end),
+                bz + dz - 0.2,
+                bz + dz + 0.2,
+                PERIMETER_H,
+                "field_fence",
+            )
+    else:
+        size = (APRON_WIDTH, 0.4, APRON_DEPTH)
+        box(field, f"Apron{tag}", size, (cx, -0.2, cz), "breach_ground")
+        end = bz + oz * APRON_DEPTH
+        block(
+            field,
+            f"Apron{tag}End",
+            bx - half,
+            bx + half,
+            min(end, end + oz * 0.4),
+            max(end, end + oz * 0.4),
+            PERIMETER_H,
+            "field_fence",
+        )
+        for side, dx in (("A", -half), ("B", half)):
+            block(
+                field,
+                f"Apron{tag}Side{side}",
+                bx + dx - 0.2,
+                bx + dx + 0.2,
+                min(bz, end),
+                max(bz, end),
+                PERIMETER_H,
+                "field_fence",
+            )
+
+
 def door(name: str, label_at) -> None:
     """A purchase door: a group that holds its slabs; the shop item, its price and the item it needs are metadata.
 
@@ -293,6 +380,8 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/car.tscn" id="car"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lamp_post.tscn" id="lamp"]')
     lines.append('[ext_resource type="Script" path="res://world/drive_in/lot_doors.gd" id="doors"]')
+    lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
     lines.append("")
     for mid, (albedo, emis) in MATS.items():
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
@@ -340,18 +429,19 @@ def build() -> None:
         box(field, f"ScreenLeg{sx}".replace("-", "N"), (1.4, 4.2, 1.6), (sx, 2.1, -48), "field_struct")
     for sx in (-14, 14):
         box(field, f"ScreenStay{sx}".replace("-", "N"), (0.8, 0.8, 7), (sx, 3.0, -52.8), "field_struct")
-    # Perimeter fence (PERIMETER_H) with the breach panels where the dead come in; the fence between the field and the
-    # yard and back lot is 2.4 m.
+    # Perimeter fence (PERIMETER_H) with a gap at each breach, where the dead come in. Boards (a Barricade) close
+    # each gap, and a walled apron outside it is where they stand before they tear the boards off. The fence between
+    # the field and the yard and back lot is 2.4 m.
     fence_h = 2.4
-    wall(field, "FenceN", "x", -52, -62, 62, PERIMETER_H, "field_fence")
-    wall(field, "FenceW", "z", -62, -52, -4, PERIMETER_H, "field_fence")
-    wall(field, "FenceE", "z", 62, -52, -4, PERIMETER_H, "field_fence")
     breaches = [("NW", -62, -46), ("NE", 62, -46), ("W", -62, -22), ("E", 62, -22), ("N", -36, -52), ("N2", 36, -52)]
+    fence_w = [(bz, BREACH_WIDTH, 0, PERIMETER_H) for (_, bx, bz) in breaches if bx == -62]
+    fence_e = [(bz, BREACH_WIDTH, 0, PERIMETER_H) for (_, bx, bz) in breaches if bx == 62]
+    fence_n = [(bx, BREACH_WIDTH, 0, PERIMETER_H) for (_, bx, bz) in breaches if bz == -52]
+    wall(field, "FenceN", "x", -52, -62, 62, PERIMETER_H, "field_fence", fence_n)
+    wall(field, "FenceW", "z", -62, -52, -4, PERIMETER_H, "field_fence", fence_w)
+    wall(field, "FenceE", "z", 62, -52, -4, PERIMETER_H, "field_fence", fence_e)
     for tag, bx, bz in breaches:
-        if abs(bx) == 62:
-            box(field, f"Breach{tag}", (0.6, PERIMETER_H, 4.0), (bx, PERIMETER_H / 2, bz), "door")
-        else:
-            box(field, f"Breach{tag}", (4.0, PERIMETER_H, 0.6), (bx, PERIMETER_H / 2, bz), "door")
+        breach(field, tag, bx, bz)
     # Fence between the field and the yard / back lot, with the two purchase gates (doors listed below).
     wall(field, "FenceS_W", "x", -4, -62, -10, fence_h, "field_fence", [(-40, 4, 0, 2.6)])
     wall(field, "FenceS_E", "x", -4, 10, 62, fence_h, "field_fence", [(40, 4, 0, 2.6)])
@@ -401,7 +491,14 @@ def build() -> None:
         marker(spawns, f"Player{i}", (sx, 0, -43))
     zs = group("ZombieSpawns", field)
     for tag, bx, bz in breaches:
-        marker(zs, f"Spawn{tag}", (bx * 0.97 if abs(bx) == 62 else bx, 0, bz if abs(bx) == 62 else bz + 2))
+        # Outside the fence, on the apron: the dead come to the boards from the dark.
+        at = (bx + math.copysign(SPAWN_OUTSIDE, bx), 0, bz) if abs(bx) == 62 else (bx, 0, bz - SPAWN_OUTSIDE)
+        node(
+            f"Spawn{tag}",
+            "Marker3D",
+            zs,
+            {"transform": xform(at), "metadata/barricade_id": f'"{tag.lower()}"'},
+        )
     label(field, "Label", "1  SCREEN FIELD  (start)", (-26, 0.6, -13), 130)
     label(field, "LabelScreen", "SCREEN", (0, 0.6, -50), 110)
 

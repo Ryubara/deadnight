@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/special_round.gd" id="8_sround"]
 [ext_resource type="Script" path="res://gameplay/rules/special_tuning.gd" id="9_stune"]
 [ext_resource type="Script" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
+[ext_resource type="Script" path="res://gameplay/rules/barricade_tuning.gd" id="10_barr1"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -291,6 +292,12 @@ band_high = 0.4
 band_chance = 0.6
 crawler_speed_fraction = 0.35
 
+[sub_resource type="Resource" id="Resource_barr1"]
+script = ExtResource("10_barr1")
+ids = Array[StringName]([&"nw", &"ne", &"w", &"e", &"n", &"n2"])
+boards = 5
+seconds_per_board = 1.2
+
 [resource]
 script = ExtResource("5_3ukcj")
 rounds = SubResource("Resource_1fk4k")
@@ -299,3 +306,4 @@ fuel = SubResource("Resource_df3qj")
 roster = SubResource("Roster_1")
 specials = SubResource("Specials_1")
 explosives = SubResource("Resource_expl1")
+barricades = SubResource("Resource_barr1")

@@ -14,7 +14,7 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `PlayerState` per player, one `GeneratorState`, two seeded random streams) and uses no scene-tree
   node, no Godot multiplayer, no clock and no global random.
 - **Change only through actions.** `rules.apply(action)` takes a plain dictionary built by
-  `RulesAction` (`tick`, `hit`, `kill`, `repair`, `buy`, `set_circuit`, `set_downed`, `add_player`
+  `RulesAction` (`tick`, `hit`, `kill`, `repair`, `tear_board`, `buy`, `set_circuit`, `set_downed`, `add_player`
   and so on) and returns the **events** it caused, also plain dictionaries
   (`{"type": &"points_changed", "player_id": 1, "total": 260, ...}`). The same events go out through
   `event_emitted` after the state has settled. A server applies what clients ask for, broadcasts the
@@ -36,7 +36,8 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `malformed`, and leaves the night as it was. The version is checked first, so a snapshot of any older
   layout answers `bad_version`; the insides are checked before anything changes (a plan naming no type,
   a zombie without a `type`, a player or the generator missing a field answer `malformed`). The
-  version is 5; 4 named two different layouts and is never used again.
+  version is 6 (5 added the plan and the zombies' type, 6 the fence's boards); 4 named two different layouts and is
+  never used again.
 - **Reads change nothing.** `points_of`, `price_of`, `is_door_open` and `zombies_remaining` are
   queries; clients may call them on their mirror.
 
@@ -53,7 +54,8 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `hit` | `player_id`, `zombie_id`, `zone` (`head`, `body`, `limb`, `weak`), `damage` (float, `> 0`), optional `melee` | the weapon code, from a player's shot or swing |
 | `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
-| `repair`, `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
+| `repair` (`barricade_id`), `buy` (`item_id`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request |
+| `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
 
@@ -74,6 +76,8 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `zombie_crippled` | `zombie_id`, `zombie_type` (the crawler it became), `look`, `player_id`, `cause` (`legs` or `wounded`), `health` (left), `speed_scale` | switch the zombie to a crawler (lower, slower by `speed_scale`); sent once per zombie, after its `zombie_damaged` |
 | `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
+| `board_torn` | `barricade_id`, `boards` (left), `zombie_id` | take the top board off that breach; a splinter burst and a sound there |
+| `board_repaired` | `barricade_id`, `boards` (now up), `player_id` | put a board back on that breach |
 | `action_rejected` | `reason`, `action`, optional `field` | tell only the sender; never broadcast |
 
 The event's own key is `type`, so a zombie's type is `zombie_type` everywhere; no field is ever called `type`.
@@ -90,6 +94,24 @@ however many shots it takes; tiny hits cannot farm it. The tables below still ho
 
 Not the rules' job: whether a client could really have fired that shot (aim, range, rate of fire,
 ammo). The server checks that when it builds the `hit`, and the network layer rate-limits.
+
+## The fence's boards
+
+Six breaches in the field's fence (`barricades` in the tuning: `nw`, `ne`, `w`, `e`, `n`, `n2`) are each closed by
+5 boards. The rules keep the count (`GameRules.barricades`, `boards_of(id)`; it rides the snapshot) and change it
+only through two actions:
+
+- **`tear_board`** (server only, from the zombie simulation, for a living zombie): one board off, answered by
+  `board_torn`; `no_boards` when none are left.
+- **`repair`** (a player): one board back, in a break or a round, answered by `board_repaired` and the points
+  (`points_changed`, reason `repair`). Refused as `barricade_full` (nothing to put back, so nothing to farm),
+  `unknown_barricade`, `player_downed` or `wrong_phase`. The pay stops at the cap (120 from one round's end to the
+  next, so a break's repairs count against the next round's), but the board goes up either way.
+
+Whether a zombie is held at the boards is the simulation's, not the rules': every zombie spawned outside a breach
+stops short of its boards while any stand and works on them at its `barrier_speed` (a walker takes 1.2 s a board, the
+tuning's `seconds_per_board`: one swing); with none up it walks in; a type with `barrier_speed` 0 (a crawler) goes
+under without a stop. How the world draws and holds it is in [the map](map.md#the-fences-breaches).
 
 ## How rounds work
 
@@ -132,7 +154,7 @@ Points (everything is per player):
 | Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
 | Kill / headshot kill / melee kill | 60 / 100 / 130 |
 | Kill by a grenade blast | 40 (times the type's pay, like a bullet's) |
-| Repair one board (at most 120 a round) | 12 |
+| Repair one board (at most 120 from one round's end to the next) | 12 |
 | Round survived, standing | 20 + 10 per round |
 | Special round cleared, standing | 150 or 200 + 40 per round (by kind, see below) |
 
@@ -175,8 +197,8 @@ the counts' remainders, the speed jitter and the look all come from the seeded s
 `health`, `speed`, `damage` (a landed blow), `knockback` (metres), `telegraph_seconds` (the wind-up the
 player may read and dodge; 0 is the ordinary swing), `barrier_speed` (1 is a walker; 0 skips barriers)
 and `hit_chance` (the shot-landing factor for hitboxes). The rules never move a zombie; they say what it
-is. The night reads all of them but `barrier_speed` (no barrier yet): damage, knockback, the
-telegraph, the look and `hit_chance` (which sizes the zones;
+is. The night reads all of them: damage, knockback, the telegraph, the look, `barrier_speed` (how fast it
+tears the fence's boards, below) and `hit_chance` (which sizes the zones;
 [zombies research](../research/zombies.md#types-in-the-night)). A `weak` hit (the boss's lit bulb) is a zone like
 `head`: the weapon sends it when the ray hits that box (`Hitbox.WEAK`, only on a zombie that has a weak spot: the
 headliner), and the rules multiply the damage by the type's

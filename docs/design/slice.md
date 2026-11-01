@@ -42,7 +42,7 @@ page says what is in, and what is next.
 | Player health: 100, regenerates after 5 s unhurt, a down at zero | `NightServer`, `NightTuning` | all down ends the night |
 | Rounds, break, points for hits and kills, the round bonus | `gameplay/rules/` | unchanged |
 | Doors: `interact` next to a slab buys the door; `LotDoors` frees its slabs, `DoorNavigation` rebakes the mesh, its area joins the spawns | `NightWorld` (binds the lot to the rules), `NightServer` | one path, the lot's own ([Doors](../research/zombies.md#doors)); the prompt shows the price |
-| Repair: `interact` at a fence breach pays the rules' repair points | `NightServer` | no boards are drawn yet |
+| Boards at the fence breaches: the dead tear them off, `interact` from the field side puts one back for the rules' repair points | `Barricade`, `NightWorld`, `NightServer`, `ZombieSim` | [the fence's boards](rounds.md#the-fences-boards); the prompt shows only at a breach with a board down |
 | A supply drop at the end of each round refills ammunition | `NightServer._resupply` | stands in for an ammunition shop |
 | Sound: shots, reloads, dry fire, round stings | `NightView` | through the `Audio` autoload |
 | The HUD: round, points, health, ammunition, the prompt at a door or breach, the party, the generator | `NightHudBinding`, `ui/hud/` | below |
@@ -54,7 +54,7 @@ page says what is in, and what is next.
 `Night.hud` (set before `start`) is fed by `NightHudBinding`, a client-side class that reads only
 `ClientState.event_received`: the rules' events go to `HudState.apply_event` as they are (round, points, party,
 fuel, purchases, game over), and each `frame` sets what the rules do not announce, the local player's health, the
-held weapon's ammunition and the prompt (`use_target`: a door's name and price, or a breach).
+held weapon's ammunition and the prompt (`use_target`: a door's name and price, or a breach with a board down).
 The server's `player_damaged` (now with `from`, where the blow came from) becomes the HUD's `player_hurt` with the
 bearing of the dead one. Weapons' events are not forwarded. The night screen and the autopilot capture each put a
 `Hud` in their own tree and hand it to the night; the HUD never reads a game object. Health and ammunition move
@@ -66,7 +66,8 @@ A bot that plays the night through `NightCommand`s. It sees only what a client s
 of the latest frame, its points and the prompt, plus the level's navigation mesh and a ray test against the walls.
 It backs away from the nearest zombie inside 7 m (sprinting), shoots the nearest zombie in range and in the clear
 (from the camera and from the barrel, the third-person corner problem), reloads on an empty magazine, walks to the
-next door when its points cover the price and buys it, and puts a board back at a breach when nothing is in sight.
+next door when its points cover the price and buys it, goes to the nearest broken breach in a break and puts
+the boards back, and puts one back at a breach it stands at when nothing is in sight.
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
@@ -86,5 +87,5 @@ Each of these is an issue.
   `GameRules`, with its snapshot.
 - **Ammunition, weapons and the crane in the shop**, tonics, the generator and its circuits (the lamps do not yet
   follow `circuit_changed`), the re-cut.
-- **Barricades** to repair, and revive by a teammate.
+- **Revive** by a teammate. (The boards at the breaches are in; their sounds are the audio's next.)
 - **Performance** of the server tick in late rounds (profile with `autopilot_night.tscn --speed`).

@@ -12,9 +12,9 @@ extends RefCounted
 ## the player's own motion to apply), and last a `frame`. A frame carries the whole picture a client
 ## or a HUD draws from.
 ##
-## Frame fields: tick, phase, round, remaining, fuel, doors (open ids), zombies (`ZombieCodec`
-## bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve, reloading, points,
-## prompt}}.
+## Frame fields: tick, phase, round, remaining, fuel, doors (open ids), barricades ({id: boards
+## up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo,
+## reserve, reloading, points, prompt}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -72,7 +72,11 @@ func _init(
 	sim.rounds = rules.tuning.rounds
 	sim.pathing = NavmeshPathing.new(world.map())
 	sim.lit_probe = world.is_lit
+	sim.gates = world.gates()
+	sim.boards_probe = rules.barricades.boards_of
+	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
+	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
 	world.bind(rules)
 	world.doors.door_opened.connect(_on_door_opened)
@@ -316,7 +320,8 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 	)
 
 
-## What `use` would do for a player right now: `{}`, a door to buy or a board to put back.
+## What `use` would do for a player right now: `{}`, a door to buy or `{"kind": &"repair", "id",
+## "boards"}` for a breach with a board down that the player stands inside, in reach of.
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -331,9 +336,13 @@ func use_target(player_id: int) -> Dictionary:
 		for point in world.door_points(door_id):
 			if _flat(here, point) <= tuning.use_reach:
 				return {"kind": &"door", "id": door_id, "price": rules.price_of(door_id)}
-	for point in world.repair_points():
-		if _flat(here, point) <= tuning.use_reach and _repair_wait[player_id] <= 0.0:
-			return {"kind": &"repair"}
+	for id in world.barricade_ids():
+		var boards := rules.barricades.boards_of(id)
+		if boards >= rules.tuning.barricades.boards:
+			continue
+		var barricade := world.barricade(id)
+		if barricade.depth_of(here) > 0.0 and _flat(here, barricade.centre()) <= tuning.use_reach:
+			return {"kind": &"repair", "id": id, "boards": boards}
 	return {}
 
 
@@ -343,8 +352,9 @@ func _use(player_id: int) -> void:
 		&"door":
 			rules.apply(RulesAction.buy(player_id, target["id"]))
 		&"repair":
-			_repair_wait[player_id] = tuning.repair_interval
-			rules.apply(RulesAction.repair(player_id))
+			if _repair_wait[player_id] <= 0.0:
+				_repair_wait[player_id] = tuning.repair_interval
+				rules.apply(RulesAction.repair(player_id, target["id"]))
 
 
 # --- The picture clients draw ---
@@ -375,6 +385,7 @@ func _frame() -> Dictionary:
 		"remaining": rules.zombies_remaining(),
 		"fuel": rules.generator.fuel,
 		"doors": rules.doors_open.duplicate(),
+		"barricades": rules.barricades.to_dict(),
 		"zombies": ZombieCodec.encode(sim.zombies),
 		"players": players,
 	}

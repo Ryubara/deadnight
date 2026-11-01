@@ -42,6 +42,8 @@ extends RefCounted
 ##   purchase_made: player_id, item_id, price, detail
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   door_opened: door_id
+##   board_torn: barricade_id, boards (left), zombie_id (the one that pulled it off)
+##   board_repaired: barricade_id, boards (now up), player_id
 ##   fuel_changed: fuel (exact), delta (whole units since the last one); only when the whole-unit
 ##     value changes, so about once per unit burnt or bought, not once per tick
 ##   fuel_low, fuel_empty, fuel_restored
@@ -65,9 +67,9 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 5: `plan`, `special_id`, `round_total` and a zombie's `type`, `max_health` and `speed` together.
+## 6 added the fence's `barricades`; 5 the plan, special round and a zombie's type, health, speed.
 ## Two older layouts both called themselves 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 5
+const SNAPSHOT_VERSION := 6
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -90,6 +92,7 @@ const SNAPSHOT_KEYS := {
 	"players": TYPE_DICTIONARY,
 	"doors_open": TYPE_ARRAY,
 	"generator": TYPE_DICTIONARY,
+	"barricades": TYPE_DICTIONARY,
 	"spawn_rng_state": TYPE_INT,
 	"shop_rng_state": TYPE_INT,
 	"cripple_rng_state": TYPE_INT,
@@ -106,6 +109,7 @@ var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
 var round_number: int = 0
 var generator: GeneratorState
+var barricades: BarricadeState
 var players: Dictionary[int, PlayerState] = {}
 var doors_open: Array[StringName] = []
 
@@ -136,6 +140,7 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 	_shop_rng.seed = p_seed ^ SHOP_STREAM
 	_cripple_rng.seed = p_seed ^ CRIPPLE_STREAM
 	generator = GeneratorState.new(tuning.fuel)
+	barricades = BarricadeState.new(tuning.barricades)
 	_fuel_announced = floori(generator.fuel)
 	generator.fuel_changed.connect(_on_fuel_changed)
 	generator.fuel_low.connect(func() -> void: _emit(&"fuel_low"))
@@ -255,6 +260,7 @@ func to_dict() -> Dictionary:
 		"players": player_data,
 		"doors_open": doors_open.duplicate(),
 		"generator": generator.to_dict(),
+		"barricades": barricades.to_dict(),
 		"spawn_rng_state": _spawn_rng.state,
 		"shop_rng_state": _shop_rng.state,
 		"cripple_rng_state": _cripple_rng.state,
@@ -319,6 +325,7 @@ func from_dict(data: Dictionary) -> StringName:
 		players[player_id] = PlayerState.from_dict(data["players"][player_id])
 	doors_open.assign(data["doors_open"])
 	generator.restore(data["generator"])
+	barricades.restore(data["barricades"])
 	_fuel_announced = floori(generator.fuel)
 	_spawn_rng.seed = rng_seed ^ SPAWN_STREAM
 	_spawn_rng.state = data["spawn_rng_state"]
@@ -360,7 +367,9 @@ func _dispatch(action: Dictionary) -> void:
 			else:
 				_reject(&"unknown_zombie", RulesAction.ZOMBIE_GONE)
 		RulesAction.REPAIR:
-			_repair(action["player_id"])
+			_repair(action["player_id"], StringName(action["barricade_id"]))
+		RulesAction.TEAR_BOARD:
+			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
 			_buy(action["player_id"], action["item_id"])
 		RulesAction.SET_CIRCUIT:
@@ -424,18 +433,9 @@ func _enter_break(seconds: float) -> void:
 	_set_phase(Phase.BREAK)
 	_emit(&"break_started", {"next_round": round_number + 1, "seconds": seconds})
 	if coming != null:
-		var is_boss := coming.kind == SpecialRound.Kind.BOSS
 		_emit(
 			&"special_round_announced",
-			{
-				"round": round_number + 1,
-				"special_id": coming.id,
-				"title": coming.title,
-				"kind": &"boss" if is_boss else &"only",
-				"boss_type": coming.boss_type if is_boss else &"",
-				"boss_count": coming.bosses_for(maxi(players.size(), 1)) if is_boss else 0,
-				"seconds": seconds,
-			}
+			coming.announcement(round_number + 1, players.size(), seconds)
 		)
 
 
@@ -447,7 +447,6 @@ func _begin_round() -> void:
 	_round_total = _plan.size()
 	_spawn_timer = tuning.rounds.first_spawn_delay
 	for player: PlayerState in players.values():
-		player.repair_points_this_round = 0
 		_refill_grenades(player)
 	_set_phase(Phase.ACTIVE)
 	_emit(
@@ -549,6 +548,8 @@ func _remove_zombie(
 func _end_round() -> void:
 	var economy := tuning.economy
 	for player: PlayerState in players.values():
+		# The cap on repair pay runs from one round's end to the next: the break's repairs count.
+		player.repair_points_this_round = 0
 		if player.downed:
 			var penalty := floori(player.points * economy.down_penalty_fraction)
 			if penalty > 0:
@@ -569,14 +570,7 @@ func _end_round() -> void:
 			if _special != null:
 				_award(player.id, _special.reward_at(round_number), &"special_reward")
 	if _special != null:
-		_emit(
-			&"special_round_cleared",
-			{
-				"round": round_number,
-				"special_id": _special.id,
-				"reward": _special.reward_at(round_number),
-			}
-		)
+		_emit(&"special_round_cleared", _special.cleared(round_number))
 	_emit(&"round_ended", {"round": round_number, "special_id": special_id()})
 	_special = null
 	_enter_break(tuning.rounds.break_seconds)
@@ -638,11 +632,6 @@ func _set_downed(player_id: int, downed: bool) -> void:
 		_check_game_over()
 	else:
 		_emit(&"player_revived", {"player_id": player_id})
-
-
-func _can_earn(player_id: int) -> bool:
-	var player := players.get(player_id) as PlayerState
-	return phase == Phase.ACTIVE and player != null and not player.downed
 
 
 func _award(player_id: int, amount: int, reason: StringName) -> void:
@@ -834,15 +823,34 @@ func _cripple_cause(zombie: ZombieState) -> StringName:
 	return &""
 
 
-func _repair(player_id: int) -> void:
-	if not _can_earn(player_id):
+## A player puts one board back, in a break or a round; the board goes up whatever the cap says.
+func _repair(player_id: int, id: StringName) -> void:
+	var player := players.get(player_id) as PlayerState
+	var refusal := &""
+	if player == null:
+		refusal = &"unknown_player"
+	elif player.downed:
+		refusal = &"player_downed"
+	elif phase != Phase.ACTIVE and phase != Phase.BREAK:
+		refusal = &"wrong_phase"
+	else:
+		refusal = barricades.repair(id)
+	if refusal != &"":
+		_reject(refusal, RulesAction.REPAIR, BarricadeState.field_for(refusal))
 		return
-	var player: PlayerState = players[player_id]
-	var room := tuning.economy.repair_cap_per_round - player.repair_points_this_round
-	var pay := mini(tuning.economy.repair, room)
-	if pay > 0:
-		player.repair_points_this_round += pay
-		_award(player_id, pay, &"repair")
+	var boards := barricades.boards_of(id)
+	_emit(&"board_repaired", {"barricade_id": id, "boards": boards, "player_id": player_id})
+	_award(player_id, player.repair_pay(tuning.economy), &"repair")
+
+
+## A zombie pulled a board off (the zombie simulation's work, sent by the server).
+func _tear_board(id: StringName, zombie_id: int) -> void:
+	var refusal := barricades.tear(id) if _zombies.has(zombie_id) else &"unknown_zombie"
+	if refusal != &"":
+		_reject(refusal, RulesAction.TEAR_BOARD, BarricadeState.field_for(refusal, &"zombie_id"))
+		return
+	var boards := barricades.boards_of(id)
+	_emit(&"board_torn", {"barricade_id": id, "boards": boards, "zombie_id": zombie_id})
 
 
 # --- The shop ---

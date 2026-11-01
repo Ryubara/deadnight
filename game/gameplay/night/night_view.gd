@@ -17,11 +17,15 @@ const RELOAD_SOUNDS := {
 	&"rifle": &"reload_rifle",
 	&"shotgun": &"reload_shotgun",
 }
+## Lifts a burst of splinters to the middle of the boards.
+const BOARD_LIFT := Vector3(0.0, 1.3, 0.0)
 ## Lifts a damage number off the wound.
 const NUMBER_LIFT := Vector3(0.0, 0.3, 0.0)
 
 var horde: ZombieHorde
 var effects: ShotEffects
+## Where each breach's boards stand (`NightWorld`): a board torn or mended shows a burst there.
+var barricade_points: Dictionary[StringName, Vector3] = {}
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
 
@@ -65,6 +69,10 @@ func _on_event(event: Dictionary) -> void:
 			Audio.play(&"round_end")
 		&"projectile_burst":
 			effects.spark(event["point"])
+		&"board_torn", &"board_repaired":
+			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
+			if at is Vector3:
+				effects.spark(at + BOARD_LIFT)
 
 
 func _sound(table: Dictionary, weapon_id: StringName, at: Variant) -> void:

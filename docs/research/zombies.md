@@ -89,7 +89,35 @@ The rules say what a zombie is (`ZombieType`, carried by `zombie_spawn_requested
   scale is the look's height (brute 1.18, runner 1.07) times the type's `hit_chance` (the crawler's 0.6 makes it low
   and small). The server sends it with each target (`"scale"`), the lag compensator keeps it, and the bot aims at the
   height the look stands at. Grenade blasts still use the walker's zones.
-- `barrier_speed` is carried on the profile; the night has no barrier yet to read it.
+- `barrier_speed` is carried on the profile and read at the fence's boards ([below](#the-fences-boards)).
+
+## The fence's boards
+
+How a zombie is held at a breach, and what we learned making it (#155):
+
+- **The gate is the simulation's, not physics'.** Zombies are not bodies, so nothing "blocks" them: a zombie
+  spawned at a field marker outside a breach carries the breach's id (`ZombieBody.gate_id`), and `ZombieSim` clamps
+  its walk to 0.9 m short of the boards while the rules' count (`boards_probe`) is above 0. It tears while it stands
+  there, by entering the `ATTACK` mode again at the end of each swing (the client already animates that: the design's
+  interim for `Tear_Boards` is `Idle_Attack` looped at the barrier), and adds `delta * barrier_speed` to its progress; every
+  `seconds_per_board` it reports `zombie_tore`, and the director turns that into the `tear_board` action. Two zombies
+  at one breach both work on it, so a crowd is quicker.
+- **Separation can push a zombie across the line**, so the clamp also runs after the crowd push. A test packs twelve
+  zombies against the boards and none gets through.
+- **A zombie in reach of a player strikes them** through the boards: standing at them is a risk, which is the point.
+- **Boards are not CSG.** `NavmeshBaker` bakes every CSG box with collision, so a `CSGBox3D` board would shut the gap
+  in the navigation mesh and the dead outside would have no path. They are `StaticBody3D`s on layer 2 (players' bodies
+  get that bit in their mask in `NightWorld.add_body`); shots and grenades only look at layer 1, so they pass through
+  the boards and a zombie at them can be shot.
+- **The apron is ground the mesh needs.** The field's ground ends at the fence line; the dead's spawns outside it
+  needed floor of their own, walled in on three sides.
+- **`Transform3D` in a `.tscn` is written row by row**, so the third axis of a yawed node is the third *column*:
+  `Transform3D(c, 0, s, 0, 1, 0, -s, 0, c, ...)` turns the node by `atan2(s, c)` and its +Z points at `(s, 0, c)`. The
+  greybox builder got a breach's facing wrong the first time (depth read inside-out), and only a test of
+  "spawn markers stand outside their breach" caught it.
+- **A ray through boards needs the board's height.** The boards are 0.45 m with 0.15 m between, so a test ray at 1.2 m
+  went through a gap and the test passed for the wrong reason before a negative control (the shot layer must see no
+  boards, the board layer must) was written at a board's middle.
 
 ## The headliner in the night
 
