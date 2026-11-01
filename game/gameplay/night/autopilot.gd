@@ -6,7 +6,8 @@ extends RefCounted
 ## its distance from the nearest zombie, turns to it and shoots, reloads when the magazine runs
 ## dry, walks to the next door when it can afford it and buys it, and puts boards back when it is
 ## standing at one with nothing to shoot. It throws the breaker of an area it has bought
-## (`AutopilotSwitches`), and back off when the tank runs low.
+## (`AutopilotSwitches`), and back off when the tank runs low; and it buys a can of fuel when the
+## tank is low and it has the points (`AutopilotFuel`).
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -37,6 +38,8 @@ var repair_goals: Dictionary = {}
 var whole_boards: int = 1
 ## The breaker posts and when to use them.
 var switches := AutopilotSwitches.new()
+## The fuel can spots and when to buy at them.
+var fuel := AutopilotFuel.new()
 
 var _yaw := 0.0
 var _sidestep := 0.0
@@ -84,12 +87,18 @@ func decide(delta: float) -> NightCommand:
 		command.use = target.is_empty()
 	elif kind == &"circuit":
 		command.use = switches.wants_use(prompt, state.frame)
+	elif kind == &"fuel":
+		command.use = fuel.wants_use(prompt, state.frame, state.points())
 	return command
 
 
-## Where to go: the standing place of the next door it can afford; a breaker post it wants thrown;
+## Where to go: a fuel can when the tank is low and it can pay for one; the standing place of the
+## next door it can afford; a breaker post it wants thrown;
 ## in a break the nearest breach with a board down; else home.
 func _goal() -> Vector3:
+	var cans := fuel.next_goal(state.frame, state.position(), state.points())
+	if cans != Vector3.INF:
+		return cans
 	for door_id in order:
 		if state.frame.get("doors", []).has(door_id):
 			continue

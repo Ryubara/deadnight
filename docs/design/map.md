@@ -233,6 +233,29 @@ The autopilot (`AutopilotSwitches`) lights the circuit of an area as soon as its
 spawn there and lit ground slows them; keeps the field's circuit on; and when the tank falls below the low line puts
 every other circuit out (in a break) and keeps them out until the tank is back 15 points above it.
 
+### The fuel cans
+
+The generator's tank only goes down, so the lot sells fuel: two **can stands** (`FuelSpots/*`, a crate of red cans with
+a yellow band and a FUEL sign in `FuelProps`), each in an area behind its door. A player buys from the spot 1.1 m in
+front of a stand, within `fuel_reach` (2 m, less than `use_reach`, so nobody buys through a wall):
+
+| Stand | Where | Needs |
+| --- | --- | --- |
+| `SpotStand` | inside the concession, behind the counter, on the soda side (2.5, 3.7) | the concession's door |
+| `SpotYard` | outside the generator cage's west wall, facing the yard's gate (35.4, 15.9) | the yard's door |
+
+The concession's is where the design put fuel (the stand), the yard's is for the player who has fought to the generator
+and finds it dry: the yard is `mains` and goes black with the tank. Each spot is a marker with the shop item
+(`metadata/shop_id`, the rules' `fuel_can`) and the door (`metadata/door`); `LotFuel` reads them and the night asks it
+which spot is in reach. Using one (`use`) sends `RulesAction.buy` for the item through the night server and the same
+prompt path as the doors and the breaker posts; the rules price it (`ShopItem.fuel_offer`: a whole can at 100 + 20 per
+round, or only the room left at its share of the price, nothing when the tank is full), and a hand buys at most every
+`fuel_interval` (0.5 s). The HUD's card reads `FUEL CAN`, `+25 UNITS OF FUEL` (or `FILLS UP: +10 UNITS`, or `THE TANK IS
+FULL`) and the price, and a refill shows the generator's card (`fuel_changed` with a positive delta).
+
+The autopilot (`AutopilotFuel`) goes to the nearest open stand when the tank is at the low line and it can pay for a
+can, and buys until the tank is back above 40%.
+
 ## The greybox
 
 `game/world/drive_in_greybox.tscn`: CSG boxes, one flat colour per area, one script (on `Doors`). Metres, Y up,
@@ -248,6 +271,7 @@ x east, z south; the screen is at z = -48 and the road at z = 52 to 64.
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator |
 | `*/Lamps` | the lights of an area, `metadata/circuit` naming the circuit they hang on ([above](#which-lamps-hang-on-which-circuit)); `LotLamps` reads them |
+| `FuelSpots`, `FuelProps` | the fuel can spots (`metadata/shop_id`, `metadata/door`; [above](#the-fuel-cans)) and the crates, cans and signs; `LotFuel` reads the spots |
 | `Switches` | the breaker posts (`metadata/circuit`, and `metadata/door` for the area's shop door; [above](#the-breaker-posts)); `LotSwitches` reads them |
 
 `game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`, `lot_lamps.gd`), the capture rig and
@@ -265,6 +289,10 @@ a change to a constant or coordinate there, not hand edits to a 380-node scene. 
 - the breaker posts: one per generator circuit, each naming its door, clear of every door's slabs, showing the
   circuit (`test_lot_switches.gd`); in a night the prompt, the throw, the held key, a downed player, a dry tank and
   the HUD (`tests/night/test_night_switches.gd`);
+- the fuel cans: a spot per stand, each selling a shop fuel item behind a shop door, on its area's ground, clear of the
+  doors and posts, walkable with every door open (`test_lot_fuel.gd`); in a night the prompt, the purchase, a dry tank
+  refilled with the lamps and the dead's speed following, the held key, a full tank, a poor player, the HUD card and the
+  generator's card (`tests/night/test_night_fuel.gd`); the rules' offer (`tests/rules/test_fuel_refill.gd`);
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 

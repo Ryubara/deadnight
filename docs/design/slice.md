@@ -72,7 +72,8 @@ next door when its points cover the price and buys it, goes to the nearest broke
 the boards back, and puts one back at a breach it stands at when nothing is in sight. It also throws the breaker of an
 area it has bought (the dead spawn there; lit ground slows them) and puts the extra circuits out when the tank runs
 low ([map](map.md#the-breaker-posts)); `tests/night/test_autopilot_switches.gd` checks the rule on frames and the bot
-doing it in a night.
+doing it in a night. When the tank is at the low line and it can pay for a can it walks to the nearest open can stand
+and buys until the tank is back above 40% ([map](map.md#the-fuel-cans), `tests/night/test_autopilot_fuel.gd`).
 
 `tests/night/test_autopilot_night.gd` runs it headless in GdUnit4 (so in CI) for three rounds with a cheaper first
 door, and asserts the night is not over, three rounds started, zombies killed, points earned **and** spent, and a
