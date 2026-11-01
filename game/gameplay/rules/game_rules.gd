@@ -1,0 +1,553 @@
+class_name GameRules
+extends RefCounted
+## The night's rules: rounds, spawn pacing, points, the shop and the generator. Server-first and
+## headless.
+##
+## All state lives in this one object (its fields, its PlayerState and GeneratorState parts, two
+## seeded random generators) and nothing else: no scene-tree node, no Godot multiplayer, no clock,
+## no global random. It changes only through `apply(action)`, a plain dictionary from `RulesAction`,
+## and answers with the events that action caused, a list of plain dictionaries `{"type":
+## StringName, ...fields}`. The same events are also sent through `event_emitted`, after the state
+## has settled. A server calls `apply`, broadcasts the events, and a client mirrors them; single-
+## player runs the same object in-process. `to_dict()` / `from_dict()` snapshot and restore
+## everything, including the random streams, so a restored copy continues exactly as the original
+## would.
+##
+## Time passes only through `RulesAction.tick(delta)`, a fixed step the caller owns.
+##
+## Events (fields besides `type`):
+##   phase_changed: phase
+##   break_started: next_round, seconds
+##   round_started: round, zombie_count
+##   round_ended: round
+##   zombie_spawn_requested: zombie_id, health, speed, point_roll (spawn point = point_roll % count)
+##   zombie_removed: zombie_id, killer_id (-1 when no player)
+##   player_added, player_removed, player_downed, player_revived: player_id
+##   points_changed: player_id, total, delta, reason
+##   purchase_made: player_id, item_id, price, detail
+##   purchase_denied: player_id, item_id, result (a BuyResult)
+##   door_opened: door_id
+##   fuel_changed: fuel, delta
+##   fuel_low, fuel_empty, fuel_restored
+##   circuit_changed: circuit_id, on
+##   game_over: reason, round_reached
+##   action_rejected: reason
+
+signal event_emitted(event: Dictionary)
+
+enum Phase { IDLE, BREAK, ACTIVE, OVER }
+enum BuyResult {
+	OK,
+	UNKNOWN_ITEM,
+	UNKNOWN_PLAYER,
+	WRONG_PHASE,
+	NOT_ENOUGH_POINTS,
+	ALREADY_OWNED,
+	LOCKED,
+	LIMIT_REACHED,
+	TANK_FULL,
+}
+
+const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
+const SNAPSHOT_VERSION := 1
+## A fuel purchase needs at least this much room in the tank.
+const MIN_FUEL_SPACE := 1.0
+## Offsets so the spawn and shop generators never share a stream.
+const SPAWN_STREAM := 0x5A17
+const SHOP_STREAM := 0x70C3
+
+var tuning: RulesTuning
+var rng_seed: int = 0
+var phase: Phase = Phase.IDLE
+var round_number: int = 0
+var generator: GeneratorState
+var players: Dictionary[int, PlayerState] = {}
+var doors_open: Array[StringName] = []
+
+var _break_left: float = 0.0
+var _spawn_left: int = 0
+var _spawn_timer: float = 0.0
+var _round_players: int = 1
+var _next_zombie_id: int = 1
+var _alive: Dictionary[int, bool] = {}
+var _spawn_rng := RandomNumberGenerator.new()
+var _shop_rng := RandomNumberGenerator.new()
+var _events: Array[Dictionary] = []
+
+
+## A fresh night. `p_tuning` defaults to the shipped table.
+func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
+	tuning = p_tuning if p_tuning != null else load(DEFAULT_TUNING_PATH)
+	rng_seed = p_seed
+	_spawn_rng.seed = p_seed ^ SPAWN_STREAM
+	_shop_rng.seed = p_seed ^ SHOP_STREAM
+	generator = GeneratorState.new(tuning.fuel)
+	generator.fuel_changed.connect(
+		func(fuel: float, delta: float) -> void:
+			_emit(&"fuel_changed", {"fuel": fuel, "delta": delta})
+	)
+	generator.fuel_low.connect(func() -> void: _emit(&"fuel_low"))
+	generator.fuel_empty.connect(func() -> void: _emit(&"fuel_empty"))
+	generator.fuel_restored.connect(func() -> void: _emit(&"fuel_restored"))
+	generator.circuit_changed.connect(
+		func(circuit_id: StringName, on: bool) -> void:
+			_emit(&"circuit_changed", {"circuit_id": circuit_id, "on": on})
+	)
+
+
+## The one way in. Returns the events the action caused, in order.
+func apply(action: Dictionary) -> Array[Dictionary]:
+	_events = []
+	_dispatch(action)
+	var caused := _events
+	for event in caused:
+		event_emitted.emit(event)
+	return caused
+
+
+# --- Queries (read-only) ---
+
+
+func points_of(player_id: int) -> int:
+	var player := players.get(player_id) as PlayerState
+	return player.points if player != null else 0
+
+
+func is_door_open(door_id: StringName) -> bool:
+	return doors_open.has(door_id)
+
+
+## What an item costs right now, or -1 when there is no such item.
+func price_of(item_id: StringName) -> int:
+	var item := tuning.economy.item(item_id)
+	return item.price_at(round_number) if item != null else -1
+
+
+## Zombies still to spawn plus those alive: the round ends at zero.
+func zombies_remaining() -> int:
+	return _spawn_left + _alive.size()
+
+
+# --- Snapshot ---
+
+
+## Everything, as plain Variant data (numbers, strings, arrays, dictionaries), ready for
+## var_to_bytes. The tuning is not included: both sides load the same table. Random states are
+## 64-bit integers: convert before JSON.
+func to_dict() -> Dictionary:
+	var player_data := {}
+	for player_id in players:
+		player_data[player_id] = players[player_id].to_dict()
+	return {
+		"version": SNAPSHOT_VERSION,
+		"seed": rng_seed,
+		"phase": phase,
+		"round": round_number,
+		"break_left": _break_left,
+		"spawn_left": _spawn_left,
+		"spawn_timer": _spawn_timer,
+		"round_players": _round_players,
+		"next_zombie_id": _next_zombie_id,
+		"alive": _alive.keys(),
+		"players": player_data,
+		"doors_open": doors_open.duplicate(),
+		"generator": generator.to_dict(),
+		"spawn_rng_state": _spawn_rng.state,
+		"shop_rng_state": _shop_rng.state,
+	}
+
+
+## Replaces this night's state with a snapshot. Emits no events: a restore is not a change.
+func from_dict(data: Dictionary) -> void:
+	rng_seed = data["seed"]
+	phase = data["phase"]
+	round_number = data["round"]
+	_break_left = data["break_left"]
+	_spawn_left = data["spawn_left"]
+	_spawn_timer = data["spawn_timer"]
+	_round_players = data["round_players"]
+	_next_zombie_id = data["next_zombie_id"]
+	_alive.clear()
+	for zombie_id in data["alive"]:
+		_alive[zombie_id] = true
+	players.clear()
+	for player_id in data["players"]:
+		players[player_id] = PlayerState.from_dict(data["players"][player_id])
+	doors_open.assign(data["doors_open"])
+	generator.restore(data["generator"])
+	_spawn_rng.seed = rng_seed ^ SPAWN_STREAM
+	_spawn_rng.state = data["spawn_rng_state"]
+	_shop_rng.seed = rng_seed ^ SHOP_STREAM
+	_shop_rng.state = data["shop_rng_state"]
+
+
+# --- Actions ---
+
+
+func _dispatch(action: Dictionary) -> void:
+	match action.get("type", &""):
+		RulesAction.START:
+			if phase == Phase.IDLE:
+				_enter_break(tuning.rounds.intro_seconds)
+		RulesAction.TICK:
+			_tick(action["delta"])
+		RulesAction.SKIP_BREAK:
+			if phase == Phase.BREAK:
+				_begin_round()
+		RulesAction.ADD_PLAYER:
+			_add_player(action["player_id"])
+		RulesAction.REMOVE_PLAYER:
+			if players.erase(action["player_id"]):
+				_emit(&"player_removed", {"player_id": action["player_id"]})
+				_check_game_over()
+		RulesAction.SET_DOWNED:
+			_set_downed(action["player_id"], action["downed"])
+		RulesAction.HIT:
+			_hit(action["player_id"], action["zombie_id"], action["headshot"])
+		RulesAction.KILL:
+			_kill(action["player_id"], action["zombie_id"], action["headshot"], action["melee"])
+		RulesAction.ZOMBIE_GONE:
+			if _alive.has(action["zombie_id"]):
+				_remove_zombie(action["zombie_id"], -1)
+		RulesAction.REPAIR:
+			_repair(action["player_id"])
+		RulesAction.BUY:
+			_buy(action["player_id"], action["item_id"])
+		RulesAction.SET_CIRCUIT:
+			if not generator.set_circuit(action["circuit_id"], action["on"]):
+				_emit(&"action_rejected", {"reason": &"unknown_circuit"})
+		RulesAction.GRANT_POINTS:
+			if players.has(action["player_id"]):
+				_award(action["player_id"], action["amount"], action.get("reason", &"grant"))
+		_:
+			_emit(&"action_rejected", {"reason": &"unknown_action"})
+
+
+func _emit(type: StringName, fields: Dictionary = {}) -> void:
+	var event := {"type": type}
+	event.merge(fields)
+	_events.append(event)
+
+
+# --- Rounds ---
+
+
+func _tick(delta: float) -> void:
+	match phase:
+		Phase.BREAK:
+			generator.tick(delta, round_number, true)
+			_break_left -= delta
+			if _break_left <= 0.0:
+				_begin_round()
+		Phase.ACTIVE:
+			generator.tick(delta, round_number, false)
+			_tick_spawning(delta)
+
+
+func _enter_break(seconds: float) -> void:
+	_break_left = seconds
+	_set_phase(Phase.BREAK)
+	_emit(&"break_started", {"next_round": round_number + 1, "seconds": seconds})
+
+
+func _begin_round() -> void:
+	round_number += 1
+	_round_players = maxi(players.size(), 1)
+	_spawn_left = tuning.rounds.zombies_for_round(round_number, _round_players)
+	_spawn_timer = tuning.rounds.first_spawn_delay
+	for player: PlayerState in players.values():
+		player.repair_points_this_round = 0
+	_set_phase(Phase.ACTIVE)
+	_emit(&"round_started", {"round": round_number, "zombie_count": _spawn_left})
+
+
+func _tick_spawning(delta: float) -> void:
+	_spawn_timer -= delta
+	var cap := tuning.rounds.alive_cap(round_number, _round_players)
+	while _spawn_timer <= 0.0 and _spawn_left > 0 and _alive.size() < cap:
+		_spawn_one()
+		_spawn_timer += tuning.rounds.spawn_interval(round_number, _round_players)
+	# A full lot or an empty queue holds the next spawn ready instead of banking a burst.
+	_spawn_timer = maxf(_spawn_timer, 0.0)
+
+
+func _spawn_one() -> void:
+	var zombie_id := _next_zombie_id
+	_next_zombie_id += 1
+	_spawn_left -= 1
+	_alive[zombie_id] = true
+	var speed := tuning.rounds.roll_speed(round_number, _spawn_rng)
+	var point_roll := _spawn_rng.randi()
+	_emit(
+		&"zombie_spawn_requested",
+		{
+			"zombie_id": zombie_id,
+			"health": tuning.rounds.health_for_round(round_number),
+			"speed": speed,
+			"point_roll": point_roll,
+		}
+	)
+
+
+func _remove_zombie(zombie_id: int, killer_id: int) -> void:
+	_alive.erase(zombie_id)
+	_emit(&"zombie_removed", {"zombie_id": zombie_id, "killer_id": killer_id})
+	if phase == Phase.ACTIVE and _spawn_left == 0 and _alive.is_empty():
+		_end_round()
+
+
+func _end_round() -> void:
+	var economy := tuning.economy
+	for player: PlayerState in players.values():
+		if player.downed:
+			var penalty := floori(player.points * economy.down_penalty_fraction)
+			if penalty > 0:
+				player.points -= penalty
+				_emit(
+					&"points_changed",
+					{
+						"player_id": player.id,
+						"total": player.points,
+						"delta": -penalty,
+						"reason": &"down_penalty",
+					}
+				)
+			player.downed = false
+			_emit(&"player_revived", {"player_id": player.id})
+		else:
+			_award(player.id, economy.round_bonus(round_number), &"round_bonus")
+	_emit(&"round_ended", {"round": round_number})
+	_enter_break(tuning.rounds.break_seconds)
+
+
+func _check_game_over() -> void:
+	if phase != Phase.ACTIVE or players.is_empty():
+		return
+	for player: PlayerState in players.values():
+		if not player.downed:
+			return
+	_set_phase(Phase.OVER)
+	_emit(&"game_over", {"reason": &"all_down", "round_reached": round_number})
+
+
+func _set_phase(new_phase: Phase) -> void:
+	phase = new_phase
+	_emit(&"phase_changed", {"phase": new_phase})
+
+
+# --- Players and points ---
+
+
+func _add_player(player_id: int) -> void:
+	if players.has(player_id):
+		return
+	players[player_id] = PlayerState.new(player_id, tuning.economy.start_points)
+	_emit(&"player_added", {"player_id": player_id})
+	_emit(
+		&"points_changed",
+		{
+			"player_id": player_id,
+			"total": tuning.economy.start_points,
+			"delta": tuning.economy.start_points,
+			"reason": &"start",
+		}
+	)
+
+
+func _set_downed(player_id: int, downed: bool) -> void:
+	var player := players.get(player_id) as PlayerState
+	if player == null or player.downed == downed:
+		return
+	player.downed = downed
+	if downed:
+		_emit(&"player_downed", {"player_id": player_id})
+		_check_game_over()
+	else:
+		_emit(&"player_revived", {"player_id": player_id})
+
+
+func _can_earn(player_id: int) -> bool:
+	var player := players.get(player_id) as PlayerState
+	return phase == Phase.ACTIVE and player != null and not player.downed
+
+
+func _award(player_id: int, amount: int, reason: StringName) -> void:
+	if amount <= 0:
+		return
+	var player: PlayerState = players[player_id]
+	player.points += amount
+	player.points_earned += amount
+	_emit(
+		&"points_changed",
+		{"player_id": player_id, "total": player.points, "delta": amount, "reason": reason}
+	)
+
+
+func _hit(player_id: int, zombie_id: int, headshot: bool) -> void:
+	if _alive.has(zombie_id) and _can_earn(player_id):
+		var pay := tuning.economy.headshot_hit if headshot else tuning.economy.hit
+		_award(player_id, pay, &"headshot_hit" if headshot else &"hit")
+
+
+## A zombie that is not alive (already killed, never spawned) pays nothing.
+func _kill(player_id: int, zombie_id: int, headshot: bool, melee: bool) -> void:
+	if not _alive.has(zombie_id):
+		return
+	var player := players.get(player_id) as PlayerState
+	if player != null and _can_earn(player_id):
+		player.kills += 1
+		if melee:
+			_award(player_id, tuning.economy.melee_kill, &"melee_kill")
+		elif headshot:
+			player.headshot_kills += 1
+			_award(player_id, tuning.economy.headshot_kill, &"headshot_kill")
+		else:
+			_award(player_id, tuning.economy.kill, &"kill")
+	_remove_zombie(zombie_id, player_id if player != null else -1)
+
+
+func _repair(player_id: int) -> void:
+	if not _can_earn(player_id):
+		return
+	var player: PlayerState = players[player_id]
+	var room := tuning.economy.repair_cap_per_round - player.repair_points_this_round
+	var pay := mini(tuning.economy.repair, room)
+	if pay > 0:
+		player.repair_points_this_round += pay
+		_award(player_id, pay, &"repair")
+
+
+# --- The shop ---
+
+
+func _buy(player_id: int, item_id: StringName) -> void:
+	var quote := _quote(player_id, item_id)
+	if quote.result != BuyResult.OK:
+		_emit(
+			&"purchase_denied", {"player_id": player_id, "item_id": item_id, "result": quote.result}
+		)
+		return
+	var player: PlayerState = players[player_id]
+	player.points -= quote.price
+	player.points_spent += quote.price
+	_emit(
+		&"points_changed",
+		{
+			"player_id": player_id,
+			"total": player.points,
+			"delta": -quote.price,
+			"reason": &"purchase",
+		}
+	)
+	var detail := _grant(player, quote)
+	_emit(
+		&"purchase_made",
+		{"player_id": player_id, "item_id": item_id, "price": quote.price, "detail": detail}
+	)
+
+
+func _quote(player_id: int, item_id: StringName) -> Quote:
+	var quote := Quote.new()
+	var player := players.get(player_id) as PlayerState
+	var item := tuning.economy.item(item_id)
+	if phase != Phase.BREAK and phase != Phase.ACTIVE:
+		quote.result = BuyResult.WRONG_PHASE
+	elif player == null:
+		quote.result = BuyResult.UNKNOWN_PLAYER
+	elif item == null:
+		quote.result = BuyResult.UNKNOWN_ITEM
+	else:
+		quote.item = item
+		quote.price = item.price_at(round_number)
+		quote.result = _check_item(player, quote)
+	if quote.result == BuyResult.OK and player.points < quote.price:
+		quote.result = BuyResult.NOT_ENOUGH_POINTS
+	return quote
+
+
+## Whether the item can be sold to this player at all, ignoring their points. A fuel quote also gets
+## its real price: you pay only for the room in the tank.
+func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
+	var item := quote.item
+	var result := BuyResult.OK
+	match item.kind:
+		ShopItem.Kind.DOOR:
+			if doors_open.has(item.id):
+				result = BuyResult.ALREADY_OWNED
+			elif item.requires != &"" and not doors_open.has(item.requires):
+				result = BuyResult.LOCKED
+		ShopItem.Kind.WEAPON:
+			if player.weapons.has(item.id):
+				result = BuyResult.ALREADY_OWNED
+		ShopItem.Kind.CRANE:
+			if _crane_pool(player, item).is_empty():
+				result = BuyResult.ALREADY_OWNED
+		ShopItem.Kind.TONIC:
+			if player.tonics.has(item.id):
+				result = BuyResult.ALREADY_OWNED
+			elif player.tonics.size() >= tuning.economy.max_tonics:
+				result = BuyResult.LIMIT_REACHED
+		ShopItem.Kind.FUEL:
+			if generator.space() < MIN_FUEL_SPACE:
+				result = BuyResult.TANK_FULL
+			else:
+				quote.fuel_added = minf(item.amount, generator.space())
+				quote.price = ceili(float(quote.price) * quote.fuel_added / item.amount)
+	return result
+
+
+## Hands over what was bought; returns what the event's `detail` should say.
+func _grant(player: PlayerState, quote: Quote) -> Dictionary:
+	var item := quote.item
+	match item.kind:
+		ShopItem.Kind.DOOR:
+			doors_open.append(item.id)
+			_emit(&"door_opened", {"door_id": item.id})
+		ShopItem.Kind.WEAPON:
+			player.weapons.append(item.id)
+			return {"weapon": item.id}
+		ShopItem.Kind.CRANE:
+			var won := _roll_crane(player, item)
+			player.weapons.append(won)
+			return {"weapon": won}
+		ShopItem.Kind.TONIC:
+			player.tonics.append(item.id)
+		ShopItem.Kind.FUEL:
+			return {"fuel": generator.add_fuel(quote.fuel_added)}
+	return {}
+
+
+## The crane's weapons this player does not own yet.
+func _crane_pool(player: PlayerState, item: ShopItem) -> Array[StringName]:
+	var pool: Array[StringName] = []
+	for weapon_id in item.pool:
+		if not player.weapons.has(weapon_id):
+			pool.append(weapon_id)
+	return pool
+
+
+func _roll_crane(player: PlayerState, item: ShopItem) -> StringName:
+	var pool := _crane_pool(player, item)
+	var total := 0.0
+	for weapon_id in pool:
+		total += _weight(item, weapon_id)
+	var pick := _shop_rng.randf() * total
+	for weapon_id in pool:
+		pick -= _weight(item, weapon_id)
+		if pick < 0.0:
+			return weapon_id
+	return pool[pool.size() - 1]
+
+
+func _weight(item: ShopItem, weapon_id: StringName) -> float:
+	var index := item.pool.find(weapon_id)
+	return item.pool_weights[index] if index < item.pool_weights.size() else 1.0
+
+
+## A priced, checked purchase that has not happened yet.
+class Quote:
+	extends RefCounted
+	var result: BuyResult = BuyResult.OK
+	var item: ShopItem
+	var price: int = 0
+	var fuel_added: float = 0.0
