@@ -124,7 +124,7 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"crane":
 			_offer(&"buy_crane", CRANE_NAME, prompt["price"], "")
 		&"crane_take":
-			_offer(&"crane_take", _weapon_name(prompt["weapon"]), 0, "")
+			_offer(&"crane_take", _weapon_name(WeaponCatalog.catalog_id(prompt["weapon"])), 0, "")
 		&"crane_busy":
 			var own: bool = prompt["buyer"] == _state.player_id
 			_offer(&"crane_busy", CRANE_NAME, 0, "YOUR PRIZE IS COMING" if own else "")

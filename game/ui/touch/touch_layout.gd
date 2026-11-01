@@ -4,8 +4,10 @@ extends RefCounted
 ## (canvas units) and the player's touch scale and it answers a circle per button.
 ##
 ## Buttons are placed by their offset from the safe rectangle's bottom right corner, where the
-## right thumb rests, in an arc round Fire. The HUD's ammo card (bottom right) and prompt card
-## (bottom centre) are kept clear; `test_touch_layout` checks that against the busiest HUD.
+## right thumb rests, in an arc round Fire. A left-handed layout (`mirrored`) is the same layout
+## flipped left to right: offsets from the bottom left corner, the stick on the right.
+## The HUD's ammo card (bottom right) and prompt card (bottom centre) are kept clear;
+## `test_touch_layout` checks that against the busiest HUD.
 ## Sizes are in canvas units: about 8 to 9 mm on a phone (the canvas is 1080 units high on a screen
 ## that is 60 to 70 mm high), and no hit area is smaller than `MIN_HIT` radius.
 
@@ -17,6 +19,7 @@ const SWAP := &"swap_weapon"
 const GRENADE := &"throw_grenade"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
+const SHOULDER := &"swap_shoulder"
 
 ## Offset from the bottom right corner (left, up) and radius, by button. The order is the order a
 ## touch tests them in: the contextual button first, so it wins where it overlaps.
@@ -28,6 +31,7 @@ const BUTTONS := [
 	[SWAP, Vector2(515.0, 475.0), 56.0],
 	[JUMP, Vector2(360.0, 150.0), 70.0],
 	[GRENADE, Vector2(520.0, 165.0), 56.0],
+	[SHOULDER, Vector2(565.0, 640.0), 52.0],
 ]
 ## Pause sits on the top edge, right of the HUD's left column.
 const PAUSE_OFFSET := Vector2(442.0, 80.0)
@@ -42,35 +46,41 @@ const HIT_PAD := 24.0
 const MIN_HIT := 66.0
 
 
-## The circles: button id -> {centre, radius, hit}.
-static func buttons(safe: Rect2, touch_scale: float) -> Dictionary:
-	var corner := safe.end
+## The circles: button id -> {centre, radius, hit}. `mirrored` flips the layout for a left hand.
+static func buttons(safe: Rect2, touch_scale: float, mirrored := false) -> Dictionary:
 	var found := {}
 	for row in BUTTONS:
 		var radius: float = row[2] * touch_scale
-		found[row[0]] = _circle(corner - (row[1] as Vector2) * touch_scale, radius)
+		var offset: Vector2 = row[1]
+		var up := safe.end.y - offset.y * touch_scale
+		var across := (
+			safe.position.x + offset.x * touch_scale
+			if mirrored
+			else safe.end.x - offset.x * touch_scale
+		)
+		found[row[0]] = _circle(Vector2(across, up), radius)
 	var pause_radius := PAUSE_RADIUS * touch_scale
-	found[PAUSE] = _circle(
-		Vector2(safe.position.x + PAUSE_OFFSET.x, safe.position.y + PAUSE_OFFSET.y), pause_radius
-	)
+	var pause_x := safe.end.x - PAUSE_OFFSET.x if mirrored else safe.position.x + PAUSE_OFFSET.x
+	found[PAUSE] = _circle(Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y), pause_radius)
 	return found
+
+
+## Where a finger may land to start the move stick, and the side it is on (the left for a right
+## hand, the right for a left hand).
+static func stick_zone(safe: Rect2, mirrored := false) -> Rect2:
+	var top := safe.size.y * STICK_ZONE_TOP
+	var width := safe.size.x * STICK_ZONE_WIDTH
+	var left := safe.end.x - width if mirrored else safe.position.x
+	return Rect2(Vector2(left, safe.position.y + top), Vector2(width, safe.size.y - top))
 
 
 static func _circle(centre: Vector2, radius: float) -> Dictionary:
 	return {&"centre": centre, &"radius": radius, &"hit": maxf(radius + HIT_PAD, MIN_HIT)}
 
 
-## Where a finger may land to start the move stick: the left of the screen below the top fifth.
-static func stick_zone(safe: Rect2) -> Rect2:
-	var top := safe.size.y * STICK_ZONE_TOP
-	return Rect2(
-		safe.position + Vector2(0.0, top),
-		Vector2(safe.size.x * STICK_ZONE_WIDTH, safe.size.y - top)
-	)
-
-
-static func stick_rest(safe: Rect2, touch_scale: float) -> Vector2:
-	return Vector2(safe.position.x, safe.end.y) + Vector2(1.0, -1.0) * STICK_REST * touch_scale
+static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Vector2:
+	var corner := Vector2(safe.end.x if mirrored else safe.position.x, safe.end.y)
+	return corner + Vector2(-1.0 if mirrored else 1.0, -1.0) * STICK_REST * touch_scale
 
 
 ## The button under `point`, or "" (the first in `BUTTONS` order wins; `skip` lists hidden ones).
