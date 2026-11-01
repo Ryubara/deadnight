@@ -89,6 +89,7 @@ script = ExtResource("2_tud1d")
 start_points = 200
 hit = 4
 headshot_hit = 8
+max_paid_hits = 4
 kill = 60
 headshot_kill = 100
 melee_kill = 130

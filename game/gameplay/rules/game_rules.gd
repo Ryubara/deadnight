@@ -13,6 +13,9 @@ extends RefCounted
 ## everything, including the random streams, so a restored copy continues exactly as the original
 ## would.
 ##
+## The rules own every zombie's health: a `hit` takes damage off it, pays only while the zombie
+## lives, and the hit that empties it is the kill. Nothing but the rules decides a kill.
+##
 ## Time passes only through `RulesAction.tick(delta)`, a fixed step the caller owns.
 ##
 ## Events (fields besides `type`):
@@ -21,7 +24,8 @@ extends RefCounted
 ##   round_started: round, zombie_count
 ##   round_ended: round
 ##   zombie_spawn_requested: zombie_id, health, speed, point_roll (spawn point = point_roll % count)
-##   zombie_removed: zombie_id, killer_id (-1 when no player)
+##   zombie_damaged: zombie_id, player_id, zone, damage (what was taken off), health (left)
+##   zombie_removed: zombie_id, cause (killed or gone), killer_id (-1 when no player), zone, melee
 ##   player_added, player_removed, player_downed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail
@@ -31,7 +35,7 @@ extends RefCounted
 ##   fuel_low, fuel_empty, fuel_restored
 ##   circuit_changed: circuit_id, on
 ##   game_over: reason, round_reached
-##   action_rejected: reason
+##   action_rejected: reason, action (the type), field (when one field is to blame)
 
 signal event_emitted(event: Dictionary)
 
@@ -49,7 +53,7 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-const SNAPSHOT_VERSION := 1
+const SNAPSHOT_VERSION := 2
 ## A fuel purchase needs at least this much room in the tank.
 const MIN_FUEL_SPACE := 1.0
 ## Offsets so the spawn and shop generators never share a stream.
@@ -69,7 +73,7 @@ var _spawn_left: int = 0
 var _spawn_timer: float = 0.0
 var _round_players: int = 1
 var _next_zombie_id: int = 1
-var _alive: Dictionary[int, bool] = {}
+var _zombies: Dictionary[int, ZombieState] = {}
 var _spawn_rng := RandomNumberGenerator.new()
 var _shop_rng := RandomNumberGenerator.new()
 var _events: Array[Dictionary] = []
@@ -98,7 +102,11 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 ## The one way in. Returns the events the action caused, in order.
 func apply(action: Dictionary) -> Array[Dictionary]:
 	_events = []
-	_dispatch(action)
+	var problem := RulesAction.validate(action)
+	if problem.is_empty():
+		_dispatch(action)
+	else:
+		_reject(problem["reason"], action.get("type"), problem["field"])
 	var caused := _events
 	for event in caused:
 		event_emitted.emit(event)
@@ -125,7 +133,7 @@ func price_of(item_id: StringName) -> int:
 
 ## Zombies still to spawn plus those alive: the round ends at zero.
 func zombies_remaining() -> int:
-	return _spawn_left + _alive.size()
+	return _spawn_left + _zombies.size()
 
 
 # --- Snapshot ---
@@ -138,6 +146,9 @@ func to_dict() -> Dictionary:
 	var player_data := {}
 	for player_id in players:
 		player_data[player_id] = players[player_id].to_dict()
+	var zombie_data := {}
+	for zombie_id in _zombies:
+		zombie_data[zombie_id] = _zombies[zombie_id].to_dict()
 	return {
 		"version": SNAPSHOT_VERSION,
 		"seed": rng_seed,
@@ -148,7 +159,7 @@ func to_dict() -> Dictionary:
 		"spawn_timer": _spawn_timer,
 		"round_players": _round_players,
 		"next_zombie_id": _next_zombie_id,
-		"alive": _alive.keys(),
+		"zombies": zombie_data,
 		"players": player_data,
 		"doors_open": doors_open.duplicate(),
 		"generator": generator.to_dict(),
@@ -167,9 +178,9 @@ func from_dict(data: Dictionary) -> void:
 	_spawn_timer = data["spawn_timer"]
 	_round_players = data["round_players"]
 	_next_zombie_id = data["next_zombie_id"]
-	_alive.clear()
-	for zombie_id in data["alive"]:
-		_alive[zombie_id] = true
+	_zombies.clear()
+	for zombie_id in data["zombies"]:
+		_zombies[zombie_id] = ZombieState.from_dict(data["zombies"][zombie_id])
 	players.clear()
 	for player_id in data["players"]:
 		players[player_id] = PlayerState.from_dict(data["players"][player_id])
@@ -203,24 +214,32 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.SET_DOWNED:
 			_set_downed(action["player_id"], action["downed"])
 		RulesAction.HIT:
-			_hit(action["player_id"], action["zombie_id"], action["headshot"])
-		RulesAction.KILL:
-			_kill(action["player_id"], action["zombie_id"], action["headshot"], action["melee"])
+			_hit(action)
 		RulesAction.ZOMBIE_GONE:
-			if _alive.has(action["zombie_id"]):
-				_remove_zombie(action["zombie_id"], -1)
+			if _zombies.has(action["zombie_id"]):
+				_remove_zombie(action["zombie_id"], &"gone", -1)
+			else:
+				_reject(&"unknown_zombie", RulesAction.ZOMBIE_GONE)
 		RulesAction.REPAIR:
 			_repair(action["player_id"])
 		RulesAction.BUY:
 			_buy(action["player_id"], action["item_id"])
 		RulesAction.SET_CIRCUIT:
 			if not generator.set_circuit(action["circuit_id"], action["on"]):
-				_emit(&"action_rejected", {"reason": &"unknown_circuit"})
+				_reject(&"unknown_circuit", RulesAction.SET_CIRCUIT)
 		RulesAction.GRANT_POINTS:
 			if players.has(action["player_id"]):
 				_award(action["player_id"], action["amount"], action.get("reason", &"grant"))
-		_:
-			_emit(&"action_rejected", {"reason": &"unknown_action"})
+			else:
+				_reject(&"unknown_player", RulesAction.GRANT_POINTS)
+
+
+## Tells the sender its action did nothing. `action_rejected` is for that sender, not a broadcast.
+func _reject(reason: StringName, action_type: Variant, field: StringName = &"") -> void:
+	var fields := {"reason": reason, "action": action_type}
+	if field != &"":
+		fields["field"] = field
+	_emit(&"action_rejected", fields)
 
 
 func _emit(type: StringName, fields: Dictionary = {}) -> void:
@@ -264,7 +283,7 @@ func _begin_round() -> void:
 func _tick_spawning(delta: float) -> void:
 	_spawn_timer -= delta
 	var cap := tuning.rounds.alive_cap(round_number, _round_players)
-	while _spawn_timer <= 0.0 and _spawn_left > 0 and _alive.size() < cap:
+	while _spawn_timer <= 0.0 and _spawn_left > 0 and _zombies.size() < cap:
 		_spawn_one()
 		_spawn_timer += tuning.rounds.spawn_interval(round_number, _round_players)
 	# A full lot or an empty queue holds the next spawn ready instead of banking a burst.
@@ -275,24 +294,36 @@ func _spawn_one() -> void:
 	var zombie_id := _next_zombie_id
 	_next_zombie_id += 1
 	_spawn_left -= 1
-	_alive[zombie_id] = true
+	var health := tuning.rounds.health_for_round(round_number)
+	_zombies[zombie_id] = ZombieState.new(zombie_id, health)
 	var speed := tuning.rounds.roll_speed(round_number, _spawn_rng)
 	var point_roll := _spawn_rng.randi()
 	_emit(
 		&"zombie_spawn_requested",
 		{
 			"zombie_id": zombie_id,
-			"health": tuning.rounds.health_for_round(round_number),
+			"health": health,
 			"speed": speed,
 			"point_roll": point_roll,
 		}
 	)
 
 
-func _remove_zombie(zombie_id: int, killer_id: int) -> void:
-	_alive.erase(zombie_id)
-	_emit(&"zombie_removed", {"zombie_id": zombie_id, "killer_id": killer_id})
-	if phase == Phase.ACTIVE and _spawn_left == 0 and _alive.is_empty():
+func _remove_zombie(
+	zombie_id: int, cause: StringName, killer_id: int, zone: StringName = &"", melee: bool = false
+) -> void:
+	_zombies.erase(zombie_id)
+	_emit(
+		&"zombie_removed",
+		{
+			"zombie_id": zombie_id,
+			"cause": cause,
+			"killer_id": killer_id,
+			"zone": zone,
+			"melee": melee,
+		}
+	)
+	if phase == Phase.ACTIVE and _spawn_left == 0 and _zombies.is_empty():
 		_end_round()
 
 
@@ -383,27 +414,62 @@ func _award(player_id: int, amount: int, reason: StringName) -> void:
 	)
 
 
-func _hit(player_id: int, zombie_id: int, headshot: bool) -> void:
-	if _alive.has(zombie_id) and _can_earn(player_id):
-		var pay := tuning.economy.headshot_hit if headshot else tuning.economy.hit
-		_award(player_id, pay, &"headshot_hit" if headshot else &"hit")
-
-
-## A zombie that is not alive (already killed, never spawned) pays nothing.
-func _kill(player_id: int, zombie_id: int, headshot: bool, melee: bool) -> void:
-	if not _alive.has(zombie_id):
+## A hit takes damage off the zombie's health. While health is left it pays a little (for the
+## first few hits only); the hit that empties it is the kill and pays by how it was made. A hit on
+## a zombie that is not alive (dead, gone, never spawned) is rejected and pays nothing.
+func _hit(action: Dictionary) -> void:
+	var player_id: int = action["player_id"]
+	var zombie_id: int = action["zombie_id"]
+	var problem := _hit_problem(player_id, zombie_id)
+	if problem != &"":
+		_reject(problem, RulesAction.HIT)
 		return
+	var player: PlayerState = players[player_id]
+	var zombie: ZombieState = _zombies[zombie_id]
+	var zone := StringName(action["zone"])
+	var melee: bool = action.get("melee", false)
+	var headshot := zone == RulesAction.ZONE_HEAD
+	var dealt := minf(float(action["damage"]), zombie.health)
+	zombie.health -= dealt
+	_emit(
+		&"zombie_damaged",
+		{
+			"zombie_id": zombie_id,
+			"player_id": player_id,
+			"zone": zone,
+			"damage": dealt,
+			"health": zombie.health,
+		}
+	)
+	if zombie.health > 0.0:
+		if zombie.paid_hits < tuning.economy.max_paid_hits:
+			zombie.paid_hits += 1
+			var pay := tuning.economy.headshot_hit if headshot else tuning.economy.hit
+			_award(player_id, pay, &"headshot_hit" if headshot else &"hit")
+		return
+	player.kills += 1
+	if melee:
+		_award(player_id, tuning.economy.melee_kill, &"melee_kill")
+	elif headshot:
+		player.headshot_kills += 1
+		_award(player_id, tuning.economy.headshot_kill, &"headshot_kill")
+	else:
+		_award(player_id, tuning.economy.kill, &"kill")
+	_remove_zombie(zombie_id, &"killed", player_id, zone, melee)
+
+
+## Why this hit cannot land, or an empty name when it can.
+func _hit_problem(player_id: int, zombie_id: int) -> StringName:
 	var player := players.get(player_id) as PlayerState
-	if player != null and _can_earn(player_id):
-		player.kills += 1
-		if melee:
-			_award(player_id, tuning.economy.melee_kill, &"melee_kill")
-		elif headshot:
-			player.headshot_kills += 1
-			_award(player_id, tuning.economy.headshot_kill, &"headshot_kill")
-		else:
-			_award(player_id, tuning.economy.kill, &"kill")
-	_remove_zombie(zombie_id, player_id if player != null else -1)
+	if phase != Phase.ACTIVE:
+		return &"wrong_phase"
+	if player == null:
+		return &"unknown_player"
+	if player.downed:
+		return &"player_downed"
+	if not _zombies.has(zombie_id):
+		return &"unknown_zombie"
+	return &""
 
 
 func _repair(player_id: int) -> void:

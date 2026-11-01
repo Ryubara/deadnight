@@ -13,7 +13,7 @@ func _begin(player_count: int = 1, seed_value: int = 1234, t: RulesTuning = null
 
 func _kill_everything() -> void:
 	for zombie_id in _log.spawned_ids():
-		_rules.apply(RulesAction.kill(1, zombie_id, false, false))
+		RulesFixture.kill(_rules, 1, zombie_id)
 
 
 func test_a_new_night_is_idle_until_started() -> void:
@@ -76,7 +76,7 @@ func test_no_more_than_the_cap_are_alive_and_a_kill_lets_the_next_in() -> void:
 	RulesFixture.into_round_one(_rules)
 	RulesFixture.run(_rules, 60.0)
 	assert_int(_log.count(&"zombie_spawn_requested")).is_equal(2)
-	_rules.apply(RulesAction.kill(1, _log.spawned_ids()[0], false, false))
+	RulesFixture.kill(_rules, 1, _log.spawned_ids()[0])
 	# The waiting spawn is ready at once: the next step lets it in, no burst of banked spawns.
 	RulesFixture.run(_rules, 0.1)
 	assert_int(_log.count(&"zombie_spawn_requested")).is_equal(3)
@@ -90,10 +90,10 @@ func test_the_round_ends_when_the_last_zombie_falls_not_before() -> void:
 	RulesFixture.run(_rules, 60.0)
 	var ids := _log.spawned_ids()
 	for index in range(ids.size() - 1):
-		_rules.apply(RulesAction.kill(1, ids[index], false, false))
+		RulesFixture.kill(_rules, 1, ids[index])
 	assert_int(_rules.phase).is_equal(GameRules.Phase.ACTIVE)
 	assert_int(_rules.zombies_remaining()).is_equal(1)
-	_rules.apply(RulesAction.kill(1, ids[ids.size() - 1], false, false))
+	RulesFixture.kill(_rules, 1, ids[ids.size() - 1])
 	assert_int(_rules.phase).is_equal(GameRules.Phase.BREAK)
 	assert_int(_log.of(&"round_ended")[0]["round"]).is_equal(1)
 	assert_int(_log.of(&"break_started")[1]["next_round"]).is_equal(2)
@@ -104,7 +104,7 @@ func test_the_round_does_not_end_while_zombies_are_still_to_spawn() -> void:
 	_begin()
 	RulesFixture.into_round_one(_rules)
 	RulesFixture.run(_rules, 2.0)
-	_rules.apply(RulesAction.kill(1, _log.spawned_ids()[0], false, false))
+	RulesFixture.kill(_rules, 1, _log.spawned_ids()[0])
 	assert_int(_rules.phase).is_equal(GameRules.Phase.ACTIVE)
 
 
