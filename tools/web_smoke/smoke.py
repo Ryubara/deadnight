@@ -46,6 +46,14 @@ SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--igno
 # Console errors that are about the browser, not the game, and are fine. Keep this list short and say why.
 IGNORED: tuple[str, ...] = ()
 
+# One mouse motion of `dx` pixels, sent to the canvas as the browser would while the pointer is locked.
+SYNTHETIC_MOUSE_MOVE_JS = """
+(dx) => {
+  const canvas = document.querySelector('canvas');
+  canvas.dispatchEvent(new MouseEvent('mousemove', { movementX: dx, movementY: 0, bubbles: true, cancelable: true }));
+}
+"""
+
 # Measures frame times in the page: requestAnimationFrame deltas for a number of seconds.
 FRAME_TIMES_JS = """
 (seconds) => new Promise((resolve) => {
@@ -220,10 +228,6 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
 
     # The mouse turns the view: a full-screen control that catches the mouse once ate every motion
     # (desktop and web alike), and only a real browser run sees that.
-    page.evaluate(
-        "() => { window.__moves = []; window.addEventListener('mousemove', (e) => "
-        "window.__moves.push([e.movementX, e.movementY, e.clientX, e.isTrusted]), true); }"
-    )
     page.mouse.move(640, 360)
     page.wait_for_timeout(500)
     yaw_before = probe(page).get("yaw", 0.0)
@@ -232,12 +236,23 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
         page.wait_for_timeout(20)
     page.wait_for_timeout(600)
     yaw_after = probe(page).get("yaw", 0.0)
+    result["mouse_look_via"] = "playwright mouse"
+    if abs(yaw_after - yaw_before) < 0.1:
+        # Chromium on Linux (the CI runner) answers every synthetic move under pointer lock with a motion and then
+        # the opposite motion (+15 px, -15 px), which cancel; Windows does not. Send the motion as the page's own
+        # mouse events instead: Godot reads them the same way, and a control eating the mouse still fails.
+        yaw_before = probe(page).get("yaw", 0.0)
+        for _ in range(20):
+            page.evaluate(SYNTHETIC_MOUSE_MOVE_JS, 15)
+            page.wait_for_timeout(20)
+        page.wait_for_timeout(600)
+        yaw_after = probe(page).get("yaw", 0.0)
+        result["mouse_look_via"] = "page mouse events"
     result["mouse_look_turn_rad"] = round(abs(yaw_after - yaw_before), 3)
     if result["mouse_look_turn_rad"] < 0.1:
         lock = page.evaluate("() => document.pointerLockElement ? document.pointerLockElement.tagName : null")
         raise RuntimeError(
-            f"moving the mouse did not turn the view (yaw {yaw_before} -> {yaw_after}, pointer lock {lock}, "
-            f"page saw {page.evaluate('() => window.__moves')})"
+            f"moving the mouse did not turn the view (yaw {yaw_before} -> {yaw_after}, pointer lock {lock})"
         )
 
     # Walk a square and fire for the rest of the time, so the night is played, not only started.
