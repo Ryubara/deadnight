@@ -32,6 +32,8 @@ var lamps: LotLamps
 var crane: CraneView
 ## The night's sounds besides the guns (`hear`).
 var sounds: NightSounds
+## The dead's voices and feet, made from the frames (`ZombieVoices`).
+var voices: ZombieVoices
 ## Seconds between frames, for the views' animation.
 var step := 1.0 / 60.0
 
@@ -52,6 +54,8 @@ func setup(
 	horde = ZombieHorde.new()
 	add_child(horde)
 	horde.setup_client(camera, ZombieTuning.new().emerge_seconds, telegraphs, board_seconds)
+	voices = ZombieVoices.new(Audio, 1)
+	voices.windups = telegraphs
 	state.event_received.connect(_on_event)
 
 
@@ -82,9 +86,11 @@ func hear(world: NightWorld) -> void:
 func _on_event(event: Dictionary) -> void:
 	if lamps != null:
 		lamps.apply_event(event)
+	voices.on_event(event)
 	match event["type"]:
 		&"frame":
 			horde.apply_snapshot(event["zombies"], step)
+			voices.update(_state.zombies, step)
 		&"shot_fired":
 			effects.shot(WeaponCatalog.get_def(event["weapon_id"]), event["muzzle"], event["ends"])
 			_sound(SHOT_SOUNDS, event["weapon_id"], event["muzzle"])

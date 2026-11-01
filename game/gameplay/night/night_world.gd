@@ -31,6 +31,8 @@ var navigation: DoorNavigation
 
 ## The lot's breaker posts, one for each circuit a player can switch.
 var switches: LotSwitches
+## The lot's fuel can spots, where a player buys fuel for the generator.
+var fuel: LotFuel
 
 var _door_nodes: Dictionary[StringName, Node3D] = {}
 var _barricades: Dictionary[StringName, Barricade] = {}
@@ -61,6 +63,7 @@ func build() -> void:
 		await get_tree().physics_frame
 	_lamps = LotLamps.new(greybox)
 	switches = LotSwitches.new(greybox)
+	fuel = LotFuel.new(greybox)
 
 
 func map() -> RID:

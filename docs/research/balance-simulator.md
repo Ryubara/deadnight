@@ -87,12 +87,13 @@ three prices with 150 seeded nights a cell (seed 77, the crane's own random stre
 | 750 | 5 / 11 / 14 / 14 | 1,160 (one and a half) |
 | 950 | 4 / 11 / 14 / not run | 1,438 (one and a half) |
 
-At 950, the Mystery Box's own price, a weak player falls a round sooner: the crane eats the points their first wall
-weapon needs. At 500 it was a cheap shortcut round after round (three plays in an average night, a tenth of the
-points) and a prize cost less than the walls' weapons. 750 sits between: a play is cheaper than the wall weapon it
-stands in for (900 and 1,200), so the gamble pays on average, and the spend is a part of the night, not the night.
-The strong 950 cell was lost when a file was moved mid-run; the other eleven cells are as above. The numbers are
-medians of a model of a player, not a promise: rerun with `--set economy.items:crane_play.price=<n>`.
+The balance gate's own cell (average, solo, 60 nights, seed 4000) is closer to the edge of its range of 10 to 14: the
+median round is 11 at a price of 500 and 550, 10 at 600 and 650, and 9 at 750, which fails the gate. So 750 is out
+whatever the wider run says, and at 950, the Mystery Box's own price, a weak player falls a round sooner: the crane eats
+the points their first wall weapon needs. At 500 it was a cheap shortcut (three plays in an average night, a tenth of
+the points). The price is **550**: under the cheaper wall weapon (900), a round clear of the gate's floor. The strong
+950 cell was lost when a file was moved mid-run; the other cells are as above. The numbers are medians of a model of a
+player, not a promise: rerun with `--set=economy.items:crane_play.price=<n>`.
 
 ## Using it
 

@@ -220,6 +220,15 @@ func _make_autopilot() -> void:
 	for circuit_id in world.switches.circuit_ids():
 		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
 		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
+	autopilot.fuel.capacity = tuning.fuel.capacity
+	autopilot.fuel.refuel_at = tuning.fuel.low_fraction
+	autopilot.fuel.fill_to = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN
+	for item in tuning.economy.items:
+		if item.kind == ShopItem.Kind.FUEL:
+			autopilot.fuel.item = item
+	for id in world.fuel.ids():
+		autopilot.fuel.goals[id] = world.fuel.standing_point(id)
+		autopilot.fuel.doors[id] = world.fuel.door_of(id)
 	for id in world.barricade_ids():
 		autopilot.repair_goals[id] = world.repair_spot(id)
 	for door_id in autopilot.order:

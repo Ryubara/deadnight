@@ -24,6 +24,9 @@ var max_distance := 50.0
 ## 3D only: how far the sound carries before it halves (the engine's `unit_size`).
 var unit_size := 8.0
 var loop := false
+## 3D only: a sound behind the listener is darker (a low-pass), the cue by which front and back are
+## told apart on two speakers, which panning alone cannot do.
+var rear_cue := false
 ## While it plays the Effects bus is lowered by this many dB (negative) for `duck_hold` seconds.
 var duck_db := 0.0
 var duck_hold := 0.0

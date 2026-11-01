@@ -282,6 +282,29 @@ The autopilot (`AutopilotSwitches`) lights the circuit of an area as soon as its
 spawn there and lit ground slows them; keeps the field's circuit on; and when the tank falls below the low line puts
 every other circuit out (in a break) and keeps them out until the tank is back 15 points above it.
 
+### The fuel cans
+
+The generator's tank only goes down, so the lot sells fuel: two **can stands** (`FuelSpots/*`, a crate of red cans with
+a yellow band and a FUEL sign in `FuelProps`), each in an area behind its door. A player buys from the spot 1.1 m in
+front of a stand, within `fuel_reach` (2 m, less than `use_reach`, so nobody buys through a wall):
+
+| Stand | Where | Needs |
+| --- | --- | --- |
+| `SpotStand` | inside the concession, behind the counter, on the soda side (2.5, 3.7) | the concession's door |
+| `SpotYard` | outside the generator cage's west wall, facing the yard's gate (35.4, 15.9) | the yard's door |
+
+The concession's is where the design put fuel (the stand), the yard's is for the player who has fought to the generator
+and finds it dry: the yard is `mains` and goes black with the tank. Each spot is a marker with the shop item
+(`metadata/shop_id`, the rules' `fuel_can`) and the door (`metadata/door`); `LotFuel` reads them and the night asks it
+which spot is in reach. Using one (`use`) sends `RulesAction.buy` for the item through the night server and the same
+prompt path as the doors and the breaker posts; the rules price it (`ShopItem.fuel_offer`: a whole can at 100 + 20 per
+round, or only the room left at its share of the price, nothing when the tank is full), and a hand buys at most every
+`fuel_interval` (0.5 s). The HUD's card reads `FUEL CAN`, `+25 UNITS OF FUEL` (or `FILLS UP: +10 UNITS`, or `THE TANK IS
+FULL`) and the price, and a refill shows the generator's card (`fuel_changed` with a positive delta).
+
+The autopilot (`AutopilotFuel`) goes to the nearest open stand when the tank is at the low line and it can pay for a
+can, and buys until the tank is back above 40%.
+
 ## The greybox
 
 `game/world/drive_in_greybox.tscn`: CSG boxes, one script (on `Doors`). Metres, Y up, x east, z south; the screen is
@@ -300,6 +323,7 @@ and the field's stalls have painted lines.
 | `CameraProbes` | markers at every narrow place, facing the way a player walks through; the camera test sweeps the shoulder camera from them |
 | `Lighting` | the night's `WorldEnvironment` (sky, fog, ambient) and the moon; the numbers are constants in the generator |
 | `*/Lamps` | the lights of an area, `metadata/circuit` naming the circuit they hang on ([above](#which-lamps-hang-on-which-circuit)); `LotLamps` reads them |
+| `FuelSpots`, `FuelProps` | the fuel can spots (`metadata/shop_id`, `metadata/door`; [above](#the-fuel-cans)) and the crates, cans and signs; `LotFuel` reads the spots |
 | `Switches` | the breaker posts (`metadata/circuit`, and `metadata/door` for the area's shop door; [above](#the-breaker-posts)); `LotSwitches` reads them |
 
 The drive-in's own props (speaker posts, the counter, popcorn machine and menu board, the projector, the ticket booths
@@ -323,6 +347,10 @@ a change to a constant or coordinate there, not hand edits to a 380-node scene. 
 - the breaker posts: one per generator circuit, each naming its door, clear of every door's slabs, showing the
   circuit (`test_lot_switches.gd`); in a night the prompt, the throw, the held key, a downed player, a dry tank and
   the HUD (`tests/night/test_night_switches.gd`);
+- the fuel cans: a spot per stand, each selling a shop fuel item behind a shop door, on its area's ground, clear of the
+  doors and posts, walkable with every door open (`test_lot_fuel.gd`); in a night the prompt, the purchase, a dry tank
+  refilled with the lamps and the dead's speed following, the held key, a full tank, a poor player, the HUD card and the
+  generator's card (`tests/night/test_night_fuel.gd`); the rules' offer (`tests/rules/test_fuel_refill.gd`);
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 
@@ -340,19 +368,19 @@ size where it stands in the way).
 
 | Where | What |
 | --- | --- |
-| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; a broken pallet by the playground, cones by the shelter |
+| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
 | Midway | a dumpster at the end of each alley, cartons where crate stack A was, a small container where B was, cones at the road gate |
-| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence |
+| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
 | Back lot | the wreck rows are the kit's Broken Car (`wreck.tscn`); tyres, debris, a spilt drum |
-| Road | the two wrecks are Broken Cars (the battery headlights sit at the west one's front); barriers and cones before the roadblock; crates by the kiosks |
+| Road | the two wrecks are Broken Cars (the battery headlights sit at the west one's front); barriers and cones before the roadblock; crates by the kiosks; queue barriers to the kiosks, a tree in each of the plaza's north corners, street lights on its side walls (models only, no light); hoardings at the road's west end, junk on its north verge, a skip, cones on the centre line |
 
 Rules the placement keeps, all checked by the world tests:
 
 - **Solid props are CSG.** The zombies' mesh is baked only from CSG shapes with collision (`navmesh_baker.gd`), so a
   prop that blocks has a hidden `CSGBox3D` or `CSGCylinder3D` with `use_collision`; a hidden CSG root still collides
   and bakes. A `StaticBody3D` would be solid for the player and invisible to the dead.
-- **Clutter has no collision**: cones, pallets, planks, debris, a lone carton, a spilt drum, a gas can. It never closes
-  a path or makes a slot.
+- **Clutter has no collision**: cones, pallets, planks, debris, papers, signs, a lone carton, a spilt drum, a gas can,
+  the street lights. It never closes a path or makes a slot. A tree is solid only at its trunk (0.3 m, 2.4 m tall).
 - **No stairs out.** A prop a player can jump onto (a crate 0.63 m, a drum 0.82 m, tyres 0.87 m, a barrier 0.5 m) is
   kept away from anything taller and from low walls: a barrier by the road's 1.6 m end walls, or a climbable wreck
   beside them, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box 1.3 m tall (no step at the bonnet),

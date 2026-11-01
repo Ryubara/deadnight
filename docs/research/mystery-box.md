@@ -42,7 +42,7 @@ Everything is in `CraneTuning` (`game/gameplay/rules/crane_tuning.gd`) and the s
 
 | Part | Our crane | Why it differs |
 | --- | --- | --- |
-| Cost | `crane_play` price, tuned with the balance simulator (see [the economy](#the-price)) | Our points are earned at a different rate (a round pays 350 to 3,500, a wall shotgun costs 900) |
+| Cost | 550, tuned with the balance simulator (see [the price](#the-price)) | Our points are earned at a different rate (a round pays 350 to 3,500, a wall shotgun costs 900) |
 | Spin | 4.5 s (`spin_seconds`) | The middle of the reported range |
 | Grab window | 12 s (`grab_seconds`), only the buyer can take it | We chose buyer-only for every title's sake: the prompt of anyone else says so |
 | Pool | shotgun 4, rifle 3, SMG 2, flare gun 1 (`pool`, `pool_weights`), minus what the buyer carries | We have four prizes, not forty: the flare gun plays the part of the rare wonder weapon. Equal odds would make the crane a free shotgun-or-rifle choice |
@@ -70,6 +70,27 @@ is 8.
 
 See the section "The crane's price" in [the balance simulator](balance-simulator.md): the cost is the one number
 the simulator chose.
+
+## How it looks and how to film it
+
+`PrizeCrane` (`game/world/crane/prize_crane.gd`) is built from boxes and spheres, no asset: a red cabinet with a glass
+case, a pile of plush prizes, a claw on a gantry, a lit marquee. `CraneView` (`game/gameplay/night/crane_view.gd`)
+stands it at the spot the server's frame names, set back 1.5 m from that spot's marker, and the crane is a function of
+the frame's `crane` ({spot, stage, left, weapon}), so a late joiner sees the same crane:
+
+- **Spin.** The claw sweeps over the pile, drops, closes and lifts; weapon models cycle above the glass, one every
+  0.07 s at first and 0.46 s at the end (the Mystery Box slows the same way). The rifle and the shotgun use the lot's
+  models; the SMG and the flare gun, which have none yet, are plain silhouettes.
+- **Grab.** The chosen weapon rises from the claw to the stage and floats, blinking for the last 3 seconds.
+- **Breakdown.** A moth-eaten plush (our dud) shows on the stage, sparks fly, the marquee and the light flicker and the
+  power goes; the crane then sinks where it stood and rises at the next spot.
+- **Beam.** A cheap additive cone (a ten-line shader: bright at the foot, fading up, blended additively, no depth
+  write) stands over the crane's spot, so the way to it is a column of light in the night.
+
+`tests/captures/crane_tour.tscn` films it from the player's shoulder camera (physics ticks, 60 a second):
+`godot --path game res://tests/captures/crane_tour.tscn --fixed-fps 10 --write-movie out.png --quit-after 700`, with
+`-- --breakdown` for the breakdown and `-- --beam` for the crane on the open field. `test_crane_view.gd` checks the
+placement, the cycling and its slowing, the chosen weapon, the dud and the move without a window.
 
 ## Open
 

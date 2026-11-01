@@ -174,7 +174,7 @@ Shop (prices at round 1):
 | --- | ---: | --- |
 | Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
-| Crane play | 750 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
+| Crane play | 550 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
 | Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
@@ -187,7 +187,7 @@ minutes, and the draw rises every round.
 
 ## The prize crane
 
-Modelled on the Call of Duty Zombies Mystery Box ([research](../research/mystery-box.md)): a play costs 750, the claw
+Modelled on the Call of Duty Zombies Mystery Box ([research](../research/mystery-box.md)): a play costs 550, the claw
 digs for 4.5 seconds, then the chosen weapon floats for 12 seconds and only the buyer can take it. A weapon the player
 carries is never drawn; the draw is seeded (its own stream, `crane_rng_state` in the snapshot). The first 3 plays at a
 place never break down; after that the chance is 15% for four plays, 30% for four more, then 50%. A breakdown refunds
@@ -195,11 +195,11 @@ the whole price (not counted as earned), shows a dud prize for 4 seconds and mov
 places whose door is open ([the places](map.md#the-cranes-places)); with no other place open it cannot break down.
 The numbers are `CraneTuning` and the item `crane_play` in `default_tuning.tres`.
 
-**Why 750.** The balance simulator ([the crane's price](../research/balance-simulator.md#the-cranes-price)) was run
-with the crane at 500, 750 and 950 (the Mystery Box's own price). A prize is worth about what the walls charge for it
-(the draw's average is near 900 points of wall weapons, and the SMG and flare gun are sold nowhere else). At 950 a weak
-player falls a round sooner; at 500 the average player buys three plays a night; at 750 the median rounds do not move
-and the crane is about one and a half plays, a tenth of what an average solo night spends.
+**Why 550.** The balance simulator ([the crane's price](../research/balance-simulator.md#the-cranes-price)) was run
+with the crane from 500 to 950 (the Mystery Box's own price). The dearer the play, the later an average solo player
+has a second weapon: the balance gate's median round (the average solo cell) is 11 at 500 and 550, 10 at 600 and 650,
+9 at 750, under its floor of 10. 550 keeps the range with a round to spare and still costs under the cheaper wall
+weapon (900); a prize is worth about what the walls charge for it, and the SMG and flare gun are sold nowhere else.
 
 ## Ammunition
 
@@ -328,6 +328,13 @@ the pillars.
   20 a round, so fuel takes a growing share of income as the night goes on (round 12 is already
   8%): the generator is always one decision away from running dry. When it does, the lights fade (the
   last tenth of the tank), every circuit goes dark, and the dead move at full speed.
+- **An empty tank is not the end.** The circuits keep their switches (a circuit can be thrown dry and lights when fuel
+  comes), nothing burns, and the only way back is a fuel can: a player walks to a can stand (one in the concession
+  stand, one by the generator's cage in the yard; [the lot](map.md#the-fuel-cans)), presses `use` and pays the can's
+  price. The card shows the price and the units it adds (only the room that is left, for a part price); a full tank
+  refuses. The tank rises at once, `fuel_restored` fires, the lamps and the slowdown come back, and the generator's card
+  shows. The yard's stand needs the yard's door and the stand's the concession's, so before the first door there is no
+  fuel to buy: the starter tank has to last until the concession is bought.
 
 When the doors open, per player (200 starting points, a player's share of the round's zombies at about 85 points
 each, the round bonus), the first round whose end covers the running total of the doors so far. "All in" spends
