@@ -53,6 +53,16 @@ Things that were not obvious:
   Godot's web runtime listens for `pointermove` on the window and reads `movementX/Y`, so the smoke dispatches
   `PointerEvent('pointermove', {movementX})` on the canvas when the real moves did not turn the view
   (`tools/web_smoke/smoke.py`, `mouse_look_via` in its result). The yaw is on `window.deadnight` for it.
+- The first Esc under pointer lock is the browser's: it frees the lock and the key never reaches the page, so the
+  game gets no `pause`. On the web `Input.mouse_mode` reads the real lock (2 captured, 0 once freed), so `Player` asks
+  `MouseGrip` every frame and, the frame a held lock is gone, turns the controls off and `NightScreen` opens its menu
+  (#476). Until the lock comes back (Resume asks inside the click or key press) look and fire wait. Playwright cannot
+  press the browser's own Esc, so `tools/web_smoke/pointer_lock.py` releases the lock with `document.exitPointerLock()`:
+  before the change the night went on running with a free cursor, after it the menu was open 0.6 s later (the probe's
+  refresh and a software renderer) and Resume, by key and by click, took the lock back. A headless Godot reads
+  `Input.mouse_mode` back as VISIBLE whatever it was set to, so the unit tests put a stand-in platform under `MouseGrip`.
+  Never run a probe that takes pointer lock on a Windows machine in use: headless Chromium there clips the real cursor to
+  an invisible box at the top left, freed only by Esc. `pointer_lock.py` refuses to start there; CI (Linux) runs it.
 - **A finger is a pointer move too (Deadnight #470).** The same `pointermove` listener also fires for a touch pointer, so
   on a phone every finger, the move stick's too, turned the view like a mouse and in device pixels (3 times too far at a
   pixel ratio of 3). The page's `head_include` stops touch pointer moves in the capture phase, and the player ignores
