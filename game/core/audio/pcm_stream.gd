@@ -20,6 +20,12 @@ static func fits(stream: AudioStream) -> bool:
 	return stream is AudioStreamOggVorbis and stream.get_length() <= MAX_SECONDS
 
 
+## The file a stream came from: its own path, or for a decoded copy the Ogg it was made from (a
+## copy in memory has no path of its own). Tests use it to tell which take played.
+static func source(stream: AudioStream) -> String:
+	return stream.resource_path if stream.resource_path != "" else stream.resource_name
+
+
 ## `ogg` as samples at `mix_rate` (the audio server's rate): one channel when both of its channels
 ## are the same, as the mono files are, two otherwise.
 static func decode(ogg: AudioStream, mix_rate: int) -> AudioStreamWAV:
@@ -42,6 +48,7 @@ static func decode(ogg: AudioStream, mix_rate: int) -> AudioStreamWAV:
 	wav.mix_rate = mix_rate
 	wav.stereo = not mono
 	wav.data = bytes
+	wav.resource_name = ogg.resource_path
 	return wav
 
 
