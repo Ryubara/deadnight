@@ -22,6 +22,7 @@ func _ready() -> void:
 	if args.has("server"):
 		_serve(args)
 		return
+	NightScreen.challenge_path = ChallengeSave.DEFAULT_PATH
 	if args.has("look"):
 		NightScreen.own_look = NightScreen.look_from_flag(args.get_string("look"))
 	add_child(WebProbe.new())
@@ -53,6 +54,11 @@ func _ready() -> void:
 		NightScreen.join_url = JoinScreen.DEFAULT_URL if url == "true" else url
 		NightScreen.join_as_bot = args.has("bot")
 		UIRouter.push(NIGHT, UITransition.Kind.IRIS)
+
+
+## The save is the real game's: leaving the root (a test frees it) puts the path away again.
+func _exit_tree() -> void:
+	NightScreen.challenge_path = ""
 
 
 ## A game server: with a backend (`ServerConfig`) the nights of its matches, else one night for

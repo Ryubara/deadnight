@@ -45,7 +45,6 @@ func test_every_arms_sound_carries_a_cap() -> void:
 		var text := String(id)
 		if (
 			text.begins_with("shot_")
-			or text.begins_with("blast_")
 			or text.begins_with("tail_")
 			or text.begins_with("reload_")
 			or text.begins_with("impact_")

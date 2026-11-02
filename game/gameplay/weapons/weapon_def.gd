@@ -65,6 +65,12 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export var splash_damage: float = 0.0
 @export_range(0.0, 1.0) var splash_min_fraction: float = 0.25
 
+@export_group("Lure")
+## Metres round a burst within which zombies leave what they chase for the burst point, and the
+## seconds they stay (`ZombieLure`); 0 makes no lure. A lure does no damage.
+@export var lure_radius: float = 0.0
+@export var lure_seconds: float = 0.0
+
 @export_group("Melee")
 @export var melee_range: float = 1.8
 ## Thickness of the sweep in metres: the shape that is cast is this fat.
@@ -94,6 +100,10 @@ func upgraded(spec: UpgradeTuning) -> WeaponDef:
 ## The damage multiplier of a hit zone; a zone the weapon does not list counts one.
 func zone_multiplier(zone: StringName) -> float:
 	return zone_multipliers.get(zone, 1.0)
+
+
+func is_lure() -> bool:
+	return lure_radius > 0.0 and lure_seconds > 0.0
 
 
 func is_hitscan() -> bool:

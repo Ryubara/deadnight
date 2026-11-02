@@ -1,0 +1,16 @@
+{
+  "challenges": [
+    {"id": "m_kills", "text": "Put down {n} zombies", "stat": "kills", "steps": [50, 250, 1000, 2500, 5000, 10000, 25000], "reward": {"stubs": 10}},
+    {"id": "m_nights", "text": "Play {n} nights", "stat": "nights", "steps": [1, 5, 10, 25, 50, 100, 250], "reward": {"stubs": 10}},
+    {"id": "m_rounds", "text": "Get through {n} rounds", "stat": "rounds", "steps": [10, 50, 150, 400, 1000, 2500], "reward": {"stubs": 10}},
+    {"id": "m_best_round", "text": "Reach round {n}", "stat": "round", "steps": [5, 8, 10, 15, 20, 30], "reward": {"stubs": 10}},
+    {"id": "m_head", "text": "Land {n} headshot kills", "stat": "kills:head", "steps": [25, 100, 500, 1500, 5000], "reward": {"stubs": 10}},
+    {"id": "m_boards", "text": "Mend {n} boards", "stat": "boards_repaired", "steps": [25, 100, 400, 1000], "reward": {"stubs": 10}},
+    {"id": "m_doors", "text": "Open {n} ways through", "stat": "doors_bought", "steps": [5, 25, 100, 250], "reward": {"stubs": 10}},
+    {"id": "m_blast", "text": "Blow up {n} zombies with grenades", "stat": "kills:blast", "steps": [10, 50, 250, 1000], "reward": {"stubs": 10}},
+    {"id": "m_melee", "text": "Take down {n} zombies in melee", "stat": "kills:melee", "steps": [10, 50, 250, 1000], "reward": {"stubs": 10}},
+    {"id": "m_headliners", "text": "Bring down {n} headliners", "stat": "kills:boss", "steps": [1, 5, 25, 100], "reward": {"stubs": 10}},
+    {"id": "m_cans", "text": "Deliver {n} fuel cans", "stat": "fuel_cans", "steps": [3, 15, 50, 150], "reward": {"stubs": 10}},
+    {"id": "m_points", "text": "Take in {n} points", "stat": "points_earned", "steps": [10000, 50000, 250000, 1000000], "reward": {"stubs": 10}}
+  ]
+}
