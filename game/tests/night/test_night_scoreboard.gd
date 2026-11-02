@@ -60,7 +60,8 @@ func test_a_played_night_alone_counts_kills_and_downs_for_the_player() -> void:
 	assert_int(hud.scoreboard.rows_text.size()).is_equal(1)
 	assert_str(hud.scoreboard.rows_text[0][1]).is_equal(str(rules.kills_of(me)))
 	assert_str(hud.scoreboard.rows_text[0][2]).is_equal("0")
-	assert_str(hud.scoreboard.rows_text[0][3]).is_equal(str(rules.points_of(me)))
+	assert_str(hud.scoreboard.rows_text[0][3]).is_equal("0")
+	assert_str(hud.scoreboard.rows_text[0][4]).is_equal(str(rules.points_of(me)))
 	assert_bool(hud.scoreboard.has_ping).is_false()
 	assert_str(hud.scoreboard.round_text).is_equal("ROUND %02d" % state.round_number())
 	# Going down is counted once, and shows on the next frame.

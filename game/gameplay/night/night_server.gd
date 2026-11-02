@@ -25,7 +25,9 @@ extends RefCounted
 ## held), pitch (the look up or down, `pitch_step`), ammo, reserve, reloading, arms (every weapon
 ## carried: id to [ammo, reserve, tier]), points, prompt, reviving (the teammate this one is
 ## raising, 0 for none), revive (0 to 1: how far the hold on this one, when downed, has got), ack
-## (the `seq` of the command this step used: a predicting client replays from it)}}.
+## (the `seq` of the command this step used: a predicting client replays from it), kills, downs,
+## revives, dead (bled out), bleed (seconds a downed player has left) and reviver (who is raising
+## this one, 0 for nobody)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -265,7 +267,7 @@ func step(delta: float) -> Array[Dictionary]:
 	director.tick(delta, _chase_targets())
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
-	rules.apply(RulesAction.tick(delta))
+	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
 	PerfProbe.end(&"server.rules", began)
 	began = PerfProbe.begin()
 	_combat(CombatAction.targets(_target_list()))
@@ -657,8 +659,8 @@ func aims_with_view(command: NightCommand) -> bool:
 ## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or
 ## `{"kind": &"fuel", "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell
 ## now: `units` is 0 and `price` 0 when the tank is full), or `{"kind": &"revive", "id",
-## "progress"}` beside a downed teammate (`progress`: 0 to 1 of the hold; first of all, a life comes
-## before a door).
+## "progress", "bleed"}` beside a downed teammate (`progress`: 0 to 1 of the hold, `bleed`: the
+## seconds they have left; first of all, a life comes before a door).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -666,7 +668,12 @@ func use_target(player_id: int) -> Dictionary:
 	var here := body.global_position
 	var raise := _revive.in_reach(player_id)
 	if raise != 0:
-		return {"kind": &"revive", "id": raise, "progress": _revive.progress(raise)}
+		return {
+			"kind": &"revive",
+			"id": raise,
+			"progress": _revive.progress(raise),
+			"bleed": rules.bleed_left_of(raise),
+		}
 	var door := _door_offer(here)
 	if not door.is_empty():
 		return door
@@ -899,12 +906,17 @@ func _frame() -> Dictionary:
 			"reloading": weapon != null and weapon.is_reloading(),
 			"arms": _arms_of(player_id),
 			"points": rules.points_of(player_id),
-			"prompt": use_target(player_id),
+			# A player on the ground can use nothing, so the card says nothing.
+			"prompt": {} if _is_downed(player_id) else use_target(player_id),
 			"ack": _acked.get(player_id, 0),
 			"reviving": _revive.target_of(player_id),
 			"revive": _revive.progress(player_id),
+			"reviver": _revive.holder_of(player_id),
 			"kills": rules.kills_of(player_id),
 			"downs": rules.downs_of(player_id),
+			"revives": rules.revives_of(player_id),
+			"dead": rules.is_dead(player_id),
+			"bleed": rules.bleed_left_of(player_id),
 		}
 		if pings.has(player_id):
 			players[player_id]["ping"] = pings[player_id]

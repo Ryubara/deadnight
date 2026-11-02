@@ -304,11 +304,11 @@ No revive exists yet (Phase 0). When it does, these are the rules.
 **Priority.** A downed human before a downed bot; among equals the one with the least time left; the nearest bot
 claims (a shared claim table with a 3 s lease, ties by slot id), the others become *cover*.
 
-**Risk check** (before committing, and again every think while reviving). Let `T` be the revive time (6 s in the
-simulator). For each known zombie estimate the time to reach the victim, path distance over speed. The revive is safe
-when no zombie can reach victim or reviver within `T` plus a margin, or when the bot can kill the ones that can in the
-time it takes them (their health from the round's public formula over the held weapon's sustained damage, the numbers
-the simulator uses). Unsafe: go to *clear*.
+**Risk check** (before committing, and again every think while reviving). Let `T` be the revive time (3.5 s,
+`HealthTuning.revive_seconds`). For each known zombie estimate the time to reach the victim, path distance over
+speed. The revive is safe when no zombie can reach victim or reviver within `T` plus a margin, or when the bot can
+kill the ones that can in the time it takes them (their health from the round's public formula over the held weapon's
+sustained damage, the numbers the simulator uses). Unsafe: go to *clear*.
 
 **Clear.** Fight from a place with a line to the victim's surroundings, with a target bonus for zombies nearest the
 victim; throw a grenade or fire the flare only when the victim is at least 4 m from the blast (the blast is 3 m, and a
@@ -540,11 +540,11 @@ disagrees with the view is refused or clamped.
   for oneself and for a target who is up. It gets the target up with `HealthTuning.revive_fraction` (0.5) of their
   health and restarts the wait before mending; `player_revived` now names the `reviver_id` (0 at a round's end, which
   still gets everyone up with all their health). The channel is the server's: holding `use` within
-  `NightTuning.revive_reach` (2.2 m) of a downed teammate for `HealthTuning.revive_seconds` (6.0), with the reviver
+  `NightTuning.revive_reach` (2.0 m) of a downed teammate for `HealthTuning.revive_seconds` (3.5), with the reviver
   free to let go, step away or be struck down, which starts the time over. The frame carries `reviving` and `revive`
   (0 to 1) per player, the prompt `{kind: revive, id, progress}` comes before a door's, and `revive_started` and
-  `revive_stopped` (reason `released`, `moved`, `down`, `done`) go to the clients. **No bleed-out** (the design says a
-  downed player waits to be raised or for the round's end), and **no points for a revive** (the rescue pay of the
+  `revive_stopped` (reason `released`, `moved`, `down`, `done`) go to the clients. **No bleed-out in #511** (the 45 s
+  clock came with #486, [Revive](../design/revive.md)), and **no points for a revive** (the rescue pay of the
   progression design is XP, from `player_revived.reviver_id`). The snapshot gained no field, so its version stays 8.
 - **Pings.** `NightServer.PING` / `ping` {kind, pos, subject} and a ten-byte client message (`NetWire.Type.MARK`, rate
   limited at 2 a second): `here`, `door` (by index), `ammo`, `enemy` (a live zombie's id) and `downed` (a downed

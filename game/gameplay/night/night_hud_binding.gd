@@ -66,6 +66,8 @@ func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistr
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
 	hud.state.local_player_id = state.player_id
+	hud.state.revive_seconds = tuning.health.revive_seconds
+	hud.state.bleed_total = tuning.revive.bleed_out_seconds
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.event_received.connect(_on_event)
@@ -135,8 +137,9 @@ func _on_frame() -> void:
 	show_prompt(me["prompt"])
 
 
-## The scoreboard's numbers, as the server counts them in its frame: every player's kills and downs
-## and the ping it last heard, and the night's clock. One batch, so the scoreboard redraws once.
+## The scoreboard's numbers, as the server counts them in its frame: every player's kills, downs and
+## revives and the ping it last heard, and the night's clock; and the revive's rings (each player's
+## bleed-out clock and the progress of the hold on them). One batch, so the HUD redraws once.
 func _show_stats(state: HudState) -> void:
 	var players: Dictionary = _state.frame.get("players", {})
 	state.hold()
@@ -146,7 +149,15 @@ func _show_stats(state: HudState) -> void:
 			player_id,
 			int(player.get("kills", 0)),
 			int(player.get("downs", 0)),
-			int(player.get("ping", HudState.NO_PING))
+			int(player.get("ping", HudState.NO_PING)),
+			int(player.get("revives", 0))
+		)
+		state.set_player_revive(
+			player_id,
+			bool(player.get("dead", false)),
+			float(player.get("bleed", 0.0)),
+			float(player.get("revive", 0.0)),
+			int(player.get("reviver", 0))
 		)
 	state.set_night_clock(int(_state.frame.get("clock", 0)))
 	state.release()
@@ -164,6 +175,8 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"repair":
 			if state.prompt.get("kind") != &"repair":
 				state.set_prompt(&"repair", BREACH_NAME)
+		&"revive":
+			_set_revive_prompt(prompt)
 		&"weapon":
 			_offer(&"buy_weapon", _weapon_name(prompt["weapon"]), prompt["price"], "")
 		&"crane":
@@ -181,13 +194,17 @@ func show_prompt(prompt: Dictionary) -> void:
 			_set_circuit_prompt(prompt["id"], prompt["on"])
 		&"fuel":
 			_set_fuel_prompt(prompt)
-		&"revive":
-			var who := str(state.team.get(int(prompt["id"]), {}).get("name", "your teammate"))
-			var detail := "HOLDING ON  %d%%" % roundi(float(prompt["progress"]) * 100.0)
-			_offer(&"revive", who, 0, detail if prompt["progress"] > 0.0 else "")
 		_:
 			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade):
 				state.clear_prompt()
+
+
+## A downed teammate in reach: whose, and how long they have (the ring itself is `HudRevive`'s).
+func _set_revive_prompt(prompt: Dictionary) -> void:
+	var member: Dictionary = _hud.state.team.get(int(prompt["id"]), {})
+	var label := "Revive %s" % str(member.get("name", "your teammate"))
+	var detail := "HOLD TO REVIVE: DEAD IN %d S" % ceili(float(prompt.get("bleed", 0.0)))
+	_offer(&"revive", label, 0, detail)
 
 
 func _offer(kind: StringName, label: String, cost: int, detail: String) -> void:

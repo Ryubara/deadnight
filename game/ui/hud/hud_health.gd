@@ -25,6 +25,9 @@ var grenade_text: String:
 var down_text: String:
 	get:
 		return _down.text
+var hint_text: String:
+	get:
+		return _hint.text
 
 var _label := HudStyle.clip(
 	HudStyle.label("HEALTH", HudStyle.SMALL, tokens.accent, false, TRACKING)
@@ -59,11 +62,12 @@ func _init() -> void:
 
 
 func topics() -> Array[StringName]:
-	return [HudState.HEALTH, HudState.TEAM]
+	return [HudState.HEALTH, HudState.TEAM, HudState.REVIVE]
 
 
 func refresh() -> void:
 	shown_downed = state.is_local_downed()
+	_say_down()
 	_top.visible = not shown_downed
 	_bar.visible = not shown_downed
 	_down.visible = shown_downed
@@ -79,6 +83,22 @@ func refresh() -> void:
 	accent = tokens.danger if shown_downed else (tokens.hot if warned else tokens.accent)
 	_bar.queue_redraw()
 	queue_redraw()
+
+
+## What the card says while down: DOWN and the clock, being pulled up, or DEAD until the round ends.
+func _say_down() -> void:
+	var me: Dictionary = state.team.get(state.local_player_id, {})
+	if me.is_empty() or not shown_downed:
+		return
+	if bool(me["dead"]):
+		HudStyle.set_text(_down, "DEAD")
+		HudStyle.set_text(_hint, "BACK NEXT ROUND")
+	elif int(me["reviver"]) != 0:
+		HudStyle.set_text(_down, "DOWN")
+		HudStyle.set_text(_hint, "BEING PULLED UP")
+	else:
+		HudStyle.set_text(_down, "DOWN")
+		HudStyle.set_text(_hint, "BLEEDING OUT  %d S" % ceili(float(me["bleed"])))
 
 
 ## The weapon put away, cut to the card's width.

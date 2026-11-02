@@ -333,13 +333,14 @@ crawl is gone: the controller adds it only when its file is there.
   `build_soldier.py` takes the finger channels out of the file after the export (`strip_channels`, 66 per clip:
   22 bones, 3 channels each). `test_player_revive.gd` checks the imported clips carry no finger track.
 - **Driven by eased weights.** `PlayerAnimation.set_downed(bool)` (the rules' `player_downed` / `player_revived`)
-  and `set_reviving(bool)` (`revive_started` naming the player as the reviver / `revive_interrupted`,
-  `player_revived`). Each eases a Blend2 over everything the standing body does, at 6 per second for the downed pose
-  and 10 for the kneel. Going down drops a repair, a reload and a revive. Down or kneeling, the weapon is put away and
-  the arm IK lets go. A downed player cannot kneel. The tree: `full` (HitReact, Death) over `downed` (Downed_Idle,
-  or the `crawl` blend) over `kneel` (Revive_Kneel) over `split`.
+  and `set_reviving(bool)` (`revive_started` naming the player as the reviver / `revive_stopped`,
+  `player_revived`). `Night` calls them from the server's events for every body it draws, and `RemoteAvatars` from each
+  frame's `downed`, so a player who joins late lies down too. Each eases a Blend2 over everything the standing body
+  does, at 6 per second for the downed pose and 10 for the kneel. Going down drops a repair, a reload and a revive.
+  Down or kneeling, the weapon is put away and the arm IK lets go. A downed player cannot kneel. The tree: `full`
+  (HitReact, Death) over `downed` (Downed_Idle, or the `crawl` blend) over `kneel` (Revive_Kneel) over `split`.
 - **Other players' bodies.** `DownedPose.add_clips(anim_player)` adds the clips to any model on the
-  Soldier's rig, so a drawn avatar (RemoteAvatars) can play `Downed_Idle` in place of its `DOWNED_TILT`.
+  Soldier's rig, so a drawn avatar (RemoteAvatars) plays `Downed_Idle`; `DOWNED_TILT` is only for a body with no animation.
 - **The camera does not frame a downed body yet.** The shoulder rig keeps its standing height and pitch, so the body
   lies at the bottom edge of the view, cut off. Framing it is the camera's job (lower the pivot and tilt down while
   down, as the crouch flag does): [#532](https://github.com/Ryubara/deadnight/issues/532).

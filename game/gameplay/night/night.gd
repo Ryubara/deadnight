@@ -48,6 +48,11 @@ const GRENADE_CLIP_EVENTS: Array[StringName] = [
 	&"cook_started", &"throw_started", &"grenade_dropped", &"grenade_exploded"
 ]
 
+## The server's events that move the Soldier's downed pose and kneel.
+const REVIVE_CLIP_EVENTS: Array[StringName] = [
+	&"player_downed", &"player_revived", &"revive_started", &"revive_stopped"
+]
+
 var mode := Mode.HUMAN
 var world: NightWorld
 var server: NightServer
@@ -740,6 +745,7 @@ func _on_event(event: Dictionary) -> void:
 		night_over.emit(event["round_reached"])
 	else:
 		_show_grenade(event)
+		_show_revive(event)
 
 
 ## The Soldier's grenade clips follow the server's events: the pin, the throw, a grenade that went
@@ -760,6 +766,29 @@ func _show_grenade(event: Dictionary) -> void:
 		&"grenade_exploded":
 			if event["in_hand"]:
 				animation.grenade(&"gone")
+
+
+## The Soldier's downed pose and kneel follow the server's events: a player going down or getting
+## up, and a teammate beginning or ending the hold (DownedPose).
+func _show_revive(event: Dictionary) -> void:
+	var type: StringName = event["type"]
+	if not REVIVE_CLIP_EVENTS.has(type):
+		return
+	var animation := _animation_of(event["player_id"])
+	if animation != null:
+		match type:
+			&"player_downed":
+				animation.set_downed(true)
+			&"player_revived":
+				animation.set_downed(false)
+			&"revive_started":
+				animation.set_reviving(true)
+			&"revive_stopped":
+				animation.set_reviving(false)
+	if type == &"player_revived" and event["reviver_id"] > 0:
+		var reviver := _animation_of(event["reviver_id"])
+		if reviver != null:
+			reviver.set_reviving(false)
 
 
 func _animation_of(player_id: int) -> PlayerAnimation:
@@ -807,6 +836,10 @@ func _make_autopilot() -> void:
 	for circuit_id in world.switches.circuit_ids():
 		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
 		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
+	autopilot.revive.reach = (
+		(night_tuning if night_tuning != null else NightTuning.shipped()).revive_reach
+	)
+	autopilot.revive.seconds = tuning.health.revive_seconds
 	autopilot.fuel.capacity = tuning.fuel.capacity
 	autopilot.fuel.refuel_at = tuning.fuel.low_fraction
 	autopilot.fuel.fill_to = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN

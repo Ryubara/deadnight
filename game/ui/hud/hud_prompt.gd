@@ -17,7 +17,7 @@ const DETAILS := {
 	&"fill_fuel": "TOPS UP THE GENERATOR",
 	&"repair": "HOLD TO NAIL BOARDS UP",
 	&"circuit": "SWITCH THE LIGHTS",
-	&"revive": "PULL THEM BACK TO THEIR FEET",
+	&"revive": "HOLD TO PULL THEM BACK UP",
 }
 const DENIED_TEXT := {
 	GameRules.BuyResult.NOT_ENOUGH_POINTS: "NOT ENOUGH POINTS",

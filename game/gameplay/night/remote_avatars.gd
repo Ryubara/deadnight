@@ -202,5 +202,11 @@ class Drawn:
 			_pitch = pitch
 		_placed = true
 		_was = pos
-		body.rotation.x = RemoteAvatars.DOWNED_TILT if downed else 0.0
+		# The Soldier lies down in his own clip (DownedPose); a body without one is tipped over.
+		var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation
+		if animation != null:
+			animation.set_downed(downed)
+			body.rotation.x = 0.0
+		else:
+			body.rotation.x = RemoteAvatars.DOWNED_TILT if downed else 0.0
 		body.puppet_to(pos, facing, _speed, aim and not downed, _pitch)

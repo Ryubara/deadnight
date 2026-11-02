@@ -78,6 +78,7 @@ const OPTIONAL := {
 	BLOW: {"bearing": TYPE_FLOAT, "source_id": TYPE_INT},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
 	BUY: {"rounds": TYPE_INT, "weapon": TYPE_STRING_NAME},
+	TICK: {"held": TYPE_ARRAY},
 }
 
 
@@ -91,9 +92,14 @@ static func configure(settings: MatchSettings) -> Dictionary:
 	return {"type": CONFIGURE, "settings": settings.to_dict()}
 
 
-## One fixed step of the clock. The only way time passes.
-static func tick(delta: float) -> Dictionary:
-	return {"type": TICK, "delta": delta}
+## One fixed step of the clock. The only way time passes. `held` lists the downed players a
+## teammate is holding the revive on (the server's channel knows): their bleed-out clock stands
+## still this tick, if the tuning says so.
+static func tick(delta: float, held: Array = []) -> Dictionary:
+	var action := {"type": TICK, "delta": delta}
+	if not held.is_empty():
+		action["held"] = held
+	return action
 
 
 static func skip_break() -> Dictionary:
