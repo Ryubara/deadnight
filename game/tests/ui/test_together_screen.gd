@@ -62,3 +62,46 @@ func test_what_a_player_reads_for_each_answer_of_the_backend() -> void:
 	# An answer nobody planned for still says something.
 	assert_str(TogetherApi._failed("weird")["text"]).contains("weird")
 	assert_bool(TogetherApi._failed("full")["ok"]).is_false()
+
+
+## An API that answers from the test: no network.
+class FakeApi:
+	extends TogetherApi
+	var joined: Array[String] = []
+
+	func sign_in(_display_name: String = "") -> Dictionary:
+		return {"ok": true}
+
+	func join_code(code: String) -> Dictionary:
+		joined.append(code)
+		if code == "NOPE":
+			return {"ok": false, "error": "not_found", "text": TogetherApi.TEXTS["not_found"]}
+		return {"ok": true, "lobby": {"id": "lobby-1", "code": code}}
+
+
+func test_a_night_found_by_a_link_waits_for_a_press_of_play() -> void:
+	var screen := _screen()
+	var fake := FakeApi.new(screen)
+	screen.api = fake
+	TogetherScreen.auto_code = "FRIEND1"
+	await screen.screen_enter()
+	assert_array(fake.joined).is_equal(["FRIEND1"])
+	# It did not go in: the invite view shows the code and a Play button, and no invite to hand out.
+	assert_str(NightScreen.join_url).is_equal("")
+	assert_bool(screen.play_button.is_visible_in_tree()).is_true()
+	assert_str(screen.invite_code.text).is_equal("FRIEND1")
+	assert_bool(screen.copy_link_button.is_visible_in_tree()).is_false()
+	assert_bool(screen.copy_code_button.is_visible_in_tree()).is_false()
+	assert_bool(screen.quick_button.is_visible_in_tree()).is_false()
+	screen.queue_free()
+
+
+func test_a_link_to_a_night_that_is_gone_says_so_and_shows_the_menu() -> void:
+	var screen := _screen()
+	screen.api = FakeApi.new(screen)
+	TogetherScreen.auto_code = "NOPE"
+	await screen.screen_enter()
+	assert_str(screen.status.text).contains("no night with that code")
+	assert_bool(screen.quick_button.is_visible_in_tree()).is_true()
+	assert_bool(screen.quick_button.disabled).is_false()
+	screen.queue_free()

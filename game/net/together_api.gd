@@ -10,6 +10,13 @@ extends RefCounted
 
 ## The backend the project runs on Railway (guests only until Discord is set up there too).
 const DEFAULT_BACKEND := "https://backend-production-bd67a.up.railway.app"
+## What the bridge has: the code, '!' when it failed or there is none, '' while it is still asking.
+const DISCORD_STATE_JS := (
+	"window.deadnightDiscord ? (window.deadnightDiscord.code"
+	+ " || (window.deadnightDiscord.error ? '!' : '')) : '!'"
+)
+## Seconds to wait for Discord's answer to the Activity's sign-in.
+const DISCORD_WAIT_SECONDS := 30.0
 ## What a player reads for each reason the backend gives.
 const TEXTS := {
 	"not_found": "There is no night with that code. Check it and try again.",
@@ -52,10 +59,20 @@ static func user_name() -> String:
 	return _user.get("name", "")
 
 
-## Signs in as a guest unless this run already has a session.
+## Signs in unless this run already has a session: with Discord when the page is an Activity (its
+## bridge, `deploy/web/discord-bridge.js`, has the OAuth code), else, or when that does not work,
+## as a guest.
 func sign_in(display_name: String = "") -> Dictionary:
 	if _token != "":
 		return {"ok": true}
+	if instance_id != "" and OS.has_feature("web"):
+		var code := await _discord_code()
+		if code != "":
+			var with_discord := await _call("POST", "/auth/discord", {"code": code}, false)
+			if with_discord["ok"]:
+				_token = with_discord["token"]
+				_user = with_discord["user"]
+				return with_discord
 	var answer := await _call("POST", "/auth/guest", {"name": display_name}, false)
 	if answer["ok"]:
 		_token = answer["token"]
@@ -104,6 +121,21 @@ func ticket(lobby: Dictionary) -> Dictionary:
 		"ticket": answer["ticket"],
 		"match": answer["matchId"],
 	}
+
+
+## The OAuth code the Discord bridge got from the Activity's `authorize()`: waits for it (the
+## player may be asked to agree), and is empty when there is no bridge, it failed or took long.
+func _discord_code() -> String:
+	var waited := 0.0
+	while waited < DISCORD_WAIT_SECONDS:
+		var state := str(JavaScriptBridge.eval(DISCORD_STATE_JS))
+		if state == "!":
+			return ""
+		if state != "":
+			return state
+		await _parent.get_tree().create_timer(0.25).timeout
+		waited += 0.25
+	return ""
 
 
 ## The invite link of a night: this page with `?room=CODE` (the web build), or just the code.

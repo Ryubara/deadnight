@@ -310,7 +310,15 @@ func _tell_backend(method: String, path: String, body: Variant) -> void:
 		self, method, backend_url + path, {"Authorization": "Bearer " + backend_secret}, body
 	)
 	if answer["status"] != 204 and answer["status"] != 200:
-		_log("backend_failed", {"path": path, "status": answer["status"]})
+		_log(
+			"backend_failed",
+			{
+				"path": path,
+				"status": answer["status"],
+				"said": answer["json"],
+				"sent": JSON.stringify(body)
+			}
+		)
 
 
 func _now() -> float:

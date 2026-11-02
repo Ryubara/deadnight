@@ -40,6 +40,11 @@ var _menu: VBoxContainer
 var _invite: VBoxContainer
 var _lobby := {}
 var _busy := false
+## The night was found for the player (an invite link, a Discord channel) rather than asked for: it
+## waits for a press of Play, which is also the click a browser needs before it lets the game
+## capture the mouse and play sound.
+var _found := false
+var _invite_title: UILabel
 
 
 func _ready() -> void:
@@ -82,11 +87,13 @@ func screen_enter() -> void:
 		var code := auto_code
 		auto_code = ""
 		code_field.text = code
+		_found = true
 		await _join()
 	elif auto_instance != "":
 		var instance := auto_instance
 		auto_instance = ""
 		api.instance_id = instance
+		_found = true
 		await _create("Joining your voice channel's night...")
 
 
@@ -133,7 +140,8 @@ func _build_menu() -> VBoxContainer:
 func _build_invite() -> VBoxContainer:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override(&"separation", _tokens.space_md)
-	column.add_child(_label("YOUR NIGHT IS READY", UILabel.Style.OVERLINE))
+	_invite_title = _label("YOUR NIGHT IS READY", UILabel.Style.OVERLINE)
+	column.add_child(_invite_title)
 	invite_code = _label("", UILabel.Style.DISPLAY)
 	invite_code.name = "InviteCode"
 	column.add_child(invite_code)
@@ -181,10 +189,6 @@ func _create(message: String) -> void:
 	var made := await api.create()
 	if made["ok"]:
 		_lobby = made["lobby"]
-		if api.instance_id != "":
-			# A Discord Activity has no invite to hand out: everyone in the channel is in already.
-			await _enter_night()
-			return
 		_show_invite()
 		_busy = false
 		_say("")
@@ -219,6 +223,11 @@ func _finish(answer: Dictionary) -> void:
 		_fail(answer)
 		return
 	_lobby = answer["lobby"]
+	if _found:
+		_show_invite()
+		_busy = false
+		_say("")
+		return
 	await _enter_night()
 
 
@@ -230,7 +239,7 @@ func _enter_night() -> void:
 	if not pass_to["ok"]:
 		_fail(pass_to)
 		return
-	NightScreen.join_url = server_url_of(pass_to, api.instance_id != "")
+	NightScreen.join_url = server_url_of(pass_to, in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
 	_busy = false
 	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
@@ -241,6 +250,7 @@ func _fail(answer: Dictionary) -> void:
 	_set_enabled(true)
 	_say(answer.get("text", "Something went wrong."))
 	if _lobby.is_empty():
+		_found = false
 		_show_menu()
 	else:
 		_show_invite()
@@ -269,7 +279,11 @@ func _show_invite() -> void:
 	_invite.visible = true
 	invite_code.text = _lobby["code"]
 	invite_link.text = TogetherApi.invite_link(_lobby["code"], _page_url())
-	copy_link_button.visible = invite_link.text != invite_code.text
+	# A night somebody else made needs no invite to hand out.
+	_invite_title.text = "YOUR FRIENDS ARE WAITING" if _found else "YOUR NIGHT IS READY"
+	invite_link.visible = not _found
+	copy_link_button.visible = invite_link.text != invite_code.text and not _found
+	copy_code_button.visible = not _found
 	_set_enabled(true)
 	play_button.grab_focus.call_deferred()
 
@@ -300,13 +314,19 @@ static func _page_host() -> String:
 	return str(JavaScriptBridge.eval("window.location.host")) if OS.has_feature("web") else ""
 
 
+## Whether this page is a Discord Activity: Discord serves it from `<client id>.discordsays.com`,
+## and everything it calls goes through that host's URL mappings (`/api`, `/server`).
+static func in_discord() -> bool:
+	return _page_host().ends_with(".discordsays.com")
+
+
 ## The backend to talk to: `?backend=` (a developer's own), the Activity proxy's `/api` inside
 ## Discord, else the project's.
 func _backend_url() -> String:
 	var args := NetArgs.new()
 	if args.has("backend"):
 		return args.get_string("backend")
-	if auto_instance != "" and OS.has_feature("web"):
+	if in_discord():
 		return "https://%s/api" % _page_host()
 	return TogetherApi.DEFAULT_BACKEND
 
