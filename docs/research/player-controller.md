@@ -71,6 +71,35 @@ replay climb the same ledges; it uses physics queries only (`test_move`, one ray
   the ledge's far edge (a body sliding off a corner) are about 10 micrometres, amplified to a millimetre by the slide;
   the replay test therefore ends on top of the ledge.
 
+## Crouching
+
+Held crouch lowers the capsule and the pose, slows the walk, and cannot be undone under a low ceiling
+(`PlayerSimulation._next_stance`, `tests/player/test_player_crouch.gd`). It is carried in `PlayerCommand.crouch`
+(a level) and `PlayerMotionState.crouching`, which the network wire already had.
+
+- **Stance:** a crouch starts on the ground when the key is down (not in the air: one that began on the ground carries
+  over a fall), and ends when the key is up *and* the standing body fits. The fit test is a shape query of the
+  standing capsule, a `crouch_probe_skin` (2 cm) shorter at both ends and narrower, so the floor under the feet and a
+  wall beside them never count, only what is overhead. Under a beam the crouch holds with the key up and the walk
+  stays slow.
+- **The shape follows the carried state:** every tick starts by setting the body's capsule to `state.crouching` (its
+  feet stay where they are, the shape grows up from them), so a rewind to a crouched or a standing state restores the
+  right shape, and a replay in any frame matches (`test_a_replay_crouches_and_stands_the_same`). A body with no
+  capsule child is left alone.
+- **Pace:** every pace (run, aim) is scaled by `crouch_speed / run_speed` (0.5): a crouched run is 2.4 m/s, a crouched
+  aim walk 1.4. Sprint is ignored while crouched, and so is a jump (the buffer still holds it for 0.1 s, so a jump
+  pressed as the key goes up fires if there is room).
+- **Camera:** the pivot target drops to `crouch_pivot_height` (1.1 m) at once; the pivot's own vertical spring (10
+  rad/s) eases it in about half a second, the same spring that eases a step up.
+- **Pose:** the kit's `Duck` clip is a down-and-up cycle (1.67 s, the Body bone's lowest at its middle), not a held
+  crouch. The body machine's `crouch` state loops 0.1 s of it around that lowest second
+  (`AnimationNodeAnimation.use_custom_timeline`, found by scanning the Body track, not assumed) and lays the Walk over
+  it at `crouch_walk_blend` (0.6) of its weight at the crouch speed, so the legs step under the held pose; the kit has
+  no crouch walk. `PlayerAnimation` travels to `crouch` from `locomotion` while the state crouches on the floor, and
+  back when it stands; a fall leaves it by its own transition.
+- **Not done:** remote avatars in the night view draw the standing pose (that view is another change's); cover and
+  zombie sight against a crouched player are not designed yet (`docs/design/map.md`).
+
 ## Settings
 
 Sensitivity and invert Y come from the `Settings` autoload (`controls/mouse_sensitivity`, `controls/invert_y`, through
@@ -88,6 +117,7 @@ All in `player_tuning_default.tres` (a `PlayerTuning` resource); metres, seconds
 | Facing | 14 rad/s toward the run direction, 9 while sprinting, 22 in a pivot (a turn wider than 100 degrees), 24 toward the aim direction | The body visibly turns instead of snapping, and the velocity turns with it; aiming catches up fast so shots go where the camera points. |
 | Jump | 1.1 m height, gravity x1.7, coyote 0.1 s, buffer 0.1 s | Short, snappy arc; a late or early press still counts. |
 | Step up | ledges up to 0.3 m, lifted onto in one tick; the model eases up at 14 /s (95 percent in about 0.2 s) | A walk into a curb, a plank or a low crate is not a wall. See [Stepping up](#stepping-up). |
+| Crouch | capsule 1.2 m (feet fixed), walk 2.4 m/s (aim 1.4), no sprint, no jump; camera pivot 1.1 m | Half the run pace is a deliberate creep; the pivot follows the head (0.89 of the capsule). See [Crouching](#crouching). |
 | Body | capsule 1.8 m by 0.35 m radius, model scaled x0.8 | `docs/design/style.md`: the kit's characters are 2.31 m, x0.8 gives 1.85 m. |
 | Look | 0.0022 rad per mouse pixel (about 0.126 degrees), stick 170 degrees per second with a squared response, pitch -60 to +50 degrees, x0.7 while aiming | Settings multiply sensitivity; the squared stick curve gives fine control near the centre. |
 | Camera | pivot 1.6 m up, shoulder 0.6 m, arm 2.3 m, FOV 70 | Over the shoulder, closer than the first draft (arm 2.8 m, FOV 75): [shoulder camera](shoulder-camera.md) has every number and the reasoning. |

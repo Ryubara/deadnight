@@ -15,7 +15,8 @@ extends RefCounted
 ##                (`FrameDelta`)
 ## PING     C->S  u8 type=6, u32 client milliseconds
 ## PONG     S->C  u8 type=7, u32 the same, u32 server step
-## REFUSED  S->C  u8 type=10, u8 reason (`Refusal`); the server closes the connection after it
+## REFUSED  S->C  u8 type=10, u8 reason (`Refusal`), u8 the server's protocol version; the server
+##                closes the connection after it
 ##
 ## A packed variable is a flag byte (0 plain, 1 compressed with Zstandard), when compressed the u32
 ## size it has once unpacked, and the `var_to_bytes` of the value. The server decodes nothing but
@@ -25,9 +26,15 @@ extends RefCounted
 ## dropped (an empty Dictionary, or null).
 
 enum Type { HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10 }
-enum Refusal { VERSION = 1, FULL = 2 }
+enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 
+## The protocol version of this build. Raise it whenever a layout above changes (a field added,
+## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
+## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
 const VERSION := 2
+## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
+## client and the server ship from one commit; lower it only for a layout both versions can read.
+const MIN_VERSION := 2
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
@@ -59,7 +66,12 @@ static func hello() -> PackedByteArray:
 
 
 static func refused(reason: Refusal) -> PackedByteArray:
-	return PackedByteArray([Type.REFUSED, reason])
+	return PackedByteArray([Type.REFUSED, reason, VERSION])
+
+
+## Whether a server of this build takes a client of that version.
+static func accepts(version: int) -> bool:
+	return version >= MIN_VERSION and version <= VERSION
 
 
 static func welcome(player_id: int, tick_rate: int, snapshot: Dictionary) -> PackedByteArray:

@@ -32,3 +32,8 @@ func test_the_screen_starts_on_the_local_server() -> void:
 	assert_str(screen.address.text).is_equal(JoinScreen.DEFAULT_URL)
 	assert_object(screen.join_button).is_not_null()
 	screen.queue_free()
+
+
+func test_the_public_server_is_a_secure_address_that_needs_no_change() -> void:
+	assert_str(JoinScreen.normalize(JoinScreen.PUBLIC_URL)).is_equal(JoinScreen.PUBLIC_URL)
+	assert_bool(JoinScreen.PUBLIC_URL.begins_with("wss://")).is_true()

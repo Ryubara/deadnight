@@ -17,8 +17,8 @@ How Deadnight is exported for the browser, how CI runs that build in headless Ch
   insurance for other plain files (`.cfg`, `.txt`) and for a Godot that stops treating `.json` as a resource. CI checks
   the three names are in the pack and the wardrobe screen is opened in the browser, which reads `parts.json`.
 - **Excluded:** `addons/gdUnit4`, `addons/godot_mcp` (untracked, per machine), `tests/`, `reports/`, `_capture.*`.
-- VRAM compression is desktop formats only (`for_mobile=false`); a mobile browser decodes to RGBA. Revisit with the
-  mobile GPU check in #82.
+- VRAM compression is desktop formats only (`for_mobile=false`); a mobile browser decodes to RGBA. Revisit with a
+  mobile GPU check (#82 has none yet).
 
 Size of `build/web`: `index.wasm` 39.5 MB (10.1 MB gzipped), `index.pck` 5.3 MB (4.8 MB gzipped), `index.js` 0.3 MB.
 
@@ -47,8 +47,13 @@ Things that were not obvious:
 - Godot reads input once per frame: a key tap shorter than a frame can be lost, so keys are held for 150 ms.
 - After Back from a screen, nothing has focus; the router spends the first arrow or accept key giving it focus. The
   run presses Down, Up, Up to get back to Play.
-- There is no pointer lock in headless Chromium, so the camera cannot be turned and the zombies are usually off screen:
-  the crowd is read from the probe, not seen.
+- Pointer lock works in headless Chromium (`document.pointerLockElement` is the canvas after the click that starts the
+  night), but on Linux (the CI runner) every synthetic `page.mouse.move` under lock arrives as a motion and then the
+  opposite motion (+15 px, -15 px), which cancel, so Playwright cannot turn the view there; Windows does not do it.
+  Godot's web runtime listens for `pointermove` on the window and reads `movementX/Y`, so the smoke dispatches
+  `PointerEvent('pointermove', {movementX})` on the canvas when the real moves did not turn the view
+  (`tools/web_smoke/smoke.py`, `mouse_look_via` in its result). The yaw is on `window.deadnight` for it.
+- The zombies are usually off screen: the crowd is read from the probe, not seen.
 - Playwright 1.64 launches `chromium-headless-shell`, which is always software-rendered. `--gpu` uses the installed
   Chrome (`channel="chrome"`) for numbers with a real GPU.
 
@@ -72,8 +77,10 @@ Things that were not obvious:
   gates on them: on the runner the night is so slow that only 3 of the 6 zombies had arrived after 45 s, yet the run passes.
 - No console errors. Console output was the three engine start-up lines, plus one "GPU stall due to ReadPixels"
   warning from SwiftShader.
-- #82: WebGL2 in Chromium shows the menu, the wardrobe and the night with no shader error in the console. Firefox and a
-  mobile GPU are still not run.
+- #82: WebGL2 in Chromium shows the menu, the wardrobe and the night with no shader error in the console. The skin
+  tour (`tools/web_smoke/skin_tour.py`: the menu, the three transitions, the settings and the credits at 1080p) also ran
+  in Chrome and Firefox with a GPU and in the software renderer: no console error and no black or white frame, numbers
+  in [the main menu page](main-menu.md). A mobile GPU is still not run.
 
 ## Playing the web build
 
@@ -115,6 +122,12 @@ Why this way, and not another:
 - The deploy needs one secret, a Railway **project token**, which can deploy to that one project and environment and
   nothing else.
 
+The game server is deployed from the same job file (`deploy-server`, `deploy/server/deploy.sh deadnight-server`): it
+builds the image from the commit `godot` tested (with the LFS files, since the server imports the whole project) and
+waits for the deployment to be `SUCCESS`. Both deploys use the one `RAILWAY_TOKEN`. They finish a few minutes apart, and
+a client of one protocol version is turned away by a server of another for that time
+([Multiplayer](multiplayer.md)).
+
 ### Setting it up (once, the maintainer)
 
 A project token cannot be created by the agent's login (`projectTokenCreate` answers "Not Authorized" to the CLI's
@@ -152,6 +165,11 @@ docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 
 
 The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
+
+`tools/web_smoke/judder.py` (same arguments, `--gpu --unpaced` for the machine's GPU and no frame limit) measures
+how evenly the soldier moves on the screen in the page: the numbers and what they showed are in
+`physics-interpolation.md`. The smoke run also fails when the night's body is not drawn between physics ticks
+(`window.deadnight.interpolated`).
 
 ### Over the internet
 

@@ -27,6 +27,7 @@ func _ready() -> void:
 		return
 	_object = JavaScriptBridge.create_object("Object")
 	JavaScriptBridge.get_interface("window").deadnight = _object
+	add_child(JudderProbe.new())
 
 
 func _process(delta: float) -> void:
@@ -40,8 +41,9 @@ func _process(delta: float) -> void:
 
 
 ## What the top screen shows: its scene name, and for a night the round, the zombies still to
-## kill, the zombies alive on the lot and the camera's yaw (radians). Plain values only, so a page
-## can read them.
+## kill, the zombies alive on the lot, the players in the frame, the player's own id and (online)
+## the round trip, the camera's yaw (radians) and whether the player's body is drawn between physics
+## ticks. Plain values only, so a page can read them.
 static func snapshot(top: Control) -> Dictionary:
 	var data := {
 		"screen": "none",
@@ -51,7 +53,11 @@ static func snapshot(top: Control) -> Dictionary:
 		"round": 0,
 		"remaining": 0,
 		"alive": 0,
+		"players": 0,
+		"player_id": 0,
+		"rtt_ms": -1.0,
 		"yaw": 0.0,
+		"interpolated": false,
 		"touch": false
 	}
 	if top == null:
@@ -66,10 +72,17 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can see the body is drawn between ticks (a screen can switch that off).
+		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
 	data["touch"] = night_screen.touch_active()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
 		data["alive"] = state.zombies.size()
+		data["players"] = (state.frame.get("players", {}) as Dictionary).size()
+	data["player_id"] = state.player_id
+	var link := night_screen.night.link as WebSocketLink
+	if link != null:
+		data["rtt_ms"] = link.rtt_ms
 	return data

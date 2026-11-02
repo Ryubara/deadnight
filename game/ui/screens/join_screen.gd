@@ -6,6 +6,9 @@ extends UIScreen
 
 const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const DEFAULT_URL := "ws://localhost:8910"
+## The game server the project runs on Railway (docs/research/testing-multiplayer.md): what the web
+## build starts with, since a browser has no server of its own on this machine.
+const PUBLIC_URL := "wss://deadnight-server-production.up.railway.app"
 const FIELD_WIDTH := 620.0
 
 var address: LineEdit
@@ -44,14 +47,17 @@ func _ready() -> void:
 	box.add_child(_label("TOGETHER", UILabel.Style.OVERLINE))
 	box.add_child(_label("Join a night", UILabel.Style.TITLE))
 	var note := _label(
-		"The address of a game server: this machine's own (ws://localhost:8910), or a host and port.",
+		(
+			"The address of a game server: the public one (filled in on the web), this machine's"
+			+ " own (ws://localhost:8910), or a host and port."
+		),
 		UILabel.Style.BODY
 	)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = FIELD_WIDTH
 	box.add_child(note)
 	address = LineEdit.new()
-	address.text = DEFAULT_URL
+	address.text = PUBLIC_URL if OS.has_feature("web") else DEFAULT_URL
 	address.placeholder_text = DEFAULT_URL
 	address.custom_minimum_size.x = FIELD_WIDTH
 	address.select_all_on_focus = true
