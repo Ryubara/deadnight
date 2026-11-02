@@ -40,11 +40,7 @@ func _run() -> void:
 	panel.break_slider.grab_focus()
 	for _i in 5:
 		_press(&"ui_right")
-	await _beat("break-10", 0.8)
-	panel.limit_slider.grab_focus()
-	for _i in 3:
-		_press(&"ui_right")
-	await _beat("limit-90", 1.0)
+	await _beat("break-10", 1.0)
 
 
 func _press(action: StringName) -> void:

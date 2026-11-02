@@ -40,9 +40,7 @@ func _init() -> void:
 	_alive_ceiling = tuning.alive_cap_ceiling
 	var tokens := UITokens.active()
 	add_theme_constant_override(&"separation", tokens.space_md)
-	count_row = _row(
-		"Zombie intensity", "Times the usual number of the dead, coming as many times as fast."
-	)
+	count_row = _row("Zombie intensity", "More of the dead, and faster.")
 	count_selector = UIOptionSelector.new()
 	var labels := PackedStringArray()
 	for choice in MatchSettings.COUNT_CHOICES:
