@@ -123,18 +123,34 @@ the catalogue. A try of a multiplier: `--set upgrade.damage_multiplier=1.6 --set
 
 ## The two-weapon carry (#410)
 
-Four choices made here are open for the maintainer, not decided: the 1.5 replace margin below, the stampede cut to
-110% of the count, the revolver and the crowbar in the crane pool at weight 1, and the starting crowbar kept until quick
-melee (#411).
+Three choices made here are open for the maintainer, not decided: the 1.5 replace margin below, the stampede cut to
+110% of the count, and the revolver and the crowbar in the crane pool at weight 1. The fourth, the starting crowbar,
+was settled by the quick melee (#411, [below](#the-quick-melee-replaces-the-starting-crowbar-411)).
 
 A player carries two weapons, and the modelled players follow it (`NightSim`, `REPLACE_GAIN`): a wall weapon or a
 crane prize replaces the weakest weapon they carry (by sustained damage for a firearm, by blows for a melee weapon),
 and only when it is worth 1.5 times more; they play the crane only when some prize they lack would be. At 1.0 they
 bought in circles (the same shotgun 79 times in 60 nights, 3 to 4 plays of the crane a night) and the average solo median
 round was 8; at 1.3 it was 9; at 1.5 it was 10 to 12. The policy matters as much as the rule, so the number is the
-average player's taste, written down. Without a carried melee weapon the simulator falls back on a crowbar blow, the
-stand-in for quick melee (#411). With it the gate held only after the stampede was cut from 140% to 110% of the count
+average player's taste, written down. Without a carried melee weapon the simulator falls back on the quick melee's blow
+(#411). With it the gate held only after the stampede was cut from 140% to 110% of the count
 (at 140% a solo average player died in 54% of the stampedes, wanted 40% at most).
+
+## The quick melee replaces the starting crowbar (#411)
+
+A player starts with the revolver alone and a free hand, and the always-available blow is the quick melee (40, 0.6 s,
+one target; the knife of the genre) instead of the crowbar's (45, 0.55 s, two targets). `SimWeapons.START_ARMS` is the
+revolver and `SimPlayer.knife` the quick melee. Two numbers moved the gate and one did not:
+
+- **The blow's numbers did not matter.** The quick melee at the crowbar's own numbers gave the same median round as at
+  its own (the average solo player's median was 8 either way): the simulated players are not dry for more than a moment
+  (`dry_rounds` 0), so the always-available blow is not what carries a night.
+- **The free hand did.** With the free hand taking any weapon, the average solo median fell from 10 to 8 (the players
+  played the crane and bought the weakest wall weapons for the empty slot, and the points went there instead of into
+  doors, rounds and the re-cut). A free hand is worth what the blow every player has is worth: a weapon must beat the
+  quick melee by the same 1.5 margin a weapon beats the one it replaces (`NightSim._worth_taking`). Then the gate holds:
+  the median round is 4 (weak, solo), 13 (average, solo), 14, 15 (average, two and four) and 15 (strong), inside every
+  range, and 97% of average solo nights clear round 4. The 1.5 margin and the stampede's 110% stay as they were.
 
 ## Using it
 

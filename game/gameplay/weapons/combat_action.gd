@@ -6,6 +6,7 @@ extends RefCounted
 
 const FIRE := &"fire"
 const RELOAD := &"reload"
+const QUICK_MELEE := &"quick_melee"
 const GIVE_WEAPON := &"give_weapon"
 const EQUIP := &"equip"
 const SWAP := &"swap"
@@ -25,6 +26,22 @@ static func fire(
 ) -> Dictionary:
 	return {
 		"type": FIRE,
+		"shooter_id": shooter_id,
+		"seq": seq,
+		"origin": origin,
+		"dir": dir,
+		"muzzle": muzzle,
+		"view_time": view_time,
+	}
+
+
+## The quick melee button (#411): a blow with whatever is in hand, swept from `origin` (the head)
+## along `dir` like a melee weapon's swing, with its own cooldown. `muzzle` is where the sound is.
+static func quick_melee(
+	shooter_id: int, seq: int, origin: Vector3, dir: Vector3, muzzle: Vector3, view_time: float
+) -> Dictionary:
+	return {
+		"type": QUICK_MELEE,
 		"shooter_id": shooter_id,
 		"seq": seq,
 		"origin": origin,

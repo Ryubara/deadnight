@@ -210,6 +210,8 @@ def main():
     # (the game plays them in phase); SprintBefore is what a sprint showed before them, Aim_<Class> over Run.
     sheets["Sprint"] = [(f"Sprint_{c}", "Run", c) for c in sc.SPRINT_CLASSES]
     sheets["SprintBefore"] = [(f"Aim_{c}", "Run", c) for c in sc.SPRINT_CLASSES]
+    # The quick melee (#411): the one blow in every class's hands, each from its own aim pose.
+    sheets["Strike"] = [(f"Strike_{c}", None, c) for c in sc.STRIKE]
     only = {s for s in args.only.split(",") if s}
     tmp = args.out.parent / "_tiles"
     tmp.mkdir(parents=True, exist_ok=True)

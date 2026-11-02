@@ -44,7 +44,8 @@ The server decides every hit. The client shows the shot at once and the server's
   `ProjectileState` against the walls and ended by the burst (a spark and a flash). It makes no light: the lot's light
   cap leaves room for a flash and a blast only (`test_lot_light_cap`).
 - **`MELEE`** (crowbar, baseball bat, fire axe): a sweep from the player's head (not the shoulder camera), a swing on
-  the Soldier, a spark on a hit; no muzzle flash, no streak, no impact puff.
+  the Soldier, a spark on a hit; no muzzle flash, no streak, no impact puff. The quick melee ([below](#quick-melee))
+  is the same sweep with its own definition, on its own button.
 
 ## The roster
 
@@ -57,19 +58,20 @@ the real command, its own model drawn).
 | Model (`assets/weapons/`) | Definition | How it is obtained | Per hit / interval |
 | --- | --- | --- | --- |
 | `revolver` | `pistol`, the Revolver | **Start** (in hand) | 24 / 0.28 s |
-| `crowbar` | `crowbar` | **Start** (carried, never dry), and the **crane** once given up (1) | 45 / 0.55 s |
+| `crowbar` | `crowbar` | The **crane** only (1); no longer a start weapon, the quick melee replaced it | 45 / 0.55 s |
 | `double_shotgun` | `shotgun`, the Pump shotgun | **Wall** 900, and the **crane** (weight 4) | 19 x 8 / 0.8 s |
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
 | `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
+| none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
 
-**The crane gives every weapon the start and the wall do not**, and the revolver and the crowbar once the buyer has
-given them up (they carry them from the first second, and the crane never gives a weapon the buyer carries). A player
-carries two weapons, so the pool is never empty for them. The pool and its weights are the shop item `crane_play`; the
+**The crane gives every weapon the start and the wall do not**, the revolver too once the buyer has given it up (they
+carry it from the first second, and the crane never gives a weapon the buyer carries). A player carries two weapons, so
+the pool is never empty for them. The pool and its weights are the shop item `crane_play`; the
 odds are [the mystery box page](../research/mystery-box.md).
 
 **The bat and the axe** were models with no definition. They are melee weapons held as `Melee` (the Swing clip, no
@@ -89,13 +91,49 @@ runs dry. They are not re-cut at the projector (the re-cut list is the firearms)
   replaced weapon is disposed of and **goes back into the weapon pool**, not dropped. See
   [Carrying weapons](#carrying-weapons).
 - Quick melee on `V` ([#411](https://github.com/Ryubara/deadnight/issues/411)) is the always-available knife blow with
-  whatever is in hand, so no melee weapon is needed in a slot for emergencies.
+  whatever is in hand, so no melee weapon is needed in a slot for emergencies; it replaced the starting crowbar
+  ([below](#quick-melee)).
+
+## Quick melee
+
+One button, `V` (the mouse's back button and the pad's d-pad down too), one blow with whatever is in the hands: the
+knife of the round-based shooters, always there, never out of rounds, a reliable hit at arm's length. It is not a
+weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and it takes no slot.
+
+| | Quick melee | Crowbar | Baseball bat | Fire axe |
+| --- | ---: | ---: | ---: | ---: |
+| Per blow (body) | 40 | 45 | 60 | 150 |
+| Interval | 0.6 s | 0.55 s | 0.4 s | 0.9 s |
+| Damage a second | 67 | 82 | 150 | 167 |
+| Reach, thickness | 1.6 m, 0.4 | 1.9 m, 0.4 | 1.8 m, 0.45 | 1.8 m, 0.4 |
+| Targets in one blow | 1 | 2 | 4 | 2 |
+| Head, limb | x1.5, x0.75 | x1.5, x0.75 | x1.5, x0.75 | x2.5, x0.7 |
+
+- **Server:** `CombatAction.quick_melee` (a bit in the command's flags, `NetWire.F_MELEE`, protocol 11) is swept from
+  the head along the view with `defs/quick_melee.tres` exactly as a melee weapon's blow is, through the same rewind,
+  and hurts as a `melee` hit: the zombie takes the damage, the kill pays the melee price (130). A fixed cooldown of
+  0.6 s is each player's own (`CombatServer`): a press inside it is refused (`fire_rejected`, `cooldown`, quiet) and
+  not queued. The weapon in hand is left alone: no round is spent, its own cooldown and reload go on. It is refused
+  while a grenade is cooking in the hand, and for a downed player.
+- **The body turns first:** like a shot from the hip, a press made while the body faces away turns it to the view and
+  the blow leaves when it faces it (`PlayerMotionState.melee_ready`; the press is kept for `hip_fire_buffer`).
+- **The look:** one blow for every weapon, a short overhead bash with what is in the hands, `Strike_<Class>` from the
+  class's own aim pose ([Quick melee on the Soldier](animation.md#quick-melee)): the revolver, the rifle, the shotgun, a
+  bat and an axe are each the club. Every client draws every player's blow from the `quick_melee` event.
+- **Bat and axe are the strong melee.** They hit harder per blow and per second than the quick melee, so a slot spent
+  on one is worth it (a test holds the bat and the axe to 1.5 times its damage a second, the axe to twice its blow, the
+  bat to more targets). The crowbar stays a slightly stronger blow than the quick melee, with a longer reach and two
+  targets, and is one of the crane's prizes.
+- **Bots:** a bot with no round left and no melee weapon in hand stands and strikes what comes within reach
+  (`BotIntent.quick_melee_ok`).
+- **Not yet:** a phone has no button for it ([touch controls](touch-controls.md)).
 
 ## Carrying weapons
 
 A player carries **two weapons** (`WeaponCatalog.CARRY_LIMIT`), melee ones included: there is no melee slot, and the
-bat and the axe take a slot like a gun. A player starts with the crowbar and the revolver (the revolver in hand). The
-swap button (F, d-pad up) cycles the two.
+bat and the axe take a slot like a gun. A player starts with the revolver alone and a free second hand: the crowbar that
+used to fill it is replaced by the [quick melee](#quick-melee), which takes no slot. The swap button (F, d-pad up)
+cycles the two weapons once there are two.
 
 Buying a weapon at the wall or taking a prize from the crane with both hands full **replaces the weapon in hand**,
 with its magazine and reserve (and its re-cut). The replaced weapon is not dropped on the ground: it is gone, and it
@@ -115,8 +153,9 @@ weapons does not make re-cuts cheaper.
 
 The simulator's players follow the rule (the 1.5 margin is an open question, below): they take a weapon only when it
 is worth 1.5 times the weakest they carry, and play the crane only when some prize would be (`REPLACE_GAIN`). Without
-that margin they buy in circles. Quick melee (#411) is not in yet, so a player who carries no melee weapon falls back
-on a crowbar blow in the simulator.
+that margin they buy in circles. A player who carries no melee weapon falls back on the quick melee's blow in the
+simulator (the same definition the server sweeps with), and a free hand is worth that blow: a weapon that does less is
+not worth a slot or its price.
 
 ## The shoulder camera
 
@@ -263,11 +302,14 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
   the reasoning and the reference are in [round scaling](../research/round-scaling.md). What is still missing is a
   way for a weapon to keep pace with health that compounds (the original's Pack-a-Punch): an issue.
 - **The carry limit: built (#410), as the maintainer decided it.** Two weapons, no melee slot, a third replaces the
-  one in hand and goes back into the pool ([Carrying weapons](#carrying-weapons)). Four balance choices were made to
+  one in hand and goes back into the pool ([Carrying weapons](#carrying-weapons)). Three balance choices were made to
   keep the balance gate and are **open for the maintainer**, not decided: the revolver and the crowbar are in the
-  crane pool at weight 1 each (the only way back for them), the stampede is cut from 140% to 110% of the count so the
-  gate holds with two weapons, the simulator's players replace a weapon only for one worth 1.5 times more, and the
-  starting crowbar stays until quick melee ([#411](https://github.com/Ryubara/deadnight/issues/411)) replaces it.
+  crane pool at weight 1 each (the only way back for them; the crowbar is no longer a start weapon), the stampede is
+  cut from 140% to 110% of the count so the gate holds with two weapons, the simulator's players replace a weapon only
+  for one worth 1.5 times more. The
+  fourth, the starting crowbar, was replaced by the quick melee
+  ([#411](https://github.com/Ryubara/deadnight/issues/411)): a player starts with one weapon and a free slot, and the
+  gate holds (see the [balance simulator](../research/balance-simulator.md#the-quick-melee-replaces-the-starting-crowbar-411)).
 - **The flare: no damage, a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe bomb, no damage for
   now. Where it bursts it burns for `lure_seconds` (8) and every zombie within `lure_radius` (25 m) walks to it
   instead of to a player ([how the dead behave](zombies.md#the-flare-lure)). Its damage and splash are 0 in the
@@ -275,5 +317,5 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
   (`player_blasted`).
 - **Reload as a skill.** A magazine swap that rewards a timed second press, and cancelling a reload by sprinting, wait
   for the controller (#14).
-- **Quick melee: not built (#411).** On its own button, with the crowbar-style sweep and a fixed short cooldown; the
-  sweep and its damage exist, the button, the command bit and the clip do not.
+- **Quick melee: built (#411)**, [above](#quick-melee). Open: a touch button for it, and whether a blow should
+  cancel a reload (it does not).

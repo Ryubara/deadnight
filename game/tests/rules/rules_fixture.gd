@@ -17,6 +17,15 @@ static func tuning() -> RulesTuning:
 	return (load(TUNING_PATH) as RulesTuning).duplicate(true)
 
 
+## A tuning (the shipped one, or `base`) in which every player starts with both hands full, the
+## crowbar and the revolver, as the game did before the quick melee replaced the crowbar (#411): for
+## the suites about what happens when a third weapon is bought, won or swapped to.
+static func full_hands(base: RulesTuning = null) -> RulesTuning:
+	var result := base if base != null else tuning()
+	result.economy.start_weapons = [&"weapon_crowbar", &"weapon_pistol"]
+	return result
+
+
 ## What every player carries at the start, as shop ids (the shipped tuning's `start_weapons`).
 static func start_weapons() -> Array[StringName]:
 	return tuning().economy.start_weapons

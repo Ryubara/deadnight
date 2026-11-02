@@ -32,12 +32,11 @@ func _use(night: Night) -> void:
 	NightFixture.run(night, 3)
 
 
-func test_a_player_starts_with_the_pistol_in_hand_and_the_crowbar_carried() -> void:
+func test_a_player_starts_with_the_pistol_alone_and_a_free_hand() -> void:
 	var night := await _start()
 	assert_str(String(night.state.me()["weapon"])).is_equal("pistol")
-	assert_array(night.server.combat.carried(1)).contains_exactly_in_any_order(
-		[&"crowbar", &"pistol"]
-	)
+	# The crowbar was replaced by the quick melee (#411), which takes no slot.
+	assert_array(night.server.combat.carried(1)).contains_exactly([&"pistol"])
 	night.queue_free()
 
 
@@ -107,7 +106,7 @@ func test_a_locker_sells_rounds_for_the_gun_in_hand_and_charges_the_part_that_fi
 
 func test_a_locker_has_nothing_for_the_crowbar() -> void:
 	var night := await _start()
-	night.server.combat.apply(CombatAction.equip(1, &"crowbar"))
+	night.server.combat.apply(CombatAction.give_weapon(1, &"crowbar"))
 	assert_dict(_stand_at(night, _spot(night, &"", &"ammo"))).is_empty()
 	night.queue_free()
 
@@ -169,10 +168,8 @@ func test_the_crowbar_in_hand_swings_and_pays_the_melee_kill() -> void:
 	var night := await _start()
 	var zombie_id := NightFixture.first_zombie(night)
 	var body: ZombieBody = night.server.sim.zombies[zombie_id]
-	var swap := NightCommand.new()
-	swap.swap = true
-	NightFixture.run(night, 1, swap)
-	NightFixture.run(night, 2)
+	night.server.combat.apply(CombatAction.give_weapon(1, &"crowbar"))
+	NightFixture.run(night, 3)
 	assert_str(String(night.state.me()["weapon"])).is_equal("crowbar")
 	var heard: Array[Dictionary] = []
 	night.state.event_received.connect(

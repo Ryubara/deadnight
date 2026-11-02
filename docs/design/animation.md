@@ -55,6 +55,7 @@ move every bone. Events are frames of the clip.
 | Reload_Pistol | upper | once | 28 (1.17 s) | mag_out 6, mag_in 22, can_fire_again 28 |
 | Aim_Melee | upper | loop | 48 (2.0 s) | - |
 | Swing_Melee | upper | once | 22 (0.92 s) | whoosh 6, hit_start 9, hit_end 12, can_swing_again 22 |
+| Strike_<Class> | upper | once | 13 (0.54 s) | whoosh 3, hit 6, can_strike_again 13 (the [quick melee](#quick-melee), its own file) |
 | Equip_<Class> | upper | once | 10 (0.42 s) | weapon_visible 2, ready 10 |
 | Unequip_<Class> | upper | once | 10 (0.42 s) | weapon_hidden 8 |
 
@@ -72,6 +73,7 @@ What each event is for:
 | lever, break_open, snap_shut, mag_out | sounds |
 | hit_start .. hit_end | the melee hit window: test the weapon's hit shape on these frames only |
 | whoosh | the swing sound |
+| hit, can_strike_again | the quick melee's blow lands; the earliest the next may start (the server's cooldown is the rule) |
 | weapon_visible, weapon_hidden | show or hide the weapon model (it appears in the hand on the way up and leaves on the way down) |
 | ready | the weapon can fire or swing |
 | step_left, step_right | footstep sounds |
@@ -394,6 +396,34 @@ with its `clips.json`; `PlayerAnimation` adds them to the Soldier's library when
   clips' speed and plays at ground speed over 2.6 (0.5 to 1.6) behind its own time scale.
 - Checked headless (`game/tests/player/test_player_aim_move.gd`): the planted foot, read off the skeleton while the
   player moves at the aim speed, sweeps straight against the travel at 2.60 m/s in all four directions.
+
+## Quick melee
+
+The `V` button (#411, [Quick melee](weapons.md#quick-melee)) strikes with whatever is in the hands, so one blow has to
+look right with a revolver, a lever rifle, a double shotgun, a bat and an axe, without a clip per gun. It is one motion,
+an overhead bash (the weapon is the club), authored once and keyed from each class's own aim pose: `Strike_Rifle`,
+`Strike_Shotgun`, `Strike_Pistol` and `Strike_Melee`, built by `strikes()` in `tools/blender/soldier_clips.py` into
+their own file, `game/assets/characters/soldier/strike/soldier_strike.glb` with its `clips.json`; `PlayerAnimation` adds
+them to the library and `strike()` plays the class's (`play_action(&"Strike")`). A bat or an axe uses the melee class's.
+
+- **The motion** (13 frames at 24 fps, 0.54 s, inside the 0.6 s cooldown): a wind-up at frame 3 (the right arm up and
+  the chest turned back), the blow at frame 6 (the arm down and ahead, the chest forward), the follow-through at 8, home
+  at 13. The same offsets for every class; `STRIKE` says how much of it the right arm does on its own, the rest being the
+  spine, which carries both hands and the weapon: a gun in two hands is mostly spine (0.45), a pistol, a bat and an axe
+  in one hand swing the whole arm (0.9, 1.0).
+- **The shouldered pose is let go at once.** A gun's arms are the IK pose (`WeaponHandsIK`), which fades out over a
+  fifth of a second when a clip takes the arms: the wind-up of a blow was flattened by it (the gun's hand moved 0.26 m
+  instead of 0.5) and the arms popped when it reached zero. `strike()` drops the IK influence to 0 on the first frame.
+- **Checked against each weapon in the hand** (`game/tests/player/test_quick_melee_strike.gd`): for the revolver, the
+  rifle, the shotgun, the bat and the axe the weapon stays shown and in the hand, travels more than 0.35 m from the
+  wind-up to the blow, lands ahead of the body, clears the head by 12 cm and is back where it began; `hit` comes once.
+  The contact sheets are `render_clips.py --only Strike --view side` with each weapon (`--weapon`, as the sprint
+  sheets do); the captures are the player's own camera, `game/tests/captures/quick_melee_tour.tscn`.
+
+```sh
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Strike_ --out game/assets/characters/soldier/strike/soldier_strike.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Strike --view side --out <scratch>/strike     --weapon Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=Shotgun=0.71     --weapon Shotgun=game/assets/weapons/double_shotgun/double_shotgun.glb=Shotgun=0.82     --weapon Pistol=game/assets/weapons/revolver/revolver.glb=Pistol=1.76     --weapon Melee=game/assets/weapons/baseball_bat/baseball_bat.glb=Shovel=0.86=-90,0,0
+```
 
 ## Sprint carry
 

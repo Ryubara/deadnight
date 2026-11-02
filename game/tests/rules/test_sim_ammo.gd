@@ -20,11 +20,12 @@ func _no_ammo_for_sale() -> RulesTuning:
 	return tuning
 
 
-func test_a_player_starts_with_the_revolver_and_a_crowbar_and_the_reserve_the_weapon_gives(
-) -> void:
+func test_a_player_starts_with_the_revolver_alone_and_the_reserve_the_weapon_gives() -> void:
 	var sim := NightSim.new(RulesFixture.tuning(), SimSkill.named(SimSkill.AVERAGE), 1, 1, 0.25)
 	var player: NightSim.SimPlayer = sim._players[1]
-	assert_array(player.arms.keys()).contains_exactly_in_any_order([&"pistol", &"crowbar"])
+	# The crowbar was replaced by the quick melee (#411): the blow every player has, not an arm.
+	assert_array(player.arms.keys()).contains_exactly([&"pistol"])
+	assert_str(player.knife.id).is_equal("quick_melee")
 	assert_str(player.weapon).is_equal("pistol")
 	var pistol := WeaponCatalog.get_def(&"pistol")
 	assert_int(player.arms[&"pistol"].mag).is_equal(pistol.magazine_size)
@@ -47,9 +48,9 @@ func test_a_reload_moves_what_the_combat_servers_reload_moves() -> void:
 		assert_int(arm.reserve).is_equal(state.reserve)
 
 
-func test_the_best_armed_weapon_skips_what_is_dry_and_falls_back_to_the_crowbar() -> void:
+func test_the_best_armed_weapon_skips_what_is_dry_and_falls_back_to_the_quick_melee() -> void:
 	var arms: Dictionary[StringName, NightSim.SimArm] = {}
-	for id in [&"pistol", &"smg", &"rifle", &"crowbar"]:
+	for id in [&"pistol", &"smg", &"rifle"]:
 		arms[id] = NightSim.SimArm.of(id)
 	# The pick is sized against the walker the round sends. Without a health it is raw damage a
 	# second, and the stepped-up rifle (#254) would now win; against round 1's 50 health the rate
@@ -62,8 +63,11 @@ func test_the_best_armed_weapon_skips_what_is_dry_and_falls_back_to_the_crowbar(
 	for id in [&"pistol", &"rifle"]:
 		arms[id].mag = 0
 		arms[id].reserve = 0
-	assert_str(SimWeapons.best_armed(arms, health)).is_equal("crowbar")
-	assert_bool(SimWeapons.is_melee(&"crowbar")).is_true()
+	assert_str(SimWeapons.best_armed(arms, health)).is_equal("quick_melee")
+	assert_bool(SimWeapons.is_melee(&"quick_melee")).is_true()
+	# A melee weapon carried is better than the free blow, when it kills faster.
+	arms[&"fire_axe"] = NightSim.SimArm.of(&"fire_axe")
+	assert_str(SimWeapons.best_armed(arms, health)).is_equal("fire_axe")
 
 
 func test_reserves_stay_inside_their_limits_all_night() -> void:
@@ -109,7 +113,7 @@ func _mean_rounds_with_a_dry_pistol(tuning_of: Callable, seeds: Array[int]) -> f
 	return total / float(seeds.size())
 
 
-func test_a_player_with_no_rounds_and_none_to_buy_fights_with_the_crowbar() -> void:
+func test_a_player_with_no_rounds_and_none_to_buy_fights_with_the_quick_melee() -> void:
 	var sim := NightSim.new(_no_ammo_for_sale(), SimSkill.named(SimSkill.AVERAGE), 1, 11, 0.25)
 	var player: NightSim.SimPlayer = sim._players[1]
 	player.arms[&"pistol"].mag = 2
@@ -117,7 +121,7 @@ func test_a_player_with_no_rounds_and_none_to_buy_fights_with_the_crowbar() -> v
 	sim.run(30)
 	assert_int(sim._result["dry_rounds"]).is_greater(0)
 	# One night's end is mostly chance (with the stepped-up weapons a single seed can go either
-	# way), so the cost of the crowbar is read from the mean of eight seeded nights: the same
+	# way), so the cost of the quick melee is read from the mean of eight seeded nights: the same
 	# player with ammunition for sale goes further than the one who cannot buy any.
 	var seeds: Array[int] = [1, 2, 3, 4, 5, 6, 7, 8]
 	assert_float(_mean_rounds_with_a_dry_pistol(_no_ammo_for_sale, seeds)).is_less(

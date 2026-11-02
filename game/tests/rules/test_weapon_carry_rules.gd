@@ -6,7 +6,10 @@ var _rules: GameRules
 
 
 func before_test() -> void:
-	_rules = RulesFixture.make_rules(1, 5, RulesFixture.steady_crane_tuning())
+	# Both hands full from the start (the crowbar and the revolver): the replace is the subject.
+	_rules = RulesFixture.make_rules(
+		1, 5, RulesFixture.full_hands(RulesFixture.steady_crane_tuning())
+	)
 	_rules.apply(RulesAction.start())
 	_rules.apply(RulesAction.skip_break())
 	_rules.apply(RulesAction.grant_points(1, 20000))

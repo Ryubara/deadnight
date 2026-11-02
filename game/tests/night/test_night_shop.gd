@@ -6,7 +6,8 @@ extends GdUnitTestSuite
 ## A night with 5000 points. `tuning` replaces the shipped table (a crane test that is not about
 ## breakdowns asks for the steady crane: with six prizes the plays run past the safe ones).
 func _start(tuning: RulesTuning = null) -> Night:
-	var night := await NightFixture.start(self, Night.Mode.MANUAL, tuning)
+	# Both hands full from the start, so what a purchase replaces is the suite's subject.
+	var night := await NightFixture.start(self, Night.Mode.MANUAL, RulesFixture.full_hands(tuning))
 	NightFixture.run(night, 5)
 	night.server.rules.apply(RulesAction.grant_points(1, 5000))
 	NightFixture.run(night, 2)

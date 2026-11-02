@@ -241,6 +241,7 @@ func _ready() -> void:
 	)
 	_aim_move_speed = aim_moves["clips"]["Walk_Shoot"]["ground_speed"]
 	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SPRINT_CLIPS)
+	SoldierClipFile.add(library, _spec, QuickStrike.GLB, QuickStrike.SPEC, QuickStrike.CLIPS)
 	var revive_specs := DownedPose.add_clips(anim_player)
 	_spec["clips"].merge(revive_specs)
 	if revive_specs.has(String(DownedPose.CRAWL_CLIP)):
@@ -471,6 +472,16 @@ func play_action(action: StringName) -> bool:
 	# `weapon_visible` frame would never come.
 	if played and action != &"Equip" and action != &"Unequip":
 		_weapon_visible(true)
+	return played
+
+
+## The quick melee's blow (`quick_melee`): the class's `Strike_` clip, the arms its own at once.
+func strike() -> bool:
+	var played := play_action(&"Strike")
+	if played:
+		_shoulder_blend = 0.0
+		_hands.influence = 0.0
+		_hands.active = false
 	return played
 
 
