@@ -172,7 +172,7 @@ func _shoot_at_height(night: Night, zombie_id: int, height: float) -> bool:
 	var eye := night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
 	var command := NightCommand.new()
 	command.origin = eye
-	command.dir = (spot + Vector3(0.0, height, 0.0) - eye).normalized()
+	command.aim_along(spot + Vector3(0.0, height, 0.0) - eye)
 	command.fire = true
 	for _i in 4:
 		body.enter(ZombieBody.Mode.CHASE)

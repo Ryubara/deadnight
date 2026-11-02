@@ -46,7 +46,7 @@ static func shoot_at(night: Night, target: Vector3) -> NightCommand:
 	var command := NightCommand.new()
 	var eye := night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
 	command.origin = eye
-	command.dir = (target + Vector3(0.0, Autopilot.CHEST, 0.0) - eye).normalized()
+	command.aim_along(target + Vector3(0.0, Autopilot.CHEST, 0.0) - eye)
 	command.fire = true
 	return command
 
