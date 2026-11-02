@@ -45,6 +45,9 @@ var _busy := false
 ## capture the mouse and play sound.
 var _found := false
 var _invite_title: UILabel
+## In a Discord Activity: whether the window can read a gamepad (`GamepadProbe`), every second.
+var _controller_note: UILabel
+var _controller_since := 1.0
 
 
 func _ready() -> void:
@@ -69,6 +72,11 @@ func _ready() -> void:
 	box.add_child(_menu)
 	box.add_child(_invite)
 	box.add_child(status)
+	_controller_note = _label("", UILabel.Style.BODY)
+	_controller_note.name = "ControllerNote"
+	_controller_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_controller_note.custom_minimum_size.x = FIELD_WIDTH
+	box.add_child(_controller_note)
 	back_button = _button("Back", UIButton.Variant.GHOST)
 	back_button.pressed.connect(UIRouter.pop)
 	box.add_child(back_button)
@@ -79,6 +87,15 @@ func _ready() -> void:
 		box.add_child(dev)
 	_show_menu()
 	initial_focus = get_path_to(quick_button)
+
+
+func _process(delta: float) -> void:
+	_controller_since += delta
+	if _controller_since < 1.0:
+		return
+	_controller_since = 0.0
+	_controller_note.text = GamepadProbe.note(GamepadProbe.read()) if in_discord() else ""
+	_controller_note.visible = _controller_note.text != ""
 
 
 func screen_enter() -> void:
