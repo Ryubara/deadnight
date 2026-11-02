@@ -152,7 +152,7 @@ under without a stop. How the world draws and holds it is in [the map](map.md#th
 Every 5th round from round 5 is a special round (below): announced in a longer break, a boss night or a
 round of one type, paying a reward when cleared. The night starts with a 12 s wait, then rounds run back to
 back: **active** (zombies spawn until the round's count is out, the round ends when the last one falls),
-then a 20 s **break** (spend, switch lights, reposition), then the next round. The night ends (`game_over`)
+then a 5 s **break** (spend, switch lights, reposition), then the next round. The night ends (`game_over`)
 when everyone still in it is down (`all_down`) or when the last player leaves during the wait or a round
 (`no_players`), so a server can free the match; `start` with nobody in the lot is rejected. Leaving before
 the start is not an end. A player still down when a round ends gets up, minus a tenth of their points, so
@@ -531,6 +531,26 @@ seed, and that the gate itself fails on a tuning that is far too hard or far too
 pay for. A change to a range
 is a change to this table in the same pull request. To try a number: `tools/balance/run_report.py --set
 rounds.health_growth=1.06` (see the research page).
+
+## A 5 s break (#382)
+
+The maintainer shortened the break from 20 s to 5 s (`RoundTuning.break_seconds`; the intro stays 12 s and a special
+round's break is 10 s longer, so 15 s). The balance report was run again with the same seed and 300 nights per cell,
+with the old break and the new one (`--set rounds.break_seconds=20` is the old):
+
+| Cell (skill, players) | Median round, 20 s break | Median round, 5 s break | Mean round |
+| --- | ---: | ---: | ---: |
+| weak, 1 | 5 | 5 | 4.9 / 4.9 |
+| average, 1 | 10 | 10 | 9.7 / 9.7 |
+| average, 2 | 11 | 11 | 11.6 / 11.4 |
+| average, 4 | 13 | 13 | 13.0 / 12.7 |
+| strong, 1 | 12 | 12 | 12.0 / 12.0 |
+| weak, 2 / 4 | 7 / 7 | 7 / 5 | 6.6 / 7.2 and 6.3 / 6.5 |
+
+The gate's five cells hold their medians and every range of the table above; the group play of weak players loses a
+little (a break is the time to spend points and mend), the most in the four-player weak cell (a median of 5 where it
+was 7, mean 7.2 to 6.5), which no target covers. Points earned barely move for solo players and fall about 7% in a
+four-player average night (15,038 to 14,098). Nothing was retuned.
 
 ## Retune after the speed rework and the crane (#265)
 

@@ -17,8 +17,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Superseded pull request runs are cancelled; every run on main finishes, so each merge is checked (#290).
+  # A pull request's runs share one group and a superseded run is cancelled. Each push to main gets its own group (its
+  # commit): GitHub keeps one pending run per group and cancels the older pending one even without cancel-in-progress,
+  # so a shared group lost the checks of merges that landed while another run was going (#290, #329).
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -136,6 +138,9 @@ jobs:
         run: uv run --with playwright==1.64.1 playwright install --with-deps chromium-headless-shell
       - name: Open the build in a browser
         run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/smoke.py repos/deadnight/build/web smoke
+      - name: Tour the skin shaders in the browser
+        # The menu, the three transitions and the credits: fails on a console error or an all-black or all-white frame.
+        run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720
       - name: Upload the build
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -161,6 +166,10 @@ jobs:
     # Railway CLI pinned to the version the deploy was tested with.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [godot, web]
+    # One deploy at a time; a waiting older deploy may be replaced by a newer one, since only the head of main matters.
+    concurrency:
+      group: deploy-web
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -187,6 +196,35 @@ jobs:
       - name: Deploy and wait for the health check
         if: env.skip != 'true'
         run: bash deploy/web/deploy.sh build/web "$GITHUB_SHA"
+
+  deploy-server:
+    # Publishes the game server of main's head to the Railway service `deadnight-server` (deploy/server/), so a client
+    # of the web build above always finds a server that speaks its protocol (the version is checked in the hello, and a
+    # server a version behind turns every player away). It builds from the `godot` job's tested commit, with LFS files,
+    # since the server imports the whole project. Same token and same skip as `deploy`.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [godot]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - name: Check the deploy token
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::warning title=Server not deployed::The repository secret RAILWAY_TOKEN is not set (docs/research/web-export.md)."
+            echo "skip=true" >> "$GITHUB_ENV"
+          fi
+      - if: env.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          lfs: true
+      - if: env.skip != 'true'
+        run: npm install --global @railway/cli@5.63.1
+      - name: Deploy and wait until the server is live
+        if: env.skip != 'true'
+        run: bash deploy/server/deploy.sh deadnight-server
 
   build-ok:
     if: always()
