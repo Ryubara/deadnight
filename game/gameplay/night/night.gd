@@ -214,6 +214,7 @@ func start_remote(
 		online.close()
 		return _fail(failure["reason"])
 	state.player_id = online.player_id
+	state.load_names(welcome["snapshot"])
 	var camera: Camera3D
 	var has_body := mode == Mode.HUMAN or (mode == Mode.AUTOPILOT and shoulder_camera)
 	if has_body:

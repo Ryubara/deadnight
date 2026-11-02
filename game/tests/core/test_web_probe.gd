@@ -51,3 +51,17 @@ func test_an_online_night_reports_the_players_and_the_round_trip() -> void:
 	assert_int(data["players"]).is_equal(3)
 	assert_int(data["player_id"]).is_equal(2)
 	assert_float(data["rtt_ms"]).is_equal(81.0)
+
+
+func test_the_together_screen_says_when_it_asks_for_a_name() -> void:
+	var screen := (
+		(load("res://ui/screens/together_screen.tscn") as PackedScene).instantiate()
+		as TogetherScreen
+	)
+	add_child(screen)
+	assert_bool(WebProbe.snapshot(screen)["naming"]).is_false()
+	TogetherScreen.name_skipped = false
+	screen.call("_show_menu")
+	screen.get("_naming").visible = true
+	assert_bool(WebProbe.snapshot(screen)["naming"]).is_true()
+	screen.queue_free()

@@ -79,7 +79,17 @@ class FakeApi:
 		return {"ok": true, "lobby": {"id": "lobby-1", "code": code}}
 
 
+## Gives the player a name (a named player is not asked for one); returns the old cache.
+func _named_player(player_name := "Bo") -> String:
+	var before: String = Settings.get_value(SettingsService.PROFILE_CACHE)
+	Settings.set_value(SettingsService.PROFILE_CACHE, "")
+	TogetherScreen.name_skipped = false
+	MenuProfile.save_name(player_name)
+	return before
+
+
 func test_a_night_found_by_a_link_waits_for_a_press_of_play() -> void:
+	var before := _named_player()
 	var screen := _screen()
 	var fake := FakeApi.new(screen)
 	screen.api = fake
@@ -94,9 +104,11 @@ func test_a_night_found_by_a_link_waits_for_a_press_of_play() -> void:
 	assert_bool(screen.copy_code_button.is_visible_in_tree()).is_false()
 	assert_bool(screen.quick_button.is_visible_in_tree()).is_false()
 	screen.queue_free()
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)
 
 
 func test_a_link_to_a_night_that_is_gone_says_so_and_shows_the_menu() -> void:
+	var before := _named_player()
 	var screen := _screen()
 	screen.api = FakeApi.new(screen)
 	TogetherScreen.auto_code = "NOPE"
@@ -105,3 +117,73 @@ func test_a_link_to_a_night_that_is_gone_says_so_and_shows_the_menu() -> void:
 	assert_bool(screen.quick_button.is_visible_in_tree()).is_true()
 	assert_bool(screen.quick_button.disabled).is_false()
 	screen.queue_free()
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+
+
+func test_a_friend_with_no_name_who_follows_a_link_is_asked_for_one_then_joins() -> void:
+	var before := _unnamed_player()
+	var screen := _screen()
+	var fake := FakeApi.new(screen)
+	screen.api = fake
+	TogetherScreen.auto_code = "FRIEND1"
+	# Not awaited: the screen waits at the name prompt until it is answered.
+	screen.screen_enter()
+	assert_bool(screen.name_field.is_visible_in_tree()).is_true()
+	assert_array(fake.joined).is_empty()
+	screen.name_field.text = "Ruby"
+	screen.name_continue_button.pressed.emit()
+	await get_tree().process_frame
+	assert_array(fake.joined).is_equal(["FRIEND1"])
+	assert_str(MenuProfile.load_saved().display_name).is_equal("Ruby")
+	assert_bool(screen.name_field.is_visible_in_tree()).is_false()
+	assert_str(screen.invite_code.text).is_equal("FRIEND1")
+	screen.queue_free()
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+
+
+func _unnamed_player() -> String:
+	var before: String = Settings.get_value(SettingsService.PROFILE_CACHE)
+	Settings.set_value(SettingsService.PROFILE_CACHE, "")
+	TogetherApi.forget()
+	TogetherScreen.name_skipped = false
+	return before
+
+
+func test_a_player_with_no_name_is_asked_for_one_before_signing_in() -> void:
+	var before := _unnamed_player()
+	var screen := _screen()
+	assert_bool(screen.needs_name()).is_true()
+	screen.call("_ask_name")
+	assert_bool(screen.name_field.is_visible_in_tree()).is_true()
+	assert_bool(screen.quick_button.is_visible_in_tree()).is_false()
+	screen.name_field.text = "  Ruby  "
+	screen.name_continue_button.pressed.emit()
+	assert_str(MenuProfile.load_saved().display_name).is_equal("Ruby")
+	assert_bool(screen.needs_name()).is_false()
+	assert_str(screen.call("_chosen_name")).is_equal("Ruby")
+	assert_bool(screen.name_field.is_visible_in_tree()).is_false()
+	screen.queue_free()
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+
+
+func test_skipping_the_prompt_is_a_guest_and_is_not_asked_again_this_run() -> void:
+	var before := _unnamed_player()
+	var screen := _screen()
+	screen.call("_ask_name")
+	screen.name_skip_button.pressed.emit()
+	assert_bool(MenuProfile.is_named()).is_false()
+	assert_bool(screen.needs_name()).is_false()
+	assert_str(screen.call("_chosen_name")).is_empty()
+	screen.queue_free()
+	TogetherScreen.name_skipped = false
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+
+
+func test_a_player_who_has_a_name_is_not_asked() -> void:
+	var before := _unnamed_player()
+	MenuProfile.save_name("Bo")
+	var screen := _screen()
+	assert_bool(screen.needs_name()).is_false()
+	assert_str(screen.call("_chosen_name")).is_equal("Bo")
+	screen.queue_free()
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)

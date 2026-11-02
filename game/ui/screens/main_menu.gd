@@ -52,7 +52,8 @@ func screen_enter() -> void:
 	if sign_node != null:
 		sign_node.ignite()
 	shell.view.set_active(true)
-	shell.refresh_panels()
+	# A name given on the way (the Play together prompt) shows on the plate at once.
+	shell.set_profile(MenuProfile.load_saved())
 	_entered = true
 	focus_initial()
 	entered.emit()

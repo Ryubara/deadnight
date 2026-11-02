@@ -62,6 +62,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
+		"naming": false,
 		"touch": false,
 		"tab": "",
 		"stage": ""
@@ -80,6 +81,8 @@ static func snapshot(top: Control) -> Dictionary:
 			together.invite_code.text if together.invite_code.is_visible_in_tree() else ""
 		)
 		data["room_status"] = together.status.text
+		# The name prompt is up (a browser test types a name into it).
+		data["naming"] = together.name_field.is_visible_in_tree()
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data

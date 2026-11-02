@@ -112,6 +112,7 @@ def main() -> int:
             to_together(a)
             smoke.press(a, "ArrowDown")  # Quick join -> Create a night
             smoke.press(a, "Enter")
+            smoke.give_name(a, "Ann")  # a player with no saved name is asked first
             invite = wait_for(a, "the invite", lambda s: s.get("room_code", "") != "", 60)
             code = invite["room_code"]
             result["code"] = code
@@ -120,6 +121,8 @@ def main() -> int:
             smoke.press(a, "Enter")  # Play
             # B opens the invite link and is in the same night.
             b = open_page(browser, f"{base}?{query}&room={code}", console, problems, "B")
+            wait_for(b, "B's name prompt", lambda s: s.get("naming"), smoke.LOAD_TIMEOUT_S)
+            smoke.give_name(b, "Bo")
             # The link finds the night; pressing Play is the click a browser needs before the game may take the mouse.
             wait_for(b, "B's invite", lambda s: s.get("room_code") == code, 120)
             b.mouse.click(5, 5)
@@ -137,11 +140,13 @@ def main() -> int:
             c = open_page(browser, f"{base}?{query}", console, problems, "C")
             to_together(c)
             smoke.press(c, "Enter")  # Quick join is the first item
+            smoke.give_name(c, "Cy")
             wait_for(c, "C in the night", in_night, NIGHT_TIMEOUT_S)
             wait_for(c, "C sees a player", lambda s: s.get("players", 0) >= 1, 60)
             d = open_page(browser, f"{base}?{query}", console, problems, "D")
             to_together(d)
             smoke.press(d, "Enter")
+            smoke.give_name(d, "Ann")  # the same name as A's, in another night
             wait_for(d, "D in the night", in_night, NIGHT_TIMEOUT_S)
             for name, page in (("c", c), ("d", d)):
                 wait_for(page, f"{name} sees two players", lambda s: s.get("players", 0) >= 2, 60)

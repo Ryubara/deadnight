@@ -275,7 +275,8 @@ func apply_events(events: Array) -> void:
 
 
 ## Restores everything from `GameRules.to_dict()` (a late joiner, a reconnect); emits no events.
-## Names are not in the rules, so the ones already set stay with their players.
+## Names are not in the rules: the ones already set stay with their players, and the server's
+## (`names` in a WELCOME's snapshot) take their place.
 func load_snapshot(data: Dictionary) -> void:
 	hold()
 	round_number = int(data.get("round", 0))
@@ -299,6 +300,14 @@ func load_snapshot(data: Dictionary) -> void:
 		member["downed"] = bool(saved.get("downed", false))
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
+	# The server's names (a WELCOME's `names`): every client shows the same ones.
+	var named: Variant = data.get("names", {})
+	if typeof(named) == TYPE_DICTIONARY:
+		for player_id in named:
+			if team.has(int(player_id)):
+				team[int(player_id)]["name"] = str(named[player_id]).strip_edges().left(
+					HudStyle.NAME_LIMIT
+				)
 	var local: Dictionary = team.get(local_player_id, {})
 	points = int(local.get("points", 0))
 	grenades = int(local.get("grenades", 0))
@@ -395,6 +404,9 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_purchase_made
 		&"player_look":
 			handler = _on_player_look
+		&"player_named":
+			handler = func(e: Dictionary) -> void:
+				set_player_name(int(e["player_id"]), str(e["name"]))
 		&"player_hurt":
 			handler = _on_player_hurt
 		&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished", &"ammo_added":
