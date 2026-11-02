@@ -55,6 +55,19 @@ func test_an_online_night_reports_the_players_and_the_round_trip() -> void:
 	assert_float(data["rtt_ms"]).is_equal(81.0)
 
 
+func test_the_probe_names_the_control_that_has_the_keyboard() -> void:
+	var screen := auto_free(Control.new()) as Control
+	screen.scene_file_path = "res://ui/screens/lobby_screen.tscn"
+	add_child(screen)
+	var button := Button.new()
+	button.name = "CopyCode"
+	screen.add_child(button)
+	button.grab_focus()
+	assert_str(WebProbe.snapshot(screen)["focus"]).is_equal("CopyCode")
+	button.release_focus()
+	assert_str(WebProbe.snapshot(screen)["focus"]).is_equal("")
+
+
 func test_the_together_screen_says_when_it_asks_for_a_name() -> void:
 	var screen := (
 		(load("res://ui/screens/together_screen.tscn") as PackedScene).instantiate()
