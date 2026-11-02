@@ -2,7 +2,7 @@
 
 Page A opens the game, goes to Play together and creates a night: the lobby screen shows a code, A as the host and three
 open seats. Page B opens the invite link (`?room=CODE`): it reads *Waiting room* first, presses Join, and both pages show
-the two seats within a few seconds; B has no Start. A presses Start: A goes into the night and B's lobby says the night
+the two seats within a few seconds; B has no Start. A moves the night's rules (intensity, most alive) and B reads the same ones within a poll, read only. A presses Start: A goes into the night and B's lobby says the night
 started, B presses Play and goes in. Page C, which opened the same link at the start and left its preview open, is told by the
 screen itself: *Night in progress*; C presses Join and goes straight into the night, and A and B both see three players and the notice "... JOINED". The script reads
 the game's probe (`window.deadnight`) on every page and fails on a console error or a seat, line or notice that is not
@@ -15,7 +15,7 @@ Run it under the quiet launcher (headless Chromium under pointer lock clips the 
 
 The first argument is a folder with the export (served on a fixed local port, which the backend must list in
 `CORS_ORIGINS`) or the URL of a deployed build. Writes `result.json`, `console.txt` and screenshots: `a_lobby_alone.png`,
-`a_lobby_two.png`, `b_lobby_two.png`, `b_started.png`, `c_preview.png`, `a_night.png`, `b_night.png`, `c_night.png`.
+`a_lobby_two.png`, `b_lobby_two.png`, `a_rules.png`, `b_rules.png`, `b_started.png`, `c_preview.png`, `a_night.png`, `b_night.png`, `c_night.png`.
 """
 
 from __future__ import annotations
@@ -124,6 +124,7 @@ def main() -> int:
             to_together(a)
             smoke.press(a, "ArrowDown")  # Quick join -> Create a night
             smoke.press(a, "Enter")
+            smoke.give_name(a, "Ann")  # a player with no saved name is asked first
             alone = wait_for(
                 a, "A's lobby", lambda s: s.get("screen") == "lobby_screen" and s.get("room_code", "") != "", 60
             )
@@ -143,12 +144,14 @@ def main() -> int:
             # C opens the link now and leaves the preview open: loading takes minutes in this browser, and the two in
             # the night would not outlast it, idle. The preview follows the night by itself.
             c = pages["c"] = open_page(browser, f"{base}?{query}&room={code}", console, problems, "C")
+            smoke.give_name(c, "Cy", 240)
             early = wait_for(c, "C's first preview", lambda s: s.get("screen") == "lobby_screen", 240)
             if "Waiting room" not in early.get("room_status", ""):
                 problems.append(f"C should first read a waiting room: {early.get('room_status')!r}")
 
             # B opens the link: a waiting room to look at, then Join.
             b = pages["b"] = open_page(browser, f"{base}?{query}&room={code}", console, problems, "B")
+            smoke.give_name(b, "Bo", 120)
             preview = wait_for(b, "B's preview", lambda s: s.get("screen") == "lobby_screen", 120)
             if "Waiting room" not in preview.get("room_status", ""):
                 problems.append(f"B should read a waiting room before joining: {preview.get('room_status')!r}")
@@ -169,6 +172,33 @@ def main() -> int:
                 problems.append(f"B, a guest, must not be offered Start or Play yet: {two_b.get('lobby_buttons')!r}")
             if "Waiting for" not in two_b.get("room_status", ""):
                 problems.append(f"B should be waiting for the host: {two_b.get('room_status')!r}")
+
+            # The night's rules: A (the host) moves them from the keyboard, B reads them within a poll and cannot move them.
+            if not two_a.get("lobby_rules_editable") or two_b.get("lobby_rules_editable"):
+                problems.append(
+                    f"only the host's rules are editable: A {two_a.get('lobby_rules_editable')}, B {two_b.get('lobby_rules_editable')}"
+                )
+            for _ in range(3):  # Start -> the break slider -> the alive slider -> the zombie intensity
+                smoke.press(a, "ArrowUp")
+            smoke.press(a, "ArrowRight")  # intensity 1x -> 2x
+            smoke.press(a, "ArrowDown")
+            for _ in range(4):  # most alive at once: Auto -> 4
+                smoke.press(a, "ArrowRight")
+            # The game publishes its state a few times a second, so a press shows a moment later: wait for the end state.
+            try:
+                moved = wait_for(
+                    a, "A's rules to read 2x and 4", lambda s: s.get("lobby_rules", "").startswith("2x|4|"), 10
+                )
+            except TimeoutError:
+                moved = read_probe(a)
+                problems.append(f"A moved the intensity to 2x and the cap to 4: {moved.get('lobby_rules')!r}")
+            result["rules_a"] = moved.get("lobby_rules")
+            wait_for(b, "B to read A's rules", lambda s: s.get("lobby_rules") == moved.get("lobby_rules"), 20)
+            result["rules_b"] = read_probe(b).get("lobby_rules")
+            a.screenshot(path=args.out / "a_rules.png")
+            b.screenshot(path=args.out / "b_rules.png")
+            for _ in range(2):  # the alive slider -> the break slider -> Start
+                smoke.press(a, "ArrowDown")
 
             # A presses Start and goes in; B is told and presses Play.
             smoke.press(a, "Enter")

@@ -455,3 +455,22 @@ func test_the_layout_before_the_settings_is_refused_as_a_bad_version() -> void:
 	snapshot.erase("match_settings")
 	assert_str(String(RulesFixture.make_rules().from_dict(snapshot))).is_equal("bad_version")
 	assert_int(GameRules.SNAPSHOT_VERSION).is_greater_equal(10)
+
+
+func test_settings_read_from_json_take_a_whole_float_for_the_alive_cap() -> void:
+	# JSON has one kind of number: the backend's `max_alive: 12` arrives as 12.0.
+	var parsed := MatchSettings.from_json(
+		JSON.parse_string('{"count_multiplier":3,"max_alive":12,"break_seconds":0}')
+	)
+	assert_object(parsed).is_not_null()
+	assert_int(parsed.max_alive).is_equal(12)
+	assert_float(parsed.count_multiplier).is_equal(3.0)
+	# A fraction, a missing key, a value out of bounds, null and the wrong type are all null.
+	for bad: Variant in [
+		{"count_multiplier": 3.0, "max_alive": 3.5, "break_seconds": 0.0},
+		{"count_multiplier": 3.0, "max_alive": 3},
+		{"count_multiplier": 9.0, "max_alive": 3, "break_seconds": 0.0},
+		null,
+		"hard",
+	]:
+		assert_object(MatchSettings.from_json(bad)).is_null()

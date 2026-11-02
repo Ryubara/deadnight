@@ -311,6 +311,55 @@ func test_two_players_meet_the_host_starts_and_a_third_joins_mid_match(
 	assert_bool(left).is_true()
 
 
+func test_the_rules_the_host_sets_while_waiting_reach_the_guest_the_ticket_and_the_room(
+	_do_skip := _why_not() != "", _skip_reason := "needs node 24 and npm ci in spikes/backend"
+) -> void:
+	var ann := await _guest("Ann")
+	var bo := await _guest("Bo")
+	var made := await ann.api.create_lobby()
+	ann.lobby = made["lobby"]
+	var code: String = ann.lobby["code"]
+	assert_object(ann.lobby["settings"]).is_null()
+	var joined := await bo.api.join_code(code)
+	bo.lobby = joined["lobby"]
+	_watch(bo)
+
+	# The host moves the rules; the guest reads them on a poll, as the lobby screen does.
+	var chosen := MatchSettings.new()
+	chosen.count_multiplier = 3.0
+	chosen.max_alive = 12
+	chosen.break_seconds = 11.0
+	var changed := await ann.api.set_settings(ann.lobby, chosen)
+	assert_bool(changed["ok"]).is_true()
+	await bo.watch.poll()
+	assert_dict(MatchSettings.from_json(bo.watch.lobby["settings"]).to_dict()).is_equal(
+		chosen.to_dict()
+	)
+	# The guest cannot change them.
+	var refused := await bo.api.set_settings(bo.lobby, MatchSettings.new())
+	assert_str(refused["error"]).is_equal("not_host")
+	(
+		assert_array(bo.watch.lobby["members"].map(func(m: Dictionary) -> String: return m["name"]))
+		. is_equal(["Ann", "Bo"])
+	)
+
+	# The start with the panel's rules (the same ones): both nights run with them.
+	var started := await ann.api.start(ann.lobby, chosen)
+	assert_bool(started["ok"]).is_true()
+	ann.lobby = started["lobby"]
+	await bo.watch.poll()
+	bo.lobby = bo.watch.lobby
+	var ann_night := await _go_in(ann)
+	var bo_night := await _go_in(bo)
+	var room := _server.room_of_match(str(ann.lobby["matchId"]))
+	assert_dict(room.server.rules.settings.to_dict()).is_equal(chosen.to_dict())
+	assert_dict(ann_night.match_settings.to_dict()).is_equal(chosen.to_dict())
+	assert_dict(bo_night.match_settings.to_dict()).is_equal(chosen.to_dict())
+	# Fixed from the start on.
+	var late := await ann.api.set_settings(ann.lobby, MatchSettings.new())
+	assert_str(late["error"]).is_equal("already_started")
+
+
 func test_a_full_night_turns_the_next_player_away_with_the_room_it_has(
 	_do_skip := _why_not() != "", _skip_reason := "needs node 24 and npm ci in spikes/backend"
 ) -> void:

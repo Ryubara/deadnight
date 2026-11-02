@@ -69,6 +69,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_seats": "",
 		"lobby_note": "",
 		"lobby_buttons": "",
+		"lobby_rules": "",
+		"lobby_rules_editable": false,
 		"notices": "",
 		"code_text": "",
 		"notice_log": "",
@@ -125,6 +127,8 @@ static func snapshot(top: Control) -> Dictionary:
 			if button.is_visible_in_tree():
 				buttons.append(button.name)
 		data["lobby_buttons"] = "|".join(buttons)
+		data["lobby_rules"] = lobby.rules_text() if lobby.rules.is_visible_in_tree() else ""
+		data["lobby_rules_editable"] = lobby.rules_editable()
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
