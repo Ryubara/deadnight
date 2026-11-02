@@ -33,7 +33,7 @@ static func step(
 		ZombieBody.Mode.ATTACK:
 			strike = _attack(zombie, tuning, delta, has_target, target_pos)
 		ZombieBody.Mode.STAGGER:
-			if zombie.mode_time >= zombie.profile.stagger:
+			if zombie.mode_time >= maxf(zombie.profile.stagger, zombie.stun_seconds):
 				zombie.enter(ZombieBody.Mode.CHASE)
 	zombie.move_speed = zombie.velocity.length()
 	return strike
@@ -43,6 +43,16 @@ static func step(
 static func stagger(zombie: ZombieBody) -> void:
 	if zombie.mode == ZombieBody.Mode.CHASE or zombie.mode == ZombieBody.Mode.ATTACK:
 		zombie.enter(ZombieBody.Mode.STAGGER)
+
+
+## A blast: the zombie is held for `seconds` (a stagger that is already on starts over), however
+## short its own stagger is. One that is still rising or already down is left alone.
+static func stun(zombie: ZombieBody, seconds: float) -> void:
+	if zombie.mode == ZombieBody.Mode.CHASE or zombie.mode == ZombieBody.Mode.ATTACK:
+		zombie.enter(ZombieBody.Mode.STAGGER)
+	if zombie.mode == ZombieBody.Mode.STAGGER:
+		zombie.mode_time = 0.0
+		zombie.stun_seconds = maxf(seconds, 0.0)
 
 
 static func die(zombie: ZombieBody) -> void:

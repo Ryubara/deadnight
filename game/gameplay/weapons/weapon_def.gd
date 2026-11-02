@@ -45,6 +45,14 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export var reserve_max: int = 96
 @export var reload_time: float = 1.6
 
+@export_group("Feel")
+## Trauma one shot adds to the shooter's view shake, 0 to 1 (`CameraShake`;
+## docs/design/camera-shake.md).
+## Heavier weapons kick the view more; 0 is no shake.
+@export_range(0.0, 1.0) var shake_trauma: float = 0.3
+## Width of the muzzle flash's star in metres (`MuzzleFlash`). 0 draws no flash.
+@export_range(0.0, 1.0, 0.01) var flash_size: float = 0.3
+
 @export_group("Projectile")
 @export var projectile_speed: float = 30.0
 ## Downward acceleration in m/s^2 (a lob falls; a bolt does not).

@@ -9,7 +9,8 @@ Run with the pinned Blender, headless:
 
 The kit Soldier carries every kit weapon as a mesh parented to the `Index1.R` bone. For each `--kit` weapon the script
 finds the transform that maps the standalone kit file onto the copy in the hand (the copy carries the same mesh
-data, its origin on the bone) and prints it in the bone's space; for each `--weapon` (Title=KitName=path.glb) it attaches our
+data, its origin on the bone) and prints it in the bone's space; for each `--weapon` (Title=KitName=path.glb, or
+Title=KitName=path.glb=scale with a hold's `model_scale`, its size on the Soldier in the game) it attaches our
 file to the same bone with the same transform. If our origin (the grip) and axes (muzzle -X, up +Z for guns; up +Z
 for melee) follow the kit's, our weapon sits in the hand exactly where the kit one does. One Soldier per column, seen
 over the right shoulder (the third-person camera) and from the side.
@@ -23,7 +24,7 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kitlib
@@ -72,21 +73,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--soldier", required=True)
     ap.add_argument("--kit", action="append", required=True, help="KitName=path.glb (KitName as held in the Soldier)")
-    ap.add_argument("--weapon", action="append", default=[], help="Title=KitName=path.glb")
+    ap.add_argument("--weapon", action="append", default=[], help="Title=KitName=path.glb[=scale]")
     ap.add_argument("--pose", default="Idle_Shoot")
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args(argv)
 
     kitlib.reset()
     kitlib.SEEN = set()
-    columns = []  # (title, kit name, weapon path or None)
+    columns = []  # (title, kit name, weapon path or None, kit path or None, scale)
     holds = {}
     for spec in args.kit:
         name, path = spec.split("=", 1)
-        columns.append((f"Kit {name}", name, None, path))
+        columns.append((f"Kit {name}", name, None, path, 1.0))
     for spec in args.weapon:
-        title, name, path = spec.split("=", 2)
-        columns.append((title, name, path, None))
+        title, name, path, *scale = spec.split("=", 3)
+        columns.append((title, name, path, None, float(scale[0]) if scale else 1.0))
 
     # The hold transform of each kit weapon, in the bone's space, from a Soldier at the origin.
     objs, arm, held = soldier(args.soldier, args.pose)
@@ -113,7 +114,7 @@ def main():
         bpy.data.objects.remove(o)
 
     # One Soldier per column, 2.2 m apart, holding one weapon.
-    for i, (title, name, path, _kit) in enumerate(columns):
+    for i, (title, name, path, _kit, scale) in enumerate(columns):
         objs, arm, held = soldier(args.soldier, args.pose)
         arm.location.x = i * 2.2
         bpy.context.view_layer.update()
@@ -127,7 +128,7 @@ def main():
             root.parent_type = "BONE"
             root.parent_bone = BONE
             bpy.context.view_layer.update()
-            root.matrix_world = bone_world(arm) @ holds[name]
+            root.matrix_world = bone_world(arm) @ holds[name] @ Matrix.Scale(scale, 4)
         cu = bpy.data.curves.new("label", "FONT")
         cu.body = title
         cu.size = 0.16
