@@ -70,7 +70,8 @@ func test_packets_that_are_not_messages_cost_more_and_end_in_a_hang_up() -> void
 		_junk(1, NetWire.Type.COMMAND),
 		_junk(NetWire.COMMAND_SIZE, 99),
 		_junk(NetWire.COMMAND_SIZE - 1, NetWire.Type.COMMAND),
-		_junk(3, NetWire.Type.HELLO),
+		_junk(1, NetWire.Type.HELLO),
+		_junk(NetWire.MAX_HELLO + 1, NetWire.Type.HELLO),
 		_junk(6, NetWire.Type.PING),
 		_junk(40_000, NetWire.Type.COMMAND),
 	]

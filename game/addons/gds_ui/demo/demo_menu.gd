@@ -3,6 +3,7 @@ extends UIScreen
 
 const DETAIL := "res://addons/gds_ui/demo/demo_detail.tscn"
 const SHEET := "res://addons/gds_ui/demo/states_sheet.tscn"
+const CONTROLS := "res://addons/gds_ui/demo/controls_sheet.tscn"
 ## Name, transition, and the token whose colour tints the screen it opens (so the change of screen
 ## shows in any palette).
 const ENTRIES := [
@@ -36,6 +37,9 @@ func _ready() -> void:
 	var sheet := _button("Component sheet", UIButton.Variant.SECONDARY)
 	sheet.pressed.connect(func() -> void: UIRouter.push(SHEET, UITransition.Kind.SLIDE))
 	box.add_child(sheet)
+	var controls := _button("Form controls", UIButton.Variant.SECONDARY)
+	controls.pressed.connect(func() -> void: UIRouter.push(CONTROLS, UITransition.Kind.SLIDE))
+	box.add_child(controls)
 	_reduced_button = _button("", UIButton.Variant.GHOST)
 	_reduced_button.pressed.connect(_toggle_reduced)
 	box.add_child(_reduced_button)
