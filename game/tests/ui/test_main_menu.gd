@@ -93,7 +93,7 @@ func test_menu_has_every_item() -> void:
 	for item in ["Play", "Join", "Settings", "Credits", "Quit"]:
 		var button := menu.find_child(item, true, false) as UIButton
 		assert_object(button).is_not_null()
-		assert_str(button.text).is_equal(item)
+		assert_str(button.text).is_equal("Play together" if item == "Join" else item)
 	assert_object(menu.find_child("Sign", true, false)).is_instanceof(NeonSign)
 
 
@@ -130,7 +130,7 @@ func test_each_item_opens_its_screen() -> void:
 	await UIRouter.idle
 	var expected := {
 		"Play": "res://ui/screens/night_screen.tscn",
-		"Join": "res://ui/screens/join_screen.tscn",
+		"Join": "res://ui/screens/together_screen.tscn",
 		"Settings": "res://ui/screens/settings_screen.tscn",
 		"Credits": "res://ui/screens/credits_screen.tscn",
 	}

@@ -240,8 +240,11 @@ stride sooner, a crouched creep slower, standing and flight are silent.
   `max_db` to its own level plus that, so close up the trim is the level and far away nothing changes.
 - **Rear cue.** A sound with `rear_cue` is low-passed by how far behind the listener it is (`rear_amount`, from the
   listener node or the camera): 0 in front and at the side, 1 straight behind, where the cutoff is 1.8 kHz.
-- **Occlusion.** A probe (`occlusion_probe`, or a physics ray against `occluder_mask`, off until the map has walls on
-  their own layer) returns 0 to 1. A fully blocked sound is 9 dB quieter and low-passed at 1.1 kHz, and counts as half as
+- **Occlusion.** A probe (`occlusion_probe`, or a physics ray against `occluder_mask`) returns 0 to 1. In the night
+  the mask is on: the lot's walls and fences (every box of `wall()` in `tools/world/build_greybox.py`) are on physics
+  layer 2 as well as the ground layer, `NightSounds` sets `Audio.occluder_mask` to it for the length of the night, and
+  cars, crates and the ground are not on it, so a wall hides a shot and a car does not. A fully blocked sound is
+  9 dB quieter and low-passed at 1.1 kHz, and counts as half as
   loud when the budget compares it. Measured in a capture: a rifle shot behind a wall was 10 dB down and its centre of
   energy fell from 3.1 kHz to 0.5 kHz.
 - **Ducking.** A sting lowers Effects and Ambience by its `duck_db` (9 dB for `round_start`, 5 for `round_end`) at
@@ -264,4 +267,14 @@ Audio.listener = player_head                          # else the current camera
 ```
 
 The listener should be the player's head. The engine hears from the active camera (or an `AudioListener3D`), so give
-the player one. Set `Audio.occlusion_probe` once the lot has walls to hide behind.
+the player one. The night sets `Audio.occluder_mask` itself (`NightSounds`); a scene of your own sets it or an
+`Audio.occlusion_probe`.
+
+## In the browser
+
+The web build plays every `AudioStreamPlayer` as a **sample** by default (Godot 4.3 and later): the browser's own audio
+nodes, which keep playing when the game stalls, but which **ignore bus effects and a player's distance filter**. Measured
+in [the web export page](../research/web-export.md#audio-in-the-browser): 44 voices play with no dropout and no click,
+the bus volumes (the settings sliders) work, and the sting's duck, the rear cue, the occlusion low-pass and the engine's
+distance dulling do not apply. The mix is otherwise the same sounds at the same trims. Playing them as streams would
+apply all of them and crackle whenever the main thread stalls for 50 ms or more, which a night does.

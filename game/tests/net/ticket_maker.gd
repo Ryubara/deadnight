@@ -1,0 +1,46 @@
+class_name TicketMaker
+extends RefCounted
+## Signs tickets the way the backend does (`spikes/backend/src/tokens.ts`), for tests of a game
+## server that checks them: HS256, `kind` "ticket", a `jti` that is new each time.
+
+static var _count := 0
+
+
+## A ticket for `user` in `match_id` on `server_id`, good for `seconds` from now.
+static func make(
+	secret: String,
+	server_id: String,
+	match_id: String,
+	user: String,
+	user_name: String = "Tester",
+	seconds: int = 60
+) -> String:
+	_count += 1
+	var now := int(Time.get_unix_time_from_system())
+	var claims := {
+		"sub": user,
+		"kind": "ticket",
+		"iat": now,
+		"exp": now + seconds,
+		"matchId": match_id,
+		"name": user_name,
+		"serverId": server_id,
+		"jti": "t%d-%d" % [_count, randi()],
+	}
+	var head := TicketVerifier.HEADER
+	var body := _encode(JSON.stringify(claims).to_utf8_buffer())
+	var signature := Crypto.new().hmac_digest(
+		HashingContext.HASH_SHA256, secret.to_utf8_buffer(), (head + "." + body).to_utf8_buffer()
+	)
+	return "%s.%s.%s" % [head, body, _encode(signature)]
+
+
+static func _encode(bytes: PackedByteArray) -> String:
+	return (
+		Marshalls
+		. raw_to_base64(bytes)
+		. replace("+", "-")
+		. replace("/", "_")
+		. trim_suffix("=")
+		. trim_suffix("=")
+	)

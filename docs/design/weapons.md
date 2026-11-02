@@ -39,7 +39,10 @@ The server decides every hit. The client shows the shot at once and the server's
   draw a streak from the muzzle to each end, for a future beam-like hitscan weapon; none of the shipped weapons does.
 - **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
   `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
-  so a travelling shot is always a real body with its own flight, not a drawn line.
+  so a travelling shot is always a real body with its own flight, not a drawn line. In the night `NightView` draws
+  each one as a `ProjectileView` (a hot core, a flickering halo and a short spark trail), flown with the server's
+  `ProjectileState` against the walls and ended by the burst (a spark and a flash). It makes no light: the lot's light
+  cap leaves room for a flash and a blast only (`test_lot_light_cap`).
 - **`MELEE`** (crowbar): a sweep from the player's head (not the shoulder camera), a swing on the Soldier, a spark on a
   hit; no muzzle flash, no streak, no impact puff.
 
@@ -186,9 +189,9 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 - **The carry limit: proposed, awaiting the maintainer (#410).** Two guns and the melee weapon; buying or taking a
   third gun replaces the one in hand and its reserve. Today a player may carry every weapon, and the swap button (F,
   d-pad up) takes the next one carried in hand.
-- **Friendly blast: proposed, awaiting the maintainer.** The flare's blast hurts zombies only: no player takes damage
-  from it, the thrower included, and a zombie does not keep burning. A grenade still hurts the thrower alone
-  (`player_blasted`). Revisit when perks can change the flare.
+- **The flare: decided, no damage; it becomes a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe
+  bomb, no damage for now. Zombies in a radius turn to it for a set time. Until #439 lands the table's flare numbers
+  (a hit and a blast) are the old design. A grenade still hurts the thrower alone (`player_blasted`).
 - **Reload as a skill.** A magazine swap that rewards a timed second press, and cancelling a reload by sprinting, wait
   for the controller (#14).
 - **Quick melee: not built (#411).** On its own button, with the crowbar-style sweep and a fixed short cooldown; the

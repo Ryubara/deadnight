@@ -156,6 +156,8 @@ func test_the_settings_key_defaults_to_full_and_is_kept_in_range() -> void:
 	settings.set_value(SettingsService.CAMERA_SHAKE, -5)
 	assert_int(settings.get_value(SettingsService.CAMERA_SHAKE)).is_equal(0)
 	assert_float(PlayerSettings.camera_shake(null)).is_equal(1.0)
+	# This service saves to the real settings file: leave the shake at full, not at the -5 above.
+	settings.set_value(SettingsService.CAMERA_SHAKE, 100)
 
 
 func test_a_long_machine_gun_burst_stays_subtle() -> void:

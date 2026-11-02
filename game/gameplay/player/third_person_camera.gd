@@ -1,3 +1,5 @@
+# gdlint:disable=max-public-methods
+# The rig is where the view is read and set from outside: every method is one of those doors.
 class_name ThirdPersonCamera
 extends Node3D
 ## Over-the-shoulder camera rig: look (mouse and stick), spring-damped follow of the body, aim and
@@ -45,6 +47,9 @@ var crouching := false
 ## Horizontal speed of the body in metres per second, set by the player after each tick; the
 ## sprint sway keeps step with it.
 var ground_speed := 0.0
+## True while the body stands on the ground (`PlayerMotionState.on_floor`); the sprint sway is none
+## in the air, whatever the sprint state says.
+var grounded := true
 
 ## The shot shake of the view (trauma, scale); null before `setup`.
 var shake: CameraShake
@@ -122,6 +127,17 @@ func apply_look(yaw_right: float, pitch_down: float) -> void:
 	var direction := 1.0 if invert_y else -1.0
 	pitch = clampf(
 		pitch + direction * pitch_down,
+		deg_to_rad(_tuning.pitch_min_degrees),
+		deg_to_rad(_tuning.pitch_max_degrees)
+	)
+
+
+## Turn the view by radians as they are, with no sensitivity and no invert: the aim assist's pull.
+## `yaw` and `pitch` themselves are the convention (yaw to the left and pitch up are positive).
+func nudge(yaw_delta: float, pitch_delta: float) -> void:
+	yaw = wrapf(yaw + yaw_delta, -PI, PI)
+	pitch = clampf(
+		pitch + pitch_delta,
 		deg_to_rad(_tuning.pitch_min_degrees),
 		deg_to_rad(_tuning.pitch_max_degrees)
 	)
@@ -228,7 +244,7 @@ func step(delta: float, fraction: float) -> void:
 		_steer_view(delta)
 	shake.step(delta)
 	var held := _holds_aim()
-	sway.step(delta, sprinting and not held, ground_speed)
+	sway.step(delta, sprinting and not held, ground_speed, grounded)
 	_aim.step(1.0 if held else 0.0, _tuning.aim_frequency, delta)
 	_steady.step(1.0 if aiming else 0.0, _tuning.aim_frequency, delta)
 	_sprint.step(1.0 if sprinting and not held else 0.0, _tuning.sprint_frequency, delta)
