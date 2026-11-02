@@ -116,6 +116,22 @@ func door_points(door_id: StringName) -> Array[Vector3]:
 	return points
 
 
+## Where to walk to use a door: a point on the open ground in front of each of its slabs, 1.5 m out
+## (`Stand*` markers, `DOOR_STAND_DISTANCE` in tools/world/build_greybox.py). The slab's middle
+## (`door_points`) is where the hand reaches from, not a place to walk to: the walking mesh is cut
+## back from a wall on both sides alike, so a goal in a slab snaps to the shut area behind it as
+## often as to the open ground in front (the booth's door did, #590). A stand is on the mesh the
+## moment the door before it is open, and within `NightTuning.use_reach` of the slab.
+func door_stands(door_id: StringName) -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	var door: Node3D = _door_nodes.get(door_id)
+	if door != null:
+		for part in door.get_children():
+			if part is Marker3D:
+				points.append((part as Marker3D).global_position)
+	return points
+
+
 ## The areas the dead can come from: the field, and the area behind each door that is open.
 func open_areas() -> Array[String]:
 	var areas: Array[String] = ["Field"]
