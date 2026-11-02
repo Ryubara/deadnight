@@ -37,7 +37,8 @@ const ACTION_LOOK_DOWN := &"look_down"
 @export var tuning: PlayerTuning = preload("res://gameplay/player/player_tuning_default.tres")
 ## Sample the local keyboard, mouse and gamepad. Turn off to feed commands with `submit_command()`.
 @export var local_input := true
-## Hide and capture the mouse while controls are enabled.
+## Hide and capture the mouse while controls are enabled (never under `GDS_QUIET`, see
+## `mouse_capture_allowed`).
 @export var capture_mouse := true
 
 ## The authoritative-looking result of the last tick. Read-only for everything but `tick()`.
@@ -121,10 +122,17 @@ func _on_setting_changed(_key: StringName, _value: Variant) -> void:
 	refresh_settings()
 
 
+## False when the kit's `gds godot` started this program on its hidden desktop
+## (`GDS_QUIET=1`): a captured mouse there clips the real cursor of the person at the
+## machine to the hidden window (kit docs/godot/no-focus.md).
+static func mouse_capture_allowed() -> bool:
+	return OS.get_environment("GDS_QUIET") != "1"
+
+
 ## Turn movement and look on or off (menus, death, cutscenes); also captures or frees the mouse.
 func set_controls_enabled(enabled: bool) -> void:
 	_controls_enabled = enabled
-	if capture_mouse and local_input:
+	if capture_mouse and local_input and mouse_capture_allowed():
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if enabled else Input.MOUSE_MODE_VISIBLE
 
 
