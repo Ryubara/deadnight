@@ -14,8 +14,10 @@ extends RefCounted
 ## Events (fields besides `type`):
 ##   shot_fired: shooter_id, weapon_id, seq, muzzle, ends (one point per pellet), flesh (the point
 ##     of every zombie the shot hit, for the view's impacts), ammo, reserve, rewound_by
+##   quick_melee: shooter_id, seq, muzzle, ends (one point: the blow's reach), flesh (the point of
+##     every zombie it hit); the damage follows as `damage_dealt` and `target_killed` with `melee`
 ##   fire_rejected: shooter_id, seq, reason (`reloading`, `cooldown`, `empty`, `no_weapon`,
-##     `bad_aim`)
+##     `bad_aim`); a quick melee in its cooldown is one with reason `cooldown`
 ##   damage_dealt: shooter_id, target_id, zone, damage, headshot, melee, pellets, health, point
 ##   target_killed: shooter_id, target_id, zone, headshot, melee
 ##   reload_started: shooter_id, weapon_id, seconds
@@ -46,6 +48,9 @@ var _current: Dictionary[int, StringName] = {}
 var _targets: Dictionary[int, Dictionary] = {}
 var _alive: Dictionary[int, bool] = {}
 var _projectiles: Array[ProjectileState] = []
+## Seconds until each player's quick melee is ready again (`WeaponCatalog.quick_melee`'s interval).
+var _quick_wait: Dictionary[int, float] = {}
+var _quick_def: WeaponDef
 var _next_projectile: int = 1
 var _events: Array[Dictionary] = []
 
@@ -119,6 +124,8 @@ func _dispatch(action: Dictionary) -> void:
 			_fire(action)
 		CombatAction.RELOAD:
 			_reload(action["shooter_id"])
+		CombatAction.QUICK_MELEE:
+			_quick_melee(action)
 		CombatAction.GIVE_WEAPON:
 			_give(action["player_id"], action["weapon_id"], StringName(action.get("replace", &"")))
 		CombatAction.EQUIP:
@@ -283,6 +290,8 @@ func _set_targets(list: Array) -> void:
 
 func _tick(delta: float) -> void:
 	now += delta
+	for player_id in _quick_wait:
+		_quick_wait[player_id] = maxf(_quick_wait[player_id] - delta, 0.0)
 	for player_id in _loadouts:
 		for state: WeaponState in _loadouts[player_id].values():
 			if state.tick(delta):
@@ -367,6 +376,46 @@ func _fire(action: Dictionary) -> void:
 	for target_id: int in damage:
 		var total: Dictionary = damage[target_id]
 		_hurt(shooter_id, target_id, total, def.is_melee())
+
+
+## The quick melee (#411): the same sweep as a melee weapon's, with the quick melee's own numbers,
+## whatever the player holds, once in `fire_interval`. The weapon in hand is not touched: its
+## rounds, its cooldown and its reload go on.
+func _quick_melee(action: Dictionary) -> void:
+	var shooter_id: int = action["shooter_id"]
+	var seq: int = action["seq"]
+	var dir: Vector3 = action["dir"]
+	if not dir.is_finite() or dir.length_squared() < 0.5:
+		_reject_fire(shooter_id, seq, &"bad_aim")
+		return
+	if _quick_wait.get(shooter_id, 0.0) > WeaponState.READY_EPSILON:
+		_reject_fire(shooter_id, seq, &"cooldown")
+		return
+	if _quick_def == null:
+		_quick_def = _defs.get(WeaponCatalog.QUICK_MELEE, WeaponCatalog.quick_melee())
+	_quick_wait[shooter_id] = _quick_def.fire_interval
+	var view := _view_at(action["view_time"])
+	var origin: Vector3 = action["origin"]
+	dir = dir.normalized()
+	var hits := AimResolver.sweep_melee(_quick_def, origin, dir, view["targets"], world_ray)
+	var damage := {}
+	_tally(damage, hits)
+	var flesh: Array[Vector3] = []
+	for hit: Dictionary in hits:
+		flesh.append(hit["point"])
+	_emit(
+		&"quick_melee",
+		{
+			"shooter_id": shooter_id,
+			"seq": seq,
+			"muzzle": action["muzzle"],
+			"ends": [origin + dir * _quick_def.melee_range],
+			"flesh": flesh,
+			"rewound_by": view["rewound_by"],
+		}
+	)
+	for target_id: int in damage:
+		_hurt(shooter_id, target_id, damage[target_id], true)
 
 
 ## The targets as the shooter saw them, without the ones already dead.

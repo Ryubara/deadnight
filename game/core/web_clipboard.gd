@@ -9,7 +9,7 @@ extends Node
 ## cancels every key press on its canvas, so Ctrl+V never makes the page's own `paste` event, the
 ## one a browser fires with no permission at all.
 ##
-## In a frame this node installs `window.deadnightClipboard` (the script below):
+## This node installs `window.deadnightClipboard` (the script below), the whole of it in a frame:
 ## - Ctrl/Cmd+V is let through to the browser, whose `paste` event hands the text to `heard`, and
 ##   the next frame `paste` puts it into the focused field;
 ## - `copy` writes from a user gesture (a hidden text box and `execCommand("copy")`, which the
@@ -18,15 +18,19 @@ extends Node
 ## - `report` says what each of those saw, for `note` and `detail` (the Play together screen reads
 ##   them, so whoever plays can send the line).
 ##
-## A browser tab and the desktop are not touched: outside a frame nothing is installed and
-## `copy_text` is the engine's own `clipboard_set`.
+## In a browser tab only the paste half is installed (#534): the engine's own Ctrl+V reads the
+## clipboard through `navigator.clipboard.readText()`, which answers a moment later, so the first
+## press pasted whatever was there before (nothing, on a fresh page). The `paste` event needs no
+## permission in a tab either, and `copy_text` stays the engine's own `clipboard_set`.
+##
+## The desktop is not touched: off the web nothing is installed.
 
 ## What a player reads when the host blocks the clipboard API.
 const BLOCKED := "Clipboard: the host blocks it here. Ctrl+V and Ctrl+C work through the page."
 const ALLOWED := "Clipboard: allowed. Ctrl+V pastes and Ctrl+C copies."
 const COPY_FAILED := "Clipboard: copy failed (%s). The text is shown selected: press Ctrl+C."
 
-## The page side. Runs once, in a frame only. Ctrl/Cmd+V and +C are the one place a keydown is not
+## The page side. Runs once. Ctrl/Cmd+V and +C are the one place a keydown is not
 ## stopped from reaching the engine for the engine's sake: the engine would cancel it (so no
 ## paste event could follow), and the browser's own paste and copy need it uncancelled.
 const PAGE_SCRIPT := """
@@ -37,12 +41,34 @@ const PAGE_SCRIPT := """
   function allowed(name) {
     try { return policy ? policy.allowsFeature(name) : null; } catch (e) { return null; }
   }
+  var framed = window.top !== window;
   var c = window.deadnightClipboard = {
-    iframe: true, write: 'untried', offer: '', ctrl_v: 0, pastes: 0, ctrl_c: 0, copies: 0,
+    iframe: framed, write: 'untried', offer: '', ctrl_v: 0, pastes: 0, ctrl_c: 0, copies: 0,
     onpaste: null,
     policy_read: allowed('clipboard-read'), policy_write: allowed('clipboard-write')
   };
   function toCanvas() { if (canvas) { canvas.focus(); } }
+  c.report = function () {
+    return JSON.stringify({iframe: c.iframe, write: c.write, ctrl_v: c.ctrl_v, pastes: c.pastes,
+      ctrl_c: c.ctrl_c, copies: c.copies, policy_read: c.policy_read,
+      policy_write: c.policy_write});
+  };
+  function onCanvas(e) {
+    var t = e.target;
+    return t === canvas || t === document.body || t === document.documentElement;
+  }
+  addEventListener('paste', function (e) {
+    if (!onCanvas(e)) { return; }
+    var text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    c.pastes++;
+    if (c.onpaste) { c.onpaste(text); }
+  }, true);
+  addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || !onCanvas(e) || e.code !== 'KeyV') { return; }
+    c.ctrl_v++;
+    e.stopImmediatePropagation();
+  }, true);
+  if (!framed) { return; }
   function gesture(text) {
     var box = document.createElement('textarea');
     box.value = text; box.setAttribute('readonly', '');
@@ -60,21 +86,9 @@ const PAGE_SCRIPT := """
     navigator.clipboard.writeText(text).then(function () { c.write = 'ok'; },
       function (e) { c.write = e && e.name ? e.name : 'Blocked'; });
   };
-  c.report = function () {
-    return JSON.stringify({iframe: c.iframe, write: c.write, ctrl_v: c.ctrl_v, pastes: c.pastes,
-      ctrl_c: c.ctrl_c, copies: c.copies, policy_read: c.policy_read,
-      policy_write: c.policy_write});
-  };
-  function onCanvas(e) {
-    var t = e.target;
-    return t === canvas || t === document.body || t === document.documentElement;
-  }
   addEventListener('keydown', function (e) {
     if (!(e.ctrlKey || e.metaKey) || e.altKey || !onCanvas(e)) { return; }
-    if (e.code === 'KeyV') {
-      c.ctrl_v++;
-      e.stopImmediatePropagation();
-    } else if (e.code === 'KeyC' && c.offer) {
+    if (e.code === 'KeyC' && c.offer) {
       c.ctrl_c++;
       var box = document.getElementById('deadnight-copy') || document.createElement('textarea');
       box.id = 'deadnight-copy'; box.value = c.offer; box.setAttribute('readonly', '');
@@ -87,12 +101,6 @@ const PAGE_SCRIPT := """
     var box = document.getElementById('deadnight-copy');
     if (box) { c.copies++; setTimeout(function () { box.remove(); toCanvas(); }, 0); }
   }, true);
-  addEventListener('paste', function (e) {
-    if (!onCanvas(e)) { return; }
-    var text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
-    c.pastes++;
-    if (c.onpaste) { c.onpaste(text); }
-  }, true);
 })();
 """
 
@@ -104,6 +112,9 @@ static var current: WebClipboard
 var eval_js := Callable()
 ## The game runs inside a frame of another page (a Discord Activity). Decided at start.
 var in_frame := false
+## The page layer is installed (on the web, in a tab and in a frame): Ctrl+V pastes through the
+## page's `paste` event.
+var pastes_here := false
 ## Seconds a copy may take before it counts as refused.
 var copy_wait := 2.0
 
@@ -118,11 +129,11 @@ func _ready() -> void:
 	if OS.has_feature("web") and not eval_js.is_valid():
 		eval_js = func(js: String) -> Variant: return JavaScriptBridge.eval(js, true)
 		in_frame = bool(eval_js.call("window.top !== window"))
-		if in_frame:
-			eval_js.call(PAGE_SCRIPT)
-			_callback = JavaScriptBridge.create_callback(heard_by_page)
-			JavaScriptBridge.get_interface("window").deadnightClipboard.onpaste = _callback
-	set_process(in_frame)
+		eval_js.call(PAGE_SCRIPT)
+		_callback = JavaScriptBridge.create_callback(heard_by_page)
+		JavaScriptBridge.get_interface("window").deadnightClipboard.onpaste = _callback
+		pastes_here = true
+	set_process(in_frame or pastes_here)
 
 
 func _exit_tree() -> void:
@@ -133,6 +144,8 @@ func _exit_tree() -> void:
 func _process(_delta: float) -> void:
 	while not _heard.is_empty():
 		paste(_heard.pop_front())
+	if not in_frame:
+		return  # copy is the engine's own in a tab
 	# Ctrl+C offers the focused field's selection, else what a screen asked to offer.
 	var selected := selected_text(get_viewport().gui_get_focus_owner())
 	var wanted := selected if selected != "" else _offered
@@ -231,9 +244,9 @@ static func one_line(text: String) -> String:
 	return text.replace("\r", "").replace("\n", "").replace("\t", "").strip_edges()
 
 
-## The page's report (empty off the web, outside a frame, or before the layer started).
+## The page's report (empty off the web, or before the layer started).
 static func read() -> Dictionary:
-	if current == null or not current.in_frame:
+	if current == null or not current.pastes_here:
 		return {}
 	var parsed: Variant = JSON.parse_string(
 		str(current.eval_js.call("window.deadnightClipboard.report()"))

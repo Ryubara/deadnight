@@ -58,6 +58,8 @@ func _server() -> NightHost:
 	_host.port = 0
 	_host.log_enabled = false
 	_host.seed_value = 7
+	# The crowbar and the revolver from the start: the suite is about what the others hold and swap.
+	_host.rules_tuning = RulesFixture.full_hands()
 	_world().add_child(_host)
 	await _until(func() -> bool: return _host.serving, 30.0)
 	return _host
@@ -339,6 +341,34 @@ func test_b_shows_a_swinging_the_crowbar() -> void:
 		)
 		. is_true()
 	)
+
+
+func _melee(command: NightCommand, down: bool) -> void:
+	command.motion.melee = down
+
+
+func test_b_shows_a_striking_with_the_quick_melee_in_the_clip_of_the_weapon_held() -> void:
+	await _server()
+	var a := await _client()
+	var b := await _client()
+	assert_bool(await _until(func() -> bool: return _pose(b, A) != null)).is_true()
+	# The revolver in A's hand (a one-hand class), then the shotgun (a two-hand class): the blow is
+	# the one button and each is struck with its own clip, on B's screen, from the wire's flag.
+	for held: Array in [[&"pistol", &"Strike_Pistol"], [&"shotgun", &"Strike_Shotgun"]]:
+		if held[0] == &"shotgun":
+			_host.server._combat(CombatAction.give_weapon(A, &"shotgun"))
+		await _hold(a, held[0])
+		assert_bool(await _until(func() -> bool: return _shows(b, A, held[0]))).is_true()
+		await _tap(a, _melee)
+		var struck := await _until(func() -> bool: return _clip(b, A) == held[1], 3.0)
+		(
+			assert_bool(struck)
+			. override_failure_message("B never saw A strike with %s" % held[0])
+			. is_true()
+		)
+		await _until(func() -> bool: return _clip(b, A) == &"", 3.0)
+		# Past the cooldown, so the second blow is not refused.
+		await _ticks(45)
 
 
 func test_b_shows_a_cooking_and_throwing_a_grenade() -> void:

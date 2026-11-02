@@ -59,6 +59,7 @@ var _combat: BotCombat
 var _dodge: BotDodge
 var _grenadier: BotGrenadier
 var _stance: BotStance
+var _errands: BotErrands
 var _swapped_at := -SWAP_EVERY
 var _order: BotGrenadier.Throw
 var _ordered_at := -INF
@@ -73,6 +74,8 @@ func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
 	_dodge = BotDodge.new(profile, dodge_seed)
 	_grenadier = BotGrenadier.new(level)
 	_stance = BotStance.new(level)
+	if level.shop != null and profile.errands:
+		_errands = BotErrands.new(level.shop, profile)
 
 
 func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
@@ -94,6 +97,7 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	var plan := BotArsenal.plan(me, held, _distance_to(beliefs, intent.target_id, here), threat)
 	var pack := BotCombat.near_count(beliefs, here, _profile.memory_seconds)
 	intent.melee_ok = BotCombat.may_melee(pack, plan.dry)
+	intent.quick_melee_ok = plan.dry and held != null and not held.is_melee()
 	var ordered := _throw(intent, beliefs, here, targets, mates, threat, kind)
 	if not _step_away(intent, beliefs, here, anchor, held, threat, kind, pack, plan.dry, ordered):
 		_last_reflex = Vector3.ZERO
@@ -101,6 +105,8 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 			intent.note = "throw"
 		elif _chase(intent, beliefs, here, held, mates, pack, plan.dry):
 			intent.note = "chase"
+		elif _errand(intent, beliefs, state, threat):
+			intent.note = intent.note if intent.note != "" else "errand"
 		elif kind == BotStance.Kind.HOLD:
 			_hold(intent, beliefs, here, anchor)
 		else:
@@ -136,7 +142,8 @@ func _step_away(
 	var dodge := not swings.is_empty() and (kind != BotStance.Kind.HOLD or boss_blow)
 	var keeps_off := _boss_distance(beliefs, here) < _profile.boss_keep and not throwing
 	var margin := _profile.retreat_margin
-	var melee := held != null and held.is_melee()
+	# A bot with no round left stands to fight with the quick melee as one with a bat does.
+	var melee := (held != null and held.is_melee()) or dry
 	var backs := threat < margin and kind != BotStance.Kind.HOLD
 	if (melee and BotCombat.may_melee(pack, dry)) or throwing:
 		backs = false
@@ -285,7 +292,7 @@ func _glance(beliefs: BotBeliefs, here: Vector3) -> float:
 
 func _handle_weapon(intent: BotIntent, plan: BotArsenal.Plan, now: float) -> void:
 	intent.reload = plan.reload
-	if plan.swap and now - _swapped_at >= SWAP_EVERY:
+	if plan.swap and not intent.keep_weapon and now - _swapped_at >= SWAP_EVERY:
 		intent.swap = true
 		_swapped_at = now
 
@@ -356,6 +363,20 @@ func _throw(
 	_grenadier.last_throw = now
 	intent.note = "throw"
 	return true
+
+
+## The errands of a lull (fuel, breakers, shopping, boards), when the level gave the bot a shop and
+## nothing is near. A refusal the server told the bot about leaves the item alone for a while.
+func _errand(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+	if _errands == null:
+		return false
+	_errands.legs = legs
+	for denial in beliefs.denials:
+		_errands.back_off(denial["item"], beliefs.now)
+	beliefs.denials.clear()
+	if intent.target_id >= 0:
+		return false
+	return _errands.run(intent, beliefs, state, threat)
 
 
 ## A bot with a crowbar in hand walks up to a zombie that is not coming to it (one tearing boards,

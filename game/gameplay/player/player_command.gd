@@ -4,8 +4,8 @@ extends RefCounted
 ##
 ## The controller samples the controls into one of these per tick; the simulation consumes it.
 ## Nothing else reaches the simulation, so a server (or a prediction replay) can run the same
-## commands and get the same result. `jump` and `swap_shoulder` are "pressed this tick" edges,
-## the rest are levels. View angles are absolute (radians), as the camera holds them.
+## commands and get the same result. `jump`, `swap_shoulder` and `melee` are "pressed this tick"
+## edges, the rest are levels. View angles are absolute (radians), as the camera holds them.
 
 ## x: right is positive; y: backward is positive (the Input.get_vector convention). Length <= 1.
 var move := Vector2.ZERO
@@ -25,6 +25,9 @@ var swap_shoulder := false
 ## `throw_over`, the short underarm toss for `throw_under`). `GrenadeThrower` makes actions of them.
 var throw_over := false
 var throw_under := false
+## The quick melee button went down this tick (an edge, like `jump`): the body turns to face the
+## view and the blow leaves once it does (`PlayerMotionState.melee_ready`).
+var melee := false
 
 
 ## Snaps the numbers to what the wire carries (`CommandCodec`), in place: a predicting client moves
@@ -50,6 +53,7 @@ func to_dict() -> Dictionary:
 		&"swap_shoulder": swap_shoulder,
 		&"throw_over": throw_over,
 		&"throw_under": throw_under,
+		&"melee": melee,
 	}
 
 
@@ -66,6 +70,7 @@ static func from_dict(data: Dictionary) -> PlayerCommand:
 	command.swap_shoulder = data.get(&"swap_shoulder", false)
 	command.throw_over = data.get(&"throw_over", false)
 	command.throw_under = data.get(&"throw_under", false)
+	command.melee = data.get(&"melee", false)
 	return command
 
 

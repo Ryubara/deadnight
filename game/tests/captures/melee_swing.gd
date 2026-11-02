@@ -35,7 +35,7 @@ func _ready() -> void:
 	Input.action_press("aim")
 	await _wait(SECOND * 2)
 	Input.action_release("aim")
-	_night.server.combat.apply(CombatAction.equip(_night.PLAYER_ID, &"crowbar"))
+	_night.server.combat.apply(CombatAction.give_weapon(_night.PLAYER_ID, &"crowbar"))
 	var zombie := await _first_zombie()
 	var animation := player.get_node("AnimationTree") as PlayerAnimation
 	var look := -player.camera_rig.camera().global_basis.z

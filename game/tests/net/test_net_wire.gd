@@ -43,6 +43,18 @@ func test_a_command_is_25_bytes_and_comes_back_whole() -> void:
 	assert_float(back.dir.distance_to(Vector3(0.0, 0.0, -1.0))).is_less(0.0002)
 
 
+func test_the_quick_melee_press_crosses_the_wire_in_its_own_flag() -> void:
+	var command := _command()
+	assert_bool(NetWire.read_command(NetWire.command(command)).motion.melee).is_false()
+	command.motion.melee = true
+	var bytes := NetWire.command(command)
+	assert_int(bytes.size()).is_equal(NetWire.COMMAND_SIZE)
+	assert_bool(NetWire.read_command(bytes).motion.melee).is_true()
+	assert_int(bytes.decode_u16(11) & NetWire.F_MELEE).is_equal(NetWire.F_MELEE)
+	# What a predicting client moves its body with has it too.
+	assert_bool(NetWire.quantize(command).motion.melee).is_true()
+
+
 func test_a_command_with_hostile_bytes_is_made_harmless() -> void:
 	# Integers cannot be not-a-number or infinite; the bytes that could still hurt are a move
 	# longer than a full push and a look past straight up.

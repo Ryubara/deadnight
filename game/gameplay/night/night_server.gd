@@ -31,6 +31,8 @@ extends RefCounted
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
+## Ticks between the asks which areas the map has taken in (a quarter second).
+const SPAWN_RETRY_TICKS := 15
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
@@ -48,6 +50,7 @@ const LOOK_PACKET := &"look_packet"
 ## answer repeats them).
 const COMBAT_EVENTS: Array[StringName] = [
 	&"shot_fired",
+	&"quick_melee",
 	&"damage_dealt",
 	&"target_killed",
 	&"reload_started",
@@ -231,6 +234,7 @@ func submit(player_id: int, command: NightCommand) -> void:
 		command.use = command.use or old.use
 		command.swap = command.swap or old.swap
 		command.motion.jump = command.motion.jump or old.motion.jump
+		command.motion.melee = command.motion.melee or old.motion.melee
 		command.motion.swap_shoulder = command.motion.swap_shoulder or old.motion.swap_shoulder
 	_pending[player_id] = command
 	_silent[player_id] = 0
@@ -268,7 +272,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	var began := PerfProbe.begin()
 	_move_players()
 	PerfProbe.end(&"server.move", began)
-	if world.take_in_areas(tick_count):
+	if tick_count % SPAWN_RETRY_TICKS == 0:
 		director.spawn_points = world.spawn_points()
 	began = PerfProbe.begin()
 	director.tick(delta, _chase_targets())
@@ -373,6 +377,7 @@ func _move_players() -> void:
 		if command != null:
 			# Pressed edges are used once.
 			command.motion.jump = false
+			command.motion.melee = false
 			command.motion.swap_shoulder = false
 
 
@@ -605,6 +610,9 @@ func _act(player_id: int, delta: float) -> void:
 		_shoot(player_id, command, delta)
 	if command.swap:
 		_combat(CombatAction.swap(player_id))
+	if _bodies[player_id].state.melee_ready:
+		_repairing[player_id] = &""
+		_quick_melee(player_id, command, delta)
 	if command.swap or command.fire or command.reload:
 		_repairing[player_id] = &""
 	if command.use:
@@ -642,6 +650,30 @@ func _shoot(player_id: int, command: NightCommand, delta: float) -> void:
 		view_time -= float(maxi(tick_count - command.view_tick, 0)) * delta
 	_combat(
 		CombatAction.fire(player_id, _shot_seq[player_id], origin, command.dir, muzzle, view_time)
+	)
+
+
+## The quick melee button (#411): a blow along the view from the head, whatever the player holds
+## (the server's cooldown is its own). Not while a grenade is cooking in the hand (the arm is busy).
+func _quick_melee(player_id: int, command: NightCommand, delta: float) -> void:
+	if grenades.is_cooking(player_id):
+		return
+	if not aims_with_view(command):
+		_outbox.append(
+			{"type": &"fire_rejected", "player_id": player_id, "reason": &"aim_mismatch"}
+		)
+		return
+	var body := _bodies[player_id]
+	var head := body.global_position + Vector3(0.0, tuning.eye_height, 0.0)
+	var muzzle := body.global_position + Basis(Vector3.UP, body.state.facing) * tuning.muzzle_offset
+	_shot_seq[player_id] += 1
+	var view_time := combat.now
+	if command.view_step >= 0:
+		view_time -= float(maxi(tick_count - command.view_tick, 0)) * delta
+	_combat(
+		CombatAction.quick_melee(
+			player_id, _shot_seq[player_id], head, command.dir, muzzle, view_time
+		)
 	)
 
 
@@ -683,64 +715,16 @@ func use_target(player_id: int) -> Dictionary:
 			"progress": _revive.progress(raise),
 			"bleed": rules.bleed_left_of(raise),
 		}
-	var door := _door_offer(here)
+	var door := UseOffers.door(world, rules, tuning, here)
 	if not door.is_empty():
 		return door
 	var offer := _spot_offer(player_id, here)
 	if not offer.is_empty():
 		return offer
-	var post := _post_offer(here)
+	var post := UseOffers.post(world, rules, tuning, here)
 	if not post.is_empty():
 		return post
-	return _fuel_offer(here)
-
-
-## The shut door in reach that can be bought now (the one before it is open), or `{}`.
-func _door_offer(here: Vector3) -> Dictionary:
-	for door_id in world.door_ids():
-		if rules.is_door_open(door_id):
-			continue
-		var item := rules.tuning.economy.item(door_id)
-		if item.requires != &"" and not rules.is_door_open(item.requires):
-			continue
-		for point in world.door_points(door_id):
-			if _flat(here, point) <= tuning.use_reach:
-				return {"kind": &"door", "id": door_id, "price": rules.price_of(door_id)}
-	return {}
-
-
-## A breach to put a board back across, or a breaker post, in reach of `here`, or `{}`.
-func _post_offer(here: Vector3) -> Dictionary:
-	for id in world.barricade_ids():
-		var boards := rules.barricades.boards_of(id)
-		if boards >= rules.tuning.barricades.boards:
-			continue
-		var barricade := world.barricade(id)
-		if barricade.depth_of(here) > 0.0 and _flat(here, barricade.centre()) <= tuning.use_reach:
-			return {"kind": &"repair", "id": id, "boards": boards}
-	var post := world.switches.within_reach(here, tuning.use_reach)
-	if post == null:
-		return {}
-	var on: bool = rules.generator.circuits.get(post.circuit_id, false)
-	return {"kind": &"circuit", "id": post.circuit_id, "on": on}
-
-
-## The can stand within reach of `here`: what the rules would sell and for how much, or `{}`.
-func _fuel_offer(here: Vector3) -> Dictionary:
-	var spot := world.fuel.within_reach(here, tuning.fuel_reach)
-	if spot == &"":
-		return {}
-	var item := world.fuel.item_of(spot)
-	var offer := rules.tuning.economy.item(item).fuel_offer(
-		rules.round_number, rules.generator.space()
-	)
-	return {
-		"kind": &"fuel",
-		"id": spot,
-		"item": item,
-		"price": offer["price"],
-		"units": offer["units"],
-	}
+	return UseOffers.fuel(world, rules, tuning, here)
 
 
 ## The offer of the nearest shop spot in reach that has one, or `{}`.

@@ -91,13 +91,21 @@ static func snapshot(top: Control) -> Dictionary:
 		"activity_code": "",
 		"controller_hint": false,
 		"clipboard": "",
-		"clipboard_detail": ""
+		"clipboard_detail": "",
+		"focus": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
+	if top.is_inside_tree():
+		# The control that has the keyboard, so a browser test walks to a button by its name (a
+		# button's inner control has no name of its own: the nearest ancestor that has one).
+		var focus: Node = top.get_viewport().gui_get_focus_owner()
+		while focus != null and String(focus.name).begins_with("@"):
+			focus = focus.get_parent()
+		data["focus"] = String(focus.name) if focus != null else ""
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
-	var clipboard := WebClipboard.read()  # inside a frame only: what copy and paste can do there
+	var clipboard := WebClipboard.read()  # what the page layer saw of copy and paste
 	data["clipboard"] = WebClipboard.note(clipboard)
 	data["clipboard_detail"] = WebClipboard.detail(clipboard)
 	var room := ActivityRoom.current

@@ -22,7 +22,7 @@ const EXPECTED := {
 
 
 func _start() -> Night:
-	var night := await NightFixture.start(self, Night.Mode.MANUAL)
+	var night := await NightFixture.start(self, Night.Mode.MANUAL, RulesFixture.full_hands())
 	NightFixture.run(night, 3)
 	return night
 

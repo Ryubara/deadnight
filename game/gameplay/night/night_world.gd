@@ -14,8 +14,6 @@ const SETTLE_FRAMES := 4
 const NAV_WAIT_FRAMES := 600
 ## Metres a path may end from its goal and still reach it.
 const NAV_REACHED := 1.0
-## Ticks between the asks whether the map has taken in an area a door opened (a quarter second).
-const SPAWN_RETRY_TICKS := 15
 ## Metres into the field, from the boards, that a player puts them back from.
 const REPAIR_SPOT := 1.4
 ## The areas whose zombie spawns open with a door (the field's are always open).
@@ -78,6 +76,19 @@ func map() -> RID:
 	return get_world_3d().navigation_map
 
 
+## Where the lamps that light the ground hang, by the circuit each hangs on (a sign's glow lights
+## none): a bot tells which circuit is lighting the ground people stand on.
+func lamp_points() -> Dictionary:
+	var found := {}
+	for lamp in _lamps.lamps:
+		if lamp.decor:
+			continue
+		if not found.has(lamp.circuit):
+			found[lamp.circuit] = []
+		found[lamp.circuit].append(lamp.position)
+	return found
+
+
 ## True once the navigation map finds a way across the field, between its first two spawn points
 ## (the field is never walled off). The map's iteration id is no sign of it: in the browser it
 ## stays at 1 while the map already answers, and waiting for a second one cost the full
@@ -120,6 +131,22 @@ func door_points(door_id: StringName) -> Array[Vector3]:
 	return points
 
 
+## Where to walk to use a door: a point on the open ground in front of each of its slabs, 1.5 m out
+## (`Stand*` markers, `DOOR_STAND_DISTANCE` in tools/world/build_greybox.py). The slab's middle
+## (`door_points`) is where the hand reaches from, not a place to walk to: the walking mesh is cut
+## back from a wall on both sides alike, so a goal in a slab snaps to the shut area behind it as
+## often as to the open ground in front (the booth's door did, #590). A stand is on the mesh the
+## moment the door before it is open, and within `NightTuning.use_reach` of the slab.
+func door_stands(door_id: StringName) -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	var door: Node3D = _door_nodes.get(door_id)
+	if door != null:
+		for part in door.get_children():
+			if part is Marker3D:
+				points.append((part as Marker3D).global_position)
+	return points
+
+
 ## The areas the dead can come from: the field, and the area behind each door that is open.
 func open_areas() -> Array[String]:
 	var areas: Array[String] = ["Field"]
@@ -134,7 +161,8 @@ func open_areas() -> Array[String]:
 ## already walks out of (`_walkable`). A door opened a moment ago has its area in `open_areas` at
 ## once but in the map a few physics ticks later (and for a lot nothing was saved for, a bake
 ## later): a dead one risen there walks to the nearest point of the island it stands on, the wall
-## of the door's room, and stays (#591). The area joins here when the map takes it in.
+## of the door's room, and stays (#591). The area joins here when the map takes it in, so the night
+## asks again every `NightServer.SPAWN_RETRY_TICKS` (the answer is kept for an area once it is yes).
 func spawn_points() -> Array[Vector3]:
 	var points: Array[Vector3] = []
 	for area in open_areas():
@@ -143,18 +171,6 @@ func spawn_points() -> Array[Vector3]:
 		for marker in _spawn_markers(area):
 			points.append(marker.global_position)
 	return points
-
-
-## Asks the map, every `SPAWN_RETRY_TICKS` of the night's `tick`, about the open areas it has not
-## taken in yet; true when it took one in, so `spawn_points` has grown. The night calls it every
-## tick: a door bought is an area to wait for, a night restored with doors open too.
-func take_in_areas(tick: int) -> bool:
-	if tick % SPAWN_RETRY_TICKS != 0:
-		return false
-	var known := _walkable_areas.size()
-	for area in open_areas():
-		_walkable(area)
-	return _walkable_areas.size() > known
 
 
 func _spawn_markers(area: String) -> Array[Marker3D]:

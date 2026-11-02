@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## lost, `nan` and `inf` entries, and the window mode left alone in a browser. Each test uses its
 ## own file under user://, so the player's real settings are never read or written.
 
-const TEST_PATH := "user://settings_hardening_test.cfg"
+var _test_path := QuietSettings.test_path("settings_hardening_test")
 
 var _settings: QuietSettings
 var _made: Array[QuietSettings] = []
@@ -32,7 +32,7 @@ func test_the_debounced_write_runs_while_the_tree_is_paused() -> void:
 	# A timer that ignores the pause: the test runner's own waits would stall with the tree.
 	await get_tree().create_timer(SettingsService.SAVE_DELAY + 0.5, true).timeout
 	var file := ConfigFile.new()
-	assert_int(file.load(TEST_PATH)).is_equal(OK)
+	assert_int(file.load(_test_path)).is_equal(OK)
 	assert_int(file.get_value("audio", "music")).is_equal(33)
 
 
@@ -40,7 +40,7 @@ func test_losing_focus_flushes_a_pending_change() -> void:
 	_settings.set_value(SettingsService.VOLUME_UI, 12)
 	_settings.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
 	var file := ConfigFile.new()
-	assert_int(file.load(TEST_PATH)).is_equal(OK)
+	assert_int(file.load(_test_path)).is_equal(OK)
 	assert_int(file.get_value("audio", "ui")).is_equal(12)
 
 
@@ -50,7 +50,7 @@ func test_nan_and_infinite_entries_fall_back_to_the_default() -> void:
 	file.set_value("audio", "master", INF)
 	file.set_value("audio", "music", -INF)
 	file.set_value("controls", "mouse_sensitivity", INF)
-	file.save(TEST_PATH)
+	file.save(_test_path)
 	var loaded := _make()
 	assert_float(loaded.get_value(SettingsService.UI_SCALE)).is_equal_approx(1.0, 0.001)
 	assert_int(loaded.get_value(SettingsService.VOLUME_MASTER)).is_equal(100)
@@ -95,11 +95,11 @@ func test_window_mode_reaches_the_window_on_the_desktop() -> void:
 
 
 func _make() -> QuietSettings:
-	var service := QuietSettings.make(self, TEST_PATH)
+	var service := QuietSettings.make(self, _test_path)
 	_made.append(service)
 	return service
 
 
 func _remove_file() -> void:
-	if FileAccess.file_exists(TEST_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+	if FileAccess.file_exists(_test_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(_test_path))

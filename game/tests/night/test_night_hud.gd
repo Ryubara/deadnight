@@ -9,7 +9,10 @@ const PRICE := 350
 func _start(tuning: RulesTuning = null) -> Dictionary:
 	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	add_child(hud)
-	var night := await NightFixture.start(self, Night.Mode.MANUAL, tuning, 7, hud)
+	# Both hands full from the start (the crowbar and the revolver): the card is the subject.
+	var night := await NightFixture.start(
+		self, Night.Mode.MANUAL, RulesFixture.full_hands(tuning), 7, hud
+	)
 	NightFixture.run(night, 30)
 	return {"night": night, "hud": hud}
 

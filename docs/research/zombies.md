@@ -303,6 +303,23 @@ through `GameRules`; a walking zombie gets in once the booth is bought; doors bo
 last in the mesh; and the control: a slab freed without a rebake leaves the dead outside) and
 `game/tests/world/test_lot_doors.gd` (a purchase through the rules removes the slabs, the collision and the label).
 
+### Walking to a door: the stands (#590)
+
+A door's slab is no place to walk to. The mesh is cut back 0.5 m from a wall on both sides alike, so the slab's middle
+lies between two cut edges, and `map_get_closest_point` (which every goal is snapped by, a bot's too) picks the nearer in
+3 D by a few centimetres of rounding. The booth's door (0, 1.3, 22.2) snapped to the shut booth's floor (0, 0.35, 22.75)
+instead of the midway at z 21.3: with only the concession open, the path from the field ended at (6.75, 0.35, 22.2),
+6.75 m short, and bots never bought it. The mesh itself is right: (0, 21) is reachable. Every other door's middle was
+only 1.2 m off, which is why only the booth stalled. A person is not affected: a hand reaches 3.2 m from the slab's
+middle (`NightTuning.use_reach`) and the body stands at z 21.3.
+
+Each slab has a `Stand*` marker on the open side, 1.5 m out (`slab()` in `tools/world/build_greybox.py`, with the side
+the door is bought from), and `NightWorld.door_stands(door_id)` returns them. Anything that walks to a door (bots)
+walks to a stand; `door_points` stays the place the hand reaches from, the HUD marker and the sound.
+`tests/night/test_door_stands.gd` buys every door in the shop's order from its stands, each with the doors before it
+open: the path ends within 2.5 m, a body on the stand is offered the door, a use press buys it. The slab's middle
+fails it for the booth (6.75 m short). Picture: `tests/captures/door_stand_mesh.tscn` (`--target=slab|stand`).
+
 ### Dead standing at the concession door (#591)
 
 Found by the shopping soak of the bots plan (`tests/captures/bots_shop_soak.tscn`): from round 2 on, three to six dead
@@ -329,11 +346,11 @@ say why:
 
 The fix on the zombie side: the dead rise only where the map walks to. `NightWorld.spawn_points` holds an open
 area's spawn markers back until a path from the field reaches every one of them (`NAV_REACHED`), and the night asks
-again every 15 ticks (`NightWorld.SPAWN_RETRY_TICKS`, `NightWorld.take_in_areas`, which replaced the server's own
-handler of `door_opened`), so the area joins a few ticks after the purchase on a server, and never in a night with
-no frames (nobody can walk out of it there either). The same guard holds in a bake (a lot nothing was saved for)
-that takes a second or more. The soak must give the engine its frames too (it does not yet, #228): a night stepped
-by hand cannot test a door, and a bot's errand to a bought door is judged on the map the purchase left.
+again every 15 ticks (`NightServer.SPAWN_RETRY_TICKS`, which replaced the server's own handler of `door_opened`), so
+the area joins a few ticks after the purchase on a server, and never in a night with no frames (nobody can walk out
+of it there either). The same guard holds in a bake (a lot nothing was saved for) that takes a second or more. The
+soak must give the engine its frames too (it does not yet, #228): a night stepped by hand cannot test a door, and a
+bot's errand to a bought door is judged on the map the purchase left.
 
 Proof: `game/tests/night/test_spawns_wait_for_the_map.gd` (no spawns in the new room straight after the purchase or in
 600 ticks without frames; they join with frames; every door of the shop in order gives its area's markers to the dead).
