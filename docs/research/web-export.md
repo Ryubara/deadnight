@@ -53,6 +53,16 @@ Things that were not obvious:
   Godot's web runtime listens for `pointermove` on the window and reads `movementX/Y`, so the smoke dispatches
   `PointerEvent('pointermove', {movementX})` on the canvas when the real moves did not turn the view
   (`tools/web_smoke/smoke.py`, `mouse_look_via` in its result). The yaw is on `window.deadnight` for it.
+- The first Esc under pointer lock is the browser's: it frees the lock and the key never reaches the page, so the
+  game gets no `pause`. On the web `Input.mouse_mode` reads the real lock (2 captured, 0 once freed), so `Player` asks
+  `MouseGrip` every frame and, the frame a held lock is gone, turns the controls off and `NightScreen` opens its menu
+  (#476). Until the lock comes back (Resume asks inside the click or key press) look and fire wait. Playwright cannot
+  press the browser's own Esc, so `tools/web_smoke/pointer_lock.py` releases the lock with `document.exitPointerLock()`:
+  before the change the night went on running with a free cursor, after it the menu was open 0.6 s later (the probe's
+  refresh and a software renderer) and Resume, by key and by click, took the lock back. A headless Godot reads
+  `Input.mouse_mode` back as VISIBLE whatever it was set to, so the unit tests put a stand-in platform under `MouseGrip`.
+  Never run a probe that takes pointer lock on a Windows machine in use: headless Chromium there clips the real cursor to
+  an invisible box at the top left, freed only by Esc. `pointer_lock.py` refuses to start there; CI (Linux) runs it.
 - **A finger is a pointer move too (Deadnight #470).** The same `pointermove` listener also fires for a touch pointer, so
   on a phone every finger, the move stick's too, turned the view like a mouse and in device pixels (3 times too far at a
   pixel ratio of 3). The page's `head_include` stops touch pointer moves in the capture phase, and the player ignores
@@ -60,6 +70,12 @@ Things that were not obvious:
   phone-sized Chrome (844 x 390 CSS pixels, ratio 3, real touch events through `Input.dispatchTouchEvent`) and checks
   that the stick turns the view 0 and a 100 px look drag turns it as `TouchLook` promises (0.41 rad). Before the fix
   the stick turned it 0.37 rad and the drag 1.43 rad, one frame up to 0.43 rad.
+- **With two fingers the first drag of each finger has a wrong `relative` (Deadnight #497).** Logged in Chrome with
+  the stick finger and the look finger down: the look finger's first `InputEventScreenDrag` had `relative` equal to its
+  own position (measured from the origin), the stick finger's first drag was measured from the look finger's press
+  (`(-1080, 522)`), and the `velocity` of a finger was stale for its first three drags. One thumb is fine (the press
+  seeds the position). `TouchControls` now keeps each finger's last position and reads the step from that; the same
+  probe (`touch_look.py`, two-finger case) turned the view 2.42 rad for a 100 px drag before, 0.41 rad after.
 - The zombies are usually off screen: the crowd is read from the probe, not seen.
 - Playwright 1.64 launches `chromium-headless-shell`, which is always software-rendered. `--gpu` uses the installed
   Chrome (`channel="chrome"`) for numbers with a real GPU.
@@ -170,7 +186,8 @@ bash deploy/web/deploy.sh path/to/build/web <commit> <stage folder>   # needs RA
 docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 8080:8080 deadnight-web
 ```
 
-The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
+The smoke run takes the URL in place of a folder:
+`uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
 
 `tools/web_smoke/judder.py` (same arguments, `--gpu --unpaced` for the machine's GPU and no frame limit) measures
@@ -258,8 +275,58 @@ over 3 s, 1,125 of them in a phase):
   ways to get the duck back are in [Sound](../design/audio.md#in-the-browser) and
   [the audio research](audio.md#open-questions): the bus volume works in samples, so a duck made of bus volume would too.
 
+## Copy and paste inside a Discord Activity (#516)
+
+The maintainer: "Copy paste doesn't work when in discord activity". Two separate causes, both measured with
+`tools/web_smoke/activity.py --clipboard` (a cross-origin iframe, under `gds quiet`, in the headless shell whose
+clipboard is the browser's own, so the person's is never touched):
+
+- **The frame may not use the clipboard API.** In an iframe of another origin `clipboard-read` and `clipboard-write`
+  are policy features that default to the page's own origin: `document.permissionsPolicy.allowsFeature` says `false`
+  and `navigator.clipboard.writeText` and `readText` throw `NotAllowedError`, even where the permission itself is
+  granted. The engine's `DisplayServer.clipboard_set` and `clipboard_get` are exactly those two calls, so "Copy the code"
+  copied nothing, and the screen still said "Code copied." (the engine does not report the failure).
+  `document.execCommand("copy")` from a user gesture is not policy-controlled and works.
+- **The engine cancels every key press on its canvas.** Its web runtime calls `preventDefault()` on every `keydown`,
+  so Ctrl+V never makes the browser's own `paste` event (the one that needs no permission): the page saw the key
+  and the engine ate it (`paste` events 0). Its own paste is `readText`, asynchronous, so even where the API is
+  allowed the first Ctrl+V pastes the stale text. The code field stayed empty.
+
+What `WebClipboard` (`game/core/web_clipboard.gd`) does, **only inside a frame** (a tab and the desktop keep the
+engine's own calls, so they are unchanged):
+
+- **Paste.** A capture-phase `keydown` for Ctrl/Cmd+V on the canvas is stopped before the engine sees it, so nobody
+  cancels it. The browser pastes into the focused canvas (Chromium fires `paste` on a non-editable focused element),
+  the page hands `clipboardData` to the game, and the next frame the text goes into the focused `LineEdit` or
+  `TextEdit` (one line, the field's `max_length`, over the selection, `text_changed` emitted). A paste that lands in
+  the engine's own touch text box (a phone's long press) is left to the engine.
+- **Copy by a button** (`copy_text`): a hidden read-only text box and `execCommand("copy")` first (it needs the press
+  that is still fresh), then `navigator.clipboard.writeText`; the page reports `write` as `pending`, `ok` or the
+  error's name, and the game waits for it (two seconds at most). When it fails the screen shows the text in a
+  read-only field, selected, with "press Ctrl+C", and never says "copied".
+- **Ctrl+C** copies what the focused field has selected, or the text a screen offered, through a native `copy` event
+  (the same hidden box takes the focus for the key's default action).
+- **Share in Discord.** `discord-bridge.js` offers `window.deadnightDiscord.share`, the SDK's `shareLink`
+  (no OAuth scope; the answer is `{success, didCopyLink, didSendMessage}`), with the room's code in the message and as
+  `custom_id` (the SDK reads it back from the page address as `customId`; nothing joins by it yet). Discord's own window
+  sends the code, so it needs no clipboard at all. `openInviteDialog` invites to the channel, not to a room code.
+- **The probe line.** The Play together screen shows what the clipboard can do inside an Activity, and
+  `window.deadnight.clipboard` and `clipboard_detail` carry it (`clipboard api read no, write no, button copy ok,
+  Ctrl+V 1 seen 1 pasted, Ctrl+C 0 seen 0 copied`), so the maintainer can read Discord's real answer.
+
+The harness runs `--embed plain` (no `allow`), `clipboard-denied` (the Activity answers
+`Permissions-Policy: clipboard-read=(), clipboard-write=()`), `clipboard` (`allow="clipboard-read; clipboard-write"`),
+`none` (a tab: no layer, the engine's own copy) and `--exec-refused` (only a native Ctrl+C can copy). It makes a night
+without starting a game server (the proxy answers `/start` itself), so a run does not use the live backend's servers. The
+before run, on `main`: paste 0, field empty, "Code copied." with the clipboard unchanged; after: both hold in every mode.
+
+Not run: Discord's real clients (desktop, browser, phone). What Discord's iframe grants is not in its docs; the line
+above says it. A real long press on a phone is not covered (its keyboard is the engine's text box).
+
 ## Sources
 
 - [Exporting for the Web](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)
 - [Playwright for Python](https://playwright.dev/python/docs/intro)
+- [Embedded App SDK: commands](https://docs.discord.com/developers/developer-tools/embedded-app-sdk) (`shareLink`, `openInviteDialog`)
+- [Permissions-Policy: clipboard-write](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy/clipboard-write)
 - [Audio streams (Godot): playback type, samples and their limits](https://docs.godotengine.org/en/stable/tutorials/audio/audio_streams.html)

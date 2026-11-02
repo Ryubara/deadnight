@@ -127,10 +127,12 @@ func _shoot_command(_tick: int) -> NightCommand:
 		if d < best and zombie["mode"] != ZombieBody.Mode.DYING:
 			best = d
 			target = zombie["position"]
-	command.dir = (
-		(target + Vector3(0.0, Autopilot.CHEST, 0.0) - eye).normalized()
-		if best < INF
-		else Vector3(-0.7, 0.0, -0.7)
+	command.aim_along(
+		(
+			(target + Vector3(0.0, Autopilot.CHEST, 0.0) - eye).normalized()
+			if best < INF
+			else Vector3(-0.7, 0.0, -0.7)
+		)
 	)
 	command.fire = true
 	command.muzzle = eye + command.dir * 0.8

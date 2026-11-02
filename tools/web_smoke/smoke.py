@@ -5,7 +5,8 @@ wardrobe and comes back, starts a night with the keyboard, plays it for a while,
 page error or failed request. It also writes what it saw: screenshots, the load time, frame times, and the zombie
 crowd the game reports through `window.deadnight` (game/core/web_probe.gd).
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py build/web build/smoke
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py build/web build/smoke
 
 The first argument can also be a URL (https://...): the run then opens the deployed game instead of serving a folder,
 and `load_to_menu_s` is the time over that connection.
@@ -34,8 +35,9 @@ VIEWPORT = {"width": 1280, "height": 720}
 LOAD_TIMEOUT_S = 150
 SCREEN_TIMEOUT_S = 40
 # Play builds the lot and warms up everything the night draws before it runs (docs/research/first-use-hitches.md):
-# about 31 s in Chrome with a GPU, far more with a software renderer.
-NIGHT_LOAD_TIMEOUT_S = 150
+# about 31 s in Chrome with a GPU, far more with a software renderer: on the CI runners it took 82 s to 107 s, and one
+# slower runner (the menu itself took 16 s, not 9 s to 13 s) was still at 83 % of the loading bar at 150 s.
+NIGHT_LOAD_TIMEOUT_S = 300
 NIGHT_SECONDS = 45
 WALK_LEG_S = 4.0
 WALK_KEYS = ("w", "d", "s", "a")  # a square, so the player does not stand facing one wall
@@ -195,10 +197,48 @@ def menu_item(page: Page, tab: str, steps: int = 0) -> None:
         press(page, "ArrowDown")
 
 
+def reach_menu(page: Page) -> None:
+    """The page is loading: waits for the main menu, clicks the canvas (that gives it the keyboard) and lets the menu
+    settle."""
+    wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
+    page.mouse.click(5, 5)
+    page.wait_for_timeout(2500)
+
+
+def back_to_menu(page: Page) -> None:
+    """Escape until the menu is the screen again (a screen opened by mistake, a key lost on the way)."""
+    deadline = time.monotonic() + SCREEN_TIMEOUT_S
+    while probe(page).get("screen") != "main_menu" and time.monotonic() < deadline:
+        press(page, "Escape")
+        page.wait_for_timeout(1000)
+    page.wait_for_timeout(1500)
+
+
+def open_together(page: Page) -> None:
+    """From the main menu to the Play together screen (the first item of the Play tab)."""
+    menu_item(page, "Play")
+    press(page, "Enter")
+    wait_for(page, "the Play together screen", lambda s: s.get("screen") == "together_screen", SCREEN_TIMEOUT_S)
+    page.wait_for_timeout(1500)
+
+
+def open_settings(page: Page) -> None:
+    """From the main menu to the settings screen (the first item of the More tab)."""
+    menu_item(page, "More")
+    press(page, "Enter")
+    wait_for(page, "settings", lambda s: s.get("screen") == "settings_screen", SCREEN_TIMEOUT_S)
+    page.wait_for_timeout(1500)
+
+
 def start_solo(page: Page) -> None:
-    """Presses Solo on the Play tab: the one way to start a night alone."""
+    """Presses Solo on the Play tab: the one way to start a night alone. Every probe that needs a night starts it
+    here, so a change to the menu is one edit and `startup_check.py` (the web job) fails on it."""
     menu_item(page, "Play", 2)
     press(page, "Enter")
+
+
+def wait_for_night(page: Page, seconds: float = NIGHT_LOAD_TIMEOUT_S) -> dict:
+    return wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), seconds)
 
 
 def main() -> int:

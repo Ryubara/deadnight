@@ -44,13 +44,15 @@ func _process(delta: float) -> void:
 
 ## What the top screen shows: its scene name, and for a night the round, the zombies still to
 ## kill, the zombies alive on the lot, the players in the frame, the player's own id and (online)
-## the round trip, the camera's yaw (radians) and whether the player's body is drawn between physics
-## ticks. Plain values only, so a page can read them.
+## the round trip, whether the menu is open, the mouse mode, the camera's yaw (radians) and whether
+## the player's body is drawn between physics ticks. Plain values only, so a page can read them.
 static func snapshot(top: Control) -> Dictionary:
 	var data := {
 		"screen": "none",
 		"night": false,
 		"running": false,
+		"paused": false,
+		"mouse_mode": 0,
 		"over": false,
 		"round": 0,
 		"remaining": 0,
@@ -62,15 +64,36 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
+		"code_text": "",
 		"touch": false,
+		"reticle": false,
 		"tab": "",
 		"stage": "",
-		"gamepad": ""
+		"gamepad": "",
+		"activity_room": "",
+		"activity_code": "",
+		"controller_hint": false,
+		"clipboard": "",
+		"clipboard_detail": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var clipboard := WebClipboard.read()  # inside a frame only: what copy and paste can do there
+	data["clipboard"] = WebClipboard.note(clipboard)
+	data["clipboard_detail"] = WebClipboard.detail(clipboard)
+	var room := ActivityRoom.current
+	if room != null:
+		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
+		data["activity_code"] = str(room.lobby.get("code", ""))
+	var tree := top.get_tree()
+	var hint: ControllerHint = (
+		tree.root.find_child("ControllerHint", true, false) as ControllerHint
+		if tree != null
+		else null
+	)
+	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
@@ -82,12 +105,17 @@ static func snapshot(top: Control) -> Dictionary:
 			together.invite_code.text if together.invite_code.is_visible_in_tree() else ""
 		)
 		data["room_status"] = together.status.text
+		data["code_text"] = together.code_field.text  # what a paste put into the code field
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
 	var state := night_screen.night.state
 	data["night"] = true
 	data["running"] = night_screen.night.running
+	# The menu is open, and what the engine says the mouse is (2 is captured: a browser's pointer
+	# lock), so a browser test sees the first Esc open the menu.
+	data["paused"] = night_screen.night.is_paused()
+	data["mouse_mode"] = Input.mouse_mode
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
@@ -95,6 +123,7 @@ static func snapshot(top: Control) -> Dictionary:
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
 	data["touch"] = night_screen.touch_active()
+	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
