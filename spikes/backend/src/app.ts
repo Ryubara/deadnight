@@ -34,7 +34,7 @@ export interface Deps {
   registry: GameServerRegistry;
   /** Lobby clock and expiry times; tests inject their own. */
   now?: () => number;
-  lobbyLimits?: LobbyLimits;
+  lobbyLimits?: Partial<LobbyLimits>;
   logger?: boolean | object;
 }
 
@@ -213,9 +213,30 @@ export function buildApp(deps: Deps): FastifyInstance {
     maxPlayers: lobby.maxPlayers,
     visibility: lobby.visibility,
     players: lobby.players,
-    members: lobby.members,
+    // Seats in the order people came (they close up when someone leaves); `away` is a member whose screen has not
+    // polled for a few seconds.
+    members: lobby.members.map((m, i) => ({
+      userId: m.userId,
+      name: m.name,
+      seat: i + 1,
+      host: m.userId === lobby.hostId,
+      away: lobbies.isQuiet(lobby, m.userId),
+    })),
     state: lobby.state,
+    round: lobby.round,
     matchId: lobby.match?.id ?? null,
+  });
+
+  // What a code says before its holder presses Join: no ids and nothing to join with, so anyone signed in may look.
+  const lobbyPreview = (lobby: Lobby) => ({
+    code: lobby.code,
+    state: lobby.state,
+    round: lobby.round,
+    players: lobby.players ?? lobby.members.length,
+    maxPlayers: lobby.maxPlayers,
+    full: lobbies.isFull(lobby),
+    hostName: lobby.members.find((m) => m.userId === lobby.hostId)?.name ?? "",
+    names: lobby.members.map((m) => m.name),
   });
 
   const member = async (userId: string) => {
@@ -251,6 +272,18 @@ export function buildApp(deps: Deps): FastifyInstance {
       const found = lobbies.findByCode(request.body.code);
       if (!found) throw new LobbyFailure("not_found");
       return lobbyView(lobbies.join(found.id, await member(request.userId)));
+    },
+  );
+
+  // Looking at a night by its code (a body, not the URL, so a code stays out of the request log): is it waiting for its
+  // host, or in round N, and is there room? It joins nobody.
+  app.post<{ Body: { code: string } }>(
+    "/lobbies/preview",
+    { onRequest: requireUser, schema: { body: { type: "object", required: ["code"], properties: { code: { type: "string", maxLength: 16 } } } } },
+    async (request) => {
+      const found = lobbies.findByCode(request.body.code);
+      if (!found) throw new LobbyFailure("not_found");
+      return lobbyPreview(found);
     },
   );
 
@@ -329,7 +362,15 @@ export function buildApp(deps: Deps): FastifyInstance {
 
   // ---- game servers (called by the headless Godot servers, never by players)
   app.post<{
-    Body: { id: string; url: string; activityPath: string; capacity: number; matchIds?: string[]; players?: Record<string, number> };
+    Body: {
+      id: string;
+      url: string;
+      activityPath: string;
+      capacity: number;
+      matchIds?: string[];
+      players?: Record<string, number>;
+      rounds?: Record<string, number>;
+    };
   }>(
     "/internal/servers/heartbeat",
     {
@@ -347,6 +388,8 @@ export function buildApp(deps: Deps): FastifyInstance {
             matchIds: { type: "array", maxItems: 1024, items: { type: "string", minLength: 1, maxLength: 64 } },
             // How many players each match has now (match id to count), for the lobby's room left.
             players: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 64 } },
+            // The round each match is in now (match id to round number), for a late joiner's "night in progress, round N".
+            rounds: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 10000 } },
           },
         },
       },
@@ -354,6 +397,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     async (request, reply) => {
       registry.heartbeat({ ...request.body, matchIds: request.body.matchIds ?? [] });
       for (const [matchId, players] of Object.entries(request.body.players ?? {})) lobbies.setPlayers(matchId, players);
+      for (const [matchId, round] of Object.entries(request.body.rounds ?? {})) lobbies.setRound(matchId, round);
       return reply.code(204).send();
     },
   );

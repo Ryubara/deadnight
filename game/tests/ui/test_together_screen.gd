@@ -187,3 +187,11 @@ func test_a_player_who_has_a_name_is_not_asked() -> void:
 	assert_str(screen.call("_chosen_name")).is_equal("Bo")
 	screen.queue_free()
 	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+
+
+func test_the_controller_note_shows_only_in_a_discord_activity() -> void:
+	var screen := _screen()
+	screen._process(2.0)
+	assert_str(screen._controller_note.text).is_empty()
+	assert_bool(screen._controller_note.visible).is_false()
+	screen.queue_free()

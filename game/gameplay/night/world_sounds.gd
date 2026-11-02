@@ -37,6 +37,7 @@ const BUYS := {
 	ShopItem.Kind.GRENADES: [&"buy_ammo"],
 	ShopItem.Kind.FUEL: [&"buy_fuel"],
 	ShopItem.Kind.TONIC: [&"buy_tonic"],
+	ShopItem.Kind.UPGRADE: [&"buy_recut"],
 	ShopItem.Kind.DOOR: [&"door_unlock", &"door_buy"],
 }
 const BUY_GAP := 0.2
@@ -85,6 +86,7 @@ func setup(
 	generator.configure(fuel)
 	_running = not generator.empty
 	_start_hum()
+	Audio.start_bed(BED, true)
 	if state.is_active():
 		Audio.start_bed(BED)
 	state.event_received.connect(_on_event)

@@ -7,6 +7,9 @@ extends RefCounted
 ## A panel asks for a route or an effect: `solo`, `together`, `quick_join`, `settings`,
 ## `credits` or `quit`.
 signal action(id: StringName)
+## Emitted just before `action`: the panel on show writes what it holds before the route leaves.
+signal leaving
+
 ## The player's name (or anything else the plate shows) changed: the plate shows it again.
 signal profile_changed
 
@@ -20,4 +23,5 @@ var compact := false
 
 
 func request(id: StringName) -> void:
+	leaving.emit()
 	action.emit(id)

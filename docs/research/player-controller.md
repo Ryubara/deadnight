@@ -125,7 +125,7 @@ All in `player_tuning_default.tres` (a `PlayerTuning` resource); metres, seconds
 | Shoulder swap | critically damped spring at 16 rad/s | About 0.3 s; the camera glides across, no cut. |
 | Camera follow | spring at 22 rad/s (10 vertically, 16 while sprinting) on the body drawn between its last two physics ticks | Smooth at any frame rate; trails a runner by 2 v / w. |
 | Camera collision | sphere sweeps (0.25 m) sideways to the shoulder, back along the view, then straight to the lens; pulled in at once, let out at 6 rad/s | The camera slides in or comes forward instead of entering a wall; the body hides when the lens is within 0.9 m of the head. |
-| Footsteps | one `footstep` signal per 1.9 m on the ground | Distance-based so it matches the animation at any speed; audio hooks onto the signal. |
+| Footsteps | one `footstep` signal per 1.5 m on the ground | Distance-based so it matches the animation at any speed; audio hooks onto the signal. |
 
 ## Animation
 
@@ -138,9 +138,9 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
   Swing, Equip, Unequip), laid over `body` by a Blend2 filtered to the 32 `upper_bones` of `clips.json`. The filter
   paths take the skeleton path from the clips' own tracks, so a rebuild that moves the skeleton does not break them.
 - `full`: a OneShot over both for HitReact and Death (`play_full_body`).
-- **No foot sliding:** the Run end of the blend plays at ground speed / 5.5 (the Run clip's planted-foot speed at scale
-  1, estimated from the foot bone's travel); Idle and Walk play at their own pace. Sprint plays Run 1.27x, in every
-  direction: the body faces where it goes, so one clip serves them all
+- **No foot sliding:** the Run end of the blend plays at ground speed / 4.3 (the Run clip's planted-foot speed at scale
+  0.8, [measured](run-clip-speed.md) off the clip; it was 5.5, estimated); Idle and Walk play at their own pace.
+  Sprint plays Run 1.63x, in every direction: the body faces where it goes, so one clip serves them all
   ([character controller](character-controller.md)).
 - Loops and event frames come from `clips.json` (glTF has no loop flag and no events); only Jump_Idle, a kit clip the
   spec does not list, is looped by name. Events are a frame check on the playing upper clip: `clip_event(clip,

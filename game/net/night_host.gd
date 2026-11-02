@@ -267,6 +267,8 @@ func _on_disconnected(transport_id: int) -> void:
 	if peer == null or peer.player_id == 0:
 		return
 	_by_player.erase(peer.player_id)
+	if server != null:
+		server.pings.erase(peer.player_id)
 	var on_purpose := listener.left_on_purpose(transport_id)
 	if (
 		server != null
@@ -326,8 +328,11 @@ func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 				return
 			server.submit(peer.player_id, command)
 		NetWire.Type.PING:
-			if data.size() == 5:
+			if data.size() == NetWire.PING_SIZE:
 				listener.send(transport_id, NetWire.pong(data.decode_u32(1), server.tick_count))
+				var rtt := NetWire.read_ping_rtt(data)
+				if rtt >= 0:
+					server.pings[peer.player_id] = rtt
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))
@@ -525,9 +530,25 @@ func _send_ticks(frame: Dictionary) -> void:
 			func(event: Dictionary) -> bool: return _is_for(event, peer.player_id)
 		)
 		out.append(FrameDelta.diff(peer.last_frame, frame))
-		peer.last_frame = frame
-		listener.send(peer.transport_id, NetWire.tick(server.tick_count, out))
+		# A tick the peer's socket would not take (it stopped reading, a frozen client, and its buffer
+		# is full) is lost, and the next delta would be against a frame it never had: the next frame
+		# is whole instead.
+		var sent := listener.send(peer.transport_id, NetWire.tick(server.tick_count, out))
+		peer.last_frame = frame if sent else {}
+		_note_delivery(peer, sent)
 	_events.clear()
+
+
+## One line in the log when a peer stops taking ticks and one when it takes them again, with how
+## many it missed: the only trace a client's freeze leaves on the server.
+func _note_delivery(peer: HostPeer, sent: bool) -> void:
+	if not sent:
+		if peer.missed_ticks == 0:
+			_log("peer_stalled", {"player": peer.player_id})
+		peer.missed_ticks += 1
+	elif peer.missed_ticks > 0:
+		_log("peer_recovered", {"player": peer.player_id, "ticks_missed": peer.missed_ticks})
+		peer.missed_ticks = 0
 
 
 # --- Log ---
@@ -591,6 +612,8 @@ class HostPeer:
 	var player_id := 0
 	## The frame this client last had, the baseline of the next delta.
 	var last_frame: Dictionary = {}
+	## Ticks in a row the socket would not take (the client stopped reading).
+	var missed_ticks := 0
 	## The step at which a refused client is hung up on, or -1.
 	var close_at := -1
 	var refused := false

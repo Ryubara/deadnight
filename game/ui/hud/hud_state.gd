@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 class_name HudState
 extends RefCounted
 ## Everything the HUD shows, as plain data. Network-first: it is fed rules events (plain
@@ -30,6 +31,12 @@ const PROMPT := &"prompt"
 const MARKERS := &"markers"
 const BOSS := &"boss"
 const SPECIAL := &"special"
+## Each player's kills, downs and ping, and the night's clock: what the scoreboard shows beyond the
+## party's points.
+const STATS := &"stats"
+
+## A ping the server has not reported: a night alone, or before the first answer.
+const NO_PING := -1
 
 ## The tank counts as low at or under this fraction (the fuel tuning's `low_fraction`).
 const LOW_FRACTION := 0.25
@@ -79,7 +86,11 @@ var circuits: Dictionary[StringName, bool] = {}
 ## "look": Dictionary}, the local player included. The seat (0 to 3) picks the player's colour (the
 ## armband's); the server gives the lowest free one, so the state does too until it is told
 ## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
+## "kills", "downs" and "ping" (milliseconds, `NO_PING` when the night has no link to measure) are
+## the server's counts, set from its frames and snapshot (`set_player_stats`), never counted here.
 var team: Dictionary[int, Dictionary] = {}
+## Whole seconds the night has run, as the server counts them (a break and a round both count).
+var night_clock := 0
 ## The interaction in reach: {} for none, else {"kind", "label", "cost"} (see `set_prompt`).
 var prompt: Dictionary = {}
 var game_over_reason := &""
@@ -208,6 +219,25 @@ func set_markers(list: Array[Dictionary]) -> void:
 	_flush()
 
 
+## The server's counts for one player: the zombies they killed, the times they went down, and the
+## round trip it last heard from them (`NO_PING` for none). Whole counts, not changes, so a frame
+## said twice changes nothing.
+func set_player_stats(player_id: int, kills: int, downs: int, ping := NO_PING) -> void:
+	var member := _member(player_id)
+	if member["kills"] != kills or member["downs"] != downs or member["ping"] != ping:
+		member["kills"] = kills
+		member["downs"] = downs
+		member["ping"] = ping
+		_mark(STATS)
+	_flush()
+
+
+## The night's clock in whole seconds, from the server.
+func set_night_clock(seconds: int) -> void:
+	_assign(&"night_clock", maxi(seconds, 0), STATS)
+	_flush()
+
+
 func local_name() -> String:
 	return str(team.get(local_player_id, {}).get("name", ""))
 
@@ -295,11 +325,14 @@ func load_snapshot(data: Dictionary) -> void:
 		var saved: Dictionary = players[player_id]
 		var member := _member(int(player_id))
 		if kept.has(int(player_id)):
-			for field in ["name", "seat", "look"]:
+			for field in ["name", "seat", "look", "ping"]:
 				member[field] = kept[int(player_id)][field]
 		member["downed"] = bool(saved.get("downed", false))
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
+		member["kills"] = int(saved.get("kills", 0))
+		member["downs"] = int(saved.get("downs", 0))
+	night_clock = floori(float(data.get("night_time", 0.0)))
 	# The server's names (a WELCOME's `names`): every client shows the same ones.
 	var named: Variant = data.get("names", {})
 	if typeof(named) == TYPE_DICTIONARY:
@@ -319,7 +352,7 @@ func load_snapshot(data: Dictionary) -> void:
 	_set_fuel(float(generator.get("fuel", fuel)))
 	for circuit_id in generator.get("circuits", {}):
 		circuits[StringName(circuit_id)] = bool(generator["circuits"][circuit_id])
-	for topic in [ROUND, TEAM, FUEL, HEALTH, POINTS, PROMPT]:
+	for topic in [ROUND, TEAM, FUEL, HEALTH, POINTS, PROMPT, STATS]:
 		_mark(topic)
 	release()
 
@@ -604,6 +637,9 @@ func _member(player_id: int) -> Dictionary:
 			"grenades": 0,
 			"seat": _free_seat(),
 			"look": {},
+			"kills": 0,
+			"downs": 0,
+			"ping": NO_PING,
 		}
 		_mark(TEAM)
 	return team[player_id]

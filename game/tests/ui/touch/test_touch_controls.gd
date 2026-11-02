@@ -370,3 +370,15 @@ class PauseSpy:
 	func _input(event: InputEvent) -> void:
 		if event is InputEventAction and event.is_action_pressed(&"pause"):
 			pressed += 1
+
+
+func test_the_scoreboard_button_is_held_while_the_thumb_is_on_it() -> void:
+	var point := _fixture.at(TouchLayout.SCOREBOARD)
+	await _fixture.touch(0, point)
+	assert_bool(Input.is_action_pressed(&"scoreboard")).is_true()
+	# Held, not toggled: it stays down as long as the finger does.
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"scoreboard")).is_true()
+	await _fixture.lift(0, point)
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"scoreboard")).is_false()
