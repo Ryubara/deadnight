@@ -6,9 +6,12 @@ the frame time, the flash's age, and what the flash did to the picture (game/cor
 without the flash and compares, so the size and brightness are the flash's own pixels, in the renderer the game is
 played in). Then it fires once more with the canvas copied frame by frame around the muzzle, for the frame sheet.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/flash.py build/web build/flash
-    uv run --with playwright==1.64.1 python tools/web_smoke/flash.py build/web build/flash --gpu --unpaced
-    uv run --with playwright==1.64.1 python tools/web_smoke/flash.py https://... build/flash --weapons pistol,rifle
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/flash.py build/web build/flash
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/flash.py build/web build/flash --gpu --unpaced
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/flash.py https://... build/flash --weapons pistol,rifle
 
 Writes `rows.json` (every row), `result.json` (the numbers per weapon and the floors they were held to),
 `clip_<weapon>/frame_NNNN.png` and `sheet.png` into the output folder. Exits 1 when a weapon's flash is under a floor

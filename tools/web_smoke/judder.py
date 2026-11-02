@@ -9,8 +9,10 @@ writes the rows into `window.deadnight.frames`). Then it reports, for the stretc
   the frames' own times (so a slow or uneven frame does not count; a body that steps does);
 - the frame times and how many physics ticks fell in each frame.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/judder.py build/web build/judder
-    uv run --with playwright==1.64.1 python tools/web_smoke/judder.py https://... build/judder --gpu --unpaced
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/judder.py build/web build/judder
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/judder.py https://... build/judder --gpu --unpaced
     python tools/web_smoke/judder.py build/judder/frames.csv -   # the numbers again from a run's rows
 
 `--gpu` uses the installed Chrome and the machine's GPU (the headless shell is software only, 10 to 15 fps);
@@ -33,16 +35,15 @@ from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 from smoke import (
-    LOAD_TIMEOUT_S,
-    NIGHT_LOAD_TIMEOUT_S,
     SOFTWARE_GL,
     UNPACED,
     VIEWPORT,
     gl_info,
     probe,
+    reach_menu,
     serve,
     start_solo,
-    wait_for,
+    wait_for_night,
 )
 
 ROW = 8  # numbers per frame, see judder_probe.gd
@@ -100,11 +101,9 @@ MIN_FRAMES = 60  # a frame is in a stretch while the soldier moves at this share
 
 def play(page, url: str) -> None:
     page.goto(url, wait_until="commit")
-    wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
-    page.mouse.click(5, 5)
-    page.wait_for_timeout(2500)
+    reach_menu(page)
     start_solo(page)
-    wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
+    wait_for_night(page)
     page.wait_for_timeout(2000)
 
 

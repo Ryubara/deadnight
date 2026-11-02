@@ -164,3 +164,31 @@ weapons.
   burst failed on it. The start is the lower of the slot plus the rise and the previous row's bottom plus the gap.
 - Fade a new row in with `self_modulate`, which multiplies with the `modulate` the owner already uses for its own fade.
 - A capture of a slide needs 30 fps: at 10 fps the 0.18 s slide is two frames.
+
+## The challenge prompt (#399)
+
+What building `HudChallenge` (the paper ticket that says a challenge moved) taught; the design is in
+[the prompt](../design/progression.md#the-progress-prompt-in-the-night).
+
+- **The free band was one card tall.** Centred on the left edge the card overlapped the players' column at 1536 x 864
+  with four players, and then the objective's two lines at its top. The layout test (the busiest HUD at every canvas,
+  with the longest challenge words) found both; the fix is structural, not a nudge: the card starts a third of the way
+  down and `Hud._fit_challenge` moves it down to a gap under the last card above it (`item_rect_changed`), so a taller
+  objective pushes it instead of being overlapped.
+- **The prompt is a part like the others: events in, nothing out.** `HudChallenge` hears `challenge_advanced` through
+  `state.event_applied` and holds no game object; the link that makes those events (`ChallengeHudLink`) lives with the
+  challenges. Its queue (`ChallengePromptQueue`) is plain data and a clock the caller moves, so a test steps 50 ms at a
+  time and a capture repeats frame for frame.
+- **Time in a test is a sum of floats.** Running 2.4 s in 48 steps of 0.05 did not reach a hold of 2.4 s; the tests
+  step one more tick than the constant, and measure lives between "appears" and "gone" rather than at exact edges.
+- **A fresh queue per measurement.** Measuring a lone prompt after another test step reused a queue that still had one
+  waiting, which shortens holds: the busy-queue rule worked, the test was wrong.
+- **Bound every loop that waits for a count.** A test that waited for four prompts when the queue caps three waiting
+  (the fourth is dropped, by design) hung the whole run until killed. Loop a fixed number of steps and assert on what
+  was seen.
+- **A `node_added` listener outlives its test.** The "makes no nodes" check connected a lambda to the tree and left it;
+  later tests then called `is_ancestor_of` on a freed HUD (`SCRIPT ERROR` for every node added). Disconnect at the end,
+  and guard with `is_instance_valid`.
+- **Captures:** a Movie Maker frame is about `seconds x 10 + 6` at 10 fps here (the scene's own seconds start after the
+  night builds). `--touch` after `--` turns the phone's controls on in a desktop capture, so the prompt is judged
+  against the real buttons.

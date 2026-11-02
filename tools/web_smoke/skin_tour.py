@@ -6,7 +6,8 @@ screenshots during every transition, checks each for a frame that is all black o
 usually does one of those), and records the page's frame times on the menu and through each transition at the
 viewport's size (1080p by default). It is the browser half of issue #82; `smoke.py` is the CI gate.
 
-    uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/skin_tour.py build/web build/skin-tour
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/skin_tour.py build/web build/skin-tour
         [--browser chromium|chrome|firefox] [--size 1920x1080]
 
 `chromium` is the headless shell (software GL), `chrome` the installed Chrome (this machine's GPU), `firefox` needs
@@ -25,7 +26,17 @@ from pathlib import Path
 from PIL import Image
 from playwright.sync_api import ConsoleMessage, Page, sync_playwright
 from playwright.sync_api import Error as PlaywrightError
-from smoke import MENU_TABS, SOFTWARE_GL, UNPACED, mute_firefox_prefs, probe, serve, stats, wait_for
+from smoke import (
+    SOFTWARE_GL,
+    UNPACED,
+    back_to_menu,
+    menu_item,
+    mute_firefox_prefs,
+    serve,
+    start_solo,
+    stats,
+    wait_for,
+)
 
 LOAD_TIMEOUT_S = 150
 SCREEN_TIMEOUT_S = 40
@@ -89,39 +100,13 @@ def press(page: Page, key: str) -> None:
     page.wait_for_timeout(SETTLE_MS)
 
 
-def to_item(page: Page, tab: str, steps: int) -> None:
-    """Walks the menu to an item of a tab: Q and E walk the tabs (wrapping) to `tab`, the tab's first control takes the
-    focus whatever it was, and `steps` presses of Down reach the item. The game reports the tab it is on, a few times a
-    second, so each press waits for the report to change."""
-    for _ in range(MENU_TABS):
-        page.wait_for_timeout(400)
-        before = probe(page).get("tab")
-        press(page, "e")
-        now = wait_for(page, "the next tab", lambda s, was=before: s.get("tab") != was, SCREEN_TIMEOUT_S)
-        if now.get("tab") == tab:
-            break
-    else:
-        raise TimeoutError(f"the menu never reached the {tab} tab; it reports {probe(page)}")
-    for _ in range(steps):
-        press(page, "ArrowDown")
-
-
-def back_to_menu(page: Page) -> None:
-    """Escape until the menu is the screen again (a screen opened by mistake, a key lost on the way)."""
-    deadline = time.monotonic() + SCREEN_TIMEOUT_S
-    while probe(page).get("screen") != "main_menu" and time.monotonic() < deadline:
-        press(page, "Escape")
-        page.wait_for_timeout(1000)
-    page.wait_for_timeout(1500)
-
-
 def open_screen(page: Page, tab: str, steps: int, expect: str, act) -> None:
     """Walks to the menu item `steps` below the first of `tab`, presses Enter, runs `act(start)` while the screen opens, and checks
     the screen is `expect`. A key lost on a slow frame lands on another item (it opens another screen): the run goes
     back and walks again, up to `ATTEMPTS` times. Solo is never reached by a lost key (its screen is `night_screen`),
     so it is asked for only once, at the end."""
     for attempt in range(ATTEMPTS):
-        to_item(page, tab, steps)
+        menu_item(page, tab, steps)
         start = clock(page)
         press(page, "Enter")
         act(start)
@@ -182,8 +167,7 @@ def run(page: Page, url: str, out: Path, result: dict, problems: list[str]) -> N
     back_to_menu(page)
 
     # Play builds the night behind the iris, so its frames are the loading's, not the iris's: only the shots are kept.
-    to_item(page, "Play", 2)
-    press(page, "Enter")
+    start_solo(page)
     for index in range(SHOTS_PER_TRANSITION):
         shot(page, out, f"play_iris_{index}", report, problems)
 

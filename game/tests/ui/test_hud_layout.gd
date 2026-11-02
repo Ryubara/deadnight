@@ -58,10 +58,29 @@ func _busy_hud(canvas: Vector2, worst := false, mirrored := false) -> HudFixture
 		hud.events_feed.push(text)
 	hud.notices.push("CAL CONNECTED")
 	hud.fuel.peek()
+	# The challenge prompt, with the longest words a challenge has, on the left edge.
+	(
+		state
+		. apply_event(
+			{
+				"type": HudChallenge.EVENT,
+				"id": &"d_smg_50",
+				"family": ChallengeDef.Family.DAILY,
+				"text": "Put down 50 zombies with the submachine gun",
+				"before": 24,
+				"after": 25,
+				"target": 50,
+				"checkpoint": 50,
+				"completed": false,
+				"rung": 0,
+				"rungs": 0,
+			}
+		)
+	)
 
 	for amount in [100, 60, 130, 60]:
 		hud.gains.add_gain(&"kill", amount)
-	fixture.advance(HudBanner.IN_TIME + 0.1)
+	fixture.advance(maxf(HudBanner.IN_TIME, ChallengePromptQueue.IN_SECONDS) + 0.1)
 	if worst:
 		fixture.fill_worst_case()
 	return fixture
