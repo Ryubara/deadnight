@@ -340,6 +340,13 @@ Soldier's library when the tree is built.
   `TimeSeek`. Every frame `PlayerAnimation` reads the Run's place
   (`parameters/body/locomotion/move/run/current_position`, after the tree's last step) plus that step
   (`current_delta`) and seeks the carry there: both clips land on the same frame, at whatever pace the Run plays.
+- **Where.** The weight and the clip's place are `SprintCarry` (`game/gameplay/player/sprint_carry.gd`, no tree in
+  it); the Sprint file is added to the Soldier's library by `SoldierClipFile`, which loads the repair, grenade,
+  aim-move and sprint files alike.
+- **With the hand grips (#507).** The carry keys no finger, so `HandGripPose` closes the fingers over it. The rifle's
+  and shotgun's carry reach the old hold's `support` point and the weapon sits at the old hold; #507 moves both
+  (`HandGrip.hold` and `left_hand`), so after it merges the Sprint clips for the long guns are rebuilt against the
+  new points (`soldier_clips.py`, `SPRINT_CARRY`): until then the gun hides behind the arm and head in a sprint.
 - **Checked:** `game/tests/player/test_sprint_carry.gd` (the clips are on Run's cycle; the carry plays only sprinting
   on the ground, holds in the air and never starts there; its phase matches Run to 0.002 s; it catches up after a
   landing without jumping; aim, a hip shot, a reload and a swing take it out within 0.15 s; the first shot's `muzzle`
