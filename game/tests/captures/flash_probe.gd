@@ -15,11 +15,13 @@ extends Node
 ##
 ##     gds godot -- --path game --write-movie <abs>/f.png --fixed-fps 60 --quit-after 700 \
 ##         res://tests/captures/flash_probe.tscn -- --out=<abs folder> [--weapons=pistol,smg]
-##         [--aim] [--no-depth] [--shots=1]
+##         [--aim] [--no-depth] [--spawn] [--look-down=DEG] [--shots=1]
 ## Options after the second `--`: `--out` a folder for the crops, `--weapons` a list (default the
 ## four hitscan guns and the flare gun), `--aim` shoots with the aim button held (zoomed), and
 ## `--no-depth` draws the flash without the depth test, to tell how much of it the gun and the
-## body hide.
+## body hide, and `--spawn` shoots from where the night starts instead of the open spot found (the
+## lamps there reach the ground with the most lights), `--look-down` tilts the view down by that
+## many degrees (the browser's first view looks down on the soldier).
 
 const WEAPONS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]
 const SETTLE_FRAMES := 40
@@ -38,6 +40,8 @@ var _target := Vector3.ZERO
 var _firing := false
 var _aim := false
 var _no_depth := false
+var _spawn := false
+var _look_down := 0.0
 var _out := ""
 var _weapons: Array[StringName] = []
 var _shots := 1
@@ -54,6 +58,10 @@ func _ready() -> void:
 			_aim = true
 		elif argument == "--no-depth":
 			_no_depth = true
+		elif argument == "--spawn":
+			_spawn = true
+		elif argument.begins_with("--look-down="):
+			_look_down = float(argument.trim_prefix("--look-down="))
 		elif argument.begins_with("--out="):
 			_out = argument.trim_prefix("--out=")
 		elif argument.begins_with("--shots="):
@@ -88,9 +96,14 @@ func _process(_delta: float) -> void:
 		return
 	if _frame == 8:
 		_spot = ShotSpot.find(_night.player())
-		_night.player().teleport(_spot.stand)
+		if not _spawn:
+			_night.player().teleport(_spot.stand)
 		var free := Vector3(-sin(_spot.free_yaw), 0.0, -cos(_spot.free_yaw))
-		_target = _spot.stand + Vector3(0.0, CHEST, 0.0) + free * 30.0
+		_target = (
+			_spot.stand
+			+ Vector3(0.0, CHEST - tan(deg_to_rad(_look_down)) * 30.0, 0.0)
+			+ free * 30.0
+		)
 		print("SPOT stand=%s free_yaw=%.2f aim=%s" % [_spot.stand, _spot.free_yaw, _aim])
 	if _frame < WARMUP_FRAMES:
 		_frame += 1
@@ -155,6 +168,8 @@ func _after_draw() -> void:
 	var row := _meter.measure(get_viewport(), flash)
 	row["weapon"] = weapon
 	row["n"] = since
+	# The drawn frame's number, the one Movie Maker puts in the file's name.
+	row["frame"] = Engine.get_frames_drawn()
 	_row(row)
 	if _out != "" and flash != null:
 		var name := "%s_%s_%d" % [weapon, "aim" if _aim else "hip", since]

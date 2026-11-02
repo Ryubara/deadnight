@@ -28,11 +28,12 @@ from pathlib import Path
 from judder import CLIP_ARM_JS, CLIP_COLUMNS, CLIP_INIT_JS, CLIP_READ_JS, play, save_clip
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
-from smoke import SOFTWARE_GL, UNPACED, VIEWPORT, gl_info, probe, serve
+from smoke import FRAME_TIMES_JS, LINKS_PER_FRAME_JS, SOFTWARE_GL, UNPACED, VIEWPORT, gl_info, probe, serve, stats
 
 FLOORS = Path(__file__).resolve().parents[2] / "game" / "tests" / "captures" / "flash_floors.json"
 WEAPONS = ["pistol", "smg", "rifle", "shotgun", "flare_gun"]
-CLIP_FRAMES = 12
+CLIP_FRAMES = 30
+SHEET_FRAMES = 8
 EQUIP_SETTLE_MS = 2500
 SHOT_WAIT_MS = 900
 
@@ -64,6 +65,26 @@ def fire(page, weapon: str, pixels: bool, clip: dict | None = None) -> list[dict
     if clip is not None:
         clip["sheet"] = page.evaluate(CLIP_READ_JS)
     return read_rows(page)
+
+
+def bench(page, weapon: str, seconds: float) -> dict:
+    """Holds the trigger for `seconds` and reports the frame times and the GL programs linked meanwhile."""
+    page.evaluate("(id) => { window.deadnight.flashGive = id; }", weapon)
+    for _ in range(100):
+        if page.evaluate("() => window.deadnight.flashHave") == weapon:
+            break
+        page.wait_for_timeout(100)
+    page.wait_for_timeout(EQUIP_SETTLE_MS)
+    page.evaluate("() => { window.__linkFrames = []; }")
+    page.mouse.move(640, 360)
+    page.mouse.down()
+    deltas = page.evaluate(FRAME_TIMES_JS, seconds)
+    page.mouse.up()
+    links = page.evaluate("() => window.__linkFrames")
+    out = stats(deltas)
+    out["programs_linked"] = sum(row[1] for row in links)
+    out["frames_over_50ms"] = sum(1 for d in deltas if d > 50)
+    return out
 
 
 def first_flash(rows: list[dict]) -> list[dict]:
@@ -101,7 +122,8 @@ def summarise(run: list[dict]) -> dict:
 
 def problems(weapon: str, summary: dict, floors: dict) -> list[str]:
     out = []
-    for key, floor in floors["min"].items():
+    minimum = {**floors["min"], **floors.get("web", {}).get("min", {})}
+    for key, floor in minimum.items():
         if key in summary and summary[key] < floor:
             out.append(f"{weapon}: {key} {summary[key]} is under the floor {floor}")
     for key, ceiling in floors["max"].items():
@@ -110,25 +132,43 @@ def problems(weapon: str, summary: dict, floors: dict) -> list[str]:
     return out
 
 
+def first_lit(frames: list) -> int:
+    """The index of the first frame of the clip in which the flash shows: warm hot pixels, or the picture suddenly brighter."""
+    from PIL import ImageStat
+
+    base = ImageStat.Stat(frames[0].convert("L")).mean[0]
+    for i, frame in enumerate(frames):
+        if ImageStat.Stat(frame.convert("L")).mean[0] - base > 6:
+            return i
+        pixels = (
+            frame.convert("RGB").get_flattened_data()
+            if hasattr(frame, "get_flattened_data")
+            else frame.convert("RGB").getdata()
+        )
+        if sum(1 for r, g, b in pixels if r > 235 and g > 170 and b < 200) >= 3:
+            return i
+    return 0
+
+
 def make_sheet(out: Path, weapons: list[str]) -> None:
+    """One row per weapon: the frame before the flash shows, then the next frames."""
     from PIL import Image, ImageDraw
 
     rows = []
     for weapon in weapons:
-        folder = out / f"clip_{weapon}"
-        frames = sorted(folder.glob("frame_*.png"))
+        frames = [Image.open(f) for f in sorted((out / f"clip_{weapon}" / "clip").glob("frame_*.png"))]
         if frames:
-            rows.append((weapon, [Image.open(f) for f in frames]))
+            start = max(first_lit(frames) - 1, 0)
+            rows.append((weapon, frames[start : start + SHEET_FRAMES]))
     if not rows:
         return
     width, height = rows[0][1][0].size
-    cols = min(len(rows[0][1]), CLIP_FRAMES)
-    sheet = Image.new("RGB", (width * cols, height * len(rows)))
+    sheet = Image.new("RGB", (width * SHEET_FRAMES, height * len(rows)))
     draw = ImageDraw.Draw(sheet)
     for r, (weapon, frames) in enumerate(rows):
-        for c, frame in enumerate(frames[:cols]):
+        for c, frame in enumerate(frames):
             sheet.paste(frame, (c * width, r * height))
-            draw.text((c * width + 4, r * height + 4), f"{weapon} +{c}", fill=(255, 255, 255))
+            draw.text((c * width + 4, r * height + 4), f"{weapon} {c - 1:+d}", fill=(255, 255, 255))
     sheet.save(out / "sheet.png")
 
 
@@ -141,6 +181,7 @@ def main() -> int:
     parser.add_argument("--unpaced", action="store_true")
     parser.add_argument("--no-pixels", action="store_true", help="timings only: no frame is drawn twice")
     parser.add_argument("--no-clip", action="store_true", help="skip the frame sheet")
+    parser.add_argument("--bench", type=float, default=0.0, help="hold the trigger this many seconds per weapon")
     parser.add_argument("--label", default="")
     parser.add_argument("--flag", action="append", default=[], help="an extra Chromium flag")
     args = parser.parse_args()
@@ -162,10 +203,13 @@ def main() -> int:
             browser = p.chromium.launch(headless=True, args=SOFTWARE_GL + args.flag)
         page = browser.new_page(viewport=VIEWPORT)
         page.add_init_script(CLIP_INIT_JS)
+        page.add_init_script("(" + LINKS_PER_FRAME_JS.strip() + ")();")
         try:
             play(page, url)
             result["gl"] = gl_info(page)
-            for weapon in weapons:
+            for weapon in weapons if args.bench else []:
+                result["weapons"][weapon] = bench(page, weapon, args.bench)
+            for weapon in [] if args.bench else weapons:
                 rows = fire(page, weapon, not args.no_pixels)
                 all_rows[weapon] = rows
                 run = first_flash(rows)

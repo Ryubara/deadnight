@@ -53,6 +53,29 @@ func _measure(viewport: Viewport, flash: MuzzleFlash) -> Dictionary:
 		return row
 	row["age"] = flash.age
 	row["light"] = flash.light.visible
+	# Where the light is, and how many other lights are on the map, for the light cap: a mesh
+	# reached by more than 8 drops some.
+	row["light_at"] = [
+		snappedf(flash.light.global_position.x, 0.01),
+		snappedf(flash.light.global_position.y, 0.01),
+		snappedf(flash.light.global_position.z, 0.01),
+	]
+	row["flash_at"] = [
+		snappedf(flash.global_position.x, 0.01),
+		snappedf(flash.global_position.y, 0.01),
+		snappedf(flash.global_position.z, 0.01),
+	]
+	row["quad_at"] = [
+		snappedf(flash.quads[1].global_position.x, 0.01),
+		snappedf(flash.quads[1].global_position.y, 0.01),
+		snappedf(flash.quads[1].global_position.z, 0.01),
+	]
+	var lights_on := 0
+	for node in flash.get_tree().root.find_children("*", "Light3D", true, false):
+		var other := node as Light3D
+		if other.is_visible_in_tree() and other != flash.light and not other is DirectionalLight3D:
+			lights_on += 1
+	row["lights_on"] = lights_on
 	var camera := viewport.get_camera_3d()
 	var box := _screen_box(flash, camera)
 	row["quad_w_px"] = box.size.x * scale.x

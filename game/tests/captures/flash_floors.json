@@ -1,5 +1,23 @@
 {
-  "note": "What a muzzle flash must show on the screen (1280x720), from the probe's rows. Held by tests/captures/flash_probe.gd (desktop), tools/web_smoke/flash.py (browser) and tests/weapons/test_flash_floors.gd. Set from measured values: see docs/design/shot-feedback.md.",
-  "min": {},
-  "max": {}
+  "note": "What a muzzle flash must show on the screen (1280x720, shoulder camera), from the probe's rows. Held by tests/captures/flash_probe.gd (desktop, 60 fps), tools/web_smoke/flash.py (browser) and tests/weapons/test_muzzle_flash_strength.gd. Set about two thirds under the worst weapon measured after the rework, and far over the worst before it (docs/research/muzzle-flash.md); `web` lowers the floors the browser run is held to. screen_gain is how much the whole picture brightens, of 255.",
+  "min": {
+    "frames_seen": 3,
+    "area_pct": 0.25,
+    "height_pct": 10.0,
+    "hot_px": 800,
+    "peak_luma": 240.0,
+    "mean_rise": 55.0
+  },
+  "max": {
+    "screen_gain": 13.0
+  },
+  "web": {
+    "note": "The browser's first view looks down on the soldier, so the flash is smaller in the picture: the floors it is held to.",
+    "min": {
+      "area_pct": 0.18,
+      "height_pct": 8.0,
+      "hot_px": 500,
+      "mean_rise": 45.0
+    }
+  }
 }
