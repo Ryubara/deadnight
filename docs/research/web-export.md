@@ -53,6 +53,13 @@ Things that were not obvious:
   Godot's web runtime listens for `pointermove` on the window and reads `movementX/Y`, so the smoke dispatches
   `PointerEvent('pointermove', {movementX})` on the canvas when the real moves did not turn the view
   (`tools/web_smoke/smoke.py`, `mouse_look_via` in its result). The yaw is on `window.deadnight` for it.
+- **A finger is a pointer move too (Deadnight #470).** The same `pointermove` listener also fires for a touch pointer, so
+  on a phone every finger, the move stick's too, turned the view like a mouse and in device pixels (3 times too far at a
+  pixel ratio of 3). The page's `head_include` stops touch pointer moves in the capture phase, and the player ignores
+  mouse motion that is not the touch layer's own while the layer is up. `tools/web_smoke/touch_look.py` drives a
+  phone-sized Chrome (844 x 390 CSS pixels, ratio 3, real touch events through `Input.dispatchTouchEvent`) and checks
+  that the stick turns the view 0 and a 100 px look drag turns it as `TouchLook` promises (0.41 rad). Before the fix
+  the stick turned it 0.37 rad and the drag 1.43 rad, one frame up to 0.43 rad.
 - The zombies are usually off screen: the crowd is read from the probe, not seen.
 - Playwright 1.64 launches `chromium-headless-shell`, which is always software-rendered. `--gpu` uses the installed
   Chrome (`channel="chrome"`) for numbers with a real GPU.
@@ -170,6 +177,11 @@ https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
 how evenly the soldier moves on the screen in the page: the numbers and what they showed are in
 `physics-interpolation.md`. The smoke run also fails when the night's body is not drawn between physics ticks
 (`window.deadnight.interpolated`).
+
+`tools/web_smoke/hip_fire.py` (same arguments) drives the real mouse and reads the camera's field of view every drawn
+frame (`window.deadnight.viewRows`, `game/core/view_web_probe.gd`): hip fire must leave it at 60, and aim, shoot, release
+and hip shot, aim, release must be back at 60 within 0.9 s of the release (the spring takes 0.3 s; the rest is the
+browser's latency, and a held zoom would add 0.8 s). Run it on the deployed URL after a change to the camera (#464).
 
 ### Over the internet
 

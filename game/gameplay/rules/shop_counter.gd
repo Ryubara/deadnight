@@ -32,6 +32,8 @@ static func quote(
 		result.result = GameRules.BuyResult.WRONG_PHASE
 	elif player == null:
 		result.result = GameRules.BuyResult.UNKNOWN_PLAYER
+	elif player.downed:
+		result.result = GameRules.BuyResult.PLAYER_DOWNED
 	elif item == null:
 		result.result = GameRules.BuyResult.UNKNOWN_ITEM
 	else:

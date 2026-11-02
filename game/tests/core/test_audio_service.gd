@@ -80,7 +80,7 @@ func test_a_variant_never_repeats_back_to_back() -> void:
 		_audio.advance(1.0)
 		var player := _audio.play(&"zombie_groan", Vector3(0, 0, 3)) as AudioStreamPlayer3D
 		assert_object(player).is_not_null()
-		var path := player.stream.resource_path
+		var path := PcmStream.source(player.stream)
 		assert_str(path).is_not_equal(last)
 		last = path
 
@@ -185,5 +185,5 @@ func _run_sequence(seed_value: int) -> Array:
 	for i in 12:
 		_audio.advance(1.0)
 		var player := _audio.play(&"shot_smg", Vector3(0, 0, 5)) as AudioStreamPlayer3D
-		out.append([player.stream.resource_path, snappedf(player.pitch_scale, 0.00001)])
+		out.append([PcmStream.source(player.stream), snappedf(player.pitch_scale, 0.00001)])
 	return out

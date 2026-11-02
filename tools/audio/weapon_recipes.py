@@ -20,47 +20,131 @@ from recipes import Entry, _jv, _metal_click, _rasp, _thud
 
 @dataclass(frozen=True)
 class Report:
+    """What a close gunshot is made of. The report is the whole shot as the shooter hears it, a few feet from the
+    muzzle: a click, a crack, a roar that darkens, a falling thump and a low note under it, all in its first
+    quarter second. The room comes later, in the tail, which is a voice of its own."""
+
     crack_hp: float  # high-pass of the supersonic crack
     crack_len: float
-    blast_len: float  # the muzzle roar
-    blast_dark: float  # where the roar's low-pass ends up
+    boom_hz: tuple[float, float]  # the muzzle roar's low-pass, from where it starts to where it ends
+    boom_len: float
     body_hz: tuple[float, float]  # the chest thump's sweep
     body_len: float
+    sub_hz: float  # a steady low note under the thump
+    sub_len: float
     length: float  # the file's length before trimming
+    mid_hz: float = 500.0  # the bark: band noise between the thump and the crack, where a gun is loudest
+    mid_len: float = 0.06
     ring: float = 0.0  # a metallic ring after the shot (an SMG's receiver)
     gain_crack: float = 1.0
-    gain_blast: float = 0.9
+    gain_boom: float = 1.0
+    gain_mid: float = 2.0
     gain_body: float = 1.0
-    drive: float = 3.0
+    gain_sub: float = 0.0
+    drive: float = 12.0  # a gunshot is loud because it is dense: driven hard, the roar fills the file up to its peak
+    bounce: float = 0.007  # the ground's reflection, seconds after the shot: size without a room
 
+
+# Every variant keeps these numbers within a few percent (`FREQUENCY_SPREAD`): the shots of a burst differ in their
+# noise, not in their pitch, which the ear takes for the gun itself.
+FREQUENCY_SPREAD = 0.02
+LEVEL_SPREAD = 0.1
 
 REPORTS = {
-    "pistol": Report(1900, 0.010, 0.060, 700, (230, 95), 0.10, 0.30, gain_blast=0.8),
-    "smg": Report(2600, 0.007, 0.040, 1000, (280, 140), 0.045, 0.20, ring=1250, gain_crack=1.1, gain_body=0.8),
-    "rifle": Report(1500, 0.014, 0.150, 450, (170, 58), 0.17, 0.45, gain_crack=1.2, gain_body=1.1),
-    "shotgun": Report(1000, 0.020, 0.260, 280, (125, 42), 0.26, 0.55, gain_crack=0.8, gain_blast=1.2, gain_body=1.4),
+    "pistol": Report(
+        1500,
+        0.012,
+        (3500, 400),
+        0.15,
+        (190, 75),
+        0.12,
+        70,
+        0.16,
+        0.5,
+        mid_hz=450,
+        mid_len=0.08,
+        gain_crack=0.6,
+        gain_boom=2.5,
+        gain_body=0.35,
+        gain_sub=0.2,
+    ),
+    "smg": Report(
+        1800,
+        0.008,
+        (4000, 600),
+        0.08,
+        (200, 100),
+        0.07,
+        100,
+        0.07,
+        0.2,
+        mid_hz=500,
+        mid_len=0.05,
+        ring=1250,
+        gain_crack=0.5,
+        gain_boom=2.5,
+        gain_body=0.55,
+        gain_sub=0.3,
+    ),
+    "rifle": Report(
+        1300,
+        0.014,
+        (3200, 300),
+        0.22,
+        (150, 60),
+        0.16,
+        62,
+        0.22,
+        0.7,
+        mid_hz=380,
+        mid_len=0.11,
+        gain_crack=0.6,
+        gain_boom=2.5,
+        gain_body=0.4,
+        gain_sub=0.3,
+    ),
+    "shotgun": Report(
+        900,
+        0.02,
+        (2800, 220),
+        0.36,
+        (110, 42),
+        0.28,
+        48,
+        0.35,
+        0.9,
+        mid_hz=300,
+        mid_len=0.16,
+        gain_crack=0.5,
+        gain_boom=3.0,
+        gain_body=0.5,
+        gain_sub=0.4,
+    ),
 }
 
 
 def report(rng: np.random.Generator, gun: Report) -> np.ndarray:
-    """Transient (a high-passed click that can be a hair late or early), blast (a roar that darkens) and body (a
-    falling sine), all jittered by the variant's seed, then driven together so they glue."""
-    length = _jv(rng, gun.length, 0.1)
-    n = dsp.samples(length)
-    crack = dsp.filt(dsp.white(rng, length), "high", _jv(rng, gun.crack_hp, 0.15))
-    crack *= dsp.decay(n, _jv(rng, gun.crack_len, 0.2))
-    blast = dsp.filt(dsp.white(rng, length), "low", np.linspace(_jv(rng, 6500, 0.15), gun.blast_dark, n))
-    blast *= dsp.decay(n, _jv(rng, gun.blast_len, 0.15))
-    f0, f1 = (_jv(rng, f, 0.1) for f in gun.body_hz)
-    body_n = min(dsp.samples(gun.body_len * 3), n)
-    body = dsp.sine(np.geomspace(f0, f1, body_n)) * dsp.decay(body_n, _jv(rng, gun.body_len, 0.12))
-    body = np.pad(body, (0, n - body_n))
-    shot = gun.gain_crack * crack * rng.uniform(0.85, 1.15)
-    shot += gun.gain_blast * blast + gun.gain_body * body * rng.uniform(0.9, 1.1)
+    """A click, a crack, a roar that darkens, a falling thump and a low note under it, driven together so they glue."""
+    n = dsp.samples(gun.length)
+    seconds = gun.length
+    snap = dsp.filt(dsp.white(rng, 0.004), "high", 3000) * dsp.decay(dsp.samples(0.004), 0.0015)
+    crack = dsp.filt(dsp.white(rng, seconds), "high", _jv(rng, gun.crack_hp, FREQUENCY_SPREAD))
+    crack *= dsp.decay(n, gun.crack_len)
+    boom_hz = np.geomspace(_jv(rng, gun.boom_hz[0], FREQUENCY_SPREAD), gun.boom_hz[1], n)
+    boom = dsp.filt(dsp.white(rng, seconds), "low", boom_hz)
+    boom *= 0.65 * dsp.decay(n, gun.boom_len * 0.3) + 0.35 * dsp.decay(n, gun.boom_len)
+    f0, f1 = (_jv(rng, f, FREQUENCY_SPREAD) for f in gun.body_hz)
+    body = dsp.sine(np.geomspace(f0, f1, n)) * dsp.decay(n, gun.body_len)
+    mid_hz = _jv(rng, gun.mid_hz, FREQUENCY_SPREAD)
+    mid = dsp.filt(dsp.white(rng, seconds), "band", mid_hz, mid_hz * 1.2) * dsp.decay(n, gun.mid_len)
+    sub = dsp.sine(_jv(rng, gun.sub_hz, FREQUENCY_SPREAD), n) * dsp.attack_decay(n, 0.004, gun.sub_len)
+    shot = gun.gain_crack * crack + gun.gain_boom * boom * _jv(rng, 1.0, LEVEL_SPREAD)
+    shot += gun.gain_mid * mid + gun.gain_body * body + gun.gain_sub * sub
+    shot[: len(snap)] += 1.5 * snap
     if gun.ring:
-        ring = dsp.sine(_jv(rng, gun.ring, 0.05), n) * dsp.decay(n, 0.05) * 0.12
-        shot += ring
-    return dsp.fade(dsp.drive(shot, gun.drive), 0.0003, 0.03)
+        shot += dsp.sine(_jv(rng, gun.ring, FREQUENCY_SPREAD), n) * dsp.decay(n, 0.05) * 0.12
+    shot = dsp.echo(dsp.drive(shot, gun.drive), gun.bounce, 0.3, dark=3500)
+    return dsp.fade(shot, 0.0002, 0.03)
 
 
 @dataclass(frozen=True)
@@ -72,38 +156,44 @@ class Tail:
 
 
 TAILS = {
-    "pistol": Tail(0.9, 0.21, 4200),
-    "smg": Tail(0.55, 0.19, 4600, gain_echo=0.4),
-    "rifle": Tail(1.5, 0.27, 3600),
-    "shotgun": Tail(1.4, 0.24, 3000, gain_echo=0.6),
+    "pistol": Tail(0.55, 0.21, 3600, gain_echo=0.35),
+    "smg": Tail(0.32, 0.19, 3800, gain_echo=0.3),
+    "rifle": Tail(0.8, 0.27, 3200, gain_echo=0.4),
+    "shotgun": Tail(0.9, 0.24, 2800, gain_echo=0.45),
 }
 
 
 def tail(rng: np.random.Generator, spec: Tail) -> np.ndarray:
     """What is left of the shot after the lot has taken it: a darkening roll of noise and one slap off the screen
-    tower. Starts almost silent (the report is the front), so the game plays it a few hundredths late."""
-    length = _jv(rng, spec.length, 0.12)
+    tower. Starts almost silent (the report is the front), so the game plays it a few hundredths late and well
+    under the report."""
+    length = _jv(rng, spec.length, 0.08)
     n = dsp.samples(length)
-    roll = dsp.filt(dsp.white(rng, length), "low", np.linspace(_jv(rng, spec.dark, 0.1), 500, n))
-    roll *= dsp.attack_decay(n, 0.012, length * 0.45)
-    low = dsp.sine(np.geomspace(_jv(rng, 80, 0.1), 38, n)) * dsp.attack_decay(n, 0.01, length * 0.3) * 0.25
-    out = dsp.echo(roll + low, _jv(rng, spec.echo, 0.12), spec.gain_echo, dark=2200)
-    out = dsp.room_tail(rng, out, length * 0.6, wet=0.5, dark=3500)
+    roll = dsp.filt(dsp.white(rng, length), "low", np.linspace(_jv(rng, spec.dark, 0.05), 500, n))
+    roll *= dsp.attack_decay(n, 0.03, length * 0.4)
+    low = dsp.sine(np.geomspace(_jv(rng, 80, 0.03), 38, n)) * dsp.attack_decay(n, 0.025, length * 0.3) * 0.25
+    out = dsp.echo(roll + low, _jv(rng, spec.echo, 0.08), spec.gain_echo, dark=2200)
+    out = dsp.room_tail(rng, out, length * 0.5, wet=0.4, dark=3500)
     return dsp.fade(out, 0.004, 0.1)
 
 
 def flare_shot(rng: np.random.Generator) -> np.ndarray:
-    """A hollow pop of a short barrel and the rocket's ignition: a low-passed puff over a falling sine, then a hiss
-    that climbs as the flare takes off."""
+    """A flare pistol's report: a crack, a hollow thump and a puff of the short barrel, then the rocket's ignition, a
+    hiss that climbs as the flare takes off."""
     n = dsp.samples(0.9)
-    puff = dsp.filt(dsp.white(rng, 0.9), "low", np.linspace(_jv(rng, 3200, 0.1), 500, n)) * dsp.decay(n, 0.07)
-    thump = dsp.sine(np.geomspace(_jv(rng, 200, 0.1), 70, n)) * dsp.decay(n, 0.09)
-    click = _metal_click(rng, _jv(rng, 1400, 0.1), ring=0.02)
+    crack = dsp.filt(dsp.white(rng, 0.9), "high", _jv(rng, 1400, FREQUENCY_SPREAD)) * dsp.decay(n, 0.014)
+    puff = dsp.filt(dsp.white(rng, 0.9), "low", np.linspace(_jv(rng, 3200, FREQUENCY_SPREAD), 500, n)) * dsp.decay(
+        n, 0.09
+    )
+    bark = dsp.filt(dsp.white(rng, 0.9), "band", _jv(rng, 420, FREQUENCY_SPREAD), 500) * dsp.decay(n, 0.07)
+    thump = dsp.sine(np.geomspace(_jv(rng, 190, FREQUENCY_SPREAD), 65, n)) * dsp.decay(n, 0.12)
+    click = _metal_click(rng, _jv(rng, 1400, FREQUENCY_SPREAD), ring=0.02)
     centre = np.linspace(1800, 5200, n)
     hiss = dsp.filt(dsp.white(rng, 0.9), "band", centre, centre * 0.9) * dsp.attack_decay(n, 0.04, 0.4) * 0.5
-    mix = dsp.place(None, puff * 1.1 + thump * 1.0 + hiss, 0.0)
-    mix = dsp.place(mix, click, 0.0, 0.5)
-    return dsp.fade(dsp.drive(mix, 2.0), 0.0005, 0.12)
+    body = 0.6 * crack + 2.4 * puff + 2.2 * bark + 0.7 * thump
+    mix = dsp.place(None, dsp.drive(body, 2.5) + hiss, 0.0)
+    mix = dsp.place(mix, click, 0.0, 0.4)
+    return dsp.fade(mix, 0.0003, 0.12)
 
 
 def flare_burst(rng: np.random.Generator) -> np.ndarray:
@@ -376,6 +466,42 @@ def buy_tonic(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(mix, 0.001, 0.05)
 
 
+def buy_recut(rng: np.random.Generator) -> np.ndarray:
+    """The re-cut bench: the reels' motor winds up, the press groans down, strikes at 0.8 s with a hot hiss and
+    a shower of sparks, the sprockets ratchet round as it lets go, and a bell says it is done at 1.55 s."""
+    seconds = 2.5
+    n = dsp.samples(seconds)
+    # The reels' motor: a sawtooth that climbs 70 to 210 Hz in 0.8 s, hums, and sags at the end.
+    hz = dsp.curve([(0, 70), (0.3, 210), (0.7, 190), (1, 120)], n)
+    motor = dsp.filt(dsp.saw(hz, n), "low", 700) * 0.5 + dsp.sine(hz * 0.5, n) * 0.4
+    motor *= dsp.curve([(0, 0), (0.04, 0.7), (0.65, 0.8), (0.9, 0.25), (1, 0)], n)
+    mix = dsp.place(None, motor, 0.0, 0.5)[:n]
+    # The press coming down: a low groan, then the blow.
+    groan_n = dsp.samples(0.4)
+    groan = dsp.sine(np.linspace(150, 60, groan_n)) * dsp.attack_decay(groan_n, 0.05, 0.3)
+    groan += _rasp(rng, 0.4, 300, 1400) * 0.5
+    mix = dsp.place(mix, groan, 0.4, 0.7)[:n]
+    mix = dsp.place(mix, _thud(rng, 70, 0.28), 0.8, 1.0)[:n]
+    mix = dsp.place(mix, _metal_click(rng, _jv(rng, 520, 0.05), ring=0.09), 0.8, 0.9)[:n]
+    # Hot metal: a hiss that dies in half a second, with sparks spitting in it.
+    hiss_n = dsp.samples(0.6)
+    hiss = dsp.filt(dsp.white(rng, 0.6), "high", 4500) * dsp.decay(hiss_n, 0.22)
+    mix = dsp.place(mix, hiss, 0.8, 0.45)[:n]
+    for _ in range(int(rng.integers(10, 15))):
+        mix = dsp.place(
+            mix, _metal_click(rng, _jv(rng, 4200, 0.3), ring=0.006), 0.8 + rng.uniform(0.0, 0.5), rng.uniform(0.1, 0.35)
+        )[:n]
+    # The sprockets ratcheting as the press lifts: clicks that slow down.
+    at, gap = 1.05, 0.03
+    while at < 1.5:
+        mix = dsp.place(mix, _metal_click(rng, _jv(rng, 1800, 0.1), ring=0.012), at, 0.4)[:n]
+        at += gap
+        gap *= 1.18
+    mix = dsp.place(mix, _bell(1567.98, 0.8, ring=0.5), 1.55, 0.45)[:n]
+    mix = dsp.place(mix, _bell(2093.0, 0.6, ring=0.35), 1.6, 0.25)[:n]
+    return dsp.fade(dsp.room_tail(rng, mix, 0.5, wet=0.15, dark=5000), 0.003, 0.15)
+
+
 def deny(rng: np.random.Generator) -> np.ndarray:
     """A game-show buzzer, but dull: two low square pulses through a band-pass, and a relay clack before them."""
     mix = dsp.place(None, _metal_click(rng, 900, ring=0.02), 0.0, 0.6)
@@ -575,6 +701,7 @@ REGISTRY: list[Entry] = [
     Entry("world", "buy_ammo", 2, buy_ammo, -4.0),
     Entry("world", "buy_fuel", 1, buy_fuel, -5.0),
     Entry("world", "buy_tonic", 1, buy_tonic, -5.0),
+    Entry("world", "buy_recut", 1, buy_recut, -3.0),
     Entry("world", "deny", 1, deny, -6.0),
     Entry("world", "crane_spin", 1, crane_spin, -4.0),
     Entry("world", "crane_claw_drop", 1, crane_claw_drop, -5.0),

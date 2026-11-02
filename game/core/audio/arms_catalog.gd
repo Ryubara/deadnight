@@ -3,16 +3,25 @@ extends RefCounted
 ## The weapons' and the lot's machines' sounds, added to `SoundCatalog` by `build`. Kept in a file
 ## of its own so the catalog stays a table of groups; the design is `docs/design/audio.md`.
 ##
-## A gunshot is three layers, each on its own voice with its own random variant and pitch, so no
-## two shots are the same sound: the report (`shot_*`: transient and body, synthesised), a
-## generated blast (`blast_*`: body and roll, ElevenLabs) and a synthesised tail (`tail_*`, played a
-## few hundredths late). The files are `tools/audio/weapon_recipes.py` and `elevenlabs.py`.
+## A gunshot is two voices, each with its own random variant: the report (`shot_*`: the whole
+## shot as the shooter hears it a few feet from the muzzle, a click, a crack, a roar and a thump,
+## synthesised) and a tail (`tail_*`, played a few hundredths late and far under it: what the lot
+## gives back). The files are `tools/audio/weapon_recipes.py`; why they are what they are, and
+## the rules every firearm follows (pitch, level, loudness against the night), is
+## `docs/research/gun-audio.md`.
+
+## The one pitch rule of every firearm voice: a random shift within plus or minus this many
+## semitones (about 1 percent). Automatic fire varies in its noise, not in its note: at the
+## 13 shots a second of the tommy gun a wider shift is heard as a gun that cannot hold a pitch.
+const FIREARM_PITCH_SEMITONES := 0.15
+## The tail's trim under its report, in dB.
+const TAIL_UNDER_DB := -14.0
 
 
 ## Adds every sound; `add` is `SoundCatalog._add` (id, path under the audio folder, variants,
 ## options).
 static func build(add: Callable) -> void:
-	var gun := {
+	var base := {
 		"near_cap_db": 0.0,
 		"group": &"gun",
 		"priority": 80,
@@ -20,71 +29,49 @@ static func build(add: Callable) -> void:
 		"max_distance": 90.0,
 		"unit_size": 14.0
 	}
-	var blast := {
-		"near_cap_db": 0.0,
-		"group": &"gun_blast",
-		"priority": 55,
-		"pitch_semitones": 1.0,
-		"max_distance": 90.0,
-		"unit_size": 14.0,
-		"volume_db": -9.0
-	}
-	var tail := {
-		"near_cap_db": 0.0,
-		"group": &"gun_tail",
-		"priority": 40,
-		"pitch_semitones": 0.8,
-		"max_distance": 90.0,
-		"unit_size": 18.0,
-		"volume_db": -13.0
-	}
-	# Report, blast and tail of each firearm. An automatic gun's blast and tail get a cooldown, so
-	# twelve shots a second are twelve reports over a roll and not a wall of tails.
+	var gun := SoundCatalog._with(base, {"pitch_semitones": FIREARM_PITCH_SEMITONES})
+	var tail := SoundCatalog._with(
+		gun, {"group": &"gun_tail", "priority": 40, "unit_size": 18.0, "volume_db": TAIL_UNDER_DB}
+	)
+	# The report's trim and the tail's cooldown of each firearm. An automatic gun's tail has a
+	# cooldown, so thirteen shots a second are thirteen reports over a roll and not a wall of tails.
 	var guns := {
-		&"pistol": [-3.0, 0.0, 0.0],
-		&"smg": [-6.0, 0.14, 0.22],
-		&"rifle": [-3.0, 0.0, 0.0],
-		&"shotgun": [-2.0, 0.0, 0.0],
+		&"pistol": [-2.5, 0.0],
+		&"smg": [-2.5, 0.22],
+		&"rifle": [-3.5, 0.0],
+		&"shotgun": [-3.0, 0.0],
 	}
 	for weapon: StringName in guns:
 		var trims: Array = guns[weapon]
 		var shot_options := SoundCatalog._with(gun, {"volume_db": trims[0]})
-		if weapon == &"smg":
-			shot_options["pitch_semitones"] = 0.8
 		add.call(StringName("shot_%s" % weapon), "guns/shot_%s_%%d.ogg" % weapon, 5, shot_options)
-		add.call(
-			StringName("blast_%s" % weapon),
-			"eleven/blast_%s_%%d.ogg" % weapon,
-			3,
-			SoundCatalog._with(blast, {"cooldown": trims[1]})
-		)
 		add.call(
 			StringName("tail_%s" % weapon),
 			"guns/tail_%s_%%d.ogg" % weapon,
 			3,
-			SoundCatalog._with(tail, {"cooldown": trims[2]})
+			SoundCatalog._with(tail, {"volume_db": trims[0] + TAIL_UNDER_DB, "cooldown": trims[1]})
 		)
 	add.call(
-		&"shot_flare", "guns/shot_flare_%d.ogg", 3, SoundCatalog._with(gun, {"volume_db": -6.0})
+		&"shot_flare", "guns/shot_flare_%d.ogg", 3, SoundCatalog._with(gun, {"volume_db": -1.5})
 	)
 	add.call(
 		&"burst_flare",
 		"guns/burst_flare_%d.ogg",
 		2,
-		SoundCatalog._with(gun, {"priority": 60, "volume_db": -9.0, "max_distance": 70.0})
+		SoundCatalog._with(base, {"priority": 60, "volume_db": -9.0, "max_distance": 70.0})
 	)
 	add.call(
 		&"dry_fire",
 		"guns/dry_fire_%d.ogg",
 		1,
-		SoundCatalog._with(gun, {"priority": 70, "max_distance": 20.0, "cooldown": 0.12})
+		SoundCatalog._with(base, {"priority": 70, "max_distance": 20.0, "cooldown": 0.12})
 	)
 	add.call(
 		&"weapon_swap",
 		"guns/weapon_swap_%d.ogg",
 		3,
 		SoundCatalog._with(
-			gun,
+			base,
 			{
 				"group": &"swap",
 				"priority": 55,
@@ -219,6 +206,9 @@ static func _build_world(add: Callable) -> void:
 	add.call(
 		&"buy_tonic", "world/buy_tonic_%d.ogg", 1, SoundCatalog._with(shop, {"volume_db": -3.0})
 	)
+	# The re-cut bench: the motor, the press' blow at 0.8 s (the machine strikes then), the bell
+	# at 1.55 s.
+	add.call(&"buy_recut", "world/buy_recut_%d.ogg", 1, SoundCatalog._with(shop, {"priority": 66}))
 
 	# The prize crane's moments (`WorldSounds`, from the rules' `crane_*` events): the wheel
 	# spinning down, the claw, the prize, a breakdown and the machine moving to a new spot.

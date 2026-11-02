@@ -36,7 +36,6 @@ const GROUP_LIMITS := {
 	&"soldier_voice": 3,
 	&"bed": 4,
 	# The arms and the lot (`ArmsCatalog`).
-	&"gun_blast": 5,
 	&"gun_tail": 4,
 	&"impact": 6,
 	&"swap": 2,
