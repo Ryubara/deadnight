@@ -9,16 +9,40 @@ extends GameLink
 ## with the frame whole (a delta is put together with `FrameDelta`). The look packets for this
 ## player come in those events (`look_packet`), as over the loopback. `refused` or `closed` say why
 ## the link is no more.
+##
+## A link that was welcomed and then loses its socket (not by `close()`, and not refused) tries to
+## get its seat back: it opens a new socket every `retry_every` seconds for `resume_within` seconds
+## and says hello with the resume token. `lost` says it began, `resumed` that the server gave the
+## same player back (with the rules' snapshot as they are now; the next frame is whole), and
+## `closed` that the time ran out or the server gave the seat to no one.
 
 ## The server accepted us: `snapshot` is the rules' state now (`GameRules.to_dict()`).
 signal welcomed(snapshot: Dictionary)
 signal refused(reason: int)
 signal closed
+signal lost
+## The seat is ours again: `snapshot` is the rules' state now.
+signal resumed(snapshot: Dictionary)
 
 ## Seconds between pings.
 const PING_EVERY := 0.5
+## Seconds to keep trying to get the seat back, and between tries (the server holds it for
+## `NightHost.RESUME_WITHIN`).
+const RESUME_WITHIN := 25.0
+const RETRY_EVERY := 1.0
+## The close code `drop` ends the socket with (the private range): neither a goodbye nor, for the
+## server, a reason to free the seat.
+const DROP_CODE := 4000
 
 var player_id := 0
+var resume_within := RESUME_WITHIN
+var retry_every := RETRY_EVERY
+## False to give up at once when the socket drops.
+var reconnect := true
+## True from the socket dropping until the seat is back or given up.
+var resuming := false
+## What the last WELCOME gave to take the seat back with.
+var token := PackedByteArray()
 var tick_rate := 60
 
 # The numbers of this connection.
@@ -35,7 +59,12 @@ var server_step := 0
 var server_version := 0
 
 var _ws := WebSocketPeer.new()
+var _url := ""
 var _active := false
+var _closed_by_us := false
+var _refused := false
+var _lost_at := 0.0
+var _next_try := 0.0
 var _was_open := false
 var _frame: Dictionary = {}
 var _next_ping := 0.0
@@ -44,6 +73,7 @@ var _next_ping := 0.0
 ## Starts connecting; the result is the error of the start, not of the connection.
 func connect_to(url: String) -> Error:
 	_active = true
+	_url = url
 	return _ws.connect_to_url(url)
 
 
@@ -56,7 +86,14 @@ func is_welcomed() -> bool:
 
 
 func close() -> void:
+	_closed_by_us = true
 	_ws.close()
+
+
+## Closes the socket as if the network had gone: unlike `close()`, the link then tries to come
+## back. For tests and for a player who asks to reconnect.
+func drop() -> void:
+	_ws.close(DROP_CODE, "dropped")
 
 
 ## Only commands and the player's look travel from a client; joining and leaving are the
@@ -76,15 +113,42 @@ func pump() -> void:
 	var state := _ws.get_ready_state()
 	if state == WebSocketPeer.STATE_OPEN and not _was_open:
 		_was_open = true
-		_send(NetWire.hello())
+		_send(NetWire.hello(token))
 	# What came before a close is still read: a refusal arrives together with the close.
 	while state != WebSocketPeer.STATE_CONNECTING and _ws.get_available_packet_count() > 0:
 		_receive(_ws.get_packet())
 	if state == WebSocketPeer.STATE_OPEN:
 		_ping_when_due()
 	elif state == WebSocketPeer.STATE_CLOSED:
+		_on_socket_closed()
+
+
+## The socket is gone. A link that had a seat tries to take it back; any other is finished.
+func _on_socket_closed() -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if _closed_by_us or _refused:
+		resuming = false
 		_active = false
 		closed.emit()
+		return
+	if not resuming:
+		if not reconnect or not is_welcomed() or token.is_empty():
+			_active = false
+			closed.emit()
+			return
+		resuming = true
+		_lost_at = now
+		_next_try = now
+		lost.emit()
+	if now - _lost_at > resume_within:
+		resuming = false
+		_active = false
+		closed.emit()
+	elif now >= _next_try:
+		_next_try = now + retry_every
+		_was_open = false
+		_ws = WebSocketPeer.new()
+		_ws.connect_to_url(_url)
 
 
 func _send(data: PackedByteArray) -> void:
@@ -107,10 +171,23 @@ func _receive(data: PackedByteArray) -> void:
 	match data[0]:
 		NetWire.Type.WELCOME:
 			var welcome := NetWire.read_welcome(data)
-			if not welcome.is_empty() and player_id == 0:
+			if welcome.is_empty():
+				return
+			if player_id == 0:
 				player_id = welcome["player_id"]
 				tick_rate = welcome["tick_rate"]
+				token = welcome["token"]
 				welcomed.emit(welcome["snapshot"])
+			elif resuming:
+				resuming = false
+				if welcome["player_id"] != player_id:
+					# The seat was given up: this would be another player, not us.
+					close()
+					return
+				token = welcome["token"]
+				# The server begins again from a whole frame.
+				_frame = {}
+				resumed.emit(welcome["snapshot"])
 		NetWire.Type.TICK:
 			_on_tick(data)
 		NetWire.Type.PONG:
@@ -121,6 +198,7 @@ func _receive(data: PackedByteArray) -> void:
 			if data.size() >= 2:
 				if data.size() >= 3:
 					server_version = data[2]
+				_refused = true
 				refused.emit(data[1])
 				close()
 

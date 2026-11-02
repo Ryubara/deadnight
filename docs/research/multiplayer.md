@@ -24,7 +24,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
 | Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 2 (the layout is in its header); a command is a fixed 23 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 3 (the layout is in its header); a command is a fixed 23 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
@@ -32,7 +32,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Looks | a client sends its look once after joining (`--look N` replaces the saved one for a run); `NightServer` owns the `LookServer` and answers with `look_packet` events, which the host sends only to the player they are for; every screen dresses every body, a client's own included, from the one `LookRegistry` table | |
 | Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
 
-Not in the game yet: reconnect (#53), lag compensation for shots (#54), interest
+Not in the game yet: lag compensation for shots (#54), interest
 management and a tighter packing of zombies (#57), server bodies without models (#153), the Discord proxy and Railway
 (#52).
 
@@ -211,6 +211,32 @@ readable for that release. Nothing is negotiated.
 **Authentication hook.** `NightHost.admit` is called with `(transport_id, version)` after the version is accepted and
 returns 0 to let the client in or a `Refusal` (`DENIED`) to turn it away. It is unset today (everyone is let in); the
 platform backend's ticket check plugs in there (see [the backend](platform-backend.md)) once hello carries a ticket.
+
+### Reconnect and resume
+
+A client whose socket drops (a phone changing network, a proxy cutting an idle socket, a Wi-Fi blip) gets its player
+back (#53, protocol version 3):
+
+- **The token.** Every WELCOME carries 8 random bytes, one set for each connection and replaced on every resume. A client
+  that comes back says HELLO with them after the version. The token proves nothing but being the same client; a made-up
+  or used token is just a new player, never someone else's seat (`test_a_token_that_is_nobodys_is_a_new_player_not_a_hijack`,
+  `test_a_used_token_does_not_work_twice`).
+- **What the server does meanwhile.** A socket that closes without a goodbye (anything but close code 1000 or 1001) keeps
+  its seat and body for `NightHost.RESUME_WITHIN` (30 s): no commands come, so after `NightTuning.command_ticks` steps the
+  body stands still and the dead can hurt it like any other (a downed player is revived by the others as usual); the other
+  players keep seeing it. A clean goodbye (the page closed, the Leave button) frees the seat at once. The seat is not given
+  to a newcomer while it is held, and the night is not rebuilt while one is.
+- **Coming back.** A HELLO with a held (or still-open, not yet noticed dead) token takes the seat: the same player id,
+  body, points and weapons, a new token, the rules' snapshot as they are now and the looks of everyone again, and a first
+  frame that is whole (the diff against nothing). The old socket, if it was still open, is hung up on.
+- **The client.** `WebSocketLink` tries a new socket every second for 25 s (`resume_within`, a little under the server's
+  hold), says `lost` when it begins and `resumed` when the seat is back, and `closed` when the time is up or the server
+  turned it away. `Night` has `connection_lost`, `connection_resumed` and `connection_ended` signals; while the socket is
+  down the client's body waits where it is, and when the seat is back the HUD loads the new snapshot and the reconciler
+  takes the body to the server's position.
+- **Not here yet:** a message on screen while the link is down (the signals are there), and the link conditioner (delay,
+  jitter and loss) of the spike: the tests cut the socket with `WebSocketLink.drop()`, which closes it with a private
+  close code the server reads as "the network went", and `test_reconnect.gd` runs over a real socket.
 
 ## Interpolation (everyone else)
 
