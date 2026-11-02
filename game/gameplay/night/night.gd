@@ -68,6 +68,9 @@ var view: NightView
 ## Where the grenade in the local player's hand would go (`show_throw`).
 var preview: GrenadePreview
 var autopilot: Autopilot
+## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
+## `start_remote` they are the ones the server's WELCOME carried.
+var match_settings := MatchSettings.new()
 ## () -> bool, whether the touch layer is up, set by the screen that owns it. The touch player's
 ## aim help (`assist`) works only while it says yes.
 var touch_active := Callable()
@@ -138,7 +141,7 @@ func start(
 	add_child(world)
 	await world.build()
 	loading.emit(BUILD_SHARE, "Setting up")
-	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning)
+	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	state = ClientState.new()
@@ -227,6 +230,7 @@ func start_remote(
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 		hud.state.load_snapshot(welcome["snapshot"])
+	match_settings = MatchSettings.from_snapshot(welcome["snapshot"])
 	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
 	_equip_sync = WeaponEquipSync.new(state, _body_of)
 	online.delivered.disconnect(keep)
