@@ -67,16 +67,76 @@ func test_what_a_player_reads_for_each_answer_of_the_backend() -> void:
 ## An API that answers from the test: no network.
 class FakeApi:
 	extends TogetherApi
-	var joined: Array[String] = []
+	var previewed: Array[String] = []
+	var created := 0
+	var signed_as: Array[String] = []
 
-	func sign_in(_display_name: String = "") -> Dictionary:
+	func my_id() -> String:
+		return "a"
+
+	func detached(_parent: Node) -> TogetherApi:
+		return self
+
+	func sign_in(display_name: String = "") -> Dictionary:
+		signed_as.append(display_name)
 		return {"ok": true}
 
-	func join_code(code: String) -> Dictionary:
-		joined.append(code)
+	func preview(code: String) -> Dictionary:
+		previewed.append(code)
 		if code == "NOPE":
 			return {"ok": false, "error": "not_found", "text": TogetherApi.TEXTS["not_found"]}
-		return {"ok": true, "lobby": {"id": "lobby-1", "code": code}}
+		return {
+			"ok": true,
+			"preview":
+			{
+				"code": code,
+				"state": "started",
+				"round": 4,
+				"players": 2,
+				"maxPlayers": 4,
+				"full": false,
+				"hostName": "Ann",
+				"names": ["Ann", "Bo"],
+			}
+		}
+
+	func create_lobby() -> Dictionary:
+		created += 1
+		var host := {"userId": "a", "name": "Ann", "seat": 1, "host": true, "away": false}
+		return {
+			"ok": true,
+			"lobby":
+			{
+				"id": "lobby-1",
+				"code": "MADE42",
+				"hostId": "a",
+				"maxPlayers": 4,
+				"state": "open",
+				"round": null,
+				"players": null,
+				"members": [host],
+			}
+		}
+
+
+func before_test() -> void:
+	TogetherScreen.auto_code = ""
+	NightScreen.join_url = ""
+	await RouterFixture.clear(get_tree())
+
+
+func after_test() -> void:
+	await RouterFixture.clear(get_tree())
+
+
+## Waits until the lobby screen is the router's top and has finished arriving.
+func _lobby_on_top() -> LobbyScreen:
+	for _i in 300:
+		if UIRouter.top() is LobbyScreen and not UIRouter.busy:
+			break
+		await get_tree().process_frame
+	await get_tree().process_frame
+	return UIRouter.top() as LobbyScreen
 
 
 ## Gives the player a name (a named player is not asked for one); returns the old cache.
@@ -88,21 +148,47 @@ func _named_player(player_name := "Bo") -> String:
 	return before
 
 
-func test_a_night_found_by_a_link_waits_for_a_press_of_play() -> void:
+## A player with nothing saved, signed in to nothing: the first Play together.
+func _unnamed_player() -> String:
+	var before: String = Settings.get_value(SettingsService.PROFILE_CACHE)
+	Settings.set_value(SettingsService.PROFILE_CACHE, "")
+	TogetherApi.forget()
+	TogetherScreen.name_skipped = false
+	return before
+
+
+func test_a_link_reads_the_night_first_and_joins_nothing_until_join_is_pressed() -> void:
 	var before := _named_player()
 	var screen := _screen()
 	var fake := FakeApi.new(screen)
 	screen.api = fake
 	TogetherScreen.auto_code = "FRIEND1"
 	await screen.screen_enter()
-	assert_array(fake.joined).is_equal(["FRIEND1"])
-	# It did not go in: the invite view shows the code and a Play button, and no invite to hand out.
+	assert_array(fake.previewed).is_equal(["FRIEND1"])
+	# The lobby screen is up with the preview and its Join: the night was not entered.
+	var lobby := await _lobby_on_top()
+	assert_object(lobby).is_not_null()
+	assert_int(lobby.mode).is_equal(LobbyScreen.Mode.PREVIEW)
+	assert_str(lobby.status.text).is_equal("Night in progress, round 4. 2 of 4 here.")
+	assert_bool(lobby.join_button.is_visible_in_tree()).is_true()
 	assert_str(NightScreen.join_url).is_equal("")
-	assert_bool(screen.play_button.is_visible_in_tree()).is_true()
-	assert_str(screen.invite_code.text).is_equal("FRIEND1")
-	assert_bool(screen.copy_link_button.is_visible_in_tree()).is_false()
-	assert_bool(screen.copy_code_button.is_visible_in_tree()).is_false()
-	assert_bool(screen.quick_button.is_visible_in_tree()).is_false()
+	screen.queue_free()
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+
+
+func test_create_a_night_makes_a_waiting_lobby_and_does_not_start_it() -> void:
+	var before := _named_player()
+	var screen := _screen()
+	var fake := FakeApi.new(screen)
+	screen.api = fake
+	await screen._create("Making your night...")
+	assert_int(fake.created).is_equal(1)
+	var lobby := await _lobby_on_top()
+	assert_object(lobby).is_not_null()
+	assert_int(lobby.mode).is_equal(LobbyScreen.Mode.LIVE)
+	assert_str(lobby.code_label.text).is_equal("MADE42")
+	assert_bool(lobby.start_button.is_visible_in_tree()).is_true()
+	assert_str(NightScreen.join_url).is_equal("")
 	screen.queue_free()
 	Settings.set_value(SettingsService.PROFILE_CACHE, before)
 
@@ -116,11 +202,27 @@ func test_a_link_to_a_night_that_is_gone_says_so_and_shows_the_menu() -> void:
 	assert_str(screen.status.text).contains("no night with that code")
 	assert_bool(screen.quick_button.is_visible_in_tree()).is_true()
 	assert_bool(screen.quick_button.disabled).is_false()
+	assert_object(UIRouter.top() as LobbyScreen).is_null()
 	screen.queue_free()
 	Settings.set_value(SettingsService.PROFILE_CACHE, before)
 
 
-func test_a_friend_with_no_name_who_follows_a_link_is_asked_for_one_then_joins() -> void:
+func test_the_controller_note_shows_only_in_a_discord_activity() -> void:
+	var screen := _screen()
+	screen._process(2.0)
+	assert_str(screen._controller_note.text).is_empty()
+	assert_bool(screen._controller_note.visible).is_false()
+	screen.queue_free()
+
+
+func test_the_clipboard_note_shows_only_in_a_discord_activity() -> void:
+	var screen := _screen()
+	screen._process(2.0)
+	assert_bool(screen._clipboard_note.visible).is_false()
+	screen.queue_free()
+
+
+func test_a_friend_with_no_name_who_follows_a_link_is_asked_for_one_then_reads_the_night() -> void:
 	var before := _unnamed_player()
 	var screen := _screen()
 	var fake := FakeApi.new(screen)
@@ -129,24 +231,18 @@ func test_a_friend_with_no_name_who_follows_a_link_is_asked_for_one_then_joins()
 	# Not awaited: the screen waits at the name prompt until it is answered.
 	screen.screen_enter()
 	assert_bool(screen.name_field.is_visible_in_tree()).is_true()
-	assert_array(fake.joined).is_empty()
+	assert_array(fake.previewed).is_empty()
 	screen.name_field.text = "Ruby"
 	screen.name_continue_button.pressed.emit()
-	await get_tree().process_frame
-	assert_array(fake.joined).is_equal(["FRIEND1"])
+	var lobby := await _lobby_on_top()
+	assert_array(fake.signed_as).is_equal(["Ruby"])
+	assert_array(fake.previewed).is_equal(["FRIEND1"])
 	assert_str(MenuProfile.load_saved().display_name).is_equal("Ruby")
 	assert_bool(screen.name_field.is_visible_in_tree()).is_false()
-	assert_str(screen.invite_code.text).is_equal("FRIEND1")
+	assert_object(lobby).is_not_null()
+	assert_int(lobby.mode).is_equal(LobbyScreen.Mode.PREVIEW)
 	screen.queue_free()
 	Settings.set_value(SettingsService.PROFILE_CACHE, before)
-
-
-func _unnamed_player() -> String:
-	var before: String = Settings.get_value(SettingsService.PROFILE_CACHE)
-	Settings.set_value(SettingsService.PROFILE_CACHE, "")
-	TogetherApi.forget()
-	TogetherScreen.name_skipped = false
-	return before
 
 
 func test_a_player_with_no_name_is_asked_for_one_before_signing_in() -> void:
@@ -187,68 +283,3 @@ func test_a_player_who_has_a_name_is_not_asked() -> void:
 	assert_str(screen.call("_chosen_name")).is_equal("Bo")
 	screen.queue_free()
 	Settings.set_value(SettingsService.PROFILE_CACHE, before)
-
-
-func test_the_controller_note_shows_only_in_a_discord_activity() -> void:
-	var screen := _screen()
-	screen._process(2.0)
-	assert_str(screen._controller_note.text).is_empty()
-	assert_bool(screen._controller_note.visible).is_false()
-	screen.queue_free()
-
-
-## A page that refuses every copy, as a frame whose host blocks the clipboard.
-func _refusing_clipboard() -> WebClipboard:
-	var clipboard := auto_free(WebClipboard.new()) as WebClipboard
-	clipboard.in_frame = true
-	clipboard.eval_js = func(js: String) -> Variant:
-		return "NotAllowedError" if js.contains(".write") else null
-	add_child(clipboard)
-	return clipboard
-
-
-func _invite_of(screen: TogetherScreen, code: String) -> void:
-	screen._lobby = {"id": "lobby-1", "code": code}
-	screen._show_invite()
-
-
-func test_a_copy_the_window_cannot_make_shows_the_code_selected_and_says_how() -> void:
-	var screen := _screen()
-	_invite_of(screen, "QZXW2345")
-	await get_tree().process_frame  # the invite view puts the focus on Play a frame later
-	var clipboard := _refusing_clipboard()
-	screen.copy_code_button.pressed.emit()
-	await get_tree().create_timer(0.3).timeout
-	assert_bool(screen.copy_field.is_visible_in_tree()).is_true()
-	assert_str(screen.copy_field.get_selected_text()).is_equal("QZXW2345")
-	assert_str(screen.status.text).is_equal(TogetherScreen.COPY_BLOCKED)
-	assert_str(screen.status.text).not_contains("copied")
-	# Ctrl+C is then offered that text.
-	assert_str(clipboard._offered).is_equal("QZXW2345")
-	screen.queue_free()
-
-
-func test_a_copy_that_works_says_copied_and_shows_no_field() -> void:
-	var screen := _screen()
-	_invite_of(screen, "QZXW2345")
-	WebClipboard.current = null  # a tab or the desktop: the engine's own copy
-	screen.copy_code_button.pressed.emit()
-	await get_tree().create_timer(0.2).timeout
-	assert_str(screen.status.text).is_equal("Code copied.")
-	assert_bool(screen.copy_field.is_visible_in_tree()).is_false()
-	screen.queue_free()
-
-
-func test_sharing_in_discord_is_offered_only_inside_an_activity() -> void:
-	var screen := _screen()
-	_invite_of(screen, "QZXW2345")
-	assert_bool(TogetherScreen.can_share()).is_false()
-	assert_bool(screen.share_button.is_visible_in_tree()).is_false()
-	screen.queue_free()
-
-
-func test_the_clipboard_note_shows_only_in_a_discord_activity() -> void:
-	var screen := _screen()
-	screen._process(2.0)
-	assert_bool(screen._clipboard_note.visible).is_false()
-	screen.queue_free()

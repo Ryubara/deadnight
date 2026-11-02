@@ -1,13 +1,15 @@
 class_name TogetherScreen
 extends UIScreen
-## Play with other people: Quick join (a public night with room), Create a night (an invite code
-## and link for friends) and Join with a code. A player never sees a server address; the platform
-## backend (`TogetherApi`) makes the night, places it on a game server and hands over a ticket.
+## Play with other people: Quick join (a public night with room, straight in), Create a night (a
+## lobby of your own: `LobbyScreen`, with the code, the seats and the host's Start) and Join with a
+## code (the lobby of a friend, read first: waiting, or a night in progress). A player never sees a
+## server address; the platform backend (`TogetherApi`) makes the lobby, places the night on a game
+## server when the host starts it and hands over a ticket.
 ##
-## A page opened with `?room=CODE` joins that night at once (a static here is set before the screen
-## opens). One opened inside a Discord Activity (`?instance_id=...`) opens on the main menu, and the
-## night of its voice channel is made ready in the background (`ActivityRoom`): this screen shows
-## it, with one press of Play to go in. The address of a game server (`JoinScreen`) is a developer
+## A page opened with `?room=CODE` reads that night at once (a static here is set before the screen
+## opens). One opened inside a Discord Activity (`?instance_id=...`) opens on the main menu, signed
+## in in the background (`ActivityRoom`): Play together goes straight to the lobby of its voice
+## channel, making it when nobody has. The address of a game server (`JoinScreen`) is a developer
 ## setting, shown on the desktop and with `?dev` on the web.
 
 ## The player answered the name prompt (a name, or no name).
@@ -37,33 +39,18 @@ var code_field: LineEdit
 var join_button: UIButton
 var back_button: UIButton
 var status: UILabel
-## What the invite view shows once a night is made.
-var invite_code: UILabel
-var invite_link: UILabel
-var play_button: UIButton
-var copy_link_button: UIButton
-var copy_code_button: UIButton
 ## The name prompt's field and buttons: asked on the first Play together of a player with no name.
 var name_field: LineEdit
 var name_continue_button: UIButton
 var name_skip_button: UIButton
-## In a Discord Activity: Discord's own window for sending the night's code to friends, which needs
-## no clipboard (`discord-bridge.js`, `shareLink`).
-var share_button: UIButton
-## Where the text to copy is shown selected when the window cannot copy for the player (a Discord
-## Activity whose host blocks the clipboard): Ctrl+C then copies it.
-var copy_field: LineEdit
 
 var _menu: VBoxContainer
 var _naming: VBoxContainer
-var _invite: VBoxContainer
 var _lobby := {}
 var _busy := false
-## The night was found for the player (an invite link, a Discord channel) rather than asked for: it
-## waits for a press of Play, which is also the click a browser needs before it lets the game
-## capture the mouse and play sound.
-var _found := false
-var _invite_title: UILabel
+## The screen opened a lobby by itself (the Activity's voice channel): coming back from it, the
+## player goes on to the main menu rather than to a menu they never asked for.
+var _opened_for_room := false
 ## In a Discord Activity: whether the window can read a gamepad (`GamepadProbe`), every second.
 var _controller_note: UILabel
 var _controller_since := 1.0
@@ -89,10 +76,8 @@ func _ready() -> void:
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status.custom_minimum_size.x = FIELD_WIDTH
 	_menu = _build_menu()
-	_invite = _build_invite()
 	_naming = _build_naming()
 	box.add_child(_menu)
-	box.add_child(_invite)
 	box.add_child(_naming)
 	box.add_child(status)
 	_controller_note = _label("", UILabel.Style.BODY)
@@ -136,33 +121,60 @@ func screen_enter() -> void:
 		var code := auto_code
 		auto_code = ""
 		code_field.text = code
-		_found = true
 		await _join()
 	elif ActivityRoom.current != null:
 		await _use_activity_room(ActivityRoom.current)
 
 
-## The night of the Activity's voice channel, ready (or made ready now) and waiting for a press of
-## Play: the invite view, as a night somebody else made.
+## Coming back from a lobby that opened by itself: on to the main menu.
+func screen_resume() -> void:
+	if _opened_for_room:
+		_opened_for_room = false
+		UIRouter.pop()
+		return
+	super.screen_resume()
+
+
+## The lobby of the Activity's voice channel: signed in on the menu already (or now), then what the
+## channel has, read fresh. Nobody has made one: the player makes it and hosts. One waiting or
+## started: its preview, with Join (the round of a night in progress is on it).
 func _use_activity_room(room: ActivityRoom) -> void:
-	_found = true
 	_busy = true
 	_set_enabled(false)
 	if room.state != ActivityRoom.State.PREPARING and room.state != ActivityRoom.State.READY:
 		room.prepare()
 	if room.state == ActivityRoom.State.PREPARING:
 		_say("Getting your night ready...")
-	if await room.until_ready():
-		_lobby = room.lobby
+	if not await room.until_ready():
 		_busy = false
-		_show_invite()
-		_say("")
+		_set_enabled(true)
+		_say(room.failure)
 		return
-	_found = false
+	var seen := await room.api.preview_instance()
+	if seen["ok"]:
+		_open_preview(room.api, seen["preview"], true)
+		return
+	if seen["error"] != "not_found":
+		_fail(seen)
+		return
+	var made := await room.api.create_lobby()
+	if not made["ok"]:
+		_fail(made)
+		return
+	_opened_for_room = true
 	_busy = false
 	_set_enabled(true)
-	_show_menu()
-	_say(room.failure)
+	_say("")
+	LobbyScreen.show_lobby(room.api, made["lobby"])
+
+
+## Shows what a code says, with Join; the lobby screen takes it from here.
+func _open_preview(from: TogetherApi, seen: Dictionary, for_room := false) -> void:
+	_opened_for_room = for_room
+	_busy = false
+	_set_enabled(true)
+	_say("")
+	LobbyScreen.show_preview(from, seen)
 
 
 func _build_menu() -> VBoxContainer:
@@ -202,46 +214,6 @@ func _build_menu() -> VBoxContainer:
 	join_button.name = "JoinCode"
 	join_button.pressed.connect(_join)
 	column.add_child(join_button)
-	return column
-
-
-func _build_invite() -> VBoxContainer:
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override(&"separation", _tokens.space_md)
-	_invite_title = _label("YOUR NIGHT IS READY", UILabel.Style.OVERLINE)
-	column.add_child(_invite_title)
-	invite_code = _label("", UILabel.Style.DISPLAY)
-	invite_code.name = "InviteCode"
-	column.add_child(invite_code)
-	invite_link = _label("", UILabel.Style.BODY)
-	invite_link.name = "InviteLink"
-	invite_link.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-	invite_link.custom_minimum_size.x = FIELD_WIDTH
-	column.add_child(invite_link)
-	play_button = _button("Play", UIButton.Variant.PRIMARY)
-	play_button.name = "PlayInvited"
-	play_button.pressed.connect(_enter_night)
-	column.add_child(play_button)
-	copy_link_button = _button("Copy the link", UIButton.Variant.SECONDARY)
-	copy_link_button.name = "CopyLink"
-	copy_link_button.pressed.connect(
-		func() -> void: await _copy(invite_link.text, "Link copied. Send it to your friends.")
-	)
-	column.add_child(copy_link_button)
-	copy_code_button = _button("Copy the code", UIButton.Variant.SECONDARY)
-	copy_code_button.name = "CopyCode"
-	copy_code_button.pressed.connect(func() -> void: await _copy(invite_code.text, "Code copied."))
-	column.add_child(copy_code_button)
-	share_button = _button("Share in Discord", UIButton.Variant.SECONDARY)
-	share_button.name = "ShareDiscord"
-	share_button.pressed.connect(_share)
-	column.add_child(share_button)
-	copy_field = LineEdit.new()
-	copy_field.name = "CopyField"
-	copy_field.editable = false
-	copy_field.custom_minimum_size.x = FIELD_WIDTH
-	copy_field.visible = false
-	column.add_child(copy_field)
 	return column
 
 
@@ -285,24 +257,29 @@ func _quick() -> void:
 	await _finish(found)
 
 
+## A lobby of your own, waiting for friends and for the host's Start.
 func _create(message: String) -> void:
 	if not await _begin(message):
 		return
-	var made := await api.create()
-	if made["ok"]:
-		_lobby = made["lobby"]
-		_show_invite()
-		_busy = false
-		_say("")
+	var made := await api.create_lobby()
+	if not made["ok"]:
+		_fail(made)
 		return
-	await _finish(made)
+	_busy = false
+	_set_enabled(true)
+	_say("")
+	LobbyScreen.show_lobby(api, made["lobby"])
 
 
+## Reads the night a code names (nothing is joined yet), and shows it with Join.
 func _join() -> void:
 	if not await _begin("Looking for your friends' night..."):
 		return
-	var joined := await api.join_code(code_field.text)
-	await _finish(joined)
+	var seen := await api.preview(code_field.text)
+	if not seen["ok"]:
+		_fail(seen)
+		return
+	_open_preview(api, seen["preview"])
 
 
 ## Signs in (once) and locks the buttons; false when it could not.
@@ -341,16 +318,12 @@ func needs_name() -> bool:
 ## Shows the name prompt and waits for the answer; a name given is saved in the profile.
 func _ask_name() -> void:
 	_menu.visible = false
-	_invite.visible = false
 	_naming.visible = true
 	name_field.text = ""
 	name_field.grab_focus.call_deferred()
 	await name_decided
 	_naming.visible = false
-	if _lobby.is_empty():
-		_show_menu()
-	else:
-		_show_invite()
+	_show_menu()
 	_set_enabled(false)
 
 
@@ -361,58 +334,12 @@ func _decide_name(give: bool) -> void:
 	name_decided.emit()
 
 
-## Copies `text` and says `done`. When the window cannot copy for the player (the host of a Discord
-## Activity may block it), the text is shown selected with how to copy it: never "copied" for a
-## copy that did not happen.
-func _copy(text: String, done: String) -> void:
-	if await WebClipboard.copy_text(text):
-		copy_field.visible = false
-		_say(done)
-		return
-	copy_field.text = text
-	copy_field.visible = true
-	copy_field.grab_focus()
-	copy_field.select_all()
-	if WebClipboard.current != null:
-		WebClipboard.current.offer(text)
-	_say(COPY_BLOCKED)
-
-
-## Opens Discord's share window with the night's code in the message: friends read it there and
-## paste it into Join with the code (or open the link). Does nothing outside an Activity.
-func _share() -> void:
-	var message := SHARE_MESSAGE % invite_code.text
-	JavaScriptBridge.eval(
-		(
-			"window.deadnightDiscord.share(%s, %s)"
-			% [JSON.stringify(message), JSON.stringify(invite_code.text)]
-		)
-	)
-	_say("Pick who to send it to in Discord's window.")
-
-
-## Whether Discord's share window is there to open: an Activity whose bridge got ready.
-static func can_share() -> bool:
-	if not in_discord():
-		return false
-	return bool(
-		JavaScriptBridge.eval(
-			"Boolean(window.deadnightDiscord && window.deadnightDiscord.canShare)"
-		)
-	)
-
-
-## An answer that is a lobby goes into its night; one that is not says why.
+## An answer that is a lobby (Quick join) goes into its night; one that is not says why.
 func _finish(answer: Dictionary) -> void:
 	if not answer["ok"]:
 		_fail(answer)
 		return
 	_lobby = answer["lobby"]
-	if _found:
-		_show_invite()
-		_busy = false
-		_say("")
-		return
 	await _enter_night()
 
 
@@ -426,8 +353,6 @@ func _enter_night() -> void:
 		return
 	NightScreen.join_url = server_url_of(pass_to, in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
-	if _found and ActivityRoom.current != null:
-		ActivityRoom.current.mark_used()
 	_busy = false
 	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
 
@@ -436,11 +361,18 @@ func _fail(answer: Dictionary) -> void:
 	_busy = false
 	_set_enabled(true)
 	_say(answer.get("text", "Something went wrong."))
-	if _lobby.is_empty():
-		_found = false
-		_show_menu()
-	else:
-		_show_invite()
+	_show_menu()
+
+
+## Whether Discord's share window is there to open: an Activity whose bridge got ready.
+static func can_share() -> bool:
+	if not in_discord():
+		return false
+	return bool(
+		JavaScriptBridge.eval(
+			"Boolean(window.deadnightDiscord && window.deadnightDiscord.canShare)"
+		)
+	)
 
 
 ## Where to connect: the address the backend gave, or, in a Discord Activity (where only the
@@ -453,42 +385,16 @@ static func server_url_of(pass_to: Dictionary, in_discord: bool, host: String = 
 	return "wss://%s%s" % [where, pass_to["activity_path"]]
 
 
-# --- The two views ---
+# --- The menu ---
 
 
 func _show_menu() -> void:
-	copy_field.visible = false
 	_menu.visible = true
-	_invite.visible = false
 	_naming.visible = false
-
-
-func _show_invite() -> void:
-	_menu.visible = false
-	_naming.visible = false
-	_invite.visible = true
-	invite_code.text = _lobby["code"]
-	invite_link.text = TogetherApi.invite_link(_lobby["code"], _page_url())
-	# A night somebody else made needs no invite to hand out.
-	_invite_title.text = "YOUR FRIENDS ARE WAITING" if _found else "YOUR NIGHT IS READY"
-	invite_link.visible = not _found
-	copy_link_button.visible = invite_link.text != invite_code.text and not _found
-	copy_code_button.visible = not _found
-	share_button.visible = not _found and can_share()
-	_set_enabled(true)
-	play_button.grab_focus.call_deferred()
 
 
 func _set_enabled(enabled: bool) -> void:
-	for button: UIButton in [
-		quick_button,
-		create_button,
-		join_button,
-		play_button,
-		copy_link_button,
-		copy_code_button,
-		share_button
-	]:
+	for button: UIButton in [quick_button, create_button, join_button]:
 		if button != null:
 			button.disabled = not enabled
 	code_field.editable = enabled

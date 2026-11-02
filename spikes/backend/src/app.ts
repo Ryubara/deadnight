@@ -275,13 +275,23 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
-  // Looking at a night by its code (a body, not the URL, so a code stays out of the request log): is it waiting for its
-  // host, or in round N, and is there room? It joins nobody.
-  app.post<{ Body: { code: string } }>(
+  // Looking at a night by its code, or by the Discord Activity instance it belongs to (a body, not the URL, so a code
+  // stays out of the request log): is it waiting for its host, or in round N, and is there room? It joins nobody.
+  app.post<{ Body: { code?: string; instanceId?: string } }>(
     "/lobbies/preview",
-    { onRequest: requireUser, schema: { body: { type: "object", required: ["code"], properties: { code: { type: "string", maxLength: 16 } } } } },
+    {
+      onRequest: requireUser,
+      schema: {
+        body: {
+          type: "object",
+          properties: { code: { type: "string", maxLength: 16 }, instanceId: { type: "string", maxLength: 128 } },
+          anyOf: [{ required: ["code"] }, { required: ["instanceId"] }],
+        },
+      },
+    },
     async (request) => {
-      const found = lobbies.findByCode(request.body.code);
+      const { code, instanceId } = request.body;
+      const found = code !== undefined ? lobbies.findByCode(code) : lobbies.findByInstance(instanceId!);
       if (!found) throw new LobbyFailure("not_found");
       return lobbyPreview(found);
     },
