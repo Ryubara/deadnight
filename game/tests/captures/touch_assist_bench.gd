@@ -11,6 +11,11 @@ const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 ## Where the look finger lands, as shares of the touch layer's size.
 const LOOK_AT := Vector2(0.7, 0.3)
+## The view counts as settled when the lens has moved less than this (metres) for `SETTLED_FRAMES`
+## frames in a row; the wait gives up after `SETTLE_LIMIT` frames.
+const SETTLED_AT := 0.0005
+const SETTLED_FRAMES := 20
+const SETTLE_LIMIT := 900
 
 var _night: Night
 var _controls: TouchControls
@@ -18,6 +23,8 @@ var _rig: AssistRig
 var _frames: Array[float] = []
 var _last_usec := 0
 var _since := 0.0
+var _grip_lost := 0
+var _started := false
 
 
 func _ready() -> void:
@@ -32,7 +39,7 @@ func _process(delta: float) -> void:
 	_since += delta
 	if _rig != null and _since >= 0.05:
 		_since = 0.0
-		_publish(true)
+		_publish(_started)
 
 
 func _run() -> void:
@@ -49,17 +56,40 @@ func _run() -> void:
 	var settings := get_tree().root.get_node("Settings")
 	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, float(query.get("assist", "0.5")))
 	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, int(query.get("auto", "0")))
+	# No mouse here, as on a phone: the player asked for the lock when it entered the night, and a
+	# lock given up later reads as lost (the night pauses, the touch layer goes dead, the look
+	# never turns: #490). So the request is withdrawn, not only the mode set.
 	_night.player().capture_mouse = false
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_night.player().grip.want(false)
+	_night.player().grip_lost.connect(func() -> void: _grip_lost += 1)
 	_controls = screen.find_children("*", "TouchControls", true, false)[0] as TouchControls
 	_rig = AssistRig.new(_night)
 	if not await _rig.start(get_tree()):
 		_eval("window.__assist = {failed: 'no zombie came out'};")
 		return
+	await _settle_view()
+	# The zombie was put beside the crosshair while the shoulder camera was still easing into
+	# place: put it again, so every run starts the same distance off and the thumb has to drag.
+	_rig.place()
 	for _i in 30:
 		await get_tree().process_frame
 	_frames.clear()
+	_started = true
 	_publish(true)
+
+
+## Waits until the shoulder camera has stopped easing (the lens is still for a while).
+func _settle_view() -> void:
+	var rig := _night.player().camera_rig
+	var last := rig.aim_transform().origin
+	var still := 0
+	for _i in SETTLE_LIMIT:
+		await get_tree().process_frame
+		var now := rig.aim_transform().origin
+		still = still + 1 if now.distance_to(last) < SETTLED_AT else 0
+		last = now
+		if still >= SETTLED_FRAMES:
+			return
 
 
 ## The state of the run as the page reads it. `ready` is true once the zombie is held.
@@ -88,6 +118,9 @@ func _publish(ready: bool) -> void:
 		"kills": _night.state.kills,
 		"zombies_seen": _night.state.zombies.size(),
 		"wall_m": _wall_before_the_chest(),
+		"paused": _night.is_paused(),
+		"grip_lost": _grip_lost,
+		"yaw": snappedf(_night.player().camera_rig.yaw, 0.0001),
 	}
 	_eval("window.__assist = %s;" % JSON.stringify(data))
 
