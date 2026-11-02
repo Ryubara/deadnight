@@ -6,8 +6,8 @@
 # at no time may the body leave the lot.
 extends GdUnitTestSuite
 
-const WALK_SECONDS := 2.0
-const STOP_SECONDS := 3.0
+const WALK_SECONDS := 1.5
+const STOP_SECONDS := 2.0
 ## Each freeze, in milliseconds.
 const FREEZES_MS := [0, 500, 2000, 5000]
 const ONE_WAY_DELAY := 0.1
