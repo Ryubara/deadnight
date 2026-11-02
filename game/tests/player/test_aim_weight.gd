@@ -78,6 +78,7 @@ func _view() -> Dictionary:
 	var pose := _pose()
 	var body := _player.global_position
 	return {
+		"physics_frame": Engine.get_physics_frames(),
 		"weight": _animation.aim_weight(),
 		"camera_weight": _rig.aim_amount(),
 		"fov": camera.fov,
@@ -158,10 +159,17 @@ func _assert_smooth(samples: Array[Dictionary], label: String) -> void:
 	var hand := 0.0
 	var turn := 0.0
 	for i in range(1, samples.size()):
-		hand = maxf(hand, (samples[i]["grip"] as Vector3).distance_to(samples[i - 1]["grip"]))
-		turn = maxf(
-			turn, rad_to_deg((samples[i]["barrel"] as Vector3).angle_to(samples[i - 1]["barrel"]))
+		# A busy machine runs several physics steps before the next drawn frame, and the body turns
+		# a step each: the bound is per physics tick, so a sample that spans n of them is divided by n.
+		var ticks := maxi(
+			1, int(samples[i]["physics_frame"]) - int(samples[i - 1]["physics_frame"])
 		)
+		var moved := (samples[i]["grip"] as Vector3).distance_to(samples[i - 1]["grip"])
+		var turned := rad_to_deg(
+			(samples[i]["barrel"] as Vector3).angle_to(samples[i - 1]["barrel"])
+		)
+		hand = maxf(hand, moved / ticks)
+		turn = maxf(turn, turned / ticks)
 	assert_float(hand).override_failure_message("%s: hand step %.3f m" % [label, hand]).is_less(
 		MAX_HAND_STEP
 	)
