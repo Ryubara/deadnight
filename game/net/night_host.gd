@@ -12,12 +12,20 @@ extends Node
 ##
 ## The server speaks plain `ws://`: on Railway the edge terminates TLS and clients use `wss://`.
 ## It reads its port from the command line (`--port N`) or `$PORT`, and logs one JSON object a line.
+##
+## Alone it owns its listener and rebuilds the night when everyone has left. As one room of a
+## `GameServer` (`embedded`) it shares the server's listener, which the `GameServer` polls and
+## routes (`attach`, `receive`, `detach`), and says `emptied` instead of rebuilding.
 
 signal player_joined(player_id: int)
 signal player_left(player_id: int)
 ## A player's socket dropped and the seat is held for them; and they came back on a new one.
 signal player_away(player_id: int)
 signal player_resumed(player_id: int)
+## The night is built and the room takes players.
+signal built
+## An embedded room's night began and everyone has gone: the `GameServer` ends and frees it.
+signal emptied
 
 const MAX_PLAYERS := 4
 ## A TICK goes out every this many steps: 2 is 30 a second at the 60 Hz step.
@@ -49,6 +57,10 @@ var resume_within := RESUME_WITHIN
 ## `NetWire.Refusal` to turn it away. Unset, everyone is let in (the platform backend's ticket check
 ## plugs in here).
 var admit: Callable
+## One room of a `GameServer`: the listener is the server's, not this node's.
+var embedded := false
+## What a room is called in the log (the match id of a `GameServer`'s room).
+var room_id := ""
 
 var listener := WsListener.new()
 var world: NightWorld
@@ -76,6 +88,10 @@ var _stats_work := 0.0
 
 
 func _ready() -> void:
+	if embedded:
+		await _build_night()
+		_log("room_ready", {"players_max": MAX_PLAYERS})
+		return
 	listener.peer_connected.connect(_on_connected)
 	listener.peer_disconnected.connect(_on_disconnected)
 	listener.packet_received.connect(_on_packet)
@@ -89,7 +105,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	listener.close()
+	if not embedded:
+		listener.close()
 	if server != null:
 		server.close()
 
@@ -98,7 +115,8 @@ func _physics_process(_delta: float) -> void:
 	if not serving:
 		return
 	var began := Time.get_ticks_usec()
-	listener.poll()
+	if not embedded:
+		listener.poll()
 	if server == null:
 		return
 	var events := server.step(Night.STEP)
@@ -117,11 +135,20 @@ func _physics_process(_delta: float) -> void:
 	_stats_steps += 1
 	_log_stats()
 	if _peers.is_empty() and _away.is_empty() and nights > 0 and _night_began():
-		_rebuild()
+		if embedded:
+			serving = false
+			emptied.emit()
+		else:
+			_rebuild()
 
 
 func player_count() -> int:
 	return _by_player.size()
+
+
+## Connections this room has been handed (players and those that have not said hello yet).
+func peer_count() -> int:
+	return _peers.size()
 
 
 ## Players whose seat is held while their socket is down.
@@ -141,10 +168,12 @@ func _build_night() -> void:
 	await world.build()
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning)
+	server.drawn_bodies = false
 	_events.clear()
 	nights += 1
 	serving = true
 	_log("night_ready", {"night": nights, "seed": chosen})
+	built.emit()
 
 
 ## The last player left a night that began: a new lot, new rules, a new seed.
@@ -159,6 +188,48 @@ func _hz() -> int:
 
 
 # --- Connections ---
+
+
+## A `GameServer` hands this room a connection (`user` is who the backend's ticket says it is).
+func attach(transport_id: int, user: String = "", user_name: String = "") -> void:
+	_on_connected(transport_id)
+	var peer: HostPeer = _peers.get(transport_id)
+	if peer != null:
+		peer.user = user
+		peer.user_name = user_name
+
+
+## What the connection sent, from a `GameServer` that routes it here.
+func receive(transport_id: int, data: PackedByteArray) -> void:
+	_on_packet(transport_id, data)
+
+
+## The connection closed, told by the `GameServer`.
+func detach(transport_id: int) -> void:
+	_on_disconnected(transport_id)
+
+
+## The room's `HostPeer` for a connection, or null.
+func peer_of(transport_id: int) -> HostPeer:
+	return _peers.get(transport_id)
+
+
+## Whether this room holds the seat a resume token is for (a live one or one that is away).
+func owns_token(token: PackedByteArray) -> bool:
+	if token.size() != NetWire.TOKEN_SIZE:
+		return false
+	for away: Away in _away.values():
+		if away.token == token:
+			return true
+	for peer: HostPeer in _by_player.values():
+		if peer.token == token:
+			return true
+	return false
+
+
+## The players in this night by the backend's user id of their ticket (`""` ids are left out).
+func users_present() -> int:
+	return _by_player.size()
 
 
 func _on_connected(transport_id: int) -> void:
@@ -185,7 +256,7 @@ func _on_disconnected(transport_id: int) -> void:
 	):
 		# The body stays where it is, with no commands coming (it stands still after a moment);
 		# the player takes it back with the token, or the time runs out.
-		_away[peer.player_id] = Away.new(peer.token, _now() + resume_within)
+		_away[peer.player_id] = Away.new(peer.token, _now() + resume_within, peer.user)
 		_log("away", {"player": peer.player_id, "players": _by_player.size()})
 		player_away.emit(peer.player_id)
 		return
@@ -244,16 +315,19 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	if peer.player_id != 0 or peer.refused:
 		_fault(peer)
 		return
-	var hello := NetWire.read_hello(data)
-	if not NetWire.accepts(hello["version"]):
+	if not NetWire.accepts(NetWire.hello_version(data)):
 		_refuse(peer, NetWire.Refusal.VERSION)
+		return
+	var hello := NetWire.read_hello(data)
+	if hello.is_empty():
+		_fault(peer)
 		return
 	if admit.is_valid():
 		var verdict: int = admit.call(peer.transport_id, hello["version"])
 		if verdict != 0:
 			_refuse(peer, verdict as NetWire.Refusal)
 			return
-	var resumed := _claim_seat(hello["token"])
+	var resumed := _claim_seat(hello["token"], peer.user)
 	if resumed != 0:
 		_resume(peer, resumed)
 		return
@@ -277,15 +351,19 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 ## The id of the player this token is the seat of, taken from the held seats or (a client that
 ## came back before the server noticed its old socket was dead) from a live connection, which is
 ## hung up on; 0 when it is no one's.
-func _claim_seat(token: PackedByteArray) -> int:
-	if token.size() != NetWire.TOKEN_SIZE:
+func _claim_seat(token: PackedByteArray, user: String = "") -> int:
+	var by_token := token.size() == NetWire.TOKEN_SIZE
+	if not by_token and user == "":
 		return 0
+	# The seat of a ticket's user is theirs whatever token they hold: a second tab or a reload with
+	# a new ticket takes the seat back instead of making a second player.
 	for player_id in _away:
-		if _away[player_id].token == token:
+		var held: Away = _away[player_id]
+		if (by_token and held.token == token) or (user != "" and held.user == user):
 			return player_id
 	for player_id in _by_player:
 		var old := _by_player[player_id]
-		if old.token == token:
+		if (by_token and old.token == token) or (user != "" and old.user == user):
 			old.player_id = 0
 			_by_player.erase(player_id)
 			listener.disconnect_peer(old.transport_id)
@@ -421,6 +499,8 @@ func _log(event: String, fields: Dictionary = {}) -> void:
 	if not log_enabled:
 		return
 	var line := {"event": event, "t": snappedf(Time.get_ticks_msec() / 1000.0, 0.01)}
+	if room_id != "":
+		line["room"] = room_id
 	line.merge(fields)
 	print(JSON.stringify(line))
 
@@ -431,10 +511,13 @@ class Away:
 	var token: PackedByteArray
 	## When the seat is given up (the host's clock, seconds).
 	var until: float
+	## The backend's user id of the player (`""` without a ticket).
+	var user: String
 
-	func _init(p_token: PackedByteArray, p_until: float) -> void:
+	func _init(p_token: PackedByteArray, p_until: float, p_user: String = "") -> void:
 		token = p_token
 		until = p_until
+		user = p_user
 
 
 ## One connection to the server.
@@ -454,6 +537,9 @@ class HostPeer:
 	var limits := PeerLimits.new()
 	## What the client was given at WELCOME to take its seat back with.
 	var token := PackedByteArray()
+	## Who the backend's ticket says this is (`""` when the server has no backend), and their name.
+	var user := ""
+	var user_name := ""
 
 	func _init(p_transport_id: int, now: float = 0.0) -> void:
 		transport_id = p_transport_id

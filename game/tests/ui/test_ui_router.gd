@@ -24,8 +24,8 @@ func before_test() -> void:
 
 func after_test() -> void:
 	Engine.time_scale = 1.0
-	UIRouter.reset(_screen("end"), UITransition.Kind.CUT)
-	await _settle()
+	# Leave the router empty: a screen left on it covers the mouse for every suite after this one.
+	await RouterFixture.clear(get_tree())
 
 
 func test_queued_calls_run_in_order() -> void:

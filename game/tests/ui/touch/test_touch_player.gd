@@ -33,6 +33,19 @@ func test_a_drag_turns_the_player_through_the_real_input_path() -> void:
 	assert_float(turned).is_equal_approx(-TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0, 0.02)
 
 
+func test_the_look_gain_slows_a_drag_as_the_aim_assist_does_near_a_zombie() -> void:
+	var runner := scene_runner("res://world/test_room.tscn")
+	var player := runner.find_child("Player") as Player
+	player.capture_mouse = false
+	_fixture.controls.look_gain = func() -> float: return 0.5
+	var yaw := player.camera_rig.yaw
+	await _fixture.touch(0, Vector2(1700.0, 300.0))
+	await _fixture.drag(0, Vector2(1800.0, 300.0), Vector2(100.0, 0.0))
+	await _fixture.lift(0)
+	var turned := angle_difference(yaw, player.camera_rig.yaw)
+	assert_float(turned).is_equal_approx(-TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0 * 0.5, 0.02)
+
+
 func test_the_side_button_moves_the_camera_to_the_other_shoulder() -> void:
 	var runner := scene_runner(TEST_ROOM)
 	var player := runner.find_child("Player") as Player

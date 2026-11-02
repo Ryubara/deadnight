@@ -16,8 +16,9 @@ var on_floor := false
 var sprinting := false
 var aiming := false
 var crouching := false
-## Seconds since the trigger was last held (the body faces the view, and the camera zooms a little,
-## while this is short). A huge number until the first shot.
+## Seconds since the trigger was last held without the aim button (a shot fired while aiming does
+## not count: the aim has its own release, and leaves no hip-fire hold behind). The aim is held
+## while this is short (`holds_aim`). A huge number until the first shot from the hip.
 var fire_age := NEVER_FIRED
 ## +1 camera over the right shoulder, -1 over the left.
 var shoulder_side := 1.0

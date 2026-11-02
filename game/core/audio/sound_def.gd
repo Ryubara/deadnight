@@ -4,7 +4,7 @@ extends RefCounted
 ## how the voice budget treats it. Plain data; `SoundCatalog` lists every one.
 
 var id: StringName
-## Variant files: this path with `%d` replaced by 1..variants.
+## Variant files: this path with `%d` replaced by 1..variants (a path without `%d` is one file).
 var path_format := ""
 var variants := 1
 var bus: StringName = &"Effects"
@@ -52,6 +52,8 @@ static func make(
 
 
 func path_for(variant: int) -> String:
+	if not path_format.contains("%d"):
+		return path_format
 	return path_format % clampi(variant, 1, variants)
 
 
