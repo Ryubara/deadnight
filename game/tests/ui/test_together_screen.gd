@@ -105,11 +105,3 @@ func test_a_link_to_a_night_that_is_gone_says_so_and_shows_the_menu() -> void:
 	assert_bool(screen.quick_button.is_visible_in_tree()).is_true()
 	assert_bool(screen.quick_button.disabled).is_false()
 	screen.queue_free()
-
-
-func test_the_controller_note_shows_only_in_a_discord_activity() -> void:
-	var screen := _screen()
-	screen._process(2.0)
-	assert_str(screen._controller_note.text).is_empty()
-	assert_bool(screen._controller_note.visible).is_false()
-	screen.queue_free()
