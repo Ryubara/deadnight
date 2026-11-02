@@ -39,7 +39,7 @@ foregrip with the stock at his shoulder, so its guard was deepened instead.
 | Double shotgun (Shotgun) | 0.96 | 1 | 1.16 m | 1.97 along the wrist | 1.11 (guard made 2 cm deeper) | 0.83 | 0.99 m; guard 0.61 |
 | Baseball bat (Melee) | 1.01 | 1 | 0.89 m | - | - | 0.64 | 0.76 m |
 | Crowbar (Melee) | 1.3 | 1 | 0.78 m | - | - | 0.56 | 0.66 m |
-| Fire axe (no hold file yet) | 0.95 | 1 | 0.94 m | - | - | 0.67 | - |
+| Fire axe (Melee) | 0.95 | 1 | 0.94 m | - | - | 0.67 | new |
 | Claw hammer (the repair's tool) | 0.85 | - | 0.50 m | - | - | 0.36 | unchanged |
 
 The kit beside the same Soldier, for scale: revolver 0.79 m, SMG 0.91 m, AK 1.14 m, shotgun 1.24 m.
