@@ -87,6 +87,21 @@ func test_a_bot_buys_the_hearty_tonic_once() -> void:
 	night.dispose()
 
 
+func test_a_bot_with_no_grenades_walks_to_the_rack_and_buys_some() -> void:
+	# Enough for every door on the list first: grenades are what is left over.
+	var night := await _shopper([], 10000)
+	var rules := night.server.rules
+	rules._set_grenades(rules.players[1], 0, &"test")
+	# A direct call is no part of a server step: tell the bot as the next step would.
+	night.host.hear([{"type": &"grenade_count_changed", "player_id": 1, "count": 0}])
+	var bought := _purchases(night, &"grenades")
+	_seconds(night, 240.0)
+	assert_int(bought.size()).is_greater_equal(1)
+	assert_int(rules.grenades_of(1)).is_greater(0)
+	assert_array(_catcher.lines).is_empty()
+	night.dispose()
+
+
 func test_a_bot_plays_the_crane_and_takes_the_prize_it_wants() -> void:
 	var night := await _shopper([&"crane_play"], 700)
 	var bought := _purchases(night, &"crane_play")

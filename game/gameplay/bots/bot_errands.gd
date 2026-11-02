@@ -41,9 +41,10 @@ const PERSON_AT_BREACH := 10.0
 ## the seconds an area stays empty before its circuit goes off.
 const AREA_MARGIN := 3.0
 const AREA_EMPTY := 15.0
-## Metres from a stand at which a bot counts itself arrived, for a stand in the open and a door.
+## Metres from a stand at which a bot counts itself arrived, for a stand in the open and a door (a
+## door's stand is 1.5 m from the slab and a hand reaches 3.2 m, so it must come closer than 1.7).
 const ARRIVE := 1.0
-const ARRIVE_DOOR := 1.8
+const ARRIVE_DOOR := 0.8
 ## Seconds at a stand with nothing to press before the item is left alone for a while, and the
 ## longest an errand may take.
 const AT_STAND_PATIENCE := 3.0
@@ -401,6 +402,7 @@ func _view(
 	view.here = me["pos"]
 	view.arms = me.get("arms", {})
 	view.held = me.get("weapon", &"")
+	view.grenades = beliefs.grenades
 	view.doors_open = frame.get("doors", [])
 	view.bought = state.bought
 	var crane: Dictionary = frame.get("crane", {})

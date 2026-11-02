@@ -9,6 +9,9 @@ extends Node
 ## - `boards`: three boards are down at the north-west breach; in a break the bot walks there and
 ##   puts them back, one after another, and the points come.
 ## - `fuel`: the tank is at a fifth, the concession is open; the bot walks to the cans and buys one.
+## - `rack`: the person stands at the grenade rack on the stand's east wall with the points for two
+##   and uses it: the card names the price, and the points and the grenades change.
+## - `rackbot`: a bot with no grenades and every door bought walks to the rack and buys some.
 ##
 ## Not part of the game. Run with Movie Maker through the kit's `gds godot`, so no window takes the
 ## person's keyboard:
@@ -23,13 +26,23 @@ const STAGE := {
 	"door": [Vector3(0.0, 0.1, 3.0), 0.0],
 	"boards": [Vector3(-36.0, 0.1, -38.0), 0.0],
 	"fuel": [Vector3(2.5, 0.1, 12.0), 0.0],
+	"rack": [Vector3(11.4, 0.1, 3.0), PI],
+	"rackbot": [Vector3(15.0, 0.1, 6.5), 0.0],
 }
+## A camera of its own for a scene that must show the lot's wall: where it stands, what it looks at.
+const VIEWS := {
+	"rack": [Vector3(14.6, 1.9, -0.8), Vector3(10.6, 1.3, 3.2)],
+	"rackbot": [Vector3(14.9, 1.8, -1.5), Vector3(10.6, 1.2, 3.0)],
+}
+## The tick the person uses the rack at.
+const USE_AT := 120
 
 var _night: Night
 var _host := BotHost.new()
 var _scenario := "door"
 var _operator := Vector3.ZERO
 var _facing := 0.0
+var _tick := 0
 
 
 func _ready() -> void:
@@ -54,6 +67,12 @@ func _ready() -> void:
 	_quiet_the_operator()
 	_seat_the_bot()
 	_stage()
+	if VIEWS.has(_scenario):
+		var camera := Camera3D.new()
+		add_child(camera)
+		camera.global_position = VIEWS[_scenario][0]
+		camera.look_at(VIEWS[_scenario][1])
+		camera.make_current()
 	_night.state.event_received.connect(_on_event)
 	_night.ticked.connect(_on_tick)
 
@@ -80,11 +99,10 @@ func _seat_the_bot() -> void:
 	LotBotData.fill(level, _night.world, _night.rules_tuning)
 	var state := ClientState.new()
 	state.player_id = BOT
-	_host.add(
-		BotClient.new(
-			state, BotProfile.regular(), 100 + BOT, Callable(self, &"_send").bind(BOT), level
-		)
-	)
+	var profile := BotProfile.regular()
+	if _scenario == "rackbot":
+		profile.shopping.clear()
+	_host.add(BotClient.new(state, profile, 100 + BOT, Callable(self, &"_send").bind(BOT), level))
 
 
 func _stage() -> void:
@@ -101,6 +119,16 @@ func _stage() -> void:
 			RulesFixture.buy(rules, Night.PLAYER_ID, &"door_concession")
 			rules.players[Night.PLAYER_ID].points = 0
 			rules.generator.fuel = 20.0
+		"rack":
+			rules.players[Night.PLAYER_ID].points = 500
+		"rackbot":
+			rules.players[BOT].points = 100000
+			for item in _night.rules_tuning.economy.items:
+				if item.kind == ShopItem.Kind.DOOR:
+					RulesFixture.buy(rules, BOT, item.id)
+			rules.players[BOT].points = 600
+			rules._set_grenades(rules.players[BOT], 0, &"stage")
+			_host.hear([{"type": &"grenade_count_changed", "player_id": BOT, "count": 0}])
 
 
 func _send(action: Dictionary, id: int) -> void:
@@ -115,6 +143,11 @@ func _on_tick() -> void:
 	_night.server.body_of(Night.PLAYER_ID).teleport(_operator)
 	_night.autopilot._yaw = _facing
 	_night.player().camera_rig.steer(_facing, 0.0)
+	_tick += 1
+	if _scenario == "rack" and _tick == USE_AT:
+		var command := NightCommand.new()
+		command.use = true
+		_night.link.send(command.to_dict())
 	_host.tick(Night.STEP)
 
 

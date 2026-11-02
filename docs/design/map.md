@@ -88,6 +88,7 @@ plaque only names the weapon).
 | Prize crane | one of four places (below); it starts inside the stand, beside the cabinet that was there | `crane_play`: a play, a spin, then a weapon the player lacks that only the buyer can take; it can break down and move | the stand is the first door; a gamble to spend the first thousand on |
 | Re-cut bench | the projection booth, in the middle of its floor at `(3.5, 28.2)`, facing the door, spot at `(3.5, 25.9)` | `upgrade_weapon`: re-cuts the weapon in hand ([the re-cut](upgrades.md)) | past the booth's door (750), mid rounds: the first thing the booth is for besides the rifle and the roost |
 | Soda fountain | the concession stand, behind the counter at `(8.2, 4.9)`, facing the door, spot at `(8.2, 3.7)` | `tonic_hearty`: more health ([the hearty tonic](upgrades.md#the-hearty-tonic)) | in the first area that opens: a first thing to save for after the shotgun |
+| Grenade rack | the stand's east wall, in the alley on the midway side, plaque at `(10.26, 3.0)`, spot at `(11.4, 3.0)` | `grenades`: as many as fit the pack (two a purchase, up to five), at their share of the price | a place to restock the throwable, opened with the concession; the stand's front wall is full (windows, door, shotgun, breaker) |
 | Ammunition lockers (5) | the avenue (field), the stand (its north-east corner), the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
 
 ### The crane's places

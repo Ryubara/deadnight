@@ -811,81 +811,9 @@ zombie, the boss included, so a bot that shoots a boss in front of it is not dod
 bot's trigger and counts only the swings that ran their course); a flat grenade throw lies 17 to 26 m out; and a
 test counter in a lambda read zero.
 
-**Left for the later phases.** Nothing in the shop: rounds, doors, the locker (phase 4, #228); a flare against the
-dead at a downed teammate and the revive (phase 5, #229); the zombie's own health stays unknown to a bot by decision,
-so "finish the weak one" is not a term. The stance and the boss logic read the special round from `round_started`; a
-bot seated after it began does not know it, until the frame carries the special round.
-
-### Phase 4: economy, repairs and the generator
-
-Issue: #228.
-
-The shopping chooser, reserve, door etiquette, repair purse rule, fuel and circuit manager, backing off after refusals,
-callout lines for buying. **Done when**: scenarios 8, 9, 11, 21 and 22 pass; in a soak no bot holds over twice the next
-purchase for a round, no rejected-buy loop occurs, every door is bought in plan order without a human present, and the
-points spent by category match the simulator's shopping model within 20%; the coverage matrix (28) is green.
-
-**Built (#228).** Three small classes under `game/gameplay/bots/` and the lot's data for them:
-
-- **`BotShop`**: what every client has before the night (the shop table, the doors in table order, and where to stand
-  at each door slab, shop spot, breach, breaker post and fuel crate, with the lamps each circuit hangs), filled from
-  the built lot by `LotBotData.fill(level, world, tuning)`. A level made without the tuning gives its bots no errands
-  (the suites that measure the fight alone keep their numbers; the golden hash did not move).
-- **`BotEconomy`**, a pure chooser (`candidates(view)`; table-driven in `tests/bots/test_bot_economy.gd` and
-  `test_bot_economy_rounds.gd`). It is the simulator's player (`NightSim._shop`) in the order: rounds the bot cannot
-  fight without (reserve under a magazine, bought at once, in a round too), rounds of a short reserve
-  (`BotProfile.ammo_floor_mags` magazines), then the items of `BotProfile.shopping` in order, passing over what it
-  cannot pay unless the profile saves for it, and last topping a reserve up with what is left once the next item is
-  paid. The three profiles carry the lists of the simulator's weak, average and strong player (a test holds the two
-  together), so the bot and the model shop the same way by construction. Doors the list lacks come after it in the
-  table's order. A refill that would fill under a tenth of the cap is never asked for (`AMMO_FULL`), a fuel can's
-  price is kept back from round 3, a wall weapon or a prize is taken when it is worth 1.5 times the **weakest** weapon
-  carried (full hands give up the one in hand, so `BotErrands` puts the weakest in hand before it pays), the re-cut is
-  for a firearm in hand that is not cut yet (as many as the profile cuts), and a tonic is bought only if it adds
-  health (`tonic_hearty`; the others do nothing and are never bought). Grenades have no place to buy them in the lot:
-  #577.
-- **`BotErrands`**, the one stateful part: a think in a lull may go on an errand, in this order, and none while a
-  zombie is within 12 m. (1) *Fuel*: the tank at the low line (`FuelTuning.low_fraction`) and a can affordable: the
-  bot whose turn it is walks to the nearest open crate and presses use until the tank is 15 points over the line. (2)
-  *Breakers*: the field's circuit stays on; an area's goes on while a person (a bot when no person is up) is within a
-  lamp's reach of it and the tank is over the line plus 15 points, and off again when the area has been empty for 15 s
-  or the tank runs low. (3) *Shopping*, from the economy, with the door manners: no door while a teammate is down or
-  under half health; a person within 15 m of the door who holds the price has it for 20 s (the bot's own clock from
-  when it first held the price); a person's ping on a door is an order, bought when affordable after 10 s if the
-  person could pay it themselves; the nearest bot that can pay buys a door, and the turn passes to the next every 40 s
-  the door stays shut. (4) *Boards*: a breach with a board down is repaired in a lull, nearest first, never where a
-  person is within 10 m or a zombie within 10 m of the breach, by holding use (`use_held`). A purchase the server
-  refuses (`purchase_denied`) leaves that item alone for 30 s; a stand the legs find no way to is left alone until a
-  door opens (the mesh changes then). The *lull* is a break, or a round with five or a quarter of its most dead left,
-  or ten seconds without a sight or a sound of the dead: the maintainer shortened the break to 5 s, which a walk to a
-  spot does not fit in, so "buy in a break" starved the shopping.
-
-Proof: scenarios 8, 9, 11, 21 and 22 and the care around them are in `tests/night/test_bot_errands.gd` (21 cases in
-the real lot with the real server: the grace for a person at the door, a refused buy in a frame that lies about the
-points backs off 30 s and does not loop, a repair that stops with a zombie at the boards and goes on after, one bot
-buys the can and the next takes over when the first is stuck, a ping buys the door where the control does not, the
-breakers, the wall shotgun, the hearty tonic, the crane, rounds at a locker for a short reserve and for a dry
-gun); the coverage matrix (28) has a rule for every shop item and prompt, and one waiver
-(grenades, #577).
-
-**Measured.** The shopping soak (`tests/captures/bots_shop_soak.tscn`: four hosted bots, no person, 15 game minutes,
-every player's health ten times the shipped so the night is not cut short; 4 runs, 16 bots) shows **no rejected-buy
-loop** (1 refusal in all, and it backed off), **no `ERROR`**, **no brain disabled**, and **no bot holding more than
-twice the next purchase for a whole round** (the longest stretch in any round of any run was 31 s, in rounds of 100 to
-500 s). Doors were bought in plan order in every run (concession, then the yard door: the booth is #590). **Not met:
-the points spent by category against the simulator.** The bots spent 0.5 to 0.6 of what they earned in the two runs
-that got to round 7 (the simulator's average and strong players spend 0.87, its weak player 0.80), and the categories
-differ: per bot to round 6 the Regular and Veteran bought 1.0 to 1.7k of rounds (the simulator's average player:
-0.6k), the 900 shotgun, one or two doors, and no crane play, rifle, re-cut or tonic (the simulator: 0.6k, 0.6k, 0.7k
-and 0.3k). Causes seen: the booth door and the re-cut bench cannot be reached on the walking mesh with only the
-concession open (#590), which also blocks the back lot and the road; bots earn their points in the last third of the
-game, in rounds a soak plays with stragglers (#591); and they top up the shotgun's rounds more than the simulator does
-(they fire more). Fitting the shopping to the model is phase 7 (#231)
-
-**Left for the later phases.** The grenades (#577), callout lines for buying (phase 5, with `bot_say`), the booth zone
-(#590) and the dead that stand at a door and end no round (#591). The shopping parity above is for the phase 7 fit
-(#231). The think cost of the errands was not separated from the machine's noise (a soak with and without them printed
-the same p99, 3.5 to 3.8 ms on a loaded machine); #564 owns it.
+**Left for the later phases.** Callout lines for buying (phase 5, with `bot_say`). The shopping parity above is for the
+phase 7 fit (#231). The think cost of the errands was not separated from the machine's noise (a soak with and without
+them printed the same p99, 3.5 to 3.8 ms on a loaded machine); #564 owns it.
 
 ### Phase 5: team play, revives and edge cases
 

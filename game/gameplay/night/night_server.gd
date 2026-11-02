@@ -759,7 +759,7 @@ func _offer_at(player_id: int, spot: Dictionary) -> Dictionary:
 			}
 		&"crane":
 			return _crane_offer(player_id, spot)
-		MachineOffers.UPGRADE_SPOT, MachineOffers.PERK_SPOT:
+		MachineOffers.UPGRADE_SPOT, MachineOffers.PERK_SPOT, MachineOffers.RACK_SPOT:
 			return MachineOffers.offer(self, player_id, spot)
 		&"ammo":
 			var held := combat.weapon_of(player_id)
@@ -813,7 +813,7 @@ func _ammo_offer(player_id: int, weapon: StringName) -> Dictionary:
 func _use(player_id: int) -> void:
 	var target := use_target(player_id)
 	match target.get("kind"):
-		&"door", &"weapon", &"ammo", &"crane", &"recut", &"tonic":
+		&"door", &"weapon", &"ammo", &"grenades", &"crane", &"recut", &"tonic":
 			buy(player_id, target["id"])
 		&"crane_take":
 			var held := MachineOffers.weapon_for(self, player_id)

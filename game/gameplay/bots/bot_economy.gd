@@ -10,7 +10,8 @@ extends RefCounted
 ## `BotProfile.shopping` (doors, wall weapons, the crane, the re-cut, the hearty tonic), and last
 ## topping the reserves up with what is left once the next thing on the list is paid for. An item
 ## on the list is passed over when it is not affordable, unless the profile saves for it. Tonics
-## that do nothing for health are never bought; grenades have no place to buy them yet.
+## that do nothing for health are never bought. Grenades come last: a bot with fewer than
+## `BotProfile.grenades_wanted` buys a rack's worth once the next thing on the list is paid for.
 ##
 ## Keeping back a reserve: a fuel can from round `RESERVE_FUEL_FROM` on, so a plan item never leaves
 ## the bot unable to feed the generator.
@@ -78,6 +79,8 @@ class View:
 	## The carried weapons: catalogue id to `[magazine, reserve, tier]`; the one in hand.
 	var arms: Dictionary = {}
 	var held: StringName = &""
+	## Grenades in the pack.
+	var grenades := 0
 	var doors_open: Array = []
 	## What the bot has bought, by shop item id (the client's count).
 	var bought: Dictionary = {}
@@ -147,6 +150,9 @@ func candidates(view: View) -> Array[Buy]:
 		var top := _ammo(view, weapon, 0, TOP_OFF, next)
 		if top != null:
 			found.append(top)
+	var grenades := _grenades(view, next)
+	if grenades != null:
+		found.append(grenades)
 	return found
 
 
@@ -291,6 +297,32 @@ func _ping(view: View) -> Buy:
 	if buy == null or buy.price > view.points:
 		return null
 	buy.why = PING
+	return buy
+
+
+# --- Grenades ---
+
+
+## Grenades from a rack, when the pack is under what the profile wants, there is room, the hour is
+## calm and the purchase leaves `keep` points. Null otherwise.
+func _grenades(view: View, keep: int) -> Buy:
+	var item := _shop.economy.item(&"grenades") if _shop.economy != null else null
+	if item == null or view.is_denied(item.id) or not view.is_calm():
+		return null
+	var count := mini(int(item.amount), _shop.max_grenades - view.grenades)
+	if view.grenades >= _profile.grenades_wanted or count <= 0:
+		return null
+	var price := ceili(float(item.price_at(view.round_number)) * count / item.amount)
+	var stand := _nearest(view, _shop.spots_by_kind(&"rack"))
+	if stand == Vector3.INF or view.points - price < keep:
+		return null
+	var buy := Buy.new()
+	buy.item = item.id
+	buy.kind = ShopItem.Kind.GRENADES
+	buy.price = price
+	buy.stand = stand
+	buy.prompt = &"grenades"
+	buy.why = TOP_OFF
 	return buy
 
 

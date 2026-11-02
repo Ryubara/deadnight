@@ -26,6 +26,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 	found.economy = tuning.economy
 	found.fuel = tuning.fuel
 	found.boards = tuning.barricades.boards
+	found.max_grenades = tuning.explosives.max_grenades
 	var night_tuning := NightTuning.shipped()
 	found.use_reach = night_tuning.use_reach
 	found.fuel_reach = night_tuning.fuel_reach
@@ -33,9 +34,9 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 	for item in tuning.economy.items:
 		match item.kind:
 			ShopItem.Kind.DOOR:
-				if world.door_ids().has(item.id) and not world.door_points(item.id).is_empty():
+				if world.door_ids().has(item.id) and not world.door_stands(item.id).is_empty():
 					found.doors.append(item.id)
-					found.door_stands[item.id] = world.door_points(item.id)
+					found.door_stands[item.id] = world.door_stands(item.id)
 			ShopItem.Kind.FUEL:
 				found.fuel_item = item
 	found.spots = world.shop_spots()

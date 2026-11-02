@@ -11,6 +11,7 @@ const DETAILS := {
 	&"buy_door": "OPENS THE NEXT PART OF THE LOT",
 	&"buy_weapon": "A NEW GUN FOR THE NIGHT",
 	&"buy_ammo": "ROUNDS FOR YOUR RESERVE",
+	&"buy_grenades": "GRENADES FOR YOUR PACK",
 	&"buy_crane": "A RANDOM GUN YOU LACK",
 	&"crane_take": "TAKE IT BEFORE IT FADES",
 	&"crane_busy": "ONLY THE BUYER CAN TAKE IT",

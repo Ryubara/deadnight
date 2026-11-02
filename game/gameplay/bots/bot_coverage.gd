@@ -17,8 +17,7 @@ const SHOP_KINDS := {
 	"TONIC":
 	"rule: BotEconomy buys the hearty tonic once; a tonic with no health in it is never bought",
 	"FUEL": "rule: BotErrands buys a can when the tank is under the low line; one bot at a time",
-	"GRENADES":
-	"waived until #577 (no place in the lot sells grenades; throwing them is BotGrenadier)",
+	"GRENADES": "rule: BotEconomy buys a rack's worth when the pack is under the profile's want",
 	"AMMO": "rule: BotEconomy buys rounds for the guns it carries (below a magazine at once)",
 	"UPGRADE": "rule: BotEconomy re-cuts the gun in hand at the bench, as many as the profile does",
 }
@@ -39,6 +38,7 @@ const PROMPTS := {
 	"door": "rule: BotErrands presses use at the door BotEconomy chose, after the person's claim",
 	"weapon": "rule: BotErrands presses use at the wall BotEconomy chose",
 	"ammo": "rule: BotErrands presses use at the locker or the wall BotEconomy chose",
+	"grenades": "rule: BotErrands presses use at the rack BotEconomy chose",
 	"crane": "rule: BotErrands presses use when BotEconomy chose a play",
 	"crane_take": "rule: BotErrands takes the prize when it beats the weapon it would give up",
 	"crane_busy":

@@ -35,6 +35,7 @@ func before_test() -> void:
 		_spot(&"upgrade", &"upgrade_weapon", Vector3(50.0, 0.0, 20.0)),
 		_spot(&"perk", &"tonic_hearty", Vector3(60.0, 0.0, 20.0)),
 		_spot(&"perk", &"tonic_second_wind", Vector3(70.0, 0.0, 20.0)),
+		_spot(&"rack", &"grenades", Vector3(80.0, 0.0, 20.0)),
 	]
 
 
@@ -43,13 +44,15 @@ func _spot(kind: StringName, shop_id: StringName, at: Vector3, crane_spot := 0) 
 
 
 ## A view of a bot with the pistol in hand and the crowbar, in a break of round 1, full reserve,
-## every door open (a test about doors shuts them with `doors_open`).
+## the two grenades it starts with, every door open (a test about doors shuts them with
+## `doors_open`).
 func _view(points: int, changes: Dictionary = {}) -> BotEconomy.View:
 	var view := BotEconomy.View.new()
 	view.points = points
 	view.doors_open = ALL_DOORS.duplicate()
 	view.arms = {PISTOL: [10, 80, 0], CROWBAR: [0, 0, 0]}
 	view.held = PISTOL
+	view.grenades = 2
 	for key: String in changes:
 		view.set(key, changes[key])
 	return view
@@ -175,6 +178,44 @@ func test_the_re_cut_is_for_a_firearm_in_hand_that_has_not_been_cut() -> void:
 	var one_cut := _view(1500, {"arms": {PISTOL: [10, 80, 1], RIFLE: [8, 80, 0]}, "held": RIFLE})
 	assert_str(String(_choose(one_cut, two).item)).is_equal("upgrade_weapon")
 	assert_bool(_choose(one_cut, profile).is_none()).is_true()
+
+
+func test_a_bot_under_two_grenades_with_points_to_spare_buys_more() -> void:
+	var item := _shop.economy.item(&"grenades")
+	var buy := _choose(_view(1000, {"grenades": 1}), _profile([]))
+	assert_str(String(buy.item)).is_equal("grenades")
+	assert_str(String(buy.prompt)).is_equal("grenades")
+	assert_int(buy.price).is_equal(item.price_at(1))
+	assert_vector(buy.stand).is_equal(Vector3(80.0, 0.0, 20.0))
+	# At two it has enough; with the points of nothing else to buy it buys nothing more.
+	assert_bool(_choose(_view(1000, {"grenades": 2}), _profile([])).is_none()).is_true()
+	# Short of the price, it waits.
+	assert_bool(_choose(_view(item.price - 1, {"grenades": 0}), _profile([])).is_none()).is_true()
+
+
+func test_grenades_wait_for_the_next_thing_on_the_list_and_for_a_calm_hour() -> void:
+	var item := _shop.economy.item(&"grenades")
+	var list := _profile([&"weapon_shotgun"], [&"weapon_shotgun"])
+	# The shotgun is the next thing: the points that would buy a grenade and not the shotgun stay.
+	assert_bool(_choose(_view(item.price + 50, {"grenades": 0}), list).is_none()).is_true()
+	var spare := _view(900 + item.price, {"grenades": 0})
+	# Nothing to buy first: the shotgun is bought, not grenades.
+	assert_str(String(_choose(spare, list).item)).is_equal("weapon_shotgun")
+	var busy := _view(1000, {"grenades": 0, "in_break": false, "remaining": 30})
+	assert_bool(_choose(busy, _profile([])).is_none()).is_true()
+	var never := _profile([])
+	never.grenades_wanted = 0
+	assert_bool(_choose(_view(1000, {"grenades": 0}), never).is_none()).is_true()
+
+
+func test_a_pack_with_room_for_one_buys_one_at_its_share_of_the_price() -> void:
+	var item := _shop.economy.item(&"grenades")
+	var buy := _choose(_view(1000, {"grenades": 4}), _profile([]))
+	assert_bool(buy.is_none()).is_true()
+	var wants_more := _profile([])
+	wants_more.grenades_wanted = 5
+	buy = _choose(_view(1000, {"grenades": 4}), wants_more)
+	assert_int(buy.price).is_equal(ceili(float(item.price_at(1)) / item.amount))
 
 
 func test_only_a_tonic_that_does_something_is_bought_and_only_once() -> void:

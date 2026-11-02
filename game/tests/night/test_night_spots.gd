@@ -104,6 +104,39 @@ func test_a_locker_sells_rounds_for_the_gun_in_hand_and_charges_the_part_that_fi
 	night.queue_free()
 
 
+func test_the_grenade_rack_sells_the_grenades_that_fit_the_pack() -> void:
+	var night := await _start()
+	var rules := night.server.rules
+	var rack := _spot(night, &"grenades", &"rack")
+	assert_bool(rack != Vector3.INF).is_true()
+	# A full pack is offered nothing.
+	rules._set_grenades(rules.players[1], rules.tuning.explosives.max_grenades, &"test")
+	assert_dict(_stand_at(night, rack)).is_empty()
+	# Three of room: two to a purchase, the price a whole purchase's.
+	rules._set_grenades(rules.players[1], rules.tuning.explosives.max_grenades - 3, &"test")
+	var prompt := _stand_at(night, rack)
+	var item := rules.tuning.economy.item(&"grenades")
+	assert_str(String(prompt["kind"])).is_equal("grenades")
+	assert_int(prompt["count"]).is_equal(int(item.amount))
+	assert_int(prompt["price"]).is_equal(item.price_at(rules.round_number))
+	var before := night.state.points()
+	var held := rules.grenades_of(1)
+	_use(night)
+	assert_int(rules.grenades_of(1)).is_equal(held + int(item.amount))
+	assert_int(before - night.state.points()).is_equal(prompt["price"])
+	# One of room: one grenade, at its share of the price.
+	var room := rules.tuning.explosives.max_grenades - rules.grenades_of(1)
+	assert_int(room).is_equal(1)
+	prompt = _stand_at(night, rack)
+	assert_int(prompt["count"]).is_equal(1)
+	assert_int(prompt["price"]).is_equal(
+		ceili(float(item.price_at(rules.round_number)) / item.amount)
+	)
+	_use(night)
+	assert_int(rules.grenades_of(1)).is_equal(rules.tuning.explosives.max_grenades)
+	night.queue_free()
+
+
 func test_a_locker_has_nothing_for_the_crowbar() -> void:
 	var night := await _start()
 	night.server.combat.apply(CombatAction.give_weapon(1, &"crowbar"))
