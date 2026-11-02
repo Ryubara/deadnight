@@ -194,6 +194,35 @@ jobs:
         if: env.skip != 'true'
         run: bash deploy/web/deploy.sh build/web "$GITHUB_SHA"
 
+  deploy-server:
+    # Publishes the game server of main's head to the Railway service `deadnight-server` (deploy/server/), so a client
+    # of the web build above always finds a server that speaks its protocol (the version is checked in the hello, and a
+    # server a version behind turns every player away). It builds from the `godot` job's tested commit, with LFS files,
+    # since the server imports the whole project. Same token and same skip as `deploy`.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [godot]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - name: Check the deploy token
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::warning title=Server not deployed::The repository secret RAILWAY_TOKEN is not set (docs/research/web-export.md)."
+            echo "skip=true" >> "$GITHUB_ENV"
+          fi
+      - if: env.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          lfs: true
+      - if: env.skip != 'true'
+        run: npm install --global @railway/cli@5.63.1
+      - name: Deploy and wait until the server is live
+        if: env.skip != 'true'
+        run: bash deploy/server/deploy.sh deadnight-server
+
   build-ok:
     if: always()
     needs: [godot, web]
