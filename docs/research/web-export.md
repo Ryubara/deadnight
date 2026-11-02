@@ -89,6 +89,73 @@ Things that were not obvious:
   in Chrome and Firefox with a GPU and in the software renderer: no console error and no black or white frame, numbers
   in [the main menu page](main-menu.md). A mobile GPU is still not run.
 
+## Loading a night (#509)
+
+CI measured 82 to 107 s from pressing Play to a running night (the smoke waits 150 s, and main went red when a slow
+runner took longer), against 20 to 30 s on a development machine. The same work on a different machine: this is where
+it went and what was cut. Method: `tools/web_smoke/first_use.py` (`--software` for the headless shell's SwiftShader,
+which is what CI runs; without it the machine's Chrome and GPU), which records every frame and every GL program the page
+links; the steps the game marks (`WebProbe.mark`, the loading screen's own text) cut the time into parts. Press Play to
+a running night, a fresh browser profile every run, three runs of the build of `main` and three of this change one
+after the other on the same machine (16 threads, RTX 5080, other agents' work on the machine, so a run moves by 10 to
+20 %).
+
+| Press Play to a running night (3 runs) | SwiftShader, CI's renderer | Chrome 156, RTX 5080 (ANGLE D3D11) |
+| --- | --- | --- |
+| `main` before | 21.6, 21.8, 22.2 s | 20.6, 24.4, 24.7 s |
+| This change | **6.7, 7.2, 7.6 s** | **16.7, 18.1, 19.2 s** |
+| Programs linked / linked while playing | 221 / 0 before, 207 / 0 after | 222 / 0 before, 207 / 0 after |
+| Longest frame while loading | 0.8 s before, 0.38 s after | 2.3 to 2.5 s before and after (the build of one lit shader) |
+
+Where the time went in `main` (one run each, seconds):
+
+| Step | SwiftShader | GPU |
+| --- | ---: | ---: |
+| Menu to the lot's first mark (screen change, the lot's scene) | 1.5 | 1.4 |
+| Sounds decoded | 3.8 | 3.4 |
+| The lot, lit then dark (21 steps) | 5.1 | 9.8 |
+| The stage under four light conditions, props | 3.9 | 5.9 |
+| The effects replayed in four light conditions | 6.1 | 2.6 |
+
+What the profile showed:
+
+- **On a renderer that draws on the CPU the cost is the pixels, not the programs.** Every warm-up frame draws the lot or
+  the stage at the window's size (1280 x 720), 0.1 to 0.3 s a frame in SwiftShader, and the warm-up is some 100 frames:
+  the same run in a 640 x 360 window took 14.3 s against 30.5 s in the run that measured it (a busy machine). A program
+  does not depend on the size of the picture, so the warm-up now draws into a 160 x 90 `SubViewport` of the same world
+  while the window's own 3D drawing is off (`NightWarmup.VIEW_SIZE`), and the window draws the night once at the end,
+  so anything only its drawing needs is built behind the bar. The same programs are linked, none while playing.
+- **The effects were replayed in all four light conditions.** In the three after the moon alone the replay linked 0
+  programs (none of the effects' materials is lit) and took 1.5 s each in SwiftShader. It is drawn once, in the first
+  condition (1.4 s of the 6.1).
+- **Sounds were decoded behind the bar**: 240 files, 14 MB of samples, by a GDScript loop that runs once for every
+  sample (3.4 to 3.8 s here). The audio service now loads them in the background while a menu is up
+  (`AudioService.start_background_preload`, a quarter of each frame, 3 to 40 ms, after a second) and the loop calls
+  nothing it can write out. The warm-up finds them cached (the step takes 0.02 s). Pressing Play before the menu has
+  finished (the first second and a half of a page) leaves the rest to the warm-up, as before.
+- **With a GPU the cost is the lit shaders, and each costs twice what it draws.** Of the 134 programs linked between
+  Play and the night, 10 take 0.6 to 1.0 s each (8.4 s of 12.9 s of linking) and the other 124 take 0.14 s or less. The
+  10 are the **default specialisation** the engine builds at the first draw of every lit shader: the colour program and
+  the instanced colour program with every light type, lightmaps and reflection probes switched on, which no mesh of ours
+  uses (a mesh is drawn with `DISABLE_LIGHTMAP` and only the light types that reach it). The menu's stage already pays
+  six such pairs when the page loads, before Play; the lot and the stage add five. So **every lit `StandardMaterial3D`
+  that differs from another in one setting costs 1.2 to 2 s of loading** whatever it draws. The seven painted and glowing
+  lot materials (`assets/lot/materials`: the lines, the neon, the plaque, the screen face...) set
+  `specular_mode = DISABLED`, a shader of their own for a material that looks the same with `metallic_specular = 0`.
+  Switching them merged two shaders into two that existed: 14 programs and about 2 s fewer. The lamps tour
+  (`tests/captures/lamps_tour`, 20 frames) is pixel for pixel the same before and after, except in the screen's own
+  animated grain (a run against itself differs in the lamp flicker only).
+- **Not a lever:** `rendering/shading/overrides/force_lambert_over_burley` (18.5 s in the same run as a 16.0 s build
+  without it: no faster within the spread of the machine); the shadow filter quality and the lights per object (0 to
+  20 % in the first-use spike, see [First-use hitches](first-use-hitches.md)). There are no threads in this build (a
+  Discord Activity cannot send the headers a threaded export needs) and the browser cannot build half a program, so the
+  loading cannot be spread over cores; the programs can only be fewer.
+
+What is left with a GPU is 8 lit `StandardMaterial3D` settings combinations at 1.2 to 2 s each (an alpha-blended lit one,
+a double-sided textured one, the emissive-and-textured one of the soldier and the dead): the next cut is a material that
+looks different, so it is an artist's decision, not made here. `tests/night/test_load_cost.gd` fails when the night
+draws more than 8, and lists them.
+
 ## Playing the web build
 
 **<https://web-production-f401d1.up.railway.app>** is the head of `main`, in a browser, with no install (issue #172).

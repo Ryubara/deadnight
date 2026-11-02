@@ -1,0 +1,5 @@
+{
+  "seconds": 30.0,
+  "allowed_rise": 0.75,
+  "note": "Seconds from Play to a running night in the web job (headless shell, SwiftShader, 1280x720), the last green number; the smoke fails above seconds * (1 + allowed_rise). Issue #509."
+}

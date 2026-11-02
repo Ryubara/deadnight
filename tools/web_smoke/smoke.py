@@ -53,6 +53,11 @@ SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--igno
 # renderer, which is why this is gated and a frame time is not. The pieces link at most 12 (a shader's two big
 # programs and the few that go with them); the limit has room for a new kind of material, not for a new burst.
 MAX_PROGRAMS_IN_A_LOADING_FRAME = 12
+# The seconds from Play to a running night in the software renderer CI runs, as the last green run measured them, and
+# how much slower than that a run may be before it fails (night_load_baseline.json, issue #509). The wait above only
+# catches a night that never starts; this catches a night that takes twice as long as it did, while it still passes
+# the wait. Change the file when a change makes the load shorter or a runner is measured slower for good.
+NIGHT_LOAD_BASELINE_FILE = Path(__file__).with_name("night_load_baseline.json")
 # Tabs in the menu's bar: Q and E walk them, wrapping round.
 MENU_TABS = 5
 
@@ -367,6 +372,25 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     result["night_peak_alive"] = max((s.get("alive", 0) for s in samples), default=0)
     result["night_worst_p95_ms"] = max((s["frames"]["p95_ms"] for s in samples), default=0)
     result["night_worst_frame_ms"] = max((s["frames"]["max_ms"] for s in samples), default=0)
+
+
+def night_load_problems(result: dict, gpu: bool, deployed: bool) -> list[str]:
+    """The night's load against the last green number of the software renderer (no GPU, a build served here)."""
+    seconds = result.get("loading", {}).get("seconds")
+    if seconds is None or gpu or deployed or not NIGHT_LOAD_BASELINE_FILE.exists():
+        return []
+    baseline = json.loads(NIGHT_LOAD_BASELINE_FILE.read_text(encoding="utf-8"))
+    limit = baseline["seconds"] * (1 + baseline["allowed_rise"])
+    result["night_load_baseline_s"] = baseline["seconds"]
+    result["night_load_limit_s"] = round(limit, 1)
+    if seconds <= limit:
+        return []
+    message = (
+        f"[loading] the night took {seconds} s to load, more than {baseline['allowed_rise']:.0%} over the last green "
+        f"{baseline['seconds']} s (limit {limit:.0f} s, tools/web_smoke/night_load_baseline.json): something made the "
+        "loading slower (docs/research/web-export.md, 'Loading a night')"
+    )
+    return [message]
 
 
 def loading_report(frames: list[list[float]], pressed: float, running: float) -> dict:

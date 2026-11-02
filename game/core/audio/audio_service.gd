@@ -29,6 +29,12 @@ const DEFER_MAX_SECONDS := 0.12
 ## Sounds that may wait at once; past it the quietest waiting one is dropped.
 const DEFER_MAX := 16
 ## Pooled players for sounds with a place, and for sounds without one.
+## The background load of the sounds (`start_background_preload`): the wait before it starts (s),
+## its share of a frame, and the least and most it takes of one (ms).
+const BACKGROUND_WAIT_S := 1.0
+const BACKGROUND_SHARE := 0.25
+const BACKGROUND_MIN_MSEC := 3.0
+const BACKGROUND_MAX_MSEC := 40.0
 const POOL_3D := 32
 const POOL_2D := 12
 ## Players for beds (looping ambience and score), which are outside the voice budget.
@@ -80,6 +86,11 @@ var starts_per_frame := 0
 var started := 0
 var culled := 0
 
+## While the player is in a menu the service loads the sounds a night uses, a slice of each frame
+## (`start_background_preload`), so the night's loading screen has less to do.
+var _background_ids: Array = []
+var _background_at := 0
+var _background_wait := 0.0
 var _rng := RandomNumberGenerator.new()
 var _now := 0.0
 var _streams := {}
@@ -156,6 +167,36 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	advance(delta)
+	_background_preload(delta)
+
+
+## Starts loading every sound into the cache in the background, a slice of each frame, after a
+## short wait (the menu draws first). The night's warm-up loads what is left. Starting again does
+## nothing. The slice is a quarter of the last frame, between `BACKGROUND_MIN_MSEC` and
+## `BACKGROUND_MAX_MSEC`: a machine that draws slowly has the time, a fast one is not stuttered.
+func start_background_preload() -> void:
+	if not _background_ids.is_empty() or _background_at > 0:
+		return
+	_background_ids = SoundCatalog.ids()
+	_background_wait = BACKGROUND_WAIT_S
+
+
+## Whether the background load has been asked for and has not finished.
+func background_preloading() -> bool:
+	return _background_at < _background_ids.size()
+
+
+func _background_preload(delta: float) -> void:
+	if not background_preloading():
+		return
+	_background_wait -= delta
+	if _background_wait > 0.0:
+		return
+	var slice := clampf(delta * 1000.0 * BACKGROUND_SHARE, BACKGROUND_MIN_MSEC, BACKGROUND_MAX_MSEC)
+	var until := Time.get_ticks_msec() + int(slice)
+	while background_preloading() and Time.get_ticks_msec() < until:
+		preload_sound(_background_ids[_background_at])
+		_background_at += 1
 
 
 ## Moves the service's clock: frees finished voices and steps the ducking.
