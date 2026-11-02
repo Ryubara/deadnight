@@ -266,6 +266,13 @@ mappings for the backend and each game server.
 
 ## Gotchas found while building it
 
+- Discord's proxy compresses the backend's answers (`Content-Encoding: gzip`), and Godot's `HTTPRequest` then decodes a
+  body the browser has decoded already and fails, which the game reads as "Could not reach the game's servers": every
+  call through `/api` failed while the backend logged a 200 or 201. `HttpJson` sets `accept_gzip = false`.
+  `tools/web_smoke/activity.py` loads the web build as an Activity (a local HTTPS stand-in for `<id>.discordsays.com`,
+  gzip and chunked answers) and fails on it. A Discord sign-in code works once, and the answer the game could not read
+  had used it: a retry sent the same code and got Discord's `400`, so the game now trades a code in once
+  (`TogetherApi._spent_code`).
 - Node 24 runs `.ts` by stripping types only: constructor parameter properties (`private readonly x` in the
   signature) and enums fail at runtime. `erasableSyntaxOnly` in `tsconfig.json` catches them in `tsc`.
 - Fastify answers 400 to a request that sets `Content-Type: application/json` with an empty body, and validates the
