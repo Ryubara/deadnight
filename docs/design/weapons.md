@@ -181,9 +181,9 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 - **The carry limit: proposed, awaiting the maintainer (#410).** Two guns and the melee weapon; buying or taking a
   third gun replaces the one in hand and its reserve. Today a player may carry every weapon, and the swap button (F,
   d-pad up) takes the next one carried in hand.
-- **Friendly blast: proposed, awaiting the maintainer.** The flare's blast hurts zombies only: no player takes damage
-  from it, the thrower included, and a zombie does not keep burning. A grenade still hurts the thrower alone
-  (`player_blasted`). Revisit when perks can change the flare.
+- **The flare: decided, no damage; it becomes a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe
+  bomb, no damage for now. Zombies in a radius turn to it for a set time. Until #439 lands the table's flare numbers
+  (a hit and a blast) are the old design. A grenade still hurts the thrower alone (`player_blasted`).
 - **Reload as a skill.** A magazine swap that rewards a timed second press, and cancelling a reload by sprinting, wait
   for the controller (#14).
 - **Quick melee: not built (#411).** On its own button, with the crowbar-style sweep and a fixed short cooldown; the
