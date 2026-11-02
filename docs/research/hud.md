@@ -121,8 +121,35 @@ weapons.
 
 ## Left out, to do
 
-- Markers are given in screen space; projecting world points (and hiding those behind walls) is the camera's job.
+- Markers are not hidden behind walls: a name or a door shows through them, as in the genre.
 - The prompt looks only at one interaction; two in reach at once needs a choice rule from the player controller.
+
+## World markers from the camera (#134)
+
+`NightMarkers` (`game/gameplay/night/`) is the client side that projects; the HUD keeps taking shares of the screen.
+
+- **Project through the viewport's current camera, every rendered frame, after the camera has moved.** The shoulder
+  camera places itself in its own `_process`; the node runs at `process_priority` 1000, so a name never trails the
+  view by a frame. Which camera is current is not always the player's: a second `Player` body made in the same process
+  (a test, a capture) makes its own camera current when it enters the tree, and the whole view goes to the teammate.
+  Make the player's camera current again after the join (`Camera3D.make_current`).
+- **A drawn body is where the engine draws it, not where it is.** Bodies are physics-interpolated, so the head is
+  `get_global_transform_interpolated().origin`, not `global_position` (a tick behind on a fast screen). Remote avatars
+  place themselves from their own track; the same call returns their transform.
+- **Behind the lens, the mirror lies.** `Camera3D.unproject_position` divides by a negative depth there, so a point
+  straight behind lands near the middle of the screen. `MarkerProjection` takes the point's side and depth in camera
+  space instead (`x`, `|z|`) and puts it outside the screen on that side, so the pin at the edge says which way to turn:
+  straight behind is the bottom edge, behind and left is the left edge or the corner.
+- **Shares, not pixels.** `unproject_position` is in the viewport's visible rect (the canvas under `canvas_items`
+  stretch); dividing by that rect gives 0 to 1 whatever the window, and the HUD multiplies by its own size.
+- **Pins slide out of the corners.** The cards stand in the corners, so a marker pinned to the left or right edge keeps
+  between the round card and the health card, and one pinned to the top or bottom keeps off the side columns
+  (`HudMarkers.SIDE_CLEAR`, `TOP_CLEAR`, `BOTTOM_CLEAR`); its text is held inside the screen.
+- **Which doors.** A closed door whose own door is open (`ShopItem.requires`) is on offer; the nearest is the important
+  one and pins. `door_opened` events (and the snapshot's `doors_open` for a late joiner) keep the set.
+- **Damage numbers keep their world point.** The binding adds `world` to the local `zombie_damaged` event, from the last
+  frame's zombie position, and `HudCrosshair.projector` (the night's `NightMarkers.screen_of`) puts the number there every
+  frame. The 3D numbers over the wound (`ShotEffects.number`) show the same hit: see issue #134's follow-up.
 
 ## Stacking rows that slide (#240)
 
