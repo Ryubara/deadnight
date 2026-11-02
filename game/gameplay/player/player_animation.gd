@@ -115,12 +115,13 @@ const AIM_RATE_PARAMETER := &"parameters/body/locomotion/aim_rate/scale"
 const AIM_BLEND_PARAMETER := &"parameters/body/locomotion/aim_blend/blend_amount"
 ## The sprint carry (#459): an upper-body loop per class on the kit Run's 17 frames, built into its
 ## own file (docs/design/animation.md, Sprint carry) and added to the Soldier's library. It is
-## seeked to the Run clip's place every frame, so the two never drift apart.
+## seeked to the Run clip's place every frame, so the two never drift apart. A model whose grip
+## turns it far from its class's in the hand has its own, `Sprint_<model>` (#527).
 const SPRINT_GLB := "res://assets/characters/soldier/sprint/soldier_sprint.glb"
 const SPRINT_SPEC := "res://assets/characters/soldier/sprint/clips.json"
 const SPRINT_PREFIX := "Sprint_"
 const SPRINT_CLIPS: Array[StringName] = [
-	&"Sprint_Rifle", &"Sprint_Shotgun", &"Sprint_Pistol", &"Sprint_Melee"
+	&"Sprint_Rifle", &"Sprint_Shotgun", &"Sprint_Pistol", &"Sprint_Melee", &"Sprint_tommy_gun"
 ]
 const CARRY_BLEND_PARAMETER := &"parameters/carry/blend_amount"
 const CARRY_SEEK_PARAMETER := &"parameters/carry_seek/seek_request"
@@ -661,7 +662,7 @@ func shoulder_blend() -> float:
 func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
-	_carry_node.animation = StringName(SPRINT_PREFIX + String(new_class))
+	_carry_node.animation = sprint_clip(new_class, hold)
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
@@ -682,6 +683,16 @@ func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 		if _weapon.find_child(MUZZLE_NODE, true, false) == null:
 			_weapon.add_child(_make_muzzle(_hold))
 		_mount.add_child(_weapon)
+
+
+## The sprint carry of a weapon: its model's own (`Sprint_<model>`) when it has one, else its
+## class's.
+static func sprint_clip(weapon_class: StringName, hold: WeaponHold) -> StringName:
+	if hold != null:
+		var own := StringName(SPRINT_PREFIX + hold.scene.get_file().get_basename())
+		if own in SPRINT_CLIPS:
+			return own
+	return StringName(SPRINT_PREFIX + String(weapon_class))
 
 
 ## The model's place under the hand bone: its grip's (solved from its sockets), or `fallback` (the
@@ -718,8 +729,11 @@ func _advance_grip(delta: float) -> void:
 	if absf(_grip_blend - target) < 0.001:
 		_grip_blend = target
 	_fingers.right_weight = _grip_blend
-	var left := grip == _weapon_grip and grip != null and grip.has_left and _hands.active
-	_fingers.left_weight = _shoulder_blend if left else 0.0
+	var left := grip == _weapon_grip and grip != null and grip.has_left
+	# The left hand is on the weapon by the arms' IK (the shouldered pose) or by the sprint carry,
+	# whose two-handed clips put it on the grip's `left_hand` (#527).
+	var on := _shoulder_blend if _hands.active else 0.0
+	_fingers.left_weight = maxf(on, smoothstep(0.0, 1.0, _carry.weight)) if left else 0.0
 
 
 ## The muzzle point of a hold: at its `muzzle` (the model's units), turned so `-Z` runs out of the
