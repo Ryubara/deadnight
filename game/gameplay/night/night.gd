@@ -639,6 +639,11 @@ func _make_autopilot() -> void:
 					autopilot.crane_pool.assign(item.pool)
 			ShopItem.Kind.AMMO:
 				autopilot.ammo_prices[item.weapon] = item.price
+			ShopItem.Kind.UPGRADE:
+				autopilot.recut_price = item.price
+			ShopItem.Kind.TONIC:
+				if item.health_bonus > 0.0:
+					autopilot.tonic_price = item.price
 	autopilot.wanted.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]

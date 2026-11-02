@@ -49,6 +49,7 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"reload_rejected",
 	&"weapon_equipped",
 	&"ammo_added",
+	&"weapon_upgraded",
 	&"projectile_spawned",
 	&"projectile_burst",
 	&"fire_rejected",
@@ -447,9 +448,12 @@ func _blast_player(event: Dictionary, from: Vector3) -> void:
 func buy(player_id: int, item_id: StringName) -> Array[Dictionary]:
 	var item := rules.tuning.economy.item(item_id)
 	var rounds := -1
+	var weapon: StringName = &""
 	if item != null and item.kind == ShopItem.Kind.AMMO:
 		rounds = ammo_room(player_id, item.weapon)
-	return rules.apply(RulesAction.buy(player_id, item_id, rounds))
+	if item != null and item.kind == ShopItem.Kind.UPGRADE:
+		weapon = MachineOffers.weapon_for(self, player_id)
+	return rules.apply(RulesAction.buy(player_id, item_id, rounds, weapon))
 
 
 ## Rounds the player's reserve of this weapon has room for; 0 for a weapon not carried.
@@ -467,6 +471,9 @@ func _deliver(player_id: int, detail: Dictionary) -> void:
 	var ammo: StringName = detail.get("ammo", &"")
 	if ammo != &"":
 		_combat(CombatAction.add_ammo(player_id, ammo, detail["rounds"]))
+	var upgrade: StringName = detail.get("upgrade", &"")
+	if upgrade != &"":
+		_combat(CombatAction.upgrade_weapon(player_id, upgrade))
 
 
 func _combat(action: Dictionary) -> void:
@@ -625,6 +632,8 @@ func _offer_at(player_id: int, spot: Dictionary) -> Dictionary:
 			}
 		&"crane":
 			return _crane_offer(player_id, spot)
+		MachineOffers.UPGRADE_SPOT, MachineOffers.PERK_SPOT:
+			return MachineOffers.offer(self, player_id, spot)
 		&"ammo":
 			var held := combat.weapon_of(player_id)
 			return _ammo_offer(player_id, held.def.id) if held != null else {}
@@ -671,7 +680,7 @@ func _ammo_offer(player_id: int, weapon: StringName) -> Dictionary:
 func _use(player_id: int) -> void:
 	var target := use_target(player_id)
 	match target.get("kind"):
-		&"door", &"weapon", &"ammo", &"crane":
+		&"door", &"weapon", &"ammo", &"crane", &"recut", &"tonic":
 			buy(player_id, target["id"])
 		&"crane_take":
 			rules.apply(RulesAction.crane_take(player_id))
