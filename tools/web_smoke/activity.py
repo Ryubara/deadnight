@@ -8,7 +8,8 @@ and the API answers can be compressed the way Discord's proxy does it. The run o
 together and checks it shows that same room code. It fails when the Activity opens on Play together, when the room could
 not be made, or when it shows an error instead.
 
-    uv run --with playwright==1.64.1 --with cryptography python tools/web_smoke/activity.py <web folder or URL> <backend https address> <out folder>
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 --with cryptography python tools/web_smoke/activity.py <web folder or URL> <backend https address> <out folder>
 
 `--encoding gzip` (default), `identity` and `chunked-gzip` choose how the API answers travel. Before `HttpJson` set
 `accept_gzip = false`, a gzip answer made every call fail with "Could not reach the game's servers" (Godot decoded a body
