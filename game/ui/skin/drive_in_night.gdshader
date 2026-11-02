@@ -34,11 +34,23 @@ float box(vec2 p, vec2 half_size, float r) {
 	return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
 }
 
-// Silhouette of one parked car facing sideways: a body, a cabin, a hint of wheel arches.
+// Silhouette of one parked car facing sideways: a body with wheel arches cut into it, a tyre in
+// each arch (a thin ring of lit gravel shows round it), and a cabin with a raked windscreen and
+// rear window, so the roofline and the wheels read even as a dark shape.
 float car(vec2 p, float h) {
-	float body = box(p - vec2(0.0, -h * 0.36), vec2(h * 2.1, h * 0.34), h * 0.2);
-	float cabin = box(p - vec2(-h * 0.1, -h * 0.9), vec2(h * 1.2, h * 0.42), h * 0.34);
-	return min(body, cabin);
+	float body = box(p - vec2(0.0, -h * 0.4), vec2(h * 2.1, h * 0.3), h * 0.16);
+	// The cabin is a box whose front and back are cut slantwise by a line each: the windscreen
+	// leans back from the bonnet, the rear window from the boot.
+	float cabin = box(p - vec2(-h * 0.25, -h * 0.9), vec2(h * 1.4, h * 0.4), h * 0.1);
+	float rake_front = dot(p - vec2(h * 1.05, -h * 0.7), normalize(vec2(1.0, -1.0)));
+	float rake_back = dot(p - vec2(-h * 1.55, -h * 0.7), normalize(vec2(-1.0, -1.0)));
+	cabin = max(cabin, max(rake_front, rake_back));
+	float hull = min(body, cabin);
+	vec2 front_wheel = vec2(h * 1.3, -h * 0.2);
+	vec2 back_wheel = vec2(-h * 1.3, -h * 0.2);
+	float arches = min(length(p - front_wheel), length(p - back_wheel)) - h * 0.46;
+	float tyres = min(length(p - front_wheel), length(p - back_wheel)) - h * 0.37;
+	return min(max(hull, -arches), tyres);
 }
 
 void fragment() {
@@ -105,7 +117,7 @@ void fragment() {
 	// Rows of parked cars: small and far, then big and near, dark against the lit gravel.
 	for (int row = 0; row < 2; row++) {
 		float h = row == 0 ? 0.038 : 0.105;
-		float base = row == 0 ? 0.835 : 1.04;
+		float base = row == 0 ? 0.835 : 0.975;
 		float spacing = h * 6.2;
 		float shift = row == 0 ? 0.3 : 0.62;
 		float idx = floor(p.x / spacing + shift);

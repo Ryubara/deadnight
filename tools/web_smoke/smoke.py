@@ -108,7 +108,8 @@ PROBE_JS = """
 () => {
   const d = window.deadnight;
   return d ? {screen: d.screen, night: d.night, running: d.running, over: d.over,
-              round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw} : null;
+              round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw,
+              interpolated: d.interpolated} : null;
 }
 """
 
@@ -274,6 +275,12 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     result["loading"] = loading_report(page.evaluate("window.__linkFrames"), pressed, running)
     page.wait_for_timeout(1500)
     page.screenshot(path=out / "night.png")
+
+    # The soldier is drawn between physics ticks. A screen (a Control) above the night once switched that off for the
+    # whole lot, and nothing in a test room or a frame time showed it (issues #344, #353).
+    result["body_interpolated"] = bool(probe(page).get("interpolated"))
+    if not result["body_interpolated"]:
+        raise RuntimeError("the player's body is not drawn between physics ticks (physics interpolation is off)")
 
     # The mouse turns the view: a full-screen control that catches the mouse once ate every motion
     # (desktop and web alike), and only a real browser run sees that.

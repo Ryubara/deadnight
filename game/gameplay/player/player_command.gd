@@ -12,7 +12,8 @@ var move := Vector2.ZERO
 var yaw := 0.0
 var pitch := 0.0
 var sprint := false
-## Carried and recorded; the simulation does not act on it yet (crouch is a follow-up).
+## A level: the body crouches while it is down on the ground, and stands up when it is let go and
+## there is room (`PlayerSimulation._next_stance`).
 var crouch := false
 var jump := false
 var aim := false

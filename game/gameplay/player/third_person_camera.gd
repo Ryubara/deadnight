@@ -13,9 +13,9 @@ extends Node3D
 ## free node). `step()` takes the time step and the blend as arguments, so a test drives it with
 ## fixed numbers and no wall time.
 ##
-## A shot shakes the view (`shake`, docs/design/camera-shake.md) but never the aim: the lens node
-## turns by the shake, while `aim_transform()` stays the unshaken view the crosshair ray and the
-## weapon's aim are taken from.
+## A shot shakes the view (`shake`) and a sprint sways it (`sway`), docs/design/camera-shake.md,
+## but never the aim: the lens node turns by both, while `aim_transform()` stays the unshaken view
+## the crosshair ray and the weapon's aim are taken from.
 
 ## The body is hidden or shown (the lens is too close to the head, or clear of it again).
 signal body_hidden_changed(hidden: bool)
@@ -37,9 +37,16 @@ var aiming := false
 var hip_firing := false
 ## True while the body sprints (not just the key: `PlayerMotionState.sprinting`).
 var sprinting := false
+## True while the body is crouched (`PlayerMotionState.crouching`): the pivot sits lower.
+var crouching := false
+## Horizontal speed of the body in metres per second, set by the player after each tick; the
+## sprint sway keeps step with it.
+var ground_speed := 0.0
 
 ## The shot shake of the view (trauma, scale); null before `setup`.
 var shake: CameraShake
+## The sprint sway of the view; null before `setup`.
+var sway: SprintSway
 
 var _tuning: PlayerTuning
 var _aim_transform := Transform3D.IDENTITY
@@ -70,6 +77,7 @@ func setup(target: CharacterBody3D, tuning: PlayerTuning) -> void:
 	_target = target
 	_tuning = tuning
 	shake = CameraShake.new(tuning)
+	sway = SprintSway.new(tuning, shake)
 	top_level = true
 	# The rig and its lens are placed every drawn frame from the body's last two ticks (`step`):
 	# the engine's physics interpolation would blend that a second time and lag it.
@@ -92,11 +100,12 @@ func track(position: Vector3) -> void:
 func snap_to(position: Vector3) -> void:
 	_previous = position
 	_current = position
-	var head := position + Vector3(0.0, _tuning.pivot_height, 0.0)
+	var head := position + Vector3(0.0, _pivot_height(), 0.0)
 	_pivot.snap(head)
 	_aim.snap(1.0 if aiming else 0.0)
 	_hip.snap(0.0)
 	_sprint.snap(0.0)
+	sway.reset()
 	_side.snap(side)
 	_shoulder_cap = 1.0
 	_arm_cap = 1.0
@@ -222,6 +231,7 @@ func step(delta: float, fraction: float) -> void:
 	if _steering:
 		_steer_view(delta)
 	shake.step(delta)
+	sway.step(delta, sprinting and not aiming, ground_speed)
 	_aim.step(1.0 if aiming else 0.0, _tuning.aim_frequency, delta)
 	var hip_in := hip_firing and not aiming
 	_hip.step(
@@ -231,7 +241,7 @@ func step(delta: float, fraction: float) -> void:
 	)
 	_sprint.step(1.0 if sprinting and not aiming else 0.0, _tuning.sprint_frequency, delta)
 	_side.step(side, _tuning.swap_frequency, delta)
-	var head := _previous.lerp(_current, fraction) + Vector3(0.0, _tuning.pivot_height, 0.0)
+	var head := _previous.lerp(_current, fraction) + Vector3(0.0, _pivot_height(), 0.0)
 	var follow := lerpf(_tuning.follow_frequency, _tuning.sprint_follow_frequency, sprint_amount())
 	_pivot.step(head, Vector3(follow, _tuning.follow_frequency_vertical, follow), delta)
 	_place(head, delta)
@@ -256,6 +266,12 @@ func _bodies() -> Array[RID]:
 		if node is CollisionObject3D:
 			bodies.append((node as CollisionObject3D).get_rid())
 	return bodies
+
+
+## Height of the pivot over the feet now: lower while the body crouches. The head target moves at
+## once and the pivot's own vertical spring eases it.
+func _pivot_height() -> float:
+	return _tuning.crouch_pivot_height if crouching else _tuning.pivot_height
 
 
 func _look_scale() -> float:
@@ -298,7 +314,7 @@ func _place(head: Vector3, delta: float) -> void:
 	var lens: Vector3 = placed["camera"]
 	_aim_transform = Transform3D(basis, lens)
 	# The lens turns where it stands; the aim keeps the unshaken view.
-	_camera.global_transform = Transform3D(basis * shake.rotation(), lens)
+	_camera.global_transform = Transform3D(basis * shake.rotation() * sway.rotation(), lens)
 	_camera.fov = lerpf(_tuning.fov, _tuning.fov_aim, aim) + _tuning.sprint_fov_kick * sprint
 	global_transform = Transform3D(Basis(Vector3.UP, yaw), pivot)
 	_lens_distance = lens.distance_to(head)
