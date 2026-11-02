@@ -72,6 +72,24 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 ## How many targets one swing can hit.
 @export var melee_max_targets: int = 1
 
+## Which tune-up this copy has had: 0 as shipped, 1 after `upgraded`. Not saved with the file.
+var tier: int = 0
+
+
+## This weapon tuned up: a copy with more damage (the pellets, the blast), a bigger magazine and
+## reserve, and the spec's prefix on its name. The id stays, so the model, the sounds and the shop
+## still know it. The server's `WeaponState` and the balance simulator both make it here.
+func upgraded(spec: UpgradeTuning) -> WeaponDef:
+	var copy := duplicate() as WeaponDef
+	copy.tier = tier + 1
+	copy.display_name = spec.name_prefix + display_name
+	copy.damage = damage * spec.damage_multiplier
+	copy.splash_damage = splash_damage * spec.damage_multiplier
+	copy.magazine_size = ceili(float(magazine_size) * spec.magazine_multiplier)
+	copy.reserve_start = ceili(float(reserve_start) * spec.reserve_multiplier)
+	copy.reserve_max = ceili(float(reserve_max) * spec.reserve_multiplier)
+	return copy
+
 
 ## The damage multiplier of a hit zone; a zone the weapon does not list counts one.
 func zone_multiplier(zone: StringName) -> float:

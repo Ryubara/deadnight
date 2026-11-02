@@ -10,6 +10,7 @@ const GIVE_WEAPON := &"give_weapon"
 const EQUIP := &"equip"
 const SWAP := &"swap"
 const ADD_AMMO := &"add_ammo"
+const UPGRADE_WEAPON := &"upgrade_weapon"
 const TICK := &"tick"
 const TARGETS := &"targets"
 const TRACK_TARGET := &"track_target"
@@ -55,6 +56,11 @@ static func swap(player_id: int) -> Dictionary:
 ## Puts up to `rounds` into the reserve of a weapon the player carries (never past its limit).
 static func add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> Dictionary:
 	return {"type": ADD_AMMO, "player_id": player_id, "weapon_id": weapon_id, "rounds": rounds}
+
+
+## Tunes up a weapon the player carries: more damage, a bigger magazine and reserve, both filled.
+static func upgrade_weapon(player_id: int, weapon_id: StringName) -> Dictionary:
+	return {"type": UPGRADE_WEAPON, "player_id": player_id, "weapon_id": weapon_id}
 
 
 ## One fixed step of the combat clock: cooldowns, reloads, projectiles in flight.
