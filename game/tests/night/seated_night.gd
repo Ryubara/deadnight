@@ -11,6 +11,8 @@ const STEP := Night.STEP
 var world: NightWorld
 var server: NightServer
 var host := BotHost.new()
+## Seats played by a stand-in for a person (`HumanWalker`): the bots take them for humans.
+var walkers: Array[HumanWalker] = []
 var level: BotLevel
 ## Every action a bot sent: `{tick, player_id, action}`, when `recording`.
 var recorded: Array[Dictionary] = []
@@ -80,7 +82,20 @@ func seat(
 	return bot
 
 
-## One tick of the night: the server steps, the bots hear it, the bots decide and send.
+## A stand-in for a person at seat `id`: it walks where it is told and is no bot.
+func human(id: int) -> HumanWalker:
+	var walker := HumanWalker.new(server, world.map(), id)
+	walkers.append(walker)
+	return walker
+
+
+## Lets the engine take `frames` physics frames (the navigation map takes a new mesh in over a few).
+func settle(frames: int) -> void:
+	for _i in frames:
+		await world.get_tree().physics_frame
+
+
+## One tick of the night: the server steps, the stand-ins and the bots hear it, decide and send.
 func tick() -> void:
 	last_events.assign(server.step(STEP))
 	frame = last_events.back()
@@ -90,6 +105,8 @@ func tick() -> void:
 	if on_event.is_valid():
 		for event in last_events:
 			on_event.call(event)
+	for walker in walkers:
+		walker.tick()
 	host.hear(last_events)
 	host.tick(STEP)
 

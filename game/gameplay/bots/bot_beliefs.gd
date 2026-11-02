@@ -22,8 +22,11 @@ var contacts: Dictionary[int, Dictionary] = {}
 var heard: Array[Dictionary] = []
 ## `{yaw, at}`: where a blow that landed came from (the rules' bearing, as a view yaw).
 var blows: Array[Dictionary] = []
-## The other players of the frame by id (position, health, downed, weapon): a person sees them.
+## The players of the frame by id, as a person sees them: `{pos, facing, health, downed, dead, bot
+## (the roster labels bots), velocity (from the last two frames)}`. The bot itself is in it, under
+## its own id in `me`.
 var teammates: Dictionary = {}
+var me := -1
 var now := 0.0
 
 

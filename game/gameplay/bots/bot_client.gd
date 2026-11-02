@@ -24,6 +24,8 @@ var rng := RandomNumberGenerator.new()
 var brain: BotBrain
 var perception: BotPerception
 var motor: BotMotor
+## The legs: the way over the mesh, giving way, and the stuck ladder (`BotLegs`).
+var legs: BotLegs
 var telemetry := BotTelemetry.new()
 ## The old bot, when the profile is the autopilot's.
 var legacy: Autopilot
@@ -37,6 +39,9 @@ var ticks := 0
 var slot := 0
 ## Seconds on this bot's own clock (the sum of the steps it was given).
 var now := 0.0
+## The seats that are bots, by player id: the roster labels them (a person sees `BOT` after the
+## name), so a bot may know. The host fills it; the same table is shared by every bot of a night.
+var bot_ids: Dictionary = {}
 
 var _send: Callable
 var _step := 1.0 / 60.0
@@ -54,7 +59,10 @@ func _init(
 	rng.seed = bot_seed
 	perception = BotPerception.new(profile, level, rng)
 	motor = BotMotor.new(profile, rng)
-	brain = BotFightBrain.new(profile, level)
+	legs = BotLegs.new(level, rng)
+	var fight := BotFightBrain.new(profile, level)
+	fight.legs = legs
+	brain = fight
 	slot = state.player_id
 
 
@@ -70,6 +78,10 @@ func hear(events: Array) -> void:
 			&"player_hurt":
 				perception.hear_blow(-float(event.get("bearing", 0.0)))
 				_damage_taken += float(event.get("damage", 0.0))
+			&"player_added":
+				# The roster labels a bot (`bot`), whoever seated it.
+				if event.get("bot", false):
+					bot_ids[int(event["player_id"])] = true
 	state.apply_events(heard)
 
 
@@ -123,17 +135,24 @@ func _hosted_command(delta: float) -> NightCommand:
 	telemetry.count(&"ticks")
 	var think := is_think_tick()
 	var began := Time.get_ticks_usec()
+	var spent := 0
 	var me := state.me()
 	perception.observe(now, think, me, state.zombies, state.round_number(), motor.yaw)
+	_track_crew(delta)
 	# The raw list of zombies stays behind the filter: the brain and everything after read beliefs.
 	state.zombies = []
 	state.frame["zombies"] = PackedByteArray()
 	if think:
 		_think()
+	var walked := Time.get_ticks_usec()
+	_walk(delta, me, not think)
+	spent = Time.get_ticks_usec() - walked
+	telemetry.sample(&"legs_us", float(spent))
 	var command := motor.command(delta, me, intent, perception.beliefs, state.shots)
 	if think:
-		# The whole decision: the look (its rays), the thought and the hands.
-		telemetry.record_think(Time.get_ticks_usec() - began)
+		# The whole decision: the look (its rays), the thought and the hands. The legs, which every
+		# tick pays for, are timed on their own (`legs_us`).
+		telemetry.record_think(Time.get_ticks_usec() - began - spent)
 	return command
 
 
@@ -178,3 +197,85 @@ func _fallback() -> BotIntent:
 	if not targets.is_empty():
 		safe.target_id = targets[0]["id"]
 	return safe
+
+
+# --- The other players, and the legs ---
+
+
+## The players of the frame as the beliefs keep them, with how fast each one walks.
+func _track_crew(delta: float) -> void:
+	var beliefs := perception.beliefs
+	beliefs.me = state.player_id
+	var players: Dictionary = state.frame.get("players", {})
+	for id: int in players:
+		var player: Dictionary = players[id]
+		var before: Dictionary = beliefs.teammates.get(id, {})
+		var velocity := Vector3.ZERO
+		if not before.is_empty():
+			var moved: Vector3 = player["pos"] - before["pos"]
+			moved.y = 0.0
+			velocity = before["velocity"].lerp(moved / maxf(delta, 0.0001), 0.5)
+		beliefs.teammates[id] = {
+			"pos": player["pos"],
+			"facing": player.get("facing", 0.0),
+			"health": player.get("health", 100.0),
+			"downed": player.get("downed", false),
+			"dead": player.get("dead", false),
+			"bot": bot_ids.has(id),
+			"velocity": velocity,
+		}
+	for id: int in beliefs.teammates.keys():
+		if not players.has(id):
+			beliefs.teammates.erase(id)
+
+
+## The legs turn the intent into a way to walk; the motor sends it.
+func _walk(delta: float, me: Dictionary, may_query: bool) -> void:
+	var beliefs := perception.beliefs
+	var crew: Array[Dictionary] = []
+	for id in beliefs.teammates:
+		if id != state.player_id:
+			crew.append(beliefs.teammates[id])
+	legs.note_doors(state.frame.get("doors", []).size(), now)
+	var here: Vector3 = me.get("pos", Vector3.ZERO)
+	var threat := beliefs.nearest_threat(here, profile.memory_seconds)
+	var asked := legs.path.queries
+	legs.step(delta, now, me, intent, crew, threat, may_query)
+	intent.wish = legs.wish
+	intent.sprint = legs.sprint
+	intent.jump = legs.jump
+	if legs.path.queries != asked:
+		telemetry.count(&"path_queries", legs.path.queries - asked)
+	_report_legs()
+	_nearest_human(here, crew)
+
+
+func _report_legs() -> void:
+	var stuck := legs.stuck
+	telemetry.gauge(&"stuck_seconds", stuck.stuck_seconds)
+	telemetry.gauge(&"walking_seconds", stuck.walking_seconds)
+	telemetry.gauge(&"longest_stuck", stuck.longest())
+	telemetry.gauge(&"ladder_depth_max", float(stuck.depth_max))
+	telemetry.gauge(&"yielded_seconds", legs.yielded_seconds)
+	telemetry.gauge(&"blocking_seconds", legs.blocking_seconds)
+	telemetry.gauge(&"unreachable_goals", float(legs.path.unreachable_marks))
+	telemetry.gauge(&"path_queries", float(legs.path.queries))
+	telemetry.gauge(&"path_empty", float(legs.path.empty_answers))
+	if stuck.report_due:
+		stuck.reported()
+	var report := legs.take_report()
+	if not report.is_empty():
+		report["decisions"] = telemetry.recent().slice(-BotLegs.REPORT_DECISIONS)
+		telemetry.event(&"bot_stuck", ticks, report)
+
+
+## Once a think: how far the nearest person is.
+func _nearest_human(here: Vector3, crew: Array[Dictionary]) -> void:
+	if not is_think_tick():
+		return
+	var best := INF
+	for other in crew:
+		if not other.get("bot", false) and not other.get("dead", false):
+			best = minf(best, Vector2(other["pos"].x - here.x, other["pos"].z - here.z).length())
+	if best < INF:
+		telemetry.sample(&"distance_to_human", best)

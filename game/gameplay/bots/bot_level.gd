@@ -15,6 +15,13 @@ const EYE_HEIGHT := 1.55
 ## Metres above the feet of a plain walker at which the bot aims, and of its head.
 const CHEST_HEIGHT := 1.1
 const HEAD_HEIGHT := 1.6
+## Metres above the ground at which a bot looks for something it cannot walk through.
+const KNEE_HEIGHT := 0.5
+## The widest a place can be between two walls and still be a passage a bot must not stop in:
+## half of it is the distance each side's ray reaches (the lot's gaps are 1.8 to 2.0 m wide).
+const PASSAGE_HALF := 1.15
+## Metres from a loop within which a bot feels its pull.
+const LOOP_REACH := 6.0
 
 ## `Callable(from: Vector3, to: Vector3) -> float`: metres to the first wall on the way, or -1.0.
 var sight: Callable = Callable()
@@ -24,6 +31,13 @@ var lit: Callable = Callable()
 var rounds: RoundTuning
 ## The navigation mesh of the lot (from phase 2 on).
 var map: RID
+## Where the dead break in, one point for each gap in the fence: a bot keeps clear of them.
+var breaches: Array[Vector3] = []
+## Curated places where a bot may jump (a car roof, a ledge), see `BotLink`.
+var links: Array[BotLink] = []
+## The lot's loops, closed polylines on the ground (see `docs/design/map.md#loops-for-kiting`): a
+## bot being chased circles round one.
+var loops: Array[PackedVector3Array] = []
 ## Where a bot falls back to when it backs away (the field in front of the screen); `Vector3.INF`
 ## for nowhere in particular.
 var home := Vector3.INF
@@ -53,3 +67,37 @@ func view_range(point: Vector3, round_number: int) -> float:
 ## Whether nothing solid stands between the two points.
 func clear(from: Vector3, to: Vector3) -> bool:
 	return not sight.is_valid() or float(sight.call(from, to)) < 0.0
+
+
+# --- The walking mesh and the lot's shape, for a bot's feet ---
+
+
+## The closest point on the walking mesh, or `point` when there is no mesh to ask.
+func project(point: Vector3) -> Vector3:
+	if not map.is_valid() or NavigationServer3D.map_get_iteration_id(map) < 1:
+		return point
+	return NavigationServer3D.map_get_closest_point(map, point)
+
+
+## Metres of open way from `from` along the flat unit `heading`, at most `limit`: how far a bot
+## could walk before something solid stops it.
+func room(from: Vector3, heading: Vector3, limit: float) -> float:
+	if not sight.is_valid():
+		return limit
+	var low := Vector3(0.0, KNEE_HEIGHT, 0.0)
+	var hit := float(sight.call(from + low, from + low + heading * limit))
+	return limit if hit < 0.0 else hit
+
+
+## Whether `point` is inside a gap: walls close in on two opposite sides (a door's opening, the
+## 2 m passages between cars). A bot never stops in one.
+func in_passage(point: Vector3) -> bool:
+	if not sight.is_valid():
+		return false
+	for axis in 4:
+		var direction := Vector3(1.0, 0.0, 0.0).rotated(Vector3.UP, float(axis) * PI / 4.0)
+		var one := room(point, direction, PASSAGE_HALF)
+		var other := room(point, -direction, PASSAGE_HALF)
+		if one < PASSAGE_HALF and other < PASSAGE_HALF:
+			return true
+	return false

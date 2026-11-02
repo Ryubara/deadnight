@@ -9,10 +9,14 @@ extends RefCounted
 const RING_SIZE := 300
 ## Think times kept for the percentiles.
 const SAMPLE_LIMIT := 4096
+## Values a sample series keeps.
+const SERIES_LIMIT := 20000
 ## The width, in degrees, of the buckets the view goes into the command hash in.
 const SIGNATURE_DEGREES := 5.0
 
 var counters: Dictionary = {}
+## Measures that are not counts (seconds stuck, metres kept from the people): the latest value.
+var gauges: Dictionary = {}
 var events: Array[Dictionary] = []
 ## The running hash of every command sent (see `note_command`) and how many there were.
 var command_hash := 0
@@ -24,10 +28,66 @@ var hashing := false
 var _ring: Array[Dictionary] = []
 var _next := 0
 var _think_us := PackedInt32Array()
+var _series: Dictionary = {}
+
+
+## The last `SERIES_LIMIT` values offered under one name.
+class Series:
+	extends RefCounted
+	var data := PackedFloat32Array()
+	var offered := 0
+
+	func add(value: float) -> void:
+		if data.size() < SERIES_LIMIT:
+			data.append(value)
+		else:
+			data[offered % SERIES_LIMIT] = value
+		offered += 1
 
 
 func count(name: StringName, by: int = 1) -> void:
 	counters[name] = counters.get(name, 0) + by
+
+
+func gauge(name: StringName, value: float) -> void:
+	gauges[name] = value
+
+
+## Keeps one more value of the series `name` (the distance to the nearest person, once a think).
+func sample(name: StringName, value: float) -> void:
+	var series: Series = _series.get(name)
+	if series == null:
+		series = Series.new()
+		_series[name] = series
+	series.add(value)
+
+
+## The `fraction` (0 to 1) quantile of the series `name`, 0 when it has no values.
+func quantile(name: StringName, fraction: float) -> float:
+	var series: Series = _series.get(name)
+	if series == null or series.data.is_empty():
+		return 0.0
+	var sorted := series.data.duplicate()
+	sorted.sort()
+	return sorted[mini(int(floorf(fraction * float(sorted.size()))), sorted.size() - 1)]
+
+
+## How many values of the series `name` were offered (the series keeps the last `SERIES_LIMIT`).
+func samples_of(name: StringName) -> int:
+	var series: Series = _series.get(name)
+	return 0 if series == null else series.offered
+
+
+## The share of the values of the series `name` at or under `limit`; 1 when it has none.
+func share_within(name: StringName, limit: float) -> float:
+	var series: Series = _series.get(name)
+	if series == null or series.data.is_empty():
+		return 1.0
+	var within := 0
+	for value in series.data:
+		if value <= limit:
+			within += 1
+	return float(within) / float(series.data.size())
 
 
 ## A named thing that happened, kept in order: `{name, tick, ...detail}`.
@@ -118,6 +178,7 @@ static func signature(action: Dictionary) -> String:
 func report(extra: Dictionary = {}) -> String:
 	var line := {
 		"counters": counters,
+		"gauges": gauges,
 		"think_us_p50": think_us(0.5),
 		"think_us_p99": think_us(0.99),
 		"commands": commands,
