@@ -56,6 +56,18 @@ extends Resource
 ## so a run of single shots (the slowest weapon fires every 0.9 s) does not swing out and in
 ## between. After it everything eases out like a released aim button.
 @export var hip_fire_hold := 0.8
+## A shot leaves only when the body faces within this many degrees of the view (the centre of the
+## screen): a press while the body faces away turns it first and the shot waits (#477). Wider than
+## one tick of the turn (`aim_turn_speed` is 7.6 degrees a tick at 60 Hz), so the body cannot step
+## over the window, and narrow enough that the muzzle, which sits 0.5 m from the body's centre, is
+## under half a degree off the aim ray at the 12 m the weapon converges on: below the least spread
+## of any gun (docs/research/hip-fire.md, "Turn first, then shoot").
+@export_range(1.0, 45.0, 0.5) var hip_fire_align_degrees := 10.0
+## Seconds a press made before the body faced the view is kept, so a tap during the turn is not
+## lost: it fires the moment the body is there. Longer than the slowest turn (a half circle takes
+## 0.4 s at `aim_turn_speed`) with room for the view to keep moving. A trigger still held needs no
+## buffer: it waits for as long as the body takes.
+@export var hip_fire_buffer := 0.6
 
 @export_group("Reload")
 ## The weapon tilts down about the grip while it reloads and comes back up when it is done, timed to

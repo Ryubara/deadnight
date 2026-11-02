@@ -511,7 +511,9 @@ func _act(player_id: int, delta: float) -> void:
 		return
 	if command.reload:
 		_combat(CombatAction.reload_weapon(player_id))
-	if command.fire:
+	# The shot leaves when the body faces the view (the press waits for the turn, #477): the
+	# simulation says when, from the same commands a predicting client runs.
+	if _bodies[player_id].state.shot_ready:
 		_shoot(player_id, command)
 	if command.swap:
 		_combat(CombatAction.swap(player_id))
