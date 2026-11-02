@@ -36,13 +36,18 @@ static func decode(ogg: AudioStream, mix_rate: int) -> AudioStreamWAV:
 	var mono := _is_mono(frames)
 	var bytes := PackedByteArray()
 	bytes.resize(frames.size() * (2 if mono else 4))
+	# The loop runs once for every sample of every sound (millions when the night loads, in a browser
+	# that is most of the time the decode takes), so it calls nothing it can write out.
+	var at := 0
 	if mono:
-		for i in frames.size():
-			bytes.encode_s16(i * 2, _sample(frames[i].x))
+		for frame in frames:
+			bytes.encode_s16(at, clampi(roundi(frame.x * PEAK), -32768, 32767))
+			at += 2
 	else:
-		for i in frames.size():
-			bytes.encode_s16(i * 4, _sample(frames[i].x))
-			bytes.encode_s16(i * 4 + 2, _sample(frames[i].y))
+		for frame in frames:
+			bytes.encode_s16(at, clampi(roundi(frame.x * PEAK), -32768, 32767))
+			bytes.encode_s16(at + 2, clampi(roundi(frame.y * PEAK), -32768, 32767))
+			at += 4
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = mix_rate
@@ -50,10 +55,6 @@ static func decode(ogg: AudioStream, mix_rate: int) -> AudioStreamWAV:
 	wav.data = bytes
 	wav.resource_name = ogg.resource_path
 	return wav
-
-
-static func _sample(value: float) -> int:
-	return clampi(roundi(value * PEAK), -32768, 32767)
 
 
 static func _is_mono(frames: PackedVector2Array) -> bool:
