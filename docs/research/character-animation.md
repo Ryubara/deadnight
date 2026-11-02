@@ -62,6 +62,29 @@ arm raise and spine pitch.
 In `Idle_Shoot` the right hand holds the weapon on `Index1.R` and the left arm hangs. Our clips keep that and leave the
 left arm free for an IK target per weapon; the pistol stays one-handed.
 
+## The exporter samples every bone; a clip that must not key some takes them out after
+
+Leaving the fingers unkeyed in Blender is not enough: the glTF exporter (NLA tracks, forced sampling) writes a channel
+for every bone of every clip, sampled at whatever the pose bone holds, and Godot kept 14 of those finger tracks (the
+constant ones it drops are not all of them; `Repair_Board` carries 14 too). `build_soldier.py` now removes the
+channels of the bones `soldier_clips.write(..., skip=...)` leaves out, straight from the .glb's JSON chunk
+(`strip_channels`), and the downed and revive clips import with no finger track (#504).
+
+## Lying and kneeling are posed in world space
+
+Local Euler offsets were measured on the standing rig; on a body lying on its back the same axes point elsewhere. The
+downed and revive poses turn bones about world axes (`turn`), move them in world metres (`move`, `place`) and solve
+arms and legs onto world targets with a pole (`reach`; `legs` adds the kit leg shape of `gaitlib.leg_shape`). The
+standing knee's own bend plane, which `gaitlib.solve_leg` keeps, bent a forward foot's knee backward into the ground
+(-12 cm) until the knee got a pole. A probe that reads each part's lowest skin vertex (by its main vertex group)
+caught both that and a toe 20 cm under the ground; the renders alone did not show them clearly.
+
+## Chibi heads collide
+
+The Soldier's head is about 40 % of his height. A reviver leaning over his hands to a downed teammate's chest put his
+head in the teammate's face, in the game capture, not in Blender (one body there). Revive_Kneel is upright with the
+arms reaching out and down, and the hands go on the belly.
+
 ## Godot headless
 
 An `AnimationTree` built in a `SceneTree` script's `_init` does not process: `advance()` leaves the bones where they

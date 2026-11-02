@@ -6,7 +6,7 @@ Run with the pinned Blender, headless:
         --soldier <bundle>/models/PpLF4rt4ah.glb --out <workspace>/scratch/deadnight/<branch>/clips
 
 Writes `<out>-<sheet>.png` for the sheets Rifle, Shotgun, Pistol, Melee, Body (full-body clips) and Split (upper
-clips over moving legs; GrenadeSplit and RepairSplit the same for those clips; `--view back` shows them from behind,
+clips over moving legs; GrenadeSplit and RepairSplit the same for those clips; Revive the downed and reviver clips; `--view back` shows them from behind,
 as the game's camera does). Each tile is posed the way Godot's upper/lower blend poses the character: upper-body bones
 from the upper clip, every other bone from the base clip (Idle, or Run/Walk on the Split sheet), so the sheet shows
 what the bone filter will. The class's kit weapon stays in the hand (Deadnight's weapons copy those holds). Moments:
@@ -199,6 +199,8 @@ def main():
     sheets["RepairSplit"] = [(n, "Walk", "Repair") for n in sc.CLIPS if n.startswith("Repair_")]
     # Moving while aiming: the kit Run for reference, then the four aim-move clips, every third frame of the cycle.
     sheets["AimMove"] = [(n, None, "Rifle") for n in ("Run", *sc.AIM_MOVES)]
+    # Downed and revive (#504): the old Downed (Death's last frame) above the clips that replace it.
+    sheets["Revive"] = [(n, None, None) for n in ("Downed", "Downed_Idle", "Downed_Crawl", "Revive_Kneel")]
     only = {s for s in args.only.split(",") if s}
     tmp = args.out.parent / "_tiles"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -213,7 +215,7 @@ def main():
             row = []
             if sheet == "AimMove":
                 frames = list(range(0, sc.CLIPS[name]["frames"], 3))
-            elif sheet.startswith(("Grenade", "Repair")):
+            elif sheet.startswith(("Grenade", "Repair", "Revive")):
                 frames = key_moments(acts[name], sc.CLIPS[name]["events"])
             else:
                 frames = moments(name)

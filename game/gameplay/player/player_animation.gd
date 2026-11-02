@@ -12,6 +12,7 @@ extends AnimationTree
 ##          Unequip), laid over the body by a Blend2 filtered to the upper bones.
 ##   repair: Repair_Board looping over the upper layer while the player puts boards back at a
 ##          breach (its own file, added to the library here), timed by the rules' events.
+##   downed: kneeling at a revive, or down, over all of that (DownedPose, #504).
 ##   full:  a full-body OneShot over both (HitReact, Death).
 ## Loops, the upper bones and the event frames come from clips.json, written by the build script.
 
@@ -191,6 +192,9 @@ var _aim_move_speed := 2.6
 var _aim_move := Vector2.ZERO
 ## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
 var _boards_due := 0
+## The downed and revive layers (#504), and where the kneel loop is for its `press` events.
+var _down := DownedPose.new()
+var _revive_time := 0.0
 
 
 func _ready() -> void:
@@ -202,6 +206,10 @@ func _ready() -> void:
 	_add_repair_clip(anim_player)
 	_add_grenade_clips(anim_player)
 	_add_aim_move_clips(anim_player)
+	var revive_specs := DownedPose.add_clips(anim_player)
+	_spec["clips"].merge(revive_specs)
+	if revive_specs.has(String(DownedPose.CRAWL_CLIP)):
+		_down.crawl_speed = revive_specs[String(DownedPose.CRAWL_CLIP)]["ground_speed"]
 	_loop_clips(anim_player)
 	_duck_bottom = _lowest_second(anim_player.get_animation(&"Duck"))
 	_mount = BoneAttachment3D.new()
@@ -257,6 +265,7 @@ func _process(delta: float) -> void:
 	_advance_aim_move(follow, delta)
 	_advance_events(delta)
 	_advance_repair(delta)
+	_advance_downed(speed, delta)
 	_advance_reload(delta)
 	_advance_shoulder(delta)
 
@@ -505,6 +514,58 @@ func repair_time() -> float:
 	return _repair_time
 
 
+## Down (`player_downed`) or up again (`player_revived`): the body eases into the downed pose or out
+## of it (DownedPose). Going down drops a repair, a reload and a revive, and puts the weapon away.
+func set_downed(downed: bool) -> void:
+	if downed == _down.downed:
+		return
+	_down.downed = downed
+	if downed:
+		stop_repair()
+		cancel_reload()
+		_down.reviving = false
+	_weapon_visible(not downed)
+
+
+## Holding the revive on a teammate (`revive_started` naming this player the reviver) or not
+## (`revive_interrupted`, `player_revived`): kneels and presses while held. Never while down.
+func set_reviving(reviving: bool) -> void:
+	reviving = reviving and not _down.downed
+	if reviving == _down.reviving:
+		return
+	_down.reviving = reviving
+	if reviving:
+		stop_repair()
+		cancel_reload()
+		_revive_time = 0.0
+	_weapon_visible(not reviving)
+
+
+func is_downed() -> bool:
+	return _down.downed
+
+
+func is_reviving() -> bool:
+	return _down.reviving
+
+
+## The layers' weights now (0 to 1), and whether the optional crawl is in, for tests.
+func downed_weight() -> float:
+	return _down.downed_blend
+
+
+func kneel_weight() -> float:
+	return _down.kneel_blend
+
+
+func crawl_weight() -> float:
+	return _down.crawl_blend
+
+
+func has_crawl() -> bool:
+	return _down.has_crawl()
+
+
 ## Event names and frames of a clip, from clips.json: {event: frame or [frames]}.
 func clip_events(clip: StringName) -> Dictionary:
 	var entry: Dictionary = _spec["clips"].get(String(clip), {})
@@ -566,7 +627,10 @@ func _make_muzzle(hold: WeaponHold) -> Marker3D:
 func _advance_shoulder(delta: float) -> void:
 	var up := _hold != null and _hold.shouldered and _weapon != null and _weapon.visible
 	var hands_free := (
-		(action_clip == &"" or String(action_clip).begins_with("Fire_")) and not is_repairing()
+		(action_clip == &"" or String(action_clip).begins_with("Fire_"))
+		and not is_repairing()
+		and not _down.downed
+		and not _down.reviving
 	)
 	var rig := _player.camera_rig
 	# The pose weight (the aim button or a recent shot from the hip, eased) turns the weapon from the
@@ -592,10 +656,11 @@ func _advance_shoulder(delta: float) -> void:
 
 
 ## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible
-## event (an Equip) does not bring the weapon back over the hammer.
+## event (an Equip) does not bring the weapon back over the hammer. Down or kneeling at a revive,
+## the hands hold nothing.
 func _weapon_visible(shown: bool) -> void:
 	if _weapon != null:
-		_weapon.visible = shown and not is_repairing()
+		_weapon.visible = shown and not is_repairing() and not _down.downed and not _down.reviving
 
 
 func _hands_on_repair(repairing: bool) -> void:
@@ -651,6 +716,19 @@ func _advance_repair(delta: float) -> void:
 	if absf(_repair_blend - target) < 0.001:
 		_repair_blend = target
 	set(REPAIR_BLEND_PARAMETER, _repair_blend)
+
+
+## The downed and kneel layers, and the kneel loop's `press` events while the revive is held.
+func _advance_downed(speed: float, delta: float) -> void:
+	_down.advance(self, speed, delta)
+	if _down.reviving:
+		var length := _clip_seconds(DownedPose.REVIVE_CLIP)
+		var before := _revive_time
+		_revive_time += delta
+		_emit_events(DownedPose.REVIVE_CLIP, before, minf(_revive_time, length))
+		if _revive_time > length:
+			_revive_time -= length
+			_emit_events(DownedPose.REVIVE_CLIP, -1.0, _revive_time)
 
 
 func _advance_repair_events(from: float, to: float) -> void:
@@ -821,7 +899,7 @@ func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	tree.connect_node(&"repair", 0, &"action")
 	tree.connect_node(&"repair", 1, &"repair_scale")
 	tree.connect_node(&"split", 1, &"repair")
-	tree.connect_node(&"full", 0, &"split")
+	tree.connect_node(&"full", 0, _down.add_nodes(tree, &"split"))
 	tree.connect_node(&"full", 1, &"full_clip")
 	tree.connect_node(&"output", 0, &"full")
 	return tree

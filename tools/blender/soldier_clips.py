@@ -46,6 +46,9 @@ CLASSES = {"Rifle": "Shotgun", "Shotgun": "Shotgun", "Pistol": "Pistol", "Melee"
 CLIPS = {}
 # The pose the glTF file's nodes hold (arms down, fingers curled), read right after the import: see capture_static.
 STATIC = {}
+# name -> bones the clip does not key. The glTF exporter samples every bone of every clip whatever its keys, so
+# build_soldier.py takes these channels out of the file after the export (strip_channels).
+UNKEYED = {}
 
 
 def capture_static(arm):
@@ -125,10 +128,12 @@ def blend(a, b, t):
     return out
 
 
-def bake_static(arm, action):
+def bake_static(arm, action, skip=()):
     """Key every bone the action leaves out at its static pose (first and last frame), so the export samples the
-    standing pose for it and not the rest pose or whatever the clip before left behind."""
+    standing pose for it and not the rest pose or whatever the clip before left behind. Bones in `skip` stay unkeyed
+    (the fingers of the clips that leave the hands to `HandGripPose`)."""
     keyed = {(fc.data_path.split('"')[1], fc.data_path.rsplit(".", 1)[1]) for fc in fcurves(action)}
+    keyed |= {(b, prop) for b in skip for prop in ("rotation_quaternion", "location")}
     end = action.frame_range[1]
     ad = arm.animation_data or arm.animation_data_create()
     ad.action = action
@@ -145,8 +150,9 @@ def bake_static(arm, action):
     ad.action = None
 
 
-def write(arm, name, keys, bones, layer, loop, cls=None, events=None):
-    """Create action `name` keyed at `keys` [(frame, pose)] on `bones`; every other bone at the static pose."""
+def write(arm, name, keys, bones, layer, loop, cls=None, events=None, skip=()):
+    """Create action `name` keyed at `keys` [(frame, pose)] on `bones`; every other bone at the static pose, except
+    the bones in `skip`, which the clip does not key at all."""
     a = bpy.data.actions.new(name)
     a.use_fake_user = True
     ad = arm.animation_data or arm.animation_data_create()
@@ -170,7 +176,9 @@ def write(arm, name, keys, bones, layer, loop, cls=None, events=None):
             pb.location = pose[b]["loc"]
             pb.keyframe_insert("location", frame=frame, group=b)
     ad.action = None
-    bake_static(arm, a)
+    bake_static(arm, a, skip)
+    if skip:
+        UNKEYED[name] = set(skip)
     CLIPS[name] = {
         "layer": layer,
         "loop": loop,
@@ -185,6 +193,7 @@ def write(arm, name, keys, bones, layer, loop, cls=None, events=None):
 def build(arm):
     """Author every new clip on `arm` (a kit Soldier armature with the kit's actions loaded); fill CLIPS."""
     CLIPS.clear()
+    UNKEYED.clear()
     acts = {a.name.split("|")[-1]: a for a in bpy.data.actions}
     up = upper_bones(arm)
     every = [b.name for b in arm.pose.bones]
@@ -291,6 +300,7 @@ def build(arm):
     grenade(arm, up, idle, idle_mid, aim)
     repair(arm, up, aim)
     aim_moves(arm, acts, aim, every)
+    revive(arm, acts)
     return CLIPS
 
 
@@ -451,3 +461,249 @@ def aim_moves(arm, acts, aim, every):
     print("AIM_MOVES", {k: (CLIPS[k]["ground_speed"], report[k]) for k in AIM_MOVES},
           {k: (round(v["thigh"] * unit, 3), round(v["ankle"].length * unit, 3), round(v["spread"] * unit, 4))
            for k, v in shape.items()})  # fmt: skip
+
+
+# ---- Downed and revive (Deadnight #504, for the revives of #486) ---------------------------------------------------
+# Positions here are world metres at kit scale (Blender Z up; the Soldier faces -Y, his right is -X), the probe's frame;
+# the game draws the Soldier at GAME_SCALE. Poses are built by turning bones about world axes and solving arms and legs
+# onto world targets, not by local Euler offsets: lying down and kneeling move every bone far from the standing axes
+# the offsets above were measured in.
+
+# The finger bones: no clip here keys them, so the hand keeps the skeleton's rest fist (the file's static pose) and
+# HandGripPose (#507) is free to close it on whatever the hand holds.
+FINGERS = tuple(f"{f}{i}.{s}" for f in ("Pinky", "Middle", "Index", "Thumb") for i in (1, 2, 3) for s in ("L", "R")
+                if not (f == "Thumb" and i == 3))  # fmt: skip
+DOWNED_CRAWL_SPEED = 0.45  # m/s in the game: the planted heel's sweep (#505 may change it; the rate follows)
+DOWNED_CRAWL_FRAMES = 32  # one pull of each heel
+REVIVE_FRAMES = 24  # one loop, two presses
+REVIVE_HANDS = (-0.66, 0.36)  # the hands ahead (y) and up (z) at the top of a press, kit metres; 0.07 lower pressed
+
+
+def world_axis(arm, axis):
+    """A world direction in the armature's space."""
+    return (arm.matrix_world.to_3x3().normalized().inverted() @ Vector(axis)).normalized()
+
+
+def turn(arm, pose, bone, axis, degrees):
+    """Turn `bone`, and everything hanging from it, `degrees` about a world axis through its head (right hand rule:
+    about +X a positive turn takes +Y toward +Z, so it raises a torso lying along +Y and leans a standing one forward)."""
+    gl.apply_pose(arm, pose)
+    m = arm.pose.bones[bone].matrix.to_3x3().normalized()
+    r = Quaternion(world_axis(arm, axis), math.radians(degrees)).to_matrix()
+    pose[bone]["rot"] = pose[bone]["rot"] @ (m.inverted() @ r @ m).to_quaternion()
+
+
+def head_at(arm, pose, bone):
+    """World position of a bone's head in `pose`."""
+    gl.apply_pose(arm, pose)
+    return arm.matrix_world @ arm.pose.bones[bone].head
+
+
+def move(arm, pose, bone, delta):
+    """Move a bone's head by `delta` (world metres) through its location key."""
+    gl.apply_pose(arm, pose)
+    b = arm.data.bones[bone]
+    base = b.matrix_local
+    if b.parent:
+        base = arm.pose.bones[b.parent.name].matrix @ b.parent.matrix_local.inverted() @ b.matrix_local
+    d = arm.matrix_world.inverted().to_3x3() @ Vector(delta)
+    pose[bone]["loc"] = pose[bone]["loc"] + base.to_3x3().inverted() @ d
+
+
+def place(arm, pose, bone, target):
+    """Put a bone's head at a world position (the IK feet, which hang from Root)."""
+    move(arm, pose, bone, Vector(target) - head_at(arm, pose, bone))
+
+
+def reach(arm, pose, upper, lower, end, target, pole, tip=None):
+    """Two-bone solve: turn `upper` and `lower` so the head of `end` (a child of `lower`) meets `target` (world), the
+    middle joint bent toward the world direction `pole`. The arm's own lengths, measured in the pose; out of reach,
+    the end stops on the line to the target. `tip` is the end in the lower bone's frame when `end` does not hang
+    from it (a leg: the ankle of gaitlib.leg_shape, since the IK foot hangs from Root)."""
+    gl.apply_pose(arm, pose)
+    inv = arm.matrix_world.inverted()
+    pu, pl, pe = arm.pose.bones[upper], arm.pose.bones[lower], arm.pose.bones[end]
+    root, mid = pu.head.copy(), pl.head.copy()
+    if tip is None:
+        tip = pl.matrix.to_3x3().inverted() @ (pe.head - mid)
+    l1, l2 = (mid - root).length, tip.length
+    to = inv @ Vector(target) - root
+    dist = min(to.length, (l1 + l2) * 0.995)
+    d = to.normalized()
+    bend = inv.to_3x3() @ Vector(pole)
+    bend = (bend - d * bend.dot(d)).normalized()
+    a = (l1 * l1 - l2 * l2 + dist * dist) / (2 * dist)
+    new_mid = root + d * a + bend * math.sqrt(max(l1 * l1 - a * a, 0.0))
+    r1 = (mid - root).rotation_difference(new_mid - root).to_matrix()
+    mu = r1 @ pu.matrix.to_3x3()
+    ml = r1 @ pl.matrix.to_3x3()
+    ml = (ml @ tip).rotation_difference(root + d * dist - new_mid).to_matrix() @ ml
+    bu, bl = arm.data.bones[upper], arm.data.bones[lower]
+    rest_u = (bu.parent.matrix_local.inverted() @ bu.matrix_local).to_3x3()
+    rest_l = (bu.matrix_local.inverted() @ bl.matrix_local).to_3x3()
+    pose[upper]["rot"] = ((pu.parent.matrix.to_3x3() @ rest_u).inverted() @ mu).to_quaternion()
+    pose[lower]["rot"] = ((mu @ rest_l).inverted() @ ml).to_quaternion()
+
+
+def legs(arm, pose, shape, feet, knees):
+    """Put each IK foot at its world target and solve its leg to meet it, the knee bent toward its world direction:
+    feet {"Foot.L": (x, y, z), ...}, knees {"Foot.L": (x, y, z), ...}. A foot out of reach is pulled in to the leg's
+    reach (gaitlib.REACH_USE), so the boot never stretches off the shin."""
+    for upper, lower, foot in gl.LEGS:
+        hip = head_at(arm, pose, upper)
+        to = Vector(feet[foot]) - hip
+        most = (shape[lower]["thigh"] + shape[lower]["ankle"].length) * gl.REACH_USE * arm.matrix_world.to_scale()[0]
+        place(arm, pose, foot, hip + to.normalized() * min(to.length, most))
+        reach(arm, pose, upper, lower, foot, head_at(arm, pose, foot), knees[foot], tip=shape[lower]["ankle"])
+
+
+def copy(pose):
+    return {b: {"rot": v["rot"].copy(), "loc": v["loc"].copy()} for b, v in pose.items()}
+
+
+# The downed sit (world, kit scale): the hips over the player's place, the chest raised 30 degrees off the ground and
+# leaned on to the left elbow, the right hand pressed on the belly, the heels out in front and the right knee drawn up.
+# Leaned, not sat up straight: from the shoulder camera behind him a straight sit is all helmet; leaned, the back, the
+# right arm and the legs show beside it.
+DOWNED_SHIFT = (0.0, -0.45, 0.0)  # moves Death's last frame so the hips sit over the player's place
+DOWNED_SIT = {"Abdomen": 20, "Torso": 14, "Neck": 8, "Head": 8}  # degrees about world X, off the ground
+DOWNED_LEAN = 12  # degrees about world Y, on to his left side (+X)
+# The whole body turned about the vertical (the head to his left, the feet to his right), so the shoulder camera behind
+# him does not look along the body over the helmet: the legs show past it.
+DOWNED_TURN = -20
+DOWNED_KNEES = {"Foot.L": (0.2, 0.0, 1.0), "Foot.R": (-0.3, 0.0, 1.0)}  # up, and a little out
+DOWNED_ELBOW = ((0.38, 0.12, 0.18), (0.3, 0.8, -0.5))  # left hand from the hips (x, y) and up (z); elbow pole
+DOWNED_WOUND = (-0.05, 0.08, 0.2)  # right hand: to his right, up the spine and out of the belly, from Abdomen
+DOWNED_WOUND_POLE = (-1.0, 0.3, -0.3)
+DOWNED_FEET = {"Foot.L": (0.2, -0.8, 0.05), "Foot.R": (-0.22, -0.55, 0.06)}  # from the hips; the right knee up
+
+
+def at_hips(arm, pose, x, y, z):
+    """A world point from the hips' centre: (x, y) in the frame of the turned body, z from the ground."""
+    c = (head_at(arm, pose, "UpperLeg.L") + head_at(arm, pose, "UpperLeg.R")) / 2
+    v = Quaternion((0, 0, 1), math.radians(DOWNED_TURN)) @ Vector((x, y, 0))
+    return Vector((c.x + v.x, c.y + v.y, z))
+
+
+def belly(arm, pose):
+    """The front of the belly (world): from Abdomen, along the spine and out of the chest's front."""
+    root, neck = head_at(arm, pose, "Abdomen"), head_at(arm, pose, "Neck")
+    spine = (neck - root).normalized()
+    ahead = Vector((0, -1, 0))
+    front = (ahead - spine * ahead.dot(spine)).normalized()
+    x, along, out = DOWNED_WOUND
+    return root + Vector((x, 0, 0)) + spine * along + front * out
+
+
+def downed_base(arm, acts, shape):
+    death = acts["Death"]
+    pose = full(arm, sample(death, death.frame_range[1]))
+    move(arm, pose, "Body", DOWNED_SHIFT)
+    for foot in ("Foot.L", "Foot.R"):
+        move(arm, pose, foot, DOWNED_SHIFT)
+    for bone, deg in DOWNED_SIT.items():
+        turn(arm, pose, bone, (1, 0, 0), deg)
+    turn(arm, pose, "Abdomen", (0, 1, 0), DOWNED_LEAN)
+    turn(arm, pose, "Body", (0, 0, 1), DOWNED_TURN)
+    legs(arm, pose, shape, {f: at_hips(arm, pose, *v) for f, v in DOWNED_FEET.items()}, DOWNED_KNEES)
+    return pose
+
+
+def downed_arms(arm, pose, elbow=None):
+    (x, y, z), pole = elbow or DOWNED_ELBOW
+    reach(arm, pose, "UpperArm.L", "LowerArm.L", "Index1.L", at_hips(arm, pose, x, y, z), pole)
+    reach(arm, pose, "UpperArm.R", "LowerArm.R", "Index1.R", belly(arm, pose), DOWNED_WOUND_POLE)
+    return pose
+
+
+def revive(arm, acts):
+    """Downed_Idle, Downed_Crawl and Revive_Kneel (Deadnight #504): the downed player and the teammate pulling them up.
+    Full body (they own the legs too), keyed on every bone but the fingers. Built into their own files:
+    `--clips Downed_Idle,Revive_` (game/assets/characters/soldier/revive/) and `--clips Downed_Crawl`
+    (game/assets/characters/soldier/crawl/, kept apart so it can be dropped if downed players do not move, #505).
+
+    Downed_Idle reads from the shoulder camera and from above: sitting up on the left hand, the right hand on the
+    wound, the right knee drawn up, the head turning to look for help; where the old `Downed` (Death's last frame) lay
+    flat with the head away from the camera, a helmet and two boots seen from behind.
+    """
+    every = [b.name for b in arm.pose.bones if b.name not in FINGERS]
+    run = acts["Run"]
+    shape = gl.leg_shape(arm, [full(arm, sample(run, f)) for f in range(int(run.frame_range[1]) + 1)])
+
+    # ---- Downed_Idle: two slow breaths over 2 s, the head looking left on the first and right on the second --------
+    sit = downed_base(arm, acts, shape)
+    downed_arms(arm, sit)
+
+    def breath(look):
+        p = copy(sit)
+        turn(arm, p, "Torso", (1, 0, 0), 3)  # the chest lifts
+        turn(arm, p, "Neck", (0, 0, 1), look * 0.4)
+        turn(arm, p, "Head", (0, 0, 1), look * 0.6)
+        turn(arm, p, "Head", (1, 0, 0), -4)  # chin up, looking for someone
+        return downed_arms(arm, p)
+
+    keys = [(0, sit), (12, breath(22)), (24, sit), (36, breath(-22)), (48, sit)]
+    write(arm, "Downed_Idle", keys, every, "full", True, skip=FINGERS)
+
+    # ---- Downed_Crawl: the heels dig in ahead and pull him forward, one then the other; the left hand pushes -------
+    n = DOWNED_CRAWL_FRAMES
+    half = n // 2
+    sweep = DOWNED_CRAWL_SPEED / GAME_SCALE / FPS * half  # kit metres a planted heel travels
+    lift = 0.06
+    keys = []
+    for f in range(n + 1):
+        p = copy(sit)
+        rock = math.sin(2 * math.pi * f / half)  # a lean into each pull
+        turn(arm, p, "Abdomen", (1, 0, 0), 3 * rock)
+        turn(arm, p, "Body", (0, 0, 1), 4 * math.sin(2 * math.pi * f / n))
+        feet = {}
+        for foot, phase in (("Foot.R", 0), ("Foot.L", half)):
+            t = (f + phase) % n
+            x = DOWNED_FEET[foot][0]
+            reach_y = DOWNED_FEET["Foot.L"][1]  # both heels reach as far as the straight leg
+            if t <= half:  # planted: sweeps back toward the hips at the crawl speed
+                y, z = reach_y + sweep * t / half, 0.05
+            else:  # lifted a little and carried forward again
+                s = (t - half) / half
+                y = reach_y + sweep * (1 - s)
+                z = 0.05 + lift * math.sin(math.pi * s)
+            feet[foot] = at_hips(arm, p, x, y, z)
+        legs(arm, p, shape, feet, DOWNED_KNEES)
+        tl = (f + half) % n  # the left elbow pushes with the left heel: planted, it slides back with the ground
+        (ex, ey, ez), pole = DOWNED_ELBOW
+        push = sweep * 0.5
+        dy = push * tl / half if tl <= half else push * (1 - (tl - half) / half)
+        dz = 0.0 if tl <= half else 0.06 * math.sin(math.pi * (tl - half) / half)
+        downed_arms(arm, p, elbow=((ex, ey + dy, ez + dz), pole))
+        keys.append((f, p))
+    events = {"pull_right": 0, "pull_left": half}
+    write(arm, "Downed_Crawl", keys, every, "full", True, events=events, skip=FINGERS)
+    CLIPS["Downed_Crawl"]["ground_speed"] = round(gl.measure_gait(arm, bpy.data.actions["Downed_Crawl"], GAME_SCALE), 2)
+
+    # ---- Revive_Kneel: down on the right knee, both hands on the teammate's chest, pressing twice a second ----------
+    stand = full(arm, sample(acts["Idle"], 0))
+    kneel = copy(stand)
+    move(arm, kneel, "Body", (0.0, 0.04, -0.4))
+    # Upright, the arms reaching out and down: leaned over the hands, his big head met the teammate's.
+    turn(arm, kneel, "Abdomen", (1, 0, 0), 4)
+    turn(arm, kneel, "Torso", (1, 0, 0), 4)
+    turn(arm, kneel, "Head", (1, 0, 0), 16)
+    # The left foot flat ahead, its knee up and forward; the right knee down, the ankle raised behind it and the toes
+    # curled under on the ground (the boot is 0.29 m long: 36 degrees down from the flat foot's 7 puts its toe at 0).
+    legs(arm, kneel, shape, {"Foot.L": (0.2, -0.4, 0.022), "Foot.R": (-0.19, 0.4, 0.2)},
+         {"Foot.L": (0.0, -1.0, 0.6), "Foot.R": (0.0, -1.0, -0.6)})  # fmt: skip
+    turn(arm, kneel, "Foot.R", (1, 0, 0), 36)
+
+    def hands(p, down):
+        z = REVIVE_HANDS[1] - down
+        reach(arm, p, "UpperArm.L", "LowerArm.L", "Index1.L", (0.09, REVIVE_HANDS[0], z), (1.0, 0.4, -0.2))
+        reach(arm, p, "UpperArm.R", "LowerArm.R", "Index1.R", (-0.09, REVIVE_HANDS[0], z), (-1.0, 0.4, -0.2))
+        return p
+
+    up_pose = hands(copy(kneel), 0.0)
+    pressed = copy(kneel)
+    turn(arm, pressed, "Torso", (1, 0, 0), 5)
+    hands(pressed, 0.07)
+    n = REVIVE_FRAMES
+    keys = [(0, up_pose), (n // 4, pressed), (n // 2, up_pose), (3 * n // 4, pressed), (n, up_pose)]
+    write(arm, "Revive_Kneel", keys, every, "full", True, events={"press": [n // 4, 3 * n // 4]}, skip=FINGERS)
