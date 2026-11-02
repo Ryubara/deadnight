@@ -21,15 +21,17 @@ document is the *mechanism*, and it is the same everywhere:
 
 ## What Deadnight does, and why
 
-- **Hip fire is the aim, held for a moment** (maintainer, playing, reopening #300: "The logic should be the same
-  camera wise with or without aiming no matter when they're shooting, aiming is just a precheck that skips it if
-  already aiming"). A first version gave hip fire its own half zoom with its own springs and left the weapon on the aim
-  button alone, which showed as a second, partial aim: the gun jumped into the aim pose when the button was pressed, did
-  not rise when shooting, and the zoom-out was three times slower. There is now one weight (`aiming or fire_age <
-  hold`) for the camera, the body, the legs and the hands, and one set of springs. The hold belongs to the hip state
-  only (maintainer, #428: "The logic to replicate the aiming zoom whenever you hipfire should not trigger at all when a
-  user is already aiming"): a shot fired while aiming does not restart it, so aim, shoot, release zooms out with the
-  aim's own release (`test_aim_release.gd`).
+- **Hip fire turns the body and raises the weapon, and never zooms** (the maintainer, #464, 2026-11-02, after testing
+  the Discord Activity: "When a player hip fires let's remove the zoom effect at all. We'll just reserve the aim zoom
+  just for aim as intended. We can always revisit the zoom on hipfire again later on."). The history: a first version
+  gave hip fire its own half zoom and left the weapon on the aim button alone (a second, partial aim: the gun jumped
+  into the aim pose when the button was pressed); #417 made it the aim held for a moment, one weight for the camera,
+  the body and the hands (`aiming or fire_age < hold`), on the maintainer's "the logic should be the same camera wise
+  with or without aiming" (#300); the zoom then showed up where it was not wanted, in aim, shoot, release (#428, #433:
+  a shot fired while aiming no longer restarts the hold) and finally on every shot. Now the camera reads the aim button
+  only (60 to 40 degrees and back, `test_hip_fire.gd`, `test_aim_release.gd`), and the body's turn, the legs' aim gait
+  and the weapon's pose read the hold (`PlayerMotionState.holds_aim`). Revisiting a small hip-fire zoom later is one
+  more input of `ThirdPersonCamera`; nothing else has to change.
 - **Face the view while the aim is held** (not always, as the combat kit above does): walking should still turn the
   soldier to where he runs, because the dead come from every side and the player flees as much as fights. The hold
   (0.8 s) hides the swing back between single shots and keeps the camera from pulsing between the slowest weapon's
@@ -37,9 +39,8 @@ document is the *mechanism*, and it is the same everywhere:
 - **Turn fast but not instantly**: 8 rad/s, 0.16 s for a view 75 degrees away. A snap makes the shoulders pop and the
   weapon jump; the finite rate is the documented option (the strafing system's turn rate). It is slower than the first
   version (22 and 24) because the weapon turns with the body *and* with the aim weight and the two add up.
-- **Zoom all the way**, as the aim does. What stays different is what the button does on top of it: a slower walk
-  (`aim_speed`) and a steadier look (`steady_amount()`, its own ease on the real button), because a burst from the hip
-  should not slow the view.
+- **The button does more than the zoom**: a slower walk (`aim_speed`) and a steadier look (`steady_amount()`), both
+  for the real aim button only, because a burst from the hip should not slow the view.
 - **The shot never moves**: the reticle sits on the camera ray whatever the body or the zoom does, as the Cinemachine
   note says it should; `AimResolver` already aimed the muzzle at that point.
 - **The server turns the body**: facing is simulated state and the muzzle is rotated by it, so the trigger travels in
@@ -54,4 +55,4 @@ document is the *mechanism*, and it is the same everywhere:
 - Whether a sprinting player should lose the sprint when firing (many shooters do). Not changed here: the bots run and
   shoot together and the balance gate is tuned on it.
 - Touch (#272, #286): a drag-to-look phone player fires with a button; the turn works the same, and an auto-fire
-  would hold the trigger and so the zoom. Revisit when #286 lands.
+  would hold the trigger and so the body's turn and the weapon's pose (not the camera, #464). Revisit when #286 lands.
