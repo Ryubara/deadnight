@@ -144,7 +144,6 @@ var _special: SpecialRound = null
 var _round_total: int = 0
 var _spawn_timer: float = 0.0
 var _round_players: int = 1
-## Seconds the round has been active, for the match's time limit.
 var _next_zombie_id: int = 1
 var _zombies: Dictionary[int, ZombieState] = {}
 var _spawn_rng := RandomNumberGenerator.new()

@@ -47,7 +47,7 @@ var port := NetWire.DEFAULT_PORT
 ## The seed of the night's dice; -1 draws one for every night.
 var seed_value := -1
 var rules_tuning: RulesTuning
-## The rules of the match (zombie count, alive cap, break, time limit) the next night runs under.
+## The rules of the match (zombie intensity, alive cap, break) the next night runs under.
 ## Set it with `configure_match`, which also changes a night nobody has started.
 var match_settings := MatchSettings.new()
 var log_enabled := true
