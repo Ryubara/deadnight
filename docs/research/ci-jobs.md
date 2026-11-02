@@ -61,3 +61,5 @@ ended, cancelled ones included). Now: `ci` (`conventions` and the jobs above, `b
 the `pr` jobs and `labels`; none runs more than half a minute, so it is green in about two minutes where it waited for
 a 15-minute build before. The 15-minute jobs that remain are the ones that were cancelled and restarted on every push:
 a push that fails `conventions` now stops them from starting.
+
+Test line for the CI scope check; this branch is never merged.
