@@ -149,5 +149,5 @@ Bigger figures (more zombies, four players, the manual run's server log) are in 
   ([#54](https://github.com/Ryubara/deadnight/issues/54)), the tighter packing of many zombies and projectiles
   ([#57](https://github.com/Ryubara/deadnight/issues/57)), and a lobby that picks the server (the
   [platform backend](platform-backend.md)): a client joins by typing an address.
-- The server's players still have bodies with models, and the other players' repair and weapon animations are not
-  drawn ([#153](https://github.com/Ryubara/deadnight/issues/153), [#245](https://github.com/Ryubara/deadnight/issues/245)).
+- The other players' repair and weapon animations are not drawn
+  ([#245](https://github.com/Ryubara/deadnight/issues/245)).
