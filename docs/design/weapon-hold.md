@@ -79,7 +79,9 @@ camera's yaw and pitch and turns in a little (at most 5 degrees) to cross the cr
 the camera is over the shoulder, the muzzle is not. The pose never flips: the pose weight
 (`PlayerAnimation.aim_weight()`, eased at the aim's speed) blends the yaw (the body's heading to the view) and the
 turn toward the ray (`converge`, 0 to 1), so the weapon eases in and out as the aim does. The camera zooms for the
-aim button only; a shot from the hip raises the weapon and does not zoom (#464). The shot itself is the
+aim button only; a shot from the hip raises the weapon and does not zoom (#464). A hip shot also waits for
+the body: it leaves when the body faces the view within 10 degrees, a press before that is kept for 0.6 s and a held
+trigger waits as long as it takes ([turn first, then shoot](../research/hip-fire.md), #477). The shot itself is the
 `AimResolver`'s, from the muzzle to what the camera ray is on.
 
 ## Per weapon
