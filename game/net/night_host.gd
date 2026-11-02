@@ -183,6 +183,7 @@ func _build_night() -> void:
 	await world.build()
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
+	server.drawn_bodies = false
 	_events.clear()
 	nights += 1
 	serving = true

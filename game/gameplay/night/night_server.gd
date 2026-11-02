@@ -83,6 +83,9 @@ var world: NightWorld
 var looks: LookServer
 var tuning: NightTuning
 var tick_count := 0
+## Whether the players' bodies have the Soldier's model. A game server draws nothing, so it leaves
+## them out (`NightHost`); in one process with its client the same bodies are drawn.
+var drawn_bodies := true
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -225,7 +228,7 @@ func step(delta: float) -> Array[Dictionary]:
 func _join(player_id: int, local: bool) -> void:
 	if _bodies.has(player_id):
 		return
-	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local)
+	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
@@ -755,6 +758,10 @@ func _frame() -> Dictionary:
 			"prompt": use_target(player_id),
 			"ack": _acked.get(player_id, 0),
 		}
+		if _face_left.get(player_id, 0.0) > 0.0:
+			# The server is turning this body (toward a breach it is repairing); its owner's
+			# predicted body takes that facing (it cannot know, the turn is not in any command).
+			players[player_id]["turn"] = true
 	return {
 		"type": &"frame",
 		"tick": tick_count,

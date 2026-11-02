@@ -2,9 +2,9 @@ class_name NightSounds
 extends Node3D
 ## What the night sounds like besides the guns, made only from what the server sent: the ambient
 ## bed (crickets and a distant highway everywhere, the projector in its booth), the score in the
-## breaks, the boards at the fence, doors, melee blows, the till, the player's own voice and every
-## player's feet (`FootstepSounds`, its child). It holds no game state and asks the server
-## nothing. The design is `docs/design/audio.md`.
+## breaks, the boards at the fence, doors, melee blows, the till and every player's feet
+## (`FootstepSounds`, its child). It holds no game state and asks the server nothing. The soldiers'
+## voices are `SoldierVoice`'s. The design is `docs/design/audio.md`.
 
 ## Lifts a sound off the ground to the middle of the boards, and to a player's head.
 const BOARD_LIFT := Vector3(0.0, 1.3, 0.0)
@@ -77,10 +77,6 @@ func _on_event(event: Dictionary) -> void:
 				Audio.play(&"door_open", points[0])
 		&"purchase_made":
 			_at_player(&"till_ring", event["player_id"])
-		&"player_hurt":
-			_at_player(&"player_hurt", event["player_id"], true)
-		&"player_downed":
-			_at_player(&"player_downed", event["player_id"], true)
 		&"shot_fired":
 			if _is_melee(event["weapon_id"]):
 				Audio.play(&"melee_swing", event["muzzle"])
@@ -105,12 +101,8 @@ func _at_breach(sound: StringName, barricade_id: Variant) -> void:
 		Audio.play(sound, barricade.centre() + BOARD_LIFT)
 
 
-## A sound of one player's: flat when it is the one at this screen's own (`own_flat`: their own
-## pain is in their head, not out in the lot), else where that player stands.
-func _at_player(sound: StringName, player_id: int, own_flat := false) -> void:
-	if own_flat and player_id == _state.player_id:
-		Audio.play(sound)
-		return
+## A sound of one player's, where that player stands.
+func _at_player(sound: StringName, player_id: int) -> void:
 	var player: Dictionary = _state.frame.get("players", {}).get(player_id, {})
 	if player.has("pos"):
 		Audio.play(sound, player["pos"] + HEAD_LIFT)

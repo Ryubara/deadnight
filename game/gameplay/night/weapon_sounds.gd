@@ -171,10 +171,14 @@ func _on_reload(event: Dictionary) -> void:
 	var tag := _reload_tag(shooter_id)
 	schedule.cancel(tag)
 	var steps: Dictionary = table["steps"]
+	# The clip's frames are stretched over the weapon's own reload time (the rifle's lever, at
+	# 2.33 s of its clip, would come after its 2.2 s reload otherwise), so the steps sound with the
+	# weapon's dip and are all over by the time the reload is.
+	var scale := float(event["seconds"]) / maxf(ClipEvents.length(table["clip"]), 0.01)
 	for step: StringName in steps:
 		var sound: StringName = steps[step]
 		for seconds in ClipEvents.times(table["clip"], step):
-			schedule.add(seconds, func() -> void: _at_player(sound, shooter_id), tag)
+			schedule.add(seconds * scale, func() -> void: _at_player(sound, shooter_id), tag)
 
 
 func _on_equipped(event: Dictionary) -> void:

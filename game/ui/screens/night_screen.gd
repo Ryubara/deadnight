@@ -30,6 +30,9 @@ static var match_settings: MatchSettings
 ## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
 ## settings file); null wears the saved look.
 static var own_look: CharacterLook
+## Where the player's challenges are kept; empty (tests, captures) counts nothing and writes
+## nothing. The game's root sets it, so only the real game keeps a save.
+static var challenge_path := ""
 
 var night: Night
 
@@ -63,6 +66,8 @@ func _ready() -> void:
 	if match_settings != null and join_url == "":
 		night.match_settings = match_settings
 	match_settings = null
+	if challenge_path != "":
+		night.challenge_board = ChallengeBoard.open(challenge_path)
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)

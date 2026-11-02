@@ -30,6 +30,7 @@ import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kitlib
+from palette_import import ensure_import
 
 # The kit atlas: every face sits on one 16 px swatch in a row at v 0.796 (style bible). Index = column.
 SWATCHES = {
@@ -146,6 +147,7 @@ class Atlas:
         img.filepath_raw = str(path)
         img.file_format = "PNG"
         img.save()
+        ensure_import(path)  # lossless, no mipmaps, Detect 3D off (tools/check_texture_imports.py)
         return img
 
 
