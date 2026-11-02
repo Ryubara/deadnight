@@ -23,8 +23,8 @@ func before_test() -> void:
 
 func after_test() -> void:
 	get_tree().paused = false
-	UIRouter.reset(_screen("end"), UITransition.Kind.CUT)
-	await _settle()
+	# Leave the router empty: a screen left on it covers the mouse for every suite after this one.
+	await RouterFixture.clear(get_tree())
 
 
 func test_a_reset_whose_new_screen_is_freed_settles_with_an_empty_stack() -> void:

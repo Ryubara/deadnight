@@ -10,15 +10,24 @@ const ACTION_USE := &"interact"
 const ACTION_SWAP := &"swap_weapon"
 const ACTION_PING := &"ping"
 
+## The touch player's aim help (`TouchAimAssist`); null for a night that has none.
+var assist: TouchAimAssist
+
 var _was_down := {}
 
 
 func command(player: Player, player_id: int) -> NightCommand:
 	var result := NightCommand.new()
 	result.player_id = player_id
+	if assist != null:
+		assist.prepare(player, player.get_physics_process_delta_time())
 	result.motion = player.sample_command()
 	if player.controls_enabled():
-		result.fire = Input.is_action_pressed(ACTION_FIRE)
+		result.fire = (
+			Input.is_action_pressed(ACTION_FIRE) or (assist != null and assist.wants_fire())
+		)
+		# The body hears the trigger too (the hip-fire zoom and the pose follow it).
+		result.motion.fire = result.fire
 		result.reload = _edge(ACTION_RELOAD)
 		result.use = _edge(ACTION_USE)
 		result.use_held = Input.is_action_pressed(ACTION_USE)

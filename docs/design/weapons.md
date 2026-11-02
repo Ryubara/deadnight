@@ -39,7 +39,10 @@ The server decides every hit. The client shows the shot at once and the server's
   draw a streak from the muzzle to each end, for a future beam-like hitscan weapon; none of the shipped weapons does.
 - **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
   `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
-  so a travelling shot is always a real body with its own flight, not a drawn line.
+  so a travelling shot is always a real body with its own flight, not a drawn line. In the night `NightView` draws
+  each one as a `ProjectileView` (a hot core, a flickering halo and a short spark trail), flown with the server's
+  `ProjectileState` against the walls and ended by the burst (a spark and a flash). It makes no light: the lot's light
+  cap leaves room for a flash and a blast only (`test_lot_light_cap`).
 - **`MELEE`** (crowbar): a sweep from the player's head (not the shoulder camera), a swing on the Soldier, a spark on a
   hit; no muzzle flash, no streak, no impact puff.
 
@@ -84,9 +87,9 @@ distance down to the floor and holds there to the range.
 
 Shots to kill at close range (head / body), against the health in [the rounds table](rounds.md#the-tuning-table):
 
-| Weapon | Round 1 (50) | Round 5 (82) | Round 10 (117) | Damage a second (body) | With reloads |
+| Weapon | Round 1 (50) | Round 5 (82) | Round 10 (121) | Damage a second (body) | With reloads |
 | --- | --- | --- | --- | ---: | ---: |
-| Revolver | 1 / 3 | 2 / 4 | 2 / 5 | 86 | 59 |
+| Revolver | 1 / 3 | 2 / 4 | 3 / 6 | 86 | 59 |
 | Tommy gun | 2 / 4 | 3 / 6 | 5 / 9 | 187 | 101 |
 | Pump shotgun | 1 / 1 | 1 / 1 | 1 / 1 | 190 | 127 |
 | Hunting rifle | 1 / 1 | 1 / 1 | 1 / 2 | 190 | 123 |
@@ -101,9 +104,14 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
 
 - **The starter is a revolver with a one-shot headshot.** At 24 damage and x2.5 on the head, a round-1 zombie (50)
   falls to one headshot or three body shots, so aiming pays from the first minute; by round 5 (82) it takes two
-  headshots or four body shots and by round 10 (117) five body shots. The health curve was lowered to the weapons
+  headshots or four body shots and by round 10 (121) six body shots. The health curve was lowered to the weapons
   that exist (rounds.md, the balance simulator): the shop weapons were stepped up in #265 (rifle 95,
   shotgun 19 a pellet) so that buying one is worth rounds.
+- **A weapon can be re-cut once** at the projector: x1.75 damage, x1.5 magazine and reserve limit, filled, for 1,500
+  points ([the re-cut](upgrades.md)). The table above is the weapon as shipped; a re-cut one has its damage in the
+  column multiplied and its magazine and reserve limit grown, and kills in fewer shots (a re-cut revolver, 42 a hit,
+  kills a round-10 zombie in 3 body shots). This is what lets the health curve climb faster than the shipped weapons
+  could follow.
 - **Each weapon has one job.** The SMG is volume at short range (the most damage a second, a short magazine of
   patience before the reload); the shotgun is a close wall; the rifle is the precision and the line (it passes through
   two zombies, each blow 40% weaker, which rewards lining the dead up); the flare gun is crowd control with a risk of
@@ -160,8 +168,8 @@ and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351
 | Carry | start with 2, every round start tops up to 3, at most 5; the shop sells 2 for 150 (+5 a round) |
 | Kill points | 40 for a zombie the blast kills (a hit that does not kill pays the usual 4) |
 
-A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m, a round-5 one (82) out to
-4.7 m, a round-10 one (117) out to 3.3 m, a round-15 one (149) only within 2 m, and no round-20 one (190) at all.
+A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m and a round-5 one (82) out to
+4.7 m; from round 12 (139) only near the centre of the blast, and no round-14 one (159) at all (the climb is 7% a round).
 
 **Crippling.** The rules (`explosion` action) decide, never the world. A zombie that survives loses its legs and
 becomes a crawler (once; one `zombie_crippled` event, speed times 0.35) when either:
@@ -181,9 +189,9 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 - **The carry limit: proposed, awaiting the maintainer (#410).** Two guns and the melee weapon; buying or taking a
   third gun replaces the one in hand and its reserve. Today a player may carry every weapon, and the swap button (F,
   d-pad up) takes the next one carried in hand.
-- **Friendly blast: proposed, awaiting the maintainer.** The flare's blast hurts zombies only: no player takes damage
-  from it, the thrower included, and a zombie does not keep burning. A grenade still hurts the thrower alone
-  (`player_blasted`). Revisit when perks can change the flare.
+- **The flare: decided, no damage; it becomes a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe
+  bomb, no damage for now. Zombies in a radius turn to it for a set time. Until #439 lands the table's flare numbers
+  (a hit and a blast) are the old design. A grenade still hurts the thrower alone (`player_blasted`).
 - **Reload as a skill.** A magazine swap that rewards a timed second press, and cancelling a reload by sprinting, wait
   for the controller (#14).
 - **Quick melee: not built (#411).** On its own button, with the crowbar-style sweep and a fixed short cooldown; the

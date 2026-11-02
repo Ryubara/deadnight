@@ -75,7 +75,7 @@ const OPTIONAL := {
 	HIT: {"melee": TYPE_BOOL},
 	BLOW: {"bearing": TYPE_FLOAT, "source_id": TYPE_INT},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
-	BUY: {"rounds": TYPE_INT},
+	BUY: {"rounds": TYPE_INT, "weapon": TYPE_STRING_NAME},
 }
 
 
@@ -161,11 +161,16 @@ static func tear_board(barricade_id: StringName, zombie_id: int) -> Dictionary:
 
 
 ## A purchase. `rounds` is only for ammunition: how many rounds the weapon's reserve has room for
-## (the combat server counts them, the rules price them); left out, the whole purchase.
-static func buy(player_id: int, item_id: StringName, rounds: int = -1) -> Dictionary:
+## (the combat server counts them, the rules price them); left out, the whole purchase. `weapon` is
+## only for a re-cut: the catalogue id of the weapon the server found in the buyer's hand.
+static func buy(
+	player_id: int, item_id: StringName, rounds: int = -1, weapon: StringName = &""
+) -> Dictionary:
 	var action := {"type": BUY, "player_id": player_id, "item_id": item_id}
 	if rounds >= 0:
 		action["rounds"] = rounds
+	if weapon != &"":
+		action["weapon"] = weapon
 	return action
 
 

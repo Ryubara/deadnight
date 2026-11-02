@@ -11,6 +11,11 @@ const NIGHT := "res://ui/screens/night_screen.tscn"
 const MAIN := "res://main.tscn"
 
 
+func after_test() -> void:
+	# The menu this suite goes back to would cover the mouse for every suite after it.
+	await RouterFixture.clear(get_tree())
+
+
 ## The game's own root (`main.tscn`) is loaded as in a real run: it is a full-screen Control too.
 func _enter_night() -> NightScreen:
 	var main := (load(MAIN) as PackedScene).instantiate()
