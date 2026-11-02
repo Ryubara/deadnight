@@ -118,3 +118,58 @@ func test_the_side_button_moves_the_camera_to_the_other_shoulder() -> void:
 	await runner.simulate_frames(6)
 	await _fixture.lift(0)
 	assert_float(player.state.shoulder_side).is_equal(before)
+
+
+## What a browser's web runtime reports for the first drag of each finger while another is down: its
+## `relative` is measured from somewhere else (the origin for the look finger, the other finger's
+## press for the stick finger), not from the finger's own last position (#497, found by logging
+## every touch event in headless Chrome with two fingers).
+func test_two_thumbs_turn_the_view_by_the_look_drag_alone_whatever_the_first_drag_reports() -> void:
+	var runner := scene_runner(TEST_ROOM)
+	var player := runner.find_child("Player") as Player
+	player.capture_mouse = false
+	var rig := player.camera_rig
+	var stick_at := Vector2(300.0, 800.0)
+	var look_at := Vector2(1700.0, 300.0)
+	var yaw := rig.yaw
+	await _fixture.touch(0, stick_at)
+	await _fixture.touch(1, look_at)
+	var biggest := 0.0
+	for step in 10:
+		stick_at += Vector2(8.0, -3.0)
+		look_at += Vector2(10.0, 0.0)
+		var stick_step := Vector2(8.0, -3.0)
+		var look_step := Vector2(10.0, 0.0)
+		if step == 0:
+			# The runtime's mistakes: the stick finger's step is measured from the look finger's press,
+			# the look finger's from the origin.
+			stick_step = stick_at - Vector2(1700.0, 300.0)
+			look_step = look_at
+		var before := rig.yaw
+		await _fixture.drag(0, stick_at, stick_step)
+		await _fixture.drag(1, look_at, look_step)
+		biggest = maxf(biggest, absf(angle_difference(before, rig.yaw)))
+	await _fixture.lift(0)
+	await _fixture.lift(1)
+	# The flick gain follows the frame timing the engine measures, so the turn is between the slow-drag
+	# design and the fastest gain; the bogus first drags turned the view by a whole screen.
+	var designed := TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0
+	var turned := -angle_difference(yaw, rig.yaw)
+	assert_float(turned).is_between(designed * 0.98, designed * TouchLook.MAX_GAIN * 1.02)
+	assert_float(rad_to_deg(biggest)).is_less(2.0)
+
+
+func test_a_drag_from_the_aim_button_turns_the_view_and_keeps_aiming() -> void:
+	var runner := scene_runner(TEST_ROOM)
+	var player := runner.find_child("Player") as Player
+	player.capture_mouse = false
+	var rig := player.camera_rig
+	var aim := _fixture.at(TouchLayout.AIM)
+	var yaw := rig.yaw
+	await _fixture.touch(0, aim)
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	await _fixture.drag(0, aim + Vector2(100.0, 0.0), Vector2(100.0, 0.0))
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	await _fixture.lift(0)
+	var turned := angle_difference(yaw, rig.yaw)
+	assert_float(turned).is_equal_approx(-TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0, 0.02)

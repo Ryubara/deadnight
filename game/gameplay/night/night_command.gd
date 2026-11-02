@@ -34,6 +34,15 @@ var view_step := -1
 var view_tick := 0
 
 
+## Looks along `direction` and shoots along it: the view turn (`motion.yaw` and `pitch`) and the
+## shot's `dir` agree, as a person's always do. The server refuses a shot that disagrees with its
+## view (`NightServer.aims_with_view`), so a command that wants to fire somewhere sets it this way.
+func aim_along(direction: Vector3) -> void:
+	dir = direction.normalized()
+	motion.yaw = atan2(-dir.x, -dir.z)
+	motion.pitch = asin(clampf(dir.y, -1.0, 1.0))
+
+
 func to_dict() -> Dictionary:
 	return {
 		"type": NightServer.COMMAND,
