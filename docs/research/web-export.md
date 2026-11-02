@@ -61,6 +61,8 @@ Things that were not obvious:
   before the change the night went on running with a free cursor, after it the menu was open 0.6 s later (the probe's
   refresh and a software renderer) and Resume, by key and by click, took the lock back. A headless Godot reads
   `Input.mouse_mode` back as VISIBLE whatever it was set to, so the unit tests put a stand-in platform under `MouseGrip`.
+  Never run a probe that takes pointer lock on a Windows machine in use: headless Chromium there clips the real cursor to
+  an invisible box at the top left, freed only by Esc. `pointer_lock.py` refuses to start there; CI (Linux) runs it.
 - The zombies are usually off screen: the crowd is read from the probe, not seen.
 - Playwright 1.64 launches `chromium-headless-shell`, which is always software-rendered. `--gpu` uses the installed
   Chrome (`channel="chrome"`) for numbers with a real GPU.

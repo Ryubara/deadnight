@@ -12,6 +12,10 @@ and checks that:
 
     uv run --with playwright==1.64.1 python tools/web_smoke/pointer_lock.py build/web build/pointer-lock
 
+Do not run it on a Windows machine someone is working at: headless Chromium there clips the real cursor to an
+invisible box at the top left of the screen on pointer lock, freed only by Esc. It runs in CI (Linux), and refuses to
+start on Windows unless GDS_ALLOW_POINTER_LOCK=1 is set.
+
 Playwright cannot press the browser's own Esc (it sends the key to the page), so the lock is released by script; the
 engine sees the same thing, a pointer lock that is gone.
 """
@@ -22,6 +26,7 @@ import argparse
 import functools
 import http.server
 import json
+import os
 import sys
 import threading
 import time
@@ -174,6 +179,12 @@ def run(page: Page, url: str, out: Path, result: dict) -> None:
 
 
 def main() -> int:
+    if sys.platform == "win32" and os.environ.get("GDS_ALLOW_POINTER_LOCK") != "1":
+        print(
+            "refusing to take pointer lock on Windows: it clips the real cursor (see the module's docstring)",
+            file=sys.stderr,
+        )
+        return 2
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("build", type=Path, help="the exported web folder")
     parser.add_argument("out", type=Path, help="where the report and screenshots go")
