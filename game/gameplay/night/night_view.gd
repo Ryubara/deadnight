@@ -25,6 +25,8 @@ var barricade_points: Dictionary[StringName, Vector3] = {}
 var lamps: LotLamps
 ## The prize crane (`show_crane`).
 var crane: CraneView
+## Plays the re-cut bench and the soda fountain.
+var machines: MachineView
 ## The night's sounds besides the guns (`hear`).
 var sounds: NightSounds
 ## The dead's voices and feet, made from the frames (`ZombieVoices`).
@@ -113,6 +115,9 @@ func show_crane(world: NightWorld, tuning: RulesTuning) -> void:
 	add_child(crane)
 	var item := tuning.economy.item(&"crane_play")
 	crane.setup(_state, world.shop_spots(), tuning.crane, item.pool if item != null else [])
+	# The lot's other machines (the re-cut bench, the soda fountain) play from the same events.
+	machines = MachineView.new()
+	machines.setup(_state, self)
 
 
 ## Draws the grenades the server throws, from its events (`GrenadeView`, `BlastEffect`): a copy of
@@ -162,13 +167,19 @@ func draw_event(event: Dictionary) -> void:
 
 
 func _on_event(event: Dictionary) -> void:
+	var began := PerfProbe.begin()
 	if lamps != null:
 		lamps.apply_event(event)
 	voices.on_event(event)
+	PerfProbe.end(&"view.lamps_voices", began)
 	match event["type"]:
 		&"frame":
+			began = PerfProbe.begin()
 			horde.apply_snapshot(event["zombies"], step)
+			PerfProbe.end(&"view.horde", began)
+			began = PerfProbe.begin()
 			voices.update(_state.zombies, step)
+			PerfProbe.end(&"view.voices", began)
 			_step_grenades()
 			_step_projectiles()
 		&"grenade_thrown", &"grenade_dropped":
@@ -180,15 +191,19 @@ func _on_event(event: Dictionary) -> void:
 		&"zombie_removed":
 			_gib(event)
 		&"shot_fired":
+			began = PerfProbe.begin()
 			_show_shot(event)
+			PerfProbe.end(&"fx.shot", began)
 		&"reload_started":
 			show_reload(event["shooter_id"], event["seconds"])
 		&"damage_dealt":
+			began = PerfProbe.begin()
 			if event["melee"]:
 				effects.spark(event["point"])
 			effects.number(
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
+			PerfProbe.end(&"fx.number", began)
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":

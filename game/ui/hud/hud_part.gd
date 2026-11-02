@@ -41,7 +41,10 @@ func on_event(_event: Dictionary) -> void:
 func _on_state_changed() -> void:
 	for topic in _watched:
 		if state.is_dirty(topic):
+			var began := PerfProbe.begin()
 			refresh()
+			if PerfProbe.enabled:
+				PerfProbe.end(StringName("hud.refresh.%s" % get_script().get_global_name()), began)
 			return
 
 

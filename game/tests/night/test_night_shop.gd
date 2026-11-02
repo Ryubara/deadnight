@@ -113,7 +113,8 @@ func test_swap_changes_the_weapon_in_hand_and_the_frame_lists_the_arms() -> void
 	assert_str(String(night.state.me()["weapon"])).is_equal("rifle")
 	var arms: Dictionary = night.state.me()["arms"]
 	assert_array(arms.keys()).contains_exactly_in_any_order([&"crowbar", &"pistol", &"rifle"])
-	assert_array(arms[&"pistol"]).is_equal([10, 40])
+	# Magazine, reserve and the tier (0: not re-cut).
+	assert_array(arms[&"pistol"]).is_equal([10, 40, 0])
 	for expected in ["crowbar", "pistol", "rifle"]:
 		_swap(night)
 		assert_str(String(night.state.me()["weapon"])).is_equal(expected)

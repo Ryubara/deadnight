@@ -58,9 +58,11 @@ switched off (`active`) once the blend reaches 0, since at influence 0 it still 
 **The aim.** At the hip the barrel is along the body (the body faces the movement; the camera's pitch still lifts
 it). While the aim is held (the button, or a shot within the hold: [hip fire](../research/hip-fire.md)) it follows the
 camera's yaw and pitch and turns in a little (at most 5 degrees) to cross the crosshair's ray 12 m ahead of the camera:
-the camera is over the shoulder, the muzzle is not. The pose never flips: the camera's one aim weight blends the yaw
-(the body's heading to the view) and the turn toward the ray (`converge`, 0 to 1), so the weapon eases in and out as
-the zoom does. The shot itself is the `AimResolver`'s, from the muzzle to what the camera ray is on.
+the camera is over the shoulder, the muzzle is not. The pose never flips: the pose weight
+(`PlayerAnimation.aim_weight()`, eased at the aim's speed) blends the yaw (the body's heading to the view) and the
+turn toward the ray (`converge`, 0 to 1), so the weapon eases in and out as the aim does. The camera zooms for the
+aim button only; a shot from the hip raises the weapon and does not zoom (#464). The shot itself is the
+`AimResolver`'s, from the muzzle to what the camera ray is on.
 
 ## Per weapon
 

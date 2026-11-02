@@ -19,6 +19,7 @@ var controls: TouchControls
 var host: Control
 var _suite: GdUnitTestSuite
 var _hand_before: Variant = null
+var _auto_fire_before: Variant = null
 ## False for a fixture over controls that belong to something else (`attach`).
 var _owns_host := true
 
@@ -61,7 +62,21 @@ func left_handed(on := true) -> void:
 	settings.set_value(SettingsService.LEFT_HANDED, on)
 
 
+## The player's auto-fire choice (through the setting, as the Settings screen does): false makes Aim
+## a toggle.
+func auto_fire(on := true) -> void:
+	var settings := _suite.get_tree().root.get_node("Settings")
+	if _auto_fire_before == null:
+		_auto_fire_before = settings.get_value(SettingsService.TOUCH_AUTO_FIRE)
+	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, 1 if on else 0)
+
+
 func free_all() -> void:
+	if _auto_fire_before != null:
+		_suite.get_tree().root.get_node("Settings").set_value(
+			SettingsService.TOUCH_AUTO_FIRE, _auto_fire_before
+		)
+		_auto_fire_before = null
 	if _hand_before != null:
 		_suite.get_tree().root.get_node("Settings").set_value(
 			SettingsService.LEFT_HANDED, _hand_before
@@ -96,6 +111,17 @@ func drag(index: int, position: Vector2, relative: Vector2, speed := 0.0) -> voi
 	event.position = _window() * position
 	event.relative = _window().basis_xform(relative)
 	event.velocity = _window().basis_xform(relative.normalized() * speed)
+	Input.parse_input_event(event)
+	await _suite.get_tree().process_frame
+
+
+## What the browser's web runtime does for every finger: the page reports the finger as a pointer
+## move, and the runtime turns it into a mouse motion in device pixels. `relative` is in canvas
+## units here. A real device sends it besides the touch events (#470).
+func stray_mouse_motion(relative: Vector2) -> void:
+	var event := InputEventMouseMotion.new()
+	event.relative = _window().basis_xform(relative)
+	event.position = _window() * Vector2(500.0, 500.0)
 	Input.parse_input_event(event)
 	await _suite.get_tree().process_frame
 
