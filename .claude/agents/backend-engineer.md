@@ -45,6 +45,9 @@ coordinator publishes it, so you do not edit that table yourself (many agents ed
    (each other open issue it partly fixes or makes out of date, `- #N: how`, or `None (reason)`); a `Fix` pull
    request adds a `Failed first:` line naming the test that failed before the fix and passes after. Issues you open
    start with a `From:` line and carry the area label (`--label A-<area>`).
+   Write the body to a file and run `uv run --project <workspace>/repos/gdstudio/python gds pr check-body <file>
+   --title <title file>` until it passes: it is the check `pr-rules` runs, and the hooks refuse `gh pr create|edit`
+   with a body that fails it. A `None (reason)` line ends with the `)`.
 
 ## Docs ship with your change (every task)
 

@@ -62,6 +62,10 @@ coordinator publishes it, so you do not edit that table yourself (many agents ed
   included (`git merge --no-edit` keeps git's own "Merge ..." title, which passes).
 - **Description:** from the template; no paths on this machine (no `C:\`, no `../../`, no `scratch/`): name places in
   words or as repository-relative paths. The model line names the model in your commits' trailer.
+- **Check the body before you send it:** write the whole description to a file, run
+  `uv run --project <workspace>/repos/gdstudio/python gds pr check-body <file> --title <title file>` (the same check
+  `pr-rules` runs; exits 1 with the reasons) and fix it until it passes. The hooks refuse `gh pr create|edit` with a
+  body that fails it. A `None (reason)` line ends with the `)`.
 - **Never force-push** (refused): after a conflict, `git merge origin/main` and push a normal commit.
 - **Issues affected:** list every other open issue your change partly fixes or makes out of date, one line each
   (`- #N: its step 2 is done`), or `None (reason)`; look through `gh issue list` first. `Fixes #N` stays in Summary.
