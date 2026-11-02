@@ -291,6 +291,8 @@ def main() -> int:
                 time.sleep(1)
             if menu_code:
                 print(f"menu first: the main menu is up with room {menu_code} ready")
+                page.wait_for_timeout(1500)
+                page.screenshot(path=args.out / "activity_menu_first.png")
                 rooms.to_together(driver)
                 waited_until = time.monotonic() + 60
                 while time.monotonic() < waited_until:
