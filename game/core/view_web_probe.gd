@@ -9,8 +9,9 @@ extends Node
 
 ## Numbers per frame, in this order: milliseconds since start, field of view in degrees, the view's
 ## aim weight (0 to 1), 1 while the body holds the aim pose (button or a recent shot from the hip),
-## the lens's distance from the head in metres.
-const ROW := 5
+## the lens's distance from the head in metres, 1 on the ticks the server lets a shot leave
+## (`shot_ready`), and how far the body is from facing the view in radians (#477).
+const ROW := 7
 
 var _object: JavaScriptObject
 var _rows: JavaScriptObject
@@ -44,5 +45,7 @@ func _process(_delta: float) -> void:
 		rig.camera().fov,
 		rig.aim_amount(),
 		1.0 if player.state.holds_aim(player.tuning.hip_fire_hold) else 0.0,
-		rig.lens_distance()
+		rig.lens_distance(),
+		1.0 if player.state.shot_ready else 0.0,
+		player.state.view_error
 	)
