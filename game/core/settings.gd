@@ -38,6 +38,11 @@ const TOUCH_CONTROLS := &"controls/touch_controls"
 const TOUCH_SCALE := &"controls/touch_scale"
 const TOUCH_OPACITY := &"controls/touch_opacity"
 const HAPTICS := &"controls/haptics"
+## Touch only: how strongly the view is helped toward a zombie (0 is off, 1 the most). `AimAssist`.
+const TOUCH_AIM_ASSIST := &"controls/touch_aim_assist"
+## Touch only: when the trigger pulls itself with the crosshair on a zombie: 0 never, 1 while the
+## Aim button is held, 2 whenever (`TouchAimAssist.AutoFire`). Off: ammunition is limited.
+const TOUCH_AUTO_FIRE := &"controls/touch_auto_fire"
 ## The touch layout flipped for a left hand: the stick on the right, Fire and its buttons on the
 ## left, and the HUD's corner columns swap sides with them.
 const LEFT_HANDED := &"controls/left_handed"
@@ -68,6 +73,8 @@ const DEFAULTS := {
 	TOUCH_SCALE: 1.0,
 	TOUCH_OPACITY: 0.7,
 	HAPTICS: true,
+	TOUCH_AIM_ASSIST: 0.5,
+	TOUCH_AUTO_FIRE: 0,
 	LEFT_HANDED: false,
 	TOUCH_HINTS_SEEN: 0,
 	CHARACTER_LOOK: "",
@@ -89,6 +96,8 @@ const RANGES := {
 	TOUCH_CONTROLS: Vector2(0, 2),
 	TOUCH_SCALE: Vector2(0.8, 1.4),
 	TOUCH_OPACITY: Vector2(0.3, 1.0),
+	TOUCH_AIM_ASSIST: Vector2(0.0, 1.0),
+	TOUCH_AUTO_FIRE: Vector2(0, 2),
 	TOUCH_HINTS_SEEN: Vector2(0, 255),
 }
 

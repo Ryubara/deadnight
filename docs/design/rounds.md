@@ -410,7 +410,10 @@ how much of the time they shoot (reloads are in the weapon, so this is the time 
 how often a blow misses them, how well they read a telegraphed blow, how much of the walk to them is on lit
 ground and which circuits they keep on for it (weak: the screen lot; average: plus the concession; strong: plus
 the booth), and what they buy, in order. Each night draws its own skill within 20% of the level's, so a level is
-a spread of nights. They shoot only what they can see (view range falls with the light), face one of four sides
+a spread of nights. A touch player with the aim assist (`--assist=`, `SimSkill.with_touch_assist`) has the misses
+the assist wins back added to the accuracy, by what a thumb bot measured
+([Touch aim assist](../research/aim-assist.md#how-much-it-is-worth)); the gate's cells never use it. They shoot
+only what they can see (view range falls with the light), face one of four sides
 at a time, revive each other in six seconds and mend between rounds, and pick the weapon with the best sustained
 damage a second. **Not modelled, because the game has none of it yet:** tonic effects (the tonics are shop
 entries that do nothing, so the modelled players do not buy them). Grenades, repair, the fence's boards (the
