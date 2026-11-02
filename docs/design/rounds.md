@@ -22,7 +22,14 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
 - **Time is an action.** Time passes only through `RulesAction.tick(delta)`, a fixed step the caller
   owns. Replays and tests do not need a clock.
 - **Seeded randomness only.** The seed picks every speed, spawn point roll and crane prize. Same seed
-  and same actions give the same night.
+  and same actions give the same night. The seed is a required argument of `GameRules.new(tuning, seed)`
+  (no default, so a night never starts on a forgotten 0): whoever builds the night, the server, chooses it,
+  and `to_dict()` records it as `seed`.
+- **One action at a time.** An action sent from inside an `event_emitted` listener, while the events of the
+  action before it are still being handed out, is answered with a `reentrant` rejection (returned to that
+  caller, never emitted) and changes nothing. Queuing it instead would hide its events from the caller
+  that sent it and let the order clients see depend on who listened first; a listener that wants a follow-up
+  tells its owner, which sends it once `apply` has returned.
 - **Snapshots.** `to_dict()` returns everything (the tuning table is left out because both sides
   load the same one; its fingerprint, `tuning_id`, and the snapshot `version` are in) and restoring
   brings back the random streams and each living zombie's health without emitting events. A restored
@@ -55,7 +62,7 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
-| `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
+| `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a downed player cannot buy: `purchase_denied` with `PLAYER_DOWNED`, nothing spent (doors, weapons, fuel, all of it); a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |

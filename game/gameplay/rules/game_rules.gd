@@ -56,7 +56,8 @@ extends RefCounted
 ##   fuel_low, fuel_empty, fuel_restored
 ##   circuit_changed: circuit_id, on
 ##   game_over: reason (all_down or no_players), round_reached
-##   action_rejected: reason, action (the type), field (when one field is to blame)
+##   action_rejected: reason, action (the type), field (when one field is to blame); `reentrant` is
+##     the answer to an action sent from inside an event listener, and is returned, never emitted
 
 signal event_emitted(event: Dictionary)
 
@@ -73,6 +74,7 @@ enum BuyResult {
 	TANK_FULL,
 	AMMO_FULL,
 	CRANE_BUSY,
+	PLAYER_DOWNED,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
@@ -116,6 +118,7 @@ const CRIPPLE_STREAM := 0xC21B
 const CRANE_STREAM := 0xC4A7
 
 var tuning: RulesTuning
+## The night's seed, given at construction and kept in the snapshot.
 var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
 var round_number: int = 0
@@ -141,12 +144,16 @@ var _shop_rng := RandomNumberGenerator.new()
 var _cripple_rng := RandomNumberGenerator.new()
 var _crane_rng := RandomNumberGenerator.new()
 var _events: Array[Dictionary] = []
+## True while `apply` hands its events to the listeners of `event_emitted`.
+var _delivering := false
 ## The whole-unit fuel value the last `fuel_changed` event announced.
 var _fuel_announced: int = 0
 
 
-## A fresh night. `p_tuning` defaults to the shipped table.
-func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
+## A fresh night. `p_tuning` null means the shipped table. The seed has no default: every random
+## stream of the night comes from it, so whoever builds the night (the server) chooses it, and the
+## snapshot records it. Both arguments are required, so `GameRules.new()` does not compile.
+func _init(p_tuning: RulesTuning, p_seed: int) -> void:
 	tuning = p_tuning if p_tuning != null else load(DEFAULT_TUNING_PATH)
 	rng_seed = p_seed
 	_spawn_rng.seed = p_seed ^ SPAWN_STREAM
@@ -168,7 +175,15 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 
 
 ## The one way in. Returns the events the action caused, in order.
+##
+## An action sent from inside an `event_emitted` listener (while the events of the action before it
+## are still being handed out) is answered with one `reentrant` rejection and changes nothing: it
+## would change the state under the listeners still waiting for the earlier events, and the order
+## clients see would depend on who listened first. A listener that wants something done after
+## an action tells its owner, which sends it once `apply` has returned.
 func apply(action: Dictionary) -> Array[Dictionary]:
+	if _delivering:
+		return [{"type": &"action_rejected", "reason": &"reentrant", "action": action.get("type")}]
 	_events = []
 	var problem := RulesAction.validate(action)
 	if problem.is_empty():
@@ -176,8 +191,10 @@ func apply(action: Dictionary) -> Array[Dictionary]:
 	else:
 		_reject(problem["reason"], action.get("type"), problem["field"])
 	var caused := _events
+	_delivering = true
 	for event in caused:
 		event_emitted.emit(event)
+	_delivering = false
 	return caused
 
 
@@ -334,7 +351,7 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.TEAR_BOARD:
 			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
-			_buy(action["player_id"], action["item_id"], action.get("rounds", -1))
+			ShopCounter.buy(self, action["player_id"], action["item_id"], action.get("rounds", -1))
 		RulesAction.CRANE_TAKE:
 			CranePlay.take(self, action["player_id"])
 		RulesAction.SET_CIRCUIT:
@@ -850,150 +867,3 @@ func _tear_board(id: StringName, zombie_id: int) -> void:
 		return
 	var boards := barricades.boards_of(id)
 	_emit(&"board_torn", {"barricade_id": id, "boards": boards, "zombie_id": zombie_id})
-
-
-# --- The shop ---
-
-
-func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
-	var quote := _quote(player_id, item_id, rounds)
-	if quote.result != BuyResult.OK:
-		_emit(
-			&"purchase_denied", {"player_id": player_id, "item_id": item_id, "result": quote.result}
-		)
-		return
-	var player: PlayerState = players[player_id]
-	player.points -= quote.price
-	player.points_spent += quote.price
-	_emit(
-		&"points_changed",
-		{
-			"player_id": player_id,
-			"total": player.points,
-			"delta": -quote.price,
-			"reason": &"purchase",
-		}
-	)
-	var detail := _grant(player, quote)
-	_emit(
-		&"purchase_made",
-		{"player_id": player_id, "item_id": item_id, "price": quote.price, "detail": detail}
-	)
-	if quote.item.kind == ShopItem.Kind.CRANE:
-		_emit(
-			&"crane_spin_started",
-			{
-				"player_id": player_id,
-				"spot": crane.spot,
-				"seconds": tuning.crane.spin_seconds,
-				"plays": crane.plays,
-			}
-		)
-
-
-func _quote(player_id: int, item_id: StringName, rounds: int = -1) -> Quote:
-	var quote := Quote.new()
-	var player := players.get(player_id) as PlayerState
-	var item := tuning.economy.item(item_id)
-	if phase != Phase.BREAK and phase != Phase.ACTIVE:
-		quote.result = BuyResult.WRONG_PHASE
-	elif player == null:
-		quote.result = BuyResult.UNKNOWN_PLAYER
-	elif item == null:
-		quote.result = BuyResult.UNKNOWN_ITEM
-	else:
-		quote.item = item
-		quote.price = item.price_at(round_number)
-		quote.rounds_offered = rounds
-		quote.result = _check_item(player, quote)
-	if quote.result == BuyResult.OK and player.points < quote.price:
-		quote.result = BuyResult.NOT_ENOUGH_POINTS
-	return quote
-
-
-## Whether the item can be sold to this player at all, ignoring their points. A fuel quote also gets
-## its real price: you pay only for the room in the tank.
-func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
-	var item := quote.item
-	var result := BuyResult.OK
-	match item.kind:
-		ShopItem.Kind.DOOR:
-			if doors_open.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-			elif item.requires != &"" and not doors_open.has(item.requires):
-				result = BuyResult.LOCKED
-		ShopItem.Kind.WEAPON:
-			if player.weapons.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-		ShopItem.Kind.CRANE:
-			if item.pool_without(player.weapons).is_empty():
-				result = BuyResult.ALREADY_OWNED
-			elif not crane.is_ready():
-				result = BuyResult.CRANE_BUSY
-		ShopItem.Kind.TONIC:
-			if player.tonics.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-			elif player.tonics.size() >= tuning.economy.max_tonics:
-				result = BuyResult.LIMIT_REACHED
-		ShopItem.Kind.GRENADES:
-			var room := tuning.explosives.max_grenades - player.grenades
-			if room <= 0:
-				result = BuyResult.LIMIT_REACHED
-			else:
-				quote.grenades_added = mini(int(item.amount), room)
-				quote.price = ceili(float(quote.price) * quote.grenades_added / item.amount)
-		ShopItem.Kind.AMMO:
-			# The weapon's reserve is the combat server's: the buyer says how many rounds fit
-			# (none given: all of them) and the rules price exactly those.
-			var fit := int(item.amount)
-			if quote.rounds_offered >= 0:
-				fit = mini(quote.rounds_offered, fit)
-			if fit <= 0:
-				result = BuyResult.AMMO_FULL
-			else:
-				quote.ammo_added = fit
-				quote.price = item.ammo_price(round_number, fit)
-		ShopItem.Kind.FUEL:
-			var offer := item.fuel_offer(round_number, generator.space())
-			if offer["units"] <= 0.0:
-				result = BuyResult.TANK_FULL
-			else:
-				quote.fuel_added = offer["units"]
-				quote.price = offer["price"]
-	return result
-
-
-## Hands over what was bought; returns what the event's `detail` should say.
-func _grant(player: PlayerState, quote: Quote) -> Dictionary:
-	var item := quote.item
-	match item.kind:
-		ShopItem.Kind.DOOR:
-			doors_open.append(item.id)
-			_emit(&"door_opened", {"door_id": item.id})
-		ShopItem.Kind.WEAPON:
-			player.weapons.append(item.id)
-			return {"weapon": item.id}
-		ShopItem.Kind.CRANE:
-			return CranePlay.start(self, player, quote.price)
-		ShopItem.Kind.TONIC:
-			player.tonics.append(item.id)
-		ShopItem.Kind.FUEL:
-			return {"fuel": generator.add_fuel(quote.fuel_added)}
-		ShopItem.Kind.GRENADES:
-			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
-			return {"grenades": quote.grenades_added}
-		ShopItem.Kind.AMMO:
-			return {"ammo": item.weapon, "rounds": quote.ammo_added}
-	return {}
-
-
-## A priced, checked purchase that has not happened yet.
-class Quote:
-	extends RefCounted
-	var result: BuyResult = BuyResult.OK
-	var item: ShopItem
-	var price: int = 0
-	var fuel_added: float = 0.0
-	var grenades_added: int = 0
-	var rounds_offered: int = -1
-	var ammo_added: int = 0
