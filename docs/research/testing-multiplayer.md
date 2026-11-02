@@ -121,7 +121,7 @@ Bigger figures (more zombies, four players, the manual run's server log) are in 
   web build `index.html?connect=wss://...`.
 - **Web clients.** The link is `WebSocketPeer`, which works in the web export; it has not been tried against a server
   there.
-- **Reconnect** after a dropped socket ([#53](https://github.com/Ryubara/deadnight/issues/53)), hit rewind
+- Hit rewind
   ([#54](https://github.com/Ryubara/deadnight/issues/54)), the tighter packing of many zombies and projectiles
   ([#57](https://github.com/Ryubara/deadnight/issues/57)), and a lobby that picks the server (the
   [platform backend](platform-backend.md)): a client joins by typing an address.
