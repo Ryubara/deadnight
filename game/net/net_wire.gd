@@ -1,11 +1,12 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 8; version 7 had no names in the WELCOME or
-## the events, version 6 had every zombie whole in a frame, version 5 had no view step in a command,
-## version 4 had a ping of 5 bytes with no round trip in it, version 3 had no ticket in the hello,
-## version 2 no resume token, version 1 sent a command as 47 bytes of floats), one message to a
-## WebSocket frame: a type byte, then the fields. `LookWire` continues the numbering with types 8
-## and 9.
+## The bytes of a night's connection (protocol version 9, whose WELCOME and events carry every
+## seat's name; version 8 carried each player's aim pose and look up or down so a client can draw
+## the weapons of the others; version 7 had zombie deltas and an interest radius, version 6 had
+## every zombie whole in a frame, version 5 had no view step in a command, version 4 had a ping of
+## 5 bytes with no round trip in it, version 3 had no ticket in the hello, version 2 no resume
+## token, version 1 sent a command as 47 bytes of floats), one message to a WebSocket frame: a type
+## byte, then the fields. `LookWire` continues the numbering with types 8 and 9.
 ##
 ## HELLO    C->S  u8 type=1, u8 version, u8 token length (0 or 8), the resume token the last WELCOME
 ##                gave (a client that lost its socket asks for its seat back), then the rest is the
@@ -44,10 +45,10 @@ enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 8
+const VERSION := 9
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 8
+const MIN_VERSION := 9
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910

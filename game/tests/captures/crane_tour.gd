@@ -2,18 +2,26 @@ extends Node
 ## The prize crane from the player's shoulder camera, for captures: the player stands at the
 ## crane, pays, watches the claw dig and the weapons cycle, takes the prize. With `--breakdown` the
 ## play breaks the crane down instead (a dud, sparks, the power goes, the crane is gone) and with
-## `--beam` the camera looks along the lot to show the light beam. Not part of the game.
+## `--beam` the camera looks along the lot to show the light beam. With `--prizes` the crane is
+## played once for every weapon of its pool (it never breaks down) and `PRIZE <weapon> <movie
+## frame>` is printed for the frame where each prize floats in its window. Not part of the game.
 ## Run it with Movie Maker: `godot --path game res://tests/captures/crane_tour.tscn --fixed-fps 10
 ## --write-movie out.png --quit-after 260 -- [--breakdown] [--beam]`.
 
 ## Frames are physics ticks, 60 a second.
 const HOLD := 90
 const SHOULDER_PITCH := 0.16
+## Ticks of a play: the spin (4.5 s), a moment of the prize floating, and the weapon in hand after.
+const SPIN_TICKS := 280
+const FLOAT_TICKS := 60
+const TAKEN_TICKS := 60
+const TICKS_PER_FRAME := 6
 
 var _night: Night
 var _yaw := 0.0
 var _use := false
 var _args := {}
+var _ticks := 0
 
 
 func _ready() -> void:
@@ -31,6 +39,8 @@ func _ready() -> void:
 	if _args.has("breakdown"):
 		tuning.crane.safe_plays = 0
 		tuning.crane.leave_chances = PackedFloat32Array([1.0])
+	if _args.has("prizes"):
+		tuning.crane.leave_chances = PackedFloat32Array([0.0])
 	_night = Night.new()
 	_night.hud = hud
 	add_child(_night)
@@ -67,6 +77,9 @@ func _play() -> void:
 	if _args.has("beam"):
 		await _beam()
 		return
+	if _args.has("prizes"):
+		await _prizes()
+		return
 	await _hold(HOLD)
 	_use = true
 	await _hold(1)
@@ -81,6 +94,24 @@ func _play() -> void:
 		await _hold(1)
 		_use = false
 		await _hold(120)
+
+
+## One play for every weapon of the pool: pay, the spin, the prize floating (its frame is printed),
+## take it. The movie runs at `MOVIE_FPS`, so a frame is the ticks over `TICKS_PER_FRAME`.
+func _prizes() -> void:
+	var pool: Array[StringName] = _night.server.rules.tuning.economy.item(&"crane_play").pool
+	await _hold(HOLD)
+	for _i in pool.size():
+		_use = true
+		await _hold(1)
+		_use = false
+		await _hold(SPIN_TICKS + FLOAT_TICKS)
+		var prize := String(_night.server.rules.crane.weapon)
+		print("PRIZE %s %d" % [prize, _ticks / TICKS_PER_FRAME])
+		_use = true
+		await _hold(1)
+		_use = false
+		await _hold(TAKEN_TICKS)
 
 
 ## From the shoulder camera, turned to look down the lot from the stand toward the crane's beam.
@@ -109,3 +140,4 @@ func _send() -> void:
 func _hold(frames: int) -> void:
 	for _i in frames:
 		await get_tree().physics_frame
+		_ticks += 1

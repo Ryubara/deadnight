@@ -91,7 +91,7 @@ func test_idle_voices_keep_to_the_hordes_gate_over_time() -> void:
 	# One every 0.6 to 1.6 s at most; and none from zombies who are not due: well under 28 a second.
 	assert_int(total).is_less_equal(int(30.0 / ZombieVoices.IDLE_GAP.x) + 1)
 	assert_int(total).is_greater(5)
-	assert_int(seen["most"]).is_less_equal(SoundCatalog.GROUP_LIMITS[&"zombie_voice"])
+	assert_int(seen["most"]).is_less_equal(SoundCatalog.group_limits()[&"zombie_voice"])
 
 
 func test_a_zombie_that_comes_within_range_snarls_once() -> void:
@@ -252,7 +252,7 @@ func test_a_horde_of_28_walking_and_swinging_stays_inside_the_budget() -> void:
 			most["all"] = maxi(most["all"], budget.active_count())
 			return crowd
 	)
-	assert_int(most["voices"]).is_less_equal(SoundCatalog.GROUP_LIMITS[&"zombie_voice"])
-	assert_int(most["steps"]).is_less_equal(SoundCatalog.GROUP_LIMITS[&"zombie_step"])
+	assert_int(most["voices"]).is_less_equal(SoundCatalog.group_limits()[&"zombie_voice"])
+	assert_int(most["steps"]).is_less_equal(SoundCatalog.group_limits()[&"zombie_step"])
 	assert_int(most["all"]).is_less_equal(AudioService.POOL_3D)
 	assert_int(_audio.started).is_greater(50)

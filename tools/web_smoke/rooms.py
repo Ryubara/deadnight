@@ -182,6 +182,11 @@ def main() -> int:
             if local:
                 local.shutdown()
     (args.out / "console.txt").write_text("\n".join(console) + "\n", encoding="utf-8")
+    # A night that ends first must close its link, not leave the snapshots unread (#467).
+    flood = [line for line in console if "Buffer payload full" in line]
+    result["buffer_full_lines"] = len(flood)
+    if flood:
+        problems.append(f"{len(flood)} console lines 'Buffer payload full', first: {flood[0]}")
     result["problems"] = problems
     (args.out / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))

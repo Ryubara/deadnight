@@ -28,25 +28,25 @@ func _rules() -> GameRules:
 
 func test_a_profile_takes_the_numbers_of_the_spawn_request() -> void:
 	var rules := _rules()
-	var profile := ZombieProfile.from_event(_request(&"brute", rules), ZombieTuning.new())
+	var profile := ZombieProfile.from_event(_request(&"brute", rules), ZombieTuning.shipped())
 	assert_str(String(profile.type)).is_equal("brute")
 	assert_str(String(profile.look)).is_equal("brute")
 	assert_float(profile.damage).is_equal(35.0)
 	assert_float(profile.knockback).is_equal(2.5)
 	assert_float(profile.barrier_speed).is_equal(2.5)
 	# No telegraph: the walker's ordinary windup.
-	assert_float(profile.windup).is_equal(ZombieTuning.new().windup_seconds)
+	assert_float(profile.windup).is_equal(ZombieTuning.shipped().windup_seconds)
 
 
 func test_a_telegraph_replaces_the_windup() -> void:
 	var rules := _rules()
-	var profile := ZombieProfile.from_event(_request(&"headliner", rules), ZombieTuning.new())
+	var profile := ZombieProfile.from_event(_request(&"headliner", rules), ZombieTuning.shipped())
 	assert_float(profile.windup).is_equal(1.2)
 	assert_float(profile.damage).is_equal(40.0)
 
 
 func test_a_request_with_nothing_but_an_id_is_a_plain_zombie() -> void:
-	var tuning := ZombieTuning.new()
+	var tuning := ZombieTuning.shipped()
 	var profile := ZombieProfile.from_event({"zombie_id": 4}, tuning)
 	assert_float(profile.damage).is_equal(tuning.strike_damage)
 	assert_float(profile.windup).is_equal(tuning.windup_seconds)
@@ -68,7 +68,7 @@ func test_the_brain_strikes_with_the_zombies_own_damage_after_its_own_windup() -
 
 
 func test_a_longer_windup_keeps_the_same_recovery() -> void:
-	var tuning := ZombieTuning.new()
+	var tuning := ZombieTuning.shipped()
 	var profile := ZombieProfile.from_event(_request(&"headliner", _rules()), tuning)
 	var sim := ZombieSim.new(tuning, 1)
 	var zombie := sim.spawn(1, 1.0, Vector3.ZERO, 0.0, profile)
@@ -131,7 +131,7 @@ func test_an_unknown_look_on_the_wire_is_a_walker() -> void:
 
 func test_hit_zones_follow_the_size_of_the_look_and_its_hit_chance() -> void:
 	var rules := _rules()
-	var tuning := ZombieTuning.new()
+	var tuning := ZombieTuning.shipped()
 	var walker := ZombieProfile.from_event(_request(&"walker", rules), tuning)
 	var brute := ZombieProfile.from_event(_request(&"brute", rules), tuning)
 	var crawler := ZombieProfile.from_event(_request(&"crawler", rules), tuning)

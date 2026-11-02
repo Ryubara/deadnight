@@ -137,7 +137,7 @@ func test_two_bosses_do_not_share_a_lamp() -> void:
 
 
 func test_the_boss_roars_for_its_entrance_before_it_chases() -> void:
-	var tuning := ZombieTuning.new()
+	var tuning := ZombieTuning.shipped()
 	var profile := ZombieProfile.from_event(_boss_request(), tuning)
 	assert_float(profile.emerge).is_equal(tuning.boss_entrance_seconds)
 	var sim := ZombieSim.new(tuning, 1)
@@ -182,7 +182,7 @@ func test_the_weak_spot_moves_with_the_boss() -> void:
 
 
 func test_a_weak_spot_hit_staggers_the_boss_with_a_cooldown() -> void:
-	var tuning := ZombieTuning.new()
+	var tuning := ZombieTuning.shipped()
 	var sim := _boss_sim(tuning)
 	var zombie := sim.zombies[1]
 	var far := {1: Vector3(20.0, 0.0, 0.0)}
@@ -207,7 +207,7 @@ func test_a_weak_spot_hit_on_a_zombie_without_one_does_nothing() -> void:
 
 
 func test_a_stagger_loses_the_boss_its_swing() -> void:
-	var sim := _boss_sim(ZombieTuning.new())
+	var sim := _boss_sim(ZombieTuning.shipped())
 	var zombie := sim.zombies[1]
 	var targets := {1: Vector3(0.0, 0.0, 1.0)}
 	ZombieFixture.run(sim, 0.8, targets)

@@ -142,8 +142,8 @@ var _rules: GameRules
 
 
 func _init() -> void:
-	_budget_3d = VoiceBudget.new(POOL_3D, SoundCatalog.GROUP_LIMITS)
-	_budget_2d = VoiceBudget.new(POOL_2D, SoundCatalog.GROUP_LIMITS)
+	_budget_3d = VoiceBudget.new(POOL_3D, SoundCatalog.group_limits())
+	_budget_2d = VoiceBudget.new(POOL_2D, SoundCatalog.group_limits())
 	_rng.randomize()
 
 

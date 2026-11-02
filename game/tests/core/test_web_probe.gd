@@ -67,3 +67,35 @@ func test_the_together_screen_says_when_it_asks_for_a_name() -> void:
 	screen.get("_naming").visible = true
 	assert_bool(WebProbe.snapshot(screen)["naming"]).is_true()
 	screen.queue_free()
+
+
+func test_the_lobby_reports_its_code_its_seats_and_the_buttons_it_shows() -> void:
+	var held := {
+		"id": "l1",
+		"code": "ABC234",
+		"hostId": "a",
+		"maxPlayers": 4,
+		"state": "open",
+		"round": null,
+		"players": null,
+		"members":
+		[
+			{"userId": "a", "name": "Ann", "seat": 1, "host": true, "away": false},
+			{"userId": "b", "name": "Bo", "seat": 2, "host": false, "away": false},
+		],
+	}
+	var screen := (
+		(load("res://ui/screens/lobby_screen.tscn") as PackedScene).instantiate() as LobbyScreen
+	)
+	var api := TogetherApi.new(self)
+	api.isolated = true
+	api._own_user = {"id": "a"}
+	screen.params = {"api": api, "lobby": held}
+	add_child(screen)
+	var data := WebProbe.snapshot(screen)
+	assert_str(data["screen"]).is_equal("lobby_screen")
+	assert_str(data["room_code"]).is_equal("ABC234")
+	assert_str(data["lobby_seats"]).is_equal("1  Ann  HOST|2  Bo|3  (open)|4  (open)")
+	assert_str(data["lobby_buttons"]).is_equal("Start")
+	assert_str(data["room_status"]).contains("2 of 4 here")
+	screen.queue_free()
