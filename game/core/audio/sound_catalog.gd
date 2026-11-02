@@ -386,7 +386,7 @@ static func _build_night() -> void:
 	var bed := {
 		"bus": BUS_AMBIENCE, "group": &"bed", "loop": true, "pitch_semitones": 0.0, "priority": 10
 	}
-	_add(&"bed_crickets", "ambience/crickets_%d.ogg", 1, _with(bed, {"volume_db": -16.0}))
+	_add(&"bed_crickets", "ambience/crickets_%d.ogg", 1, _with(bed, {"volume_db": -18.5}))
 	_add(&"bed_highway", "ambience/highway_%d.ogg", 1, _with(bed, {"volume_db": -18.0}))
 	_add(
 		&"bed_projector",
@@ -394,4 +394,4 @@ static func _build_night() -> void:
 		1,
 		_with(bed, {"volume_db": -14.0, "max_distance": 35.0, "unit_size": 4.0})
 	)
-	_add(&"bed_score", "music/score_%d.ogg", 1, _with(bed, {"bus": BUS_MUSIC, "volume_db": -22.0}))
+	_add(&"bed_score", "music/score_%d.ogg", 1, _with(bed, {"bus": BUS_MUSIC, "volume_db": -20.1}))

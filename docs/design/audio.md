@@ -98,6 +98,12 @@ footstep (14 to 22 dB), so they are felt when they stop rather than heard.
 - **The score** (32 s, stereo, on Music): a low organ pad through four chords with a sub bass and a sparse theremin
   wail. It plays in the **breaks**: it fades in when a round ends and out when the next begins, so it never fights the
   stings. At the game's end every bed fades out over two seconds.
+- **The break's levels** (maintainer, #382). The break is 5 s (`RoundTuning.break_seconds`; the intro is still 12 s).
+  The score is 25% louder than it was, +1.9 dB, at -20.1 dB, and the crickets 25% quieter, -2.5 dB, at -18.5 dB: the
+  score's trim went from 6 dB under the crickets' to 1.6 dB under it, and as the meter hears them the score went from
+  3.7 to 8.1 LU above the crickets ([measured](../research/audio.md#the-breaks-levels-382)), so the intermission reads as
+  music over a quieter night. A bed fades in at 20 dB/s, so in a 5 s break the score is at full level for only the
+  last two seconds or so before it fades out at 30 dB/s; a special round's break (15 s) plays it in full.
 
 All four are built to loop: every event that runs past the end wraps to the start and every filter is applied to the
 whole loop at once, so the seam is smaller than the largest step inside the file (measured in
