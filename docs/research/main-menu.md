@@ -71,3 +71,33 @@ from a local web server, and run in Chrome 156 headless over the DevTools protoc
 - **How:** a preset `Web` in `export_presets.cfg` (not committed), then `godot --headless --path game --export-release Web`
   into the scratch folder; Chrome is driven with `--remote-debugging-port` and a Node script using the built-in
   `WebSocket` (`Page.captureScreenshot`, `Page.startScreencast`, `Input.dispatchKeyEvent`).
+
+## Polish: the entrance, the credits scroll, placeholder focus, the cars (#85)
+
+- **Transparent is not out of reach.** During the 0.55 s entrance the items were `modulate.a = 0` but still focusable
+  and clickable: a key press made the router focus Play, and Enter opened it unseen (the capture shows the iris to Play
+  at 0.2 s). `MainMenu` now sets each item's `mouse_filter` to ignore and `focus_mode` to none when it hides them, keeps
+  what they were, and gives them back in `finish_entrance()`. `focus_initial()` does nothing until the items have
+  risen, so a key pressed too early is swallowed (the router handles it) instead of calling `grab_focus()` on a control
+  that cannot take it. A menu covered by another screen still brings its items in at once (`screen_pause`).
+- **Credits scroll.** The card is as tall as the window allows (a margin of `space_lg` round it): the title above, the
+  list in a `ScrollContainer` (`Scroll`), Back below it, so Back is on screen however long the list is (checked with 40
+  lines at 1280 x 720 pixels, the unstretched, tighter case). Back is the only control that takes focus, so Up and Down
+  have no neighbour to move to: `CreditsScreen._input` scrolls the list by two caption lines (Page Up and Page Down by
+  most of a page), on the keyboard and the D-pad alike, and marks the event handled. The mouse wheel scrolls it too.
+- **Placeholder focus** is a reference (`first_action`), not `box.get_child(3)`; with no actions Back takes it.
+- **Cars.** A parked car is now a body with the wheel arches cut out of it, a tyre in each arch (a thin ring of lit
+  gravel shows round it), and a cabin whose windscreen and rear window are cut slantwise, so the roofline and the wheels
+  read even as a dark shape. The near row stands at `0.975` instead of `1.04`, so its wheels are on screen and the row
+  is no longer cropped by the bottom edge (the near cars at the corners still run off the sides, as a lot does).
+- **Tests.** `test_main_menu_input.gd` sends real key and mouse events: Down and Up walk the items and stop at the ends,
+  Enter and a click open an item, hovering takes the focus, Esc does nothing at the root, and during the entrance a key,
+  a click and a hover change nothing. `test_credits_screen.gd` and `test_placeholder_screen.gd` cover the other two.
+  The entrance tests fail on the old code (`Failed first`).
+- **Headless mouse.** The GdUnit window in headless mode is 64 x 64 pixels while the UI is laid out at the stretched
+  size, so a mouse event sent with `Input.parse_input_event` lands outside the window and nothing is hovered. Send it
+  with `get_viewport().push_input(event, true)` (viewport coordinates, `in_local_coords`), then
+  `gui_get_hovered_control()` and `mouse_entered` work. Keys still go through `Input.parse_input_event`.
+- **Capture.** `tests/captures/menu_polish_tour.tscn` saves a PNG per beat at the window's real pixels (Movie Maker
+  always records 1920 x 1080 and ignores `--resolution`), with a caption naming the focus. Await each beat's
+  `_note()`: a coroutine called without `await` carries on and the PNG is taken a few frames late.

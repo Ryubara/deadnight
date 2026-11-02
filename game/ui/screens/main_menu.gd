@@ -25,6 +25,8 @@ static var items_delay := ITEMS_DELAY
 
 var _entrance: Timer
 var _entered := false
+## What each item's `mouse_filter` and `focus_mode` were before the entrance took them away.
+var _interaction := {}
 
 @onready var _sign: NeonSign = %Sign
 @onready var _overline: Label = %Overline
@@ -98,6 +100,13 @@ func screen_pause() -> void:
 	finish_entrance()
 
 
+## Takes the focus when the items are there to be seen; before that there is nothing to focus,
+## and a key press that asks for the focus (the router does) finds the entrance still going.
+func focus_initial() -> void:
+	if _entered:
+		super.focus_initial()
+
+
 ## Whether the items have risen.
 func has_entered() -> bool:
 	return _entered
@@ -112,6 +121,7 @@ func finish_entrance() -> void:
 	if _entrance != null:
 		_entrance.queue_free()
 		_entrance = null
+	_restore_interaction()
 	UIMotion.stagger_in(_visible_items())
 	if UIRouter.top() == self:
 		focus_initial()
@@ -123,6 +133,18 @@ func _hide_for_entrance() -> void:
 	_footer.modulate.a = 0.0
 	for item in _visible_items():
 		item.modulate.a = 0.0
+		# Transparent is not out of reach: a click or a key must not find an item nobody can see.
+		_interaction[item] = [item.mouse_filter, item.focus_mode]
+		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item.focus_mode = Control.FOCUS_NONE
+
+
+func _restore_interaction() -> void:
+	for item: Control in _interaction:
+		var before: Array = _interaction[item]
+		item.mouse_filter = before[0]
+		item.focus_mode = before[1]
+	_interaction.clear()
 
 
 func _visible_items() -> Array[Control]:
