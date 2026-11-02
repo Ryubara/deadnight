@@ -1,0 +1,5 @@
+{
+  "note": "What a muzzle flash must show on the screen (1280x720), from the probe's rows. Held by tests/captures/flash_probe.gd (desktop), tools/web_smoke/flash.py (browser) and tests/weapons/test_flash_floors.gd. Set from measured values: see docs/design/shot-feedback.md.",
+  "min": {},
+  "max": {}
+}
