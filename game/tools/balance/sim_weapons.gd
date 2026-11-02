@@ -96,10 +96,34 @@ static func is_melee(weapon_id: StringName) -> bool:
 	return def(weapon_id).is_melee()
 
 
-## The weapon to take in hand from those carried (`NightSim.SimArm`): the best firearm by
-## sustained damage that has any rounds left, else the crowbar.
-static func best_armed(arms: Dictionary, health: float = 0.0) -> StringName:
+## Health of zombies a second a melee weapon kills at arm's length, a blow landing whole against a
+## zombie of `health` (the damage a second of a blow with none).
+static func melee_rate_of(weapon: WeaponDef, health: float = 0.0) -> float:
+	var per_blow := maxf(damage_of(weapon, &"body", 0.0), 0.001)
+	if health <= 0.0:
+		return per_blow / weapon.fire_interval
+	return health / (ceilf(health / per_blow) * weapon.fire_interval)
+
+
+## The melee weapon to fall back on from those carried: the one that kills fastest, the crowbar when
+## no other is carried.
+static func best_melee(arms: Dictionary, health: float = 0.0) -> StringName:
 	var best_id: StringName = &"crowbar"
+	var best_rate := melee_rate_of(def(best_id), health)
+	for weapon_id: StringName in arms:
+		if not is_melee(weapon_id):
+			continue
+		var rate := melee_rate_of(arms[weapon_id].def(), health)
+		if rate > best_rate:
+			best_rate = rate
+			best_id = weapon_id
+	return best_id
+
+
+## The weapon to take in hand from those carried (`NightSim.SimArm`): the best firearm by
+## sustained damage that has any rounds left, else the best melee weapon.
+static func best_armed(arms: Dictionary, health: float = 0.0) -> StringName:
+	var best_id := best_melee(arms, health)
 	var best_dps := -1.0
 	for weapon_id: StringName in arms:
 		if is_melee(weapon_id) or arms[weapon_id].mag + arms[weapon_id].reserve <= 0:

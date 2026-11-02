@@ -94,3 +94,31 @@ func test_the_light_a_player_keeps_on_costs_fuel() -> void:
 	# Four rounds of strong play burn much more than the idle draw alone would.
 	var minimum_idle_burn := tuning.fuel.idle_drain * 60.0
 	assert_float(idle_only - sim.rules.generator.fuel).is_greater(minimum_idle_burn * 2.0)
+
+
+func _melee_arms(ids: Array[StringName]) -> Dictionary:
+	var arms := {}
+	for id in ids:
+		arms[id] = NightSim.SimArm.of(id)
+	return arms
+
+
+func test_a_player_out_of_rounds_falls_back_on_the_melee_weapon_that_kills_fastest() -> void:
+	var crowbar: Array[StringName] = [&"crowbar"]
+	var all: Array[StringName] = [&"crowbar", &"baseball_bat", &"fire_axe"]
+	# With only the crowbar, the crowbar, whatever the health.
+	assert_str(String(SimWeapons.best_armed(_melee_arms(crowbar), 50.0))).is_equal("crowbar")
+	# Against nothing in particular the heavy axe does the most a second; a round-1 walker (50) falls
+	# to one quick bat blow sooner than to one slow axe blow or two crowbar blows; a round-10 one
+	# (121) takes the crowbar three blows, the bat three quick ones and the axe a single one.
+	assert_str(String(SimWeapons.best_armed(_melee_arms(all)))).is_equal("fire_axe")
+	assert_str(String(SimWeapons.best_armed(_melee_arms(all), 50.0))).is_equal("baseball_bat")
+	assert_str(String(SimWeapons.best_armed(_melee_arms(all), 121.0))).is_equal("fire_axe")
+
+
+func test_a_firearm_with_rounds_beats_any_melee_weapon_in_hand() -> void:
+	var arms := _melee_arms([&"crowbar", &"fire_axe", &"pistol"])
+	assert_str(String(SimWeapons.best_armed(arms, 50.0))).is_equal("pistol")
+	arms[&"pistol"].mag = 0
+	arms[&"pistol"].reserve = 0
+	assert_str(String(SimWeapons.best_armed(arms, 0.0))).is_equal("fire_axe")
