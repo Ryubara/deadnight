@@ -31,8 +31,34 @@ import smoke
 WATCH_S = 3.0
 SETTLE_S = 2.5
 SECOND_SHOT_AFTER_S = 3.5
+# The lure of a flare burns 8 s (`lure_seconds`): the third shot comes after it has gone, which is the case that
+# builds the embers' programs again when nothing holds them.
+THIRD_SHOT_AFTER_S = 10.0
 MAX_FRAME_MS = 100.0
 CHROME_FLAGS = ["--enable-precise-memory-info"]
+
+# With `--sources`: keeps the source of the shaders of every program linked after `window.__keep` is set, so a program
+# that links in a hitch can be read to see which material it belongs to (the trigger sets the flag).
+SOURCES_JS = """
+() => {
+  window.__keep = false;
+  window.__sources = [];
+  const proto = WebGL2RenderingContext.prototype;
+  const shaderSource = proto.shaderSource;
+  proto.shaderSource = function (shader, source) {
+    shader.__src = source;
+    return shaderSource.call(this, shader, source);
+  };
+  const link = proto.linkProgram;
+  proto.linkProgram = function (program) {
+    if (window.__keep) {
+      const shaders = this.getAttachedShaders(program) || [];
+      window.__sources.push([performance.now(), shaders.map((s) => s.__src || '')]);
+    }
+    return link.call(this, program);
+  };
+}
+""".strip()
 
 
 def window_stats(run: dict, start: float, seconds: float) -> dict:
@@ -50,11 +76,15 @@ def window_stats(run: dict, start: float, seconds: float) -> dict:
         "over_100ms": sum(1 for d in deltas if d > 100.0),
         "programs": len(links),
         "link_ms": round(sum(li[1] for li in links), 1),
-        "defs": [li[2][:200] for li in sorted(links, key=lambda li: li[0])][:12],
+        # When each program was linked (seconds after `start`), how long it took and the `#define`s of its shaders.
+        "linked": [
+            {"at_s": round((li[0] - start) / 1000, 3), "ms": li[1], "defs": li[2]}
+            for li in sorted(links, key=lambda li: li[0])
+        ],
     }
 
 
-def run_once(url: str, out: Path, gpu: bool, index: int) -> dict:
+def run_once(url: str, out: Path, gpu: bool, index: int, sources: bool = False) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         if gpu:
@@ -67,6 +97,8 @@ def run_once(url: str, out: Path, gpu: bool, index: int) -> dict:
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.add_init_script("(" + first_use.RECORDER_JS.strip() + ")();")
         page.add_init_script("(" + first_use.GL_HOOK_JS.strip() + ")();")
+        if sources:
+            page.add_init_script("(" + SOURCES_JS + ")();")
         page.goto(url, wait_until="commit")
         smoke.reach_menu(page)
         smoke.start_solo(page)
@@ -79,21 +111,23 @@ def run_once(url: str, out: Path, gpu: bool, index: int) -> dict:
             page.wait_for_timeout(100)
         page.wait_for_timeout(int(SETTLE_S * 1000))
         shots = []
-        for number in (1, 2):
-            fired = page.evaluate("performance.now()")
+        for number in (1, 2, 3):
+            fired = page.evaluate("() => { window.__keep = true; return performance.now(); }")
             page.mouse.down()
             page.wait_for_timeout(60)
             page.mouse.up()
             page.wait_for_timeout(int(WATCH_S * 1000))
             page.screenshot(path=out / f"flare_{index}_shot{number}.png")
             shots.append(fired)
-            if number == 1:
-                page.wait_for_timeout(int((SECOND_SHOT_AFTER_S - WATCH_S) * 1000))
+            after = {1: SECOND_SHOT_AFTER_S, 2: THIRD_SHOT_AFTER_S}.get(number)
+            if after is not None:
+                page.wait_for_timeout(int((after - WATCH_S) * 1000))
         frames = page.evaluate("window.__frames")
         links = page.evaluate("window.__links")
         gl = smoke.gl_info(page)
+        kept = page.evaluate("window.__sources || []") if sources else []
         browser.close()
-    return {"shots": shots, "frames": frames, "links": links, "gl": gl, "errors": errors}
+    return {"shots": shots, "frames": frames, "links": links, "gl": gl, "errors": errors, "sources": kept}
 
 
 def chart(runs: list[dict], summaries: list[dict], path: Path, title: str) -> None:
@@ -133,6 +167,7 @@ def main() -> int:
     parser.add_argument("--label", default="run")
     parser.add_argument("--max-ms", type=float, default=MAX_FRAME_MS)
     parser.add_argument("--software", action="store_true")
+    parser.add_argument("--sources", action="store_true", help="save the shader source of every program linked (large)")
     args = parser.parse_args()
     deployed = args.build.startswith(("http://", "https://"))
     server, port = (None, 0) if deployed else smoke.serve(Path(args.build))
@@ -143,11 +178,15 @@ def main() -> int:
     problems: list[str] = []
     try:
         for i in range(args.runs):
-            run = run_once(url, args.out, not args.software, i)
+            run = run_once(url, args.out, not args.software, i, args.sources)
+            if run["sources"]:
+                args.out.mkdir(parents=True, exist_ok=True)
+                (args.out / f"sources_{args.label}_{i}.json").write_text(json.dumps(run["sources"]), encoding="utf-8")
             summary = {
                 "first_shot": window_stats(run, run["shots"][0], WATCH_S),
                 "first_shot_1s": window_stats(run, run["shots"][0], 1.0),
                 "second_shot": window_stats(run, run["shots"][1], WATCH_S),
+                "third_shot": window_stats(run, run["shots"][2], WATCH_S),
                 "console_errors": run["errors"][:5],
                 "gl": run["gl"],
             }
@@ -156,6 +195,9 @@ def main() -> int:
             print(json.dumps(summary, indent=2))
             if summary["first_shot"]["worst_ms"] > args.max_ms:
                 problems.append(f"run {i + 1}: a frame of {summary['first_shot']['worst_ms']} ms after the first shot")
+            for name in ("second_shot", "third_shot"):
+                if summary[name]["programs"] > 0:
+                    problems.append(f"run {i + 1}: {summary[name]['programs']} programs linked after the {name}")
             if summary["first_shot_1s"]["programs"] > 0:
                 problems.append(
                     f"run {i + 1}: {summary['first_shot_1s']['programs']} programs linked in the first second"

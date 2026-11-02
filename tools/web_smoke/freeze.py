@@ -22,11 +22,13 @@ has it, and how many freezes the client noticed. The run fails when
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import math
 import socket
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -53,6 +55,62 @@ BUSY_JS = """
   return performance.now();
 }
 """
+
+
+class DelayProxy:
+    """A TCP relay that holds every chunk back by `delay_s` each way, in order: a connection with a round trip of
+    twice that between the page and the server. The browser's own network throttling does not touch WebSockets, and
+    the freeze desync of #483 needs a round trip of a few frames, so a probe over loopback proves nothing without it."""
+
+    def __init__(self, target_port: int, delay_s: float) -> None:
+        self.target_port = target_port
+        self.delay_s = delay_s
+        self.port = 0
+        self._loop = asyncio.new_event_loop()
+        self._ready = threading.Event()
+        threading.Thread(target=self._run, daemon=True).start()
+        self._ready.wait(10)
+
+    def _run(self) -> None:
+        asyncio.set_event_loop(self._loop)
+        server = self._loop.run_until_complete(asyncio.start_server(self._handle, "127.0.0.1", 0))
+        self.port = server.sockets[0].getsockname()[1]
+        self._ready.set()
+        self._loop.run_forever()
+
+    async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        up_reader, up_writer = await asyncio.open_connection("127.0.0.1", self.target_port)
+        await asyncio.gather(self._pipe(reader, up_writer), self._pipe(up_reader, writer))
+
+    async def _pipe(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        queue: asyncio.Queue = asyncio.Queue()
+
+        async def deliver() -> None:
+            while True:
+                due, data = await queue.get()
+                if data is None:
+                    break
+                wait = due - self._loop.time()
+                if wait > 0:
+                    await asyncio.sleep(wait)
+                try:
+                    writer.write(data)
+                    await writer.drain()
+                except ConnectionError:
+                    break
+            writer.close()
+
+        task = asyncio.ensure_future(deliver())
+        try:
+            while data := await reader.read(65536):
+                queue.put_nowait((self._loop.time() + self.delay_s, data))
+        except ConnectionError:
+            pass
+        queue.put_nowait((0.0, None))
+        await task
+
+    def stop(self) -> None:
+        self._loop.call_soon_threadsafe(self._loop.stop)
 
 
 def free_port() -> int:
@@ -139,6 +197,7 @@ def one_stall(page: Page, seconds: float, out: Path, index: int) -> dict:
     page.screenshot(path=out / f"stall_{index}_{seconds:g}s.png")
     return {
         "stall_s": seconds,
+        "rtt_ms": round(settled.get("rtt_ms", -1.0), 1),
         "stalls_before": before.get("stalls", 0),
         "stalls_after": settled.get("stalls", 0),
         "longest_stall_ms": settled.get("stall_longest_ms", 0.0),
@@ -157,6 +216,7 @@ def main() -> int:
     parser.add_argument("--godot", required=True, help="the pinned Godot (gds tool path godot)")
     parser.add_argument("--game", type=Path, default=Path(__file__).resolve().parents[2] / "game")
     parser.add_argument("--stalls", default="0.5,2,5", help="seconds to stall the page for, in order")
+    parser.add_argument("--delay-ms", type=float, default=100.0, help="held back each way (a round trip of twice that)")
     parser.add_argument("--settled", type=float, default=SETTLED_M)
     parser.add_argument("--most-off", type=float, default=MOST_OFF_M)
     parser.add_argument("--gpu", action="store_true", help="the machine's Chrome and GPU, not a software renderer")
@@ -174,6 +234,8 @@ def main() -> int:
 
     port = free_port()
     server = start_server(args.godot, args.game, port, args.out / "server.log")
+    proxy = DelayProxy(port, args.delay_ms / 1000.0) if args.delay_ms > 0 else None
+    address_port = proxy.port if proxy else port
     local = None
     url = args.web
     if not url.startswith(("http://", "https://")):
@@ -191,7 +253,7 @@ def main() -> int:
             page.on("pageerror", lambda error: problems.append(f"[pageerror] {error}"))
             try:
                 page.goto(url, wait_until="commit")
-                online.join(page, f"ws://127.0.0.1:{port}", args.out)
+                online.join(page, f"ws://127.0.0.1:{address_port}", args.out)
                 online.probe_after(
                     page,
                     online.JOIN_TIMEOUT_S,
@@ -225,6 +287,8 @@ def main() -> int:
                 browser.close()
     finally:
         stop(server)
+        if proxy:
+            proxy.stop()
         if local:
             local.shutdown()
     full = [line for line in console if "payload full" in line.lower()]
