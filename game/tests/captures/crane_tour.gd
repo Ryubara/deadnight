@@ -35,6 +35,9 @@ func _ready() -> void:
 	_night.hud = hud
 	add_child(_night)
 	await _night.start(Night.Mode.MANUAL, 7, tuning)
+	# The real mouse and keys must not turn the camera or move the body in a recording.
+	_night.player().local_input = false
+	_night.player().capture_mouse = false
 	_night.ticked.connect(_send)
 	_night.state.apply_events(_night.server.rules.apply(RulesAction.grant_points(1, 5000)))
 	# The concession is open, so the crane in the stand can be reached and the others can be moved to.
