@@ -19,15 +19,15 @@ const CHUNK := 1.3
 @export_file("*.glb") var scene := ""
 ## Size of the model in the hand, on top of the Soldier's own scale (the model is drawn at the
 ## weapon's real length; the rule is `real length x character height / 1.75 m x chunk`).
-@export var model_scale := 1.0
+@export_range(0.1, 5.0, 0.01, "or_greater", "suffix:x") var model_scale := 1.0
 ## How many times the size rule this weapon is drawn at: 1 is the rule. A gun whose pistol grip
 ## is shorter than the Soldier's fingers under the trigger finger (the revolver, the flare gun) is
 ## drawn larger until it fills them (docs/design/weapon-hold.md, "The size rule").
-@export var size_factor := 1.0
+@export_range(0.1, 5.0, 0.01, "or_greater", "suffix:x") var size_factor := 1.0
 ## The weapon's real length in metres, kept so the rule can be checked (docs, tests).
-@export var real_length := 1.0
+@export_range(0.05, 5.0, 0.01, "or_greater", "suffix:m") var real_length := 1.0
 ## The model's length along its muzzle axis, at its own scale (the glb's bounds).
-@export var model_length := 1.0
+@export_range(0.05, 5.0, 0.01, "or_greater", "suffix:m") var model_length := 1.0
 ## Whether the arms are posed to hold it at the shoulder (guns) or the clip keeps the arm (melee).
 @export var shouldered := true
 ## Where the grip rests, in metres, from the shoulder joint, in the aim's frame: x right, y up,
@@ -39,10 +39,10 @@ const CHUNK := 1.3
 @export var muzzle := Vector3.ZERO
 @export var butt := Vector3.ZERO
 ## Degrees the barrel is raised above the aim line (the aim line runs through the crosshair).
-@export var pitch_offset_deg := 0.0
+@export_range(-90.0, 90.0, 0.5, "or_greater", "suffix:deg") var pitch_offset_deg := 0.0
 ## Degrees the chest turns while the arms hold the weapon, the left shoulder forward (a shooter's
 ## stance): the Soldier's arm is short for a two-handed gun's fore-end (docs/design/weapon-hold.md).
-@export var stance_turn_deg := 0.0
+@export_range(-180.0, 180.0, 0.5, "or_greater", "suffix:deg") var stance_turn_deg := 0.0
 
 
 ## Whether the model has arrived: a hold file may be ready (class, grip) before its glb is.

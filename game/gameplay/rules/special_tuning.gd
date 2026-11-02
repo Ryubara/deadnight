@@ -5,10 +5,10 @@ extends Resource
 ## it is cleared.
 
 ## A special round every this many rounds, starting at `first_round`. 0 turns them off.
-@export var every: int = 5
-@export var first_round: int = 5
+@export_range(1, 50, 1, "or_greater") var every: int = 5
+@export_range(1, 100, 1, "or_greater") var first_round: int = 5
 ## The break before a special round is this much longer.
-@export var break_bonus_seconds: float = 10.0
+@export_range(0.0, 60.0, 0.5, "or_greater", "suffix:s") var break_bonus_seconds: float = 10.0
 ## The kinds, in turn: the first special round is the first entry, the next the second, and the list
 ## starts again at its end.
 @export var rounds: Array[SpecialRound] = []
