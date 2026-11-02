@@ -208,3 +208,38 @@ screen.
 ## Left out
 
 Settings widgets (slider, toggle, option selector) came with the settings screen: see [Settings](settings.md).
+
+## Form controls: check box, text field, scroll area, item list (#9)
+
+`UICheckBox`, `UILineEdit`, `UIScroll` and `UIItemList` in `game/addons/gds_ui/components/`, themed by `UIThemeBuilder`
+and shown in every state on `demo/controls_sheet.tscn` (the demo menu's "Form controls").
+
+- **Check box** is a `Button` in toggle mode. The box and the tick are drawn (`_draw`), the label is the button's own
+  `text`: the theme variation `UICheckBox` gives it the body face and a left content margin of
+  `space_sm + UICheckBox.box_size(tokens) + space_md`, so the engine lays the text out and the control only paints the
+  box. The tick strokes itself by a spring (`_on`): a polyline cut to a share of its length, so it overshoots a little
+  with the fill. Hover grabs focus like the other controls; the ring goes round the whole row.
+- **Text field** is a `LineEdit`: the engine keeps typing, selection and the caret; the theme variation `UILineEdit`
+  gives the fill, border, caret and selection colours from tokens, and `_draw` adds a hover tint and the focus ring.
+  **The ring shows only when the field took focus from the keyboard or a gamepad** (`UIInputMode.pointer` is false when
+  it gains focus). Typing a letter flips `UIInputMode.pointer` to false (a key is not a pointer), so asking
+  `UIInputMode.pointer` on every frame, as the buttons do, would put a ring round a field the player clicked into and
+  is typing in; the field remembers how it got focus instead.
+- **Scroll area** is a `ScrollContainer` (vertical, `follow_focus` on). The bars are the theme's `VScrollBar` and
+  `HScrollBar` styleboxes, so every scroll container under the stage theme gets them. A shade at the top and bottom
+  edge, on a spring, says there is more; it is drawn by an internal child on top, because a container draws its own
+  background before its children. `keyboard_scroll` makes it take focus and scroll on Up, Down, Page Up, Page Down,
+  Home and End and the d-pad, for a page of text with nothing to focus. (`CreditsScreen` has its own version of
+  this from #85; it could use `UIScroll` and does not yet.)
+- **Item list** is one `Control` that draws its rows, not a `Tree` or a `VBox` of buttons: the highlight is a single
+  bar that slides between rows on a spring (the text colour follows the bar), the hovered row is a second, fainter
+  bar, and the list scrolls itself (`visible_rows`, the wheel, the choice kept in view, a thin bar on the right).
+  Keys: Up and Down (Down from no choice picks the first row), Page Up and Page Down, Home and End, accept activates;
+  a click selects, a double click activates. A list scrolls inside itself, so it needs no `ScrollContainer` round it.
+- **Tests** (`game/tests/ui/test_ui_check_box.gd`, `test_ui_line_edit.gd`, `test_ui_scroll.gd`, `test_ui_item_list.gd`)
+  send real key events with `Input.parse_input_event` and mouse events with `get_viewport().push_input(event, true)`
+  (a headless window is 64 x 64 pixels, so a window position is scaled by the stretch before it arrives). A control
+  built in a test needs `theme = UIThemeBuilder.build()`, or its theme variation does not exist.
+- **Capture:** `tests/captures/gds_controls_tour.tscn` types into the field, ticks a box, walks both lists and
+  scrolls the area, one PNG per beat at the window's real pixels. Mouse events there are virtual and go through the
+  viewport's final (stretch) transform; nothing captures the real mouse.
