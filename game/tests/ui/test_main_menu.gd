@@ -105,6 +105,7 @@ func test_quit_is_hidden_on_the_web() -> void:
 func test_play_is_the_first_focus() -> void:
 	var menu := _menu()
 	await await_idle_frame()
+	menu.finish_entrance()
 	menu.focus_initial()
 	assert_object(menu.get_viewport().gui_get_focus_owner()).is_same(menu.find_child("Play"))
 

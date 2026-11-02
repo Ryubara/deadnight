@@ -35,6 +35,8 @@ var rtt_samples: Array[float] = []
 var server_step := 0
 ## Milliseconds between one TICK arriving and the next (30 a second is 33.3), since `take_stats`.
 var tick_gaps_ms: Array[float] = []
+## The protocol version a server that turned us away speaks (0 until one has).
+var server_version := 0
 
 var _ws := WebSocketPeer.new()
 var _active := false
@@ -152,7 +154,9 @@ func _receive(data: PackedByteArray) -> void:
 				rtt_ms = float(Time.get_ticks_msec() - data.decode_u32(1))
 				rtt_samples.append(rtt_ms)
 		NetWire.Type.REFUSED:
-			if data.size() == 2:
+			if data.size() >= 2:
+				if data.size() >= 3:
+					server_version = data[2]
 				refused.emit(data[1])
 				close()
 

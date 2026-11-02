@@ -11,12 +11,23 @@ var _object: JavaScriptObject
 var _since := 0.0
 
 
+## Writes `label` into `window.deadnight_marks` with the page's clock, so a browser run can line the
+## frames and the GL programs it recorded up with what the game was doing (the loading steps).
+## Does nothing outside a browser.
+static func mark(label: String) -> void:
+	if not OS.has_feature("web"):
+		return
+	var push := "(window.deadnight_marks = window.deadnight_marks || []).push([%s, performance.now()])"
+	JavaScriptBridge.eval(push % JSON.stringify(label))
+
+
 func _ready() -> void:
 	if not OS.has_feature("web"):
 		set_process(false)
 		return
 	_object = JavaScriptBridge.create_object("Object")
 	JavaScriptBridge.get_interface("window").deadnight = _object
+	add_child(JudderProbe.new())
 
 
 func _process(delta: float) -> void:
@@ -31,8 +42,8 @@ func _process(delta: float) -> void:
 
 ## What the top screen shows: its scene name, and for a night the round, the zombies still to
 ## kill, the zombies alive on the lot, the players in the frame, the player's own id and (online)
-## the round trip, and the camera's yaw (radians). Plain values only, so a page
-## can read them.
+## the round trip, the camera's yaw (radians) and whether the player's body is drawn between physics
+## ticks. Plain values only, so a page can read them.
 static func snapshot(top: Control) -> Dictionary:
 	var data := {
 		"screen": "none",
@@ -46,6 +57,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"player_id": 0,
 		"rtt_ms": -1.0,
 		"yaw": 0.0,
+		"interpolated": false,
 		"touch": false
 	}
 	if top == null:
@@ -60,6 +72,8 @@ static func snapshot(top: Control) -> Dictionary:
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view
+		# So a browser test can see the body is drawn between ticks (a screen can switch that off).
+		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
 	data["touch"] = night_screen.touch_active()
 	if state.has_frame():

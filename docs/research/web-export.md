@@ -37,7 +37,9 @@ SwiftShader on CI), and:
    cannot see inside a Godot canvas), screenshots it and measures frame times;
 2. opens the wardrobe (reads `parts.json`) and goes back;
 3. starts a night with the keyboard, walks a square and fires for a while, sampling the crowd and frame times each second;
-4. fails on any console `error`, uncaught page error, failed request or HTTP status 400 or more, and writes screenshots,
+4. counts the GL programs linked in each page frame between Play and a running night and fails when one frame links
+   more than 12 (a loading screen that stops for seconds; `first-use-hitches.md`);
+5. fails on any console `error`, uncaught page error, failed request or HTTP status 400 or more, and writes screenshots,
    `console.txt` and `result.json`.
 
 Things that were not obvious:
@@ -156,6 +158,11 @@ docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 
 
 The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
+
+`tools/web_smoke/judder.py` (same arguments, `--gpu --unpaced` for the machine's GPU and no frame limit) measures
+how evenly the soldier moves on the screen in the page: the numbers and what they showed are in
+`physics-interpolation.md`. The smoke run also fails when the night's body is not drawn between physics ticks
+(`window.deadnight.interpolated`).
 
 ### Over the internet
 

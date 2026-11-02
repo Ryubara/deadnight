@@ -35,6 +35,7 @@ func test_a_running_night_reports_round_and_zombies() -> void:
 	assert_int(data["remaining"]).is_equal(17)
 	assert_int(data["alive"]).is_equal(3)
 	assert_bool(data["touch"]).is_false()
+	assert_bool(data["interpolated"]).is_false()
 
 
 func test_an_online_night_reports_the_players_and_the_round_trip() -> void:
