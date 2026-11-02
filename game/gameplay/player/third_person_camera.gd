@@ -45,6 +45,9 @@ var crouching := false
 ## Horizontal speed of the body in metres per second, set by the player after each tick; the
 ## sprint sway keeps step with it.
 var ground_speed := 0.0
+## True while the body stands on the ground (`PlayerMotionState.on_floor`); the sprint sway is none
+## in the air, whatever the sprint state says.
+var grounded := true
 
 ## The shot shake of the view (trauma, scale); null before `setup`.
 var shake: CameraShake
@@ -228,7 +231,7 @@ func step(delta: float, fraction: float) -> void:
 		_steer_view(delta)
 	shake.step(delta)
 	var held := _holds_aim()
-	sway.step(delta, sprinting and not held, ground_speed)
+	sway.step(delta, sprinting and not held, ground_speed, grounded)
 	_aim.step(1.0 if held else 0.0, _tuning.aim_frequency, delta)
 	_steady.step(1.0 if aiming else 0.0, _tuning.aim_frequency, delta)
 	_sprint.step(1.0 if sprinting and not held else 0.0, _tuning.sprint_frequency, delta)

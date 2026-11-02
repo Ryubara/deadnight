@@ -1,7 +1,7 @@
 // Process entry: configuration from the environment, structured logs, health, graceful shutdown.
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
-import { LiveDiscord, StubDiscord } from "./discord.ts";
+import { LiveDiscord, OffDiscord, StubDiscord } from "./discord.ts";
 import { PgStore } from "./pg-store.ts";
 import { GameServerRegistry } from "./servers.ts";
 import { MemoryStore } from "./store.ts";
@@ -11,7 +11,9 @@ const store = config.databaseUrl ? await PgStore.connect(config.databaseUrl) : n
 const discord =
   config.discordMode === "live"
     ? new LiveDiscord(config.discordClientId, config.discordClientSecret)
-    : new StubDiscord();
+    : config.discordMode === "off"
+      ? new OffDiscord()
+      : new StubDiscord();
 
 const app = buildApp({
   config,
