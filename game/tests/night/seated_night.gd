@@ -252,6 +252,8 @@ static func _snap(point: Vector3) -> Vector3i:
 
 
 func dispose() -> void:
+	# A handler that names the night would keep it alive in a cycle.
+	on_event = Callable()
 	server.close()
 	world.queue_free()
 
