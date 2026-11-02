@@ -53,6 +53,14 @@ Things that were not obvious:
   Godot's web runtime listens for `pointermove` on the window and reads `movementX/Y`, so the smoke dispatches
   `PointerEvent('pointermove', {movementX})` on the canvas when the real moves did not turn the view
   (`tools/web_smoke/smoke.py`, `mouse_look_via` in its result). The yaw is on `window.deadnight` for it.
+- The first Esc under pointer lock is the browser's: it frees the lock and the key never reaches the page, so the
+  game gets no `pause`. On the web `Input.mouse_mode` reads the real lock (2 captured, 0 once freed), so `Player` asks
+  `MouseGrip` every frame and, the frame a held lock is gone, turns the controls off and `NightScreen` opens its menu
+  (#476). Until the lock comes back (Resume asks inside the click or key press) look and fire wait. Playwright cannot
+  press the browser's own Esc, so `tools/web_smoke/pointer_lock.py` releases the lock with `document.exitPointerLock()`:
+  before the change the night went on running with a free cursor, after it the menu was open 0.6 s later (the probe's
+  refresh and a software renderer) and Resume, by key and by click, took the lock back. A headless Godot reads
+  `Input.mouse_mode` back as VISIBLE whatever it was set to, so the unit tests put a stand-in platform under `MouseGrip`.
 - The zombies are usually off screen: the crowd is read from the probe, not seen.
 - Playwright 1.64 launches `chromium-headless-shell`, which is always software-rendered. `--gpu` uses the installed
   Chrome (`channel="chrome"`) for numbers with a real GPU.
