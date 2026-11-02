@@ -18,6 +18,10 @@ const DOOR_NAMES := {
 	&"door_back_lot": "Back lot",
 	&"door_road": "The road",
 }
+## How high over a zombie's feet its damage number starts: a headshot over the head, any other hit
+## at the chest.
+const HEAD_HEIGHT := 1.65
+const BODY_HEIGHT := 1.1
 const BREACH_NAME := "Broken fence"
 const FUEL_NAME := "Fuel can"
 const CRANE_NAME := "Prize crane"
@@ -94,7 +98,22 @@ func _on_event(event: Dictionary) -> void:
 				HudLoadout.EVENTS.has(event["type"])
 				or not NightServer.COMBAT_EVENTS.has(event["type"])
 			):
-				_hud.state.apply_event(event)
+				_hud.state.apply_event(_with_world_point(event))
+
+
+## A hit on a zombie also says where in the world it landed, so its number can stay there while
+## the camera moves (`HudCrosshair.projector`): the zombie's place in the last frame, lifted to the
+## head or the chest.
+func _with_world_point(event: Dictionary) -> Dictionary:
+	if event["type"] != &"zombie_damaged":
+		return event
+	for zombie in _state.zombies:
+		if zombie["id"] == event["zombie_id"]:
+			var lift := HEAD_HEIGHT if str(event.get("zone", "")) == "head" else BODY_HEIGHT
+			var marked := event.duplicate()
+			marked["world"] = zombie["position"] + Vector3(0.0, lift, 0.0)
+			return marked
+	return event
 
 
 func _on_frame() -> void:
