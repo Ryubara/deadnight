@@ -10,6 +10,8 @@ extends UIScreen
 
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
+## Seconds to wait for a game server to welcome us (a night may have to be built first).
+const JOIN_SECONDS := 25.0
 
 ## Whether the night warms up behind a loading screen before it starts. There is nothing to warm up
 ## without a renderer, so a headless run skips it.
@@ -17,6 +19,9 @@ static var warm_up_enabled := DisplayServer.get_name() != "headless"
 
 ## The server to join (`ws://host:port`) the next time this screen opens; empty plays alone.
 static var join_url := ""
+## With `join_url`: the platform backend's ticket for the night, said in the hello (empty for a
+## server with no backend, as on a developer's machine).
+static var join_ticket := ""
 ## With `join_url`: the autopilot plays this player (`--bot`), seen over its own shoulder.
 static var join_as_bot := false
 ## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
@@ -82,11 +87,14 @@ func screen_enter() -> void:
 	var url := join_url
 	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN
 	night.shoulder_camera = join_as_bot
+	var link := WebSocketLink.new()
+	link.ticket = join_ticket
 	join_url = ""
+	join_ticket = ""
 	join_as_bot = false
-	_show_overlay("Joining", url, false)
+	_show_overlay("Joining", "" if link.ticket != "" else url, false)
 	night.connect_failed.connect(_on_connect_failed)
-	if await night.start_remote(url, mode):
+	if await night.start_remote(url, mode, JOIN_SECONDS, link):
 		_overlay.hide()
 
 

@@ -12,6 +12,7 @@ const SNAPSHOT_KEYS := {
 	"since_blow": TYPE_FLOAT,
 	"weapons": TYPE_ARRAY,
 	"tonics": TYPE_ARRAY,
+	"upgraded": TYPE_ARRAY,
 	"grenades": TYPE_INT,
 	"repair_points_this_round": TYPE_INT,
 	"kills": TYPE_INT,
@@ -31,6 +32,8 @@ var max_health: float = 0.0
 var since_blow: float = 0.0
 var weapons: Array[StringName] = []
 var tonics: Array[StringName] = []
+## The weapons (catalogue ids) this player has had re-cut this night.
+var upgraded: Array[StringName] = []
 var grenades: int = 0
 var repair_points_this_round: int = 0
 var kills: int = 0
@@ -63,6 +66,7 @@ func to_dict() -> Dictionary:
 		"since_blow": since_blow,
 		"weapons": weapons.duplicate(),
 		"tonics": tonics.duplicate(),
+		"upgraded": upgraded.duplicate(),
 		"grenades": grenades,
 		"repair_points_this_round": repair_points_this_round,
 		"kills": kills,
@@ -80,6 +84,7 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.since_blow = data["since_blow"]
 	player.weapons.assign(data["weapons"])
 	player.tonics.assign(data["tonics"])
+	player.upgraded.assign(data["upgraded"])
 	player.grenades = data["grenades"]
 	player.repair_points_this_round = data["repair_points_this_round"]
 	player.kills = data["kills"]

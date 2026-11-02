@@ -15,6 +15,16 @@ entries of the right type and a finite number (`nan` and `inf` fall back to the 
 cannot break anything. The file is `user://settings.cfg`
 (`ConfigFile`); on the web build that lives in the browser's storage.
 
+**Tests and captures never touch that file (#418).** `SettingsService.default_path()` is the one place that decides:
+the person's file, except in the GdUnit runner, a scene of `res://tests/`, a `gds godot` run (`GDS_QUIET=1`) or a run
+with `DEADNIGHT_NO_USER_FILES` set, where the path is empty: the defaults load and `save()` writes nothing. Before,
+a service freed with a change pending saved itself (`NOTIFICATION_PREDELETE`), so `test_camera_shake` wrote
+`camera_shake=0` into the real file, and the suites that restored the real path and called `save()` wrote their test
+values there too; the next run read them back and a shake test failed. A suite that needs a file sets `path` to one
+of its own under `user://`. `test_settings_user_file` runs a child Godot that does what those suites did and checks
+the real file is byte for byte unchanged (with a control that the child does write a file it is pointed at). The only
+other `user://` files are the captures' own `*_capture.cfg` and PNGs, which are named per capture.
+
 | Key | Default | Applied as |
 | --- | --- | --- |
 | `video/window_mode` | windowed | `DisplayServer.window_set_mode` (skipped on the web, where the page owns the window) |

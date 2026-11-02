@@ -16,7 +16,7 @@ test -s "$build/index.html" && test -s "$build/index.wasm" && test -s "$build/in
 
 rm -rf "$stage"
 mkdir -p "$stage/build"
-cp "$here/Dockerfile" "$here/Caddyfile" "$here/railway.toml" "$stage/"
+cp "$here/Dockerfile" "$here/Caddyfile" "$here/railway.toml" "$here/discord-bridge.js" "$stage/"
 cp -r "$build" "$stage/build/web"
 
 railway up "$stage" --path-as-root --service web --ci --message "main ${sha:0:7}"
