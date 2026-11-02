@@ -685,5 +685,5 @@ The ranges and the health, count and spawn curves are unchanged.
   the research page).
 - **Downed players and revives** are built ([Revive](revive.md): a hold, a bleed-out clock, death until the round
   ends); the simulator reads their numbers from the tuning table but has its own rule for who is free to revive. The
-  exact down penalty and the maintainer's decisions on solo self-revive, a revive perk and points for a revive are open
-  ([the list](revive.md#decisions-for-the-maintainer)).
+  maintainer's decisions on solo self-revive, a revive perk and points for a revive are made
+  ([the list](revive.md#decided-2026-11-02-505)).

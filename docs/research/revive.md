@@ -107,17 +107,18 @@ From the code on the `scoreboard` branch this was written on:
 4. **No self-revive by default** and no perk: both are shop decisions ([tonics, #281](https://github.com/Ryubara/deadnight/issues/281)).
 5. **Everyone down ends the night**, unchanged.
 6. **The counts are the server's**: a `REVIVES` column beside kills and downs, never counted by a client.
-7. **A downed player does nothing**, as today. A crawl and a sidearm are listed as decisions, not built.
+7. **A downed player does nothing**, as today. The maintainer decided against a crawl and a sidearm.
 
-## Open decisions for the maintainer
+## The questions, and what was decided
 
-Listed here and in [the design](../design/revive.md#decisions-for-the-maintainer); none is guessed in the build.
+The maintainer approved the built answer to each on 2026-11-02 (#505; [the list](../design/revive.md#decided-2026-11-02-505)).
 
-1. **Solo self-revive**: none, one free, or paid? (CoD: paid, three times; BO6: one free.)
-2. **A revive perk or tonic**: halve the hold, or keep the downed's perks? (#281's tonics.)
-3. **Crawl and sidearm while downed**: both CoD and L4D let a downed player act a little.
-4. **A hit on the reviver resets or slows the hold**: L4D resets, CoD unknown.
-5. **Points for the reviver**: the build pays none (a field in the resource, default 0).
+1. **Solo self-revive**: none, one free, or paid? (CoD: paid, three times; BO6: one free.) Decided: none.
+2. **A revive perk or tonic**: halve the hold, or keep the downed's perks? (#281's tonics.) Decided: none for now.
+3. **Crawl and sidearm while downed**: both CoD and L4D let a downed player act a little. Decided: neither.
+4. **A hit on the reviver resets or slows the hold**: L4D resets, CoD unknown. Decided: no.
+5. **Points for the reviver**: the build pays none (a field in the resource, default 0). Decided: 0.
 6. **Dead players**: watch a teammate, get up at the next round (built), or only with an item.
-7. **Bleed-out pause**: the clock stops while someone holds the revive (built); CoD and L4D unknown.
-8. **A reviver clip** for the soldier: not built here; the actor's pose while holding is a Blender job.
+   Decided: get up at the round's end.
+7. **Bleed-out pause**: the clock stops while someone holds the revive (built); CoD and L4D unknown. Decided: on.
+8. **A reviver clip** for the soldier: `Revive_Kneel` from #536 (a Blender job, not wired here).

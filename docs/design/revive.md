@@ -27,7 +27,7 @@ designer changes it in the editor and the balance simulator, the server and ever
 | `revive_seconds` | 3.5 | Hold time to pull a player up |
 | `reach` | 2.0 m | How near the reviver stands to the body; beyond it the hold breaks |
 | `health_fraction` | 0.5 | Share of maximum health a revived player gets up with (a round's end restores all) |
-| `reviver_points` | 0 | Points paid to the reviver; 0 until the maintainer decides ([decisions](#decisions-for-the-maintainer)) |
+| `reviver_points` | 0 | Points paid to the reviver; 0 ([decided](#decided-2026-11-02-505)) |
 | `bleed_stops_while_held` | true | The clock stands still while someone holds the revive |
 
 Why these: the bleed-out sits between the two reference games' clocks, 30 seconds and minutes
@@ -67,7 +67,7 @@ same clocks.
     - fires, reloads or swaps weapon (the hands are busy; the same rule as a repair);
     - or when the target is revived by other means (a round's end), bleeds out, or leaves.
 - **A hit on the reviver does not reset the hold** (Left 4 Dead's rule does); the reviver is exposed instead, and a
-  second blow downs them and breaks it. This is [decision 4](#decisions-for-the-maintainer).
+  second blow downs them and breaks it. This is [decision 4](#decided-2026-11-02-505).
 - **One at a time.** A body with a reviver on it offers nothing to a second player. The server picks the first.
 
 ## Bleed-out
@@ -116,8 +116,8 @@ after the first only carries fields that changed ([`FrameDelta`](../research/mul
 - **The team box** shows `DOWN` and, once dead, `DEAD`; the portrait dims.
 - **The scoreboard** has a `REVIVES` column between downs and points.
 - **The feed**: `RUBY REVIVED PAUL` and `PAUL BLED OUT`.
-- **The body** lies down as before (`Downed` clip); a reviver clip (the soldier kneeling) is not built
-  ([decision 8](#decisions-for-the-maintainer)).
+- **The body** lies down as before (`Downed` clip); a reviver clip (the soldier kneeling, `Revive_Kneel` from
+  #536) is not wired yet ([decision 8](#decided-2026-11-02-505)).
 
 ## Bots
 
@@ -126,18 +126,18 @@ when no zombie is within 7 m of the body or of itself (it shoots them first, as 
 and holds Use; it gives up if the clock is shorter than its walk and goes on. It does not revive a body with a reviver
 on it. This makes the online and the autopilot tests able to play a revive end to end.
 
-## Decisions for the maintainer
+## Decided (2026-11-02, #505)
 
-None of these is guessed in the build; each is a field or a small change.
+The maintainer approved all eight as built ("Go for it"). Each is a field of the tuning resource or a small change, so it
+can be retuned in the inspector.
 
-1. **Solo self-revive.** Today a lone player that goes down ends the night at once. Options: none (built), one free per
-   night, or bought (CoD charges points and allows three; BO6 gives one).
-2. **A revive perk or tonic**, halving `revive_seconds` or keeping a revived player's tonics (#281's tonics are the place).
-3. **Crawl and a sidearm while downed.** Both reference games let a downed player do a little; the build lets them do
-   nothing.
-4. **A hit on the reviver resets or slows the hold.** Built: it does not.
-5. **Points for the reviver** (`reviver_points`, built as 0). Revives pay nothing yet.
-6. **Dead players**: they get up at the round's end (built). Alternatives: spectate a teammate until then, or come back
-   only with an item.
-7. **The clock stops while held** (`bleed_stops_while_held`, built as on).
-8. **A reviver clip**, the soldier kneeling at the body: a Blender job, not built here.
+1. **Solo self-revive**: none. A lone player who goes down ends the night.
+2. **A revive perk or tonic**: none for now; a later tonic (#281) can add one.
+3. **Crawl and a sidearm while downed**: neither. The optional `Downed_Crawl` clip (#536) stays unused.
+4. **A hit on the reviver** does not reset or slow the hold. A second blow downs them, which breaks it.
+5. **Points for the reviver** (`reviver_points`): 0.
+6. **Dead players** get up at the round's end.
+7. **The clock stops while held** (`bleed_stops_while_held`): on.
+8. **A reviver clip**: `Revive_Kneel` (#536).
+
+Values: `bleed_out_seconds` 45, `revive_seconds` 3.5, `reach` 2.0 m, `health_fraction` 0.5.
