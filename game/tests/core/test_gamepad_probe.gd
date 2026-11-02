@@ -46,6 +46,14 @@ func test_the_detail_gives_the_counts_the_page_saw() -> void:
 	assert_str(GamepadProbe.detail({})).is_empty()
 
 
+func test_a_frame_without_the_focus_gets_the_click_hint_and_nothing_else_does() -> void:
+	assert_str(GamepadProbe.hint({"iframe": true, "focus": false})).is_equal(GamepadProbe.HINT)
+	assert_str(GamepadProbe.hint({"iframe": true, "focus": true})).is_empty()
+	assert_str(GamepadProbe.hint({"iframe": true})).is_empty()
+	assert_str(GamepadProbe.hint({"iframe": false, "focus": false})).is_empty()
+	assert_str(GamepadProbe.hint({})).is_empty()
+
+
 func test_a_listed_pad_is_connected() -> void:
 	var report := {"iframe": true, "policy": true, "pads": 1}
 	assert_str(GamepadProbe.note(report)).is_equal(GamepadProbe.READY)

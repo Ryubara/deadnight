@@ -23,6 +23,8 @@ const NO_FOCUS := (
 	"Controller: allowed, but Discord keeps the keyboard focus away from the game even after a"
 	+ " click, so no controller is listed. Play in a browser tab, or send this line to the makers."
 )
+## The short line shown on every screen while a frame has no focus (`hint`).
+const HINT := "Click the game once to use a controller"
 const UNKNOWN := ""
 
 
@@ -50,6 +52,15 @@ static func note(report: Dictionary) -> String:
 	if report.get("focus") == false:
 		return NO_FOCUS if int(report.get("clicks", 0)) > 0 else UNFOCUSED
 	return WAITING
+
+
+## The short hint for every screen: a game inside a frame (a Discord Activity) that does not hold
+## the focus gets no controller from the browser until it is clicked once (the maintainer's pad
+## worked after one click, #479). Empty in a tab, on the desktop, and once the frame has the focus.
+static func hint(report: Dictionary) -> String:
+	if report.get("iframe") == true and report.get("focus") == false:
+		return HINT
+	return ""
 
 
 ## What the page saw, as one short line for whoever reads the screen: whether the window has the
