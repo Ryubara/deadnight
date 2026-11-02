@@ -44,6 +44,21 @@ static func down(player: PlayerState, cause: StringName, bearing: float) -> Dict
 	return {"type": &"player_downed", "player_id": player.id, "cause": cause, "bearing": bearing}
 
 
+## A tonic raises the most the player can have by `bonus` and gives them the same health now (a
+## player who is down gets the room only, and stands up to all of it). The `player_healed` event.
+static func raise_max(player: PlayerState, bonus: float) -> Dictionary:
+	player.max_health += bonus
+	if not player.downed:
+		player.health += bonus
+	return {
+		"type": &"player_healed",
+		"player_id": player.id,
+		"health": player.health,
+		"max_health": player.max_health,
+		"reason": &"tonic",
+	}
+
+
 ## The player gets up with all their health.
 static func revive(player: PlayerState, tuning: HealthTuning) -> Array[Dictionary]:
 	player.downed = false

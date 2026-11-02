@@ -10,7 +10,14 @@ const DIAMOND_NEAR := 24.0
 const DIAMOND_FAR := 13.0
 const FAR_METRES := 60.0
 const EDGE_INSET := 90.0
+## What a marker pinned to an edge keeps clear of: the side columns (along the top and the bottom
+## edge), and the round card above and the health and ammo cards below (along a side edge).
+const SIDE_CLEAR := HudStyle.MARGIN + HudStyle.COLUMN + 48.0
+const TOP_CLEAR := 260.0
+const BOTTOM_CLEAR := 390.0
 const ARROW := 16.0
+## Text stays this far inside the screen.
+const TEXT_MARGIN := 12.0
 const LABEL_SIZE := HudStyle.MIN_TEXT
 
 ## Where each marker is drawn on the last frame: {id: {"at": Vector2, "pinned": bool}}.
@@ -61,17 +68,24 @@ func _place_all() -> Dictionary:
 	return out
 
 
-## The edge point toward `at` from the screen centre, inset so the marker stays whole.
+## The edge point toward `at` from the screen centre, inset so the marker stays whole, and slid
+## along that edge out of the corners, where the HUD's cards stand.
 func _pin(at: Vector2) -> Vector2:
 	var centre := size * 0.5
 	var half := centre - Vector2.ONE * EDGE_INSET
 	var offset := at - centre
 	if offset == Vector2.ZERO:
 		return centre
-	var scale_to_edge := minf(
-		half.x / maxf(absf(offset.x), 0.001), half.y / maxf(absf(offset.y), 0.001)
-	)
-	return centre + offset * scale_to_edge
+	var across_x := half.x / maxf(absf(offset.x), 0.001)
+	var across_y := half.y / maxf(absf(offset.y), 0.001)
+	var pinned := centre + offset * minf(across_x, across_y)
+	if across_x < across_y:
+		pinned.y = clampf(
+			pinned.y, minf(TOP_CLEAR, centre.y), maxf(size.y - BOTTOM_CLEAR, centre.y)
+		)
+	else:
+		pinned.x = clampf(pinned.x, minf(SIDE_CLEAR, centre.x), maxf(size.x - SIDE_CLEAR, centre.x))
+	return pinned
 
 
 func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
@@ -134,5 +148,6 @@ func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
 func _text(font: Font, text: String, baseline_centre: Vector2, colour: Color) -> void:
 	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE).x
 	var at := baseline_centre - Vector2(width * 0.5, 0.0)
+	at.x = clampf(at.x, TEXT_MARGIN, maxf(size.x - TEXT_MARGIN - width, TEXT_MARGIN))
 	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 7, tokens.shadow)
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, colour)
