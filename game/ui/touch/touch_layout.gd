@@ -19,6 +19,7 @@ const SWAP := &"swap_weapon"
 const GRENADE := &"throw_grenade"
 const INTERACT := &"interact"
 const PAUSE := &"pause"
+const SCOREBOARD := &"scoreboard"
 const SHOULDER := &"swap_shoulder"
 
 ## Offset from the bottom right corner (left, up) and radius, by button. The order is the order a
@@ -36,6 +37,10 @@ const BUTTONS := [
 ## Pause sits on the top edge, right of the HUD's left column.
 const PAUSE_OFFSET := Vector2(442.0, 80.0)
 const PAUSE_RADIUS := 36.0
+## The scoreboard button sits under Pause, held to show the board (it presses the `scoreboard`
+## action while a finger is on it).
+const SCOREBOARD_OFFSET := Vector2(442.0, 178.0)
+const SCOREBOARD_RADIUS := 34.0
 ## The floating stick: its resting place (a faint ring), its radius and where it may start.
 const STICK_REST := Vector2(330.0, 330.0)
 const STICK_RADIUS := 105.0
@@ -62,6 +67,12 @@ static func buttons(safe: Rect2, touch_scale: float, mirrored := false) -> Dicti
 	var pause_radius := PAUSE_RADIUS * touch_scale
 	var pause_x := safe.end.x - PAUSE_OFFSET.x if mirrored else safe.position.x + PAUSE_OFFSET.x
 	found[PAUSE] = _circle(Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y), pause_radius)
+	var board_x := (
+		safe.end.x - SCOREBOARD_OFFSET.x if mirrored else safe.position.x + SCOREBOARD_OFFSET.x
+	)
+	found[SCOREBOARD] = _circle(
+		Vector2(board_x, safe.position.y + SCOREBOARD_OFFSET.y), SCOREBOARD_RADIUS * touch_scale
+	)
 	return found
 
 
@@ -85,7 +96,7 @@ static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Ve
 
 ## The button under `point`, or "" (the first in `BUTTONS` order wins; `skip` lists hidden ones).
 static func button_at(point: Vector2, circles: Dictionary, skip: Array = []) -> StringName:
-	var order: Array = [PAUSE]
+	var order: Array = [PAUSE, SCOREBOARD]
 	for row in BUTTONS:
 		order.append(row[0])
 	for id: StringName in order:

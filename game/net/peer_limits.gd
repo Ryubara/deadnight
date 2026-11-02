@@ -52,7 +52,7 @@ static func size_of(type: int) -> int:
 		NetWire.Type.COMMAND:
 			return NetWire.COMMAND_SIZE
 		NetWire.Type.PING:
-			return 5
+			return NetWire.PING_SIZE
 		LookWire.Type.LOOK:
 			return 1 + CharacterLook.wire_size()
 	return -1
