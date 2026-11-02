@@ -43,6 +43,8 @@ const ACTION_LOOK_DOWN := &"look_down"
 
 ## The authoritative-looking result of the last tick. Read-only for everything but `tick()`.
 var state := PlayerMotionState.new()
+## False for a body made by `strip_model`: nothing to dress or animate.
+var has_model := true
 var last_command := PlayerCommand.new()
 
 var _controls_enabled := true
@@ -107,10 +109,22 @@ func refresh_settings() -> void:
 	camera_rig.shake.scale = PlayerSettings.camera_shake(get_tree())
 
 
+## Takes the Soldier's model, skeleton and animation out of a body that is not in the tree yet,
+## leaving the collision and the simulation: what a game server needs of a player (`add_body`).
+func strip_model() -> void:
+	get_node("AnimationTree").free()
+	get_node("Model").free()
+	var stub := Node3D.new()
+	stub.name = "Model"
+	add_child(stub)
+	has_model = false
+
+
 ## Puts a look and the armband of a seat on the body's Soldier (`CharacterAssembler.dress`). A body
 ## wears the default look until the night says otherwise.
 func dress(look: CharacterLook, seat := 0) -> void:
-	CharacterAssembler.dress(_model, look, seat)
+	if has_model:
+		CharacterAssembler.dress(_model, look, seat)
 
 
 ## The lens is too close to the head (or clear again): draw or hide the body.
@@ -199,6 +213,7 @@ func tick(command: PlayerCommand) -> void:
 	camera_rig.sprinting = state.sprinting
 	camera_rig.crouching = state.crouching
 	camera_rig.ground_speed = state.ground_speed()
+	camera_rig.grounded = state.on_floor
 	camera_rig.track(global_position)
 	if state.jumped:
 		jumped.emit()

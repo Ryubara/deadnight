@@ -102,9 +102,14 @@ func test_a_reload_sounds_on_the_frames_of_its_clip() -> void:
 		assert_array(_heard).is_empty()
 		var table: Dictionary = WeaponSounds.RELOAD[weapon]
 		var expected: Array[Dictionary] = []
+		# The clip's frames are stretched over the reload's seconds (2.0 here).
+		var scale := 2.0 / ClipEvents.length(table["clip"])
 		for step: StringName in table["steps"]:
 			for seconds in ClipEvents.times(table["clip"], step):
-				expected.append({"id": table["steps"][step], "t": seconds})
+				expected.append({"id": table["steps"][step], "t": seconds * scale})
+		# ...and every step is over before the reload is.
+		for entry in expected:
+			assert_float(entry["t"]).is_less(2.0)
 		expected.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["t"] < b["t"])
 		assert_int(expected.size()).is_greater(1)
 		# Just before each frame nothing new has sounded; just after, exactly that step has.
@@ -130,10 +135,13 @@ func test_the_rifle_loads_three_rounds_then_throws_the_lever() -> void:
 	assert_array(_ids()).is_equal(
 		[&"reload_rifle_round", &"reload_rifle_round", &"reload_rifle_round", &"reload_rifle_lever"]
 	)
-	# Frames 20, 32 and 44, then the lever at 56, at 24 frames a second.
-	assert_float(_heard[0]["t"]).is_equal_approx(20.0 / 24.0, 0.001)
-	assert_float(_heard[1]["t"]).is_equal_approx(32.0 / 24.0, 0.001)
-	assert_float(_heard[3]["t"]).is_equal_approx(56.0 / 24.0, 0.001)
+	# Frames 20, 32 and 44, then the lever at 56, at 24 frames a second, stretched from the clip's
+	# length to the reload's 2.2 s.
+	var scale := 2.2 / ClipEvents.length(&"Reload_Rifle")
+	assert_float(_heard[0]["t"]).is_equal_approx(20.0 / 24.0 * scale, 0.001)
+	assert_float(_heard[1]["t"]).is_equal_approx(32.0 / 24.0 * scale, 0.001)
+	assert_float(_heard[3]["t"]).is_equal_approx(56.0 / 24.0 * scale, 0.001)
+	assert_float(_heard[3]["t"]).is_less(2.2)
 
 
 func test_putting_the_weapon_away_abandons_the_reload() -> void:

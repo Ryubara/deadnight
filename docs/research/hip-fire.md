@@ -26,7 +26,10 @@ document is the *mechanism*, and it is the same everywhere:
   already aiming"). A first version gave hip fire its own half zoom with its own springs and left the weapon on the aim
   button alone, which showed as a second, partial aim: the gun jumped into the aim pose when the button was pressed, did
   not rise when shooting, and the zoom-out was three times slower. There is now one weight (`aiming or fire_age <
-  hold`) for the camera, the body, the legs and the hands, and one set of springs.
+  hold`) for the camera, the body, the legs and the hands, and one set of springs. The hold belongs to the hip state
+  only (maintainer, #428: "The logic to replicate the aiming zoom whenever you hipfire should not trigger at all when a
+  user is already aiming"): a shot fired while aiming does not restart it, so aim, shoot, release zooms out with the
+  aim's own release (`test_aim_release.gd`).
 - **Face the view while the aim is held** (not always, as the combat kit above does): walking should still turn the
   soldier to where he runs, because the dead come from every side and the player flees as much as fights. The hold
   (0.8 s) hides the swing back between single shots and keeps the camera from pulsing between the slowest weapon's

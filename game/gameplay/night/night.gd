@@ -68,6 +68,11 @@ var view: NightView
 ## Where the grenade in the local player's hand would go (`show_throw`).
 var preview: GrenadePreview
 var autopilot: Autopilot
+## () -> bool, whether the touch layer is up, set by the screen that owns it. The touch player's
+## aim help (`assist`) works only while it says yes.
+var touch_active := Callable()
+## The touch player's aim help, once the night has begun (a human's night only).
+var assist: TouchAimAssist
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
 ## Puts the names and the next door on the HUD from the player's camera (made with the view, when
@@ -332,8 +337,19 @@ func _go() -> void:
 		)
 		await warmup.run(self)
 		_warming = false
+	if mode == Mode.HUMAN:
+		_make_assist()
 	running = true
 	ready_to_play.emit()
+
+
+## The touch player's aim help, over the picture of the night this client has.
+func _make_assist() -> void:
+	if _sight == null:
+		_sight = WorldProbe.new(get_world_3d().direct_space_state)
+	assist = TouchAimAssist.new(get_tree(), state, _sight.callable())
+	assist.touch_active = func() -> bool: return touch_active.is_valid() and touch_active.call()
+	_human.assist = assist
 
 
 ## The look this client wears: the one a test or `--look` set, else the saved one.
@@ -349,7 +365,8 @@ func _make_spectator() -> Camera3D:
 	return _spectator
 
 
-## The guns, the grenades and the lot's machines and shop sound from the same events as the view.
+## The guns, the grenades, the lot's machines and shop and the soldiers' voices sound from the same
+## events as the view.
 func _add_sounds() -> void:
 	var weapons := WeaponSounds.new()
 	weapons.name = "WeaponSounds"
@@ -365,6 +382,10 @@ func _add_sounds() -> void:
 	var tuning: RulesTuning = rules_tuning
 	var generator := world.greybox.get_node_or_null("GeneratorYard/Generator") as Node3D
 	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
+	var voice := SoldierVoice.new()
+	voice.name = "SoldierVoice"
+	add_child(voice)
+	voice.setup(state)
 
 
 ## Where the prize crane stands at `spot` (the rules' list of crane places), or null.
@@ -528,6 +549,9 @@ func _on_remote_event(event: Dictionary) -> void:
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
+	if me.get("turn", false):
+		_body.state.facing = me["facing"]
+		_body.rotation.y = _body.state.facing
 
 
 ## Shows, for the command the local player is about to send, where the grenade they are holding

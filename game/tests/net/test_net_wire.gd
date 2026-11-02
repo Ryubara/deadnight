@@ -170,9 +170,34 @@ func test_a_hello_carries_the_resume_token_when_there_is_one() -> void:
 	assert_array(back["token"]).is_equal(token)
 	# A hello of another length, or a token of the wrong size, is nothing (and sent as none).
 	assert_dict(NetWire.read_hello(PackedByteArray([NetWire.Type.HELLO, 3, 1, 2, 3]))).is_empty()
+	assert_dict(NetWire.read_hello(PackedByteArray([NetWire.Type.HELLO, 3, 8, 1]))).is_empty()
 	assert_dict(NetWire.read_hello(PackedByteArray())).is_empty()
-	assert_int(NetWire.hello(PackedByteArray([1, 2, 3])).size()).is_equal(2)
+	assert_int(NetWire.hello(PackedByteArray([1, 2, 3])).size()).is_equal(NetWire.HELLO_HEADER)
+	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 1)).is_false()
 	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 2)).is_true()
-	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 10)).is_true()
-	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 5)).is_false()
+	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 3)).is_true()
+	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 400)).is_true()
+	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, NetWire.MAX_HELLO + 1)).is_false()
 	assert_bool(PeerLimits.fits(NetWire.Type.COMMAND, 10)).is_false()
+
+
+func test_a_hello_carries_the_ticket_as_text_after_the_token() -> void:
+	var ticket := "aaa.bbb.ccc-Ø"
+	var plain := NetWire.read_hello(NetWire.hello(PackedByteArray(), ticket))
+	assert_str(plain["ticket"]).is_equal(ticket)
+	assert_int((plain["token"] as PackedByteArray).size()).is_equal(0)
+	var token := PackedByteArray([8, 7, 6, 5, 4, 3, 2, 1])
+	var both := NetWire.read_hello(NetWire.hello(token, ticket))
+	assert_str(both["ticket"]).is_equal(ticket)
+	assert_array(both["token"]).is_equal(token)
+	assert_str(NetWire.read_hello(NetWire.hello())["ticket"]).is_equal("")
+
+
+func test_an_old_hello_is_known_by_its_version_alone() -> void:
+	# Version 3 said hello in two bytes (or ten with a token): too short to read now, but enough to be
+	# refused as the wrong version.
+	assert_int(NetWire.hello_version(PackedByteArray([NetWire.Type.HELLO, 3]))).is_equal(3)
+	assert_dict(NetWire.read_hello(PackedByteArray([NetWire.Type.HELLO, 3]))).is_empty()
+	assert_int(NetWire.hello_version(PackedByteArray([NetWire.Type.PING, 3]))).is_equal(-1)
+	assert_int(NetWire.hello_version(PackedByteArray())).is_equal(-1)
+	assert_bool(NetWire.accepts(-1)).is_false()
