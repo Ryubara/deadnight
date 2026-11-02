@@ -22,9 +22,15 @@ What building the flare as a lure (#439) taught us. The design is in
 
 The sim tests step `ZombieSim` by hand; the night test runs a whole night with `Night.Mode.MANUAL`, puts a zombie 12 m
 from the burst and watches 6 simulated seconds. `NightFixture` and a tick of 1/60 s keep it free of real time.
-The capture (`game/tests/captures/flare_lure.tscn`, from the player's shoulder camera) shows the muzzle flash, the
-burning flare and a zombie coming in; the flare must be aimed slightly down to land in view (a level shot flies over the
-roofs, 60 m).
+The capture (`game/tests/captures/flare_lure.tscn`) fires from the player's shoulder camera, then cuts to a camera
+17 m straight up over the flare: four zombies put 8 to 10 m to either side of it, across the line to the player, so
+walking to the flare and walking to the player look different. It prints each zombie's distance to the flare and to
+the player every second: they close from 7 to 9 m to about 2 m of the flare while the distance to the player stays
+about 7 m, hold there for the 8 s, then turn to the player. A level shot flies over the roofs (60 m), so the flare is
+aimed slightly down to land in view; from 40 m up a zombie is a speck, 17 m reads.
+
+The HUD's bottom-left line is the equipment slot (the weapon put away), not the weapon in hand: during the capture the
+ammunition card read "Flare gun 0 / 6" and the slot "Revolver", which is right.
 
 ## A pitfall
 

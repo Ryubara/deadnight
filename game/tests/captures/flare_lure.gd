@@ -1,7 +1,8 @@
 extends Node
-## A person fires a flare in the night (#439), from the player's own shoulder camera with the HUD:
-## the flare lands and burns, and a zombie put near it walks to it instead of to the player. Not
-## part of the game. Run with Movie Maker:
+## A person fires a flare in the night (#439), from the player's own shoulder camera with the HUD,
+## then the view goes overhead: the flare lands and burns, and zombies put to either side of it
+## (well off the line to the player) turn and walk to it instead of to the player. Not part of
+## the game. Run with Movie Maker:
 ## `gds godot -- --path game res://tests/captures/flare_lure.tscn --fixed-fps 10
 ## --write-movie out.png --quit-after 300`.
 ## Each stage prints its name and the movie frame it began on.
@@ -13,11 +14,17 @@ const SCAN_HEIGHT := 1.0
 ## The flare leaves the muzzle this far above level (rise over run); below, it lands near.
 const LOFT := -0.22
 const FLIGHT_LIMIT := 400
-## The zombie is put this far to the side of the flare, so it is seen walking to it (m).
-const STANDOFF := 5.0
-const WATCH_SECONDS := 6
+## The zombies are put this far to either side of the flare, across the line to the player (m).
+const STANDOFFS: Array[float] = [8.0, -8.0, 10.0, -10.0]
+## The overhead camera: this high over the flare and this far back toward the player (m).
+const OVERHEAD_HEIGHT := 17.0
+const OVERHEAD_BACK := 3.0
+const OVERHEAD_FOV := 50.0
+## Long enough for the lure to end (8 s) and the zombies to turn back to the player.
+const WATCH_SECONDS := 13
 
 var _night: Night
+var _hud: Hud
 var _heard: Array[Dictionary] = []
 
 
@@ -25,14 +32,14 @@ func _ready() -> void:
 	# The body captures the mouse when it enters the tree; a recording must never hold the cursor
 	# of the person at the machine, so it is told first.
 	get_tree().node_added.connect(_keep_the_mouse_free)
-	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
+	_hud = (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	var layer := CanvasLayer.new()
-	layer.add_child(hud)
+	layer.add_child(_hud)
 	add_child(layer)
 	var tuning := RulesFixture.tuning()
 	tuning.rounds.intro_seconds = 1.0
 	_night = Night.new()
-	_night.hud = hud
+	_night.hud = _hud
 	add_child(_night)
 	await _night.start(Night.Mode.HUMAN, 7, tuning)
 	await get_tree().physics_frame
@@ -43,9 +50,14 @@ func _ready() -> void:
 	_night.state.event_received.connect(_heard.append)
 	_do(CombatAction.give_weapon(1, &"flare_gun"))
 	_do(CombatAction.equip(1, &"flare_gun"))
-	var zombie_id := await _first_zombie()
+	await _zombies_up(STANDOFFS.size())
 	await _wait(SECOND * 3)
-	_stage("ready, flare gun in hand")
+	_stage(
+		(
+			"ready: the ammunition card says %s, the equipment slot %s"
+			% [_hud.state.weapon_name, _hud.state.equipment_name]
+		)
+	)
 	var eye := _night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
 	var ahead := Basis(Vector3.UP, yaw) * Vector3.FORWARD
 	_do(
@@ -76,19 +88,45 @@ func _ready() -> void:
 		)
 	)
 	var at: Vector3 = lure[0]["point"]
-	var body: ZombieBody = _night.server.sim.zombies[zombie_id]
-	body.enter(ZombieBody.Mode.CHASE)
-	body.position = at + Basis(Vector3.UP, yaw + PI * 0.5) * Vector3.FORWARD * STANDOFF
-	body.velocity = Vector3.ZERO
-	await _wait(SECOND * WATCH_SECONDS)
-	var gap := Vector2(body.position.x - at.x, body.position.z - at.z).length()
-	_stage(
-		(
-			"end: the zombie is %.1f m from the flare, damage events %d"
-			% [gap, _count(&"damage_dealt")]
-		)
-	)
+	var from_player := _night.player().global_position
+	var across := Vector3(at.z - from_player.z, 0.0, from_player.x - at.x).normalized()
+	var bodies: Array[ZombieBody] = []
+	for i in STANDOFFS.size():
+		var body: ZombieBody = _night.server.sim.zombies.values()[i]
+		body.enter(ZombieBody.Mode.CHASE)
+		body.position = at + across * STANDOFFS[i]
+		body.velocity = Vector3.ZERO
+		bodies.append(body)
+	_overhead(at, from_player)
+	_stage("overhead: %d zombies across the line to the player" % bodies.size())
+	for second in WATCH_SECONDS:
+		await _wait(SECOND)
+		print("t+%2d s: %s" % [second + 1, _distances(bodies, at, from_player)])
+	_stage("end: %d damage events" % _count(&"damage_dealt"))
 	get_tree().quit()
+
+
+## Each zombie's distance to the flare / to the player, in metres.
+func _distances(bodies: Array[ZombieBody], at: Vector3, player_at: Vector3) -> String:
+	var parts: PackedStringArray = []
+	for body in bodies:
+		parts.append("%.1f/%.1f" % [_flat(body.position, at), _flat(body.position, player_at)])
+	return " ".join(parts)
+
+
+func _flat(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+## A camera straight down over the flare, the player at the bottom of the picture.
+func _overhead(at: Vector3, player_at: Vector3) -> void:
+	var camera := Camera3D.new()
+	camera.fov = OVERHEAD_FOV
+	add_child(camera)
+	var back := Vector3(player_at.x - at.x, 0.0, player_at.z - at.z).normalized()
+	camera.global_position = at + back * OVERHEAD_BACK + Vector3.UP * OVERHEAD_HEIGHT
+	camera.look_at(at + back * OVERHEAD_BACK, -back)
+	camera.make_current()
 
 
 ## One combat action to the server; its events go to the client.
@@ -130,12 +168,12 @@ func _open_yaw() -> float:
 	return best
 
 
-func _first_zombie() -> int:
-	for _i in 900:
+## Waits until `count` zombies are in the night.
+func _zombies_up(count: int) -> void:
+	for _i in 1800:
 		await get_tree().physics_frame
-		if not _night.server.sim.zombies.is_empty():
-			return _night.server.sim.zombies.keys()[0]
-	return -1
+		if _night.server.sim.zombies.size() >= count:
+			return
 
 
 func _stage(stage: String) -> void:
