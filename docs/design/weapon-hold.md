@@ -25,6 +25,7 @@ carries `model_scale`, the factor from the model to the rule.
 | Double shotgun (Shotgun) | 1.12 m | 0.99 m | 1.51 m | 0.82 | 0.99 m | 1.21 m |
 | Baseball bat (Melee) | 0.86 m | 0.76 m | 1.11 m | 0.86 | 0.76 m | 0.89 m |
 | Crowbar (Melee) | 0.75 m | 0.66 m | 0.75 m | 1.1 | 0.66 m | new |
+| Fire axe (Melee) | 0.90 m | 0.79 m | 1.24 m | 0.8 | 0.79 m | new |
 | Tommy gun (SMG) | 0.88 m | 0.78 m | 0.88 m | 1.1 | 0.78 m | new |
 | Revolver (Pistol), exception | 0.31 m | 0.27 m | 0.31 m | 1.76 | 0.44 m (1.6 times) | new |
 | Flare gun, exception | 0.26 m | 0.23 m | 0.26 m | 1.76 | 0.37 m (1.6 times) | new |
@@ -69,7 +70,7 @@ the zoom does. The shot itself is the `AimResolver`'s, from the muzzle to what t
 | Double shotgun | right 0.05, down 0.09, forward 0.36 | -0.45, -0.03 | the same, the stock a little longer |
 | Tommy gun | right 0.05, down 0.09, forward 0.34 | -0.365, -0.04 (the foregrip) | stock at the shoulder, left hand on the foregrip |
 | Revolver, flare gun | right 0.10, down 0.05, forward 0.42 | none | one hand: the right arm out toward the aim, the left stays with the clip |
-| Baseball bat, crowbar | the kit's grip, `shouldered = false` | none | one hand, as the Swing clip moves it; two hands on the grip is open work |
+| Baseball bat, crowbar, fire axe | the kit's grip, `shouldered = false` | none | one hand, as the Swing clip moves it; two hands on the grip is open work |
 
 `muzzle` and `butt` (the ends of the model, origin the grip) are in every hold so the tests, and later the muzzle flash
 and the aim correction, read the same points.
@@ -100,12 +101,14 @@ Shotgun, SMG Rifle, revolver and flare gun Pistol, every melee weapon Melee); `P
 takes the class's clips and the id's own hold (`WeaponHoldMap.hold_for`). A hold whose `scene` is not in
 `assets/weapons/` yet
 (`WeaponHold.has_model`) leaves the hand empty, never another weapon's model: `WeaponHoldMap.no_model()` lists those
-(none now). `holds/melee.tres` stays as the class-level hold for a weapon with no file of its own, the bat and the
-axe when they get an id. `WeaponEquipSync` (`game/gameplay/night/weapon_equip_sync.gd`) reads the `weapon` of every
-player in each frame the server sends and calls `equip` on that player's body when it changes: the local
-player and the others take the same line, and a player who joins late shows the weapon of his first frame. The test
-is `game/tests/night/test_weapon_equip.gd` (each id taken in hand through the real combat action, for the local
-player and a second one, by a swap, and no two ids sharing a model).
+(none now). `holds/melee.tres` stays as the class-level hold for a weapon with no file of its own (the bat and the axe
+have `holds/baseball_bat.tres` and `holds/fire_axe.tres` since they got ids, #461; the axe uses the melee class's grip
+as the bat does, a bad grip is the hand-placement task's, #460). `WeaponEquipSync`
+(`game/gameplay/night/weapon_equip_sync.gd`) reads the `weapon` of every player in each frame the server sends and
+calls `equip` on that player's body when it changes: the local player and the others take the same line, and a player
+who joins late shows the weapon of his first frame. The test is `game/tests/night/test_weapon_equip.gd` (each id taken
+in hand through the real combat action, for the local player and a second one, by a swap, and no two ids sharing a
+model).
 
 **The shoulder camera sees a gun end-on.** From behind the shoulder, with the barrel converging on the crosshair, every
 gun in the aim pose is a fist and the tip of a barrel; the revolver is no different from the rifle. The side, rear and
