@@ -31,6 +31,8 @@ func before_test() -> void:
 
 func _step(ticks: int) -> void:
 	for _i in ticks:
+		# The aim weight is the camera's: the legs and the hands read it.
+		_player.camera_rig.step(TICK, 1.0)
 		_animation._process(TICK)
 		_animation.advance(TICK)
 
@@ -42,6 +44,7 @@ func _move(local: Vector2, speed: float, facing := 0.0) -> void:
 	var right := Vector3(cos(facing), 0.0, -sin(facing))
 	_player.state.facing = facing
 	_player.state.aiming = true
+	_player.camera_rig.aiming = true
 	_player.state.on_floor = true
 	_player.state.velocity = (right * local.x + ahead * local.y).normalized() * speed
 
@@ -85,14 +88,15 @@ func test_the_blend_follows_the_direction_of_travel() -> void:
 func test_aiming_takes_the_aim_gait_and_letting_go_returns() -> void:
 	_move(Vector2.RIGHT, _player.tuning.aim_speed)
 	_step(60)
-	assert_float(_animation.aim_weight()).is_equal(1.0)
+	assert_float(_animation.aim_weight()).is_equal_approx(1.0, 0.001)
 	assert_vector(_animation.aim_move()).is_equal_approx(Vector2.RIGHT, Vector2(0.01, 0.01))
 	assert_vector(_animation.get(PlayerAnimation.AIM_MOVE_PARAMETER)).is_equal_approx(
 		Vector2.RIGHT, Vector2(0.01, 0.01)
 	)
 	_player.state.aiming = false
+	_player.camera_rig.aiming = false
 	_step(60)
-	assert_float(_animation.aim_weight()).is_equal(0.0)
+	assert_float(_animation.aim_weight()).is_equal_approx(0.0, 0.001)
 
 
 ## Where a bone is in the world after the last advance. The skeleton refreshes its global poses on

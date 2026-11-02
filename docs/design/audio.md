@@ -15,7 +15,7 @@ commercial use, to be relicensed or replaced before a commercial release
 | --- | --- | --- | --- |
 | `zombie/` `alert_4..6`, `attack_4..6`, `death_3..5`, `groan_5..7`, `groan_brute_4..5`, `groan_crawler_4..5`, `hurt_4..6`, `roar_3..4`, `shriek_3..5` | 24 | ElevenLabs (models v2 and v3), extra takes of the dead's voices | [`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), every prompt in `zombie/eleven.json` |
 | `eleven/` | 17 | ElevenLabs (model v2): the shots' blasts, the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
-| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `player/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (3, 8, 72, 5, 2, 5, 2, 8, 3, 9 and 35 files) | 200 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
+| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `player/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (3, 8, 72, 5, 2, 5, 2, 32, 3, 9 and 35 files) | 224 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
 
 The decision to use the ElevenLabs takes is recorded in two places, which say it differently:
 [#252](https://github.com/Ryubara/deadnight/issues/252) states a maintainer decision of 2026-11-01 to use the free tier
@@ -72,7 +72,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Guns | `shot_<gun>`, `blast_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap` | see [The guns](#the-guns) |
 | Impacts | `impact_flesh`, `impact_head`, `impact_world` | a wet thump, the same with a crack and a knock, and a round on asphalt or sheet metal with a ricochet's whine |
 | Reloads | `reload_pistol_mag_out/_in`, `reload_smg_mag_out/_in`, `reload_rifle_round/_lever`, `reload_shotgun_open/_shells/_shut` | one sound for each event frame of the reload clip |
-| Steps | `step_asphalt`, `step_gravel` | four variants each; gravel is a spray of tiny grains |
+| Steps | `step_asphalt`, `step_gravel`, `step_own_asphalt`, `step_own_gravel` | eight takes each; gravel is a spray of tiny grains; the `own` pair is the local player's softer set ([footsteps](#footsteps)) |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the groans, snarls, hurts, deaths, shrieks and roars also have ElevenLabs takes as extra variants (see above) |
 | Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_engine` (loops), `generator_start`, `generator_up`, `generator_sputter`, `generator_down`, `generator_down_air`, `breaker_on`, `breaker_off` | see [The lot's machines](#the-lots-machines) |
@@ -189,8 +189,34 @@ rules' `zombie_damaged` events. Who sounds like what is one table, `ZombieVoiceT
 - **Behind you.** Every dead sound has `rear_cue`: a sound behind the listener is low-passed (from 5 kHz at the side
   to 1.8 kHz straight behind), because panning alone cannot tell front from back on two speakers.
 
-Not heard in a real night yet: the grenades, because the night does not run the grenade server (#239); `GrenadeSounds`
-is ready for its events.
+### Footsteps
+
+`FootstepSounds` (`game/gameplay/night/`) gives every player's feet a sound, from the same ground rules as the
+simulation (`PlayerSimulation`: a step for every `step_distance`, 1.9 m, of ground covered while on the floor and moving
+faster than 0.5 m/s), so the pace of the feet is the pace of the player: a sprint steps faster because it covers the
+stride sooner, a crouched creep slower, standing and flight are silent.
+
+| | Your own | Everyone else's |
+| --- | --- | --- |
+| Where | flat, centred (in your head): the shoulder camera is metres from your feet and would make the level depend on the camera | in the world at their feet, 30 m, `unit_size` 4, held to their own level up close (`near_cap_db` 0) |
+| Sound | `step_own_*`: a dull heel-and-toe thump, nothing above 3.2 kHz, no scuff or grit | `step_*`: the brighter set with the scuff and, on gravel, the grains |
+| Level | `STEP_OWN_DB` (-14 dB on a file peaking at -6 dBFS) | -2 dB asphalt, -3 dB gravel |
+| Voices | group `step_own`, 2, priority 25 | group `step`, 8, priority 20 (the dead's feet are 15) |
+| Read from | the body's `footstep` signal, with its crouch flag | the frames' positions (`FootStride`): a body only drawn from frames has no foot events |
+
+- **Subtle by design, and measured** ([research](../research/audio.md#footsteps-239)): in the capture a walk's step
+  stands 4.6 dB over the night's bed (6 dB at a sprint, 2 dB crouched) and 12 dB under the pistol's shots; a walk adds
+  1.1 LU to the bed's loudness. Your own steps are meant to be felt more than listened to, so nobody mutes them.
+- **The pace sets the level** (`FootstepSounds.level_db`): 25 dB per decade of speed from the run pace (4.8 m/s), so a
+  sprint (7 m/s) is 4 dB up and a crouched creep (2.4 m/s) 7.5 down, with 4 dB more when the body says it is crouched.
+  Each step also wanders 1.5 dB either way.
+- **The ground picks the file** (`FootSurface`): a ray from the foot to the floor reads the pattern of its material, so
+  the yard and the back lot are gravel and every other ground (asphalt, concrete, tile) is asphalt.
+- **Never a loop.** Eight takes of each, never the same twice in a row, each with a small random pitch, a level that
+  wanders, and (for the soft set) a heel-to-toe gap and a pitch that differ from take to take.
+- **The others** are told from frames, as in an online night: a body that rises or falls faster than 2 m/s for two
+  frames is in the air (no steps until it lands); a player down makes none.
+- A landing makes no sound of its own yet.
 
 ## The service's rules
 

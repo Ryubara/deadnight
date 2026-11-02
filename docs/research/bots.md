@@ -401,11 +401,11 @@ The Autopilot decides at 60 Hz and queries a path every tick. The plan thinks at
 | Paths, 3 a second at 0.23 ms | 0.02 ms |
 | Motor, every tick | 0.02 ms |
 | **Mean** | **about 0.1 ms** |
-| Worst tick (a think plus a path, 46 zombies) | under 0.5 ms |
+| Worst tick (a think plus a path, 40 zombies) | under 0.5 ms |
 
 Three bots then cost about 0.3 ms mean against a 33 ms tick: 1%. **Budget**: bots together under 5% of the tick, so
-0.5 ms worst per bot (a test fails above it with 46 zombies in the frame, the rules' late-round cap with four players;
-the director holds 40), and
+0.5 ms worst per bot (a test fails above it with 40 zombies in the frame, the rules' cap at four players from round
+21 on, and the most the lot ever stands: [crowd budget](../design/zombies.md#crowd-budget)), and
 think ticks staggered by slot so they never land together. Perception is bounded by design: a cheap angle and distance
 test first, then at most six rays a think (the closest candidates in the cone). The 40-zombie ceiling of the director
 and the `alive_cap` (28 solo plus 6 for each extra player) bound N.
@@ -451,7 +451,7 @@ timing) are ours too ([Ocio Barriales](http://www.gameaipro.com/GameAIPro3/GameA
 | 23 | Late join | The bot's slot is released cleanly |
 | 24 | Replay of a bot night | Same hash as the live run |
 | 25 | Golden command hash | Constant |
-| 26 | Decision time with 46 zombies | p99 under 0.5 ms |
+| 26 | Decision time with 40 zombies | p99 under 0.5 ms |
 | 27 | A script error inside the brain | Watchdog disables the brain, the motor holds and follows, a telemetry event fires |
 | 28 | Coverage matrix | Every shop item, weapon and prompt kind has a bot rule or a written waiver |
 
@@ -541,7 +541,7 @@ streams, telemetry and the decision ring buffer, the multi-player `NightFixture`
 source scan. The Autopilot becomes the first profile on this host (its behaviour unchanged) so nothing regresses.
 **Done when**: four hosted bots survive three rounds in a soak without an `ERROR`; scenarios 1 to 3 and 24 to 28 pass;
 the reaction and turn-rate distributions are inside their bounds; the firewall and replay tests pass; the decision p99
-is under 0.5 ms at 46 zombies; the page's cost section is updated with the measured numbers.
+is under 0.5 ms at 40 zombies; the page's cost section is updated with the measured numbers.
 
 ### Phase 2: movement
 
