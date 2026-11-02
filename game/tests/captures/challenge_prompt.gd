@@ -26,7 +26,6 @@ var _ticks := 0
 func _ready() -> void:
 	_args = _parse_args()
 	UIMotion.reduced = _args.has("reduced")
-	Settings.set_value(SettingsService.CHALLENGE_PROMPTS, int(_args.get("setting", 0)))
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
@@ -58,6 +57,7 @@ func _ready() -> void:
 	tuning.rounds.intro_seconds = 3.0
 	tuning.economy.item(&"door_concession").price = 250
 	await _night.start(Night.Mode.AUTOPILOT, Night.SEED, tuning)
+	_hud.challenge.mode = int(_args.get("setting", 0)) as HudChallenge.Mode
 	_seed_progress(board)
 	_night.ticked.connect(_on_tick)
 

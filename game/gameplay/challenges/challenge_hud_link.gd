@@ -5,14 +5,17 @@ extends RefCounted
 ## and the player's setting decides which prompts show. The night holds it for as long as it plays.
 
 var _hud: Hud
+var _settings: SettingsService
 
 
-func _init(session: ChallengeSession, hud: Hud) -> void:
+## `settings` is the player's (the `Settings` autoload); a test passes its own.
+func _init(session: ChallengeSession, hud: Hud, settings: SettingsService = null) -> void:
 	_hud = hud
+	_settings = settings if settings != null else Settings
 	session.advanced.connect(_on_advanced)
 	hud.challenge.cue.connect(_on_cue)
 	_apply_setting()
-	Settings.changed.connect(_on_setting)
+	_settings.changed.connect(_on_setting)
 
 
 func _on_advanced(advance: Dictionary) -> void:
@@ -32,5 +35,5 @@ func _on_setting(key: StringName, _value: Variant) -> void:
 
 func _apply_setting() -> void:
 	_hud.challenge.mode = (
-		int(Settings.get_value(SettingsService.CHALLENGE_PROMPTS)) as HudChallenge.Mode
+		int(_settings.get_value(SettingsService.CHALLENGE_PROMPTS)) as HudChallenge.Mode
 	)

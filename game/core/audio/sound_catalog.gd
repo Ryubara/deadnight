@@ -90,6 +90,10 @@ static func _build() -> void:
 	_add(&"ui_back", "ui/back_%d.ogg", 1, ui)
 	_add(&"ui_push", "ui/push_%d.ogg", 1, _with(ui, {"volume_db": -3.0}))
 	_add(&"ui_pop", "ui/pop_%d.ogg", 1, _with(ui, {"volume_db": -3.0}))
+	# The challenge prompt's cues: quiet, and never two at once.
+	var challenge := _with(ui, {"group": &"challenge", "priority": 60, "cooldown": 0.25})
+	_add(&"challenge_tick", "ui/challenge_tick_%d.ogg", 1, challenge)
+	_add(&"challenge_done", "ui/challenge_done_%d.ogg", 1, challenge)
 
 	ArmsCatalog.build(_add)
 
