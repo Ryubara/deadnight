@@ -5,7 +5,8 @@ wardrobe and comes back, starts a night with the keyboard, plays it for a while,
 page error or failed request. It also writes what it saw: screenshots, the load time, frame times, and the zombie
 crowd the game reports through `window.deadnight` (game/core/web_probe.gd).
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py build/web build/smoke
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py build/web build/smoke
 
 The first argument can also be a URL (https://...): the run then opens the deployed game instead of serving a folder,
 and `load_to_menu_s` is the time over that connection.
@@ -54,6 +55,11 @@ SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--igno
 # renderer, which is why this is gated and a frame time is not. The pieces link at most 12 (a shader's two big
 # programs and the few that go with them); the limit has room for a new kind of material, not for a new burst.
 MAX_PROGRAMS_IN_A_LOADING_FRAME = 12
+# The seconds from Play to a running night in the software renderer CI runs, as the last green run measured them, and
+# how much slower than that a run may be before it fails (night_load_baseline.json, issue #509). The wait above only
+# catches a night that never starts; this catches a night that takes twice as long as it did, while it still passes
+# the wait. Change the file when a change makes the load shorter or a runner is measured slower for good.
+NIGHT_LOAD_BASELINE_FILE = Path(__file__).with_name("night_load_baseline.json")
 # Tabs in the menu's bar: Q and E walk them, wrapping round.
 MENU_TABS = 5
 
@@ -196,10 +202,48 @@ def menu_item(page: Page, tab: str, steps: int = 0) -> None:
         press(page, "ArrowDown")
 
 
+def reach_menu(page: Page) -> None:
+    """The page is loading: waits for the main menu, clicks the canvas (that gives it the keyboard) and lets the menu
+    settle."""
+    wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
+    page.mouse.click(5, 5)
+    page.wait_for_timeout(2500)
+
+
+def back_to_menu(page: Page) -> None:
+    """Escape until the menu is the screen again (a screen opened by mistake, a key lost on the way)."""
+    deadline = time.monotonic() + SCREEN_TIMEOUT_S
+    while probe(page).get("screen") != "main_menu" and time.monotonic() < deadline:
+        press(page, "Escape")
+        page.wait_for_timeout(1000)
+    page.wait_for_timeout(1500)
+
+
+def open_together(page: Page) -> None:
+    """From the main menu to the Play together screen (the first item of the Play tab)."""
+    menu_item(page, "Play")
+    press(page, "Enter")
+    wait_for(page, "the Play together screen", lambda s: s.get("screen") == "together_screen", SCREEN_TIMEOUT_S)
+    page.wait_for_timeout(1500)
+
+
+def open_settings(page: Page) -> None:
+    """From the main menu to the settings screen (the first item of the More tab)."""
+    menu_item(page, "More")
+    press(page, "Enter")
+    wait_for(page, "settings", lambda s: s.get("screen") == "settings_screen", SCREEN_TIMEOUT_S)
+    page.wait_for_timeout(1500)
+
+
 def start_solo(page: Page) -> None:
-    """Presses Solo on the Play tab: the one way to start a night alone."""
+    """Presses Solo on the Play tab: the one way to start a night alone. Every probe that needs a night starts it
+    here, so a change to the menu is one edit and `startup_check.py` (the web job) fails on it."""
     menu_item(page, "Play", 2)
     press(page, "Enter")
+
+
+def wait_for_night(page: Page, seconds: float = NIGHT_LOAD_TIMEOUT_S) -> dict:
+    return wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), seconds)
 
 
 def main() -> int:
@@ -256,6 +300,8 @@ def main() -> int:
             f"{MAX_PROGRAMS_IN_A_LOADING_FRAME}): the lot is drawn in too few pieces, so the page stops for seconds "
             "(docs/research/first-use-hitches.md)"
         )
+
+    problems.extend(night_load_problems(result, args.gpu, deployed))
 
     (out / "console.txt").write_text("\n".join(console) + "\n", encoding="utf-8")
     result["console_lines"] = len(console)
@@ -368,6 +414,25 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     result["night_peak_alive"] = max((s.get("alive", 0) for s in samples), default=0)
     result["night_worst_p95_ms"] = max((s["frames"]["p95_ms"] for s in samples), default=0)
     result["night_worst_frame_ms"] = max((s["frames"]["max_ms"] for s in samples), default=0)
+
+
+def night_load_problems(result: dict, gpu: bool, deployed: bool) -> list[str]:
+    """The night's load against the last green number of the software renderer (no GPU, a build served here)."""
+    seconds = result.get("loading", {}).get("seconds")
+    if seconds is None or gpu or deployed or not NIGHT_LOAD_BASELINE_FILE.exists():
+        return []
+    baseline = json.loads(NIGHT_LOAD_BASELINE_FILE.read_text(encoding="utf-8"))
+    limit = baseline["seconds"] * (1 + baseline["allowed_rise"])
+    result["night_load_baseline_s"] = baseline["seconds"]
+    result["night_load_limit_s"] = round(limit, 1)
+    if seconds <= limit:
+        return []
+    message = (
+        f"[loading] the night took {seconds} s to load, more than {baseline['allowed_rise']:.0%} over the last green "
+        f"{baseline['seconds']} s (limit {limit:.0f} s, tools/web_smoke/night_load_baseline.json): something made the "
+        "loading slower (docs/research/web-export.md, 'Loading a night')"
+    )
+    return [message]
 
 
 def loading_report(frames: list[list[float]], pressed: float, running: float) -> dict:

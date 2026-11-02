@@ -158,6 +158,8 @@ func send(action: Dictionary) -> void:
 			_send(NetWire.command(NightCommand.from_dict(action)))
 		NightServer.LOOK:
 			_send(action["packet"])
+		NightServer.PING:
+			_send(NetWire.mark(action["kind"], action["pos"], int(action.get("subject", 0))))
 
 
 func pump() -> void:

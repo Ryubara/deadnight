@@ -55,8 +55,14 @@ const LIGHT_CELLS: Array[Dictionary] = [
 ## Share of the bar each step takes.
 ## It follows the time each takes in a browser, so the bar moves at an even pace.
 const WEIGHTS := {"load": 0.04, "sounds": 0.04, "lot": 0.50, "stage": 0.42}
-## Milliseconds a frame may spend loading sounds, so the bar keeps moving.
-const SOUND_BUDGET_MSEC := 8
+## Milliseconds a frame may spend loading sounds, so the bar keeps moving. A frame of the loading
+## screen is slow on a machine that draws on the CPU (a quarter of a second or more), so a small
+## budget stretched the sounds over seconds of frames that did nothing else.
+const SOUND_BUDGET_MSEC := 30
+## How big the warm-up's pictures are (px). A program does not depend on the size of the picture,
+## and a renderer that draws on the CPU (the CI browser, a machine with no GPU) pays for every
+## pixel: the lot drawn at the window's size made each warm-up frame cost 0.1 to 0.3 s there.
+const VIEW_SIZE := Vector2i(160, 90)
 ## Frames each shot is held, so the draw reaches the screen (and the renderer builds what it needs).
 const SHOT_FRAMES := 2
 ## Digits of the damage numbers: every glyph the numbers use is drawn once.
@@ -86,6 +92,9 @@ var lot_steps := 0
 var _night: Night
 var _camera: Camera3D
 var _before: Camera3D
+## The small picture the warm-up draws into, and whether the window's own 3D drawing was off before.
+var _view: SubViewport
+var _window_3d_was_off := false
 ## Everything the night will want again, held so it stays loaded (resources, effect materials).
 var _pins: Array = []
 var _stage: Node3D
@@ -101,10 +110,18 @@ var _paused: Array[SubViewport] = []
 func run(night: Night) -> void:
 	_night = night
 	_before = get_viewport().get_camera_3d()
+	# The warm-up looks at the night's own world through a small picture of its own, and the window
+	# does not draw that world meanwhile (its camera sees nothing the warm-up needs).
+	_view = SubViewport.new()
+	_view.size = VIEW_SIZE
+	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_view)
+	_window_3d_was_off = get_viewport().disable_3d
+	get_viewport().disable_3d = true
 	_camera = Camera3D.new()
 	_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	_camera.fov = SHOT_FOV
-	add_child(_camera)
+	_view.add_child(_camera)
 	# Nothing of the night is drawn until the lot pass brings it in, a kind of material at a time;
 	# the HUD's portrait draws the Soldier with the same shaders, so it waits for them as well.
 	_held.hide(night)
@@ -120,11 +137,15 @@ func run(night: Night) -> void:
 	_night.view.effects.prewarm()
 	await get_tree().process_frame
 	_unmute(muted)
+	# The window draws the night once, from the player's camera, before it runs: anything only the
+	# window's own drawing needs is built behind the loading screen, not in the first frame.
+	get_viewport().disable_3d = _window_3d_was_off
 	if is_instance_valid(_before):
 		_before.make_current()
-	_camera.queue_free()
+	_view.queue_free()
 	if _stage != null:
 		_stage.queue_free()
+	await _shots(_night, 1)
 	_say(1.0, "Ready")
 
 
@@ -134,6 +155,8 @@ func _pause_viewports() -> Array[SubViewport]:
 	var paused: Array[SubViewport] = []
 	for node in get_tree().root.find_children("*", "SubViewport", true, false):
 		var viewport := node as SubViewport
+		if viewport == _view:
+			continue
 		RenderingServer.viewport_set_active(viewport.get_viewport_rid(), false)
 		paused.append(viewport)
 	return paused
@@ -262,9 +285,13 @@ func _stage_pass() -> void:
 		_show_crane(crane, CraneState.Stage.GRAB)
 		await _shot_at(FAR_SHOT)
 		_show_crane(crane, CraneState.Stage.LEAVING)
-		_say(_step("stage", (i + 0.5) / LIGHT_CELLS.size()), "Firing: %s" % cell["label"])
 		_aim_at(NEAR_SHOT)
-		await _replay_effects()
+		# The effects are drawn once, in the first condition: none of their materials is lit (a flash,
+		# a puff, a streak, a number), so a light reaching them builds nothing, and replaying them
+		# in the other three conditions linked 0 programs and took about a third of the loading.
+		if i == 0:
+			_say(_step("stage", (i + 0.5) / LIGHT_CELLS.size()), "Firing")
+			await _replay_effects()
 		await _shot_at(NEAR_SHOT)
 		_keep_materials(_night.view)
 		_keep_materials(crane)

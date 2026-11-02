@@ -143,7 +143,7 @@ func _fight() -> void:
 			var aim := _boss.position + Basis(Vector3.UP, _boss.yaw) * lamp * scale
 			var eye := _night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
 			command.origin = eye
-			command.dir = (aim - eye).normalized()
+			command.aim_along(aim - eye)
 			command.fire = true
 		if fighting and seconds >= FIGHT_KILL_AT and _victim == -1:
 			_victim = _boss.id

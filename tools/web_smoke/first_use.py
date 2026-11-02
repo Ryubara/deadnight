@@ -6,7 +6,8 @@ firing) in a fresh Chrome profile, records every requestAnimationFrame delta fro
 the worst frames and where in the night they fall. Chrome keeps a GPU program cache in its profile, so a run always
 starts from an empty one: `launch` makes a new temporary profile each time.
 
-    uv run --with playwright==1.64.1 --with matplotlib python tools/web_smoke/first_use.py build/web build/first_use
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 --with matplotlib python tools/web_smoke/first_use.py build/web build/first_use
 
 Options: `--runs N` repeats from a new profile each time (the report keeps every run), `--seconds S` is how long the
 night is played (default 20), `--label before|after` names the chart. The chart (`frame_times.png`) shows the first
@@ -119,13 +120,10 @@ def run_once(url: str, out: Path, seconds: float, gpu: bool, index: int) -> dict
         marks: dict[str, float] = {}
         t0 = time.monotonic()
         page.goto(url, wait_until="commit")
-        smoke.wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
+        smoke.reach_menu(page)
         marks["menu_s"] = round(time.monotonic() - t0, 2)
-        page.mouse.click(5, 5)
-        page.wait_for_timeout(3000)  # the menu settles
-        smoke.menu_item(page, "Play", 2)
         marks["play_pressed"] = page.evaluate("performance.now()")
-        smoke.press(page, "Enter")
+        smoke.start_solo(page)
         wait_for_night(page, out, index)
         marks["night_running"] = page.evaluate("performance.now()")
         # Walk a square and fire from the first second, as the smoke run does.
