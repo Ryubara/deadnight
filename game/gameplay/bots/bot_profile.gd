@@ -109,13 +109,14 @@ static func rookie() -> BotProfile:
 	var profile := BotProfile.new()
 	profile.title = "Rookie"
 	profile.reaction_seconds = 0.55
+	profile.view_degrees = 80.0
 	profile.max_aim_speed = 240.0
 	profile.aim_stiffness = 9.0
 	profile.track_error = 14.0
 	profile.fire_slop = 6.0
 	profile.head_rate = 0.07
 	profile.weak_spot_rate = 0.25
-	profile.telegraph_read = 0.3
+	profile.telegraph_read = 0.0
 	profile.boss_keep = 0.0
 	profile.fire_jitter = 0.15
 	profile.think_hz = 5
