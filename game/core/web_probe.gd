@@ -170,6 +170,8 @@ static func snapshot(top: Control) -> Dictionary:
 ## Where the night's menu buttons are, as `Text:x,y` with x and y a fraction of the window (0 to 1),
 ## so a browser test taps them without knowing the layout.
 static func _button_spots(screen: NightScreen) -> String:
+	if not screen.is_inside_tree():
+		return ""
 	var size := screen.get_viewport().get_visible_rect().size
 	var spots: Array[String] = []
 	for button: UIButton in screen.find_children("*", "UIButton", true, false):

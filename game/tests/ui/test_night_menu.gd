@@ -219,6 +219,21 @@ func test_the_touch_pause_button_opens_the_menu_and_a_tap_on_resume_closes_it() 
 	assert_bool(screen.touch_active()).is_true()
 
 
+func test_the_browser_probe_sees_the_menu_and_where_its_buttons_are() -> void:
+	var screen := await _enter_night()
+	var shut := WebProbe.snapshot(screen)
+	assert_str(shut["menu_buttons"]).is_empty()
+	assert_bool(shut["settings_open"]).is_false()
+	await _key(KEY_ESCAPE)
+	var open := WebProbe.snapshot(screen)
+	assert_bool(open["paused"]).is_true()
+	assert_str(open["menu_buttons"]).contains("Resume:").contains("Settings:").contains(
+		"Leave night:"
+	)
+	await _click(_button(screen, "Settings"))
+	assert_bool(WebProbe.snapshot(screen)["settings_open"]).is_true()
+
+
 func test_a_solo_night_stands_still_behind_the_menu() -> void:
 	var screen := await _enter_night()
 	await _key(KEY_ESCAPE)
