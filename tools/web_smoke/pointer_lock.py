@@ -48,7 +48,7 @@ LOCK_TIMEOUT_S = 10
 # one or two frames a second, and the probe refreshes every 0.25 s, so this only tells "at once" from "never".
 MENU_WITHIN_S = 5.0
 # The Resume button at this viewport (the card is centred; 2_menu_after_lock_loss.png shows it).
-RESUME_BUTTON = (640, 382)
+RESUME_BUTTON = (640, 350)
 MOTION_PIXELS = 15
 MOTIONS = 20
 

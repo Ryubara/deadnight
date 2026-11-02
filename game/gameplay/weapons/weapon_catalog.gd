@@ -15,6 +15,11 @@ const IDS: Array[StringName] = [
 	&"fire_axe",
 ]
 
+## The blow every player has on its own button (#411): a knife-like swing with whatever is in hand.
+## It is a definition like the others (`defs/quick_melee.tres`, the server's sweep and cooldown) but
+## it is not a weapon: nobody carries, buys or is given it, so it is not in `IDS`.
+const QUICK_MELEE := &"quick_melee"
+
 ## How many weapons a player carries at once (#410): a third replaces the one in hand. There is
 ## no melee slot; a melee weapon takes one of the two like a gun.
 const CARRY_LIMIT := 2
@@ -30,6 +35,11 @@ static func catalog_id(shop_or_catalog_id: StringName) -> StringName:
 
 static func get_def(id: StringName) -> WeaponDef:
 	return load(DIR + String(id) + ".tres") as WeaponDef
+
+
+## The quick melee's definition (`QUICK_MELEE`).
+static func quick_melee() -> WeaponDef:
+	return get_def(QUICK_MELEE)
 
 
 static func all() -> Array[WeaponDef]:

@@ -42,7 +42,8 @@ func _count(type: StringName) -> int:
 
 
 func _take_crowbar() -> void:
-	_night.server.combat.apply(CombatAction.equip(1, &"crowbar"))
+	# Not a start weapon any more (the quick melee took its place, #411): found, like the crane's.
+	_night.server.combat.apply(CombatAction.give_weapon(1, &"crowbar"))
 	NightFixture.run(_night, 3)
 	assert_str(String(_night.state.me()["weapon"])).is_equal("crowbar")
 

@@ -6,6 +6,13 @@
 extends GdUnitTestSuite
 
 const PLAY_SECONDS := 20.0
+## Time here is game time, not wall-clock time: every wait counts physics frames, and the links'
+## conditioners run on the same clock (`WebSocketLink.clock`), so a loaded machine that gets fewer
+## frames a second plays the same twenty seconds of bad network instead of fewer frames of it
+## (docs/research/testing-multiplayer.md).
+const PLAY_FRAMES := int(PLAY_SECONDS * 60.0)
+const SETTLE_FRAMES := 8 * 60
+const SERVE_FRAMES := 30 * 60
 ## How far a predicted body may be from the server's while a bot sprints on a 200 ms round trip:
 ## the length of a sprint in that time, and some room.
 const MOST_AHEAD := 2.5
@@ -33,17 +40,24 @@ func _world() -> SubViewport:
 	return viewport
 
 
-func _until(condition: Callable, seconds: float = 10.0) -> bool:
-	var began := Time.get_ticks_msec()
-	while not condition.call():
-		if (Time.get_ticks_msec() - began) / 1000.0 > seconds:
-			return false
+## True once `condition` holds, within `frames` physics frames (false when it never does).
+func _until(condition: Callable, frames: int = 10 * 60) -> bool:
+	for i in frames:
+		if condition.call():
+			return true
 		await get_tree().physics_frame
-	return true
+	return condition.call()
+
+
+## The link's clock: game time (physics frames), so the bad network is the same number of frames
+## whatever the machine's speed.
+func _game_seconds() -> float:
+	return Engine.get_physics_frames() / float(Engine.physics_ticks_per_second)
 
 
 func _bot(seed_value: int) -> Night:
 	var link := WebSocketLink.new()
+	link.clock = _game_seconds
 	link.conditioner_in = LinkConditioner.new(0.1, 0.02, seed_value)
 	link.conditioner_out = LinkConditioner.new(0.1, 0.02, seed_value + 100)
 	link.conditioner_in.stall_chance = 0.01
@@ -69,12 +83,11 @@ func test_two_bots_on_a_bad_network_stay_with_the_server_and_settle_when_they_st
 	_host.log_enabled = false
 	_host.seed_value = 7
 	_world().add_child(_host)
-	await _until(func() -> bool: return _host.serving, 30.0)
+	await _until(func() -> bool: return _host.serving, SERVE_FRAMES)
 	var one := await _bot(11)
 	var two := await _bot(22)
 	var worst := 0.0
-	var began := Time.get_ticks_msec()
-	while (Time.get_ticks_msec() - began) / 1000.0 < PLAY_SECONDS:
+	for i in PLAY_FRAMES:
 		await get_tree().physics_frame
 		worst = maxf(worst, maxf(_distance_to_server(one), _distance_to_server(two)))
 	var moved: Vector3 = _host.server.body_of(1).global_position
@@ -106,6 +119,6 @@ func test_two_bots_on_a_bad_network_stay_with_the_server_and_settle_when_they_st
 	var settled := await _until(
 		func() -> bool:
 			return _distance_to_server(one) < SETTLED and _distance_to_server(two) < SETTLED,
-		8.0
+		SETTLE_FRAMES
 	)
 	assert_bool(settled).is_true()

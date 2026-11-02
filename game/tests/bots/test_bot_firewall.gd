@@ -18,7 +18,9 @@ const GLOBAL_RANDOM := (
 )
 const CLOCK_FILE := "bot_client.gd"
 const SOURCES_OF_TRUTH := [
-	"res://gameplay/night/night_server.gd", "res://gameplay/night/machine_offers.gd"
+	"res://gameplay/night/night_server.gd",
+	"res://gameplay/night/use_offers.gd",
+	"res://gameplay/night/machine_offers.gd",
 ]
 
 

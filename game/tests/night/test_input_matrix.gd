@@ -19,6 +19,7 @@ const MAIN := "res://main.tscn"
 const PAD := 3
 const HOLD_TICKS := 24
 const SETTLE_FRAMES := 6
+const COOLDOWN_TICKS := 40
 const INTRO_SECONDS := 1.0
 const FAR_OFF := 600.0
 ## Where a thumb lands in the stick's zone (canvas units) and how far each push goes.
@@ -47,6 +48,10 @@ const ROWS: Array = [
 	[&"reload", &"reload"],
 	[&"interact", &"interact"],
 	[&"swap_weapon", &"swap_weapon"],
+	# The quick melee (#411): V, the mouse's back button and the d-pad's down. A phone has no button
+	# for it yet. Before the grenades: the arm that is throwing one is busy, and a blow asked for then
+	# is refused (`test_night_quick_melee.gd`).
+	[&"quick_melee", &""],
 	[&"throw_grenade", &"throw_grenade"],
 	[&"toss_grenade", &""],
 	# A ping is not in the command: the night makes it from the view (`test_night_pings.gd`).
@@ -68,7 +73,8 @@ func before_test() -> void:
 	_held = []
 	_jumps = 0
 	_controller = HumanController.new()
-	var tuning := RulesFixture.tuning()
+	# Two weapons from the start: the swap row needs a second one to swap to.
+	var tuning := RulesFixture.full_hands()
 	tuning.rounds.intro_seconds = INTRO_SECONDS
 	# A round that is on but whose first zombie is minutes away: nothing hurts the player here.
 	tuning.rounds.first_spawn_delay = FAR_OFF
@@ -129,6 +135,8 @@ func _read(action: StringName, c: NightCommand) -> bool:
 			return c.motion.throw_over
 		&"toss_grenade":
 			return c.motion.throw_under
+		&"quick_melee":
+			return c.motion.melee
 	# The look stick turns the camera rig and not the command: `_shown` checks the view turned.
 	return true
 
@@ -159,6 +167,8 @@ func _shown(action: StringName, before: Dictionary) -> bool:
 			return _count_since(&"weapon_equipped", before) > 0
 		&"throw_grenade", &"toss_grenade":
 			return _count_since(&"cook_started", before) > 0
+		&"quick_melee":
+			return _count_since(&"quick_melee", before) > 0
 	return true
 
 
@@ -208,6 +218,12 @@ func _send(event: InputEvent, pressed: bool) -> void:
 	Input.flush_buffered_events()
 
 
+## Ticks to let pass after an action, so the next binding of it meets a night ready for it: the
+## quick melee has a cooldown (0.6 s, 36 ticks) and a press made inside it is, rightly, refused.
+func _after(action: StringName) -> int:
+	return COOLDOWN_TICKS if action == &"quick_melee" else 4
+
+
 ## The events the map binds to `action` that a gamepad sends (`pad`), or a keyboard or a mouse does.
 func _bound(action: StringName, pad: bool) -> Array[InputEvent]:
 	var found: Array[InputEvent] = []
@@ -248,8 +264,8 @@ func _hold(who: String, action: StringName) -> void:
 	)
 
 
-func _let_go() -> void:
-	for _i in 4:
+func _let_go(ticks: int = 4) -> void:
+	for _i in ticks:
 		NightFixture.run(_night, 1, _controller.command(_night.player(), 1))
 
 
@@ -305,7 +321,7 @@ func test_the_keyboard_and_mouse_do_every_action() -> void:
 			_send(event, true)
 			await _hold("keyboard/mouse", row[0])
 			_send(event, false)
-			_let_go()
+			_let_go(_after(row[0]))
 
 
 func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
@@ -316,7 +332,7 @@ func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 			_send(event, true)
 			await _hold("gamepad %d" % PAD, row[0])
 			_send(event, false)
-			_let_go()
+			_let_go(_after(row[0]))
 
 
 func test_the_touch_layer_does_every_action_it_offers() -> void:

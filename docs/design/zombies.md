@@ -92,7 +92,9 @@ draws 120 zombies in 2.4 ms of frame (1080p, RTX 5080) and a server's 60 Hz tick
 The ceiling is the weakest client's in the match: a client says what it is after its welcome, one that says nothing
 counts as a browser, and the rules' cap and the director's hard cap move together. The default curve is unchanged; 100
 and more come from the "Most alive at once" match setting (its slider ends at the host's platform's ceiling) or from the
-intensity multiplier. A server operator can cap a small container with `MAX_ALIVE`.
+intensity multiplier. A game server also cuts each room to its share of an alive budget (`ALIVE_BUDGET`, 120 for the
+whole process: a lone desktop room stands 120, three rooms 40 each), and an operator can cap a small container with
+`MAX_ALIVE`; see the [crowd budget](../research/crowd-budget.md#rooms-in-one-process-561).
 
 ## Boss: the Projectionist
 
@@ -214,3 +216,11 @@ Checked in `game/tests/zombies/test_zombie_lure.gd` (the simulation alone), `gam
 (a flare shot in a night: no damage, a zombie walks to it, the view draws it, the server ends it) and
 `game/tests/weapons/test_combat_special.gd` (the event and the 0 damage). The numbers are in the flare's definition, not
 in the code, so a new lure weapon is a new `.tres`. Findings: [the flare lure](../research/flare-lure.md).
+
+## Finding the last ones: the outline through walls
+
+When a round is down to its last `ZombieTuning.mark_last` zombies (3), counting those still to spawn, every
+player sees them outlined in orange through walls, so a round is never stuck on one zombie in a corner. The
+outline is the silhouette's edge, a few pixels wide at any distance, with a soft glow; the body is not filled. It
+clears when the round ends or a zombie dies. How it is built, what it costs and the choices to retune (colour,
+width, glow, N) are on the [research page](../research/outline.md).

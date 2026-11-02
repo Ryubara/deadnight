@@ -26,6 +26,9 @@ var trigger_down := false
 ## Seconds left of a press made before the body faced the view (`hip_fire_buffer`): the shot it
 ## asked for leaves the moment the body is there. Zero when nothing waits.
 var shot_buffer := 0.0
+## The same for the quick melee button: a press made before the body faced the view waits here
+## (`hip_fire_buffer`) and the blow leaves the moment it does.
+var melee_buffer := 0.0
 ## +1 camera over the right shoulder, -1 over the left.
 var shoulder_side := 1.0
 var view_yaw := 0.0
@@ -41,6 +44,9 @@ var step_settle := 0.0
 ## and the body faces the view within `hip_fire_align_degrees`, or the aim button is down. The
 ## server shoots on this, never on the trigger alone (#477).
 var shot_ready := false
+## The quick melee the button asks for may leave this tick (a press, buffered until the body faces
+## the view within `hip_fire_align_degrees`). The server swings on this (#411).
+var melee_ready := false
 ## How far the body is from facing the view after this tick's turn, radians, 0 to pi.
 var view_error := 0.0
 var jumped := false

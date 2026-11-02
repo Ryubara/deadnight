@@ -298,12 +298,38 @@ def build(arm):
         keys = [(0, target), (6, blend(target, idle_mid, 0.55)), (10, idle_mid)]
         write(arm, f"Unequip_{cls}", keys, up, "upper", False, cls, {"weapon_hidden": 8})
 
+    strikes(arm, {"Rifle": aim, "Shotgun": aim, "Pistol": pistol, "Melee": ready}, up)
     grenade(arm, up, idle, idle_mid, aim)
     repair(arm, up, aim)
     aim_moves(arm, acts, aim, every)
     revive(arm, acts)
     sprint_carries(arm, acts, aim, up)
     return CLIPS
+
+
+# The quick melee (#411): one blow for every weapon, a short club-like bash with whatever is in the hands. The motion
+# is the same for each class; `arm` is how much of it the right arm does on its own (a gun in two hands is mostly
+# the spine, which carries both hands and the weapon, so the left hand stays on the fore-end; one hand holds a
+# pistol, a bat or an axe and swings freely). 13 frames, under the quick melee's cooldown (0.6 s).
+STRIKE = {"Rifle": 0.45, "Shotgun": 0.45, "Pistol": 0.9, "Melee": 1.0}
+STRIKE_EVENTS = {"whoosh": 3, "hit": 6, "can_strike_again": 13}
+
+
+def strikes(arm, bases, up):
+    """Strike_Rifle, Strike_Shotgun, Strike_Pistol and Strike_Melee, each from its class's aim pose."""
+    for cls, base in bases.items():
+        k = STRIKE[cls]
+        windup = offset(
+            base, UpperArm_R=(35 * k, 0, 0), LowerArm_R=(0, 0, 25 * k), Torso=(-8, 14, 0), Abdomen=(-2, 6, 0)
+        )
+        strike = offset(
+            base, UpperArm_R=(-15 * k, 0, 0), LowerArm_R=(0, 0, -15 * k), Torso=(15, -11, 0), Abdomen=(5, -5, 0)
+        )
+        follow = offset(
+            base, UpperArm_R=(-22 * k, 0, 0), LowerArm_R=(0, 0, -18 * k), Torso=(19, -15, 0), Abdomen=(6, -7, 0)
+        )
+        keys = [(0, base), (3, windup), (6, strike), (8, follow), (13, base)]
+        write(arm, f"Strike_{cls}", keys, up, "upper", False, cls, dict(STRIKE_EVENTS))  # fmt: skip
 
 
 # The grenade is held on the same bone as every weapon, so the projectile leaves from there at `release`.
@@ -723,19 +749,31 @@ SPRINT_CLASSES = ("Rifle", "Shotgun", "Pistol", "Melee")
 SPRINT_LOW = (5, 14)
 # The frame of Run whose chest is the reference for the carry targets below (Torso turned least: 1 degree).
 SPRINT_REF = 4
-# The two-handed carry, per class, in the frame of the chest at SPRINT_REF (the Soldier faces -Y, his right is -X):
-# the way the right upper arm hangs from the shoulder, the way the muzzle points and the top of the gun faces (the
-# grip follows: the kit hold puts it 0.62 m out along the forearm), how far the gun swings across with the chest
-# (degrees each way, on top of Run's own chest twist of 9 degrees each way), and how far it dips a frame after each
-# footfall (degrees the muzzle drops). The support point is the left hand's place on the fore-end: the hold's
-# `support` (game/gameplay/player/holds/<class>.tres, model units) times its `model_scale`, so the left hand meets
-# the weapon the game draws.
+# The two-handed carry, per class: the weapon's pose, in the world's axes at SPRINT_REF (the Soldier faces -Y, his
+# right is -X), turned with the chest: where its grip is from the waist (the Torso bone's head, metres), the way the
+# muzzle points and the top of the gun faces, how far it swings across with the chest (degrees each way, on top of
+# Run's own chest twist of 9 degrees each way), and how far it dips a frame after each footfall (degrees the muzzle
+# drops). Both hands reach the weapon there by two-bone IK, as WeaponHandsIK does while aiming (Deadnight #527): the
+# right hand bone turned so the weapon, through its solved grip (`HandGrip.hold` in grips/<model>.tres, at the hold's
+# `model_scale`; `hold` names the hold file, game/gameplay/player/holds/<hold>.tres), points that way and its grip
+# lands on the point; the left hand bone on the grip's `left_hand` point of that weapon, turned the same way. A carry
+# built the other way (the forearm fixed, the weapon wherever the hand's hold put it) moved with every new grip: with
+# #507's grips the gun hung by the right leg and the left hand missed the fore-end by 0.2 m.
 SPRINT_CARRY = {
-    "Rifle": {"upper": (-0.35, -0.05, -1.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
-              "swing": 6.0, "dip": 4.0, "support": (-0.45 * 0.71, -0.05 * 0.71)},
-    "Shotgun": {"upper": (-0.35, -0.05, -1.0), "muzzle": (0.85, -0.52, 0.4), "top": (-0.3, 0.2, 1.0),
-                "swing": 7.0, "dip": 5.0, "support": (-0.45 * 0.82, -0.03 * 0.82)},
+    "Rifle": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+              "swing": 6.0, "dip": 4.0, "hold": "rifle"},
+    "Shotgun": {"grip": (0.1, -0.33, -0.03), "muzzle": (0.85, -0.52, 0.4), "top": (-0.3, 0.2, 1.0),
+                "swing": 7.0, "dip": 5.0, "hold": "shotgun"},
+    # A weapon whose grip turns it in the hand far from its class's (the Tommy gun's pistol grip stands 90 degrees
+    # off the lever rifle's wrist) gets its own carry, `Sprint_<model>`, the same pose through its own grip:
+    # SprintCarry.clip_for picks it for that model and the class's for the rest.
+    "tommy_gun": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+                  "swing": 6.0, "dip": 4.0, "hold": "smg", "class": "Rifle"},
 }  # fmt: skip
+# The carries of single models, after the class ones (named Sprint_<model>).
+SPRINT_MODELS = tuple(k for k, c in SPRINT_CARRY.items() if "class" in c)
+# The game's data the carries are built against (the hold and grip files).
+GAME = Path(__file__).resolve().parents[2] / "game"
 # Pistol: Run_Gun's right arm (the kit's own one-handed gun run: the forearm pumps 46 degrees a stride), with the upper
 # arm swinging this share of the left arm's swing, half a stride later, so the gun hand swings at the side too.
 SPRINT_PISTOL_SWING = 0.35
@@ -828,18 +866,49 @@ def _frame(muzzle, top):
     return Matrix((m, t, m.cross(t))).transposed()
 
 
-def _gun_basis(obj):
-    """World basis of a held kit gun: its local axis that points most ahead (-Y) in the gun hold is the muzzle, the
-    one of the others that points most up is the top."""
-    r = _rot(obj.matrix_world)
-    axes = [s * r.col[i] for i in range(3) for s in (1, -1)]
-    muzzle = max(axes, key=lambda a: -a.y)
-    top = max((a for a in axes if abs(a.dot(muzzle)) < 0.5), key=lambda a: a.z)
-    return _frame(muzzle, top)
-
-
 def _phase(f, n):
     return 2 * math.pi * f / n
+
+
+def _tres(path):
+    """The `key = value` lines of a Godot .tres resource, values as written."""
+    return dict(re.findall(r"^(\w+) = (.+)$", path.read_text(encoding="utf-8"), re.MULTILINE))
+
+
+def _transform(text):
+    """A Godot `Transform3D(...)` as a 4x4 matrix: the basis written row by row, then the origin."""
+    v = [float(x) for x in text[text.index("(") + 1 : text.rindex(")")].split(",")]
+    return Matrix.Translation(v[9:12]) @ Matrix((v[0:3], v[3:6], v[6:9])).to_4x4()
+
+
+def game_grip(hold):
+    """(weapon, left) for the hold file `hold`: the weapon node's transform under the hand bone (the grip's `hold`
+    scaled by the hold's `model_scale`: `hold.scaled_local(Vector3.ONE * model_scale)` in PlayerAnimation) and the
+    left hand bone's transform on the weapon (`HandGrip.left_hand`, in the model's own space).
+
+    Godot's bones are Blender's pose bones with the same local axes (the exporter only turns the world to Y up:
+    measured on soldier.glb, every node's world rotation is the pose bone's, turned from Z up to Y up), so a bone's
+    world matrix here times these is where the game draws the weapon and puts the left hand."""
+    h = _tres(GAME / "gameplay/player/holds" / f"{hold}.tres")
+    scale = float(h["model_scale"])
+    model = Path(h["scene"].strip('"')).stem
+    g = _tres(GAME / "gameplay/player/grips" / f"{model}.tres")
+    assert abs(float(g["model_scale"]) - scale) < 1e-6, f"grips/{model}.tres was solved at another size: solve again"
+    assert g.get("has_left") == "true", f"grips/{model}.tres has no left hand"
+    return _transform(g["hold"]) @ Matrix.Scale(scale, 4), _transform(g["left_hand"])
+
+
+def _bone_matrix(arm, bone):
+    """A pose bone's world matrix, rotation orthonormal and head in metres."""
+    r, head = _world(arm, bone)
+    return Matrix.Translation(head) @ r.to_4x4()
+
+
+def _weapon_frame(weapon):
+    """The basis of a weapon placed at `weapon` (a world matrix of the model): the model's muzzle is its -X, its top
+    +Y (the hold's `muzzle`, Godot's model axes), in the columns of `_frame`."""
+    m = weapon.to_3x3()
+    return _frame(-m.col[0], m.col[1])
 
 
 def sprint_carries(arm, acts, aim, up):
@@ -863,19 +932,19 @@ def sprint_carries(arm, acts, aim, up):
             p[b] = {"rot": aim[b]["rot"].copy(), "loc": aim[b]["loc"].copy()}
         return p
 
-    # The gun hold's right arm and gun: every carry target is turned from it.
-    _pose_arm(arm, aim)
-    rl_aim, elbow_aim = _world(arm, "LowerArm.R")
-    gun = _held("Shotgun")
-    gun_aim = _gun_basis(gun) if gun else _frame((0, -1, 0.3), (0, 0, 1))
-    grip_at = gun.matrix_world.translation if gun else _world(arm, "Index1.R")[1]
-    grip_local = rl_aim.inverted() @ (grip_at - elbow_aim)
     _pose_arm(arm, base(SPRINT_REF))
     t_ref, _ = _world(arm, "Torso")
 
     report = {}
     for cls, c in SPRINT_CARRY.items():
-        keys, grips, left = [], [], 0.0
+        # The class's weapon in the gun hold's right hand, through its solved grip: the hand's turn for the carry is
+        # worked out from it, the way WeaponHandsIK works the hand out from the weapon's pose.
+        weapon, left_hand = game_grip(c["hold"])
+        _pose_arm(arm, aim)
+        hand_aim = _world(arm, "Index1.R")[0]
+        gun_aim = _weapon_frame(_bone_matrix(arm, "Index1.R") @ weapon)
+        keys, grips = [], []
+        miss, turned = {"R": 0.0, "L": 0.0}, {"R": 0.0, "L": 0.0}
         for f in range(n + 1):
             phase = _phase(f % n, n)
             start = base(f % n)
@@ -887,26 +956,35 @@ def sprint_carries(arm, acts, aim, up):
             swing = Matrix.Rotation(math.radians(c["swing"]) * math.cos(phase), 3, "Z")
             dip = c["dip"] * (math.cos(_phase(f - SPRINT_LOW[0], n / 2)) * 0.5 + 0.5)
             side = (follow @ Vector((1, 0, 0))).normalized()
-            # The muzzle pitches down by the dip (about the chest's side axis), the rest of the gun with it.
-            want = Matrix.Rotation(math.radians(dip), 3, side) @ swing @ follow @ _frame(c["muzzle"], c["top"])
-            rl = want @ gun_aim.inverted() @ rl_aim
-            shoulder = _world(arm, "UpperArm.R")[1]
-            lu = (_world(arm, "LowerArm.R")[1] - shoulder).length
-            hang = swing @ follow @ Vector(c["upper"]).normalized()
-            _turn(arm, "UpperArm.R", _world(arm, "LowerArm.R")[1] - shoulder, hang * lu)
-            _set_world_rot(arm, "LowerArm.R", rl)
-            r_now, e_now = _world(arm, "LowerArm.R")
-            reached = e_now + r_now @ grip_local
-            grips.append(t.inverted() @ (reached - waist))
-            # The left hand on the fore-end: the hold's support point along the barrel, a little under it.
-            sup = reached + want.col[0] * -c["support"][0] + want.col[1] * c["support"][1]
-            side = (_world(arm, "UpperArm.L")[1] - shoulder).normalized()
-            pole = side * 0.45 + Vector((0, 0, -1))
-            left = max(left, _reach(arm, ("UpperArm.L", "LowerArm.L", "Index1.L"), sup, pole, back=0.07))
+            # The muzzle pitches down by the dip (about the chest's side axis), the rest of the gun with it, about
+            # the grip.
+            turn_by = swing @ follow
+            want = Matrix.Rotation(math.radians(dip), 3, side) @ turn_by @ _frame(c["muzzle"], c["top"])
+            grip = waist + turn_by @ Vector(c["grip"])
+            # The right hand on the grip: turned so the weapon points where `want` says, its bone where the grip's
+            # hold then puts it.
+            hand = want @ gun_aim.inverted() @ hand_aim
+            right_shoulder, left_shoulder = _world(arm, "UpperArm.R")[1], _world(arm, "UpperArm.L")[1]
+            out = (right_shoulder - left_shoulder).normalized() * 0.45
+            goal = grip - hand @ weapon.translation
+            miss["R"] = max(miss["R"], _reach(arm, ("UpperArm.R", "LowerArm.R", "Index1.R"), goal,
+                                              out + Vector((0, 0, -1))))  # fmt: skip
+            _set_world_rot(arm, "Index1.R", hand)
+            grips.append(turn_by.inverted() @ (grip - waist))
+            # The left hand on the fore-end where the grip puts it on the weapon the game draws, turned to hold it
+            # (WeaponHandsIK does the same while aiming: the hand bone's head on the point, its basis the grip's).
+            hold = _bone_matrix(arm, "Index1.R") @ weapon @ left_hand
+            miss["L"] = max(miss["L"], _reach(arm, ("UpperArm.L", "LowerArm.L", "Index1.L"), hold.translation,
+                                              -out + Vector((0, 0, -1))))  # fmt: skip
+            _set_world_rot(arm, "Index1.L", hold.to_3x3().normalized())
+            # How far each wrist is turned off the kit's own two-handed hold (Idle_Shoot), in degrees.
+            for s in "RL":
+                q = arm.pose.bones[f"Index1.{s}"].rotation_quaternion.rotation_difference(aim[f"Index1.{s}"]["rot"])
+                turned[s] = max(turned[s], math.degrees(q.angle))
             keys.append((f, _read_pose(arm, start)))
-        write(arm, f"Sprint_{cls}", keys, up, "upper", True, cls)
-        mid = sum(grips, Vector()) / len(grips)
-        report[cls] = {"grip from the waist": tuple(round(v, 2) for v in mid), "left hand miss": round(left, 3)}
+        write(arm, f"Sprint_{cls}", keys, up, "upper", True, c.get("class", cls))
+        report[cls] = {"hand miss (m)": {k: round(v, 3) for k, v in miss.items()},
+                       "wrist turn off the aim hold (deg)": {k: round(v, 1) for k, v in turned.items()}}  # fmt: skip
 
     # Pistol: Run_Gun's right arm, its upper arm swinging with the stride too (the left arm's swing, half a stride on).
     left_arm = [full(arm, sample(run, f))["UpperArm.L"]["rot"] for f in range(n)]
@@ -951,4 +1029,4 @@ def sprint_carries(arm, acts, aim, up):
         _set_world_rot(arm, "LowerArm.R", Matrix.Rotation(roll, 3, axis) @ r)
         keys.append((f, _read_pose(arm, start)))
     write(arm, "Sprint_Melee", keys, up, "upper", True, "Melee")
-    print("SPRINT", {k: CLIPS[f"Sprint_{k}"]["frames"] for k in SPRINT_CLASSES}, report)
+    print("SPRINT", {k: CLIPS[f"Sprint_{k}"]["frames"] for k in (*SPRINT_CLASSES, *SPRINT_MODELS)}, report)

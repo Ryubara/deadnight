@@ -61,6 +61,12 @@ static func snapshot(top: Control) -> Dictionary:
 		"players": 0,
 		"player_id": 0,
 		"rtt_ms": -1.0,
+		"body_x": 0.0,
+		"body_z": 0.0,
+		"server_x": 0.0,
+		"server_z": 0.0,
+		"stalls": 0,
+		"stall_longest_ms": 0.0,
 		"yaw": 0.0,
 		"interpolated": false,
 		"room_code": "",
@@ -76,6 +82,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"notice_log": "",
 		"touch": false,
 		"reticle": false,
+		"settings_open": false,
+		"menu_buttons": "",
 		"tab": "",
 		"stage": "",
 		"quick_join": "",
@@ -84,13 +92,21 @@ static func snapshot(top: Control) -> Dictionary:
 		"activity_code": "",
 		"controller_hint": false,
 		"clipboard": "",
-		"clipboard_detail": ""
+		"clipboard_detail": "",
+		"focus": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
+	if top.is_inside_tree():
+		# The control that has the keyboard, so a browser test walks to a button by its name (a
+		# button's inner control has no name of its own: the nearest ancestor that has one).
+		var focus: Node = top.get_viewport().gui_get_focus_owner()
+		while focus != null and String(focus.name).begins_with("@"):
+			focus = focus.get_parent()
+		data["focus"] = String(focus.name) if focus != null else ""
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
-	var clipboard := WebClipboard.read()  # inside a frame only: what copy and paste can do there
+	var clipboard := WebClipboard.read()  # what the page layer saw of copy and paste
 	data["clipboard"] = WebClipboard.note(clipboard)
 	data["clipboard_detail"] = WebClipboard.detail(clipboard)
 	var room := ActivityRoom.current
@@ -155,6 +171,8 @@ static func snapshot(top: Control) -> Dictionary:
 		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
+	data["settings_open"] = night_screen.settings_open()
+	data["menu_buttons"] = _button_spots(night_screen)
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
@@ -164,4 +182,31 @@ static func snapshot(top: Control) -> Dictionary:
 	var link := night_screen.night.link as WebSocketLink
 	if link != null:
 		data["rtt_ms"] = link.rtt_ms
+	if night_screen.night.remote:
+		# Online: where this client's own body is and where the server has the player, and the
+		# freezes of the page the client noticed, so a browser test can stall the page and see the
+		# body come back (`tools/web_smoke/freeze.py`).
+		var body := night_screen.night.player()
+		if body != null:
+			data["body_x"] = body.state.position.x
+			data["body_z"] = body.state.position.z
+		if state.has_frame() and not state.me().is_empty():
+			data["server_x"] = state.position().x
+			data["server_z"] = state.position().z
+		data["stalls"] = night_screen.night.stalls.stalls
+		data["stall_longest_ms"] = night_screen.night.stalls.longest_ms
 	return data
+
+
+## Where the night's menu buttons are, as `Text:x,y` with x and y a fraction of the window (0 to 1),
+## so a browser test taps them without knowing the layout.
+static func _button_spots(screen: NightScreen) -> String:
+	if not screen.is_inside_tree():
+		return ""
+	var size := screen.get_viewport().get_visible_rect().size
+	var spots: Array[String] = []
+	for button: UIButton in screen.find_children("*", "UIButton", true, false):
+		if button.is_visible_in_tree():
+			var at := button.get_global_rect().get_center() / size
+			spots.append("%s:%.4f,%.4f" % [button.text, at.x, at.y])
+	return "|".join(spots)

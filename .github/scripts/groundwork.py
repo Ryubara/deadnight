@@ -1057,12 +1057,19 @@ def cmd_check_message(conv: dict[str, Any], args: argparse.Namespace) -> int:
     return _report(commit_problems(conv, stored_message(_read(args.message))), "commit message")
 
 
+def _has_ref(name: str) -> bool:
+    """True when git knows the ref `name`."""
+    return subprocess.run(["git", "rev-parse", "--verify", "--quiet", name], capture_output=True).returncode == 0
+
+
 def cmd_check_push(conv: dict[str, Any], args: argparse.Namespace) -> int:
     """The `pre-push` hook: every commit about to leave the machine, merges included, judged as CI will judge it. The
     range comes from pre-commit's environment (`PRE_COMMIT_FROM_REF..PRE_COMMIT_TO_REF`) or `--range`."""
     to_ref = os.environ.get("PRE_COMMIT_TO_REF", "")
     from_ref = os.environ.get("PRE_COMMIT_FROM_REF", "")
     rng = args.range or (f"{from_ref}..{to_ref}" if from_ref and to_ref else f"{to_ref} --not --remotes")
+    if not args.range and from_ref and _has_ref("origin/main"):
+        rng += " --not origin/main"  # the commits a merge of main brings are main's, already judged and squashed
     if not args.range and (not to_ref or set(to_ref) == {"0"}):  # a branch deletion, or git gave no range
         return _report([], "push")
     problems = []

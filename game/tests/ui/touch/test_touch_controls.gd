@@ -278,6 +278,20 @@ func test_a_menu_up_hides_the_layer_lets_go_and_gives_the_mouse_emulation_back()
 	assert_bool(_fixture.controls.is_active()).is_true()
 
 
+func test_freeing_the_fixture_lets_go_of_a_mouse_button_a_finger_left_down() -> void:
+	# A finger down on a layer that is off is the engine's emulated left mouse button, and a test
+	# can end with the finger still down: the night's trigger of a later suite would read it
+	# (`test_night_pad_pause`, when it ran after this suite).
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	Input.parse_input_event(press)
+	Input.flush_buffered_events()
+	assert_bool(Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)).is_true()
+	_fixture.free_all()
+	assert_bool(Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)).is_false()
+
+
 func test_held_upright_the_layer_waits_for_landscape() -> void:
 	_fixture.free_all()
 	_fixture = TouchFixture.make(self, Vector2(1080.0, 1920.0))

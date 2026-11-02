@@ -99,7 +99,7 @@ func test_a_crowbar_in_hand_says_there_is_nothing_to_re_cut() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	night.server.combat.apply(CombatAction.equip(1, &"crowbar"))
+	night.server.combat.apply(CombatAction.give_weapon(1, &"crowbar"))
 	_stand_at(night, &"upgrade")
 	assert_str(hud.state.prompt["detail"]).is_equal("NOTHING TO RE-CUT IN YOUR HAND")
 	_finish(night, hud)

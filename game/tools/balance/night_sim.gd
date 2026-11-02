@@ -225,7 +225,7 @@ func _mend(player: SimPlayer, engaged: Dictionary) -> void:
 
 
 ## The weapon in hand: a carried one, or the knife when no melee weapon is carried and the firearms
-## are dry (the always-available blow, the crowbar's numbers until quick melee has its own, #411).
+## are dry (the always-available blow: the quick melee's own numbers, #411).
 func _held_arm(player: SimPlayer) -> SimArm:
 	return player.arms.get(player.weapon, player.knife)
 
@@ -711,15 +711,16 @@ func _weakest(player: SimPlayer) -> StringName:
 	return weakest
 
 
-## Whether a weapon (a shop id) is worth taking: a free hand takes anything, full hands only a
-## weapon worth more than the one they would give up.
+## Whether a weapon (a shop id) is worth taking: it must be worth more than what it would put
+## away. Full hands give up the weakest weapon carried; a free hand is worth the quick melee (#411),
+## the blow every player has, so a weapon that does less than that is not worth a slot or a price.
 func _worth_taking(player: SimPlayer, shop_id: StringName) -> bool:
-	if player.arms.size() < WeaponCatalog.CARRY_LIMIT:
-		return true
-	var weakest: SimArm = player.arms[_weakest(player)]
+	var given_up := player.knife
+	if player.arms.size() >= WeaponCatalog.CARRY_LIMIT:
+		given_up = player.arms[_weakest(player)]
 	return (
 		SimWeapons.worth_of(SimWeapons.def(shop_id), _health())
-		> SimWeapons.worth_of(weakest.def(), _health()) * REPLACE_GAIN
+		> SimWeapons.worth_of(given_up.def(), _health()) * REPLACE_GAIN
 	)
 
 
@@ -796,11 +797,11 @@ class SimPlayer:
 	## Bled out: down until the round ends.
 	var dead: bool = false
 	var weapon: StringName = &"pistol"
-	## Every weapon carried (catalogue id to its magazine and reserve), the crowbar included.
+	## Every weapon carried (catalogue id to its magazine and reserve).
 	var arms: Dictionary[StringName, SimArm] = {}
 	## The blow every player has whatever they carry.
-	var knife: SimArm = SimArm.of(&"crowbar")
-	## Ran out of every firearm this round and fought with the crowbar.
+	var knife: SimArm = SimArm.of(WeaponCatalog.QUICK_MELEE)
+	## Ran out of every firearm this round and fought with the quick melee.
 	var dry: bool = false
 	## Shot time banked toward the next trigger pull, in seconds.
 	var carry: float = 0.0

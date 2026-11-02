@@ -29,6 +29,9 @@ var swap := false
 var use := false
 ## Whether a melee swing may be made (false inside a pack the bot is not forced to fight).
 var melee_ok := true
+## Whether a bot with no round left (and no melee weapon in hand) may use the quick melee on the
+## zombie it faces: the blow every player has, the dry bot's last resort (#411).
+var quick_melee_ok := false
 ## A grenade to throw, or nothing: the style (`over` or `under`), the view to throw along, and the
 ## clock when it was ordered. The motor turns, pulls the pin when the view is there, and lets go.
 var throw_style: StringName = &""

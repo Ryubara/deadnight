@@ -89,6 +89,19 @@ func free_all() -> void:
 	UIInputMode.reset()
 	for action in ACTIONS:
 		Input.action_release(action)
+	# A finger still down made the engine's emulated left mouse button: the Input singleton holds it
+	# for every suite after this one (the night's trigger reads it), until something lets it go.
+	_release_mouse()
+
+
+static func _release_mouse() -> void:
+	for button in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
+		if Input.is_mouse_button_pressed(button):
+			var event := InputEventMouseButton.new()
+			event.button_index = button
+			event.pressed = false
+			Input.parse_input_event(event)
+	Input.flush_buffered_events()
 
 
 ## The centre of a button, in canvas units.

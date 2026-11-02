@@ -9,8 +9,8 @@ and this run, in the CI `web` job, fails on the change instead of a probe failin
 2. Play together, and back (`rooms.py`, `online.py`, `activity.py`)
 3. settings, and back (`resolution_scale.py`)
 4. Solo: a running night (`smoke.py`, `judder.py` and so `flash.py` and `hip_fire.py`, `first_use.py`, `skin_tour.py`,
-   `touch_look.py`, `resolution_scale.py`)
-5. a second page with `?dev`: Play together, then its server address button: the join screen (`online.py`)
+   `touch_look.py`, `resolution_scale.py`, `flare_first.py`)
+5. a second page with `?dev`: Play together, then its server address button: the join screen (`online.py`, `freeze.py`)
 6. on that page, pointed at a backend that is not there: Quick join on the main menu opens its card (and never the Play
    together screen), the card ends in the network text, and Esc closes it (`quick_join.py`)
 

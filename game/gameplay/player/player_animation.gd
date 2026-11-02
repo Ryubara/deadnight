@@ -115,13 +115,9 @@ const AIM_RATE_PARAMETER := &"parameters/body/locomotion/aim_rate/scale"
 const AIM_BLEND_PARAMETER := &"parameters/body/locomotion/aim_blend/blend_amount"
 ## The sprint carry (#459): an upper-body loop per class on the kit Run's 17 frames, built into its
 ## own file (docs/design/animation.md, Sprint carry) and added to the Soldier's library. It is
-## seeked to the Run clip's place every frame, so the two never drift apart.
+## seeked to the Run clip's place every frame, so the two never drift apart (names: SprintCarry).
 const SPRINT_GLB := "res://assets/characters/soldier/sprint/soldier_sprint.glb"
 const SPRINT_SPEC := "res://assets/characters/soldier/sprint/clips.json"
-const SPRINT_PREFIX := "Sprint_"
-const SPRINT_CLIPS: Array[StringName] = [
-	&"Sprint_Rifle", &"Sprint_Shotgun", &"Sprint_Pistol", &"Sprint_Melee"
-]
 const CARRY_BLEND_PARAMETER := &"parameters/carry/blend_amount"
 const CARRY_SEEK_PARAMETER := &"parameters/carry_seek/seek_request"
 const RUN_POSITION_PARAMETER := &"parameters/body/locomotion/move/run/current_position"
@@ -240,7 +236,8 @@ func _ready() -> void:
 		library, _spec, AIM_MOVE_GLB, AIM_MOVE_SPEC, AIM_MOVES.keys()
 	)
 	_aim_move_speed = aim_moves["clips"]["Walk_Shoot"]["ground_speed"]
-	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SPRINT_CLIPS)
+	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SprintCarry.CLIPS)
+	SoldierClipFile.add(library, _spec, QuickStrike.GLB, QuickStrike.SPEC, QuickStrike.CLIPS)
 	var revive_specs := DownedPose.add_clips(anim_player)
 	_spec["clips"].merge(revive_specs)
 	if revive_specs.has(String(DownedPose.CRAWL_CLIP)):
@@ -474,6 +471,16 @@ func play_action(action: StringName) -> bool:
 	return played
 
 
+## The quick melee's blow (`quick_melee`): the class's `Strike_` clip, the arms its own at once.
+func strike() -> bool:
+	var played := play_action(&"Strike")
+	if played:
+		_shoulder_blend = 0.0
+		_hands.influence = 0.0
+		_hands.active = false
+	return played
+
+
 ## The Soldier's side of a grenade, by the server's events. `&"cook"` (`cook_started`): the pin is
 ## out, the cook clip plays and the gun goes down. `&"throw"` (`throw_started`, the button came up):
 ## the throw clip, or for the short underarm toss the toss clip (`underarm` is the event's own
@@ -663,7 +670,7 @@ func shoulder_blend() -> float:
 func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
-	_carry_node.animation = StringName(SPRINT_PREFIX + String(new_class))
+	_carry_node.animation = SprintCarry.clip_for(new_class, hold)
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
@@ -720,8 +727,11 @@ func _advance_grip(delta: float) -> void:
 	if absf(_grip_blend - target) < 0.001:
 		_grip_blend = target
 	_fingers.right_weight = _grip_blend
-	var left := grip == _weapon_grip and grip != null and grip.has_left and _hands.active
-	_fingers.left_weight = _shoulder_blend if left else 0.0
+	var left := grip == _weapon_grip and grip != null and grip.has_left
+	# The left hand is on the weapon by the arms' IK (the shouldered pose) or by the sprint carry,
+	# whose two-handed clips put it on the grip's `left_hand` (#527).
+	var on := _shoulder_blend if _hands.active else 0.0
+	_fingers.left_weight = maxf(on, smoothstep(0.0, 1.0, _carry.weight)) if left else 0.0
 
 
 ## The muzzle point of a hold: at its `muzzle` (the model's units), turned so `-Z` runs out of the
