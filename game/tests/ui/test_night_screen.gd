@@ -133,3 +133,17 @@ func test_the_way_out_returns_to_the_menu() -> void:
 			candidate.pressed.emit()
 	await UIRouter.idle
 	assert_object(UIRouter.top()).is_instanceof(MainMenu)
+
+
+func test_a_night_keeps_challenges_only_where_the_game_asks_it_to() -> void:
+	var screen := await _enter_night()
+	assert_object(screen.night.challenge_board).is_null()
+	await _leave(screen)
+	var path := ChallengeFixture.save_path("screen")
+	NightScreen.challenge_path = path
+	screen = await _enter_night()
+	NightScreen.challenge_path = ""
+	assert_object(screen.night.challenge_board).is_not_null()
+	assert_str(screen.night.challenge_board.path).is_equal(path)
+	assert_object(screen.night.challenges).is_not_null()
+	await _leave(screen)

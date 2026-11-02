@@ -18,6 +18,7 @@ func _ready() -> void:
 	if args.has("server"):
 		_serve(args)
 		return
+	NightScreen.challenge_path = ChallengeSave.DEFAULT_PATH
 	if args.has("look"):
 		NightScreen.own_look = NightScreen.look_from_flag(args.get_string("look"))
 	add_child(WebProbe.new())
