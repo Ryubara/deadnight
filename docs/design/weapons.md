@@ -37,8 +37,9 @@ The server decides every hit. The client shows the shot at once and the server's
 - **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
   `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
   so a travelling shot is always a real body with its own flight, not a drawn line. In the night `NightView` draws
-  each one as a `ProjectileView` (a hot core, a halo, a flickering warm light and a short spark trail), flown with the
-  server's `ProjectileState` against the walls and ended by the burst (a spark and a flash).
+  each one as a `ProjectileView` (a hot core, a flickering halo and a short spark trail), flown with the server's
+  `ProjectileState` against the walls and ended by the burst (a spark and a flash). It makes no light: the lot's light
+  cap leaves room for a flash and a blast only (`test_lot_light_cap`).
 - **`MELEE`** (crowbar): a sweep from the player's head (not the shoulder camera), a swing on the Soldier, a spark on a
   hit; no muzzle flash, no streak, no impact puff.
 

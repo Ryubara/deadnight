@@ -1,7 +1,7 @@
 class_name ProjectileView
 extends Node3D
-## What a flare (or any projectile weapon's shot) in flight looks like: a hot core, a soft halo, a
-## flickering warm light and a short trail of fading sparks. It follows a `ProjectileState`, the
+## What a flare (or any projectile weapon's shot) in flight looks like: a hot core, a flickering
+## soft halo and a short trail of fading sparks. It follows a `ProjectileState`, the
 ## client's copy of the server's shot, and decides nothing: the server's `projectile_burst` ends it.
 
 ## The core is drawn this many times the shot's hit radius, so it reads from the shoulder camera.
@@ -10,9 +10,9 @@ const HALO_SCALE := 3.5
 const HALO_ALPHA := 0.28
 const CORE_COLOUR := Color(1.0, 0.82, 0.55)
 const HALO_COLOUR := Color(1.0, 0.45, 0.18)
-const LIGHT_ENERGY := 2.2
-const LIGHT_RANGE := 7.0
-## The light's flicker: a sum of two sines of the shot's age, so it is the same every run.
+## The halo's flicker: a product of two sines of the shot's age, so it is the same every run. It
+## lights nothing: a light per flare would take a third slot on the meshes a fight already gives
+## a flash and a blast (`test_lot_light_cap`).
 const FLICKER_DEPTH := 0.3
 const FLICKER_RATE_A := 31.0
 const FLICKER_RATE_B := 47.0
@@ -22,28 +22,24 @@ const TRAIL_RADIUS := 0.05
 
 var state: ProjectileState
 
-var _light: OmniLight3D
+var _halo: MeshInstance3D
 var _steps := 0
 
 
 func _ready() -> void:
 	var radius := state.def.projectile_radius
 	add_child(_ball(radius * CORE_SCALE, CORE_COLOUR, 1.0))
-	add_child(_ball(radius * HALO_SCALE, HALO_COLOUR, HALO_ALPHA))
-	_light = OmniLight3D.new()
-	_light.light_color = HALO_COLOUR
-	_light.light_energy = LIGHT_ENERGY
-	_light.omni_range = LIGHT_RANGE
-	add_child(_light)
+	_halo = _ball(radius * HALO_SCALE, HALO_COLOUR, HALO_ALPHA)
+	add_child(_halo)
 	follow()
 
 
-## Moves to where the state is and flickers the light, for one step.
+## Moves to where the state is and flickers the halo, for one step.
 func follow() -> void:
 	position = state.position
 	_steps += 1
 	var flicker := sin(state.age * FLICKER_RATE_A) * sin(state.age * FLICKER_RATE_B)
-	_light.light_energy = LIGHT_ENERGY * (1.0 - FLICKER_DEPTH * (flicker * 0.5 + 0.5))
+	_halo.scale = Vector3.ONE * (1.0 - FLICKER_DEPTH * (flicker * 0.5 + 0.5))
 	if _steps % TRAIL_EVERY == 0:
 		_drop_trail_dot()
 
