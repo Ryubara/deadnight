@@ -1,6 +1,7 @@
 """Plays a loud night's worth of voices in the web build, in a browser, and listens to what comes out.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/audio_load.py build/web build/audio-load \
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/audio_load.py build/web build/audio-load \
         [--playback sample|stream] [--gpu]
 
 Runs `res://tools/web_audio_load/web_audio_load.tscn` (a copy of the export's page with that scene as the program's
