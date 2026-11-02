@@ -317,10 +317,6 @@ func _add_sounds() -> void:
 	grenades.name = "GrenadeSounds"
 	add_child(grenades)
 	grenades.setup(state)
-	var feet := FootstepSounds.new()
-	feet.name = "FootstepSounds"
-	add_child(feet)
-	feet.setup(state, _body_of, SEED)
 	var lot := WorldSounds.new()
 	lot.name = "WorldSounds"
 	add_child(lot)

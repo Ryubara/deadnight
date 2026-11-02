@@ -6,6 +6,8 @@ extends GdUnitTestSuite
 const OWN := Night.PLAYER_ID
 const OTHER := 2
 const STRIDE := 1.9
+## Where the yard's ground is clear of the generator and the cages, from its first slab's centre.
+const YARD_OPEN_GROUND := Vector3(-7.0, 0.3, 4.0)
 
 var _steps: Array[Dictionary] = []
 var _start_point := Vector3.ZERO
@@ -33,7 +35,7 @@ func _start() -> Night:
 
 
 func _feet(night: Night) -> FootstepSounds:
-	return night.get_node("FootstepSounds") as FootstepSounds
+	return night.view.sounds.get_node("FootstepSounds") as FootstepSounds
 
 
 func _walk(sprint := false, crouch := false, jump := false) -> NightCommand:
@@ -262,3 +264,22 @@ func test_your_own_steps_hold_two_voices_and_a_crowds_never_take_them() -> void:
 	assert_int(own.priority).is_greater(crowd.priority)
 	assert_float(own.volume_db).is_equal(SoundCatalog.STEP_OWN_DB)
 	assert_str(own.bus).is_equal("Effects")
+
+
+func test_walking_in_the_yard_steps_on_gravel() -> void:
+	var night := await _start()
+	var yard := night.world.greybox.get_node("GeneratorYard/Ground0_0") as CSGBox3D
+	night.player().teleport(yard.global_position + YARD_OPEN_GROUND)
+	NightFixture.run(night, 5)
+	await get_tree().physics_frame
+	_steps = []
+	NightFixture.run(night, 90, _walk())
+	assert_int(_steps.size()).is_greater(2)
+	for step in _steps:
+		assert_str(step["id"]).is_equal("step_own_gravel")
+	night.queue_free()
+
+
+func test_other_players_close_up_are_held_to_their_own_level() -> void:
+	for id in [&"step_asphalt", &"step_gravel"]:
+		assert_float(SoundCatalog.get_def(id).near_cap_db).is_equal(0.0)

@@ -98,16 +98,17 @@ static func _build() -> void:
 		"priority": 20,
 		"pitch_semitones": 1.5,
 		"max_distance": 30.0,
-		"unit_size": 4.0
+		"unit_size": 4.0,
+		"near_cap_db": 0.0
 	}
 	_add(
 		&"step_asphalt",
 		"steps/asphalt_%d.ogg",
 		8,
-		_with(step, {"volume_db": -5.0, "cooldown": 0.12})
+		_with(step, {"volume_db": -2.0, "cooldown": 0.0})
 	)
 	_add(
-		&"step_gravel", "steps/gravel_%d.ogg", 8, _with(step, {"volume_db": -6.0, "cooldown": 0.12})
+		&"step_gravel", "steps/gravel_%d.ogg", 8, _with(step, {"volume_db": -3.0, "cooldown": 0.0})
 	)
 	# The local player's own feet (`FootstepSounds`): flat, from the softer set, its own group so a
 	# crowd's feet never take it. `volume_db` is the walking level, `STEP_OWN_DB`.

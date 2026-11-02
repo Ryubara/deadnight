@@ -202,6 +202,68 @@ analysed with `tools/audio/analyze.py capture`.
 | Sounds started / culled over 54 s | 934 / 31 |
 | Mix peak, clipped samples | -0.4 dBFS, 0 (before the boss levels were trimmed: 0 dBFS, 268 clipped) |
 
+## Footsteps (#239)
+
+The dead's voices and feet (#248), the generator's hum and its start (`WorldSounds`) and the grenades (`GrenadeSounds`)
+were already in the night when this was written; what was missing was the **players' feet**. The maintainer's brief:
+"we need to be able to hear player's footsteps but it needs to be very subtle and not obnoxious to the point where they
+have to mute it."
+
+**How shooters mix a player's own steps.** There is no published figure (no developer talk or patch note gives
+decibels), only what players and studios said when they got it wrong. Call of Duty: Modern Warfare's beta had your own
+steps louder than the enemy's, players complained and the studio said it would lower the first-person footsteps and
+raise other players' ([Charlie Intel](https://charlieintel.com/footstep-audio-changes-coming-to-call-of-duty-modern-warfare-in-beta/56122/),
+[Kotaku](https://kotaku.com/the-footsteps-in-call-of-duty-modern-warfare-are-too-d-1839530724)); the Modern Warfare 2
+alpha had the same complaint. Warzone 2 players showed that a loud one-off (a killstreak) can take the voice a distant
+footstep needed, so step priority matters. The rule that falls out, and what this mix follows: **your own steps are
+confirmation, not information, so they are the quietest steps in the mix; other players' steps are information, so they
+are placed in the world and can be heard over your own.** Everything else here (the 12 dB under the guns, 5 dB over the
+bed) is a number this project measured, not a standard.
+
+**What was built** ([design](../design/audio.md#footsteps)): the soft set `step_own_*` (`tools/audio/step_recipes.py`:
+heel and toe thump at 130 to 150 Hz plus a dull band, nothing above 3.2 kHz; centroid 420 Hz on asphalt, against 1,800 Hz
+for the others' asphalt step; a thump at 90 Hz was tried first and is unheard on a laptop speaker), eight takes of every
+step, `FootstepSounds` reading `Player.footstep` for a body here and `FootStride` for a player known only from frames,
+and `FootSurface` (a ray to the floor and its material's pattern texture) for the ground.
+
+**Measured** (`game/tests/captures/audio_footsteps.tscn`, Movie Maker mix, `tools/audio/step_levels.py`; shoulder
+camera, the body's `local_input` and `capture_mouse` off; the bed is the crickets, the highway and the score at the
+start of a night, median 100 ms RMS -36.4 dBFS):
+
+| What | Over the bed, 100 ms RMS | Over the bed, peak | Mix LUFS of its 7 s |
+| --- | ---: | ---: | ---: |
+| Standing, the bed alone | 0 | 0 | -32.4 |
+| Your own walk on asphalt (4.8 m/s) | +5.1 dB | +7.0 dB | -31.0 |
+| Your own sprint (7 m/s) | +7.1 dB | +10.8 dB | -29.6 |
+| Your own crouched creep (2.4 m/s) | +2.5 dB | +3.9 dB | -32.8 |
+| Your own walk on gravel | +4.9 dB | +7.9 dB | -30.7 |
+| A teammate passing at 6 m (the loudest of 20 steps) | +4.6 dB | | -31.6 |
+| The starting pistol, 17 shots in 6 s | +17.5 dB | +18.7 dB | -20.6 |
+
+So a walk's steps sit 12 dB under the pistol's shots and the walk adds 1.4 LU to the night; a sprint is 2 dB louder
+and a crouch 2.6 dB quieter than a walk (the level model asks for 4 and 7.5 dB: the bed fills part of every 100 ms
+window). The mix peaked at -5.5 dBFS with no clipped sample.
+
+**A whole night** (`audio_footsteps.tscn -- --autopilot --seconds=90`: the bot fights through the first rounds, shoulder
+camera): 93 s, integrated -27.9 LUFS, peak -4.2 dBFS, no clipped sample; 81 of the player's own steps, all asphalt,
+286 sounds started and 20 culled, **12 voices at once at the most** of the 44 the service has (32 positional, 12 flat).
+The loudest night (28 zombies, four players) was not played here: the horde capture of #248 held 10 of 32 voices with
+the horde at its most, and the steps add at most 8 positional and 2 flat (their group limits).
+
+**What went wrong.**
+
+- A step that is only a low thump is a step nobody hears on a phone or a laptop; the first soft set at 90 Hz had a
+  centroid of 265 Hz. Keep the body above about 130 Hz and give it a low band of noise.
+- `near_cap_db` matters for feet: the engine's inverse attenuation (`unit_size / distance`) lifts a step next to the
+  listener up to the +3 dB ceiling, which would have made a teammate's step right beside you louder than a shot; the
+  others' steps are held to their own level (`near_cap_db` 0).
+- A test that walked from the middle of the generator yard walked into the generator (0.14 m in 1.5 s): the yard's
+  open ground is a corner of its first slab, not its centre.
+- The 0.12 s cooldown of the old `step_*` entries would drop one of two players' steps that land together; the
+  stride already limits each player, so the cooldown is 0.
+- A remote body has no on-the-ground flag in the frame (`NightServer._frame`), so `FootStride` infers flight from the
+  height. A `grounded` field in the frame would be exact; it was left because the file is in an open pull request.
+
 ## Godot facts
 
 - **Movie Maker records audio.** `--write-movie out.png` also writes `out.wav` next to the frames: the master mix at the
