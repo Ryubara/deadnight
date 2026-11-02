@@ -72,6 +72,9 @@ func markers() -> Array[Dictionary]:
 	for id: int in _state.frame["players"]:
 		if id != _state.player_id:
 			out.append(_ally(camera, id, here))
+	var marks: Dictionary = _state.frame.get("pings", {})
+	for id: int in marks:
+		out.append(_ping(camera, id, marks[id], here))
 	var next := _next_door(here)
 	for door_id in _door_points:
 		if _is_next(door_id):
@@ -120,6 +123,16 @@ func _ally(camera: Camera3D, id: int, here: Vector3) -> Dictionary:
 	marker["bleed"] = ceili(float(player.get("bleed", 0.0)))
 	marker["revive"] = snappedf(float(player.get("revive", 0.0)), 0.01)
 	return marker
+
+
+## A teammate's ping: a diamond over the spot, labelled with who put it up.
+func _ping(camera: Camera3D, id: int, mark: Dictionary, here: Vector3) -> Dictionary:
+	var at: Vector3 = mark["pos"]
+	var found := MarkerProjection.project(camera, at + Vector3(0.0, 1.0, 0.0))
+	var who := str(_hud_state.team.get(id, {}).get("name", "PING"))
+	return _marker(
+		StringName("ping_%d" % id), OBJECTIVE, found["screen"], here.distance_to(at), who, true
+	)
 
 
 func _door(camera: Camera3D, door_id: StringName, here: Vector3, important: bool) -> Dictionary:

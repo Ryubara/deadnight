@@ -47,8 +47,6 @@ static func down(
 	player.health = 0.0
 	player.downs += 1
 	player.bleed_left = bleed_seconds
-	player.revive_progress = 0.0
-	player.reviver_id = 0
 	return {
 		"type": &"player_downed",
 		"player_id": player.id,
@@ -73,19 +71,19 @@ static func raise_max(player: PlayerState, bonus: float) -> Dictionary:
 	}
 
 
-## The player gets up, with `fraction` of their most health (all of it at a round's end, the share
-## `ReviveTuning.health_fraction` from a teammate's hands). `reviver_id` is that teammate, or -1
-## when nobody did it (the round ended).
+## The player gets up with `fraction` of their health (all of it at the end of a round; a
+## teammate's revive gives `HealthTuning.revive_fraction`). `reviver_id` is the teammate who did it
+## (0 for none: the round ended). A player who bled out gets up the same way.
 static func revive(
-	player: PlayerState, tuning: HealthTuning, fraction: float = 1.0, reviver_id: int = -1
+	player: PlayerState, tuning: HealthTuning, fraction: float = 1.0, reviver_id: int = 0
 ) -> Array[Dictionary]:
 	player.downed = false
 	player.dead = false
 	player.bleed_left = 0.0
-	player.revive_progress = 0.0
-	player.reviver_id = 0
 	player.health = player.max_health * fraction
-	player.since_blow = tuning.regen_delay if fraction >= 1.0 else 0.0
+	# Getting up at a round's end is a fresh start; a teammate's hand leaves the wait for mending
+	# to run from the revive.
+	player.since_blow = tuning.regen_delay if reviver_id == 0 else 0.0
 	var events: Array[Dictionary] = [
 		{
 			"type": &"player_healed",

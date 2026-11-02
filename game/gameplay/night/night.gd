@@ -60,6 +60,8 @@ var remote := false
 var avatars: RemoteAvatars
 ## Online: how far the server's answers have disagreed with this client's own body.
 var reconciler := Reconciler.new()
+## Watches for this client's own loop freezing (`StallGuard`).
+var stalls := StallGuard.new()
 var state: ClientState
 ## Every player's look and seat as this client heard them from the server; the bodies are dressed
 ## from it.
@@ -531,6 +533,14 @@ func tick() -> void:
 ## server will check it), and send the next command.
 func _tick_remote() -> void:
 	link.pump()
+	match stalls.check(Time.get_ticks_msec()):
+		StallGuard.Verdict.RESYNC:
+			_resync_body()
+		StallGuard.Verdict.SKIP:
+			# A tick the engine ran to catch up with a freeze: the server would take the newest of
+			# these commands and none of the steps, so there is neither a step nor a command.
+			ticked.emit()
+			return
 	if not link.is_open():
 		# The socket is down: nothing to send, and the body waits where it is until the server's
 		# answer comes back.
@@ -563,6 +573,18 @@ func _tick_remote() -> void:
 	ticked.emit()
 
 
+## The loop froze and the server went on without us: the body is where the server has the player
+## (the newest frame the backlog held), and the commands in flight are forgotten, since the answers
+## to them are no longer about this body.
+func _resync_body() -> void:
+	reconciler.reset()
+	if _body == null or not state.has_frame() or state.me().is_empty():
+		return
+	_body.state.position = state.position()
+	_body.state.velocity = Vector3.ZERO
+	PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
+
+
 ## The seat is ours again: the rules as the server has them now, in place of the events missed.
 func _on_resumed(snapshot: Dictionary) -> void:
 	if hud != null:
@@ -579,7 +601,7 @@ func _on_remote_event(event: Dictionary) -> void:
 	var me: Dictionary = event["players"].get(state.player_id, {})
 	if _body == null or me.is_empty():
 		return
-	var shift := reconciler.correction(me["ack"], me["pos"])
+	var shift := reconciler.correction(me["ack"], me["pos"], _body.state.position)
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
@@ -606,7 +628,41 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 
 
 func _human_command() -> NightCommand:
-	return _human.command(player(), state.player_id)
+	var command := _human.command(player(), state.player_id)
+	if _human.ping_pressed(player()):
+		link.send(_ping_request(command))
+	return command
+
+
+## What the ping key marks: what the crosshair is on, else where its ray lands (`PingAim`).
+func _ping_request(aim: NightCommand) -> Dictionary:
+	var landed := Vector3.INF
+	var cast := PhysicsRayQueryParameters3D.create(
+		aim.origin, aim.origin + aim.dir * PingAim.REACH, CameraProbe.PLAYER_MASK
+	)
+	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
+	if not hit.is_empty():
+		landed = hit["position"]
+	var shut := {}
+	var index := 0
+	for door_id in world.door_ids():
+		if not state.frame.get("doors", []).has(door_id):
+			shut[index] = world.door_points(door_id)
+		index += 1
+	var ammo: Array[Vector3] = []
+	for spot in world.shop_spots():
+		if spot["kind"] == &"ammo":
+			ammo.append(spot["position"])
+	return PingAim.pick(
+		aim.origin,
+		aim.dir,
+		state.zombies,
+		state.frame.get("players", {}),
+		state.player_id,
+		shut,
+		ammo,
+		landed
+	)
 
 
 ## What the server answered: the look server's packets go to the look table, the rest to the
@@ -717,8 +773,10 @@ func _make_autopilot() -> void:
 	for circuit_id in world.switches.circuit_ids():
 		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
 		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
-	autopilot.revive.reach = tuning.revive.reach
-	autopilot.revive.seconds = tuning.revive.revive_seconds
+	autopilot.revive.reach = (
+		(night_tuning if night_tuning != null else NightTuning.shipped()).revive_reach
+	)
+	autopilot.revive.seconds = tuning.health.revive_seconds
 	autopilot.fuel.capacity = tuning.fuel.capacity
 	autopilot.fuel.refuel_at = tuning.fuel.low_fraction
 	autopilot.fuel.fill_to = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN

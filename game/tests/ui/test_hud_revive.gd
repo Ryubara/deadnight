@@ -5,9 +5,15 @@ extends GdUnitTestSuite
 ## frame adds (the clock and the hold's progress) is pushed into the state as the binding does.
 
 var _host: Control
+## The channel's numbers, as the server's frame would carry them: downed id to how far the hold
+## has got (0 to 1), and to who holds it.
+var _progress := {}
+var _holder := {}
 
 
 func before_test() -> void:
+	_progress = {}
+	_holder = {}
 	UIMotion.reduced = false
 	_host = auto_free(Control.new())
 	_host.size = Vector2(1920, 1080)
@@ -20,6 +26,10 @@ func _round(players := 2) -> HudFixture:
 	return fixture
 
 
+func _revive_seconds(fixture: HudFixture) -> float:
+	return fixture.rules.tuning.health.revive_seconds
+
+
 ## What `NightHudBinding` puts into the state from every frame: each player's revive numbers.
 func _frame(fixture: HudFixture) -> void:
 	var state := fixture.hud.state
@@ -29,8 +39,8 @@ func _frame(fixture: HudFixture) -> void:
 			id,
 			fixture.rules.is_dead(id),
 			fixture.rules.bleed_left_of(id),
-			fixture.rules.revive_fraction_of(id),
-			fixture.rules.reviver_of(id)
+			_progress.get(id, 0.0),
+			_holder.get(id, 0)
 		)
 		state.set_player_stats(
 			id,
@@ -42,11 +52,27 @@ func _frame(fixture: HudFixture) -> void:
 	state.release()
 
 
-## One tick of the clock and one of the hold, as the server sends them.
+## `reviver` holds the revive on `target` for `seconds`, as the server's channel does: the rules'
+## clock stands still for them, and at the full time the `revive` action raises them.
 func _hold(fixture: HudFixture, target: int, reviver: int, seconds: float) -> void:
+	var held := 0.0
+	_holder[target] = reviver
 	for _i in ceili(seconds / RulesFixture.STEP - 0.0001):
-		fixture.act(RulesAction.tick(RulesFixture.STEP))
-		fixture.act(RulesAction.revive_hold(target, reviver, RulesFixture.STEP))
+		fixture.act(RulesAction.tick(RulesFixture.STEP, [target]))
+		held += RulesFixture.STEP
+		_progress[target] = clampf(held / _revive_seconds(fixture), 0.0, 1.0)
+		if held >= _revive_seconds(fixture):
+			fixture.act(RulesAction.revive(reviver, target))
+			_progress.erase(target)
+			_holder.erase(target)
+			break
+	_frame(fixture)
+
+
+## The reviver lets go: the channel's numbers on that player are gone.
+func _release(fixture: HudFixture, target: int) -> void:
+	_progress.erase(target)
+	_holder.erase(target)
 	_frame(fixture)
 
 
@@ -119,12 +145,9 @@ func test_the_ring_goes_when_the_hold_does_and_when_the_player_is_up() -> void:
 	fixture.act(RulesAction.blow(2, 1000.0))
 	_hold(fixture, 2, 1, 1.0)
 	assert_int(fixture.hud.revive.mode).is_equal(HudRevive.Mode.REVIVING)
-	# The hold stops being renewed: the rules release it at the next tick.
-	fixture.act(RulesAction.tick(RulesFixture.STEP))
-	fixture.act(RulesAction.tick(RulesFixture.STEP))
-	_frame(fixture)
+	_release(fixture, 2)
 	assert_int(fixture.hud.revive.mode).is_equal(HudRevive.Mode.NONE)
-	_hold(fixture, 2, 1, fixture.rules.tuning.revive.revive_seconds + 0.1)
+	_hold(fixture, 2, 1, _revive_seconds(fixture) + 0.1)
 	assert_int(fixture.hud.revive.mode).is_equal(HudRevive.Mode.NONE)
 	assert_bool(fixture.hud.revive.visible).is_false()
 	assert_bool(fixture.hud.state.team[2]["downed"]).is_false()
@@ -152,7 +175,7 @@ func test_a_player_who_bled_out_reads_dead_until_the_round_ends() -> void:
 func test_the_feed_names_who_revived_whom_and_who_bled_out() -> void:
 	var fixture := _round()
 	fixture.act(RulesAction.blow(2, 1000.0))
-	_hold(fixture, 2, 1, fixture.rules.tuning.revive.revive_seconds + 0.1)
+	_hold(fixture, 2, 1, _revive_seconds(fixture) + 0.1)
 	var texts: Array[String] = []
 	for row in fixture.hud.events_feed.rows:
 		texts.append((row["label"] as Label).text)
@@ -196,7 +219,7 @@ func test_a_late_joiner_reads_the_clocks_and_the_count_from_the_snapshot() -> vo
 	fixture.act(RulesAction.blow(3, 1000.0))
 	for _i in ceili(10.0 / RulesFixture.STEP):
 		fixture.act(RulesAction.tick(RulesFixture.STEP))
-	_hold(fixture, 3, 1, fixture.rules.tuning.revive.revive_seconds + 0.1)
+	_hold(fixture, 3, 1, _revive_seconds(fixture) + 0.1)
 	var late := HudState.new()
 	late.local_player_id = 2
 	late.load_snapshot(fixture.rules.to_dict())

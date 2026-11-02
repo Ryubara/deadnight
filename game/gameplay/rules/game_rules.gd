@@ -48,11 +48,8 @@ extends RefCounted
 ##     time they have before they are dead)
 ##   player_died: player_id, cause (bleed_out): a downed player nobody got up in time; down until
 ##     the round ends
-##   player_revived: player_id, reviver_id (-1: nobody, the round ended)
-##   revive_started: player_id (the downed), reviver_id, seconds (the hold takes)
-##   revive_interrupted: player_id, reviver_id, reason (released, away, busy_hands, reviver_downed,
-##     left, died)
 ##   player_removed: player_id
+##   player_revived: player_id (the one who got up), reviver_id (the teammate; 0 at a round's end)
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
 ##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
@@ -91,12 +88,12 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 12 added each player's `revives`, `dead`, `bleed_left`, `revive_progress` and `reviver_id`
-## (teammate revives), 11 added each player's `downs` and the night's `night_time` (the scoreboard),
-## 10 the match settings (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize crane
-## (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the plan,
-## special round and a zombie's type, health, speed. Two older layouts both called themselves 4;
-## every older snapshot is refused as `bad_version`.
+## 12 added each player's `revives`, `dead` and `bleed_left` (teammate revives), 11 each player's
+## `downs` and the night's `night_time` (the scoreboard), 10 the match settings
+## (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize crane (`crane`,
+## `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the plan, special round
+## and a zombie's type, health, speed. Two older layouts both called themselves 4; every older
+## snapshot is refused as `bad_version`.
 const SNAPSHOT_VERSION := 12
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
@@ -263,20 +260,6 @@ func bleed_left_of(player_id: int) -> float:
 	return player.bleed_left if player != null else 0.0
 
 
-## How far a teammate's hold on this downed player has got, 0 to 1 (0 when nobody holds it).
-func revive_fraction_of(player_id: int) -> float:
-	var player := players.get(player_id) as PlayerState
-	if player == null or tuning.revive.revive_seconds <= 0.0:
-		return 0.0
-	return clampf(player.revive_progress / tuning.revive.revive_seconds, 0.0, 1.0)
-
-
-## Who holds the revive on this downed player now (0 for nobody).
-func reviver_of(player_id: int) -> int:
-	var player := players.get(player_id) as PlayerState
-	return player.reviver_id if player != null else 0
-
-
 func is_door_open(door_id: StringName) -> bool:
 	return doors_open.has(door_id)
 
@@ -401,7 +384,7 @@ func _dispatch(action: Dictionary) -> void:
 			elif phase == Phase.IDLE:
 				_enter_break(tuning.rounds.intro_seconds)
 		RulesAction.TICK:
-			_tick(action["delta"])
+			_tick(action["delta"], action.get("held", []))
 		RulesAction.CONFIGURE:
 			_configure(action["settings"])
 		RulesAction.SKIP_BREAK:
@@ -410,15 +393,14 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.ADD_PLAYER:
 			_add_player(action["player_id"])
 		RulesAction.REMOVE_PLAYER:
-			var leaving: int = action["player_id"]
-			if players.has(leaving):
-				RevivePlay.reviver_gone(self, leaving, &"left")
-			if players.erase(leaving):
-				CranePlay.buyer_left(self, leaving)
+			if players.erase(action["player_id"]):
+				CranePlay.buyer_left(self, action["player_id"])
 				_emit(&"player_removed", {"player_id": action["player_id"]})
 				_check_game_over()
 		RulesAction.SET_DOWNED:
 			_set_downed(action["player_id"], action["downed"])
+		RulesAction.REVIVE:
+			_revive(action["player_id"], action["target_id"])
 		RulesAction.BLOW:
 			_blow(action)
 		RulesAction.HIT:
@@ -448,11 +430,6 @@ func _dispatch(action: Dictionary) -> void:
 			_use_grenade(action["player_id"])
 		RulesAction.EXPLOSION:
 			ExplosionPlay.explode(self, action["player_id"], action["victims"])
-		RulesAction.REVIVE_HOLD:
-			RevivePlay.hold(self, action["player_id"], action["reviver_id"], action["delta"])
-		RulesAction.REVIVE_RELEASE:
-			var why := StringName(action.get("reason", &"released"))
-			RevivePlay.release(self, action["player_id"], why)
 		RulesAction.GRANT_POINTS:
 			if players.has(action["player_id"]):
 				_award(action["player_id"], action["amount"], action.get("reason", &"grant"))
@@ -491,7 +468,7 @@ func _on_circuit_changed(circuit_id: StringName, on: bool) -> void:
 # --- Rounds ---
 
 
-func _tick(delta: float) -> void:
+func _tick(delta: float, held: Array = []) -> void:
 	match phase:
 		Phase.BREAK:
 			night_time += delta
@@ -506,7 +483,7 @@ func _tick(delta: float) -> void:
 			generator.tick(delta, round_number, false)
 			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
-			RevivePlay.tick(self, delta)
+			RevivePlay.tick(self, delta, held)
 			_tick_spawning(delta)
 
 
@@ -733,10 +710,36 @@ func _set_downed(player_id: int, downed: bool) -> void:
 		return
 	if downed:
 		_events.append(PlayerHealth.down(player, &"forced", 0.0, tuning.revive.bleed_out_seconds))
-		RevivePlay.reviver_gone(self, player_id, &"reviver_downed")
 		_check_game_over()
 	else:
 		_events.append_array(PlayerHealth.revive(player, tuning.health))
+
+
+## A teammate gets a downed player up for a share of their health, in a round only.
+func _revive(player_id: int, target_id: int) -> void:
+	var reviver := players.get(player_id) as PlayerState
+	var target := players.get(target_id) as PlayerState
+	var refusal := &""
+	if phase != Phase.ACTIVE:
+		refusal = &"wrong_phase"
+	elif reviver == null or target == null:
+		refusal = &"unknown_player"
+	elif player_id == target_id:
+		refusal = &"self_revive"
+	elif reviver.downed:
+		refusal = &"player_downed"
+	elif target.dead:
+		refusal = &"target_dead"
+	elif not target.downed:
+		refusal = &"not_downed"
+	if refusal != &"":
+		_reject(refusal, RulesAction.REVIVE)
+		return
+	_events.append_array(
+		PlayerHealth.revive(target, tuning.health, tuning.health.revive_fraction, player_id)
+	)
+	reviver.revives += 1
+	_award(player_id, tuning.revive.reviver_points, &"revive")
 
 
 ## A blow takes health off, restarts the wait before it mends, and downs the player at zero.
@@ -759,7 +762,6 @@ func _blow(action: Dictionary) -> void:
 			)
 		)
 		if player.downed:
-			RevivePlay.reviver_gone(self, player.id, &"reviver_downed")
 			_check_game_over()
 
 

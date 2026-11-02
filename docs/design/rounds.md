@@ -64,6 +64,7 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
 | `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a downed player cannot buy: `purchase_denied` with `PLAYER_DOWNED`, nothing spent (doors, weapons, fuel, all of it); a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
+| `revive` | `player_id` (the one raising), `target_id` (the downed one) | the night server, when a teammate has held use beside the downed player for the whole channel ([Revives](#revives)); refused as `wrong_phase`, `unknown_player`, `self_revive`, `player_downed` (the reviver) or `not_downed` |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `revive_hold` | `player_id` (the downed), `reviver_id`, `delta` (`0..1` s) | the night server, one for every tick a teammate's hold of Use lasts beside a downed player in reach ([Revive](revive.md)); refused as `wrong_phase`, `unknown_player`, `self_revive`, `reviver_downed`, `target_dead`, `not_downed` or `busy` |
@@ -88,9 +89,7 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `player_hurt` | `player_id`, `damage` (taken off), `health` (left), `max_health`, `bearing`, `source_id` | the HUD's damage arc toward `bearing` (turned by where the player faces), the health bar; the camera shake |
 | `player_healed` | `player_id`, `health`, `max_health`, `reason` (`regen` or `revive`) | the health bar. `regen` is sent when the whole-unit health changes (about 25 a second while mending), `revive` once with `player_revived` |
 | `player_downed` | `player_id`, `cause` (`blow` or `forced`), `bearing`, `bleed_seconds` (the time they have before they are dead) | the DOWN tag and the held red frame and the clock; the night ends when every player is down or dead |
-| `revive_started` | `player_id` (the downed), `reviver_id`, `seconds` (the hold takes) | the rings ([Revive](revive.md#events)) |
-| `revive_interrupted` | `player_id`, `reviver_id`, `reason` (`released`, `away`, `busy_hands`, `reviver_downed`, `left`, `died`) | clears the rings |
-| `player_revived` | `player_id`, `reviver_id` (-1: nobody, the round ended) | the feed (`RUBY REVIVED PAUL`), the voice; counts for the reviver on the scoreboard |
+| `player_revived` | `player_id`, `reviver_id` (the teammate; 0 when the round ended and got everyone up) | the DOWN tag goes; "IS BACK UP" in the feed, or `RUBY REVIVED PAUL` when a teammate did it. Account progression pays the rescue to `reviver_id` (never to a bot). Counts for the reviver on the scoreboard |
 | `player_died` | `player_id`, `cause` (`bleed_out`) | the DEAD tag; down until the round ends |
 | `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
@@ -120,6 +119,22 @@ however many shots it takes; tiny hits cannot farm it. The tables below still ho
 
 Not the rules' job: whether a client could really have fired that shot (aim, range, rate of fire,
 ammo). The server checks that when it builds the `hit`, and the network layer rate-limits.
+
+## Revives
+
+A downed player stays down until a teammate raises them, they bleed out, or the round ends (then every downed
+player gets up with all their health for a tenth of their points; see `down_penalty_fraction`). A teammate holds the use
+button within 2.0 m (`NightTuning.revive_reach`) of them for **3.5 seconds** (`HealthTuning.revive_seconds`) and they
+get up with **half their health** (`HealthTuning.revive_fraction`), mending again after the usual 5 s without a blow.
+Letting go, stepping out of reach or going down starts the time over; being struck does not, so a revive under attack
+is the reviver's call. Only in a round. The prompt (`{kind: revive, id, progress, bleed}`) comes before any door's, and
+the frame carries `reviving` (whom a player is raising) and `revive` (0 to 1, on the downed one). Two helpers at once do
+not speed it up. The rules take only the finished `revive` action; the channel lives in `NightServer`.
+
+**Bleed-out** ([Revive](revive.md)): a downed player has `ReviveTuning.bleed_out_seconds` (45 s) to live. The clock
+stands still while a teammate holds the revive on them. At zero they are dead (`player_died`), past reviving, until the
+round ends and gets them up like everyone else. The night ends when every player is down or dead. A revive counts for
+the reviver (`revives`, the scoreboard's REVIVES column) and pays `ReviveTuning.reviver_points` (0).
 
 ## The fence's boards
 
@@ -683,7 +698,7 @@ The ranges and the health, count and spawn curves are unchanged.
   kill and the gate's cells, so it is a decision for the maintainer with the weapon work, and the health curve could
   climb again behind it. `tools/balance/run_report.py` and `balance_cli.gd --shopping=...` reproduce the table (see
   the research page).
-- **Downed players and revives** are built ([Revive](revive.md): a hold, a bleed-out clock, death until the round
-  ends); the simulator reads their numbers from the tuning table but has its own rule for who is free to revive. The
-  maintainer's decisions on solo self-revive, a revive perk and points for a revive are made
-  ([the list](revive.md#decided-2026-11-02-505)).
+- **Downed players and revives**: the revive is built ([Revives](#revives)); a downed player now bleeds out after
+  `ReviveTuning.bleed_out_seconds` and is dead until the round ends ([Revive](revive.md)). The exact penalty at a
+  round's end (a tenth of the points) is still for the player work to settle; the maintainer's decisions on solo
+  self-revive, a revive perk and points for a revive are made ([the list](revive.md#decided-2026-11-02-505)).

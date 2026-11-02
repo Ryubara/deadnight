@@ -200,16 +200,17 @@ func _mend(player: SimPlayer, engaged: Dictionary) -> void:
 		# A player who bled out stays down until the round ends (the rules say when).
 		if player.dead:
 			return
+		var helper: SimPlayer = null
 		for other: SimPlayer in _players.values():
 			if not other.downed and engaged.get(other.id, 0) == 0:
+				helper = other
 				player.revive += step
 				break
-		var revive := rules.tuning.revive
-		if player.revive >= revive.revive_seconds:
-			player.downed = false
-			player.health = player.max_health * revive.health_fraction
+		# The real revive: the rules' own channel time and share of health, sent as the action a
+		# teammate's hold on use ends in.
+		if helper != null and player.revive >= rules.tuning.health.revive_seconds:
 			player.last_hit = _clock
-			_handle(rules.apply(RulesAction.set_downed(player.id, false)))
+			_handle(rules.apply(RulesAction.revive(helper.id, player.id)))
 		return
 	player.stun = maxf(player.stun - step, 0.0)
 	if _clock - player.last_hit >= player.regen_delay:
@@ -430,7 +431,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				if revived != null and revived.downed:
 					revived.downed = false
 					revived.dead = false
-					revived.health = revived.max_health * rules.tuning.revive.health_fraction
+					revived.health = rules.health_of(revived.id)
 			&"player_died":
 				var dead: SimPlayer = _players.get(event["player_id"])
 				if dead != null:

@@ -21,8 +21,6 @@ const SNAPSHOT_KEYS := {
 	"revives": TYPE_INT,
 	"dead": TYPE_BOOL,
 	"bleed_left": TYPE_FLOAT,
-	"revive_progress": TYPE_FLOAT,
-	"reviver_id": TYPE_INT,
 	"points_earned": TYPE_INT,
 	"points_spent": TYPE_INT,
 }
@@ -54,13 +52,6 @@ var revives: int = 0
 var dead: bool = false
 ## Seconds a downed player has left before they are dead (0 when up or dead).
 var bleed_left: float = 0.0
-## Seconds a teammate has held the revive on this downed player, and who (0: nobody). Reset to zero
-## by any interruption.
-var revive_progress: float = 0.0
-var reviver_id: int = 0
-## Whether a hold arrived since the last tick (not in the snapshot): a hold that was not renewed is
-## over at the next tick.
-var held: bool = false
 var points_earned: int = 0
 var points_spent: int = 0
 
@@ -98,8 +89,6 @@ func to_dict() -> Dictionary:
 		"revives": revives,
 		"dead": dead,
 		"bleed_left": bleed_left,
-		"revive_progress": revive_progress,
-		"reviver_id": reviver_id,
 		"points_earned": points_earned,
 		"points_spent": points_spent,
 	}
@@ -122,8 +111,6 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.revives = data["revives"]
 	player.dead = data["dead"]
 	player.bleed_left = data["bleed_left"]
-	player.revive_progress = data["revive_progress"]
-	player.reviver_id = data["reviver_id"]
 	player.points_earned = data["points_earned"]
 	player.points_spent = data["points_spent"]
 	return player

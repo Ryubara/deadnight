@@ -66,7 +66,7 @@ func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistr
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
 	hud.state.local_player_id = state.player_id
-	hud.state.revive_seconds = tuning.revive.revive_seconds
+	hud.state.revive_seconds = tuning.health.revive_seconds
 	hud.state.bleed_total = tuning.revive.bleed_out_seconds
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(tuning.specials)

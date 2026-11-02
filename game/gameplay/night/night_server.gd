@@ -20,11 +20,13 @@ extends RefCounted
 ## client or a HUD draws from.
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
-## barricades ({id: boards up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health,
-## downed, weapon, ammo, reserve, reloading, arms (every weapon carried: id to [ammo, reserve,
-## tier]), points, prompt, ack (the `seq` of the command this step used: a predicting client
-## replays from it), kills, downs, revives, dead, bleed (seconds a downed player has left), revive
-## (how far a teammate's hold on them has got, 0 to 1) and reviver (who holds it, 0 for nobody)}}.
+## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
+## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve,
+## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
+## (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one,
+## when downed, has got), ack (the `seq` of the command this step used: a predicting client
+## replays from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player has
+## left) and reviver (who is raising this one, 0 for nobody)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -32,6 +34,8 @@ const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
 const START_NIGHT := &"start_night"
+## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
+const PING := &"ping"
 ## A player came back on a new connection: `resync` {player_id} tells it the looks again.
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
@@ -84,8 +88,15 @@ var director: ZombieDirector
 var world: NightWorld
 ## Every player's accepted look and seat (`docs/design/customization.md`, On the network).
 var looks: LookServer
-var tuning: NightTuning
+var tuning: NightTuning:
+	set(value):
+		tuning = value
+		if _revive != null:
+			_revive.tuning = value
+			_ping_judge.tuning = value
 var tick_count := 0
+## The marks the players have put up.
+var ping_board := PingBoard.new()
 ## Whether the players' bodies have the Soldier's model. A game server draws nothing, so it leaves
 ## them out (`NightHost`); in one process with its client the same bodies are drawn.
 var drawn_bodies := true
@@ -110,12 +121,10 @@ var _repairing: Dictionary[int, StringName] = {}
 ## while the repair clip hammers them. Walking or aiming turns it the player's way as before.
 var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
-## The downed teammate a reviver's body turns to face while it holds the revive (0: the breach).
-var _facing_patient: Dictionary[int, int] = {}
-## The downed teammate each player's held `use` is reviving (0: none). A hold begins when `use` is
-## held beside a downed teammate in reach and ends when the button comes up, the player walks out of
-## reach, fires, reloads or swaps (the hands are busy), or goes down.
-var _reviving: Dictionary[int, int] = {}
+## The teammates raising downed players (held `use` beside a downed one).
+var _revive: ReviveChannel
+## What decides whether a ping is true.
+var _ping_judge: PingJudge
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
 ## Held here: a Callable does not keep its RefCounted alive.
@@ -134,6 +143,8 @@ func _init(
 	world = p_world
 	looks = LookServer.new(_send_look)
 	tuning = p_tuning if p_tuning != null else NightTuning.shipped()
+	ping_board.seconds = tuning.ping_seconds
+	ping_board.gap = tuning.ping_gap
 	rules = GameRules.new(p_rules_tuning, p_seed, p_settings)
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
@@ -148,6 +159,8 @@ func _init(
 	sim.gates = world.gates()
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
+	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
+	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
@@ -182,6 +195,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			rules.apply(RulesAction.start())
 		LOOK:
 			looks.receive(action["player_id"], action["packet"])
+		PING:
+			ping(from_id if from_id > 0 else action.get("player_id", 1), action)
 		RESYNC:
 			if _bodies.has(action["player_id"]):
 				looks.sync(action["player_id"])
@@ -229,17 +244,20 @@ func step(delta: float) -> Array[Dictionary]:
 	director.tick(delta, _chase_targets())
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
-	rules.apply(RulesAction.tick(delta))
+	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
 	PerfProbe.end(&"server.rules", began)
 	began = PerfProbe.begin()
 	_combat(CombatAction.targets(_target_list()))
 	_combat(CombatAction.tick(delta))
 	PerfProbe.end(&"server.combat", began)
 	began = PerfProbe.begin()
+	_revive.begin_tick()
 	for player_id in _bodies:
 		_act(player_id, delta)
+	_revive.finish_tick(delta)
 	PerfProbe.end(&"server.act", began)
 	began = PerfProbe.begin()
+	_outbox.append_array(ping_board.step(delta))
 	_throw_grenades(delta)
 	_outbox.append(_frame())
 	PerfProbe.end(&"server.frame", began)
@@ -257,7 +275,6 @@ func _join(player_id: int, local: bool) -> void:
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
 	_repairing[player_id] = &""
-	_reviving[player_id] = 0
 	var thrower := GrenadeThrower.new(player_id, grenades.def)
 	thrower.release_over = tuning.grenade_release_over
 	thrower.release_under = tuning.grenade_release_under
@@ -277,10 +294,10 @@ func _leave(player_id: int) -> void:
 		_acked.erase(player_id)
 		pings.erase(player_id)
 		_repairing.erase(player_id)
-		_reviving.erase(player_id)
+		_revive.forget(player_id)
+		ping_board.forget(player_id)
 		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
-		_facing_patient.erase(player_id)
 		_face_left.erase(player_id)
 		looks.leave(player_id)
 		rules.apply(RulesAction.remove_player(player_id))
@@ -289,6 +306,10 @@ func _leave(player_id: int) -> void:
 ## The look server's way to reach one client: an event for it, carried like any other.
 func _send_look(player_id: int, packet: PackedByteArray) -> void:
 	_outbox.append({"type": LOOK_PACKET, "to": player_id, "packet": packet})
+
+
+func _announce(event: Dictionary) -> void:
+	_outbox.append(event)
 
 
 func _is_downed(player_id: int) -> bool:
@@ -389,11 +410,6 @@ func _on_rules_event(event: Dictionary) -> void:
 	match event["type"]:
 		&"player_hurt":
 			_repairing[event["player_id"]] = &""
-		&"player_revived", &"revive_interrupted":
-			# The hold is over, however it ended: the reviver stops holding.
-			var reviver: int = event.get("reviver_id", -1)
-			if _reviving.has(reviver):
-				_reviving[reviver] = 0
 		&"purchase_made":
 			_deliver(event["player_id"], event["detail"])
 		&"crane_prize_taken":
@@ -547,7 +563,7 @@ func _act(player_id: int, delta: float) -> void:
 	var command := _pending.get(player_id) as NightCommand
 	if command == null or _is_downed(player_id):
 		_repairing[player_id] = &""
-		_end_revive(player_id, &"reviver_downed")
+		_revive.stop(player_id, &"down")
 		return
 	if command.reload:
 		_combat(CombatAction.reload_weapon(player_id))
@@ -560,7 +576,7 @@ func _act(player_id: int, delta: float) -> void:
 	if command.use:
 		_use(player_id)
 	_hold_repair(player_id, command)
-	_hold_revive(player_id, command, delta)
+	_revive.hold(player_id, command.use_held)
 	_face_breach(player_id, delta)
 	# Edges are used once.
 	command.reload = false
@@ -569,6 +585,11 @@ func _act(player_id: int, delta: float) -> void:
 
 
 func _shoot(player_id: int, command: NightCommand) -> void:
+	if not aims_with_view(command):
+		_outbox.append(
+			{"type": &"fire_rejected", "player_id": player_id, "reason": &"aim_mismatch"}
+		)
+		return
 	var body := _bodies[player_id]
 	var head := body.global_position + Vector3(0.0, tuning.eye_height, 0.0)
 	var origin := command.origin
@@ -586,41 +607,57 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 	)
 
 
-## What `use` would do for a player right now: `{}`, a door to buy, a weapon on a wall, the crane or
-## rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id", "boards"}` for a
-## breach with a board down that the player stands inside, in reach of, or `{"kind": &"circuit",
-## "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or `{"kind": &"fuel",
-## "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell now: `units` is 0
-## and `price` 0 when the tank is full), or `{"kind": &"revive", "id", "progress", "bleed"}` for a
-## downed teammate in reach (it comes first: `id` is the teammate, `progress` the hold's 0 to 1,
-## `bleed` the seconds they have left).
+## Where a view with this turn and look points (the camera's forward: yaw 0 and pitch 0 look down
+## -z, a positive pitch looks up). What a shot's direction is checked against.
+static func view_dir(yaw: float, pitch: float) -> Vector3:
+	return Basis.from_euler(Vector3(pitch, yaw, 0.0)) * Vector3.FORWARD
+
+
+## Whether the command's shot goes where its own view points, within `aim_slack_degrees`. A person
+## shoots along the camera, so this is always true for one; a client that shoots at a zombie it is
+## not looking at (a bot that skipped the turn, a tampered client) is false.
+func aims_with_view(command: NightCommand) -> bool:
+	var view := view_dir(command.motion.yaw, command.motion.pitch)
+	var shot := command.dir
+	if not shot.is_finite() or shot.length() < 0.5:
+		return false
+	return rad_to_deg(view.angle_to(shot.normalized())) <= tuning.aim_slack_degrees
+
+
+## What `use` would do for a player right now: `{}`, a door to buy, a weapon on a wall, the crane
+## or rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id",
+## "boards"}` for a breach with a board down that the player stands inside, in reach of, or
+## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or
+## `{"kind": &"fuel", "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell
+## now: `units` is 0 and `price` 0 when the tank is full), or `{"kind": &"revive", "id",
+## "progress", "bleed"}` beside a downed teammate (`progress`: 0 to 1 of the hold, `bleed`: the
+## seconds they have left; first of all, a life comes before a door).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
 		return {}
 	var here := body.global_position
-	var offer := _revive_offer(player_id)
-	if offer.is_empty():
-		offer = _door_offer(here)
-	if offer.is_empty():
-		offer = _spot_offer(player_id, here)
+	var raise := _revive.in_reach(player_id)
+	if raise != 0:
+		return {
+			"kind": &"revive",
+			"id": raise,
+			"progress": _revive.progress(raise),
+			"bleed": rules.bleed_left_of(raise),
+		}
+	var door := _door_offer(here)
+	if not door.is_empty():
+		return door
+	var offer := _spot_offer(player_id, here)
 	if not offer.is_empty():
 		return offer
-	for id in world.barricade_ids():
-		var boards := rules.barricades.boards_of(id)
-		if boards >= rules.tuning.barricades.boards:
-			continue
-		var barricade := world.barricade(id)
-		if barricade.depth_of(here) > 0.0 and _flat(here, barricade.centre()) <= tuning.use_reach:
-			return {"kind": &"repair", "id": id, "boards": boards}
-	var post := world.switches.within_reach(here, tuning.use_reach)
-	if post != null:
-		var on: bool = rules.generator.circuits.get(post.circuit_id, false)
-		return {"kind": &"circuit", "id": post.circuit_id, "on": on}
+	var post := _post_offer(here)
+	if not post.is_empty():
+		return post
 	return _fuel_offer(here)
 
 
-## The door to buy within reach of `here` (one whose own door is open or needs none), or `{}`.
+## The shut door in reach that can be bought now (the one before it is open), or `{}`.
 func _door_offer(here: Vector3) -> Dictionary:
 	for door_id in world.door_ids():
 		if rules.is_door_open(door_id):
@@ -634,17 +671,20 @@ func _door_offer(here: Vector3) -> Dictionary:
 	return {}
 
 
-## A downed teammate in reach: who, how far the hold has got and how long they have, or `{}`.
-func _revive_offer(player_id: int) -> Dictionary:
-	var patient := revive_target(player_id)
-	if patient == 0:
+## A breach to put a board back across, or a breaker post, in reach of `here`, or `{}`.
+func _post_offer(here: Vector3) -> Dictionary:
+	for id in world.barricade_ids():
+		var boards := rules.barricades.boards_of(id)
+		if boards >= rules.tuning.barricades.boards:
+			continue
+		var barricade := world.barricade(id)
+		if barricade.depth_of(here) > 0.0 and _flat(here, barricade.centre()) <= tuning.use_reach:
+			return {"kind": &"repair", "id": id, "boards": boards}
+	var post := world.switches.within_reach(here, tuning.use_reach)
+	if post == null:
 		return {}
-	return {
-		"kind": &"revive",
-		"id": patient,
-		"progress": rules.revive_fraction_of(patient),
-		"bleed": rules.bleed_left_of(patient),
-	}
+	var on: bool = rules.generator.circuits.get(post.circuit_id, false)
+	return {"kind": &"circuit", "id": post.circuit_id, "on": on}
 
 
 ## The can stand within reach of `here`: what the rules would sell and for how much, or `{}`.
@@ -761,13 +801,23 @@ func _use(player_id: int) -> void:
 				buy(player_id, target["item"])
 
 
+## The revive channel (for tests and the picture): `progress(target_id)`, `is_reviving(player_id)`.
+func revive() -> ReviveChannel:
+	return _revive
+
+
+## A player marks something (`ping` {kind, pos, subject}); the answer is `&""` when the mark went
+## up, else why not (`PingJudge`).
+func ping(player_id: int, action: Dictionary) -> StringName:
+	return _ping_judge.place(player_id, action)
+
+
 ## One board back if this hand is free: the first at the press, then one every `repair_interval`.
 func _repair(player_id: int, breach: StringName) -> void:
 	if _hand_wait[player_id] <= 0.0:
 		_hand_wait[player_id] = tuning.repair_interval
 		rules.apply(RulesAction.repair(player_id, breach))
 		_facing_breach[player_id] = breach
-		_facing_patient[player_id] = 0
 		_face_left[player_id] = tuning.repair_interval
 
 
@@ -779,12 +829,7 @@ func _face_breach(player_id: int, delta: float) -> void:
 		return
 	_face_left[player_id] = left - delta
 	var body := _bodies[player_id]
-	var patient: int = _facing_patient.get(player_id, 0)
-	var to := Vector3.ZERO
-	if patient != 0 and _bodies.has(patient):
-		to = _bodies[patient].global_position - body.global_position
-	elif _facing_breach.get(player_id, &"") != &"":
-		to = world.barricade(_facing_breach[player_id]).global_position - body.global_position
+	var to := world.barricade(_facing_breach[player_id]).global_position - body.global_position
 	if Vector2(to.x, to.z).length() < 0.01:
 		return
 	body.state.facing = rotate_toward(
@@ -804,70 +849,6 @@ func _hold_repair(player_id: int, command: NightCommand) -> void:
 		_repairing[player_id] = &""
 		return
 	_repair(player_id, breach)
-
-
-## The downed teammate nearest this player within the revive's reach whom nobody else is reviving,
-## or 0. A player who is down has nobody to revive, and nothing is revived outside a round.
-func revive_target(player_id: int) -> int:
-	var body := _bodies.get(player_id) as Player
-	if body == null or _is_downed(player_id) or rules.phase != GameRules.Phase.ACTIVE:
-		return 0
-	var reach := rules.tuning.revive.reach
-	var best := 0
-	var best_apart := INF
-	for other_id: int in _bodies:
-		var other: PlayerState = rules.players.get(other_id)
-		if other == null or other_id == player_id or not other.downed or other.dead:
-			continue
-		if other.reviver_id != 0 and other.reviver_id != player_id:
-			continue
-		var apart := _flat(body.global_position, _bodies[other_id].global_position)
-		if apart <= reach and apart < best_apart:
-			best = other_id
-			best_apart = apart
-	return best
-
-
-## The held `use` beside a downed teammate: one tick of the hold while the button stays down and the
-## teammate stays in reach. Anything else lets go and the next hold starts from nothing: the button
-## coming up, a step out of reach, or the hands busy (a shot, a reload, a swap).
-func _hold_revive(player_id: int, command: NightCommand, delta: float) -> void:
-	var current: int = _reviving[player_id]
-	var target := revive_target(player_id)
-	if command.fire or command.reload or command.swap:
-		_end_revive(player_id, &"busy_hands")
-		return
-	if target == 0 or (current != 0 and target != current):
-		_end_revive(player_id, &"away")
-		return
-	if not command.use_held:
-		_end_revive(player_id, &"released")
-		return
-	_reviving[player_id] = target
-	rules.apply(RulesAction.revive_hold(target, player_id, delta))
-	_face_patient(player_id, target)
-
-
-## Lets go of the hold this player has on someone, telling the rules why (nothing when there is
-## none).
-func _end_revive(player_id: int, reason: StringName) -> void:
-	var held: int = _reviving.get(player_id, 0)
-	if held == 0:
-		return
-	_reviving[player_id] = 0
-	rules.apply(RulesAction.revive_release(held, reason))
-
-
-## The body turns toward the teammate it is reviving, for as long as the hold lasts.
-func _face_patient(player_id: int, patient_id: int) -> void:
-	_facing_breach[player_id] = &""
-	_facing_patient[player_id] = patient_id
-	_face_left[player_id] = tuning.revive_face_seconds
-
-
-## Whether this player's held `use` is reviving a teammate now (for tests and the picture).
-func is_reviving(player_id: int) -> bool:
-	return _reviving.get(player_id, 0) != 0
 
 
 ## Whether this player's held `use` is putting boards back now (for tests and the picture).
@@ -894,16 +875,17 @@ func _frame() -> Dictionary:
 			"reloading": weapon != null and weapon.is_reloading(),
 			"arms": _arms_of(player_id),
 			"points": rules.points_of(player_id),
-			# A player who is down can use nothing, so the card says nothing.
+			# A player on the ground can use nothing, so the card says nothing.
 			"prompt": {} if _is_downed(player_id) else use_target(player_id),
 			"ack": _acked.get(player_id, 0),
+			"reviving": _revive.target_of(player_id),
+			"revive": _revive.progress(player_id),
+			"reviver": _revive.holder_of(player_id),
 			"kills": rules.kills_of(player_id),
 			"downs": rules.downs_of(player_id),
 			"revives": rules.revives_of(player_id),
 			"dead": rules.is_dead(player_id),
 			"bleed": rules.bleed_left_of(player_id),
-			"revive": rules.revive_fraction_of(player_id),
-			"reviver": rules.reviver_of(player_id),
 		}
 		if pings.has(player_id):
 			players[player_id]["ping"] = pings[player_id]
@@ -922,6 +904,7 @@ func _frame() -> Dictionary:
 		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),
 		"crane": _crane_frame(),
+		"pings": ping_board.marks(),
 		"barricades": rules.barricades.to_dict(),
 		"zombies": ZombieCodec.encode(sim.zombies),
 		"players": players,

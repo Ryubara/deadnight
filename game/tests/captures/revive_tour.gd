@@ -84,7 +84,7 @@ func _downed_view() -> void:
 	_command.use_held = true
 	_command.use = true
 	var rules := _host.server.rules
-	while rules.revive_fraction_of(1) < 0.5 and rules.players[1].downed:
+	while _host.server.revive().progress(1) < 0.5 and rules.players[1].downed:
 		await get_tree().physics_frame
 	await _settle(2)
 	await _save("downed-ring")
@@ -106,7 +106,7 @@ func _reviver_view() -> void:
 	await _settle(8)
 	await _save("marker")
 	var rules := _host.server.rules
-	while rules.revive_fraction_of(2) < 0.5 and rules.players[2].downed:
+	while _host.server.revive().progress(2) < 0.5 and rules.players[2].downed:
 		await get_tree().physics_frame
 	await _settle(2)
 	await _save("reviver-ring")

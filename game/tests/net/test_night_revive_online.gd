@@ -93,7 +93,7 @@ func _client(mode: Night.Mode) -> Night:
 					&"player_revived",
 					&"player_died",
 					&"revive_started",
-					&"revive_interrupted",
+					&"revive_stopped",
 				]
 			):
 				heard.append(event)
@@ -180,11 +180,14 @@ func test_a_hold_beside_a_downed_teammate_shows_the_ring_on_both_screens_and_get
 	# Out of reach nothing is offered and nothing happens.
 	_hold(b)
 	await get_tree().create_timer(0.5).timeout
-	assert_int(rules.reviver_of(1)).is_equal(0)
-	assert_int(_host.server.revive_target(2)).is_equal(0)
+	assert_int(_host.server.revive().holder_of(1)).is_equal(0)
+	assert_int(_host.server.revive().in_reach(2)).is_equal(0)
 	# Beside the body the prompt names the teammate and the hold starts.
 	_stand_beside(2, 1, 1.0)
-	assert_bool(await _until(func() -> bool: return rules.reviver_of(1) == 2)).is_true()
+	(
+		assert_bool(await _until(func() -> bool: return _host.server.revive().holder_of(1) == 2))
+		. is_true()
+	)
 	var offered := func() -> bool:
 		return _player_in(b, 2).get("prompt", {}).get("kind", &"") == &"revive"
 	assert_bool(await _until(offered, 10.0)).is_true()
@@ -241,27 +244,33 @@ func test_a_hold_beside_a_downed_teammate_shows_the_ring_on_both_screens_and_get
 	assert_bool(_huds[late].state.team[1]["downed"]).is_false()
 
 
-func test_a_hold_is_broken_by_walking_away_by_firing_and_by_the_reviver_going_down() -> void:
+func test_a_hold_is_broken_by_walking_away_and_by_the_reviver_going_down() -> void:
 	var pair := await _scene()
 	var a := pair[0]
 	var b := pair[1]
 	var rules := _rules()
 	_stand_beside(2, 1)
 	_hold(b)
-	assert_bool(await _until(func() -> bool: return rules.revive_fraction_of(1) > 0.25)).is_true()
+	(
+		assert_bool(await _until(func() -> bool: return _host.server.revive().progress(1) > 0.25))
+		. is_true()
+	)
 	# Walks away: out of reach the hold breaks, on both screens, and the progress is lost.
 	_stand_beside(2, 1, 6.0)
-	assert_bool(await _until(func() -> bool: return rules.reviver_of(1) == 0)).is_true()
-	assert_float(rules.revive_fraction_of(1)).is_equal(0.0)
+	(
+		assert_bool(await _until(func() -> bool: return _host.server.revive().holder_of(1) == 0))
+		. is_true()
+	)
+	assert_float(_host.server.revive().progress(1)).is_equal(0.0)
 	(
 		assert_bool(
-			await _until(func() -> bool: return _count(a, &"revive_interrupted", &"away") == 1)
+			await _until(func() -> bool: return _count(a, &"revive_stopped", &"released") == 1)
 		)
 		. is_true()
 	)
 	(
 		assert_bool(
-			await _until(func() -> bool: return _count(b, &"revive_interrupted", &"away") == 1)
+			await _until(func() -> bool: return _count(b, &"revive_stopped", &"released") == 1)
 		)
 		. is_true()
 	)
@@ -275,36 +284,30 @@ func test_a_hold_is_broken_by_walking_away_by_firing_and_by_the_reviver_going_do
 	assert_float(_player_in(a, 1)["revive"]).is_equal(0.0)
 	# Back beside the body it starts from nothing, not from where it stopped.
 	_stand_beside(2, 1)
-	assert_bool(await _until(func() -> bool: return rules.reviver_of(1) == 2)).is_true()
-	assert_float(rules.revive_fraction_of(1)).is_less(0.2)
-	assert_bool(await _until(func() -> bool: return rules.revive_fraction_of(1) > 0.25)).is_true()
-	# A shot: the hands are busy, the hold is over.
-	(_commands[b] as NightCommand).fire = true
-	assert_bool(await _until(func() -> bool: return rules.reviver_of(1) == 0)).is_true()
 	(
-		assert_bool(
-			await _until(
-				func() -> bool: return _count(a, &"revive_interrupted", &"busy_hands") >= 1
-			)
-		)
+		assert_bool(await _until(func() -> bool: return _host.server.revive().holder_of(1) == 2))
 		. is_true()
 	)
-	(_commands[b] as NightCommand).fire = false
-	assert_bool(rules.players[1].downed).is_true()
-	assert_int(rules.revives_of(2)).is_equal(0)
+	assert_float(_host.server.revive().progress(1)).is_less(0.2)
+	(
+		assert_bool(await _until(func() -> bool: return _host.server.revive().progress(1) > 0.25))
+		. is_true()
+	)
 	# The reviver goes down mid-hold: the hold is over and says so.
-	assert_bool(await _until(func() -> bool: return rules.reviver_of(1) == 2)).is_true()
-	assert_bool(await _until(func() -> bool: return rules.revive_fraction_of(1) > 0.1)).is_true()
+	(
+		assert_bool(await _until(func() -> bool: return _host.server.revive().holder_of(1) == 2))
+		. is_true()
+	)
+	(
+		assert_bool(await _until(func() -> bool: return _host.server.revive().progress(1) > 0.1))
+		. is_true()
+	)
 	_act(RulesAction.blow(2, 99999.0))
 	(
-		assert_bool(
-			await _until(
-				func() -> bool: return _count(a, &"revive_interrupted", &"reviver_downed") == 1
-			)
-		)
+		assert_bool(await _until(func() -> bool: return _count(a, &"revive_stopped", &"down") == 1))
 		. is_true()
 	)
-	assert_int(rules.reviver_of(1)).is_equal(0)
+	assert_int(_host.server.revive().holder_of(1)).is_equal(0)
 	assert_int(rules.revives_of(2)).is_equal(0)
 
 
@@ -332,8 +335,8 @@ func test_a_player_nobody_reaches_bleeds_out_and_cannot_be_revived() -> void:
 	# Beside the body, holding for as long as it takes, changes nothing: dead is dead.
 	_stand_beside(2, 1)
 	_hold(b)
-	await get_tree().create_timer(rules.tuning.revive.revive_seconds + 1.0).timeout
-	assert_int(_host.server.revive_target(2)).is_equal(0)
+	await get_tree().create_timer(rules.tuning.health.revive_seconds + 1.0).timeout
+	assert_int(_host.server.revive().in_reach(2)).is_equal(0)
 	assert_bool(rules.players[1].downed).is_true()
 	assert_bool(rules.is_dead(1)).is_true()
 	assert_int(rules.revives_of(2)).is_equal(0)

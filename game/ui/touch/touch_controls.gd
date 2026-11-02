@@ -67,6 +67,11 @@ const VERBS := {
 }
 const DEFAULT_VERB := "USE"
 const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
+## A finger that starts on one of these also looks while it drags, so one thumb can aim and shoot.
+const LOOKING_BUTTONS: Array[StringName] = [TouchLayout.FIRE, TouchLayout.AIM]
+## The engine's `velocity` of a finger is wrong for its first drags (the web runtime seeds it with
+## the jump from another position): it is trusted after this many.
+const VELOCITY_WARMUP_DRAGS := 3
 
 ## The HUD state, for the interact button.
 var state: HudState
@@ -240,7 +245,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
-		_touch_drag(drag.index, drag.position, drag.relative, drag.velocity)
+		_touch_drag(drag.index, drag.position, drag.velocity)
 		get_viewport().set_input_as_handled()
 
 
@@ -250,7 +255,7 @@ func _touch_down(index: int, point: Vector2) -> void:
 	var hidden: Array = [] if _interact_verb != "" else [TouchLayout.INTERACT]
 	var button := TouchLayout.button_at(point, _circles, hidden)
 	if button != &"":
-		_touches[index] = {&"role": &"button", &"button": button}
+		_touches[index] = _own(&"button", point, {&"button": button})
 		_press_button(button)
 		if button == TouchLayout.INTERACT:
 			hints.mark_used(TouchHints.INTERACT)
@@ -259,10 +264,10 @@ func _touch_down(index: int, point: Vector2) -> void:
 		_stick_index = index
 		_stick_origin = point
 		_stick_pos = point
-		_touches[index] = {&"role": &"stick"}
+		_touches[index] = _own(&"stick", point)
 		_set_stick(Vector2.ZERO)
 	elif not _has_role(&"look"):
-		_touches[index] = {&"role": &"look"}
+		_touches[index] = _own(&"look", point)
 
 
 func _touch_up(index: int) -> void:
@@ -276,17 +281,38 @@ func _touch_up(index: int) -> void:
 			_release_button(touch[&"button"])
 
 
-func _touch_drag(index: int, point: Vector2, relative: Vector2, velocity: Vector2) -> void:
+## What a finger owns from its press to its lift: one job (`role`), where it last was (`last`), and
+## how many drags it made (`drags`).
+func _own(role: StringName, point: Vector2, extra := {}) -> Dictionary:
+	var owned := {&"role": role, &"last": point, &"drags": 0}
+	owned.merge(extra)
+	return owned
+
+
+## A drag is read from the finger's own path, not from the event's `relative`: with two fingers
+## down the browser's runtime measures the first drag of a finger from somewhere else (the origin
+## for one finger, the other finger's press for the next), and the view flicked round by a whole
+## screen (#497). `velocity` is stale for a finger's first few drags too: it counts after three.
+func _touch_drag(index: int, point: Vector2, velocity: Vector2) -> void:
 	var touch: Dictionary = _touches.get(index, {})
-	match touch.get(&"role", &""):
+	if touch.is_empty():
+		return
+	var relative: Vector2 = point - touch[&"last"]
+	touch[&"last"] = point
+	touch[&"drags"] += 1
+	match touch[&"role"]:
 		&"stick":
 			_stick_pos = point
 			_follow_stick()
 		&"look":
-			_look(relative, velocity)
+			_look(relative, _trusted_velocity(touch, velocity))
 		&"button":
-			if touch[&"button"] == TouchLayout.FIRE:
-				_look(relative, velocity)
+			if LOOKING_BUTTONS.has(touch[&"button"]):
+				_look(relative, _trusted_velocity(touch, velocity))
+
+
+func _trusted_velocity(touch: Dictionary, velocity: Vector2) -> Vector2:
+	return velocity if touch[&"drags"] > VELOCITY_WARMUP_DRAGS else Vector2.ZERO
 
 
 func _look(relative: Vector2, velocity: Vector2) -> void:

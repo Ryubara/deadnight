@@ -158,8 +158,10 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   *diagonal* ticks (starting 9 units out) and sit between the reticle's, so the two never overprint. Lengths are canvas
   units: it scales with the window and the UI scale like every other part (a test reads the viewport's stretch). It
   is shown **while aiming too**: the aim view has no reticle of its own, and hiding the only mark where the shots go
-  at the moment of precision would be wrong. It is hidden under the pause card (the screen calls `set_shown`) and
-  while you are down. Every number is on `ReticleStyle` (`ui/hud/reticle_style.tres`, also the *Reticle Style*
+  at the moment of precision would be wrong. It is hidden under every card the night screen shows (Joining,
+  Paused, the result: `_show_overlay` calls `set_shown`) and shown again by `_hide_overlay`, the one way a card goes,
+  together with the scoreboard and the touch controls (#517: a joined night once ran with none of them). It is also
+  hidden while you are down. Every number is on `ReticleStyle` (`ui/hud/reticle_style.tres`, also the *Reticle Style*
   property of the `Hud` node): arm length, gap, thickness, outline, dot size (0 for none), tint and opacity, with
   ranges in the inspector.
 - **A part never grows past its band.** The layout test once used short values and the fallback font and passed

@@ -431,8 +431,14 @@ func _aim(command: NightCommand, here: Vector3, target: Vector3, look: StringNam
 	var eye := here + Vector3(0.0, EYE, 0.0)
 	var to := target + Vector3(0.0, _chest(look), 0.0) - eye
 	command.origin = eye
-	command.dir = to.normalized()
+	command.aim_along(to)
 	command.muzzle = here + Basis(Vector3.UP, _yaw) * MUZZLE
+	# The view turns to the target and the body goes on walking its way, as a person does with the
+	# camera on a zombie: the server refuses a shot that does not follow the view
+	# (`NightServer.aims_with_view`).
+	if command.motion.move != Vector2.ZERO:
+		var apart := command.motion.yaw - _yaw
+		command.motion.move = Vector2(sin(apart), -cos(apart))
 
 
 ## Where it aims on a zombie that stands as tall as the look says (a crawler lies low).

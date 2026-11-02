@@ -24,14 +24,13 @@ const SAMPLES := {
 	&"set_circuit": {"type": &"set_circuit", "circuit_id": &"screen_lot", "on": false},
 	&"grant_points": {"type": &"grant_points", "player_id": 1, "amount": 10},
 	&"use_grenade": {"type": &"use_grenade", "player_id": 1},
+	&"revive": {"type": &"revive", "player_id": 1, "target_id": 2},
 	&"explosion":
 	{
 		"type": &"explosion",
 		"player_id": 1,
 		"victims": [{"zombie_id": 1, "damage": 20.0, "leg_damage": 5.0}],
 	},
-	&"revive_hold": {"type": &"revive_hold", "player_id": 1, "reviver_id": 2, "delta": 0.1},
-	&"revive_release": {"type": &"revive_release", "player_id": 1},
 }
 
 var _rules: GameRules

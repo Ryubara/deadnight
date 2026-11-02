@@ -12,6 +12,7 @@ const SKIP_BREAK := &"skip_break"
 const ADD_PLAYER := &"add_player"
 const REMOVE_PLAYER := &"remove_player"
 const SET_DOWNED := &"set_downed"
+const REVIVE := &"revive"
 const BLOW := &"blow"
 const HIT := &"hit"
 const ZOMBIE_GONE := &"zombie_gone"
@@ -23,8 +24,6 @@ const SET_CIRCUIT := &"set_circuit"
 const GRANT_POINTS := &"grant_points"
 const USE_GRENADE := &"use_grenade"
 const EXPLOSION := &"explosion"
-const REVIVE_HOLD := &"revive_hold"
-const REVIVE_RELEASE := &"revive_release"
 
 ## Where a hit landed. `ZONE_HEAD` and `ZONE_WEAK` change what the rules pay; the weapon has already
 ## applied its zone multiplier to the damage, and the rules add the type's own `weak_multiplier` for
@@ -59,6 +58,7 @@ const REQUIRED := {
 	ADD_PLAYER: {"player_id": TYPE_INT},
 	REMOVE_PLAYER: {"player_id": TYPE_INT},
 	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
+	REVIVE: {"player_id": TYPE_INT, "target_id": TYPE_INT},
 	BLOW: {"player_id": TYPE_INT, "damage": TYPE_FLOAT},
 	HIT:
 	{"player_id": TYPE_INT, "zombie_id": TYPE_INT, "zone": TYPE_STRING_NAME, "damage": TYPE_FLOAT},
@@ -71,8 +71,6 @@ const REQUIRED := {
 	GRANT_POINTS: {"player_id": TYPE_INT, "amount": TYPE_INT},
 	USE_GRENADE: {"player_id": TYPE_INT},
 	EXPLOSION: {"player_id": TYPE_INT, "victims": TYPE_ARRAY},
-	REVIVE_HOLD: {"player_id": TYPE_INT, "reviver_id": TYPE_INT, "delta": TYPE_FLOAT},
-	REVIVE_RELEASE: {"player_id": TYPE_INT},
 }
 ## Fields that may be left out; when present they must have the type.
 const OPTIONAL := {
@@ -80,7 +78,7 @@ const OPTIONAL := {
 	BLOW: {"bearing": TYPE_FLOAT, "source_id": TYPE_INT},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
 	BUY: {"rounds": TYPE_INT, "weapon": TYPE_STRING_NAME},
-	REVIVE_RELEASE: {"reason": TYPE_STRING_NAME},
+	TICK: {"held": TYPE_ARRAY},
 }
 
 
@@ -94,9 +92,14 @@ static func configure(settings: MatchSettings) -> Dictionary:
 	return {"type": CONFIGURE, "settings": settings.to_dict()}
 
 
-## One fixed step of the clock. The only way time passes.
-static func tick(delta: float) -> Dictionary:
-	return {"type": TICK, "delta": delta}
+## One fixed step of the clock. The only way time passes. `held` lists the downed players a
+## teammate is holding the revive on (the server's channel knows): their bleed-out clock stands
+## still this tick, if the tuning says so.
+static func tick(delta: float, held: Array = []) -> Dictionary:
+	var action := {"type": TICK, "delta": delta}
+	if not held.is_empty():
+		action["held"] = held
+	return action
 
 
 static func skip_break() -> Dictionary:
@@ -113,6 +116,14 @@ static func remove_player(player_id: int) -> Dictionary:
 
 static func set_downed(player_id: int, downed: bool) -> Dictionary:
 	return {"type": SET_DOWNED, "player_id": player_id, "downed": downed}
+
+
+## `player_id` gets `target_id` back on their feet, with `HealthTuning.revive_fraction` of their
+## health. The server sends it when the channel (`HealthTuning.revive_seconds` of holding use beside
+## the downed player) is complete; the rules refuse it unless the round is on, the reviver is up
+## and the target is down, so a client cannot raise anyone by asking.
+static func revive(player_id: int, target_id: int) -> Dictionary:
+	return {"type": REVIVE, "player_id": player_id, "target_id": target_id}
 
 
 ## One blow on a player (a zombie's swing). `damage` is what it does; `bearing` is where it came
@@ -206,27 +217,6 @@ static func explosion(player_id: int, victims: Array) -> Dictionary:
 	return {"type": EXPLOSION, "player_id": player_id, "victims": victims}
 
 
-## One tick of a teammate's hold of Use beside a downed player (`player_id`): the rules add `delta`
-## to the downed player's revive progress, and at `ReviveTuning.revive_seconds` the player is up.
-## The server sends one every tick the hold lasts, after it has checked reach and hands; the rules
-## check who is downed and who is up (`not_downed`, `target_dead`, `reviver_downed`, `self_revive`,
-## `busy`).
-static func revive_hold(player_id: int, reviver_id: int, delta: float) -> Dictionary:
-	return {
-		"type": REVIVE_HOLD,
-		"player_id": player_id,
-		"reviver_id": reviver_id,
-		"delta": delta,
-	}
-
-
-## The hold on a downed player (`player_id`) is over: its progress goes back to zero. `reason` is
-## `released`, `away` or `busy_hands` (the reviver let go, walked out of reach, or fired); a hold
-## the server simply stops sending is released as `released` at the next tick.
-static func revive_release(player_id: int, reason: StringName = &"released") -> Dictionary:
-	return {"type": REVIVE_RELEASE, "player_id": player_id, "reason": reason}
-
-
 ## Checks an action against `REQUIRED` and `OPTIONAL` and the value bounds. Returns `{}` when it is
 ## well formed, else `{"reason": StringName, "field": StringName}` with the reason one of
 ## `unknown_action`, `missing_field`, `wrong_type`, `out_of_range`. Whether the ids it names exist
@@ -267,9 +257,6 @@ static func _has_type(value: Variant, expected: int) -> bool:
 static func _out_of_range_field(type: StringName, action: Dictionary) -> StringName:
 	match type:
 		TICK:
-			if not _within(action["delta"], 0.0, MAX_TICK):
-				return &"delta"
-		REVIVE_HOLD:
 			if not _within(action["delta"], 0.0, MAX_TICK):
 				return &"delta"
 		HIT:
