@@ -44,7 +44,7 @@ and what loads it are in [Scenes: which is which](scenes.md).
 
 - **A night, straight away: F6 on `dev/play_night.tscn`** (above).
 - **The whole game: F5** (Run Project) opens `main.tscn`. Click Play (it takes about half a second for the items to
-  appear). You are in the night, alone, on the seed `Night.SEED` (1958). Esc pauses; "Back to the menu" leaves.
+  appear). You are in the night, alone, on the seed `Night.SEED` (1958). Esc opens the menu: Resume, Settings, "Leave night".
 - **F6 on `ui/screens/night_screen.tscn` starts a solo night too** (checked: the lot and the HUD come up and the
   player stands in it). The screen starts the night itself when it is the scene you run; inside the menu's router the
   router starts it. `dev/play_night.tscn` is still the one with options.

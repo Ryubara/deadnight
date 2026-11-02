@@ -167,3 +167,17 @@ drives the screen with key and gamepad events only and prints the focus owner at
   `test_ui_button_ring.gd`: the ring is the shared one; keyboard focus lights it and pointer focus does not. Buttons do
   not snap their springs under reduced motion (the other widgets do): the focus and hover springs of a button still
   settle over a few frames.
+
+## In the night (#471)
+
+The night's menu (Esc, the pad's Start, the touch layer's pause button, or the platform taking the mouse back) has
+Resume, Settings and Leave night. Settings is the same `SettingsScreen` as the main menu's, held as a child of
+`NightScreen` with `embedded = true` (its Back emits `closed`): a router push would set the night's `process_mode` to
+disabled, and a night played with others would stop reading its socket. Alone, the night stands still behind the menu
+(`Night.set_paused`); with others it keeps running and only this player's controls go off, so the card says "Menu",
+"The night goes on around you". Esc, B or Start inside the settings goes back to the card, one step. Every change is
+applied and saved by the service as it is made, and the player, the touch layer and the HUD already listen to
+`changed`, so sensitivity, volume and the touch layout move at once. Tests: `tests/ui/test_night_menu.gd` (real keys,
+pad buttons, fingers and clicks; a game server over loopback for the online night); browser:
+`tools/web_smoke/ingame_menu.py` (desktop and a phone in landscape; the page reads the card's buttons from
+`window.deadnight.menu_buttons`).

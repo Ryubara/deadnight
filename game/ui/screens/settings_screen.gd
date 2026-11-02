@@ -4,7 +4,12 @@ extends UIScreen
 ## `Settings` autoload. A change applies at once (the service does that); this screen only draws
 ## the controls, keeps them in step with the service and switches tabs.
 ##
-## Route to it with `UIRouter.push("res://ui/screens/settings_screen.tscn")`.
+## Route to it with `UIRouter.push("res://ui/screens/settings_screen.tscn")`. The night's menu
+## holds one itself instead (`embedded`): a router push would switch the night's screen off, and a
+## night played with others goes on behind its menu.
+
+## An embedded screen's Back: its owner takes the screen away.
+signal closed
 
 const PANEL_WIDTH := 1200
 const MAX_PAGE_ROWS := 4
@@ -237,6 +242,9 @@ const TABS := [
 
 ## True in a browser. Set before the screen enters the tree to test the web layout.
 var is_web := OS.has_feature("web")
+## Held inside another screen (the night's menu) rather than on the router's stack: Back emits
+## `closed` and the owner removes it. Set before the screen enters the tree.
+var embedded := false
 
 var _bindings: Array[Dictionary] = []
 var _tab_buttons: Array[UIButton] = []
@@ -421,10 +429,17 @@ func _build_footer() -> HBoxContainer:
 	footer.add_child(spacer)
 	var back := UIButton.new()
 	back.text = "Back"
-	back.pressed.connect(func() -> void: UIRouter.pop())
+	back.pressed.connect(_on_back)
 	footer.add_child(back)
 	_footer_buttons.append(back)
 	return footer
+
+
+func _on_back() -> void:
+	if embedded:
+		closed.emit()
+	else:
+		UIRouter.pop()
 
 
 func _on_reset() -> void:
