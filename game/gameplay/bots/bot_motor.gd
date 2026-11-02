@@ -12,7 +12,10 @@ extends RefCounted
 ## - the trigger is pulled when the view is inside the weapon's hit cone, not before, with a
 ##   small seeded pause after each shot and a pause on switching to the next zombie;
 ## - the bot aims at the chest, and at the head with the profile's head-aim rate when the target
-##   is slow and near.
+##   is slow and near; at the headliner's lit lens (its weak spot) at the profile's rate while the
+##   boss faces it;
+## - a grenade is thrown by turning to the view the brain chose, pulling the pin when the view is
+##   there, letting go a moment after and holding the view while the arm swings.
 ##
 ## All randomness is the bot's own seeded stream; time is the step it is given.
 
@@ -25,11 +28,23 @@ const NOISE_MEMORY := 0.25
 const FOCUS_FLOOR := 0.6
 const FOCUS_SECONDS := 1.0
 ## A head is aimed at only when the target moves slower than this (m/s) and is nearer than this (m).
-const HEAD_SPEED := 1.5
+const HEAD_SPEED := 3.0
 const HEAD_RANGE := 12.0
 ## Limits of the pitch the view turns to (radians), and a melee swing's reach (metres).
 const PITCH_LIMIT := 1.2
 const MELEE_RANGE := 1.9
+## The weak spot of the headliner in a walker's units (as `Hitbox.WEAK_ZONE`): up and ahead of its
+## feet, and the least a boss must face the bot (dot product) for the lens to be seen.
+const WEAK_SPOT := Vector3(0.0, 1.16, 0.29)
+const WEAK_FACING := 0.35
+## A grenade throw: degrees the view may be off the throw's, ticks the pin is held, seconds the view
+## is held after the button comes up (the arm's swing), and the longest the turn may take.
+const THROW_AIM_DEGREES := 3.0
+const THROW_COOK_TICKS := 2
+const THROW_SWING_SECONDS := 0.5
+const THROW_TURN_SECONDS := 1.5
+## The widest the view may be off a target for a panic shot (degrees).
+const PANIC_DEGREES := 25.0
 ## Shots in a burst of an automatic weapon.
 const BURST_MIN := 3
 const BURST_MAX := 5
@@ -42,8 +57,9 @@ var pitch := 0.0
 ## The target the motor is on, and the degrees between the view and it at the last tick.
 var target_id := -1
 var error_degrees := INF
-## Shots the motor has asked for since it began.
+## Shots the motor has asked for since it began, and grenades it has thrown.
 var triggers := 0
+var throws := 0
 
 var _profile: BotProfile
 var _rng: RandomNumberGenerator
@@ -56,6 +72,13 @@ var _pause_left := 0.0
 var _burst_left := 0
 var _focus := 0.0
 var _head := false
+var _weak := false
+var _panicky := false
+var _throw_phase := 0
+var _throw_ticks := 0
+var _throw_left := 0.0
+var _throw_style: StringName = &""
+var _throw_view := Vector2.ZERO
 var _shots_seen := 0
 var _last_position := Vector3.INF
 var _last_bearing := 0.0
@@ -92,15 +115,20 @@ func command(
 	_tick_timers(delta)
 	var eye := here + Vector3(0.0, BotLevel.EYE_HEIGHT, 0.0)
 	var contact := _target(intent, beliefs)
-	var wanted := _wanted_view(delta, eye, contact, intent, own_speed)
+	var throwing := _throwing(intent, delta)
+	var wanted := _throw_view if throwing else _wanted_view(delta, eye, contact, intent, own_speed)
 	_turn(delta, wanted)
 	out.origin = eye
 	out.look_along(yaw, pitch)
 	out.muzzle = here + Basis(Vector3.UP, yaw) * MUZZLE
 	if me.get("downed", false):
+		_end_throw()
 		return out
 	_walk(out, intent)
-	out.fire = _trigger(me, eye, contact)
+	if throwing:
+		_throw(out)
+	else:
+		out.fire = _trigger(me, eye, contact, intent.melee_ok)
 	out.reload = intent.reload and not me.get("reloading", false)
 	out.swap = intent.swap
 	out.use = intent.use
@@ -124,6 +152,8 @@ func _target(intent: BotIntent, beliefs: BotBeliefs) -> Dictionary:
 			_retarget_left = _rng.randf_range(_profile.retarget_min, _profile.retarget_max)
 		target_id = intent.target_id
 		_head = _rng.randf() < _profile.head_rate
+		if ZombieModels.is_boss(contact.get("look", ZombieModels.DEFAULT)):
+			_weak = _rng.randf() < _profile.weak_spot_rate
 		_focus = 0.0
 		_noise = Vector2.ZERO
 	return contact
@@ -171,12 +201,30 @@ func _wanted_view(
 
 
 func _aim_point(contact: Dictionary, eye: Vector3) -> Vector3:
-	var scale := ZombieModels.aim_scale(contact.get("look", ZombieModels.DEFAULT))
+	var look: StringName = contact.get("look", ZombieModels.DEFAULT)
+	var scale := ZombieModels.aim_scale(look)
 	var at: Vector3 = contact["position"]
+	if _weak and ZombieModels.is_boss(look):
+		var lens := weak_spot(contact, eye)
+		if lens != Vector3.INF:
+			return lens
 	var apart := Vector2(at.x - eye.x, at.z - eye.z).length()
 	var speed := Vector2(contact["velocity"].x, contact["velocity"].z).length()
 	var head := _head and speed < HEAD_SPEED and apart < HEAD_RANGE
 	return at + Vector3(0.0, (BotLevel.HEAD_HEIGHT if head else BotLevel.CHEST_HEIGHT) * scale, 0.0)
+
+
+## Where the boss's lens is, or `Vector3.INF` when the boss does not face `eye` enough for the bot
+## to see it (the lamp is on its belly).
+static func weak_spot(contact: Dictionary, eye: Vector3) -> Vector3:
+	var yaw_of: float = contact.get("yaw", 0.0)
+	var forward := Vector3(sin(yaw_of), 0.0, cos(yaw_of))
+	var at: Vector3 = contact["position"]
+	var to_eye := Vector3(eye.x - at.x, 0.0, eye.z - at.z)
+	if to_eye.length() < 0.01 or forward.dot(to_eye.normalized()) < WEAK_FACING:
+		return Vector3.INF
+	var scale := ZombieModels.aim_scale(contact.get("look", ZombieModels.DEFAULT))
+	return at + (forward * WEAK_SPOT.z + Vector3.UP * WEAK_SPOT.y) * scale
 
 
 ## Filtered tracking noise, in radians: yaw at full size, pitch at half.
@@ -234,7 +282,7 @@ func _walk(out: NightCommand, intent: BotIntent) -> void:
 
 ## Whether to hold the trigger: on a target, view inside the hit cone, nothing in the way of the
 ## gun, and the pauses of the last shot and the last switch over.
-func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary) -> bool:
+func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool = true) -> bool:
 	if contact.is_empty() or me.get("reloading", false):
 		return false
 	var weapon := _weapon_of(me)
@@ -242,13 +290,65 @@ func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary) -> bool:
 		return false
 	var distance := Vector2(contact["position"].x - eye.x, contact["position"].z - eye.z).length()
 	if weapon.is_melee():
-		return distance < MELEE_RANGE
+		return melee_ok and distance < MELEE_RANGE
 	if int(me.get("ammo", 0)) <= 0 or _retarget_left > 0.0 or _pause_left > 0.0:
 		return false
-	if error_degrees > _cone_degrees(distance):
+	var limit := PANIC_DEGREES if _panicky else _cone_degrees(distance) * _profile.fire_slop
+	if error_degrees > limit:
 		return false
 	triggers += 1
 	return true
+
+
+# --- Grenades ---
+
+
+## Whether the view belongs to a throw this tick: one was ordered and is not over (the turn, the
+## pin, the arm's swing). The order is taken when it comes and kept: the brain thinks several
+## times while the view turns, and each fresh intent would otherwise forget it. The brain stops it
+## by setting `throw_abort` while the view is still turning; a turn that takes too long is given up.
+func _throwing(intent: BotIntent, delta: float) -> bool:
+	match _throw_phase:
+		0:
+			if intent.throw_style == &"":
+				return false
+			_throw_phase = 1
+			_throw_left = THROW_TURN_SECONDS
+			_throw_style = intent.throw_style
+			_throw_view = Vector2(intent.throw_yaw, intent.throw_pitch)
+			intent.throw_style = &""
+		1:
+			_throw_left -= delta
+			if intent.throw_abort or _throw_left <= 0.0:
+				_throw_phase = 0
+				return false
+		3:
+			_throw_left -= delta
+			if _throw_left <= 0.0:
+				_throw_phase = 0
+				return false
+	return true
+
+
+## The throw buttons: held for `THROW_COOK_TICKS` ticks once the view is on the throw's, then let go
+## with the view kept still while the arm swings.
+func _throw(out: NightCommand) -> void:
+	if _throw_phase == 1 and _view_error_degrees(_throw_view) <= THROW_AIM_DEGREES:
+		_throw_phase = 2
+		_throw_ticks = 0
+	if _throw_phase != 2:
+		return
+	out.motion.throw_under = _throw_style == &"under"
+	out.motion.throw_over = _throw_style != &"under"
+	_throw_ticks += 1
+	if _throw_ticks >= THROW_COOK_TICKS:
+		_throw_phase = 3
+		_throw_left = THROW_SWING_SECONDS
+		throws += 1
+
+
+func _end_throw() -> void:
+	_throw_phase = 0
 
 
 ## The weapon in hand (looked up once per change), or null.
@@ -278,6 +378,7 @@ func _count_shots(shots: int, automatic: bool) -> void:
 		return
 	for _i in shots - _shots_seen:
 		_pause_left = _rng.randf() * _profile.fire_jitter
+		_panicky = _profile.panic_rate > 0.0 and _rng.randf() < _profile.panic_rate
 		if not automatic:
 			continue
 		if _burst_left <= 0:
