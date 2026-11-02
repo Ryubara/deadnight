@@ -379,8 +379,9 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	peer.player_id = player_id
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	_by_player[player_id] = peer
-	_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
+	# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
 	_name_seat(player_id, peer.user_name)
+	_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
 	listener.send(
