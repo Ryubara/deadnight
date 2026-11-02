@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/barricade_tuning.gd" id="10_barr1"]
 [ext_resource type="Script" path="res://gameplay/rules/health_tuning.gd" id="10_ptune"]
 [ext_resource type="Script" path="res://gameplay/rules/crane_tuning.gd" id="11_crane1"]
+[ext_resource type="Script" path="res://gameplay/rules/upgrade_tuning.gd" id="12_upgr1"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -82,6 +83,7 @@ script = ExtResource("1_skww1")
 id = &"tonic_hearty"
 kind = 3
 price = 1000
+health_bonus = 50.0
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_lpb0c"]
@@ -95,6 +97,13 @@ pool_weights = PackedFloat32Array()
 script = ExtResource("1_skww1")
 id = &"tonic_fleet"
 kind = 3
+price = 1500
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_upgr1"]
+script = ExtResource("1_skww1")
+id = &"upgrade_weapon"
+kind = 7
 price = 1500
 pool_weights = PackedFloat32Array()
 
@@ -175,7 +184,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")
@@ -362,6 +371,15 @@ leave_chances = PackedFloat32Array(0.15, 0.15, 0.15, 0.15, 0.3, 0.3, 0.3, 0.3, 0
 breakdown_seconds = 4.0
 refund_fraction = 1.0
 
+[sub_resource type="Resource" id="Resource_upgt1"]
+script = ExtResource("12_upgr1")
+weapons = Array[StringName]([&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun"])
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+price_step = 1500
+name_prefix = "Tuned "
+
 [resource]
 script = ExtResource("5_3ukcj")
 rounds = SubResource("Resource_1fk4k")
@@ -373,3 +391,4 @@ explosives = SubResource("Resource_expl1")
 barricades = SubResource("Resource_barr1")
 health = SubResource("Resource_ptune1")
 crane = SubResource("Resource_crane1")
+upgrade = SubResource("Resource_upgt1")
