@@ -35,16 +35,16 @@ func test_a_wall_hit_is_a_spark_a_puff_and_a_mark_and_all_of_it_is_small() -> vo
 
 
 func test_the_impact_is_far_smaller_than_the_old_sphere_and_puff() -> void:
-	assert_float(ImpactFx.SPARK_SIZE).is_less(OLD_SPARK * 0.5)
-	assert_float(ImpactFx.DUST_TO).is_less(OLD_PUFF * 0.5)
-	assert_float(ImpactFx.BLOOD_TO).is_less(ImpactFx.DUST_TO)
+	assert_float(_effects.impacts.fx.spark_size).is_less(OLD_SPARK * 0.5)
+	assert_float(_effects.impacts.fx.dust_to).is_less(OLD_PUFF * 0.5)
+	assert_float(_effects.impacts.fx.blood_to).is_less(_effects.impacts.fx.dust_to)
 	assert_float(ImpactFx.MAX_SIZE).is_less(OLD_PUFF * 0.5)
 
 
 func test_a_zombie_hit_is_one_small_dark_red_puff() -> void:
 	_effects.impacts.spawn(Vector3(0, 1, 0), ImpactFx.Kind.FLESH)
 	assert_int(_effects.impacts.visible_parts()).is_equal(1)
-	var colour: Color = ImpactFx.BLOOD
+	var colour: Color = _effects.impacts.fx.blood_colour
 	assert_float(colour.r).is_greater(colour.g * 3.0)
 	assert_float(colour.get_luminance()).is_less(0.2)
 

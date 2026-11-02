@@ -1,0 +1,109 @@
+[gd_resource type="Resource" script_class="SoundBank" format=3]
+
+[ext_resource type="Script" path="res://core/audio/sound_bank.gd" id="1_bank"]
+[ext_resource type="Script" path="res://core/audio/sound_def.gd" id="2_def"]
+
+[sub_resource type="Resource" id="Resource_bed_tension"]
+resource_name = "bed_tension"
+script = ExtResource("2_def")
+id = &"bed_tension"
+path_format = "res://assets/audio/music/tension_%d.ogg"
+variants = 1
+bus = &"Music"
+loop = true
+volume_db = -20.0
+pitch_semitones = 0.0
+group = &"bed"
+priority = 10
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_bed_crickets"]
+resource_name = "bed_crickets"
+script = ExtResource("2_def")
+id = &"bed_crickets"
+path_format = "res://assets/audio/ambience/crickets_%d.ogg"
+variants = 1
+bus = &"Ambience"
+loop = true
+volume_db = -18.5
+pitch_semitones = 0.0
+group = &"bed"
+priority = 10
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_bed_highway"]
+resource_name = "bed_highway"
+script = ExtResource("2_def")
+id = &"bed_highway"
+path_format = "res://assets/audio/ambience/highway_%d.ogg"
+variants = 1
+bus = &"Ambience"
+loop = true
+volume_db = -18.0
+pitch_semitones = 0.0
+group = &"bed"
+priority = 10
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_bed_projector"]
+resource_name = "bed_projector"
+script = ExtResource("2_def")
+id = &"bed_projector"
+path_format = "res://assets/audio/ambience/projector_%d.ogg"
+variants = 1
+bus = &"Ambience"
+loop = true
+volume_db = -14.0
+pitch_semitones = 0.0
+group = &"bed"
+priority = 10
+cooldown = 0.0
+max_distance = 35.0
+unit_size = 4.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_bed_score"]
+resource_name = "bed_score"
+script = ExtResource("2_def")
+id = &"bed_score"
+path_format = "res://assets/audio/music/score_%d.ogg"
+variants = 1
+bus = &"Music"
+loop = true
+volume_db = -20.1
+pitch_semitones = 0.0
+group = &"bed"
+priority = 10
+cooldown = 0.0
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[resource]
+script = ExtResource("1_bank")
+label = "Loops under the night: crickets, highway, projector, the tension and the score"
+sounds = Array[ExtResource("2_def")]([SubResource("Resource_bed_tension"), SubResource("Resource_bed_crickets"), SubResource("Resource_bed_highway"), SubResource("Resource_bed_projector"), SubResource("Resource_bed_score")])

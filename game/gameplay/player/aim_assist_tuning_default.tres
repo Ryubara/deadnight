@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AimAssistTuning" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/aim_assist_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+reach = 30.0
+front_cos = 0.5
+aim_height = 1.2
+capture_metres = 1.1
+capture_floor = 0.4
+friction_max = 0.6
+magnetism_gain = 5.0
+magnetism_max_rate = 0.9
+flick_speed = 2.0
+auto_fire_reach = 25.0
+accuracy_gain = 0.39
+accuracy_curve = 1.8
