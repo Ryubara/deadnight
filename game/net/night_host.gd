@@ -48,6 +48,8 @@ var port := NetWire.DEFAULT_PORT
 var seed_value := -1
 var rules_tuning: RulesTuning
 var log_enabled := true
+## Metres around a player within which the zombies are sent to their client (0: all of them).
+var interest_radius := 0.0
 ## Seconds a connection has to say hello (`HELLO_WITHIN`; a test sets it shorter).
 var hello_within := HELLO_WITHIN
 ## Seconds a dropped player's seat is held (`RESUME_WITHIN`); 0 frees it at once.
@@ -377,6 +379,7 @@ func _resume(peer: HostPeer, player_id: int) -> void:
 	_away.erase(player_id)
 	peer.player_id = player_id
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
+	peer.zombie_base = {}
 	_by_player[player_id] = peer
 	listener.send(
 		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, server.rules.to_dict())
@@ -457,14 +460,40 @@ func _is_for(event: Dictionary, player_id: int) -> bool:
 
 
 func _send_ticks(frame: Dictionary) -> void:
+	var zombies := ZombieDelta.entries_of(frame["zombies"])
 	for peer: HostPeer in _by_player.values():
 		var out: Array = _events.filter(
 			func(event: Dictionary) -> bool: return _is_for(event, peer.player_id)
 		)
-		out.append(FrameDelta.diff(peer.last_frame, frame))
-		peer.last_frame = frame
+		# The zombies go as what changed from the ones this client has (`ZombieDelta`), and only
+		# those near enough when the host has an `interest_radius`.
+		var seen := _in_interest(peer, zombies)
+		var own := frame.duplicate()
+		own["zombies"] = ZombieDelta.diff(peer.zombie_base, seen, peer.zombie_sequence)
+		peer.zombie_sequence = (peer.zombie_sequence + 1) & 0xFF
+		peer.zombie_base = seen
+		out.append(FrameDelta.diff(peer.last_frame, own))
+		peer.last_frame = own
 		listener.send(peer.transport_id, NetWire.tick(server.tick_count, out))
 	_events.clear()
+
+
+## The zombies this player's client is told of: all of them, or the ones within `interest_radius`
+## metres of their body (the lot is one screen, so a night does not set it; a bigger map would).
+func _in_interest(
+	peer: HostPeer, zombies: Dictionary[int, PackedByteArray]
+) -> Dictionary[int, PackedByteArray]:
+	if interest_radius <= 0.0 or not _by_player.has(peer.player_id):
+		return zombies
+	var body := server.body_of(peer.player_id)
+	var from := Vector2(body.global_position.x, body.global_position.z)
+	var near: Dictionary[int, PackedByteArray] = {}
+	for id: int in zombies:
+		var entry := zombies[id]
+		var at := Vector2(entry.decode_s16(2), entry.decode_s16(6)) / 100.0
+		if at.distance_to(from) <= interest_radius:
+			near[id] = entry
+	return near
 
 
 # --- Log ---
@@ -535,6 +564,9 @@ class HostPeer:
 	## When the connection opened (seconds), for the time it has to say hello.
 	var connected_at := 0.0
 	var limits := PeerLimits.new()
+	## The zombies this client has (`ZombieDelta`), and the number of the next delta to it.
+	var zombie_base: Dictionary[int, PackedByteArray] = {}
+	var zombie_sequence := 0
 	## What the client was given at WELCOME to take its seat back with.
 	var token := PackedByteArray()
 	## Who the backend's ticket says this is (`""` when the server has no backend), and their name.

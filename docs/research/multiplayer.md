@@ -225,6 +225,32 @@ One thing the server decides that no command says: while a player repairs, the s
 (#338). The frame marks such a player (`turn`), and the player's own predicted body takes the server's facing for those
 frames (a position correction is not enough: the facing is not in `Reconciler`).
 
+### Entities in a frame: zombie deltas and interest (#57)
+
+A frame carried every zombie whole (`ZombieCodec`, 13 bytes each) every 30th of a second, so a night with 100 dead cost
+one client about 1.3 KB a tick before compression. The zombies now travel as what changed from the ones that client has
+(`ZombieDelta`, tested in `test_zombie_delta.gd`):
+
+- an entry is the id, a flag byte and only the fields the flags name: `POSITION` (three signed bytes of centimetres
+  moved, or three `s16` when a zombie moved more than 127 cm), `YAW`, `SPEED`, `MODE` (mode and episode), `LOOK`, and
+  `NEW` (every field, for a zombie the client does not have); a zombie that did not change costs nothing, a gone one two
+  bytes. A walking zombie is 2 + 1 + 3 = **6 bytes** (a turn adds one), against 13.
+- a delta starts with a sequence byte, so two deltas are never the same bytes (`FrameDelta` leaves out a field that
+  repeats, and a repeated delta would be lost), and a client refuses bytes that are not a delta of what it has (short, long,
+  a step of an id it never had) and keeps what it had.
+- the host can set an `interest_radius` (metres around the player's body); zombies beyond it are not in that client's
+  base, so they are `gone` as they leave and `NEW` as they arrive. The lot is one screen, so a night leaves it at 0 (all
+  of them); a bigger map sets it. 34 of 100 zombies on an 80 m lot are within 25 m, and the first delta is 481 bytes
+  against 1405.
+- a client that resumes starts from nothing (the first delta is all `NEW`).
+
+Measured (`test_zombie_delta.gd`, 100 zombies walking at 3 m/s, turning now and then, 30 ticks a second): the zombies
+alone cost **608 bytes a tick as deltas against 1302 whole**. A whole TICK to one of four players with 100 zombies, with
+the compression `NetWire` applies above 256 bytes: **948 bytes (28.4 KB/s) whole, 574 bytes (17.2 KB/s) as deltas**. What
+is left of that is mostly the walking itself (positions that change every tick); the next gains are a lower rate for far
+zombies and the interest radius. Not done: a type byte for projectiles and pickups (the night has no entities of those
+kinds in the frame: shots and grenades travel as events), and the protocol version is bumped with this change.
+
 ### Reconnect and resume
 
 A client whose socket drops (a phone changing network, a proxy cutting an idle socket, a Wi-Fi blip) gets its player

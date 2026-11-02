@@ -26,5 +26,4 @@ MultiplayerSynchronizer) and not netfox.
 
 ## Open work
 
-Lag compensation for hits (#54), server and bots in CI (#56), more entity kinds and
-interest management (#57), latency over Railway and Discord (#52).
+Lag compensation for hits (#54), server and bots in CI (#56), latency over Railway and Discord (#52).
