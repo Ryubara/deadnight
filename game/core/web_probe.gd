@@ -65,6 +65,10 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
+		"lobby_seats": "",
+		"lobby_note": "",
+		"lobby_buttons": "",
+		"notices": "",
 		"code_text": "",
 		"touch": false,
 		"reticle": false,
@@ -107,6 +111,19 @@ static func snapshot(top: Control) -> Dictionary:
 		)
 		data["room_status"] = together.status.text
 		data["code_text"] = together.code_field.text  # what a paste put into the code field
+	var lobby := top as LobbyScreen
+	if lobby != null:
+		# The lobby: its code, the seats as `1  Ann  HOST|2  Bo|...`, the standing line, the last
+		# thing that happened and which buttons are up (`Start`, `Play`, `Join`).
+		data["room_code"] = lobby.code_label.text
+		data["room_status"] = lobby.status.text
+		data["lobby_seats"] = "|".join(lobby.seat_texts())
+		data["lobby_note"] = lobby.note.text
+		var buttons: Array[String] = []
+		for button: UIButton in [lobby.start_button, lobby.play_button, lobby.join_button]:
+			if button.is_visible_in_tree():
+				buttons.append(button.name)
+		data["lobby_buttons"] = "|".join(buttons)
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
@@ -123,6 +140,9 @@ static func snapshot(top: Control) -> Dictionary:
 		# So a browser test can see the body is drawn between ticks (a screen can switch that off).
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
+	if night_screen.night.hud != null:
+		# Who joined or left, as the night's notices say it.
+		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():

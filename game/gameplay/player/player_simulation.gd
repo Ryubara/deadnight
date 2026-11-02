@@ -22,6 +22,7 @@ static func simulate(
 	delta: float
 ) -> void:
 	state.jumped = false
+	state.shot_ready = false
 	state.landed = false
 	state.footstep = false
 	state.stepped_up = 0.0
@@ -50,6 +51,7 @@ static func simulate(
 	)
 	state.sprinting = _sprint_allowed(state, command, tuning)
 	_face(state, wish, command, tuning, delta)
+	_gate_shot(state, command, tuning, delta)
 	_move(body, state, wish, command, tuning, delta)
 
 	state.position = body.global_position
@@ -88,6 +90,26 @@ static func _sprint_allowed(
 		and (state.on_floor or state.sprinting)
 		and command.move.length() >= tuning.sprint_min_input
 	)
+
+
+## The trigger's shot may leave when the body faces the view: the one rule of the server (which
+## shoots on `shot_ready`) and of a predicting client (which runs the same turn, so it knows the
+## tick the shot leaves). A press made before that is kept for `hip_fire_buffer`; a held trigger
+## waits as long as it takes. The aim button needs no turn: the body already faces the view.
+static func _gate_shot(
+	state: PlayerMotionState, command: PlayerCommand, tuning: PlayerTuning, delta: float
+) -> void:
+	state.view_error = absf(angle_difference(state.facing, command.yaw))
+	var pressed := command.fire and not state.trigger_down
+	state.trigger_down = command.fire
+	if pressed:
+		state.shot_buffer = tuning.hip_fire_buffer
+	else:
+		state.shot_buffer = maxf(state.shot_buffer - delta, 0.0)
+	var faces := command.aim or state.view_error <= deg_to_rad(tuning.hip_fire_align_degrees)
+	state.shot_ready = (command.fire or state.shot_buffer > 0.0) and faces
+	if state.shot_ready:
+		state.shot_buffer = 0.0
 
 
 static func _face(

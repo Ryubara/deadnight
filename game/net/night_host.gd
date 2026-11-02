@@ -151,6 +151,12 @@ func player_count() -> int:
 	return _by_player.size()
 
 
+## The round the night is in (0 before the first begins, and while there is no night): what the
+## backend tells a latecomer's lobby screen ("Night in progress, round 4").
+func round_number() -> int:
+	return server.rules.round_number if server != null else 0
+
+
 ## Connections this room has been handed (players and those that have not said hello yet).
 func peer_count() -> int:
 	return _peers.size()

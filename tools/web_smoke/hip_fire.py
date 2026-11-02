@@ -7,9 +7,18 @@ player does while the game records the camera's field of view every drawn frame 
 2. aim, shoot, let go of the aim: the field of view reaches the aim's, starts to go within `LEAVE_S` seconds of the
    release and is back at the hip's within `BLEND_S`, with no hold.
 3. hip shot, then aim, then let go of the aim: likewise.
+4. turn first (#477): the body faces away from the view, the trigger is tapped or held: no shot may leave until the
+   body is within 10 degrees of the view (about 0.35 s for a half circle), and a tap makes exactly one shot.
+5. aim, a tap of the trigger 0, 50 and 100 ms later, let go of the aim (#478): likewise, and the body's aim pose goes
+   within `LEAVE_S` too (an aimed shot leaves no hip-fire hold).
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/hip_fire.py build/web build/hip-fire
-    uv run --with playwright==1.64.1 python tools/web_smoke/hip_fire.py https://... build/hip-fire-live --gpu
+Run it under `gds quiet` (the kit's `docs/godot/no-focus.md`): a page that takes pointer lock confines the real cursor.
+
+    uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/hip_fire.py         build/web build/hip-fire
+    ... hip_fire.py https://... build/hip-fire-live --gpu
+
+A night ends when the zombies get the player; the run starts a fresh one (`new_nights` in the result) and repeats the
+scenario, so every number comes from a living player.
 
 Writes `result.json` (the numbers per scenario and the build's address) and screenshots (`hip_idle.png`,
 `hip_fire_held.png`, `aim_held.png`) into the output folder. Exits 1 when a check fails. A build
@@ -26,7 +35,7 @@ from pathlib import Path
 from judder import play
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
-from smoke import SOFTWARE_GL, UNPACED, VIEWPORT, gl_info, probe, serve
+from smoke import SOFTWARE_GL, SYNTHETIC_MOUSE_MOVE_JS, UNPACED, VIEWPORT, gl_info, probe, serve
 
 # After the button is let go the view must start to move within LEAVE_S and be back at the hip's within BLEND_S. The
 # aim's own spring settles in about 0.3 s (the unit tests hold it to 0.5 s); the rest is the browser's input and frame
@@ -39,6 +48,31 @@ HIP_TOLERANCE = 0.05
 # How close to the aim's field of view the zoom must get while the button is held, and to the hip's after it.
 ZOOM_TOLERANCE = 0.5
 CENTER = (640, 360)
+
+# The gaps between the aim button and a tap of the trigger that the maintainer's report (#478) is about.
+QUICK_GAPS_MS = (0, 50, 100)
+
+
+def night_over(page) -> bool:
+    return bool((probe(page) or {}).get("over"))
+
+
+def scenario(page, url: str, result: dict, name: str, run):
+    """Runs one scenario in a night where the player is alive. Zombies end a night within a minute (the software
+    renderer is slow, so the scenarios are too): a night that is over before the scenario, or that ended under it, is
+    replaced by a fresh one (`result["new_nights"]` counts them) and the scenario is run again once, because a body
+    that is down says nothing about the game."""
+    for attempt in range(2):
+        if night_over(page):
+            play(page, url)
+            page.mouse.move(*CENTER)
+            page.wait_for_timeout(500)
+            result["new_nights"] = result.get("new_nights", 0) + 1
+        found = run()
+        if not night_over(page):
+            break
+    result[name] = found
+    return found
 
 
 def clear_rows(page) -> None:
@@ -93,11 +127,18 @@ def after_release(rows: list[list[float]], at: int, hip: float, aim: float) -> d
         if abs(r[1] - hip) <= HIP_TOLERANCE * 2:
             back = seconds
             break
+    # How long the body's aim pose (the hip-fire hold, 0.8 s after a shot from the hip) outlives the release.
+    hold_left = None
+    for r in after:
+        if r[3] < 0.5:
+            hold_left = (r[0] - after[0][0]) / 1000.0
+            break
     return {
         "frames": len(rows),
         "fov_zoomed": zoomed,
         "fov_leaves_after_s": leaves,
         "fov_back_after_s": back,
+        "pose_hold_left_after_s": hold_left,
         "ok": bool(before)
         and bool(after)
         and abs(zoomed - aim) <= ZOOM_TOLERANCE
@@ -123,6 +164,89 @@ def aim_shoot_release(page, hip: float, aim: float, out: Path) -> dict:
     return after_release(stop_rows(page), int(at), hip, aim)
 
 
+def quick_aim_tap(page, hip: float, aim: float, gap_ms: int) -> dict:
+    """#478: the aim button, a tap of the trigger `gap_ms` later, the button let go. The tap is an aimed shot (the
+    button is down), so no hip-fire hold exists: the zoom and the pose both go with the button."""
+    clear_rows(page)
+    page.mouse.down(button="right")
+    page.wait_for_timeout(gap_ms)
+    page.mouse.down()
+    page.wait_for_timeout(60)
+    page.mouse.up()
+    page.wait_for_timeout(1000)
+    at = row_count(page)
+    page.mouse.up(button="right")
+    page.wait_for_timeout(1500)
+    found = after_release(stop_rows(page), int(at), hip, aim)
+    found["gap_ms"] = gap_ms
+    left = found["pose_hold_left_after_s"]
+    found["ok"] = found["ok"] and left is not None and left <= LEAVE_S
+    return found
+
+
+TURN_STEP_PX = 15
+TAP_MS = 150
+FACING_AWAY = 2.9  # radians between the body and the view: nearly a half circle
+
+
+def turn_view_away(page) -> None:
+    """Turns the view with the page's own mouse events until it is nearly 180 degrees from the body."""
+    for _ in range(400):
+        rows = page.evaluate("() => window.deadnight.viewRows.slice(-window.deadnight.viewRow)")
+        if rows and rows[-1] >= FACING_AWAY:
+            return
+        page.evaluate(SYNTHETIC_MOUSE_MOVE_JS, TURN_STEP_PX)
+        page.wait_for_timeout(20)
+
+
+def shot_ready_times(rows: list[list[float]], after_ms: float) -> list[tuple[float, float]]:
+    """(seconds after `after_ms`, the body's distance from the view in radians) for every frame a shot may leave."""
+    return [((r[0] - after_ms) / 1000.0, r[6]) for r in rows if r[5] > 0.5 and r[0] >= after_ms]
+
+
+def turn_first(page, out: Path, hold: bool) -> dict:
+    """#477: the body faces away from the view; a press (a tap, or a held trigger) turns it and the shot waits."""
+    clear_rows(page)
+    turn_view_away(page)
+    page.wait_for_timeout(300)
+    start = page.evaluate("() => window.deadnight.viewRows.slice(-window.deadnight.viewRow)")
+    away = start[6]
+    pressed_at = page.evaluate("() => performance.now()")
+    page.mouse.down()
+    if hold:
+        page.wait_for_timeout(150)
+        page.screenshot(path=out / "turn_first_turning.png")
+        page.wait_for_timeout(700)
+        page.screenshot(path=out / "turn_first_firing.png")
+        page.wait_for_timeout(300)
+        page.mouse.up()
+    else:
+        # A real click lasts 80 to 150 ms, and the game reads the trigger once per physics tick: 150 ms is a tap that
+        # ends before the half-circle turn does.
+        page.wait_for_timeout(TAP_MS)
+        page.mouse.up()
+        page.wait_for_timeout(1000)
+    page.wait_for_timeout(500)
+    rows = stop_rows(page)
+    ready = shot_ready_times(rows, pressed_at)
+    first = ready[0] if ready else None
+    # The turn of that far at 8 rad/s, less the tolerance (10 degrees), with a frame or two of the browser's.
+    wanted = (away - 0.1745) / 8.0
+    return {
+        "hold": hold,
+        "view_error_at_press": away,
+        "first_shot_ready_after_s": first[0] if first else None,
+        "view_error_at_first_shot": first[1] if first else None,
+        "ticks_ready": len(ready),
+        "expected_wait_s": wanted,
+        "ok": bool(ready)
+        and away >= FACING_AWAY - 0.05
+        and first[0] >= wanted - 0.1
+        and first[1] <= 0.1745 + 0.02
+        and (hold or len(ready) <= 3),
+    }
+
+
 def hip_aim_release(page, hip: float, aim: float) -> dict:
     clear_rows(page)
     page.mouse.down()
@@ -146,6 +270,9 @@ def main() -> int:
     parser.add_argument("--hip-fov", type=float, default=60.0)
     parser.add_argument("--aim-fov", type=float, default=40.0)
     parser.add_argument("--label", default="")
+    parser.add_argument(
+        "--no-turn-first", action="store_true", help="skip #477 (a build older than it has no shot_ready column)"
+    )
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     deployed = args.build.startswith(("http://", "https://"))
@@ -168,10 +295,39 @@ def main() -> int:
                 page.mouse.move(*CENTER)
                 page.wait_for_timeout(500)
                 result["hip_fire"] = hip_fire(page, args.out)
-                result["aim_shoot_release"] = aim_shoot_release(page, args.hip_fov, args.aim_fov, args.out)
+                for hold in () if args.no_turn_first else (False, True):
+                    page.wait_for_timeout(1500)
+                    name = "turn_first_" + ("held" if hold else "tap")
+                    scenario(page, url, result, name, lambda hold=hold: turn_first(page, args.out, hold))
                 page.wait_for_timeout(1000)
-                result["hip_aim_release"] = hip_aim_release(page, args.hip_fov, args.aim_fov)
-                ok = all(result[k]["ok"] for k in ("hip_fire", "aim_shoot_release", "hip_aim_release"))
+                scenario(
+                    page,
+                    url,
+                    result,
+                    "aim_shoot_release",
+                    lambda: aim_shoot_release(page, args.hip_fov, args.aim_fov, args.out),
+                )
+                page.wait_for_timeout(1000)
+                scenario(
+                    page,
+                    url,
+                    result,
+                    "hip_aim_release",
+                    lambda: hip_aim_release(page, args.hip_fov, args.aim_fov),
+                )
+                for gap in QUICK_GAPS_MS:
+                    page.wait_for_timeout(1000)
+                    scenario(
+                        page,
+                        url,
+                        result,
+                        f"quick_aim_tap_{gap}ms",
+                        lambda gap=gap: quick_aim_tap(page, args.hip_fov, args.aim_fov, gap),
+                    )
+                keys = ["hip_fire", "aim_shoot_release", "hip_aim_release"]
+                keys += [] if args.no_turn_first else ["turn_first_tap", "turn_first_held"]
+                keys += [f"quick_aim_tap_{g}ms" for g in QUICK_GAPS_MS]
+                ok = all(result[k]["ok"] for k in keys)
             result["state"] = probe(page)
         except PlaywrightError as error:
             result["error"] = str(error)
