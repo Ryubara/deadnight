@@ -94,6 +94,8 @@ var _repair_interval := NightTuning.new().repair_interval
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
 var _hud_binding: NightHudBinding
+## Held here: it listens to the session and the HUD, and nothing else keeps it alive.
+var _challenge_link: ChallengeHudLink
 ## Held here: it listens to the client state and nothing else keeps it alive.
 var _equip_sync: WeaponEquipSync
 var _paused := false
@@ -268,6 +270,8 @@ func _track_challenges() -> void:
 	if challenge_board != null:
 		challenges = ChallengeSession.new(challenge_board, rules_tuning)
 		challenges.attach(state)
+		if hud != null:
+			_challenge_link = ChallengeHudLink.new(challenges, hud)
 
 
 ## The view and the sounds, once there is a camera to look through.
