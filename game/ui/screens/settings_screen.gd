@@ -137,6 +137,14 @@ const TABS := [
 				"step": 10,
 				"format": PERCENT,
 			},
+			{
+				"key": SettingsService.CHALLENGE_PROMPTS,
+				"title": "Challenge prompts",
+				"hint": "The small card in the night when a challenge moves.",
+				"kind": "option",
+				"labels": ["All", "Finished only", "Off"],
+				"values": [0, 1, 2],
+			},
 		],
 	},
 	{

@@ -333,6 +333,12 @@ func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 				var rtt := NetWire.read_ping_rtt(data)
 				if rtt >= 0:
 					server.pings[peer.player_id] = rtt
+		NetWire.Type.MARK:
+			var mark := NetWire.read_mark(data)
+			if mark.is_empty():
+				_fault(peer)
+			else:
+				_collect(server.apply(mark, peer.player_id))
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))
