@@ -196,9 +196,10 @@ Kept short here; the look is on `small-map-art.md` (#623).
 
 ## The formula: hard targets for our map
 
-The maintainer asked for hard targets, not guidance. The greybox of the second map is measured against every row; a
-row it misses is a bug, or a decision recorded here. The tolerance is around Nacht's estimate, which itself carries
-about 20%; where a row is a count, it is exact. Deadnight's style adds the last block.
+The maintainer asked for hard targets, not guidance. The greybox of the second map (#631) is measured against every
+row, and its gameplay setup (#632) against rows 20 to 26; a row it misses is a bug, or a decision recorded here. The
+tolerance is around Nacht's estimate, which itself carries about 20%; where a row is a count, it is exact. Deadnight's
+style adds the last block.
 
 ### Size and shape targets
 
