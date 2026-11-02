@@ -126,7 +126,12 @@ its burst sizzles where it lands (`projectile_burst`).
 - **Reloads** sound on the reload clip's event frames from `clips.json` (`ClipEvents`), the same frames the player's
   animation emits: the revolver and SMG on `mag_out` (6) and `mag_in` (22), the rifle on `round_in` (20, 32, 44) and
   `lever` (56), the shotgun and flare gun on `break_open` (6), `shells_in` (26) and `snap_shut` (34), at 24 frames a
-  second. Putting the weapon away abandons them.
+  second, **stretched over the weapon's own `reload_time`** (the rifle's lever is at 2.33 s of its clip, after its 2.2 s
+  reload, and the shotgun's steps all fall in the first 1.4 s of 2.4), so the steps sound with the weapon's dip
+  ([reloading](animation.md#reloading)) and are over when the reload is. Putting the weapon away abandons them.
+  `test_night_reload.gd` counts the steps per gun in the real night. Level, from a Movie Maker mix of a rifle shot and
+  reload on the lot (`tools/audio/analyze.py capture`): the steps' peaks are -9 to -11 dBFS against the shot's -7 and
+  the beds' -30 to -37 dBFS RMS, so they are well over the beds and a little under the gun.
 - **Empty and swap.** A `fire_rejected` for an empty magazine clicks where the shooter stands; a `weapon_equipped`
   rustles.
 - The crowbar's swing and blow are the melee sounds above.
