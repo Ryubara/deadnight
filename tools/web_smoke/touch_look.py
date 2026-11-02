@@ -11,7 +11,8 @@ It reads the camera's yaw from `window.deadnight` (game/core/web_probe.gd) every
 `pointermove` events the browser made for the touches (Godot's web runtime reads every `pointermove` of the window as
 a mouse motion, a touch included: that was the cause of #470).
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/touch_look.py build/web build/touch_look
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/touch_look.py build/web build/touch_look
 
 The first argument is the exported folder or a URL; the second is where the screenshots and `result.json` go. Exits 1
 when the stick turns the view, when the look drag turns it by more than `MAX_TURN_RATIO` times what the design says, or

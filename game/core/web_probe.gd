@@ -69,12 +69,18 @@ static func snapshot(top: Control) -> Dictionary:
 		"tab": "",
 		"stage": "",
 		"gamepad": "",
+		"activity_room": "",
+		"activity_code": "",
 		"controller_hint": false
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var room := ActivityRoom.current
+	if room != null:
+		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
+		data["activity_code"] = str(room.lobby.get("code", ""))
 	var tree := top.get_tree()
 	var hint: ControllerHint = (
 		tree.root.find_child("ControllerHint", true, false) as ControllerHint
