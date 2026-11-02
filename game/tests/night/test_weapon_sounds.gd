@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The guns' sounds, driven like a client: events in, sounds out, on a clock the test steps by
-## hand. Every shot is three layers, a reload sounds on its clip's event frames, an empty trigger
-## clicks, and a round that hits the lot ricochets while one that hits a zombie thumps.
+## hand. Every shot is a report and a late tail, a reload sounds on its clip's event frames, an
+## empty trigger clicks, and a round that hits the lot ricochets while one that hits a zombie
+## thumps.
 
 const OWN := 1
 const MUZZLE := Vector3(0.0, 1.5, 0.0)
@@ -58,13 +59,12 @@ func _hit(point: Vector3, headshot := false, melee := false) -> Dictionary:
 	}
 
 
-func test_every_firearm_shot_is_a_report_a_blast_and_a_late_tail() -> void:
+func test_every_firearm_shot_is_a_report_and_a_late_tail() -> void:
 	for weapon: StringName in [&"pistol", &"smg", &"rifle", &"shotgun"]:
 		_heard.clear()
 		var start := _sounds.schedule.now()
 		_tell(_shot(weapon))
-		var report: Array = [StringName("shot_%s" % weapon), StringName("blast_%s" % weapon)]
-		assert_array(_ids()).is_equal(report)
+		assert_array(_ids()).is_equal([StringName("shot_%s" % weapon)])
 		_sounds.schedule.advance(0.2)
 		assert_array(_ids()).contains([StringName("tail_%s" % weapon)])
 		assert_float(_heard[-1]["t"] - start).is_between(

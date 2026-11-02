@@ -1,5 +1,5 @@
 extends Node
-## Plays each firearm's three layers on their own, one weapon every two seconds, at the muzzle of
+## Plays each firearm's two voices on their own, one weapon every two seconds, at the muzzle of
 ## a player standing in the open, so the level of each weapon in the mix can be read off the
 ## recording (`--write-movie out.png --fixed-fps 30`). Prints `GUN <seconds> <weapon>`.
 
@@ -25,7 +25,6 @@ func _ready() -> void:
 			print("GUN %.3f %s" % [(Engine.get_frames_drawn() - _frame_start) / MOVIE_FPS, weapon])
 			var layers: Dictionary = FIRE[weapon]
 			Audio.play(layers["shot"], MUZZLE, extra_db)
-			Audio.play(layers["blast"], MUZZLE, extra_db)
 			Audio.play(layers["tail"], MUZZLE + Vector3(0.0, 0.0, -0.05), extra_db)
 			for _i in GAP_FRAMES:
 				await get_tree().process_frame

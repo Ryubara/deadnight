@@ -108,12 +108,12 @@ Added in `tools/audio/weapon_recipes.py` (synthesised) and `tools/audio/elevenla
 [Sound](../design/audio.md); this is what was learned.
 
 - **Hitscan has no tracer, so the report sells the shot.** The old shot was one file: a crack, a roar and a 120 Hz sine
-  that rang for 0.3 s like a struck pipe (the spectrogram's bright line at the bottom). Each shot is now three voices
-  (report, blast, tail) with their own variants, pitch and level, so the same shot is a different sound each time
-  (5 x 3 x 3 combinations per gun) and the report's transient is the loudest thing in the first 10 ms. Before and
+  that rang for 0.3 s like a struck pipe (the spectrogram's bright line at the bottom). Each shot was then three voices
+  (report, blast, tail) with their own variants, pitch and level (since #407 two: the report and the tail, see
+  [Gun audio](gun-audio.md)) and the report's transient is the loudest thing in the first 10 ms. Before and
   after, rifle: `rifle_before` against `rifle_after` in the pull request's spectrogram.
-- **Variation costs voices, so the groups have limits.** Blasts 5, tails 4, impacts 6; the SMG's blast and tail have a
-  0.14 s and a 0.22 s cooldown. Twelve SMG shots a second still start the report every time.
+- **Variation costs voices, so the groups have limits.** Tails 4, impacts 6; the SMG's tail has a 0.22 s cooldown.
+  Thirteen SMG shots a second still start the report every time.
 - **Reload steps from the clip's frames.** `clips.json` lists the events in frames at 24 a second (the revolver and
   SMG's `mag_out` 6 and `mag_in` 22; the rifle's `round_in` 20, 32, 44 and `lever` 56; the shotgun's `break_open` 6,
   `shells_in` 26, `snap_shut` 34). The sounds read those frames (`ClipEvents`) on a `SoundSchedule` the node steps, so a
@@ -128,14 +128,15 @@ Added in `tools/audio/weapon_recipes.py` (synthesised) and `tools/audio/elevenla
   built from `fuel_changed`, `circuit_changed`, `fuel_empty`, `fuel_restored`); level and pitch are lerped by it and
   slew at 24 dB/s, so a breaker thrown is a change you hear take a second. A dry tank stops the loops; they restart
   on a refuel.
-- **Generated clips (ElevenLabs Sound Effects, free tier).** Used for the shots' blasts (3 variants a gun), the
-  generator's engine loop, power-down and power-up, and the door purchase; 17 clips, 33 seconds, billed 40 credits a
-  second (about 1,300 credits of the 3,500 allowed). Every file's prompt is in `game/assets/audio/eleven/LICENSE.md`
-  with its licence: attribution required, not licensed for commercial use, to be replaced or relicensed before any
-  commercial release (#252). Model `eleven_text_to_sound_v2` was used (the v3 model was not tried, to spare credits).
-  What the files needed: levels from -22 to +4 dBFS once decoded (several above full scale), a lead-in of up to 0.3 s,
-  and no seed, so a bad take is a new request. `elevenlabs.py` trims the silence before the sound, levels to -1 dBFS,
-  fades the end and encodes Ogg; a file that exists is never fetched again, and `--reprocess` redoes only the levelling.
+- **Generated clips (ElevenLabs Sound Effects, free tier).** Used for the shots' blasts (3 variants a gun; removed in
+  #407, [Gun audio](gun-audio.md)), the generator's engine loop, power-down and power-up, and the door purchase; 17
+  clips, 33 seconds, billed 40 credits a second (about 1,300 credits of the 3,500 allowed). Every file's prompt is in
+  `game/assets/audio/eleven/LICENSE.md` with its licence: attribution required, not licensed for commercial use, to be
+  replaced or relicensed before any commercial release (#252). Model `eleven_text_to_sound_v2` was used (the v3 model
+  was not tried, to spare credits). What the files needed: levels from -22 to +4 dBFS once decoded (several above full
+  scale), a lead-in of up to 0.3 s, and no seed, so a bad take is a new request. `elevenlabs.py` trims the silence
+  before the sound, levels to -1 dBFS, fades the end and encodes Ogg; a file that exists is never fetched again, and
+  `--reprocess` redoes only the levelling.
 - **Layering over them.** The generated blast sits 9 dB under the synthesised report and the synthesised tail 10 dB,
   so the report's transient stays the front and the generated clip is the body and the roll. Nobody could listen to it:
   this is balanced by the numbers below and wants a pair of ears.

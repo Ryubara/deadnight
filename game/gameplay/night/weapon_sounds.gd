@@ -1,18 +1,20 @@
 class_name WeaponSounds
 extends Node
 ## What the guns sound like, made only from what the server sent (like `NightView`): each shot is
-## a report, a blast and a tail on three voices with their own random variants; a reload's steps
+## a report and a tail on two voices with their own random variants, and the shooter's own shots
+## play flat, close and un-panned, not from the muzzle a few metres ahead of the camera
+## (`docs/research/gun-audio.md`); a reload's steps
 ## sound on the event frames of the reload clip; an empty trigger clicks; a swap rustles; a round
 ## that hits a zombie thumps (and cracks on the head) and one that hits the lot ricochets. It
 ## holds no game state and asks the server nothing. The design is `docs/design/audio.md`.
 
-## What each firearm plays: the report, the blast under it and the tail after it. Ids are
-## `ArmsCatalog`'s. The crowbar's swing and blow are `NightSounds`' (melee), not these.
+## What each firearm plays: the report and the tail after it. Ids are `ArmsCatalog`'s. The
+## crowbar's swing and blow are `NightSounds`' (melee), not these.
 const FIRE := {
-	&"pistol": {"shot": &"shot_pistol", "blast": &"blast_pistol", "tail": &"tail_pistol"},
-	&"smg": {"shot": &"shot_smg", "blast": &"blast_smg", "tail": &"tail_smg"},
-	&"rifle": {"shot": &"shot_rifle", "blast": &"blast_rifle", "tail": &"tail_rifle"},
-	&"shotgun": {"shot": &"shot_shotgun", "blast": &"blast_shotgun", "tail": &"tail_shotgun"},
+	&"pistol": {"shot": &"shot_pistol", "tail": &"tail_pistol"},
+	&"smg": {"shot": &"shot_smg", "tail": &"tail_smg"},
+	&"rifle": {"shot": &"shot_rifle", "tail": &"tail_rifle"},
+	&"shotgun": {"shot": &"shot_shotgun", "tail": &"tail_shotgun"},
 	&"flare_gun": {"shot": &"shot_flare"},
 }
 ## Which reload clip each weapon is drawn with, and which sound each of the clip's events makes.
@@ -58,10 +60,12 @@ const RELOAD := {
 ## Lifts a sound off the ground to a player's head.
 const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
 ## The tail starts this long after the report, and up to `TAIL_SPREAD` later: the lot answers late.
-const TAIL_DELAY := 0.04
-const TAIL_SPREAD := 0.03
-## A level wobble on every layer, in dB either way, so repeats do not machine-gun.
-const LEVEL_JITTER_DB := 1.2
+const TAIL_DELAY := 0.03
+const TAIL_SPREAD := 0.02
+## A level wobble on every layer, in dB either way: the one level rule of the firearms, with the
+## pitch rule of `ArmsCatalog.FIREARM_PITCH_SEMITONES`. Enough that repeats do not machine-gun
+## (the variants and their noise do the rest), too little to make one shot stand out.
+const LEVEL_JITTER_DB := 0.5
 ## How many ricochets one shot may make (a shotgun has eight pellets), and how close a hit's point
 ## must be to a pellet's end for the pellet to count as having hit the zombie.
 const MAX_WORLD_IMPACTS := 3
@@ -115,13 +119,14 @@ func _on_shot(event: Dictionary) -> void:
 	if layers.is_empty():
 		return
 	var at: Vector3 = event["muzzle"]
-	_play(layers["shot"], at)
-	if layers.has("blast"):
-		_play(layers["blast"], at)
+	# The shooter's own gun is in their hands: flat, at full level, whatever the distance from the
+	# camera to the muzzle and the pan law of a 3D voice (which costs a centred sound 6 dB).
+	var heard_at: Variant = null if event["shooter_id"] == _state.player_id else at
+	_play(layers["shot"], heard_at)
 	if layers.has("tail"):
 		var tail: StringName = layers["tail"]
 		var delay := TAIL_DELAY + _rng.randf() * TAIL_SPREAD
-		schedule.add(delay, func() -> void: _play(tail, at))
+		schedule.add(delay, func() -> void: _play(tail, heard_at))
 	var def := WeaponCatalog.get_def(weapon_id)
 	if def != null and def.is_hitscan():
 		_note_ends(at, event["ends"], def.max_range)
