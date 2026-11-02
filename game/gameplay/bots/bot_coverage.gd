@@ -27,6 +27,8 @@ const WEAPONS := {
 	"rifle": "rule: BotMotor fires it like the pistol",
 	"flare_gun": "waived until #227 (combat: the flare lures the dead away)",
 	"crowbar": "rule: BotMotor swings it at a target inside its reach",
+	"baseball_bat": "rule: BotMotor swings it at a target inside its reach (melee)",
+	"fire_axe": "rule: BotMotor swings it at a target inside its reach (melee)",
 }
 ## The `kind` of every prompt the server's `use_target` and the machines can show.
 const PROMPTS := {
