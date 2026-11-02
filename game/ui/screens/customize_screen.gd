@@ -8,7 +8,8 @@ extends UIScreen
 ## and say how to get them; nothing here changes how a night plays.
 ##
 ## With the param `embedded` it is only the pickers and the footer, without its own title,
-## turntable or Back: the main menu's Loadout tab hosts it and shows the look on its own stage.
+## turntable, Back or Save: the main menu's Loadout tab hosts it, shows the look on its own stage
+## and keeps the working look until the player leaves the tab (`commit`).
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/customize_screen.tscn")`. Tests and captures
 ## drive it through `apply_preset`, `randomize`, `choose`, `save` and the strips themselves.
@@ -94,6 +95,15 @@ func save() -> void:
 	UIAudio.play(&"press")
 
 
+## Makes the working look the saved one in memory and leaves the file write to the caller (the
+## Loadout panel writes every choice it holds at once).
+func commit() -> void:
+	look = look.without_locked(unlocks)
+	LookStore.set_look(look)
+	saved = look.duplicate_look()
+	_refresh_status()
+
+
 ## The swatch strip of a colour channel, by key ("colour:<channel>").
 func strip(key: String) -> ChoiceStrip:
 	return _strips[key]
@@ -162,7 +172,8 @@ func _link_focus() -> void:
 		chain.append(_selectors[slot])
 	for slot in LookCatalog.colour_slots():
 		chain.append(_strips[COLOUR_PREFIX + slot])
-	chain.append(_save_button)
+	if _save_button != null:
+		chain.append(_save_button)
 	for i in chain.size() - 1:
 		chain[i].focus_neighbor_bottom = chain[i].get_path_to(chain[i + 1])
 		chain[i + 1].focus_neighbor_top = chain[i + 1].get_path_to(chain[i])
@@ -293,10 +304,11 @@ func _build_footer(with_back := true) -> HBoxContainer:
 		back.variant = UIButton.Variant.GHOST
 		back.pressed.connect(func() -> void: UIRouter.pop())
 		footer.add_child(back)
-	_save_button = UIButton.new()
-	_save_button.text = "Save"
-	_save_button.pressed.connect(save)
-	footer.add_child(_save_button)
+	if not _embedded:
+		_save_button = UIButton.new()
+		_save_button.text = "Save"
+		_save_button.pressed.connect(save)
+		footer.add_child(_save_button)
 	return footer
 
 
@@ -337,7 +349,7 @@ func _refresh_preview() -> void:
 
 func _refresh_status() -> void:
 	if is_dirty():
-		_status.text = "Not saved yet"
+		_status.text = "Saved when you leave this tab" if _embedded else "Not saved yet"
 	else:
 		_status.text = "Saved: this is how the others see you"
 

@@ -48,9 +48,21 @@ and `game/ui/screens/main_menu.gd`.
   it as `window.deadnight.tab`), the tab's first control takes the focus whatever it was, and `steps` presses of Down
   reach the item. `start_solo` is Play, then two Downs, then Enter.
 
+- **A panel holds its choices and writes them once, when the player leaves** (#489). The Loadout tab first wrote the
+  showcase weapon on every click, which made the stage dress the soldier from the *saved* look (the weapon's
+  `Settings.changed` ran `MenuStageView.reload_look`) and so threw the picked outfit off the screen, and leaving the tab
+  dropped any look not saved with the footer's Save. Now the wardrobe keeps the working look, `LoadoutPanel` the weapon,
+  and the stage previews both; `MenuPanel.commit` writes them with one `Settings.save()`. The shell calls it on a tab
+  change, on `MenuContext.leaving` (just before any action: Play, Settings, Credits, Quit), on a close request and when
+  the window loses focus (a browser has no close request), and as it leaves the tree. A visit with no change writes
+  nothing. A new panel with choices does the same: hold in memory, override `commit`, never write per click.
+
 ## Tests
 
 `test_menu_shell.gd` (35 cases: tabs by keys, bumpers, D-pad and A, a click and a tap, hints per device, each panel
 showing the profile, board and save, the stage following, the wardrobe previewing and restoring, a phone's minimums,
 every panel inside every canvas, reduced motion, the longest count), `test_menu_profile_and_nav.gd`,
-`test_main_menu.gd`, `test_main_menu_input.gd`, `test_gamepad_navigation.gd`. Captures: `tests/captures/menu_shell_tour.tscn`.
+`test_main_menu.gd`, `test_main_menu_input.gd`, `test_gamepad_navigation.gd`, `test_loadout_keeps_choices.gd` (real
+clicks: an outfit survives a weapon change, another tab and a reload from the file, and a visit writes the file once,
+counted by `Settings.write_count`). Captures: `tests/captures/menu_shell_tour.tscn`,
+`tests/captures/menu_loadout_keep_tour.tscn` (pick, change weapon, other tab, back; prints what the soldier wears).

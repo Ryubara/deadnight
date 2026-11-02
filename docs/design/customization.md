@@ -16,7 +16,7 @@ right.
 | A selector per part slot | Face, hair style, headwear, top, trousers, footwear, eyewear, neckwear, armwear; left and right step through the parts |
 | A strip per colour channel | Swatches: skin, hair, main, second and trim colour |
 | Randomize | A look made only of what the player has unlocked |
-| Save / Back | Save writes the look; Back (or Esc, gamepad B) leaves and drops unsaved changes, and the footer says which |
+| Save / Back | On its own screen, Save writes the look; Back (or Esc, gamepad B) leaves and drops unsaved changes, and the footer says which. In the main menu's Loadout tab there is no Save: the look and the showcase weapon are kept while the tab is open and written once when the player leaves it |
 | Turntable | Turns by itself (still with reduced motion); drag it, or push the right stick |
 
 Input: a strip is one focus stop. Left and right (arrows, d-pad, stick) move along it and choose as they go, up and down
