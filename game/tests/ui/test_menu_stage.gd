@@ -158,3 +158,22 @@ func test_the_stage_screen_walks_the_tabs_with_keys_and_never_takes_the_mouse() 
 		await get_tree().process_frame
 	assert_int(screen.tab).is_equal(MenuTab.Id.LOADOUT)
 	assert_int(Input.mouse_mode).is_equal(Input.MOUSE_MODE_VISIBLE)
+
+
+func test_on_a_cpu_renderer_the_auto_stage_starts_as_a_still() -> void:
+	var view := MenuStageView.new()
+	view.manual = true
+	view.adapter_name = "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device), SwiftShader driver)"
+	add_child(view)
+	auto_free(view)
+	await get_tree().process_frame
+	assert_int(view.level).is_equal(StageGovernor.Level.STILL)
+	# A player who chose Live gets Live whatever the machine.
+	Settings.set_value(SettingsService.MENU_SCENE, MenuStageView.MODE_LIVE)
+	var chosen := MenuStageView.new()
+	chosen.manual = true
+	chosen.adapter_name = view.adapter_name
+	add_child(chosen)
+	auto_free(chosen)
+	await get_tree().process_frame
+	assert_int(chosen.level).is_equal(StageGovernor.Level.LIVE)

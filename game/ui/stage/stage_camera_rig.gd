@@ -15,6 +15,8 @@ const SWAY_METRES := 0.05
 const SWAY_RATE := 0.45
 
 var tab := MenuTab.Id.PLAY
+## The window is a phone's: poses leave room for wider panels.
+var compact := false
 
 var _camera: Camera3D
 var _aspect := 16.0 / 9.0
@@ -46,7 +48,7 @@ func set_aspect(aspect: float) -> void:
 ## Goes to the pose of `to`: a glide, or at once when `cut` or with reduced motion.
 func go_to(to: MenuTab.Id, cut := false) -> void:
 	tab = to
-	_pose = StagePose.for_tab(to)
+	_pose = StagePose.for_tab(to, compact)
 	_retarget()
 	if cut or _reduced:
 		_snap()

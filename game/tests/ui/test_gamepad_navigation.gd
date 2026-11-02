@@ -1,5 +1,6 @@
-# A gamepad drives the menu: real joypad events (not `pressed.emit()`) move focus, A opens a screen,
-# B goes back, and B on the first screen does nothing. The bindings live in project.godot.
+# A gamepad drives the menu: real joypad events (not `pressed.emit()`) move focus, the
+# bumpers change tab, A opens a screen, B goes back, and B on the first screen only goes to the
+# tab bar. The bindings live in project.godot.
 extends GdUnitTestSuite
 
 const MENU := "res://ui/screens/main_menu.tscn"
@@ -9,17 +10,22 @@ var _was_reduced := false
 
 
 func before_test() -> void:
-	# Reduced motion makes the items usable at once and the transitions short fades.
+	# Reduced motion makes the transitions short fades.
 	_was_reduced = UIMotion.reduced
 	UIMotion.reduced = true
+	UIInputMode.reset()
+	MainMenu.board_factory = func() -> Object: return FakeChallengeBoard.new()
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
 	await await_idle_frame()
 	(UIRouter.top() as UIScreen).focus_initial()
+	await await_idle_frame()
 
 
 func after_test() -> void:
 	UIMotion.reduced = _was_reduced
+	UIInputMode.reset()
+	MainMenu.board_factory = Callable()
 	await RouterFixture.clear(get_tree())
 
 
@@ -47,24 +53,26 @@ func test_the_default_ui_actions_have_gamepad_buttons() -> void:
 	assert_bool(InputMap.action_has_event(&"ui_cancel", _key(KEY_ESCAPE))).is_true()
 
 
-func test_dpad_moves_focus_and_stops_at_the_ends() -> void:
-	assert_str(_focused_name()).is_equal("Play")
+func test_dpad_moves_focus_down_the_starts_and_up_to_the_tab_bar() -> void:
+	assert_str(_focused_name()).is_equal("together")
+	await _tap(JOY_BUTTON_DPAD_DOWN)
+	assert_str(_focused_name()).is_equal("quick_join")
+	await _tap(JOY_BUTTON_DPAD_DOWN)
+	assert_str(_focused_name()).is_equal("solo")
+	await _tap(JOY_BUTTON_DPAD_UP)
+	await _tap(JOY_BUTTON_DPAD_UP)
+	assert_str(_focused_name()).is_equal("together")
 	await _tap(JOY_BUTTON_DPAD_UP)
 	assert_str(_focused_name()).is_equal("Play")
-	await _tap(JOY_BUTTON_DPAD_DOWN)
-	assert_str(_focused_name()).is_equal("Join")
-	await _tap(JOY_BUTTON_DPAD_DOWN)
-	assert_str(_focused_name()).is_equal("Customize")
-	await _tap(JOY_BUTTON_DPAD_DOWN)
-	assert_str(_focused_name()).is_equal("Settings")
-	await _tap(JOY_BUTTON_DPAD_DOWN)
-	assert_str(_focused_name()).is_equal("Credits")
 
 
-func test_a_opens_credits_and_b_returns() -> void:
+func test_the_bumpers_change_tab_and_a_opens_credits_and_b_returns() -> void:
 	var menu := UIRouter.top()
 	for _i in 4:
-		await _tap(JOY_BUTTON_DPAD_DOWN)
+		await _tap(JOY_BUTTON_RIGHT_SHOULDER)
+	assert_str(_focused_name()).is_equal("settings")
+	await _tap(JOY_BUTTON_DPAD_DOWN)
+	assert_str(_focused_name()).is_equal("credits")
 	await _tap(JOY_BUTTON_A)
 	await UIRouter.idle
 	assert_int(UIRouter.depth()).is_equal(2)
@@ -81,7 +89,7 @@ func test_start_accepts_too() -> void:
 	assert_int(UIRouter.depth()).is_equal(2)
 
 
-func test_b_at_the_root_does_nothing() -> void:
+func test_b_at_the_root_only_goes_to_the_tab_bar() -> void:
 	await _tap(JOY_BUTTON_B)
 	assert_bool(UIRouter.busy).is_false()
 	assert_int(UIRouter.depth()).is_equal(1)

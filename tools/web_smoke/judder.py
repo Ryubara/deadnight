@@ -39,9 +39,9 @@ from smoke import (
     UNPACED,
     VIEWPORT,
     gl_info,
-    press,
     probe,
     serve,
+    start_solo,
     wait_for,
 )
 
@@ -103,10 +103,7 @@ def play(page, url: str) -> None:
     wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
     page.mouse.click(5, 5)
     page.wait_for_timeout(2500)
-    press(page, "ArrowDown")
-    for _ in range(4):
-        press(page, "ArrowUp")
-    press(page, "Enter")
+    start_solo(page)
     wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
     page.wait_for_timeout(2000)
 

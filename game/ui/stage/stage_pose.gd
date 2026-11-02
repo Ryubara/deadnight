@@ -43,13 +43,19 @@ static func make(
 ## The pose of a tab. Play is the wide shot with the soldier left of centre and the screen over his
 ## shoulder; Loadout comes in close; Shop turns towards the concession counter; Challenges puts the
 ## soldier on the right under the ticket booth's lamp; More pulls back and up.
-static func for_tab(tab: MenuTab.Id) -> StagePose:
+static func for_tab(tab: MenuTab.Id, compact := false) -> StagePose:
 	match tab:
 		MenuTab.Id.LOADOUT:
-			return make(-10.0, 4.8, 1.3, 30.0, 0.36, 8.0, Vector3(0.0, 0.95, 0.0))
+			if compact:
+				# A phone's wardrobe column takes most of the picture: the soldier steps back to the
+				# left edge.
+				return make(-10.0, 5.6, 1.3, 30.0, 0.17, 36.0, Vector3(0.0, 0.95, 0.0))
+			return make(-10.0, 4.8, 1.3, 30.0, 0.36, 36.0, Vector3(0.0, 0.95, 0.0))
 		MenuTab.Id.SHOP:
 			return make(32.0, 5.0, 1.35, 32.0, 0.27, 80.0, Vector3(0.0, 1.0, 0.0))
 		MenuTab.Id.CHALLENGES:
+			if compact:
+				return make(-28.0, 6.4, 1.3, 32.0, 0.9, -82.0, Vector3(0.0, 1.0, 0.0))
 			return make(-28.0, 5.2, 1.3, 32.0, 0.74, -82.0, Vector3(0.0, 1.0, 0.0))
 		MenuTab.Id.MORE:
 			return make(6.0, 9.5, 2.6, 34.0, 0.3, 70.0, Vector3(0.0, 1.5, 0.0))

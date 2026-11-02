@@ -17,10 +17,13 @@ func test_an_address_is_made_a_websocket_url() -> void:
 	assert_str(JoinScreen.normalize("http://localhost:8910")).is_equal("ws://localhost:8910")
 
 
-func test_the_main_menu_offers_join() -> void:
-	var menu := (load("res://ui/screens/main_menu.tscn") as PackedScene).instantiate()
+func test_the_main_menu_offers_join_on_the_play_tab() -> void:
+	var menu := (load("res://ui/screens/main_menu.tscn") as PackedScene).instantiate() as MainMenu
 	add_child(menu)
-	assert_object(menu.find_child("Join")).is_not_null()
+	var play := menu.shell.panel(MenuTab.Id.PLAY) as PlayPanel
+	assert_object(play.button(&"together")).is_not_null()
+	assert_object(play.button(&"quick_join")).is_not_null()
+	assert_str(MainMenu.ROUTES[&"together"][0]).is_equal(MainMenu.JOIN_SCREEN)
 	menu.queue_free()
 
 
