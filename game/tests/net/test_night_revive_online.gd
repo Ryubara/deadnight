@@ -158,10 +158,10 @@ func _let_go(night: Night) -> void:
 
 
 ## Two manual players in round one with nobody to fight, the first on the ground.
-func _scene(bleed_seconds := -1.0) -> Array[Night]:
+func _scene(bleed_seconds := -1.0, a_mode := Night.Mode.MANUAL) -> Array[Night]:
 	var tuning := _quiet_tuning(bleed_seconds)
 	await _server(tuning)
-	var a := await _client(Night.Mode.MANUAL)
+	var a := await _client(a_mode)
 	var b := await _client(Night.Mode.MANUAL)
 	_act(RulesAction.skip_break())
 	_act(RulesAction.blow(1, 99999.0))
@@ -242,6 +242,58 @@ func test_a_hold_beside_a_downed_teammate_shows_the_ring_on_both_screens_and_get
 	assert_int(_huds[late].state.team[2]["revives"]).is_equal(1)
 	assert_int(_huds[late].state.team[1]["revives"]).is_equal(0)
 	assert_bool(_huds[late].state.team[1]["downed"]).is_false()
+
+
+## What each screen draws of a person on the ground and of the one kneeling at them (#504): the
+## player's own body and the other client's drawn avatar of them, through the server's events and
+## frames, not through a call on the animation.
+func test_the_downed_pose_and_the_kneel_show_on_both_screens_and_ease_back() -> void:
+	# The downed player is a played body (a human's own, with the camera); the other is a seat.
+	var pair := await _scene(-1.0, Night.Mode.HUMAN)
+	var a := pair[0]
+	var b := pair[1]
+	var weight := func(night: Night, player_id: int, kind: StringName) -> float:
+		var animation := night._animation_of(player_id)
+		if animation == null:
+			return -1.0
+		return animation.downed_weight() if kind == &"downed" else animation.kneel_weight()
+	assert_object(a.player()).is_not_null()
+	assert_object(a._body_of(1)).is_same(a.player())
+	# Down: the player's own body and the other client's avatar of them lie in the pose, eased.
+	var down_on_both := func() -> bool:
+		return weight.call(a, 1, &"downed") > 0.99 and weight.call(b, 1, &"downed") > 0.99
+	assert_bool(await _until(down_on_both)).is_true()
+	assert_float(weight.call(a, 2, &"downed")).is_equal(0.0)
+	assert_float(weight.call(b, 2, &"downed")).is_equal(0.0)
+	# The hold: the reviver kneels on their own screen and on the downed player's; the patient stays
+	# down.
+	_stand_beside(2, 1, 1.0)
+	_hold(b)
+	var kneel_on_both := func() -> bool:
+		return weight.call(a, 2, &"kneel") > 0.99 and weight.call(b, 2, &"kneel") > 0.99
+	assert_bool(await _until(kneel_on_both)).is_true()
+	assert_float(weight.call(a, 1, &"kneel")).is_equal(0.0)
+	assert_float(weight.call(a, 1, &"downed")).is_greater(0.99)
+	# Walking away drops the kneel on both screens and leaves the patient on the ground.
+	_stand_beside(2, 1, 6.0)
+	var up_again := func() -> bool:
+		return weight.call(a, 2, &"kneel") < 0.01 and weight.call(b, 2, &"kneel") < 0.01
+	assert_bool(await _until(up_again)).is_true()
+	assert_float(weight.call(b, 1, &"downed")).is_greater(0.99)
+	# A hold that is finished gets the patient up (the weight eases, it does not flip) and the
+	# reviver off their knee, on both screens.
+	_stand_beside(2, 1, 1.0)
+	var finished := func() -> bool: return not _rules().players[1].downed
+	assert_bool(await _until(finished, 15.0)).is_true()
+	_let_go(b)
+	var standing := func() -> bool:
+		return (
+			weight.call(a, 1, &"downed") < 0.01
+			and weight.call(b, 1, &"downed") < 0.01
+			and weight.call(a, 2, &"kneel") < 0.01
+			and weight.call(b, 2, &"kneel") < 0.01
+		)
+	assert_bool(await _until(standing, 15.0)).is_true()
 
 
 func test_a_hold_is_broken_by_walking_away_and_by_the_reviver_going_down() -> void:

@@ -61,7 +61,7 @@ func _init(
 	motor = BotMotor.new(profile, rng)
 	legs = BotLegs.new(level, rng)
 	legs.seat = state.player_id
-	var fight := BotFightBrain.new(profile, level)
+	var fight := BotFightBrain.new(profile, level, bot_seed ^ 0xD0D6E)
 	fight.legs = legs
 	brain = fight
 	slot = state.player_id
@@ -83,6 +83,12 @@ func hear(events: Array) -> void:
 				# The roster labels a bot (`bot`), whoever seated it.
 				if event.get("bot", false):
 					bot_ids[int(event["player_id"])] = true
+			&"grenade_count_changed":
+				perception.beliefs.grenades = int(event.get("count", 0))
+			&"round_started":
+				perception.beliefs.special = event.get("special_id", &"")
+			&"round_ended", &"special_round_cleared":
+				perception.beliefs.special = &""
 	state.apply_events(heard)
 
 
@@ -150,6 +156,7 @@ func _hosted_command(delta: float) -> NightCommand:
 	spent = Time.get_ticks_usec() - walked
 	telemetry.sample(&"legs_us", float(spent))
 	var command := motor.command(delta, me, intent, perception.beliefs, state.shots)
+	telemetry.gauge(&"grenades_thrown", float(motor.throws))
 	if think:
 		# The whole decision: the look (its rays), the thought and the hands. The legs, which every
 		# tick pays for, are timed on their own (`legs_us`).
@@ -217,11 +224,16 @@ func _track_crew(delta: float) -> void:
 			var moved: Vector3 = player["pos"] - before["pos"]
 			moved.y = 0.0
 			velocity = before["velocity"].lerp(moved / maxf(delta, 0.0001), 0.5)
+		var health: float = player.get("health", 100.0)
+		var hurt_at: float = before.get("hurt_at", -INF)
+		if not before.is_empty() and health < float(before["health"]) - 0.5:
+			hurt_at = now
 		beliefs.teammates[id] = {
 			"id": id,
 			"pos": player["pos"],
 			"facing": player.get("facing", 0.0),
-			"health": player.get("health", 100.0),
+			"health": health,
+			"hurt_at": hurt_at,
 			"downed": player.get("downed", false),
 			"dead": player.get("dead", false),
 			"bot": bot_ids.has(id),

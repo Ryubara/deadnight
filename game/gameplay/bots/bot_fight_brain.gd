@@ -1,21 +1,30 @@
 class_name BotFightBrain
 extends BotBrain
-## The brain of phases 1 and 2: the fight and staying with the people (the errands, the revive and
-## the rest come with the later phases). It shoots the nearest believed zombie in sight and keeps
-## to it while it stays a fair choice, backs away from anything that gets inside the profile's
-## margin (a heading chosen on the walking mesh, `BotSteering`), looks toward a blow it felt or a
-## sound it heard, reloads when the magazine is dry or low in a quiet moment, swaps to a weapon
-## that has rounds when its own is spent, and otherwise walks to a place near the people
-## (`BotFollow`) and stands there.
+## The brain of phases 1 to 3: the fight and staying with the people (the errands, the revive and
+## the rest come with the later phases). It picks the zombie to shoot by a utility (`BotCombat`),
+## backs away from anything that gets inside the profile's margin (a heading chosen on the walking
+## mesh, `BotSteering`) and steps out of a blow it saw start (`BotDodge`), keeps the headliner at
+## arm's length, looks toward a blow it felt or a sound it heard, handles its weapons (`BotArsenal`:
+## reloads, swaps, the crowbar when the guns are dry, never into a pack), throws a grenade at a
+## pack when no teammate is near the blast (`BotGrenadier`), holds a choke in the stampede
+## (`BotStance`), and otherwise walks to a place near the people (`BotFollow`) and stands there.
 
-## Metres a committed target may be farther than the nearest before the bot changes its mind.
-const COMMITMENT := 3.0
-## Metres from a zombie inside which a tactical reload waits.
-const RELOAD_SAFE := 8.0
-## Share of a magazine under which a quiet moment is used to reload.
-const LOW_MAGAZINE := 0.3
-## Ticks between two swaps.
-const SWAP_EVERY := 20
+## A chase with the crowbar: from how near it starts (the swing reaches the rest), how far it goes,
+## the speed (m/s) toward the bot under which a zombie counts as not coming, and where it stops.
+const CHASE_FROM_NEAR := 1.6
+const CHASE_UP_TO := 8.0
+const CHASE_IDLE_SPEED := 0.3
+const CHASE_STOP := 1.2
+## A full health, as the frame counts it.
+const FULL_HEALTH := 100.0
+## Metres from its choke at which a bot holding the stampede counts itself there.
+const HOLD_RADIUS := 1.0
+## Seconds between two swaps.
+const SWAP_EVERY := 0.8
+## Metres to the nearest dead inside which an ordered throw is given up.
+const THROW_ABORT_NEAR := 3.0
+## Seconds a grenade order is watched over: the longest a turn, the pin and the swing take.
+const THROW_WATCH := 2.5
 ## How much of the way to the people (or home) bends a retreat (so it circles the field, not a
 ## corner).
 const HOME_BEND := 0.9
@@ -46,62 +55,98 @@ var _planned_at := -INF
 var _planned_anchor := Vector3.INF
 var _was_fighting := false
 var _last_reflex := Vector3.ZERO
-var _committed := -1
-var _thinks := 0
+var _combat: BotCombat
+var _dodge: BotDodge
+var _grenadier: BotGrenadier
+var _stance: BotStance
 var _swapped_at := -SWAP_EVERY
+var _order: BotGrenadier.Throw
+var _ordered_at := -INF
 
 
-func _init(profile: BotProfile, level: BotLevel) -> void:
+func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
 	_profile = profile
 	_level = level
 	_follow = BotFollow.new(level)
 	_steering = BotSteering.new(level)
+	_combat = BotCombat.new(profile)
+	_dodge = BotDodge.new(profile, dodge_seed)
+	_grenadier = BotGrenadier.new(level)
+	_stance = BotStance.new(level)
 
 
 func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
-	_thinks += 1
 	var intent := BotIntent.new()
 	var me := state.me()
 	if me.is_empty() or me.get("downed", true):
 		return intent
 	var here: Vector3 = me["pos"]
 	var held := _held(me)
+	var kind := BotStance.of(beliefs.special)
+	var mates := _mates(beliefs, state.player_id)
 	var targets := beliefs.targets(here)
-	intent.target_id = _choose(targets, here)
-	_committed = intent.target_id
+	intent.target_id = _combat.choose(
+		targets, here, held, mates, beliefs.now, _blow_age(beliefs), _health(me)
+	)
 	var threat := beliefs.nearest_threat(here, _profile.memory_seconds)
 	var people := _people(beliefs, state.player_id)
 	var anchor := BotFollow.anchor_of(people)
-	if threat < _profile.retreat_margin and (held == null or not held.is_melee()):
-		intent.reflex = _retreat(here, beliefs, anchor)
-		intent.run = true
-		intent.note = "retreat"
-		_last_reflex = intent.reflex
-	else:
+	var plan := BotArsenal.plan(me, held, _distance_to(beliefs, intent.target_id, here), threat)
+	var pack := BotCombat.near_count(beliefs, here, _profile.memory_seconds)
+	intent.melee_ok = BotCombat.may_melee(pack, plan.dry)
+	var ordered := _throw(intent, beliefs, here, targets, mates, threat, kind)
+	if not _step_away(intent, beliefs, here, anchor, held, threat, kind, pack, plan.dry, ordered):
 		_last_reflex = Vector3.ZERO
-		_walk_to_people(intent, here, beliefs, people, anchor, threat)
+		if ordered:
+			intent.note = "throw"
+		elif _chase(intent, beliefs, here, held, mates, pack, plan.dry):
+			intent.note = "chase"
+		elif kind == BotStance.Kind.HOLD:
+			_hold(intent, beliefs, here, anchor)
+		else:
+			_walk_to_people(intent, here, beliefs, people, anchor, threat)
 	if intent.target_id < 0:
 		intent.look_yaw = _glance(beliefs, here)
-	_handle_weapon(intent, me, held, threat)
+	_handle_weapon(intent, plan, beliefs.now)
 	if intent.note == "":
 		intent.note = "fight" if intent.target_id >= 0 else "hold"
 	return intent
 
 
-## The target to shoot: the nearest in sight, kept once chosen unless another is clearly nearer.
-func _choose(targets: Array[Dictionary], here: Vector3) -> int:
-	var best := -1
-	var best_score := INF
-	for contact in targets:
-		var score := (
-			Vector2(contact["position"].x - here.x, contact["position"].z - here.z).length()
-		)
-		if contact["id"] == _committed:
-			score -= COMMITMENT
-		if score < best_score:
-			best_score = score
-			best = contact["id"]
-	return best
+## Gives the intent a heading away from the dead when the bot should not stand where it is: a blow
+## it saw start and can still step out of, the headliner nearer than the profile's `boss_keep`, or a
+## zombie inside the profile's margin. Nothing in the stampede (running from runners is no use) but
+## the boss's blow; a melee bot stands to fight except in front of a pack. True when it did.
+func _step_away(
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	here: Vector3,
+	anchor: Vector3,
+	held: WeaponDef,
+	threat: float,
+	kind: BotStance.Kind,
+	pack: int,
+	dry: bool,
+	throwing: bool
+) -> bool:
+	var swings := _dodge.swings(beliefs, here)
+	var boss_blow := false
+	for swing in swings:
+		boss_blow = boss_blow or beliefs.contact(swing["id"]).get("look", &"") == &"headliner"
+	var dodge := not swings.is_empty() and (kind != BotStance.Kind.HOLD or boss_blow)
+	var keeps_off := _boss_distance(beliefs, here) < _profile.boss_keep and not throwing
+	var margin := _profile.retreat_margin
+	var melee := held != null and held.is_melee()
+	var backs := threat < margin and kind != BotStance.Kind.HOLD
+	if (melee and BotCombat.may_melee(pack, dry)) or throwing:
+		backs = false
+	if not (dodge or keeps_off or backs):
+		return false
+	intent.reflex = _retreat(here, beliefs, anchor)
+	intent.run = true
+	intent.note = "dodge" if dodge else "retreat"
+	_last_reflex = intent.reflex
+	return true
 
 
 ## A heading away from what the bot knows of, chosen among twelve on the walking mesh, with a pull
@@ -238,39 +283,137 @@ func _glance(beliefs: BotBeliefs, here: Vector3) -> float:
 	return NAN
 
 
-func _handle_weapon(intent: BotIntent, me: Dictionary, held: WeaponDef, threat: float) -> void:
-	if held == null:
-		return
-	var reloading: bool = me.get("reloading", false)
-	var ammo: int = me.get("ammo", 0)
-	var reserve: int = me.get("reserve", 0)
-	if not held.is_melee() and not reloading and reserve > 0:
-		var dry := ammo <= 0
-		var low := float(ammo) < float(held.magazine_size) * LOW_MAGAZINE
-		intent.reload = dry or (low and threat > RELOAD_SAFE)
-	if _thinks - _swapped_at >= SWAP_EVERY and _wants_swap(me, held):
+func _handle_weapon(intent: BotIntent, plan: BotArsenal.Plan, now: float) -> void:
+	intent.reload = plan.reload
+	if plan.swap and now - _swapped_at >= SWAP_EVERY:
 		intent.swap = true
-		_swapped_at = _thinks
+		_swapped_at = now
 
 
-## Swap away from a melee weapon or an empty gun to one that has rounds; from an empty gun to the
-## melee weapon when nothing else can shoot.
-func _wants_swap(me: Dictionary, held: WeaponDef) -> bool:
-	var arms: Dictionary = me.get("arms", {})
-	if arms.size() < 2:
+## Meters to the target the bot means to shoot, or INF for none.
+static func _distance_to(beliefs: BotBeliefs, target_id: int, here: Vector3) -> float:
+	var contact := beliefs.contact(target_id)
+	return _flat(here, contact["position"]) if not contact.is_empty() else INF
+
+
+## Seconds since the last blow the bot took (INF for none lately).
+static func _blow_age(beliefs: BotBeliefs) -> float:
+	return beliefs.now - float(beliefs.blows.back()["at"]) if not beliefs.blows.is_empty() else INF
+
+
+## The other players as the beliefs keep them.
+static func _mates(beliefs: BotBeliefs, me: int) -> Array[Dictionary]:
+	var mates: Array[Dictionary] = []
+	for id in beliefs.teammates:
+		if id != me:
+			mates.append(beliefs.teammates[id])
+	return mates
+
+
+## Metres to the nearest headliner the bot believes in, or INF.
+static func _boss_distance(beliefs: BotBeliefs, here: Vector3) -> float:
+	var best := INF
+	for id in beliefs.contacts:
+		var contact: Dictionary = beliefs.contacts[id]
+		if ZombieModels.is_boss(contact.get("look", ZombieModels.DEFAULT)):
+			if beliefs.is_believed(contact):
+				best = minf(best, _flat(here, contact["position"]))
+	return best
+
+
+## Orders a grenade at a pack when the throw is safe, and watches an order given a moment ago:
+## the bot stands still for it, and takes it back if a teammate walks into the blast. True while an
+## order is in force.
+func _throw(
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	here: Vector3,
+	targets: Array[Dictionary],
+	mates: Array[Dictionary],
+	threat: float,
+	kind: BotStance.Kind
+) -> bool:
+	var now := beliefs.now
+	if _order != null and now - _ordered_at < THROW_WATCH:
+		if threat < THROW_ABORT_NEAR or not _grenadier.is_safe(_order.landing, here, mates):
+			intent.throw_abort = true
+			_order = null
+			return false
+		return true
+	_order = null
+	if beliefs.grenades <= 0 or threat < BotGrenadier.SAFE_FROM_SELF or targets.is_empty():
 		return false
-	if not held.is_melee() and _rounds(arms, held.id) > 0:
+	var throw := _grenadier.plan(
+		here, targets, mates, beliefs.grenades, now, kind == BotStance.Kind.LOW
+	)
+	if throw == null:
 		return false
-	var other_has_rounds := false
-	for id: StringName in arms:
-		if id != held.id and not WeaponCatalog.get_def(id).is_melee() and _rounds(arms, id) > 0:
-			other_has_rounds = true
-	return other_has_rounds if held.is_melee() else true
+	intent.throw_style = throw.style
+	intent.throw_yaw = throw.yaw
+	intent.throw_pitch = throw.pitch
+	_order = throw
+	_ordered_at = now
+	_grenadier.last_throw = now
+	intent.note = "throw"
+	return true
 
 
-static func _rounds(arms: Dictionary, weapon_id: StringName) -> int:
-	var counts: Array = arms.get(weapon_id, [0, 0])
-	return int(counts[0]) + int(counts[1])
+## A bot with a crowbar in hand walks up to a zombie that is not coming to it (one tearing boards,
+## held by a hit or by a blast), when the swing is a good idea (`BotCombat.may_melee`) and the
+## leash allows the walk (`BotCombat.leash_allows`). A zombie that is coming is waited for.
+func _chase(
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	here: Vector3,
+	held: WeaponDef,
+	mates: Array[Dictionary],
+	pack: int,
+	dry: bool
+) -> bool:
+	var target := beliefs.contact(intent.target_id)
+	if held == null or not held.is_melee() or target.is_empty():
+		return false
+	var apart := _flat(here, target["position"])
+	if apart <= CHASE_FROM_NEAR or apart > CHASE_UP_TO:
+		return false
+	if (
+		BotCombat.closing_speed(target, here) > CHASE_IDLE_SPEED
+		or not BotCombat.may_melee(pack, dry)
+	):
+		return false
+	var humans: Array[Vector3] = []
+	var bots: Array[Vector3] = []
+	var downed: Array[Vector3] = []
+	for mate in mates:
+		if mate.get("dead", false):
+			continue
+		if mate.get("downed", false):
+			downed.append(mate["pos"])
+		else:
+			(bots if mate.get("bot", false) else humans).append(mate["pos"])
+	var people := humans if not humans.is_empty() else bots
+	if not BotCombat.leash_allows(target["position"], here, people, downed):
+		return false
+	intent.goal = target["position"]
+	intent.goal_radius = CHASE_STOP
+	intent.run = false
+	return true
+
+
+## The stampede: stand at a choke near the people (walls about it) and not run from the runners.
+func _hold(intent: BotIntent, beliefs: BotBeliefs, here: Vector3, anchor: Vector3) -> void:
+	var centre := anchor if anchor != Vector3.INF else here
+	var spot := _stance.choke(here, centre, beliefs.now)
+	if spot == Vector3.INF or _flat(here, spot) < HOLD_RADIUS:
+		return
+	intent.goal = spot
+	intent.goal_radius = HOLD_RADIUS
+	intent.run = false
+
+
+## The bot's own health as a share of a full one.
+static func _health(me: Dictionary) -> float:
+	return float(me.get("health", 100.0)) / FULL_HEALTH
 
 
 static func _held(me: Dictionary) -> WeaponDef:

@@ -350,8 +350,23 @@ stopped with `OS.delay_msec` for 0.5, 2 and 5 s.
   inbound and the server's outbound buffers are now 1 MB each with room for 8192 packets (a minute or more), and a tick
   the socket still would not take makes the next frame whole. `peer_stalled` and `peer_recovered` in the server log say
   when it happened. No wire change: the protocol version stays.
-- **What is not done:** the browser build was not frozen on purpose here (the Chrome probe needs a night with the flare
-  in hand). The flare's own first-shot hitch is in [First-use hitches](first-use-hitches.md#the-flares-first-shot-483).
+- **In the browser (#502).** `tools/web_smoke/freeze.py` starts a game server of its own, joins it from Chrome (GPU,
+  fresh profile) through a relay that holds each chunk back 100 ms each way (a round trip of 214 to 240 ms: loopback
+  has none and the old client came back within 1.2 m of the server over it, so the relay is what makes the probe able
+  to fail), walks, stalls the page's main thread with a busy loop for 0.5, 2 and 5 s with the keys held, walks on,
+  stops, and compares the body with the server's position (`window.deadnight` `body_*`, `server_*`, `stalls`):
+
+  | Client | 0.5 s stall | 2 s stall | 5 s stall |
+  | --- | --- | --- | --- |
+  | `main` before #501 (rebuilt without its client changes), worst gap while walking / settled gap | 0 / 0 m | 142 m / 1.1e9 m | 4.8e15 m / 4.5e22 m |
+  | `main` (with #501) | 0 / 0 m | 0.01 / 0.0 m | 3.7 / 0.0 m |
+
+  With #501 the page also noticed all three stalls (`stalls` 1, 2, 3; the longest 5007 ms).
+
+  A 60 s stall printed 670 `Buffer payload full` console errors with the old 64 KB buffers and none now (1 MB), and
+  the body was where the server had it. So the freeze needed no new fix in the browser, only the proof.
+- **The flare's first shot in the browser** hitched for a different reason (its embers were never warmed):
+  [First-use hitches](first-use-hitches.md#in-chrome-the-flares-embers-were-never-warmed-502).
 
 ## Match settings
 

@@ -94,6 +94,15 @@ arms reaching out and down, and the hands go on the belly.
 - **The kit hold ties the gun to the forearm.** On `Index1.R` the grip sits 0.62 m out along the forearm and the
   barrel within 17 degrees of it, and the upper arm is only 0.39 m, so a grip target at the hip with a steep gun
   missed by 0.32 m: the carry is set by the upper arm's hang and the gun's direction, and the grip follows.
+- **On solved grips the weapon's pose leads, not the forearm (#527).** Once #507 solved a grip per model, that
+  rule broke: the rebuilt rifle hung by the right leg with the left hand 0.2 m off the fore-end. The carry now names
+  the weapon's pose (grip point, muzzle, top) and both hands reach it by IK, the right hand bone turned so the weapon
+  points as asked through the model's own grip, so the hand bones turn (as the aim IK turns them) and both hands
+  land on the weapon (0.001 m). A grip can turn a weapon far in the hand: the Tommy gun's pistol grip stands 90
+  degrees off the lever rifle's wrist, so one class clip cannot carry both, and it has its own.
+- **Godot bones have Blender's pose-bone axes.** Comparing `soldier.glb`'s node world rotations with the Blender pose
+  bones at rest gave the identity for every bone, so a grip's `hold` and `left_hand` apply in Blender as they are
+  (kit page: Rig sharing, bone axes in Godot).
 - **A melee weapon at the end of a hanging arm points at the legs.** Mirroring Run's free arm swung the bat like a
   pendulum, head down. A bent runner's arm with the forearm rolled to lean the shaft back keeps it up.
 - **Locking two branches of a tree.** Godot 4.7 exposes every clip node's play position as
