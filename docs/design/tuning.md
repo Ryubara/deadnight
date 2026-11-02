@@ -45,9 +45,9 @@ and what loads it are in [Scenes: which is which](scenes.md).
 - **A night, straight away: F6 on `dev/play_night.tscn`** (above).
 - **The whole game: F5** (Run Project) opens `main.tscn`. Click Play (it takes about half a second for the items to
   appear). You are in the night, alone, on the seed `Night.SEED` (1958). Esc pauses; "Back to the menu" leaves.
-- **F6 on `night_screen.tscn` does not start a night.** The screen starts it when the router *enters* it (its
-  `screen_enter`), and F6 only instances the scene. You get the loading card and nothing else (checked). Go through
-  the menu, or use `dev/play_night.tscn`.
+- **F6 on `ui/screens/night_screen.tscn` starts a solo night too** (checked: the lot and the HUD come up and the
+  player stands in it). The screen starts the night itself when it is the scene you run; inside the menu's router the
+  router starts it. `dev/play_night.tscn` is still the one with options.
 - **Movement and camera only: F6 on `world/test_room.tscn`.** Real keys and mouse (WASD,
   mouse, Shift sprints, C crouches, Space jumps).
   The `Player` node's `Tuning` slot holds `player_tuning_default.tres`: change a value, press F6 again.
@@ -83,12 +83,15 @@ Press F5 or F6 with a mouse in your hand: the night captures the mouse while you
 
 A game developer's numbers live in resources, `.tres` files with an exported script, so the inspector edits them. Open
 one by double-clicking it in the FileSystem dock; each `@export_group` is a section, and the `##` comment above each
-number is its tooltip. Save with Ctrl+S. A number the `.tres` does not mention falls back to the script's default,
+number is its tooltip. A number with a unit shows it in the box (`m`, `s`, `deg`, `Hz`, `pts`), and the slider
+stops at a sensible largest value; type a bigger number if you want one (a few ratios, like a share from 0 to 1, stop
+at their end). Save with Ctrl+S. What each resource looks like is on [Tuning resources in the
+inspector](tuning-inspector.md). A number the `.tres` does not mention falls back to the script's default,
 which is what the inspector shows with no "revert" arrow; the file wins when it has the number.
 
 | Resource | File | What it controls | Where it is loaded |
 | --- | --- | --- | --- |
-| `RulesTuning` (parts below) | `gameplay/rules/default_tuning.tres` | The whole rules table: one resource, nine parts | `GameRules.DEFAULT_TUNING_PATH`, by the night's server (`GameRules`), by the client for HUD numbers (`Night`), the balance simulator and the tests |
+| `RulesTuning` (parts below) | `gameplay/rules/default_tuning.tres` | The whole rules table: one resource, eleven parts | `GameRules.DEFAULT_TUNING_PATH`, by the night's server (`GameRules`), by the client for HUD numbers (`Night`), the balance simulator and the tests |
 | `RoundTuning` | in `default_tuning.tres` (`rounds`) | How a round grows: zombie count, health, speed, spawn pace, break length, how the night darkens | the rules, the zombie simulation |
 | `EconomyTuning`, `ShopItem` | `economy` | Points per hit and kill; every shop item's price, requirement and pool | the rules, the shop |
 | `FuelTuning` | `fuel` | Generator tank, drain per circuit, start state | the rules, the lights |
@@ -97,6 +100,8 @@ which is what the inspector shows with no "revert" arrow; the file wins when it 
 | `ExplosiveTuning` | `explosives` | Grenades carried, blast pay, when a blast cripples | the rules |
 | `BarricadeTuning` | `barricades` | Boards per breach, seconds a zombie takes to tear one | the rules, the zombies |
 | `HealthTuning` | `health` | The health bar and how fast it mends | the rules |
+| `ReviveTuning` | `revive` | How long a downed player bleeds out, what a revive pays | the rules (`revive_play.gd`) |
+| `UpgradeTuning` | `upgrade` | What a re-cut does to a weapon: the weapons it takes, the price step, the damage and magazine multipliers | the rules, `WeaponDef.upgraded`, the re-cut machine |
 | `CraneTuning` | `crane` | The prize crane's timing and its chance to break down | the rules (`crane_play.gd`), `crane_view.gd` |
 | `PlayerTuning` | `gameplay/player/player_tuning_default.tres` | How the player feels: speeds, acceleration, jump, crouch, step up, hip fire, camera framing and springs, shake, sprint sway (15 groups) | `Player.tuning` (the export on the `Player` node of `player.tscn`, `test_room.tscn`), remote avatars, the touch look and the camera probe |
 | `NightTuning` | `gameplay/night/night_tuning_default.tres` | What a player starts with (gun, melee), how far a hand reaches (doors, boards, fuel), the repair and switch intervals, grenade release times, the muzzle, how long a command lasts, the bot's spectator camera | `NightTuning.shipped()`: the night (`Night.night_tuning`, the server and the client), the tests |
@@ -109,6 +114,11 @@ which is what the inspector shows with no "revert" arrow; the file wins when it 
 | `GrenadeDef` | `gameplay/grenades/defs/frag.tres` | The grenade: fuse, throw, bounces, blast radius and damage | `NightServer.GRENADE_DEF` |
 | `WeaponHold` | `gameplay/player/holds/<id>.tres` | How a weapon sits on the Soldier: size, rest pose, support hand | `PlayerAnimation` |
 | Range scenes' own exports | the root node of `world/weapon_range/weapon_range.tscn` and `world/grenade_range/grenade_range.tscn` | The range cameras (position, target, field of view), the barrel, the demo throw | the scene itself: select the root node |
+| `NightSoundTuning` | `gameplay/night/night_sound_tuning_default.tres` | How the night's sounds behave: footstep level against pace, a shot's tail and impacts, the grenade's tick and bounce, the generator's hum and the shop, how far and how often the dead speak, the voice director, when the soldier speaks | `NightSoundTuning.current()`: `FootstepSounds`, `WeaponSounds`, `GrenadeSounds`, `WorldSounds`, `ZombieVoices`, `VoiceDirector`, `SoldierVoice` |
+| `SoldierMoments` | `core/audio/soldier_moments_default.tres` | The soldier's 21 moments: priority, cooldown, chance (and how many takes there are) | `SoldierVoiceCatalog.moments()`, `VoiceDirector` |
+| `LightTuning` | `world/drive_in/light_tuning_default.tres` | The lot's light: how far a lamp reaches and how it fails with the tank (the rules read these), how the night darkens as the rounds go, how bright each fixture burns | `LightTuning.current()`: `LotLamps`, `NightLight`, the lamp posts, switches, sign, screen, projector |
+| `TouchTuning` | `ui/touch/touch_tuning_default.tres` | The touch controls' feel: how a finger turns the view (turn per screen height, flick gain), the stick's dead zone and sprint thresholds, the buttons' minimum press | `TouchLook`, `TouchControls` |
+| `HudTuning` | `ui/hud/hud_tuning_default.tres` | How long the HUD's things stay and when it warns: banner, fuel panel, feeds, hit markers, damage arcs, challenge prompts, low health, ammo and boss warnings, ping colours | `HudTuning.current()`: the HUD parts |
 | `ReticleStyle` | `ui/hud/reticle_style.tres` | The centre reticle's ticks, gap and dot | the `Hud` node's `reticle_style` |
 | `UITokens` | `ui/skin/deadnight_tokens.tres` | The skin: colours, type sizes, spacing | `project.godot` (`[gds_ui] tokens`) |
 | Audio buses | `default_bus_layout.tres` | Bus volumes (Music, Effects, UI, Voice, Ambience) | the project (`Audio` autoload) |
@@ -122,11 +132,14 @@ audit, area by area:
 | Area | Moved | Left in code, and why |
 | --- | --- | --- |
 | Zombies | `ZombieTuning` (all 28 numbers, now a `.tres` the simulation loads) | per-type numbers are already `ZombieType` in `default_tuning.tres`; `ZombieRig`, `AnimationThrottle`: animation and rendering cost, not design |
-| Sound | every `SoundDef` (97), the group limits, the soldier voice's level and reach | the soldier's per-moment table (`SoldierVoiceCatalog.EVENTS`: takes, priority, cooldown, chance) is tied to the generated files; `UI_CUES` (ids); the pitch rule `ArmsCatalog.FIREARM_PITCH_SEMITONES` (checked by a test, no longer builds anything); mix helpers in `audio_service.gd`, `footstep_sounds.gd`, `world_sounds.gd`, `weapon_sounds.gd` (follow-up) |
+| Sound | every `SoundDef` (97), the group limits, the soldier voice's level and reach; `NightSoundTuning` (footsteps, guns, grenades, generator and shop, the dead's voices, voice director, when the soldier speaks); `SoldierMoments` (what was `SoldierVoiceCatalog.EVENTS`) | `UI_CUES` (ids); the pitch rule `ArmsCatalog.FIREARM_PITCH_SEMITONES` (checked by a test); the audio service's engine numbers (pool sizes, defer budget, occlusion filter, duck speeds, bed fades: how the mixer works, not a taste) |
 | Weapons | the look of a shot, a flare and a lure (`ShotFxTuning`) | `WeaponDef` and `GrenadeDef` were already resources; `ImpactFx.MAX_ACTIVE` (the pool's size) and `MAX_SIZE` (the bound the tests check) |
 | Camera | the range scenes' cameras (exports on their root nodes) | the player's camera is `PlayerTuning`; the bot's camera is `NightTuning` (#465); the loading warm-up's hidden stage camera (`NightWarmup.SHOT_FOV`, near and far shot) only guarantees shaders compile, it is not a feel number |
-| Touch | `AimAssistTuning` (a `.tres` now) | the finger's look gain and sprint thresholds (`TouchLook`, `TouchControls`, touch pull requests in flight: tests use their names); button and stick layout (`TouchLayout`: layout arithmetic) |
-| HUD, menu | nothing | sizes and colours are the skin (`UITokens`) and `HudStyle` layout arithmetic |
+| Touch | `AimAssistTuning`; `TouchTuning` (look gain, flick, dead zone, sprint thresholds, minimum press) | button and stick layout (`TouchLayout`, `TouchHints`: layout arithmetic) |
+| HUD, menu | `HudTuning` (every time a HUD part stays on screen, and the low-health, ammo, boss and ping thresholds) | sizes and colours are the skin (`UITokens`) and `HudStyle` layout arithmetic; row counts and widths (`MAX_ROWS`, `WIDTH`); the menu's panel widths |
+| World, light | `LightTuning` (lamp reach and flicker, the night closing in, fixture brightness) | the machines' and the barricade's animation timings (`RecutMachine`, `SodaFountain`, `Barricade`: presentation of a rule that is `CraneTuning`/`UpgradeTuning`); the lot's model data (`ModelGlow`) |
+| Bots | nothing | `BotProfile` is already a resource built in code (three skills), `Autopilot` and the `Bot*` constants are test and balance tools, not the game |
+| Network | nothing | `net/` limits and the remote avatars' smoothing (`Reconciler`, `RemoteAvatars`): a protocol and its lag budget, not a taste |
 
 What stays in code on purpose: the network protocol and its limits (`net/`), layout arithmetic, ids and node names,
 and constants that only a test uses.
@@ -153,7 +166,9 @@ When you retune on purpose, change the number in that table too: it is the one p
 | Zombie behaviour | `tests/zombies`, `tests/tuning` | Movement, attacks, types, the boss, the director; the shipped numbers |
 | Player feel, camera | `tests/player`, `tests/world/test_camera_probe_tuning.gd` | Speeds against the zombies', the camera's pull-back, the shake's peak ("subtle" is a number), hip fire, the 8-direction movement matrix |
 | Weapons, grenades | `tests/weapons`, `tests/grenades` | Damage per zone, ammo and reload, the shot's look, the blast |
-| Sounds | `tests/core`, `tests/tuning` | The catalogue, the budget and the mix levels; the shipped value of every sound |
+| Sounds | `tests/core`, `tests/night`, `tests/zombies`, `tests/tuning` | The catalogue, the budget and the mix levels; the shipped value of every sound; the footsteps, guns, generator, voices and the soldier's moments (they read `NightSoundTuning` and `SoldierMoments`) |
+| The lot's light | `tests/world`, `tests/tuning` | Lamps follow circuits and flicker with the tank, the night closes in over its ease (they read `LightTuning`) |
+| Touch, HUD | `tests/ui`, `tests/tuning` | The touch layer turns the view by `TouchTuning`; the HUD parts hold for the seconds of `HudTuning` |
 | The night's hands and the lot | `tests/night`, `tests/world` | Reach, repair, fuel and switch spots |
 
 Run one suite or folder headless, with the pinned Godot (the flag is needed because GdUnit4 refuses headless

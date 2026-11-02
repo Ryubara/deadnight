@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="LightTuning" format=3]
+
+[ext_resource type="Script" path="res://world/drive_in/light_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+lamp_reach = 6.0
+flicker_ticks = 5
+sag_floor = 0.35
+dropout = 0.12
+ease_seconds = 12.0
+darkest_ambient = 0.35
+darkest_moon = 0.5
+darkest_sky = 0.5
+darkest_fog_density = 1.7
+bulb_dark_albedo = 0.25
+bulb_energy = 3.0
+bulb_halo_energy = 0.9
+bulb_pool_energy = 0.5
+switch_glow_off = 0.5
+switch_glow_on = 2.0
+switch_halo_on = 1.1
+switch_halo_off = 0.45
+neon_tube_energy = 3.0
+neon_halo_energy = 0.9
+screen_face_energy = 1.0
+screen_spill_energy = 0.1
+pane_energy = 0.55
+beam_energy = 0.14
+beam_halo_energy = 1.5
+beam_near = 1.0
+beam_far = 0.12

@@ -21,10 +21,6 @@ const PING_CELL := 5
 ## Size of the armband chip before the name, and of a row's height.
 const CHIP := Vector2(10.0, 34.0)
 const ROW_HEIGHT := 46.0
-## Up to this many milliseconds a ping reads as good (the ordinary ink); up to the next, it is
-## worth a glance (the accent); past it, it hurts (the danger red).
-const PING_GOOD_MS := 80
-const PING_FAIR_MS := 160
 ## The most players a night holds (the rows kept).
 const MAX_ROWS := 4
 ## A row of the local player is laid on a faint wash of the accent.
@@ -41,6 +37,7 @@ var has_ping := false
 ## The player ids in row order.
 var row_ids: Array[int] = []
 
+var _t := HudTuning.current()
 var _grid := VBoxContainer.new()
 var _title_row := HBoxContainer.new()
 var _round := HudStyle.label("", HudStyle.MEDIUM, tokens.hot, true)
@@ -78,9 +75,9 @@ static func format_clock(seconds: int) -> String:
 
 ## Which way a ping reads: 0 good, 1 fair, 2 bad.
 static func ping_grade(ping_ms: int) -> int:
-	if ping_ms <= PING_GOOD_MS:
+	if ping_ms <= HudTuning.current().ping_good_ms:
 		return 0
-	return 1 if ping_ms <= PING_FAIR_MS else 2
+	return 1 if ping_ms <= HudTuning.current().ping_fair_ms else 2
 
 
 ## Where the card sits, for the layout test.

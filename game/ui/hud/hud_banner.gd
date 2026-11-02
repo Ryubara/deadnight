@@ -7,11 +7,6 @@ extends HudTicket
 
 enum Rank { AREA, ROUND, END }
 
-const IN_TIME := 0.35
-const HOLD_TIME := 2.4
-const OUT_TIME := 0.5
-## The board grows from this scale to full size as it appears (movement: skipped when reduced).
-const POP_FROM := 0.92
 ## Fixed width: a long title shrinks to fit instead of widening the board into the readouts.
 const WIDTH := HudStyle.CARD
 ## Title size of a round banner ("ROUND 12" must fit the width).
@@ -33,10 +28,11 @@ var subtitle_room: float:
 	get:
 		return WIDTH - float(HudStyle.PAD + HudStyle.PAD_LEFT)
 
+var _t := HudTuning.current()
 var _title := HudStyle.label("", ROUND_SIZE, tokens.accent_bright, true)
 var _subtitle := HudStyle.label("", HudStyle.MEDIUM, tokens.ink, false)
 var _age := 0.0
-var _hold := HOLD_TIME
+var _hold := _t.banner_hold
 var _rank := Rank.AREA
 var _clock := 0.0
 ## The last restore of a special round the banner showed (`HudState.special_restored`).
@@ -111,13 +107,14 @@ func _cleared_line() -> String:
 	return "%s CLEARED  +%d" % [title.to_upper(), int(cleared["reward"])]
 
 
-func show_banner(main: String, sub: String, rank: Rank, hold := HOLD_TIME) -> void:
-	if showing and rank < _rank and _age < IN_TIME + _hold + OUT_TIME:
+## Shows a banner; `hold` is how long it holds, or -1 for `HudTuning.banner_hold`.
+func show_banner(main: String, sub: String, rank: Rank, hold := -1.0) -> void:
+	if showing and rank < _rank and _age < _t.banner_in + _hold + _t.banner_out:
 		return
 	title = main
 	subtitle = sub
 	_rank = rank
-	_hold = hold
+	_hold = hold if hold >= 0.0 else _t.banner_hold
 	_age = 0.0
 	showing = true
 	var wanted := ROUND_SIZE if rank == Rank.ROUND else HudStyle.BIG
@@ -146,7 +143,7 @@ func advance(delta: float) -> void:
 	if not showing:
 		return
 	_age += delta
-	if _age >= IN_TIME + _hold + OUT_TIME:
+	if _age >= _t.banner_in + _hold + _t.banner_out:
 		showing = false
 		visible = false
 		return
@@ -158,18 +155,18 @@ func advance(delta: float) -> void:
 func presence() -> float:
 	if not showing:
 		return 0.0
-	if _age < IN_TIME:
-		return _age / IN_TIME
-	if _age < IN_TIME + _hold:
+	if _age < _t.banner_in:
+		return _age / _t.banner_in
+	if _age < _t.banner_in + _hold:
 		return 1.0
-	return 1.0 - (_age - IN_TIME - _hold) / OUT_TIME
+	return 1.0 - (_age - _t.banner_in - _hold) / _t.banner_out
 
 
 func _apply() -> void:
 	var shown := presence()
 	modulate.a = shown
 	pivot_offset = size * 0.5
-	scale = Vector2.ONE * (1.0 if UIMotion.reduced else lerpf(POP_FROM, 1.0, shown))
+	scale = Vector2.ONE * (1.0 if UIMotion.reduced else lerpf(_t.banner_pop_from, 1.0, shown))
 
 
 func _draw() -> void:

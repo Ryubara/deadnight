@@ -80,7 +80,7 @@ func _busy_hud(canvas: Vector2, worst := false, mirrored := false) -> HudFixture
 
 	for amount in [100, 60, 130, 60]:
 		hud.gains.add_gain(&"kill", amount)
-	fixture.advance(maxf(HudBanner.IN_TIME, ChallengePromptQueue.IN_SECONDS) + 0.1)
+	fixture.advance(maxf(HudTuning.current().banner_in, HudTuning.current().challenge_in) + 0.1)
 	if worst:
 		fixture.fill_worst_case()
 	return fixture

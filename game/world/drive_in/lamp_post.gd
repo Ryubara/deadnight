@@ -6,13 +6,6 @@ extends Node3D
 ## Compatibility renderer lights a mesh with at most 8, so the pool is what makes a lamp read on the
 ## asphalt from across the lot.
 
-## How much of its albedo the bulb keeps when it is dark.
-const DARK_ALBEDO := 0.25
-## The lens's emission, the halo's and the pool's brightness at full glow.
-const BULB_ENERGY := 3.0
-const HALO_ENERGY := 0.9
-const POOL_ENERGY := 0.5
-
 var _lit_albedo := Color.WHITE
 var _material: StandardMaterial3D
 var _halo_material: ShaderMaterial
@@ -37,9 +30,10 @@ func _ready() -> void:
 
 ## `level` 0 (dark) to 1 (burning): the bulb's glow and colour, its halo and its pool of light.
 func set_glow(level: float) -> void:
-	_material.emission_energy_multiplier = level * BULB_ENERGY
-	_material.albedo_color = _lit_albedo * lerpf(DARK_ALBEDO, 1.0, level)
-	_halo_material.set_shader_parameter(&"energy", level * HALO_ENERGY)
-	_pool_material.set_shader_parameter(&"energy", level * POOL_ENERGY)
+	var tuning := LightTuning.current()
+	_material.emission_energy_multiplier = level * tuning.bulb_energy
+	_material.albedo_color = _lit_albedo * lerpf(tuning.bulb_dark_albedo, 1.0, level)
+	_halo_material.set_shader_parameter(&"energy", level * tuning.bulb_halo_energy)
+	_pool_material.set_shader_parameter(&"energy", level * tuning.bulb_pool_energy)
 	_halo.visible = level > 0.0
 	_pool.visible = level > 0.0

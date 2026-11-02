@@ -6,15 +6,15 @@ extends Resource
 
 @export_group("Carrying")
 ## Grenades a player starts the night with.
-@export var start_grenades: int = 2
+@export_range(0, 20, 1, "or_greater") var start_grenades: int = 2
 ## Every round start tops a player up to at least this many.
-@export var refill_to: int = 3
+@export_range(0, 20, 1, "or_greater") var refill_to: int = 3
 ## The most a player can carry, shop included.
-@export var max_grenades: int = 5
+@export_range(0, 20, 1, "or_greater") var max_grenades: int = 5
 
 @export_group("Points")
 ## The blast that kills pays this, not the gun kill: a grenade clears crowds, so it pays less each.
-@export var explosion_kill: int = 40
+@export_range(0, 1000, 1, "or_greater", "suffix:pts") var explosion_kill: int = 40
 
 @export_group("Crippling")
 ## Blast damage that landed on the legs, as a fraction of the zombie's full health, past which the

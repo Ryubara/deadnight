@@ -34,7 +34,7 @@ func _try(event: StringName, speaker := 1) -> int:
 func test_every_moment_picks_a_take_that_exists() -> void:
 	for event: StringName in SoldierVoiceCatalog.events():
 		var take := VoiceDirector.new().choose(event, 1)
-		var info: Dictionary = SoldierVoiceCatalog.EVENTS[event]
+		var info: Dictionary = SoldierVoiceCatalog.moments()[event]
 		if info["chance"] >= 1.0:
 			assert_int(take).override_failure_message(String(event)).is_between(1, info["takes"])
 
@@ -53,18 +53,18 @@ func test_two_lines_never_overlap() -> void:
 
 func test_a_gap_of_silence_follows_every_line() -> void:
 	_say(&"round_start")
-	_director.advance(LINE + VoiceDirector.GAP * 0.5)
+	_director.advance(LINE + NightSoundTuning.current().line_gap * 0.5)
 	assert_bool(_director.is_speaking()).is_false()
-	assert_float(_director.wait()).is_equal_approx(VoiceDirector.GAP * 0.5, 0.001)
+	assert_float(_director.wait()).is_equal_approx(NightSoundTuning.current().line_gap * 0.5, 0.001)
 	assert_int(_say(&"round_clear")).is_equal(0)
-	_director.advance(VoiceDirector.GAP * 0.5 + 0.01)
+	_director.advance(NightSoundTuning.current().line_gap * 0.5 + 0.01)
 	assert_int(_say(&"round_clear")).is_not_equal(0)
 
 
 func test_a_dropped_request_is_not_queued() -> void:
 	_say(&"round_start")
 	assert_int(_say(&"door")).is_equal(0)
-	_director.advance(LINE + VoiceDirector.GAP + 5.0)
+	_director.advance(LINE + NightSoundTuning.current().line_gap + 5.0)
 	assert_int(_director.history.size()).is_equal(1)
 
 
@@ -72,13 +72,13 @@ func test_downed_cuts_a_line_and_hurt_cuts_an_ordinary_one() -> void:
 	_say(&"round_start")
 	_director.advance(0.5)
 	(
-		assert_bool(_director.would_interrupt(SoldierVoiceCatalog.EVENTS[&"hurt"]["priority"]))
+		assert_bool(_director.would_interrupt(SoldierVoiceCatalog.moments()[&"hurt"]["priority"]))
 		. is_true()
 	)
 	assert_int(_say(&"hurt")).is_not_equal(0)
 	_director.advance(0.5)
 	(
-		assert_bool(_director.would_interrupt(SoldierVoiceCatalog.EVENTS[&"downed"]["priority"]))
+		assert_bool(_director.would_interrupt(SoldierVoiceCatalog.moments()[&"downed"]["priority"]))
 		. is_true()
 	)
 	assert_int(_say(&"downed")).is_not_equal(0)
@@ -116,27 +116,27 @@ func test_a_line_does_not_cut_one_of_nearly_its_own_rank() -> void:
 
 
 func test_the_priorities_rank_downed_over_hurt_over_the_rest() -> void:
-	var downed: int = SoldierVoiceCatalog.EVENTS[&"downed"]["priority"]
-	var hurt: int = SoldierVoiceCatalog.EVENTS[&"hurt"]["priority"]
+	var downed: int = SoldierVoiceCatalog.moments()[&"downed"]["priority"]
+	var hurt: int = SoldierVoiceCatalog.moments()[&"hurt"]["priority"]
 	assert_int(downed).is_greater(hurt)
 	for event: StringName in SoldierVoiceCatalog.events():
 		if event != &"downed" and event != &"hurt":
-			var priority: int = SoldierVoiceCatalog.EVENTS[event]["priority"]
+			var priority: int = SoldierVoiceCatalog.moments()[event]["priority"]
 			assert_int(hurt).override_failure_message(String(event)).is_greater(priority)
 			assert_int(priority).override_failure_message(String(event)).is_less(
-				VoiceDirector.INTERRUPT_PRIORITY
+				NightSoundTuning.current().interrupt_priority
 			)
 
 
 func test_a_moment_has_a_cooldown_for_each_speaker() -> void:
-	var cooldown: float = SoldierVoiceCatalog.EVENTS[&"power_low"]["cooldown"]
-	assert_bool(cooldown > LINE + VoiceDirector.GAP).is_true()
+	var cooldown: float = SoldierVoiceCatalog.moments()[&"power_low"]["cooldown"]
+	assert_bool(cooldown > LINE + NightSoundTuning.current().line_gap).is_true()
 	assert_int(_say(&"power_low", 1)).is_not_equal(0)
-	_director.advance(LINE + VoiceDirector.GAP + 0.1)
+	_director.advance(LINE + NightSoundTuning.current().line_gap + 0.1)
 	assert_int(_say(&"power_low", 1)).is_equal(0)
 	# Another player has not said it, so the same moment is theirs to say.
 	assert_int(_say(&"power_low", 2)).is_not_equal(0)
-	_director.advance(LINE + VoiceDirector.GAP + cooldown)
+	_director.advance(LINE + NightSoundTuning.current().line_gap + cooldown)
 	assert_int(_say(&"power_low", 1)).is_not_equal(0)
 
 
@@ -144,14 +144,14 @@ func test_no_take_repeats_among_the_last_few() -> void:
 	var recent: Array[int] = []
 	for i in 40:
 		var take := _say(&"reload")
-		_director.advance(LINE + VoiceDirector.GAP + 100.0)
+		_director.advance(LINE + NightSoundTuning.current().line_gap + 100.0)
 		if take == 0:
 			continue
 		assert_array(recent).override_failure_message("take %d repeated" % take).not_contains(
 			[take]
 		)
 		recent.append(take)
-		if recent.size() > VoiceDirector.REMEMBER:
+		if recent.size() > NightSoundTuning.current().remember_takes:
 			recent.pop_front()
 
 

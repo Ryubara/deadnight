@@ -17,25 +17,18 @@ extends RefCounted
 
 enum Phase { IDLE, IN, HOLD, OUT }
 
-const IN_SECONDS := 0.25
-const OUT_SECONDS := 0.4
-const HOLD_SECONDS := 2.4
-const HOLD_COMPLETE_SECONDS := 3.2
-const HOLD_BUSY_SECONDS := 1.6
-## Quiet between one prompt and the next.
-const GAP_SECONDS := 0.3
 const MAX_WAITING := 3
-const STALE_SECONDS := 20.0
 
 ## The prompt showing now (empty when none).
 var current: Dictionary = {}
 var phase: Phase = Phase.IDLE
 
+var _t := HudTuning.current()
 var _waiting: Array[Dictionary] = []
 var _clock := 0.0
 var _phase_time := 0.0
 var _gap := 0.0
-var _hold := HOLD_SECONDS
+var _hold := _t.challenge_hold
 
 
 ## How much a prompt matters: higher shows first and is dropped last.
@@ -87,7 +80,7 @@ func push(advance: Dictionary) -> void:
 func advance(delta: float, blocked := false) -> void:
 	_clock += delta
 	_waiting = _waiting.filter(
-		func(entry: Dictionary) -> bool: return _clock - float(entry["_at"]) <= STALE_SECONDS
+		func(entry: Dictionary) -> bool: return _clock - float(entry["_at"]) <= _t.challenge_stale
 	)
 	if blocked:
 		return
@@ -98,7 +91,7 @@ func advance(delta: float, blocked := false) -> void:
 			if _gap <= 0.0 and not _waiting.is_empty():
 				_show(_waiting.pop_front())
 		Phase.IN:
-			if _phase_time >= IN_SECONDS:
+			if _phase_time >= _t.challenge_in:
 				phase = Phase.HOLD
 				_phase_time = 0.0
 		Phase.HOLD:
@@ -106,22 +99,22 @@ func advance(delta: float, blocked := false) -> void:
 				phase = Phase.OUT
 				_phase_time = 0.0
 		Phase.OUT:
-			if _phase_time >= OUT_SECONDS:
+			if _phase_time >= _t.challenge_out:
 				current = {}
 				phase = Phase.IDLE
 				_phase_time = 0.0
-				_gap = GAP_SECONDS
+				_gap = _t.challenge_gap
 
 
 ## 0 to 1: how far the prompt is in (0 not there, 1 fully shown).
 func shown() -> float:
 	match phase:
 		Phase.IN:
-			return clampf(_phase_time / IN_SECONDS, 0.0, 1.0)
+			return clampf(_phase_time / _t.challenge_in, 0.0, 1.0)
 		Phase.HOLD:
 			return 1.0
 		Phase.OUT:
-			return 1.0 - clampf(_phase_time / OUT_SECONDS, 0.0, 1.0)
+			return 1.0 - clampf(_phase_time / _t.challenge_out, 0.0, 1.0)
 	return 0.0
 
 
@@ -143,9 +136,9 @@ func _show(entry: Dictionary) -> void:
 	phase = Phase.IN
 	_phase_time = 0.0
 	var quick := not _waiting.is_empty()
-	_hold = HOLD_COMPLETE_SECONDS if priority(entry) >= 100 else HOLD_SECONDS
+	_hold = _t.challenge_hold_complete if priority(entry) >= 100 else _t.challenge_hold
 	if quick:
-		_hold = minf(_hold, HOLD_BUSY_SECONDS)
+		_hold = minf(_hold, _t.challenge_hold_busy)
 
 
 ## Drops the least important waiting prompt that is not a completion.

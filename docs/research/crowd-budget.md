@@ -148,3 +148,23 @@ deltas. Bandwidth is not the limit at this size.
 What this does not say: one machine of each kind and four standing players; a crowd chasing four moving players spreads
 the neighbours and costs less in separation and more in paths; four rooms in one process were not run together; the
 Discord proxy and a lossy link were not measured.
+
+### The browser by system, and on a weak processor (#105)
+
+`tools/web_smoke/crowd_cost.py` exports the crowd bench (`crowd_cost_bench.tscn`: the real lot and views, the director
+in the page) and reads each stage of a frame from the page: Chrome 156, RTX 5080, unpaced, 30 s of crowd before the
+first frame, 400 frames, two runs a cell (the processor slowed 4 times: one run):
+
+| Zombies | Frame mean / p95 | Animation | The director and paths | Views | The rest (drawing, engine) | With the processor slowed 4 times |
+| ---: | --- | ---: | ---: | ---: | ---: | --- |
+| 0 | 1.06 / 1.25 ms | 0.00 ms | 0.00 ms | 0.00 ms | 1.06 ms | 4.6 / 5.0 ms |
+| 20 | 1.79 / 2.10 ms | 0.10 ms | 0.03 ms | 0.00 ms | 1.65 ms | 6.4 / 10.6 ms |
+| 40 | 2.33 / 2.90 ms | 0.16 ms | 0.06 ms | 0.01 ms | 2.09 ms | 7.8 / 13.6 ms |
+| 80 | 2.95 / 4.50 ms | 0.28 ms | 0.14 ms | 0.02 ms | 2.49 ms | not run |
+
+A zombie costs about 0.015 ms of frame in the browser with a GPU past the first 40 (0.03 ms each up to 40, the first
+ones carry the fixed costs of drawing a skinned model; 0.01 on the desktop), and about 0.08 ms with the processor slowed
+4 times. The crowd bench is lighter than the night: the same slowed processor takes
+89 ms a frame with 40 zombies in the shipped night ([above](web-export.md#big-crowds-in-the-browser-from-the-autopilot-171)),
+so read the bench for the share a crowd takes and the night for what a player gets. Not run: Firefox (not installed on
+the machine) and a real weak laptop; the slowed processor is the stand-in.

@@ -36,7 +36,7 @@ func _moon() -> DirectionalLight3D:
 ## The round announced by a break, settled (a change takes `EASE_SECONDS`).
 func _settle_at(round_number: int) -> void:
 	_state.apply_events([{"type": &"break_started", "next_round": round_number, "seconds": 20.0}])
-	_light.advance(NightLight.EASE_SECONDS)
+	_light.advance(LightTuning.current().ease_seconds)
 
 
 func _fill() -> float:
@@ -102,7 +102,7 @@ func test_a_new_round_eases_in_with_no_pop() -> void:
 	assert_float(_env().ambient_light_energy).is_equal(before)
 	var last := before
 	var biggest_step := 0.0
-	var frames := int(NightLight.EASE_SECONDS * 60.0)
+	var frames := int(LightTuning.current().ease_seconds * 60.0)
 	for _i in frames:
 		_light.advance(1.0 / 60.0)
 		var now := _env().ambient_light_energy
@@ -143,6 +143,6 @@ func test_the_real_night_darkens_when_its_round_begins() -> void:
 	night.server.rules.apply(RulesAction.skip_break())
 	NightFixture.run(night, 3)
 	assert_int(light.round_target).is_equal(10)
-	light.advance(NightLight.EASE_SECONDS)
+	light.advance(LightTuning.current().ease_seconds)
 	assert_float(env.ambient_light_energy).is_less(round_one * 0.8)
 	night.queue_free()

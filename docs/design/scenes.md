@@ -21,7 +21,8 @@ main.tscn                          entry; core/main.gd
   UIRouter (an autoload) holds the stack of screens
   ui/screens/main_menu.tscn        the first screen: the soldier on a live lot, a tab shell over it
     Play tab    "Solo"          -> ui/screens/night_screen.tscn       the night, HUD over it
-                "Play together" -> ui/screens/together_screen.tscn    rooms, invite code
+                "Play together" -> ui/screens/together_screen.tscn    quick join, create, join by code
+                                      -> ui/screens/lobby_screen.tscn the lobby: code, seats, Start
                                       -> night_screen.tscn            (or join_screen.tscn with --dev)
     Loadout tab                 -> ui/screens/customize_screen.tscn   the wardrobe
     More tab    Settings        -> ui/screens/settings_screen.tscn
@@ -43,7 +44,7 @@ straight to the night of a server, `--room CODE` opens Play together on that cod
 | `world/drive_in_greybox.tscn` | **The map**: the drive-in lot with lamps, doors, boards, breaker switches, fuel spots, spawn markers and navigation meshes. The rules and `NightWorld` find its nodes by name and by `meta` (`shop_id`, `barricade_id`): renaming one breaks the game and `tests/world/test_drive_in_greybox.gd` | `NightWorld` (`gameplay/night/night_world.gd`) |
 | `gameplay/player/player.tscn` | The player's body: camera rig, collision, the soldier model. One per player, local and remote | `NightWorld`, `world/test_room.tscn` |
 | `ui/hud/hud.tscn` | The HUD: health, ammo, round, points, markers, feed, prompts | `NightScreen` |
-| `ui/screens/together_screen.tscn`, `join_screen.tscn` | Join a night of a game server (rooms and invite code; type an address) | the menu, `main.gd` flags |
+| `ui/screens/together_screen.tscn`, `lobby_screen.tscn`, `join_screen.tscn` | Play with others: quick join, create a night or join by code; the lobby (code, seats, the host's Start) before the night; type a server address (`--dev`) | the menu, `main.gd` flags |
 | `ui/screens/customize_screen.tscn` | The wardrobe: pick a look, saved to the profile | the Loadout tab |
 | `ui/screens/settings_screen.tscn`, `credits_screen.tscn` | Settings (the player's options) and the credits | the More tab |
 | `ui/screens/menu_stage_screen.tscn` | The menu's stage alone, for frame-time runs | `main.gd --stage` |

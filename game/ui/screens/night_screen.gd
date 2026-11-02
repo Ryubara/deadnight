@@ -93,6 +93,15 @@ func _ready() -> void:
 		add_child(_loading)
 		night.loading.connect(_loading.show_progress)
 		night.ready_to_play.connect(_loading.finish)
+	_start_if_run_alone.call_deferred()
+
+
+## Run on its own (F6 in the editor, or as the main scene) no router enters the screen, so it
+## starts the night itself: a solo night, as the menu's Play does. Inside the router, or a test,
+## `screen_enter` comes from there.
+func _start_if_run_alone() -> void:
+	if get_tree().current_scene == self and not night.running:
+		screen_enter()
 
 
 ## True while the touch controls are on screen and taking touches.

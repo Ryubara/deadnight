@@ -124,6 +124,7 @@ static func _fingerprint(from: Dictionary) -> String:
 			from.get("state"),
 			from.get("hostId"),
 			from.get("round"),
+			from.get("settings"),
 			from.get("players"),
 			from.get("members")
 		]

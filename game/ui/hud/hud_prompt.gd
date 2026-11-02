@@ -37,7 +37,6 @@ const TAKE_DENIED_TEXT := {
 	&"downed": "GET UP FIRST",
 	&"already_owned": "YOU ALREADY HAVE THAT",
 }
-const DENIED_SECONDS := 1.8
 const WIDTH := HudStyle.CARD
 
 @export var action := &"interact"
@@ -63,6 +62,7 @@ var glyph_is_tap_mark: bool:
 	get:
 		return _glyph.touch
 
+var _t := HudTuning.current()
 var _title := HudStyle.wrap(HudStyle.label("", HudStyle.MEDIUM, tokens.ink, true))
 var _detail := HudStyle.wrap(
 	HudStyle.label("", HudStyle.SMALL, tokens.ink_muted, false, HudStyle.TRACK_CAPTION)
@@ -138,7 +138,7 @@ func on_event(event: Dictionary) -> void:
 		return
 	if int(event.get("player_id", -1)) != state.local_player_id or state.prompt.is_empty():
 		return
-	denied_left = DENIED_SECONDS
+	denied_left = _t.prompt_denied_seconds
 	_price.visible = true
 	if type == &"crane_take_denied":
 		_say_price(TAKE_DENIED_TEXT.get(event["reason"], "NOT POSSIBLE"))

@@ -1,7 +1,7 @@
 class_name SoldierVoice
 extends Node
 ## The soldiers talk: a person reacting to what just happened, made only from what the server sent
-## (like `WeaponSounds`). Each event of the night becomes one moment (`SoldierVoiceCatalog.EVENTS`),
+## (like `WeaponSounds`). Each event of the night becomes one moment (`SoldierMoments`),
 ## `VoiceDirector` says whether it is voiced and which take, and the take plays on the Voice bus:
 ## flat for the player at this screen (their voice is in their head), where they stand for a
 ## teammate. It holds no game state and asks the server nothing. The design is
@@ -9,29 +9,6 @@ extends Node
 
 ## A voice comes from a player's head.
 const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
-## Kills in a row that make a streak, and the longest gap between two of them, in seconds.
-const STREAK_KILLS := 4
-const STREAK_WINDOW := 6.0
-## Below this share of health a blow is a close call.
-const LOW_HEALTH := 0.35
-## A weapon that costs this much is a big buy.
-const BIG_BUY := 1000
-## A low magazine: the rounds left when there is no reserve, as a share of a full magazine.
-const LOW_MAGAZINE := 0.4
-## Seconds after a round starts or ends before the soldier speaks (the sting and the score first).
-const ROUND_START_DELAY := 1.6
-const ROUND_CLEAR_DELAY := 2.4
-## The boss is seen this long after it is told of.
-const BOSS_DELAY := 0.8
-## A teammate who sees someone go down speaks this long after the fallen one's line.
-const RESCUE_DELAY := 0.4
-## The soldier muses aloud after this many quiet seconds, in a break that has `IDLE_MARGIN` more
-## seconds to run (before the night too), or in a round after `LULL` seconds with no dead within
-## `LULL_DISTANCE` metres.
-const IDLE_AFTER := 5.0
-const IDLE_MARGIN := 8.0
-const LULL := 10.0
-const LULL_DISTANCE := 30.0
 
 ## `Callable(id: StringName, at: Variant, extra_db: float)`, returning a node (or true) when the
 ## line started and null (or false) when the service dropped it; the audio service unless a test
@@ -40,6 +17,7 @@ var play := Callable()
 var director := VoiceDirector.new()
 var schedule := SoundSchedule.new()
 
+var _t := NightSoundTuning.current()
 var _state: ClientState
 var _kills: Dictionary[int, Array] = {}
 var _speaking: Variant = null
@@ -65,12 +43,12 @@ func step(delta: float) -> void:
 	if _state == null or not _state.has_frame() or _state.over:
 		return
 	if _state.phase() == GameRules.Phase.ACTIVE:
-		_lull = _lull + delta if _nearest_dead() > LULL_DISTANCE else 0.0
-		ready = _lull > LULL
+		_lull = _lull + delta if _nearest_dead() > _t.lull_distance else 0.0
+		ready = _lull > _t.lull
 	else:
 		_lull = 0.0
-		ready = _break_ends - director.now() > IDLE_MARGIN
-	if ready and director.quiet_for() > IDLE_AFTER:
+		ready = _break_ends - director.now() > _t.idle_margin
+	if ready and director.quiet_for() > _t.idle_after:
 		say(&"idle", _state.player_id)
 
 
@@ -86,7 +64,7 @@ func say(event: StringName, speaker: int) -> bool:
 	var at: Variant = null
 	if not own and player.has("pos"):
 		at = player["pos"] + HEAD_LIFT
-	var priority: int = SoldierVoiceCatalog.EVENTS[event]["priority"]
+	var priority: int = SoldierVoiceCatalog.moments()[event]["priority"]
 	var cut := director.would_interrupt(priority)
 	var started: Variant = _play(
 		SoldierVoiceCatalog.take_id(event, take),
@@ -115,12 +93,12 @@ func _on_event(event: Dictionary) -> void:
 		&"round_started":
 			_kills.clear()
 			if int(event.get("boss_count", 0)) == 0:
-				say_in(ROUND_START_DELAY, &"round_start", _state.player_id)
+				say_in(_t.round_start_delay, &"round_start", _state.player_id)
 		&"round_ended":
-			say_in(ROUND_CLEAR_DELAY, &"round_clear", _state.player_id, true)
+			say_in(_t.round_clear_delay, &"round_clear", _state.player_id, true)
 		&"zombie_spawn_requested":
 			if event["boss"]:
-				say_in(BOSS_DELAY, &"boss_arrive", _state.player_id)
+				say_in(_t.boss_delay, &"boss_arrive", _state.player_id)
 		&"zombie_removed":
 			_on_zombie_removed(event)
 		&"player_hurt":
@@ -154,14 +132,14 @@ func _on_zombie_removed(event: Dictionary) -> void:
 	if event["cause"] != &"killed" or killer < 0:
 		return
 	if event["boss"]:
-		say_in(BOSS_DELAY, &"boss_dead", killer, true)
+		say_in(_t.boss_delay, &"boss_dead", killer, true)
 		return
 	var times: Array = _kills.get(killer, [])
 	var now := director.now()
-	times = times.filter(func(t: float) -> bool: return now - t <= STREAK_WINDOW)
+	times = times.filter(func(t: float) -> bool: return now - t <= _t.streak_window)
 	times.append(now)
 	_kills[killer] = times
-	if times.size() >= STREAK_KILLS and say(&"streak", killer):
+	if times.size() >= _t.streak_kills and say(&"streak", killer):
 		_kills[killer] = []
 		return
 	say(&"kill", killer)
@@ -170,7 +148,7 @@ func _on_zombie_removed(event: Dictionary) -> void:
 func _on_hurt(event: Dictionary) -> void:
 	var who: int = event["player_id"]
 	say(&"hurt", who)
-	if event["health"] > 0.0 and event["health"] <= LOW_HEALTH * event["max_health"]:
+	if event["health"] > 0.0 and event["health"] <= _t.low_health * event["max_health"]:
 		say_in(0.3, &"close_call", who, true)
 
 
@@ -178,14 +156,14 @@ func _on_downed(who: int) -> void:
 	say(&"downed", who)
 	var rescuer := _nearest_standing(who)
 	if rescuer >= 0:
-		say_in(RESCUE_DELAY, &"teammate_down", rescuer, true)
+		say_in(_t.rescue_delay, &"teammate_down", rescuer, true)
 
 
 func _on_shot(event: Dictionary) -> void:
 	var weapon := WeaponCatalog.get_def(event["weapon_id"])
 	if weapon == null or weapon.is_melee():
 		return
-	var low := ceili(weapon.magazine_size * LOW_MAGAZINE)
+	var low := ceili(weapon.magazine_size * _t.low_magazine)
 	if event["reserve"] == 0 and event["ammo"] > 0 and event["ammo"] <= low:
 		say(&"low_ammo", event["shooter_id"])
 
@@ -196,7 +174,7 @@ func _on_purchase(event: Dictionary) -> void:
 	if item.begins_with("door_"):
 		say_in(0.5, &"door", buyer)
 	elif item.begins_with("weapon_"):
-		say_in(0.5, &"buy_big" if event["price"] >= BIG_BUY else &"buy_weapon", buyer)
+		say_in(0.5, &"buy_big" if event["price"] >= _t.big_buy else &"buy_weapon", buyer)
 
 
 ## How far the nearest dead is from the local player (INF when there are none).

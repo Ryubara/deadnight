@@ -12,6 +12,10 @@ class FakeApi:
 	var refreshed := {}
 	var started: Dictionary = {}
 	var start_failure := ""
+	## The rules the host's panel showed at each Start, and at each change sent while waiting.
+	var started_with: Array = []
+	var rules_sent: Array[MatchSettings] = []
+	var rules_failure := ""
 	var joined: Array[String] = []
 	var left: Array[String] = []
 	var tickets := 0
@@ -26,10 +30,19 @@ class FakeApi:
 	func refresh(_held: Dictionary) -> Dictionary:
 		return {"ok": true, "lobby": refreshed if not refreshed.is_empty() else lobby}
 
-	func start(_held: Dictionary) -> Dictionary:
+	func start(_held: Dictionary, settings: MatchSettings = null) -> Dictionary:
+		started_with.append(settings)
 		if start_failure != "":
 			return TogetherApi._failed(start_failure)
 		return {"ok": true, "lobby": started}
+
+	func set_settings(_held: Dictionary, settings: MatchSettings) -> Dictionary:
+		if rules_failure != "":
+			return TogetherApi._failed(rules_failure)
+		rules_sent.append(settings)
+		lobby = lobby.duplicate()
+		lobby["settings"] = settings.to_dict()
+		return {"ok": true, "lobby": lobby}
 
 	func preview(_code: String) -> Dictionary:
 		if preview_answer.has("ok"):

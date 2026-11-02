@@ -3,7 +3,8 @@ extends RefCounted
 ## Checks the ticket the platform backend gives a player for a night (`spikes/backend/src/
 ## tokens.ts`, docs/research/platform-backend.md, "The game-server ticket"): an HS256 token whose
 ## payload says which player (`sub`, `name`), which night (`matchId`) and which game server
-## (`serverId`) it is for.
+## (`serverId`) it is for, and, when the host chose them, the rules of the night (`settings`, the
+## game's `MatchSettings` as `to_dict` writes it).
 ##
 ## A ticket is good once: the `jti` of every one admitted is remembered until it would have expired
 ## anyway. Time is the caller's (`now`, seconds since 1970), so a test moves it by hand.
@@ -14,6 +15,7 @@ const HEADER := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 const BAD := "bad ticket"
 const WRONG_SERVER := "ticket is for another server"
 const USED := "ticket already used"
+const BAD_SETTINGS := "ticket carries rules this server does not take"
 
 var _secret: PackedByteArray
 var _server_id: String
@@ -26,8 +28,11 @@ func _init(secret: String, server_id: String) -> void:
 	_server_id = server_id
 
 
-## `{"ok": true, "user": sub, "name", "match": matchId}` for a ticket this server may admit (and
-## spends it), or `{"ok": false, "reason"}`.
+## `{"ok": true, "user": sub, "name", "match": matchId, "settings"}` for a ticket this server may
+## admit (and spends it), or `{"ok": false, "reason"}`. `settings` is the `MatchSettings` the host
+## chose, or null when the ticket has none (the usual rules). Rules this server cannot take (a value
+## out of its bounds: the backend and the game disagree) refuse the ticket, loudly, instead of
+## starting a night with other rules than the host asked for.
 func admit(ticket: String, now: int) -> Dictionary:
 	var claims := claims_of(ticket, now)
 	if claims.is_empty():
@@ -41,6 +46,12 @@ func admit(ticket: String, now: int) -> Dictionary:
 		or typeof(claims.get("matchId")) != TYPE_STRING
 	):
 		return {"ok": false, "reason": BAD}
+	var settings: MatchSettings = null
+	if claims.has("settings"):
+		var held: Variant = claims["settings"]
+		settings = MatchSettings.from_json(held)
+		if settings == null:
+			return {"ok": false, "reason": BAD_SETTINGS}
 	for known: String in _used.keys():
 		if _used[known] <= now:
 			_used.erase(known)
@@ -52,6 +63,7 @@ func admit(ticket: String, now: int) -> Dictionary:
 		"user": claims["sub"],
 		"name": str(claims.get("name", "")),
 		"match": claims["matchId"],
+		"settings": settings,
 	}
 
 

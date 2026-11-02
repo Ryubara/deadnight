@@ -107,9 +107,11 @@ func test_the_levels_rise_with_pace_and_a_crouch_is_the_quietest() -> void:
 	assert_float(walk).is_equal_approx(0.0, 0.01)
 	assert_float(sprint - walk).is_between(3.0, 5.0)
 	assert_float(walk - creep).is_greater(9.0)
-	assert_float(FootstepSounds.level_db(0.1, false, true)).is_equal(FootstepSounds.LEVEL_MIN_DB)
+	assert_float(FootstepSounds.level_db(0.1, false, true)).is_equal(
+		NightSoundTuning.current().step_min_db
+	)
 	assert_float(FootstepSounds.level_db(30.0, true, false)).is_less_equal(
-		FootstepSounds.LEVEL_MAX_DB
+		NightSoundTuning.current().step_max_db
 	)
 
 

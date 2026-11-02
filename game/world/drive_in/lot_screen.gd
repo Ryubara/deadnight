@@ -4,10 +4,6 @@ extends LightFollower
 ## this node feeds it the circuit's level and a slow flicker of the projector's light, and the
 ## ground below the screen takes a faint spill of the same flicker.
 
-## How brightly the face and the spill burn at level 1.
-const FACE_ENERGY := 1.0
-const SPILL_ENERGY := 0.1
-
 ## The face to paint (a CSG panel of the lot).
 @export var panel_path: NodePath
 ## The spill on the ground below the screen (an additive quad, `glow.gdshader`).
@@ -41,7 +37,9 @@ static func flicker(at: float) -> float:
 func _apply() -> void:
 	var f := flicker(phase)
 	if _face != null:
-		_face.set_shader_parameter(&"energy", level * f * FACE_ENERGY)
+		_face.set_shader_parameter(&"energy", level * f * LightTuning.current().screen_face_energy)
 		_face.set_shader_parameter(&"phase", phase)
 	if _spill != null:
-		_spill.set_shader_parameter(&"energy", level * f * SPILL_ENERGY)
+		_spill.set_shader_parameter(
+			&"energy", level * f * LightTuning.current().screen_spill_energy
+		)

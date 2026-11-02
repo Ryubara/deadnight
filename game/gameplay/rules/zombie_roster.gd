@@ -7,7 +7,7 @@ extends Resource
 ## The type that fills what the others leave (the common dead).
 @export var base_id: StringName = &"walker"
 ## The special types together never take more than this share of a normal round.
-@export var max_special_share: float = 0.7
+@export_range(0.0, 1.0, 0.01) var max_special_share: float = 0.7
 @export var types: Array[ZombieType] = []
 
 

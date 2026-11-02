@@ -30,7 +30,9 @@ func test_a_drag_turns_the_player_through_the_real_input_path() -> void:
 	# Dragging right turns the view right (mouse convention): the yaw falls. A drag of 100 units
 	# on a 1080 unit tall canvas turns 100 / 1080 of the full-height swipe, at sensitivity 1.
 	var turned := angle_difference(yaw, rig.yaw)
-	assert_float(turned).is_equal_approx(-TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0, 0.02)
+	assert_float(turned).is_equal_approx(
+		-TouchLook.tuning.radians_per_height * 100.0 / 1080.0, 0.02
+	)
 
 
 func test_a_100_unit_drag_turns_about_8_degrees_in_small_steps_at_the_default_sensitivity() -> void:
@@ -62,7 +64,9 @@ func test_a_drag_turns_once_when_the_browser_also_reports_it_as_mouse_motion() -
 	await _fixture.stray_mouse_motion(Vector2(100.0, 0.0))
 	await _fixture.lift(0)
 	var turned := angle_difference(yaw, player.camera_rig.yaw)
-	assert_float(turned).is_equal_approx(-TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0, 0.02)
+	assert_float(turned).is_equal_approx(
+		-TouchLook.tuning.radians_per_height * 100.0 / 1080.0, 0.02
+	)
 
 
 func test_the_move_stick_turns_nothing_when_the_browser_reports_the_finger_as_mouse_motion(
@@ -100,7 +104,9 @@ func test_the_look_gain_slows_a_drag_as_the_aim_assist_does_near_a_zombie() -> v
 	await _fixture.drag(0, Vector2(1800.0, 300.0), Vector2(100.0, 0.0))
 	await _fixture.lift(0)
 	var turned := angle_difference(yaw, player.camera_rig.yaw)
-	assert_float(turned).is_equal_approx(-TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0 * 0.5, 0.02)
+	assert_float(turned).is_equal_approx(
+		-TouchLook.tuning.radians_per_height * 100.0 / 1080.0 * 0.5, 0.02
+	)
 
 
 func test_the_side_button_moves_the_camera_to_the_other_shoulder() -> void:
@@ -153,9 +159,9 @@ func test_two_thumbs_turn_the_view_by_the_look_drag_alone_whatever_the_first_dra
 	await _fixture.lift(1)
 	# The flick gain follows the frame timing the engine measures, so the turn is between the slow-drag
 	# design and the fastest gain; the bogus first drags turned the view by a whole screen.
-	var designed := TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0
+	var designed := TouchLook.tuning.radians_per_height * 100.0 / 1080.0
 	var turned := -angle_difference(yaw, rig.yaw)
-	assert_float(turned).is_between(designed * 0.98, designed * TouchLook.MAX_GAIN * 1.02)
+	assert_float(turned).is_between(designed * 0.98, designed * TouchLook.tuning.max_gain * 1.02)
 	assert_float(rad_to_deg(biggest)).is_less(2.0)
 
 
@@ -172,4 +178,6 @@ func test_a_drag_from_the_aim_button_turns_the_view_and_keeps_aiming() -> void:
 	assert_bool(Input.is_action_pressed(&"aim")).is_true()
 	await _fixture.lift(0)
 	var turned := angle_difference(yaw, rig.yaw)
-	assert_float(turned).is_equal_approx(-TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0, 0.02)
+	assert_float(turned).is_equal_approx(
+		-TouchLook.tuning.radians_per_height * 100.0 / 1080.0, 0.02
+	)

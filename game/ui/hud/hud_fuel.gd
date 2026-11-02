@@ -11,9 +11,6 @@ extends HudPart
 ## fuel the generator burns is not progress, so a `fuel_changed` that only counts the tank down
 ## does not show it.
 
-const IN_TIME := 0.3
-const HOLD_TIME := 4.0
-const OUT_TIME := 0.5
 ## Events that show the panel; a `fuel_changed` shows it only when fuel was added.
 const SHOW_EVENTS: Array[StringName] = [
 	&"circuit_changed", &"fuel_low", &"fuel_empty", &"fuel_restored"
@@ -62,6 +59,7 @@ var showing := false
 ## The ticket itself (it slides inside this part, which holds only the room it has revealed).
 var panel := HudTicket.new()
 
+var _t := HudTuning.current()
 var _caption := HudStyle.label(
 	"GENERATOR", HudStyle.SMALL, tokens.accent, false, HudStyle.TRACK_CAPTION
 )
@@ -103,7 +101,7 @@ func advance(delta: float) -> void:
 	_time += delta
 	if showing:
 		_age += delta
-		if _age >= IN_TIME + HOLD_TIME + OUT_TIME:
+		if _age >= _t.fuel_in + _t.fuel_hold + _t.fuel_out:
 			showing = false
 			_age = 0.0
 		_apply()
@@ -115,16 +113,16 @@ func advance(delta: float) -> void:
 func presence() -> float:
 	if not showing:
 		return 0.0
-	if _age < IN_TIME:
-		return _age / IN_TIME
-	if _age < IN_TIME + HOLD_TIME:
+	if _age < _t.fuel_in:
+		return _age / _t.fuel_in
+	if _age < _t.fuel_in + _t.fuel_hold:
 		return 1.0
-	return clampf(1.0 - (_age - IN_TIME - HOLD_TIME) / OUT_TIME, 0.0, 1.0)
+	return clampf(1.0 - (_age - _t.fuel_in - _t.fuel_hold) / _t.fuel_out, 0.0, 1.0)
 
 
 ## Shows the panel (or keeps it up for `HOLD_TIME` more seconds when it already shows).
 func peek() -> void:
-	_age = minf(_age, presence() * IN_TIME) if showing else 0.0
+	_age = minf(_age, presence() * _t.fuel_in) if showing else 0.0
 	showing = true
 	_apply()
 

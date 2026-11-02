@@ -5,10 +5,6 @@ extends LightFollower
 ## is placed in). The tubes follow the lamp's level with a buzz: now and then one drops out for an
 ## instant, a function of the phase alone.
 
-## How brightly the tubes and the halo burn at level 1.
-const TUBE_ENERGY := 3.0
-const HALO_ENERGY := 0.9
-
 @export var text := "OPEN"
 @export var neon_color := Color(1.0, 0.25, 0.5)
 
@@ -41,8 +37,8 @@ static func buzz(at: float) -> float:
 
 func _apply() -> void:
 	var f := level * buzz(phase)
-	_frame.emission_energy_multiplier = f * TUBE_ENERGY
+	_frame.emission_energy_multiplier = f * LightTuning.current().neon_tube_energy
 	_frame.albedo_color = neon_color * lerpf(0.2, 1.0, level)
 	_text.modulate = neon_color.lerp(Color.WHITE, 0.35) * (0.15 + 0.85 * f)
-	_halo.set_shader_parameter(&"energy", f * HALO_ENERGY)
+	_halo.set_shader_parameter(&"energy", f * LightTuning.current().neon_halo_energy)
 	($Halo as MeshInstance3D).visible = level > 0.0

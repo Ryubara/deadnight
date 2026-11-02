@@ -17,42 +17,24 @@ const PREFIX := "vox_"
 ## lowered by are `SoundMix` (`sound_mix_default.tres`, "Soldier voice").
 
 ## Per moment: `takes` (how many files there are), `priority` (a line may cut the one speaking only
-## from `VoiceDirector.INTERRUPT_PRIORITY` up, and then only a lower one), `cooldown` (seconds
+## from `NightSoundTuning.interrupt_priority` up, and then only a lower one), `cooldown` (seconds
 ## before the same player says this moment again) and `chance` (the share of the times that it
 ## happens that the soldier says anything, so the commonest moments are not a running commentary).
-const EVENTS := {
-	&"downed": {"takes": 4, "priority": 100, "cooldown": 0.0, "chance": 1.0},
-	&"hurt": {"takes": 8, "priority": 90, "cooldown": 1.6, "chance": 0.85},
-	&"boss_arrive": {"takes": 5, "priority": 75, "cooldown": 20.0, "chance": 1.0},
-	&"boss_dead": {"takes": 4, "priority": 72, "cooldown": 20.0, "chance": 1.0},
-	&"close_call": {"takes": 5, "priority": 70, "cooldown": 14.0, "chance": 1.0},
-	&"teammate_down": {"takes": 5, "priority": 68, "cooldown": 8.0, "chance": 1.0},
-	&"revived": {"takes": 5, "priority": 66, "cooldown": 5.0, "chance": 1.0},
-	&"streak": {"takes": 7, "priority": 60, "cooldown": 20.0, "chance": 1.0},
-	&"dry": {"takes": 5, "priority": 55, "cooldown": 8.0, "chance": 0.8},
-	&"power_low": {"takes": 4, "priority": 52, "cooldown": 30.0, "chance": 1.0},
-	&"round_start": {"takes": 5, "priority": 50, "cooldown": 10.0, "chance": 1.0},
-	&"grenade": {"takes": 5, "priority": 48, "cooldown": 6.0, "chance": 0.7},
-	&"reload": {"takes": 9, "priority": 45, "cooldown": 6.0, "chance": 0.7},
-	&"low_ammo": {"takes": 5, "priority": 44, "cooldown": 25.0, "chance": 1.0},
-	&"round_clear": {"takes": 5, "priority": 42, "cooldown": 10.0, "chance": 1.0},
-	&"power_on": {"takes": 5, "priority": 40, "cooldown": 20.0, "chance": 1.0},
-	&"buy_big": {"takes": 4, "priority": 38, "cooldown": 5.0, "chance": 1.0},
-	&"buy_weapon": {"takes": 5, "priority": 36, "cooldown": 5.0, "chance": 1.0},
-	&"door": {"takes": 5, "priority": 34, "cooldown": 8.0, "chance": 1.0},
-	&"kill": {"takes": 10, "priority": 30, "cooldown": 5.0, "chance": 0.45},
-	&"idle": {"takes": 5, "priority": 10, "cooldown": 40.0, "chance": 1.0},
-}
-
 static var _lengths := {}
+
+
+## The moments, `{event: {takes, priority, cooldown, chance}}`: the resource `SoldierMoments`
+## (`soldier_moments_default.tres`, in the inspector).
+static func moments() -> Dictionary:
+	return SoldierMoments.table()
 
 
 ## Adds every take as a sound; `add` is `SoundCatalog._add` (id, path under the audio folder,
 ## variants, options).
 static func build(add: Callable) -> void:
 	var mix := SoundCatalog.mix()
-	for event: StringName in EVENTS:
-		var info: Dictionary = EVENTS[event]
+	for event: StringName in moments():
+		var info: Dictionary = moments()[event]
 		for n in range(1, int(info["takes"]) + 1):
 			(
 				add
@@ -79,11 +61,11 @@ static func take_id(event: StringName, n: int) -> StringName:
 
 
 static func events() -> Array:
-	return EVENTS.keys()
+	return moments().keys()
 
 
 static func takes_of(event: StringName) -> int:
-	return int(EVENTS.get(event, {}).get("takes", 0))
+	return int(moments().get(event, {}).get("takes", 0))
 
 
 static func path_of(event: StringName, n: int) -> String:

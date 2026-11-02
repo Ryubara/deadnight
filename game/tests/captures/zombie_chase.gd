@@ -13,7 +13,6 @@ const ROUTE: Array[Vector3] = [
 	Vector3(14, 0, -24),
 	Vector3(14, 0, -38),
 ]
-const LAMP_REACH := 6.0
 const BENCH_WARMUP_FRAMES := 120
 ## Physics frames the map is given to answer before the crowd starts.
 const MAP_WAIT_FRAMES := 600
@@ -151,7 +150,7 @@ func _is_lit(point: Vector3) -> bool:
 			lamp.visible
 			and (
 				Vector2(point.x - lamp.global_position.x, point.z - lamp.global_position.z).length()
-				< LAMP_REACH
+				< LightTuning.current().lamp_reach
 			)
 		):
 			return true

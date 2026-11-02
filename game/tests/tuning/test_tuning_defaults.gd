@@ -57,5 +57,42 @@ func test_the_aim_assist_file_holds_the_old_constants() -> void:
 	_check(load(AimAssistTuning.SHIPPED_PATH), DefaultValues.AIM_ASSIST_TUNING)
 
 
+func test_the_night_sound_file_holds_the_old_constants() -> void:
+	_check(load(NightSoundTuning.SHIPPED_PATH), DefaultValues.NIGHT_SOUND_TUNING)
+
+
+func test_the_light_file_holds_the_old_constants() -> void:
+	_check(load(LightTuning.SHIPPED_PATH), DefaultValues.LIGHT_TUNING)
+
+
+func test_the_soldiers_moments_hold_the_old_table() -> void:
+	var table := SoldierVoiceCatalog.moments()
+	assert_int(table.size()).is_equal(DefaultValues.SOLDIER_MOMENTS.size())
+	var wrong := PackedStringArray()
+	for row: Array in DefaultValues.SOLDIER_MOMENTS:
+		var info: Dictionary = table.get(row[0], {})
+		var now := [
+			row[0],
+			info.get("takes"),
+			info.get("priority"),
+			info.get("cooldown"),
+			info.get("chance")
+		]
+		if now != row:
+			wrong.append("%s: shipped %s, file %s" % [row[0], row, now])
+	assert_array(Array(wrong)).is_empty()
+	assert_array(table.keys()).is_equal(
+		DefaultValues.SOLDIER_MOMENTS.map(func(r: Array) -> Variant: return r[0])
+	)
+
+
+func test_the_hud_file_holds_the_old_constants() -> void:
+	_check(load(HudTuning.SHIPPED_PATH), DefaultValues.HUD_TUNING)
+
+
+func test_the_touch_file_holds_the_old_constants() -> void:
+	_check(load(TouchTuning.SHIPPED_PATH), DefaultValues.TOUCH_TUNING)
+
+
 func test_the_shot_effects_file_holds_the_old_constants() -> void:
 	_check(load(ShotFxTuning.SHIPPED_PATH), DefaultValues.SHOT_FX_TUNING)

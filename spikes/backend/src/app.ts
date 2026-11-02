@@ -53,6 +53,7 @@ const LOBBY_STATUS: Record<string, number> = {
   not_started: 409,
   not_member: 403,
   already_in_lobby: 409,
+  bad_settings: 400,
 };
 
 function sameSecret(given: string, expected: string): boolean {
@@ -223,6 +224,7 @@ export function buildApp(deps: Deps): FastifyInstance {
       away: lobbies.isQuiet(lobby, m.userId),
     })),
     state: lobby.state,
+    settings: lobby.settings,
     round: lobby.round,
     matchId: lobby.match?.id ?? null,
   });
@@ -311,8 +313,20 @@ export function buildApp(deps: Deps): FastifyInstance {
     return reply.code(204).send();
   });
 
-  app.post<{ Params: { id: string } }>("/lobbies/:id/start", { onRequest: requireUser }, async (request) =>
-    lobbyView(lobbies.start(request.params.id, request.userId)),
+  // The host sets the night's rules while the lobby waits; the other members read them on their next poll. The body is
+  // the settings themselves: `{count_multiplier, max_alive, break_seconds}`.
+  app.put<{ Params: { id: string }; Body: unknown }>(
+    "/lobbies/:id/settings",
+    { onRequest: requireUser },
+    async (request) => lobbyView(lobbies.setSettings(request.params.id, request.userId, request.body)),
+  );
+
+  // The host may send the night's rules (`settings`, the game's `MatchSettings`: count_multiplier, max_alive,
+  // break_seconds); they are checked here, kept on the lobby and signed into every ticket of the match.
+  app.post<{ Params: { id: string }; Body: { settings?: unknown } | undefined }>(
+    "/lobbies/:id/start",
+    { onRequest: requireUser },
+    async (request) => lobbyView(lobbies.start(request.params.id, request.userId, request.body?.settings)),
   );
 
   // The handoff: a member of a started lobby gets the game server's address and a one-minute ticket for their seat.
@@ -328,6 +342,8 @@ export function buildApp(deps: Deps): FastifyInstance {
       serverId: server.id,
       jti: randomUUID(),
       name: seat.name,
+      // Every ticket of a match carries the same rules; the game server applies them when the first one opens the room.
+      ...(lobby.settings ? { settings: lobby.settings } : {}),
     });
     return { matchId: lobby.match.id, address: { url: server.url, activityPath: server.activityPath }, ticket };
   });

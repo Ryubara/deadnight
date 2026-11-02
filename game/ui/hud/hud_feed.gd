@@ -15,8 +15,6 @@ const MAX_NOTICES := 1
 ## ends in an ellipsis. The space left of the column under the banner is empty, so it costs nothing.
 const ROW_WIDTH := 480.0
 const HISTORY := 8
-const LIFE := 4.5
-const FADE := 0.6
 const ITEM_NAMES := {
 	&"door_concession": "OPENED THE CONCESSION STAND",
 	&"door_booth": "OPENED THE PROJECTION BOOTH",
@@ -55,6 +53,7 @@ var rows: Array[Dictionary] = []
 ## gone after a few seconds and a slow page may not look in time.
 var history: Array[String] = []
 
+var _t := HudTuning.current()
 var _stack := HudRowStack.new()
 var _pad := MarginContainer.new()
 
@@ -111,8 +110,8 @@ func push(text: String, colour := Color.TRANSPARENT) -> void:
 func advance(delta: float) -> void:
 	for row in rows.duplicate():
 		row["age"] = float(row["age"]) + delta
-		var left := LIFE - float(row["age"])
-		(row["label"] as Label).modulate.a = clampf(left / FADE, 0.0, 1.0)
+		var left := _t.feed_life - float(row["age"])
+		(row["label"] as Label).modulate.a = clampf(left / _t.feed_fade, 0.0, 1.0)
 		if left <= 0.0:
 			_drop(row)
 	_stack.advance(delta)

@@ -193,6 +193,50 @@ a double-sided textured one, the emissive-and-textured one of the soldier and th
 looks different, so it is an artist's decision, not made here. `tests/night/test_load_cost.gd` fails when the night
 draws more than 8, and lists them.
 
+## Big crowds in the browser, from the autopilot (#171)
+
+`?autopilot` in the page's address lets the bot play a night from its shoulder camera (`AutopilotRun`,
+`game/tools/bench/autopilot_run.gd`, started in place of the menu like `?bench`) with a player who cannot die, and
+publishes `window.deadnightRounds` when it has played the round asked for: for each round, and for each size of crowd
+on the lot, the frames' mean, median, 95th and 99th percentile and worst, the worst second (the mean frame time of the
+worst second of frames) and how many frames passed 33 ms. `tools/web_smoke/autopilot_night.py` serves the export (or
+takes a URL), drives it and prints the tables, with a screenshot when the crowd passes 10, 20, 40 zombies. Its arguments
+are the address's: `rounds` and `hold` (play until a round starts, then for some seconds), `count` and `alive` (the match
+settings), `crowd` (the first round brings N zombies) and `tough` (the dead have that many times the health, so the bot
+cannot clear them and the crowd grows to the cap and stands there: a big crowd without waiting for round 20). Recorded,
+never gated.
+
+Chrome 156 on the RTX 5080, unpaced (`--gpu --unpaced`: the page is not held to the display), 1280 x 720, a fresh profile:
+
+| The shipped night, the bot plays 5 rounds (count 3x) | Frames | Mean | p95 | Worst second | Over 33 ms | Zombies (peak) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Round 1 | 17,426 | 3.7 ms | 5.2 ms | 5.7 ms | 1 | 12 |
+| Round 2 | 14,424 | 4.5 ms | 7.6 ms | 7.0 ms | 9 | 15 |
+| Round 3 | 16,157 | 4.9 ms | 8.1 ms | 9.4 ms | 13 | 21 |
+| Round 4 | 17,007 | 4.9 ms | 8.5 ms | 7.5 ms | 0 | 26 |
+
+A crowd that stands (`count=5 alive=40 crowd=60 tough=300`, 60 s of night after the loading), by the zombies on the lot:
+
+| Zombies on the lot | GPU: mean / p95 / worst second | GPU with the processor slowed 4 times | Software renderer (CI's) |
+| --- | --- | --- | --- |
+| 0 to 9 | 4.0 / 5.2 / 5.0 ms | 21.4 / 32.7 / 43.5 ms | 126 / 145 / 135 ms |
+| 10 to 19 | 4.2 / 5.7 / 4.4 ms | 27.2 / 46.3 / 32.4 ms | 131 / 144 / 134 ms |
+| 20 to 29 | 4.4 / 6.3 / 4.6 ms | 31.8 / 54.4 / 46.9 ms | 131 / 146 / 135 ms |
+| 30 to 39 | 4.6 / 6.9 / 4.7 ms | 45.8 / 72.7 / 58.2 ms | 133 / 147 / 135 ms |
+| **40 (the cap)** | **4.7 / 7.7 / 6.0 ms** | **88.5 / 132 / 133 ms** | 133 / 145 / 135 ms |
+
+- With a GPU the real night, with its HUD, the soldier, the lamps and the sounds, holds 40 zombies at 4.7 ms: no frame
+  past 33 ms in 33 s at the cap (the longest 26.5 ms). A zombie is about 0.02 ms of frame here (4.0 ms with fewer
+  than 10 on the lot, 4.7 with 40).
+- The software renderer takes 126 to 133 ms a frame whatever stands on the lot (7.5 frames a second): it is fill-bound,
+  the crowd is nothing next to the lot's own cost, which is why the CI run cannot say anything about zombies and why the
+  warm-up draws into a small picture ([the load](#loading-a-night-509)).
+- **A slow processor is where the crowd costs**: with Chrome's processor slowed 4 times (`--throttle 4`, a rough stand-in
+  for a weak laptop's CPU, not its GPU) the empty night takes 21 ms a frame and 40 zombies 89 ms (11 frames a second):
+  the night's own scripts (the server's tick in the same process, the views, the audio) are what a slow CPU cannot do,
+  and a zombie costs about 1.7 ms there. 40 is not a floor for every browser; a lower ceiling for a weak machine would
+  have to be chosen by the machine (a frame-time probe), not by the platform.
+
 ## Playing the web build
 
 **<https://web-production-f401d1.up.railway.app>** is the head of `main`, in a browser, with no install (issue #172).
