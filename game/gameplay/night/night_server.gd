@@ -51,6 +51,7 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"ammo_added",
 	&"projectile_spawned",
 	&"projectile_burst",
+	&"lure_started",
 	&"fire_rejected",
 ]
 ## What the grenade server answers that is worth sending on (its answer also repeats the rules'
@@ -478,6 +479,8 @@ func _combat(action: Dictionary) -> void:
 			continue
 		if event["type"] == &"fire_rejected" and QUIET_REJECTIONS.has(event["reason"]):
 			continue
+		if event["type"] == &"lure_started":
+			sim.add_lure(event["lure_id"], event["point"], event["radius"], event["seconds"])
 		_outbox.append(event)
 
 

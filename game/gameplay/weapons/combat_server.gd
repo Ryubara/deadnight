@@ -495,9 +495,21 @@ func _burst(projectile: ProjectileState, result: Dictionary, alive: Dictionary) 
 			"kind": result["kind"],
 		}
 	)
+	if def.is_lure():
+		_emit(
+			&"lure_started",
+			{
+				"lure_id": projectile.id,
+				"shooter_id": projectile.shooter_id,
+				"weapon_id": def.id,
+				"point": point,
+				"radius": def.lure_radius,
+				"seconds": def.lure_seconds,
+			}
+		)
 	var damage := {}
 	var direct := -1
-	if result["kind"] == &"target":
+	if result["kind"] == &"target" and def.damage > 0.0:
 		direct = result["target_id"]
 		var zone: StringName = result["zone"]
 		_tally(
