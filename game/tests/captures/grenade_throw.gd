@@ -9,11 +9,19 @@ extends Node
 ## Each stage prints its name and the movie frame it began on.
 
 const SECOND := 60
-const COOK_SECONDS := 2.2
+## The underarm toss (a short lob that lands close), cooked a moment so the cook pose holds.
+const THROW_KEY := KEY_H
+const COOK_SECONDS := 1.2
 const FLIGHT_LIMIT := 600
 const SCAN_STEPS := 36
 const SCAN_REACH := 40.0
 const SCAN_HEIGHT := 1.0
+## The blast goes off this far from the player (m): at real size a grenade is small from the
+## shoulder camera, so the throw is lobbed at a zombie close enough to read the blast.
+const CLOSE_RANGE := 6.0
+## The camera's pitch is nudged by this much per metre the arc's landing is off, each tick.
+const AIM_GAIN := 0.004
+const AIM_LIMIT := 0.9
 
 var _night: Night
 var _heard: Array[StringName] = []
@@ -21,6 +29,9 @@ var _thrown := {}
 
 
 func _ready() -> void:
+	# The body is made inside `Night.start` and captures the mouse when it enters the tree; a
+	# recording must never hold the cursor of the person at the machine, so it is told first.
+	get_tree().node_added.connect(_keep_the_mouse_free)
 	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	var layer := CanvasLayer.new()
 	layer.add_child(hud)
@@ -41,10 +52,10 @@ func _ready() -> void:
 	await _wait(SECOND * 3)
 	var body: ZombieBody = _night.server.sim.zombies[zombie_id]
 	_stage("ready, %d grenades" % rules.grenades_of(_night.PLAYER_ID))
-	_key(KEY_G, true)
+	_key(THROW_KEY, true)
 	_stage("key down: cooking")
-	await _wait(roundi(COOK_SECONDS * SECOND))
-	_key(KEY_G, false)
+	await _aim_close(roundi(COOK_SECONDS * SECOND), rig)
+	_key(THROW_KEY, false)
 	_stage("key up: the arm swings")
 	for _i in SECOND:
 		if _heard.has(&"grenade_thrown"):
@@ -68,6 +79,26 @@ func _ready() -> void:
 		)
 	)
 	get_tree().quit()
+
+
+## Holds the key for `frames` ticks and tilts the camera until the arc the preview draws comes down
+## `CLOSE_RANGE` metres away (the same arc the server throws), then keeps it there.
+func _aim_close(frames: int, rig: ThirdPersonCamera) -> void:
+	var from := _night.player().global_position
+	var apart := 0.0
+	for _i in frames:
+		await get_tree().physics_frame
+		var landing := _night.preview.landing()
+		if landing == Vector3.ZERO:
+			continue
+		apart = Vector2(landing.x - from.x, landing.z - from.z).length()
+		rig.pitch = clampf(rig.pitch + (CLOSE_RANGE - apart) * AIM_GAIN, -AIM_LIMIT, AIM_LIMIT)
+	print("aimed: pitch %.3f, lands %.1f m away" % [rig.pitch, apart])
+
+
+func _keep_the_mouse_free(node: Node) -> void:
+	if node is Player:
+		(node as Player).capture_mouse = false
 
 
 ## The way the player can see furthest (a throw there flies a while before it meets a wall).

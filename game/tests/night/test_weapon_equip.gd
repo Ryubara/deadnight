@@ -5,14 +5,17 @@
 extends GdUnitTestSuite
 
 const OTHER_ID := 2
-## Per weapon: the class it is held as and the model scene its hold names ("" = none yet).
+## Frames the Equip clip is given to bring the weapon up.
+const EQUIP_FRAMES := 120
+## Per weapon: the class it is held as and the model its own hold file names. A model that is not
+## in `assets/weapons/` yet leaves the hand empty (`WAITING`): never another weapon's model.
 const EXPECTED := {
 	&"rifle": [&"Rifle", "res://assets/weapons/lever_rifle/lever_rifle.glb"],
 	&"shotgun": [&"Shotgun", "res://assets/weapons/double_shotgun/double_shotgun.glb"],
-	&"crowbar": [&"Melee", "res://assets/weapons/baseball_bat/baseball_bat.glb"],
-	&"smg": [&"Rifle", "res://assets/weapons/lever_rifle/lever_rifle.glb"],
-	&"pistol": [&"Pistol", ""],
-	&"flare_gun": [&"Pistol", ""],
+	&"crowbar": [&"Melee", "res://assets/weapons/crowbar/crowbar.glb"],
+	&"smg": [&"Rifle", "res://assets/weapons/tommy_gun/tommy_gun.glb"],
+	&"pistol": [&"Pistol", "res://assets/weapons/revolver/revolver.glb"],
+	&"flare_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
 }
 
 
@@ -34,8 +37,13 @@ func _equip(night: Night, player_id: int, weapon_id: StringName) -> void:
 	NightFixture.run(night, 3)
 
 
+## The weapon shows on the Equip clip's `weapon_visible` frame: frames, not ticks, carry it.
 func _check(body: Player, weapon_id: StringName) -> void:
 	var animation := _animation(body)
+	for _i in EQUIP_FRAMES:
+		if animation.weapon() == null or animation.weapon().visible:
+			break
+		await get_tree().process_frame
 	var expected: Array = EXPECTED[weapon_id]
 	(
 		assert_str(String(animation.weapon_class))
@@ -43,20 +51,23 @@ func _check(body: Player, weapon_id: StringName) -> void:
 		. is_equal(String(expected[0]))
 	)
 	var model: String = expected[1]
-	if model == "":
+	if not ResourceLoader.exists(model):
 		(
 			assert_object(animation.weapon())
-			. override_failure_message("%s: no model yet" % weapon_id)
+			. override_failure_message("%s: no model yet, an empty hand" % weapon_id)
 			. is_null()
 		)
 		assert_object(animation.weapon_hold()).is_null()
 		return
+	var weapon := animation.weapon()
 	(
-		assert_object(animation.weapon())
-		. override_failure_message("%s: a model" % weapon_id)
+		assert_object(weapon)
+		. override_failure_message("%s: its model is not in the hand" % weapon_id)
 		. is_not_null()
 	)
-	assert_str(animation.weapon().scene_file_path).is_equal(model)
+	assert_bool(weapon.visible).override_failure_message("%s: hidden" % weapon_id).is_true()
+	assert_bool(weapon.is_inside_tree()).is_true()
+	assert_str(weapon.scene_file_path).is_equal(model)
 	assert_str(animation.weapon_hold().scene).is_equal(model)
 	assert_str(String(animation.weapon_hold().weapon_class)).is_equal(String(expected[0]))
 
@@ -69,12 +80,32 @@ func test_the_table_covers_the_whole_catalogue() -> void:
 		assert_str(String(weapon_class)).is_equal(String(EXPECTED[id][0]))
 
 
-func test_every_weapon_off_the_list_has_a_hold_of_its_own_class() -> void:
-	for id in WeaponHoldMap.NO_MODEL:
-		assert_bool(id in WeaponCatalog.IDS).is_true()
+func test_no_two_weapons_share_a_model() -> void:
+	var seen := {}
 	for id in WeaponCatalog.IDS:
-		if id not in WeaponHoldMap.NO_MODEL:
-			assert_object(PlayerAnimation.hold_of(WeaponHoldMap.class_of(id))).is_not_null()
+		var model: String = EXPECTED[id][1]
+		(
+			assert_bool(seen.has(model))
+			. override_failure_message("%s shares %s" % [id, model])
+			. is_false()
+		)
+		seen[model] = id
+	# The bat and the axe are not the crowbar, the lever rifle is not the Tommy gun.
+	assert_str(EXPECTED[&"crowbar"][1]).is_not_equal(
+		"res://assets/weapons/baseball_bat/baseball_bat.glb"
+	)
+
+
+func test_every_weapon_has_a_hold_file_of_its_own() -> void:
+	for id in WeaponCatalog.IDS:
+		var path := "%s%s.tres" % [PlayerAnimation.HOLDS_DIR, id]
+		assert_bool(ResourceLoader.exists(path)).override_failure_message(path).is_true()
+		var hold := load(path) as WeaponHold
+		assert_str(hold.scene).is_equal(EXPECTED[id][1])
+		assert_str(String(hold.weapon_class)).is_equal(String(WeaponHoldMap.class_of(id)))
+	# What has no glb yet is the list the docs name.
+	for id in WeaponHoldMap.no_model():
+		assert_bool(ResourceLoader.exists(EXPECTED[id][1])).is_false()
 
 
 func test_a_melee_weapon_is_held_as_melee_whatever_its_id() -> void:
@@ -89,7 +120,7 @@ func test_each_weapon_equipped_shows_its_class_and_model_on_the_local_player() -
 	for id in WeaponCatalog.IDS:
 		await _equip(night, 1, id)
 		assert_str(String(night.state.me()["weapon"])).is_equal(String(id))
-		_check(night.player(), id)
+		await _check(night.player(), id)
 	night.queue_free()
 
 
@@ -101,7 +132,7 @@ func test_the_weapon_of_another_player_shows_on_his_body() -> void:
 	assert_object(other).is_not_null()
 	for id: StringName in [&"shotgun", &"crowbar", &"rifle"]:
 		await _equip(night, OTHER_ID, id)
-		_check(other, id)
+		await _check(other, id)
 		# The local player's hand is his own.
 		assert_str(String(_animation(night.player()).weapon_class)).is_equal("Pistol")
 	night.queue_free()
@@ -113,5 +144,17 @@ func test_a_swap_to_the_next_carried_weapon_changes_the_view() -> void:
 	night.server.combat.apply(CombatAction.swap(1))
 	NightFixture.run(night, 3)
 	assert_str(String(night.state.me()["weapon"])).is_equal("crowbar")
-	_check(night.player(), &"crowbar")
+	await _check(night.player(), &"crowbar")
+	night.queue_free()
+
+
+func test_an_attack_straight_after_equipping_does_not_leave_the_hand_empty() -> void:
+	var night := await _start()
+	await _equip(night, 1, &"rifle")
+	var animation := _animation(night.player())
+	# Taken in hand and fired within the same frame: the Equip clip never reaches its frame.
+	animation.equip(&"shotgun")
+	assert_bool(animation.weapon().visible).is_false()
+	animation.play_action(&"Fire")
+	assert_bool(animation.weapon().visible).is_true()
 	night.queue_free()
