@@ -129,7 +129,7 @@ func test_the_way_out_returns_to_the_menu() -> void:
 	var screen := await _enter_night()
 	await _press_escape()
 	for candidate in screen.find_children("*", "UIButton", true, false):
-		if (candidate as UIButton).text == "Back to the menu":
+		if (candidate as UIButton).text == "Leave night":
 			candidate.pressed.emit()
 	await UIRouter.idle
 	assert_object(UIRouter.top()).is_instanceof(MainMenu)
