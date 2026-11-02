@@ -330,6 +330,25 @@ How to read it:
 - Connecting costs more than a round trip: the WebSocket upgrade over TLS took 370 to 490 ms from Houston. Show a
   connecting state; do not block on it.
 
+### Measured on the game's own server (#52, 2026-11-01)
+
+The game server (`deploy/server/`, the head of `main` at the time, protocol version 2) on the same Railway service, a
+headless desktop client and the web build in headless Chrome (graphics card) joined one night from the same machine
+(Houston; TCP connect to the edge 29 ms mean, 76 ms worst of 10; TLS done at 81 ms). One night of three players, round 3,
+15 zombies at most:
+
+| What | Desktop client (315 s) | Web client in Chrome (120 s) |
+| --- | --- | --- |
+| Round trip, ping to pong, read on the client's tick | mean 78 ms, worst p95 132 ms, max 132 ms (621 samples) | mean 77 ms, p95 86 ms, max 90 ms (118 samples) |
+| Gap between TICKs (30 a second is 33.3 ms) | mean 33.3 ms, worst p95 59 ms, max 107 ms, 1 stall over 100 ms in 9540 | not read |
+| Down / up | 8.7 KB/s down, 1.4 KB/s up (one bot, three players) | not read |
+
+The server's `stats` lines with three players: 25 KB/s out in all, 2.6 ms of work a 60 Hz step on average, 8 to 20 ms
+worst. So the 100 ms interpolation delay and the 30 Hz snapshots stay (one stall in 9540 ticks is covered by the
+delay), and the cost of a night is bandwidth that fits a phone. The two clients saw each other (`players` [1, 2, 3] in
+the frame and three portraits on the HUD) and the zombies killed raised the points of the bot and the second player.
+Not measured: the Discord proxy, a lossy network, a server far from the player (the service runs in one region).
+
 ### The interpolation delay and the snapshot rate
 
 Both stay at the spike's values: **100 ms (3 ticks) and a snapshot every tick (30 Hz)**. The client now counts how

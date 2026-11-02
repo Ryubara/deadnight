@@ -132,6 +132,15 @@ const STATE_LOCOMOTION := &"locomotion"
 const STATE_JUMP := &"jump"
 const STATE_FALL := &"fall"
 const STATE_LAND := &"land"
+## Crouched: the kit's Duck clip held at its lowest pose, with some of the Walk laid over it while
+## the body moves (the kit has no crouch walk).
+const STATE_CROUCH := &"crouch"
+const CROUCH_MIX_PARAMETER := &"parameters/body/crouch/mix/blend_amount"
+const CROUCH_RATE_PARAMETER := &"parameters/body/crouch/walk_rate/scale"
+## Seconds of the Duck clip looped around its lowest pose to hold it.
+const DUCK_HOLD := 0.1
+## The slowest the Walk steps under the Duck pose, as a share of its own pace.
+const CROUCH_WALK_RATE_MIN := 0.5
 const MOVE_PARAMETER := &"parameters/body/locomotion/move/blend_position"
 const RUN_SPEED_PARAMETER := &"parameters/body/locomotion/run_speed/scale"
 
@@ -157,6 +166,8 @@ var _recoil := 0.0
 var _action_time := 0.0
 var _move_blend := 0.0
 var _was_on_floor := true
+## Seconds into the Duck clip where the body is lowest: the pose a crouch holds.
+var _duck_bottom := 0.0
 ## Seconds of repair left before the clip lets go (0: not repairing).
 var _repair_left := 0.0
 ## Where the repair clip is, in its own seconds.
@@ -181,6 +192,7 @@ func _ready() -> void:
 	_add_grenade_clips(anim_player)
 	_add_aim_move_clips(anim_player)
 	_loop_clips(anim_player)
+	_duck_bottom = _lowest_second(anim_player.get_animation(&"Duck"))
 	_mount = BoneAttachment3D.new()
 	_mount.name = "WeaponMount"
 	_mount.bone_name = HAND_BONE
@@ -210,7 +222,7 @@ func _ready() -> void:
 	set(&"parameters/split/blend_amount", 1.0)
 	active = true
 	_playback = get(&"parameters/body/playback") as AnimationNodeStateMachinePlayback
-	_set_class(DEFAULT_CLASS)
+	_set_class(DEFAULT_CLASS, hold_of(DEFAULT_CLASS))
 	_player.jumped.connect(_on_jumped)
 	_player.landed.connect(_on_landed)
 
@@ -220,6 +232,7 @@ func _process(delta: float) -> void:
 	if _was_on_floor and not on_floor and _player.state.velocity.y <= 0.0:
 		_playback.travel(STATE_FALL)
 	_was_on_floor = on_floor
+	_follow_stance(on_floor)
 
 	var speed := _player.ground_speed()
 	var follow := 1.0 - exp(-_tuning.blend_rate * delta)
@@ -229,10 +242,45 @@ func _process(delta: float) -> void:
 	var run_scale := maxf(speed / _tuning.run_clip_speed, 0.4)
 	var run_part := clampf((_move_blend - WALK_POINT) / (0.95 - WALK_POINT), 0.0, 1.0)
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
+	_advance_crouch()
 	_advance_aim_move(follow)
 	_advance_events(delta)
 	_advance_repair(delta)
 	_advance_shoulder(delta)
+
+
+## Into the crouch state when the body crouches on the ground, back to the locomotion when it
+## stands (a fall leaves it by its own transition, a landing returns to the locomotion).
+func _follow_stance(on_floor: bool) -> void:
+	var current := _playback.get_current_node()
+	if _player.state.crouching and on_floor and current == STATE_LOCOMOTION:
+		_playback.travel(STATE_CROUCH)
+	elif not _player.state.crouching and current == STATE_CROUCH:
+		_playback.travel(STATE_LOCOMOTION)
+
+
+## How much Walk shows under the held Duck pose, and how fast it steps, for the speed now.
+func _advance_crouch() -> void:
+	var share := clampf(_player.ground_speed() / _tuning.crouch_speed, 0.0, 1.0)
+	set(CROUCH_MIX_PARAMETER, share * _tuning.crouch_walk_blend)
+	set(CROUCH_RATE_PARAMETER, maxf(share, CROUCH_WALK_RATE_MIN))
+
+
+## The second of `clip` at which the Body bone is lowest.
+static func _lowest_second(clip: Animation) -> float:
+	var best := INF
+	var at := 0.0
+	for track in clip.get_track_count():
+		if (
+			clip.track_get_type(track) == Animation.TYPE_POSITION_3D
+			and String(clip.track_get_path(track)).ends_with(":Body")
+		):
+			for key in clip.track_get_key_count(track):
+				var height: float = (clip.track_get_key_value(track, key) as Vector3).y
+				if height < best:
+					best = height
+					at = clip.track_get_key_time(track, key)
+	return at
 
 
 ## The aim gait for the player's velocity in the frame of its facing: where it sits in the 2D
@@ -290,13 +338,18 @@ func muzzle_point() -> Node3D:
 	return _weapon.find_child(MUZZLE_NODE, true, false) as Node3D
 
 
-## Switches to a weapon class: Equip_<Class> plays and the weapon appears on its weapon_visible
-## frame; the upper body then holds Aim_<Class>.
-func equip(new_class: StringName) -> void:
-	if new_class not in CLASSES:
-		push_error("PlayerAnimation: no weapon class %s" % new_class)
+## Switches to a weapon: a class (`&"Rifle"`) or a weapon of the catalogue (`&"pistol"`).
+## Equip_<Class> plays and the weapon appears on its weapon_visible frame; the upper body then
+## holds Aim_<Class>. A catalogue weapon brings its own hold and model (`WeaponHoldMap.hold_for`),
+## so no two share a model; a class brings the class's hold (`hold_of`).
+func equip(weapon: StringName) -> void:
+	if weapon in CLASSES:
+		_set_class(weapon, hold_of(weapon))
+	elif weapon in WeaponCatalog.IDS:
+		_set_class(WeaponHoldMap.class_of(weapon), WeaponHoldMap.hold_for(weapon))
+	else:
+		push_error("PlayerAnimation: no weapon or class %s" % weapon)
 		return
-	_set_class(new_class)
 	_weapon_visible(false)
 	play_action(&"Equip")
 
@@ -304,7 +357,12 @@ func equip(new_class: StringName) -> void:
 ## Plays `<action>_<Class>` (Fire, Reload, Swing, Equip, Unequip) on the upper body. Returns
 ## false when the class has no such clip.
 func play_action(action: StringName) -> bool:
-	return _play_clip(StringName("%s_%s" % [action, weapon_class]))
+	var played := _play_clip(StringName("%s_%s" % [action, weapon_class]))
+	# An attack or a reload that cuts the Equip clip short must not leave the weapon hidden: its
+	# `weapon_visible` frame would never come.
+	if played and action != &"Equip" and action != &"Unequip":
+		_weapon_visible(true)
+	return played
 
 
 ## The Soldier's side of a grenade, by the server's events. `&"cook"` (`cook_started`): the pin is
@@ -428,13 +486,13 @@ func shoulder_blend() -> float:
 	return _shoulder_blend
 
 
-func _set_class(new_class: StringName) -> void:
+func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
-	_hold = hold_of(new_class)
+	_hold = hold
 	_hands.hold = _hold
 	if _hold != null:
 		_weapon = (load(_hold.scene) as PackedScene).instantiate() as Node3D
@@ -724,6 +782,7 @@ func _build_body() -> AnimationNodeStateMachine:
 	machine.add_node(STATE_JUMP, _clip(&"Jump"), Vector2(400, 0))
 	machine.add_node(STATE_FALL, _clip(&"Jump_Idle"), Vector2(600, 100))
 	machine.add_node(STATE_LAND, _clip(&"Jump_Land"), Vector2(400, 200))
+	machine.add_node(STATE_CROUCH, _build_crouch(), Vector2(200, 250))
 	machine.add_transition(&"Start", STATE_LOCOMOTION, _transition(0.0, false))
 	machine.add_transition(STATE_LOCOMOTION, STATE_JUMP, _transition(0.08, false))
 	machine.add_transition(STATE_LOCOMOTION, STATE_FALL, _transition(0.15, false))
@@ -732,6 +791,9 @@ func _build_body() -> AnimationNodeStateMachine:
 	machine.add_transition(STATE_FALL, STATE_LAND, _transition(0.05, false))
 	machine.add_transition(STATE_LAND, STATE_LOCOMOTION, _transition(0.15, true))
 	machine.add_transition(STATE_LAND, STATE_JUMP, _transition(0.08, false))
+	machine.add_transition(STATE_LOCOMOTION, STATE_CROUCH, _transition(0.15, false))
+	machine.add_transition(STATE_CROUCH, STATE_LOCOMOTION, _transition(0.15, false))
+	machine.add_transition(STATE_CROUCH, STATE_FALL, _transition(0.15, false))
 	return machine
 
 
@@ -742,6 +804,26 @@ func _transition(fade: float, at_end: bool) -> AnimationNodeStateMachineTransiti
 		transition.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_AT_END
 		transition.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
 	return transition
+
+
+## The held Duck pose (a short loop around its lowest second) with the Walk laid over by `mix`.
+func _build_crouch() -> AnimationNodeBlendTree:
+	var tree := AnimationNodeBlendTree.new()
+	var duck := _clip(&"Duck")
+	duck.use_custom_timeline = true
+	duck.start_offset = maxf(_duck_bottom - DUCK_HOLD * 0.5, 0.0)
+	duck.timeline_length = DUCK_HOLD
+	duck.loop_mode = Animation.LOOP_LINEAR
+	duck.stretch_time_scale = false
+	tree.add_node(&"duck", duck)
+	tree.add_node(&"walk", _clip(&"Walk"))
+	tree.add_node(&"walk_rate", AnimationNodeTimeScale.new())
+	tree.connect_node(&"walk_rate", 0, &"walk")
+	tree.add_node(&"mix", AnimationNodeBlend2.new())
+	tree.connect_node(&"mix", 0, &"duck")
+	tree.connect_node(&"mix", 1, &"walk_rate")
+	tree.connect_node(&"output", 0, &"mix")
+	return tree
 
 
 func _build_locomotion() -> AnimationNodeBlendTree:
