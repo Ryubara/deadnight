@@ -6,16 +6,19 @@ const STEP := Night.STEP
 
 
 ## A night in `mode`, added to `parent`, ready to play. `rules_tuning` replaces the shipped table;
-## `hud`, when given, hears the night from its first event.
+## `hud`, when given, hears the night from its first event; `night_tuning` replaces the shipped
+## night numbers.
 static func start(
 	parent: Node,
 	mode: Night.Mode,
 	rules_tuning: RulesTuning = null,
 	seed_value: int = 7,
-	hud: Hud = null
+	hud: Hud = null,
+	night_tuning: NightTuning = null
 ) -> Night:
 	var night := Night.new()
 	night.hud = hud
+	night.night_tuning = night_tuning
 	parent.add_child(night)
 	await night.start(mode, seed_value, rules_tuning)
 	return night
