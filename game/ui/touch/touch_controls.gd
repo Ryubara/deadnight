@@ -12,8 +12,9 @@ extends Control
 ## by hand. Fire shoots wherever the player aims, in both.
 ##
 ## Every finger is tracked by its touch index and has one job until it lifts: the stick, the look,
-## or one button. A finger that starts on Fire also looks while it drags, so one thumb can aim and
-## shoot. Look goes out as mouse motion in mouse pixels (`TouchLook`), so the sensitivity setting,
+## or one button. A finger that starts on Fire, Aim or Grenade also looks while it drags, so one
+## thumb can aim and shoot, or turn while the grenade is held. Look goes out as mouse motion in
+## mouse pixels (`TouchLook`), so the sensitivity setting,
 ## the ADS slow-down and invert Y apply as they do for a mouse.
 ##
 ## The layer shows when `TouchMode.wanted`, in landscape, and while the night is live (`live`).
@@ -61,8 +62,10 @@ const VERBS := {
 }
 const DEFAULT_VERB := "USE"
 const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
-## A finger that starts on one of these also looks while it drags, so one thumb can aim and shoot.
-const LOOKING_BUTTONS: Array[StringName] = [TouchLayout.FIRE, TouchLayout.AIM]
+## A finger that starts on one of these also looks while it drags, so one thumb can aim and shoot,
+## and a grenade can be aimed while the pin is out: the right thumb is on the button for the whole
+## cook and the left has the stick (#599).
+const LOOKING_BUTTONS: Array[StringName] = [TouchLayout.FIRE, TouchLayout.AIM, TouchLayout.GRENADE]
 
 ## The feel numbers (dead zone, sprint, hold, look): `touch_tuning_default.tres`.
 var tuning: TouchTuning = TouchLook.tuning
