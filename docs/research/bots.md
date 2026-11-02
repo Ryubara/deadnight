@@ -842,8 +842,9 @@ points spent by category match the simulator's shopping model within 20%; the co
   price is kept back from round 3, a wall weapon or a prize is taken when it is worth 1.5 times the **weakest** weapon
   carried (full hands give up the one in hand, so `BotErrands` puts the weakest in hand before it pays), the re-cut is
   for a firearm in hand that is not cut yet (as many as the profile cuts), and a tonic is bought only if it adds
-  health (`tonic_hearty`; the others do nothing and are never bought). Grenades have no place to buy them in the lot:
-  #577.
+  health (`tonic_hearty`; the others do nothing and are never bought). Grenades come last, as a top-off: a bot with fewer
+  than `BotProfile.grenades_wanted` (2) buys what fits the pack at the grenade rack once the next thing on the list is
+  paid for, in a lull (#577; the rack is on the stand's east wall, in the alley, so the concession door opens it).
 - **`BotErrands`**, the one stateful part: a think in a lull may go on an errand, in this order, and none while a
   zombie is within 12 m. (1) *Fuel*: the tank at the low line (`FuelTuning.low_fraction`) and a can affordable: the
   bot whose turn it is walks to the nearest open crate and presses use until the tank is 15 points over the line. (2)
@@ -865,8 +866,8 @@ the real lot with the real server: the grace for a person at the door, a refused
 points backs off 30 s and does not loop, a repair that stops with a zombie at the boards and goes on after, one bot
 buys the can and the next takes over when the first is stuck, a ping buys the door where the control does not, the
 breakers, the wall shotgun, the hearty tonic, the crane, rounds at a locker for a short reserve and for a dry
-gun); the coverage matrix (28) has a rule for every shop item and prompt, and one waiver
-(grenades, #577).
+gun, the grenade rack); the coverage matrix (28) has a rule for every shop item and prompt (the grenade waiver
+is lifted by #577).
 
 **Measured.** The shopping soak (`tests/captures/bots_shop_soak.tscn`: four hosted bots, no person, 15 game minutes,
 every player's health ten times the shipped so the night is not cut short; 4 runs, 16 bots) shows **no rejected-buy
@@ -882,7 +883,7 @@ concession open (#590), which also blocks the back lot and the road; bots earn t
 game, in rounds a soak plays with stragglers (#591); and they top up the shotgun's rounds more than the simulator does
 (they fire more). Fitting the shopping to the model is phase 7 (#231)
 
-**Left for the later phases.** The grenades (#577), callout lines for buying (phase 5, with `bot_say`), the booth zone
+**Left for the later phases.** Callout lines for buying (phase 5, with `bot_say`), the booth zone
 (#590) and the dead that stand at a door and end no round (#591). The shopping parity above is for the phase 7 fit
 (#231). The think cost of the errands was not separated from the machine's noise (a soak with and without them printed
 the same p99, 3.5 to 3.8 ms on a loaded machine); #564 owns it.
