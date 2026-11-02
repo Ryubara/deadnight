@@ -322,6 +322,7 @@ func _replay_effects() -> void:
 				"point": at + Vector3(0.0, 0.5, -2.0),
 				"damage": float(DIGITS_NUMBER),
 				"headshot": false,
+				"melee": false,
 			}
 		)
 	)
@@ -333,6 +334,7 @@ func _replay_effects() -> void:
 				"point": at + Vector3(1.0, 0.5, -2.0),
 				"damage": float(DIGITS_NUMBER),
 				"headshot": true,
+				"melee": false,
 			}
 		)
 	)

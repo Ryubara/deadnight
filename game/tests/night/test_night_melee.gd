@@ -59,8 +59,9 @@ func _zombie_in_reach() -> ZombieBody:
 	return body
 
 
+## The muzzle flashes made so far: one the first time a weapon fires, none for a blow.
 func _lights() -> int:
-	return _night.view.effects.find_children("*", "OmniLight3D", false, false).size()
+	return _night.find_children(String(MuzzleFlash.NODE_NAME), "Node3D", true, false).size()
 
 
 func test_the_attack_button_swings_the_crowbar_and_hurts_a_zombie_in_reach() -> void:
