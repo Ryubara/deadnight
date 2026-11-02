@@ -110,11 +110,11 @@ $godot --headless --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a re
 It checks that two clients see each other walk (what one hears is what the server has), that each player's parts and
 colours are the same on both clients and in the server's table, that each client's own body wears its saved look, that
 a late joiner is told the looks already there and a new connection in a seat replaces the old look, that a player is
-as tall (skeleton height and global scale, to a millimetre) on every client and on the server, that the zombies on
-every client are the server's and a shot is heard by both with the right shooter and paid to the right player, that a
-player who joins in the middle gets the doors, the round and the points as they are, that a player who leaves
-disappears for the others and the seat is reused, that a fifth player is turned away, and that a server nobody is on
-gives a reason instead of a hang. `test_net_wire.gd` covers the bytes (a hostile command is made harmless) and
+as tall (skeleton height and global scale, to a millimetre) on every client (the server has no model to measure), that
+the zombies on every client are the server's and a shot is heard by both with the right shooter and paid to the right
+player, that a player who joins in the middle gets the doors, the round and the points as they are, that a player who
+leaves disappears for the others and the seat is reused, that a fifth player is turned away, and that a server nobody
+is on gives a reason instead of a hang. `test_net_wire.gd` covers the bytes (a hostile command is made harmless) and
 `test_night_commands.gd` the server's handling of commands.
 
 `game/tests/captures/online_heights.tscn` renders two clients of one night side by side in one window, each with the
