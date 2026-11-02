@@ -20,9 +20,12 @@ const DISCORD_WAIT_SECONDS := 30.0
 ## What a player reads for each reason the backend gives.
 const TEXTS := {
 	"not_found": "There is no night with that code. Check it and try again.",
-	"full": "That night is full.",
+	"full": "That night is full (4 of 4).",
 	"no_server": "All the servers are busy. Try again in a minute.",
 	"already_in_lobby": "You are in another night already.",
+	"not_member": "You were away for too long, so the room moved on. Make a night or join again.",
+	"not_host": "Only the host can start the night.",
+	"already_started": "The night has started already.",
 	"too_many_guests": "Too many people signed in from here. Try again later.",
 	"unauthorized": "Your sign-in ran out. Try again.",
 	"network": "Could not reach the game's servers. Check your connection.",
@@ -38,13 +41,24 @@ var base_url := DEFAULT_BACKEND
 ## The Discord Activity instance this player is in (empty on the web): everyone with the same one
 ## lands in the same night.
 var instance_id := ""
+## Keeps this API's own session instead of the run's: a test with several players in one process
+## gives each its own (the game itself has one player per run).
+var isolated := false
 
 var _parent: Node
+var _own_token := ""
+var _own_user := {}
 
 
 func _init(parent: Node, backend: String = DEFAULT_BACKEND) -> void:
 	_parent = parent
 	base_url = backend.trim_suffix("/")
+
+
+## The backend's id of this API's player (empty before sign-in): how a lobby screen knows which
+## seat is its own and whether it is the host.
+func my_id() -> String:
+	return str((_own_user if isolated else _user).get("id", ""))
 
 
 ## Forgets the session (tests, and a player who signs out).
@@ -66,7 +80,7 @@ static func user_name() -> String:
 ## bridge, `deploy/web/discord-bridge.js`, has the OAuth code), else, or when that does not work,
 ## as a guest.
 func sign_in(display_name: String = "") -> Dictionary:
-	if _token != "":
+	if _has_session():
 		return {"ok": true}
 	if instance_id != "" and OS.has_feature("web"):
 		var code := await _discord_code()
@@ -74,13 +88,11 @@ func sign_in(display_name: String = "") -> Dictionary:
 			_spent_code = code
 			var with_discord := await _call("POST", "/auth/discord", {"code": code}, false)
 			if with_discord["ok"]:
-				_token = with_discord["token"]
-				_user = with_discord["user"]
+				_keep(with_discord["token"], with_discord["user"])
 				return with_discord
 	var answer := await _call("POST", "/auth/guest", {"name": display_name}, false)
 	if answer["ok"]:
-		_token = answer["token"]
-		_user = answer["user"]
+		_keep(answer["token"], answer["user"])
 	return answer
 
 
@@ -95,6 +107,54 @@ func create() -> Dictionary:
 			return started
 		made = started
 	return {"ok": true, "lobby": made}
+
+
+## A lobby of your own, still waiting: the player is its host and seat 1, and nobody has a night
+## until `start`. In a Discord Activity the lobby of the voice channel is found or made.
+## `{"ok", "lobby"}`.
+func create_lobby() -> Dictionary:
+	var made := await _call("POST", "/lobbies", {"maxPlayers": 4, "instanceId": instance_id})
+	return {"ok": true, "lobby": made} if made["ok"] else made
+
+
+## The lobby as it is now (a member's poll, which is also the proof the member is still there).
+## A player the backend dropped for being away, or a lobby that ended, answers `not_member` or
+## `not_found`. `{"ok", "lobby"}`.
+func refresh(lobby: Dictionary) -> Dictionary:
+	var now := await _call("GET", "/lobbies/%s" % lobby["id"])
+	return {"ok": true, "lobby": now} if now["ok"] else now
+
+
+## The host starts the night: a game server is given to the lobby. `{"ok", "lobby"}`.
+func start(lobby: Dictionary) -> Dictionary:
+	var started := await _call("POST", "/lobbies/%s/start" % lobby["id"])
+	return {"ok": true, "lobby": started} if started["ok"] else started
+
+
+## Leaves the lobby (the host role passes to the next seat). `{"ok"}`.
+func leave(lobby: Dictionary) -> Dictionary:
+	return await _call("POST", "/lobbies/%s/leave" % lobby["id"])
+
+
+## What a code says before its holder joins: `{"ok", "preview": {code, state, round, players,
+## maxPlayers, full, hostName, names}}`. Joins nobody.
+func preview(code: String) -> Dictionary:
+	var clean := code.strip_edges().to_upper()
+	if clean.is_empty():
+		return _failed("not_found")
+	var seen := await _call("POST", "/lobbies/preview", {"code": clean})
+	return {"ok": true, "preview": seen} if seen["ok"] else seen
+
+
+## An API of the same backend and session that lives under `parent`, which outlasts the screen
+## that asks (a screen that is leaving says `leave` on its way out).
+func detached(parent: Node) -> TogetherApi:
+	var other := TogetherApi.new(parent, base_url)
+	other.instance_id = instance_id
+	other.isolated = isolated
+	other._own_token = _own_token
+	other._own_user = _own_user
+	return other
 
 
 ## The night an invite code names.
@@ -154,13 +214,18 @@ func _call(
 	method: String, path: String, body: Variant = null, authorised: bool = true
 ) -> Dictionary:
 	var headers := {}
-	if authorised and _token != "":
-		headers["Authorization"] = "Bearer " + _token
+	var token := _own_token if isolated else _token
+	if authorised and token != "":
+		headers["Authorization"] = "Bearer " + token
 	var answer := await HttpJson.send(_parent, method, base_url + path, headers, body)
 	var status: int = answer["status"]
 	var json: Variant = answer["json"]
 	if status == 401:
-		forget()
+		if isolated:
+			_own_token = ""
+			_own_user = {}
+		else:
+			forget()
 	if status >= 200 and status < 300:
 		var out: Dictionary = json if typeof(json) == TYPE_DICTIONARY else {}
 		out["ok"] = true
@@ -173,6 +238,19 @@ func _call(
 			else "bad_request"
 		)
 	return _failed(reason)
+
+
+func _has_session() -> bool:
+	return (_own_token if isolated else _token) != ""
+
+
+func _keep(token: String, user: Dictionary) -> void:
+	if isolated:
+		_own_token = token
+		_own_user = user
+	else:
+		_token = token
+		_user = user
 
 
 static func _failed(reason: String) -> Dictionary:

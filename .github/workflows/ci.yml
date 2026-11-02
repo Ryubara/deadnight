@@ -91,6 +91,12 @@ jobs:
         with:
           path: cache/downloads
           key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Install the platform backend's packages
+        # The lobby's real-socket test runs the backend (spikes/backend) beside a game server; without these it skips.
+        run: npm ci --prefix repos/deadnight/spikes/backend
       - name: Every committed script has its committed uid
         # Before the import: an import writes missing uids to disk, and the check reads the git index anyway.
         run: python3 repos/deadnight/tools/check_gd_uids.py --root repos/deadnight

@@ -139,7 +139,7 @@ func _text_for(event: Dictionary) -> String:
 
 func _notice(type: StringName, event: Dictionary) -> String:
 	if type == &"player_added":
-		return "%s CONNECTED" % _who(event)
+		return "%s JOINED" % _who(event)
 	if type == &"player_removed":
 		return "%s LEFT" % state.left_name.to_upper()
 	return ""

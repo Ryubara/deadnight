@@ -186,8 +186,8 @@ host calls `POST /lobbies/:id/start`, and every member polls `GET /lobbies/:id` 
   inside that minute: a lobby whose members are all quiet (every tab in the background, which stops the game's frames
   and so its polls) is never emptied by this and expires after ten idle minutes as before. `away` in the view is a member
   not seen for 15 s. A dropped member who polls again gets `403 not_member` and is free to open or join another lobby.
-- **The round.** The game server's heartbeat has an optional `rounds` (`{matchId: round}`, next to `players`); an older
-  server that sends none leaves `round` null.
+- **The round.** The game server's heartbeat has an optional `rounds` (`{matchId: round}`, next to `players`; `GameServer`
+  sends it from `NightHost.round_number()`, 0 before round 1); an older server that sends none leaves `round` null.
 - **Looking before joining.** `POST /lobbies/preview {code}` (any signed-in user, a body so the code stays out of the
   request log) answers `{code, state, round, players, maxPlayers, full, hostName, names}` and joins nobody; an unknown
   code is `404 not_found`. A started night's `full` is the game server's count, the same test `join` applies.
