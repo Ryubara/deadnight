@@ -96,3 +96,10 @@ export class LiveDiscord implements DiscordClient {
     return { accessToken, user: { id: user.id, username: user.username, avatar: user.avatar ?? null } };
   }
 }
+
+/** Discord is not configured: every code is refused as unavailable (guests are the only way in). */
+export class OffDiscord implements DiscordClient {
+  async exchangeCode(): Promise<DiscordSignIn> {
+    throw new DiscordUnavailable("discord sign-in is not configured on this backend");
+  }
+}
