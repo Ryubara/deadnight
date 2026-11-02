@@ -75,7 +75,7 @@ func jittered(rng: RandomNumberGenerator, spread: float) -> SimSkill:
 ## assist wins back are added to the accuracy (`AimAssist.assisted_accuracy`, which is what
 ## `test_aim_assist_bot.gd` measured). Nothing else about the player moves.
 func with_touch_assist(strength: float) -> SimSkill:
-	accuracy = AimAssist.assisted_accuracy(accuracy, strength, AimAssistTuning.new())
+	accuracy = AimAssist.assisted_accuracy(accuracy, strength, AimAssistTuning.shipped())
 	return self
 
 

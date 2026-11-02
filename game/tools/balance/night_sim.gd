@@ -23,8 +23,6 @@ const VIEW_PER_LIGHT := 25.0
 ## to another costs this long.
 const SIDES := 4
 const TURN_SECONDS := 0.6
-const REVIVE_SECONDS := 6.0
-const REVIVE_HEALTH := 0.5
 ## Fire time lost per metre of knockback.
 const STUN_PER_METRE := 0.3
 ## Players mend fully between rounds. A player buys a fuel can when the tank is below this.
@@ -52,7 +50,7 @@ var skill: SimSkill
 var step: float
 ## The numbers the night (not the rules) owns: a zombie's swing. The shipped defaults, as the real
 ## night loads them. The player's health and mending are the rules' (`tuning.player`).
-var zombies_tuning := ZombieTuning.new()
+var zombies_tuning := ZombieTuning.shipped()
 
 var _rng := RandomNumberGenerator.new()
 var _players: Dictionary[int, SimPlayer] = {}
@@ -199,15 +197,17 @@ func _blow(zombie: SimZombie, target: SimPlayer) -> void:
 
 func _mend(player: SimPlayer, engaged: Dictionary) -> void:
 	if player.downed:
+		var helper: SimPlayer = null
 		for other: SimPlayer in _players.values():
 			if not other.downed and engaged.get(other.id, 0) == 0:
+				helper = other
 				player.revive += step
 				break
-		if player.revive >= REVIVE_SECONDS:
-			player.downed = false
-			player.health = player.max_health * REVIVE_HEALTH
+		# The real revive: the rules' own channel time and share of health, sent as the action a
+		# teammate's hold on use ends in.
+		if helper != null and player.revive >= rules.tuning.health.revive_seconds:
 			player.last_hit = _clock
-			_handle(rules.apply(RulesAction.set_downed(player.id, false)))
+			_handle(rules.apply(RulesAction.revive(helper.id, player.id)))
 		return
 	player.stun = maxf(player.stun - step, 0.0)
 	if _clock - player.last_hit >= player.regen_delay:
@@ -427,7 +427,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				var revived: SimPlayer = _players.get(event["player_id"])
 				if revived != null and revived.downed:
 					revived.downed = false
-					revived.health = revived.max_health * REVIVE_HEALTH
+					revived.health = rules.health_of(revived.id)
 			&"game_over":
 				_over = true
 

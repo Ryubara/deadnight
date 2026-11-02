@@ -25,6 +25,11 @@ const RING_MAX := 22.0
 const OPEN_CUTOFF_HZ := 20500.0
 const FILTERED_CUTOFF_HZ := 800.0
 const DUCK_DB := -12.0
+## What the service's duck is asked for in the `svc_ducked` phase, and the stand-in sound it plays:
+## the brightest file the game has (a low-pass shows on it), looped, on the Effects bus like a shot.
+const SERVICE_DUCK_DB := -12.0
+const SERVICE_SOUND := &"rig_bright"
+const SERVICE_DISTANCE := 5.0
 ## The bus's own volume (the settings screen's slider) for the `bus_quiet` phase.
 const QUIET_BUS_DB := -12.0
 ## The stall of the last phase, every `HITCH_EVERY` seconds: a frame that takes this long on the
@@ -40,6 +45,15 @@ const PHASES: Array[Dictionary] = [
 	{"name": "filtered", "voices": 1, "sound": BRIGHT, "cutoff": FILTERED_CUTOFF_HZ, "fixed": true},
 	{"name": "ducked", "voices": 1, "sound": BRIGHT, "duck_db": DUCK_DB, "fixed": true},
 	{"name": "bus_quiet", "voices": 1, "sound": BRIGHT, "bus_db": QUIET_BUS_DB, "fixed": true},
+	# The game's own service (`Audio`) plays one bright loop, so what the player hears of the duck, the
+	# wall and the rear cue is measured through the code that does them: `svc_open` is the reference,
+	# the others change one thing (`svc_duck_db` is the sound's own duck, `occlusion` the wall's
+	# 0..1, `behind` puts the voice behind the listener, `rear_cue` whether it is darkened there).
+	{"name": "svc_open", "service": true},
+	{"name": "svc_ducked", "service": true, "svc_duck_db": SERVICE_DUCK_DB},
+	{"name": "svc_occluded", "service": true, "occlusion": 1.0},
+	{"name": "svc_behind", "service": true, "behind": true, "rear_cue": false},
+	{"name": "svc_rear", "service": true, "behind": true, "rear_cue": true},
 	{"name": "voices_8", "voices": 8},
 	{"name": "voices_16", "voices": 16},
 	{"name": "voices_32", "voices": 32},
@@ -123,6 +137,9 @@ func _next_phase() -> void:
 	_settled = false
 	_deltas = PackedFloat64Array()
 	WebProbe.mark("audio:%s:start" % spec["name"])
+	if spec.get("service", false):
+		_start_service(spec)
+		return
 	if spec.has("duck_db"):
 		_set_duck(spec["duck_db"])
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(EFFECTS_BUS), spec.get("bus_db", 0.0))
@@ -130,6 +147,34 @@ func _next_phase() -> void:
 		_start_voice(spec, i, true)
 	for i in int(spec.get("flat", 0)):
 		_start_voice(spec, i, false)
+
+
+## One bright voice through `Audio`, in front of the listener (the camera looks down -Z) or behind.
+func _start_service(spec: Dictionary) -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(EFFECTS_BUS), 0.0)
+	var def := (
+		SoundDef
+		. make(
+			SERVICE_SOUND,
+			SoundCatalog.ROOT + "ambience/crickets_%d.ogg",
+			1,
+			{
+				"loop": true,
+				"volume_db": VOICE_DB,
+				"pitch_semitones": 0.0,
+				"group": &"generator",
+				"rear_cue": spec.get("rear_cue", false),
+				"duck_db": spec.get("svc_duck_db", 0.0),
+				"duck_hold": 600.0 if spec.has("svc_duck_db") else 0.0,
+			}
+		)
+	)
+	SoundCatalog.get_def(&"ui_hover")  # builds the table
+	SoundCatalog._defs[SERVICE_SOUND] = def
+	var occlusion: float = spec.get("occlusion", 0.0)
+	Audio.occlusion_probe = func(_from: Vector3, _to: Vector3) -> float: return occlusion
+	var z := SERVICE_DISTANCE if spec.get("behind", false) else -SERVICE_DISTANCE
+	Audio.play(SERVICE_SOUND, Vector3(0.0, 0.0, z))
 
 
 func _start_voice(spec: Dictionary, index: int, positional: bool) -> void:
@@ -169,6 +214,9 @@ func _set_duck(db: float) -> void:
 
 
 func _clear() -> void:
+	if has_node("/root/Audio"):
+		Audio.stop_all()
+		Audio.occlusion_probe = Callable()
 	for player in _players:
 		player.call("stop")
 		player.set("stream", null)

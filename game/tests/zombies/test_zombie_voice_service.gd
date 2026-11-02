@@ -22,7 +22,7 @@ func after_test() -> void:
 
 
 func test_the_nearest_attacker_beats_a_far_groan_for_a_voice() -> void:
-	var limit: int = SoundCatalog.GROUP_LIMITS[&"zombie_voice"]
+	var limit: int = SoundCatalog.group_limits()[&"zombie_voice"]
 	for i in limit:
 		_audio.play(&"zombie_groan", Vector3(30.0, 0, -i))
 	var near := _audio.play(&"zombie_alert", Vector3(0, 0, -3.0))

@@ -83,6 +83,8 @@ var _next_try := 0.0
 var _was_open := false
 var _last_tick_usec := 0
 var _frame: Dictionary = {}
+## The zombies the server has told us of (`ZombieDelta`), by id.
+var _zombie_base: Dictionary[int, PackedByteArray] = {}
 var _next_ping := 0.0
 
 
@@ -158,6 +160,8 @@ func send(action: Dictionary) -> void:
 			_send(NetWire.command(NightCommand.from_dict(action)))
 		NightServer.LOOK:
 			_send(action["packet"])
+		NightServer.PING:
+			_send(NetWire.mark(action["kind"], action["pos"], int(action.get("subject", 0))))
 
 
 func pump() -> void:
@@ -262,6 +266,7 @@ func _receive(data: PackedByteArray) -> void:
 				token = welcome["token"]
 				# The server begins again from a whole frame.
 				_frame = {}
+				_zombie_base = {}
 				resumed.emit(welcome["snapshot"])
 		NetWire.Type.TICK:
 			_on_tick(data)
@@ -276,6 +281,16 @@ func _receive(data: PackedByteArray) -> void:
 				_refused = true
 				refused.emit(data[1])
 				close()
+
+
+## The whole `ZombieCodec` bytes of the zombies the frame `last` leaves this client with: the delta
+## in it, applied to the ones it had, or the same ones when the frame says nothing of them.
+func _zombies_of(last: Dictionary) -> PackedByteArray:
+	if last.has("zombies"):
+		var applied := ZombieDelta.apply(_zombie_base, last["zombies"])
+		if applied["ok"]:
+			_zombie_base = applied["entries"]
+	return ZombieDelta.whole(_zombie_base)
 
 
 func _on_tick(data: PackedByteArray) -> void:
@@ -295,5 +310,6 @@ func _on_tick(data: PackedByteArray) -> void:
 			frames_in += 1
 			frame_bytes_in += data.size()
 			_frame = FrameDelta.apply(_frame, last)
+			_frame["zombies"] = _zombies_of(last)
 			events[events.size() - 1] = _frame
 	delivered.emit(events)

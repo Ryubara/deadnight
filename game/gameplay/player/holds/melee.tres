@@ -6,7 +6,7 @@
 script = ExtResource("1_hold")
 weapon_class = &"Melee"
 scene = "res://assets/weapons/baseball_bat/baseball_bat.glb"
-model_scale = 0.86
+model_scale = 1.01
 real_length = 0.86
 model_length = 1.106
 shouldered = false

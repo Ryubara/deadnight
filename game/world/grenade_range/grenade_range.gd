@@ -16,14 +16,6 @@ const SEED := 20260102
 const STEP := 1.0 / 60.0
 const WARMUP_SECONDS := 20.0
 
-const PLAYER_FEET := Vector3(0.0, 0.0, 2.0)
-const HAND_OFFSET := Vector3(0.35, 1.45, -0.35)
-const CAMERA_POSITION := Vector3(5.5, 7.0, 1.0)
-const CAMERA_TARGET := Vector3(2.4, 0.2, -8.6)
-const CAMERA_FOV := 55.0
-## Where the demo's cooked overarm throw is aimed.
-const DEMO_AIM := Vector3(0.15, 0.0, -1.0)
-const DEMO_COOK_SECONDS := 1.4
 ## Zombie slots, in spawn order (see `docs/research/grenades.md` for which is which).
 const SLOTS: Array[Vector3] = [
 	Vector3(2.0, 0, -10.2),
@@ -45,6 +37,19 @@ const CRAWLER_SQUASH := 0.42
 const KNOCK_SECONDS := 0.35
 const KNOCK_SCALE := 0.18
 
+@export_group("Camera")
+## Where the camera stands and what it looks at (metres), and its field of view (degrees).
+@export var camera_position := Vector3(5.5, 7.0, 1.0)
+@export var camera_target := Vector3(2.4, 0.2, -8.6)
+@export_range(20.0, 120.0, 1.0, "suffix:deg") var camera_fov := 55.0
+@export_group("Demo throw")
+## Where the player stands (feet) and where the hand is, relative to them (metres).
+@export var player_feet := Vector3(0.0, 0.0, 2.0)
+@export var hand_offset := Vector3(0.35, 1.45, -0.35)
+## Where the demo's cooked overarm throw is aimed, and how long it is cooked (seconds).
+@export var demo_aim := Vector3(0.15, 0.0, -1.0)
+@export_range(0.0, 3.0, 0.05, "suffix:s") var demo_cook_seconds := 1.4
+
 var rules: GameRules
 var server: GrenadeServer
 var effects: ShotEffects
@@ -58,7 +63,7 @@ var _predicted: Array[GrenadeView] = []
 var _dummies: Dictionary[int, ZombieDummy] = {}
 var _spawned := 0
 var _held := false
-var _aim := DEMO_AIM
+var _aim := Vector3.ZERO
 var _demo_time := 0.0
 var _demo_steps: Array[Dictionary] = []
 var _note := ""
@@ -74,6 +79,7 @@ var _log := OS.get_cmdline_user_args().has("--log")
 
 
 func _ready() -> void:
+	_aim = demo_aim
 	_def = load("res://gameplay/grenades/defs/frag.tres")
 	effects = ShotEffects.new()
 	add_child(effects)
@@ -85,9 +91,9 @@ func _ready() -> void:
 		audio.listener = _camera
 		sound_requested.connect(func(id: StringName, at: Vector3) -> void: audio.play(id, at))
 	_demo_steps = _steps()
-	_camera.fov = CAMERA_FOV
-	_camera.look_at_from_position(CAMERA_POSITION, CAMERA_TARGET)
-	_player.position = PLAYER_FEET + Vector3(0, 0.9, 0)
+	_camera.fov = camera_fov
+	_camera.look_at_from_position(camera_position, camera_target)
+	_player.position = player_feet + Vector3(0, 0.9, 0)
 	_update_hud()
 
 
@@ -115,7 +121,7 @@ func _physics_process(_delta: float) -> void:
 	rules.apply(RulesAction.tick(STEP))
 	_run_demo()
 	server.apply(GrenadeAction.targets(_target_list()))
-	server.apply(GrenadeAction.players([{"id": PLAYER_ID, "pos": PLAYER_FEET}]))
+	server.apply(GrenadeAction.players([{"id": PLAYER_ID, "pos": player_feet}]))
 	_send_player_command()
 	_on_events(server.apply(GrenadeAction.tick(STEP)))
 	_step_predicted()
@@ -139,7 +145,7 @@ func _send_player_command() -> void:
 
 
 func hand() -> Vector3:
-	return PLAYER_FEET + HAND_OFFSET
+	return player_feet + hand_offset
 
 
 ## The client draws the throw at once, from its own copy of the grenade; the server's
@@ -329,7 +335,7 @@ func _steps() -> Array[Dictionary]:
 	list.append({"at": 0.6, "do": func() -> void: _show_arc(true)})
 	list.append({"at": 1.8, "do": func() -> void: _show_arc(false)})
 	list.append({"at": 2.0, "do": func() -> void: _held = true})
-	list.append({"at": 2.0 + DEMO_COOK_SECONDS, "do": func() -> void: _held = false})
+	list.append({"at": 2.0 + demo_cook_seconds, "do": func() -> void: _held = false})
 	return list
 
 

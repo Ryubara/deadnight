@@ -112,3 +112,30 @@ func test_a_dead_target_cannot_be_hit_from_the_past() -> void:
 	server.apply(CombatAction.untrack_target(1))
 	var events := _shot_at_where_it_was(server, 0.1, 0.1)
 	assert_array(WeaponsFixture.of(events, &"damage_dealt")).is_empty()
+
+
+## Shots at a zombie walking across the view, each aimed where the shooter saw it `latency` ago
+## (one way to the shooter, plus the frame it was drawn from), with the rewind and without: how
+## many of 24 starts of the walk (different phases of the 60 Hz step) are hits.
+func _hit_rate(latency: float, rewind: bool) -> int:
+	var hits := 0
+	for phase in 24:
+		var server := _walked(0.5 + phase * 0.0137)
+		var events := _shot_at_where_it_was(server, latency, latency if rewind else 0.0)
+		if not WeaponsFixture.of(events, &"damage_dealt").is_empty():
+			hits += 1
+	return hits
+
+
+func test_the_hit_rate_at_100_and_200_ms() -> void:
+	# The zombie runs at 4 m/s, a fast one: 0.4 m of lead at 100 ms and 0.8 m at 200 ms.
+	var rates := {}
+	for latency in [0.1, 0.2]:
+		rates[latency] = [_hit_rate(latency, true), _hit_rate(latency, false)]
+	print("lag compensation hits of 24 shots at a 4 m/s walker: ", rates)
+	assert_int(rates[0.1][0]).is_equal(24)
+	assert_int(rates[0.2][0]).is_equal(24)
+	# Without it the 200 ms shots all miss (a walker is 0.8 m from where it is shot at).
+	assert_int(rates[0.2][1]).is_equal(0)
+	# At 100 ms the 0.4 m lead is still inside the body's zones, so both hit.
+	assert_int(rates[0.1][1]).is_less_equal(rates[0.1][0])

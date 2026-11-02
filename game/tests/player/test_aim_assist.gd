@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 const EYE := Vector3(0.0, 1.6, 0.0)
 const AHEAD := Vector3(0.0, 0.0, -1.0)
 
-var _tuning := AimAssistTuning.new()
+var _tuning := AimAssistTuning.shipped()
 
 
 ## A walker `distance` metres ahead and `right` metres to the right of the view axis.

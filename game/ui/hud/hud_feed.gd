@@ -32,6 +32,14 @@ const ITEM_NAMES := {
 	&"upgrade_weapon": "HAD A WEAPON RE-CUT",
 	&"tonic_hearty": "DRANK THE HEARTY TONIC",
 }
+## What each mark says in the feed (one meaning each, `PingBoard`).
+const PING_WORDS := {
+	&"here": "HOLD HERE",
+	&"door": "OPEN THIS DOOR",
+	&"ammo": "AMMUNITION HERE",
+	&"enemy": "SHOOT THIS ONE",
+	&"downed": "GET THEM UP",
+}
 const CIRCUIT_WORDS := {
 	&"screen_lot": "THE SCREEN LOT",
 	&"concession": "THE CONCESSION STAND",
@@ -122,6 +130,8 @@ func _text_for(event: Dictionary) -> String:
 			text = "%s IS DOWN" % who
 		&"player_revived":
 			text = "%s IS BACK UP" % who
+		&"ping_placed":
+			text = "%s: %s" % [who, PING_WORDS.get(event.get("kind", &""), "LOOK")]
 		&"circuit_changed":
 			var words: String = CIRCUIT_WORDS.get(event["circuit_id"], "THE LOT")
 			text = "LIGHTS %s: %s" % ["ON" if event["on"] else "OFF", words]
