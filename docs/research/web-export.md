@@ -4,6 +4,11 @@ How Deadnight is exported for the browser, how CI runs that build in headless Ch
 (issue #167; the browser checks asked for by #82 and #105). The preset is `game/export_presets.cfg`, the run is
 `tools/web_smoke/smoke.py`, the CI job is `web` in `.github/workflows/ci.yml`.
 
+A probe never listens, so it makes no sound at the machine. Playwright's headless Chromium starts with `--mute-audio`
+(read off the process command line, Playwright 1.64.1, the headless shell and Chrome alike). It does not mute a headed
+Chromium or Firefox, so under `gds quiet` (`GDS_QUIET=1`) `smoke.mute_args()` and `smoke.mute_firefox_prefs()` add
+the mute. A new probe passes `args=[..., *smoke.mute_args()]` to `chromium.launch`.
+
 ## The preset
 
 - **Web, Compatibility renderer** (WebGL2), release export, `build/web/index.html` (git-ignored).
