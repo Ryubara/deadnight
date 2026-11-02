@@ -5,7 +5,8 @@ The game, started with `?bench` in its address, plays a night with the autopilot
 `window.deadnightPerf` after `bench_seconds`. This script serves the exported build, runs it in a fresh Chrome profile,
 and reports how long the frames with a kill, a zombie appearing or a zombie leaving take next to the others.
 
-    uv run --with playwright==1.64.1 --with matplotlib python tools/web_smoke/kill_spike.py build/web build/kill_spike
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 --with matplotlib python tools/web_smoke/kill_spike.py build/web build/kill_spike
 
 Options: `--seconds S` (the night's length, default 70), `--label before|after` names the chart and the report,
 `--unpaced` lets the page run faster than the display (frame times then show the work, not the 60 Hz tick).

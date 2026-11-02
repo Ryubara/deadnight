@@ -1,10 +1,10 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 5; version 4 had a ping of 5 bytes with no
-## round trip in it, version 3 had no ticket in the hello,
-## version 2 no resume token, version 1 sent a command as 47 bytes of floats), one message to a
-## WebSocket frame: a type byte, then the fields. `LookWire` continues the numbering with types 8
-## and 9.
+## The bytes of a night's connection (protocol version 7; version 6 had no names in the WELCOME or
+## the events, version 5 had no view step in a command, version 4 had a ping of 5 bytes with no
+## round trip in it, version 3 had no ticket in the hello, version 2 no resume token, version 1
+## sent a command as 47 bytes of floats), one message to a WebSocket frame: a type byte, then the
+## fields. `LookWire` continues the numbering with types 8 and 9.
 ##
 ## HELLO    C->S  u8 type=1, u8 version, u8 token length (0 or 8), the resume token the last WELCOME
 ##                gave (a client that lost its socket asks for its seat back), then the rest is the
@@ -13,8 +13,9 @@ extends RefCounted
 ##                packed variable: the rules' snapshot (`GameRules.to_dict()`), for a HUD that joins
 ##                in the middle (or comes back)
 ## COMMAND  C->S  u8 type=3, u32 seq, s8 move x/y, u16 yaw, s16 pitch, u16 flags, s16 origin x/y/z
-##                (centimetres), u16 shot yaw, s16 shot pitch (fixed, `COMMAND_SIZE` = 23 bytes in
-##                all; the steps are `CommandCodec`'s)
+##                (centimetres), u16 shot yaw, s16 shot pitch, u16 the server step of the frame the
+##                shooter was looking at (fixed, `COMMAND_SIZE` = 25 bytes in all; the steps are
+##                `CommandCodec`'s)
 ## TICK     S->C  u8 type=4, u32 server step, then a packed variable: the array of events since the
 ##                last TICK, the frame last; a frame after the first only carries what changed
 ##                (`FrameDelta`)
@@ -42,14 +43,14 @@ enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 6
+const VERSION := 7
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 6
+const MIN_VERSION := 7
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
-const COMMAND_SIZE := 23
+const COMMAND_SIZE := 25
 const MARK_SIZE := 10
 const PING_SIZE := 7
 ## What a ping says when the client has not measured a round trip yet, and the most it can say.
@@ -82,6 +83,8 @@ const F_RELOAD := 1 << 8
 const F_USE := 1 << 9
 const F_SWAP := 1 << 10
 const F_USE_HELD := 1 << 11
+## The command says which frame its shooter was looking at (`NightCommand.view_step`).
+const F_VIEW := 1 << 12
 
 
 static func hello(
@@ -251,6 +254,7 @@ static func command(value: NightCommand) -> PackedByteArray:
 	flags |= F_USE if value.use else 0
 	flags |= F_SWAP if value.swap else 0
 	flags |= F_USE_HELD if value.use_held else 0
+	flags |= F_VIEW if value.view_step >= 0 else 0
 	out.encode_u16(11, flags)
 	out.encode_s16(13, CommandCodec.point_step(value.origin.x))
 	out.encode_s16(15, CommandCodec.point_step(value.origin.y))
@@ -258,6 +262,7 @@ static func command(value: NightCommand) -> PackedByteArray:
 	var aim := CommandCodec.direction_angles(value.dir)
 	out.encode_u16(19, CommandCodec.yaw_step(aim.x))
 	out.encode_s16(21, CommandCodec.look_step(aim.y))
+	out.encode_u16(23, maxi(value.view_step, 0) & 0xFFFF)
 	return out
 
 
@@ -287,6 +292,7 @@ static func read_command(data: PackedByteArray) -> NightCommand:
 	result.use = flags & F_USE != 0
 	result.swap = flags & F_SWAP != 0
 	result.use_held = flags & F_USE_HELD != 0
+	result.view_step = data.decode_u16(23) if flags & F_VIEW != 0 else -1
 	result.origin = Vector3(
 		CommandCodec.point_from_step(data.decode_s16(13)),
 		CommandCodec.point_from_step(data.decode_s16(15)),

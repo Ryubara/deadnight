@@ -19,10 +19,10 @@ func _command() -> NightCommand:
 	return command
 
 
-func test_a_command_is_23_bytes_and_comes_back_whole() -> void:
+func test_a_command_is_25_bytes_and_comes_back_whole() -> void:
 	var bytes := NetWire.command(_command())
 	assert_int(bytes.size()).is_equal(NetWire.COMMAND_SIZE)
-	assert_int(NetWire.COMMAND_SIZE).is_equal(23)
+	assert_int(NetWire.COMMAND_SIZE).is_equal(25)
 	var back := NetWire.read_command(bytes)
 	assert_int(back.seq).is_equal(4_000_000_000)
 	# A move longer than 1 is shortened on the way in; a stick axis is a byte (1/127).

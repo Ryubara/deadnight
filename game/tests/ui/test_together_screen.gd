@@ -195,3 +195,60 @@ func test_the_controller_note_shows_only_in_a_discord_activity() -> void:
 	assert_str(screen._controller_note.text).is_empty()
 	assert_bool(screen._controller_note.visible).is_false()
 	screen.queue_free()
+
+
+## A page that refuses every copy, as a frame whose host blocks the clipboard.
+func _refusing_clipboard() -> WebClipboard:
+	var clipboard := auto_free(WebClipboard.new()) as WebClipboard
+	clipboard.in_frame = true
+	clipboard.eval_js = func(js: String) -> Variant:
+		return "NotAllowedError" if js.contains(".write") else null
+	add_child(clipboard)
+	return clipboard
+
+
+func _invite_of(screen: TogetherScreen, code: String) -> void:
+	screen._lobby = {"id": "lobby-1", "code": code}
+	screen._show_invite()
+
+
+func test_a_copy_the_window_cannot_make_shows_the_code_selected_and_says_how() -> void:
+	var screen := _screen()
+	_invite_of(screen, "QZXW2345")
+	await get_tree().process_frame  # the invite view puts the focus on Play a frame later
+	var clipboard := _refusing_clipboard()
+	screen.copy_code_button.pressed.emit()
+	await get_tree().create_timer(0.3).timeout
+	assert_bool(screen.copy_field.is_visible_in_tree()).is_true()
+	assert_str(screen.copy_field.get_selected_text()).is_equal("QZXW2345")
+	assert_str(screen.status.text).is_equal(TogetherScreen.COPY_BLOCKED)
+	assert_str(screen.status.text).not_contains("copied")
+	# Ctrl+C is then offered that text.
+	assert_str(clipboard._offered).is_equal("QZXW2345")
+	screen.queue_free()
+
+
+func test_a_copy_that_works_says_copied_and_shows_no_field() -> void:
+	var screen := _screen()
+	_invite_of(screen, "QZXW2345")
+	WebClipboard.current = null  # a tab or the desktop: the engine's own copy
+	screen.copy_code_button.pressed.emit()
+	await get_tree().create_timer(0.2).timeout
+	assert_str(screen.status.text).is_equal("Code copied.")
+	assert_bool(screen.copy_field.is_visible_in_tree()).is_false()
+	screen.queue_free()
+
+
+func test_sharing_in_discord_is_offered_only_inside_an_activity() -> void:
+	var screen := _screen()
+	_invite_of(screen, "QZXW2345")
+	assert_bool(TogetherScreen.can_share()).is_false()
+	assert_bool(screen.share_button.is_visible_in_tree()).is_false()
+	screen.queue_free()
+
+
+func test_the_clipboard_note_shows_only_in_a_discord_activity() -> void:
+	var screen := _screen()
+	screen._process(2.0)
+	assert_bool(screen._clipboard_note.visible).is_false()
+	screen.queue_free()

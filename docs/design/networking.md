@@ -30,7 +30,8 @@ The game server puts the ticket's name on the player's seat, so every client sho
 show the same name in any case of letters: the later one becomes `Ann (2)`, `Ann (3)`, cut to the HUD's 20 characters
 first so the number is never lost. A WELCOME carries every seat's name (`names`: player id to name) so a player who joins
 late or comes back shows everyone at once; the others hear a new name as a `player_named` event. A seat with no name stays
-`PLAYER n`, and the seat keeps its name while the player is away. These are new keys, and the protocol version is 6.
+`PLAYER n`, and the seat keeps its name while the player is away. These are new keys, and the protocol version is 7
+(6 put the view step in a command).
 
 ## Before the night
 
@@ -39,5 +40,5 @@ newcomers: [the lobby](lobby.md).
 
 ## Open work
 
-Lag compensation for hits (#54), server and bots in CI (#56), more entity kinds and
+Server and bots in CI (#56), more entity kinds and
 interest management (#57), latency over Railway and Discord (#52).
