@@ -6,35 +6,37 @@ extends Node
 ## frame's delta against the last one, packed in a `NetWire.tick`) so the bytes are the wire's.
 ## Not part of the game. Runs headless, the same in the Railway container and on this machine.
 ## Arguments after `--`: `--zombies=N` (alive at once), `--measure=TICKS` (default 1200, 20 s of
-## game time), `--players=N` (default 4), `--seed=N`.
+## game time), `--players=N` (default 4), `--seed=N`, `--web=1` (the players are browsers).
+## `--rooms=K` runs K nights in this one process, each in a `SubViewport` of its own as
+## `GameServer` builds them, all stepped in the same physics frame: the numbers are then the
+## process's tick (`tick_ms_*`: the steps and the snapshots of every room), which is what has to fit
+## the 16.7 ms. `--stagger=1` starts the odd rooms one step later (`NightHost.phase`), so the
+## rooms' heavy steps do not fall on the same tick.
 
 ## Ticks the crowd is given to fill and settle before the measured ones.
 const FILL_TICKS_MAX := 6000
 const SETTLE_TICKS := 300
 const NEVER := 1.0e9
 
-var _world: NightWorld
-var _server: NightServer
-var _timed: TimedPathing
 var _args := {}
 var _crowd := 40
 var _players := 4
+var _room_count := 1
+var _stagger := false
 var _measure_ticks := 1200
+var _rooms: Array[BenchRoom] = []
 var _running := false
 var _ticks := 0
 var _fill_until := 1 << 30
 var _filled_in := 0
 var _measured := 0
+## Per physics frame: the steps of every room, and those plus the snapshots they make.
 var _step_ms: Array[float] = []
+var _tick_ms: Array[float] = []
 var _send_ms: Array[float] = []
 var _bytes_each: Array[int] = []
-var _last_frames := {}
-var _zombie_base := {}
-var _no_zombies: Dictionary[int, PackedByteArray] = {}
-var _zombie_sequence := 0
 var _alive_sum := 0.0
-var _paths_before := 0
-var _calls_before := 0
+var _no_zombies: Dictionary[int, PackedByteArray] = {}
 ## What `PerfProbe` timed inside the server's step, summed over the measured ticks (microseconds).
 var _probe_usec: Dictionary[StringName, Array] = {}
 
@@ -54,37 +56,72 @@ class TimedPathing:
 		return way
 
 
+## One night in the process: its own world in its own `SubViewport` (as `GameServer` builds a room),
+## its step counter and what it last sent each player.
+class BenchRoom:
+	extends RefCounted
+	var world: NightWorld
+	var server: NightServer
+	var timed: TimedPathing
+	var steps := 0
+	var phase := 0
+	var paths_before := 0
+	var calls_before := 0
+	var last_frames := {}
+	var zombie_base := {}
+	var zombie_sequence := 0
+
+
 func _ready() -> void:
 	_args = _parse_args()
 	_crowd = int(_args.get("zombies", 40))
 	_players = int(_args.get("players", 4))
+	_room_count = maxi(int(_args.get("rooms", 1)), 1)
+	_stagger = _flag("stagger")
 	_measure_ticks = int(_args.get("measure", 1200))
-	var tuning := _bent_rules(_crowd)
-	_world = NightWorld.new()
-	add_child(_world)
-	await _world.build()
-	_server = NightServer.new(_world, int(_args.get("seed", 7)), null, tuning)
-	_server.sim.tuning.hard_cap = _crowd
-	_timed = TimedPathing.new(_world.map())
-	_server.sim.pathing = _timed
-	for id in range(1, _players + 1):
-		_server.apply({"type": NightServer.JOIN, "player_id": id})
-		_server.crowd.set_platform(id, bool(_args.get("web", false)))
-	_server.apply({"type": NightServer.START_NIGHT})
+	for index in _room_count:
+		_rooms.append(await _build_room(index))
 	_running = true
 	PerfProbe.enabled = true
 	PerfProbe.take()
 
 
+func _build_room(index: int) -> BenchRoom:
+	var room := BenchRoom.new()
+	var viewport := SubViewport.new()
+	viewport.name = "Room_%d" % index
+	viewport.own_world_3d = true
+	viewport.size = Vector2i(64, 64)
+	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(viewport)
+	room.world = NightWorld.new()
+	viewport.add_child(room.world)
+	await room.world.build()
+	room.server = NightServer.new(
+		room.world, int(_args.get("seed", 7)) + index, null, _bent_rules(_crowd)
+	)
+	room.server.sim.tuning.hard_cap = _crowd
+	room.timed = TimedPathing.new(room.world.map())
+	room.server.sim.pathing = room.timed
+	for id in range(1, _players + 1):
+		room.server.apply({"type": NightServer.JOIN, "player_id": id})
+		room.server.crowd.set_platform(id, _flag("web"))
+	room.server.apply({"type": NightServer.START_NIGHT})
+	return room
+
+
 ## One server tick a physics frame, as `NightHost` runs it: the navigation map and the bodies need
-## the engine's own physics step between ticks.
+## the engine's own physics step between ticks. Every room steps in the same frame, in turn.
 func _physics_process(_delta: float) -> void:
 	if not _running:
 		return
 	if _ticks < _fill_until:
 		_fill_step()
 	elif _ticks < _fill_until + SETTLE_TICKS:
-		_server.step(Night.STEP)
+		for room in _rooms:
+			_align(room)
+			room.server.step(Night.STEP)
+			room.steps += 1
 		_ticks += 1
 	elif _measured < _measure_ticks:
 		_measure_step()
@@ -93,10 +130,24 @@ func _physics_process(_delta: float) -> void:
 		_report()
 
 
+## What `NightHost` does on its first step when a `GameServer` gave it a `heavy_parity`.
+func _align(room: BenchRoom) -> void:
+	if room.steps != 0 or not _stagger:
+		return
+	if (Engine.get_physics_frames() & 1) == _rooms.find(room) % 2:
+		room.phase = 1
+		room.server.sim.tick(Night.STEP, {})
+
+
 func _fill_step() -> void:
-	_server.step(Night.STEP)
+	var full := true
+	for room in _rooms:
+		_align(room)
+		room.server.step(Night.STEP)
+		room.steps += 1
+		full = full and room.server.sim.standing_count() >= _crowd
 	_ticks += 1
-	if _server.sim.standing_count() >= _crowd or _ticks >= FILL_TICKS_MAX:
+	if full or _ticks >= FILL_TICKS_MAX:
 		_fill_until = _ticks
 		_filled_in = _ticks
 
@@ -123,73 +174,116 @@ func _bent_rules(crowd: int) -> RulesTuning:
 
 func _measure_step() -> void:
 	if _measured == 0:
-		_paths_before = _timed.usec
-		_calls_before = _timed.calls
-	# As `NightHost` runs it: a frame is built only on the steps a snapshot is sent after.
-	var sending := (_measured + 1) % NightHost.SEND_EVERY == 0
-	var began := Time.get_ticks_usec()
-	var events := _server.step(Night.STEP, sending)
-	_step_ms.append((Time.get_ticks_usec() - began) / 1000.0)
+		for room in _rooms:
+			room.paths_before = room.timed.usec
+			room.calls_before = room.timed.calls
+	var step_total := 0.0
+	var send_total := 0.0
+	for room in _rooms:
+		# As `NightHost` runs it: a frame is built only on the steps a snapshot is sent after.
+		var sending := (room.steps + room.phase + 1) % NightHost.SEND_EVERY == 0
+		var began := Time.get_ticks_usec()
+		var events := room.server.step(Night.STEP, sending)
+		step_total += (Time.get_ticks_usec() - began) / 1000.0
+		room.steps += 1
+		_alive_sum += room.server.sim.standing_count()
+		if sending:
+			send_total += _send_snapshots(room, events)
 	var probes: Dictionary = PerfProbe.take()["usec"]
 	for label: StringName in probes:
 		(_probe_usec.get_or_add(label, []) as Array).append(int(probes[label]))
-	var frame: Dictionary = events.pop_back() if sending else {}
-	_alive_sum += _server.sim.standing_count()
+	_step_ms.append(step_total)
+	_tick_ms.append(step_total + send_total)
+	if send_total > 0.0:
+		_send_ms.append(send_total)
 	_measured += 1
-	if not sending:
-		return
+
+
+## The snapshot each of the room's players is sent, made as `NightHost._send_ticks` makes it (the
+## frame's delta against the last one, the zombies as a delta); returns the milliseconds it took.
+func _send_snapshots(room: BenchRoom, events: Array[Dictionary]) -> float:
+	var frame: Dictionary = events.pop_back()
 	var sent := Time.get_ticks_usec()
 	var zombies := ZombieDelta.entries_of(frame["zombies"])
 	for id in range(1, _players + 1):
 		var out: Array = events.filter(
 			func(e: Dictionary) -> bool: return e["type"] != NightServer.LOOK_PACKET
 		)
-		# As `NightHost._send_ticks`: the zombies go as what changed from the ones the client has.
 		var own := frame.duplicate()
-		var base: Dictionary[int, PackedByteArray] = _zombie_base.get(id, _no_zombies)
-		own["zombies"] = ZombieDelta.diff(base, zombies, _zombie_sequence)
-		_zombie_base[id] = zombies
-		out.append(FrameDelta.diff(_last_frames.get(id, {}), own))
-		_last_frames[id] = own
-		_bytes_each.append(NetWire.tick(_server.tick_count, out).size())
-	_zombie_sequence = (_zombie_sequence + 1) & 0xFF
-	_send_ms.append((Time.get_ticks_usec() - sent) / 1000.0)
+		var base: Dictionary[int, PackedByteArray] = room.zombie_base.get(id, _no_zombies)
+		own["zombies"] = ZombieDelta.diff(base, zombies, room.zombie_sequence)
+		room.zombie_base[id] = zombies
+		out.append(FrameDelta.diff(room.last_frames.get(id, {}), own))
+		room.last_frames[id] = own
+		_bytes_each.append(NetWire.tick(room.server.tick_count, out).size())
+	room.zombie_sequence = (room.zombie_sequence + 1) & 0xFF
+	return (Time.get_ticks_usec() - sent) / 1000.0
 
 
 func _report() -> void:
-	var sorted := _step_ms.duplicate()
-	sorted.sort()
 	var ticks := _measured
 	var seconds := ticks * Night.STEP
 	var bytes_total := 0
 	for b in _bytes_each:
 		bytes_total += b
-	var over := 0
-	for ms in _step_ms:
-		if ms > Night.STEP * 1000.0:
-			over += 1
+	var paths_usec := 0
+	var path_calls := 0
+	for room in _rooms:
+		paths_usec += room.timed.usec - room.paths_before
+		path_calls += room.timed.calls - room.calls_before
 	var result := {
 		"zombies_asked": _crowd,
+		"rooms": _room_count,
+		"stagger": _stagger,
 		"players": _players,
 		"filled_in_ticks": _filled_in,
 		"alive": snappedf(_alive_sum / ticks, 0.1),
 		"ticks": ticks,
-		"step_ms_mean": snappedf(_mean(_step_ms), 0.001),
-		"step_ms_p50": snappedf(sorted[sorted.size() / 2], 0.001),
-		"step_ms_p95": snappedf(sorted[int(sorted.size() * 0.95)], 0.001),
-		"step_ms_p99": snappedf(sorted[int(sorted.size() * 0.99)], 0.001),
-		"step_ms_max": snappedf(sorted[sorted.size() - 1], 0.001),
-		"ticks_over_budget": over,
-		"send_ms_mean_per_snapshot": snappedf(_mean(_send_ms), 0.001),
-		"navigation_ms_per_tick": snappedf((_timed.usec - _paths_before) / 1000.0 / ticks, 0.001),
-		"navigation_calls_per_tick": snappedf(float(_timed.calls - _calls_before) / ticks, 0.01),
+		"send_ms_mean_per_sending_tick": snappedf(_mean(_send_ms), 0.001),
+		"navigation_ms_per_tick": snappedf(paths_usec / 1000.0 / ticks, 0.001),
+		"navigation_calls_per_tick": snappedf(float(path_calls) / ticks, 0.01),
 		"tick_budget_ms": snappedf(Night.STEP * 1000.0, 0.01),
 		"bytes_per_snapshot_per_player": snappedf(float(bytes_total) / _bytes_each.size(), 1.0),
 		"bytes_per_second_all_players": roundi(bytes_total / seconds),
+		"memory_rss_mb": _rss_mb(),
 		"probe_ms_per_tick": _probe_report(ticks),
 	}
+	# The steps of every room (what an older bench of one room called the step), then those and
+	# the snapshots made after them: the process's tick, which has to fit the budget.
+	result.merge(_spread("step_ms", _step_ms))
+	result.merge(_spread("tick_ms", _tick_ms))
 	print("CROWD_SERVER ", JSON.stringify(result))
 	get_tree().quit()
+
+
+## Mean, median, 95th and 99th percentile, worst and the count over the tick budget of per-tick
+## milliseconds, under `<prefix>_mean`, `_p50`, ...
+func _spread(prefix: String, values: Array[float]) -> Dictionary:
+	var sorted := values.duplicate()
+	sorted.sort()
+	var over := 0
+	for ms in values:
+		if ms > Night.STEP * 1000.0:
+			over += 1
+	return {
+		prefix + "_mean": snappedf(_mean(values), 0.001),
+		prefix + "_p50": snappedf(sorted[sorted.size() / 2], 0.001),
+		prefix + "_p95": snappedf(sorted[int(sorted.size() * 0.95)], 0.001),
+		prefix + "_p99": snappedf(sorted[int(sorted.size() * 0.99)], 0.001),
+		prefix + "_max": snappedf(sorted[sorted.size() - 1], 0.001),
+		prefix.replace("_ms", "") + "_over_budget": over,
+	}
+
+
+## The process's resident memory in megabytes (Linux; 0 elsewhere).
+func _rss_mb() -> float:
+	var status := FileAccess.get_file_as_string("/proc/self/status")
+	for line in status.split("\n"):
+		if line.begins_with("VmRSS:"):
+			return snappedf(
+				float(line.get_slice(":", 1).strip_edges().get_slice(" ", 0)) / 1024.0, 0.1
+			)
+	return 0.0
 
 
 ## The probes of the server's step, in milliseconds a tick: mean, median, 95th percentile and worst.
@@ -221,6 +315,11 @@ func _mean(values: Array[float]) -> float:
 	for v in values:
 		total += v
 	return total / maxf(values.size(), 1.0)
+
+
+## Whether `--name=1` was given.
+func _flag(name: String) -> bool:
+	return int(str(_args.get(name, 0))) != 0
 
 
 func _parse_args() -> Dictionary:

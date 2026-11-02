@@ -12,8 +12,10 @@ extends Node
 ## needed. Every few seconds the server tells the backend which matches it runs and how many
 ## players each has (`heartbeat`), and tells it when a match is over.
 ##
-## The nights run one after the other in one thread, each costing about 3 ms of a 16 ms step with
-## three players, which is what `capacity` (rooms a process takes) is sized from.
+## The nights run one after the other in one thread, so their costs add up in one 16.7 ms tick:
+## `capacity` (rooms a process takes) and `max_alive` are sized from that
+## (`docs/research/crowd-budget.md`, "Rooms in one process"). Rooms put their heavy ticks on
+## alternate halves of the frames (`_lighter_parity`).
 
 signal room_opened(match_id: String)
 signal room_closed(match_id: String)
@@ -267,6 +269,7 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	if settings != null:
 		room.match_settings = settings
 	room.max_alive = max_alive
+	room.heavy_parity = _lighter_parity()
 	room.emptied.connect(func() -> void: _end_room(match_id))
 	viewport.add_child(room)
 	await room.built
@@ -276,6 +279,16 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	_log("room_opened", {"match": match_id, "rooms": _rooms.size()})
 	room_opened.emit(match_id)
 	return room
+
+
+## The half of the physics frames (`NightHost.heavy_parity`) that fewer of the open rooms put their
+## heavy tick on, so the rooms' crowds step on alternate ticks and the process's worst tick is about
+## half its rooms' sum, not all of it.
+func _lighter_parity() -> int:
+	var on_even := 0
+	for room: NightHost in _rooms.values():
+		on_even += 1 if room.heavy_parity == 0 else -1
+	return 1 if on_even > 0 else 0
 
 
 ## A room whose night began and is empty is over; one that nobody ever came to is let go.

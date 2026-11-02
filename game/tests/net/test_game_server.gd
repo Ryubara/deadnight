@@ -150,6 +150,39 @@ func test_two_matches_are_two_nights_that_know_nothing_of_each_other() -> void:
 	assert_bool((ann.state.frame["players"] as Dictionary).has(2)).is_true()
 
 
+func test_rooms_put_their_crowds_steps_on_alternate_ticks() -> void:
+	await _start()
+	for index in 4:
+		await _client("match-%d" % index, "user-%d" % index)
+	var rooms: Array[NightHost] = []
+	var lures: Array[ZombieLure] = []
+	var parities := [0, 0]
+	for match_id in _server.match_ids():
+		var room := _server.room_of_match(match_id)
+		rooms.append(room)
+		parities[room.heavy_parity] += 1
+		# A lure counts down by one step each time the room's zombies step, nothing else.
+		var lure := ZombieLure.new(1, Vector3.ZERO, 1.0, 1000.0)
+		room.server.sim.lures.append(lure)
+		lures.append(lure)
+	assert_array(parities).is_equal([2, 2])
+	await get_tree().physics_frame
+	var before: Array[float] = []
+	for lure in lures:
+		before.append(lure.left)
+	var stepping: Array[int] = []
+	for _frame in 20:
+		await get_tree().physics_frame
+		var count := 0
+		for index in lures.size():
+			if lures[index].left < before[index]:
+				count += 1
+			before[index] = lures[index].left
+		stepping.append(count)
+	# Two of the four rooms step their zombies in every frame, never all four or none.
+	assert_array(stepping).is_equal([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+
+
 func test_a_ticket_that_is_not_good_is_turned_away() -> void:
 	await _start()
 	var good := _ticket("m", "ann")

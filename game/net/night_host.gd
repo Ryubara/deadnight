@@ -68,6 +68,11 @@ var resume_within := RESUME_WITHIN
 ## `NetWire.Refusal` to turn it away. Unset, everyone is let in (the platform backend's ticket check
 ## plugs in here).
 var admit: Callable
+## Which half of the physics frames this room's heavy ticks (the zombies' step, and the frame built
+## after it) fall on: `Engine.get_physics_frames() % 2`, or -1 for whenever it started. A
+## `GameServer` gives its rooms alternate halves, so four rooms in one process never all step their
+## crowds in the same tick.
+var heavy_parity := -1
 ## One room of a `GameServer`: the listener is the server's, not this node's.
 var embedded := false
 ## What a room is called in the log (the match id of a `GameServer`'s room).
@@ -80,6 +85,8 @@ var server: NightServer
 var serving := false
 ## Steps taken, and milliseconds spent in them (the work, not the waiting), for the stats.
 var steps := 0
+## 1 when `heavy_parity` moved this room's cadence by one tick (sent and stepped a tick earlier).
+var phase := 0
 var work_ms := 0.0
 var worst_ms := 0.0
 ## The nights built so far.
@@ -135,7 +142,11 @@ func _physics_process(_delta: float) -> void:
 		return
 	# Clients are sent a frame every `SEND_EVERY` steps and only the last of them counts, so the
 	# steps between do not build one (it is half a millisecond or more at every step).
-	var sending := (steps + 1) % SEND_EVERY == 0
+	if steps == 0 and heavy_parity >= 0 and (Engine.get_physics_frames() & 1) == heavy_parity:
+		phase = 1
+		# One tick's time for the zombies' sim without a step: its 30 Hz step falls on this tick.
+		server.sim.tick(Night.STEP, {})
+	var sending := (steps + phase + 1) % SEND_EVERY == 0
 	var events := server.step(Night.STEP, sending)
 	var frame: Dictionary = events.pop_back() if sending else {}
 	_events.append_array(events)
