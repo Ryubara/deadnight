@@ -9,6 +9,8 @@ extends UIScreen
 @export var actions := PackedStringArray()
 
 var back_button: UIButton
+## The first action, which takes the focus; null when the screen has no actions.
+var first_action: UIButton
 
 
 func _ready() -> void:
@@ -31,11 +33,13 @@ func _ready() -> void:
 	for action in actions:
 		var button := _button(action, UIButton.Variant.PRIMARY)
 		button.pressed.connect(func() -> void: UIMotion.shake(button))
+		if first_action == null:
+			first_action = button
 		box.add_child(button)
 	back_button = _button("Back", UIButton.Variant.GHOST)
 	back_button.pressed.connect(UIRouter.pop)
 	box.add_child(back_button)
-	initial_focus = get_path_to(back_button if actions.is_empty() else box.get_child(3))
+	initial_focus = get_path_to(back_button if first_action == null else first_action)
 
 
 func _label(text: String, style: UILabel.Style) -> UILabel:
