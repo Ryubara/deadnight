@@ -10,7 +10,8 @@ offers Create a night and Close, and the page stays on the main menu.
         tools/web_smoke/quick_join.py build/web https://backend.example build/quick-join
 
 The first argument is a folder with the export (served on a fixed local port, which the backend must list in
-`CORS_ORIGINS`) or the URL of a deployed build. Writes `result.json`, `console.txt` and screenshots (`c_searching.png`
+`CORS_ORIGINS`, or `--cors-shim` adds the headers on the way) or the URL of a deployed build. Writes `result.json`,
+`console.txt` and screenshots (`c_searching.png`
 when the card was caught searching, `c_night.png`, `d_night.png`, `e_failed.png`).
 """
 
@@ -41,8 +42,35 @@ IGNORED = ("A user gesture is required to request Pointer Lock",)
 DEAD_BACKEND = "http://127.0.0.1:9"
 
 
+CORS_HEADERS = {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "access-control-allow-headers": "content-type, authorization",
+}
+# Set by `--cors-shim`: the backend whose answers the browser is given CORS headers for.
+SHIMMED: list[str] = []
+
+
+def shim_cors(context, backend: str) -> None:
+    """Lets a build served from this machine call a deployed backend that only lists its own web page in
+    `CORS_ORIGINS`: the answers pass through the probe, which adds the headers. The requests themselves, and the game
+    server the ticket names, are the deployed ones."""
+
+    def handle(route) -> None:
+        if route.request.method == "OPTIONS":
+            route.fulfill(status=204, headers=CORS_HEADERS)
+            return
+        response = route.fetch()
+        route.fulfill(response=response, headers={**response.headers, **CORS_HEADERS})
+
+    context.route(f"{backend}/**", handle)
+
+
 def open_page(browser: Browser, url: str, console: list[str], problems: list[str], label: str) -> Page:
-    page = browser.new_context(viewport=smoke.VIEWPORT).new_page()
+    context = browser.new_context(viewport=smoke.VIEWPORT)
+    for backend in SHIMMED:
+        shim_cors(context, backend)
+    page = context.new_page()
     page.on("console", lambda m: console.append(f"[{label}] [{m.type}] {m.text}"))
     page.on(
         "pageerror",
@@ -57,8 +85,7 @@ def in_night(state: dict) -> bool:
 
 
 def press_quick_join(page: Page) -> None:
-    """The main menu's Play tab: Play together, then Quick join (one step down)."""
-    smoke.reach_menu(page)
+    """From the main menu, the Play tab's Quick join (one step down from Play together)."""
     smoke.menu_item(page, "Play", 1)
     smoke.press(page, "Enter")
 
@@ -96,12 +123,19 @@ def main() -> int:
     parser.add_argument("backend", help="the platform backend's https address")
     parser.add_argument("out", type=Path)
     parser.add_argument("--gpu", action="store_true", help="use the machine's Chrome and GPU")
+    parser.add_argument(
+        "--cors-shim",
+        action="store_true",
+        help="add CORS headers to the backend's answers, to run a local build against a deployed backend",
+    )
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     console: list[str] = []
     problems: list[str] = []
     result: dict = {"backend": args.backend}
 
+    if args.cors_shim:
+        SHIMMED.append(args.backend.rstrip("/"))
     local = None
     base = args.web
     if not args.web.startswith(("http://", "https://")):
@@ -117,21 +151,25 @@ def main() -> int:
         else:
             browser = p.chromium.launch(headless=True, args=smoke.SOFTWARE_GL)
         try:
-            # C presses Quick join: a night, with the card over the menu and no screen between.
+            # Both pages load to the menu first, so D reaches C's night while C is still alive.
             c = open_page(browser, f"{base}?{query}", console, problems, "C")
+            d = open_page(browser, f"{base}?{query}", console, problems, "D")
+            smoke.reach_menu(c)
+            smoke.reach_menu(d)
+            # C presses Quick join: a night, with the card over the menu and no screen between.
             press_quick_join(c)
             follow_into_night(c, "C", args.out, result, problems)
-            wait_players(c, 1)
             # D presses Quick join and is put in C's night.
-            d = open_page(browser, f"{base}?{query}", console, problems, "D")
             press_quick_join(d)
             follow_into_night(d, "D", args.out, result, problems)
+            both = wait_both(c, d, 2)
+            result["c_players"], result["d_players"] = both
             for name, page in (("c", c), ("d", d)):
-                result[f"{name}_players"] = wait_players(page, 2)
-                page.wait_for_timeout(2500)
+                page.wait_for_timeout(2000)
                 page.screenshot(path=args.out / f"{name}_night.png")
             # E: nothing to reach. The card says so, offers Create a night, and the page stays on the menu.
             e = open_page(browser, f"{base}?backend={DEAD_BACKEND}", console, problems, "E")
+            smoke.reach_menu(e)
             press_quick_join(e)
             failed = smoke.wait_for(
                 e, "the failure text", lambda s: s.get("quick_join") not in ("", SEARCHING), smoke.SCREEN_TIMEOUT_S
@@ -167,9 +205,21 @@ def main() -> int:
     return 1 if problems else 0
 
 
-def wait_players(page: Page, count: int) -> int:
-    seen = smoke.wait_for(page, f"{count} players", lambda s: s.get("players", 0) >= count, 120)
-    return seen["players"]
+def read_probe(page: Page) -> dict:
+    """The whole probe (`smoke.probe` keeps the few fields the shared helpers need)."""
+    return page.evaluate("() => window.deadnight ? Object.assign({}, window.deadnight) : null") or {}
+
+
+def wait_both(first: Page, second: Page, count: int) -> tuple[int, int]:
+    """Waits until both pages see `count` players at the same time: both are in one night."""
+    deadline = time.monotonic() + 120
+    seen: list[dict] = [{}, {}]
+    while time.monotonic() < deadline:
+        seen = [read_probe(first), read_probe(second)]
+        if all(state.get("players", 0) >= count for state in seen):
+            return seen[0]["players"], seen[1]["players"]
+        time.sleep(0.25)
+    raise TimeoutError(f"timed out waiting for {count} players on both pages; they reported {seen}")
 
 
 if __name__ == "__main__":

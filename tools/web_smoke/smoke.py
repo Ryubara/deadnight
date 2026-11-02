@@ -140,7 +140,7 @@ PROBE_JS = """
   const d = window.deadnight;
   return d ? {screen: d.screen, night: d.night, running: d.running, over: d.over,
               round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw,
-              interpolated: d.interpolated, tab: d.tab, stage: d.stage} : null;
+              interpolated: d.interpolated, tab: d.tab, stage: d.stage, quick_join: d.quick_join} : null;
 }
 """
 
