@@ -110,6 +110,56 @@ func test_a_night_draws_nothing_the_warm_up_did_not() -> void:
 	night.queue_free()
 
 
+func test_a_first_flare_shot_draws_nothing_the_warm_up_did_not() -> void:
+	# The shot of the flare gun as the server tells it (#483: its first shot hitched): the muzzle
+	# flash, the flare in the air, where it lands and the fire that calls the dead.
+	var night := await _warmed_night()
+	var muzzle := night.player().global_position + Vector3(0.0, 1.5, -0.5)
+	var landing := muzzle + Vector3(0.0, -1.2, -9.0)
+	(
+		night
+		. view
+		. draw_event(
+			{
+				"type": &"shot_fired",
+				"weapon_id": &"flare_gun",
+				"muzzle": muzzle,
+				"ends": [muzzle + Vector3(0.0, 0.0, -3.0)],
+				"flesh": [],
+			}
+		)
+	)
+	(
+		night
+		. view
+		. draw_event(
+			{
+				"type": &"projectile_spawned",
+				"projectile_id": 7,
+				"shooter_id": 1,
+				"weapon_id": &"flare_gun",
+				"position": muzzle,
+				"velocity": Vector3(0.0, 2.0, -12.0),
+			}
+		)
+	)
+	assert_int(night.view.projectiles_in_flight()).is_equal(1)
+	var drawn := DrawLedger.strings_of(night)
+	night.view.draw_event({"type": &"projectile_burst", "projectile_id": 7, "point": landing})
+	night.view.draw_event({"type": &"lure_started", "point": landing, "seconds": 8.0})
+	await get_tree().process_frame
+	drawn.merge(DrawLedger.strings_of(night))
+	var absent := night.warmup.ledger.missing(drawn)
+	(
+		assert_array(absent)
+		. override_failure_message(
+			"The flare's first shot drew these and the warm-up did not:\n%s" % "\n".join(absent)
+		)
+		. is_empty()
+	)
+	night.queue_free()
+
+
 func test_the_warm_up_draws_the_crane_in_every_stage_and_keeps_its_materials() -> void:
 	# The night's own crane is hidden until the server's first frame, so the warm-up draws a copy:
 	# whatever the real one is made of (cabinet, glass, beam, sparks) is in the ledger.

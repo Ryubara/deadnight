@@ -65,10 +65,11 @@ the shot shake, so the aim ray, the walls sweep and the weapon's aim never see i
 (`SprintSway`) is stepped by the rig each frame from `sprinting` and `ground_speed`, which the player sets after
 every tick.
 
-- **Locked to the feet.** The phase counts footfalls: ground speed times the step over `step_distance` (1.9 m, the
-  metres per footstep event, and half the 3.9 m the Run clip covers in one cycle at its planted speed of 5.5 m/s).
-  So a faster run sways faster (3.7 footfalls a second at 7 m/s), the same stride the animation and the footstep audio
-  keep, and a body held against a wall stands still in the picture. No wall time is read.
+- **Locked to the feet.** The phase counts footfalls: ground speed times the step over `step_distance` (1.5 m, the
+  metres per footstep event, and half the 3.0 m the Run clip covers in one cycle at its planted speed of 4.3 m/s,
+  [measured](../research/run-clip-speed.md)). So a faster run sways faster (4.7 footfalls a second at 7 m/s), the
+  same stride the animation and the footstep audio keep, and a body held against a wall stands still in the
+  picture. No wall time is read.
 - **Bob and sway.** Pitch goes through one cycle per footfall (`sprint_sway_bob_steps` 1), roll and yaw through one per
   two footfalls (`sprint_sway_sway_steps` 2), yaw a quarter of a cycle behind roll. `sprint_sway_phase_degrees` slides
   where in the stride a foot lands.
