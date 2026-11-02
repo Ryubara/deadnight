@@ -122,10 +122,10 @@ func test_the_living_cap_is_pinned_for_every_player_count() -> void:
 		10: [13, 19, 25, 31],
 		20: [21, 27, 33, 39],
 		21: [22, 28, 34, 40],
-		22: [23, 29, 35, 40],
-		29: [28, 34, 40, 40],
-		30: [28, 34, 40, 40],
-		99: [28, 34, 40, 40],
+		22: [23, 29, 35, 41],
+		29: [28, 34, 40, 46],
+		30: [28, 34, 40, 46],
+		99: [28, 34, 40, 46],
 	}
 	for round_number: int in table:
 		var expected: Array = table[round_number]
@@ -133,24 +133,34 @@ func test_the_living_cap_is_pinned_for_every_player_count() -> void:
 			assert_int(_t.alive_cap(round_number, players)).is_equal(expected[players - 1])
 
 
-func test_no_player_count_nor_round_lifts_the_cap_above_the_web_ceiling() -> void:
+func test_no_player_count_nor_round_lifts_a_browsers_cap_above_its_ceiling() -> void:
+	# The curve alone stops at 46 for four players (the desktop's ceiling is above it); a match with
+	# a browser in it is trimmed to the web ceiling by `MatchSettings` (`GameRules.crowd_ceiling`).
+	var settings := MatchSettings.new()
 	for round_number in range(1, 101):
 		for players in range(1, 9):
-			assert_int(_t.alive_cap(round_number, players)).is_less_equal(40)
+			var cap := settings.alive_cap(_t, round_number, players, _t.web_alive_cap_ceiling)
+			assert_int(cap).is_less_equal(_t.web_alive_cap_ceiling)
+			assert_int(_t.alive_cap(round_number, players)).is_less_equal(_t.alive_cap_ceiling)
 
 
-## The rules' ceiling and the crowd's hard cap are the same number: a rules cap above it (46 for
+## The browser's ceiling and the crowd's hard cap are the same number: a rules cap above it (46 for
 ## four players, #315) only queued the extra zombies in the director and told the balance model
-## about a crowd the lot never stood.
-func test_the_rules_ceiling_is_the_crowds_hard_cap() -> void:
-	assert_int(_t.alive_cap_ceiling).is_equal(ZombieTuning.new().hard_cap)
+## about a crowd the lot never stood. A desktop has its own, higher one (#453); the server sets
+## both from the weakest client in the match (`NightServer.set_platform`).
+func test_the_browsers_ceiling_is_the_crowds_hard_cap() -> void:
+	# The web build's measured crowd (docs/research/crowd-budget.md); a desktop has its own, above it.
+	assert_int(_t.web_alive_cap_ceiling).is_equal(ZombieTuning.new().hard_cap)
+	assert_int(_t.alive_cap_ceiling).is_greater_equal(100)
 
 
 func test_the_ceiling_only_trims_the_cap_and_never_lifts_it() -> void:
 	var loose := _t.duplicate() as RoundTuning
 	loose.alive_cap_ceiling = 1000
 	for players in range(1, 5):
-		assert_int(_t.alive_cap(30, players)).is_equal(mini(loose.alive_cap(30, players), 40))
+		var asked := loose.alive_cap(30, players)
+		assert_int(_t.alive_cap(30, players)).is_equal(mini(asked, _t.alive_cap_ceiling))
+		assert_int(_t.alive_cap(30, players)).is_less_equal(asked)
 
 
 func test_the_night_gets_darker_to_a_floor() -> void:

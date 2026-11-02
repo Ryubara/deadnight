@@ -91,6 +91,13 @@ var drawn_bodies := true
 ## The round trip each connected player last reported, milliseconds (the game server fills it from
 ## their pings): a player with no entry has none to show, and a night on a loopback has no one's.
 var pings: Dictionary[int, int] = {}
+## A cap an operator puts on the crowd (a small container's CPU is shared by its rooms); 0 is none.
+## Setting it applies at once.
+var crowd_limit := 0:
+	set(value):
+		crowd_limit = maxi(value, 0)
+		if rules != null:
+			_apply_crowd_ceiling()
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -110,6 +117,9 @@ var _repairing: Dictionary[int, StringName] = {}
 var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
 var _outbox: Array[Dictionary] = []
+## Whether each player's client is a browser, which stands a smaller crowd than a desktop. A remote
+## client counts as a browser until it says it is not (`set_platform`).
+var _web: Dictionary[int, bool] = {}
 var _probe: WorldProbe
 ## Held here: a Callable does not keep its RefCounted alive.
 var _cast: WorldCast
@@ -147,6 +157,7 @@ func _init(
 	world.bind(rules)
 	world.doors.door_opened.connect(_on_door_opened)
 	rules.event_emitted.connect(_on_rules_event)
+	_apply_crowd_ceiling()
 
 
 ## Stops listening to the rules and the doors, so nothing calls into a finished night. Call when
@@ -186,6 +197,30 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 	return _outbox
 
 
+## A client says what kind it is (`NetWire.platform`): the crowd of the match is the weakest
+## client's. Unknown players are ignored.
+func set_platform(player_id: int, web: bool) -> void:
+	if _bodies.has(player_id):
+		_web[player_id] = web
+		_apply_crowd_ceiling()
+
+
+## The most zombies alive at once in this match now.
+func crowd_ceiling() -> int:
+	return rules.crowd_ceiling
+
+
+## The rules' cap and the crowd's hard cap, one number: the browser's when any player is on one,
+## else the desktop's (with nobody here yet, this process's own platform).
+func _apply_crowd_ceiling() -> void:
+	var web := OS.has_feature("web") if _web.is_empty() else _web.values().has(true)
+	var ceiling := rules.tuning.rounds.ceiling_for(web)
+	if crowd_limit > 0:
+		ceiling = mini(ceiling, crowd_limit)
+	rules.crowd_ceiling = ceiling
+	sim.tuning.hard_cap = ceiling
+
+
 ## Keeps the newest command of a player, with the pressed edges of the one it replaces if no step
 ## has used that one yet.
 func submit(player_id: int, command: NightCommand) -> void:
@@ -212,7 +247,7 @@ func health_of(player_id: int) -> float:
 
 
 ## One fixed tick. Returns every event of it, the frame last.
-func step(delta: float) -> Array[Dictionary]:
+func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
 	var began := PerfProbe.begin()
@@ -225,7 +260,10 @@ func step(delta: float) -> Array[Dictionary]:
 	rules.apply(RulesAction.tick(delta))
 	PerfProbe.end(&"server.rules", began)
 	began = PerfProbe.begin()
-	_combat(CombatAction.targets(_target_list()))
+	var target_list := _target_list()
+	PerfProbe.end(&"server.target_list", began)
+	began = PerfProbe.begin()
+	_combat(CombatAction.targets(target_list))
 	_combat(CombatAction.tick(delta))
 	PerfProbe.end(&"server.combat", began)
 	began = PerfProbe.begin()
@@ -234,7 +272,8 @@ func step(delta: float) -> Array[Dictionary]:
 	PerfProbe.end(&"server.act", began)
 	began = PerfProbe.begin()
 	_throw_grenades(delta)
-	_outbox.append(_frame())
+	if with_frame:
+		_outbox.append(_frame())
 	PerfProbe.end(&"server.frame", began)
 	return _outbox
 
@@ -246,6 +285,8 @@ func _join(player_id: int, local: bool) -> void:
 	if _bodies.has(player_id):
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
+	_web[player_id] = OS.has_feature("web") if local else true
+	_apply_crowd_ceiling()
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
@@ -264,6 +305,8 @@ func _leave(player_id: int) -> void:
 	if _bodies.has(player_id):
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
+		_web.erase(player_id)
+		_apply_crowd_ceiling()
 		_pending.erase(player_id)
 		_silent.erase(player_id)
 		_acked.erase(player_id)
@@ -806,9 +849,16 @@ func _frame() -> Dictionary:
 		"doors": rules.doors_open.duplicate(),
 		"crane": _crane_frame(),
 		"barricades": rules.barricades.to_dict(),
-		"zombies": ZombieCodec.encode(sim.zombies),
+		"zombies": _encode_zombies(),
 		"players": players,
 	}
+
+
+func _encode_zombies() -> PackedByteArray:
+	var began := PerfProbe.begin()
+	var bytes := ZombieCodec.encode(sim.zombies)
+	PerfProbe.end(&"server.encode", began)
+	return bytes
 
 
 ## The crane for the picture: where it stands, which stage it is in, whose play it is, the prize

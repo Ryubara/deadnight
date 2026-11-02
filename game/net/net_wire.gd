@@ -23,6 +23,10 @@ extends RefCounted
 ## PONG     S->C  u8 type=7, u32 the same, u32 server step
 ## REFUSED  S->C  u8 type=10, u8 reason (`Refusal`), u8 the server's protocol version; the server
 ##                closes the connection after it
+## PLATFORM C->S  u8 type=11, u8 1 for a browser and 0 for any other client (2 bytes), sent once
+##                after the welcome: the crowd a room may stand depends on the weakest client in it.
+##                No version bump: a server that does not know it drops the packet, and a client
+##                that never sends it is taken for a browser (`NightServer.set_platform`)
 ##
 ## A packed variable is a flag byte (0 plain, 1 compressed with Zstandard), when compressed the u32
 ## size it has once unpacked, and the `var_to_bytes` of the value. The server decodes nothing but
@@ -31,7 +35,9 @@ extends RefCounted
 ## Everything a decoder reads is length-checked first, and a short, long or unknown packet is
 ## dropped (an empty Dictionary, or null).
 
-enum Type { HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10 }
+enum Type {
+	HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10, PLATFORM = 11
+}
 enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
@@ -46,6 +52,7 @@ const MIN_VERSION := 5
 const DEFAULT_PORT := 8910
 const COMMAND_SIZE := 23
 const PING_SIZE := 7
+const PLATFORM_SIZE := 2
 ## What a ping says when the client has not measured a round trip yet, and the most it can say.
 const NO_RTT := 0xFFFF
 ## The resume token a WELCOME gives: random, one for each connection, good for taking back the seat.
@@ -109,6 +116,18 @@ static func read_hello(data: PackedByteArray) -> Dictionary:
 		"token": data.slice(HELLO_HEADER, ticket_at),
 		"ticket": data.slice(ticket_at).get_string_from_utf8(),
 	}
+
+
+## The message that says what kind of client this is (a browser or not).
+static func platform(web: bool) -> PackedByteArray:
+	return PackedByteArray([Type.PLATFORM, 1 if web else 0])
+
+
+## 1 for a browser, 0 for another client, -1 when the packet is not a platform message.
+static func read_platform(data: PackedByteArray) -> int:
+	if data.size() != PLATFORM_SIZE or data[0] != Type.PLATFORM or data[1] > 1:
+		return -1
+	return data[1]
 
 
 static func refused(reason: Refusal) -> PackedByteArray:

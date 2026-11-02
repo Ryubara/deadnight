@@ -131,6 +131,10 @@ var tuning: RulesTuning
 ## The match settings the night runs under: set before it starts (`RulesAction.configure`, or the
 ## constructor), then read-only.
 var settings: MatchSettings
+## The most zombies alive at once in this match: the ceiling of the weakest client in it (a browser
+## stands fewer than a desktop). 0 is the tuning's own, the desktop's. The server sets it as players
+## come and go (`NightServer`); the rules' cap and the crowd's hard cap are the same number.
+var crowd_ceiling := 0
 ## The night's seed, given at construction and kept in the snapshot.
 var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
@@ -529,7 +533,7 @@ func _type(type_id: StringName) -> ZombieType:
 
 func _tick_spawning(delta: float) -> void:
 	_spawn_timer -= delta
-	var cap := settings.alive_cap(tuning.rounds, round_number, _round_players)
+	var cap := settings.alive_cap(tuning.rounds, round_number, _round_players, crowd_ceiling)
 	var interval := settings.spawn_interval(tuning.rounds, round_number, _round_players)
 	if _special != null and _special.kind == SpecialRound.Kind.ONLY:
 		interval /= _special.spawn_rate
