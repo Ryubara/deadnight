@@ -106,6 +106,9 @@ const BUSES := {
 var path := DEFAULT_PATH
 ## True in a browser, which owns its window (window mode is not ours to set). Tests inject it.
 var is_web := OS.has_feature("web")
+## Takes the window mode instead of the real window when it is valid (a Callable taking a
+## `DisplayServer.WindowMode`): a test sets one, so no test changes the display it runs on.
+var window_setter := Callable()
 
 var _values := {}
 var _dirty := false
@@ -297,7 +300,10 @@ func _apply_window_mode(mode: int) -> void:
 
 ## The one call that touches the real window, so a test can stand in for it.
 func _set_window_mode(target: DisplayServer.WindowMode) -> void:
-	DisplayServer.window_set_mode(target)
+	if window_setter.is_valid():
+		window_setter.call(target)
+	else:
+		DisplayServer.window_set_mode(target)
 
 
 func _apply_volume(bus: StringName, linear: float) -> void:
