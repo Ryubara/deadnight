@@ -3,7 +3,13 @@
 # imported and run headless. Any engine or script error fails the job, since Godot itself exits 0 on most of them.
 # The `web` job exports the game for the browser and runs it in headless Chromium (docs/research/web-export.md).
 # The `deploy` job, on main only, publishes that same build to Railway (docs/research/web-export.md, "Playing the web
-# build"). `build-ok` is the one required check, so the jobs above it can change freely.
+# build"). `build-ok` is the required check for the build, so the jobs above it can change freely.
+#
+# What starts per push (the runners are the bottleneck, #447): `conventions` is the first job and also says which parts
+# of the repository the pull request touches (.github/scripts/ci_scope.py). `godot` and `web` wait for it and start only
+# when something they can see changed (no documentation-only run; no web build for a change that only adds tests); `mkdocs`, `markdownlint` and `actionlint` start only when their files
+# changed. A job skipped by an `if` reports success to a required check, so every required name is still reported;
+# `build-ok` fails on a failed or cancelled job and on a `conventions` that failed (which also stops the long jobs).
 # Actions are pinned to a full commit SHA; the tag is in the comment beside it.
 name: ci
 
@@ -24,7 +30,48 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  conventions:
+    # The conventions file must stay well formed and the generated files (the pull request template and the issue
+    # forms) must match it. It runs first, takes seconds, and its `scope` step decides which of the jobs below start:
+    # on a pull request from the files it changes (the API, so no checkout of more than the base is needed), on a push to
+    # the default branch or a manual run everything.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      godot: ${{ steps.scope.outputs.godot }}
+      web: ${{ steps.scope.outputs.web }}
+      docs: ${{ steps.scope.outputs.docs }}
+      markdown: ${{ steps.scope.outputs.markdown }}
+      workflows: ${{ steps.scope.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - run: uv run --with pyyaml python .github/scripts/groundwork.py validate
+      - run: uv run --with pyyaml python .github/scripts/groundwork.py render --check
+      - run: uv run --with pyyaml python .github/scripts/groundwork.py check-files
+      - name: Which parts of the repository the change touches
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/ci_scope.py --self-test
+          if [ "$EVENT" = pull_request ]; then
+            [[ "$NUMBER" =~ ^[0-9]+$ ]] || { echo "unexpected pull request number" >&2; exit 1; }
+            gh api --paginate "repos/$GH_REPO/pulls/$NUMBER/files" --jq '.[].filename' | python3 .github/scripts/ci_scope.py | tee -a "$GITHUB_OUTPUT"
+          else
+            python3 .github/scripts/ci_scope.py --all | tee -a "$GITHUB_OUTPUT"
+          fi
+
   godot:
+    needs: conventions
+    if: needs.conventions.outputs.godot == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -46,6 +93,9 @@ jobs:
       - name: Every committed script has its committed uid
         # Before the import: an import writes missing uids to disk, and the check reads the git index anyway.
         run: python3 repos/deadnight/tools/check_gd_uids.py --root repos/deadnight
+      - name: Every texture import keeps palettes exact and Detect 3D off
+        # Before the import as well: the committed .import files are what the maintainer's editor reads (issue #441).
+        run: python3 repos/deadnight/tools/check_texture_imports.py --root repos/deadnight
       - name: Make the workspace and fetch the pinned Godot and GdUnit4
         run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot,gdunit4
       - name: Import the project
@@ -92,6 +142,8 @@ jobs:
           if-no-files-found: warn
 
   web:
+    needs: conventions
+    if: needs.conventions.outputs.web == 'true'
     # The web export, in a browser. Godot exports with the pinned templates (tools.toml `godot-templates`, hash-checked by
     # `gds workspace init`, about 1 GB, so the download cache matters), the build is served by tools/web_smoke/smoke.py,
     # and headless Chromium (Playwright) reaches the main menu and the wardrobe, starts a night and plays it a while.
@@ -140,7 +192,7 @@ jobs:
         run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/smoke.py repos/deadnight/build/web smoke
       - name: Tour the skin shaders in the browser
         # The menu, the three transitions and the credits: fails on a console error or an all-black or all-white frame.
-        run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720
+        run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500
       - name: Upload the build
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -226,12 +278,57 @@ jobs:
         if: env.skip != 'true'
         run: bash deploy/server/deploy.sh deadnight-server
 
+  mkdocs:
+    # The documentation site built strictly (a broken link or a page missing from the nav fails). A pull request that
+    # changes no page, no `mkdocs.yml` and no Markdown file skips it; the push to the default branch builds and
+    # publishes the site in docs.yml.
+    needs: conventions
+    if: github.event_name == 'pull_request' && needs.conventions.outputs.docs == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-docs.txt
+      - run: mkdocs build --strict
+
+  markdownlint:
+    needs: conventions
+    if: needs.conventions.outputs.markdown == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The rules are in .markdownlint.yaml; the files skipped in .markdownlint-cli2.yaml.
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: |
+            **/*.md
+            #.venv
+            #site
+
+  actionlint:
+    needs: conventions
+    if: needs.conventions.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The download script comes from the same commit as the release it fetches (v1.7.12).
+      - name: Download actionlint 1.7.12
+        run: >-
+          bash <(curl -sSfL
+          https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash)
+          1.7.12
+      - run: ./actionlint -color .github/workflows/*.yml
+
   build-ok:
     if: always()
-    needs: [godot, web]
+    needs: [conventions, godot, web]
     runs-on: ubuntu-24.04
     steps:
       - name: Every job passed
+        # A skipped `godot` and `web` (a documentation-only change) are fine; a skipped one after a failed
+        # `conventions` is not, and that failure is in the list.
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |

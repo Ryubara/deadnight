@@ -196,18 +196,28 @@ ground;
 
 ### Visual direction
 
-Two directions were mocked over the live stage for the maintainer (the captures are in the pull request): **A, the
-program** (paper tickets with notches, a punch card of holes for progress, the Billing level as a ring on a name plate)
-and **B, the letterboard** (no cards: dark hairline panels like a showtimes board, amber used sparingly, progress as a
-strip of film frames, marquee bulbs under the active tab). Which one is built is the maintainer's pick, recorded here
-when it comes; the layout, cameras, data and input above hold for both. Both avoid the generic look on purpose: no glow
-on everything, no rounded cards in a grid, no icons for their own sake; type does the work, one accent, one idea of how
-progress looks.
+Two directions were mocked over the live stage (the captures are in the first pull request): **A, the program**
+(paper tickets with notches, a punch card of holes for progress, the Billing level as a ring on a name plate) and **B,
+the letterboard** (dark hairline panels, film-frame strips). **The maintainer picked A.** The rules it sets:
+
+- **Surfaces are paper.** A ticket (a cream stub with a half-round notch cut in each side and a perforation) is the one
+  surface for a button, a plate and a challenge stub; the Challenges tab is one sheet of paper, "the program". Dark
+  surfaces are the stage and the scrim only; the wardrobe's pickers keep the game's dark components beside a paper
+  heading.
+- **Progress is a punch card:** a row of ten holes, punched from the left as the goal fills (a hole is a tenth of the
+  goal, rounded). The count beside it ("14/20", "1,850/3,000") is real type and the only place the exact number lives.
+- **One accent, red** (`hot`) on the primary ticket and on tags; amber only for the refresh countdown on the dark.
+- Type does the rest: Bungee Inline for titles and numbers, Barlow Condensed in wide-tracked capitals for labels.
+  No glow, no icons for their own sake, no cards in a grid.
+- **Numbers never clip.** A count sits in a container with the text beside it, never at a fixed offset: the text
+  takes what is left and is cut with an ellipsis, the count takes what it needs (the longest is `1,000,000/1,000,000`
+  in the display face, 380 units). The first mock placed counts by hand and ran off the paper; a test now fills a
+  row with the longest value on every canvas and checks the count is inside its row.
 
 ### Open questions
 
-- Dailies: how many a day, whether unfinished ones bank (proposed in #399: up to three), and the refresh hour; the menu
-  shows whatever the tracker decides.
+- Dailies: how many a day and the reset hour. **They expire at each reset** (the maintainer chose that over
+  banking), so the menu shows no "banked" or "leaves soon" state, only the time to the reset.
 - The showcase weapon is cosmetic. Should the Loadout tab also pick the weapon a night starts with, once the starter
   program lets a player choose a sidearm (progression, Billing 4)?
 - Shop prices and the shape of the economy are not designed; the Shop tab is a labelled placeholder.
@@ -299,5 +309,10 @@ the new `car()` of #380. Three browsers, 1920 x 1080:
   `uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/skin_tour.py build/web <out> --browser
   chromium|chrome|firefox [--size 1920x1080] [--unpaced]`. Firefox needs `playwright install firefox` once. The CI `web`
   job runs the Chromium tour at 1280 x 720 after the smoke run.
+- **A key is lost on a slow frame.** Godot reads input once per frame, and the runner's software renderer draws a frame
+  in 200 to 250 ms, so the 150 ms key hold the smoke run uses can fall between two frames: the first CI runs of the tour
+  walked to the wrong item and waited for a screen that never opened. The tour holds each key for `--hold-ms` (500 in
+  CI), gives each a moment to land, and when the wrong screen opens (or none) goes back with Escape and walks again,
+  up to three times. `--throttle 6` slows a local Chromium to reproduce a slow runner (it still passes).
 - **Keys on the menu:** a screen you came back from remembers its focused item (since #380), so a script that walks the
   menu presses Up six times first (the focus stops at the ends) and then Down to the item it wants.

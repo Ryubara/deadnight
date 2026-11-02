@@ -86,6 +86,7 @@ static func _player_fits(player: Dictionary) -> bool:
 	return (
 		all_names(player["weapons"])
 		and all_names(player["tonics"])
+		and all_names(player["upgraded"])
 		and _health_fits(player["health"], player["max_health"])
 		and is_finite(player["since_blow"])
 		and player["since_blow"] >= 0.0

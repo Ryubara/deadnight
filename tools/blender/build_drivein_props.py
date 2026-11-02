@@ -22,6 +22,9 @@ import bmesh
 import bpy
 from mathutils import Euler, Matrix, Vector
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from palette_import import ensure_import
+
 ROUGHNESS = 0.415  # the kit's
 METALLIC = 0.0  # paint, wood and enamel; the kit's 0.4 reads as dark at night
 SWATCH_PX = 16
@@ -142,6 +145,7 @@ def palette_image(path):
     img.filepath_raw = str(path)
     img.file_format = "PNG"
     img.save()
+    ensure_import(path)  # lossless, no mipmaps, Detect 3D off (tools/check_texture_imports.py)
     return img
 
 
