@@ -13,6 +13,13 @@ static func load_look(unlocks: LookUnlocks = null) -> CharacterLook:
 	return look.without_locked(unlocks if unlocks != null else LookUnlocks.new())
 
 
+## Writes the look to the file now.
 static func save_look(look: CharacterLook) -> void:
-	Settings.set_value(SettingsService.CHARACTER_LOOK, look.to_json())
+	set_look(look)
 	Settings.save()
+
+
+## Makes `look` the saved one in memory and leaves the file write to the caller, so a screen that
+## holds several choices can write them all once (`LoadoutPanel.commit`).
+static func set_look(look: CharacterLook) -> void:
+	Settings.set_value(SettingsService.CHARACTER_LOOK, look.to_json())

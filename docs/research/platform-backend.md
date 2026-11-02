@@ -266,6 +266,16 @@ mappings for the backend and each game server.
 
 ## Gotchas found while building it
 
+- The gamepad in an Activity (#479). The Activity is an iframe, and a browser lists a gamepad to an iframe only when
+  the Permissions-Policy feature `gamepad` allows it (the default in current Chromium is every origin, so a host
+  has to forbid it on purpose, by an `allow` attribute or a header, to block it); a blocked page's
+  `navigator.getGamepads()` throws, and Godot's web runtime swallows the error, so no pad ever shows. A page without the
+  keyboard focus is listed none either, and a pad needs one button press to appear. The Embedded App SDK has no
+  gamepad command (only key-binding types). The head include of the export defines `window.deadnightGamepad()` (frame,
+  focus, the policy's answer, pads, the exception's name) and the Play together screen reads it inside an Activity
+  and says which case it is (`GamepadProbe`: blocked, click first, press a button, connected), so the maintainer can
+  read the cause in Discord. `tools/web_smoke/activity.py --embed denied` shows the blocked line; `--embed gamepad
+  --pad` the connected one. What Discord's clients grant is not in its docs: read it from that line.
 - Discord's proxy compresses the backend's answers (`Content-Encoding: gzip`), and Godot's `HTTPRequest` then decodes a
   body the browser has decoded already and fails, which the game reads as "Could not reach the game's servers": every
   call through `/api` failed while the backend logged a 200 or 201. `HttpJson` sets `accept_gzip = false`.
