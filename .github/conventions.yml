@@ -92,6 +92,26 @@ pull_requests:
   # A pull request whose title verb is listed (a fix) shows a test failing before the change and passing after it: a
   # `Failed first:` line in Testing, or `Failed first: none (reason)` when no test can show it. Needs `check-body --title`.
   failed_first: {verbs: [Fix], section: Testing, label: "Failed first:"}
+  # Docs ship with the change (the kit's docs/hooks.md#docs). A pull request is judged an agent correcting earlier work
+  # from what GitHub knows, not from what its author says: its title verb, a watched check that failed on an earlier
+  # commit of it, or a closed issue labelled `bug` (`groundwork.py pr-history`, then `check-body --history`). Such a pull
+  # request needs a `Lessons:` line in Summary linking the lesson (a file of the kit's docs/lessons/) or a row of the
+  # kit's corrections page that records what went wrong; `Lessons: none (reason)` is refused for it and allowed elsewhere.
+  lessons:
+    section: Summary
+    label: "Lessons:"
+    verbs: [Fix, Rework]
+    bug_labels: [bug]
+    history_checks: [build-ok, conventions, mkdocs, markdownlint, actionlint]
+  # A fix, a rework or a closed `bug` issue also names the kit pull request that documents the process (the lessons
+  # live in the kit repository, Ryubara/gdstudio), or says `Kit docs: none (reason)`.
+  kit_docs: {section: Summary, label: "Kit docs:", verbs: [Fix, Rework], repo: gdstudio}
+  # A pull request that closes an issue names the areas of the kit's docs/lessons/areas.toml whose checks the author
+  # read first (`gds lessons <area>`). This repository has no areas file (`areas_file` would be read from the working
+  # directory of the checker), so the line is required but not matched against the issue's labels.
+  read_first:
+    section: Summary
+    label: "Read first:"
   ai_use:
     section: "AI use"
     written_by:
@@ -101,7 +121,7 @@ pull_requests:
     # names_trailer_models: the model line must name every model a commit's co-author trailer names.
     model: {label: "Model:", none: "n/a", names_trailer_models: true}
   guidance:
-    Summary: "One short paragraph: what this changes and why. If the change needs no documentation, add a line `Docs: none`. If this finishes an issue, add a line `Fixes #<number>` (one per issue)."
+    Summary: "One short paragraph: what this changes and why. If the change needs no documentation, add a line `Docs: none`. If this finishes an issue, add a line `Fixes #<number>` (one per issue) and a line `Read first: <areas>` naming the areas of its labels (the kit's docs/lessons/areas.toml). A fix or rework, or a change after a failed check, adds `Lessons: docs/lessons/<file>.md` (the kit's lesson on what went wrong, written in this task). A fix or rework or a closed `bug` issue adds `Kit docs: <the kit pull request>` (or `Kit docs: none (reason)`)."
     "Issues affected": "Every other open issue this partly fixes, changes or makes out of date, one line each: `- #123: its step 2 is done`. An issue this finishes is `Fixes #N` in Summary, not here. None affected: one line `None (reason)`, such as `None (one-line fix)`. After the merge the coordinator updates each issue listed."
     Checklist: "List what this pull request finishes, each item ticked. Work it does not finish is not listed here: it lives in its own issue."
     Testing: "What was run and what came out: commands, tests added or changed, results as counts or pass/fail. A `Fix` pull request adds a line `Failed first:` naming the test that failed before the fix and passes after (or `Failed first: none (reason)`)."

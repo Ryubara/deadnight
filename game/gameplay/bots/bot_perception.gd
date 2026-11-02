@@ -150,6 +150,9 @@ func _sighted(zombie: Dictionary) -> void:
 			"velocity": Vector3.ZERO,
 			"look": zombie.get("look", ZombieModels.DEFAULT),
 			"mode": zombie["mode"],
+			"yaw": zombie.get("yaw", 0.0),
+			"episode": zombie.get("episode", 0),
+			"attack_at": beliefs.now if zombie["mode"] == ZombieBody.Mode.ATTACK else -1.0,
 			"first_seen": beliefs.now,
 			"last_seen": beliefs.now,
 			"believed_at": beliefs.now + draw_reaction(),
@@ -203,6 +206,8 @@ func _follow(by_id: Dictionary) -> void:
 
 func _update(contact: Dictionary, zombie: Dictionary) -> void:
 	contact["position"] = zombie["position"]
+	contact["yaw"] = zombie.get("yaw", contact.get("yaw", 0.0))
+	_note_swing(contact, zombie)
 	contact["mode"] = zombie["mode"]
 	contact["last_seen"] = beliefs.now
 	var gap: float = beliefs.now - contact["anchor_at"]
@@ -211,6 +216,17 @@ func _update(contact: Dictionary, zombie: Dictionary) -> void:
 		contact["velocity"] = Vector3(moved.x, 0.0, moved.z) / gap
 		contact["anchor_pos"] = zombie["position"]
 		contact["anchor_at"] = beliefs.now
+
+
+## A swing is first seen on the clock: the telegraph the bot reacts to. A new swing (the episode
+## counter moved, or the mode just became an attack) starts the clock again; any other mode ends it.
+func _note_swing(contact: Dictionary, zombie: Dictionary) -> void:
+	var episode: int = zombie.get("episode", 0)
+	if zombie["mode"] != ZombieBody.Mode.ATTACK:
+		contact["attack_at"] = -1.0
+	elif contact["mode"] != ZombieBody.Mode.ATTACK or episode != contact.get("episode", 0):
+		contact["attack_at"] = beliefs.now
+	contact["episode"] = episode
 
 
 ## A zombie that left the frame (killed, gone) leaves the beliefs; so does one that is going

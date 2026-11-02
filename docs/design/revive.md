@@ -118,7 +118,7 @@ present for every player always, because a frame after the first only carries fi
 - **The feed**: `RUBY REVIVED PAUL` and `PAUL BLED OUT`.
 - **The body** lies down in `Downed_Idle` and the reviver kneels in `Revive_Kneel` (#536), driven by the server's
   events (`player_downed`, `player_revived`, `revive_started`, `revive_stopped`) on every screen
-  ([decision 8](#decided-2026-11-02-505)). The shoulder camera does not frame a body on the ground yet (#532).
+  ([decision 8](#decided-2026-11-02-505)). The shoulder camera follows a body to the ground (#532, [shoulder camera](../research/shoulder-camera.md#the-downed-camera)).
 
 ## Bots
 

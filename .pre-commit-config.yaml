@@ -4,8 +4,12 @@
 # Never rewritten by a hook: licence texts stay verbatim.
 exclude: ^(LICENSE|CODE_OF_CONDUCT\.md)$
 
-# `pre-commit install` sets up both: the file checks on commit and the message checks at the commit-msg stage.
-default_install_hook_types: [pre-commit, commit-msg]
+# gds-sync:begin install-hooks (kit-owned: edit it in the kit, then run `gds sync`)
+# `pre-commit install` sets up all three: the file checks on commit, the message checks at the commit-msg stage, and
+# the same message checks again on every commit about to be pushed (merges included), so nothing CI would refuse
+# leaves the machine.
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+# gds-sync:end install-hooks
 
 # markdownlint's Node, pinned to an LTS release: an unpinned one is whatever is newest in Node's index, pre-releases
 # included, which has broken installs on Windows.
@@ -47,6 +51,7 @@ repos:
       - id: gdlint
   - repo: local
     hooks:
+      # gds-sync:begin message-checks (kit-owned: edit it in the kit, then run `gds sync`)
       # The rules of .github/conventions.yml, before the commit exists: a title the squash would keep must follow
       # commits.title (tool-written titles such as `fixup!` pass), and the trailers follow commits.trailers.
       - id: commit-title
@@ -61,6 +66,17 @@ repos:
         additional_dependencies: [pyyaml]
         entry: python .github/scripts/groundwork.py check-message
         stages: [commit-msg]
+      # The stored message of every commit that would be pushed, judged by the functions CI uses (the commit-msg hook
+      # sees the message before git's cleanup, so it cannot see a `# Conflicts:` paragraph that --no-edit keeps).
+      - id: push-messages
+        name: pushed commits follow the conventions
+        language: python
+        additional_dependencies: [pyyaml]
+        entry: python .github/scripts/groundwork.py check-push
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false
+      # gds-sync:end message-checks
       # Godot writes `<script>.gd.uid` beside every script; one that is not committed shows up untracked in every
       # checkout (issue #144). Reads the git index, so it also sees uids that an import created on disk only.
       - id: gd-uids
