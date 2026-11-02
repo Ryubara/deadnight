@@ -41,6 +41,7 @@ static func hurt(
 static func down(player: PlayerState, cause: StringName, bearing: float) -> Dictionary:
 	player.downed = true
 	player.health = 0.0
+	player.downs += 1
 	return {"type": &"player_downed", "player_id": player.id, "cause": cause, "bearing": bearing}
 
 

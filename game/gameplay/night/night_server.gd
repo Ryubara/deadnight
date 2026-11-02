@@ -95,10 +95,13 @@ var tuning: NightTuning:
 			_ping_judge.tuning = value
 var tick_count := 0
 ## The marks the players have put up.
-var pings := PingBoard.new()
+var ping_board := PingBoard.new()
 ## Whether the players' bodies have the Soldier's model. A game server draws nothing, so it leaves
 ## them out (`NightHost`); in one process with its client the same bodies are drawn.
 var drawn_bodies := true
+## The round trip each connected player last reported, milliseconds (the game server fills it from
+## their pings): a player with no entry has none to show, and a night on a loopback has no one's.
+var pings: Dictionary[int, int] = {}
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -139,8 +142,8 @@ func _init(
 	world = p_world
 	looks = LookServer.new(_send_look)
 	tuning = p_tuning if p_tuning != null else NightTuning.shipped()
-	pings.seconds = tuning.ping_seconds
-	pings.gap = tuning.ping_gap
+	ping_board.seconds = tuning.ping_seconds
+	ping_board.gap = tuning.ping_gap
 	rules = GameRules.new(p_rules_tuning, p_seed, p_settings)
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
@@ -156,7 +159,7 @@ func _init(
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
-	_ping_judge = PingJudge.new(tuning, pings, rules, world, sim, _bodies, _announce)
+	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
@@ -253,7 +256,7 @@ func step(delta: float) -> Array[Dictionary]:
 	_revive.finish_tick(delta)
 	PerfProbe.end(&"server.act", began)
 	began = PerfProbe.begin()
-	_outbox.append_array(pings.step(delta))
+	_outbox.append_array(ping_board.step(delta))
 	_throw_grenades(delta)
 	_outbox.append(_frame())
 	PerfProbe.end(&"server.frame", began)
@@ -288,9 +291,10 @@ func _leave(player_id: int) -> void:
 		_pending.erase(player_id)
 		_silent.erase(player_id)
 		_acked.erase(player_id)
+		pings.erase(player_id)
 		_repairing.erase(player_id)
 		_revive.forget(player_id)
-		pings.forget(player_id)
+		ping_board.forget(player_id)
 		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
 		_face_left.erase(player_id)
@@ -869,7 +873,11 @@ func _frame() -> Dictionary:
 			"ack": _acked.get(player_id, 0),
 			"reviving": _revive.target_of(player_id),
 			"revive": _revive.progress(player_id),
+			"kills": rules.kills_of(player_id),
+			"downs": rules.downs_of(player_id),
 		}
+		if pings.has(player_id):
+			players[player_id]["ping"] = pings[player_id]
 		if _face_left.get(player_id, 0.0) > 0.0:
 			# The server is turning this body (toward a breach it is repairing); its owner's
 			# predicted body takes that facing (it cannot know, the turn is not in any command).
@@ -880,11 +888,12 @@ func _frame() -> Dictionary:
 		"phase": rules.phase,
 		"round": rules.round_number,
 		"remaining": rules.zombies_remaining(),
+		"clock": floori(rules.night_time),
 		"fuel": rules.generator.fuel,
 		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),
 		"crane": _crane_frame(),
-		"pings": pings.marks(),
+		"pings": ping_board.marks(),
 		"barricades": rules.barricades.to_dict(),
 		"zombies": ZombieCodec.encode(sim.zombies),
 		"players": players,

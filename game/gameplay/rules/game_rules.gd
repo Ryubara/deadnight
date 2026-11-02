@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 class_name GameRules
 extends RefCounted
 ## The night's rules: rounds, spawn pacing, points, the shop and the generator. Server-first and
@@ -84,11 +85,12 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 10 added the match settings (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize
-## crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the
-## plan, special round and a zombie's type, health, speed. Two older layouts both called themselves
-## 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 10
+## 11 added each player's `downs` and the night's `night_time` (the scoreboard), 10 the match
+## settings (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize crane (`crane`,
+## `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the plan, special round
+## and a zombie's type, health, speed. Two older layouts both called themselves 4; every older
+## snapshot is refused as `bad_version`.
+const SNAPSHOT_VERSION := 11
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -101,6 +103,7 @@ const SNAPSHOT_KEYS := {
 	"phase": TYPE_INT,
 	"round": TYPE_INT,
 	"break_left": TYPE_FLOAT,
+	"night_time": TYPE_FLOAT,
 	"plan": TYPE_ARRAY,
 	"special_id": TYPE_STRING,
 	"round_total": TYPE_INT,
@@ -138,6 +141,10 @@ var barricades: BarricadeState
 var crane: CraneState
 var players: Dictionary[int, PlayerState] = {}
 var doors_open: Array[StringName] = []
+
+## Seconds the night has run: counted in a break and in a round (not before the first break, not
+## after the end), so the scoreboard's clock is the same on every screen and in a snapshot.
+var night_time: float = 0.0
 
 var _break_left: float = 0.0
 ## The types still to spawn this round, in order.
@@ -216,6 +223,18 @@ func apply(action: Dictionary) -> Array[Dictionary]:
 func points_of(player_id: int) -> int:
 	var player := players.get(player_id) as PlayerState
 	return player.points if player != null else 0
+
+
+## Zombies this player has killed this night (a gun, a blow of the hand or a blast).
+func kills_of(player_id: int) -> int:
+	var player := players.get(player_id) as PlayerState
+	return player.kills if player != null else 0
+
+
+## Times this player has gone down this night.
+func downs_of(player_id: int) -> int:
+	var player := players.get(player_id) as PlayerState
+	return player.downs if player != null else 0
 
 
 func is_door_open(door_id: StringName) -> bool:
@@ -429,6 +448,7 @@ func _on_circuit_changed(circuit_id: StringName, on: bool) -> void:
 func _tick(delta: float) -> void:
 	match phase:
 		Phase.BREAK:
+			night_time += delta
 			generator.tick(delta, round_number, true)
 			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
@@ -436,6 +456,7 @@ func _tick(delta: float) -> void:
 			if _break_left <= 0.0:
 				_begin_round()
 		Phase.ACTIVE:
+			night_time += delta
 			generator.tick(delta, round_number, false)
 			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))

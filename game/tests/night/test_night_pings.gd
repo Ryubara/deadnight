@@ -80,7 +80,7 @@ func test_a_place_far_away_or_not_a_place_is_refused() -> void:
 	wrong["pos"] = "there"
 	assert_str(_ping(night, wrong)).is_equal("bad_position")
 	assert_str(_ping(night, _ask(PingBoard.HERE, here), 9)).is_equal("unknown_player")
-	assert_dict(night.server.pings.marks()).is_empty()
+	assert_dict(night.server.ping_board.marks()).is_empty()
 	night.queue_free()
 
 
@@ -91,7 +91,7 @@ func test_a_door_is_marked_by_its_index_and_only_while_shut() -> void:
 	night.server.body_of(1).teleport(night.world.door_points(ids[0])[0] + Vector3(0, 0.1, -2.0))
 	NightFixture.run(night, 2)
 	assert_str(_ping(night, _ask(PingBoard.DOOR, Vector3.ZERO, 0))).is_equal("")
-	assert_str(night.server.pings.marks()[1]["subject"]).is_equal(str(ids[0]))
+	assert_str(night.server.ping_board.marks()[1]["subject"]).is_equal(str(ids[0]))
 	# Open, it is nothing to buy.
 	night.server.rules.apply(RulesAction.grant_points(1, 5000))
 	night.server.buy(1, ids[0])
@@ -110,7 +110,9 @@ func test_an_ammunition_spot_is_marked_where_it_is() -> void:
 	night.server.body_of(1).teleport(spot + Vector3(2, 0, 0))
 	NightFixture.run(night, 2)
 	assert_str(_ping(night, _ask(PingBoard.AMMO, spot + Vector3(1, 0, 1)))).is_equal("")
-	assert_vector(night.server.pings.marks()[1]["pos"]).is_equal_approx(spot, Vector3.ONE * 0.01)
+	assert_vector(night.server.ping_board.marks()[1]["pos"]).is_equal_approx(
+		spot, Vector3.ONE * 0.01
+	)
 	NightFixture.run(night, _gap_ticks(night))
 	var far := _ask(PingBoard.AMMO, spot + Vector3(30, 0, 0))
 	assert_str(_ping(night, far)).is_equal("no_such_spot")
@@ -126,7 +128,7 @@ func test_an_enemy_must_be_a_live_zombie_and_the_mark_sits_on_it() -> void:
 	night.server.body_of(1).teleport(zombie.position + Vector3(4, 0, 0))
 	NightFixture.run(night, 2)
 	assert_str(_ping(night, _ask(PingBoard.ENEMY, Vector3.ZERO, zombie_id))).is_equal("")
-	assert_int(night.server.pings.marks()[1]["subject"]).is_equal(zombie_id)
+	assert_int(night.server.ping_board.marks()[1]["subject"]).is_equal(zombie_id)
 	night.queue_free()
 
 
@@ -155,5 +157,5 @@ func test_a_player_who_leaves_takes_their_mark_with_them() -> void:
 	var night := await _start()
 	assert_str(_ping(night, _ask(PingBoard.HERE, night.state.position()), 2)).is_equal("")
 	night.server.apply({"type": NightServer.LEAVE, "player_id": 2})
-	assert_dict(night.server.pings.marks()).is_empty()
+	assert_dict(night.server.ping_board.marks()).is_empty()
 	night.queue_free()

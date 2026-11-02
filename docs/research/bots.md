@@ -552,7 +552,7 @@ disagrees with the view is refused or clamped.
   downed player), snaps the position to the thing named, keeps one mark per player for 20 s and one new mark a second,
   and puts them in the frame (`pings`) and the feed (`ping_placed`, `ping_cleared`). A person presses `Z`, the middle
   mouse button or the pad's right D-pad; `PingAim` picks what the crosshair is on. Markers show over the view
-  (`NightMarkers`). The old `NetWire` version stays 3: a new type is additive.
+  (`NightMarkers`). The `NetWire` version does not change: a new type is additive.
 - **Shots follow the view.** `NightServer.aims_with_view`: a shot whose `dir` is more than 10 degrees from the view's
   forward (`view_dir(yaw, pitch)`) is refused with `fire_rejected` / `aim_mismatch`. `NightCommand.aim_along` sets
   both; the Autopilot now turns its view to the target and walks its own way. A person's camera measured at under one

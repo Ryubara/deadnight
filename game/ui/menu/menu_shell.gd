@@ -49,6 +49,7 @@ func _ready() -> void:
 	_apply_scale()
 	get_window().size_changed.connect(_on_window_resized)
 	Settings.changed.connect(_on_setting)
+	context.leaving.connect(commit)
 	view = MenuStageView.new()
 	view.manual = manual_stage
 	context.stage = view
@@ -67,6 +68,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	commit()
 	if Settings.changed.is_connected(_on_setting):
 		Settings.changed.disconnect(_on_setting)
 	var window := get_window()
@@ -75,6 +77,12 @@ func _exit_tree() -> void:
 			window.size_changed.disconnect(_on_window_resized)
 		# The player's own UI scale comes back, whatever the phone factor was.
 		window.content_scale_factor = float(Settings.get_value(SettingsService.UI_SCALE))
+
+
+func _notification(what: int) -> void:
+	# A browser has no close request: losing focus is the last chance to write what a panel holds.
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		commit()
 
 
 func _process(delta: float) -> void:
@@ -131,6 +139,14 @@ func show_tab(to: MenuTab.Id, animate := true) -> void:
 ## The panel of a tab.
 func panel(id: MenuTab.Id) -> MenuPanel:
 	return _panels[id]
+
+
+## Has the panel on show write what it holds (a panel with nothing to keep does nothing). The
+## shell does it by itself when the tab changes, a screen is asked for, the menu closes or leaves.
+func commit() -> void:
+	var shown: MenuPanel = _panels.get(tab)
+	if shown != null and is_instance_valid(shown):
+		shown.commit()
 
 
 ## Shows a fresh profile (the plate and the panels that read it).
