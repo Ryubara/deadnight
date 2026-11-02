@@ -15,7 +15,7 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   node, no Godot multiplayer, no clock and no global random.
 - **Change only through actions.** `rules.apply(action)` takes a plain dictionary built by
   `RulesAction` (`tick`, `hit`, `kill`, `repair`, `tear_board`, `buy`, `set_circuit`, `set_downed`, `add_player`,
-  `revive_hold` and so on) and returns the **events** it caused, also plain dictionaries
+  `revive` and so on) and returns the **events** it caused, also plain dictionaries
   (`{"type": &"points_changed", "player_id": 1, "total": 260, ...}`). The same events go out through
   `event_emitted` after the state has settled. A server applies what clients ask for, broadcasts the
   events, and clients mirror them. The full event list is in the header of `game_rules.gd`.
@@ -67,8 +67,6 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `revive` | `player_id` (the one raising), `target_id` (the downed one) | the night server, when a teammate has held use beside the downed player for the whole channel ([Revives](#revives)); refused as `wrong_phase`, `unknown_player`, `self_revive`, `player_downed` (the reviver) or `not_downed` |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
-| `revive_hold` | `player_id` (the downed), `reviver_id`, `delta` (`0..1` s) | the night server, one for every tick a teammate's hold of Use lasts beside a downed player in reach ([Revive](revive.md)); refused as `wrong_phase`, `unknown_player`, `self_revive`, `reviver_downed`, `target_dead`, `not_downed` or `busy` |
-| `revive_release` | `player_id` (the downed), optional `reason` (`released`, `away`, `busy_hands`) | the night server, when a hold is broken; a hold that is not renewed is released at the next tick |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
 
 **Who owns a zombie's health: the rules.** `zombie_spawn_requested` gives the id and the health the

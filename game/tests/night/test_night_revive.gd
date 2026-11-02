@@ -48,10 +48,10 @@ func _seconds_needed(night: Night) -> float:
 func test_holding_use_beside_a_downed_teammate_raises_them_after_the_channel() -> void:
 	var night := await _start()
 	var needed := _seconds_needed(night)
-	_hold(night, needed - 0.5)
+	_hold(night, needed * 0.95)
 	assert_bool(night.server.rules.players[2].downed).is_true()
 	assert_float(night.server.revive().progress(2)).is_between(0.9, 1.0)
-	_hold(night, 1.0)
+	_hold(night, needed * 0.2)
 	assert_bool(night.server.rules.players[2].downed).is_false()
 	assert_float(night.server.rules.health_of(2)).is_equal(50.0)
 	assert_int(_count(&"player_revived")).is_equal(1)
@@ -69,7 +69,7 @@ func test_the_prompt_and_the_frame_say_who_is_being_raised_and_how_far_it_has_go
 	var night := await _start()
 	assert_str(night.state.me()["prompt"]["kind"]).is_equal("revive")
 	assert_int(night.state.me()["prompt"]["id"]).is_equal(2)
-	_hold(night, 2.0)
+	_hold(night, _seconds_needed(night) / 3.0)
 	var frame: Dictionary = night.state.frame["players"]
 	assert_int(frame[1]["reviving"]).is_equal(2)
 	assert_float(frame[2]["revive"]).is_between(0.3, 0.36)
@@ -109,7 +109,7 @@ func test_out_of_reach_nothing_happens() -> void:
 
 func test_a_reviver_who_goes_down_stops_the_channel() -> void:
 	var night := await _start()
-	_hold(night, 2.0)
+	_hold(night, _seconds_needed(night) * 0.5)
 	night.server.rules.apply(RulesAction.blow(1, 500.0))
 	_hold(night, 1.0)
 	assert_bool(night.server.revive().is_reviving(1)).is_false()

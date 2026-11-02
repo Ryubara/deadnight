@@ -58,13 +58,13 @@ same clocks.
 
 - **Start.** `use_held` with a downed, living teammate within `reach` and no other reviver on them. The prompt
   (`use_target`) offers `revive` before a door, a shop or a breach: you cannot buy a door with a friend on the floor.
-- **Progress.** Every tick the hold lasts adds the tick to the downed player's `revive_progress`. At `revive_seconds` they
-  get up: `player_revived` with the `reviver_id`, health back to `health_fraction`.
+- **Progress.** Every tick the hold lasts adds the tick to the downed player's progress, kept by the server's
+  `ReviveChannel`. At `revive_seconds` it asks the rules for the `revive` action: the player gets up, `player_revived`
+  with the `reviver_id`, health back to `health_fraction`.
 - **Interrupted** (progress goes back to zero at once) when the reviver:
-    - lets go of Use;
-    - moves out of `reach`;
-    - is downed (by a blow or any other road);
-    - fires, reloads or swaps weapon (the hands are busy; the same rule as a repair);
+    - lets go of Use (`released`);
+    - moves out of `reach` (`moved`);
+    - is downed (by a blow or any other road: `down`);
     - or when the target is revived by other means (a round's end), bleeds out, or leaves.
 - **A hit on the reviver does not reset the hold** (Left 4 Dead's rule does); the reviver is exposed instead, and a
   second blow downs them and breaks it. This is [decision 4](#decided-2026-11-02-505).
@@ -89,18 +89,18 @@ already ended when that player went down.
 | Event | Fields | For |
 | --- | --- | --- |
 | `player_downed` | `player_id`, `cause`, `bearing`, **`bleed_seconds`** | the DOWN card, the clock |
-| `revive_started` | `player_id` (the downed), `reviver_id`, `seconds` | the rings, the reviver's clip |
-| `revive_interrupted` | `player_id`, `reviver_id`, `reason` (`released`, `away`, `reviver_downed`, `busy_hands`) | clears the rings |
+| `revive_started` | `player_id` (the reviver), `target_id` (the downed) | the rings |
+| `revive_stopped` | `player_id` (the reviver), `target_id`, `reason` (`released`, `moved`, `down`, `done`) | clears the rings |
 | `player_revived` | `player_id`, **`reviver_id`** (-1 for a round's end) | the feed, the voice, the scoreboard |
 | `player_died` | `player_id`, `cause` (`bleed_out`) | the feed, the DOWN card turns to DEAD |
 
-The rules' actions: `revive_hold` {`player_id` (the downed), `reviver_id`, `delta`}, `revive_release` {`player_id`,
-`reason`}. The server only sends them; a client never does. `revive_hold` is refused as `unknown_player`,
-`wrong_phase`, `not_downed`, `target_dead`, `reviver_downed`, `self_revive` or `busy`.
+The rules' action: `revive` {`player_id` (the reviver), `target_id`}, sent by the server's channel when the hold is
+complete; a client never sends it. It is refused as `wrong_phase`, `unknown_player`, `self_revive`, `player_downed` (the
+reviver), `target_dead` or `not_downed`. The bleed-out clock takes the ids the channel is holding with each `tick`.
 
 The frame carries, for every player: `bleed` (seconds left, 0 when up or dead), `dead`, `revive` (progress as a
-fraction, 0 to 1) and `reviver` (player id, 0 for none). They are present for every player always, because a frame
-after the first only carries fields that changed ([`FrameDelta`](../research/multiplayer.md)).
+fraction, 0 to 1) and `reviver` (player id, 0 for none), and `reviving` (the id a player is raising now). They are
+present for every player always, because a frame after the first only carries fields that changed ([`FrameDelta`](../research/multiplayer.md)).
 
 ## What the player sees
 

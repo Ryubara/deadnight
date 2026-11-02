@@ -300,13 +300,13 @@ numbers are in [rounds](../design/rounds.md#match-settings).
 ## Revives
 
 A teammate's revive (#486, [Revive](../design/revive.md)) is made of what is already on the wire. The hold is the
-`use_held` flag every command carries (`F_USE_HELD`); the server finds who is in reach, counts the hold in the rules
-(`revive_hold`, one action a tick) and answers with events (`revive_started`, `revive_interrupted`, `player_revived`
+`use_held` flag every command carries (`F_USE_HELD`); the server finds who is in reach, counts the hold in its revive
+channel (`revive` to the rules when it is complete) and answers with events (`revive_started`, `revive_stopped`, `player_revived`
 with a `reviver_id`, `player_died`) and, in every frame, four fields for every player: `bleed`, `dead`, `revive` and
 `reviver`. A frame after the first carries only what changed, so a field that is sometimes absent can never be cleared
 by a delta: these four are always there. The rules' snapshot (so every WELCOME) holds each player's `revives`, `dead`,
 `bleed_left`, `revive_progress` and `reviver_id`: **snapshot version 12**, and the protocol version is not raised (no
-byte layout changed). The hold the server stops sending is released by the rules at the next tick, so a lost or late
+byte layout changed). A hold the client stops sending is released by the channel at the next tick, so a lost or late
 command breaks a hold and never leaves one stuck. Tested over a real socket in `test_night_revive_online.gd`.
 
 ## Interpolation (everyone else)
