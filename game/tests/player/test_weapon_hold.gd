@@ -26,8 +26,8 @@ const TARGET_DISTANCE := WeaponHandsIK.CONVERGE_DISTANCE
 ## The catalogue's guns, each with its own model and hold, and what is held in one hand.
 const GUNS: Array[StringName] = [&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun"]
 ## The weapons given a size other than the rule's (docs/design/weapon-hold.md, "The size rule").
-## The grenade's own size exception: drawn 1.5 times the rule so it fills the fist.
-const GRENADE_SIZE_FACTOR := 1.5
+## The grenade's own size exception: drawn 2.2 times the rule so it fills the fist.
+const GRENADE_SIZE_FACTOR := 2.2
 const SIZE_EXCEPTIONS := {&"pistol": 1.75, &"flare_gun": 1.7}
 
 var _runner: GdUnitSceneRunner
@@ -283,19 +283,23 @@ func test_the_hip_barrel_keeps_the_body_when_the_view_is_behind_it() -> void:
 
 
 func test_the_hip_share_is_continuous_and_the_aim_weight_wins() -> void:
-	var hands := WeaponHandsIK.new()
 	var last := 1.0
 	for gap in 91:
-		var share := hands.converge_share(deg_to_rad(float(gap)))
+		var share := WeaponHandsIK.hip_share(deg_to_rad(float(gap)))
 		assert_float(share).is_between(0.0, 1.0)
 		assert_float(share).is_less_equal(last + 0.0001)
 		assert_float(last - share).is_less(0.08)
 		last = share
-	assert_float(hands.converge_share(deg_to_rad(10.0))).is_equal(1.0)
-	assert_float(hands.converge_share(deg_to_rad(120.0))).is_equal(0.0)
-	hands.converge = 0.7
-	assert_float(hands.converge_share(deg_to_rad(120.0))).is_equal(0.7)
-	hands.free()
+	assert_float(WeaponHandsIK.hip_share(deg_to_rad(10.0))).is_equal(1.0)
+	assert_float(WeaponHandsIK.hip_share(deg_to_rad(-120.0))).is_equal(0.0)
+	# The hands take the larger of the hip share and the aim weight.
+	await _equip_weapon(&"rifle")
+	_rig.yaw = _player.rotation.y + deg_to_rad(150.0)
+	await _ticks(40)
+	assert_float(_animation.hands().hip_converge).is_equal(0.0)
+	_runner.simulate_action_press("aim")
+	await _ticks(40)
+	assert_float(_animation.hands().converge).is_greater(0.9)
 
 
 func test_the_barrel_follows_the_camera_pitch() -> void:

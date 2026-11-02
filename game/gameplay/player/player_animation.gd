@@ -750,6 +750,7 @@ func _advance_shoulder(delta: float) -> void:
 	_hands.aim_yaw = lerp_angle(_player.rotation.y, rig.yaw, weight)
 	_hands.aim_pitch = rig.pitch
 	_hands.converge = weight
+	_hands.hip_converge = WeaponHandsIK.hip_share(angle_difference(_player.rotation.y, rig.yaw))
 	var view := rig.aim_transform()
 	_hands.converge_on = view.origin - view.basis.z * WeaponHandsIK.CONVERGE_DISTANCE
 	if String(action_clip).begins_with("Fire_") and _action_time < delta * 1.5:

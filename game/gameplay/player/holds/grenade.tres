@@ -6,8 +6,8 @@
 script = ExtResource("1_hold")
 weapon_class = &"Grenade"
 scene = "res://assets/weapons/grenade/grenade.glb"
-model_scale = 0.35
-size_factor = 1.5
+model_scale = 0.51
+size_factor = 2.2
 real_length = 0.11
 model_length = 0.608
 shouldered = false
