@@ -40,8 +40,9 @@ func test_more_players_bring_more_zombies_but_not_proportionally() -> void:
 func test_health_climbs_straight_to_the_knee_then_compounds() -> void:
 	assert_float(_t.health_for_round(1)).is_equal(50.0)
 	assert_float(_t.health_for_round(8)).is_equal(106.0)
-	assert_float(_t.health_for_round(9)).is_equal_approx(106.0 * 1.05, 0.001)
-	assert_float(_t.health_for_round(18)).is_equal_approx(106.0 * pow(1.05, 10.0), 0.01)
+	var growth := _t.health_growth
+	assert_float(_t.health_for_round(9)).is_equal_approx(106.0 * growth, 0.001)
+	assert_float(_t.health_for_round(18)).is_equal_approx(106.0 * pow(growth, 10.0), 0.01)
 
 
 func test_health_never_falls() -> void:
