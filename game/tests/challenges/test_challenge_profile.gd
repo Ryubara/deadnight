@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## The profile: dealing and banking dailies, the three orders, counting, quarter marks and ladders.
+## The profile: dealing dailies that expire at the next day, and the three orders.
 
 ## Not the first day of a 30-day block (`DailyRotation.BLOCK_DAYS`), so neighbours differ.
 const DAY := 20401
@@ -26,7 +26,7 @@ func _finish_all() -> void:
 		entry["progress"] = _catalog.get_def(entry["id"]).target
 
 
-# --- Dealing and banking ---
+# --- Dealing ---
 
 
 func test_a_first_day_deals_the_days_three() -> void:
@@ -51,42 +51,41 @@ func test_a_clock_set_back_deals_nothing_new() -> void:
 	assert_int(_profile.dealt_day).is_equal(DAY)
 
 
-func test_finished_dailies_leave_at_the_next_day() -> void:
+func test_a_finished_daily_stays_on_the_board_until_the_day_turns() -> void:
 	_profile.refresh(_catalog, DAY)
 	_finish_all()
-	_profile.refresh(_catalog, DAY + 1)
-	assert_array(_ids(_profile.dailies)).is_equal(DailyRotation.deal(_catalog, DAY + 1))
-
-
-func test_unfinished_dailies_bank_and_keep_their_progress() -> void:
 	_profile.refresh(_catalog, DAY)
-	var first := _ids(_profile.dailies)
+	assert_int(_profile.dailies.size()).is_equal(3)
+	assert_int(_profile.dailies[0]["progress"]).is_equal(
+		_catalog.get_def(_profile.dailies[0]["id"]).target
+	)
+
+
+func test_every_daily_expires_at_the_next_day_finished_or_not() -> void:
+	_profile.refresh(_catalog, DAY)
+	_profile.dailies[0]["progress"] = _catalog.get_def(_profile.dailies[0]["id"]).target
 	_profile.dailies[1]["progress"] = 2
 	_profile.refresh(_catalog, DAY + 1)
-	var today := DailyRotation.deal(_catalog, DAY + 1)
-	assert_int(_profile.dailies.size()).is_equal(6)
-	assert_array(_ids(_profile.dailies).slice(0, 3)).is_equal(today)
-	assert_array(_ids(_profile.dailies).slice(3)).is_equal(first)
-	assert_int(_profile.dailies[4]["progress"]).is_equal(2)
-	assert_int(_profile.dailies[4]["day"]).is_equal(DAY)
+	assert_array(_ids(_profile.dailies)).is_equal(DailyRotation.deal(_catalog, DAY + 1))
+	assert_int(_profile.dailies.size()).is_equal(3)
+	for entry in _profile.dailies:
+		assert_int(entry["progress"]).is_equal(0)
+		assert_int(entry["day"]).is_equal(DAY + 1)
 
 
-func test_the_bank_holds_three_and_the_oldest_retires() -> void:
+func test_nothing_carries_over_however_many_days_pass() -> void:
 	_profile.refresh(_catalog, DAY)
-	var first := _ids(_profile.dailies)
-	assert_array(_profile.refresh(_catalog, DAY + 1)).is_empty()
-	assert_int(_profile.dailies.size()).is_equal(6)
-	var second := DailyRotation.deal(_catalog, DAY + 1)
-	# Nothing was finished: the bank is full, so the first day's three, the oldest, go.
-	var retired := _profile.refresh(_catalog, DAY + 2)
-	assert_array(retired).contains_exactly_in_any_order(first)
-	assert_int(_profile.dailies.size()).is_equal(6)
-	var days: Array = _profile.dailies.map(func(e: Dictionary) -> int: return e["day"])
-	assert_bool(days.has(DAY)).is_false()
-	assert_array(_ids(_profile.dailies).slice(3)).is_equal(second)
+	for step in range(1, 6):
+		_profile.dailies[0]["progress"] = 1
+		_profile.refresh(_catalog, DAY + step)
+		assert_int(_profile.dailies.size()).is_equal(3)
+		assert_int(_profile.dailies[0]["progress"]).is_equal(0)
+	_profile.refresh(_catalog, DAY + 40)
+	assert_array(_ids(_profile.dailies)).is_equal(DailyRotation.deal(_catalog, DAY + 40))
+	assert_int(_profile.dailies.size()).is_equal(3)
 
 
-func test_a_banked_daily_dealt_again_is_todays_with_its_progress() -> void:
+func test_a_daily_dealt_again_later_starts_from_zero() -> void:
 	# Find a day on which two days on deals something this day dealt (rare, so search).
 	var day := DAY
 	var shared: Array[StringName] = []
@@ -99,24 +98,17 @@ func test_a_banked_daily_dealt_again_is_todays_with_its_progress() -> void:
 	for entry in _profile.dailies:
 		if entry["id"] == shared[0]:
 			entry["progress"] = 1
-	_profile.refresh(_catalog, day + 1)
 	_profile.refresh(_catalog, day + 2)
-	var copies := _profile.dailies.filter(func(e: Dictionary) -> bool: return e["id"] == shared[0])
-	assert_int(copies.size()).is_equal(1)
-	assert_int(copies[0]["progress"]).is_equal(1)
-	assert_int(copies[0]["day"]).is_equal(day + 2)
+	for entry in _profile.dailies:
+		if entry["id"] == shared[0]:
+			assert_int(entry["progress"]).is_equal(0)
 
 
-func test_a_player_away_for_a_month_returns_to_a_day_of_three_and_a_full_bank_at_most() -> void:
+func test_no_streak_or_count_of_days_is_kept() -> void:
 	_profile.refresh(_catalog, DAY)
-	_profile.refresh(_catalog, DAY + 30)
-	var again := DailyRotation.deal(_catalog, DAY + 30).filter(
-		func(id: StringName) -> bool: return DailyRotation.deal(_catalog, DAY).has(id)
-	)
-	assert_int(_profile.dailies.size()).is_equal(6 - again.size())
-	assert_array(_ids(_profile.dailies).slice(0, 3)).is_equal(
-		DailyRotation.deal(_catalog, DAY + 30)
-	)
+	var keys := _profile.to_dict().keys()
+	for banned in ["streak", "bank", "banked", "days_played", "login"]:
+		assert_array(keys).not_contains([banned])
 
 
 func test_a_challenge_gone_from_the_data_is_dropped() -> void:

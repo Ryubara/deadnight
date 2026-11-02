@@ -4,17 +4,17 @@ extends RefCounted
 ## menu's home panel and the Challenges tab are built on this class alone.
 ##
 ##   var board := ChallengeBoard.open()          # loads the save, deals today's dailies
-##   board.dailies()          -> today's three, then the banked, each a Dictionary (below)
+##   board.dailies()          -> today's three, each a Dictionary (below)
 ##   board.orders()           -> the open Concession Orders
 ##   board.milestones()       -> every lifetime ladder
 ##   board.seconds_to_refresh(), board.refresh_text()   the time until the next dailies
 ##   board.swap_order(slot)   changes an order (free, unlimited) and saves
 ##   board.refresh()          call when the menu is shown again: a new day deals new dailies
 ##
-## A daily or order: `{id, text, progress, target, fraction (0..1), done, tier, reward}`; a daily
-## also has `banked` (dealt on an earlier day) and `leaves` (it retires at the next refresh, the
-## bank being full); an order has `slot` and `pillar`. A milestone: `{id, text (the next step),
-## stat, value, rung, rungs, target (the next step; 0 when the ladder is done), fraction, done}`.
+## A daily or order: `{id, text, progress, target, fraction (0..1), done, tier, reward}`; an order
+## also has `slot` and `pillar`. A daily expires at the next refresh, done or not. A milestone:
+## `{id, text (the next step), stat, value, rung, rungs, target (the next step; 0 when the ladder
+## is done), fraction, done}`.
 ## `tier` is "short", "medium" or "long". `reward` is a placeholder dictionary (nothing pays yet).
 
 signal changed
@@ -77,15 +77,11 @@ func refresh_text() -> String:
 
 
 func dailies() -> Array[Dictionary]:
-	var leaving := _leaving()
 	var list: Array[Dictionary] = []
 	for entry in profile.dailies:
 		var row := _row(entry)
-		if row.is_empty():
-			continue
-		row["banked"] = int(entry["day"]) < clock.day()
-		row["leaves"] = leaving.has(row["id"])
-		list.append(row)
+		if not row.is_empty():
+			list.append(row)
 	return list
 
 
@@ -156,11 +152,3 @@ func _row(entry: Dictionary) -> Dictionary:
 		"tier": ChallengeDef.TIER_NAMES.find_key(def.tier),
 		"reward": def.reward,
 	}
-
-
-## The ids of banked dailies that retire at the next refresh: the profile as it will be then.
-func _leaving() -> Array[StringName]:
-	var ahead := ChallengeProfile.from_dict(profile.to_dict())
-	var next_day := clock.day() + 1
-	var gone := ahead.refresh(catalog, next_day)
-	return gone

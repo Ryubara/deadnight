@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## The board is all the menu reads: today's dailies with progress, the banked ones, the orders, the
+## The board is all the menu reads: today's dailies with progress, the orders, the
 ## ladders and the time to the next refresh. Tested on its keys and values, as a screen would use
 ## them.
 
@@ -44,12 +44,9 @@ func test_a_new_player_sees_three_dailies_three_orders_and_every_ladder_at_zero(
 
 func test_a_daily_row_has_what_a_card_shows() -> void:
 	var row := _open("row").dailies()[0]
-	for key in [
-		"id", "text", "progress", "target", "fraction", "done", "tier", "reward", "banked", "leaves"
-	]:
+	for key in ["id", "text", "progress", "target", "fraction", "done", "tier", "reward"]:
 		assert_bool(row.has(key)).override_failure_message("missing key %s" % key).is_true()
 	assert_str(row["tier"]).is_equal("short")
-	assert_bool(row["banked"]).is_false()
 	assert_str(row["text"]).not_contains("{n}")
 
 
@@ -65,30 +62,21 @@ func test_progress_shows_as_a_fraction_and_never_past_the_target() -> void:
 	assert_bool(board.dailies()[0]["done"]).is_true()
 
 
-func test_the_next_day_shows_yesterdays_unfinished_as_banked() -> void:
-	var first := _open("bank")
+func test_the_next_day_shows_three_new_dailies_at_zero() -> void:
+	var first := _open("expire")
+	first.profile.dailies[0]["progress"] = 1
 	var yesterday := first.dailies().map(func(r: Dictionary) -> StringName: return r["id"])
 	_day = DAY + 1
 	var board := ChallengeBoard.open(first.path, ChallengeFixture.clock_on(_day), _catalog)
 	var rows := board.dailies()
-	assert_int(rows.size()).is_equal(6)
-	assert_bool(rows[0]["banked"]).is_false()
-	assert_bool(rows[3]["banked"]).is_true()
+	assert_int(rows.size()).is_equal(3)
 	(
-		assert_array(rows.slice(3).map(func(r: Dictionary) -> StringName: return r["id"]))
-		. is_equal(yesterday)
+		assert_array(rows.map(func(r: Dictionary) -> StringName: return r["id"]))
+		. is_not_equal(yesterday)
 	)
-
-
-func test_a_banked_daily_the_next_refresh_will_retire_says_so() -> void:
-	var board := _open("leaves")
-	_day = DAY + 1
-	board = ChallengeBoard.open(board.path, ChallengeFixture.clock_on(_day), _catalog)
-	# Three banked and three today: tomorrow the three banked of the first day would be too many.
-	var leaving := board.dailies().filter(func(r: Dictionary) -> bool: return r["leaves"])
-	assert_int(leaving.size()).is_equal(3)
-	for row in leaving:
-		assert_bool(row["banked"]).is_true()
+	for row in rows:
+		assert_int(row["progress"]).is_equal(0)
+		assert_bool(row.has("banked")).is_false()
 
 
 func test_the_board_is_saved_when_opened_and_reopens_the_same() -> void:
@@ -177,10 +165,9 @@ func test_refresh_deals_a_new_day_while_the_menu_is_open() -> void:
 	now[0] += 86400.0
 	board.refresh()
 	assert_int(told[0]).is_equal(1)
-	assert_int(board.dailies().size()).is_equal(6)
+	assert_int(board.dailies().size()).is_equal(3)
 	(
-		assert_array(
-			board.dailies().slice(3).map(func(r: Dictionary) -> StringName: return r["id"])
-		)
-		. is_equal(today)
+		assert_array(board.dailies().map(func(r: Dictionary) -> StringName: return r["id"]))
+		. is_equal(DailyRotation.deal(_catalog, DAY + 1))
 	)
+	assert_array(today).is_equal(DailyRotation.deal(_catalog, DAY))

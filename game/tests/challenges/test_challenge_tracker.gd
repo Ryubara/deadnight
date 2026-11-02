@@ -156,7 +156,8 @@ func test_a_night_across_midnight_counts_on_the_new_days_challenges() -> void:
 	now[0] += 120.0
 	_kill(tracker, 1)
 	assert_int(profile.dealt_day).is_equal(DAY + 1)
-	# The kill of yesterday's d_kills banked with it, the day after still counting.
+	# Yesterday's kill expired with the day; the one after midnight counts on the new day's daily
+	# (the small catalogue deals the same three every day, so it is the same id, from zero).
 	var kills := profile.dailies.filter(func(e: Dictionary) -> bool: return e["id"] == &"d_kills")
-	assert_int(kills.size()).is_equal(1)
-	assert_int(kills[0]["progress"]).is_equal(2)
+	assert_int(profile.dailies.size()).is_equal(3)
+	assert_int(kills[0]["progress"]).is_equal(1)

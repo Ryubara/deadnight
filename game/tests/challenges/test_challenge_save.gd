@@ -16,7 +16,7 @@ func _busy_profile() -> ChallengeProfile:
 	profile.refresh(_catalog, DAY)
 	profile.refresh(_catalog, DAY + 1)
 	profile.dailies[0]["progress"] = 3
-	profile.dailies[4]["progress"] = 2
+	profile.dailies[2]["progress"] = 2
 	profile.orders[1]["progress"] = 5
 	profile.apply(_catalog, &"kills", 120, 120)
 	profile.apply(_catalog, &"round", 6, 6)
