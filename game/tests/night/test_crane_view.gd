@@ -92,3 +92,11 @@ func test_a_breakdown_shows_the_dud_then_the_crane_moves_to_its_next_spot() -> v
 	assert_float(apart.length()).is_equal_approx(CraneView.SET_BACK, 0.05)
 	assert_bool(prop.dud_visible()).is_false()
 	night.queue_free()
+
+
+func test_every_prize_the_crane_can_give_has_a_model_of_its_own() -> void:
+	var item := RulesFixture.tuning().economy.item(&"crane_play")
+	assert_array(item.pool).is_not_empty()
+	for prize: StringName in item.pool:
+		assert_bool(PrizeCrane.MODELS.has(prize)).is_true()
+		assert_bool(load(PrizeCrane.MODELS[prize]) is PackedScene).is_true()
