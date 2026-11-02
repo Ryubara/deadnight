@@ -105,6 +105,7 @@ which is what the inspector shows with no "revert" arrow; the file wins when it 
 | `HealthTuning` | `health` | The health bar and how fast it mends | the rules |
 | `CraneTuning` | `crane` | The prize crane's timing and its chance to break down | the rules (`crane_play.gd`), `crane_view.gd` |
 | `PlayerTuning` | `gameplay/player/player_tuning_default.tres` | How the player feels: speeds, acceleration, jump, crouch, step up, hip fire, camera framing and springs, shake, sprint sway (15 groups) | `Player.tuning` (the export on the `Player` node of `player.tscn`, `test_room.tscn`), remote avatars, the touch look and the camera probe |
+| `NightTuning` | `gameplay/night/night_tuning_default.tres` | What a player starts with (gun, melee), how far a hand reaches (doors, boards, fuel), the repair and switch intervals, grenade release times, the muzzle, how long a command lasts, the bot's spectator camera | `NightTuning.shipped()`: the night (`Night.night_tuning`, the server and the client), the tests |
 | `WeaponDef` | `gameplay/weapons/defs/<id>.tres` (pistol, smg, shotgun, rifle, flare_gun, crowbar) | One weapon: damage, rate, magazine, reload, spread, recoil and shake, projectile, melee sweep | `WeaponCatalog` (the server and the client), the simulator |
 | `GrenadeDef` | `gameplay/grenades/defs/frag.tres` | The grenade: fuse, throw, bounces, blast radius and damage | `NightServer.GRENADE_DEF` |
 | `WeaponHold` | `gameplay/player/holds/<id>.tres` | How a weapon sits on the Soldier: size, rest pose, support hand | `PlayerAnimation` |
@@ -118,15 +119,12 @@ These are numbers a developer would tune that you cannot reach in the inspector 
 [#415](https://github.com/Ryubara/deadnight/issues/415) moves them, area by area, and this page is updated with each
 step.
 
-- **`NightTuning`** (`gameplay/night/night_tuning.gd`: start weapon and melee, hand reach, repair and switch
-  intervals, grenade release times, muzzle offset) has all its exports, but **no `.tres`**: the night builds
-  `NightTuning.new()`, so only the script's defaults count.
 - **`ZombieTuning`** (`gameplay/zombies/zombie_tuning.gd`: the crowd cap, repath, separation, reach and swing, the
-  stagger and boss timings) is in the same state: `ZombieTuning.new()`.
+  stagger and boss timings) has all its exports but **no `.tres`**: the simulation builds `ZombieTuning.new()`, so
+  only the script's defaults count.
 - **`SoundDef`** (`core/audio/sound_def.gd`) is a plain object that `SoundCatalog` fills in code, one line per sound
   (variants, bus, trim, distance). Sound levels are edited in `core/audio/sound_catalog.gd`.
-- **Constants in scripts**: the camera's field of view in the warm-up (`night_warmup.gd`) and the spectator camera
-  (`night.gd`), the ranges' camera, effect sizes and times, HUD sizes (`HudStyle`), and the like.
+- **Constants in scripts**: the ranges' camera, effect sizes and times, HUD sizes (`HudStyle`), and the like.
 
 What stays in code on purpose: the network protocol and its limits (`net/`), layout arithmetic, ids and node names,
 and constants that only a test uses.

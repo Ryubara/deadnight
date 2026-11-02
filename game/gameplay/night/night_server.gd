@@ -117,7 +117,7 @@ func _init(
 ) -> void:
 	world = p_world
 	looks = LookServer.new(_send_look)
-	tuning = p_tuning if p_tuning != null else NightTuning.new()
+	tuning = p_tuning if p_tuning != null else NightTuning.shipped()
 	rules = GameRules.new(p_rules_tuning, p_seed)
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
