@@ -61,6 +61,12 @@ static func snapshot(top: Control) -> Dictionary:
 		"players": 0,
 		"player_id": 0,
 		"rtt_ms": -1.0,
+		"body_x": 0.0,
+		"body_z": 0.0,
+		"server_x": 0.0,
+		"server_z": 0.0,
+		"stalls": 0,
+		"stall_longest_ms": 0.0,
 		"yaw": 0.0,
 		"interpolated": false,
 		"room_code": "",
@@ -160,4 +166,17 @@ static func snapshot(top: Control) -> Dictionary:
 	var link := night_screen.night.link as WebSocketLink
 	if link != null:
 		data["rtt_ms"] = link.rtt_ms
+	if night_screen.night.remote:
+		# Online: where this client's own body is and where the server has the player, and the
+		# freezes of the page the client noticed, so a browser test can stall the page and see the
+		# body come back (`tools/web_smoke/freeze.py`).
+		var body := night_screen.night.player()
+		if body != null:
+			data["body_x"] = body.state.position.x
+			data["body_z"] = body.state.position.z
+		if state.has_frame() and not state.me().is_empty():
+			data["server_x"] = state.position().x
+			data["server_z"] = state.position().z
+		data["stalls"] = night_screen.night.stalls.stalls
+		data["stall_longest_ms"] = night_screen.night.stalls.longest_ms
 	return data
