@@ -4,6 +4,8 @@ extends Control
 ##
 ## Options after `--` on the command line (or in the page address on the web, `?connect=...`):
 ## `--server [--port N] [--seed N]` runs a game server instead of the game (headless, no menu), and
+## `--stage` (`?stage` on the web) opens only the menu's 3D stage for a frame-time run, and
+## `--stage=still` (`?stage=still`) its still level, and
 ## `--connect [ws://host:port]` goes from the menu straight into the night of that server, and
 ## `--report [seconds]` prints a line of what the joined night looks like from here, and
 ## `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of the saved
@@ -11,6 +13,7 @@ extends Control
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
+const STAGE := "res://ui/screens/menu_stage_screen.tscn"
 
 
 func _ready() -> void:
@@ -27,6 +30,9 @@ func _ready() -> void:
 	prompt_layer.add_child(TouchRotatePrompt.new())
 	add_child(prompt_layer)
 	await get_tree().process_frame
+	if args.has("stage"):
+		UIRouter.reset(STAGE, UITransition.Kind.CUT, {"still": args.get_string("stage") == "still"})
+		return
 	UIRouter.reset(MENU, UITransition.Kind.FADE)
 	if args.has("report"):
 		var report := ClientReport.new()
