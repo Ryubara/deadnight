@@ -113,36 +113,40 @@ What changed in the way it works, not only the numbers:
 ## Hip fire
 
 Firing without aiming (maintainer feedback, 2026-11-01, #300): the shot already lands on the reticle, but the body kept
-its walking facing and the view stayed wide, unlike other third-person shooters. Now, while the trigger is held without
-the aim button, and for a short time after, **the body turns to the view** and **the camera eases part of the way into
-the aim view**. What other games do, and what is and is not sourced, is in [hip fire](hip-fire.md). The numbers are
-on `PlayerTuning` (the *Hip fire* group), so they are editable in the Godot editor:
+its walking facing and the view stayed wide, unlike other third-person shooters. Reopened the same day: hip fire had
+become *a second, partial aim* (its own camera spring, half the zoom, out three times slower after a longer wait) and the
+gun in the hands jumped between its hip and aim poses in one frame. Now **firing from the hip is the aim, held for a
+moment**: one aim weight, entered by the aim button or by a shot, read by the camera, the body and the hands. Holding the
+aim button only skips the entry (the weight is already full). What other games do, and what is and is not sourced, is in
+[hip fire](hip-fire.md). The numbers are on `PlayerTuning` (the *Hip fire* group), so they are editable in the Godot
+editor:
 
 | Value | Number | Why |
 | --- | --- | --- |
-| Turn speed | 22 rad/s | Just under the aim turn (24): a 180 degree swing takes 0.14 s (9 ticks), so the first shot of a burst leaves from a body that already faces the target, and the turn is still visible. Not an instant snap: the soldier's shoulders would pop. |
-| Hold | 0.6 s | The body keeps facing the view this long after the trigger is let go. The slowest weapon fires every 0.9 s, the rifle every 0.55 s, so single shots inside a fight do not swing the body back to the run direction between them; two seconds would look stuck. |
-| Zoom share | 0.5 | Halfway between the hip view and the full aim view: arm 2.3 to 2.05 m, FOV 70 to 65, shoulder 0.60 to 0.625 m. Enough to read as settling in; the aim view (arm 1.8 m, FOV 60) stays the precise one. |
-| Zoom delay | 0.8 s | After the last shot before the zoom lets go. Longer than the 0.55 s rifle interval, so a rifle fired steadily never pulses the view in and out; the slowest weapon (0.9 s) lets go a little between shots and re-zooms, which reads as a shotgun kick. |
-| Zoom in, out | 14, 7 rad/s | Springs: 95 % in 0.34 s in and 0.68 s out. The way out is half as quick, so the view does not snap back between two bursts; the way in is a little slower than the aim's 24 (0.2 s), because a shot is not a decision to aim. |
+| Hold | 0.8 s | The aim stays held this long after the trigger is let go (`PlayerMotionState.holds_aim`). Longer than the rifle's 0.55 s interval, so a rifle fired steadily never pulses the view in and out; the slowest weapon (0.9 s) lets go a little between shots and re-enters, which reads as a shotgun kick. |
+| Turn speed | 8 rad/s (`aim_turn_speed`, one for the button and the shot) | A view 75 degrees away is faced in 0.16 s, 180 degrees in 0.4 s. The weapon turns with the body and with the weight, so the two add: a slower body turn keeps the weapon's peak at about 19 degrees a tick (the aim button turned it 78 degrees in one tick when the weapon switched poses). |
+| Zoom, shoulder, arm, FOV | the aim's | There is no hip-fire share any more: the same `aim_frequency` (24 rad/s, 95 % in 0.2 s) in and out. |
 
 How it works:
 
 - **The trigger is part of the player's command** (`PlayerCommand.fire`), because the body's facing is simulated state
   the server owns and a replay must agree on. `NightServer` sets it from the `NightCommand`'s own `fire` (a human, the
   autopilot and a remote client all send that), and a downed player's trigger does nothing. `PlayerMotionState.fire_age`
-  is the seconds since the trigger was last held; the simulation turns the body to `command.yaw` at the hip-fire speed
-  while `fire_age < hip_fire_hold` (aiming keeps its own, faster turn and wins). The muzzle of a shot is rotated by this
-  facing, so it now leaves from a body that faces the target.
+  is the seconds since the trigger was last held; `holds_aim(hold)` is `aiming or fire_age < hold`, and the simulation
+  asks it for the body's turn to the view and for the strafing velocity. The muzzle of a shot is rotated by this facing,
+  so it leaves from a body that faces the target.
 - **Shots are still the camera ray.** The camera's yaw and pitch are the input as before, the zoom only moves the lens
   along its arm, and `AimResolver` aims the muzzle at what the camera ray hits; a test checks the camera's forward
   vector equals the view's yaw and pitch while zoomed.
-- **The camera** keeps a separate spring (`_hip`, 0 or 1) next to the aim spring; the placement reads
-  `zoom_amount() = aim + (1 - aim) * hip * hip_fire_zoom`, so pressing aim during a burst continues smoothly to the
-  full aim view, and releasing everything goes back to the hip view. The look sensitivity still reads only the aim
-  amount: a burst from the hip does not slow the view.
-- **Sprint** is not cancelled by firing (the bots flee and shoot together, and the balance gate does not move): the
-  sprint pull-back and the hip-fire zoom add.
+- **One weight.** The player sets `ThirdPersonCamera.aim_held = state.holds_aim(hold)`; the camera's one `_aim` spring
+  chases it, `aim_amount()` is the result, and the placement and `PlayerAnimation` (the aim gait of the legs, and the
+  hands) all read that number. In the hands `WeaponHandsIK.aim_yaw` is the angle from the body's heading to the view by
+  the weight, and `converge` (0 to 1, it was a bool) blends the aim basis toward the one that crosses the crosshair's
+  ray, so neither input flips.
+- **The look is steadier only for the button.** `steady_amount()` is its own spring on the real aim button (same
+  frequency); a burst from the hip does not slow the view down. This is the one place hip fire is not the aim.
+- **Sprint** is not cancelled by firing (the bots flee and shoot together, and the balance gate does not move), but the
+  sprint pull-back and the sprint sway ease out while the aim is held.
 
 ## Things found the hard way
 

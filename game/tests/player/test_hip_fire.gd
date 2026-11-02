@@ -1,6 +1,6 @@
-# Firing without aiming: the body turns to the view and the camera eases part of the way into the
-# aim view, then lets go after a delay. Stepped by hand with fixed ticks (no wall time), like the
-# shoulder camera suite.
+# Firing without aiming: the body turns to the view and the camera eases into the aim view, then
+# lets go after the hold, like an aim button released. Stepped by hand with fixed ticks (no wall
+# time), like the shoulder camera suite. Hip fire against the aim in full: test_aim_weight.gd.
 extends GdUnitTestSuite
 
 const TEST_ROOM := "res://world/test_room.tscn"
@@ -40,15 +40,11 @@ func _seconds(seconds: float) -> void:
 	await _ticks(roundi(seconds / TICK))
 
 
-func _hip_zoom_fov() -> float:
-	return lerpf(_tuning.fov, _tuning.fov_aim, _tuning.hip_fire_zoom)
-
-
 func test_without_firing_the_body_does_not_follow_the_view() -> void:
 	_rig.yaw = 1.2
 	await _seconds(0.5)
 	assert_float(_player.rotation.y).is_equal_approx(0.0, 0.01)
-	assert_float(_rig.zoom_amount()).is_equal_approx(0.0, 0.001)
+	assert_float(_rig.aim_amount()).is_equal_approx(0.0, 0.001)
 
 
 func test_firing_turns_the_body_to_the_view_within_a_few_ticks() -> void:
@@ -57,7 +53,7 @@ func test_firing_turns_the_body_to_the_view_within_a_few_ticks() -> void:
 	# 1.2 radians at the hip-fire turn speed: a handful of ticks, and not a snap.
 	await _ticks(1)
 	assert_float(_player.rotation.y).is_between(0.05, 1.19)
-	var ticks_needed := ceili(1.2 / (_tuning.hip_fire_turn_speed * TICK)) + 2
+	var ticks_needed := ceili(1.2 / (_tuning.aim_turn_speed * TICK)) + 2
 	await _ticks(ticks_needed)
 	assert_float(_player.rotation.y).is_equal_approx(1.2, 0.01)
 	assert_bool(_player.is_aiming()).is_false()
@@ -79,65 +75,60 @@ func test_a_strafing_player_faces_the_view_while_firing_then_turns_back_after_th
 	_runner.simulate_action_release("move_back")
 
 
-func test_firing_eases_the_camera_part_of_the_way_into_the_aim_view() -> void:
+func test_firing_eases_the_camera_into_the_aim_view() -> void:
 	var camera := _rig.camera()
 	assert_float(camera.fov).is_equal_approx(_tuning.fov, 0.1)
-	var hip_lens := _rig.lens_distance()
 	_runner.simulate_action_press("fire")
 	await _seconds(0.05)
-	assert_float(camera.fov).is_between(_hip_zoom_fov() + 0.3, _tuning.fov - 0.05)  # mid-ease
+	assert_float(camera.fov).is_between(_tuning.fov_aim + 0.3, _tuning.fov - 0.05)  # mid-ease
 	await _seconds(1.0)
-	assert_float(_rig.zoom_amount()).is_equal_approx(_tuning.hip_fire_zoom, 0.01)
-	assert_float(camera.fov).is_equal_approx(_hip_zoom_fov(), 0.1)
-	# Part of the way: closer than the hip view, farther than the aim view.
+	assert_float(_rig.aim_amount()).is_equal_approx(1.0, 0.01)
+	assert_float(camera.fov).is_equal_approx(_tuning.fov_aim, 0.1)
 	var aim_lens := Vector2(_tuning.shoulder_offset_aim, _tuning.arm_length_aim).length()
-	assert_float(_rig.lens_distance()).is_less(hip_lens - 0.05)
-	assert_float(_rig.lens_distance()).is_greater(aim_lens + 0.05)
-	assert_bool(_rig.is_aim_zoomed()).is_false()
+	assert_float(_rig.lens_distance()).is_equal_approx(aim_lens, 0.05)
+	assert_bool(_rig.is_aim_zoomed()).is_true()
 
 
-func test_the_zoom_holds_for_the_delay_after_the_last_shot_then_releases() -> void:
+func test_the_aim_holds_for_the_hold_after_the_last_shot_then_releases() -> void:
 	var camera := _rig.camera()
 	_runner.simulate_action_press("fire")
 	await _seconds(1.0)
 	_runner.simulate_action_release("fire")
-	await _seconds(_tuning.hip_fire_zoom_delay - 0.2)
-	assert_float(_rig.zoom_amount()).is_equal_approx(_tuning.hip_fire_zoom, 0.02)
-	await _seconds(0.4)  # the delay is over: it starts to ease out
-	assert_float(_rig.zoom_amount()).is_less(_tuning.hip_fire_zoom - 0.02)
+	await _seconds(_tuning.hip_fire_hold - 0.2)
+	assert_float(_rig.aim_amount()).is_equal_approx(1.0, 0.02)
+	await _seconds(0.4)  # the hold is over: it starts to ease out
+	assert_float(_rig.aim_amount()).is_less(0.98)
 	await _seconds(1.5)
-	assert_float(_rig.zoom_amount()).is_equal_approx(0.0, 0.01)
+	assert_float(_rig.aim_amount()).is_equal_approx(0.0, 0.01)
 	assert_float(camera.fov).is_equal_approx(_tuning.fov, 0.1)
 
 
-func test_a_burst_with_short_gaps_keeps_the_zoom_in() -> void:
-	# Taps closer than the delay never let the zoom go (the slowest weapon fires every 0.9 s).
+func test_a_burst_with_short_gaps_keeps_the_aim_in() -> void:
+	# Taps closer than the hold never let the aim go (the slowest weapon fires every 0.9 s).
 	for i in 3:
 		_runner.simulate_action_press("fire")
 		await _ticks(3)
 		_runner.simulate_action_release("fire")
-		await _seconds(_tuning.hip_fire_zoom_delay - 0.1)
-	assert_float(_rig.zoom_amount()).is_greater(_tuning.hip_fire_zoom * 0.9)
+		await _seconds(_tuning.hip_fire_hold - 0.1)
+	assert_float(_rig.aim_amount()).is_greater(0.98)
 
 
-func test_aiming_still_uses_the_full_aim_zoom() -> void:
+func test_aiming_and_firing_together_use_the_same_aim() -> void:
 	var camera := _rig.camera()
 	_runner.simulate_action_press("aim")
 	_runner.simulate_action_press("fire")
 	await _seconds(1.2)
 	assert_float(_rig.aim_amount()).is_equal_approx(1.0, 0.01)
-	assert_float(_rig.zoom_amount()).is_equal_approx(1.0, 0.01)
 	assert_float(camera.fov).is_equal_approx(_tuning.fov_aim, 0.1)
-	assert_float(_rig.hip_amount()).is_less(0.01)
 	assert_bool(_rig.is_aim_zoomed()).is_true()
 	_runner.simulate_action_release("aim")
 	_runner.simulate_action_release("fire")
 	await _seconds(2.0)
-	assert_float(_rig.zoom_amount()).is_equal_approx(0.0, 0.01)
+	assert_float(_rig.aim_amount()).is_equal_approx(0.0, 0.01)
 
 
-func test_the_hip_fire_zoom_does_not_slow_the_look() -> void:
-	# The aim steadies the look; a burst from the hip does not.
+func test_a_burst_from_the_hip_does_not_slow_the_look() -> void:
+	# The aim button steadies the look; a burst from the hip does not.
 	var before := _rig.yaw
 	_rig.look_mouse(Vector2(100.0, 0.0))
 	var plain := before - _rig.yaw
