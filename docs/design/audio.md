@@ -192,7 +192,7 @@ rules' `zombie_damaged` events. Who sounds like what is one table, `ZombieVoiceT
 ### Footsteps
 
 `FootstepSounds` (`game/gameplay/night/`) gives every player's feet a sound, from the same ground rules as the
-simulation (`PlayerSimulation`: a step for every `step_distance`, 1.9 m, of ground covered while on the floor and moving
+simulation (`PlayerSimulation`: a step for every `step_distance`, 1.5 m, of ground covered while on the floor and moving
 faster than 0.5 m/s), so the pace of the feet is the pace of the player: a sprint steps faster because it covers the
 stride sooner, a crouched creep slower, standing and flight are silent.
 

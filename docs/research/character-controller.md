@@ -68,7 +68,7 @@ question for the next play.
 ## Animation: no sliding in any direction
 
 The Soldier has one locomotion set, and the body always faces its travel when not aiming, so every sprint plays the
-Run clip forward, its pace tied to the ground speed (`speed / run_clip_speed`, 1.27 at 7 m/s). Because the velocity
+Run clip forward, its pace tied to the ground speed (`speed / run_clip_speed`, 1.63 at 7 m/s). Because the velocity
 turns with the body, the two never part by more than a tick of turning. While aiming the body faces the view but moves
 sideways or backward: the strafe and back clips of PR #330 are not merged, so those directions still play the forward
 Run or Walk blend under the aim (the known gap of issue #74). The blend reads `state.velocity` only, so adding the
