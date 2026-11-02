@@ -24,6 +24,7 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	var player := _night.player()
 	player.local_input = false
+	player.capture_mouse = false
 	player.camera_rig.yaw = PI
 	player.camera_rig.snap_to(player.global_position)
 	await _wait(SECOND)
