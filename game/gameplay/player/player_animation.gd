@@ -161,6 +161,10 @@ var _hammer: Node3D
 var _grenade: Node3D
 var _hold: WeaponHold
 var _hands: WeaponHandsIK
+var _spine: AimSpine
+var _spine_blend := 1.0
+## Seconds a full-body clip (`play_full_body`) still has to run: the spine does not lean over it.
+var _full_body_left := 0.0
 var _shoulder_blend := 0.0
 var _recoil := 0.0
 var _action_time := 0.0
@@ -212,6 +216,12 @@ func _ready() -> void:
 	_grenade.visible = false
 	GrenadeView.add_placeholder(_grenade)
 	_mount.add_child(_grenade)
+	# The spine bends before the arms reach, so the hands and the stock follow the shoulders.
+	_spine = AimSpine.new()
+	_spine.name = "AimSpine"
+	_spine.follow = _tuning.spine_pitch_follow
+	_spine.limit_deg = _tuning.spine_pitch_limit_degrees
+	skeleton.add_child(_spine)
 	_hands = WeaponHandsIK.new()
 	_hands.name = "WeaponHandsIK"
 	_hands.hand_hold = HOLD_GUN
@@ -247,6 +257,7 @@ func _process(delta: float) -> void:
 	_advance_events(delta)
 	_advance_repair(delta)
 	_advance_shoulder(delta)
+	_advance_spine(delta)
 
 
 ## Into the crouch state when the body crouches on the ground, back to the locomotion when it
@@ -408,6 +419,7 @@ func _play_clip(clip: StringName) -> bool:
 ## Plays a full-body clip over everything (HitReact, Death).
 func play_full_body(clip: StringName) -> void:
 	_full_node.animation = clip
+	_full_body_left = _clip_seconds(clip)
 	set(&"parameters/full/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 
@@ -542,6 +554,23 @@ func _advance_shoulder(delta: float) -> void:
 	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
 	# so the clips that move them (the repair, Reload, Swing) never showed in a running game.
 	_hands.active = _shoulder_blend > 0.0
+
+
+## Leans the spine with the view's pitch, and lets go of it while a full-body clip plays.
+func _advance_spine(delta: float) -> void:
+	_full_body_left = maxf(_full_body_left - delta, 0.0)
+	_spine.pitch = _player.camera_rig.pitch
+	var target := 0.0 if _full_body_left > 0.0 else 1.0
+	_spine_blend = lerpf(_spine_blend, target, 1.0 - exp(-_tuning.spine_blend_rate * delta))
+	if absf(_spine_blend - target) < 0.001:
+		_spine_blend = target
+	_spine.influence = _spine_blend
+	_spine.active = _spine_blend > 0.0
+
+
+## The spine's lean now, in radians (forward positive), for tests and captures.
+func spine_bend() -> float:
+	return _spine.bend() * _spine_blend
 
 
 ## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible

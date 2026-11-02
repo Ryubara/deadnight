@@ -143,6 +143,14 @@ extends Resource
 ## Look sensitivity while aiming is scaled by this, so aiming is steadier.
 @export var aim_sensitivity_scale := 0.7
 
+@export_group("Body pitch")
+## The spine leans with the view's pitch (`AimSpine`): this share of it, up to this many degrees
+## either way, shared between the lower back and the chest. The weapon takes the whole pitch.
+@export_range(0.0, 1.0, 0.05) var spine_pitch_follow := 0.6
+@export_range(0.0, 60.0, 1.0) var spine_pitch_limit_degrees := 40.0
+## How fast the lean eases in and out when a full-body clip (a hit, a death) takes over, per second.
+@export var spine_blend_rate := 14.0
+
 @export_group("Camera")
 ## Height of the camera pivot above the player's feet (about the head).
 @export var pivot_height := 1.6
