@@ -6,10 +6,12 @@ extends Resource
 ## code of its own.
 
 ## The size rule: a weapon is its real length, scaled by the Soldier's height over a person's,
-## and a little more so that it reads (the kit's guns are chunky). One rule, every weapon.
+## and a third more, as the kit draws its guns for the Soldier's big hands (its AK is 1.33 times a
+## real one beside him). One rule, every weapon; a small gun whose grip would vanish in the fist
+## is drawn larger still (`size_factor`: docs/design/weapon-hold.md, "The size rule").
 const CHARACTER_HEIGHT := 1.4
 const PERSON_HEIGHT := 1.75
-const CHUNK := 1.1
+const CHUNK := 1.3
 
 ## The class the clips are named after (Rifle, Shotgun, Melee).
 @export var weapon_class: StringName = &""
@@ -18,9 +20,9 @@ const CHUNK := 1.1
 ## Size of the model in the hand, on top of the Soldier's own scale (the model is drawn at the
 ## weapon's real length; the rule is `real length x character height / 1.75 m x chunk`).
 @export var model_scale := 1.0
-## How many times the size rule this weapon is drawn at: 1 is the rule. A small one-handed gun
-## hides in the Soldier's fist at the rule's size, so the revolver and the flare gun are given 1.6
-## (docs/design/weapon-hold.md, "The size rule"); nothing else but the repair's hammer departs.
+## How many times the size rule this weapon is drawn at: 1 is the rule. A gun whose pistol grip
+## is shorter than the Soldier's fingers under the trigger finger (the revolver, the flare gun) is
+## drawn larger until it fills them (docs/design/weapon-hold.md, "The size rule").
 @export var size_factor := 1.0
 ## The weapon's real length in metres, kept so the rule can be checked (docs, tests).
 @export var real_length := 1.0
@@ -38,6 +40,9 @@ const CHUNK := 1.1
 @export var butt := Vector3.ZERO
 ## Degrees the barrel is raised above the aim line (the aim line runs through the crosshair).
 @export var pitch_offset_deg := 0.0
+## Degrees the chest turns while the arms hold the weapon, the left shoulder forward (a shooter's
+## stance): the Soldier's arm is short for a two-handed gun's fore-end (docs/design/weapon-hold.md).
+@export var stance_turn_deg := 0.0
 
 
 ## Whether the model has arrived: a hold file may be ready (class, grip) before its glb is.

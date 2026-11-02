@@ -271,7 +271,7 @@ func test_a_delta_that_is_not_a_time_does_nothing() -> void:
 
 
 func test_a_long_stall_catches_up_a_few_steps_not_all_of_it() -> void:
-	var sim := ZombieSim.new(ZombieTuning.new(), 3)
+	var sim := ZombieSim.new(ZombieTuning.shipped(), 3)
 	var zombie := ZombieFixture.standing(sim, 1, Vector3.ZERO, 2.0)
 	sim.tick(10.0, {1: Vector3(60, 0, 0)})
 	# Ten seconds at 2 m/s is 20 m; the catch-up is a fraction of a second.

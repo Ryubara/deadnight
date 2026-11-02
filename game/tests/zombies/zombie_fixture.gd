@@ -6,7 +6,7 @@ const STEP := ZombieSim.STEP
 
 
 static func sim(p_seed: int = 7) -> ZombieSim:
-	return ZombieSim.new(ZombieTuning.new(), p_seed)
+	return ZombieSim.new(ZombieTuning.shipped(), p_seed)
 
 
 ## Runs `seconds` of fixed steps; returns every event, in order.

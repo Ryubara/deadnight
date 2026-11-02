@@ -53,7 +53,7 @@ var skill: SimSkill
 var step: float
 ## The numbers the night (not the rules) owns: a zombie's swing. The shipped defaults, as the real
 ## night loads them. The player's health and mending are the rules' (`tuning.player`).
-var zombies_tuning := ZombieTuning.new()
+var zombies_tuning := ZombieTuning.shipped()
 
 var _rng := RandomNumberGenerator.new()
 var _players: Dictionary[int, SimPlayer] = {}

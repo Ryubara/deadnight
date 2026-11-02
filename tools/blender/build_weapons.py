@@ -110,8 +110,8 @@ def double_shotgun(b):
     b.box((-0.29, 0, -0.02), (0.03, 0.12, 0.072), G, bevel=0.008)
     b.box((-0.46, 0, -0.056), (0.05, 0.03, 0.012), G, bevel=0, detail=True)
     b.cyl((-0.23, -0.068, -0.03), (-0.23, 0.068, -0.03), 0.015, D, segs=8, bevel=0, detail=True)  # hinge pin
-    # Trigger guard and two triggers.
-    b.bar([(-0.12, -0.06), (-0.10, -0.10), (-0.02, -0.112), (0.04, -0.09), (0.07, -0.052)], 0.026, 0.018, G)
+    # Trigger guard and two triggers; the guard hangs deep enough for the Soldier's thick finger (#460).
+    b.bar([(-0.12, -0.06), (-0.10, -0.12), (-0.02, -0.132), (0.04, -0.11), (0.07, -0.052)], 0.026, 0.018, G)
     b.bar([(-0.065, -0.058), (-0.06, -0.094)], 0.014, 0.014, K)
     b.bar([(-0.025, -0.058), (-0.02, -0.094)], 0.014, 0.014, K)
 
@@ -277,7 +277,8 @@ def tommy_gun(b):
     # Pistol grip, trigger guard, trigger.
     b.prism([(-0.006, -0.02), (0.04, -0.02), (0.075, -0.13), (0.072, -0.145), (0.034, -0.145), (0.005, -0.06)],
             -0.024, 0.024, W, bevel=0.008)  # fmt: skip
-    b.bar([(-0.036, -0.018), (-0.038, -0.055), (-0.018, -0.072), (0.006, -0.066), (0.012, -0.04)], 0.018, 0.012, G)
+    # The guard hangs deep enough for the Soldier's thick finger (#460).
+    b.bar([(-0.036, -0.018), (-0.038, -0.07), (-0.018, -0.087), (0.006, -0.081), (0.012, -0.04)], 0.018, 0.012, G)
     b.bar([(-0.01, -0.02), (-0.014, -0.044), (-0.006, -0.056)], 0.01, 0.01, K)
     # Stock: shallow, the butt slanted back at the bottom, a black butt plate.
     b.prism([(0.05, 0.075), (0.12, 0.06), (0.3, 0.064), (0.318, -0.05), (0.28, -0.056), (0.12, -0.012),
@@ -384,6 +385,80 @@ def add_muzzle(o, name, chunk, table=MUZZLES, node=MUZZLE):
     return m
 
 
+# Where the hands meet each weapon (Deadnight #460), in drawing units before `chunk` like MUZZLES. Each is an empty
+# under the weapon; the grip solver (game/tests/art/solve_grips.gd) reads them and writes the hand poses.
+# - `Grip`: the right hand's handle. At the centre of the handle where the middle finger wraps, its local +Z up the
+#   handle toward the index finger (`up`), its local +Y the way the straight fingers point (`front`: along the barrel
+#   for a pistol grip, so the palm lies on the grip's right and the fingertips reach round to its left; the striking
+#   side of a melee weapon, whose turn about the handle the solver keeps from its old hold). In Godot +Z is the node's
+#   +Y and +Y its -Z.
+# - `Trigger`: the middle of the trigger's front face, where the index finger's pad presses; local +Y the press
+#   (backward, +X). Guns only.
+# - `Support`: the left hand's handle (the fore-end, the vertical foregrip, or higher up a melee handle), set out as
+#   `Grip` is: up toward the index finger (the muzzle, on a fore-end), front the way the fingers point (to the gun's
+#   right, +Y, and a little up on a fore-end held from below; forward on a vertical foregrip). Two-handed weapons only.
+# Each entry: (origin, up, front) in drawing units; front is made square to up.
+GRIPS = {
+    "revolver": ((0.032, 0.0, -0.058), (-0.38, 0.0, 0.92), (-1.0, 0.0, 0.0)),
+    "flare_gun": ((0.026, 0.0, -0.056), (-0.37, 0.0, 0.93), (-1.0, 0.0, 0.0)),
+    "tommy_gun": ((0.036, 0.0, -0.085), (-0.28, 0.0, 0.96), (-1.0, 0.0, 0.0)),
+    # A straight stock's wrist is held like a stick: the knuckles run forward along it (the index foremost, toward the
+    # trigger), the fingers point down round its underside, the thumb over the top.
+    "lever_rifle": ((0.07, 0.0, 0.0), (-1.0, 0.0, -0.2), (0.0, 0.0, -1.0)),
+    "double_shotgun": ((0.07, 0.0, 0.0), (-1.0, 0.0, -0.2), (0.0, 0.0, -1.0)),
+    "baseball_bat": ((0.0, 0.0, 0.03), (0.0, 0.0, 1.0), (-1.0, 0.0, 0.0)),
+    "crowbar": ((0.0, 0.0, 0.025), (0.0, 0.0, 1.0), (-1.0, 0.0, 0.0)),
+    "fire_axe": ((0.0, 0.0, 0.01), (0.0, 0.0, 1.0), (-1.0, 0.0, 0.0)),
+    "hammer": ((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), (-1.0, 0.0, 0.0)),
+}
+TRIGGERS = {
+    "revolver": (-0.026, 0.0, -0.018),
+    "flare_gun": (-0.023, 0.0, -0.012),
+    "tommy_gun": (-0.018, 0.0, -0.038),
+    "lever_rifle": (-0.063, 0.0, -0.075),
+    "double_shotgun": (-0.031, 0.0, -0.074),
+}
+SUPPORTS = {
+    # The rear of the fore-end, where the Soldier's short arm reaches with the stock at his shoulder.
+    "lever_rifle": ((-0.36, 0.0, -0.02), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.6)),
+    "double_shotgun": ((-0.36, 0.0, -0.02), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.6)),
+    "tommy_gun": ((-0.37, 0.0, -0.045), (0.08, 0.0, 1.0), (-1.0, 0.0, 0.0)),
+}
+GRIP, TRIGGER, SUPPORT = "Grip", "Trigger", "Support"
+
+
+def add_socket(o, node, origin, chunk, up=(0.0, 0.0, 1.0), front=(1.0, 0.0, 0.0)):
+    """A hand socket empty under the weapon: at `origin`, local +Z along `up` and local +Y along `front` (both scaled
+    by `chunk` like the drawing, then made square)."""
+    k = Vector(chunk)
+    z = (Vector(up) * k).normalized()
+    y = Vector(front) * k
+    y = (y - z * y.dot(z)).normalized()
+    x = y.cross(z)
+    m = bpy.data.objects.new(node, None)
+    m.empty_display_type = "ARROWS"
+    m.empty_display_size = 0.04
+    bpy.context.scene.collection.objects.link(m)
+    m.parent = o
+    m.matrix_basis = Matrix.Translation(Vector(origin) * k) @ Matrix((x, y, z)).transposed().to_4x4()
+    return m
+
+
+def add_sockets(o, name, chunk):
+    """The `Grip`, `Trigger` and `Support` empties of `name` (GRIPS, TRIGGERS, SUPPORTS); returns them."""
+    out = []
+    if name in GRIPS:
+        origin, up, front = GRIPS[name]
+        out.append(add_socket(o, GRIP, origin, chunk, up, front))
+    if name in TRIGGERS:
+        # The press runs backward (+X), up stays up.
+        out.append(add_socket(o, TRIGGER, TRIGGERS[name], chunk, (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)))
+    if name in SUPPORTS:
+        origin, up, front = SUPPORTS[name]
+        out.append(add_socket(o, SUPPORT, origin, chunk, up, front))
+    return out
+
+
 # name: (builder, chunk). Guns fatten across Y and Z (their length runs along X); melee across X and Y.
 WEAPONS = {
     "lever_rifle": (lever_rifle, (1.0, 1.5, 1.5)),
@@ -432,7 +507,7 @@ def stats(o, offset=(0.0, 0.0, 0.0)):
 def export(o, path):
     bpy.ops.object.select_all(action="DESELECT")
     o.select_set(True)
-    for k in o.children:  # pin, spoon, muzzle: separate nodes under the weapon
+    for k in o.children:  # pin, spoon, muzzle, hand sockets: separate nodes under the weapon
         k.select_set(True)
     bpy.context.view_layer.objects.active = o
     bpy.ops.export_scene.gltf(
@@ -476,6 +551,7 @@ def main():
                 k.location = pivot
                 kids.append(k)
             muzzle = add_muzzle(o, name, chunk) or add_muzzle(o, name, chunk, FACES, FACE)
+            sockets = add_sockets(o, name, chunk)
             tris, parts, mn, mx = stats(o)
             for k in kids:
                 kt, kp, kmn, kmx = stats(k, offset=k.location)
@@ -493,11 +569,17 @@ def main():
                 at = [round(c, 4) for c in muzzle.location]
                 report[f"{name}/{lod}"][muzzle.name.lower()] = at
                 nodes += f", {muzzle.name.lower()} {at}"
+            for k in sockets:
+                at = [round(c, 4) for c in k.location]
+                report[f"{name}/{lod}"][k.name.lower()] = at
+                nodes += f", {k.name.lower()} {at}"
             print(f"WEAPON {name} {lod}: {tris} tris, {parts} parts, size {size}{nodes}, file {path}")
             for k in kids:
                 bpy.data.objects.remove(k)
             if muzzle:
                 bpy.data.objects.remove(muzzle)
+            for k in sockets:
+                bpy.data.objects.remove(k)
             bpy.data.objects.remove(o)
     print("REPORT " + json.dumps(report))
 
