@@ -17,8 +17,8 @@ How Deadnight is exported for the browser, how CI runs that build in headless Ch
   insurance for other plain files (`.cfg`, `.txt`) and for a Godot that stops treating `.json` as a resource. CI checks
   the three names are in the pack and the wardrobe screen is opened in the browser, which reads `parts.json`.
 - **Excluded:** `addons/gdUnit4`, `addons/godot_mcp` (untracked, per machine), `tests/`, `reports/`, `_capture.*`.
-- VRAM compression is desktop formats only (`for_mobile=false`); a mobile browser decodes to RGBA. Revisit with the
-  mobile GPU check in #82.
+- VRAM compression is desktop formats only (`for_mobile=false`); a mobile browser decodes to RGBA. Revisit with a
+  mobile GPU check (#82 has none yet).
 
 Size of `build/web`: `index.wasm` 39.5 MB (10.1 MB gzipped), `index.pck` 5.3 MB (4.8 MB gzipped), `index.js` 0.3 MB.
 
@@ -72,8 +72,10 @@ Things that were not obvious:
   gates on them: on the runner the night is so slow that only 3 of the 6 zombies had arrived after 45 s, yet the run passes.
 - No console errors. Console output was the three engine start-up lines, plus one "GPU stall due to ReadPixels"
   warning from SwiftShader.
-- #82: WebGL2 in Chromium shows the menu, the wardrobe and the night with no shader error in the console. Firefox and a
-  mobile GPU are still not run.
+- #82: WebGL2 in Chromium shows the menu, the wardrobe and the night with no shader error in the console. The skin
+  tour (`tools/web_smoke/skin_tour.py`: the menu, the three transitions, the settings and the credits at 1080p) also ran
+  in Chrome and Firefox with a GPU and in the software renderer: no console error and no black or white frame, numbers
+  in [the main menu page](main-menu.md). A mobile GPU is still not run.
 
 ## Playing the web build
 
