@@ -46,7 +46,7 @@ magnitude).
 | `use_target` / `prompt` | `night_server.gd` | What `use` would do now: a door (with price), a breach with a board down, and (#214, open when this was written) wall weapons, ammunition lockers and the crane. The bot reads it as a human reads the prompt. |
 | `RulesAction` | `rules/rules_action.gd` | The only way to change the night; validated by one schema. Bots never send these: the server turns commands into them. |
 | Autopilot | `night/autopilot.gd` | Moves with the navigation mesh, backs away inside 7 m, shoots the nearest zombie in sight (camera and barrel both clear), reloads, buys the next door, repairs boards. Plays five rounds alive (measured below). |
-| Zombie navigation | `zombies/navmesh_baker.gd` | One mesh (cell 0.25, agent radius 0.5, height 1.75, climb 0.25, slope 45 degrees); rebaked when a door opens. The bot uses `NavigationServer3D.map_get_path` on it. |
+| Zombie navigation | `zombies/navmesh_baker.gd` | One mesh (cell 0.25, agent radius 0.5, height 1.75, climb 0.25, slope 45 degrees, contour error 1.0 cell); rebaked when a door opens. The bot uses `NavigationServer3D.map_get_path` on it. |
 | Balance simulator | `tools/balance/` | `SimSkill` levels (weak, average, strong) with accuracy 0.45 / 0.65 / 0.82, head rate 0.06 / 0.15 / 0.30, dodge, read; the reference for "like a human". |
 
 ### Gaps a bot would meet (each is a phase item)
@@ -920,3 +920,28 @@ the rest were fetched or reported.
 Not found despite searching: any design write-up of Back 4 Blood's bots, of Overwatch's or Valorant's practice bots, of
 Deep Rock Galactic's Bosco, of Killing Floor 2's own (absent) bots, and any Valheim companion source. GDC Vault talks
 other than the free ones are behind a login and were not read.
+
+## Tuning the follow soak (#564)
+
+Measured with the move soak (`game/tests/captures/bots_move_soak.tscn`, `--tough=3`, 20 minutes, seeds 1 to 6,
+four bots):
+
+| Change | Stuck (share of walking time) | Within 12 m of the person |
+| --- | --- | --- |
+| Baseline | 1.62% | 0.85 to 0.93 |
+| Navmesh contour error 1.3 to 1.0 cells | 1.30% (the locker at (3, -31) stopped being a cause) | about 0.91 |
+| Also: a bot gives way to any bot standing still | 1.2% on five seeds, but a bot wedged for 61% of one seed | not better |
+| Also: calm follow band 4-10 m to 4-8 m | 1.35% | about 0.91 (varies from 0.77 to 0.96 by seed) |
+
+The default contour error of 1.3 cells cuts a corner by about 0.33 m at a 0.25 m cell, which puts the mesh edge
+inside the bodies' margin: bots walked into locker and prop corners. The last two rows were tried and not kept. A
+run's rounds differ by seed once the bots behave differently, so a few tenths of a percent between runs is noise;
+compare over all six seeds. Remaining stuck episodes are bot against bot (44 of 98) and no contact (42).
+
+Open: the Concession's east wall (x 9.8 to 10.2) and the soda fountain collider (x 7 to 9.4) leave a 0.4 m slot a
+bot can wedge in (#615).
+
+The bands test reads the Veteran's dodge from a few dozen blows: on `main` four seeds read 0.50 (34 blows due) and ten
+seeds read 0.67 (63), and with the tighter contour four seeds read 0.68 (19) and ten read 0.60 (45). The same fight is
+bit-identical from run to run, so the four-seed number is a draw, not noise to average. The test runs eight seeds
+(dodge 0.61 with the tighter contour, band 0.35 to 0.65). The Veteran's true dodge sits near the top of the band.
