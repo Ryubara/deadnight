@@ -9,6 +9,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | --- | --- | --- |
 | `ci` | `conventions` (first, seconds, also decides the rest) | every push to a pull request |
 | | `godot` (17 to 20 minutes on 2026-11-02, limit 30), `web` (about 15) | the change touches something they can see |
+| | `backend` (about a minute) | `spikes/backend/**` (not its Markdown) or `ci.yml` changed; every push to `main` |
 | | `mkdocs`, `markdownlint`, `actionlint` | their own files changed |
 | | `build-ok` | always: the one required name for the build |
 | `pr` (`pull_request_target`) | `pr-rules` (the title, description, docs and commits checks, as steps) | every push and every edit of the description |
@@ -18,11 +19,18 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 ## Which files start which job
 
 `.github/scripts/ci_scope.py` reads the pull request's changed files (the API, no checkout) and the `conventions` job
-passes four answers on: `godot`, `web`, `docs`, `markdown`, `workflows`.
+passes its answers on: `godot`, `web`, `docs`, `markdown`, `workflows`, `backend`.
 
 - A **documentation-only** pull request (`docs/**`, any `*.md`, `.github/ISSUE_TEMPLATE/**`) skips `godot` and `web`.
 - A pull request that **only adds tests** (`game/tests/**`) skips `web`: the export's `exclude_filter` drops `tests/*`.
 - `deploy/`, `spikes/` and `tools/web_smoke/` are not seen by the game's import and tests.
+- `backend` runs the platform backend's own tests (`npm run typecheck`, `npm test` of `spikes/backend`, Node 24, with a
+  Postgres 17 service so the two store tests do not skip; a skipped test fails the step) when `spikes/backend/**` other
+  than Markdown, or `ci.yml`, changed, and on every push to `main` (#558). It waits for `conventions` only, so it runs
+  beside the three Godot shards and never lengthens the critical path (about a minute against 5 to 6 minutes for a
+  shard), and `build-ok` waits for it. Before it, nothing ran `node --test`: `godot` only installs the packages so the
+  lobby's real-socket test can start the backend, so a backend change that broke a lobby, presence or ticket rule
+  merged green.
 - `mkdocs` runs for `docs/**`, `mkdocs.yml`, `requirements-docs.txt` and any `*.md`; `markdownlint` for any `*.md` and
   the markdownlint rules; `actionlint` for `.github/workflows/**`.
 - A list of no files, or of 3000 (the API's limit), turns everything on; so does a push to `main` or a manual run.
