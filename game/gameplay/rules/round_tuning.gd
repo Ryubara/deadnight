@@ -8,74 +8,74 @@ extends Resource
 
 @export_group("Count")
 ## Zombies in round 1 for one player.
-@export var count_base: float = 6.0
+@export_range(0.0, 50.0, 0.1, "or_greater") var count_base: float = 6.0
 ## Zombies added per round (a straight climb).
-@export var count_linear: float = 2.4
+@export_range(0.0, 20.0, 0.05, "or_greater") var count_linear: float = 2.4
 ## Extra zombies added per round squared (the climb steepens).
-@export var count_quadratic: float = 0.12
+@export_range(0.0, 2.0, 0.01, "or_greater") var count_quadratic: float = 0.12
 ## Each player after the first adds this fraction of the solo count.
-@export var count_per_extra_player: float = 0.6
+@export_range(0.0, 10.0, 0.05, "or_greater") var count_per_extra_player: float = 0.6
 
 @export_group("Health")
-@export var health_base: float = 60.0
+@export_range(1.0, 1000.0, 1.0, "or_greater", "suffix:hp") var health_base: float = 60.0
 ## Health added per round up to the knee.
-@export var health_step: float = 18.0
+@export_range(0.0, 200.0, 1.0, "or_greater", "suffix:hp") var health_step: float = 18.0
 ## The last round of the straight climb.
-@export var health_knee_round: int = 8
+@export_range(1, 60, 1, "or_greater") var health_knee_round: int = 8
 ## After the knee health grows by this factor each round.
-@export var health_growth: float = 1.07
+@export_range(1.0, 2.0, 0.005, "or_greater") var health_growth: float = 1.07
 
 @export_group("Speed")
 ## Walking speed of a zombie in round 1, metres per second: its pace under the lights. The
 ## round-by-round pace follows the original games' speed tiers (docs/research/movement-speeds.md).
-@export var speed_base: float = 1.2
-@export var speed_step: float = 0.16
+@export_range(0.1, 10.0, 0.05, "or_greater", "suffix:m/s") var speed_base: float = 1.2
+@export_range(0.0, 2.0, 0.01, "or_greater", "suffix:m/s") var speed_step: float = 0.16
 ## No zombie is faster than this under the lights: a hair above the player's run, so running alone
 ## does not shake the fastest, but a sprinting player can always get away.
-@export var speed_cap: float = 5.0
+@export_range(0.5, 12.0, 0.1, "or_greater", "suffix:m/s") var speed_cap: float = 5.0
 ## Each zombie's speed is varied by up to this fraction either way.
-@export var speed_jitter: float = 0.12
+@export_range(0.0, 1.0, 0.01) var speed_jitter: float = 0.12
 ## A zombie on ground that is not lit (a circuit off, or the generator dry) moves at this multiple
 ## of its speed: the dark makes the dead faster, and the light only keeps them at their round's
 ## pace. Times `speed_cap` it must stay under the player's sprint.
-@export var dark_speed_multiplier: float = 1.25
+@export_range(0.5, 3.0, 0.05, "or_greater", "suffix:x") var dark_speed_multiplier: float = 1.25
 
 @export_group("Spawning")
 ## Seconds between spawns in round 1 for one player.
-@export var spawn_interval_start: float = 2.4
-@export var spawn_interval_decay: float = 0.92
-@export var spawn_interval_min: float = 0.5
+@export_range(0.1, 20.0, 0.1, "or_greater", "suffix:s") var spawn_interval_start: float = 2.4
+@export_range(0.5, 1.0, 0.005) var spawn_interval_decay: float = 0.92
+@export_range(0.05, 10.0, 0.05, "or_greater", "suffix:s") var spawn_interval_min: float = 0.5
 ## The fastest the match settings' count multiplier may make the dead come: 5 a second, what four
 ## players already reach at 1x (0.5 s over 2.5). Only a multiplier above 1x is held to it.
-@export var spawn_interval_floor: float = 0.2
+@export_range(0.02, 5.0, 0.01, "or_greater", "suffix:s") var spawn_interval_floor: float = 0.2
 ## Each extra player makes spawns this much faster (fraction).
-@export var spawn_rate_per_extra_player: float = 0.5
+@export_range(0.0, 2.0, 0.05, "or_greater") var spawn_rate_per_extra_player: float = 0.5
 ## Zombies alive at once in round 1, for one player.
-@export var alive_cap_start: float = 10.0
-@export var alive_cap_step: float = 1.5
-@export var alive_cap_max: float = 28.0
-@export var alive_cap_per_extra_player: float = 6.0
+@export_range(1.0, 200.0, 0.5, "or_greater") var alive_cap_start: float = 10.0
+@export_range(0.0, 20.0, 0.1, "or_greater") var alive_cap_step: float = 1.5
+@export_range(1.0, 200.0, 0.5, "or_greater") var alive_cap_max: float = 28.0
+@export_range(0.0, 40.0, 0.5, "or_greater") var alive_cap_per_extra_player: float = 6.0
 ## The most zombies the rules ever allow alive at once on a desktop or a game server, whatever the
 ## round and the players: the crowd the lot stands there (docs/research/crowd-budget.md). A cap
 ## above the ceiling in force would only queue the rest in the director, never on the lot.
-@export var alive_cap_ceiling: int = 120
+@export_range(1, 300, 1, "or_greater") var alive_cap_ceiling: int = 120
 ## The same for a match with a browser in it, which stands a smaller crowd (measured in the web
 ## build, docs/research/crowd-budget.md). `ceiling_for` picks one.
-@export var web_alive_cap_ceiling: int = 40
+@export_range(1, 300, 1, "or_greater") var web_alive_cap_ceiling: int = 40
 ## Seconds from the start of a round to its first spawn.
-@export var first_spawn_delay: float = 1.5
+@export_range(0.0, 10.0, 0.05, "or_greater", "suffix:s") var first_spawn_delay: float = 1.5
 
 @export_group("Breaks")
 ## The wait before round 1.
-@export var intro_seconds: float = 12.0
+@export_range(0.0, 60.0, 0.5, "or_greater", "suffix:s") var intro_seconds: float = 12.0
 ## The break after each round.
-@export var break_seconds: float = 5.0
+@export_range(0.0, 120.0, 0.5, "or_greater", "suffix:s") var break_seconds: float = 5.0
 
 @export_group("Night")
 ## Ambient light level in round 1 (0 dark, 1 day), read by the world (`NightLight`).
-@export var ambient_start: float = 0.6
-@export var ambient_step: float = 0.035
-@export var ambient_min: float = 0.15
+@export_range(0.0, 1.0, 0.005) var ambient_start: float = 0.6
+@export_range(0.0, 0.5, 0.005, "or_greater") var ambient_step: float = 0.035
+@export_range(0.0, 1.0, 0.005) var ambient_min: float = 0.15
 
 
 func zombies_for_round(round_number: int, players: int) -> int:

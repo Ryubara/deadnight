@@ -6,26 +6,18 @@ extends RefCounted
 ##
 ## - **One voice at a time.** A line owns the channel until it ends plus `GAP`; a request that
 ##   comes while it is busy is dropped (a bark is about the moment it was said in, not queued).
-## - **Priority.** Only a request of `INTERRUPT_PRIORITY` or more (hurt, downed) may cut any line
+## - **Priority.** Only a request of `interrupt_priority` or more (hurt, downed) may cut any line
 ##   that is speaking, and only one it ranks above: downed over hurt over everything else. A
-##   request that outranks the line speaking by `CUT_MARGIN` (a streak over a kill, a boss over a
+##   request that outranks the line speaking by `cut_margin` (a streak over a kill, a boss over a
 ##   mutter) cuts it too.
 ## - **Cooldown** per moment and per speaker, and a `chance` that the moment is voiced at all.
-## - **Variety.** A moment never repeats one of its last `REMEMBER` takes (fewer when it has few).
-
-## Silence after a line before the next may start, in seconds.
-const GAP := 0.5
-## From this priority up a line may cut a lower one that is speaking.
-const INTERRUPT_PRIORITY := 80
-## Any line may cut one this many ranks below it.
-const CUT_MARGIN := 25
-## How many of a moment's last takes it will not play again.
-const REMEMBER := 3
+## - **Variety.** A moment never repeats one of its last `remember_takes` takes (fewer when few).
 
 ## Lines started, in order, for tests and the capture's report:
 ## {"event", "speaker", "take", "at"}.
 var history: Array[Dictionary] = []
 
+var _t := NightSoundTuning.current()
 var _rng := RandomNumberGenerator.new()
 var _now := 0.0
 ## "event:speaker" -> when it last started.
@@ -69,7 +61,7 @@ func quiet_for() -> float:
 ## moment is unknown, the channel is busy with something at least as important, the speaker said
 ## it too recently, or the chance roll said no. Changes nothing until `commit`.
 func choose(event: StringName, speaker := 0) -> int:
-	var info: Dictionary = SoldierVoiceCatalog.EVENTS.get(event, {})
+	var info: Dictionary = SoldierVoiceCatalog.moments().get(event, {})
 	if info.is_empty() or not may_start(int(info["priority"])):
 		return 0
 	if _now - float(_last.get("%s:%d" % [event, speaker], -INF)) < float(info["cooldown"]):
@@ -90,7 +82,7 @@ func may_start(priority: int) -> bool:
 	if _now >= _free_at:
 		return true
 	if not is_speaking():
-		return priority >= INTERRUPT_PRIORITY
+		return priority >= _t.interrupt_priority
 	return would_interrupt(priority)
 
 
@@ -100,17 +92,18 @@ func would_interrupt(priority: int) -> bool:
 		return false
 	var current := int(_line["priority"])
 	return (
-		priority > current and (priority >= INTERRUPT_PRIORITY or priority - current >= CUT_MARGIN)
+		priority > current
+		and (priority >= _t.interrupt_priority or priority - current >= _t.cut_margin)
 	)
 
 
 ## Records that `take` of `event` started now and lasts `duration`; the channel is its until then.
 func commit(event: StringName, speaker: int, take: int, duration: float) -> void:
-	var info: Dictionary = SoldierVoiceCatalog.EVENTS[event]
+	var info: Dictionary = SoldierVoiceCatalog.moments()[event]
 	_last["%s:%d" % [event, speaker]] = _now
 	var recent: Array = _recent.get(event, [])
 	recent.append(take)
-	var keep := mini(REMEMBER, int(info["takes"]) - 1)
+	var keep := mini(_t.remember_takes, int(info["takes"]) - 1)
 	while recent.size() > keep:
 		recent.pop_front()
 	_recent[event] = recent
@@ -121,7 +114,7 @@ func commit(event: StringName, speaker: int, take: int, duration: float) -> void
 		"priority": int(info["priority"]),
 		"ends": _now + duration,
 	}
-	_free_at = _now + duration + GAP
+	_free_at = _now + duration + _t.line_gap
 	history.append({"event": event, "speaker": speaker, "take": take, "at": _now})
 
 

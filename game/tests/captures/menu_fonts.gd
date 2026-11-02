@@ -52,7 +52,14 @@ func _hud() -> void:
 	fixture.into_round_one()
 	var hud := fixture.hud
 	var state := hud.state
-	fixture.advance(HudFuel.IN_TIME + HudFuel.HOLD_TIME + HudFuel.OUT_TIME + 0.5)
+	fixture.advance(
+		(
+			HudTuning.current().fuel_in
+			+ HudTuning.current().fuel_hold
+			+ HudTuning.current().fuel_out
+			+ 0.5
+		)
+	)
 	hud.banner.show_banner("ROUND 1", "THE NIGHT BEGINS", HudBanner.Rank.ROUND)
 	state.set_ammo(18, 90, "Rifle")
 	state.set_equipment("Revolver", 6)
@@ -67,7 +74,7 @@ func _hud() -> void:
 	for amount in [100, 60]:
 		hud.gains.add_gain(&"kill", amount)
 	state.apply_event({"type": &"fuel_changed", "fuel": 62.0, "delta": 0.0})
-	fixture.advance(HudBanner.IN_TIME + 0.3)
+	fixture.advance(HudTuning.current().banner_in + 0.3)
 	await get_tree().process_frame
 
 

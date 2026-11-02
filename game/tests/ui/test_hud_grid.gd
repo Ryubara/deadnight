@@ -44,7 +44,7 @@ func _busy(canvas: Vector2) -> Hud:
 	for amount in [100, 60]:
 		fixture.hud.gains.add_gain(&"kill", amount)
 	fixture.hud.fuel.peek()
-	fixture.advance(HudFuel.IN_TIME + 0.1)
+	fixture.advance(HudTuning.current().fuel_in + 0.1)
 	return fixture.hud
 
 

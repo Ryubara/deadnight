@@ -185,7 +185,7 @@ func test_four_kills_close_together_are_a_streak() -> void:
 func test_kills_far_apart_are_not_a_streak() -> void:
 	for i in 6:
 		_tell(_killed(OWN))
-		_settle(SoldierVoice.STREAK_WINDOW + 3.0)
+		_settle(NightSoundTuning.current().streak_window + 3.0)
 	assert_array(_moments()).not_contains([&"streak"])
 
 
@@ -206,7 +206,7 @@ func test_a_boss_arriving_is_called_out_after_a_beat() -> void:
 		}
 	)
 	assert_array(_moments()).is_empty()
-	_voice.step(SoldierVoice.BOSS_DELAY + 0.1)
+	_voice.step(NightSoundTuning.current().boss_delay + 0.1)
 	assert_array(_moments()).contains([&"boss_arrive"])
 
 
@@ -220,7 +220,7 @@ func test_a_round_starts_after_the_sting_and_a_boss_round_has_the_boss_line_inst
 			"boss_count": 0
 		}
 	)
-	_voice.step(SoldierVoice.ROUND_START_DELAY + 0.1)
+	_voice.step(NightSoundTuning.current().round_start_delay + 0.1)
 	assert_array(_moments()).contains([&"round_start"])
 	_settle(30.0)
 	_voice.director.history.clear()
@@ -233,13 +233,13 @@ func test_a_round_starts_after_the_sting_and_a_boss_round_has_the_boss_line_inst
 			"boss_count": 1
 		}
 	)
-	_voice.step(SoldierVoice.ROUND_START_DELAY + 0.1)
+	_voice.step(NightSoundTuning.current().round_start_delay + 0.1)
 	assert_array(_moments()).not_contains([&"round_start"])
 
 
 func test_a_cleared_round_is_a_moment_to_catch_the_breath() -> void:
 	_tell({"type": &"round_ended", "round": 2, "special_id": &""})
-	_voice.step(SoldierVoice.ROUND_CLEAR_DELAY + 0.1)
+	_voice.step(NightSoundTuning.current().round_clear_delay + 0.1)
 	assert_array(_moments()).contains([&"round_clear"])
 
 
@@ -306,20 +306,20 @@ func test_a_thrown_grenade_is_called_by_the_thrower() -> void:
 func test_a_quiet_break_makes_the_soldier_muse_but_a_short_one_does_not() -> void:
 	_frame(GameRules.Phase.BREAK)
 	_tell({"type": &"break_started", "next_round": 2, "seconds": 20.0})
-	_voice.step(SoldierVoice.IDLE_AFTER + 0.5)
+	_voice.step(NightSoundTuning.current().idle_after + 0.5)
 	assert_array(_moments()).contains([&"idle"])
 	_settle(60.0)
 	_voice.director.history.clear()
 	_tell({"type": &"break_started", "next_round": 3, "seconds": 9.0})
-	_voice.step(SoldierVoice.IDLE_AFTER + 0.5)
+	_voice.step(NightSoundTuning.current().idle_after + 0.5)
 	assert_array(_moments()).not_contains([&"idle"])
 
 
 func test_a_lull_in_a_round_makes_the_soldier_muse_but_the_dead_close_by_do_not() -> void:
 	_dead_near = false
 	_frame(GameRules.Phase.ACTIVE)
-	_voice.step(SoldierVoice.IDLE_AFTER + 1.0)
-	_voice.step(SoldierVoice.LULL + 0.5)
+	_voice.step(NightSoundTuning.current().idle_after + 1.0)
+	_voice.step(NightSoundTuning.current().lull + 0.5)
 	assert_array(_moments()).contains([&"idle"])
 	_settle(60.0)
 	_voice.director.history.clear()

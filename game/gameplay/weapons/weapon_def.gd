@@ -19,18 +19,18 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export_group("Damage")
 ## Per pellet (hitscan), on a direct hit (projectile) or per swing (melee), on the body zone and
 ## at point blank.
-@export var damage: float = 20.0
-@export var pellets: int = 1
+@export_range(0.0, 500.0, 1.0, "or_greater") var damage: float = 20.0
+@export_range(1, 30, 1, "or_greater") var pellets: int = 1
 ## Half-angle of the cone the pellets fall in, in degrees. 0 is a perfect line.
-@export var spread_deg: float = 0.0
+@export_range(0.0, 30.0, 0.05, "or_greater", "suffix:deg") var spread_deg: float = 0.0
 ## Full damage up to `falloff_start` metres, sliding linearly to `min_damage_fraction` at
 ## `falloff_end`, flat beyond it up to `max_range`.
-@export var falloff_start: float = 15.0
-@export var falloff_end: float = 40.0
+@export_range(0.0, 100.0, 0.5, "or_greater", "suffix:m") var falloff_start: float = 15.0
+@export_range(0.0, 1000.0, 0.5, "or_greater", "suffix:m") var falloff_end: float = 40.0
 @export_range(0.0, 1.0) var min_damage_fraction: float = 0.5
-@export var max_range: float = 80.0
+@export_range(0.0, 1000.0, 0.5, "or_greater", "suffix:m") var max_range: float = 80.0
 ## How many extra targets a shot passes through, each one weaker (see below).
-@export var penetration: int = 0
+@export_range(0, 10, 1, "or_greater") var penetration: int = 0
 ## Damage multiplier applied once per target the shot has already passed through.
 @export_range(0.0, 1.0) var penetration_falloff: float = 0.6
 ## Hit zone name (`Hitbox.HEAD`, `BODY`, `LIMB`) to damage multiplier.
@@ -38,12 +38,12 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 
 @export_group("Handling")
 ## Seconds between two shots (melee: between two swings).
-@export var fire_interval: float = 0.4
-@export var magazine_size: int = 8
+@export_range(0.02, 3.0, 0.01, "or_greater", "suffix:s") var fire_interval: float = 0.4
+@export_range(1, 200, 1, "or_greater") var magazine_size: int = 8
 ## Rounds carried when the weapon is given.
-@export var reserve_start: int = 32
-@export var reserve_max: int = 96
-@export var reload_time: float = 1.6
+@export_range(0, 500, 1, "or_greater") var reserve_start: int = 32
+@export_range(0, 1000, 1, "or_greater") var reserve_max: int = 96
+@export_range(0.1, 8.0, 0.05, "or_greater", "suffix:s") var reload_time: float = 1.6
 
 @export_group("Feel")
 ## Trauma one shot adds to the shooter's view shake, 0 to 1 (`CameraShake`;
@@ -54,29 +54,29 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export_range(0.0, 1.0, 0.01) var flash_size: float = 0.3
 
 @export_group("Projectile")
-@export var projectile_speed: float = 30.0
+@export_range(0.0, 200.0, 1.0, "or_greater", "suffix:m/s") var projectile_speed: float = 30.0
 ## Downward acceleration in m/s^2 (a lob falls; a bolt does not).
-@export var projectile_gravity: float = 0.0
-@export var projectile_radius: float = 0.1
+@export_range(0.0, 40.0, 0.5, "or_greater", "suffix:m/s^2") var projectile_gravity: float = 0.0
+@export_range(0.0, 2.0, 0.01, "or_greater", "suffix:m") var projectile_radius: float = 0.1
 ## Seconds before it bursts in the air.
-@export var projectile_lifetime: float = 3.0
-@export var splash_radius: float = 0.0
+@export_range(0.1, 20.0, 0.1, "or_greater", "suffix:s") var projectile_lifetime: float = 3.0
+@export_range(0.0, 20.0, 0.1, "or_greater", "suffix:m") var splash_radius: float = 0.0
 ## Damage at the burst centre; it slides linearly to `splash_min_fraction` at the radius.
-@export var splash_damage: float = 0.0
+@export_range(0.0, 500.0, 1.0, "or_greater") var splash_damage: float = 0.0
 @export_range(0.0, 1.0) var splash_min_fraction: float = 0.25
 
 @export_group("Lure")
 ## Metres round a burst within which zombies leave what they chase for the burst point, and the
 ## seconds they stay (`ZombieLure`); 0 makes no lure. A lure does no damage.
-@export var lure_radius: float = 0.0
-@export var lure_seconds: float = 0.0
+@export_range(0.0, 60.0, 0.5, "or_greater", "suffix:m") var lure_radius: float = 0.0
+@export_range(0.0, 60.0, 0.5, "or_greater", "suffix:s") var lure_seconds: float = 0.0
 
 @export_group("Melee")
-@export var melee_range: float = 1.8
+@export_range(0.0, 10.0, 0.05, "or_greater", "suffix:m") var melee_range: float = 1.8
 ## Thickness of the sweep in metres: the shape that is cast is this fat.
-@export var melee_radius: float = 0.35
+@export_range(0.0, 10.0, 0.01, "or_greater", "suffix:m") var melee_radius: float = 0.35
 ## How many targets one swing can hit.
-@export var melee_max_targets: int = 1
+@export_range(1, 10, 1, "or_greater") var melee_max_targets: int = 1
 
 ## Which re-cut this copy has had: 0 as shipped, 1 after `upgraded`. Not saved with the file.
 var tier: int = 0

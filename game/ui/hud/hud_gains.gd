@@ -8,10 +8,6 @@ extends HudPart
 const MAX_ROWS := 3
 ## The room until the `Hud` says how much the canvas leaves (see `set_room`).
 const WIDTH := 225.0
-const LIFE := 2.4
-const FADE := 0.5
-## Hits within this many seconds of the last row of the same kind add to it.
-const MERGE_WINDOW := 0.7
 ## What each rules reason is called on screen. Reasons not listed are shown as their own name.
 const REASON_TEXT := {
 	&"kill": "KILL",
@@ -32,6 +28,7 @@ var rows: Array[Dictionary] = []
 ## How wide the list may be: a row's type shrinks to fit.
 var room := WIDTH
 
+var _t := HudTuning.current()
 var _stack := HudRowStack.new()
 ## Labels that left the list, kept for the next gains (a kill makes one every time): the plain
 ## ones and the big ones, which are in another font.
@@ -92,7 +89,11 @@ func add_gain(reason: StringName, amount: int) -> void:
 	if reason == &"start" or reason == &"grant":
 		return
 	var last: Dictionary = rows.back() if not rows.is_empty() else {}
-	if MERGES.has(reason) and last.get("reason") == reason and float(last["age"]) < MERGE_WINDOW:
+	if (
+		MERGES.has(reason)
+		and last.get("reason") == reason
+		and float(last["age"]) < _t.gains_merge_window
+	):
 		last["amount"] = int(last["amount"]) + amount
 		last["age"] = 0.0
 		_write(last)
@@ -112,8 +113,8 @@ func add_gain(reason: StringName, amount: int) -> void:
 func advance(delta: float) -> void:
 	for row in rows.duplicate():
 		row["age"] = float(row["age"]) + delta
-		var left := LIFE - float(row["age"])
-		(row["label"] as Label).modulate.a = clampf(left / FADE, 0.0, 1.0)
+		var left := _t.gains_life - float(row["age"])
+		(row["label"] as Label).modulate.a = clampf(left / _t.gains_fade, 0.0, 1.0)
 		if left <= 0.0:
 			_drop(row)
 	_stack.advance(delta)

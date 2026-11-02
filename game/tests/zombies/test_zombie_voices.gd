@@ -89,7 +89,7 @@ func test_idle_voices_keep_to_the_hordes_gate_over_time() -> void:
 	)
 	var total := _count(&"zombie_groan")
 	# One every 0.6 to 1.6 s at most; and none from zombies who are not due: well under 28 a second.
-	assert_int(total).is_less_equal(int(30.0 / ZombieVoices.IDLE_GAP.x) + 1)
+	assert_int(total).is_less_equal(int(30.0 / NightSoundTuning.current().idle_gap_min) + 1)
 	assert_int(total).is_greater(5)
 	assert_int(seen["most"]).is_less_equal(SoundCatalog.group_limits()[&"zombie_voice"])
 

@@ -143,9 +143,9 @@ func test_the_card_fades_in_and_out_and_slides_from_the_edge() -> void:
 	_run(0.5)
 	assert_float(card.modulate.a).is_equal(1.0)
 	assert_float(card.position.x).is_equal(0.0)
-	_run(ChallengePromptQueue.HOLD_SECONDS)
+	_run(HudTuning.current().challenge_hold)
 	assert_float(card.modulate.a).is_less(1.0)
-	_run(ChallengePromptQueue.OUT_SECONDS + 0.2)
+	_run(HudTuning.current().challenge_out + 0.2)
 	assert_bool(_hud.challenge.visible).is_false()
 
 

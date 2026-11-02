@@ -31,7 +31,7 @@ func _typical_hud(canvas: Vector2) -> HudFixture:
 		state.apply_event({"type": &"purchase_made", "player_id": 1, "item_id": item})
 	state.apply_event({"type": &"player_added", "player_id": 2})
 	fixture.hud.banner.show_banner("ROUND 1", "", HudBanner.Rank.ROUND)
-	fixture.advance(HudBanner.IN_TIME + 0.1)
+	fixture.advance(HudTuning.current().banner_in + 0.1)
 	return fixture
 
 

@@ -14,12 +14,6 @@ const LEVER_ON := deg_to_rad(-40.0)
 const LEVER_OFF := deg_to_rad(40.0)
 const LAMP_ON := Color(0.35, 1.0, 0.45)
 const LAMP_OFF := Color(0.55, 0.08, 0.06)
-## How much of the lamp's colour glows when it is off.
-const GLOW_OFF := 0.5
-const GLOW_ON := 2.0
-## The halo round the lamp, so a post reads from across the lot: bright green on, a dull red off.
-const HALO_ON := 1.1
-const HALO_OFF := 0.45
 
 ## The circuit this post switches (`metadata/circuit`).
 var circuit_id: StringName = &""
@@ -56,9 +50,10 @@ func set_on(on: bool) -> void:
 	_lever.rotation.x = LEVER_ON if on else LEVER_OFF
 	_material.albedo_color = LAMP_ON if on else LAMP_OFF
 	_material.emission = LAMP_ON if on else LAMP_OFF
-	_material.emission_energy_multiplier = GLOW_ON if on else GLOW_OFF
+	var tuning := LightTuning.current()
+	_material.emission_energy_multiplier = tuning.switch_glow_on if on else tuning.switch_glow_off
 	_halo.set_shader_parameter(&"tint", LAMP_ON if on else LAMP_OFF)
-	_halo.set_shader_parameter(&"energy", HALO_ON if on else HALO_OFF)
+	_halo.set_shader_parameter(&"energy", tuning.switch_halo_on if on else tuning.switch_halo_off)
 
 
 ## Where a player stands to use it: `distance` metres out from its front.

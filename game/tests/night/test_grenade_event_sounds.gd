@@ -42,7 +42,7 @@ func test_a_cook_ticks_faster_as_the_fuse_runs_down() -> void:
 	assert_int(ticks.size()).is_greater(8)
 	var first_gap := ticks[1] - ticks[0]
 	var last_gap := ticks[-1] - ticks[-2]
-	assert_float(first_gap).is_equal_approx(GrenadeSounds.TICK_GAP_START, 0.06)
+	assert_float(first_gap).is_equal_approx(NightSoundTuning.current().tick_gap_start, 0.06)
 	assert_float(last_gap).is_less(first_gap * 0.5)
 	# The gaps only ever shrink.
 	for i in range(1, ticks.size() - 1):
@@ -113,5 +113,7 @@ func test_the_blast_sounds_where_it_goes_off() -> void:
 
 
 func test_the_tick_gap_runs_from_slow_to_fast() -> void:
-	assert_float(GrenadeSounds.tick_gap(3.0, 3.0)).is_equal(GrenadeSounds.TICK_GAP_START)
-	assert_float(GrenadeSounds.tick_gap(0.0, 3.0)).is_equal(GrenadeSounds.TICK_GAP_END)
+	assert_float(GrenadeSounds.tick_gap(3.0, 3.0)).is_equal(
+		NightSoundTuning.current().tick_gap_start
+	)
+	assert_float(GrenadeSounds.tick_gap(0.0, 3.0)).is_equal(NightSoundTuning.current().tick_gap_end)

@@ -4,7 +4,6 @@
 extends GdUnitTestSuite
 
 const STEP := 0.1
-const TOTAL := HudFuel.IN_TIME + HudFuel.HOLD_TIME + HudFuel.OUT_TIME
 
 var _host: Control
 var _fixture: HudFixture
@@ -72,20 +71,20 @@ func test_it_comes_in_holds_and_leaves_on_the_stepped_clock() -> void:
 	_refill()
 	assert_bool(_hud.fuel.showing).is_true()
 	assert_float(_hud.fuel.presence()).is_equal(0.0)
-	_step(HudFuel.IN_TIME * 0.5)
+	_step(HudTuning.current().fuel_in * 0.5)
 	assert_float(_hud.fuel.presence()).is_equal_approx(0.5, 0.001)
-	_step(HudFuel.IN_TIME * 0.5)
+	_step(HudTuning.current().fuel_in * 0.5)
 	assert_float(_hud.fuel.presence()).is_equal_approx(1.0, 0.001)
 	# Held for its seconds, at full strength.
-	_step(HudFuel.HOLD_TIME * 0.5)
+	_step(HudTuning.current().fuel_hold * 0.5)
 	assert_float(_hud.fuel.presence()).is_equal(1.0)
 	assert_bool(_hud.fuel.visible).is_true()
-	_step(HudFuel.HOLD_TIME * 0.5)
+	_step(HudTuning.current().fuel_hold * 0.5)
 	assert_float(_hud.fuel.presence()).is_equal(1.0)
 	# Out: halfway through the exit it is half as strong.
-	_step(HudFuel.OUT_TIME * 0.5)
+	_step(HudTuning.current().fuel_out * 0.5)
 	assert_float(_hud.fuel.presence()).is_equal_approx(0.5, 0.01)
-	_step(HudFuel.OUT_TIME * 0.5 + STEP)
+	_step(HudTuning.current().fuel_out * 0.5 + STEP)
 	assert_bool(_hud.fuel.showing).is_false()
 	assert_bool(_hud.fuel.visible).is_false()
 	assert_float(_hud.fuel.presence()).is_equal(0.0)
@@ -93,22 +92,28 @@ func test_it_comes_in_holds_and_leaves_on_the_stepped_clock() -> void:
 
 func test_more_progress_while_it_shows_keeps_it_up_for_another_hold() -> void:
 	_refill()
-	_step(HudFuel.IN_TIME + 3.0)
+	_step(HudTuning.current().fuel_in + 3.0)
 	_refill()
 	_step(3.0)
 	assert_bool(_hud.fuel.showing).is_true()
 	assert_float(_hud.fuel.presence()).is_equal(1.0)
-	_step(HudFuel.HOLD_TIME + HudFuel.OUT_TIME + STEP)
+	_step(HudTuning.current().fuel_hold + HudTuning.current().fuel_out + STEP)
 	assert_bool(_hud.fuel.showing).is_false()
 
 
 func test_progress_during_the_exit_brings_it_back_without_a_jump() -> void:
 	_refill()
-	_step(HudFuel.IN_TIME + HudFuel.HOLD_TIME + HudFuel.OUT_TIME * 0.5)
+	_step(
+		(
+			HudTuning.current().fuel_in
+			+ HudTuning.current().fuel_hold
+			+ HudTuning.current().fuel_out * 0.5
+		)
+	)
 	var before := _hud.fuel.presence()
 	_refill()
 	assert_float(_hud.fuel.presence()).is_less_equal(before + 0.001)
-	_step(HudFuel.IN_TIME)
+	_step(HudTuning.current().fuel_in)
 	assert_float(_hud.fuel.presence()).is_equal(1.0)
 
 
@@ -118,11 +123,11 @@ func test_it_slides_in_and_the_feed_under_it_follows() -> void:
 	await await_idle_frame()
 	var resting := _hud.events_feed.global_position.y
 	_refill()
-	_step(HudFuel.IN_TIME * 0.5)
+	_step(HudTuning.current().fuel_in * 0.5)
 	await await_idle_frame()
 	await await_idle_frame()
 	var halfway := _hud.events_feed.global_position.y
-	_step(HudFuel.IN_TIME)
+	_step(HudTuning.current().fuel_in)
 	await await_idle_frame()
 	await await_idle_frame()
 	var full := _hud.events_feed.global_position.y
@@ -133,7 +138,7 @@ func test_it_slides_in_and_the_feed_under_it_follows() -> void:
 		_hud.fuel.panel.get_combined_minimum_size().y + HudStyle.GAP, 1.0
 	)
 	# Out again: the feed is back where it was.
-	_step(HudFuel.HOLD_TIME + HudFuel.OUT_TIME + STEP)
+	_step(HudTuning.current().fuel_hold + HudTuning.current().fuel_out + STEP)
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_float(_hud.events_feed.global_position.y).is_equal_approx(resting, 0.5)
@@ -141,20 +146,20 @@ func test_it_slides_in_and_the_feed_under_it_follows() -> void:
 
 func test_the_panel_slides_down_from_above_its_slot() -> void:
 	_refill()
-	_step(HudFuel.IN_TIME * 0.25)
+	_step(HudTuning.current().fuel_in * 0.25)
 	assert_float(_hud.fuel.panel.position.y).is_less(0.0)
-	_step(HudFuel.IN_TIME)
+	_step(HudTuning.current().fuel_in)
 	assert_float(_hud.fuel.panel.position.y).is_equal_approx(0.0, 0.001)
 
 
 func test_with_reduced_motion_it_fades_without_sliding() -> void:
 	UIMotion.reduced = true
 	_refill()
-	_step(HudFuel.IN_TIME * 0.25)
+	_step(HudTuning.current().fuel_in * 0.25)
 	assert_float(_hud.fuel.panel.position.y).is_equal_approx(0.0, 0.001)
 	assert_float(_hud.fuel.panel.modulate.a).is_less(1.0)
 	assert_float(_hud.fuel.panel.modulate.a).is_greater(0.0)
-	_step(HudFuel.IN_TIME)
+	_step(HudTuning.current().fuel_in)
 	assert_float(_hud.fuel.panel.modulate.a).is_equal(1.0)
 
 
@@ -166,7 +171,7 @@ func test_a_snapshot_does_not_show_it() -> void:
 
 func test_a_held_panel_costs_no_layout() -> void:
 	_refill()
-	_step(HudFuel.IN_TIME + 0.5)
+	_step(HudTuning.current().fuel_in + 0.5)
 	var changes := [0]
 	_hud.fuel.minimum_size_changed.connect(func() -> void: changes[0] += 1)
 	_step(2.0)

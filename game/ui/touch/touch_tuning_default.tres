@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TouchTuning" format=3]
+
+[ext_resource type="Script" path="res://ui/touch/touch_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+radians_per_height = 1.6
+slow_speed = 450.0
+fast_speed = 2400.0
+max_gain = 1.6
+velocity_warmup_drags = 3
+stick_deadzone = 0.1
+sprint_on = 0.95
+sprint_off = 0.75
+min_hold = 0.09
+inset_period = 0.5
+haptic_ms = 12

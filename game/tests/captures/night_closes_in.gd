@@ -49,7 +49,7 @@ func _process(_delta: float) -> void:
 			_night.tick()
 		var light := _night.get_node_or_null("NightLight") as NightLight  # not there on `main`
 		if light != null:
-			light.advance(NightLight.EASE_SECONDS)
+			light.advance(LightTuning.current().ease_seconds)
 		print("ROUND ", _round, " light ", light.level if light != null else "fixed")
 	if _frame > HOLD_FRAMES * DISTANCES.size():
 		get_tree().quit()

@@ -59,25 +59,13 @@ const RELOAD := {
 }
 ## Lifts a sound off the ground to a player's head.
 const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
-## The tail starts this long after the report, and up to `TAIL_SPREAD` later: the lot answers late.
-const TAIL_DELAY := 0.03
-const TAIL_SPREAD := 0.02
-## A level wobble on every layer, in dB either way: the one level rule of the firearms, with the
-## pitch rule of `ArmsCatalog.FIREARM_PITCH_SEMITONES`. Enough that repeats do not machine-gun
-## (the variants and their noise do the rest), too little to make one shot stand out.
-const LEVEL_JITTER_DB := 0.5
-## How many ricochets one shot may make (a shotgun has eight pellets), and how close a hit's point
-## must be to a pellet's end for the pellet to count as having hit the zombie.
-const MAX_WORLD_IMPACTS := 3
-const HIT_MATCH_RADIUS := 1.5
-## A pellet that ends within this of the weapon's range hit nothing at all (the sky).
-const RANGE_MARGIN := 0.5
 
 ## `Callable(id: StringName, at: Variant, extra_db: float)`; the audio service unless a test
 ## listens instead.
 var play := Callable()
 var schedule := SoundSchedule.new()
 
+var _t := NightSoundTuning.current()
 var _state: ClientState
 var _rng := RandomNumberGenerator.new()
 var _pending_ends: Array[Vector3] = []
@@ -125,7 +113,7 @@ func _on_shot(event: Dictionary) -> void:
 	_play(layers["shot"], heard_at)
 	if layers.has("tail"):
 		var tail: StringName = layers["tail"]
-		var delay := TAIL_DELAY + _rng.randf() * TAIL_SPREAD
+		var delay := _t.tail_delay + _rng.randf() * _t.tail_spread
 		schedule.add(delay, func() -> void: _play(tail, heard_at))
 	var def := WeaponCatalog.get_def(weapon_id)
 	if def != null and def.is_hitscan():
@@ -136,7 +124,7 @@ func _on_shot(event: Dictionary) -> void:
 ## moment later in the same batch (`_on_damage` claims them), and what is left struck the lot.
 func _note_ends(muzzle: Vector3, ends: Array, max_range: float) -> void:
 	for end: Vector3 in ends:
-		if muzzle.distance_to(end) < max_range - RANGE_MARGIN:
+		if muzzle.distance_to(end) < max_range - _t.range_margin:
 			_pending_ends.append(end)
 	if not _pending_ends.is_empty() and not _flush_queued:
 		_flush_queued = true
@@ -148,7 +136,7 @@ func _on_damage(event: Dictionary) -> void:
 		return
 	var point: Vector3 = event["point"]
 	var best := -1
-	var best_distance := HIT_MATCH_RADIUS
+	var best_distance := _t.hit_match_radius
 	for i in _pending_ends.size():
 		var distance := _pending_ends[i].distance_to(point)
 		if distance <= best_distance:
@@ -161,7 +149,7 @@ func _on_damage(event: Dictionary) -> void:
 
 func _flush_impacts() -> void:
 	_flush_queued = false
-	var count := mini(_pending_ends.size(), MAX_WORLD_IMPACTS)
+	var count := mini(_pending_ends.size(), _t.max_world_impacts)
 	for i in count:
 		var end := _pending_ends[int(float(i * _pending_ends.size()) / float(count))]
 		_play(&"impact_world", end)
@@ -208,7 +196,7 @@ func _at_player(sound: StringName, player_id: int) -> void:
 
 
 func _play(sound: StringName, at: Variant) -> void:
-	var extra_db := _rng.randf_range(-LEVEL_JITTER_DB, LEVEL_JITTER_DB)
+	var extra_db := _rng.randf_range(-_t.shot_jitter_db, _t.shot_jitter_db)
 	if play.is_valid():
 		play.call(sound, at, extra_db)
 	else:

@@ -9,21 +9,6 @@ extends Node
 const HUM := &"generator_hum"
 const ENGINE := &"generator_engine"
 const BED := &"bed_tension"
-## The hum's level in dB: the synthesised layer and the generated engine, idle to full load.
-const HUM_DB := Vector2(-15.0, -7.0)
-const ENGINE_DB := Vector2(-22.0, -9.0)
-## The hum's pitch scale at idle and at full load, and how far a starving engine wobbles.
-const HUM_PITCH := Vector2(0.94, 1.05)
-const STARVE_WOBBLE := 0.035
-const STARVE_WOBBLE_HZ := 6.0
-## How fast a level moves toward its target, in dB per second, and the level that counts as off.
-const SLEW_DB_PER_S := 24.0
-const OFF_DB := -60.0
-## Seconds between sputters: barely low, and nearly dry.
-const SPUTTER_GAP := Vector2(4.0, 1.0)
-## The tense bed starts this long after a round does, when the sting's front is over, and fades
-## in and out like the other beds (`Audio.start_bed`).
-const BED_DELAY := 2.4
 const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
 ## The points reasons that ring the bell (a kill) instead of ticking (a hit).
 const KILL_REASONS: Array[StringName] = [
@@ -40,9 +25,6 @@ const BUYS := {
 	ShopItem.Kind.UPGRADE: [&"buy_recut"],
 	ShopItem.Kind.DOOR: [&"door_unlock", &"door_buy"],
 }
-const BUY_GAP := 0.2
-## The prize ding comes this long after the claw starts up with it.
-const PRIZE_DING_DELAY := 0.35
 
 ## `Callable(id: StringName, at: Variant, extra_db: float)`; the audio service unless a test
 ## listens instead.
@@ -50,6 +32,7 @@ var play := Callable()
 var schedule := SoundSchedule.new()
 var generator := GeneratorLoad.new()
 
+var _t := NightSoundTuning.current()
 var _state: ClientState
 var _economy: EconomyTuning
 var _anchor: Node3D
@@ -58,8 +41,8 @@ var _crane_point := Callable()
 var _rng := RandomNumberGenerator.new()
 var _hum: AudioStreamPlayer3D
 var _engine: AudioStreamPlayer3D
-var _hum_db := HUM_DB.x
-var _engine_db := ENGINE_DB.x
+var _hum_db := _t.hum_idle_db
+var _engine_db := _t.engine_idle_db
 var _running := true
 var _clock := 0.0
 var _sputter_left := 0.0
@@ -144,7 +127,7 @@ func _on_event(event: Dictionary) -> void:
 		&"crane_prize_ready":
 			_at_crane(&"crane_claw_lift", event["spot"], event["player_id"])
 			schedule.add(
-				PRIZE_DING_DELAY,
+				_t.prize_ding_delay,
 				func() -> void: _at_crane(&"crane_prize", event["spot"], event["player_id"])
 			)
 		&"crane_prize_taken":
@@ -158,7 +141,7 @@ func _on_event(event: Dictionary) -> void:
 			_at_crane(&"crane_move", event["from_spot"], -1)
 		&"round_started":
 			schedule.cancel(&"bed")
-			schedule.add(BED_DELAY, func() -> void: Audio.start_bed(BED), &"bed")
+			schedule.add(_t.bed_delay, func() -> void: Audio.start_bed(BED), &"bed")
 		&"round_ended", &"game_over":
 			schedule.cancel(&"bed")
 			Audio.stop_bed(BED)
@@ -178,14 +161,20 @@ func _start_hum() -> void:
 ## Level and pitch follow the load; a dry tank (`_running` false) fades the hum away and stops it.
 func _follow_hum(delta: float, snap := false) -> void:
 	var load_fraction := generator.load_fraction()
-	var hum_target := lerpf(HUM_DB.x, HUM_DB.y, load_fraction) if _running else OFF_DB
-	var engine_target := lerpf(ENGINE_DB.x, ENGINE_DB.y, load_fraction) if _running else OFF_DB
-	var step := SLEW_DB_PER_S * delta
+	var hum_target := (
+		lerpf(_t.hum_idle_db, _t.hum_full_db, load_fraction) if _running else _t.off_db
+	)
+	var engine_target := (
+		lerpf(_t.engine_idle_db, _t.engine_full_db, load_fraction) if _running else _t.off_db
+	)
+	var step := _t.slew_db_per_s * delta
 	_hum_db = hum_target if snap else move_toward(_hum_db, hum_target, step)
 	_engine_db = engine_target if snap else move_toward(_engine_db, engine_target, step)
-	var pitch := lerpf(HUM_PITCH.x, HUM_PITCH.y, load_fraction)
+	var pitch := lerpf(_t.hum_idle_pitch, _t.hum_full_pitch, load_fraction)
 	if generator.is_low():
-		pitch *= 1.0 + STARVE_WOBBLE * generator.starving() * sin(_clock * TAU * STARVE_WOBBLE_HZ)
+		pitch *= (
+			1.0 + _t.starve_wobble * generator.starving() * sin(_clock * TAU * _t.starve_wobble_hz)
+		)
 	_set_loop(_hum, _hum_db, pitch)
 	_set_loop(_engine, _engine_db, pitch)
 
@@ -197,9 +186,9 @@ func _set_loop(player: AudioStreamPlayer3D, db: float, pitch: float) -> void:
 	# Near the generator the engine would boost the loop to its own ceiling: hold it at its level.
 	player.max_db = db
 	player.pitch_scale = pitch
-	if db <= OFF_DB + 1.0 and player.playing:
+	if db <= _t.off_db + 1.0 and player.playing:
 		player.stop()
-	elif db > OFF_DB + 1.0 and not player.playing and _anchor.is_inside_tree():
+	elif db > _t.off_db + 1.0 and not player.playing and _anchor.is_inside_tree():
 		player.play()
 
 
@@ -209,7 +198,7 @@ func _follow_sputter(delta: float) -> void:
 	_sputter_left -= delta
 	if _sputter_left <= 0.0:
 		_play_at_generator(&"generator_sputter")
-		var gap := lerpf(SPUTTER_GAP.x, SPUTTER_GAP.y, generator.starving())
+		var gap := lerpf(_t.sputter_gap_low, _t.sputter_gap_dry, generator.starving())
 		_sputter_left = gap * _rng.randf_range(0.7, 1.3)
 
 
@@ -239,7 +228,7 @@ func _on_purchase(event: Dictionary) -> void:
 		if i == 0:
 			_at_player(sound, buyer)
 		else:
-			schedule.add(BUY_GAP * i, func() -> void: _at_player(sound, buyer))
+			schedule.add(_t.buy_gap * i, func() -> void: _at_player(sound, buyer))
 
 
 func _on_points(event: Dictionary) -> void:

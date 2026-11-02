@@ -5,13 +5,6 @@ extends Node
 ## the knock of each bounce (harder when it hits harder) and the blast. A grenade in the air makes
 ## no tick: its place is only known at the throw, the bounces and the blast.
 
-## The tick's gap at the start of a fuse and at its end, in seconds.
-const TICK_GAP_START := 0.5
-const TICK_GAP_END := 0.1
-## A bounce's level goes from `BOUNCE_QUIET_DB` at rest to `BOUNCE_LOUD_DB` at `BOUNCE_FAST` m/s.
-const BOUNCE_QUIET_DB := -9.0
-const BOUNCE_LOUD_DB := 0.0
-const BOUNCE_FAST := 12.0
 const HEAD_LIFT := Vector3(0.0, 1.4, 0.0)
 
 ## `Callable(id: StringName, at: Variant, extra_db: float)`; the audio service unless a test
@@ -19,6 +12,7 @@ const HEAD_LIFT := Vector3(0.0, 1.4, 0.0)
 var play := Callable()
 var schedule := SoundSchedule.new()
 
+var _t := NightSoundTuning.current()
 var _state: ClientState
 var _cooks: Dictionary[int, int] = {}
 
@@ -34,7 +28,8 @@ func _process(delta: float) -> void:
 
 ## The gap before the next tick when `left` of `fuse` seconds remain.
 static func tick_gap(left: float, fuse: float) -> float:
-	return lerpf(TICK_GAP_END, TICK_GAP_START, clampf(left / maxf(fuse, 0.001), 0.0, 1.0))
+	var t := NightSoundTuning.current()
+	return lerpf(t.tick_gap_end, t.tick_gap_start, clampf(left / maxf(fuse, 0.001), 0.0, 1.0))
 
 
 func _on_event(event: Dictionary) -> void:
@@ -47,8 +42,12 @@ func _on_event(event: Dictionary) -> void:
 		&"grenade_dropped", &"cook_rejected":
 			_stop_cook(event.get("thrower_id", event.get("player_id", -1)))
 		&"grenade_bounced":
-			var loud := clampf(float(event["speed"]) / BOUNCE_FAST, 0.0, 1.0)
-			_play(&"grenade_bounce", event["point"], lerpf(BOUNCE_QUIET_DB, BOUNCE_LOUD_DB, loud))
+			var loud := clampf(float(event["speed"]) / _t.bounce_fast_speed, 0.0, 1.0)
+			_play(
+				&"grenade_bounce",
+				event["point"],
+				lerpf(_t.bounce_quiet_db, _t.bounce_loud_db, loud)
+			)
 		&"grenade_exploded":
 			_play(&"grenade_blast", event["point"])
 			_stop_cook(event["thrower_id"])

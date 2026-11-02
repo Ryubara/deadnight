@@ -13,13 +13,6 @@ extends RefCounted
 ## The generator's circuits and the lamps' own kinds.
 const MAINS := &"mains"
 const BATTERY := &"battery"
-## Metres within which a lamp lights the ground, where the dead keep to their round's pace.
-const LAMP_REACH := 6.0
-## A failing tank changes a lamp's state every this many ticks (60 a second: about 12 times).
-const FLICKER_TICKS := 5
-## How much light a lamp keeps when the tank is nearly dry, and in the dropouts of a flicker.
-const SAG_FLOOR := 0.35
-const DROPOUT := 0.12
 ## The step of the golden-ratio sequence that spreads each lamp's flicker out of step with the rest.
 const _SPREAD := 0.6180339887
 const _SLOT_PRIME := 7919.0
@@ -92,7 +85,10 @@ func lit_at(point: Vector3, generator: GeneratorState) -> bool:
 	for lamp in lamps:
 		if lamp.decor:
 			continue
-		if _flat(point, lamp.position) < LAMP_REACH and circuit_is_lit(lamp.circuit, generator):
+		if (
+			_flat(point, lamp.position) < LightTuning.current().lamp_reach
+			and circuit_is_lit(lamp.circuit, generator)
+		):
 			return true
 	return false
 
@@ -153,10 +149,10 @@ static func brightness(on: bool, power_level: float, tick: int, index: int) -> f
 		return 0.0
 	if power_level >= 1.0:
 		return 1.0
-	var slot := float(floori(float(tick) / FLICKER_TICKS))
+	var slot := float(floori(float(tick) / LightTuning.current().flicker_ticks))
 	var roll := fposmod((slot * _SLOT_PRIME + float(index) * _LAMP_PRIME) * _SPREAD, 1.0)
-	var sag := lerpf(SAG_FLOOR, 1.0, power_level)
-	return sag if roll < power_level else sag * DROPOUT
+	var sag := lerpf(LightTuning.current().sag_floor, 1.0, power_level)
+	return sag if roll < power_level else sag * LightTuning.current().dropout
 
 
 ## A battery's lights do not ride the tank.
