@@ -118,6 +118,9 @@ const AIM_BLEND_PARAMETER := &"parameters/body/locomotion/aim_blend/blend_amount
 const SPRINT_GLB := "res://assets/characters/soldier/sprint/soldier_sprint.glb"
 const SPRINT_SPEC := "res://assets/characters/soldier/sprint/clips.json"
 const SPRINT_PREFIX := "Sprint_"
+const SPRINT_CLIPS: Array[StringName] = [
+	&"Sprint_Rifle", &"Sprint_Shotgun", &"Sprint_Pistol", &"Sprint_Melee"
+]
 const CARRY_BLEND_PARAMETER := &"parameters/carry/blend_amount"
 const CARRY_SEEK_PARAMETER := &"parameters/carry_seek/seek_request"
 const RUN_POSITION_PARAMETER := &"parameters/body/locomotion/move/run/current_position"
@@ -131,6 +134,7 @@ const GRENADE_SPEC := "res://assets/characters/soldier/grenade/clips.json"
 const GRENADE_COOK := &"Grenade_Cook"
 const GRENADE_THROW := &"Grenade_Throw"
 const GRENADE_TOSS := &"Grenade_Toss"
+const GRENADE_CLIPS: Array[StringName] = [GRENADE_COOK, GRENADE_THROW, GRENADE_TOSS]
 ## The cook clip's first event: the gun goes down, the grenade is in the hand.
 const GRENADE_TAKEN_EVENT := "grenade_visible"
 ## The throw clips' last event: the arm is back, the gun comes up again.
@@ -216,14 +220,16 @@ func _ready() -> void:
 	_spec = JSON.parse_string(FileAccess.get_file_as_string(SPEC))
 	var model := _player.get_node("Model")
 	var anim_player := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	_add_repair_clip(anim_player)
-	_add_grenade_clips(anim_player)
-	_add_aim_move_clips(anim_player)
-	SprintCarry.add_clips(
-		anim_player.get_animation_library(&""), CLASSES, SPRINT_GLB, SPRINT_SPEC, _spec
+	var library := anim_player.get_animation_library(&"")
+	SoldierClipFile.add(library, _spec, REPAIR_GLB, REPAIR_SPEC, [REPAIR_CLIP])
+	SoldierClipFile.add(library, _spec, GRENADE_GLB, GRENADE_SPEC, GRENADE_CLIPS)
+	var aim_moves := SoldierClipFile.add(
+		library, _spec, AIM_MOVE_GLB, AIM_MOVE_SPEC, AIM_MOVES.keys()
 	)
+	_aim_move_speed = aim_moves["clips"]["Walk_Shoot"]["ground_speed"]
+	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SPRINT_CLIPS)
 	_loop_clips(anim_player)
-	_duck_bottom = _lowest_second(anim_player.get_animation(&"Duck"))
+	_duck_bottom = SoldierClipFile.lowest_second(anim_player.get_animation(&"Duck"))
 	_mount = BoneAttachment3D.new()
 	_mount.name = "WeaponMount"
 	_mount.bone_name = HAND_BONE
@@ -249,7 +255,7 @@ func _ready() -> void:
 	_hands.influence = 0.0
 	skeleton.add_child(_hands)
 	self.anim_player = get_path_to(anim_player)
-	tree_root = _build_tree(_skeleton_track_path(anim_player))
+	tree_root = _build_tree(SoldierClipFile.skeleton_track_path(anim_player))
 	set(&"parameters/split/blend_amount", 1.0)
 	active = true
 	_playback = get(&"parameters/body/playback") as AnimationNodeStateMachinePlayback
@@ -313,23 +319,6 @@ func _advance_crouch() -> void:
 	var share := clampf(_player.ground_speed() / _tuning.crouch_speed, 0.0, 1.0)
 	set(CROUCH_MIX_PARAMETER, share * _tuning.crouch_walk_blend)
 	set(CROUCH_RATE_PARAMETER, maxf(share, CROUCH_WALK_RATE_MIN))
-
-
-## The second of `clip` at which the Body bone is lowest.
-static func _lowest_second(clip: Animation) -> float:
-	var best := INF
-	var at := 0.0
-	for track in clip.get_track_count():
-		if (
-			clip.track_get_type(track) == Animation.TYPE_POSITION_3D
-			and String(clip.track_get_path(track)).ends_with(":Body")
-		):
-			for key in clip.track_get_key_count(track):
-				var height: float = (clip.track_get_key_value(track, key) as Vector3).y
-				if height < best:
-					best = height
-					at = clip.track_get_key_time(track, key)
-	return at
 
 
 ## The aim gait for the player's velocity in the frame of its facing: where it sits in the 2D
@@ -790,51 +779,6 @@ func _on_landed(_impact_speed: float) -> void:
 	_playback.travel(STATE_LAND)
 
 
-## Adds Repair_Board to the Soldier's own library (same rig, same track paths: the grenade
-## clips' recipe) and its entry to the clip spec, so its loop and events read like any other.
-func _add_repair_clip(anim_player: AnimationPlayer) -> void:
-	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(REPAIR_SPEC))
-	_spec["clips"][String(REPAIR_CLIP)] = spec["clips"][String(REPAIR_CLIP)]
-	var library := anim_player.get_animation_library(&"")
-	if library.has_animation(REPAIR_CLIP):
-		return
-	# Not kept in a static: a static Animation outlives the scene tree and is reported leaked at exit.
-	var holder := (load(REPAIR_GLB) as PackedScene).instantiate()
-	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	library.add_animation(REPAIR_CLIP, source.get_animation(REPAIR_CLIP))
-	holder.free()
-
-
-## Adds the grenade clips to the Soldier's own library, as `_add_repair_clip` does for its clip.
-func _add_grenade_clips(anim_player: AnimationPlayer) -> void:
-	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(GRENADE_SPEC))
-	var library := anim_player.get_animation_library(&"")
-	var holder := (load(GRENADE_GLB) as PackedScene).instantiate()
-	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	for clip: StringName in [GRENADE_COOK, GRENADE_THROW, GRENADE_TOSS]:
-		_spec["clips"][String(clip)] = spec["clips"][String(clip)]
-		if not library.has_animation(clip):
-			library.add_animation(clip, source.get_animation(clip))
-	holder.free()
-
-
-## Adds the aim-move clips to the Soldier's own library (the repair clip's recipe) and their
-## entries to the clip spec; their ground speed comes from the same spec.
-func _add_aim_move_clips(anim_player: AnimationPlayer) -> void:
-	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(AIM_MOVE_SPEC))
-	for clip: StringName in AIM_MOVES:
-		_spec["clips"][String(clip)] = spec["clips"][String(clip)]
-	_aim_move_speed = spec["clips"]["Walk_Shoot"]["ground_speed"]
-	var library := anim_player.get_animation_library(&"")
-	if library.has_animation(&"Walk_Shoot"):
-		return
-	var holder := (load(AIM_MOVE_GLB) as PackedScene).instantiate()
-	var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	for clip: StringName in AIM_MOVES:
-		library.add_animation(clip, source.get_animation(clip))
-	holder.free()
-
-
 func _loop_clips(anim_player: AnimationPlayer) -> void:
 	var clips: Dictionary = _spec["clips"]
 	for clip: String in clips:
@@ -842,16 +786,6 @@ func _loop_clips(anim_player: AnimationPlayer) -> void:
 			anim_player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
 	for clip: String in KIT_LOOPS:
 		anim_player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
-
-
-## The node path the clips' bone tracks use for the skeleton (read from the file, not assumed).
-func _skeleton_track_path(anim_player: AnimationPlayer) -> String:
-	var idle := anim_player.get_animation(&"Idle")
-	for track in idle.get_track_count():
-		var path := String(idle.track_get_path(track))
-		if path.contains(":"):
-			return path.get_slice(":", 0)
-	return "CharacterArmature/Skeleton3D"
 
 
 func _clip(clip_name: StringName) -> AnimationNodeAnimation:

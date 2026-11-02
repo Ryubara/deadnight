@@ -28,23 +28,3 @@ func follow_run(delta: float, run_place: float, step: float, length: float, fram
 		time = target
 	else:
 		time = fposmod(time + step + error * (1.0 - exp(-CATCH_RATE * delta)), length)
-
-
-## Adds the carry clips of `classes` from the file `glb` to the library (the repair clip's recipe)
-## and their entries from `spec_path` to `spec`.
-static func add_clips(
-	library: AnimationLibrary, classes: Array, glb: String, spec_path: String, spec: Dictionary
-) -> void:
-	var from: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(spec_path))
-	var holder: Node = null
-	for cls: StringName in classes:
-		var clip := StringName("Sprint_" + String(cls))
-		spec["clips"][String(clip)] = from["clips"][String(clip)]
-		if library.has_animation(clip):
-			continue
-		if holder == null:
-			holder = (load(glb) as PackedScene).instantiate()
-		var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
-		library.add_animation(clip, source.get_animation(clip))
-	if holder != null:
-		holder.free()
