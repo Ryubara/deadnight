@@ -15,17 +15,18 @@ const SHOP_KINDS := {
 	"CRANE": "waived until #228 (economy: the prize crane)",
 	"TONIC": "waived until #228 (economy: the hearty tonic)",
 	"FUEL": "waived until #228 (the generator: a fuel can when the tank runs low)",
-	"GRENADES": "waived until #227 (combat: grenades)",
-	"AMMO": "waived until #227 (ammunition: rounds for the gun in hand)",
+	"GRENADES": "waived until #228 (economy: buying more grenades; throwing them is BotGrenadier)",
+	"AMMO": "waived until #228 (economy: buying rounds for the gun in hand)",
 	"UPGRADE": "waived until #228 (economy: the re-cut bench)",
 }
 ## `WeaponCatalog.IDS`: a weapon is covered when the motor can fire it as it is built.
 const WEAPONS := {
-	"pistol": "rule: BotMotor fires any hitscan weapon at a target inside its hit cone",
+	"pistol":
+	"rule: BotMotor fires any hitscan weapon inside its hit cone; BotArsenal ranks and swaps",
 	"smg": "rule: BotMotor fires it in bursts of three to five (automatic)",
 	"shotgun": "rule: BotMotor fires it like the pistol (the cone is for the body, not the spread)",
 	"rifle": "rule: BotMotor fires it like the pistol",
-	"flare_gun": "waived until #227 (combat: the flare lures the dead away)",
+	"flare_gun": "waived until #229 (team play: a flare to draw the dead off a downed teammate)",
 	"crowbar": "rule: BotMotor swings it at a target inside its reach",
 	"baseball_bat": "rule: BotMotor swings it at a target inside its reach (melee)",
 	"fire_axe": "rule: BotMotor swings it at a target inside its reach (melee)",
@@ -34,7 +35,7 @@ const WEAPONS := {
 const PROMPTS := {
 	"door": "waived until #228 (economy)",
 	"weapon": "waived until #228 (economy)",
-	"ammo": "waived until #227 (ammunition)",
+	"ammo": "waived until #228 (economy: the ammunition locker)",
 	"crane": "waived until #228 (economy)",
 	"crane_take": "waived until #228 (economy)",
 	"crane_busy": "waived until #228 (economy: wait for the buyer)",

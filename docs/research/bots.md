@@ -199,16 +199,23 @@ hardest shipped profile reacts in 0.22 s. Our floor is 0.20 s and no profile goe
 | --- | ---: | ---: | ---: |
 | Reaction to a new contact (s) | 0.55 | 0.35 | 0.25 |
 | Maximum aim speed (degrees a second) | 240 | 360 | 540 |
-| Track error at 15 m (degrees, 1 sigma) | 3.0 | 1.8 | 1.0 |
-| Head-aim rate | 0.05 | 0.12 | 0.20 |
+| Track error at 15 m (degrees, 1 sigma) | 14 | 4 | 2 |
+| Fire slop (times the hit cone the trigger waits for) | 6 | 3 | 1.8 |
+| Head-aim rate | 0.07 | 0.30 | 0.75 |
+| Weak-spot rate (the boss's lens, when it faces the bot) | 0.25 | 0.50 | 0.80 |
 | Fire jitter (s) | 0.15 | 0.08 | 0.04 |
 | Think rate (Hz) | 5 | 8 | 10 |
-| Retreat early (metres of margin) | 5 | 7 | 9 |
+| Retreat early (metres of margin) | 0 | 1.25 | 1.5 |
 | Revive eagerness (risk it accepts) | low | medium | medium |
 
-*Proposal.* Calibration target: a profile's measured hit rate, head share and dodge land inside the corresponding
-`SimSkill` (weak 0.45 / 0.06, average 0.65 / 0.15, strong 0.82 / 0.30) so the simulator and the bots tell the same
-story; the profile numbers move to meet it, the simulator's do not.
+Calibration target: a profile's measured hit rate, head share and dodge land inside the corresponding
+`SimSkill` (weak 0.45 / 0.06 / 0.12, average 0.65 / 0.15 / 0.30, strong 0.82 / 0.30 / 0.50) so the simulator and the
+bots tell the same story; the profile numbers move to meet it, the simulator's do not. **The table above is the
+phase 3 result** (the proposal was 3.0 / 1.8 / 1.0 degrees of track error, 0.05 / 0.12 / 0.20 head-aim and a retreat
+margin of 5 / 7 / 9 m): a bot that fires only when its view is on target hits nearly everything it fires at, so the
+misses had to come from a trigger that fires when the view is roughly there (`fire_slop`) and from a wide wander of the
+view, and the early retreat of the proposal gave a dodge of 0.7 to 0.8 for every profile, stronger than the strong
+level. [Phase 3](#phase-3-combat-and-ammunition) has the measurements.
 
 **What difficulty never touches**: zombie health, speed or count, damage dealt or taken, points earned, ammunition. Ellie
 taught the same: leave damage alone, "that makes an NPC feel broken". Accuracy is **emergent** from the aim model and
@@ -705,6 +712,109 @@ telegraph dodging and weak-spot aim, the special-round stances, leash and kill c
 to 14 pass; per-profile hit rate and head share fall in the `SimSkill` bands (Rookie to weak, Regular to average,
 Veteran to strong); a four-bot night passes the first boss night in at least the share of nights the simulator
 predicts for its skill (within 15 percentage points).
+
+**Built (#227).** Under `game/gameplay/bots/`, small pure classes the fight brain calls (`BotFightBrain` is the one that
+decides, the others hold a rule each, so a test pins them one by one):
+
+- **`BotCombat`**: the target **utility**, in points, for a believed zombie in sight: its nearness (6 at the bot's
+  feet, nothing at 25 m), a swing under way (+3), a runner (+1.2), the headliner once it is near (+1.5), how fast it
+  comes at the bot (up to +0.8), a zombie on a teammate hit in the last 2 s (+2.5), on a downed one (+3.5) or on the
+  bot itself after a blow (+2), a hurt bot's zombies at its feet (up to +3), the loss of damage the weapon in hand
+  suffers at that range (up to -3: a shotgun does not pick the far ones) and a +1 for the target it already has.
+  **Kill courtesy**: a zombie that a person (not a bot) is aiming at (within 7 degrees, from 25 m or less) and that is
+  6 m or more from the bot and not swinging is left to them; with nothing else to shoot, the bot holds fire. The
+  zombie's own health is not a term: a client does not know it (`zombie_damaged` stays off the allow-list; its test
+  says so). **`may_melee`**: never a swing into three or more dead within 4 m, unless every firearm is dry.
+  **`leash_allows`**: a chase goes no farther than 12 m from the nearest person (a bot of the team when there is
+  none), unless the target stands within 3.5 m of a downed teammate. The brain uses it for the one chase it makes: a
+  bot with a crowbar walks up to a zombie that is not coming to it (one at the boards, held by a hit), never into a
+  pack.
+- **`BotArsenal`**: a weapon is worth `WeaponWorth.sustained_dps` (reloads in) times the damage the range leaves it,
+  the ranking the simulator's players use. A forced reload when the magazine is dry, except with a zombie within 4.5 m
+  and another weapon loaded (the swap is quicker); a tactical reload under 30% of a magazine with nothing within 8 m,
+  and a top-up under 70% when nothing is within 16 m; a swap to the loaded weapon that is 1.4 times better at the
+  range of the fight (the simulator's `SWITCH_GAIN`) and to the crowbar when every gun is dry; the crowbar goes back
+  to a gun that can fire.
+- **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 14 m away, as
+  the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
+  **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is
+  the scatter of a real throw, see the lesson on the rolling grenade), with an open arc and 6 s since the last. The
+  pitch comes from a table of real flights made once with `GrenadeArc` on flat ground: a grenade bounces and rolls for
+  the whole fuse, so a short throw is a lob (underarm up to 7.5 m, steep overarm to 14 m). The motor turns, holds the
+  button for two ticks and keeps the view still while the arm swings; the brain takes the order back if a teammate
+  walks in.
+- **`BotDodge`**: a swing that began on the frame (`attack_at` on the contact) and that would still reach the bot
+  (within 1.4 + 0.4 m, plus 0.3 of drift) is stepped out of after the profile's reaction time, if there is time before
+  the blow (0.45 s a plain zombie, **1.2 s the headliner**): a retreat heading on the mesh at a sprint. A telegraphed
+  (boss) swing is made out with the profile's `telegraph_read` (the simulator's `read`: 0.3 for the Rookie, 1.0 for
+  the others), rolled once a swing. The headliner is also kept `boss_keep` (6 m) away. The weak spot: the lit lens at
+  (0, 1.16, 0.29) in the boss's frame, aimed at with the profile's `weak_spot_rate` when the boss faces the bot
+  (`BotMotor.weak_spot`).
+- **`BotStance`**: Midnight Stampede is `HOLD` (no retreat, no sprint; walk to a choke and stay), Crawl Space `LOW`
+  (the aim already follows the crawler's height; a grenade needs only two) and Double Feature `BOSS`. A choke is the
+  place within 4.5 m of the group (or of the bot) with the most walls about it (eight 2.5 m rays; at least three), two
+  candidates rated a think, never a gap, kept until a place with a wall more is found. The special round is read from
+  `round_started`'s `special_id`, which is public.
+- **Tests that stood in the way.** The bot does not hear a round that began by a direct `rules.apply` (see the
+  lesson); `SeatedNight.start_round()` hands the answer to the host.
+
+**Measured.** *Bands* (`tests/night/test_bot_bands.gd`; one bot with the pistol and endless rounds and health against a
+stream of walkers at 2.4 m/s, about round 8; hit rate and head share from the shots at a zombie 5 to 20 m away, since
+nearer a shot lands whatever the aim; dodge from the blows that came due on the bot, the share that missed; four seeds
+of 110 s in the test, six of 150 s for the numbers below):
+
+| | Rookie (weak) | Regular (average) | Veteran (strong) |
+| --- | ---: | ---: | ---: |
+| Hit rate, 5 to 20 m (level's number in brackets) | 0.41 (0.45) | 0.70 (0.65) | 0.86 (0.82) |
+| Head share of the hits | 0.07 (0.06) | 0.15 (0.15) | 0.31 (0.30) |
+| Dodge (of the blows that came due) | 0.08 (0.12) | 0.20 (0.30) | 0.51 (0.50) |
+| Shots counted, blows that came due | 266, 278 | 314, 125 | 252, 55 |
+
+The test holds each number to the level's number, a tolerance either side (hit rate 0.12, head share 0.07, dodge 0.15:
+wide enough for the run-to-run difference of a physics engine and for the few hundred shots of a run, narrow enough to
+keep the profiles apart).
+
+*Boss night* (`tests/captures/bots_boss_night.tscn`, `BossNight`): four hosted bots of one profile play the first boss
+night (round 5, two headliners among escorts at four players) in the real server. The bots cannot shop yet (phase 4),
+so they begin the round with what the simulator's players carry then (the pistol and the crowbar, for 120 of 160
+players of every skill), full magazines and a full reserve, and a bot that runs dry is given its rounds back after the
+simulator's 8 s for a trip to the locker. A night passes when the round ends with a bot standing; it is lost when
+every bot is down or 420 s of play pass. The simulator's prediction is the share of the nights that reached round 5
+(300 nights, four players) that did not end in it:
+
+| Skill | Simulator: passes round 5 | Bots, four of a profile | Inside 15 points |
+| --- | ---: | ---: | --- |
+| weak / Rookie | 0.40 (118 of 297 nights) | 16 of 16 (1.00), and 16 of 16 with half the reserve | **no** |
+| average / Regular | 0.997 (299 of 300) | 16 of 16 (1.00) | yes |
+| strong / Veteran | 1.00 (300 of 300) | 16 of 16 (1.00) | yes |
+
+A night took 133 s (Rookie), 119 s (Regular) and 114 s (Veteran) of play. **The Rookie is not within the band:** the
+simulator's weak players die in 60% of the boss nights they reach; four Rookie bots lost none in the 32 nights of the
+final code and 5 of 64 earlier ones. Tried along the way, none moving the share under 87% in eight nights: a telegraph
+read of 0.3 (the simulator's `read`, kept: `BotProfile.telegraph_read`), no keep-off from the boss, a narrower view
+and shorter memory, a reaction of 0.9 s, half the ammunition. The bots are downed (up to three of four in a night) but
+never all four, and they do not revive yet; the cause is more likely the lot (a long approach lane and a boss at 0.45
+of the walking speed, which a bot walks away from) or the weak level's damage model than the bot's skill. Follow-up:
+issue #568 (phase 7 fits `SimSkill` to the measured bots).
+
+*Cost* (a think, in the soak, four bots, shared machine): **p50 about 160 microseconds, p99 about 800** (seeds 1 and
+2, eight game minutes, tough players, the autopilot as the person and four bots, a shared machine), against about 110
+and 650 in phase 2: the target utility, the weapon plan, the dodge check and the pack count add some 50 microseconds a
+think, and the p99 is over the plan's 0.5 ms (the same shared-machine caveat as phase 2; scenario 26 scales its budget
+by the machine and passes). The grenade table (63 real flights for each style) is made once when the first bot is
+built. #564 owns the think cost; nothing here tunes it.
+
+**What the tests found.** The first calibration measured a hit rate of 0.9 for every setting of the aim noise (see the
+lesson: the skill is in the trigger, and a hit at point blank says nothing about the aim); the proposal's retreat margin
+of 5 to 9 m gave a dodge of 0.7 to 0.8, above the strong level, so the margins are 0 to 1.5 m now; every hit staggers a
+zombie, the boss included, so a bot that shoots a boss in front of it is not dodging anything (the dodge test holds the
+bot's trigger and counts only the swings that ran their course); a flat grenade throw lies 17 to 26 m out; and a
+test counter in a lambda read zero.
+
+**Left for the later phases.** Nothing in the shop: rounds, doors, the locker (phase 4, #228); a flare against the
+dead at a downed teammate and the revive (phase 5, #229); the zombie's own health stays unknown to a bot by decision,
+so "finish the weak one" is not a term. The stance and the boss logic read the special round from `round_started`; a
+bot seated after it began does not know it, until the frame carries the special round.
 
 ### Phase 4: economy, repairs and the generator
 

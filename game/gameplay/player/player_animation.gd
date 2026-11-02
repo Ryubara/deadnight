@@ -144,10 +144,8 @@ const GRENADE_DONE_EVENT := "done"
 const GRENADE_RELEASE_EVENT := "release"
 ## How long the cook clip holds its last frame while the button is down (more than any fuse).
 const GRENADE_COOK_HOLD := 30.0
-## The grenade in the hand: the placeholder shell, drawn this much of its flight size, in the grip
-## of the melee hold (the fist closed on something short).
-const GRENADE_HELD_SCALE := 0.55
-## The grenade shell's grip file (`grips/grenade.tres`): it has no glb of its own.
+## The grenade in the hand: its hold file (model, size: docs/design/weapon-hold.md) and grip file.
+const GRENADE_HOLD := "res://gameplay/player/holds/grenade.tres"
 const GRENADE_GRIP := "grenade"
 ## How fast the fingers go to and from a grip (per second, exponential).
 const GRIP_RATE := 20.0
@@ -263,16 +261,7 @@ func _ready() -> void:
 	)
 	_hammer.visible = false
 	_mount.add_child(_hammer)
-	_grenade = Node3D.new()
-	_grenade.name = "Grenade"
-	_grenade_grip = HandGrip.for_name(GRENADE_GRIP)
-	_grenade.transform = (
-		_grip_hold(_grenade_grip, Transform3D(Basis(), HOLD_MELEE.origin))
-		. scaled_local(Vector3.ONE * GRENADE_HELD_SCALE)
-	)
-	_grenade.visible = false
-	GrenadeView.add_placeholder(_grenade)
-	_mount.add_child(_grenade)
+	_build_grenade()
 	_hands = WeaponHandsIK.new()
 	_hands.name = "WeaponHandsIK"
 	_hands.hand_hold = HOLD_GUN
@@ -636,6 +625,19 @@ func clip_events(clip: StringName) -> Dictionary:
 	return entry.get("events", {})
 
 
+## The grenade in the hand, on the same mount as the weapons: the model of `GRENADE_HOLD` at the
+## hold's size, in the grip solved for it (the fist closed on something short).
+func _build_grenade() -> void:
+	var hold := load(GRENADE_HOLD) as WeaponHold
+	_grenade = (load(hold.scene) as PackedScene).instantiate() as Node3D
+	_grenade.name = "Grenade"
+	_grenade_grip = HandGrip.for_name(GRENADE_GRIP)
+	var held := _grip_hold(_grenade_grip, Transform3D(Basis(), HOLD_MELEE.origin))
+	_grenade.transform = held.scaled_local(Vector3.ONE * hold.model_scale)
+	_grenade.visible = false
+	_mount.add_child(_grenade)
+
+
 ## The hold data of a weapon class, or null when the class shows no weapon.
 static func hold_of(new_class: StringName) -> WeaponHold:
 	if new_class not in HOLD_CLASSES:
@@ -748,6 +750,7 @@ func _advance_shoulder(delta: float) -> void:
 	_hands.aim_yaw = lerp_angle(_player.rotation.y, rig.yaw, weight)
 	_hands.aim_pitch = rig.pitch
 	_hands.converge = weight
+	_hands.hip_converge = WeaponHandsIK.hip_share(angle_difference(_player.rotation.y, rig.yaw))
 	var view := rig.aim_transform()
 	_hands.converge_on = view.origin - view.basis.z * WeaponHandsIK.CONVERGE_DISTANCE
 	if String(action_clip).begins_with("Fire_") and _action_time < delta * 1.5:

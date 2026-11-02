@@ -54,6 +54,8 @@ jobs:
       - run: uv run --with pyyaml python .github/scripts/groundwork.py check-files
       - name: The web deploy script refuses a branch other than main
         run: bash deploy/web/test_deploy.sh
+      - name: The deploy jobs refuse a build that is not the head of main
+        run: bash deploy/test_check_head.sh
       - name: Which parts of the repository the change touches
         id: scope
         env:
@@ -275,7 +277,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: deploy/web
+          sparse-checkout: deploy
+      - name: Skip a build that is not the head of main
+        if: env.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash deploy/check_head.sh "$GITHUB_SHA" || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
       - if: env.skip != 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -294,6 +301,10 @@ jobs:
     # since the server imports the whole project. Same token and same skip as `deploy`.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [godot]
+    # One deploy at a time, like `deploy`: the head check below reads main when this job starts, after its wait.
+    concurrency:
+      group: deploy-server
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -305,6 +316,17 @@ jobs:
             echo "::warning title=Server not deployed::The repository secret RAILWAY_TOKEN is not set (docs/research/web-export.md)."
             echo "skip=true" >> "$GITHUB_ENV"
           fi
+      - if: env.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: deploy
+          path: head-check
+      - name: Skip a build that is not the head of main
+        if: env.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash head-check/deploy/check_head.sh "$GITHUB_SHA" || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
       - if: env.skip != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

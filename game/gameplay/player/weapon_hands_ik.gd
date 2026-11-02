@@ -22,6 +22,12 @@ const CHEST_PITCH_SHARE := 0.5
 const CHEST_PITCH_MAX := deg_to_rad(40.0)
 ## How far ahead of the camera the barrel meets the crosshair's ray, in metres.
 const CONVERGE_DISTANCE := 12.0
+## At the hip the barrel meets the crosshair's ray as well, while the view is near the body's
+## heading: fully up to `HIP_CONVERGE_FULL` between the two, fading to nothing (the barrel along the
+## body, as the pivot rules turn it) at `HIP_CONVERGE_NONE`, so a view behind the body never swings
+## the gun round (`hip_share()`).
+const HIP_CONVERGE_FULL := deg_to_rad(30.0)
+const HIP_CONVERGE_NONE := deg_to_rad(90.0)
 
 ## The weapon's hold (size, rest and support point).
 var hold: WeaponHold
@@ -34,11 +40,13 @@ var grip: HandGrip
 ## Where the weapon points: yaw and pitch in radians (the camera's).
 var aim_yaw := 0.0
 var aim_pitch := 0.0
-## While aiming the barrel turns in a little to meet the crosshair's ray `CONVERGE_DISTANCE` ahead
-## of the camera (the camera sits over the shoulder, the muzzle does not): `converge_on` is that
-## point, and `converge` (0 to 1, the aim weight) is how far the aim turns toward it, so the pose
-## eases into and out of it and never jumps.
+## The barrel turns in a little to meet the crosshair's ray `CONVERGE_DISTANCE` ahead of the camera
+## (the camera sits over the shoulder, the muzzle does not): `converge_on` is that point, and
+## `converge` (0 to 1, the aim weight) is how far the aim turns toward it, so the pose eases into
+## and out of it and never jumps. At the hip (`converge` 0) `hip_converge` does the same while the
+## view is near the body's heading: the pose uses the larger of the two.
 var converge := 0.0
+var hip_converge := 0.0
 var converge_on := Vector3.ZERO
 ## How far the weapon is tilted down for a reload, 0 to 1, and the angle of the full tilt in
 ## degrees. The pitch is added to the hold's, about the grip, so the pose it tilts from is the
@@ -79,14 +87,21 @@ func weapon_target() -> Transform3D:
 	var skeleton := get_skeleton()
 	var aim := aim_basis()
 	var shoulder := _world(skeleton, skeleton.find_bone(RIGHT[0])).origin
-	if converge > 0.0:
+	if not converge_on.is_zero_approx():
 		var toward := converge_on - (shoulder + aim * hold.grip_offset)
-		aim = aim.slerp(Basis.looking_at(toward.normalized(), Vector3.UP), minf(converge, 1.0))
+		var meets := Basis.looking_at(toward.normalized(), Vector3.UP)
+		aim = aim.slerp(meets, clampf(maxf(converge, hip_converge), 0.0, 1.0))
 	var pitch := hold.pitch_offset_deg + recoil * recoil_up_deg - reload_dip * reload_tilt_deg
 	var raise := Basis(aim.x, deg_to_rad(pitch))
 	var forward_turn := Basis(Vector3.UP, -PI / 2.0)
 	var offset := hold.grip_offset + Vector3(0.0, 0.0, recoil * recoil_back)
 	return Transform3D(raise * aim * forward_turn, shoulder + aim * offset)
+
+
+## How far the barrel turns toward the crosshair's point at the hip, 0 to 1, when the view is `gap`
+## radians from the body's heading: all of it near the body, none behind it, a smooth fade between.
+static func hip_share(gap: float) -> float:
+	return 1.0 - smoothstep(HIP_CONVERGE_FULL, HIP_CONVERGE_NONE, absf(gap))
 
 
 ## The support hand's point in the world, for the weapon at `target`.
