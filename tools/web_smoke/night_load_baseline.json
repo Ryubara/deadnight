@@ -1,5 +1,5 @@
 {
-  "seconds": 30.0,
-  "allowed_rise": 0.75,
-  "note": "Seconds from Play to a running night in the web job (headless shell, SwiftShader, 1280x720), the last green number; the smoke fails above seconds * (1 + allowed_rise). Issue #509."
+  "seconds": 36.0,
+  "allowed_rise": 1.0,
+  "note": "Seconds from Play to a running night in the web job (headless shell, SwiftShader, 1280x720); the smoke fails above seconds * (1 + allowed_rise), 72 s. 36 is the mean of the ten main runs of 2026-11-02 after the load was cut (24.3 to 53.3 s, the runner moves by 40 % or more between runs of the same build); before the cut a green run took 82 to 107 s. Issue #509."
 }
