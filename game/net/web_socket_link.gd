@@ -256,6 +256,8 @@ func _receive(data: PackedByteArray) -> void:
 				player_id = welcome["player_id"]
 				tick_rate = welcome["tick_rate"]
 				token = welcome["token"]
+				# With a seat it can be heard: the server sizes the crowd by the weakest client.
+				_send(NetWire.platform(OS.has_feature("web")))
 				welcomed.emit(welcome["snapshot"])
 			elif resuming:
 				resuming = false
@@ -267,6 +269,7 @@ func _receive(data: PackedByteArray) -> void:
 				# The server begins again from a whole frame.
 				_frame = {}
 				_zombie_base = {}
+				_send(NetWire.platform(OS.has_feature("web")))
 				resumed.emit(welcome["snapshot"])
 		NetWire.Type.TICK:
 			_on_tick(data)

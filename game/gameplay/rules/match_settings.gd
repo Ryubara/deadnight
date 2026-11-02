@@ -34,8 +34,9 @@ const KEYS := {
 ## round still brings its exact `intro_count`, and a boss round its own bosses.
 @export_range(0.25, 5.0, 0.25) var count_multiplier: float = 1.0
 ## Most zombies alive at once; 0 is the tuned curve (`RoundTuning.alive_cap`). A number caps it,
-## and never above `RoundTuning.alive_cap_ceiling`, the crowd the lot stands.
-@export_range(0, 40, 1) var max_alive: int = AUTO
+## and never above the ceiling in force (`RoundTuning.ceiling_for`: the crowd the weakest client
+## in the match stands).
+@export_range(0, 200, 1) var max_alive: int = AUTO
 ## Seconds of break between rounds; 0 is the tuned break (`RoundTuning.break_seconds`). The wait
 ## before round 1 and the longer break before a special round are unchanged.
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
@@ -65,11 +66,12 @@ func scaled_count(normal: int) -> int:
 ## ceiling), else the tuned curve times the multiplier (a night of 3x the dead comes 3 times as
 ## fast, so 3 times as many stand before the player has dealt with them), at most the ceiling and
 ## at least one.
-func alive_cap(rounds: RoundTuning, round_number: int, players: int) -> int:
+func alive_cap(rounds: RoundTuning, round_number: int, players: int, ceiling := 0) -> int:
+	var top := ceiling if ceiling > 0 else rounds.alive_cap_ceiling
 	if max_alive > AUTO:
-		return mini(max_alive, rounds.alive_cap_ceiling)
+		return mini(max_alive, top)
 	var wanted := roundi(float(rounds.alive_cap(round_number, players)) * count_multiplier)
-	return clampi(wanted, 1, rounds.alive_cap_ceiling)
+	return clampi(wanted, 1, top)
 
 
 ## Seconds of break after a round.

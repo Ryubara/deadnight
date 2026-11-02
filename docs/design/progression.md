@@ -86,7 +86,8 @@ XP to go from level L to L+1 is `150 + 30 x L`: 180 for the first, 1,620 for the
 function in code and only raw XP is stored, so retuning it needs no data migration.
 
 The **starter program** is the small, complete set every new player has and every veteran can always fall back on.
-It is what the in-review rounds tuning already sells: the crane pool of shotgun, rifle, submachine gun and flare gun,
+It is what the in-review rounds tuning already sells: the crane pool of shotgun, rifle, submachine gun, flare gun,
+baseball bat and fire axe,
 the four tonics (second wind, hearty, quick hands, fleet) and the sidearm. The rounds work chooses these items; this page
 only decides *when the rest arrive* (see [first ten hours](#first-ten-hours-a-tuning-table)).
 

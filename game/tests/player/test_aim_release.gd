@@ -21,10 +21,15 @@ func before_test() -> void:
 	_runner = scene_runner(TEST_ROOM)
 	_player = _runner.find_child("Player") as Player
 	_player.capture_mouse = false
+	# The suite ticks the player by hand (PlayerHandStep), not at the physics clock's pace.
+	_player.set_physics_process(false)
 	_rig = _player.camera_rig
 	_tuning = _player.tuning
 	_rig.set_process(false)
 	_player.teleport(START)
+	# The physics server learns of the room's static bodies on its first step: take that one by
+	# the clock, then tick by hand.
+	await get_tree().physics_frame
 	await _ticks(20)
 
 
@@ -35,8 +40,9 @@ func after_test() -> void:
 
 func _ticks(count: int) -> void:
 	for i in count:
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 		_rig.step(TICK, 1.0)
+	await get_tree().process_frame
 
 
 func _seconds(seconds: float) -> void:

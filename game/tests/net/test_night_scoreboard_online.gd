@@ -203,11 +203,13 @@ func test_each_player_sees_every_players_ping() -> void:
 		var board: HudScoreboard = _huds[night].scoreboard
 		board.set_shown(true)
 		assert_bool(board.has_ping).is_true()
-		assert_array(board.headings).is_equal(["PLAYER", "KILLS", "DOWNS", "POINTS", "PING"])
+		assert_array(board.headings).is_equal(
+			["PLAYER", "KILLS", "DOWNS", "REVIVES", "POINTS", "PING"]
+		)
 		for row in board.rows_text:
 			# On this machine a round trip is a few milliseconds; the point is that it is a number
 			# a client measured and the server passed on, not a default.
-			assert_int(int(row[4])).is_between(0, 500)
+			assert_int(int(row[HudScoreboard.PING_CELL])).is_between(0, 500)
 	# The ping on the board is the one in the server's frame, and the server holds what was reported.
 	assert_int(_huds[b].state.team[1]["ping"]).is_equal(
 		_nights[1].state.frame["players"][1]["ping"]

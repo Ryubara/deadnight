@@ -34,7 +34,9 @@ It is not the source: it counts on the client, and counts no downs.
 ## What we did not do
 
 - **Revives.** `player_revived` names nobody who helped; the round's end revives everyone (see
-  [Challenges](challenges.md#learned-while-building)). When a teammate revive exists it is one more count beside downs.
+  [Challenges](challenges.md#learned-while-building)). When a teammate revive exists it is one more
+  count beside downs. It does now (#486): the `REVIVES` column, counted on the server
+  ([Revive](../design/revive.md)).
 - **Names.** The HUD still says `PLAYER N` for everyone; the backend's display name is on the server (`HostPeer.user_name`)
   and is not replicated. A scoreboard of `PLAYER 1` to `PLAYER 4` works, a scoreboard of names would be better.
 

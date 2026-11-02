@@ -249,3 +249,25 @@ test("a lobby service drops an absent member and counts the round, with no HTTP 
   assert.equal(lobbies.get(made.id).round, 3);
   lobbies.setRound("unknown-match", 9); // ignored, as setPlayers does
 });
+
+test("the Activity's voice channel is looked at by its instance: nothing yet, then a waiting room, then a night in round N", async () => {
+  const { app, guest, call, beat } = await platform();
+  const [ann, bo] = [await guest("Ann"), await guest("Bo")];
+  // Nobody has opened the lobby of this channel: nothing to read, and looking made none.
+  assert.equal((await call("POST", "/lobbies/preview", bo, { instanceId: "voice-9" })).statusCode, 404);
+  assert.equal((await call("POST", "/lobbies/preview", bo, {})).statusCode, 400);
+
+  const made = (await call("POST", "/lobbies", ann, { instanceId: "voice-9" })).json();
+  const waiting = (await call("POST", "/lobbies/preview", bo, { instanceId: "voice-9" })).json();
+  assert.deepEqual(
+    { code: waiting.code, state: waiting.state, players: waiting.players, host: waiting.hostName },
+    { code: made.code, state: "open", players: 1, host: "Ann" },
+  );
+  assert.equal((await call("GET", `/lobbies/${made.id}`, bo)).statusCode, 403); // looking joined nobody
+
+  const started = (await call("POST", `/lobbies/${made.id}/start`, ann)).json();
+  await beat([started.matchId], { players: { [started.matchId]: 1 }, rounds: { [started.matchId]: 6 } });
+  const inProgress = (await call("POST", "/lobbies/preview", bo, { instanceId: "voice-9" })).json();
+  assert.deepEqual({ state: inProgress.state, round: inProgress.round, full: inProgress.full }, { state: "started", round: 6, full: false });
+  await app.close();
+});

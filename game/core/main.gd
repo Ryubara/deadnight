@@ -63,6 +63,9 @@ func _ready() -> void:
 		var room := ActivityRoom.new(args.get_string("instance_id"), TogetherScreen.backend_url())
 		add_child(room)
 		room.prepare()
+	# `--bot` (or `?bot`) lets the autopilot play a night entered from a lobby: a browser probe with
+	# several pages needs players that stay alive while the others load.
+	LobbyScreen.play_as_bot = args.has("bot")
 	if args.has("report"):
 		var report := ClientReport.new()
 		report.every = args.get_float("report", ClientReport.DEFAULT_EVERY)

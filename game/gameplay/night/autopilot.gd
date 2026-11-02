@@ -9,7 +9,8 @@ extends RefCounted
 ## that has rounds, re-cuts one weapon at the bench and drinks the hearty tonic when it can pay, and
 ## puts boards back when it is standing at one with nothing to shoot. It throws the breaker of an
 ## area it has bought (`AutopilotSwitches`), and back off when the tank runs low; and it buys a can
-## of fuel when the tank is low and it has the points (`AutopilotFuel`).
+## of fuel when the tank is low and it has the points (`AutopilotFuel`). A downed teammate it can
+## reach safely is pulled up before anything else (`AutopilotRevive`).
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -63,6 +64,8 @@ var whole_boards: int = 1
 var switches := AutopilotSwitches.new()
 ## The fuel can spots and when to buy at them.
 var fuel := AutopilotFuel.new()
+## When to go and pull a downed teammate up.
+var revive := AutopilotRevive.new()
 
 var _yaw := 0.0
 var _sidestep := 0.0
@@ -87,6 +90,11 @@ func decide(delta: float) -> NightCommand:
 	if not state.has_frame() or state.me().get("downed", true):
 		return command
 	var here := state.position()
+	var patient := revive.choose(state.frame, state.player_id, here, state.zombies)
+	if patient != 0:
+		return _revive_command(
+			command, here, state.frame["players"][patient]["pos"], patient, delta
+		)
 	var near := _nearest(here, false)
 	var target := _nearest(here, true)
 	var prompt: Dictionary = state.me().get("prompt", {})
@@ -140,6 +148,24 @@ func decide(delta: float) -> NightCommand:
 		command.use = switches.wants_use(prompt, state.frame)
 	elif kind == &"fuel":
 		command.use = fuel.wants_use(prompt, state.frame, state.points())
+	return command
+
+
+## Walks to a downed teammate and holds `use` beside them: no shooting, reloading or swapping (the
+## server lets go of a hold for any of them).
+func _revive_command(
+	command: NightCommand, here: Vector3, there: Vector3, patient: int, delta: float
+) -> NightCommand:
+	var wish := _unstuck(_toward(here, there), here, delta)
+	if wish != Vector3.ZERO:
+		_yaw = atan2(-wish.x, -wish.z)
+		command.motion.move = Vector2(0.0, -1.0)
+	elif _flat(here, there) > 0.01:
+		_yaw = atan2(-(there.x - here.x), -(there.z - here.z))
+	command.motion.yaw = _yaw
+	if revive.in_reach(here, there):
+		command.use_held = true
+		command.use = state.frame["players"][patient].get("reviver", 0) == 0
 	return command
 
 
@@ -354,7 +380,9 @@ func _clear(here: Vector3, target: Vector3, look: StringName) -> bool:
 		return true
 	var eye := here + Vector3(0.0, EYE, 0.0)
 	var aim := target + Vector3(0.0, _chest(look), 0.0)
-	var barrel := here + Basis(Vector3.UP, _yaw) * MUZZLE
+	# It turns to the target to shoot, so the barrel is where it will be then.
+	var to := aim - eye
+	var barrel := here + Basis(Vector3.UP, atan2(-to.x, -to.z)) * MUZZLE
 	# The camera sees the target past a corner the barrel does not clear: both must be open.
 	return float(sight.call(eye, aim)) < 0.0 and float(sight.call(barrel, aim)) < 0.0
 

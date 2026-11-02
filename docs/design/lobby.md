@@ -6,8 +6,11 @@ players are in your lobby before you start"; Deadnight #515). The platform side 
 [the platform backend](../research/platform-backend.md#the-lobby-before-the-night); the networking decision is in
 [networking](networking.md).
 
-**Status:** the backend side is built (open and started lobbies, presence, the round, the preview); the screen is the
-next pull request, after the Activity's main-menu rework (#503) lands in `together_screen.gd`.
+**Status:** built and played in the browser: the backend (open and started lobbies, presence, the round, the
+preview by code or by Activity instance), the lobby screen and its poll (`LobbyScreen`, `LobbyWatch`), Play together
+opening it, the join notice in the night, and a web probe (`tools/web_smoke/lobby.py`). Not built: the host's match
+settings on this screen (branch `net-room-settings` holds the backend half) and the player's own name in the night's
+notice (#485: it reads `PLAYER 3 JOINED` until then).
 
 ## The rules in one place
 
@@ -68,7 +71,9 @@ sound, which is why a guest is not walked in without one) and gets a ticket.
 
 ### 4. Join late
 
-A friend with a code (typed, or from `?room=CODE`, or the Activity's room) first sees a **preview**, joined to nothing:
+A friend with a code (typed, or from `?room=CODE`, or the Activity's room) first sees a **preview**, joined to nothing,
+which keeps reading the code every two seconds while the screen is open (a waiting room becomes *Night in progress*
+by itself):
 
 - *Waiting room, Ann hosting, 2 of 4.* with **Join**;
 - *Night in progress, round 4, 2 of 4 here.* with **Join** (a late joiner goes straight into the night);

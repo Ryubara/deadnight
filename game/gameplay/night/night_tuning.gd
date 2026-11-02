@@ -57,7 +57,7 @@ const SHIPPED_PATH := "res://gameplay/night/night_tuning_default.tres"
 
 @export_group("Revive")
 ## Metres (on the ground) between two players that one can raise the other from.
-@export var revive_reach: float = 2.2
+@export var revive_reach: float = 2.0
 
 @export_group("Aim")
 ## A shot whose direction differs from where the shooter's view points (`motion.yaw` and `pitch`)

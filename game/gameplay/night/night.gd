@@ -48,6 +48,11 @@ const GRENADE_CLIP_EVENTS: Array[StringName] = [
 	&"cook_started", &"throw_started", &"grenade_dropped", &"grenade_exploded"
 ]
 
+## The server's events that move the Soldier's downed pose and kneel.
+const REVIVE_CLIP_EVENTS: Array[StringName] = [
+	&"player_downed", &"player_revived", &"revive_started", &"revive_stopped"
+]
+
 var mode := Mode.HUMAN
 var world: NightWorld
 var server: NightServer
@@ -73,6 +78,9 @@ var view: NightView
 ## Where the grenade in the local player's hand would go (`show_throw`).
 var preview: GrenadePreview
 var autopilot: Autopilot
+## The bot host the autopilot runs on (`BotClient`, profile `BotProfile.autopilot()`): it decides
+## with the autopilot every tick, as it always did, and counts what it sends.
+var bot: BotClient
 ## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
 ## `start_remote` they are the ones the server's WELCOME carried.
 var match_settings := MatchSettings.new()
@@ -224,6 +232,7 @@ func start_remote(
 		online.close()
 		return _fail(failure["reason"])
 	state.player_id = online.player_id
+	state.load_names(welcome["snapshot"])
 	var camera: Camera3D
 	var has_body := mode == Mode.HUMAN or (mode == Mode.AUTOPILOT and shoulder_camera)
 	if has_body:
@@ -367,7 +376,7 @@ func _add_markers() -> void:
 func _drawn_player(player_id: int) -> Node3D:
 	if not remote:
 		return server.body_of(player_id)
-	if player_id == state.player_id:
+	if player_id == state.player_id and _body != null:
 		return _body
 	return avatars.avatar(player_id) if avatars != null else null
 
@@ -542,11 +551,11 @@ func tick() -> void:
 	match mode:
 		Mode.AUTOPILOT:
 			began = PerfProbe.begin()
-			var command := autopilot.decide(STEP)
+			var command := bot.decide(STEP)
 			PerfProbe.end(&"tick.bot", began)
 			if shoulder_camera:
 				_aim_rig(command)
-			link.send(command.to_dict())
+			_send_command(command)
 		Mode.HUMAN:
 			var human := _human_command()
 			show_throw(human)
@@ -581,7 +590,7 @@ func _tick_remote() -> void:
 			command = _human_command()
 			show_throw(command)
 		Mode.AUTOPILOT:
-			command = autopilot.decide(STEP)
+			command = bot.decide(STEP)
 			if _body != null:
 				_aim_rig(command)
 	if command != null:
@@ -597,7 +606,7 @@ func _tick_remote() -> void:
 		command.player_id = state.player_id
 		if _body != null:
 			reconciler.record(_seq, _body.state.position)
-		link.send(command.to_dict())
+		_send_command(command)
 	if _body == null:
 		_follow(STEP)
 	ticked.emit()
@@ -714,14 +723,18 @@ func _dress_bodies(_player_id: int) -> void:
 	var resolved := looks.resolved()
 	for id: int in resolved:
 		var body := _body_of(id)
-		if body != null:
+		# A puppet is dressed by the avatars that place it (`RemoteAvatars`).
+		if body != null and not body.is_puppet:
 			body.dress(resolved[id], looks.seats[id])
 
 
-## The body of a player in this process: the server's, or (online) our own.
+## The body that draws a player on this screen: the server's in this process; online, our own, or
+## the puppet the frames place for any other (and for ours when this client plays no body).
 func _body_of(player_id: int) -> Player:
 	if remote:
-		return _body if player_id == state.player_id else null
+		if _body != null and player_id == state.player_id:
+			return _body
+		return avatars.avatar(player_id) if avatars != null else null
 	return server.body_of(player_id)
 
 
@@ -736,6 +749,7 @@ func _on_event(event: Dictionary) -> void:
 		night_over.emit(event["round_reached"])
 	else:
 		_show_grenade(event)
+		_show_revive(event)
 
 
 ## The Soldier's grenade clips follow the server's events: the pin, the throw, a grenade that went
@@ -758,6 +772,29 @@ func _show_grenade(event: Dictionary) -> void:
 				animation.grenade(&"gone")
 
 
+## The Soldier's downed pose and kneel follow the server's events: a player going down or getting
+## up, and a teammate beginning or ending the hold (DownedPose).
+func _show_revive(event: Dictionary) -> void:
+	var type: StringName = event["type"]
+	if not REVIVE_CLIP_EVENTS.has(type):
+		return
+	var animation := _animation_of(event["player_id"])
+	if animation != null:
+		match type:
+			&"player_downed":
+				animation.set_downed(true)
+			&"player_revived":
+				animation.set_downed(false)
+			&"revive_started":
+				animation.set_reviving(true)
+			&"revive_stopped":
+				animation.set_reviving(false)
+	if type == &"player_revived" and event["reviver_id"] > 0:
+		var reviver := _animation_of(event["reviver_id"])
+		if reviver != null:
+			reviver.set_reviving(false)
+
+
 func _animation_of(player_id: int) -> PlayerAnimation:
 	var body := _body_of(player_id)
 	return body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
@@ -768,10 +805,21 @@ func _repair_seconds() -> float:
 	return night_tuning.repair_interval
 
 
+## Sends a command and, when a bot made it, counts it in the bot's telemetry.
+func _send_command(command: NightCommand) -> void:
+	var action := command.to_dict()
+	if bot != null:
+		bot.telemetry.note_command(action)
+	link.send(action)
+
+
 func _make_autopilot() -> void:
 	autopilot = Autopilot.new(state, world.map())
 	_sight = WorldProbe.new(get_world_3d().direct_space_state)
 	autopilot.sight = _sight.callable()
+	var level := BotLevel.new(_sight.callable(), world.is_lit, rules_tuning.rounds, world.map())
+	bot = BotClient.new(state, BotProfile.autopilot(), SEED, link.send, level)
+	bot.legacy = autopilot
 	var tuning: RulesTuning = rules_tuning
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.DOOR:
@@ -803,6 +851,10 @@ func _make_autopilot() -> void:
 	for circuit_id in world.switches.circuit_ids():
 		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
 		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
+	autopilot.revive.reach = (
+		(night_tuning if night_tuning != null else NightTuning.shipped()).revive_reach
+	)
+	autopilot.revive.seconds = tuning.health.revive_seconds
 	autopilot.fuel.capacity = tuning.fuel.capacity
 	autopilot.fuel.refuel_at = tuning.fuel.low_fraction
 	autopilot.fuel.fill_to = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN

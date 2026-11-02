@@ -20,7 +20,7 @@ signal room_closed(match_id: String)
 
 ## Rooms a process takes unless told otherwise.
 const DEFAULT_CAPACITY := 4
-## Seconds between heartbeats.
+## Seconds between heartbeats (the default of `heartbeat_every`).
 const HEARTBEAT_EVERY := 5.0
 ## Connections that have not said hello yet; the next is hung up on.
 const MAX_PENDING := 32
@@ -32,6 +32,8 @@ const REFUSAL_GRACE := 1.0
 
 var port := NetWire.DEFAULT_PORT
 var capacity := DEFAULT_CAPACITY
+## The most zombies alive at once in a night here (`ServerConfig.max_alive`); 0 is the rules' own.
+var max_alive := 0
 var log_enabled := true
 var rules_tuning: RulesTuning
 ## The seed of every room's dice; -1 draws one for each.
@@ -48,6 +50,8 @@ var verifier: TicketVerifier
 ## Seconds a connection may take to say hello (a test sets it shorter).
 var hello_within := HELLO_WITHIN
 var idle_room_seconds := IDLE_ROOM_SECONDS
+## Seconds between heartbeats (a test sets it shorter).
+var heartbeat_every := HEARTBEAT_EVERY
 
 var listener := WsListener.new()
 var heartbeats_sent := 0
@@ -67,6 +71,7 @@ static func make(config: ServerConfig, p_port: int, p_seed: int = -1) -> GameSer
 	server.port = p_port
 	server.seed_value = p_seed
 	server.capacity = config.capacity
+	server.max_alive = config.max_alive
 	server.server_id = config.server_id
 	server.public_url = config.public_url
 	server.activity_path = config.activity_path
@@ -128,6 +133,14 @@ func players_by_match() -> Dictionary:
 	var out := {}
 	for match_id: String in _rooms:
 		out[match_id] = _rooms[match_id].player_count()
+	return out
+
+
+## The round of each room, as a `{match id: round}` for the heartbeat.
+func rounds_by_match() -> Dictionary:
+	var out := {}
+	for match_id: String in _rooms:
+		out[match_id] = _rooms[match_id].round_number()
 	return out
 
 
@@ -249,6 +262,7 @@ func _open_room(match_id: String) -> NightHost:
 	room.log_enabled = log_enabled
 	room.seed_value = seed_value
 	room.rules_tuning = rules_tuning
+	room.max_alive = max_alive
 	room.emptied.connect(func() -> void: _end_room(match_id))
 	viewport.add_child(room)
 	await room.built
@@ -287,7 +301,7 @@ func _end_room(match_id: String) -> void:
 
 
 func _heartbeat() -> void:
-	_beat_at = _now() + HEARTBEAT_EVERY
+	_beat_at = _now() + heartbeat_every
 	heartbeats_sent += 1
 	_tell_backend(
 		"POST",
@@ -299,6 +313,7 @@ func _heartbeat() -> void:
 			"capacity": capacity,
 			"matchIds": match_ids(),
 			"players": players_by_match(),
+			"rounds": rounds_by_match(),
 		}
 	)
 

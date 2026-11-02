@@ -21,7 +21,8 @@ come from one script, so this page and the file cannot drift:
 
 - **`<Action>_<Class>`** for anything a weapon changes: `Aim_Rifle`, `Fire_Shotgun`, `Reload_Pistol`,
   `Swing_Melee`, `Equip_Melee`. Classes: **Rifle, Shotgun, Pistol, Melee**.
-- **Bare names** for whole-body clips: `Idle`, `Walk`, `Run`, `Downed`.
+- **Bare names** for whole-body clips: `Idle`, `Walk`, `Run`, `Downed`; a whole-body clip with a variant is
+  `<State>_<Variant>`: `Downed_Idle`, `Downed_Crawl`, `Revive_Kneel` ([Downed and revive](#downed-and-revive)).
 - **Kit names stay** for kit clips we use as they are: `HitReact` is the hit, `Death` is going down. Renaming them
   would break the other kit characters that share the library.
 
@@ -42,7 +43,7 @@ move every bone. Events are frames of the clip.
 | Run | full | loop | 17 (0.71 s) | - |
 | HitReact | full | once | 10 (0.42 s) | - |
 | Death | full | once | 18 (0.75 s) | - |
-| Downed | full | loop | 48 (2.0 s) | - |
+| Downed | full | loop | 48 (2.0 s) | - (superseded by `Downed_Idle`, not played) |
 | Aim_Rifle | upper | loop | 48 (2.0 s) | - |
 | Fire_Rifle | upper | once | 8 (0.33 s) | muzzle 0, can_fire_again 8 |
 | Reload_Rifle | upper | once | 62 (2.58 s) | round_in 20, 32, 44; lever 56; can_fire_again 62 |
@@ -297,6 +298,59 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   through the night and checks the hammer replaces the weapon and the weapon comes back on release, and
   `game/tests/ui/touch/test_touch_repair.gd` does the same from a finger on the touch Interact button.
 
+## Downed and revive
+
+A downed player lies in `Downed_Idle`, and a teammate holding the revive kneels in `Revive_Kneel` (#504, for the
+revives of #486). `Downed_Crawl` is ready in case downed players may move ([#505](https://github.com/Ryubara/deadnight/issues/505)
+decides). All three are `full` clips: they own the legs too. They are built by `revive()` in
+`tools/blender/soldier_clips.py` into their own files: `Downed_Idle` and `Revive_Kneel` in
+`game/assets/characters/soldier/revive/soldier_revive.glb`, `Downed_Crawl` alone in
+`game/assets/characters/soldier/crawl/soldier_crawl.glb`, each with its `clips.json`. Delete the `crawl` folder and the
+crawl is gone: the controller adds it only when its file is there.
+
+| Clip | Layer | Plays | Frames | Ground speed | Events |
+| --- | --- | --- | --- | --- | --- |
+| Downed_Idle | full | loop | 48 (2.0 s) | - | - |
+| Downed_Crawl | full | loop, at ground speed | 32 (1.33 s) | 0.45 m/s | pull_right 0, pull_left 16 |
+| Revive_Kneel | full | loop while the hold lasts | 24 (1.0 s) | - | press 6, 18 |
+
+- **Downed_Idle** reclines on the left elbow, the chest 30 degrees off the ground. The right hand holds the belly, the
+  right knee is drawn up, and the head looks left on one breath and right on the next. It sits with the hips over the
+  player's place, and the whole body is turned 20 degrees about the vertical (head to his left, feet to his right).
+  That turn is what makes it read from the shoulder camera behind him: lying straight, the camera looks along the body
+  and sees the helmet. Unlike the old `Downed` (Death's last frame: flat on the back, the head 1.3 m behind the
+  player's place, a helmet and two boots from behind), it reads from the side and from above too. Nothing goes below
+  the ground (the lowest skin is the shin, at -2 mm).
+- **Downed_Crawl** is the same recline. The heels dig in ahead and pull him forward, one then the other: a planted heel
+  sweeps back at 0.45 m/s in the game (measured off the clip, `ground_speed` in its `clips.json`), and the left elbow
+  pushes with the left heel. The controller plays it at ground speed over 0.45 (0.5 to 1.6), fully in by 40 % of it.
+- **Revive_Kneel** is down on the right knee, the toes curled under, the left foot flat ahead. The back is upright and
+  the arms reach out and down: the hands press 0.53 m ahead of him and 0.29 m up, and 6 cm lower on each `press`.
+  Upright on purpose: leaned over his hands, the Soldier's big head met the teammate's. He presses the belly (where the
+  downed hand holds the wound), not the chest, for the same reason.
+- **No finger is keyed.** The hands keep the skeleton's rest fist, and `HandGripPose` (#507) is free to close them on
+  whatever they hold. Blender's glTF exporter samples every bone of every clip whatever its keys, so
+  `build_soldier.py` takes the finger channels out of the file after the export (`strip_channels`, 66 per clip:
+  22 bones, 3 channels each). `test_player_revive.gd` checks the imported clips carry no finger track.
+- **Driven by eased weights.** `PlayerAnimation.set_downed(bool)` (the rules' `player_downed` / `player_revived`)
+  and `set_reviving(bool)` (`revive_started` naming the player as the reviver / `revive_stopped`,
+  `player_revived`). `Night` calls them from the server's events for every body it draws, and `RemoteAvatars` from each
+  frame's `downed`, so a player who joins late lies down too. Each eases a Blend2 over everything the standing body
+  does, at 6 per second for the downed pose and 10 for the kneel. Going down drops a repair, a reload and a revive.
+  Down or kneeling, the weapon is put away and the arm IK lets go. A downed player cannot kneel. The tree: `full`
+  (HitReact, Death) over `downed` (Downed_Idle, or the `crawl` blend) over `kneel` (Revive_Kneel) over `split`.
+- **Other players' bodies.** `DownedPose.add_clips(anim_player)` adds the clips to any model on the
+  Soldier's rig, so a drawn avatar (RemoteAvatars) plays `Downed_Idle`; `DOWNED_TILT` is only for a body with no animation.
+- **The camera does not frame a downed body yet.** The shoulder rig keeps its standing height and pitch, so the body
+  lies at the bottom edge of the view, cut off. Framing it is the camera's job (lower the pivot and tilt down while
+  down, as the crouch flag does): [#532](https://github.com/Ryubara/deadnight/issues/532).
+- Checked headless (`game/tests/player/test_player_revive.gd`): the clips are in the library, loop, find every bone on
+  the player's skeleton, key the legs and no finger. The tree has a node for each. Going down eases (one tick in, the
+  weight is under 0.2), the head ends under 60 % of its standing height, and getting up brings it and the weapon back.
+  The downed head turns more than 15 degrees over a loop. The kneel presses 4 times in 2 s. A downed player does not
+  kneel. Moving at 0.45 m/s while down plays the crawl at rate 1.0 and the heels move. Captures:
+  `game/tests/captures/revive_poses.tscn`, in the night, from the shoulder camera, the side and above.
+
 ## Reloading
 
 A reload is a tilt, not a clip (maintainer, 2026-11-01, #383: "it can just be a slight tilt weapon downward and pull it
@@ -417,7 +471,9 @@ Soldier's library when the tree is built.
 From the kit's own poses, never from a blank rig: `Idle_Shoot` frame 0 (the gun hold) is the base of every weapon
 pose, `Idle` frame 0 the lowered arms that Equip and Unequip move from and to. Recoil, sway and reloads are local
 rotations on top, mostly of the spine, so both arms and the weapon move together. `Walk` is the kit `Run` at 60 % of
-its stride, stretched to one second; `Downed` is the last frame of `Death`, breathing. What we learned on the way:
+its stride, stretched to one second; `Downed` is the last frame of `Death`, breathing. The downed and revive
+clips are built in world space instead (bones turned about world axes, arms and legs solved onto world targets):
+lying and kneeling move the bones too far from the standing axes the offsets were measured in. What we learned on the way:
 [Character animation](../research/character-animation.md).
 
 ## Rebuilding
@@ -443,6 +499,13 @@ godot --headless --path game -s res://tests/art/check_repair.gd           # LIBR
 # sheet, the kit Run above them (front, side, or from above and behind to see the feet on a strafe):
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Walk_,Strafe_ --out game/assets/characters/soldier/aim_move/soldier_aim_move.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only AimMove --view top --out <scratch>/aim
+# The downed and revive clips, and the optional crawl in a file of its own (prints the finger channels taken out);
+# their sheet, the old Downed above them (front, side, back or top); the check; the captures in the night:
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Downed_Idle,Revive_ --out game/assets/characters/soldier/revive/soldier_revive.glb
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Downed_Crawl --out game/assets/characters/soldier/crawl/soldier_crawl.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Revive --view side --out <scratch>/revive
+godot --headless --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/player/test_player_revive.gd
+gds godot -- --path game res://tests/captures/revive_poses.tscn --quit-after 3600 -- --out <scratch>/revive
 # The sprint carry clips, their own file (prints SPRINT: each clip's frames and how far the left hand missed the
 # fore-end); one stride of each over Run with the game's weapons (Sprint; SprintBefore is Aim_<Class> over Run):
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Sprint_ --out game/assets/characters/soldier/sprint/soldier_sprint.glb

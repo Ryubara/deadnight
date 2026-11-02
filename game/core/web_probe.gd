@@ -65,7 +65,13 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
+		"naming": false,
+		"lobby_seats": "",
+		"lobby_note": "",
+		"lobby_buttons": "",
+		"notices": "",
 		"code_text": "",
+		"notice_log": "",
 		"touch": false,
 		"reticle": false,
 		"tab": "",
@@ -87,7 +93,7 @@ static func snapshot(top: Control) -> Dictionary:
 	var room := ActivityRoom.current
 	if room != null:
 		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
-		data["activity_code"] = str(room.lobby.get("code", ""))
+		data["activity_code"] = str(room.preview.get("code", ""))
 	var tree := top.get_tree()
 	var hint: ControllerHint = (
 		tree.root.find_child("ControllerHint", true, false) as ControllerHint
@@ -101,12 +107,24 @@ static func snapshot(top: Control) -> Dictionary:
 		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
 	var together := top as TogetherScreen
 	if together != null:
-		# The invite of the night just made and what the screen says (a browser test reads both).
-		data["room_code"] = (
-			together.invite_code.text if together.invite_code.is_visible_in_tree() else ""
-		)
+		# What the screen says (a browser test reads it); the code is the lobby screen's.
 		data["room_status"] = together.status.text
+		# The name prompt is up (a browser test types a name into it).
+		data["naming"] = together.name_field.is_visible_in_tree()
 		data["code_text"] = together.code_field.text  # what a paste put into the code field
+	var lobby := top as LobbyScreen
+	if lobby != null:
+		# The lobby: its code, the seats as `1  Ann  HOST|2  Bo|...`, the standing line, the last
+		# thing that happened and which buttons are up (`Start`, `Play`, `Join`).
+		data["room_code"] = lobby.code_label.text
+		data["room_status"] = lobby.status.text
+		data["lobby_seats"] = "|".join(lobby.seat_texts())
+		data["lobby_note"] = lobby.note.text
+		var buttons: Array[String] = []
+		for button: UIButton in [lobby.start_button, lobby.play_button, lobby.join_button]:
+			if button.is_visible_in_tree():
+				buttons.append(button.name)
+		data["lobby_buttons"] = "|".join(buttons)
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
@@ -123,6 +141,10 @@ static func snapshot(top: Control) -> Dictionary:
 		# So a browser test can see the body is drawn between ticks (a screen can switch that off).
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
+	if night_screen.night.hud != null:
+		# Who joined or left, as the night's notices say it.
+		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
+		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():

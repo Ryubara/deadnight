@@ -32,11 +32,17 @@ const MODELS := {
 	&"weapon_shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"weapon_smg": "res://assets/weapons/tommy_gun/tommy_gun.glb",
 	&"weapon_flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
+	&"weapon_baseball_bat": "res://assets/weapons/baseball_bat/baseball_bat.glb",
+	&"weapon_fire_axe": "res://assets/weapons/fire_axe/fire_axe.glb",
 }
 ## How long a model is drawn on the stage, in metres; the others use `MODEL_LENGTH`. The flare gun
 ## is a pistol and stays small beside the long guns.
 const MODEL_LENGTH := 1.5
-const MODEL_LENGTHS := {&"weapon_flare_gun": 0.8}
+const MODEL_LENGTHS := {
+	&"weapon_flare_gun": 0.8,
+	&"weapon_baseball_bat": 1.3,
+	&"weapon_fire_axe": 1.3,
+}
 ## The cycling starts this quick (seconds between weapons) and slows to the slow one.
 const CYCLE_FAST := 0.07
 const CYCLE_SLOW := 0.46
@@ -506,9 +512,13 @@ func _fit(model: Node3D, length: float) -> void:
 	longest = maxf(longest, box.size.y)
 	var factor := length / maxf(longest, 0.001)
 	var centre := box.get_center()
-	model.basis = (
-		Basis(Vector3.UP, PI * 0.5 if turn else 0.0) * Basis.from_scale(Vector3.ONE * factor)
+	# A gun lies along X; a melee weapon is modelled standing (its head up), so it is laid down
+	# with the head toward -X, where a gun's muzzle is.
+	var upright := box.size.y > maxf(box.size.x, box.size.z)
+	var lay := (
+		Basis(Vector3.BACK, PI * 0.5) if upright else Basis(Vector3.UP, PI * 0.5 if turn else 0.0)
 	)
+	model.basis = lay * Basis.from_scale(Vector3.ONE * factor)
 	model.position = -(model.basis * centre)
 
 
