@@ -31,6 +31,16 @@ var _sum := 0.0
 var _count := 0
 
 
+## Whether an adapter name is a renderer that draws on the CPU (a browser's SwiftShader, Mesa's
+## llvmpipe, Windows' basic render driver): the stage does not go live on one.
+static func is_software(adapter: String) -> bool:
+	var lower := adapter.to_lower()
+	for word in ["swiftshader", "llvmpipe", "softpipe", "software", "basic render"]:
+		if lower.contains(word):
+			return true
+	return false
+
+
 ## Feeds one frame; returns true when the level changed.
 func feed(delta: float) -> bool:
 	if level == Level.STILL:

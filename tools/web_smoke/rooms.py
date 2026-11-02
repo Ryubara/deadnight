@@ -66,11 +66,11 @@ def open_page(browser: Browser, url: str, console: list[str], problems: list[str
 
 
 def to_together(page: Page) -> None:
-    """From the main menu to the Play together screen (the second item)."""
+    """From the main menu to the Play together screen (the first item of the Play tab)."""
     wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
     page.mouse.click(5, 5)  # gives the canvas the keyboard
     page.wait_for_timeout(2500)
-    smoke.press(page, "ArrowDown")
+    smoke.menu_item(page, "Play")
     smoke.press(page, "Enter")
     wait_for(page, "the Play together screen", lambda s: s.get("screen") == "together_screen", smoke.SCREEN_TIMEOUT_S)
     page.wait_for_timeout(1500)

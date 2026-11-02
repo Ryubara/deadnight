@@ -23,6 +23,8 @@ var manual := false
 var level := StageGovernor.Level.LIVE
 ## A mode that overrides the setting for this view (a run's own choice); -1 follows the setting.
 var forced_mode := -1
+## The graphics adapter's name, as the engine reports it (a test sets another).
+var adapter_name := RenderingServer.get_video_adapter_name()
 
 var _viewport := SubViewport.new()
 var _mode := MODE_AUTO
@@ -71,6 +73,11 @@ func _process(delta: float) -> void:
 		set_level(governor.level)
 
 
+## Tells the camera the window is a phone's (poses leave room for wider panels).
+func set_compact(compact: bool) -> void:
+	stage.rig.compact = compact
+
+
 ## Turns the camera to a tab (a cut in a still).
 func show_tab(tab: MenuTab.Id) -> void:
 	_tab = tab
@@ -83,6 +90,12 @@ func show_tab(tab: MenuTab.Id) -> void:
 ## Dresses the soldier again from the save (the wardrobe saved a new look, or a weapon was chosen).
 func reload_look() -> void:
 	stage.show_look(LookStore.load_look(), MenuHero.saved_weapon())
+	refresh()
+
+
+## Shows a look that is not saved yet (the wardrobe's working copy) with the saved weapon.
+func preview_look(look: CharacterLook) -> void:
+	stage.show_look(look, MenuHero.saved_weapon())
 	refresh()
 
 
@@ -130,8 +143,13 @@ func _apply_mode() -> void:
 			governor.level = StageGovernor.Level.STILL
 			set_level(StageGovernor.Level.STILL)
 		_:
-			governor.level = StageGovernor.Level.LIVE
-			set_level(StageGovernor.Level.LIVE)
+			# On a renderer that draws on the CPU the stage would hold the menu to a few frames a
+			# second for the seconds the governor needs to notice: start on the still.
+			var start := StageGovernor.Level.LIVE
+			if _mode == MODE_AUTO and StageGovernor.is_software(adapter_name):
+				start = StageGovernor.Level.STILL
+			governor.level = start
+			set_level(start)
 	_apply_level()
 
 

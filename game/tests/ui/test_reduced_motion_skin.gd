@@ -21,23 +21,22 @@ func _motion_of(node: CanvasItem) -> float:
 	return (node.material as ShaderMaterial).get_shader_parameter(&"motion")
 
 
-func test_the_overlay_and_the_sky_follow_the_setting_live() -> void:
+func test_the_overlay_and_the_stage_follow_the_setting_live() -> void:
 	var runner := scene_runner("res://main.tscn")
 	await await_idle_frame()
 	await UIRouter.idle
 	var film := runner.scene().find_child("Film", true, false) as FilmOverlay
-	var menu := UIRouter.top()
-	var sky := _first_sky(menu)
+	var menu := UIRouter.top() as MainMenu
+	var stage := menu.shell.view.stage
 	assert_object(film).is_not_null()
-	assert_object(sky).is_not_null()
 	assert_float(_motion_of(film)).is_equal(1.0)
-	assert_float(_motion_of(sky)).is_equal(1.0)
+	assert_bool(stage.animated).is_true()
 	UIMotion.reduced = true
 	assert_float(_motion_of(film)).is_equal(0.0)
-	assert_float(_motion_of(sky)).is_equal(0.0)
+	assert_bool(stage.animated).is_false()
 	UIMotion.reduced = false
 	assert_float(_motion_of(film)).is_equal(1.0)
-	assert_float(_motion_of(sky)).is_equal(1.0)
+	assert_bool(stage.animated).is_true()
 	runner.invoke("queue_free")
 
 
@@ -81,13 +80,3 @@ func test_the_change_signal_fires_once_per_change() -> void:
 	UIMotion.reduced = false
 	UIMotion.changed().disconnect(listener)
 	assert_array(seen).contains_exactly([true, false])
-
-
-func _first_sky(node: Node) -> NightSky:
-	if node is NightSky:
-		return node
-	for child in node.get_children():
-		var found := _first_sky(child)
-		if found != null:
-			return found
-	return null

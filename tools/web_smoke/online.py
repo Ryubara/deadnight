@@ -53,11 +53,11 @@ def probe_after(page: Page, seconds: float, what: str, test) -> dict:
 
 
 def join(page: Page, server: str, out: Path) -> None:
-    """Menu, then Join (the second item), then the address, then Enter."""
+    """Menu, then Play together (the first item of the Play tab), then the address, then Enter."""
     smoke.wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
     page.mouse.click(5, 5)  # gives the canvas the keyboard
     page.wait_for_timeout(2500)
-    smoke.press(page, "ArrowDown")
+    smoke.menu_item(page, "Play")
     page.screenshot(path=out / "menu_join.png")
     smoke.press(page, "Enter")
     smoke.wait_for(page, "the join screen", lambda s: s.get("screen") == "join_screen", smoke.SCREEN_TIMEOUT_S)

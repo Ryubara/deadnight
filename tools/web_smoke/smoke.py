@@ -53,6 +53,8 @@ SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--igno
 # renderer, which is why this is gated and a frame time is not. The pieces link at most 12 (a shader's two big
 # programs and the few that go with them); the limit has room for a new kind of material, not for a new burst.
 MAX_PROGRAMS_IN_A_LOADING_FRAME = 12
+# Tabs in the menu's bar: Q and E walk them, wrapping round.
+MENU_TABS = 5
 
 # Console errors that are about the browser, not the game, and are fine. Keep this list short and say why.
 IGNORED: tuple[str, ...] = ()
@@ -109,7 +111,7 @@ PROBE_JS = """
   const d = window.deadnight;
   return d ? {screen: d.screen, night: d.night, running: d.running, over: d.over,
               round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw,
-              interpolated: d.interpolated} : null;
+              interpolated: d.interpolated, tab: d.tab} : null;
 }
 """
 
@@ -172,6 +174,31 @@ def wait_for(page: Page, what: str, test, seconds: float) -> dict:
             return seen
         time.sleep(0.1)
     raise TimeoutError(f"timed out waiting for {what}; the game last reported {seen}")
+
+
+def menu_item(page: Page, tab: str, steps: int = 0) -> None:
+    """Puts the keyboard on an item of the main menu: the tab bar's Q and E walk (and wrap) to `tab`, and the focus lands
+    on the tab's first control whatever it was before, so `steps` presses of Down reach the item. It works from
+    any focus, which the old menu needed six Up presses for. Play's items are Play together, Quick join and Solo;
+    More's are Settings, Credits and Quit."""
+    for _ in range(MENU_TABS):
+        page.wait_for_timeout(400)  # longer than the probe's period, so `before` is the tab on show
+        before = probe(page).get("tab")
+        press(page, "e")
+        # The game publishes its state a few times a second: wait for the new tab, never read the old one twice.
+        now = wait_for(page, "the next tab", lambda s, was=before: s.get("tab") != was, SCREEN_TIMEOUT_S)
+        if now.get("tab") == tab:
+            break
+    else:
+        raise TimeoutError(f"the menu never reached the {tab} tab; it reports {probe(page)}")
+    for _ in range(steps):
+        press(page, "ArrowDown")
+
+
+def start_solo(page: Page) -> None:
+    """Presses Solo on the Play tab: the one way to start a night alone."""
+    menu_item(page, "Play", 2)
+    press(page, "Enter")
 
 
 def main() -> int:
@@ -243,30 +270,22 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     page.goto(url, wait_until="commit")
     wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
     result["load_to_menu_s"] = round(time.monotonic() - started, 2)
-    # The menu's items rise a moment after the screen arrives; a click gives the canvas the keyboard.
+    # The menu's panel arrives a moment after the screen does; a click gives the canvas the keyboard.
     page.mouse.click(5, 5)
     page.wait_for_timeout(2500)
     page.screenshot(path=out / "menu.png")
     result["menu_frames"] = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
 
-    # The wardrobe reads parts.json, which only reaches the build through the export filter. It is the
-    # third item, after Play and Join.
-    press(page, "ArrowDown")
-    press(page, "ArrowDown")
-    press(page, "Enter")
-    wait_for(page, "the wardrobe", lambda s: s.get("screen") == "customize_screen", SCREEN_TIMEOUT_S)
+    # The wardrobe (the Loadout tab) reads parts.json, which only reaches the build through the export filter.
+    menu_item(page, "Loadout")
     page.wait_for_timeout(2500)
     page.screenshot(path=out / "wardrobe.png")
-    press(page, "Escape")
-    wait_for(page, "the menu again", lambda s: s.get("screen") == "main_menu", SCREEN_TIMEOUT_S)
+    menu_item(page, "Play")
     page.wait_for_timeout(1500)
     page.screenshot(path=out / "menu_back.png")
 
-    # Back on the menu nothing has focus until a key asks for it (that key is spent doing so); then Up walks
-    # to the first item, Play (focus stops at the ends, so an Up too many is harmless).
-    press(page, "ArrowDown")
-    for _ in range(4):
-        press(page, "ArrowUp")
+    # Solo is the third item of the Play tab.
+    menu_item(page, "Play", 2)
     page.screenshot(path=out / "menu_focus.png")
     pressed = page.evaluate("performance.now()")
     press(page, "Enter")
