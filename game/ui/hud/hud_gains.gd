@@ -36,6 +36,9 @@ var _stack := HudRowStack.new()
 ## Labels that left the list, kept for the next gains (a kill makes one every time): the plain
 ## ones and the big ones, which are in another font.
 var _spare: Array[Array] = [[], []]
+## Where the spare labels wait, hidden: in the tree, so they are freed with the part and are never
+## orphans.
+var _shelf := Control.new()
 
 
 func _init() -> void:
@@ -43,6 +46,8 @@ func _init() -> void:
 	_stack.gap = HudStyle.XS
 	_stack.custom_minimum_size.x = room
 	add_child(_stack)
+	_shelf.visible = false
+	add_child(_shelf)
 	_stack.minimum_size_changed.connect(update_minimum_size)
 
 
@@ -52,16 +57,6 @@ func _get_minimum_size() -> Vector2:
 
 func _process(delta: float) -> void:
 	advance(delta)
-
-
-## The labels kept for later are not in the tree, so nothing else would free them.
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		for spare: Array in _spare:
-			for label: Label in spare:
-				if is_instance_valid(label):
-					label.free()
-			spare.clear()
 
 
 ## Gives the list `width` to lay out in (the canvas leaves more room on a wide screen) and fits
@@ -138,6 +133,7 @@ func _drop(row: Dictionary) -> void:
 	_stack.take_row(label)
 	var spare: Array = _spare[1 if row["size"] == HudStyle.MEDIUM else 0]
 	if spare.size() < MAX_ROWS:
+		_shelf.add_child(label)
 		spare.append(label)
 	else:
 		label.queue_free()
@@ -149,6 +145,7 @@ func _label(size: int, colour: Color, big: bool) -> Label:
 	if spare.is_empty():
 		return HudStyle.clip(HudStyle.label("", size, colour, big))
 	var label: Label = spare.pop_back()
+	_shelf.remove_child(label)
 	label.add_theme_color_override(&"font_color", colour)
 	label.add_theme_font_size_override(&"font_size", size)
 	label.modulate.a = 1.0
