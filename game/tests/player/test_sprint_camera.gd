@@ -73,3 +73,21 @@ func test_the_camera_pulls_back_when_sprinting_in_every_direction() -> void:
 		assert_float(_rig.lens_distance()).override_failure_message(label).is_greater(
 			_tuning.show_body_distance
 		)
+
+
+func test_the_view_is_63_degrees_at_rest_60_at_full_aim_and_66_at_a_full_sprint() -> void:
+	# The maintainer (issue #405): the default view was too far outward, so the FOV is 10 percent
+	# narrower (70 to 63), the sprint's widening is halved (6 to 3 degrees) and the aim stays at 60.
+	var camera := _rig.camera()
+	_render(1.0)
+	assert_float(camera.fov).is_equal_approx(63.0, 0.01)
+	_rig.sprinting = true
+	_render(1.5)
+	assert_float(camera.fov).is_equal_approx(66.0, 0.05)
+	_rig.sprinting = false
+	_rig.aiming = true
+	_render(1.5)
+	assert_float(camera.fov).is_equal_approx(60.0, 0.05)
+	assert_float(_tuning.fov).is_equal(63.0)
+	assert_float(_tuning.fov_aim).is_equal(60.0)
+	assert_float(_tuning.sprint_fov_kick).is_equal(3.0)

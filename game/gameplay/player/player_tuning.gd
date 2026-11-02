@@ -159,8 +159,10 @@ extends Resource
 ## Distance behind the pivot, in metres, and the same while aiming.
 @export var arm_length := 2.3
 @export var arm_length_aim := 1.8
-## Vertical field of view in degrees, and the same while aiming.
-@export var fov := 70.0
+## Vertical field of view in degrees, and the same while aiming. The default is 63 (it was 70, 10
+## percent narrower at the maintainer's word, issue #405: "too far outward", closer to the
+## character); the aim view stays 60.
+@export var fov := 63.0
 @export var fov_aim := 60.0
 ## Radius of the sphere swept from the pivot to the lens, so the camera never clips a wall.
 @export var arm_margin := 0.25
@@ -182,9 +184,9 @@ extends Resource
 @export var aim_frequency := 24.0
 @export var swap_frequency := 16.0
 @export var sprint_frequency := 13.5
-## Sprint widens the view by this many degrees and lets the camera out by this many metres (the
-## pull-back was 0.3 m; now half that).
-@export var sprint_fov_kick := 6.0
+## Sprint widens the view by this many degrees (it was 6, halved at the maintainer's word, issue
+## #405) and lets the camera out by this many metres (the pull-back was 0.3 m; now half that).
+@export var sprint_fov_kick := 3.0
 @export var sprint_arm_extra := 0.15
 ## A wall pulls the camera in at once; this is the rate (per second) it lets out again.
 @export var release_frequency := 6.0
@@ -211,11 +213,12 @@ extends Resource
 ## The gentle sway of the view while sprinting (`SprintSway`): a bob (pitch) every `bob_steps`
 ## footfalls, and a roll and yaw (a quarter turn apart) every `sway_steps` footfalls. A footfall is
 ## `step_distance` metres of travel, so the rate follows ground speed like the Run clip does.
-## Subtle on purpose: the peaks are under half a degree. The camera shake setting scales it and
-## Reduced motion turns it off. Amounts are degrees.
-@export var sprint_sway_pitch_degrees := 0.4
-@export var sprint_sway_yaw_degrees := 0.2
-@export var sprint_sway_roll_degrees := 0.28
+## Subtle on purpose: the largest turn of the look direction is a quarter of a degree. The camera
+## shake setting scales it and Reduced motion turns it off. None at all in the air. Amounts are
+## degrees (half of what they were: pitch 0.4, yaw 0.2, roll 0.28, issue #405).
+@export var sprint_sway_pitch_degrees := 0.2
+@export var sprint_sway_yaw_degrees := 0.1
+@export var sprint_sway_roll_degrees := 0.14
 ## Footfalls for one full bob (1: the head dips on every foot) and for one full roll and yaw (2:
 ## once per left and right stride).
 @export var sprint_sway_bob_steps := 1.0
