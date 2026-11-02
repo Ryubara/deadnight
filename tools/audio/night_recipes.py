@@ -1,5 +1,5 @@
 """The night's remaining sounds as recipes: the ambient bed (crickets, a distant highway, the projector), the score,
-the boards at the fence, doors, melee, the till and the player's own voice.
+the boards at the fence, doors, melee and the till (the soldiers' voices are `elevenlabs_voice.py`).
 
 Same rules as `recipes.py`: a recipe takes a seeded numpy Generator and returns float samples, nothing is sampled
 or taken from anywhere. The loops (the bed and the score) are built circularly: every event that runs past the end
@@ -12,7 +12,7 @@ from __future__ import annotations
 import dsp
 import numpy as np
 from dsp import SAMPLE_RATE
-from recipes import Entry, _jv, _metal_click, _rasp, _thud, _voice
+from recipes import Entry, _jv, _metal_click, _rasp, _thud
 
 # ---- helpers for loops ------------------------------------------------------------------------------------------
 
@@ -313,32 +313,6 @@ def till_ring(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(mix, 0.001, 0.15)
 
 
-# ---- the player -------------------------------------------------------------------------------------------------
-
-
-def player_grunt(rng: np.random.Generator) -> np.ndarray:
-    """A grunt of pain: a short, clean throat sound that drops, with a catch of breath. Human, not the dead."""
-    seconds = _jv(rng, 0.3, 0.15)
-    n = dsp.samples(seconds)
-    pitch = dsp.curve([(0, _jv(rng, 165, 0.15)), (0.2, _jv(rng, 190, 0.1)), (1, 120)], n)
-    voice = _voice(rng, seconds, pitch, ("aa", "oh"), rasp=0.12, breath=0.4)
-    env = dsp.curve([(0, 0), (0.05, 1), (0.45, 0.8), (1, 0)], n)
-    return dsp.fade(dsp.room_tail(rng, voice * env, 0.25, wet=0.12, dark=4000), 0.003, 0.05)
-
-
-def player_down(rng: np.random.Generator) -> np.ndarray:
-    """Going down: a long falling groan with a shaky breath, and the weight of the body on the ground."""
-    seconds = _jv(rng, 0.85, 0.1)
-    n = dsp.samples(seconds)
-    pitch = dsp.curve([(0, _jv(rng, 175, 0.1)), (0.35, 140), (1, 70)], n)
-    voice = _voice(rng, seconds, pitch, ("aa", "uh"), rasp=0.25, breath=0.5)
-    env = dsp.curve([(0, 0), (0.07, 1), (0.6, 0.7), (1, 0)], n)
-    mix = dsp.room_tail(rng, voice * env, 0.4, wet=0.15, dark=3500)
-    mix = dsp.place(mix, _thud(rng, _jv(rng, 62, 0.1), 0.3), seconds * 0.8, 0.9)
-    mix = dsp.place(mix, _rasp(rng, 0.2, 400, 1100), seconds * 0.78, 0.15)
-    return dsp.fade(mix, 0.004, 0.1)
-
-
 # ---- registry ---------------------------------------------------------------------------------------------------
 
 REGISTRY: list[Entry] = [
@@ -353,6 +327,4 @@ REGISTRY: list[Entry] = [
     Entry("melee", "swing", 3, melee_swing, -5.0),
     Entry("melee", "hit", 2, melee_hit, -3.0),
     Entry("shop", "till", 2, till_ring, -3.0),
-    Entry("player", "grunt", 3, player_grunt, -4.0),
-    Entry("player", "down", 2, player_down, -3.0),
 ]
