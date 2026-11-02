@@ -36,7 +36,9 @@ The server decides every hit. The client shows the shot at once and the server's
   draw a streak from the muzzle to each end, for a future beam-like hitscan weapon; none of the shipped weapons does.
 - **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
   `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
-  so a travelling shot is always a real body with its own flight, not a drawn line.
+  so a travelling shot is always a real body with its own flight, not a drawn line. In the night `NightView` draws
+  each one as a `ProjectileView` (a hot core, a halo, a flickering warm light and a short spark trail), flown with the
+  server's `ProjectileState` against the walls and ended by the burst (a spark and a flash).
 - **`MELEE`** (crowbar): a sweep; no streak, no impact puff.
 
 ## The shoulder camera
