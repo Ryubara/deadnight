@@ -14,6 +14,9 @@ const SCORE := &"bed_score"
 const PROJECTOR := &"bed_projector"
 ## The node of the lot's greybox that holds the projection booth.
 const BOOTH_NODE := "ProjectionBooth"
+## The physics layer (bit 2) the lot's walls and fences are also on, which the audio service's rays
+## read: a sound behind one is quieter and duller. Cars, crates and the ground are not on it.
+const OCCLUDER_MASK := 2
 
 var _state: ClientState
 var _world: NightWorld
@@ -25,6 +28,7 @@ var _over := false
 func setup(state: ClientState, world: NightWorld) -> void:
 	_state = state
 	_world = world
+	Audio.occluder_mask = OCCLUDER_MASK
 	state.event_received.connect(_on_event)
 	for id in NIGHT_BEDS:
 		Audio.start_bed(id)
@@ -34,6 +38,7 @@ func setup(state: ClientState, world: NightWorld) -> void:
 
 
 func _exit_tree() -> void:
+	Audio.occluder_mask = 0
 	# A finished night leaves nothing of its own playing (the service outlives it).
 	for id in NIGHT_BEDS:
 		Audio.stop_bed(id)
