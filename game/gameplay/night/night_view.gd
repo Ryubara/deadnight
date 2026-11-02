@@ -25,6 +25,8 @@ var barricade_points: Dictionary[StringName, Vector3] = {}
 var lamps: LotLamps
 ## The prize crane (`show_crane`).
 var crane: CraneView
+## Plays the re-cut bench and the soda fountain.
+var machines: MachineView
 ## The night's sounds besides the guns (`hear`).
 var sounds: NightSounds
 ## The dead's voices and feet, made from the frames (`ZombieVoices`).
@@ -113,6 +115,9 @@ func show_crane(world: NightWorld, tuning: RulesTuning) -> void:
 	add_child(crane)
 	var item := tuning.economy.item(&"crane_play")
 	crane.setup(_state, world.shop_spots(), tuning.crane, item.pool if item != null else [])
+	# The lot's other machines (the re-cut bench, the soda fountain) play from the same events.
+	machines = MachineView.new()
+	machines.setup(_state, self)
 
 
 ## Draws the grenades the server throws, from its events (`GrenadeView`, `BlastEffect`): a copy of

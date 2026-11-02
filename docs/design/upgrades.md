@@ -46,6 +46,23 @@ Tonics were shop entries that did nothing. The first with an effect is **hearty*
 buys the room only and stands up to all of it. Getting up after a down restores the raised most. The effect is the
 item's `health_bonus`; the other three tonics (second wind, quick hands, fleet) have none yet and no machine sells them.
 
+## The machines
+
+| | Re-cut bench | Soda fountain |
+| --- | --- | --- |
+| Where | the projection booth ([the lot](map.md#shop-spots)) | the concession stand |
+| Look | a cast-iron bench with two brass film reels on its tower, a sprocketed film strip along its front, a cradle under a press with a hot head, five ready lamps, a "RE-CUT / WHILE-U-WAIT" sign | a red and cream counter with a chrome band, a back bar of bottles, a tank of fizzing tonic, a tap with a lever, a neon heart over a "HEARTY" board |
+| Prompt | "Re-cut: Revolver, damage x1.75, rounds x1.5, 1500 points"; "this weapon is already re-cut"; "nothing to re-cut in your hand" | "Hearty tonic, +50 most health, 1000 points"; "you have had yours" |
+| On a purchase | the weapon lies on the cradle, the reels spin up, the press drops and strikes at 0.8 s with a flash and sparks, the weapon glows brass, the lamps chase, a bell at 1.55 s; 2.4 s in all | the lever pulls, the cork pops, the tumbler fills, the gulp at 0.55 s flashes the heart; 1.3 s in all |
+| Sound | `buy_recut` (a recipe: motor, groan, blow, hiss, ratchet, bell; no ElevenLabs) | `buy_tonic` (the cork and the gulp) |
+| HUD | the ammo card says "Re-Cut Revolver" and the bigger magazine and reserve; the feed says "had a weapon re-cut" | the health card reads the new most (150); the feed says "drank the hearty tonic" |
+
+Every client plays the machine on the event (`weapon_upgraded` for the bench, `purchase_made` of the tonic for the
+fountain), so everyone in the lot sees it. The offers are the server's (`MachineOffers`, the prompt kinds `recut`,
+`recut_done`, `recut_none`, `tonic`, `tonic_owned`); the card's words are `MachinePrompts`; `MachineView` starts the
+machines; a late joiner sees idle machines and names the re-cut weapon from the frame's `arms` (`[ammo, reserve,
+tier]`, the second wire change of #281).
+
 ## What it asks of the rest
 
 - **Zombie health compounds at 7% a round** after round 8 (it was 5%), the genre's own order of magnitude, because
@@ -54,5 +71,5 @@ item's `health_bonus`; the other three tonics (second wind, quick hands, fleet) 
   an average player saves for the re-cut after the wall weapons and the crane, re-cuts the weapon that kills most,
   then buys the tonic. The gate's ranges did not move, and a test fails the gate when the same shopping changes
   nothing.
-- **The places** are the lot's, in [the map](map.md): the re-cut in the projection booth and the tonics at the
+- **The places** are the lot's, in [the map](map.md#shop-spots): the re-cut in the projection booth and the tonics at the
   concession's soda fountain.

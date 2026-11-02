@@ -37,6 +37,7 @@ const BUYS := {
 	ShopItem.Kind.GRENADES: [&"buy_ammo"],
 	ShopItem.Kind.FUEL: [&"buy_fuel"],
 	ShopItem.Kind.TONIC: [&"buy_tonic"],
+	ShopItem.Kind.UPGRADE: [&"buy_recut"],
 	ShopItem.Kind.DOOR: [&"door_unlock", &"door_buy"],
 }
 const BUY_GAP := 0.2
