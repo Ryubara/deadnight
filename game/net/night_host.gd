@@ -235,6 +235,12 @@ func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 		NetWire.Type.PING:
 			if data.size() == 5:
 				listener.send(transport_id, NetWire.pong(data.decode_u32(1), server.tick_count))
+		NetWire.Type.MARK:
+			var mark := NetWire.read_mark(data)
+			if mark.is_empty():
+				_fault(peer)
+			else:
+				_collect(server.apply(mark, peer.player_id))
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))

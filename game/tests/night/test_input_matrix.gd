@@ -49,6 +49,8 @@ const ROWS: Array = [
 	[&"swap_weapon", &"swap_weapon"],
 	[&"throw_grenade", &"throw_grenade"],
 	[&"toss_grenade", &""],
+	# A ping is not in the command: the night makes it from the view (`test_night_pings.gd`).
+	[&"ping", &""],
 	[&"pause", &""],
 ]
 

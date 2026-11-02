@@ -419,9 +419,9 @@ not an errand for one. The start is no closer to danger: the players spawn 33 to
 
 ### Where a downed player can be revived
 
-Not built: the rules only get a downed player up at the end of the round, for a tenth of their points, and have no
-revive action yet ([rounds](rounds.md#open-questions)); the balance simulator assumes six seconds. The places to design
-it for are the lit ground at least 30 m from every spawn that is open, which is little:
+A teammate gets a downed player up by holding use beside them for six seconds ([rounds](rounds.md#revives)); at the
+round's end the rules also get them up, for a tenth of their points. The places to design it for are
+the lit ground at least 30 m from every spawn that is open, which is little:
 
 | Pocket | Size | Where | When |
 | --- | ---: | --- | --- |

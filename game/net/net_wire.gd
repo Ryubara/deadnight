@@ -17,6 +17,9 @@ extends RefCounted
 ##                (`FrameDelta`)
 ## PING     C->S  u8 type=6, u32 client milliseconds
 ## PONG     S->C  u8 type=7, u32 the same, u32 server step
+## MARK     C->S  u8 type=11, u8 kind (an index of `PingBoard.KINDS`), s16 x/y/z (centimetres), u16
+##                the thing marked (an index of the lot's doors, a zombie's or a player's id);
+##                `MARK_SIZE` = 10 bytes. The server answers with a `ping_placed` event for everyone
 ## REFUSED  S->C  u8 type=10, u8 reason (`Refusal`), u8 the server's protocol version; the server
 ##                closes the connection after it
 ##
@@ -27,7 +30,9 @@ extends RefCounted
 ## Everything a decoder reads is length-checked first, and a short, long or unknown packet is
 ## dropped (an empty Dictionary, or null).
 
-enum Type { HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10 }
+enum Type {
+	HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10, MARK = 11
+}
 enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
@@ -41,6 +46,7 @@ const MIN_VERSION := 3
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
 const COMMAND_SIZE := 23
+const MARK_SIZE := 10
 ## The resume token a WELCOME gives: random, one for each connection, good for taking back the seat.
 const TOKEN_SIZE := 8
 const WELCOME_HEADER := 4 + TOKEN_SIZE
@@ -135,6 +141,38 @@ static func ping(client_ms: int) -> PackedByteArray:
 	var out := PackedByteArray([Type.PING, 0, 0, 0, 0])
 	out.encode_u32(1, client_ms & 0xFFFFFFFF)
 	return out
+
+
+## A ping to put up: `kind` is one of `PingBoard.KINDS`, `pos` where, `subject` the door index,
+## zombie id or player id it is about (0 for none).
+static func mark(kind: StringName, pos: Vector3, subject: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(MARK_SIZE)
+	out[0] = Type.MARK
+	out[1] = maxi(PingBoard.KINDS.find(kind), 0)
+	out.encode_s16(2, CommandCodec.point_step(pos.x))
+	out.encode_s16(4, CommandCodec.point_step(pos.y))
+	out.encode_s16(6, CommandCodec.point_step(pos.z))
+	out.encode_u16(8, clampi(subject, 0, 0xFFFF))
+	return out
+
+
+## The `ping` action a mark packet asks for, or `{}` when the packet is not one (a kind that is not
+## in the list included).
+static func read_mark(data: PackedByteArray) -> Dictionary:
+	if data.size() != MARK_SIZE or data[0] != Type.MARK or data[1] >= PingBoard.KINDS.size():
+		return {}
+	return {
+		"type": NightServer.PING,
+		"kind": PingBoard.KINDS[data[1]],
+		"pos":
+		Vector3(
+			CommandCodec.point_from_step(data.decode_s16(2)),
+			CommandCodec.point_from_step(data.decode_s16(4)),
+			CommandCodec.point_from_step(data.decode_s16(6))
+		),
+		"subject": data.decode_u16(8),
+	}
 
 
 static func pong(client_ms: int, step: int) -> PackedByteArray:

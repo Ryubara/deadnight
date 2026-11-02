@@ -19,6 +19,7 @@ const SAMPLES := {
 	&"set_circuit": {"type": &"set_circuit", "circuit_id": &"screen_lot", "on": false},
 	&"grant_points": {"type": &"grant_points", "player_id": 1, "amount": 10},
 	&"use_grenade": {"type": &"use_grenade", "player_id": 1},
+	&"revive": {"type": &"revive", "player_id": 1, "target_id": 2},
 	&"explosion":
 	{
 		"type": &"explosion",

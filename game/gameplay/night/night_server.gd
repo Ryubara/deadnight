@@ -20,9 +20,11 @@ extends RefCounted
 ## client or a HUD draws from.
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
-## barricades ({id: boards up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health,
-## downed, weapon, ammo, reserve, reloading, arms (every weapon carried: id to [ammo, reserve]),
-## points, prompt, ack (the `seq` of the command this step used: a predicting client replays from
+## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
+## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve,
+## reloading, arms (every weapon carried: id to [ammo, reserve]), points, prompt, reviving (the
+## teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one, when
+## downed, has got), ack (the `seq` of the command this step used: a predicting client replays from
 ## it)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
@@ -31,6 +33,8 @@ const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
 const START_NIGHT := &"start_night"
+## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
+const PING := &"ping"
 ## A player came back on a new connection: `resync` {player_id} tells it the looks again.
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
@@ -81,8 +85,15 @@ var director: ZombieDirector
 var world: NightWorld
 ## Every player's accepted look and seat (`docs/design/customization.md`, On the network).
 var looks: LookServer
-var tuning: NightTuning
+var tuning: NightTuning:
+	set(value):
+		tuning = value
+		if _revive != null:
+			_revive.tuning = value
+			_ping_judge.tuning = value
 var tick_count := 0
+## The marks the players have put up.
+var pings := PingBoard.new()
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -101,6 +112,10 @@ var _repairing: Dictionary[int, StringName] = {}
 ## while the repair clip hammers them. Walking or aiming turns it the player's way as before.
 var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
+## The teammates raising downed players (held `use` beside a downed one).
+var _revive: ReviveChannel
+## What decides whether a ping is true.
+var _ping_judge: PingJudge
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
 ## Held here: a Callable does not keep its RefCounted alive.
@@ -118,6 +133,8 @@ func _init(
 	world = p_world
 	looks = LookServer.new(_send_look)
 	tuning = p_tuning if p_tuning != null else NightTuning.new()
+	pings.seconds = tuning.ping_seconds
+	pings.gap = tuning.ping_gap
 	rules = GameRules.new(p_rules_tuning, p_seed)
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
@@ -132,6 +149,8 @@ func _init(
 	sim.gates = world.gates()
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
+	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
+	_ping_judge = PingJudge.new(tuning, pings, rules, world, sim, _bodies, _announce)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
@@ -166,6 +185,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			rules.apply(RulesAction.start())
 		LOOK:
 			looks.receive(action["player_id"], action["packet"])
+		PING:
+			ping(from_id if from_id > 0 else action.get("player_id", 1), action)
 		RESYNC:
 			if _bodies.has(action["player_id"]):
 				looks.sync(action["player_id"])
@@ -211,8 +232,11 @@ func step(delta: float) -> Array[Dictionary]:
 	rules.apply(RulesAction.tick(delta))
 	_combat(CombatAction.targets(_target_list()))
 	_combat(CombatAction.tick(delta))
+	_revive.begin_tick()
 	for player_id in _bodies:
 		_act(player_id, delta)
+	_revive.finish_tick(delta)
+	_outbox.append_array(pings.step(delta))
 	_throw_grenades(delta)
 	_outbox.append(_frame())
 	return _outbox
@@ -247,6 +271,8 @@ func _leave(player_id: int) -> void:
 		_silent.erase(player_id)
 		_acked.erase(player_id)
 		_repairing.erase(player_id)
+		_revive.forget(player_id)
+		pings.forget(player_id)
 		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
 		_face_left.erase(player_id)
@@ -257,6 +283,10 @@ func _leave(player_id: int) -> void:
 ## The look server's way to reach one client: an event for it, carried like any other.
 func _send_look(player_id: int, packet: PackedByteArray) -> void:
 	_outbox.append({"type": LOOK_PACKET, "to": player_id, "packet": packet})
+
+
+func _announce(event: Dictionary) -> void:
+	_outbox.append(event)
 
 
 func _is_downed(player_id: int) -> bool:
@@ -502,6 +532,7 @@ func _act(player_id: int, delta: float) -> void:
 	var command := _pending.get(player_id) as NightCommand
 	if command == null or _is_downed(player_id):
 		_repairing[player_id] = &""
+		_revive.stop(player_id, &"down")
 		return
 	if command.reload:
 		_combat(CombatAction.reload_weapon(player_id))
@@ -514,6 +545,7 @@ func _act(player_id: int, delta: float) -> void:
 	if command.use:
 		_use(player_id)
 	_hold_repair(player_id, command)
+	_revive.hold(player_id, command.use_held)
 	_face_breach(player_id, delta)
 	# Edges are used once.
 	command.reload = false
@@ -522,6 +554,11 @@ func _act(player_id: int, delta: float) -> void:
 
 
 func _shoot(player_id: int, command: NightCommand) -> void:
+	if not aims_with_view(command):
+		_outbox.append(
+			{"type": &"fire_rejected", "player_id": player_id, "reason": &"aim_mismatch"}
+		)
+		return
 	var body := _bodies[player_id]
 	var head := body.global_position + Vector3(0.0, tuning.eye_height, 0.0)
 	var origin := command.origin
@@ -539,17 +576,53 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 	)
 
 
+## Where a view with this turn and look points (the camera's forward: yaw 0 and pitch 0 look down
+## -z, a positive pitch looks up). What a shot's direction is checked against.
+static func view_dir(yaw: float, pitch: float) -> Vector3:
+	return Basis.from_euler(Vector3(pitch, yaw, 0.0)) * Vector3.FORWARD
+
+
+## Whether the command's shot goes where its own view points, within `aim_slack_degrees`. A person
+## shoots along the camera, so this is always true for one; a client that shoots at a zombie it is
+## not looking at (a bot that skipped the turn, a tampered client) is false.
+func aims_with_view(command: NightCommand) -> bool:
+	var view := view_dir(command.motion.yaw, command.motion.pitch)
+	var shot := command.dir
+	if not shot.is_finite() or shot.length() < 0.5:
+		return false
+	return rad_to_deg(view.angle_to(shot.normalized())) <= tuning.aim_slack_degrees
+
+
 ## What `use` would do for a player right now: `{}`, a door to buy, a weapon on a wall, the crane
 ## or rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id",
 ## "boards"}` for a breach with a board down that the player stands inside, in reach of, or
 ## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or
 ## `{"kind": &"fuel", "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell
-## now: `units` is 0 and `price` 0 when the tank is full).
+## now: `units` is 0 and `price` 0 when the tank is full), or `{"kind": &"revive", "id",
+## "progress"}` beside a downed teammate (`progress`: 0 to 1 of the hold; first of all, a life comes
+## before a door).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
 		return {}
 	var here := body.global_position
+	var raise := _revive.in_reach(player_id)
+	if raise != 0:
+		return {"kind": &"revive", "id": raise, "progress": _revive.progress(raise)}
+	var door := _door_offer(here)
+	if not door.is_empty():
+		return door
+	var offer := _spot_offer(player_id, here)
+	if not offer.is_empty():
+		return offer
+	var post := _post_offer(here)
+	if not post.is_empty():
+		return post
+	return _fuel_offer(here)
+
+
+## The shut door in reach that can be bought now (the one before it is open), or `{}`.
+func _door_offer(here: Vector3) -> Dictionary:
 	for door_id in world.door_ids():
 		if rules.is_door_open(door_id):
 			continue
@@ -559,9 +632,11 @@ func use_target(player_id: int) -> Dictionary:
 		for point in world.door_points(door_id):
 			if _flat(here, point) <= tuning.use_reach:
 				return {"kind": &"door", "id": door_id, "price": rules.price_of(door_id)}
-	var offer := _spot_offer(player_id, here)
-	if not offer.is_empty():
-		return offer
+	return {}
+
+
+## A breach to put a board back across, or a breaker post, in reach of `here`, or `{}`.
+func _post_offer(here: Vector3) -> Dictionary:
 	for id in world.barricade_ids():
 		var boards := rules.barricades.boards_of(id)
 		if boards >= rules.tuning.barricades.boards:
@@ -570,10 +645,10 @@ func use_target(player_id: int) -> Dictionary:
 		if barricade.depth_of(here) > 0.0 and _flat(here, barricade.centre()) <= tuning.use_reach:
 			return {"kind": &"repair", "id": id, "boards": boards}
 	var post := world.switches.within_reach(here, tuning.use_reach)
-	if post != null:
-		var on: bool = rules.generator.circuits.get(post.circuit_id, false)
-		return {"kind": &"circuit", "id": post.circuit_id, "on": on}
-	return _fuel_offer(here)
+	if post == null:
+		return {}
+	var on: bool = rules.generator.circuits.get(post.circuit_id, false)
+	return {"kind": &"circuit", "id": post.circuit_id, "on": on}
 
 
 ## The can stand within reach of `here`: what the rules would sell and for how much, or `{}`.
@@ -688,6 +763,17 @@ func _use(player_id: int) -> void:
 				buy(player_id, target["item"])
 
 
+## The revive channel (for tests and the picture): `progress(target_id)`, `is_reviving(player_id)`.
+func revive() -> ReviveChannel:
+	return _revive
+
+
+## A player marks something (`ping` {kind, pos, subject}); the answer is `&""` when the mark went
+## up, else why not (`PingJudge`).
+func ping(player_id: int, action: Dictionary) -> StringName:
+	return _ping_judge.place(player_id, action)
+
+
 ## One board back if this hand is free: the first at the press, then one every `repair_interval`.
 func _repair(player_id: int, breach: StringName) -> void:
 	if _hand_wait[player_id] <= 0.0:
@@ -753,6 +839,8 @@ func _frame() -> Dictionary:
 			"points": rules.points_of(player_id),
 			"prompt": use_target(player_id),
 			"ack": _acked.get(player_id, 0),
+			"reviving": _revive.target_of(player_id),
+			"revive": _revive.progress(player_id),
 		}
 	return {
 		"type": &"frame",
@@ -764,6 +852,7 @@ func _frame() -> Dictionary:
 		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),
 		"crane": _crane_frame(),
+		"pings": pings.marks(),
 		"barricades": rules.barricades.to_dict(),
 		"zombies": ZombieCodec.encode(sim.zombies),
 		"players": players,

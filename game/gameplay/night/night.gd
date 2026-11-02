@@ -544,7 +544,41 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 
 
 func _human_command() -> NightCommand:
-	return _human.command(player(), state.player_id)
+	var command := _human.command(player(), state.player_id)
+	if _human.ping_pressed(player()):
+		link.send(_ping_request(command))
+	return command
+
+
+## What the ping key marks: what the crosshair is on, else where its ray lands (`PingAim`).
+func _ping_request(aim: NightCommand) -> Dictionary:
+	var landed := Vector3.INF
+	var cast := PhysicsRayQueryParameters3D.create(
+		aim.origin, aim.origin + aim.dir * PingAim.REACH, CameraProbe.PLAYER_MASK
+	)
+	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
+	if not hit.is_empty():
+		landed = hit["position"]
+	var shut := {}
+	var index := 0
+	for door_id in world.door_ids():
+		if not state.frame.get("doors", []).has(door_id):
+			shut[index] = world.door_points(door_id)
+		index += 1
+	var ammo: Array[Vector3] = []
+	for spot in world.shop_spots():
+		if spot["kind"] == &"ammo":
+			ammo.append(spot["position"])
+	return PingAim.pick(
+		aim.origin,
+		aim.dir,
+		state.zombies,
+		state.frame.get("players", {}),
+		state.player_id,
+		shut,
+		ammo,
+		landed
+	)
 
 
 ## What the server answered: the look server's packets go to the look table, the rest to the

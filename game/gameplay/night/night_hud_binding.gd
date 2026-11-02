@@ -158,6 +158,10 @@ func show_prompt(prompt: Dictionary) -> void:
 			_set_circuit_prompt(prompt["id"], prompt["on"])
 		&"fuel":
 			_set_fuel_prompt(prompt)
+		&"revive":
+			var who := str(state.team.get(int(prompt["id"]), {}).get("name", "your teammate"))
+			var detail := "HOLDING ON  %d%%" % roundi(float(prompt["progress"]) * 100.0)
+			_offer(&"revive", who, 0, detail if prompt["progress"] > 0.0 else "")
 		_:
 			state.clear_prompt()
 
