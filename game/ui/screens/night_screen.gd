@@ -1,8 +1,14 @@
 class_name NightScreen
 extends UIScreen
 ## The night as a screen: the 3D night underneath, the HUD over it (`NightHudBinding` feeds it from
-## the night's events), a pause menu on Esc and a result when the night is over. Both ways out
-## lead back to the menu.
+## the night's events), the night's menu and a result when the night is over. Both ways out lead
+## back to the menu.
+##
+## The menu opens on Esc, the pad's Start or the touch layer's pause button (or when the platform
+## takes the mouse back). It has Resume, Settings (the same screen as the main menu's, held inside
+## this one: a router push would switch the night off, and a night played with others goes on) and
+## Leave night. Played alone the night stands still behind it; played with others it keeps running
+## and only this player's controls are off.
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/night_screen.tscn")`; the main menu's Play
 ## does. To join a game server instead, set `join_url` first (the Join screen does): the screen
@@ -12,6 +18,7 @@ const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
 ## Seconds to wait for a game server to welcome us (a night may have to be built first).
 const JOIN_SECONDS := 25.0
+const SETTINGS_SCENE := "res://ui/screens/settings_screen.tscn"
 
 ## Whether the night warms up behind a loading screen before it starts. There is nothing to warm up
 ## without a renderer, so a headless run skips it.
@@ -48,8 +55,11 @@ var _touch: TouchControls
 var _overlay: Control
 var _title: UILabel
 var _note: UILabel
+var _card: Control
 var _resume: UIButton
+var _settings_button: UIButton
 var _quit: UIButton
+var _settings: SettingsScreen
 
 
 ## The look a `--look` value names: `N` is the preset N, `seed:N` a random look made from seed N.
@@ -109,6 +119,11 @@ func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
 
 
+## True while the settings page of the menu is open (a browser test reads it).
+func settings_open() -> bool:
+	return _settings != null
+
+
 ## True while the centre reticle is on screen (a browser test reads it, #517).
 func reticle_shown() -> bool:
 	return _hud != null and _hud.reticle.is_visible_in_tree()
@@ -159,6 +174,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Only `pause` (Esc, Start) pauses: `ui_cancel` is also B, which crouches. B resumes a paused
 	# night, where it has nothing else to do.
 	var resumes := night.is_paused() and event.is_action_pressed(&"ui_cancel")
+	if _settings != null:
+		# Esc, Start or B leaves the settings for the menu, one step back, not out of the menu.
+		if event.is_action_pressed(&"pause") or event.is_action_pressed(&"ui_cancel"):
+			_close_settings()
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed(&"pause") or resumes:
 		if night.is_paused():
 			_resume_night()
@@ -200,10 +221,14 @@ func _on_mouse_lost() -> void:
 
 func _pause() -> void:
 	night.set_paused(true)
-	_show_overlay("Paused", "The dead wait.", true)
+	if night.remote:
+		_show_overlay("Menu", "The night goes on around you.", true)
+	else:
+		_show_overlay("Paused", "The dead wait.", true)
 
 
 func _resume_night() -> void:
+	_drop_settings()
 	_hide_overlay()
 	night.set_paused(false)
 
@@ -232,6 +257,7 @@ func _on_night_over(round_reached: int) -> void:
 
 
 func _show_overlay(title: String, note: String, can_resume: bool) -> void:
+	_drop_settings()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_hud.reticle.set_shown(false)
 	_hud.scoreboard_enabled = false
@@ -239,12 +265,45 @@ func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	_title.text = title
 	_note.text = note
 	_resume.visible = can_resume
+	_settings_button.visible = can_resume
 	_overlay.show()
 	(_resume if can_resume else _quit).grab_focus()
 
 
 func _leave() -> void:
 	UIRouter.pop()
+
+
+## The settings page over the card: the same screen as the main menu's, with a Back that comes here.
+## Every change is applied and saved by the settings service as it is made.
+func _open_settings() -> void:
+	if _settings != null:
+		return
+	_settings = (load(SETTINGS_SCENE) as PackedScene).instantiate() as SettingsScreen
+	_settings.embedded = true
+	_settings.closed.connect(_close_settings)
+	_overlay.add_child(_settings)
+	_settings.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_card.hide()
+	_settings.focus_initial()
+
+
+func _close_settings() -> void:
+	if _settings == null:
+		return
+	_drop_settings()
+	_settings_button.grab_focus()
+
+
+## Takes the settings page away and shows the card again.
+func _drop_settings() -> void:
+	if _settings == null:
+		return
+	var page := _settings
+	_settings = null
+	_overlay.remove_child(page)
+	page.queue_free()
+	_card.show()
 
 
 func _build_overlay() -> void:
@@ -256,12 +315,12 @@ func _build_overlay() -> void:
 	dim.color = DIM
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(dim)
-	var centre := CenterContainer.new()
-	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(centre)
+	_card = CenterContainer.new()
+	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(_card)
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.MARQUEE
-	centre.add_child(panel)
+	_card.add_child(panel)
 	var box := VBoxContainer.new()
 	box.custom_minimum_size.x = PANEL_WIDTH
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
@@ -272,9 +331,12 @@ func _build_overlay() -> void:
 	box.add_child(_note)
 	_resume = _button("Resume", UIButton.Variant.PRIMARY)
 	_resume.pressed.connect(_resume_night)
-	_quit = _button("Back to the menu", UIButton.Variant.SECONDARY)
+	_settings_button = _button("Settings", UIButton.Variant.SECONDARY)
+	_settings_button.pressed.connect(_open_settings)
+	_quit = _button("Leave night", UIButton.Variant.SECONDARY)
 	_quit.pressed.connect(_leave)
 	box.add_child(_resume)
+	box.add_child(_settings_button)
 	box.add_child(_quit)
 
 

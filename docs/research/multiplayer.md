@@ -24,7 +24,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
 | Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 11 (the layout is in its header; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 added the aim pose and look to each player of the frame, [below](#other-players-weapons-518); 9 put every seat's name in the WELCOME and a `player_named` event on a join, #485; 10 added the `PLATFORM` message; 11 added each player's `stance` to the frame, [below](#other-players-sprint-crouch-and-jump-549)); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; a `PLATFORM` message (type 12, two bytes) says after the welcome whether the client is a browser, because the crowd a night stands is the weakest client's ([crowd budget](crowd-budget.md#decision-120-for-a-desktop-and-a-server-40-with-a-browser-in-the-match-453)); a client that does not send it counts as a browser; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 12 (the layout is in its header; 11 put the quick melee in a flag of the command, #411; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 added the aim pose and look to each player of the frame, [below](#other-players-weapons-518); 9 put every seat's name in the WELCOME and a `player_named` event on a join, #485; 10 added the `PLATFORM` message; 12 added each player's `stance` to the frame, [below](#other-players-sprint-crouch-and-jump-549)); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; a `PLATFORM` message (type 12, two bytes) says after the welcome whether the client is a browser, because the crowd a night stands is the weakest client's ([crowd budget](crowd-budget.md#decision-120-for-a-desktop-and-a-server-40-with-a-browser-in-the-match-453)); a client that does not send it counts as a browser; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
@@ -259,7 +259,7 @@ player's entry (a test pins it under 64, as the weapon's). `RemoteAvatars` keeps
 stance in each track sample and draws the one of the sample the clock is at, like the position it sits beside, so the
 carry starts when the body is seen to speed up and not 100 ms before. `Player.puppet_to` sets the state and says
 `jumped` when the body leaves the floor rising and `landed` when it is back, so the Jump and Land clips play. The
-height itself was already in the frame's `pos`. `NetWire.VERSION` is 11: a client of 10 would draw the others without
+height itself was already in the frame's `pos`. `NetWire.VERSION` is 12: a client of 11 would draw the others without
 a stance, so the server refuses it and the page says to reload (`test_remote_stance.gd`).
 
 Two things the puppet needed that were not about the wire. (1) `make_puppet` called `set_physics_process(false)`, but
@@ -374,8 +374,23 @@ stopped with `OS.delay_msec` for 0.5, 2 and 5 s.
   inbound and the server's outbound buffers are now 1 MB each with room for 8192 packets (a minute or more), and a tick
   the socket still would not take makes the next frame whole. `peer_stalled` and `peer_recovered` in the server log say
   when it happened. No wire change: the protocol version stays.
-- **What is not done:** the browser build was not frozen on purpose here (the Chrome probe needs a night with the flare
-  in hand). The flare's own first-shot hitch is in [First-use hitches](first-use-hitches.md#the-flares-first-shot-483).
+- **In the browser (#502).** `tools/web_smoke/freeze.py` starts a game server of its own, joins it from Chrome (GPU,
+  fresh profile) through a relay that holds each chunk back 100 ms each way (a round trip of 214 to 240 ms: loopback
+  has none and the old client came back within 1.2 m of the server over it, so the relay is what makes the probe able
+  to fail), walks, stalls the page's main thread with a busy loop for 0.5, 2 and 5 s with the keys held, walks on,
+  stops, and compares the body with the server's position (`window.deadnight` `body_*`, `server_*`, `stalls`):
+
+  | Client | 0.5 s stall | 2 s stall | 5 s stall |
+  | --- | --- | --- | --- |
+  | `main` before #501 (rebuilt without its client changes), worst gap while walking / settled gap | 0 / 0 m | 142 m / 1.1e9 m | 4.8e15 m / 4.5e22 m |
+  | `main` (with #501) | 0 / 0 m | 0.01 / 0.0 m | 3.7 / 0.0 m |
+
+  With #501 the page also noticed all three stalls (`stalls` 1, 2, 3; the longest 5007 ms).
+
+  A 60 s stall printed 670 `Buffer payload full` console errors with the old 64 KB buffers and none now (1 MB), and
+  the body was where the server had it. So the freeze needed no new fix in the browser, only the proof.
+- **The flare's first shot in the browser** hitched for a different reason (its embers were never warmed):
+  [First-use hitches](first-use-hitches.md#in-chrome-the-flares-embers-were-never-warmed-502).
 
 ## Match settings
 

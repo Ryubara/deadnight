@@ -11,8 +11,8 @@ extends Node
 ## folder, the picture being the window's.
 
 ## How far the camera stands off the body it looks at (metres) and how high.
-const CAMERA_DISTANCE := 3.4
-const CAMERA_HEIGHT := 1.3
+const CAMERA_DISTANCE := 4.4
+const CAMERA_HEIGHT := 1.5
 
 var _out := ""
 var _host: NightHost
@@ -52,13 +52,14 @@ func _start() -> void:
 	while not _host.serving:
 		await get_tree().physics_frame
 	var url := "ws://127.0.0.1:%d" % _host.listener.port()
+	# A joins first, so A is seat 1; B, the window, is seat 2.
+	_a = Night.new()
+	hidden.add_child(_a)
+	await _a.start_remote(url, Night.Mode.MANUAL, 30.0)
 	_b = Night.new()
 	_b.hud = _hud
 	add_child(_b)
 	await _b.start_remote(url, Night.Mode.MANUAL, 30.0)
-	_a = Night.new()
-	hidden.add_child(_a)
-	await _a.start_remote(url, Night.Mode.MANUAL, 30.0)
 	_a.ticked.connect(func() -> void: _a.link.send(_command.to_dict()))
 	_host._collect(_host.server.rules.apply(RulesAction.skip_break()))
 	_camera = Camera3D.new()
@@ -124,7 +125,7 @@ func _look_at_a() -> void:
 	var at := body.global_position
 	var side := Basis(Vector3.UP, body.rotation.y) * Vector3.RIGHT
 	_camera.global_position = at + side * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
-	_camera.look_at(Vector3(at.x, _floor_y + 0.8, at.z))
+	_camera.look_at(Vector3(at.x, _floor_y + 1.1, at.z))
 	_camera.make_current()
 
 

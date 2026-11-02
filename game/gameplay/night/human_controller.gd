@@ -9,6 +9,8 @@ const ACTION_RELOAD := &"reload"
 const ACTION_USE := &"interact"
 const ACTION_SWAP := &"swap_weapon"
 const ACTION_PING := &"ping"
+## The quick melee: a blow with whatever is in hand (#411).
+const ACTION_MELEE := &"quick_melee"
 
 ## The touch player's aim help (`TouchAimAssist`); null for a night that has none.
 var assist: TouchAimAssist
@@ -30,6 +32,7 @@ func command(player: Player, player_id: int) -> NightCommand:
 		result.use = _edge(ACTION_USE)
 		result.use_held = Input.is_action_pressed(ACTION_USE)
 		result.swap = _edge(ACTION_SWAP)
+		result.motion.melee = _edge(ACTION_MELEE)
 	# The aim ray is the view without the shot shake: a shake moves the picture, never the shot.
 	result.origin = player.camera_rig.aim_transform().origin
 	result.dir = (-player.camera_rig.aim_transform().basis.z)

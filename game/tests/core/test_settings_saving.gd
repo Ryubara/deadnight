@@ -4,14 +4,14 @@ extends GdUnitTestSuite
 ## the test's own: it calls `_process` with the seconds that passed, so nothing waits and nothing
 ## depends on the machine's speed. Each test uses its own file under user://.
 
-const TEST_PATH := "user://settings_saving_test.cfg"
+var _test_path := QuietSettings.test_path("settings_saving_test")
 
 var _settings: QuietSettings
 
 
 func before_test() -> void:
 	_remove_file()
-	_settings = QuietSettings.make(self, TEST_PATH)
+	_settings = QuietSettings.make(self, _test_path)
 
 
 func after_test() -> void:
@@ -22,7 +22,7 @@ func after_test() -> void:
 
 func _written(key_section: String, key_name: String) -> Variant:
 	var file := ConfigFile.new()
-	if file.load(TEST_PATH) != OK:
+	if file.load(_test_path) != OK:
 		return null
 	return file.get_value(key_section, key_name)
 
@@ -31,7 +31,7 @@ func test_nothing_is_written_before_the_delay() -> void:
 	_settings.set_value(SettingsService.VOLUME_MUSIC, 33)
 	_settings._process(SettingsService.SAVE_DELAY * 0.5)
 	assert_int(_settings.saves).is_equal(0)
-	assert_bool(FileAccess.file_exists(TEST_PATH)).is_false()
+	assert_bool(FileAccess.file_exists(_test_path)).is_false()
 
 
 func test_the_change_is_written_once_the_delay_has_passed() -> void:
@@ -70,7 +70,7 @@ func test_a_close_request_writes_a_pending_change_at_once_and_only_once() -> voi
 func test_nothing_pending_means_nothing_written_on_close() -> void:
 	_settings.notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
 	assert_int(_settings.saves).is_equal(0)
-	assert_bool(FileAccess.file_exists(TEST_PATH)).is_false()
+	assert_bool(FileAccess.file_exists(_test_path)).is_false()
 
 
 func test_freeing_the_service_writes_a_pending_change() -> void:
@@ -88,9 +88,9 @@ func test_a_saved_service_has_nothing_left_to_write_as_it_is_freed() -> void:
 	var service := _settings
 	_settings = null
 	service.free()
-	assert_bool(FileAccess.file_exists(TEST_PATH)).is_false()
+	assert_bool(FileAccess.file_exists(_test_path)).is_false()
 
 
 func _remove_file() -> void:
-	if FileAccess.file_exists(TEST_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+	if FileAccess.file_exists(_test_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(_test_path))

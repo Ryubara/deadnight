@@ -115,13 +115,9 @@ const AIM_RATE_PARAMETER := &"parameters/body/locomotion/aim_rate/scale"
 const AIM_BLEND_PARAMETER := &"parameters/body/locomotion/aim_blend/blend_amount"
 ## The sprint carry (#459): an upper-body loop per class on the kit Run's 17 frames, built into its
 ## own file (docs/design/animation.md, Sprint carry) and added to the Soldier's library. It is
-## seeked to the Run clip's place every frame, so the two never drift apart.
+## seeked to the Run clip's place every frame, so the two never drift apart (names: SprintCarry).
 const SPRINT_GLB := "res://assets/characters/soldier/sprint/soldier_sprint.glb"
 const SPRINT_SPEC := "res://assets/characters/soldier/sprint/clips.json"
-const SPRINT_PREFIX := "Sprint_"
-const SPRINT_CLIPS: Array[StringName] = [
-	&"Sprint_Rifle", &"Sprint_Shotgun", &"Sprint_Pistol", &"Sprint_Melee"
-]
 const CARRY_BLEND_PARAMETER := &"parameters/carry/blend_amount"
 const CARRY_SEEK_PARAMETER := &"parameters/carry_seek/seek_request"
 const RUN_POSITION_PARAMETER := &"parameters/body/locomotion/move/run/current_position"
@@ -150,19 +146,10 @@ const GRENADE_GRIP := "grenade"
 ## How fast the fingers go to and from a grip (per second, exponential).
 const GRIP_RATE := 20.0
 
-const STATE_LOCOMOTION := &"locomotion"
+const STATE_LOCOMOTION := StanceDrive.STATE_LOCOMOTION
 const STATE_JUMP := &"jump"
-const STATE_FALL := &"fall"
+const STATE_FALL := StanceDrive.STATE_FALL
 const STATE_LAND := &"land"
-## Crouched: the kit's Duck clip held at its lowest pose, with some of the Walk laid over it while
-## the body moves (the kit has no crouch walk).
-const STATE_CROUCH := &"crouch"
-const CROUCH_MIX_PARAMETER := &"parameters/body/crouch/mix/blend_amount"
-const CROUCH_RATE_PARAMETER := &"parameters/body/crouch/walk_rate/scale"
-## Seconds of the Duck clip looped around its lowest pose to hold it.
-const DUCK_HOLD := 0.1
-## The slowest the Walk steps under the Duck pose, as a share of its own pace.
-const CROUCH_WALK_RATE_MIN := 0.5
 const MOVE_PARAMETER := &"parameters/body/locomotion/move/blend_position"
 const RUN_SPEED_PARAMETER := &"parameters/body/locomotion/run_speed/scale"
 
@@ -199,7 +186,7 @@ var _reload_length := 1.0
 var _reload_dip := 0.0
 var _action_time := 0.0
 var _move_blend := 0.0
-var _was_on_floor := true
+var _stance: StanceDrive
 ## Seconds into the Duck clip where the body is lowest: the pose a crouch holds.
 var _duck_bottom := 0.0
 ## Seconds of repair left before the clip lets go (0: not repairing).
@@ -240,7 +227,8 @@ func _ready() -> void:
 		library, _spec, AIM_MOVE_GLB, AIM_MOVE_SPEC, AIM_MOVES.keys()
 	)
 	_aim_move_speed = aim_moves["clips"]["Walk_Shoot"]["ground_speed"]
-	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SPRINT_CLIPS)
+	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SprintCarry.CLIPS)
+	SoldierClipFile.add(library, _spec, QuickStrike.GLB, QuickStrike.SPEC, QuickStrike.CLIPS)
 	var revive_specs := DownedPose.add_clips(anim_player)
 	_spec["clips"].merge(revive_specs)
 	if revive_specs.has(String(DownedPose.CRAWL_CLIP)):
@@ -279,6 +267,7 @@ func _ready() -> void:
 	# The machine's Start has no automatic way out: a body that never falls (a puppet on the floor)
 	# would stay there, with no crouch and no stance of the legs, until its first jump.
 	_playback.start(STATE_LOCOMOTION)
+	_stance = StanceDrive.new(self, _player, _tuning, _playback)
 	_set_class(DEFAULT_CLASS, hold_of(DEFAULT_CLASS))
 	_player.jumped.connect(_on_jumped)
 	_player.landed.connect(_on_landed)
@@ -286,10 +275,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var on_floor := _player.state.on_floor
-	if _was_on_floor and not on_floor and _player.state.velocity.y <= 0.0:
-		_playback.travel(STATE_FALL)
-	_was_on_floor = on_floor
-	_follow_stance(on_floor)
+	_stance.step()
 
 	var speed := _player.ground_speed()
 	var follow := 1.0 - exp(-_tuning.blend_rate * delta)
@@ -299,7 +285,6 @@ func _process(delta: float) -> void:
 	var run_scale := maxf(speed / _tuning.run_clip_speed, 0.4)
 	var run_part := clampf((_move_blend - WALK_POINT) / (0.95 - WALK_POINT), 0.0, 1.0)
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
-	_advance_crouch()
 	_advance_aim_move(follow, delta)
 	_advance_events(delta)
 	_advance_repair(delta)
@@ -324,23 +309,6 @@ func _advance_reload(delta: float) -> void:
 		_reload_dip = 0.0
 	_hands.reload_dip = _reload_dip
 	_hands.reload_tilt_deg = _tuning.reload_tilt_degrees
-
-
-## Into the crouch state when the body crouches on the ground, back to the locomotion when it
-## stands (a fall leaves it by its own transition, a landing returns to the locomotion).
-func _follow_stance(on_floor: bool) -> void:
-	var current := _playback.get_current_node()
-	if _player.state.crouching and on_floor and current == STATE_LOCOMOTION:
-		_playback.travel(STATE_CROUCH)
-	elif not _player.state.crouching and current == STATE_CROUCH:
-		_playback.travel(STATE_LOCOMOTION)
-
-
-## How much Walk shows under the held Duck pose, and how fast it steps, for the speed now.
-func _advance_crouch() -> void:
-	var share := clampf(_player.ground_speed() / _tuning.crouch_speed, 0.0, 1.0)
-	set(CROUCH_MIX_PARAMETER, share * _tuning.crouch_walk_blend)
-	set(CROUCH_RATE_PARAMETER, maxf(share, CROUCH_WALK_RATE_MIN))
 
 
 ## The aim gait for the player's velocity in the frame of its facing: where it sits in the 2D
@@ -474,6 +442,16 @@ func play_action(action: StringName) -> bool:
 	# `weapon_visible` frame would never come.
 	if played and action != &"Equip" and action != &"Unequip":
 		_weapon_visible(true)
+	return played
+
+
+## The quick melee's blow (`quick_melee`): the class's `Strike_` clip, the arms its own at once.
+func strike() -> bool:
+	var played := play_action(&"Strike")
+	if played:
+		_shoulder_blend = 0.0
+		_hands.influence = 0.0
+		_hands.active = false
 	return played
 
 
@@ -666,7 +644,7 @@ func shoulder_blend() -> float:
 func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
-	_carry_node.animation = StringName(SPRINT_PREFIX + String(new_class))
+	_carry_node.animation = SprintCarry.clip_for(new_class, hold)
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
@@ -723,8 +701,11 @@ func _advance_grip(delta: float) -> void:
 	if absf(_grip_blend - target) < 0.001:
 		_grip_blend = target
 	_fingers.right_weight = _grip_blend
-	var left := grip == _weapon_grip and grip != null and grip.has_left and _hands.active
-	_fingers.left_weight = _shoulder_blend if left else 0.0
+	var left := grip == _weapon_grip and grip != null and grip.has_left
+	# The left hand is on the weapon by the arms' IK (the shouldered pose) or by the sprint carry,
+	# whose two-handed clips put it on the grip's `left_hand` (#527).
+	var on := _shoulder_blend if _hands.active else 0.0
+	_fingers.left_weight = maxf(on, smoothstep(0.0, 1.0, _carry.weight)) if left else 0.0
 
 
 ## The muzzle point of a hold: at its `muzzle` (the model's units), turned so `-Z` runs out of the

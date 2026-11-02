@@ -501,7 +501,7 @@ damage a second. **Not modelled:** the other three tonics (they do nothing yet).
 simulator keeps its own six-second barrier) and the doors' and spots' geometry (they only cost points) are not
 modelled either.
 
-**Ammunition and the shop** (#152). The players carry the revolver and the crowbar from the start and every weapon
+**Ammunition and the shop** (#152). The players carry the revolver from the start and every weapon
 they buy or win with the reserve the weapon gives; rounds only come from the shop, at the shop's price for the
 rounds that fit (`NightSim` asks the rules the same `buy` the night does). Between rounds a player, in order: buys
 fuel, buys rounds up to a reserve of `ammo_floor_mags` magazines for each weapon worth shooting (at least half the
@@ -511,7 +511,7 @@ marquee announces, everyone fills up first. In a round a player takes another lo
 more damage a second to the target in front of them (a shotgun for what is at the door, the rifle for what is far;
 weak players do not); a weapon that runs dry is put away for the next; when what is left is worth less than three
 quarters of the best weapon carried and the player has points, they run to a locker (8 s without shooting) and buy
-rounds; with nothing to shoot and nothing to pay with they swing the crowbar (130 points a kill, at arm's length
+rounds; with nothing to shoot and nothing to pay with they use the quick melee (130 points a kill, at arm's length
 only). Reserves, reloads and prices are the game's own numbers.
 
 **The change that made this honest** (#188). The first simulator shot a stand-in table (a rifle at 210 damage a

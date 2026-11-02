@@ -40,20 +40,20 @@ func _lone(profile: BotProfile, bot_seed: int, at := Vector3.ZERO) -> SeatedNigh
 # --- Scenario 10 ---
 
 
-func test_scenario_10_a_dry_magazine_with_no_reserve_falls_back_to_the_crowbar() -> void:
+func test_scenario_10_a_dry_magazine_with_no_reserve_falls_back_to_the_quick_melee() -> void:
 	var night := await _lone(BotProfile.regular(), 31)
 	var pistol := night.server.combat.state_of(1, &"pistol")
 	pistol.ammo = 0
 	pistol.reserve = 0
-	assert_array(night.server.combat.carried(1)).contains([&"pistol", &"crowbar"])
-	var swapped_at: Array[int] = []
+	# No melee weapon is carried (#411): the blow every player has is all the bot has left.
+	assert_array(night.server.combat.carried(1)).contains_exactly([&"pistol"])
+	var blows: Array[int] = []
 	var kills: Array[int] = []
 	night.on_event = func(event: Dictionary) -> void:
-		if event["type"] == &"weapon_equipped" and event["weapon_id"] == &"crowbar":
-			swapped_at.append(night.server.tick_count)
+		if event["type"] == &"quick_melee" and event["shooter_id"] == 1:
+			blows.append(night.server.tick_count)
 		elif event["type"] == &"zombie_removed" and event["cause"] == &"killed":
 			kills.append(1)
-	var began := night.server.tick_count
 	var zombie := night.drop_zombie(_home() + AVENUE)
 	assert_object(zombie).is_not_null()
 	for _i in 30 * TICKS_PER_SECOND:
@@ -61,11 +61,9 @@ func test_scenario_10_a_dry_magazine_with_no_reserve_falls_back_to_the_crowbar()
 		if not kills.is_empty():
 			break
 	assert_int(kills.size()).is_equal(1)
-	assert_str(night.frame["players"][1]["weapon"]).is_equal("crowbar")
-	# It swapped while the zombie was still walking up (14 m at about a metre a second), not when
-	# the blows began, and it did not buy back to the pistol: nothing in it.
-	assert_array(swapped_at).is_not_empty()
-	assert_int(swapped_at[0] - began).is_less(5 * TICKS_PER_SECOND)
+	# It struck with the pistol still in hand, and did not buy back to it: nothing in it.
+	assert_array(blows).is_not_empty()
+	assert_str(night.frame["players"][1]["weapon"]).is_equal("pistol")
 	assert_int(night.server.combat.state_of(1, &"pistol").ammo).is_equal(0)
 	night.on_event = Callable()
 	night.dispose()

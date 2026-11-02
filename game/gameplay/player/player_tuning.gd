@@ -185,6 +185,14 @@ extends Resource
 @export_range(0.0, 10.0, 0.01, "or_greater", "suffix:m") var hide_body_distance := 0.9
 @export_range(0.0, 10.0, 0.05, "or_greater", "suffix:m") var show_body_distance := 1.05
 
+@export_group("Downed camera")
+## While the player is down the shoulder camera follows the body to the ground (#532): the pivot
+## sinks to this height over the feet, the view tips down by this many degrees over the player's
+## own pitch, and both ease in and out (on getting up) with the spring of this frequency.
+@export_range(0.0, 10.0, 0.05, "or_greater", "suffix:m") var downed_pivot_height := 0.8
+@export_range(0.0, 60.0, 1.0, "or_greater", "suffix:deg") var downed_pitch_degrees := 20.0
+@export_range(1.0, 60.0, 0.5, "or_greater", "suffix:Hz") var downed_frequency := 5.0
+
 @export_group("Camera motion")
 ## Springs are critically damped: the number is the angular frequency in rad/s, and the camera
 ## closes 95 percent of a step in 4.75 divided by it seconds (docs/research/shoulder-camera.md).

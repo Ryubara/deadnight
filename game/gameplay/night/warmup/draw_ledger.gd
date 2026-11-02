@@ -31,6 +31,31 @@ const MATERIAL_PROPERTIES: Array[StringName] = [
 	&"grow",
 ]
 
+## What decides the program of a `ParticleProcessMaterial`: the engine writes its shader from
+## these settings (the values of its parameters are uniforms and cost nothing), and keeps it only
+## while a material uses it.
+const PARTICLE_PROPERTIES: Array[StringName] = [
+	&"emission_shape",
+	&"sub_emitter_mode",
+	&"turbulence_enabled",
+	&"attractor_interaction_enabled",
+	&"collision_mode",
+	&"particle_flag_align_y",
+	&"particle_flag_rotate_y",
+	&"particle_flag_disable_z",
+]
+## The ones a texture or a curve switches on.
+const PARTICLE_TEXTURES: Array[StringName] = [
+	&"color_ramp",
+	&"color_initial_ramp",
+	&"alpha_curve",
+	&"scale_curve",
+	&"emission_curve",
+	&"hue_variation_curve",
+	&"velocity_limit_curve",
+	&"emission_shape_offset",
+]
+
 ## Each string seen so far, and how many nodes had it the first time.
 var seen: Dictionary[String, int] = {}
 
@@ -83,6 +108,8 @@ static func _light(light: Light3D) -> String:
 
 
 static func _geometry(node: GeometryInstance3D) -> Array[String]:
+	if node is GPUParticles3D:
+		return _particles(node as GPUParticles3D)
 	var kind := _kind(node)
 	var materials: Array[Material] = []
 	if node.material_override != null:
@@ -116,6 +143,46 @@ static func _geometry(node: GeometryInstance3D) -> Array[String]:
 	for material in materials:
 		strings.append("%s|%s" % [kind, material_key(material)])
 	return strings
+
+
+## A particle system draws with two programs of its own: the one that moves the particles (its
+## process material) and the one that draws each of them (the material of its draw pass). Both are
+## built the first time the system runs, and go with the last material that uses them.
+static func _particles(node: GPUParticles3D) -> Array[String]:
+	var strings: Array[String] = ["particles|%s" % process_key(node.process_material)]
+	for pass_index in node.draw_passes:
+		var mesh := node.get_draw_pass_mesh(pass_index)
+		if mesh == null:
+			continue
+		var materials: Array[Material] = []
+		if node.material_override != null:
+			materials.append(node.material_override)
+		for surface in mesh.get_surface_count():
+			var surface_material := mesh.surface_get_material(surface)
+			if surface_material != null:
+				materials.append(surface_material)
+		if mesh is PrimitiveMesh and (mesh as PrimitiveMesh).material != null:
+			materials.append((mesh as PrimitiveMesh).material)
+		if materials.is_empty():
+			strings.append("particles_draw|default")
+		for material in materials:
+			strings.append("particles_draw|%s" % material_key(material))
+	return strings
+
+
+## What decides the program that moves a particle system's particles.
+static func process_key(material: Material) -> String:
+	if material == null:
+		return "none"
+	if material is ShaderMaterial:
+		return material_key(material)
+	var parts: Array[String] = [material.get_class()]
+	if material is ParticleProcessMaterial:
+		for property in PARTICLE_PROPERTIES:
+			parts.append(str(material.get(property)))
+		for property in PARTICLE_TEXTURES:
+			parts.append("t" if material.get(property) != null else "-")
+	return "process:" + ",".join(parts)
 
 
 ## How the mesh reaches the program: skinned, instanced many times, text, or a plain mesh.

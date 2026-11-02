@@ -28,8 +28,9 @@ permissions granted to its origin (`plain` has no allow attribute, which already
 Play together code field (the field must hold the code), makes a night, presses Share in Discord (the stub bridge must
 get the code) and Copy the code (the clipboard must hold the night's code; when a button cannot copy, the screen must
 say so and Ctrl+C must), and prints the page's clipboard line. `--exec-refused` makes `execCommand` refuse too, so
-only Ctrl+C is left. With `--embed none` (a plain tab) it checks the page is left alone: no clipboard layer, and the
-engine's own copy puts the code on the clipboard. It exits 1 when a check fails. It needs the headless shell (the
+only Ctrl+C is left. With `--embed none` (a plain tab) the clipboard layer is the paste half only (Ctrl+V pastes the
+clipboard's text on the first press, #534) and the engine's own copy puts the code on the clipboard. It exits 1 when a
+check fails. It needs the headless shell (the
 default): its clipboard lives in the browser, so the run never touches the person's own.
 """
 
@@ -267,6 +268,32 @@ addEventListener('copy', () => deadnightSpy.copy++, true);"""
 PASTED = "QZXW2345"
 
 
+def focus_on(page, frame, name: str, steps: int = 12) -> None:
+    """Walks the keyboard focus to the control called `name`, which the probe reports as `focus`: Down, then Up, and at
+    each stop a look to the right (two buttons share a row). Counting presses broke whenever a screen gained or lost a
+    button."""
+
+    def focused() -> str:
+        page.wait_for_timeout(400)  # longer than the probe's period
+        return str(rooms.read_probe(frame).get("focus", ""))
+
+    seen = focused()
+    for key in ("ArrowDown", "ArrowUp"):
+        for _ in range(steps):
+            if seen == name:
+                return
+            smoke.press(page, "ArrowRight")
+            side = focused()
+            if side == name:
+                return
+            if side != seen:
+                smoke.press(page, "ArrowLeft")
+                focused()
+            smoke.press(page, key)
+            seen = focused()
+    raise TimeoutError(f"the keyboard never reached {name}; it is on {seen!r}")
+
+
 def hold_keys(page, *keys: str) -> None:
     """Chords like Ctrl+V: the modifier down, the last key held a few frames."""
     for key in keys[:-1]:
@@ -276,7 +303,7 @@ def hold_keys(page, *keys: str) -> None:
         page.keyboard.up(key)
 
 
-def clipboard_flow(page, frame) -> tuple[list[str], bool]:
+def clipboard_flow(page, frame, out: Path) -> tuple[list[str], bool]:
     """From the main menu to Play together, then the clipboard checks of `--clipboard`; the lines and whether both held."""
     lines: list[str] = []
     rooms.wait_for(frame, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
@@ -296,42 +323,39 @@ def clipboard_flow(page, frame) -> tuple[list[str], bool]:
     page.wait_for_timeout(500)
     # The page around the frame writes the clipboard (it may: the permission was granted to its origin).
     page.evaluate(f"navigator.clipboard.writeText('{PASTED}')")
-    smoke.press(page, "ArrowDown")  # Quick join -> Create a night
-    smoke.press(page, "ArrowDown")  # -> the code field
+    focus_on(page, frame, "Code")
     page.wait_for_timeout(500)
     hold_keys(page, "Control", "v")
     page.wait_for_timeout(1500)
     state = rooms.read_probe(frame)
+    page.screenshot(path=out / f"paste_{'tab' if frame is page else 'frame'}.png")  # the code field after Ctrl+V
     field = state.get("code_text", "")
     spy = frame.evaluate("window.deadnightSpy")
     lines.append(f"Ctrl+V reached the frame: {spy}")
     pasted = field == PASTED
-    if tab:
-        # A tab keeps the engine's own paste (it reads the clipboard through the API, and the first Ctrl+V gets the old
-        # text): reported, not held to the code. What must hold is that the page was left alone.
-        lines.append(f"paste in a tab (the engine's own, unchanged): the code field holds {field!r}")
-        pasted = layer == "undefined"
-    else:
-        lines.append(f"paste: the code field holds {field!r}, wanted {PASTED!r}: {'ok' if pasted else 'FAILED'}")
-    smoke.press(page, "ArrowUp")  # the code field -> Create a night
+    where = "in a tab" if tab else "in the frame"
+    lines.append(f"paste {where}: the code field holds {field!r}, wanted {PASTED!r}: {'ok' if pasted else 'FAILED'}")
+    focus_on(page, frame, "CreateNight")
     smoke.press(page, "Enter")
     state = rooms.wait_for(frame, "a night's code", lambda s: bool(s.get("room_code")), 60)
     code = state["room_code"]
     page.wait_for_timeout(1500)
-    for _ in range(3):
-        smoke.press(page, "ArrowDown")  # Play -> Copy the link -> Copy the code -> Share in Discord
-    smoke.press(page, "Enter")
-    page.wait_for_timeout(500)
-    shared = frame.evaluate("window.deadnightShared || null")
+    shared = None
+    if not tab:  # a tab has no Share in Discord button
+        focus_on(page, frame, "ShareDiscord")
+        smoke.press(page, "Enter")
+        page.wait_for_timeout(500)
+        shared = frame.evaluate("window.deadnightShared || null")
     sent = tab or (bool(shared) and code in shared.get("message", ""))
     lines.append(f"share in Discord: the SDK got {shared}: {'ok' if sent else 'FAILED'}")
-    smoke.press(page, "ArrowUp")  # -> Copy the code
+    focus_on(page, frame, "CopyCode")
     page.evaluate("navigator.clipboard.writeText('before')")
     smoke.press(page, "Enter")
     page.wait_for_timeout(1500)
     state = rooms.read_probe(frame)
     held = page.evaluate("navigator.clipboard.readText()")
-    status = str(state.get("room_status", ""))
+    # The lobby says it in its own note line under the standing line, which the next refresh rewrites.
+    status = f"{state.get('room_status', '')} {state.get('lobby_note', '')}".strip()
     lines.append(f"the screen says {status!r}")
     copied = held == code
     if copied:
@@ -452,7 +476,7 @@ def main() -> int:
                     page.wait_for_timeout(200)  # lets Playwright see the frame
                 frame = page.frames[1]
             if args.clipboard:
-                lines, ok = clipboard_flow(page, frame)
+                lines, ok = clipboard_flow(page, frame, args.out)
                 page.screenshot(path=args.out / f"clipboard_{args.embed}.png")
                 browser.close()
                 server.shutdown()

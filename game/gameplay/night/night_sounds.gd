@@ -82,6 +82,8 @@ func _on_event(event: Dictionary) -> void:
 		&"shot_fired":
 			if _is_melee(event["weapon_id"]):
 				Audio.play(&"melee_swing", event["muzzle"])
+		&"quick_melee":
+			Audio.play(&"melee_swing", event["muzzle"])
 		&"damage_dealt":
 			if event["melee"]:
 				Audio.play(&"melee_hit", event["point"])

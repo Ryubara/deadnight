@@ -174,9 +174,13 @@ func test_the_crouch_under_a_beam_slows_the_walk_even_with_the_key_up() -> void:
 
 func test_a_replay_crouches_and_stands_the_same() -> void:
 	# Recorded in one physics callback, replayed from a standing start in a later one: the stance, the
-	# capsule and the position come out the same, with a beam that holds one crouch. (The idle frame
-	# of a message handler is the reconcile suite's: replayed in one, this test missed by 0.2 to 6 mm
-	# in one run of six, depending on that frame's wall-time delta, which the simulation rescales.)
+	# capsule and the position come out the same, with a beam that holds one crouch. Both halves go
+	# through the same call with the same tick (`_simulate`). The recording used to go through the
+	# player's `tick`, which steps by the engine's physics delta, while the replay stepped by `TICK`:
+	# the two are one number only while nothing has changed the tick rate or the time scale, so a
+	# suite before this one decided whether the replay was the recording (#535). (The idle frame of a
+	# message handler is the reconcile suite's: replayed in one, this test missed by 0.2 to 6 mm in
+	# one run of six, depending on that frame's wall-time delta, which the simulation rescales.)
 	_add_beam()
 	await _flush_physics()
 	var recorded: Array[PackedByteArray] = []
@@ -189,7 +193,7 @@ func test_a_replay_crouches_and_stands_the_same() -> void:
 		command.sprint = i % 70 > 40
 		command.jump = i == 15 or i == 160
 		recorded.append(command.to_bytes())
-		_step(command)
+		_simulate(command)
 	var first_end := _player.state.duplicate_state()
 	var first_height := _capsule().height
 	await _flush_physics()  # the replay is a later physics callback; see the note above
@@ -198,13 +202,17 @@ func test_a_replay_crouches_and_stands_the_same() -> void:
 	_player.velocity = start.velocity
 	_capsule().height = _tuning.crouch_height  # the body's shape is not where the start state says
 	for bytes in recorded:
-		PlayerSimulation.simulate(
-			_player, _player.state, PlayerCommand.from_bytes(bytes), _tuning, TICK
-		)
+		_simulate(PlayerCommand.from_bytes(bytes))
 	assert_bool(_player.state.crouching).is_equal(first_end.crouching)
 	assert_float(_capsule().height).is_equal(first_height)
 	assert_float(_player.state.position.distance_to(first_end.position)).is_less(0.001)
 	assert_float(_player.state.velocity.distance_to(first_end.velocity)).is_less(0.001)
+
+
+## One tick of the simulation alone, by `TICK`: what the server and a rewind run, and nothing of the
+## player's own frame (its camera, its animation, the engine's physics delta).
+func _simulate(command: PlayerCommand) -> void:
+	PlayerSimulation.simulate(_player, _player.state, command, _tuning, TICK)
 
 
 func test_a_rewind_to_a_crouch_restores_the_crouched_shape() -> void:
@@ -245,7 +253,7 @@ func test_the_crouch_pose_plays_and_the_stand_returns() -> void:
 
 func test_a_crouched_walk_steps_under_the_held_pose() -> void:
 	await _crouch_run(Vector2(0.0, -1.0), 40)
-	var mix: float = _animation.get(PlayerAnimation.CROUCH_MIX_PARAMETER)
+	var mix: float = _animation.get(StanceDrive.CROUCH_MIX_PARAMETER)
 	assert_float(mix).is_equal_approx(_tuning.crouch_walk_blend, 0.05)
 	await _crouch_run(Vector2.ZERO, 40)
-	assert_float(_animation.get(PlayerAnimation.CROUCH_MIX_PARAMETER)).is_less(0.05)
+	assert_float(_animation.get(StanceDrive.CROUCH_MIX_PARAMETER)).is_less(0.05)

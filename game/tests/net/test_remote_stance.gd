@@ -9,7 +9,7 @@ extends GdUnitTestSuite
 const A := 1
 const B := 2
 ## The protocol version of main when the stance was added: this build refuses it.
-const VERSION_BEFORE := 10
+const VERSION_BEFORE := 11
 
 var _host: NightHost
 var _nights: Array[Night] = []

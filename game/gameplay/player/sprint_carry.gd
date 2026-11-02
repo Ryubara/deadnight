@@ -8,9 +8,25 @@ extends RefCounted
 ## landing, the carry held still in the air) it catches up at this rate (per second, exponential)
 ## instead of jumping; within a frame it is locked.
 const CATCH_RATE := 12.0
+## The carry clips (one per class; a model whose grip turns it far from its class's in the hand
+## has its own, `Sprint_<model>`, #527), in `soldier_sprint.glb`.
+const PREFIX := "Sprint_"
+const CLIPS: Array[StringName] = [
+	&"Sprint_Rifle", &"Sprint_Shotgun", &"Sprint_Pistol", &"Sprint_Melee", &"Sprint_tommy_gun"
+]
 
 var weight := 0.0
 var time := 0.0
+
+
+## The carry clip of a weapon: its model's own (`Sprint_<model>`) when it has one, else its
+## class's.
+static func clip_for(weapon_class: StringName, hold: WeaponHold) -> StringName:
+	if hold != null:
+		var own := StringName(PREFIX + hold.scene.get_file().get_basename())
+		if own in CLIPS:
+			return own
+	return StringName(PREFIX + String(weapon_class))
 
 
 ## The weight `span` seconds toward `wanted`.

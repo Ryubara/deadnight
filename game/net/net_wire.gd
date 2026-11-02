@@ -1,7 +1,8 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 11 carries each player's stance, sprint,
-## crouch and in the air, in the frame; version 10 had the client's PLATFORM message; version
+## The bytes of a night's connection (protocol version 12 carries each player's stance, sprint,
+## crouch and in the air, in the frame; version 11 has the quick melee flag in a command's flags
+## (`F_MELEE`); version 10 has the client's PLATFORM message; version
 ## 9 had a WELCOME and events that carry every seat's name; version 8 carried each player's aim pose
 ## and look up or down so a client can draw the weapons of the others; version 7 had zombie deltas
 ## and an interest radius, version 6 had every zombie whole in a frame, version 5 had no view step
@@ -59,10 +60,10 @@ enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 11
+const VERSION := 12
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 11
+const MIN_VERSION := 12
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
@@ -102,6 +103,8 @@ const F_SWAP := 1 << 10
 const F_USE_HELD := 1 << 11
 ## The command says which frame its shooter was looking at (`NightCommand.view_step`).
 const F_VIEW := 1 << 12
+## The quick melee button went down (`PlayerCommand.melee`, #411).
+const F_MELEE := 1 << 13
 
 
 static func hello(
@@ -284,6 +287,7 @@ static func command(value: NightCommand) -> PackedByteArray:
 	flags |= F_SWAP if value.swap else 0
 	flags |= F_USE_HELD if value.use_held else 0
 	flags |= F_VIEW if value.view_step >= 0 else 0
+	flags |= F_MELEE if motion.melee else 0
 	out.encode_u16(11, flags)
 	out.encode_s16(13, CommandCodec.point_step(value.origin.x))
 	out.encode_s16(15, CommandCodec.point_step(value.origin.y))
@@ -315,6 +319,7 @@ static func read_command(data: PackedByteArray) -> NightCommand:
 	motion.swap_shoulder = flags & F_SWAP_SHOULDER != 0
 	motion.throw_over = flags & F_THROW_OVER != 0
 	motion.throw_under = flags & F_THROW_UNDER != 0
+	motion.melee = flags & F_MELEE != 0
 	result.fire = flags & F_FIRE != 0
 	motion.fire = result.fire
 	result.reload = flags & F_RELOAD != 0

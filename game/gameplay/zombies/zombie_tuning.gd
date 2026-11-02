@@ -66,6 +66,11 @@ const SHIPPED_PATH := "res://gameplay/zombies/zombie_tuning_default.tres"
 ## Health a blow takes from the player.
 @export_range(0.0, 200.0, 1.0, "suffix:health") var strike_damage: float = 20.0
 
+@export_group("Marks")
+## The last this many zombies of a round (those still to spawn count) are outlined through walls on
+## every client, so the players can find them. 0 turns the outline off.
+@export_range(0, 40, 1, "suffix:zombies") var mark_last: int = 3
+
 @export_group("Reactions")
 ## Seconds a zombie rises from the ground after it spawns.
 @export_range(0.0, 5.0, 0.05, "suffix:s") var emerge_seconds: float = 0.7

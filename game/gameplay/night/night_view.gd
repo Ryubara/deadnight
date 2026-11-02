@@ -18,6 +18,8 @@ const GIB_LIFT := Vector3(0.0, 1.0, 0.0)
 const GIB_THROW := 2.0
 
 var horde: ZombieHorde
+## The outline through walls on the last zombies of a round.
+var marks: ZombieMarks
 var effects: ShotEffects
 ## Where each breach's boards stand (`NightWorld`): a board torn or mended shows a burst there.
 var barricade_points: Dictionary[StringName, Vector3] = {}
@@ -67,7 +69,12 @@ func setup(
 	add_child(effects)
 	horde = ZombieHorde.new()
 	add_child(horde)
-	horde.setup_client(camera, ZombieTuning.shipped().emerge_seconds, telegraphs, board_seconds)
+	var zombies := ZombieTuning.shipped()
+	horde.setup_client(camera, zombies.emerge_seconds, telegraphs, board_seconds)
+	marks = ZombieMarks.new()
+	marks.name = "ZombieMarks"
+	add_child(marks)
+	marks.setup(horde, zombies.mark_last)
 	voices = ZombieVoices.new(Audio, 1)
 	voices.windups = telegraphs
 	state.event_received.connect(_on_event)
@@ -90,6 +97,15 @@ func show_attack(player_id: int, weapon: WeaponDef) -> void:
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 	if animation != null:
 		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire")
+
+
+## The quick melee: the Soldier strikes with what he holds (`Strike_<Class>`). Every client draws
+## every player's blow from the same `quick_melee` event.
+func show_strike(player_id: int) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.strike()
 
 
 ## The shooter's weapon tilts down for the `seconds` of its reload and comes back up (every client
@@ -176,6 +192,7 @@ func _on_event(event: Dictionary) -> void:
 		&"frame":
 			began = PerfProbe.begin()
 			horde.apply_snapshot(event["zombies"], step)
+			marks.apply_frame(event.get("phase", -1), event.get("remaining", 0))
 			PerfProbe.end(&"view.horde", began)
 			began = PerfProbe.begin()
 			voices.update(_state.zombies, step)
@@ -194,6 +211,8 @@ func _on_event(event: Dictionary) -> void:
 			began = PerfProbe.begin()
 			_show_shot(event)
 			PerfProbe.end(&"fx.shot", began)
+		&"quick_melee":
+			show_strike(event["shooter_id"])
 		&"reload_started":
 			show_reload(event["shooter_id"], event["seconds"])
 		&"damage_dealt":
