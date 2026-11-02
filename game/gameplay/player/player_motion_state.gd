@@ -38,6 +38,13 @@ var stepped_up := 0.0
 var footstep := false
 
 
+## True while the character holds the aim: the aim button is down, or the trigger was held within
+## `hold` seconds (firing from the hip is the aim entered for a moment, not a second, partial aim).
+## The body, the camera and the hands all read this one answer.
+func holds_aim(hold: float) -> bool:
+	return aiming or fire_age < hold
+
+
 func ground_speed() -> float:
 	return Vector2(velocity.x, velocity.z).length()
 
