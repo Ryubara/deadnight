@@ -40,6 +40,13 @@ func star_count() -> int:
 	return _stars.size()
 
 
+## Whether the first focus key (an arrow or accept) with nothing focused is spent giving this screen
+## its focus, as a menu wants. A screen that is a live game says no: its keys must reach the game,
+## and a key that is also `ui_accept` (a gamepad's Start, which is `pause` too) would be eaten.
+func wants_focus_key() -> bool:
+	return true
+
+
 ## Called when the screen has become the visible top of the stack.
 func screen_enter() -> void:
 	focus_initial()

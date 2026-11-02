@@ -85,6 +85,22 @@ The Soldier's head is about 40 % of his height. A reviver leaning over his hands
 head in the teammate's face, in the game capture, not in Blender (one body there). Revive_Kneel is upright with the
 arms reaching out and down, and the hands go on the belly.
 
+## The sprint carry (#459)
+
+- **Judge a carry from the game's camera.** The first two-handed carry, the gun low in front of the chest, looked
+  right from the front and was invisible from behind: the body hid the whole gun, so the shoulder camera saw no swing
+  at all. The muzzle now points across to his left and up, past the helmet, and the bat leans up and out over the
+  right shoulder. `render_clips.py --view back` is the first look; the Godot tour is the proof.
+- **The kit hold ties the gun to the forearm.** On `Index1.R` the grip sits 0.62 m out along the forearm and the
+  barrel within 17 degrees of it, and the upper arm is only 0.39 m, so a grip target at the hip with a steep gun
+  missed by 0.32 m: the carry is set by the upper arm's hang and the gun's direction, and the grip follows.
+- **A melee weapon at the end of a hanging arm points at the legs.** Mirroring Run's free arm swung the bat like a
+  pendulum, head down. A bent runner's arm with the forearm rolled to lean the shaft back keeps it up.
+- **Locking two branches of a tree.** Godot 4.7 exposes every clip node's play position as
+  `parameters/<path>/current_position` (and the last step as `current_delta`); seeking the carry there plus the step,
+  every frame, keeps it on the Run's frame at any pace (measured within 0.002 s). See the kit's
+  [AnimationTree page](https://github.com/Ryubara/gdstudio/blob/main/docs/godot/animation-tree.md).
+
 ## Godot headless
 
 An `AnimationTree` built in a `SceneTree` script's `_init` does not process: `advance()` leaves the bones where they

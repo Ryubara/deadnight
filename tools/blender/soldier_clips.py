@@ -21,11 +21,12 @@ location keys (Body and the IK feet carry them), which are written in file units
 """
 
 import math
+import re
 import sys
 from pathlib import Path
 
 import bpy
-from mathutils import Euler, Quaternion, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gaitlib as gl
@@ -301,6 +302,7 @@ def build(arm):
     repair(arm, up, aim)
     aim_moves(arm, acts, aim, every)
     revive(arm, acts)
+    sprint_carries(arm, acts, aim, up)
     return CLIPS
 
 
@@ -707,3 +709,246 @@ def revive(arm, acts):
     n = REVIVE_FRAMES
     keys = [(0, up_pose), (n // 4, pressed), (n // 2, up_pose), (3 * n // 4, pressed), (n, up_pose)]
     write(arm, "Revive_Kneel", keys, every, "full", True, events={"press": [n // 4, 3 * n // 4]}, skip=FINGERS)
+
+
+# ---- Sprint carry (Deadnight #459) -------------------------------------------------------------------------------
+# While the body sprints, the legs play the kit Run and the upper body plays Sprint_<Class>: the weapon rides the
+# swing of the arms and the chest instead of hanging in the aim pose. Each clip is the kit Run's own 17 frames, frame
+# for frame (its spine twist and bob, its left arm), so the swing lands on Run's footfalls by construction and the
+# game only has to play it at Run's time. The right arm comes from the kit's Run_Gun (the one-handed gun run, which
+# the kit keys on the same 17 frames); the two-handed guns are carried low across the chest with both hands on.
+SPRINT_CLASSES = ("Rifle", "Shotgun", "Pistol", "Melee")
+# Run's frames where the Body is lowest, one frame after each foot plants (right foot at 3.5, left at 12.5): the
+# carried gun dips a frame after the body, so it reads heavy.
+SPRINT_LOW = (5, 14)
+# The frame of Run whose chest is the reference for the carry targets below (Torso turned least: 1 degree).
+SPRINT_REF = 4
+# The two-handed carry, per class, in the frame of the chest at SPRINT_REF (the Soldier faces -Y, his right is -X):
+# the way the right upper arm hangs from the shoulder, the way the muzzle points and the top of the gun faces (the
+# grip follows: the kit hold puts it 0.62 m out along the forearm), how far the gun swings across with the chest
+# (degrees each way, on top of Run's own chest twist of 9 degrees each way), and how far it dips a frame after each
+# footfall (degrees the muzzle drops). The support point is the left hand's place on the fore-end: the hold's
+# `support` (game/gameplay/player/holds/<class>.tres, model units) times its `model_scale`, so the left hand meets
+# the weapon the game draws.
+SPRINT_CARRY = {
+    "Rifle": {"upper": (-0.35, -0.05, -1.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+              "swing": 6.0, "dip": 4.0, "support": (-0.45 * 0.71, -0.05 * 0.71)},
+    "Shotgun": {"upper": (-0.35, -0.05, -1.0), "muzzle": (0.85, -0.52, 0.4), "top": (-0.3, 0.2, 1.0),
+                "swing": 7.0, "dip": 5.0, "support": (-0.45 * 0.82, -0.03 * 0.82)},
+}  # fmt: skip
+# Pistol: Run_Gun's right arm (the kit's own one-handed gun run: the forearm pumps 46 degrees a stride), with the upper
+# arm swinging this share of the left arm's swing, half a stride later, so the gun hand swings at the side too.
+SPRINT_PISTOL_SWING = 0.35
+# Melee: a runner's arm with the bat in the fist. The upper arm hangs (`upper`, chest frame) and swings fore and aft
+# from the shoulder, against the left arm (back at frame 0, when the left hand leads), `swing` degrees each way; the
+# forearm stays bent forward (`fore`) and pumps `pump` times the arm's swing, so the bat stays up and rocks with the
+# stride instead of hanging toward the legs. The arm is held out from the side so the weapon clears the body and the
+# head from the shoulder camera behind him.
+# `shaft` is the way the weapon's shaft leans (chest frame): the forearm is turned about its own axis to bring it as
+# close as it can, up and back over the shoulder and a little out.
+SPRINT_MELEE = {"upper": (-0.5, 0.1, -1.0), "fore": (-0.3, -1.0, 0.3), "shaft": (-0.25, 0.45, 1.0), "swing": 24.0,
+                "pump": 1.2}  # fmt: skip
+
+
+def _rot(m):
+    """The rotation of a world or pose matrix with its scale taken out."""
+    return m.to_3x3().normalized()
+
+
+def _world(arm, bone):
+    """(rotation, head) of a pose bone in the world: the rotation orthonormal, the head in metres."""
+    m = arm.matrix_world @ arm.pose.bones[bone].matrix
+    return _rot(m), m.translation.copy()
+
+
+def _set_world_rot(arm, bone, rot):
+    """Turn a pose bone so its world rotation is `rot`; its head stays where its parent puts it."""
+    pb = arm.pose.bones[bone]
+    pose_rot = _rot(arm.matrix_world).inverted() @ rot
+    pb.matrix = Matrix.Translation(pb.matrix.translation) @ pose_rot.to_4x4()
+    bpy.context.view_layer.update()
+
+
+def _turn(arm, bone, frm, to):
+    """Turn a pose bone in the world so the direction `frm` becomes `to` (the shortest turn)."""
+    r, _ = _world(arm, bone)
+    _set_world_rot(arm, bone, frm.rotation_difference(to).to_matrix() @ r)
+
+
+def _reach(arm, bones, goal, pole, back=0.0):
+    """Two-bone IK in the world (WeaponHandsIK._reach in the game): turn upper and lower so the hand bone's head
+    reaches `goal`, the elbow toward `pole`; with `back` the hand stops that far short along the forearm. Returns how
+    far the hand ended from where it was sent (metres)."""
+    upper, lower, hand = bones
+    target = goal
+    for _ in range(2):
+        root, elbow, wrist = (_world(arm, b)[1] for b in bones)
+        lu, ll = (elbow - root).length, (wrist - elbow).length
+        target = goal - (wrist - elbow).normalized() * back
+        to = target - root
+        dist = min(max(to.length, abs(lu - ll) + 0.01), lu + ll - 0.001)
+        d = to.normalized()
+        along = (lu * lu - ll * ll + dist * dist) / (2 * dist)
+        height = math.sqrt(max(lu * lu - along * along, 0.0))
+        bend = (pole - d * pole.dot(d)).normalized()
+        new_elbow = root + d * along + bend * height
+        _turn(arm, upper, elbow - root, new_elbow - root)
+        e, w = _world(arm, lower)[1], _world(arm, hand)[1]
+        _turn(arm, lower, w - e, root + d * dist - new_elbow)
+    return (_world(arm, hand)[1] - target).length
+
+
+def _pose_arm(arm, pose):
+    for pb in arm.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+        pb.rotation_quaternion = pose[pb.name]["rot"]
+        pb.location = pose[pb.name]["loc"]
+    bpy.context.view_layer.update()
+
+
+def _read_pose(arm, like):
+    """The armature's pose now, rotations only: locations stay as `like` has them (turning a bone through its matrix
+    must not move it)."""
+    return {
+        pb.name: {"rot": pb.rotation_quaternion.copy(), "loc": like[pb.name]["loc"].copy()} for pb in arm.pose.bones
+    }
+
+
+def _held(kit):
+    """The kit weapon `kit` on Index1.R, or None (build_soldier removes them only after build)."""
+    return next((o for o in bpy.data.objects if o.parent_type == "BONE" and o.parent_bone == "Index1.R"
+                 and re.sub(r"\.\d+$", "", o.name) == kit), None)  # fmt: skip
+
+
+def _frame(muzzle, top):
+    """A gun's basis from where its muzzle points and its top faces (columns: muzzle, top, side)."""
+    m = Vector(muzzle).normalized()
+    t = Vector(top)
+    t = (t - m * t.dot(m)).normalized()
+    return Matrix((m, t, m.cross(t))).transposed()
+
+
+def _gun_basis(obj):
+    """World basis of a held kit gun: its local axis that points most ahead (-Y) in the gun hold is the muzzle, the
+    one of the others that points most up is the top."""
+    r = _rot(obj.matrix_world)
+    axes = [s * r.col[i] for i in range(3) for s in (1, -1)]
+    muzzle = max(axes, key=lambda a: -a.y)
+    top = max((a for a in axes if abs(a.dot(muzzle)) < 0.5), key=lambda a: a.z)
+    return _frame(muzzle, top)
+
+
+def _phase(f, n):
+    return 2 * math.pi * f / n
+
+
+def sprint_carries(arm, acts, aim, up):
+    """Sprint_Rifle, Sprint_Shotgun, Sprint_Pistol and Sprint_Melee: upper-body loops on the kit Run's 17 frames.
+
+    Every frame starts from Run at the same frame (its spine, shoulders and left arm: the chest twist and bob that
+    belong to the stride) with the right arm and the fingers of the gun hold (`aim`, Idle_Shoot frame 0; no kit clip
+    keys a finger, so they stay the static grip every weapon clip has), then poses the arms for the class. Only the
+    spine, the shoulders and the arms move: no finger curls and no change to the weapon's place in the hand, which
+    the game's hold owns.
+    """
+    run, run_gun = acts["Run"], acts["Run_Gun"]
+    n = int(run.frame_range[1])
+    assert n == int(run_gun.frame_range[1]), "Run_Gun and Run must share their cycle"
+    body = ("Abdomen", "Torso", "Neck", "Head", "Shoulder", "UpperArm", "LowerArm")
+    fingers = [b for b in up if b.split(".")[0] not in body]
+
+    def base(f, source=run):
+        p = full(arm, sample(source, f))
+        for b in [*fingers, "UpperArm.R", "LowerArm.R"] if source is run else fingers:
+            p[b] = {"rot": aim[b]["rot"].copy(), "loc": aim[b]["loc"].copy()}
+        return p
+
+    # The gun hold's right arm and gun: every carry target is turned from it.
+    _pose_arm(arm, aim)
+    rl_aim, elbow_aim = _world(arm, "LowerArm.R")
+    gun = _held("Shotgun")
+    gun_aim = _gun_basis(gun) if gun else _frame((0, -1, 0.3), (0, 0, 1))
+    grip_at = gun.matrix_world.translation if gun else _world(arm, "Index1.R")[1]
+    grip_local = rl_aim.inverted() @ (grip_at - elbow_aim)
+    _pose_arm(arm, base(SPRINT_REF))
+    t_ref, _ = _world(arm, "Torso")
+
+    report = {}
+    for cls, c in SPRINT_CARRY.items():
+        keys, grips, left = [], [], 0.0
+        for f in range(n + 1):
+            phase = _phase(f % n, n)
+            start = base(f % n)
+            _pose_arm(arm, start)
+            t, waist = _world(arm, "Torso")
+            follow = t @ t_ref.inverted()  # the chest's turn since the reference: the gun turns with it
+            # Across with the chest once a stride (the left hand leads at frame 0, as Run's left arm does), and down
+            # a frame after each footfall.
+            swing = Matrix.Rotation(math.radians(c["swing"]) * math.cos(phase), 3, "Z")
+            dip = c["dip"] * (math.cos(_phase(f - SPRINT_LOW[0], n / 2)) * 0.5 + 0.5)
+            side = (follow @ Vector((1, 0, 0))).normalized()
+            # The muzzle pitches down by the dip (about the chest's side axis), the rest of the gun with it.
+            want = Matrix.Rotation(math.radians(dip), 3, side) @ swing @ follow @ _frame(c["muzzle"], c["top"])
+            rl = want @ gun_aim.inverted() @ rl_aim
+            shoulder = _world(arm, "UpperArm.R")[1]
+            lu = (_world(arm, "LowerArm.R")[1] - shoulder).length
+            hang = swing @ follow @ Vector(c["upper"]).normalized()
+            _turn(arm, "UpperArm.R", _world(arm, "LowerArm.R")[1] - shoulder, hang * lu)
+            _set_world_rot(arm, "LowerArm.R", rl)
+            r_now, e_now = _world(arm, "LowerArm.R")
+            reached = e_now + r_now @ grip_local
+            grips.append(t.inverted() @ (reached - waist))
+            # The left hand on the fore-end: the hold's support point along the barrel, a little under it.
+            sup = reached + want.col[0] * -c["support"][0] + want.col[1] * c["support"][1]
+            side = (_world(arm, "UpperArm.L")[1] - shoulder).normalized()
+            pole = side * 0.45 + Vector((0, 0, -1))
+            left = max(left, _reach(arm, ("UpperArm.L", "LowerArm.L", "Index1.L"), sup, pole, back=0.07))
+            keys.append((f, _read_pose(arm, start)))
+        write(arm, f"Sprint_{cls}", keys, up, "upper", True, cls)
+        mid = sum(grips, Vector()) / len(grips)
+        report[cls] = {"grip from the waist": tuple(round(v, 2) for v in mid), "left hand miss": round(left, 3)}
+
+    # Pistol: Run_Gun's right arm, its upper arm swinging with the stride too (the left arm's swing, half a stride on).
+    left_arm = [full(arm, sample(run, f))["UpperArm.L"]["rot"] for f in range(n)]
+    mean = left_arm[0].slerp(left_arm[round(n / 2)], 0.5)
+    keys = []
+    for f in range(n + 1):
+        p = base(f % n, run_gun)
+        other = full(arm, sample(run, (f + n / 2) % n))["UpperArm.L"]["rot"]
+        e = (mean.inverted() @ other).to_euler("XYZ")  # the left arm's swing about its mean, in its own axes
+        mirrored = Euler((e.x, -e.y, -e.z), "XYZ").to_quaternion()  # the same swing on the right side
+        p["UpperArm.R"]["rot"] = p["UpperArm.R"]["rot"] @ Quaternion().slerp(mirrored, SPRINT_PISTOL_SWING)
+        keys.append((f, p))
+    write(arm, "Sprint_Pistol", keys, up, "upper", True, "Pistol")
+
+    # Melee: the runner's arm, from the gun hold's arm (the bat upright in the fist) turned by the shortest way, then
+    # the forearm rolled so the shaft leans where SPRINT_MELEE says. The shaft is the kit Shovel's long axis (its local
+    # Y, up in the gun hold), the hold every melee weapon copies.
+    m = SPRINT_MELEE
+    _pose_arm(arm, aim)
+    shovel = _held("Shovel")
+    shaft_up = _rot(shovel.matrix_world).col[1] if shovel else Vector((0, 0, 1))
+    shaft_local = _world(arm, "LowerArm.R")[0].inverted() @ shaft_up.normalized()
+    keys = []
+    for f in range(n + 1):
+        start = base(f % n)
+        _pose_arm(arm, start)
+        t, _ = _world(arm, "Torso")
+        follow = t @ t_ref.inverted()
+        side = (follow @ Vector((1, 0, 0))).normalized()
+        back = math.radians(m["swing"]) * math.cos(_phase(f % n, n))  # positive: the hand behind
+        s = _world(arm, "UpperArm.R")[1]
+        hang = Matrix.Rotation(back, 3, side) @ follow @ Vector(m["upper"]).normalized()
+        _turn(arm, "UpperArm.R", _world(arm, "LowerArm.R")[1] - s, hang)
+        fore = Matrix.Rotation(back * m["pump"], 3, side) @ follow @ Vector(m["fore"]).normalized()
+        e = _world(arm, "LowerArm.R")[1]
+        _turn(arm, "LowerArm.R", _world(arm, "Index1.R")[1] - e, fore)
+        r, e = _world(arm, "LowerArm.R")
+        axis = (_world(arm, "Index1.R")[1] - e).normalized()
+        want = follow @ Vector(m["shaft"]).normalized()
+        now, goal = (v - axis * v.dot(axis) for v in (r @ shaft_local, want))
+        roll = now.angle(goal) * (1 if now.cross(goal).dot(axis) > 0 else -1)
+        _set_world_rot(arm, "LowerArm.R", Matrix.Rotation(roll, 3, axis) @ r)
+        keys.append((f, _read_pose(arm, start)))
+    write(arm, "Sprint_Melee", keys, up, "upper", True, "Melee")
+    print("SPRINT", {k: CLIPS[f"Sprint_{k}"]["frames"] for k in SPRINT_CLASSES}, report)

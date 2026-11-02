@@ -59,7 +59,7 @@ def moments(name):
 GONE_AFTER = {"pin_out": "Pin", "spoon_off": "Spoon", "release": None}
 
 
-def attach(path, kit, turn=(180, 0, 0)):
+def attach(path, kit, turn=(180, 0, 0), scale=1.0):
     """Import our weapon and hold it where the kit weapon `kit` sits, turned by `turn` (degrees, XYZ, in the weapon's
     own axes: the grenade stands in the gun hold upside down, so it turns 180 about X); return its root object. The
     kit copy's mesh is in the armature's 1/100 units, so the child drops that scale."""
@@ -72,7 +72,7 @@ def attach(path, kit, turn=(180, 0, 0)):
     root.parent = kit
     root.matrix_parent_inverse = Matrix.Identity(4)
     root.matrix_basis = (
-        Matrix.Scale(1 / kit.matrix_world.to_scale()[0], 4)
+        Matrix.Scale(scale / kit.matrix_world.to_scale()[0], 4)
         @ Euler([math.radians(v) for v in turn]).to_matrix().to_4x4()
     )
     return root
@@ -119,8 +119,10 @@ def main():
         "--weapon",
         action="append",
         default=[],
-        help="Class=path.glb=KitName: hold one of our weapons for a class's sheet, in the kit weapon's hold (the "
-        "Grenade sheet: Grenade=game/assets/weapons/grenade/grenade.glb=Shotgun)",
+        help="Class=path.glb=KitName[=scale[=rx,ry,rz]]: hold one of our weapons for a class's sheet, in the kit "
+        "weapon's hold (the Grenade sheet: Grenade=game/assets/weapons/grenade/grenade.glb=Shotgun); scale is the hold's "
+        "model_scale (game/gameplay/player/holds/), the turn (degrees) maps the model's axes onto the kit weapon's: "
+        "180,0,0 for a gun (the default), -90,0,0 for a melee weapon on the kit Shovel",
     )
     ap.add_argument(
         "--view",
@@ -143,9 +145,12 @@ def main():
     held = {re.sub(r"\.\d+$", "", o.name): o for o in held}
     for o in [o for o in bpy.data.objects if o.type == "EMPTY" and o.name.endswith("_end")]:
         o.hide_render = True
+    kits = dict(held)  # the kit weapons, by name, even once one of ours takes a class's place
     for spec in args.weapon:
-        cls, path, kit = spec.split("=")
-        held[cls] = attach(path, held[kit])
+        cls, path, kit, *more = spec.split("=")
+        scale = float(more[0]) if more else 1.0
+        turn = tuple(float(v) for v in more[1].split(",")) if len(more) > 1 else (180, 0, 0)
+        held[cls] = attach(path, kits[kit], turn, scale)
     sc.build(arm)
     arm.animation_data.action = None
     for t in list(arm.animation_data.nla_tracks):
@@ -201,6 +206,10 @@ def main():
     sheets["AimMove"] = [(n, None, "Rifle") for n in ("Run", *sc.AIM_MOVES)]
     # Downed and revive (#504): the old Downed (Death's last frame) above the clips that replace it.
     sheets["Revive"] = [(n, None, None) for n in ("Downed", "Downed_Idle", "Downed_Crawl", "Revive_Kneel")]
+    # The sprint carry: one stride (every second frame of Run's 17), each Sprint_<Class> over Run at the same frame
+    # (the game plays them in phase); SprintBefore is what a sprint showed before them, Aim_<Class> over Run.
+    sheets["Sprint"] = [(f"Sprint_{c}", "Run", c) for c in sc.SPRINT_CLASSES]
+    sheets["SprintBefore"] = [(f"Aim_{c}", "Run", c) for c in sc.SPRINT_CLASSES]
     only = {s for s in args.only.split(",") if s}
     tmp = args.out.parent / "_tiles"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -209,24 +218,32 @@ def main():
             continue
         grid = []
         for name, base, cls in rows:
-            weapon = sc.CLASSES.get(cls, cls) if cls else None
-            for n, o in held.items():
-                set_hidden(o, n != weapon)
+            # One of ours for the class when given (--weapon), else the kit weapon whose hold the class uses. Hide
+            # every weapon, then show that one: hide_render is not inherited, so ours shows under a hidden kit parent.
+            weapon = (cls if cls in held else sc.CLASSES.get(cls, cls)) if cls else None
+            for o in [*kits.values(), *held.values()]:
+                set_hidden(o, True)
+            if weapon in held:
+                set_hidden(held[weapon], False)
             row = []
             if sheet == "AimMove":
                 frames = list(range(0, sc.CLIPS[name]["frames"], 3))
+            elif sheet.startswith("Sprint"):
+                frames = list(range(0, sc.CLIPS["Run"]["frames"], 2))
             elif sheet.startswith(("Grenade", "Repair", "Revive")):
                 frames = key_moments(acts[name], sc.CLIPS[name]["events"])
             else:
                 frames = moments(name)
             for i, f in enumerate(frames):
                 layer = sc.CLIPS[name]["layer"]
-                if base:  # base clip at the same moment of its own cycle
+                if base and sheet.startswith("Sprint"):  # in phase: Run at the same frame
+                    bpose = sc.full(arm, sc.sample(acts[base], f))
+                elif base:  # base clip at the same moment of its own cycle
                     bn = sc.CLIPS[base]["frames"]
                     bpose = sc.full(arm, sc.sample(acts[base], round(i / len(frames) * bn)))
                 else:
                     bpose = idle0
-                clip = sc.full(arm, sc.sample(acts[name], f))
+                clip = sc.full(arm, sc.sample(acts[name], f % (sc.CLIPS[name]["frames"] + 1)))
                 if layer == "upper":
                     apply_pose(arm, up, clip, bpose)
                 else:

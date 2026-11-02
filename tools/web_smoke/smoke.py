@@ -21,6 +21,7 @@ import argparse
 import functools
 import http.server
 import json
+import os
 import statistics
 import sys
 import threading
@@ -47,6 +48,27 @@ KEY_HOLD_MS = 150
 # With --gpu --unpaced the page is not held to the display's refresh rate, so frame times show the GPU's work.
 UNPACED = ["--disable-gpu-vsync", "--disable-frame-rate-limit"]
 SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
+# A probe never listens (the page reports numbers through `window.deadnight`). Playwright's headless Chromium is
+# already muted; a headed one, and Firefox, are not. `gds quiet` sets GDS_QUIET=1 for everything it runs, and then every
+# launch adds these (docs/godot/no-focus.md in the kit, "Sound").
+MUTE_CHROMIUM = ["--mute-audio"]
+MUTE_FIREFOX = {"media.volume_scale": "0.0"}
+
+
+def quiet() -> bool:
+    """True under `gds quiet` (GDS_QUIET=1): the probe must not use the person's keyboard, mouse or speakers."""
+    return os.environ.get("GDS_QUIET") == "1"
+
+
+def mute_args() -> list[str]:
+    """Chromium arguments that silence a launch under `gds quiet`; add them to every `chromium.launch(args=...)`."""
+    return MUTE_CHROMIUM if quiet() else []
+
+
+def mute_firefox_prefs() -> dict[str, str]:
+    """Firefox preferences that silence a launch under `gds quiet`, for `firefox.launch(firefox_user_prefs=...)`."""
+    return MUTE_FIREFOX if quiet() else {}
+
 
 # Between pressing Play and a running night the game draws its lot and everything else once, behind a loading screen
 # (docs/research/first-use-hitches.md). The browser builds a GL program the first time a kind of thing is drawn, on the

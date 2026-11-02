@@ -26,7 +26,17 @@ from pathlib import Path
 from PIL import Image
 from playwright.sync_api import ConsoleMessage, Page, sync_playwright
 from playwright.sync_api import Error as PlaywrightError
-from smoke import SOFTWARE_GL, UNPACED, back_to_menu, menu_item, serve, start_solo, stats, wait_for
+from smoke import (
+    SOFTWARE_GL,
+    UNPACED,
+    back_to_menu,
+    menu_item,
+    mute_firefox_prefs,
+    serve,
+    start_solo,
+    stats,
+    wait_for,
+)
 
 LOAD_TIMEOUT_S = 150
 SCREEN_TIMEOUT_S = 40
@@ -187,7 +197,7 @@ def main() -> int:
     server, port = serve(args.build)
     with sync_playwright() as p:
         if args.browser == "firefox":
-            browser = p.firefox.launch(headless=True)
+            browser = p.firefox.launch(headless=True, firefox_user_prefs=mute_firefox_prefs())
         elif args.browser == "chrome":
             browser = p.chromium.launch(channel="chrome", headless=True, args=UNPACED if args.unpaced else [])
         else:

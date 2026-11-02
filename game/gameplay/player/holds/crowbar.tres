@@ -6,7 +6,7 @@
 script = ExtResource("1_hold")
 weapon_class = &"Melee"
 scene = "res://assets/weapons/crowbar/crowbar.glb"
-model_scale = 1.1
+model_scale = 1.3
 real_length = 0.75
 model_length = 0.75
 shouldered = false
