@@ -72,6 +72,11 @@ var server_version := 0
 ## A bad network to put between this client and the server, in each direction (tests and bots).
 var conditioner_in: LinkConditioner
 var conditioner_out: LinkConditioner
+## The time in seconds the link measures by (the conditioners' delays, pings, the gaps between
+## ticks, the wait to resume). Empty means the real clock. A test gives it the game's own (the
+## physics frame count over the tick rate), so a loaded machine that runs fewer frames a second
+## meets the same bad network a quick one does, frame for frame.
+var clock := Callable()
 
 var _ws := _new_socket()
 var _url := ""
@@ -193,7 +198,7 @@ func pump() -> void:
 
 ## The socket is gone. A link that had a seat tries to take it back; any other is finished.
 func _on_socket_closed() -> void:
-	var now := Time.get_ticks_msec() / 1000.0
+	var now := _now()
 	if _closed_by_us or _refused:
 		resuming = false
 		_active = false
@@ -233,14 +238,22 @@ func _put(data: PackedByteArray) -> void:
 
 
 func _now() -> float:
+	if clock.is_valid():
+		return clock.call()
 	return Time.get_ticks_usec() / 1000000.0
 
 
+func _now_msec() -> int:
+	if clock.is_valid():
+		return roundi(float(clock.call()) * 1000.0)
+	return Time.get_ticks_msec()
+
+
 func _ping_when_due() -> void:
-	var now := Time.get_ticks_msec() / 1000.0
+	var now := _now()
 	if now >= _next_ping:
 		_next_ping = now + PING_EVERY
-		_send(NetWire.ping(Time.get_ticks_msec(), rtt_ms))
+		_send(NetWire.ping(_now_msec(), rtt_ms))
 
 
 func _receive(data: PackedByteArray) -> void:
@@ -275,7 +288,7 @@ func _receive(data: PackedByteArray) -> void:
 			_on_tick(data)
 		NetWire.Type.PONG:
 			if data.size() == 9:
-				rtt_ms = float(Time.get_ticks_msec() - data.decode_u32(1))
+				rtt_ms = float(_now_msec() - data.decode_u32(1))
 				rtt_samples.append(rtt_ms)
 		NetWire.Type.REFUSED:
 			if data.size() >= 2:
@@ -300,7 +313,7 @@ func _on_tick(data: PackedByteArray) -> void:
 	var tick := NetWire.read_tick(data)
 	if tick.is_empty():
 		return
-	var now := Time.get_ticks_usec()
+	var now := roundi(_now() * 1000000.0)
 	if _last_tick_usec > 0:
 		tick_gaps_ms.append((now - _last_tick_usec) / 1000.0)
 	_last_tick_usec = now
