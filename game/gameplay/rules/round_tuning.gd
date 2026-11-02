@@ -65,6 +65,11 @@ extends Resource
 ## The break after each round.
 @export var break_seconds: float = 5.0
 
+@export_group("Time limit")
+## When a round's time limit (`MatchSettings.round_time_limit`) runs out, spawns come this many
+## times as often and the alive cap rises to its ceiling. Nobody loses: the dead only come faster.
+@export var overtime_spawn_rate: float = 3.0
+
 @export_group("Night")
 ## Ambient light level in round 1 (0 dark, 1 day), read by the world (`NightLight`).
 @export var ambient_start: float = 0.6

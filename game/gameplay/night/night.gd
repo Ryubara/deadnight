@@ -69,6 +69,9 @@ var view: NightView
 ## Where the grenade in the local player's hand would go (`show_throw`).
 var preview: GrenadePreview
 var autopilot: Autopilot
+## The match settings, set before `start`: the night's zombie count, alive cap, break and round
+## time limit. After `start_remote` they are the ones the server's WELCOME carried.
+var match_settings := MatchSettings.new()
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
 ## Ticks run in each physics frame: 1 is real time; a test turns it up to play faster.
@@ -123,7 +126,7 @@ func start(
 	add_child(world)
 	await world.build()
 	loading.emit(BUILD_SHARE, "Setting up")
-	server = NightServer.new(world, p_seed, null, p_rules_tuning)
+	server = NightServer.new(world, p_seed, null, p_rules_tuning, match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	state = ClientState.new()
@@ -207,6 +210,7 @@ func start_remote(
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 		hud.state.load_snapshot(welcome["snapshot"])
+	match_settings = MatchSettings.from_snapshot(welcome["snapshot"])
 	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
 	_equip_sync = WeaponEquipSync.new(state, _body_of)
 	online.delivered.disconnect(keep)

@@ -51,6 +51,9 @@ static func insides_fit(data: Dictionary, tuning: RulesTuning) -> bool:
 		and _generator_fits(data["generator"])
 		and BarricadeState.new(tuning.barricades).fits(data["barricades"])
 		and CraneState.new().fits(data["crane"], tuning.crane.spot_count())
+		and MatchSettings.problem(data["match_settings"]).is_empty()
+		and is_finite(data["round_elapsed"])
+		and data["round_elapsed"] >= 0.0
 	)
 
 

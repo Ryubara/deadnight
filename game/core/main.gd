@@ -48,4 +48,16 @@ func _serve(args: NetArgs) -> void:
 		"port", int(from_environment) if from_environment != "" else NetWire.DEFAULT_PORT
 	)
 	host.seed_value = args.get_int("seed", -1)
+	host.match_settings = _match_from(args)
 	add_child(host)
+
+
+## The match settings a game server is started with: `--count 2`, `--max-alive 12`, `--break 10`
+## and `--round-limit 120` (each left out is the default), pulled into their bounds.
+func _match_from(args: NetArgs) -> MatchSettings:
+	var settings := MatchSettings.new()
+	settings.count_multiplier = args.get_float("count", settings.count_multiplier)
+	settings.max_alive = args.get_int("max-alive", settings.max_alive)
+	settings.break_seconds = args.get_float("break", settings.break_seconds)
+	settings.round_time_limit = args.get_float("round-limit", settings.round_time_limit)
+	return settings.clamped()

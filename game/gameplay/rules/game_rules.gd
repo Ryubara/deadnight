@@ -24,6 +24,10 @@ extends RefCounted
 ##   special_round_announced: round (the coming one), special_id, title, kind (boss or only),
 ##     boss_type, boss_count, seconds (until it starts); right after the break_started of the break
 ##     before a special round
+##   settings_changed: settings (MatchSettings.to_dict), after a configure action, before the start
+##   round_time_up: round, limit, zombies_left (still to spawn); once, when the match's time limit
+##     for the round runs out (never without a limit). The dead come faster from here, see
+##     MatchSettings
 ##   round_started: round, zombie_count, special_id (&"" for a normal round), boss_count
 ##   special_round_cleared: round, special_id, reward (paid to each player on their feet)
 ##   round_ended: round, special_id
@@ -76,10 +80,11 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 8 added the prize crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's
-## health, 5 the plan, special round and a zombie's type, health, speed. Two older layouts both
-## called themselves 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 8
+## 9 added the match settings and the round's elapsed time, 8 the prize crane (`crane`,
+## `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the plan, special round
+## and a zombie's type, health, speed. Two older layouts both called themselves 4; every older
+## snapshot is refused as `bad_version`.
+const SNAPSHOT_VERSION := 9
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -104,6 +109,8 @@ const SNAPSHOT_KEYS := {
 	"generator": TYPE_DICTIONARY,
 	"barricades": TYPE_DICTIONARY,
 	"crane": TYPE_DICTIONARY,
+	"match_settings": TYPE_DICTIONARY,
+	"round_elapsed": TYPE_FLOAT,
 	"spawn_rng_state": TYPE_INT,
 	"shop_rng_state": TYPE_INT,
 	"cripple_rng_state": TYPE_INT,
@@ -116,6 +123,9 @@ const CRIPPLE_STREAM := 0xC21B
 const CRANE_STREAM := 0xC4A7
 
 var tuning: RulesTuning
+## The match settings the night runs under: set before it starts (`RulesAction.configure`, or the
+## constructor), then read-only.
+var settings: MatchSettings
 var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
 var round_number: int = 0
@@ -134,6 +144,8 @@ var _special: SpecialRound = null
 var _round_total: int = 0
 var _spawn_timer: float = 0.0
 var _round_players: int = 1
+## Seconds the round has been active, for the match's time limit.
+var _round_elapsed: float = 0.0
 var _next_zombie_id: int = 1
 var _zombies: Dictionary[int, ZombieState] = {}
 var _spawn_rng := RandomNumberGenerator.new()
@@ -146,8 +158,9 @@ var _fuel_announced: int = 0
 
 
 ## A fresh night. `p_tuning` defaults to the shipped table.
-func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
+func _init(p_tuning: RulesTuning = null, p_seed: int = 0, p_settings: MatchSettings = null) -> void:
 	tuning = p_tuning if p_tuning != null else load(DEFAULT_TUNING_PATH)
+	settings = p_settings.clamped() if p_settings != null else MatchSettings.new()
 	rng_seed = p_seed
 	_spawn_rng.seed = p_seed ^ SPAWN_STREAM
 	_shop_rng.seed = p_seed ^ SHOP_STREAM
@@ -308,6 +321,8 @@ func _dispatch(action: Dictionary) -> void:
 				_enter_break(tuning.rounds.intro_seconds)
 		RulesAction.TICK:
 			_tick(action["delta"])
+		RulesAction.CONFIGURE:
+			_configure(action["settings"])
 		RulesAction.SKIP_BREAK:
 			if phase == Phase.BREAK:
 				_begin_round()
@@ -343,7 +358,7 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.USE_GRENADE:
 			_use_grenade(action["player_id"])
 		RulesAction.EXPLOSION:
-			_explosion(action["player_id"], action["victims"])
+			ExplosionPlay.explode(self, action["player_id"], action["victims"])
 		RulesAction.GRANT_POINTS:
 			if players.has(action["player_id"]):
 				_award(action["player_id"], action["amount"], action.get("reason", &"grant"))
@@ -395,7 +410,18 @@ func _tick(delta: float) -> void:
 			generator.tick(delta, round_number, false)
 			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
+			_tick_clock(delta)
 			_tick_spawning(delta)
+
+
+## Takes the settings of a `configure` action. Only before the night: the rules of a match in
+## progress do not change under the players.
+func _configure(data: Dictionary) -> void:
+	if phase != Phase.IDLE:
+		_reject(&"wrong_phase", RulesAction.CONFIGURE)
+		return
+	settings = MatchSettings.from_dict(data)
+	_emit(&"settings_changed", {"settings": settings.to_dict()})
 
 
 func _enter_break(seconds: float) -> void:
@@ -419,6 +445,7 @@ func _begin_round() -> void:
 	_plan = _plan_round()
 	_round_total = _plan.size()
 	_spawn_timer = tuning.rounds.first_spawn_delay
+	_round_elapsed = 0.0
 	for player: PlayerState in players.values():
 		_refill_grenades(player)
 	_set_phase(Phase.ACTIVE)
@@ -435,7 +462,9 @@ func _begin_round() -> void:
 
 ## The types of every zombie of the round, in the order they spawn.
 func _plan_round() -> Array[StringName]:
-	var normal := tuning.rounds.zombies_for_round(round_number, _round_players)
+	var normal := settings.scaled_count(
+		tuning.rounds.zombies_for_round(round_number, _round_players)
+	)
 	if _special == null:
 		return tuning.roster.plan_for_round(round_number, normal, _spawn_rng)
 	return _special.plan(round_number, _round_players, normal, tuning.roster, _spawn_rng)
@@ -453,10 +482,26 @@ func _type(type_id: StringName) -> ZombieType:
 	return found if found != null else tuning.roster.type_of(tuning.roster.base_id)
 
 
+## Counts the round's time and says once when the match's limit runs out.
+func _tick_clock(delta: float) -> void:
+	var before := settings.is_overtime(_round_elapsed)
+	_round_elapsed += delta
+	if not before and settings.is_overtime(_round_elapsed):
+		_emit(
+			&"round_time_up",
+			{
+				"round": round_number,
+				"limit": settings.round_time_limit,
+				"zombies_left": _plan.size()
+			}
+		)
+
+
 func _tick_spawning(delta: float) -> void:
 	_spawn_timer -= delta
-	var cap := tuning.rounds.alive_cap(round_number, _round_players)
-	var interval := tuning.rounds.spawn_interval(round_number, _round_players)
+	var late := settings.is_overtime(_round_elapsed)
+	var cap := settings.alive_cap(tuning.rounds, round_number, _round_players, late)
+	var interval := settings.spawn_interval(tuning.rounds, round_number, _round_players, late)
 	if _special != null and _special.kind == SpecialRound.Kind.ONLY:
 		interval /= _special.spawn_rate
 	while _spawn_timer <= 0.0 and not _plan.is_empty() and _zombies.size() < cap:
@@ -545,7 +590,7 @@ func _end_round() -> void:
 		_emit(&"special_round_cleared", _special.cleared(round_number))
 	_emit(&"round_ended", {"round": round_number, "special_id": special_id()})
 	_special = null
-	_enter_break(tuning.rounds.break_seconds)
+	_enter_break(settings.break_for(tuning.rounds))
 
 
 ## The night ends when nobody is left in it (a break or a round) or, in a round, everyone is down.
@@ -753,56 +798,6 @@ func _set_grenades(player: PlayerState, count: int, reason: StringName) -> void:
 		&"grenade_count_changed",
 		{"player_id": player.id, "count": player.grenades, "reason": reason}
 	)
-
-
-## One blast: what it did to each zombie, in the order given. Each takes its damage off its health
-## and pays like a hit (the blast that kills pays `explosion_kill`); a zombie that lives may then
-## lose its legs. A zombie already gone is skipped, so a blast racing a gunshot is harmless.
-func _explosion(player_id: int, victims: Array) -> void:
-	if phase != Phase.ACTIVE:
-		_reject(&"wrong_phase", RulesAction.EXPLOSION)
-		return
-	if not players.has(player_id):
-		_reject(&"unknown_player", RulesAction.EXPLOSION)
-		return
-	for victim: Dictionary in victims:
-		var zombie := _zombies.get(int(victim["zombie_id"])) as ZombieState
-		if zombie != null:
-			_blast_one(player_id, zombie, float(victim["damage"]), float(victim["leg_damage"]))
-
-
-func _blast_one(player_id: int, zombie: ZombieState, damage: float, leg_damage: float) -> void:
-	var type := _type(zombie.type)
-	var dealt := minf(damage, zombie.health)
-	zombie.health -= dealt
-	zombie.leg_damage += minf(leg_damage, dealt)
-	_emit_damaged(zombie, player_id, RulesAction.ZONE_BLAST, dealt)
-	if zombie.health <= 0.0:
-		_award(player_id, _scaled(tuning.explosives.explosion_kill, type), &"explosion_kill")
-		players[player_id].kills += 1
-		_remove_zombie(zombie.id, &"killed", player_id, RulesAction.ZONE_BLAST, false)
-		return
-	if zombie.paid_hits < _paid_hit_limit(type):
-		zombie.paid_hits += 1
-		_award(player_id, _scaled(tuning.economy.hit, type), &"hit")
-	var cause := _cripple_cause(zombie)
-	if cause != &"":
-		zombie.crippled = true
-		var crawler := tuning.roster.type_of(_type(zombie.type).crawls_into)
-		if crawler != null:
-			zombie.type = crawler.id
-		_emit(
-			&"zombie_crippled",
-			{
-				"zombie_id": zombie.id,
-				"zombie_type": zombie.type,
-				"look": _type(zombie.type).look_for(zombie.id << 8),
-				"player_id": player_id,
-				"cause": cause,
-				"health": zombie.health,
-				"speed_scale": tuning.explosives.crawler_speed_fraction,
-			}
-		)
 
 
 ## Why a zombie that survived a blast loses its legs, or an empty name. Its legs go when enough of

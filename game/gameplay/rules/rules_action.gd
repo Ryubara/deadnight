@@ -6,6 +6,7 @@ extends RefCounted
 ## of numbers, strings and booleans needs no node, no object and no Godot multiplayer to travel.
 
 const START := &"start"
+const CONFIGURE := &"configure"
 const TICK := &"tick"
 const SKIP_BREAK := &"skip_break"
 const ADD_PLAYER := &"add_player"
@@ -50,6 +51,7 @@ const ZONE_BLAST := &"blast"
 ## ignored.
 const REQUIRED := {
 	START: {},
+	CONFIGURE: {"settings": TYPE_DICTIONARY},
 	TICK: {"delta": TYPE_FLOAT},
 	SKIP_BREAK: {},
 	ADD_PLAYER: {"player_id": TYPE_INT},
@@ -79,6 +81,12 @@ const OPTIONAL := {
 
 static func start() -> Dictionary:
 	return {"type": START}
+
+
+## The match settings (`MatchSettings.to_dict`), before the night starts: refused as `wrong_phase`
+## once it has, and with the field to blame as `settings` when a value is out of bounds.
+static func configure(settings: MatchSettings) -> Dictionary:
+	return {"type": CONFIGURE, "settings": settings.to_dict()}
 
 
 ## One fixed step of the clock. The only way time passes.
@@ -248,6 +256,8 @@ static func _out_of_range_field(type: StringName, action: Dictionary) -> StringN
 				return &"rounds"
 		EXPLOSION:
 			return _bad_victims(action["victims"])
+		CONFIGURE:
+			return &"settings" if not MatchSettings.problem(action["settings"]).is_empty() else &""
 	return &""
 
 
