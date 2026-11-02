@@ -11,6 +11,9 @@ const AGENT_HEIGHT := 1.75
 const AGENT_RADIUS := 0.5
 const AGENT_MAX_CLIMB := 0.25
 const AGENT_MAX_SLOPE := 45.0
+## Contour simplification error in cells (the default 1.3 cut corners by 0.33 m at this cell size,
+## into the bodies' margin).
+const EDGE_MAX_ERROR := 1.0
 
 
 static func bake(root: Node3D) -> NavigationMesh:
@@ -59,7 +62,7 @@ static func source_data(root: Node3D) -> NavigationMeshSourceGeometryData3D:
 
 ## The sizes `new_navmesh` bakes with.
 static func new_navmesh_settings() -> Array[float]:
-	return [CELL_SIZE, AGENT_HEIGHT, AGENT_RADIUS, AGENT_MAX_CLIMB, AGENT_MAX_SLOPE]
+	return [CELL_SIZE, AGENT_HEIGHT, AGENT_RADIUS, AGENT_MAX_CLIMB, AGENT_MAX_SLOPE, EDGE_MAX_ERROR]
 
 
 static func new_navmesh() -> NavigationMesh:
@@ -70,6 +73,7 @@ static func new_navmesh() -> NavigationMesh:
 	navmesh.agent_radius = AGENT_RADIUS
 	navmesh.agent_max_climb = AGENT_MAX_CLIMB
 	navmesh.agent_max_slope = AGENT_MAX_SLOPE
+	navmesh.edge_max_error = EDGE_MAX_ERROR
 	return navmesh
 
 
