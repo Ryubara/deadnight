@@ -50,15 +50,15 @@ RUNS = {
 }
 
 
-def export_bench(godot: str, work: Path) -> Path:
-    """A copy of the project whose main scene is the bench and whose export keeps `tests/`; returns the web folder."""
+def export_bench(godot: str, work: Path, scene: str = BENCH_SCENE) -> Path:
+    """A copy of the project whose main scene is `scene` and whose export keeps `tests/`; returns the web folder."""
     project = work / "game"
     if project.exists():
         shutil.rmtree(project)
     shutil.copytree(GAME, project, ignore=SKIP)
     settings = project / "project.godot"
     settings.write_text(
-        re.sub(r'run/main_scene=".*"', f'run/main_scene="{BENCH_SCENE}"', settings.read_text(encoding="utf-8")),
+        re.sub(r'run/main_scene=".*"', f'run/main_scene="{scene}"', settings.read_text(encoding="utf-8")),
         encoding="utf-8",
     )
     presets = project / "export_presets.cfg"

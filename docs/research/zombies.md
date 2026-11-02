@@ -320,6 +320,41 @@ walks to a stand; `door_points` stays the place the hand reaches from, the HUD m
 open: the path ends within 2.5 m, a body on the stand is offered the door, a use press buys it. The slab's middle
 fails it for the booth (6.75 m short). Picture: `tests/captures/door_stand_mesh.tscn` (`--target=slab|stand`).
 
+### Dead standing at the concession door (#591)
+
+Found by the shopping soak of the bots plan (`tests/captures/bots_shop_soak.tscn`): from round 2 on, three to six dead
+stood still at (-2, -3) and (9, -3), beside the concession door, in chase mode with no gate, for minutes, and the round
+never ended. The trace and a dump of the same night (seed 1, four bots, health x4, 3000 points each, 8 game minutes)
+say why:
+
+- **The map was the one baked before the door was bought.** The soak steps the night in a loop of `tick()` calls and
+  never gives the engine a physics frame. The navigation server takes a new mesh in only on a physics frame, so the
+  concession was bought (the lot's slab freed, `DoorNavigation` swapped the saved mesh into the region) and the map
+  stayed as it was for the whole night: a query on the live map still found no mesh across the door gap (z -3.5 and -3.25
+  at x -1 to 1), the concession's floor an island of its own. A night stepped by hand stands in no physics frame, and
+  the server, which steps one tick a physics frame, has the mesh a few ticks after the purchase
+  (`NavigationServer3D.map_force_update` does not shorten it, measured here).
+- **The dead rose on that island.** `NightWorld.open_areas` put the midway's spawn points in at the purchase. A dead
+  one risen there asks for a path to a bot on the field, gets the island's nearest point to it (`map_get_path` ends at
+  the closest point of the part it can walk), walks there and stays: the inner face of the front wall, at z -3.25 (the
+  slab's z -3.6 and 0.15 half thickness, 0.5 m of cut-back), at the x of the bot they were after: Z45 (3.89, -3.25) with
+  the target at (3.93, -21.8); a path of two points, the second at (3.93, 0.35, -3.25); the same path on a fresh query.
+  Others at (12.25, -3.25), after a 35-point walk from the west alley, and against the yard's north wall (54, -3)
+  once the yard was bought. Never a breach (`gate_id` empty), and none of them could reach the bots, who stood on the field.
+- **Not a fault of the mesh or of the dead's walking.** The same night with a physics frame every 30 ticks (the map
+  takes each door in): no dead left standing, none swept, rounds ending after 63, 135, 200 and 267 s.
+
+The fix on the zombie side: the dead rise only where the map walks to. `NightWorld.spawn_points` holds an open
+area's spawn markers back until a path from the field reaches every one of them (`NAV_REACHED`), and the night asks
+again every 15 ticks (`NightServer.SPAWN_RETRY_TICKS`, which replaced the server's own handler of `door_opened`), so
+the area joins a few ticks after the purchase on a server, and never in a night with no frames (nobody can walk out
+of it there either). The same guard holds in a bake (a lot nothing was saved for) that takes a second or more. The
+soak must give the engine its frames too (it does not yet, #228): a night stepped by hand cannot test a door, and a
+bot's errand to a bought door is judged on the map the purchase left.
+
+Proof: `game/tests/night/test_spawns_wait_for_the_map.gd` (no spawns in the new room straight after the purchase or in
+600 ticks without frames; they join with frames; every door of the shop in order gives its area's markers to the dead).
+
 ## Left open
 
 - Browser and weak-machine measurement of the full scene: done in the browser (Chrome with a GPU, and the processor

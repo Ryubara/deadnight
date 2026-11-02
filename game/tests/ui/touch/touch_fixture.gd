@@ -11,6 +11,7 @@ const ACTIONS: Array[StringName] = [
 	&"interact",
 	&"swap_weapon",
 	&"throw_grenade",
+	&"quick_melee",
 	&"sprint",
 	&"swap_shoulder"
 ]
@@ -146,6 +147,14 @@ func tap(position: Vector2) -> void:
 		event.position = _window() * position
 		event.pressed = pressed
 		Input.parse_input_event(event)
+	await _suite.get_tree().process_frame
+
+
+## The look the fingers made and the view has not turned yet goes out now (the layer lets it out a
+## share each frame, `LookSmoother`), and the player reads it: the turn is whole.
+func settle_look() -> void:
+	controls.flush_look()
+	await _suite.get_tree().process_frame
 	await _suite.get_tree().process_frame
 
 

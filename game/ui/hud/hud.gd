@@ -100,6 +100,8 @@ var scoreboard_enabled := true:
 var _tokens := UITokens.active()
 ## Each stacked column: {node, parts, ax, ay, dx, dy}, kept so a mirror can place it again.
 var _columns: Array[Dictionary] = []
+## The platform's safe area (left, top, right, bottom, canvas units) the cards keep inside.
+var _insets := Vector4.ZERO
 
 
 func _ready() -> void:
@@ -109,7 +111,7 @@ func _ready() -> void:
 	for part_name in PART_NAMES:
 		(get(part_name) as Node).name = PART_NAMES[part_name]
 	reticle.style = reticle_style
-	for overlay in [damage, revive, markers, reticle, crosshair]:
+	for overlay in screen_overlays():
 		add_child(overlay)
 		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var margin := float(HudStyle.margin())
@@ -129,6 +131,32 @@ func _ready() -> void:
 		part.bind(state)
 	resized.connect(_fit_gains)
 	_fit_gains()
+
+
+## Keeps the cards inside the platform's safe area (a phone's notch, rounded corners and home bar),
+## in canvas units: left, top, right, bottom. The overlays that are the screen itself keep all of
+## it. The reticle is the centre of the screen, where the camera looks and the shots go (#601): on
+## an iPhone held sideways the home bar insets the bottom 29 units and not the top, and a reticle
+## in the middle of the inset cards sat 14 units above the dot the shots came to. The same goes for
+## the world markers and the damage numbers, which are shares of the screen.
+func set_safe_insets(insets: Vector4) -> void:
+	_insets = insets
+	offset_left = insets.x
+	offset_top = insets.y
+	offset_right = -insets.z
+	offset_bottom = -insets.w
+	for overlay: Control in screen_overlays():
+		overlay.offset_left = -insets.x
+		overlay.offset_top = -insets.y
+		overlay.offset_right = insets.z
+		overlay.offset_bottom = insets.w
+	for entry in _columns:
+		_place(entry)
+
+
+## The overlays that fill the whole screen, whatever the cards keep clear of.
+func screen_overlays() -> Array[Control]:
+	return [damage, revive, markers, reticle, crosshair]
 
 
 func _process(delta: float) -> void:
@@ -277,10 +305,15 @@ func _place(entry: Dictionary) -> void:
 	column.anchor_right = at
 	column.anchor_top = ay
 	column.anchor_bottom = ay
-	column.offset_left = offset
-	column.offset_right = offset
-	column.offset_top = entry[&"dy"]
-	column.offset_bottom = entry[&"dy"]
+	# A column on the middle of the screen (the point gains beside the reticle) stays on the screen's
+	# middle, not on the middle of the cards' area.
+	var shift := Vector2.ZERO
+	if ax == 0.5 and ay == 0.5:
+		shift = Vector2(_insets.x - _insets.z, _insets.y - _insets.w) * 0.5
+	column.offset_left = offset - shift.x
+	column.offset_right = offset - shift.x
+	column.offset_top = entry[&"dy"] - shift.y
+	column.offset_bottom = entry[&"dy"] - shift.y
 	column.grow_horizontal = (
 		Control.GROW_DIRECTION_BEGIN
 		if at == 1.0

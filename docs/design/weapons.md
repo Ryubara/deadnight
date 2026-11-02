@@ -126,8 +126,7 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
   targets, and is one of the crane's prizes.
 - **Bots:** a bot with no round left and no melee weapon in hand stands and strikes what comes within reach
   (`BotIntent.quick_melee_ok`).
-- **Not yet:** a phone has no button for it ([touch controls](touch-controls.md),
-  [#588](https://github.com/Ryubara/deadnight/issues/588)).
+- **On a phone** it is the MELEE button of the [touch controls](touch-controls.md) (#588).
 
 ## Carrying weapons
 

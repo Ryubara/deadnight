@@ -48,10 +48,10 @@ const ROWS: Array = [
 	[&"reload", &"reload"],
 	[&"interact", &"interact"],
 	[&"swap_weapon", &"swap_weapon"],
-	# The quick melee (#411): V, the mouse's back button and the d-pad's down. A phone has no button
-	# for it yet. Before the grenades: the arm that is throwing one is busy, and a blow asked for then
-	# is refused (`test_night_quick_melee.gd`).
-	[&"quick_melee", &""],
+	# The quick melee (#411, #588): V, the mouse's back button, the d-pad's down and the touch
+	# button. Before the grenades: the arm that is throwing one is busy, and a blow asked for then is
+	# refused (`test_night_quick_melee.gd`).
+	[&"quick_melee", &"quick_melee"],
 	[&"throw_grenade", &"throw_grenade"],
 	[&"toss_grenade", &""],
 	# A ping is not in the command: the night makes it from the view (`test_night_pings.gd`).

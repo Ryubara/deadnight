@@ -12,8 +12,10 @@ extends Node
 ## the lens's distance from the head in metres, 1 on the ticks the server lets a shot leave
 ## (`shot_ready`: 1 when any tick since the last drawn frame let a shot leave, because a tap's
 ## one tick falls between two frames of a slow browser), and how far the body is from facing the
-## view in radians (#477).
-const ROW := 7
+## view in radians (#477), the player's view yaw and pitch in radians (#598) and how many look
+## motions the touch layer turned the view by (`TouchLook.sent`) and how many look samples the
+## fingers made (`TouchLook.samples`) since the last drawn frame.
+const ROW := 11
 
 var _object: JavaScriptObject
 var _rows: JavaScriptObject
@@ -64,6 +66,10 @@ func _process(_delta: float) -> void:
 		1.0 if player.state.holds_aim(player.tuning.hip_fire_hold) else 0.0,
 		rig.lens_distance(),
 		1.0 if _shot_ready_since_frame else 0.0,
-		player.state.view_error
+		player.state.view_error,
+		rig.yaw,
+		rig.pitch,
+		TouchLook.take_sent(),
+		TouchLook.take_samples()
 	)
 	_shot_ready_since_frame = false
