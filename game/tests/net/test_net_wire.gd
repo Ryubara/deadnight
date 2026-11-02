@@ -201,3 +201,26 @@ func test_an_old_hello_is_known_by_its_version_alone() -> void:
 	assert_int(NetWire.hello_version(PackedByteArray([NetWire.Type.PING, 3]))).is_equal(-1)
 	assert_int(NetWire.hello_version(PackedByteArray())).is_equal(-1)
 	assert_bool(NetWire.accepts(-1)).is_false()
+
+
+func test_a_ping_carries_the_round_trip_the_client_measured() -> void:
+	var first := NetWire.ping(1234)
+	assert_int(first.size()).is_equal(NetWire.PING_SIZE)
+	assert_int(first.decode_u32(1)).is_equal(1234)
+	# Before the first answer there is nothing to report.
+	assert_int(NetWire.read_ping_rtt(first)).is_equal(-1)
+	assert_int(NetWire.read_ping_rtt(NetWire.ping(1234, 0.0))).is_equal(0)
+	assert_int(NetWire.read_ping_rtt(NetWire.ping(1234, 47.4))).is_equal(47)
+	# The most it says is kept under the "none" value, so a bad link never reads as no link.
+	assert_int(NetWire.read_ping_rtt(NetWire.ping(1, 9_000_000.0))).is_equal(NetWire.NO_RTT - 1)
+	# A ping of the old size, or another message, has no round trip.
+	assert_int(NetWire.read_ping_rtt(PackedByteArray([NetWire.Type.PING, 0, 0, 0, 0]))).is_equal(-1)
+	assert_int(NetWire.read_ping_rtt(NetWire.hello())).is_equal(-1)
+	assert_bool(PeerLimits.fits(NetWire.Type.PING, NetWire.PING_SIZE)).is_true()
+	assert_bool(PeerLimits.fits(NetWire.Type.PING, 5)).is_false()
+
+
+func test_the_protocol_is_past_the_version_with_the_five_byte_ping() -> void:
+	# A client of version 4 pinged in 5 bytes; the server of 5 takes no such client at all.
+	assert_int(NetWire.VERSION).is_greater(4)
+	assert_bool(NetWire.accepts(4)).is_false()
