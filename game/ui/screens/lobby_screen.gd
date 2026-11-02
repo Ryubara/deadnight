@@ -20,6 +20,8 @@ const FIELD_WIDTH := 620.0
 const SEAT_NUMBER_WIDTH := 48.0
 const TAG_WIDTH := 96.0
 const LEAVE_WIDTH := 150.0
+## How long the host's last change waits for another before it is sent (a slider drag is a stream).
+const RULES_DELAY := 0.35
 ## Kept free around the panel when the window is shorter than the screen is tall (it scrolls then).
 const PANEL_MARGIN := 120.0
 
@@ -53,7 +55,16 @@ var share_button: UIButton
 ## Activity whose host blocks the clipboard): Ctrl+C then copies it.
 var copy_field: LineEdit
 var leave_button: UIButton
+## The night's rules: the host's panel moves and is sent to the backend, a guest's shows what the
+## host set (read only), and both are fixed once the night starts.
+var rules: MatchSettingsPanel
 
+var _rules_title: UILabel
+var _rules_timer: Timer
+var _rules_waiting: MatchSettings
+var _rules_sending := false
+var _rules_editable := false
+var _rules_shown := false
 var _seats: VBoxContainer
 var _scroll: ScrollContainer
 var _seat_rows: Array[Dictionary] = []
@@ -175,6 +186,18 @@ func _ready() -> void:
 	_seats.name = "Seats"
 	_seats.add_theme_constant_override(&"separation", _tokens.space_sm)
 	box.add_child(_seats)
+	_rules_title = _label("THE NIGHT'S RULES", UILabel.Style.OVERLINE)
+	box.add_child(_rules_title)
+	rules = MatchSettingsPanel.new()
+	rules.name = "Rules"
+	rules.custom_minimum_size.x = FIELD_WIDTH
+	rules.changed.connect(_on_rules_changed)
+	box.add_child(rules)
+	_rules_timer = Timer.new()
+	_rules_timer.one_shot = true
+	_rules_timer.wait_time = RULES_DELAY
+	_rules_timer.timeout.connect(send_rules)
+	add_child(_rules_timer)
 	status = _label("", UILabel.Style.BODY)
 	status.name = "Status"
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -302,9 +325,12 @@ func start() -> void:
 	if _busy or not is_host():
 		return
 	_busy = true
+	_rules_timer.stop()
+	_rules_waiting = null
 	_set_enabled(false)
 	_say("Starting the night...")
-	var started := await api.start(lobby)
+	# The rules as the panel shows them now: a change still waiting to be sent goes with the start.
+	var started := await api.start(lobby, rules.settings())
 	if not started["ok"]:
 		_busy = false
 		_set_enabled(true)
@@ -412,6 +438,7 @@ func _show() -> void:
 	link_label.text = page_link
 	link_label.visible = live and page_link != code_label.text
 	_show_seats()
+	_show_rules()
 	var started: bool = live and lobby.get("state") == "started"
 	start_button.visible = live and is_host() and not started
 	play_button.visible = live and started
@@ -427,6 +454,74 @@ func _show() -> void:
 	if not _over:
 		status.text = status_text(lobby, _me) if live else preview_text(preview)
 	_set_enabled(not _busy)
+
+
+## Whether the player can move the panel now.
+func rules_editable() -> bool:
+	return _rules_editable
+
+
+## The rules the lobby holds (the usual ones while the host has set none).
+func lobby_rules() -> MatchSettings:
+	var out := MatchSettings.from_json(lobby.get("settings"))
+	return out if out != null else MatchSettings.new()
+
+
+## The rules on the panel as the web probe reads them: `2x|Auto|20 s`.
+func rules_text() -> String:
+	var shown := rules.settings()
+	return (
+		"%dx|%s|%d s"
+		% [
+			roundi(shown.count_multiplier),
+			MatchSettingsPanel.alive_text(shown.max_alive),
+			roundi(rules.break_slider.value)
+		]
+	)
+
+
+## A control of the host's panel moved: the change is sent once the host stops for a moment.
+func _on_rules_changed(value: MatchSettings) -> void:
+	if not _rules_editable:
+		return
+	_rules_waiting = value
+	_rules_timer.start()
+
+
+## Sends the host's latest change to the backend (the timer calls this; a test calls it to step by
+## hand). One request at a time: a change made while one is on its way follows it.
+func send_rules() -> void:
+	if _rules_waiting == null or _rules_sending or api == null or not is_host():
+		return
+	_rules_sending = true
+	var value := _rules_waiting
+	_rules_waiting = null
+	var answer := await api.set_settings(lobby, value)
+	_rules_sending = false
+	if not answer["ok"]:
+		_say(str(answer.get("text", "")))
+	if _rules_waiting != null:
+		send_rules()
+
+
+## The panel: the host's while the lobby waits, otherwise what the lobby holds.
+func _show_rules() -> void:
+	var live := mode == Mode.LIVE
+	_rules_title.visible = live
+	rules.visible = live
+	if not live:
+		_rules_editable = false
+		_rules_shown = false
+		return
+	var editable: bool = is_host() and lobby.get("state") != "started"
+	# A host's own panel is the truth while they use it: it takes the lobby's rules once, when the
+	# role comes to them (the first host, or the next one after the host left).
+	if not editable or not _rules_editable:
+		rules.set_settings(lobby_rules())
+	if editable != _rules_editable or not _rules_shown:
+		rules.set_editable(editable)
+	_rules_editable = editable
+	_rules_shown = true
 
 
 func _show_seats() -> void:

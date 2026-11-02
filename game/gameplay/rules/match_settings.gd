@@ -125,6 +125,21 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	return out
 
 
+## The settings parsed JSON holds (a ticket's claim, the lobby the backend answers with), or null.
+## JSON has one kind of number, so `max_alive` arrives as a float (12.0): a whole one is made the
+## int `from_dict` wants, any other stays and `from_dict` refuses it.
+static func from_json(held: Variant) -> MatchSettings:
+	if typeof(held) != TYPE_DICTIONARY:
+		return null
+	var data: Dictionary = (held as Dictionary).duplicate()
+	for key: String in KEYS:
+		var value: Variant = data.get(key)
+		if KEYS[key] == TYPE_INT and typeof(value) == TYPE_FLOAT:
+			if is_equal_approx(value, roundf(value)):
+				data[key] = int(value)
+	return from_dict(data)
+
+
 ## The settings a rules snapshot (or WELCOME's) holds; the defaults for a snapshot without any.
 static func from_snapshot(snapshot: Dictionary) -> MatchSettings:
 	var held: Variant = snapshot.get("match_settings")

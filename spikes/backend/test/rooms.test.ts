@@ -37,7 +37,7 @@ async function platform(extra: Record<string, string> = {}, capacity = 3) {
     const response = await app.inject({ method: "POST", url: "/auth/guest", payload: { name }, remoteAddress: ip });
     return { response, headers: { authorization: `Bearer ${response.json().token}` }, user: response.json().user };
   };
-  const call = async (method: "GET" | "POST", url: string, headers: object, payload?: object) =>
+  const call = async (method: "GET" | "POST" | "PUT", url: string, headers: object, payload?: object) =>
     app.inject({ method, url, headers, payload });
   return { app, clock, registry, config, store, beat, guest, call, auth };
 }
@@ -225,5 +225,56 @@ test("a night started with no settings keeps the game's defaults: no settings in
   const second = (await call("POST", "/lobbies", other.headers, {})).json();
   assert.equal((await call("POST", `/lobbies/${second.id}/start`, host.headers, { settings: { count_multiplier: 1, max_alive: 0, break_seconds: 0 } })).statusCode, 403);
   assert.equal((await call("POST", `/lobbies/${lobby.id}/start`, host.headers, { settings: { count_multiplier: 1, max_alive: 0, break_seconds: 0 } })).statusCode, 409);
+  await app.close();
+});
+
+test("the host sets the rules while the lobby waits, the others read them, and the start keeps them", async () => {
+  const { app, guest, call, config } = await platform();
+  const host = await guest("host");
+  const friend = await guest("friend");
+  const lobby = (await call("POST", "/lobbies", host.headers, {})).json();
+  await call("POST", "/lobbies/join-by-code", friend.headers, { code: lobby.code });
+  const put = (who: { headers: object }, body: object) => call("PUT", `/lobbies/${lobby.id}/settings`, who.headers, body);
+
+  const good = { count_multiplier: 3, max_alive: 14, break_seconds: 9 };
+  const set = await put(host, good);
+  assert.equal(set.statusCode, 200);
+  assert.deepEqual(set.json().settings, good);
+  // A member reads them on a poll.
+  assert.deepEqual((await call("GET", `/lobbies/${lobby.id}`, friend.headers)).json().settings, good);
+
+  // A guest cannot change them; a value the game does not take is refused and the rules stay as they were.
+  assert.equal((await put(friend, { ...good, count_multiplier: 1 })).statusCode, 403);
+  for (const bad of [{ ...good, count_multiplier: 9 }, { ...good, extra: 1 }, { count_multiplier: 2 }, []]) {
+    const refused = await put(host, bad);
+    assert.equal(refused.statusCode, 400, JSON.stringify(bad));
+    assert.equal(refused.json().error, "bad_settings");
+  }
+  assert.deepEqual((await call("GET", `/lobbies/${lobby.id}`, host.headers)).json().settings, good);
+  // Unknown lobby, then no sign-in.
+  assert.equal((await call("PUT", "/lobbies/nope/settings", host.headers, good)).statusCode, 404);
+  assert.equal((await call("PUT", `/lobbies/${lobby.id}/settings`, {}, good)).statusCode, 401);
+
+  // Start with no settings of its own keeps what the host set; every ticket carries them.
+  const started = await call("POST", `/lobbies/${lobby.id}/start`, host.headers, {});
+  assert.equal(started.statusCode, 200);
+  assert.deepEqual(started.json().settings, good);
+  for (const who of [host, friend]) {
+    const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, who.headers)).json();
+    assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, good);
+  }
+  // Fixed from the start on.
+  assert.equal((await put(host, { ...good, count_multiplier: 1 })).statusCode, 409);
+  await app.close();
+});
+
+test("settings sent with the start win over the ones set while waiting", async () => {
+  const { app, guest, call } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, {})).json();
+  await call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, { count_multiplier: 3, max_alive: 14, break_seconds: 9 });
+  const mine = { count_multiplier: 2, max_alive: 0, break_seconds: 0 };
+  const started = (await call("POST", `/lobbies/${lobby.id}/start`, host.headers, { settings: mine })).json();
+  assert.deepEqual(started.settings, mine);
   await app.close();
 });

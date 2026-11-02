@@ -313,6 +313,14 @@ export function buildApp(deps: Deps): FastifyInstance {
     return reply.code(204).send();
   });
 
+  // The host sets the night's rules while the lobby waits; the other members read them on their next poll. The body is
+  // the settings themselves: `{count_multiplier, max_alive, break_seconds}`.
+  app.put<{ Params: { id: string }; Body: unknown }>(
+    "/lobbies/:id/settings",
+    { onRequest: requireUser },
+    async (request) => lobbyView(lobbies.setSettings(request.params.id, request.userId, request.body)),
+  );
+
   // The host may send the night's rules (`settings`, the game's `MatchSettings`: count_multiplier, max_alive,
   // break_seconds); they are checked here, kept on the lobby and signed into every ticket of the match.
   app.post<{ Params: { id: string }; Body: { settings?: unknown } | undefined }>(

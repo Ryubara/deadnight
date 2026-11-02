@@ -281,10 +281,14 @@ extension for it). Neither is built; until then game servers are trusted and run
 The host of a night chooses its rules (`MatchSettings`: zombie intensity, alive cap, break) and they travel with
 the ticket, so the game server needs no second channel:
 
+0. `PUT /lobbies/:id/settings` (the host only, while the lobby waits; the body is the three keys) keeps the rules on
+   the lobby as the host moves the panel of the lobby screen; every member reads them in `lobby.settings` on a poll.
+   `403 not_host`, `409 already_started` and `400 bad_settings` otherwise, and nothing changes.
 1. `POST /lobbies/:id/start` takes `{"settings": {"count_multiplier", "max_alive", "break_seconds"}}` from the
-   host. The backend (`src/settings.ts`) accepts exactly those three keys inside the game's bounds (0.25 to 5; a whole
-   0 to 40; 0 or 1 to 120) and answers `400 bad_settings` otherwise, leaving the lobby open. No `settings` is today's
-   game. They are fixed when the match starts; the lobby view shows them.
+   host (without it, the ones set while waiting; without those, today's game). The backend (`src/settings.ts`)
+   accepts exactly those three keys inside the game's bounds (0.25 to 5; a whole 0 to 40; 0 or 1 to 120) and answers
+   `400 bad_settings` otherwise, leaving the lobby open. They are fixed when the match starts; the lobby view shows
+   them.
 2. Every ticket of the match (`/lobbies/:id/ticket`) carries the same `settings` claim, signed with the rest.
 3. The game server's `TicketVerifier.admit` returns them as a `MatchSettings`; the ticket that opens the room gives
    it to `NightHost.match_settings` before the night is built, and every WELCOME carries them from there. A ticket
@@ -294,7 +298,8 @@ the ticket, so the game server needs no second channel:
 `JSON.parse` gives every number as a float, so `max_alive` arrives as `12.0`: the verifier makes a whole one an int
 before `MatchSettings.from_dict` (strict) sees it. The first version of this change missed it and a ticket from the
 backend would have been refused; `tickets.json` now holds a ticket the backend signed with settings. What is not
-done: the Together screen has no settings panel yet (`TogetherApi.create(settings)` takes them).
+done: none. The lobby screen's panel is the host's way in (`LobbyScreen.rules`, `TogetherApi.set_settings`); a
+lobby reads its rules back with `MatchSettings.from_json`, which makes the whole float a whole number the same way.
 
 ## What is not decided or not proven
 

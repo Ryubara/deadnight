@@ -49,7 +49,7 @@ func admit(ticket: String, now: int) -> Dictionary:
 	var settings: MatchSettings = null
 	if claims.has("settings"):
 		var held: Variant = claims["settings"]
-		settings = _settings_of(held)
+		settings = MatchSettings.from_json(held)
 		if settings == null:
 			return {"ok": false, "reason": BAD_SETTINGS}
 	for known: String in _used.keys():
@@ -65,21 +65,6 @@ func admit(ticket: String, now: int) -> Dictionary:
 		"match": claims["matchId"],
 		"settings": settings,
 	}
-
-
-## The settings a ticket's JSON holds, or null. JSON has one kind of number, so `max_alive` arrives
-## as a float (12.0); a whole one is made the int `MatchSettings` wants, any other stays and is
-## refused by `MatchSettings.from_dict`.
-static func _settings_of(held: Variant) -> MatchSettings:
-	if typeof(held) != TYPE_DICTIONARY:
-		return null
-	var data: Dictionary = (held as Dictionary).duplicate()
-	for key: String in MatchSettings.KEYS:
-		var value: Variant = data.get(key)
-		if MatchSettings.KEYS[key] == TYPE_INT and typeof(value) == TYPE_FLOAT:
-			if is_equal_approx(value, roundf(value)):
-				data[key] = int(value)
-	return MatchSettings.from_dict(data)
 
 
 ## The payload of a correctly signed, unexpired ticket, or `{}`: the header is the one the backend

@@ -138,10 +138,25 @@ func refresh(lobby: Dictionary) -> Dictionary:
 	return {"ok": true, "lobby": now} if now["ok"] else now
 
 
-## The host starts the night: a game server is given to the lobby. `{"ok", "lobby"}`.
-func start(lobby: Dictionary) -> Dictionary:
-	var started := await _call("POST", "/lobbies/%s/start" % lobby["id"])
+## The host starts the night: a game server is given to the lobby. `settings` are the rules as the
+## host's panel shows them at that moment (they win over the ones sent while waiting); null keeps
+## the ones the lobby holds. `{"ok", "lobby"}`.
+func start(lobby: Dictionary, settings: MatchSettings = null) -> Dictionary:
+	var started := await _call(
+		"POST",
+		"/lobbies/%s/start" % lobby["id"],
+		{"settings": settings.clamped().to_dict()} if settings != null else null
+	)
 	return {"ok": true, "lobby": started} if started["ok"] else started
+
+
+## The host sets the night's rules while the lobby waits; every member reads them on their next
+## poll (`lobby["settings"]`, null for the usual rules). Refused after the start. `{"ok", "lobby"}`.
+func set_settings(lobby: Dictionary, settings: MatchSettings) -> Dictionary:
+	var answer := await _call(
+		"PUT", "/lobbies/%s/settings" % lobby["id"], settings.clamped().to_dict()
+	)
+	return {"ok": true, "lobby": answer} if answer["ok"] else answer
 
 
 ## Leaves the lobby (the host role passes to the next seat). `{"ok"}`.
