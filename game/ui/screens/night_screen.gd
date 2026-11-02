@@ -34,6 +34,12 @@ static var own_look: CharacterLook
 ## nothing. The game's root sets it, so only the real game keeps a save.
 static var challenge_path := ""
 
+## How a night played alone starts, for a run that is not a person's (`KillBench`): the bot plays,
+## filmed from its shoulder, under this tuning (the defaults when null).
+static var start_mode := Night.Mode.HUMAN
+static var start_tuning: RulesTuning = null
+static var shoulder_camera := false
+
 var night: Night
 
 var _hud: Hud
@@ -95,7 +101,8 @@ func touch_active() -> bool:
 
 func screen_enter() -> void:
 	if join_url == "":
-		await night.start(Night.Mode.HUMAN)
+		night.shoulder_camera = shoulder_camera
+		await night.start(start_mode, Night.SEED, start_tuning)
 		return
 	var url := join_url
 	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN

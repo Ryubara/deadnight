@@ -22,10 +22,19 @@ extends RefCounted
 
 ## The weapons' events this reads; the binding forwards these and no other weapon event.
 const EVENTS: Array[StringName] = [
-	&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished", &"ammo_added"
+	&"weapon_equipped",
+	&"shot_fired",
+	&"reload_started",
+	&"reload_finished",
+	&"ammo_added",
+	&"weapon_upgraded"
 ]
 ## The equipment count of a weapon that has no rounds to count.
 const NO_COUNT := -1
+
+## The prefix a re-cut weapon's name carries ("Re-Cut Revolver"), the tuning's own default; the
+## `weapon_upgraded` event brings the server's name and wins over it.
+static var _recut_prefix := UpgradeTuning.new().name_prefix
 
 
 ## Mirrors one weapons' event for the local player; any other is left alone.
@@ -44,6 +53,11 @@ static func apply(event: Dictionary, state: HudState) -> void:
 		&"reload_started":
 			if weapon_id == state.weapon_id:
 				_show(state, true)
+		&"weapon_upgraded":
+			# A re-cut: the name changes, and the magazine and reserve come back full.
+			state.weapon_names[weapon_id] = String(event["display_name"])
+			_count(state, weapon_id, int(event["ammo"]), int(event["reserve"]))
+			_show(state, false)
 		&"ammo_added":
 			# Rounds for the weapon in hand move the card; for one put away, the equipment slot.
 			_count(state, weapon_id, int(event["ammo"]), int(event["reserve"]))
@@ -51,9 +65,9 @@ static func apply(event: Dictionary, state: HudState) -> void:
 
 
 ## Reads the local player's entry of a frame (`NightServer` frame: `weapon`, `ammo`, `reserve`,
-## `reloading`, `arms`, the id of each weapon carried to `[ammo, reserve]`) into the state. The
-## frame is the server's own word, so it wins over what the events said; a state it already
-## matches announces nothing.
+## `reloading`, `arms`, the id of each weapon carried to `[ammo, reserve, tier]`, the tier 1 for a
+## re-cut weapon) into the state. The frame is the server's own word, so it wins over what the
+## events said; a state it already matches announces nothing.
 static func sync(me: Dictionary, state: HudState) -> void:
 	var weapon := StringName(me.get("weapon", &""))
 	if weapon == &"":
@@ -63,6 +77,8 @@ static func sync(me: Dictionary, state: HudState) -> void:
 	for carried: StringName in arms:
 		var rounds: Array = arms[carried]
 		_count(state, carried, int(rounds[0]), int(rounds[1]))
+		if rounds.size() > 2 and int(rounds[2]) > 0:
+			state.weapon_names[carried] = _recut_prefix + _base_name(carried)
 	if weapon != state.weapon_id and state.weapon_id != &"":
 		state.holstered_id = state.weapon_id
 	state.weapon_id = weapon
@@ -79,6 +95,12 @@ static func equip(weapon_id: StringName, ammo: int, reserve: int, state: HudStat
 	state.weapon_id = weapon_id
 	_count(state, weapon_id, ammo, reserve)
 	_show(state, false)
+
+
+## The name a weapon has as it is shipped, from the catalogue.
+static func _base_name(weapon_id: StringName) -> String:
+	var def := WeaponCatalog.get_def(weapon_id)
+	return def.display_name if def != null else String(weapon_id)
 
 
 static func name_of(weapon_id: StringName, state: HudState) -> String:

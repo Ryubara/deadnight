@@ -248,7 +248,7 @@ func test_the_takes_vary_and_never_repeat_back_to_back() -> void:
 	for _i in 60:
 		Audio.advance(0.3)
 		var player := Audio.play(&"step_own_asphalt") as AudioStreamPlayer
-		var path := (player.stream as AudioStream).resource_path
+		var path := PcmStream.source(player.stream)
 		assert_str(path).is_not_equal(last)
 		last = path
 		seen[path] = true

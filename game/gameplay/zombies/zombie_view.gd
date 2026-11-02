@@ -36,6 +36,8 @@ var _placed := false
 
 
 ## `phase` (0 to 1) starts the walk part-way through its cycle so a crowd does not march in step.
+## A view that was parked (`park`) and is wanted in the same look is set going again as it is, with
+## its model, skeleton and tree: nothing is made.
 func setup(
 	model_scene: PackedScene,
 	id: int,
@@ -49,9 +51,34 @@ func setup(
 	_emerge_seconds = emerge_seconds
 	_telegraph = telegraph_seconds
 	_board_seconds = maxf(board_seconds, 0.05)
-	dress(model_scene, p_look)
+	if _model == null or p_look != look:
+		dress(model_scene, p_look)
+	else:
+		_restart()
 	accumulated = phase * 1.3333  # the walk's length
+	visible = true
 	set_process(false)
+
+
+## Takes the zombie off the lot and keeps its body for the next one of its look (`ZombieHorde` keeps
+## the parked views): hidden, with nothing to draw, move or animate.
+func park() -> void:
+	visible = false
+	tree.active = false
+	_tearing = false
+
+
+## The next life of a parked body: no mode, gait or clip yet, so the first entry starts them.
+func _restart() -> void:
+	tree.active = true
+	_mode = -1
+	_episode = -1
+	_speed_step = -1
+	_tearing = false
+	_emerge_left = 0.0
+	period = 1
+	if _boss:
+		_light_lamp(_model)
 
 
 ## Puts the zombie in another body (its look changed: the legs went). The pose starts over from
