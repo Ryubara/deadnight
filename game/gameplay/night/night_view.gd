@@ -175,6 +175,8 @@ func _on_event(event: Dictionary) -> void:
 			Audio.play(&"special_round")
 		&"projectile_burst":
 			effects.spark(event["point"])
+		&"lure_started":
+			_burn_lure(event)
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
@@ -183,6 +185,13 @@ func _on_event(event: Dictionary) -> void:
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
+
+
+## The flare lies where it landed and burns for as long as the server's lure lasts.
+func _burn_lure(event: Dictionary) -> void:
+	var view := LureView.new()
+	add_child(view)
+	view.burn(event["point"], event["seconds"])
 
 
 func _launch_grenade(event: Dictionary) -> void:

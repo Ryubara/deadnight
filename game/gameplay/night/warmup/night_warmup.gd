@@ -30,6 +30,8 @@ extends Node
 ## Fraction (0 to 1) done and what is being done.
 signal progress(fraction: float, text: String)
 
+## How long the warm-up's sample flare burns (s): long enough to be drawn, then it frees itself.
+const WARMUP_LURE_SECONDS := 0.2
 ## The stage is this high above the lot, out of reach of every lamp.
 const STAGE_HEIGHT := 150.0
 ## How far the zombies in a row stand apart.
@@ -414,6 +416,17 @@ func _replay_effects() -> void:
 	)
 	await _chunk()
 	view.draw_event({"type": &"projectile_burst", "point": at + Vector3(2.0, 0.0, -2.0)})
+	await _chunk()
+	(
+		view
+		. draw_event(
+			{
+				"type": &"lure_started",
+				"point": at + Vector3(2.0, 0.0, -2.0),
+				"seconds": WARMUP_LURE_SECONDS,
+			}
+		)
+	)
 	await _chunk()
 	for def_path in _grenade_defs():
 		var blast := BlastEffect.new()
