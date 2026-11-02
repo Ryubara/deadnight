@@ -89,7 +89,10 @@ func test_releasing_aim_halfway_keeps_the_velocity_and_does_not_snap_back() -> v
 	_rig.aiming = false
 	_rig.step(TICK, 1.0)
 	# Still closing in for a moment (its velocity carries on), then it opens: no jump in either.
-	assert_float(absf(_rig.camera().fov - fov_before)).is_less(1.0)
+	# No jump: a tick moves it less than a tenth of the way between the hip and the aim view.
+	assert_float(absf(_rig.camera().fov - fov_before)).is_less(
+		(_tuning.fov - _tuning.fov_aim) * 0.1
+	)
 	_render(0.8)
 	assert_float(_rig.camera().fov).is_equal_approx(_tuning.fov, 0.05)
 

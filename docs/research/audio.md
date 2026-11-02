@@ -324,9 +324,9 @@ The wall figure combines the 9 dB occlusion trim, the lowered cutoff and the ext
 
 ## Open questions
 
-- Does the web build play many `AudioStreamPlayer3D` voices without crackle on a modest laptop? Not measured: the capture
-  is native. The pool is 32 positional voices; if the web build needs fewer, the limit is one constant
-  (`AudioService.POOL_3D`) and the group limits already keep most nights well under it.
-- `AudioStreamPlayer3D` sample playback on the web (the engine can play short sounds as browser "samples") changes
-  how filters and effects apply. Check when the first web export exists.
-- A real occlusion probe needs the map's walls on their own physics layer; set `Audio.occluder_mask` then.
+- **Answered (#88):** the web build plays 44 voices without crackle, and plays them as samples, which ignore bus effects
+  and the distance filter: [Audio in the browser](web-export.md#audio-in-the-browser). The pool stays at 32 and 12.
+- **Answered (#88):** the lot's walls are on physics layer 2 and the night sets `Audio.occluder_mask` to it
+  (`test_night_occlusion.gd`).
+- The sting's duck (and the rear cue and occlusion low-pass) do not work in the browser. The bus volume does, so the duck
+  could be a bus volume on the web; not done.

@@ -4,7 +4,7 @@
 # A label is added when its condition holds and removed as soon as it stops holding. The logic is
 # .github/scripts/pr_status.py (tested in python/tests/test_pr_status.py); this file only says when to run it:
 #   - a pull request is opened, pushed to or reopened (both labels);
-#   - a workflow that carries a required check finishes (S-ci-failing, for the pull requests whose head it ran on);
+#   - `ci` finishes, unless it was cancelled by a newer push (S-ci-failing, for the pull requests whose head it ran on);
 #   - the default branch moves (every merge can create a conflict in any other pull request, so all are looked at);
 #   - by hand, for a sweep.
 # GitHub computes a pull request's `mergeable` lazily, so the script asks again until it has an answer, within a bound.
@@ -20,9 +20,10 @@ name: pr-status
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
-  # The workflows that carry the required checks; they must be the `name:` of each workflow file.
+  # The workflow whose run is the longest: it finishes after the quick `pr` checks, so its end sees them all (one run
+  # per push instead of one per workflow, #447). It must be the `name:` of the workflow file.
   workflow_run:
-    workflows: [ci, conventions, docs, pr]
+    workflows: [ci]
     types: [completed]
   push:
     branches: [main]
@@ -45,8 +46,9 @@ jobs:
     # A workflow that ran on a push to the default branch has no pull request to label; the push event sweeps instead.
     if: >-
       github.event_name != 'workflow_run' ||
-      github.event.workflow_run.event == 'pull_request' ||
-      github.event.workflow_run.event == 'pull_request_target'
+      (github.event.workflow_run.conclusion != 'cancelled' &&
+      (github.event.workflow_run.event == 'pull_request' ||
+      github.event.workflow_run.event == 'pull_request_target'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
