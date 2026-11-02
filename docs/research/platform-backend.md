@@ -236,6 +236,8 @@ extension for it). Neither is built; until then game servers are trusted and run
   gateway). Prefix stripping and mapping limits were not verified on the live proxy; check on the first real deploy.
   WebSockets work through the proxy; WebRTC and WebTransport do not
   ([networking guide](https://docs.discord.com/developers/activities/development-guides/networking)).
+  The backend serves `/api/...` as `/...` (`stripApiPrefix`, tested), so the `/api` mapping works whether or not the
+  proxy strips the prefix; the game server takes any WebSocket path.
 - **Outbound IP.** Discord warns that a changing egress IP (common on cloud functions) can be banned by Cloudflare
   for up to an hour and recommends a static one for all server traffic
   ([production readiness](https://docs.discord.com/developers/activities/development-guides/production-readiness)).
