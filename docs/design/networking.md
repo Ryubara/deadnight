@@ -31,4 +31,4 @@ newcomers: [the lobby](lobby.md).
 
 ## Open work
 
-Lag compensation for hits (#54), server and bots in CI (#56), latency over Railway and Discord (#52).
+Server and bots in CI (#56), latency over Railway and Discord (#52).
