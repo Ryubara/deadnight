@@ -341,15 +341,21 @@ crawl is gone: the controller adds it only when its file is there.
   (HitReact, Death) over `downed` (Downed_Idle, or the `crawl` blend) over `kneel` (Revive_Kneel) over `split`.
 - **Other players' bodies.** `DownedPose.add_clips(anim_player)` adds the clips to any model on the
   Soldier's rig, so a drawn avatar (RemoteAvatars) plays `Downed_Idle`; `DOWNED_TILT` is only for a body with no animation.
-- **The camera does not frame a downed body yet.** The shoulder rig keeps its standing height and pitch, so the body
-  lies at the bottom edge of the view, cut off. Framing it is the camera's job (lower the pivot and tilt down while
-  down, as the crouch flag does): [#532](https://github.com/Ryubara/deadnight/issues/532).
+- **The camera follows the body down** (#532): the shoulder rig sinks its pivot and tips the view while the player is
+  down, so the whole body is in the picture; the clips do not move the camera. See
+  [shoulder camera](../research/shoulder-camera.md#the-downed-camera).
 - Checked headless (`game/tests/player/test_player_revive.gd`): the clips are in the library, loop, find every bone on
   the player's skeleton, key the legs and no finger. The tree has a node for each. Going down eases (one tick in, the
   weight is under 0.2), the head ends under 60 % of its standing height, and getting up brings it and the weapon back.
   The downed head turns more than 15 degrees over a loop. The kneel presses 4 times in 2 s. A downed player does not
   kneel. Moving at 0.45 m/s while down plays the crawl at rate 1.0 and the heels move. Captures:
   `game/tests/captures/revive_poses.tscn`, in the night, from the shoulder camera, the side and above.
+- Checked over a real socket (`game/tests/net/test_night_revive_online.gd`, the pose test): the downed player's own
+  played body and the other client's drawn avatar of them reach the downed weight 1 from the server's events and
+  frames, the reviver's kneel reaches 1 on both screens while the hold lasts, and a walk-away, a finished hold and a
+  revive each ease their weights back to 0 on both. Captures of the same flow from the two screens:
+  `game/tests/captures/revive_poses_online.tscn` (the window is the downed player's screen, a second viewport is the
+  reviver's; the reviver is a bot that walks over and holds Use).
 
 ## Reloading
 
