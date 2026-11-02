@@ -139,10 +139,9 @@ jobs:
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --self-test
-          folders=$(python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --shard "${{ matrix.shard }}")
-          echo "shard ${{ matrix.shard }}: $folders"
-          # shellcheck disable=SC2086 -- the folders are separate arguments
-          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd $folders -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
+          read -r -a folders < <(python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --shard "${{ matrix.shard }}")
+          echo "shard ${{ matrix.shard }}: ${folders[*]}"
+          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
           # Godot prints a leak after the run has finished, so only the log shows it (see the night step).
           ! grep -E "leaked at exit|still in use" tests.log
       - name: List what leaked at exit
