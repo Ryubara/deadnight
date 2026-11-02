@@ -132,6 +132,8 @@ const BUSES := {
 
 ## Where the file lives: `default_path()`. A test that wants a file of its own points this at one.
 var path := default_path()
+## How many times the file was written (a test counts the writes of a visit to a screen).
+var write_count := 0
 ## True in a browser, which owns its window (window mode is not ours to set). Tests inject it.
 var is_web := OS.has_feature("web")
 ## Takes the window mode instead of the real window when it is valid (a Callable taking a
@@ -248,6 +250,7 @@ func save() -> Error:
 	_dirty = false
 	_idle = 0.0
 	set_process(false)
+	write_count += 1
 	return file.save(path)
 
 

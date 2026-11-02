@@ -262,28 +262,30 @@ func test_the_loadout_panel_shows_the_saved_look_weapon_and_mastery() -> void:
 	assert_bool(panel.wardrobe.look.equals(look)).is_true()
 	assert_str(panel.mastery_text()).starts_with("Mastery 1 of 10")
 	panel.selector().select(panel.weapons().find(&"rifle"))
-	assert_str(String(Settings.get_value(SettingsService.SHOWCASE_WEAPON))).is_equal("rifle")
+	# Held while the tab is open; the file changes when the player leaves (test_loadout_keeps_choices).
+	assert_str(String(Settings.get_value(SettingsService.SHOWCASE_WEAPON))).is_equal("shotgun")
 	assert_str(panel.mastery_text()).starts_with("Mastery 2 of 10")
+	shell.show_tab(MenuTab.Id.PLAY)
+	assert_str(String(Settings.get_value(SettingsService.SHOWCASE_WEAPON))).is_equal("rifle")
 
 
-func test_a_change_in_the_wardrobe_shows_on_the_stage_and_leaving_unsaved_puts_it_back() -> void:
-	var saved := CharacterLook.from_preset(1)
-	LookStore.save_look(saved)
+func test_a_change_in_the_wardrobe_shows_on_the_stage_and_leaving_keeps_it() -> void:
+	LookStore.save_look(CharacterLook.from_preset(1))
 	var shell := await _open()
 	shell.show_tab(MenuTab.Id.LOADOUT)
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 	panel.wardrobe.apply_preset(5)
 	assert_bool(shell.view.stage.hero.look.equals(CharacterLook.from_preset(5))).is_true()
 	shell.show_tab(MenuTab.Id.PLAY)
-	assert_bool(shell.view.stage.hero.look.equals(saved)).is_true()
+	assert_bool(shell.view.stage.hero.look.equals(CharacterLook.from_preset(5))).is_true()
+	assert_bool(LookStore.load_look().equals(CharacterLook.from_preset(5))).is_true()
 
 
-func test_saving_in_the_wardrobe_writes_the_look_the_stage_then_keeps() -> void:
+func test_leaving_the_loadout_tab_writes_the_look_the_stage_then_keeps() -> void:
 	var shell := await _open()
 	shell.show_tab(MenuTab.Id.LOADOUT)
 	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
 	panel.wardrobe.apply_preset(4)
-	panel.wardrobe.save()
 	shell.show_tab(MenuTab.Id.PLAY)
 	assert_bool(LookStore.load_look().equals(CharacterLook.from_preset(4))).is_true()
 	assert_bool(shell.view.stage.hero.look.equals(CharacterLook.from_preset(4))).is_true()
