@@ -31,6 +31,11 @@ func _ready() -> void:
 	prompt_layer.layer = TouchRotatePrompt.LAYER
 	prompt_layer.add_child(TouchRotatePrompt.new())
 	add_child(prompt_layer)
+	# The same for a game in a frame without the focus: "click once to use a controller".
+	var hint_layer := CanvasLayer.new()
+	hint_layer.layer = ControllerHint.LAYER
+	hint_layer.add_child(ControllerHint.new())
+	add_child(hint_layer)
 	await get_tree().process_frame
 	if KillBench.requested():
 		add_child(KillBench.new())
