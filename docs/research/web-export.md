@@ -52,6 +52,13 @@ Things that were not obvious:
 - Godot reads input once per frame: a key tap shorter than a frame can be lost, so keys are held for 150 ms.
 - After Back from a screen, nothing has focus; the router spends the first arrow or accept key giving it focus. The
   run presses Down, Up, Up to get back to Play.
+- **A virtual gamepad** (`tools/web_smoke/pad_pause.py`, #494): an init script gives the page a `navigator.getGamepads`
+  with a standard-mapping pad (17 buttons, 4 axes; Start is button 9, the right stick axes 2 and 3) and the probe holds
+  a button for 0.9 s, since a software renderer reads a pad once a frame. A real `GamepadEvent` cannot be built from
+  a plain object, and the engine lists the pad without one. `requestPointerLock` is stubbed, which is also a pad
+  player's real case: a gamepad button is no user gesture, so the page never gets the lock. The probe's
+  `pad_count`, `pad_start_presses` and `pause_presses` come from the `Input` singleton, so they show a press that a
+  node ate on the way. Before the fix both counted 1 and the night did not pause ([cause](gamepad-devices.md)).
 - Pointer lock works in headless Chromium (`document.pointerLockElement` is the canvas after the click that starts the
   night), but on Linux (the CI runner) every synthetic `page.mouse.move` under lock arrives as a motion and then the
   opposite motion (+15 px, -15 px), which cancel, so Playwright cannot turn the view there; Windows does not do it.
@@ -325,6 +332,17 @@ So in the browser the sting's duck, the rear cue, the occlusion low-pass and the
 **not applied**, and the settings sliders are. The spatial level also differs between the two (32 positional voices read
 -27.7 dBFS as samples and -24.0 as streams), so the mix was tuned for streams and the browser plays a slightly different
 one.
+
+**What the game does about it (#423).** The duck was an `AudioEffectAmplify` on the ducked buses; it is now the volume of
+a `Duck` bus that Effects and Ambience send to, which samples honour (measured: -11.9 dB asked -12). The occlusion and the
+rear cue keep their low-pass and, where it is not heard, take a few dB of volume as well (`AudioService.filters_apply`).
+`audio_load.py` plays one bright loop through the real service (`svc_open`, `svc_ducked`, `svc_occluded`, `svc_behind`,
+`svc_rear`) and prints each against the open voice; `--playback stream` turns the project's default player type to
+streams (`general/default_playback_type.web=0` in the `[audio]` section: a key written with its `audio/` prefix is
+ignored, which the earlier `--latency` option did too and is fixed) to show what desktop does. Before and after, in the
+headless shell: the duck +0.4 to -11.9 dB, a wall -8.6 to -12.9 (streams -21.9), the rear cue +0.4 to -2.9 (streams
+-8.3). The player type enum of the project setting (0 stream, 1 sample) is not `AudioServer.PlaybackType` (1 stream, 2
+sample): compare against the setting's own values.
 
 **Voices and crackle** (the same voices as the real pool: 8, 16, 32 positional, then 32 with 12 flat; a steady hum so a
 silent block is a dropout; Chrome 156 with a GPU, and the headless shell with a software renderer; blocks counted

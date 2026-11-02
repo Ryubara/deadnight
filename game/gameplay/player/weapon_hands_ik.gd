@@ -9,18 +9,28 @@ extends SkeletonModifier3D
 ## IK reaches both hands there. Pure geometry on the current pose: no randomness, no clock.
 
 const RIGHT: Array[String] = ["UpperArm.R", "LowerArm.R", "Index1.R"]
+## The bone the stance turns (both shoulders hang from it).
+const CHEST := "Torso"
 const LEFT: Array[String] = ["UpperArm.L", "LowerArm.L", "Index1.L"]
 ## Points the elbows out and down: this fraction of the shoulder width, plus straight down.
 const ELBOW_OUT := 0.45
 ## How far the support hand's bone sits behind the fore-end it holds, in metres.
 const SUPPORT_HAND_BACK := 0.07
+## How much of the view's pitch the chest takes when the player looks up or down (#110): the
+## upper body leans with the aim, the arms take the rest; at most `CHEST_PITCH_MAX` radians.
+const CHEST_PITCH_SHARE := 0.5
+const CHEST_PITCH_MAX := deg_to_rad(40.0)
 ## How far ahead of the camera the barrel meets the crosshair's ray, in metres.
 const CONVERGE_DISTANCE := 12.0
 
 ## The weapon's hold (size, rest and support point).
 var hold: WeaponHold
-## The hold of the weapon on the hand bone (the kit's grip), in the bone's space.
+## The hold of the weapon on the hand bone (the weapon's `HandGrip.hold`, or the kit's), in the
+## bone's space.
 var hand_hold := Transform3D.IDENTITY
+## The weapon's grip: where the left hand bone goes on it and how it is turned (`left_hand`, solved
+## from the model's `Support` socket), or null (the left hand reaches `hold.support`).
+var grip: HandGrip
 ## Where the weapon points: yaw and pitch in radians (the camera's).
 var aim_yaw := 0.0
 var aim_pitch := 0.0
@@ -40,6 +50,22 @@ var recoil := 0.0
 ## Metres the weapon kicks back at full recoil, and degrees it kicks up.
 var recoil_back := 0.05
 var recoil_up_deg := 4.0
+## The weapon's pose and the left hand bone's the last modification reached for, in the
+## skeleton's space (read them with `solved_target()` and `solved_left()`).
+var _solved_target := Transform3D.IDENTITY
+var _solved_left := Transform3D.IDENTITY
+
+
+## The weapon's pose the last modification reached for, in the world where the body is now (for
+## tests: after the frame the skeleton hands back the clip's pose, and `weapon_target` reads that,
+## without the stance's turn).
+func solved_target() -> Transform3D:
+	return get_skeleton().global_transform * _solved_target
+
+
+## The left hand bone's pose the last modification reached for, likewise.
+func solved_left() -> Transform3D:
+	return get_skeleton().global_transform * _solved_left
 
 
 ## The aim basis: the camera's, whose -Z is the crosshair ray.
@@ -68,6 +94,14 @@ func support_point(target: Transform3D) -> Vector3:
 	return target.origin + target.basis * (hold.support * _scale())
 
 
+## The left hand bone's world pose on the weapon whose node is at `weapon` (scale included; the
+## grip's `left_hand` is in the model's own space): rotation orthonormal, origin where the bone
+## goes.
+func left_hand_on(weapon: Transform3D) -> Transform3D:
+	var pose := weapon * grip.left_hand
+	return Transform3D(pose.basis.orthonormalized(), pose.origin)
+
+
 func _scale() -> float:
 	return hold.model_scale * absf(get_skeleton().global_basis.get_scale().x)
 
@@ -76,7 +110,11 @@ func _process_modification() -> void:
 	var skeleton := get_skeleton()
 	if skeleton == null or hold == null or not hold.shouldered:
 		return
+	if hold.stance_turn_deg != 0.0:
+		_turn_chest(skeleton, hold.stance_turn_deg)
+	_pitch_chest(skeleton)
 	var target := weapon_target()
+	_solved_target = skeleton.global_transform.affine_inverse() * target
 	var right_shoulder := _world(skeleton, skeleton.find_bone(RIGHT[0])).origin
 	var left_shoulder := _world(skeleton, skeleton.find_bone(LEFT[0])).origin
 	var side := (right_shoulder - left_shoulder).normalized()
@@ -85,11 +123,47 @@ func _process_modification() -> void:
 	var hand_basis := target.basis * hand_hold.basis.inverse()
 	var hand_origin := target.origin - hand_basis * (hand_hold.origin * model_scale)
 	_reach(skeleton, RIGHT, hand_origin, side * ELBOW_OUT + Vector3.DOWN, hand_basis, false)
-	# The left hand: on the fore-end.
-	if hold.support != Vector3.ZERO:
+	# The left hand: on the fore-end, turned to hold it (the grip's), or reaching the support point.
+	# It goes where the weapon is now, after the right arm (which may fall a little short of the
+	# target), so the two hands always hold the same weapon.
+	if grip != null and grip.has_left:
+		var right_hand := (
+			skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone(RIGHT[2]))
+		)
+		var weapon := right_hand * hand_hold.scaled_local(Vector3.ONE * hold.model_scale)
+		var left := left_hand_on(weapon)
+		_solved_left = skeleton.global_transform.affine_inverse() * left
+		_reach(skeleton, LEFT, left.origin, -side * ELBOW_OUT + Vector3.DOWN, left.basis, false)
+	elif hold.support != Vector3.ZERO:
 		_reach(
 			skeleton, LEFT, support_point(target), -side * ELBOW_OUT + Vector3.DOWN, Basis(), true
 		)
+
+
+## Turns the chest `degrees` about the world's up, the left shoulder forward (toward the aim): a
+## two-handed gun's stance, so the short left arm reaches the fore-end. The right shoulder goes back
+## with it, and the weapon's place is taken from it after the turn.
+func _turn_chest(skeleton: Skeleton3D, degrees: float) -> void:
+	var chest := skeleton.find_bone(CHEST)
+	var left := _world(skeleton, skeleton.find_bone(LEFT[0])).origin
+	var right := _world(skeleton, skeleton.find_bone(RIGHT[0])).origin
+	var ahead := -aim_basis().z
+	# The turn's sense that brings the left shoulder forward along the aim.
+	var across := left - right
+	var sense := signf(Vector3.UP.dot(across.cross(ahead)))
+	var turn := Basis(Vector3.UP, deg_to_rad(degrees) * sense)
+	_set_world_basis(skeleton, chest, turn * _world(skeleton, chest).basis)
+
+
+## Leans the chest with the view's pitch (a share of it, clamped), about the aim's right: looking up
+## the upper body tips back, looking down it bends over the weapon. Pure geometry on `aim_pitch`.
+func _pitch_chest(skeleton: Skeleton3D) -> void:
+	var lean := clampf(aim_pitch * CHEST_PITCH_SHARE, -CHEST_PITCH_MAX, CHEST_PITCH_MAX)
+	if is_zero_approx(lean):
+		return
+	var chest := skeleton.find_bone(CHEST)
+	var turn := Basis(aim_basis().x.normalized(), lean)
+	_set_world_basis(skeleton, chest, turn * _world(skeleton, chest).basis)
 
 
 ## Two-bone IK in the world: the arm `bones` (upper, lower, hand) so the hand bone reaches
