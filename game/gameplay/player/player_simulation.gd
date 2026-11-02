@@ -35,7 +35,9 @@ static func simulate(
 	state.crouching = _next_stance(body, state, command, tuning)
 	_set_stance(body, state.crouching, tuning)
 	state.aiming = command.aim
-	if command.fire:
+	if command.fire and not command.aim:
+		# Only a shot from the hip starts the hip-fire hold; one fired while aiming leaves none
+		# behind, so letting go of the aim lets go of the zoom at once (#428).
 		state.fire_age = 0.0
 	else:
 		state.fire_age = minf(state.fire_age + delta, PlayerMotionState.NEVER_FIRED)

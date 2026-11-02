@@ -27,6 +27,9 @@ static var join_as_bot := false
 ## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
 ## settings file); null wears the saved look.
 static var own_look: CharacterLook
+## Where the player's challenges are kept; empty (tests, captures) counts nothing and writes
+## nothing. The game's root sets it, so only the real game keeps a save.
+static var challenge_path := ""
 
 ## How a night played alone starts, for a run that is not a person's (`KillBench`): the bot plays,
 ## filmed from its shoulder, under this tuning (the defaults when null).
@@ -63,6 +66,8 @@ func _ready() -> void:
 	night.warm_up = warm_up_enabled
 	night.touch_active = touch_active
 	night.own_look = own_look
+	if challenge_path != "":
+		night.challenge_board = ChallengeBoard.open(challenge_path)
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)

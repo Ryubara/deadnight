@@ -90,6 +90,15 @@ func show_attack(player_id: int, weapon: WeaponDef) -> void:
 		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire")
 
 
+## The shooter's weapon tilts down for the `seconds` of its reload and comes back up (every client
+## draws every player's reload from the same `reload_started` event).
+func show_reload(player_id: int, seconds: float) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.reload(seconds)
+
+
 ## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
 ## begins (the circuits on, the tank full), and following every circuit, the tank and the frames.
 func show_lamps(lot: Node, fuel: FuelTuning) -> void:
@@ -180,6 +189,8 @@ func _on_event(event: Dictionary) -> void:
 			began = PerfProbe.begin()
 			_show_shot(event)
 			PerfProbe.end(&"fx.shot", began)
+		&"reload_started":
+			show_reload(event["shooter_id"], event["seconds"])
 		&"damage_dealt":
 			began = PerfProbe.begin()
 			if event["melee"]:
