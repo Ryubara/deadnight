@@ -19,12 +19,31 @@ const DEVICE := 0x7468
 
 ## True while the touch layer is up (set by `TouchControls`).
 static var layer_up := false
+## How many look motions the layer has sent since `take_sent` last asked (a browser probe reads it
+## per drawn frame to see how the drags reach the frames, #598).
+static var sent := 0
+## ... and how many look samples the fingers made.
+static var samples := 0
 ## The look numbers; `TouchControls` reads the same resource for the stick and the buttons.
 static var tuning: TouchTuning = load(TouchTuning.SHIPPED_PATH)
 static var mouse_radians_per_pixel: float = (
 	(load("res://gameplay/player/player_tuning_default.tres") as PlayerTuning)
 	. mouse_radians_per_pixel
 )
+
+
+## The count of look motions sent since the last call, then back to 0.
+static func take_sent() -> int:
+	var count := sent
+	sent = 0
+	return count
+
+
+## The count of look samples the fingers made since the last call, then back to 0.
+static func take_samples() -> int:
+	var count := samples
+	samples = 0
+	return count
 
 
 ## `relative` is the drag since the last event (canvas units), `speed` the finger's speed in canvas
