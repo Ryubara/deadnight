@@ -205,8 +205,8 @@ stride sooner, a crouched creep slower, standing and flight are silent.
 | Read from | the body's `footstep` signal, with its crouch flag | the frames' positions (`FootStride`): a body only drawn from frames has no foot events |
 
 - **Subtle by design, and measured** ([research](../research/audio.md#footsteps-239)): in the capture a walk's step
-  stands 5 dB over the night's bed (7 dB at a sprint, 2.5 dB crouched) and 12 dB under the pistol's shots; it adds 1.4 LU
-  to the bed's loudness. Your own steps are meant to be felt more than listened to, so nobody mutes them.
+  stands 4.6 dB over the night's bed (6 dB at a sprint, 2 dB crouched) and 12 dB under the pistol's shots; a walk adds
+  1.1 LU to the bed's loudness. Your own steps are meant to be felt more than listened to, so nobody mutes them.
 - **The pace sets the level** (`FootstepSounds.level_db`): 25 dB per decade of speed from the run pace (4.8 m/s), so a
   sprint (7 m/s) is 4 dB up and a crouched creep (2.4 m/s) 7.5 down, with 4 dB more when the body says it is crouched.
   Each step also wanders 1.5 dB either way.

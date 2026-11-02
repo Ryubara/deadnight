@@ -228,21 +228,21 @@ and `FootSurface` (a ray to the floor and its material's pattern texture) for th
 
 **Measured** (`game/tests/captures/audio_footsteps.tscn`, Movie Maker mix, `tools/audio/step_levels.py`; shoulder
 camera, the body's `local_input` and `capture_mouse` off; the bed is the crickets, the highway and the score at the
-start of a night, median 100 ms RMS -36.4 dBFS):
+start of a night, median 100 ms RMS -35.5 dBFS):
 
 | What | Over the bed, 100 ms RMS | Over the bed, peak | Mix LUFS of its 7 s |
 | --- | ---: | ---: | ---: |
-| Standing, the bed alone | 0 | 0 | -32.4 |
-| Your own walk on asphalt (4.8 m/s) | +5.1 dB | +7.0 dB | -31.0 |
-| Your own sprint (7 m/s) | +7.1 dB | +10.8 dB | -29.6 |
-| Your own crouched creep (2.4 m/s) | +2.5 dB | +3.9 dB | -32.8 |
-| Your own walk on gravel | +4.9 dB | +7.9 dB | -30.7 |
-| A teammate passing at 6 m (the loudest of 20 steps) | +4.6 dB | | -31.6 |
-| The starting pistol, 17 shots in 6 s | +17.5 dB | +18.7 dB | -20.6 |
+| Standing, the bed alone | 0 | 0 | -31.8 |
+| Your own walk on asphalt (4.8 m/s) | +4.6 dB | +7.2 dB | -30.7 |
+| Your own sprint (7 m/s) | +6.2 dB | +10.7 dB | -29.7 |
+| Your own crouched creep (2.4 m/s) | +2.2 dB | +1.6 dB | -32.7 |
+| Your own walk on gravel | +4.3 dB | +7.6 dB | -30.4 |
+| A teammate passing at 6 m (the loudest of 20 steps) | +4.2 dB | | -31.4 |
+| The starting pistol, 17 shots in 6 s | +16.5 dB | +18.8 dB | -20.7 |
 
-So a walk's steps sit 12 dB under the pistol's shots and the walk adds 1.4 LU to the night; a sprint is 2 dB louder
-and a crouch 2.6 dB quieter than a walk (the level model asks for 4 and 7.5 dB: the bed fills part of every 100 ms
-window). The mix peaked at -5.5 dBFS with no clipped sample.
+So a walk's steps sit 12 dB under the pistol's shots and the walk adds 1.1 LU to the night; a sprint is 1.6 dB louder
+and a crouch 2.4 dB quieter than a walk (the level model asks for 4 and 11.5 dB: the bed fills part of every 100 ms
+window, and a crouch also steps less often). The mix peaked at -5.8 dBFS with no clipped sample.
 
 **A whole night** (`audio_footsteps.tscn -- --autopilot --seconds=90`: the bot fights through the first rounds, shoulder
 camera): 93 s, integrated -27.9 LUFS, peak -4.2 dBFS, no clipped sample; 81 of the player's own steps, all asphalt,
