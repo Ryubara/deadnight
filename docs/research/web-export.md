@@ -113,6 +113,12 @@ Why this way, and not another:
 - The deploy needs one secret, a Railway **project token**, which can deploy to that one project and environment and
   nothing else.
 
+The game server is deployed from the same job file (`deploy-server`, `deploy/server/deploy.sh deadnight-server`): it
+builds the image from the commit `godot` tested (with the LFS files, since the server imports the whole project) and
+waits for the deployment to be `SUCCESS`. Both deploys use the one `RAILWAY_TOKEN`. They finish a few minutes apart, and
+a client of one protocol version is turned away by a server of another for that time
+([Multiplayer](multiplayer.md)).
+
 ### Setting it up (once, the maintainer)
 
 A project token cannot be created by the agent's login (`projectTokenCreate` answers "Not Authorized" to the CLI's

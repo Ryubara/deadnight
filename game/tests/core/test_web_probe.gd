@@ -35,3 +35,18 @@ func test_a_running_night_reports_round_and_zombies() -> void:
 	assert_int(data["remaining"]).is_equal(17)
 	assert_int(data["alive"]).is_equal(3)
 	assert_bool(data["touch"]).is_false()
+
+
+func test_an_online_night_reports_the_players_and_the_round_trip() -> void:
+	var screen := auto_free(NightScreen.new()) as NightScreen
+	screen.night = auto_free(Night.new()) as Night
+	screen.night.state = ClientState.new()
+	screen.night.state.player_id = 2
+	screen.night.state.frame = {"round": 1, "players": {1: {}, 2: {}, 3: {}}}
+	var link := WebSocketLink.new()
+	link.rtt_ms = 81.0
+	screen.night.link = link
+	var data := WebProbe.snapshot(screen)
+	assert_int(data["players"]).is_equal(3)
+	assert_int(data["player_id"]).is_equal(2)
+	assert_float(data["rtt_ms"]).is_equal(81.0)

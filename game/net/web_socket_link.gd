@@ -17,6 +17,8 @@ signal closed
 
 ## Seconds between pings.
 const PING_EVERY := 0.5
+## A gap between ticks over this many milliseconds is a stall.
+const STALL_MS := 100.0
 
 var player_id := 0
 var tick_rate := 60
@@ -31,10 +33,13 @@ var rtt_ms := -1.0
 var rtt_samples: Array[float] = []
 ## The server step of the newest tick heard.
 var server_step := 0
+## Milliseconds between one TICK arriving and the next (30 a second is 33.3), since `take_stats`.
+var tick_gaps_ms: Array[float] = []
 
 var _ws := WebSocketPeer.new()
 var _active := false
 var _was_open := false
+var _last_tick_usec := 0
 var _frame: Dictionary = {}
 var _next_ping := 0.0
 
@@ -47,6 +52,37 @@ func connect_to(url: String) -> Error:
 
 func is_open() -> bool:
 	return _active and _ws.get_ready_state() == WebSocketPeer.STATE_OPEN
+
+
+## The round trips (ping and pong) and the gaps between ticks since the last call, each as
+## `{n, mean, p95, max}` in milliseconds; the gaps also say how many were `stalls` (over 100 ms,
+## three ticks late). Clears them.
+func take_stats() -> Dictionary:
+	var out := {"rtt": _summary(rtt_samples), "gaps": _summary(tick_gaps_ms)}
+	var stalls := 0
+	for gap in tick_gaps_ms:
+		if gap > STALL_MS:
+			stalls += 1
+	out["gaps"]["stalls"] = stalls
+	rtt_samples.clear()
+	tick_gaps_ms.clear()
+	return out
+
+
+static func _summary(samples: Array[float]) -> Dictionary:
+	if samples.is_empty():
+		return {"n": 0, "mean": 0.0, "p95": 0.0, "max": 0.0}
+	var sorted := samples.duplicate()
+	sorted.sort()
+	var total := 0.0
+	for value in sorted:
+		total += value
+	return {
+		"n": sorted.size(),
+		"mean": snappedf(total / sorted.size(), 0.1),
+		"p95": snappedf(sorted[mini(int(sorted.size() * 0.95), sorted.size() - 1)], 0.1),
+		"max": snappedf(sorted[-1], 0.1),
+	}
 
 
 func is_welcomed() -> bool:
@@ -125,6 +161,10 @@ func _on_tick(data: PackedByteArray) -> void:
 	var tick := NetWire.read_tick(data)
 	if tick.is_empty():
 		return
+	var now := Time.get_ticks_usec()
+	if _last_tick_usec > 0:
+		tick_gaps_ms.append((now - _last_tick_usec) / 1000.0)
+	_last_tick_usec = now
 	ticks_in += 1
 	server_step = tick["step"]
 	var events: Array = tick["events"]

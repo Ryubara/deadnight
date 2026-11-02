@@ -1,8 +1,7 @@
 # Testing multiplayer
 
 How to put two or more players in one night and look at it. The design is in [Multiplayer](multiplayer.md); this page
-is the commands. Everything runs on one machine today; a game server on Railway comes later (see
-[What is not here yet](#what-is-not-here-yet)).
+is the commands. The game also has a public server on Railway (see [Playing online today](#playing-online-today)).
 
 All commands run from the repository root with the pinned Godot (never a Steam copy):
 
@@ -10,6 +9,35 @@ All commands run from the repository root with the pinned Godot (never a Steam c
 godot=$(uv run --project ../gdstudio/python gds tool path godot)        # bash
 $godot = uv run --project ..\gdstudio\python gds tool path godot        # PowerShell
 $godot --headless --path game --import                                  # once, and after pulling
+```
+
+## Playing online today
+
+A game server runs on Railway (project `gdstudio-net-test`, service `deadnight-server`), and every merge to `main` deploys
+it next to the web build. To play:
+
+1. Open the web build, <https://web-production-f401d1.up.railway.app>, and wait for the menu.
+2. Choose **Join** (the second item). The address field already holds
+   **`wss://deadnight-server-production.up.railway.app`** on the web; on the desktop type it (the field starts at
+   `ws://localhost:8910`, this machine's own server).
+3. Press **Join**. The first player to arrive starts the night, up to four share it, and a player who comes later joins
+   it where it is. Joining builds the lot and warms it up first (about 35 s in Chrome with a graphics card).
+
+From a desktop build or the editor, the same without the menu: `godot --path game -- --connect
+wss://deadnight-server-production.up.railway.app`, and `--bot` lets the autopilot play (`--headless` too, no window).
+`--report [seconds]` makes a client print a JSON line every few seconds (`player_id`, the `players` in the frame, the
+zombies, points, the round trip and the gaps between ticks), which is how a headless run is read.
+
+A web build and the server must speak the same protocol version (`NetWire.VERSION`), and a merge deploys both, a few
+minutes apart: for those minutes Join may answer that the server speaks another version (or that the game is out of
+date, when the server is the newer: reload). To read what the server sees: `railway logs --service deadnight-server`
+(one JSON line a `joined`, `left` and every ten seconds a `stats`).
+
+`tools/web_smoke/online.py` does the same in headless Chromium: the menu, Join, the address, then a night of walking and
+shooting, reading the page's probe (`players`, `alive`, `rtt_ms`) every second:
+
+```text
+uv run --with playwright==1.64.1 python tools/web_smoke/online.py <web URL or build/web> <server address> <out folder> --seconds 90 --gpu
 ```
 
 ## Two desktop windows on one machine
@@ -115,12 +143,8 @@ Bigger figures (more zombies, four players, the manual run's server log) are in 
 
 ## What is not here yet
 
-- **A game server on Railway.** The spike's image (`spikes/net/Dockerfile`) ran there for the measurements; the real
-  server is the same command (`godot --headless --path game -- --server`, port from `$PORT`) and needs its own image
-  built from `game/`. Joining one is the same address in the Join field (`wss://<service>.up.railway.app`), and in the
-  web build `index.html?connect=wss://...`.
-- **Web clients.** The link is `WebSocketPeer`, which works in the web export; it has not been tried against a server
-  there.
+- **The Discord proxy.** The server is reached directly; through a Discord Activity it goes through Discord's proxy,
+  which waits for the Activity setup ([#287](https://github.com/Ryubara/deadnight/issues/287)).
 - **Reconnect** after a dropped socket ([#53](https://github.com/Ryubara/deadnight/issues/53)), hit rewind
   ([#54](https://github.com/Ryubara/deadnight/issues/54)), the tighter packing of many zombies and projectiles
   ([#57](https://github.com/Ryubara/deadnight/issues/57)), and a lobby that picks the server (the
