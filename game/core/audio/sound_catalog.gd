@@ -9,6 +9,9 @@ const BUS_EFFECTS := &"Effects"
 const BUS_UI := &"UI"
 const BUS_VOICE := &"Voice"
 const BUS_AMBIENCE := &"Ambience"
+## The level of the local player's own step at a walk, dB on the file (peak -6 dBFS): measured in
+## `docs/research/audio.md` (footsteps) to sit well under the beds' swell and the guns.
+const STEP_OWN_DB := -14.0
 
 ## How many voices a group may hold at once. Past it a louder or higher-priority sound takes the
 ## weakest voice; anything else is dropped.
@@ -18,6 +21,7 @@ const GROUP_LIMITS := {
 	&"gun": 12,
 	&"reload": 4,
 	&"step": 8,
+	&"step_own": 2,
 	&"zombie_voice": 6,
 	&"zombie_boss": 2,
 	&"zombie_step": 5,
@@ -93,17 +97,29 @@ static func _build() -> void:
 		"priority": 20,
 		"pitch_semitones": 1.5,
 		"max_distance": 30.0,
-		"unit_size": 4.0
+		"unit_size": 4.0,
+		"near_cap_db": 0.0
 	}
 	_add(
 		&"step_asphalt",
 		"steps/asphalt_%d.ogg",
-		4,
-		_with(step, {"volume_db": -5.0, "cooldown": 0.12})
+		8,
+		_with(step, {"volume_db": -2.0, "cooldown": 0.0})
 	)
 	_add(
-		&"step_gravel", "steps/gravel_%d.ogg", 4, _with(step, {"volume_db": -6.0, "cooldown": 0.12})
+		&"step_gravel", "steps/gravel_%d.ogg", 8, _with(step, {"volume_db": -3.0, "cooldown": 0.0})
 	)
+	# The local player's own feet (`FootstepSounds`): flat, from the softer set, its own group so a
+	# crowd's feet never take it. `volume_db` is the walking level, `STEP_OWN_DB`.
+	var own_step := {
+		"group": &"step_own",
+		"priority": 25,
+		"pitch_semitones": 1.0,
+		"volume_db": STEP_OWN_DB,
+		"max_distance": 30.0,
+	}
+	_add(&"step_own_asphalt", "steps/own_asphalt_%d.ogg", 8, own_step)
+	_add(&"step_own_gravel", "steps/own_gravel_%d.ogg", 8, own_step)
 
 	var zombie := {
 		"group": &"zombie_voice", "pitch_semitones": 1.5, "unit_size": 6.0, "rear_cue": true

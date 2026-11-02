@@ -31,6 +31,8 @@ const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
 const START_NIGHT := &"start_night"
+## A player came back on a new connection: `resync` {player_id} tells it the looks again.
+const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
 const LOOK := &"look"
 ## What the look server answers, as an event for one client: `look_packet` {to, packet}, the bytes
@@ -164,6 +166,9 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			rules.apply(RulesAction.start())
 		LOOK:
 			looks.receive(action["player_id"], action["packet"])
+		RESYNC:
+			if _bodies.has(action["player_id"]):
+				looks.sync(action["player_id"])
 		COMMAND:
 			submit(
 				from_id if from_id > 0 else action.get("player_id", 1),

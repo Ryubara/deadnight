@@ -33,9 +33,9 @@ func test_a_gun_close_up_is_held_to_its_own_level() -> void:
 
 
 func test_a_sound_without_a_cap_keeps_the_engines_ceiling() -> void:
-	var def := SoundCatalog.get_def(&"step_asphalt")
+	var def := SoundCatalog.get_def(&"board_tear")
 	assert_float(def.near_cap_db).is_equal(INF)
-	var player := _audio.play(&"step_asphalt", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
+	var player := _audio.play(&"board_tear", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
 	assert_object(player).is_not_null()
 	assert_float(player.max_db).is_equal(3.0)
 
