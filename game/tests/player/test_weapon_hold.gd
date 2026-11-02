@@ -18,6 +18,10 @@ const AIM_TOE_IN_DEG := 5.0
 const CONVERGE_TOLERANCE_DEG := 1.0
 ## How far away the crosshair's target is for the convergence check.
 const TARGET_DISTANCE := WeaponHandsIK.CONVERGE_DISTANCE
+## The catalogue's guns, each with its own model and hold, and what is held in one hand.
+const GUNS: Array[StringName] = [&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun"]
+## The weapons given a size other than the rule's (docs/design/weapon-hold.md, "The size rule").
+const SIZE_EXCEPTIONS := {&"pistol": 1.6, &"flare_gun": 1.6}
 
 var _runner: GdUnitSceneRunner
 var _player: Player
@@ -64,6 +68,11 @@ func _equip(weapon_class: StringName) -> void:
 	await _ticks(60)
 
 
+func _equip_weapon(weapon_id: StringName) -> void:
+	_animation.equip(weapon_id)
+	await _ticks(60)
+
+
 func _bone_position(bone: String) -> Vector3:
 	return _bones[bone]
 
@@ -89,6 +98,20 @@ func test_one_rule_sizes_every_weapon() -> void:
 		)
 
 
+func test_one_rule_sizes_every_catalogue_weapon_but_the_two_small_guns() -> void:
+	for id in WeaponCatalog.IDS:
+		var hold := WeaponHoldMap.hold_for(id)
+		assert_object(hold).override_failure_message("%s: no model" % id).is_not_null()
+		var factor: float = SIZE_EXCEPTIONS.get(id, 1.0)
+		assert_float(hold.size_factor).override_failure_message("%s: factor" % id).is_equal(factor)
+		var length := hold.world_length(_world_scale())
+		(
+			assert_float(length / hold.sized_length())
+			. override_failure_message("%s: length off its size" % id)
+			. is_between(1.0 - SIZE_TOLERANCE, 1.0 + SIZE_TOLERANCE)
+		)
+
+
 func test_every_weapon_class_has_a_hold_with_its_model() -> void:
 	for weapon_class in PlayerAnimation.HOLD_CLASSES:
 		var hold := PlayerAnimation.hold_of(weapon_class)
@@ -98,8 +121,8 @@ func test_every_weapon_class_has_a_hold_with_its_model() -> void:
 
 
 func test_guns_are_shouldered_in_the_aim_pose() -> void:
-	for weapon_class: StringName in [&"Rifle", &"Shotgun"]:
-		await _equip(weapon_class)
+	for weapon_class: StringName in GUNS:
+		await _equip_weapon(weapon_class)
 		_runner.simulate_action_press("aim")
 		await _ticks(40)
 		var weapon := _animation.weapon()
@@ -115,20 +138,22 @@ func test_guns_are_shouldered_in_the_aim_pose() -> void:
 			. override_failure_message(tag + "grip off the target")
 			. is_less(GRIP_TOLERANCE)
 		)
-		# The support hand is at the fore-end.
+		# The support hand is at the fore-end (a one-handed gun has none).
 		var fore_end := weapon.to_global(hold.support)
-		(
-			assert_float(_bone_position("Index1.L").distance_to(fore_end))
-			. override_failure_message(tag + "support hand off the fore-end")
-			. is_less(SUPPORT_TOLERANCE)
-		)
-		# The stock is against the shoulder.
+		if hold.support != Vector3.ZERO:
+			(
+				assert_float(_bone_position("Index1.L").distance_to(fore_end))
+				. override_failure_message(tag + "support hand off the fore-end")
+				. is_less(SUPPORT_TOLERANCE)
+			)
+		# The stock is against the shoulder (a pistol has none to speak of).
 		var butt := weapon.to_global(hold.butt)
-		(
-			assert_float(butt.distance_to(_bone_position("UpperArm.R")))
-			. override_failure_message(tag + "stock off the shoulder")
-			. is_less(STOCK_TOLERANCE)
-		)
+		if hold.support != Vector3.ZERO:
+			(
+				assert_float(butt.distance_to(_bone_position("UpperArm.R")))
+				. override_failure_message(tag + "stock off the shoulder")
+				. is_less(STOCK_TOLERANCE)
+			)
 		# The barrel runs along the crosshair's ray, and the muzzle sees the crosshair's target.
 		var camera := _rig.get_node("Camera3D") as Camera3D
 		var ray := -camera.global_basis.z
@@ -146,7 +171,7 @@ func test_guns_are_shouldered_in_the_aim_pose() -> void:
 		)
 		# The size in the world is the rule's.
 		var span := muzzle.distance_to(butt)
-		assert_float(span / hold.rule_length()).is_between(
+		assert_float(span / hold.sized_length()).is_between(
 			1.0 - SIZE_TOLERANCE, 1.0 + SIZE_TOLERANCE
 		)
 		_runner.simulate_action_release("aim")
@@ -154,8 +179,8 @@ func test_guns_are_shouldered_in_the_aim_pose() -> void:
 
 
 func test_guns_point_along_the_body_at_the_hip_and_running() -> void:
-	for weapon_class: StringName in [&"Rifle", &"Shotgun"]:
-		await _equip(weapon_class)
+	for weapon_class: StringName in GUNS:
+		await _equip_weapon(weapon_class)
 		var weapon := _animation.weapon()
 		var forward := -_player.global_basis.z
 		assert_float(_animation.shoulder_blend()).is_equal(1.0)
@@ -216,3 +241,23 @@ func test_the_bat_is_in_the_right_hand_at_the_rule_size() -> void:
 	assert_float(weapon.global_position.distance_to(hand)).is_between(0.1, 0.2)
 	var length := weapon.to_global(hold.muzzle).distance_to(weapon.to_global(hold.butt))
 	assert_float(length / hold.rule_length()).is_between(1.0 - SIZE_TOLERANCE, 1.0 + 0.2)
+
+
+func test_the_crowbar_is_its_own_model_in_the_right_hand() -> void:
+	await _equip_weapon(&"crowbar")
+	var weapon := _animation.weapon()
+	var hold := _animation.weapon_hold()
+	assert_str(weapon.scene_file_path).is_equal("res://assets/weapons/crowbar/crowbar.glb")
+	assert_bool(hold.shouldered).is_false()
+	assert_float(_animation.shoulder_blend()).is_equal(0.0)
+	var hand := _bone_position(PlayerAnimation.HAND_BONE)
+	assert_float(weapon.global_position.distance_to(hand)).is_between(0.05, 0.25)
+	var length := weapon.to_global(hold.muzzle).distance_to(weapon.to_global(hold.butt))
+	assert_float(length / hold.rule_length()).is_between(1.0 - SIZE_TOLERANCE, 1.0 + 0.2)
+
+
+func test_a_gun_given_the_aim_shows_in_the_hand_and_the_hand_is_not_empty() -> void:
+	for id: StringName in [&"pistol", &"flare_gun", &"smg"]:
+		await _equip_weapon(id)
+		assert_bool(_animation.weapon().visible).override_failure_message(id).is_true()
+		assert_bool(_animation.weapon().is_inside_tree()).is_true()
