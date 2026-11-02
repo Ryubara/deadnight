@@ -46,6 +46,14 @@ KEY_HOLD_MS = 150
 UNPACED = ["--disable-gpu-vsync", "--disable-frame-rate-limit"]
 SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
 
+# Between pressing Play and a running night the game draws its lot and everything else once, behind a loading screen
+# (docs/research/first-use-hitches.md). The browser builds a GL program the first time a kind of thing is drawn, on the
+# main thread, so a frame that links many programs is a frame in which nothing moves: before the lot was drawn in
+# pieces (#347) one frame linked 79 of them and took 9 s. The count is the same on every GPU and in a software
+# renderer, which is why this is gated and a frame time is not. The pieces link at most 12 (a shader's two big
+# programs and the few that go with them); the limit has room for a new kind of material, not for a new burst.
+MAX_PROGRAMS_IN_A_LOADING_FRAME = 12
+
 # Console errors that are about the browser, not the game, and are fine. Keep this list short and say why.
 IGNORED: tuple[str, ...] = ()
 
@@ -72,6 +80,28 @@ FRAME_TIMES_JS = """
   }
   requestAnimationFrame(frame);
 })
+"""
+
+# Counts the WebGL programs linked in each page frame (Godot links them inside its own frame callback, and this one
+# runs once a frame), and keeps the frames that linked any or took over 100 ms: [time, programs, frame ms].
+LINKS_PER_FRAME_JS = """
+() => {
+  window.__linkFrames = [];
+  let count = 0;
+  let last = performance.now();
+  const link = WebGL2RenderingContext.prototype.linkProgram;
+  WebGL2RenderingContext.prototype.linkProgram = function (program) {
+    count += 1;
+    return link.call(this, program);
+  };
+  function frame(now) {
+    if (count > 0 || now - last > 100) window.__linkFrames.push([Math.round(now * 10) / 10, count, Math.round((now - last) * 10) / 10]);
+    count = 0;
+    last = now;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
 """
 
 PROBE_JS = """
@@ -166,6 +196,7 @@ def main() -> int:
         else:
             browser = p.chromium.launch(headless=True, args=SOFTWARE_GL)
         page = browser.new_page(viewport=VIEWPORT)
+        page.add_init_script("(" + LINKS_PER_FRAME_JS.strip() + ")();")
         page.on("console", on_console)
         page.on("pageerror", lambda error: problems.append(f"[pageerror] {error}"))
         page.on("requestfailed", lambda r: problems.append(f"[requestfailed] {r.url} {r.failure}"))
@@ -183,6 +214,14 @@ def main() -> int:
             browser.close()
             if server:
                 server.shutdown()
+
+    burst = result.get("loading", {}).get("most_programs_in_a_frame", 0)
+    if burst > MAX_PROGRAMS_IN_A_LOADING_FRAME:
+        problems.append(
+            f"[loading] a frame of the loading screen linked {burst} GL programs (at most "
+            f"{MAX_PROGRAMS_IN_A_LOADING_FRAME}): the lot is drawn in too few pieces, so the page stops for seconds "
+            "(docs/research/first-use-hitches.md)"
+        )
 
     (out / "console.txt").write_text("\n".join(console) + "\n", encoding="utf-8")
     result["console_lines"] = len(console)
@@ -228,8 +267,11 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     for _ in range(4):
         press(page, "ArrowUp")
     page.screenshot(path=out / "menu_focus.png")
+    pressed = page.evaluate("performance.now()")
     press(page, "Enter")
     wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
+    running = page.evaluate("performance.now()")
+    result["loading"] = loading_report(page.evaluate("window.__linkFrames"), pressed, running)
     page.wait_for_timeout(1500)
     page.screenshot(path=out / "night.png")
 
@@ -292,6 +334,22 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     result["night_peak_alive"] = max((s.get("alive", 0) for s in samples), default=0)
     result["night_worst_p95_ms"] = max((s["frames"]["p95_ms"] for s in samples), default=0)
     result["night_worst_frame_ms"] = max((s["frames"]["max_ms"] for s in samples), default=0)
+
+
+def loading_report(frames: list[list[float]], pressed: float, running: float) -> dict:
+    """What the loading screen cost between Play and a running night: its length, and the worst frames.
+
+    `frames` is [time, programs linked, frame ms] for each page frame that linked a program or took over 100 ms."""
+    during = [f for f in frames if pressed <= f[0] <= running]
+    burst = max(during, key=lambda f: f[1], default=[0, 0, 0])
+    longest = max(during, key=lambda f: f[2], default=[0, 0, 0])
+    return {
+        "seconds": round((running - pressed) / 1000, 2),
+        "programs_linked": int(sum(f[1] for f in during)),
+        "most_programs_in_a_frame": int(burst[1]),
+        "longest_frame_ms": round(longest[2], 1),
+        "frames_over_1s": sum(1 for f in during if f[2] > 1000),
+    }
 
 
 def gl_info(page: Page) -> str:

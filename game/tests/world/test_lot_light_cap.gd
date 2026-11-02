@@ -12,7 +12,7 @@ const EXEMPT := ["Outskirts"]
 ## Where each script and scene that makes a light says what it is. A new light source is not in
 ## here, and the test that reads the project fails until its place in the cap is decided.
 const LIGHT_SCRIPTS := {
-	"res://gameplay/weapons/fx/muzzle_flash.gd": "muzzle flash: one on the map at a time",
+	"res://gameplay/weapons/fx/muzzle_flash.gd": "muzzle flash: one flash on the map lit at a time",
 	"res://world/grenade_range/blast_effect.gd": "blast",
 	"res://world/grenade_range/grenade_view.gd": "grenade lamp",
 	"res://world/crane/prize_crane.gd": "the crane's lamp: counted at every crane spot",
@@ -217,17 +217,17 @@ func test_every_light_the_game_can_make_at_run_time_has_a_place_in_the_cap() -> 
 func test_each_fight_effect_adds_one_light_and_the_headroom_pays_for_it() -> void:
 	var effects := auto_free(ShotEffects.new()) as ShotEffects
 	add_child(effects)
+	# The flashes are pooled and only one holds its light at a time: whichever weapon fires, one
+	# lit light is what a shot has on the map.
 	for def in WeaponCatalog.all():
+		if def.is_melee():
+			continue
 		effects.shot(def, Vector3(0, 1.5, 0), [Vector3(0, 1.0, -6)])
-		# The flash's light is lent from a pool of one: lit, it is the only one a shot has.
 		var lit := 0
-		for light in effects.find_children("*", "Light3D", true, false):
-			if (light as Light3D).is_visible_in_tree():
+		for light: Light3D in effects.find_children("*", "Light3D", true, false):
+			if light.visible:
 				lit += 1
-		# A weapon with no flash (the crowbar) lights nothing: the last flash's light may still be up.
-		assert_int(lit).override_failure_message("%s lights %d" % [def.id, lit]).is_less_equal(1)
-		if def.flash_size > 0.0:
-			assert_int(lit).override_failure_message("%s lights no flash" % def.id).is_equal(1)
+		assert_int(lit).override_failure_message("%s lights %d lights" % [def.id, lit]).is_equal(1)
 	var blast := auto_free(BlastEffect.new()) as BlastEffect
 	add_child(blast)
 	blast.play(Vector3.ZERO, load("res://gameplay/grenades/defs/frag.tres") as GrenadeDef)

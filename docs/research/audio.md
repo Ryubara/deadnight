@@ -83,6 +83,10 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
   such lines once the beds played. The service now stops every voice, drops every player's stream and clears its cache
   in `_exit_tree`; waiting in `_exit_tree` did not help, letting go of the streams did. A loop that lives outside the
   service (the projector's player, under the night) is stopped by its node.
+  The test run checks it too (#211): `tests/net` built nights whose beds only fade out when the night is freed, so
+  `after_test` calls `Audio.stop_all()` and `after` waits `Audio.wait_for_mixer()`. CI fails a test run whose log has
+  `leaked at exit` or `still in use`. Another source in the same run was a test lambda that captured itself through
+  an array (`chain[0] = func ...`): a cycle nothing frees, which kept the test script in use; the test cuts it.
 - **A stopped voice is still held until the mixer thread has run a few steps** (#317). `stop()` only marks the playback
   for removal; the audio server keeps it, and its stream, until the mixer takes a step or two. Quitting first leaks
   every such stream, and a fixed real-time wait (the capture waited 0.3 s) is too short whenever the mixer thread is

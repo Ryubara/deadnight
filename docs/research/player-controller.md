@@ -46,6 +46,31 @@ re-simulated in one callback, from the air and from a slope, in a physics frame 
 Still open for the net work: floats are not quantized for the wire yet; and `_slide` cannot scale when the engine has
 no delta yet (the very first frame), where it reports an error.
 
+## Stepping up
+
+A ledge up to `step_height` (0.3 m) is climbed by walking into it, at any pace and from an angle, with no jump
+(`tests/player/test_player_step_up.gd`). It is part of the simulation (`PlayerSimulation._step_up`), so a server and a
+replay climb the same ledges; it uses physics queries only (`test_move`, one ray), never the body's contact cache.
+
+- **What counts as a ledge:** the tick's walk is blocked by a *wall* (a contact steeper than `floor_max_angle`, so a
+  slope stays the engine's), a ray down a hair inside the face finds a walkable top between `step_min_rise` and
+  `step_height` above the feet, there is room to lift (nothing overhead) and the lifted body is not blocked going on.
+  A taller ledge, a low beam over it and a wall with no top within reach stay walls.
+- **Lift, then walk:** the body is lifted onto the top (plus two safe margins) and the same tick's slide carries it on.
+  The rounded foot is still over the ledge's edge for about one body radius of walking, so the engine would report no
+  floor, and the body would sag a few centimetres, play the fall and the landing, and bounce. `step_settle` keeps the
+  carried floor flag for `step_settle_distance` (0.5 m) of walking and turns the floor snap off meanwhile (a snap would
+  pull the foot back down beside the ledge); the engine's answer takes over as soon as the foot is on the top.
+- **The view:** the body moves up in one tick, but `Player` draws the model `step_lag` metres lower and lets that decay
+  (`exp(-step_view_frequency * delta)`, in the tick, so physics interpolation blends it and a replay does not care).
+  The camera's vertical spring (10 rad/s) does the same for the view. Measured at 144 Hz over a climb
+  (`test_the_view_is_smooth_at_144_hz_over_a_climb`): the model moves at most 27 mm a frame (a pop would be 126 mm), the
+  camera pivot at most 8 mm; the control test with the easing off sees the pop.
+- **Limits:** only on the ground and not while rising (a jump is a jump); a ledge too narrow to rest the whole capsule
+  on is still climbed (the ray finds the top, not the footprint). Micro differences between a first run and a replay at
+  the ledge's far edge (a body sliding off a corner) are about 10 micrometres, amplified to a millimetre by the slide;
+  the replay test therefore ends on top of the ledge.
+
 ## Settings
 
 Sensitivity and invert Y come from the `Settings` autoload (`controls/mouse_sensitivity`, `controls/invert_y`, through
@@ -62,6 +87,7 @@ All in `player_tuning_default.tres` (a `PlayerTuning` resource); metres, seconds
 | Acceleration | 38 m/s2 up to the run (0.13 s), 18 above it to the sprint (0.25 s in all), friction 44 from a run and 30 above it, 30 easing down to a lower pace, 6 in the air | Snappy but not instant; a sprint builds and carries on a little. [Character controller](character-controller.md) has the curves. |
 | Facing | 14 rad/s toward the run direction, 9 while sprinting, 22 in a pivot (a turn wider than 100 degrees), 24 toward the aim direction | The body visibly turns instead of snapping, and the velocity turns with it; aiming catches up fast so shots go where the camera points. |
 | Jump | 1.1 m height, gravity x1.7, coyote 0.1 s, buffer 0.1 s | Short, snappy arc; a late or early press still counts. |
+| Step up | ledges up to 0.3 m, lifted onto in one tick; the model eases up at 14 /s (95 percent in about 0.2 s) | A walk into a curb, a plank or a low crate is not a wall. See [Stepping up](#stepping-up). |
 | Body | capsule 1.8 m by 0.35 m radius, model scaled x0.8 | `docs/design/style.md`: the kit's characters are 2.31 m, x0.8 gives 1.85 m. |
 | Look | 0.0022 rad per mouse pixel (about 0.126 degrees), stick 170 degrees per second with a squared response, pitch -60 to +50 degrees, x0.7 while aiming | Settings multiply sensitivity; the squared stick curve gives fine control near the centre. |
 | Camera | pivot 1.6 m up, shoulder 0.6 m, arm 2.3 m, FOV 70 | Over the shoulder, closer than the first draft (arm 2.8 m, FOV 75): [shoulder camera](shoulder-camera.md) has every number and the reasoning. |

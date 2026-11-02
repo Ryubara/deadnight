@@ -26,11 +26,15 @@ var view_pitch := 0.0
 var coyote := 0.0
 var jump_buffer := 0.0
 var step_travelled := 0.0
+## Metres still to walk after a step up during which a missing floor is forgiven.
+var step_settle := 0.0
 
 # What happened during the last simulated tick; reset every tick.
 var jumped := false
 var landed := false
 var landed_speed := 0.0
+## Metres the body was lifted onto a ledge this tick (0 when it was not).
+var stepped_up := 0.0
 var footstep := false
 
 

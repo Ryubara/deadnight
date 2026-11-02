@@ -29,6 +29,10 @@ var path := PackedVector3Array()
 var path_index: int = 0
 var repath_left: float = 0.0
 var retarget_left: float = 0.0
+## Seconds a blast holds it in its stagger (longer than the profile's own), while STAGGER lasts.
+var stun_seconds: float = 0.0
+## The ground speed a blast threw it at, along the ground; it slows to nothing (`ZombieSim`).
+var push := Vector3.ZERO
 ## Seconds until a weak-spot hit may stagger it again (a boss).
 var stagger_cooldown_left: float = 0.0
 ## The breach it came in by and has not yet walked through (`ZombieGate.id`), or none: it stands
@@ -43,6 +47,7 @@ var tearing: bool = false
 func enter(new_mode: Mode) -> void:
 	mode = new_mode
 	mode_time = 0.0
+	stun_seconds = 0.0
 	struck = false
 	episode = (episode + 1) & 0xFF
 

@@ -1,4 +1,3 @@
-# gdlint: disable=max-public-methods
 class_name ThirdPersonCamera
 extends Node3D
 ## Over-the-shoulder camera rig: look (mouse and stick), spring-damped follow of the body, aim and
@@ -184,19 +183,10 @@ func add_shake(trauma: float) -> void:
 		shake.add(trauma)
 
 
-## The view the crosshair sees, without the shake: the lens place and turn the aim ray, the
-## weapon's aim and the shot are taken from.
+## The view the crosshair sees, without the shake: the lens place (`origin`) and turn (`-basis.z`)
+## the aim ray, the weapon's aim and the shot are taken from.
 func aim_transform() -> Transform3D:
 	return _aim_transform
-
-
-## Where the aim ray starts and which way it goes (-Z of `aim_transform()`).
-func aim_origin() -> Vector3:
-	return _aim_transform.origin
-
-
-func aim_direction() -> Vector3:
-	return -_aim_transform.basis.z
 
 
 ## Distance from the player's head (the pivot height) to the lens, after the walls.

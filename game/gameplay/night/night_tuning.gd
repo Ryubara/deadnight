@@ -36,6 +36,11 @@ extends Resource
 ## Metres in front of the player, along the aim, that a grenade leaves the hand from (the server
 ## keeps it within `GrenadeDef.hand_reach` of the hand it knows).
 @export var grenade_hand_reach: float = 0.35
+## Seconds from the button coming up to the grenade leaving the hand: the Soldier's throw clip
+## reaches its release frame then (`Grenade_Throw` frame 9 and `Grenade_Toss` frame 10, at 24 fps,
+## `assets/characters/soldier/grenade/clips.json`), so the grenade flies as the hand opens.
+@export var grenade_release_over: float = 0.375
+@export var grenade_release_under: float = 0.4167
 
 @export_group("Shots")
 ## The barrel, relative to the player's feet and facing (x right, -z forward).

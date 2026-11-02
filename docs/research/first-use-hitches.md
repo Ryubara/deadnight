@@ -65,25 +65,28 @@ run skips it (nothing is drawn, so nothing is built).
    (`ResourceLoader.get_dependencies`, so a weapon's model scene is picked up when it is added to its `.tres`). They are
    requested with `ResourceLoader.load_threaded_request` and polled every frame; the loaded resources are held.
 2. **Sounds.** `Audio.preload_sound(id)` for every id of `SoundCatalog`, a few milliseconds a frame.
-3. **The lot.** A camera of its own, made current, looks down on the whole lot from above for two frames with every
-   lamp lit and for two frames with every lamp dark (lights hidden, then put back). A mesh's programs depend on the lights
-   that reach it, and the generator can fail.
+3. **The lot.** A camera of its own, made current, looks down on the whole lot from above. Every drawn node of the
+   night is held out of the picture first and **brought back one new kind of material per frame** (`DrawReveal`, see
+   "The first draw of the lot"), with every lamp lit; then two frames with every lamp dark (the lamps' lights hidden,
+   then put back; the moon stays). A mesh's programs depend on the lights that reach it, and the generator can fail.
 4. **The stage.** A node 150 m above the lot, out of reach of every lamp, under each of four light conditions (the moon
    alone, an omni light, a spot light, both): every zombie look near and far (the near and far meshes, by visibility
-   range), each weapon's and grenade's scene, then the night view's effects, **replayed through the view's own event
-   handler** from a sample of each event (`shot_fired` for each weapon in the catalogue, `damage_dealt` with every digit
-   and a headshot, `projectile_burst`, a blast and gibs). Because the real handler runs, a reworked muzzle flash or
-   impact is warmed without anyone editing the warm-up. The materials the effects made are **kept** for the whole
-   night (the fix for the repeats above); the stage and the effect nodes are freed. Two things the ledger cannot see
-   by itself are put on the stage on purpose, because the night hides them until they are used: a **copy of the prize
-   crane** shown in its spin, grab and breakdown stages (the night's own crane stays invisible until the server's first
-   frame, and the ledger records hidden nodes as if they were drawn), and the **repair hammer's model** (it is on the
-   Soldier's hand mount, hidden until a repair; its path is in a hold file, not a dependency, so `WarmupManifest`
-   names it). Touch controls are UI, not 3D, and are not warmed.
-   A client that joined a game server keeps reading the link meanwhile (`Night._physics_process`), so the server's
-   frames are not seconds old when the night starts (`test_night_online`).
-5. The Effects and Voice buses are muted meanwhile, the player's camera is current again, the bar fills and the overlay
-   fades.
+   range), each weapon's and grenade's scene (in the first condition they are brought in one kind of material at a time
+   as well), then the night view's effects, **replayed through the view's own event handler**, one frame after each
+   weapon's shot and each kind of event, from a sample of each event (`shot_fired` for each weapon in the catalogue,
+   `damage_dealt` with every digit and a headshot, `projectile_burst`, a blast and gibs). Because the real handler runs,
+   a reworked muzzle flash or impact is warmed without anyone editing the warm-up. The materials the effects made are
+   **kept** for the whole night (the fix for the repeats above); the stage and the effect nodes are freed. Two things
+   the ledger cannot see by itself are put on the stage on purpose, because the night hides them until they are used: a
+   **copy of the prize crane** shown in its spin, grab and breakdown stages (the night's own crane stays invisible until
+   the server's first frame, and the ledger records hidden nodes as if they were drawn), and the **repair hammer's
+   model** (it is on the Soldier's hand mount, hidden until a repair; its path is in a hold file, not a dependency, so
+   `WarmupManifest` names it). Touch controls are UI, not 3D, and are not warmed. A client that joined a game server
+   keeps reading the link meanwhile (`Night._physics_process`), so the server's frames are not seconds old when the
+   night starts (`test_night_online`). 5. The Effects and Voice buses are muted meanwhile, the player's camera is
+   current again, the bar fills and the overlay fades. The HUD's portrait (a `SubViewport` with a world of its own,
+   drawn once) is stopped until the lot is in: it draws the Soldier with shaders the lot builds anyway, and in its own
+   early frame it met them all at once.
 
 The night's own lights, environment and fog are used as they are: the stage is in the same world, seen by a second
 camera, so the specialisations (`DISABLE_LIGHT_OMNI`, fog, radiance map) match the ones the night asks for.
@@ -98,7 +101,65 @@ material the warm-up never saw and expects the check to report exactly it (other
 Also tested: the manifest names every look, weapon and the grenade; every sound is cached; progress never goes
 backwards; the camera and lamps are as they were after.
 
-## Results (after)
+## The first draw of the lot (#347)
+
+With the warm-up (#339) and baked navigation meshes (#348) in, Play still froze the web page once: one frame of 9.3 to
+11.1 s (three runs on the deployed build) with 79 GL programs linked in it, and a second of 3.6 to 4.5 s for the
+enemies and weapons. `WebProbe.mark` (the loading steps, written into `window.deadnight_marks`) lined the frames up
+with the steps: the long frame was the first draw of the lot, the warm-up's first frame with its own camera. The
+navigation bake, blamed in #335, takes 0.5 s in Chrome.
+
+**Cause (Godot 4.7 `ShaderGLES3::_initialize_version`, and a spike with one cube per material in Chrome).** The first
+time a shader is bound, the renderer builds all four of its variants (colour, colour instanced, depth, depth instanced)
+at the *default* specialisation, in which no light type, lightmap or fog is disabled, area lights included; then it
+builds the specialisation the draw asked for. The two colour programs of the default take 0.5 to 0.9 s each (ANGLE on
+Direct3D 11, RTX 5080); the depth ones 10 ms; the one drawn with 90 to 170 ms.
+
+| First bind of a shader (spike) | Two default colour programs | Drawn program |
+| --- | --- | --- |
+| `StandardMaterial3D`, Burley and GGX | 915 + 889 ms | 171 ms |
+| Lambert, specular disabled | 594 + 523 ms | 140 ms |
+| per-vertex shading (not our look) | 142 + 151 ms | 128 ms |
+| unshaded | 29 + 36 ms | 30 ms |
+
+`shadows_disabled`, `ambient_light_disabled`, `fog_disabled`, `force_lambert_over_burley`, the shadow filter and 4 / 8
+lights per object / renderable change it by 0 to 20 %. The lot has nine lit shaders (the lot paint, textured kit props,
+untextured, emissive, and the double-sided ones: a weapon, glass), so its first frame was nine pairs, 12 s of linking.
+
+**Fix.** `DrawReveal` (`game/gameplay/night/warmup/draw_reveal.gd`) turns the renderer's instance of every drawn node
+under the night off (not the node's `visible`) before the warm-up's camera is made current, then brings them back in
+steps: the most used material first, each node at the step where the last of its materials is first met, so a step
+meets one new material at most (`DrawLedger.keys_of`). The stage's props do the same in the first light condition, the
+HUD portrait's `SubViewport` is stopped until the lot is in (it drew the Soldier's shaders in a frame of its own), the
+effects are replayed one weapon and one kind of event per frame (their materials are kept at once, before the effect
+frees itself), and the dark pass hides the lamps only (the moon is never switched off).
+
+| Play pressed to a running night (web, Chrome, RTX 5080, fresh profile, 3 runs) | Before (main) | After |
+| --- | --- | --- |
+| Longest frame | 11.1, 9.3, 10.0 s | 2.0, 2.2, 2.3 s |
+| Most programs linked in one frame | 79 | 11 |
+| Frames over 1 s | 3, 2, 2 | 8, 8, 8 |
+| Programs linked while playing | 0 | 0 |
+| Longest frame while playing | 17 ms | 13 to 17 ms |
+| Total time | 20.5, 17.6, 18.2 s | 19.1, 20.8, 22.4 s |
+
+Charts: the frame times of both, one above the other, are attached to the pull request.
+
+**The floor.** A frame cannot be shorter than the build of one lit shader (1.1 s for the lot paint, 1.7 to 1.9 s for a
+textured Burley and GGX material): the engine builds the pair inside one bind and the browser cannot build half a
+program. So the lot cannot go under 1 s by cutting the draw, and the total time does not shrink either: it is the sum
+of the shaders. The bar now moves between them (18 steps for the lot, 9 for the stage) and the page is never stopped
+for more than 2.3 s. What shortens it is fewer lit shaders: a material that differs in one setting from another (a
+double-sided weapon texture, a glass pane, specular on in a few kit props) is one more pair of huge programs, 1.1 to
+1.8 s. Merging them changes how things look, so it is for an artist's decision, not done here.
+
+**The guard.** `tools/web_smoke/smoke.py` counts the programs linked in each page frame between Play and a running
+night and fails above 12 (the count is the same on every GPU and on the CI software renderer, which a frame time is
+not); `main` links 79. `tests/night/test_draw_reveal.gd` tests the order (one new material a step, every node back
+once, nodes the game hid left alone) and `test_night_warmup.gd` that the lot comes in as many steps and nothing is left
+out of the picture.
+
+## Results of the first warm-up (#319)
 
 Same method, same machine, three runs each with a fresh profile:
 
@@ -133,6 +194,6 @@ it cannot move during the navigation bake, which blocks the page (Open).
   links for in 20 s; grenades and the flare in the night (the night does not draw them yet, #257: the blast is warmed
   because its code exists, and a night view that draws a projectile is picked up by the same check once it plays one);
   other players' looks (the wardrobe parts) in a multiplayer night.
-- **Navigation bake**: the first bake of the lot is one 11 to 12 s main-thread frame in the browser. The comment in
-  `NavmeshBaker` already says the world owner should ship a baked mesh. Follow-up: #335.
-- **Loading time** grew by the warm-up (about 7 s of linking in the browser, on this machine); the bar shows it.
+- **Navigation bake**: solved by shipping baked meshes (#348); it was never the long frame (0.5 s, #347).
+- **Loading time** is the sum of the lit shaders (about 12 s of 19 in the browser, on this machine); the bar shows it.
+  Fewer lit shaders is the only lever (see "The first draw of the lot").

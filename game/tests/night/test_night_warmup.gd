@@ -136,3 +136,11 @@ func test_the_check_notices_a_material_the_warm_up_never_drew() -> void:
 	assert_int(absent.size()).is_equal(1)
 	assert_str(absent[0]).starts_with("mesh|standard:")
 	night.queue_free()
+
+
+func test_the_lot_is_drawn_in_pieces_and_nothing_is_left_out_of_the_picture() -> void:
+	var night := await _warmed_night()
+	# A frame meets one new kind of material at most (`DrawReveal`): the lot is many steps, not one.
+	assert_int(night.warmup.lot_steps).is_greater(8)
+	assert_int(night.warmup.held_back()).is_equal(0)
+	night.queue_free()

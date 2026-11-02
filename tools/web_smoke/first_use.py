@@ -16,6 +16,7 @@ run, or the worst run with `--chart worst`.
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import sys
 import time
@@ -76,7 +77,7 @@ GL_HOOK_JS = """
     if (pname === this.LINK_STATUS && program.__t !== undefined) {
       const done = performance.now();
       window.__links.push([Math.round(program.__t * 10) / 10, Math.round((done - program.__t) * 10) / 10,
-                           (program.__defs || []).join(' | ').slice(0, 600)]);
+                           (program.__defs || []).join(' | ').slice(0, 3000)]);
       program.__t = undefined;
     }
     return result;
@@ -149,9 +150,10 @@ def run_once(url: str, out: Path, seconds: float, gpu: bool, index: int) -> dict
         page.screenshot(path=out / f"night_end_{index}.png")
         frames = page.evaluate("window.__frames")
         links = page.evaluate("window.__links")
+        steps = page.evaluate("window.deadnight_marks || []")
         gl = smoke.gl_info(page)
         browser.close()
-    return {"marks": marks, "frames": frames, "links": links, "gl": gl, "errors": errors}
+    return {"marks": marks, "frames": frames, "links": links, "steps": steps, "gl": gl, "errors": errors}
 
 
 def analyse(run: dict, seconds: float) -> dict:
@@ -166,6 +168,13 @@ def analyse(run: dict, seconds: float) -> dict:
     loading_worst = sorted(loading, key=lambda f: -f[1])[:5]
     links = run["links"]
     night_links = [li for li in links if start <= li[0] <= start + seconds * 1000]
+    # Programs linked in each page frame of the loading screen: a link belongs to the first frame that ends after it.
+    ends = [f[0] for f in run["frames"]]
+    per_frame: dict[int, int] = {}
+    for link in links:
+        index = bisect.bisect_left(ends, link[0])
+        if index < len(ends) and marks["play_pressed"] <= ends[index] < start:
+            per_frame[index] = per_frame.get(index, 0) + 1
     first_zombie = next((f[0] for f in window if f[2] > 0), None)
     return {
         "frames": len(window),
@@ -175,6 +184,13 @@ def analyse(run: dict, seconds: float) -> dict:
         "over": {f">{t:g}ms": sum(1 for d in deltas if d > t) for t in THRESHOLDS_MS},
         "worst": [{"at_s": round((f[0] - start) / 1000, 2), "ms": f[1], "alive": f[2]} for f in worst],
         "loading_worst": [{"at_s": round((f[0] - start) / 1000, 2), "ms": f[1]} for f in loading_worst],
+        "loading": {
+            "seconds": round((start - marks["play_pressed"]) / 1000, 2),
+            "longest_frame_ms": loading_worst[0][1] if loading_worst else 0,
+            "frames_over_250ms": sum(1 for f in loading if f[1] > 250),
+            "frames_over_1s": sum(1 for f in loading if f[1] > 1000),
+            "most_programs_in_a_frame": max(per_frame.values(), default=0),
+        },
         "programs_linked_total": len(links),
         "programs_linked_in_play": len(night_links),
         "link_ms_in_play": round(sum(li[1] for li in night_links), 1),
@@ -261,7 +277,7 @@ def main() -> int:
         args.seconds,
     )
     (args.out / f"first_use_{args.label}.json").write_text(json.dumps(summaries, indent=2) + "\n", encoding="utf-8")
-    raw = [{"marks": r["marks"], "frames": r["frames"], "links": r["links"]} for r in runs]
+    raw = [{"marks": r["marks"], "frames": r["frames"], "links": r["links"], "steps": r["steps"]} for r in runs]
     (args.out / f"frames_{args.label}.json").write_text(json.dumps(raw), encoding="utf-8")
     return 0
 
