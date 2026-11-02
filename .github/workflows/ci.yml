@@ -193,6 +193,10 @@ jobs:
       - name: Tour the skin shaders in the browser
         # The menu, the three transitions and the credits: fails on a console error or an all-black or all-white frame.
         run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500
+      - name: Start every web probe's menu path
+        # The menu paths the probes in tools/web_smoke walk (Loadout, Play together, settings, Solo, the ?dev join screen)
+        # through their shared helpers, once: a menu change that breaks one fails here, not the next time a probe is run.
+        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/startup_check.py repos/deadnight/build/web smoke/startup-check
       - name: Upload the build
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

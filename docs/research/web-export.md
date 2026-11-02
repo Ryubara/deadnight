@@ -170,7 +170,8 @@ bash deploy/web/deploy.sh path/to/build/web <commit> <stage folder>   # needs RA
 docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 8080:8080 deadnight-web
 ```
 
-The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
+The smoke run takes the URL in place of a folder:
+`uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
 
 `tools/web_smoke/judder.py` (same arguments, `--gpu --unpaced` for the machine's GPU and no frame limit) measures

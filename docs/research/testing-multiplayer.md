@@ -45,15 +45,18 @@ date, when the server is the newer: reload). To read what the server sees: `rail
 invite link, C and D press Quick join) and fails unless each pair sees exactly two players:
 
 ```text
-uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py <web URL or build/web> <backend https address> <out folder> --gpu
+uv run --project <kit>/python gds quiet --   uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py <web URL or build/web> <backend https address> <out folder> --gpu
 ```
 
 `tools/web_smoke/online.py` joins one game server by its address (the developer path) and plays a night, reading the
 page's probe (`players`, `alive`, `rtt_ms`) every second:
 
 ```text
-uv run --with playwright==1.64.1 python tools/web_smoke/online.py <web URL or build/web> <server address> <out folder> --seconds 90 --gpu
+uv run --project <kit>/python gds quiet --   uv run --with playwright==1.64.1 python tools/web_smoke/online.py <web URL or build/web> <server address> <out folder> --seconds 90 --gpu
 ```
+
+Every probe runs under `gds quiet` (the kit's `docs/godot/no-focus.md`): a page that takes pointer lock confines the
+real cursor, and a hook refuses a probe started without it.
 
 ## Two desktop windows on one machine
 
