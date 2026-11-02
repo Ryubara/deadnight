@@ -49,6 +49,25 @@ const SHIPPED_PATH := "res://gameplay/night/night_tuning_default.tres"
 ## Metres from the feet to the head the server judges a shot's origin against.
 @export_range(0.5, 2.5, 0.01, "suffix:m") var eye_height: float = 1.55
 
+@export_group("Revive")
+## Metres (on the ground) between two players that one can raise the other from.
+@export var revive_reach: float = 2.2
+
+@export_group("Aim")
+## A shot whose direction differs from where the shooter's view points (`motion.yaw` and `pitch`)
+## by more than this many degrees is refused: a person's shot follows the camera, so only a client
+## that shoots one way and looks another is turned away.
+@export var aim_slack_degrees: float = 10.0
+
+@export_group("Pings")
+## Metres from the player that a place can be marked.
+@export var ping_range: float = 70.0
+## Metres from a marked ammunition spot that counts as the spot.
+@export var ping_snap: float = 4.0
+## Seconds a mark stays up, and seconds before the same player can place another.
+@export var ping_seconds: float = 20.0
+@export var ping_gap: float = 1.0
+
 @export_group("Spectator camera")
 ## Where the bot's camera hangs, relative to the bot (metres): above and behind it, so a recording
 ## reads. Used when the autopilot plays without its own shoulder camera.

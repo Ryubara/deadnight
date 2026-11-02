@@ -149,6 +149,10 @@ an `initial_focus` path, `allow_back` (whether Esc pops it) and `stars` (the tok
 `glow` overrides the bottom of the backdrop gradient. Esc and gamepad B (`ui_cancel`) pop while more than one screen
 is on the stack.
 
+With nothing focused, the router spends the first arrow or accept key giving the top screen its focus (and marks it
+handled). A screen that is a live game overrides `wants_focus_key()` to return false while it has nothing to focus, so
+that its keys reach the game: a gamepad's Start is `ui_accept` and also the game's `pause`.
+
 ## Adding a router transition
 
 A transition is a `UITransition` whose `play(ctx)` is awaited by the router. Before it merges, check each item and

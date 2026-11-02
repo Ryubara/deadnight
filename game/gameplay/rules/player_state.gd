@@ -18,6 +18,7 @@ const SNAPSHOT_KEYS := {
 	"repair_points_this_round": TYPE_INT,
 	"kills": TYPE_INT,
 	"headshot_kills": TYPE_INT,
+	"downs": TYPE_INT,
 	"points_earned": TYPE_INT,
 	"points_spent": TYPE_INT,
 }
@@ -43,6 +44,8 @@ var grenades: int = 0
 var repair_points_this_round: int = 0
 var kills: int = 0
 var headshot_kills: int = 0
+## How many times this player went down this night (a blow or a forced down), for the scoreboard.
+var downs: int = 0
 var points_earned: int = 0
 var points_spent: int = 0
 
@@ -77,6 +80,7 @@ func to_dict() -> Dictionary:
 		"repair_points_this_round": repair_points_this_round,
 		"kills": kills,
 		"headshot_kills": headshot_kills,
+		"downs": downs,
 		"points_earned": points_earned,
 		"points_spent": points_spent,
 	}
@@ -96,6 +100,7 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.repair_points_this_round = data["repair_points_this_round"]
 	player.kills = data["kills"]
 	player.headshot_kills = data["headshot_kills"]
+	player.downs = data["downs"]
 	player.points_earned = data["points_earned"]
 	player.points_spent = data["points_spent"]
 	return player

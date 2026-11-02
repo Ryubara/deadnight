@@ -166,7 +166,7 @@ func _fire() -> void:
 	_command = NightCommand.new()
 	var eye := _night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
 	_command.origin = eye
-	_command.dir = Vector3(0.0, -0.02, -1.0).normalized()
+	_command.aim_along(Vector3(0.0, -0.02, -1.0))
 	_command.muzzle = eye + _command.dir * 0.8
 	_command.fire = true
 

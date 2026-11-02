@@ -12,6 +12,7 @@ const SKIP_BREAK := &"skip_break"
 const ADD_PLAYER := &"add_player"
 const REMOVE_PLAYER := &"remove_player"
 const SET_DOWNED := &"set_downed"
+const REVIVE := &"revive"
 const BLOW := &"blow"
 const HIT := &"hit"
 const ZOMBIE_GONE := &"zombie_gone"
@@ -57,6 +58,7 @@ const REQUIRED := {
 	ADD_PLAYER: {"player_id": TYPE_INT},
 	REMOVE_PLAYER: {"player_id": TYPE_INT},
 	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
+	REVIVE: {"player_id": TYPE_INT, "target_id": TYPE_INT},
 	BLOW: {"player_id": TYPE_INT, "damage": TYPE_FLOAT},
 	HIT:
 	{"player_id": TYPE_INT, "zombie_id": TYPE_INT, "zone": TYPE_STRING_NAME, "damage": TYPE_FLOAT},
@@ -109,6 +111,14 @@ static func remove_player(player_id: int) -> Dictionary:
 
 static func set_downed(player_id: int, downed: bool) -> Dictionary:
 	return {"type": SET_DOWNED, "player_id": player_id, "downed": downed}
+
+
+## `player_id` gets `target_id` back on their feet, with `HealthTuning.revive_fraction` of their
+## health. The server sends it when the channel (`HealthTuning.revive_seconds` of holding use beside
+## the downed player) is complete; the rules refuse it unless the round is on, the reviver is up
+## and the target is down, so a client cannot raise anyone by asking.
+static func revive(player_id: int, target_id: int) -> Dictionary:
+	return {"type": REVIVE, "player_id": player_id, "target_id": target_id}
 
 
 ## One blow on a player (a zombie's swing). `damage` is what it does; `bearing` is where it came

@@ -18,8 +18,8 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | --- | --- | --- |
 | Move | anywhere on the left, below the top fifth | a stick that floats under the thumb and follows it past the rim; the rim is a sprint |
 | Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 92 degrees at sensitivity 1 (100 px on a 390 px tall phone is 23 degrees), a fast flick gains up to 1.6 times |
-| Fire | big, right thumb | `fire` held, wherever the player aims (hip, aimed, auto-fire on or off); a drag that starts on it also looks |
-| Aim | an arc round Fire | `aim`, **held** with auto-fire on (the default), a **toggle** with auto-fire off: a tap aims, the next tap leaves the aim, so the player can aim and shoot by hand. The button stays lit while the toggle is on |
+| Fire | big, right thumb | `fire` held, wherever the player aims (hip, aimed, auto-fire on or off); a drag that starts on it also looks, at the look sensitivity (#497) |
+| Aim | an arc round Fire | `aim`, **held** with auto-fire on (the default), a **toggle** with auto-fire off: a tap aims, the next tap leaves the aim, so the player can aim and shoot by hand. The button stays lit while the toggle is on. A drag that starts on it also looks, held or toggled (#497), so one thumb can aim and turn |
 | Jump, Reload, Swap, Grenade | an arc round Fire | `jump`, `reload`, `swap_weapon`, `throw_grenade` |
 | Shoulder swap ("SIDE") | small, above Swap, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
 | Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |

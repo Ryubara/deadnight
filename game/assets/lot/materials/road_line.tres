@@ -4,4 +4,4 @@
 resource_name = "road_line"
 albedo_color = Color(0.820, 0.671, 0.275, 1)
 roughness = 1.0
-specular_mode = 2
+metallic_specular = 0.0

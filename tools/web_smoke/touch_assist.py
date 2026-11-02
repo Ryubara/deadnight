@@ -7,7 +7,8 @@ a finger on the look area that drags toward the zombie and stops short, then a f
 the game reports (`window.__assist`): how far the crosshair is from the zombie's chest, the shots fired, the kills,
 and the longest frame.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/touch_assist.py <godot> <work folder> [--out <folder>]
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/touch_assist.py <godot> <work folder> [--out <folder>]
 
 `<godot>` is the pinned Godot (`gds tool path godot`); the copy and its export are made in `<work folder>`. It fails
 when the browser logs an error, when the assist does not bring the crosshair nearer than the unhelped thumb gets, or

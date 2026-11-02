@@ -34,6 +34,7 @@ other `user://` files are the captures' own `*_capture.cfg` and PNGs, which are 
 | `accessibility/reduced_motion` | off | `UIMotion.reduced` |
 | `accessibility/ui_scale` | 1.0 | root `Window.content_scale_factor` (0.8, 1.0, 1.25) |
 | `accessibility/camera_shake` | 100 | nothing: the player reads it (`PlayerSettings.camera_shake`, off while reduced motion is on); [Camera shake](../design/camera-shake.md) |
+| `accessibility/challenge_prompts` | 0 | nothing: `ChallengeHudLink` reads it and sets `HudChallenge.mode` (0 all, 1 finished challenges and milestone steps only, 2 off); [the prompt](../design/progression.md#the-progress-prompt-in-the-night) |
 | `controls/mouse_sensitivity`, `invert_y` | 1.0, off | nothing: gameplay reads them and listens to `changed` |
 | `controls/touch_controls` (0 auto, 1 on, 2 off), `touch_scale`, `touch_opacity`, `haptics` | 0, 1.0, 0.7, on | nothing: `TouchControls` reads them and listens to `changed` (the Touch tab) |
 | `controls/touch_aim_assist` (0 to 1), `controls/touch_auto_fire` (0 off, 1 on: fires while aiming; Aim is a toggle when 0) | 0.5, 1 | nothing: `TouchAimAssist` reads them and listens to `changed` (the Touch tab); [Touch aim assist](aim-assist.md) |

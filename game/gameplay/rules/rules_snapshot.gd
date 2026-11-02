@@ -21,6 +21,7 @@ static func take(rules: GameRules) -> Dictionary:
 		"phase": rules.phase,
 		"round": rules.round_number,
 		"break_left": rules._break_left,
+		"night_time": rules.night_time,
 		"plan": rules._plan.duplicate(),
 		# How many are still to spawn: derived from the plan, for readers that only count (the HUD).
 		"spawn_left": rules._plan.size(),
@@ -61,6 +62,7 @@ static func restore(rules: GameRules, data: Dictionary) -> StringName:
 	rules.phase = data["phase"]
 	rules.round_number = data["round"]
 	rules._break_left = data["break_left"]
+	rules.night_time = data["night_time"]
 	rules._plan.assign(data["plan"])
 	rules._special = rules.tuning.specials.by_id(StringName(data["special_id"]))
 	rules._round_total = data["round_total"]

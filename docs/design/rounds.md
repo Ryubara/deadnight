@@ -64,6 +64,7 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
 | `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a downed player cannot buy: `purchase_denied` with `PLAYER_DOWNED`, nothing spent (doors, weapons, fuel, all of it); a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
+| `revive` | `player_id` (the one raising), `target_id` (the downed one) | the night server, when a teammate has held use beside the downed player for the whole channel ([Revives](#revives)); refused as `wrong_phase`, `unknown_player`, `self_revive`, `player_downed` (the reviver) or `not_downed` |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
@@ -86,6 +87,7 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `player_hurt` | `player_id`, `damage` (taken off), `health` (left), `max_health`, `bearing`, `source_id` | the HUD's damage arc toward `bearing` (turned by where the player faces), the health bar; the camera shake |
 | `player_healed` | `player_id`, `health`, `max_health`, `reason` (`regen` or `revive`) | the health bar. `regen` is sent when the whole-unit health changes (about 25 a second while mending), `revive` once with `player_revived` |
 | `player_downed` | `player_id`, `cause` (`blow` or `forced`), `bearing` | the DOWN tag and the held red frame; the night ends when every player is down |
+| `player_revived` | `player_id`, `reviver_id` (the teammate; 0 when the round ended and got everyone up) | the DOWN tag goes; "IS BACK UP" in the feed. Account progression pays the rescue to `reviver_id` (never to a bot) |
 | `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
 | `board_torn` | `barricade_id`, `boards` (left), `zombie_id` | take the top board off that breach; a splinter burst and a sound there |
@@ -112,6 +114,18 @@ however many shots it takes; tiny hits cannot farm it. The tables below still ho
 
 Not the rules' job: whether a client could really have fired that shot (aim, range, rate of fire,
 ammo). The server checks that when it builds the `hit`, and the network layer rate-limits.
+
+## Revives
+
+A downed player stays down until a teammate raises them or the round ends (then every downed player gets up with
+all their health for a tenth of their points; see `down_penalty_fraction`). There is **no bleed-out**: the time a
+downed player has is the round. A teammate holds the use button within 2.2 m (`NightTuning.revive_reach`) of them
+for **6 seconds** (`HealthTuning.revive_seconds`, the number the balance simulator already used) and they get up
+with **half their health** (`HealthTuning.revive_fraction`), mending again after the usual 5 s without a blow.
+Letting go, stepping out of reach or going down starts the time over; being struck does not, so a revive under
+attack is the reviver's call. Only in a round. The prompt (`{kind: revive, id, progress}`) comes before any door's,
+and the frame carries `reviving` (whom a player is raising) and `revive` (0 to 1, on the downed one). Two helpers at
+once do not speed it up. The rules take only the finished `revive` action; the channel lives in `NightServer`.
 
 ## The fence's boards
 
@@ -673,5 +687,5 @@ The ranges and the health, count and spawn curves are unchanged.
   kill and the gate's cells, so it is a decision for the maintainer with the weapon work, and the health curve could
   climb again behind it. `tools/balance/run_report.py` and `balance_cli.gd --shopping=...` reproduce the table (see
   the research page).
-- **Downed players and revives** are only modelled as down and up; the revive action, bleed-out and
-  the exact penalty are for the player work to settle.
+- **Downed players and revives**: the revive is built ([Revives](#revives)) and has no bleed-out; the exact penalty
+  at a round's end (a tenth of the points) is still for the player work to settle.

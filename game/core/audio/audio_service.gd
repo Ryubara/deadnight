@@ -12,8 +12,10 @@ extends Node
 ##   play, from a seedable generator (`seed_random`);
 ## - distance (sounds past their `max_distance` are not started; the engine attenuates the rest)
 ##   and occlusion (a muffled, quieter sound when `occlusion_probe` says a wall is between);
-## - ducking: a sting lowers the Effects bus for a moment, in an `AudioEffectAmplify` this node
-##   adds, so the player's own volume settings (which own the buses' volumes) are never touched;
+## - ducking: a sting lowers the `Duck` bus, which the Effects and Ambience buses send to, for a
+##   moment, so the player's own volume settings (which own those buses' volumes) are never touched.
+##   It is bus volume and nothing else, so it sounds the same in the web build, where players are
+##   samples that ignore bus effects;
 ## - beds: a few players for the looping ambience and score, which fade in and out in dB per second
 ##   of the service's own clock (`start_bed`, `stop_bed`);
 ## - the hook for the UI: `UIAudio.handler` is pointed at `play_ui` when the service is ready.
@@ -29,6 +31,12 @@ const DEFER_MAX_SECONDS := 0.12
 ## Sounds that may wait at once; past it the quietest waiting one is dropped.
 const DEFER_MAX := 16
 ## Pooled players for sounds with a place, and for sounds without one.
+## The background load of the sounds (`start_background_preload`): the wait before it starts (s),
+## its share of a frame, and the least and most it takes of one (ms).
+const BACKGROUND_WAIT_S := 1.0
+const BACKGROUND_SHARE := 0.25
+const BACKGROUND_MIN_MSEC := 3.0
+const BACKGROUND_MAX_MSEC := 40.0
 const POOL_3D := 32
 const POOL_2D := 12
 ## Players for beds (looping ambience and score), which are outside the voice budget.
@@ -50,7 +58,7 @@ const REAR_CUTOFF_HZ := 1800.0
 const REAR_FROM_COS := 0.15
 ## The budget treats a fully occluded sound as this much quieter.
 const OCCLUSION_LOUDNESS := 0.5
-## Ducking: how fast the Effects bus drops and recovers, in dB per second.
+## Ducking: how fast the `Duck` bus drops and recovers, in dB per second.
 const DUCK_ATTACK_DB_PER_S := 80.0
 const DUCK_RELEASE_DB_PER_S := 14.0
 ## Mix steps the audio thread must take after voices are stopped before it has let go of their
@@ -62,11 +70,25 @@ const DRAIN_POLL_MS := 2
 ## The buses a sting ducks (the guns and the dead, and the ambience under them). The voice of the
 ## player, the music and the interface are left alone.
 const DUCK_BUSES: Array[StringName] = [&"Effects", &"Ambience"]
+## The bus the ducked buses send to (`default_bus_layout.tres`); the duck is its volume.
+const DUCK_BUS := &"Duck"
+## The value of the project setting `audio/general/default_playback_type.web` that plays players as
+## samples (0 is streams). It is not the engine's `AudioServer.PlaybackType`, whose numbers differ.
+const PLAYBACK_SETTING_SAMPLE := 1
+## Where a player's filter does not apply (the web build plays players as samples, which ignore it),
+## a wall and the rear cue are also told by volume: this much more than the usual occlusion drop for
+## a fully blocked sound, and this much for one straight behind the listener (dB, both quieter).
+const NO_FILTER_OCCLUSION_DB := -4.0
+const NO_FILTER_REAR_DB := -3.0
 
 ## Where the listener is when no camera exists (and what tests set).
 var listener: Node3D
 ## `Callable(from: Vector3, to: Vector3) -> float`: 0 open, 1 fully blocked. Used when valid.
 var occlusion_probe := Callable()
+## Whether the low-pass of occlusion and the rear cue is heard (`players_apply_filters`). When it is
+## not, they are told by volume as well (`NO_FILTER_OCCLUSION_DB`, `NO_FILTER_REAR_DB`). A test
+## sets it.
+var filters_apply := AudioService.players_apply_filters()
 ## Physics layers that block sound. 0 turns the built-in ray test off (the default until the map
 ## has walls on a layer of their own); `occlusion_probe` overrides it.
 var occluder_mask := 0
@@ -80,6 +102,11 @@ var starts_per_frame := 0
 var started := 0
 var culled := 0
 
+## While the player is in a menu the service loads the sounds a night uses, a slice of each frame
+## (`start_background_preload`), so the night's loading screen has less to do.
+var _background_ids: Array = []
+var _background_at := 0
+var _background_wait := 0.0
 var _rng := RandomNumberGenerator.new()
 var _now := 0.0
 var _streams := {}
@@ -106,7 +133,10 @@ var _budget_2d: VoiceBudget
 var _duck_until := 0.0
 var _duck_target := 0.0
 ## The amplify effect this service put on each ducked bus.
-var _duck_effects: Dictionary[StringName, AudioEffectAmplify] = {}
+var _duck_bus := -1
+## The duck last written to the `Duck` bus, so a second service (a test beside the game's) that has
+## nothing to duck leaves the bus alone.
+var _duck_written := 0.0
 var _warned := {}
 var _rules: GameRules
 
@@ -133,7 +163,9 @@ func _ready() -> void:
 		player.name = "Bed%d" % i
 		add_child(player)
 		_bed_players.append(player)
-	_add_duck_effect()
+	_duck_bus = AudioServer.get_bus_index(DUCK_BUS)
+	if _duck_bus < 0:
+		push_warning("Audio: the bus layout has no %s bus, so a sting cannot duck" % DUCK_BUS)
 	install_ui_hook()
 
 
@@ -149,13 +181,50 @@ func _exit_tree() -> void:
 	_pcm.clear()
 	_looped.clear()
 	_kept.clear()
-	_remove_duck_effect()
+	_set_duck_volume(0.0)
 	if UIAudio.handler == play_ui:
 		UIAudio.handler = Callable()
+	# The engine frees what the audio server still holds only once its mixer has taken a few steps,
+	# and a process that quits at once (a test run, a capture) leaves it held: reported at exit as
+	# `ObjectDB instances were leaked` and `resources still in use`, at random under load. Only the
+	# autoload waits: it leaves the tree last, and a service a test frees mid-run would add a wait
+	# to every test.
+	if is_inside_tree() and get_parent() == get_tree().root:
+		drain_mixer_blocking()
 
 
 func _process(delta: float) -> void:
 	advance(delta)
+	_background_preload(delta)
+
+
+## Starts loading every sound into the cache in the background, a slice of each frame, after a
+## short wait (the menu draws first). The night's warm-up loads what is left. Starting again does
+## nothing. The slice is a quarter of the last frame, between `BACKGROUND_MIN_MSEC` and
+## `BACKGROUND_MAX_MSEC`: a machine that draws slowly has the time, a fast one is not stuttered.
+func start_background_preload() -> void:
+	if not _background_ids.is_empty() or _background_at > 0:
+		return
+	_background_ids = SoundCatalog.ids()
+	_background_wait = BACKGROUND_WAIT_S
+
+
+## Whether the background load has been asked for and has not finished.
+func background_preloading() -> bool:
+	return _background_at < _background_ids.size()
+
+
+func _background_preload(delta: float) -> void:
+	if not background_preloading():
+		return
+	_background_wait -= delta
+	if _background_wait > 0.0:
+		return
+	var slice := clampf(delta * 1000.0 * BACKGROUND_SHARE, BACKGROUND_MIN_MSEC, BACKGROUND_MAX_MSEC)
+	var until := Time.get_ticks_msec() + int(slice)
+	while background_preloading() and Time.get_ticks_msec() < until:
+		preload_sound(_background_ids[_background_at])
+		_background_at += 1
 
 
 ## Moves the service's clock: frees finished voices and steps the ducking.
@@ -167,8 +236,7 @@ func advance(delta: float) -> void:
 	_duck_target = _duck_target if _now < _duck_until else 0.0
 	var rate := DUCK_ATTACK_DB_PER_S if _duck_target < duck_db else DUCK_RELEASE_DB_PER_S
 	duck_db = move_toward(duck_db, _duck_target, rate * delta)
-	for effect in _duck_effects.values():
-		effect.volume_db = duck_db
+	_set_duck_volume(duck_db)
 	_step_beds(delta)
 
 
@@ -487,6 +555,23 @@ func wait_for_mixer() -> void:
 	push_warning("Audio: the mixer took %d of %d steps in time" % [steps, DRAIN_MIX_STEPS])
 
 
+## `wait_for_mixer` for a place that cannot await, the end of the process: blocks this thread (the
+## mixer runs on its own) until the mixer has taken the steps or the polls run out. Returns whether
+## it did.
+func drain_mixer_blocking() -> bool:
+	var steps := 0
+	var last := AudioServer.get_time_since_last_mix()
+	for _i in DRAIN_MAX_POLLS:
+		if steps >= DRAIN_MIX_STEPS:
+			return true
+		OS.delay_msec(DRAIN_POLL_MS)
+		var now := AudioServer.get_time_since_last_mix()
+		if now < last:
+			steps += 1
+		last = now
+	return false
+
+
 func _play_3d(
 	def: SoundDef, stream: AudioStream, at: Vector3, pitch: float, duration: float, extra_db: float
 ) -> Node:
@@ -509,6 +594,10 @@ func _play_3d(
 	player.stream = stream
 	player.bus = def.bus
 	player.volume_db = def.volume_db + extra_db + OCCLUSION_DB * occlusion
+	if not filters_apply:
+		player.volume_db += NO_FILTER_OCCLUSION_DB * occlusion
+		if def.rear_cue:
+			player.volume_db += NO_FILTER_REAR_DB * rear_amount(at)
 	cap_near_level(player, def)
 	player.pitch_scale = pitch
 	player.unit_size = def.unit_size
@@ -644,21 +733,22 @@ func _on_rules_event(event: Dictionary) -> void:
 			play(&"special_round")
 
 
-func _add_duck_effect() -> void:
-	for bus_name in DUCK_BUSES:
-		var bus := AudioServer.get_bus_index(bus_name)
-		if bus < 0:
-			continue
-		var effect := AudioEffectAmplify.new()
-		AudioServer.add_bus_effect(bus, effect)
-		_duck_effects[bus_name] = effect
+## Writes the duck to the `Duck` bus when it has changed.
+func _set_duck_volume(db: float) -> void:
+	if _duck_bus < 0 or is_equal_approx(db, _duck_written):
+		return
+	_duck_written = db
+	AudioServer.set_bus_volume_db(_duck_bus, db)
 
 
-func _remove_duck_effect() -> void:
-	for bus_name in _duck_effects:
-		var bus := AudioServer.get_bus_index(bus_name)
-		for i in AudioServer.get_bus_effect_count(bus) if bus >= 0 else 0:
-			if AudioServer.get_bus_effect(bus, i) == _duck_effects[bus_name]:
-				AudioServer.remove_bus_effect(bus, i)
-				break
-	_duck_effects.clear()
+## Whether a 3D player's distance filter (the low-pass of occlusion and the rear cue) reaches the
+## speakers: not for a player played as a sample, which is the web build's default.
+static func players_apply_filters() -> bool:
+	if not OS.has_feature("web"):
+		return true
+	var setting := int(
+		ProjectSettings.get_setting(
+			"audio/general/default_playback_type.web", PLAYBACK_SETTING_SAMPLE
+		)
+	)
+	return setting != PLAYBACK_SETTING_SAMPLE
