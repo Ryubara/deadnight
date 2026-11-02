@@ -75,6 +75,28 @@ after its workflow is on `main`:
 
 A push to a pull request now starts one `pr` job (`pr-rules`) where it started four, then five.
 
+## The docs rules of `pr-rules` (#540)
+
+The kit's rules that make docs ship with a change (its `docs/hooks.md#docs`) apply here through the same checker
+(`.github/scripts/groundwork.py`, synced from the kit with `gds sync`) and this repository's `.github/conventions.yml`
+(`pull_requests.lessons`, `read_first`, `kit_docs`). The description step runs `groundwork.py pr-history` first, which
+asks GitHub (read-only: the `checks: read` and `issues: read` permissions of the job) which watched checks failed on an
+earlier commit of the pull request and which issues it closes, with their labels; it falls back to the title alone when
+GitHub cannot be asked.
+
+- `Lessons:` in Summary: a pull request titled `Fix` or `Rework`, or after a failed `build-ok`, `conventions`, `mkdocs`,
+  `markdownlint` or `actionlint` on an earlier commit, or closing a `bug` issue, links the kit's lesson
+  (`docs/lessons/<yyyy-mm-dd>-<slug>.md`) or a row of its corrections page. `Lessons: none (reason)` is refused there and
+  allowed elsewhere.
+- `Kit docs:` in Summary: the same pull requests name the kit pull request that documents the process
+  (`gdstudio#N` or its URL), or `Kit docs: none (reason)`.
+- `Read first:` in Summary: a pull request that closes an issue names the areas whose checks the author read first
+  (`gds lessons <area>`). The kit's `areas.toml` is not in this repository, so the line is required but not matched
+  against the issue's labels.
+
+A `none (reason)` line ends with the `)`. Changing the rules is a change to `.github/conventions.yml`, which a
+maintainer merges by hand.
+
 ## Measured
 
 Jobs started (not skipped) per push to a pull request, from the runs of one pull request head before and after:

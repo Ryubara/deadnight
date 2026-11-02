@@ -43,6 +43,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      checks: read   # the checks that failed on an earlier commit of the pull request (pr-history)
+      issues: read   # the issues it closes and their labels (pr-history)
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -64,9 +66,15 @@ jobs:
         run: uv run --with pyyaml python .github/scripts/groundwork.py check-title "$RUNNER_TEMP/pr-title.txt"
       - name: Check the description against the template
         if: ${{ !cancelled() }}
+        # The description is judged with what the API knows of the pull request (checks that failed on its earlier
+        # commits, the issues it closes and their labels): `pr-history` reads it with the read-only token and falls back
+        # to the title alone when GitHub cannot be asked (the lessons, kit docs and read-first rules).
         run: |
+          set -euo pipefail
+          uv run --with pyyaml python .github/scripts/groundwork.py pr-history --repo "$GH_REPO" --number "$NUMBER" \
+            > "$RUNNER_TEMP/pr-history.json"
           uv run --with pyyaml python .github/scripts/groundwork.py check-body --body "$RUNNER_TEMP/pr-body.md" \
-            --title "$RUNNER_TEMP/pr-title.txt"
+            --title "$RUNNER_TEMP/pr-title.txt" --history "$RUNNER_TEMP/pr-history.json"
       - name: Check that the docs change with the code
         if: ${{ !cancelled() }}
         run: |
