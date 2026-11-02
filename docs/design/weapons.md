@@ -37,7 +37,8 @@ The server decides every hit. The client shows the shot at once and the server's
 - **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
   `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
   so a travelling shot is always a real body with its own flight, not a drawn line.
-- **`MELEE`** (crowbar): a sweep; no streak, no impact puff.
+- **`MELEE`** (crowbar): a sweep from the player's head (not the shoulder camera), a swing on the Soldier, a spark on a
+  hit; no muzzle flash, no streak, no impact puff.
 
 ## The shoulder camera
 

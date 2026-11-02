@@ -27,6 +27,7 @@ var _next_id := 1
 ## Peers being hung up on, and when we began (seconds): a client that does not answer the closing
 ## handshake is let go after `CLOSE_GRACE`.
 var _closing: Dictionary[int, float] = {}
+var _close_codes: Dictionary[int, int] = {}
 
 
 func listen(port: int) -> Error:
@@ -76,9 +77,24 @@ func poll() -> void:
 		if _closing.has(id) and now - _closing[id] > CLOSE_GRACE:
 			gone = true
 		if gone:
+			# Remembered for the signal's handlers: a clean goodbye (1000, or 1001 when a page is
+			# closed) against a socket that went away (no close frame, or any other code).
+			_close_codes[id] = ws.get_close_code()
 			_peers.erase(id)
 			_closing.erase(id)
 			peer_disconnected.emit(id)
+
+
+## The close code the peer's socket ended with (-1 when no close frame came), kept after
+## `peer_disconnected`.
+func close_code_of(peer_id: int) -> int:
+	return _close_codes.get(peer_id, -1)
+
+
+## Whether the peer said goodbye on purpose (a normal closure, or a page going away).
+func left_on_purpose(peer_id: int) -> bool:
+	var code := close_code_of(peer_id)
+	return code == 1000 or code == 1001
 
 
 func send(peer_id: int, data: PackedByteArray) -> void:

@@ -222,7 +222,7 @@ func _ready() -> void:
 	set(&"parameters/split/blend_amount", 1.0)
 	active = true
 	_playback = get(&"parameters/body/playback") as AnimationNodeStateMachinePlayback
-	_set_class(DEFAULT_CLASS)
+	_set_class(DEFAULT_CLASS, hold_of(DEFAULT_CLASS))
 	_player.jumped.connect(_on_jumped)
 	_player.landed.connect(_on_landed)
 
@@ -338,13 +338,18 @@ func muzzle_point() -> Node3D:
 	return _weapon.find_child(MUZZLE_NODE, true, false) as Node3D
 
 
-## Switches to a weapon class: Equip_<Class> plays and the weapon appears on its weapon_visible
-## frame; the upper body then holds Aim_<Class>.
-func equip(new_class: StringName) -> void:
-	if new_class not in CLASSES:
-		push_error("PlayerAnimation: no weapon class %s" % new_class)
+## Switches to a weapon: a class (`&"Rifle"`) or a weapon of the catalogue (`&"pistol"`).
+## Equip_<Class> plays and the weapon appears on its weapon_visible frame; the upper body then
+## holds Aim_<Class>. A catalogue weapon brings its own hold and model (`WeaponHoldMap.hold_for`),
+## so no two share a model; a class brings the class's hold (`hold_of`).
+func equip(weapon: StringName) -> void:
+	if weapon in CLASSES:
+		_set_class(weapon, hold_of(weapon))
+	elif weapon in WeaponCatalog.IDS:
+		_set_class(WeaponHoldMap.class_of(weapon), WeaponHoldMap.hold_for(weapon))
+	else:
+		push_error("PlayerAnimation: no weapon or class %s" % weapon)
 		return
-	_set_class(new_class)
 	_weapon_visible(false)
 	play_action(&"Equip")
 
@@ -352,7 +357,12 @@ func equip(new_class: StringName) -> void:
 ## Plays `<action>_<Class>` (Fire, Reload, Swing, Equip, Unequip) on the upper body. Returns
 ## false when the class has no such clip.
 func play_action(action: StringName) -> bool:
-	return _play_clip(StringName("%s_%s" % [action, weapon_class]))
+	var played := _play_clip(StringName("%s_%s" % [action, weapon_class]))
+	# An attack or a reload that cuts the Equip clip short must not leave the weapon hidden: its
+	# `weapon_visible` frame would never come.
+	if played and action != &"Equip" and action != &"Unequip":
+		_weapon_visible(true)
+	return played
 
 
 ## The Soldier's side of a grenade, by the server's events. `&"cook"` (`cook_started`): the pin is
@@ -476,13 +486,13 @@ func shoulder_blend() -> float:
 	return _shoulder_blend
 
 
-func _set_class(new_class: StringName) -> void:
+func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
-	_hold = hold_of(new_class)
+	_hold = hold
 	_hands.hold = _hold
 	if _hold != null:
 		_weapon = (load(_hold.scene) as PackedScene).instantiate() as Node3D
