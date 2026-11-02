@@ -14,6 +14,7 @@ class FakeApi:
 	var joined: Array[String] = []
 	var left: Array[String] = []
 	var tickets := 0
+	var preview_answer := {}
 
 	func my_id() -> String:
 		return me
@@ -28,6 +29,11 @@ class FakeApi:
 		if start_failure != "":
 			return TogetherApi._failed(start_failure)
 		return {"ok": true, "lobby": started}
+
+	func preview(_code: String) -> Dictionary:
+		if preview_answer.has("ok"):
+			return preview_answer
+		return {"ok": true, "preview": preview_answer}
 
 	func join_code(code: String) -> Dictionary:
 		joined.append(code)
@@ -113,12 +119,29 @@ func _instance() -> LobbyScreen:
 
 func _screen(api: FakeApi, params: Dictionary) -> LobbyScreen:
 	await RouterFixture.clear(get_tree())
-	var screen := _instance()
+	var screen := (load(LobbyScreen.SCREEN) as PackedScene).instantiate() as LobbyScreen
 	screen.params = params.merged({"api": api})
 	add_child(screen)
 	screen.watch.every = 3600.0
 	await screen.screen_enter()
 	return screen
+
+
+func test_the_screen_asks_through_an_api_under_itself_not_under_the_screen_it_covers() -> void:
+	# A covered screen is not processed, and neither are the requests made under it: the lobby
+	# screen opened from Play together would otherwise never get an answer (found in the browser).
+	var covered := auto_free(Control.new()) as Control
+	add_child(covered)
+	var api := TogetherApi.new(covered)
+	api.isolated = true
+	var held := _lobby([_member("a", "Ann", 1, true)])
+	await RouterFixture.clear(get_tree())
+	var screen := (load(LobbyScreen.SCREEN) as PackedScene).instantiate() as LobbyScreen
+	screen.params = {"api": api, "lobby": held}
+	add_child(screen)
+	assert_object(screen.api.owner_node()).is_same(screen)
+	assert_object(screen.api).is_not_same(api)
+	screen.free()
 
 
 func test_the_host_sees_the_code_the_seats_and_start() -> void:
@@ -304,6 +327,29 @@ func test_a_night_in_progress_says_its_round_before_the_player_joins() -> void:
 	assert_array(api.joined).is_equal(["ABC234"])
 	assert_int(api.tickets).is_equal(1)
 	assert_int(_entered).is_equal(1)
+	screen.free()
+
+
+func test_a_preview_left_open_follows_the_night_it_reads() -> void:
+	var api := FakeApi.new(self)
+	var screen := await _screen(api, {"preview": _preview("open", null, 1)})
+	assert_str(screen.status.text).is_equal("Waiting room. Ann is hosting, 1 of 4 here.")
+	assert_bool(screen._preview_timer.is_stopped()).is_false()
+	# The host starts, and a friend joins: the next read says so, with no press of anything.
+	api.preview_answer = _preview("started", 2, 2)
+	await screen.refresh_preview()
+	assert_str(screen.status.text).is_equal("Night in progress, round 2. 2 of 4 here.")
+	assert_bool(screen.join_button.is_visible_in_tree()).is_true()
+	api.preview_answer = _preview("started", 2, 4, true)
+	await screen.refresh_preview()
+	assert_str(screen.status.text).is_equal("That night is full (4 of 4).")
+	assert_bool(screen.join_button.is_visible_in_tree()).is_false()
+	# A night that ended says so and offers only Back.
+	api.preview_answer = TogetherApi._failed("not_found")
+	await screen.refresh_preview()
+	assert_str(screen.status.text).is_equal(TogetherApi.TEXTS["not_found"])
+	assert_bool(screen._preview_timer.is_stopped()).is_true()
+	assert_bool(screen.leave_button.is_visible_in_tree()).is_true()
 	screen.free()
 
 

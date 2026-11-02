@@ -67,32 +67,94 @@ func test_what_a_player_reads_for_each_answer_of_the_backend() -> void:
 ## An API that answers from the test: no network.
 class FakeApi:
 	extends TogetherApi
-	var joined: Array[String] = []
+	var previewed: Array[String] = []
+	var created := 0
+
+	func my_id() -> String:
+		return "a"
 
 	func sign_in(_display_name: String = "") -> Dictionary:
 		return {"ok": true}
 
-	func join_code(code: String) -> Dictionary:
-		joined.append(code)
+	func preview(code: String) -> Dictionary:
+		previewed.append(code)
 		if code == "NOPE":
 			return {"ok": false, "error": "not_found", "text": TogetherApi.TEXTS["not_found"]}
-		return {"ok": true, "lobby": {"id": "lobby-1", "code": code}}
+		return {
+			"ok": true,
+			"preview":
+			{
+				"code": code,
+				"state": "started",
+				"round": 4,
+				"players": 2,
+				"maxPlayers": 4,
+				"full": false,
+				"hostName": "Ann",
+				"names": ["Ann", "Bo"],
+			}
+		}
+
+	func create_lobby() -> Dictionary:
+		created += 1
+		var host := {"userId": "a", "name": "Ann", "seat": 1, "host": true, "away": false}
+		return {
+			"ok": true,
+			"lobby":
+			{
+				"id": "lobby-1",
+				"code": "MADE42",
+				"hostId": "a",
+				"maxPlayers": 4,
+				"state": "open",
+				"round": null,
+				"players": null,
+				"members": [host],
+			}
+		}
 
 
-func test_a_night_found_by_a_link_waits_for_a_press_of_play() -> void:
+func before_test() -> void:
+	TogetherScreen.auto_code = ""
+	NightScreen.join_url = ""
+	await RouterFixture.clear(get_tree())
+
+
+func after_test() -> void:
+	await RouterFixture.clear(get_tree())
+
+
+func test_a_link_reads_the_night_first_and_joins_nothing_until_join_is_pressed() -> void:
 	var screen := _screen()
 	var fake := FakeApi.new(screen)
 	screen.api = fake
 	TogetherScreen.auto_code = "FRIEND1"
 	await screen.screen_enter()
-	assert_array(fake.joined).is_equal(["FRIEND1"])
-	# It did not go in: the invite view shows the code and a Play button, and no invite to hand out.
+	await UIRouter.idle
+	assert_array(fake.previewed).is_equal(["FRIEND1"])
+	# The lobby screen is up with the preview and its Join: the night was not entered.
+	var lobby := UIRouter.top() as LobbyScreen
+	assert_object(lobby).is_not_null()
+	assert_int(lobby.mode).is_equal(LobbyScreen.Mode.PREVIEW)
+	assert_str(lobby.status.text).is_equal("Night in progress, round 4. 2 of 4 here.")
+	assert_bool(lobby.join_button.is_visible_in_tree()).is_true()
 	assert_str(NightScreen.join_url).is_equal("")
-	assert_bool(screen.play_button.is_visible_in_tree()).is_true()
-	assert_str(screen.invite_code.text).is_equal("FRIEND1")
-	assert_bool(screen.copy_link_button.is_visible_in_tree()).is_false()
-	assert_bool(screen.copy_code_button.is_visible_in_tree()).is_false()
-	assert_bool(screen.quick_button.is_visible_in_tree()).is_false()
+	screen.queue_free()
+
+
+func test_create_a_night_makes_a_waiting_lobby_and_does_not_start_it() -> void:
+	var screen := _screen()
+	var fake := FakeApi.new(screen)
+	screen.api = fake
+	await screen._create("Making your night...")
+	await UIRouter.idle
+	assert_int(fake.created).is_equal(1)
+	var lobby := UIRouter.top() as LobbyScreen
+	assert_object(lobby).is_not_null()
+	assert_int(lobby.mode).is_equal(LobbyScreen.Mode.LIVE)
+	assert_str(lobby.code_label.text).is_equal("MADE42")
+	assert_bool(lobby.start_button.is_visible_in_tree()).is_true()
+	assert_str(NightScreen.join_url).is_equal("")
 	screen.queue_free()
 
 
@@ -104,6 +166,7 @@ func test_a_link_to_a_night_that_is_gone_says_so_and_shows_the_menu() -> void:
 	assert_str(screen.status.text).contains("no night with that code")
 	assert_bool(screen.quick_button.is_visible_in_tree()).is_true()
 	assert_bool(screen.quick_button.disabled).is_false()
+	assert_object(UIRouter.top() as LobbyScreen).is_null()
 	screen.queue_free()
 
 
