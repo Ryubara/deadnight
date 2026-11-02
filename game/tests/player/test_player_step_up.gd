@@ -66,6 +66,7 @@ func test_a_ledge_as_high_as_the_step_height_is_climbed_without_a_jump() -> void
 	var height := 0.3
 	assert_float(_tuning.step_height).is_greater_equal(height)
 	_add_ledge(height)
+	await _flush_physics()
 	await _walk_into_it()
 	assert_bool(_on_top_of(height)).is_true()
 	assert_int(_jumps).is_equal(0)
@@ -74,6 +75,7 @@ func test_a_ledge_as_high_as_the_step_height_is_climbed_without_a_jump() -> void
 func test_a_ledge_is_climbed_at_every_pace_and_from_an_angle() -> void:
 	var height := 0.25
 	_add_ledge(height)
+	await _flush_physics()
 	var attempts := {
 		"run": [Vector2(0.0, -1.0), false, false],
 		"sprint": [Vector2(0.0, -1.0), true, false],
@@ -98,6 +100,7 @@ func test_climbing_does_not_stall_the_walk() -> void:
 	_player.teleport(START)
 	await _run(Vector2.ZERO, 20)
 	_add_ledge(_tuning.step_height, 6.0)
+	await _flush_physics()
 	await _run(Vector2(0.0, -1.0), 90)
 	var with_ledge := START.z - _player.state.position.z
 	assert_float(with_ledge).is_greater(flat - 0.25)
@@ -105,6 +108,7 @@ func test_climbing_does_not_stall_the_walk() -> void:
 
 func test_a_ledge_above_the_step_height_stays_a_wall() -> void:
 	_add_ledge(0.35)
+	await _flush_physics()
 	await _walk_into_it()
 	assert_float(_player.state.position.y).is_less(0.02)
 	assert_float(_player.state.position.z).is_greater(FACE_Z)
@@ -114,6 +118,7 @@ func test_a_low_ceiling_over_the_ledge_stops_the_climb() -> void:
 	var height := 0.25
 	_add_ledge(height)
 	_add_beam(height, 1.2)  # lower than the body's 1.8 m
+	await _flush_physics()
 	await _walk_into_it()
 	assert_float(_player.state.position.y).is_less(0.02)
 	assert_float(_player.state.position.z).is_greater(FACE_Z)
@@ -123,6 +128,7 @@ func test_a_ledge_with_enough_headroom_is_climbed_under_a_beam() -> void:
 	var height := 0.25
 	_add_ledge(height)
 	_add_beam(height, _tuning.height + 0.2)
+	await _flush_physics()
 	await _walk_into_it()
 	assert_bool(_on_top_of(height)).is_true()
 
@@ -135,8 +141,7 @@ func test_a_slope_is_walked_not_stepped() -> void:
 	for i in 90:
 		var command := PlayerCommand.new()
 		command.move = Vector2(0.0, -1.0)
-		_player.submit_command(command)
-		await get_tree().physics_frame
+		_step(command)
 		if _player.state.stepped_up > 0.0:
 			steps += 1
 	assert_float(_player.state.position.y).is_greater(0.5)  # it did climb the ramp
@@ -147,6 +152,7 @@ func test_a_narrow_curb_is_climbed() -> void:
 	# Thinner than the body is wide: no landing to fit the whole capsule on.
 	var height := 0.2
 	_add_ledge(height, 0.3)
+	await _flush_physics()
 	await _walk_into_it(Vector2(0.0, -1.0), 1.5)
 	assert_float(_player.state.position.z).is_less(FACE_Z - 0.3)  # carried on, over the curb
 
@@ -156,6 +162,7 @@ func test_step_height_zero_turns_stepping_off() -> void:
 	_tuning.step_height = 0.0
 	_player.tuning = _tuning
 	_add_ledge(0.2)
+	await _flush_physics()
 	await _walk_into_it()
 	assert_float(_player.state.position.y).is_less(0.02)
 
@@ -165,9 +172,11 @@ func test_step_height_zero_turns_stepping_off() -> void:
 
 func test_a_replay_climbs_the_same_ledges() -> void:
 	# The step is part of the simulation: the recorded commands, run again from the start state
-	# (here in an idle frame, as a handler would), end in the same place.
+	# (here in a later physics callback; the idle frame of a handler is the reconcile suite's, see
+	# `test_player_crouch.gd`), end in the same place.
 	_add_ledge(0.2)
 	_add_ledge(0.3, 3.5, 3.0).global_position += Vector3(0.0, 0.0, -1.5)
+	await _flush_physics()
 	var recorded: Array[PackedByteArray] = []
 	var start := _player.state.duplicate_state()
 	for i in 75:
@@ -177,11 +186,10 @@ func test_a_replay_climbs_the_same_ledges() -> void:
 		command.sprint = i % 90 > 50
 		command.jump = i % 120 == 119
 		recorded.append(command.to_bytes())
-		_player.submit_command(command)
-		await get_tree().physics_frame
+		_step(command)
 	var first_end := _player.state.duplicate_state()
 	assert_float(first_end.position.y).is_greater(0.25)  # it went up both ledges
-	await get_tree().process_frame
+	await _flush_physics()  # the replay is a later physics callback; see the note above
 	_player.state.copy_from(start)
 	_player.global_position = start.position
 	_player.velocity = start.velocity
@@ -202,14 +210,14 @@ func test_a_replay_climbs_the_same_ledges() -> void:
 
 func test_the_model_eases_up_instead_of_popping() -> void:
 	_add_ledge(_tuning.step_height)
+	await _flush_physics()
 	var model := _player.get_node("Model") as Node3D
 	var lags: Array[float] = []
 	var rise := 0.0
 	for i in 120:
 		var command := PlayerCommand.new()
 		command.move = Vector2(0.0, -1.0)
-		_player.submit_command(command)
-		await get_tree().physics_frame
+		_step(command)
 		rise += _player.state.stepped_up
 		if rise > 0.0:
 			lags.append(_player.step_lag())
@@ -227,11 +235,11 @@ func test_the_model_eases_up_instead_of_popping() -> void:
 
 func test_teleporting_drops_the_lag() -> void:
 	_add_ledge(_tuning.step_height)
+	await _flush_physics()
 	for i in 70:
 		var command := PlayerCommand.new()
 		command.move = Vector2(0.0, -1.0)
-		_player.submit_command(command)
-		await get_tree().physics_frame
+		_step(command)
 		if _player.state.stepped_up > 0.0:
 			break
 	assert_float(_player.step_lag()).is_greater(0.0)
@@ -245,6 +253,7 @@ func test_teleporting_drops_the_lag() -> void:
 ## growing from 0 to 1 across them. A jerk is what the eye sees as a pop.
 func _climb_at_144_hz() -> Dictionary:
 	_add_ledge(_tuning.step_height)
+	await _flush_physics()
 	var model := _player.get_node("Model") as Node3D
 	var rig := _player.camera_rig
 	var drawn: Array[float] = []
@@ -254,9 +263,8 @@ func _climb_at_144_hz() -> Dictionary:
 	for tick in 150:
 		var command := PlayerCommand.new()
 		command.move = Vector2(0.0, -1.0)
-		_player.submit_command(command)
 		var before_y := _player.global_position.y + model.position.y
-		await get_tree().physics_frame
+		_step(command)
 		var after_y := _player.global_position.y + model.position.y
 		stepped = stepped or _player.state.stepped_up > 0.0
 		while (frame + 1) * FRAME_DELTA * 60.0 <= tick + 1.0 + 1e-6:
