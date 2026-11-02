@@ -21,13 +21,22 @@ document is the *mechanism*, and it is the same everywhere:
 
 ## What Deadnight does, and why
 
-- **Face the view while the trigger is held and a moment after** (not always, as the combat kit above does): walking
-  should still turn the soldier to where he runs, because the dead come from every side and the player flees as much
-  as fights. The hold (0.6 s) hides the swing back between single shots.
-- **Turn fast but not instantly**: 22 rad/s, 0.14 s for a half turn. A snap makes the shoulders pop and reads as a
-  glitch; the finite rate is the documented option (the strafing system's turn rate).
-- **Zoom part of the way** (half of the aim view): the maintainer asked for it "as if they were aiming"; the aim view
-  stays the precise one with a slower walk and a steadier look, and the half-zoom has neither.
+- **Hip fire is the aim, held for a moment** (maintainer, playing, reopening #300: "The logic should be the same
+  camera wise with or without aiming no matter when they're shooting, aiming is just a precheck that skips it if
+  already aiming"). A first version gave hip fire its own half zoom with its own springs and left the weapon on the aim
+  button alone, which showed as a second, partial aim: the gun jumped into the aim pose when the button was pressed, did
+  not rise when shooting, and the zoom-out was three times slower. There is now one weight (`aiming or fire_age <
+  hold`) for the camera, the body, the legs and the hands, and one set of springs.
+- **Face the view while the aim is held** (not always, as the combat kit above does): walking should still turn the
+  soldier to where he runs, because the dead come from every side and the player flees as much as fights. The hold
+  (0.8 s) hides the swing back between single shots and keeps the camera from pulsing between the slowest weapon's
+  shots.
+- **Turn fast but not instantly**: 8 rad/s, 0.16 s for a view 75 degrees away. A snap makes the shoulders pop and the
+  weapon jump; the finite rate is the documented option (the strafing system's turn rate). It is slower than the first
+  version (22 and 24) because the weapon turns with the body *and* with the aim weight and the two add up.
+- **Zoom all the way**, as the aim does. What stays different is what the button does on top of it: a slower walk
+  (`aim_speed`) and a steadier look (`steady_amount()`, its own ease on the real button), because a burst from the hip
+  should not slow the view.
 - **The shot never moves**: the reticle sits on the camera ray whatever the body or the zoom does, as the Cinemachine
   note says it should; `AimResolver` already aimed the muzzle at that point.
 - **The server turns the body**: facing is simulated state and the muzzle is rotated by it, so the trigger travels in

@@ -186,7 +186,7 @@ func tick(command: PlayerCommand) -> void:
 	rotation.y = state.facing
 	_ease_step(state.stepped_up, get_physics_process_delta_time())
 	camera_rig.aiming = state.aiming
-	camera_rig.hip_firing = state.fire_age < tuning.hip_fire_zoom_delay
+	camera_rig.aim_held = state.holds_aim(tuning.hip_fire_hold)
 	camera_rig.side = state.shoulder_side
 	camera_rig.sprinting = state.sprinting
 	camera_rig.crouching = state.crouching

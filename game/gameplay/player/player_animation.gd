@@ -522,9 +522,12 @@ func _advance_shoulder(delta: float) -> void:
 		(action_clip == &"" or String(action_clip).begins_with("Fire_")) and not is_repairing()
 	)
 	var rig := _player.camera_rig
-	_hands.aim_yaw = rig.yaw if _player.state.aiming else _player.rotation.y
+	# The one aim weight (the aim button or a recent shot, eased by the camera) turns the weapon from
+	# the body's heading to the view and the barrel in to the crosshair's ray: no single-frame jump.
+	var weight := rig.aim_amount()
+	_hands.aim_yaw = lerp_angle(_player.rotation.y, rig.yaw, weight)
 	_hands.aim_pitch = rig.pitch
-	_hands.converging = _player.state.aiming
+	_hands.converge = weight
 	var view := rig.aim_transform()
 	_hands.converge_on = view.origin - view.basis.z * WeaponHandsIK.CONVERGE_DISTANCE
 	if String(action_clip).begins_with("Fire_") and _action_time < delta * 1.5:
@@ -566,13 +569,11 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
-## Follows the aim: while aiming the legs take the aim gait for the direction of travel (the body
-## keeps facing the camera, so moving sideways or back is a strafe or a backpedal).
+## Follows the aim: while the aim is held (the button, or a shot just fired) the legs take the aim
+## gait for the direction of travel (the body keeps facing the camera, so moving sideways or back is
+## a strafe or a backpedal). The weight is the camera's, already eased: the one aim weight.
 func _advance_aim_move(follow: float) -> void:
-	var target := 1.0 if _player.state.aiming else 0.0
-	_aim_blend = lerpf(_aim_blend, target, follow)
-	if absf(_aim_blend - target) < 0.001:
-		_aim_blend = target
+	_aim_blend = _player.camera_rig.aim_amount()
 	set(AIM_BLEND_PARAMETER, _aim_blend)
 	var gait := aim_move_for(_player.state.velocity, _player.state.facing, _aim_move_speed)
 	_aim_move = _aim_move.lerp(gait["position"], follow)
