@@ -8,6 +8,8 @@ extends Control
 ## the corners hold the always-on readouts, the centre stays clear for the view.
 
 const SCENE := "res://ui/hud/hud.tscn"
+## The input action that shows the scoreboard while it is held.
+const SCOREBOARD_ACTION := &"scoreboard"
 ## The gap beside the crosshair where point gains list. The banner sits on the top margin, level
 ## with the cards at the corners, so it ends above the event list that reaches under it (its rows
 ## are wider than the column). The prompt sits on the bottom margin between the health and ammo
@@ -43,6 +45,7 @@ const PART_NAMES := {
 	&"crosshair": "Crosshair",
 	&"damage": "Damage",
 	&"markers": "Markers",
+	&"scoreboard": "Scoreboard",
 }
 
 ## The look of the centre reticle (`reticle_style.tres`); editable on the Hud node in the editor.
@@ -78,6 +81,13 @@ var reticle := HudReticle.new()
 var crosshair := HudCrosshair.new()
 var damage := HudDamage.new()
 var markers := HudMarkers.new()
+var scoreboard := HudScoreboard.new()
+## False while a menu or the result is over the night: holding the key then shows nothing.
+var scoreboard_enabled := true:
+	set(value):
+		scoreboard_enabled = value
+		if not value:
+			scoreboard.set_shown(false)
 
 var _tokens := UITokens.active()
 ## Each stacked column: {node, parts, ax, ay, dx, dy}, kept so a mirror can place it again.
@@ -104,6 +114,8 @@ func _ready() -> void:
 	_stack([prompt], 0.5, 1.0, 0.0, -margin, gap)
 	_stack([gains], 0.5, 0.5, GAINS_OFFSET.x, GAINS_OFFSET.y, gap)
 	(gains.get_parent() as Control).grow_horizontal = Control.GROW_DIRECTION_END
+	# Last, so it draws over every other part.
+	_centre(scoreboard)
 	for part in all_parts():
 		part.bind(state)
 	resized.connect(_fit_gains)
@@ -112,6 +124,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	state.tick(delta)
+	# Polled, not read from events: the key, the pad and the touch button all hold the action.
+	scoreboard.set_shown(scoreboard_enabled and Input.is_action_pressed(SCOREBOARD_ACTION))
 
 
 func _input(event: InputEvent) -> void:
@@ -151,7 +165,8 @@ func all_parts() -> Array[HudPart]:
 		marquee,
 		boss_bar,
 		prompt,
-		gains
+		gains,
+		scoreboard
 	]
 
 
@@ -172,6 +187,15 @@ func boxed_parts() -> Array[Control]:
 		prompt,
 		gains
 	]
+
+
+## Holds `part` in the middle of the screen, over everything else.
+func _centre(part: Control) -> void:
+	var holder := CenterContainer.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(part)
+	add_child(holder)
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 ## A column anchored at (ax, ay) of the screen, grown away from the anchor, `parts` top to bottom.

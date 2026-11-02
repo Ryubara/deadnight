@@ -69,6 +69,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"tab": "",
 		"stage": "",
 		"gamepad": "",
+		"controller_hint": false,
 		"clipboard": "",
 		"clipboard_detail": ""
 	}
@@ -79,6 +80,13 @@ static func snapshot(top: Control) -> Dictionary:
 	var clipboard := WebClipboard.read()  # inside a frame only: what copy and paste can do there
 	data["clipboard"] = WebClipboard.note(clipboard)
 	data["clipboard_detail"] = WebClipboard.detail(clipboard)
+	var tree := top.get_tree()
+	var hint: ControllerHint = (
+		tree.root.find_child("ControllerHint", true, false) as ControllerHint
+		if tree != null
+		else null
+	)
+	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
