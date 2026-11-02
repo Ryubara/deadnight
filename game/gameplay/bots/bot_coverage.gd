@@ -53,7 +53,8 @@ const PROMPTS := {
 	"circuit": "rule: BotErrands throws a breaker the generator care wants the other way",
 	"fuel":
 	"rule: BotErrands presses use at a can spot while the tank is low and it is the bot's turn",
-	"revive": "waived until #229 (team play: raising a downed teammate)",
+	"revive":
+	"rule: BotRevive holds use beside the downed teammate it claimed, once the risk check passes",
 }
 
 
