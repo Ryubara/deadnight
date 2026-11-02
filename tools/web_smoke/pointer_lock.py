@@ -39,7 +39,8 @@ from smoke import start_solo
 VIEWPORT = {"width": 1280, "height": 720}
 SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
 LOAD_TIMEOUT_S = 150
-NIGHT_LOAD_TIMEOUT_S = 150
+# The night's load on a CI runner took 82 s to 107 s, and over 150 s on a slow one (see smoke.py).
+NIGHT_LOAD_TIMEOUT_S = 300
 SCREEN_TIMEOUT_S = 40
 LOCK_TIMEOUT_S = 10
 # The menu opens the frame after the lock goes (the unit tests prove the frame); a software renderer on a runner draws
