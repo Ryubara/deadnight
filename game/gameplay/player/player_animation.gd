@@ -14,6 +14,7 @@ extends AnimationTree
 ##          body by a Blend2 filtered to the upper bones.
 ##   repair: Repair_Board looping over the upper layer while the player puts boards back at a
 ##          breach (its own file, added to the library here), timed by the rules' events.
+##   downed: kneeling at a revive, or down, over all of that (DownedPose, #504).
 ##   full:  a full-body OneShot over both (HitReact, Death).
 ## Loops, the upper bones and the event frames come from clips.json, written by the build script.
 
@@ -223,6 +224,9 @@ var _carry_node: AnimationNodeAnimation
 ## ground); the tree gets the weight through a smoothstep.
 var _carry := SprintCarry.new()
 var _carry_on := false
+## The downed and revive layers (#504), and where the kneel loop is for its `press` events.
+var _down := DownedPose.new()
+var _revive_time := 0.0
 
 
 func _ready() -> void:
@@ -239,6 +243,10 @@ func _ready() -> void:
 	)
 	_aim_move_speed = aim_moves["clips"]["Walk_Shoot"]["ground_speed"]
 	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SPRINT_CLIPS)
+	var revive_specs := DownedPose.add_clips(anim_player)
+	_spec["clips"].merge(revive_specs)
+	if revive_specs.has(String(DownedPose.CRAWL_CLIP)):
+		_down.crawl_speed = revive_specs[String(DownedPose.CRAWL_CLIP)]["ground_speed"]
 	_loop_clips(anim_player)
 	_duck_bottom = SoldierClipFile.lowest_second(anim_player.get_animation(&"Duck"))
 	_mount = BoneAttachment3D.new()
@@ -303,6 +311,7 @@ func _process(delta: float) -> void:
 	_advance_aim_move(follow, delta)
 	_advance_events(delta)
 	_advance_repair(delta)
+	_advance_downed(speed, delta)
 	_advance_carry(delta, on_floor)
 	_advance_reload(delta)
 	_advance_shoulder(delta)
@@ -358,9 +367,9 @@ static func aim_move_for(velocity: Vector3, facing: float, clip_speed: float) ->
 
 
 ## Whether the arms should carry the weapon with the stride: sprinting on the ground at speed with
-## nothing else for the arms to do (no aim and no shot held, no action clip, no repair). In the air
-## the carry only holds what it had: it never starts there, and anything that interrupts it on the
-## ground interrupts it in the air too.
+## nothing else for the arms to do (no aim and no shot held, no action clip, no repair, not down
+## and not kneeling at a revive). In the air the carry only holds what it had: it never starts
+## there, and anything that interrupts it on the ground interrupts it in the air too.
 func sprint_carry_wanted(on_floor: bool) -> bool:
 	var state := _player.state
 	return (
@@ -370,6 +379,8 @@ func sprint_carry_wanted(on_floor: bool) -> bool:
 		and not state.holds_aim(_tuning.hip_fire_hold)
 		and action_clip == &""
 		and not is_repairing()
+		and not _down.downed
+		and not _down.reviving
 	)
 
 
@@ -567,6 +578,58 @@ func repair_time() -> float:
 	return _repair_time
 
 
+## Down (`player_downed`) or up again (`player_revived`): the body eases into the downed pose or out
+## of it (DownedPose). Going down drops a repair, a reload and a revive, and puts the weapon away.
+func set_downed(downed: bool) -> void:
+	if downed == _down.downed:
+		return
+	_down.downed = downed
+	if downed:
+		stop_repair()
+		cancel_reload()
+		_down.reviving = false
+	_weapon_visible(not downed)
+
+
+## Holding the revive on a teammate (`revive_started` naming this player the reviver) or not
+## (`revive_interrupted`, `player_revived`): kneels and presses while held. Never while down.
+func set_reviving(reviving: bool) -> void:
+	reviving = reviving and not _down.downed
+	if reviving == _down.reviving:
+		return
+	_down.reviving = reviving
+	if reviving:
+		stop_repair()
+		cancel_reload()
+		_revive_time = 0.0
+	_weapon_visible(not reviving)
+
+
+func is_downed() -> bool:
+	return _down.downed
+
+
+func is_reviving() -> bool:
+	return _down.reviving
+
+
+## The layers' weights now (0 to 1), and whether the optional crawl is in, for tests.
+func downed_weight() -> float:
+	return _down.downed_blend
+
+
+func kneel_weight() -> float:
+	return _down.kneel_blend
+
+
+func crawl_weight() -> float:
+	return _down.crawl_blend
+
+
+func has_crawl() -> bool:
+	return _down.has_crawl()
+
+
 ## Event names and frames of a clip, from clips.json: {event: frame or [frames]}.
 func clip_events(clip: StringName) -> Dictionary:
 	var entry: Dictionary = _spec["clips"].get(String(clip), {})
@@ -673,7 +736,10 @@ func _make_muzzle(hold: WeaponHold) -> Marker3D:
 func _advance_shoulder(delta: float) -> void:
 	var up := _hold != null and _hold.shouldered and _weapon != null and _weapon.visible
 	var hands_free := (
-		(action_clip == &"" or String(action_clip).begins_with("Fire_")) and not is_repairing()
+		(action_clip == &"" or String(action_clip).begins_with("Fire_"))
+		and not is_repairing()
+		and not _down.downed
+		and not _down.reviving
 	)
 	var rig := _player.camera_rig
 	# The pose weight (the aim button or a recent shot from the hip, eased) turns the weapon from the
@@ -701,10 +767,11 @@ func _advance_shoulder(delta: float) -> void:
 
 
 ## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible
-## event (an Equip) does not bring the weapon back over the hammer.
+## event (an Equip) does not bring the weapon back over the hammer. Down or kneeling at a revive,
+## the hands hold nothing.
 func _weapon_visible(shown: bool) -> void:
 	if _weapon != null:
-		_weapon.visible = shown and not is_repairing()
+		_weapon.visible = shown and not is_repairing() and not _down.downed and not _down.reviving
 
 
 func _hands_on_repair(repairing: bool) -> void:
@@ -778,6 +845,19 @@ func _advance_repair(delta: float) -> void:
 	if absf(_repair_blend - target) < 0.001:
 		_repair_blend = target
 	set(REPAIR_BLEND_PARAMETER, _repair_blend)
+
+
+## The downed and kneel layers, and the kneel loop's `press` events while the revive is held.
+func _advance_downed(speed: float, delta: float) -> void:
+	_down.advance(self, speed, delta)
+	if _down.reviving:
+		var length := _clip_seconds(DownedPose.REVIVE_CLIP)
+		var before := _revive_time
+		_revive_time += delta
+		_emit_events(DownedPose.REVIVE_CLIP, before, minf(_revive_time, length))
+		if _revive_time > length:
+			_revive_time -= length
+			_emit_events(DownedPose.REVIVE_CLIP, -1.0, _revive_time)
 
 
 func _advance_repair_events(from: float, to: float) -> void:
@@ -861,7 +941,7 @@ func _clip(clip_name: StringName) -> AnimationNodeAnimation:
 
 func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	var tree := AnimationNodeBlendTree.new()
-	tree.add_node(&"body", _build_body())
+	tree.add_node(&"body", PlayerBodyTree.build(_duck_bottom))
 	_aim_node = _clip(&"Aim_Rifle")
 	_carry_node = _clip(&"Sprint_Rifle")
 	_action_node = _clip(&"Fire_Rifle")
@@ -900,88 +980,7 @@ func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	tree.connect_node(&"repair", 0, &"action")
 	tree.connect_node(&"repair", 1, &"repair_scale")
 	tree.connect_node(&"split", 1, &"repair")
-	tree.connect_node(&"full", 0, &"split")
+	tree.connect_node(&"full", 0, _down.add_nodes(tree, &"split"))
 	tree.connect_node(&"full", 1, &"full_clip")
 	tree.connect_node(&"output", 0, &"full")
-	return tree
-
-
-func _build_body() -> AnimationNodeStateMachine:
-	var machine := AnimationNodeStateMachine.new()
-	machine.add_node(STATE_LOCOMOTION, _build_locomotion(), Vector2(200, 100))
-	machine.add_node(STATE_JUMP, _clip(&"Jump"), Vector2(400, 0))
-	machine.add_node(STATE_FALL, _clip(&"Jump_Idle"), Vector2(600, 100))
-	machine.add_node(STATE_LAND, _clip(&"Jump_Land"), Vector2(400, 200))
-	machine.add_node(STATE_CROUCH, _build_crouch(), Vector2(200, 250))
-	machine.add_transition(&"Start", STATE_LOCOMOTION, _transition(0.0, false))
-	machine.add_transition(STATE_LOCOMOTION, STATE_JUMP, _transition(0.08, false))
-	machine.add_transition(STATE_LOCOMOTION, STATE_FALL, _transition(0.15, false))
-	machine.add_transition(STATE_JUMP, STATE_FALL, _transition(0.1, true))
-	machine.add_transition(STATE_JUMP, STATE_LAND, _transition(0.05, false))
-	machine.add_transition(STATE_FALL, STATE_LAND, _transition(0.05, false))
-	machine.add_transition(STATE_LAND, STATE_LOCOMOTION, _transition(0.15, true))
-	machine.add_transition(STATE_LAND, STATE_JUMP, _transition(0.08, false))
-	machine.add_transition(STATE_LOCOMOTION, STATE_CROUCH, _transition(0.15, false))
-	machine.add_transition(STATE_CROUCH, STATE_LOCOMOTION, _transition(0.15, false))
-	machine.add_transition(STATE_CROUCH, STATE_FALL, _transition(0.15, false))
-	return machine
-
-
-func _transition(fade: float, at_end: bool) -> AnimationNodeStateMachineTransition:
-	var transition := AnimationNodeStateMachineTransition.new()
-	transition.xfade_time = fade
-	if at_end:
-		transition.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_AT_END
-		transition.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
-	return transition
-
-
-## The held Duck pose (a short loop around its lowest second) with the Walk laid over by `mix`.
-func _build_crouch() -> AnimationNodeBlendTree:
-	var tree := AnimationNodeBlendTree.new()
-	var duck := _clip(&"Duck")
-	duck.use_custom_timeline = true
-	duck.start_offset = maxf(_duck_bottom - DUCK_HOLD * 0.5, 0.0)
-	duck.timeline_length = DUCK_HOLD
-	duck.loop_mode = Animation.LOOP_LINEAR
-	duck.stretch_time_scale = false
-	tree.add_node(&"duck", duck)
-	tree.add_node(&"walk", _clip(&"Walk"))
-	tree.add_node(&"walk_rate", AnimationNodeTimeScale.new())
-	tree.connect_node(&"walk_rate", 0, &"walk")
-	tree.add_node(&"mix", AnimationNodeBlend2.new())
-	tree.connect_node(&"mix", 0, &"duck")
-	tree.connect_node(&"mix", 1, &"walk_rate")
-	tree.connect_node(&"output", 0, &"mix")
-	return tree
-
-
-func _build_locomotion() -> AnimationNodeBlendTree:
-	var tree := AnimationNodeBlendTree.new()
-	var move := AnimationNodeBlendSpace1D.new()
-	move.min_space = 0.0
-	move.max_space = 1.0
-	move.sync = true  # Walk and Run differ in length: keep their steps in phase
-	move.add_blend_point(_clip(&"Idle"), 0.0, -1, &"idle")
-	move.add_blend_point(_clip(&"Walk"), WALK_POINT, -1, &"walk")
-	move.add_blend_point(_clip(&"Run"), 1.0, -1, &"run")
-	tree.add_node(&"move", move)
-	tree.add_node(&"run_speed", AnimationNodeTimeScale.new())
-	tree.connect_node(&"run_speed", 0, &"move")
-	# Aiming: the four directions around Idle; the clips share their length and step together,
-	# so a diagonal is two of them in phase.
-	var aim_move := AnimationNodeBlendSpace2D.new()
-	aim_move.sync = true
-	aim_move.add_blend_point(_clip(&"Idle"), Vector2.ZERO, -1, &"idle")
-	for clip: StringName in AIM_MOVES:
-		aim_move.add_blend_point(
-			_clip(clip), AIM_MOVES[clip], -1, StringName(String(clip).to_snake_case())
-		)
-	tree.add_node(&"aim_move", aim_move)
-	tree.add_node(&"aim_rate", AnimationNodeTimeScale.new())
-	tree.connect_node(&"aim_rate", 0, &"aim_move")
-	tree.add_node(&"aim_blend", AnimationNodeBlend2.new())
-	tree.connect_node(&"aim_blend", 0, &"run_speed")
-	tree.connect_node(&"aim_blend", 1, &"aim_rate")
-	tree.connect_node(&"output", 0, &"aim_blend")
 	return tree
