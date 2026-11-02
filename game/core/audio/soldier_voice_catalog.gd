@@ -1,7 +1,7 @@
 class_name SoldierVoiceCatalog
 extends RefCounted
 ## The soldier's voice: what each moment of the night is called, how many takes it has and how
-## it ranks against the others, added to `SoundCatalog` by `build` (as `ArmsCatalog` does).
+## it ranks against the others, added to `SoundCatalog` by `build`.
 ##
 ## The files are `game/assets/audio/voice/soldier/<event>_<n>.ogg`, made by
 ## `tools/audio/elevenlabs_voice.py` from `tools/audio/soldier_voice.json` (ElevenLabs text to
@@ -13,14 +13,8 @@ const FOLDER := "voice/soldier/"
 const BUS := &"Voice"
 const GROUP := &"soldier_voice"
 const PREFIX := "vox_"
-## The level of every take on the Voice bus, and what the local player's own voice (flat, in their
-## head) is lowered by on top of that. Measured against the guns and the beds in a night capture
-## (`docs/research/audio.md`).
-const VOICE_DB := -4.0
-const LOCAL_DB := -2.0
-## A teammate's voice carries this far (metres) and halves at `unit_size`.
-const MAX_DISTANCE := 40.0
-const UNIT_SIZE := 6.0
+## The level of every take, how far a teammate's voice carries and what the local player's own is
+## lowered by are `SoundMix` (`sound_mix_default.tres`, "Soldier voice").
 
 ## Per moment: `takes` (how many files there are), `priority` (a line may cut the one speaking only
 ## from `VoiceDirector.INTERRUPT_PRIORITY` up, and then only a lower one), `cooldown` (seconds
@@ -56,6 +50,7 @@ static var _lengths := {}
 ## Adds every take as a sound; `add` is `SoundCatalog._add` (id, path under the audio folder,
 ## variants, options).
 static func build(add: Callable) -> void:
+	var mix := SoundCatalog.mix()
 	for event: StringName in EVENTS:
 		var info: Dictionary = EVENTS[event]
 		for n in range(1, int(info["takes"]) + 1):
@@ -70,9 +65,9 @@ static func build(add: Callable) -> void:
 						"group": GROUP,
 						"priority": info["priority"],
 						"pitch_semitones": 0.0,
-						"volume_db": VOICE_DB,
-						"max_distance": MAX_DISTANCE,
-						"unit_size": UNIT_SIZE,
+						"volume_db": mix.voice_db,
+						"max_distance": mix.voice_max_distance,
+						"unit_size": mix.voice_unit_size,
 						"near_cap_db": 0.0,
 					}
 				)

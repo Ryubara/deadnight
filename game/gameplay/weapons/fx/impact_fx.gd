@@ -15,29 +15,11 @@ const PUFF_SHADER := preload("res://gameplay/weapons/fx/impact_puff.gdshader")
 
 ## The most impacts alive at once.
 const MAX_ACTIVE := 24
-## Rendered frames a spark stays.
-const SPARK_FRAMES := 2
-## Sizes are diameters in metres. The old impact was a 0.2 spark and a 0.1 puff that swelled to
-## 0.52 (a round sphere each); these never go past the bounds below.
-const SPARK_SIZE := 0.09
-const DUST_FROM := 0.09
-const DUST_TO := 0.2
-const DUST_SECONDS := 0.28
-const MARK_SIZE := 0.045
-const MARK_SECONDS := 0.8
-const BLOOD_FROM := 0.06
-const BLOOD_TO := 0.14
-const BLOOD_SECONDS := 0.22
 ## The largest part any impact may draw, for the tests that keep them small.
 const MAX_SIZE := 0.25
-## Quads are nudged this far toward the camera so a wall does not cut them in half.
-const LIFT := 0.04
-
-const DUST := Color(0.62, 0.58, 0.5)
-const DUST_LIGHT := Color(0.82, 0.78, 0.68)
-const MARK := Color(0.1, 0.085, 0.08, 0.85)
-const BLOOD := Color(0.42, 0.03, 0.05)
-const BLOOD_LIGHT := Color(0.68, 0.1, 0.1)
+## The sizes, times and colours (`shot_fx_tuning_default.tres`, "Impact"). Sizes are diameters in
+## metres; the old impact was a 0.2 spark and a 0.1 puff that swelled to 0.52 (a round sphere each).
+var fx := ShotFxTuning.shipped()
 
 var _spark_material: ShaderMaterial
 var _slots: Array[Slot] = []
@@ -123,7 +105,7 @@ func spawn(at: Vector3, kind: Kind) -> void:
 	slot.global_position = at
 	if camera != null:
 		var back := (camera.global_position - at).normalized()
-		slot.global_position = at + back * LIFT
+		slot.global_position = at + back * fx.lift
 		slot.global_basis = Basis.looking_at(-back, Vector3.UP)
 	else:
 		slot.global_basis = Basis.IDENTITY
@@ -132,18 +114,18 @@ func spawn(at: Vector3, kind: Kind) -> void:
 	slot.mark.visible = kind == Kind.WORLD
 	slot.puff.visible = true
 	slot.spark.rotation.z = turn
-	slot.spark.scale = Vector3.ONE * SPARK_SIZE * _rng.randf_range(0.85, 1.2)
-	slot.mark.scale = Vector3.ONE * MARK_SIZE * _rng.randf_range(0.8, 1.2)
+	slot.spark.scale = Vector3.ONE * fx.spark_size * _rng.randf_range(0.85, 1.2)
+	slot.mark.scale = Vector3.ONE * fx.mark_size * _rng.randf_range(0.8, 1.2)
 	slot.puff_material.set_shader_parameter(&"seed", _rng.randf() * TAU)
 	slot.mark_material.set_shader_parameter(&"seed", _rng.randf() * TAU)
 	if kind == Kind.WORLD:
-		slot.puff_material.set_shader_parameter(&"colour", DUST)
-		slot.puff_material.set_shader_parameter(&"highlight", DUST_LIGHT)
-		slot.life = MARK_SECONDS
+		slot.puff_material.set_shader_parameter(&"colour", fx.dust_colour)
+		slot.puff_material.set_shader_parameter(&"highlight", fx.dust_light_colour)
+		slot.life = fx.mark_seconds
 	else:
-		slot.puff_material.set_shader_parameter(&"colour", BLOOD)
-		slot.puff_material.set_shader_parameter(&"highlight", BLOOD_LIGHT)
-		slot.life = BLOOD_SECONDS
+		slot.puff_material.set_shader_parameter(&"colour", fx.blood_colour)
+		slot.puff_material.set_shader_parameter(&"highlight", fx.blood_light_colour)
+		slot.life = fx.blood_seconds
 	_pose(slot)
 	set_process(true)
 
@@ -176,16 +158,16 @@ func _process(delta: float) -> void:
 ## Sizes and fades of one impact for the time it has lived.
 func _pose(slot: Slot) -> void:
 	if slot.kind == Kind.WORLD:
-		slot.spark.visible = slot.frames <= SPARK_FRAMES
-		var dust := clampf(slot.seconds / DUST_SECONDS, 0.0, 1.0)
+		slot.spark.visible = slot.frames <= fx.spark_frames
+		var dust := clampf(slot.seconds / fx.dust_seconds, 0.0, 1.0)
 		slot.puff.visible = dust < 1.0
-		slot.puff.scale = Vector3.ONE * lerpf(DUST_FROM, DUST_TO, _ease_out(dust))
+		slot.puff.scale = Vector3.ONE * lerpf(fx.dust_from, fx.dust_to, _ease_out(dust))
 		slot.puff_material.set_shader_parameter(&"progress", dust)
-		var mark := clampf(slot.seconds / MARK_SECONDS, 0.0, 1.0)
+		var mark := clampf(slot.seconds / fx.mark_seconds, 0.0, 1.0)
 		slot.mark_material.set_shader_parameter(&"progress", mark)
 	else:
-		var blood := clampf(slot.seconds / BLOOD_SECONDS, 0.0, 1.0)
-		slot.puff.scale = Vector3.ONE * lerpf(BLOOD_FROM, BLOOD_TO, _ease_out(blood))
+		var blood := clampf(slot.seconds / fx.blood_seconds, 0.0, 1.0)
+		slot.puff.scale = Vector3.ONE * lerpf(fx.blood_from, fx.blood_to, _ease_out(blood))
 		slot.puff_material.set_shader_parameter(&"progress", blood)
 
 
@@ -221,7 +203,7 @@ func _make_slot() -> Slot:
 	slot.visible = false
 	slot.puff_material = _puff_material(0.12, 1.0, 0.35)
 	slot.mark_material = _puff_material(0.05, 0.0, 0.6)
-	slot.mark_material.set_shader_parameter(&"colour", MARK)
+	slot.mark_material.set_shader_parameter(&"colour", fx.mark_colour)
 	slot.spark = _quad(_spark_material)
 	slot.puff = _quad(slot.puff_material)
 	slot.mark = _quad(slot.mark_material)
