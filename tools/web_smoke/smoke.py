@@ -262,6 +262,8 @@ def main() -> int:
             "(docs/research/first-use-hitches.md)"
         )
 
+    problems.extend(night_load_problems(result, args.gpu, deployed))
+
     (out / "console.txt").write_text("\n".join(console) + "\n", encoding="utf-8")
     result["console_lines"] = len(console)
     result["problems"] = problems
