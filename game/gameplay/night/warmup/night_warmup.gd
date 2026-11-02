@@ -30,6 +30,8 @@ extends Node
 ## Fraction (0 to 1) done and what is being done.
 signal progress(fraction: float, text: String)
 
+## The id of the sample flare the warm-up draws (a real shot never has it).
+const WARMUP_PROJECTILE := -1
 ## The stage is this high above the lot, out of reach of every lamp.
 const STAGE_HEIGHT := 150.0
 ## How far the zombies in a row stand apart.
@@ -434,7 +436,25 @@ func _replay_effects() -> void:
 		)
 	)
 	await _chunk()
-	view.draw_event({"type": &"projectile_burst", "point": at + Vector3(2.0, 0.0, -2.0)})
+	var flare_at := at + Vector3(2.0, 0.0, -2.0)
+	var flare := WeaponCatalog.get_def(&"flare_gun")
+	(
+		view
+		. draw_event(
+			{
+				"type": &"projectile_spawned",
+				"projectile_id": WARMUP_PROJECTILE,
+				"shooter_id": -1,
+				"weapon_id": flare.id,
+				"position": flare_at,
+				"velocity": Vector3.ZERO,
+			}
+		)
+	)
+	await _chunk()
+	view.draw_event(
+		{"type": &"projectile_burst", "projectile_id": WARMUP_PROJECTILE, "point": flare_at}
+	)
 	# A weapon that asks for a streak is not in the catalogue, but the pooled streaks are made.
 	view.effects.tracer(at + Vector3(4.0, 0.0, 0.0), at + Vector3(4.0, 0.0, -3.0))
 	await _chunk()

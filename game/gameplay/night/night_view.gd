@@ -39,6 +39,11 @@ var bodies: Callable = func(_player_id: int) -> Node3D: return null
 var repair_interval: Callable = func() -> float: return 1.0
 
 var _state: ClientState
+## The projectiles in the air, by the server's id: each a copy of the server's shot, stepped with
+## the same code on every frame, and ended by the server's burst.
+var _projectile_views: Dictionary[int, ProjectileView] = {}
+## The world's first surface on a segment, as the server's shots see it (made on the first shot).
+var _probe: WorldProbe
 ## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
 ## the same code on every frame, so it lands where the server's lands (`show_grenades`).
 var _grenade_views: Dictionary[int, GrenadeView] = {}
@@ -113,6 +118,11 @@ func grenades_in_flight() -> int:
 	return _grenade_views.size()
 
 
+## How many projectiles (flares) are in the air on this client.
+func projectiles_in_flight() -> int:
+	return _projectile_views.size()
+
+
 ## Starts the night's ambience and the sounds of its boards, doors, blows, till and voices, placed
 ## in `world`.
 func hear(world: NightWorld) -> void:
@@ -157,6 +167,7 @@ func _on_event(event: Dictionary) -> void:
 			voices.update(_state.zombies, step)
 			PerfProbe.end(&"view.voices", began)
 			_step_grenades()
+			_step_projectiles()
 		&"grenade_thrown", &"grenade_dropped":
 			_launch_grenade(event)
 		&"grenade_exploded":
@@ -183,8 +194,10 @@ func _on_event(event: Dictionary) -> void:
 			Audio.play(&"round_end")
 		&"special_round_announced":
 			Audio.play(&"special_round")
+		&"projectile_spawned":
+			_launch_projectile(event)
 		&"projectile_burst":
-			effects.spark(event["point"])
+			_burst_projectile(event)
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
@@ -193,6 +206,41 @@ func _on_event(event: Dictionary) -> void:
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
+
+
+func _launch_projectile(event: Dictionary) -> void:
+	var view := ProjectileView.new()
+	view.state = ProjectileState.new(
+		event["projectile_id"],
+		event["shooter_id"],
+		WeaponCatalog.get_def(event["weapon_id"]),
+		event["position"],
+		event["velocity"]
+	)
+	add_child(view)
+	_projectile_views[event["projectile_id"]] = view
+
+
+## The copies fly with the server's code against the walls, not the zombies: the burst the server
+## sends says where and when each one ends.
+func _step_projectiles() -> void:
+	if _projectile_views.is_empty():
+		return
+	if _probe == null:
+		_probe = WorldProbe.new(get_world_3d().direct_space_state)
+	for view in _projectile_views.values():
+		view.state.step(step, {}, _probe.callable())
+		view.follow()
+
+
+func _burst_projectile(event: Dictionary) -> void:
+	var id: int = event.get("projectile_id", -1)  # the warm-up's sample burst has none
+	var view: ProjectileView = _projectile_views.get(id)
+	if view != null:
+		view.queue_free()
+		_projectile_views.erase(id)
+	effects.spark(event["point"])
+	effects.muzzle_flash(event["point"])
 
 
 func _launch_grenade(event: Dictionary) -> void:

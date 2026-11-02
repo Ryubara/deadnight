@@ -145,6 +145,24 @@ Structures are 5.1-5.6k; Broken Car 5.4k.
 | Character skin | `#a68450`, `#b89359` | Soldier, Enemy |
 | Character mains | `#5c6d37`, `#c79b17`, `#991c22` | Soldier olive, Hazmat yellow, Enemy red |
 
+### Palette imports
+
+Every palette or atlas PNG (the weapons', props', drive-in's, zombies' and Soldier's, and the images Godot extracts
+from a glb) is imported **lossless, without mipmaps, with Detect 3D off** (`compress/mode=0`,
+`mipmaps/generate=false`, `detect_3d/compress_to=0`). Faces sit on one swatch each, so nothing is gained by mipmaps,
+and block compression or a mip blends neighbouring swatches: the editor then showed other colours than the build. The
+lot's tiling textures are the one exception (mipmapped, see [Lot surfaces](#lot-surfaces)).
+
+| What | Measured (pinned Godot 4.7.2, issue #441) |
+| --- | --- |
+| Detect 3D on (Godot's default `compress_to=1`) | opening the editor on the drive-in rewrote 11 `.import` files: VRAM compression (`s3tc_bptc`, `etc2_astc`), mipmaps on; a headless import never does, so the checkout was dirty after every editor session |
+| Detect 3D off | the same editor session leaves `git status` clean |
+| A glb's extracted image | Godot rewrites the PNG only when the image inside the glb changes (`generator_parameters` md5 in the `.import`); it keeps `compress/mode` and Detect 3D but turns mipmaps back on |
+
+`tools/check_texture_imports.py` holds the rule (tiling textures listed by path, everything else a palette). The
+Blender builds write each palette's `.import` as they save it (`tools/blender/palette_import.py`), the pre-commit hook
+`texture-imports` corrects any other (an extracted image after a rebuild) and fails, and CI runs the check.
+
 ## Scale
 
 The kit is oversized for a game where players stand about 1.8 m tall, and the zombie file is smaller than the kit.
@@ -185,7 +203,7 @@ tint, from the palette above.
 
 | Rule | Value |
 | --- | --- |
-| Textures | 256 x 256 greyscale PNG, lossless, mipmapped (set in the `.import`: a headless import leaves mipmaps off), 0.4-4.6 KB each |
+| Textures | 256 x 256 greyscale PNG, lossless, mipmapped, Detect 3D off (set in the `.import` and listed as tiling in `tools/check_texture_imports.py`), 0.4-4.6 KB each |
 | Patterns and tile | asphalt 4 m (three blotch tones, chips, cracks), gravel 2 m, concrete 4 m (2 m slabs), planks 2 m (0.25 m boards), corrugated 2 m (0.125 m ribs), blocks 3.2 m (0.4 x 0.2 m, running bond), diner tiles 2 m (0.5 m), shutter 2 m (0.125 m slats) |
 | Tones | the lightest tone is 250 of 255, so the tint is the surface's colour; seams and gaps 100-150, never black |
 | Projection | the lot shader (`game/assets/lot/lot_surface.gdshader`) projects the pattern in world space onto each face's own plane: a box of any size keeps its pattern at true scale and needs no UVs. One texture read a pixel; Godot's triplanar (three reads) cost about 10 ms a night frame in the software-rendered web build |

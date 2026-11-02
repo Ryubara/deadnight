@@ -77,6 +77,8 @@ var left_handed := false
 var persist_hints := true
 ## The first-run labels, a child that draws over the buttons.
 var hints: TouchHints
+## () -> float, the factor on a look drag: the aim assist's friction near a zombie (1 without).
+var look_gain := Callable()
 
 var _enabled := false
 var _active := false
@@ -267,6 +269,8 @@ func _touch_drag(index: int, point: Vector2, relative: Vector2, velocity: Vector
 
 func _look(relative: Vector2, velocity: Vector2) -> void:
 	var look := TouchLook.mouse_equivalent(relative, velocity.length(), _canvas().y)
+	if look_gain.is_valid():
+		look *= float(look_gain.call())
 	looked.emit(look)
 	if relative != Vector2.ZERO:
 		hints.mark_used(TouchHints.LOOK)

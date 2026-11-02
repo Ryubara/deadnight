@@ -26,6 +26,7 @@ from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kitlib as kl
+from palette_import import ensure_import
 
 SCALE = 0.8  # the style bible's factor for the kit (characters and what they hold); the props follow it
 ROUGHNESS = 0.415  # every kit material
@@ -147,6 +148,7 @@ def palette_image(path):
     img.filepath_raw = str(path)
     img.file_format = "PNG"
     img.save()
+    ensure_import(path)  # lossless, no mipmaps, Detect 3D off (tools/check_texture_imports.py)
     return img
 
 
