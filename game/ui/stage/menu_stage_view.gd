@@ -108,9 +108,10 @@ func reload_look() -> void:
 	refresh()
 
 
-## Shows a look that is not saved yet (the wardrobe's working copy) with the saved weapon.
-func preview_look(look: CharacterLook) -> void:
-	stage.show_look(look, MenuHero.saved_weapon())
+## Shows a look that is not saved yet (the wardrobe's working copy) with `weapon`, or the saved
+## weapon when none is given.
+func preview_look(look: CharacterLook, weapon := &"") -> void:
+	stage.show_look(look, weapon if weapon != &"" else MenuHero.saved_weapon())
 	refresh()
 
 

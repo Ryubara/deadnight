@@ -24,7 +24,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
 | Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 3 (the layout is in its header); a command is a fixed 23 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 5 (the layout is in its header; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md)); a command is a fixed 23 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
@@ -112,7 +112,7 @@ the handshake (`HELLO`/`WELCOME`); a server refuses a client of another version.
 | `SNAPSHOT` 4 full | S→C | `u32 tick, u32 ack_seq, u32 0, u8 count, count × (u8 id, i16 x_cm, i16 y_cm)` | 14 + 5 × players |
 | `SNAPSHOT` 4 delta | S→C | `u32 tick, u32 ack_seq, u32 baseline_tick, u8 count, count × (u8 id, i8 dx_cm, i8 dy_cm)` | 14 + 3 × moved |
 | `EVENT` 5 | S→C | `u8 kind (1 joined, 2 left), u8 player_id` | 3 |
-| `PING` 6 / `PONG` 7 | C→S / S→C | `u32 client_tick` / `u32 client_tick, u32 server_tick` | 5 / 9 |
+| `PING` 6 / `PONG` 7 | C→S / S→C | `u32 client_tick` / `u32 client_tick, u32 server_tick` | 7 / 9 |
 
 - Positions are whole **centimetres** (`i16` covers ±327 m; the arena is ±11 m), movement input is a direction
   quantised to `i8` per axis (`-127..127`). Nothing floating-point crosses the wire.
@@ -188,7 +188,7 @@ budget (`PeerLimits`, `TokenBucket`; `test_peer_limits.gd`, and a hostile client
 
 | Limit | Value | Why |
 | --- | --- | --- |
-| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 5, look 13); the socket's own buffer is 4 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
+| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 7, look 13); the socket's own buffer is 4 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
 | Commands | 90 a second sustained, 240 at once | a client sends 60 a second; a 3 s stall of the connection delivers 180 together and is forgiven |
 | Pings, looks, hellos | 4/s (burst 6), 1/s (burst 3), 1/s (burst 2) | a client pings twice a second and sends one look and one hello |
 | Strikes | a packet over its rate costs 0.5, one the server cannot read (empty, too long, unknown type, wrong size, before hello, hello twice) costs 5; they wear off at 5 a second; at 100 the server hangs up | a flood of commands is cut off after about 450 packets, an honest client never gets one |
@@ -250,6 +250,42 @@ back (#53, protocol version 3):
 - **Not here yet:** a message on screen while the link is down (the signals are there), and the link conditioner (delay,
   jitter and loss) of the spike: the tests cut the socket with `WebSocketLink.drop()`, which closes it with a private
   close code the server reads as "the network went", and `test_reconnect.gd` runs over a real socket.
+
+### A client that freezes (#483)
+
+The maintainer's report: after a hitch (the first flare shot loading its effect) the player "flies all over the map until
+only the skybox shows". The server logs had nothing to show for it (joins, stats and leaves; the server saw a client that
+went quiet and came back), so the cause came from a reproduction, `test_client_freeze.gd`: the server as a process of
+its own, the client over the real socket with 100 ms each way, a person walking with the keys, and the client's thread
+stopped with `OS.delay_msec` for 0.5, 2 and 5 s.
+
+- **The cause was `Reconciler`, and a freeze only set it off.** A correction moved the body but left the remembered
+  positions of the commands still unanswered where they were. The server's answers are a round trip behind, so the next
+  frames measured the same error again and corrected it again: each correction (a quarter of the error, or all of it over
+  2.5 m) was repeated for every frame in flight. With a round trip of about 200 ms the repeats outweigh the error, and
+  the body is thrown further each time, exponentially (to 10^23 m in 15 s on `main`, with no freeze at all, once
+  anything pushed the body off by more than the 3 cm deadzone). A freeze is the surest push: the engine runs up to eight
+  ticks at once to catch up, the server takes only the newest of the commands that come together, and the client is
+  some 0.7 m ahead of it. The fix shifts the remembered positions by every correction (`Reconciler.correction`).
+  `test_reconciler_loop.gd` runs the loop in one dimension at 50 to 400 ms: 14 of 20 cases ended thousands of metres
+  off on `main`, none now. A body far from the server with no answer to judge it by is put where the server says (`LOST`).
+- **The tests had missed it** because the network was the thing that stalled (`LinkConditioner` holds packets back while
+  the client's own loop keeps running, and at 25 ms the loop above is stable): nothing froze the _client_, and nothing
+  ran a round trip long enough for the loop to matter while anything pushed the body.
+- **After a freeze the client starts again from the server's state** (`StallGuard`). A gap of over 250 ms between two
+  ticks resyncs: the body goes where the newest frame of the backlog has the player, the commands in flight are forgotten,
+  and the ticks the engine runs to catch up (under 8 ms apart) neither move the body nor send a command. The server
+  goes on with the last command for `command_ticks` (half a second, 3 m of sprint), so the client is then snapped back
+  to it: 5.4 to 5.6 m at worst in the test, 0.00 to 0.03 m after the player stops.
+- **A long freeze must not drop what the server sends.** The engine's default socket buffers are 64 KB: at 15 to 35 KB a
+  second a client that read nothing for about three to twelve seconds lost the newest ticks (an `ERROR: Buffer payload
+  full` in the browser's console, as seen at game over), and the frame deltas that followed were against frames it never
+  had, so a position that changed in a lost tick stayed wrong for good (3.7 m in `test_stall_buffers.gd`). The client's
+  inbound and the server's outbound buffers are now 1 MB each with room for 8192 packets (a minute or more), and a tick
+  the socket still would not take makes the next frame whole. `peer_stalled` and `peer_recovered` in the server log say
+  when it happened. No wire change: the protocol version stays.
+- **What is not done:** the browser build was not frozen on purpose here (the Chrome probe needs a night with the flare
+  in hand). The flare's own first-shot hitch is in [First-use hitches](first-use-hitches.md#the-flares-first-shot-483).
 
 ## Match settings
 
