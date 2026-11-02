@@ -73,6 +73,9 @@ var view: NightView
 ## Where the grenade in the local player's hand would go (`show_throw`).
 var preview: GrenadePreview
 var autopilot: Autopilot
+## The bot host the autopilot runs on (`BotClient`, profile `BotProfile.autopilot()`): it decides
+## with the autopilot every tick, as it always did, and counts what it sends.
+var bot: BotClient
 ## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
 ## `start_remote` they are the ones the server's WELCOME carried.
 var match_settings := MatchSettings.new()
@@ -542,11 +545,11 @@ func tick() -> void:
 	match mode:
 		Mode.AUTOPILOT:
 			began = PerfProbe.begin()
-			var command := autopilot.decide(STEP)
+			var command := bot.decide(STEP)
 			PerfProbe.end(&"tick.bot", began)
 			if shoulder_camera:
 				_aim_rig(command)
-			link.send(command.to_dict())
+			_send_command(command)
 		Mode.HUMAN:
 			var human := _human_command()
 			show_throw(human)
@@ -581,7 +584,7 @@ func _tick_remote() -> void:
 			command = _human_command()
 			show_throw(command)
 		Mode.AUTOPILOT:
-			command = autopilot.decide(STEP)
+			command = bot.decide(STEP)
 			if _body != null:
 				_aim_rig(command)
 	if command != null:
@@ -597,7 +600,7 @@ func _tick_remote() -> void:
 		command.player_id = state.player_id
 		if _body != null:
 			reconciler.record(_seq, _body.state.position)
-		link.send(command.to_dict())
+		_send_command(command)
 	if _body == null:
 		_follow(STEP)
 	ticked.emit()
@@ -768,10 +771,21 @@ func _repair_seconds() -> float:
 	return night_tuning.repair_interval
 
 
+## Sends a command and, when a bot made it, counts it in the bot's telemetry.
+func _send_command(command: NightCommand) -> void:
+	var action := command.to_dict()
+	if bot != null:
+		bot.telemetry.note_command(action)
+	link.send(action)
+
+
 func _make_autopilot() -> void:
 	autopilot = Autopilot.new(state, world.map())
 	_sight = WorldProbe.new(get_world_3d().direct_space_state)
 	autopilot.sight = _sight.callable()
+	var level := BotLevel.new(_sight.callable(), world.is_lit, rules_tuning.rounds, world.map())
+	bot = BotClient.new(state, BotProfile.autopilot(), SEED, link.send, level)
+	bot.legacy = autopilot
 	var tuning: RulesTuning = rules_tuning
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.DOOR:

@@ -373,7 +373,14 @@ things", so the set is small and each ping has one meaning.
   dictionaries, replay them through `Night.Mode.MANUAL` into a fresh server with the same seed, compare a state hash
   every 100 ticks. If they differ, the bot reached something the command did not carry.
 - **Golden hash.** Four bots, 600 ticks, fixed seed: the hash of the command stream is a constant in the test; a change
-  to it is a reviewed change.
+  to it is a reviewed change. *Built (#225):* the hash is of each command's buttons, walking direction in eighths and
+  view in 5 degree buckets, over a rig with no physics engine, because the last bit of a float differs between
+  machines. *Measured:* two runs of the same commands in two world instances are **not** bit-identical: a body that
+  walks differs by a hair (1e-5 m on its first step, then a different fight), and a zombie walks round an obstacle by
+  either of two tied routes (0.75 m apart, in about a run in four). So the replay test seats bots that stand and fight
+  (`retreat_margin = 0`) on the open field, compares the rules' state (the round, the dead left, each player's place in
+  quarter metres, health, ammunition, points, kills) and leaves the dead's places out, and checks that a fight
+  happened; it passed ten runs in ten ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-02-a-walking-body-makes-two-runs-of-the-same-commands-differ.md)).
 - **Firewall.** The source scan above, plus: the bot class takes a `ClientState`, a profile, a seed, an `apply`
   callable, a sight callable, a lit callable and the static level data, and has no other constructor argument.
 - **Balance simulator.** The model simulator stays the fast tuning tool (a night in 0.05 to 0.15 s). Bots run in the
@@ -403,6 +410,22 @@ The Autopilot decides at 60 Hz and queries a path every tick. The plan thinks at
 | Motor, every tick | 0.02 ms |
 | **Mean** | **about 0.1 ms** |
 | Worst tick (a think plus a path, 40 zombies) | under 0.5 ms |
+
+**Measured on the built host (#225)**, same machine and rules as above (`BotClient`, regular profile, real ray tests;
+the server steps at 60 Hz here, 16.7 ms a tick):
+
+| What | Measured |
+| --- | --- |
+| A think (look with its rays, thought, hands), 0 / 10 / 30 / 46 zombies in the frame, 1,500 thinks each | p50 29 / 95 / 163 / 183 microseconds; **p99 76 / 170 / 275 / 290 microseconds** (best of three batches; at most 0 / 2 / 6 / 6 rays) |
+| What a bot costs each 60 Hz tick in a four-player night (it hears its share of the events, decides, sends the command as plain data to `apply`), rounds 1 and 2 | about 85 microseconds: 20 to hear, 65 to decide and send (the motor runs every tick, a think one tick in 8) |
+| The server's own step in the same night, four players and 7 zombies | 1.65 ms |
+
+The 46 zombies are the rules' cap at four players (28 plus 6 for each extra player). The p99 is under the 0.5 ms
+budget with room, and the test (`test_bot_night.gd`, scenario 26) scales the budget by how fast the runner runs a fixed
+piece of GDScript, so a slow machine does not fail it. The first version of the look asked the light of every zombie in
+the frame (the lamps are a list) and took 4 to 6 ms a think at 46 zombies; it now asks only the nearest few that pass
+the angle and distance test, until the six rays are spent. Four bots cost about 0.35 ms of a 16.7 ms tick, 2%, before
+movement and paths (phase 2) are added.
 
 Three bots then cost about 0.3 ms mean against a 33 ms tick: 1%. **Budget**: bots together under 5% of the tick, so
 0.5 ms worst per bot (a test fails above it with 40 zombies in the frame, the rules' cap at four players from round
@@ -570,6 +593,48 @@ source scan. The Autopilot becomes the first profile on this host (its behaviour
 **Done when**: four hosted bots survive three rounds in a soak without an `ERROR`; scenarios 1 to 3 and 24 to 28 pass;
 the reaction and turn-rate distributions are inside their bounds; the firewall and replay tests pass; the decision p99
 is under 0.5 ms at 40 zombies; the page's cost section is updated with the measured numbers.
+
+**Built (#225).** Under `game/gameplay/bots/`, all `RefCounted` or `Resource` data in typed GDScript:
+
+- **`BotClient`** is the host. It is given a `ClientState`, a `BotProfile`, a seed, a callable to send with and a
+  `BotLevel` (the sight and lit callables, the rounds table and the navigation map), and nothing else; a test reads
+  its `_init` and fails on any other argument. `hear(events)` lets the allow-list `BotEvents` through (public events,
+  and a short list that count only when they are about the bot) and gives the state its own copy of the frame;
+  `decide(delta)` makes the command and `tick(delta)` also sends it. After the perception has looked, the raw zombie
+  list is taken out of the client state, so the brain and the motor can only read beliefs.
+- **`BotPerception`** is the filter: a 110 degree cone around where the bot looks, a sight range that follows the
+  light (`BotLevel.view_range`: 8 m plus 25 m times the round's ambient, or 33 m on lit ground), a ray from the eye to
+  the chest and then the head, at most six rays a think (nearest first), a per-contact reaction drawn log-normal around
+  the profile's mean and never under 0.20 s, a memory of three seconds that is never shot at, and hearing within 4 m
+  as a direction and a range class (no position, no id). A contact seen for less than its reaction is dropped.
+- **`BotMotor`** (aim and trigger; movement is phase 2): a critically damped spring on yaw and pitch with a hard cap on
+  the speed of the turn, so no 100 ms window beats `BotProfile.max_aim_speed`; the shot's `dir` is derived from the
+  view (`NightCommand.look_along`), never the other way; seeded filtered tracking noise that grows with distance, the
+  target's sweep and the bot's own speed and shrinks on target; chest or (at the profile's rate, slow and near) head;
+  the trigger waits for the view to be inside the weapon's hit cone, with a seeded pause after each shot, bursts of
+  three to five for an automatic weapon and a flick pause between targets.
+- **`BotFightBrain`** is the brain of this phase (the fight only): nearest believed target with a commitment bonus,
+  backs away inside the profile's margin, glances toward a blow or a sound, reloads and swaps. A **watchdog** in the
+  client treats an answer that is not a sane `BotIntent` (what a script error in the brain gives) as a failure; at the
+  profile's limit the brain is switched off, a `brain_disabled` telemetry event fires, and the motor holds where it
+  stands and follows the nearest zombie it can see.
+- **`BotProfile`** has `rookie()`, `regular()`, `veteran()` (the table above) and `autopilot()`. **The Autopilot is the
+  first profile**: `Night` runs it through a `BotClient` whose `legacy` is the `Autopilot` object, which decides every
+  tick from the whole frame exactly as before; the host only sends, counts and reports. Its own suites
+  (`test_autopilot_night`, `_machines`, `_fuel`, `_switches`, the kill-allocation budget) pass unchanged.
+- **`BotTelemetry`**: counters, named events, think-time percentiles, a ring buffer of the last 300 decisions with the
+  beliefs behind them, a JSON report line, and a command hash (`signature`: the buttons, the walking direction in
+  eighths and the view in 5 degree buckets, so it does not move with the last bit of a float). **`BotCoverage`** lists
+  every shop item kind, weapon and prompt with a rule or a waiver naming the phase; a test reads the server's source
+  for prompt kinds, so a new prompt without a bot rule or a waiver fails the build (scenario 28).
+- **The harness** (`game/tests/`): `SeatedNight` (`NightFixture.seat`) builds the lot and the server with no client of
+  its own, seats up to four players, puts a `BotHost` on them and sends every command through `NightServer.apply` as
+  plain data. `BotRig` is a bot with no server, for the parts' own tests. Scenarios 1 to 3, 24 to 28 and the soak are in
+  `tests/night/test_bot_night.gd`, `test_bot_soak.gd` and `tests/bots/`.
+- **What the tests found.** A downed bot still sent a walk. The first perception looked up the light for every zombie
+  in the frame and cost 4 to 6 ms a think with 46 zombies; asking the light only of the nearest few that pass the cone
+  and range test brought it to the numbers below. And two runs of the same commands are not bit-identical once a body
+  walks (see [Determinism and testability](#determinism-and-testability)).
 
 ### Phase 2: movement
 
