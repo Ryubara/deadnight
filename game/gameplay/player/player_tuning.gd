@@ -192,3 +192,27 @@ extends Resource
 @export var shake_frequency := 14.0
 ## The roll about the view axis, as a fraction of the pitch and yaw (roll reads as nausea).
 @export_range(0.0, 1.0) var shake_roll_fraction := 0.4
+
+@export_group("Sprint sway")
+## The gentle sway of the view while sprinting (`SprintSway`): a bob (pitch) every `bob_steps`
+## footfalls, and a roll and yaw (a quarter turn apart) every `sway_steps` footfalls. A footfall is
+## `step_distance` metres of travel, so the rate follows ground speed like the Run clip does.
+## Subtle on purpose: the peaks are under half a degree. The camera shake setting scales it and
+## Reduced motion turns it off. Amounts are degrees.
+@export var sprint_sway_pitch_degrees := 0.4
+@export var sprint_sway_yaw_degrees := 0.2
+@export var sprint_sway_roll_degrees := 0.28
+## Footfalls for one full bob (1: the head dips on every foot) and for one full roll and yaw (2:
+## once per left and right stride).
+@export var sprint_sway_bob_steps := 1.0
+@export var sprint_sway_sway_steps := 2.0
+## Where in the stride a foot lands, as a turn of the bob and the sway.
+@export var sprint_sway_phase_degrees := 0.0
+## Seconds to ease the sway in when the sprint starts and out when it stops.
+@export var sprint_sway_ease_in := 0.4
+@export var sprint_sway_ease_out := 0.3
+## No sway below this ground speed (m/s), whatever the sprint state says.
+@export var sprint_sway_min_speed := 3.0
+## While a shot shakes the view the sway gives way by up to this fraction (at full trauma), so the
+## two add up without fighting.
+@export_range(0.0, 1.0) var sprint_sway_fire_duck := 0.5
