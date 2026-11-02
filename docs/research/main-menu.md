@@ -309,5 +309,10 @@ the new `car()` of #380. Three browsers, 1920 x 1080:
   `uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/skin_tour.py build/web <out> --browser
   chromium|chrome|firefox [--size 1920x1080] [--unpaced]`. Firefox needs `playwright install firefox` once. The CI `web`
   job runs the Chromium tour at 1280 x 720 after the smoke run.
+- **A key is lost on a slow frame.** Godot reads input once per frame, and the runner's software renderer draws a frame
+  in 200 to 250 ms, so the 150 ms key hold the smoke run uses can fall between two frames: the first CI runs of the tour
+  walked to the wrong item and waited for a screen that never opened. The tour holds each key for `--hold-ms` (500 in
+  CI), gives each a moment to land, and when the wrong screen opens (or none) goes back with Escape and walks again,
+  up to three times. `--throttle 6` slows a local Chromium to reproduce a slow runner (it still passes).
 - **Keys on the menu:** a screen you came back from remembers its focused item (since #380), so a script that walks the
   menu presses Up six times first (the focus stops at the ends) and then Down to the item it wants.

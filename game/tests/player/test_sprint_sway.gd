@@ -7,8 +7,12 @@ extends GdUnitTestSuite
 const TEST_ROOM := "res://world/test_room.tscn"
 const TICK := 1.0 / 60.0
 const START := Vector3(0.0, 0.05, 10.0)
-## "Very subtle": the sway's largest turn of the view stays under this many degrees.
-const SUBTLE_DEGREES := 0.5
+## "Very subtle": the sway's largest turn of the view stays under this many degrees. It was 0.5, and
+## the maintainer found the sprint still too strong (issue #405): half of it now.
+const SUBTLE_DEGREES := 0.25
+## What main swayed at the sprint (pitch 0.4, yaw 0.2, roll 0.28): the sway's largest turn of the
+## look direction, in degrees, before issue #405 halved it.
+const MAIN_PEAK_DEGREES := 0.44721
 
 var _player: Player
 var _rig: ThirdPersonCamera
@@ -28,6 +32,9 @@ func before_test() -> void:
 	_player.global_position = START
 	_player.state.position = START
 	_rig.snap_to(START)
+	# Stepped by hand on the ground (the player's own ticks set this from the body, and the body of
+	# a frozen player did not land yet).
+	_rig.grounded = true
 	await get_tree().physics_frame
 
 
@@ -121,13 +128,24 @@ func test_there_is_no_sway_while_walking_standing_or_aiming() -> void:
 	assert_float(_rig.sway.amount()).is_equal(0.0)
 
 
-func test_the_sprint_sways_a_bit_more_than_a_rifle_shot_and_still_under_half_a_degree() -> void:
-	# The maintainer: more shake than firing, but very subtle, like other games.
+func test_the_sprint_sways_half_as_much_as_it_did() -> void:
+	# The maintainer (issue #405): "camera shake when sprinting is too intensive, lower this down
+	# by 50%".
+	# The same run as on main (full sprint, the sway fully eased in): half of main's 0.447 degrees,
+	# and each angle half of main's.
 	_sprint(true, _tuning.sprint_speed)
 	_render(_tuning.sprint_sway_ease_in + 0.2)
-	var rifle := _tuning.shake_max_degrees * pow(0.45, _tuning.shake_exponent)
-	assert_float(_rig.sway.peak_degrees()).is_greater(rifle)
-	assert_float(_rig.sway.peak_degrees()).is_greater(0.4)
+	assert_float(_rig.sway.peak_degrees()).is_equal_approx(MAIN_PEAK_DEGREES * 0.5, 0.002)
+	assert_float(_tuning.sprint_sway_pitch_degrees).is_equal_approx(0.2, 0.0001)
+	assert_float(_tuning.sprint_sway_yaw_degrees).is_equal_approx(0.1, 0.0001)
+	assert_float(_tuning.sprint_sway_roll_degrees).is_equal_approx(0.14, 0.0001)
+	# And what the lens does over a stride, not only the tuning: the worst turn of the look direction
+	# measured on the camera stays at that peak or under, and is not nothing.
+	var worst := 0.0
+	for i in 120:
+		_render(TICK)
+		worst = maxf(worst, _view_error())
+	assert_float(worst).is_between(0.05, MAIN_PEAK_DEGREES * 0.5 + 0.001)
 	assert_float(_rig.sway.peak_degrees()).is_less(SUBTLE_DEGREES)
 
 
@@ -144,7 +162,7 @@ func test_sprinting_sways_within_its_bounds_and_is_never_more_than_subtle() -> v
 	assert_float(worst_look).is_less_equal(_rig.sway.peak_degrees() + 0.0001)
 	assert_float(worst_pitch).is_greater(_tuning.sprint_sway_pitch_degrees * 0.9)
 	assert_float(worst_pitch).is_less_equal(_tuning.sprint_sway_pitch_degrees + 0.0001)
-	assert_float(_tuning.sprint_sway_pitch_degrees).is_between(0.2, 0.45)
+	assert_float(_tuning.sprint_sway_pitch_degrees).is_between(0.1, 0.225)
 	for angle in [
 		_tuning.sprint_sway_pitch_degrees,
 		_tuning.sprint_sway_yaw_degrees,
@@ -164,8 +182,8 @@ func test_the_sway_repeats_every_stride_and_never_drifts() -> void:
 	for i in range(150, 210):
 		low = minf(low, _pitch_of(turns[i]))
 		high = maxf(high, _pitch_of(turns[i]))
-	assert_float(high).is_greater(0.2)
-	assert_float(low).is_less(-0.2)
+	assert_float(high).is_greater(0.1)
+	assert_float(low).is_less(-0.1)
 
 
 func test_the_bob_is_locked_to_the_footfalls_not_to_the_clock() -> void:
@@ -340,3 +358,68 @@ func test_the_players_sprint_drives_the_sway_and_stopping_or_downed_ends_it() ->
 		_rig.step(TICK, 1.0)
 	assert_bool(_player.state.sprinting).is_false()
 	assert_float(_rig.sway.amount()).is_equal(0.0)
+
+
+func test_the_sway_stops_on_the_first_tick_in_the_air_and_stays_off_until_landing() -> void:
+	# The maintainer (issue #405): a sprint-jump with Shift still held must not sway in the air, and
+	# the sway stops "as soon as player is ever in the air", not over the ease-out.
+	_sprint(true, _tuning.sprint_speed)
+	_render(1.0)
+	assert_float(_rig.sway.amount()).is_greater(0.99)
+	assert_float(_lens_angle()).is_greater(0.0)
+	# Leaves the ground, sprint still held and the body still fast: gone on that very tick.
+	_rig.grounded = false
+	_render(TICK)
+	assert_float(_rig.sway.amount()).is_equal(0.0)
+	assert_float(_rig.sway.peak_degrees()).is_equal(0.0)
+	assert_float(_lens_angle()).is_less(0.0001)
+	assert_float(_view_error()).is_less(0.0001)
+	# Stays zero through the whole jump (0.9 s in the air, the sprint key held the whole time).
+	for i in 54:
+		_render(TICK)
+		assert_float(_lens_angle()).is_less(0.0001)
+	# Lands with the sprint still held: it comes back with the normal ease-in, from nothing.
+	_rig.grounded = true
+	_render(TICK)
+	var first := _rig.sway.amount()
+	assert_float(first).is_between(0.0, 0.01)
+	_render(_tuning.sprint_sway_ease_in * 0.5)
+	assert_float(_rig.sway.amount()).is_between(0.3, 0.7)
+	_render(_tuning.sprint_sway_ease_in * 0.5 + 0.05)
+	assert_float(_rig.sway.amount()).is_greater(0.99)
+
+
+func test_a_sprint_jump_of_the_player_has_no_sway_from_the_first_airborne_tick() -> void:
+	_player.set_physics_process(true)
+	var run := PlayerCommand.new()
+	run.move = Vector2(0.0, -1.0)
+	run.sprint = true
+	for i in 90:
+		_player.submit_command(run)
+		await get_tree().physics_frame
+		_rig.step(TICK, 1.0)
+	assert_bool(_player.state.on_floor).is_true()
+	assert_float(_rig.sway.amount()).is_greater(0.99)
+	# Jump with the sprint key held until the body is on the ground again.
+	var jump := PlayerCommand.new()
+	jump.move = Vector2(0.0, -1.0)
+	jump.sprint = true
+	jump.jump = true
+	var airborne_ticks := 0
+	var worst := 0.0
+	for i in 120:
+		_player.submit_command(jump)
+		await get_tree().physics_frame
+		_rig.step(TICK, 1.0)
+		jump.jump = false
+		if not _player.state.on_floor:
+			airborne_ticks += 1
+			worst = maxf(worst, _lens_angle())
+			assert_bool(_player.state.sprinting).is_true()
+			assert_float(_rig.sway.amount()).is_equal(0.0)
+	# It really was a jump, with the sprint held in the air, and the view did not move for it.
+	assert_int(airborne_ticks).is_greater(20)
+	assert_float(worst).is_less(0.0001)
+	# Back on the ground and still sprinting: the sway is coming back.
+	assert_bool(_player.state.on_floor).is_true()
+	assert_float(_rig.sway.level).is_greater(0.0)

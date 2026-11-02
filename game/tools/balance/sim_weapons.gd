@@ -33,13 +33,22 @@ static func warm() -> void:
 ## Damage of one trigger pull that lands in `zone` at `distance` metres: every pellet, with the
 ## weapon's own falloff and zone multiplier.
 static func damage(weapon_id: StringName, zone: StringName, distance: float) -> float:
-	var weapon := def(weapon_id)
+	return damage_of(def(weapon_id), zone, distance)
+
+
+## The same for a definition in hand: the ones the night derives (a re-cut weapon) are not in
+## the catalogue.
+static func damage_of(weapon: WeaponDef, zone: StringName, distance: float) -> float:
 	return float(weapon.pellets) * DamageModel.damage(weapon, distance, zone)
 
 
 ## Blast damage a neighbour `apart` metres from the burst takes (0 for a weapon without a blast).
 static func splash(weapon_id: StringName, apart: float) -> float:
 	return DamageModel.splash(def(weapon_id), apart)
+
+
+static func splash_of(weapon: WeaponDef, apart: float) -> float:
+	return DamageModel.splash(weapon, apart)
 
 
 ## Seconds between two trigger pulls.
@@ -60,9 +69,12 @@ static func reload_seconds(weapon_id: StringName) -> float:
 ## shots land whole, so a blow that overshoots the health wastes the rest (a 95 damage rifle against
 ## 117 health needs two, and does no better than a weapon of 60).
 static func sustained_dps(weapon_id: StringName, health: float = 0.0) -> float:
-	var weapon := def(weapon_id)
+	return sustained_dps_of(def(weapon_id), health)
+
+
+static func sustained_dps_of(weapon: WeaponDef, health: float = 0.0) -> float:
 	var cycle := float(weapon.magazine_size) * weapon.fire_interval + weapon.reload_time
-	var per_shot := damage(weapon_id, &"body", 0.0)
+	var per_shot := damage_of(weapon, &"body", 0.0)
 	if health <= 0.0:
 		return per_shot * float(weapon.magazine_size) / cycle
 	var shots := ceilf(health / maxf(per_shot, 0.001))
@@ -72,8 +84,12 @@ static func sustained_dps(weapon_id: StringName, health: float = 0.0) -> float:
 ## Health of zombies a second a loaded weapon kills `distance` metres away, shots landing whole
 ## against a zombie of `health` (`sustained_dps` with a health, reloads left out).
 static func kill_rate_at(weapon_id: StringName, distance: float, health: float) -> float:
-	var shots := ceilf(health / maxf(damage(weapon_id, &"body", distance), 0.001))
-	return health / (shots * interval(weapon_id))
+	return kill_rate_of(def(weapon_id), distance, health)
+
+
+static func kill_rate_of(weapon: WeaponDef, distance: float, health: float) -> float:
+	var shots := ceilf(health / maxf(damage_of(weapon, &"body", distance), 0.001))
+	return health / (shots * weapon.fire_interval)
 
 
 static func is_melee(weapon_id: StringName) -> bool:
@@ -88,7 +104,7 @@ static func best_armed(arms: Dictionary, health: float = 0.0) -> StringName:
 	for weapon_id: StringName in arms:
 		if is_melee(weapon_id) or arms[weapon_id].mag + arms[weapon_id].reserve <= 0:
 			continue
-		var dps := sustained_dps(weapon_id, health)
+		var dps := sustained_dps_of(arms[weapon_id].def(), health)
 		if dps > best_dps:
 			best_dps = dps
 			best_id = weapon_id

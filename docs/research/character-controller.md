@@ -61,9 +61,9 @@ All measured from the capture run (`tests/player/capture_omni.gd`, 60 Hz ticks, 
 | A forward sprint reversed to a back sprint | the sprint ends; the speed is 0.6 m/s at 0.2 s, then a run (4.8) the other way | the sprint continues; 0.9 m/s at 0.2 s, 7.0 at 0.45 s, facing 180 degrees |
 | Pull-back of the sprint camera | 0.3 m, spring 9 rad/s (95 percent in 0.53 s) | 0.15 m, spring 13.5 rad/s (95 percent in 0.35 s) |
 
-The sprint camera's other parts are unchanged: +6 degrees of FOV and the looser follow at 16 rad/s (0.9 m of lag at
-7 m/s). The maintainer asked for the pull-back distance and time; whether the FOV kick wants the same cut is a feel
-question for the next play.
+The sprint camera's other parts were unchanged: +6 degrees of FOV and the looser follow at 16 rad/s (0.9 m of lag at
+7 m/s). The FOV kick was then halved to +3 degrees (and the default FOV set to 60, from 70, with the aim at 40,
+from 60), at the maintainer's word after playing (issue #405, [camera shake](../design/camera-shake.md)).
 
 ## Animation: no sliding in any direction
 

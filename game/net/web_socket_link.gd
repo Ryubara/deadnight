@@ -45,6 +45,8 @@ var reconnect := true
 var resuming := false
 ## What the last WELCOME gave to take the seat back with.
 var token := PackedByteArray()
+## The platform backend's ticket for this night, said in the hello (empty with no backend).
+var ticket := ""
 var tick_rate := 60
 
 # The numbers of this connection.
@@ -149,7 +151,7 @@ func pump() -> void:
 	var state := _ws.get_ready_state()
 	if state == WebSocketPeer.STATE_OPEN and not _was_open:
 		_was_open = true
-		_send(NetWire.hello(token))
+		_send(NetWire.hello(token, ticket))
 	# What came before a close is still read: a refusal arrives together with the close.
 	while state != WebSocketPeer.STATE_CONNECTING and _ws.get_available_packet_count() > 0:
 		_receive(_ws.get_packet())
