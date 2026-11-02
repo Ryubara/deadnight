@@ -16,6 +16,9 @@ const SIDE_CLEAR := HudStyle.MARGIN + HudStyle.COLUMN + 48.0
 const TOP_CLEAR := 260.0
 const BOTTOM_CLEAR := 390.0
 const ARROW := 16.0
+## The ring of a teammate on the ground.
+const DOWNED_RADIUS := 22.0
+const DOWNED_WIDTH := 6.0
 ## Text stays this far inside the screen.
 const TEXT_MARGIN := 12.0
 const LABEL_SIZE := HudStyle.MIN_TEXT
@@ -131,6 +134,9 @@ func _draw_objective(font: Font, marker: Dictionary, spot: Dictionary) -> void:
 
 
 func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
+	if bool(marker.get("downed", false)):
+		_draw_downed(font, marker, at)
+		return
 	var tip := at + Vector2(0.0, -10.0)
 	draw_colored_polygon(
 		PackedVector2Array([tip + Vector2(0, 14), tip + Vector2(-10, 0), tip + Vector2(10, 0)]),
@@ -142,6 +148,39 @@ func _draw_ally(font: Font, marker: Dictionary, at: Vector2) -> void:
 		tip + Vector2(0.0, -10.0),
 		tokens.accent_bright
 	)
+
+
+## A teammate on the ground: a red marker with their name and the seconds they have left, and a ring
+## that fills while somebody holds the revive on them. Bled out, it says so and carries no clock.
+func _draw_downed(font: Font, marker: Dictionary, at: Vector2) -> void:
+	var dead := bool(marker.get("dead", false))
+	var colour := tokens.ink_muted if dead else tokens.danger
+	draw_circle(at, DOWNED_RADIUS + 4.0, Color(tokens.shadow, 0.6))
+	draw_arc(at, DOWNED_RADIUS, 0.0, TAU, 32, Color(colour, 0.35), DOWNED_WIDTH, true)
+	var progress := float(marker.get("revive", 0.0))
+	if progress > 0.0:
+		draw_arc(
+			at,
+			DOWNED_RADIUS,
+			-PI * 0.5,
+			-PI * 0.5 + TAU * clampf(progress, 0.0, 1.0),
+			32,
+			tokens.accent_bright,
+			DOWNED_WIDTH,
+			true
+		)
+	elif not dead:
+		draw_arc(at, DOWNED_RADIUS, -PI * 0.5, PI * 1.5, 32, colour, DOWNED_WIDTH * 0.5, true)
+	# A cross, the mark of someone who needs a hand.
+	var arm := DOWNED_RADIUS * 0.45
+	draw_line(at + Vector2(-arm, 0.0), at + Vector2(arm, 0.0), colour, 4.0)
+	draw_line(at + Vector2(0.0, -arm), at + Vector2(0.0, arm), colour, 4.0)
+	var words := str(marker.get("label", "")).to_upper()
+	if dead:
+		words += "  DEAD"
+	else:
+		words += "  %d S" % int(marker.get("bleed", 0))
+	_text(font, words, at + Vector2(0.0, -DOWNED_RADIUS - 10.0), colour)
 
 
 ## Centred text with a dark outline, so it holds on a lit or dark ground.

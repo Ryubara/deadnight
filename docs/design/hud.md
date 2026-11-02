@@ -81,16 +81,36 @@ event (`player_id`, `seat`, `look`) replaces it. Until a client sends looks, the
 
 Hold **Tab** (the pad's **Back / Select** button; on a phone a small button under Pause) and a ticket comes up over the
 middle of the night; let go and it leaves. One row per player in the night, in seat order on every screen:
-`[armband][name][kills][downs][points][ping]`, with the round and the night's clock above (`TIME 12:34`, hours after the
-first). A downed player's name goes red and says `(DOWN)`; your own row has a faint wash. **Ping** is a column only when
-some player has one (a night over a link), and each ping reads good, fair or bad in ink, accent and red. **Revives are
-not a column**: a downed player here gets up when the round ends and nobody's hand does it, so there is nothing to count
-(see [Scoreboard](../research/scoreboard.md)). Every number is the server's, never counted on the client.
+`[armband][name][kills][downs][revives][points][ping]`, with the round and the night's clock above (`TIME 12:34`, hours
+after the first). A downed player's name goes red and says `(DOWN)`, one who bled out `(DEAD)`; your own row has a faint
+wash. **Ping** is a column only when some player has one (a night over a link), and each ping reads good, fair or bad in
+ink, accent and red. **REVIVES** counts the teammates a player pulled up by hand ([Revives](#revives)); getting up
+when a round ends is nobody's revive (see [Scoreboard](../research/scoreboard.md)). Every number is the server's,
+never counted on the client.
 
 It is `HudScoreboard`, a part like the others, drawn last and not part of any column; it takes no space while hidden. It
 is held by the `scoreboard` input action, which the key, the pad and the touch button all press, so the HUD polls the
 action instead of listening for one kind of event. A pause menu or the result switches it off
 (`Hud.scoreboard_enabled`).
+
+## Revives
+
+What a player reads when someone is down (the rules are in [Revive](revive.md)). Every number is the server's: the frame
+carries each player's `bleed`, `revive` (the hold's progress), `reviver` and `dead`, and `HudState.team` keeps them
+(`set_player_revive`), so every screen shows the same ring.
+
+| Where | What | Part |
+| --- | --- | --- |
+| Over the view, a little under the reticle | **The ring** (`HudRevive`). The reviver: a ring filling as the hold goes on, the seconds left inside, `REVIVING <NAME>` under it. The downed player: the bleed-out clock as a red ring draining, the seconds inside, `BLEEDING OUT`, and over it the teammate's ring filling while they are pulled up (`<NAME> IS PULLING YOU UP`). Bled out: `YOU BLED OUT`, `BACK NEXT ROUND`. Nothing for a player who is up and not reviving | `HudRevive` |
+| Health card, bottom left | While down: `DOWN` and `BLEEDING OUT 32 S`, or `BEING PULLED UP`, or `DEAD` and `BACK NEXT ROUND` | `HudHealth` |
+| Prompt card, bottom middle | `REVIVE <NAME>`, `HOLD TO PULL THEM UP: 32 S LEFT`; it comes before a door or a shop | `HudPrompt` |
+| Over a downed teammate | A red ring with a cross, their name and the seconds they have left (`DEAD` once they bled out), the hold's ring filling over it; pinned to the screen edge with the other important markers while they are alive, so you know who is bleeding and where | `HudMarkers` |
+| Player boxes, left | `DOWN`, or `DEAD`; the portrait dims | `HudPlayerBox` |
+| Feed, top right | `RUBY REVIVED PAUL`, `PAUL BLED OUT` (a round's end: `PAUL IS BACK UP`) | `HudFeed` |
+| Scoreboard | A REVIVES column | `HudScoreboard` |
+
+Names come from one place, `HudState.team[id]["name"]` (the prompt, the ring, the feed, the markers and the scoreboard all
+read it), so a replicated display name (#485) shows everywhere once it fills that field.
 
 ## The generator card
 

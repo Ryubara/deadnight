@@ -23,6 +23,8 @@ const SET_CIRCUIT := &"set_circuit"
 const GRANT_POINTS := &"grant_points"
 const USE_GRENADE := &"use_grenade"
 const EXPLOSION := &"explosion"
+const REVIVE_HOLD := &"revive_hold"
+const REVIVE_RELEASE := &"revive_release"
 
 ## Where a hit landed. `ZONE_HEAD` and `ZONE_WEAK` change what the rules pay; the weapon has already
 ## applied its zone multiplier to the damage, and the rules add the type's own `weak_multiplier` for
@@ -69,6 +71,8 @@ const REQUIRED := {
 	GRANT_POINTS: {"player_id": TYPE_INT, "amount": TYPE_INT},
 	USE_GRENADE: {"player_id": TYPE_INT},
 	EXPLOSION: {"player_id": TYPE_INT, "victims": TYPE_ARRAY},
+	REVIVE_HOLD: {"player_id": TYPE_INT, "reviver_id": TYPE_INT, "delta": TYPE_FLOAT},
+	REVIVE_RELEASE: {"player_id": TYPE_INT},
 }
 ## Fields that may be left out; when present they must have the type.
 const OPTIONAL := {
@@ -76,6 +80,7 @@ const OPTIONAL := {
 	BLOW: {"bearing": TYPE_FLOAT, "source_id": TYPE_INT},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
 	BUY: {"rounds": TYPE_INT, "weapon": TYPE_STRING_NAME},
+	REVIVE_RELEASE: {"reason": TYPE_STRING_NAME},
 }
 
 
@@ -201,6 +206,27 @@ static func explosion(player_id: int, victims: Array) -> Dictionary:
 	return {"type": EXPLOSION, "player_id": player_id, "victims": victims}
 
 
+## One tick of a teammate's hold of Use beside a downed player (`player_id`): the rules add `delta`
+## to the downed player's revive progress, and at `ReviveTuning.revive_seconds` the player is up.
+## The server sends one every tick the hold lasts, after it has checked reach and hands; the rules
+## check who is downed and who is up (`not_downed`, `target_dead`, `reviver_downed`, `self_revive`,
+## `busy`).
+static func revive_hold(player_id: int, reviver_id: int, delta: float) -> Dictionary:
+	return {
+		"type": REVIVE_HOLD,
+		"player_id": player_id,
+		"reviver_id": reviver_id,
+		"delta": delta,
+	}
+
+
+## The hold on a downed player (`player_id`) is over: its progress goes back to zero. `reason` is
+## `released`, `away` or `busy_hands` (the reviver let go, walked out of reach, or fired); a hold
+## the server simply stops sending is released as `released` at the next tick.
+static func revive_release(player_id: int, reason: StringName = &"released") -> Dictionary:
+	return {"type": REVIVE_RELEASE, "player_id": player_id, "reason": reason}
+
+
 ## Checks an action against `REQUIRED` and `OPTIONAL` and the value bounds. Returns `{}` when it is
 ## well formed, else `{"reason": StringName, "field": StringName}` with the reason one of
 ## `unknown_action`, `missing_field`, `wrong_type`, `out_of_range`. Whether the ids it names exist
@@ -241,6 +267,9 @@ static func _has_type(value: Variant, expected: int) -> bool:
 static func _out_of_range_field(type: StringName, action: Dictionary) -> StringName:
 	match type:
 		TICK:
+			if not _within(action["delta"], 0.0, MAX_TICK):
+				return &"delta"
+		REVIVE_HOLD:
 			if not _within(action["delta"], 0.0, MAX_TICK):
 				return &"delta"
 		HIT:

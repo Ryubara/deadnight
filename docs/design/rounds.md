@@ -14,8 +14,8 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `PlayerState` per player, one `GeneratorState`, two seeded random streams) and uses no scene-tree
   node, no Godot multiplayer, no clock and no global random.
 - **Change only through actions.** `rules.apply(action)` takes a plain dictionary built by
-  `RulesAction` (`tick`, `hit`, `kill`, `repair`, `tear_board`, `buy`, `set_circuit`, `set_downed`, `add_player`
-  and so on) and returns the **events** it caused, also plain dictionaries
+  `RulesAction` (`tick`, `hit`, `kill`, `repair`, `tear_board`, `buy`, `set_circuit`, `set_downed`, `add_player`,
+  `revive_hold` and so on) and returns the **events** it caused, also plain dictionaries
   (`{"type": &"points_changed", "player_id": 1, "total": 260, ...}`). The same events go out through
   `event_emitted` after the state has settled. A server applies what clients ask for, broadcasts the
   events, and clients mirror them. The full event list is in the header of `game_rules.gd`.
@@ -66,6 +66,8 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a downed player cannot buy: `purchase_denied` with `PLAYER_DOWNED`, nothing spent (doors, weapons, fuel, all of it); a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
+| `revive_hold` | `player_id` (the downed), `reviver_id`, `delta` (`0..1` s) | the night server, one for every tick a teammate's hold of Use lasts beside a downed player in reach ([Revive](revive.md)); refused as `wrong_phase`, `unknown_player`, `self_revive`, `reviver_downed`, `target_dead`, `not_downed` or `busy` |
+| `revive_release` | `player_id` (the downed), optional `reason` (`released`, `away`, `busy_hands`) | the night server, when a hold is broken; a hold that is not renewed is released at the next tick |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
 
 **Who owns a zombie's health: the rules.** `zombie_spawn_requested` gives the id and the health the
@@ -85,7 +87,11 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `zombie_crippled` | `zombie_id`, `zombie_type` (the crawler it became), `look`, `player_id`, `cause` (`legs` or `wounded`), `health` (left), `speed_scale` | switch the zombie to a crawler (lower, slower by `speed_scale`); sent once per zombie, after its `zombie_damaged` |
 | `player_hurt` | `player_id`, `damage` (taken off), `health` (left), `max_health`, `bearing`, `source_id` | the HUD's damage arc toward `bearing` (turned by where the player faces), the health bar; the camera shake |
 | `player_healed` | `player_id`, `health`, `max_health`, `reason` (`regen` or `revive`) | the health bar. `regen` is sent when the whole-unit health changes (about 25 a second while mending), `revive` once with `player_revived` |
-| `player_downed` | `player_id`, `cause` (`blow` or `forced`), `bearing` | the DOWN tag and the held red frame; the night ends when every player is down |
+| `player_downed` | `player_id`, `cause` (`blow` or `forced`), `bearing`, `bleed_seconds` (the time they have before they are dead) | the DOWN tag and the held red frame and the clock; the night ends when every player is down or dead |
+| `revive_started` | `player_id` (the downed), `reviver_id`, `seconds` (the hold takes) | the rings ([Revive](revive.md#events)) |
+| `revive_interrupted` | `player_id`, `reviver_id`, `reason` (`released`, `away`, `busy_hands`, `reviver_downed`, `left`, `died`) | clears the rings |
+| `player_revived` | `player_id`, `reviver_id` (-1: nobody, the round ended) | the feed (`RUBY REVIVED PAUL`), the voice; counts for the reviver on the scoreboard |
+| `player_died` | `player_id`, `cause` (`bleed_out`) | the DEAD tag; down until the round ends |
 | `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
 | `board_torn` | `barricade_id`, `boards` (left), `zombie_id` | take the top board off that breach; a splinter burst and a sound there |
@@ -102,8 +108,10 @@ that is not a player's (a trap, a fall) and `set_downed` as players go down and 
 **Who owns a player's health: the rules too.** A player starts with `HealthTuning.max_health` (it is the player's
 own `max_health`, so a tonic can raise it), a `blow` takes it off and restarts the wait, and a player at zero is
 down. After `regen_delay` seconds without a blow health mends at `regen_per_second` (in a break as well as a
-round), announced as `player_healed` whenever the whole-unit value changes. Getting up (a `set_downed` false, or the
-end of the round) restores all of it. Health, its maximum and the wait since the last blow are in the snapshot.
+round), announced as `player_healed` whenever the whole-unit value changes. Getting up by the end of the round or a
+`set_downed` false restores all of it; getting up by a teammate's hold gives `ReviveTuning.health_fraction` of it
+([Revive](revive.md)). Health, its maximum, the wait since the last blow, the bleed-out clock, a hold in progress and
+whether a player bled out are in the snapshot.
 
 **What a zombie is worth.** The first 4 hits that do not kill pay 4 (8 to the head); the hit that
 kills pays the kill (60, head 100, melee 130) instead of a hit. Any hits after the fourth, and hits
@@ -164,7 +172,8 @@ then a 5 s **break** (spend, switch lights, reposition), then the next round. Th
 when everyone still in it is down (`all_down`) or when the last player leaves during the wait or a round
 (`no_players`), so a server can free the match; `start` with nobody in the lot is rejected. Leaving before
 the start is not an end. A player still down when a round ends gets up, minus a tenth of their points, so
-being downed hurts but never locks you out.
+being downed hurts but never locks you out. A player who bled out gets up then as well; their death lasts for the rest
+of the round ([Revive](revive.md#the-states)).
 
 ## Match settings
 
@@ -473,7 +482,8 @@ a spread of nights. A touch player with the aim assist (`--assist=`, `SimSkill.w
 the assist wins back added to the accuracy, by what a thumb bot measured
 ([Touch aim assist](../research/aim-assist.md#how-much-it-is-worth)); the gate's cells never use it. They shoot
 only what they can see (view range falls with the light), face one of four sides
-at a time, revive each other in six seconds and mend between rounds, and pick the weapon with the best sustained
+at a time, revive each other in `ReviveTuning.revive_seconds` (a player nobody reaches within
+`bleed_out_seconds` is dead until the round ends) and mend between rounds, and pick the weapon with the best sustained
 damage a second. **Not modelled:** the other three tonics (they do nothing yet). Grenades, repair, the fence's boards (the
 simulator keeps its own six-second barrier) and the doors' and spots' geometry (they only cost points) are not
 modelled either.
@@ -673,5 +683,7 @@ The ranges and the health, count and spawn curves are unchanged.
   kill and the gate's cells, so it is a decision for the maintainer with the weapon work, and the health curve could
   climb again behind it. `tools/balance/run_report.py` and `balance_cli.gd --shopping=...` reproduce the table (see
   the research page).
-- **Downed players and revives** are only modelled as down and up; the revive action, bleed-out and
-  the exact penalty are for the player work to settle.
+- **Downed players and revives** are built ([Revive](revive.md): a hold, a bleed-out clock, death until the round
+  ends); the simulator reads their numbers from the tuning table but has its own rule for who is free to revive. The
+  exact down penalty and the maintainer's decisions on solo self-revive, a revive perk and points for a revive are open
+  ([the list](revive.md#decisions-for-the-maintainer)).

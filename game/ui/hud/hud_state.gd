@@ -34,6 +34,9 @@ const SPECIAL := &"special"
 ## Each player's kills, downs and ping, and the night's clock: what the scoreboard shows beyond the
 ## party's points.
 const STATS := &"stats"
+## Each player's bleed-out clock and the progress of the hold on them, which change every tick while
+## someone is down: apart from `TEAM` so a part that only draws the ring is not rebuilt for a name.
+const REVIVE := &"revive"
 
 ## A ping the server has not reported: a night alone, or before the first answer.
 const NO_PING := -1
@@ -46,6 +49,10 @@ const PHASE_ACTIVE := 2
 const PHASE_OVER := 3
 
 var local_player_id := 1
+## The seconds a revive's hold takes and a downed player has before they are dead, from the shared
+## tuning (the binding sets them): the rings are drawn against them.
+var revive_seconds := 3.5
+var bleed_total := 45.0
 ## Which way the local player faces, radians (their yaw): the frame sets it, a blow's bearing is
 ## turned by it. Not a topic: nothing redraws for it.
 var facing := 0.0
@@ -86,8 +93,11 @@ var circuits: Dictionary[StringName, bool] = {}
 ## "look": Dictionary}, the local player included. The seat (0 to 3) picks the player's colour (the
 ## armband's); the server gives the lowest free one, so the state does too until it is told
 ## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
-## "kills", "downs" and "ping" (milliseconds, `NO_PING` when the night has no link to measure) are
-## the server's counts, set from its frames and snapshot (`set_player_stats`), never counted here.
+## "kills", "downs", "revives" and "ping" (milliseconds, `NO_PING` when the night has no link to
+## measure) are the server's counts, set from its frames and snapshot (`set_player_stats`), never
+## counted here. "dead" (bled out), "bleed" (seconds a downed player has left), "revive" (the hold's
+## progress, 0 to 1) and "reviver" (who holds it, 0 for nobody) are the server's too
+## (`set_player_revive`).
 var team: Dictionary[int, Dictionary] = {}
 ## Whole seconds the night has run, as the server counts them (a break and a round both count).
 var night_clock := 0
@@ -148,6 +158,16 @@ func configure(capacity: float, circuit_ids: Array[StringName], lit: Array[Strin
 
 func is_local_downed() -> bool:
 	return bool(team.get(local_player_id, {}).get("downed", false))
+
+
+## Whether the local player bled out (down until the round ends).
+func is_local_dead() -> bool:
+	return bool(team.get(local_player_id, {}).get("dead", false))
+
+
+## The share of the bleed-out clock a downed player has left, 0 to 1.
+func bleed_share(member: Dictionary) -> float:
+	return clampf(float(member["bleed"]) / bleed_total, 0.0, 1.0) if bleed_total > 0.0 else 0.0
 
 
 func fuel_fraction() -> float:
@@ -222,13 +242,44 @@ func set_markers(list: Array[Dictionary]) -> void:
 ## The server's counts for one player: the zombies they killed, the times they went down, and the
 ## round trip it last heard from them (`NO_PING` for none). Whole counts, not changes, so a frame
 ## said twice changes nothing.
-func set_player_stats(player_id: int, kills: int, downs: int, ping := NO_PING) -> void:
+func set_player_stats(
+	player_id: int, kills: int, downs: int, ping := NO_PING, revives := 0
+) -> void:
 	var member := _member(player_id)
-	if member["kills"] != kills or member["downs"] != downs or member["ping"] != ping:
+	if (
+		member["kills"] != kills
+		or member["downs"] != downs
+		or member["ping"] != ping
+		or member["revives"] != revives
+	):
 		member["kills"] = kills
 		member["downs"] = downs
 		member["ping"] = ping
+		member["revives"] = revives
 		_mark(STATS)
+	_flush()
+
+
+## The server's word on one player's revive: whether they bled out, the seconds a downed player has
+## left, how far the hold on them has got (0 to 1) and who holds it (0 for nobody). Whole values,
+## not changes, so a frame said twice changes nothing.
+func set_player_revive(
+	player_id: int, dead: bool, bleed: float, progress: float, reviver: int
+) -> void:
+	var member := _member(player_id)
+	if member["dead"] != dead or member["reviver"] != reviver:
+		_mark(TEAM)
+	if (
+		member["dead"] != dead
+		or not is_equal_approx(member["bleed"], bleed)
+		or not is_equal_approx(member["revive"], progress)
+		or member["reviver"] != reviver
+	):
+		member["dead"] = dead
+		member["bleed"] = bleed
+		member["revive"] = progress
+		member["reviver"] = reviver
+		_mark(REVIVE)
 	_flush()
 
 
@@ -327,6 +378,9 @@ func load_snapshot(data: Dictionary) -> void:
 			for field in ["name", "seat", "look", "ping"]:
 				member[field] = kept[int(player_id)][field]
 		member["downed"] = bool(saved.get("downed", false))
+		member["dead"] = bool(saved.get("dead", false))
+		member["bleed"] = float(saved.get("bleed_left", 0.0))
+		member["revives"] = int(saved.get("revives", 0))
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
 		member["kills"] = int(saved.get("kills", 0))
@@ -343,7 +397,7 @@ func load_snapshot(data: Dictionary) -> void:
 	_set_fuel(float(generator.get("fuel", fuel)))
 	for circuit_id in generator.get("circuits", {}):
 		circuits[StringName(circuit_id)] = bool(generator["circuits"][circuit_id])
-	for topic in [ROUND, TEAM, FUEL, HEALTH, POINTS, PROMPT, STATS]:
+	for topic in [ROUND, TEAM, FUEL, HEALTH, POINTS, PROMPT, STATS, REVIVE]:
 		_mark(topic)
 	release()
 
@@ -409,7 +463,9 @@ func _handler(type: StringName) -> Callable:
 		&"player_healed":
 			handler = _on_player_healed
 		&"player_revived":
-			handler = func(e: Dictionary) -> void: _set_downed(int(e["player_id"]), false)
+			handler = _on_player_revived
+		&"player_died":
+			handler = _on_player_died
 		&"points_changed":
 			handler = _on_points_changed
 		&"fuel_changed":
@@ -574,8 +630,35 @@ func _on_player_healed(event: Dictionary) -> void:
 func _on_player_downed(event: Dictionary) -> void:
 	var player_id := int(event["player_id"])
 	_set_downed(player_id, true)
+	var member := _member(player_id)
+	member["dead"] = false
+	member["bleed"] = float(event.get("bleed_seconds", bleed_total))
+	member["revive"] = 0.0
+	member["reviver"] = 0
+	_mark(REVIVE)
 	if player_id == local_player_id:
 		_assign(&"health", 0.0, HEALTH)
+
+
+func _on_player_revived(event: Dictionary) -> void:
+	var player_id := int(event["player_id"])
+	_set_downed(player_id, false)
+	var member := _member(player_id)
+	member["dead"] = false
+	member["bleed"] = 0.0
+	member["revive"] = 0.0
+	member["reviver"] = 0
+	_mark(REVIVE)
+
+
+func _on_player_died(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	member["dead"] = true
+	member["bleed"] = 0.0
+	member["revive"] = 0.0
+	member["reviver"] = 0
+	_mark(TEAM)
+	_mark(REVIVE)
 
 
 ## Takes the local player's `health` (and `max_health`, when the event has it) off an event.
@@ -627,7 +710,12 @@ func _member(player_id: int) -> Dictionary:
 			"look": {},
 			"kills": 0,
 			"downs": 0,
+			"revives": 0,
 			"ping": NO_PING,
+			"dead": false,
+			"bleed": 0.0,
+			"revive": 0.0,
+			"reviver": 0,
 		}
 		_mark(TEAM)
 	return team[player_id]

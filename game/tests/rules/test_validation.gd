@@ -30,6 +30,8 @@ const SAMPLES := {
 		"player_id": 1,
 		"victims": [{"zombie_id": 1, "damage": 20.0, "leg_damage": 5.0}],
 	},
+	&"revive_hold": {"type": &"revive_hold", "player_id": 1, "reviver_id": 2, "delta": 0.1},
+	&"revive_release": {"type": &"revive_release", "player_id": 1},
 }
 
 var _rules: GameRules

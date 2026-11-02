@@ -717,6 +717,8 @@ func _make_autopilot() -> void:
 	for circuit_id in world.switches.circuit_ids():
 		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
 		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
+	autopilot.revive.reach = tuning.revive.reach
+	autopilot.revive.seconds = tuning.revive.revive_seconds
 	autopilot.fuel.capacity = tuning.fuel.capacity
 	autopilot.fuel.refuel_at = tuning.fuel.low_fraction
 	autopilot.fuel.fill_to = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN

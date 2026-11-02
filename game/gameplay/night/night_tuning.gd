@@ -29,6 +29,9 @@ const SHIPPED_PATH := "res://gameplay/night/night_tuning_default.tres"
 @export var repair_hold: bool = true
 ## Seconds before the same hand can throw a breaker again (a held key does not flicker the lights).
 @export_range(0.0, 5.0, 0.05, "suffix:s") var switch_interval: float = 0.5
+## Seconds after a tick of a revive hold that the body keeps turning to face the downed teammate
+## (the hold renews it every tick, so the body faces them for as long as it lasts).
+@export_range(0.05, 2.0, 0.05, "suffix:s") var revive_face_seconds: float = 0.2
 
 ## Metres from a fuel can spot that a can can be bought from: the spot is stood at, so a wall's far
 ## side is out of reach.

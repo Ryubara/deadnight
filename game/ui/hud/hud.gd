@@ -44,6 +44,7 @@ const PART_NAMES := {
 	&"reticle": "Reticle",
 	&"crosshair": "Crosshair",
 	&"damage": "Damage",
+	&"revive": "Revive",
 	&"markers": "Markers",
 	&"scoreboard": "Scoreboard",
 }
@@ -80,6 +81,7 @@ var gains := HudGains.new()
 var reticle := HudReticle.new()
 var crosshair := HudCrosshair.new()
 var damage := HudDamage.new()
+var revive := HudRevive.new()
 var markers := HudMarkers.new()
 var scoreboard := HudScoreboard.new()
 ## False while a menu or the result is over the night: holding the key then shows nothing.
@@ -101,7 +103,7 @@ func _ready() -> void:
 	for part_name in PART_NAMES:
 		(get(part_name) as Node).name = PART_NAMES[part_name]
 	reticle.style = reticle_style
-	for overlay in [damage, markers, reticle, crosshair]:
+	for overlay in [damage, revive, markers, reticle, crosshair]:
 		add_child(overlay)
 		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var margin := float(HudStyle.margin())
@@ -150,6 +152,7 @@ func feed(events: Array) -> void:
 func all_parts() -> Array[HudPart]:
 	return [
 		damage,
+		revive,
 		markers,
 		reticle,
 		crosshair,

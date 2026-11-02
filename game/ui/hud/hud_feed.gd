@@ -121,7 +121,13 @@ func _text_for(event: Dictionary) -> String:
 		&"player_downed":
 			text = "%s IS DOWN" % who
 		&"player_revived":
-			text = "%s IS BACK UP" % who
+			var reviver := int(event.get("reviver_id", -1))
+			if reviver >= 0:
+				text = "%s REVIVED %s" % [_name_of(reviver), who]
+			else:
+				text = "%s IS BACK UP" % who
+		&"player_died":
+			text = "%s BLED OUT" % who
 		&"circuit_changed":
 			var words: String = CIRCUIT_WORDS.get(event["circuit_id"], "THE LOT")
 			text = "LIGHTS %s: %s" % ["ON" if event["on"] else "OFF", words]
@@ -143,6 +149,10 @@ func _notice(type: StringName, event: Dictionary) -> String:
 	if type == &"player_removed":
 		return "%s LEFT" % state.left_name.to_upper()
 	return ""
+
+
+func _name_of(player_id: int) -> String:
+	return str(state.team.get(player_id, {}).get("name", "SOMEONE")).to_upper()
 
 
 func _who(event: Dictionary) -> String:
