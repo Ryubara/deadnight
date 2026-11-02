@@ -16,6 +16,18 @@ extends Resource
 ## A waypoint this close counts as reached.
 @export var waypoint_reach: float = 0.4
 
+@export_group("Lure")
+## Metres from a lure at which a zombie stops and stands about it (inside the attack's `reach`
+## it would swing at nothing).
+@export var lure_gather_distance: float = 2.5
+## Whether a zombie in the middle of a swing at a player drops it at once for a lure (true), or
+## finishes the swing first (false).
+@export var lure_breaks_swings: bool = false
+## Whether a zombie that is tearing a barricade's boards leaves them for a lure.
+@export var lure_pulls_gate_zombies: bool = false
+## Whether a boss goes to a lure.
+@export var lure_pulls_bosses: bool = false
+
 @export_group("Body")
 ## Two zombies closer than this (metres) push each other apart.
 @export var separation_radius: float = 0.8

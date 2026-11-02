@@ -1,12 +1,15 @@
-# Aim, shoot, let go of the aim (#428): a shot fired while aiming starts no hip-fire hold, so the
-# aim weight falls the tick the button is let go, along the aim's own release. The rule:
-# `holds_aim = aiming or fire_age < hip_fire_hold`, and `fire_age` restarts only for a trigger
-# pull made without the aim button. Stepped by hand with fixed ticks.
+# Aim, shoot, let go of the aim (#428), and the zoom for the aim only (#464): a shot never holds the
+# camera. Aim, shoot, release and hip fire, aim, release both let the view go the tick the button
+# is let go and are back at 60 degrees within the aim's own blend time, with no extra hold. The
+# hip-fire hold (`fire_age`, restarted only by a trigger pull made without the aim button) is the
+# body's alone. Stepped by hand with fixed ticks.
 extends GdUnitTestSuite
 
 const TEST_ROOM := "res://world/test_room.tscn"
 const TICK := 1.0 / 60.0
 const START := Vector3(0.0, 0.05, 10.0)
+## The aim's own blend time: back at the hip view within this after the button is let go.
+const AIM_BLEND_TIME := 0.5
 
 var _runner: GdUnitSceneRunner
 var _player: Player
@@ -104,51 +107,92 @@ func test_the_release_is_immediate_however_late_the_shot_was() -> void:
 	assert_float(_player.state.fire_age).is_greater(0.5)
 
 
-func test_hip_fire_alone_still_holds_for_the_hold() -> void:
-	_runner.simulate_action_press("fire")
-	await _seconds(1.0)
-	_runner.simulate_action_release("fire")
-	var weights := await _weights(120)
-	var first := _first_below(weights, 0.95)
-	assert_float(first * TICK).is_equal_approx(_tuning.hip_fire_hold, 0.1)
+## The field of view every tick for `count` ticks.
+func _fovs(count: int) -> Array[float]:
+	var found: Array[float] = []
+	for i in count:
+		await _ticks(1)
+		found.append(_rig.camera().fov)
+	return found
 
 
-func test_an_aim_inside_a_hip_hold_gives_only_what_hip_fire_gives() -> void:
-	# Hip shot, aim during its hold, let go of the aim inside the hold: the hold the hip shot
-	# started runs out as it would have (no restart from the aim, no second hold).
-	_runner.simulate_action_press("fire")
-	await _seconds(1.0)
-	_runner.simulate_action_release("fire")
-	await _seconds(0.2)
+func _assert_hip_view(fovs: Array[float], label: String) -> void:
+	for i in fovs.size():
+		(
+			assert_float(fovs[i])
+			. override_failure_message("%s: tick %d fov %.3f" % [label, i, fovs[i]])
+			. is_equal_approx(_tuning.fov, 0.0001)
+		)
+
+
+func test_aim_shoot_release_is_back_at_60_within_the_aim_blend_time() -> void:
 	_runner.simulate_action_press("aim")
-	await _seconds(0.2)
-	_runner.simulate_action_release("aim")
-	# 0.4 s into the hold: the rest of it runs out as it would have, 0.4 s later.
-	var weights := await _weights(120)
-	var falls_in := _first_below(weights, 0.95) * TICK
-	assert_float(falls_in).is_equal_approx(_tuning.hip_fire_hold - 0.4, 0.1)
-	# Aimed late in the hold and let go after it ran out: immediate.
-	await _seconds(2.0)
+	await _seconds(1.0)
+	assert_float(_rig.camera().fov).is_equal_approx(_tuning.fov_aim, 0.05)
 	_runner.simulate_action_press("fire")
 	await _ticks(3)
 	_runner.simulate_action_release("fire")
-	await _seconds(_tuning.hip_fire_hold - 0.2)
-	_runner.simulate_action_press("aim")
-	await _seconds(0.5)
+	await _seconds(0.1)
 	_runner.simulate_action_release("aim")
-	var late := await _weights(60)
-	assert_int(_first_below(late, 0.95)).is_less(10)
+	var fovs := await _fovs(roundi(AIM_BLEND_TIME / TICK))
+	# No hold: it starts to go the tick the button is let go, and is at 60 inside the blend time.
+	assert_float(fovs[2]).is_greater(_tuning.fov_aim + 0.1)
+	assert_float(fovs[2]).is_less(_tuning.fov - 1.0)
+	assert_float(fovs[-1]).is_equal_approx(_tuning.fov, 0.1)
+	var plain := await _plain_release_fovs(fovs.size())
+	for i in fovs.size():
+		assert_float(fovs[i]).override_failure_message("tick %d" % i).is_equal_approx(plain[i], 0.3)
 
 
-func test_letting_go_of_the_aim_with_the_trigger_held_is_hip_fire() -> void:
+## The fovs after a release of an aim nobody shot from: the reference curve.
+func _plain_release_fovs(count: int) -> Array[float]:
+	await _seconds(1.5)
+	_runner.simulate_action_press("aim")
+	await _seconds(1.0)
+	_runner.simulate_action_release("aim")
+	return await _fovs(count)
+
+
+func test_hip_fire_aim_release_is_back_at_60_within_the_aim_blend_time() -> void:
+	# A shot from the hip leaves no zoom; aiming inside its body hold zooms for the aim; letting go
+	# of the aim returns to 60 at once, with nothing held over from the hip shot.
+	_runner.simulate_action_press("fire")
+	var before_aim := await _fovs(roundi(0.5 / TICK))
+	_assert_hip_view(before_aim, "hip fire")
+	_runner.simulate_action_release("fire")
+	await _seconds(0.2)
+	assert_bool(_player.state.holds_aim(_tuning.hip_fire_hold)).is_true()
+	_runner.simulate_action_press("aim")
+	await _seconds(1.0)
+	assert_float(_rig.camera().fov).is_equal_approx(_tuning.fov_aim, 0.05)
+	_runner.simulate_action_release("aim")
+	var fovs := await _fovs(roundi(AIM_BLEND_TIME / TICK))
+	assert_float(fovs[2]).is_greater(_tuning.fov_aim + 0.1)
+	assert_float(fovs[-1]).is_equal_approx(_tuning.fov, 0.1)
+
+
+func test_hip_fire_alone_never_zooms_and_holds_only_the_body() -> void:
+	_runner.simulate_action_press("fire")
+	await _seconds(1.0)
+	_runner.simulate_action_release("fire")
+	var fovs := await _fovs(120)
+	_assert_hip_view(fovs, "after the trigger")
+	assert_float(_rig.aim_amount()).is_equal_approx(0.0, 0.0001)
+	# The body's hold is what stayed: it ended `hip_fire_hold` after the last shot.
+	assert_float(_player.state.fire_age).is_greater(_tuning.hip_fire_hold)
+
+
+func test_letting_go_of_the_aim_with_the_trigger_held_lets_the_zoom_go_at_once() -> void:
 	_runner.simulate_action_press("aim")
 	_runner.simulate_action_press("fire")
 	await _seconds(1.0)
+	assert_float(_rig.camera().fov).is_equal_approx(_tuning.fov_aim, 0.05)
 	_runner.simulate_action_release("aim")
-	await _seconds(0.5)
-	assert_float(_rig.aim_amount()).is_greater(0.99)
-	_runner.simulate_action_release("fire")
-	await _seconds(_tuning.hip_fire_hold - 0.2)
-	assert_float(_rig.aim_amount()).is_greater(0.98)
-	await _seconds(1.0)
+	var fovs := await _fovs(roundi(AIM_BLEND_TIME / TICK))
+	assert_float(fovs[-1]).is_equal_approx(_tuning.fov, 0.1)
 	assert_float(_rig.aim_amount()).is_less(0.01)
+	# The trigger is still down: the body keeps facing the view (the hip-fire turn), the view stays.
+	assert_bool(_player.is_aiming()).is_false()
+	assert_bool(_player.state.holds_aim(_tuning.hip_fire_hold)).is_true()
+	await _seconds(1.0)
+	assert_float(_rig.camera().fov).is_equal_approx(_tuning.fov, 0.0001)

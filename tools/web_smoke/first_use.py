@@ -122,10 +122,8 @@ def run_once(url: str, out: Path, seconds: float, gpu: bool, index: int) -> dict
         smoke.wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
         marks["menu_s"] = round(time.monotonic() - t0, 2)
         page.mouse.click(5, 5)
-        page.wait_for_timeout(3000)  # the menu's items rise
-        smoke.press(page, "ArrowDown")
-        smoke.press(page, "ArrowUp")
-        smoke.press(page, "ArrowUp")
+        page.wait_for_timeout(3000)  # the menu settles
+        smoke.menu_item(page, "Play", 2)
         marks["play_pressed"] = page.evaluate("performance.now()")
         smoke.press(page, "Enter")
         wait_for_night(page, out, index)

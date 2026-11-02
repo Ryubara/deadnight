@@ -29,6 +29,8 @@ const ITEM_NAMES := {
 	&"ammo_rifle": "BOUGHT AMMUNITION",
 	&"ammo_flare_gun": "BOUGHT AMMUNITION",
 	&"fuel_can": "FILLED THE GENERATOR",
+	&"upgrade_weapon": "HAD A WEAPON RE-CUT",
+	&"tonic_hearty": "DRANK THE HEARTY TONIC",
 }
 ## What each mark says in the feed (one meaning each, `PingBoard`).
 const PING_WORDS := {

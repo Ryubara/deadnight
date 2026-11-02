@@ -6,9 +6,10 @@ extends RefCounted
 ## its distance from the nearest zombie, turns to it and shoots, reloads when the magazine runs
 ## dry, walks to the next door when it can afford it and buys it, buys rounds when the gun in hand
 ## is nearly out, buys the weapons on the walls and the crane with points to spare, swaps to a gun
-## that has rounds, and puts boards back when it is standing at one with nothing to shoot. It throws
-## the breaker of an area it has bought (`AutopilotSwitches`), and back off when the tank runs low;
-## and it buys a can of fuel when the tank is low and it has the points (`AutopilotFuel`).
+## that has rounds, re-cuts one weapon at the bench and drinks the hearty tonic when it can pay, and
+## puts boards back when it is standing at one with nothing to shoot. It throws the breaker of an
+## area it has bought (`AutopilotSwitches`), and back off when the tank runs low; and it buys a can
+## of fuel when the tank is low and it has the points (`AutopilotFuel`).
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -51,6 +52,10 @@ var prices_of_goods: Dictionary = {}
 var ammo_prices: Dictionary = {}
 var wanted: Array[StringName] = []
 var crane_pool: Array[StringName] = []
+## What a re-cut and the hearty tonic cost at their machines (the shop's base prices), or 0 when
+## the bot does not shop for it. The bot re-cuts one weapon and drinks one tonic a night.
+var recut_price: int = 0
+var tonic_price: int = 0
 ## Where to stand to put boards back across each breach, by id, and how many a whole one holds.
 var repair_goals: Dictionary = {}
 var whole_boards: int = 1
@@ -66,6 +71,7 @@ var _last_pos := Vector3.ZERO
 var _ticks := 0
 var _swap_wait := 0
 var _shopping: Dictionary = {}
+var _had_tonic := false
 
 
 func _init(p_state: ClientState, p_map: RID) -> void:
@@ -122,6 +128,12 @@ func decide(delta: float) -> NightCommand:
 		command.use = _wants(prompt) and state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"ammo":
 		command.use = _low_on_rounds(held) and state.points() >= int(prompt.get("price", BIG_PRICE))
+	elif kind == &"recut":
+		command.use = recut_price > 0 and state.points() >= int(prompt.get("price", BIG_PRICE))
+	elif kind == &"tonic":
+		command.use = tonic_price > 0 and state.points() >= int(prompt.get("price", BIG_PRICE))
+	elif kind == &"tonic_owned":
+		_had_tonic = true
 	elif kind == &"repair":
 		command.use = target.is_empty()
 	elif kind == &"circuit":
@@ -195,6 +207,10 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 	var points := state.points()
 	if kind == &"ammo":
 		return _low_on_rounds(held) and points >= int(ammo_prices.get(held.id, BIG_PRICE))
+	if kind == MachineOffers.UPGRADE_SPOT:
+		return recut_price > 0 and _recut_wanted(held) and points >= recut_price + AMMO_MONEY
+	if kind == MachineOffers.PERK_SPOT:
+		return tonic_price > 0 and not _had_tonic and points >= tonic_price + AMMO_MONEY
 	var id: StringName = spot["shop_id"]
 	if kind == &"wall":
 		var weapon := WeaponCatalog.catalog_id(id)
@@ -209,6 +225,18 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 	if kind == &"crane" and not _crane_here_with_prizes(spot):
 		return false
 	return wanted.has(id) and points >= int(prices_of_goods.get(id, BIG_PRICE)) + AMMO_MONEY
+
+
+## Whether the weapon in hand is worth a trip to the re-cut bench: a firearm, not yet re-cut, and
+## nothing else re-cut yet (the bot re-cuts one weapon a night).
+func _recut_wanted(held: WeaponDef) -> bool:
+	if held == null or held.is_melee():
+		return false
+	var arms: Dictionary = state.me().get("arms", {})
+	for counts: Array in arms.values():
+		if counts.size() > 2 and int(counts[2]) > 0:
+			return false
+	return true
 
 
 ## Whether this crane spot is where the crane stands now and a prize is left that the bot lacks.

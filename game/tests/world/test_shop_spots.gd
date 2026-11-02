@@ -3,7 +3,7 @@
 # sits clear of every door and of the other spots, so one press never means two things.
 extends GdUnitTestSuite
 
-const KINDS: Array[StringName] = [&"wall", &"crane", &"ammo"]
+const KINDS: Array[StringName] = [&"wall", &"crane", &"ammo", &"upgrade", &"perk"]
 ## The night's reach for a use (NightTuning.use_reach): spots of different kinds must be farther
 ## apart than twice this, so no place is in reach of two of them.
 const REACH := 3.2
@@ -24,13 +24,15 @@ func after_test() -> void:
 	_world.queue_free()
 
 
-func test_the_lot_has_two_wall_weapons_a_crane_and_lockers() -> void:
+func test_the_lot_has_two_wall_weapons_a_crane_lockers_and_the_two_machines() -> void:
 	var kinds := {}
 	for spot in _spots:
 		kinds[spot["kind"]] = kinds.get(spot["kind"], 0) + 1
 	assert_int(kinds[&"wall"]).is_equal(2)
 	assert_int(kinds[&"crane"]).is_equal(CraneTuning.new().spot_count())
 	assert_int(kinds[&"ammo"]).is_greater_equal(4)
+	assert_int(kinds[&"upgrade"]).is_equal(1)
+	assert_int(kinds[&"perk"]).is_equal(1)
 
 
 func test_every_spot_has_a_known_kind_and_wall_and_crane_name_shop_items() -> void:
@@ -42,8 +44,13 @@ func test_every_spot_has_a_known_kind_and_wall_and_crane_name_shop_items() -> vo
 			continue
 		var item := economy.item(spot["shop_id"])
 		assert_object(item).override_failure_message(String(spot["shop_id"])).is_not_null()
-		var expected := ShopItem.Kind.WEAPON if spot["kind"] == &"wall" else ShopItem.Kind.CRANE
-		assert_int(item.kind).is_equal(expected)
+		var expected: Dictionary = {
+			&"wall": ShopItem.Kind.WEAPON,
+			&"crane": ShopItem.Kind.CRANE,
+			&"upgrade": ShopItem.Kind.UPGRADE,
+			&"perk": ShopItem.Kind.TONIC,
+		}
+		assert_int(item.kind).is_equal(expected[spot["kind"]])
 
 
 func test_every_place_the_crane_can_stand_has_one_marker() -> void:
@@ -108,3 +115,23 @@ func test_the_wall_weapons_hang_in_the_two_places_the_design_gives_them() -> voi
 
 static func _flat(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+func test_the_machines_stand_in_the_booth_and_the_stand_over_their_blocks() -> void:
+	# The re-cut bench is in the projection booth, the soda fountain in the concession stand
+	# (docs/design/map.md), each drawn over the hidden block that holds its place in the walking mesh.
+	for spot in _spots:
+		if spot["kind"] == &"upgrade":
+			assert_float(spot["position"].z).is_between(22.0, 32.0)
+			assert_float(spot["position"].x).is_between(-6.0, 6.0)
+		if spot["kind"] == &"perk":
+			assert_float(spot["position"].z).is_between(-4.0, 8.0)
+			assert_float(spot["position"].x).is_between(-10.0, 10.0)
+	var greybox := _world.greybox
+	var blocks := ["ProjectionBooth/ReCutMachine", "Concession/SodaFountain"]
+	for path: String in blocks:
+		var block := greybox.get_node(path) as CSGBox3D
+		assert_bool(block.visible).is_false()
+		assert_bool(block.use_collision).is_true()
+	assert_bool(greybox.get_node("ShopProps/ReCut") is RecutMachine).is_true()
+	assert_bool(greybox.get_node("ShopProps/Soda") is SodaFountain).is_true()

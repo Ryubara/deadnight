@@ -4,6 +4,11 @@ extends GdUnitTestSuite
 ## One well formed action of every type, by type.
 const SAMPLES := {
 	&"start": {"type": &"start"},
+	&"configure":
+	{
+		"type": &"configure",
+		"settings": {"count_multiplier": 2.0, "max_alive": 12, "break_seconds": 8.0},
+	},
 	&"tick": {"type": &"tick", "delta": 0.016},
 	&"skip_break": {"type": &"skip_break"},
 	&"add_player": {"type": &"add_player", "player_id": 9},
@@ -58,6 +63,7 @@ func test_every_action_type_has_a_sample() -> void:
 func test_the_builders_make_well_formed_actions() -> void:
 	for action: Dictionary in [
 		RulesAction.start(),
+		RulesAction.configure(MatchSettings.new()),
 		RulesAction.tick(0.5),
 		RulesAction.skip_break(),
 		RulesAction.add_player(3),
