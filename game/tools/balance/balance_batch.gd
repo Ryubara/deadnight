@@ -59,6 +59,8 @@ static func run_cell(
 static func _add(cell: Dictionary, night: Dictionary, rules: GameRules) -> void:
 	var rounds: Dictionary = night["rounds"]
 	for r: int in rounds:
+		if r > int(cell["max_rounds"]):
+			continue
 		var record: Dictionary = rounds[r]
 		cell["reached"][r] += 1
 		cell["damage"][r] += record.get("damage", 0.0)
