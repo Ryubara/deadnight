@@ -52,6 +52,10 @@ extends Resource
 @export var alive_cap_step: float = 1.5
 @export var alive_cap_max: float = 28.0
 @export var alive_cap_per_extra_player: float = 6.0
+## The most zombies the rules ever allow alive at once, whatever the round and the players: the
+## crowd the lot stands (`ZombieTuning.hard_cap`, the web ceiling; see docs/design/zombies.md).
+## A cap above it would only queue the rest in the director, never on the lot.
+@export var alive_cap_ceiling: int = 40
 ## Seconds from the start of a round to its first spawn.
 @export var first_spawn_delay: float = 1.5
 
@@ -112,7 +116,8 @@ func spawn_interval(round_number: int, players: int) -> float:
 func alive_cap(round_number: int, players: int) -> int:
 	var n := float(maxi(round_number - 1, 0))
 	var solo := minf(alive_cap_start + alive_cap_step * n, alive_cap_max)
-	return roundi(solo + alive_cap_per_extra_player * float(maxi(players - 1, 0)))
+	var wanted := roundi(solo + alive_cap_per_extra_player * float(maxi(players - 1, 0)))
+	return mini(wanted, alive_cap_ceiling)
 
 
 func ambient_for_round(round_number: int) -> float:

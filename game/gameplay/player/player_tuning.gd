@@ -43,27 +43,20 @@ extends Resource
 @export var turn_speed := 14.0
 ## The same while sprinting: a wider arc (0.78 m at a sprint), more weight.
 @export var sprint_turn_speed := 9.0
-## Radians per second the body turns to face the aim direction while aiming.
-@export var aim_turn_speed := 24.0
+## Radians per second the body turns to face the view while the aim is held (the button, or the
+## trigger and `hip_fire_hold` after it). Slow enough that the weapon in the hands, which turns with
+## the body, moves a few degrees a tick and never jumps: a view 75 degrees away is faced in 0.16 s.
+@export var aim_turn_speed := 8.0
 
 @export_group("Hip fire")
-## Firing without aiming turns the body to the view and eases the camera part of the way into the
-## aim view, as third-person shooters do (docs/research/hip-fire.md). Radians per second the body
-## turns to the view while the trigger is held; as quick as the aim turn, so the first shot of a
-## burst leaves from a body already facing the target.
-@export var hip_fire_turn_speed := 22.0
-## Seconds after the trigger is let go that the body keeps facing the view, so a run of single
-## shots (the slowest weapon fires every 0.9 s) does not swing back to the move direction between.
-@export var hip_fire_hold := 0.6
-## How far the camera eases from the hip view toward the full aim view while firing: 0 is none,
-## 1 is the aim view. The arm, the shoulder and the field of view all take this share.
-@export_range(0.0, 1.0, 0.05) var hip_fire_zoom := 0.5
-## Seconds after the last shot before the camera lets the hip-fire zoom go.
-@export var hip_fire_zoom_delay := 0.8
-## Springs of the hip-fire zoom, rad/s: in (95 percent in 0.34 s) and out (0.68 s, gentler than
-## the way in, so the view does not snap back between two bursts).
-@export var hip_fire_zoom_frequency := 14.0
-@export var hip_fire_release_frequency := 7.0
+## Firing without aiming is the aim entered for a moment, not a second, partial aim: while the
+## trigger is held, and for `hip_fire_hold` after it, the character holds the aim, and the camera,
+## the body and the hands ease to the same pose and back at the same speed as for the aim button
+## (docs/research/hip-fire.md).
+## Seconds after the trigger is let go that the aim is still held: the body keeps facing the view
+## and the camera stays in, so a run of single shots (the slowest weapon fires every 0.9 s) does
+## not swing out and in between. After it everything eases out like a released aim button.
+@export var hip_fire_hold := 0.8
 
 @export_group("Pivot")
 ## A change of direction wider than this (degrees) is a pivot, not an arc: the body plants,
