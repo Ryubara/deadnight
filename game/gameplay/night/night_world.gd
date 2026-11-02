@@ -44,8 +44,10 @@ var _generator: GeneratorState
 
 ## Builds the lot and waits until its collision and navigation are live.
 func build() -> void:
+	WebProbe.mark("lot: instantiate")
 	greybox = GREYBOX.instantiate()
 	add_child(greybox)
+	WebProbe.mark("lot: in the tree")
 	doors = greybox.get_node("Doors") as LotDoors
 	for door in doors.get_children():
 		_door_nodes[StringName(door.get_meta("shop_id"))] = door
@@ -54,6 +56,7 @@ func build() -> void:
 		_barricades[StringName(barricade.get_meta(&"barricade_id"))] = barricade
 	for _i in SETTLE_FRAMES:
 		await get_tree().physics_frame
+	WebProbe.mark("lot: settled")
 	navigation = DoorNavigation.new()
 	add_child(navigation)
 	navigation.setup(greybox, doors)
@@ -61,6 +64,7 @@ func build() -> void:
 		if _map_answers():
 			break
 		await get_tree().physics_frame
+	WebProbe.mark("lot: navigation ready")
 	_lamps = LotLamps.new(greybox)
 	switches = LotSwitches.new(greybox)
 	fuel = LotFuel.new(greybox)

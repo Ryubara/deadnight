@@ -12,14 +12,18 @@ extends Node
 ##      because a resource nothing references is freed and read again at its next use;
 ##   2. loads every sound's files into the audio service's cache;
 ##   3. draws the whole lot from above with every lamp lit, then with every lamp dark (the
-##      programs of a mesh differ with the lights that reach it, and the generator can fail);
+##      programs of a mesh differ with the lights that reach it, and the generator can fail). The
+##      lot is held out of the picture first and brought in a kind of material at a time
+##      (`DrawReveal`), because the renderer's first draw of one shader takes about a second in a
+##      browser and the lot has nine: all at once they were one 9 to 12 s frame;
 ##   4. on a stage high above the lot, in each of four light conditions (the moon alone, an omni
 ##      light, a spot light, both): every zombie look near and far, every weapon's and grenade's
 ##      scene, the repair hammer, the prize crane in each of its stages, and the night view's own
 ##      effects, replayed from sample events (a shot of each weapon, damage numbers with every
-##      digit, a blast), and keeps the materials those effects made, so the shaders they own are
-##      not freed with the short-lived nodes (a shader goes with the last material that uses it,
-##      and would be built again at every shot).
+##      digit, a blast; the first light condition brings its props in the same way), and keeps
+##      the materials those effects made, so the shaders they own are not freed with the
+##      short-lived nodes (a shader goes with the last material that uses it, and would be built
+##      again at every shot).
 ## The night's lights, environment and fog are used as they are: the stage is in the same world,
 ## seen through a camera of its own that is current for the warm-up.
 
@@ -45,7 +49,8 @@ const LIGHT_CELLS: Array[Dictionary] = [
 	{"label": "both", "omni": true, "spot": true},
 ]
 ## Share of the bar each step takes.
-const WEIGHTS := {"load": 0.30, "sounds": 0.10, "lot": 0.20, "stage": 0.40}
+## It follows the time each takes in a browser, so the bar moves at an even pace.
+const WEIGHTS := {"load": 0.04, "sounds": 0.04, "lot": 0.50, "stage": 0.42}
 ## Milliseconds a frame may spend loading sounds, so the bar keeps moving.
 const SOUND_BUDGET_MSEC := 8
 ## Frames each shot is held, so the draw reaches the screen (and the renderer builds what it needs).
@@ -60,6 +65,8 @@ var ledger := DrawLedger.new()
 var shots := 0
 ## The box around the lot that the lot pass looked at.
 var lot_bounds := AABB()
+## How many pieces the lot was brought in as (steps of `DrawReveal`), for tests.
+var lot_steps := 0
 
 var _night: Night
 var _camera: Camera3D
@@ -68,6 +75,11 @@ var _before: Camera3D
 var _pins: Array = []
 var _stage: Node3D
 var _done := 0.0
+var _last_text := ""
+## The night's drawn nodes, out of the picture until the lot pass brings them in.
+var _held := DrawReveal.new()
+## The viewports of their own (the HUD's portrait) that wait for the lot pass.
+var _paused: Array[SubViewport] = []
 
 
 ## Runs every step; the night is not running meanwhile. The caller waits for it.
@@ -78,6 +90,10 @@ func run(night: Night) -> void:
 	_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	_camera.fov = SHOT_FOV
 	add_child(_camera)
+	# Nothing of the night is drawn until the lot pass brings it in, a kind of material at a time;
+	# the HUD's portrait draws the Soldier with the same shaders, so it waits for them as well.
+	_held.hide(night)
+	_paused = _pause_viewports()
 	_camera.make_current()
 	var muted := _mute()
 	await _load_resources()
@@ -91,6 +107,29 @@ func run(night: Night) -> void:
 	if _stage != null:
 		_stage.queue_free()
 	_say(1.0, "Ready")
+
+
+## Stops the viewports of their own from drawing until `_resume_viewports`. A viewport that draws
+## the Soldier (the HUD's portrait is drawn once, early) would meet its shaders all in one frame.
+func _pause_viewports() -> Array[SubViewport]:
+	var paused: Array[SubViewport] = []
+	for node in get_tree().root.find_children("*", "SubViewport", true, false):
+		var viewport := node as SubViewport
+		RenderingServer.viewport_set_active(viewport.get_viewport_rid(), false)
+		paused.append(viewport)
+	return paused
+
+
+func _resume_viewports() -> void:
+	for viewport in _paused:
+		if is_instance_valid(viewport):
+			RenderingServer.viewport_set_active(viewport.get_viewport_rid(), true)
+	_paused.clear()
+
+
+## How many of the night's drawn nodes are still held out of the picture (none once it is done).
+func held_back() -> int:
+	return _held.pending()
 
 
 ## What the warm-up holds on to: a test looks that the catalogue's files are among them.
@@ -142,7 +181,8 @@ func _load_sounds() -> void:
 	_finish("sounds")
 
 
-## The lot from high above, every lamp lit and then every lamp dark.
+## The lot from high above, brought in a kind of material at a time with every lamp lit, and then
+## drawn with every lamp dark.
 func _lot_pass() -> void:
 	var lot := _night.world.greybox
 	var bounds := _bounds_of(lot)
@@ -155,12 +195,24 @@ func _lot_pass() -> void:
 	_camera.look_at_from_position(
 		Vector3(centre.x, height, centre.z), Vector3(centre.x, 0.0, centre.z), Vector3.FORWARD
 	)
-	_say(_step("lot", 0.0), "Lighting the lot")
-	await _shots(_night)
-	_say(_step("lot", 0.5), "Putting the lights out")
+	var steps := _held.steps()
+	lot_steps = steps.size()
+	for i in steps.size():
+		_say(
+			_step("lot", 0.9 * float(i) / steps.size()),
+			"Lighting the lot (%d of %d)" % [i + 1, steps.size()]
+		)
+		_held.reveal(steps[i])
+		await _shots(_night, 1)
+	_held.reveal_all()
+	_resume_viewports()
+	_say(_step("lot", 0.9), "Putting the lights out")
+	# The lamps only: the moon is never switched off, so the programs without it are never used.
 	var lights: Array[Light3D] = []
 	var was: Array[bool] = []
 	for node in lot.find_children("*", "Light3D", true, false):
+		if node is DirectionalLight3D:
+			continue
 		lights.append(node as Light3D)
 		was.append((node as Light3D).visible)
 		(node as Light3D).visible = false
@@ -185,12 +237,15 @@ func _stage_pass() -> void:
 		var props := _stage_row()
 		var crane := _stage_crane()
 		_show_crane(crane, CraneState.Stage.SPIN)
+		if i == 0:
+			await _bring_in(_stage, i, cell["label"])
 		await _shot_at(NEAR_SHOT)
 		_show_crane(crane, CraneState.Stage.GRAB)
 		await _shot_at(FAR_SHOT)
 		_show_crane(crane, CraneState.Stage.LEAVING)
 		_say(_step("stage", (i + 0.5) / LIGHT_CELLS.size()), "Firing: %s" % cell["label"])
-		_replay_effects()
+		_aim_at(NEAR_SHOT)
+		await _replay_effects()
 		await _shot_at(NEAR_SHOT)
 		_keep_materials(_night.view)
 		_keep_materials(crane)
@@ -204,6 +259,23 @@ func _stage_pass() -> void:
 		rig.free()
 		await get_tree().process_frame
 	_finish("stage")
+
+
+## Holds the stage's props out of the picture and brings them in a kind of material at a time, as
+## the lot was: the first light condition meets every shader, the others only new programs.
+func _bring_in(root: Node3D, cell_index: int, label: String) -> void:
+	var held := DrawReveal.new()
+	held.hide(root)
+	_aim_at(NEAR_SHOT)
+	var steps := held.steps()
+	for i in steps.size():
+		_say(
+			_step("stage", (cell_index + 0.4 * float(i) / steps.size()) / LIGHT_CELLS.size()),
+			"Setting the scene: %s (%d of %d)" % [label, i + 1, steps.size()]
+		)
+		held.reveal(steps[i])
+		await _shots(_night, 1)
+	held.reveal_all()
 
 
 func _light_rig(cell: Dictionary) -> Node3D:
@@ -291,7 +363,8 @@ func _instance_of(path: String) -> Node3D:
 	return null
 
 
-## One of each thing the view draws for an event, from a sample event of each kind.
+## One of each thing the view draws for an event, from a sample event of each kind. A frame is drawn
+## after each weapon's shot and each kind of event, so a frame meets few new programs.
 func _replay_effects() -> void:
 	var view := _night.view
 	var at := _stage.global_position + Vector3(-3.0, 1.4, 1.5)
@@ -314,6 +387,7 @@ func _replay_effects() -> void:
 				}
 			)
 		)
+		await _chunk()
 	(
 		view
 		. draw_event(
@@ -338,12 +412,22 @@ func _replay_effects() -> void:
 			}
 		)
 	)
+	await _chunk()
 	view.draw_event({"type": &"projectile_burst", "point": at + Vector3(2.0, 0.0, -2.0)})
+	await _chunk()
 	for def_path in _grenade_defs():
 		var blast := BlastEffect.new()
 		view.effects.add_child(blast)
 		blast.play(at + Vector3(3.0, -1.0, -2.0), load(def_path) as GrenadeDef)
 		blast.gibs(at, Vector3.UP, 1)
+		await _chunk()
+
+
+## One frame of what was just made. The materials are kept first: an effect frees itself a fraction
+## of a second after it starts, and a frame that builds programs can take longer than that.
+func _chunk() -> void:
+	_keep_materials(_night.view)
+	await _shots(_night, 1)
 
 
 func _grenade_defs() -> Array[String]:
@@ -375,14 +459,18 @@ func _keep_materials(root: Node) -> void:
 
 ## The camera looks at the middle of the row from `distance`, and the frames are held.
 func _shot_at(distance: float) -> void:
-	var middle := _stage.global_position + Vector3(0.0, 1.5, 0.0)
-	_camera.look_at_from_position(middle + Vector3(0.0, 1.5, distance), middle)
+	_aim_at(distance)
 	await _shots(_night)
 
 
-## Waits for `SHOT_FRAMES` frames to be drawn and records what the tree held in them.
-func _shots(root: Node) -> void:
-	for _i in SHOT_FRAMES:
+func _aim_at(distance: float) -> void:
+	var middle := _stage.global_position + Vector3(0.0, 1.5, 0.0)
+	_camera.look_at_from_position(middle + Vector3(0.0, 1.5, distance), middle)
+
+
+## Waits for `frames` frames to be drawn and records what the tree held in them.
+func _shots(root: Node, frames := SHOT_FRAMES) -> void:
+	for _i in frames:
 		await get_tree().process_frame
 		# A headless run draws nothing and never says a frame was drawn.
 		if DisplayServer.get_name() != "headless":
@@ -430,4 +518,7 @@ func _finish(step: String) -> void:
 
 
 func _say(fraction: float, text: String) -> void:
+	if text != "" and text != _last_text:
+		_last_text = text
+		WebProbe.mark("warm-up: " + text)
 	progress.emit(fraction, text)
