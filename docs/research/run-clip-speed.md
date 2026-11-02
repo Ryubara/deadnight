@@ -49,5 +49,5 @@ count ([the sprint sway](../design/camera-shake.md#the-sprint-sway)).
 ## Left open
 
 - Other players' footsteps (`footstep_sounds.gd`'s own `STEP_DISTANCE`, 1.9 m) should read the tuning's
-  `step_distance`; that file is being changed by the footsteps pull request, so it is left to follow it.
+  `step_distance`; the footsteps pull request has landed, so this is the follow-up to make.
 - Below the run (the Walk to Run blend, 0.45 to 0.95 of the blend) the Walk plays at its own pace; no check covers it.
