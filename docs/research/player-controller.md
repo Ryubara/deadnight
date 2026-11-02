@@ -146,7 +146,7 @@ The Soldier is the build of `tools/blender/build_soldier.py` (35 clips, bare nam
   spec does not list, is looped by name. Events are a frame check on the playing upper clip: `clip_event(clip,
   event)` fires for muzzle, can_fire_again, round_in, weapon_visible and the rest, and the weapon shows and hides on
   its own events. Footsteps stay distance based (one source); Walk's step events are not used.
-- **Weapons:** `equip(class)` attaches the class's weapon scene (lever rifle, double shotgun, bat; Pistol has none yet)
+- **Weapons:** `equip(id)` attaches the weapon id's own model (`holds/<id>.tres`); `equip(class)` the class's
   to a `BoneAttachment3D` on `Index1.R` with `HOLD_GUN` or `HOLD_MELEE`. The default is Rifle.
 - `clips.json` is read with `FileAccess`: the web preset includes `*.json` in its filter ([web export](web-export.md)).
 - **Moving while aiming** plays the aim gait: `Walk_Shoot`, `Walk_Back`, `Strafe_Left`, `Strafe_Right` in a

@@ -522,6 +522,11 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 	var origin := command.origin
 	if origin.distance_to(head) > tuning.origin_slack:
 		origin = head + (origin - head).normalized() * tuning.origin_slack
+	# A blow reaches from the body, not from the shoulder camera 2.3 m behind it: swept from the
+	# camera, a crowbar's 1.9 m fell short of a zombie standing at the player's face (#285).
+	var held := combat.weapon_of(player_id)
+	if held != null and held.def.is_melee():
+		origin = head
 	var muzzle := body.global_position + Basis(Vector3.UP, body.state.facing) * tuning.muzzle_offset
 	_shot_seq[player_id] += 1
 	_combat(

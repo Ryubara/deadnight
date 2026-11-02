@@ -80,6 +80,16 @@ func show_repair(player_id: int) -> void:
 		animation.board_repaired(repair_interval.call())
 
 
+## The shooter's Soldier plays the attack of the weapon he fired: a swing for a melee weapon, the
+## fire clip (and its recoil) for a gun. Every client draws every player's attack from the same
+## `shot_fired` event.
+func show_attack(player_id: int, weapon: WeaponDef) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire")
+
+
 ## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
 ## begins (the circuits on, the tank full), and following every circuit, the tank and the frames.
 func show_lamps(lot: Node, fuel: FuelTuning) -> void:
@@ -130,6 +140,8 @@ func _show_shot(event: Dictionary) -> void:
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
 	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
+	if shooter > 0:
+		show_attack(shooter, def)
 	if body != null and shooter == _state.player_id:
 		body.camera_rig.add_shake(def.shake_trauma)
 
@@ -161,6 +173,8 @@ func _on_event(event: Dictionary) -> void:
 		&"shot_fired":
 			_show_shot(event)
 		&"damage_dealt":
+			if event["melee"]:
+				effects.spark(event["point"])
 			effects.number(
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)

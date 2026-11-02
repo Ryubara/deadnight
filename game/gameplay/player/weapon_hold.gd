@@ -18,6 +18,10 @@ const CHUNK := 1.1
 ## Size of the model in the hand, on top of the Soldier's own scale (the model is drawn at the
 ## weapon's real length; the rule is `real length x character height / 1.75 m x chunk`).
 @export var model_scale := 1.0
+## How many times the size rule this weapon is drawn at: 1 is the rule. A small one-handed gun
+## hides in the Soldier's fist at the rule's size, so the revolver and the flare gun are given 1.6
+## (docs/design/weapon-hold.md, "The size rule"); nothing else but the repair's hammer departs.
+@export var size_factor := 1.0
 ## The weapon's real length in metres, kept so the rule can be checked (docs, tests).
 @export var real_length := 1.0
 ## The model's length along its muzzle axis, at its own scale (the glb's bounds).
@@ -36,6 +40,11 @@ const CHUNK := 1.1
 @export var pitch_offset_deg := 0.0
 
 
+## Whether the model has arrived: a hold file may be ready (class, grip) before its glb is.
+func has_model() -> bool:
+	return scene != "" and ResourceLoader.exists(scene)
+
+
 ## The model's length in the game, in metres, with the Soldier's own scale `character_scale`.
 func world_length(character_scale: float) -> float:
 	return model_length * model_scale * character_scale
@@ -44,3 +53,8 @@ func world_length(character_scale: float) -> float:
 ## The length the rule asks for, in metres: the real length at the Soldier's size.
 func rule_length() -> float:
 	return real_length * CHARACTER_HEIGHT / PERSON_HEIGHT * CHUNK
+
+
+## The length this weapon is given: the rule's, times its declared exception (`size_factor`).
+func sized_length() -> float:
+	return rule_length() * size_factor

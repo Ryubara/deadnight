@@ -39,7 +39,8 @@ The server decides every hit. The client shows the shot at once and the server's
   so a travelling shot is always a real body with its own flight, not a drawn line. In the night `NightView` draws
   each one as a `ProjectileView` (a hot core, a halo, a flickering warm light and a short spark trail), flown with the
   server's `ProjectileState` against the walls and ended by the burst (a spark and a flash).
-- **`MELEE`** (crowbar): a sweep; no streak, no impact puff.
+- **`MELEE`** (crowbar): a sweep from the player's head (not the shoulder camera), a swing on the Soldier, a spark on a
+  hit; no muzzle flash, no streak, no impact puff.
 
 ## The shoulder camera
 
