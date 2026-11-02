@@ -36,6 +36,8 @@ var switches: LotSwitches
 var fuel: LotFuel
 
 var _door_nodes: Dictionary[StringName, Node3D] = {}
+## The open areas the map walks to (`_walkable`).
+var _walkable_areas: Dictionary[String, bool] = {}
 var _barricades: Dictionary[StringName, Barricade] = {}
 var _lamps: LotLamps
 ## The rules' generator, which says which circuits are lit; without one every lamp is.
@@ -155,14 +157,48 @@ func open_areas() -> Array[String]:
 	return areas
 
 
+## Where the dead may rise: the markers of the field and of each open area whose ground the map
+## already walks out of (`_walkable`). A door opened a moment ago has its area in `open_areas` at
+## once but in the map a few physics ticks later (and for a lot nothing was saved for, a bake
+## later): a dead one risen there walks to the nearest point of the island it stands on, the wall
+## of the door's room, and stays (#591). The area joins here when the map takes it in, so the night
+## asks again every `NightServer.SPAWN_RETRY_TICKS` (the answer is kept for an area once it is yes).
 func spawn_points() -> Array[Vector3]:
 	var points: Array[Vector3] = []
 	for area in open_areas():
-		var markers := greybox.get_node_or_null(area + "/ZombieSpawns")
-		if markers != null:
-			for marker in markers.get_children():
-				points.append((marker as Marker3D).global_position)
+		if not _walkable(area):
+			continue
+		for marker in _spawn_markers(area):
+			points.append(marker.global_position)
 	return points
+
+
+func _spawn_markers(area: String) -> Array[Marker3D]:
+	var markers: Array[Marker3D] = []
+	var group := greybox.get_node_or_null(area + "/ZombieSpawns")
+	if group != null:
+		for marker in group.get_children():
+			markers.append(marker as Marker3D)
+	return markers
+
+
+## Whether the map walks from the field to every spawn point of `area`. An area stays walkable once
+## it has been (a door never closes again), so each is asked until it answers, then never again.
+func _walkable(area: String) -> bool:
+	if area == "Field" or _walkable_areas.has(area):
+		return true
+	var from := (greybox.get_node("Field/ZombieSpawns").get_child(0) as Marker3D).global_position
+	for marker in _spawn_markers(area):
+		var to := marker.global_position
+		var way := NavigationServer3D.map_get_path(map(), from, to, true)
+		if way.is_empty() or _flat(way[way.size() - 1], to) >= NAV_REACHED:
+			return false
+	_walkable_areas[area] = true
+	return true
+
+
+func _flat(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
 
 
 ## Where a player buys without a door: the weapons on the walls, the prize crane and the ammunition
