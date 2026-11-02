@@ -544,6 +544,9 @@ func _on_remote_event(event: Dictionary) -> void:
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
+	if me.get("turn", false):
+		_body.state.facing = me["facing"]
+		_body.rotation.y = _body.state.facing
 
 
 ## Shows, for the command the local player is about to send, where the grenade they are holding
