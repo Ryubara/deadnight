@@ -1,5 +1,4 @@
-# gdlint:disable=max-public-methods
-# The tree's one public face: its actions, events and test views (main already had 23 of them).
+# gdlint: disable=max-public-methods
 class_name PlayerAnimation
 extends AnimationTree
 ## Drives the Soldier's clips (docs/design/animation.md is the spec) from the player's movement.
