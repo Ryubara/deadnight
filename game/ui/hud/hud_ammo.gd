@@ -5,7 +5,6 @@ extends HudTicket
 ## numbers get a smaller type (the numeral and the reserve together), a long weapon name too, and
 ## then an ellipsis.
 
-const LOW_FRACTION := 0.25
 ## What the numbers read for a weapon that uses no ammunition.
 const NO_AMMO_MARK := "--"
 const WIDTH := 250.0
@@ -26,6 +25,7 @@ var hint_text: String:
 	get:
 		return _hint.text
 
+var _t := HudTuning.current()
 var _weapon := HudStyle.clip(
 	HudStyle.label("", HudStyle.SMALL, tokens.ink_on_accent, false, HudStyle.TRACK_CAPTION)
 )
@@ -69,7 +69,7 @@ func topics() -> Array[StringName]:
 
 func refresh() -> void:
 	_magazine_size = maxi(_magazine_size, state.ammo_magazine)
-	is_low = state.ammo_magazine <= maxi(1, int(_magazine_size * LOW_FRACTION))
+	is_low = state.ammo_magazine <= maxi(1, int(_magazine_size * _t.ammo_low_fraction))
 	HudStyle.set_fitted(_weapon, state.weapon_name.to_upper(), HudStyle.SMALL, _bar_room())
 	if state.ammo_used:
 		_fit_numbers(str(state.ammo_magazine), "/ %d" % state.ammo_reserve)

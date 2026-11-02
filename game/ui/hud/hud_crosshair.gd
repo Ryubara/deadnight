@@ -6,10 +6,7 @@ extends HudPart
 
 enum Kind { HIT, HEAD, KILL }
 
-const MARKER_LIFE := 0.22
-const NUMBER_LIFE := 0.9
 const MAX_NUMBERS := 8
-const NUMBER_RISE := 33.0
 const TICK_NEAR := 9.0
 const TICK_LENGTH := 11.0
 const TICK_POP := 6.0
@@ -26,6 +23,7 @@ var numbers: Array[Dictionary] = []
 ## while the camera turns. Without one a number starts where the event said (or by the crosshair).
 var projector: Callable = Callable()
 
+var _t := HudTuning.current()
 var _count := 0
 
 
@@ -51,8 +49,8 @@ func advance(delta: float) -> void:
 		marker["age"] = float(marker["age"]) + delta
 	for number in numbers:
 		number["age"] = float(number["age"]) + delta
-	markers = markers.filter(func(m: Dictionary) -> bool: return m["age"] < MARKER_LIFE)
-	numbers = numbers.filter(func(n: Dictionary) -> bool: return n["age"] < NUMBER_LIFE)
+	markers = markers.filter(func(m: Dictionary) -> bool: return m["age"] < _t.hit_marker_life)
+	numbers = numbers.filter(func(n: Dictionary) -> bool: return n["age"] < _t.hit_number_life)
 	queue_redraw()
 
 
@@ -87,8 +85,8 @@ func _draw() -> void:
 		_draw_marker(centre, marker)
 	var font := tokens.display_font(tokens.embolden_display * 0.3)
 	for number in numbers:
-		var t: float = float(number["age"]) / NUMBER_LIFE
-		var rise := 0.0 if UIMotion.reduced else NUMBER_RISE * t
+		var t: float = float(number["age"]) / _t.hit_number_life
+		var rise := 0.0 if UIMotion.reduced else _t.hit_number_rise * t
 		var colour: Color = number["colour"]
 		colour.a = 1.0 - maxf(t - 0.5, 0.0) * 2.0
 		var at := number_at(number) + Vector2(0.0, -rise)
@@ -114,7 +112,7 @@ func number_at(number: Dictionary) -> Vector2:
 
 func _draw_marker(centre: Vector2, marker: Dictionary) -> void:
 	var kind: Kind = marker["kind"]
-	var t: float = float(marker["age"]) / MARKER_LIFE
+	var t: float = float(marker["age"]) / _t.hit_marker_life
 	var colour := tokens.ink
 	var reach := TICK_LENGTH
 	if kind == Kind.HEAD:

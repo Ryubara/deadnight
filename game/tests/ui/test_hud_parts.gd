@@ -94,7 +94,7 @@ func test_gains_stack_oldest_first_and_never_overlap() -> void:
 	var first := (_hud.gains.rows[0]["label"] as Label).get_global_rect()
 	var second := (_hud.gains.rows[1]["label"] as Label).get_global_rect()
 	assert_bool(first.intersects(second)).is_false()
-	_fixture.advance(HudGains.LIFE - 0.2 + 0.05)
+	_fixture.advance(HudTuning.current().gains_life - 0.2 + 0.05)
 	assert_array(_hud.gains.texts()).has_size(1)
 	_fixture.advance(1.0)
 	assert_array(_hud.gains.texts()).is_empty()
@@ -131,7 +131,7 @@ func test_hit_markers_and_damage_numbers_follow_hits_and_are_capped() -> void:
 	assert_int(crosshair.markers.size()).is_equal(1)
 	assert_int(crosshair.markers[0]["kind"]).is_equal(HudCrosshair.Kind.HEAD)
 	assert_str(crosshair.numbers[0]["text"]).is_equal("25")
-	crosshair.advance(HudCrosshair.NUMBER_LIFE + 0.1)
+	crosshair.advance(HudTuning.current().hit_number_life + 0.1)
 	assert_array(crosshair.numbers).is_empty()
 	assert_array(crosshair.markers).is_empty()
 	for i in 20:
@@ -164,7 +164,7 @@ func test_a_blow_draws_an_arc_toward_the_attacker_and_low_health_a_frame() -> vo
 	_hud.state.apply_event(HudFixture.hurt(-2.0, 20.0))
 	_hud.damage.advance(0.0)
 	assert_float(_hud.damage.frame_strength).is_greater(0.0)
-	_hud.damage.advance(HudDamage.ARC_LIFE + 0.1)
+	_hud.damage.advance(HudTuning.current().damage_arc_life + 0.1)
 	assert_array(_hud.damage.arcs).is_empty()
 	for i in 20:
 		_hud.state.apply_event(HudFixture.hurt(float(i), 20.0))
@@ -197,11 +197,11 @@ func test_the_round_banner_runs_in_holds_and_out() -> void:
 	assert_bool(banner.showing).is_true()
 	assert_str(banner.title).is_equal("ROUND 1")
 	assert_float(banner.presence()).is_less(1.0)
-	_fixture.advance(HudBanner.IN_TIME + 0.2)
+	_fixture.advance(HudTuning.current().banner_in + 0.2)
 	assert_float(banner.presence()).is_equal(1.0)
-	_fixture.advance(HudBanner.HOLD_TIME)
+	_fixture.advance(HudTuning.current().banner_hold)
 	assert_float(banner.presence()).is_less(1.0)
-	_fixture.advance(HudBanner.OUT_TIME + 0.1)
+	_fixture.advance(HudTuning.current().banner_out + 0.1)
 	assert_bool(banner.showing).is_false()
 	assert_bool(banner.visible).is_false()
 
@@ -238,7 +238,7 @@ func test_the_event_feed_says_who_did_what_and_fades() -> void:
 	assert_array(_hud.events_feed.texts()).contains(["MOE OPENED THE CONCESSION STAND"])
 	_fixture.act(RulesAction.set_downed(2, true))
 	assert_str(_hud.events_feed.texts().back()).is_equal("MOE IS DOWN")
-	_fixture.advance(HudFeed.LIFE + 0.1)
+	_fixture.advance(HudTuning.current().feed_life + 0.1)
 	assert_array(_hud.events_feed.texts()).is_empty()
 
 

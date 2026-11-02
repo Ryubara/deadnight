@@ -205,10 +205,10 @@ func test_a_player_who_bled_out_is_marked_dead_and_the_revives_are_the_servers()
 
 func test_a_ping_reads_good_fair_or_bad() -> void:
 	assert_int(HudScoreboard.ping_grade(0)).is_equal(0)
-	assert_int(HudScoreboard.ping_grade(HudScoreboard.PING_GOOD_MS)).is_equal(0)
-	assert_int(HudScoreboard.ping_grade(HudScoreboard.PING_GOOD_MS + 1)).is_equal(1)
-	assert_int(HudScoreboard.ping_grade(HudScoreboard.PING_FAIR_MS)).is_equal(1)
-	assert_int(HudScoreboard.ping_grade(HudScoreboard.PING_FAIR_MS + 1)).is_equal(2)
+	assert_int(HudScoreboard.ping_grade(HudTuning.current().ping_good_ms)).is_equal(0)
+	assert_int(HudScoreboard.ping_grade(HudTuning.current().ping_good_ms + 1)).is_equal(1)
+	assert_int(HudScoreboard.ping_grade(HudTuning.current().ping_fair_ms)).is_equal(1)
+	assert_int(HudScoreboard.ping_grade(HudTuning.current().ping_fair_ms + 1)).is_equal(2)
 
 
 func test_the_clock_reads_minutes_and_after_an_hour_hours() -> void:

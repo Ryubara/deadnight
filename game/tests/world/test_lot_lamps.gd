@@ -108,12 +108,12 @@ func test_a_lamp_post_bulb_glows_with_its_own_light_only() -> void:
 	var yard_bulb := yard.get_node("Head") as CSGBox3D
 	assert_object(bulb.material).is_not_same(yard_bulb.material)
 	assert_float((bulb.material as StandardMaterial3D).emission_energy_multiplier).is_equal(
-		LampPost.BULB_ENERGY
+		LightTuning.current().bulb_energy
 	)
 	_lamps.apply_event({"type": &"circuit_changed", "circuit_id": &"screen_lot", "on": false})
 	assert_float((bulb.material as StandardMaterial3D).emission_energy_multiplier).is_equal(0.0)
 	assert_float((yard_bulb.material as StandardMaterial3D).emission_energy_multiplier).is_equal(
-		LampPost.BULB_ENERGY
+		LightTuning.current().bulb_energy
 	)
 
 
@@ -157,7 +157,7 @@ func test_a_failing_tank_flickers_the_same_way_every_time() -> void:
 	for tick in range(1, 120):
 		if run_a[tick] != run_a[tick - 1]:
 			changes += 1
-	assert_int(changes).is_less_equal(120 / LotLamps.FLICKER_TICKS)
+	assert_int(changes).is_less_equal(120 / LightTuning.current().flicker_ticks)
 	assert_array(other).is_not_equal(run_a)
 
 

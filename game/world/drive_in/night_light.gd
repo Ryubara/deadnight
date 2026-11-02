@@ -4,22 +4,12 @@ extends Node
 ## how light the night is (`RoundTuning.ambient_for_round`, 0.60 in round 1 falling to 0.15); this
 ## reads it from the events the client hears, so a client of any kind does the same and the server
 ## draws nothing. Round 1 is the look the generator wrote (`docs/research/night-environment.md`);
-## each later round scales the scene's own numbers toward the `DARKEST_*` fractions below, so the
-## lamps' pools, which are lights and quads of their own, hold while the field around them sinks.
-## The change begins when the break announces the next round and eases in over `EASE_SECONDS`, so
-## nothing pops. Compatibility only: an `Environment` energy, a fog density and one light energy.
-
-## Seconds a change of round takes to settle (a break is 20 s).
-const EASE_SECONDS := 12.0
-## At the darkest round: the fraction left of the scene's ambient energy and of the moon's light.
-## The player's shadow side and the dead at 25 m still read at these
-## (docs/research/night-environment.md).
-const DARKEST_AMBIENT := 0.35
-const DARKEST_MOON := 0.5
-## The sky and the fog's colour dim together (the fog is matched to the sky's horizon by hand).
-const DARKEST_SKY := 0.5
-## Times the scene's fog density at the darkest round: the view closes in too.
-const DARKEST_FOG_DENSITY := 1.7
+## each later round scales the scene's own numbers toward the `darkest_*` fractions of
+## `LightTuning` (`light_tuning_default.tres`; the player's shadow side and the dead at 25 m still
+## read at the shipped ones), so the lamps' pools, which are lights and quads of their own, hold
+## while the field around them sinks. The change begins when the break announces the next round
+## and eases in over `ease_seconds`, so nothing pops. Compatibility only: an `Environment` energy,
+## a fog density and one light energy.
 
 ## The eased light level now, in the rules' units (`ambient_for_round`: 1 is day).
 var level: float
@@ -34,7 +24,7 @@ var _base_moon: float
 var _base_fog_density: float
 var _from: float
 var _to: float
-var _elapsed := EASE_SECONDS
+var _elapsed := LightTuning.current().ease_seconds
 
 
 ## Follows `lighting` (the lot's `Lighting` node) by the round `state` hears.
@@ -72,8 +62,8 @@ func on_event(event: Dictionary) -> void:
 
 ## Moves the level on by `delta` seconds.
 func advance(delta: float) -> void:
-	_elapsed = minf(_elapsed + delta, EASE_SECONDS)
-	level = lerpf(_from, _to, smoothstep(0.0, 1.0, _elapsed / EASE_SECONDS))
+	_elapsed = minf(_elapsed + delta, LightTuning.current().ease_seconds)
+	level = lerpf(_from, _to, smoothstep(0.0, 1.0, _elapsed / LightTuning.current().ease_seconds))
 	_apply()
 
 
@@ -96,15 +86,16 @@ func _head_for(round_number: int, snap: bool = false) -> void:
 	round_target = round_number
 	_from = level
 	_to = _rounds.ambient_for_round(round_number)
-	_elapsed = EASE_SECONDS if (snap or first) else 0.0
+	_elapsed = LightTuning.current().ease_seconds if (snap or first) else 0.0
 	advance(0.0)
 
 
 func _apply() -> void:
 	var dark := darkness()
-	_environment.ambient_light_energy = _base_ambient * lerpf(1.0, DARKEST_AMBIENT, dark)
-	_moon.light_energy = _base_moon * lerpf(1.0, DARKEST_MOON, dark)
-	var sky := lerpf(1.0, DARKEST_SKY, dark)
+	var tuning := LightTuning.current()
+	_environment.ambient_light_energy = _base_ambient * lerpf(1.0, tuning.darkest_ambient, dark)
+	_moon.light_energy = _base_moon * lerpf(1.0, tuning.darkest_moon, dark)
+	var sky := lerpf(1.0, tuning.darkest_sky, dark)
 	_environment.background_energy_multiplier = sky
 	_environment.fog_light_energy = sky
-	_environment.fog_density = _base_fog_density * lerpf(1.0, DARKEST_FOG_DENSITY, dark)
+	_environment.fog_density = _base_fog_density * lerpf(1.0, tuning.darkest_fog_density, dark)

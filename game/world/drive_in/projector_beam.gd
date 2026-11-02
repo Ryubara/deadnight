@@ -5,12 +5,7 @@ extends LightFollower
 ## thins towards the screen and fades at the silhouette so no edge shows. It burns with the screen's
 ## lamp (`light_path`), flicker and all.
 
-const BEAM_ENERGY := 0.14
 const SEGMENTS := 28
-const HALO_ENERGY := 1.5
-## The haze's brightness at the lens and at the screen.
-const NEAR := 1.0
-const FAR := 0.12
 
 ## The middle of the screen and its size, relative to this node (the lens is the origin).
 @export var target_centre := Vector3(0.0, 4.6, -69.7)
@@ -46,9 +41,11 @@ func _pyramid() -> ArrayMesh:
 	var normals := PackedVector3Array()
 	var colours := PackedColorArray()
 	var indices := PackedInt32Array()
+	var near := LightTuning.current().beam_near
+	var far := LightTuning.current().beam_far
 	vertices.append(Vector3.ZERO)
 	normals.append(Vector3.FORWARD)
-	colours.append(Color(NEAR, NEAR, NEAR))
+	colours.append(Color(near, near, near))
 	for i in SEGMENTS:
 		var angle := TAU * float(i) / SEGMENTS
 		var rim := target_centre + Vector3(cos(angle) * half.x, sin(angle) * half.y, 0.0)
@@ -56,7 +53,7 @@ func _pyramid() -> ArrayMesh:
 		# The cone's outward normal there: across the slope, away from the axis.
 		var around := Vector3(-sin(angle) * half.x, cos(angle) * half.y, 0.0).normalized()
 		normals.append(rim.cross(around).normalized())
-		colours.append(Color(FAR, FAR, FAR))
+		colours.append(Color(far, far, far))
 	for i in SEGMENTS:
 		indices.append_array([0, 1 + i, 1 + (i + 1) % SEGMENTS])
 	var arrays := []
@@ -72,6 +69,8 @@ func _pyramid() -> ArrayMesh:
 
 func _apply() -> void:
 	var f := LotScreen.flicker(phase)
-	_material.set_shader_parameter(&"energy", level * (0.6 + 0.4 * f) * BEAM_ENERGY)
+	_material.set_shader_parameter(
+		&"energy", level * (0.6 + 0.4 * f) * LightTuning.current().beam_energy
+	)
 	if _halo != null:
-		_halo.set_shader_parameter(&"energy", level * f * HALO_ENERGY)
+		_halo.set_shader_parameter(&"energy", level * f * LightTuning.current().beam_halo_energy)

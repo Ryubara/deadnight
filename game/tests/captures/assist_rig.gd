@@ -110,6 +110,6 @@ func turn_to_chest() -> Vector2:
 ## The thumb's next drag event, in canvas units of a canvas `height` units tall: a share of the
 ## turn that is left, so it slows as it nears. A finger that drags right turns the view right.
 func thumb_step(height: float) -> Vector2:
-	var units_per_radian := height / TouchLook.RADIANS_PER_HEIGHT
+	var units_per_radian := height / TouchLook.tuning.radians_per_height
 	var turn := turn_to_chest() * STEP_SHARE
 	return Vector2(-turn.x, -turn.y) * units_per_radian

@@ -6,7 +6,7 @@ extends SceneTree
 ##
 ##   godot --headless --path game -s res://tools/lot/lot_report.gd
 ##
-## "Lit" is the rules' word (`LotLamps.lit_at`): ground within `LotLamps.LAMP_REACH` of a lamp
+## "Lit" is the rules' word (`LotLamps.lit_at`): ground within `LightTuning.lamp_reach` of a lamp
 ## whose circuit is on, counted on a grid over each area's floor. A capture's glow reaches further.
 
 const GREYBOX := preload("res://world/drive_in_greybox.tscn")
@@ -222,7 +222,7 @@ func _cells(area: StringName, circuits: Array, only_lit: bool) -> float:
 func _is_lit(at: Vector3, circuits: Array) -> bool:
 	for lamp in _lamps.lamps:
 		if not lamp.decor and circuits.has(lamp.circuit):
-			if _flat(at, lamp.position) < LotLamps.LAMP_REACH:
+			if _flat(at, lamp.position) < LightTuning.current().lamp_reach:
 				return true
 	return false
 

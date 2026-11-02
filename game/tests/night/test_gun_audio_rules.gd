@@ -145,7 +145,9 @@ func test_a_burst_of_every_firearm_stays_inside_the_pitch_and_level_rules() -> v
 			_heard.clear()
 			_shot(weapon, OWN)
 			for h in _heard:
-				assert_float(absf(h["db"])).is_less_equal(WeaponSounds.LEVEL_JITTER_DB + 0.001)
+				assert_float(absf(h["db"])).is_less_equal(
+					NightSoundTuning.current().shot_jitter_db + 0.001
+				)
 				var player := audio.play(h["id"], null, h["db"]) as AudioStreamPlayer
 				if player != null:
 					var shift := absf(12.0 * log(player.pitch_scale) / log(2.0))
@@ -156,7 +158,7 @@ func test_a_burst_of_every_firearm_stays_inside_the_pitch_and_level_rules() -> v
 					)
 			audio.stop_all()
 			audio.advance(5.0)
-	assert_float(WeaponSounds.LEVEL_JITTER_DB * 2.0).is_less_equal(LEVEL_RANGE * 2.0)
+	assert_float(NightSoundTuning.current().shot_jitter_db * 2.0).is_less_equal(LEVEL_RANGE * 2.0)
 
 
 func test_the_guns_stay_above_the_night_beds_by_the_documented_loudness() -> void:
