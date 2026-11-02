@@ -17,9 +17,14 @@ const MARKER_WIDTH := 4.0
 ## Horizontal nudges, cycled, so quick hits do not print on top of each other.
 const NUDGES: Array[float] = [0.0, 20.0, -20.0, 40.0, -40.0]
 
-## Markers alive: {"kind", "age"}; numbers alive: {"text", "at", "colour", "size", "age"}.
+## Markers alive: {"kind", "age"}; numbers alive: {"text", "at", "colour", "size", "age"}, and the
+## "world" point of the hit when the event named one.
 var markers: Array[Dictionary] = []
 var numbers: Array[Dictionary] = []
+## Turns a world point into a share of the screen (`Vector2`, `Vector2.INF` when it is not in
+## view): a number that has a world point is drawn there every frame, so it stays on the wound
+## while the camera turns. Without one a number starts where the event said (or by the crosshair).
+var projector: Callable = Callable()
 
 var _count := 0
 
@@ -59,18 +64,17 @@ func _hit(kind: Kind, event: Dictionary) -> void:
 		at = Vector2(float(event["screen_x"]) * size.x, float(event["screen_y"]) * size.y)
 		at.x += NUDGES[_count % NUDGES.size()]
 	var head := kind == Kind.HEAD
-	(
-		numbers
-		. append(
-			{
-				"text": str(roundi(damage)),
-				"at": at,
-				"colour": tokens.accent_bright if head else tokens.ink,
-				"size": HudStyle.TEXT if head else HudStyle.MIN_TEXT,
-				"age": 0.0,
-			}
-		)
-	)
+	var number := {
+		"text": str(roundi(damage)),
+		"at": at,
+		"nudge": NUDGES[_count % NUDGES.size()],
+		"colour": tokens.accent_bright if head else tokens.ink,
+		"size": HudStyle.TEXT if head else HudStyle.MIN_TEXT,
+		"age": 0.0,
+	}
+	if event.has("world"):
+		number["world"] = event["world"]
+	numbers.append(number)
 	_count += 1
 	while numbers.size() > MAX_NUMBERS:
 		numbers.pop_front()
@@ -87,12 +91,25 @@ func _draw() -> void:
 		var rise := 0.0 if UIMotion.reduced else NUMBER_RISE * t
 		var colour: Color = number["colour"]
 		colour.a = 1.0 - maxf(t - 0.5, 0.0) * 2.0
-		var at: Vector2 = number["at"] + Vector2(0.0, -rise)
+		var at := number_at(number) + Vector2(0.0, -rise)
+		if not at.is_finite():
+			continue
 		var px: int = number["size"]
 		draw_string_outline(
 			font, at, number["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, px, 6, tokens.shadow
 		)
 		draw_string(font, at, number["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, px, colour)
+
+
+## Where a number is this frame: over its world point as the camera has it now, else where it began;
+## `Vector2.INF` while the point is out of view.
+func number_at(number: Dictionary) -> Vector2:
+	if number.has("world") and projector.is_valid():
+		var share: Vector2 = projector.call(number["world"])
+		if not share.is_finite():
+			return Vector2.INF
+		return share * size + Vector2(float(number["nudge"]), 0.0)
+	return number["at"]
 
 
 func _draw_marker(centre: Vector2, marker: Dictionary) -> void:
