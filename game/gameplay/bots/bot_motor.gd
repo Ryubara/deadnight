@@ -135,6 +135,7 @@ func command(
 	out.reload = intent.reload and not me.get("reloading", false)
 	out.swap = intent.swap
 	out.use = intent.use
+	out.use_held = intent.use_held
 	intent.reload = false
 	intent.swap = false
 	intent.use = false

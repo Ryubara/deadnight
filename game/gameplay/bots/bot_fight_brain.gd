@@ -59,6 +59,7 @@ var _combat: BotCombat
 var _dodge: BotDodge
 var _grenadier: BotGrenadier
 var _stance: BotStance
+var _errands: BotErrands
 var _swapped_at := -SWAP_EVERY
 var _order: BotGrenadier.Throw
 var _ordered_at := -INF
@@ -73,6 +74,8 @@ func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
 	_dodge = BotDodge.new(profile, dodge_seed)
 	_grenadier = BotGrenadier.new(level)
 	_stance = BotStance.new(level)
+	if level.shop != null and profile.errands:
+		_errands = BotErrands.new(level.shop, profile)
 
 
 func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
@@ -102,6 +105,8 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 			intent.note = "throw"
 		elif _chase(intent, beliefs, here, held, mates, pack, plan.dry):
 			intent.note = "chase"
+		elif _errand(intent, beliefs, state, threat):
+			intent.note = intent.note if intent.note != "" else "errand"
 		elif kind == BotStance.Kind.HOLD:
 			_hold(intent, beliefs, here, anchor)
 		else:
@@ -287,7 +292,7 @@ func _glance(beliefs: BotBeliefs, here: Vector3) -> float:
 
 func _handle_weapon(intent: BotIntent, plan: BotArsenal.Plan, now: float) -> void:
 	intent.reload = plan.reload
-	if plan.swap and now - _swapped_at >= SWAP_EVERY:
+	if plan.swap and not intent.keep_weapon and now - _swapped_at >= SWAP_EVERY:
 		intent.swap = true
 		_swapped_at = now
 
@@ -358,6 +363,20 @@ func _throw(
 	_grenadier.last_throw = now
 	intent.note = "throw"
 	return true
+
+
+## The errands of a lull (fuel, breakers, shopping, boards), when the level gave the bot a shop and
+## nothing is near. A refusal the server told the bot about leaves the item alone for a while.
+func _errand(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+	if _errands == null:
+		return false
+	_errands.legs = legs
+	for denial in beliefs.denials:
+		_errands.back_off(denial["item"], beliefs.now)
+	beliefs.denials.clear()
+	if intent.target_id >= 0:
+		return false
+	return _errands.run(intent, beliefs, state, threat)
 
 
 ## A bot with a crowbar in hand walks up to a zombie that is not coming to it (one tearing boards,

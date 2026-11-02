@@ -8,12 +8,50 @@ extends RefCounted
 const LOOP_MARGIN := 3.0
 
 
-## Fills `level` from `world`.
-static func fill(level: BotLevel, world: NightWorld) -> void:
+## Fills `level` from `world`. With the rules' `tuning` the bots also get the shop (`shop`): a level
+## made without it is one whose bots do no errands (the suites that measure the fight alone).
+static func fill(level: BotLevel, world: NightWorld, tuning: RulesTuning = null) -> void:
 	level.home = Autopilot.HOME
 	level.breaches = world.repair_points()
 	level.loops = loops(world.greybox)
 	level.links = links(world.greybox)
+	if tuning != null:
+		level.shop = shop(world, tuning)
+
+
+## What a bot is given of the shop, the breaches, the breaker posts and the fuel crates: the rules'
+## tables and where to stand at each of them.
+static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
+	var found := BotShop.new()
+	found.economy = tuning.economy
+	found.fuel = tuning.fuel
+	found.boards = tuning.barricades.boards
+	var night_tuning := NightTuning.shipped()
+	found.use_reach = night_tuning.use_reach
+	found.fuel_reach = night_tuning.fuel_reach
+	found.lamp_reach = LightTuning.current().lamp_reach
+	for item in tuning.economy.items:
+		match item.kind:
+			ShopItem.Kind.DOOR:
+				if world.door_ids().has(item.id) and not world.door_points(item.id).is_empty():
+					found.doors.append(item.id)
+					found.door_stands[item.id] = world.door_points(item.id)
+			ShopItem.Kind.FUEL:
+				found.fuel_item = item
+	found.spots = world.shop_spots()
+	for id in world.barricade_ids():
+		found.repair_stands[id] = world.repair_spot(id)
+		found.repair_centres[id] = world.barricade(id).centre()
+	for circuit_id in world.switches.circuit_ids():
+		found.circuit_stands[circuit_id] = world.switches.standing_point(circuit_id)
+		found.circuit_doors[circuit_id] = world.switches.door_of(circuit_id)
+	var lamps := world.lamp_points()
+	for circuit_id: StringName in lamps:
+		found.circuit_lamps[circuit_id] = lamps[circuit_id]
+	for id in world.fuel.ids():
+		found.fuel_stands[id] = world.fuel.standing_point(id)
+		found.fuel_doors[id] = world.fuel.door_of(id)
+	return found
 
 
 ## The loops as closed rings on the ground: round the generator cage (about 50 m) and round the
