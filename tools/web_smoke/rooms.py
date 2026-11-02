@@ -9,7 +9,7 @@ page and fails unless A and B see two players, C and D see two players and A nev
 
 The first argument is a folder with the export (served on a fixed local port, which the backend must list in
 `CORS_ORIGINS`) or the URL of a deployed build (then the backend's CORS already allows it). Writes `result.json`,
-`console.txt` and screenshots (`a_invite.png`, `a_night.png`, `b_night.png`, `c_night.png`, `d_night.png`).
+`console.txt` and screenshots (`a_invite.png`, `b_invite.png`, and `a_night.png` .. `d_night.png` a moment after each pair meets, `*_end.png` at the end).
 """
 
 from __future__ import annotations
@@ -128,15 +128,25 @@ def main() -> int:
             smoke.press(b, "Enter")
             wait_for(a, "A in the night", in_night, NIGHT_TIMEOUT_S)
             wait_for(b, "B in the night", in_night, NIGHT_TIMEOUT_S)
+            # Each page's first seconds in the night: the other player stands beside the player's own.
+            for name, page in (("a", a), ("b", b)):
+                wait_for(page, f"{name} sees two players", lambda s: s.get("players", 0) >= 2, 60)
+                page.wait_for_timeout(2500)
+                page.screenshot(path=args.out / f"{name}_night.png")
             # C and D press Quick join and meet in a night of their own.
             c = open_page(browser, f"{base}?{query}", console, problems, "C")
             to_together(c)
             smoke.press(c, "Enter")  # Quick join is the first item
             wait_for(c, "C in the night", in_night, NIGHT_TIMEOUT_S)
+            wait_for(c, "C sees a player", lambda s: s.get("players", 0) >= 1, 60)
             d = open_page(browser, f"{base}?{query}", console, problems, "D")
             to_together(d)
             smoke.press(d, "Enter")
             wait_for(d, "D in the night", in_night, NIGHT_TIMEOUT_S)
+            for name, page in (("c", c), ("d", d)):
+                wait_for(page, f"{name} sees two players", lambda s: s.get("players", 0) >= 2, 60)
+                page.wait_for_timeout(2500)
+                page.screenshot(path=args.out / f"{name}_night.png")
             # Everyone plays a while; the pages count who they see.
             seen = {name: 0 for name in "abcd"}
             began = time.monotonic()
@@ -146,7 +156,7 @@ def main() -> int:
                     seen[name] = max(seen[name], read_probe(page).get("players", 0))
                 time.sleep(1.0)
             for name, page in pages.items():
-                page.screenshot(path=args.out / f"{name}_night.png")
+                page.screenshot(path=args.out / f"{name}_end.png")
                 result[f"{name}_player_id"] = read_probe(page).get("player_id")
             result["players_seen"] = seen
             if seen["a"] != 2 or seen["b"] != 2:
