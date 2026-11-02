@@ -34,6 +34,7 @@ from pathlib import Path
 
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page, sync_playwright
+from smoke import start_solo
 
 VIEWPORT = {"width": 1280, "height": 720}
 SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
@@ -44,9 +45,6 @@ LOCK_TIMEOUT_S = 10
 # The menu opens the frame after the lock goes (the unit tests prove the frame); a software renderer on a runner draws
 # one or two frames a second, and the probe refreshes every 0.25 s, so this only tells "at once" from "never".
 MENU_WITHIN_S = 5.0
-# Keys at the main menu are tried again every few seconds, up to this many times.
-MENU_ATTEMPTS = 8
-MENU_ATTEMPT_S = 6.0
 # The Resume button at this viewport (the card is centred; 2_menu_after_lock_loss.png shows it).
 RESUME_BUTTON = (640, 382)
 MOTION_PIXELS = 15
@@ -113,29 +111,12 @@ def menu_open(state: dict) -> bool:
     return bool(state.get("night")) and not state.get("running")
 
 
-def start_night(page: Page) -> None:
-    """Presses Play. The menu's items take no key until they have risen, which a software renderer makes slow (the
-    first CI run found the menu still up after every key): so the keys are sent again until the screen changes."""
-    for _ in range(MENU_ATTEMPTS):
-        # Nothing has focus until a key asks for it (that key is spent doing so); then Up walks to Play.
-        press(page, "ArrowDown")
-        for _ in range(4):
-            press(page, "ArrowUp")
-        press(page, "Enter")
-        end = time.monotonic() + MENU_ATTEMPT_S
-        while time.monotonic() < end:
-            if probe(page).get("screen") != "main_menu":
-                return
-            page.wait_for_timeout(200)
-    raise RuntimeError("Play did not start the night from the main menu")
-
-
 def run(page: Page, url: str, out: Path, result: dict) -> None:
     page.goto(url, wait_until="commit")
     wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
     page.mouse.click(5, 5)
     page.wait_for_timeout(2500)
-    start_night(page)
+    start_solo(page)
     wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
     # The click that started the night is the user gesture a browser wants before it gives the lock.
     page.mouse.move(640, 360)

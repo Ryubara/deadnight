@@ -45,8 +45,9 @@ const TOUCH_OPACITY := &"controls/touch_opacity"
 const HAPTICS := &"controls/haptics"
 ## Touch only: how strongly the view is helped toward a zombie (0 is off, 1 the most). `AimAssist`.
 const TOUCH_AIM_ASSIST := &"controls/touch_aim_assist"
-## Touch only: when the trigger pulls itself with the crosshair on a zombie: 0 never, 1 while the
-## Aim button is held, 2 whenever (`TouchAimAssist.AutoFire`). Off: ammunition is limited.
+## Touch only: 1 (the default) fires by itself while the player aims with the crosshair on a zombie
+## and holds Aim while the thumb is on it; 0 leaves the trigger alone and makes Aim a toggle
+## (`TouchAimAssist.AutoFire`, `TouchControls`). Auto-fire spends ammunition.
 const TOUCH_AUTO_FIRE := &"controls/touch_auto_fire"
 ## The touch layout flipped for a left hand: the stick on the right, Fire and its buttons on the
 ## left, and the HUD's corner columns swap sides with them.
@@ -56,6 +57,9 @@ const LEFT_HANDED := &"controls/left_handed"
 const TOUCH_HINTS_SEEN := &"controls/touch_hints_seen"
 ## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
 const CHARACTER_LOOK := &"character/look"
+## The platform profile as last read, for the menu to show (`MenuProfile`): JSON, read-only on the
+## client, empty until the backend (or a test) fills it. Nothing in the game writes progress here.
+const PROFILE_CACHE := &"profile/cache"
 ## The weapon the menu's soldier holds (`WeaponCatalog` id, one that has a model). Cosmetic: a night
 ## starts with the starter program whatever is chosen here.
 const SHOWCASE_WEAPON := &"loadout/weapon"
@@ -85,10 +89,11 @@ const DEFAULTS := {
 	TOUCH_OPACITY: 0.7,
 	HAPTICS: true,
 	TOUCH_AIM_ASSIST: 0.5,
-	TOUCH_AUTO_FIRE: 0,
+	TOUCH_AUTO_FIRE: 1,
 	LEFT_HANDED: false,
 	TOUCH_HINTS_SEEN: 0,
 	CHARACTER_LOOK: "",
+	PROFILE_CACHE: "",
 	SHOWCASE_WEAPON: "rifle",
 	MENU_SCENE: 0,
 }
@@ -110,7 +115,7 @@ const RANGES := {
 	TOUCH_SCALE: Vector2(0.8, 1.4),
 	TOUCH_OPACITY: Vector2(0.3, 1.0),
 	TOUCH_AIM_ASSIST: Vector2(0.0, 1.0),
-	TOUCH_AUTO_FIRE: Vector2(0, 2),
+	TOUCH_AUTO_FIRE: Vector2(0, 1),
 	TOUCH_HINTS_SEEN: Vector2(0, 255),
 	MENU_SCENE: Vector2(0, 2),
 }

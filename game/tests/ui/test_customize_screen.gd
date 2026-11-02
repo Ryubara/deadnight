@@ -284,14 +284,16 @@ func test_dragging_the_preview_turns_it() -> void:
 	assert_float(preview.angle - before).is_equal_approx(100.0 * LookPreview.DRAG_SPEED, 0.001)
 
 
-func test_the_main_menu_opens_the_wardrobe() -> void:
+func test_the_main_menu_hosts_the_wardrobe_on_its_loadout_tab() -> void:
 	UIRouter.reset("res://ui/screens/main_menu.tscn", UITransition.Kind.CUT)
 	await UIRouter.idle
-	var button := UIRouter.top().find_child("Customize", true, false) as UIButton
-	assert_object(button).is_not_null()
-	button.pressed.emit()
-	await UIRouter.idle
-	assert_object(UIRouter.top()).is_instanceof(CustomizeScreen)
+	var menu := UIRouter.top() as MainMenu
+	menu.shell.show_tab(MenuTab.Id.LOADOUT)
+	var panel := menu.shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+	assert_object(panel.wardrobe).is_instanceof(CustomizeScreen)
+	# Embedded: the pickers and the footer, no title, turntable or Back of its own.
+	assert_object(panel.wardrobe.preview()).is_null()
+	assert_object(panel.wardrobe.find_child("Back", true, false)).is_null()
 	UIRouter.reset("res://ui/screens/main_menu.tscn", UITransition.Kind.CUT)
 	await UIRouter.idle
 
