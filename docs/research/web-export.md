@@ -47,8 +47,13 @@ Things that were not obvious:
 - Godot reads input once per frame: a key tap shorter than a frame can be lost, so keys are held for 150 ms.
 - After Back from a screen, nothing has focus; the router spends the first arrow or accept key giving it focus. The
   run presses Down, Up, Up to get back to Play.
-- There is no pointer lock in headless Chromium, so the camera cannot be turned and the zombies are usually off screen:
-  the crowd is read from the probe, not seen.
+- Pointer lock works in headless Chromium (`document.pointerLockElement` is the canvas after the click that starts the
+  night), but on Linux (the CI runner) every synthetic `page.mouse.move` under lock arrives as a motion and then the
+  opposite motion (+15 px, -15 px), which cancel, so Playwright cannot turn the view there; Windows does not do it.
+  Godot's web runtime listens for `pointermove` on the window and reads `movementX/Y`, so the smoke dispatches
+  `PointerEvent('pointermove', {movementX})` on the canvas when the real moves did not turn the view
+  (`tools/web_smoke/smoke.py`, `mouse_look_via` in its result). The yaw is on `window.deadnight` for it.
+- The zombies are usually off screen: the crowd is read from the probe, not seen.
 - Playwright 1.64 launches `chromium-headless-shell`, which is always software-rendered. `--gpu` uses the installed
   Chrome (`channel="chrome"`) for numbers with a real GPU.
 
