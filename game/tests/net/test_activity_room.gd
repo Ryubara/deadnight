@@ -57,6 +57,16 @@ func _together(fake: TogetherApi = null) -> TogetherScreen:
 	return _find_together()
 
 
+## Waits until the lobby screen is the router's top and has finished arriving.
+func _lobby_on_top() -> LobbyScreen:
+	for _i in 300:
+		if UIRouter.top() is LobbyScreen and not UIRouter.busy:
+			break
+		await await_idle_frame()
+	await await_idle_frame()
+	return UIRouter.top() as LobbyScreen
+
+
 func _find_together() -> TogetherScreen:
 	for screen in UIRouter.screens():
 		if screen is TogetherScreen:
@@ -72,6 +82,9 @@ class RoomApi:
 
 	func my_id() -> String:
 		return "a"
+
+	func detached(_parent: Node) -> TogetherApi:
+		return self
 
 	func sign_in(_display_name: String = "") -> Dictionary:
 		return {"ok": true}
@@ -125,7 +138,7 @@ func test_play_together_makes_the_lobby_when_the_channel_has_none() -> void:
 	api.preview_answer = TogetherApi._failed("not_found")
 	await _together(api)
 	assert_int(api.created).is_equal(1)
-	var lobby := UIRouter.top() as LobbyScreen
+	var lobby := await _lobby_on_top()
 	assert_object(lobby).is_not_null()
 	assert_str(lobby.code_label.text).is_equal("NEW123")
 	assert_bool(lobby.start_button.is_visible_in_tree()).is_true()
@@ -138,7 +151,7 @@ func test_play_together_shows_a_lobby_the_channel_has_as_a_preview_with_join() -
 	api.preview_answer = _waiting("ROOM42")
 	await _together(api)
 	assert_int(api.created).is_equal(0)
-	var lobby := UIRouter.top() as LobbyScreen
+	var lobby := await _lobby_on_top()
 	assert_object(lobby).is_not_null()
 	assert_int(lobby.mode).is_equal(LobbyScreen.Mode.PREVIEW)
 	assert_str(lobby.status.text).contains("Waiting room. Ann is hosting")

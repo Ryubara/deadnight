@@ -73,6 +73,9 @@ class FakeApi:
 	func my_id() -> String:
 		return "a"
 
+	func detached(_parent: Node) -> TogetherApi:
+		return self
+
 	func sign_in(_display_name: String = "") -> Dictionary:
 		return {"ok": true}
 
@@ -124,16 +127,25 @@ func after_test() -> void:
 	await RouterFixture.clear(get_tree())
 
 
+## Waits until the lobby screen is the router's top and has finished arriving.
+func _lobby_on_top() -> LobbyScreen:
+	for _i in 300:
+		if UIRouter.top() is LobbyScreen and not UIRouter.busy:
+			break
+		await get_tree().process_frame
+	await get_tree().process_frame
+	return UIRouter.top() as LobbyScreen
+
+
 func test_a_link_reads_the_night_first_and_joins_nothing_until_join_is_pressed() -> void:
 	var screen := _screen()
 	var fake := FakeApi.new(screen)
 	screen.api = fake
 	TogetherScreen.auto_code = "FRIEND1"
 	await screen.screen_enter()
-	await UIRouter.idle
 	assert_array(fake.previewed).is_equal(["FRIEND1"])
 	# The lobby screen is up with the preview and its Join: the night was not entered.
-	var lobby := UIRouter.top() as LobbyScreen
+	var lobby := await _lobby_on_top()
 	assert_object(lobby).is_not_null()
 	assert_int(lobby.mode).is_equal(LobbyScreen.Mode.PREVIEW)
 	assert_str(lobby.status.text).is_equal("Night in progress, round 4. 2 of 4 here.")
@@ -147,9 +159,8 @@ func test_create_a_night_makes_a_waiting_lobby_and_does_not_start_it() -> void:
 	var fake := FakeApi.new(screen)
 	screen.api = fake
 	await screen._create("Making your night...")
-	await UIRouter.idle
 	assert_int(fake.created).is_equal(1)
-	var lobby := UIRouter.top() as LobbyScreen
+	var lobby := await _lobby_on_top()
 	assert_object(lobby).is_not_null()
 	assert_int(lobby.mode).is_equal(LobbyScreen.Mode.LIVE)
 	assert_str(lobby.code_label.text).is_equal("MADE42")
