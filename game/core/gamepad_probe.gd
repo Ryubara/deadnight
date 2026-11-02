@@ -27,10 +27,27 @@ const NO_FOCUS := (
 const HINT := "Click the game once to use a controller"
 const UNKNOWN := ""
 
+## The IFRAME check, asked of the page once: -1 not yet, 0 a page of its own, 1 inside a frame.
+static var _framed := -1
 
-## The page's own report as a dictionary (empty off the web or when the page has no probe).
-static func read() -> Dictionary:
+
+## Whether the game runs inside a frame (a Discord Activity). Asked once: a game in a tab or on the
+## desktop never reads the page again, so the probe costs nothing there, loading included.
+static func in_frame() -> bool:
 	if not OS.has_feature("web"):
+		return false
+	if _framed < 0:
+		var framed: Variant = JavaScriptBridge.eval(
+			"(function(){try{return window.top!==window}catch(e){return true}})()"
+		)
+		_framed = 1 if framed == true else 0
+	return _framed == 1
+
+
+## The page's own report as a dictionary (empty off the web, outside a frame, or when the page has
+## no probe).
+static func read() -> Dictionary:
+	if not in_frame():
 		return {}
 	var raw: Variant = JavaScriptBridge.eval(
 		"window.deadnightGamepad ? window.deadnightGamepad() : ''"

@@ -61,3 +61,10 @@ func test_a_listed_pad_is_connected() -> void:
 
 func test_off_the_web_there_is_no_report() -> void:
 	assert_dict(GamepadProbe.read()).is_empty()
+
+
+func test_outside_a_frame_the_page_is_never_read() -> void:
+	# A tab and the desktop are asked once and never again: no report, no polling.
+	assert_bool(GamepadProbe.in_frame()).is_false()
+	assert_dict(GamepadProbe.read()).is_empty()
+	assert_str(GamepadProbe.hint(GamepadProbe.read())).is_empty()
