@@ -251,7 +251,7 @@ func test_join_and_leave_notices_use_the_name() -> void:
 	_hud.state.set_player_name(2, "Moe")
 	_fixture.act(RulesAction.add_player(2))
 	assert_array(_hud.notices.texts()).has_size(1)
-	assert_str(_hud.notices.texts()[0]).is_equal("MOE CONNECTED")
+	assert_str(_hud.notices.texts()[0]).is_equal("MOE JOINED")
 	for i in 5:
 		_hud.notices.push("X%d" % i)
 	assert_int(_hud.notices.rows.size()).is_equal(HudFeed.MAX_NOTICES)

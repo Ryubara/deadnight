@@ -4,7 +4,16 @@ extends RefCounted
 ## because an exported build hides the `.tres` files behind `.remap`.
 
 const DIR := "res://gameplay/weapons/defs/"
-const IDS: Array[StringName] = [&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun", &"crowbar"]
+const IDS: Array[StringName] = [
+	&"pistol",
+	&"smg",
+	&"shotgun",
+	&"rifle",
+	&"flare_gun",
+	&"crowbar",
+	&"baseball_bat",
+	&"fire_axe",
+]
 
 ## The shop sells weapons as `weapon_<id>` (the crane's pool too); the catalogue knows `<id>`.
 const SHOP_PREFIX := "weapon_"

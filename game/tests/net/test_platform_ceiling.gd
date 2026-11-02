@@ -156,5 +156,5 @@ func test_an_operators_cap_holds_whatever_the_players_are_on() -> void:
 	assert_int(_host.server.crowd_ceiling()).is_equal(30)
 	assert_int(_host.server.sim.tuning.hard_cap).is_equal(30)
 	# A cap above the ceiling of the match changes nothing.
-	_host.server.crowd_limit = 500
+	_host.server.limit_crowd(500)
 	assert_int(_host.server.crowd_ceiling()).is_equal(RoundTuning.new().alive_cap_ceiling)

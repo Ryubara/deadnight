@@ -21,11 +21,11 @@ extends RefCounted
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
 ## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
-## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve,
-## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
-## (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one,
-## when downed, has got), ack (the `seq` of the command this step used: a predicting client
-## replays from it)}}.
+## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
+## held), pitch (the look up or down, `pitch_step`), ammo, reserve, reloading, arms (every weapon
+## carried: id to [ammo, reserve, tier]), points, prompt, reviving (the teammate this one is
+## raising, 0 for none), revive (0 to 1: how far the hold on this one, when downed, has got), ack
+## (the `seq` of the command this step used: a predicting client replays from it)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -77,6 +77,9 @@ const GRENADE_EVENTS: Array[StringName] = [
 const GRENADE_DEF := "res://gameplay/grenades/defs/frag.tres"
 ## A held trigger meets these every tick; they are not news.
 const QUIET_REJECTIONS: Array[StringName] = [&"cooldown", &"reloading"]
+## The frame names where a player looks up or down in steps of this many radians (3 degrees): a
+## drawn copy only needs the barrel to follow, and a field that did not change costs nothing.
+const PITCH_STEP := deg_to_rad(3.0)
 
 var rules: GameRules
 var combat: CombatServer
@@ -102,13 +105,8 @@ var drawn_bodies := true
 ## The round trip each connected player last reported, milliseconds (the game server fills it from
 ## their pings): a player with no entry has none to show, and a night on a loopback has no one's.
 var pings: Dictionary[int, int] = {}
-## A cap an operator puts on the crowd (a small container's CPU is shared by its rooms); 0 is none.
-## Setting it applies at once.
-var crowd_limit := 0:
-	set(value):
-		crowd_limit = maxi(value, 0)
-		if rules != null:
-			_apply_crowd_ceiling()
+## The crowd this match stands, from the weakest client in it (`set_platform`).
+var crowd := CrowdCeiling.new()
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -132,9 +130,6 @@ var _revive: ReviveChannel
 ## What decides whether a ping is true.
 var _ping_judge: PingJudge
 var _outbox: Array[Dictionary] = []
-## Whether each player's client is a browser, which stands a smaller crowd than a desktop. A remote
-## client counts as a browser until it says it is not (`set_platform`).
-var _web: Dictionary[int, bool] = {}
 var _probe: WorldProbe
 ## Held here: a Callable does not keep its RefCounted alive.
 var _cast: WorldCast
@@ -221,9 +216,14 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 ## A client says what kind it is (`NetWire.platform`): the crowd of the match is the weakest
 ## client's. Unknown players are ignored.
 func set_platform(player_id: int, web: bool) -> void:
-	if _bodies.has(player_id):
-		_web[player_id] = web
-		_apply_crowd_ceiling()
+	crowd.set_platform(player_id, web)
+	_apply_crowd_ceiling()
+
+
+## Puts an operator's cap on the crowd (a small container's CPU is shared by its rooms); 0 is none.
+func limit_crowd(count: int) -> void:
+	crowd.limit = maxi(count, 0)
+	_apply_crowd_ceiling()
 
 
 ## The most zombies alive at once in this match now.
@@ -234,10 +234,7 @@ func crowd_ceiling() -> int:
 ## The rules' cap and the crowd's hard cap, one number: the browser's when any player is on one,
 ## else the desktop's (with nobody here yet, this process's own platform).
 func _apply_crowd_ceiling() -> void:
-	var web := OS.has_feature("web") if _web.is_empty() else _web.values().has(true)
-	var ceiling := rules.tuning.rounds.ceiling_for(web)
-	if crowd_limit > 0:
-		ceiling = mini(ceiling, crowd_limit)
+	var ceiling := crowd.value(rules.tuning.rounds)
 	rules.crowd_ceiling = ceiling
 	sim.tuning.hard_cap = ceiling
 
@@ -259,6 +256,16 @@ func submit(player_id: int, command: NightCommand) -> void:
 		command.motion.swap_shoulder = command.motion.swap_shoulder or old.motion.swap_shoulder
 	_pending[player_id] = command
 	_silent[player_id] = 0
+
+
+## The step of the frame's `pitch` for a look of `radians` (up is positive).
+static func pitch_step(radians: float) -> int:
+	return roundi(clampf(radians, -PI / 2.0, PI / 2.0) / PITCH_STEP)
+
+
+## The look up or down a step of the frame's `pitch` means.
+static func pitch_from_step(step: int) -> float:
+	return step * PITCH_STEP
 
 
 ## The server step a shooter's view step (the low 16 bits) means: the latest step with those bits
@@ -318,7 +325,7 @@ func _join(player_id: int, local: bool) -> void:
 	if _bodies.has(player_id):
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
-	_web[player_id] = OS.has_feature("web") if local else true
+	crowd.join(player_id, OS.has_feature("web") if local else true)
 	_apply_crowd_ceiling()
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
@@ -338,7 +345,7 @@ func _leave(player_id: int) -> void:
 	if _bodies.has(player_id):
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
-		_web.erase(player_id)
+		crowd.leave(player_id)
 		_apply_crowd_ceiling()
 		_pending.erase(player_id)
 		_silent.erase(player_id)
@@ -922,6 +929,8 @@ func _frame() -> Dictionary:
 			"health": rules.health_of(player_id),
 			"downed": _is_downed(player_id),
 			"weapon": weapon.def.id if weapon != null else &"",
+			"aim": body.state.holds_aim(body.tuning.hip_fire_hold),
+			"pitch": pitch_step(body.state.view_pitch),
 			"ammo": weapon.ammo if weapon != null else 0,
 			"reserve": weapon.reserve if weapon != null else 0,
 			"reloading": weapon != null and weapon.is_reloading(),

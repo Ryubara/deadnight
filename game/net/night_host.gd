@@ -51,7 +51,7 @@ var rules_tuning: RulesTuning
 ## Set it with `configure_match`, which also changes a night nobody has started.
 var match_settings := MatchSettings.new()
 ## The most zombies alive at once in this room's night whatever the players are on; 0 is the rules'
-## own (`NightServer.crowd_limit`).
+## own (`NightServer.limit_crowd`).
 var max_alive := 0
 var log_enabled := true
 ## Metres around a player within which the zombies are sent to their client (0: all of them).
@@ -157,6 +157,12 @@ func player_count() -> int:
 	return _by_player.size()
 
 
+## The round the night is in (0 before the first begins, and while there is no night): what the
+## backend tells a latecomer's lobby screen ("Night in progress, round 4").
+func round_number() -> int:
+	return server.rules.round_number if server != null else 0
+
+
 ## Connections this room has been handed (players and those that have not said hello yet).
 func peer_count() -> int:
 	return _peers.size()
@@ -192,7 +198,7 @@ func _build_night() -> void:
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
 	server.drawn_bodies = false
-	server.crowd_limit = max_alive
+	server.limit_crowd(max_alive)
 	_events.clear()
 	nights += 1
 	serving = true

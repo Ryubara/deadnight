@@ -48,6 +48,8 @@ const ACTION_LOOK_DOWN := &"look_down"
 var state := PlayerMotionState.new()
 ## False for a body made by `strip_model`: nothing to dress or animate.
 var has_model := true
+## True for a body made by `make_puppet`: the drawn copy of a player on another machine.
+var is_puppet := false
 var last_command := PlayerCommand.new()
 ## Whether the mouse really is captured, as the platform says.
 var grip := MouseGrip.new()
@@ -138,6 +140,36 @@ func strip_model() -> void:
 	has_model = false
 
 
+## Makes this body the drawn copy of a player on another machine (`RemoteAvatars`), before it is in
+## the tree: no input, no mouse, no collision (it is where the frames say, and nothing bumps into
+## it), no camera of its own and no simulation. `puppet_to` places it; its `PlayerAnimation` draws
+## the weapon, the pose and the clips from the same events as a body that is played.
+func make_puppet() -> void:
+	is_puppet = true
+	local_input = false
+	capture_mouse = false
+	collision_layer = 0
+	collision_mask = 0
+	set_physics_process(false)
+	var rig := get_node(^"CameraRig") as ThirdPersonCamera
+	rig.set_process(false)
+	(rig.get_node(^"Camera3D") as Camera3D).current = false
+
+
+## Puts a puppet where the frames say: at `at`, turned `facing`, moving at `velocity` (the gait
+## follows it), holding the aim pose or not, looking `pitch` up (radians). The weapon's barrel is
+## aimed along that look from the head.
+func puppet_to(at: Vector3, facing: float, velocity: Vector3, aiming: bool, pitch: float) -> void:
+	state.position = at
+	state.velocity = velocity
+	state.facing = facing
+	state.on_floor = true
+	state.aiming = aiming
+	position = at
+	rotation.y = facing
+	camera_rig.aim_along(at + Vector3(0.0, tuning.pivot_height, 0.0), facing, pitch)
+
+
 ## Puts a look and the armband of a seat on the body's Soldier (`CharacterAssembler.dress`). A body
 ## wears the default look until the night says otherwise.
 func dress(look: CharacterLook, seat := 0) -> void:
@@ -147,7 +179,8 @@ func dress(look: CharacterLook, seat := 0) -> void:
 
 ## The lens is too close to the head (or clear again): draw or hide the body.
 func _on_body_hidden_changed(hidden: bool) -> void:
-	_model.visible = not hidden
+	if not is_puppet:
+		_model.visible = not hidden
 
 
 func _on_setting_changed(_key: StringName, _value: Variant) -> void:

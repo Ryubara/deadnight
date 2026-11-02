@@ -43,8 +43,54 @@ The server decides every hit. The client shows the shot at once and the server's
   each one as a `ProjectileView` (a hot core, a flickering halo and a short spark trail), flown with the server's
   `ProjectileState` against the walls and ended by the burst (a spark and a flash). It makes no light: the lot's light
   cap leaves room for a flash and a blast only (`test_lot_light_cap`).
-- **`MELEE`** (crowbar): a sweep from the player's head (not the shoulder camera), a swing on the Soldier, a spark on a
-  hit; no muzzle flash, no streak, no impact puff.
+- **`MELEE`** (crowbar, baseball bat, fire axe): a sweep from the player's head (not the shoulder camera), a swing on
+  the Soldier, a spark on a hit; no muzzle flash, no streak, no impact puff.
+
+## The roster
+
+Every model in `game/assets/weapons/` and what became of it. A weapon is a **definition** (`defs/<id>.tres`) with a
+**source**: the **start**, a **wall** buy or the prize **crane**. `WeaponCatalog.IDS` lists them and
+`game/tests/night/test_every_weapon.gd` fails when a definition has no source, when the crane's pool is not drawn
+whole by seeded plays, or when a weapon a source gives does not reach the hand (taken, equipped, swung or fired with
+the real command, its own model drawn).
+
+| Model (`assets/weapons/`) | Definition | How it is obtained | Per hit / interval |
+| --- | --- | --- | --- |
+| `revolver` | `pistol`, the Revolver | **Start** (in hand) | 24 / 0.28 s |
+| `crowbar` | `crowbar` | **Start** (carried, never dry) | 45 / 0.55 s |
+| `double_shotgun` | `shotgun`, the Pump shotgun | **Wall** 900, and the **crane** (weight 4) | 19 x 8 / 0.8 s |
+| `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
+| `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
+| `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
+| `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
+| `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
+| `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
+| `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
+
+**The crane gives every weapon the start and the wall do not**, the revolver and the crowbar excepted (the buyer
+owns them from the first second, and the crane never gives a weapon the buyer has). A buyer who has every prize of the
+pool gets "already owned" and no play. The pool and its weights are the shop item `crane_play`; the odds are
+[the mystery box page](../research/mystery-box.md).
+
+**The bat and the axe** were models with no definition. They are melee weapons held as `Melee` (the Swing clip, no
+flash, a spark on a hit) with their own hold files, so each shows its own model. They are **found only in the prize
+crane, never at the start**, and a player carries two weapons with no separate melee slot ([#410](https://github.com/Ryubara/deadnight/issues/410)),
+so one in hand takes a slot a firearm could have had. That is why they are cut stronger than the crowbar (82 a second)
+and than the revolver (86): the bat is the crowd weapon (a quick blow that kills a round-1 walker, a sweep that hits
+four, 150 a second), the axe is the heavy one (one blow kills a walker of any round up to 10, a head blow x2.5, the
+slowest, 167 a second). Neither needs ammunition, which is what the slot buys, against a firearm's 190 a second that
+runs dry. They are not re-cut at the projector (the re-cut list is the firearms).
+
+**Decided by the maintainer** (on #461, recorded on #410 and #411):
+
+- The hammer is a cosmetic repair tool only: no definition, no slot.
+- No grenades from the crane: the grenade is thrown by its own system.
+- Carry ([#410](https://github.com/Ryubara/deadnight/issues/410)): a third weapon replaces the one in hand; the
+  replaced weapon is disposed of and **goes back into the weapon pool**, not dropped. This branch does not do the
+  carry; when it lands, the crane's pool and its "already owned" rule follow it (the revolver and the crowbar would
+  join the pool the moment a player can lose one).
+- Quick melee on `V` ([#411](https://github.com/Ryubara/deadnight/issues/411)) is the always-available knife blow with
+  whatever is in hand, so no melee weapon is needed in a slot for emergencies.
 
 ## The shoulder camera
 
@@ -61,11 +107,11 @@ Zombies are shot at through their zones, not their meshes: a head sphere, a body
 multiplier for it: the rules' x2.2 is the one). The test range draws them as they are. The whole set is sized to the
 zombie: a brute's zones are 1.18 times a walker's, a crawler's 0.6 (its look's height times its type's `hit_chance`).
 
-| Zone | Pistol | SMG | Shotgun (per pellet) | Rifle | Flare gun | Crowbar |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Head | x2.5 | x2.0 | x1.5 | x2.5 | x1.5 | x1.5 |
-| Body | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 |
-| Limb | x0.6 | x0.6 | x0.6 | x0.7 | x0.6 | x0.75 |
+| Zone | Pistol | SMG | Shotgun (per pellet) | Rifle | Flare gun | Crowbar | Bat | Axe |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Head | x2.5 | x2.0 | x1.5 | x2.5 | x1.5 | x1.5 | x1.5 | x2.5 |
+| Body | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 | x1.0 |
+| Limb | x0.6 | x0.6 | x0.6 | x0.7 | x0.6 | x0.75 | x0.75 | x0.7 |
 
 Damage of one hit is `damage x falloff(distance) x zone x 0.6^(bodies already passed)`. A shot that lands on one
 zombie with several pellets is one hit for the rules (one `hit` action carrying the damage, headshot
@@ -84,6 +130,8 @@ distance down to the floor and holds there to the range.
 | Hunting rifle | hitscan, pierces 2 | 95 | 0.5 s | 8 / 40 (max 80) | 2.2 s | 40 to 90 m (80%) | 120 m |
 | Flare gun | projectile, lobbed | none: calls the dead (25 m, 8 s) | 0.8 s | 1 / 6 (max 12) | 2.0 s | none | 40 m |
 | Crowbar | melee sweep, 2 targets | 45 | 0.55 s | none | none | none | 1.9 m |
+| Baseball bat | melee sweep, 4 targets | 60 | 0.4 s | none | none | none | 1.8 m |
+| Fire axe | melee sweep, 2 targets | 150 | 0.9 s | none | none | none | 1.8 m |
 
 Shots to kill at close range (head / body), against the health in [the rounds table](rounds.md#the-tuning-table):
 
@@ -95,6 +143,8 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
 | Hunting rifle | 1 / 1 | 1 / 1 | 1 / 2 | 190 | 123 |
 | Flare gun | none | none | none | 0 | 0 |
 | Crowbar | 1 / 2 | 1 / 2 | 2 / 3 | 82 | 82 |
+| Baseball bat | 1 / 1 | 1 / 2 | 2 / 3 | 150 | 150 |
+| Fire axe | 1 / 1 | 1 / 1 | 1 / 1 | 167 | 167 |
 
 The shots are the health of the zombie (the table in the page above; `rounds.md` is the source) over the weapon's
 damage, rounded up. "With reloads" is the sustained rate over a whole magazine and its reload, the number the
