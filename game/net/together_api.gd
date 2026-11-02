@@ -77,8 +77,9 @@ static func user_name() -> String:
 
 
 ## Signs in unless this run already has a session: with Discord when the page is an Activity (its
-## bridge, `deploy/web/discord-bridge.js`, has the OAuth code), else, or when that does not work,
-## as a guest.
+## bridge, `deploy/web/discord-bridge.js`, has the OAuth code; the name is the player's nickname in
+## the server, else their Discord display name), else, or when that does not work, as a guest
+## called `display_name` (the backend cleans it; empty is `Guest NNNN`).
 func sign_in(display_name: String = "") -> Dictionary:
 	if _has_session():
 		return {"ok": true}
@@ -86,7 +87,11 @@ func sign_in(display_name: String = "") -> Dictionary:
 		var code := await _discord_code()
 		if code != "" and code != _spent_code:
 			_spent_code = code
-			var with_discord := await _call("POST", "/auth/discord", {"code": code}, false)
+			var body := {"code": code}
+			var guild := _discord_guild()
+			if guild != "":
+				body["guildId"] = guild
+			var with_discord := await _call("POST", "/auth/discord", body, false)
 			if with_discord["ok"]:
 				_keep(with_discord["token"], with_discord["user"])
 				return with_discord
@@ -200,6 +205,15 @@ func ticket(lobby: Dictionary) -> Dictionary:
 		"ticket": answer["ticket"],
 		"match": answer["matchId"],
 	}
+
+
+## The server (guild) the Activity runs in, as the bridge read it, for the backend to look up the
+## player's nickname there; empty in a DM or a call, or when it is not a number.
+func _discord_guild() -> String:
+	var raw := str(
+		JavaScriptBridge.eval("window.deadnightDiscord ? window.deadnightDiscord.guildId : ''")
+	)
+	return raw if raw.is_valid_int() and raw.length() <= 20 else ""
 
 
 ## The OAuth code the Discord bridge got from the Activity's `authorize()`: waits for it (the

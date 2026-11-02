@@ -12,6 +12,9 @@ extends UIScreen
 ## channel, making it when nobody has. The address of a game server (`JoinScreen`) is a developer
 ## setting, shown on the desktop and with `?dev` on the web.
 
+## The player answered the name prompt (a name, or no name).
+signal name_decided
+
 const SCREEN := "res://ui/screens/together_screen.tscn"
 const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const JOIN_SCREEN := "res://ui/screens/join_screen.tscn"
@@ -24,6 +27,8 @@ const COPY_BLOCKED := "Copying is blocked here. The text is selected: press Ctrl
 
 ## A code to join as soon as the screen opens (`?room=`); used once.
 static var auto_code := ""
+## The player chose not to give a name this run (the prompt is not asked again until the next one).
+static var name_skipped := false
 ## Show the server address button (the desktop, or `?dev`).
 static var dev_enabled := not OS.has_feature("web")
 
@@ -34,8 +39,13 @@ var code_field: LineEdit
 var join_button: UIButton
 var back_button: UIButton
 var status: UILabel
+## The name prompt's field and buttons: asked on the first Play together of a player with no name.
+var name_field: LineEdit
+var name_continue_button: UIButton
+var name_skip_button: UIButton
 
 var _menu: VBoxContainer
+var _naming: VBoxContainer
 var _lobby := {}
 var _busy := false
 ## The screen opened a lobby by itself (the Activity's voice channel): coming back from it, the
@@ -66,7 +76,9 @@ func _ready() -> void:
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status.custom_minimum_size.x = FIELD_WIDTH
 	_menu = _build_menu()
+	_naming = _build_naming()
 	box.add_child(_menu)
+	box.add_child(_naming)
 	box.add_child(status)
 	_controller_note = _label("", UILabel.Style.BODY)
 	_controller_note.name = "ControllerNote"
@@ -205,6 +217,36 @@ func _build_menu() -> VBoxContainer:
 	return column
 
 
+func _build_naming() -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override(&"separation", _tokens.space_md)
+	column.add_child(_label("WHAT SHOULD WE CALL YOU?", UILabel.Style.OVERLINE))
+	var note := _label(
+		"This is the name your friends see in a night. You can change it later in the menu, under More.",
+		UILabel.Style.BODY
+	)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size.x = FIELD_WIDTH
+	column.add_child(note)
+	name_field = LineEdit.new()
+	name_field.name = "PlayerName"
+	name_field.placeholder_text = "Your name"
+	name_field.max_length = MenuProfile.MAX_NAME
+	name_field.custom_minimum_size.x = FIELD_WIDTH
+	name_field.text_submitted.connect(func(_text: String) -> void: _decide_name(true))
+	column.add_child(name_field)
+	name_continue_button = _button("Continue", UIButton.Variant.PRIMARY)
+	name_continue_button.name = "NameContinue"
+	name_continue_button.pressed.connect(_decide_name.bind(true))
+	column.add_child(name_continue_button)
+	name_skip_button = _button("Skip, call me Guest", UIButton.Variant.GHOST)
+	name_skip_button.name = "NameSkip"
+	name_skip_button.pressed.connect(_decide_name.bind(false))
+	column.add_child(name_skip_button)
+	column.visible = false
+	return column
+
+
 # --- What the buttons do ---
 
 
@@ -247,11 +289,49 @@ func _begin(message: String) -> bool:
 	_busy = true
 	_set_enabled(false)
 	_say(message)
-	var signed := await api.sign_in()
+	if needs_name():
+		await _ask_name()
+		_say(message)
+	var signed := await api.sign_in(_chosen_name())
 	if not signed["ok"]:
 		_fail(signed)
 		return false
 	return true
+
+
+## The name the player gave (the profile's), or "" for `Guest NNNN`.
+func _chosen_name() -> String:
+	return MenuProfile.load_saved().display_name if MenuProfile.is_named() else ""
+
+
+## Whether the player is asked for a name now: on the web and the desktop (Discord has its own),
+## at the first sign-in of a player with no name, unless they skipped it this run.
+func needs_name() -> bool:
+	return (
+		not in_discord()
+		and not name_skipped
+		and not TogetherApi.signed_in()
+		and not MenuProfile.is_named()
+	)
+
+
+## Shows the name prompt and waits for the answer; a name given is saved in the profile.
+func _ask_name() -> void:
+	_menu.visible = false
+	_naming.visible = true
+	name_field.text = ""
+	name_field.grab_focus.call_deferred()
+	await name_decided
+	_naming.visible = false
+	_show_menu()
+	_set_enabled(false)
+
+
+func _decide_name(give: bool) -> void:
+	var saved := MenuProfile.save_name(name_field.text) if give else ""
+	if saved == "":
+		name_skipped = true
+	name_decided.emit()
 
 
 ## An answer that is a lobby (Quick join) goes into its night; one that is not says why.
@@ -310,6 +390,7 @@ static func server_url_of(pass_to: Dictionary, in_discord: bool, host: String = 
 
 func _show_menu() -> void:
 	_menu.visible = true
+	_naming.visible = false
 
 
 func _set_enabled(enabled: bool) -> void:

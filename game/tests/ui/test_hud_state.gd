@@ -203,3 +203,20 @@ func test_the_hud_state_is_plain_data_only() -> void:
 		if property["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE:
 			var value: Variant = state.get(property["name"])
 			assert_bool(value is Object).is_false()
+
+
+func test_the_servers_names_come_in_a_welcome_and_on_a_join() -> void:
+	var state := HudState.new()
+	state.local_player_id = 1
+	var snapshot := {"players": {1: {}, 2: {}, 3: {}}, "names": {1: "Ann", 3: "Cy"}}
+	state.load_snapshot(snapshot)
+	assert_str(state.team[1]["name"]).is_equal("Ann")
+	assert_str(state.team[3]["name"]).is_equal("Cy")
+	# A seat with no name keeps what it had (the HUD shows PLAYER n for it).
+	assert_str(state.team[2]["name"]).is_not_equal("Ann")
+	# A player who joins later is named by an event.
+	state.apply_event({"type": &"player_named", "player_id": 2, "name": "Bo"})
+	assert_str(state.team[2]["name"]).is_equal("Bo")
+	# A name too long for the HUD is cut as `set_player_name` cuts it.
+	state.apply_event({"type": &"player_named", "player_id": 2, "name": "W".repeat(60)})
+	assert_int((state.team[2]["name"] as String).length()).is_equal(HudStyle.NAME_LIMIT)

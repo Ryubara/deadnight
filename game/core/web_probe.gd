@@ -65,6 +65,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
+		"naming": false,
 		"lobby_seats": "",
 		"lobby_note": "",
 		"lobby_buttons": "",
@@ -108,6 +109,8 @@ static func snapshot(top: Control) -> Dictionary:
 	if together != null:
 		# What the screen says (a browser test reads it); the code is the lobby screen's.
 		data["room_status"] = together.status.text
+		# The name prompt is up (a browser test types a name into it).
+		data["naming"] = together.name_field.is_visible_in_tree()
 		data["code_text"] = together.code_field.text  # what a paste put into the code field
 	var lobby := top as LobbyScreen
 	if lobby != null:
