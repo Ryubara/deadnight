@@ -1,9 +1,9 @@
 extends GdUnitTestSuite
-## The sound catalog's table: every override the catalog writes takes effect (issue #135: `merged`
-## ignored them), the night's sounds are all listed, and the beds are loops that sit under the
+## The sound catalog's table: every override takes effect (issue #135: `merged` ignored them; the
+## banks now hold every value, and this pins the ones that were once overrides), the night's sounds
+## are all listed, and the beds are loops that sit under the
 ## effects.
 
-const CATALOG_SOURCE := "res://core/audio/sound_catalog.gd"
 ## Overrides that `merged(..., false)` used to drop: the base already had the key.
 const OVERRIDES := {
 	&"ui_tick": {"pitch_semitones": 1.0, "cooldown": 0.02},
@@ -48,14 +48,6 @@ func test_every_override_takes_effect() -> void:
 				. override_failure_message("%s.%s ignored its override" % [id, property])
 				. is_equal(OVERRIDES[id][property])
 			)
-
-
-func test_the_catalog_never_calls_merged_without_overwriting() -> void:
-	var source := FileAccess.get_file_as_string(CATALOG_SOURCE)
-	var calls := source.count(".merged(")
-	# The one helper (`_with`), which passes true; every override goes through it.
-	assert_int(calls).is_equal(1)
-	assert_bool(source.contains("base.merged(overrides, true)")).is_true()
 
 
 func test_the_night_s_sounds_are_in_the_catalog() -> void:

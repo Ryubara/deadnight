@@ -107,7 +107,7 @@ func test_a_take_is_a_sound_of_the_catalog_and_names_its_moment() -> void:
 func test_the_local_player_is_flat_and_a_little_lower() -> void:
 	assert_bool(_say_until(&"reload", OWN)).is_true()
 	assert_object(_heard[0]["at"]).is_null()
-	assert_float(_heard[0]["db"]).is_equal(SoldierVoiceCatalog.LOCAL_DB)
+	assert_float(_heard[0]["db"]).is_equal(SoundCatalog.mix().own_voice_db)
 
 
 func test_a_teammate_speaks_from_where_they_stand() -> void:

@@ -53,7 +53,7 @@ func test_more_strength_puts_more_of_the_aim_on_a_zombie() -> void:
 
 
 func test_the_assist_wins_back_what_the_simulator_assumes_at_every_strength() -> void:
-	var tuning := AimAssistTuning.new()
+	var tuning := AimAssistTuning.shipped()
 	for strength in [0.25, 0.5, 0.75, 1.0]:
 		assert_float(_gain(strength)).is_equal_approx(
 			AimAssist.accuracy_gain(strength, tuning), 0.04

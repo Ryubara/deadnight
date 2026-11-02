@@ -8,7 +8,7 @@ var _budget: VoiceBudget
 
 
 func before_test() -> void:
-	_budget = VoiceBudget.new(SLOTS, SoundCatalog.GROUP_LIMITS)
+	_budget = VoiceBudget.new(SLOTS, SoundCatalog.group_limits())
 
 
 func test_slots_fill_then_the_pool_is_never_exceeded() -> void:
@@ -43,7 +43,7 @@ func test_cooldown_drops_a_repeat_until_it_has_passed() -> void:
 
 func test_28_zombies_hold_only_the_group_limit_and_the_nearest_win() -> void:
 	var groan := SoundCatalog.get_def(&"zombie_groan")
-	var limit: int = SoundCatalog.GROUP_LIMITS[&"zombie_voice"]
+	var limit: int = SoundCatalog.group_limits()[&"zombie_voice"]
 	# Each zombie is clearly louder (nearer) than the one before it, so the last ones must hold the
 	# slots.
 	var loudness := 0.01
@@ -67,7 +67,7 @@ func test_28_zombies_hold_only_the_group_limit_and_the_nearest_win() -> void:
 
 func test_a_quiet_zombie_cannot_take_a_loud_ones_voice() -> void:
 	var groan := SoundCatalog.get_def(&"zombie_groan")
-	var limit: int = SoundCatalog.GROUP_LIMITS[&"zombie_voice"]
+	var limit: int = SoundCatalog.group_limits()[&"zombie_voice"]
 	for i in limit:
 		_budget.acquire(groan, 1.0, 0.0, 5.0)
 	assert_int(_budget.acquire(groan, 0.5, 0.0, 5.0)).is_equal(-1)
@@ -101,7 +101,7 @@ func test_a_lower_priority_never_takes_a_slot_from_a_higher_one() -> void:
 	var other := SoundCatalog.get_def(&"generator_start")
 	var shot := SoundCatalog.get_def(&"shot_rifle")
 	# One slot budget: the sting holds it, the quieter and the lesser sounds are dropped.
-	var tiny := VoiceBudget.new(1, SoundCatalog.GROUP_LIMITS)
+	var tiny := VoiceBudget.new(1, SoundCatalog.group_limits())
 	assert_int(tiny.acquire(sting, 0.5, 0.0, 3.0)).is_equal(0)
 	assert_int(tiny.acquire(other, 5.0, 0.0, 3.0)).is_equal(-1)
 	assert_int(tiny.acquire(shot, 5.0, 0.0, 3.0)).is_equal(-1)
