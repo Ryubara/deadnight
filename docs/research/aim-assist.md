@@ -102,6 +102,15 @@ short, then a finger on Aim. Once with the assist off and once at 0.5 with auto-
 No console error or page error in either run, and the game saw a finger as the last input
 (`UIInputMode.touch`) through the browser's own touch events, which is what turns the assist on.
 
+The run is repeatable (`--runs N` repeats both runs on one export; 10 of 10 pass, the view turns 0.143 rad in three
+drag steps from 1.17 m to 0.46 m off the chest every time). Two things made it flaky before (#490): the bench set the
+mouse visible but left the player's request for the lock standing, which the grip reads as a lock lost, so the night
+paused itself (3 of 3 runs on a loaded machine) and the touch layer went dead; and the zombie was placed while the
+shoulder camera still eased in, so the view often started 0.44 m off, under the 0.55 m stop, and the drag never ran (a
+pass that proved nothing). The bench now withdraws the request (`grip.want(false)`), waits for the lens to be still
+and places the zombie then; the probe fails on a paused night, on a start too near to need a drag, and on a yaw that
+does not change, and prints the yaw and distance at each drag step.
+
 Found while building the run:
 
 - **The shoulder camera's lens orbits the pivot**, so a world-fixed zombie changes its angle from the lens when the view
