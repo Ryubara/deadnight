@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/explosive_tuning.gd" id="6_expl1"]
 [ext_resource type="Script" path="res://gameplay/rules/barricade_tuning.gd" id="10_barr1"]
 [ext_resource type="Script" path="res://gameplay/rules/health_tuning.gd" id="10_ptune"]
+[ext_resource type="Script" path="res://gameplay/rules/revive_tuning.gd" id="13_revive"]
 [ext_resource type="Script" path="res://gameplay/rules/crane_tuning.gd" id="11_crane1"]
 [ext_resource type="Script" path="res://gameplay/rules/upgrade_tuning.gd" id="12_upgr1"]
 
@@ -68,8 +69,8 @@ script = ExtResource("1_skww1")
 id = &"crane_play"
 kind = 2
 price = 550
-pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun"])
-pool_weights = PackedFloat32Array(4, 3, 2, 1)
+pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe"])
+pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5)
 
 [sub_resource type="Resource" id="Resource_0d3wl"]
 script = ExtResource("1_skww1")
@@ -360,6 +361,14 @@ script = ExtResource("10_ptune")
 max_health = 100.0
 regen_delay = 5.0
 regen_per_second = 25.0
+revive_seconds = 3.5
+revive_fraction = 0.5
+
+[sub_resource type="Resource" id="Resource_revive1"]
+script = ExtResource("13_revive")
+bleed_out_seconds = 45.0
+reviver_points = 0
+bleed_stops_while_held = true
 
 [sub_resource type="Resource" id="Resource_crane1"]
 script = ExtResource("11_crane1")
@@ -391,5 +400,6 @@ specials = SubResource("Specials_1")
 explosives = SubResource("Resource_expl1")
 barricades = SubResource("Resource_barr1")
 health = SubResource("Resource_ptune1")
+revive = SubResource("Resource_revive1")
 crane = SubResource("Resource_crane1")
 upgrade = SubResource("Resource_upgt1")

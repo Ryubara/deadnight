@@ -1,9 +1,9 @@
 class_name MenuProfile
 extends RefCounted
 ## What the menu shows of the player's account, from the cached profile (`profile/cache` in the
-## settings file: JSON the platform backend will fill; nothing in the client writes it). Plain
-## values and the Billing arithmetic of docs/design/progression.md; an empty or damaged cache is a
-## new player (level 1, no stubs), never an error, and a night never waits on it.
+## settings file: JSON the platform backend will fill; the client writes only the player's name).
+## Plain values and the Billing arithmetic of docs/design/progression.md; an empty or damaged cache
+## is a new player (level 1, no stubs), never an error, and a night never waits on it.
 
 ## Billing levels run 1 to `MAX_LEVEL`; Encores after it are cosmetic and not counted here.
 const MAX_LEVEL := 50
@@ -24,6 +24,38 @@ var mastery: Dictionary = {}
 ## The profile in the settings file.
 static func load_saved() -> MenuProfile:
 	return from_json(Settings.get_value(SettingsService.PROFILE_CACHE))
+
+
+## Whether the profile holds a name somebody gave: the player (asked on the first Play together, or
+## typed in the menu) or the platform. Without one the player is `Player` here and `Guest NNNN`
+## online.
+static func is_named() -> bool:
+	return str(_record().get("name", "")).strip_edges() != ""
+
+
+## The name as the profile keeps it: no edge spaces, one space between words, at most `MAX_NAME`.
+static func clean_name(text: String) -> String:
+	var words := text.strip_edges().split(" ", false)
+	return " ".join(words).left(MAX_NAME).strip_edges()
+
+
+## Saves `text` as the profile's name (cleaned, the rest of the cache kept) and returns what was
+## saved; an empty one takes the name away.
+static func save_name(text: String) -> String:
+	var clean := clean_name(text)
+	var record := _record()
+	record["name"] = clean
+	Settings.set_value(SettingsService.PROFILE_CACHE, JSON.stringify(record))
+	return clean
+
+
+## The cache as a dictionary; empty when it is missing or damaged.
+static func _record() -> Dictionary:
+	var reader := JSON.new()
+	var text: String = Settings.get_value(SettingsService.PROFILE_CACHE)
+	if text == "" or reader.parse(text) != OK or typeof(reader.data) != TYPE_DICTIONARY:
+		return {}
+	return reader.data
 
 
 ## A profile read from JSON text; anything else gives a new player.

@@ -5,7 +5,8 @@ Page B opens that link (`?room=CODE`) and lands in A's night. Pages C and D neve
 join, and they land together in a night of their own. The script reads the game's probe (`window.deadnight`) on every
 page and fails unless A and B see two players, C and D see two players and A never sees more than two.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py build/web https://backend.example build/rooms
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py build/web https://backend.example build/rooms
 
 The first argument is a folder with the export (served on a fixed local port, which the backend must list in
 `CORS_ORIGINS`) or the URL of a deployed build (then the backend's CORS already allows it). Writes `result.json`,
@@ -66,14 +67,9 @@ def open_page(browser: Browser, url: str, console: list[str], problems: list[str
 
 
 def to_together(page: Page) -> None:
-    """From the main menu to the Play together screen (the first item of the Play tab)."""
-    wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
-    page.mouse.click(5, 5)  # gives the canvas the keyboard
-    page.wait_for_timeout(2500)
-    smoke.menu_item(page, "Play")
-    smoke.press(page, "Enter")
-    wait_for(page, "the Play together screen", lambda s: s.get("screen") == "together_screen", smoke.SCREEN_TIMEOUT_S)
-    page.wait_for_timeout(1500)
+    """From a loading page to the Play together screen, by the shared start-up."""
+    smoke.reach_menu(page)
+    smoke.open_together(page)
 
 
 def in_night(state: dict) -> bool:
@@ -112,6 +108,7 @@ def main() -> int:
             to_together(a)
             smoke.press(a, "ArrowDown")  # Quick join -> Create a night
             smoke.press(a, "Enter")
+            smoke.give_name(a, "Ann")  # a player with no saved name is asked first
             invite = wait_for(a, "the invite", lambda s: s.get("room_code", "") != "", 60)
             code = invite["room_code"]
             result["code"] = code
@@ -120,6 +117,8 @@ def main() -> int:
             smoke.press(a, "Enter")  # Play
             # B opens the invite link and is in the same night.
             b = open_page(browser, f"{base}?{query}&room={code}", console, problems, "B")
+            wait_for(b, "B's name prompt", lambda s: s.get("naming"), smoke.LOAD_TIMEOUT_S)
+            smoke.give_name(b, "Bo")
             # The link finds the night; pressing Play is the click a browser needs before the game may take the mouse.
             wait_for(b, "B's invite", lambda s: s.get("room_code") == code, 120)
             b.mouse.click(5, 5)
@@ -137,11 +136,13 @@ def main() -> int:
             c = open_page(browser, f"{base}?{query}", console, problems, "C")
             to_together(c)
             smoke.press(c, "Enter")  # Quick join is the first item
+            smoke.give_name(c, "Cy")
             wait_for(c, "C in the night", in_night, NIGHT_TIMEOUT_S)
             wait_for(c, "C sees a player", lambda s: s.get("players", 0) >= 1, 60)
             d = open_page(browser, f"{base}?{query}", console, problems, "D")
             to_together(d)
             smoke.press(d, "Enter")
+            smoke.give_name(d, "Ann")  # the same name as A's, in another night
             wait_for(d, "D in the night", in_night, NIGHT_TIMEOUT_S)
             for name, page in (("c", c), ("d", d)):
                 wait_for(page, f"{name} sees two players", lambda s: s.get("players", 0) >= 2, 60)
@@ -181,6 +182,11 @@ def main() -> int:
             if local:
                 local.shutdown()
     (args.out / "console.txt").write_text("\n".join(console) + "\n", encoding="utf-8")
+    # A night that ends first must close its link, not leave the snapshots unread (#467).
+    flood = [line for line in console if "Buffer payload full" in line]
+    result["buffer_full_lines"] = len(flood)
+    if flood:
+        problems.append(f"{len(flood)} console lines 'Buffer payload full', first: {flood[0]}")
     result["problems"] = problems
     (args.out / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))

@@ -49,7 +49,10 @@ const ROWS: Array = [
 	[&"swap_weapon", &"swap_weapon"],
 	[&"throw_grenade", &"throw_grenade"],
 	[&"toss_grenade", &""],
+	# A ping is not in the command: the night makes it from the view (`test_night_pings.gd`).
+	[&"ping", &""],
 	[&"pause", &""],
+	[&"scoreboard", &""],
 ]
 
 var _night: Night
@@ -296,7 +299,7 @@ func test_every_action_has_a_gamepad_binding() -> void:
 
 func test_the_keyboard_and_mouse_do_every_action() -> void:
 	for row in ROWS:
-		if row[0] == &"pause":
+		if row[0] == &"pause" or row[0] == &"scoreboard":
 			continue
 		for event in _bound(row[0], false):
 			_send(event, true)
@@ -307,7 +310,7 @@ func test_the_keyboard_and_mouse_do_every_action() -> void:
 
 func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 	for row in ROWS:
-		if row[0] == &"pause":
+		if row[0] == &"pause" or row[0] == &"scoreboard":
 			continue
 		for event in _bound(row[0], true):
 			_send(event, true)
@@ -355,7 +358,7 @@ func _push_stick(action: StringName) -> void:
 	_let_go()
 
 
-# --- Pause belongs to the screen, not the command ---
+# --- Pause and the scoreboard belong to the screen, not the command ---
 
 
 ## The game's own root, loaded as in a real run, with the night on top.
@@ -379,21 +382,51 @@ func _leave() -> void:
 	await UIRouter.idle
 
 
-func test_pause_on_every_device() -> void:
+func test_the_scoreboard_shows_while_held_on_every_device() -> void:
 	var screen := await _enter_night()
+	var board := screen.night.hud.scoreboard
 	for pad in [false, true]:
-		for event in _bound(&"pause", pad):
-			var before := screen.night.is_paused()
+		for event in _bound(&"scoreboard", pad):
+			assert_bool(board.visible).is_false()
 			_send(event, true)
 			await get_tree().process_frame
 			await get_tree().process_frame
 			(
-				assert_bool(screen.night.is_paused() != before)
-				. override_failure_message("pause by %s did not toggle the night" % event.as_text())
+				assert_bool(board.visible)
+				. override_failure_message("%s did not show the scoreboard" % event.as_text())
 				. is_true()
 			)
 			_send(event, false)
 			await get_tree().process_frame
+			await get_tree().process_frame
+			assert_bool(board.visible).is_false()
+	await _leave()
+
+
+## Each pause event, as the first press on a live night and again on the paused one. A gamepad's
+## Start is also `ui_accept`: the router once spent it on a menu's focus, so a Start pressed after
+## the keyboard's Esc (which had put a button in focus) looked fine here and did nothing on its
+## own (#494).
+func test_pause_on_every_device() -> void:
+	var screen := await _enter_night()
+	for pad in [true, false]:
+		for event in _bound(&"pause", pad):
+			for expected_paused in [true, false]:
+				_send(event, true)
+				await get_tree().process_frame
+				await get_tree().process_frame
+				(
+					assert_bool(screen.night.is_paused())
+					. override_failure_message(
+						(
+							"pause by %s left the night %s"
+							% [event.as_text(), "running" if expected_paused else "paused"]
+						)
+					)
+					. is_equal(expected_paused)
+				)
+				_send(event, false)
+				await get_tree().process_frame
 	await _leave()
 
 

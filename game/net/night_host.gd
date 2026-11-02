@@ -28,6 +28,9 @@ signal built
 signal emptied
 
 const MAX_PLAYERS := 4
+## The longest name a seat shows, as the HUD keeps it (`HudStyle.NAME_LIMIT`), so the ` (2)` of a
+## duplicate is never cut off.
+const NAME_MAX := 20
 ## A TICK goes out every this many steps: 2 is 30 a second at the 60 Hz step.
 const SEND_EVERY := 2
 ## Steps a refused client has to read why before the server closes the connection.
@@ -51,6 +54,8 @@ var rules_tuning: RulesTuning
 ## Set it with `configure_match`, which also changes a night nobody has started.
 var match_settings := MatchSettings.new()
 var log_enabled := true
+## Metres around a player within which the zombies are sent to their client (0: all of them).
+var interest_radius := 0.0
 ## Seconds a connection has to say hello (`HELLO_WITHIN`; a test sets it shorter).
 var hello_within := HELLO_WITHIN
 ## Seconds a dropped player's seat is held (`RESUME_WITHIN`); 0 frees it at once.
@@ -81,6 +86,9 @@ var kicked_count := 0
 
 var _peers: Dictionary[int, HostPeer] = {}
 var _by_player: Dictionary[int, HostPeer] = {}
+## Player id -> the name the seat shows (the ticket's name, made unique); players without a name
+## are left out and are `PLAYER n` on every screen. Kept with the seat while it is away.
+var _names: Dictionary = {}
 ## Players whose socket dropped, by id: their seat, kept until they come back or the time is up.
 var _away: Dictionary[int, Away] = {}
 var _events: Array[Dictionary] = []
@@ -147,6 +155,12 @@ func _physics_process(_delta: float) -> void:
 
 func player_count() -> int:
 	return _by_player.size()
+
+
+## The round the night is in (0 before the first begins, and while there is no night): what the
+## backend tells a latecomer's lobby screen ("Night in progress, round 4").
+func round_number() -> int:
+	return server.rules.round_number if server != null else 0
 
 
 ## Connections this room has been handed (players and those that have not said hello yet).
@@ -261,6 +275,8 @@ func _on_disconnected(transport_id: int) -> void:
 	if peer == null or peer.player_id == 0:
 		return
 	_by_player.erase(peer.player_id)
+	if server != null:
+		server.pings.erase(peer.player_id)
 	var on_purpose := listener.left_on_purpose(transport_id)
 	if (
 		server != null
@@ -281,6 +297,7 @@ func _on_disconnected(transport_id: int) -> void:
 ## Frees a seat for good: the body leaves the lot and the id can be given to someone new.
 func _free_seat(player_id: int) -> void:
 	_away.erase(player_id)
+	_names.erase(player_id)
 	if server != null:
 		_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
 	_log("left", {"player": player_id, "players": _by_player.size()})
@@ -319,8 +336,17 @@ func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 				return
 			server.submit(peer.player_id, command)
 		NetWire.Type.PING:
-			if data.size() == 5:
+			if data.size() == NetWire.PING_SIZE:
 				listener.send(transport_id, NetWire.pong(data.decode_u32(1), server.tick_count))
+				var rtt := NetWire.read_ping_rtt(data)
+				if rtt >= 0:
+					server.pings[peer.player_id] = rtt
+		NetWire.Type.MARK:
+			var mark := NetWire.read_mark(data)
+			if mark.is_empty():
+				_fault(peer)
+			else:
+				_collect(server.apply(mark, peer.player_id))
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))
@@ -353,14 +379,56 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	peer.player_id = player_id
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	_by_player[player_id] = peer
+	# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
+	_name_seat(player_id, peer.user_name)
 	_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
 	listener.send(
-		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, server.rules.to_dict())
+		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
 	)
 	_log("joined", {"player": player_id, "players": _by_player.size()})
 	player_joined.emit(player_id)
+
+
+## What a WELCOME carries: the rules' snapshot and the names of the seats (`names`: player id ->
+## name), so a client that joins late, or comes back, shows everyone by name at once.
+func _welcome_snapshot() -> Dictionary:
+	var snapshot := server.rules.to_dict()
+	snapshot["names"] = _names.duplicate()
+	return snapshot
+
+
+## Gives the seat the name the ticket said, made unique among the seats (`Ann`, `Ann (2)`, ...), and
+## tells everyone (a `player_named` event; the joiner's own WELCOME carries it too). A seat with no
+## name stays without one.
+func _name_seat(player_id: int, wanted: String) -> void:
+	var shown := unique_name(wanted, _names, player_id)
+	if shown == "":
+		return
+	_names[player_id] = shown
+	_collect([{"type": &"player_named", "player_id": player_id, "name": shown}])
+
+
+## `wanted` (edge spaces cut, at most `NAME_MAX` characters) or, when another seat of `taken`
+## (player id -> name) already shows it, in any case of letters, the first of `wanted (2)`,
+## `wanted (3)`, ... that is free. "" when there is no name.
+static func unique_name(wanted: String, taken: Dictionary, player_id: int) -> String:
+	var base := wanted.strip_edges().left(NAME_MAX)
+	if base == "":
+		return ""
+	var used: Dictionary = {}
+	for id: Variant in taken:
+		if id != player_id:
+			used[str(taken[id]).to_lower()] = true
+	if not used.has(base.to_lower()):
+		return base
+	for number in range(2, MAX_PLAYERS + 2):
+		var suffix := " (%d)" % number
+		var candidate := base.left(NAME_MAX - suffix.length()).strip_edges() + suffix
+		if not used.has(candidate.to_lower()):
+			return candidate
+	return base
 
 
 ## The id of the player this token is the seat of, taken from the held seats or (a client that
@@ -392,9 +460,10 @@ func _resume(peer: HostPeer, player_id: int) -> void:
 	_away.erase(player_id)
 	peer.player_id = player_id
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
+	peer.zombie_base = {}
 	_by_player[player_id] = peer
 	listener.send(
-		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, server.rules.to_dict())
+		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
 	)
 	_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
 	_log("resumed", {"player": player_id, "players": _by_player.size()})
@@ -472,14 +541,57 @@ func _is_for(event: Dictionary, player_id: int) -> bool:
 
 
 func _send_ticks(frame: Dictionary) -> void:
+	var zombies := ZombieDelta.entries_of(frame["zombies"])
 	for peer: HostPeer in _by_player.values():
 		var out: Array = _events.filter(
 			func(event: Dictionary) -> bool: return _is_for(event, peer.player_id)
 		)
-		out.append(FrameDelta.diff(peer.last_frame, frame))
-		peer.last_frame = frame
-		listener.send(peer.transport_id, NetWire.tick(server.tick_count, out))
+		# The zombies go as what changed from the ones this client has (`ZombieDelta`), and only
+		# those near enough when the host has an `interest_radius`.
+		var seen := _in_interest(peer, zombies)
+		var own := frame.duplicate()
+		own["zombies"] = ZombieDelta.diff(peer.zombie_base, seen, peer.zombie_sequence)
+		out.append(FrameDelta.diff(peer.last_frame, own))
+		# A tick the peer's socket would not take (it stopped reading, a frozen client, and its buffer
+		# is full) is lost, and the next delta would be against a frame it never had: the next frame
+		# is whole instead, and the zombies stay a delta against the ones the client really has.
+		var sent := listener.send(peer.transport_id, NetWire.tick(server.tick_count, out))
+		peer.last_frame = own if sent else {}
+		if sent:
+			peer.zombie_base = seen
+			peer.zombie_sequence = (peer.zombie_sequence + 1) & 0xFF
+		_note_delivery(peer, sent)
 	_events.clear()
+
+
+## The zombies this player's client is told of: all of them, or the ones within `interest_radius`
+## metres of their body (the lot is one screen, so a night does not set it; a bigger map would).
+func _in_interest(
+	peer: HostPeer, zombies: Dictionary[int, PackedByteArray]
+) -> Dictionary[int, PackedByteArray]:
+	if interest_radius <= 0.0 or not _by_player.has(peer.player_id):
+		return zombies
+	var body := server.body_of(peer.player_id)
+	var from := Vector2(body.global_position.x, body.global_position.z)
+	var near: Dictionary[int, PackedByteArray] = {}
+	for id: int in zombies:
+		var entry := zombies[id]
+		var at := Vector2(entry.decode_s16(2), entry.decode_s16(6)) / 100.0
+		if at.distance_to(from) <= interest_radius:
+			near[id] = entry
+	return near
+
+
+## One line in the log when a peer stops taking ticks and one when it takes them again, with how
+## many it missed: the only trace a client's freeze leaves on the server.
+func _note_delivery(peer: HostPeer, sent: bool) -> void:
+	if not sent:
+		if peer.missed_ticks == 0:
+			_log("peer_stalled", {"player": peer.player_id})
+		peer.missed_ticks += 1
+	elif peer.missed_ticks > 0:
+		_log("peer_recovered", {"player": peer.player_id, "ticks_missed": peer.missed_ticks})
+		peer.missed_ticks = 0
 
 
 # --- Log ---
@@ -543,6 +655,8 @@ class HostPeer:
 	var player_id := 0
 	## The frame this client last had, the baseline of the next delta.
 	var last_frame: Dictionary = {}
+	## Ticks in a row the socket would not take (the client stopped reading).
+	var missed_ticks := 0
 	## The step at which a refused client is hung up on, or -1.
 	var close_at := -1
 	var refused := false
@@ -550,6 +664,9 @@ class HostPeer:
 	## When the connection opened (seconds), for the time it has to say hello.
 	var connected_at := 0.0
 	var limits := PeerLimits.new()
+	## The zombies this client has (`ZombieDelta`), and the number of the next delta to it.
+	var zombie_base: Dictionary[int, PackedByteArray] = {}
+	var zombie_sequence := 0
 	## What the client was given at WELCOME to take its seat back with.
 	var token := PackedByteArray()
 	## Who the backend's ticket says this is (`""` when the server has no backend), and their name.

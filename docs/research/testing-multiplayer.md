@@ -20,13 +20,18 @@ Postgres) makes the nights and the game servers (`deadnight-server`) run them, o
 1. Open the web build, <https://web-production-f401d1.up.railway.app>, and wait for the menu.
 2. Choose **Play together** (the second item). Then one of:
    - **Quick join**: you land in a public night with room, or a new one starts.
-   - **Create a night**: the screen shows a code and an invite link; **Copy the link** and send it. A friend who opens
-     the link (`?room=CODE`) lands in your night at once, or types the code under **Join with the code**.
-3. **Play** (after Create) or the join itself builds the lot and warms it up (about 35 s in Chrome with a graphics card).
-   Up to four share a night, and a player who comes later joins it where it is.
+   - **Create a night**: the lobby opens with a code, an invite link and four seats, you as host. **Copy the link** and
+     send it. A friend who opens the link (`?room=CODE`) reads your lobby first (*Waiting room, Ann is hosting, 1 of 4
+     here.*) and presses **Join**; or types the code under **Join with the code**. Everyone sees who is there within a
+     couple of seconds. You press **Start the night** when they are in; they press **Play**.
+3. Starting or joining builds the lot and warms it up (about 35 s in Chrome with a graphics card). Up to four share a
+   night, and a player who comes later reads *Night in progress, round N* on the same screen and joins it where it is
+   (a preview left open follows the night by itself).
 
-Inside a Discord Activity the same page lands everyone of the voice channel in one night with no code
-(`?instance_id=` from Discord).
+Inside a Discord Activity the game opens on the main menu like anywhere else, signed in in the background
+(`?instance_id=` from Discord); **Play together** goes straight to the voice channel's lobby: the first to press it hosts,
+the others read the lobby and press **Join**. `tools/web_smoke/activity.py` checks it: the menu first, then the lobby of
+the channel with its code.
 
 The server address is a developer setting: on the desktop the Play together screen has a **Server address** button
 (the old Join screen, `ws://localhost:8910` is this machine's own server), and on the web `?dev` shows it.
@@ -45,15 +50,29 @@ date, when the server is the newer: reload). To read what the server sees: `rail
 invite link, C and D press Quick join) and fails unless each pair sees exactly two players:
 
 ```text
-uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py <web URL or build/web> <backend https address> <out folder> --gpu
+uv run --project <kit>/python gds quiet --   uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py <web URL or build/web> <backend https address> <out folder> --gpu
+```
+
+`tools/web_smoke/lobby.py` plays the lobby in headless Chromium with three pages (A creates and sees the seats, B joins
+from the link and cannot start, A starts and B presses Play, C's preview left open says *Night in progress* and C joins
+mid-match), under `gds quiet`, with the autopilot (`?bot`) playing so nobody idles and dies while the others load. It
+runs against a deployed backend, or a local one: `node spikes/backend/src/main.ts` (env as in `test_lobby_online.gd`, with
+`CORS_ORIGINS=http://127.0.0.1:8081`) and a game server with `BACKEND_URL`, `TICKET_SECRET`, `GAME_SERVER_SECRET` and
+`PUBLIC_URL=ws://127.0.0.1:<port>`:
+
+```text
+uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/lobby.py <web URL or build/web> <backend address> <out folder>
 ```
 
 `tools/web_smoke/online.py` joins one game server by its address (the developer path) and plays a night, reading the
 page's probe (`players`, `alive`, `rtt_ms`) every second:
 
 ```text
-uv run --with playwright==1.64.1 python tools/web_smoke/online.py <web URL or build/web> <server address> <out folder> --seconds 90 --gpu
+uv run --project <kit>/python gds quiet --   uv run --with playwright==1.64.1 python tools/web_smoke/online.py <web URL or build/web> <server address> <out folder> --seconds 90 --gpu
 ```
+
+Every probe runs under `gds quiet` (the kit's `docs/godot/no-focus.md`): a page that takes pointer lock confines the
+real cursor, and a hook refuses a probe started without it.
 
 ## Two desktop windows on one machine
 
@@ -165,7 +184,7 @@ One Windows machine, loopback, server and clients in one process (`test_the_numb
 
 - a **tick to a client** (every 2nd step, 30 a second) is about **220 bytes** with two players and four zombies, as a
   difference against the previous frame, compressed when large; about 6.6 KB/s down. A command up is a fixed
-  **23 bytes** (47 before protocol 2), 60 a second, 1.4 KB/s.
+  **25 bytes** (47 before protocol 2), 60 a second, 1.5 KB/s.
 - the **round trip** (client ping, server pong, read on the client's 60 Hz tick) is 2 to 18 ms on this loaded machine;
   it is the sum of two tick waits, not the network.
 
@@ -175,8 +194,7 @@ Bigger figures (more zombies, four players, the manual run's server log) are in 
 
 - **The Discord proxy.** The server is reached directly; through a Discord Activity it goes through Discord's proxy,
   which waits for the Activity setup ([#287](https://github.com/Ryubara/deadnight/issues/287)).
-- Hit rewind
-  ([#54](https://github.com/Ryubara/deadnight/issues/54)), the tighter packing of many zombies and projectiles
+- The tighter packing of many zombies and projectiles
   ([#57](https://github.com/Ryubara/deadnight/issues/57)).
 - The other players' repair and weapon animations are not drawn
   ([#245](https://github.com/Ryubara/deadnight/issues/245)).

@@ -34,6 +34,12 @@ static var own_look: CharacterLook
 ## nothing. The game's root sets it, so only the real game keeps a save.
 static var challenge_path := ""
 
+## How a night played alone starts, for a run that is not a person's (`KillBench`): the bot plays,
+## filmed from its shoulder, under this tuning (the defaults when null).
+static var start_mode := Night.Mode.HUMAN
+static var start_tuning: RulesTuning = null
+static var shoulder_camera := false
+
 var night: Night
 
 var _hud: Hud
@@ -81,6 +87,7 @@ func _ready() -> void:
 	add_child(_touch)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
+	night.ready_to_play.connect(_watch_mouse)
 	if night.warm_up:
 		_loading = LoadingOverlay.new()
 		add_child(_loading)
@@ -93,9 +100,15 @@ func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
 
 
+## True while the centre reticle is on screen (a browser test reads it, #517).
+func reticle_shown() -> bool:
+	return _hud != null and _hud.reticle.is_visible_in_tree()
+
+
 func screen_enter() -> void:
 	if join_url == "":
-		await night.start(Night.Mode.HUMAN)
+		night.shoulder_camera = shoulder_camera
+		await night.start(start_mode, Night.SEED, start_tuning)
 		return
 	var url := join_url
 	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN
@@ -108,12 +121,18 @@ func screen_enter() -> void:
 	_show_overlay("Joining", "" if link.ticket != "" else url, false)
 	night.connect_failed.connect(_on_connect_failed)
 	if await night.start_remote(url, mode, JOIN_SECONDS, link):
-		_overlay.hide()
+		_hide_overlay()
 
 
 func screen_pause() -> void:
 	if night.running:
 		_pause()
+
+
+## A live night takes its keys itself: Start is `pause` and also `ui_accept`, and the router would
+## spend it on giving a menu its focus (#494). Only the overlay's buttons are navigated.
+func wants_focus_key() -> bool:
+	return _overlay.visible
 
 
 func screen_resume() -> void:
@@ -157,16 +176,38 @@ func _on_safe_insets_changed(insets: Vector4) -> void:
 	_hud.offset_bottom = -insets.w
 
 
+## The player's body takes the mouse back from the platform (a browser's first Esc, a window that
+## lost focus) without a `pause` key press: the menu opens in the same frame, as Esc would.
+func _watch_mouse() -> void:
+	var body := night.player()
+	if night.mode == Night.Mode.HUMAN and body != null:
+		body.grip_lost.connect(_on_mouse_lost)
+
+
+func _on_mouse_lost() -> void:
+	if night.state != null and not night.state.over and not night.is_paused():
+		_pause()
+
+
 func _pause() -> void:
 	night.set_paused(true)
 	_show_overlay("Paused", "The dead wait.", true)
 
 
 func _resume_night() -> void:
+	_hide_overlay()
+	night.set_paused(false)
+
+
+## Takes the card away and gives the night back what `_show_overlay` took: the reticle, the
+## scoreboard on Tab and the touch controls. Every way the card goes (Resume, a joined night
+## starting) comes here: a night joined online once ran with none of them until a pause and a Resume
+## (#517).
+func _hide_overlay() -> void:
 	_overlay.hide()
 	_hud.reticle.set_shown(true)
+	_hud.scoreboard_enabled = true
 	_touch.live = true
-	night.set_paused(false)
 
 
 func _on_connect_failed(reason: String) -> void:
@@ -184,6 +225,7 @@ func _on_night_over(round_reached: int) -> void:
 func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_hud.reticle.set_shown(false)
+	_hud.scoreboard_enabled = false
 	_touch.live = false
 	_title.text = title
 	_note.text = note

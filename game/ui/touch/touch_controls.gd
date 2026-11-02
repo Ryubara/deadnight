@@ -2,8 +2,14 @@ class_name TouchControls
 extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
 ## and buttons under the right thumb. They press the game's own input actions (`move_*`, `fire`,
-## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `interact`, `sprint`, `pause`), so
+## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `interact`, `sprint`, `pause`,
+## `scoreboard`), so
 ## the player and the night read them like a key or a pad and nothing else forks.
+##
+## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
+## default: the weapon fires by itself with the crosshair on a zombie while aiming), and a toggle
+## when auto-fire is off: a tap aims, the next tap leaves the aim, so the player can aim and shoot
+## by hand. Fire shoots wherever the player aims, in both.
 ##
 ## Every finger is tracked by its touch index and has one job until it lifts: the stick, the look,
 ## or one button. A finger that starts on Fire also looks while it drags, so one thumb can aim and
@@ -12,7 +18,9 @@ extends Control
 ##
 ## The layer shows when `TouchMode.wanted`, in landscape, and while the night is live (`live`).
 ## While it is up the engine's touch-to-mouse emulation is off, or every touch would also click
-## Fire. The interact button shows only while the HUD has a prompt: what it does is its label.
+## Fire, and the player turns only for the layer's own look (`TouchLook.is_stray`): in a browser a
+## finger is also a pointer move, which the web runtime reads as a mouse motion (#470).
+## The interact button shows only while the HUD has a prompt: what it does is its label.
 ##
 ## While it is up the HUD shows no key hints (`UIInputMode.touch`), and `TouchHints` labels the
 ## controls the first time each is met, until it is used.
@@ -58,6 +66,12 @@ const VERBS := {
 	&"revive": "REVIVE",
 }
 const DEFAULT_VERB := "USE"
+const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
+## A finger that starts on one of these also looks while it drags, so one thumb can aim and shoot.
+const LOOKING_BUTTONS: Array[StringName] = [TouchLayout.FIRE, TouchLayout.AIM]
+## The engine's `velocity` of a finger is wrong for its first drags (the web runtime seeds it with
+## the jump from another position): it is trusted after this many.
+const VELOCITY_WARMUP_DRAGS := 3
 
 ## The HUD state, for the interact button.
 var state: HudState
@@ -80,6 +94,9 @@ var hints: TouchHints
 ## () -> float, the factor on a look drag: the aim assist's friction near a zombie (1 without).
 var look_gain := Callable()
 
+## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
+var _aim_is_hold := true
+var _aim_latched := false
 var _enabled := false
 var _active := false
 var _circles := {}
@@ -116,6 +133,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_release_everything()
+	TouchLook.layer_up = false
 	Input.emulate_mouse_from_touch = true
 
 
@@ -124,6 +142,10 @@ func refresh() -> void:
 	touch_scale = _setting(&"controls/touch_scale", 1.0)
 	opacity = _setting(&"controls/touch_opacity", 0.7)
 	left_handed = _flag(SettingsService.LEFT_HANDED)
+	var hold := _setting(AUTO_FIRE_SETTING, 1.0) >= 1.0
+	if hold != _aim_is_hold:
+		_aim_is_hold = hold
+		_unlatch_aim()
 	_enabled = TouchMode.wanted(get_tree())
 	_relayout()
 	_refresh_active()
@@ -159,6 +181,11 @@ func stick_vector() -> Vector2:
 
 func is_sprinting() -> bool:
 	return _sprinting
+
+
+## True while the aim is toggled on (auto-fire off, Aim tapped once).
+func is_aim_latched() -> bool:
+	return _aim_latched
 
 
 func is_pressed(id: StringName) -> bool:
@@ -218,7 +245,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
-		_touch_drag(drag.index, drag.position, drag.relative, drag.velocity)
+		_touch_drag(drag.index, drag.position, drag.velocity)
 		get_viewport().set_input_as_handled()
 
 
@@ -228,7 +255,7 @@ func _touch_down(index: int, point: Vector2) -> void:
 	var hidden: Array = [] if _interact_verb != "" else [TouchLayout.INTERACT]
 	var button := TouchLayout.button_at(point, _circles, hidden)
 	if button != &"":
-		_touches[index] = {&"role": &"button", &"button": button}
+		_touches[index] = _own(&"button", point, {&"button": button})
 		_press_button(button)
 		if button == TouchLayout.INTERACT:
 			hints.mark_used(TouchHints.INTERACT)
@@ -237,10 +264,10 @@ func _touch_down(index: int, point: Vector2) -> void:
 		_stick_index = index
 		_stick_origin = point
 		_stick_pos = point
-		_touches[index] = {&"role": &"stick"}
+		_touches[index] = _own(&"stick", point)
 		_set_stick(Vector2.ZERO)
 	elif not _has_role(&"look"):
-		_touches[index] = {&"role": &"look"}
+		_touches[index] = _own(&"look", point)
 
 
 func _touch_up(index: int) -> void:
@@ -254,17 +281,38 @@ func _touch_up(index: int) -> void:
 			_release_button(touch[&"button"])
 
 
-func _touch_drag(index: int, point: Vector2, relative: Vector2, velocity: Vector2) -> void:
+## What a finger owns from its press to its lift: one job (`role`), where it last was (`last`), and
+## how many drags it made (`drags`).
+func _own(role: StringName, point: Vector2, extra := {}) -> Dictionary:
+	var owned := {&"role": role, &"last": point, &"drags": 0}
+	owned.merge(extra)
+	return owned
+
+
+## A drag is read from the finger's own path, not from the event's `relative`: with two fingers
+## down the browser's runtime measures the first drag of a finger from somewhere else (the origin
+## for one finger, the other finger's press for the next), and the view flicked round by a whole
+## screen (#497). `velocity` is stale for a finger's first few drags too: it counts after three.
+func _touch_drag(index: int, point: Vector2, velocity: Vector2) -> void:
 	var touch: Dictionary = _touches.get(index, {})
-	match touch.get(&"role", &""):
+	if touch.is_empty():
+		return
+	var relative: Vector2 = point - touch[&"last"]
+	touch[&"last"] = point
+	touch[&"drags"] += 1
+	match touch[&"role"]:
 		&"stick":
 			_stick_pos = point
 			_follow_stick()
 		&"look":
-			_look(relative, velocity)
+			_look(relative, _trusted_velocity(touch, velocity))
 		&"button":
-			if touch[&"button"] == TouchLayout.FIRE:
-				_look(relative, velocity)
+			if LOOKING_BUTTONS.has(touch[&"button"]):
+				_look(relative, _trusted_velocity(touch, velocity))
+
+
+func _trusted_velocity(touch: Dictionary, velocity: Vector2) -> Vector2:
+	return velocity if touch[&"drags"] > VELOCITY_WARMUP_DRAGS else Vector2.ZERO
 
 
 func _look(relative: Vector2, velocity: Vector2) -> void:
@@ -279,6 +327,7 @@ func _look(relative: Vector2, velocity: Vector2) -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.relative = get_viewport().get_final_transform().basis_xform(look)
 	motion.position = get_viewport().get_final_transform() * get_viewport().get_mouse_position()
+	motion.device = TouchLook.DEVICE
 	Input.parse_input_event(motion)
 
 
@@ -328,6 +377,13 @@ func _press_button(id: StringName) -> void:
 		_send_action(id, true)
 		_send_action.call_deferred(id, false)
 		return
+	if id == TouchLayout.AIM and not _aim_is_hold:
+		_aim_latched = not _aim_latched
+		if _aim_latched:
+			Input.action_press(id)
+		else:
+			Input.action_release(id)
+		return
 	_release_at.erase(id)
 	_pressed_at[id] = _clock
 	Input.action_press(id)
@@ -342,6 +398,12 @@ func _release_button(id: StringName) -> void:
 		Input.action_release(id)
 	else:
 		_release_at[id] = held_until
+
+
+func _unlatch_aim() -> void:
+	if _aim_latched:
+		_aim_latched = false
+		Input.action_release(TouchLayout.AIM)
 
 
 func _send_action(action: StringName, pressed: bool) -> void:
@@ -422,12 +484,14 @@ func _refresh_active() -> void:
 		mirrored_changed.emit(_was_mirrored)
 	# Touch-to-mouse emulation would also click Fire (left mouse) and look twice.
 	Input.emulate_mouse_from_touch = not _active
+	TouchLook.layer_up = _active
 
 
 func _release_everything() -> void:
 	_touches.clear()
 	_stick_index = -1
 	_set_stick(Vector2.ZERO)
+	_unlatch_aim()
 	for action: StringName in _pressed_at.keys():
 		Input.action_release(action)
 	_pressed_at.clear()
@@ -495,6 +559,8 @@ func _alpha(colour: Color, held: bool) -> Color:
 
 
 func _is_held(id: StringName) -> bool:
+	if id == TouchLayout.AIM and _aim_latched:
+		return true
 	for touch: Dictionary in _touches.values():
 		if touch.get(&"button", &"") == id:
 			return true
@@ -521,6 +587,16 @@ func _draw_button(
 		var bar := Vector2(7.0, radius * 0.9)
 		draw_rect(Rect2(centre + Vector2(-13.0, -bar.y * 0.5), bar), _alpha(ink, held))
 		draw_rect(Rect2(centre + Vector2(6.0, -bar.y * 0.5), bar), _alpha(ink, held))
+		return
+	if id == TouchLayout.SCOREBOARD:
+		# Three rows of a table: a dot and a line each.
+		for row in 3:
+			var y := (float(row) - 1.0) * radius * 0.4
+			draw_circle(centre + Vector2(-radius * 0.45, y), 3.5, _alpha(ink, held))
+			draw_rect(
+				Rect2(centre + Vector2(-radius * 0.2, y - 2.5), Vector2(radius * 0.7, 5.0)),
+				_alpha(ink, held)
+			)
 		return
 	var px := int(radius * (0.34 if label.length() <= 4 else 0.27))
 	var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x

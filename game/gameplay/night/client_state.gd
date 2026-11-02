@@ -21,12 +21,29 @@ var shots := 0
 var rounds_started := 0
 var damage_taken := 0.0
 var last_event: Dictionary = {}
+## Player id -> the name that seat shows, as the server says it (the WELCOME's `names` and the
+## `player_named` events): the same on every client. A seat without a name is not in it.
+var names: Dictionary = {}
+
+
+## Keeps the names a WELCOME's snapshot carries (`names`: player id -> name).
+func load_names(snapshot: Dictionary) -> void:
+	var held: Variant = snapshot.get("names", {})
+	names.clear()
+	if typeof(held) != TYPE_DICTIONARY:
+		return
+	for id: Variant in held:
+		names[int(id)] = str(held[id])
 
 
 func apply_events(events: Array) -> void:
 	for event: Dictionary in events:
+		var began := PerfProbe.begin()
 		_apply(event)
 		event_received.emit(event)
+		if PerfProbe.enabled:
+			PerfProbe.end(StringName("event.%s" % event["type"]), began)
+			PerfProbe.count(StringName("ev.%s" % event["type"]))
 
 
 func _apply(event: Dictionary) -> void:
@@ -34,6 +51,8 @@ func _apply(event: Dictionary) -> void:
 		&"frame":
 			frame = event
 			zombies = ZombieCodec.decode(event["zombies"])
+		&"player_named":
+			names[int(event["player_id"])] = str(event["name"])
 		&"round_started":
 			rounds_started += 1
 		&"game_over":
@@ -42,6 +61,8 @@ func _apply(event: Dictionary) -> void:
 		&"zombie_removed":
 			if event["killer_id"] == player_id:
 				kills += 1
+			if event["cause"] == &"killed":
+				PerfProbe.count(&"kill")
 		&"points_changed":
 			if event["player_id"] == player_id:
 				if event["delta"] > 0:

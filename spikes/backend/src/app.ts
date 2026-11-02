@@ -5,6 +5,7 @@ import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { RateLimit } from "./limits.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService } from "./lobbies.ts";
+import { chooseName } from "./names.ts";
 import { GameServerRegistry } from "./servers.ts";
 import { checkSave, SaveRejected } from "./saves.ts";
 import { RevisionConflict, type Store } from "./store.ts";
@@ -19,10 +20,9 @@ export const GUESTS_IN_ALL_PER_HOUR = 2000;
 /** A guest's `discord_id` column: its own namespace, never a number like a Discord snowflake. */
 export const GUEST_ID_PREFIX = "guest:";
 
-/** The name a guest chose, cleaned (letters, digits, spaces, a few marks), or `Guest 1234` when there is none. */
+/** The name a guest chose, cleaned (letters, digits, spaces, a few marks, no rude words), or `Guest 1234` when there is none. */
 export function guestName(given: string | undefined): string {
-  const cleaned = (given ?? "").replace(/[^\p{L}\p{N} _.'-]/gu, "").trim().slice(0, 24);
-  return cleaned.length > 0 ? cleaned : `Guest ${1000 + Math.floor(Math.random() * 9000)}`;
+  return chooseName([given]);
 }
 /** How often expired lobbies are dropped. */
 export const LOBBY_SWEEP_MS = 30_000;
@@ -34,7 +34,7 @@ export interface Deps {
   registry: GameServerRegistry;
   /** Lobby clock and expiry times; tests inject their own. */
   now?: () => number;
-  lobbyLimits?: LobbyLimits;
+  lobbyLimits?: Partial<LobbyLimits>;
   logger?: boolean | object;
 }
 
@@ -155,19 +155,30 @@ export function buildApp(deps: Deps): FastifyInstance {
   });
 
   // ---- sign-in
-  app.post<{ Body: { code: string } }>(
+  // `guildId` is the server the Activity runs in (the SDK's `guildId`): with it the backend asks for the player's
+  // nickname there. The name shown is the nickname, else Discord's display name, else the account's username.
+  app.post<{ Body: { code: string; guildId?: string } }>(
     "/auth/discord",
-    { schema: { body: { type: "object", required: ["code"], properties: { code: { type: "string", maxLength: 512 } } } } },
+    {
+      schema: {
+        body: {
+          type: "object",
+          required: ["code"],
+          properties: { code: { type: "string", maxLength: 512 }, guildId: { type: "string", pattern: "^[0-9]{1,20}$" } },
+        },
+      },
+    },
     async (request, reply) => {
       let signIn;
       try {
-        signIn = await discord.exchangeCode(request.body.code);
+        signIn = await discord.exchangeCode(request.body.code, request.body.guildId);
       } catch (error) {
         request.log.warn({ err: (error as Error).message }, "discord sign-in failed");
         if (error instanceof DiscordUnavailable) return reply.code(502).send({ error: "discord_unavailable" });
         return reply.code(401).send({ error: "invalid_code" });
       }
-      const user = await store.upsertUser(signIn.user.id, signIn.user.username);
+      const { nick, globalName, username } = signIn.user;
+      const user = await store.upsertUser(signIn.user.id, chooseName([nick, globalName, username], "Player"));
       const token = signToken(config.sessionSecret, "session", user.id, SESSION_TTL_SECONDS, { name: user.name });
       // access_token goes back because the Embedded App SDK needs it for authenticate().
       return { token, expiresIn: SESSION_TTL_SECONDS, access_token: signIn.accessToken, user: { id: user.id, name: user.name } };
@@ -203,10 +214,31 @@ export function buildApp(deps: Deps): FastifyInstance {
     maxPlayers: lobby.maxPlayers,
     visibility: lobby.visibility,
     players: lobby.players,
-    members: lobby.members,
+    // Seats in the order people came (they close up when someone leaves); `away` is a member whose screen has not
+    // polled for a few seconds.
+    members: lobby.members.map((m, i) => ({
+      userId: m.userId,
+      name: m.name,
+      seat: i + 1,
+      host: m.userId === lobby.hostId,
+      away: lobbies.isQuiet(lobby, m.userId),
+    })),
     state: lobby.state,
     settings: lobby.settings,
+    round: lobby.round,
     matchId: lobby.match?.id ?? null,
+  });
+
+  // What a code says before its holder presses Join: no ids and nothing to join with, so anyone signed in may look.
+  const lobbyPreview = (lobby: Lobby) => ({
+    code: lobby.code,
+    state: lobby.state,
+    round: lobby.round,
+    players: lobby.players ?? lobby.members.length,
+    maxPlayers: lobby.maxPlayers,
+    full: lobbies.isFull(lobby),
+    hostName: lobby.members.find((m) => m.userId === lobby.hostId)?.name ?? "",
+    names: lobby.members.map((m) => m.name),
   });
 
   const member = async (userId: string) => {
@@ -242,6 +274,28 @@ export function buildApp(deps: Deps): FastifyInstance {
       const found = lobbies.findByCode(request.body.code);
       if (!found) throw new LobbyFailure("not_found");
       return lobbyView(lobbies.join(found.id, await member(request.userId)));
+    },
+  );
+
+  // Looking at a night by its code, or by the Discord Activity instance it belongs to (a body, not the URL, so a code
+  // stays out of the request log): is it waiting for its host, or in round N, and is there room? It joins nobody.
+  app.post<{ Body: { code?: string; instanceId?: string } }>(
+    "/lobbies/preview",
+    {
+      onRequest: requireUser,
+      schema: {
+        body: {
+          type: "object",
+          properties: { code: { type: "string", maxLength: 16 }, instanceId: { type: "string", maxLength: 128 } },
+          anyOf: [{ required: ["code"] }, { required: ["instanceId"] }],
+        },
+      },
+    },
+    async (request) => {
+      const { code, instanceId } = request.body;
+      const found = code !== undefined ? lobbies.findByCode(code) : lobbies.findByInstance(instanceId!);
+      if (!found) throw new LobbyFailure("not_found");
+      return lobbyPreview(found);
     },
   );
 
@@ -326,7 +380,15 @@ export function buildApp(deps: Deps): FastifyInstance {
 
   // ---- game servers (called by the headless Godot servers, never by players)
   app.post<{
-    Body: { id: string; url: string; activityPath: string; capacity: number; matchIds?: string[]; players?: Record<string, number> };
+    Body: {
+      id: string;
+      url: string;
+      activityPath: string;
+      capacity: number;
+      matchIds?: string[];
+      players?: Record<string, number>;
+      rounds?: Record<string, number>;
+    };
   }>(
     "/internal/servers/heartbeat",
     {
@@ -344,6 +406,8 @@ export function buildApp(deps: Deps): FastifyInstance {
             matchIds: { type: "array", maxItems: 1024, items: { type: "string", minLength: 1, maxLength: 64 } },
             // How many players each match has now (match id to count), for the lobby's room left.
             players: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 64 } },
+            // The round each match is in now (match id to round number), for a late joiner's "night in progress, round N".
+            rounds: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 10000 } },
           },
         },
       },
@@ -351,6 +415,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     async (request, reply) => {
       registry.heartbeat({ ...request.body, matchIds: request.body.matchIds ?? [] });
       for (const [matchId, players] of Object.entries(request.body.players ?? {})) lobbies.setPlayers(matchId, players);
+      for (const [matchId, round] of Object.entries(request.body.rounds ?? {})) lobbies.setRound(matchId, round);
       return reply.code(204).send();
     },
   );

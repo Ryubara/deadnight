@@ -3,8 +3,10 @@ extends GdUnitTestSuite
 ## the reserve of what they carry (and only what fits), and `swap` changes the weapon in hand.
 
 
-func _start() -> Night:
-	var night := await NightFixture.start(self, Night.Mode.MANUAL)
+## A night with 5000 points. `tuning` replaces the shipped table (a crane test that is not about
+## breakdowns asks for the steady crane: with six prizes the plays run past the safe ones).
+func _start(tuning: RulesTuning = null) -> Night:
+	var night := await NightFixture.start(self, Night.Mode.MANUAL, tuning)
 	NightFixture.run(night, 5)
 	night.server.rules.apply(RulesAction.grant_points(1, 5000))
 	NightFixture.run(night, 2)
@@ -28,7 +30,7 @@ func test_a_wall_weapon_bought_through_the_rules_is_carried_and_in_hand() -> voi
 
 
 func test_every_crane_prize_reaches_the_players_hands() -> void:
-	var night := await _start()
+	var night := await _start(RulesFixture.steady_crane_tuning())
 	var item := night.server.rules.tuning.economy.item(&"crane_play")
 	for _i in item.pool.size():
 		night.server.buy(1, &"crane_play")
@@ -111,7 +113,8 @@ func test_swap_changes_the_weapon_in_hand_and_the_frame_lists_the_arms() -> void
 	assert_str(String(night.state.me()["weapon"])).is_equal("rifle")
 	var arms: Dictionary = night.state.me()["arms"]
 	assert_array(arms.keys()).contains_exactly_in_any_order([&"crowbar", &"pistol", &"rifle"])
-	assert_array(arms[&"pistol"]).is_equal([10, 40])
+	# Magazine, reserve and the tier (0: not re-cut).
+	assert_array(arms[&"pistol"]).is_equal([10, 40, 0])
 	for expected in ["crowbar", "pistol", "rifle"]:
 		_swap(night)
 		assert_str(String(night.state.me()["weapon"])).is_equal(expected)

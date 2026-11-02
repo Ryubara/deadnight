@@ -27,7 +27,7 @@ func test_every_catalog_sound_has_all_its_variant_files() -> void:
 	for id: StringName in SoundCatalog.ids():
 		var def := SoundCatalog.get_def(id)
 		(
-			assert_bool(SoundCatalog.GROUP_LIMITS.has(def.group))
+			assert_bool(SoundCatalog.group_limits().has(def.group))
 			. override_failure_message("%s: group %s has no limit" % [id, def.group])
 			. is_true()
 		)
@@ -80,7 +80,7 @@ func test_a_variant_never_repeats_back_to_back() -> void:
 		_audio.advance(1.0)
 		var player := _audio.play(&"zombie_groan", Vector3(0, 0, 3)) as AudioStreamPlayer3D
 		assert_object(player).is_not_null()
-		var path := player.stream.resource_path
+		var path := PcmStream.source(player.stream)
 		assert_str(path).is_not_equal(last)
 		last = path
 
@@ -118,7 +118,7 @@ func test_a_sound_past_its_range_is_not_started() -> void:
 
 func test_gunfire_is_limited_to_its_group_and_makes_no_new_nodes() -> void:
 	var children := _audio.get_child_count()
-	var limit: int = SoundCatalog.GROUP_LIMITS[&"gun"]
+	var limit: int = SoundCatalog.group_limits()[&"gun"]
 	for i in 60:
 		_audio.play(&"shot_rifle", Vector3(0, 0, 4.0 + i * 0.01))
 	assert_int(_audio.budget_3d().group_count(&"gun")).is_less_equal(limit)
@@ -126,7 +126,7 @@ func test_gunfire_is_limited_to_its_group_and_makes_no_new_nodes() -> void:
 
 
 func test_28_zombies_do_not_drown_the_night() -> void:
-	var limit: int = SoundCatalog.GROUP_LIMITS[&"zombie_voice"]
+	var limit: int = SoundCatalog.group_limits()[&"zombie_voice"]
 	# Zombie i stands i + 2 metres away, the nearest first; all groan in the same instant.
 	for i in 28:
 		_audio.play(&"zombie_groan", Vector3(i + 2.0, 0, 0))
@@ -145,7 +145,7 @@ func test_28_zombies_do_not_drown_the_night() -> void:
 
 
 func test_a_nearer_zombie_takes_over_from_a_farther_one() -> void:
-	var limit: int = SoundCatalog.GROUP_LIMITS[&"zombie_voice"]
+	var limit: int = SoundCatalog.group_limits()[&"zombie_voice"]
 	for i in limit:
 		_audio.play(&"zombie_groan", Vector3(30.0, 0, 0))
 	var near := _audio.play(&"zombie_groan", Vector3(3.0, 0, 0)) as AudioStreamPlayer3D
@@ -185,5 +185,5 @@ func _run_sequence(seed_value: int) -> Array:
 	for i in 12:
 		_audio.advance(1.0)
 		var player := _audio.play(&"shot_smg", Vector3(0, 0, 5)) as AudioStreamPlayer3D
-		out.append([player.stream.resource_path, snappedf(player.pitch_scale, 0.00001)])
+		out.append([PcmStream.source(player.stream), snappedf(player.pitch_scale, 0.00001)])
 	return out

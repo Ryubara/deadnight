@@ -21,11 +21,12 @@ location keys (Body and the IK feet carry them), which are written in file units
 """
 
 import math
+import re
 import sys
 from pathlib import Path
 
 import bpy
-from mathutils import Euler, Quaternion, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gaitlib as gl
@@ -46,6 +47,9 @@ CLASSES = {"Rifle": "Shotgun", "Shotgun": "Shotgun", "Pistol": "Pistol", "Melee"
 CLIPS = {}
 # The pose the glTF file's nodes hold (arms down, fingers curled), read right after the import: see capture_static.
 STATIC = {}
+# name -> bones the clip does not key. The glTF exporter samples every bone of every clip whatever its keys, so
+# build_soldier.py takes these channels out of the file after the export (strip_channels).
+UNKEYED = {}
 
 
 def capture_static(arm):
@@ -125,10 +129,12 @@ def blend(a, b, t):
     return out
 
 
-def bake_static(arm, action):
+def bake_static(arm, action, skip=()):
     """Key every bone the action leaves out at its static pose (first and last frame), so the export samples the
-    standing pose for it and not the rest pose or whatever the clip before left behind."""
+    standing pose for it and not the rest pose or whatever the clip before left behind. Bones in `skip` stay unkeyed
+    (the fingers of the clips that leave the hands to `HandGripPose`)."""
     keyed = {(fc.data_path.split('"')[1], fc.data_path.rsplit(".", 1)[1]) for fc in fcurves(action)}
+    keyed |= {(b, prop) for b in skip for prop in ("rotation_quaternion", "location")}
     end = action.frame_range[1]
     ad = arm.animation_data or arm.animation_data_create()
     ad.action = action
@@ -145,8 +151,9 @@ def bake_static(arm, action):
     ad.action = None
 
 
-def write(arm, name, keys, bones, layer, loop, cls=None, events=None):
-    """Create action `name` keyed at `keys` [(frame, pose)] on `bones`; every other bone at the static pose."""
+def write(arm, name, keys, bones, layer, loop, cls=None, events=None, skip=()):
+    """Create action `name` keyed at `keys` [(frame, pose)] on `bones`; every other bone at the static pose, except
+    the bones in `skip`, which the clip does not key at all."""
     a = bpy.data.actions.new(name)
     a.use_fake_user = True
     ad = arm.animation_data or arm.animation_data_create()
@@ -170,7 +177,9 @@ def write(arm, name, keys, bones, layer, loop, cls=None, events=None):
             pb.location = pose[b]["loc"]
             pb.keyframe_insert("location", frame=frame, group=b)
     ad.action = None
-    bake_static(arm, a)
+    bake_static(arm, a, skip)
+    if skip:
+        UNKEYED[name] = set(skip)
     CLIPS[name] = {
         "layer": layer,
         "loop": loop,
@@ -185,6 +194,7 @@ def write(arm, name, keys, bones, layer, loop, cls=None, events=None):
 def build(arm):
     """Author every new clip on `arm` (a kit Soldier armature with the kit's actions loaded); fill CLIPS."""
     CLIPS.clear()
+    UNKEYED.clear()
     acts = {a.name.split("|")[-1]: a for a in bpy.data.actions}
     up = upper_bones(arm)
     every = [b.name for b in arm.pose.bones]
@@ -291,6 +301,8 @@ def build(arm):
     grenade(arm, up, idle, idle_mid, aim)
     repair(arm, up, aim)
     aim_moves(arm, acts, aim, every)
+    revive(arm, acts)
+    sprint_carries(arm, acts, aim, up)
     return CLIPS
 
 
@@ -451,3 +463,492 @@ def aim_moves(arm, acts, aim, every):
     print("AIM_MOVES", {k: (CLIPS[k]["ground_speed"], report[k]) for k in AIM_MOVES},
           {k: (round(v["thigh"] * unit, 3), round(v["ankle"].length * unit, 3), round(v["spread"] * unit, 4))
            for k, v in shape.items()})  # fmt: skip
+
+
+# ---- Downed and revive (Deadnight #504, for the revives of #486) ---------------------------------------------------
+# Positions here are world metres at kit scale (Blender Z up; the Soldier faces -Y, his right is -X), the probe's frame;
+# the game draws the Soldier at GAME_SCALE. Poses are built by turning bones about world axes and solving arms and legs
+# onto world targets, not by local Euler offsets: lying down and kneeling move every bone far from the standing axes
+# the offsets above were measured in.
+
+# The finger bones: no clip here keys them, so the hand keeps the skeleton's rest fist (the file's static pose) and
+# HandGripPose (#507) is free to close it on whatever the hand holds.
+FINGERS = tuple(f"{f}{i}.{s}" for f in ("Pinky", "Middle", "Index", "Thumb") for i in (1, 2, 3) for s in ("L", "R")
+                if not (f == "Thumb" and i == 3))  # fmt: skip
+DOWNED_CRAWL_SPEED = 0.45  # m/s in the game: the planted heel's sweep (#505 may change it; the rate follows)
+DOWNED_CRAWL_FRAMES = 32  # one pull of each heel
+REVIVE_FRAMES = 24  # one loop, two presses
+REVIVE_HANDS = (-0.66, 0.36)  # the hands ahead (y) and up (z) at the top of a press, kit metres; 0.07 lower pressed
+
+
+def world_axis(arm, axis):
+    """A world direction in the armature's space."""
+    return (arm.matrix_world.to_3x3().normalized().inverted() @ Vector(axis)).normalized()
+
+
+def turn(arm, pose, bone, axis, degrees):
+    """Turn `bone`, and everything hanging from it, `degrees` about a world axis through its head (right hand rule:
+    about +X a positive turn takes +Y toward +Z, so it raises a torso lying along +Y and leans a standing one forward)."""
+    gl.apply_pose(arm, pose)
+    m = arm.pose.bones[bone].matrix.to_3x3().normalized()
+    r = Quaternion(world_axis(arm, axis), math.radians(degrees)).to_matrix()
+    pose[bone]["rot"] = pose[bone]["rot"] @ (m.inverted() @ r @ m).to_quaternion()
+
+
+def head_at(arm, pose, bone):
+    """World position of a bone's head in `pose`."""
+    gl.apply_pose(arm, pose)
+    return arm.matrix_world @ arm.pose.bones[bone].head
+
+
+def move(arm, pose, bone, delta):
+    """Move a bone's head by `delta` (world metres) through its location key."""
+    gl.apply_pose(arm, pose)
+    b = arm.data.bones[bone]
+    base = b.matrix_local
+    if b.parent:
+        base = arm.pose.bones[b.parent.name].matrix @ b.parent.matrix_local.inverted() @ b.matrix_local
+    d = arm.matrix_world.inverted().to_3x3() @ Vector(delta)
+    pose[bone]["loc"] = pose[bone]["loc"] + base.to_3x3().inverted() @ d
+
+
+def place(arm, pose, bone, target):
+    """Put a bone's head at a world position (the IK feet, which hang from Root)."""
+    move(arm, pose, bone, Vector(target) - head_at(arm, pose, bone))
+
+
+def reach(arm, pose, upper, lower, end, target, pole, tip=None):
+    """Two-bone solve: turn `upper` and `lower` so the head of `end` (a child of `lower`) meets `target` (world), the
+    middle joint bent toward the world direction `pole`. The arm's own lengths, measured in the pose; out of reach,
+    the end stops on the line to the target. `tip` is the end in the lower bone's frame when `end` does not hang
+    from it (a leg: the ankle of gaitlib.leg_shape, since the IK foot hangs from Root)."""
+    gl.apply_pose(arm, pose)
+    inv = arm.matrix_world.inverted()
+    pu, pl, pe = arm.pose.bones[upper], arm.pose.bones[lower], arm.pose.bones[end]
+    root, mid = pu.head.copy(), pl.head.copy()
+    if tip is None:
+        tip = pl.matrix.to_3x3().inverted() @ (pe.head - mid)
+    l1, l2 = (mid - root).length, tip.length
+    to = inv @ Vector(target) - root
+    dist = min(to.length, (l1 + l2) * 0.995)
+    d = to.normalized()
+    bend = inv.to_3x3() @ Vector(pole)
+    bend = (bend - d * bend.dot(d)).normalized()
+    a = (l1 * l1 - l2 * l2 + dist * dist) / (2 * dist)
+    new_mid = root + d * a + bend * math.sqrt(max(l1 * l1 - a * a, 0.0))
+    r1 = (mid - root).rotation_difference(new_mid - root).to_matrix()
+    mu = r1 @ pu.matrix.to_3x3()
+    ml = r1 @ pl.matrix.to_3x3()
+    ml = (ml @ tip).rotation_difference(root + d * dist - new_mid).to_matrix() @ ml
+    bu, bl = arm.data.bones[upper], arm.data.bones[lower]
+    rest_u = (bu.parent.matrix_local.inverted() @ bu.matrix_local).to_3x3()
+    rest_l = (bu.matrix_local.inverted() @ bl.matrix_local).to_3x3()
+    pose[upper]["rot"] = ((pu.parent.matrix.to_3x3() @ rest_u).inverted() @ mu).to_quaternion()
+    pose[lower]["rot"] = ((mu @ rest_l).inverted() @ ml).to_quaternion()
+
+
+def legs(arm, pose, shape, feet, knees):
+    """Put each IK foot at its world target and solve its leg to meet it, the knee bent toward its world direction:
+    feet {"Foot.L": (x, y, z), ...}, knees {"Foot.L": (x, y, z), ...}. A foot out of reach is pulled in to the leg's
+    reach (gaitlib.REACH_USE), so the boot never stretches off the shin."""
+    for upper, lower, foot in gl.LEGS:
+        hip = head_at(arm, pose, upper)
+        to = Vector(feet[foot]) - hip
+        most = (shape[lower]["thigh"] + shape[lower]["ankle"].length) * gl.REACH_USE * arm.matrix_world.to_scale()[0]
+        place(arm, pose, foot, hip + to.normalized() * min(to.length, most))
+        reach(arm, pose, upper, lower, foot, head_at(arm, pose, foot), knees[foot], tip=shape[lower]["ankle"])
+
+
+def copy(pose):
+    return {b: {"rot": v["rot"].copy(), "loc": v["loc"].copy()} for b, v in pose.items()}
+
+
+# The downed sit (world, kit scale): the hips over the player's place, the chest raised 30 degrees off the ground and
+# leaned on to the left elbow, the right hand pressed on the belly, the heels out in front and the right knee drawn up.
+# Leaned, not sat up straight: from the shoulder camera behind him a straight sit is all helmet; leaned, the back, the
+# right arm and the legs show beside it.
+DOWNED_SHIFT = (0.0, -0.45, 0.0)  # moves Death's last frame so the hips sit over the player's place
+DOWNED_SIT = {"Abdomen": 20, "Torso": 14, "Neck": 8, "Head": 8}  # degrees about world X, off the ground
+DOWNED_LEAN = 12  # degrees about world Y, on to his left side (+X)
+# The whole body turned about the vertical (the head to his left, the feet to his right), so the shoulder camera behind
+# him does not look along the body over the helmet: the legs show past it.
+DOWNED_TURN = -20
+DOWNED_KNEES = {"Foot.L": (0.2, 0.0, 1.0), "Foot.R": (-0.3, 0.0, 1.0)}  # up, and a little out
+DOWNED_ELBOW = ((0.38, 0.12, 0.18), (0.3, 0.8, -0.5))  # left hand from the hips (x, y) and up (z); elbow pole
+DOWNED_WOUND = (-0.05, 0.08, 0.2)  # right hand: to his right, up the spine and out of the belly, from Abdomen
+DOWNED_WOUND_POLE = (-1.0, 0.3, -0.3)
+DOWNED_FEET = {"Foot.L": (0.2, -0.8, 0.05), "Foot.R": (-0.22, -0.55, 0.06)}  # from the hips; the right knee up
+
+
+def at_hips(arm, pose, x, y, z):
+    """A world point from the hips' centre: (x, y) in the frame of the turned body, z from the ground."""
+    c = (head_at(arm, pose, "UpperLeg.L") + head_at(arm, pose, "UpperLeg.R")) / 2
+    v = Quaternion((0, 0, 1), math.radians(DOWNED_TURN)) @ Vector((x, y, 0))
+    return Vector((c.x + v.x, c.y + v.y, z))
+
+
+def belly(arm, pose):
+    """The front of the belly (world): from Abdomen, along the spine and out of the chest's front."""
+    root, neck = head_at(arm, pose, "Abdomen"), head_at(arm, pose, "Neck")
+    spine = (neck - root).normalized()
+    ahead = Vector((0, -1, 0))
+    front = (ahead - spine * ahead.dot(spine)).normalized()
+    x, along, out = DOWNED_WOUND
+    return root + Vector((x, 0, 0)) + spine * along + front * out
+
+
+def downed_base(arm, acts, shape):
+    death = acts["Death"]
+    pose = full(arm, sample(death, death.frame_range[1]))
+    move(arm, pose, "Body", DOWNED_SHIFT)
+    for foot in ("Foot.L", "Foot.R"):
+        move(arm, pose, foot, DOWNED_SHIFT)
+    for bone, deg in DOWNED_SIT.items():
+        turn(arm, pose, bone, (1, 0, 0), deg)
+    turn(arm, pose, "Abdomen", (0, 1, 0), DOWNED_LEAN)
+    turn(arm, pose, "Body", (0, 0, 1), DOWNED_TURN)
+    legs(arm, pose, shape, {f: at_hips(arm, pose, *v) for f, v in DOWNED_FEET.items()}, DOWNED_KNEES)
+    return pose
+
+
+def downed_arms(arm, pose, elbow=None):
+    (x, y, z), pole = elbow or DOWNED_ELBOW
+    reach(arm, pose, "UpperArm.L", "LowerArm.L", "Index1.L", at_hips(arm, pose, x, y, z), pole)
+    reach(arm, pose, "UpperArm.R", "LowerArm.R", "Index1.R", belly(arm, pose), DOWNED_WOUND_POLE)
+    return pose
+
+
+def revive(arm, acts):
+    """Downed_Idle, Downed_Crawl and Revive_Kneel (Deadnight #504): the downed player and the teammate pulling them up.
+    Full body (they own the legs too), keyed on every bone but the fingers. Built into their own files:
+    `--clips Downed_Idle,Revive_` (game/assets/characters/soldier/revive/) and `--clips Downed_Crawl`
+    (game/assets/characters/soldier/crawl/, kept apart so it can be dropped if downed players do not move, #505).
+
+    Downed_Idle reads from the shoulder camera and from above: sitting up on the left hand, the right hand on the
+    wound, the right knee drawn up, the head turning to look for help; where the old `Downed` (Death's last frame) lay
+    flat with the head away from the camera, a helmet and two boots seen from behind.
+    """
+    every = [b.name for b in arm.pose.bones if b.name not in FINGERS]
+    run = acts["Run"]
+    shape = gl.leg_shape(arm, [full(arm, sample(run, f)) for f in range(int(run.frame_range[1]) + 1)])
+
+    # ---- Downed_Idle: two slow breaths over 2 s, the head looking left on the first and right on the second --------
+    sit = downed_base(arm, acts, shape)
+    downed_arms(arm, sit)
+
+    def breath(look):
+        p = copy(sit)
+        turn(arm, p, "Torso", (1, 0, 0), 3)  # the chest lifts
+        turn(arm, p, "Neck", (0, 0, 1), look * 0.4)
+        turn(arm, p, "Head", (0, 0, 1), look * 0.6)
+        turn(arm, p, "Head", (1, 0, 0), -4)  # chin up, looking for someone
+        return downed_arms(arm, p)
+
+    keys = [(0, sit), (12, breath(22)), (24, sit), (36, breath(-22)), (48, sit)]
+    write(arm, "Downed_Idle", keys, every, "full", True, skip=FINGERS)
+
+    # ---- Downed_Crawl: the heels dig in ahead and pull him forward, one then the other; the left hand pushes -------
+    n = DOWNED_CRAWL_FRAMES
+    half = n // 2
+    sweep = DOWNED_CRAWL_SPEED / GAME_SCALE / FPS * half  # kit metres a planted heel travels
+    lift = 0.06
+    keys = []
+    for f in range(n + 1):
+        p = copy(sit)
+        rock = math.sin(2 * math.pi * f / half)  # a lean into each pull
+        turn(arm, p, "Abdomen", (1, 0, 0), 3 * rock)
+        turn(arm, p, "Body", (0, 0, 1), 4 * math.sin(2 * math.pi * f / n))
+        feet = {}
+        for foot, phase in (("Foot.R", 0), ("Foot.L", half)):
+            t = (f + phase) % n
+            x = DOWNED_FEET[foot][0]
+            reach_y = DOWNED_FEET["Foot.L"][1]  # both heels reach as far as the straight leg
+            if t <= half:  # planted: sweeps back toward the hips at the crawl speed
+                y, z = reach_y + sweep * t / half, 0.05
+            else:  # lifted a little and carried forward again
+                s = (t - half) / half
+                y = reach_y + sweep * (1 - s)
+                z = 0.05 + lift * math.sin(math.pi * s)
+            feet[foot] = at_hips(arm, p, x, y, z)
+        legs(arm, p, shape, feet, DOWNED_KNEES)
+        tl = (f + half) % n  # the left elbow pushes with the left heel: planted, it slides back with the ground
+        (ex, ey, ez), pole = DOWNED_ELBOW
+        push = sweep * 0.5
+        dy = push * tl / half if tl <= half else push * (1 - (tl - half) / half)
+        dz = 0.0 if tl <= half else 0.06 * math.sin(math.pi * (tl - half) / half)
+        downed_arms(arm, p, elbow=((ex, ey + dy, ez + dz), pole))
+        keys.append((f, p))
+    events = {"pull_right": 0, "pull_left": half}
+    write(arm, "Downed_Crawl", keys, every, "full", True, events=events, skip=FINGERS)
+    CLIPS["Downed_Crawl"]["ground_speed"] = round(gl.measure_gait(arm, bpy.data.actions["Downed_Crawl"], GAME_SCALE), 2)
+
+    # ---- Revive_Kneel: down on the right knee, both hands on the teammate's chest, pressing twice a second ----------
+    stand = full(arm, sample(acts["Idle"], 0))
+    kneel = copy(stand)
+    move(arm, kneel, "Body", (0.0, 0.04, -0.4))
+    # Upright, the arms reaching out and down: leaned over the hands, his big head met the teammate's.
+    turn(arm, kneel, "Abdomen", (1, 0, 0), 4)
+    turn(arm, kneel, "Torso", (1, 0, 0), 4)
+    turn(arm, kneel, "Head", (1, 0, 0), 16)
+    # The left foot flat ahead, its knee up and forward; the right knee down, the ankle raised behind it and the toes
+    # curled under on the ground (the boot is 0.29 m long: 36 degrees down from the flat foot's 7 puts its toe at 0).
+    legs(arm, kneel, shape, {"Foot.L": (0.2, -0.4, 0.022), "Foot.R": (-0.19, 0.4, 0.2)},
+         {"Foot.L": (0.0, -1.0, 0.6), "Foot.R": (0.0, -1.0, -0.6)})  # fmt: skip
+    turn(arm, kneel, "Foot.R", (1, 0, 0), 36)
+
+    def hands(p, down):
+        z = REVIVE_HANDS[1] - down
+        reach(arm, p, "UpperArm.L", "LowerArm.L", "Index1.L", (0.09, REVIVE_HANDS[0], z), (1.0, 0.4, -0.2))
+        reach(arm, p, "UpperArm.R", "LowerArm.R", "Index1.R", (-0.09, REVIVE_HANDS[0], z), (-1.0, 0.4, -0.2))
+        return p
+
+    up_pose = hands(copy(kneel), 0.0)
+    pressed = copy(kneel)
+    turn(arm, pressed, "Torso", (1, 0, 0), 5)
+    hands(pressed, 0.07)
+    n = REVIVE_FRAMES
+    keys = [(0, up_pose), (n // 4, pressed), (n // 2, up_pose), (3 * n // 4, pressed), (n, up_pose)]
+    write(arm, "Revive_Kneel", keys, every, "full", True, events={"press": [n // 4, 3 * n // 4]}, skip=FINGERS)
+
+
+# ---- Sprint carry (Deadnight #459) -------------------------------------------------------------------------------
+# While the body sprints, the legs play the kit Run and the upper body plays Sprint_<Class>: the weapon rides the
+# swing of the arms and the chest instead of hanging in the aim pose. Each clip is the kit Run's own 17 frames, frame
+# for frame (its spine twist and bob, its left arm), so the swing lands on Run's footfalls by construction and the
+# game only has to play it at Run's time. The right arm comes from the kit's Run_Gun (the one-handed gun run, which
+# the kit keys on the same 17 frames); the two-handed guns are carried low across the chest with both hands on.
+SPRINT_CLASSES = ("Rifle", "Shotgun", "Pistol", "Melee")
+# Run's frames where the Body is lowest, one frame after each foot plants (right foot at 3.5, left at 12.5): the
+# carried gun dips a frame after the body, so it reads heavy.
+SPRINT_LOW = (5, 14)
+# The frame of Run whose chest is the reference for the carry targets below (Torso turned least: 1 degree).
+SPRINT_REF = 4
+# The two-handed carry, per class, in the frame of the chest at SPRINT_REF (the Soldier faces -Y, his right is -X):
+# the way the right upper arm hangs from the shoulder, the way the muzzle points and the top of the gun faces (the
+# grip follows: the kit hold puts it 0.62 m out along the forearm), how far the gun swings across with the chest
+# (degrees each way, on top of Run's own chest twist of 9 degrees each way), and how far it dips a frame after each
+# footfall (degrees the muzzle drops). The support point is the left hand's place on the fore-end: the hold's
+# `support` (game/gameplay/player/holds/<class>.tres, model units) times its `model_scale`, so the left hand meets
+# the weapon the game draws.
+SPRINT_CARRY = {
+    "Rifle": {"upper": (-0.35, -0.05, -1.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+              "swing": 6.0, "dip": 4.0, "support": (-0.45 * 0.71, -0.05 * 0.71)},
+    "Shotgun": {"upper": (-0.35, -0.05, -1.0), "muzzle": (0.85, -0.52, 0.4), "top": (-0.3, 0.2, 1.0),
+                "swing": 7.0, "dip": 5.0, "support": (-0.45 * 0.82, -0.03 * 0.82)},
+}  # fmt: skip
+# Pistol: Run_Gun's right arm (the kit's own one-handed gun run: the forearm pumps 46 degrees a stride), with the upper
+# arm swinging this share of the left arm's swing, half a stride later, so the gun hand swings at the side too.
+SPRINT_PISTOL_SWING = 0.35
+# Melee: a runner's arm with the bat in the fist. The upper arm hangs (`upper`, chest frame) and swings fore and aft
+# from the shoulder, against the left arm (back at frame 0, when the left hand leads), `swing` degrees each way; the
+# forearm stays bent forward (`fore`) and pumps `pump` times the arm's swing, so the bat stays up and rocks with the
+# stride instead of hanging toward the legs. The arm is held out from the side so the weapon clears the body and the
+# head from the shoulder camera behind him.
+# `shaft` is the way the weapon's shaft leans (chest frame): the forearm is turned about its own axis to bring it as
+# close as it can, up and back over the shoulder and a little out.
+SPRINT_MELEE = {"upper": (-0.5, 0.1, -1.0), "fore": (-0.3, -1.0, 0.3), "shaft": (-0.25, 0.45, 1.0), "swing": 24.0,
+                "pump": 1.2}  # fmt: skip
+
+
+def _rot(m):
+    """The rotation of a world or pose matrix with its scale taken out."""
+    return m.to_3x3().normalized()
+
+
+def _world(arm, bone):
+    """(rotation, head) of a pose bone in the world: the rotation orthonormal, the head in metres."""
+    m = arm.matrix_world @ arm.pose.bones[bone].matrix
+    return _rot(m), m.translation.copy()
+
+
+def _set_world_rot(arm, bone, rot):
+    """Turn a pose bone so its world rotation is `rot`; its head stays where its parent puts it."""
+    pb = arm.pose.bones[bone]
+    pose_rot = _rot(arm.matrix_world).inverted() @ rot
+    pb.matrix = Matrix.Translation(pb.matrix.translation) @ pose_rot.to_4x4()
+    bpy.context.view_layer.update()
+
+
+def _turn(arm, bone, frm, to):
+    """Turn a pose bone in the world so the direction `frm` becomes `to` (the shortest turn)."""
+    r, _ = _world(arm, bone)
+    _set_world_rot(arm, bone, frm.rotation_difference(to).to_matrix() @ r)
+
+
+def _reach(arm, bones, goal, pole, back=0.0):
+    """Two-bone IK in the world (WeaponHandsIK._reach in the game): turn upper and lower so the hand bone's head
+    reaches `goal`, the elbow toward `pole`; with `back` the hand stops that far short along the forearm. Returns how
+    far the hand ended from where it was sent (metres)."""
+    upper, lower, hand = bones
+    target = goal
+    for _ in range(2):
+        root, elbow, wrist = (_world(arm, b)[1] for b in bones)
+        lu, ll = (elbow - root).length, (wrist - elbow).length
+        target = goal - (wrist - elbow).normalized() * back
+        to = target - root
+        dist = min(max(to.length, abs(lu - ll) + 0.01), lu + ll - 0.001)
+        d = to.normalized()
+        along = (lu * lu - ll * ll + dist * dist) / (2 * dist)
+        height = math.sqrt(max(lu * lu - along * along, 0.0))
+        bend = (pole - d * pole.dot(d)).normalized()
+        new_elbow = root + d * along + bend * height
+        _turn(arm, upper, elbow - root, new_elbow - root)
+        e, w = _world(arm, lower)[1], _world(arm, hand)[1]
+        _turn(arm, lower, w - e, root + d * dist - new_elbow)
+    return (_world(arm, hand)[1] - target).length
+
+
+def _pose_arm(arm, pose):
+    for pb in arm.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+        pb.rotation_quaternion = pose[pb.name]["rot"]
+        pb.location = pose[pb.name]["loc"]
+    bpy.context.view_layer.update()
+
+
+def _read_pose(arm, like):
+    """The armature's pose now, rotations only: locations stay as `like` has them (turning a bone through its matrix
+    must not move it)."""
+    return {
+        pb.name: {"rot": pb.rotation_quaternion.copy(), "loc": like[pb.name]["loc"].copy()} for pb in arm.pose.bones
+    }
+
+
+def _held(kit):
+    """The kit weapon `kit` on Index1.R, or None (build_soldier removes them only after build)."""
+    return next((o for o in bpy.data.objects if o.parent_type == "BONE" and o.parent_bone == "Index1.R"
+                 and re.sub(r"\.\d+$", "", o.name) == kit), None)  # fmt: skip
+
+
+def _frame(muzzle, top):
+    """A gun's basis from where its muzzle points and its top faces (columns: muzzle, top, side)."""
+    m = Vector(muzzle).normalized()
+    t = Vector(top)
+    t = (t - m * t.dot(m)).normalized()
+    return Matrix((m, t, m.cross(t))).transposed()
+
+
+def _gun_basis(obj):
+    """World basis of a held kit gun: its local axis that points most ahead (-Y) in the gun hold is the muzzle, the
+    one of the others that points most up is the top."""
+    r = _rot(obj.matrix_world)
+    axes = [s * r.col[i] for i in range(3) for s in (1, -1)]
+    muzzle = max(axes, key=lambda a: -a.y)
+    top = max((a for a in axes if abs(a.dot(muzzle)) < 0.5), key=lambda a: a.z)
+    return _frame(muzzle, top)
+
+
+def _phase(f, n):
+    return 2 * math.pi * f / n
+
+
+def sprint_carries(arm, acts, aim, up):
+    """Sprint_Rifle, Sprint_Shotgun, Sprint_Pistol and Sprint_Melee: upper-body loops on the kit Run's 17 frames.
+
+    Every frame starts from Run at the same frame (its spine, shoulders and left arm: the chest twist and bob that
+    belong to the stride) with the right arm and the fingers of the gun hold (`aim`, Idle_Shoot frame 0; no kit clip
+    keys a finger, so they stay the static grip every weapon clip has), then poses the arms for the class. Only the
+    spine, the shoulders and the arms move: no finger curls and no change to the weapon's place in the hand, which
+    the game's hold owns.
+    """
+    run, run_gun = acts["Run"], acts["Run_Gun"]
+    n = int(run.frame_range[1])
+    assert n == int(run_gun.frame_range[1]), "Run_Gun and Run must share their cycle"
+    body = ("Abdomen", "Torso", "Neck", "Head", "Shoulder", "UpperArm", "LowerArm")
+    fingers = [b for b in up if b.split(".")[0] not in body]
+
+    def base(f, source=run):
+        p = full(arm, sample(source, f))
+        for b in [*fingers, "UpperArm.R", "LowerArm.R"] if source is run else fingers:
+            p[b] = {"rot": aim[b]["rot"].copy(), "loc": aim[b]["loc"].copy()}
+        return p
+
+    # The gun hold's right arm and gun: every carry target is turned from it.
+    _pose_arm(arm, aim)
+    rl_aim, elbow_aim = _world(arm, "LowerArm.R")
+    gun = _held("Shotgun")
+    gun_aim = _gun_basis(gun) if gun else _frame((0, -1, 0.3), (0, 0, 1))
+    grip_at = gun.matrix_world.translation if gun else _world(arm, "Index1.R")[1]
+    grip_local = rl_aim.inverted() @ (grip_at - elbow_aim)
+    _pose_arm(arm, base(SPRINT_REF))
+    t_ref, _ = _world(arm, "Torso")
+
+    report = {}
+    for cls, c in SPRINT_CARRY.items():
+        keys, grips, left = [], [], 0.0
+        for f in range(n + 1):
+            phase = _phase(f % n, n)
+            start = base(f % n)
+            _pose_arm(arm, start)
+            t, waist = _world(arm, "Torso")
+            follow = t @ t_ref.inverted()  # the chest's turn since the reference: the gun turns with it
+            # Across with the chest once a stride (the left hand leads at frame 0, as Run's left arm does), and down
+            # a frame after each footfall.
+            swing = Matrix.Rotation(math.radians(c["swing"]) * math.cos(phase), 3, "Z")
+            dip = c["dip"] * (math.cos(_phase(f - SPRINT_LOW[0], n / 2)) * 0.5 + 0.5)
+            side = (follow @ Vector((1, 0, 0))).normalized()
+            # The muzzle pitches down by the dip (about the chest's side axis), the rest of the gun with it.
+            want = Matrix.Rotation(math.radians(dip), 3, side) @ swing @ follow @ _frame(c["muzzle"], c["top"])
+            rl = want @ gun_aim.inverted() @ rl_aim
+            shoulder = _world(arm, "UpperArm.R")[1]
+            lu = (_world(arm, "LowerArm.R")[1] - shoulder).length
+            hang = swing @ follow @ Vector(c["upper"]).normalized()
+            _turn(arm, "UpperArm.R", _world(arm, "LowerArm.R")[1] - shoulder, hang * lu)
+            _set_world_rot(arm, "LowerArm.R", rl)
+            r_now, e_now = _world(arm, "LowerArm.R")
+            reached = e_now + r_now @ grip_local
+            grips.append(t.inverted() @ (reached - waist))
+            # The left hand on the fore-end: the hold's support point along the barrel, a little under it.
+            sup = reached + want.col[0] * -c["support"][0] + want.col[1] * c["support"][1]
+            side = (_world(arm, "UpperArm.L")[1] - shoulder).normalized()
+            pole = side * 0.45 + Vector((0, 0, -1))
+            left = max(left, _reach(arm, ("UpperArm.L", "LowerArm.L", "Index1.L"), sup, pole, back=0.07))
+            keys.append((f, _read_pose(arm, start)))
+        write(arm, f"Sprint_{cls}", keys, up, "upper", True, cls)
+        mid = sum(grips, Vector()) / len(grips)
+        report[cls] = {"grip from the waist": tuple(round(v, 2) for v in mid), "left hand miss": round(left, 3)}
+
+    # Pistol: Run_Gun's right arm, its upper arm swinging with the stride too (the left arm's swing, half a stride on).
+    left_arm = [full(arm, sample(run, f))["UpperArm.L"]["rot"] for f in range(n)]
+    mean = left_arm[0].slerp(left_arm[round(n / 2)], 0.5)
+    keys = []
+    for f in range(n + 1):
+        p = base(f % n, run_gun)
+        other = full(arm, sample(run, (f + n / 2) % n))["UpperArm.L"]["rot"]
+        e = (mean.inverted() @ other).to_euler("XYZ")  # the left arm's swing about its mean, in its own axes
+        mirrored = Euler((e.x, -e.y, -e.z), "XYZ").to_quaternion()  # the same swing on the right side
+        p["UpperArm.R"]["rot"] = p["UpperArm.R"]["rot"] @ Quaternion().slerp(mirrored, SPRINT_PISTOL_SWING)
+        keys.append((f, p))
+    write(arm, "Sprint_Pistol", keys, up, "upper", True, "Pistol")
+
+    # Melee: the runner's arm, from the gun hold's arm (the bat upright in the fist) turned by the shortest way, then
+    # the forearm rolled so the shaft leans where SPRINT_MELEE says. The shaft is the kit Shovel's long axis (its local
+    # Y, up in the gun hold), the hold every melee weapon copies.
+    m = SPRINT_MELEE
+    _pose_arm(arm, aim)
+    shovel = _held("Shovel")
+    shaft_up = _rot(shovel.matrix_world).col[1] if shovel else Vector((0, 0, 1))
+    shaft_local = _world(arm, "LowerArm.R")[0].inverted() @ shaft_up.normalized()
+    keys = []
+    for f in range(n + 1):
+        start = base(f % n)
+        _pose_arm(arm, start)
+        t, _ = _world(arm, "Torso")
+        follow = t @ t_ref.inverted()
+        side = (follow @ Vector((1, 0, 0))).normalized()
+        back = math.radians(m["swing"]) * math.cos(_phase(f % n, n))  # positive: the hand behind
+        s = _world(arm, "UpperArm.R")[1]
+        hang = Matrix.Rotation(back, 3, side) @ follow @ Vector(m["upper"]).normalized()
+        _turn(arm, "UpperArm.R", _world(arm, "LowerArm.R")[1] - s, hang)
+        fore = Matrix.Rotation(back * m["pump"], 3, side) @ follow @ Vector(m["fore"]).normalized()
+        e = _world(arm, "LowerArm.R")[1]
+        _turn(arm, "LowerArm.R", _world(arm, "Index1.R")[1] - e, fore)
+        r, e = _world(arm, "LowerArm.R")
+        axis = (_world(arm, "Index1.R")[1] - e).normalized()
+        want = follow @ Vector(m["shaft"]).normalized()
+        now, goal = (v - axis * v.dot(axis) for v in (r @ shaft_local, want))
+        roll = now.angle(goal) * (1 if now.cross(goal).dot(axis) > 0 else -1)
+        _set_world_rot(arm, "LowerArm.R", Matrix.Rotation(roll, 3, axis) @ r)
+        keys.append((f, _read_pose(arm, start)))
+    write(arm, "Sprint_Melee", keys, up, "upper", True, "Melee")
+    print("SPRINT", {k: CLIPS[f"Sprint_{k}"]["frames"] for k in SPRINT_CLASSES}, report)

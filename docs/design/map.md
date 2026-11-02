@@ -86,7 +86,9 @@ plaque only names the weapon).
 | Shotgun, on the wall | the concession's front wall, field side, left of the door | `weapon_shotgun`; once owned, its rounds | in the open before any door: the first weapon a player can save for, bought under the dead's eyes |
 | Rifle, on the wall | the booth's front wall, midway side | `weapon_rifle`; once owned, its rounds | past the concession: the long gun waits for the middle rounds and the player who has opened the lot |
 | Prize crane | one of four places (below); it starts inside the stand, beside the cabinet that was there | `crane_play`: a play, a spin, then a weapon the player lacks that only the buyer can take; it can break down and move | the stand is the first door; a gamble to spend the first thousand on |
-| Ammunition lockers (5) | the avenue (field), the stand, the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
+| Re-cut bench | the projection booth, in the middle of its floor at `(3.5, 28.2)`, facing the door, spot at `(3.5, 25.9)` | `upgrade_weapon`: re-cuts the weapon in hand ([the re-cut](upgrades.md)) | past the booth's door (750), mid rounds: the first thing the booth is for besides the rifle and the roost |
+| Soda fountain | the concession stand, behind the counter at `(8.2, 4.9)`, facing the door, spot at `(8.2, 3.7)` | `tonic_hearty`: more health ([the hearty tonic](upgrades.md#the-hearty-tonic)) | in the first area that opens: a first thing to save for after the shotgun |
+| Ammunition lockers (5) | the avenue (field), the stand (its north-east corner), the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
 
 ### The crane's places
 
@@ -104,6 +106,11 @@ beam over the current place says where it is.
 
 A play can only break down while another place is open to move to. The tests (`test_shop_spots.gd`) hold the markers to
 one for each index and to the rules above.
+
+The two machines are `RecutMachine` and `SodaFountain` (`game/world/machines/`), drawn from primitives like the crane
+and placed in the greybox over the hidden blocks (`ReCutMachine`, `SodaFountain`) that keep their collision and their
+place in the zombies' walking mesh. Each has a spot marker of its own kind (`upgrade`, `perk`); the marker of the
+stand's locker moved 3.6 m north so the fountain's spot is farther than a reach from it.
 
 A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
 real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one
@@ -419,9 +426,9 @@ not an errand for one. The start is no closer to danger: the players spawn 33 to
 
 ### Where a downed player can be revived
 
-Not built: the rules only get a downed player up at the end of the round, for a tenth of their points, and have no
-revive action yet ([rounds](rounds.md#open-questions)); the balance simulator assumes six seconds. The places to design
-it for are the lit ground at least 30 m from every spawn that is open, which is little:
+A teammate gets a downed player up by holding use beside them for six seconds ([rounds](rounds.md#revives)); at the
+round's end the rules also get them up, for a tenth of their points. The places to design it for are
+the lit ground at least 30 m from every spawn that is open, which is little:
 
 | Pocket | Size | Where | When |
 | --- | ---: | --- | --- |

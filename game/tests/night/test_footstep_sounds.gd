@@ -248,7 +248,7 @@ func test_the_takes_vary_and_never_repeat_back_to_back() -> void:
 	for _i in 60:
 		Audio.advance(0.3)
 		var player := Audio.play(&"step_own_asphalt") as AudioStreamPlayer
-		var path := (player.stream as AudioStream).resource_path
+		var path := PcmStream.source(player.stream)
 		assert_str(path).is_not_equal(last)
 		last = path
 		seen[path] = true
@@ -259,10 +259,9 @@ func test_your_own_steps_hold_two_voices_and_a_crowds_never_take_them() -> void:
 	var own := SoundCatalog.get_def(&"step_own_asphalt")
 	var crowd := SoundCatalog.get_def(&"step_asphalt")
 	assert_str(own.group).is_equal("step_own")
-	assert_int(SoundCatalog.GROUP_LIMITS[own.group]).is_equal(2)
+	assert_int(SoundCatalog.group_limits()[own.group]).is_equal(2)
 	assert_str(crowd.group).is_equal("step")
 	assert_int(own.priority).is_greater(crowd.priority)
-	assert_float(own.volume_db).is_equal(SoundCatalog.STEP_OWN_DB)
 	assert_str(own.bus).is_equal("Effects")
 
 

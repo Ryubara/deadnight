@@ -17,9 +17,10 @@ Each finger has one job until it lifts, tracked by its touch index, so move, loo
 | Control | Where | Does |
 | --- | --- | --- |
 | Move | anywhere on the left, below the top fifth | a stick that floats under the thumb and follows it past the rim; the rim is a sprint |
-| Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 183 degrees at sensitivity 1, a fast flick gains up to 1.6 times |
-| Fire | big, right thumb | `fire` held; a drag that starts on it also looks |
-| Aim, Jump, Reload, Swap, Grenade | an arc round Fire | `aim` (held), `jump`, `reload`, `swap_weapon`, `throw_grenade` |
+| Look | the rest of the screen | a drag turns the view; one swipe across the screen's height turns about 92 degrees at sensitivity 1 (100 px on a 390 px tall phone is 23 degrees), a fast flick gains up to 1.6 times |
+| Fire | big, right thumb | `fire` held, wherever the player aims (hip, aimed, auto-fire on or off); a drag that starts on it also looks, at the look sensitivity (#497) |
+| Aim | an arc round Fire | `aim`, **held** with auto-fire on (the default), a **toggle** with auto-fire off: a tap aims, the next tap leaves the aim, so the player can aim and shoot by hand. The button stays lit while the toggle is on. A drag that starts on it also looks, held or toggled (#497), so one thumb can aim and turn |
+| Jump, Reload, Swap, Grenade | an arc round Fire | `jump`, `reload`, `swap_weapon`, `throw_grenade` |
 | Shoulder swap ("SIDE") | small, above Swap, outside the middle of the screen | `swap_shoulder`: the camera moves to the other shoulder, to see round a corner |
 | Interact | left of Fire, only with a HUD prompt | `interact`; its caption says what it does (OPEN, BUY, HOLD for a broken fence, which keeps nailing boards while held, FUEL, SWITCH, TAKE, REVIVE) ([hold at a broken fence](rounds.md#the-fences-boards)) |
 | Pause | top, beside the round card | `pause` |
@@ -60,9 +61,10 @@ mirrored without overlap.
 ## Settings
 
 Touch controls (Auto, On, Off), button size (0.8 to 1.4), opacity at rest (0.3 to 1.0), left-handed layout, vibration
-on touch, **aim assist** (0 to 1, default 0.5) and **auto-fire** (Off, While aiming, Always; default Off). The assist
-slows the look drag near a zombie, pulls the view a little toward its chest while Aim or Fire is held, and auto-fire
-holds the trigger with the crosshair on a zombie; all of it only while a finger was the last input
+on touch, **aim assist** (0 to 1, default 0.5) and **auto-fire** (Off, On; default On, the maintainer's decision, see
+issue 470). The assist slows the look drag near a zombie, pulls the view a little toward its chest while Aim or Fire
+is held, and auto-fire holds the trigger with the crosshair on a zombie while the player aims (with it off, Aim is a
+toggle and nothing fires by itself); all of it only while a finger was the last input
 ([Touch aim assist](../research/aim-assist.md)).
 
 ## Not done yet
@@ -72,6 +74,13 @@ editor and asking Discord for landscape. Each is an open question on the researc
 
 ## Gotchas found while building it
 
+- **In a browser a finger is also a mouse motion (#470).** Godot's web runtime listens for `pointermove` on the
+  window, and a touch pointer fires it too, with `movementX/Y` in device pixels. Every finger (the move stick too)
+  therefore also turned the view as a mouse would, three times too far on a phone with a pixel ratio of 3, on top of
+  the layer's own look. The export page stops touch pointer moves in the capture phase (`html/head_include`,
+  `export_presets.cfg`), and the player ignores a mouse motion that is not the layer's own (`TouchLook.DEVICE`) while
+  the layer is up and a finger was the last input (`TouchLook.is_stray`). `tools/web_smoke/touch_look.py` proves both
+  on a phone-sized page with real touch events.
 - **Touch-to-mouse emulation clicks Fire.** The engine turns every touch into a left click, which is `fire`, and into
   mouse motion, so the layer turns `Input.emulate_mouse_from_touch` off while it is up and back on for menus.
 - **Injected events are in window pixels.** `Input.parse_input_event` runs the viewport's stretch backwards, so a look sent

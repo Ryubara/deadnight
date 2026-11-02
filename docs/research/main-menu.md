@@ -105,7 +105,7 @@ The picture is 1920 x 1080 design units (the canvas stretch). The soldier stands
 | Tab | Soldier at | Panel zone | Panels | What the player does there |
 | --- | --- | --- | --- | --- |
 | **Play** | left, 30% across, aiming into the lot | right column, 600 wide | **Play together**, **Quick join**, **Solo** (one flow object, the seam #391 fills with rooms: until it lands, Play opens a night and Quick join the join screen); **Today's challenges** under them: the three dailies, each with its progress and the time to the next refresh | start a night, see what today asks |
-| **Loadout** | centre-left, 36%, turning | right column, 700 wide | the wardrobe's content in this layout: preset, part selectors, colour strips, Randomize, Save and Revert; a **showcase weapon** row (the weapons that have a model) with that weapon's mastery steps | dress the soldier and see it turn; drag, right stick, or the turn keys |
+| **Loadout** | centre-left, 36%, turning | right column, 700 wide | the wardrobe's content in this layout: preset, part selectors, colour strips, Randomize (every choice is kept in memory while the tab is open and written once on leaving it); a **showcase weapon** row (the weapons that have a model) with that weapon's mastery steps | dress the soldier and see it turn; drag, right stick, or the turn keys |
 | **Shop** | left, 27% | right, 1100 wide | the prize counter: stub balance, categories (costumes, finishes, flashlight housings, reels, horn and emotes), a grid of items, each locked, owned or priced | browse and buy cosmetics; **placeholders until the economy exists** (marked "coming" on the screen, not hidden) |
 | **Challenges** | right, 74% | left, 1060 wide | the **dailies** with the time to the next refresh, the **Concession Orders** (three open), the **milestones**; a family filter (Light, Night, Together, Craft, Place) | see all progress, swap an order, browse by family |
 | **More** | left, 30%, small, wide shot | right column, 560 wide | Settings, Credits, Quit (not on the web), the account line (name; sign-in when the platform has it) | everything that is not a night or a look |
@@ -306,8 +306,9 @@ the new `car()` of #380. Three browsers, 1920 x 1080:
   budget. **Still not run: a mobile GPU.** When a phone number says the sky costs too much, the SubViewport is the next
   step.
 - **How to run it:** export the web build (`godot --headless --path game --export-release Web`), then
-  `uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/skin_tour.py build/web <out> --browser
-  chromium|chrome|firefox [--size 1920x1080] [--unpaced]`. Firefox needs `playwright install firefox` once. The CI `web`
+  `uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 --with pillow python
+  tools/web_smoke/skin_tour.py build/web <out> --browser chromium|chrome|firefox [--size 1920x1080]
+  [--unpaced]`. Firefox needs `playwright install firefox` once. The CI `web`
   job runs the Chromium tour at 1280 x 720 after the smoke run.
 - **A key is lost on a slow frame.** Godot reads input once per frame, and the runner's software renderer draws a frame
   in 200 to 250 ms, so the 150 ms key hold the smoke run uses can fall between two frames: the first CI runs of the tour

@@ -66,11 +66,11 @@ func _ticket(match_id: String, user: String, name := "Tester", settings := {}) -
 
 
 ## A hand-driven client with a ticket (MANUAL): it sends `_commands[night]` every tick.
-func _client(match_id: String, user: String, settings := {}) -> Night:
+func _client(match_id: String, user: String, name := "Tester", settings := {}) -> Night:
 	var night := Night.new()
 	_world().add_child(night)
 	var link := WebSocketLink.new()
-	link.ticket = _ticket(match_id, user, "Tester", settings)
+	link.ticket = _ticket(match_id, user, name, settings)
 	var joined := await night.start_remote(_url(), Night.Mode.MANUAL, 60.0, link)
 	assert_bool(joined).is_true()
 	_nights.append(night)
@@ -174,7 +174,7 @@ func test_the_rules_the_host_chose_ride_the_ticket_into_the_room_and_every_welco
 	var chosen := {"count_multiplier": 3.0, "max_alive": 9, "break_seconds": 11.0}
 	# The first ticket of the match opens the room with the host's rules; the JSON the backend signs
 	# gives numbers as floats, and a whole one still fits `max_alive`.
-	var ann := await _client("rules-a", "ann", chosen)
+	var ann := await _client("rules-a", "ann", "Tester", chosen)
 	var room := _server.room_of_match("rules-a")
 	assert_dict(room.server.rules.settings.to_dict()).is_equal(chosen)
 	assert_dict(ann.match_settings.to_dict()).is_equal(chosen)
@@ -200,6 +200,26 @@ func test_a_ticket_with_rules_out_of_bounds_is_turned_away_and_no_room_opens() -
 		assert_int(packet[0]).is_equal(NetWire.Type.REFUSED)
 		assert_int(packet[1]).is_equal(NetWire.Refusal.DENIED)
 	assert_array(_server.match_ids()).is_empty()
+
+
+func test_every_client_shows_the_same_names_and_a_duplicate_gets_a_number() -> void:
+	await _start()
+	var ann := await _client("names-a", "u1", "Ann")
+	var bo := await _client("names-a", "u2", "ann")
+	# The ticket's name is the seat's; the second Ann is told apart from the first.
+	var expected := {1: "Ann", 2: "ann (2)"}
+	assert_dict(_server.room_of_match("names-a")._names).is_equal(expected)
+	assert_bool(await _until(func() -> bool: return ann.state.names == expected)).is_true()
+	assert_dict(bo.state.names).is_equal(expected)
+	# A late joiner gets everyone's name in its WELCOME, and the others hear its own.
+	var cy := await _client("names-a", "u3", "Cy")
+	var everyone := {1: "Ann", 2: "ann (2)", 3: "Cy"}
+	assert_dict(cy.state.names).is_equal(everyone)
+	assert_bool(await _until(func() -> bool: return ann.state.names == everyone)).is_true()
+	assert_bool(await _until(func() -> bool: return bo.state.names == everyone)).is_true()
+	# Another night does not know them.
+	var dee := await _client("names-b", "u4", "Ann")
+	assert_dict(dee.state.names).is_equal({1: "Ann"})
 
 
 func test_a_server_with_no_room_left_turns_a_new_match_away() -> void:

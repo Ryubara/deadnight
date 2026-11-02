@@ -24,20 +24,20 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
 | Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 3 (the layout is in its header); a command is a fixed 23 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 9 (the layout is in its header; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 added the aim pose and look to each player of the frame, [below](#other-players-weapons-518); 9 put every seat's name in the WELCOME and a `player_named` event on a join, #485); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
-| Everyone else | `RemoteAvatars`: a character in the player's look and seat armband, drawn **100 ms behind** the newest frame between two frames, walking or running by its speed. The model is stood the way `player.tscn` stands its own (turned half way round, scaled by `PlayerTuning.model_scale`, 0.8): the first version drew it at scale 1, a quarter taller than on the player's own screen and facing the camera; `test_a_player_is_as_tall_on_every_screen` holds it to a millimetre | the same delay, kept |
+| Everyone else | `RemoteAvatars`: a **puppet `Player`** (the player scene with no input, collision, camera or simulation: `Player.make_puppet`) in the player's look and seat armband, drawn **100 ms behind** the newest frame between two frames. It is the same scene as a played body, so it has the same `PlayerAnimation` and everything the view draws on a body from the server's events is drawn on it too: the weapon in the hand and every swap (the frame's `weapon`), the aim pose and the barrel's tilt (the frame's `aim` and `pitch`), the fire clip with its flash on the muzzle, the reload, the swing and the grenade clips ([below](#other-players-weapons-518)). The model is stood the way `player.tscn` stands its own: the first version drew it at scale 1, a quarter taller than on the player's own screen and facing the camera; `test_a_player_is_as_tall_on_every_screen` holds it to a millimetre | the same delay, kept |
 | Looks | a client sends its look once after joining (`--look N` replaces the saved one for a run); `NightServer` owns the `LookServer` and answers with `look_packet` events, which the host sends only to the player they are for; every screen dresses every body, a client's own included, from the one `LookRegistry` table | |
 | Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
+| Game over | when the night ends (`night_over`) a client closes its link on purpose (the server frees the seat, no resume) and reads what is still in flight to the floor; before, nothing read the socket and a browser logged `Buffer payload full` for every later snapshot (#467) | |
 
-Not in the game yet: lag compensation for shots (#54), interest
-management and a tighter packing of zombies (#57), the Discord proxy (#52).
+Not in the game yet: the Discord proxy (#52).
 
 The first numbers from the real thing, loopback on one loaded machine: 222 bytes a `TICK` with two players and four
-zombies (6.6 KB/s down), a command 47 bytes (2.8 KB/s up; 23 and 1.4 KB/s since protocol 2), a round trip of
-2 to 18 ms. They are in
+zombies (6.6 KB/s down), a command 47 bytes (2.8 KB/s up; 23 and 1.4 KB/s since protocol 2, 25 and 1.5 KB/s
+since protocol 6), a round trip of 2 to 18 ms. They are in
 [Testing multiplayer](testing-multiplayer.md#numbers-from-a-local-run) with how to repeat them.
 
 ## The decision
@@ -112,7 +112,7 @@ the handshake (`HELLO`/`WELCOME`); a server refuses a client of another version.
 | `SNAPSHOT` 4 full | S→C | `u32 tick, u32 ack_seq, u32 0, u8 count, count × (u8 id, i16 x_cm, i16 y_cm)` | 14 + 5 × players |
 | `SNAPSHOT` 4 delta | S→C | `u32 tick, u32 ack_seq, u32 baseline_tick, u8 count, count × (u8 id, i8 dx_cm, i8 dy_cm)` | 14 + 3 × moved |
 | `EVENT` 5 | S→C | `u8 kind (1 joined, 2 left), u8 player_id` | 3 |
-| `PING` 6 / `PONG` 7 | C→S / S→C | `u32 client_tick` / `u32 client_tick, u32 server_tick` | 5 / 9 |
+| `PING` 6 / `PONG` 7 | C→S / S→C | `u32 client_tick` / `u32 client_tick, u32 server_tick` | 7 / 9 |
 
 - Positions are whole **centimetres** (`i16` covers ±327 m; the arena is ±11 m), movement input is a direction
   quantised to `i8` per axis (`-127..127`). Nothing floating-point crosses the wire.
@@ -160,7 +160,8 @@ and the new predicted position is the **correction**. The capsule is drawn at th
 
 ### Command quantization and rewinding the body
 
-Protocol 2 (#77) sends a command in 23 bytes instead of 47: a stick axis is a signed byte (1/127), the view turn a
+Protocol 2 (#77) sends a command in 23 bytes instead of 47 (25 since protocol 6 added the view step, below): a stick
+axis is a signed byte (1/127), the view turn a
 `u16` (65536 steps, 0.0055 degrees), the look a `s16` over a quarter turn either way, the shot origin centimetres in
 three `s16` (good to 327 m from the origin) and the shot direction as a turn and a look. `CommandCodec` holds the steps;
 every `snap_*` is the decode of the encode, so a number is only ever one of the wire's values. A client that predicts
@@ -188,7 +189,7 @@ budget (`PeerLimits`, `TokenBucket`; `test_peer_limits.gd`, and a hostile client
 
 | Limit | Value | Why |
 | --- | --- | --- |
-| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 5, look 13); the socket's own buffer is 4 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
+| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 7, look 13); the socket's own buffer is 4 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
 | Commands | 90 a second sustained, 240 at once | a client sends 60 a second; a 3 s stall of the connection delivers 180 together and is forgiven |
 | Pings, looks, hellos | 4/s (burst 6), 1/s (burst 3), 1/s (burst 2) | a client pings twice a second and sends one look and one hello |
 | Strikes | a packet over its rate costs 0.5, one the server cannot read (empty, too long, unknown type, wrong size, before hello, hello twice) costs 5; they wear off at 5 a second; at 100 the server hangs up | a flood of commands is cut off after about 450 packets, an honest client never gets one |
@@ -221,9 +222,74 @@ collision and the simulation. A body is **5 nodes** on a server and 71 drawn (`t
 frames as `RemoteAvatars`, and a door's look follows `door_opened`: the split of the issue is the transport since #302,
 this removes the cost of the bodies on the server.
 
+### Other players' weapons (#518)
+
+Online, a client saw other players as bare characters with no gun. The frame already named every player's weapon
+(`players[id].weapon`, sent in a delta only when it changes) and every event (`shot_fired`, `reload_started`,
+`weapon_equipped`, `cook_started`, `throw_started`) goes to every client. What draws them (`WeaponEquipSync`,
+`NightView.show_attack` and `show_reload`, the flash on the muzzle point, the grenade clips) all asked
+`Night._body_of(id)` for a `Player` with a `PlayerAnimation`, and online that was null for everyone but the local
+body: a remote player was a `RemoteAvatars.Avatar`, a model that only played Idle, Walk and Run. The client received
+everything and applied nothing; with the one `_body_of` line put back to null, the seven behaviour tests of
+`test_remote_weapons.gd` fail again.
+
+The fix is that a remote player is the same body as ours: `RemoteAvatars` makes a puppet `Player`
+(`Player.make_puppet`: no input, mouse, collision, camera or simulation, so nothing bumps into it and its camera never
+takes the view) and `puppet_to` places it from the interpolated track. Wire cost: two new per-player frame fields,
+`aim` (the aim pose is held, the hip-fire hold included) and `pitch` (the look up or down in 3 degree steps,
+`NightServer.pitch_step`); both are delta-coded, so a player who keeps still adds nothing and a swap, an aim or a
+look costs under 64 bytes (a test pins it). No new event and no tier field: a weapon's tier (the re-cut) changes no
+model, so the id is all a body needs. `NetWire.VERSION` was raised for the new frame fields, so a client that cannot
+draw them is told to reload instead of showing a gun-less crowd. A puppet is not a footstep source (`Player.is_puppet`:
+the feet stay on the frames' stride) and is dressed by `RemoteAvatars`, not by the night's `_dress_bodies`.
+
 One thing the server decides that no command says: while a player repairs, the server turns the body toward the breach
 (#338). The frame marks such a player (`turn`), and the player's own predicted body takes the server's facing for those
 frames (a position correction is not enough: the facing is not in `Reconciler`).
+
+### Lag compensation (#54)
+
+The server rewinds the dead to the world the shooter saw before it judges a shot (`LagCompensator`, capped at 0.25 s so
+a lying client cannot shoot into the distant past). Until protocol version 6 the night never said which world that was:
+every shot was judged against the present. A command now carries `view_step`, the server step (low 16 bits) of the newest
+frame its client had, which is what the client draws the dead from; the server reads it as the latest step with those
+bits that is not in the future (the 16 bits wrap every 18 minutes of a night, tested across the wrap), and
+`NightServer` fires the shot at `now - (steps since that frame) * step`. A command that says nothing, or one from a
+single-player night, is judged against the present as before. The shot event's `rewound_by` says how far it went back.
+
+Measured (`test_lag_compensation.gd`, 24 shots at a zombie walking at 4 m/s across the view, aimed where the shooter saw
+it): at **100 ms** 24 of 24 hit with the rewind and 24 of 24 without (the 0.4 m lead is inside the body's hit zones);
+at **200 ms** 24 of 24 with and **0 of 24 without** (0.8 m of lead). The cap holds: a client claiming a full second of
+lag is judged at 0.25 s and leads the target (`test_a_client_claiming_more_lag_than_the_cap_leads_the_target`). Players
+are not rewound: nobody can hurt another player, so there is nothing to hit; if friendly fire is ever added, the players
+go into the same `LagCompensator` frames beside the dead. Grenades fly in the present and are not compensated.
+
+### Entities in a frame: zombie deltas and interest (#57)
+
+A frame carried every zombie whole (`ZombieCodec`, 13 bytes each) every 30th of a second, so a night with 100 dead cost
+one client about 1.3 KB a tick before compression. The zombies now travel as what changed from the ones that client has
+(`ZombieDelta`, tested in `test_zombie_delta.gd`):
+
+- an entry is the id, a flag byte and only the fields the flags name: `POSITION` (three signed bytes of centimetres
+  moved, or three `s16` when a zombie moved more than 127 cm), `YAW`, `SPEED`, `MODE` (mode and episode), `LOOK`, and
+  `NEW` (every field, for a zombie the client does not have); a zombie that did not change costs nothing, a gone one two
+  bytes. A walking zombie is 2 + 1 + 3 = **6 bytes** (a turn adds one), against 13.
+- a delta starts with a sequence byte, so two deltas are never the same bytes (`FrameDelta` leaves out a field that
+  repeats, and a repeated delta would be lost), and a client refuses bytes that are not a delta of what it has (short, long,
+  a step of an id it never had) and keeps what it had.
+- the host can set an `interest_radius` (metres around the player's body); zombies beyond it are not in that client's
+  base, so they are `gone` as they leave and `NEW` as they arrive. The lot is one screen, so a night leaves it at 0 (all
+  of them); a bigger map sets it. 34 of 100 zombies on an 80 m lot are within 25 m, and the first delta is 481 bytes
+  against 1405.
+- a client that resumes starts from nothing (the first delta is all `NEW`); a tick the socket would not take (#483) is
+  not counted: the host keeps the base and the sequence the client really has, and the next delta is against those.
+
+Measured (`test_zombie_delta.gd`, 100 zombies walking at 3 m/s, turning now and then, 30 ticks a second): the zombies
+alone cost **608 bytes a tick as deltas against 1302 whole**. A whole TICK to one of four players with 100 zombies, with
+the compression `NetWire` applies above 256 bytes: **948 bytes (28.4 KB/s) whole, 574 bytes (17.2 KB/s) as deltas**. What
+is left of that is mostly the walking itself (positions that change every tick); the next gains are a lower rate for far
+zombies and the interest radius. Not done: a type byte for projectiles and pickups (the night has no entities of those
+kinds in the frame: shots and grenades travel as events), and the protocol version is bumped with this change.
 
 ### Reconnect and resume
 
@@ -251,6 +317,42 @@ back (#53, protocol version 3):
   jitter and loss) of the spike: the tests cut the socket with `WebSocketLink.drop()`, which closes it with a private
   close code the server reads as "the network went", and `test_reconnect.gd` runs over a real socket.
 
+### A client that freezes (#483)
+
+The maintainer's report: after a hitch (the first flare shot loading its effect) the player "flies all over the map until
+only the skybox shows". The server logs had nothing to show for it (joins, stats and leaves; the server saw a client that
+went quiet and came back), so the cause came from a reproduction, `test_client_freeze.gd`: the server as a process of
+its own, the client over the real socket with 100 ms each way, a person walking with the keys, and the client's thread
+stopped with `OS.delay_msec` for 0.5, 2 and 5 s.
+
+- **The cause was `Reconciler`, and a freeze only set it off.** A correction moved the body but left the remembered
+  positions of the commands still unanswered where they were. The server's answers are a round trip behind, so the next
+  frames measured the same error again and corrected it again: each correction (a quarter of the error, or all of it over
+  2.5 m) was repeated for every frame in flight. With a round trip of about 200 ms the repeats outweigh the error, and
+  the body is thrown further each time, exponentially (to 10^23 m in 15 s on `main`, with no freeze at all, once
+  anything pushed the body off by more than the 3 cm deadzone). A freeze is the surest push: the engine runs up to eight
+  ticks at once to catch up, the server takes only the newest of the commands that come together, and the client is
+  some 0.7 m ahead of it. The fix shifts the remembered positions by every correction (`Reconciler.correction`).
+  `test_reconciler_loop.gd` runs the loop in one dimension at 50 to 400 ms: 14 of 20 cases ended thousands of metres
+  off on `main`, none now. A body far from the server with no answer to judge it by is put where the server says (`LOST`).
+- **The tests had missed it** because the network was the thing that stalled (`LinkConditioner` holds packets back while
+  the client's own loop keeps running, and at 25 ms the loop above is stable): nothing froze the _client_, and nothing
+  ran a round trip long enough for the loop to matter while anything pushed the body.
+- **After a freeze the client starts again from the server's state** (`StallGuard`). A gap of over 250 ms between two
+  ticks resyncs: the body goes where the newest frame of the backlog has the player, the commands in flight are forgotten,
+  and the ticks the engine runs to catch up (under 8 ms apart) neither move the body nor send a command. The server
+  goes on with the last command for `command_ticks` (half a second, 3 m of sprint), so the client is then snapped back
+  to it: 5.4 to 5.6 m at worst in the test, 0.00 to 0.03 m after the player stops.
+- **A long freeze must not drop what the server sends.** The engine's default socket buffers are 64 KB: at 15 to 35 KB a
+  second a client that read nothing for about three to twelve seconds lost the newest ticks (an `ERROR: Buffer payload
+  full` in the browser's console, as seen at game over), and the frame deltas that followed were against frames it never
+  had, so a position that changed in a lost tick stayed wrong for good (3.7 m in `test_stall_buffers.gd`). The client's
+  inbound and the server's outbound buffers are now 1 MB each with room for 8192 packets (a minute or more), and a tick
+  the socket still would not take makes the next frame whole. `peer_stalled` and `peer_recovered` in the server log say
+  when it happened. No wire change: the protocol version stays.
+- **What is not done:** the browser build was not frozen on purpose here (the Chrome probe needs a night with the flare
+  in hand). The flare's own first-shot hitch is in [First-use hitches](first-use-hitches.md#the-flares-first-shot-483).
+
 ## Match settings
 
 The rules of a match (zombie intensity, alive cap, break: `MatchSettings`, #414) are the
@@ -260,6 +362,18 @@ joiner and a player coming back read the same settings from it (`MatchSettings.f
 version is not raised. The host sets them with `NightHost.configure_match` before the night starts; once it began
 the call changes nothing for this night. Tested over a real socket in `test_match_settings_net.gd`. Details and the
 numbers are in [rounds](../design/rounds.md#match-settings).
+
+## Revives
+
+A teammate's revive (#486, [Revive](../design/revive.md)) is made of what is already on the wire. The hold is the
+`use_held` flag every command carries (`F_USE_HELD`); the server finds who is in reach, counts the hold in its revive
+channel (`revive` to the rules when it is complete) and answers with events (`revive_started`, `revive_stopped`, `player_revived`
+with a `reviver_id`, `player_died`) and, in every frame, four fields for every player: `bleed`, `dead`, `revive` and
+`reviver`. A frame after the first carries only what changed, so a field that is sometimes absent can never be cleared
+by a delta: these four are always there. The rules' snapshot (so every WELCOME) holds each player's `revives`, `dead`,
+`bleed_left`, `revive_progress` and `reviver_id`: **snapshot version 12**, and the protocol version is not raised (no
+byte layout changed). A hold the client stops sending is released by the channel at the next tick, so a lost or late
+command breaks a hold and never leaves one stuck. Tested over a real socket in `test_night_revive_online.gd`.
 
 ## Interpolation (everyone else)
 

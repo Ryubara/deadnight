@@ -11,6 +11,11 @@ const COMMANDS := 150
 const MILLIMETRE := 0.001
 
 
+func _init() -> void:
+	# This suite is about the engine's own physics callback: the player ticks there, not by hand.
+	_by_clock = true
+
+
 ## A varied run: runs, a sprint, jumps, an aim, a turn, so every branch of the rules is replayed.
 func _commands(yaw_start: float, forward_ticks: int) -> Array[PackedByteArray]:
 	var recorded: Array[PackedByteArray] = []

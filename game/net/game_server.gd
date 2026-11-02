@@ -20,7 +20,7 @@ signal room_closed(match_id: String)
 
 ## Rooms a process takes unless told otherwise.
 const DEFAULT_CAPACITY := 4
-## Seconds between heartbeats.
+## Seconds between heartbeats (the default of `heartbeat_every`).
 const HEARTBEAT_EVERY := 5.0
 ## Connections that have not said hello yet; the next is hung up on.
 const MAX_PENDING := 32
@@ -48,6 +48,8 @@ var verifier: TicketVerifier
 ## Seconds a connection may take to say hello (a test sets it shorter).
 var hello_within := HELLO_WITHIN
 var idle_room_seconds := IDLE_ROOM_SECONDS
+## Seconds between heartbeats (a test sets it shorter).
+var heartbeat_every := HEARTBEAT_EVERY
 
 var listener := WsListener.new()
 var heartbeats_sent := 0
@@ -128,6 +130,14 @@ func players_by_match() -> Dictionary:
 	var out := {}
 	for match_id: String in _rooms:
 		out[match_id] = _rooms[match_id].player_count()
+	return out
+
+
+## The round of each room, as a `{match id: round}` for the heartbeat.
+func rounds_by_match() -> Dictionary:
+	var out := {}
+	for match_id: String in _rooms:
+		out[match_id] = _rooms[match_id].round_number()
 	return out
 
 
@@ -291,7 +301,7 @@ func _end_room(match_id: String) -> void:
 
 
 func _heartbeat() -> void:
-	_beat_at = _now() + HEARTBEAT_EVERY
+	_beat_at = _now() + heartbeat_every
 	heartbeats_sent += 1
 	_tell_backend(
 		"POST",
@@ -303,6 +313,7 @@ func _heartbeat() -> void:
 			"capacity": capacity,
 			"matchIds": match_ids(),
 			"players": players_by_match(),
+			"rounds": rounds_by_match(),
 		}
 	)
 

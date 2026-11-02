@@ -13,6 +13,9 @@ signal footstep(speed: float, sprinting: bool)
 signal jumped
 ## Back on the ground after a fall or jump; `impact_speed` is the downward speed in m/s.
 signal landed(impact_speed: float)
+## The platform took the mouse back (a browser's Esc frees the pointer lock without a key press,
+## a window lost focus) and the controls are off: the night opens its menu, as Esc would.
+signal grip_lost
 
 ## Below this the model counts as level with the body again.
 const STEP_LAG_REST := 0.0005
@@ -45,7 +48,11 @@ const ACTION_LOOK_DOWN := &"look_down"
 var state := PlayerMotionState.new()
 ## False for a body made by `strip_model`: nothing to dress or animate.
 var has_model := true
+## True for a body made by `make_puppet`: the drawn copy of a player on another machine.
+var is_puppet := false
 var last_command := PlayerCommand.new()
+## Whether the mouse really is captured, as the platform says.
+var grip := MouseGrip.new()
 
 var _controls_enabled := true
 var _was_down := {}
@@ -88,17 +95,30 @@ func _physics_process(_delta: float) -> void:
 	tick(command)
 
 
+func _process(_delta: float) -> void:
+	if grip.poll():
+		release_grip()
+
+
+func _notification(what: int) -> void:
+	# A window that lost focus no longer has the cursor: the night is not played blind.
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and grip.is_wanted():
+		release_grip()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not local_input:
 		return
-	if event is InputEventMouseMotion and _controls_enabled:
+	if event is InputEventMouseMotion and mouse_enabled() and not TouchLook.is_stray(event):
 		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
 	elif event.is_action_pressed(&"pause") and capture_mouse and _controls_enabled:
 		set_controls_enabled(false)
-	elif (
-		event is InputEventMouseButton and event.pressed and capture_mouse and not _controls_enabled
-	):
-		set_controls_enabled(true)
+	elif event is InputEventMouseButton and event.pressed and capture_mouse:
+		if not _controls_enabled:
+			set_controls_enabled(true)
+		elif grip.is_pending():
+			# The lock a click is needed for: asked again here, from the click.
+			grip.retry()
 
 
 ## Re-read sensitivity, invert Y and camera shake from the settings service (defaults when there
@@ -120,6 +140,36 @@ func strip_model() -> void:
 	has_model = false
 
 
+## Makes this body the drawn copy of a player on another machine (`RemoteAvatars`), before it is in
+## the tree: no input, no mouse, no collision (it is where the frames say, and nothing bumps into
+## it), no camera of its own and no simulation. `puppet_to` places it; its `PlayerAnimation` draws
+## the weapon, the pose and the clips from the same events as a body that is played.
+func make_puppet() -> void:
+	is_puppet = true
+	local_input = false
+	capture_mouse = false
+	collision_layer = 0
+	collision_mask = 0
+	set_physics_process(false)
+	var rig := get_node(^"CameraRig") as ThirdPersonCamera
+	rig.set_process(false)
+	(rig.get_node(^"Camera3D") as Camera3D).current = false
+
+
+## Puts a puppet where the frames say: at `at`, turned `facing`, moving at `velocity` (the gait
+## follows it), holding the aim pose or not, looking `pitch` up (radians). The weapon's barrel is
+## aimed along that look from the head.
+func puppet_to(at: Vector3, facing: float, velocity: Vector3, aiming: bool, pitch: float) -> void:
+	state.position = at
+	state.velocity = velocity
+	state.facing = facing
+	state.on_floor = true
+	state.aiming = aiming
+	position = at
+	rotation.y = facing
+	camera_rig.aim_along(at + Vector3(0.0, tuning.pivot_height, 0.0), facing, pitch)
+
+
 ## Puts a look and the armband of a seat on the body's Soldier (`CharacterAssembler.dress`). A body
 ## wears the default look until the night says otherwise.
 func dress(look: CharacterLook, seat := 0) -> void:
@@ -129,7 +179,8 @@ func dress(look: CharacterLook, seat := 0) -> void:
 
 ## The lens is too close to the head (or clear again): draw or hide the body.
 func _on_body_hidden_changed(hidden: bool) -> void:
-	_model.visible = not hidden
+	if not is_puppet:
+		_model.visible = not hidden
 
 
 func _on_setting_changed(_key: StringName, _value: Variant) -> void:
@@ -147,7 +198,13 @@ static func mouse_capture_allowed() -> bool:
 func set_controls_enabled(enabled: bool) -> void:
 	_controls_enabled = enabled
 	if capture_mouse and local_input and mouse_capture_allowed():
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if enabled else Input.MOUSE_MODE_VISIBLE
+		grip.want(enabled)
+
+
+## The controls go off because the platform freed the mouse; `grip_lost` tells the night.
+func release_grip() -> void:
+	set_controls_enabled(false)
+	grip_lost.emit()
 
 
 ## Use this command for the next physics tick instead of sampling the controls.
@@ -158,14 +215,14 @@ func submit_command(command: PlayerCommand) -> void:
 ## Read the controls into a command (also the stick look for the camera).
 func sample_command() -> PlayerCommand:
 	var command := PlayerCommand.new()
-	if not _controls_enabled:
+	if not controls_enabled():
 		camera_rig.set_stick(Vector2.ZERO)
 	else:
 		command.move = Input.get_vector(ACTION_LEFT, ACTION_RIGHT, ACTION_FORWARD, ACTION_BACK)
 		command.sprint = Input.is_action_pressed(ACTION_SPRINT)
 		command.crouch = Input.is_action_pressed(ACTION_CROUCH)
 		command.aim = Input.is_action_pressed(ACTION_AIM)
-		command.fire = Input.is_action_pressed(ACTION_FIRE)
+		command.fire = trigger_held()
 		command.jump = _pressed_edge(ACTION_JUMP)
 		command.swap_shoulder = _pressed_edge(ACTION_SWAP_SHOULDER)
 		command.throw_over = Input.is_action_pressed(ACTION_THROW_GRENADE)
@@ -251,8 +308,25 @@ func teleport(position: Vector3) -> void:
 	camera_rig.snap_to(position)
 
 
+## Whether the controls act. A gamepad needs no mouse: it plays while the mouse waits for its lock.
 func controls_enabled() -> bool:
 	return _controls_enabled
+
+
+## Whether the mouse acts: the controls are on and the mouse is not waiting for a lock a click has
+## to bring (a browser gives the lock to a click or a key, never to a gamepad button).
+func mouse_enabled() -> bool:
+	return _controls_enabled and not grip.is_pending()
+
+
+## Whether the trigger is held. A mouse click that is only asking for the lock is not a shot; a
+## gamepad's trigger always is one.
+func trigger_held() -> bool:
+	if not _controls_enabled:
+		return false
+	if grip.is_pending() and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		return false
+	return Input.is_action_pressed(ACTION_FIRE)
 
 
 func is_sprinting() -> bool:

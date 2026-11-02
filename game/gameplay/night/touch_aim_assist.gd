@@ -7,23 +7,24 @@ extends RefCounted
 ##
 ## It is for touch alone: nothing happens unless the touch layer is up and a finger, not a mouse
 ## or a pad, was the last input (`UIInputMode.touch`). The strength is the setting
-## `controls/touch_aim_assist`; the auto-fire choice is `controls/touch_auto_fire` (off by default:
-## ammunition is limited).
+## `controls/touch_aim_assist`; the auto-fire choice is `controls/touch_auto_fire` (on by default,
+## the maintainer's decision in #470: while aiming, the weapon fires as if Fire were held with the
+## crosshair on a zombie; off, the touch layer makes Aim a toggle and the player shoots by hand).
 
-## When the trigger pulls itself with the crosshair on a zombie.
-enum AutoFire { OFF, WHILE_AIMING, ALWAYS }
+## When the trigger pulls itself with the crosshair on a zombie: never, or while the player aims.
+enum AutoFire { OFF, WHILE_AIMING }
 
 const SETTINGS_PATH := ^"/root/Settings"
 const ACTION_AIM := &"aim"
 const ACTION_FIRE := &"fire"
 const MIN_AMMO := 1
 
-var tuning := AimAssistTuning.new()
+var tuning := AimAssistTuning.shipped()
 ## () -> bool, whether the touch layer is up. Without one the assist is off.
 var touch_active := Callable()
 ## 0 (off) to 1; read from the settings.
 var strength := 0.5
-var auto_fire: int = AutoFire.OFF
+var auto_fire: int = AutoFire.WHILE_AIMING
 
 var _tree: SceneTree
 var _state: ClientState
@@ -95,13 +96,12 @@ func prepare(player: Player, delta: float) -> void:
 		_on_target = AimAssist.on_target(eye, dir, _targets, _fire_reach(), _sight)
 
 
-## Whether the trigger should be pulled for the player this tick: auto-fire is on (and Aim held, if
-## that is what it was asked to wait for), the crosshair is on a zombie in reach, and the gun can
-## shoot.
+## Whether the trigger should be pulled for the player this tick: auto-fire is on, the player aims,
+## the crosshair is on a zombie in reach, and the gun can shoot.
 func wants_fire() -> bool:
 	if auto_fire == AutoFire.OFF or not _on_target or not is_touch():
 		return false
-	if auto_fire == AutoFire.WHILE_AIMING and not Input.is_action_pressed(ACTION_AIM):
+	if not Input.is_action_pressed(ACTION_AIM):
 		return false
 	var me := _state.me()
 	if me.get("downed", false) or me.get("reloading", false):
@@ -161,7 +161,8 @@ func _read_settings() -> void:
 		strength = clampf(float(level), 0.0, 1.0)
 	var mode: Variant = service.call(&"get_value", &"controls/touch_auto_fire")
 	if mode is int:
-		auto_fire = clampi(mode, AutoFire.OFF, AutoFire.ALWAYS)
+		# A saved 2 ("always", gone with #470) counts as on.
+		auto_fire = AutoFire.WHILE_AIMING if mode >= 1 else AutoFire.OFF
 
 
 func _on_setting_changed(_key: StringName, _value: Variant) -> void:

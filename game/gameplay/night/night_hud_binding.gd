@@ -8,7 +8,8 @@ extends RefCounted
 ## added). Each `frame` carries what neither announces: which way the local player faces, what the
 ## hand would do (the prompt at a door, a breach or a breaker post), and the weapons' state, which
 ## `HudLoadout.sync` reads every tick, so the ammo card is the server's whatever changed it (a HUD
-## that joined after the events needs no replay).
+## that joined after the events needs no replay). The scoreboard's counts come the same way, from
+## the frame (`_show_stats`).
 
 ## What the player is told at each door: the name on the card (the shop ids are the shop's).
 const DOOR_NAMES := {
@@ -40,6 +41,7 @@ var _hud: Hud
 var _state: ClientState
 var _weapon_names: Dictionary[StringName, String] = {}
 var _fuel: FuelTuning
+var _upgrade: UpgradeTuning
 ## Units a whole can adds, by shop item: what the card says a can is worth.
 var _can_units: Dictionary[StringName, int] = {}
 
@@ -59,10 +61,13 @@ func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistr
 	hud.state.ammo_free = ammo_free
 	var fuel: FuelTuning = tuning.fuel
 	_fuel = fuel
+	_upgrade = tuning.upgrade
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
 	hud.state.local_player_id = state.player_id
+	hud.state.revive_seconds = tuning.health.revive_seconds
+	hud.state.bleed_total = tuning.revive.bleed_out_seconds
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.event_received.connect(_on_event)
@@ -98,7 +103,9 @@ func _on_event(event: Dictionary) -> void:
 				HudLoadout.EVENTS.has(event["type"])
 				or not NightServer.COMBAT_EVENTS.has(event["type"])
 			):
+				var began := PerfProbe.begin()
 				_hud.state.apply_event(_with_world_point(event))
+				PerfProbe.end(&"hud.event", began)
 
 
 ## A hit on a zombie also says where in the world it landed, so its number can stay there while
@@ -118,6 +125,7 @@ func _with_world_point(event: Dictionary) -> Dictionary:
 
 func _on_frame() -> void:
 	var state := _hud.state
+	_show_stats(state)
 	var me := _state.me()
 	if me.is_empty():
 		return
@@ -127,6 +135,32 @@ func _on_frame() -> void:
 	# late (it heard no event) takes the weapon in hand.
 	HudLoadout.sync(me, state)
 	show_prompt(me["prompt"])
+
+
+## The scoreboard's numbers, as the server counts them in its frame: every player's kills, downs and
+## revives and the ping it last heard, and the night's clock; and the revive's rings (each player's
+## bleed-out clock and the progress of the hold on them). One batch, so the HUD redraws once.
+func _show_stats(state: HudState) -> void:
+	var players: Dictionary = _state.frame.get("players", {})
+	state.hold()
+	for player_id: int in players:
+		var player: Dictionary = players[player_id]
+		state.set_player_stats(
+			player_id,
+			int(player.get("kills", 0)),
+			int(player.get("downs", 0)),
+			int(player.get("ping", HudState.NO_PING)),
+			int(player.get("revives", 0))
+		)
+		state.set_player_revive(
+			player_id,
+			bool(player.get("dead", false)),
+			float(player.get("bleed", 0.0)),
+			float(player.get("revive", 0.0)),
+			int(player.get("reviver", 0))
+		)
+	state.set_night_clock(int(_state.frame.get("clock", 0)))
+	state.release()
 
 
 ## Puts what `NightServer.use_target` found on the HUD's prompt card, or clears it.
@@ -141,6 +175,8 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"repair":
 			if state.prompt.get("kind") != &"repair":
 				state.set_prompt(&"repair", BREACH_NAME)
+		&"revive":
+			_set_revive_prompt(prompt)
 		&"weapon":
 			_offer(&"buy_weapon", _weapon_name(prompt["weapon"]), prompt["price"], "")
 		&"crane":
@@ -159,7 +195,16 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"fuel":
 			_set_fuel_prompt(prompt)
 		_:
-			state.clear_prompt()
+			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade):
+				state.clear_prompt()
+
+
+## A downed teammate in reach: whose, and how long they have (the ring itself is `HudRevive`'s).
+func _set_revive_prompt(prompt: Dictionary) -> void:
+	var member: Dictionary = _hud.state.team.get(int(prompt["id"]), {})
+	var label := "Revive %s" % str(member.get("name", "your teammate"))
+	var detail := "HOLD TO REVIVE: DEAD IN %d S" % ceili(float(prompt.get("bleed", 0.0)))
+	_offer(&"revive", label, 0, detail)
 
 
 func _offer(kind: StringName, label: String, cost: int, detail: String) -> void:

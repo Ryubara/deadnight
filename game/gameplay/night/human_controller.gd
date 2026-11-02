@@ -8,6 +8,7 @@ const ACTION_FIRE := &"fire"
 const ACTION_RELOAD := &"reload"
 const ACTION_USE := &"interact"
 const ACTION_SWAP := &"swap_weapon"
+const ACTION_PING := &"ping"
 
 ## The touch player's aim help (`TouchAimAssist`); null for a night that has none.
 var assist: TouchAimAssist
@@ -22,9 +23,7 @@ func command(player: Player, player_id: int) -> NightCommand:
 		assist.prepare(player, player.get_physics_process_delta_time())
 	result.motion = player.sample_command()
 	if player.controls_enabled():
-		result.fire = (
-			Input.is_action_pressed(ACTION_FIRE) or (assist != null and assist.wants_fire())
-		)
+		result.fire = player.trigger_held() or (assist != null and assist.wants_fire())
 		# The body hears the trigger too (the hip-fire zoom and the pose follow it).
 		result.motion.fire = result.fire
 		result.reload = _edge(ACTION_RELOAD)
@@ -35,6 +34,11 @@ func command(player: Player, player_id: int) -> NightCommand:
 	result.origin = player.camera_rig.aim_transform().origin
 	result.dir = (-player.camera_rig.aim_transform().basis.z)
 	return result
+
+
+## Whether the ping key went down this tick (the controls must be on).
+func ping_pressed(player: Player) -> bool:
+	return player.controls_enabled() and _edge(ACTION_PING)
 
 
 func _edge(action: StringName) -> bool:

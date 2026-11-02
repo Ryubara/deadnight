@@ -12,8 +12,10 @@ extends Node
 ##   play, from a seedable generator (`seed_random`);
 ## - distance (sounds past their `max_distance` are not started; the engine attenuates the rest)
 ##   and occlusion (a muffled, quieter sound when `occlusion_probe` says a wall is between);
-## - ducking: a sting lowers the Effects bus for a moment, in an `AudioEffectAmplify` this node
-##   adds, so the player's own volume settings (which own the buses' volumes) are never touched;
+## - ducking: a sting lowers the `Duck` bus, which the Effects and Ambience buses send to, for a
+##   moment, so the player's own volume settings (which own those buses' volumes) are never touched.
+##   It is bus volume and nothing else, so it sounds the same in the web build, where players are
+##   samples that ignore bus effects;
 ## - beds: a few players for the looping ambience and score, which fade in and out in dB per second
 ##   of the service's own clock (`start_bed`, `stop_bed`);
 ## - the hook for the UI: `UIAudio.handler` is pointed at `play_ui` when the service is ready.
@@ -23,11 +25,22 @@ extends Node
 ## A sound started: `id` and its position (null when flat). For tests and a debug overlay.
 signal played(id: StringName, position: Variant)
 
+## A sound that cannot start this frame (`starts_per_frame`) waits at most this long, then is
+## dropped: a step or a hurt cry that late would be heard as a mistake.
+const DEFER_MAX_SECONDS := 0.12
+## Sounds that may wait at once; past it the quietest waiting one is dropped.
+const DEFER_MAX := 16
 ## Pooled players for sounds with a place, and for sounds without one.
+## The background load of the sounds (`start_background_preload`): the wait before it starts (s),
+## its share of a frame, and the least and most it takes of one (ms).
+const BACKGROUND_WAIT_S := 1.0
+const BACKGROUND_SHARE := 0.25
+const BACKGROUND_MIN_MSEC := 3.0
+const BACKGROUND_MAX_MSEC := 40.0
 const POOL_3D := 32
 const POOL_2D := 12
 ## Players for beds (looping ambience and score), which are outside the voice budget.
-const POOL_BEDS := 4
+const POOL_BEDS := 6
 ## A bed fades between this and its own level, at these rates (dB per second), so it comes in over
 ## about three seconds and goes out over about two.
 const BED_SILENT_DB := -60.0
@@ -45,7 +58,7 @@ const REAR_CUTOFF_HZ := 1800.0
 const REAR_FROM_COS := 0.15
 ## The budget treats a fully occluded sound as this much quieter.
 const OCCLUSION_LOUDNESS := 0.5
-## Ducking: how fast the Effects bus drops and recovers, in dB per second.
+## Ducking: how fast the `Duck` bus drops and recovers, in dB per second.
 const DUCK_ATTACK_DB_PER_S := 80.0
 const DUCK_RELEASE_DB_PER_S := 14.0
 ## Mix steps the audio thread must take after voices are stopped before it has let go of their
@@ -57,29 +70,62 @@ const DRAIN_POLL_MS := 2
 ## The buses a sting ducks (the guns and the dead, and the ambience under them). The voice of the
 ## player, the music and the interface are left alone.
 const DUCK_BUSES: Array[StringName] = [&"Effects", &"Ambience"]
+## The bus the ducked buses send to (`default_bus_layout.tres`); the duck is its volume.
+const DUCK_BUS := &"Duck"
+## The value of the project setting `audio/general/default_playback_type.web` that plays players as
+## samples (0 is streams). It is not the engine's `AudioServer.PlaybackType`, whose numbers differ.
+const PLAYBACK_SETTING_SAMPLE := 1
+## Where a player's filter does not apply (the web build plays players as samples, which ignore it),
+## a wall and the rear cue are also told by volume: this much more than the usual occlusion drop for
+## a fully blocked sound, and this much for one straight behind the listener (dB, both quieter).
+const NO_FILTER_OCCLUSION_DB := -4.0
+const NO_FILTER_REAR_DB := -3.0
 
 ## Where the listener is when no camera exists (and what tests set).
 var listener: Node3D
 ## `Callable(from: Vector3, to: Vector3) -> float`: 0 open, 1 fully blocked. Used when valid.
 var occlusion_probe := Callable()
+## Whether the low-pass of occlusion and the rear cue is heard (`players_apply_filters`). When it is
+## not, they are told by volume as well (`NO_FILTER_OCCLUSION_DB`, `NO_FILTER_REAR_DB`). A test
+## sets it.
+var filters_apply := AudioService.players_apply_filters()
 ## Physics layers that block sound. 0 turns the built-in ray test off (the default until the map
 ## has walls on a layer of their own); `occlusion_probe` overrides it.
 var occluder_mask := 0
 ## The Effects bus's current ducking in dB (0 or negative).
 var duck_db := 0.0
+## How many sounds may start in one frame; 0 is no limit. Starting a sound costs about a millisecond
+## in the web build, and a kill starts six: the rest start in the next frames (the highest priority
+## first), a frame or two late, which no one hears. The night turns it on.
+var starts_per_frame := 0
 ## Counters for tests and the debug overlay.
 var started := 0
 var culled := 0
 
+## While the player is in a menu the service loads the sounds a night uses, a slice of each frame
+## (`start_background_preload`), so the night's loading screen has less to do.
+var _background_ids: Array = []
+var _background_at := 0
+var _background_wait := 0.0
 var _rng := RandomNumberGenerator.new()
 var _now := 0.0
 var _streams := {}
+## Loops and beds ready to play, by file path: a copy of the Ogg that loops (made when the sound is
+## preloaded, not when a bed starts, where copying a minute of music took 40 ms of the frame).
+var _looped := {}
+## Short sounds decoded to samples (`PcmStream`) by file path, played instead of the Ogg.
+var _pcm := {}
+var _starts_frame := -1
+var _starts_now := 0
+var _deferred: Array[Dictionary] = []
 var _last_variant := {}
 var _players_3d: Array[AudioStreamPlayer3D] = []
 var _players_2d: Array[AudioStreamPlayer] = []
 var _bed_players: Array[AudioStreamPlayer] = []
 ## Each running bed by id: {"player", "def", "fade_db" (now), "target_db"}.
 var _beds := {}
+## Beds that come and go (`keep_bed`): at silence their player is paused, not freed.
+var _kept := {}
 ## The looping players `start_loop` made, so `stop_all` can stop those too.
 var _loops: Array[AudioStreamPlayer3D] = []
 var _budget_3d: VoiceBudget
@@ -87,14 +133,17 @@ var _budget_2d: VoiceBudget
 var _duck_until := 0.0
 var _duck_target := 0.0
 ## The amplify effect this service put on each ducked bus.
-var _duck_effects: Dictionary[StringName, AudioEffectAmplify] = {}
+var _duck_bus := -1
+## The duck last written to the `Duck` bus, so a second service (a test beside the game's) that has
+## nothing to duck leaves the bus alone.
+var _duck_written := 0.0
 var _warned := {}
 var _rules: GameRules
 
 
 func _init() -> void:
-	_budget_3d = VoiceBudget.new(POOL_3D, SoundCatalog.GROUP_LIMITS)
-	_budget_2d = VoiceBudget.new(POOL_2D, SoundCatalog.GROUP_LIMITS)
+	_budget_3d = VoiceBudget.new(POOL_3D, SoundCatalog.group_limits())
+	_budget_2d = VoiceBudget.new(POOL_2D, SoundCatalog.group_limits())
 	_rng.randomize()
 
 
@@ -114,7 +163,9 @@ func _ready() -> void:
 		player.name = "Bed%d" % i
 		add_child(player)
 		_bed_players.append(player)
-	_add_duck_effect()
+	_duck_bus = AudioServer.get_bus_index(DUCK_BUS)
+	if _duck_bus < 0:
+		push_warning("Audio: the bus layout has no %s bus, so a sting cannot duck" % DUCK_BUS)
 	install_ui_hook()
 
 
@@ -127,25 +178,65 @@ func _exit_tree() -> void:
 	for player in _players_2d:
 		player.stream = null
 	_streams.clear()
-	_remove_duck_effect()
+	_pcm.clear()
+	_looped.clear()
+	_kept.clear()
+	_set_duck_volume(0.0)
 	if UIAudio.handler == play_ui:
 		UIAudio.handler = Callable()
+	# The engine frees what the audio server still holds only once its mixer has taken a few steps,
+	# and a process that quits at once (a test run, a capture) leaves it held: reported at exit as
+	# `ObjectDB instances were leaked` and `resources still in use`, at random under load. Only the
+	# autoload waits: it leaves the tree last, and a service a test frees mid-run would add a wait
+	# to every test.
+	if is_inside_tree() and get_parent() == get_tree().root:
+		drain_mixer_blocking()
 
 
 func _process(delta: float) -> void:
 	advance(delta)
+	_background_preload(delta)
+
+
+## Starts loading every sound into the cache in the background, a slice of each frame, after a
+## short wait (the menu draws first). The night's warm-up loads what is left. Starting again does
+## nothing. The slice is a quarter of the last frame, between `BACKGROUND_MIN_MSEC` and
+## `BACKGROUND_MAX_MSEC`: a machine that draws slowly has the time, a fast one is not stuttered.
+func start_background_preload() -> void:
+	if not _background_ids.is_empty() or _background_at > 0:
+		return
+	_background_ids = SoundCatalog.ids()
+	_background_wait = BACKGROUND_WAIT_S
+
+
+## Whether the background load has been asked for and has not finished.
+func background_preloading() -> bool:
+	return _background_at < _background_ids.size()
+
+
+func _background_preload(delta: float) -> void:
+	if not background_preloading():
+		return
+	_background_wait -= delta
+	if _background_wait > 0.0:
+		return
+	var slice := clampf(delta * 1000.0 * BACKGROUND_SHARE, BACKGROUND_MIN_MSEC, BACKGROUND_MAX_MSEC)
+	var until := Time.get_ticks_msec() + int(slice)
+	while background_preloading() and Time.get_ticks_msec() < until:
+		preload_sound(_background_ids[_background_at])
+		_background_at += 1
 
 
 ## Moves the service's clock: frees finished voices and steps the ducking.
 func advance(delta: float) -> void:
 	_now += delta
+	_start_deferred()
 	_budget_3d.expire(_now)
 	_budget_2d.expire(_now)
 	_duck_target = _duck_target if _now < _duck_until else 0.0
 	var rate := DUCK_ATTACK_DB_PER_S if _duck_target < duck_db else DUCK_RELEASE_DB_PER_S
 	duck_db = move_toward(duck_db, _duck_target, rate * delta)
-	for effect in _duck_effects.values():
-		effect.volume_db = duck_db
+	_set_duck_volume(duck_db)
 	_step_beds(delta)
 
 
@@ -179,11 +270,76 @@ func seed_random(value: int) -> void:
 ## the player it started on, or null when the sound was dropped (too far, over its limit, too
 ## soon, missing).
 func play(id: StringName, position: Variant = null, extra_db := 0.0) -> Node:
+	var began := PerfProbe.begin()
+	var player: Node = null
+	if _may_start_now():
+		player = _start(id, position, extra_db)
+	else:
+		_defer(id, position, extra_db)
+	PerfProbe.end(&"audio.play", began)
+	if PerfProbe.enabled:
+		PerfProbe.end(StringName("snd.%s" % id), began)
+		PerfProbe.count(&"sounds")
+	return player
+
+
+## Whether another sound may start in this frame; counts it if so.
+func _may_start_now() -> bool:
+	if starts_per_frame <= 0:
+		return true
+	var frame := Engine.get_process_frames()
+	if frame != _starts_frame:
+		_starts_frame = frame
+		_starts_now = 0
+	if _starts_now >= starts_per_frame:
+		return false
+	_starts_now += 1
+	return true
+
+
+func _defer(id: StringName, position: Variant, extra_db: float) -> void:
+	var def := SoundCatalog.get_def(id)
+	if def == null:
+		return
+	_deferred.append(
+		{"id": id, "position": position, "extra_db": extra_db, "at": _now, "priority": def.priority}
+	)
+	if _deferred.size() > DEFER_MAX:
+		var quietest := 0
+		for i in _deferred.size():
+			if _deferred[i]["priority"] < _deferred[quietest]["priority"]:
+				quietest = i
+		_deferred.remove_at(quietest)
+	PerfProbe.count(&"sounds_deferred")
+
+
+## Starts the waiting sounds the frame has room for, highest priority first (the oldest of equals).
+func _start_deferred() -> void:
+	if _deferred.is_empty():
+		return
+	var waiting: Array[Dictionary] = []
+	for sound in _deferred:
+		if _now - float(sound["at"]) <= DEFER_MAX_SECONDS:
+			waiting.append(sound)
+	_deferred = waiting
+	_deferred.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			return (
+				a["priority"] > b["priority"]
+				or (a["priority"] == b["priority"] and a["at"] < b["at"])
+			)
+	)
+	while not _deferred.is_empty() and _may_start_now():
+		var sound: Dictionary = _deferred.pop_front()
+		_start(sound["id"], sound["position"], sound["extra_db"])
+
+
+func _start(id: StringName, position: Variant, extra_db: float) -> Node:
 	var def := SoundCatalog.get_def(id)
 	if def == null:
 		_warn_once("unknown sound '%s'" % id)
 		return null
-	var stream := _pick_stream(def)
+	var stream := _pick_stream(def, true)
 	if stream == null:
 		return null
 	var pitch := _random_pitch(def)
@@ -205,6 +361,10 @@ func preload_sound(id: StringName) -> int:
 		if not _streams.has(path):
 			_streams[path] = load(path) if ResourceLoader.exists(path) else null
 			loaded += 1
+		if not def.loop and not _pcm.has(path) and PcmStream.fits(_streams[path]):
+			_pcm[path] = PcmStream.decode(_streams[path], int(AudioServer.get_mix_rate()))
+		if def.loop and not _looped.has(path) and _streams[path] is AudioStreamOggVorbis:
+			_looped[path] = _loop_of(_streams[path])
 	return loaded
 
 
@@ -215,8 +375,7 @@ func start_loop(id: StringName, parent: Node3D) -> AudioStreamPlayer3D:
 	var stream := _pick_stream(def) if def != null else null
 	if stream == null:
 		return null
-	var looped := stream.duplicate() as AudioStreamOggVorbis
-	looped.loop = true
+	var looped := _loop_for(stream)
 	var player := AudioStreamPlayer3D.new()
 	player.stream = looped
 	player.bus = def.bus
@@ -234,28 +393,53 @@ func start_loop(id: StringName, parent: Node3D) -> AudioStreamPlayer3D:
 ## Starts a looping flat sound (a bed: the night's ambience, the score) that fades in from
 ## silence. Starting one that already runs only turns it back up. Returns its player, or null when
 ## the sound is unknown or every bed player is busy.
-func start_bed(id: StringName) -> AudioStreamPlayer:
+func start_bed(id: StringName, keep := false) -> AudioStreamPlayer:
+	var whole := PerfProbe.begin()
+	var bed := _start_bed(id)
+	PerfProbe.end(&"audio.start_bed", whole)
+	if keep and bed != null:
+		_keep(id)
+	return bed
+
+
+## Marks a bed that comes and goes with the night's rounds (the score between them, the tension in
+## them), and puts it away silent and paused: from here on it is only paused when it fades to
+## silence, and starting it again is a fade up. Starting a minute of music takes 40 ms in the
+## browser, which is a frame of the night when it is done at the end of a round.
+func _keep(id: StringName) -> void:
+	_kept[id] = true
+	stop_bed(id)
+	_beds[id]["fade_db"] = BED_SILENT_DB
+	advance(0.0)
+
+
+func _start_bed(id: StringName) -> AudioStreamPlayer:
 	if _beds.has(id):
-		_beds[id]["target_db"] = 0.0
-		return _beds[id]["player"]
+		var bed: Dictionary = _beds[id]
+		if bed.get("parked", false):
+			bed["parked"] = false
+			(bed["player"] as AudioStreamPlayer).stream_paused = false
+		bed["target_db"] = 0.0
+		return bed["player"]
 	var def := SoundCatalog.get_def(id)
 	var stream := _pick_stream(def) if def != null else null
 	var player := _free_bed_player()
 	if stream == null or player == null:
 		return null
-	var looped := stream.duplicate() as AudioStreamOggVorbis
-	looped.loop = true
+	var looped := _loop_for(stream)
 	player.stream = looped
 	player.bus = def.bus
 	player.volume_db = def.volume_db + BED_SILENT_DB
+	var began := PerfProbe.begin()
 	player.play()
+	PerfProbe.end(&"audio.bed_play", began)
 	_beds[id] = {"player": player, "def": def, "fade_db": BED_SILENT_DB, "target_db": 0.0}
 	return player
 
 
 ## Fades a bed out and frees its player when it is silent. Nothing happens for a bed not running.
 func stop_bed(id: StringName) -> void:
-	if _beds.has(id):
+	if _beds.has(id) and not _beds[id].get("parked", false):
 		_beds[id]["target_db"] = BED_SILENT_DB
 
 
@@ -269,7 +453,7 @@ func stop_beds(immediately := false) -> void:
 
 
 func is_bed_running(id: StringName) -> bool:
-	return _beds.has(id)
+	return _beds.has(id) and not _beds[id].get("parked", false)
 
 
 ## A bed's fade in dB: -60 is silent, 0 is its own level.
@@ -371,6 +555,23 @@ func wait_for_mixer() -> void:
 	push_warning("Audio: the mixer took %d of %d steps in time" % [steps, DRAIN_MIX_STEPS])
 
 
+## `wait_for_mixer` for a place that cannot await, the end of the process: blocks this thread (the
+## mixer runs on its own) until the mixer has taken the steps or the polls run out. Returns whether
+## it did.
+func drain_mixer_blocking() -> bool:
+	var steps := 0
+	var last := AudioServer.get_time_since_last_mix()
+	for _i in DRAIN_MAX_POLLS:
+		if steps >= DRAIN_MIX_STEPS:
+			return true
+		OS.delay_msec(DRAIN_POLL_MS)
+		var now := AudioServer.get_time_since_last_mix()
+		if now < last:
+			steps += 1
+		last = now
+	return false
+
+
 func _play_3d(
 	def: SoundDef, stream: AudioStream, at: Vector3, pitch: float, duration: float, extra_db: float
 ) -> Node:
@@ -379,17 +580,24 @@ func _play_3d(
 	if distance > def.max_distance:
 		culled += 1
 		return null
+	var began := PerfProbe.begin()
 	var occlusion := occlusion_between(from, at)
+	PerfProbe.end(&"audio.occlusion", began)
 	var loudness := def.linear_gain() * def.unit_size / (def.unit_size + distance)
 	loudness *= 1.0 - OCCLUSION_LOUDNESS * occlusion
 	var slot := _budget_3d.acquire(def, loudness, _now, duration)
 	if slot < 0:
 		return null
 	var player := _players_3d[slot]
+	began = PerfProbe.begin()
 	player.stop()
 	player.stream = stream
 	player.bus = def.bus
 	player.volume_db = def.volume_db + extra_db + OCCLUSION_DB * occlusion
+	if not filters_apply:
+		player.volume_db += NO_FILTER_OCCLUSION_DB * occlusion
+		if def.rear_cue:
+			player.volume_db += NO_FILTER_REAR_DB * rear_amount(at)
 	cap_near_level(player, def)
 	player.pitch_scale = pitch
 	player.unit_size = def.unit_size
@@ -399,7 +607,10 @@ func _play_3d(
 		cutoff = minf(cutoff, lerpf(OPEN_CUTOFF_HZ, REAR_CUTOFF_HZ, rear_amount(at)))
 	player.attenuation_filter_cutoff_hz = cutoff
 	player.global_position = at
+	PerfProbe.end(&"audio.setup3d", began)
+	began = PerfProbe.begin()
 	player.play()
+	PerfProbe.end(&"audio.player_play", began)
 	_after_start(def, at)
 	return player
 
@@ -411,12 +622,14 @@ func _play_2d(
 	if slot < 0:
 		return null
 	var player := _players_2d[slot]
+	var began := PerfProbe.begin()
 	player.stop()
 	player.stream = stream
 	player.bus = def.bus
 	player.volume_db = def.volume_db + extra_db
 	player.pitch_scale = pitch
 	player.play()
+	PerfProbe.end(&"audio.player_play", began)
 	_after_start(def, null)
 	return player
 
@@ -424,6 +637,8 @@ func _play_2d(
 func _step_beds(delta: float) -> void:
 	for id: StringName in _beds.keys():
 		var bed: Dictionary = _beds[id]
+		if bed.get("parked", false):
+			continue
 		var rate := (
 			BED_FADE_IN_DB_PER_S if bed["target_db"] > bed["fade_db"] else BED_FADE_OUT_DB_PER_S
 		)
@@ -432,12 +647,17 @@ func _step_beds(delta: float) -> void:
 			(bed["def"] as SoundDef).volume_db + bed["fade_db"]
 		)
 		if bed["target_db"] <= BED_SILENT_DB and bed["fade_db"] <= BED_SILENT_DB:
-			_release_bed(id)
+			if _kept.has(id):
+				bed["parked"] = true
+				(bed["player"] as AudioStreamPlayer).stream_paused = true
+			else:
+				_release_bed(id)
 
 
 func _release_bed(id: StringName) -> void:
 	var player := _beds[id]["player"] as AudioStreamPlayer
 	player.stop()
+	player.stream_paused = false
 	player.stream = null
 	_beds.erase(id)
 
@@ -458,7 +678,22 @@ func _after_start(def: SoundDef, position: Variant) -> void:
 		_duck_until = maxf(_duck_until, _now + def.duck_hold)
 
 
-func _pick_stream(def: SoundDef) -> AudioStream:
+## One variant of the sound (never the one played last). `samples` asks for its decoded copy when it
+## has one (`PcmStream`): a loop or a bed needs the Ogg, which it can loop.
+## The copy of `stream` that loops: the one made at preload, or one made now.
+func _loop_for(stream: AudioStream) -> AudioStreamOggVorbis:
+	if _looped.has(stream.resource_path):
+		return _looped[stream.resource_path]
+	return _loop_of(stream)
+
+
+func _loop_of(stream: AudioStream) -> AudioStreamOggVorbis:
+	var looped := stream.duplicate() as AudioStreamOggVorbis
+	looped.loop = true
+	return looped
+
+
+func _pick_stream(def: SoundDef, samples := false) -> AudioStream:
 	var variant := 1
 	if def.variants > 1:
 		var last: int = _last_variant.get(def.id, 0)
@@ -471,6 +706,8 @@ func _pick_stream(def: SoundDef) -> AudioStream:
 		_streams[path] = load(path) if ResourceLoader.exists(path) else null
 	if _streams[path] == null:
 		_warn_once("missing file %s" % path)
+	if samples and _pcm.has(path):
+		return _pcm[path]
 	return _streams[path]
 
 
@@ -496,21 +733,22 @@ func _on_rules_event(event: Dictionary) -> void:
 			play(&"special_round")
 
 
-func _add_duck_effect() -> void:
-	for bus_name in DUCK_BUSES:
-		var bus := AudioServer.get_bus_index(bus_name)
-		if bus < 0:
-			continue
-		var effect := AudioEffectAmplify.new()
-		AudioServer.add_bus_effect(bus, effect)
-		_duck_effects[bus_name] = effect
+## Writes the duck to the `Duck` bus when it has changed.
+func _set_duck_volume(db: float) -> void:
+	if _duck_bus < 0 or is_equal_approx(db, _duck_written):
+		return
+	_duck_written = db
+	AudioServer.set_bus_volume_db(_duck_bus, db)
 
 
-func _remove_duck_effect() -> void:
-	for bus_name in _duck_effects:
-		var bus := AudioServer.get_bus_index(bus_name)
-		for i in AudioServer.get_bus_effect_count(bus) if bus >= 0 else 0:
-			if AudioServer.get_bus_effect(bus, i) == _duck_effects[bus_name]:
-				AudioServer.remove_bus_effect(bus, i)
-				break
-	_duck_effects.clear()
+## Whether a 3D player's distance filter (the low-pass of occlusion and the rear cue) reaches the
+## speakers: not for a player played as a sample, which is the web build's default.
+static func players_apply_filters() -> bool:
+	if not OS.has_feature("web"):
+		return true
+	var setting := int(
+		ProjectSettings.get_setting(
+			"audio/general/default_playback_type.web", PLAYBACK_SETTING_SAMPLE
+		)
+	)
+	return setting != PLAYBACK_SETTING_SAMPLE

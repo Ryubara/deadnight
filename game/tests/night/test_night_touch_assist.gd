@@ -19,6 +19,7 @@ func before_test() -> void:
 func after_test() -> void:
 	UIInputMode.touch = _was_touch
 	Input.action_release(&"fire")
+	Input.action_release(&"aim")
 
 
 func _human_night() -> Night:
@@ -47,7 +48,7 @@ func _play(night: Night, zombie: ZombieBody, frames := 90) -> int:
 func test_a_human_night_builds_the_assist_and_the_settings_reach_it() -> void:
 	var night := await _human_night()
 	assert_object(night.assist).is_not_null()
-	assert_int(night.assist.auto_fire).is_equal(TouchAimAssist.AutoFire.OFF)
+	assert_int(night.assist.auto_fire).is_equal(TouchAimAssist.AutoFire.WHILE_AIMING)
 	assert_float(night.assist.strength).is_equal_approx(0.5, 0.001)
 	night.queue_free()
 
@@ -58,9 +59,9 @@ func test_an_autopilot_night_has_no_assist() -> void:
 	night.queue_free()
 
 
-func test_auto_fire_shoots_a_zombie_on_the_crosshair_without_fire_held() -> void:
+func test_auto_fire_shoots_a_zombie_on_the_crosshair_while_aiming_without_fire_held() -> void:
 	var night := await _human_night()
-	night.assist.auto_fire = TouchAimAssist.AutoFire.ALWAYS
+	Input.action_press(&"aim")
 	var id := NightFixture.first_zombie(night)
 	var zombie: ZombieBody = night.server.sim.zombies[id]
 	var shots := await _play(night, zombie)
@@ -70,6 +71,8 @@ func test_auto_fire_shoots_a_zombie_on_the_crosshair_without_fire_held() -> void
 
 func test_auto_fire_off_leaves_the_trigger_alone() -> void:
 	var night := await _human_night()
+	night.assist.auto_fire = TouchAimAssist.AutoFire.OFF
+	Input.action_press(&"aim")
 	var id := NightFixture.first_zombie(night)
 	var zombie: ZombieBody = night.server.sim.zombies[id]
 	var shots := await _play(night, zombie)
@@ -79,7 +82,7 @@ func test_auto_fire_off_leaves_the_trigger_alone() -> void:
 
 func test_a_mouse_player_is_never_auto_fired_for() -> void:
 	var night := await _human_night()
-	night.assist.auto_fire = TouchAimAssist.AutoFire.ALWAYS
+	Input.action_press(&"aim")
 	UIInputMode.touch = false
 	var id := NightFixture.first_zombie(night)
 	var zombie: ZombieBody = night.server.sim.zombies[id]

@@ -9,6 +9,8 @@ const START := Vector3(0.0, 0.05, 10.0)
 ## Tolerances: metres for places, degrees for angles.
 const GRIP_TOLERANCE := 0.03
 const SUPPORT_TOLERANCE := 0.12
+## A weapon with a grip puts the left hand bone on the grip's own place for it (#460).
+const LEFT_HAND_TOLERANCE := 0.01
 const STOCK_TOLERANCE := 0.16
 const SIZE_TOLERANCE := 0.05
 const BARREL_TOLERANCE_DEG := 3.0
@@ -21,7 +23,7 @@ const TARGET_DISTANCE := WeaponHandsIK.CONVERGE_DISTANCE
 ## The catalogue's guns, each with its own model and hold, and what is held in one hand.
 const GUNS: Array[StringName] = [&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun"]
 ## The weapons given a size other than the rule's (docs/design/weapon-hold.md, "The size rule").
-const SIZE_EXCEPTIONS := {&"pistol": 1.6, &"flare_gun": 1.6}
+const SIZE_EXCEPTIONS := {&"pistol": 1.75, &"flare_gun": 1.7}
 
 var _runner: GdUnitSceneRunner
 var _player: Player
@@ -36,6 +38,8 @@ func before_test() -> void:
 	_runner = scene_runner(TEST_ROOM)
 	_player = _runner.find_child("Player") as Player
 	_player.capture_mouse = false
+	# The suite ticks the player by hand (PlayerHandStep), not at the physics clock's pace.
+	_player.set_physics_process(false)
 	_rig = _player.camera_rig
 	_animation = _player.get_node("AnimationTree") as PlayerAnimation
 	_rig.set_process(false)
@@ -44,18 +48,21 @@ func before_test() -> void:
 	var skeleton := _player.find_child("Skeleton3D", true, false) as Skeleton3D
 	skeleton.skeleton_updated.connect(_record_bones.bind(skeleton))
 	_player.teleport(START)
+	# The physics server learns of the room's static bodies on its first step: take that one by
+	# the clock, then tick by hand.
+	await get_tree().physics_frame
 	await _ticks(20)
 
 
 func _record_bones(skeleton: Skeleton3D) -> void:
-	for bone: String in ["Index1.L", "Index1.R", "UpperArm.R", "UpperArm.L"]:
+	for bone: String in ["Index1.L", "Index1.R", "UpperArm.R", "UpperArm.L", "Neck", "Hips"]:
 		var pose := skeleton.get_bone_global_pose(skeleton.find_bone(bone))
 		_bones[bone] = skeleton.global_transform * pose.origin
 
 
 func _ticks(count: int) -> void:
 	for i in count:
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 		_rig.step(TICK, 1.0)
 		_animation._process(TICK)
 		_animation.advance(TICK)
@@ -132,15 +139,25 @@ func test_guns_are_shouldered_in_the_aim_pose() -> void:
 			1.0
 		)
 		# The grip is where the pose put it, and the right hand is on it.
-		var target := _animation.hands().weapon_target()
+		var target := _animation.hands().solved_target()
 		(
 			assert_float(weapon.global_position.distance_to(target.origin))
 			. override_failure_message(tag + "grip off the target")
 			. is_less(GRIP_TOLERANCE)
 		)
-		# The support hand is at the fore-end (a one-handed gun has none).
+		# The support hand is at the fore-end (a one-handed gun has none): on the grip's own place for
+		# it where the weapon has a grip (the fingers are `test_hand_grips.gd`'s), else near `support`.
 		var fore_end := weapon.to_global(hold.support)
-		if hold.support != Vector3.ZERO:
+		var grip := _animation.weapon_grip()
+		if grip != null and grip.has_left:
+			(
+				assert_float(
+					_bone_position("Index1.L").distance_to(_animation.hands().solved_left().origin)
+				)
+				. override_failure_message(tag + "support hand off its grip on the fore-end")
+				. is_less(LEFT_HAND_TOLERANCE)
+			)
+		elif hold.support != Vector3.ZERO:
 			(
 				assert_float(_bone_position("Index1.L").distance_to(fore_end))
 				. override_failure_message(tag + "support hand off the fore-end")
@@ -199,7 +216,7 @@ func test_guns_point_along_the_body_at_the_hip_and_running() -> void:
 		)
 		(
 			assert_float(
-				weapon.global_position.distance_to(_animation.hands().weapon_target().origin)
+				weapon.global_position.distance_to(_animation.hands().solved_target().origin)
 			)
 			. is_less(GRIP_TOLERANCE)
 		)
@@ -218,6 +235,21 @@ func test_the_barrel_follows_the_camera_pitch() -> void:
 		AIM_TOE_IN_DEG
 	)
 	assert_float(_muzzle_direction(weapon).y).is_greater(0.25)
+
+
+# Looking down bends the upper body over the weapon, looking up tips it back (#110): the chest
+# takes half the view's pitch, clamped, while the arms hold the gun.
+func test_the_chest_leans_with_the_view_pitch() -> void:
+	await _equip(&"Rifle")
+	_runner.simulate_action_press("aim")
+	var lean := {}
+	for pitch: float in [-0.6, 0.0, 0.6]:
+		_rig.pitch = pitch
+		await _ticks(40)
+		var forward := -_player.global_basis.z
+		lean[pitch] = (_bone_position("Neck") - _bone_position("Hips")).dot(forward)
+	assert_float(lean[-0.6] - lean[0.0]).is_greater(0.04)
+	assert_float(lean[0.0] - lean[0.6]).is_greater(0.04)
 
 
 func test_the_clip_keeps_the_hands_while_reloading() -> void:

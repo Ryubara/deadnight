@@ -62,7 +62,7 @@ test("guest sign-in is off unless it is switched on, and names are cleaned", asy
   const { app, guest } = await platform({ DISCORD_MODE: "stub", ALLOW_STUB_SIGN_IN: "1", NODE_ENV: "test", GUEST_SIGN_IN: "0" });
   assert.equal((await guest("x")).response.statusCode, 404);
   await app.close();
-  assert.equal(guestName("  <b>Ann</b> & co  "), "bAnnb  co");
+  assert.equal(guestName("  <b>Ann</b> & co  "), "bAnnb co");
   assert.match(guestName(""), /^Guest [0-9]{4}$/);
   assert.equal(guestName("x".repeat(80)).length, 24);
   assert.equal(guestName("Zoë-3"), "Zoë-3");

@@ -38,7 +38,7 @@ local player) into the direction on screen.
 | `HudRound` | top left | the round on a row of **reel digits** (a projector drum counter that rolls to the next number), zombies left or the break countdown |
 | `HudObjective` | top left, under the round | a card with the area you are in and one line of what to do next (two lines at most) |
 | `HudFuel` | top right, **only for a moment** | the generator card: the tank as 20 segments, a percentage or `LOW` or `NO POWER`, one bulb per circuit with its sign's word beside it, in two columns (`SCREEN`, `SNACKS`, `BOOTH`, `BACK LOT`). Slides down into the column and fades in when the night makes progress at the generator, holds 4 s, leaves (see below) |
-| `HudFeed` | top right, under the generator card (at the top while it is away) | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who connected or left; one line each, 480 units wide (wider than the column), ending on the cards' right text line: a long line shrinks toward 20, then ends in an ellipsis (a cleared special round adds `DOUBLE FEATURE CLEARED  +440 EACH`) |
+| `HudFeed` | top right, under the generator card (at the top while it is away) | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who joined or left; one line each, 480 units wide (wider than the column), ending on the cards' right text line: a long line shrinks toward 20, then ends in an ellipsis (a cleared special round adds `DOUBLE FEATURE CLEARED  +440 EACH`) |
 | `HudPoints` | bottom left | **a container per player**, `[portrait][points]` (see below), you first, then the others by id |
 | `HudHealth` | bottom left, under the players | a card: `HEALTH n` and the grenade count on one row, a bar of ten ticks (or `DOWN` and what to hope for), then the equipment: the weapon put away last, by name (no rounds; the ammo card says the rounds), cut to the room |
 | `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it on the same baseline, the weapon name on a coloured bar; hot orange when low; `RELOADING` while a reload runs; `--` for a weapon with no ammunition (the crowbar) |
@@ -46,6 +46,7 @@ local player) into the direction on screen.
 | `HudMarquee` | top centre, under the banner | in the break before a special round, `COMING UP - ROUND 5 - IN 24` over the round's name in big letters that flicker like a failing neon sign (steady with reduced motion) over what it brings, between two rows of bulbs (the banner's); gone as the round starts. A HUD that joins in the break reads it from the schedule |
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card as high as its words need (a long name or line wraps, never cut; it grows upward): the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
+| `HudChallenge` | left edge, a third of the way down | a paper ticket that says a challenge moved a step (a quarter mark, a finish, a milestone step): the kind in small caps, the count, the words, four punch-card holes (one more punched at each quarter). One at a time, in from the edge, held about 2.4 s, out; see [the prompt](progression.md#the-progress-prompt-in-the-night) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows; rows slide into their slots (see Decisions) |
 | `HudReticle` | centre | the reticle (see Decisions): four short ticks round a gap and a dot, cream with a dark edge, static and small; hidden under the pause card and while you are down |
 | `HudCrosshair` | centre, over the reticle | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
@@ -76,6 +77,41 @@ The portrait is the Soldier as the player wears it, a head-and-shoulders render 
 alone (`UPDATE_ONCE`), so it costs nothing after its first frame. The state holds each player's `seat` and `look` as plain
 data (the look as `CharacterLook.to_dict`); a join gives the lowest free seat, as the server does, and a `player_look`
 event (`player_id`, `seat`, `look`) replaces it. Until a client sends looks, the seat's own preset shows.
+
+## The scoreboard
+
+Hold **Tab** (the pad's **Back / Select** button; on a phone a small button under Pause) and a ticket comes up over the
+middle of the night; let go and it leaves. One row per player in the night, in seat order on every screen:
+`[armband][name][kills][downs][revives][points][ping]`, with the round and the night's clock above (`TIME 12:34`, hours
+after the first). A downed player's name goes red and says `(DOWN)`, one who bled out `(DEAD)`; your own row has a faint
+wash. **Ping** is a column only when some player has one (a night over a link), and each ping reads good, fair or bad in
+ink, accent and red. **REVIVES** counts the teammates a player pulled up by hand ([Revives](#revives)); getting up
+when a round ends is nobody's revive (see [Scoreboard](../research/scoreboard.md)). Every number is the server's,
+never counted on the client.
+
+It is `HudScoreboard`, a part like the others, drawn last and not part of any column; it takes no space while hidden. It
+is held by the `scoreboard` input action, which the key, the pad and the touch button all press, so the HUD polls the
+action instead of listening for one kind of event. A pause menu or the result switches it off
+(`Hud.scoreboard_enabled`).
+
+## Revives
+
+What a player reads when someone is down (the rules are in [Revive](revive.md)). Every number is the server's: the frame
+carries each player's `bleed`, `revive` (the hold's progress), `reviver` and `dead`, and `HudState.team` keeps them
+(`set_player_revive`), so every screen shows the same ring.
+
+| Where | What | Part |
+| --- | --- | --- |
+| Over the view, a little under the reticle | **The ring** (`HudRevive`). The reviver: a ring filling as the hold goes on, the seconds left inside, `REVIVING <NAME>` under it. The downed player: the bleed-out clock as a red ring draining, the seconds inside, `BLEEDING OUT`, and over it the teammate's ring filling while they are pulled up (`<NAME> IS PULLING YOU UP`). Bled out: `YOU BLED OUT`, `BACK NEXT ROUND`. Nothing for a player who is up and not reviving | `HudRevive` |
+| Health card, bottom left | While down: `DOWN` and `BLEEDING OUT 32 S`, or `BEING PULLED UP`, or `DEAD` and `BACK NEXT ROUND` | `HudHealth` |
+| Prompt card, bottom middle | `REVIVE <NAME>`, `HOLD TO PULL THEM UP: 32 S LEFT`; it comes before a door or a shop | `HudPrompt` |
+| Over a downed teammate | A red ring with a cross, their name and the seconds they have left (`DEAD` once they bled out), the hold's ring filling over it; pinned to the screen edge with the other important markers while they are alive, so you know who is bleeding and where | `HudMarkers` |
+| Player boxes, left | `DOWN`, or `DEAD`; the portrait dims | `HudPlayerBox` |
+| Feed, top right | `RUBY REVIVED PAUL`, `PAUL BLED OUT` (a round's end: `PAUL IS BACK UP`) | `HudFeed` |
+| Scoreboard | A REVIVES column | `HudScoreboard` |
+
+Names come from one place, `HudState.team[id]["name"]` (the prompt, the ring, the feed, the markers and the scoreboard all
+read it), so a replicated display name (#485) shows everywhere once it fills that field.
 
 ## The generator card
 
@@ -123,8 +159,10 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   *diagonal* ticks (starting 9 units out) and sit between the reticle's, so the two never overprint. Lengths are canvas
   units: it scales with the window and the UI scale like every other part (a test reads the viewport's stretch). It
   is shown **while aiming too**: the aim view has no reticle of its own, and hiding the only mark where the shots go
-  at the moment of precision would be wrong. It is hidden under the pause card (the screen calls `set_shown`) and
-  while you are down. Every number is on `ReticleStyle` (`ui/hud/reticle_style.tres`, also the *Reticle Style*
+  at the moment of precision would be wrong. It is hidden under every card the night screen shows (Joining,
+  Paused, the result: `_show_overlay` calls `set_shown`) and shown again by `_hide_overlay`, the one way a card goes,
+  together with the scoreboard and the touch controls (#517: a joined night once ran with none of them). It is also
+  hidden while you are down. Every number is on `ReticleStyle` (`ui/hud/reticle_style.tres`, also the *Reticle Style*
   property of the `Hud` node): arm length, gap, thickness, outline, dot size (0 for none), tint and opacity, with
   ranges in the inspector.
 - **A part never grows past its band.** The layout test once used short values and the fallback font and passed
@@ -149,6 +187,14 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   in one frame cannot overlap) and fades in as it rises. The height the stack reports eases too, so the notices under
   the event list follow. It is the view's motion: `advance(delta)` steps it with the fade (tests and captures pass the
   seconds), `HudState` knows nothing of it, and with reduced motion every line is in its slot at once.
+- **The challenge prompt sits where nothing else does (#399).** The left edge, a third of the way down, is the one
+  free band: the
+  round column ends above it, the players' column starts below it, the reticle, gains and prompt are in the middle and
+  at the bottom. It does not mirror for a left hand (the corner buttons are at the bottom). It is a paper ticket, not a
+  dark card, on purpose: it is rare, so it may be the one light thing at the edge, and it matches the main menu's
+  "The program". `HudChallenge` reads `challenge_advanced` events like every part; `ChallengeHudLink` makes them from the
+  night's challenges. A layout test puts it on the busiest HUD at every canvas, mirrored or not, beside the crosshair's
+  clear box (`test_hud_challenge.gd`).
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
 - **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with four players, an

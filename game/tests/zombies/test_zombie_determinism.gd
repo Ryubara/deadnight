@@ -45,7 +45,7 @@ func _box(at: Vector3, size: Vector3) -> CSGBox3D:
 
 
 func _world(p_seed: int) -> ZombieSim:
-	var sim := ZombieSim.new(ZombieTuning.new(), p_seed)
+	var sim := ZombieSim.new(ZombieTuning.shipped(), p_seed)
 	sim.pathing = _pathing
 	for i in 16:
 		var side := -1.0 if i % 2 == 0 else 1.0

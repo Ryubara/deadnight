@@ -120,6 +120,76 @@ func test_each_button_presses_its_action() -> void:
 		assert_bool(Input.is_action_pressed(id)).is_false()
 
 
+func test_aim_is_held_while_the_thumb_is_on_it_with_auto_fire_on() -> void:
+	var aim := _fixture.at(TouchLayout.AIM)
+	await _fixture.touch(0, aim)
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	await _fixture.lift(0, aim)
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"aim")).is_false()
+
+
+func test_aim_is_a_toggle_with_auto_fire_off() -> void:
+	_fixture.auto_fire(false)
+	var aim := _fixture.at(TouchLayout.AIM)
+	await _fixture.touch(0, aim)
+	await _fixture.lift(0, aim)
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	assert_bool(_fixture.controls.is_aim_latched()).is_true()
+	await _fixture.touch(0, aim)
+	await _fixture.lift(0, aim)
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"aim")).is_false()
+	assert_bool(_fixture.controls.is_aim_latched()).is_false()
+
+
+func test_fire_shoots_with_aim_toggled_on_and_from_the_hip_and_leaves_the_aim_alone() -> void:
+	_fixture.auto_fire(false)
+	var fire := _fixture.at(TouchLayout.FIRE)
+	await _fixture.touch(0, fire)
+	assert_bool(Input.is_action_pressed(&"fire")).is_true()
+	assert_bool(Input.is_action_pressed(&"aim")).is_false()
+	await _fixture.lift(0, fire)
+	await await_millis(250)
+	var aim := _fixture.at(TouchLayout.AIM)
+	await _fixture.tap(aim)
+	await await_millis(250)
+	await _fixture.touch(1, fire)
+	assert_bool(Input.is_action_pressed(&"fire")).is_true()
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	await _fixture.lift(1, fire)
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	await _fixture.tap(aim)
+	await await_millis(250)
+
+
+func test_fire_shoots_while_aim_is_held_with_auto_fire_on() -> void:
+	await _fixture.touch(0, _fixture.at(TouchLayout.AIM))
+	await _fixture.touch(1, _fixture.at(TouchLayout.FIRE))
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	assert_bool(Input.is_action_pressed(&"fire")).is_true()
+	await _fixture.lift(1)
+	await _fixture.lift(0)
+
+
+func test_changing_auto_fire_or_hiding_the_layer_lets_go_of_a_toggled_aim() -> void:
+	_fixture.auto_fire(false)
+	await _fixture.tap(_fixture.at(TouchLayout.AIM))
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	_fixture.auto_fire(true)
+	assert_bool(Input.is_action_pressed(&"aim")).is_false()
+	_fixture.auto_fire(false)
+	await _fixture.tap(_fixture.at(TouchLayout.AIM))
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"aim")).is_true()
+	_fixture.controls.live = false
+	assert_bool(Input.is_action_pressed(&"aim")).is_false()
+	_fixture.controls.live = true
+
+
 func test_stick_look_and_fire_work_together_with_three_fingers() -> void:
 	await _fixture.touch(0, Vector2(300.0, 800.0))
 	await _fixture.drag(0, Vector2(380.0, 800.0), Vector2(80.0, 0.0))
@@ -300,3 +370,15 @@ class PauseSpy:
 	func _input(event: InputEvent) -> void:
 		if event is InputEventAction and event.is_action_pressed(&"pause"):
 			pressed += 1
+
+
+func test_the_scoreboard_button_is_held_while_the_thumb_is_on_it() -> void:
+	var point := _fixture.at(TouchLayout.SCOREBOARD)
+	await _fixture.touch(0, point)
+	assert_bool(Input.is_action_pressed(&"scoreboard")).is_true()
+	# Held, not toggled: it stays down as long as the finger does.
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"scoreboard")).is_true()
+	await _fixture.lift(0, point)
+	await await_millis(250)
+	assert_bool(Input.is_action_pressed(&"scoreboard")).is_false()

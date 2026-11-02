@@ -31,6 +31,9 @@ signal connection_ended
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
 
+## Sounds that may start in one frame during the night (`AudioService.starts_per_frame`): the
+## frame of a kill starts six, and each costs about a millisecond in the browser.
+const SOUND_STARTS_PER_FRAME := 2
 ## Share of the loading bar the lot's own build takes, before the warm-up starts.
 const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
@@ -45,6 +48,11 @@ const GRENADE_CLIP_EVENTS: Array[StringName] = [
 	&"cook_started", &"throw_started", &"grenade_dropped", &"grenade_exploded"
 ]
 
+## The server's events that move the Soldier's downed pose and kneel.
+const REVIVE_CLIP_EVENTS: Array[StringName] = [
+	&"player_downed", &"player_revived", &"revive_started", &"revive_stopped"
+]
+
 var mode := Mode.HUMAN
 var world: NightWorld
 var server: NightServer
@@ -57,6 +65,8 @@ var remote := false
 var avatars: RemoteAvatars
 ## Online: how far the server's answers have disagreed with this client's own body.
 var reconciler := Reconciler.new()
+## Watches for this client's own loop freezing (`StallGuard`).
+var stalls := StallGuard.new()
 var state: ClientState
 ## Every player's look and seat as this client heard them from the server; the bodies are dressed
 ## from it.
@@ -112,11 +122,16 @@ var _seq := 0
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
 var _hud_binding: NightHudBinding
+## Held here: it listens to the session and the HUD, and nothing else keeps it alive.
+var _challenge_link: ChallengeHudLink
 ## Held here: it listens to the client state and nothing else keeps it alive.
 var _equip_sync: WeaponEquipSync
 var _paused := false
 ## True while the warm-up runs.
 var _warming := false
+## The night is over on a game server and this client has left the seat: the link is read to the
+## floor until its socket is closed (`_leave_server`).
+var _leaving := false
 
 
 func _init() -> void:
@@ -214,6 +229,7 @@ func start_remote(
 		online.close()
 		return _fail(failure["reason"])
 	state.player_id = online.player_id
+	state.load_names(welcome["snapshot"])
 	var camera: Camera3D
 	var has_body := mode == Mode.HUMAN or (mode == Mode.AUTOPILOT and shoulder_camera)
 	if has_body:
@@ -297,6 +313,8 @@ func _track_challenges() -> void:
 	if challenge_board != null:
 		challenges = ChallengeSession.new(challenge_board, rules_tuning)
 		challenges.attach(state)
+		if hud != null:
+			_challenge_link = ChallengeHudLink.new(challenges, hud)
 
 
 ## The view and the sounds, once there is a camera to look through.
@@ -316,8 +334,28 @@ func _build_view(camera: Camera3D) -> void:
 	view.hear(world)
 	if hud != null:
 		_add_markers()
-	night_over.connect(func(_r: int) -> void: running = false)
+	night_over.connect(_on_over)
 	state.event_received.connect(_on_event)
+
+
+## The night ended: the ticks stop. Online the client has nothing more to say or hear, so it
+## leaves the seat at once (the server frees it) instead of leaving the socket unread, where a
+## browser's buffer fills with snapshots ("Buffer payload full").
+func _on_over(_round_reached: int) -> void:
+	running = false
+	if remote:
+		_leave_server.call_deferred()
+
+
+## Closes the link and drops what is still in flight: the night has ended, so frames that arrive
+## now change nothing. `_physics_process` goes on reading until the socket has closed.
+func _leave_server() -> void:
+	if link == null or _leaving:
+		return
+	if link.delivered.is_connected(_on_delivered):
+		link.delivered.disconnect(_on_delivered)
+	_leaving = true
+	link.close()
 
 
 ## The world markers of the HUD: the other players' names and the next door, projected through
@@ -335,7 +373,7 @@ func _add_markers() -> void:
 func _drawn_player(player_id: int) -> Node3D:
 	if not remote:
 		return server.body_of(player_id)
-	if player_id == state.player_id:
+	if player_id == state.player_id and _body != null:
 		return _body
 	return avatars.avatar(player_id) if avatars != null else null
 
@@ -354,6 +392,8 @@ func _go() -> void:
 		)
 		await warmup.run(self)
 		_warming = false
+	# Only the game limits them: a test that needs no pictures hears every sound at once.
+	Audio.starts_per_frame = SOUND_STARTS_PER_FRAME if warm_up else 0
 	if mode == Mode.HUMAN:
 		_make_assist()
 	running = true
@@ -470,6 +510,7 @@ func set_paused(paused: bool) -> void:
 
 
 func _exit_tree() -> void:
+	Audio.starts_per_frame = 0
 	running = false
 	if challenges != null:
 		challenges.flush()
@@ -482,7 +523,7 @@ func _exit_tree() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if _warming and remote:
+	if (_warming or _leaving) and remote:
 		link.pump()
 	for _i in ticks_per_frame:
 		if not running:
@@ -495,11 +536,20 @@ func tick() -> void:
 	if remote:
 		_tick_remote()
 		return
+	var began := PerfProbe.begin()
 	link.pump()
-	link.broadcast(server.step(STEP))
+	PerfProbe.end(&"tick.pump", began)
+	began = PerfProbe.begin()
+	var events := server.step(STEP)
+	PerfProbe.end(&"tick.server", began)
+	began = PerfProbe.begin()
+	link.broadcast(events)
+	PerfProbe.end(&"tick.client", began)
 	match mode:
 		Mode.AUTOPILOT:
+			began = PerfProbe.begin()
 			var command := autopilot.decide(STEP)
+			PerfProbe.end(&"tick.bot", began)
 			if shoulder_camera:
 				_aim_rig(command)
 			link.send(command.to_dict())
@@ -516,6 +566,14 @@ func tick() -> void:
 ## server will check it), and send the next command.
 func _tick_remote() -> void:
 	link.pump()
+	match stalls.check(Time.get_ticks_msec()):
+		StallGuard.Verdict.RESYNC:
+			_resync_body()
+		StallGuard.Verdict.SKIP:
+			# A tick the engine ran to catch up with a freeze: the server would take the newest of
+			# these commands and none of the steps, so there is neither a step nor a command.
+			ticked.emit()
+			return
 	if not link.is_open():
 		# The socket is down: nothing to send, and the body waits where it is until the server's
 		# answer comes back.
@@ -534,6 +592,9 @@ func _tick_remote() -> void:
 				_aim_rig(command)
 	if command != null:
 		# The body moves with the command as the server will read it, not as it was sampled.
+		# The frame the player is looking at: the server judges the shot against it.
+		if state.has_frame():
+			command.view_step = int(state.frame.get("tick", 0)) & 0xFFFF
 		command = NetWire.quantize(command)
 		if _body != null:
 			_body.tick(command.motion)
@@ -546,6 +607,18 @@ func _tick_remote() -> void:
 	if _body == null:
 		_follow(STEP)
 	ticked.emit()
+
+
+## The loop froze and the server went on without us: the body is where the server has the player
+## (the newest frame the backlog held), and the commands in flight are forgotten, since the answers
+## to them are no longer about this body.
+func _resync_body() -> void:
+	reconciler.reset()
+	if _body == null or not state.has_frame() or state.me().is_empty():
+		return
+	_body.state.position = state.position()
+	_body.state.velocity = Vector3.ZERO
+	PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
 
 
 ## The seat is ours again: the rules as the server has them now, in place of the events missed.
@@ -564,7 +637,7 @@ func _on_remote_event(event: Dictionary) -> void:
 	var me: Dictionary = event["players"].get(state.player_id, {})
 	if _body == null or me.is_empty():
 		return
-	var shift := reconciler.correction(me["ack"], me["pos"])
+	var shift := reconciler.correction(me["ack"], me["pos"], _body.state.position)
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
@@ -591,7 +664,41 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 
 
 func _human_command() -> NightCommand:
-	return _human.command(player(), state.player_id)
+	var command := _human.command(player(), state.player_id)
+	if _human.ping_pressed(player()):
+		link.send(_ping_request(command))
+	return command
+
+
+## What the ping key marks: what the crosshair is on, else where its ray lands (`PingAim`).
+func _ping_request(aim: NightCommand) -> Dictionary:
+	var landed := Vector3.INF
+	var cast := PhysicsRayQueryParameters3D.create(
+		aim.origin, aim.origin + aim.dir * PingAim.REACH, CameraProbe.PLAYER_MASK
+	)
+	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
+	if not hit.is_empty():
+		landed = hit["position"]
+	var shut := {}
+	var index := 0
+	for door_id in world.door_ids():
+		if not state.frame.get("doors", []).has(door_id):
+			shut[index] = world.door_points(door_id)
+		index += 1
+	var ammo: Array[Vector3] = []
+	for spot in world.shop_spots():
+		if spot["kind"] == &"ammo":
+			ammo.append(spot["position"])
+	return PingAim.pick(
+		aim.origin,
+		aim.dir,
+		state.zombies,
+		state.frame.get("players", {}),
+		state.player_id,
+		shut,
+		ammo,
+		landed
+	)
 
 
 ## What the server answered: the look server's packets go to the look table, the rest to the
@@ -613,14 +720,18 @@ func _dress_bodies(_player_id: int) -> void:
 	var resolved := looks.resolved()
 	for id: int in resolved:
 		var body := _body_of(id)
-		if body != null:
+		# A puppet is dressed by the avatars that place it (`RemoteAvatars`).
+		if body != null and not body.is_puppet:
 			body.dress(resolved[id], looks.seats[id])
 
 
-## The body of a player in this process: the server's, or (online) our own.
+## The body that draws a player on this screen: the server's in this process; online, our own, or
+## the puppet the frames place for any other (and for ours when this client plays no body).
 func _body_of(player_id: int) -> Player:
 	if remote:
-		return _body if player_id == state.player_id else null
+		if _body != null and player_id == state.player_id:
+			return _body
+		return avatars.avatar(player_id) if avatars != null else null
 	return server.body_of(player_id)
 
 
@@ -635,6 +746,7 @@ func _on_event(event: Dictionary) -> void:
 		night_over.emit(event["round_reached"])
 	else:
 		_show_grenade(event)
+		_show_revive(event)
 
 
 ## The Soldier's grenade clips follow the server's events: the pin, the throw, a grenade that went
@@ -655,6 +767,29 @@ func _show_grenade(event: Dictionary) -> void:
 		&"grenade_exploded":
 			if event["in_hand"]:
 				animation.grenade(&"gone")
+
+
+## The Soldier's downed pose and kneel follow the server's events: a player going down or getting
+## up, and a teammate beginning or ending the hold (DownedPose).
+func _show_revive(event: Dictionary) -> void:
+	var type: StringName = event["type"]
+	if not REVIVE_CLIP_EVENTS.has(type):
+		return
+	var animation := _animation_of(event["player_id"])
+	if animation != null:
+		match type:
+			&"player_downed":
+				animation.set_downed(true)
+			&"player_revived":
+				animation.set_downed(false)
+			&"revive_started":
+				animation.set_reviving(true)
+			&"revive_stopped":
+				animation.set_reviving(false)
+	if type == &"player_revived" and event["reviver_id"] > 0:
+		var reviver := _animation_of(event["reviver_id"])
+		if reviver != null:
+			reviver.set_reviving(false)
 
 
 func _animation_of(player_id: int) -> PlayerAnimation:
@@ -686,6 +821,11 @@ func _make_autopilot() -> void:
 					autopilot.crane_pool.assign(item.pool)
 			ShopItem.Kind.AMMO:
 				autopilot.ammo_prices[item.weapon] = item.price
+			ShopItem.Kind.UPGRADE:
+				autopilot.recut_price = item.price
+			ShopItem.Kind.TONIC:
+				if item.health_bonus > 0.0:
+					autopilot.tonic_price = item.price
 	autopilot.wanted.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
@@ -697,6 +837,10 @@ func _make_autopilot() -> void:
 	for circuit_id in world.switches.circuit_ids():
 		autopilot.switches.goals[circuit_id] = world.switches.standing_point(circuit_id)
 		autopilot.switches.doors[circuit_id] = world.switches.door_of(circuit_id)
+	autopilot.revive.reach = (
+		(night_tuning if night_tuning != null else NightTuning.shipped()).revive_reach
+	)
+	autopilot.revive.seconds = tuning.health.revive_seconds
 	autopilot.fuel.capacity = tuning.fuel.capacity
 	autopilot.fuel.refuel_at = tuning.fuel.low_fraction
 	autopilot.fuel.fill_to = tuning.fuel.low_fraction + SWITCH_RESUME_MARGIN

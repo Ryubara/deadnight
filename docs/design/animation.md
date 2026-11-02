@@ -21,7 +21,8 @@ come from one script, so this page and the file cannot drift:
 
 - **`<Action>_<Class>`** for anything a weapon changes: `Aim_Rifle`, `Fire_Shotgun`, `Reload_Pistol`,
   `Swing_Melee`, `Equip_Melee`. Classes: **Rifle, Shotgun, Pistol, Melee**.
-- **Bare names** for whole-body clips: `Idle`, `Walk`, `Run`, `Downed`.
+- **Bare names** for whole-body clips: `Idle`, `Walk`, `Run`, `Downed`; a whole-body clip with a variant is
+  `<State>_<Variant>`: `Downed_Idle`, `Downed_Crawl`, `Revive_Kneel` ([Downed and revive](#downed-and-revive)).
 - **Kit names stay** for kit clips we use as they are: `HitReact` is the hit, `Death` is going down. Renaming them
   would break the other kit characters that share the library.
 
@@ -42,7 +43,7 @@ move every bone. Events are frames of the clip.
 | Run | full | loop | 17 (0.71 s) | - |
 | HitReact | full | once | 10 (0.42 s) | - |
 | Death | full | once | 18 (0.75 s) | - |
-| Downed | full | loop | 48 (2.0 s) | - |
+| Downed | full | loop | 48 (2.0 s) | - (superseded by `Downed_Idle`, not played) |
 | Aim_Rifle | upper | loop | 48 (2.0 s) | - |
 | Fire_Rifle | upper | once | 8 (0.33 s) | muzzle 0, can_fire_again 8 |
 | Reload_Rifle | upper | once | 62 (2.58 s) | round_in 20, 32, 44; lever 56; can_fire_again 62 |
@@ -58,7 +59,8 @@ move every bone. Events are frames of the clip.
 | Unequip_<Class> | upper | once | 10 (0.42 s) | weapon_hidden 8 |
 
 Also in the file, unused for now: `Idle_Shoot` and `Run_Gun` (the kit's gun clips, which the Rifle and Shotgun clips
-start from), `Punch`, `Wave`, `Yes`, `No`, `Duck`, `Jump`, `Jump_Idle`, `Jump_Land`.
+and the [sprint carry](#sprint-carry) start from), `Punch`, `Wave`, `Yes`, `No`, `Duck`, `Jump`, `Jump_Idle`,
+`Jump_Land`.
 
 What each event is for:
 
@@ -90,11 +92,12 @@ The legs run while the arms aim: an AnimationTree blends an upper-body layer ove
 ```text
 locomotion (Idle / Walk / Run by speed) ──┐
                                           Blend2 "split", amount 1, filter = upper bones ── full-body OneShot ── output
-upper (Aim_<Class>; OneShots Fire, Reload, Swing, Equip, Unequip) ──┘   (HitReact; Death then Downed)
+upper (Aim_<Class> or Sprint_<Class>; OneShots Fire, Reload, Swing, Equip, Unequip) ──┘   (HitReact; Death then Downed)
 ```
 
-- Standing still, the locomotion is `Idle`; the upper layer is always the class's `Aim_<Class>` loop with its
-  one-shots on top, so the Soldier never holds a weapon in the Idle arms.
+- Standing still, the locomotion is `Idle`; the upper layer is the class's `Aim_<Class>` loop with its one-shots on
+  top, so the Soldier never holds a weapon in the Idle arms. Sprinting on the ground it is the class's
+  `Sprint_<Class>` carry instead ([Sprint carry](#sprint-carry)).
 - `HitReact`, `Death` and `Downed` are full-body and override both layers (a OneShot or a state with no filter).
 - Checked headless in Godot: with `Run` under `Aim_Rifle` through a filtered Blend2, the legs follow `Run` and the
   right arm matches `Aim_Rifle` to 0.00 degrees (`game/tests/art/check_soldier_clips.gd`).
@@ -127,16 +130,73 @@ const HOLD_MELEE := Transform3D(
 With these, the lever rifle, double shotgun and bat sit in the Soldier's hand in Godot through every clip (the
 Godot capture in the pull request).
 
-- **Left hand:** the kit hold is one-handed (in `Idle_Shoot` the left arm hangs), and so are the clips: the left arm
-  is free. `WeaponHandsIK` ([Weapons in the hands](weapon-hold.md)) reaches both hands to the weapon with a two-bone
-  IK, the left to the hold's `support` point on the fore-end (data in the hold, not a marker node in the scene), with
-  the weight below; the clips move the arms themselves where the weight is 0. The bat and axe stay one-handed for now.
+- **Each model's own grip replaces these holds** wherever it has one (every model now does): see [Grips](#grips).
+  `HOLD_GUN` and `HOLD_MELEE` stay as the fallback for a model with no grip file, and as the turn about the handle a
+  melee weapon keeps.
+- **Left hand:** the clips are one-handed (in `Idle_Shoot` the left arm hangs). `WeaponHandsIK`
+  ([Weapons in the hands](weapon-hold.md)) reaches both hands to the weapon with a two-bone IK: the left hand bone to
+  the grip's `left_hand`, turned as the grip says (solved from the model's `Support` socket), with the weight below;
+  the clips move the arms themselves where the weight is 0. The melee weapons stay one-handed for now.
 
 | Class | LeftHand IK weight |
 | --- | --- |
-| Rifle, Shotgun | 1 in Aim and Fire; 0 in Reload, Equip and Unequip (the clip moves the left hand to the belt and the gun) |
+| Rifle, Shotgun | 1 in Aim and Fire, standing and running; 0 in Reload, Equip and Unequip (the clip moves the left hand) |
 | Pistol | 0 (one-handed, as the kit holds it) |
-| Melee | 1 in Aim; 0 in Swing, Equip and Unequip |
+| Melee | 0 (one-handed; the IK does not run for a weapon that is not shouldered) |
+
+## Grips
+
+How the hands close on what they hold (#460): every finger touches the weapon and none goes into it, the trigger
+finger is on the trigger, and the left hand holds the fore-end. A grip is data, one file per model,
+`game/gameplay/player/grips/<model>.tres` (`HandGrip`), **solved from the model's own hand sockets**, so a new weapon
+gets its grip by placing three empties and running the solver, never by tuning numbers.
+
+**The sockets** (Blender empties under the weapon, built by `build_weapons.py` from its `GRIPS`, `TRIGGERS` and
+`SUPPORTS` tables, like the `Muzzle`):
+
+| Socket | Where | Turn (Blender; Godot) |
+| --- | --- | --- |
+| `Grip` | the right hand's handle: its centre where the middle finger wraps | +Z (Godot +Y) up the handle toward the index finger; +Y (Godot -Z) the way the straight fingers point: along the barrel on a pistol grip |
+| `Trigger` | guns: the middle of the trigger's front face, where the finger's pad presses | +Y the press (backward) |
+| `Support` | two-handed guns: the left hand's handle (fore-end, vertical foregrip) | +Z toward the left index finger (the muzzle, on a fore-end); +Y the way its fingers point (to the gun's right on a fore-end held from below, forward on a vertical grip) |
+
+**The solver** (`game/tests/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
+(`Index1`), so its result holds in every pose:
+
+1. The hand's handle line: across the knuckles (pinky to index) at the middle finger; the straight fingers' direction
+   and the palm's normal square to it.
+2. The model is turned so its socket's up runs along the line and its front the fingers' way (a melee weapon keeps its
+   old hold's turn about the handle, so its blade or claw still leads the swing), and moved so the socket is on the
+   line; a gun slides along it until its `Trigger` is level with the index finger's knuckle.
+3. It is pushed along the palm's normal until the palm is 1 mm from it.
+4. A gun is then turned up to 30 degrees about the handle and slid up to 2 cm along the fingers, to the place where the
+   index finger reaches the trigger best: the kit's fingers are short and thick, so on a gun drawn at real proportions
+   the trigger is out of reach with the grip square in the palm (a chibi hand turns the gun, as a small hand does).
+5. Each finger bends at its knuckle and middle joint (the thumb at its root and tip; the trigger finger also
+   sideways at its knuckle) within joint limits, to the bend that brings its tip 1 mm from the surface with no part of
+   it more than 1.2 mm in. The trigger finger looks for the trigger's face first and lies along the frame when it
+   cannot reach it; a finger that can touch nothing is only kept out.
+
+It writes the model's place under the right hand (`hold`, before the hold's `model_scale`), the size it was solved
+at, every finger rotation of both hands, the left hand bone's pose in the model's space, and which parts touch.
+
+**In the game** `PlayerAnimation` puts the model under the hand by its grip and gives the same hold to the arms' IK,
+and `HandGripPose` (a `SkeletonModifier3D` after `WeaponHandsIK`) closes the fingers: the right hand on the held
+item's grip (the weapon, the repair hammer or the grenade shell) while it shows, eased at 20 per second; the left hand
+on the weapon's while the IK holds it there. It also keeps the palm whole: the kit hand is four bones from the wrist
+(`Index1`, `Middle1`, `Pinky1`, `Thumb1`) and the weapon rides `Index1`, so when the IK turned only that one the other
+three stayed with the forearm and the palm tore (every gun's hand in the aim pose before #460).
+The left hand goes to the grip's `left_hand` on the weapon where it is after the right arm, and a two-handed gun's
+hold turns the chest 20-30 degrees, left shoulder forward ([How a gun is held](weapon-hold.md#how-a-gun-is-held)):
+the Soldier's 0.66 m arm did not reach a fore-end 0.70-0.81 m from his shoulder, and the clamped hand ended inside the
+stock.
+
+**Proof.** `game/tests/player/test_hand_grips.gd` measures the skin as drawn (`HandContact`: the skinned mesh against
+the weapon's triangles, inside counted per closed piece) in every pose the player uses (equipped, standing, running,
+aiming, firing and two moments of the reload for the guns; standing, running and four moments of the swing for melee;
+the repair and the cooked grenade): no part more than 2 mm into the weapon, every contact within 5 mm.
+`tools/blender/render_grips.py` draws the close contact sheets from the probe's dumps
+(`game/tests/art/probe_hands.gd`).
 
 ## Grenade
 
@@ -238,6 +298,59 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   through the night and checks the hammer replaces the weapon and the weapon comes back on release, and
   `game/tests/ui/touch/test_touch_repair.gd` does the same from a finger on the touch Interact button.
 
+## Downed and revive
+
+A downed player lies in `Downed_Idle`, and a teammate holding the revive kneels in `Revive_Kneel` (#504, for the
+revives of #486). `Downed_Crawl` is ready in case downed players may move ([#505](https://github.com/Ryubara/deadnight/issues/505)
+decides). All three are `full` clips: they own the legs too. They are built by `revive()` in
+`tools/blender/soldier_clips.py` into their own files: `Downed_Idle` and `Revive_Kneel` in
+`game/assets/characters/soldier/revive/soldier_revive.glb`, `Downed_Crawl` alone in
+`game/assets/characters/soldier/crawl/soldier_crawl.glb`, each with its `clips.json`. Delete the `crawl` folder and the
+crawl is gone: the controller adds it only when its file is there.
+
+| Clip | Layer | Plays | Frames | Ground speed | Events |
+| --- | --- | --- | --- | --- | --- |
+| Downed_Idle | full | loop | 48 (2.0 s) | - | - |
+| Downed_Crawl | full | loop, at ground speed | 32 (1.33 s) | 0.45 m/s | pull_right 0, pull_left 16 |
+| Revive_Kneel | full | loop while the hold lasts | 24 (1.0 s) | - | press 6, 18 |
+
+- **Downed_Idle** reclines on the left elbow, the chest 30 degrees off the ground. The right hand holds the belly, the
+  right knee is drawn up, and the head looks left on one breath and right on the next. It sits with the hips over the
+  player's place, and the whole body is turned 20 degrees about the vertical (head to his left, feet to his right).
+  That turn is what makes it read from the shoulder camera behind him: lying straight, the camera looks along the body
+  and sees the helmet. Unlike the old `Downed` (Death's last frame: flat on the back, the head 1.3 m behind the
+  player's place, a helmet and two boots from behind), it reads from the side and from above too. Nothing goes below
+  the ground (the lowest skin is the shin, at -2 mm).
+- **Downed_Crawl** is the same recline. The heels dig in ahead and pull him forward, one then the other: a planted heel
+  sweeps back at 0.45 m/s in the game (measured off the clip, `ground_speed` in its `clips.json`), and the left elbow
+  pushes with the left heel. The controller plays it at ground speed over 0.45 (0.5 to 1.6), fully in by 40 % of it.
+- **Revive_Kneel** is down on the right knee, the toes curled under, the left foot flat ahead. The back is upright and
+  the arms reach out and down: the hands press 0.53 m ahead of him and 0.29 m up, and 6 cm lower on each `press`.
+  Upright on purpose: leaned over his hands, the Soldier's big head met the teammate's. He presses the belly (where the
+  downed hand holds the wound), not the chest, for the same reason.
+- **No finger is keyed.** The hands keep the skeleton's rest fist, and `HandGripPose` (#507) is free to close them on
+  whatever they hold. Blender's glTF exporter samples every bone of every clip whatever its keys, so
+  `build_soldier.py` takes the finger channels out of the file after the export (`strip_channels`, 66 per clip:
+  22 bones, 3 channels each). `test_player_revive.gd` checks the imported clips carry no finger track.
+- **Driven by eased weights.** `PlayerAnimation.set_downed(bool)` (the rules' `player_downed` / `player_revived`)
+  and `set_reviving(bool)` (`revive_started` naming the player as the reviver / `revive_stopped`,
+  `player_revived`). `Night` calls them from the server's events for every body it draws, and `RemoteAvatars` from each
+  frame's `downed`, so a player who joins late lies down too. Each eases a Blend2 over everything the standing body
+  does, at 6 per second for the downed pose and 10 for the kneel. Going down drops a repair, a reload and a revive.
+  Down or kneeling, the weapon is put away and the arm IK lets go. A downed player cannot kneel. The tree: `full`
+  (HitReact, Death) over `downed` (Downed_Idle, or the `crawl` blend) over `kneel` (Revive_Kneel) over `split`.
+- **Other players' bodies.** `DownedPose.add_clips(anim_player)` adds the clips to any model on the
+  Soldier's rig, so a drawn avatar (RemoteAvatars) plays `Downed_Idle`; `DOWNED_TILT` is only for a body with no animation.
+- **The camera does not frame a downed body yet.** The shoulder rig keeps its standing height and pitch, so the body
+  lies at the bottom edge of the view, cut off. Framing it is the camera's job (lower the pivot and tilt down while
+  down, as the crouch flag does): [#532](https://github.com/Ryubara/deadnight/issues/532).
+- Checked headless (`game/tests/player/test_player_revive.gd`): the clips are in the library, loop, find every bone on
+  the player's skeleton, key the legs and no finger. The tree has a node for each. Going down eases (one tick in, the
+  weight is under 0.2), the head ends under 60 % of its standing height, and getting up brings it and the weapon back.
+  The downed head turns more than 15 degrees over a loop. The kneel presses 4 times in 2 s. A downed player does not
+  kneel. Moving at 0.45 m/s while down plays the crawl at rate 1.0 and the heels move. Captures:
+  `game/tests/captures/revive_poses.tscn`, in the night, from the shoulder camera, the side and above.
+
 ## Reloading
 
 A reload is a tilt, not a clip (maintainer, 2026-11-01, #383: "it can just be a slight tilt weapon downward and pull it
@@ -282,12 +395,85 @@ with its `clips.json`; `PlayerAnimation` adds them to the Soldier's library when
 - Checked headless (`game/tests/player/test_player_aim_move.gd`): the planted foot, read off the skeleton while the
   player moves at the aim speed, sweeps straight against the travel at 2.60 m/s in all four directions.
 
+## Sprint carry
+
+While the body sprints, the legs play `Run` and the arms carry the weapon with the stride (#459): before, the upper
+layer kept looping `Aim_<Class>`, so the arms and the gun stayed frozen through a sprint. Weapons need no clips of
+their own: each rides `Index1.R`, so it swings when the arms and the chest do. Four `upper` clips, built by
+`sprint_carries()` in `tools/blender/soldier_clips.py` into their own file,
+`game/assets/characters/soldier/sprint/soldier_sprint.glb` with its `clips.json`; `PlayerAnimation` adds them to the
+Soldier's library when the tree is built.
+
+| Clip | Layer | Plays | Frames | The carry |
+| --- | --- | --- | --- | --- |
+| Sprint_Rifle | upper | loop | 17 (0.71 s) | both hands on, low across the chest, muzzle up past his left shoulder |
+| Sprint_Shotgun | upper | loop | 17 (0.71 s) | the same, a little lower and with more swing (the heavier gun) |
+| Sprint_Pistol | upper | loop | 17 (0.71 s) | one hand at the side, the forearm pumping (the kit's `Run_Gun` arm) |
+| Sprint_Melee | upper | loop | 17 (0.71 s) | a runner's arm out from the side, the weapon upright and leaning back |
+
+- **On Run's own frames.** Each clip is the kit `Run`, frame for frame: its spine, shoulders and left arm (the chest
+  twists 9 degrees each way and bobs with the stride), so the swing lands on Run's footfalls by construction (the
+  right foot plants at frame 3.5, the left at 12.5; the Body is lowest at 4 and 13). Only the right arm and, for the
+  two-handed guns, the left arm are posed for the class.
+- **Rifle and Shotgun.** The upper arm hangs (chest frame, his right is -X, ahead -Y: `(-0.35, -0.05, -1)`), the
+  muzzle points `(0.85, -0.5, 0.45)` (across to his left, ahead and up) and the gun's top faces `(-0.3, 0.2, 1)`;
+  the grip follows from the kit hold (0.62 m out along the forearm, so a low grip and a steep gun cannot both be had).
+  On top of the chest's twist the gun swings 6 degrees each way (7 for the shotgun) and the muzzle dips 4 degrees (5)
+  a frame after each footfall. The left hand reaches the hold's `support` point (`holds/<class>.tres`, times its
+  `model_scale`) by two-bone IK in Blender, 0.07 m short along the forearm like `WeaponHandsIK`: if the support point
+  moves, rebuild the clips. The muzzle shows past the left of the helmet from the shoulder camera; a carry in front of
+  the chest (tried first) is hidden by the body.
+- **Pistol.** `Run_Gun`'s right arm (the forearm pumps 46 degrees a stride), the upper arm swinging a third of the left
+  arm's swing half a stride later.
+- **Melee.** The upper arm hangs out from the side (`(-0.5, 0.1, -1)`) and swings 24 degrees fore and aft against the
+  left arm; the forearm points ahead and pumps 1.2 times the arm's swing; the forearm is turned about its axis so the
+  shaft leans up, back and out (`(-0.25, 0.45, 1)`): it stays up and clears the head from the camera. Hanging, the
+  weapon pointed at the legs (first try).
+- **Only the spine, the shoulders and the arms move.** The fingers stay the static grip every weapon clip shares and
+  the hand's hold on the weapon is the game's (`HOLD_GUN`, `HOLD_MELEE`): the grip sockets and finger poses are #460's.
+  A test fails if a Sprint clip moves a finger or a leg bone.
+
+### The blend
+
+- **When.** The carry comes in while the body is `sprinting`, **on the floor**, at `sprint_carry_min_speed` (3 m/s)
+  or more, with nothing else for the arms (no aim and no hip-fire hold, no action clip, no repair). It eases in over
+  `sprint_carry_in` (0.2 s) and out over `sprint_carry_out` (0.15 s), linearly, through a smoothstep in the tree
+  (`PlayerTuning`, group Sprint carry).
+- **Out at once for the arms' work.** The aim, a shot (the hip-fire hold), a reload, a swing, an equip or a grenade
+  start the blend-out on their first tick; the one-shot's own fade (0.05 s) covers the carry first. The shot itself is
+  not delayed: `muzzle` is frame 0 of Fire and comes in the call that starts it, carry or not. The shouldered pose
+  (`WeaponHandsIK`) gives way to the carry by its weight (`influence = shoulder x (1 - carry)`).
+- **In the air it holds still.** Following the sprint sway's rule (the feet make the motion,
+  [Camera shake](camera-shake.md#the-sprint-sway)): in the air the clip stops where it is (the Run is not played
+  there either) and keeps its weight; it never starts in the air. After the landing the locomotion restarts the Run,
+  and the carry catches up with it (12 per second, exponential) instead of jumping.
+- **Locked to the Run.** The tree has a `carry` Blend2 between `aim` and the action OneShot, its clip behind a
+  `TimeSeek`. Every frame `PlayerAnimation` reads the Run's place
+  (`parameters/body/locomotion/move/run/current_position`, after the tree's last step) plus that step
+  (`current_delta`) and seeks the carry there: both clips land on the same frame, at whatever pace the Run plays.
+- **Where.** The weight and the clip's place are `SprintCarry` (`game/gameplay/player/sprint_carry.gd`, no tree in
+  it); the Sprint file is added to the Soldier's library by `SoldierClipFile`, which loads the repair, grenade,
+  aim-move and sprint files alike.
+- **With the hand grips (#507).** The carry keys no finger, so `HandGripPose` closes the fingers over it. The rifle's
+  and shotgun's carry reach the old hold's `support` point and the weapon sits at the old hold; #507 moves both
+  (`HandGrip.hold` and `left_hand`), so after it merges the Sprint clips for the long guns are rebuilt against the
+  new points (`soldier_clips.py`, `SPRINT_CARRY`): until then the gun hides behind the arm and head in a sprint.
+- **Checked:** `game/tests/player/test_sprint_carry.gd` (the clips are on Run's cycle; the carry plays only sprinting
+  on the ground, holds in the air and never starts there; its phase matches Run to 0.002 s; it catches up after a
+  landing without jumping; aim, a hip shot, a reload and a swing take it out within 0.15 s; the first shot's `muzzle`
+  comes in the same call; the hand swings more than 5 cm a stride in every class; no finger or leg moves) and
+  `game/tests/night/test_night_sprint_carry.gd` (sprint commands through the real night carry the weapon, and the
+  first shot after the sprint comes on the same tick as one from a standstill). Captures:
+  `game/tests/captures/sprint_carry_tour.tscn`.
+
 ## How the clips are made
 
 From the kit's own poses, never from a blank rig: `Idle_Shoot` frame 0 (the gun hold) is the base of every weapon
 pose, `Idle` frame 0 the lowered arms that Equip and Unequip move from and to. Recoil, sway and reloads are local
 rotations on top, mostly of the spine, so both arms and the weapon move together. `Walk` is the kit `Run` at 60 % of
-its stride, stretched to one second; `Downed` is the last frame of `Death`, breathing. What we learned on the way:
+its stride, stretched to one second; `Downed` is the last frame of `Death`, breathing. The downed and revive
+clips are built in world space instead (bones turned about world axes, arms and legs solved onto world targets):
+lying and kneeling move the bones too far from the standing axes the offsets were measured in. What we learned on the way:
 [Character animation](../research/character-animation.md).
 
 ## Rebuilding
@@ -313,6 +499,17 @@ godot --headless --path game -s res://tests/art/check_repair.gd           # LIBR
 # sheet, the kit Run above them (front, side, or from above and behind to see the feet on a strafe):
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Walk_,Strafe_ --out game/assets/characters/soldier/aim_move/soldier_aim_move.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only AimMove --view top --out <scratch>/aim
+# The downed and revive clips, and the optional crawl in a file of its own (prints the finger channels taken out);
+# their sheet, the old Downed above them (front, side, back or top); the check; the captures in the night:
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Downed_Idle,Revive_ --out game/assets/characters/soldier/revive/soldier_revive.glb
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Downed_Crawl --out game/assets/characters/soldier/crawl/soldier_crawl.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Revive --view side --out <scratch>/revive
+godot --headless --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/player/test_player_revive.gd
+gds godot -- --path game res://tests/captures/revive_poses.tscn --quit-after 3600 -- --out <scratch>/revive
+# The sprint carry clips, their own file (prints SPRINT: each clip's frames and how far the left hand missed the
+# fore-end); one stride of each over Run with the game's weapons (Sprint; SprintBefore is Aim_<Class> over Run):
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Sprint_ --out game/assets/characters/soldier/sprint/soldier_sprint.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Sprint,SprintBefore --view back --out <scratch>/sprint     --weapon Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=Shotgun=0.71     --weapon Shotgun=game/assets/weapons/double_shotgun/double_shotgun.glb=Shotgun=0.82     --weapon Pistol=game/assets/weapons/revolver/revolver.glb=Pistol=1.76     --weapon Melee=game/assets/weapons/baseball_bat/baseball_bat.glb=Shovel=0.86=-90,0,0
 ```
 
 `<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is third-party-derived (CC0); it is committed with

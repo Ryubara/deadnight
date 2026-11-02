@@ -64,8 +64,11 @@ run skips it (nothing is drawn, so nothing is built).
    shared extra clips, every weapon and grenade definition and **what each definition points at**
    (`ResourceLoader.get_dependencies`, so a weapon's model scene is picked up when it is added to its `.tres`). They are
    requested with `ResourceLoader.load_threaded_request` and polled every frame; the loaded resources are held.
-2. **Sounds.** `Audio.preload_sound(id)` for every id of `SoundCatalog`, a few milliseconds a frame.
-3. **The lot.** A camera of its own, made current, looks down on the whole lot from above. Every drawn node of the
+2. **Sounds.** `Audio.preload_sound(id)` for every id of `SoundCatalog`, a few milliseconds a frame (most are found
+   cached: the audio service loads them in the background while a menu is up, #509).
+3. **The lot.** A camera of its own, in a 160 x 90 `SubViewport` of the night's world (the window's own 3D is off
+   meanwhile and draws the night once at the end: a program does not depend on the picture's size and a renderer on
+   the CPU pays for every pixel, #509), looks down on the whole lot from above. Every drawn node of the
    night is held out of the picture first and **brought back one new kind of material per frame** (`DrawReveal`, see
    "The first draw of the lot"), with every lamp lit; then two frames with every lamp dark (the lamps' lights hidden,
    then put back; the moon stays). A mesh's programs depend on the lights that reach it, and the generator can fail.
@@ -186,16 +189,41 @@ The loading screen takes about 7 s longer in the browser on this machine; most o
 is what the player no longer pays during the night. The bar moves through the loading, the sounds and the drawing;
 it cannot move during the navigation bake, which blocks the page (Open).
 
+## The flare's first shot (#483)
+
+The maintainer's online report: the first flare shot hitched the client while its effect loaded, and the player was lost
+after it (the hitch was the trigger; the desync is in [Multiplayer](multiplayer.md#a-client-that-freezes-483)). The flare
+is in the warm-up since #463: the stage replays `projectile_spawned`, `projectile_burst` and `lure_started` through the
+view's own handler, and the flare gun's shot like any weapon's. `test_a_first_flare_shot_draws_nothing_the_warm_up_did_not`
+plays a real shot (muzzle flash, the flare in the air, its burst, the fire that calls the dead) after the warm-up and
+asks the ledger for what is new: nothing is.
+
+Frame times of the first flare shot on desktop (`game/tests/captures/flare_first_shot.tscn`, a window with the OpenGL
+driver, the player's camera, the trigger a real mouse event; the frame list after the trigger, four runs):
+
+| Warm-up | Worst frame after the trigger | Frames over 25 ms |
+| --- | --- | --- |
+| off | 19.6 and 21.3 ms | 0 |
+| on | 15.7 and 16.4 ms | 0 |
+
+So on desktop the unwarmed first shot costs one frame of about 20 ms and the warmed one has none: nothing large enough for
+a second pull request. The browser is the open part: a native driver builds a program faster than ANGLE and the browser
+(see above), and a Chrome run needs the flare gun in the player's hands (a purchase or the crane).
+
 ## Open
 
+- **Every shot and kill** also cost a frame, for another reason (made and freed in the frame, sounds started):
+  [The lag on every shot and kill](kill-spike.md).
 - **Not covered**: the HUD's own (canvas) shaders and font glyphs for HUD numbers, which the browser run showed no
-  links for in 20 s; grenades and the flare in the night (the night does not draw them yet, #257: the blast is warmed
-  because its code exists, and a night view that draws a projectile is picked up by the same check once it plays one);
-  other players' looks (the wardrobe parts) in a multiplayer night.
+  links for in 20 s; other players' looks (the wardrobe parts) in a multiplayer night.
 - **Navigation bake**: solved by shipping baked meshes (#348, #335); it was never the long frame (0.5 s, #347). Nothing
   is baked on the web path any more: the night's first mesh takes 15 ms and a bought door 15 ms, against 594 and 370 ms
   baked in the browser ([Zombies](zombies.md#the-meshes-are-baked-ahead-of-time-335)). The loading's longest frame is
   2.2 to 2.3 s, the build of one lit shader (see "The floor"), so the issue's goal of under 1 s needs fewer lit shaders,
   not navigation.
+- **Loading time, cut (#509):** the warm-up now draws into a small picture, replays the effects once, finds the sounds
+  loaded while the menu was up, and the lot has two lit shaders fewer; the numbers and what they showed are in
+  [Web export](web-export.md#loading-a-night-509): 21.8 s to 7.2 s in the software renderer CI runs and 24.4 s to 18.1 s
+  with a GPU.
 - **Loading time** is the sum of the lit shaders (about 12 s of 19 in the browser, on this machine); the bar shows it.
   Fewer lit shaders is the only lever (see "The first draw of the lot").

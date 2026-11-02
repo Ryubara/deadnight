@@ -143,7 +143,7 @@ func test_no_player_count_nor_round_lifts_the_cap_above_the_web_ceiling() -> voi
 ## four players, #315) only queued the extra zombies in the director and told the balance model
 ## about a crowd the lot never stood.
 func test_the_rules_ceiling_is_the_crowds_hard_cap() -> void:
-	assert_int(_t.alive_cap_ceiling).is_equal(ZombieTuning.new().hard_cap)
+	assert_int(_t.alive_cap_ceiling).is_equal(ZombieTuning.shipped().hard_cap)
 
 
 func test_the_ceiling_only_trims_the_cap_and_never_lifts_it() -> void:

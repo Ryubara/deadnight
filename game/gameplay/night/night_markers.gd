@@ -11,6 +11,8 @@ extends Node
 
 ## The name sits this far over a player's feet: the capsule's height and a little more.
 const NAME_LIFT := 0.35
+## The marker of a teammate on the ground floats this far over their feet, metres.
+const DOWNED_LIFT := 0.9
 ## The kinds of marker the HUD draws.
 const ALLY := &"ally"
 const OBJECTIVE := &"objective"
@@ -70,6 +72,9 @@ func markers() -> Array[Dictionary]:
 	for id: int in _state.frame["players"]:
 		if id != _state.player_id:
 			out.append(_ally(camera, id, here))
+	var marks: Dictionary = _state.frame.get("pings", {})
+	for id: int in marks:
+		out.append(_ping(camera, id, marks[id], here))
 	var next := _next_door(here)
 	for door_id in _door_points:
 		if _is_next(door_id):
@@ -98,14 +103,35 @@ func _ally(camera: Camera3D, id: int, here: Vector3) -> Dictionary:
 	var feet: Vector3 = _state.frame["players"][id]["pos"]
 	if node != null:
 		feet = node.get_global_transform_interpolated().origin
-	var found := MarkerProjection.project(camera, feet + Vector3(0.0, _head, 0.0))
-	return _marker(
+	var player: Dictionary = _state.frame["players"][id]
+	var downed: bool = player.get("downed", false)
+	# A downed body lies on the ground: its marker sits just over it, not over a standing head.
+	var lift := _head if not downed else DOWNED_LIFT
+	var found := MarkerProjection.project(camera, feet + Vector3(0.0, lift, 0.0))
+	var marker := _marker(
 		StringName("player_%d" % id),
 		ALLY,
 		found["screen"],
 		here.distance_to(feet),
 		str(_hud_state.team.get(id, {}).get("name", "")),
-		false
+		downed and not player.get("dead", false)
+	)
+	# What the marker of a teammate on the ground says: the clock, and the hold on them if any. The
+	# seconds are whole and the progress a hundredth, so a marker does not change on every tick.
+	marker["downed"] = downed
+	marker["dead"] = player.get("dead", false)
+	marker["bleed"] = ceili(float(player.get("bleed", 0.0)))
+	marker["revive"] = snappedf(float(player.get("revive", 0.0)), 0.01)
+	return marker
+
+
+## A teammate's ping: a diamond over the spot, labelled with who put it up.
+func _ping(camera: Camera3D, id: int, mark: Dictionary, here: Vector3) -> Dictionary:
+	var at: Vector3 = mark["pos"]
+	var found := MarkerProjection.project(camera, at + Vector3(0.0, 1.0, 0.0))
+	var who := str(_hud_state.team.get(id, {}).get("name", "PING"))
+	return _marker(
+		StringName("ping_%d" % id), OBJECTIVE, found["screen"], here.distance_to(at), who, true
 	)
 
 

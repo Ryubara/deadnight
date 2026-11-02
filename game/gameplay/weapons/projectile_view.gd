@@ -4,22 +4,11 @@ extends Node3D
 ## soft halo and a short trail of fading sparks. It follows a `ProjectileState`, the
 ## client's copy of the server's shot, and decides nothing: the server's `projectile_burst` ends it.
 
-## The core is drawn this many times the shot's hit radius, so it reads from the shoulder camera.
-const CORE_SCALE := 1.3
-const HALO_SCALE := 3.5
-const HALO_ALPHA := 0.28
-const CORE_COLOUR := Color(1.0, 0.82, 0.55)
-const HALO_COLOUR := Color(1.0, 0.45, 0.18)
-## The halo's flicker: a product of two sines of the shot's age, so it is the same every run. It
-## lights nothing: a light per flare would take a third slot on the meshes a fight already gives
-## a flash and a blast (`test_lot_light_cap`).
-const FLICKER_DEPTH := 0.3
-const FLICKER_RATE_A := 31.0
-const FLICKER_RATE_B := 47.0
-const TRAIL_EVERY := 2
-const TRAIL_SECONDS := 0.5
-const TRAIL_RADIUS := 0.05
-
+## The look (`shot_fx_tuning_default.tres`, "Flare in flight"): the core's and halo's size, the
+## halo's flicker (a product of two sines of the shot's age, so it is the same every run; it lights
+## nothing, a light per flare would take a third slot on the meshes a fight already gives a flash
+## and a blast, `test_lot_light_cap`) and the trail.
+var fx := ShotFxTuning.shipped()
 var state: ProjectileState
 
 var _halo: MeshInstance3D
@@ -28,8 +17,8 @@ var _steps := 0
 
 func _ready() -> void:
 	var radius := state.def.projectile_radius
-	add_child(_ball(radius * CORE_SCALE, CORE_COLOUR, 1.0))
-	_halo = _ball(radius * HALO_SCALE, HALO_COLOUR, HALO_ALPHA)
+	add_child(_ball(radius * fx.flare_core_scale, fx.flare_core_colour, 1.0))
+	_halo = _ball(radius * fx.flare_halo_scale, fx.flare_halo_colour, fx.flare_halo_alpha)
 	add_child(_halo)
 	follow()
 
@@ -38,9 +27,11 @@ func _ready() -> void:
 func follow() -> void:
 	position = state.position
 	_steps += 1
-	var flicker := sin(state.age * FLICKER_RATE_A) * sin(state.age * FLICKER_RATE_B)
-	_halo.scale = Vector3.ONE * (1.0 - FLICKER_DEPTH * (flicker * 0.5 + 0.5))
-	if _steps % TRAIL_EVERY == 0:
+	var flicker := (
+		sin(state.age * fx.flare_flicker_rate_a) * sin(state.age * fx.flare_flicker_rate_b)
+	)
+	_halo.scale = Vector3.ONE * (1.0 - fx.flare_flicker_depth * (flicker * 0.5 + 0.5))
+	if _steps % fx.flare_trail_every == 0:
 		_drop_trail_dot()
 
 
@@ -63,12 +54,12 @@ static func _ball(radius: float, colour: Color, alpha: float) -> MeshInstance3D:
 
 
 func _drop_trail_dot() -> void:
-	var dot := _ball(TRAIL_RADIUS, HALO_COLOUR, 1.0)
+	var dot := _ball(fx.flare_trail_radius, fx.flare_halo_colour, 1.0)
 	var material := (dot.mesh as SphereMesh).material as StandardMaterial3D
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	dot.top_level = true
 	add_child(dot)
 	dot.global_position = state.position
 	var tween := create_tween()
-	tween.tween_property(material, "albedo_color:a", 0.0, TRAIL_SECONDS)
+	tween.tween_property(material, "albedo_color:a", 0.0, fx.flare_trail_seconds)
 	tween.tween_callback(dot.queue_free)

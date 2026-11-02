@@ -1,9 +1,12 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 4; version 3 had no ticket in the hello,
-## version 2 no resume token, version 1 sent a command as 47 bytes of floats), one message to a
-## WebSocket frame: a type byte, then the fields. `LookWire` continues the numbering with types 8
-## and 9.
+## The bytes of a night's connection (protocol version 9, whose WELCOME and events carry every
+## seat's name; version 8 carried each player's aim pose and look up or down so a client can draw
+## the weapons of the others; version 7 had zombie deltas and an interest radius, version 6 had
+## every zombie whole in a frame, version 5 had no view step in a command, version 4 had a ping of
+## 5 bytes with no round trip in it, version 3 had no ticket in the hello, version 2 no resume
+## token, version 1 sent a command as 47 bytes of floats), one message to a WebSocket frame: a type
+## byte, then the fields. `LookWire` continues the numbering with types 8 and 9.
 ##
 ## HELLO    C->S  u8 type=1, u8 version, u8 token length (0 or 8), the resume token the last WELCOME
 ##                gave (a client that lost its socket asks for its seat back), then the rest is the
@@ -12,13 +15,18 @@ extends RefCounted
 ##                packed variable: the rules' snapshot (`GameRules.to_dict()`), for a HUD that joins
 ##                in the middle (or comes back)
 ## COMMAND  C->S  u8 type=3, u32 seq, s8 move x/y, u16 yaw, s16 pitch, u16 flags, s16 origin x/y/z
-##                (centimetres), u16 shot yaw, s16 shot pitch (fixed, `COMMAND_SIZE` = 23 bytes in
-##                all; the steps are `CommandCodec`'s)
+##                (centimetres), u16 shot yaw, s16 shot pitch, u16 the server step of the frame the
+##                shooter was looking at (fixed, `COMMAND_SIZE` = 25 bytes in all; the steps are
+##                `CommandCodec`'s)
 ## TICK     S->C  u8 type=4, u32 server step, then a packed variable: the array of events since the
 ##                last TICK, the frame last; a frame after the first only carries what changed
-##                (`FrameDelta`)
-## PING     C->S  u8 type=6, u32 client milliseconds
+##                (`FrameDelta`); its zombies are a `ZombieDelta` against the zombies the client has
+## PING     C->S  u8 type=6, u32 client milliseconds, u16 the round trip the last PONG measured, in
+##                milliseconds (`NO_RTT` before the first), for the scoreboard (7 bytes in all)
 ## PONG     S->C  u8 type=7, u32 the same, u32 server step
+## MARK     C->S  u8 type=11, u8 kind (an index of `PingBoard.KINDS`), s16 x/y/z (centimetres), u16
+##                the thing marked (an index of the lot's doors, a zombie's or a player's id);
+##                `MARK_SIZE` = 10 bytes. The server answers with a `ping_placed` event for everyone
 ## REFUSED  S->C  u8 type=10, u8 reason (`Refusal`), u8 the server's protocol version; the server
 ##                closes the connection after it
 ##
@@ -29,20 +37,26 @@ extends RefCounted
 ## Everything a decoder reads is length-checked first, and a short, long or unknown packet is
 ## dropped (an empty Dictionary, or null).
 
-enum Type { HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10 }
+enum Type {
+	HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10, MARK = 11
+}
 enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 4
+const VERSION := 9
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 4
+const MIN_VERSION := 9
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
-const COMMAND_SIZE := 23
+const COMMAND_SIZE := 25
+const MARK_SIZE := 10
+const PING_SIZE := 7
+## What a ping says when the client has not measured a round trip yet, and the most it can say.
+const NO_RTT := 0xFFFF
 ## The resume token a WELCOME gives: random, one for each connection, good for taking back the seat.
 const TOKEN_SIZE := 8
 const WELCOME_HEADER := 4 + TOKEN_SIZE
@@ -71,6 +85,8 @@ const F_RELOAD := 1 << 8
 const F_USE := 1 << 9
 const F_SWAP := 1 << 10
 const F_USE_HELD := 1 << 11
+## The command says which frame its shooter was looking at (`NightCommand.view_step`).
+const F_VIEW := 1 << 12
 
 
 static func hello(
@@ -157,10 +173,53 @@ static func read_tick(data: PackedByteArray) -> Dictionary:
 	return {"step": data.decode_u32(1), "events": events}
 
 
-static func ping(client_ms: int) -> PackedByteArray:
-	var out := PackedByteArray([Type.PING, 0, 0, 0, 0])
+## `rtt_ms` is the client's last measured round trip (negative for none yet).
+static func ping(client_ms: int, rtt_ms := -1.0) -> PackedByteArray:
+	var out := PackedByteArray([Type.PING, 0, 0, 0, 0, 0, 0])
 	out.encode_u32(1, client_ms & 0xFFFFFFFF)
+	out.encode_u16(5, NO_RTT if rtt_ms < 0.0 else mini(roundi(rtt_ms), NO_RTT - 1))
 	return out
+
+
+## A ping to put up: `kind` is one of `PingBoard.KINDS`, `pos` where, `subject` the door index,
+## zombie id or player id it is about (0 for none).
+static func mark(kind: StringName, pos: Vector3, subject: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(MARK_SIZE)
+	out[0] = Type.MARK
+	out[1] = maxi(PingBoard.KINDS.find(kind), 0)
+	out.encode_s16(2, CommandCodec.point_step(pos.x))
+	out.encode_s16(4, CommandCodec.point_step(pos.y))
+	out.encode_s16(6, CommandCodec.point_step(pos.z))
+	out.encode_u16(8, clampi(subject, 0, 0xFFFF))
+	return out
+
+
+## The `ping` action a mark packet asks for, or `{}` when the packet is not one (a kind that is not
+## in the list included).
+static func read_mark(data: PackedByteArray) -> Dictionary:
+	if data.size() != MARK_SIZE or data[0] != Type.MARK or data[1] >= PingBoard.KINDS.size():
+		return {}
+	return {
+		"type": NightServer.PING,
+		"kind": PingBoard.KINDS[data[1]],
+		"pos":
+		Vector3(
+			CommandCodec.point_from_step(data.decode_s16(2)),
+			CommandCodec.point_from_step(data.decode_s16(4)),
+			CommandCodec.point_from_step(data.decode_s16(6))
+		),
+		"subject": data.decode_u16(8),
+	}
+
+
+## The round trip a client reported in its ping, in milliseconds, or -1 for none (or a ping of the
+## wrong size).
+static func read_ping_rtt(data: PackedByteArray) -> int:
+	if data.size() != PING_SIZE or data[0] != Type.PING:
+		return -1
+	var rtt := data.decode_u16(5)
+	return -1 if rtt == NO_RTT else rtt
 
 
 static func pong(client_ms: int, step: int) -> PackedByteArray:
@@ -197,6 +256,7 @@ static func command(value: NightCommand) -> PackedByteArray:
 	flags |= F_USE if value.use else 0
 	flags |= F_SWAP if value.swap else 0
 	flags |= F_USE_HELD if value.use_held else 0
+	flags |= F_VIEW if value.view_step >= 0 else 0
 	out.encode_u16(11, flags)
 	out.encode_s16(13, CommandCodec.point_step(value.origin.x))
 	out.encode_s16(15, CommandCodec.point_step(value.origin.y))
@@ -204,6 +264,7 @@ static func command(value: NightCommand) -> PackedByteArray:
 	var aim := CommandCodec.direction_angles(value.dir)
 	out.encode_u16(19, CommandCodec.yaw_step(aim.x))
 	out.encode_s16(21, CommandCodec.look_step(aim.y))
+	out.encode_u16(23, maxi(value.view_step, 0) & 0xFFFF)
 	return out
 
 
@@ -233,6 +294,7 @@ static func read_command(data: PackedByteArray) -> NightCommand:
 	result.use = flags & F_USE != 0
 	result.swap = flags & F_SWAP != 0
 	result.use_held = flags & F_USE_HELD != 0
+	result.view_step = data.decode_u16(23) if flags & F_VIEW != 0 else -1
 	result.origin = Vector3(
 		CommandCodec.point_from_step(data.decode_s16(13)),
 		CommandCodec.point_from_step(data.decode_s16(15)),
