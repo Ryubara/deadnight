@@ -49,6 +49,9 @@ func _contacts(profile: BotProfile, bot_seed: int, count: int, hashing := false)
 		rig.put_zombie(id, Vector3(-sin(around), 0.0, -cos(around)) * distance)
 		var began := rig.tick_count
 		var shots := rig.shot_ticks.size()
+		# The window of the turn check is made of consecutive steps: a gap between two contacts is
+		# not part of one.
+		views.clear()
 		for _i in GIVE_UP:
 			var command := rig.step()
 			views.append(BotRig.view_of(command))
@@ -115,9 +118,12 @@ func test_the_trigger_waits_for_the_view_to_come_onto_the_target() -> void:
 	var rig := BotRig.new(BotProfile.rookie(), 9)
 	rig.put_zombie(1, Vector3(-8, 0, -8))  # 45 degrees off the view: it has to turn first.
 	var fired_off := 0
+	# A rookie fires when it is roughly on (`fire_slop` times the cone, and a panic shot at the most
+	# `PANIC_DEGREES`), not before.
+	var limit := maxf(BotMotor.CONE_MAX * rig.profile.fire_slop, BotMotor.PANIC_DEGREES)
 	for _i in 200:
 		var command := rig.step()
-		if command.fire and rig.bot.motor.error_degrees > BotMotor.CONE_MAX:
+		if command.fire and rig.bot.motor.error_degrees > limit:
 			fired_off += 1
 	assert_int(fired_off).is_equal(0)
 	assert_int(rig.shot_ticks.size()).is_greater(0)
@@ -142,7 +148,9 @@ func test_with_nothing_in_sight_it_stands_and_does_not_fire() -> void:
 
 
 func test_it_backs_away_from_a_zombie_inside_its_margin_and_not_from_one_outside() -> void:
-	var rig := BotRig.new(BotProfile.regular(), 4)
+	var profile := BotProfile.regular()
+	profile.retreat_margin = 7.0
+	var rig := BotRig.new(profile, 4)
 	rig.put_zombie(1, Vector3(0, 0, -15))
 	rig.run(60)
 	assert_vector(rig.sent.back()["motion"]["move"]).is_equal(Vector2.ZERO)
@@ -175,4 +183,6 @@ func test_the_head_is_aimed_at_with_the_profiles_rate_only_when_slow_and_near() 
 			heads += 1
 		rig.zombies.erase(id)
 		rig.run(GAP)
-	assert_float(float(heads) / count).is_between(0.11, 0.30)
+	# The veteran aims at the head of three in four (the rate that makes three in ten of its hits
+	# land there; see `test_bot_bands.gd`).
+	assert_float(float(heads) / count).is_between(0.6, 0.9)

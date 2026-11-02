@@ -30,8 +30,11 @@ extends Node
 ## Fraction (0 to 1) done and what is being done.
 signal progress(fraction: float, text: String)
 
-## How long the warm-up's sample flare burns (s): long enough to be drawn, then it frees itself.
-const WARMUP_LURE_SECONDS := 0.2
+## How long the warm-up's sample flare burns (s). A lure frees itself by the frame times it is
+## given and a warm-up frame that builds a program takes seconds, so the sample is never left to
+## expire: it is drawn for a few frames and freed by hand (#502, its embers were gone before the
+## first draw).
+const WARMUP_LURE_SECONDS := 60.0
 ## The id of the sample flare the warm-up draws (a real shot never has it).
 const WARMUP_PROJECTILE := -1
 ## The stage is this high above the lot, out of reach of every lamp.
@@ -172,6 +175,16 @@ func _resume_viewports() -> void:
 ## How many of the night's drawn nodes are still held out of the picture (none once it is done).
 func held_back() -> int:
 	return _held.pending()
+
+
+## How many of what the warm-up holds on to are of a class (a test looks that a particle system's
+## process material is among them).
+func pinned_count(of_class: StringName) -> int:
+	var count := 0
+	for pin in _pins:
+		if pin is Object and (pin as Object).is_class(String(of_class)):
+			count += 1
+	return count
 
 
 ## What the warm-up holds on to: a test looks that the catalogue's files are among them.
@@ -497,7 +510,11 @@ func _replay_effects() -> void:
 			}
 		)
 	)
-	await _chunk()
+	# The embers are a particle system: it moves its particles in a first frame and draws them in
+	# the next.
+	await _chunk(SHOT_FRAMES + 1)
+	for lure in view.find_children("*", "LureView", true, false):
+		lure.queue_free()
 	for def_path in _grenade_defs():
 		var blast := BlastEffect.new()
 		view.effects.add_child(blast)
@@ -508,9 +525,9 @@ func _replay_effects() -> void:
 
 ## One frame of what was just made. The materials are kept first: an effect frees itself a fraction
 ## of a second after it starts, and a frame that builds programs can take longer than that.
-func _chunk() -> void:
+func _chunk(frames := 1) -> void:
 	_keep_materials(_night.view)
-	await _shots(_night, 1)
+	await _shots(_night, frames)
 
 
 func _grenade_defs() -> Array[String]:
@@ -538,6 +555,18 @@ func _keep_materials(root: Node) -> void:
 				var material := mesh.surface_get_material(surface)
 				if material != null:
 					_pins.append(material)
+	# A particle system's own programs go with its process material and its draw passes' materials.
+	for node in root.find_children("*", "GPUParticles3D", true, false):
+		var particles := node as GPUParticles3D
+		if particles.process_material != null:
+			_pins.append(particles.process_material)
+		for pass_index in particles.draw_passes:
+			var mesh := particles.get_draw_pass_mesh(pass_index)
+			if mesh == null:
+				continue
+			_pins.append(mesh)
+			if mesh is PrimitiveMesh and (mesh as PrimitiveMesh).material != null:
+				_pins.append((mesh as PrimitiveMesh).material)
 
 
 ## The camera looks at the middle of the row from `distance`, and the frames are held.

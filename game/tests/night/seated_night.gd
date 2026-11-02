@@ -27,6 +27,9 @@ var on_event := Callable()
 ## has a fight in it without waiting for the dead to walk the lot, and no route round an obstacle
 ## to choose between. Done the same way in `replay`.
 var stage_the_dead := false
+## When on, every command the bots send leaves with the trigger up: the bots move, look and dodge
+## as they would but never shoot (a test of the legs alone, on a zombie a hit would stagger).
+var hold_fire := false
 ## When above 0, the state hash after every this many steps is kept in `hashes`.
 var hash_every := 0
 var hashes: Array[int] = []
@@ -95,6 +98,13 @@ func open_door(door_id: StringName) -> void:
 	server.rules.apply(RulesAction.grant_points(1, 100000))
 	var result := RulesFixture.buy(server.rules, 1, door_id)
 	assert(result == GameRules.BuyResult.OK, "could not buy %s: %d" % [door_id, result])
+
+
+## Ends the break and starts the round, and lets the bots hear what that said (`round_started` and
+## the rest): the rules' answer to a direct action is not part of a server step, so the bots would
+## not hear it otherwise.
+func start_round() -> void:
+	host.hear(server.rules.apply(RulesAction.skip_break()))
 
 
 ## Lets the engine take `frames` physics frames (the navigation map takes a new mesh in over a few).
@@ -267,6 +277,8 @@ func _stage() -> void:
 ## the bots, which hold the lambda.)
 func _send(action: Dictionary, id: int) -> void:
 	var plain: Dictionary = bytes_to_var(var_to_bytes(action))
+	if hold_fire:
+		plain["fire"] = false
 	if recording:
 		recorded.append({"tick": server.tick_count, "player_id": id, "action": plain})
 	server.apply(plain, id)

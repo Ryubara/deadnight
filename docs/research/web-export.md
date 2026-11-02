@@ -283,6 +283,22 @@ waits for the deployment to be `SUCCESS`. Both deploys use the one `RAILWAY_TOKE
 a client of one protocol version is turned away by a server of another for that time
 ([Multiplayer](multiplayer.md)).
 
+### The deployed build is the head of main
+
+The runs of two quick merges finish in any order, and the concurrency group `deploy-web` only serializes the deploys. On
+2026-11-02 `main 85325be` (#507) was live at 08:05:05Z and `main 7c12a41` (#525, one merge earlier) deployed over it at
+08:06:21Z, which put the hand grips back out of the game (#552). So `deploy` and `deploy-server` (which now has its own
+group `deploy-server`) run `deploy/check_head.sh "$GITHUB_SHA"` first, when they start, after the wait in their group:
+it reads the head of `main` from the GitHub API and, when the run's commit is another one, prints a notice ("not the head
+of main (xxxxxxx); a newer run deploys the head"), sets `skip` and ends the job green without touching Railway. The run
+of the head deploys itself. If the API cannot be read three times the check warns and deploys, as before. `bash deploy/test_check_head.sh`
+tests it without GitHub (`DEPLOY_MAIN_HEAD` stands in for the API); the `conventions` job runs it.
+
+Two consequences. A run that fails its tests deploys nothing, and the older run that would have deployed has skipped
+itself, so after a red merge the live build stays on the last good one until the next green merge (or **Actions, ci, Run
+workflow**, once main is green). And re-running the `deploy` job of an *earlier* run now skips (it is not the head): to
+redeploy the head, run the workflow on `main`; to go back to an earlier build, roll back in Railway (below).
+
 ### Setting it up (once, the maintainer)
 
 A project token cannot be created by the agent's login (`projectTokenCreate` answers "Not Authorized" to the CLI's
@@ -308,8 +324,9 @@ Until the secret exists the `deploy` job warns "Not deployed" and stops; it neve
 
   Rolling back keeps the build, but the next merge to `main` deploys over it.
 - **Lasting:** revert the commit on `main`; the merge deploys the reverted build.
-- **Redo a deploy:** re-run the `deploy` job of an earlier `ci` run on `main` (`gh run rerun <id> --job <deploy job id>`);
-  it uses that run's `web-build` artifact, which GitHub keeps for 90 days.
+- **Redo a deploy:** re-run the `deploy` job of the `ci` run of main's *head*
+  (`gh run rerun <id> --job <deploy job id>`; it uses that run's `web-build` artifact, which GitHub keeps for 90 days)
+  or run the workflow on `main`. The `deploy` job of an earlier run skips itself: it is not the head.
 
 ### Running it locally
 

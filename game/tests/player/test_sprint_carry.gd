@@ -229,10 +229,12 @@ func test_the_weapon_swings_with_the_stride_in_every_class() -> void:
 
 
 func test_the_clips_move_only_the_spine_shoulders_and_arms() -> void:
-	# The fingers stay on the grip every weapon clip shares (#460 owns the grip poses) and the
-	# legs are the Run's: no Sprint clip moves a finger or a lower-body bone.
+	# The fingers are the grip's (#460: `HandGripPose` closes them) and the legs are the Run's: no
+	# Sprint clip moves a finger or a lower-body bone. The hand bones (`Index1`, the palm the weapon
+	# rides) turn, as the arms' IK turns them, so the weapon points where the carry wants it and
+	# the left hand holds the fore-end the way the grip says (#527).
 	var anim_player := _player.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	var moving := ["Abdomen", "Torso", "Neck", "Head", "Shoulder", "UpperArm", "LowerArm"]
+	var moving := ["Abdomen", "Torso", "Neck", "Head", "Shoulder", "UpperArm", "LowerArm", "Index1"]
 	for cls: StringName in PlayerAnimation.CLASSES:
 		var clip := anim_player.get_animation(StringName("Sprint_%s" % cls))
 		var moved: Array[String] = []

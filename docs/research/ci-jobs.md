@@ -9,6 +9,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | --- | --- | --- |
 | `ci` | `conventions` (first, seconds, also decides the rest) | every push to a pull request |
 | | `godot` (17 to 20 minutes on 2026-11-02, limit 30), `web` (about 15) | the change touches something they can see |
+| | `backend` (about a minute) | `spikes/backend/**` (not its Markdown) or `ci.yml` changed; every push to `main` |
 | | `mkdocs`, `markdownlint`, `actionlint` | their own files changed |
 | | `build-ok` | always: the one required name for the build |
 | `pr` (`pull_request_target`) | `pr-rules` (the title, description, docs and commits checks, as steps) | every push and every edit of the description |
@@ -18,11 +19,18 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 ## Which files start which job
 
 `.github/scripts/ci_scope.py` reads the pull request's changed files (the API, no checkout) and the `conventions` job
-passes four answers on: `godot`, `web`, `docs`, `markdown`, `workflows`.
+passes its answers on: `godot`, `web`, `docs`, `markdown`, `workflows`, `backend`.
 
 - A **documentation-only** pull request (`docs/**`, any `*.md`, `.github/ISSUE_TEMPLATE/**`) skips `godot` and `web`.
 - A pull request that **only adds tests** (`game/tests/**`) skips `web`: the export's `exclude_filter` drops `tests/*`.
 - `deploy/`, `spikes/` and `tools/web_smoke/` are not seen by the game's import and tests.
+- `backend` runs the platform backend's own tests (`npm run typecheck`, `npm test` of `spikes/backend`, Node 24, with a
+  Postgres 17 service so the two store tests do not skip; a skipped test fails the step) when `spikes/backend/**` other
+  than Markdown, or `ci.yml`, changed, and on every push to `main` (#558). It waits for `conventions` only, so it runs
+  beside the three Godot shards and never lengthens the critical path (about a minute against 5 to 6 minutes for a
+  shard), and `build-ok` waits for it. Before it, nothing ran `node --test`: `godot` only installs the packages so the
+  lobby's real-socket test can start the backend, so a backend change that broke a lobby, presence or ticket rule
+  merged green.
 - `mkdocs` runs for `docs/**`, `mkdocs.yml`, `requirements-docs.txt` and any `*.md`; `markdownlint` for any `*.md` and
   the markdownlint rules; `actionlint` for `.github/workflows/**`.
 - A list of no files, or of 3000 (the API's limit), turns everything on; so does a push to `main` or a manual run.
@@ -66,6 +74,28 @@ after its workflow is on `main`:
    updated by hand.
 
 A push to a pull request now starts one `pr` job (`pr-rules`) where it started four, then five.
+
+## The docs rules of `pr-rules` (#540)
+
+The kit's rules that make docs ship with a change (its `docs/hooks.md#docs`) apply here through the same checker
+(`.github/scripts/groundwork.py`, synced from the kit with `gds sync`) and this repository's `.github/conventions.yml`
+(`pull_requests.lessons`, `read_first`, `kit_docs`). The description step runs `groundwork.py pr-history` first, which
+asks GitHub (read-only: the `checks: read` and `issues: read` permissions of the job) which watched checks failed on an
+earlier commit of the pull request and which issues it closes, with their labels; it falls back to the title alone when
+GitHub cannot be asked.
+
+- `Lessons:` in Summary: a pull request titled `Fix` or `Rework`, or after a failed `build-ok`, `conventions`, `mkdocs`,
+  `markdownlint` or `actionlint` on an earlier commit, or closing a `bug` issue, links the kit's lesson
+  (`docs/lessons/<yyyy-mm-dd>-<slug>.md`) or a row of its corrections page. `Lessons: none (reason)` is refused there and
+  allowed elsewhere.
+- `Kit docs:` in Summary: the same pull requests name the kit pull request that documents the process
+  (`gdstudio#N` or its URL), or `Kit docs: none (reason)`.
+- `Read first:` in Summary: a pull request that closes an issue names the areas whose checks the author read first
+  (`gds lessons <area>`). The kit's `areas.toml` is not in this repository, so the line is required but not matched
+  against the issue's labels.
+
+A `none (reason)` line ends with the `)`. Changing the rules is a change to `.github/conventions.yml`, which a
+maintainer merges by hand.
 
 ## Measured
 
