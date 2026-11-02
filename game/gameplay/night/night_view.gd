@@ -18,6 +18,8 @@ const GIB_LIFT := Vector3(0.0, 1.0, 0.0)
 const GIB_THROW := 2.0
 
 var horde: ZombieHorde
+## The outline through walls on the last zombies of a round.
+var marks: ZombieMarks
 var effects: ShotEffects
 ## Where each breach's boards stand (`NightWorld`): a board torn or mended shows a burst there.
 var barricade_points: Dictionary[StringName, Vector3] = {}
@@ -67,7 +69,12 @@ func setup(
 	add_child(effects)
 	horde = ZombieHorde.new()
 	add_child(horde)
-	horde.setup_client(camera, ZombieTuning.shipped().emerge_seconds, telegraphs, board_seconds)
+	var zombies := ZombieTuning.shipped()
+	horde.setup_client(camera, zombies.emerge_seconds, telegraphs, board_seconds)
+	marks = ZombieMarks.new()
+	marks.name = "ZombieMarks"
+	add_child(marks)
+	marks.setup(horde, zombies.mark_last)
 	voices = ZombieVoices.new(Audio, 1)
 	voices.windups = telegraphs
 	state.event_received.connect(_on_event)
@@ -176,6 +183,7 @@ func _on_event(event: Dictionary) -> void:
 		&"frame":
 			began = PerfProbe.begin()
 			horde.apply_snapshot(event["zombies"], step)
+			marks.apply_frame(event.get("phase", -1), event.get("remaining", 0))
 			PerfProbe.end(&"view.horde", began)
 			began = PerfProbe.begin()
 			voices.update(_state.zombies, step)

@@ -22,6 +22,9 @@ var accumulated: float = 0.0
 var period: int = 1
 
 var _model: Node3D
+## Draws the outline through walls (`ZombieMarks`); made at the first mark, so a zombie that is
+## never marked has none.
+var _outline: Outline
 var _boss := false
 ## The boss's lamp (its material, a copy of its own): dark once it is dead.
 var _lamp: StandardMaterial3D
@@ -79,6 +82,7 @@ func setup(
 ## Takes the zombie off the lot and keeps its body for the next one of its look (`ZombieHorde` keeps
 ## the parked views): hidden, with nothing to draw, move or animate.
 func park() -> void:
+	set_outlined(false)
 	visible = false
 	tree.active = false
 	_tearing = false
@@ -112,6 +116,8 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 	_model.scale = Vector3.ONE * ZombieModels.GAME_SCALE
 	add_child(_model)
 	_strip_for_crowd(_model)
+	if _outline != null:
+		_outline.set_root(_model)
 	if _boss:
 		tree = ZombieRig.attach_boss(_model)
 		_light_lamp(_model)
@@ -223,6 +229,28 @@ func tear_position() -> float:
 ## The body being drawn.
 func model() -> Node3D:
 	return _model
+
+
+## Draws the zombie's silhouette through walls in `style`, or stops (`Outline`).
+func set_outlined(on: bool, style: OutlineStyle = null) -> void:
+	if _outline == null:
+		if not on:
+			return
+		_outline = Outline.new()
+		add_child(_outline)
+		_outline.set_root(_model)
+	if style != null:
+		_outline.style = style
+	_outline.enabled = on
+
+
+func is_outlined() -> bool:
+	return _outline != null and _outline.enabled
+
+
+## Whether the zombie is dead and falling (its entry's mode said so).
+func is_dying() -> bool:
+	return _mode == ZombieBody.Mode.DYING
 
 
 ## Spends the accumulated animation time.
