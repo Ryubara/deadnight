@@ -16,7 +16,9 @@ extends GdUnitTestSuite
 
 const STEP := Night.STEP
 ## Seeds, and seconds of play for each.
-const SEEDS := 4
+## Eight: the Veteran's dodge is read from the few dozen blows that come due, and with four seeds a
+## change of the navigation mesh moved it from 0.50 to 0.68 (19 blows) where ten seeds read 0.60.
+const SEEDS := 8
 const SECONDS := 110
 ## Metres a second the stream of zombies walks at.
 const ZOMBIE_SPEED := 2.4

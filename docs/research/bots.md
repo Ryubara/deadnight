@@ -903,3 +903,8 @@ compare over all six seeds. Remaining stuck episodes are bot against bot (44 of 
 
 Open: the Concession's east wall (x 9.8 to 10.2) and the soda fountain collider (x 7 to 9.4) leave a 0.4 m slot a
 bot can wedge in (#615).
+
+The bands test reads the Veteran's dodge from a few dozen blows: on `main` four seeds read 0.50 (34 blows due) and ten
+seeds read 0.67 (63), and with the tighter contour four seeds read 0.68 (19) and ten read 0.60 (45). The same fight is
+bit-identical from run to run, so the four-seed number is a draw, not noise to average. The test runs eight seeds
+(dodge 0.61 with the tighter contour, band 0.35 to 0.65). The Veteran's true dodge sits near the top of the band.
