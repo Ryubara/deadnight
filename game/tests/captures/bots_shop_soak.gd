@@ -27,9 +27,6 @@ const CATEGORIES := {
 }
 ## Seconds within which the same item refused again counts as a loop.
 const LOOP_WINDOW := 30.0
-## Dead left at or under which a round that does not move is helped along, and the seconds it waits.
-const STRAGGLERS := 8
-const STRAGGLER_SECONDS := 90.0
 
 var _args := {}
 var _night: SeatedNight
@@ -39,9 +36,6 @@ var _denials: Array[Dictionary] = []
 var _rounds: Dictionary = {}
 var _ends: Dictionary = {}
 var _boards := 0
-var _quiet_since := 0
-var _last_remaining := -1
-var _swept := 0
 
 
 func _ready() -> void:
@@ -67,7 +61,6 @@ func _ready() -> void:
 		ticks += 1
 		if _args.has("trace") and ticks % 900 == 0:
 			_trace(ticks)
-		_sweep(ticks)
 		# The navigation server takes a bought door's mesh in only on a physics frame.
 		if ticks % FRAME_EVERY == 0:
 			await get_tree().physics_frame
@@ -79,27 +72,6 @@ func _ready() -> void:
 	_night.dispose()
 	await get_tree().process_frame
 	get_tree().quit()
-
-
-## A few dead that stand where no one goes (three were found at the concession door, none of them
-## coming) keep a round from ending, and a person would go and finish them: after
-## `STRAGGLER_SECONDS` with `STRAGGLERS` or fewer left and no kill, they are taken off the lot.
-## Counted in the report.
-func _sweep(ticks: int) -> void:
-	var rules := _night.server.rules
-	if rules.phase != GameRules.Phase.ACTIVE or rules.zombies_remaining() > STRAGGLERS:
-		_quiet_since = ticks
-		return
-	if rules.zombies_remaining() != _last_remaining:
-		_last_remaining = rules.zombies_remaining()
-		_quiet_since = ticks
-	if ticks - _quiet_since < STRAGGLER_SECONDS * 60:
-		return
-	for id in _night.server.sim.zombies.keys():
-		_night.host.hear(rules.apply(RulesAction.zombie_gone(id)))
-		_night.server.sim.despawn(id)
-		_swept += 1
-	_quiet_since = ticks
 
 
 func _trace(ticks: int) -> void:
@@ -233,7 +205,6 @@ func _report(ticks: int) -> void:
 		"denials": _denials.size(),
 		"denial_loops": loops,
 		"boards": _boards,
-		"swept": _swept,
 		"round_starts": _rounds,
 		"round_ends": _ends,
 		"bots": bots,
