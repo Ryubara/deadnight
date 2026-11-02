@@ -159,6 +159,42 @@ func _classify_stuck() -> void:
 		var now: bool = bot.legs.stuck.stuck
 		if now and not _was_stuck.get(id, false):
 			var cause := _what_it_ran_into(id)
+			if _args.has("causes"):
+				var body := _night.server.body_of(id)
+				print(
+					(
+						"CAUSE %s seat %d at %s wish %s vel %s goal %s note %s"
+						% [
+							cause,
+							id,
+							body.global_position.snappedf(0.1),
+							bot.intent.wish.snappedf(0.1),
+							body.velocity.snappedf(0.1),
+							bot.intent.goal.snappedf(0.1),
+							bot.intent.note
+						]
+					)
+				)
+				if cause == "bot":
+					for other in _host.bots:
+						var ob := _night.server.body_of(other.state.player_id)
+						if (
+							other.state.player_id != id
+							and ob.global_position.distance_to(body.global_position) < 2.0
+						):
+							print(
+								(
+									"   PARTNER seat %d at %s wish %s vel %s goal %s note %s"
+									% [
+										other.state.player_id,
+										ob.global_position.snappedf(0.1),
+										other.intent.wish.snappedf(0.1),
+										ob.velocity.snappedf(0.1),
+										other.intent.goal.snappedf(0.1),
+										other.intent.note
+									]
+								)
+							)
 			_causes[cause] = int(_causes.get(cause, 0)) + 1
 		_was_stuck[id] = now
 

@@ -259,9 +259,14 @@ func _query(here: Vector3, to: Vector3, now: float) -> Status:
 	return Status.OK
 
 
-## Moves `index` past the points the bot has reached.
+## Moves `index` past the points the bot has reached or run past (a corner cut at speed is passed
+## without ever being within reach of its point: the bot is nearer the next point than this one is).
 func _advance(here: Vector3) -> void:
-	while index < points.size() - 1 and _flat(here, points[index]) <= LOOK_AHEAD * 0.5:
+	while index < points.size() - 1:
+		var reached := _flat(here, points[index]) <= LOOK_AHEAD * 0.5
+		var passed := _flat(here, points[index + 1]) < _flat(points[index], points[index + 1])
+		if not reached and not passed:
+			break
 		index += 1
 
 
