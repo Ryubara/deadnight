@@ -36,6 +36,8 @@ func _ready() -> void:
 	_player.teleport(START)
 	_player.camera_rig.yaw = 0.0
 	_player.camera_rig.pitch = 0.0
+	# The view is stepped here, one step per physics tick, so the trace is the same on any machine.
+	_player.camera_rig.set_process(false)
 
 
 func _physics_process(_delta: float) -> void:
@@ -49,6 +51,7 @@ func _physics_process(_delta: float) -> void:
 	command.aim = now >= AIM_FROM
 	_player.submit_command(command)
 	var rig := _player.camera_rig
+	rig.step(TICK, 1.0)
 	var turn := rig.aim_transform().basis.inverse() * rig.camera().global_transform.basis
 	var euler := turn.get_euler() * (180.0 / PI)
 	print(
