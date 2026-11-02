@@ -76,6 +76,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"notice_log": "",
 		"touch": false,
 		"reticle": false,
+		"settings_open": false,
+		"menu_buttons": "",
 		"tab": "",
 		"stage": "",
 		"gamepad": "",
@@ -151,6 +153,8 @@ static func snapshot(top: Control) -> Dictionary:
 		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
+	data["settings_open"] = night_screen.settings_open()
+	data["menu_buttons"] = _button_spots(night_screen)
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
@@ -161,3 +165,15 @@ static func snapshot(top: Control) -> Dictionary:
 	if link != null:
 		data["rtt_ms"] = link.rtt_ms
 	return data
+
+
+## Where the night's menu buttons are, as `Text:x,y` with x and y a fraction of the window (0 to 1),
+## so a browser test taps them without knowing the layout.
+static func _button_spots(screen: NightScreen) -> String:
+	var size := screen.get_viewport().get_visible_rect().size
+	var spots: Array[String] = []
+	for button: UIButton in screen.find_children("*", "UIButton", true, false):
+		if button.is_visible_in_tree():
+			var at := button.get_global_rect().get_center() / size
+			spots.append("%s:%.4f,%.4f" % [button.text, at.x, at.y])
+	return "|".join(spots)
