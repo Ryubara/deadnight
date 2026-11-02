@@ -64,6 +64,15 @@ POINTER_JS = """
 }
 """
 
+# Headless Chromium on Windows clips the real cursor to a box at the top left while a page holds pointer lock, so the
+# run never lets it: the request is counted and dropped (`result["pointer_lock_requests"]`).
+NO_POINTER_LOCK_JS = """
+() => {
+  window.__lockRequests = 0;
+  Element.prototype.requestPointerLock = function () { window.__lockRequests += 1; };
+}
+"""
+
 # Records the yaw the game reports on every animation frame, with the page's clock.
 YAW_TRACE_JS = """
 () => {
@@ -156,10 +165,12 @@ def run(url: str, out: Path) -> dict:
             lambda m: problems.append(f"console {m.type}: {m.text}") if m.type == "error" else None,
         )
         page.add_init_script("(" + POINTER_JS.strip() + ")();")
+        page.add_init_script("(" + NO_POINTER_LOCK_JS.strip() + ")();")
         page.goto(f"{url}?touch=1", wait_until="commit")
         start_night(page)
         page.evaluate(YAW_TRACE_JS)
         client = context.new_cdp_session(page)
+        result["pointer_lock_requests"] = page.evaluate("window.__lockRequests")
         result["probe_touch"] = smoke.probe(page).get("touch")
         page.screenshot(path=str(out / "night_touch.png"))
 
@@ -177,6 +188,7 @@ def run(url: str, out: Path) -> dict:
         result["look_biggest_frame_turn_rad"], result["look_frames"] = turns(page)
         result["look_expected_rad"] = RADIANS_PER_HEIGHT * LOOK_DRAG_PX / VIEWPORT["height"]
         page.screenshot(path=str(out / "after_look.png"))
+        result["pointer_lock_requests"] = page.evaluate("window.__lockRequests")
         browser.close()
     result["problems"] = problems
     return result
