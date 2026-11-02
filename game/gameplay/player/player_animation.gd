@@ -127,6 +127,10 @@ const GRENADE_COOK_HOLD := 30.0
 ## The grenade in the hand: the placeholder shell, drawn this much of its flight size, in the grip
 ## of the melee hold (the fist closed on something short).
 const GRENADE_HELD_SCALE := 0.55
+## The grenade shell's grip file (`grips/grenade.tres`): it has no glb of its own.
+const GRENADE_GRIP := "grenade"
+## How fast the fingers go to and from a grip (per second, exponential).
+const GRIP_RATE := 20.0
 
 const STATE_LOCOMOTION := &"locomotion"
 const STATE_JUMP := &"jump"
@@ -161,6 +165,13 @@ var _hammer: Node3D
 var _grenade: Node3D
 var _hold: WeaponHold
 var _hands: WeaponHandsIK
+## The fingers on what the hands hold (`HandGrip` of the weapon, the hammer or the grenade).
+var _fingers: HandGripPose
+var _weapon_grip: HandGrip
+var _hammer_grip: HandGrip
+var _grenade_grip: HandGrip
+## How far the right hand's fingers are on the held item's grip (0: the clip's fist).
+var _grip_blend := 0.0
 var _shoulder_blend := 0.0
 var _recoil := 0.0
 var _action_time := 0.0
@@ -201,13 +212,18 @@ func _ready() -> void:
 	var hammer_hold := load(HAMMER_HOLD) as WeaponHold
 	_hammer = (load(hammer_hold.scene) as PackedScene).instantiate() as Node3D
 	_hammer.name = "Hammer"
-	_hammer.transform = HOLD_HAMMER.scaled_local(Vector3.ONE * hammer_hold.model_scale)
+	_hammer_grip = HandGrip.for_scene(hammer_hold.scene)
+	_hammer.transform = _grip_hold(_hammer_grip, HOLD_HAMMER).scaled_local(
+		Vector3.ONE * hammer_hold.model_scale
+	)
 	_hammer.visible = false
 	_mount.add_child(_hammer)
 	_grenade = Node3D.new()
 	_grenade.name = "Grenade"
-	_grenade.transform = Transform3D(
-		Basis.from_scale(Vector3.ONE * GRENADE_HELD_SCALE), HOLD_MELEE.origin
+	_grenade_grip = HandGrip.for_name(GRENADE_GRIP)
+	_grenade.transform = (
+		_grip_hold(_grenade_grip, Transform3D(Basis(), HOLD_MELEE.origin))
+		. scaled_local(Vector3.ONE * GRENADE_HELD_SCALE)
 	)
 	_grenade.visible = false
 	GrenadeView.add_placeholder(_grenade)
@@ -217,6 +233,10 @@ func _ready() -> void:
 	_hands.hand_hold = HOLD_GUN
 	_hands.influence = 0.0
 	skeleton.add_child(_hands)
+	# After the arms' IK: the fingers close on what the hand holds, the palm turns as one.
+	_fingers = HandGripPose.new()
+	_fingers.name = "HandGripPose"
+	skeleton.add_child(_fingers)
 	self.anim_player = get_path_to(anim_player)
 	tree_root = _build_tree(_skeleton_track_path(anim_player))
 	set(&"parameters/split/blend_amount", 1.0)
@@ -247,6 +267,7 @@ func _process(delta: float) -> void:
 	_advance_events(delta)
 	_advance_repair(delta)
 	_advance_shoulder(delta)
+	_advance_grip(delta)
 
 
 ## Into the crouch state when the body crouches on the ground, back to the locomotion when it
@@ -494,15 +515,59 @@ func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 		_weapon = null
 	_hold = hold
 	_hands.hold = _hold
+	_weapon_grip = null
+	_hands.grip = null
 	if _hold != null:
 		_weapon = (load(_hold.scene) as PackedScene).instantiate() as Node3D
 		_weapon.name = "Weapon"
-		var grip := HOLD_MELEE if new_class == &"Melee" else HOLD_GUN
+		_weapon_grip = HandGrip.for_scene(_hold.scene)
+		_hands.grip = _weapon_grip
+		var grip := _grip_hold(_weapon_grip, HOLD_MELEE if new_class == &"Melee" else HOLD_GUN)
 		_weapon.transform = grip.scaled_local(Vector3.ONE * _hold.model_scale)
+		# The arms' IK works the hand out from the weapon's pose through the same grip.
+		_hands.hand_hold = grip
 		_weapon.visible = not is_repairing()
 		if _weapon.find_child(MUZZLE_NODE, true, false) == null:
 			_weapon.add_child(_make_muzzle(_hold))
 		_mount.add_child(_weapon)
+
+
+## The model's place under the hand bone: its grip's (solved from its sockets), or `fallback` (the
+## kit's hold) for a model with no grip file yet.
+static func _grip_hold(grip: HandGrip, fallback: Transform3D) -> Transform3D:
+	return grip.hold if grip != null else fallback
+
+
+## The grip of the weapon in the hand, or null.
+func weapon_grip() -> HandGrip:
+	return _weapon_grip
+
+
+## The finger pose on the skeleton, for tests.
+func fingers() -> HandGripPose:
+	return _fingers
+
+
+## The fingers close on what the right hand shows: the hammer while repairing, the grenade while it
+## is in the hand, else the weapon; the left hand's fingers follow the arms' IK, which puts that
+## hand on the weapon's `Support`.
+func _advance_grip(delta: float) -> void:
+	var grip: HandGrip = null
+	if _hammer.visible:
+		grip = _hammer_grip
+	elif _grenade.visible:
+		grip = _grenade_grip
+	elif _weapon != null and _weapon.visible:
+		grip = _weapon_grip
+	if grip != null:
+		_fingers.grip = grip
+	var target := 1.0 if grip != null else 0.0
+	_grip_blend = lerpf(_grip_blend, target, 1.0 - exp(-GRIP_RATE * delta))
+	if absf(_grip_blend - target) < 0.001:
+		_grip_blend = target
+	_fingers.right_weight = _grip_blend
+	var left := grip == _weapon_grip and grip != null and grip.has_left and _hands.active
+	_fingers.left_weight = _shoulder_blend if left else 0.0
 
 
 ## The muzzle point of a hold: at its `muzzle` (the model's units), turned so `-Z` runs out of the

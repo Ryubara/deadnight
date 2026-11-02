@@ -127,16 +127,73 @@ const HOLD_MELEE := Transform3D(
 With these, the lever rifle, double shotgun and bat sit in the Soldier's hand in Godot through every clip (the
 Godot capture in the pull request).
 
-- **Left hand:** the kit hold is one-handed (in `Idle_Shoot` the left arm hangs), and so are the clips: the left arm
-  is free. `WeaponHandsIK` ([Weapons in the hands](weapon-hold.md)) reaches both hands to the weapon with a two-bone
-  IK, the left to the hold's `support` point on the fore-end (data in the hold, not a marker node in the scene), with
-  the weight below; the clips move the arms themselves where the weight is 0. The bat and axe stay one-handed for now.
+- **Each model's own grip replaces these holds** wherever it has one (every model now does): see [Grips](#grips).
+  `HOLD_GUN` and `HOLD_MELEE` stay as the fallback for a model with no grip file, and as the turn about the handle a
+  melee weapon keeps.
+- **Left hand:** the clips are one-handed (in `Idle_Shoot` the left arm hangs). `WeaponHandsIK`
+  ([Weapons in the hands](weapon-hold.md)) reaches both hands to the weapon with a two-bone IK: the left hand bone to
+  the grip's `left_hand`, turned as the grip says (solved from the model's `Support` socket), with the weight below;
+  the clips move the arms themselves where the weight is 0. The melee weapons stay one-handed for now.
 
 | Class | LeftHand IK weight |
 | --- | --- |
-| Rifle, Shotgun | 1 in Aim and Fire; 0 in Reload, Equip and Unequip (the clip moves the left hand to the belt and the gun) |
+| Rifle, Shotgun | 1 in Aim and Fire, standing and running; 0 in Reload, Equip and Unequip (the clip moves the left hand) |
 | Pistol | 0 (one-handed, as the kit holds it) |
-| Melee | 1 in Aim; 0 in Swing, Equip and Unequip |
+| Melee | 0 (one-handed; the IK does not run for a weapon that is not shouldered) |
+
+## Grips
+
+How the hands close on what they hold (#460): every finger touches the weapon and none goes into it, the trigger
+finger is on the trigger, and the left hand holds the fore-end. A grip is data, one file per model,
+`game/gameplay/player/grips/<model>.tres` (`HandGrip`), **solved from the model's own hand sockets**, so a new weapon
+gets its grip by placing three empties and running the solver, never by tuning numbers.
+
+**The sockets** (Blender empties under the weapon, built by `build_weapons.py` from its `GRIPS`, `TRIGGERS` and
+`SUPPORTS` tables, like the `Muzzle`):
+
+| Socket | Where | Turn (Blender; Godot) |
+| --- | --- | --- |
+| `Grip` | the right hand's handle: its centre where the middle finger wraps | +Z (Godot +Y) up the handle toward the index finger; +Y (Godot -Z) the way the straight fingers point: along the barrel on a pistol grip |
+| `Trigger` | guns: the middle of the trigger's front face, where the finger's pad presses | +Y the press (backward) |
+| `Support` | two-handed guns: the left hand's handle (fore-end, vertical foregrip) | +Z toward the left index finger (the muzzle, on a fore-end); +Y the way its fingers point (to the gun's right on a fore-end held from below, forward on a vertical grip) |
+
+**The solver** (`game/tests/art/solve_grips.gd`, with `GripSolver` and `HandContact`) works in the hand bone's space
+(`Index1`), so its result holds in every pose:
+
+1. The hand's handle line: across the knuckles (pinky to index) at the middle finger; the straight fingers' direction
+   and the palm's normal square to it.
+2. The model is turned so its socket's up runs along the line and its front the fingers' way (a melee weapon keeps its
+   old hold's turn about the handle, so its blade or claw still leads the swing), and moved so the socket is on the
+   line; a gun slides along it until its `Trigger` is level with the index finger's knuckle.
+3. It is pushed along the palm's normal until the palm is 1 mm from it.
+4. A gun is then turned up to 30 degrees about the handle and slid up to 2 cm along the fingers, to the place where the
+   index finger reaches the trigger best: the kit's fingers are short and thick, so on a gun drawn at real proportions
+   the trigger is out of reach with the grip square in the palm (a chibi hand turns the gun, as a small hand does).
+5. Each finger bends at its knuckle and middle joint (the thumb at its root and tip; the trigger finger also
+   sideways at its knuckle) within joint limits, to the bend that brings its tip 1 mm from the surface with no part of
+   it more than 1.2 mm in. The trigger finger looks for the trigger's face first and lies along the frame when it
+   cannot reach it; a finger that can touch nothing is only kept out.
+
+It writes the model's place under the right hand (`hold`, before the hold's `model_scale`), the size it was solved
+at, every finger rotation of both hands, the left hand bone's pose in the model's space, and which parts touch.
+
+**In the game** `PlayerAnimation` puts the model under the hand by its grip and gives the same hold to the arms' IK,
+and `HandGripPose` (a `SkeletonModifier3D` after `WeaponHandsIK`) closes the fingers: the right hand on the held
+item's grip (the weapon, the repair hammer or the grenade shell) while it shows, eased at 20 per second; the left hand
+on the weapon's while the IK holds it there. It also keeps the palm whole: the kit hand is four bones from the wrist
+(`Index1`, `Middle1`, `Pinky1`, `Thumb1`) and the weapon rides `Index1`, so when the IK turned only that one the other
+three stayed with the forearm and the palm tore (every gun's hand in the aim pose before #460).
+The left hand goes to the grip's `left_hand` on the weapon where it is after the right arm, and a two-handed gun's
+hold turns the chest 20-30 degrees, left shoulder forward ([How a gun is held](weapon-hold.md#how-a-gun-is-held)):
+the Soldier's 0.66 m arm did not reach a fore-end 0.70-0.81 m from his shoulder, and the clamped hand ended inside the
+stock.
+
+**Proof.** `game/tests/player/test_hand_grips.gd` measures the skin as drawn (`HandContact`: the skinned mesh against
+the weapon's triangles, inside counted per closed piece) in every pose the player uses (equipped, standing, running,
+aiming, firing and two moments of the reload for the guns; standing, running and four moments of the swing for melee;
+the repair and the cooked grenade): no part more than 2 mm into the weapon, every contact within 5 mm.
+`tools/blender/render_grips.py` draws the close contact sheets from the probe's dumps
+(`game/tests/art/probe_hands.gd`).
 
 ## Grenade
 
