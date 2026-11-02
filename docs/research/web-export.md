@@ -253,6 +253,17 @@ So in the browser the sting's duck, the rear cue, the occlusion low-pass and the
 -27.7 dBFS as samples and -24.0 as streams), so the mix was tuned for streams and the browser plays a slightly different
 one.
 
+**What the game does about it (#423).** The duck was an `AudioEffectAmplify` on the ducked buses; it is now the volume of
+a `Duck` bus that Effects and Ambience send to, which samples honour (measured: -11.9 dB asked -12). The occlusion and the
+rear cue keep their low-pass and, where it is not heard, take a few dB of volume as well (`AudioService.filters_apply`).
+`audio_load.py` plays one bright loop through the real service (`svc_open`, `svc_ducked`, `svc_occluded`, `svc_behind`,
+`svc_rear`) and prints each against the open voice; `--playback stream` turns the project's default player type to
+streams (`general/default_playback_type.web=0` in the `[audio]` section: a key written with its `audio/` prefix is
+ignored, which the earlier `--latency` option did too and is fixed) to show what desktop does. Before and after, in the
+headless shell: the duck +0.4 to -11.9 dB, a wall -8.6 to -12.9 (streams -21.9), the rear cue +0.4 to -2.9 (streams
+-8.3). The player type enum of the project setting (0 stream, 1 sample) is not `AudioServer.PlaybackType` (1 stream, 2
+sample): compare against the setting's own values.
+
 **Voices and crackle** (the same voices as the real pool: 8, 16, 32 positional, then 32 with 12 flat; a steady hum so a
 silent block is a dropout; Chrome 156 with a GPU, and the headless shell with a software renderer; blocks counted
 over 3 s, 1,125 of them in a phase):
