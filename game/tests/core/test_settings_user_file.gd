@@ -52,7 +52,9 @@ func test_the_settings_screen_saving_after_a_suite_leaves_the_real_file_alone() 
 func test_a_child_godot_that_changes_and_frees_the_options_leaves_the_real_file_alone() -> void:
 	var before := _real_file()
 	var text := _run_probe()
-	assert_str(text).contains("PROBE path=<> wrote=0")
+	assert_str(text).override_failure_message("the probe said: " + text).contains(
+		"PROBE path=<> wrote=0"
+	)
 	assert_array(_real_file()).is_equal(before)
 
 
@@ -60,6 +62,8 @@ func test_the_probe_does_write_a_file_it_is_pointed_at() -> void:
 	DirAccess.remove_absolute(CONTROL_FILE)
 	var before := _real_file()
 	var text := _run_probe(["--file"])
-	assert_str(text).contains("PROBE path=<%s> wrote=1" % CONTROL_FILE)
+	assert_str(text).override_failure_message("the probe said: " + text).contains(
+		"PROBE path=<%s> wrote=1" % CONTROL_FILE
+	)
 	assert_array(_real_file()).is_equal(before)
 	DirAccess.remove_absolute(CONTROL_FILE)
