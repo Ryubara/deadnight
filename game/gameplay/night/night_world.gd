@@ -74,6 +74,19 @@ func map() -> RID:
 	return get_world_3d().navigation_map
 
 
+## Where the lamps that light the ground hang, by the circuit each hangs on (a sign's glow lights
+## none): a bot tells which circuit is lighting the ground people stand on.
+func lamp_points() -> Dictionary:
+	var found := {}
+	for lamp in _lamps.lamps:
+		if lamp.decor:
+			continue
+		if not found.has(lamp.circuit):
+			found[lamp.circuit] = []
+		found[lamp.circuit].append(lamp.position)
+	return found
+
+
 ## True once the navigation map finds a way across the field, between its first two spawn points
 ## (the field is never walled off). The map's iteration id is no sign of it: in the browser it
 ## stays at 1 while the map already answers, and waiting for a second one cost the full

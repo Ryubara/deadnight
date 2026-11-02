@@ -10,14 +10,17 @@ const WAIVER := "waived until "
 
 ## `ShopItem.Kind` by name.
 const SHOP_KINDS := {
-	"DOOR": "waived until #228 (economy: doors in the planned order)",
-	"WEAPON": "waived until #228 (economy: wall weapons)",
-	"CRANE": "waived until #228 (economy: the prize crane)",
-	"TONIC": "waived until #228 (economy: the hearty tonic)",
-	"FUEL": "waived until #228 (the generator: a fuel can when the tank runs low)",
-	"GRENADES": "waived until #228 (economy: buying more grenades; throwing them is BotGrenadier)",
-	"AMMO": "waived until #228 (economy: buying rounds for the gun in hand)",
-	"UPGRADE": "waived until #228 (economy: the re-cut bench)",
+	"DOOR":
+	"rule: BotEconomy buys the doors in the profile's order; BotErrands holds a person's claim",
+	"WEAPON": "rule: BotEconomy buys a wall weapon worth more than the one it would replace",
+	"CRANE": "rule: BotEconomy plays the crane when a prize it lacks beats the weapon in hand",
+	"TONIC":
+	"rule: BotEconomy buys the hearty tonic once; a tonic with no health in it is never bought",
+	"FUEL": "rule: BotErrands buys a can when the tank is under the low line; one bot at a time",
+	"GRENADES":
+	"waived until #577 (no place in the lot sells grenades; throwing them is BotGrenadier)",
+	"AMMO": "rule: BotEconomy buys rounds for the guns it carries (below a magazine at once)",
+	"UPGRADE": "rule: BotEconomy re-cuts the gun in hand at the bench, as many as the profile does",
 }
 ## `WeaponCatalog.IDS`: a weapon is covered when the motor can fire it as it is built.
 const WEAPONS := {
@@ -33,20 +36,23 @@ const WEAPONS := {
 }
 ## The `kind` of every prompt the server's `use_target` and the machines can show.
 const PROMPTS := {
-	"door": "waived until #228 (economy)",
-	"weapon": "waived until #228 (economy)",
-	"ammo": "waived until #228 (economy: the ammunition locker)",
-	"crane": "waived until #228 (economy)",
-	"crane_take": "waived until #228 (economy)",
-	"crane_busy": "waived until #228 (economy: wait for the buyer)",
-	"recut": "waived until #228 (economy)",
-	"recut_done": "waived until #228 (economy: nothing to do)",
-	"recut_none": "waived until #228 (economy: nothing to do)",
-	"tonic": "waived until #228 (economy)",
-	"tonic_owned": "waived until #228 (economy: nothing to do)",
-	"repair": "waived until #228 (repairs: boards at a breach)",
-	"circuit": "waived until #228 (the generator: breakers)",
-	"fuel": "waived until #228 (the generator: fuel)",
+	"door": "rule: BotErrands presses use at the door BotEconomy chose, after the person's claim",
+	"weapon": "rule: BotErrands presses use at the wall BotEconomy chose",
+	"ammo": "rule: BotErrands presses use at the locker or the wall BotEconomy chose",
+	"crane": "rule: BotErrands presses use when BotEconomy chose a play",
+	"crane_take": "rule: BotErrands takes the prize when it beats the weapon it would give up",
+	"crane_busy":
+	"rule: BotErrands does not choose the crane while a play runs (it waits for the buyer)",
+	"recut": "rule: BotErrands presses use at the bench BotEconomy chose",
+	"recut_done": "rule: nothing to do (BotEconomy does not choose a re-cut for a re-cut gun)",
+	"recut_none": "rule: nothing to do (BotEconomy re-cuts a firearm only)",
+	"tonic": "rule: BotErrands presses use at the fountain when BotEconomy chose the hearty tonic",
+	"tonic_owned": "rule: nothing to do (BotEconomy buys a tonic once)",
+	"repair":
+	"rule: BotErrands holds use at a breach with a board down, in a break, away from people",
+	"circuit": "rule: BotErrands throws a breaker the generator care wants the other way",
+	"fuel":
+	"rule: BotErrands presses use at a can spot while the tank is low and it is the bot's turn",
 	"revive": "waived until #229 (team play: raising a downed teammate)",
 }
 

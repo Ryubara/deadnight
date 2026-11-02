@@ -83,6 +83,14 @@ func hear(events: Array) -> void:
 				# The roster labels a bot (`bot`), whoever seated it.
 				if event.get("bot", false):
 					bot_ids[int(event["player_id"])] = true
+			&"purchase_denied":
+				perception.beliefs.denials.append(
+					{"item": event.get("item_id", &""), "result": event.get("result", -1)}
+				)
+				telemetry.count(&"rejected_buys")
+			&"purchase_made":
+				telemetry.count(&"buys")
+				perception.beliefs.purchased_at = now
 			&"grenade_count_changed":
 				perception.beliefs.grenades = int(event.get("count", 0))
 			&"round_started":

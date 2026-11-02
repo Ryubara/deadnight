@@ -62,6 +62,32 @@ const REACTION_FLOOR := 0.20
 ## not walk: a body the physics engine moves does not repeat to the last bit).
 @export var follows: bool = true
 
+@export_group("Shopping")
+## Whether the bot goes on errands (shopping, boards, the generator) when the level gives it a shop.
+@export var errands: bool = true
+## What the bot buys, first to last: the player model of the balance simulator's matching level
+## (`SimSkill.shopping`; a test holds the two together). Doors the list lacks are bought after it,
+## in the shop table's order.
+@export var shopping: Array[StringName] = [
+	&"weapon_shotgun",
+	&"door_concession",
+	&"weapon_rifle",
+	&"door_booth",
+	&"crane_play",
+	&"upgrade_weapon",
+	&"tonic_hearty",
+	&"door_back_lot",
+]
+## Items on that list the bot saves for: while one is not yet affordable, nothing after it is
+## bought.
+@export var saves_for: Array[StringName] = [&"upgrade_weapon", &"tonic_hearty"]
+## Magazines of reserve the bot keeps for each gun worth shooting before it spends on anything else,
+## and the share of a gun's reserve limit it tops up to with what is left over (`SimSkill`).
+@export_range(1, 6, 1) var ammo_floor_mags: int = 3
+@export_range(0.0, 1.0, 0.05) var ammo_topoff: float = 1.0
+## How many weapons the bot re-cuts in a night.
+@export_range(0, 4, 1) var re_cuts: int = 1
+
 @export_group("Thinking")
 ## How many times a second the brain decides; the motor runs every tick.
 @export_range(1, 30, 1, "suffix:Hz") var think_hz: int = 8
@@ -93,6 +119,26 @@ static func rookie() -> BotProfile:
 	profile.think_hz = 5
 	profile.retreat_margin = 0.0
 	profile.revive_eagerness = 0.25
+	profile.ammo_floor_mags = 2
+	profile.ammo_topoff = 0.5
+	profile.saves_for.clear()
+	(
+		profile
+		. shopping
+		. assign(
+			[
+				&"door_concession",
+				&"crane_play",
+				&"weapon_shotgun",
+				&"door_booth",
+				&"crane_play",
+				&"weapon_rifle",
+				&"door_back_lot",
+				&"upgrade_weapon",
+				&"tonic_hearty",
+			]
+		)
+	)
 	return profile
 
 
@@ -114,6 +160,23 @@ static func veteran() -> BotProfile:
 	profile.think_hz = 10
 	profile.retreat_margin = 1.5
 	profile.revive_eagerness = 0.5
+	profile.re_cuts = 2
+	(
+		profile
+		. shopping
+		. assign(
+			[
+				&"weapon_shotgun",
+				&"weapon_rifle",
+				&"door_concession",
+				&"door_booth",
+				&"crane_play",
+				&"upgrade_weapon",
+				&"tonic_hearty",
+				&"door_back_lot",
+			]
+		)
+	)
 	return profile
 
 
