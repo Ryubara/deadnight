@@ -132,7 +132,9 @@ How it works:
 - **The trigger is part of the player's command** (`PlayerCommand.fire`), because the body's facing is simulated state
   the server owns and a replay must agree on. `NightServer` sets it from the `NightCommand`'s own `fire` (a human, the
   autopilot and a remote client all send that), and a downed player's trigger does nothing. `PlayerMotionState.fire_age`
-  is the seconds since the trigger was last held; `holds_aim(hold)` is `aiming or fire_age < hold`, and the simulation
+  is the seconds since the trigger was last held **without the aim button** (a shot fired while aiming does not restart
+  it: letting go of the aim lets go of the zoom at once, with no hold left behind, #428; a hip shot's hold still runs
+  out if the aim is pressed and let go inside it); `holds_aim(hold)` is `aiming or fire_age < hold`, and the simulation
   asks it for the body's turn to the view and for the strafing velocity. The muzzle of a shot is rotated by this facing,
   so it leaves from a body that faces the target.
 - **Shots are still the camera ray.** The camera's yaw and pitch are the input as before, the zoom only moves the lens
