@@ -289,7 +289,7 @@ the ticket, so the game server needs no second channel:
    `403 not_host`, `409 already_started` and `400 bad_settings` otherwise, and nothing changes.
 1. `POST /lobbies/:id/start` takes `{"settings": {"count_multiplier", "max_alive", "break_seconds"}}` from the
    host (without it, the ones set while waiting; without those, today's game). The backend (`src/settings.ts`)
-   accepts exactly those three keys inside the game's bounds (0.25 to 5; a whole 0 to 40; 0 or 1 to 120) and answers
+   accepts exactly those three keys inside the game's bounds (0.25 to 5; a whole 0 to 120; 0 or 1 to 120) and answers
    `400 bad_settings` otherwise, leaving the lobby open. They are fixed when the match starts; the lobby view shows
    them.
 2. Every ticket of the match (`/lobbies/:id/ticket`) carries the same `settings` claim, signed with the rest.

@@ -16,7 +16,7 @@ export interface MatchSettings {
 
 export const MIN_COUNT_MULTIPLIER = 0.25;
 export const MAX_COUNT_MULTIPLIER = 5;
-export const MAX_ALIVE = 40;
+export const MAX_ALIVE = 120;
 export const MIN_BREAK = 1;
 export const MAX_BREAK = 120;
 

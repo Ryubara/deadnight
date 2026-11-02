@@ -95,7 +95,7 @@ func test_a_ticket_whose_rules_this_server_does_not_take_is_refused_and_not_spen
 	var now := int(Time.get_unix_time_from_system())
 	for rules in [
 		{"count_multiplier": 6.0, "max_alive": 1, "break_seconds": 0.0},
-		{"count_multiplier": 1.0, "max_alive": 41, "break_seconds": 0.0},
+		{"count_multiplier": 1.0, "max_alive": 121, "break_seconds": 0.0},
 		{"count_multiplier": 1.0, "max_alive": 1, "break_seconds": 0.5},
 		{"count_multiplier": 1.0},
 	]:

@@ -182,7 +182,7 @@ test("the host's match settings are checked, kept on the lobby and signed into e
   for (const bad of [
     { ...good, count_multiplier: 9 },
     { ...good, count_multiplier: 0.1 },
-    { ...good, max_alive: 41 },
+    { ...good, max_alive: 121 },
     { ...good, max_alive: 3.5 },
     { ...good, break_seconds: 0.5 },
     { ...good, break_seconds: 500 },
