@@ -6,8 +6,10 @@ players are in your lobby before you start"; Deadnight #515). The platform side 
 [the platform backend](../research/platform-backend.md#the-lobby-before-the-night); the networking decision is in
 [networking](networking.md).
 
-**Status:** the backend side is built (open and started lobbies, presence, the round, the preview); the screen is the
-next pull request, after the Activity's main-menu rework (#503) lands in `together_screen.gd`.
+**Status:** built: the backend (open and started lobbies, presence, the round, the preview), the lobby screen and its
+poll (`LobbyScreen`, `LobbyWatch`), the game server's round in its heartbeat and the join notice in the night. Next: the
+Play together screen opens it (after the Activity's main-menu rework, #503, which changes that file) and the host's
+match settings join it (branch `net-room-settings`).
 
 ## The rules in one place
 
