@@ -20,6 +20,19 @@ one, which includes its `before()` and `after()`; sorting those gaps gives the l
 | `player/test_player_crouch`, `test_reload_tilt`, `test_player_step_up`, `test_aim_weight`, `test_weapon_hold`, `test_omni_curves`, `test_hip_fire`, `test_aim_release` | 24 to 34 each | a physics frame awaited per hand-stepped tick |
 | `net/*_online`, `test_client_freeze`, `test_netcode_scenario` | 21 to 43 each | real sockets and real freezes: the time is the test |
 
+After the speed-ups below the same job took 15 min 10 s (suites 853 s, down about 420 s on the suites both runs had; `main`
+had grown by 26 suites and 150 s meanwhile). The rest is compute and real time, so the job is also split.
+
+## Three jobs by test folder
+
+`godot` is a matrix of three shards (`godot (1)` to `godot (3)`), each running its own test folders
+(`tools/ci_test_shards.py`: `night` and `rules`; `net`, `world` and `zombies`; everything else). A folder that is not
+named goes to shard 3, so a new folder is never left out, and the script's self-test (run in every shard) fails if a
+folder is in no shard or in two. Each shard repeats the checkout, the fetch of the pinned Godot (cached) and the import,
+about a minute; the main-scene run and the night run happen in shard 1 only. `build-ok` still waits for the whole
+`godot` job and is the one required name, so the ruleset needs no change. The timing per folder to balance by is in the
+job log: re-balance when one shard drifts past the others by more than a few minutes.
+
 ## What a fast test does
 
 1. **Tick by hand, back to back.** A suite that steps the player itself switches its `_physics_process` off once and
