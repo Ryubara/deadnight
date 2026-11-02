@@ -45,8 +45,9 @@ dry where you are, big and open everywhere else, and a little theatrical**.
 
 ## Buses
 
-Six buses, each with its own slider in the settings screen (`default_bus_layout.tres`, volumes owned by `Settings`).
-Everything goes to Master, which is the master slider.
+Five buses with a slider each in the settings screen (`default_bus_layout.tres`, volumes owned by `Settings`), and the
+`Duck` bus that has no slider. Everything goes to Master, which is the master slider; Effects and Ambience go through
+`Duck` on the way.
 
 | Bus (slider) | Carries | Ducked by the sting | Default |
 | --- | --- | --- | --- |
@@ -60,8 +61,9 @@ The ambience sits lowest on purpose (its sounds are 14 to 22 dB under a footstep
 busy turns one slider and keeps the guns. A sting ducks Effects and Ambience together, so the title card is heard over the
 night; Music, Voice and UI are left alone.
 
-Ducking never touches a bus's volume. The service adds one `AudioEffectAmplify` to each ducked bus and moves those, so the
-player's own sliders and the duck do not fight.
+Ducking never touches a slider's bus. Effects and Ambience send to `Duck`, and the service moves `Duck`'s volume (and only
+that), so the player's own sliders and the duck do not fight, and the duck is **bus volume, not a bus effect**: the web
+build ignores effects but not volume, so a sting ducks the same on every platform.
 
 ## The sounds
 
@@ -238,7 +240,7 @@ rules' `zombie_damaged` events. Who sounds like what is one table, `ZombieVoiceT
 ### Footsteps
 
 `FootstepSounds` (`game/gameplay/night/`) gives every player's feet a sound, from the same ground rules as the
-simulation (`PlayerSimulation`: a step for every `step_distance`, 1.9 m, of ground covered while on the floor and moving
+simulation (`PlayerSimulation`: a step for every `step_distance`, 1.5 m, of ground covered while on the floor and moving
 faster than 0.5 m/s), so the pace of the feet is the pace of the player: a sprint steps faster because it covers the
 stride sooner, a crouched creep slower, standing and flight are silent.
 
@@ -285,16 +287,18 @@ stride sooner, a crouched creep slower, standing and flight are silent.
   layers sum past full scale. A sound with a `near_cap_db` (the arms and the lot's sounds have 0) sets the player's
   `max_db` to its own level plus that, so close up the trim is the level and far away nothing changes.
 - **Rear cue.** A sound with `rear_cue` is low-passed by how far behind the listener it is (`rear_amount`, from the
-  listener node or the camera): 0 in front and at the side, 1 straight behind, where the cutoff is 1.8 kHz.
+  listener node or the camera): 0 in front and at the side, 1 straight behind, where the cutoff is 1.8 kHz. Where the
+  filter is not heard (the web build, below) it is also `NO_FILTER_REAR_DB` (3 dB) quieter straight behind.
 - **Occlusion.** A probe (`occlusion_probe`, or a physics ray against `occluder_mask`) returns 0 to 1. In the night
   the mask is on: the lot's walls and fences (every box of `wall()` in `tools/world/build_greybox.py`) are on physics
   layer 2 as well as the ground layer, `NightSounds` sets `Audio.occluder_mask` to it for the length of the night, and
   cars, crates and the ground are not on it, so a wall hides a shot and a car does not. A fully blocked sound is
   9 dB quieter and low-passed at 1.1 kHz, and counts as half as
-  loud when the budget compares it. Measured in a capture: a rifle shot behind a wall was 10 dB down and its centre of
-  energy fell from 3.1 kHz to 0.5 kHz.
-- **Ducking.** A sting lowers Effects and Ambience by its `duck_db` (9 dB for `round_start`, 5 for `round_end`) at
-  80 dB/s, holds it for the sting's front (1.6 s, 0.8 s) and lets go at 14 dB/s.
+  loud when the budget compares it (in the web build a further `NO_FILTER_OCCLUSION_DB`, 4 dB, below). Measured in a
+  capture: a rifle shot behind a wall was 10 dB down and its centre of energy fell from 3.1 kHz to 0.5 kHz.
+- **Ducking.** A sting lowers the `Duck` bus, so Effects and Ambience, by its `duck_db` (9 dB for `round_start`, 5 for
+  `round_end`) at 80 dB/s, holds it for the sting's front (1.6 s, 0.8 s) and lets go at 14 dB/s. The curve is pinned in
+  `tests/core/test_audio_mix.gd`.
 - **Seeded.** Variants and pitch come from one generator (`seed_random`); the clock is the service's own
   (`advance(delta)`), so tests and replays do not depend on real time.
 - **UI.** The service sets `UIAudio.handler` when it starts; every `gds_ui` control and every router transition then
@@ -321,6 +325,24 @@ the player one. The night sets `Audio.occluder_mask` itself (`NightSounds`); a s
 The web build plays every `AudioStreamPlayer` as a **sample** by default (Godot 4.3 and later): the browser's own audio
 nodes, which keep playing when the game stalls, but which **ignore bus effects and a player's distance filter**. Measured
 in [the web export page](../research/web-export.md#audio-in-the-browser): 44 voices play with no dropout and no click,
-the bus volumes (the settings sliders) work, and the sting's duck, the rear cue, the occlusion low-pass and the engine's
-distance dulling do not apply. The mix is otherwise the same sounds at the same trims. Playing them as streams would
-apply all of them and crackle whenever the main thread stalls for 50 ms or more, which a night does.
+and the bus volumes (the settings sliders) work. Playing them as streams would apply every effect and crackle whenever
+the main thread stalls for 50 ms or more, which a night does, so the mix is built from what samples keep, volume:
+
+| What | Desktop | Web build (samples) |
+| --- | --- | --- |
+| The sting's duck | the `Duck` bus's volume, 9 dB for the title card | the same: bus volume works, so it is identical |
+| A shot behind a wall | 9 dB quieter and low-passed at 1.1 kHz | 13 dB quieter (the 9 dB, plus `NO_FILTER_OCCLUSION_DB` = 4 dB, in place of the low-pass) |
+| A dead voice straight behind you | low-passed at 1.8 kHz | 3 dB quieter (`NO_FILTER_REAR_DB`), no darkening |
+| The engine's distance dulling | applied | not applied |
+
+The service chooses by `AudioService.players_apply_filters()` (a web export whose project plays samples) and keeps it in
+`filters_apply`, which a test may set. The two stand-in amounts are middles, not matches: the low-pass costs a bright
+sound much more than a dull one (a cricket loop loses 13 dB at the wall on desktop, a rifle shot about 1 dB), and a
+volume cannot say "darker". Measured in a browser, one bright looped voice through the real service (`audio_load.py`,
+the `svc_*` phases), against the same voice in the open:
+
+| | Web before | Web now | Streams (desktop's way) |
+| --- | ---: | ---: | ---: |
+| Sting duck (-12 dB asked) | +0.4 dB | -11.9 | -11.9 |
+| Behind a wall | -8.6 | -12.9 | -21.9 |
+| Straight behind, rear cue | +0.4 | -2.9 | -8.3 |

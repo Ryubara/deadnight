@@ -11,7 +11,8 @@ It reads the camera's yaw from `window.deadnight` (game/core/web_probe.gd) every
 `pointermove` events the browser made for the touches (Godot's web runtime reads every `pointermove` of the window as
 a mouse motion, a touch included: that was the cause of #470).
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/touch_look.py build/web build/touch_look
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/touch_look.py build/web build/touch_look
 
 The first argument is the exported folder or a URL; the second is where the screenshots and `result.json` go. Exits 1
 when the stick turns the view, when the look drag turns it by more than `MAX_TURN_RATIO` times what the design says, or
@@ -24,6 +25,7 @@ import argparse
 import itertools
 import json
 import math
+import re
 import sys
 import time
 from pathlib import Path
@@ -39,6 +41,8 @@ LOAD_TIMEOUT_S = 240
 # Where the fingers land, in CSS pixels: the stick zone is the left side below the top fifth, the look area is the rest.
 STICK_FROM = (110.0, 300.0)
 LOOK_FROM = (520.0, 110.0)
+# The Aim button's centre on the 844 x 390 phone (read off the probe's screenshot), for the drag that starts on it.
+AIM_FROM = (728.0, 202.0)
 STEPS = 20
 STEP_PERIOD_S = 0.03
 # A look drag, in CSS pixels, and what the design promises for it: radians per screen height at sensitivity 1
@@ -46,6 +50,17 @@ STEP_PERIOD_S = 0.03
 LOOK_DRAG_PX = 100.0
 RADIANS_PER_HEIGHT = 1.6
 MAX_TURN_RATIO = 1.25
+MAX_FLICK_GAIN = 1.6
+AIM_TOLERANCE = 0.05
+# How long the finger holds Aim before it drags: the aim eases in over about a second, and the look scale with it.
+AIM_SETTLE_S = 1.5
+# The look scale the game applies once the aim has eased in (`aim_sensitivity_scale`, game/gameplay/player).
+ADS_LOOK_SCALE = float(
+    re.search(
+        r"aim_sensitivity_scale := ([0-9.]+)",
+        (Path(__file__).parents[2] / "game/gameplay/player/player_tuning.gd").read_text(encoding="utf-8"),
+    ).group(1)
+)
 # The view turned by the stick must be below this; a few thousandths is the hand-off noise.
 MAX_STICK_TURN_RAD = 0.02
 MAX_FRAME_TURN_RAD = 0.35
@@ -107,6 +122,20 @@ def drag(client: CDPSession, finger: int, start: tuple[float, float], delta: tup
     time.sleep(0.4)
 
 
+def hold_then_drag(
+    client: CDPSession, finger: int, start: tuple[float, float], delta: tuple[float, float], hold_s: float
+) -> None:
+    """A finger down at `start` that stays `hold_s` before it moves by `delta` in even steps and lifts."""
+    x, y = start
+    touch(client, "touchStart", [(finger, x, y)])
+    time.sleep(hold_s)
+    for step in range(1, STEPS + 1):
+        touch(client, "touchMove", [(finger, x + delta[0] * step / STEPS, y + delta[1] * step / STEPS)])
+        time.sleep(STEP_PERIOD_S)
+    touch(client, "touchEnd", [])
+    time.sleep(0.4)
+
+
 def wander(client: CDPSession, finger: int, start: tuple[float, float], shot=None) -> None:
     """A stick finger that pushes right by 120 px and comes back half way, as a thumb steering does."""
     x, y = start
@@ -120,6 +149,26 @@ def wander(client: CDPSession, finger: int, start: tuple[float, float], shot=Non
         if shot is not None:
             shot()
             shot = None
+    touch(client, "touchEnd", [])
+    time.sleep(0.4)
+
+
+def two_thumbs(client: CDPSession, stick: tuple[float, float], look: tuple[float, float], shot=None) -> None:
+    """The stick finger wanders while the look finger drags `LOOK_DRAG_PX` to the right, both moving in every event
+    (#497: with two fingers down the first drag of each had a wrong `relative` and the view flicked round)."""
+    sx, sy = stick
+    lx, ly = look
+    touch(client, "touchStart", [(1, sx, sy)])
+    time.sleep(STEP_PERIOD_S)
+    touch(client, "touchStart", [(1, sx, sy), (2, lx, ly)])
+    time.sleep(STEP_PERIOD_S)
+    for step in range(1, STEPS + 1):
+        stick_at = (sx + 80.0 * math.sin(step / 4.0), sy - 30.0 * step / STEPS)
+        look_at = (lx + LOOK_DRAG_PX * step / STEPS, ly)
+        touch(client, "touchMove", [(1, *stick_at), (2, *look_at)])
+        time.sleep(STEP_PERIOD_S)
+        if shot is not None and step == STEPS // 2:
+            shot()
     touch(client, "touchEnd", [])
     time.sleep(0.4)
 
@@ -141,10 +190,7 @@ def turns(page: Page) -> tuple[float, float]:
 def start_night(page: Page) -> None:
     smoke.wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
     page.wait_for_timeout(3000)
-    smoke.press(page, "ArrowDown")
-    for _ in range(4):
-        smoke.press(page, "ArrowUp")
-    smoke.press(page, "Enter")
+    smoke.start_solo(page)
     smoke.wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), 240)
     page.wait_for_timeout(2500)
 
@@ -188,6 +234,16 @@ def run(url: str, out: Path) -> dict:
         result["look_biggest_frame_turn_rad"], result["look_frames"] = turns(page)
         result["look_expected_rad"] = RADIANS_PER_HEIGHT * LOOK_DRAG_PX / VIEWPORT["height"]
         page.screenshot(path=str(out / "after_look.png"))
+        page.evaluate("window.__yaws.length = 0")
+        before = yaw(page)
+        two_thumbs(client, STICK_FROM, LOOK_FROM, lambda: page.screenshot(path=str(out / "two_thumbs.png")))
+        result["two_turn_rad"] = abs(math.remainder(yaw(page) - before, math.tau))
+        result["two_biggest_frame_turn_rad"], result["two_frames"] = turns(page)
+
+        page.evaluate("window.__yaws.length = 0")
+        before = yaw(page)
+        hold_then_drag(client, 3, AIM_FROM, (LOOK_DRAG_PX, 0.0), AIM_SETTLE_S)
+        result["aim_turn_rad"] = abs(math.remainder(yaw(page) - before, math.tau))
         result["pointer_lock_requests"] = page.evaluate("window.__lockRequests")
         browser.close()
     result["problems"] = problems
@@ -207,6 +263,21 @@ def verdict(result: dict) -> list[str]:
         wrong.append(f"a look drag turned the view only {result['look_turn_rad']:.3f} rad")
     if result["look_biggest_frame_turn_rad"] > MAX_FRAME_TURN_RAD:
         wrong.append(f"one frame turned the view {result['look_biggest_frame_turn_rad']:.3f} rad")
+    expected = result["look_expected_rad"]
+    # A fast flick gains up to MAX_GAIN, so two thumbs may turn more than the slow design, but not by a whole screen.
+    if result["two_turn_rad"] > expected * MAX_TURN_RATIO * MAX_FLICK_GAIN:
+        wrong.append(f"two thumbs: a {LOOK_DRAG_PX:.0f} px look drag turned the view {result['two_turn_rad']:.3f} rad")
+    if result["two_turn_rad"] < expected / MAX_TURN_RATIO:
+        wrong.append(f"two thumbs: the look drag turned the view only {result['two_turn_rad']:.3f} rad")
+    if result["two_biggest_frame_turn_rad"] > MAX_FRAME_TURN_RAD:
+        wrong.append(f"two thumbs: one frame turned the view {result['two_biggest_frame_turn_rad']:.3f} rad")
+    # Aiming slows the look by the camera's own ADS scale once the aim has eased in (the drag waits for that).
+    aimed = expected * ADS_LOOK_SCALE
+    if abs(result["aim_turn_rad"] - aimed) > aimed * AIM_TOLERANCE:
+        wrong.append(
+            f"a drag from the Aim button turned the view {result['aim_turn_rad']:.3f} rad, "
+            f"the design says {aimed:.3f} ({expected:.3f} x the ADS scale {ADS_LOOK_SCALE})"
+        )
     return wrong
 
 

@@ -47,48 +47,90 @@ func test_the_probe_is_asked_from_the_listener_to_the_source() -> void:
 	assert_vector(seen[0][1]).is_equal(Vector3(5, 0, 9))
 
 
+func _duck_bus_db() -> float:
+	return AudioServer.get_bus_volume_db(AudioServer.get_bus_index(AudioService.DUCK_BUS))
+
+
 func test_a_sting_ducks_the_effects_bus_then_lets_it_back() -> void:
 	var bus := AudioServer.get_bus_index(&"Effects")
+	var before := AudioServer.get_bus_volume_db(bus)
 	assert_float(_audio.duck_db).is_equal(0.0)
 	_audio.play(&"round_start")
 	_audio.advance(0.2)
 	assert_float(_audio.duck_db).is_less(-8.0)
-	# The bus carries it in an effect of its own; the player's volume setting is untouched.
-	var amplify: AudioEffectAmplify
-	for i in AudioServer.get_bus_effect_count(bus):
-		if AudioServer.get_bus_effect(bus, i) is AudioEffectAmplify:
-			amplify = AudioServer.get_bus_effect(bus, i)
-	assert_object(amplify).is_not_null()
-	assert_float(amplify.volume_db).is_equal_approx(_audio.duck_db, 0.001)
+	# The duck is the volume of the bus the ducked buses send to; the player's setting is untouched.
+	assert_float(_duck_bus_db()).is_equal_approx(_audio.duck_db, 0.001)
+	assert_float(AudioServer.get_bus_volume_db(bus)).is_equal(before)
 	var held := SoundCatalog.get_def(&"round_start").duck_hold
 	_audio.advance(held)
 	_audio.advance(1.0)
 	_audio.advance(1.0)
 	assert_float(_audio.duck_db).is_equal(0.0)
+	assert_float(_duck_bus_db()).is_equal(0.0)
 
 
-func _has_duck_effect(bus_name: StringName) -> bool:
+func test_the_duck_falls_at_its_attack_holds_and_lets_go_at_its_release() -> void:
+	var def := SoundCatalog.get_def(&"round_start")
+	_audio.play(&"round_start")
+	_audio.advance(0.05)
+	assert_float(_duck_bus_db()).is_equal_approx(-AudioService.DUCK_ATTACK_DB_PER_S * 0.05, 0.01)
+	_audio.advance(0.2)
+	assert_float(_duck_bus_db()).is_equal_approx(def.duck_db, 0.001)
+	# Small steps, so the hold ends where it should (1.6 s after the sting started).
+	for _i in roundi((def.duck_hold - 0.25) / 0.01) - 5:
+		_audio.advance(0.01)
+	assert_float(_duck_bus_db()).is_equal_approx(def.duck_db, 0.001)
+	for _i in 36:
+		_audio.advance(0.01)
+	# 0.05 s of hold were left, then 0.31 s of release.
+	var released := def.duck_db + AudioService.DUCK_RELEASE_DB_PER_S * 0.31
+	assert_float(_duck_bus_db()).is_greater(def.duck_db)
+	assert_float(_duck_bus_db()).is_less(0.0)
+	assert_float(_duck_bus_db()).is_equal_approx(released, 0.4)
+
+
+func test_a_slider_moved_during_a_duck_is_kept_when_the_duck_lets_go() -> void:
+	var bus := AudioServer.get_bus_index(&"Effects")
+	var before := AudioServer.get_bus_volume_db(bus)
+	_audio.play(&"round_start")
+	_audio.advance(0.3)
+	AudioServer.set_bus_volume_db(bus, before - 6.0)
+	_audio.advance(10.0)
+	assert_float(_duck_bus_db()).is_equal(0.0)
+	assert_float(AudioServer.get_bus_volume_db(bus)).is_equal(before - 6.0)
+	AudioServer.set_bus_volume_db(bus, before)
+
+
+func _has_effect(bus_name: StringName) -> bool:
 	var bus := AudioServer.get_bus_index(bus_name)
-	for i in AudioServer.get_bus_effect_count(bus):
-		if AudioServer.get_bus_effect(bus, i) is AudioEffectAmplify:
-			return true
-	return false
+	return AudioServer.get_bus_effect_count(bus) > 0
 
 
 func test_the_sting_ducks_the_ambience_with_the_effects_and_leaves_the_rest() -> void:
-	assert_bool(_has_duck_effect(&"Effects")).is_true()
-	assert_bool(_has_duck_effect(&"Ambience")).is_true()
-	for untouched: StringName in [&"Music", &"Voice", &"UI"]:
-		assert_bool(_has_duck_effect(untouched)).override_failure_message(untouched).is_false()
+	var duck := AudioService.DUCK_BUS
 	for bus_name: StringName in AudioService.DUCK_BUSES:
 		var bus := AudioServer.get_bus_index(bus_name)
+		assert_str(AudioServer.get_bus_send(bus)).override_failure_message(bus_name).is_equal(duck)
 		var before := AudioServer.get_bus_volume_db(bus)
 		_audio.play(&"round_start")
 		_audio.advance(0.2)
-		# The player's own volume setting is untouched; the duck lives in the effect.
+		# The player's own volume setting is untouched; the duck lives on the bus they send to.
 		assert_float(AudioServer.get_bus_volume_db(bus)).is_equal(before)
 		_audio.stop_all()
 		_audio.advance(5.0)
+	for untouched: StringName in [&"Music", &"Voice", &"UI"]:
+		var bus := AudioServer.get_bus_index(untouched)
+		assert_str(AudioServer.get_bus_send(bus)).override_failure_message(untouched).is_equal(
+			"Master"
+		)
+	assert_str(AudioServer.get_bus_send(AudioServer.get_bus_index(duck))).is_equal("Master")
+
+
+func test_no_bus_effect_does_the_duck() -> void:
+	# Effects do not play in the web build's samples, so the duck must not depend on one.
+	for bus_name: StringName in [&"Master", &"Music", &"Effects", &"Voice", &"Ambience", &"UI"]:
+		assert_bool(_has_effect(bus_name)).override_failure_message(bus_name).is_false()
+	assert_bool(_has_effect(AudioService.DUCK_BUS)).is_false()
 
 
 func test_every_catalog_sound_is_on_a_bus_of_its_kind() -> void:
@@ -127,14 +169,48 @@ func test_a_sting_does_not_duck_the_ui() -> void:
 	assert_float(AudioServer.get_bus_volume_db(bus)).is_equal(before)
 
 
-func test_leaving_the_tree_takes_the_duck_effect_off_the_bus() -> void:
-	var bus := AudioServer.get_bus_index(&"Effects")
-	var count := AudioServer.get_bus_effect_count(bus)
+func test_leaving_the_tree_lets_the_duck_go() -> void:
 	var extra := AudioService.new()
 	add_child(extra)
-	assert_int(AudioServer.get_bus_effect_count(bus)).is_equal(count + 1)
+	extra.play(&"round_start")
+	extra.advance(0.3)
+	assert_float(_duck_bus_db()).is_less(-8.0)
 	extra.free()
-	assert_int(AudioServer.get_bus_effect_count(bus)).is_equal(count)
+	assert_float(_duck_bus_db()).is_equal(0.0)
+
+
+func test_a_wall_and_the_rear_are_told_by_volume_where_the_filter_is_not_heard() -> void:
+	_audio.filters_apply = false
+	var front := Vector3(0, 0, -10)
+	var behind := Vector3(0, 0, 10)
+	var open := _audio.play(&"zombie_groan", front) as AudioStreamPlayer3D
+	var open_db := open.volume_db
+	_audio.stop_all()
+	var back := _audio.play(&"zombie_groan", behind) as AudioStreamPlayer3D
+	assert_float(back.volume_db).is_equal_approx(open_db + AudioService.NO_FILTER_REAR_DB, 0.001)
+	_audio.stop_all()
+	_audio.occlusion_probe = func(_from: Vector3, _to: Vector3) -> float: return 1.0
+	var blocked := _audio.play(&"zombie_groan", front) as AudioStreamPlayer3D
+	var wall := AudioService.OCCLUSION_DB + AudioService.NO_FILTER_OCCLUSION_DB
+	assert_float(blocked.volume_db).is_equal_approx(open_db + wall, 0.001)
+
+
+func test_where_the_filter_is_heard_volume_is_left_to_the_usual_drop() -> void:
+	_audio.filters_apply = true
+	var front := Vector3(0, 0, -10)
+	var open := _audio.play(&"zombie_groan", front) as AudioStreamPlayer3D
+	var open_db := open.volume_db
+	_audio.stop_all()
+	var back := _audio.play(&"zombie_groan", Vector3(0, 0, 10)) as AudioStreamPlayer3D
+	assert_float(back.volume_db).is_equal_approx(open_db, 0.001)
+	_audio.stop_all()
+	_audio.occlusion_probe = func(_from: Vector3, _to: Vector3) -> float: return 1.0
+	var blocked := _audio.play(&"zombie_groan", front) as AudioStreamPlayer3D
+	assert_float(blocked.volume_db).is_equal_approx(open_db + AudioService.OCCLUSION_DB, 0.001)
+
+
+func test_a_desktop_and_a_stream_build_hear_the_filter_and_a_sample_build_does_not() -> void:
+	assert_bool(AudioService.players_apply_filters()).is_equal(not OS.has_feature("web"))
 
 
 func test_the_ui_hook_plays_the_cue_s_sound() -> void:
