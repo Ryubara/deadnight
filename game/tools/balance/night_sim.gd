@@ -107,6 +107,10 @@ func run(max_rounds: int) -> Dictionary:
 				break
 			_handle(rules.apply(RulesAction.skip_break()))
 		elif rules.phase == GameRules.Phase.ACTIVE:
+			# A long wait in the break (the crane's spin) can run the break out: that round is one
+			# past the last the cell counts, so the night ends where it was meant to.
+			if rules.round_number > max_rounds:
+				break
 			_step()
 		else:
 			break
@@ -284,7 +288,7 @@ func _health() -> float:
 func _worth_at(arm: SimArm, distance: float) -> float:
 	if SimWeapons.is_melee(arm.id) or arm.mag <= 0:
 		return 0.0
-	return SimWeapons.kill_rate_at(arm.id, distance, _health())
+	return SimWeapons.kill_rate_of(arm.def(), distance, _health())
 
 
 ## The magazine and the reserve are both empty: take the best weapon that still has rounds, or the
@@ -295,11 +299,11 @@ func _out_of_rounds(player: SimPlayer) -> void:
 	var best := 0.0
 	for weapon_id: StringName in player.arms:
 		if not SimWeapons.is_melee(weapon_id):
-			best = maxf(best, SimWeapons.sustained_dps(weapon_id, _health()))
+			best = maxf(best, SimWeapons.sustained_dps_of(player.arms[weapon_id].def(), _health()))
 	var left := (
 		0.0
 		if SimWeapons.is_melee(player.weapon)
-		else SimWeapons.sustained_dps(player.weapon, _health())
+		else SimWeapons.sustained_dps_of(player.arms[player.weapon].def(), _health())
 	)
 	if left < best * RUN_BELOW and _resupply_run(player):
 		return
@@ -384,7 +388,9 @@ func _fire_at(player: SimPlayer, zombie: SimZombie) -> void:
 	if zombie.first_hit < 0.0:
 		zombie.first_hit = _clock
 	var melee := SimWeapons.is_melee(player.weapon)
-	var damage := SimWeapons.damage(player.weapon, zone, maxf(zombie.distance, 0.0))
+	var damage := SimWeapons.damage_of(
+		player.arms[player.weapon].def(), zone, maxf(zombie.distance, 0.0)
+	)
 	_splash(player, zombie)
 	_handle(rules.apply(RulesAction.hit(player.id, zombie.id, zone, damage, melee)))
 
@@ -392,12 +398,13 @@ func _fire_at(player: SimPlayer, zombie: SimZombie) -> void:
 ## A bursting shot hurts the others on the same side near the one it hit (a flare); the one it hit
 ## takes the direct hit only, as in the combat server.
 func _splash(player: SimPlayer, hit: SimZombie) -> void:
-	if SimWeapons.def(player.weapon).splash_radius <= 0.0:
+	var weapon: WeaponDef = player.arms[player.weapon].def()
+	if weapon.splash_radius <= 0.0:
 		return
 	for other: SimZombie in _zombies.values().duplicate():
 		if other == hit or other.side != hit.side:
 			continue
-		var blast := SimWeapons.splash(player.weapon, absf(other.distance - hit.distance))
+		var blast := SimWeapons.splash_of(weapon, absf(other.distance - hit.distance))
 		if blast > 0.0 and not _over:
 			_handle(rules.apply(RulesAction.hit(player.id, other.id, &"body", blast)))
 
@@ -535,10 +542,11 @@ func _between_rounds() -> void:
 		_refresh(player)
 
 
-## Reads what the player now owns off the rules. Tonics are shop entries the night gives no effect
-## yet, so they change nothing here either.
+## Reads what the player now owns off the rules: weapons, and the most health a tonic gave (the
+## rules own both; a tune-up is applied where it is bought, `_buy_upgrade`).
 func _refresh(player: SimPlayer) -> void:
 	var owned: PlayerState = rules.players[player.id]
+	player.max_health = owned.max_health
 	for shop_id in owned.weapons:
 		var weapon_id := WeaponCatalog.catalog_id(shop_id)
 		if not player.arms.has(weapon_id):
@@ -577,7 +585,10 @@ func _shop(player: SimPlayer) -> void:
 				bought = true
 				_refresh(player)
 				break
-	var keep := rules.price_of(wanted[0]) if not wanted.is_empty() else 0
+			# Saving for the next big thing: nothing after it is bought until it is.
+			if skill.saves_for.has(item_id) and _can_ever_buy(player, item_id):
+				break
+	var keep := rules.price_of(wanted[0], player.id) if not wanted.is_empty() else 0
 	var topoff := 1.0 if prepared else skill.ammo_topoff
 	for weapon_id in _useful(player):
 		var top := int(float(player.arms[weapon_id].def().reserve_max) * topoff)
@@ -589,16 +600,22 @@ func _useful(player: SimPlayer) -> Array[StringName]:
 	var best := 0.0
 	for weapon_id: StringName in player.arms:
 		if not SimWeapons.is_melee(weapon_id):
-			best = maxf(best, SimWeapons.sustained_dps(weapon_id, _health()))
+			best = maxf(best, SimWeapons.sustained_dps_of(player.arms[weapon_id].def(), _health()))
 	var useful: Array[StringName] = []
 	for weapon_id: StringName in player.arms:
 		if SimWeapons.is_melee(weapon_id):
 			continue
-		if SimWeapons.sustained_dps(weapon_id, _health()) >= best * USEFUL_SHARE:
+		if (
+			SimWeapons.sustained_dps_of(player.arms[weapon_id].def(), _health())
+			>= best * USEFUL_SHARE
+		):
 			useful.append(weapon_id)
 	useful.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
-			return SimWeapons.sustained_dps(a, _health()) > SimWeapons.sustained_dps(b, _health())
+			return (
+				SimWeapons.sustained_dps_of(player.arms[a].def(), _health())
+				> SimWeapons.sustained_dps_of(player.arms[b].def(), _health())
+			)
 	)
 	return useful
 
@@ -635,14 +652,44 @@ func _ammo_item(weapon_id: StringName) -> ShopItem:
 ## the reserve). `rounds` is the room an ammunition purchase has (the combat server's number in the
 ## game).
 func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
-	for event in rules.apply(RulesAction.buy(player.id, item_id, rounds)):
+	var weapon := _tune_up_weapon(player) if item_id == &"upgrade_weapon" else &""
+	for event in rules.apply(RulesAction.buy(player.id, item_id, rounds, weapon)):
 		if event["type"] == &"purchase_made":
 			var spent: Dictionary = _result["spent_on"]
 			spent[item_id] = spent.get(item_id, 0) + event["price"]
 			if item_id == &"crane_play":
 				return 1 if _play_crane(player, event["price"]) else 0
+			if item_id == &"upgrade_weapon":
+				player.arms[weapon].upgrade(rules.tuning.upgrade)
 			return int(event["detail"].get("rounds", 1))
 	return 0
+
+
+## The weapon a player puts on the bench: the firearm that kills most, tuned up, among those not yet
+## tuned up. `&""` when there is none.
+func _tune_up_weapon(player: SimPlayer) -> StringName:
+	var spec := rules.tuning.upgrade
+	var best_id: StringName = &""
+	var best_rate := -1.0
+	if rules.players[player.id].upgraded.size() >= skill.tune_ups:
+		return best_id
+	for weapon_id: StringName in player.arms:
+		var arm: SimArm = player.arms[weapon_id]
+		if arm.tier() > 0 or not spec.allows(weapon_id):
+			continue
+		var rate := SimWeapons.sustained_dps_of(arm.def().upgraded(spec), _health())
+		if rate > best_rate:
+			best_rate = rate
+			best_id = weapon_id
+	return best_id
+
+
+## Whether the item may still be sold to this player some day, so saving for it is sensible (it is
+## not already owned, and there is a weapon to tune up).
+func _can_ever_buy(player: SimPlayer, item_id: StringName) -> bool:
+	if item_id == &"upgrade_weapon":
+		return _tune_up_weapon(player) != &""
+	return not rules.players[player.id].tonics.has(item_id)
 
 
 ## Spins the crane out in the break (the shopper stands at the glass, so the weapon is taken the
@@ -696,17 +743,29 @@ class SimArm:
 	var id: StringName = &""
 	var mag: int = 0
 	var reserve: int = 0
+	var _def: WeaponDef
 
 	static func of(weapon_id: StringName) -> SimArm:
 		var arm := SimArm.new()
 		arm.id = weapon_id
-		var def := arm.def()
-		arm.mag = def.magazine_size
-		arm.reserve = def.reserve_start
+		arm._def = SimWeapons.def(weapon_id)
+		arm.mag = arm._def.magazine_size
+		arm.reserve = arm._def.reserve_start
 		return arm
 
+	## The definition in use: the catalogue's, or its tuned-up copy.
 	func def() -> WeaponDef:
-		return SimWeapons.def(id)
+		return _def
+
+	func tier() -> int:
+		return _def.tier
+
+	## A tune-up, as `WeaponState.upgrade` does it: the numbers of `WeaponDef.upgraded`, then the
+	## magazine and the reserve full.
+	func upgrade(spec: UpgradeTuning) -> void:
+		_def = _def.upgraded(spec)
+		mag = _def.magazine_size
+		reserve = _def.reserve_max
 
 	## A reload: the magazine fills from the reserve, as far as the reserve goes.
 	func reload() -> void:
