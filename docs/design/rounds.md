@@ -402,7 +402,7 @@ from the game:
 | What | Source |
 | --- | --- |
 | Damage, pellets, falloff, zone multipliers, fire interval, magazine, reload | the weapon definitions (`WeaponCatalog`, priced with `DamageModel`, the functions the combat server uses) |
-| A flare's blast on its neighbours | the definition's `splash_*`, on the zombies on the same side within its radius |
+| A flare's pull on the dead | the definition's `lure_radius` and `lure_seconds`; it hurts no one ([zombies](zombies.md#the-flare-lure)) |
 | Health, regeneration delay and rate | `HealthTuning` in the rules' table (100, 5 s, 25 a second) |
 | A zombie's blow and swing | the type's `damage` (the night reads the same since #191), `ZombieTuning.swing_seconds` |
 | Lit ground | `GeneratorState`: a circuit keeps the dead at their round's pace (off it they are faster) only while it is on and the tank has fuel, and every circuit burns fuel |
@@ -587,7 +587,7 @@ The ranges and the health, count and spawn curves are unchanged.
 - **The weapon limit** (two or three weapons) is still open: the weapons and their numbers are in
   [Weapons](weapons.md) (shots to kill per round are tabled there).
 - **The shop's weapons are barely better than the pistol.** Sustained, reloads included, the pistol does about 59
-  damage a second, the shotgun 68, the rifle 85, the SMG 101 and the flare gun 32 (plus its blast). With health
+  damage a second, the shotgun 68, the rifle 85, the SMG 101 (the flare gun hurts no one since #439). With health
   that compounds against weapons that do not grow, this is why the health curve had to come down (#188). The
   shop now sells them (#152) and the simulator can say what each is worth, so the question has numbers.
   Average solo players with 20,000 points (so price is no object and only the weapon counts), buying nothing but

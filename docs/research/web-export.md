@@ -195,7 +195,59 @@ Chrome profile, with the machine's GPU. Play now builds the lot and warms up eve
 screen, which takes about 31 s there (24 s before): `smoke.py` waits up to 150 s for it. The numbers are in
 [First-use hitches](first-use-hitches.md).
 
+## Audio in the browser
+
+Asked by #88: does the web build play a night's voices without crackle on a modest laptop, and do the things the mix
+relies on (the duck, a player's distance filter) survive the browser? `tools/web_smoke/audio_load.py` answers with the
+real export: it exports the game with `game/tools/web_audio_load/web_audio_load.tscn` as its main scene (a release web
+template refuses a scene on the command line, so it changes `run/main_scene` for the length of the export and puts it
+back), plays steps of looping voices in headless Chromium or in the machine's Chrome (`--gpu`), and **taps the speakers**:
+every connection the game makes to the browser's audio destination goes through one gain node and an `AudioWorklet`
+that counts the output's level, its silent 128-sample blocks (an underrun) and its jumps over 0.2 of full scale (a
+click). Run it with `--playback sample|stream` (how the engine plays its players) and `--latency MS`.
+
+**What the browser does.** Godot 4.3 and later plays players in a web export as *samples* by default
+(`audio/general/default_playback_type.web`): the browser's own `AudioBufferSourceNode`s, mixed by the browser, not by the
+engine's audio worklet. The documentation says that with samples, bus effects and a player's filter do not work, and
+that `Stream` playback restores them at the cost of latency on a build without threads
+([Audio streams](https://docs.godotengine.org/en/stable/tutorials/audio/audio_streams.html)). Measured (one voice of
+the crickets, from the same place in its file, so only the setting differs):
+
+| One voice | Samples (the default) | Streams |
+| --- | ---: | ---: |
+| Open | -50.9 dBFS | -46.2 dBFS |
+| Distance filter at 800 Hz (`attenuation_filter_cutoff_hz`) | -50.9 (no change) | -77.3 (-31 dB) |
+| `AudioEffectAmplify` -12 dB on the bus (the duck) | -50.8 (no change) | -58.0 (-11.8 dB) |
+| The bus's own volume -12 dB (a settings slider) | -62.8 (-11.9 dB) | -57.8 (-11.6 dB) |
+
+So in the browser the sting's duck, the rear cue, the occlusion low-pass and the engine's built-in distance dulling are
+**not applied**, and the settings sliders are. The spatial level also differs between the two (32 positional voices read
+-27.7 dBFS as samples and -24.0 as streams), so the mix was tuned for streams and the browser plays a slightly different
+one.
+
+**Voices and crackle** (the same voices as the real pool: 8, 16, 32 positional, then 32 with 12 flat; a steady hum so a
+silent block is a dropout; Chrome 156 with a GPU, and the headless shell with a software renderer; blocks counted
+over 3 s, 1,125 of them in a phase):
+
+| Voices | Samples: silent blocks, jumps | Streams: silent blocks, jumps | Frame mean / p95 (GPU) |
+| --- | ---: | ---: | ---: |
+| 8 / 16 / 32 | 0, 0 | 9 / 0 / 0, 0 | 1.0 to 1.3 / 1.9 to 3.9 ms |
+| 44 (the whole pool) | 0, 0 | 15, 0 | 1.1 to 1.7 / 2.3 to 5.1 ms |
+| 44 and a 60 ms stall every 0.5 s | **0**, 0 | **114**, 8 | 1.5 to 2.3 / 3.2 to 7.3 ms |
+
+- **The pool is fine.** 44 voices cost about 0.5 ms of frame time, in both modes, and as samples never dropped a block
+  or clicked, with the software renderer and the GPU alike. The 32 and 12 stay.
+- **Samples cannot crackle from a slow frame; streams can.** The engine's worklet is fed from the main thread (the
+  build has no threads), so a stall of 50 ms or more starves it: a 60 ms stall every half second dropped 4 to 10% of the
+  blocks, and asking for more latency (`audio/driver/output_latency.web` 100 and 150 ms instead of 50) did not help (39
+  silent blocks at both). The night does stall like that, about one second in thirty at 50 to 75 ms
+  ([above](#numbers-1280x720-local-server-single-run)) and on every shot and kill (#387).
+- **The decision, left as it is:** samples. The web build gets a crackle-free mix without the duck and the filters. The
+  ways to get the duck back are in [Sound](../design/audio.md#in-the-browser) and
+  [the audio research](audio.md#open-questions): the bus volume works in samples, so a duck made of bus volume would too.
+
 ## Sources
 
 - [Exporting for the Web](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)
 - [Playwright for Python](https://playwright.dev/python/docs/intro)
+- [Audio streams (Godot): playback type, samples and their limits](https://docs.godotengine.org/en/stable/tutorials/audio/audio_streams.html)

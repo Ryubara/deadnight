@@ -32,6 +32,8 @@ signal progress(fraction: float, text: String)
 
 ## How long the warm-up's sample flare burns (s): long enough to be drawn, then it frees itself.
 const WARMUP_LURE_SECONDS := 0.2
+## The id of the sample flare the warm-up draws (a real shot never has it).
+const WARMUP_PROJECTILE := -1
 ## The stage is this high above the lot, out of reach of every lamp.
 const STAGE_HEIGHT := 150.0
 ## How far the zombies in a row stand apart.
@@ -415,14 +417,32 @@ func _replay_effects() -> void:
 		)
 	)
 	await _chunk()
-	view.draw_event({"type": &"projectile_burst", "point": at + Vector3(2.0, 0.0, -2.0)})
+	var flare_at := at + Vector3(2.0, 0.0, -2.0)
+	var flare := WeaponCatalog.get_def(&"flare_gun")
+	(
+		view
+		. draw_event(
+			{
+				"type": &"projectile_spawned",
+				"projectile_id": WARMUP_PROJECTILE,
+				"shooter_id": -1,
+				"weapon_id": flare.id,
+				"position": flare_at,
+				"velocity": Vector3.ZERO,
+			}
+		)
+	)
+	await _chunk()
+	view.draw_event(
+		{"type": &"projectile_burst", "projectile_id": WARMUP_PROJECTILE, "point": flare_at}
+	)
 	await _chunk()
 	(
 		view
 		. draw_event(
 			{
 				"type": &"lure_started",
-				"point": at + Vector3(2.0, 0.0, -2.0),
+				"point": flare_at,
 				"seconds": WARMUP_LURE_SECONDS,
 			}
 		)
