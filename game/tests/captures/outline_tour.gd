@@ -5,13 +5,15 @@ extends Node
 ## `HOLD_FRAMES` frames; the frame numbered `spot * HOLD_FRAMES + HOLD_FRAMES - 1` (from 0) is the
 ## settled shot.
 ##
-##     gds godot -- --path game res://tests/captures/outline_tour.tscn --write-movie <abs>/o.png \
-## --fixed-fps 10 --quit-after 34 -- [--off] [--hud] [--glow=N] [--thickness=N] `--off` switches the
-## outline off (the "before" picture of the same spots); `--glow` and `--thickness` set the style.
-## Prints SPOT <name> <frame> as each spot starts. In a browser
-## (`tools/web_smoke/outline_capture.py` exports a copy of the project that starts here) the page's
-## query gives the same arguments, `?spot=near&off=1&hold=60`: only that spot is held, and then
-## `window.__outline` says so and the page is photographed.
+##     gds godot -- --path game res://tests/captures/outline_tour.tscn \
+##         --write-movie <abs>/o.png --fixed-fps 10 --quit-after 34 -- \
+##         [--off] [--hud] [--glow=N] [--thickness=N]
+##
+## `--off` switches the outline off (the "before" picture of the same spots); `--glow` and
+## `--thickness` set the style. Prints SPOT <name> <frame> as each spot starts.
+## In a browser (`tools/web_smoke/outline_capture.py` exports a copy of the project that starts
+## here) the page's query gives the same arguments, `?spot=near&off=1&hold=60`: only that spot is
+## held, and then `window.__outline` says so and the page is photographed.
 
 const HOLD_FRAMES := 10
 const SEED := 5
