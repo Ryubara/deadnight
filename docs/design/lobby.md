@@ -9,8 +9,8 @@ players are in your lobby before you start"; Deadnight #515). The platform side 
 **Status:** built and played in the browser: the backend (open and started lobbies, presence, the round, the
 preview by code or by Activity instance), the lobby screen and its poll (`LobbyScreen`, `LobbyWatch`), Play together
 opening it, the join notice in the night, and a web probe (`tools/web_smoke/lobby.py`). Not built: the host's match
-settings on this screen (branch `net-room-settings` holds the backend half) and the player's own name in the night's
-notice (#485: it reads `PLAYER 3 JOINED` until then).
+settings are built too (the host's `MatchSettingsPanel`, sent live with `PUT /lobbies/:id/settings`, read only for
+guests).
 
 ## The rules in one place
 
@@ -50,6 +50,10 @@ longer starts the night. It opens the **lobby** with the player as host:
   (guest names, Discord names; #485 will make them the player's own).
 - **The night's rules** (`MatchSettingsPanel`, shared with the Play screen): zombie intensity, most alive at once,
   break between rounds. Only the host's panel moves; guests see the same values, read only, as the host sets them.
+  A change goes to the backend a third of a second after the host stops (`PUT /lobbies/:id/settings`, one request
+  at a time, the last change wins) and reaches the others on their next poll (within two seconds). Start sends the
+  panel's values with it, so a change still waiting is never lost. A host who leaves hands the panel on with the
+  rules the lobby holds. Once the night starts the panel is read only for everyone (`409 already_started`).
 - **Start the night** (primary, focused) and **Leave** (ghost). A line under the seats says what is going on:
   *Waiting for friends. Send them the code.*
 
