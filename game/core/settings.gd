@@ -14,6 +14,11 @@ signal changed(key: StringName, value: Variant)
 enum WindowMode { WINDOWED, FULLSCREEN, EXCLUSIVE }
 
 const DEFAULT_PATH := "user://settings.cfg"
+## What a test run, a capture and an agent's run get instead: no file, so nothing is read from or
+## written to the person's own options (an empty path loads the defaults and saves nothing).
+const HARNESS_PATH := ""
+## Set to anything to take the harness path in a run the checks below do not recognise.
+const HARNESS_ENV := "DEADNIGHT_NO_USER_FILES"
 ## Seconds after the last change before the file is written (a slider drag is one write).
 const SAVE_DELAY := 0.6
 
@@ -102,8 +107,8 @@ const BUSES := {
 	VOLUME_UI: &"UI",
 }
 
-## Where the file lives. Tests point this somewhere else.
-var path := DEFAULT_PATH
+## Where the file lives: `default_path()`. A test that wants a file of its own points this at one.
+var path := default_path()
 ## True in a browser, which owns its window (window mode is not ours to set). Tests inject it.
 var is_web := OS.has_feature("web")
 ## Takes the window mode instead of the real window when it is valid (a Callable taking a
@@ -115,6 +120,24 @@ var _dirty := false
 var _idle := 0.0
 ## Kept so the browser keeps the page-hide callback alive.
 var _page_hide_callback: JavaScriptObject
+
+
+## The one place that decides where the options are kept: the person's file, unless this is a test
+## run (the GdUnit runner), a capture or autopilot scene of `res://tests/`, a run of the kit's
+## `gds godot` (`GDS_QUIET`) or one that asks for it (`HARNESS_ENV`). Those keep them in memory: a
+## suite that sets a value, or a service freed with a change pending, must never reach the file
+## the person plays with (#418).
+static func default_path() -> String:
+	return HARNESS_PATH if is_harness_run() else DEFAULT_PATH
+
+
+static func is_harness_run() -> bool:
+	if OS.has_environment(HARNESS_ENV) or OS.get_environment("GDS_QUIET") == "1":
+		return true
+	for argument in OS.get_cmdline_args():
+		if argument.begins_with("res://tests/") or argument.contains("gdUnit4"):
+			return true
+	return false
 
 
 func _init() -> void:
@@ -178,6 +201,8 @@ func reset_defaults() -> void:
 ## Reads the file. A missing or unreadable file, or a bad entry, leaves the default in place.
 func load_from_disk() -> void:
 	_values = DEFAULTS.duplicate()
+	if path.is_empty():
+		return
 	var file := ConfigFile.new()
 	if file.load(path) != OK:
 		return
@@ -188,6 +213,11 @@ func load_from_disk() -> void:
 
 ## Writes the file now.
 func save() -> Error:
+	if path.is_empty():
+		_dirty = false
+		_idle = 0.0
+		set_process(false)
+		return OK
 	var file := ConfigFile.new()
 	for key: StringName in DEFAULTS:
 		var parts := String(key).split("/")

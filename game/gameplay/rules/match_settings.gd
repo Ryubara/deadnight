@@ -1,36 +1,37 @@
 class_name MatchSettings
 extends Resource
-## The rules of one match that whoever starts it chooses before the night begins: how many
-## zombies, how many at once, how long the breaks last and an optional time limit per round.
+## The rules of one match that whoever starts it chooses before the night begins: how intense the
+## night is (how many zombies, coming how fast), how many may stand at once and how long the
+## breaks last.
 ##
 ## The server owns them (`GameRules.settings`), they ride the rules' snapshot (so WELCOME and a
 ## late join carry them) and they are set only while the night has not started
 ## (`RulesAction.configure`). The defaults are today's game exactly: a count of 1x, the alive cap
-## the round curve gives, the tuned break and no time limit. Pure data and pure functions; the
-## reasoning is in docs/design/rounds.md#match-settings.
+## the round curve gives and the tuned break. A round never has a time limit. Pure data and pure
+## functions; the reasoning is in docs/design/rounds.md#match-settings.
 
 ## The zombie counts the Play screen offers. The setting itself takes any value in
 ## `MIN_COUNT_MULTIPLIER..MAX_COUNT_MULTIPLIER`, so another choice is a line added here.
 const COUNT_CHOICES: Array[float] = [1.0, 2.0, 3.0]
 const MIN_COUNT_MULTIPLIER := 0.25
 const MAX_COUNT_MULTIPLIER := 5.0
-## `max_alive`, `break_seconds` and `round_time_limit` mean "not set" at this value.
+## `max_alive` and `break_seconds` mean "not set" at this value.
 const AUTO := 0
-## The explicit values: a break of at least a second, a limit of at least half a minute.
+## The explicit break: at least a second.
 const MIN_BREAK := 1.0
 const MAX_BREAK := 120.0
-const MIN_TIME_LIMIT := 30.0
-const MAX_TIME_LIMIT := 3600.0
 ## The keys of `to_dict`, each with the type it must have (a whole number also fits a float).
 const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
 	"max_alive": TYPE_INT,
 	"break_seconds": TYPE_FLOAT,
-	"round_time_limit": TYPE_FLOAT,
 }
 
-## Round N's zombie count is the tuned count for N times this (rounded, at least one). A type's
-## first round still brings its exact `intro_count`, and a boss round its own bosses.
+## The night's intensity. Round N brings the tuned count times this (rounded, at least one) and the
+## dead come this many times as fast (the spawn interval divides by it, down to
+## `RoundTuning.spawn_interval_floor`) with this many times as many standing at once (the auto
+## alive cap), so a round lasts about as long as at 1x with more of them on the lot. A type's first
+## round still brings its exact `intro_count`, and a boss round its own bosses.
 @export_range(0.25, 5.0, 0.25) var count_multiplier: float = 1.0
 ## Most zombies alive at once; 0 is the tuned curve (`RoundTuning.alive_cap`). A number caps it,
 ## and never above `RoundTuning.alive_cap_ceiling`, the crowd the lot stands.
@@ -38,9 +39,6 @@ const KEYS := {
 ## Seconds of break between rounds; 0 is the tuned break (`RoundTuning.break_seconds`). The wait
 ## before round 1 and the longer break before a special round are unchanged.
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
-## Seconds a round may last before time is up; 0 is no limit. When it runs out the dead keep
-## coming faster (`RoundTuning.overtime_spawn_rate`, and the tuned cap's ceiling); nobody loses.
-@export_range(0.0, 3600.0, 5.0) var round_time_limit: float = 0.0
 
 
 ## The defaults: today's game.
@@ -49,11 +47,10 @@ func is_default() -> bool:
 		is_equal_approx(count_multiplier, 1.0)
 		and max_alive == AUTO
 		and is_zero_approx(break_seconds)
-		and is_zero_approx(round_time_limit)
 	)
 
 
-## Whether `other` holds the same four values.
+## Whether `other` holds the same three values.
 func same_as(other: MatchSettings) -> bool:
 	return other != null and to_dict() == other.to_dict()
 
@@ -64,14 +61,15 @@ func scaled_count(normal: int) -> int:
 	return maxi(1, roundi(float(normal) * count_multiplier))
 
 
-## Zombies alive at once in `round_number` for `players`. `overtime` is a round whose time ran out:
-## the tuned curve gives way to the ceiling, but a cap the host chose stays.
-func alive_cap(rounds: RoundTuning, round_number: int, players: int, overtime: bool = false) -> int:
+## Zombies alive at once in `round_number` for `players`: the host's number (never above the
+## ceiling), else the tuned curve times the multiplier (a night of 3x the dead comes 3 times as
+## fast, so 3 times as many stand before the player has dealt with them), at most the ceiling and
+## at least one.
+func alive_cap(rounds: RoundTuning, round_number: int, players: int) -> int:
 	if max_alive > AUTO:
 		return mini(max_alive, rounds.alive_cap_ceiling)
-	if overtime:
-		return rounds.alive_cap_ceiling
-	return rounds.alive_cap(round_number, players)
+	var wanted := roundi(float(rounds.alive_cap(round_number, players)) * count_multiplier)
+	return clampi(wanted, 1, rounds.alive_cap_ceiling)
 
 
 ## Seconds of break after a round.
@@ -79,17 +77,16 @@ func break_for(rounds: RoundTuning) -> float:
 	return break_seconds if break_seconds > 0.0 else rounds.break_seconds
 
 
-## Seconds between spawns: the round's own, faster once its time is up.
-func spawn_interval(
-	rounds: RoundTuning, round_number: int, players: int, overtime: bool = false
-) -> float:
-	var interval := rounds.spawn_interval(round_number, players)
-	return interval / rounds.overtime_spawn_rate if overtime else interval
-
-
-## Whether a round that has run `elapsed` seconds is out of time (never when there is no limit).
-func is_overtime(elapsed: float) -> bool:
-	return round_time_limit > 0.0 and elapsed >= round_time_limit
+## Seconds between spawns: the round's own divided by the multiplier, so N times the zombies come in
+## about the time of 1x. Never faster than `RoundTuning.spawn_interval_floor`, and never slower than
+## the round's own interval when that is already below the floor (a crowd of players at 1x), so the
+## default settings change nothing.
+func spawn_interval(rounds: RoundTuning, round_number: int, players: int) -> float:
+	var own := rounds.spawn_interval(round_number, players)
+	var scaled := own / count_multiplier
+	if count_multiplier <= 1.0:
+		return scaled
+	return maxf(scaled, minf(own, rounds.spawn_interval_floor))
 
 
 ## Plain data for the snapshot, an action or a command line.
@@ -98,7 +95,6 @@ func to_dict() -> Dictionary:
 		"count_multiplier": count_multiplier,
 		"max_alive": max_alive,
 		"break_seconds": break_seconds,
-		"round_time_limit": round_time_limit,
 	}
 
 
@@ -114,8 +110,6 @@ static func problem(data: Dictionary) -> StringName:
 		return &"max_alive"
 	if not _is_auto_or_in_range(data["break_seconds"], MIN_BREAK, MAX_BREAK):
 		return &"break_seconds"
-	if not _is_auto_or_in_range(data["round_time_limit"], MIN_TIME_LIMIT, MAX_TIME_LIMIT):
-		return &"round_time_limit"
 	return &""
 
 
@@ -128,7 +122,6 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	out.count_multiplier = float(data["count_multiplier"])
 	out.max_alive = data["max_alive"]
 	out.break_seconds = float(data["break_seconds"])
-	out.round_time_limit = float(data["round_time_limit"])
 	return out
 
 
@@ -146,7 +139,6 @@ func clamped() -> MatchSettings:
 	out.count_multiplier = clampf(count_multiplier, MIN_COUNT_MULTIPLIER, MAX_COUNT_MULTIPLIER)
 	out.max_alive = clampi(max_alive, AUTO, _alive_ceiling())
 	out.break_seconds = _clamp_optional(break_seconds, MIN_BREAK, MAX_BREAK)
-	out.round_time_limit = _clamp_optional(round_time_limit, MIN_TIME_LIMIT, MAX_TIME_LIMIT)
 	return out
 
 

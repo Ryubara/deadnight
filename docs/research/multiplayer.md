@@ -240,8 +240,8 @@ back (#53, protocol version 3):
 
 ## Match settings
 
-The rules of a match (zombie count multiplier, alive cap, break, round time limit: `MatchSettings`, #414) are the
-server's and travel inside the rules' snapshot, version 9, as `match_settings` (plus the round's `round_elapsed`).
+The rules of a match (zombie intensity, alive cap, break: `MatchSettings`, #414) are the
+server's and travel inside the rules' snapshot, version 10, as `match_settings`.
 That is the whole protocol change: the WELCOME already carries `GameRules.to_dict()`, so the first player, a late
 joiner and a player coming back read the same settings from it (`MatchSettings.from_snapshot`), and the protocol
 version is not raised. The host sets them with `NightHost.configure_match` before the night starts; once it began

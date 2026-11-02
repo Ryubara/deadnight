@@ -3,7 +3,7 @@ extends Node
 ## game. Arguments after `--`: `--rounds=N` (stop once round N has started, default 3),
 ## `--speed=N` (ticks per frame), `--seed=N`, `--seconds=S` (stop after S game seconds),
 ## `--log` (print every event), `--fast` (quick dead for a recording), `--trace`,
-## `--count`, `--max-alive`, `--break`, `--round-limit` (the match settings, see MatchSettings),
+## `--count`, `--max-alive`, `--break` (the match settings, see MatchSettings),
 ## `--shoulder` (film through the bot's own shoulder camera), `--cheap` (a cheap door and shotgun
 ## and no rounds in the pistol's reserve, so a short run shows the bot shopping).
 
@@ -38,13 +38,12 @@ func _ready() -> void:
 		_night.state.event_received.connect(_print_event)
 
 
-## `--count=N`, `--max-alive=N`, `--break=S` and `--round-limit=S`: the match settings of the night.
+## `--count=N`, `--max-alive=N`, and `--break=S`: the match settings of the night.
 func _match_settings() -> MatchSettings:
 	var settings := MatchSettings.new()
 	settings.count_multiplier = float(_args.get("count", 1.0))
 	settings.max_alive = int(_args.get("max-alive", 0))
 	settings.break_seconds = float(_args.get("break", 0.0))
-	settings.round_time_limit = float(_args.get("round-limit", 0.0))
 	return settings.clamped()
 
 

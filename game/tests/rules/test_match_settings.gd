@@ -1,20 +1,25 @@
 # gdlint:disable=max-public-methods
-# The match settings: the zombie count multiplier, the cap on the living, the break and the round
-# time limit. They are the server's, set before the night, and the defaults are today's game.
+# The match settings: the zombie intensity (count and spawn rate), the cap on the living and the
+# break. They are the server's, set before the night, and the defaults are today's game. A round
+# has no time limit.
 extends GdUnitTestSuite
 
 const ROUNDS := 10
 const LONG := 400.0
+## Rounds the duration test plays, and its player: each zombie dies this long after it stands.
+const DURATION_ROUNDS := 10
+const KILL_AFTER := 7.0
+const DURATION_TOLERANCE := 0.10
+## Round 1 has 4 zombies at 1x: the wait before the first, the last one's life and the one gap fewer
+## than zombies are a bigger share of it, so it gets a little more room.
+const FIRST_ROUND_TOLERANCE := 0.15
 
 
-func _settings(
-	count: float = 1.0, alive: int = 0, between: float = 0.0, limit: float = 0.0
-) -> MatchSettings:
+func _settings(count: float = 1.0, alive: int = 0, between: float = 0.0) -> MatchSettings:
 	var s := MatchSettings.new()
 	s.count_multiplier = count
 	s.max_alive = alive
 	s.break_seconds = between
-	s.round_time_limit = limit
 	return s
 
 
@@ -45,7 +50,6 @@ func test_the_defaults_are_the_usual_rules() -> void:
 	assert_float(settings.count_multiplier).is_equal(1.0)
 	assert_int(settings.max_alive).is_equal(0)
 	assert_float(settings.break_seconds).is_equal(0.0)
-	assert_float(settings.round_time_limit).is_equal(0.0)
 	assert_bool(RulesFixture.make_rules().settings.is_default()).is_true()
 
 
@@ -59,13 +63,12 @@ func test_default_rounds_are_the_tuned_rounds() -> void:
 			assert_int(_round_size(null, round_number, players)).is_equal(plain)
 
 
-func test_default_settings_leave_the_cap_and_the_clock_alone() -> void:
+func test_default_settings_leave_the_cap_alone() -> void:
 	var rules := RulesFixture.make_rules(1, 5, null, MatchSettings.new())
 	var log := RulesFixture.record(rules)
 	RulesFixture.into_round_one(rules)
 	var cap := rules.tuning.rounds.alive_cap(1, 1)
 	assert_int(_most_alive(rules, 120.0)).is_equal(mini(cap, rules._round_total))
-	assert_int(log.count(&"round_time_up")).is_equal(0)
 	assert_int(log.count(&"settings_changed")).is_equal(0)
 
 
@@ -189,77 +192,140 @@ func test_the_default_break_is_the_tuned_one_and_the_intro_is_not_touched() -> v
 	)
 
 
-# --- The round time limit ---
+# --- The spawn rate follows the count ---
 
 
-func test_time_up_is_said_once_at_the_limit() -> void:
-	var rules := RulesFixture.make_rules(1, 8, null, _settings(3.0, 0, 0.0, 30.0))
-	var log := RulesFixture.record(rules)
-	RulesFixture.into_round_one(rules)
-	RulesFixture.run(rules, 29.0)
-	assert_int(log.count(&"round_time_up")).is_equal(0)
-	RulesFixture.run(rules, 2.0)
-	assert_int(log.count(&"round_time_up")).is_equal(1)
-	RulesFixture.run(rules, 60.0)
-	assert_int(log.count(&"round_time_up")).is_equal(1)
-	var event := log.of(&"round_time_up")[0]
-	assert_int(event["round"]).is_equal(1)
-	assert_float(event["limit"]).is_equal(30.0)
+## Seconds each round lasts (round_started to round_ended) for a player who kills every zombie
+## `KILL_AFTER` seconds after it stands, for rounds 1 to `DURATION_ROUNDS`.
+func _round_durations(settings: MatchSettings) -> Array[float]:
+	var rules := RulesFixture.make_rules(1, 7, null, settings)
+	rules.apply(RulesAction.start())
+	var born := {}
+	var began := 0.0
+	var now := 0.0
+	var out: Array[float] = []
+	while out.size() < DURATION_ROUNDS and now < 3000.0:
+		var caused := rules.apply(RulesAction.tick(RulesFixture.STEP))
+		now += RulesFixture.STEP
+		for zombie_id in rules.zombie_ids():
+			if now - born.get(zombie_id, now) >= KILL_AFTER:
+				caused.append_array(RulesFixture.kill(rules, 1, zombie_id))
+		for event in caused:
+			match event["type"]:
+				&"zombie_spawn_requested":
+					born[event["zombie_id"]] = now
+				&"round_started":
+					began = now
+				&"round_ended":
+					out.append(now - began)
+	return out
 
 
-func test_without_a_limit_a_round_never_runs_out() -> void:
-	var rules := RulesFixture.make_rules(1, 8, null, _settings(3.0))
-	var log := RulesFixture.record(rules)
-	RulesFixture.into_round_one(rules)
-	RulesFixture.run(rules, LONG)
-	assert_int(log.count(&"round_time_up")).is_equal(0)
-	assert_int(rules.phase).is_equal(GameRules.Phase.ACTIVE)
-
-
-func test_when_time_is_up_the_dead_come_faster_and_nobody_loses() -> void:
-	var rules := RulesFixture.make_rules(1, 8, null, _settings(3.0, 0, 0.0, 30.0))
-	var cap := rules.tuning.rounds.alive_cap(1, 1)
-	RulesFixture.into_round_one(rules)
-	RulesFixture.run(rules, 29.0)
-	assert_int(rules.zombie_ids().size()).is_equal(cap)
-	var queued := rules._plan.size()
-	assert_int(queued).is_greater(0)
-	RulesFixture.run(rules, 10.0)
-	# More than the round's cap now stand (the ceiling lifts), and the queue drains.
-	assert_int(rules.zombie_ids().size()).is_greater(cap)
-	assert_int(queued - rules._plan.size()).is_greater_equal(3)
-	assert_int(rules.phase).is_equal(GameRules.Phase.ACTIVE)
-
-
-func test_overtime_keeps_a_cap_the_host_chose() -> void:
-	var rules := RulesFixture.make_rules(1, 8, null, _settings(3.0, 4, 0.0, 30.0))
-	RulesFixture.into_round_one(rules)
-	assert_int(_most_alive(rules, 90.0)).is_equal(4)
-
-
-func test_overtime_spawns_come_by_the_tuned_rate() -> void:
+func test_the_spawn_interval_divides_by_the_multiplier() -> void:
 	var rounds := RulesFixture.tuning().rounds
-	var settings := _settings(1.0, 0, 0.0, 30.0)
-	assert_float(settings.spawn_interval(rounds, 3, 1, true)).is_equal_approx(
-		rounds.spawn_interval(3, 1) / rounds.overtime_spawn_rate, 0.0001
+	for round_number in [1, 3, 6, 10]:
+		var own := rounds.spawn_interval(round_number, 1)
+		for multiplier in MatchSettings.COUNT_CHOICES:
+			var got := _settings(multiplier).spawn_interval(rounds, round_number, 1)
+			(
+				assert_float(got)
+				. override_failure_message("round %d at %dx" % [round_number, roundi(multiplier)])
+				. is_equal_approx(own / multiplier, 0.0001)
+			)
+
+
+func test_the_default_spawn_interval_is_the_tuned_one_for_any_crowd() -> void:
+	var rounds := RulesFixture.tuning().rounds
+	for round_number in [1, 5, 10, 25, 60]:
+		for players in [1, 2, 4, 8]:
+			(
+				assert_float(MatchSettings.new().spawn_interval(rounds, round_number, players))
+				. is_equal(rounds.spawn_interval(round_number, players))
+			)
+
+
+func test_a_multiplier_never_makes_spawns_faster_than_the_floor() -> void:
+	var rounds := RulesFixture.tuning().rounds
+	assert_float(rounds.spawn_interval_floor).is_equal(0.2)
+	# A late round, where the tuned interval has reached its minimum.
+	var own := rounds.spawn_interval(80, 1)
+	assert_float(own).is_equal(rounds.spawn_interval_min)
+	for multiplier in [2.0, 3.0, 5.0]:
+		var got := _settings(multiplier).spawn_interval(rounds, 80, 1)
+		assert_float(got).override_failure_message("%dx" % roundi(multiplier)).is_equal_approx(
+			maxf(own / multiplier, rounds.spawn_interval_floor), 0.0001
+		)
+		assert_float(got).is_greater_equal(rounds.spawn_interval_floor - 0.0001)
+	# Four players at 1x already come faster than the floor; a multiplier does not slow them.
+	var crowd := rounds.spawn_interval(80, 4)
+	assert_float(crowd).is_less(rounds.spawn_interval_floor + 0.0001)
+	assert_float(_settings(3.0).spawn_interval(rounds, 80, 4)).is_equal(crowd)
+
+
+func test_a_fractional_multiplier_slows_the_spawns_with_the_count() -> void:
+	var rounds := RulesFixture.tuning().rounds
+	assert_float(_settings(0.5).spawn_interval(rounds, 4, 1)).is_equal_approx(
+		2.0 * rounds.spawn_interval(4, 1), 0.0001
 	)
-	assert_float(settings.spawn_interval(rounds, 3, 1, false)).is_equal(rounds.spawn_interval(3, 1))
 
 
-func test_each_round_has_its_own_clock() -> void:
-	var rules := RulesFixture.make_rules(1, 9, null, _settings(1.0, 0, 1.0, 30.0))
-	var log := RulesFixture.record(rules)
-	RulesFixture.into_round_one(rules)
-	# Round 1 is cleared in seconds, inside its limit; the 1 s break passes; round 2 runs out at 30.
-	RulesFixture.clear_round(rules)
-	assert_int(log.count(&"round_time_up")).is_equal(0)
-	RulesFixture.run(rules, 1.5)
-	assert_int(rules.round_number).is_equal(2)
-	RulesFixture.run(rules, 28.0)
-	assert_int(log.count(&"round_time_up")).is_equal(0)
-	RulesFixture.run(rules, 2.5)
-	assert_int(log.count(&"round_time_up")).is_equal(1)
-	assert_int(log.of(&"round_time_up")[0]["round"]).is_equal(2)
+func test_the_rules_spawn_the_first_zombies_by_the_scaled_interval() -> void:
+	for multiplier in MatchSettings.COUNT_CHOICES:
+		var rules := RulesFixture.make_rules(1, 4, null, _settings(multiplier))
+		var log := RulesFixture.record(rules)
+		RulesFixture.into_round_one(rules)
+		RulesFixture.run(rules, 6.0)
+		var interval := _settings(multiplier).spawn_interval(rules.tuning.rounds, 1, 1)
+		var expected := 1 + floori((6.0 - rules.tuning.rounds.first_spawn_delay) / interval)
+		var spawned := log.count(&"zombie_spawn_requested")
+		assert_int(spawned).override_failure_message("%dx" % roundi(multiplier)).is_between(
+			expected - 1, expected + 1
+		)
+
+
+func test_a_round_lasts_about_as_long_at_2x_and_3x_as_at_1x() -> void:
+	var one := _round_durations(_settings(1.0))
+	assert_int(one.size()).is_equal(DURATION_ROUNDS)
+	for multiplier in [2.0, 3.0]:
+		var longer := _round_durations(_settings(multiplier))
+		assert_int(longer.size()).is_equal(DURATION_ROUNDS)
+		var all_one := 0.0
+		var all_more := 0.0
+		for i in DURATION_ROUNDS:
+			var room := FIRST_ROUND_TOLERANCE if i == 0 else DURATION_TOLERANCE
+			var label := "round %d at %dx: %.1f s against %.1f s at 1x"
+			(
+				assert_float(longer[i])
+				. override_failure_message(label % [i + 1, roundi(multiplier), longer[i], one[i]])
+				. is_between(one[i] * (1.0 - room), one[i] * (1.0 + room))
+			)
+			all_one += one[i]
+			all_more += longer[i]
+		assert_float(all_more).is_between(
+			all_one * (1.0 - DURATION_TOLERANCE), all_one * (1.0 + DURATION_TOLERANCE)
+		)
+
+
+func test_the_auto_alive_cap_grows_with_the_multiplier_up_to_the_ceiling() -> void:
+	var rounds := RulesFixture.tuning().rounds
+	for round_number in [1, 5, 10, 30, 80]:
+		var tuned := rounds.alive_cap(round_number, 1)
+		assert_int(MatchSettings.new().alive_cap(rounds, round_number, 1)).is_equal(tuned)
+		for multiplier in [2.0, 3.0]:
+			var got := _settings(multiplier).alive_cap(rounds, round_number, 1)
+			(
+				assert_int(got)
+				. override_failure_message("round %d at %dx" % [round_number, roundi(multiplier)])
+				. is_equal(mini(roundi(tuned * multiplier), rounds.alive_cap_ceiling))
+			)
+	assert_int(_settings(0.25).alive_cap(rounds, 1, 1)).is_equal(
+		maxi(1, roundi(rounds.alive_cap(1, 1) * 0.25))
+	)
+
+
+func test_a_cap_the_host_chose_is_not_scaled() -> void:
+	var rounds := RulesFixture.tuning().rounds
+	assert_int(_settings(3.0, 7).alive_cap(rounds, 10, 1)).is_equal(7)
 
 
 # --- Configuring ---
@@ -268,14 +334,13 @@ func test_each_round_has_its_own_clock() -> void:
 func test_configure_sets_the_settings_before_the_night() -> void:
 	var rules := RulesFixture.make_rules()
 	var log := RulesFixture.record(rules)
-	var caused := rules.apply(RulesAction.configure(_settings(2.0, 9, 8.0, 90.0)))
+	var caused := rules.apply(RulesAction.configure(_settings(2.0, 9, 8.0)))
 	assert_int(caused.size()).is_equal(1)
 	assert_str(String(caused[0]["type"])).is_equal("settings_changed")
 	assert_dict(caused[0]["settings"]).is_equal(rules.settings.to_dict())
 	assert_float(rules.settings.count_multiplier).is_equal(2.0)
 	assert_int(rules.settings.max_alive).is_equal(9)
 	assert_float(rules.settings.break_seconds).is_equal(8.0)
-	assert_float(rules.settings.round_time_limit).is_equal(90.0)
 	assert_int(log.count(&"settings_changed")).is_equal(1)
 
 
@@ -300,9 +365,6 @@ func test_configure_with_a_value_out_of_bounds_is_refused() -> void:
 		{"break_seconds": 0.5},
 		{"break_seconds": 500.0},
 		{"break_seconds": -3.0},
-		{"round_time_limit": 10.0},
-		{"round_time_limit": 99999.0},
-		{"round_time_limit": INF},
 	]
 	for change: Dictionary in bad:
 		var data := MatchSettings.new().to_dict()
@@ -322,8 +384,8 @@ func test_configure_with_a_missing_or_mistyped_field_is_refused() -> void:
 	short.erase("max_alive")
 	assert_str(String(MatchSettings.problem(short))).is_equal("max_alive")
 	var typed := MatchSettings.new().to_dict()
-	typed["round_time_limit"] = "never"
-	assert_str(String(MatchSettings.problem(typed))).is_equal("round_time_limit")
+	typed["break_seconds"] = "never"
+	assert_str(String(MatchSettings.problem(typed))).is_equal("break_seconds")
 	for settings: Dictionary in [short, typed]:
 		var caused := rules.apply({"type": RulesAction.CONFIGURE, "settings": settings})
 		assert_str(String(caused[0]["type"])).is_equal("action_rejected")
@@ -331,31 +393,29 @@ func test_configure_with_a_missing_or_mistyped_field_is_refused() -> void:
 
 
 func test_clamped_pulls_every_value_into_its_bounds() -> void:
-	var wild := _settings(9.0, 400, 0.2, 5.0).clamped()
+	var wild := _settings(9.0, 400, 0.2).clamped()
 	assert_float(wild.count_multiplier).is_equal(MatchSettings.MAX_COUNT_MULTIPLIER)
 	assert_int(wild.max_alive).is_equal(RoundTuning.new().alive_cap_ceiling)
 	assert_float(wild.break_seconds).is_equal(MatchSettings.MIN_BREAK)
-	assert_float(wild.round_time_limit).is_equal(MatchSettings.MIN_TIME_LIMIT)
 	assert_str(String(MatchSettings.problem(wild.to_dict()))).is_empty()
-	assert_bool(_settings(1.0, 0, -5.0, -5.0).clamped().is_default()).is_true()
+	assert_bool(_settings(1.0, 0, -5.0).clamped().is_default()).is_true()
 
 
 # --- The snapshot ---
 
 
-func test_the_snapshot_carries_the_settings_and_the_round_clock() -> void:
-	var settings := _settings(2.0, 8, 12.0, 60.0)
+func test_the_snapshot_carries_the_settings() -> void:
+	var settings := _settings(2.0, 8, 12.0)
 	var rules := RulesFixture.make_rules(1, 10, null, settings)
 	RulesFixture.into_round_one(rules)
 	RulesFixture.run(rules, 20.0)
 	var snapshot := rules.to_dict()
 	assert_dict(snapshot["match_settings"]).is_equal(settings.to_dict())
-	assert_float(snapshot["round_elapsed"]).is_equal_approx(20.0, 0.05)
 	assert_int(snapshot["version"]).is_equal(GameRules.SNAPSHOT_VERSION)
 
 
 func test_a_restore_brings_the_settings_back_through_every_form() -> void:
-	var rules := RulesFixture.make_rules(2, 10, null, _settings(3.0, 9, 14.0, 45.0))
+	var rules := RulesFixture.make_rules(2, 10, null, _settings(3.0, 9, 14.0))
 	RulesFixture.into_round_one(rules)
 	RulesFixture.run(rules, 12.0)
 	for form in ["dict", "bytes", "wire"]:
@@ -377,19 +437,6 @@ func test_a_restore_brings_the_settings_back_through_every_form() -> void:
 		)
 
 
-func test_a_restored_night_runs_out_of_time_when_the_original_does() -> void:
-	var rules := RulesFixture.make_rules(1, 10, null, _settings(3.0, 0, 0.0, 30.0))
-	RulesFixture.into_round_one(rules)
-	RulesFixture.run(rules, 20.0)
-	var copy := RulesFixture.make_rules(1, 5)
-	var log := RulesFixture.record(copy)
-	assert_str(String(copy.from_dict(rules.to_dict()))).is_empty()
-	RulesFixture.run(copy, 8.0)
-	assert_int(log.count(&"round_time_up")).is_equal(0)
-	RulesFixture.run(copy, 3.0)
-	assert_int(log.count(&"round_time_up")).is_equal(1)
-
-
 func test_a_snapshot_with_settings_out_of_bounds_is_malformed_and_changes_nothing() -> void:
 	var rules := RulesFixture.make_rules(1, 10, null, _settings(2.0))
 	var snapshot := rules.to_dict()
@@ -404,8 +451,7 @@ func test_a_snapshot_with_settings_out_of_bounds_is_malformed_and_changes_nothin
 
 func test_the_layout_before_the_settings_is_refused_as_a_bad_version() -> void:
 	var snapshot := RulesFixture.make_rules().to_dict()
-	snapshot["version"] = 8
+	snapshot["version"] = 9
 	snapshot.erase("match_settings")
-	snapshot.erase("round_elapsed")
 	assert_str(String(RulesFixture.make_rules().from_dict(snapshot))).is_equal("bad_version")
-	assert_int(GameRules.SNAPSHOT_VERSION).is_greater_equal(9)
+	assert_int(GameRules.SNAPSHOT_VERSION).is_greater_equal(10)

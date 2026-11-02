@@ -45,6 +45,9 @@ extends Resource
 @export var spawn_interval_start: float = 2.4
 @export var spawn_interval_decay: float = 0.92
 @export var spawn_interval_min: float = 0.5
+## The fastest the match settings' count multiplier may make the dead come: 5 a second, what four
+## players already reach at 1x (0.5 s over 2.5). Only a multiplier above 1x is held to it.
+@export var spawn_interval_floor: float = 0.2
 ## Each extra player makes spawns this much faster (fraction).
 @export var spawn_rate_per_extra_player: float = 0.5
 ## Zombies alive at once in round 1, for one player.
@@ -64,11 +67,6 @@ extends Resource
 @export var intro_seconds: float = 12.0
 ## The break after each round.
 @export var break_seconds: float = 5.0
-
-@export_group("Time limit")
-## When a round's time limit (`MatchSettings.round_time_limit`) runs out, spawns come this many
-## times as often and the alive cap rises to its ceiling. Nobody loses: the dead only come faster.
-@export var overtime_spawn_rate: float = 3.0
 
 @export_group("Night")
 ## Ambient light level in round 1 (0 dark, 1 day), read by the world (`NightLight`).

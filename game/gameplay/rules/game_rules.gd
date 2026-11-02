@@ -25,9 +25,6 @@ extends RefCounted
 ##     boss_type, boss_count, seconds (until it starts); right after the break_started of the break
 ##     before a special round
 ##   settings_changed: settings (MatchSettings.to_dict), after a configure action, before the start
-##   round_time_up: round, limit, zombies_left (still to spawn); once, when the match's time limit
-##     for the round runs out (never without a limit). The dead come faster from here, see
-##     MatchSettings
 ##   round_started: round, zombie_count, special_id (&"" for a normal round), boss_count
 ##   special_round_cleared: round, special_id, reward (paid to each player on their feet)
 ##   round_ended: round, special_id
@@ -43,13 +40,15 @@ extends RefCounted
 ##   player_added: player_id, grenades (the count they start with), health, max_health
 ##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
 ##     seen from above, where the blow came from), source_id (the zombie, -1 for none)
-##   player_healed: player_id, health, max_health, reason (regen or revive); regen sends one when
-##     the whole-unit health changes, about once per unit mended
+##   player_healed: player_id, health, max_health, reason (regen, revive or tonic: a health tonic
+##     raised the most); regen sends one when the whole-unit health changes, about once per unit
+##     mended
 ##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow)
 ##   player_removed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
-##     catalogue weapon, and `rounds` into its reserve; a crane play: `crane_spot`, see CranePlay)
+##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
+##     a crane play: `crane_spot`, see CranePlay)
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   crane_*: the prize crane's play, see `CranePlay`
 ##   door_opened: door_id
@@ -77,14 +76,16 @@ enum BuyResult {
 	TANK_FULL,
 	AMMO_FULL,
 	CRANE_BUSY,
+	## A re-cut with no weapon in hand that can take one.
+	NO_WEAPON,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 9 added the match settings and the round's elapsed time, 8 the prize crane (`crane`,
-## `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the plan, special round
-## and a zombie's type, health, speed. Two older layouts both called themselves 4; every older
-## snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 9
+## 10 added the match settings (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize
+## crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the
+## plan, special round and a zombie's type, health, speed. Two older layouts both called themselves
+## 4; every older snapshot is refused as `bad_version`.
+const SNAPSHOT_VERSION := 10
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -110,7 +111,6 @@ const SNAPSHOT_KEYS := {
 	"barricades": TYPE_DICTIONARY,
 	"crane": TYPE_DICTIONARY,
 	"match_settings": TYPE_DICTIONARY,
-	"round_elapsed": TYPE_FLOAT,
 	"spawn_rng_state": TYPE_INT,
 	"shop_rng_state": TYPE_INT,
 	"cripple_rng_state": TYPE_INT,
@@ -145,7 +145,6 @@ var _round_total: int = 0
 var _spawn_timer: float = 0.0
 var _round_players: int = 1
 ## Seconds the round has been active, for the match's time limit.
-var _round_elapsed: float = 0.0
 var _next_zombie_id: int = 1
 var _zombies: Dictionary[int, ZombieState] = {}
 var _spawn_rng := RandomNumberGenerator.new()
@@ -206,10 +205,16 @@ func is_door_open(door_id: StringName) -> bool:
 	return doors_open.has(door_id)
 
 
-## What an item costs right now, or -1 when there is no such item.
-func price_of(item_id: StringName) -> int:
+## What an item costs right now, or -1 when there is no such item. With a `player_id`, what that
+## player pays: a re-cut costs more for each weapon they have re-cut already (-1 for no player).
+func price_of(item_id: StringName, player_id: int = -1) -> int:
 	var item := tuning.economy.item(item_id)
-	return item.price_at(round_number) if item != null else -1
+	if item == null:
+		return -1
+	if player_id < 0:
+		return item.price_at(round_number)
+	var player := players.get(player_id) as PlayerState
+	return ShopCounter.price(self, item, player) if player != null else -1
 
 
 ## A player's health (0 when they are down or unknown).
@@ -349,7 +354,12 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.TEAR_BOARD:
 			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
-			_buy(action["player_id"], action["item_id"], action.get("rounds", -1))
+			_buy(
+				action["player_id"],
+				action["item_id"],
+				action.get("rounds", -1),
+				StringName(action.get("weapon", &""))
+			)
 		RulesAction.CRANE_TAKE:
 			CranePlay.take(self, action["player_id"])
 		RulesAction.SET_CIRCUIT:
@@ -410,7 +420,6 @@ func _tick(delta: float) -> void:
 			generator.tick(delta, round_number, false)
 			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
-			_tick_clock(delta)
 			_tick_spawning(delta)
 
 
@@ -445,7 +454,6 @@ func _begin_round() -> void:
 	_plan = _plan_round()
 	_round_total = _plan.size()
 	_spawn_timer = tuning.rounds.first_spawn_delay
-	_round_elapsed = 0.0
 	for player: PlayerState in players.values():
 		_refill_grenades(player)
 	_set_phase(Phase.ACTIVE)
@@ -482,26 +490,10 @@ func _type(type_id: StringName) -> ZombieType:
 	return found if found != null else tuning.roster.type_of(tuning.roster.base_id)
 
 
-## Counts the round's time and says once when the match's limit runs out.
-func _tick_clock(delta: float) -> void:
-	var before := settings.is_overtime(_round_elapsed)
-	_round_elapsed += delta
-	if not before and settings.is_overtime(_round_elapsed):
-		_emit(
-			&"round_time_up",
-			{
-				"round": round_number,
-				"limit": settings.round_time_limit,
-				"zombies_left": _plan.size()
-			}
-		)
-
-
 func _tick_spawning(delta: float) -> void:
 	_spawn_timer -= delta
-	var late := settings.is_overtime(_round_elapsed)
-	var cap := settings.alive_cap(tuning.rounds, round_number, _round_players, late)
-	var interval := settings.spawn_interval(tuning.rounds, round_number, _round_players, late)
+	var cap := settings.alive_cap(tuning.rounds, round_number, _round_players)
+	var interval := settings.spawn_interval(tuning.rounds, round_number, _round_players)
 	if _special != null and _special.kind == SpecialRound.Kind.ONLY:
 		interval /= _special.spawn_rate
 	while _spawn_timer <= 0.0 and not _plan.is_empty() and _zombies.size() < cap:
@@ -850,8 +842,8 @@ func _tear_board(id: StringName, zombie_id: int) -> void:
 # --- The shop ---
 
 
-func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
-	var quote := _quote(player_id, item_id, rounds)
+func _buy(player_id: int, item_id: StringName, rounds: int = -1, weapon: StringName = &"") -> void:
+	var quote := ShopCounter.quote(self, player_id, item_id, rounds, weapon)
 	if quote.result != BuyResult.OK:
 		_emit(
 			&"purchase_denied", {"player_id": player_id, "item_id": item_id, "result": quote.result}
@@ -869,7 +861,7 @@ func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
 			"reason": &"purchase",
 		}
 	)
-	var detail := _grant(player, quote)
+	var detail := ShopCounter.grant(self, player, quote)
 	_emit(
 		&"purchase_made",
 		{"player_id": player_id, "item_id": item_id, "price": quote.price, "detail": detail}
@@ -884,111 +876,3 @@ func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
 				"plays": crane.plays,
 			}
 		)
-
-
-func _quote(player_id: int, item_id: StringName, rounds: int = -1) -> Quote:
-	var quote := Quote.new()
-	var player := players.get(player_id) as PlayerState
-	var item := tuning.economy.item(item_id)
-	if phase != Phase.BREAK and phase != Phase.ACTIVE:
-		quote.result = BuyResult.WRONG_PHASE
-	elif player == null:
-		quote.result = BuyResult.UNKNOWN_PLAYER
-	elif item == null:
-		quote.result = BuyResult.UNKNOWN_ITEM
-	else:
-		quote.item = item
-		quote.price = item.price_at(round_number)
-		quote.rounds_offered = rounds
-		quote.result = _check_item(player, quote)
-	if quote.result == BuyResult.OK and player.points < quote.price:
-		quote.result = BuyResult.NOT_ENOUGH_POINTS
-	return quote
-
-
-## Whether the item can be sold to this player at all, ignoring their points. A fuel quote also gets
-## its real price: you pay only for the room in the tank.
-func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
-	var item := quote.item
-	var result := BuyResult.OK
-	match item.kind:
-		ShopItem.Kind.DOOR:
-			if doors_open.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-			elif item.requires != &"" and not doors_open.has(item.requires):
-				result = BuyResult.LOCKED
-		ShopItem.Kind.WEAPON:
-			if player.weapons.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-		ShopItem.Kind.CRANE:
-			if item.pool_without(player.weapons).is_empty():
-				result = BuyResult.ALREADY_OWNED
-			elif not crane.is_ready():
-				result = BuyResult.CRANE_BUSY
-		ShopItem.Kind.TONIC:
-			if player.tonics.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-			elif player.tonics.size() >= tuning.economy.max_tonics:
-				result = BuyResult.LIMIT_REACHED
-		ShopItem.Kind.GRENADES:
-			var room := tuning.explosives.max_grenades - player.grenades
-			if room <= 0:
-				result = BuyResult.LIMIT_REACHED
-			else:
-				quote.grenades_added = mini(int(item.amount), room)
-				quote.price = ceili(float(quote.price) * quote.grenades_added / item.amount)
-		ShopItem.Kind.AMMO:
-			# The weapon's reserve is the combat server's: the buyer says how many rounds fit
-			# (none given: all of them) and the rules price exactly those.
-			var fit := int(item.amount)
-			if quote.rounds_offered >= 0:
-				fit = mini(quote.rounds_offered, fit)
-			if fit <= 0:
-				result = BuyResult.AMMO_FULL
-			else:
-				quote.ammo_added = fit
-				quote.price = item.ammo_price(round_number, fit)
-		ShopItem.Kind.FUEL:
-			var offer := item.fuel_offer(round_number, generator.space())
-			if offer["units"] <= 0.0:
-				result = BuyResult.TANK_FULL
-			else:
-				quote.fuel_added = offer["units"]
-				quote.price = offer["price"]
-	return result
-
-
-## Hands over what was bought; returns what the event's `detail` should say.
-func _grant(player: PlayerState, quote: Quote) -> Dictionary:
-	var item := quote.item
-	match item.kind:
-		ShopItem.Kind.DOOR:
-			doors_open.append(item.id)
-			_emit(&"door_opened", {"door_id": item.id})
-		ShopItem.Kind.WEAPON:
-			player.weapons.append(item.id)
-			return {"weapon": item.id}
-		ShopItem.Kind.CRANE:
-			return CranePlay.start(self, player, quote.price)
-		ShopItem.Kind.TONIC:
-			player.tonics.append(item.id)
-		ShopItem.Kind.FUEL:
-			return {"fuel": generator.add_fuel(quote.fuel_added)}
-		ShopItem.Kind.GRENADES:
-			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
-			return {"grenades": quote.grenades_added}
-		ShopItem.Kind.AMMO:
-			return {"ammo": item.weapon, "rounds": quote.ammo_added}
-	return {}
-
-
-## A priced, checked purchase that has not happened yet.
-class Quote:
-	extends RefCounted
-	var result: BuyResult = BuyResult.OK
-	var item: ShopItem
-	var price: int = 0
-	var fuel_added: float = 0.0
-	var grenades_added: int = 0
-	var rounds_offered: int = -1
-	var ammo_added: int = 0

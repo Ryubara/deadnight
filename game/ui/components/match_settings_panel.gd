@@ -1,9 +1,9 @@
 class_name MatchSettingsPanel
 extends VBoxContainer
-## The match settings as form rows: how many zombies, how many at once, how long the breaks are
-## and an optional time limit per round. Built from gds_ui controls (`UIRow`, `UIOptionSelector`,
-## `UISlider`) and bound to nothing: it holds a `MatchSettings`, says `changed` when a control moves
-## and hands the result out with `settings()`.
+## The match settings as form rows: how intense the night is (zombies per round and how fast they
+## come), how many at once and how long the breaks are. Built from gds_ui controls (`UIRow`,
+## `UIOptionSelector`, `UISlider`) and bound to nothing: it holds a `MatchSettings`, says `changed`
+## when a control moves and hands the result out with `settings()`.
 ##
 ## The Play screen uses it for a night on this machine. The room host's lobby (#391) puts the same
 ## panel on its screen, reads `settings()` and hands it to the server with
@@ -15,17 +15,13 @@ signal changed(settings: MatchSettings)
 
 const ALIVE_STEP := 1
 const BREAK_MAX := 30
-const LIMIT_STEP := 30
-const LIMIT_MAX := 600
 
 var count_row: UIRow
 var alive_row: UIRow
 var break_row: UIRow
-var limit_row: UIRow
 var count_selector: UIOptionSelector
 var alive_slider: UISlider
 var break_slider: UISlider
-var limit_slider: UISlider
 
 ## The tuned break, shown on the break slider while the setting follows it.
 var _standard_break: float
@@ -38,23 +34,15 @@ static func alive_text(max_alive: int) -> String:
 	return "Auto" if max_alive <= MatchSettings.AUTO else str(max_alive)
 
 
-## "Off" for no limit, else seconds, or minutes and seconds from a minute up.
-static func limit_text(seconds: float) -> String:
-	if seconds <= 0.0:
-		return "Off"
-	var whole := roundi(seconds)
-	if whole < 60:
-		return "%d s" % whole
-	return "%d min" % (whole / 60) if whole % 60 == 0 else "%d:%02d" % [whole / 60, whole % 60]
-
-
 func _init() -> void:
 	var tuning := (load(GameRules.DEFAULT_TUNING_PATH) as RulesTuning).rounds
 	_standard_break = tuning.break_seconds
 	_alive_ceiling = tuning.alive_cap_ceiling
 	var tokens := UITokens.active()
 	add_theme_constant_override(&"separation", tokens.space_md)
-	count_row = _row("Zombies per round", "Times the usual number of the dead.")
+	count_row = _row(
+		"Zombie intensity", "Times the usual number of the dead, coming as many times as fast."
+	)
 	count_selector = UIOptionSelector.new()
 	var labels := PackedStringArray()
 	for choice in MatchSettings.COUNT_CHOICES:
@@ -68,9 +56,6 @@ func _init() -> void:
 	break_row = _row("Break between rounds", "Time to spend points and get ready.")
 	break_slider = _slider(int(MatchSettings.MIN_BREAK), BREAK_MAX, 1)
 	break_row.set_control(break_slider)
-	limit_row = _row("Round time limit", "Past it, the dead come faster.")
-	limit_slider = _slider(0, LIMIT_MAX, LIMIT_STEP)
-	limit_row.set_control(limit_slider)
 	set_settings(MatchSettings.new())
 
 
@@ -80,7 +65,6 @@ func settings() -> MatchSettings:
 	out.count_multiplier = MatchSettings.COUNT_CHOICES[count_selector.selected]
 	out.max_alive = roundi(alive_slider.value)
 	out.break_seconds = break_slider.value if _break_set else 0.0
-	out.round_time_limit = limit_slider.value
 	return out.clamped()
 
 
@@ -91,7 +75,6 @@ func set_settings(value: MatchSettings) -> void:
 	alive_slider.set_value_no_signal(held.max_alive)
 	_break_set = held.break_seconds > 0.0
 	break_slider.set_value_no_signal(held.break_seconds if _break_set else _standard_break)
-	limit_slider.set_value_no_signal(held.round_time_limit)
 	_show_values()
 
 
@@ -99,7 +82,6 @@ func set_settings(value: MatchSettings) -> void:
 func set_editable(on: bool) -> void:
 	alive_slider.editable = on
 	break_slider.editable = on
-	limit_slider.editable = on
 	count_selector.focus_mode = Control.FOCUS_ALL if on else Control.FOCUS_NONE
 	count_selector.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
 
@@ -111,7 +93,7 @@ func first_control() -> Control:
 
 ## The last control, to link the focus to what follows the panel.
 func last_control() -> Control:
-	return limit_slider
+	return break_slider
 
 
 func _row(title: String, hint: String) -> UIRow:
@@ -144,7 +126,6 @@ func _on_changed() -> void:
 func _show_values() -> void:
 	alive_row.set_value_text(alive_text(roundi(alive_slider.value)))
 	break_row.set_value_text("%d s" % roundi(break_slider.value))
-	limit_row.set_value_text(limit_text(limit_slider.value))
 
 
 static func _nearest_choice(multiplier: float) -> int:

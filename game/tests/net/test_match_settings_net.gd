@@ -4,7 +4,7 @@
 # WebSocket.
 extends GdUnitTestSuite
 
-const SETTINGS_FIELDS := ["count_multiplier", "max_alive", "break_seconds", "round_time_limit"]
+const SETTINGS_FIELDS := ["count_multiplier", "max_alive", "break_seconds"]
 
 var _host: NightHost
 var _nights: Array[Night] = []
@@ -28,7 +28,6 @@ func _settings() -> MatchSettings:
 	s.count_multiplier = 3.0
 	s.max_alive = 9
 	s.break_seconds = 11.0
-	s.round_time_limit = 90.0
 	return s
 
 

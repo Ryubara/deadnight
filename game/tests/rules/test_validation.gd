@@ -7,8 +7,7 @@ const SAMPLES := {
 	&"configure":
 	{
 		"type": &"configure",
-		"settings":
-		{"count_multiplier": 2.0, "max_alive": 12, "break_seconds": 8.0, "round_time_limit": 90.0},
+		"settings": {"count_multiplier": 2.0, "max_alive": 12, "break_seconds": 8.0},
 	},
 	&"tick": {"type": &"tick", "delta": 0.016},
 	&"skip_break": {"type": &"skip_break"},

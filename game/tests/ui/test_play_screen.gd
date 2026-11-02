@@ -36,10 +36,6 @@ func test_the_screen_opens_on_the_usual_rules() -> void:
 	assert_bool(screen.panel.settings().is_default()).is_true()
 	assert_str(screen.panel.count_selector.text()).is_equal("1x")
 	assert_str(MatchSettingsPanel.alive_text(0)).is_equal("Auto")
-	assert_str(MatchSettingsPanel.limit_text(0.0)).is_equal("Off")
-	assert_str(MatchSettingsPanel.limit_text(90.0)).is_equal("1:30")
-	assert_str(MatchSettingsPanel.limit_text(120.0)).is_equal("2 min")
-	assert_str(MatchSettingsPanel.limit_text(30.0)).is_equal("30 s")
 
 
 func test_the_panel_hands_back_what_it_was_given() -> void:
@@ -48,7 +44,6 @@ func test_the_panel_hands_back_what_it_was_given() -> void:
 	wanted.count_multiplier = 3.0
 	wanted.max_alive = 9
 	wanted.break_seconds = 11.0
-	wanted.round_time_limit = 90.0
 	screen.panel.set_settings(wanted)
 	assert_bool(screen.panel.settings().same_as(wanted)).is_true()
 	screen.panel.set_settings(MatchSettings.new())
@@ -73,12 +68,12 @@ func test_the_keyboard_moves_every_control_and_the_panel_says_so() -> void:
 	assert_str(screen.panel.count_selector.text()).is_equal("3x")
 	screen.panel.alive_slider.grab_focus()
 	await _tap(&"ui_right", 5)
-	screen.panel.limit_slider.grab_focus()
+	screen.panel.break_slider.grab_focus()
 	await _tap(&"ui_right", 3)
 	var now := screen.panel.settings()
 	assert_float(now.count_multiplier).is_equal(3.0)
 	assert_int(now.max_alive).is_equal(5)
-	assert_float(now.round_time_limit).is_equal(90.0)
+	assert_float(now.break_seconds).is_greater(0.0)
 	assert_int(heard.size()).is_equal(2 + 5 + 3)
 	assert_bool(heard.back().same_as(now)).is_true()
 
@@ -95,7 +90,6 @@ func test_the_controls_fit_a_720p_window_and_do_not_overlap() -> void:
 		screen.panel.count_row,
 		screen.panel.alive_row,
 		screen.panel.break_row,
-		screen.panel.limit_row,
 	]
 	for i in rows.size():
 		var rect := (rows[i] as Control).get_global_rect()

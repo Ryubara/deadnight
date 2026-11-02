@@ -2,7 +2,7 @@ extends Node
 ## The zombies of a night over time, from the rules alone (no window needed): a player who kills
 ## every zombie `--life` seconds (default 7) after it stands. Prints `CSV,<t>,<round>,<alive>,
 ## <queued>` every half second, for as many rounds as `--rounds` (default 5). Arguments after `--`:
-## `--count`, `--max-alive`, `--break`, `--round-limit` (the match settings), `--seed`. Not part
+## `--count`, `--max-alive`, `--break` (the match settings), `--seed`. Not part
 ## of the game.
 
 const STEP := 1.0 / 30.0
@@ -15,7 +15,6 @@ func _ready() -> void:
 	settings.count_multiplier = float(args.get("count", 1.0))
 	settings.max_alive = int(args.get("max-alive", 0))
 	settings.break_seconds = float(args.get("break", 0.0))
-	settings.round_time_limit = float(args.get("round-limit", 0.0))
 	var life := float(args.get("life", 7.0))
 	var rounds := int(args.get("rounds", 5))
 	var rules := GameRules.new(null, int(args.get("seed", 1)), settings.clamped())
