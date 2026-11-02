@@ -32,6 +32,8 @@ const REFUSAL_GRACE := 1.0
 
 var port := NetWire.DEFAULT_PORT
 var capacity := DEFAULT_CAPACITY
+## The most zombies alive at once in a night here (`ServerConfig.max_alive`); 0 is the rules' own.
+var max_alive := 0
 var log_enabled := true
 var rules_tuning: RulesTuning
 ## The seed of every room's dice; -1 draws one for each.
@@ -69,6 +71,7 @@ static func make(config: ServerConfig, p_port: int, p_seed: int = -1) -> GameSer
 	server.port = p_port
 	server.seed_value = p_seed
 	server.capacity = config.capacity
+	server.max_alive = config.max_alive
 	server.server_id = config.server_id
 	server.public_url = config.public_url
 	server.activity_path = config.activity_path
@@ -263,6 +266,7 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	room.rules_tuning = rules_tuning
 	if settings != null:
 		room.match_settings = settings
+	room.max_alive = max_alive
 	room.emptied.connect(func() -> void: _end_room(match_id))
 	viewport.add_child(room)
 	await room.built

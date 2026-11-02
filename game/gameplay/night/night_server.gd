@@ -107,6 +107,8 @@ var drawn_bodies := true
 ## The round trip each connected player last reported, milliseconds (the game server fills it from
 ## their pings): a player with no entry has none to show, and a night on a loopback has no one's.
 var pings: Dictionary[int, int] = {}
+## The crowd this match stands, from the weakest client in it (`CrowdCeiling.set_platform`).
+var crowd := CrowdCeiling.new()
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -171,6 +173,7 @@ func _init(
 	world.bind(rules)
 	world.doors.door_opened.connect(_on_door_opened)
 	rules.event_emitted.connect(_on_rules_event)
+	crowd.bind(rules, sim)
 
 
 ## Stops listening to the rules and the doors, so nothing calls into a finished night. Call when
@@ -210,6 +213,11 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 				NightCommand.from_dict(action)
 			)
 	return _outbox
+
+
+## The most zombies alive at once in this match now (`crowd`).
+func crowd_ceiling() -> int:
+	return rules.crowd_ceiling
 
 
 ## Keeps the newest command of a player, with the pressed edges of the one it replaces if no step
@@ -257,7 +265,7 @@ func health_of(player_id: int) -> float:
 
 
 ## One fixed tick. Returns every event of it, the frame last.
-func step(delta: float) -> Array[Dictionary]:
+func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
 	var began := PerfProbe.begin()
@@ -270,7 +278,10 @@ func step(delta: float) -> Array[Dictionary]:
 	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
 	PerfProbe.end(&"server.rules", began)
 	began = PerfProbe.begin()
-	_combat(CombatAction.targets(_target_list()))
+	var target_list := _target_list()
+	PerfProbe.end(&"server.target_list", began)
+	began = PerfProbe.begin()
+	_combat(CombatAction.targets(target_list))
 	_combat(CombatAction.tick(delta))
 	PerfProbe.end(&"server.combat", began)
 	began = PerfProbe.begin()
@@ -282,7 +293,8 @@ func step(delta: float) -> Array[Dictionary]:
 	began = PerfProbe.begin()
 	_outbox.append_array(ping_board.step(delta))
 	_throw_grenades(delta)
-	_outbox.append(_frame())
+	if with_frame:
+		_outbox.append(_frame())
 	PerfProbe.end(&"server.frame", began)
 	return _outbox
 
@@ -294,6 +306,7 @@ func _join(player_id: int, local: bool) -> void:
 	if _bodies.has(player_id):
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
+	crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
@@ -312,6 +325,7 @@ func _leave(player_id: int) -> void:
 	if _bodies.has(player_id):
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
+		crowd.leave(player_id)
 		_pending.erase(player_id)
 		_silent.erase(player_id)
 		_acked.erase(player_id)
@@ -937,9 +951,16 @@ func _frame() -> Dictionary:
 		"crane": _crane_frame(),
 		"pings": ping_board.marks(),
 		"barricades": rules.barricades.to_dict(),
-		"zombies": ZombieCodec.encode(sim.zombies),
+		"zombies": _encode_zombies(),
 		"players": players,
 	}
+
+
+func _encode_zombies() -> PackedByteArray:
+	var began := PerfProbe.begin()
+	var bytes := ZombieCodec.encode(sim.zombies)
+	PerfProbe.end(&"server.encode", began)
+	return bytes
 
 
 ## The crane for the picture: where it stands, which stage it is in, whose play it is, the prize

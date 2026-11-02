@@ -45,7 +45,8 @@ crowd before it starts to run.
 
 The crowds spike (kit `docs/godot/crowds.md`) holds 40 zombies as the ceiling and 20 to 30 as the normal wave, with
 one mesh per zombie (the separate eyelid mesh cost 30 % of the browser frame at 80). The rounds cap a solo night at 28
-alive and a night of any size at 40 (the decision below).
+alive, and any night with a browser in it at 40; a night of desktops and a server alone stands up to 120
+([the platforms](#decision-a-ceiling-for-each-platform-453), the decisions below).
 
 | Zombies alive | All at gameplay LOD | Half far | Notes |
 | --- | ---: | ---: | --- |
@@ -75,6 +76,23 @@ What changes: only four players are cut, from round 22 (round 21 is 40 already);
 and stay there, one and two never do. The table in [rounds](rounds.md) and [the lot](map.md) show the
 cap per player count: 4 players are 24, 31, 39 and 40 in rounds 1, 10, 20 and 30 (46 at round 30 before).
 The director's queue stays as a safety net for a tuning that asks for more.
+
+### Decision: a ceiling for each platform (#453)
+
+The 40 above was measured in the browser and held everywhere, so a desktop never had a budget of its own. Measured
+on its own ([the numbers](../research/crowd-budget.md#desktop-and-game-server-100-and-more-alive-453-156)): a desktop
+draws 120 zombies in 2.4 ms of frame (1080p, RTX 5080) and a server's 60 Hz tick takes 7.0 ms at the median and
+14.8 ms at p95 for 120 on Railway's processor, 17.3 ms at p95 for 160, over the 16.7 ms tick. So:
+
+| Where the night is played | Most alive at once |
+| --- | ---: |
+| A browser, alone or in a room with a browser in it | 40 (`RoundTuning.web_alive_cap_ceiling`) |
+| A desktop alone, or a server with no browser in the room | 120 (`RoundTuning.alive_cap_ceiling`) |
+
+The ceiling is the weakest client's in the match: a client says what it is after its welcome, one that says nothing
+counts as a browser, and the rules' cap and the director's hard cap move together. The default curve is unchanged; 100
+and more come from the "Most alive at once" match setting (its slider ends at the host's platform's ceiling) or from the
+intensity multiplier. A server operator can cap a small container with `MAX_ALIVE`.
 
 ## Boss: the Projectionist
 

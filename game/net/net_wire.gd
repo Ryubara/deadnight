@@ -1,12 +1,13 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 9, whose WELCOME and events carry every
-## seat's name; version 8 carried each player's aim pose and look up or down so a client can draw
-## the weapons of the others; version 7 had zombie deltas and an interest radius, version 6 had
-## every zombie whole in a frame, version 5 had no view step in a command, version 4 had a ping of
-## 5 bytes with no round trip in it, version 3 had no ticket in the hello, version 2 no resume
-## token, version 1 sent a command as 47 bytes of floats), one message to a WebSocket frame: a type
-## byte, then the fields. `LookWire` continues the numbering with types 8 and 9.
+## The bytes of a night's connection (protocol version 10 has the client's PLATFORM message; version
+## 9 had a WELCOME and events that carry every seat's name; version 8 carried each player's aim pose
+## and look up or down so a client can draw the weapons of the others; version 7 had zombie deltas
+## and an interest radius, version 6 had every zombie whole in a frame, version 5 had no view step
+## in a command, version 4 had a ping of 5 bytes with no round trip in it, version 3 had no ticket
+## in the hello, version 2 no resume token, version 1 sent a command as 47 bytes of floats), one
+## message to a WebSocket frame: a type byte, then the fields. `LookWire` continues the numbering
+## with types 8 and 9.
 ##
 ## HELLO    C->S  u8 type=1, u8 version, u8 token length (0 or 8), the resume token the last WELCOME
 ##                gave (a client that lost its socket asks for its seat back), then the rest is the
@@ -29,6 +30,10 @@ extends RefCounted
 ##                `MARK_SIZE` = 10 bytes. The server answers with a `ping_placed` event for everyone
 ## REFUSED  S->C  u8 type=10, u8 reason (`Refusal`), u8 the server's protocol version; the server
 ##                closes the connection after it
+## PLATFORM C->S  u8 type=12, u8 1 for a browser and 0 for any other client (2 bytes), sent once
+##                after the welcome: the crowd a room may stand depends on the weakest client in it.
+##                Version 10: a client that never sends it is taken for a browser, the safe number
+##                (`CrowdCeiling.set_platform`)
 ##
 ## A packed variable is a flag byte (0 plain, 1 compressed with Zstandard), when compressed the u32
 ## size it has once unpacked, and the `var_to_bytes` of the value. The server decodes nothing but
@@ -38,23 +43,32 @@ extends RefCounted
 ## dropped (an empty Dictionary, or null).
 
 enum Type {
-	HELLO = 1, WELCOME = 2, COMMAND = 3, TICK = 4, PING = 6, PONG = 7, REFUSED = 10, MARK = 11
+	HELLO = 1,
+	WELCOME = 2,
+	COMMAND = 3,
+	TICK = 4,
+	PING = 6,
+	PONG = 7,
+	REFUSED = 10,
+	MARK = 11,
+	PLATFORM = 12
 }
 enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 9
+const VERSION := 10
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 9
+const MIN_VERSION := 10
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
 const COMMAND_SIZE := 25
 const MARK_SIZE := 10
 const PING_SIZE := 7
+const PLATFORM_SIZE := 2
 ## What a ping says when the client has not measured a round trip yet, and the most it can say.
 const NO_RTT := 0xFFFF
 ## The resume token a WELCOME gives: random, one for each connection, good for taking back the seat.
@@ -120,6 +134,18 @@ static func read_hello(data: PackedByteArray) -> Dictionary:
 		"token": data.slice(HELLO_HEADER, ticket_at),
 		"ticket": data.slice(ticket_at).get_string_from_utf8(),
 	}
+
+
+## The message that says what kind of client this is (a browser or not).
+static func platform(web: bool) -> PackedByteArray:
+	return PackedByteArray([Type.PLATFORM, 1 if web else 0])
+
+
+## 1 for a browser, 0 for another client, -1 when the packet is not a platform message.
+static func read_platform(data: PackedByteArray) -> int:
+	if data.size() != PLATFORM_SIZE or data[0] != Type.PLATFORM or data[1] > 1:
+		return -1
+	return data[1]
 
 
 static func refused(reason: Refusal) -> PackedByteArray:

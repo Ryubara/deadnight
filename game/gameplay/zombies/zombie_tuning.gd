@@ -13,6 +13,11 @@ const SHIPPED_PATH := "res://gameplay/zombies/zombie_tuning_default.tres"
 @export_range(1, 200, 1, "suffix:zombies") var hard_cap: int = 40
 ## Seconds between a zombie's path queries; each zombie starts at a random phase.
 @export_range(0.02, 2.0, 0.01, "suffix:s") var repath_interval: float = 0.25
+## A zombie farther than this (metres) from its target asks for its path this many times less
+## often: the way to a target across the lot hardly changes in a quarter of a second, and in a big
+## crowd most of the dead are far.
+@export_range(1.0, 100.0, 1.0, "suffix:m") var repath_far_distance: float = 14.0
+@export_range(1.0, 8.0, 0.25) var repath_far_factor: float = 2.0
 ## Seconds between a zombie checking whether another player is the nearer one.
 @export_range(0.05, 5.0, 0.05, "suffix:s") var retarget_interval: float = 0.5
 ## A new target must be this many metres nearer than the current one, so zombies do not flip-flop.

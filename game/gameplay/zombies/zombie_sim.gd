@@ -41,6 +41,8 @@ var lures: Array[ZombieLure] = []
 
 var _rng := RandomNumberGenerator.new()
 var _grid: Dictionary[Vector2i, Array] = {}
+## What a cell nobody stands in answers, so a lookup makes no array.
+var _no_zombies: Array = []
 ## Time handed to `tick` that has not made a whole step yet.
 var _pending: float = 0.0
 
@@ -186,15 +188,21 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 	for lure in lures:
 		lure.left -= STEP
 	lures = lures.filter(func(lure: ZombieLure) -> bool: return lure.left > 0.0)
+	var began := PerfProbe.begin()
 	for zombie: ZombieBody in zombies.values():
 		zombie.stagger_cooldown_left = maxf(zombie.stagger_cooldown_left - STEP, 0.0)
 		if zombie.mode == ZombieBody.Mode.DYING:
 			zombie.mode_time += STEP
 		else:
 			_think(zombie, STEP, targets, events)
+	PerfProbe.end(&"sim.think", began)
+	began = PerfProbe.begin()
 	_separate(STEP)
+	PerfProbe.end(&"sim.separate", began)
+	began = PerfProbe.begin()
 	_keep_outside_the_boards()
 	_clear_the_dead(events)
+	PerfProbe.end(&"sim.boards_and_clear", began)
 	return events
 
 
@@ -349,8 +357,18 @@ func _repath(zombie: ZombieBody, delta: float, has_target: bool, target_pos: Vec
 	zombie.repath_left -= delta
 	if zombie.repath_left > 0.0 or not has_target:
 		return
-	zombie.repath_left = tuning.repath_interval
+	# Only a zombie on the move follows a path: one that is swinging, rising, staggered or held
+	# keeps its timer at zero and asks the moment it walks again (a crowd at the players' feet is
+	# mostly swinging, and every path it asked for was thrown away).
+	if zombie.mode != ZombieBody.Mode.CHASE:
+		return
+	var interval := tuning.repath_interval
+	if _flat(zombie.position, target_pos) > tuning.repath_far_distance:
+		interval *= tuning.repath_far_factor
+	zombie.repath_left = interval
+	var began := PerfProbe.begin()
 	zombie.path = pathing.find_path(zombie.position, target_pos)
+	PerfProbe.end(&"sim.path", began)
 	zombie.path_index = 0
 	if lit_probe.is_valid():
 		zombie.lit = lit_probe.call(zombie.position)
@@ -385,10 +403,17 @@ func _separate(delta: float) -> void:
 func _push_on(zombie: ZombieBody, radius: float) -> Vector3:
 	var push := Vector3.ZERO
 	var cell := _cell(zombie.position, radius)
+	var here := zombie.position
+	var radius_squared := radius * radius
 	for dx in range(-1, 2):
 		for dz in range(-1, 2):
-			for other: ZombieBody in _grid.get(cell + Vector2i(dx, dz), []):
-				if other != zombie:
+			for other: ZombieBody in _grid.get(cell + Vector2i(dx, dz), _no_zombies):
+				if other == zombie:
+					continue
+				# Most of the neighbours in the nine cells are farther than the radius: no square
+				# root for them.
+				var away := here - other.position
+				if away.x * away.x + away.z * away.z < radius_squared:
 					push += _push_from(zombie, other, radius)
 	# A pile of coincident zombies adds up a push from each; the sum is bounded so no tick throws one.
 	return push.limit_length(tuning.separation_max_speed)
