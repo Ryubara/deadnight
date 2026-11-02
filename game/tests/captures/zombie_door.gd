@@ -67,7 +67,7 @@ func _ready() -> void:
 	_make_player()
 	var camera := _make_camera()
 	_make_ui()
-	var sim := ZombieSim.new(ZombieTuning.new(), 5)
+	var sim := ZombieSim.new(ZombieTuning.shipped(), 5)
 	sim.rounds = tuning.rounds
 	sim.pathing = NavmeshPathing.new(map)
 	var points: Array[Vector3] = SPAWNS.duplicate()

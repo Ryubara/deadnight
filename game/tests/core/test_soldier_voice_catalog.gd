@@ -82,7 +82,7 @@ func test_the_takes_are_voice_bus_sounds_ranked_by_their_moment() -> void:
 		assert_str(def.group).is_equal(SoldierVoiceCatalog.GROUP)
 		assert_int(def.priority).is_equal(SoldierVoiceCatalog.EVENTS[event]["priority"])
 		assert_float(def.pitch_semitones).is_equal(0.0)
-	assert_bool(SoundCatalog.GROUP_LIMITS.has(SoldierVoiceCatalog.GROUP)).is_true()
+	assert_bool(SoundCatalog.group_limits().has(SoldierVoiceCatalog.GROUP)).is_true()
 
 
 func test_the_bus_the_voices_play_on_exists_and_is_not_ducked() -> void:

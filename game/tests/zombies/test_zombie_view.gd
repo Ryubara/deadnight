@@ -75,7 +75,7 @@ func test_a_view_draws_one_mesh_at_a_time_and_casts_no_shadow() -> void:
 
 func test_the_horde_hands_its_views_the_emerge_time_it_was_given() -> void:
 	var rules := RulesFixture.make_rules(1, 9, RulesFixture.tuning())
-	var tuning := ZombieTuning.new()
+	var tuning := ZombieTuning.shipped()
 	tuning.emerge_seconds = 0.7
 	var sim := ZombieSim.new(tuning, 9)
 	var director := ZombieDirector.new(rules, sim, [Vector3(5, 0, 5)] as Array[Vector3])

@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ZombieTuning" format=3]
+
+[ext_resource type="Script" path="res://gameplay/zombies/zombie_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+hard_cap = 40
+repath_interval = 0.25
+retarget_interval = 0.5
+retarget_margin = 2.0
+waypoint_reach = 0.4
+lure_gather_distance = 2.5
+lure_breaks_swings = false
+lure_pulls_gate_zombies = false
+lure_pulls_bosses = false
+separation_radius = 0.8
+separation_speed = 2.0
+separation_max_speed = 4.0
+turn_rate = 9.0
+board_stop = 0.9
+board_slack = 0.25
+reach = 1.4
+windup_seconds = 0.45
+swing_seconds = 1.2
+strike_slack = 0.4
+strike_damage = 20.0
+emerge_seconds = 0.7
+stagger_seconds = 0.4
+boss_entrance_seconds = 2.75
+boss_stagger_seconds = 1.42
+boss_stagger_cooldown = 6.0
+push_max_speed = 8.0
+push_decay = 14.0
+death_seconds = 2.5
