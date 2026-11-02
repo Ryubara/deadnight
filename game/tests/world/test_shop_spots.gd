@@ -1,9 +1,10 @@
-# The lot's shop spots (docs/design/map.md): wall weapons, the prize crane and ammunition lockers
-# are markers the night reads; each names a real shop item, stands on ground a player can reach and
-# sits clear of every door and of the other spots, so one press never means two things.
+# The lot's shop spots (docs/design/map.md): wall weapons, the prize crane, ammunition lockers,
+# the machines and the grenade rack are markers the night reads; each names a real shop item,
+# stands on ground a player can reach and sits clear of every door and of the other spots, so one
+# press never means two things.
 extends GdUnitTestSuite
 
-const KINDS: Array[StringName] = [&"wall", &"crane", &"ammo", &"upgrade", &"perk"]
+const KINDS: Array[StringName] = [&"wall", &"crane", &"ammo", &"upgrade", &"perk", &"rack"]
 ## The night's reach for a use (NightTuning.use_reach): spots of different kinds must be farther
 ## apart than twice this, so no place is in reach of two of them.
 const REACH := 3.2
@@ -24,7 +25,8 @@ func after_test() -> void:
 	_world.queue_free()
 
 
-func test_the_lot_has_two_wall_weapons_a_crane_lockers_and_the_two_machines() -> void:
+func test_the_lot_has_two_wall_weapons_a_crane_lockers_the_two_machines_and_a_grenade_rack(
+) -> void:
 	var kinds := {}
 	for spot in _spots:
 		kinds[spot["kind"]] = kinds.get(spot["kind"], 0) + 1
@@ -33,6 +35,7 @@ func test_the_lot_has_two_wall_weapons_a_crane_lockers_and_the_two_machines() ->
 	assert_int(kinds[&"ammo"]).is_greater_equal(4)
 	assert_int(kinds[&"upgrade"]).is_equal(1)
 	assert_int(kinds[&"perk"]).is_equal(1)
+	assert_int(kinds[&"rack"]).is_equal(1)
 
 
 func test_every_spot_has_a_known_kind_and_wall_and_crane_name_shop_items() -> void:
@@ -49,6 +52,7 @@ func test_every_spot_has_a_known_kind_and_wall_and_crane_name_shop_items() -> vo
 			&"crane": ShopItem.Kind.CRANE,
 			&"upgrade": ShopItem.Kind.UPGRADE,
 			&"perk": ShopItem.Kind.TONIC,
+			&"rack": ShopItem.Kind.GRENADES,
 		}
 		assert_int(item.kind).is_equal(expected[spot["kind"]])
 

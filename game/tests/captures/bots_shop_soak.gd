@@ -12,6 +12,8 @@ extends Node
 ## the cost of a think without them), `--trace` (a line every 15 s).
 ## Prints `SHOP {json}` at the end.
 
+## Ticks between the physics frames the engine is given (a bought door needs one).
+const FRAME_EVERY := 30
 ## The categories points are counted in.
 const CATEGORIES := {
 	ShopItem.Kind.DOOR: "door",
@@ -66,6 +68,9 @@ func _ready() -> void:
 		if _args.has("trace") and ticks % 900 == 0:
 			_trace(ticks)
 		_sweep(ticks)
+		# The navigation server takes a bought door's mesh in only on a physics frame.
+		if ticks % FRAME_EVERY == 0:
+			await get_tree().physics_frame
 	_report(ticks)
 	for _i in 600:
 		if not _night.world.navigation.is_busy():
