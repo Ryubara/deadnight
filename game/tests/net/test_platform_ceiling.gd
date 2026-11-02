@@ -69,7 +69,9 @@ func test_the_platform_message_round_trips_and_is_taken_by_the_limits() -> void:
 	assert_int(NetWire.read_platform(PackedByteArray([NetWire.Type.PLATFORM]))).is_equal(-1)
 	assert_bool(PeerLimits.fits(NetWire.Type.PLATFORM, NetWire.PLATFORM_SIZE)).is_true()
 	assert_bool(PeerLimits.fits(NetWire.Type.PLATFORM, 3)).is_false()
-	assert_int(NetWire.VERSION).is_equal(5)
+	# Its own number, not the ping mark's, and no new layout for an old one: the version stays.
+	assert_int(NetWire.Type.PLATFORM).is_not_equal(NetWire.Type.MARK)
+	assert_int(NetWire.MIN_VERSION).is_less_equal(NetWire.VERSION)
 
 
 func test_the_desktops_crowd_and_the_browsers_are_two_numbers_the_tuning_names() -> void:

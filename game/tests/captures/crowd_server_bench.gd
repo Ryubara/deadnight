@@ -29,6 +29,9 @@ var _step_ms: Array[float] = []
 var _send_ms: Array[float] = []
 var _bytes_each: Array[int] = []
 var _last_frames := {}
+var _zombie_base := {}
+var _no_zombies: Dictionary[int, PackedByteArray] = {}
+var _zombie_sequence := 0
 var _alive_sum := 0.0
 var _paths_before := 0
 var _calls_before := 0
@@ -136,13 +139,20 @@ func _measure_step() -> void:
 	if not sending:
 		return
 	var sent := Time.get_ticks_usec()
+	var zombies := ZombieDelta.entries_of(frame["zombies"])
 	for id in range(1, _players + 1):
 		var out: Array = events.filter(
 			func(e: Dictionary) -> bool: return e["type"] != NightServer.LOOK_PACKET
 		)
-		out.append(FrameDelta.diff(_last_frames.get(id, {}), frame))
-		_last_frames[id] = frame
+		# As `NightHost._send_ticks`: the zombies go as what changed from the ones the client has.
+		var own := frame.duplicate()
+		var base: Dictionary[int, PackedByteArray] = _zombie_base.get(id, _no_zombies)
+		own["zombies"] = ZombieDelta.diff(base, zombies, _zombie_sequence)
+		_zombie_base[id] = zombies
+		out.append(FrameDelta.diff(_last_frames.get(id, {}), own))
+		_last_frames[id] = own
 		_bytes_each.append(NetWire.tick(_server.tick_count, out).size())
+	_zombie_sequence = (_zombie_sequence + 1) & 0xFF
 	_send_ms.append((Time.get_ticks_usec() - sent) / 1000.0)
 
 

@@ -139,14 +139,17 @@ what happens underneath:
    `POST /internal/matches/:id/end`. `capacity` (rooms a process takes, `ROOM_CAPACITY`, 4) is what it reports in the
    heartbeat; a fifth match is refused `FULL` and the backend does not give it a ticket (`no_server`) once the
    heartbeats are full. A night costs about 2.6 ms of a 16 ms step with three players, so four rooms use about two
-   thirds of one core.
+   thirds of one core. That is at 15 zombies: at 120 alive a night costs 7 ms of the step on the
+   Railway processor and at 40 about 3 ms ([crowd budget](crowd-budget.md#desktop-and-game-server-100-and-more-alive-453-156)),
+   and the rooms of a process share one tick, so `MAX_ALIVE` (the most alive in any night of the process; a room with a
+   browser in it stands 40 whatever it says) and `ROOM_CAPACITY` are sized together.
 
 Environment of the services (names only; the secrets are Railway variables, never in the repository):
 
 | Service | Variables |
 | --- | --- |
 | `backend` | `SESSION_SECRET`, `TICKET_SECRET`, `GAME_SERVER_SECRET` (all different, 32+ characters), `DATABASE_URL` (the Postgres reference), `DISCORD_MODE`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `GUEST_SIGN_IN=1`, `CORS_ORIGINS` |
-| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` |
+| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY`, optionally `MAX_ALIVE` |
 
 A path variable set from Git Bash on Windows is rewritten (`/server` became `C:/Program Files/Git/server`): set them with
 `MSYS_NO_PATHCONV=1` or from PowerShell.
