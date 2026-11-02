@@ -31,5 +31,4 @@ newcomers: [the lobby](lobby.md).
 
 ## Open work
 
-Server and bots in CI (#56), more entity kinds and
-interest management (#57), latency over Railway and Discord (#52).
+Server and bots in CI (#56), latency over Railway and Discord (#52).
