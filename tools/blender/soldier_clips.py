@@ -738,7 +738,7 @@ SPRINT_CARRY = {
               "swing": 6.0, "dip": 4.0, "hold": "rifle"},
     "Shotgun": {"grip": (0.1, -0.33, -0.03), "muzzle": (0.85, -0.52, 0.4), "top": (-0.3, 0.2, 1.0),
                 "swing": 7.0, "dip": 5.0, "hold": "shotgun"},
-    # A weapon whose grip turns it in the hand far from its class's (the Tommy gun's pistol grip stands 77 degrees
+    # A weapon whose grip turns it in the hand far from its class's (the Tommy gun's pistol grip stands 90 degrees
     # off the lever rifle's wrist) gets its own carry, `Sprint_<model>`, the same pose through its own grip:
     # PlayerAnimation plays it for that model and the class's for the rest.
     "tommy_gun": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),

@@ -408,6 +408,7 @@ Soldier's library when the tree is built.
 | --- | --- | --- | --- | --- |
 | Sprint_Rifle | upper | loop | 17 (0.71 s) | both hands on, low across the chest, muzzle up past his left shoulder |
 | Sprint_Shotgun | upper | loop | 17 (0.71 s) | the same, a little lower and with more swing (the heavier gun) |
+| Sprint_tommy_gun | upper | loop | 17 (0.71 s) | the rifle's carry through the Tommy gun's own grip (see below) |
 | Sprint_Pistol | upper | loop | 17 (0.71 s) | one hand at the side, the forearm pumping (the kit's `Run_Gun` arm) |
 | Sprint_Melee | upper | loop | 17 (0.71 s) | a runner's arm out from the side, the weapon upright and leaning back |
 
@@ -415,23 +416,33 @@ Soldier's library when the tree is built.
   twists 9 degrees each way and bobs with the stride), so the swing lands on Run's footfalls by construction (the
   right foot plants at frame 3.5, the left at 12.5; the Body is lowest at 4 and 13). Only the right arm and, for the
   two-handed guns, the left arm are posed for the class.
-- **Rifle and Shotgun.** The upper arm hangs (chest frame, his right is -X, ahead -Y: `(-0.35, -0.05, -1)`), the
-  muzzle points `(0.85, -0.5, 0.45)` (across to his left, ahead and up) and the gun's top faces `(-0.3, 0.2, 1)`;
-  the grip follows from the kit hold (0.62 m out along the forearm, so a low grip and a steep gun cannot both be had).
-  On top of the chest's twist the gun swings 6 degrees each way (7 for the shotgun) and the muzzle dips 4 degrees (5)
-  a frame after each footfall. The left hand reaches the hold's `support` point (`holds/<class>.tres`, times its
-  `model_scale`) by two-bone IK in Blender, 0.07 m short along the forearm like `WeaponHandsIK`: if the support point
-  moves, rebuild the clips. The muzzle shows past the left of the helmet from the shoulder camera; a carry in front of
-  the chest (tried first) is hidden by the body.
+- **Rifle and Shotgun: the weapon's pose, both hands on it (#527).** The carry says where the weapon is, in the
+  world's axes at Run's frame 4 (his right is -X, ahead -Y), turned with the chest: its grip `(0.1, -0.33, 0)` m from
+  the Torso bone's head (a little left of centre, ahead of the belly; the shotgun 3 cm lower), the muzzle pointing
+  `(0.85, -0.5, 0.45)` (across to his left, ahead and up) and the top facing `(-0.3, 0.2, 1)`. On top of the chest's
+  twist the gun swings 6 degrees each way (7 for the shotgun) and the muzzle dips 4 degrees (5) a frame after each
+  footfall. Both arms reach it by two-bone IK in Blender, the way `WeaponHandsIK` does while aiming: the right hand
+  bone turned so the weapon, through its solved grip (`grips/<model>.tres` `hold`, at the hold's `model_scale`),
+  points that way with its grip on the point; the left hand bone on the grip's `left_hand` point of that weapon and
+  turned to it. `soldier_clips.py` reads the hold and grip files itself (`game_grip`; Godot's bones have Blender's pose
+  bone axes), so a re-solved grip needs only a rebuild. Both hands land within 0.001 m. The muzzle shows past the
+  left of the helmet from the shoulder camera; a carry in front of the chest (tried first) is hidden by the body.
+  Built the old way (the forearm fixed by the gun's direction through the kit weapon's hold, the left hand on a typed
+  support point), the carry moved with every new grip: on #507's grips the gun hung by the right leg.
+- **A model's own carry.** The Tommy gun's pistol grip turns it 90 degrees off the lever rifle's wrist in the hand,
+  so through `Sprint_Rifle` it pointed at his legs. A model whose grip is that far from its class's gets
+  `Sprint_<model>` (`SPRINT_CARRY` entries with a `class`), the same pose through its own grip;
+  `PlayerAnimation.sprint_clip` plays it for that model and the class's carry for every other.
 - **Pistol.** `Run_Gun`'s right arm (the forearm pumps 46 degrees a stride), the upper arm swinging a third of the left
   arm's swing half a stride later.
 - **Melee.** The upper arm hangs out from the side (`(-0.5, 0.1, -1)`) and swings 24 degrees fore and aft against the
   left arm; the forearm points ahead and pumps 1.2 times the arm's swing; the forearm is turned about its axis so the
   shaft leans up, back and out (`(-0.25, 0.45, 1)`): it stays up and clears the head from the camera. Hanging, the
   weapon pointed at the legs (first try).
-- **Only the spine, the shoulders and the arms move.** The fingers stay the static grip every weapon clip shares and
-  the hand's hold on the weapon is the game's (`HOLD_GUN`, `HOLD_MELEE`): the grip sockets and finger poses are #460's.
-  A test fails if a Sprint clip moves a finger or a leg bone.
+- **Only the spine, the shoulders, the arms and the hand bones move.** The fingers are the grip's: `HandGripPose`
+  closes the right hand whenever a weapon shows and the left on a two-handed gun while the carry is in (its weight,
+  as the shouldered pose's while aiming). The hand bones (`Index1`, the palm the weapon rides) turn as the IK turns
+  them. A test fails if a Sprint clip moves a finger or a leg bone.
 
 ### The blend
 
@@ -454,10 +465,10 @@ Soldier's library when the tree is built.
 - **Where.** The weight and the clip's place are `SprintCarry` (`game/gameplay/player/sprint_carry.gd`, no tree in
   it); the Sprint file is added to the Soldier's library by `SoldierClipFile`, which loads the repair, grenade,
   aim-move and sprint files alike.
-- **With the hand grips (#507).** The carry keys no finger, so `HandGripPose` closes the fingers over it. The rifle's
-  and shotgun's carry reach the old hold's `support` point and the weapon sits at the old hold; #507 moves both
-  (`HandGrip.hold` and `left_hand`), so after it merges the Sprint clips for the long guns are rebuilt against the
-  new points (`soldier_clips.py`, `SPRINT_CARRY`): until then the gun hides behind the arm and head in a sprint.
+- **On the hand grips (#527).** The carry keys no finger, so `HandGripPose` closes the fingers over it, and the
+  long guns' clips are built through the grip files: when a grip is solved again (`solve_grips.gd`), rebuild the
+  Sprint file and check the hands with `test_hand_grips.gd`, which measures both hands on every weapon's skin in the
+  sprint too.
 - **Checked:** `game/tests/player/test_sprint_carry.gd` (the clips are on Run's cycle; the carry plays only sprinting
   on the ground, holds in the air and never starts there; its phase matches Run to 0.002 s; it catches up after a
   landing without jumping; aim, a hip shot, a reload and a swing take it out within 0.15 s; the first shot's `muzzle`
@@ -506,10 +517,13 @@ blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bun
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Revive --view side --out <scratch>/revive
 godot --headless --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/player/test_player_revive.gd
 gds godot -- --path game res://tests/captures/revive_poses.tscn --quit-after 3600 -- --out <scratch>/revive
-# The sprint carry clips, their own file (prints SPRINT: each clip's frames and how far the left hand missed the
-# fore-end); one stride of each over Run with the game's weapons (Sprint; SprintBefore is Aim_<Class> over Run):
+# The sprint carry clips, their own file (prints SPRINT: each clip's frames and how far each hand missed the weapon);
+# one stride of each over Run with the game's weapons held through their grips (Sprint; SprintBefore is Aim_<Class>
+# over Run); the tour from the shoulder camera, and with `-- --side` from his right:
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Sprint_ --out game/assets/characters/soldier/sprint/soldier_sprint.glb
-blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Sprint,SprintBefore --view back --out <scratch>/sprint     --weapon Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=Shotgun=0.71     --weapon Shotgun=game/assets/weapons/double_shotgun/double_shotgun.glb=Shotgun=0.82     --weapon Pistol=game/assets/weapons/revolver/revolver.glb=Pistol=1.76     --weapon Melee=game/assets/weapons/baseball_bat/baseball_bat.glb=Shovel=0.86=-90,0,0
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Sprint,SprintBefore --view back --out <scratch>/sprint     --grip Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=rifle     --grip Shotgun=game/assets/weapons/double_shotgun/double_shotgun.glb=shotgun     --grip tommy_gun=game/assets/weapons/tommy_gun/tommy_gun.glb=smg     --weapon Pistol=game/assets/weapons/revolver/revolver.glb=Pistol=1.76     --weapon Melee=game/assets/weapons/baseball_bat/baseball_bat.glb=Shovel=0.86=-90,0,0
+gds godot -- --path game res://tests/captures/sprint_carry_tour.tscn --write-movie <abs>/f.png --fixed-fps 30 --quit-after 700
+gds godot -- --path game res://tests/captures/sprint_carry_tour.tscn --write-movie <abs>/f.png --fixed-fps 30 --quit-after 700 -- --side
 ```
 
 `<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is third-party-derived (CC0); it is committed with
