@@ -73,16 +73,32 @@ switched off (`active`) once the blend reaches 0, since at influence 0 it still 
    clip's pose: no clock, no randomness.
 5. Firing kicks the weapon back 5 cm and up 4 degrees, dying away at 16 per second.
 
-**The aim.** At the hip the barrel is along the body (the body faces the movement; the camera's pitch still lifts
-it). While the aim is held (the button, or a shot within the hold: [hip fire](../research/hip-fire.md)) it follows the
-camera's yaw and pitch and turns in a little (at most 5 degrees) to cross the crosshair's ray 12 m ahead of the camera:
-the camera is over the shoulder, the muzzle is not. The pose never flips: the pose weight
+**At the hip** the barrel is along the body (the body faces the movement; the camera's pitch still lifts it), turned
+in to the crosshair's point (12 m ahead of the camera) the way the aim does, while the view is within 30 degrees of the
+body's heading; the share fades out to nothing at 90 degrees (`WeaponHandsIK.hip_share()`, continuous, so a gun is
+never swung round by a view behind the body: a person who runs one way and looks the other keeps the barrel forward).
+Running pulls the camera back, so the turn-in is up to 8 degrees there. (Before #285 the hip barrel ran parallel to the
+body and crossed the crosshair's ray nowhere; `game/tests/captures/hip_aim_targets.tscn` shows the barrel line
+against a close and a far target.)
+
+**The aim.** While the aim is held (the button, or a shot within the hold: [hip fire](../research/hip-fire.md)) it
+follows the camera's yaw and pitch and turns in a little (at most 5 degrees) to cross the crosshair's ray 12 m ahead
+of the camera: the camera is over the shoulder, the muzzle is not. The pose never flips: the pose weight
 (`PlayerAnimation.aim_weight()`, eased at the aim's speed) blends the yaw (the body's heading to the view) and the
-turn toward the ray (`converge`, 0 to 1), so the weapon eases in and out as the aim does. The camera zooms for the
-aim button only; a shot from the hip raises the weapon and does not zoom (#464). A hip shot also waits for
-the body: it leaves when the body faces the view within 10 degrees, a press before that is kept for 0.6 s and a held
-trigger waits as long as it takes ([turn first, then shoot](../research/hip-fire.md), #477). The shot itself is the
-`AimResolver`'s, from the muzzle to what the camera ray is on.
+turn toward the ray (`converge`, 0 to 1), so the weapon eases in and out as the aim does. The camera zooms for the aim
+button only; a shot from the hip raises the weapon and does not zoom (#464). A hip shot also waits for the body: it
+leaves when the body faces the view within 10 degrees, a press before that is kept for 0.6 s and a held trigger waits
+as long as it takes ([turn first, then shoot](../research/hip-fire.md), #477). The shot itself is the `AimResolver`'s,
+from the muzzle to what the camera ray is on.
+
+## The grenade in the hand
+
+The cooked grenade is held like a weapon: `holds/grenade.tres` (`weapon_class` Grenade) names the model
+(`assets/weapons/grenade/grenade.glb`), the size (2.2 times the rule's length: a real grenade vanishes in the chibi's
+fist at the rule's size), the muzzle and butt points of the model, and `grips/grenade.tres` is the fist solved for it
+(`tests/art/solve_grips.gd`, rerun after a size change). `PlayerAnimation` builds the node `Grenade` on the weapon mount
+from them; it shows with the cook clip's `grenade_visible` event and goes with `release`. The capture
+(`weapon_hold_sheet.tscn -- --only=grenade`) adds a close view of the hand and one from the front.
 
 ## Per weapon
 
@@ -157,7 +173,9 @@ of reach left alone, a gun still flashes) and the capture `game/tests/captures/m
 
 `test_weapon_hold.gd`: per gun in the aim pose, the grip within 3 cm of the pose's target, the left hand within 12 cm of
 the fore-end, the stock within 16 cm of the shoulder, the barrel within 5 degrees of the camera ray and within 1 degree
-of the crosshair's point 12 m ahead; at the hip and running, along the body within 3 degrees; pitched with the camera;
-hands back to the clip during Reload; the bat in the hand at the rule's size. The capture sheet
+of the crosshair's point 12 m ahead; pitched with the camera;
+hands back to the clip during Reload; the bat in the hand at the rule's size; at the hip and running the barrel
+within 1 degree of the crosshair's point and within 8 degrees of the body, and a view behind the body leaving it forward;
+the grenade held by its hold file (model, size, in the hand while cooked). The capture sheet
 (`game/tests/captures/weapon_hold_sheet.tscn`: side, the shoulder camera, from behind, from above, in idle, run, aim
 and fire) is in the pull request.

@@ -432,7 +432,7 @@ Soldier's library when the tree is built.
 - **A model's own carry.** The Tommy gun's pistol grip turns it 90 degrees off the lever rifle's wrist in the hand,
   so through `Sprint_Rifle` it pointed at his legs. A model whose grip is that far from its class's gets
   `Sprint_<model>` (`SPRINT_CARRY` entries with a `class`), the same pose through its own grip;
-  `PlayerAnimation.sprint_clip` plays it for that model and the class's carry for every other.
+  `SprintCarry.clip_for` picks it for that model and the class's carry for every other.
 - **Pistol.** `Run_Gun`'s right arm (the forearm pumps 46 degrees a stride), the upper arm swinging a third of the left
   arm's swing half a stride later.
 - **Melee.** The upper arm hangs out from the side (`(-0.5, 0.1, -1)`) and swings 24 degrees fore and aft against the

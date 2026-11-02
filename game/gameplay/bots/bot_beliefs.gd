@@ -6,7 +6,9 @@ extends RefCounted
 ##
 ##   id, position (where it was last seen), velocity (m/s, from the last two sightings), look,
 ##   mode, first_seen / last_seen / believed_at (seconds on the bot's clock), visible (clear ray
-##   at the last look), tracked_at (the clock of the last position update)
+##   at the last look), tracked_at (the clock of the last position update), yaw (where it faces),
+##   episode (the swing counter) and attack_at (the clock when this swing was first seen, or -1
+##   when it is not swinging)
 ##
 ## A contact is *pending* until `believed_at` (the reaction delay), *believed* after, and a
 ## believed contact that is no longer seen is *remembered* until the memory runs out. Only a
@@ -15,6 +17,9 @@ extends RefCounted
 ## Range classes of a zombie heard but not seen.
 const NEAR := &"near"
 const VERY_NEAR := &"very_near"
+## Grenades a player starts the night with (`ExplosiveTuning.start_grenades`; a test holds the two
+## together).
+const START_GRENADES := 2
 
 var contacts: Dictionary[int, Dictionary] = {}
 ## `{yaw, range_class, at}` per zombie heard out of sight at the last look: a direction, never a
@@ -27,6 +32,11 @@ var blows: Array[Dictionary] = []
 ## its own id in `me`.
 var teammates: Dictionary = {}
 var me := -1
+## Grenades the bot carries: the count a player starts with until the rules say otherwise
+## (`grenade_count_changed`: a throw, a refill at a round's start, a purchase).
+var grenades := START_GRENADES
+## The special round in play (`round_started`'s `special_id`), or empty in an ordinary round.
+var special: StringName = &""
 ## Rays the last look cast: how busy this think already was.
 var rays := 0
 var now := 0.0

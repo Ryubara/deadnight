@@ -10,6 +10,7 @@
 # when something they can see changed (no documentation-only run; no web build for a change that only adds tests); `mkdocs`, `markdownlint` and `actionlint` start only when their files
 # changed. A job skipped by an `if` reports success to a required check, so every required name is still reported;
 # `build-ok` fails on a failed or cancelled job and on a `conventions` that failed (which also stops the long jobs).
+# The `backend` job runs the platform backend's own tests beside them (docs/research/ci-jobs.md).
 # Actions are pinned to a full commit SHA; the tag is in the comment beside it.
 name: ci
 
@@ -46,6 +47,7 @@ jobs:
       docs: ${{ steps.scope.outputs.docs }}
       markdown: ${{ steps.scope.outputs.markdown }}
       workflows: ${{ steps.scope.outputs.workflows }}
+      backend: ${{ steps.scope.outputs.backend }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
@@ -54,6 +56,8 @@ jobs:
       - run: uv run --with pyyaml python .github/scripts/groundwork.py check-files
       - name: The web deploy script refuses a branch other than main
         run: bash deploy/web/test_deploy.sh
+      - name: The deploy jobs refuse a build that is not the head of main
+        run: bash deploy/test_check_head.sh
       - name: Which parts of the repository the change touches
         id: scope
         env:
@@ -275,7 +279,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: deploy/web
+          sparse-checkout: deploy
+      - name: Skip a build that is not the head of main
+        if: env.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash deploy/check_head.sh "$GITHUB_SHA" || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
       - if: env.skip != 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -294,6 +303,10 @@ jobs:
     # since the server imports the whole project. Same token and same skip as `deploy`.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [godot]
+    # One deploy at a time, like `deploy`: the head check below reads main when this job starts, after its wait.
+    concurrency:
+      group: deploy-server
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -309,12 +322,71 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout: deploy
+          path: head-check
+      - name: Skip a build that is not the head of main
+        if: env.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash head-check/deploy/check_head.sh "$GITHUB_SHA" || { test $? = 3 && echo "skip=true" >> "$GITHUB_ENV"; }
+      - if: env.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
           lfs: true
       - if: env.skip != 'true'
         run: npm install --global @railway/cli@5.63.1
       - name: Deploy and wait until the server is live
         if: env.skip != 'true'
         run: bash deploy/server/deploy.sh deadnight-server
+
+  backend:
+    # The platform backend's own tests (spikes/backend, `npm test`: the lobby, presence, ticket and save rules), which no
+    # other job runs: `godot` only installs the packages so the lobby's real-socket test can start the backend (#558).
+    # It runs beside `godot` and `web`, not before them, so the critical path stays the Godot shards; it takes about a
+    # minute. It starts when the backend (or this workflow) changed, and on main (.github/scripts/ci_scope.py). A real
+    # Postgres service runs the two store tests that skip without TEST_DATABASE_URL.
+    needs: conventions
+    if: needs.conventions.outputs.backend == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: deadnight_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d deadnight_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: spikes/backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: spikes/backend
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: spikes/backend/package-lock.json
+      - run: npm ci
+      - name: Type check
+        run: npm run typecheck
+      - name: The backend's tests
+        env:
+          TEST_DATABASE_URL: postgres://postgres:ci@localhost:5432/deadnight_test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test.log
+          # A skipped Postgres test would mean the service was not reached: the suite then proved less than it says.
+          ! grep -E "^.* skipped [1-9][0-9]*$" test.log
 
   mkdocs:
     # The documentation site built strictly (a broken link or a page missing from the nav fails). A pull request that
@@ -361,11 +433,11 @@ jobs:
 
   build-ok:
     if: always()
-    needs: [conventions, godot, web]
+    needs: [conventions, godot, web, backend]
     runs-on: ubuntu-24.04
     steps:
       - name: Every job passed
-        # A skipped `godot` and `web` (a documentation-only change) are fine; a skipped one after a failed
+        # A skipped `godot`, `web` and `backend` (a documentation-only change) are fine; a skipped one after a failed
         # `conventions` is not, and that failure is in the list.
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
