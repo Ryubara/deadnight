@@ -1,3 +1,5 @@
+# gdlint:disable=max-public-methods
+# The rig is where the view is read and set from outside: every method is one of those doors.
 class_name ThirdPersonCamera
 extends Node3D
 ## Over-the-shoulder camera rig: look (mouse and stick), spring-damped follow of the body, aim and
@@ -31,13 +33,11 @@ var invert_y := false
 var sensitivity := 1.0
 ## +1 camera over the right shoulder, -1 over the left. Set from the player's state.
 var side := 1.0
-## True while the aim button is down. It steadies the look (`steady_amount`); the view itself eases
-## by `aim_held`, which this also sets.
+## True while the aim button is down: the one thing that zooms the view (60 to 40 degrees), moves
+## the shoulder and the arm in, and steadies the look. Firing from the hip changes none of it
+## (#464); the body's turn and the weapon's pose follow the hip-fire hold elsewhere
+## (`PlayerMotionState.holds_aim`).
 var aiming := false
-## True while the character holds the aim: the aim button is down, or the trigger was held within
-## the hip-fire hold (`PlayerMotionState.holds_aim`). The one weight that zooms the camera, turns
-## the body to the view and raises the weapon; the player sets it from the motion state.
-var aim_held := false
 ## True while the body sprints (not just the key: `PlayerMotionState.sprinting`).
 var sprinting := false
 ## True while the body is crouched (`PlayerMotionState.crouching`): the pivot sits lower.
@@ -45,6 +45,9 @@ var crouching := false
 ## Horizontal speed of the body in metres per second, set by the player after each tick; the
 ## sprint sway keeps step with it.
 var ground_speed := 0.0
+## True while the body stands on the ground (`PlayerMotionState.on_floor`); the sprint sway is none
+## in the air, whatever the sprint state says.
+var grounded := true
 
 ## The shot shake of the view (trauma, scale); null before `setup`.
 var shake: CameraShake
@@ -58,7 +61,6 @@ var _previous := Vector3.ZERO
 var _current := Vector3.ZERO
 var _pivot := DampedSpring3.new()
 var _aim := DampedSpring.new()
-var _steady := DampedSpring.new()
 var _sprint := DampedSpring.new()
 var _side := DampedSpring.new(1.0)
 var _shoulder_cap := 1.0
@@ -105,8 +107,7 @@ func snap_to(position: Vector3) -> void:
 	_current = position
 	var head := position + Vector3(0.0, _pivot_height(), 0.0)
 	_pivot.snap(head)
-	_aim.snap(1.0 if _holds_aim() else 0.0)
-	_steady.snap(1.0 if aiming else 0.0)
+	_aim.snap(1.0 if aiming else 0.0)
 	_sprint.snap(0.0)
 	sway.reset()
 	_side.snap(side)
@@ -122,6 +123,17 @@ func apply_look(yaw_right: float, pitch_down: float) -> void:
 	var direction := 1.0 if invert_y else -1.0
 	pitch = clampf(
 		pitch + direction * pitch_down,
+		deg_to_rad(_tuning.pitch_min_degrees),
+		deg_to_rad(_tuning.pitch_max_degrees)
+	)
+
+
+## Turn the view by radians as they are, with no sensitivity and no invert: the aim assist's pull.
+## `yaw` and `pitch` themselves are the convention (yaw to the left and pitch up are positive).
+func nudge(yaw_delta: float, pitch_delta: float) -> void:
+	yaw = wrapf(yaw + yaw_delta, -PI, PI)
+	pitch = clampf(
+		pitch + pitch_delta,
 		deg_to_rad(_tuning.pitch_min_degrees),
 		deg_to_rad(_tuning.pitch_max_degrees)
 	)
@@ -160,16 +172,16 @@ func is_aim_zoomed() -> bool:
 	return aim_amount() > 0.5
 
 
-## How far the character has eased into the aim, 0 to 1: the one weight of the zoom, the shoulder,
-## the arm, the body's turn and the weapon's pose, whether the aim button or a shot holds it.
+## How far the view has eased into the aim, 0 to 1: the weight of the zoom, the shoulder and the
+## arm. Only the aim button moves it; a shot from the hip leaves it at 0.
 func aim_amount() -> float:
 	return clampf(_aim.value, 0.0, 1.0)
 
 
-## How far the aim button has steadied the look, 0 to 1: it eases like the aim but follows only the
-## button, so a burst from the hip does not slow the view down (docs/research/hip-fire.md).
+## How far the aim button has steadied the look, 0 to 1: the aim's own ease, so a burst from the hip
+## does not slow the view down (docs/research/hip-fire.md).
 func steady_amount() -> float:
-	return clampf(_steady.value, 0.0, 1.0)
+	return aim_amount()
 
 
 ## How far the sprint pull-back has eased in, 0 to 1.
@@ -227,11 +239,9 @@ func step(delta: float, fraction: float) -> void:
 	if _steering:
 		_steer_view(delta)
 	shake.step(delta)
-	var held := _holds_aim()
-	sway.step(delta, sprinting and not held, ground_speed)
-	_aim.step(1.0 if held else 0.0, _tuning.aim_frequency, delta)
-	_steady.step(1.0 if aiming else 0.0, _tuning.aim_frequency, delta)
-	_sprint.step(1.0 if sprinting and not held else 0.0, _tuning.sprint_frequency, delta)
+	sway.step(delta, sprinting and not aiming, ground_speed, grounded)
+	_aim.step(1.0 if aiming else 0.0, _tuning.aim_frequency, delta)
+	_sprint.step(1.0 if sprinting and not aiming else 0.0, _tuning.sprint_frequency, delta)
 	_side.step(side, _tuning.swap_frequency, delta)
 	var head := _previous.lerp(_current, fraction) + Vector3(0.0, _pivot_height(), 0.0)
 	var follow := lerpf(_tuning.follow_frequency, _tuning.sprint_follow_frequency, sprint_amount())
@@ -268,11 +278,6 @@ func _pivot_height() -> float:
 
 func _look_scale() -> float:
 	return lerpf(1.0, _tuning.aim_sensitivity_scale, steady_amount())
-
-
-## The aim button, or a recent shot: the target of the one aim weight.
-func _holds_aim() -> bool:
-	return aiming or aim_held
 
 
 ## The lens for the current eases, swept through the world from the true `head` (never from the

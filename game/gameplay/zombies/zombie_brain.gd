@@ -39,6 +39,13 @@ static func step(
 	return strike
 
 
+## Turns the zombie toward `point` for one tick (a zombie standing about a lure).
+static func face(zombie: ZombieBody, tuning: ZombieTuning, delta: float, point: Vector3) -> void:
+	var to_point := point - zombie.position
+	to_point.y = 0.0
+	_turn_toward(zombie, to_point, tuning.turn_rate * delta)
+
+
 ## A hit that did not kill: the zombie stops and loses its swing for the profile's stagger time.
 static func stagger(zombie: ZombieBody) -> void:
 	if zombie.mode == ZombieBody.Mode.CHASE or zombie.mode == ZombieBody.Mode.ATTACK:

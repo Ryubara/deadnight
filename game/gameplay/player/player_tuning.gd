@@ -43,20 +43,27 @@ extends Resource
 @export var turn_speed := 14.0
 ## The same while sprinting: a wider arc (0.78 m at a sprint), more weight.
 @export var sprint_turn_speed := 9.0
-## Radians per second the body turns to face the view while the aim is held (the button, or the
+## Radians per second the body turns to face the view while the aim pose is held (the button, or the
 ## trigger and `hip_fire_hold` after it). Slow enough that the weapon in the hands, which turns with
 ## the body, moves a few degrees a tick and never jumps: a view 75 degrees away is faced in 0.16 s.
 @export var aim_turn_speed := 8.0
 
 @export_group("Hip fire")
-## Firing without aiming is the aim entered for a moment, not a second, partial aim: while the
-## trigger is held, and for `hip_fire_hold` after it, the character holds the aim, and the camera,
-## the body and the hands ease to the same pose and back at the same speed as for the aim button
-## (docs/research/hip-fire.md).
-## Seconds after the trigger is let go that the aim is still held: the body keeps facing the view
-## and the camera stays in, so a run of single shots (the slowest weapon fires every 0.9 s) does
-## not swing out and in between. After it everything eases out like a released aim button.
+## Firing without aiming turns the body to the view and raises the weapon, with no zoom and no
+## camera change (#464, docs/research/hip-fire.md): while the trigger is held, and for
+## `hip_fire_hold` after it, the body and the hands hold the aim pose.
+## Seconds after the trigger is let go that the pose is still held: the body keeps facing the view,
+## so a run of single shots (the slowest weapon fires every 0.9 s) does not swing out and in
+## between. After it everything eases out like a released aim button.
 @export var hip_fire_hold := 0.8
+
+@export_group("Reload")
+## The weapon tilts down about the grip while it reloads and comes back up when it is done, timed to
+## the weapon's reload time (`WeaponDef.reload_time`): degrees of the full tilt, and the shares of
+## the reload spent going down and coming back up (the rest holds it down).
+@export var reload_tilt_degrees := 35.0
+@export_range(0.05, 0.45, 0.01) var reload_dip_in := 0.2
+@export_range(0.05, 0.45, 0.01) var reload_dip_out := 0.25
 
 @export_group("Pivot")
 ## A change of direction wider than this (degrees) is a pivot, not an arc: the body plants,
@@ -154,9 +161,11 @@ extends Resource
 ## Distance behind the pivot, in metres, and the same while aiming.
 @export var arm_length := 2.3
 @export var arm_length_aim := 1.8
-## Vertical field of view in degrees, and the same while aiming.
-@export var fov := 70.0
-@export var fov_aim := 60.0
+## Vertical field of view in degrees, and the same while aiming. The default is 60 (it was 70) and
+## the aim view 40 (it was 60): at the maintainer's word, issue #405 ("too far outward", closer to
+## the character). The one aim weight blends the two, so a shot from the hip zooms 60 to 40 too.
+@export var fov := 60.0
+@export var fov_aim := 40.0
 ## Radius of the sphere swept from the pivot to the lens, so the camera never clips a wall.
 @export var arm_margin := 0.25
 ## The body is hidden when the lens is closer than this to the head, shown again beyond the
@@ -177,9 +186,9 @@ extends Resource
 @export var aim_frequency := 24.0
 @export var swap_frequency := 16.0
 @export var sprint_frequency := 13.5
-## Sprint widens the view by this many degrees and lets the camera out by this many metres (the
-## pull-back was 0.3 m; now half that).
-@export var sprint_fov_kick := 6.0
+## Sprint widens the view by this many degrees (it was 6, halved at the maintainer's word, issue
+## #405) and lets the camera out by this many metres (the pull-back was 0.3 m; now half that).
+@export var sprint_fov_kick := 3.0
 @export var sprint_arm_extra := 0.15
 ## A wall pulls the camera in at once; this is the rate (per second) it lets out again.
 @export var release_frequency := 6.0
@@ -206,11 +215,12 @@ extends Resource
 ## The gentle sway of the view while sprinting (`SprintSway`): a bob (pitch) every `bob_steps`
 ## footfalls, and a roll and yaw (a quarter turn apart) every `sway_steps` footfalls. A footfall is
 ## `step_distance` metres of travel, so the rate follows ground speed like the Run clip does.
-## Subtle on purpose: the peaks are under half a degree. The camera shake setting scales it and
-## Reduced motion turns it off. Amounts are degrees.
-@export var sprint_sway_pitch_degrees := 0.4
-@export var sprint_sway_yaw_degrees := 0.2
-@export var sprint_sway_roll_degrees := 0.28
+## Subtle on purpose: the largest turn of the look direction is a quarter of a degree. The camera
+## shake setting scales it and Reduced motion turns it off. None at all in the air. Amounts are
+## degrees (half of what they were: pitch 0.4, yaw 0.2, roll 0.28, issue #405).
+@export var sprint_sway_pitch_degrees := 0.2
+@export var sprint_sway_yaw_degrees := 0.1
+@export var sprint_sway_roll_degrees := 0.14
 ## Footfalls for one full bob (1: the head dips on every foot) and for one full roll and yaw (2:
 ## once per left and right stride).
 @export var sprint_sway_bob_steps := 1.0

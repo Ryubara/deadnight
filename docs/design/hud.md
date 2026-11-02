@@ -20,8 +20,8 @@ The HUD reads one object, `HudState` (plain numbers, strings, arrays and diction
 | The frame's weapons | `HudLoadout.sync`, every frame, from the local player's `weapon`, `ammo`, `reserve`, `reloading` and `arms` | the same readings, as the server holds them: rounds that came by any road (a locker, a wall buy of a weapon already carried, a pickup) show on the tick they arrive, and a HUD that joined late needs no replay. The frame wins over the events; matching it announces nothing |
 | The rules' events | `hud.feed(events)` / `state.apply_event(event)`, the same dictionaries the server broadcasts | round, zombies left, points, fuel, circuits, players and their down state, **your health** (`player_added`, `player_hurt`, `player_healed`, `player_downed`), purchases, hits and kills, game over |
 | A snapshot | `state.load_snapshot(rules.to_dict())` | a late joiner or reconnect, no events replayed: round, phase, break, zombies left and the round's total, every player's points, down state and grenades, your health, the generator, the special round running and the bosses on the lot with their health (a boss whose spawn event was already in flight is not counted twice). Names, seats and looks are not in the rules, so the ones set before stay |
-| The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events and the frame fill them), `set_prompt`, `set_area`, `set_markers`, `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
-| HUD additions to the rules' events | optional `screen_x`, `screen_y` (0 to 1) on `zombie_damaged` to place the damage number at the hit | the client turns a hit point into these; there is no world position in the HUD |
+| The local player's readings | `facing` (a property; `set_ammo` and `set_equipment` are for tools and captures, the weapons' events and the frame fill them), `set_prompt`, `set_area`, `set_markers` (the night fills it every frame, `NightMarkers`), `set_player_name` (`set_health` is for tools and captures) | what the rules do not own: which way you face, what is in reach, where the player stands |
+| HUD additions to the rules' events | optional `world` (a `Vector3`) on `zombie_damaged`, or `screen_x`, `screen_y` (0 to 1) | the night's binding adds `world` (the zombie, lifted to the head or the chest); the crosshair draws the number over that point through its `projector` every frame, so it stays on the wound while the camera turns and hides while the point is behind the lens. `screen_x`/`screen_y` place a number once, for tools |
 
 The ammo card and the equipment slot are the local player's only: another player's `ammo_added`, shot or reload leaves
 them alone (a teammate's rounds are not shown anywhere).
@@ -119,7 +119,7 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   the 1080-unit canvas height (22 px at 720p). The maintainer asked for "very simple, inspired from games like Call of
   Duty, static and small", so it does not bloom with movement or fire, does not change colour over a zombie and is
   not an animation; the one thing it shows is the camera ray, which is where `AimResolver` sends the shot, so it
-  stays at the centre whatever the shoulder offset, the aim or the hip-fire zoom do. The hit markers are the
+  stays at the centre whatever the shoulder offset or the aim zoom do. The hit markers are the
   *diagonal* ticks (starting 9 units out) and sit between the reticle's, so the two never overprint. Lengths are canvas
   units: it scales with the window and the UI scale like every other part (a test reads the viewport's stretch). It
   is shown **while aiming too**: the aim view has no reticle of its own, and hiding the only mark where the shots go

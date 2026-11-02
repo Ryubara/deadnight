@@ -33,8 +33,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
 
 Not in the game yet: lag compensation for shots (#54), interest
-management and a tighter packing of zombies (#57), server bodies without models (#153), the Discord proxy and Railway
-(#52).
+management and a tighter packing of zombies (#57), the Discord proxy (#52).
 
 The first numbers from the real thing, loopback on one loaded machine: 222 bytes a `TICK` with two players and four
 zombies (6.6 KB/s down), a command 47 bytes (2.8 KB/s up; 23 and 1.4 KB/s since protocol 2), a round trip of
@@ -212,6 +211,20 @@ readable for that release. Nothing is negotiated.
 returns 0 to let the client in or a `Refusal` (`DENIED`) to turn it away. It is unset today (everyone is let in); the
 platform backend's ticket check plugs in there (see [the backend](platform-backend.md)) once hello carries a ticket.
 
+### Server bodies and drawn avatars (#153)
+
+A single-process night draws the server's own bodies (the Soldier's model, skeleton and animation), so the world is
+one scene. A game server draws nothing: `NightServer.drawn_bodies` is false under `NightHost`, and `NightWorld.add_body`
+then calls `Player.strip_model`, which frees the `Model` and the `AnimationTree` and leaves an empty `Model` node, the
+collision and the simulation. A body is **5 nodes** on a server and 71 drawn (`test_server_bodies.gd`), and walks the same
+(the model has no part in `PlayerSimulation`; the test replays 120 ticks on both). Each client draws the others from the
+frames as `RemoteAvatars`, and a door's look follows `door_opened`: the split of the issue is the transport since #302,
+this removes the cost of the bodies on the server.
+
+One thing the server decides that no command says: while a player repairs, the server turns the body toward the breach
+(#338). The frame marks such a player (`turn`), and the player's own predicted body takes the server's facing for those
+frames (a position correction is not enough: the facing is not in `Reconciler`).
+
 ### Reconnect and resume
 
 A client whose socket drops (a phone changing network, a proxy cutting an idle socket, a Wi-Fi blip) gets its player
@@ -237,6 +250,16 @@ back (#53, protocol version 3):
 - **Not here yet:** a message on screen while the link is down (the signals are there), and the link conditioner (delay,
   jitter and loss) of the spike: the tests cut the socket with `WebSocketLink.drop()`, which closes it with a private
   close code the server reads as "the network went", and `test_reconnect.gd` runs over a real socket.
+
+## Match settings
+
+The rules of a match (zombie intensity, alive cap, break: `MatchSettings`, #414) are the
+server's and travel inside the rules' snapshot, version 10, as `match_settings`.
+That is the whole protocol change: the WELCOME already carries `GameRules.to_dict()`, so the first player, a late
+joiner and a player coming back read the same settings from it (`MatchSettings.from_snapshot`), and the protocol
+version is not raised. The host sets them with `NightHost.configure_match` before the night starts; once it began
+the call changes nothing for this night. Tested over a real socket in `test_match_settings_net.gd`. Details and the
+numbers are in [rounds](../design/rounds.md#match-settings).
 
 ## Interpolation (everyone else)
 

@@ -25,6 +25,8 @@ var barricade_points: Dictionary[StringName, Vector3] = {}
 var lamps: LotLamps
 ## The prize crane (`show_crane`).
 var crane: CraneView
+## Plays the re-cut bench and the soda fountain.
+var machines: MachineView
 ## The night's sounds besides the guns (`hear`).
 var sounds: NightSounds
 ## The dead's voices and feet, made from the frames (`ZombieVoices`).
@@ -39,6 +41,11 @@ var bodies: Callable = func(_player_id: int) -> Node3D: return null
 var repair_interval: Callable = func() -> float: return 1.0
 
 var _state: ClientState
+## The projectiles in the air, by the server's id: each a copy of the server's shot, stepped with
+## the same code on every frame, and ended by the server's burst.
+var _projectile_views: Dictionary[int, ProjectileView] = {}
+## The world's first surface on a segment, as the server's shots see it (made on the first shot).
+var _probe: WorldProbe
 ## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
 ## the same code on every frame, so it lands where the server's lands (`show_grenades`).
 var _grenade_views: Dictionary[int, GrenadeView] = {}
@@ -85,6 +92,15 @@ func show_attack(player_id: int, weapon: WeaponDef) -> void:
 		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire")
 
 
+## The shooter's weapon tilts down for the `seconds` of its reload and comes back up (every client
+## draws every player's reload from the same `reload_started` event).
+func show_reload(player_id: int, seconds: float) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.reload(seconds)
+
+
 ## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
 ## begins (the circuits on, the tank full), and following every circuit, the tank and the frames.
 func show_lamps(lot: Node, fuel: FuelTuning) -> void:
@@ -99,6 +115,9 @@ func show_crane(world: NightWorld, tuning: RulesTuning) -> void:
 	add_child(crane)
 	var item := tuning.economy.item(&"crane_play")
 	crane.setup(_state, world.shop_spots(), tuning.crane, item.pool if item != null else [])
+	# The lot's other machines (the re-cut bench, the soda fountain) play from the same events.
+	machines = MachineView.new()
+	machines.setup(_state, self)
 
 
 ## Draws the grenades the server throws, from its events (`GrenadeView`, `BlastEffect`): a copy of
@@ -111,6 +130,11 @@ func show_grenades(def: GrenadeDef) -> void:
 ## How many grenades are in the air on this client.
 func grenades_in_flight() -> int:
 	return _grenade_views.size()
+
+
+## How many projectiles (flares) are in the air on this client.
+func projectiles_in_flight() -> int:
+	return _projectile_views.size()
 
 
 ## Starts the night's ambience and the sounds of its boards, doors, blows, till and voices, placed
@@ -143,14 +167,21 @@ func draw_event(event: Dictionary) -> void:
 
 
 func _on_event(event: Dictionary) -> void:
+	var began := PerfProbe.begin()
 	if lamps != null:
 		lamps.apply_event(event)
 	voices.on_event(event)
+	PerfProbe.end(&"view.lamps_voices", began)
 	match event["type"]:
 		&"frame":
+			began = PerfProbe.begin()
 			horde.apply_snapshot(event["zombies"], step)
+			PerfProbe.end(&"view.horde", began)
+			began = PerfProbe.begin()
 			voices.update(_state.zombies, step)
+			PerfProbe.end(&"view.voices", began)
 			_step_grenades()
+			_step_projectiles()
 		&"grenade_thrown", &"grenade_dropped":
 			_launch_grenade(event)
 		&"grenade_exploded":
@@ -160,21 +191,31 @@ func _on_event(event: Dictionary) -> void:
 		&"zombie_removed":
 			_gib(event)
 		&"shot_fired":
+			began = PerfProbe.begin()
 			_show_shot(event)
+			PerfProbe.end(&"fx.shot", began)
+		&"reload_started":
+			show_reload(event["shooter_id"], event["seconds"])
 		&"damage_dealt":
+			began = PerfProbe.begin()
 			if event["melee"]:
 				effects.spark(event["point"])
 			effects.number(
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
+			PerfProbe.end(&"fx.number", began)
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":
 			Audio.play(&"round_end")
 		&"special_round_announced":
 			Audio.play(&"special_round")
+		&"projectile_spawned":
+			_launch_projectile(event)
 		&"projectile_burst":
-			effects.spark(event["point"])
+			_burst_projectile(event)
+		&"lure_started":
+			_burn_lure(event)
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
@@ -183,6 +224,48 @@ func _on_event(event: Dictionary) -> void:
 			var at: Variant = barricade_points.get(StringName(event["barricade_id"]))
 			if at is Vector3:
 				effects.spark(at + BOARD_LIFT)
+
+
+func _launch_projectile(event: Dictionary) -> void:
+	var view := ProjectileView.new()
+	view.state = ProjectileState.new(
+		event["projectile_id"],
+		event["shooter_id"],
+		WeaponCatalog.get_def(event["weapon_id"]),
+		event["position"],
+		event["velocity"]
+	)
+	add_child(view)
+	_projectile_views[event["projectile_id"]] = view
+
+
+## The copies fly with the server's code against the walls, not the zombies: the burst the server
+## sends says where and when each one ends.
+func _step_projectiles() -> void:
+	if _projectile_views.is_empty():
+		return
+	if _probe == null:
+		_probe = WorldProbe.new(get_world_3d().direct_space_state)
+	for view in _projectile_views.values():
+		view.state.step(step, {}, _probe.callable())
+		view.follow()
+
+
+func _burst_projectile(event: Dictionary) -> void:
+	var id: int = event.get("projectile_id", -1)  # the warm-up's sample burst has none
+	var view: ProjectileView = _projectile_views.get(id)
+	if view != null:
+		view.queue_free()
+		_projectile_views.erase(id)
+	effects.spark(event["point"])
+	effects.muzzle_flash(event["point"])
+
+
+## The flare lies where it landed and burns for as long as the server's lure lasts.
+func _burn_lure(event: Dictionary) -> void:
+	var view := LureView.new()
+	add_child(view)
+	view.burn(event["point"], event["seconds"])
 
 
 func _launch_grenade(event: Dictionary) -> void:

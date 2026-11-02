@@ -23,6 +23,7 @@ extends RefCounted
 ##   reload_rejected: shooter_id, reason
 ##   weapon_equipped: player_id, weapon_id, ammo, reserve
 ##   ammo_added: player_id, weapon_id, added (rounds that fitted), ammo, reserve
+##   weapon_upgraded: player_id, weapon_id, tier, display_name, ammo, reserve, magazine, damage
 ##   projectile_spawned: projectile_id, shooter_id, weapon_id, position, velocity
 ##   projectile_burst: projectile_id, shooter_id, weapon_id, point, radius, kind
 ##   action_rejected: reason
@@ -123,6 +124,8 @@ func _dispatch(action: Dictionary) -> void:
 			_swap(action["player_id"])
 		CombatAction.ADD_AMMO:
 			_add_ammo(action["player_id"], action["weapon_id"], action["rounds"])
+		CombatAction.UPGRADE_WEAPON:
+			_upgrade(action["player_id"], action["weapon_id"])
 		CombatAction.TICK:
 			_tick(action["delta"])
 		CombatAction.TARGETS:
@@ -200,6 +203,34 @@ func _add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> void:
 			"added": added,
 			"ammo": state.ammo,
 			"reserve": state.reserve,
+		}
+	)
+
+
+## Re-cuts a carried weapon once (the numbers are the rules' `upgrade` tuning, the defaults without
+## rules). The rules have already charged; a weapon that is not carried, can not be re-cut or
+## already is, is refused.
+func _upgrade(player_id: int, weapon_id: StringName) -> void:
+	var spec := rules.tuning.upgrade if rules != null else UpgradeTuning.new()
+	var state := state_of(player_id, weapon_id)
+	if state == null:
+		_emit(&"action_rejected", {"reason": &"not_carried"})
+		return
+	if state.tier() > 0 or not spec.allows(weapon_id):
+		_emit(&"action_rejected", {"reason": &"not_upgradable"})
+		return
+	state.upgrade(spec)
+	_emit(
+		&"weapon_upgraded",
+		{
+			"player_id": player_id,
+			"weapon_id": weapon_id,
+			"tier": state.tier(),
+			"display_name": state.def.display_name,
+			"ammo": state.ammo,
+			"reserve": state.reserve,
+			"magazine": state.def.magazine_size,
+			"damage": state.def.damage,
 		}
 	)
 
@@ -464,9 +495,21 @@ func _burst(projectile: ProjectileState, result: Dictionary, alive: Dictionary) 
 			"kind": result["kind"],
 		}
 	)
+	if def.is_lure():
+		_emit(
+			&"lure_started",
+			{
+				"lure_id": projectile.id,
+				"shooter_id": projectile.shooter_id,
+				"weapon_id": def.id,
+				"point": point,
+				"radius": def.lure_radius,
+				"seconds": def.lure_seconds,
+			}
+		)
 	var damage := {}
 	var direct := -1
-	if result["kind"] == &"target":
+	if result["kind"] == &"target" and def.damage > 0.0:
 		direct = result["target_id"]
 		var zone: StringName = result["zone"]
 		_tally(

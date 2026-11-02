@@ -204,6 +204,25 @@ const TABS := [
 				"hint": "A short buzz when a button is pressed, where the device allows it.",
 				"kind": "toggle",
 			},
+			{
+				"key": SettingsService.TOUCH_AIM_ASSIST,
+				"title": "Touch aim assist",
+				"hint": "Slows the view and pulls it a little toward a zombie. Touch only.",
+				"kind": "slider",
+				"min": 0.0,
+				"max": 1.0,
+				"step": 0.05,
+				"format": "%.2f",
+			},
+			{
+				"key": SettingsService.TOUCH_AUTO_FIRE,
+				"title": "Touch auto-fire",
+				"hint":
+				"On: fires by itself while you aim at a zombie. Off: tap Aim to aim, tap again to leave.",
+				"kind": "option",
+				"labels": ["Off", "On"],
+				"values": [0, 1],
+			},
 		],
 	},
 ]

@@ -1,11 +1,13 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 3; version 2 had no resume token, version 1
-## sent a command as 47 bytes of floats), one message to a WebSocket frame: a type byte, then the
-## fields. `LookWire` continues the numbering with types 8 and 9.
+## The bytes of a night's connection (protocol version 4; version 3 had no ticket in the hello,
+## version 2 no resume token, version 1 sent a command as 47 bytes of floats), one message to a
+## WebSocket frame: a type byte, then the fields. `LookWire` continues the numbering with types 8
+## and 9.
 ##
-## HELLO    C->S  u8 type=1, u8 version, then optionally the 8 bytes of the resume token the last
-##                WELCOME gave (a client that lost its socket asks for its seat back)
+## HELLO    C->S  u8 type=1, u8 version, u8 token length (0 or 8), the resume token the last WELCOME
+##                gave (a client that lost its socket asks for its seat back), then the rest is the
+##                ticket of the platform backend as text (empty when the server has no backend)
 ## WELCOME  S->C  u8 type=2, u8 version, u8 player_id, u8 tick_rate, 8 bytes of resume token, then a
 ##                packed variable: the rules' snapshot (`GameRules.to_dict()`), for a HUD that joins
 ##                in the middle (or comes back)
@@ -33,10 +35,10 @@ enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 3
+const VERSION := 4
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 3
+const MIN_VERSION := 4
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
@@ -44,6 +46,12 @@ const COMMAND_SIZE := 23
 ## The resume token a WELCOME gives: random, one for each connection, good for taking back the seat.
 const TOKEN_SIZE := 8
 const WELCOME_HEADER := 4 + TOKEN_SIZE
+## Type, version and the length of the resume token; a ticket makes a hello the longest message.
+const HELLO_HEADER := 3
+## The shortest hello there has been (version 3 and before had no token length): enough to read the
+## version of an old client.
+const HELLO_MIN := 2
+const MAX_HELLO := 1024
 const TICK_HEADER := 5
 ## What a packed variable may be once unpacked, so a hostile length cannot ask for gigabytes.
 const MAX_UNPACKED := 4 * 1024 * 1024
@@ -65,19 +73,37 @@ const F_SWAP := 1 << 10
 const F_USE_HELD := 1 << 11
 
 
-static func hello(token: PackedByteArray = PackedByteArray()) -> PackedByteArray:
-	var out := PackedByteArray([Type.HELLO, VERSION])
-	if token.size() == TOKEN_SIZE:
+static func hello(
+	token: PackedByteArray = PackedByteArray(), ticket: String = ""
+) -> PackedByteArray:
+	var kept := token.size() == TOKEN_SIZE
+	var out := PackedByteArray([Type.HELLO, VERSION, TOKEN_SIZE if kept else 0])
+	if kept:
 		out.append_array(token)
+	out.append_array(ticket.to_utf8_buffer())
 	return out
 
 
-## `{"version", "token"}` (the token empty when the client is new), or `{}` when the packet is not
-## a hello.
+## The protocol version a hello says (its second byte, whatever follows), or -1 when the packet is
+## not a hello: a server can turn an old client away by it though it cannot read the rest.
+static func hello_version(data: PackedByteArray) -> int:
+	return data[1] if data.size() >= 2 and data[0] == Type.HELLO else -1
+
+
+## `{"version", "token", "ticket"}` (the token empty when the client is new, the ticket empty when
+## it has none), or `{}` when the packet is not a hello.
 static func read_hello(data: PackedByteArray) -> Dictionary:
-	if (data.size() != 2 and data.size() != 2 + TOKEN_SIZE) or data[0] != Type.HELLO:
+	if data.size() < HELLO_HEADER or data[0] != Type.HELLO:
 		return {}
-	return {"version": data[1], "token": data.slice(2)}
+	var token_size := data[2]
+	if (token_size != 0 and token_size != TOKEN_SIZE) or data.size() < HELLO_HEADER + token_size:
+		return {}
+	var ticket_at := HELLO_HEADER + token_size
+	return {
+		"version": data[1],
+		"token": data.slice(HELLO_HEADER, ticket_at),
+		"ticket": data.slice(ticket_at).get_string_from_utf8(),
+	}
 
 
 static func refused(reason: Refusal) -> PackedByteArray:

@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest, 
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
+import { RateLimit } from "./limits.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService } from "./lobbies.ts";
 import { GameServerRegistry } from "./servers.ts";
 import { checkSave, SaveRejected } from "./saves.ts";
@@ -12,11 +13,22 @@ import { signToken, verifyToken } from "./tokens.ts";
 export const SESSION_TTL_SECONDS = 60 * 60;
 export const TICKET_TTL_SECONDS = 60;
 export const MAX_SAVE_BYTES = 64 * 1024;
+/** Guest sign-ins one address may make in an hour, and all addresses together. */
+export const GUESTS_PER_ADDRESS_PER_HOUR = 30;
+export const GUESTS_IN_ALL_PER_HOUR = 2000;
+/** A guest's `discord_id` column: its own namespace, never a number like a Discord snowflake. */
+export const GUEST_ID_PREFIX = "guest:";
+
+/** The name a guest chose, cleaned (letters, digits, spaces, a few marks), or `Guest 1234` when there is none. */
+export function guestName(given: string | undefined): string {
+  const cleaned = (given ?? "").replace(/[^\p{L}\p{N} _.'-]/gu, "").trim().slice(0, 24);
+  return cleaned.length > 0 ? cleaned : `Guest ${1000 + Math.floor(Math.random() * 9000)}`;
+}
 /** How often expired lobbies are dropped. */
 export const LOBBY_SWEEP_MS = 30_000;
 
 export interface Deps {
-  config: Pick<Config, "sessionSecret" | "ticketSecret" | "gameServerSecret">;
+  config: Pick<Config, "sessionSecret" | "ticketSecret" | "gameServerSecret"> & Partial<Pick<Config, "guestSignIn" | "corsOrigins">>;
   store: Store;
   discord: DiscordClient;
   registry: GameServerRegistry;
@@ -49,11 +61,26 @@ function sameSecret(given: string, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/**
+ * A Discord Activity reaches this API through the URL mapping `/api` of the Developer Portal. Discord's docs do not say
+ * whether the proxy strips the prefix before it forwards, so both are served: `/api/auth/guest` is `/auth/guest`.
+ * No route of ours starts with `/api`.
+ */
+export function stripApiPrefix(url: string): string {
+  const match = /^\/api(?=[/?]|$)/.exec(url);
+  if (match === null) return url;
+  const rest = url.slice(match[0].length);
+  return rest.startsWith("/") ? rest : `/${rest}`;
+}
+
 export function buildApp(deps: Deps): FastifyInstance {
   const { config, store, discord, registry } = deps;
   const app = Fastify({
     logger: deps.logger ?? false,
+    // Behind Railway's edge: the client's address is the first of X-Forwarded-For (for the guest sign-in limit).
+    trustProxy: true,
     bodyLimit: MAX_SAVE_BYTES + 1024,
+    rewriteUrl: (request) => stripApiPrefix(request.url ?? "/"),
     // Heartbeats and health checks arrive every few seconds and would drown the log. (The top-level
     // `disableRequestLogging` option is deprecated and goes in Fastify 6; the log controller replaces it.)
     logController: new LogController({
@@ -71,6 +98,23 @@ export function buildApp(deps: Deps): FastifyInstance {
   const sweeper = setInterval(() => lobbies.sweep(), LOBBY_SWEEP_MS);
   sweeper.unref();
   app.addHook("onClose", async () => clearInterval(sweeper));
+
+  // The web build is another origin than this API: the pages named in CORS_ORIGINS may call it from a browser (the
+  // answer to a preflight, and the allow header on every answer). Nobody else gets the header, so a page on another
+  // site cannot read what a signed-in player's browser asks for. The Authorization header is the only credential.
+  const corsOrigins = new Set(config.corsOrigins ?? []);
+  app.addHook("onRequest", async (request, reply) => {
+    const origin = request.headers.origin;
+    if (origin === undefined || !corsOrigins.has(origin)) return;
+    reply.header("Access-Control-Allow-Origin", origin);
+    reply.header("Vary", "Origin");
+    if (request.method === "OPTIONS") {
+      reply.header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
+      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      reply.header("Access-Control-Max-Age", "600");
+      return reply.code(204).send();
+    }
+  });
 
   const bearer = (request: FastifyRequest): string | null => {
     const header = request.headers.authorization;
@@ -129,6 +173,26 @@ export function buildApp(deps: Deps): FastifyInstance {
     },
   );
 
+  // Guests: a visitor with no Discord (the web build) gets a user of their own. The id is random and lives in its own
+  // `guest:` namespace, so a guest can never be, or be mistaken for, a Discord user. Anyone can call this, so it is
+  // limited per address and in all.
+  const guestsPerAddress = new RateLimit(GUESTS_PER_ADDRESS_PER_HOUR, 60 * 60_000, deps.now);
+  const guestsInAll = new RateLimit(GUESTS_IN_ALL_PER_HOUR, 60 * 60_000, deps.now);
+  app.post<{ Body: { name?: string } }>(
+    "/auth/guest",
+    { schema: { body: { type: "object", properties: { name: { type: "string", maxLength: 64 } } } } },
+    async (request, reply) => {
+      if (!config.guestSignIn) return reply.code(404).send({ error: "not_found" });
+      if (!guestsPerAddress.allow(request.ip) || !guestsInAll.allow("all")) {
+        return reply.code(429).send({ error: "too_many_guests" });
+      }
+      const name = guestName(request.body?.name);
+      const user = await store.upsertUser(`${GUEST_ID_PREFIX}${randomUUID()}`, name);
+      const token = signToken(config.sessionSecret, "session", user.id, SESSION_TTL_SECONDS, { name: user.name });
+      return reply.code(201).send({ token, expiresIn: SESSION_TTL_SECONDS, user: { id: user.id, name: user.name, guest: true } });
+    },
+  );
+
   // ---- lobbies
   const lobbyView = (lobby: Lobby) => ({
     id: lobby.id,
@@ -136,6 +200,8 @@ export function buildApp(deps: Deps): FastifyInstance {
     instanceId: lobby.instanceId,
     hostId: lobby.hostId,
     maxPlayers: lobby.maxPlayers,
+    visibility: lobby.visibility,
+    players: lobby.players,
     members: lobby.members,
     state: lobby.state,
     matchId: lobby.match?.id ?? null,
@@ -179,6 +245,11 @@ export function buildApp(deps: Deps): FastifyInstance {
 
   app.get<{ Params: { id: string } }>("/lobbies/:id", { onRequest: requireUser }, async (request) => {
     return lobbyView(lobbies.view(request.params.id, request.userId));
+  });
+
+  // Quick join: into a public night with room, or a new public one that starts at once.
+  app.post("/lobbies/quick", { onRequest: requireUser }, async (request, reply) => {
+    return reply.code(200).send(lobbyView(lobbies.quick(await member(request.userId))));
   });
 
   app.post<{ Params: { id: string } }>("/lobbies/:id/leave", { onRequest: requireUser }, async (request, reply) => {
@@ -246,7 +317,9 @@ export function buildApp(deps: Deps): FastifyInstance {
   );
 
   // ---- game servers (called by the headless Godot servers, never by players)
-  app.post<{ Body: { id: string; url: string; activityPath: string; capacity: number; matchIds?: string[] } }>(
+  app.post<{
+    Body: { id: string; url: string; activityPath: string; capacity: number; matchIds?: string[]; players?: Record<string, number> };
+  }>(
     "/internal/servers/heartbeat",
     {
       onRequest: requireGameServer,
@@ -261,12 +334,15 @@ export function buildApp(deps: Deps): FastifyInstance {
             capacity: { type: "integer", minimum: 0 },
             // The matches the server is running now; one it stops listing (after a grace) counts as ended.
             matchIds: { type: "array", maxItems: 1024, items: { type: "string", minLength: 1, maxLength: 64 } },
+            // How many players each match has now (match id to count), for the lobby's room left.
+            players: { type: "object", maxProperties: 1024, additionalProperties: { type: "integer", minimum: 0, maximum: 64 } },
           },
         },
       },
     },
     async (request, reply) => {
       registry.heartbeat({ ...request.body, matchIds: request.body.matchIds ?? [] });
+      for (const [matchId, players] of Object.entries(request.body.players ?? {})) lobbies.setPlayers(matchId, players);
       return reply.code(204).send();
     },
   );

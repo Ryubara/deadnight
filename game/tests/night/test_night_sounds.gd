@@ -1,10 +1,9 @@
 # What the night sounds like besides the guns, driven like a client: events in, sounds out. The
-# ambient bed starts with the night and stops with it, the boards, doors, blows, the till and the
-# player's voice play where they happen, and the score belongs to the breaks.
+# ambient bed starts with the night and stops with it, the boards, doors, blows and the till play
+# where they happen, and the score belongs to the breaks.
 extends GdUnitTestSuite
 
 const OWN := Night.PLAYER_ID
-const OTHER := 2
 const NEAR := Vector3.ONE * 0.01
 const BED_IDS: Array[StringName] = [&"bed_crickets", &"bed_highway", &"bed_score"]
 
@@ -55,18 +54,6 @@ func _tell(night: Night, event: Dictionary) -> void:
 
 func _breach(night: Night) -> StringName:
 	return night.world.barricade_ids()[0]
-
-
-func _hurt(player_id: int) -> Dictionary:
-	return {
-		"type": &"player_hurt",
-		"player_id": player_id,
-		"damage": 10.0,
-		"health": 90.0,
-		"max_health": 100.0,
-		"bearing": 0.0,
-		"source_id": 4,
-	}
 
 
 func _swing(weapon_id: StringName, muzzle: Vector3) -> Dictionary:
@@ -190,24 +177,6 @@ func test_a_purchase_rings_the_till_where_the_buyer_stands() -> void:
 	var heard := _last(&"till_ring")
 	assert_bool(heard.is_empty()).is_false()
 	assert_vector(heard["at"]).is_equal_approx(stands + NightSounds.HEAD_LIFT, NEAR)
-
-
-func test_the_player_s_own_pain_is_flat_and_a_teammate_s_is_where_they_are() -> void:
-	var night := await _start()
-	_tell(night, _hurt(OWN))
-	assert_object(_last(&"player_hurt")["at"]).is_null()
-	_heard.clear()
-	var frame: Dictionary = night.state.frame
-	frame["players"][OTHER] = {"pos": Vector3(4.0, 0.0, 3.0)}
-	_ears.global_position = Vector3(4.0, 0.0, 3.0)
-	_tell(night, _hurt(OTHER))
-	assert_vector(_last(&"player_hurt")["at"]).is_equal_approx(Vector3(4.0, 1.6, 3.0), NEAR)
-
-
-func test_going_down_has_a_voice() -> void:
-	var night := await _start()
-	_tell(night, {"type": &"player_downed", "player_id": OWN, "cause": &"blow", "bearing": 0.0})
-	assert_array(_ids()).contains([&"player_downed"])
 
 
 func test_a_swing_of_the_crowbar_whooshes_and_a_gun_does_not() -> void:

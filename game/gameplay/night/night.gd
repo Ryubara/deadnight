@@ -31,13 +31,15 @@ signal connection_ended
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
 
+## Sounds that may start in one frame during the night (`AudioService.starts_per_frame`): the
+## frame of a kill starts six, and each costs about a millisecond in the browser.
+const SOUND_STARTS_PER_FRAME := 2
 ## Share of the loading bar the lot's own build takes, before the warm-up starts.
 const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
 const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
 const SEED := 1958
-const SPECTATOR_OFFSET := Vector3(0.0, 11.0, 8.0)
 ## How far past the low-tank line (a fraction of a full tank) the bot waits before it lights an
 ## area again.
 const SWITCH_RESUME_MARGIN := 0.15
@@ -69,8 +71,23 @@ var view: NightView
 ## Where the grenade in the local player's hand would go (`show_throw`).
 var preview: GrenadePreview
 var autopilot: Autopilot
+## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
+## `start_remote` they are the ones the server's WELCOME carried.
+var match_settings := MatchSettings.new()
+## () -> bool, whether the touch layer is up, set by the screen that owns it. The touch player's
+## aim help (`assist`) works only while it says yes.
+var touch_active := Callable()
+## The touch player's aim help, once the night has begun (a human's night only).
+var assist: TouchAimAssist
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
+## The player's challenges, set before `start` by the screen a person plays on (bots, captures and
+## tests leave it empty, so they never touch the save). The night counts into it as it plays.
+var challenge_board: ChallengeBoard
+var challenges: ChallengeSession
+## Puts the names and the next door on the HUD from the player's camera (made with the view, when
+## there is a HUD).
+var markers: NightMarkers
 ## Ticks run in each physics frame: 1 is real time; a test turns it up to play faster.
 ## (Engine.time_scale would scale the step itself, which is not the same night.)
 var ticks_per_frame := 1
@@ -83,6 +100,9 @@ var running := false
 var warm_up := false
 ## The warm-up, once it ran: it holds what it loaded for as long as the night lasts.
 var warmup: NightWarmup
+## The night's own numbers (hands, reach, the bot's camera): set before `start` to play another
+## table; without one the shipped `night_tuning_default.tres` is read when the night starts.
+var night_tuning: NightTuning
 
 var _human := HumanController.new()
 ## Held here: a Callable does not keep its RefCounted alive.
@@ -92,7 +112,6 @@ var _spectator: Camera3D
 var _body: Player
 var _mirror: WorldMirror
 var _seq := 0
-var _repair_interval := NightTuning.new().repair_interval
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
 var _hud_binding: NightHudBinding
@@ -114,6 +133,8 @@ func start(
 	p_mode: Mode = Mode.HUMAN, p_seed: int = SEED, p_rules_tuning: RulesTuning = null
 ) -> void:
 	mode = p_mode
+	if night_tuning == null:
+		night_tuning = NightTuning.shipped()
 	loading.emit(0.0, "Building the lot")
 	if warm_up:
 		# The build takes the main thread for seconds: let the loading screen be drawn first.
@@ -123,11 +144,12 @@ func start(
 	add_child(world)
 	await world.build()
 	loading.emit(BUILD_SHARE, "Setting up")
-	server = NightServer.new(world, p_seed, null, p_rules_tuning)
+	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
+	_track_challenges()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
@@ -162,6 +184,8 @@ func start_remote(
 ) -> bool:
 	mode = p_mode
 	remote = true
+	if night_tuning == null:
+		night_tuning = NightTuning.shipped()
 	world = NightWorld.new()
 	add_child(world)
 	await world.build()
@@ -169,6 +193,7 @@ func start_remote(
 	var online := p_link if p_link != null else WebSocketLink.new()
 	link = online
 	state = ClientState.new()
+	_track_challenges()
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
@@ -204,13 +229,17 @@ func start_remote(
 		camera = _make_spectator()
 	if mode == Mode.AUTOPILOT:
 		_make_autopilot()
+	var open_doors: Array = welcome["snapshot"].get("doors_open", [])
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 		hud.state.load_snapshot(welcome["snapshot"])
+	match_settings = MatchSettings.from_snapshot(welcome["snapshot"])
 	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
 	_equip_sync = WeaponEquipSync.new(state, _body_of)
 	online.delivered.disconnect(keep)
 	_build_view(camera)
+	if markers != null:
+		markers.load_doors(open_doors)
 	view.step = Night.STEP * NightHost.SEND_EVERY
 	_mirror = WorldMirror.new(world, view)
 	avatars = RemoteAvatars.new()
@@ -266,6 +295,13 @@ func _last_frame(events: Array) -> Dictionary:
 	return {}
 
 
+## Counts the night into the player's challenges, when there is a board to count into.
+func _track_challenges() -> void:
+	if challenge_board != null:
+		challenges = ChallengeSession.new(challenge_board, rules_tuning)
+		challenges.attach(state)
+
+
 ## The view and the sounds, once there is a camera to look through.
 func _build_view(camera: Camera3D) -> void:
 	view = NightView.new()
@@ -281,8 +317,30 @@ func _build_view(camera: Camera3D) -> void:
 	add_child(NightLight.new(world.greybox.get_node("Lighting"), rules_tuning.rounds, state))
 	_add_sounds()
 	view.hear(world)
+	if hud != null:
+		_add_markers()
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
+
+
+## The world markers of the HUD: the other players' names and the next door, projected through
+## whichever camera is current; the damage numbers follow their hits the same way.
+func _add_markers() -> void:
+	markers = NightMarkers.new()
+	markers.name = "NightMarkers"
+	add_child(markers)
+	markers.setup(hud.state, state, world, rules_tuning)
+	markers.drawn = _drawn_player
+	hud.crosshair.projector = markers.screen_of
+
+
+## The node a player is drawn by on this client: their body here, or their avatar from the frames.
+func _drawn_player(player_id: int) -> Node3D:
+	if not remote:
+		return server.body_of(player_id)
+	if player_id == state.player_id:
+		return _body
+	return avatars.avatar(player_id) if avatars != null else null
 
 
 ## The warm-up (when asked for), then the first tick. A client on a game server goes on reading
@@ -299,8 +357,21 @@ func _go() -> void:
 		)
 		await warmup.run(self)
 		_warming = false
+	# Only the game limits them: a test that needs no pictures hears every sound at once.
+	Audio.starts_per_frame = SOUND_STARTS_PER_FRAME if warm_up else 0
+	if mode == Mode.HUMAN:
+		_make_assist()
 	running = true
 	ready_to_play.emit()
+
+
+## The touch player's aim help, over the picture of the night this client has.
+func _make_assist() -> void:
+	if _sight == null:
+		_sight = WorldProbe.new(get_world_3d().direct_space_state)
+	assist = TouchAimAssist.new(get_tree(), state, _sight.callable())
+	assist.touch_active = func() -> bool: return touch_active.is_valid() and touch_active.call()
+	_human.assist = assist
 
 
 ## The look this client wears: the one a test or `--look` set, else the saved one.
@@ -310,13 +381,14 @@ func _wanted_look() -> CharacterLook:
 
 func _make_spectator() -> Camera3D:
 	_spectator = Camera3D.new()
-	_spectator.fov = 60.0
+	_spectator.fov = night_tuning.spectator_fov
 	add_child(_spectator)
 	_spectator.make_current()
 	return _spectator
 
 
-## The guns, the grenades and the lot's machines and shop sound from the same events as the view.
+## The guns, the grenades, the lot's machines and shop and the soldiers' voices sound from the same
+## events as the view.
 func _add_sounds() -> void:
 	var weapons := WeaponSounds.new()
 	weapons.name = "WeaponSounds"
@@ -332,6 +404,10 @@ func _add_sounds() -> void:
 	var tuning: RulesTuning = rules_tuning
 	var generator := world.greybox.get_node_or_null("GeneratorYard/Generator") as Node3D
 	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
+	var voice := SoldierVoice.new()
+	voice.name = "SoldierVoice"
+	add_child(voice)
+	voice.setup(state)
 
 
 ## Where the prize crane stands at `spot` (the rules' list of crane places), or null.
@@ -399,7 +475,10 @@ func set_paused(paused: bool) -> void:
 
 
 func _exit_tree() -> void:
+	Audio.starts_per_frame = 0
 	running = false
+	if challenges != null:
+		challenges.flush()
 	if server != null:
 		server.close()
 	if remote and link != null:
@@ -422,11 +501,20 @@ func tick() -> void:
 	if remote:
 		_tick_remote()
 		return
+	var began := PerfProbe.begin()
 	link.pump()
-	link.broadcast(server.step(STEP))
+	PerfProbe.end(&"tick.pump", began)
+	began = PerfProbe.begin()
+	var events := server.step(STEP)
+	PerfProbe.end(&"tick.server", began)
+	began = PerfProbe.begin()
+	link.broadcast(events)
+	PerfProbe.end(&"tick.client", began)
 	match mode:
 		Mode.AUTOPILOT:
+			began = PerfProbe.begin()
 			var command := autopilot.decide(STEP)
+			PerfProbe.end(&"tick.bot", began)
 			if shoulder_camera:
 				_aim_rig(command)
 			link.send(command.to_dict())
@@ -495,6 +583,9 @@ func _on_remote_event(event: Dictionary) -> void:
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
+	if me.get("turn", false):
+		_body.state.facing = me["facing"]
+		_body.rotation.y = _body.state.facing
 
 
 ## Shows, for the command the local player is about to send, where the grenade they are holding
@@ -509,7 +600,6 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 	add_child(preview)
 	_throw_cast = WorldCast.new(get_world_3d().direct_space_state)
 	preview.setup(def, _throw_cast.callable())
-	var night_tuning: NightTuning = server.tuning if server != null else NightTuning.new()
 	preview.hand_reach = night_tuning.grenade_hand_reach
 	preview.release_over = night_tuning.grenade_release_over
 	preview.release_under = night_tuning.grenade_release_under
@@ -589,7 +679,7 @@ func _animation_of(player_id: int) -> PlayerAnimation:
 
 ## The seconds between boards: the server's in this process, else the shared default.
 func _repair_seconds() -> float:
-	return server.tuning.repair_interval if server != null else _repair_interval
+	return night_tuning.repair_interval
 
 
 func _make_autopilot() -> void:
@@ -611,6 +701,11 @@ func _make_autopilot() -> void:
 					autopilot.crane_pool.assign(item.pool)
 			ShopItem.Kind.AMMO:
 				autopilot.ammo_prices[item.weapon] = item.price
+			ShopItem.Kind.UPGRADE:
+				autopilot.recut_price = item.price
+			ShopItem.Kind.TONIC:
+				if item.health_bonus > 0.0:
+					autopilot.tonic_price = item.price
 	autopilot.wanted.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
@@ -653,4 +748,6 @@ func _follow(_delta: float) -> void:
 	if _spectator == null or not state.has_frame():
 		return
 	var at := state.position()
-	_spectator.look_at_from_position(at + SPECTATOR_OFFSET, at + Vector3(0.0, 1.0, -3.0))
+	_spectator.look_at_from_position(
+		at + night_tuning.spectator_offset, at + night_tuning.spectator_look_at
+	)

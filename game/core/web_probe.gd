@@ -28,6 +28,8 @@ func _ready() -> void:
 	_object = JavaScriptBridge.create_object("Object")
 	JavaScriptBridge.get_interface("window").deadnight = _object
 	add_child(JudderProbe.new())
+	add_child(FlashWebProbe.new())
+	add_child(ViewWebProbe.new())
 
 
 func _process(delta: float) -> void:
@@ -58,11 +60,26 @@ static func snapshot(top: Control) -> Dictionary:
 		"rtt_ms": -1.0,
 		"yaw": 0.0,
 		"interpolated": false,
-		"touch": false
+		"room_code": "",
+		"room_status": "",
+		"touch": false,
+		"tab": "",
+		"stage": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
+	var menu := top as MainMenu
+	if menu != null and menu.shell != null:
+		data["tab"] = MenuTab.label(menu.shell.tab)
+		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
+	var together := top as TogetherScreen
+	if together != null:
+		# The invite of the night just made and what the screen says (a browser test reads both).
+		data["room_code"] = (
+			together.invite_code.text if together.invite_code.is_visible_in_tree() else ""
+		)
+		data["room_status"] = together.status.text
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data

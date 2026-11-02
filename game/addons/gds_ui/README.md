@@ -9,7 +9,7 @@ behind it, with the measurements, are in the game's `docs/research/ui-foundation
 | Folder | What |
 | --- | --- |
 | `tokens/` | `UITokens` (the resource), `UIThemeBuilder` (tokens to `Theme`) |
-| `components/` | `UIScreen`, `UIButton`, `UILabel`, `UIPanel`, `UIRow`, `UISlider`, `UIToggle`, `UIOptionSelector` |
+| `components/` | `UIScreen`, `UIButton`, `UILabel`, `UIPanel`, `UIRow`, `UISlider`, `UIToggle`, `UIOptionSelector`, `UICheckBox`, `UILineEdit`, `UIScroll`, `UIItemList` |
 | `router/` | `UIRouter` (the autoload) and the transitions: fade, slide, film burn, iris |
 | `shaders/` | `film_burn`, `projector_iris`, and the shared hash include |
 | `motion/`, `core/` | `UIMotion` (tweens, reduced motion), `UISpring`, `UIAudio`, `UIInputMode`, `UIFocusRing` |
@@ -108,6 +108,26 @@ unset handler is a silent no-op):
 | `tick` | a slider's value changes |
 | `push`, `pop` | the router starts showing a new screen, or going back |
 | `back` | Esc or gamepad B pops the top screen |
+
+## Button prompts
+
+`UIGlyph` draws the button to press for an action: a keycap or mouse button for the keyboard and mouse, or the gamepad
+button (a lettered disc, the four PlayStation shapes, a shoulder or trigger, a d-pad cross, a stick, start or back),
+chosen by the last device used (`UIInputMode`). It reads the action's binding from the `InputMap`, so a rebound key shows
+the new key (call `refresh()` after changing the map), and it sinks while the action is held. `UIHint` is a glyph with
+its words ("Select", "Back"); a row of them is the key-hint line at the foot of a screen, and they hide under a finger.
+
+```gdscript
+var hint := UIHint.new()
+hint.action = &"ui_accept"
+hint.text = "Select"
+footer.add_child(hint)
+```
+
+`UIInputMode.changed()` is emitted when `gamepad`, `touch` or `family` changes: glyphs follow it, so none polls.
+`UIInputMode.family` (`GENERIC`, `PLAYSTATION`, `NINTENDO`) comes from the name the OS gives the pad
+(`UIInputMode.family_for(name)`). Nothing is an image: every shape is drawn from tokens, so there is no asset to license
+and a restyle reaches it. See `demo/glyph_sheet.tscn`.
 
 ## Router calls
 

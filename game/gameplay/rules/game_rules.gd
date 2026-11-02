@@ -24,6 +24,7 @@ extends RefCounted
 ##   special_round_announced: round (the coming one), special_id, title, kind (boss or only),
 ##     boss_type, boss_count, seconds (until it starts); right after the break_started of the break
 ##     before a special round
+##   settings_changed: settings (MatchSettings.to_dict), after a configure action, before the start
 ##   round_started: round, zombie_count, special_id (&"" for a normal round), boss_count
 ##   special_round_cleared: round, special_id, reward (paid to each player on their feet)
 ##   round_ended: round, special_id
@@ -39,13 +40,15 @@ extends RefCounted
 ##   player_added: player_id, grenades (the count they start with), health, max_health
 ##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
 ##     seen from above, where the blow came from), source_id (the zombie, -1 for none)
-##   player_healed: player_id, health, max_health, reason (regen or revive); regen sends one when
-##     the whole-unit health changes, about once per unit mended
+##   player_healed: player_id, health, max_health, reason (regen, revive or tonic: a health tonic
+##     raised the most); regen sends one when the whole-unit health changes, about once per unit
+##     mended
 ##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow)
 ##   player_removed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
-##     catalogue weapon, and `rounds` into its reserve; a crane play: `crane_spot`, see CranePlay)
+##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
+##     a crane play: `crane_spot`, see CranePlay)
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   crane_*: the prize crane's play, see `CranePlay`
 ##   door_opened: door_id
@@ -56,7 +59,8 @@ extends RefCounted
 ##   fuel_low, fuel_empty, fuel_restored
 ##   circuit_changed: circuit_id, on
 ##   game_over: reason (all_down or no_players), round_reached
-##   action_rejected: reason, action (the type), field (when one field is to blame)
+##   action_rejected: reason, action (the type), field (when one field is to blame); `reentrant` is
+##     the answer to an action sent from inside an event listener, and is returned, never emitted
 
 signal event_emitted(event: Dictionary)
 
@@ -73,13 +77,17 @@ enum BuyResult {
 	TANK_FULL,
 	AMMO_FULL,
 	CRANE_BUSY,
+	## A re-cut with no weapon in hand that can take one.
+	NO_WEAPON,
+	PLAYER_DOWNED,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 8 added the prize crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's
-## health, 5 the plan, special round and a zombie's type, health, speed. Two older layouts both
-## called themselves 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 8
+## 10 added the match settings (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize
+## crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the
+## plan, special round and a zombie's type, health, speed. Two older layouts both called themselves
+## 4; every older snapshot is refused as `bad_version`.
+const SNAPSHOT_VERSION := 10
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -104,6 +112,7 @@ const SNAPSHOT_KEYS := {
 	"generator": TYPE_DICTIONARY,
 	"barricades": TYPE_DICTIONARY,
 	"crane": TYPE_DICTIONARY,
+	"match_settings": TYPE_DICTIONARY,
 	"spawn_rng_state": TYPE_INT,
 	"shop_rng_state": TYPE_INT,
 	"cripple_rng_state": TYPE_INT,
@@ -116,6 +125,10 @@ const CRIPPLE_STREAM := 0xC21B
 const CRANE_STREAM := 0xC4A7
 
 var tuning: RulesTuning
+## The match settings the night runs under: set before it starts (`RulesAction.configure`, or the
+## constructor), then read-only.
+var settings: MatchSettings
+## The night's seed, given at construction and kept in the snapshot.
 var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
 var round_number: int = 0
@@ -141,13 +154,18 @@ var _shop_rng := RandomNumberGenerator.new()
 var _cripple_rng := RandomNumberGenerator.new()
 var _crane_rng := RandomNumberGenerator.new()
 var _events: Array[Dictionary] = []
+## True while `apply` hands its events to the listeners of `event_emitted`.
+var _delivering := false
 ## The whole-unit fuel value the last `fuel_changed` event announced.
 var _fuel_announced: int = 0
 
 
-## A fresh night. `p_tuning` defaults to the shipped table.
-func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
+## A fresh night. `p_tuning` null means the shipped table. The seed has no default: every random
+## stream of the night comes from it, so whoever builds the night (the server) chooses it, and the
+## snapshot records it. `p_settings` null means the usual rules (`MatchSettings.new()`).
+func _init(p_tuning: RulesTuning, p_seed: int, p_settings: MatchSettings = null) -> void:
 	tuning = p_tuning if p_tuning != null else load(DEFAULT_TUNING_PATH)
+	settings = p_settings.clamped() if p_settings != null else MatchSettings.new()
 	rng_seed = p_seed
 	_spawn_rng.seed = p_seed ^ SPAWN_STREAM
 	_shop_rng.seed = p_seed ^ SHOP_STREAM
@@ -168,7 +186,15 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 
 
 ## The one way in. Returns the events the action caused, in order.
+##
+## An action sent from inside an `event_emitted` listener (while the events of the action before it
+## are still being handed out) is answered with one `reentrant` rejection and changes nothing: it
+## would change the state under the listeners still waiting for the earlier events, and the order
+## clients see would depend on who listened first. A listener that wants something done after
+## an action tells its owner, which sends it once `apply` has returned.
 func apply(action: Dictionary) -> Array[Dictionary]:
+	if _delivering:
+		return [{"type": &"action_rejected", "reason": &"reentrant", "action": action.get("type")}]
 	_events = []
 	var problem := RulesAction.validate(action)
 	if problem.is_empty():
@@ -176,8 +202,10 @@ func apply(action: Dictionary) -> Array[Dictionary]:
 	else:
 		_reject(problem["reason"], action.get("type"), problem["field"])
 	var caused := _events
+	_delivering = true
 	for event in caused:
 		event_emitted.emit(event)
+	_delivering = false
 	return caused
 
 
@@ -193,10 +221,16 @@ func is_door_open(door_id: StringName) -> bool:
 	return doors_open.has(door_id)
 
 
-## What an item costs right now, or -1 when there is no such item.
-func price_of(item_id: StringName) -> int:
+## What an item costs right now, or -1 when there is no such item. With a `player_id`, what that
+## player pays: a re-cut costs more for each weapon they have re-cut already (-1 for no player).
+func price_of(item_id: StringName, player_id: int = -1) -> int:
 	var item := tuning.economy.item(item_id)
-	return item.price_at(round_number) if item != null else -1
+	if item == null:
+		return -1
+	if player_id < 0:
+		return item.price_at(round_number)
+	var player := players.get(player_id) as PlayerState
+	return ShopCounter.price(self, item, player) if player != null else -1
 
 
 ## A player's health (0 when they are down or unknown).
@@ -308,6 +342,8 @@ func _dispatch(action: Dictionary) -> void:
 				_enter_break(tuning.rounds.intro_seconds)
 		RulesAction.TICK:
 			_tick(action["delta"])
+		RulesAction.CONFIGURE:
+			_configure(action["settings"])
 		RulesAction.SKIP_BREAK:
 			if phase == Phase.BREAK:
 				_begin_round()
@@ -334,7 +370,12 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.TEAR_BOARD:
 			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
-			_buy(action["player_id"], action["item_id"], action.get("rounds", -1))
+			_buy(
+				action["player_id"],
+				action["item_id"],
+				action.get("rounds", -1),
+				StringName(action.get("weapon", &""))
+			)
 		RulesAction.CRANE_TAKE:
 			CranePlay.take(self, action["player_id"])
 		RulesAction.SET_CIRCUIT:
@@ -343,7 +384,7 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.USE_GRENADE:
 			_use_grenade(action["player_id"])
 		RulesAction.EXPLOSION:
-			_explosion(action["player_id"], action["victims"])
+			ExplosionPlay.explode(self, action["player_id"], action["victims"])
 		RulesAction.GRANT_POINTS:
 			if players.has(action["player_id"]):
 				_award(action["player_id"], action["amount"], action.get("reason", &"grant"))
@@ -398,6 +439,16 @@ func _tick(delta: float) -> void:
 			_tick_spawning(delta)
 
 
+## Takes the settings of a `configure` action. Only before the night: the rules of a match in
+## progress do not change under the players.
+func _configure(data: Dictionary) -> void:
+	if phase != Phase.IDLE:
+		_reject(&"wrong_phase", RulesAction.CONFIGURE)
+		return
+	settings = MatchSettings.from_dict(data)
+	_emit(&"settings_changed", {"settings": settings.to_dict()})
+
+
 func _enter_break(seconds: float) -> void:
 	var coming := tuning.specials.special_for(round_number + 1)
 	if coming != null:
@@ -435,7 +486,9 @@ func _begin_round() -> void:
 
 ## The types of every zombie of the round, in the order they spawn.
 func _plan_round() -> Array[StringName]:
-	var normal := tuning.rounds.zombies_for_round(round_number, _round_players)
+	var normal := settings.scaled_count(
+		tuning.rounds.zombies_for_round(round_number, _round_players)
+	)
 	if _special == null:
 		return tuning.roster.plan_for_round(round_number, normal, _spawn_rng)
 	return _special.plan(round_number, _round_players, normal, tuning.roster, _spawn_rng)
@@ -455,8 +508,8 @@ func _type(type_id: StringName) -> ZombieType:
 
 func _tick_spawning(delta: float) -> void:
 	_spawn_timer -= delta
-	var cap := tuning.rounds.alive_cap(round_number, _round_players)
-	var interval := tuning.rounds.spawn_interval(round_number, _round_players)
+	var cap := settings.alive_cap(tuning.rounds, round_number, _round_players)
+	var interval := settings.spawn_interval(tuning.rounds, round_number, _round_players)
 	if _special != null and _special.kind == SpecialRound.Kind.ONLY:
 		interval /= _special.spawn_rate
 	while _spawn_timer <= 0.0 and not _plan.is_empty() and _zombies.size() < cap:
@@ -545,7 +598,7 @@ func _end_round() -> void:
 		_emit(&"special_round_cleared", _special.cleared(round_number))
 	_emit(&"round_ended", {"round": round_number, "special_id": special_id()})
 	_special = null
-	_enter_break(tuning.rounds.break_seconds)
+	_enter_break(settings.break_for(tuning.rounds))
 
 
 ## The night ends when nobody is left in it (a break or a round) or, in a round, everyone is down.
@@ -755,56 +808,6 @@ func _set_grenades(player: PlayerState, count: int, reason: StringName) -> void:
 	)
 
 
-## One blast: what it did to each zombie, in the order given. Each takes its damage off its health
-## and pays like a hit (the blast that kills pays `explosion_kill`); a zombie that lives may then
-## lose its legs. A zombie already gone is skipped, so a blast racing a gunshot is harmless.
-func _explosion(player_id: int, victims: Array) -> void:
-	if phase != Phase.ACTIVE:
-		_reject(&"wrong_phase", RulesAction.EXPLOSION)
-		return
-	if not players.has(player_id):
-		_reject(&"unknown_player", RulesAction.EXPLOSION)
-		return
-	for victim: Dictionary in victims:
-		var zombie := _zombies.get(int(victim["zombie_id"])) as ZombieState
-		if zombie != null:
-			_blast_one(player_id, zombie, float(victim["damage"]), float(victim["leg_damage"]))
-
-
-func _blast_one(player_id: int, zombie: ZombieState, damage: float, leg_damage: float) -> void:
-	var type := _type(zombie.type)
-	var dealt := minf(damage, zombie.health)
-	zombie.health -= dealt
-	zombie.leg_damage += minf(leg_damage, dealt)
-	_emit_damaged(zombie, player_id, RulesAction.ZONE_BLAST, dealt)
-	if zombie.health <= 0.0:
-		_award(player_id, _scaled(tuning.explosives.explosion_kill, type), &"explosion_kill")
-		players[player_id].kills += 1
-		_remove_zombie(zombie.id, &"killed", player_id, RulesAction.ZONE_BLAST, false)
-		return
-	if zombie.paid_hits < _paid_hit_limit(type):
-		zombie.paid_hits += 1
-		_award(player_id, _scaled(tuning.economy.hit, type), &"hit")
-	var cause := _cripple_cause(zombie)
-	if cause != &"":
-		zombie.crippled = true
-		var crawler := tuning.roster.type_of(_type(zombie.type).crawls_into)
-		if crawler != null:
-			zombie.type = crawler.id
-		_emit(
-			&"zombie_crippled",
-			{
-				"zombie_id": zombie.id,
-				"zombie_type": zombie.type,
-				"look": _type(zombie.type).look_for(zombie.id << 8),
-				"player_id": player_id,
-				"cause": cause,
-				"health": zombie.health,
-				"speed_scale": tuning.explosives.crawler_speed_fraction,
-			}
-		)
-
-
 ## Why a zombie that survived a blast loses its legs, or an empty name. Its legs go when enough of
 ## the blast landed on them; failing that, a zombie left badly hurt (inside the band) may lose them
 ## on a seeded roll. The roll is drawn only for a zombie in the band, so the stream is a function
@@ -855,8 +858,8 @@ func _tear_board(id: StringName, zombie_id: int) -> void:
 # --- The shop ---
 
 
-func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
-	var quote := _quote(player_id, item_id, rounds)
+func _buy(player_id: int, item_id: StringName, rounds: int = -1, weapon: StringName = &"") -> void:
+	var quote := ShopCounter.quote(self, player_id, item_id, rounds, weapon)
 	if quote.result != BuyResult.OK:
 		_emit(
 			&"purchase_denied", {"player_id": player_id, "item_id": item_id, "result": quote.result}
@@ -874,7 +877,7 @@ func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
 			"reason": &"purchase",
 		}
 	)
-	var detail := _grant(player, quote)
+	var detail := ShopCounter.grant(self, player, quote)
 	_emit(
 		&"purchase_made",
 		{"player_id": player_id, "item_id": item_id, "price": quote.price, "detail": detail}
@@ -889,111 +892,3 @@ func _buy(player_id: int, item_id: StringName, rounds: int = -1) -> void:
 				"plays": crane.plays,
 			}
 		)
-
-
-func _quote(player_id: int, item_id: StringName, rounds: int = -1) -> Quote:
-	var quote := Quote.new()
-	var player := players.get(player_id) as PlayerState
-	var item := tuning.economy.item(item_id)
-	if phase != Phase.BREAK and phase != Phase.ACTIVE:
-		quote.result = BuyResult.WRONG_PHASE
-	elif player == null:
-		quote.result = BuyResult.UNKNOWN_PLAYER
-	elif item == null:
-		quote.result = BuyResult.UNKNOWN_ITEM
-	else:
-		quote.item = item
-		quote.price = item.price_at(round_number)
-		quote.rounds_offered = rounds
-		quote.result = _check_item(player, quote)
-	if quote.result == BuyResult.OK and player.points < quote.price:
-		quote.result = BuyResult.NOT_ENOUGH_POINTS
-	return quote
-
-
-## Whether the item can be sold to this player at all, ignoring their points. A fuel quote also gets
-## its real price: you pay only for the room in the tank.
-func _check_item(player: PlayerState, quote: Quote) -> BuyResult:
-	var item := quote.item
-	var result := BuyResult.OK
-	match item.kind:
-		ShopItem.Kind.DOOR:
-			if doors_open.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-			elif item.requires != &"" and not doors_open.has(item.requires):
-				result = BuyResult.LOCKED
-		ShopItem.Kind.WEAPON:
-			if player.weapons.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-		ShopItem.Kind.CRANE:
-			if item.pool_without(player.weapons).is_empty():
-				result = BuyResult.ALREADY_OWNED
-			elif not crane.is_ready():
-				result = BuyResult.CRANE_BUSY
-		ShopItem.Kind.TONIC:
-			if player.tonics.has(item.id):
-				result = BuyResult.ALREADY_OWNED
-			elif player.tonics.size() >= tuning.economy.max_tonics:
-				result = BuyResult.LIMIT_REACHED
-		ShopItem.Kind.GRENADES:
-			var room := tuning.explosives.max_grenades - player.grenades
-			if room <= 0:
-				result = BuyResult.LIMIT_REACHED
-			else:
-				quote.grenades_added = mini(int(item.amount), room)
-				quote.price = ceili(float(quote.price) * quote.grenades_added / item.amount)
-		ShopItem.Kind.AMMO:
-			# The weapon's reserve is the combat server's: the buyer says how many rounds fit
-			# (none given: all of them) and the rules price exactly those.
-			var fit := int(item.amount)
-			if quote.rounds_offered >= 0:
-				fit = mini(quote.rounds_offered, fit)
-			if fit <= 0:
-				result = BuyResult.AMMO_FULL
-			else:
-				quote.ammo_added = fit
-				quote.price = item.ammo_price(round_number, fit)
-		ShopItem.Kind.FUEL:
-			var offer := item.fuel_offer(round_number, generator.space())
-			if offer["units"] <= 0.0:
-				result = BuyResult.TANK_FULL
-			else:
-				quote.fuel_added = offer["units"]
-				quote.price = offer["price"]
-	return result
-
-
-## Hands over what was bought; returns what the event's `detail` should say.
-func _grant(player: PlayerState, quote: Quote) -> Dictionary:
-	var item := quote.item
-	match item.kind:
-		ShopItem.Kind.DOOR:
-			doors_open.append(item.id)
-			_emit(&"door_opened", {"door_id": item.id})
-		ShopItem.Kind.WEAPON:
-			player.weapons.append(item.id)
-			return {"weapon": item.id}
-		ShopItem.Kind.CRANE:
-			return CranePlay.start(self, player, quote.price)
-		ShopItem.Kind.TONIC:
-			player.tonics.append(item.id)
-		ShopItem.Kind.FUEL:
-			return {"fuel": generator.add_fuel(quote.fuel_added)}
-		ShopItem.Kind.GRENADES:
-			_set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
-			return {"grenades": quote.grenades_added}
-		ShopItem.Kind.AMMO:
-			return {"ammo": item.weapon, "rounds": quote.ammo_added}
-	return {}
-
-
-## A priced, checked purchase that has not happened yet.
-class Quote:
-	extends RefCounted
-	var result: BuyResult = BuyResult.OK
-	var item: ShopItem
-	var price: int = 0
-	var fuel_added: float = 0.0
-	var grenades_added: int = 0
-	var rounds_offered: int = -1
-	var ammo_added: int = 0

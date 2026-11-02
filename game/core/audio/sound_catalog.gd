@@ -32,10 +32,9 @@ const GROUP_LIMITS := {
 	&"door": 2,
 	&"melee": 4,
 	&"till": 2,
-	&"player_voice": 3,
+	&"soldier_voice": 3,
 	&"bed": 4,
 	# The arms and the lot (`ArmsCatalog`).
-	&"gun_blast": 5,
 	&"gun_tail": 4,
 	&"impact": 6,
 	&"swap": 2,
@@ -92,6 +91,7 @@ static func _build() -> void:
 	_add(&"ui_pop", "ui/pop_%d.ogg", 1, _with(ui, {"volume_db": -3.0}))
 
 	ArmsCatalog.build(_add)
+	SoldierVoiceCatalog.build(_add)
 
 	var step := {
 		"group": &"step",
@@ -365,22 +365,6 @@ static func _build_night() -> void:
 			"unit_size": 8.0,
 			"volume_db": -4.0
 		}
-	)
-	var voice := {
-		"bus": BUS_VOICE,
-		"group": &"player_voice",
-		"pitch_semitones": 1.0,
-		"max_distance": 45.0,
-		"unit_size": 7.0
-	}
-	_add(
-		&"player_hurt",
-		"player/grunt_%d.ogg",
-		3,
-		_with(voice, {"priority": 85, "volume_db": -2.0, "cooldown": 0.15})
-	)
-	_add(
-		&"player_downed", "player/down_%d.ogg", 2, _with(voice, {"priority": 88, "volume_db": -3.0})
 	)
 
 	var bed := {

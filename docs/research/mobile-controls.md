@@ -55,7 +55,7 @@ thumbs, so most of the work is deciding what to remove, fold into another contro
   choosing.
 - Common practice for aim assist: a slight slowdown of the look speed while the crosshair is over a target (friction)
   and a small pull toward it while ADS (magnetism), strongest on touch, off for sniping. It is tuned by play, so make
-  the strength a number in settings.
+  the strength a number in settings (built in #286: [Touch aim assist](aim-assist.md)).
 
 ### Buttons: size, place and opacity
 
@@ -205,7 +205,8 @@ dp. Buttons are drawn at 50 percent opacity at rest and 90 percent while held, w
 
 ## Open questions for the maintainer
 
-1. **Auto-fire:** off by default (ammunition is limited), or on while ADS on a target?
+1. **Auto-fire:** off by default (ammunition is limited), or on while ADS on a target? (Answered in #470: on, while
+   aiming; off makes Aim a toggle.)
 2. **Aim assist strength:** none, light friction, or friction plus magnetism? The touch player faces the same zombies
    as a mouse player; a gentle default keeps co-op fair.
 3. **Gyro:** offer it, given the iOS permission prompt and that it is unverified in a Discord Activity?
@@ -229,7 +230,7 @@ game does now:
 | Interact, a pill at bottom centre | A round button left of Fire, captioned with the verb (OPEN, BUY, REPAIR, FUEL, SWITCH, TAKE, REVIVE) | The prompt card is at bottom centre and stays (it names the object and the price); the thumb reaches the button without leaving Fire |
 | Jump above Fire | Jump below and left of Fire, Reload and Aim above it | The ammo card fills the bottom right corner: the first layout put Jump 26 units into it and Fire's rim touched it, found in the captures, so the arc moved up and left (Fire 350 units up, Jump 360 left) |
 | Stick: dead zone 8 percent, sprint past 90 percent | Dead zone 10 percent, sprint on at 95 percent and off at 75 percent | Hysteresis, or sprint flickers at the rim; the base follows a thumb that goes past the rim, so travel never runs out |
-| Look: 180 degrees per screen height, no acceleration | 3.2 radians (183 degrees) per screen height at sensitivity 1, a flick gain rising from 1 to 1.6 between 450 and 2400 units per second, and the mouse sensitivity setting on top | A turn of 180 degrees in one swipe needs more than a slow drag gives; the slow range stays 1:1 for aiming. The ADS slow-down is the camera's own, not a separate 60 percent |
+| Look: 180 degrees per screen height, no acceleration | 1.6 radians (92 degrees, a little under 200 degrees for one width of a phone; it was 3.2 until #470, when a thumb flew round) per screen height at sensitivity 1, a flick gain rising from 1 to 1.6 between 450 and 2400 units per second, and the mouse sensitivity setting on top | A turn of 180 degrees in one swipe needs more than a slow drag gives; the slow range stays 1:1 for aiming. The ADS slow-down is the camera's own, not a separate 60 percent |
 | Rest opacity 50 percent | 70 percent (setting 30 to 100), 100 percent while held | At 60 the Fire label was hard to read on a lit ground |
 | Grenade hidden at zero | Always shown | The HUD state has no grenade count for the local player in a shape the layer reads yet |
 | Reload also on the ammo card | Not built | The card is a read-out; a second target next to the Fire arc invites mis-taps |
@@ -270,7 +271,10 @@ game does now:
   in all). The feed and notice columns at the top right are not checked: a long list can reach the Aim and Reload
   buttons.
 
-Still open from the questions below: 1 (auto-fire), 2 (aim assist), 3 (gyro) and 4 (Discord orientation, issue #287).
+Still open from the questions below: 3 (gyro) and 4 (Discord orientation, issue #287). Answered by #286: 1 (auto-fire is
+off by default, and a setting turns it on while Aim is held or always) and 2 (aim assist is friction plus magnetism at a
+gentle 0.5 by default, a slider from 0 to 1); how it works and what it is worth are in
+[Touch aim assist and auto-fire](aim-assist.md).
 Answered by the build: 5 (left hand: a setting from the first release, off by default, a full mirror of the buttons, the
 stick and the HUD's corner columns), 6 (haptics default is on, a setting turns it off; the web vibrates only on
 Android), 7 (keyboard glyphs hide on the first touch and return on a key, pad or real click) and 8 (auto detects a

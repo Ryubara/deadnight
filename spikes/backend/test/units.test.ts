@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { test } from "node:test";
-import { buildApp } from "../src/app.ts";
+import { buildApp, stripApiPrefix } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { LiveDiscord, StubDiscord } from "../src/discord.ts";
 import { GameServerRegistry } from "../src/servers.ts";
@@ -156,4 +156,38 @@ test("Discord saying the code is bad is a 401; Discord failing is a 502", async 
   assert.equal(await signInVia(answering(400)), 401);
   assert.equal(await signInVia(answering(500)), 502);
   assert.equal(await signInVia(answering(429)), 502);
+});
+
+test("the Discord proxy's /api prefix is dropped, whether or not the proxy strips it itself", async () => {
+  assert.equal(stripApiPrefix("/auth/guest"), "/auth/guest");
+  assert.equal(stripApiPrefix("/api/auth/guest"), "/auth/guest");
+  assert.equal(stripApiPrefix("/api/lobbies/quick?x=1"), "/lobbies/quick?x=1");
+  assert.equal(stripApiPrefix("/api"), "/");
+  assert.equal(stripApiPrefix("/api?x=1"), "/?x=1");
+  assert.equal(stripApiPrefix("/apiary/x"), "/apiary/x");
+  const app = buildApp({
+    config: loadConfig(stubEnv),
+    store: new MemoryStore(),
+    discord: new StubDiscord(),
+    registry: new GameServerRegistry(),
+  });
+  const code = { code: "stub:42:zed" };
+  const plain = await app.inject({ method: "POST", url: "/auth/discord", payload: code });
+  const proxied = await app.inject({ method: "POST", url: "/api/auth/discord", payload: code });
+  assert.equal(plain.statusCode, 200);
+  assert.equal(proxied.statusCode, 200);
+  assert.equal(proxied.json().user.name, plain.json().user.name);
+  await app.close();
+});
+
+test("a rejected code is logged with the error name Discord gave, and never its message", async () => {
+  const rejecting = (body: string) => (async () => new Response(body, { status: 400 })) as unknown as typeof fetch;
+  const why = async (body: string) =>
+    new LiveDiscord("1", "2", rejecting(body)).exchangeCode("c").then(
+      () => "",
+      (error: Error) => error.message,
+    );
+  assert.equal(await why('{"error":"invalid_grant","error_description":"Invalid \\"code\\""}'), "discord token exchange rejected: 400 (invalid_grant)");
+  assert.equal(await why("<html>"), "discord token exchange rejected: 400");
+  assert.equal(await why('{"error":"Bad Thing! secret"}'), "discord token exchange rejected: 400");
 });

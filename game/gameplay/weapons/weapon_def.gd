@@ -65,6 +65,12 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export var splash_damage: float = 0.0
 @export_range(0.0, 1.0) var splash_min_fraction: float = 0.25
 
+@export_group("Lure")
+## Metres round a burst within which zombies leave what they chase for the burst point, and the
+## seconds they stay (`ZombieLure`); 0 makes no lure. A lure does no damage.
+@export var lure_radius: float = 0.0
+@export var lure_seconds: float = 0.0
+
 @export_group("Melee")
 @export var melee_range: float = 1.8
 ## Thickness of the sweep in metres: the shape that is cast is this fat.
@@ -72,10 +78,32 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 ## How many targets one swing can hit.
 @export var melee_max_targets: int = 1
 
+## Which re-cut this copy has had: 0 as shipped, 1 after `upgraded`. Not saved with the file.
+var tier: int = 0
+
+
+## This weapon re-cut: a copy with more damage (the pellets, the blast), a bigger magazine and
+## reserve, and the spec's prefix on its name. The id stays, so the model, the sounds and the shop
+## still know it. The server's `WeaponState` and the balance simulator both make it here.
+func upgraded(spec: UpgradeTuning) -> WeaponDef:
+	var copy := duplicate() as WeaponDef
+	copy.tier = tier + 1
+	copy.display_name = spec.name_prefix + display_name
+	copy.damage = damage * spec.damage_multiplier
+	copy.splash_damage = splash_damage * spec.damage_multiplier
+	copy.magazine_size = ceili(float(magazine_size) * spec.magazine_multiplier)
+	copy.reserve_start = ceili(float(reserve_start) * spec.reserve_multiplier)
+	copy.reserve_max = ceili(float(reserve_max) * spec.reserve_multiplier)
+	return copy
+
 
 ## The damage multiplier of a hit zone; a zone the weapon does not list counts one.
 func zone_multiplier(zone: StringName) -> float:
 	return zone_multipliers.get(zone, 1.0)
+
+
+func is_lure() -> bool:
+	return lure_radius > 0.0 and lure_seconds > 0.0
 
 
 func is_hitscan() -> bool:

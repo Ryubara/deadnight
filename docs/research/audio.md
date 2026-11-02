@@ -108,12 +108,12 @@ Added in `tools/audio/weapon_recipes.py` (synthesised) and `tools/audio/elevenla
 [Sound](../design/audio.md); this is what was learned.
 
 - **Hitscan has no tracer, so the report sells the shot.** The old shot was one file: a crack, a roar and a 120 Hz sine
-  that rang for 0.3 s like a struck pipe (the spectrogram's bright line at the bottom). Each shot is now three voices
-  (report, blast, tail) with their own variants, pitch and level, so the same shot is a different sound each time
-  (5 x 3 x 3 combinations per gun) and the report's transient is the loudest thing in the first 10 ms. Before and
+  that rang for 0.3 s like a struck pipe (the spectrogram's bright line at the bottom). Each shot was then three voices
+  (report, blast, tail) with their own variants, pitch and level (since #407 two: the report and the tail, see
+  [Gun audio](gun-audio.md)) and the report's transient is the loudest thing in the first 10 ms. Before and
   after, rifle: `rifle_before` against `rifle_after` in the pull request's spectrogram.
-- **Variation costs voices, so the groups have limits.** Blasts 5, tails 4, impacts 6; the SMG's blast and tail have a
-  0.14 s and a 0.22 s cooldown. Twelve SMG shots a second still start the report every time.
+- **Variation costs voices, so the groups have limits.** Tails 4, impacts 6; the SMG's tail has a 0.22 s cooldown.
+  Thirteen SMG shots a second still start the report every time.
 - **Reload steps from the clip's frames.** `clips.json` lists the events in frames at 24 a second (the revolver and
   SMG's `mag_out` 6 and `mag_in` 22; the rifle's `round_in` 20, 32, 44 and `lever` 56; the shotgun's `break_open` 6,
   `shells_in` 26, `snap_shut` 34). The sounds read those frames (`ClipEvents`) on a `SoundSchedule` the node steps, so a
@@ -128,14 +128,15 @@ Added in `tools/audio/weapon_recipes.py` (synthesised) and `tools/audio/elevenla
   built from `fuel_changed`, `circuit_changed`, `fuel_empty`, `fuel_restored`); level and pitch are lerped by it and
   slew at 24 dB/s, so a breaker thrown is a change you hear take a second. A dry tank stops the loops; they restart
   on a refuel.
-- **Generated clips (ElevenLabs Sound Effects, free tier).** Used for the shots' blasts (3 variants a gun), the
-  generator's engine loop, power-down and power-up, and the door purchase; 17 clips, 33 seconds, billed 40 credits a
-  second (about 1,300 credits of the 3,500 allowed). Every file's prompt is in `game/assets/audio/eleven/LICENSE.md`
-  with its licence: attribution required, not licensed for commercial use, to be replaced or relicensed before any
-  commercial release (#252). Model `eleven_text_to_sound_v2` was used (the v3 model was not tried, to spare credits).
-  What the files needed: levels from -22 to +4 dBFS once decoded (several above full scale), a lead-in of up to 0.3 s,
-  and no seed, so a bad take is a new request. `elevenlabs.py` trims the silence before the sound, levels to -1 dBFS,
-  fades the end and encodes Ogg; a file that exists is never fetched again, and `--reprocess` redoes only the levelling.
+- **Generated clips (ElevenLabs Sound Effects, free tier).** Used for the shots' blasts (3 variants a gun; removed in
+  #407, [Gun audio](gun-audio.md)), the generator's engine loop, power-down and power-up, and the door purchase; 17
+  clips, 33 seconds, billed 40 credits a second (about 1,300 credits of the 3,500 allowed). Every file's prompt is in
+  `game/assets/audio/eleven/LICENSE.md` with its licence: attribution required, not licensed for commercial use, to be
+  replaced or relicensed before any commercial release (#252). Model `eleven_text_to_sound_v2` was used (the v3 model
+  was not tried, to spare credits). What the files needed: levels from -22 to +4 dBFS once decoded (several above full
+  scale), a lead-in of up to 0.3 s, and no seed, so a bad take is a new request. `elevenlabs.py` trims the silence
+  before the sound, levels to -1 dBFS, fades the end and encodes Ogg; a file that exists is never fetched again, and
+  `--reprocess` redoes only the levelling.
 - **Layering over them.** The generated blast sits 9 dB under the synthesised report and the synthesised tail 10 dB,
   so the report's transient stays the front and the generated clip is the body and the roll. Nobody could listen to it:
   this is balanced by the numbers below and wants a pair of ears.
@@ -288,6 +289,84 @@ while the whole bed moves only 0.3 to 0.4 LU. The break is not louder, it is the
 fade-out at 5 s, so a break plays about 2 s of it at full level (a special round's 15 s plays it whole). A quicker fade
 is a one-number change (`AudioService.BED_FADE_IN_DB_PER_S`) if the maintainer wants the music heard in full.
 
+## The soldier's voice (#384)
+
+The player's character talks like a person in the moment: 115 takes of 21 moments ("Reloading, cover me!", "Jeez, that one
+nearly had me, back off, back off!"), played by `SoldierVoice` (design: [the soldiers' voices](../design/audio.md#the-soldiers-voices)).
+The maintainer listened to samples and approved the configuration below, which is not changed here.
+
+| What | Value |
+| --- | --- |
+| Service | ElevenLabs text to speech, free tier (`POST /v1/text-to-speech/{voice_id}`, `mp3_44100_128`) |
+| Model, voice | `eleven_v4`; Brian, the premade `nPczCjzI2devNBz1zQrb` |
+| Settings | `stability` 0.0, `similarity_boost` 0.8, `style` 0.6 (the low stability is what lets the tags act) |
+| Recipe | `tools/audio/elevenlabs_voice.py` reads the lines and settings from `tools/audio/soldier_voice.json`: `plan` (the table and the characters to request, refusing over `--budget`), `generate` (one request per take, never twice: the raw mp3 and its request are kept in a cache folder), `encode` (trim, level to -20 LUFS, peak limit -1 dBFS, Ogg Vorbis q3, mono), `check`, `credits` |
+| Output | `game/assets/audio/voice/soldier/<moment>_<n>.ogg`, `manifest.json` (file to moment, text, characters, model, voice, settings, seed, seconds, loudness before levelling), `LICENSE.md` |
+| Takes | 115: 113 requested once each, and the two samples the maintainer approved (`round_clear_1`, `streak_1`) encoded like the rest |
+
+### How the lines were written
+
+The first sample failed ("Reload... catch your breath" read like a narrator: [lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-01-voice-lines-written-as-captions-sounded-robotic.md)).
+Each line is first person, with contractions, a filler or a breath, an exclamation where it fits, and uneven
+length (10 to 139 characters); the feeling is in the words and the v4 tag (`[breathing hard]`, `[laughs]`,
+`[shouting]`) only adds to it. A test fails a line that is a bare caption (`test_soldier_voice_catalog.gd`). Barks run
+0.8 to 3.8 s (a reload 2.4 s on average, a kill 1.9 s, a hurt 2.2 s), the calm moments longer (a cleared round 6.6 to
+8.5 s, the idle musings 5 to 7 s). The lines are original; no other game's line is quoted or paraphrased.
+
+### Characters, and what the check cost
+
+| Step | Free-tier characters used (of 10,000) |
+| --- | ---: |
+| Before | 2,248 |
+| After the 113 requests | 7,302 (5,054 billed for 5,738 written) |
+| After transcribing every take | 8,278 (976 for the 115 transcripts) |
+| Left | 1,722 |
+
+- **Audio tags are not billed.** The 113 lines are 5,738 characters with their tags and 4,674 without; the account was
+  charged 5,054. The plan counts tags (the safe number); the bill is lower.
+- **Transcribing costs credits.** `POST /v1/speech-to-text` (`scribe_v1`) takes about 8.5 characters of the same quota
+  for a take of about 4 s (976 for 115). A recipe that checks every take must budget for it; the transcripts are kept in
+  the cache and never fetched twice.
+- **Tags performed, not spoken.** Scribe writes the sounds it hears in brackets (`[laughs]`, `[sighs]`, `[grunts]`); a tag
+  the voice read out comes back as plain words. Across the 115 takes no tag word appeared outside brackets and no line lost
+  more than a word or two (`check` flags both): 0 of 115 failed, so no retake was spent. Some tags are heard as a
+  different sound than written (`[sharp inhale]` as `[inhales]`, `[through gritted teeth]` as nothing, `[grunts]` alone
+  for `[pained grunt] Ugh!`), which is acceptable for a bark.
+- **Licence.** Free-tier output is for non-commercial use and needs attribution: the same as the other ElevenLabs sounds,
+  so it joins [#252](https://github.com/Ryubara/deadnight/issues/252) (replace or relicense before any commercial
+  release). The Credits screen names ElevenLabs for the voice too.
+
+### Measured in a night capture
+
+Run with `game/tests/captures/audio_soldier_night.tscn` under Movie Maker (15 frames a second): the autopilot plays through
+the shoulder camera (`local_input` and `capture_mouse` off) for 45 s, then the moments it does not reach are told to the
+soldier one after another (7 s apart). The Voice, Effects and Ambience buses are recorded as stems with an
+`AudioEffectRecord` each, and `tools/audio/voice_report.py` measures them (BS.1770 loudness, `pyloudnorm`).
+
+| What | Result |
+| --- | --- |
+| The run | 111 s, 15 voice lines of 15 moments, 20 shots, mix peak -3.1 dBFS, 0 clipped samples, integrated -24.4 LUFS |
+| Stems over the run | Voice -23.3, Effects -24.7, Ambience -33.3 LUFS |
+| A voice line while it speaks (first 1.2 s) | mean -24.0 LUFS (-27.8 to -21.7) |
+| A shot (Effects stem, 0.4 s from it) | mean -19.2 LUFS (max -17.4) |
+| The beds away from gunfire | mean -34.6 LUFS |
+| The voice against the guns / the beds | -4.8 LU / +10.6 LU |
+| The voice against everything else playing in the same 1.2 s | +8.7 LU |
+
+The voice is heard clearly over the beds and the fight but never over the guns: a line is 5 LU under the burst of a
+shot. The takes are levelled to -20 LUFS (their loudness before levelling ran from -33.5 to -16.7 LUFS, the whispered lines
+lowest), `SoldierVoiceCatalog.VOICE_DB` is -4 dB and the player's own voice another -2 dB (`LOCAL_DB`); those two numbers
+are the whole trim. Nobody has listened to it in the game: the maintainer's ears decide whether it wants another dB.
+
+- **Stems from a capture.** `AudioEffectRecord` on a bus works under Movie Maker: add it to each bus, set
+  `set_recording_active(true)`, and `get_recording().save_to_wav(...)` at the end gives each bus's own mix, so a level can
+  be compared across kinds of sound without guessing from the master. Remove the effects before quitting, or the engine
+  reports a resource still in use at exit.
+- **The frame size is the project's.** `--write-movie` ignores `--resolution` and a window resized in the script: the frames
+  are 1920 x 1080 whatever is asked (a night at that size ran at about 2 frames a second on a busy machine).
+- **`obj == false` is an error.** The service returns a node or null; a test double returns `true`. Comparing a node with
+  `false` raises `Invalid operands 'Object' and 'bool'` at run time, not at parse time: test with `is bool`.
+
 ## Godot facts
 
 - **Movie Maker records audio.** `--write-movie out.png` also writes `out.wav` next to the frames: the master mix at the
@@ -324,9 +403,9 @@ The wall figure combines the 9 dB occlusion trim, the lowered cutoff and the ext
 
 ## Open questions
 
-- Does the web build play many `AudioStreamPlayer3D` voices without crackle on a modest laptop? Not measured: the capture
-  is native. The pool is 32 positional voices; if the web build needs fewer, the limit is one constant
-  (`AudioService.POOL_3D`) and the group limits already keep most nights well under it.
-- `AudioStreamPlayer3D` sample playback on the web (the engine can play short sounds as browser "samples") changes
-  how filters and effects apply. Check when the first web export exists.
-- A real occlusion probe needs the map's walls on their own physics layer; set `Audio.occluder_mask` then.
+- **Answered (#88):** the web build plays 44 voices without crackle, and plays them as samples, which ignore bus effects
+  and the distance filter: [Audio in the browser](web-export.md#audio-in-the-browser). The pool stays at 32 and 12.
+- **Answered (#88):** the lot's walls are on physics layer 2 and the night sets `Audio.occluder_mask` to it
+  (`test_night_occlusion.gd`).
+- The sting's duck (and the rear cue and occlusion low-pass) do not work in the browser. The bus volume does, so the duck
+  could be a bus volume on the web; not done.

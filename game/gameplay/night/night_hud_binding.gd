@@ -18,6 +18,10 @@ const DOOR_NAMES := {
 	&"door_back_lot": "Back lot",
 	&"door_road": "The road",
 }
+## How high over a zombie's feet its damage number starts: a headshot over the head, any other hit
+## at the chest.
+const HEAD_HEIGHT := 1.65
+const BODY_HEIGHT := 1.1
 const BREACH_NAME := "Broken fence"
 const FUEL_NAME := "Fuel can"
 const CRANE_NAME := "Prize crane"
@@ -36,6 +40,7 @@ var _hud: Hud
 var _state: ClientState
 var _weapon_names: Dictionary[StringName, String] = {}
 var _fuel: FuelTuning
+var _upgrade: UpgradeTuning
 ## Units a whole can adds, by shop item: what the card says a can is worth.
 var _can_units: Dictionary[StringName, int] = {}
 
@@ -55,6 +60,7 @@ func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistr
 	hud.state.ammo_free = ammo_free
 	var fuel: FuelTuning = tuning.fuel
 	_fuel = fuel
+	_upgrade = tuning.upgrade
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
@@ -94,7 +100,24 @@ func _on_event(event: Dictionary) -> void:
 				HudLoadout.EVENTS.has(event["type"])
 				or not NightServer.COMBAT_EVENTS.has(event["type"])
 			):
-				_hud.state.apply_event(event)
+				var began := PerfProbe.begin()
+				_hud.state.apply_event(_with_world_point(event))
+				PerfProbe.end(&"hud.event", began)
+
+
+## A hit on a zombie also says where in the world it landed, so its number can stay there while
+## the camera moves (`HudCrosshair.projector`): the zombie's place in the last frame, lifted to the
+## head or the chest.
+func _with_world_point(event: Dictionary) -> Dictionary:
+	if event["type"] != &"zombie_damaged":
+		return event
+	for zombie in _state.zombies:
+		if zombie["id"] == event["zombie_id"]:
+			var lift := HEAD_HEIGHT if str(event.get("zone", "")) == "head" else BODY_HEIGHT
+			var marked := event.duplicate()
+			marked["world"] = zombie["position"] + Vector3(0.0, lift, 0.0)
+			return marked
+	return event
 
 
 func _on_frame() -> void:
@@ -140,7 +163,8 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"fuel":
 			_set_fuel_prompt(prompt)
 		_:
-			state.clear_prompt()
+			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade):
+				state.clear_prompt()
 
 
 func _offer(kind: StringName, label: String, cost: int, detail: String) -> void:

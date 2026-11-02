@@ -10,6 +10,8 @@ extends UIScreen
 
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)
+## Seconds to wait for a game server to welcome us (a night may have to be built first).
+const JOIN_SECONDS := 25.0
 
 ## Whether the night warms up behind a loading screen before it starts. There is nothing to warm up
 ## without a renderer, so a headless run skips it.
@@ -17,11 +19,26 @@ static var warm_up_enabled := DisplayServer.get_name() != "headless"
 
 ## The server to join (`ws://host:port`) the next time this screen opens; empty plays alone.
 static var join_url := ""
+## With `join_url`: the platform backend's ticket for the night, said in the hello (empty for a
+## server with no backend, as on a developer's machine).
+static var join_ticket := ""
 ## With `join_url`: the autopilot plays this player (`--bot`), seen over its own shoulder.
 static var join_as_bot := false
+## The match settings of the next local night (the Play screen sets them); taken once, the way
+## `join_url` is. Joining a server ignores them: the server's are in its WELCOME.
+static var match_settings: MatchSettings
 ## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
 ## settings file); null wears the saved look.
 static var own_look: CharacterLook
+## Where the player's challenges are kept; empty (tests, captures) counts nothing and writes
+## nothing. The game's root sets it, so only the real game keeps a save.
+static var challenge_path := ""
+
+## How a night played alone starts, for a run that is not a person's (`KillBench`): the bot plays,
+## filmed from its shoulder, under this tuning (the defaults when null).
+static var start_mode := Night.Mode.HUMAN
+static var start_tuning: RulesTuning = null
+static var shoulder_camera := false
 
 var night: Night
 
@@ -50,7 +67,13 @@ func _ready() -> void:
 	allow_back = false
 	night = Night.new()
 	night.warm_up = warm_up_enabled
+	night.touch_active = touch_active
 	night.own_look = own_look
+	if match_settings != null and join_url == "":
+		night.match_settings = match_settings
+	match_settings = null
+	if challenge_path != "":
+		night.challenge_board = ChallengeBoard.open(challenge_path)
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
@@ -60,6 +83,7 @@ func _ready() -> void:
 	_touch.state = _hud.state
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
+	_touch.look_gain = _look_gain
 	add_child(_touch)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
@@ -77,16 +101,20 @@ func touch_active() -> bool:
 
 func screen_enter() -> void:
 	if join_url == "":
-		await night.start(Night.Mode.HUMAN)
+		night.shoulder_camera = shoulder_camera
+		await night.start(start_mode, Night.SEED, start_tuning)
 		return
 	var url := join_url
 	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN
 	night.shoulder_camera = join_as_bot
+	var link := WebSocketLink.new()
+	link.ticket = join_ticket
 	join_url = ""
+	join_ticket = ""
 	join_as_bot = false
-	_show_overlay("Joining", url, false)
+	_show_overlay("Joining", "" if link.ticket != "" else url, false)
 	night.connect_failed.connect(_on_connect_failed)
-	if await night.start_remote(url, mode):
+	if await night.start_remote(url, mode, JOIN_SECONDS, link):
 		_overlay.hide()
 
 
@@ -116,6 +144,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_pause()
 		get_viewport().set_input_as_handled()
+
+
+## The factor on a touch look drag: the aim assist slows it near a zombie.
+func _look_gain() -> float:
+	return night.assist.friction() if night != null and night.assist != null else 1.0
 
 
 ## A left-handed layout swaps the HUD's corner columns with the buttons.

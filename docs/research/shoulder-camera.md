@@ -84,10 +84,10 @@ estimates or design choices, none is a Battlefront measurement. The first column
 | Pivot height | 1.55 m | 1.6 m | A little above the head, so the soldier sits lower in the frame and the horizon is above the reticle. |
 | Arm (behind the pivot) | 2.8 m | 2.3 m | Closer, as asked: with the FOV change the soldier is a third larger on screen (2.8/2.3 times tan 37.5 over tan 35). Closer than this cuts the boots off. |
 | Shoulder offset | 0.75 m | 0.6 m | The soldier stands left of centre (about 40 percent from the left edge in the tour capture) and the reticle stays clear. |
-| FOV (vertical) | 75 | 70 | Less world around him; 70 vertical is about 102 horizontal at 16:9, not a fish-eye. |
-| Aim: arm, offset, FOV | 1.9 m, 0.6 m, 62 | 1.8 m, 0.65 m, 60 | The research table suggested 1.3 m, 0.4 m, 55; that puts the right pad 5 degrees from the reticle (issue #109). A test needs 0.2 m of air between the body and the centre ray. |
+| FOV (vertical) | 75 | 70 | Less world around him; 70 vertical is about 102 horizontal at 16:9, not a fish-eye. Later 60 (issue #405: the maintainer found 70 too far outward). |
+| Aim: arm, offset, FOV | 1.9 m, 0.6 m, 62 | 1.8 m, 0.65 m, 60 (the FOV is now 40, issue #405) | The research table suggested 1.3 m, 0.4 m, 55; that puts the right pad 5 degrees from the reticle (issue #109). A test needs 0.2 m of air between the body and the centre ray. |
 | Follow spring | exponential, none | 22 rad/s on the ground plane, 10 vertically (95 percent in 0.22 s and 0.48 s) | A critically damped spring trails a steady runner by 2 v / w: 0.4 m at a run. The slower vertical follow keeps a jump from whipping the view. |
-| Sprint | none | +6 degrees FOV, +0.15 m arm, follow 16 rad/s (0.9 m of lag at 7 m/s), eased at 13.5 rad/s (95 percent in 0.35 s) | Speed shows as the character drifting ahead on screen, then settling. The maintainer found the first pull-back (0.3 m, 9 rad/s, 0.53 s) too long and too slow: now half the distance, 1.5 times as fast ([character controller](character-controller.md)). |
+| Sprint | none | +6 degrees FOV (now +3; the default FOV is now 60, aim 40: issue #405), +0.15 m arm, follow 16 rad/s (0.9 m of lag at 7 m/s), eased at 13.5 rad/s (95 percent in 0.35 s) | Speed shows as the character drifting ahead on screen, then settling. The maintainer found the first pull-back (0.3 m, 9 rad/s, 0.53 s) too long and too slow: now half the distance, 1.5 times as fast ([character controller](character-controller.md)). |
 | Aim zoom, shoulder swap | exponential 10 and 9 per second | springs, 24 and 16 rad/s (0.2 s and 0.3 s) | Same duration, but they start from rest and a half-done transition keeps its velocity when reversed. |
 | Wall release | none (the arm moved with the wall) | pulled in at once, let out at 6 rad/s | A wall hit cannot wait; leaving one should not pop. |
 | Hide the body | arm below 0.7 m | lens closer than 0.9 m to the head, shown again beyond 1.05 m | Measured to the head, not along the arm, so a shoulder-side wall counts too (issue #157). |
@@ -112,41 +112,41 @@ What changed in the way it works, not only the numbers:
 
 ## Hip fire
 
-Firing without aiming (maintainer feedback, 2026-11-01, #300): the shot already lands on the reticle, but the body kept
-its walking facing and the view stayed wide, unlike other third-person shooters. Reopened the same day: hip fire had
-become *a second, partial aim* (its own camera spring, half the zoom, out three times slower after a longer wait) and the
-gun in the hands jumped between its hip and aim poses in one frame. Now **firing from the hip is the aim, held for a
-moment**: one aim weight, entered by the aim button or by a shot, read by the camera, the body and the hands. Holding the
-aim button only skips the entry (the weight is already full). What other games do, and what is and is not sourced, is in
-[hip fire](hip-fire.md). The numbers are on `PlayerTuning` (the *Hip fire* group), so they are editable in the Godot
-editor:
+Firing without aiming turns the body to the view and raises the weapon, and **does nothing to the camera**: no zoom, no
+shoulder or arm change, no sprint effect eased out (the maintainer, 2026-11-02, testing the Discord Activity, #464: "When
+a player hip fires let's remove the zoom effect at all. We'll just reserve the aim zoom just for aim as intended. We can
+always revisit the zoom on hipfire again later on."). How it got here: #300 gave hip fire its own half zoom and the gun
+jumped between poses; #417 made hip fire *the aim held for a moment* with one weight for the camera, the body and the
+hands; #433 stopped a shot fired while aiming from starting that hold; #464 took the camera out of it. What other games
+do, and what is and is not sourced, is in [hip fire](hip-fire.md). The numbers are on `PlayerTuning` (the *Hip fire*
+group), so they are editable in the Godot editor:
 
 | Value | Number | Why |
 | --- | --- | --- |
-| Hold | 0.8 s | The aim stays held this long after the trigger is let go (`PlayerMotionState.holds_aim`). Longer than the rifle's 0.55 s interval, so a rifle fired steadily never pulses the view in and out; the slowest weapon (0.9 s) lets go a little between shots and re-enters, which reads as a shotgun kick. |
-| Turn speed | 8 rad/s (`aim_turn_speed`, one for the button and the shot) | A view 75 degrees away is faced in 0.16 s, 180 degrees in 0.4 s. The weapon turns with the body and with the weight, so the two add: a slower body turn keeps the weapon's peak at about 19 degrees a tick (the aim button turned it 78 degrees in one tick when the weapon switched poses). |
-| Zoom, shoulder, arm, FOV | the aim's | There is no hip-fire share any more: the same `aim_frequency` (24 rad/s, 95 % in 0.2 s) in and out. |
+| Hold | 0.8 s | The body and the hands keep the aim pose this long after the trigger is let go (`PlayerMotionState.holds_aim`). Longer than the rifle's 0.55 s interval, so a rifle fired steadily never swings the body in and out; the slowest weapon (0.9 s) lets go a little between shots and re-enters, which reads as a shotgun kick. The camera does not read it. |
+| Turn speed | 8 rad/s (`aim_turn_speed`, one for the button and the shot) | A view 75 degrees away is faced in 0.16 s, 180 degrees in 0.4 s. The weapon turns with the body and with the pose weight, so the two add: a slower body turn keeps the weapon's peak at about 19 degrees a tick (the aim button turned it 78 degrees in one tick when the weapon switched poses). |
+| Zoom, shoulder, arm, FOV | the aim button's only | 60 to 40 degrees and back at `aim_frequency` (24 rad/s, 95 % in 0.2 s), in and out. A shot never moves them, so letting go of the aim lets go of the zoom at once, with nothing held over (#428, #464). |
 
 How it works:
 
 - **The trigger is part of the player's command** (`PlayerCommand.fire`), because the body's facing is simulated state
   the server owns and a replay must agree on. `NightServer` sets it from the `NightCommand`'s own `fire` (a human, the
   autopilot and a remote client all send that), and a downed player's trigger does nothing. `PlayerMotionState.fire_age`
-  is the seconds since the trigger was last held; `holds_aim(hold)` is `aiming or fire_age < hold`, and the simulation
-  asks it for the body's turn to the view and for the strafing velocity. The muzzle of a shot is rotated by this facing,
-  so it leaves from a body that faces the target.
-- **Shots are still the camera ray.** The camera's yaw and pitch are the input as before, the zoom only moves the lens
-  along its arm, and `AimResolver` aims the muzzle at what the camera ray hits; a test checks the camera's forward
-  vector equals the view's yaw and pitch while zoomed.
-- **One weight.** The player sets `ThirdPersonCamera.aim_held = state.holds_aim(hold)`; the camera's one `_aim` spring
-  chases it, `aim_amount()` is the result, and the placement and `PlayerAnimation` (the aim gait of the legs, and the
-  hands) all read that number. In the hands `WeaponHandsIK.aim_yaw` is the angle from the body's heading to the view by
-  the weight, and `converge` (0 to 1, it was a bool) blends the aim basis toward the one that crosses the crosshair's
-  ray, so neither input flips.
-- **The look is steadier only for the button.** `steady_amount()` is its own spring on the real aim button (same
-  frequency); a burst from the hip does not slow the view down. This is the one place hip fire is not the aim.
-- **Sprint** is not cancelled by firing (the bots flee and shoot together, and the balance gate does not move), but the
-  sprint pull-back and the sprint sway ease out while the aim is held.
+  is the seconds since the trigger was last held **without the aim button** (a shot fired while aiming does not restart
+  it, #428); `holds_aim(hold)` is `aiming or fire_age < hold`, and the simulation asks it for the body's turn to the
+  view and for the strafing velocity. The muzzle of a shot is rotated by this facing, so it leaves from a body that
+  faces the target.
+- **Shots are still the camera ray.** The camera's yaw and pitch are the input as before, and `AimResolver` aims the
+  muzzle at what the camera ray hits; a test checks the camera's forward vector equals the view's yaw and pitch.
+- **The camera reads the aim button only.** `ThirdPersonCamera.aiming` is the one input of its `_aim` spring: the zoom,
+  the shoulder, the arm, the look's steadiness (`steady_amount()` is the same weight) and the sprint pull-back and sway
+  (they ease out for the button, not for a shot, so a hip shot while sprinting leaves the framing as it was). The camera
+  has no `aim_held` any more.
+- **The weapon's pose has its own weight.** `PlayerAnimation` eases one weight (`aim_weight()`, `aim_frequency`) toward
+  `holds_aim(hold)`, and the legs' aim gait and the hands read it. In the hands `WeaponHandsIK.aim_yaw` is the angle from
+  the body's heading to the view by the weight, and `converge` (0 to 1) blends the aim basis toward the one that crosses
+  the crosshair's ray, so neither input flips. For the aim button it is the same curve the camera's weight follows.
+- **Sprint** is not cancelled by firing (the bots flee and shoot together, and the balance gate does not move).
 
 ## Things found the hard way
 

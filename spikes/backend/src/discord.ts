@@ -38,6 +38,16 @@ export class StubDiscord implements DiscordClient {
 const API = "https://discord.com/api";
 export const DISCORD_TIMEOUT_MS = 5000;
 
+/** The OAuth `error` Discord named in a rejection (`invalid_grant`: a code used twice or expired), for the log. Never the message. */
+async function errorName(response: Response): Promise<string> {
+  try {
+    const { error } = (await response.json()) as { error?: unknown };
+    return typeof error === "string" && /^[a-z_]{1,40}$/.test(error) ? ` (${error})` : "";
+  } catch {
+    return "";
+  }
+}
+
 export class LiveDiscord implements DiscordClient {
   private readonly clientId: string;
   private readonly clientSecret: string;
@@ -63,7 +73,7 @@ export class LiveDiscord implements DiscordClient {
     if (response.status === 429 || response.status >= 500) {
       throw new DiscordUnavailable(`discord ${what} failed: ${response.status}`);
     }
-    if (!response.ok) throw new Error(`discord ${what} rejected: ${response.status}`);
+    if (!response.ok) throw new Error(`discord ${what} rejected: ${response.status}${await errorName(response)}`);
     try {
       return await response.json();
     } catch {
@@ -94,5 +104,12 @@ export class LiveDiscord implements DiscordClient {
       throw new DiscordUnavailable("discord user lookup gave no user");
     }
     return { accessToken, user: { id: user.id, username: user.username, avatar: user.avatar ?? null } };
+  }
+}
+
+/** Discord is not configured: every code is refused as unavailable (guests are the only way in). */
+export class OffDiscord implements DiscordClient {
+  async exchangeCode(): Promise<DiscordSignIn> {
+    throw new DiscordUnavailable("discord sign-in is not configured on this backend");
   }
 }

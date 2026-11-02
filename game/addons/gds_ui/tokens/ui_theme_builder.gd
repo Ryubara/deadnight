@@ -22,6 +22,9 @@ const PANEL_STYLES: Array[StringName] = [&"UIPanelFlat", &"UIPanelRaised", &"UIP
 const TOGGLE_STYLE := &"UIToggle"
 const SLIDER_STYLE := &"UISlider"
 const OPTION_TYPE := &"UIOptionSelector"
+const CHECK_STYLE := &"UICheckBox"
+const LINE_EDIT_STYLE := &"UILineEdit"
+const ITEM_LIST_TYPE := &"UIItemList"
 
 const BUTTON_STATES: Array[StringName] = [
 	&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled", &"focus"
@@ -132,6 +135,88 @@ static func _add_controls(theme: Theme, t: UITokens) -> void:
 		&"font", OPTION_TYPE, t.text_font(t.embolden_display * t.embolden_option_ratio, 0.0)
 	)
 	theme.set_font_size(&"font_size", OPTION_TYPE, t.size_body)
+	theme.set_font(
+		&"font", ITEM_LIST_TYPE, t.text_font(t.embolden_display * t.embolden_option_ratio, 0.0)
+	)
+	theme.set_font_size(&"font_size", ITEM_LIST_TYPE, t.size_body)
+	_add_check_box(theme, t)
+	_add_line_edit(theme, t)
+	_add_scroll_bars(theme, t)
+
+
+## The check box draws its box; the theme gives its label the body face and leaves room for the box.
+static func _add_check_box(theme: Theme, t: UITokens) -> void:
+	theme.set_type_variation(CHECK_STYLE, &"Button")
+	theme.set_font(
+		&"font", CHECK_STYLE, t.text_font(t.embolden_display * t.embolden_option_ratio, 0.0)
+	)
+	theme.set_font_size(&"font_size", CHECK_STYLE, t.size_body)
+	for color_name in [
+		&"font_color",
+		&"font_hover_color",
+		&"font_pressed_color",
+		&"font_hover_pressed_color",
+		&"font_focus_color",
+	]:
+		theme.set_color(color_name, CHECK_STYLE, t.ink)
+	theme.set_color(&"font_disabled_color", CHECK_STYLE, t.ink_disabled)
+	var left := t.space_sm + UICheckBox.box_size(t) + t.space_md
+	for state in BUTTON_STATES:
+		var box := StyleBoxEmpty.new()
+		box.content_margin_left = left
+		box.content_margin_right = t.space_md
+		theme.set_stylebox(state, CHECK_STYLE, box)
+
+
+## The text field: a raised fill with the outline, the accent border while it has focus.
+static func _add_line_edit(theme: Theme, t: UITokens) -> void:
+	theme.set_type_variation(LINE_EDIT_STYLE, &"LineEdit")
+	theme.set_font(
+		&"font", LINE_EDIT_STYLE, t.text_font(t.embolden_display * t.embolden_option_ratio, 0.0)
+	)
+	theme.set_font_size(&"font_size", LINE_EDIT_STYLE, t.size_body)
+	theme.set_color(&"font_color", LINE_EDIT_STYLE, t.ink)
+	theme.set_color(&"font_uneditable_color", LINE_EDIT_STYLE, t.ink_muted)
+	theme.set_color(&"font_placeholder_color", LINE_EDIT_STYLE, t.ink_disabled)
+	theme.set_color(&"font_selected_color", LINE_EDIT_STYLE, t.ink_on_accent)
+	theme.set_color(&"caret_color", LINE_EDIT_STYLE, t.accent_bright)
+	theme.set_color(&"selection_color", LINE_EDIT_STYLE, Color(t.accent, 0.85))
+	var rows := {
+		&"normal": [t.surface_raised, t.outline],
+		&"focus": [t.surface_raised, t.accent],
+		&"read_only": [t.surface, t.outline],
+	}
+	for state in rows:
+		var box := _flat(rows[state][0], rows[state][1], t, t.space_md)
+		box.content_margin_left = t.space_lg
+		box.content_margin_right = t.space_lg
+		theme.set_stylebox(state, LINE_EDIT_STYLE, box)
+
+
+## Scroll bars (any ScrollContainer, and the plain engine ones): a thin track and a rounded thumb
+## that warms on hover and press.
+static func _add_scroll_bars(theme: Theme, t: UITokens) -> void:
+	var thickness := t.border * 3
+	var track := _pill(Color(t.surface, 0.0), thickness)
+	var thumbs := {
+		&"grabber": t.ink_disabled,
+		&"grabber_highlight": t.accent,
+		&"grabber_pressed": t.accent_bright,
+	}
+	for kind in [&"VScrollBar", &"HScrollBar"]:
+		theme.set_stylebox(&"scroll", kind, track)
+		theme.set_stylebox(&"scroll_focus", kind, track)
+		for part in thumbs:
+			theme.set_stylebox(part, kind, _pill(thumbs[part], thickness))
+
+
+static func _pill(fill: Color, thickness: int) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill
+	box.anti_aliasing = true
+	box.set_corner_radius_all(thickness)
+	box.set_content_margin_all(thickness * 0.5)
+	return box
 
 
 static func _add_plain_controls(theme: Theme, t: UITokens) -> void:

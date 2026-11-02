@@ -77,6 +77,12 @@ every tick.
   while walking, aiming, standing, in the air, or downed (a downed body is ticked with an empty command, so it does not
   sprint). It eases in over `sprint_sway_ease_in` (0.4 s) and out over `sprint_sway_ease_out` (0.3 s), a linear ramp
   through a smoothstep, so the turn never jumps; the phase restarts at zero when the sway is fully out.
+- **None in the air.** The feet make the sway, so it belongs to the ground: `ThirdPersonCamera.grounded` (the body's
+  `on_floor`, set by the player after each tick) goes into `SprintSway.step`, and on the first tick the body is in the
+  air (a jump, a step off a ledge, a fall) the sway is gone **at once**, level and phase to zero, with no ease-out, even
+  with the sprint key still held and the body still fast. After landing, with the sprint still held, it comes back with
+  the normal ease-in (0.4 s) from nothing. The maintainer saw it keep swaying through a sprint-jump with Shift held
+  (issue #405).
 - **With the shot shake.** The two turns multiply into one lens turn (the shake first). While trauma is up the sway
   gives way by up to `sprint_sway_fire_duck` (0.5) of itself, so a kick is not buried in the bob and the two never add
   to more than their bounds.
@@ -85,18 +91,33 @@ every tick.
 
 | `PlayerTuning` (group Sprint sway) | Value |
 | --- | --- |
-| `sprint_sway_pitch_degrees` | 0.4 (was 0.3) |
-| `sprint_sway_yaw_degrees` | 0.2 (was 0.15) |
-| `sprint_sway_roll_degrees` | 0.28 (was 0.2) |
+| `sprint_sway_pitch_degrees` | 0.2 (was 0.4, and 0.3 before that) |
+| `sprint_sway_yaw_degrees` | 0.1 (was 0.2) |
+| `sprint_sway_roll_degrees` | 0.14 (was 0.28) |
 | `sprint_sway_bob_steps` / `sprint_sway_sway_steps` | 1 / 2 footfalls to a cycle |
 | `sprint_sway_phase_degrees` | 0 |
 | `sprint_sway_ease_in` / `_ease_out` | 0.4 s / 0.3 s |
 | `sprint_sway_min_speed` | 3 m/s |
 | `sprint_sway_fire_duck` | 0.5 |
 
-Why so small: Godot's field of view is the vertical one, so 70 degrees over 1080 pixels is about 15 pixels a degree
-(14 at the sprint's wider lens): 0.4 degrees of bob moves the picture about 6 pixels up and down, and 0.28 degrees of
-roll about 4 pixels at the edge of the screen. That is felt as life in the picture and not read as a wobble. The
-maintainer asked for a sprint that shakes a bit more than walking or a shot, like other games, and still very subtle:
-the largest turn of the look direction is now 0.45 degrees (pitch and yaw together, 0.2 above 0.3 before), level with
-the shotgun's peak (0.45) and under the half degree the test keeps every amplitude below. Captures: the pull request.
+Why so small: Godot's field of view is the vertical one, so 60 degrees over 1080 pixels is about 18 pixels a degree:
+0.2 degrees of bob moves the picture about 3 pixels up and down, and 0.14 degrees of roll about 2 pixels at the edge
+of the screen. That is felt as a little life in the picture and not read as a wobble. The sway has been halved twice
+as the maintainer played: first "very subtle, a bit more than a shot" (0.45 degrees at the largest, level with the
+shotgun), then "too intensive, lower this down by 50%" (issue #405): the largest turn of the look direction is now
+0.22 degrees (pitch and yaw together), under the quarter degree the test keeps every amplitude below. Measured on the
+same run (a sprint, a sprint-jump with Shift held, the landing, in `tests/captures/sprint_camera_tune.tscn`): the
+largest turn on the ground was 0.425 degrees before and 0.2125 after, and in the air 0.425 before (it carried on) and
+0 after, from the first airborne tick.
+
+## The sprint's other view changes
+
+The sprint also widens the view and lets the camera out (`ThirdPersonCamera`, not shake): `sprint_fov_kick` is 3
+degrees (it was 6; the maintainer asked for half, issue #405) and `sprint_arm_extra` 0.15 m (already halved from 0.3).
+The default FOV is 60 degrees (it was 70: the maintainer found the view too far outward and wanted it closer to the
+character), so a full sprint is 63 and the aim is 40 (`fov_aim`, it was 60). The one aim weight (#417) blends `fov` to
+`fov_aim` for the aim button and for a shot from the hip alike, so a hip shot zooms 60 to 40 too (and back after the
+0.8 s hold). `arm_length` is unchanged. The
+follow lag of the sprint (16 rad/s) is not a shake and stays. No other sprint-driven motion exists: footsteps make no
+trauma, and the only caller of `add_shake` is a local player's shot. Test: `test_sprint_camera.gd`. Captures: the pull
+request.

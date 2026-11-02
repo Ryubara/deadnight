@@ -51,6 +51,7 @@ static func insides_fit(data: Dictionary, tuning: RulesTuning) -> bool:
 		and _generator_fits(data["generator"])
 		and BarricadeState.new(tuning.barricades).fits(data["barricades"])
 		and CraneState.new().fits(data["crane"], tuning.crane.spot_count())
+		and MatchSettings.problem(data["match_settings"]).is_empty()
 	)
 
 
@@ -86,6 +87,7 @@ static func _player_fits(player: Dictionary) -> bool:
 	return (
 		all_names(player["weapons"])
 		and all_names(player["tonics"])
+		and all_names(player["upgraded"])
 		and _health_fits(player["health"], player["max_health"])
 		and is_finite(player["since_blow"])
 		and player["since_blow"] >= 0.0

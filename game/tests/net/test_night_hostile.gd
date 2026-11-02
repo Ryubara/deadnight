@@ -166,7 +166,7 @@ func test_another_version_is_refused_with_the_servers_own() -> void:
 	await _server()
 	for version in [NetWire.VERSION + 1, 1, 0, 255]:
 		var ws := await _socket()
-		ws.send(PackedByteArray([NetWire.Type.HELLO, version]), WebSocketPeer.WRITE_MODE_BINARY)
+		ws.send(PackedByteArray([NetWire.Type.HELLO, version, 0]), WebSocketPeer.WRITE_MODE_BINARY)
 		var refusal := await _refusal_of(ws)
 		assert_int(refusal.size()).is_equal(3)
 		assert_int(refusal[1]).is_equal(NetWire.Refusal.VERSION)
