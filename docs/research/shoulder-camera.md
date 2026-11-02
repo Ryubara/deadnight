@@ -148,6 +148,28 @@ How it works:
   the crosshair's ray, so neither input flips. For the aim button it is the same curve the camera's weight follows.
 - **Sprint** is not cancelled by firing (the bots flee and shoot together, and the balance gate does not move).
 
+## The downed camera
+
+While the player is down the rig keeps no standing view: it sinks and tips toward the body lying at the player's
+place (#532). Before, the pivot stayed at 1.6 m and the pitch stayed the player's, so the body lay at the bottom edge,
+cut off, and looking down with the mouse raised the lens (the arm swings up with the pitch) without bringing it in.
+
+| Value (`PlayerTuning`, *Downed camera*) | Number | Why |
+| --- | --- | --- |
+| `downed_pivot_height` | 0.8 m (standing 1.6, crouched 1.1) | About the height of the lying body's back plus room: the lens drops with it, to about 1.8 m. Lower puts the lens close to the ground and a car or a wall in the picture. |
+| `downed_pitch_degrees` | 20 | Laid over the player's own pitch (never written into it): with the pivot at 0.8 m the body sits below the middle of the picture, and tipping brings it up to the lower left, whole, with room around it. |
+| `downed_frequency` | 5 rad/s (95 % in 0.95 s) | Slower than the body's own fall (6 per second): the view arrives as the body settles, and the revive eases back at the same rate. |
+
+How it works: `Player.tick` copies `PlayerAnimation.is_downed()` into `ThirdPersonCamera.downed`; the rig has one more
+spring (`downed_amount()`, 0 to 1) that lerps the pivot height and tips the drawn pitch (`view_pitch()`; `pitch`
+stays the player's). The pivot's own vertical spring follows the target on top, so a drop is two eases in a row.
+`snap_to` starts at the final value for a player who spawns or teleports down. The aim ray (`aim_transform()`) is the
+drawn view: a downed player has the weapon put away and no shot. Not framed: a player who looks up on purpose (that is
+theirs), and what a car or a wall puts between the lens and the body (the wall sweep pulls the lens in as ever).
+`game/tests/player/test_downed_camera.gd` drives a real down (the rules' blow) and a revive (a teammate holding use) and
+projects every bone of the player's skeleton (fingers apart) through the real camera: all inside the frame, at four looks,
+where the standing camera cuts some. The capture `game/tests/captures/downed_camera.tscn` saves the stages.
+
 ## Things found the hard way
 
 - `PhysicsDirectSpaceState3D.cast_motion` ignores a body the sweep already starts inside, so every sweep must start
