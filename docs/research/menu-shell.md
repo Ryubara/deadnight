@@ -13,7 +13,7 @@ and `game/ui/screens/main_menu.gd`.
 | `MenuProfile` | The account facts from the cached profile (`profile/cache` in the settings file, JSON, read-only): name, XP, stubs, mastery. Billing levels are derived (`150 + 30 x level`), an empty or damaged cache is a new player |
 | Panels | `PlayPanel` (the sign, Play together, Quick join, Solo, today's challenges), `LoadoutPanel` (the customize screen embedded, a showcase weapon row), `ShopPanel`, `ChallengesPanel` (a sheet of paper: dailies, orders, milestones, a family chip), `MorePanel` |
 | Look | `MenuLook` (colours, type sizes, `Paper`, `Punches`, `Ring`, the ticket polygon), `MenuItemButton` (a ticket), `ChallengeRow` (a stub, or a ruled line on the sheet) |
-| `MenuScale` | The phone rules: below 500 px on the short side the UI factor doubles, so the design is 540 units high |
+| `MenuScale` | The phone rules: below 500 px on the short side the UI factor doubles, so the design is 540 units high. The factor is the menu's: a night pushed over it runs on the player's own scale (1080 units high, what its HUD and touch layer are made for, #606) and the shell puts the factor back when it shows again |
 
 ## Placeholders and seams (listed because they are not the real thing yet)
 

@@ -120,7 +120,14 @@ func _publish() -> void:
 	var ratio := maxf(float(JavaScriptBridge.eval("window.devicePixelRatio", true)), 1.0)
 	var centre: Vector2 = _controls.button_circle(TouchLayout.MELEE)[&"centre"]
 	var window := get_viewport().get_final_transform() * centre
+	var buttons := {}
+	var zoom := get_viewport().get_final_transform().get_scale().x / ratio
+	for id: StringName in TouchLayout.buttons(_controls.safe_rect(), _controls.touch_scale):
+		var circle := _controls.button_circle(id)
+		var at := get_viewport().get_final_transform() * (circle[&"centre"] as Vector2)
+		buttons[id] = [at.x / ratio, at.y / ratio, float(circle[&"radius"]) * zoom]
 	var data := {
+		"buttons": buttons,
 		"ready": _started,
 		"melee": [window.x / ratio, window.y / ratio],
 		"blows": _blows,

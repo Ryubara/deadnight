@@ -5,7 +5,7 @@ export leaves `tests/` out): the game's own night screen with the touch layer fo
 of the blow. In a headless Chrome with touch emulation it sends what a thumb would, through the DevTools protocol: a
 tap on the MELEE button, then two more taps inside the cooldown, then a tap after it, once right-handed and once
 left-handed. It reads what the game reports (`window.__melee`): the blows the server made, the zombies it hurt, whether
-the night paused.
+the night paused, and where every touch button is (#606): each circle must lie inside the page.
 
     uv run --project <kit>/python gds quiet -- \\
         uv run --with playwright==1.64.1 python tools/web_smoke/touch_melee.py <godot> <work folder> [--out <folder>]
@@ -109,6 +109,11 @@ def verdict(label: str, result: dict) -> list[str]:
         wrong.append(f"{label}: the night paused ({end.get('grip_lost')} times the mouse was lost)")
     if not end.get("touch"):
         wrong.append(f"{label}: the game never saw a finger as the last input")
+    for name, (bx, by, radius) in end.get("buttons", {}).items():
+        if bx - radius < 0 or by - radius < 0 or bx + radius > VIEWPORT["width"] or by + radius > VIEWPORT["height"]:
+            wrong.append(f"{label}: the {name} button ({bx:.0f}, {by:.0f}, r {radius:.0f}) leaves the {VIEWPORT} page")
+    if not end.get("buttons"):
+        wrong.append(f"{label}: the game reported no buttons")
     taps = result["taps"]
     if taps[2] - taps[0] > INSIDE_S * 1000:
         wrong.append(

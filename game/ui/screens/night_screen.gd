@@ -75,6 +75,10 @@ func _ready() -> void:
 	super._ready()
 	# B (`ui_cancel`) crouches in the night: it must not take the player back to the menu.
 	allow_back = false
+	# The night is made for the player's own UI scale: the menu's phone factor (2, which halves the
+	# canvas to 540 units high) would put half the touch buttons off the top. The menu puts the
+	# factor back when it shows again (`MenuShell`).
+	get_window().content_scale_factor = float(Settings.get_value(SettingsService.UI_SCALE))
 	night = Night.new()
 	night.warm_up = warm_up_enabled
 	night.touch_active = touch_active
