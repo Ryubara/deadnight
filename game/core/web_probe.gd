@@ -70,6 +70,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_buttons": "",
 		"notices": "",
 		"code_text": "",
+		"notice_log": "",
 		"touch": false,
 		"reticle": false,
 		"tab": "",
@@ -140,6 +141,7 @@ static func snapshot(top: Control) -> Dictionary:
 	if night_screen.night.hud != null:
 		# Who joined or left, as the night's notices say it.
 		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
+		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():

@@ -200,7 +200,7 @@ def main() -> int:
             deadline = time.monotonic() + NIGHT_TIMEOUT_S
             while time.monotonic() < deadline:
                 for name in ("a", "b"):
-                    heard.update(n for n in read_probe(pages[name]).get("notices", "").split("|") if n)
+                    heard.update(n for n in read_probe(pages[name]).get("notice_log", "").split("|") if n)
                 if read_probe(c).get("night") and all(read_probe(pages[n]).get("players", 0) >= 3 for n in "abc"):
                     break
                 time.sleep(0.25)
