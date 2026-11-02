@@ -69,9 +69,9 @@ func test_the_platform_message_round_trips_and_is_taken_by_the_limits() -> void:
 	assert_int(NetWire.read_platform(PackedByteArray([NetWire.Type.PLATFORM]))).is_equal(-1)
 	assert_bool(PeerLimits.fits(NetWire.Type.PLATFORM, NetWire.PLATFORM_SIZE)).is_true()
 	assert_bool(PeerLimits.fits(NetWire.Type.PLATFORM, 3)).is_false()
-	# Its own number, not the ping mark's, and no new layout for an old one: the version stays.
+	# Its own number, not the ping mark's, and a version of its own: 10 is the first with it.
 	assert_int(NetWire.Type.PLATFORM).is_not_equal(NetWire.Type.MARK)
-	assert_int(NetWire.MIN_VERSION).is_less_equal(NetWire.VERSION)
+	assert_int(NetWire.VERSION).is_greater_equal(10)
 
 
 func test_the_desktops_crowd_and_the_browsers_are_two_numbers_the_tuning_names() -> void:
@@ -156,5 +156,5 @@ func test_an_operators_cap_holds_whatever_the_players_are_on() -> void:
 	assert_int(_host.server.crowd_ceiling()).is_equal(30)
 	assert_int(_host.server.sim.tuning.hard_cap).is_equal(30)
 	# A cap above the ceiling of the match changes nothing.
-	_host.server.limit_crowd(500)
+	_host.server.crowd.limit = 500
 	assert_int(_host.server.crowd_ceiling()).is_equal(RoundTuning.new().alive_cap_ceiling)

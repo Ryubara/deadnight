@@ -35,6 +35,32 @@ func test_an_empty_or_damaged_cache_is_a_new_player() -> void:
 		assert_str(profile.display_name).is_equal(MenuProfile.DEFAULT_NAME)
 
 
+func test_a_name_the_player_gives_is_kept_in_the_profile_with_the_rest_of_the_cache() -> void:
+	var before: String = Settings.get_value(SettingsService.PROFILE_CACHE)
+	Settings.set_value(SettingsService.PROFILE_CACHE, MenuProfile.to_json("", 9000, 12))
+	assert_bool(MenuProfile.is_named()).is_false()
+	assert_str(MenuProfile.save_name("  Ruby   Lee ")).is_equal("Ruby Lee")
+	assert_bool(MenuProfile.is_named()).is_true()
+	var profile := MenuProfile.load_saved()
+	assert_str(profile.display_name).is_equal("Ruby Lee")
+	assert_int(profile.xp).is_equal(9000)
+	assert_int(profile.stubs).is_equal(12)
+	# An empty name takes it away again, and a long one is cut.
+	assert_str(MenuProfile.save_name("   ")).is_empty()
+	assert_bool(MenuProfile.is_named()).is_false()
+	assert_int(MenuProfile.save_name("W".repeat(60)).length()).is_equal(MenuProfile.MAX_NAME)
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+
+
+func test_a_damaged_cache_takes_a_name_without_error() -> void:
+	var before: String = Settings.get_value(SettingsService.PROFILE_CACHE)
+	Settings.set_value(SettingsService.PROFILE_CACHE, "not json")
+	assert_bool(MenuProfile.is_named()).is_false()
+	MenuProfile.save_name("Bo")
+	assert_str(MenuProfile.load_saved().display_name).is_equal("Bo")
+	Settings.set_value(SettingsService.PROFILE_CACHE, before)
+
+
 func test_a_long_name_is_cut() -> void:
 	var profile := MenuProfile.from_json(MenuProfile.to_json("A".repeat(60), 0, 0))
 	assert_int(profile.display_name.length()).is_equal(MenuProfile.MAX_NAME)

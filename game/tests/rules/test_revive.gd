@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## A teammate raising a downed player: the `revive` action, what it refuses and what it changes.
-## The channel (six seconds of holding use beside them) is the night server's
+## The channel (3.5 seconds of holding use beside them) is the night server's
 ## (`tests/night/test_night_revive.gd`); the rules only take the finished action.
 
 var _t: RulesTuning
@@ -29,8 +29,8 @@ func _reason(events: Array[Dictionary]) -> String:
 	return str(events[0]["reason"])
 
 
-func test_the_shipped_numbers_are_six_seconds_and_half_health() -> void:
-	assert_float(_t.health.revive_seconds).is_equal(6.0)
+func test_the_shipped_numbers_are_three_and_a_half_seconds_and_half_health() -> void:
+	assert_float(_t.health.revive_seconds).is_equal(3.5)
 	assert_float(_t.health.revive_fraction).is_equal(0.5)
 
 

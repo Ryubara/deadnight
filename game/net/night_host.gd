@@ -28,6 +28,9 @@ signal built
 signal emptied
 
 const MAX_PLAYERS := 4
+## The longest name a seat shows, as the HUD keeps it (`HudStyle.NAME_LIMIT`), so the ` (2)` of a
+## duplicate is never cut off.
+const NAME_MAX := 20
 ## A TICK goes out every this many steps: 2 is 30 a second at the 60 Hz step.
 const SEND_EVERY := 2
 ## Steps a refused client has to read why before the server closes the connection.
@@ -51,7 +54,7 @@ var rules_tuning: RulesTuning
 ## Set it with `configure_match`, which also changes a night nobody has started.
 var match_settings := MatchSettings.new()
 ## The most zombies alive at once in this room's night whatever the players are on; 0 is the rules'
-## own (`NightServer.limit_crowd`).
+## own (`CrowdCeiling.limit`).
 var max_alive := 0
 var log_enabled := true
 ## Metres around a player within which the zombies are sent to their client (0: all of them).
@@ -86,6 +89,9 @@ var kicked_count := 0
 
 var _peers: Dictionary[int, HostPeer] = {}
 var _by_player: Dictionary[int, HostPeer] = {}
+## Player id -> the name the seat shows (the ticket's name, made unique); players without a name
+## are left out and are `PLAYER n` on every screen. Kept with the seat while it is away.
+var _names: Dictionary = {}
 ## Players whose socket dropped, by id: their seat, kept until they come back or the time is up.
 var _away: Dictionary[int, Away] = {}
 var _events: Array[Dictionary] = []
@@ -198,7 +204,7 @@ func _build_night() -> void:
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
 	server.drawn_bodies = false
-	server.limit_crowd(max_alive)
+	server.crowd.limit = max_alive
 	_events.clear()
 	nights += 1
 	serving = true
@@ -298,6 +304,7 @@ func _on_disconnected(transport_id: int) -> void:
 ## Frees a seat for good: the body leaves the lot and the id can be given to someone new.
 func _free_seat(player_id: int) -> void:
 	_away.erase(player_id)
+	_names.erase(player_id)
 	if server != null:
 		_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
 	_log("left", {"player": player_id, "players": _by_player.size()})
@@ -354,7 +361,7 @@ func _on_player_packet(peer: HostPeer, data: PackedByteArray) -> void:
 			if web < 0:
 				_fault(peer)
 				return
-			server.set_platform(peer.player_id, web == 1)
+			server.crowd.set_platform(peer.player_id, web == 1)
 		NetWire.Type.MARK:
 			var mark := NetWire.read_mark(data)
 			if mark.is_empty():
@@ -393,14 +400,56 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	peer.player_id = player_id
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	_by_player[player_id] = peer
+	# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
+	_name_seat(player_id, peer.user_name)
 	_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
 	listener.send(
-		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, server.rules.to_dict())
+		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
 	)
 	_log("joined", {"player": player_id, "players": _by_player.size()})
 	player_joined.emit(player_id)
+
+
+## What a WELCOME carries: the rules' snapshot and the names of the seats (`names`: player id ->
+## name), so a client that joins late, or comes back, shows everyone by name at once.
+func _welcome_snapshot() -> Dictionary:
+	var snapshot := server.rules.to_dict()
+	snapshot["names"] = _names.duplicate()
+	return snapshot
+
+
+## Gives the seat the name the ticket said, made unique among the seats (`Ann`, `Ann (2)`, ...), and
+## tells everyone (a `player_named` event; the joiner's own WELCOME carries it too). A seat with no
+## name stays without one.
+func _name_seat(player_id: int, wanted: String) -> void:
+	var shown := unique_name(wanted, _names, player_id)
+	if shown == "":
+		return
+	_names[player_id] = shown
+	_collect([{"type": &"player_named", "player_id": player_id, "name": shown}])
+
+
+## `wanted` (edge spaces cut, at most `NAME_MAX` characters) or, when another seat of `taken`
+## (player id -> name) already shows it, in any case of letters, the first of `wanted (2)`,
+## `wanted (3)`, ... that is free. "" when there is no name.
+static func unique_name(wanted: String, taken: Dictionary, player_id: int) -> String:
+	var base := wanted.strip_edges().left(NAME_MAX)
+	if base == "":
+		return ""
+	var used: Dictionary = {}
+	for id: Variant in taken:
+		if id != player_id:
+			used[str(taken[id]).to_lower()] = true
+	if not used.has(base.to_lower()):
+		return base
+	for number in range(2, MAX_PLAYERS + 2):
+		var suffix := " (%d)" % number
+		var candidate := base.left(NAME_MAX - suffix.length()).strip_edges() + suffix
+		if not used.has(candidate.to_lower()):
+			return candidate
+	return base
 
 
 ## The id of the player this token is the seat of, taken from the held seats or (a client that
@@ -435,7 +484,7 @@ func _resume(peer: HostPeer, player_id: int) -> void:
 	peer.zombie_base = {}
 	_by_player[player_id] = peer
 	listener.send(
-		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, server.rules.to_dict())
+		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
 	)
 	_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
 	_log("resumed", {"player": player_id, "players": _by_player.size()})

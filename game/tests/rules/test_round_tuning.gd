@@ -147,7 +147,7 @@ func test_no_player_count_nor_round_lifts_a_browsers_cap_above_its_ceiling() -> 
 ## The browser's ceiling and the crowd's hard cap are the same number: a rules cap above it (46 for
 ## four players, #315) only queued the extra zombies in the director and told the balance model
 ## about a crowd the lot never stood. A desktop has its own, higher one (#453); the server sets
-## both from the weakest client in the match (`NightServer.set_platform`).
+## both from the weakest client in the match (`CrowdCeiling.set_platform`).
 func test_the_browsers_ceiling_is_the_crowds_hard_cap() -> void:
 	# The web build's measured crowd (docs/research/crowd-budget.md); a desktop has its own, above it.
 	assert_int(_t.web_alive_cap_ceiling).is_equal(ZombieTuning.shipped().hard_cap)

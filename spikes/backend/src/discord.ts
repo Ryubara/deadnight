@@ -3,7 +3,12 @@
 
 export interface DiscordUser {
   id: string;
+  /** The account handle (`name_123`), not what people see. */
   username: string;
+  /** The display name the player chose on Discord, if any. */
+  globalName: string | null;
+  /** The player's nickname in the server the Activity runs in, if they have one (needs the `guilds.members.read` scope). */
+  nick: string | null;
   avatar: string | null;
 }
 
@@ -16,21 +21,30 @@ export interface DiscordSignIn {
 export class DiscordUnavailable extends Error {}
 
 export interface DiscordClient {
-  /** Throws when the code is not valid, and `DiscordUnavailable` when Discord could not be asked. */
-  exchangeCode(code: string): Promise<DiscordSignIn>;
+  /** Throws when the code is not valid, and `DiscordUnavailable` when Discord could not be asked. `guildId`: the server of the Activity. */
+  exchangeCode(code: string, guildId?: string): Promise<DiscordSignIn>;
 }
 
 /** Stub users live in their own `discord_id` namespace, so one can never collide with a real Discord id. */
 export const STUB_ID_PREFIX = "stub:";
 
-/** Test double: the code is `stub:<id>:<name>`. Never allowed in production (see config). */
+/**
+ * Test double: the code is `stub:<id>:<username>[:<global name>[:<nick>]]`; an empty part is none. The nickname is
+ * given only when the call names a server, as Discord does. Never allowed in production (see config).
+ */
 export class StubDiscord implements DiscordClient {
-  async exchangeCode(code: string): Promise<DiscordSignIn> {
-    const match = /^stub:([0-9]{1,20}):([\w-]{1,32})$/.exec(code);
+  async exchangeCode(code: string, guildId?: string): Promise<DiscordSignIn> {
+    const match = /^stub:([0-9]{1,20}):([\w-]{1,32})(?::([\w -]{0,32}))?(?::([\w -]{0,32}))?$/.exec(code);
     if (!match) throw new Error("invalid stub code");
     return {
       accessToken: `stub-access-${match[1]}`,
-      user: { id: `${STUB_ID_PREFIX}${match[1]}`, username: match[2]!, avatar: null },
+      user: {
+        id: `${STUB_ID_PREFIX}${match[1]}`,
+        username: match[2]!,
+        globalName: match[3] || null,
+        nick: guildId ? match[4] || null : null,
+        avatar: null,
+      },
     };
   }
 }
@@ -81,7 +95,19 @@ export class LiveDiscord implements DiscordClient {
     }
   }
 
-  async exchangeCode(code: string): Promise<DiscordSignIn> {
+  /** The player's nickname in `guildId`, or null: no nickname, the scope was not granted, or Discord did not answer (the name then falls back, the sign-in does not fail). */
+  private async nickIn(guildId: string, accessToken: string): Promise<string | null> {
+    try {
+      const member = (await this.call("member lookup", `${API}/users/@me/guilds/${guildId}/member`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })) as { nick?: unknown };
+      return typeof member.nick === "string" ? member.nick : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async exchangeCode(code: string, guildId?: string): Promise<DiscordSignIn> {
     const token = (await this.call("token exchange", `${API}/oauth2/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -91,7 +117,7 @@ export class LiveDiscord implements DiscordClient {
         grant_type: "authorization_code",
         code,
       }),
-    })) as { access_token?: unknown };
+    })) as { access_token?: unknown; scope?: unknown };
     if (typeof token.access_token !== "string") {
       throw new DiscordUnavailable("discord token exchange gave no access_token");
     }
@@ -99,11 +125,23 @@ export class LiveDiscord implements DiscordClient {
 
     const user = (await this.call("user lookup", `${API}/users/@me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
-    })) as Partial<DiscordUser>;
+    })) as Partial<DiscordUser> & { global_name?: unknown };
     if (typeof user.id !== "string" || typeof user.username !== "string") {
       throw new DiscordUnavailable("discord user lookup gave no user");
     }
-    return { accessToken, user: { id: user.id, username: user.username, avatar: user.avatar ?? null } };
+    // The nickname is a server's, so it takes the member scope and the server's id; without either the name falls back.
+    const scopes = typeof token.scope === "string" ? token.scope.split(" ") : [];
+    const nick = guildId && scopes.includes("guilds.members.read") ? await this.nickIn(guildId, accessToken) : null;
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        globalName: typeof user.global_name === "string" ? user.global_name : null,
+        nick,
+        avatar: user.avatar ?? null,
+      },
+    };
   }
 }
 

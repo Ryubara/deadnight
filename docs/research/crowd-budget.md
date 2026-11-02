@@ -132,9 +132,9 @@ deltas. Bandwidth is not the limit at this size.
 | Web | 40 | the browser's measurement above (8 to 10 ms a frame at the worst on a fast desktop in Chrome, no headroom on a slow CPU) |
 | Desktop (single-player) and a game server with no browser in the room | 120 | the client draws 120 in 2.4 ms; the server's step is 7 ms at the median and 14.8 ms at p95 on Railway, under the 16.7 ms tick; 160 is 17.3 ms at p95 there, over it |
 
-- **One number per match, from the weakest client in it** (`RoundTuning.ceiling_for`, `NightServer.set_platform`): a
-  client tells the server what it is with a `PLATFORM` packet after its welcome (no protocol version change: a client
-  that says nothing, or an old one, counts as a browser, so the safe number holds). A browser that joins a night of
+- **One number per match, from the weakest client in it** (`RoundTuning.ceiling_for`, `CrowdCeiling.set_platform`): a
+  client tells the server what it is with a `PLATFORM` packet after its welcome (protocol version 10; a client
+  that says nothing counts as a browser, so the safe number holds). A browser that joins a night of
   desktop players takes the crowd down to 40 for what spawns next; one that leaves puts it back. The rules' cap
   (`GameRules.crowd_ceiling`) and the sim's hard cap are set together.
 - The match settings' slider offers the host's platform's ceiling (a browser host 40, a desktop host 120).

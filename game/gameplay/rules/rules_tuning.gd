@@ -13,6 +13,7 @@ const FINGERPRINT_LENGTH := 16
 @export var explosives: ExplosiveTuning = ExplosiveTuning.new()
 @export var barricades: BarricadeTuning = BarricadeTuning.new()
 @export var health: HealthTuning = HealthTuning.new()
+@export var revive: ReviveTuning = ReviveTuning.new()
 @export var crane: CraneTuning = CraneTuning.new()
 @export var upgrade: UpgradeTuning = UpgradeTuning.new()
 

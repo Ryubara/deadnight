@@ -18,6 +18,9 @@ const SNAPSHOT_KEYS := {
 	"kills": TYPE_INT,
 	"headshot_kills": TYPE_INT,
 	"downs": TYPE_INT,
+	"revives": TYPE_INT,
+	"dead": TYPE_BOOL,
+	"bleed_left": TYPE_FLOAT,
 	"points_earned": TYPE_INT,
 	"points_spent": TYPE_INT,
 }
@@ -41,6 +44,14 @@ var kills: int = 0
 var headshot_kills: int = 0
 ## How many times this player went down this night (a blow or a forced down), for the scoreboard.
 var downs: int = 0
+## How many teammates this player has pulled up this night, for the scoreboard. A getting up at a
+## round's end is nobody's revive.
+var revives: int = 0
+## Bled out: down until the round ends, and not to be revived. `downed` stays true as well, so every
+## rule that refuses a downed player refuses a dead one.
+var dead: bool = false
+## Seconds a downed player has left before they are dead (0 when up or dead).
+var bleed_left: float = 0.0
 var points_earned: int = 0
 var points_spent: int = 0
 
@@ -75,6 +86,9 @@ func to_dict() -> Dictionary:
 		"kills": kills,
 		"headshot_kills": headshot_kills,
 		"downs": downs,
+		"revives": revives,
+		"dead": dead,
+		"bleed_left": bleed_left,
 		"points_earned": points_earned,
 		"points_spent": points_spent,
 	}
@@ -94,6 +108,9 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.kills = data["kills"]
 	player.headshot_kills = data["headshot_kills"]
 	player.downs = data["downs"]
+	player.revives = data["revives"]
+	player.dead = data["dead"]
+	player.bleed_left = data["bleed_left"]
 	player.points_earned = data["points_earned"]
 	player.points_spent = data["points_spent"]
 	return player

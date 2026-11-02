@@ -259,6 +259,7 @@ func _build_chrome() -> void:
 	plate.offset_bottom = 22.0 + MenuPlate.SIZE.y
 	add_child(plate)
 	plate.show_profile(context.profile)
+	context.profile_changed.connect(func() -> void: plate.show_profile(context.profile))
 	hints = MenuHints.new()
 	hints.anchor_top = 1.0
 	hints.anchor_bottom = 1.0

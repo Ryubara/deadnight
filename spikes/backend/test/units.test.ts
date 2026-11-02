@@ -123,7 +123,10 @@ test("the live Discord client exchanges the code and reads the user (fetch stubb
     return new Response(JSON.stringify(body));
   }) as unknown as typeof fetch;
   const result = await new LiveDiscord("cid", "csecret", fetchStub).exchangeCode("the-code");
-  assert.deepEqual(result, { accessToken: "tok", user: { id: "42", username: "zed", avatar: null } });
+  assert.deepEqual(result, {
+    accessToken: "tok",
+    user: { id: "42", username: "zed", globalName: null, nick: null, avatar: null },
+  });
   assert.deepEqual(calls, ["POST https://discord.com/api/oauth2/token", "GET https://discord.com/api/users/@me"]);
 });
 

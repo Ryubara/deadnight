@@ -103,6 +103,7 @@ def main() -> int:
     parser.add_argument("--ablate", nargs="+", default=["none"])
     parser.add_argument("--runs", type=int, default=2)
     parser.add_argument("--frames", type=int, default=400)
+    parser.add_argument("--warmup", type=int, default=8, help="seconds of crowd simulated before the first frame")
     parser.add_argument("--build", type=Path, help="a folder an earlier run exported; skips the export")
     args = parser.parse_args()
     args.work.mkdir(parents=True, exist_ok=True)
@@ -114,7 +115,7 @@ def main() -> int:
             for ablate in args.ablate:
                 for zombies in args.zombies:
                     for _ in range(args.runs):
-                        query = f"zombies={zombies}&frames={args.frames}&warmup=8"
+                        query = f"zombies={zombies}&frames={args.frames}&warmup={args.warmup}"
                         if ablate != "none":
                             query += f"&ablate={ablate}"
                         row = run_cell(p, args.browser, args.throttle, f"http://127.0.0.1:{port}/index.html?{query}")

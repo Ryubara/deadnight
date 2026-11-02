@@ -95,6 +95,10 @@ static func _player_fits(player: Dictionary) -> bool:
 		and player["since_blow"] >= 0.0
 		and player["kills"] >= 0
 		and player["downs"] >= 0
+		and player["revives"] >= 0
+		and is_finite(player["bleed_left"])
+		and player["bleed_left"] >= 0.0
+		and (player["downed"] or not player["dead"])
 	)
 
 

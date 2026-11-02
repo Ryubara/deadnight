@@ -25,7 +25,9 @@ extends RefCounted
 ## held), pitch (the look up or down, `pitch_step`), ammo, reserve, reloading, arms (every weapon
 ## carried: id to [ammo, reserve, tier]), points, prompt, reviving (the teammate this one is
 ## raising, 0 for none), revive (0 to 1: how far the hold on this one, when downed, has got), ack
-## (the `seq` of the command this step used: a predicting client replays from it)}}.
+## (the `seq` of the command this step used: a predicting client replays from it), kills, downs,
+## revives, dead (bled out), bleed (seconds a downed player has left) and reviver (who is raising
+## this one, 0 for nobody)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -105,7 +107,7 @@ var drawn_bodies := true
 ## The round trip each connected player last reported, milliseconds (the game server fills it from
 ## their pings): a player with no entry has none to show, and a night on a loopback has no one's.
 var pings: Dictionary[int, int] = {}
-## The crowd this match stands, from the weakest client in it (`set_platform`).
+## The crowd this match stands, from the weakest client in it (`CrowdCeiling.set_platform`).
 var crowd := CrowdCeiling.new()
 
 var _pending: Dictionary[int, NightCommand] = {}
@@ -171,7 +173,7 @@ func _init(
 	world.bind(rules)
 	world.doors.door_opened.connect(_on_door_opened)
 	rules.event_emitted.connect(_on_rules_event)
-	_apply_crowd_ceiling()
+	crowd.bind(rules, sim)
 
 
 ## Stops listening to the rules and the doors, so nothing calls into a finished night. Call when
@@ -213,30 +215,9 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 	return _outbox
 
 
-## A client says what kind it is (`NetWire.platform`): the crowd of the match is the weakest
-## client's. Unknown players are ignored.
-func set_platform(player_id: int, web: bool) -> void:
-	crowd.set_platform(player_id, web)
-	_apply_crowd_ceiling()
-
-
-## Puts an operator's cap on the crowd (a small container's CPU is shared by its rooms); 0 is none.
-func limit_crowd(count: int) -> void:
-	crowd.limit = maxi(count, 0)
-	_apply_crowd_ceiling()
-
-
-## The most zombies alive at once in this match now.
+## The most zombies alive at once in this match now (`crowd`).
 func crowd_ceiling() -> int:
 	return rules.crowd_ceiling
-
-
-## The rules' cap and the crowd's hard cap, one number: the browser's when any player is on one,
-## else the desktop's (with nobody here yet, this process's own platform).
-func _apply_crowd_ceiling() -> void:
-	var ceiling := crowd.value(rules.tuning.rounds)
-	rules.crowd_ceiling = ceiling
-	sim.tuning.hard_cap = ceiling
 
 
 ## Keeps the newest command of a player, with the pressed edges of the one it replaces if no step
@@ -294,7 +275,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	director.tick(delta, _chase_targets())
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
-	rules.apply(RulesAction.tick(delta))
+	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
 	PerfProbe.end(&"server.rules", began)
 	began = PerfProbe.begin()
 	var target_list := _target_list()
@@ -326,7 +307,6 @@ func _join(player_id: int, local: bool) -> void:
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
 	crowd.join(player_id, OS.has_feature("web") if local else true)
-	_apply_crowd_ceiling()
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
@@ -346,7 +326,6 @@ func _leave(player_id: int) -> void:
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
 		crowd.leave(player_id)
-		_apply_crowd_ceiling()
 		_pending.erase(player_id)
 		_silent.erase(player_id)
 		_acked.erase(player_id)
@@ -694,8 +673,8 @@ func aims_with_view(command: NightCommand) -> bool:
 ## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or
 ## `{"kind": &"fuel", "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell
 ## now: `units` is 0 and `price` 0 when the tank is full), or `{"kind": &"revive", "id",
-## "progress"}` beside a downed teammate (`progress`: 0 to 1 of the hold; first of all, a life comes
-## before a door).
+## "progress", "bleed"}` beside a downed teammate (`progress`: 0 to 1 of the hold, `bleed`: the
+## seconds they have left; first of all, a life comes before a door).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -703,7 +682,12 @@ func use_target(player_id: int) -> Dictionary:
 	var here := body.global_position
 	var raise := _revive.in_reach(player_id)
 	if raise != 0:
-		return {"kind": &"revive", "id": raise, "progress": _revive.progress(raise)}
+		return {
+			"kind": &"revive",
+			"id": raise,
+			"progress": _revive.progress(raise),
+			"bleed": rules.bleed_left_of(raise),
+		}
 	var door := _door_offer(here)
 	if not door.is_empty():
 		return door
@@ -936,12 +920,17 @@ func _frame() -> Dictionary:
 			"reloading": weapon != null and weapon.is_reloading(),
 			"arms": _arms_of(player_id),
 			"points": rules.points_of(player_id),
-			"prompt": use_target(player_id),
+			# A player on the ground can use nothing, so the card says nothing.
+			"prompt": {} if _is_downed(player_id) else use_target(player_id),
 			"ack": _acked.get(player_id, 0),
 			"reviving": _revive.target_of(player_id),
 			"revive": _revive.progress(player_id),
+			"reviver": _revive.holder_of(player_id),
 			"kills": rules.kills_of(player_id),
 			"downs": rules.downs_of(player_id),
+			"revives": rules.revives_of(player_id),
+			"dead": rules.is_dead(player_id),
+			"bleed": rules.bleed_left_of(player_id),
 		}
 		if pings.has(player_id):
 			players[player_id]["ping"] = pings[player_id]

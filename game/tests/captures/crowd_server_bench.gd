@@ -69,7 +69,7 @@ func _ready() -> void:
 	_server.sim.pathing = _timed
 	for id in range(1, _players + 1):
 		_server.apply({"type": NightServer.JOIN, "player_id": id})
-		_server.set_platform(id, bool(_args.get("web", false)))
+		_server.crowd.set_platform(id, bool(_args.get("web", false)))
 	_server.apply({"type": NightServer.START_NIGHT})
 	_running = true
 	PerfProbe.enabled = true
