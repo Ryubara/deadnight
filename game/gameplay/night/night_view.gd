@@ -181,18 +181,6 @@ func _on_event(event: Dictionary) -> void:
 				effects.spark(at + BOARD_LIFT)
 
 
-## The flash on the shooter's muzzle point (or at the server's muzzle when the weapon has no model),
-## the impacts, and the shake of the local player's own view.
-func _show_shot(event: Dictionary) -> void:
-	var def := WeaponCatalog.get_def(event["weapon_id"])
-	var body := bodies.call(event["shooter_id"]) as Player if bodies.is_valid() else null
-	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
-	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
-	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
-	if body != null and event["shooter_id"] == _state.player_id:
-		body.camera_rig.add_shake(def.shake_trauma)
-
-
 func _launch_grenade(event: Dictionary) -> void:
 	if _grenade_def == null:
 		return
