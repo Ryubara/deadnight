@@ -10,8 +10,9 @@ extends RefCounted
 ## side.
 
 const START := &"pistol"
-## Carried from the first moment: the revolver in hand and the crowbar, which never runs dry.
-const START_ARMS: Array[StringName] = [&"pistol", &"crowbar"]
+## Carried from the first moment: the revolver in hand. The other hand is empty, and the quick melee
+## (#411) is every player's own blow, not a carried weapon.
+const START_ARMS: Array[StringName] = [&"pistol"]
 
 static var _defs: Dictionary[StringName, WeaponDef] = {}
 
@@ -28,6 +29,7 @@ static func def(weapon_id: StringName) -> WeaponDef:
 static func warm() -> void:
 	for id in WeaponCatalog.IDS:
 		def(id)
+	def(WeaponCatalog.QUICK_MELEE)
 
 
 ## Damage of one trigger pull that lands in `zone` at `distance` metres: every pellet, with the
@@ -103,10 +105,10 @@ static func worth_of(weapon: WeaponDef, health: float = 0.0) -> float:
 	return WeaponWorth.of(weapon, health)
 
 
-## The melee weapon to fall back on from those carried: the one that kills fastest, the crowbar when
-## no other is carried.
+## The melee weapon to fall back on from those carried: the one that kills fastest, the quick melee
+## (`WeaponCatalog.QUICK_MELEE`) when none is carried or none beats it.
 static func best_melee(arms: Dictionary, health: float = 0.0) -> StringName:
-	var best_id: StringName = &"crowbar"
+	var best_id: StringName = WeaponCatalog.QUICK_MELEE
 	var best_rate := melee_rate_of(def(best_id), health)
 	for weapon_id: StringName in arms:
 		if not is_melee(weapon_id):

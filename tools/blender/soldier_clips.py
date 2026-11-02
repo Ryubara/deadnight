@@ -298,12 +298,38 @@ def build(arm):
         keys = [(0, target), (6, blend(target, idle_mid, 0.55)), (10, idle_mid)]
         write(arm, f"Unequip_{cls}", keys, up, "upper", False, cls, {"weapon_hidden": 8})
 
+    strikes(arm, {"Rifle": aim, "Shotgun": aim, "Pistol": pistol, "Melee": ready}, up)
     grenade(arm, up, idle, idle_mid, aim)
     repair(arm, up, aim)
     aim_moves(arm, acts, aim, every)
     revive(arm, acts)
     sprint_carries(arm, acts, aim, up)
     return CLIPS
+
+
+# The quick melee (#411): one blow for every weapon, a short club-like bash with whatever is in the hands. The motion
+# is the same for each class; `arm` is how much of it the right arm does on its own (a gun in two hands is mostly
+# the spine, which carries both hands and the weapon, so the left hand stays on the fore-end; one hand holds a
+# pistol, a bat or an axe and swings freely). 13 frames, under the quick melee's cooldown (0.6 s).
+STRIKE = {"Rifle": 0.45, "Shotgun": 0.45, "Pistol": 0.9, "Melee": 1.0}
+STRIKE_EVENTS = {"whoosh": 3, "hit": 6, "can_strike_again": 13}
+
+
+def strikes(arm, bases, up):
+    """Strike_Rifle, Strike_Shotgun, Strike_Pistol and Strike_Melee, each from its class's aim pose."""
+    for cls, base in bases.items():
+        k = STRIKE[cls]
+        windup = offset(
+            base, UpperArm_R=(35 * k, 0, 0), LowerArm_R=(0, 0, 25 * k), Torso=(-8, 14, 0), Abdomen=(-2, 6, 0)
+        )
+        strike = offset(
+            base, UpperArm_R=(-15 * k, 0, 0), LowerArm_R=(0, 0, -15 * k), Torso=(15, -11, 0), Abdomen=(5, -5, 0)
+        )
+        follow = offset(
+            base, UpperArm_R=(-22 * k, 0, 0), LowerArm_R=(0, 0, -18 * k), Torso=(19, -15, 0), Abdomen=(6, -7, 0)
+        )
+        keys = [(0, base), (3, windup), (6, strike), (8, follow), (13, base)]
+        write(arm, f"Strike_{cls}", keys, up, "upper", False, cls, dict(STRIKE_EVENTS))  # fmt: skip
 
 
 # The grenade is held on the same bone as every weapon, so the projectile leaves from there at `release`.

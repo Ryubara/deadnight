@@ -78,7 +78,7 @@ func test_a_re_cut_weapon_hurts_by_the_multiplier_in_the_real_combat() -> void:
 
 func test_the_crowbar_has_nothing_to_re_cut_and_a_press_costs_nothing() -> void:
 	var night := await _start()
-	night.server.combat.apply(CombatAction.equip(1, &"crowbar"))
+	night.server.combat.apply(CombatAction.give_weapon(1, &"crowbar"))
 	var prompt := _stand_at(night, _spot(night, &"upgrade"))
 	assert_str(String(prompt["kind"])).is_equal("recut_none")
 	var before := night.state.points()

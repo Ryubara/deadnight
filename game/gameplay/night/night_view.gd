@@ -99,6 +99,15 @@ func show_attack(player_id: int, weapon: WeaponDef) -> void:
 		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire")
 
 
+## The quick melee: the Soldier strikes with what he holds (`Strike_<Class>`). Every client draws
+## every player's blow from the same `quick_melee` event.
+func show_strike(player_id: int) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.strike()
+
+
 ## The shooter's weapon tilts down for the `seconds` of its reload and comes back up (every client
 ## draws every player's reload from the same `reload_started` event).
 func show_reload(player_id: int, seconds: float) -> void:
@@ -202,6 +211,8 @@ func _on_event(event: Dictionary) -> void:
 			began = PerfProbe.begin()
 			_show_shot(event)
 			PerfProbe.end(&"fx.shot", began)
+		&"quick_melee":
+			show_strike(event["shooter_id"])
 		&"reload_started":
 			show_reload(event["shooter_id"], event["seconds"])
 		&"damage_dealt":
