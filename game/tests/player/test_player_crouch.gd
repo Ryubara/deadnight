@@ -253,7 +253,7 @@ func test_the_crouch_pose_plays_and_the_stand_returns() -> void:
 
 func test_a_crouched_walk_steps_under_the_held_pose() -> void:
 	await _crouch_run(Vector2(0.0, -1.0), 40)
-	var mix: float = _animation.get(PlayerAnimation.CROUCH_MIX_PARAMETER)
+	var mix: float = _animation.get(StanceDrive.CROUCH_MIX_PARAMETER)
 	assert_float(mix).is_equal_approx(_tuning.crouch_walk_blend, 0.05)
 	await _crouch_run(Vector2.ZERO, 40)
-	assert_float(_animation.get(PlayerAnimation.CROUCH_MIX_PARAMETER)).is_less(0.05)
+	assert_float(_animation.get(StanceDrive.CROUCH_MIX_PARAMETER)).is_less(0.05)

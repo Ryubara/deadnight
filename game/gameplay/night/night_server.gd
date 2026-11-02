@@ -22,12 +22,12 @@ extends RefCounted
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
 ## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
 ## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
-## held), pitch (the look up or down, `pitch_step`), ammo, reserve, reloading, arms (every weapon
-## carried: id to [ammo, reserve, tier]), points, prompt, reviving (the teammate this one is
-## raising, 0 for none), revive (0 to 1: how far the hold on this one, when downed, has got), ack
-## (the `seq` of the command this step used: a predicting client replays from it), kills, downs,
-## revives, dead (bled out), bleed (seconds a downed player has left) and reviver (who is raising
-## this one, 0 for nobody)}}.
+## held), pitch (the look up or down, `pitch_step`), stance (`PlayerStance` bits), ammo, reserve,
+## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
+## (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one,
+## when downed, has got), ack (the `seq` of the command this step used: a predicting client replays
+## from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player has left) and
+## reviver (who is raising this one, 0 for nobody)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -907,6 +907,7 @@ func _frame() -> Dictionary:
 			"weapon": weapon.def.id if weapon != null else &"",
 			"aim": body.state.holds_aim(body.tuning.hip_fire_hold),
 			"pitch": pitch_step(body.state.view_pitch),
+			"stance": PlayerStance.pack(body.state),
 			"ammo": weapon.ammo if weapon != null else 0,
 			"reserve": weapon.reserve if weapon != null else 0,
 			"reloading": weapon != null and weapon.is_reloading(),
