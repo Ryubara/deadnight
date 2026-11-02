@@ -37,17 +37,26 @@ SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--igno
 SCREEN_TIMEOUT_S = 40
 LOCK_TIMEOUT_S = 10
 LOCKED_JS = "() => document.pointerLockElement ? document.pointerLockElement.tagName : null"
-# The pause button of the touch layer in the 844 x 390 landscape layout (game/ui/touch/touch_layout.gd: 442 from the
-# left edge of the safe area, 80 from its top, in a 1280-unit-wide canvas that is scaled to the window).
-PAUSE_BUTTON = (0.345, 0.205)
+# The pause button of the touch layer in the 844 x 390 landscape layout, as a fraction of the window (read off
+# phone_1_night.png: the round bar at the top left, the pause button beside it; the scoreboard button is below it).
+PAUSE_BUTTON = (0.189, 0.074)
 
 
 def probe(page: Page) -> dict:
-    return smoke.probe(page)
+    """Everything the game publishes (smoke.probe keeps a few keys only)."""
+    return page.evaluate("() => window.deadnight ? Object.assign({}, window.deadnight) : {}")
 
 
 def wait_for(page: Page, what: str, test, seconds: float = SCREEN_TIMEOUT_S) -> dict:
-    return smoke.wait_for(page, what, test, seconds)
+    end = time.monotonic() + seconds
+    state: dict = {}
+    while time.monotonic() < end:
+        state = probe(page)
+        if test(state):
+            return state
+        page.wait_for_timeout(100)
+    keys = ("screen", "night", "running", "paused", "settings_open", "menu_buttons", "mouse_mode")
+    raise TimeoutError(f"timed out waiting for {what} (last: { ({k: state.get(k) for k in keys}) })")
 
 
 def wait_lock(page: Page, locked: bool, seconds: float) -> bool:
