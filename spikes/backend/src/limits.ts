@@ -21,7 +21,7 @@ export class RateLimit {
       this.counts.set(key, { windowStart: now, count: 1 });
       return true;
     }
-    if (entry.count >= this.max) return false;
+    if (entry.count > this.max) return false;
     entry.count++;
     return true;
   }
