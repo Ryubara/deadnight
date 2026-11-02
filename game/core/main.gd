@@ -34,13 +34,22 @@ func _ready() -> void:
 		UIRouter.push(NIGHT, UITransition.Kind.IRIS)
 
 
-## A game server: one night for up to four players. The port is `--port`, else `$PORT` (Railway
-## sets it), else the default.
+## A game server: with a backend (`ServerConfig`) the nights of its matches, else one night for
+## up to four players. The port is `--port`, else `$PORT` (Railway sets it), else the default.
 func _serve(args: NetArgs) -> void:
-	var host := NightHost.new()
 	var from_environment := OS.get_environment("PORT")
-	host.port = args.get_int(
+	var port := args.get_int(
 		"port", int(from_environment) if from_environment != "" else NetWire.DEFAULT_PORT
 	)
+	var config := ServerConfig.from_environment()
+	if config.problem() != "":
+		push_error("game server: " + config.problem())
+		get_tree().quit(1)
+		return
+	if config.uses_backend():
+		add_child(GameServer.make(config, port, args.get_int("seed", -1)))
+		return
+	var host := NightHost.new()
+	host.port = port
 	host.seed_value = args.get_int("seed", -1)
 	add_child(host)
