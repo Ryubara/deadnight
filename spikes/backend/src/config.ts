@@ -1,6 +1,6 @@
 // All configuration comes from environment variables. Nothing here has a secret default.
 
-export type DiscordMode = "stub" | "live";
+export type DiscordMode = "stub" | "live" | "off";
 
 export interface Config {
   host: string;
@@ -14,6 +14,8 @@ export interface Config {
   discordClientSecret: string;
   databaseUrl: string | null;
   production: boolean;
+  /** `POST /auth/guest` signs in a visitor who has no Discord (the web build). */
+  guestSignIn: boolean;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string, minLength = 1): string {
@@ -41,8 +43,8 @@ function parsePort(value: string | undefined): number {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const production = env.NODE_ENV === "production";
   const mode = env.DISCORD_MODE;
-  if (mode !== "stub" && mode !== "live") {
-    throw new Error("DISCORD_MODE is required and must be 'live' or 'stub'");
+  if (mode !== "stub" && mode !== "live" && mode !== "off") {
+    throw new Error("DISCORD_MODE is required and must be 'live', 'stub' or 'off'");
   }
   const discordMode: DiscordMode = mode;
   if (discordMode === "stub") {
@@ -52,6 +54,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     }
   }
   const live = discordMode === "live";
+  const guestSignIn = env.GUEST_SIGN_IN === "1";
+  // `off` is a backend with no Discord yet: only guests can sign in, so it needs them on.
+  if (discordMode === "off" && !guestSignIn) throw new Error("DISCORD_MODE=off needs GUEST_SIGN_IN=1 (nobody could sign in)");
   const sessionSecret = required(env, "SESSION_SECRET", 32);
   const ticketSecret = required(env, "TICKET_SECRET", 32);
   const gameServerSecret = required(env, "GAME_SERVER_SECRET", 32);
@@ -71,5 +76,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     discordClientSecret: live ? required(env, "DISCORD_CLIENT_SECRET") : "",
     databaseUrl: env.DATABASE_URL ?? null,
     production,
+    guestSignIn,
   };
 }

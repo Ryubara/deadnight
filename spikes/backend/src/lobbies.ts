@@ -25,7 +25,11 @@ export interface Lobby {
   instanceId: string | null;
   hostId: string;
   maxPlayers: number;
+  /** A public night is one Quick join may put a stranger in; a private one is for whoever has its code. */
+  visibility: "private" | "public";
   members: Member[];
+  /** Players on the game server now, as it last said (null until it has, or before the match starts). */
+  players: number | null;
   state: "open" | "started";
   match: Match | null;
   createdAt: number;
@@ -59,6 +63,9 @@ export interface LobbyLimits {
   /** A started lobby is dropped at this age even when the game server never said its match ended. */
   startedMaxAgeMs: number;
 }
+
+/** Most people who may ever hold a seat of one started night (who left is not tracked, only who is there now). */
+export const MAX_SEATS_EVER = 32;
 
 export const DEFAULT_LOBBY_LIMITS: LobbyLimits = { openIdleMs: 10 * 60_000, startedMaxAgeMs: 2 * 60 * 60_000 };
 
@@ -132,7 +139,7 @@ export class LobbyService {
     return dropped;
   }
 
-  create(host: Member, maxPlayers: number, instanceId: string | null): Lobby {
+  create(host: Member, maxPlayers: number, instanceId: string | null, visibility: "private" | "public" = "private"): Lobby {
     if (this.openLobbyOf.has(host.userId)) throw new LobbyFailure("already_in_lobby");
     let code = makeCode();
     while (this.byCode.has(code)) code = makeCode();
@@ -143,7 +150,9 @@ export class LobbyService {
       instanceId,
       hostId: host.userId,
       maxPlayers,
+      visibility,
       members: [host],
+      players: null,
       state: "open",
       match: null,
       createdAt: now,
@@ -186,8 +195,8 @@ export class LobbyService {
   }
 
   findByInstance(instanceId: string): Lobby | null {
-    const lobby = this.find(this.byInstance, instanceId);
-    return lobby?.state === "open" ? lobby : null;
+    // A started night counts too: the friends who open the Activity later land in the same night.
+    return this.find(this.byInstance, instanceId);
   }
 
   findByCode(code: string): Lobby | null {
@@ -197,7 +206,15 @@ export class LobbyService {
   join(id: string, member: Member): Lobby {
     const lobby = this.get(id);
     if (lobby.members.some((m) => m.userId === member.userId)) return lobby;
-    if (lobby.state !== "open") throw new LobbyFailure("already_started");
+    if (lobby.state === "started") {
+      // A night in progress takes newcomers while it has room: the game server's own count when it has said one.
+      if ((lobby.players ?? lobby.members.length) >= lobby.maxPlayers || lobby.members.length >= MAX_SEATS_EVER) {
+        throw new LobbyFailure("full");
+      }
+      lobby.members.push(member);
+      lobby.lastActiveAt = this.now();
+      return lobby;
+    }
     if (this.openLobbyOf.has(member.userId)) throw new LobbyFailure("already_in_lobby");
     if (lobby.members.length >= lobby.maxPlayers) throw new LobbyFailure("full");
     lobby.members.push(member);
@@ -233,8 +250,34 @@ export class LobbyService {
     this.byMatch.set(matchId, lobby.id);
     // A started lobby is no longer an open one: its members may open or join another.
     for (const m of lobby.members) if (this.openLobbyOf.get(m.userId) === lobby.id) this.openLobbyOf.delete(m.userId);
-    if (lobby.instanceId && this.byInstance.get(lobby.instanceId) === lobby.id) this.byInstance.delete(lobby.instanceId);
     return lobby;
+  }
+
+  /** Quick join: a public night with room (open or started), else a new public one, started at once. */
+  quick(member: Member, maxPlayers = 4): Lobby {
+    for (const lobby of this.lobbies.values()) {
+      if (lobby.visibility !== "public" || this.expired(lobby)) continue;
+      if (lobby.members.some((m) => m.userId === member.userId)) return lobby;
+      try {
+        return this.join(lobby.id, member);
+      } catch (error) {
+        if (!(error instanceof LobbyFailure)) throw error;
+      }
+    }
+    const lobby = this.create(member, maxPlayers, null, "public");
+    try {
+      return this.start(lobby.id, member.userId);
+    } catch (error) {
+      this.remove(lobby);
+      throw error;
+    }
+  }
+
+  /** The game server's count of the players in a match, from its heartbeat. Unknown matches are ignored. */
+  setPlayers(matchId: string, players: number): void {
+    const lobbyId = this.byMatch.get(matchId);
+    const lobby = lobbyId ? this.lobbies.get(lobbyId) : undefined;
+    if (lobby) lobby.players = players;
   }
 
   /** The match is over (the game server said so, or stopped listing it): its lobby goes. Unknown ids are ignored. */
