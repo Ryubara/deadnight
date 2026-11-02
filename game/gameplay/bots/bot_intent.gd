@@ -27,6 +27,15 @@ var look_yaw := NAN
 var reload := false
 var swap := false
 var use := false
+## Whether a melee swing may be made (false inside a pack the bot is not forced to fight).
+var melee_ok := true
+## A grenade to throw, or nothing: the style (`over` or `under`), the view to throw along, and the
+## clock when it was ordered. The motor turns, pulls the pin when the view is there, and lets go.
+var throw_style: StringName = &""
+var throw_yaw := 0.0
+var throw_pitch := 0.0
+## The brain takes back a throw it ordered whose view is still turning (a teammate walked in).
+var throw_abort := false
 ## A short reason, for the ring buffer of decisions.
 var note := ""
 
@@ -55,5 +64,6 @@ func to_dict() -> Dictionary:
 		"reload": reload,
 		"swap": swap,
 		"use": use,
+		"throw": throw_style,
 		"note": note,
 	}

@@ -16,7 +16,9 @@ const SPAWN_OFFSET := 30
 const SPAWN_DISTANCE := 20.0
 const WALK_SPEED := 1.5
 const SHOTS_TO_KILL := 3
-const GOLDEN_HASH := 2644484567
+## Moved by phase 3 (reviewed): the regular profile's new numbers (wider tracking and trigger, a
+## retreat margin of 1.25 m), the lull top-up reload and the target utility.
+const GOLDEN_HASH := 277854534
 
 
 ## The hash of a night of four bots, and the shots they fired.
