@@ -6,8 +6,9 @@ extends Control
 ## `--server [--port N] [--seed N]` runs a game server instead of the game (headless, no menu),
 ## `--room CODE` (or `?room=CODE`) joins the night of an invite code, `--dev` shows the server
 ## address setting, `--connect [ws://host:port]` goes from the menu straight into the night of that
-## server, and `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of
-## the saved one, so two windows of one machine can differ.
+## server, `--report [seconds]` prints a line of what the joined night looks like from here, and
+## `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of the saved
+## one, so two windows of one machine can differ.
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
@@ -37,6 +38,10 @@ func _ready() -> void:
 		# Inside a Discord Activity: the night of the voice channel.
 		TogetherScreen.auto_instance = args.get_string("instance_id")
 		UIRouter.push(TogetherScreen.SCREEN, UITransition.Kind.SLIDE)
+	if args.has("report"):
+		var report := ClientReport.new()
+		report.every = args.get_float("report", ClientReport.DEFAULT_EVERY)
+		add_child(report)
 	if args.has("connect"):
 		var url := args.get_string("connect")
 		NightScreen.join_url = JoinScreen.DEFAULT_URL if url == "true" else url
