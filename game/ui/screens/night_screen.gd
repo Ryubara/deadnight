@@ -100,6 +100,11 @@ func touch_active() -> bool:
 	return _touch != null and _touch.is_active()
 
 
+## True while the centre reticle is on screen (a browser test reads it, #517).
+func reticle_shown() -> bool:
+	return _hud != null and _hud.reticle.is_visible_in_tree()
+
+
 func screen_enter() -> void:
 	if join_url == "":
 		night.shoulder_camera = shoulder_camera
@@ -116,7 +121,7 @@ func screen_enter() -> void:
 	_show_overlay("Joining", "" if link.ticket != "" else url, false)
 	night.connect_failed.connect(_on_connect_failed)
 	if await night.start_remote(url, mode, JOIN_SECONDS, link):
-		_overlay.hide()
+		_hide_overlay()
 
 
 func screen_pause() -> void:
@@ -184,10 +189,19 @@ func _pause() -> void:
 
 
 func _resume_night() -> void:
+	_hide_overlay()
+	night.set_paused(false)
+
+
+## Takes the card away and gives the night back what `_show_overlay` took: the reticle, the
+## scoreboard on Tab and the touch controls. Every way the card goes (Resume, a joined night
+## starting) comes here: a night joined online once ran with none of them until a pause and a Resume
+## (#517).
+func _hide_overlay() -> void:
 	_overlay.hide()
 	_hud.reticle.set_shown(true)
+	_hud.scoreboard_enabled = true
 	_touch.live = true
-	night.set_paused(false)
 
 
 func _on_connect_failed(reason: String) -> void:
@@ -205,6 +219,7 @@ func _on_night_over(round_reached: int) -> void:
 func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_hud.reticle.set_shown(false)
+	_hud.scoreboard_enabled = false
 	_touch.live = false
 	_title.text = title
 	_note.text = note

@@ -30,6 +30,11 @@ const PING_EVERY := 0.5
 ## `NightHost.RESUME_WITHIN`).
 const RESUME_WITHIN := 25.0
 const RETRY_EVERY := 1.0
+## What the socket may hold unread: a freeze of this client's loop stops the reading, and the
+## server's ticks wait here (the engine's default of 64 KB overflowed within a few seconds, and what
+## does not fit is dropped, newest first).
+const INBOUND_BUFFER := 1 << 20
+const MAX_QUEUED := 8192
 ## The close code `drop` ends the socket with (the private range): neither a goodbye nor, for the
 ## server, a reason to free the seat.
 const DROP_CODE := 4000
@@ -68,7 +73,7 @@ var server_version := 0
 var conditioner_in: LinkConditioner
 var conditioner_out: LinkConditioner
 
-var _ws := WebSocketPeer.new()
+var _ws := _new_socket()
 var _url := ""
 var _active := false
 var _closed_by_us := false
@@ -81,6 +86,13 @@ var _frame: Dictionary = {}
 ## The zombies the server has told us of (`ZombieDelta`), by id.
 var _zombie_base: Dictionary[int, PackedByteArray] = {}
 var _next_ping := 0.0
+
+
+static func _new_socket() -> WebSocketPeer:
+	var socket := WebSocketPeer.new()
+	socket.inbound_buffer_size = INBOUND_BUFFER
+	socket.max_queued_packets = MAX_QUEUED
+	return socket
 
 
 ## Starts connecting; the result is the error of the start, not of the connection.
@@ -148,6 +160,8 @@ func send(action: Dictionary) -> void:
 			_send(NetWire.command(NightCommand.from_dict(action)))
 		NightServer.LOOK:
 			_send(action["packet"])
+		NightServer.PING:
+			_send(NetWire.mark(action["kind"], action["pos"], int(action.get("subject", 0))))
 
 
 func pump() -> void:
@@ -201,7 +215,7 @@ func _on_socket_closed() -> void:
 	elif now >= _next_try:
 		_next_try = now + retry_every
 		_was_open = false
-		_ws = WebSocketPeer.new()
+		_ws = _new_socket()
 		_ws.connect_to_url(_url)
 
 
@@ -226,7 +240,7 @@ func _ping_when_due() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	if now >= _next_ping:
 		_next_ping = now + PING_EVERY
-		_send(NetWire.ping(Time.get_ticks_msec()))
+		_send(NetWire.ping(Time.get_ticks_msec(), rtt_ms))
 
 
 func _receive(data: PackedByteArray) -> void:

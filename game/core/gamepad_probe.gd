@@ -23,12 +23,31 @@ const NO_FOCUS := (
 	"Controller: allowed, but Discord keeps the keyboard focus away from the game even after a"
 	+ " click, so no controller is listed. Play in a browser tab, or send this line to the makers."
 )
+## The short line shown on every screen while a frame has no focus (`hint`).
+const HINT := "Click the game once to use a controller"
 const UNKNOWN := ""
 
+## The IFRAME check, asked of the page once: -1 not yet, 0 a page of its own, 1 inside a frame.
+static var _framed := -1
 
-## The page's own report as a dictionary (empty off the web or when the page has no probe).
-static func read() -> Dictionary:
+
+## Whether the game runs inside a frame (a Discord Activity). Asked once: a game in a tab or on the
+## desktop never reads the page again, so the probe costs nothing there, loading included.
+static func in_frame() -> bool:
 	if not OS.has_feature("web"):
+		return false
+	if _framed < 0:
+		var framed: Variant = JavaScriptBridge.eval(
+			"(function(){try{return window.top!==window}catch(e){return true}})()"
+		)
+		_framed = 1 if framed == true else 0
+	return _framed == 1
+
+
+## The page's own report as a dictionary (empty off the web, outside a frame, or when the page has
+## no probe).
+static func read() -> Dictionary:
+	if not in_frame():
 		return {}
 	var raw: Variant = JavaScriptBridge.eval(
 		"window.deadnightGamepad ? window.deadnightGamepad() : ''"
@@ -50,6 +69,15 @@ static func note(report: Dictionary) -> String:
 	if report.get("focus") == false:
 		return NO_FOCUS if int(report.get("clicks", 0)) > 0 else UNFOCUSED
 	return WAITING
+
+
+## The short hint for every screen: a game inside a frame (a Discord Activity) that does not hold
+## the focus gets no controller from the browser until it is clicked once (the maintainer's pad
+## worked after one click, #479). Empty in a tab, on the desktop, and once the frame has the focus.
+static func hint(report: Dictionary) -> String:
+	if report.get("iframe") == true and report.get("focus") == false:
+		return HINT
+	return ""
 
 
 ## What the page saw, as one short line for whoever reads the screen: whether the window has the

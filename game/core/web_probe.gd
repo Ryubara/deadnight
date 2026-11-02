@@ -65,14 +65,29 @@ static func snapshot(top: Control) -> Dictionary:
 		"room_code": "",
 		"room_status": "",
 		"touch": false,
+		"reticle": false,
 		"tab": "",
 		"stage": "",
-		"gamepad": ""
+		"gamepad": "",
+		"activity_room": "",
+		"activity_code": "",
+		"controller_hint": false
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var room := ActivityRoom.current
+	if room != null:
+		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
+		data["activity_code"] = str(room.lobby.get("code", ""))
+	var tree := top.get_tree()
+	var hint: ControllerHint = (
+		tree.root.find_child("ControllerHint", true, false) as ControllerHint
+		if tree != null
+		else null
+	)
+	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
@@ -101,6 +116,7 @@ static func snapshot(top: Control) -> Dictionary:
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
 	data["touch"] = night_screen.touch_active()
+	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)

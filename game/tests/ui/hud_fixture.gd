@@ -65,7 +65,14 @@ func advance(seconds: float) -> void:
 	while left > 0.0:
 		var step := minf(STEP, left)
 		for part in [
-			hud.gains, hud.crosshair, hud.damage, hud.banner, hud.events_feed, hud.notices, hud.fuel
+			hud.gains,
+			hud.crosshair,
+			hud.damage,
+			hud.banner,
+			hud.events_feed,
+			hud.notices,
+			hud.fuel,
+			hud.challenge
 		]:
 			part.advance(step)
 		hud.state.tick(step)

@@ -24,6 +24,11 @@ MultiplayerSynchronizer) and not netfox.
 - **Hosting:** the game server runs as a Docker image on Railway (TCP and WebSockets on its HTTPS domain); the platform
   backend is separate ([research](../research/platform-backend.md)).
 
+## Before the night
+
+Players meet in a lobby on the platform backend, which polls rather than pushes and lets a night in progress take
+newcomers: [the lobby](lobby.md).
+
 ## Open work
 
 Lag compensation for hits (#54), server and bots in CI (#56), latency over Railway and Discord (#52).

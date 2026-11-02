@@ -28,8 +28,9 @@ Generated from `.github/conventions.yml` (`groundwork.py render`); what each are
 
 ## Checks
 
-The required checks are `title`, `body`, `docs`, `commits`, `conventions`, `build-ok`, `mkdocs`,
-`markdownlint` and `actionlint`. Before you push, `uvx pre-commit run --all-files` runs the local ones, and
+The required checks are `pr-rules` (the title, description, docs and commits checks, as the steps of one job),
+`conventions`, `build-ok`, `mkdocs`, `markdownlint` and `actionlint`. Before you push,
+`uvx pre-commit run --all-files` runs the local ones, and
 `uv run --with pyyaml python .github/scripts/groundwork.py check --offline` shows whether the generated files
 still match the conventions.
 

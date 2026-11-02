@@ -6,6 +6,17 @@ var _host: NightHost
 var _night: Night
 
 
+## A listener that can be told to take nothing for a while, as a full socket would not.
+class FullListener:
+	extends WsListener
+	var full := false
+
+	func send(peer_id: int, data: PackedByteArray) -> bool:
+		if full:
+			return false
+		return super.send(peer_id, data)
+
+
 func after_test() -> void:
 	if is_instance_valid(_night):
 		_night.get_parent().queue_free()
@@ -31,8 +42,10 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 	return true
 
 
-func _start(radius: float) -> void:
+func _start(radius: float, listener: WsListener = null) -> void:
 	_host = NightHost.new()
+	if listener != null:
+		_host.listener = listener
 	_host.port = 0
 	_host.log_enabled = false
 	_host.seed_value = 7
@@ -84,6 +97,50 @@ func test_a_client_is_told_only_of_the_zombies_within_the_interest_radius() -> v
 		var at: Vector3 = entry["position"]
 		# The radius, as the server measured it a step or two before, and a step of walking.
 		assert_float(_flat(at, body.global_position)).is_less(6.0 + 2.0)
+
+
+## Ticks the socket would not take (#483) are lost: the zombies that came and went in them are not
+## in the delta after them unless the server kept the base the client really has.
+func test_the_zombies_after_lost_ticks_are_a_delta_against_what_the_client_has() -> void:
+	var listener := FullListener.new()
+	await _start(0.0, listener)
+	await _until(func() -> bool: return _night.state.has_frame())
+	var at_start: Array = _host.server.sim.zombies.keys()
+	at_start.sort()
+	# Seconds in which the dead come and go and none of it reaches the client.
+	listener.full = true
+	var changed := await _until(
+		func() -> bool:
+			var now: Array = _host.server.sim.zombies.keys()
+			now.sort()
+			return now != at_start,
+		60.0
+	)
+	assert_bool(changed).is_true()
+	for _i in 60:
+		await get_tree().physics_frame
+	listener.full = false
+	var agreed := await _until(
+		func() -> bool:
+			var ids: Array = []
+			for entry in _night.state.zombies:
+				ids.append(entry["id"])
+			ids.sort()
+			var server_ids: Array = _host.server.sim.zombies.keys()
+			server_ids.sort()
+			return ids == server_ids,
+		10.0
+	)
+	(
+		assert_bool(agreed)
+		. override_failure_message(
+			(
+				"the client has %d zombies, the server %d"
+				% [_night.state.zombies.size(), _host.server.sim.zombies.size()]
+			)
+		)
+		. is_true()
+	)
 
 
 func _flat(a: Vector3, b: Vector3) -> float:
