@@ -115,13 +115,9 @@ const AIM_RATE_PARAMETER := &"parameters/body/locomotion/aim_rate/scale"
 const AIM_BLEND_PARAMETER := &"parameters/body/locomotion/aim_blend/blend_amount"
 ## The sprint carry (#459): an upper-body loop per class on the kit Run's 17 frames, built into its
 ## own file (docs/design/animation.md, Sprint carry) and added to the Soldier's library. It is
-## seeked to the Run clip's place every frame, so the two never drift apart.
+## seeked to the Run clip's place every frame, so the two never drift apart (names: SprintCarry).
 const SPRINT_GLB := "res://assets/characters/soldier/sprint/soldier_sprint.glb"
 const SPRINT_SPEC := "res://assets/characters/soldier/sprint/clips.json"
-const SPRINT_PREFIX := "Sprint_"
-const SPRINT_CLIPS: Array[StringName] = [
-	&"Sprint_Rifle", &"Sprint_Shotgun", &"Sprint_Pistol", &"Sprint_Melee"
-]
 const CARRY_BLEND_PARAMETER := &"parameters/carry/blend_amount"
 const CARRY_SEEK_PARAMETER := &"parameters/carry_seek/seek_request"
 const RUN_POSITION_PARAMETER := &"parameters/body/locomotion/move/run/current_position"
@@ -144,10 +140,8 @@ const GRENADE_DONE_EVENT := "done"
 const GRENADE_RELEASE_EVENT := "release"
 ## How long the cook clip holds its last frame while the button is down (more than any fuse).
 const GRENADE_COOK_HOLD := 30.0
-## The grenade in the hand: the placeholder shell, drawn this much of its flight size, in the grip
-## of the melee hold (the fist closed on something short).
-const GRENADE_HELD_SCALE := 0.55
-## The grenade shell's grip file (`grips/grenade.tres`): it has no glb of its own.
+## The grenade in the hand: its hold file (model, size: docs/design/weapon-hold.md) and grip file.
+const GRENADE_HOLD := "res://gameplay/player/holds/grenade.tres"
 const GRENADE_GRIP := "grenade"
 ## How fast the fingers go to and from a grip (per second, exponential).
 const GRIP_RATE := 20.0
@@ -242,7 +236,7 @@ func _ready() -> void:
 		library, _spec, AIM_MOVE_GLB, AIM_MOVE_SPEC, AIM_MOVES.keys()
 	)
 	_aim_move_speed = aim_moves["clips"]["Walk_Shoot"]["ground_speed"]
-	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SPRINT_CLIPS)
+	SoldierClipFile.add(library, _spec, SPRINT_GLB, SPRINT_SPEC, SprintCarry.CLIPS)
 	var revive_specs := DownedPose.add_clips(anim_player)
 	_spec["clips"].merge(revive_specs)
 	if revive_specs.has(String(DownedPose.CRAWL_CLIP)):
@@ -263,16 +257,7 @@ func _ready() -> void:
 	)
 	_hammer.visible = false
 	_mount.add_child(_hammer)
-	_grenade = Node3D.new()
-	_grenade.name = "Grenade"
-	_grenade_grip = HandGrip.for_name(GRENADE_GRIP)
-	_grenade.transform = (
-		_grip_hold(_grenade_grip, Transform3D(Basis(), HOLD_MELEE.origin))
-		. scaled_local(Vector3.ONE * GRENADE_HELD_SCALE)
-	)
-	_grenade.visible = false
-	GrenadeView.add_placeholder(_grenade)
-	_mount.add_child(_grenade)
+	_build_grenade()
 	_hands = WeaponHandsIK.new()
 	_hands.name = "WeaponHandsIK"
 	_hands.hand_hold = HOLD_GUN
@@ -636,6 +621,19 @@ func clip_events(clip: StringName) -> Dictionary:
 	return entry.get("events", {})
 
 
+## The grenade in the hand, on the same mount as the weapons: the model of `GRENADE_HOLD` at the
+## hold's size, in the grip solved for it (the fist closed on something short).
+func _build_grenade() -> void:
+	var hold := load(GRENADE_HOLD) as WeaponHold
+	_grenade = (load(hold.scene) as PackedScene).instantiate() as Node3D
+	_grenade.name = "Grenade"
+	_grenade_grip = HandGrip.for_name(GRENADE_GRIP)
+	var held := _grip_hold(_grenade_grip, Transform3D(Basis(), HOLD_MELEE.origin))
+	_grenade.transform = held.scaled_local(Vector3.ONE * hold.model_scale)
+	_grenade.visible = false
+	_mount.add_child(_grenade)
+
+
 ## The hold data of a weapon class, or null when the class shows no weapon.
 static func hold_of(new_class: StringName) -> WeaponHold:
 	if new_class not in HOLD_CLASSES:
@@ -661,7 +659,7 @@ func shoulder_blend() -> float:
 func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
-	_carry_node.animation = StringName(SPRINT_PREFIX + String(new_class))
+	_carry_node.animation = SprintCarry.clip_for(new_class, hold)
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
@@ -718,8 +716,11 @@ func _advance_grip(delta: float) -> void:
 	if absf(_grip_blend - target) < 0.001:
 		_grip_blend = target
 	_fingers.right_weight = _grip_blend
-	var left := grip == _weapon_grip and grip != null and grip.has_left and _hands.active
-	_fingers.left_weight = _shoulder_blend if left else 0.0
+	var left := grip == _weapon_grip and grip != null and grip.has_left
+	# The left hand is on the weapon by the arms' IK (the shouldered pose) or by the sprint carry,
+	# whose two-handed clips put it on the grip's `left_hand` (#527).
+	var on := _shoulder_blend if _hands.active else 0.0
+	_fingers.left_weight = maxf(on, smoothstep(0.0, 1.0, _carry.weight)) if left else 0.0
 
 
 ## The muzzle point of a hold: at its `muzzle` (the model's units), turned so `-Z` runs out of the
@@ -748,6 +749,7 @@ func _advance_shoulder(delta: float) -> void:
 	_hands.aim_yaw = lerp_angle(_player.rotation.y, rig.yaw, weight)
 	_hands.aim_pitch = rig.pitch
 	_hands.converge = weight
+	_hands.hip_converge = WeaponHandsIK.hip_share(angle_difference(_player.rotation.y, rig.yaw))
 	var view := rig.aim_transform()
 	_hands.converge_on = view.origin - view.basis.z * WeaponHandsIK.CONVERGE_DISTANCE
 	if String(action_clip).begins_with("Fire_") and _action_time < delta * 1.5:

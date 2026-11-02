@@ -9,13 +9,20 @@ extends Node
 ##     gds godot -- --path game res://tests/captures/sprint_carry_tour.tscn \
 ##         --write-movie <abs>/f.png --fixed-fps 30 --quit-after 560
 ##
+## With `-- --side` after the arguments a camera beside the player, on his right at chest height,
+## follows him instead (the carry seen from the side: where the weapon sits against the body).
+##
 ## Prints one `TOUR` line per weapon and one `TRACE` line per tick: the weapon, seconds into its
 ## turn, sprinting, on the floor, and (on a build that has it) the carry's weight and its clip's
 ## place against the Run's.
 
 const TICK := 1.0 / 60.0
 const START := Vector3(0.0, 0.05, 17.0)
-const WEAPONS: Array[StringName] = [&"rifle", &"shotgun", &"pistol", &"crowbar"]
+## The Tommy gun last: it shares the rifle's carry (`Sprint_Rifle`) with its own grip.
+const WEAPONS: Array[StringName] = [&"rifle", &"shotgun", &"pistol", &"crowbar", &"smg"]
+## The side camera: metres to the player's right, up from his feet, and the point it looks at.
+const SIDE_OFFSET := Vector3(3.2, 1.0, 0.0)
+const SIDE_LOOK := Vector3(0.0, 0.9, 0.0)
 ## Seconds into each class's turn: the sprint starts, the aim is held, let go, the jump is pressed,
 ## the sprint ends, the turn ends.
 const SPRINT_AT := 0.3
@@ -29,6 +36,7 @@ var _ticks := 0
 var _class := -1
 var _player: Player
 var _animation: PlayerAnimation
+var _side: Camera3D
 
 
 func _ready() -> void:
@@ -39,6 +47,17 @@ func _ready() -> void:
 	_player.capture_mouse = false
 	_player.local_input = false
 	_animation = _player.get_node("AnimationTree") as PlayerAnimation
+	if "--side" in OS.get_cmdline_user_args():
+		_side = Camera3D.new()
+		_side.fov = 40.0
+		add_child(_side)
+		_side.make_current()
+
+
+func _process(_delta: float) -> void:
+	if _side != null:
+		var at := _player.global_position
+		_side.look_at_from_position(at + SIDE_OFFSET, at + SIDE_LOOK)
 
 
 func _physics_process(_delta: float) -> void:

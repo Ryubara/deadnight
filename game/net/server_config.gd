@@ -10,10 +10,12 @@ extends RefCounted
 ##   SERVER_ID           the name the backend knows this server by (default: the Railway service id)
 ##   PUBLIC_URL          where players connect (default: wss:// the Railway public domain)
 ##   ACTIVITY_PATH       the Discord proxy path mapped to this server (default /server)
-##   ROOM_CAPACITY       nights one process takes (default 4)
+##   ROOM_CAPACITY       nights one process takes (default 3)
 ##   MAX_ALIVE           the most zombies alive at once in any night of this process (default: the
 ##                       rules', 120 for desktop players and 40 with a browser in the match); the
 ##                       process's CPU is shared by its rooms, so a small container takes less
+##   ALIVE_BUDGET        the most zombies alive at once in all the nights of this process together
+##                       (default 120): each night is cut to its share, 0 turns it off
 
 var backend_url := ""
 var game_server_secret := ""
@@ -24,6 +26,7 @@ var activity_path := "/server"
 var capacity := GameServer.DEFAULT_CAPACITY
 ## 0 is no cap beyond the rules' own.
 var max_alive := 0
+var alive_budget := GameServer.DEFAULT_ALIVE_BUDGET
 
 
 ## Reads `getenv` (a Callable name -> String; `OS.get_environment` by default).
@@ -43,6 +46,8 @@ static func from_environment(getenv: Callable = Callable()) -> ServerConfig:
 	var rooms := int(str(read.call("ROOM_CAPACITY")))
 	config.capacity = rooms if rooms > 0 else GameServer.DEFAULT_CAPACITY
 	config.max_alive = maxi(int(str(read.call("MAX_ALIVE"))), 0)
+	var budget := str(read.call("ALIVE_BUDGET")).strip_edges()
+	config.alive_budget = maxi(int(budget), 0) if budget.is_valid_int() else config.alive_budget
 	return config
 
 

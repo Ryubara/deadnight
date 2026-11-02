@@ -206,9 +206,38 @@ driver, the player's camera, the trigger a real mouse event; the frame list afte
 | off | 19.6 and 21.3 ms | 0 |
 | on | 15.7 and 16.4 ms | 0 |
 
-So on desktop the unwarmed first shot costs one frame of about 20 ms and the warmed one has none: nothing large enough for
-a second pull request. The browser is the open part: a native driver builds a program faster than ANGLE and the browser
-(see above), and a Chrome run needs the flare gun in the player's hands (a purchase or the crane).
+So on desktop the unwarmed first shot costs one frame of about 20 ms and the warmed one has none: nothing large enough
+for a second pull request. The browser was the open part, and it was different (#502).
+
+### In Chrome: the flare's embers were never warmed (#502)
+
+`tools/web_smoke/flare_first.py` plays a solo night in a fresh Chrome profile (RTX 5080, ANGLE on Direct3D 11), gives the
+soldier the flare gun through the flash probe (`?probe=flash`), fires three times (the first; one 3.5 s later, while the
+first fire still burns; one 10 s later, after it went out) and records every frame and every GL program linked after
+each trigger. Three runs each, the warm-up on in both:
+
+| Build | Worst frame in the 3 s after the 1st shot | Programs linked, 1st / 2nd / 3rd shot | Frames over 100 ms after the 1st shot |
+| --- | --- | --- | --- |
+| `main` before the fix | 1772, 1798 and 1858 ms | 10 / 0 / 8, in every run | 2 |
+| with the fix | 7, 34 and 36 ms | 0 / 0 / 0, in every run | 0 |
+
+- **What was linked.** Six programs of an unshaded standard material at its default and at the lights it is drawn with
+  (30 ms each, the 210 to 330 ms frame half a second after the trigger), then the two programs that *move* the lure's
+  `GPUParticles3D` embers (845 ms each, 0.55 s and 1.4 s after the trigger), then their draw programs. The first
+  flare's fire builds them all, and so does a flare thrown after the first one's 8 s fire is out.
+- **Why the warm-up missed them.** The sample lure was made to burn 0.2 s and a `LureView` counts its age in frame
+  deltas; a warm-up frame that builds programs takes seconds, so it was freed on the frame after it started, before any
+  frame drew it. And `_keep_materials` pins what a `MeshInstance3D` draws, not a `GPUParticles3D`'s process material or
+  draw passes, so the shaders went with the effect. The `DrawLedger` only knew meshes, so the check said nothing was
+  missing.
+- **The fix.** The sample lure burns 60 s and `NightWarmup` frees it by hand after `SHOT_FRAMES + 1` frames (a system
+  moves its particles in the frame after it starts and draws them in the next); the pins and the ledger cover
+  particle systems (`DrawLedger.process_key`, each draw pass's material). 10 more programs link behind the loading
+  screen (217 against 207, nothing in play), about 1.7 s more load with a GPU (19.2 s to 22.1 s in one run each) and
+  the most programs in one frame stay at 11.
+- **Checks.** `test_the_warm_up_draws_the_flares_embers_and_keeps_their_programs` and
+  `test_the_check_notices_a_particle_system_the_warm_up_never_drew` (a headless run has fast frames, so only the
+  pins, the ledger and the hand-freed sample are held there; the browser probe is the real test).
 
 ## Open
 

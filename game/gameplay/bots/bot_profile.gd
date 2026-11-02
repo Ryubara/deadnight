@@ -39,9 +39,21 @@ const REACTION_FLOOR := 0.20
 ## Natural frequency of the turning spring (radians a second): higher closes the gap faster.
 @export_range(1.0, 60.0, 0.5, "suffix:rad/s") var aim_stiffness: float = 14.0
 ## Degrees of tracking error, one sigma, on a target 15 m away that stands still.
-@export_range(0.0, 10.0, 0.05, "suffix:deg") var track_error: float = 1.8
+@export_range(0.0, 20.0, 0.05, "suffix:deg") var track_error: float = 4.0
 ## Share of contacts the bot aims at the head of, when the target is slow and near.
-@export_range(0.0, 1.0, 0.01) var head_rate: float = 0.12
+@export_range(0.0, 1.0, 0.01) var head_rate: float = 0.3
+## How many times wider than the weapon's hit cone the view may be off the target when the bot pulls
+## the trigger: a rookie fires when it is roughly on, a veteran waits to be on.
+@export_range(1.0, 8.0, 0.05) var fire_slop: float = 3.0
+## Share of shots pulled without waiting to be on target (the view only has to be roughly there):
+## the nerves of a bot that fires at what is coming at it.
+@export_range(0.0, 1.0, 0.01) var panic_rate: float = 0.0
+## Chance that the bot makes out a telegraphed blow (the boss's) at all: the simulator's `read`, as
+## a rookie misses most of them. A blow it makes out is stepped out of after the reaction time.
+@export_range(0.0, 1.0, 0.01) var telegraph_read: float = 1.0
+## Share of the headliner's contacts the bot aims at the weak spot (the lit lens) of, when it
+## faces the bot: the simulator's `weak_spot_rate` of the matching skill.
+@export_range(0.0, 1.0, 0.01) var weak_spot_rate: float = 0.5
 ## Seconds, at most, between two shots on top of the weapon's own interval.
 @export_range(0.0, 1.0, 0.01, "suffix:s") var fire_jitter: float = 0.08
 
@@ -54,7 +66,10 @@ const REACTION_FLOOR := 0.20
 ## How many times a second the brain decides; the motor runs every tick.
 @export_range(1, 30, 1, "suffix:Hz") var think_hz: int = 8
 ## Metres of margin before a zombie reaches the bot at which it starts to back away.
-@export_range(0.0, 20.0, 0.5, "suffix:m") var retreat_margin: float = 7.0
+@export_range(0.0, 20.0, 0.5, "suffix:m") var retreat_margin: float = 1.25
+## Metres the headliner is kept away (a boss nearer than this makes the bot back off, whatever the
+## margin above says). 0 turns it off: a bot that is pinned has nowhere to back to.
+@export_range(0.0, 20.0, 0.5, "suffix:m") var boss_keep: float = 6.0
 ## How much risk a revive may take, 0 (none) to 1 (any); used from phase 5.
 @export_range(0.0, 1.0, 0.05) var revive_eagerness: float = 0.5
 ## Brain failures (a thought that comes back empty or broken) after which the brain is switched off
@@ -68,17 +83,21 @@ static func rookie() -> BotProfile:
 	profile.reaction_seconds = 0.55
 	profile.max_aim_speed = 240.0
 	profile.aim_stiffness = 9.0
-	profile.track_error = 3.0
-	profile.head_rate = 0.05
+	profile.track_error = 14.0
+	profile.fire_slop = 6.0
+	profile.head_rate = 0.07
+	profile.weak_spot_rate = 0.25
+	profile.telegraph_read = 0.3
+	profile.boss_keep = 0.0
 	profile.fire_jitter = 0.15
 	profile.think_hz = 5
-	profile.retreat_margin = 5.0
+	profile.retreat_margin = 0.0
 	profile.revive_eagerness = 0.25
 	return profile
 
 
 static func regular() -> BotProfile:
-	return BotProfile.new()
+	return BotProfile.new()  # The field defaults are the regular bot's.
 
 
 static func veteran() -> BotProfile:
@@ -87,11 +106,13 @@ static func veteran() -> BotProfile:
 	profile.reaction_seconds = 0.25
 	profile.max_aim_speed = 540.0
 	profile.aim_stiffness = 20.0
-	profile.track_error = 1.0
-	profile.head_rate = 0.20
+	profile.track_error = 2.0
+	profile.fire_slop = 1.8
+	profile.head_rate = 0.75
+	profile.weak_spot_rate = 0.8
 	profile.fire_jitter = 0.04
 	profile.think_hz = 10
-	profile.retreat_margin = 9.0
+	profile.retreat_margin = 1.5
 	profile.revive_eagerness = 0.5
 	return profile
 

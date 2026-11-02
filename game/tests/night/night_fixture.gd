@@ -85,8 +85,16 @@ static func only_tuning(type_id: StringName) -> RulesTuning:
 
 ## The shipped table with round 1 the shipped boss night (a headliner among escorts).
 static func boss_tuning() -> RulesTuning:
+	return special_tuning(&"double_feature")
+
+
+## The shipped table with round 1 the shipped special round `special_id` (`double_feature`,
+## `stampede`, `crawl_space`), with the id and rules the game has for it.
+static func special_tuning(special_id: StringName) -> RulesTuning:
 	var tuning := RulesFixture.tuning()
-	_make_round_one_special(tuning, tuning.specials.rounds[0])
+	for special in tuning.specials.rounds:
+		if special.id == special_id:
+			_make_round_one_special(tuning, special)
 	return tuning
 
 

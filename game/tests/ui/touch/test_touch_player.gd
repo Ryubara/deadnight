@@ -177,7 +177,11 @@ func test_a_drag_from_the_aim_button_turns_the_view_and_keeps_aiming() -> void:
 	await _fixture.drag(0, aim + Vector2(100.0, 0.0), Vector2(100.0, 0.0))
 	assert_bool(Input.is_action_pressed(&"aim")).is_true()
 	await _fixture.lift(0)
-	var turned := angle_difference(yaw, rig.yaw)
-	assert_float(turned).is_equal_approx(
-		-TouchLook.tuning.radians_per_height * 100.0 / 1080.0, 0.02
-	)
+	# The aim button also steadies the look: the rig scales the turn by `aim_sensitivity_scale` in
+	# proportion to how far its spring (stepped by the measured frame time) has eased into the aim
+	# when the drag lands, so the turn is anywhere between the hip turn and the fully steadied one
+	# (#576: 0.112 to 0.148 rad on different runs). A drag that turns nothing, or too much, is outside.
+	var hip_turn := TouchLook.tuning.radians_per_height * 100.0 / 1080.0
+	var steady_turn := hip_turn * player.tuning.aim_sensitivity_scale
+	var turned := -angle_difference(yaw, rig.yaw)
+	assert_float(turned).is_between(steady_turn * 0.98, hip_turn * 1.02)

@@ -55,6 +55,28 @@ func test_an_online_night_reports_the_players_and_the_round_trip() -> void:
 	assert_float(data["rtt_ms"]).is_equal(81.0)
 
 
+func test_an_online_night_reports_where_the_body_and_the_server_have_the_player() -> void:
+	var screen := auto_free(NightScreen.new()) as NightScreen
+	var night := auto_free(Night.new()) as Night
+	screen.night = night
+	night.remote = true
+	night.state = ClientState.new()
+	night.state.player_id = 2
+	night.state.frame = {"players": {2: {"pos": Vector3(4.0, 0.0, -3.0)}}}
+	var body := auto_free(Player.new()) as Player
+	body.state.position = Vector3(1.5, 0.0, 2.5)
+	night._body = body
+	night.stalls.check(0.0)
+	night.stalls.check(900.0)
+	var data := WebProbe.snapshot(screen)
+	assert_float(data["body_x"]).is_equal(1.5)
+	assert_float(data["body_z"]).is_equal(2.5)
+	assert_float(data["server_x"]).is_equal(4.0)
+	assert_float(data["server_z"]).is_equal(-3.0)
+	assert_int(data["stalls"]).is_equal(1)
+	assert_float(data["stall_longest_ms"]).is_equal(900.0)
+
+
 func test_the_together_screen_says_when_it_asks_for_a_name() -> void:
 	var screen := (
 		(load("res://ui/screens/together_screen.tscn") as PackedScene).instantiate()
