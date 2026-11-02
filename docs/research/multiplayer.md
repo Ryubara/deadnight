@@ -24,7 +24,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
 | Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 7 (the layout is in its header; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 put every seat's name in the WELCOME); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 8 (the layout is in its header; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 put every seat's name in the WELCOME); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
@@ -32,8 +32,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Looks | a client sends its look once after joining (`--look N` replaces the saved one for a run); `NightServer` owns the `LookServer` and answers with `look_packet` events, which the host sends only to the player they are for; every screen dresses every body, a client's own included, from the one `LookRegistry` table | |
 | Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
 
-Not in the game yet: interest
-management and a tighter packing of zombies (#57), the Discord proxy (#52).
+Not in the game yet: the Discord proxy (#52).
 
 The first numbers from the real thing, loopback on one loaded machine: 222 bytes a `TICK` with two players and four
 zombies (6.6 KB/s down), a command 47 bytes (2.8 KB/s up; 23 and 1.4 KB/s since protocol 2, 25 and 1.5 KB/s
@@ -242,6 +241,33 @@ at **200 ms** 24 of 24 with and **0 of 24 without** (0.8 m of lead). The cap hol
 lag is judged at 0.25 s and leads the target (`test_a_client_claiming_more_lag_than_the_cap_leads_the_target`). Players
 are not rewound: nobody can hurt another player, so there is nothing to hit; if friendly fire is ever added, the players
 go into the same `LagCompensator` frames beside the dead. Grenades fly in the present and are not compensated.
+
+### Entities in a frame: zombie deltas and interest (#57)
+
+A frame carried every zombie whole (`ZombieCodec`, 13 bytes each) every 30th of a second, so a night with 100 dead cost
+one client about 1.3 KB a tick before compression. The zombies now travel as what changed from the ones that client has
+(`ZombieDelta`, tested in `test_zombie_delta.gd`):
+
+- an entry is the id, a flag byte and only the fields the flags name: `POSITION` (three signed bytes of centimetres
+  moved, or three `s16` when a zombie moved more than 127 cm), `YAW`, `SPEED`, `MODE` (mode and episode), `LOOK`, and
+  `NEW` (every field, for a zombie the client does not have); a zombie that did not change costs nothing, a gone one two
+  bytes. A walking zombie is 2 + 1 + 3 = **6 bytes** (a turn adds one), against 13.
+- a delta starts with a sequence byte, so two deltas are never the same bytes (`FrameDelta` leaves out a field that
+  repeats, and a repeated delta would be lost), and a client refuses bytes that are not a delta of what it has (short, long,
+  a step of an id it never had) and keeps what it had.
+- the host can set an `interest_radius` (metres around the player's body); zombies beyond it are not in that client's
+  base, so they are `gone` as they leave and `NEW` as they arrive. The lot is one screen, so a night leaves it at 0 (all
+  of them); a bigger map sets it. 34 of 100 zombies on an 80 m lot are within 25 m, and the first delta is 481 bytes
+  against 1405.
+- a client that resumes starts from nothing (the first delta is all `NEW`); a tick the socket would not take (#483) is
+  not counted: the host keeps the base and the sequence the client really has, and the next delta is against those.
+
+Measured (`test_zombie_delta.gd`, 100 zombies walking at 3 m/s, turning now and then, 30 ticks a second): the zombies
+alone cost **608 bytes a tick as deltas against 1302 whole**. A whole TICK to one of four players with 100 zombies, with
+the compression `NetWire` applies above 256 bytes: **948 bytes (28.4 KB/s) whole, 574 bytes (17.2 KB/s) as deltas**. What
+is left of that is mostly the walking itself (positions that change every tick); the next gains are a lower rate for far
+zombies and the interest radius. Not done: a type byte for projectiles and pickups (the night has no entities of those
+kinds in the frame: shots and grenades travel as events), and the protocol version is bumped with this change.
 
 ### Reconnect and resume
 

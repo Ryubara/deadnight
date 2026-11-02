@@ -152,11 +152,13 @@ func test_the_face_leads_the_blow() -> void:
 	# The hammer rides the hand bone: over one loop its face swings down from the raise onto the
 	# board, face first. Read from the bone (a BoneAttachment3D follows only on a processed frame).
 	assert_object(_animation.hammer().get_parent()).is_same(_animation.weapon_mount())
-	# The hold file's size on the tipped melee grip.
+	# The hold file's size on the hammer's own grip (solved from its sockets, keeping the tipped
+	# melee grip's turn about the handle: docs/design/animation.md, "Grips").
 	var grip := _animation.hammer().transform
 	var hold := load(PlayerAnimation.HAMMER_HOLD) as WeaponHold
 	assert_float(grip.basis.get_scale().x).is_equal_approx(hold.model_scale, 0.001)
-	assert_bool(grip.orthonormalized().is_equal_approx(PlayerAnimation.HOLD_HAMMER)).is_true()
+	var solved := HandGrip.for_scene(hold.scene).hold
+	assert_bool(grip.orthonormalized().is_equal_approx(solved)).is_true()
 	var face_node := _animation.hammer().find_child(PlayerAnimation.HAMMER_FACE) as Node3D
 	assert_object(face_node).is_not_null()
 	# The face in the hammer scene's own space (the model carries it, not the code).

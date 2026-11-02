@@ -201,6 +201,9 @@ jobs:
       - name: Lose the pointer lock in the browser
         # The browser's first Esc frees the lock and never reaches the page: the night's menu must open at once (#476).
         run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/pointer_lock.py repos/deadnight/build/web smoke/pointer-lock
+      - name: Press Start on a virtual gamepad in the browser
+        # Start is `pause` and `ui_accept`: the night must pause and resume on it, and the pad must play with no mouse lock (#494).
+        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/pad_pause.py repos/deadnight/build/web smoke/pad-pause
       - name: Tour the skin shaders in the browser
         # The menu, the three transitions and the credits: fails on a console error or an all-black or all-white frame.
         run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500

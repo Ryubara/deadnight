@@ -131,6 +131,19 @@ def phases_from(marks: list, result: dict) -> list[dict]:
     return out
 
 
+def service_deltas(rows: list[dict]) -> dict:
+    """The level of each `svc_*` phase against `svc_open`, in dB: the duck, the wall and the rear cue as heard."""
+    levels = {row["phase"]: row.get("level_dbfs") for row in rows if row["phase"].startswith("svc_")}
+    base = levels.get("svc_open")
+    if base is None:
+        return {}
+    return {
+        name.removeprefix("svc_"): None if level is None else round(level - base, 1)
+        for name, level in levels.items()
+        if name != "svc_open"
+    }
+
+
 def export_with_scene(godot: str, folder: Path, settings: str = "") -> None:
     """Exports the web build into `folder` with the load scene as the main scene, and restores project.godot."""
     project = GAME / "project.godot"
@@ -170,7 +183,15 @@ def main() -> int:
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     build = args.out / "web"
-    settings = f"audio/driver/output_latency.web={args.latency}" if args.latency else ""
+    settings_lines = []
+    if args.latency:
+        settings_lines.append(f"driver/output_latency.web={args.latency}")
+    if args.playback == "stream":
+        # The game's own `Audio` players follow the project's default, so a stream run changes it
+        # (0 is stream, 1 is sample, the web's default). The key is in the `[audio]` section, so it
+        # is written without its `audio/`.
+        settings_lines.append("general/default_playback_type.web=0")
+    settings = "\n".join(settings_lines)
     export_with_scene(args.godot, build, settings)
     page_name = "index.html"
     server, port = serve(build)
@@ -202,8 +223,18 @@ def main() -> int:
     finally:
         server.shutdown()
     rows = phases_from(marks, result)
+    deltas = service_deltas(rows)
     (args.out / "audio_load.json").write_text(
-        json.dumps({"playback": args.playback, "gpu": args.gpu, "phases": rows, "console": console}, indent=1)
+        json.dumps(
+            {
+                "playback": args.playback,
+                "gpu": args.gpu,
+                "service_deltas_db": deltas,
+                "phases": rows,
+                "console": console,
+            },
+            indent=1,
+        )
     )
     print(
         f"playback {args.playback}, {'GPU Chrome' if args.gpu else 'headless shell'}, mix {result['mix_rate']:.0f} Hz"
@@ -216,6 +247,9 @@ def main() -> int:
             f"{row['phase']:<12}{row['voices']:>7}{row.get('level_dbfs')!s:>8}{row.get('peak_dbfs')!s:>8}"
             f"{row.get('silent_blocks')!s:>8}{row.get('jumps')!s:>7}{row['mean_ms']:>9}{row['p95_ms']:>8}{row['max_ms']:>8}"
         )
+    print("what the game's service does to one bright voice, dB against svc_open (0 is nothing heard):")
+    for name, value in deltas.items():
+        print(f"  {name:<14}{value:>7}")
     return 0
 
 

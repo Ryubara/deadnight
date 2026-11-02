@@ -6,12 +6,13 @@
 script = ExtResource("1_hold")
 weapon_class = &"Rifle"
 scene = "res://assets/weapons/lever_rifle/lever_rifle.glb"
-model_scale = 0.71
+model_scale = 0.84
 real_length = 1.07
 model_length = 1.653
 shouldered = true
-grip_offset = Vector3(0.05, -0.09, -0.32)
-support = Vector3(-0.45, -0.05, 0)
+grip_offset = Vector3(0.0, -0.09, -0.365)
+support = Vector3(-0.36, -0.03, 0)
 muzzle = Vector3(-1.224, 0.05, 0)
 butt = Vector3(0.429, 0.0, 0)
 pitch_offset_deg = 0.0
+stance_turn_deg = 20.0
