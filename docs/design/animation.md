@@ -58,7 +58,8 @@ move every bone. Events are frames of the clip.
 | Unequip_<Class> | upper | once | 10 (0.42 s) | weapon_hidden 8 |
 
 Also in the file, unused for now: `Idle_Shoot` and `Run_Gun` (the kit's gun clips, which the Rifle and Shotgun clips
-start from), `Punch`, `Wave`, `Yes`, `No`, `Duck`, `Jump`, `Jump_Idle`, `Jump_Land`.
+and the [sprint carry](#sprint-carry) start from), `Punch`, `Wave`, `Yes`, `No`, `Duck`, `Jump`, `Jump_Idle`,
+`Jump_Land`.
 
 What each event is for:
 
@@ -90,11 +91,12 @@ The legs run while the arms aim: an AnimationTree blends an upper-body layer ove
 ```text
 locomotion (Idle / Walk / Run by speed) ──┐
                                           Blend2 "split", amount 1, filter = upper bones ── full-body OneShot ── output
-upper (Aim_<Class>; OneShots Fire, Reload, Swing, Equip, Unequip) ──┘   (HitReact; Death then Downed)
+upper (Aim_<Class> or Sprint_<Class>; OneShots Fire, Reload, Swing, Equip, Unequip) ──┘   (HitReact; Death then Downed)
 ```
 
-- Standing still, the locomotion is `Idle`; the upper layer is always the class's `Aim_<Class>` loop with its
-  one-shots on top, so the Soldier never holds a weapon in the Idle arms.
+- Standing still, the locomotion is `Idle`; the upper layer is the class's `Aim_<Class>` loop with its one-shots on
+  top, so the Soldier never holds a weapon in the Idle arms. Sprinting on the ground it is the class's
+  `Sprint_<Class>` carry instead ([Sprint carry](#sprint-carry)).
 - `HitReact`, `Death` and `Downed` are full-body and override both layers (a OneShot or a state with no filter).
 - Checked headless in Godot: with `Run` under `Aim_Rifle` through a filtered Blend2, the legs follow `Run` and the
   right arm matches `Aim_Rifle` to 0.00 degrees (`game/tests/art/check_soldier_clips.gd`).
@@ -268,6 +270,70 @@ with its `clips.json`; `PlayerAnimation` adds them to the Soldier's library when
 - Checked headless (`game/tests/player/test_player_aim_move.gd`): the planted foot, read off the skeleton while the
   player moves at the aim speed, sweeps straight against the travel at 2.60 m/s in all four directions.
 
+## Sprint carry
+
+While the body sprints, the legs play `Run` and the arms carry the weapon with the stride (#459): before, the upper
+layer kept looping `Aim_<Class>`, so the arms and the gun stayed frozen through a sprint. Weapons need no clips of
+their own: each rides `Index1.R`, so it swings when the arms and the chest do. Four `upper` clips, built by
+`sprint_carries()` in `tools/blender/soldier_clips.py` into their own file,
+`game/assets/characters/soldier/sprint/soldier_sprint.glb` with its `clips.json`; `PlayerAnimation` adds them to the
+Soldier's library when the tree is built.
+
+| Clip | Layer | Plays | Frames | The carry |
+| --- | --- | --- | --- | --- |
+| Sprint_Rifle | upper | loop | 17 (0.71 s) | both hands on, low across the chest, muzzle up past his left shoulder |
+| Sprint_Shotgun | upper | loop | 17 (0.71 s) | the same, a little lower and with more swing (the heavier gun) |
+| Sprint_Pistol | upper | loop | 17 (0.71 s) | one hand at the side, the forearm pumping (the kit's `Run_Gun` arm) |
+| Sprint_Melee | upper | loop | 17 (0.71 s) | a runner's arm out from the side, the weapon upright and leaning back |
+
+- **On Run's own frames.** Each clip is the kit `Run`, frame for frame: its spine, shoulders and left arm (the chest
+  twists 9 degrees each way and bobs with the stride), so the swing lands on Run's footfalls by construction (the
+  right foot plants at frame 3.5, the left at 12.5; the Body is lowest at 4 and 13). Only the right arm and, for the
+  two-handed guns, the left arm are posed for the class.
+- **Rifle and Shotgun.** The upper arm hangs (chest frame, his right is -X, ahead -Y: `(-0.35, -0.05, -1)`), the
+  muzzle points `(0.85, -0.5, 0.45)` (across to his left, ahead and up) and the gun's top faces `(-0.3, 0.2, 1)`;
+  the grip follows from the kit hold (0.62 m out along the forearm, so a low grip and a steep gun cannot both be had).
+  On top of the chest's twist the gun swings 6 degrees each way (7 for the shotgun) and the muzzle dips 4 degrees (5)
+  a frame after each footfall. The left hand reaches the hold's `support` point (`holds/<class>.tres`, times its
+  `model_scale`) by two-bone IK in Blender, 0.07 m short along the forearm like `WeaponHandsIK`: if the support point
+  moves, rebuild the clips. The muzzle shows past the left of the helmet from the shoulder camera; a carry in front of
+  the chest (tried first) is hidden by the body.
+- **Pistol.** `Run_Gun`'s right arm (the forearm pumps 46 degrees a stride), the upper arm swinging a third of the left
+  arm's swing half a stride later.
+- **Melee.** The upper arm hangs out from the side (`(-0.5, 0.1, -1)`) and swings 24 degrees fore and aft against the
+  left arm; the forearm points ahead and pumps 1.2 times the arm's swing; the forearm is turned about its axis so the
+  shaft leans up, back and out (`(-0.25, 0.45, 1)`): it stays up and clears the head from the camera. Hanging, the
+  weapon pointed at the legs (first try).
+- **Only the spine, the shoulders and the arms move.** The fingers stay the static grip every weapon clip shares and
+  the hand's hold on the weapon is the game's (`HOLD_GUN`, `HOLD_MELEE`): the grip sockets and finger poses are #460's.
+  A test fails if a Sprint clip moves a finger or a leg bone.
+
+### The blend
+
+- **When.** The carry comes in while the body is `sprinting`, **on the floor**, at `sprint_carry_min_speed` (3 m/s)
+  or more, with nothing else for the arms (no aim and no hip-fire hold, no action clip, no repair). It eases in over
+  `sprint_carry_in` (0.2 s) and out over `sprint_carry_out` (0.15 s), linearly, through a smoothstep in the tree
+  (`PlayerTuning`, group Sprint carry).
+- **Out at once for the arms' work.** The aim, a shot (the hip-fire hold), a reload, a swing, an equip or a grenade
+  start the blend-out on their first tick; the one-shot's own fade (0.05 s) covers the carry first. The shot itself is
+  not delayed: `muzzle` is frame 0 of Fire and comes in the call that starts it, carry or not. The shouldered pose
+  (`WeaponHandsIK`) gives way to the carry by its weight (`influence = shoulder x (1 - carry)`).
+- **In the air it holds still.** Following the sprint sway's rule (the feet make the motion,
+  [Camera shake](camera-shake.md#the-sprint-sway)): in the air the clip stops where it is (the Run is not played
+  there either) and keeps its weight; it never starts in the air. After the landing the locomotion restarts the Run,
+  and the carry catches up with it (12 per second, exponential) instead of jumping.
+- **Locked to the Run.** The tree has a `carry` Blend2 between `aim` and the action OneShot, its clip behind a
+  `TimeSeek`. Every frame `PlayerAnimation` reads the Run's place
+  (`parameters/body/locomotion/move/run/current_position`, after the tree's last step) plus that step
+  (`current_delta`) and seeks the carry there: both clips land on the same frame, at whatever pace the Run plays.
+- **Checked:** `game/tests/player/test_sprint_carry.gd` (the clips are on Run's cycle; the carry plays only sprinting
+  on the ground, holds in the air and never starts there; its phase matches Run to 0.002 s; it catches up after a
+  landing without jumping; aim, a hip shot, a reload and a swing take it out within 0.15 s; the first shot's `muzzle`
+  comes in the same call; the hand swings more than 5 cm a stride in every class; no finger or leg moves) and
+  `game/tests/night/test_night_sprint_carry.gd` (sprint commands through the real night carry the weapon, and the
+  first shot after the sprint comes on the same tick as one from a standstill). Captures:
+  `game/tests/captures/sprint_carry_tour.tscn`.
+
 ## How the clips are made
 
 From the kit's own poses, never from a blank rig: `Idle_Shoot` frame 0 (the gun hold) is the base of every weapon
@@ -299,6 +365,10 @@ godot --headless --path game -s res://tests/art/check_repair.gd           # LIBR
 # sheet, the kit Run above them (front, side, or from above and behind to see the feet on a strafe):
 blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Walk_,Strafe_ --out game/assets/characters/soldier/aim_move/soldier_aim_move.glb
 blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only AimMove --view top --out <scratch>/aim
+# The sprint carry clips, their own file (prints SPRINT: each clip's frames and how far the left hand missed the
+# fore-end); one stride of each over Run with the game's weapons (Sprint; SprintBefore is Aim_<Class> over Run):
+blender -b --factory-startup -P tools/blender/build_soldier.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --clips Sprint_ --out game/assets/characters/soldier/sprint/soldier_sprint.glb
+blender -b --factory-startup -P tools/blender/render_clips.py -- --soldier <bundle>/models/PpLF4rt4ah.glb     --only Sprint,SprintBefore --view back --out <scratch>/sprint     --weapon Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=Shotgun=0.71     --weapon Shotgun=game/assets/weapons/double_shotgun/double_shotgun.glb=Shotgun=0.82     --weapon Pistol=game/assets/weapons/revolver/revolver.glb=Pistol=1.76     --weapon Melee=game/assets/weapons/baseball_bat/baseball_bat.glb=Shovel=0.86=-90,0,0
 ```
 
 `<bundle>` is the Toon Shooter kit's folder in `refs/`. The `.glb` is third-party-derived (CC0); it is committed with

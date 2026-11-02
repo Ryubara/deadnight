@@ -8,8 +8,10 @@ extends AnimationTree
 ##          run_clip_speed so the feet do not slide; while aiming, Walk_Shoot / Walk_Back /
 ##          Strafe_Left / Strafe_Right blended by the direction of travel, from their own file),
 ##          and jump -> fall -> land -> locomotion.
-##   upper: the class's Aim_<Class> loop with a OneShot on top (Fire, Reload, Swing, Equip,
-##          Unequip), laid over the body by a Blend2 filtered to the upper bones.
+##   upper: the class's Aim_<Class> loop, or while sprinting on the ground its Sprint_<Class>
+##          carry (its own file, played at the Run clip's time so the swing lands on the
+##          footfalls), with a OneShot on top (Fire, Reload, Swing, Equip, Unequip), laid over the
+##          body by a Blend2 filtered to the upper bones.
 ##   repair: Repair_Board looping over the upper layer while the player puts boards back at a
 ##          breach (its own file, added to the library here), timed by the rules' events.
 ##   full:  a full-body OneShot over both (HitReact, Death).
@@ -107,6 +109,20 @@ const AIM_RATE_MAX := 1.6
 const AIM_MOVE_PARAMETER := &"parameters/body/locomotion/aim_move/blend_position"
 const AIM_RATE_PARAMETER := &"parameters/body/locomotion/aim_rate/scale"
 const AIM_BLEND_PARAMETER := &"parameters/body/locomotion/aim_blend/blend_amount"
+## The sprint carry (#459): an upper-body loop per class on the kit Run's 17 frames, built into its
+## own file (docs/design/animation.md, Sprint carry) and added to the Soldier's library. It is
+## seeked to the Run clip's place every frame, so the two never drift apart.
+const SPRINT_GLB := "res://assets/characters/soldier/sprint/soldier_sprint.glb"
+const SPRINT_SPEC := "res://assets/characters/soldier/sprint/clips.json"
+const SPRINT_PREFIX := "Sprint_"
+const CARRY_BLEND_PARAMETER := &"parameters/carry/blend_amount"
+const CARRY_SEEK_PARAMETER := &"parameters/carry_seek/seek_request"
+const RUN_POSITION_PARAMETER := &"parameters/body/locomotion/move/run/current_position"
+const RUN_DELTA_PARAMETER := &"parameters/body/locomotion/move/run/current_delta"
+## When the carry is out of step with the Run by more than a frame (the locomotion restarted on a
+## landing, the carry held still in the air) it catches up at this rate (per second, exponential)
+## instead of jumping; within a frame it is locked.
+const CARRY_CATCH_RATE := 12.0
 
 ## The grenade's clips, a file of their own on the same rig (`docs/design/animation.md`, Grenade):
 ## the pin and the cooking hold, the overarm throw and the underarm toss. Upper body, so the legs
@@ -180,6 +196,12 @@ var _aim_move_speed := 2.6
 var _aim_move := Vector2.ZERO
 ## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
 var _boards_due := 0
+var _carry_node: AnimationNodeAnimation
+## The sprint carry's weight, 0 to 1, moved linearly (the tree gets it through a smoothstep), and
+## where its clip is, in its own seconds (the Run clip's place, while the feet are on the ground).
+var _carry := 0.0
+var _carry_time := 0.0
+var _carry_on := false
 
 
 func _ready() -> void:
@@ -191,6 +213,7 @@ func _ready() -> void:
 	_add_repair_clip(anim_player)
 	_add_grenade_clips(anim_player)
 	_add_aim_move_clips(anim_player)
+	_add_sprint_clips(anim_player)
 	_loop_clips(anim_player)
 	_duck_bottom = _lowest_second(anim_player.get_animation(&"Duck"))
 	_mount = BoneAttachment3D.new()
@@ -246,6 +269,7 @@ func _process(delta: float) -> void:
 	_advance_aim_move(follow)
 	_advance_events(delta)
 	_advance_repair(delta)
+	_advance_carry(delta, on_floor)
 	_advance_shoulder(delta)
 
 
@@ -296,6 +320,37 @@ static func aim_move_for(velocity: Vector3, facing: float, clip_speed: float) ->
 	var weight := clampf(share / AIM_MOVE_FULL, 0.0, 1.0)
 	var rate := lerpf(1.0, clampf(share, AIM_RATE_MIN, AIM_RATE_MAX), weight)
 	return {"position": local.normalized() * weight, "rate": rate}
+
+
+## Whether the arms should carry the weapon with the stride: sprinting on the ground at speed with
+## nothing else for the arms to do (no aim and no shot held, no action clip, no repair). In the air
+## the carry only holds what it had: it never starts there, and anything that interrupts it on the
+## ground interrupts it in the air too.
+func sprint_carry_wanted(on_floor: bool) -> bool:
+	var state := _player.state
+	return (
+		state.sprinting
+		and (on_floor or _carry_on)
+		and _player.ground_speed() >= _tuning.sprint_carry_min_speed
+		and not state.holds_aim(_tuning.hip_fire_hold)
+		and action_clip == &""
+		and not is_repairing()
+	)
+
+
+## The sprint carry's weight now, 0 to 1 (linear in time; the tree eases it), for tests.
+func sprint_carry() -> float:
+	return _carry
+
+
+## Where the sprint carry's clip is, in its own seconds, for tests.
+func sprint_carry_time() -> float:
+	return _carry_time
+
+
+## Where the Run clip is in the locomotion, in its own seconds (the carry follows it).
+func run_time() -> float:
+	return get(RUN_POSITION_PARAMETER)
 
 
 ## The aim gait's place in its blend space now, for tests.
@@ -489,6 +544,7 @@ func shoulder_blend() -> float:
 func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
+	_carry_node.animation = StringName(SPRINT_PREFIX + String(new_class))
 	if _weapon != null:
 		_weapon.free()
 		_weapon = null
@@ -538,10 +594,12 @@ func _advance_shoulder(delta: float) -> void:
 	_shoulder_blend = lerpf(_shoulder_blend, target, 1.0 - exp(-SHOULDER_RATE * delta))
 	if absf(_shoulder_blend - target) < 0.001:
 		_shoulder_blend = target
-	_hands.influence = _shoulder_blend
+	# The sprint carry holds the arms itself: the shouldered pose gives way to it as it comes in.
+	_hands.influence = _shoulder_blend * (1.0 - _carry)
 	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
-	# so the clips that move them (the repair, Reload, Swing) never showed in a running game.
-	_hands.active = _shoulder_blend > 0.0
+	# so the clips that move them (the repair, Reload, Swing, the carry) never showed in a running
+	# game.
+	_hands.active = _hands.influence > 0.0
 
 
 ## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible
@@ -579,6 +637,30 @@ func _advance_aim_move(follow: float) -> void:
 	_aim_move = _aim_move.lerp(gait["position"], follow)
 	set(AIM_MOVE_PARAMETER, _aim_move)
 	set(AIM_RATE_PARAMETER, gait["rate"])
+
+
+## The sprint carry: its weight toward what the body is doing (in over `sprint_carry_in`, out over
+## `sprint_carry_out`, linearly) and its clip locked to the Run clip's place. The Run's place is
+## read off the tree after its last step, plus that step: the place the Run reaches in the step to
+## come, so the two land on the same frame. In the air the clip holds still (the Run is not played
+## there either); after a landing it catches up with the restarted Run instead of jumping.
+func _advance_carry(delta: float, on_floor: bool) -> void:
+	_carry_on = sprint_carry_wanted(on_floor)
+	var span := _tuning.sprint_carry_in if _carry_on else _tuning.sprint_carry_out
+	_carry = move_toward(_carry, 1.0 if _carry_on else 0.0, delta / maxf(span, 0.001))
+	set(CARRY_BLEND_PARAMETER, smoothstep(0.0, 1.0, _carry))
+	var length := _clip_seconds(_carry_node.animation)
+	if on_floor and current_state() == STATE_LOCOMOTION:
+		var step: float = get(RUN_DELTA_PARAMETER)
+		var target := fposmod(run_time() + step, length)
+		var error := wrapf(target - (_carry_time + step), -length * 0.5, length * 0.5)
+		if _carry == 0.0 or absf(error) < 1.0 / float(_spec["fps"]):
+			_carry_time = target
+		else:
+			_carry_time = fposmod(
+				_carry_time + step + error * (1.0 - exp(-CARRY_CATCH_RATE * delta)), length
+			)
+	set(CARRY_SEEK_PARAMETER, _carry_time)
 
 
 ## Moves the repair loop on by `delta` seconds: its events (`board_set` only for a board that is
@@ -695,6 +777,25 @@ func _add_grenade_clips(anim_player: AnimationPlayer) -> void:
 	holder.free()
 
 
+## Adds the sprint carry clips to the Soldier's own library (the repair clip's recipe) and their
+## entries to the clip spec.
+func _add_sprint_clips(anim_player: AnimationPlayer) -> void:
+	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SPRINT_SPEC))
+	var library := anim_player.get_animation_library(&"")
+	var holder: Node = null
+	for cls: StringName in CLASSES:
+		var clip := StringName(SPRINT_PREFIX + String(cls))
+		_spec["clips"][String(clip)] = spec["clips"][String(clip)]
+		if library.has_animation(clip):
+			continue
+		if holder == null:
+			holder = (load(SPRINT_GLB) as PackedScene).instantiate()
+		var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		library.add_animation(clip, source.get_animation(clip))
+	if holder != null:
+		holder.free()
+
+
 ## Adds the aim-move clips to the Soldier's own library (the repair clip's recipe) and their
 ## entries to the clip spec; their ground speed comes from the same spec.
 func _add_aim_move_clips(anim_player: AnimationPlayer) -> void:
@@ -741,9 +842,13 @@ func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	var tree := AnimationNodeBlendTree.new()
 	tree.add_node(&"body", _build_body())
 	_aim_node = _clip(&"Aim_Rifle")
+	_carry_node = _clip(&"Sprint_Rifle")
 	_action_node = _clip(&"Fire_Rifle")
 	_full_node = _clip(&"HitReact")
 	tree.add_node(&"aim", _aim_node)
+	tree.add_node(&"carry_clip", _carry_node)
+	tree.add_node(&"carry_seek", AnimationNodeTimeSeek.new())
+	tree.add_node(&"carry", AnimationNodeBlend2.new())
 	tree.add_node(&"action_clip", _action_node)
 	var action := AnimationNodeOneShot.new()
 	action.fadein_time = 0.05
@@ -763,7 +868,10 @@ func _build_tree(skeleton_path: String) -> AnimationNodeBlendTree:
 	full.fadein_time = 0.05
 	full.fadeout_time = 0.15
 	tree.add_node(&"full", full)
-	tree.connect_node(&"action", 0, &"aim")
+	tree.connect_node(&"carry_seek", 0, &"carry_clip")
+	tree.connect_node(&"carry", 0, &"aim")
+	tree.connect_node(&"carry", 1, &"carry_seek")
+	tree.connect_node(&"action", 0, &"carry")
 	tree.connect_node(&"action", 1, &"action_clip")
 	tree.connect_node(&"split", 0, &"body")
 	tree.connect_node(&"repair_seek", 0, &"repair_clip")
