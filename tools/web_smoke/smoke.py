@@ -186,6 +186,19 @@ def probe(page: Page) -> dict:
     return page.evaluate(PROBE_JS) or {}
 
 
+def give_name(page: Page, name: str, seconds: float = 60.0) -> None:
+    """Answers the Play together name prompt, which a player with no saved name gets before signing in."""
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        if page.evaluate("() => window.deadnight ? window.deadnight.naming : false"):
+            page.wait_for_timeout(500)  # the field takes the keyboard a frame after it shows
+            page.keyboard.type(name, delay=40)
+            press(page, "Enter")
+            return
+        page.wait_for_timeout(250)
+    raise TimeoutError("the name prompt never showed")
+
+
 def press(page: Page, key: str) -> None:
     """A key held for a few frames: Godot reads input once per frame, and a tap shorter than that can be lost."""
     page.keyboard.down(key)

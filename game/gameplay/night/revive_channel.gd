@@ -38,7 +38,8 @@ func begin_tick() -> void:
 
 
 ## The downed teammate nearest to this player within `revive_reach` (lowest id on a tie), or 0.
-## Nobody when the player is down themselves or the round is not on.
+## Nobody when the player is down themselves or the round is not on; a teammate who bled out is
+## past reviving.
 func in_reach(player_id: int) -> int:
 	if _is_down(player_id) or _rules.phase != GameRules.Phase.ACTIVE:
 		return 0
@@ -46,7 +47,7 @@ func in_reach(player_id: int) -> int:
 	var best := 0
 	var best_apart := INF
 	for other_id: int in _bodies:
-		if other_id == player_id or not _is_down(other_id):
+		if other_id == player_id or not _is_down(other_id) or _rules.is_dead(other_id):
 			continue
 		var there: Vector3 = _bodies[other_id].global_position
 		var apart := Vector2(here.x - there.x, here.z - there.z).length()
@@ -56,6 +57,20 @@ func in_reach(player_id: int) -> int:
 			best = other_id
 			best_apart = apart
 	return best
+
+
+## The downed players a teammate is holding on to now: the rules stand their bleed-out clock still
+## for them (`RulesAction.tick`'s `held`).
+func held_targets() -> Array:
+	return _holding.values()
+
+
+## The teammate holding on to this downed player now, or 0.
+func holder_of(target_id: int) -> int:
+	for holder: int in _holding:
+		if _holding[holder] == target_id:
+			return holder
+	return 0
 
 
 ## How far a downed player's revive has got, 0 to 1.

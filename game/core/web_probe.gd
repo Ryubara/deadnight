@@ -65,11 +65,13 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
+		"naming": false,
 		"lobby_seats": "",
 		"lobby_note": "",
 		"lobby_buttons": "",
 		"notices": "",
 		"code_text": "",
+		"notice_log": "",
 		"touch": false,
 		"reticle": false,
 		"tab": "",
@@ -91,7 +93,7 @@ static func snapshot(top: Control) -> Dictionary:
 	var room := ActivityRoom.current
 	if room != null:
 		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
-		data["activity_code"] = str(room.lobby.get("code", ""))
+		data["activity_code"] = str(room.preview.get("code", ""))
 	var tree := top.get_tree()
 	var hint: ControllerHint = (
 		tree.root.find_child("ControllerHint", true, false) as ControllerHint
@@ -105,11 +107,10 @@ static func snapshot(top: Control) -> Dictionary:
 		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
 	var together := top as TogetherScreen
 	if together != null:
-		# The invite of the night just made and what the screen says (a browser test reads both).
-		data["room_code"] = (
-			together.invite_code.text if together.invite_code.is_visible_in_tree() else ""
-		)
+		# What the screen says (a browser test reads it); the code is the lobby screen's.
 		data["room_status"] = together.status.text
+		# The name prompt is up (a browser test types a name into it).
+		data["naming"] = together.name_field.is_visible_in_tree()
 		data["code_text"] = together.code_field.text  # what a paste put into the code field
 	var lobby := top as LobbyScreen
 	if lobby != null:
@@ -143,6 +144,7 @@ static func snapshot(top: Control) -> Dictionary:
 	if night_screen.night.hud != null:
 		# Who joined or left, as the night's notices say it.
 		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
+		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
 	data["touch"] = night_screen.touch_active()
 	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():

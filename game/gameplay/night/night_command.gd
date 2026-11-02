@@ -43,6 +43,15 @@ func aim_along(direction: Vector3) -> void:
 	motion.pitch = asin(clampf(dir.y, -1.0, 1.0))
 
 
+## The other way round: the view turn is (`yaw`, `pitch`) and the shot's `dir` is derived from it,
+## the camera's forward (the basis of `NightServer.view_dir`). A client that turns its view with a
+## model of its own (a spring, a turn-rate cap) sets the view and gets a shot that agrees with it.
+func look_along(yaw: float, pitch: float) -> void:
+	motion.yaw = yaw
+	motion.pitch = pitch
+	dir = Basis.from_euler(Vector3(pitch, yaw, 0.0)) * Vector3.FORWARD
+
+
 func to_dict() -> Dictionary:
 	return {
 		"type": NightServer.COMMAND,

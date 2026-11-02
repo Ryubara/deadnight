@@ -9,7 +9,8 @@ extends RefCounted
 ## that has rounds, re-cuts one weapon at the bench and drinks the hearty tonic when it can pay, and
 ## puts boards back when it is standing at one with nothing to shoot. It throws the breaker of an
 ## area it has bought (`AutopilotSwitches`), and back off when the tank runs low; and it buys a can
-## of fuel when the tank is low and it has the points (`AutopilotFuel`).
+## of fuel when the tank is low and it has the points (`AutopilotFuel`). A downed teammate it can
+## reach safely is pulled up before anything else (`AutopilotRevive`).
 
 ## Metres: a zombie nearer than this is backed away from.
 const KEEP_AWAY := 7.0
@@ -63,6 +64,8 @@ var whole_boards: int = 1
 var switches := AutopilotSwitches.new()
 ## The fuel can spots and when to buy at them.
 var fuel := AutopilotFuel.new()
+## When to go and pull a downed teammate up.
+var revive := AutopilotRevive.new()
 
 var _yaw := 0.0
 var _sidestep := 0.0
@@ -87,6 +90,11 @@ func decide(delta: float) -> NightCommand:
 	if not state.has_frame() or state.me().get("downed", true):
 		return command
 	var here := state.position()
+	var patient := revive.choose(state.frame, state.player_id, here, state.zombies)
+	if patient != 0:
+		return _revive_command(
+			command, here, state.frame["players"][patient]["pos"], patient, delta
+		)
 	var near := _nearest(here, false)
 	var target := _nearest(here, true)
 	var prompt: Dictionary = state.me().get("prompt", {})
@@ -123,7 +131,7 @@ func decide(delta: float) -> NightCommand:
 	if kind == &"door":
 		command.use = state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"crane_take":
-		command.use = true
+		command.use = _worth_taking(WeaponCatalog.catalog_id(prompt.get("weapon", &"")))
 	elif kind == &"weapon" or kind == &"crane":
 		command.use = _wants(prompt) and state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"ammo":
@@ -140,6 +148,24 @@ func decide(delta: float) -> NightCommand:
 		command.use = switches.wants_use(prompt, state.frame)
 	elif kind == &"fuel":
 		command.use = fuel.wants_use(prompt, state.frame, state.points())
+	return command
+
+
+## Walks to a downed teammate and holds `use` beside them: no shooting, reloading or swapping (the
+## server lets go of a hold for any of them).
+func _revive_command(
+	command: NightCommand, here: Vector3, there: Vector3, patient: int, delta: float
+) -> NightCommand:
+	var wish := _unstuck(_toward(here, there), here, delta)
+	if wish != Vector3.ZERO:
+		_yaw = atan2(-wish.x, -wish.z)
+		command.motion.move = Vector2(0.0, -1.0)
+	elif _flat(here, there) > 0.01:
+		_yaw = atan2(-(there.x - here.x), -(there.z - here.z))
+	command.motion.yaw = _yaw
+	if revive.in_reach(here, there):
+		command.use_held = true
+		command.use = state.frame["players"][patient].get("reviver", 0) == 0
 	return command
 
 
@@ -184,6 +210,11 @@ func _wants_swap(held: WeaponDef) -> bool:
 ## rounds to spare.
 func _wants(prompt: Dictionary) -> bool:
 	var id: StringName = prompt.get("id", &"")
+	var kind: StringName = prompt.get("kind", &"")
+	if kind == &"weapon" and not _worth_taking(WeaponCatalog.catalog_id(id)):
+		return false
+	if kind == &"crane" and not _some_prize_worth_taking():
+		return false
 	return wanted.has(id) and state.points() >= int(prompt.get("price", BIG_PRICE)) + AMMO_MONEY
 
 
@@ -222,7 +253,8 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 				and _low_on_rounds(held)
 				and points >= int(ammo_prices.get(weapon, BIG_PRICE))
 			)
-	if kind == &"crane" and not _crane_here_with_prizes(spot):
+	var pointless := kind == &"wall" and not _worth_taking(WeaponCatalog.catalog_id(id))
+	if pointless or (kind == &"crane" and not _crane_here_with_prizes(spot)):
 		return false
 	return wanted.has(id) and points >= int(prices_of_goods.get(id, BIG_PRICE)) + AMMO_MONEY
 
@@ -243,11 +275,29 @@ func _recut_wanted(held: WeaponDef) -> bool:
 func _crane_here_with_prizes(spot: Dictionary) -> bool:
 	if spot.get("crane_spot", 0) != state.frame.get("crane", {}).get("spot", 0):
 		return false
-	var arms: Dictionary = state.me().get("arms", {})
+	return _some_prize_worth_taking()
+
+
+## Whether the crane's pool holds a prize worth taking: nobody pays for a play whose prize they
+## would leave on the glass.
+func _some_prize_worth_taking() -> bool:
 	for prize in crane_pool:
-		if not arms.has(WeaponCatalog.catalog_id(prize)):
+		if _worth_taking(WeaponCatalog.catalog_id(prize)):
 			return true
 	return false
+
+
+## Whether a weapon (a catalogue id) is worth taking: a free hand takes anything; full hands only
+## a weapon worth `WeaponWorth.REPLACE_GAIN` times the one in hand, which is the one it replaces
+## (without the margin the bot buys in circles). A weapon it already carries is not "taken".
+func _worth_taking(weapon_id: StringName) -> bool:
+	var arms: Dictionary = state.me().get("arms", {})
+	if arms.has(weapon_id):
+		return false
+	if arms.size() < WeaponCatalog.CARRY_LIMIT:
+		return true
+	var held := _held()
+	return held != null and WeaponWorth.beats(WeaponCatalog.get_def(weapon_id), held)
 
 
 ## Where the crane stands now, or `Vector3.INF` when the lot has no spot for it.

@@ -66,11 +66,11 @@ func _ticket(match_id: String, user: String, name := "Tester") -> String:
 
 
 ## A hand-driven client with a ticket (MANUAL): it sends `_commands[night]` every tick.
-func _client(match_id: String, user: String) -> Night:
+func _client(match_id: String, user: String, name := "Tester") -> Night:
 	var night := Night.new()
 	_world().add_child(night)
 	var link := WebSocketLink.new()
-	link.ticket = _ticket(match_id, user)
+	link.ticket = _ticket(match_id, user, name)
 	var joined := await night.start_remote(_url(), Night.Mode.MANUAL, 60.0, link)
 	assert_bool(joined).is_true()
 	_nights.append(night)
@@ -169,6 +169,26 @@ func test_a_ticket_that_is_not_good_is_turned_away() -> void:
 	assert_int((again["packet"] as PackedByteArray)[0]).is_equal(NetWire.Type.REFUSED)
 
 
+func test_every_client_shows_the_same_names_and_a_duplicate_gets_a_number() -> void:
+	await _start()
+	var ann := await _client("names-a", "u1", "Ann")
+	var bo := await _client("names-a", "u2", "ann")
+	# The ticket's name is the seat's; the second Ann is told apart from the first.
+	var expected := {1: "Ann", 2: "ann (2)"}
+	assert_dict(_server.room_of_match("names-a")._names).is_equal(expected)
+	assert_bool(await _until(func() -> bool: return ann.state.names == expected)).is_true()
+	assert_dict(bo.state.names).is_equal(expected)
+	# A late joiner gets everyone's name in its WELCOME, and the others hear its own.
+	var cy := await _client("names-a", "u3", "Cy")
+	var everyone := {1: "Ann", 2: "ann (2)", 3: "Cy"}
+	assert_dict(cy.state.names).is_equal(everyone)
+	assert_bool(await _until(func() -> bool: return ann.state.names == everyone)).is_true()
+	assert_bool(await _until(func() -> bool: return bo.state.names == everyone)).is_true()
+	# Another night does not know them.
+	var dee := await _client("names-b", "u4", "Ann")
+	assert_dict(dee.state.names).is_equal({1: "Ann"})
+
+
 func test_a_server_with_no_room_left_turns_a_new_match_away() -> void:
 	await _start(1)
 	var first := await _client("m1", "ann")
@@ -246,6 +266,7 @@ func test_the_server_is_set_up_from_its_environment() -> void:
 		"RAILWAY_SERVICE_ID": "abcdef0123456789",
 		"RAILWAY_PUBLIC_DOMAIN": "gs.example.app",
 		"ROOM_CAPACITY": "6",
+		"MAX_ALIVE": "60",
 	}
 	var config := ServerConfig.from_environment(
 		func(key: String) -> String: return env.get(key, "")
@@ -256,6 +277,11 @@ func test_the_server_is_set_up_from_its_environment() -> void:
 	assert_str(config.public_url).is_equal("wss://gs.example.app")
 	assert_str(config.activity_path).is_equal("/server")
 	assert_int(config.capacity).is_equal(6)
+	assert_int(config.max_alive).is_equal(60)
+	# Unset, or not a number, is no cap.
+	env["MAX_ALIVE"] = "lots"
+	var unset := ServerConfig.from_environment(func(key: String) -> String: return env.get(key, ""))
+	assert_int(unset.max_alive).is_equal(0)
 	var alone := ServerConfig.from_environment(func(_key: String) -> String: return "")
 	assert_bool(alone.uses_backend()).is_false()
 	assert_str(alone.problem()).is_equal("")

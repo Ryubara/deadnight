@@ -21,11 +21,13 @@ extends RefCounted
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
 ## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
-## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve,
-## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
-## (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one,
-## when downed, has got), ack (the `seq` of the command this step used: a predicting client
-## replays from it)}}.
+## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
+## held), pitch (the look up or down, `pitch_step`), ammo, reserve, reloading, arms (every weapon
+## carried: id to [ammo, reserve, tier]), points, prompt, reviving (the teammate this one is
+## raising, 0 for none), revive (0 to 1: how far the hold on this one, when downed, has got), ack
+## (the `seq` of the command this step used: a predicting client replays from it), kills, downs,
+## revives, dead (bled out), bleed (seconds a downed player has left) and reviver (who is raising
+## this one, 0 for nobody)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -78,6 +80,9 @@ const GRENADE_EVENTS: Array[StringName] = [
 const GRENADE_DEF := "res://gameplay/grenades/defs/frag.tres"
 ## A held trigger meets these every tick; they are not news.
 const QUIET_REJECTIONS: Array[StringName] = [&"cooldown", &"reloading"]
+## The frame names where a player looks up or down in steps of this many radians (3 degrees): a
+## drawn copy only needs the barrel to follow, and a field that did not change costs nothing.
+const PITCH_STEP := deg_to_rad(3.0)
 
 var rules: GameRules
 var combat: CombatServer
@@ -103,6 +108,8 @@ var drawn_bodies := true
 ## The round trip each connected player last reported, milliseconds (the game server fills it from
 ## their pings): a player with no entry has none to show, and a night on a loopback has no one's.
 var pings: Dictionary[int, int] = {}
+## The crowd this match stands, from the weakest client in it (`CrowdCeiling.set_platform`).
+var crowd := CrowdCeiling.new()
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -167,6 +174,7 @@ func _init(
 	world.bind(rules)
 	world.doors.door_opened.connect(_on_door_opened)
 	rules.event_emitted.connect(_on_rules_event)
+	crowd.bind(rules, sim)
 
 
 ## Stops listening to the rules and the doors, so nothing calls into a finished night. Call when
@@ -208,6 +216,11 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 	return _outbox
 
 
+## The most zombies alive at once in this match now (`crowd`).
+func crowd_ceiling() -> int:
+	return rules.crowd_ceiling
+
+
 ## Keeps the newest command of a player, with the pressed edges of the one it replaces if no step
 ## has used that one yet.
 func submit(player_id: int, command: NightCommand) -> void:
@@ -227,6 +240,16 @@ func submit(player_id: int, command: NightCommand) -> void:
 	_silent[player_id] = 0
 
 
+## The step of the frame's `pitch` for a look of `radians` (up is positive).
+static func pitch_step(radians: float) -> int:
+	return roundi(clampf(radians, -PI / 2.0, PI / 2.0) / PITCH_STEP)
+
+
+## The look up or down a step of the frame's `pitch` means.
+static func pitch_from_step(step: int) -> float:
+	return step * PITCH_STEP
+
+
 ## The server step a shooter's view step (the low 16 bits) means: the latest step with those bits
 ## that is not in the future, so the wrap of a long night is no matter.
 func _view_tick_of(view_step: int) -> int:
@@ -243,7 +266,7 @@ func health_of(player_id: int) -> float:
 
 
 ## One fixed tick. Returns every event of it, the frame last.
-func step(delta: float) -> Array[Dictionary]:
+func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	_outbox = []
 	tick_count += 1
 	var began := PerfProbe.begin()
@@ -253,10 +276,13 @@ func step(delta: float) -> Array[Dictionary]:
 	director.tick(delta, _chase_targets())
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
-	rules.apply(RulesAction.tick(delta))
+	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
 	PerfProbe.end(&"server.rules", began)
 	began = PerfProbe.begin()
-	_combat(CombatAction.targets(_target_list()))
+	var target_list := _target_list()
+	PerfProbe.end(&"server.target_list", began)
+	began = PerfProbe.begin()
+	_combat(CombatAction.targets(target_list))
 	_combat(CombatAction.tick(delta))
 	PerfProbe.end(&"server.combat", began)
 	began = PerfProbe.begin()
@@ -268,7 +294,8 @@ func step(delta: float) -> Array[Dictionary]:
 	began = PerfProbe.begin()
 	_outbox.append_array(ping_board.step(delta))
 	_throw_grenades(delta)
-	_outbox.append(_frame())
+	if with_frame:
+		_outbox.append(_frame())
 	PerfProbe.end(&"server.frame", began)
 	return _outbox
 
@@ -280,6 +307,7 @@ func _join(player_id: int, local: bool) -> void:
 	if _bodies.has(player_id):
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
+	crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
@@ -298,6 +326,7 @@ func _leave(player_id: int) -> void:
 	if _bodies.has(player_id):
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
+		crowd.leave(player_id)
 		_pending.erase(player_id)
 		_silent.erase(player_id)
 		_acked.erase(player_id)
@@ -512,27 +541,9 @@ func buy(player_id: int, item_id: StringName) -> Array[Dictionary]:
 	var weapon: StringName = &""
 	if item != null and item.kind == ShopItem.Kind.AMMO:
 		rounds = ammo_room(player_id, item.weapon)
-	if item != null and item.kind == ShopItem.Kind.UPGRADE:
+	if item != null and item.kind in [ShopItem.Kind.UPGRADE, ShopItem.Kind.WEAPON]:
 		weapon = MachineOffers.weapon_for(self, player_id)
-	if item != null and item.kind == ShopItem.Kind.WEAPON:
-		weapon = _in_hand(player_id)
 	return rules.apply(RulesAction.buy(player_id, item_id, rounds, weapon))
-
-
-## The catalogue id of the weapon in the player's hand, or `&""`: what a full carry gives up.
-func _in_hand(player_id: int) -> StringName:
-	var held := combat.weapon_of(player_id)
-	return held.def.id if held != null else &""
-
-
-## What taking a weapon would cost the player's hands: the name of the weapon in hand it replaces
-## (a catalogue id) when the hands are full and the weapon is not carried yet, else `&""`.
-func replaces(player_id: int, weapon_id: StringName) -> StringName:
-	if combat.state_of(player_id, weapon_id) != null:
-		return &""
-	if combat.carried(player_id).size() < WeaponCatalog.CARRY_LIMIT:
-		return &""
-	return _in_hand(player_id)
 
 
 ## Rounds the player's reserve of this weapon has room for; 0 for a weapon not carried.
@@ -664,8 +675,8 @@ func aims_with_view(command: NightCommand) -> bool:
 ## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or
 ## `{"kind": &"fuel", "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell
 ## now: `units` is 0 and `price` 0 when the tank is full), or `{"kind": &"revive", "id",
-## "progress"}` beside a downed teammate (`progress`: 0 to 1 of the hold; first of all, a life comes
-## before a door).
+## "progress", "bleed"}` beside a downed teammate (`progress`: 0 to 1 of the hold, `bleed`: the
+## seconds they have left; first of all, a life comes before a door).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -673,7 +684,12 @@ func use_target(player_id: int) -> Dictionary:
 	var here := body.global_position
 	var raise := _revive.in_reach(player_id)
 	if raise != 0:
-		return {"kind": &"revive", "id": raise, "progress": _revive.progress(raise)}
+		return {
+			"kind": &"revive",
+			"id": raise,
+			"progress": _revive.progress(raise),
+			"bleed": rules.bleed_left_of(raise),
+		}
 	var door := _door_offer(here)
 	if not door.is_empty():
 		return door
@@ -762,7 +778,7 @@ func _offer_at(player_id: int, spot: Dictionary) -> Dictionary:
 				"id": spot["shop_id"],
 				"weapon": weapon,
 				"price": rules.price_of(spot["shop_id"]),
-				"replaces": replaces(player_id, weapon),
+				"replaces": MachineOffers.replaces(self, player_id, weapon),
 			}
 		&"crane":
 			return _crane_offer(player_id, spot)
@@ -795,7 +811,7 @@ func _crane_offer(player_id: int, spot: Dictionary) -> Dictionary:
 			"id": item.id,
 			"weapon": crane.weapon,
 			"left": crane.left,
-			"replaces": replaces(player_id, WeaponCatalog.catalog_id(crane.weapon)),
+			"replaces": MachineOffers.replaces(self, player_id, crane.weapon),
 		}
 	return {"kind": &"crane_busy", "id": item.id, "buyer": crane.buyer_id}
 
@@ -823,7 +839,8 @@ func _use(player_id: int) -> void:
 		&"door", &"weapon", &"ammo", &"crane", &"recut", &"tonic":
 			buy(player_id, target["id"])
 		&"crane_take":
-			rules.apply(RulesAction.crane_take(player_id, _in_hand(player_id)))
+			var held := MachineOffers.weapon_for(self, player_id)
+			rules.apply(RulesAction.crane_take(player_id, held))
 		&"repair":
 			_repairing[player_id] = target["id"]
 			_repair(player_id, target["id"])
@@ -906,17 +923,24 @@ func _frame() -> Dictionary:
 			"health": rules.health_of(player_id),
 			"downed": _is_downed(player_id),
 			"weapon": weapon.def.id if weapon != null else &"",
+			"aim": body.state.holds_aim(body.tuning.hip_fire_hold),
+			"pitch": pitch_step(body.state.view_pitch),
 			"ammo": weapon.ammo if weapon != null else 0,
 			"reserve": weapon.reserve if weapon != null else 0,
 			"reloading": weapon != null and weapon.is_reloading(),
 			"arms": _arms_of(player_id),
 			"points": rules.points_of(player_id),
-			"prompt": use_target(player_id),
+			# A player on the ground can use nothing, so the card says nothing.
+			"prompt": {} if _is_downed(player_id) else use_target(player_id),
 			"ack": _acked.get(player_id, 0),
 			"reviving": _revive.target_of(player_id),
 			"revive": _revive.progress(player_id),
+			"reviver": _revive.holder_of(player_id),
 			"kills": rules.kills_of(player_id),
 			"downs": rules.downs_of(player_id),
+			"revives": rules.revives_of(player_id),
+			"dead": rules.is_dead(player_id),
+			"bleed": rules.bleed_left_of(player_id),
 		}
 		if pings.has(player_id):
 			players[player_id]["ping"] = pings[player_id]
@@ -937,9 +961,16 @@ func _frame() -> Dictionary:
 		"crane": _crane_frame(),
 		"pings": ping_board.marks(),
 		"barricades": rules.barricades.to_dict(),
-		"zombies": ZombieCodec.encode(sim.zombies),
+		"zombies": _encode_zombies(),
 		"players": players,
 	}
+
+
+func _encode_zombies() -> PackedByteArray:
+	var began := PerfProbe.begin()
+	var bytes := ZombieCodec.encode(sim.zombies)
+	PerfProbe.end(&"server.encode", began)
+	return bytes
 
 
 ## The crane for the picture: where it stands, which stage it is in, whose play it is, the prize

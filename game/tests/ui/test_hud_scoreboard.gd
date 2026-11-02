@@ -111,22 +111,25 @@ func test_a_menu_over_the_night_keeps_it_away_and_takes_it_down() -> void:
 func test_a_row_for_each_player_with_the_servers_numbers() -> void:
 	var fixture := _hud(3)
 	var state := fixture.hud.state
-	state.set_player_stats(1, 12, 1)
+	state.set_player_stats(1, 12, 1, HudState.NO_PING, 2)
 	state.set_player_stats(2, 7, 0)
-	state.set_player_stats(3, 31, 4)
+	state.set_player_stats(3, 31, 4, HudState.NO_PING, 9)
 	state.set_night_clock(754)
 	fixture.act(RulesAction.grant_points(1, 250))
 	var board := fixture.hud.scoreboard
 	board.set_shown(true)
 	assert_array(board.row_ids).is_equal([1, 2, 3])
-	assert_array(board.headings).is_equal(["PLAYER", "KILLS", "DOWNS", "POINTS"])
+	assert_array(board.headings).is_equal(["PLAYER", "KILLS", "DOWNS", "REVIVES", "POINTS"])
 	assert_str(board.rows_text[0][0]).is_equal("RUBY")
 	assert_str(board.rows_text[0][1]).is_equal("12")
 	assert_str(board.rows_text[0][2]).is_equal("1")
-	assert_str(board.rows_text[0][3]).is_equal(str(fixture.rules.points_of(1)))
+	assert_str(board.rows_text[0][3]).is_equal("2")
+	assert_str(board.rows_text[0][4]).is_equal(str(fixture.rules.points_of(1)))
+	assert_str(board.rows_text[1][3]).is_equal("0")
 	assert_str(board.rows_text[2][0]).is_equal("DEE")
 	assert_str(board.rows_text[2][1]).is_equal("31")
 	assert_str(board.rows_text[2][2]).is_equal("4")
+	assert_str(board.rows_text[2][3]).is_equal("9")
 	assert_str(board.round_text).is_equal("ROUND 01")
 	assert_str(board.clock_text).is_equal("TIME 12:34")
 
@@ -172,15 +175,32 @@ func test_the_ping_column_is_there_only_when_someone_has_a_ping() -> void:
 	var board := fixture.hud.scoreboard
 	board.set_shown(true)
 	assert_bool(board.has_ping).is_false()
-	assert_int(board.rows_text[0].size()).is_equal(4)
+	assert_int(board.rows_text[0].size()).is_equal(5)
 	state.set_player_stats(1, 0, 0, 38)
 	assert_bool(board.has_ping).is_true()
-	assert_array(board.headings).is_equal(["PLAYER", "KILLS", "DOWNS", "POINTS", "PING"])
-	assert_str(board.rows_text[0][4]).is_equal("38")
+	assert_array(board.headings).is_equal(["PLAYER", "KILLS", "DOWNS", "REVIVES", "POINTS", "PING"])
+	assert_str(board.rows_text[0][HudScoreboard.PING_CELL]).is_equal("38")
 	# A player the server has not heard from yet shows a dash, not a made-up number.
-	assert_str(board.rows_text[1][4]).is_equal("-")
+	assert_str(board.rows_text[1][HudScoreboard.PING_CELL]).is_equal("-")
 	state.set_player_stats(1, 0, 0, HudState.NO_PING)
 	assert_bool(board.has_ping).is_false()
+
+
+func test_a_player_who_bled_out_is_marked_dead_and_the_revives_are_the_servers() -> void:
+	var fixture := _hud(3)
+	var state := fixture.hud.state
+	fixture.act(RulesAction.blow(2, 99999.0))
+	fixture.act(RulesAction.blow(3, 99999.0))
+	state.apply_event({"type": &"player_died", "player_id": 3, "cause": &"bleed_out"})
+	var board := fixture.hud.scoreboard
+	board.set_shown(true)
+	assert_str(board.rows_text[1][0]).is_equal("MOE  (DOWN)")
+	assert_str(board.rows_text[2][0]).is_equal("DEE  (DEAD)")
+	# The count is the server's whole number, not a tally of the events heard.
+	state.set_player_stats(1, 0, 0, HudState.NO_PING, 3)
+	assert_str(board.rows_text[0][3]).is_equal("3")
+	state.set_player_stats(1, 0, 0, HudState.NO_PING, 3)
+	assert_str(board.rows_text[0][3]).is_equal("3")
 
 
 func test_a_ping_reads_good_fair_or_bad() -> void:

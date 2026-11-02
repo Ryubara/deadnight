@@ -55,6 +55,20 @@ func test_an_online_night_reports_the_players_and_the_round_trip() -> void:
 	assert_float(data["rtt_ms"]).is_equal(81.0)
 
 
+func test_the_together_screen_says_when_it_asks_for_a_name() -> void:
+	var screen := (
+		(load("res://ui/screens/together_screen.tscn") as PackedScene).instantiate()
+		as TogetherScreen
+	)
+	add_child(screen)
+	assert_bool(WebProbe.snapshot(screen)["naming"]).is_false()
+	TogetherScreen.name_skipped = false
+	screen.call("_show_menu")
+	screen.get("_naming").visible = true
+	assert_bool(WebProbe.snapshot(screen)["naming"]).is_true()
+	screen.queue_free()
+
+
 func test_the_lobby_reports_its_code_its_seats_and_the_buttons_it_shows() -> void:
 	var held := {
 		"id": "l1",
@@ -70,9 +84,7 @@ func test_the_lobby_reports_its_code_its_seats_and_the_buttons_it_shows() -> voi
 			{"userId": "b", "name": "Bo", "seat": 2, "host": false, "away": false},
 		],
 	}
-	var screen := (
-		(load("res://ui/screens/lobby_screen.tscn") as PackedScene).instantiate() as LobbyScreen
-	)
+	var screen := (load(LobbyScreen.SCREEN) as PackedScene).instantiate() as LobbyScreen
 	var api := TogetherApi.new(self)
 	api.isolated = true
 	api._own_user = {"id": "a"}

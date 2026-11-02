@@ -2,16 +2,13 @@ class_name HudScoreboard
 extends HudTicket
 ## The scoreboard: a ticket over the middle of the night, shown while the player holds the
 ## `scoreboard` action (Tab, the pad's Back button, the touch button) and gone when they let go.
-## Every player in the night is a row: `[armband][name][kills][downs][points][ping]`, with the round
-## and the night's clock above. Ping is a column only when some player has one (a night over a
-## link; alone there is nothing to measure). The numbers are the server's (`HudState.team`'s
-## "kills", "downs", "ping", the points, and `night_clock`), so every screen shows the same ones.
-##
-## Revives are not a column: a downed player here gets up when the round ends, and nobody's hand
-## does it, so there is no count to keep (`docs/research/scoreboard.md`).
-##
-## Rows are rebuilt when shown and while shown, not while hidden: a night's kills would otherwise
-## rebuild a card nobody sees.
+## Every player in the night is a row: `[armband][name][kills][downs][revives][points][ping]`, with
+## the round and the night's clock above. Ping is a column only when some player has one (a night
+## over a link; alone there is nothing to measure). The numbers are the server's (`HudState.team`'s
+## "kills", "downs", "revives", "ping", the points, and `night_clock`), so every screen shows the
+## same ones. REVIVES counts the teammates a player pulled up by hand (`docs/design/revive.md`); a
+## player who gets up when a round ends is nobody's revive. Rows are rebuilt when shown and while
+## shown, not while hidden: a night's kills would otherwise rebuild a card nobody sees.
 
 ## Widths of the columns, canvas units. The name column is the one that gives: a longer name
 ## shrinks to fit it, then ends in an ellipsis.
@@ -19,6 +16,8 @@ const NAME_WIDTH := 300.0
 const NUMBER_WIDTH := 124.0
 const POINTS_WIDTH := 170.0
 const PING_WIDTH := 110.0
+## Which cell holds the ping, when there is one (after the name and the four counts).
+const PING_CELL := 5
 ## Size of the armband chip before the name, and of a row's height.
 const CHIP := Vector2(10.0, 34.0)
 const ROW_HEIGHT := 46.0
@@ -132,7 +131,7 @@ func refresh() -> void:
 
 
 func _headings() -> Array[String]:
-	var names: Array[String] = ["PLAYER", "KILLS", "DOWNS", "POINTS"]
+	var names: Array[String] = ["PLAYER", "KILLS", "DOWNS", "REVIVES", "POINTS"]
 	if has_ping:
 		names.append("PING")
 	return names
@@ -141,9 +140,10 @@ func _headings() -> Array[String]:
 func _cells(player_id: int) -> Array[String]:
 	var member: Dictionary = state.team[player_id]
 	var cells: Array[String] = [
-		str(member["name"]).to_upper() + ("  (DOWN)" if bool(member["downed"]) else ""),
+		str(member["name"]).to_upper() + _state_tag(member),
 		str(member["kills"]),
 		str(member["downs"]),
+		str(member["revives"]),
 		str(member["points"]),
 	]
 	if has_ping:
@@ -152,8 +152,15 @@ func _cells(player_id: int) -> Array[String]:
 	return cells
 
 
+## ` (DOWN)` for a player on the ground, ` (DEAD)` for one who bled out.
+func _state_tag(member: Dictionary) -> String:
+	if bool(member["dead"]):
+		return "  (DEAD)"
+	return "  (DOWN)" if bool(member["downed"]) else ""
+
+
 func _widths() -> Array[float]:
-	var widths: Array[float] = [NAME_WIDTH, NUMBER_WIDTH, NUMBER_WIDTH, POINTS_WIDTH]
+	var widths: Array[float] = [NAME_WIDTH, NUMBER_WIDTH, NUMBER_WIDTH, NUMBER_WIDTH, POINTS_WIDTH]
 	if has_ping:
 		widths.append(PING_WIDTH)
 	return widths
@@ -209,7 +216,7 @@ func _player_row(player_id: int, cells: Array[String]) -> Control:
 		var ink := tokens.ink
 		if i == 0 and downed:
 			ink = tokens.danger
-		elif i == 4:
+		elif i == PING_CELL:
 			var grades: Array[Color] = [tokens.ink, tokens.accent, tokens.danger]
 			var ping := int(member["ping"])
 			ink = tokens.ink_muted if ping < 0 else grades[ping_grade(ping)]

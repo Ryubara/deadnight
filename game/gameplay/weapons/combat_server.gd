@@ -277,12 +277,7 @@ func _begin_reload(shooter_id: int, state: WeaponState) -> void:
 func _set_targets(list: Array) -> void:
 	_targets.clear()
 	for target in list:
-		_targets[target["id"]] = {
-			"pos": target["pos"],
-			"yaw": target.get("yaw", 0.0),
-			"scale": target.get("scale", 1.0),
-			"weak": target.get("weak", false),
-		}
+		_targets[target["id"]] = LagCompensator.placed(target)
 	lag.record(now, list)
 
 

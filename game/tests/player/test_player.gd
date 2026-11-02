@@ -18,6 +18,8 @@ func before_test() -> void:
 	_runner = scene_runner(TEST_ROOM)
 	_player = _runner.find_child("Player") as Player
 	_player.capture_mouse = false
+	# The suite ticks the player by hand (PlayerHandStep), not at the physics clock's pace.
+	_player.set_physics_process(false)
 	_rig = _player.camera_rig
 	_tuning = _player.tuning
 	_animation = _player.get_node("AnimationTree") as PlayerAnimation
@@ -28,6 +30,9 @@ func before_test() -> void:
 	_animation.set_process(false)
 	_animation.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	_player.teleport(START)
+	# The physics server learns of the room's static bodies on its first step: take that one by
+	# the clock, then tick by hand.
+	await get_tree().physics_frame
 	await _ticks(20)  # settle onto the floor
 
 
@@ -63,8 +68,9 @@ func _install_fake_settings(values: Dictionary) -> void:
 ## same fixed time after each, so game time never depends on how fast the machine renders.
 func _ticks(count: int) -> void:
 	for i in count:
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 		_step_frame_nodes(TICK)
+	await get_tree().process_frame
 
 
 func _step_frame_nodes(delta: float) -> void:
@@ -224,7 +230,7 @@ func test_jump_reaches_the_tuned_height_and_lands() -> void:
 	var peak := floor_y
 	_runner.simulate_action_press("jump")
 	for i in 100:
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 		peak = maxf(peak, _player.global_position.y)
 		_runner.simulate_action_release("jump")
 	assert_float(peak - floor_y).is_equal_approx(_tuning.jump_height, 0.08)
@@ -564,7 +570,7 @@ func test_replaying_the_same_commands_from_the_same_state_gives_the_same_result(
 		command.fire = i > 40 and i < 90
 		recorded.append(command.to_bytes())
 		_player.submit_command(command)
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 	var first_end := _player.state.duplicate_state()
 	assert_float(first_end.position.distance_to(start.position)).is_greater(5.0)
 
@@ -572,7 +578,7 @@ func test_replaying_the_same_commands_from_the_same_state_gives_the_same_result(
 	_player.global_position = start.position
 	for bytes in recorded:
 		_player.submit_command(PlayerCommand.from_bytes(bytes))
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 	var replay_end := _player.state
 	assert_vector(replay_end.position).is_equal_approx(first_end.position, Vector3.ONE * 0.001)
 	assert_vector(replay_end.velocity).is_equal_approx(first_end.velocity, Vector3.ONE * 0.001)
@@ -587,7 +593,7 @@ func test_the_simulation_does_not_read_the_controls() -> void:
 	_player.submit_command(PlayerCommand.new())
 	for i in 30:
 		_player.submit_command(PlayerCommand.new())
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 	assert_float(_plane_distance(start)).is_less(0.01)
 
 

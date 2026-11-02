@@ -55,10 +55,13 @@ extends Resource
 @export var alive_cap_step: float = 1.5
 @export var alive_cap_max: float = 28.0
 @export var alive_cap_per_extra_player: float = 6.0
-## The most zombies the rules ever allow alive at once, whatever the round and the players: the
-## crowd the lot stands (`ZombieTuning.hard_cap`, the web ceiling; see docs/design/zombies.md).
-## A cap above it would only queue the rest in the director, never on the lot.
-@export var alive_cap_ceiling: int = 40
+## The most zombies the rules ever allow alive at once on a desktop or a game server, whatever the
+## round and the players: the crowd the lot stands there (docs/research/crowd-budget.md). A cap
+## above the ceiling in force would only queue the rest in the director, never on the lot.
+@export var alive_cap_ceiling: int = 120
+## The same for a match with a browser in it, which stands a smaller crowd (measured in the web
+## build, docs/research/crowd-budget.md). `ceiling_for` picks one.
+@export var web_alive_cap_ceiling: int = 40
 ## Seconds from the start of a round to its first spawn.
 @export var first_spawn_delay: float = 1.5
 
@@ -114,6 +117,11 @@ func spawn_interval(round_number: int, players: int) -> float:
 	var n := float(maxi(round_number - 1, 0))
 	var solo := maxf(spawn_interval_start * pow(spawn_interval_decay, n), spawn_interval_min)
 	return solo / (1.0 + spawn_rate_per_extra_player * float(maxi(players - 1, 0)))
+
+
+## The ceiling of a match: the browser's when any client is one, else the desktop's.
+func ceiling_for(web: bool) -> int:
+	return mini(web_alive_cap_ceiling, alive_cap_ceiling) if web else alive_cap_ceiling
 
 
 func alive_cap(round_number: int, players: int) -> int:

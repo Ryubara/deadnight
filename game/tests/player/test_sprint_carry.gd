@@ -160,6 +160,20 @@ func test_a_reload_and_a_swing_take_the_arms_back_within_the_blend_out() -> void
 		assert_float(_animation.sprint_carry()).override_failure_message(action).is_equal(0.0)
 
 
+func test_going_down_or_kneeling_at_a_revive_takes_the_arms_back() -> void:
+	for down: bool in [true, false]:
+		_run(60)
+		assert_float(_animation.sprint_carry()).is_equal(1.0)
+		if down:
+			_animation.set_downed(true)
+		else:
+			_animation.set_reviving(true)
+		_run(_ticks(_tuning.sprint_carry_out))
+		assert_float(_animation.sprint_carry()).override_failure_message(str(down)).is_equal(0.0)
+		_animation.set_downed(false)
+		_animation.set_reviving(false)
+
+
 func test_the_first_shot_after_a_sprint_has_no_extra_delay() -> void:
 	# The muzzle event is frame 0 of Fire: it comes in the same call that starts the clip, with
 	# the carry fully in or not at all.

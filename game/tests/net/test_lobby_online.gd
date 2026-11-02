@@ -298,7 +298,7 @@ func test_two_players_meet_the_host_starts_and_a_third_joins_mid_match(
 	assert_int(cy_night.state.player_id).is_equal(3)
 	assert_int(room.player_count()).is_equal(3)
 	# (The label's own reveal animation scrambles the letters for a moment: wait for the settled text.)
-	var told := await _until(func() -> bool: return notices.texts().has("PLAYER 3 JOINED"))
+	var told := await _until(func() -> bool: return notices.texts().has("CY JOINED"))
 	assert_bool(told).is_true()
 	# The lobby the others poll lists all three, and the round the night is in.
 	await ann.watch.poll()
@@ -307,7 +307,7 @@ func test_two_players_meet_the_host_starts_and_a_third_joins_mid_match(
 
 	# Cy leaves the night: the others read it.
 	cy_night.link.close()
-	var left := await _until(func() -> bool: return notices.texts().has("PLAYER 3 LEFT"))
+	var left := await _until(func() -> bool: return notices.texts().has("CY LEFT"))
 	assert_bool(left).is_true()
 
 

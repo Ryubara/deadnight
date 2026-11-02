@@ -14,6 +14,7 @@ const MAX_NOTICES := 1
 ## and reaches the point gains below it): a long text first shrinks toward the smallest size, then
 ## ends in an ellipsis. The space left of the column under the banner is empty, so it costs nothing.
 const ROW_WIDTH := 480.0
+const HISTORY := 8
 const LIFE := 4.5
 const FADE := 0.6
 const ITEM_NAMES := {
@@ -50,6 +51,9 @@ const CIRCUIT_WORDS := {
 @export var kind := Kind.EVENTS
 ## Rows alive, oldest first: {"label", "age"}.
 var rows: Array[Dictionary] = []
+## The last `HISTORY` lines ever pushed, oldest first: what a browser probe reads, since a row is
+## gone after a few seconds and a slow page may not look in time.
+var history: Array[String] = []
 
 var _stack := HudRowStack.new()
 var _pad := MarginContainer.new()
@@ -88,6 +92,9 @@ func on_event(event: Dictionary) -> void:
 
 
 func push(text: String, colour := Color.TRANSPARENT) -> void:
+	history.append(text)
+	if history.size() > HISTORY:
+		history.pop_front()
 	var plain := tokens.ink if kind == Kind.EVENTS else tokens.ink_muted
 	var label := HudStyle.clip(
 		HudStyle.label(text, HudStyle.TEXT, colour if colour.a > 0.0 else plain, false, 1.0)
@@ -129,7 +136,13 @@ func _text_for(event: Dictionary) -> String:
 		&"player_downed":
 			text = "%s IS DOWN" % who
 		&"player_revived":
-			text = "%s IS BACK UP" % who
+			var reviver := int(event.get("reviver_id", 0))
+			if reviver > 0:
+				text = "%s REVIVED %s" % [_name_of(reviver), who]
+			else:
+				text = "%s IS BACK UP" % who
+		&"player_died":
+			text = "%s BLED OUT" % who
 		&"ping_placed":
 			text = "%s: %s" % [who, PING_WORDS.get(event.get("kind", &""), "LOOK")]
 		&"circuit_changed":
@@ -153,6 +166,10 @@ func _notice(type: StringName, event: Dictionary) -> String:
 	if type == &"player_removed":
 		return "%s LEFT" % state.left_name.to_upper()
 	return ""
+
+
+func _name_of(player_id: int) -> String:
+	return str(state.team.get(player_id, {}).get("name", "SOMEONE")).to_upper()
 
 
 func _who(event: Dictionary) -> String:

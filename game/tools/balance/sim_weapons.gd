@@ -73,12 +73,7 @@ static func sustained_dps(weapon_id: StringName, health: float = 0.0) -> float:
 
 
 static func sustained_dps_of(weapon: WeaponDef, health: float = 0.0) -> float:
-	var cycle := float(weapon.magazine_size) * weapon.fire_interval + weapon.reload_time
-	var per_shot := damage_of(weapon, &"body", 0.0)
-	if health <= 0.0:
-		return per_shot * float(weapon.magazine_size) / cycle
-	var shots := ceilf(health / maxf(per_shot, 0.001))
-	return health * float(weapon.magazine_size) / shots / cycle
+	return WeaponWorth.sustained_dps(weapon, health)
 
 
 ## Health of zombies a second a loaded weapon kills `distance` metres away, shots landing whole
@@ -99,18 +94,13 @@ static func is_melee(weapon_id: StringName) -> bool:
 ## Health of zombies a second a melee weapon kills at arm's length, a blow landing whole against a
 ## zombie of `health` (the damage a second of a blow with none).
 static func melee_rate_of(weapon: WeaponDef, health: float = 0.0) -> float:
-	var per_blow := maxf(damage_of(weapon, &"body", 0.0), 0.001)
-	if health <= 0.0:
-		return per_blow / weapon.fire_interval
-	return health / (ceilf(health / per_blow) * weapon.fire_interval)
+	return WeaponWorth.melee_rate(weapon, health)
 
 
 ## What a weapon is worth in the hands: a melee weapon by its blows, a firearm by its sustained
 ## damage, against zombies of `health`. The player gives up the one worth least for a third weapon.
 static func worth_of(weapon: WeaponDef, health: float = 0.0) -> float:
-	if weapon.is_melee():
-		return melee_rate_of(weapon, health)
-	return sustained_dps_of(weapon, health)
+	return WeaponWorth.of(weapon, health)
 
 
 ## The melee weapon to fall back on from those carried: the one that kills fastest, the crowbar when

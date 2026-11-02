@@ -92,7 +92,7 @@ trigger waits as long as it takes ([turn first, then shoot](../research/hip-fire
 | Double shotgun | right 0, down 0.09, forward 0.41 | -0.36, -0.03 | the same, the stock a little longer; chest turned 30 degrees |
 | Tommy gun | right 0, down 0.09, forward 0.39 | -0.37, -0.045 (the foregrip) | stock at the shoulder, left hand on the foregrip; chest turned 30 degrees |
 | Revolver, flare gun | right 0.10, down 0.05, forward 0.42 | none | one hand: the right arm out toward the aim, the left stays with the clip |
-| Baseball bat, crowbar | the kit's grip, `shouldered = false` | none | one hand, as the Swing clip moves it; two hands on the grip is open work |
+| Baseball bat, crowbar, fire axe | the kit's grip, `shouldered = false` | none | one hand, as the Swing clip moves it; two hands on the grip is open work |
 
 The grip moved forward with the bigger stocks of #460 (by the butt's growth), so the stock stays at the shoulder, and
 in by 5 cm, toward the chest.
@@ -129,12 +129,14 @@ Shotgun, SMG Rifle, revolver and flare gun Pistol, every melee weapon Melee); `P
 takes the class's clips and the id's own hold (`WeaponHoldMap.hold_for`). A hold whose `scene` is not in
 `assets/weapons/` yet
 (`WeaponHold.has_model`) leaves the hand empty, never another weapon's model: `WeaponHoldMap.no_model()` lists those
-(none now). `holds/melee.tres` stays as the class-level hold for a weapon with no file of its own, the bat and the
-axe when they get an id. `WeaponEquipSync` (`game/gameplay/night/weapon_equip_sync.gd`) reads the `weapon` of every
-player in each frame the server sends and calls `equip` on that player's body when it changes: the local
-player and the others take the same line, and a player who joins late shows the weapon of his first frame. The test
-is `game/tests/night/test_weapon_equip.gd` (each id taken in hand through the real combat action, for the local
-player and a second one, by a swap, and no two ids sharing a model).
+(none now). `holds/melee.tres` stays as the class-level hold for a weapon with no file of its own (the bat and the axe
+have `holds/baseball_bat.tres` and `holds/fire_axe.tres` since they got ids, #461; the axe uses the melee class's grip
+as the bat does, a bad grip is the hand-placement task's, #460). `WeaponEquipSync`
+(`game/gameplay/night/weapon_equip_sync.gd`) reads the `weapon` of every player in each frame the server sends and
+calls `equip` on that player's body when it changes: the local player and the others take the same line, and a player
+who joins late shows the weapon of his first frame. The test is `game/tests/night/test_weapon_equip.gd` (each id taken
+in hand through the real combat action, for the local player and a second one, by a swap, and no two ids sharing a
+model).
 
 **The shoulder camera sees a gun end-on.** From behind the shoulder, with the barrel converging on the crosshair, every
 gun in the aim pose is a fist and the tip of a barrel; the revolver is no different from the rifle. The side, rear and

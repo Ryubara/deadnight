@@ -464,9 +464,9 @@ def main() -> int:
             deadline = time.monotonic() + args.seconds
             state: dict = {}
             failed = ""
-            # The Activity opens on the main menu with the voice channel's night already made (#495); Play together
-            # then shows that same room.
-            menu_code = ""
+            # The Activity opens on the main menu, signed in and ready (#495); Play together then goes straight to the
+            # voice channel's lobby (made there when nobody has one: this player is its host).
+            menu_ready = False
             while time.monotonic() < deadline:
                 state = rooms.read_probe(frame)
                 if state.get("screen") == "together_screen":
@@ -476,23 +476,25 @@ def main() -> int:
                     failed = "the room could not be made ready on the menu"
                     break
                 if state.get("screen") == "main_menu" and state.get("activity_room") == "ready":
-                    menu_code = str(state.get("activity_code", ""))
+                    menu_ready = True
                     break
                 time.sleep(1)
-            if menu_code:
-                print(f"menu first: the main menu is up with room {menu_code} ready")
+            if menu_ready:
+                print("menu first: the main menu is up with the voice channel ready")
                 page.wait_for_timeout(1500)
                 page.screenshot(path=args.out / "activity_menu_first.png")
                 rooms.to_together(driver)
                 waited_until = time.monotonic() + 60
                 while time.monotonic() < waited_until:
                     state = rooms.read_probe(frame)
-                    if state.get("room_code"):
+                    if state.get("screen") == "lobby_screen" and state.get("room_code"):
                         break
                     time.sleep(0.5)
-                if state.get("room_code") != menu_code:
-                    failed = f"Play together showed room {state.get('room_code')!r}, the menu had made {menu_code!r}"
+                if state.get("screen") != "lobby_screen" or not state.get("room_code"):
+                    failed = f"Play together did not open the voice channel's lobby: {state.get('screen')!r}"
                     state = {}
+                else:
+                    print(f"lobby: {state.get('lobby_seats')} (code {state.get('room_code')})")
             page.wait_for_timeout(2000)
             if args.parent_focus and args.embed != "none":
                 probe = "window.deadnightGamepad ? window.deadnightGamepad() : ''"
@@ -521,9 +523,9 @@ def main() -> int:
     print(chr(10).join(stages))
     print(f"gamepad page report: {gamepad}\ngamepad note: {note or '(none)'}")
     if state.get("room_code"):
-        print(f"{args.encoding}: the Activity is in its night (room {state['room_code']})")
+        print(f"{args.encoding}: the Activity is in its lobby (room {state['room_code']})")
         return 0
-    print(f"{args.encoding}: the Activity did not get a night: {failed or state}")
+    print(f"{args.encoding}: the Activity did not get a lobby: {failed or state}")
     return 1
 
 

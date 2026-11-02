@@ -14,8 +14,8 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `PlayerState` per player, one `GeneratorState`, two seeded random streams) and uses no scene-tree
   node, no Godot multiplayer, no clock and no global random.
 - **Change only through actions.** `rules.apply(action)` takes a plain dictionary built by
-  `RulesAction` (`tick`, `hit`, `kill`, `repair`, `tear_board`, `buy`, `set_circuit`, `set_downed`, `add_player`
-  and so on) and returns the **events** it caused, also plain dictionaries
+  `RulesAction` (`tick`, `hit`, `kill`, `repair`, `tear_board`, `buy`, `set_circuit`, `set_downed`, `add_player`,
+  `revive` and so on) and returns the **events** it caused, also plain dictionaries
   (`{"type": &"points_changed", "player_id": 1, "total": 260, ...}`). The same events go out through
   `event_emitted` after the state has settled. A server applies what clients ask for, broadcasts the
   events, and clients mirror them. The full event list is in the header of `game_rules.gd`.
@@ -86,8 +86,9 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | `zombie_crippled` | `zombie_id`, `zombie_type` (the crawler it became), `look`, `player_id`, `cause` (`legs` or `wounded`), `health` (left), `speed_scale` | switch the zombie to a crawler (lower, slower by `speed_scale`); sent once per zombie, after its `zombie_damaged` |
 | `player_hurt` | `player_id`, `damage` (taken off), `health` (left), `max_health`, `bearing`, `source_id` | the HUD's damage arc toward `bearing` (turned by where the player faces), the health bar; the camera shake |
 | `player_healed` | `player_id`, `health`, `max_health`, `reason` (`regen` or `revive`) | the health bar. `regen` is sent when the whole-unit health changes (about 25 a second while mending), `revive` once with `player_revived` |
-| `player_downed` | `player_id`, `cause` (`blow` or `forced`), `bearing` | the DOWN tag and the held red frame; the night ends when every player is down |
-| `player_revived` | `player_id`, `reviver_id` (the teammate; 0 when the round ended and got everyone up) | the DOWN tag goes; "IS BACK UP" in the feed. Account progression pays the rescue to `reviver_id` (never to a bot) |
+| `player_downed` | `player_id`, `cause` (`blow` or `forced`), `bearing`, `bleed_seconds` (the time they have before they are dead) | the DOWN tag and the held red frame and the clock; the night ends when every player is down or dead |
+| `player_revived` | `player_id`, `reviver_id` (the teammate; 0 when the round ended and got everyone up) | the DOWN tag goes; "IS BACK UP" in the feed, or `RUBY REVIVED PAUL` when a teammate did it. Account progression pays the rescue to `reviver_id` (never to a bot). Counts for the reviver on the scoreboard |
+| `player_died` | `player_id`, `cause` (`bleed_out`) | the DEAD tag; down until the round ends |
 | `grenade_count_changed` | `player_id`, `count`, `reason` (`thrown`, `refill`, `purchase`) | update the grenade count |
 | `fuel_changed` | `fuel` (exact), `delta` (whole units since the last one) | move the gauge. Sent only when the whole-unit value changes: about once per unit burnt or bought, never per tick |
 | `board_torn` | `barricade_id`, `boards` (left), `zombie_id` | take the top board off that breach; a splinter burst and a sound there |
@@ -104,8 +105,10 @@ that is not a player's (a trap, a fall) and `set_downed` as players go down and 
 **Who owns a player's health: the rules too.** A player starts with `HealthTuning.max_health` (it is the player's
 own `max_health`, so a tonic can raise it), a `blow` takes it off and restarts the wait, and a player at zero is
 down. After `regen_delay` seconds without a blow health mends at `regen_per_second` (in a break as well as a
-round), announced as `player_healed` whenever the whole-unit value changes. Getting up (a `set_downed` false, or the
-end of the round) restores all of it. Health, its maximum and the wait since the last blow are in the snapshot.
+round), announced as `player_healed` whenever the whole-unit value changes. Getting up by the end of the round or a
+`set_downed` false restores all of it; getting up by a teammate's hold gives `ReviveTuning.health_fraction` of it
+([Revive](revive.md)). Health, its maximum, the wait since the last blow, the bleed-out clock, a hold in progress and
+whether a player bled out are in the snapshot.
 
 **What a zombie is worth.** The first 4 hits that do not kill pay 4 (8 to the head); the hit that
 kills pays the kill (60, head 100, melee 130) instead of a hit. Any hits after the fourth, and hits
@@ -117,15 +120,19 @@ ammo). The server checks that when it builds the `hit`, and the network layer ra
 
 ## Revives
 
-A downed player stays down until a teammate raises them or the round ends (then every downed player gets up with
-all their health for a tenth of their points; see `down_penalty_fraction`). There is **no bleed-out**: the time a
-downed player has is the round. A teammate holds the use button within 2.2 m (`NightTuning.revive_reach`) of them
-for **6 seconds** (`HealthTuning.revive_seconds`, the number the balance simulator already used) and they get up
-with **half their health** (`HealthTuning.revive_fraction`), mending again after the usual 5 s without a blow.
-Letting go, stepping out of reach or going down starts the time over; being struck does not, so a revive under
-attack is the reviver's call. Only in a round. The prompt (`{kind: revive, id, progress}`) comes before any door's,
-and the frame carries `reviving` (whom a player is raising) and `revive` (0 to 1, on the downed one). Two helpers at
-once do not speed it up. The rules take only the finished `revive` action; the channel lives in `NightServer`.
+A downed player stays down until a teammate raises them, they bleed out, or the round ends (then every downed
+player gets up with all their health for a tenth of their points; see `down_penalty_fraction`). A teammate holds the use
+button within 2.0 m (`NightTuning.revive_reach`) of them for **3.5 seconds** (`HealthTuning.revive_seconds`) and they
+get up with **half their health** (`HealthTuning.revive_fraction`), mending again after the usual 5 s without a blow.
+Letting go, stepping out of reach or going down starts the time over; being struck does not, so a revive under attack
+is the reviver's call. Only in a round. The prompt (`{kind: revive, id, progress, bleed}`) comes before any door's, and
+the frame carries `reviving` (whom a player is raising) and `revive` (0 to 1, on the downed one). Two helpers at once do
+not speed it up. The rules take only the finished `revive` action; the channel lives in `NightServer`.
+
+**Bleed-out** ([Revive](revive.md)): a downed player has `ReviveTuning.bleed_out_seconds` (45 s) to live. The clock
+stands still while a teammate holds the revive on them. At zero they are dead (`player_died`), past reviving, until the
+round ends and gets them up like everyone else. The night ends when every player is down or dead. A revive counts for
+the reviver (`revives`, the scoreboard's REVIVES column) and pays `ReviveTuning.reviver_points` (0).
 
 ## The fence's boards
 
@@ -178,7 +185,8 @@ then a 5 s **break** (spend, switch lights, reposition), then the next round. Th
 when everyone still in it is down (`all_down`) or when the last player leaves during the wait or a round
 (`no_players`), so a server can free the match; `start` with nobody in the lot is rejected. Leaving before
 the start is not an end. A player still down when a round ends gets up, minus a tenth of their points, so
-being downed hurts but never locks you out.
+being downed hurts but never locks you out. A player who bled out gets up then as well; their death lasts for the rest
+of the round ([Revive](revive.md#the-states)).
 
 ## Match settings
 
@@ -487,7 +495,8 @@ a spread of nights. A touch player with the aim assist (`--assist=`, `SimSkill.w
 the assist wins back added to the accuracy, by what a thumb bot measured
 ([Touch aim assist](../research/aim-assist.md#how-much-it-is-worth)); the gate's cells never use it. They shoot
 only what they can see (view range falls with the light), face one of four sides
-at a time, revive each other in six seconds and mend between rounds, and pick the weapon with the best sustained
+at a time, revive each other in `ReviveTuning.revive_seconds` (a player nobody reaches within
+`bleed_out_seconds` is dead until the round ends) and mend between rounds, and pick the weapon with the best sustained
 damage a second. **Not modelled:** the other three tonics (they do nothing yet). Grenades, repair, the fence's boards (the
 simulator keeps its own six-second barrier) and the doors' and spots' geometry (they only cost points) are not
 modelled either.
@@ -687,5 +696,7 @@ The ranges and the health, count and spawn curves are unchanged.
   kill and the gate's cells, so it is a decision for the maintainer with the weapon work, and the health curve could
   climb again behind it. `tools/balance/run_report.py` and `balance_cli.gd --shopping=...` reproduce the table (see
   the research page).
-- **Downed players and revives**: the revive is built ([Revives](#revives)) and has no bleed-out; the exact penalty
-  at a round's end (a tenth of the points) is still for the player work to settle.
+- **Downed players and revives**: the revive is built ([Revives](#revives)); a downed player now bleeds out after
+  `ReviveTuning.bleed_out_seconds` and is dead until the round ends ([Revive](revive.md)). The exact penalty at a
+  round's end (a tenth of the points) is still for the player work to settle; the maintainer's decisions on solo
+  self-revive, a revive perk and points for a revive are made ([the list](revive.md#decided-2026-11-02-505)).

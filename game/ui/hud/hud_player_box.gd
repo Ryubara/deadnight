@@ -114,7 +114,8 @@ func show_player(id: int, member: Dictionary, local: bool) -> void:
 	portrait.downed = downed
 	_set_colour(_name, _tokens.danger if downed else ink)
 	_set_colour(_number, ink)
-	HudStyle.set_text(_name, "DOWN" if downed else str(member["name"]).to_upper())
+	var tag := "DEAD" if bool(member["dead"]) else "DOWN"
+	HudStyle.set_text(_name, tag if downed else str(member["name"]).to_upper())
 	HudStyle.set_fitted(
 		_number,
 		str(member["points"]),

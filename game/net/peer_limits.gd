@@ -27,6 +27,7 @@ const RATES := {
 	NetWire.Type.HELLO: Vector2(1.0, 2.0),
 	NetWire.Type.COMMAND: Vector2(90.0, 240.0),
 	NetWire.Type.PING: Vector2(4.0, 6.0),
+	NetWire.Type.PLATFORM: Vector2(1.0, 2.0),
 	LookWire.Type.LOOK: Vector2(1.0, 3.0),
 	NetWire.Type.MARK: Vector2(2.0, 4.0),
 }
@@ -54,6 +55,8 @@ static func size_of(type: int) -> int:
 			return NetWire.COMMAND_SIZE
 		NetWire.Type.PING:
 			return NetWire.PING_SIZE
+		NetWire.Type.PLATFORM:
+			return NetWire.PLATFORM_SIZE
 		NetWire.Type.MARK:
 			return NetWire.MARK_SIZE
 		LookWire.Type.LOOK:

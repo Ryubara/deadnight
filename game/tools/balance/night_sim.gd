@@ -29,7 +29,7 @@ const STUN_PER_METRE := 0.3
 const FUEL_BUY_BELOW := 35.0
 ## A player gives up a weapon for another only when the new one is worth this many times more, so a
 ## small difference (that comes and goes with the round's health) does not make them buy in circles.
-const REPLACE_GAIN := 1.5
+const REPLACE_GAIN := WeaponWorth.REPLACE_GAIN
 ## Seconds per tick while the shopper waits at the crane in a break.
 const CRANE_STEP := 0.25
 ## Seconds to put a dry weapon away and take another.
@@ -200,6 +200,9 @@ func _blow(zombie: SimZombie, target: SimPlayer) -> void:
 
 func _mend(player: SimPlayer, engaged: Dictionary) -> void:
 	if player.downed:
+		# A player who bled out stays down until the round ends (the rules say when).
+		if player.dead:
+			return
 		var helper: SimPlayer = null
 		for other: SimPlayer in _players.values():
 			if not other.downed and engaged.get(other.id, 0) == 0:
@@ -434,7 +437,12 @@ func _handle(events: Array[Dictionary]) -> void:
 				var revived: SimPlayer = _players.get(event["player_id"])
 				if revived != null and revived.downed:
 					revived.downed = false
+					revived.dead = false
 					revived.health = rules.health_of(revived.id)
+			&"player_died":
+				var dead: SimPlayer = _players.get(event["player_id"])
+				if dead != null:
+					dead.dead = true
 			&"game_over":
 				_over = true
 
@@ -542,6 +550,7 @@ func _between_rounds() -> void:
 		_refresh(player)
 		player.health = player.max_health
 		player.downed = false
+		player.dead = false
 		player.last_hit = -100.0
 		player.stun = 0.0
 	for player: SimPlayer in _players.values():
@@ -784,6 +793,8 @@ class SimPlayer:
 	var health: float = 100.0
 	var max_health: float = 100.0
 	var downed: bool = false
+	## Bled out: down until the round ends.
+	var dead: bool = false
 	var weapon: StringName = &"pistol"
 	## Every weapon carried (catalogue id to its magazine and reserve), the crowbar included.
 	var arms: Dictionary[StringName, SimArm] = {}
