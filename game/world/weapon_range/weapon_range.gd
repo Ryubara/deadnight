@@ -16,11 +16,7 @@ const STEP := 1.0 / 60.0
 ## Rules time run before the demo starts, so the zombies are already on the lot.
 const WARMUP_SECONDS := 20.0
 
-## The shoulder camera and the barrel, relative to the player's feet.
-const CAMERA_OFFSET := Vector3(0.8, 1.9, 2.5)
-const MUZZLE_OFFSET := Vector3(0.3, 1.45, -0.4)
 const CHEST_OFFSET := Vector3(0, 1.1, 0)
-const CAMERA_FOV := 55.0
 const BODY_HEIGHT := 1.1
 const HEAD_HEIGHT := 1.62
 ## Where the zombies the rules spawn stand, in spawn order. Slot 1 is behind slot 0 on a shot from
@@ -44,6 +40,15 @@ const MARK_EVERY := 5.0
 const MARK_COUNT := 5
 
 @export var latency_ticks: int = 0
+
+@export_group("Camera")
+## The shoulder camera's place, relative to the player's feet (metres).
+@export var camera_offset := Vector3(0.8, 1.9, 2.5)
+## The camera's field of view (degrees).
+@export_range(20.0, 120.0, 1.0, "suffix:deg") var camera_fov := 55.0
+@export_group("Barrel")
+## Where the shots leave the barrel, relative to the player's feet (metres).
+@export var muzzle_offset := Vector3(0.3, 1.45, -0.4)
 
 var rules: GameRules
 var server: CombatServer
@@ -117,8 +122,8 @@ func move_rig(offset: Vector3) -> void:
 ## Pulls the trigger with the crosshair on `aim_point`.
 func fire_at(aim_point: Vector3) -> void:
 	_look_at = aim_point
-	var origin := _rig + CAMERA_OFFSET
-	var muzzle := _rig + MUZZLE_OFFSET
+	var origin := _rig + camera_offset
+	var muzzle := _rig + muzzle_offset
 	var dir := (aim_point - origin).normalized()
 	if _client_weapon == null or _client_weapon.fire_block() != &"":
 		return
@@ -330,8 +335,8 @@ func _add_box(centre: Vector3, size: Vector3, colour: Color) -> void:
 
 
 func _update_camera() -> void:
-	_camera.fov = CAMERA_FOV
-	_camera.look_at_from_position(_rig + CAMERA_OFFSET, _look_at)
+	_camera.fov = camera_fov
+	_camera.look_at_from_position(_rig + camera_offset, _look_at)
 	_player.position = _rig + Vector3(0, 0.9, 0)
 
 

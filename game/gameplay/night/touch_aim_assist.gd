@@ -19,7 +19,7 @@ const ACTION_AIM := &"aim"
 const ACTION_FIRE := &"fire"
 const MIN_AMMO := 1
 
-var tuning := AimAssistTuning.new()
+var tuning := AimAssistTuning.shipped()
 ## () -> bool, whether the touch layer is up. Without one the assist is off.
 var touch_active := Callable()
 ## 0 (off) to 1; read from the settings.

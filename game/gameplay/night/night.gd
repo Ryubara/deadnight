@@ -124,6 +124,9 @@ var _equip_sync: WeaponEquipSync
 var _paused := false
 ## True while the warm-up runs.
 var _warming := false
+## The night is over on a game server and this client has left the seat: the link is read to the
+## floor until its socket is closed (`_leave_server`).
+var _leaving := false
 
 
 func _init() -> void:
@@ -325,8 +328,28 @@ func _build_view(camera: Camera3D) -> void:
 	view.hear(world)
 	if hud != null:
 		_add_markers()
-	night_over.connect(func(_r: int) -> void: running = false)
+	night_over.connect(_on_over)
 	state.event_received.connect(_on_event)
+
+
+## The night ended: the ticks stop. Online the client has nothing more to say or hear, so it
+## leaves the seat at once (the server frees it) instead of leaving the socket unread, where a
+## browser's buffer fills with snapshots ("Buffer payload full").
+func _on_over(_round_reached: int) -> void:
+	running = false
+	if remote:
+		_leave_server.call_deferred()
+
+
+## Closes the link and drops what is still in flight: the night has ended, so frames that arrive
+## now change nothing. `_physics_process` goes on reading until the socket has closed.
+func _leave_server() -> void:
+	if link == null or _leaving:
+		return
+	if link.delivered.is_connected(_on_delivered):
+		link.delivered.disconnect(_on_delivered)
+	_leaving = true
+	link.close()
 
 
 ## The world markers of the HUD: the other players' names and the next door, projected through
@@ -494,7 +517,7 @@ func _exit_tree() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if _warming and remote:
+	if (_warming or _leaving) and remote:
 		link.pump()
 	for _i in ticks_per_frame:
 		if not running:

@@ -56,7 +56,7 @@ small pooled impacts) and [Camera shake](camera-shake.md) (the light, per-weapon
 
 ## Tuning the game
 
-Which scene is which, how to play from the editor and where every number lives: [Tuning in the editor](tuning.md).
+Which scene is which: [Scenes](scenes.md). How to play from the editor and where every number lives: [Tuning in the editor](tuning.md).
 
 ## Playing together
 
