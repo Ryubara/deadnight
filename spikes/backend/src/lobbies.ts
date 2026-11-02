@@ -6,6 +6,7 @@
 // clock, so tests move time by hand.
 import { randomBytes, randomUUID } from "node:crypto";
 import type { GameServerInfo } from "./servers.ts";
+import { type MatchSettings, parseSettings } from "./settings.ts";
 
 export interface Member {
   userId: string;
@@ -31,6 +32,8 @@ export interface Lobby {
   /** Players on the game server now, as it last said (null until it has, or before the match starts). */
   players: number | null;
   state: "open" | "started";
+  /** What the host chose for the night (null: the game's defaults); fixed when the match starts. */
+  settings: MatchSettings | null;
   match: Match | null;
   createdAt: number;
   /** Last create, join, leave, start or poll by a member; an open lobby expires when this is old. */
@@ -46,7 +49,8 @@ export type LobbyError =
   | "no_server"
   | "not_member"
   | "not_started"
-  | "already_in_lobby";
+  | "already_in_lobby"
+  | "bad_settings";
 
 export class LobbyFailure extends Error {
   readonly reason: LobbyError;
@@ -154,6 +158,7 @@ export class LobbyService {
       members: [host],
       players: null,
       state: "open",
+      settings: null,
       match: null,
       createdAt: now,
       lastActiveAt: now,
@@ -235,15 +240,18 @@ export class LobbyService {
   }
 
   /** The host starts the match: a game server is allocated and the lobby is closed to newcomers. */
-  start(id: string, userId: string): Lobby {
+  start(id: string, userId: string, settings: unknown = undefined): Lobby {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
+    const chosen = settings === undefined || settings === null ? null : parseSettings(settings);
+    if (settings !== undefined && settings !== null && chosen === null) throw new LobbyFailure("bad_settings");
     const matchId = randomUUID();
     const server = this.hooks.allocate(matchId);
     if (!server) throw new LobbyFailure("no_server");
     const now = this.now();
     lobby.state = "started";
+    lobby.settings = chosen;
     lobby.startedAt = now;
     lobby.lastActiveAt = now;
     lobby.match = { id: matchId, server };

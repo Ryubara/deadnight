@@ -6,14 +6,16 @@ extends RefCounted
 static var _count := 0
 
 
-## A ticket for `user` in `match_id` on `server_id`, good for `seconds` from now.
+## A ticket for `user` in `match_id` on `server_id`, good for `seconds` from now; `settings` (a
+## `MatchSettings.to_dict`) are the rules the host chose, none when empty.
 static func make(
 	secret: String,
 	server_id: String,
 	match_id: String,
 	user: String,
 	user_name: String = "Tester",
-	seconds: int = 60
+	seconds: int = 60,
+	settings: Dictionary = {}
 ) -> String:
 	_count += 1
 	var now := int(Time.get_unix_time_from_system())
@@ -27,6 +29,8 @@ static func make(
 		"serverId": server_id,
 		"jti": "t%d-%d" % [_count, randi()],
 	}
+	if not settings.is_empty():
+		claims["settings"] = settings
 	var head := TicketVerifier.HEADER
 	var body := _encode(JSON.stringify(claims).to_utf8_buffer())
 	var signature := Crypto.new().hmac_digest(

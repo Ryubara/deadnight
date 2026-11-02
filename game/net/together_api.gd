@@ -23,6 +23,7 @@ const TEXTS := {
 	"full": "That night is full.",
 	"no_server": "All the servers are busy. Try again in a minute.",
 	"already_in_lobby": "You are in another night already.",
+	"bad_settings": "Those rules are not ones the game takes. Change them and try again.",
 	"too_many_guests": "Too many people signed in from here. Try again later.",
 	"unauthorized": "Your sign-in ran out. Try again.",
 	"network": "Could not reach the game's servers. Check your connection.",
@@ -85,12 +86,19 @@ func sign_in(display_name: String = "") -> Dictionary:
 
 
 ## A night of your own: made, started on a game server, and its invite code. `{"ok", "lobby"}`.
-func create() -> Dictionary:
+## `settings` are the rules its host chose (`MatchSettingsPanel`); the backend keeps them on the
+## lobby and signs them into every ticket, and the game server's room starts with them. Null is
+## the usual rules. A night of this Activity that is already started keeps the rules it began with.
+func create(settings: MatchSettings = null) -> Dictionary:
 	var made := await _call("POST", "/lobbies", {"maxPlayers": 4, "instanceId": instance_id})
 	if not made["ok"]:
 		return made
 	if made["state"] != "started":
-		var started := await _call("POST", "/lobbies/%s/start" % made["id"])
+		var started := await _call(
+			"POST",
+			"/lobbies/%s/start" % made["id"],
+			{"settings": settings.clamped().to_dict()} if settings != null else null
+		)
 		if not started["ok"]:
 			return started
 		made = started

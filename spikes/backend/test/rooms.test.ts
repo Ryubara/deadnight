@@ -7,6 +7,7 @@ import { loadConfig } from "../src/config.ts";
 import { OffDiscord } from "../src/discord.ts";
 import { GameServerRegistry } from "../src/servers.ts";
 import { MemoryStore } from "../src/store.ts";
+import { verifyToken } from "../src/tokens.ts";
 
 const env = {
   SESSION_SECRET: "s".repeat(32),
@@ -82,7 +83,7 @@ test("a friend with the code joins a night that has started, and a full night tu
   const { app, guest, call, beat } = await platform();
   const host = await guest("host");
   const lobby = (await call("POST", "/lobbies", host.headers, { maxPlayers: 2 })).json();
-  const started = (await call("POST", `/lobbies/${lobby.id}/start`, host.headers)).json();
+  const started = (await call("POST", `/lobbies/${lobby.id}/start`, host.headers, {})).json();
   assert.equal(started.state, "started");
 
   const friend = await guest("friend");
@@ -167,5 +168,62 @@ test("only the pages named in CORS_ORIGINS may call the API from a browser", asy
   assert.equal(answer.headers["access-control-allow-origin"], "http://127.0.0.1:8080");
   const stranger = await ask("https://evil.example");
   assert.equal(stranger.headers["access-control-allow-origin"], undefined);
+  await app.close();
+});
+
+test("the host's match settings are checked, kept on the lobby and signed into every ticket of the match", async () => {
+  const { app, guest, call, config } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, { maxPlayers: 3 })).json();
+  assert.equal(lobby.settings, null);
+
+  // A value outside the game's bounds, a missing key, an extra key or a wrong type is refused and the lobby stays open.
+  const good = { count_multiplier: 2, max_alive: 12, break_seconds: 20 };
+  for (const bad of [
+    { ...good, count_multiplier: 9 },
+    { ...good, count_multiplier: 0.1 },
+    { ...good, max_alive: 41 },
+    { ...good, max_alive: 3.5 },
+    { ...good, break_seconds: 0.5 },
+    { ...good, break_seconds: 500 },
+    { count_multiplier: 2, max_alive: 12 },
+    { ...good, extra: 1 },
+    { ...good, max_alive: "12" },
+    "hard",
+    [],
+  ]) {
+    const refused = await call("POST", `/lobbies/${lobby.id}/start`, host.headers, { settings: bad });
+    assert.equal(refused.statusCode, 400, JSON.stringify(bad));
+    assert.equal(refused.json().error, "bad_settings");
+  }
+  assert.equal((await call("GET", `/lobbies/${lobby.id}`, host.headers)).json().state, "open");
+
+  const started = await call("POST", `/lobbies/${lobby.id}/start`, host.headers, { settings: good });
+  assert.equal(started.statusCode, 200);
+  assert.deepEqual(started.json().settings, good);
+
+  // A friend who joins later is handed the same rules in their ticket (the claims are signed, the game server reads them).
+  const friend = await guest("friend");
+  await call("POST", "/lobbies/join-by-code", friend.headers, { code: lobby.code });
+  for (const who of [host, friend]) {
+    const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, who.headers)).json();
+    assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, good);
+  }
+  await app.close();
+});
+
+test("a night started with no settings keeps the game's defaults: no settings in the lobby or the ticket", async () => {
+  const { app, guest, call, config } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, {})).json();
+  const started = (await call("POST", `/lobbies/${lobby.id}/start`, host.headers, {})).json();
+  assert.equal(started.settings, null, JSON.stringify(started));
+  const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, host.headers)).json();
+  assert.equal(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, undefined);
+  // Only the host chooses, and only before the start.
+  const other = await guest("other");
+  const second = (await call("POST", "/lobbies", other.headers, {})).json();
+  assert.equal((await call("POST", `/lobbies/${second.id}/start`, host.headers, { settings: { count_multiplier: 1, max_alive: 0, break_seconds: 0 } })).statusCode, 403);
+  assert.equal((await call("POST", `/lobbies/${lobby.id}/start`, host.headers, { settings: { count_multiplier: 1, max_alive: 0, break_seconds: 0 } })).statusCode, 409);
   await app.close();
 });

@@ -201,7 +201,7 @@ func _route(transport_id: int, pending: Pending, data: PackedByteArray) -> void:
 			pending.routing = false
 			_refuse(transport_id, pending, NetWire.Refusal.FULL, "ROOMS")
 			return
-		room = await _open_room(match_id)
+		room = await _open_room(match_id, admitted.get("settings"))
 	if not _pending.has(transport_id):
 		return
 	_hand_over(transport_id, room, admitted["user"], admitted["name"], data)
@@ -227,8 +227,10 @@ func _refuse(transport_id: int, pending: Pending, reason: NetWire.Refusal, why: 
 # --- Rooms ---
 
 
-## Builds the night of a match (once: a second ticket of the same match waits for the first).
-func _open_room(match_id: String) -> NightHost:
+## Builds the night of a match (once: a second ticket of the same match waits for the first). The
+## first ticket's `settings` (the host's rules, null for the usual ones) are the room's: every
+## ticket of a match carries the same.
+func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	if _rooms.has(match_id):
 		return _rooms[match_id]
 	if _building.has(match_id):
@@ -249,6 +251,8 @@ func _open_room(match_id: String) -> NightHost:
 	room.log_enabled = log_enabled
 	room.seed_value = seed_value
 	room.rules_tuning = rules_tuning
+	if settings != null:
+		room.match_settings = settings
 	room.emptied.connect(func() -> void: _end_room(match_id))
 	viewport.add_child(room)
 	await room.built

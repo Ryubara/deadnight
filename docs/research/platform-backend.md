@@ -225,6 +225,26 @@ a ticket key per game server, derived as `HMAC(TICKET_SECRET, serverId)` so a se
 backend signs with the target's, or Ed25519 tickets (the game server then holds only a public key, but Godot needs an
 extension for it). Neither is built; until then game servers are trusted and run only by us.
 
+## Match settings: the host's rules reach the room
+
+The host of a night chooses its rules (`MatchSettings`: zombie intensity, alive cap, break) and they travel with
+the ticket, so the game server needs no second channel:
+
+1. `POST /lobbies/:id/start` takes `{"settings": {"count_multiplier", "max_alive", "break_seconds"}}` from the
+   host. The backend (`src/settings.ts`) accepts exactly those three keys inside the game's bounds (0.25 to 5; a whole
+   0 to 40; 0 or 1 to 120) and answers `400 bad_settings` otherwise, leaving the lobby open. No `settings` is today's
+   game. They are fixed when the match starts; the lobby view shows them.
+2. Every ticket of the match (`/lobbies/:id/ticket`) carries the same `settings` claim, signed with the rest.
+3. The game server's `TicketVerifier.admit` returns them as a `MatchSettings`; the ticket that opens the room gives
+   it to `NightHost.match_settings` before the night is built, and every WELCOME carries them from there. A ticket
+   whose rules the game cannot take (the two sides' bounds drifted) is refused as `ticket carries rules this server
+   does not take`, not played with other rules than the host asked for.
+
+`JSON.parse` gives every number as a float, so `max_alive` arrives as `12.0`: the verifier makes a whole one an int
+before `MatchSettings.from_dict` (strict) sees it. The first version of this change missed it and a ticket from the
+backend would have been refused; `tickets.json` now holds a ticket the backend signed with settings. What is not
+done: the Together screen has no settings panel yet (`TogetherApi.create(settings)` takes them).
+
 ## What is not decided or not proven
 
 - **Starting game servers on demand.** The spike uses a static pool that announces itself. Creating a Railway service
