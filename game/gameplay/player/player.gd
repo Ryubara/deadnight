@@ -17,6 +17,9 @@ signal landed(impact_speed: float)
 ## a window lost focus) and the controls are off: the night opens its menu, as Esc would.
 signal grip_lost
 
+## The downward speed (m/s) a puppet's landing is told with: the frames carry no speed, and the
+## animation's landing does not read it.
+const PUPPET_LANDING_SPEED := 4.0
 ## Below this the model counts as level with the body again.
 const STEP_LAG_REST := 0.0005
 
@@ -57,6 +60,8 @@ var grip := MouseGrip.new()
 var _controls_enabled := true
 var _was_down := {}
 var _submitted: PlayerCommand
+## The stance the last `puppet_to` was given (`PlayerStance`), to see a jump begin and a landing.
+var _puppet_stance := 0
 ## Metres the drawn model is still below the body after a step up (it eases up, the body does not).
 var _step_lag := 0.0
 var _model_rest := Vector3.ZERO
@@ -88,6 +93,11 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	# A puppet is placed by `puppet_to`; the engine turns physics processing back on when a node is
+	# ready, whatever `make_puppet` asked for, so a puppet says no here (a simulated puppet fell
+	# through the floor it has no collision with and was never `on_floor`).
+	if is_puppet:
+		return
 	var command := _submitted
 	if command == null:
 		command = sample_command() if local_input else _idle_command()
@@ -157,17 +167,32 @@ func make_puppet() -> void:
 
 
 ## Puts a puppet where the frames say: at `at`, turned `facing`, moving at `velocity` (the gait
-## follows it), holding the aim pose or not, looking `pitch` up (radians). The weapon's barrel is
-## aimed along that look from the head.
-func puppet_to(at: Vector3, facing: float, velocity: Vector3, aiming: bool, pitch: float) -> void:
+## follows it), holding the aim pose or not, looking `pitch` up (radians), in `stance` (a
+## `PlayerStance`: the sprint carry, the crouch, the jump and the fall are the animation's own,
+## drawn from the same state a played body has). The weapon's barrel is aimed along that look from
+## the head. A step off the floor upward says `jumped`, a step back onto it `landed`, as a played
+## body does.
+func puppet_to(
+	at: Vector3, facing: float, velocity: Vector3, aiming: bool, pitch: float, stance := 0
+) -> void:
+	var was_in_air := _puppet_stance & PlayerStance.AIR != 0
+	var in_air := stance & PlayerStance.AIR != 0
+	var rising := stance & PlayerStance.RISING != 0
 	state.position = at
-	state.velocity = velocity
+	state.velocity = Vector3(velocity.x, 1.0 if rising else (-1.0 if in_air else 0.0), velocity.z)
 	state.facing = facing
-	state.on_floor = true
+	state.on_floor = not in_air
+	state.sprinting = stance & PlayerStance.SPRINT != 0
+	state.crouching = stance & PlayerStance.CROUCH != 0
 	state.aiming = aiming
 	position = at
 	rotation.y = facing
 	camera_rig.aim_along(at + Vector3(0.0, tuning.pivot_height, 0.0), facing, pitch)
+	if in_air and rising and not was_in_air:
+		jumped.emit()
+	elif was_in_air and not in_air:
+		landed.emit(PUPPET_LANDING_SPEED)
+	_puppet_stance = stance
 
 
 ## Puts a look and the armband of a seat on the body's Soldier (`CharacterAssembler.dress`). A body

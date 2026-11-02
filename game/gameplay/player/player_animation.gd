@@ -276,6 +276,9 @@ func _ready() -> void:
 	set(&"parameters/split/blend_amount", 1.0)
 	active = true
 	_playback = get(&"parameters/body/playback") as AnimationNodeStateMachinePlayback
+	# The machine's Start has no automatic way out: a body that never falls (a puppet on the floor)
+	# would stay there, with no crouch and no stance of the legs, until its first jump.
+	_playback.start(STATE_LOCOMOTION)
 	_set_class(DEFAULT_CLASS, hold_of(DEFAULT_CLASS))
 	_player.jumped.connect(_on_jumped)
 	_player.landed.connect(_on_landed)
