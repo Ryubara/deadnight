@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 extends GdUnitTestSuite
 ## The settings screen bound to the real `Settings` autoload (pointed at a throwaway file): moving a
 ## control changes the value, Reset puts it back, and the widgets behave the way the screen needs.
@@ -7,11 +8,15 @@ const TEST_PATH := "user://settings_screen_test.cfg"
 
 var _screen: SettingsScreen
 var _saved_path: String
+var _window_calls: Array[int] = []
 
 
 func before_test() -> void:
 	_saved_path = Settings.path
 	Settings.path = TEST_PATH
+	# The window mode goes to a list: no test changes the display it runs on.
+	_window_calls.clear()
+	Settings.window_setter = func(mode: int) -> void: _window_calls.append(mode)
 	Settings.reset_defaults()
 	_screen = (load(SCREEN) as PackedScene).instantiate() as SettingsScreen
 	add_child(_screen)
@@ -22,6 +27,7 @@ func after_test() -> void:
 	Settings.reset_defaults()
 	Settings.save()
 	Settings.path = _saved_path
+	Settings.window_setter = Callable()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
@@ -34,6 +40,28 @@ func test_controls_start_at_the_saved_values() -> void:
 	assert_float(_slider(1, 1).value).is_equal(80.0)
 	assert_bool(_toggle(0, 2).button_pressed).is_true()
 	assert_int(_selector(2, 1).selected).is_equal(1)
+
+
+func test_controls_start_from_a_saved_file_that_is_not_the_default() -> void:
+	var file := ConfigFile.new()
+	file.set_value("audio", "master", 35)
+	file.set_value("audio", "music", 10)
+	file.set_value("controls", "invert_y", true)
+	file.set_value("accessibility", "ui_scale", 1.25)
+	file.save(TEST_PATH)
+	Settings.load_from_disk()
+	var screen := _make_screen(false)
+	assert_float((screen._pages[1].get_child(0) as UIRow).control.value).is_equal(35.0)
+	assert_float((screen._pages[1].get_child(1) as UIRow).control.value).is_equal(10.0)
+	assert_bool((screen._pages[3].get_child(1) as UIRow).control.button_pressed).is_true()
+	assert_int((screen._pages[2].get_child(1) as UIRow).control.selected).is_equal(2)
+
+
+func test_the_window_mode_row_reaches_the_window_through_the_setter_only() -> void:
+	var row := _screen._pages[0].get_child(0) as UIRow
+	assert_str(row.title).is_equal("Window mode")
+	(row.control as UIOptionSelector).select(SettingsService.WindowMode.FULLSCREEN, true)
+	assert_array(_window_calls).contains([DisplayServer.WINDOW_MODE_FULLSCREEN])
 
 
 func test_moving_a_slider_changes_the_setting() -> void:

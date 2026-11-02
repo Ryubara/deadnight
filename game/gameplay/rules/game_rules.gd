@@ -39,13 +39,15 @@ extends RefCounted
 ##   player_added: player_id, grenades (the count they start with), health, max_health
 ##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
 ##     seen from above, where the blow came from), source_id (the zombie, -1 for none)
-##   player_healed: player_id, health, max_health, reason (regen or revive); regen sends one when
-##     the whole-unit health changes, about once per unit mended
+##   player_healed: player_id, health, max_health, reason (regen, revive or tonic: a health tonic
+##     raised the most); regen sends one when the whole-unit health changes, about once per unit
+##     mended
 ##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow)
 ##   player_removed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
-##     catalogue weapon, and `rounds` into its reserve; a crane play: `crane_spot`, see CranePlay)
+##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
+##     a crane play: `crane_spot`, see CranePlay)
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   crane_*: the prize crane's play, see `CranePlay`
 ##   door_opened: door_id
@@ -74,14 +76,17 @@ enum BuyResult {
 	TANK_FULL,
 	AMMO_FULL,
 	CRANE_BUSY,
+	## A re-cut with no weapon in hand that can take one.
+	NO_WEAPON,
 	PLAYER_DOWNED,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 8 added the prize crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's
-## health, 5 the plan, special round and a zombie's type, health, speed. Two older layouts both
-## called themselves 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 8
+## 9 added each player's `upgraded` weapons, 8 the prize crane (`crane`, `crane_rng_state`), 7 the
+## fence's `barricades`, 6 each player's health, 5 the plan, special round and a zombie's type,
+## health, speed. Two older layouts both called themselves 4; every older snapshot is refused as
+## `bad_version`.
+const SNAPSHOT_VERSION := 9
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -210,10 +215,16 @@ func is_door_open(door_id: StringName) -> bool:
 	return doors_open.has(door_id)
 
 
-## What an item costs right now, or -1 when there is no such item.
-func price_of(item_id: StringName) -> int:
+## What an item costs right now, or -1 when there is no such item. With a `player_id`, what that
+## player pays: a re-cut costs more for each weapon they have re-cut already (-1 for no player).
+func price_of(item_id: StringName, player_id: int = -1) -> int:
 	var item := tuning.economy.item(item_id)
-	return item.price_at(round_number) if item != null else -1
+	if item == null:
+		return -1
+	if player_id < 0:
+		return item.price_at(round_number)
+	var player := players.get(player_id) as PlayerState
+	return ShopCounter.price(self, item, player) if player != null else -1
 
 
 ## A player's health (0 when they are down or unknown).
@@ -351,7 +362,12 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.TEAR_BOARD:
 			_tear_board(StringName(action["barricade_id"]), action["zombie_id"])
 		RulesAction.BUY:
-			ShopCounter.buy(self, action["player_id"], action["item_id"], action.get("rounds", -1))
+			_buy(
+				action["player_id"],
+				action["item_id"],
+				action.get("rounds", -1),
+				StringName(action.get("weapon", &""))
+			)
 		RulesAction.CRANE_TAKE:
 			CranePlay.take(self, action["player_id"])
 		RulesAction.SET_CIRCUIT:
@@ -867,3 +883,42 @@ func _tear_board(id: StringName, zombie_id: int) -> void:
 		return
 	var boards := barricades.boards_of(id)
 	_emit(&"board_torn", {"barricade_id": id, "boards": boards, "zombie_id": zombie_id})
+
+
+# --- The shop ---
+
+
+func _buy(player_id: int, item_id: StringName, rounds: int = -1, weapon: StringName = &"") -> void:
+	var quote := ShopCounter.quote(self, player_id, item_id, rounds, weapon)
+	if quote.result != BuyResult.OK:
+		_emit(
+			&"purchase_denied", {"player_id": player_id, "item_id": item_id, "result": quote.result}
+		)
+		return
+	var player: PlayerState = players[player_id]
+	player.points -= quote.price
+	player.points_spent += quote.price
+	_emit(
+		&"points_changed",
+		{
+			"player_id": player_id,
+			"total": player.points,
+			"delta": -quote.price,
+			"reason": &"purchase",
+		}
+	)
+	var detail := ShopCounter.grant(self, player, quote)
+	_emit(
+		&"purchase_made",
+		{"player_id": player_id, "item_id": item_id, "price": quote.price, "detail": detail}
+	)
+	if quote.item.kind == ShopItem.Kind.CRANE:
+		_emit(
+			&"crane_spin_started",
+			{
+				"player_id": player_id,
+				"spot": crane.spot,
+				"seconds": tuning.crane.spin_seconds,
+				"plays": crane.plays,
+			}
+		)

@@ -84,6 +84,38 @@ New tokens (`UITokens`, group Controls): `control_height`, `control_width`, `tra
   scripts in tests need window pixels: `viewport.get_final_transform() * control.get_global_transform_with_canvas()`.
 - Movie Maker writes frame N after the scripted code for that moment ran: to see the state before a change, read N - 1.
 
+## Resolution scale in the Compatibility renderer (#36)
+
+Deadnight is Compatibility-only (desktop and the WebGL2 web build), and `video/resolution_scale` sets the root
+viewport's `scaling_3d_scale`. It works in both, at every step the slider offers (50 to 100 in steps of 5), and exactly
+0.5 is not a no-op:
+
+| Scale | Mean absolute difference from 100 % (1280 x 720) | Detail along a row of the floor |
+| --- | --- | --- |
+| 100 % | 0 | 0.144 |
+| 75 % | 0.117 | 0.135 |
+| 50 % | 0.151 | 0.126 |
+
+(A checker floor, a lit box and a sphere under one sun, bilinear scaling, Godot 4.7.2, RTX 5080.) At a 640 x 360 window
+the difference of 0.5 is 0.178, against 0.151 at 75 % there too. The probe in #26 saw a byte-identical picture at exactly
+0.5 and could not be reproduced with the real service, any number of frames after the change (0, 1, 2 and 6), any window
+size tried, or the root viewport's own scaling mode left alone; it was most likely a probe that read the picture before
+the viewport was resized. **The only way to get a picture from a change is to wait for the frame after it** (the capture
+waits six, and `RenderingServer.frame_post_draw`).
+
+- **The range stops at 50 on purpose.** The service clamps to `RANGES` (50 to 100); a 25 % request draws as 50 %.
+- **Web:** `tools/web_smoke/resolution_scale.py` opens the export in Chrome (WebGL2, the machine's GPU) in two fresh
+  contexts, lowers the slider with the keyboard to 50 % in one, starts a night in each and compares the middle of the
+  lower half of the screenshots: the 50 % picture differs by 0.017 and has 9 % less detail from pixel to pixel; the HUD
+  is as sharp in both (the interface is drawn at full size). Not in CI: starting a night in a software renderer takes
+  minutes.
+- **Guard:** `game/tests/captures/resolution_scale.tscn` (windowed, through the no-focus launcher) draws the scene at each
+  scale through the real `Settings` service and fails its run when a lower scale does not change the picture or does not
+  lose detail. It never touches the real display mode or the real mouse. A headless GdUnit test cannot do this: the
+  headless renderer draws nothing.
+- **Reading the numbers:** a mean difference of 0.01 or less means the picture did not change; the checks use that and
+  "less detail than the step above".
+
 ## Proof
 
 `game/tests/core/test_settings.gd` (defaults, round trip, file layout, bad entries, clamping, `changed`, reset, buses,
@@ -95,3 +127,31 @@ window sizes and scales, rows apart and inside the panel, one selected tab, no s
 `game/tests/ui/test_stagger_in.gd` (the entrance itself). Run them with GdUnit4 (`--ignoreHeadlessMode` for the
 headless command line). `game/tests/captures/settings_tour.tscn` is the scripted capture of every tab; `settings_navigation.tscn`
 drives the screen with key and gamepad events only and prints the focus owner at each step.
+
+### The widgets, the save timer and the display in tests (#37)
+
+- **The widgets have tests of their own** (`test_ui_slider.gd`, `test_ui_toggle.gd`, `test_ui_option_selector.gd`),
+  driven with real events from `tests/ui/widget_events.gd`: the keyboard and the d-pad step a slider and stop at its
+  ends, a click at 60 % of a slider's width lands at (x - thumb / 2) / (width - thumb) of its range (the invisible
+  grabber the theme gives the engine matches the drawn thumb; this was only a capture printout before), a toggle flips on
+  a click, the accept keys and the A button and not while disabled, an option selector steps with left, right, accept and
+  the d-pad, wraps at both ends, steps back from a click on its left edge zone and forward from anywhere else, and
+  reduced motion snaps every spring.
+- **The save timer runs on the test's clock** (`test_settings_saving.gd`): the test calls `_process(seconds)` itself, so
+  nothing waits and nothing depends on the machine. Nothing is written before `SAVE_DELAY`; a burst of changes (a slider
+  drag) is one write of the last value, because every change restarts the wait; a close request writes a pending change
+  at once and writes nothing when nothing is pending; freeing the service (`NOTIFICATION_PREDELETE`) writes the last
+  change. `tests/core/quiet_settings.gd` counts `save` calls.
+- **A service with an unsaved change writes the file as it is freed.** A test that removed its file and then let the
+  service be freed (`auto_free` runs after `after_test`) left the file behind again. The suites now free their services,
+  then remove the file.
+- **No test changes the display it runs on.** `SettingsService.window_setter` (a `Callable`, empty in the game) takes the
+  window mode instead of `DisplayServer.window_set_mode`; `QuietSettings` records the calls, and the screen suite sets
+  one on the `Settings` autoload for its duration. `test_save_then_load_round_trips` used to put the running window in
+  fullscreen in a windowed run.
+- **A screen that starts from a saved file that is not the default** is tested (`test_settings_screen.gd`): the sliders,
+  the toggle and the selector show the file's values, not the defaults they start with.
+- **`UIButton` draws its ring with `UIFocusRing`**, like every other component (it had a copy of the same drawing).
+  `test_ui_button_ring.gd`: the ring is the shared one; keyboard focus lights it and pointer focus does not. Buttons do
+  not snap their springs under reduced motion (the other widgets do): the focus and hover springs of a button still
+  settle over a few frames.

@@ -1,9 +1,9 @@
 class_name ShopCounter
 extends RefCounted
-## The shop, as the rules run it: pricing, the checks that refuse a purchase, and handing the goods
-## over, in static functions that take the rules so no reference cycle is made (as `CranePlay`
-## does). Every result is a `GameRules.BuyResult`; a refusal is a `purchase_denied` event and costs
-## nothing. A downed player cannot buy anything.
+## The shop's till, as the rules run it: price a purchase, check it can be made, and hand over what
+## was bought. Static functions that take the rules (the same shape as `CranePlay`), so the rules
+## stay one file's worth of state and no reference cycle is made. `GameRules._buy` does the
+## paying and the events; the item kinds are `ShopItem.Kind`.
 
 
 ## A priced, checked purchase that has not happened yet.
@@ -16,80 +16,81 @@ class Quote:
 	var grenades_added: int = 0
 	var rounds_offered: int = -1
 	var ammo_added: int = 0
+	## UPGRADE: the weapon (a catalogue id) the buyer holds.
+	var weapon: StringName = &""
 
 
-## `player_id` buys `item_id` (for ammunition, `rounds` fit in the reserve; -1 means all of them).
-static func buy(rules: GameRules, player_id: int, item_id: StringName, rounds: int = -1) -> void:
-	var quote := quote_for(rules, player_id, item_id, rounds)
-	if quote.result != GameRules.BuyResult.OK:
-		rules._emit(
-			&"purchase_denied", {"player_id": player_id, "item_id": item_id, "result": quote.result}
-		)
-		return
-	var player: PlayerState = rules.players[player_id]
-	player.points -= quote.price
-	player.points_spent += quote.price
-	(
-		rules
-		. _emit(
-			&"points_changed",
-			{
-				"player_id": player_id,
-				"total": player.points,
-				"delta": -quote.price,
-				"reason": &"purchase",
-			}
-		)
-	)
-	var detail := _grant(rules, player, quote)
-	rules._emit(
-		&"purchase_made",
-		{"player_id": player_id, "item_id": item_id, "price": quote.price, "detail": detail}
-	)
-	if quote.item.kind == ShopItem.Kind.CRANE:
-		(
-			rules
-			. _emit(
-				&"crane_spin_started",
-				{
-					"player_id": player_id,
-					"spot": rules.crane.spot,
-					"seconds": rules.tuning.crane.spin_seconds,
-					"plays": rules.crane.plays,
-				}
-			)
-		)
-
-
-## What buying would cost and whether it would work, changing nothing.
-static func quote_for(
-	rules: GameRules, player_id: int, item_id: StringName, rounds: int = -1
+## The quote for `item_id` for this player now. `rounds` is the room an ammunition purchase has
+## (`RulesAction.buy`), `weapon` the weapon a re-cut is for.
+static func quote(
+	rules: GameRules, player_id: int, item_id: StringName, rounds: int, weapon: StringName
 ) -> Quote:
-	var quote := Quote.new()
+	var result := Quote.new()
 	var player := rules.players.get(player_id) as PlayerState
 	var item := rules.tuning.economy.item(item_id)
 	if rules.phase != GameRules.Phase.BREAK and rules.phase != GameRules.Phase.ACTIVE:
-		quote.result = GameRules.BuyResult.WRONG_PHASE
+		result.result = GameRules.BuyResult.WRONG_PHASE
 	elif player == null:
-		quote.result = GameRules.BuyResult.UNKNOWN_PLAYER
+		result.result = GameRules.BuyResult.UNKNOWN_PLAYER
 	elif player.downed:
-		quote.result = GameRules.BuyResult.PLAYER_DOWNED
+		result.result = GameRules.BuyResult.PLAYER_DOWNED
 	elif item == null:
-		quote.result = GameRules.BuyResult.UNKNOWN_ITEM
+		result.result = GameRules.BuyResult.UNKNOWN_ITEM
 	else:
-		quote.item = item
-		quote.price = item.price_at(rules.round_number)
-		quote.rounds_offered = rounds
-		quote.result = _check_item(rules, player, quote)
-	if quote.result == GameRules.BuyResult.OK and player.points < quote.price:
-		quote.result = GameRules.BuyResult.NOT_ENOUGH_POINTS
-	return quote
+		result.item = item
+		result.price = price(rules, item, player)
+		result.rounds_offered = rounds
+		result.weapon = weapon
+		result.result = _check(rules, player, result)
+	if result.result == GameRules.BuyResult.OK and player.points < result.price:
+		result.result = GameRules.BuyResult.NOT_ENOUGH_POINTS
+	return result
 
 
-## Whether the item can be sold to this player at all, ignoring their points. A fuel quote also gets
-## its real price: you pay only for the room in the tank.
-static func _check_item(rules: GameRules, player: PlayerState, quote: Quote) -> GameRules.BuyResult:
-	var item := quote.item
+## What this player pays for the item at the start of the quote: its price this round, and for a
+## re-cut the step for each weapon they have re-cut already.
+static func price(rules: GameRules, item: ShopItem, player: PlayerState) -> int:
+	var cost := item.price_at(rules.round_number)
+	if item.kind == ShopItem.Kind.UPGRADE:
+		cost += rules.tuning.upgrade.price_step * player.upgraded.size()
+	return cost
+
+
+## Hands over what was bought; returns what the event's `detail` should say.
+static func grant(rules: GameRules, player: PlayerState, bought: Quote) -> Dictionary:
+	var item := bought.item
+	var detail := {}
+	match item.kind:
+		ShopItem.Kind.DOOR:
+			rules.doors_open.append(item.id)
+			rules._emit(&"door_opened", {"door_id": item.id})
+		ShopItem.Kind.WEAPON:
+			player.weapons.append(item.id)
+			detail = {"weapon": item.id}
+		ShopItem.Kind.CRANE:
+			detail = CranePlay.start(rules, player, bought.price)
+		ShopItem.Kind.TONIC:
+			player.tonics.append(item.id)
+			if item.health_bonus > 0.0:
+				rules._events.append(PlayerHealth.raise_max(player, item.health_bonus))
+		ShopItem.Kind.UPGRADE:
+			player.upgraded.append(bought.weapon)
+			detail = {"upgrade": bought.weapon}
+		ShopItem.Kind.FUEL:
+			detail = {"fuel": rules.generator.add_fuel(bought.fuel_added)}
+		ShopItem.Kind.GRENADES:
+			rules._set_grenades(player, player.grenades + bought.grenades_added, &"purchase")
+			detail = {"grenades": bought.grenades_added}
+		ShopItem.Kind.AMMO:
+			detail = {"ammo": item.weapon, "rounds": bought.ammo_added}
+	return detail
+
+
+## Whether the item can be sold to this player at all, ignoring their points. A fuel, grenade or
+## ammunition quote also gets its real price: you pay only for the room.
+static func _check(rules: GameRules, player: PlayerState, bought: Quote) -> GameRules.BuyResult:
+	var item := bought.item
+	var tuning := rules.tuning
 	var result := GameRules.BuyResult.OK
 	match item.kind:
 		ShopItem.Kind.DOOR:
@@ -108,55 +109,36 @@ static func _check_item(rules: GameRules, player: PlayerState, quote: Quote) -> 
 		ShopItem.Kind.TONIC:
 			if player.tonics.has(item.id):
 				result = GameRules.BuyResult.ALREADY_OWNED
-			elif player.tonics.size() >= rules.tuning.economy.max_tonics:
+			elif player.tonics.size() >= tuning.economy.max_tonics:
 				result = GameRules.BuyResult.LIMIT_REACHED
+		ShopItem.Kind.UPGRADE:
+			if not tuning.upgrade.allows(bought.weapon):
+				result = GameRules.BuyResult.NO_WEAPON
+			elif player.upgraded.has(bought.weapon):
+				result = GameRules.BuyResult.ALREADY_OWNED
 		ShopItem.Kind.GRENADES:
-			var room := rules.tuning.explosives.max_grenades - player.grenades
+			var room := tuning.explosives.max_grenades - player.grenades
 			if room <= 0:
 				result = GameRules.BuyResult.LIMIT_REACHED
 			else:
-				quote.grenades_added = mini(int(item.amount), room)
-				quote.price = ceili(float(quote.price) * quote.grenades_added / item.amount)
+				bought.grenades_added = mini(int(item.amount), room)
+				bought.price = ceili(float(bought.price) * bought.grenades_added / item.amount)
 		ShopItem.Kind.AMMO:
 			# The weapon's reserve is the combat server's: the buyer says how many rounds fit
 			# (none given: all of them) and the rules price exactly those.
 			var fit := int(item.amount)
-			if quote.rounds_offered >= 0:
-				fit = mini(quote.rounds_offered, fit)
+			if bought.rounds_offered >= 0:
+				fit = mini(bought.rounds_offered, fit)
 			if fit <= 0:
 				result = GameRules.BuyResult.AMMO_FULL
 			else:
-				quote.ammo_added = fit
-				quote.price = item.ammo_price(rules.round_number, fit)
+				bought.ammo_added = fit
+				bought.price = item.ammo_price(rules.round_number, fit)
 		ShopItem.Kind.FUEL:
 			var offer := item.fuel_offer(rules.round_number, rules.generator.space())
 			if offer["units"] <= 0.0:
 				result = GameRules.BuyResult.TANK_FULL
 			else:
-				quote.fuel_added = offer["units"]
-				quote.price = offer["price"]
+				bought.fuel_added = offer["units"]
+				bought.price = offer["price"]
 	return result
-
-
-## Hands over what was bought; returns what the event's `detail` should say.
-static func _grant(rules: GameRules, player: PlayerState, quote: Quote) -> Dictionary:
-	var item := quote.item
-	match item.kind:
-		ShopItem.Kind.DOOR:
-			rules.doors_open.append(item.id)
-			rules._emit(&"door_opened", {"door_id": item.id})
-		ShopItem.Kind.WEAPON:
-			player.weapons.append(item.id)
-			return {"weapon": item.id}
-		ShopItem.Kind.CRANE:
-			return CranePlay.start(rules, player, quote.price)
-		ShopItem.Kind.TONIC:
-			player.tonics.append(item.id)
-		ShopItem.Kind.FUEL:
-			return {"fuel": rules.generator.add_fuel(quote.fuel_added)}
-		ShopItem.Kind.GRENADES:
-			rules._set_grenades(player, player.grenades + quote.grenades_added, &"purchase")
-			return {"grenades": quote.grenades_added}
-		ShopItem.Kind.AMMO:
-			return {"ammo": item.weapon, "rounds": quote.ammo_added}
-	return {}
