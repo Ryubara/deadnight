@@ -91,8 +91,12 @@ before), well under the ceiling of 13.
 
 The flash is the same three quads and one light, and one shader whose program the warm-up draws already (the halo is
 two more lines in the same shader, not a second program). No new allocation or material per shot: the quads, the
-materials and the light are made when the flash is. The browser's frame times while holding the trigger and the GL
-programs linked, before and after, are in the pull request (`tools/web_smoke/flash.py --bench`).
+materials and the light are made when the flash is. Measured in the browser (headless Chrome, the machine's GPU, not
+paced, `flash.py --bench 8`: the trigger held for 8 s with the SMG, the shotgun and the pistol, two runs each, before and
+after): mean frame 4.3 to 4.7 ms before and 4.3 to 5.1 ms after, p95 4.3 to 8.4 ms in both, 1 600 to 1 900 frames per
+run, **no GL program linked while firing in any run** (the halo is two lines in the same shader, not a second program),
+and the occasional 45 to 90 ms frame in both builds (the per-shot spike that the open pull request #402 removes; this
+change neither adds to it nor removes it).
 
 ## Things that bit
 
