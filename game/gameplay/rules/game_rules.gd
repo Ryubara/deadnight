@@ -58,7 +58,8 @@ extends RefCounted
 ##   fuel_low, fuel_empty, fuel_restored
 ##   circuit_changed: circuit_id, on
 ##   game_over: reason (all_down or no_players), round_reached
-##   action_rejected: reason, action (the type), field (when one field is to blame)
+##   action_rejected: reason, action (the type), field (when one field is to blame); `reentrant` is
+##     the answer to an action sent from inside an event listener, and is returned, never emitted
 
 signal event_emitted(event: Dictionary)
 
@@ -77,6 +78,7 @@ enum BuyResult {
 	CRANE_BUSY,
 	## A re-cut with no weapon in hand that can take one.
 	NO_WEAPON,
+	PLAYER_DOWNED,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
@@ -121,6 +123,7 @@ const CRIPPLE_STREAM := 0xC21B
 const CRANE_STREAM := 0xC4A7
 
 var tuning: RulesTuning
+## The night's seed, given at construction and kept in the snapshot.
 var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
 var round_number: int = 0
@@ -146,12 +149,16 @@ var _shop_rng := RandomNumberGenerator.new()
 var _cripple_rng := RandomNumberGenerator.new()
 var _crane_rng := RandomNumberGenerator.new()
 var _events: Array[Dictionary] = []
+## True while `apply` hands its events to the listeners of `event_emitted`.
+var _delivering := false
 ## The whole-unit fuel value the last `fuel_changed` event announced.
 var _fuel_announced: int = 0
 
 
-## A fresh night. `p_tuning` defaults to the shipped table.
-func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
+## A fresh night. `p_tuning` null means the shipped table. The seed has no default: every random
+## stream of the night comes from it, so whoever builds the night (the server) chooses it, and the
+## snapshot records it. Both arguments are required, so `GameRules.new()` does not compile.
+func _init(p_tuning: RulesTuning, p_seed: int) -> void:
 	tuning = p_tuning if p_tuning != null else load(DEFAULT_TUNING_PATH)
 	rng_seed = p_seed
 	_spawn_rng.seed = p_seed ^ SPAWN_STREAM
@@ -173,7 +180,15 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0) -> void:
 
 
 ## The one way in. Returns the events the action caused, in order.
+##
+## An action sent from inside an `event_emitted` listener (while the events of the action before it
+## are still being handed out) is answered with one `reentrant` rejection and changes nothing: it
+## would change the state under the listeners still waiting for the earlier events, and the order
+## clients see would depend on who listened first. A listener that wants something done after
+## an action tells its owner, which sends it once `apply` has returned.
 func apply(action: Dictionary) -> Array[Dictionary]:
+	if _delivering:
+		return [{"type": &"action_rejected", "reason": &"reentrant", "action": action.get("type")}]
 	_events = []
 	var problem := RulesAction.validate(action)
 	if problem.is_empty():
@@ -181,8 +196,10 @@ func apply(action: Dictionary) -> Array[Dictionary]:
 	else:
 		_reject(problem["reason"], action.get("type"), problem["field"])
 	var caused := _events
+	_delivering = true
 	for event in caused:
 		event_emitted.emit(event)
+	_delivering = false
 	return caused
 
 

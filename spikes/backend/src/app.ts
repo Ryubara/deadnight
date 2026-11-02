@@ -61,6 +61,18 @@ function sameSecret(given: string, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/**
+ * A Discord Activity reaches this API through the URL mapping `/api` of the Developer Portal. Discord's docs do not say
+ * whether the proxy strips the prefix before it forwards, so both are served: `/api/auth/guest` is `/auth/guest`.
+ * No route of ours starts with `/api`.
+ */
+export function stripApiPrefix(url: string): string {
+  const match = /^\/api(?=[/?]|$)/.exec(url);
+  if (match === null) return url;
+  const rest = url.slice(match[0].length);
+  return rest.startsWith("/") ? rest : `/${rest}`;
+}
+
 export function buildApp(deps: Deps): FastifyInstance {
   const { config, store, discord, registry } = deps;
   const app = Fastify({
@@ -68,6 +80,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     // Behind Railway's edge: the client's address is the first of X-Forwarded-For (for the guest sign-in limit).
     trustProxy: true,
     bodyLimit: MAX_SAVE_BYTES + 1024,
+    rewriteUrl: (request) => stripApiPrefix(request.url ?? "/"),
     // Heartbeats and health checks arrive every few seconds and would drown the log. (The top-level
     // `disableRequestLogging` option is deprecated and goes in Fastify 6; the log controller replaces it.)
     logController: new LogController({

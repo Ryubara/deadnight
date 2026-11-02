@@ -128,7 +128,7 @@ distance down to the floor and holds there to the range.
 | Tommy gun | hitscan, auto | 14 | 0.075 s | 30 / 120 (max 180) | 1.9 s | 10 to 30 m (50%) | 50 m |
 | Pump shotgun | 8 pellets, 5 degrees | 19 x 8 | 0.8 s | 6 / 30 (max 60) | 2.4 s | 8 to 22 m (35%) | 30 m |
 | Hunting rifle | hitscan, pierces 2 | 95 | 0.5 s | 8 / 40 (max 80) | 2.2 s | 40 to 90 m (80%) | 120 m |
-| Flare gun | projectile, lobbed | 90 + blast 60 (3 m) | 0.8 s | 1 / 6 (max 12) | 2.0 s | none | 40 m |
+| Flare gun | projectile, lobbed | none: calls the dead (25 m, 8 s) | 0.8 s | 1 / 6 (max 12) | 2.0 s | none | 40 m |
 | Crowbar | melee sweep, 2 targets | 45 | 0.55 s | none | none | none | 1.9 m |
 | Baseball bat | melee sweep, 4 targets | 60 | 0.4 s | none | none | none | 1.8 m |
 | Fire axe | melee sweep, 2 targets | 150 | 0.9 s | none | none | none | 1.8 m |
@@ -141,7 +141,7 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
 | Tommy gun | 2 / 4 | 3 / 6 | 5 / 9 | 187 | 101 |
 | Pump shotgun | 1 / 1 | 1 / 1 | 1 / 1 | 190 | 127 |
 | Hunting rifle | 1 / 1 | 1 / 1 | 1 / 2 | 190 | 123 |
-| Flare gun | 1 / 1 | 1 / 1 | 2 / 2 | 112 + blast | 32 + blast |
+| Flare gun | none | none | none | 0 | 0 |
 | Crowbar | 1 / 2 | 1 / 2 | 2 / 3 | 82 | 82 |
 | Baseball bat | 1 / 1 | 1 / 2 | 2 / 3 | 150 | 150 |
 | Fire axe | 1 / 1 | 1 / 1 | 1 / 1 | 167 | 167 |
@@ -164,8 +164,8 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
   could follow.
 - **Each weapon has one job.** The SMG is volume at short range (the most damage a second, a short magazine of
   patience before the reload); the shotgun is a close wall; the rifle is the precision and the line (it passes through
-  two zombies, each blow 40% weaker, which rewards lining the dead up); the flare gun is crowd control with a risk of
-  being too close (the blast hurts anyone near the point of impact, the shooter's own party excluded for now); the
+  two zombies, each blow 40% weaker, which rewards lining the dead up); the flare gun is crowd control: it draws the dead
+  away from the team for a few seconds and hurts no one; the
   crowbar never runs dry and pays the melee kill bonus (130 points) for the risk of being in reach.
 - **The shotgun cannot farm points.** Pellets add up to one hit for the rules, and its damage falls to 35% by 22
   m, so it is a close weapon by its own numbers, not by a rule.
@@ -239,9 +239,11 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 - **The carry limit: proposed, awaiting the maintainer (#410).** Two guns and the melee weapon; buying or taking a
   third gun replaces the one in hand and its reserve. Today a player may carry every weapon, and the swap button (F,
   d-pad up) takes the next one carried in hand.
-- **The flare: decided, no damage; it becomes a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe
-  bomb, no damage for now. Zombies in a radius turn to it for a set time. Until #439 lands the table's flare numbers
-  (a hit and a blast) are the old design. A grenade still hurts the thrower alone (`player_blasted`).
+- **The flare: no damage, a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe bomb, no damage for
+  now. Where it bursts it burns for `lure_seconds` (8) and every zombie within `lure_radius` (25 m) walks to it
+  instead of to a player ([how the dead behave](zombies.md#the-flare-lure)). Its damage and splash are 0 in the
+  definition, so an upgrade's damage multiplier does nothing to it. A grenade still hurts the thrower alone
+  (`player_blasted`).
 - **Reload as a skill.** A magazine swap that rewards a timed second press, and cancelling a reload by sprinting, wait
   for the controller (#14).
 - **Quick melee: not built (#411).** On its own button, with the crowbar-style sweep and a fixed short cooldown; the
