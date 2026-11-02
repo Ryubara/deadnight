@@ -25,8 +25,10 @@ Postgres) makes the nights and the game servers (`deadnight-server`) run them, o
 3. **Play** (after Create) or the join itself builds the lot and warms it up (about 35 s in Chrome with a graphics card).
    Up to four share a night, and a player who comes later joins it where it is.
 
-Inside a Discord Activity the same page lands everyone of the voice channel in one night with no code
-(`?instance_id=` from Discord).
+Inside a Discord Activity the game opens on the main menu like anywhere else, while the night of the voice channel is
+made ready in the background (`?instance_id=` from Discord); **Play together** shows its code at once and one press of
+**Play** puts everyone of the channel in that one night, with no code to type. `tools/web_smoke/activity.py` checks it:
+the menu first, then the same room code on Play together.
 
 The server address is a developer setting: on the desktop the Play together screen has a **Server address** button
 (the old Join screen, `ws://localhost:8910` is this machine's own server), and on the web `?dev` shows it.
