@@ -43,7 +43,7 @@ func _get_minimum_size() -> Vector2:
 
 func on_event(event: Dictionary) -> void:
 	if (
-		event["type"] != EVENT
+		event.get("type") != EVENT
 		or mode == Mode.OFF
 		or not ChallengePromptQueue.is_worth_showing(event)
 	):

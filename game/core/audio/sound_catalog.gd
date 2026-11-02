@@ -18,6 +18,7 @@ const STEP_OWN_DB := -14.0
 const GROUP_LIMITS := {
 	&"ui": 4,
 	&"ui_hint": 1,
+	&"challenge": 1,
 	&"gun": 12,
 	&"reload": 4,
 	&"step": 8,

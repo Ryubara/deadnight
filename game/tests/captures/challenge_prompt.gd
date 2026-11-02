@@ -4,8 +4,9 @@ extends Node
 ## kills and purchases cross a quarter mark, a finish or a milestone step, exactly as in the game.
 ## Not part of the game.
 ##
-## Arguments after `--`: `--seconds=S` (game seconds to
-## play, default 40), `--reduced` (reduced motion), `--setting=N` (0 all, 1 finished only, 2 off).
+## Arguments after `--`: `--seconds=S` (game seconds to play, default 40), `--reduced` (reduced
+## motion), `--touch` (the phone's controls on), `--marks` (start far from a finish: quarter marks
+## first), `--setting=N` (0 all, 1 finished only, 2 off).
 ## Record: `gds godot -- --path game res://tests/captures/challenge_prompt.tscn --write-movie
 ## <abs>/f.png --fixed-fps 10 --quit-after N -- --seconds=60`. Prints `PROMPT <seconds> <what>`
 ## whenever a card appears, so the frame to look at is time x fps.
@@ -43,6 +44,11 @@ func _ready() -> void:
 				)
 			)
 	)
+	if _args.has("touch"):
+		# The phone's layout, as the night screen builds it (the `--touch` flag turns the controls on).
+		var touch := TouchControls.new()
+		touch.state = _hud.state
+		add_child(touch)
 	if FileAccess.file_exists(SAVE):
 		DirAccess.remove_absolute(SAVE)
 	var board := ChallengeBoard.open(SAVE, ChallengeFixture.clock_on(DAY), _catalog())
@@ -172,10 +178,10 @@ func _record(
 func _seed_progress(board: ChallengeBoard) -> void:
 	for entry in board.profile.dailies:
 		if entry["id"] == &"d_kills":
-			entry["progress"] = 9
+			entry["progress"] = 2 if _args.has("marks") else 9
 		if entry["id"] == &"d_head":
 			entry["progress"] = 5
-	board.profile.lifetime[&"kills"] = 8
+	board.profile.lifetime[&"kills"] = 0 if _args.has("marks") else 8
 
 
 func _on_tick() -> void:
