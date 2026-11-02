@@ -43,6 +43,8 @@ static func insides_fit(data: Dictionary, tuning: RulesTuning) -> bool:
 	return (
 		data["phase"] >= 0
 		and data["phase"] < GameRules.Phase.size()
+		and is_finite(data["night_time"])
+		and data["night_time"] >= 0.0
 		and _plan_fits(data["plan"], tuning)
 		and _special_fits(data["special_id"], tuning)
 		and all_names(data["doors_open"])
@@ -91,6 +93,8 @@ static func _player_fits(player: Dictionary) -> bool:
 		and _health_fits(player["health"], player["max_health"])
 		and is_finite(player["since_blow"])
 		and player["since_blow"] >= 0.0
+		and player["kills"] >= 0
+		and player["downs"] >= 0
 	)
 
 

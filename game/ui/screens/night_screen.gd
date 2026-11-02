@@ -192,6 +192,7 @@ func _pause() -> void:
 func _resume_night() -> void:
 	_overlay.hide()
 	_hud.reticle.set_shown(true)
+	_hud.scoreboard_enabled = true
 	_touch.live = true
 	night.set_paused(false)
 
@@ -211,6 +212,7 @@ func _on_night_over(round_reached: int) -> void:
 func _show_overlay(title: String, note: String, can_resume: bool) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_hud.reticle.set_shown(false)
+	_hud.scoreboard_enabled = false
 	_touch.live = false
 	_title.text = title
 	_note.text = note
