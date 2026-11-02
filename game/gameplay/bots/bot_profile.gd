@@ -85,6 +85,8 @@ const REACTION_FLOOR := 0.20
 ## and the share of a gun's reserve limit it tops up to with what is left over (`SimSkill`).
 @export_range(1, 6, 1) var ammo_floor_mags: int = 3
 @export_range(0.0, 1.0, 0.05) var ammo_topoff: float = 1.0
+## Grenades under which the bot buys more at a rack when it has points to spare (0: never).
+@export_range(0, 5, 1) var grenades_wanted: int = 2
 ## How many weapons the bot re-cuts in a night.
 @export_range(0, 4, 1) var re_cuts: int = 1
 

@@ -200,6 +200,10 @@ func show_prompt(prompt: Dictionary) -> void:
 			_offer(
 				&"buy_ammo", label, prompt["price"], "%d ROUNDS FOR YOUR RESERVE" % prompt["rounds"]
 			)
+		&"grenades":
+			_offer(
+				&"buy_grenades", "Grenades", prompt["price"], "%d FOR YOUR PACK" % prompt["count"]
+			)
 		&"circuit":
 			_set_circuit_prompt(prompt["id"], prompt["on"])
 		&"fuel":

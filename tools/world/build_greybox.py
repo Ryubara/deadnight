@@ -537,7 +537,7 @@ def door(name: str, label_at) -> None:
 
 
 def shop_spot(name: str, kind: str, shop_id: str, pos, yaw: float = 0.0, crane_spot: int | None = None) -> None:
-    """Where a player stands to buy: a marker in `ShopSpots`. `kind` is wall, crane or ammo; `shop_id` is the shop item
+    """Where a player stands to buy: a marker in `ShopSpots`. `kind` is wall, crane, rack or ammo; `shop_id` is the shop item
     (empty for ammunition: the lot sells the rounds of the weapon in hand). A crane marker names its place in the
     rules' list of crane spots (`crane_spot`, an index into `spot_doors` of the tuning's crane)."""
     props = {"transform": xform(pos, yaw), "metadata/kind": f'"{kind}"', "metadata/shop_id": f'"{shop_id}"'}
@@ -971,6 +971,12 @@ def build() -> None:
     box("ShopProps", "ShotgunPlaque", (1.7, 0.9, 0.12), (-8.2, 1.6, -4.26), "plaque", collide=False)
     sign("ShopProps", "ShotgunSign", "SHOTGUN", (-8.2, 1.6, -4.34), 180)
     shop_spot("SpotShotgun", "wall", "weapon_shotgun", (-8.2, 0, -5.6), 180)
+    # The grenade rack, on the stand's east wall in the alley (the midway side, so it opens with the concession): a
+    # plaque like the weapons' that names it; the spot sells the grenades the shop table prices (`grenades`), as many
+    # as fit the pack. The front wall is full: windows, the door, the shotgun and the concession's breaker post.
+    box("ShopProps", "GrenadePlaque", (1.7, 0.9, 0.12), (10.26, 1.6, 3.0), "plaque", 90, collide=False)
+    sign("ShopProps", "GrenadeSign", "GRENADES", (10.34, 1.6, 3.0), 90, 56)
+    shop_spot("SpotGrenades", "rack", "grenades", (11.4, 0, 3.0), 90)
     # The rifle, on the booth's front wall, midway side.
     box("ShopProps", "RiflePlaque", (1.7, 0.9, 0.12), (-4.0, 1.6, 21.74), "plaque", collide=False)
     sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)

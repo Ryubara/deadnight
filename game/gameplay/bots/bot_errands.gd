@@ -401,6 +401,7 @@ func _view(
 	view.here = me["pos"]
 	view.arms = me.get("arms", {})
 	view.held = me.get("weapon", &"")
+	view.grenades = beliefs.grenades
 	view.doors_open = frame.get("doors", [])
 	view.bought = state.bought
 	var crane: Dictionary = frame.get("crane", {})

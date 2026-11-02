@@ -26,6 +26,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 	found.economy = tuning.economy
 	found.fuel = tuning.fuel
 	found.boards = tuning.barricades.boards
+	found.max_grenades = tuning.explosives.max_grenades
 	var night_tuning := NightTuning.shipped()
 	found.use_reach = night_tuning.use_reach
 	found.fuel_reach = night_tuning.fuel_reach

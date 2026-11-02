@@ -12,6 +12,8 @@ var economy: EconomyTuning
 var fuel: FuelTuning
 ## Boards a whole barricade holds.
 var boards := 1
+## Grenades a pack holds (`ExplosiveTuning.max_grenades`).
+var max_grenades := 5
 ## Metres a hand reaches to use a door, a spot, a breach or a breaker, and to buy a fuel can.
 var use_reach := 3.2
 var fuel_reach := 2.0
