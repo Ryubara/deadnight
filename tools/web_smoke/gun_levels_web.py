@@ -1,6 +1,7 @@
 """Fires every gun in the web build, in a browser, and measures what comes out of the page's audio output.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/gun_levels_web.py build/gun-levels --godot <pinned godot>
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/gun_levels_web.py build/gun-levels --godot <pinned godot>
 
 Runs `res://tools/bench/audio_gun_bench.tscn` (the scene that fires one shot and a two second burst of each firearm
 through `WeaponSounds` and the audio service, then runs the night's beds alone) as the page's program, in headless

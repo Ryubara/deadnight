@@ -60,11 +60,17 @@ static func raise_max(player: PlayerState, bonus: float) -> Dictionary:
 	}
 
 
-## The player gets up with all their health.
-static func revive(player: PlayerState, tuning: HealthTuning) -> Array[Dictionary]:
+## The player gets up with `fraction` of their health (all of it at the end of a round; a
+## teammate's revive gives `HealthTuning.revive_fraction`). `reviver_id` is the teammate who did it
+## (0 for none: the round ended).
+static func revive(
+	player: PlayerState, tuning: HealthTuning, fraction: float = 1.0, reviver_id: int = 0
+) -> Array[Dictionary]:
 	player.downed = false
-	player.health = player.max_health
-	player.since_blow = tuning.regen_delay
+	player.health = player.max_health * fraction
+	# Getting up at a round's end is a fresh start; a teammate's hand leaves the wait for mending
+	# to run from the revive.
+	player.since_blow = tuning.regen_delay if reviver_id == 0 else 0.0
 	var events: Array[Dictionary] = [
 		{
 			"type": &"player_healed",
@@ -73,7 +79,7 @@ static func revive(player: PlayerState, tuning: HealthTuning) -> Array[Dictionar
 			"max_health": player.max_health,
 			"reason": &"revive",
 		},
-		{"type": &"player_revived", "player_id": player.id},
+		{"type": &"player_revived", "player_id": player.id, "reviver_id": reviver_id},
 	]
 	return events
 

@@ -6,7 +6,7 @@ probe (`window.deadnight`, game/core/web_probe.gd): the players in the frame, th
 round trip the page measures to the server. A second player (a headless desktop client with `--bot`, or another page)
 shows as `players` 2 or more.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/online.py \\
+    uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/online.py \\
         https://web-production-f401d1.up.railway.app wss://deadnight-server-production.up.railway.app build/online
 
 Writes `result.json`, `console.txt` and screenshots (`join.png`, `night.png`, `night_<n>.png`) into the folder.
@@ -52,25 +52,23 @@ def probe_after(page: Page, seconds: float, what: str, test) -> dict:
     raise TimeoutError(f"timed out waiting for {what}; the game last reported {seen}")
 
 
-def join(page: Page, server: str, out: Path) -> None:
-    """Menu, Play together, its developer button for the server address, then the address and Enter."""
-    smoke.wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
-    page.mouse.click(5, 5)  # gives the canvas the keyboard
-    page.wait_for_timeout(2500)
-    smoke.menu_item(page, "Play")
-    page.screenshot(path=out / "menu_join.png")
-    smoke.press(page, "Enter")
-    smoke.wait_for(
-        page, "the Play together screen", lambda s: s.get("screen") == "together_screen", smoke.SCREEN_TIMEOUT_S
-    )
-    page.wait_for_timeout(1500)
-    # The server address is a developer setting, the last control of the Play together screen (the page is opened
-    # with `?dev`): Quick join, Create a night, the code field, Join, Back, then the address button.
+def open_address(page: Page) -> None:
+    """Menu, Play together, its developer button for the server address: the join screen (the page is opened with
+    `?dev`). Shared with `startup_check.py`, which fails when the menu or that screen changes under it."""
+    smoke.open_together(page)
+    # The server address is the last control of the Play together screen: Quick join, Create a night, the code field,
+    # Join, Back, then the address button.
     for _ in range(5):
         smoke.press(page, "ArrowDown")
     smoke.press(page, "Enter")
     smoke.wait_for(page, "the join screen", lambda s: s.get("screen") == "join_screen", smoke.SCREEN_TIMEOUT_S)
     page.wait_for_timeout(2000)
+
+
+def join(page: Page, server: str, out: Path) -> None:
+    """Menu, Play together, its developer button for the server address, then the address and Enter."""
+    smoke.reach_menu(page)
+    open_address(page)
     # The address field has the focus with its text selected: typing replaces it.
     page.keyboard.type(server, delay=40)
     page.wait_for_timeout(500)
