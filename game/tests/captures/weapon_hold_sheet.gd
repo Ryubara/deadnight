@@ -6,15 +6,19 @@ extends Node
 ##
 ##     godot --path game --write-movie <abs>/hold.png --fixed-fps 10 --quit-after N \
 ##         res://tests/captures/weapon_hold_sheet.tscn
+## `-- --only=grenade` films one weapon (its id) alone.
 ## Also prints `HOLD <class> <pose> ...` lines: the numbers the weapon hold test checks.
 
 const MOVIE_FPS := 10.0
 const SHOT_FRAMES := 8
 ## Every catalogue weapon, each with its own model and hold (`PlayerAnimation.equip`).
 const WEAPONS: Array[StringName] = [
-	&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun", &"crowbar"
+	&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun", &"crowbar", &"grenade"
 ]
 const POSES := ["idle", "run", "aim", "fire"]
+## The grenade is thrown, never aimed or fired: its cooked hold, standing and running.
+const GRENADE := &"grenade"
+const GRENADE_POSES := ["idle", "run"]
 const VIEWS := ["side", "shoulder", "rear", "top"]
 
 var _player: Player
@@ -37,8 +41,14 @@ func _ready() -> void:
 	_side = _camera()
 	_top = _camera()
 	_rear = _camera()
+	var only := ""
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--only="):
+			only = argument.trim_prefix("--only=")
 	for weapon_class in WEAPONS:
-		for pose in POSES:
+		if only != "" and String(weapon_class) != only:
+			continue
+		for pose in GRENADE_POSES if weapon_class == GRENADE else POSES:
 			for view in VIEWS:
 				_steps.append([weapon_class, pose, view])
 	print("FRAMES ", _steps.size() * SHOT_FRAMES + 12)
@@ -95,7 +105,11 @@ func _begin(step: Array, index: int) -> void:
 		_player.teleport(Vector3(0.0, 0.05, 6.0))
 		_player.camera_rig.yaw = 0.0
 		_player.camera_rig.pitch = 0.0
-		if _animation.weapon_hold() != WeaponHoldMap.hold_for(weapon_class) or index == 0:
+		if weapon_class == GRENADE:
+			_animation.grenade(&"gone")
+			_animation.grenade(&"cook")
+		elif _animation.weapon_hold() != WeaponHoldMap.hold_for(weapon_class) or index == 0:
+			_animation.grenade(&"gone")
 			_animation.equip(weapon_class)
 		match pose:
 			"run":
@@ -117,7 +131,9 @@ func _begin(step: Array, index: int) -> void:
 
 
 func _report(step: Array) -> void:
-	var weapon := _animation.weapon()
+	var weapon := _animation.weapon_mount().get_node("Grenade") as Node3D
+	if step[0] != GRENADE:
+		weapon = _animation.weapon()
 	if weapon == null:
 		return
 	var hand := _animation.weapon_mount().global_position

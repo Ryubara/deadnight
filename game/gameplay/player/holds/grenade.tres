@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="WeaponHold" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/weapon_hold.gd" id="1_hold"]
+
+[resource]
+script = ExtResource("1_hold")
+weapon_class = &"Grenade"
+scene = "res://assets/weapons/grenade/grenade.glb"
+model_scale = 0.35
+size_factor = 1.5
+real_length = 0.11
+model_length = 0.608
+shouldered = false
+grip_offset = Vector3(0, 0, 0)
+support = Vector3(0, 0, 0)
+muzzle = Vector3(0, 0.337, 0)
+butt = Vector3(0, -0.271, 0)
+pitch_offset_deg = 0.0

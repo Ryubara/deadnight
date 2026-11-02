@@ -18,11 +18,16 @@ const BARREL_TOLERANCE_DEG := 3.0
 ## ray's direction but crosses it at the convergence distance.
 const AIM_TOE_IN_DEG := 5.0
 const CONVERGE_TOLERANCE_DEG := 1.0
+## At the hip the camera is behind the shoulder, further back running (the sprint pull-back), so the
+## barrel turns in a little more (5.5 degrees measured running).
+const HIP_TOE_IN_DEG := 8.0
 ## How far away the crosshair's target is for the convergence check.
 const TARGET_DISTANCE := WeaponHandsIK.CONVERGE_DISTANCE
 ## The catalogue's guns, each with its own model and hold, and what is held in one hand.
 const GUNS: Array[StringName] = [&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun"]
 ## The weapons given a size other than the rule's (docs/design/weapon-hold.md, "The size rule").
+## The grenade's own size exception: drawn 1.5 times the rule so it fills the fist.
+const GRENADE_SIZE_FACTOR := 1.5
 const SIZE_EXCEPTIONS := {&"pistol": 1.75, &"flare_gun": 1.7}
 
 var _runner: GdUnitSceneRunner
@@ -195,16 +200,34 @@ func test_guns_are_shouldered_in_the_aim_pose() -> void:
 		await _ticks(10)
 
 
-func test_guns_point_along_the_body_at_the_hip_and_running() -> void:
+func _crosshair_target() -> Vector3:
+	var camera := _rig.get_node("Camera3D") as Camera3D
+	return camera.global_position - camera.global_basis.z * TARGET_DISTANCE
+
+
+func test_guns_meet_the_crosshair_at_the_hip_and_running() -> void:
 	for weapon_class: StringName in GUNS:
 		await _equip_weapon(weapon_class)
 		var weapon := _animation.weapon()
-		var forward := -_player.global_basis.z
+		var hold := _animation.weapon_hold()
 		assert_float(_animation.shoulder_blend()).is_equal(1.0)
+		assert_float(_animation.aim_weight()).is_equal(0.0)
+		# The body faces the view: the barrel is along it, turned in to the crosshair's point.
+		var forward := -_player.global_basis.z
 		(
 			assert_float(_angle_deg(_muzzle_direction(weapon), forward))
-			. override_failure_message("%s at the hip" % weapon_class)
-			. is_less(BARREL_TOLERANCE_DEG)
+			. override_failure_message("%s at the hip, off the body" % weapon_class)
+			. is_less(HIP_TOE_IN_DEG)
+		)
+		(
+			assert_float(
+				_angle_deg(
+					_muzzle_direction(weapon),
+					(_crosshair_target() - weapon.to_global(hold.muzzle)).normalized()
+				)
+			)
+			. override_failure_message("%s at the hip, off the crosshair's point" % weapon_class)
+			. is_less(CONVERGE_TOLERANCE_DEG)
 		)
 		_runner.simulate_action_press("move_forward")
 		await _ticks(40)
@@ -212,7 +235,17 @@ func test_guns_point_along_the_body_at_the_hip_and_running() -> void:
 		(
 			assert_float(_angle_deg(_muzzle_direction(weapon), forward))
 			. override_failure_message("%s running" % weapon_class)
-			. is_less(BARREL_TOLERANCE_DEG)
+			. is_less(HIP_TOE_IN_DEG)
+		)
+		(
+			assert_float(
+				_angle_deg(
+					_muzzle_direction(weapon),
+					(_crosshair_target() - weapon.to_global(hold.muzzle)).normalized()
+				)
+			)
+			. override_failure_message("%s running, off the crosshair's point" % weapon_class)
+			. is_less(CONVERGE_TOLERANCE_DEG)
 		)
 		(
 			assert_float(
@@ -222,6 +255,47 @@ func test_guns_point_along_the_body_at_the_hip_and_running() -> void:
 		)
 		_runner.simulate_action_release("move_forward")
 		await _ticks(10)
+
+
+# A view behind the body (the player runs one way and looks the other) never swings the gun round
+# at the hip: the barrel keeps the body's forward, and eases onto the crosshair as the view
+# comes near it (the share is continuous, so nothing jumps).
+func test_the_hip_barrel_keeps_the_body_when_the_view_is_behind_it() -> void:
+	await _equip_weapon(&"rifle")
+	var weapon := _animation.weapon()
+	var forward := -_player.global_basis.z
+	_rig.yaw = _player.rotation.y + deg_to_rad(150.0)
+	await _ticks(40)
+	assert_float(_animation.aim_weight()).is_equal(0.0)
+	assert_float(_angle_deg(_muzzle_direction(weapon), forward)).is_less(BARREL_TOLERANCE_DEG)
+	var last := 180.0
+	for gap in [75.0, 50.0, 30.0, 10.0]:
+		_rig.yaw = _player.rotation.y + deg_to_rad(gap)
+		await _ticks(40)
+		var off := _angle_deg(
+			_muzzle_direction(weapon), _crosshair_target() - weapon.global_position
+		)
+		assert_float(off).override_failure_message("view %d deg: off the crosshair" % gap).is_less(
+			last + 0.5
+		)
+		last = off
+	assert_float(last).is_less(CONVERGE_TOLERANCE_DEG + 2.0)
+
+
+func test_the_hip_share_is_continuous_and_the_aim_weight_wins() -> void:
+	var hands := WeaponHandsIK.new()
+	var last := 1.0
+	for gap in 91:
+		var share := hands.converge_share(deg_to_rad(float(gap)))
+		assert_float(share).is_between(0.0, 1.0)
+		assert_float(share).is_less_equal(last + 0.0001)
+		assert_float(last - share).is_less(0.08)
+		last = share
+	assert_float(hands.converge_share(deg_to_rad(10.0))).is_equal(1.0)
+	assert_float(hands.converge_share(deg_to_rad(120.0))).is_equal(0.0)
+	hands.converge = 0.7
+	assert_float(hands.converge_share(deg_to_rad(120.0))).is_equal(0.7)
+	hands.free()
 
 
 func test_the_barrel_follows_the_camera_pitch() -> void:
@@ -293,3 +367,31 @@ func test_a_gun_given_the_aim_shows_in_the_hand_and_the_hand_is_not_empty() -> v
 		await _equip_weapon(id)
 		assert_bool(_animation.weapon().visible).override_failure_message(id).is_true()
 		assert_bool(_animation.weapon().is_inside_tree()).is_true()
+
+
+func test_the_grenade_is_held_by_its_hold_file() -> void:
+	var hold := load(PlayerAnimation.GRENADE_HOLD) as WeaponHold
+	assert_object(hold).is_not_null()
+	assert_str(str(hold.weapon_class)).is_equal("Grenade")
+	assert_bool(hold.has_model()).is_true()
+	assert_bool(hold.shouldered).is_false()
+	assert_float(hold.size_factor).is_equal(GRENADE_SIZE_FACTOR)
+	# Sized by the rule like the rest, times its exception (a grenade vanishes in the fist).
+	assert_float(hold.world_length(_world_scale()) / hold.sized_length()).is_between(
+		1.0 - SIZE_TOLERANCE, 1.0 + SIZE_TOLERANCE
+	)
+	# Its grip was solved at this size.
+	assert_float(HandGrip.for_name("grenade").model_scale).is_equal_approx(hold.model_scale, 0.001)
+	_animation.grenade(&"cook")
+	await _ticks(40)
+	var grenade := _animation.weapon_mount().get_node("Grenade") as Node3D
+	assert_bool(grenade.visible).is_true()
+	assert_str(grenade.scene_file_path).is_equal(hold.scene)
+	var hand := _bone_position(PlayerAnimation.HAND_BONE)
+	assert_float(grenade.global_position.distance_to(hand)).is_between(0.05, 0.25)
+	var length := grenade.to_global(hold.muzzle).distance_to(grenade.to_global(hold.butt))
+	assert_float(length / hold.sized_length()).is_between(
+		1.0 - SIZE_TOLERANCE, 1.0 + SIZE_TOLERANCE
+	)
+	# The gun is put away while it is in the hand.
+	assert_bool(_animation.weapon().visible).is_false()
