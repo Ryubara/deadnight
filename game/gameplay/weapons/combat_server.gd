@@ -12,8 +12,8 @@ extends RefCounted
 ## combat events that caused them.
 ##
 ## Events (fields besides `type`):
-##   shot_fired: shooter_id, weapon_id, seq, muzzle, ends (one point per pellet), ammo, reserve,
-##     rewound_by
+##   shot_fired: shooter_id, weapon_id, seq, muzzle, ends (one point per pellet), flesh (the point
+##     of every zombie the shot hit, for the view's impacts), ammo, reserve, rewound_by
 ##   fire_rejected: shooter_id, seq, reason (`reloading`, `cooldown`, `empty`, `no_weapon`,
 ##     `bad_aim`)
 ##   damage_dealt: shooter_id, target_id, zone, damage, headshot, melee, pellets, health, point
@@ -280,6 +280,7 @@ func _fire(action: Dictionary) -> void:
 	var muzzle: Vector3 = action["muzzle"]
 	var def := state.def
 	var ends: Array[Vector3] = []
+	var flesh: Array[Vector3] = []
 	var damage := {}
 	match def.kind:
 		WeaponDef.Kind.HITSCAN:
@@ -290,6 +291,8 @@ func _fire(action: Dictionary) -> void:
 			for pellet: Dictionary in shot["pellets"]:
 				ends.append(pellet["end"])
 				_tally(damage, pellet["hits"])
+				for hit: Dictionary in pellet["hits"]:
+					flesh.append(hit["point"])
 		WeaponDef.Kind.PROJECTILE:
 			var mdir := AimResolver.aim_direction(
 				def, origin, dir, muzzle, view["targets"], world_ray
@@ -299,6 +302,8 @@ func _fire(action: Dictionary) -> void:
 		WeaponDef.Kind.MELEE:
 			var hits := AimResolver.sweep_melee(def, origin, dir, view["targets"], world_ray)
 			_tally(damage, hits)
+			for hit: Dictionary in hits:
+				flesh.append(hit["point"])
 			ends.append(origin + dir * def.melee_range)
 	_emit(
 		&"shot_fired",
@@ -308,6 +313,7 @@ func _fire(action: Dictionary) -> void:
 			"seq": seq,
 			"muzzle": muzzle,
 			"ends": ends,
+			"flesh": flesh,
 			"ammo": state.ammo,
 			"reserve": state.reserve,
 			"rewound_by": view["rewound_by"],

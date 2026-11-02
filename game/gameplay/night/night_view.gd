@@ -121,6 +121,21 @@ func hear(world: NightWorld) -> void:
 	sounds.setup(_state, world)
 
 
+## The flash on the shooter's muzzle point (or at the server's muzzle when the weapon has no model),
+## the impacts, and the shake of the local player's own view.
+func _show_shot(event: Dictionary) -> void:
+	var def := WeaponCatalog.get_def(event["weapon_id"])
+	var shooter: int = event.get("shooter_id", -1)  # the warm-up's sample shot has none
+	var body := bodies.call(shooter) as Player
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	var muzzle: Node3D = animation.muzzle_point() if animation != null else null
+	effects.shot(def, event["muzzle"], event["ends"], event.get("flesh", []), muzzle)
+	if shooter > 0:
+		show_attack(shooter, def)
+	if body != null and shooter == _state.player_id:
+		body.camera_rig.add_shake(def.shake_trauma)
+
+
 ## Draws and sounds one event as if the server had sent it (the warm-up replays samples of each
 ## kind before the night starts, `NightWarmup`).
 func draw_event(event: Dictionary) -> void:
@@ -145,9 +160,7 @@ func _on_event(event: Dictionary) -> void:
 		&"zombie_removed":
 			_gib(event)
 		&"shot_fired":
-			var def := WeaponCatalog.get_def(event["weapon_id"])
-			effects.shot(def, event["muzzle"], event["ends"])
-			show_attack(event["shooter_id"], def)
+			_show_shot(event)
 		&"damage_dealt":
 			if event["melee"]:
 				effects.spark(event["point"])

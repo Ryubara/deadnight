@@ -1,27 +1,38 @@
 class_name ShotEffects
 extends Node3D
-## The instant, client-side look of a shot: muzzle flash, impact spark and puff, damage number, and
-## a tracer only for a weapon that asks for one (`WeaponDef.tracer`). All of it is predicted from
-## the shooter's own view and needs no answer from the server.
+## The instant, client-side look of a shot: the muzzle flash (`MuzzleFlash`, on the weapon's muzzle
+## point when it has one), a small impact where it landed (`ImpactFx`: a dust puff on a wall, a
+## dark-red puff on a zombie), damage numbers, and a tracer only for a weapon that asks for one
+## (`WeaponDef.tracer`). All of it is predicted from the shooter's own view and needs no answer from
+## the server. Sizes and why: docs/design/shot-feedback.md.
 
 const TRACER_COLOUR := Color(1.0, 0.86, 0.45)
 const TRACER_RADIUS := 0.02
 const TRACER_SECONDS := 0.3
-const FLASH_SECONDS := 0.2
-const FLASH_ENERGY := 3.0
 const NUMBER_SECONDS := 1.0
 const NUMBER_RISE := 0.8
 const HEAD_COLOUR := Color(1.0, 0.45, 0.35)
 const BODY_COLOUR := Color(1.0, 1.0, 1.0)
-const PUFF_COLOUR := Color(0.78, 0.74, 0.66, 0.55)
-const PUFF_RADIUS := 0.1
-const PUFF_GROWTH := 2.6
-const PUFF_SECONDS := 0.35
 ## A shot that ended within this many metres of its range hit something.
 const RANGE_SLACK := 0.1
+## A pellet that ended this close to a point it hit a zombie at hit the zombie, not the wall.
+const SAME_POINT := 0.02
+## A weapon with no model in the hand (the pistol: the hand stays empty) flashes this far along the
+## barrel from the body's muzzle, where its fist is, so the body does not hide the flash.
+const BARE_REACH := 0.6
+## The flash of something that has no weapon def (a flare's burst), in metres across.
+const DEFAULT_FLASH := 0.3
 
 ## Streaks drawn so far, for tests.
 var tracers_drawn := 0
+## The impacts, pooled and capped.
+var impacts := ImpactFx.new()
+
+var _flash: MuzzleFlash
+
+
+func _ready() -> void:
+	add_child(impacts)
 
 
 func _init() -> void:
@@ -31,47 +42,40 @@ func _init() -> void:
 
 
 ## The look of one shot of `def` from `muzzle` that ended at each of `ends` (one per pellet): the
-## muzzle flash, then at every end that stopped short of the weapon's range an impact (a spark and a
-## puff of dust). A streak only when the weapon asks for one. A projectile weapon draws nothing
-## here: its body flies and bursts.
-func shot(def: WeaponDef, muzzle: Vector3, ends: Array) -> void:
-	# A blow has no muzzle: no flash, no impact (a hit shows as a spark, `NightView`).
-	if def.is_melee():
+## muzzle flash (on `anchor`, the weapon's muzzle point, when there is one), then a small puff on
+## every zombie hit at `flesh` and a spark, puff and mark at every end that stopped short of the
+## weapon's range on something else. A streak only when the weapon asks for one. A projectile
+## weapon draws only the flash: its body flies and bursts. A melee weapon draws nothing here.
+func shot(
+	def: WeaponDef, muzzle: Vector3, ends: Array, flesh: Array = [], anchor: Node3D = null
+) -> void:
+	if def.is_melee():  # a swing has no muzzle: no flash, no impacts of a bullet
 		return
-	muzzle_flash(muzzle)
+	var aim := Vector3.ZERO
+	if not ends.is_empty():
+		aim = (ends[0] as Vector3) - muzzle
+	muzzle_flash(muzzle, def.flash_size, anchor, aim)
 	if def.is_projectile():
 		return
+	for point: Vector3 in flesh:
+		impacts.spawn(point, ImpactFx.Kind.FLESH)
 	for end: Vector3 in ends:
 		if def.tracer:
 			tracer(muzzle, end)
-		if muzzle.distance_to(end) < def.max_range - RANGE_SLACK:
-			impact(end)
+		if def.is_melee() or muzzle.distance_to(end) >= def.max_range - RANGE_SLACK:
+			continue
+		if not _is_near_any(end, flesh):
+			impacts.spawn(end, ImpactFx.Kind.WORLD)
 
 
-## A spark and a puff of dust where a shot landed.
+## A spark, a puff and a mark where a shot landed on the world.
 func impact(at: Vector3) -> void:
-	spark(at)
-	puff(at)
+	impacts.spawn(at, ImpactFx.Kind.WORLD)
 
 
-## Dust that swells and fades.
-func puff(at: Vector3) -> void:
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = PUFF_COLOUR
-	var mesh := SphereMesh.new()
-	mesh.radius = PUFF_RADIUS
-	mesh.height = PUFF_RADIUS * 2.0
-	mesh.material = material
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	instance.position = at
-	add_child(instance)
-	var tween := create_tween().set_parallel()
-	tween.tween_property(instance, "scale", Vector3.ONE * PUFF_GROWTH, PUFF_SECONDS)
-	tween.tween_property(material, "albedo_color:a", 0.0, PUFF_SECONDS)
-	tween.chain().tween_callback(instance.queue_free)
+## A small glint where something burst (a flare, a board).
+func spark(at: Vector3) -> void:
+	impacts.spark(at)
 
 
 func tracer(from: Vector3, to: Vector3, radius: float = TRACER_RADIUS) -> void:
@@ -94,19 +98,27 @@ func tracer(from: Vector3, to: Vector3, radius: float = TRACER_RADIUS) -> void:
 	_free_after(instance, TRACER_SECONDS)
 
 
-func muzzle_flash(at: Vector3) -> void:
-	var light := OmniLight3D.new()
-	light.light_energy = FLASH_ENERGY
-	light.omni_range = 5.0
-	light.light_color = TRACER_COLOUR
-	light.position = at
-	add_child(light)
-	_free_after(light, FLASH_SECONDS)
-	_burst(at, 0.12)
-
-
-func spark(at: Vector3) -> void:
-	_burst(at, 0.1)
+## A flash `size` metres across at `at` (or on `anchor`, the weapon's muzzle point, which sets the
+## place), the barrel pointing along `aim` (the muzzle point's own way when it has one).
+func muzzle_flash(
+	at: Vector3, size: float = DEFAULT_FLASH, anchor: Node3D = null, aim: Vector3 = Vector3.ZERO
+) -> void:
+	if size <= 0.0:
+		return
+	var flash: MuzzleFlash
+	var barrel := aim
+	if anchor != null and is_instance_valid(anchor) and anchor.is_inside_tree():
+		flash = MuzzleFlash.on(anchor)
+		barrel = -anchor.global_basis.z
+	else:
+		if not is_instance_valid(_flash):  # the warm-up frees what it drew
+			_flash = MuzzleFlash.new()
+			add_child(_flash)
+		flash = _flash
+		flash.global_position = (
+			at + barrel.normalized() * BARE_REACH if barrel.length() > 0.01 else at
+		)
+	flash.fire(size, barrel)
 
 
 func number(at: Vector3, text: String, headshot: bool) -> void:
@@ -125,16 +137,11 @@ func number(at: Vector3, text: String, headshot: bool) -> void:
 	tween.tween_callback(label.queue_free)
 
 
-func _burst(at: Vector3, radius: float) -> void:
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.material = _glow(TRACER_COLOUR)
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	instance.position = at
-	add_child(instance)
-	_free_after(instance, FLASH_SECONDS)
+func _is_near_any(point: Vector3, points: Array) -> bool:
+	for other: Vector3 in points:
+		if point.distance_to(other) < SAME_POINT:
+			return true
+	return false
 
 
 func _glow(colour: Color) -> StandardMaterial3D:

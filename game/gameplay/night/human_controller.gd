@@ -22,9 +22,9 @@ func command(player: Player, player_id: int) -> NightCommand:
 		result.use = _edge(ACTION_USE)
 		result.use_held = Input.is_action_pressed(ACTION_USE)
 		result.swap = _edge(ACTION_SWAP)
-	var camera := player.camera_rig.camera()
-	result.origin = camera.global_position
-	result.dir = -camera.global_transform.basis.z
+	# The aim ray is the view without the shot shake: a shake moves the picture, never the shot.
+	result.origin = player.camera_rig.aim_transform().origin
+	result.dir = (-player.camera_rig.aim_transform().basis.z)
 	return result
 
 
