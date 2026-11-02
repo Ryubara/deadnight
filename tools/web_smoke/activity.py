@@ -301,9 +301,13 @@ def clipboard_flow(page, frame) -> tuple[list[str], bool]:
     spy = frame.evaluate("window.deadnightSpy")
     lines.append(f"Ctrl+V reached the frame: {spy}")
     pasted = field == PASTED
-    lines.append(f"paste: the code field holds {field!r}, wanted {PASTED!r}: {'ok' if pasted else 'FAILED'}")
     if tab:
-        pasted = layer == "undefined"  # a tab keeps the engine's own paste: nothing to hold to
+        # A tab keeps the engine's own paste (it reads the clipboard through the API, and the first Ctrl+V gets the old
+        # text): reported, not held to the code. What must hold is that the page was left alone.
+        lines.append(f"paste in a tab (the engine's own, unchanged): the code field holds {field!r}")
+        pasted = layer == "undefined"
+    else:
+        lines.append(f"paste: the code field holds {field!r}, wanted {PASTED!r}: {'ok' if pasted else 'FAILED'}")
     smoke.press(page, "ArrowUp")  # the code field -> Create a night
     smoke.press(page, "Enter")
     state = rooms.wait_for(frame, "a night's code", lambda s: bool(s.get("room_code")), 60)
