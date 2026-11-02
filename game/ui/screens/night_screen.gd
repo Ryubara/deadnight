@@ -24,6 +24,9 @@ static var join_url := ""
 static var join_ticket := ""
 ## With `join_url`: the autopilot plays this player (`--bot`), seen over its own shoulder.
 static var join_as_bot := false
+## The match settings of the next local night (the Play screen sets them); taken once, the way
+## `join_url` is. Joining a server ignores them: the server's are in its WELCOME.
+static var match_settings: MatchSettings
 ## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
 ## settings file); null wears the saved look.
 static var own_look: CharacterLook
@@ -60,6 +63,9 @@ func _ready() -> void:
 	night.warm_up = warm_up_enabled
 	night.touch_active = touch_active
 	night.own_look = own_look
+	if match_settings != null and join_url == "":
+		night.match_settings = match_settings
+	match_settings = null
 	if challenge_path != "":
 		night.challenge_board = ChallengeBoard.open(challenge_path)
 	add_child(night)

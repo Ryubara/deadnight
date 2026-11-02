@@ -80,9 +80,10 @@ func test_the_rules_cannot_be_built_without_a_seed() -> void:
 		if method["name"] == "_init":
 			init = method
 	assert_bool(init.is_empty()).is_false()
-	assert_int((init["args"] as Array).size()).is_equal(2)
-	# Neither argument has a default: `GameRules.new()` and `GameRules.new(tuning)` do not compile.
-	assert_int((init["default_args"] as Array).size()).is_equal(0)
+	assert_int((init["args"] as Array).size()).is_equal(3)
+	# Only the match settings (the third) have a default: `GameRules.new()` and
+	# `GameRules.new(tuning)` do not compile.
+	assert_int((init["default_args"] as Array).size()).is_equal(1)
 
 
 func test_the_seed_is_in_the_snapshot_and_a_restore_keeps_it() -> void:

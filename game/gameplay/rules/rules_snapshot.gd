@@ -36,6 +36,7 @@ static func take(rules: GameRules) -> Dictionary:
 		"generator": rules.generator.to_dict(),
 		"barricades": rules.barricades.to_dict(),
 		"crane": rules.crane.to_dict(),
+		"match_settings": rules.settings.to_dict(),
 		"spawn_rng_state": rules._spawn_rng.state,
 		"shop_rng_state": rules._shop_rng.state,
 		"cripple_rng_state": rules._cripple_rng.state,
@@ -67,6 +68,7 @@ static func restore(rules: GameRules, data: Dictionary) -> StringName:
 	rules._round_total = data["round_total"]
 	rules._spawn_timer = data["spawn_timer"]
 	rules._round_players = data["round_players"]
+	rules.settings = MatchSettings.from_dict(data["match_settings"])
 	rules._next_zombie_id = data["next_zombie_id"]
 	rules._zombies.clear()
 	for zombie_id in data["zombies"]:

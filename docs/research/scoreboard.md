@@ -22,9 +22,9 @@ It is not the source: it counts on the client, and counts no downs.
 
 ## Versions
 
-- `GameRules.SNAPSHOT_VERSION` 9 to 10: a player's `downs` and the rules' `night_time`. Every older snapshot is
+- `GameRules.SNAPSHOT_VERSION` 10 to 11: a player's `downs` and the rules' `night_time`. Every older snapshot is
   refused as
-  `bad_version` (`test_scoreboard_counts.gd` keeps one from version 9).
+  `bad_version` (`test_scoreboard_counts.gd` keeps one from version 10).
 - `NetWire.VERSION` 4 to 5 (`MIN_VERSION` 5): a `PING` is 7 bytes, the client's last round trip in milliseconds
   (`NetWire.NO_RTT` before the first answer) after its clock. The server cannot measure a round trip itself over TCP
   without an extra message, so the client reports its own; a client that lies can only misprint its own ping.

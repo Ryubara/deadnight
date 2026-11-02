@@ -91,17 +91,17 @@ func test_the_counts_and_the_clock_survive_a_snapshot() -> void:
 	assert_dict(copy.to_dict()).is_equal(rules.to_dict())
 
 
-func test_the_layout_of_version_9_is_bad_version_not_malformed() -> void:
+func test_the_layout_of_version_10_is_bad_version_not_malformed() -> void:
 	var rules := RulesFixture.make_rules(1)
 	RulesFixture.into_round_one(rules)
 	var old := rules.to_dict()
-	old["version"] = 9
+	old["version"] = 10
 	old.erase("night_time")
 	for entry: Dictionary in old["players"].values():
 		entry.erase("downs")
 	var target := RulesFixture.make_rules(1)
 	assert_str(target.from_dict(old)).is_equal("bad_version")
-	assert_int(GameRules.SNAPSHOT_VERSION).is_greater(9)
+	assert_int(GameRules.SNAPSHOT_VERSION).is_greater(10)
 
 
 func test_a_snapshot_with_a_negative_count_or_clock_is_malformed() -> void:
