@@ -15,6 +15,10 @@
 #      file written from it, never expanded into a script's text.
 #   4. The token is read-only and no secret is used.
 # The workflow that runs is the base branch's, so an edit to this file takes effect once it merges.
+#
+# `pr-rules` runs the four checks as steps of one job: one runner and one required name instead of four (#447, the
+# runners are the bottleneck). It sits beside `title`, `body`, `docs` and `commits` until the ruleset requires it in
+# their place, then they are deleted (docs/research/ci-jobs.md).
 name: pr
 
 on:
@@ -31,6 +35,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The four checks below as one job. A step after a failed one still runs (`!cancelled()`), so one run lists every
+  # refusal, as the four jobs did; the job fails when any step failed. Same four rules: the base branch's checkout, the
+  # API for files and commits, title and description only through the environment, a read-only token.
+  pr-rules:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Write the title and description to files
+        run: |
+          set -euo pipefail
+          [[ "$NUMBER" =~ ^[0-9]+$ ]] || { echo "unexpected pull request number" >&2; exit 1; }
+          printf '%s\n' "$PR_TITLE" > "$RUNNER_TEMP/pr-title.txt"
+          printf '%s\n' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
+      - name: Check the title against the commit conventions
+        run: uv run --with pyyaml python .github/scripts/groundwork.py check-title "$RUNNER_TEMP/pr-title.txt"
+      - name: Check the description against the template
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --with pyyaml python .github/scripts/groundwork.py check-body --body "$RUNNER_TEMP/pr-body.md" \
+            --title "$RUNNER_TEMP/pr-title.txt"
+      - name: Check that the docs change with the code
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GH_REPO/pulls/$NUMBER/files" --jq '.[].filename' > "$RUNNER_TEMP/changed.txt"
+          if [ "$(wc -l < "$RUNNER_TEMP/changed.txt")" -ge 3000 ]; then
+            echo "the pull request changes 3000 files or more, which the API does not list in full: split it" >&2
+            exit 1
+          fi
+          uv run --with pyyaml python .github/scripts/groundwork.py check-docs \
+            --body "$RUNNER_TEMP/pr-body.md" --changed "$RUNNER_TEMP/changed.txt"
+      - name: Check the commits' trailers
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp "repos/$GH_REPO/pulls/$NUMBER/commits" > "$RUNNER_TEMP/commits.json"
+          uv run --with pyyaml python .github/scripts/groundwork.py check-commits \
+            --commits "$RUNNER_TEMP/commits.json" --body "$RUNNER_TEMP/pr-body.md"
+
   title:
     runs-on: ubuntu-24.04
     steps:

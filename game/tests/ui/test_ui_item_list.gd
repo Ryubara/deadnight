@@ -10,6 +10,8 @@ var _activated: Array[int] = []
 
 
 func before_test() -> void:
+	# A screen another suite left on the router would cover the widget and eat its clicks.
+	await RouterFixture.clear(get_tree())
 	_picked.clear()
 	_activated.clear()
 	_list = auto_free(UIItemList.new())

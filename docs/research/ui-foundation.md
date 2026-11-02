@@ -183,6 +183,17 @@ menu through the router, or the main scene, clears the router when it is done, a
 screen clears it before (`RouterFixture.clear` in `game/tests/ui/router_fixture.gd`). The pair `test_main_scene.gd`
 plus `test_customize_screen.gd` (about 6 s) reproduces it under load without the 5-minute full run.
 
+### A screen left on the router eats the next suite's clicks
+
+Run alone, the slider, toggle and option selector click tests passed; run with the whole `tests/ui` folder they failed
+(the value stayed put, `pressed` stayed false) while key tests in the same suites passed. The cause was the router suites:
+`test_ui_router.gd` and `test_ui_router_robustness.gd` ended every test with `UIRouter.reset(_screen("end"))`, and
+`test_night_mouse_look.gd` ended on the main menu, so a screen (a plain `Control`, mouse filter *stop*, full rect) stayed
+on the router's stage for every suite after them. A widget a later suite put at the top-left of the window sat under it:
+the click went to the screen, a key went to the focused widget. They now end with `RouterFixture.clear`, and the
+click-driven widget suites clear the router before each test as well, so one suite's leftover cannot break another's. To
+find such a cover, list the visible controls with a stopping mouse filter whose rect holds the click point.
+
 ### A screen takes focus only while it is the top (#190)
 
 The cause of #178 was also a product bug: `SceneTree.create_timer` keeps running while the router disables a covered

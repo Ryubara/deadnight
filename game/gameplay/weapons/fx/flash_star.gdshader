@@ -18,6 +18,10 @@ uniform float spike_depth = 0.6;
 // How much of the star the pale core fills.
 uniform float core_size = 0.42;
 uniform float energy = 1.0;
+// A flat disc of the rim colour behind the star, at this brightness (0 draws none), for a star that fills only `star_fill`
+// of the quad (1 fills it all, as the impact sparks do).
+uniform float halo = 0.0;
+uniform float star_fill = 1.0;
 
 float star_edge(vec2 p) {
 	float angle = atan(p.y, p.x);
@@ -47,8 +51,17 @@ float inside(vec2 p, float scale) {
 
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
-	float outer = inside(p, 1.0);
-	float inner = inside(p, core_size);
-	ALBEDO = mix(rim_colour.rgb, core_colour.rgb, inner) * energy;
-	ALPHA = outer;
+	vec2 q = p / star_fill;
+	float outer = inside(q, 1.0);
+	float inner = inside(q, core_size);
+	vec3 colour = mix(rim_colour.rgb, core_colour.rgb, inner) * energy;
+	float disc = 0.0;
+	if (halo > 0.0) {
+		float d = length(p);
+		float pixel = max(fwidth(d), 0.0001);
+		disc = (1.0 - smoothstep(0.96 - pixel, 0.96, d)) * halo;
+	}
+	// Where only the glow is, the glow's colour; the star over it.
+	ALBEDO = mix(rim_colour.rgb * energy, colour, outer);
+	ALPHA = max(outer, disc);
 }

@@ -76,6 +76,10 @@ var touch_active := Callable()
 var assist: TouchAimAssist
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
+## The player's challenges, set before `start` by the screen a person plays on (bots, captures and
+## tests leave it empty, so they never touch the save). The night counts into it as it plays.
+var challenge_board: ChallengeBoard
+var challenges: ChallengeSession
 ## Puts the names and the next door on the HUD from the player's camera (made with the view, when
 ## there is a HUD).
 var markers: NightMarkers
@@ -136,6 +140,7 @@ func start(
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
+	_track_challenges()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
@@ -177,6 +182,7 @@ func start_remote(
 	var online := p_link if p_link != null else WebSocketLink.new()
 	link = online
 	state = ClientState.new()
+	_track_challenges()
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
@@ -277,6 +283,13 @@ func _last_frame(events: Array) -> Dictionary:
 	return {}
 
 
+## Counts the night into the player's challenges, when there is a board to count into.
+func _track_challenges() -> void:
+	if challenge_board != null:
+		challenges = ChallengeSession.new(challenge_board, rules_tuning)
+		challenges.attach(state)
+
+
 ## The view and the sounds, once there is a camera to look through.
 func _build_view(camera: Camera3D) -> void:
 	view = NightView.new()
@@ -360,7 +373,8 @@ func _make_spectator() -> Camera3D:
 	return _spectator
 
 
-## The guns, the grenades and the lot's machines and shop sound from the same events as the view.
+## The guns, the grenades, the lot's machines and shop and the soldiers' voices sound from the same
+## events as the view.
 func _add_sounds() -> void:
 	var weapons := WeaponSounds.new()
 	weapons.name = "WeaponSounds"
@@ -376,6 +390,10 @@ func _add_sounds() -> void:
 	var tuning: RulesTuning = rules_tuning
 	var generator := world.greybox.get_node_or_null("GeneratorYard/Generator") as Node3D
 	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
+	var voice := SoldierVoice.new()
+	voice.name = "SoldierVoice"
+	add_child(voice)
+	voice.setup(state)
 
 
 ## Where the prize crane stands at `spot` (the rules' list of crane places), or null.
@@ -444,6 +462,8 @@ func set_paused(paused: bool) -> void:
 
 func _exit_tree() -> void:
 	running = false
+	if challenges != null:
+		challenges.flush()
 	if server != null:
 		server.close()
 	if remote and link != null:
@@ -542,6 +562,9 @@ func _on_remote_event(event: Dictionary) -> void:
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
+	if me.get("turn", false):
+		_body.state.facing = me["facing"]
+		_body.rotation.y = _body.state.facing
 
 
 ## Shows, for the command the local player is about to send, where the grenade they are holding

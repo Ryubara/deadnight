@@ -33,8 +33,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
 
 Not in the game yet: interest
-management and a tighter packing of zombies (#57), server bodies without models (#153), the Discord proxy and Railway
-(#52).
+management and a tighter packing of zombies (#57), the Discord proxy (#52).
 
 The first numbers from the real thing, loopback on one loaded machine: 222 bytes a `TICK` with two players and four
 zombies (6.6 KB/s down), a command 47 bytes (2.8 KB/s up; 23 and 1.4 KB/s since protocol 2, 25 and 1.5 KB/s
@@ -212,6 +211,20 @@ readable for that release. Nothing is negotiated.
 **Authentication hook.** `NightHost.admit` is called with `(transport_id, version)` after the version is accepted and
 returns 0 to let the client in or a `Refusal` (`DENIED`) to turn it away. It is unset today (everyone is let in); the
 platform backend's ticket check plugs in there (see [the backend](platform-backend.md)) once hello carries a ticket.
+
+### Server bodies and drawn avatars (#153)
+
+A single-process night draws the server's own bodies (the Soldier's model, skeleton and animation), so the world is
+one scene. A game server draws nothing: `NightServer.drawn_bodies` is false under `NightHost`, and `NightWorld.add_body`
+then calls `Player.strip_model`, which frees the `Model` and the `AnimationTree` and leaves an empty `Model` node, the
+collision and the simulation. A body is **5 nodes** on a server and 71 drawn (`test_server_bodies.gd`), and walks the same
+(the model has no part in `PlayerSimulation`; the test replays 120 ticks on both). Each client draws the others from the
+frames as `RemoteAvatars`, and a door's look follows `door_opened`: the split of the issue is the transport since #302,
+this removes the cost of the bodies on the server.
+
+One thing the server decides that no command says: while a player repairs, the server turns the body toward the breach
+(#338). The frame marks such a player (`turn`), and the player's own predicted body takes the server's facing for those
+frames (a position correction is not enough: the facing is not in `Reconciler`).
 
 ### Lag compensation (#54)
 
