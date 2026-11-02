@@ -45,6 +45,11 @@ const REACTION_FLOOR := 0.20
 ## Seconds, at most, between two shots on top of the weapon's own interval.
 @export_range(0.0, 1.0, 0.01, "suffix:s") var fire_jitter: float = 0.08
 
+@export_group("Movement")
+## Whether the bot walks to stay near the people. Off, it holds where it stands (a test that must
+## not walk: a body the physics engine moves does not repeat to the last bit).
+@export var follows: bool = true
+
 @export_group("Thinking")
 ## How many times a second the brain decides; the motor runs every tick.
 @export_range(1, 30, 1, "suffix:Hz") var think_hz: int = 8

@@ -170,6 +170,7 @@ func _four_standing_bots(recording: bool) -> SeatedNight:
 	# to the last bit from one run to the next, and a fight amplifies a hair into a different night.
 	var stand := BotProfile.regular()
 	stand.retreat_margin = 0.0
+	stand.follows = false
 	for id in range(1, 5):
 		night.seat(id, stand, SEED + id)
 	night.gather()

@@ -51,7 +51,7 @@ func _seat_the_hosted_bots() -> void:
 	var level := BotLevel.new(
 		_probe.callable(), _night.world.is_lit, _night.rules_tuning.rounds, _night.world.map()
 	)
-	level.home = Autopilot.HOME
+	LotBotData.fill(level, _night.world)
 	for i in SEATS.size():
 		var state := ClientState.new()
 		state.player_id = SEATS[i]

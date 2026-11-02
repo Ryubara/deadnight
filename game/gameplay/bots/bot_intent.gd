@@ -6,9 +6,22 @@ extends RefCounted
 
 ## The believed contact to shoot at, by id; -1 for none.
 var target_id := -1
-## The way to walk, a flat world direction (not normalised); zero to stand still.
+## Where to walk to (`Vector3.INF` for nowhere), and how near counts as there (0 for the legs'
+## own radius). The legs find the way: a cached path over the walking mesh.
+var goal := Vector3.INF
+var goal_radius := 0.0
+## A heading to take as it is, flat, already chosen on the mesh by the steering (a retreat, a
+## dodge); it takes the place of the goal. Zero for none.
+var reflex := Vector3.ZERO
+## Whether the brain wants to run (sprint) to get there.
+var run := false
+## What the legs made of it this tick, which the motor turns into the stick: the way to walk (a
+## flat world direction, zero to stand still), whether to sprint, whether to jump.
 var wish := Vector3.ZERO
 var sprint := false
+var jump := false
+## How hard to push the stick, 0 to 1.
+var pace := 1.0
 ## A view yaw to turn toward when there is no target; NAN to keep the view.
 var look_yaw := NAN
 var reload := false
@@ -20,12 +33,22 @@ var note := ""
 
 ## False for an intent no motor should obey: a number that is not one, or a wish that is huge.
 func is_sane() -> bool:
-	return wish.is_finite() and wish.length() < 1000.0 and (is_nan(look_yaw) or is_finite(look_yaw))
+	return (
+		wish.is_finite()
+		and wish.length() < 1000.0
+		and reflex.is_finite()
+		and reflex.length() < 1000.0
+		and (goal == Vector3.INF or goal.is_finite())
+		and (is_nan(look_yaw) or is_finite(look_yaw))
+	)
 
 
 func to_dict() -> Dictionary:
 	return {
 		"target": target_id,
+		"goal": goal,
+		"reflex": reflex,
+		"run": run,
 		"wish": wish,
 		"sprint": sprint,
 		"look": look_yaw,

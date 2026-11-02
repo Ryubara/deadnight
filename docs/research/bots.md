@@ -648,6 +648,54 @@ no path error is printed across a soak with door purchases. **Tests**: the stuck
 follow scorer, a nav test on every area of the opening-order test, a negative control (a blocked gap) that the ladder
 must solve or report.
 
+**Built (#226).** Under `game/gameplay/bots/`, pure data in and a command out, time always the caller's:
+
+- **`BotPath`** keeps one cached path and follows it with a look-ahead point (the first path point more than 0.8 m
+  away; a corner run past at speed counts as reached once the bot is nearer the next point than the corner is). A goal
+  is snapped with `map_get_closest_point` first; a goal the mesh does not reach is *unreachable* for 5 s and the brain is
+  told, so the bot takes another errand and no question is asked twice. A door bought drops the cache and holds every
+  query until the map's iteration id has moved (or a cap of seconds), because a query before the first
+  synchronisation prints an `ERROR`. Three queries a second at most, per bot.
+- **`BotSteering`** rates 12 headings (away from threats, toward the goal, room ahead, light, the nearest loop, the last
+  choice) and projects the end of the best onto the mesh; a heading that ends off the mesh or that a wall stops is not
+  a candidate, so a reflex cannot leave the mesh. **`BotFollow`** rates a ring of places round the people after Ellie (the
+  band, the walk, behind or beside the leader, out of the line of fire, 2.5 m from the other bots, light, not in a gap),
+  the cheap terms for every candidate and the ray and projection only for the best few, and keeps a place until another
+  is clearly better.
+- **`BotLegs`** turns the brain's goal or reflex heading into the way to walk: a person who walks at the bot is given way
+  inside 1.2 m (or when closing in a gap), and **`BotStuck`** (a detector fed the commanded speed and the progress
+  made, then the ladder: sidestep, repath to a jittered goal, jump, drop the goal, walk back along the breadcrumbs,
+  `bot_stuck` report) never teleports. **`BotLink`** and the lot's loops are authored data read by `LotBotData`
+  (the loops are rectangles 3 m outside the generator cage and the projection booth's floor; the lot has no jump
+  links yet, phase 5 uses them).
+- **Tests.** Unit: the stuck detector on synthetic traces, the path (cache, budget, doors, unreachable), the steering
+  and follow scorers (`tests/bots/`); `tests/world/test_bot_navigation.gd` asks a path from the start to a point in every
+  area of the opening-order test with each of its nine door sets (an open area is reached, a shut one is marked, no
+  empty answer). `tests/night/test_bot_movement.gd` has scenarios 17 to 20 in the real lot, a gap the mesh does not know
+  is shut (the ladder solves it or reports, with no teleport) and a bot pushed into a wall. `ErrorCatcher` (a `Logger`
+  added with `OS.add_logger`) collects what the engine prints, so "no path error printed" is an assertion and not a
+  hope; its own test proves it sees the unsynchronised-map error.
+- **The soak** (`tests/captures/bots_move_soak.tscn`, a local or nightly run) plays the old autopilot as the person
+  (it shops, opens the doors and fights) with four hosted bots and prints per bot walking seconds, stuck seconds, the
+  longest episode, the distance from the nearest person, queries a second, think and legs cost, and what each stuck
+  episode ran into. `test_bot_soak.gd` runs a short one in CI. Measured on the final code over seeds 1, 2 and 6
+  (20 game minutes or the game's end, the players' health tripled so the night lasts): no `ERROR`, no `bot_stuck`
+  report, the longest stuck episode 1.7 s (the limit is 10 s), **stuck 0.9 to 1.2% of the bots' walking time** (the
+  target is under 1%: met on one seed of three; one bot reached 2.7% on a seed), within 12 m of the nearest person
+  **94 to 95% of the time** (the target is 95%; round by round it runs from 82 to 100%), 0.5 to 0.9 path queries a
+  second per bot (the limit is 3). Over half of the stuck episodes are a bot pressed against another bot while
+  following; the next rung or the other bot's step clears them in about a second. Tuning that point and the think cost
+  are a follow-up issue.
+- **What the tests found.** A path point run past at speed was never "reached", so the bot turned back for it (the
+  look-ahead now moves on once the bot is nearer the next point than the corner is). A navigation query is an engine
+  `ERROR` on the frames before the map has taken its first mesh in or a swapped one, which a test can only see
+  through a `Logger`, hence the hold on every query after a door. The soak's stuck cause report (what the bot touched
+  when an episode began) showed that most episodes are bot against bot, not the lot's furniture.
+- **Cost** (the soak: four bots, 40 ticks a frame on a shared machine, so read the second digit as noise): a think
+  **p50 about 0.11 ms, p99 about 0.65 ms** with the follow rating and steering in it (the phase 1 budget is 0.5 ms
+  worst per bot at 40 zombies, so this run is over it on a shared machine: see the follow-up issue), the legs
+  **p50 about 20 microseconds, p99 0.08 to 0.2 ms**, and 0.5 to 0.9 path queries a second per bot.
+
 ### Phase 3: combat and ammunition
 
 Issue: #227.

@@ -1,8 +1,8 @@
 class_name BotMotor
 extends RefCounted
-## The hands of a bot: every tick it turns the brain's intent into a `NightCommand`. In this phase
-## that is the view and the trigger (path following and the stuck ladder come with the movement
-## phase). The aim is a model, not a dice roll:
+## The hands of a bot: every tick it turns the brain's intent into a `NightCommand`: the view, the
+## trigger and the stick (the way to walk was found by `BotLegs`). The aim is a model, not a dice
+## roll:
 ##
 ## - the view (`yaw`, `pitch`) is a critically damped spring toward where the target is, with a
 ##   hard cap on how fast it may turn (`BotProfile.max_aim_speed`, any window), and the shot's
@@ -223,11 +223,12 @@ func _view_error_degrees(truth: Vector2) -> float:
 ## The stick: the wish direction seen from the view (the body walks its own way while the view
 ## is elsewhere, as a person's does).
 func _walk(out: NightCommand, intent: BotIntent) -> void:
+	out.motion.jump = intent.jump
 	if intent.wish.length() <= 0.01:
 		return
 	var heading := atan2(-intent.wish.x, -intent.wish.z)
 	var apart := yaw - heading
-	out.motion.move = Vector2(sin(apart), -cos(apart))
+	out.motion.move = Vector2(sin(apart), -cos(apart)) * clampf(intent.pace, 0.0, 1.0)
 	out.motion.sprint = intent.sprint
 
 

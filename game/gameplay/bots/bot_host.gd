@@ -6,10 +6,17 @@ extends RefCounted
 ## night in the game server, a headless test and a soak.
 
 var bots: Array[BotClient] = []
+## The seats that are bots by player id, shared with every bot (the roster labels them).
+var bot_ids: Dictionary = {}
 
 
-func add(bot: BotClient) -> BotClient:
+## Seats a bot. A client that is run on the host but stands for a person (a test's stand-in for a
+## human player) is added with `is_bot` false: the others take it for a person.
+func add(bot: BotClient, is_bot: bool = true) -> BotClient:
 	bots.append(bot)
+	bot.bot_ids = bot_ids
+	if is_bot:
+		bot_ids[bot.state.player_id] = true
 	return bot
 
 
