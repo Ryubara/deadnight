@@ -88,6 +88,7 @@ func test_requests_past_the_crowd_cap_wait_for_a_kill() -> void:
 		func(rounds: RoundTuning) -> void:
 			rounds.alive_cap_start = 60.0
 			rounds.alive_cap_max = 60.0
+			rounds.alive_cap_ceiling = 60
 			rounds.count_base = 80.0
 			rounds.spawn_interval_start = 0.2
 			rounds.spawn_interval_min = 0.2
@@ -106,6 +107,7 @@ func test_a_hit_on_a_queued_zombie_is_rejected_and_pays_nothing() -> void:
 		func(rounds: RoundTuning) -> void:
 			rounds.alive_cap_start = 60.0
 			rounds.alive_cap_max = 60.0
+			rounds.alive_cap_ceiling = 60
 			rounds.count_base = 80.0
 			rounds.spawn_interval_start = 0.2
 			rounds.spawn_interval_min = 0.2
