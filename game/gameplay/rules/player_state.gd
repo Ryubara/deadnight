@@ -32,7 +32,7 @@ var max_health: float = 0.0
 var since_blow: float = 0.0
 var weapons: Array[StringName] = []
 var tonics: Array[StringName] = []
-## The weapons (catalogue ids) this player has had tuned up this night.
+## The weapons (catalogue ids) this player has had re-cut this night.
 var upgraded: Array[StringName] = []
 var grenades: int = 0
 var repair_points_this_round: int = 0

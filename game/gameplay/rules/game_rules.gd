@@ -46,7 +46,7 @@ extends RefCounted
 ##   player_removed, player_revived: player_id
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
-##     catalogue weapon, and `rounds` into its reserve; a tune-up: `upgrade`, the catalogue weapon;
+##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
 ##     a crane play: `crane_spot`, see CranePlay)
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   crane_*: the prize crane's play, see `CranePlay`
@@ -75,7 +75,7 @@ enum BuyResult {
 	TANK_FULL,
 	AMMO_FULL,
 	CRANE_BUSY,
-	## A tune-up with no weapon in hand that can take one.
+	## A re-cut with no weapon in hand that can take one.
 	NO_WEAPON,
 }
 
@@ -199,7 +199,7 @@ func is_door_open(door_id: StringName) -> bool:
 
 
 ## What an item costs right now, or -1 when there is no such item. With a `player_id`, what that
-## player pays: a tune-up costs more for each weapon they have tuned up already (-1 for no player).
+## player pays: a re-cut costs more for each weapon they have re-cut already (-1 for no player).
 func price_of(item_id: StringName, player_id: int = -1) -> int:
 	var item := tuning.economy.item(item_id)
 	if item == null:

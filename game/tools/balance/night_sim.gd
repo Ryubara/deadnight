@@ -543,7 +543,7 @@ func _between_rounds() -> void:
 
 
 ## Reads what the player now owns off the rules: weapons, and the most health a tonic gave (the
-## rules own both; a tune-up is applied where it is bought, `_buy_upgrade`).
+## rules own both; a re-cut is applied where it is bought, `_buy_upgrade`).
 func _refresh(player: SimPlayer) -> void:
 	var owned: PlayerState = rules.players[player.id]
 	player.max_health = owned.max_health
@@ -652,7 +652,7 @@ func _ammo_item(weapon_id: StringName) -> ShopItem:
 ## the reserve). `rounds` is the room an ammunition purchase has (the combat server's number in the
 ## game).
 func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
-	var weapon := _tune_up_weapon(player) if item_id == &"upgrade_weapon" else &""
+	var weapon := _re_cut_weapon(player) if item_id == &"upgrade_weapon" else &""
 	for event in rules.apply(RulesAction.buy(player.id, item_id, rounds, weapon)):
 		if event["type"] == &"purchase_made":
 			var spent: Dictionary = _result["spent_on"]
@@ -665,13 +665,13 @@ func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
 	return 0
 
 
-## The weapon a player puts on the bench: the firearm that kills most, tuned up, among those not yet
-## tuned up. `&""` when there is none.
-func _tune_up_weapon(player: SimPlayer) -> StringName:
+## The weapon a player puts on the bench: the firearm that kills most, re-cut, among those not yet
+## re-cut. `&""` when there is none.
+func _re_cut_weapon(player: SimPlayer) -> StringName:
 	var spec := rules.tuning.upgrade
 	var best_id: StringName = &""
 	var best_rate := -1.0
-	if rules.players[player.id].upgraded.size() >= skill.tune_ups:
+	if rules.players[player.id].upgraded.size() >= skill.re_cuts:
 		return best_id
 	for weapon_id: StringName in player.arms:
 		var arm: SimArm = player.arms[weapon_id]
@@ -685,10 +685,10 @@ func _tune_up_weapon(player: SimPlayer) -> StringName:
 
 
 ## Whether the item may still be sold to this player some day, so saving for it is sensible (it is
-## not already owned, and there is a weapon to tune up).
+## not already owned, and there is a weapon to re-cut).
 func _can_ever_buy(player: SimPlayer, item_id: StringName) -> bool:
 	if item_id == &"upgrade_weapon":
-		return _tune_up_weapon(player) != &""
+		return _re_cut_weapon(player) != &""
 	return not rules.players[player.id].tonics.has(item_id)
 
 
@@ -753,14 +753,14 @@ class SimArm:
 		arm.reserve = arm._def.reserve_start
 		return arm
 
-	## The definition in use: the catalogue's, or its tuned-up copy.
+	## The definition in use: the catalogue's, or its re-cut copy.
 	func def() -> WeaponDef:
 		return _def
 
 	func tier() -> int:
 		return _def.tier
 
-	## A tune-up, as `WeaponState.upgrade` does it: the numbers of `WeaponDef.upgraded`, then the
+	## A re-cut, as `WeaponState.upgrade` does it: the numbers of `WeaponDef.upgraded`, then the
 	## magazine and the reserve full.
 	func upgrade(spec: UpgradeTuning) -> void:
 		_def = _def.upgraded(spec)

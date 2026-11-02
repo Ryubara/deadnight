@@ -21,7 +21,7 @@ class Quote:
 
 
 ## The quote for `item_id` for this player now. `rounds` is the room an ammunition purchase has
-## (`RulesAction.buy`), `weapon` the weapon a tune-up is for.
+## (`RulesAction.buy`), `weapon` the weapon a re-cut is for.
 static func quote(
 	rules: GameRules, player_id: int, item_id: StringName, rounds: int, weapon: StringName
 ) -> Quote:
@@ -46,7 +46,7 @@ static func quote(
 
 
 ## What this player pays for the item at the start of the quote: its price this round, and for a
-## tune-up the step for each weapon they have tuned up already.
+## re-cut the step for each weapon they have re-cut already.
 static func price(rules: GameRules, item: ShopItem, player: PlayerState) -> int:
 	var cost := item.price_at(rules.round_number)
 	if item.kind == ShopItem.Kind.UPGRADE:

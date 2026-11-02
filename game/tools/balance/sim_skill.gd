@@ -41,11 +41,11 @@ var ammo_topoff: float = 1.0
 ## What the player buys, first to last.
 var shopping: Array[StringName] = []
 ## Items on that list the player saves for: while one is not yet affordable, nothing after it is
-## bought (a player who wants the tune-up does not spend the points on a door first).
+## bought (a player who wants the re-cut does not spend the points on a door first).
 var saves_for: Array[StringName] = []
-## How many weapons the player tunes up in a night (the list is read again at every break, and a
-## tune-up can be bought again for another weapon, so the player needs a stopping point).
-var tune_ups: int = 1
+## How many weapons the player re-cuts in a night (the list is read again at every break, and a
+## re-cut can be bought again for another weapon, so the player needs a stopping point).
+var re_cuts: int = 1
 
 
 ## The same player on another night: every number moved by up to `spread` either way (a good night,
@@ -55,7 +55,7 @@ func jittered(rng: RandomNumberGenerator, spread: float) -> SimSkill:
 	copy.id = id
 	copy.shopping = shopping
 	copy.saves_for = saves_for
-	copy.tune_ups = tune_ups
+	copy.re_cuts = re_cuts
 	copy.circuits = circuits
 	copy.swaps = swaps
 	copy.ammo_floor_mags = ammo_floor_mags
@@ -137,7 +137,7 @@ static func named(skill_id: StringName) -> SimSkill:
 				)
 			)
 			skill.saves_for.assign([&"upgrade_weapon", &"tonic_hearty"])
-			skill.tune_ups = 2
+			skill.re_cuts = 2
 		_:
 			(
 				skill

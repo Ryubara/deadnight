@@ -72,11 +72,11 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 ## How many targets one swing can hit.
 @export var melee_max_targets: int = 1
 
-## Which tune-up this copy has had: 0 as shipped, 1 after `upgraded`. Not saved with the file.
+## Which re-cut this copy has had: 0 as shipped, 1 after `upgraded`. Not saved with the file.
 var tier: int = 0
 
 
-## This weapon tuned up: a copy with more damage (the pellets, the blast), a bigger magazine and
+## This weapon re-cut: a copy with more damage (the pellets, the blast), a bigger magazine and
 ## reserve, and the spec's prefix on its name. The id stays, so the model, the sounds and the shop
 ## still know it. The server's `WeaponState` and the balance simulator both make it here.
 func upgraded(spec: UpgradeTuning) -> WeaponDef:

@@ -72,7 +72,7 @@ func add_reserve(rounds: int) -> int:
 	return added
 
 
-## Tunes the weapon up (`WeaponDef.upgraded`): the magazine and the reserve come back full at their
+## Re-cuts the weapon (`WeaponDef.upgraded`): the magazine and the reserve come back full at their
 ## new size. The caller has checked `tier() == 0`.
 func upgrade(spec: UpgradeTuning) -> void:
 	def = def.upgraded(spec)
@@ -81,7 +81,7 @@ func upgrade(spec: UpgradeTuning) -> void:
 	reserve = def.reserve_max
 
 
-## 0 as shipped, 1 once tuned up.
+## 0 as shipped, 1 once re-cut.
 func tier() -> int:
 	return def.tier
 

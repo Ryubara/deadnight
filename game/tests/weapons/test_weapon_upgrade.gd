@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## A tuned-up weapon: the numbers `UpgradeTuning` gives, filled to the new size, and what the combat
+## A re-cut weapon: the numbers `UpgradeTuning` gives, filled to the new size, and what the combat
 ## server does with the action.
 
 var _spec := UpgradeTuning.new()
@@ -16,17 +16,17 @@ func test_the_copy_has_the_numbers_of_the_tuning() -> void:
 		assert_float(tuned.splash_damage).is_equal(base.splash_damage * _spec.damage_multiplier)
 		assert_int(tuned.magazine_size).is_equal(ceili(base.magazine_size * 1.5))
 		assert_int(tuned.reserve_max).is_equal(ceili(base.reserve_max * 1.5))
-		assert_str(tuned.display_name).is_equal("Tuned " + base.display_name)
+		assert_str(tuned.display_name).is_equal("Re-Cut " + base.display_name)
 		assert_float(tuned.fire_interval).is_equal(base.fire_interval)
 
 
-func test_the_shipped_file_is_not_changed_by_a_tune_up() -> void:
+func test_the_shipped_file_is_not_changed_by_a_re_cut() -> void:
 	var before := WeaponCatalog.get_def(&"rifle").damage
 	WeaponCatalog.get_def(&"rifle").upgraded(_spec)
 	assert_float(WeaponCatalog.get_def(&"rifle").damage).is_equal(before)
 
 
-func test_a_tune_up_fills_the_magazine_and_the_reserve() -> void:
+func test_a_re_cut_fills_the_magazine_and_the_reserve() -> void:
 	var state := WeaponState.new(WeaponCatalog.get_def(&"smg"))
 	state.ammo = 3
 	state.reserve = 4
@@ -39,13 +39,13 @@ func test_a_tune_up_fills_the_magazine_and_the_reserve() -> void:
 	assert_int(state.def.magazine_size).is_greater(30)
 
 
-func test_the_server_tunes_up_a_carried_weapon_once() -> void:
+func test_the_server_re_cuts_a_carried_weapon_once() -> void:
 	var server := WeaponsFixture.make_server()
 	server.apply(CombatAction.give_weapon(1, &"pistol"))
 	var events := server.apply(CombatAction.upgrade_weapon(1, &"pistol"))
 	var done := WeaponsFixture.of(events, &"weapon_upgraded")[0]
 	assert_int(done["tier"]).is_equal(1)
-	assert_str(done["display_name"]).is_equal("Tuned Revolver")
+	assert_str(done["display_name"]).is_equal("Re-Cut Revolver")
 	assert_float(done["damage"]).is_equal(
 		WeaponCatalog.get_def(&"pistol").damage * _spec.damage_multiplier
 	)
@@ -63,7 +63,7 @@ func test_a_weapon_not_carried_or_a_crowbar_is_refused() -> void:
 	assert_str(WeaponsFixture.of(melee, &"action_rejected")[0]["reason"]).is_equal("not_upgradable")
 
 
-func test_a_tuned_up_shot_hurts_by_the_multiplier() -> void:
+func test_a_re_cut_shot_hurts_by_the_multiplier() -> void:
 	var rules := RulesFixture.make_rules(1)
 	RulesFixture.into_round_one(rules)
 	var server := CombatServer.new(WeaponsFixture.all_defs(), rules, Callable(), 1)

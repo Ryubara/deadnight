@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## The tune-up in the shop (item `upgrade_weapon`): priced by the item, one per weapon, only for a
+## The re-cut in the shop (item `upgrade_weapon`): priced by the item, one per weapon, only for a
 ## weapon the server found in the buyer's hand and the tuning allows, and named in the purchase.
 ## The hearty tonic beside it: the first perk with an effect, more health.
 
@@ -14,55 +14,55 @@ func _begin(points: int = 10000) -> void:
 	_rules.apply(RulesAction.grant_points(1, points))
 
 
-func _tune(weapon: StringName) -> int:
+func _cut(weapon: StringName) -> int:
 	for event in _rules.apply(RulesAction.buy(1, &"upgrade_weapon", -1, weapon)):
 		if event["type"] == &"purchase_denied":
 			return event["result"]
 	return GameRules.BuyResult.OK
 
 
-func test_the_tune_up_is_a_shop_item_with_a_price() -> void:
+func test_the_re_cut_is_a_shop_item_with_a_price() -> void:
 	var item := RulesFixture.tuning().economy.item(&"upgrade_weapon")
 	assert_object(item).is_not_null()
 	assert_int(item.kind).is_equal(ShopItem.Kind.UPGRADE)
 	assert_int(item.price).is_greater(0)
 
 
-func test_a_tune_up_costs_the_price_and_names_the_weapon() -> void:
+func test_a_re_cut_costs_the_price_and_names_the_weapon() -> void:
 	_begin()
 	var price := _rules.price_of(&"upgrade_weapon")
-	assert_int(_tune(&"rifle")).is_equal(GameRules.BuyResult.OK)
+	assert_int(_cut(&"rifle")).is_equal(GameRules.BuyResult.OK)
 	assert_int(_rules.points_of(1)).is_equal(10200 - price)
 	var made := _log.of(&"purchase_made")[0]
 	assert_str(made["detail"]["upgrade"]).is_equal("rifle")
 	assert_array(_rules.players[1].upgraded).contains_exactly([&"rifle"])
 
 
-func test_a_weapon_is_tuned_up_once_but_another_can_be() -> void:
+func test_a_weapon_is_re_cut_once_but_another_can_be() -> void:
 	_begin()
-	_tune(&"rifle")
-	assert_int(_tune(&"rifle")).is_equal(GameRules.BuyResult.ALREADY_OWNED)
-	assert_int(_tune(&"pistol")).is_equal(GameRules.BuyResult.OK)
+	_cut(&"rifle")
+	assert_int(_cut(&"rifle")).is_equal(GameRules.BuyResult.ALREADY_OWNED)
+	assert_int(_cut(&"pistol")).is_equal(GameRules.BuyResult.OK)
 	assert_array(_rules.players[1].upgraded).contains_exactly([&"rifle", &"pistol"])
 
 
 func test_nothing_in_hand_or_a_crowbar_is_refused_and_costs_nothing() -> void:
 	_begin()
-	assert_int(_tune(&"")).is_equal(GameRules.BuyResult.NO_WEAPON)
-	assert_int(_tune(&"crowbar")).is_equal(GameRules.BuyResult.NO_WEAPON)
-	assert_int(_tune(&"no_such_gun")).is_equal(GameRules.BuyResult.NO_WEAPON)
+	assert_int(_cut(&"")).is_equal(GameRules.BuyResult.NO_WEAPON)
+	assert_int(_cut(&"crowbar")).is_equal(GameRules.BuyResult.NO_WEAPON)
+	assert_int(_cut(&"no_such_gun")).is_equal(GameRules.BuyResult.NO_WEAPON)
 	assert_int(_rules.points_of(1)).is_equal(10200)
 
 
 func test_without_the_points_nothing_is_sold() -> void:
 	_begin(100)
-	assert_int(_tune(&"pistol")).is_equal(GameRules.BuyResult.NOT_ENOUGH_POINTS)
+	assert_int(_cut(&"pistol")).is_equal(GameRules.BuyResult.NOT_ENOUGH_POINTS)
 	assert_array(_rules.players[1].upgraded).is_empty()
 
 
-func test_the_tuned_weapons_survive_a_snapshot() -> void:
+func test_the_re_cut_weapons_survive_a_snapshot() -> void:
 	_begin()
-	_tune(&"smg")
+	_cut(&"smg")
 	var copy := GameRules.new(RulesFixture.tuning(), 1)
 	assert_str(copy.from_dict(_rules.to_dict())).is_equal("")
 	assert_array(copy.players[1].upgraded).contains_exactly([&"smg"])

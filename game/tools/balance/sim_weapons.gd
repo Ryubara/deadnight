@@ -36,7 +36,7 @@ static func damage(weapon_id: StringName, zone: StringName, distance: float) -> 
 	return damage_of(def(weapon_id), zone, distance)
 
 
-## The same for a definition in hand: the ones the night derives (a tuned-up weapon) are not in
+## The same for a definition in hand: the ones the night derives (a re-cut weapon) are not in
 ## the catalogue.
 static func damage_of(weapon: WeaponDef, zone: StringName, distance: float) -> float:
 	return float(weapon.pellets) * DamageModel.damage(weapon, distance, zone)

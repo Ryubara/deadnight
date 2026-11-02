@@ -378,7 +378,7 @@ damage_multiplier = 1.75
 magazine_multiplier = 1.5
 reserve_multiplier = 1.5
 price_step = 1500
-name_prefix = "Tuned "
+name_prefix = "Re-Cut "
 
 [resource]
 script = ExtResource("5_3ukcj")

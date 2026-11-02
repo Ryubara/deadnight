@@ -1,7 +1,7 @@
 class_name ShopItem
 extends Resource
 ## One thing the shop sells: a door, a weapon, a crane play, a tonic, fuel, grenades, ammunition or
-## a weapon tune-up.
+## a weapon re-cut.
 ##
 ## Data only. The price is a base plus a rise per round, so fuel can get dearer as the night goes
 ## on.

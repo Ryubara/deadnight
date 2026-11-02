@@ -93,14 +93,14 @@ func test_the_gate_fails_when_the_tuning_drifts() -> void:
 	assert_array(BalanceTargets.check(_batch(easy, 20))).is_not_empty()
 
 
-func test_zombie_health_climbs_faster_than_it_used_to_because_weapons_can_be_tuned_up() -> void:
+func test_zombie_health_climbs_faster_than_it_used_to_because_weapons_can_be_re_cut() -> void:
 	# Health compounded at 5% a round while weapons were flat (docs/research/round-scaling.md); the
-	# tune-up is what lets it climb like the original's, so the gate holds at the faster rate.
+	# re-cut is what lets it climb like the original's, so the gate holds at the faster rate.
 	assert_float(RulesFixture.tuning().rounds.health_growth).is_greater_equal(1.06)
 	assert_array(BalanceTargets.check(_shipped)).is_empty()
 
 
-func test_the_same_climb_is_a_wall_when_the_tune_up_and_the_tonic_do_nothing() -> void:
+func test_the_same_climb_is_a_wall_when_the_re_cut_and_the_tonic_do_nothing() -> void:
 	# The same shopping at the same price, but the bench changes nothing and the tonic gives no
 	# health: the gate must fail, so it is the upgrade that carries the climb and not luck.
 	var inert := RulesFixture.tuning()

@@ -207,9 +207,9 @@ func _add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> void:
 	)
 
 
-## Tunes a carried weapon up once (the numbers are the rules' `upgrade` tuning, the defaults
-## without rules). The rules have already charged; a weapon that is not carried, can not be tuned
-## up, or already is, is refused.
+## Re-cuts a carried weapon once (the numbers are the rules' `upgrade` tuning, the defaults without
+## rules). The rules have already charged; a weapon that is not carried, can not be re-cut or
+## already is, is refused.
 func _upgrade(player_id: int, weapon_id: StringName) -> void:
 	var spec := rules.tuning.upgrade if rules != null else UpgradeTuning.new()
 	var state := state_of(player_id, weapon_id)

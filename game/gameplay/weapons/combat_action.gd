@@ -58,7 +58,7 @@ static func add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> Dict
 	return {"type": ADD_AMMO, "player_id": player_id, "weapon_id": weapon_id, "rounds": rounds}
 
 
-## Tunes up a weapon the player carries: more damage, a bigger magazine and reserve, both filled.
+## Re-cuts a weapon the player carries: more damage, a bigger magazine and reserve, both filled.
 static func upgrade_weapon(player_id: int, weapon_id: StringName) -> Dictionary:
 	return {"type": UPGRADE_WEAPON, "player_id": player_id, "weapon_id": weapon_id}
 
