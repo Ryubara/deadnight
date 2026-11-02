@@ -1,7 +1,7 @@
 class_name MenuPanel
 extends Control
-## The base of a tab's panel: which side of the picture it takes, how wide it is, and the three
-## hooks the shell calls. A panel is built from its `MenuContext` (set before it enters the tree)
+## The base of a tab's panel: which side of the picture it takes, how wide it is, and the hooks
+## the shell calls. A panel is built from its `MenuContext` (set before it enters the tree)
 ## and reads only that.
 
 enum Side { LEFT, RIGHT }
@@ -36,6 +36,12 @@ func on_show() -> void:
 
 ## The shell hides the panel.
 func on_hide() -> void:
+	pass
+
+
+## Writes what the panel holds in memory, once. The shell calls it when the player leaves the tab,
+## asks for another screen, or closes the menu; a panel with nothing to keep leaves it empty.
+func commit() -> void:
 	pass
 
 
