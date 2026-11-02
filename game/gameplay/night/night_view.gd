@@ -209,6 +209,8 @@ func _on_event(event: Dictionary) -> void:
 			_launch_projectile(event)
 		&"projectile_burst":
 			_burst_projectile(event)
+		&"lure_started":
+			_burn_lure(event)
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
@@ -252,6 +254,13 @@ func _burst_projectile(event: Dictionary) -> void:
 		_projectile_views.erase(id)
 	effects.spark(event["point"])
 	effects.muzzle_flash(event["point"])
+
+
+## The flare lies where it landed and burns for as long as the server's lure lasts.
+func _burn_lure(event: Dictionary) -> void:
+	var view := LureView.new()
+	add_child(view)
+	view.burn(event["point"], event["seconds"])
 
 
 func _launch_grenade(event: Dictionary) -> void:

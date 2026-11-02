@@ -30,6 +30,8 @@ extends Node
 ## Fraction (0 to 1) done and what is being done.
 signal progress(fraction: float, text: String)
 
+## How long the warm-up's sample flare burns (s): long enough to be drawn, then it frees itself.
+const WARMUP_LURE_SECONDS := 0.2
 ## The id of the sample flare the warm-up draws (a real shot never has it).
 const WARMUP_PROJECTILE := -1
 ## The stage is this high above the lot, out of reach of every lamp.
@@ -457,6 +459,17 @@ func _replay_effects() -> void:
 	)
 	# A weapon that asks for a streak is not in the catalogue, but the pooled streaks are made.
 	view.effects.tracer(at + Vector3(4.0, 0.0, 0.0), at + Vector3(4.0, 0.0, -3.0))
+	await _chunk()
+	(
+		view
+		. draw_event(
+			{
+				"type": &"lure_started",
+				"point": flare_at,
+				"seconds": WARMUP_LURE_SECONDS,
+			}
+		)
+	)
 	await _chunk()
 	for def_path in _grenade_defs():
 		var blast := BlastEffect.new()
