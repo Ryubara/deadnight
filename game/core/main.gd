@@ -26,6 +26,7 @@ func _ready() -> void:
 	if args.has("look"):
 		NightScreen.own_look = NightScreen.look_from_flag(args.get_string("look"))
 	add_child(WebProbe.new())
+	add_child(WebClipboard.new())  # copy and paste inside a Discord Activity's frame (#516)
 	# Above the router, below the film: "turn your phone" when a touch device is held upright.
 	var prompt_layer := CanvasLayer.new()
 	prompt_layer.layer = TouchRotatePrompt.LAYER

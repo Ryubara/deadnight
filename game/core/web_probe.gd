@@ -64,15 +64,21 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
+		"code_text": "",
 		"touch": false,
 		"tab": "",
 		"stage": "",
-		"gamepad": ""
+		"gamepad": "",
+		"clipboard": "",
+		"clipboard_detail": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var clipboard := WebClipboard.read()  # inside a frame only: what copy and paste can do there
+	data["clipboard"] = WebClipboard.note(clipboard)
+	data["clipboard_detail"] = WebClipboard.detail(clipboard)
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
@@ -84,6 +90,7 @@ static func snapshot(top: Control) -> Dictionary:
 			together.invite_code.text if together.invite_code.is_visible_in_tree() else ""
 		)
 		data["room_status"] = together.status.text
+		data["code_text"] = together.code_field.text  # what a paste put into the code field
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
