@@ -332,15 +332,16 @@ order, or a milestone step reached. The rules, drawn from the [HUD](hud.md) and 
 - **One home.** It does not repeat a number the HUD already owns (points, round). Progress toward a challenge lives
   here and on the tab, nowhere else in the night.
 - **Never over the crosshair or the round counter,** nor the prompt card, the gains, the feed, health or ammo. It
-  sits in the free band at the middle of the screen's left edge, mirrors with a left-handed layout, and a test checks
-  it against the HUD's measured parts at every canvas the HUD test uses.
+  sits in the free band on the screen's left edge, a third of the way down (it stays on the left for a left hand),
+  and a test checks it against the HUD's measured parts at every canvas the HUD test uses.
 - **Panels appear on change and leave.** In 0.25 s, held about 2.4 s, out 0.4 s (completions hold 3.2 s). With two or
   more waiting, holds shorten to 1.6 s so a burst of advances never queues up a minute of prompts. A completion is
   never dropped; the lowest quarter marks go first when more than three wait. Stale prompts (older than 20 s) are
   dropped, so one never describes something long gone.
 - **Calm while it matters.** Nothing new starts while the player is down; the queue waits (and still goes stale).
 - **A sound.** One soft cue: a short tick for a quarter mark, a rising pair for a finished challenge or a milestone,
-  on the UI bus, quieter than a shot, made from a recipe in `tools/audio` (no generated voice).
+  on the UI bus, quieter than a shot, made from `tools/audio/challenge_recipes.py` (a ticket punch, then two soft
+  notes a fifth apart; no generated voice).
 - **Reduced motion and touch.** Reduced motion fades without sliding. The touch layout keeps clear of the fire
   and move buttons.
 - **A setting.** `Challenge prompts`: all, completions and milestones only, or off. Nothing is hidden by default.

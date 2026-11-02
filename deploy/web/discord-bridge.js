@@ -8,7 +8,7 @@ import { DiscordSDK } from "@discord/embedded-app-sdk";
 
 const CLIENT_ID = "1566609915219419286"; // public: the Discord application's id
 
-const state = { ready: false, code: "", error: "", instanceId: "" };
+const state = { ready: false, code: "", error: "", instanceId: "", canShare: false };
 window.deadnightDiscord = state;
 
 try {
@@ -16,6 +16,18 @@ try {
   state.instanceId = sdk.instanceId;
   await sdk.ready();
   state.ready = true;
+  // Discord's own "share a link to this Activity" window (no OAuth scope): the way to send a room's code to friends
+  // when the frame may not use the clipboard (game/core/web_clipboard.gd). `custom_id` rides along in the link.
+  state.share = async (message, customId) => {
+    try {
+      const answer = await sdk.commands.shareLink({ message, custom_id: customId });
+      return Boolean(answer.success);
+    } catch (error) {
+      console.warn("Discord share failed:", String(error));
+      return false;
+    }
+  };
+  state.canShare = true;
   const { code } = await sdk.commands.authorize({
     client_id: CLIENT_ID,
     response_type: "code",

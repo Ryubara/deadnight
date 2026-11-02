@@ -4,6 +4,11 @@ How Deadnight is exported for the browser, how CI runs that build in headless Ch
 (issue #167; the browser checks asked for by #82 and #105). The preset is `game/export_presets.cfg`, the run is
 `tools/web_smoke/smoke.py`, the CI job is `web` in `.github/workflows/ci.yml`.
 
+A probe never listens, so it makes no sound at the machine. Playwright's headless Chromium starts with `--mute-audio`
+(read off the process command line, Playwright 1.64.1, the headless shell and Chrome alike). It does not mute a headed
+Chromium or Firefox, so under `gds quiet` (`GDS_QUIET=1`) `smoke.mute_args()` and `smoke.mute_firefox_prefs()` add
+the mute. A new probe passes `args=[..., *smoke.mute_args()]` to `chromium.launch`.
+
 ## The preset
 
 - **Web, Compatibility renderer** (WebGL2), release export, `build/web/index.html` (git-ignored).
@@ -47,6 +52,13 @@ Things that were not obvious:
 - Godot reads input once per frame: a key tap shorter than a frame can be lost, so keys are held for 150 ms.
 - After Back from a screen, nothing has focus; the router spends the first arrow or accept key giving it focus. The
   run presses Down, Up, Up to get back to Play.
+- **A virtual gamepad** (`tools/web_smoke/pad_pause.py`, #494): an init script gives the page a `navigator.getGamepads`
+  with a standard-mapping pad (17 buttons, 4 axes; Start is button 9, the right stick axes 2 and 3) and the probe holds
+  a button for 0.9 s, since a software renderer reads a pad once a frame. A real `GamepadEvent` cannot be built from
+  a plain object, and the engine lists the pad without one. `requestPointerLock` is stubbed, which is also a pad
+  player's real case: a gamepad button is no user gesture, so the page never gets the lock. The probe's
+  `pad_count`, `pad_start_presses` and `pause_presses` come from the `Input` singleton, so they show a press that a
+  node ate on the way. Before the fix both counted 1 and the night did not pause ([cause](gamepad-devices.md)).
 - Pointer lock works in headless Chromium (`document.pointerLockElement` is the canvas after the click that starts the
   night), but on Linux (the CI runner) every synthetic `page.mouse.move` under lock arrives as a motion and then the
   opposite motion (+15 px, -15 px), which cancel, so Playwright cannot turn the view there; Windows does not do it.
@@ -104,6 +116,73 @@ Things that were not obvious:
   tour (`tools/web_smoke/skin_tour.py`: the menu, the three transitions, the settings and the credits at 1080p) also ran
   in Chrome and Firefox with a GPU and in the software renderer: no console error and no black or white frame, numbers
   in [the main menu page](main-menu.md). A mobile GPU is still not run.
+
+## Loading a night (#509)
+
+CI measured 82 to 107 s from pressing Play to a running night (the smoke waits 150 s, and main went red when a slow
+runner took longer), against 20 to 30 s on a development machine. The same work on a different machine: this is where
+it went and what was cut. Method: `tools/web_smoke/first_use.py` (`--software` for the headless shell's SwiftShader,
+which is what CI runs; without it the machine's Chrome and GPU), which records every frame and every GL program the page
+links; the steps the game marks (`WebProbe.mark`, the loading screen's own text) cut the time into parts. Press Play to
+a running night, a fresh browser profile every run, three runs of the build of `main` and three of this change one
+after the other on the same machine (16 threads, RTX 5080, other agents' work on the machine, so a run moves by 10 to
+20 %).
+
+| Press Play to a running night (3 runs) | SwiftShader, CI's renderer | Chrome 156, RTX 5080 (ANGLE D3D11) |
+| --- | --- | --- |
+| `main` before | 21.6, 21.8, 22.2 s | 20.6, 24.4, 24.7 s |
+| This change | **6.7, 7.2, 7.6 s** | **16.7, 18.1, 19.2 s** |
+| Programs linked / linked while playing | 221 / 0 before, 207 / 0 after | 222 / 0 before, 207 / 0 after |
+| Longest frame while loading | 0.8 s before, 0.38 s after | 2.3 to 2.5 s before and after (the build of one lit shader) |
+
+Where the time went in `main` (one run each, seconds):
+
+| Step | SwiftShader | GPU |
+| --- | ---: | ---: |
+| Menu to the lot's first mark (screen change, the lot's scene) | 1.5 | 1.4 |
+| Sounds decoded | 3.8 | 3.4 |
+| The lot, lit then dark (21 steps) | 5.1 | 9.8 |
+| The stage under four light conditions, props | 3.9 | 5.9 |
+| The effects replayed in four light conditions | 6.1 | 2.6 |
+
+What the profile showed:
+
+- **On a renderer that draws on the CPU the cost is the pixels, not the programs.** Every warm-up frame draws the lot or
+  the stage at the window's size (1280 x 720), 0.1 to 0.3 s a frame in SwiftShader, and the warm-up is some 100 frames:
+  the same run in a 640 x 360 window took 14.3 s against 30.5 s in the run that measured it (a busy machine). A program
+  does not depend on the size of the picture, so the warm-up now draws into a 160 x 90 `SubViewport` of the same world
+  while the window's own 3D drawing is off (`NightWarmup.VIEW_SIZE`), and the window draws the night once at the end,
+  so anything only its drawing needs is built behind the bar. The same programs are linked, none while playing.
+- **The effects were replayed in all four light conditions.** In the three after the moon alone the replay linked 0
+  programs (none of the effects' materials is lit) and took 1.5 s each in SwiftShader. It is drawn once, in the first
+  condition (1.4 s of the 6.1).
+- **Sounds were decoded behind the bar**: 240 files, 14 MB of samples, by a GDScript loop that runs once for every
+  sample (3.4 to 3.8 s here). The audio service now loads them in the background while a menu is up
+  (`AudioService.start_background_preload`, a quarter of each frame, 3 to 40 ms, after a second) and the loop calls
+  nothing it can write out. The warm-up finds them cached (the step takes 0.02 s). Pressing Play before the menu has
+  finished (the first second and a half of a page) leaves the rest to the warm-up, as before.
+- **With a GPU the cost is the lit shaders, and each costs twice what it draws.** Of the 134 programs linked between
+  Play and the night, 10 take 0.6 to 1.0 s each (8.4 s of 12.9 s of linking) and the other 124 take 0.14 s or less. The
+  10 are the **default specialisation** the engine builds at the first draw of every lit shader: the colour program and
+  the instanced colour program with every light type, lightmaps and reflection probes switched on, which no mesh of ours
+  uses (a mesh is drawn with `DISABLE_LIGHTMAP` and only the light types that reach it). The menu's stage already pays
+  six such pairs when the page loads, before Play; the lot and the stage add five. So **every lit `StandardMaterial3D`
+  that differs from another in one setting costs 1.2 to 2 s of loading** whatever it draws. The seven painted and glowing
+  lot materials (`assets/lot/materials`: the lines, the neon, the plaque, the screen face...) set
+  `specular_mode = DISABLED`, a shader of their own for a material that looks the same with `metallic_specular = 0`.
+  Switching them merged two shaders into two that existed: 14 programs and about 2 s fewer. The lamps tour
+  (`tests/captures/lamps_tour`, 20 frames) is pixel for pixel the same before and after, except in the screen's own
+  animated grain (a run against itself differs in the lamp flicker only).
+- **Not a lever:** `rendering/shading/overrides/force_lambert_over_burley` (18.5 s in the same run as a 16.0 s build
+  without it: no faster within the spread of the machine); the shadow filter quality and the lights per object (0 to
+  20 % in the first-use spike, see [First-use hitches](first-use-hitches.md)). There are no threads in this build (a
+  Discord Activity cannot send the headers a threaded export needs) and the browser cannot build half a program, so the
+  loading cannot be spread over cores; the programs can only be fewer.
+
+What is left with a GPU is 8 lit `StandardMaterial3D` settings combinations at 1.2 to 2 s each (an alpha-blended lit one,
+a double-sided textured one, the emissive-and-textured one of the soldier and the dead): the next cut is a material that
+looks different, so it is an artist's decision, not made here. `tests/night/test_load_cost.gd` fails when the night
+draws more than 8, and lists them.
 
 ## Playing the web build
 
@@ -186,7 +265,8 @@ bash deploy/web/deploy.sh path/to/build/web <commit> <stage folder>   # needs RA
 docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 8080:8080 deadnight-web
 ```
 
-The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
+The smoke run takes the URL in place of a folder:
+`uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
 
 `tools/web_smoke/judder.py` (same arguments, `--gpu --unpaced` for the machine's GPU and no frame limit) measures
@@ -253,6 +333,17 @@ So in the browser the sting's duck, the rear cue, the occlusion low-pass and the
 -27.7 dBFS as samples and -24.0 as streams), so the mix was tuned for streams and the browser plays a slightly different
 one.
 
+**What the game does about it (#423).** The duck was an `AudioEffectAmplify` on the ducked buses; it is now the volume of
+a `Duck` bus that Effects and Ambience send to, which samples honour (measured: -11.9 dB asked -12). The occlusion and the
+rear cue keep their low-pass and, where it is not heard, take a few dB of volume as well (`AudioService.filters_apply`).
+`audio_load.py` plays one bright loop through the real service (`svc_open`, `svc_ducked`, `svc_occluded`, `svc_behind`,
+`svc_rear`) and prints each against the open voice; `--playback stream` turns the project's default player type to
+streams (`general/default_playback_type.web=0` in the `[audio]` section: a key written with its `audio/` prefix is
+ignored, which the earlier `--latency` option did too and is fixed) to show what desktop does. Before and after, in the
+headless shell: the duck +0.4 to -11.9 dB, a wall -8.6 to -12.9 (streams -21.9), the rear cue +0.4 to -2.9 (streams
+-8.3). The player type enum of the project setting (0 stream, 1 sample) is not `AudioServer.PlaybackType` (1 stream, 2
+sample): compare against the setting's own values.
+
 **Voices and crackle** (the same voices as the real pool: 8, 16, 32 positional, then 32 with 12 flat; a steady hum so a
 silent block is a dropout; Chrome 156 with a GPU, and the headless shell with a software renderer; blocks counted
 over 3 s, 1,125 of them in a phase):
@@ -274,8 +365,58 @@ over 3 s, 1,125 of them in a phase):
   ways to get the duck back are in [Sound](../design/audio.md#in-the-browser) and
   [the audio research](audio.md#open-questions): the bus volume works in samples, so a duck made of bus volume would too.
 
+## Copy and paste inside a Discord Activity (#516)
+
+The maintainer: "Copy paste doesn't work when in discord activity". Two separate causes, both measured with
+`tools/web_smoke/activity.py --clipboard` (a cross-origin iframe, under `gds quiet`, in the headless shell whose
+clipboard is the browser's own, so the person's is never touched):
+
+- **The frame may not use the clipboard API.** In an iframe of another origin `clipboard-read` and `clipboard-write`
+  are policy features that default to the page's own origin: `document.permissionsPolicy.allowsFeature` says `false`
+  and `navigator.clipboard.writeText` and `readText` throw `NotAllowedError`, even where the permission itself is
+  granted. The engine's `DisplayServer.clipboard_set` and `clipboard_get` are exactly those two calls, so "Copy the code"
+  copied nothing, and the screen still said "Code copied." (the engine does not report the failure).
+  `document.execCommand("copy")` from a user gesture is not policy-controlled and works.
+- **The engine cancels every key press on its canvas.** Its web runtime calls `preventDefault()` on every `keydown`,
+  so Ctrl+V never makes the browser's own `paste` event (the one that needs no permission): the page saw the key
+  and the engine ate it (`paste` events 0). Its own paste is `readText`, asynchronous, so even where the API is
+  allowed the first Ctrl+V pastes the stale text. The code field stayed empty.
+
+What `WebClipboard` (`game/core/web_clipboard.gd`) does, **only inside a frame** (a tab and the desktop keep the
+engine's own calls, so they are unchanged):
+
+- **Paste.** A capture-phase `keydown` for Ctrl/Cmd+V on the canvas is stopped before the engine sees it, so nobody
+  cancels it. The browser pastes into the focused canvas (Chromium fires `paste` on a non-editable focused element),
+  the page hands `clipboardData` to the game, and the next frame the text goes into the focused `LineEdit` or
+  `TextEdit` (one line, the field's `max_length`, over the selection, `text_changed` emitted). A paste that lands in
+  the engine's own touch text box (a phone's long press) is left to the engine.
+- **Copy by a button** (`copy_text`): a hidden read-only text box and `execCommand("copy")` first (it needs the press
+  that is still fresh), then `navigator.clipboard.writeText`; the page reports `write` as `pending`, `ok` or the
+  error's name, and the game waits for it (two seconds at most). When it fails the screen shows the text in a
+  read-only field, selected, with "press Ctrl+C", and never says "copied".
+- **Ctrl+C** copies what the focused field has selected, or the text a screen offered, through a native `copy` event
+  (the same hidden box takes the focus for the key's default action).
+- **Share in Discord.** `discord-bridge.js` offers `window.deadnightDiscord.share`, the SDK's `shareLink`
+  (no OAuth scope; the answer is `{success, didCopyLink, didSendMessage}`), with the room's code in the message and as
+  `custom_id` (the SDK reads it back from the page address as `customId`; nothing joins by it yet). Discord's own window
+  sends the code, so it needs no clipboard at all. `openInviteDialog` invites to the channel, not to a room code.
+- **The probe line.** The Play together screen shows what the clipboard can do inside an Activity, and
+  `window.deadnight.clipboard` and `clipboard_detail` carry it (`clipboard api read no, write no, button copy ok,
+  Ctrl+V 1 seen 1 pasted, Ctrl+C 0 seen 0 copied`), so the maintainer can read Discord's real answer.
+
+The harness runs `--embed plain` (no `allow`), `clipboard-denied` (the Activity answers
+`Permissions-Policy: clipboard-read=(), clipboard-write=()`), `clipboard` (`allow="clipboard-read; clipboard-write"`),
+`none` (a tab: no layer, the engine's own copy) and `--exec-refused` (only a native Ctrl+C can copy). It makes a night
+without starting a game server (the proxy answers `/start` itself), so a run does not use the live backend's servers. The
+before run, on `main`: paste 0, field empty, "Code copied." with the clipboard unchanged; after: both hold in every mode.
+
+Not run: Discord's real clients (desktop, browser, phone). What Discord's iframe grants is not in its docs; the line
+above says it. A real long press on a phone is not covered (its keyboard is the engine's text box).
+
 ## Sources
 
 - [Exporting for the Web](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)
 - [Playwright for Python](https://playwright.dev/python/docs/intro)
+- [Embedded App SDK: commands](https://docs.discord.com/developers/developer-tools/embedded-app-sdk) (`shareLink`, `openInviteDialog`)
+- [Permissions-Policy: clipboard-write](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy/clipboard-write)
 - [Audio streams (Godot): playback type, samples and their limits](https://docs.godotengine.org/en/stable/tutorials/audio/audio_streams.html)

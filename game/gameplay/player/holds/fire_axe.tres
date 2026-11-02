@@ -6,7 +6,7 @@
 script = ExtResource("1_hold")
 weapon_class = &"Melee"
 scene = "res://assets/weapons/fire_axe/fire_axe.glb"
-model_scale = 0.8
+model_scale = 0.95
 real_length = 0.9
 model_length = 1.242
 shouldered = false

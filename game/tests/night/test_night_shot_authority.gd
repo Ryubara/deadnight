@@ -35,7 +35,11 @@ func _fire(origin: Vector3, muzzle: Vector3) -> void:
 	var command := NightCommand.new()
 	command.origin = origin
 	command.muzzle = muzzle
+	# Straight up, with the view kept on the way the body faces: a shot turns the body to its
+	# view, and a view elsewhere would move the muzzle these tests measure.
 	command.dir = Vector3.UP
+	command.motion.yaw = _night.server.body_of(1).state.facing
+	command.motion.pitch = PI / 2.0
 	command.fire = true
 	NightFixture.run(_night, 1, command)
 	NightFixture.run(_night, SETTLE)

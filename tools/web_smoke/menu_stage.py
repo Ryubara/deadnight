@@ -6,8 +6,10 @@ the camera round the five tabs with the Right key (a move every 2.5 s) and recor
 `requestAnimationFrame` deltas and the GL programs linked per frame. It also records today's main menu (the sky shader
 and the sign) in the same browser, for a comparison, and writes a screenshot of each case.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/menu_stage.py build/web build/menu-stage
-    uv run --with playwright==1.64.1 python tools/web_smoke/menu_stage.py build/web build/menu-stage --gpu --unpaced
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/menu_stage.py build/web build/menu-stage
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/menu_stage.py build/web build/menu-stage --gpu --unpaced
 
 `--gpu` uses the installed Chrome and the machine's GPU (headless, so no window opens); without it Chromium draws with
 SwiftShader on the CPU, which says the stage runs without a GPU and nothing about a phone. `--unpaced` lifts the
