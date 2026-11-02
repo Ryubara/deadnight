@@ -181,9 +181,9 @@ func test_every_player_looks_the_same_on_every_screen() -> void:
 	# Each client's own body wears its saved look; the other player's avatar wears theirs.
 	var models := {
 		[1, 1]: a._body.get_node("Model"),
-		[1, 2]: (a.avatars.avatar(2) as RemoteAvatars.Avatar).model(),
+		[1, 2]: a.avatars.avatar(2).get_node("Model"),
 		[2, 2]: b._body.get_node("Model"),
-		[2, 1]: (b.avatars.avatar(1) as RemoteAvatars.Avatar).model(),
+		[2, 1]: b.avatars.avatar(1).get_node("Model"),
 	}
 	for key: Array in models:
 		var shown_id: int = key[1]
@@ -232,7 +232,7 @@ func test_a_player_is_as_tall_on_every_screen() -> void:
 		var own: Night = a if id == 1 else b
 		var other: Night = b if id == 1 else a
 		var on_own_screen := _stature(own._body.get_node("Model"))
-		var on_other_screen := _stature((other.avatars.avatar(id) as RemoteAvatars.Avatar).model())
+		var on_other_screen := _stature(other.avatars.avatar(id).get_node("Model"))
 		# The server draws nothing: its body has no skeleton to measure (`test_server_bodies.gd`).
 		assert_bool(_host.server.body_of(id).has_model).is_false()
 		assert_float(on_other_screen["height"]).is_equal_approx(on_own_screen["height"], 0.001)

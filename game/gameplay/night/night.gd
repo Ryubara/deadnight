@@ -338,7 +338,7 @@ func _add_markers() -> void:
 func _drawn_player(player_id: int) -> Node3D:
 	if not remote:
 		return server.body_of(player_id)
-	if player_id == state.player_id:
+	if player_id == state.player_id and _body != null:
 		return _body
 	return avatars.avatar(player_id) if avatars != null else null
 
@@ -628,14 +628,18 @@ func _dress_bodies(_player_id: int) -> void:
 	var resolved := looks.resolved()
 	for id: int in resolved:
 		var body := _body_of(id)
-		if body != null:
+		# A puppet is dressed by the avatars that place it (`RemoteAvatars`).
+		if body != null and not body.is_puppet:
 			body.dress(resolved[id], looks.seats[id])
 
 
-## The body of a player in this process: the server's, or (online) our own.
+## The body that draws a player on this screen: the server's in this process; online, our own, or
+## the puppet the frames place for any other (and for ours when this client plays no body).
 func _body_of(player_id: int) -> Player:
 	if remote:
-		return _body if player_id == state.player_id else null
+		if _body != null and player_id == state.player_id:
+			return _body
+		return avatars.avatar(player_id) if avatars != null else null
 	return server.body_of(player_id)
 
 

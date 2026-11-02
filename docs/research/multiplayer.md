@@ -28,7 +28,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
-| Everyone else | `RemoteAvatars`: a character in the player's look and seat armband, drawn **100 ms behind** the newest frame between two frames, walking or running by its speed. The model is stood the way `player.tscn` stands its own (turned half way round, scaled by `PlayerTuning.model_scale`, 0.8): the first version drew it at scale 1, a quarter taller than on the player's own screen and facing the camera; `test_a_player_is_as_tall_on_every_screen` holds it to a millimetre | the same delay, kept |
+| Everyone else | `RemoteAvatars`: a **puppet `Player`** (the player scene with no input, collision, camera or simulation: `Player.make_puppet`) in the player's look and seat armband, drawn **100 ms behind** the newest frame between two frames. It is the same scene as a played body, so it has the same `PlayerAnimation` and everything the view draws on a body from the server's events is drawn on it too: the weapon in the hand and every swap (the frame's `weapon`), the aim pose and the barrel's tilt (the frame's `aim` and `pitch`), the fire clip with its flash on the muzzle, the reload, the swing and the grenade clips ([below](#other-players-weapons-518)). The model is stood the way `player.tscn` stands its own: the first version drew it at scale 1, a quarter taller than on the player's own screen and facing the camera; `test_a_player_is_as_tall_on_every_screen` holds it to a millimetre | the same delay, kept |
 | Looks | a client sends its look once after joining (`--look N` replaces the saved one for a run); `NightServer` owns the `LookServer` and answers with `look_packet` events, which the host sends only to the player they are for; every screen dresses every body, a client's own included, from the one `LookRegistry` table | |
 | Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
 
@@ -220,6 +220,27 @@ collision and the simulation. A body is **5 nodes** on a server and 71 drawn (`t
 (the model has no part in `PlayerSimulation`; the test replays 120 ticks on both). Each client draws the others from the
 frames as `RemoteAvatars`, and a door's look follows `door_opened`: the split of the issue is the transport since #302,
 this removes the cost of the bodies on the server.
+
+### Other players' weapons (#518)
+
+Online, a client saw other players as bare characters with no gun. The frame already named every player's weapon
+(`players[id].weapon`, sent in a delta only when it changes) and every event (`shot_fired`, `reload_started`,
+`weapon_equipped`, `cook_started`, `throw_started`) goes to every client. What draws them (`WeaponEquipSync`,
+`NightView.show_attack` and `show_reload`, the flash on the muzzle point, the grenade clips) all asked
+`Night._body_of(id)` for a `Player` with a `PlayerAnimation`, and online that was null for everyone but the local
+body: a remote player was a `RemoteAvatars.Avatar`, a model that only played Idle, Walk and Run. The client received
+everything and applied nothing; with the one `_body_of` line put back to null, the seven behaviour tests of
+`test_remote_weapons.gd` fail again.
+
+The fix is that a remote player is the same body as ours: `RemoteAvatars` makes a puppet `Player`
+(`Player.make_puppet`: no input, mouse, collision, camera or simulation, so nothing bumps into it and its camera never
+takes the view) and `puppet_to` places it from the interpolated track. Wire cost: two new per-player frame fields,
+`aim` (the aim pose is held, the hip-fire hold included) and `pitch` (the look up or down in 3 degree steps,
+`NightServer.pitch_step`); both are delta-coded, so a player who keeps still adds nothing and a swap, an aim or a
+look costs under 40 bytes (a test pins it). No new event and no tier field: a weapon's tier (the re-cut) changes no
+model, so the id is all a body needs. `NetWire.VERSION` was raised for the new frame fields, so a client that cannot
+draw them is told to reload instead of showing a gun-less crowd. A puppet is not a footstep source (`Player.is_puppet`:
+the feet stay on the frames' stride) and is dressed by `RemoteAvatars`, not by the night's `_dress_bodies`.
 
 One thing the server decides that no command says: while a player repairs, the server turns the body toward the breach
 (#338). The frame marks such a player (`turn`), and the player's own predicted body takes the server's facing for those
