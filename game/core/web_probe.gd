@@ -65,12 +65,20 @@ static func snapshot(top: Control) -> Dictionary:
 		"touch": false,
 		"tab": "",
 		"stage": "",
-		"gamepad": ""
+		"gamepad": "",
+		"controller_hint": false
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var tree := top.get_tree()
+	var hint: ControllerHint = (
+		tree.root.find_child("ControllerHint", true, false) as ControllerHint
+		if tree != null
+		else null
+	)
+	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
