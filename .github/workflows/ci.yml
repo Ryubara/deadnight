@@ -59,7 +59,7 @@ jobs:
           "$godot" --headless --path repos/deadnight/game --quit-after 60 2>&1 | tee run.log
           ! grep -E "^(SCRIPT )?ERROR" run.log
 
-      - name: Play a night headless and look for leaks at exit
+      - name: Play a night headless
         # A night builds the rules, the servers and the sounds; Godot prints a leak as a warning and an ERROR at exit,
         # after the game itself has finished, so only the log shows it.
         run: |
@@ -77,6 +77,8 @@ jobs:
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
           "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests -c --ignoreHeadlessMode 2>&1 | tee tests.log
+          # Godot prints a leak after the run has finished, so only the log shows it (see the night step).
+          ! grep -E "leaked at exit|still in use" tests.log
       - name: Upload the test report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
