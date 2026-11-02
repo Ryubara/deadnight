@@ -5,17 +5,19 @@ every level and limit, is `sound_catalog.gd`.
 
 ## Where the sounds come from
 
-Of the 241 sound files in `game/assets/audio/`, **200 are synthesised** by the scripts in `tools/audio/` (how:
+Of the 351 sound files in `game/assets/audio/`, **195 are synthesised** by the scripts in `tools/audio/` (how:
 [research](../research/audio.md)): original work, committed, and changed by editing a number. **41 are generated with
-ElevenLabs Sound Effects** on the free tier, which is third-party output: attribution required, not licensed for
-commercial use, to be relicensed or replaced before a commercial release
+ElevenLabs Sound Effects** and **115 with ElevenLabs text to speech** (the soldier's voice) on the free tier, which is
+third-party output: attribution required, not licensed for commercial use, to be relicensed or replaced before a
+commercial release
 ([#252](https://github.com/Ryubara/deadnight/issues/252)). The Credits screen names ElevenLabs.
 
 | Where | Files | Source | Licence entry |
 | --- | --- | --- | --- |
 | `zombie/` `alert_4..6`, `attack_4..6`, `death_3..5`, `groan_5..7`, `groan_brute_4..5`, `groan_crawler_4..5`, `hurt_4..6`, `roar_3..4`, `shriek_3..5` | 24 | ElevenLabs (models v2 and v3), extra takes of the dead's voices | [`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), every prompt in `zombie/eleven.json` |
 | `eleven/` | 17 | ElevenLabs (model v2): the shots' blasts, the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
-| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `player/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (3, 8, 72, 5, 2, 5, 2, 8, 3, 9 and 35 files) | 200 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
+| `voice/soldier/` | 115 | ElevenLabs text to speech (model `eleven_v4`, the premade voice Brian): the soldier's barks, see [The soldiers' voices](#the-soldiers-voices) | [`voice/soldier/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier/LICENSE.md), every line, setting and seed in `manifest.json` |
+| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (3, 8, 72, 5, 2, 2, 8, 3, 9 and 35 files) | 195 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
 
 The decision to use the ElevenLabs takes is recorded in two places, which say it differently:
 [#252](https://github.com/Ryubara/deadnight/issues/252) states a maintainer decision of 2026-11-01 to use the free tier
@@ -50,7 +52,7 @@ Everything goes to Master, which is the master slider.
 | --- | --- | --- | --- |
 | Music | stings and the score | no | 80 |
 | Effects | guns, reloads, steps, the dead, the generator, boards, doors, blows, the till | yes | 100 |
-| Voice ("Voices") | the player's own hurt and downed voices | no: what you hear of yourself is never ducked | 100 |
+| Voice ("Voices") | the soldiers' voices: the player's own and the teammates' | no: what you hear of yourself is never ducked | 100 |
 | Ambience | the crickets, the highway and the projector | yes | 80 |
 | UI ("Interface sounds") | menu and widget sounds | no | 80 |
 
@@ -82,7 +84,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Doors | `door_open` | a bolt thrown, a rusty creak, the weight settling; from `door_opened`, at the door |
 | Melee | `melee_swing`, `melee_hit` | a crowbar through the air from `shot_fired` of a melee weapon; the thud of iron on the dead from a melee `damage_dealt` |
 | The till | `till_ring` | the shop's cash register (key thump, ratchet, bell) from `purchase_made`, where the buyer stands |
-| The player | `player_hurt`, `player_downed` | a grunt, and a falling groan with the body hitting the ground; the player's own are flat (in their head), a teammate's are where they stand |
+| The soldiers | `vox_<moment>_<n>` | 115 takes of 21 moments, played by `SoldierVoice`: see [The soldiers' voices](#the-soldiers-voices); they replace the synthesised `player_hurt` and `player_downed` |
 | Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
 | Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension` | loops under everything, see below |
 
@@ -154,6 +156,41 @@ its burst sizzles where it lands (`projectile_burst`).
 
 The code is `gameplay/night/weapon_sounds.gd`, `grenade_sounds.gd` and `world_sounds.gd`, each listening to the client
 state's events like `NightSounds`, on a `SoundSchedule` clock they step themselves.
+
+### The soldiers' voices
+
+A hardened soldier who talks like a person in the moment, not a caption for it: "Reloading, cover me!", "Jeez, that one
+nearly had me, back off, back off!". Each line is first person with contractions, fillers, breaths and exclamations, of
+uneven length, with the feeling in the words first and an ElevenLabs v4 audio tag (`[breathing hard]`, `[laughs]`) second
+(the first sample, written as instructions, read like a narrator: [research](../research/audio.md#the-soldiers-voice-384)).
+One voice, Brian,
+for everyone: the player's own comes flat (in their head), a teammate's from where they stand.
+`SoldierVoice` (`gameplay/night/`) turns what the server sent into **moments** and `VoiceDirector` decides whether
+and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCatalog`.
+
+| Moment (takes) | Said when |
+| --- | --- |
+| `round_start` (5), `round_clear` (5) | a round starts (after the sting, not in a boss round); a round ends, after the line still speaking |
+| `reload` (9), `low_ammo` (5), `dry` (5) | `reload_started`; the last rounds of a magazine with no reserve; an empty trigger |
+| `kill` (10), `streak` (7) | a kill (a share of them); four kills in six seconds |
+| `close_call` (5), `hurt` (8), `downed` (4), `revived` (5), `teammate_down` (5) | a blow that leaves a third of health; any blow; going down; getting up; the nearest player on their feet, after the fallen one's own line |
+| `buy_weapon` (5), `buy_big` (4), `door` (5) | `purchase_made` of a weapon (a big one from 1000 points) or a door |
+| `power_on` (5), `power_low` (4) | `fuel_restored`; `fuel_low` or `fuel_empty` |
+| `grenade` (5), `boss_arrive` (5), `boss_dead` (4) | `grenade_thrown`; the boss's spawn; the boss's death |
+| `idle` (5) | quiet: five seconds with nothing said in a break that has eight more seconds to run, or ten seconds of a round with no dead within 30 m |
+
+- **One voice at a time.** A line owns the channel until it ends and a half second more; a request that meets a busy
+  channel is dropped, never queued: a bark is about the moment it was said in. The teammates share the channel with the
+  player, so four players reloading are one voice, not four.
+- **Priority.** Downed (100) over hurt (90) over everything else (boss 75 down to idle 10). Only those two may cut the line
+  speaking; any other line may cut one 25 ranks below it (a streak over a kill, a boss over a mutter).
+- **Cooldown and chance.** Each moment has a cooldown for each speaker (a reload 6 s, a streak 20 s, a kill 5 s) and a
+  chance (a kill is voiced 45% of the time, a reload 70%), so the commonest moments are not a running commentary.
+- **Variety.** A moment never repeats one of its last three takes, from a seeded generator, so a night repeats
+  the same way.
+- **Level.** The takes are levelled to -20 LUFS and play on the Voice bus (never ducked) at -4 dB, the player's own 2 dB
+  lower again. In a night capture the voice sat 5 LU under the gunfire and 10 LU over the beds
+  ([research](../research/audio.md#the-soldiers-voice-384)).
 
 ### The dead, per type
 

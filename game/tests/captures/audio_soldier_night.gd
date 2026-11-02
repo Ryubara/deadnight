@@ -50,6 +50,11 @@ func _ready() -> void:
 	add_child(_night)
 	_night.shoulder_camera = true
 	await _night.start(Night.Mode.AUTOPILOT, Night.SEED, tuning)
+	# The machine's mouse is never held or read: the bot drives the player.
+	var player := _night.player()
+	if player != null:
+		player.local_input = false
+		player.capture_mouse = false
 	_night.ticked.connect(_on_tick)
 
 
@@ -78,59 +83,71 @@ func _on_tick() -> void:
 		_tell_the_rest()
 
 
-## Moments a short autopilot run does not reach, as the events the server sends.
+## Moments a short autopilot run does not reach: the events the server sends, where the rest of
+## the client can take them (a boss's spawn and a grenade's throw carry what the view draws, so the
+## soldier is told of those two directly).
 func _tell_the_rest() -> void:
 	_night.set_paused(true)
 	var state := _night.state
-	var steps: Array[Dictionary] = [
-		{
-			"type": &"zombie_spawn_requested",
-			"zombie_id": 900,
-			"zombie_type": &"headliner",
-			"boss": true
-		},
-		{"type": &"fuel_low"},
-		{
-			"type": &"grenade_thrown",
-			"grenade_id": 1,
-			"thrower_id": PLAYER,
-			"position": state.position()
-		},
-		{
-			"type": &"player_hurt",
-			"player_id": PLAYER,
-			"damage": 30.0,
-			"health": 20.0,
-			"max_health": 100.0,
-			"bearing": 0.0,
-			"source_id": 4
-		},
-		{"type": &"player_downed", "player_id": PLAYER, "cause": &"blow", "bearing": 0.0},
-		{"type": &"player_revived", "player_id": PLAYER},
-		{
-			"type": &"purchase_made",
-			"player_id": PLAYER,
-			"item_id": &"weapon_rifle",
-			"price": 1200,
-			"detail": {}
-		},
-		{"type": &"fuel_restored"},
-		{
-			"type": &"zombie_removed",
-			"zombie_id": 900,
-			"zombie_type": &"headliner",
-			"boss": true,
-			"cause": &"killed",
-			"killer_id": PLAYER,
-			"zone": &"body",
-			"melee": false
-		},
+	var voice := _night.get_node("SoldierVoice") as SoldierVoice
+	var steps: Array[Callable] = [
+		func() -> void: voice.say(&"boss_arrive", PLAYER),
+		func() -> void: state.apply_events([{"type": &"fuel_low"}]),
+		func() -> void: voice.say(&"grenade", PLAYER),
+		func() -> void: state.apply_events([_hurt(20.0)]),
+		func() -> void:
+			state.apply_events(
+				[{"type": &"player_downed", "player_id": PLAYER, "cause": &"blow", "bearing": 0.0}]
+			),
+		func() -> void: state.apply_events([{"type": &"player_revived", "player_id": PLAYER}]),
+		func() -> void:
+			(
+				state
+				. apply_events(
+					[
+						{
+							"type": &"purchase_made",
+							"player_id": PLAYER,
+							"item_id": &"weapon_rifle",
+							"price": 1200,
+							"detail": {},
+						}
+					]
+				)
+			),
+		func() -> void: state.apply_events([{"type": &"fuel_restored"}]),
+		func() -> void: state.apply_events([_boss_killed()]),
 	]
 	for step in steps:
-		state.apply_events([step])
+		step.call()
 		for i in int(TOLD_GAP * MOVIE_FPS):
 			await get_tree().process_frame
 	_finish()
+
+
+func _hurt(health: float) -> Dictionary:
+	return {
+		"type": &"player_hurt",
+		"player_id": PLAYER,
+		"damage": 30.0,
+		"health": health,
+		"max_health": 100.0,
+		"bearing": 0.0,
+		"source_id": 4,
+	}
+
+
+func _boss_killed() -> Dictionary:
+	return {
+		"type": &"zombie_removed",
+		"zombie_id": 900,
+		"zombie_type": &"headliner",
+		"boss": true,
+		"cause": &"killed",
+		"killer_id": PLAYER,
+		"zone": &"body",
+		"melee": false,
+	}
 
 
 func _finish() -> void:
@@ -144,6 +161,9 @@ func _finish() -> void:
 		var wav := record.get_recording()
 		if wav != null and out != "":
 			wav.save_to_wav("%s/stem_%s.wav" % [out, String(bus).to_lower()])
+		var index := AudioServer.get_bus_index(bus)
+		AudioServer.remove_bus_effect(index, AudioServer.get_bus_effect_count(index) - 1)
+	_records.clear()
 	print("CAPTURE done at %.1f s" % _now())
 	_night.queue_free()
 	await _night.tree_exited
