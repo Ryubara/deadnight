@@ -236,6 +236,30 @@ func test_a_guest_sees_the_start_and_presses_play_once() -> void:
 	screen.free()
 
 
+func test_the_focus_starts_on_the_main_button_and_follows_the_host_start_to_play() -> void:
+	var api := FakeApi.new(self)
+	api.me = "b"
+	api.lobby = _lobby([_member("a", "Ann", 1, true), _member("b", "Bo", 2)])
+	var screen := await _screen(api, {"lobby": api.lobby})
+	await get_tree().process_frame
+	# A guest waiting has nothing to press but Copy and Leave; Play takes the focus when it shows.
+	assert_object(screen.get_viewport().gui_get_focus_owner()).is_not_same(screen.play_button)
+	api.refreshed = _lobby(api.lobby["members"], "started", 0)
+	await screen.watch.poll()
+	await get_tree().process_frame
+	assert_object(screen.get_viewport().gui_get_focus_owner()).is_same(screen.play_button)
+	screen.free()
+	# The host starts on Start.
+	var host_api := FakeApi.new(self)
+	host_api.lobby = _lobby([_member("a", "Ann", 1, true)])
+	var host_screen := await _screen(host_api, {"lobby": host_api.lobby})
+	await get_tree().process_frame
+	assert_object(host_screen.get_viewport().gui_get_focus_owner()).is_same(
+		host_screen.start_button
+	)
+	host_screen.free()
+
+
 func test_leaving_gives_the_seat_up() -> void:
 	var api := FakeApi.new(self)
 	api.lobby = _lobby([_member("a", "Ann", 1, true)])

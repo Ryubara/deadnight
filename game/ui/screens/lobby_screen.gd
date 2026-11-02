@@ -58,6 +58,7 @@ var _entering := false
 ## The lobby ended for this player (dropped, or gone): no seat to give up.
 var _over := false
 var _me := ""
+var _play_shown := false
 
 
 ## Opens the lobby screen for a lobby the player is a member of.
@@ -212,6 +213,16 @@ func _ready() -> void:
 	_show()
 
 
+## The button a player most likely presses: Start, Play or Join, else Leave.
+func focus_initial() -> void:
+	var target: Control = leave_button
+	for button: UIButton in [start_button, play_button, join_button]:
+		if button.is_visible_in_tree():
+			target = button
+			break
+	target.grab_focus()
+
+
 func screen_enter() -> void:
 	super.screen_enter()
 	if mode == Mode.LIVE and api != null and not _over:
@@ -357,6 +368,10 @@ func _show() -> void:
 	var started: bool = live and lobby.get("state") == "started"
 	start_button.visible = live and is_host() and not started
 	play_button.visible = live and started
+	if play_button.visible and not _play_shown:
+		# The host has started: the guest's next press is Play, wherever the focus was.
+		play_button.grab_focus.call_deferred()
+	_play_shown = play_button.visible
 	join_button.visible = (not live) and not preview.get("full", false)
 	copy_link_button.visible = live and link_label.visible
 	copy_code_button.visible = live

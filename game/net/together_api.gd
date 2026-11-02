@@ -146,6 +146,15 @@ func preview(code: String) -> Dictionary:
 	return {"ok": true, "preview": seen} if seen["ok"] else seen
 
 
+## What the Discord Activity's voice channel has: `{"ok", "preview"}` of its lobby (waiting, or a
+## night in progress), or `not_found` when nobody has opened one yet. Joins nobody.
+func preview_instance() -> Dictionary:
+	if instance_id == "":
+		return _failed("not_found")
+	var seen := await _call("POST", "/lobbies/preview", {"instanceId": instance_id})
+	return {"ok": true, "preview": seen} if seen["ok"] else seen
+
+
 ## An API of the same backend and session that lives under `parent`, which outlasts the screen
 ## that asks (a screen that is leaving says `leave` on its way out).
 func detached(parent: Node) -> TogetherApi:
