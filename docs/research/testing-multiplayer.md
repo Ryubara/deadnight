@@ -129,6 +129,21 @@ To use a server in your own test: add a `NightHost` (`port = 0` picks a free por
 `host.listener.port()`) and join with `Night.start_remote(url, Night.Mode.MANUAL)`; in `MANUAL` the test sends the
 commands through `night.link`.
 
+## A bad network, and the CI scenario
+
+`LinkConditioner` puts a bad network between a client and its server: `WebSocketLink.conditioner_in` and
+`conditioner_out` hold every packet back `delay` seconds (plus a random `jitter` either way), in order, as TCP delivers
+them; a `stall_chance` of packets is held `stall` seconds longer with everything behind it (a retransmission: a
+WebSocket cannot lose a packet, so loss is a stall here). A bot, a test or a window can use it.
+
+`test_netcode_scenario.gd` is the run #56 asked for: a game server and two bots (the autopilot, each driving its own
+predicted body from its own shoulder camera) over a real WebSocket with 100 ms each way, 20 ms jitter and 1 % stalls,
+for twenty seconds. The first run on a loaded Windows machine: a round trip of 211 ms, the predicted bodies never more
+than 0.89 m from the server's (a sprint's length in the round trip), the reconciler's worst error 0.89 m, 150 and 197
+corrections in 20 s, and when the bots stop sending both bodies settle within 12 cm of the server's. The test fails on
+more than 2.5 m of drift or snap, or when they do not settle; an engine error anywhere in it fails the CI job like any
+other test (the job reads the log). It runs with the rest of `tests/net` in the `godot` job.
+
 ## Numbers from a local run
 
 One Windows machine, loopback, server and clients in one process (`test_the_numbers_of_a_run_are_small`):
