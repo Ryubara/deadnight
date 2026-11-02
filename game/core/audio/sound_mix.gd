@@ -13,6 +13,7 @@ const SHIPPED_PATH := "res://core/audio/sound_mix_default.tres"
 @export var group_limits: Dictionary[StringName, int] = {
 	&"ui": 4,
 	&"ui_hint": 1,
+	&"challenge": 1,
 	&"gun": 12,
 	&"reload": 4,
 	&"step": 8,

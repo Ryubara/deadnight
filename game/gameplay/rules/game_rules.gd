@@ -45,7 +45,8 @@ extends RefCounted
 ##     raised the most); regen sends one when the whole-unit health changes, about once per unit
 ##     mended
 ##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow)
-##   player_removed, player_revived: player_id
+##   player_removed: player_id
+##   player_revived: player_id (the one who got up), reviver_id (the teammate; 0 at a round's end)
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
 ##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
@@ -375,6 +376,8 @@ func _dispatch(action: Dictionary) -> void:
 				_check_game_over()
 		RulesAction.SET_DOWNED:
 			_set_downed(action["player_id"], action["downed"])
+		RulesAction.REVIVE:
+			_revive(action["player_id"], action["target_id"])
 		RulesAction.BLOW:
 			_blow(action)
 		RulesAction.HIT:
@@ -686,6 +689,29 @@ func _set_downed(player_id: int, downed: bool) -> void:
 		_check_game_over()
 	else:
 		_events.append_array(PlayerHealth.revive(player, tuning.health))
+
+
+## A teammate gets a downed player up for a share of their health, in a round only.
+func _revive(player_id: int, target_id: int) -> void:
+	var reviver := players.get(player_id) as PlayerState
+	var target := players.get(target_id) as PlayerState
+	var refusal := &""
+	if phase != Phase.ACTIVE:
+		refusal = &"wrong_phase"
+	elif reviver == null or target == null:
+		refusal = &"unknown_player"
+	elif player_id == target_id:
+		refusal = &"self_revive"
+	elif reviver.downed:
+		refusal = &"player_downed"
+	elif not target.downed:
+		refusal = &"not_downed"
+	if refusal != &"":
+		_reject(refusal, RulesAction.REVIVE)
+		return
+	_events.append_array(
+		PlayerHealth.revive(target, tuning.health, tuning.health.revive_fraction, player_id)
+	)
 
 
 ## A blow takes health off, restarts the wait before it mends, and downs the player at zero.

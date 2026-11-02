@@ -183,7 +183,47 @@ rear_cue = false
 duck_db = 0.0
 duck_hold = 0.0
 
+[sub_resource type="Resource" id="Resource_challenge_tick"]
+resource_name = "challenge_tick"
+script = ExtResource("2_def")
+id = &"challenge_tick"
+path_format = "res://assets/audio/ui/challenge_tick_%d.ogg"
+variants = 1
+bus = &"UI"
+loop = false
+volume_db = 0.0
+pitch_semitones = 0.0
+group = &"challenge"
+priority = 60
+cooldown = 0.25
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
+[sub_resource type="Resource" id="Resource_challenge_done"]
+resource_name = "challenge_done"
+script = ExtResource("2_def")
+id = &"challenge_done"
+path_format = "res://assets/audio/ui/challenge_done_%d.ogg"
+variants = 1
+bus = &"UI"
+loop = false
+volume_db = 0.0
+pitch_semitones = 0.0
+group = &"challenge"
+priority = 60
+cooldown = 0.25
+max_distance = 50.0
+unit_size = 8.0
+near_cap_db = inf
+rear_cue = false
+duck_db = 0.0
+duck_hold = 0.0
+
 [resource]
 script = ExtResource("1_bank")
 label = "Menu and HUD cues: hover, press, push, pop, points and the deny buzz"
-sounds = Array[ExtResource("2_def")]([SubResource("Resource_ui_hover"), SubResource("Resource_ui_focus"), SubResource("Resource_ui_tick"), SubResource("Resource_ui_press"), SubResource("Resource_ui_back"), SubResource("Resource_ui_push"), SubResource("Resource_ui_pop"), SubResource("Resource_points_tick"), SubResource("Resource_points_kill")])
+sounds = Array[ExtResource("2_def")]([SubResource("Resource_ui_hover"), SubResource("Resource_ui_focus"), SubResource("Resource_ui_tick"), SubResource("Resource_ui_press"), SubResource("Resource_ui_back"), SubResource("Resource_ui_push"), SubResource("Resource_ui_pop"), SubResource("Resource_challenge_tick"), SubResource("Resource_challenge_done"), SubResource("Resource_points_tick"), SubResource("Resource_points_kill")])

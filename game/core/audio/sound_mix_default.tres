@@ -8,6 +8,7 @@ group_limits = Dictionary[StringName, int]({
 &"bed": 4,
 &"board": 4,
 &"breaker": 2,
+&"challenge": 1,
 &"door": 2,
 &"generator": 2,
 &"grenade": 8,

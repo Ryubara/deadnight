@@ -39,5 +39,5 @@ What moving constants into resources (#415) taught us about Godot 4.7.2. The gui
 ## Pinning the shipped values
 
 `tests/tuning/default_values.gd` holds one table per resource and a `differences` helper that also flags an exported
-property missing from the table, so a new number cannot ship unpinned. The 95 sounds are `sound_defaults.json`,
+property missing from the table, so a new number cannot ship unpinned. The 97 sounds are `sound_defaults.json`,
 dumped from the code that built them before it was deleted.

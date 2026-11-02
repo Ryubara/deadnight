@@ -101,7 +101,7 @@ which is what the inspector shows with no "revert" arrow; the file wins when it 
 | `PlayerTuning` | `gameplay/player/player_tuning_default.tres` | How the player feels: speeds, acceleration, jump, crouch, step up, hip fire, camera framing and springs, shake, sprint sway (15 groups) | `Player.tuning` (the export on the `Player` node of `player.tscn`, `test_room.tscn`), remote avatars, the touch look and the camera probe |
 | `NightTuning` | `gameplay/night/night_tuning_default.tres` | What a player starts with (gun, melee), how far a hand reaches (doors, boards, fuel), the repair and switch intervals, grenade release times, the muzzle, how long a command lasts, the bot's spectator camera | `NightTuning.shipped()`: the night (`Night.night_tuning`, the server and the client), the tests |
 | `ZombieTuning` | `gameplay/zombies/zombie_tuning_default.tres` | How a zombie behaves: the crowd cap, how often it re-plans, lure rules, separation and turn rate, the fence stop, the swing (reach, windup, damage), emerging, staggers, the boss's entrance and stagger, the blast push | `ZombieTuning.shipped()`: the simulation (`ZombieSim`), the client's horde, the balance simulator, the tests |
-| `SoundDef` in a `SoundBank` | `core/audio/banks/<family>.tres` (ui, weapons, steps, zombies, world, grenades, stings, beds: 95 sounds) | One sound: its files, bus, level, pitch spread, voice-budget group and priority, cooldown, 3D reach, near cap, rear cue, duck | `SoundCatalog.BANKS`, loaded by `SoundCatalog.get_def` (the `Audio` autoload, the night's sounds, the tests) |
+| `SoundDef` in a `SoundBank` | `core/audio/banks/<family>.tres` (ui, weapons, steps, zombies, world, grenades, stings, beds: 97 sounds) | One sound: its files, bus, level, pitch spread, voice-budget group and priority, cooldown, 3D reach, near cap, rear cue, duck | `SoundCatalog.BANKS`, loaded by `SoundCatalog.get_def` (the `Audio` autoload, the night's sounds, the tests) |
 | `SoundMix` | `core/audio/sound_mix_default.tres` | How many voices each group may hold; the soldier's voice level, own-voice drop, reach | `SoundCatalog.mix()`, `Audio` (the voice budget), `SoldierVoice` |
 | `AimAssistTuning` | `gameplay/player/aim_assist_tuning_default.tres` | The touch aim assist: reach, capture, friction, magnetism, auto-fire, the simulator's gain | `TouchAimAssist.tuning` (the night), the balance simulator, the tests |
 | `ShotFxTuning` | `gameplay/weapons/fx/shot_fx_tuning_default.tres` | How a shot looks: the wall spark, dust and mark, the blood puff, the flare in flight (core, halo, flicker, trail), the lure on the ground (glow, embers) | `ImpactFx`, `ProjectileView`, `LureView` |
@@ -122,7 +122,7 @@ audit, area by area:
 | Area | Moved | Left in code, and why |
 | --- | --- | --- |
 | Zombies | `ZombieTuning` (all 28 numbers, now a `.tres` the simulation loads) | per-type numbers are already `ZombieType` in `default_tuning.tres`; `ZombieRig`, `AnimationThrottle`: animation and rendering cost, not design |
-| Sound | every `SoundDef` (95), the group limits, the soldier voice's level and reach | the soldier's per-moment table (`SoldierVoiceCatalog.EVENTS`: takes, priority, cooldown, chance) is tied to the generated files; `UI_CUES` (ids); the pitch rule `ArmsCatalog.FIREARM_PITCH_SEMITONES` (checked by a test, no longer builds anything); mix helpers in `audio_service.gd`, `footstep_sounds.gd`, `world_sounds.gd`, `weapon_sounds.gd` (follow-up) |
+| Sound | every `SoundDef` (97), the group limits, the soldier voice's level and reach | the soldier's per-moment table (`SoldierVoiceCatalog.EVENTS`: takes, priority, cooldown, chance) is tied to the generated files; `UI_CUES` (ids); the pitch rule `ArmsCatalog.FIREARM_PITCH_SEMITONES` (checked by a test, no longer builds anything); mix helpers in `audio_service.gd`, `footstep_sounds.gd`, `world_sounds.gd`, `weapon_sounds.gd` (follow-up) |
 | Weapons | the look of a shot, a flare and a lure (`ShotFxTuning`) | `WeaponDef` and `GrenadeDef` were already resources; `ImpactFx.MAX_ACTIVE` (the pool's size) and `MAX_SIZE` (the bound the tests check) |
 | Camera | the range scenes' cameras (exports on their root nodes) | the player's camera is `PlayerTuning`; the bot's camera is `NightTuning` (#465); the loading warm-up's hidden stage camera (`NightWarmup.SHOT_FOV`, near and far shot) only guarantees shaders compile, it is not a feel number |
 | Touch | `AimAssistTuning` (a `.tres` now) | the finger's look gain and sprint thresholds (`TouchLook`, `TouchControls`, touch pull requests in flight: tests use their names); button and stick layout (`TouchLayout`: layout arithmetic) |
@@ -144,7 +144,7 @@ test_round_tuning.gd > test_zombie_count_matches_the_documented_table      (10, 
 
 Every tuning resource has one more pin, `tests/tuning/test_tuning_defaults.gd`: each file must hold the numbers the
 game had as constants before it was a resource, and each exported property must be in the table
-(`tests/tuning/default_values.gd`, and `sound_defaults.json` for the 95 sounds). It fails with the property's name.
+(`tests/tuning/default_values.gd`, and `sound_defaults.json` for the 97 sounds). It fails with the property's name.
 When you retune on purpose, change the number in that table too: it is the one place that says what shipped.
 
 | You change | Run | What it holds |
