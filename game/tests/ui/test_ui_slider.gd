@@ -10,6 +10,8 @@ var _was_reduced := false
 
 
 func before_test() -> void:
+	# A screen another suite left on the router would cover the widget and eat its clicks.
+	await RouterFixture.clear(get_tree())
 	_was_reduced = UIMotion.reduced
 	_slider = auto_free(UISlider.new())
 	_slider.theme = UIThemeBuilder.build()

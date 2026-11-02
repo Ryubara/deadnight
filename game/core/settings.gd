@@ -56,6 +56,12 @@ const LEFT_HANDED := &"controls/left_handed"
 const TOUCH_HINTS_SEEN := &"controls/touch_hints_seen"
 ## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
 const CHARACTER_LOOK := &"character/look"
+## The weapon the menu's soldier holds (`WeaponCatalog` id, one that has a model). Cosmetic: a night
+## starts with the starter program whatever is chosen here.
+const SHOWCASE_WEAPON := &"loadout/weapon"
+## The live 3D stage behind the menu: 0 follows the machine (it falls back to a still when frames
+## run long), 1 always live, 2 always a still (`MenuStageQuality`).
+const MENU_SCENE := &"video/menu_scene"
 ## The longest saved text accepted, so a damaged file cannot fill memory.
 const MAX_TEXT := 4096
 
@@ -83,6 +89,8 @@ const DEFAULTS := {
 	LEFT_HANDED: false,
 	TOUCH_HINTS_SEEN: 0,
 	CHARACTER_LOOK: "",
+	SHOWCASE_WEAPON: "rifle",
+	MENU_SCENE: 0,
 }
 
 ## Allowed range of each numeric value.
@@ -104,6 +112,7 @@ const RANGES := {
 	TOUCH_AIM_ASSIST: Vector2(0.0, 1.0),
 	TOUCH_AUTO_FIRE: Vector2(0, 2),
 	TOUCH_HINTS_SEEN: Vector2(0, 255),
+	MENU_SCENE: Vector2(0, 2),
 }
 
 ## The audio bus each volume drives (the layout is `res://default_bus_layout.tres`).

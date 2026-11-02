@@ -121,7 +121,7 @@ Each of these is an issue.
   clip's release frame, the cook pose held and the arc preview. What is left is the artist's model (#285).
 - **Real transport.** Done for one machine (#302, [Testing multiplayer](../research/testing-multiplayer.md)): the night
   runs on a headless `NightHost` over WebSocket, clients draw the others as avatars and follow the doors from the
-  frames. What is left: the player bodies on the server still have models (#153), Railway and Discord.
+  frames, and the server's player bodies have no model (#153). What is left: Discord.
 - **Tonics**, the re-cut. (A breaker post for each circuit is in:
   the lamps follow `circuit_changed` and the tank, and a player or the bot throws the switch.)
 - **Revive** by a teammate. (The boards at the breaches are in; their sounds are the audio's next.)

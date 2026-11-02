@@ -9,9 +9,10 @@ maintainer can answer are at the end.
 A night is a fresh start and stays one: the same points, the same fuel, the same lot for everybody. What carries over is
 **breadth, identity and know-how, never strength**. Playing earns *Billing* (an account level whose rewards widen the
 choices a player brings to the night), *weapon mastery* (which unlocks side-grade *trims* for the weapons they use),
-*Concession Orders* (goals that reward lighting the lot, holding it and rescuing each other) and *stubs* (a currency
-that buys only cosmetics). Nothing expires, nothing is sold that changes a night, and a level-1 player and a level-50
-player can stand in the same lot and be equally dangerous.
+*Concession Orders* (goals that reward lighting the lot, holding it and rescuing each other), *daily challenges* and
+*milestones* (small goals that turn a night into a few good reasons to play it) and *stubs* (a currency that buys only
+cosmetics). Missing a day costs nothing but that day's three, nothing is sold that changes a night, and a level-1
+player and a level-50 player can stand in the same lot and be equally dangerous.
 
 ## What the research says
 
@@ -27,7 +28,7 @@ on the search summary and are marked.
 | Weapon camo and mastery tracks (Call of Duty Zombies) | Each weapon has tiered challenges for camos | Goals tied to the weapon you already like | Players call the grind too long and say certain weapon archetypes are always better ([Gamereactor](https://www.gamereactor.eu/what-really-grinds-my-gears-call-of-duty-black-ops-6s-camo-challenges-1453823/)); challenge bugs ([NME](https://www.nme.com/news/call-of-duty-vanguard-players-report-weapon-challenges-are-bugged-3088522)) | Few mastery tiers, reachable in a handful of nights, rewarded with side-grades that make the weapon *different*, not better |
 | Challenge-only battle pass (Halo Infinite) | Pass progress only from challenges at launch | Clear goals | Backlash that matches did not count; the studio added "play 1 game" challenges and sped weekly ones up ([GameSpot](https://www.gamespot.com/articles/halo-infinite-major-battle-pass-progression-changes-coming-this-week/1100-6498137/), [Windows Central](https://www.windowscentral.com/halo-infinite-fans-angry-about-battle-pass)) | Playing the game always earns; challenges add to it, never replace it |
 | Permanent, un-expiring tracks (Helldivers 2 warbonds) | Premium tracks never retire; premium tracks can be progressed with medals earned in play | Studio statements that they never retire and are not pay-to-win ([Prima Games](https://primagames.com/tips/do-helldivers-2s-warbonds-go-away-answered), [Yahoo](https://www.yahoo.com/tech/helldivers-2-warbonds-not-pay-220436504.html)); a limited-run crossover was made permanent ([Final Boss](https://finalboss.io/helldivers-2-x-killzone-is-back-this-time)) | Premium tracks still cost paid credits | Nothing expires; a returning player picks up where they left off |
-| Expiring seasons and daily tasks (battle passes in general) | Rewards vanish when the season ends | Predictable revenue (not our concern) | FOMO and burnout; even a never-expiring pass can create FOMO through a purchase window ([VideoGamer](https://www.videogamer.com/features/marvel-rivals-battle-pass-still-gives-players-massive-fomo-and-it-should-be-fixed), [Exputer](https://exputer.com/features/battle-passes-replaced-loot-boxes-consumers/)); commentary, not data | No timers on progress; catch-up instead of daily streaks |
+| Expiring seasons and daily tasks (battle passes in general) | Rewards vanish when the season ends | Predictable revenue (not our concern) | FOMO and burnout; even a never-expiring pass can create FOMO through a purchase window ([VideoGamer](https://www.videogamer.com/features/marvel-rivals-battle-pass-still-gives-players-massive-fomo-and-it-should-be-fixed), [Exputer](https://exputer.com/features/battle-passes-replaced-loot-boxes-consumers/)); commentary, not data | No timers on lasting progress and no streaks. The maintainer chose dailies that simply expire ([Challenges](#challenges-dailies-orders-and-milestones)) |
 | Random loot and crafting (Vermintide 2, Darktide, Killing Floor 3) | Gear power from chests and crafting | Vermintide 2's designers wanted gear to matter less than skill ([PC Gamer](https://www.pcgamer.com/how-warhammer-vermintide-2-plans-to-fix-the-first-games-loot-system), via search summary) | Darktide's launch progression was called RNG-heavy and incomplete, and Fatshark apologised and rebuilt it ([Shacknews](https://shacknews.com/article/133824/warhammer-40000-darktide-launch-apology), [PC Gamer](https://pcgamer.com/fatshark-details-upcoming-changes-to-darktides-gear-acquisition-and-crafting)); Vermintide 2 players report a slow power grind and an account-wide item level that leaves alts behind (anecdotal); Killing Floor 3 launched "Mixed" with a progression grind, worse solo ([MeinMMO](https://mein-mmo.de/en/killing-floor-3-launch-durchwachsen,1516766)) | No random power. Every unlock is a named thing the player picked or earned |
 | Meta currency that pays on failure (Vampire Survivors, Hades) | Every run, won or lost, pays toward permanent options | "Players always have something to work towards, even when they don't manage to complete a run" ([Substack](https://jboger.substack.com/p/the-secret-sauce-of-vampire-survivors), community analysis); opt-in difficulty for opt-in reward ([fan analysis](https://saschb2b.github.io/game-mechanics/games/hades/meta-progression)) | - | A lost night pays almost the same; harder nights are a choice that pays more |
 | Unlocks that add options (Risk of Rain 2) | Challenges unlock characters, skills, skins; items reset every run | Unlocks "have entirely different experiences" rather than raise power ([PC Gamer](https://www.pcgamer.com/au/risk-of-rain-2-character-unlocks), [GamesRadar](https://www.gamesradar.com/risk-of-rain-2-challenges)) | Some challenges needed rework (anecdotal) | The model for the whole page |
@@ -50,7 +51,7 @@ That is the test for every feature below: it should give a choice (autonomy), a 
 | 3 | **One gate per item.** An item is earned by exactly one of: a Billing level, a mastery level, a named order, or stubs. Never two in series | Stacked gates are what players call grind |
 | 4 | **Stubs buy cosmetics only.** Anything that changes a night cannot be bought, rerolled, skipped or boosted with any currency | Keeps pay-to-win off the table before the money question is even asked |
 | 5 | **Playing always pays.** Win or lose, solo or four, a night earns; challenges add to it | Halo's lesson, Back 4 Blood's lesson |
-| 6 | **Nothing expires.** No timed track, no streak that breaks, no limited item that never returns | FOMO and burnout |
+| 6 | **A missed day owes nothing.** Daily challenges exist and expire at each daily reset, finished or not (the maintainer, 2026-11-02, [decision](#decision-daily-challenges)): no banking, no carry-over, no streak, no login reward, nothing for a missed day. Orders and milestones have no timer and never expire, and no item or reward exists only on one date | FOMO and burnout; a daily is an offer for one day, never a debt |
 | 7 | **No random power.** Randomness in a night (the crane) is fine; randomness in what a player *has* is not | Darktide, Vermintide |
 | 8 | **Level never sorts people.** No matchmaking, no difficulty, no lock on level | Weak signal; and most lobbies here are friends |
 | 9 | **The server awards, the client asks.** Only an authoritative game server instance started by the platform can report a result | Cheating and trust; the game is network-first, with an authoritative server |
@@ -216,6 +217,147 @@ period references below are the era's general look, not another game's content.
 | Name plates are chosen from word cards, not typed | Free text is a moderation job this game does not need |
 | Reels never change the field's light level | The screen lights the front of the lot |
 
+## Challenges: dailies, orders and milestones
+
+Small, visible reasons to play a night a certain way, with no unlocks behind them yet (the foundation, issue #399:
+the model, the counting, the save and the read API; the rewards below are placeholders). What the research behind it
+found is in [Challenges](../research/challenges.md).
+
+### Decision: daily challenges
+
+The maintainer asked for daily challenges (2026-11-02, #399: "daily challenges and stuff to meet ... checkpoint
+progress prompts in the UI during gameplay ... a really well thought out design ... modern and sleek, not
+AI-ified") and then decided their shape: **dailies expire at each daily reset. No banking, no carry-over and no
+streaks.** That changes rule 6, which used to say "nothing expires". The research
+([Challenges](../research/challenges.md)) leaned the other way (Fortnite and Overwatch both moved toward progress
+that carries over, and the CHI Play study found fear of missing out is one of three ways players take dailies); the
+decision stands, and what keeps it from becoming a chore is in the table.
+
+| Part of the decision | Rule |
+| --- | --- |
+| Dailies exist | Three a day, dealt from the date, the same for everybody |
+| They expire | At the reset, finished or not: the board shows three new ones at zero. Nothing is banked, nothing carries over |
+| No streak | Nothing counts consecutive days, or days played. Nothing is paid for opening the game |
+| Small on purpose | One short, one medium, one long a day; the short one is under a night's work, so one night finishes something |
+| Playing always counts | Every night advances everything it touches; a challenge adds a goal, it is never the only way to progress |
+| Orders and milestones stay | Three orders at a time and the lifetime ladders have no timer and never expire; orders are the long goals |
+| Nothing exists only on one date | A daily's reward (a placeholder today) is the same kind of thing every day |
+
+### Families
+
+| Family | Size | Refresh | Counts | Shown |
+| --- | --- | --- | --- | --- |
+| **Daily** | One short, one medium, one long a day (under a night to a few nights) | Expires at the player's midnight: the date picks the next three, at zero | From the moment it is on the board | Home panel and Challenges tab |
+| **Order** (Concession Order) | Three open; short, medium or long (days to weeks) | Never. A finished order is replaced when the night ends; the player may swap any one at any time | Total or best night, per order | Challenges tab; the home panel shows the nearest to done |
+| **Milestone** | A ladder of lifetime steps per stat (kills, nights, rounds, best round, headshots, boards, doors, grenade kills, melee kills, headliners, fuel cans, points) | Never; the rung is derived from the lifetime total | Lifetime | Challenges tab; a step reached shows in the night |
+
+A challenge is a record in `game/gameplay/challenges/data/` (`dailies.json`, `orders.json`, `milestones.json`):
+`id`, `text` (`{n}` is the target, so retuning a target retunes the words), `stat`, `target` (a milestone has `steps`),
+`mode` (`total`, adding up across nights, or `night`, the best single night), `tier`, a `group` for dailies, a
+`pillar` for orders and a placeholder `reward`. A test checks every file: unique ids, a stat the night counts, rising
+steps, enough of every tier and group for a day to be varied.
+
+### Refresh and the order draw
+
+| Rule | Value | Why |
+| --- | --- | --- |
+| A day | Local midnight to local midnight (UTC where the platform gives no offset). The day is a whole number; the rotation is a function of it | A test can set any day; the same date gives the same dailies for friends in one call |
+| The deal | One short, one medium, one long. Two of one group never share a day. A challenge dealt the day before is passed over | A day is varied; a returning player sees different things |
+| Rotation memory | Worked out from the first day of a 30-day block, so a day needs no stored history; only a block's first day can repeat the day before | A pure function: no state, no drift between devices |
+| Expiry | Every daily leaves at the reset, done or not; the new three start at zero, even one dealt again. A player away for a month sees three dailies and nothing else | No debt, no backlog, no catching up |
+| Finished | A finished daily stays on the board, done, until the reset | The card shows done, once |
+| Orders | Three, drawn from a seeded draw per account (`order_seed`, `order_draws`), not one finished lately. A swap redraws that slot and costs only its own progress. A finished order is replaced when the night is settled | No pay-to-skip; the pool is solo-safe by construction |
+| Milestones | Lifetime totals; a best stat (the round reached) is a high-water mark | Facts stored, rungs derived |
+
+### What a night counts
+
+Counted from the events a client hears (`NightTally`), for every player in the night, solo and co-op by the same code.
+A stat is a name; a challenge names one.
+
+| Stat | From |
+| --- | --- |
+| `kills`, `kills:head` (head or weak zone), `kills:melee`, `kills:blast` (a grenade), `kills:boss` | `zombie_removed` (`cause` killed, the `killer_id`, `zone`, `melee`, `boss`) |
+| `kills:weapon:<id>` | the same, with the killer's weapon: the last `weapon_equipped`, `shot_fired` or frame reading of that player. A blast has no weapon |
+| `kills:type:<id>` | the same, by zombie type |
+| `boards_repaired` | `board_repaired` |
+| `doors_bought`, `buys`, `fuel_cans` | `purchase_made` (a refusal is `purchase_denied` and counts nothing) |
+| `points_earned` | `points_changed` with a gain, without the starting purse |
+| `rounds` | `round_ended`, for every player in the lot (down or not: playing always counts) |
+| `round` (best) | `round_started`, `game_over` |
+| `nights` | `game_over`, for every player still in the lot |
+
+**Not counted yet, and no challenge asks for them** (a challenge the night cannot finish is a broken promise): rescues
+(no teammate revive exists in the rules; a downed player gets up when the round ends, and `player_revived` names nobody
+who helped), weapon mastery steps (mastery is not built), lighting goals that need the circuits' state (they are the
+generator's, not a player's), and every "Together" order. Each is one stat and a data record the day its event exists.
+
+### The read API
+
+One small class, `ChallengeBoard` (`game/gameplay/challenges/challenge_board.gd`), is everything the main menu's home
+panel and the Challenges tab (#397) read. It loads the save, deals today's dailies and saves what changed; it holds no
+node.
+
+| Call | Answers |
+| --- | --- |
+| `ChallengeBoard.open()` | The player's board (the save at `user://challenges.json`; a clock and catalogue can be passed for tests and captures) |
+| `dailies()` | Today's three: `id`, `text`, `progress`, `target`, `fraction`, `done`, `tier`, `reward` |
+| `orders()` | The open orders: the same keys plus `slot` and `pillar` |
+| `milestones()` | Each ladder: `text` (the next step), `value`, `rung`, `rungs`, `target` (0 when done), `fraction` toward the next step, `done` |
+| `seconds_to_refresh()`, `refresh_text()` | Time to the next dailies, "6 h 12 min" |
+| `swap_order(slot)`, `refresh()`, signal `changed` | The one write the menu makes; `refresh()` when the screen is shown again |
+
+### The save
+
+Facts only, in the platform backend's envelope (`{revision, schemaVersion, data}`, [save format](../research/platform-backend.md#save-format)):
+the day the dailies were dealt for, each daily's day and progress, each order's progress, the order seed and its
+draw count, the lifetime totals by stat, how many dailies and orders were ever finished. Today it is the file
+`user://challenges.json`; the backend slot later takes the same text. The rules: `schemaVersion` is 1; a newer
+version is never read or overwritten (an old client cannot wipe progress); a damaged file is set aside as `.broken`
+and play starts fresh; every number is small (a count or a seed under 2^31), so none needs the backend's string
+rule for 64-bit values; a night saves at the end of every round and at the end of the night, so a quit loses at most
+the round in progress. Only a night a person plays writes the save (bots, captures and tests have no board). **When
+the server awards (rule 9)** the same `NightTally` and `ChallengeTracker` run on the game server, following every
+player, and the client's board becomes a cache.
+
+### The progress prompt in the night
+
+A small checkpoint that says a challenge moved one step: a quarter mark (25, 50, 75, 100 percent) of a daily or an
+order, or a milestone step reached. The rules, drawn from the [HUD](hud.md) and its [research](../research/hud.md):
+
+- **Rare and quiet.** A target under 4 is only said when done (a quarter of 3 is no step). A jump over two marks says
+  the highest. One prompt per challenge per moment; a daily, an order and a milestone crossing in the same instant are
+  three prompts in a queue, not one crowded card.
+- **A half-second read.** The name of the thing in at most six words, the count as the large part (`12 / 40`), and four
+  punch-card dots, one more punched at each quarter. Nothing else: no reward text, no explanation (the Challenges tab explains).
+- **One home.** It does not repeat a number the HUD already owns (points, round). Progress toward a challenge lives
+  here and on the tab, nowhere else in the night.
+- **Never over the crosshair or the round counter,** nor the prompt card, the gains, the feed, health or ammo. It
+  sits in the free band at the middle of the screen's left edge, mirrors with a left-handed layout, and a test checks
+  it against the HUD's measured parts at every canvas the HUD test uses.
+- **Panels appear on change and leave.** In 0.25 s, held about 2.4 s, out 0.4 s (completions hold 3.2 s). With two or
+  more waiting, holds shorten to 1.6 s so a burst of advances never queues up a minute of prompts. A completion is
+  never dropped; the lowest quarter marks go first when more than three wait. Stale prompts (older than 20 s) are
+  dropped, so one never describes something long gone.
+- **Calm while it matters.** Nothing new starts while the player is down; the queue waits (and still goes stale).
+- **A sound.** One soft cue: a short tick for a quarter mark, a rising pair for a finished challenge or a milestone,
+  on the UI bus, quieter than a shot, made from a recipe in `tools/audio` (no generated voice).
+- **Reduced motion and touch.** Reduced motion fades without sliding. The touch layout keeps clear of the fire
+  and move buttons.
+- **A setting.** `Challenge prompts`: all, completions and milestones only, or off. Nothing is hidden by default.
+
+**The look** is the maintainer's choice for the main menu, "The program" (2026-11-02): a paper ticket, cream with dark ink,
+notched like the HUD's cards, a perforated tear line down its left edge, progress as punch-card dots (a punched hole
+is a quarter done), the finish a fifth mark: the last hole punched and the caption `FINISHED`. Two directions were
+drawn for it first (a dark lit-sign card with a row of bulbs, and this ticket); the ticket was chosen so the night and
+the menu read as one set of paper.
+
+### The menu (issue #397)
+
+The home panel shows the day's three dailies as three plain lines with their counts, the order nearest to done, and
+"New dailies in 6 h 12 min" in small print. The Challenges tab has three groups (Today, Orders, Milestones) and a swap
+on each order. Both read `ChallengeBoard` and nothing else. The menu's look is the maintainer's choice for the main
+menu, "The program": paper tickets, with progress as punch-card dots; the night's prompt below matches it.
+
 ## How a fresh night stays fair
 
 | Situation | Rule |
@@ -315,7 +457,7 @@ weekly operator task, so it ships only if the maintainer wants live operations.
 | 2 | Profile, ledger and round reports in the platform backend | backend choice (#25) |
 | 3 | Billing and the starter program, with item ids gated by level | 1, 2 |
 | 4 | Mastery and trims, with the audit bot night | weapons art |
-| 5 | Concession Orders | 1, 2 |
+| 5 | Concession Orders, daily challenges and milestones: the model, the tracker, the save and `ChallengeBoard` are built ([issue #399](https://github.com/Ryubara/deadnight/issues/399)); the night's progress prompt follows; the rewards wait for 3 and 6 | 1, 2 |
 | 6 | Cosmetics, the Marquee and the Night Report screen | art, UI |
 | 7 | Bad Weather, then the weekly bill | 3 |
 
@@ -335,6 +477,7 @@ weekly operator task, so it ships only if the maintainer wants live operations.
 | 10 | Are Bad Weather nights part of the first release? | Level 20 and later; can slip |
 | 11 | The 1958 setting and the creature-feature cosmetics: any reference we avoid (period slurs, real brands)? | No real brands or logos |
 | 12 | Which numbers does the rounds page own? | This page reads rounds; round length and point values are its |
+| 13 | Which rewards do dailies, orders and milestones pay once unlocks exist: the placeholders (XP and stubs by size) or something else? | The placeholders, paid at the end of the night |
 
 ## Sources, and what we could not read
 

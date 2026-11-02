@@ -238,6 +238,20 @@ weapon clips, so the legs keep their locomotion under it through the same bone f
   through the night and checks the hammer replaces the weapon and the weapon comes back on release, and
   `game/tests/ui/touch/test_touch_repair.gd` does the same from a finger on the touch Interact button.
 
+## Reloading
+
+A reload is a tilt, not a clip (maintainer, 2026-11-01, #383: "it can just be a slight tilt weapon downward and pull it
+back up after it's done"). The `Reload_<Class>` clips above are not played in the night: the arms stay on the weapon
+(`WeaponHandsIK`) and the server's `reload_started` (`seconds` is the weapon's `reload_time`) calls
+`PlayerAnimation.reload(seconds)` on the shooter's Soldier, on every client, through `NightView`. Over those seconds the
+weapon's pitch is lowered about the grip by `PlayerTuning.reload_tilt_degrees` (35): down over the first
+`reload_dip_in` (0.2) of the time, held, and back up over the last `reload_dip_out` (0.25), each a smoothstep, so the
+weapon is level again when the reload is done. A swap (`equip`) cancels it. The tilt is added to the pitch of the pose
+the aim weight gives ([hip fire](../research/hip-fire.md)), so a reload while aiming dips from the aim and returns to
+it, and it never touches the weight: `test_reload_tilt.gd` samples the barrel's pitch every tick for every gun (hip and
+aim) and checks the dip, the return within the reload time, a bounded turn per tick and an unchanged aim weight;
+`test_night_reload.gd` does it through the real night with the sounds counted ([audio](audio.md)).
+
 ## Moving while aiming
 
 While aiming the Soldier keeps facing the camera and moves at `aim_speed` (2.6 m/s) in any direction, so the legs
