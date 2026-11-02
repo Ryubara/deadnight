@@ -98,7 +98,9 @@ func _on_event(event: Dictionary) -> void:
 				HudLoadout.EVENTS.has(event["type"])
 				or not NightServer.COMBAT_EVENTS.has(event["type"])
 			):
+				var began := PerfProbe.begin()
 				_hud.state.apply_event(_with_world_point(event))
+				PerfProbe.end(&"hud.event", began)
 
 
 ## A hit on a zombie also says where in the world it landed, so its number can stay there while
