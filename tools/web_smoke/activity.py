@@ -282,10 +282,16 @@ def main() -> int:
                 stages.append(
                     f"after a click in the frame: top has focus {page.evaluate('document.hasFocus()')}, frame {frame.evaluate(probe)}"
                 )
-                stages.append(f"line: {rooms.read_probe(frame).get('gamepad', '')}")
+                page.screenshot(full_page=True, path=args.out / "activity_after_click_without_focus.png")
+                stages.append(
+                    f"line: {rooms.read_probe(frame).get('gamepad', '')}"
+                    f" (hint on every screen shown: {rooms.read_probe(frame).get('controller_hint')})"
+                )
             gamepad = frame.evaluate("window.deadnightGamepad ? window.deadnightGamepad() : ''")
             note = rooms.read_probe(frame).get("gamepad", "")
-            page.screenshot(path=args.out / f"activity_{args.encoding}_{args.embed}{'_pad' if args.pad else ''}.png")
+            page.screenshot(
+                full_page=True, path=args.out / f"activity_{args.encoding}_{args.embed}{'_pad' if args.pad else ''}.png"
+            )
             browser.close()
         server.shutdown()
     (args.out / "console.txt").write_text("\n".join(console), encoding="utf-8")

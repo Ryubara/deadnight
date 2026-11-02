@@ -11,7 +11,13 @@ signal packet_received(peer_id: int, data: PackedByteArray)
 ## What a peer may have waiting to be read: bytes, and packets. A client sends small packets (see
 ## `PeerLimits.MAX_PACKET`), so a frame bigger than the buffer is a hostile one the engine refuses.
 const INBOUND_BUFFER := 4096
-const MAX_QUEUED := 256
+## The engine's count limit holds for both directions: what comes in is held to 4 KB by the buffer
+## above, 178 commands at most, and what goes out to `OUTBOUND_BUFFER`.
+const MAX_QUEUED := 8192
+## What may be waiting to be sent to a peer that is not reading (a client whose game loop froze):
+## ticks of a second or two are some 15 to 35 KB each second, and the engine's default of 64 KB
+## began to drop them after a few seconds, which broke the chain of frame deltas (#483).
+const OUTBOUND_BUFFER := 1 << 20
 ## Seconds a client has to answer the closing handshake before the server lets go of it.
 const CLOSE_GRACE := 1.0
 
@@ -19,6 +25,9 @@ const CLOSE_GRACE := 1.0
 var bytes_in := 0
 var bytes_out := 0
 var packets_out := 0
+
+## Bytes that may wait to be sent to a peer (`OUTBOUND_BUFFER`; a test sets it before peers come).
+var outbound_buffer := OUTBOUND_BUFFER
 
 var _tcp := TCPServer.new()
 var _handshaking: Array[WebSocketPeer] = []
@@ -52,6 +61,7 @@ func poll() -> void:
 		var ws := WebSocketPeer.new()
 		ws.inbound_buffer_size = INBOUND_BUFFER
 		ws.max_queued_packets = MAX_QUEUED
+		ws.outbound_buffer_size = outbound_buffer
 		ws.accept_stream(_tcp.take_connection())
 		_handshaking.append(ws)
 	for ws in _handshaking.duplicate():
@@ -97,12 +107,19 @@ func left_on_purpose(peer_id: int) -> bool:
 	return code == 1000 or code == 1001
 
 
-func send(peer_id: int, data: PackedByteArray) -> void:
+## Sends a packet to a peer; false when it was not sent (no such peer, not open, or its buffer
+## is full because it has stopped reading).
+func send(peer_id: int, data: PackedByteArray) -> bool:
 	var ws: WebSocketPeer = _peers.get(peer_id)
-	if ws != null and ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
-		ws.send(data, WebSocketPeer.WRITE_MODE_BINARY)
-		bytes_out += data.size()
-		packets_out += 1
+	if ws == null or ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
+		return false
+	if ws.get_current_outbound_buffered_amount() + data.size() > outbound_buffer:
+		return false
+	if ws.send(data, WebSocketPeer.WRITE_MODE_BINARY) != OK:
+		return false
+	bytes_out += data.size()
+	packets_out += 1
+	return true
 
 
 func disconnect_peer(peer_id: int) -> void:

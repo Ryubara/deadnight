@@ -73,7 +73,8 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.godot == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # The suite takes 17 to 20 minutes on a runner: a limit it nearly met cancelled a green run (#501).
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
