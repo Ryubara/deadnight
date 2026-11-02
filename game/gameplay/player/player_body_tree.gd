@@ -11,7 +11,7 @@ static func build(duck_bottom: float) -> AnimationNodeStateMachine:
 	var jump := PlayerAnimation.STATE_JUMP
 	var fall := PlayerAnimation.STATE_FALL
 	var land := PlayerAnimation.STATE_LAND
-	var crouch := PlayerAnimation.STATE_CROUCH
+	var crouch := StanceDrive.STATE_CROUCH
 	var machine := AnimationNodeStateMachine.new()
 	machine.add_node(locomotion, _locomotion(), Vector2(200, 100))
 	machine.add_node(jump, _clip(&"Jump"), Vector2(400, 0))
@@ -46,8 +46,8 @@ static func _crouch(duck_bottom: float) -> AnimationNodeBlendTree:
 	var tree := AnimationNodeBlendTree.new()
 	var duck := _clip(&"Duck")
 	duck.use_custom_timeline = true
-	duck.start_offset = maxf(duck_bottom - PlayerAnimation.DUCK_HOLD * 0.5, 0.0)
-	duck.timeline_length = PlayerAnimation.DUCK_HOLD
+	duck.start_offset = maxf(duck_bottom - StanceDrive.DUCK_HOLD * 0.5, 0.0)
+	duck.timeline_length = StanceDrive.DUCK_HOLD
 	duck.loop_mode = Animation.LOOP_LINEAR
 	duck.stretch_time_scale = false
 	tree.add_node(&"duck", duck)

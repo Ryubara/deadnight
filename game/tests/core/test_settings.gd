@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## Load, save and apply for the settings service. Each test uses its own file under user://, so the
 ## player's real settings are never read or written.
 
-const TEST_PATH := "user://settings_test.cfg"
+var _test_path := QuietSettings.test_path("settings_test")
 
 var _settings: QuietSettings
 var _made: Array[QuietSettings] = []
@@ -49,7 +49,7 @@ func test_file_uses_the_documented_sections() -> void:
 	_settings.set_value(SettingsService.VSYNC, false)
 	_settings.save()
 	var file := ConfigFile.new()
-	assert_int(file.load(TEST_PATH)).is_equal(OK)
+	assert_int(file.load(_test_path)).is_equal(OK)
 	assert_bool(file.get_value("video", "vsync")).is_false()
 	assert_bool(file.has_section_key("audio", "master")).is_true()
 	assert_bool(file.has_section_key("controls", "invert_y")).is_true()
@@ -71,7 +71,7 @@ func test_bad_entries_fall_back_or_clamp() -> void:
 	file.set_value("video", "vsync", "yes")
 	file.set_value("controls", "mouse_sensitivity", "fast")
 	file.set_value("accessibility", "ui_scale", 0.1)
-	file.save(TEST_PATH)
+	file.save(_test_path)
 	var loaded := _make()
 	assert_int(loaded.get_value(SettingsService.VOLUME_MASTER)).is_equal(100)
 	assert_bool(loaded.get_value(SettingsService.VSYNC)).is_true()
@@ -80,7 +80,7 @@ func test_bad_entries_fall_back_or_clamp() -> void:
 
 
 func test_unreadable_file_leaves_defaults() -> void:
-	var handle := FileAccess.open(TEST_PATH, FileAccess.WRITE)
+	var handle := FileAccess.open(_test_path, FileAccess.WRITE)
 	handle.store_string("[[ not a config")
 	handle.close()
 	var loaded := _make()
@@ -150,7 +150,7 @@ func test_startup_applies_the_saved_file() -> void:
 	var file := ConfigFile.new()
 	file.set_value("audio", "ui", 20)
 	file.set_value("accessibility", "reduced_motion", true)
-	file.save(TEST_PATH)
+	file.save(_test_path)
 	var started := _make()
 	started.apply_all()
 	assert_float(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(&"UI"))).is_equal_approx(
@@ -162,11 +162,18 @@ func test_startup_applies_the_saved_file() -> void:
 ## A service on the test file, in the tree so it can reach the root window; its window calls go to
 ## a list, never to the display this runs on.
 func _make() -> QuietSettings:
-	var service := QuietSettings.make(self, TEST_PATH)
+	var service := QuietSettings.make(self, _test_path)
 	_made.append(service)
 	return service
 
 
 func _remove_file() -> void:
-	if FileAccess.file_exists(TEST_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+	if FileAccess.file_exists(_test_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(_test_path))
+
+
+func test_a_suite_file_is_named_by_the_process_so_two_runs_do_not_share_it() -> void:
+	var path := QuietSettings.test_path("settings_test")
+	assert_str(path).starts_with("user://settings_test_")
+	assert_str(path).contains("_%d." % OS.get_process_id())
+	assert_str(path).is_not_equal(QuietSettings.test_path("other_test"))

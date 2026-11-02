@@ -19,6 +19,13 @@ func save() -> Error:
 	return super.save()
 
 
+## A settings file under user:// for one suite, named by the process too: two Godot runs of the same
+## project at once (agents do that) share user://, and a fixed name let one run's cleanup delete the
+## other's file between its write and its read (#594).
+static func test_path(name: String) -> String:
+	return "user://%s_%d.cfg" % [name, OS.get_process_id()]
+
+
 ## One on `path`, in `parent`'s tree so it can reach the root window; its first load and apply
 ## are not counted. The caller frees it (free it before the file is removed: a service with an
 ## unsaved change writes the file once more as it goes).

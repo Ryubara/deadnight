@@ -37,6 +37,10 @@ var me := -1
 var grenades := START_GRENADES
 ## The special round in play (`round_started`'s `special_id`), or empty in an ordinary round.
 var special: StringName = &""
+## The purchases the server refused since the brain last looked: `{item, result}`.
+var denials: Array[Dictionary] = []
+## The clock when the bot last bought something.
+var purchased_at := -INF
 ## Rays the last look cast: how busy this think already was.
 var rays := 0
 var now := 0.0

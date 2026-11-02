@@ -85,15 +85,19 @@ func apply_frame(frame: Dictionary) -> void:
 			_tracks[id] = []
 			_make(id)
 		var track: Array = _tracks[id]
-		track.append(
-			{
-				"t": time,
-				"pos": player["pos"],
-				"facing": player["facing"],
-				"downed": player["downed"],
-				"aim": player.get("aim", false),
-				"pitch": player.get("pitch", 0)
-			}
+		(
+			track
+			. append(
+				{
+					"t": time,
+					"pos": player["pos"],
+					"facing": player["facing"],
+					"downed": player["downed"],
+					"aim": player.get("aim", false),
+					"pitch": player.get("pitch", 0),
+					"stance": PlayerStance.clean(player.get("stance", 0)),
+				}
+			)
 		)
 		while track.size() > 2 and track[1]["t"] < time - KEEP:
 			track.pop_front()
@@ -157,6 +161,7 @@ func _place(player_id: int, delta: float) -> void:
 	var pos: Vector3 = last["pos"]
 	var facing: float = last["facing"]
 	var pitch := float(last["pitch"])
+	var stance: int = last["stance"]
 	if _clock < last["t"]:
 		for i in range(track.size() - 1, 0, -1):
 			var after: Dictionary = track[i]
@@ -167,14 +172,19 @@ func _place(player_id: int, delta: float) -> void:
 				pos = (before["pos"] as Vector3).lerp(after["pos"], amount)
 				facing = lerp_angle(before["facing"], after["facing"], amount)
 				pitch = lerpf(before["pitch"], after["pitch"], amount)
+				# What the body was doing at the moment it is drawn at, not what the newest says.
+				stance = before["stance"]
 				break
 			if i == 1:
 				pos = before["pos"]
 				facing = before["facing"]
 				pitch = before["pitch"]
+				stance = before["stance"]
 	else:
 		starved += 1
-	drawn.show_at(pos, facing, last["downed"], last["aim"], pitch * NightServer.PITCH_STEP, delta)
+	drawn.show_at(
+		pos, facing, last["downed"], last["aim"], pitch * NightServer.PITCH_STEP, stance, delta
+	)
 
 
 ## One player's drawn body: placed, turned, and given the speed, the aim and the look it is moving
@@ -192,7 +202,13 @@ class Drawn:
 		body = p_body
 
 	func show_at(
-		pos: Vector3, facing: float, downed: bool, aim: bool, pitch: float, delta: float
+		pos: Vector3,
+		facing: float,
+		downed: bool,
+		aim: bool,
+		pitch: float,
+		stance: int,
+		delta: float
 	) -> void:
 		if _placed and delta > 0.0:
 			var flat := Vector3(pos.x - _was.x, 0.0, pos.z - _was.z) / delta
@@ -209,4 +225,4 @@ class Drawn:
 			body.rotation.x = 0.0
 		else:
 			body.rotation.x = RemoteAvatars.DOWNED_TILT if downed else 0.0
-		body.puppet_to(pos, facing, _speed, aim and not downed, _pitch)
+		body.puppet_to(pos, facing, _speed, aim and not downed, _pitch, stance)

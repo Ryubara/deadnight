@@ -246,8 +246,10 @@ static func _share(zones: Dictionary, zone: StringName) -> float:
 func test_the_aim_and_fire_distributions_of_phase_1_hold_in_a_boss_fight() -> void:
 	# Four bots of the three skills fight the boss night for 40 s; the view of each never turns faster
 	# than its profile's cap in any 100 ms, every shot agrees with the view (the server refuses one
-	# that
-	# does not: `fire_rejected`). The reaction floor in the real lot is scenario 1 in
+	# that does not: `fire_rejected`). The dead are staged in front of the bots (`stage_the_dead`):
+	# left to walk the lot from its far spawn spots, they came within range only near the end of the
+	# 40 s, by a path that changed a little from one run to the next, so the count of shots swung
+	# from 130 to 3 on a slow machine (#596). The reaction floor in the real lot is scenario 1 in
 	# `test_bot_night.gd`, which runs on this brain too.
 	var tuning := NightFixture.special_tuning(&"double_feature")
 	tuning.health.max_health = 100000.0
@@ -258,6 +260,7 @@ func test_the_aim_and_fire_distributions_of_phase_1_hold_in_a_boss_fight() -> vo
 	for i in 4:
 		night.seat(i + 1, profiles[i], 77 + i)
 	night.recording = true
+	night.stage_the_dead = true
 	night.gather()
 	var rejected: Array[StringName] = []
 	night.on_event = func(event: Dictionary) -> void:
