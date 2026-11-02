@@ -20,6 +20,9 @@ var _controls: TouchControls
 var _blows := 0
 var _hurt := 0
 var _grip_lost := 0
+## What the server answered, with the page's clock (`performance.now()`, ms) and the server's own
+## clock: `blow` or `reject:<reason>`. The browser run lines it up with the taps it sent.
+var _log: Array = []
 var _since := 0.0
 var _started := false
 
@@ -67,9 +70,19 @@ func _count(event: Dictionary) -> void:
 	match event["type"]:
 		&"quick_melee":
 			_blows += 1
+			_note("blow")
+		&"fire_rejected":
+			_note("reject:%s" % event["reason"])
 		&"damage_dealt":
 			if event["melee"]:
 				_hurt += 1
+
+
+func _note(what: String) -> void:
+	if not OS.has_feature("web"):
+		return
+	var page_ms := float(JavaScriptBridge.eval("performance.now()", true))
+	_log.append([what, snappedf(page_ms, 0.1), snappedf(_night.server.combat.now, 0.001)])
 
 
 ## Every tick: the first zombie stays in reach of the blow, the others stand behind.
@@ -111,6 +124,7 @@ func _publish() -> void:
 		"ready": _started,
 		"melee": [window.x / ratio, window.y / ratio],
 		"blows": _blows,
+		"log": _log,
 		"hurt": _hurt,
 		"paused": _night.is_paused(),
 		"grip_lost": _grip_lost,

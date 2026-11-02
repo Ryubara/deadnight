@@ -41,7 +41,13 @@ def state(page: Page) -> dict:
     return page.evaluate("window.__melee || {}") or {}
 
 
-def tap(client: CDPSession, x: float, y: float, hold_s: float = 0.12) -> None:
+def stamp(page: Page, taps: list[float]) -> None:
+    """Notes the page's clock at a touch start, to line the taps up with the game's answers."""
+    taps.append(round(page.evaluate("performance.now()"), 1))
+
+
+def tap(page: Page, client: CDPSession, taps: list[float], x: float, y: float, hold_s: float = 0.12) -> None:
+    stamp(page, taps)
     touch_assist.touch(client, "touchStart", [(1, x, y)])
     time.sleep(hold_s)
     touch_assist.touch(client, "touchEnd", [])
@@ -50,6 +56,7 @@ def tap(client: CDPSession, x: float, y: float, hold_s: float = 0.12) -> None:
 def run_once(url: str, label: str, query: str, out: Path | None) -> dict:
     problems: list[str] = []
     steps: dict[str, int] = {}
+    taps: list[float] = []
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
         context = browser.new_context(viewport=VIEWPORT, has_touch=True, is_mobile=True)
@@ -68,6 +75,7 @@ def run_once(url: str, label: str, query: str, out: Path | None) -> dict:
         if out is not None:
             out.mkdir(parents=True, exist_ok=True)
             page.screenshot(path=str(out / f"touch_melee_{label}_before.png"))
+        stamp(page, taps)
         touch_assist.touch(client, "touchStart", [(1, x, y)])
         time.sleep(0.15)
         if out is not None:
@@ -77,15 +85,15 @@ def run_once(url: str, label: str, query: str, out: Path | None) -> dict:
         steps["one_tap"] = state(page)["blows"]
         # Two more taps, 0.2 s apart: all inside the first blow's 0.6 s.
         for _ in range(2):
-            tap(client, x, y, 0.1)
+            tap(page, client, taps, x, y, 0.1)
             time.sleep(0.1)
         time.sleep(0.2)
         steps["three_taps"] = state(page)["blows"]
         time.sleep(COOLDOWN_S + 0.6)
-        tap(client, x, y)
+        tap(page, client, taps, x, y)
         time.sleep(0.4)
         steps["after_cooldown"] = state(page)["blows"]
-        result = {"steps": steps, "end": state(page), "problems": problems}
+        result = {"steps": steps, "end": state(page), "problems": problems, "taps": taps}
         browser.close()
     return result
 
@@ -122,7 +130,7 @@ def main() -> int:
         for label, query in RUNS.items():
             try:
                 result = run_once(f"http://127.0.0.1:{port}/index.html", label, query, args.out)
-                print(label, json.dumps({"steps": result["steps"], "end": result["end"]}))
+                print(label, json.dumps({"steps": result["steps"], "taps": result["taps"], "end": result["end"]}))
                 failed += verdict(label, result)
             except (RuntimeError, TimeoutError) as error:
                 failed.append(str(error))
