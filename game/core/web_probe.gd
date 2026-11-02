@@ -66,9 +66,12 @@ static func snapshot(top: Control) -> Dictionary:
 		"room_status": "",
 		"code_text": "",
 		"touch": false,
+		"reticle": false,
 		"tab": "",
 		"stage": "",
 		"gamepad": "",
+		"activity_room": "",
+		"activity_code": "",
 		"controller_hint": false,
 		"clipboard": "",
 		"clipboard_detail": ""
@@ -80,6 +83,10 @@ static func snapshot(top: Control) -> Dictionary:
 	var clipboard := WebClipboard.read()  # inside a frame only: what copy and paste can do there
 	data["clipboard"] = WebClipboard.note(clipboard)
 	data["clipboard_detail"] = WebClipboard.detail(clipboard)
+	var room := ActivityRoom.current
+	if room != null:
+		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
+		data["activity_code"] = str(room.lobby.get("code", ""))
 	var tree := top.get_tree()
 	var hint: ControllerHint = (
 		tree.root.find_child("ControllerHint", true, false) as ControllerHint
@@ -116,6 +123,7 @@ static func snapshot(top: Control) -> Dictionary:
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
 	data["touch"] = night_screen.touch_active()
+	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)

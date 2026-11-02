@@ -69,6 +69,13 @@ closes on `SIGTERM`.
 
 ## Join flow: from the Activity to a running match
 
+The Activity opens on the main menu, like every platform (#495). The sign-in, the instance's lobby and its start (all
+that comes before the ticket request below) run in the background from the menu (`ActivityRoom`, started by `main.gd`
+when the page has `instance_id`); Play together then shows the room code ready, and one press of Play asks for the
+ticket. If the room could not be
+made the screen says why and tries again on the next visit; a night entered from the room makes it stale, so the next
+visit makes a fresh one.
+
 ```mermaid
 sequenceDiagram
     autonumber

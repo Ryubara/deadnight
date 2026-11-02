@@ -4,8 +4,9 @@ A local HTTPS server stands in for `<id>.discordsays.com`: the page and its file
 goes to the platform backend with the prefix kept (Discord forwards it as it is), the Discord bridge is replaced by a
 stub (there is no Discord client to sign in with, so the game signs in as a guest, as it does when Discord refuses),
 and the API answers can be compressed the way Discord's proxy does it. The run opens the Activity's address
-(`?frame_id=...&instance_id=...`), waits for the Play together screen to land in a night and fails when it shows an
-error instead.
+(`?frame_id=...&instance_id=...`), waits for the main menu with the voice channel's night already made, presses Play
+together and checks it shows that same room code. It fails when the Activity opens on Play together, when the room could
+not be made, or when it shows an error instead.
 
     uv run --with playwright==1.64.1 --with cryptography python tools/web_smoke/activity.py <web folder or URL> <backend https address> <out folder>
 
@@ -47,7 +48,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Page, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).parent))
 import rooms
@@ -108,6 +109,16 @@ def self_signed(folder: Path) -> tuple[Path, Path]:
     )
     cert_file.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
     return cert_file, key_file
+
+
+class Driver:
+    """The page's keyboard and mouse with the Activity frame's game probe: what `rooms` and `smoke` call on a page."""
+
+    def __init__(self, page: Page, frame) -> None:
+        self.keyboard = page.keyboard
+        self.mouse = page.mouse
+        self.wait_for_timeout = page.wait_for_timeout
+        self.evaluate = frame.evaluate
 
 
 def make_handler(
@@ -264,20 +275,13 @@ def hold_keys(page, *keys: str) -> None:
         page.keyboard.up(key)
 
 
-class Both:
-    """The page's keyboard and clock with the frame's scripts: what `smoke.menu_item` wants of one page."""
-
-    def __init__(self, page, frame) -> None:
-        self.keyboard, self.wait_for_timeout, self.evaluate = page.keyboard, page.wait_for_timeout, frame.evaluate
-
-
 def clipboard_flow(page, frame) -> tuple[list[str], bool]:
     """From the main menu to Play together, then the clipboard checks of `--clipboard`; the lines and whether both held."""
     lines: list[str] = []
     rooms.wait_for(frame, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
     page.mouse.click(5, 5)  # the user gesture, and the keyboard for the canvas
     page.wait_for_timeout(2500)
-    smoke.menu_item(Both(page, frame), "Play")
+    smoke.menu_item(Driver(page, frame), "Play")
     smoke.press(page, "Enter")
     rooms.wait_for(frame, "the Play together screen", lambda s: s.get("screen") == "together_screen", 30)
     page.wait_for_timeout(1500)
@@ -453,18 +457,39 @@ def main() -> int:
                 print(chr(10).join(log + lines))
                 print(f"clipboard ({args.embed}): {'both held' if ok else 'FAILED'}")
                 return 0 if ok else 1
+            driver = Driver(page, frame)
             deadline = time.monotonic() + args.seconds
             state: dict = {}
             failed = ""
+            # The Activity opens on the main menu with the voice channel's night already made (#495); Play together
+            # then shows that same room.
+            menu_code = ""
             while time.monotonic() < deadline:
                 state = rooms.read_probe(frame)
-                if state.get("room_code"):
+                if state.get("screen") == "together_screen":
+                    failed = "the Activity opened on Play together instead of the main menu"
                     break
-                status = str(state.get("room_status", ""))
-                if state.get("screen") == "together_screen" and status.startswith("Could not"):
-                    failed = status
+                if state.get("screen") == "main_menu" and state.get("activity_room") == "failed":
+                    failed = "the room could not be made ready on the menu"
+                    break
+                if state.get("screen") == "main_menu" and state.get("activity_room") == "ready":
+                    menu_code = str(state.get("activity_code", ""))
                     break
                 time.sleep(1)
+            if menu_code:
+                print(f"menu first: the main menu is up with room {menu_code} ready")
+                page.wait_for_timeout(1500)
+                page.screenshot(path=args.out / "activity_menu_first.png")
+                rooms.to_together(driver)
+                waited_until = time.monotonic() + 60
+                while time.monotonic() < waited_until:
+                    state = rooms.read_probe(frame)
+                    if state.get("room_code"):
+                        break
+                    time.sleep(0.5)
+                if state.get("room_code") != menu_code:
+                    failed = f"Play together showed room {state.get('room_code')!r}, the menu had made {menu_code!r}"
+                    state = {}
             page.wait_for_timeout(2000)
             if args.parent_focus and args.embed != "none":
                 probe = "window.deadnightGamepad ? window.deadnightGamepad() : ''"

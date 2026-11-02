@@ -4,10 +4,11 @@ extends UIScreen
 ## and link for friends) and Join with a code. A player never sees a server address; the platform
 ## backend (`TogetherApi`) makes the night, places it on a game server and hands over a ticket.
 ##
-## A page opened with `?room=CODE` joins that night at once, and one opened inside a Discord
-## Activity (`?instance_id=...`) lands in the night of its voice channel: both set a static here
-## before the screen opens. The address of a game server (`JoinScreen`) is a developer setting,
-## shown on the desktop and with `?dev` on the web.
+## A page opened with `?room=CODE` joins that night at once (a static here is set before the screen
+## opens). One opened inside a Discord Activity (`?instance_id=...`) opens on the main menu, and the
+## night of its voice channel is made ready in the background (`ActivityRoom`): this screen shows
+## it, with one press of Play to go in. The address of a game server (`JoinScreen`) is a developer
+## setting, shown on the desktop and with `?dev` on the web.
 
 const SCREEN := "res://ui/screens/together_screen.tscn"
 const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
@@ -19,10 +20,8 @@ const SHARE_MESSAGE := "Join my night in Deadnight. Room code: %s"
 ## Said when the window cannot copy by itself and the text is shown selected.
 const COPY_BLOCKED := "Copying is blocked here. The text is selected: press Ctrl+C (Cmd+C on Mac)."
 
-## A code to join as soon as the screen opens (`?room=`), and a Discord Activity instance to join
-## the night of (`?instance_id=`); each is used once.
+## A code to join as soon as the screen opens (`?room=`); used once.
 static var auto_code := ""
-static var auto_instance := ""
 ## Show the server address button (the desktop, or `?dev`).
 static var dev_enabled := not OS.has_feature("web")
 
@@ -64,7 +63,7 @@ var _clipboard_note: UILabel
 
 func _ready() -> void:
 	super._ready()
-	api = TogetherApi.new(self, _backend_url())
+	api = TogetherApi.new(self, backend_url())
 	var centre := CenterContainer.new()
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(centre)
@@ -127,12 +126,31 @@ func screen_enter() -> void:
 		code_field.text = code
 		_found = true
 		await _join()
-	elif auto_instance != "":
-		var instance := auto_instance
-		auto_instance = ""
-		api.instance_id = instance
-		_found = true
-		await _create("Joining your voice channel's night...")
+	elif ActivityRoom.current != null:
+		await _use_activity_room(ActivityRoom.current)
+
+
+## The night of the Activity's voice channel, ready (or made ready now) and waiting for a press of
+## Play: the invite view, as a night somebody else made.
+func _use_activity_room(room: ActivityRoom) -> void:
+	_found = true
+	_busy = true
+	_set_enabled(false)
+	if room.state != ActivityRoom.State.PREPARING and room.state != ActivityRoom.State.READY:
+		room.prepare()
+	if room.state == ActivityRoom.State.PREPARING:
+		_say("Getting your night ready...")
+	if await room.until_ready():
+		_lobby = room.lobby
+		_busy = false
+		_show_invite()
+		_say("")
+		return
+	_found = false
+	_busy = false
+	_set_enabled(true)
+	_show_menu()
+	_say(room.failure)
 
 
 func _build_menu() -> VBoxContainer:
@@ -324,6 +342,8 @@ func _enter_night() -> void:
 		return
 	NightScreen.join_url = server_url_of(pass_to, in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
+	if _found and ActivityRoom.current != null:
+		ActivityRoom.current.mark_used()
 	_busy = false
 	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
 
@@ -413,7 +433,7 @@ static func in_discord() -> bool:
 
 ## The backend to talk to: `?backend=` (a developer's own), the Activity proxy's `/api` inside
 ## Discord, else the project's.
-func _backend_url() -> String:
+static func backend_url() -> String:
 	var args := NetArgs.new()
 	if args.has("backend"):
 		return args.get_string("backend")

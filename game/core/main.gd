@@ -4,11 +4,12 @@ extends Control
 ##
 ## Options after `--` on the command line (or in the page address on the web, `?connect=...`):
 ## `--server [--port N] [--seed N]` runs a game server instead of the game (headless, no menu),
-## `--room CODE` (or `?room=CODE`) joins the night of an invite code, `--dev` shows the server
-## address setting, `--stage` (`?stage`) opens only the menu's 3D stage for a frame-time run and
-## `--stage=still` (`?stage=still`) its still level, `--connect [ws://host:port]` goes from the menu
-## straight into the night of that server, `--report [seconds]` prints a line of what the joined
-## night looks like from here, and
+## `--room CODE` (or `?room=CODE`) joins the night of an invite code, `--instance_id ID` (a Discord
+## Activity) opens the menu and makes the voice channel's night ready for Play together, `--dev`
+## shows the server address setting, `--stage` (`?stage`) opens only the menu's 3D stage for a
+## frame-time run and `--stage=still` (`?stage=still`) its still level,
+## `--connect [ws://host:port]` goes from the menu straight into the night of that server,
+## `--report [seconds]` prints a line of what the joined night looks like from here, and
 ## `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of the saved
 ## one, so two windows of one machine can differ.
 
@@ -16,9 +17,12 @@ const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
 const STAGE := "res://ui/screens/menu_stage_screen.tscn"
 
+## The options the page or the command line gave; a test sets them before the node enters the tree.
+var launch_args: PackedStringArray = OS.get_cmdline_user_args()
+
 
 func _ready() -> void:
-	var args := NetArgs.new()
+	var args := NetArgs.new(launch_args)
 	if args.has("server"):
 		_serve(args)
 		return
@@ -51,9 +55,11 @@ func _ready() -> void:
 		TogetherScreen.auto_code = args.get_string("room")
 		UIRouter.push(TogetherScreen.SCREEN, UITransition.Kind.SLIDE)
 	elif args.has("instance_id"):
-		# Inside a Discord Activity: the night of the voice channel.
-		TogetherScreen.auto_instance = args.get_string("instance_id")
-		UIRouter.push(TogetherScreen.SCREEN, UITransition.Kind.SLIDE)
+		# Inside a Discord Activity: the menu first, like every platform. The night of the voice
+		# channel is made ready in the background; Play together shows it at once.
+		var room := ActivityRoom.new(args.get_string("instance_id"), TogetherScreen.backend_url())
+		add_child(room)
+		room.prepare()
 	if args.has("report"):
 		var report := ClientReport.new()
 		report.every = args.get_float("report", ClientReport.DEFAULT_EVERY)
