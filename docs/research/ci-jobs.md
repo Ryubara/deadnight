@@ -11,7 +11,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | | `godot`, `web` (about 15 minutes each) | the change touches something they can see |
 | | `mkdocs`, `markdownlint`, `actionlint` | their own files changed |
 | | `build-ok` | always: the one required name for the build |
-| `pr` (`pull_request_target`) | `title`, `body`, `docs`, `commits` | every push and every edit of the description |
+| `pr` (`pull_request_target`) | `pr-rules` (the four below as steps), `title`, `body`, `docs`, `commits` | every push and every edit of the description |
 | `pr-status` | `labels` | the push, and once when `ci` ends (not when it was cancelled) |
 | `docs` | `mkdocs` (pages build), `deploy` | a push to `main` only |
 
@@ -33,15 +33,22 @@ whole workflow would leave the check missing and block the merge, which is why t
 `build-ok` fails when `conventions`, `godot` or `web` failed or was cancelled, so a skipped job after a failed
 `conventions` does not pass.
 
-## Why `pr` still has four jobs
+## Folding the four `pr` checks into `pr-rules`
 
 The ruleset requires `title`, `body`, `docs` and `commits` by name, and one job is one name, so folding them into one
-job would block every pull request until the ruleset is edited. The change that would save three more jobs a push is
-to replace the four names with one (for example `pr-rules`, one job with the four steps), in three steps because
-`pr.yml` runs from the base branch (`pull_request_target`) and a new name only reports after its workflow is on `main`:
-(1) merge a pull request that adds the `pr-rules` job next to the four old ones; (2) the maintainer edits the ruleset,
-adding `pr-rules` and removing `title`, `body`, `docs` and `commits` in one edit; (3) merge a pull request that deletes
-the four old jobs. Until then the four jobs stay.
+job would block every pull request until the ruleset is edited. Replacing the four names with one saves three more jobs
+a push, in three steps, because `pr.yml` runs from the base branch (`pull_request_target`) and a new name only reports
+after its workflow is on `main`:
+
+1. **Done in this step:** `pr.yml` gains the `pr-rules` job (the four checks as steps of one job, a later step still
+   runs after a failed one so a run lists every refusal) beside the four old jobs. For a while a push starts five
+   `pr` jobs instead of four.
+2. The maintainer edits the ruleset once `pr-rules` has reported on `main`: add `pr-rules`, remove `title`, `body`,
+   `docs` and `commits`, in one edit.
+3. A pull request deletes the four old jobs and changes `merge.required_checks` in `.github/conventions.yml` to name
+   `pr-rules` (a manual path: a maintainer merges it by hand).
+
+Until step 3 the four jobs stay.
 
 ## Measured
 

@@ -11,7 +11,9 @@ extends Node
 ##     godot --headless --path game res://tests/captures/hip_fire_transition.tscn --fixed-fps 60 \
 ##         -- --scenario=fire
 ##
-## `--scenario=fire` holds the trigger without aiming, `--scenario=aim` holds the aim button.
+## `--scenario=fire` holds the trigger without aiming, `--scenario=aim` holds the aim button,
+## `--scenario=aimshot` holds the aim button, taps the trigger once while aiming and lets the
+## aim go (#428: the shot must leave no hold behind).
 ## `STAGE <name> <seconds> frame=<n>` lines mark the stages (the movie's frame number, which starts
 ## before the night does); the view is turned `LOOK_AWAY` degrees from the
 ## body just before, so the body has to turn to it (the old weapon pose jumped by that much).
@@ -35,6 +37,7 @@ var _hands: WeaponHandsIK
 var _pressed := false
 var _released := false
 var _looked := false
+var _tapped := false
 var _staged := {}
 
 
@@ -86,6 +89,12 @@ func _physics_process(_delta: float) -> void:
 		_pressed = true
 		_stage("press_" + _scenario, now)
 		Input.action_press("fire" if _scenario == "fire" else "aim")
+	if _scenario == "aimshot" and now >= PRESS_AT + 1.1 and not _tapped:
+		_tapped = true
+		_stage("shot_while_aiming", now)
+		Input.action_press("fire")
+	if _tapped and now >= PRESS_AT + 1.2:
+		Input.action_release("fire")
 	if now >= RELEASE_AT and not _released:
 		_released = true
 		_stage("release", now)

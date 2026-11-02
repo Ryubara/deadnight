@@ -10,7 +10,7 @@ const AREA_OF_DOOR := {&"door_concession": "Concession", &"door_yard": "Generato
 var _lot: Node3D
 var _fuel: LotFuel
 var _rules: GameRules
-var _tuning := NightTuning.new()
+var _tuning := NightTuning.shipped()
 
 
 func before_test() -> void:

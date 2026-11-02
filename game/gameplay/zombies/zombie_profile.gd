@@ -29,6 +29,8 @@ var stagger: float = 0.0
 var stagger_cooldown: float = 0.0
 ## Whether it has a weak spot: a hit zone of its own that the weapons can reach.
 var weak: bool = false
+## A boss: it ignores a lure unless the tuning says otherwise (`ZombieTuning.lure_pulls_bosses`).
+var boss: bool = false
 
 
 ## The plain zombie of `tuning`: the numbers a zombie has when the rules say nothing more.
@@ -54,6 +56,7 @@ static func from_event(event: Dictionary, tuning: ZombieTuning) -> ZombieProfile
 	if telegraph > 0.0:
 		profile.windup = telegraph
 	if event.get("boss", false):
+		profile.boss = true
 		profile.emerge = tuning.boss_entrance_seconds
 		profile.stagger = tuning.boss_stagger_seconds
 		profile.stagger_cooldown = tuning.boss_stagger_cooldown

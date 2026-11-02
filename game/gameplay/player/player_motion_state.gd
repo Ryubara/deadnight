@@ -16,8 +16,10 @@ var on_floor := false
 var sprinting := false
 var aiming := false
 var crouching := false
-## Seconds since the trigger was last held (the body faces the view, and the camera zooms a little,
-## while this is short). A huge number until the first shot.
+## Seconds since the trigger was last held without the aim button (a shot fired while aiming does
+## not count: the aim has its own release, and leaves no hip-fire hold behind). The body keeps
+## facing the view while this is short (`holds_aim`). A huge number until the first shot from the
+## hip. It never zooms or moves the camera (#464).
 var fire_age := NEVER_FIRED
 ## +1 camera over the right shoulder, -1 over the left.
 var shoulder_side := 1.0
@@ -38,9 +40,9 @@ var stepped_up := 0.0
 var footstep := false
 
 
-## True while the character holds the aim: the aim button is down, or the trigger was held within
-## `hold` seconds (firing from the hip is the aim entered for a moment, not a second, partial aim).
-## The body, the camera and the hands all read this one answer.
+## True while the body holds the aim pose: the aim button is down, or the trigger was held within
+## `hold` seconds. The body's turn and strafing, the legs' aim gait and the weapon's pose read this
+## answer; the camera does not (the view zooms for the aim button only, #464).
 func holds_aim(hold: float) -> bool:
 	return aiming or fire_age < hold
 

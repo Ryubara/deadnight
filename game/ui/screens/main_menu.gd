@@ -1,162 +1,104 @@
 class_name MainMenu
 extends UIScreen
-## The first screen: the Deadnight sign, and Play, Play together, Settings, Credits and Quit.
-##
-## Each item opens its screen with its own router transition (Play irises open like a projector
+## The first screen: the player's soldier in the live drive-in with the tab shell over it (Play,
+## Loadout, Shop, Challenges, More; `docs/research/main-menu.md`). The shell and its panels read
+## the account profile and the challenge board and know no route: they ask through the context's
+## `action`, and this screen turns each ask into a router push (Play irises open like a projector
 ## gate, Settings slides in, Credits burns in like a reel). Quit is left out on the web, where a
 ## page cannot close itself.
 
-## The items have risen, or were brought in early because another screen covered the menu.
+## The shell is built and the screen is the one on show.
 signal entered
 
 const PLAY_SCREEN := "res://ui/screens/night_screen.tscn"
 const JOIN_SCREEN := "res://ui/screens/together_screen.tscn"
-const CUSTOMIZE_SCREEN := "res://ui/screens/customize_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"
-## Seconds after the screen appears before the items rise, so the sign is catching first.
-const ITEMS_DELAY := 0.55
-## How opaque the plate behind the footer line is.
-const FOOTER_PLATE_ALPHA := 0.78
+## The route of each ask a panel can make. Play together and Quick join open what Join opened
+## until the rooms flow (#391) replaces `together` and `quick_join` here, in this one table.
+const ROUTES := {
+	&"solo": [PLAY_SCREEN, UITransition.Kind.IRIS],
+	&"together": [JOIN_SCREEN, UITransition.Kind.SLIDE],
+	&"quick_join": [JOIN_SCREEN, UITransition.Kind.SLIDE],
+	&"settings": [SETTINGS_SCREEN, UITransition.Kind.SLIDE],
+	&"credits": [CREDITS_SCREEN, UITransition.Kind.BURN],
+}
 
-## The delay the next menu waits before its items rise: a test sets a short one; `ITEMS_DELAY` is
-## the design value.
-static var items_delay := ITEMS_DELAY
+## Builds the challenge board the menu reads (a test or a capture sets its own).
+static var board_factory := Callable()
 
-var _entrance: Timer
+var shell: MenuShell
+
 var _entered := false
-## What each item's `mouse_filter` and `focus_mode` were before the entrance took them away.
-var _interaction := {}
-
-@onready var _sign: NeonSign = %Sign
-@onready var _overline: Label = %Overline
-@onready var _items: VBoxContainer = %Items
-@onready var _footer: Label = %Footer
-@onready var _play: UIButton = %Play
-@onready var _join: UIButton = %Join
-@onready var _customize: UIButton = %Customize
-@onready var _settings: UIButton = %Settings
-@onready var _credits: UIButton = %Credits
-@onready var _quit: UIButton = %Quit
 
 
 ## Whether this platform gets a Quit item.
 static func has_quit(web: bool = OS.has_feature("web")) -> bool:
-	return not web
+	return MorePanel.has_quit(web)
 
 
 func _ready() -> void:
 	super._ready()
-	_sign.tube_a = _tokens.hot
-	_sign.tube_b = _tokens.accent
-	_quit.visible = has_quit()
-	_style_footer()
-	_play.pressed.connect(_open.bind(PLAY_SCREEN, UITransition.Kind.IRIS))
-	_join.pressed.connect(_open.bind(JOIN_SCREEN, UITransition.Kind.SLIDE))
-	_customize.pressed.connect(_open.bind(CUSTOMIZE_SCREEN, UITransition.Kind.SLIDE))
-	_settings.pressed.connect(_open.bind(SETTINGS_SCREEN, UITransition.Kind.SLIDE))
-	_credits.pressed.connect(_open.bind(CREDITS_SCREEN, UITransition.Kind.BURN))
-	_quit.pressed.connect(get_tree().quit)
-	initial_focus = get_path_to(_play)
-	# Hidden until the screen has arrived; screen_enter brings them in.
-	_hide_for_entrance()
-
-
-## The footer sits on the parked cars at the bottom of the sky: it takes the full ink and a plate
-## of the surface colour behind it, so it reads at 720p over the silhouettes.
-func _style_footer() -> void:
-	var plate := StyleBoxFlat.new()
-	plate.bg_color = Color(_tokens.surface, FOOTER_PLATE_ALPHA)
-	plate.set_corner_radius_all(_tokens.radius_sm)
-	plate.content_margin_left = _tokens.space_md
-	plate.content_margin_right = _tokens.space_md
-	plate.content_margin_top = _tokens.space_xs
-	plate.content_margin_bottom = _tokens.space_xs
-	_footer.add_theme_stylebox_override(&"normal", plate)
-	_footer.add_theme_color_override(&"font_color", _tokens.ink)
-	# The label's own width, not the column's, so the plate hugs the text.
-	_footer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	shell = MenuShell.new()
+	shell.name = "Shell"
+	shell.context.profile = MenuProfile.load_saved()
+	shell.context.board = _open_board()
+	shell.context.action.connect(_on_action)
+	add_child(shell)
 
 
 func screen_enter() -> void:
-	_sign.ignite()
-	UIMotion.fade_in(_overline, ITEMS_DELAY * 0.5)
-	UIMotion.fade_in(_footer, ITEMS_DELAY + 0.4)
-	if UIMotion.reduced or items_delay <= 0.0:
-		finish_entrance.call_deferred()
-		return
-	# A child Timer, not `SceneTree.create_timer`: it stops while the router disables this screen
-	# under another one, and it is freed with the screen.
-	_entrance = Timer.new()
-	_entrance.one_shot = true
-	_entrance.timeout.connect(finish_entrance)
-	add_child(_entrance)
-	_entrance.start(items_delay)
+	var sign_node := (shell.panel(MenuTab.Id.PLAY) as PlayPanel).sign_node
+	if sign_node != null:
+		sign_node.ignite()
+	shell.view.set_active(true)
+	shell.refresh_panels()
+	_entered = true
+	focus_initial()
+	entered.emit()
 
 
-## A covered menu brings its items in at once (they must be there when the player comes back)
-## and takes no focus: the screen over it owns it.
+## A covered menu draws nothing: the stage's viewport stops until the screen above is gone.
 func screen_pause() -> void:
-	finish_entrance()
+	shell.view.set_active(false)
 
 
-## Takes the focus when the items are there to be seen; before that there is nothing to focus,
-## and a key press that asks for the focus (the router does) finds the entrance still going.
+func screen_resume() -> void:
+	shell.view.set_active(true)
+	shell.set_profile(MenuProfile.load_saved())
+	focus_initial()
+
+
+## Focus goes to the tab's first control, so a key or the pad starts in the panel.
 func focus_initial() -> void:
-	if _entered:
-		super.focus_initial()
+	if _entered and shell != null:
+		shell.focus_panel()
 
 
-## Whether the items have risen.
+## Whether the screen has been shown.
 func has_entered() -> bool:
 	return _entered
 
 
-## Brings the items in, and takes the focus only while the menu is the screen the player is on.
-## Does nothing the second time.
-func finish_entrance() -> void:
-	if _entered or not is_inside_tree():
+func _open_board() -> Object:
+	if board_factory.is_valid():
+		return board_factory.call()
+	# The challenge tracker (#399) provides the board; until it is in the project the menu shows
+	# no challenges rather than failing.
+	for entry in ProjectSettings.get_global_class_list():
+		if entry["class"] == &"ChallengeBoard":
+			return (load(entry["path"]) as GDScript).call(&"open")
+	return null
+
+
+func _on_action(id: StringName) -> void:
+	if id == &"quit":
+		get_tree().quit()
 		return
-	_entered = true
-	if _entrance != null:
-		_entrance.queue_free()
-		_entrance = null
-	_restore_interaction()
-	UIMotion.stagger_in(_visible_items())
-	if UIRouter.top() == self:
-		focus_initial()
-	entered.emit()
-
-
-func _hide_for_entrance() -> void:
-	_overline.modulate.a = 0.0
-	_footer.modulate.a = 0.0
-	for item in _visible_items():
-		item.modulate.a = 0.0
-		# Transparent is not out of reach: a click or a key must not find an item nobody can see.
-		_interaction[item] = [item.mouse_filter, item.focus_mode]
-		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		item.focus_mode = Control.FOCUS_NONE
-
-
-func _restore_interaction() -> void:
-	for item: Control in _interaction:
-		var before: Array = _interaction[item]
-		item.mouse_filter = before[0]
-		item.focus_mode = before[1]
-	_interaction.clear()
-
-
-func _visible_items() -> Array[Control]:
-	var out: Array[Control] = []
-	for child in _items.get_children():
-		if (child as Control).visible:
-			out.append(child)
-	return out
-
-
-func _open(path: String, kind: UITransition.Kind) -> void:
-	if not ResourceLoader.exists(path):
-		UIMotion.shake(_items)
+	if not ROUTES.has(id):
 		return
-	UIRouter.push(path, kind)
+	var route: Array = ROUTES[id]
+	if not ResourceLoader.exists(route[0]):
+		UIMotion.shake(shell)
+		return
+	UIRouter.push(route[0], route[1])

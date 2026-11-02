@@ -49,6 +49,9 @@ const HOLD_CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
 const SHOULDER_RATE := 14.0
 ## Recoil of a shot dies away at this rate (per second, exponential).
 const RECOIL_RATE := 16.0
+## How fast the tilt of a reload follows its curve, per second: a cancelled reload (a swap) lets the
+## weapon back up in a few frames instead of jumping.
+const RELOAD_FOLLOW := 30.0
 ## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount.
 ## Its hold file sizes it (a tool, larger than the size rule: docs/design/weapon-hold.md); the
 ## grip is the melee one tipped 20 degrees in the hammer's swing plane (about its Z), so the face
@@ -174,6 +177,11 @@ var _grenade_grip: HandGrip
 var _grip_blend := 0.0
 var _shoulder_blend := 0.0
 var _recoil := 0.0
+## Seconds of the reload left (0: not reloading), its length, and how far the weapon is tilted down
+## for it now, 0 to 1 (`WeaponHandsIK.reload_dip`).
+var _reload_left := 0.0
+var _reload_length := 1.0
+var _reload_dip := 0.0
 var _action_time := 0.0
 var _move_blend := 0.0
 var _was_on_floor := true
@@ -186,7 +194,10 @@ var _repair_time := 0.0
 var _repair_scale := 1.0
 var _repair_blend := 0.0
 ## The aim gait's weight over the free locomotion (0 free, 1 aiming), and its clips' ground speed.
+## It is also the weapon's pose weight: the aim button or a shot from the hip raises it, and the
+## camera does not follow it (the view zooms for the aim button only, #464).
 var _aim_blend := 0.0
+var _aim_spring := DampedSpring.new()
 var _aim_move_speed := 2.6
 var _aim_move := Vector2.ZERO
 ## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
@@ -263,11 +274,28 @@ func _process(delta: float) -> void:
 	var run_part := clampf((_move_blend - WALK_POINT) / (0.95 - WALK_POINT), 0.0, 1.0)
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
 	_advance_crouch()
-	_advance_aim_move(follow)
+	_advance_aim_move(follow, delta)
 	_advance_events(delta)
 	_advance_repair(delta)
+	_advance_reload(delta)
 	_advance_shoulder(delta)
 	_advance_grip(delta)
+
+
+## The tilt for the reload: down over the first `reload_dip_in` of it, held, up over the last
+## `reload_dip_out`, each a smoothstep.
+func _advance_reload(delta: float) -> void:
+	var target := 0.0
+	if _reload_left > 0.0:
+		_reload_left = maxf(_reload_left - delta, 0.0)
+		var done := 1.0 - _reload_left / _reload_length
+		target = smoothstep(0.0, _tuning.reload_dip_in, done)
+		target *= 1.0 - smoothstep(1.0 - _tuning.reload_dip_out, 1.0, done)
+	_reload_dip = lerpf(_reload_dip, target, 1.0 - exp(-RELOAD_FOLLOW * delta))
+	if _reload_left <= 0.0 and _reload_dip < 0.001:
+		_reload_dip = 0.0
+	_hands.reload_dip = _reload_dip
+	_hands.reload_tilt_deg = _tuning.reload_tilt_degrees
 
 
 ## Into the crouch state when the body crouches on the ground, back to the locomotion when it
@@ -371,8 +399,27 @@ func equip(weapon: StringName) -> void:
 	else:
 		push_error("PlayerAnimation: no weapon or class %s" % weapon)
 		return
+	cancel_reload()
 	_weapon_visible(false)
 	play_action(&"Equip")
+
+
+## The weapon is reloading for `seconds` (the server's `reload_started`): it tilts down, eased, and
+## is back up when they are over, whatever the aim weight is (the tilt is added to the pose the
+## aim weight gives, so a reload while aiming returns to the aim).
+func reload(seconds: float) -> void:
+	_reload_length = maxf(seconds, 0.01)
+	_reload_left = _reload_length
+
+
+## The reload stops (a swap abandons it, the server cancels it too).
+func cancel_reload() -> void:
+	_reload_left = 0.0
+
+
+## How far the weapon is tilted down for the reload now, 0 to 1, for tests.
+func reload_dip() -> float:
+	return _reload_dip
 
 
 ## Plays `<action>_<Class>` (Fire, Reload, Swing, Equip, Unequip) on the upper body. Returns
@@ -587,9 +634,9 @@ func _advance_shoulder(delta: float) -> void:
 		(action_clip == &"" or String(action_clip).begins_with("Fire_")) and not is_repairing()
 	)
 	var rig := _player.camera_rig
-	# The one aim weight (the aim button or a recent shot, eased by the camera) turns the weapon from
-	# the body's heading to the view and the barrel in to the crosshair's ray: no single-frame jump.
-	var weight := rig.aim_amount()
+	# The pose weight (the aim button or a recent shot from the hip, eased) turns the weapon from the
+	# body's heading to the view and the barrel in to the crosshair's ray: no single-frame jump.
+	var weight := _aim_blend
 	_hands.aim_yaw = lerp_angle(_player.rotation.y, rig.yaw, weight)
 	_hands.aim_pitch = rig.pitch
 	_hands.converge = weight
@@ -634,11 +681,14 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
-## Follows the aim: while the aim is held (the button, or a shot just fired) the legs take the aim
-## gait for the direction of travel (the body keeps facing the camera, so moving sideways or back is
-## a strafe or a backpedal). The weight is the camera's, already eased: the one aim weight.
-func _advance_aim_move(follow: float) -> void:
-	_aim_blend = _player.camera_rig.aim_amount()
+## Follows the aim: while the aim is held (the button, or a shot just fired from the hip) the legs
+## take the aim gait for the direction of travel (the body keeps facing the view, so moving sideways
+## or back is a strafe or a backpedal). The weight eases at the aim's speed, from the same answer
+## the body's turn reads (`PlayerMotionState.holds_aim`); the camera does not read it.
+func _advance_aim_move(follow: float, delta: float) -> void:
+	var held := _player.state.holds_aim(_tuning.hip_fire_hold)
+	_aim_spring.step(1.0 if held else 0.0, _tuning.aim_frequency, delta)
+	_aim_blend = clampf(_aim_spring.value, 0.0, 1.0)
 	set(AIM_BLEND_PARAMETER, _aim_blend)
 	var gait := aim_move_for(_player.state.velocity, _player.state.facing, _aim_move_speed)
 	_aim_move = _aim_move.lerp(gait["position"], follow)

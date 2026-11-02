@@ -19,7 +19,7 @@ const FIRE_FRAME := 4
 const FLASH := 5
 const PUFF := 6
 const ZOMBIE_DISTANCE := 4.0
-const CHEST := 1.1
+const CHEST := ShotSpot.CHEST
 
 var _night: Night
 var _close: Camera3D
@@ -88,23 +88,17 @@ func _process(_delta: float) -> void:
 		)
 
 
-## Looks over the lot for a place to stand with room round it for the shoulder camera, a wall a few
-## metres off (the wall impact) and a long free line (the flash and the zombie), and puts the player
-## there.
+## Looks over the lot for a place to stand (`ShotSpot`) and puts the player there.
 func _survey() -> void:
 	var player := _night.player()
-	var space := player.get_world_3d().direct_space_state
-	var found := false
-	var origin := player.global_position
-	for ring in range(0, 40, 3):
-		for step in maxi(1, ring * 2):
-			var angle := TAU * float(step) / float(maxi(1, ring * 2))
-			var spot := Vector3(sin(angle), 0.0, cos(angle)) * float(ring) + origin
-			if _try_spot(space, spot):
-				found = true
-				break
-		if found:
-			break
+	var spot := ShotSpot.find(player)
+	_stand = spot.stand
+	_free_yaw = spot.free_yaw
+	_wall_yaw = spot.wall_yaw
+	_wall_hit = spot.wall_hit
+	_wall_distance = spot.wall_distance
+	var free_dir := Vector3(-sin(_free_yaw), 0.0, -cos(_free_yaw))
+	_zombie_spot = _stand + free_dir * ZOMBIE_DISTANCE
 	player.teleport(_stand)
 	print(
 		(
@@ -112,69 +106,6 @@ func _survey() -> void:
 			% [_stand, _free_yaw, _wall_yaw, _wall_distance]
 		)
 	)
-
-
-func _try_spot(space: PhysicsDirectSpaceState3D, spot: Vector3) -> bool:
-	var down := space.intersect_ray(
-		PhysicsRayQueryParameters3D.create(spot + Vector3.UP * 2.0, spot + Vector3.DOWN * 3.0, 1)
-	)
-	if down.is_empty() or absf(down["normal"].y) < 0.9 or absf(down["position"].y) > 0.15:
-		return false
-	var feet: Vector3 = down["position"]
-	# Under the open sky: not inside a building or under the screen.
-	if not (
-		space
-		. intersect_ray(
-			PhysicsRayQueryParameters3D.create(feet + Vector3.UP * 0.5, feet + Vector3.UP * 12.0, 1)
-		)
-		. is_empty()
-	):
-		return false
-	var from := feet + Vector3(0.0, CHEST, 0.0)
-	var free_yaw := -1.0
-	var wall_yaw := -1.0
-	var wall_hit := Vector3.ZERO
-	var wall_distance := 0.0
-	for step in 24:
-		var yaw := TAU * float(step) / 24.0
-		var dir := Vector3(-sin(yaw), 0.0, -cos(yaw))
-		var hit := space.intersect_ray(
-			PhysicsRayQueryParameters3D.create(from, from + dir * 30.0, 1)
-		)
-		var distance := 30.0 if hit.is_empty() else from.distance_to(hit["position"])
-		# Room for the camera behind: the opposite ray is free for 3 m.
-		if distance >= 12.0 and free_yaw < 0.0:
-			free_yaw = yaw
-		if (
-			not hit.is_empty()
-			and distance >= 4.0
-			and distance <= 6.0
-			and absf(hit["normal"].y) < 0.2
-		):
-			wall_yaw = yaw
-			wall_hit = hit["position"]
-			wall_distance = distance
-	if free_yaw < 0.0 or wall_yaw < 0.0:
-		return false
-	for step in 8:
-		var back := Vector3(sin(TAU * step / 8.0), 0.0, cos(TAU * step / 8.0))
-		if (
-			(
-				space
-				. intersect_ray(PhysicsRayQueryParameters3D.create(from, from + back * 3.2, 1))
-				. size()
-			)
-			> 0
-		):
-			return false
-	_stand = feet
-	_free_yaw = free_yaw
-	_wall_yaw = wall_yaw
-	_wall_hit = wall_hit
-	_wall_distance = wall_distance
-	var free_dir := Vector3(-sin(_free_yaw), 0.0, -cos(_free_yaw))
-	_zombie_spot = feet + free_dir * ZOMBIE_DISTANCE
-	return true
 
 
 func _begin(weapon: StringName, view: String, index: int) -> void:

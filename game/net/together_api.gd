@@ -30,6 +30,8 @@ const TEXTS := {
 
 static var _token := ""
 static var _user := {}
+## The Discord code this run traded in already: Discord takes a code once (a second try is a 400).
+static var _spent_code := ""
 
 ## The backend's base address; a test or `?backend=` changes it.
 var base_url := DEFAULT_BACKEND
@@ -49,6 +51,7 @@ func _init(parent: Node, backend: String = DEFAULT_BACKEND) -> void:
 static func forget() -> void:
 	_token = ""
 	_user = {}
+	_spent_code = ""
 
 
 static func signed_in() -> bool:
@@ -67,7 +70,8 @@ func sign_in(display_name: String = "") -> Dictionary:
 		return {"ok": true}
 	if instance_id != "" and OS.has_feature("web"):
 		var code := await _discord_code()
-		if code != "":
+		if code != "" and code != _spent_code:
+			_spent_code = code
 			var with_discord := await _call("POST", "/auth/discord", {"code": code}, false)
 			if with_discord["ok"]:
 				_token = with_discord["token"]

@@ -1,0 +1,130 @@
+class_name LoadoutPanel
+extends MenuPanel
+## The Loadout tab: the wardrobe's pickers (the customize screen, embedded) beside a showcase
+## weapon row, with the soldier on the stage showing every change at once. The showcase weapon is
+## cosmetic: it is what the menu's soldier holds, and a night starts with the starter program
+## whatever is chosen. Leaving the tab without saving puts the saved look back on the stage.
+
+const CUSTOMIZE := "res://ui/screens/customize_screen.tscn"
+
+var wardrobe: CustomizeScreen
+
+var _weapon_selector: UIOptionSelector
+var _mastery_label: Label
+var _weapons: Array[StringName] = []
+
+
+func _ready() -> void:
+	var column := VBoxContainer.new()
+	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	column.add_theme_constant_override(&"separation", 14)
+	add_child(column)
+	column.add_child(MenuLook.heading("Loadout", "Dress the soldier"))
+	column.add_child(_build_weapon_row())
+	wardrobe = (load(CUSTOMIZE) as PackedScene).instantiate() as CustomizeScreen
+	wardrobe.params = {"embedded": true}
+	wardrobe.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	wardrobe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(wardrobe)
+	wardrobe.look_changed.connect(_on_look_changed)
+	if context.compact:
+		_fit_for_fingers()
+	refresh()
+
+
+func width(compact: bool) -> float:
+	# The pickers' rows are about 800 units wide: a label column, a 440 selector, the padding.
+	return 860.0 if compact else 900.0
+
+
+func first_focus() -> Control:
+	return _weapon_selector
+
+
+## The weapons the row offers: those whose class has a model.
+func weapons() -> Array[StringName]:
+	return _weapons
+
+
+func selector() -> UIOptionSelector:
+	return _weapon_selector
+
+
+## The line under the weapon: its mastery level.
+func mastery_text() -> String:
+	return _mastery_label.text
+
+
+func refresh() -> void:
+	if _weapon_selector == null:
+		return
+	var saved := MenuHero.saved_weapon()
+	_weapon_selector.select(maxi(_weapons.find(saved), 0), false)
+	_show_mastery(saved)
+
+
+func on_hide() -> void:
+	# What was not saved does not stay on the stage.
+	if context != null and context.stage != null:
+		context.stage.reload_look()
+	if wardrobe != null and wardrobe.is_dirty():
+		wardrobe.look = wardrobe.saved.duplicate_look()
+
+
+func _build_weapon_row() -> Control:
+	var row := UIRow.new()
+	row.title = "Showcase weapon"
+	row.hint = "The soldier holds it here. A night starts with the starter program."
+	_weapon_selector = UIOptionSelector.new()
+	var names := PackedStringArray()
+	_weapons = MenuHero.available()
+	for id in _weapons:
+		var def := WeaponCatalog.get_def(id)
+		names.append(def.display_name if def != null and def.display_name != "" else String(id))
+	_weapon_selector.options = names
+	_weapon_selector.selected_changed.connect(_on_weapon_selected)
+	row.set_control(_weapon_selector)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override(&"separation", 6)
+	box.add_child(row)
+	var line := HBoxContainer.new()
+	box.add_child(line)
+	_mastery_label = MenuLook.label("", MenuLook.SIZE_CAPTION, MenuLook.MUTED, &"wide")
+	_mastery_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(_mastery_label)
+	return box
+
+
+## On a phone every picker is at least a tap target high and no text is under the type floor.
+func _fit_for_fingers() -> void:
+	for node in find_children("*", "Label", true, false):
+		var label := node as Label
+		var size := label.get_theme_font_size(&"font_size")
+		label.add_theme_font_size_override(&"font_size", maxi(size, MenuLook.SIZE_CAPTION))
+	for node in wardrobe.find_children("*", "", true, false):
+		if node is UIOptionSelector or node is UIButton or node is ChoiceStrip:
+			var control := node as Control
+			control.custom_minimum_size.y = maxf(control.custom_minimum_size.y, MenuLook.TAP_TARGET)
+	_weapon_selector.custom_minimum_size.y = maxf(
+		_weapon_selector.custom_minimum_size.y, MenuLook.TAP_TARGET
+	)
+
+
+func _on_weapon_selected(index: int) -> void:
+	if index < 0 or index >= _weapons.size():
+		return
+	Settings.set_value(SettingsService.SHOWCASE_WEAPON, String(_weapons[index]))
+	_show_mastery(_weapons[index])
+
+
+func _show_mastery(weapon: StringName) -> void:
+	var profile := context.profile
+	_mastery_label.text = (
+		"Mastery %d of 10 - %d%% to the next"
+		% [profile.mastery_level(weapon), roundi(profile.mastery_fraction(weapon) * 100.0)]
+	)
+
+
+func _on_look_changed(look: CharacterLook) -> void:
+	if context.stage != null:
+		context.stage.preview_look(look)

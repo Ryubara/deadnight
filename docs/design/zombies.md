@@ -176,3 +176,23 @@ A crowd must never march in step. Per zombie, chosen by the seeded random of the
 
 The animation throttle of the crowds spike (update far and unseen zombies less often) also breaks sync for free: a
 zombie updated every third frame drifts against its neighbours.
+
+## The flare lure
+
+A flare does no damage (#439). Where it bursts it burns for `WeaponDef.lure_seconds` (8 s), and for that time every zombie
+within `lure_radius` (25 m, along the ground) walks to it instead of to a player; the maintainer's model is a monkey bomb
+or a pipe bomb. The server owns it: the combat server sends `lure_started` (id, point, radius, seconds) with the burst,
+`ZombieSim` holds the `ZombieLure`s and counts them down, and the client's `LureView` only draws the burning flare.
+
+| Rule | What happens |
+| --- | --- |
+| Who hears it | a zombie within the radius that is up (not emerging, not dying); the nearest lure wins when several burn |
+| Walking | the lure replaces the zombie's target: it paths to the flare (a new way is found when the lure changes) and ignores the players while it burns |
+| Arriving | within `lure_gather_distance` (2.5 m, inside the swing's reach) it stops and stands about the flare, facing it; it swings at nothing |
+| The end | the lure runs out and the zombie picks the nearest player again as it always does; no zombie is left holding a dead lure |
+| Left alone by default | a zombie tearing boards (`lure_pulls_gate_zombies`), a boss (`lure_pulls_bosses`) and a zombie in the middle of a swing (`lure_breaks_swings`); each is a flag in `ZombieTuning`, off |
+
+Checked in `game/tests/zombies/test_zombie_lure.gd` (the simulation alone), `game/tests/night/test_night_flare_lure.gd`
+(a flare shot in a night: no damage, a zombie walks to it, the view draws it, the server ends it) and
+`game/tests/weapons/test_combat_special.gd` (the event and the 0 damage). The numbers are in the flare's definition, not
+in the code, so a new lure weapon is a new `.tres`. Findings: [the flare lure](../research/flare-lure.md).

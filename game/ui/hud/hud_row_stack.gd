@@ -69,10 +69,20 @@ func add_row(row: Control) -> void:
 
 ## Takes `row` out and frees it. The rows below it slide up into the space.
 func remove_row(row: Control) -> void:
+	take_row(row)
+	row.queue_free()
+
+
+## Takes `row` out and keeps it (for a part that lends its rows again, so a row is not built at
+## every gain). The rows below it slide up into the space.
+func take_row(row: Control) -> void:
 	_rows.erase(row)
 	_enter.erase(row)
+	var resized := _on_row_resized.bind(row)
+	if row.minimum_size_changed.is_connected(resized):
+		row.minimum_size_changed.disconnect(resized)
 	remove_child(row)
-	row.queue_free()
+	row.self_modulate.a = 1.0
 	if UIMotion.reduced:
 		_snap()
 

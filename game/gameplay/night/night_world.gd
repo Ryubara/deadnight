@@ -231,11 +231,15 @@ func is_lit(point: Vector3) -> bool:
 	return _lamps.lit_at(point, _generator)
 
 
-## A body for one player, driven by the server (its own physics step is off).
-func add_body(spawn: Vector3, local_input: bool) -> Player:
+## A body for one player, driven by the server (its own physics step is off). `drawn` false makes
+## a body that is only physics (a game server draws nothing): the Soldier's model, skeleton and
+## animation are left out, which is most of a body's nodes and all of its per-frame work.
+func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
 	var body := PLAYER_SCENE.instantiate() as Player
 	body.local_input = local_input
 	body.capture_mouse = local_input
+	if not drawn:
+		body.strip_model()
 	add_child(body)
 	body.teleport(spawn)
 	body.set_physics_process(false)

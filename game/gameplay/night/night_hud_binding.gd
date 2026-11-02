@@ -40,6 +40,7 @@ var _hud: Hud
 var _state: ClientState
 var _weapon_names: Dictionary[StringName, String] = {}
 var _fuel: FuelTuning
+var _upgrade: UpgradeTuning
 ## Units a whole can adds, by shop item: what the card says a can is worth.
 var _can_units: Dictionary[StringName, int] = {}
 
@@ -59,6 +60,7 @@ func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistr
 	hud.state.ammo_free = ammo_free
 	var fuel: FuelTuning = tuning.fuel
 	_fuel = fuel
+	_upgrade = tuning.upgrade
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
@@ -98,7 +100,9 @@ func _on_event(event: Dictionary) -> void:
 				HudLoadout.EVENTS.has(event["type"])
 				or not NightServer.COMBAT_EVENTS.has(event["type"])
 			):
+				var began := PerfProbe.begin()
 				_hud.state.apply_event(_with_world_point(event))
+				PerfProbe.end(&"hud.event", began)
 
 
 ## A hit on a zombie also says where in the world it landed, so its number can stay there while
@@ -159,7 +163,8 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"fuel":
 			_set_fuel_prompt(prompt)
 		_:
-			state.clear_prompt()
+			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade):
+				state.clear_prompt()
 
 
 func _offer(kind: StringName, label: String, cost: int, detail: String) -> void:

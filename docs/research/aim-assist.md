@@ -13,7 +13,8 @@ strength).
 - A shooter on phones that fires for the player when the crosshair is on an enemy ("simple" mode) is easy to start with
   and wastes ammunition; players are advised to move on to a fire button
   ([GGRecon](https://www.ggrecon.com/guides/best-call-of-duty-mobile-season-9-settings-guide/)). With limited
-  ammunition, auto-fire is therefore an option the player turns on, not the default.
+  ammunition, auto-fire was first an option the player turns on; the maintainer decided otherwise in #470 (see the
+  answers below).
 - *Common practice* (not tied to one primary source): **friction** slows the look speed while the crosshair is over a
   target, **magnetism** pulls the view a little toward it, both strongest on touch and with a strength the player can
   set. Both are tuned by play.
@@ -29,7 +30,7 @@ plain data, `game/gameplay/player/`), `TouchAimAssist` (the night's driver, `gam
 | --- | --- | --- |
 | Friction | Multiplies the look drag by `1 - 0.6 * strength * closeness`, down to 0.4 on the middle of a zombie at full strength | Whenever a zombie is near the crosshair's ray |
 | Magnetism | Closes part of the angle from the view to the zombie's chest each tick, at most 0.9 rad/s at full strength | Only while Aim or Fire is held, and not while the thumb turns the view quickly (it is gone at 2 rad/s, half gone at 1) |
-| Auto-fire | Holds the trigger while the crosshair is on a hit zone within 25 m (the same ray test as a shot, `Hitbox.ray`) | Only when the setting asks: off, while Aim is held, or always |
+| Auto-fire | Holds the trigger while the crosshair is on a hit zone within 25 m (the same ray test as a shot, `Hitbox.ray`) | Only with the setting on (the default) and while the player aims; with it off Aim is a toggle and the trigger is left alone |
 
 - The target is the zombie whose chest the crosshair's ray passes nearest, as a share of the capture radius (1.1 m at
   full strength, 0.44 m at near zero, times the zombie's size). Zombies behind the view, farther than 30 m, dying or
@@ -40,12 +41,14 @@ plain data, `game/gameplay/player/`), `TouchAimAssist` (the night's driver, `gam
   (`ThirdPersonCamera.nudge`); the command the server reads is the view as it is after it.
 - Auto-fire does not fire an empty gun, a reloading one or a downed player's, and a melee weapon only within its arm.
 - Settings (the Touch tab): **Touch aim assist** 0 to 1, default 0.5 (gentle: a mouse player and a touch
-  player face the same zombies), and **Touch auto-fire** Off, While aiming, Always, default Off.
+  player face the same zombies), and **Touch auto-fire** Off or On, default On (a saved "always" counts as On).
 
 ## Answers to the open questions
 
-1. **Auto-fire** is off by default (ammunition is limited). When on, "While aiming" waits for the Aim button and
-   "Always" fires whenever the crosshair is on a zombie in reach; it never fires beyond 25 m, whatever the gun reaches.
+1. **Auto-fire** was off by default (ammunition is limited) with a "While aiming" and an "Always" choice. The
+   maintainer decided in #470: **on by default**, firing only while the player aims with the crosshair on a zombie in
+   reach (never beyond 25 m, whatever the gun reaches), and with it **off** the Aim button is a toggle, so the player
+   aims and shoots by hand. The Fire button shoots wherever the player aims, in both. "Always" is gone.
 2. **Assist strength**: friction plus magnetism, at 0.5 by default; the player sets 0 (off) to 1. The strength scales
    both the effect and the capture radius.
 
