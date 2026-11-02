@@ -40,7 +40,7 @@ func test_the_same_shot_number_scatters_the_same_way_on_a_second_server() -> voi
 	)
 
 
-func test_a_flare_flies_bursts_on_the_target_and_hurts_its_neighbour() -> void:
+func test_a_flare_flies_bursts_on_the_target_and_hurts_no_one() -> void:
 	_server.apply(CombatAction.give_weapon(1, &"flare_gun"))
 	var targets := {1: Vector3(0, 0, 0), 2: Vector3(1.0, 0, 0)}
 	WeaponsFixture.step(_server, targets, 2)
@@ -55,11 +55,32 @@ func test_a_flare_flies_bursts_on_the_target_and_hurts_its_neighbour() -> void:
 	assert_array(burst).has_size(1)
 	assert_str(burst[0]["kind"]).is_equal("target")
 	assert_int(_server.projectiles_in_flight()).is_equal(0)
-	var by_target := {}
-	for hit in WeaponsFixture.of(events, &"damage_dealt"):
-		by_target[hit["target_id"]] = hit["damage"]
-	assert_float(by_target[1]).is_greater_equal(90.0)
-	assert_float(by_target[2]).is_between(1.0, 60.0)
+	# The maintainer decided (#439): a flare does no damage, to the one it struck or the next one.
+	assert_array(WeaponsFixture.of(events, &"damage_dealt")).is_empty()
+	assert_array(WeaponsFixture.of(events, &"target_killed")).is_empty()
+
+
+func test_a_flare_burst_starts_a_lure_where_it_burst() -> void:
+	_server.apply(CombatAction.give_weapon(1, &"flare_gun"))
+	var targets := {1: Vector3(0, 0, 0)}
+	WeaponsFixture.step(_server, targets, 2)
+	_fire(BODY)
+	var events: Array[Dictionary] = []
+	for _i in 60:
+		server_step(targets, events)
+	var burst := WeaponsFixture.of(events, &"projectile_burst")[0]
+	var lures := WeaponsFixture.of(events, &"lure_started")
+	assert_array(lures).has_size(1)
+	var def := WeaponCatalog.get_def(&"flare_gun")
+	assert_bool(lures[0]["point"] == burst["point"]).is_true()
+	assert_int(lures[0]["lure_id"]).is_equal(burst["projectile_id"])
+	assert_float(lures[0]["radius"]).is_equal(def.lure_radius)
+	assert_float(lures[0]["seconds"]).is_equal(def.lure_seconds)
+
+
+func test_only_the_flare_gun_is_a_lure() -> void:
+	for def in WeaponCatalog.all():
+		assert_bool(def.is_lure()).is_equal(def.id == &"flare_gun")
 
 
 func server_step(targets: Dictionary, into: Array[Dictionary]) -> void:

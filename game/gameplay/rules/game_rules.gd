@@ -59,7 +59,8 @@ extends RefCounted
 ##   fuel_low, fuel_empty, fuel_restored
 ##   circuit_changed: circuit_id, on
 ##   game_over: reason (all_down or no_players), round_reached
-##   action_rejected: reason, action (the type), field (when one field is to blame)
+##   action_rejected: reason, action (the type), field (when one field is to blame); `reentrant` is
+##     the answer to an action sent from inside an event listener, and is returned, never emitted
 
 signal event_emitted(event: Dictionary)
 
@@ -78,6 +79,7 @@ enum BuyResult {
 	CRANE_BUSY,
 	## A re-cut with no weapon in hand that can take one.
 	NO_WEAPON,
+	PLAYER_DOWNED,
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
@@ -126,6 +128,7 @@ var tuning: RulesTuning
 ## The match settings the night runs under: set before it starts (`RulesAction.configure`, or the
 ## constructor), then read-only.
 var settings: MatchSettings
+## The night's seed, given at construction and kept in the snapshot.
 var rng_seed: int = 0
 var phase: Phase = Phase.IDLE
 var round_number: int = 0
@@ -151,12 +154,16 @@ var _shop_rng := RandomNumberGenerator.new()
 var _cripple_rng := RandomNumberGenerator.new()
 var _crane_rng := RandomNumberGenerator.new()
 var _events: Array[Dictionary] = []
+## True while `apply` hands its events to the listeners of `event_emitted`.
+var _delivering := false
 ## The whole-unit fuel value the last `fuel_changed` event announced.
 var _fuel_announced: int = 0
 
 
-## A fresh night. `p_tuning` defaults to the shipped table.
-func _init(p_tuning: RulesTuning = null, p_seed: int = 0, p_settings: MatchSettings = null) -> void:
+## A fresh night. `p_tuning` null means the shipped table. The seed has no default: every random
+## stream of the night comes from it, so whoever builds the night (the server) chooses it, and the
+## snapshot records it. `p_settings` null means the usual rules (`MatchSettings.new()`).
+func _init(p_tuning: RulesTuning, p_seed: int, p_settings: MatchSettings = null) -> void:
 	tuning = p_tuning if p_tuning != null else load(DEFAULT_TUNING_PATH)
 	settings = p_settings.clamped() if p_settings != null else MatchSettings.new()
 	rng_seed = p_seed
@@ -179,7 +186,15 @@ func _init(p_tuning: RulesTuning = null, p_seed: int = 0, p_settings: MatchSetti
 
 
 ## The one way in. Returns the events the action caused, in order.
+##
+## An action sent from inside an `event_emitted` listener (while the events of the action before it
+## are still being handed out) is answered with one `reentrant` rejection and changes nothing: it
+## would change the state under the listeners still waiting for the earlier events, and the order
+## clients see would depend on who listened first. A listener that wants something done after
+## an action tells its owner, which sends it once `apply` has returned.
 func apply(action: Dictionary) -> Array[Dictionary]:
+	if _delivering:
+		return [{"type": &"action_rejected", "reason": &"reentrant", "action": action.get("type")}]
 	_events = []
 	var problem := RulesAction.validate(action)
 	if problem.is_empty():
@@ -187,8 +202,10 @@ func apply(action: Dictionary) -> Array[Dictionary]:
 	else:
 		_reject(problem["reason"], action.get("type"), problem["field"])
 	var caused := _events
+	_delivering = true
 	for event in caused:
 		event_emitted.emit(event)
+	_delivering = false
 	return caused
 
 

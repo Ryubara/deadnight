@@ -36,6 +36,8 @@ var barricades: BarricadeState
 ## Seconds of work one board takes a walker (a type's `barrier_speed` makes it quicker).
 var board_seconds: float = 1.2
 var zombies: Dictionary[int, ZombieBody] = {}
+## The lures burning now (`add_lure`, `ZombieLure`).
+var lures: Array[ZombieLure] = []
 
 var _rng := RandomNumberGenerator.new()
 var _grid: Dictionary[Vector2i, Array] = {}
@@ -49,6 +51,16 @@ func _init(p_tuning: ZombieTuning = null, p_seed: int = 0) -> void:
 
 
 ## Zombies that count toward the cap: the dying are on the ground and do not.
+## A lure starts burning at `position`: for `seconds` the zombies within `radius` go to it (the
+## tuning says which may stay on what they are doing). A lure with the same id is replaced.
+func add_lure(lure_id: int, position: Vector3, radius: float, seconds: float) -> void:
+	for i in lures.size():
+		if lures[i].id == lure_id:
+			lures.remove_at(i)
+			break
+	lures.append(ZombieLure.new(lure_id, position, radius, seconds))
+
+
 func standing_count() -> int:
 	var count := 0
 	for zombie: ZombieBody in zombies.values():
@@ -171,6 +183,9 @@ func tick(delta: float, targets: Dictionary) -> Array[Dictionary]:
 ## One fixed step.
 func _step(targets: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	for lure in lures:
+		lure.left -= STEP
+	lures = lures.filter(func(lure: ZombieLure) -> bool: return lure.left > 0.0)
 	for zombie: ZombieBody in zombies.values():
 		zombie.stagger_cooldown_left = maxf(zombie.stagger_cooldown_left - STEP, 0.0)
 		if zombie.mode == ZombieBody.Mode.DYING:
@@ -186,13 +201,35 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 func _think(
 	zombie: ZombieBody, delta: float, targets: Dictionary, events: Array[Dictionary]
 ) -> void:
-	_retarget(zombie, delta, targets)
-	var has_target := targets.has(zombie.target_id)
-	var target_pos: Vector3 = targets[zombie.target_id] if has_target else zombie.position
+	var lure := _lure_for(zombie)
+	var lure_id := lure.id if lure != null else 0
+	if lure_id != zombie.lure_id:
+		zombie.lure_id = lure_id
+		zombie.repath_left = 0.0
+	if lure == null:
+		_retarget(zombie, delta, targets)
+	var has_target := lure != null or targets.has(zombie.target_id)
+	var target_pos := zombie.position
+	if lure != null:
+		target_pos = lure.position
+	elif has_target:
+		target_pos = targets[zombie.target_id]
 	_repath(zombie, delta, has_target, target_pos)
 	var waypoint := _waypoint(zombie, target_pos)
+	# At a lure a zombie stands about it, facing it: no target to walk to and none to swing at.
+	var gathered := (
+		lure != null and _flat(zombie.position, lure.position) <= tuning.lure_gather_distance
+	)
+	if gathered and zombie.mode == ZombieBody.Mode.CHASE:
+		ZombieBrain.face(zombie, tuning, delta, lure.position)
 	var strike := ZombieBrain.step(
-		zombie, tuning, delta, has_target, target_pos, waypoint, _ground_speed(zombie)
+		zombie,
+		tuning,
+		delta,
+		has_target and not gathered,
+		target_pos,
+		waypoint,
+		_ground_speed(zombie)
 	)
 	if not strike.is_empty():
 		strike["type"] = &"zombie_struck"
@@ -204,6 +241,30 @@ func _think(
 	# offset (twice the cell height), so using its height needs that taken off first.
 	zombie.position += (zombie.velocity + zombie.push) * delta
 	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
+
+
+## The nearest lure that calls this zombie, or null: one within its radius, unless the zombie is
+## tearing boards, is a boss or is in a swing and the tuning leaves those alone. A zombie that is
+## not up yet or is dying hears nothing.
+func _lure_for(zombie: ZombieBody) -> ZombieLure:
+	if lures.is_empty() or zombie.mode == ZombieBody.Mode.EMERGING or not zombie.is_alive():
+		return null
+	if zombie.gate_id != &"" and not tuning.lure_pulls_gate_zombies:
+		return null
+	if zombie.profile.boss and not tuning.lure_pulls_bosses:
+		return null
+	if zombie.mode == ZombieBody.Mode.ATTACK and not tuning.lure_breaks_swings:
+		return null
+	var best: ZombieLure
+	var best_distance := INF
+	for lure in lures:
+		if not lure.reaches(zombie.position):
+			continue
+		var distance := _flat(zombie.position, lure.position)
+		if distance < best_distance:
+			best_distance = distance
+			best = lure
+	return best
 
 
 ## A zombie that came for a breach stops short of its boards while any stand, and once at them

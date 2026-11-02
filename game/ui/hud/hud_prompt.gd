@@ -28,6 +28,7 @@ const DENIED_TEXT := {
 	GameRules.BuyResult.AMMO_FULL: "YOUR RESERVE IS FULL",
 	GameRules.BuyResult.WRONG_PHASE: "NOT RIGHT NOW",
 	GameRules.BuyResult.CRANE_BUSY: "THE CRANE IS BUSY",
+	GameRules.BuyResult.PLAYER_DOWNED: "GET UP FIRST",
 }
 ## Why the crane would not hand the weapon over (`crane_take_denied`'s reason).
 const TAKE_DENIED_TEXT := {

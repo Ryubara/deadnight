@@ -40,13 +40,7 @@ class Clip:
     loop: bool = False
 
 
-# One close-miked shot with its own room tail per file; the game layers the synthesised transient on top.
-_GUN = "{what}, single shot, outdoors at night in an open parking lot, punchy low-end body, short echo tail, no music"
 CLIPS: list[Clip] = [
-    Clip("blast_pistol", 3, _GUN.format(what="revolver gunshot, .44 magnum"), 1.4),
-    Clip("blast_smg", 3, _GUN.format(what="tommy gun submachine gun single round, 1940s"), 1.2),
-    Clip("blast_rifle", 3, _GUN.format(what="lever action rifle gunshot, heavy"), 1.6),
-    Clip("blast_shotgun", 3, _GUN.format(what="12 gauge pump shotgun blast, huge"), 1.8),
     Clip(
         "generator_hum",
         1,
