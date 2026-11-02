@@ -238,9 +238,11 @@ def main() -> int:
         flags = [f"--host-resolver-rules=MAP {HOST} 127.0.0.1:{PORT}, MAP {PARENT} 127.0.0.1:{PORT}"]
         with sync_playwright() as p:
             if args.gpu:
-                browser = p.chromium.launch(channel="chrome", headless=not args.headed, args=flags)
+                browser = p.chromium.launch(channel="chrome", headless=not args.headed, args=flags + smoke.mute_args())
             else:
-                browser = p.chromium.launch(headless=not args.headed, args=smoke.SOFTWARE_GL + flags)
+                browser = p.chromium.launch(
+                    headless=not args.headed, args=smoke.SOFTWARE_GL + flags + smoke.mute_args()
+                )
             browser_context = browser.new_context(viewport=smoke.VIEWPORT, ignore_https_errors=True)
             # Never take the real mouse: a pointer lock in headless Chromium on Windows clips the person's cursor.
             browser_context.add_init_script(NO_POINTER_LOCK)
