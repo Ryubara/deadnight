@@ -98,7 +98,12 @@ func test_the_round_ends_when_the_last_zombie_falls_not_before() -> void:
 	assert_int(_rules.phase).is_equal(GameRules.Phase.BREAK)
 	assert_int(_log.of(&"round_ended")[0]["round"]).is_equal(1)
 	assert_int(_log.of(&"break_started")[1]["next_round"]).is_equal(2)
-	assert_float(_log.of(&"break_started")[1]["seconds"]).is_equal(20.0)
+	assert_float(_log.of(&"break_started")[1]["seconds"]).is_equal(5.0)
+
+
+func test_a_break_is_five_seconds_in_the_class_and_in_the_shipped_tuning() -> void:
+	assert_float(RoundTuning.new().break_seconds).is_equal(5.0)
+	assert_float(RulesFixture.tuning().rounds.break_seconds).is_equal(5.0)
 
 
 func test_the_round_does_not_end_while_zombies_are_still_to_spawn() -> void:
