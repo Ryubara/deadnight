@@ -12,7 +12,8 @@ extends RefCounted
 ##     included); right after the purchase's points_changed and purchase_made
 ##   crane_prize_ready: player_id, spot, weapon (a shop id such as weapon_rifle), seconds (the
 ##     window in which only that player can take it)
-##   crane_prize_taken: player_id, spot, weapon
+##   crane_prize_taken: player_id, spot, weapon, released (the shop id the hands gave up for it, or
+##     an empty name)
 ##   crane_prize_lost: player_id, spot, weapon, reason (expired, or left when the buyer went)
 ##   crane_take_denied: player_id, reason (not_buyer, nothing_to_take, downed, already_owned)
 ##   crane_breakdown: player_id, spot, refund, seconds (until the crane is gone); the dud shows,
@@ -110,7 +111,8 @@ static func _refund(rules: GameRules, buyer: PlayerState, amount: int) -> int:
 	return amount
 
 
-static func take(rules: GameRules, player_id: int) -> void:
+## `held` is the catalogue id of the weapon in the taker's hand, the one a full carry gives up.
+static func take(rules: GameRules, player_id: int, held: StringName = &"") -> void:
 	var crane := rules.crane
 	var player := rules.players.get(player_id) as PlayerState
 	if player == null:
@@ -128,9 +130,10 @@ static func take(rules: GameRules, player_id: int) -> void:
 	if denied != &"":
 		rules._emit(&"crane_take_denied", {"player_id": player_id, "reason": denied})
 		return
-	player.weapons.append(crane.weapon)
+	var released := WeaponCarry.take(rules, player, crane.weapon, held)
 	rules._emit(
-		&"crane_prize_taken", {"player_id": player_id, "spot": crane.spot, "weapon": crane.weapon}
+		&"crane_prize_taken",
+		{"player_id": player_id, "spot": crane.spot, "weapon": crane.weapon, "released": released}
 	)
 	crane.stage = CraneState.Stage.READY
 	crane.buyer_id = -1

@@ -15,6 +15,10 @@ const IDS: Array[StringName] = [
 	&"fire_axe",
 ]
 
+## How many weapons a player carries at once (#410): a third replaces the one in hand. There is
+## no melee slot; a melee weapon takes one of the two like a gun.
+const CARRY_LIMIT := 2
+
 ## The shop sells weapons as `weapon_<id>` (the crane's pool too); the catalogue knows `<id>`.
 const SHOP_PREFIX := "weapon_"
 

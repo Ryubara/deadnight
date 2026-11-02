@@ -22,6 +22,7 @@ extends RefCounted
 
 ## The weapons' events this reads; the binding forwards these and no other weapon event.
 const EVENTS: Array[StringName] = [
+	&"weapon_replaced",
 	&"weapon_equipped",
 	&"shot_fired",
 	&"reload_started",
@@ -44,6 +45,10 @@ static func apply(event: Dictionary, state: HudState) -> void:
 		return
 	var weapon_id := StringName(event.get("weapon_id", &""))
 	match event["type"]:
+		&"weapon_replaced":
+			# The weapon in hand is gone, not put away: the other one stays the one put away.
+			state.weapon_id = &""
+			state.rounds.erase(StringName(event["dropped"]))
 		&"weapon_equipped":
 			equip(weapon_id, int(event["ammo"]), int(event["reserve"]), state)
 		&"shot_fired", &"reload_finished":

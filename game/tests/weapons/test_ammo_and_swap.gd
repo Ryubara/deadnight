@@ -51,17 +51,16 @@ func test_ammo_does_not_fill_the_magazine_only_a_reload_does() -> void:
 	assert_int(state.reserve).is_equal(8)
 
 
-func test_swap_goes_to_the_next_weapon_and_round_again() -> void:
+func test_swap_goes_to_the_other_weapon_and_back() -> void:
 	_server.apply(CombatAction.give_weapon(1, &"shotgun"))
 	assert_str(_server.weapon_of(1).def.id).is_equal("shotgun")
 	var events := _server.apply(CombatAction.swap(1))
 	assert_str(WeaponsFixture.of(events, &"weapon_equipped")[0]["weapon_id"]).is_equal("pistol")
-	_server.apply(CombatAction.give_weapon(1, &"rifle"))
 	var seen: Array = []
 	for _i in 3:
 		_server.apply(CombatAction.swap(1))
 		seen.append(_server.weapon_of(1).def.id)
-	assert_array(seen).contains_exactly([&"pistol", &"shotgun", &"rifle"])
+	assert_array(seen).is_equal([&"shotgun", &"pistol", &"shotgun"])
 
 
 func test_swap_with_one_weapon_does_nothing() -> void:

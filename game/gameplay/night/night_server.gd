@@ -53,6 +53,7 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"reload_started",
 	&"reload_finished",
 	&"reload_rejected",
+	&"weapon_replaced",
 	&"weapon_equipped",
 	&"ammo_added",
 	&"weapon_upgraded",
@@ -316,9 +317,9 @@ func _join(player_id: int, local: bool) -> void:
 	thrower.release_under = tuning.grenade_release_under
 	_throwers[player_id] = thrower
 	rules.apply(RulesAction.add_player(player_id))
-	# The melee weapon first, so the firearm is the one in hand.
-	_combat(CombatAction.give_weapon(player_id, tuning.start_melee))
-	_combat(CombatAction.give_weapon(player_id, tuning.start_weapon))
+	# What the rules say the player starts with, the firearm last so it is the one in hand.
+	for shop_id in rules.players[player_id].weapons:
+		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
 
 
 func _leave(player_id: int) -> void:
@@ -450,7 +451,7 @@ func _on_rules_event(event: Dictionary) -> void:
 		&"purchase_made":
 			_deliver(event["player_id"], event["detail"])
 		&"crane_prize_taken":
-			_deliver(event["player_id"], {"weapon": event["weapon"]})
+			_deliver(event["player_id"], {"weapon": event["weapon"], "released": event["released"]})
 
 
 # --- Grenades ---
@@ -540,7 +541,7 @@ func buy(player_id: int, item_id: StringName) -> Array[Dictionary]:
 	var weapon: StringName = &""
 	if item != null and item.kind == ShopItem.Kind.AMMO:
 		rounds = ammo_room(player_id, item.weapon)
-	if item != null and item.kind == ShopItem.Kind.UPGRADE:
+	if item != null and item.kind in [ShopItem.Kind.UPGRADE, ShopItem.Kind.WEAPON]:
 		weapon = MachineOffers.weapon_for(self, player_id)
 	return rules.apply(RulesAction.buy(player_id, item_id, rounds, weapon))
 
@@ -556,7 +557,8 @@ func ammo_room(player_id: int, weapon_id: StringName) -> int:
 func _deliver(player_id: int, detail: Dictionary) -> void:
 	var weapon: StringName = detail.get("weapon", &"")
 	if weapon != &"":
-		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(weapon)))
+		var released := WeaponCatalog.catalog_id(detail.get("released", &""))
+		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(weapon), released))
 	var ammo: StringName = detail.get("ammo", &"")
 	if ammo != &"":
 		_combat(CombatAction.add_ammo(player_id, ammo, detail["rounds"]))
@@ -776,6 +778,7 @@ func _offer_at(player_id: int, spot: Dictionary) -> Dictionary:
 				"id": spot["shop_id"],
 				"weapon": weapon,
 				"price": rules.price_of(spot["shop_id"]),
+				"replaces": MachineOffers.replaces(self, player_id, weapon),
 			}
 		&"crane":
 			return _crane_offer(player_id, spot)
@@ -803,7 +806,13 @@ func _crane_offer(player_id: int, spot: Dictionary) -> Dictionary:
 			return {}
 		return {"kind": &"crane", "id": item.id, "price": rules.price_of(item.id)}
 	if crane.buyer_id == player_id and crane.stage == CraneState.Stage.GRAB:
-		return {"kind": &"crane_take", "id": item.id, "weapon": crane.weapon, "left": crane.left}
+		return {
+			"kind": &"crane_take",
+			"id": item.id,
+			"weapon": crane.weapon,
+			"left": crane.left,
+			"replaces": MachineOffers.replaces(self, player_id, crane.weapon),
+		}
 	return {"kind": &"crane_busy", "id": item.id, "buyer": crane.buyer_id}
 
 
@@ -830,7 +839,8 @@ func _use(player_id: int) -> void:
 		&"door", &"weapon", &"ammo", &"crane", &"recut", &"tonic":
 			buy(player_id, target["id"])
 		&"crane_take":
-			rules.apply(RulesAction.crane_take(player_id))
+			var held := MachineOffers.weapon_for(self, player_id)
+			rules.apply(RulesAction.crane_take(player_id, held))
 		&"repair":
 			_repairing[player_id] = target["id"]
 			_repair(player_id, target["id"])

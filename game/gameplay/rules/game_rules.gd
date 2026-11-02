@@ -51,9 +51,12 @@ extends RefCounted
 ##   player_removed: player_id
 ##   player_revived: player_id (the one who got up), reviver_id (the teammate; 0 at a round's end)
 ##   points_changed: player_id, total, delta, reason
-##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
+##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon` and `released`, the shop
+##     id the hands gave up for it or an empty name; ammunition: `ammo`, the
 ##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
 ##     a crane play: `crane_spot`, see CranePlay)
+##   weapon_released: player_id, weapon (a shop id), taken (the shop id that replaced it); a third
+##     weapon replaced the one in hand and the released one is a prize and a purchase again
 ##   purchase_denied: player_id, item_id, result (a BuyResult)
 ##   crane_*: the prize crane's play, see `CranePlay`
 ##   door_opened: door_id
@@ -88,13 +91,13 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 12 added each player's `revives`, `dead` and `bleed_left` (teammate revives), 11 each player's
-## `downs` and the night's `night_time` (the scoreboard), 10 the match settings
-## (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize crane (`crane`,
-## `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the plan, special round
-## and a zombie's type, health, speed. Two older layouts both called themselves 4; every older
-## snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 12
+## 13 added the carry (`weapons` holds the start weapons, `recuts_lost`), 12 each player's
+## `revives`, `dead` and `bleed_left` (teammate revives), 11 each player's `downs` and the night's
+## `night_time` (the scoreboard), 10 the match settings (`match_settings`), 9 each player's
+## `upgraded` weapons, 8 the prize crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`,
+## 6 each player's health, 5 the plan, special round and a zombie's type, health, speed. Two older
+## layouts both called themselves 4; every older snapshot is refused as `bad_version`.
+const SNAPSHOT_VERSION := 13
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -426,7 +429,7 @@ func _dispatch(action: Dictionary) -> void:
 				StringName(action.get("weapon", &""))
 			)
 		RulesAction.CRANE_TAKE:
-			CranePlay.take(self, action["player_id"])
+			CranePlay.take(self, action["player_id"], StringName(action.get("held", &"")))
 		RulesAction.SET_CIRCUIT:
 			if not generator.set_circuit(action["circuit_id"], action["on"]):
 				_reject(&"unknown_circuit", RulesAction.SET_CIRCUIT)
@@ -687,6 +690,7 @@ func _add_player(player_id: int) -> void:
 	var added := PlayerState.new(player_id, tuning.economy.start_points)
 	added.grenades = tuning.explosives.start_grenades
 	PlayerHealth.start(added, tuning.health)
+	added.weapons.assign(tuning.economy.start_weapons)
 	players[player_id] = added
 	_emit(
 		&"player_added",

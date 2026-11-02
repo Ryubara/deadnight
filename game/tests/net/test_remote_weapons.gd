@@ -181,9 +181,10 @@ func test_b_shows_the_weapon_a_holds_and_every_swap() -> void:
 		)
 		. is_true()
 	)
-	# Swap away and back: every swap shows.
+	# Swap away and back: every swap shows. The shotgun replaces the revolver in A's hand (the carry
+	# is two weapons, #410), so the swap cycles the crowbar and the shotgun.
 	_host.server._combat(CombatAction.give_weapon(A, &"shotgun"))
-	for weapon: StringName in [&"crowbar", &"pistol", &"shotgun"]:
+	for weapon: StringName in [&"shotgun", &"crowbar", &"shotgun"]:
 		await _hold(a, weapon)
 		(
 			assert_bool(await _until(func() -> bool: return _shows(b, A, weapon)))
@@ -203,6 +204,41 @@ func test_b_shows_the_weapon_a_holds_and_every_swap() -> void:
 		)
 		. is_true()
 	)
+
+
+func test_b_sees_a_third_weapon_replace_the_one_in_a_hand() -> void:
+	# A buys the shotgun at the wall with both hands full: the revolver in hand is gone for good
+	# (it goes back to the pool, not onto the floor), and B sees the shotgun in A's hand, the
+	# revolver never again, and the swap cycling the crowbar and the shotgun only (#410).
+	await _server()
+	var a := await _client()
+	var b := await _client()
+	var heard := _listen(b)
+	assert_bool(await _until(func() -> bool: return _shows(b, A, &"pistol"))).is_true()
+	_host.server.rules.apply(RulesAction.grant_points(A, 5000))
+	_host.server.buy(A, &"weapon_shotgun")
+	(
+		assert_bool(await _until(func() -> bool: return _shows(b, A, &"shotgun")))
+		. override_failure_message(
+			"B does not show A holding the shotgun after the buy (heard %s)" % [heard.slice(-6)]
+		)
+		. is_true()
+	)
+	var carried: Array = _host.server.combat.carried(A)
+	assert_int(carried.size()).is_equal(WeaponCatalog.CARRY_LIMIT)
+	assert_bool(carried.has(&"pistol")).is_false()
+	# A client that joins after the buy draws the shotgun too, never the revolver.
+	var late := await _client()
+	assert_bool(await _until(func() -> bool: return _shows(late, A, &"shotgun"))).is_true()
+	assert_bool(_shows(late, A, &"pistol")).is_false()
+	for _i in 4:
+		await _tap(a, _swap)
+		var held := _held_by_server(A)
+		assert_bool(held in [&"crowbar", &"shotgun"]).is_true()
+		assert_bool(await _until(func() -> bool: return _shows(b, A, held))).is_true()
+		assert_bool(_shows(b, A, &"pistol")).is_false()
+	# The pool gives it again: the rules count the revolver as not carried.
+	assert_bool(_host.server.rules.players[A].weapons.has(&"weapon_pistol")).is_false()
 
 
 func test_b_shows_a_aiming_and_lowering_the_gun() -> void:

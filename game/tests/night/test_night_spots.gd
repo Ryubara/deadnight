@@ -83,9 +83,7 @@ func test_a_full_reserve_is_offered_nothing_at_the_wall_or_a_locker() -> void:
 	var shotgun := night.server.combat.state_of(1, &"shotgun")
 	shotgun.reserve = shotgun.def.reserve_max
 	assert_dict(_stand_at(night, at)).is_empty()
-	var pistol := night.server.combat.state_of(1, &"pistol")
-	pistol.reserve = pistol.def.reserve_max
-	night.server.combat.apply(CombatAction.equip(1, &"pistol"))
+	# The shotgun is in hand (it replaced the pistol), so the locker has nothing for it either.
 	assert_dict(_stand_at(night, _spot(night, &"", &"ammo"))).is_empty()
 	night.queue_free()
 
@@ -114,7 +112,7 @@ func test_a_locker_has_nothing_for_the_crowbar() -> void:
 	night.queue_free()
 
 
-func test_the_crane_plays_until_it_has_nothing_left_to_give() -> void:
+func test_the_crane_never_runs_dry_for_a_player_with_two_hands() -> void:
 	var night := await _start(RulesFixture.steady_crane_tuning())
 	var at := _spot(night, &"crane_play")
 	var prompt := _stand_at(night, at)
@@ -129,8 +127,8 @@ func test_the_crane_plays_until_it_has_nothing_left_to_give() -> void:
 		NightFixture.run(night, 300)
 		assert_str(String(night.state.me()["prompt"]["kind"])).is_equal("crane_take")
 		_use(night)
-	assert_int(night.server.combat.carried(1).size()).is_equal(2 + pool)
-	assert_dict(_stand_at(night, at)).is_empty()
+	assert_int(night.server.combat.carried(1).size()).is_equal(WeaponCatalog.CARRY_LIMIT)
+	assert_str(String(_stand_at(night, at)["kind"])).is_equal("crane")
 	night.queue_free()
 
 

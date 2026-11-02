@@ -121,6 +121,21 @@ what the rules say (`PlayerState.max_health`). What it needed of the model, and 
 that take a `WeaponDef` (`SimWeapons.damage_of`, `sustained_dps_of`, `kill_rate_of`) because a re-cut weapon is not in
 the catalogue. A try of a multiplier: `--set upgrade.damage_multiplier=1.6 --set rounds.health_growth=1.07`.
 
+## The two-weapon carry (#410)
+
+Four choices made here are open for the maintainer, not decided: the 1.5 replace margin below, the stampede cut to
+110% of the count, the revolver and the crowbar in the crane pool at weight 1, and the starting crowbar kept until quick
+melee (#411).
+
+A player carries two weapons, and the modelled players follow it (`NightSim`, `REPLACE_GAIN`): a wall weapon or a
+crane prize replaces the weakest weapon they carry (by sustained damage for a firearm, by blows for a melee weapon),
+and only when it is worth 1.5 times more; they play the crane only when some prize they lack would be. At 1.0 they
+bought in circles (the same shotgun 79 times in 60 nights, 3 to 4 plays of the crane a night) and the average solo median
+round was 8; at 1.3 it was 9; at 1.5 it was 10 to 12. The policy matters as much as the rule, so the number is the
+average player's taste, written down. Without a carried melee weapon the simulator falls back on a crowbar blow, the
+stand-in for quick melee (#411). With it the gate held only after the stampede was cut from 140% to 110% of the count
+(at 140% a solo average player died in 54% of the stampedes, wanted 40% at most).
+
 ## Using it
 
 ```text

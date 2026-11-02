@@ -78,6 +78,7 @@ const OPTIONAL := {
 	BLOW: {"bearing": TYPE_FLOAT, "source_id": TYPE_INT},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
 	BUY: {"rounds": TYPE_INT, "weapon": TYPE_STRING_NAME},
+	CRANE_TAKE: {"held": TYPE_STRING_NAME},
 	TICK: {"held": TYPE_ARRAY},
 }
 
@@ -176,7 +177,8 @@ static func tear_board(barricade_id: StringName, zombie_id: int) -> Dictionary:
 
 ## A purchase. `rounds` is only for ammunition: how many rounds the weapon's reserve has room for
 ## (the combat server counts them, the rules price them); left out, the whole purchase. `weapon` is
-## only for a re-cut: the catalogue id of the weapon the server found in the buyer's hand.
+## the catalogue id of the weapon the server found in the buyer's hand: the one a re-cut is for, or
+## the one a bought weapon replaces when the hands are full.
 static func buy(
 	player_id: int, item_id: StringName, rounds: int = -1, weapon: StringName = &""
 ) -> Dictionary:
@@ -190,8 +192,13 @@ static func buy(
 
 ## The buyer takes the weapon the crane is holding out. Anyone else, or nobody's, is answered with
 ## `crane_take_denied`.
-static func crane_take(player_id: int) -> Dictionary:
-	return {"type": CRANE_TAKE, "player_id": player_id}
+## `held` is the catalogue id of the weapon in the taker's hand (the server finds it): the one a
+## full carry gives up for the prize. Left out, the oldest carried goes.
+static func crane_take(player_id: int, held: StringName = &"") -> Dictionary:
+	var action := {"type": CRANE_TAKE, "player_id": player_id}
+	if held != &"":
+		action["held"] = held
+	return action
 
 
 static func set_circuit(circuit_id: StringName, on: bool) -> Dictionary:

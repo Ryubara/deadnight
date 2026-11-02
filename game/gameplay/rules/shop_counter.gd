@@ -21,7 +21,8 @@ class Quote:
 
 
 ## The quote for `item_id` for this player now. `rounds` is the room an ammunition purchase has
-## (`RulesAction.buy`), `weapon` the weapon a re-cut is for.
+## (`RulesAction.buy`), `weapon` the weapon a re-cut is for, or the weapon in hand a bought weapon
+## replaces when the hands are full.
 static func quote(
 	rules: GameRules, player_id: int, item_id: StringName, rounds: int, weapon: StringName
 ) -> Quote:
@@ -52,7 +53,7 @@ static func quote(
 static func price(rules: GameRules, item: ShopItem, player: PlayerState) -> int:
 	var cost := item.price_at(rules.round_number)
 	if item.kind == ShopItem.Kind.UPGRADE:
-		cost += rules.tuning.upgrade.price_step * player.upgraded.size()
+		cost += rules.tuning.upgrade.price_step * (player.upgraded.size() + player.recuts_lost)
 	return cost
 
 
@@ -65,8 +66,8 @@ static func grant(rules: GameRules, player: PlayerState, bought: Quote) -> Dicti
 			rules.doors_open.append(item.id)
 			rules._emit(&"door_opened", {"door_id": item.id})
 		ShopItem.Kind.WEAPON:
-			player.weapons.append(item.id)
-			detail = {"weapon": item.id}
+			var released := WeaponCarry.take(rules, player, item.id, bought.weapon)
+			detail = {"weapon": item.id, "released": released}
 		ShopItem.Kind.CRANE:
 			detail = CranePlay.start(rules, player, bought.price)
 		ShopItem.Kind.TONIC:

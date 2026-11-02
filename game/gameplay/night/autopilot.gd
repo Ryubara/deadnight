@@ -131,7 +131,7 @@ func decide(delta: float) -> NightCommand:
 	if kind == &"door":
 		command.use = state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"crane_take":
-		command.use = true
+		command.use = _worth_taking(WeaponCatalog.catalog_id(prompt.get("weapon", &"")))
 	elif kind == &"weapon" or kind == &"crane":
 		command.use = _wants(prompt) and state.points() >= int(prompt.get("price", BIG_PRICE))
 	elif kind == &"ammo":
@@ -210,6 +210,11 @@ func _wants_swap(held: WeaponDef) -> bool:
 ## rounds to spare.
 func _wants(prompt: Dictionary) -> bool:
 	var id: StringName = prompt.get("id", &"")
+	var kind: StringName = prompt.get("kind", &"")
+	if kind == &"weapon" and not _worth_taking(WeaponCatalog.catalog_id(id)):
+		return false
+	if kind == &"crane" and not _some_prize_worth_taking():
+		return false
 	return wanted.has(id) and state.points() >= int(prompt.get("price", BIG_PRICE)) + AMMO_MONEY
 
 
@@ -248,7 +253,8 @@ func _is_goal(spot: Dictionary, held: WeaponDef) -> bool:
 				and _low_on_rounds(held)
 				and points >= int(ammo_prices.get(weapon, BIG_PRICE))
 			)
-	if kind == &"crane" and not _crane_here_with_prizes(spot):
+	var pointless := kind == &"wall" and not _worth_taking(WeaponCatalog.catalog_id(id))
+	if pointless or (kind == &"crane" and not _crane_here_with_prizes(spot)):
 		return false
 	return wanted.has(id) and points >= int(prices_of_goods.get(id, BIG_PRICE)) + AMMO_MONEY
 
@@ -269,11 +275,29 @@ func _recut_wanted(held: WeaponDef) -> bool:
 func _crane_here_with_prizes(spot: Dictionary) -> bool:
 	if spot.get("crane_spot", 0) != state.frame.get("crane", {}).get("spot", 0):
 		return false
-	var arms: Dictionary = state.me().get("arms", {})
+	return _some_prize_worth_taking()
+
+
+## Whether the crane's pool holds a prize worth taking: nobody pays for a play whose prize they
+## would leave on the glass.
+func _some_prize_worth_taking() -> bool:
 	for prize in crane_pool:
-		if not arms.has(WeaponCatalog.catalog_id(prize)):
+		if _worth_taking(WeaponCatalog.catalog_id(prize)):
 			return true
 	return false
+
+
+## Whether a weapon (a catalogue id) is worth taking: a free hand takes anything; full hands only
+## a weapon worth `WeaponWorth.REPLACE_GAIN` times the one in hand, which is the one it replaces
+## (without the margin the bot buys in circles). A weapon it already carries is not "taken".
+func _worth_taking(weapon_id: StringName) -> bool:
+	var arms: Dictionary = state.me().get("arms", {})
+	if arms.has(weapon_id):
+		return false
+	if arms.size() < WeaponCatalog.CARRY_LIMIT:
+		return true
+	var held := _held()
+	return held != null and WeaponWorth.beats(WeaponCatalog.get_def(weapon_id), held)
 
 
 ## Where the crane stands now, or `Vector3.INF` when the lot has no spot for it.

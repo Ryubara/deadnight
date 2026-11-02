@@ -80,7 +80,9 @@ func test_a_weapon_belongs_to_the_buyer_alone() -> void:
 	_rich()
 	assert_int(RulesFixture.buy(_rules, 1, &"weapon_shotgun")).is_equal(GameRules.BuyResult.OK)
 	assert_array((_rules.players[1] as PlayerState).weapons).contains([&"weapon_shotgun"])
-	assert_array((_rules.players[2] as PlayerState).weapons).is_empty()
+	assert_array((_rules.players[2] as PlayerState).weapons).contains_exactly(
+		RulesFixture.start_weapons()
+	)
 	assert_int(RulesFixture.buy(_rules, 1, &"weapon_shotgun")).is_equal(
 		GameRules.BuyResult.ALREADY_OWNED
 	)

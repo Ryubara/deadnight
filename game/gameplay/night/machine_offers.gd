@@ -34,6 +34,16 @@ static func weapon_for(server: NightServer, player_id: int) -> StringName:
 	return held.def.id if held != null else &""
 
 
+## What taking a weapon would cost the player's hands: the catalogue id of the weapon in hand it
+## replaces when the hands are full and the weapon is not carried yet, else `&""`.
+static func replaces(server: NightServer, player_id: int, weapon_id: StringName) -> StringName:
+	if server.combat.state_of(player_id, weapon_id) != null:
+		return &""
+	if server.combat.carried(player_id).size() < WeaponCatalog.CARRY_LIMIT:
+		return &""
+	return weapon_for(server, player_id)
+
+
 static func _recut(server: NightServer, player_id: int, item_id: StringName) -> Dictionary:
 	var weapon := weapon_for(server, player_id)
 	if weapon == &"":

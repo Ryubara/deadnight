@@ -16,9 +16,8 @@ const ATTACK_TICKS := 12
 ## Where each catalogue weapon comes from: id to the list of sources (`start`, `wall`, `crane`).
 func _sources(tuning: RulesTuning) -> Dictionary:
 	var sources := {}
-	var start := NightTuning.new()
-	for id: StringName in [start.start_weapon, start.start_melee]:
-		_add(sources, id, &"start")
+	for id: StringName in tuning.economy.start_weapons:
+		_add(sources, WeaponCatalog.catalog_id(id), &"start")
 	for item: ShopItem in tuning.economy.items:
 		match item.kind:
 			ShopItem.Kind.WEAPON:
@@ -86,6 +85,8 @@ func test_seeded_plays_draw_every_prize_of_the_crane() -> void:
 		var rules := RulesFixture.make_rules(1, seed_value, tuning)
 		rules.apply(RulesAction.start())
 		rules.apply(RulesAction.grant_points(1, 5000))
+		# Empty hands: the revolver and the crowbar are prizes too, once they are given up.
+		(rules.players[1] as PlayerState).weapons.clear()
 		var ready := RulesFixture.first(RulesFixture.play_crane(rules, 1), &"crane_prize_ready")
 		drawn[ready["weapon"]] = true
 	for prize in _crane_pool(tuning):
@@ -172,32 +173,29 @@ func _check_in_hand(night: Night, weapon_id: StringName) -> void:
 	NightFixture.run(night, 90)
 
 
-func test_every_crane_prize_is_taken_equipped_attacked_and_drawn_in_the_hand() -> void:
+func test_a_crane_prize_is_taken_equipped_attacked_and_drawn_in_the_hand() -> void:
+	# A player holds two weapons (#410): each prize replaces the one in hand, so they are checked
+	# one after the other, each from a real play.
 	var night := await _start()
-	var pool := _crane_pool(night.server.rules.tuning)
-	for _i in pool.size():
+	for _i in 4:
 		night.server.buy(1, &"crane_play")
 		NightFixture.run(night, 300)
-		night.server.rules.apply(RulesAction.crane_take(1))
+		var prize := WeaponCatalog.catalog_id(night.server.rules.crane.weapon)
+		night.server.rules.apply(RulesAction.crane_take(1, night.state.me()["weapon"]))
 		NightFixture.run(night, 3)
-	for prize in pool:
-		var id := WeaponCatalog.catalog_id(prize)
-		assert_array(night.server.combat.carried(1)).contains([id])
-		await _check_in_hand(night, id)
+		assert_array(night.server.combat.carried(1)).has_size(WeaponCatalog.CARRY_LIMIT)
+		assert_array(night.server.combat.carried(1)).contains([prize])
+		await _check_in_hand(night, prize)
 	night.queue_free()
 
 
-func test_the_start_and_wall_weapons_are_equipped_attacked_and_drawn_in_the_hand() -> void:
+func test_every_weapon_is_equipped_attacked_and_drawn_in_the_hand() -> void:
+	# Every catalogue weapon, given the way the wall and the crane give it (the combat server's
+	# `give_weapon`, replacing the one in hand once both hands are full).
 	var night := await _start()
-	var ids: Array[StringName] = []
-	var sources := _sources(night.server.rules.tuning)
 	for id in WeaponCatalog.IDS:
-		if &"wall" in sources[id]:
-			night.server.rules.apply(RulesAction.buy(1, StringName("weapon_%s" % id)))
-			NightFixture.run(night, 2)
-		if &"wall" in sources[id] or &"start" in sources[id]:
-			ids.append(id)
-	for id in ids:
+		night.server.combat.apply(CombatAction.give_weapon(1, id))
+		NightFixture.run(night, 2)
 		assert_array(night.server.combat.carried(1)).contains([id])
 		await _check_in_hand(night, id)
 	night.queue_free()

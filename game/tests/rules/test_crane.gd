@@ -47,7 +47,9 @@ func test_a_play_takes_the_price_and_starts_the_spin_without_giving_a_weapon() -
 	assert_float(caused[2]["seconds"]).is_equal(1.0)
 	assert_int(caused[2]["plays"]).is_equal(1)
 	assert_dict(caused[1]["detail"]).is_equal({"crane_spot": 0})
-	assert_array((_rules.players[1] as PlayerState).weapons).is_empty()
+	assert_array((_rules.players[1] as PlayerState).weapons).contains_exactly(
+		RulesFixture.start_weapons()
+	)
 
 
 func test_the_crane_serves_one_play_at_a_time() -> void:
@@ -83,7 +85,9 @@ func test_the_grab_window_closes_and_the_prize_is_lost_without_a_refund() -> voi
 	var lost := RulesFixture.first(last, &"crane_prize_lost")
 	assert_str(lost["reason"]).is_equal("expired")
 	assert_int(_rules.points_of(1)).is_equal(points)
-	assert_array((_rules.players[1] as PlayerState).weapons).is_empty()
+	assert_array((_rules.players[1] as PlayerState).weapons).contains_exactly(
+		RulesFixture.start_weapons()
+	)
 	assert_bool(_rules.crane.is_ready()).is_true()
 	assert_int(RulesFixture.buy(_rules, 2, &"crane_play")).is_equal(GameRules.BuyResult.OK)
 
@@ -94,11 +98,12 @@ func test_only_the_buyer_takes_the_weapon() -> void:
 	var stranger := _rules.apply(RulesAction.crane_take(2))
 	assert_str(stranger[0]["type"]).is_equal("crane_take_denied")
 	assert_str(stranger[0]["reason"]).is_equal("not_buyer")
-	assert_array((_rules.players[2] as PlayerState).weapons).is_empty()
+	assert_array((_rules.players[2] as PlayerState).weapons).contains_exactly(
+		RulesFixture.start_weapons()
+	)
 	assert_int(_rules.crane.stage).is_equal(CraneState.Stage.GRAB)
-	var taken := _rules.apply(RulesAction.crane_take(1))
-	assert_str(taken[0]["type"]).is_equal("crane_prize_taken")
-	assert_str(taken[0]["weapon"]).is_equal(ready["weapon"])
+	var taken := RulesFixture.first(_rules.apply(RulesAction.crane_take(1)), &"crane_prize_taken")
+	assert_str(taken["weapon"]).is_equal(ready["weapon"])
 	assert_array((_rules.players[1] as PlayerState).weapons).contains([ready["weapon"]])
 	assert_bool(_rules.crane.is_ready()).is_true()
 	var again := _rules.apply(RulesAction.crane_take(1))
@@ -111,7 +116,8 @@ func test_a_downed_buyer_cannot_take_the_weapon_until_up() -> void:
 	_rules.apply(RulesAction.set_downed(1, true))
 	assert_str(_rules.apply(RulesAction.crane_take(1))[0]["reason"]).is_equal("downed")
 	_rules.apply(RulesAction.set_downed(1, false))
-	assert_str(_rules.apply(RulesAction.crane_take(1))[0]["type"]).is_equal("crane_prize_taken")
+	var taken := RulesFixture.first(_rules.apply(RulesAction.crane_take(1)), &"crane_prize_taken")
+	assert_dict(taken).is_not_empty()
 
 
 func test_a_buyer_who_leaves_frees_the_crane() -> void:
@@ -135,7 +141,7 @@ func test_a_breakdown_refunds_the_price_and_the_crane_moves_to_another_spot() ->
 	assert_int(_rules.points_of(1)).is_equal(before)
 	var buyer := _rules.players[1] as PlayerState
 	assert_int(buyer.points_spent).is_equal(0)
-	assert_array(buyer.weapons).is_empty()
+	assert_array(buyer.weapons).contains_exactly(RulesFixture.start_weapons())
 	# The refund is a points_changed marked as one, and is not counted as earned.
 	var refunds := caused.filter(
 		func(event: Dictionary) -> bool: return event.get("reason", &"") == &"refund"
@@ -179,19 +185,32 @@ func test_a_prize_is_never_a_weapon_the_buyer_has() -> void:
 		assert_str(ready["weapon"]).is_not_equal(SHOTGUN)
 
 
-func test_the_crane_runs_dry_when_the_buyer_has_every_prize() -> void:
-	_begin(1)
-	var pool: Array[StringName] = _rules.tuning.economy.item(&"crane_play").pool
-	var won: Array = []
-	for _i in pool.size():
-		var ready := RulesFixture.first(RulesFixture.play_crane(_rules, 1), &"crane_prize_ready")
-		won.append(ready["weapon"])
-		_rules.apply(RulesAction.crane_take(1))
-	for weapon_id in pool:
-		assert_int(won.count(weapon_id)).is_equal(1)
+func test_the_crane_runs_dry_when_the_buyer_carries_every_prize() -> void:
+	# A player carries two weapons (#410), so a crane runs dry only for a pool of what they carry.
+	var t := RulesFixture.steady_crane_tuning()
+	var item := t.economy.item(&"crane_play")
+	item.pool = t.economy.start_weapons.duplicate()
+	item.pool_weights = PackedFloat32Array([1.0, 1.0])
+	_rules = RulesFixture.make_rules(1, 5, t)
+	_rules.apply(RulesAction.start())
+	_rules.apply(RulesAction.grant_points(1, 10000))
 	assert_int(RulesFixture.buy(_rules, 1, &"crane_play")).is_equal(
 		GameRules.BuyResult.ALREADY_OWNED
 	)
+
+
+func test_the_crane_never_runs_dry_for_a_player_with_two_hands() -> void:
+	_begin(1)
+	var item := _rules.tuning.economy.item(&"crane_play")
+	var carried: Array[StringName] = (_rules.players[1] as PlayerState).weapons
+	assert_int(item.pool_without(carried).size()).is_equal(item.pool.size() - carried.size())
+	for _i in item.pool.size() * 2:
+		var ready := RulesFixture.first(RulesFixture.play_crane(_rules, 1), &"crane_prize_ready")
+		assert_dict(ready).is_not_empty()
+		_rules.apply(RulesAction.crane_take(1))
+		assert_int((_rules.players[1] as PlayerState).weapons.size()).is_equal(
+			WeaponCatalog.CARRY_LIMIT
+		)
 
 
 func test_the_pool_follows_its_weights_over_many_seeded_plays() -> void:
@@ -206,6 +225,8 @@ func test_the_pool_follows_its_weights_over_many_seeded_plays() -> void:
 		var rules := RulesFixture.make_rules(1, seed_value, t)
 		rules.apply(RulesAction.start())
 		rules.apply(RulesAction.grant_points(1, 5000))
+		# Empty hands, so the whole pool is on offer (a player carries the revolver and the crowbar).
+		(rules.players[1] as PlayerState).weapons.clear()
 		var ready := RulesFixture.first(RulesFixture.play_crane(rules, 1), &"crane_prize_ready")
 		counts[ready["weapon"]] = counts.get(ready["weapon"], 0) + 1
 	for i in item.pool.size():

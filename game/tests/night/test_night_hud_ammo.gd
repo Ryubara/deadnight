@@ -82,21 +82,20 @@ func test_ammo_for_the_weapon_put_away_reaches_the_equipment_slot() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	night.server.buy(1, &"weapon_shotgun")
-	NightFixture.run(night, 3)
-	night.server.buy(1, &"weapon_rifle")
+	# The shotgun takes the crowbar's place (#410): the pistol in hand, the shotgun put away.
+	night.server.rules.apply(RulesAction.buy(1, &"weapon_shotgun", -1, &"crowbar"))
 	NightFixture.run(night, 3)
 	_run_low(night, &"shotgun", 2)
-	_run_low(night, &"rifle")
+	_run_low(night, &"pistol")
 	var shotgun := night.server.combat.state_of(1, &"shotgun")
-	assert_str(hud.state.weapon_name).is_equal(WeaponCatalog.get_def(&"rifle").display_name)
+	assert_str(hud.state.weapon_name).is_equal(WeaponCatalog.get_def(&"pistol").display_name)
 	assert_int(hud.state.equipment_count).is_equal(shotgun.ammo + 2)
 	_stand_at(night, &"weapon_shotgun", &"wall")
 	_use(night)
 	assert_int(shotgun.reserve).is_greater(2)
 	assert_int(hud.state.equipment_count).is_equal(shotgun.ammo + shotgun.reserve)
-	# The card still shows the rifle in hand.
-	assert_int(hud.state.ammo_reserve).is_equal(night.server.combat.state_of(1, &"rifle").reserve)
+	# The card still shows the pistol in hand.
+	assert_int(hud.state.ammo_reserve).is_equal(night.server.combat.state_of(1, &"pistol").reserve)
 	_finish(night, hud)
 
 
