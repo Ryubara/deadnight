@@ -80,8 +80,8 @@ lot at night, a tab bar runs along the top, the panels of the tab sit on one sid
 does. The maintainer's reference is a character-centred console menu (the character large in a lit 3D scene, a top tab
 bar, progress panels at the sides, level and currency top right, input hints at the bottom). We took that **layout and
 feel only**: the scene, names, art, type and text are Deadnight's own (the drive-in, the Marquee, stubs, Billing).
-Three steps: this design, the live stage (its page, `menu-stage.md`, comes with that pull request) and the tab shell
-with its panels.
+Three steps: this design, [the live stage](menu-stage.md) and
+[the tab shell with its panels](menu-shell.md).
 
 ### Structure
 
@@ -165,7 +165,7 @@ nothing on the menu is worded as a loss, and a daily left unfinished is not scol
 | Phone portrait | not a layout: the existing "turn your phone" prompt stays |
 
 The first mocks (a factor of 1.8) had 9 px captions on a 390 px phone, which is why the minimums are written here. The
-stage drops to half resolution or a still when frames run long (`menu-stage.md`), so the panels never wait
+stage drops to half resolution or a still when frames run long ([menu stage](menu-stage.md)), so the panels never wait
 on the 3D.
 
 ### Input per device
@@ -211,7 +211,7 @@ the letterboard** (dark hairline panels, film-frame strips). **The maintainer pi
   No glow, no icons for their own sake, no cards in a grid.
 - **Numbers never clip.** A count sits in a container with the text beside it, never at a fixed offset: the text
   takes what is left and is cut with an ellipsis, the count takes what it needs (the longest is `1,000,000/1,000,000`
-  in the display face, 380 units). The first mock placed counts by hand and ran off the paper; a test now fills a
+  in the display face, 331 units). The first mock placed counts by hand and ran off the paper; a test now fills a
   row with the longest value on every canvas and checks the count is inside its row.
 
 ### Open questions
@@ -314,5 +314,6 @@ the new `car()` of #380. Three browsers, 1920 x 1080:
   walked to the wrong item and waited for a screen that never opened. The tour holds each key for `--hold-ms` (500 in
   CI), gives each a moment to land, and when the wrong screen opens (or none) goes back with Escape and walks again,
   up to three times. `--throttle 6` slows a local Chromium to reproduce a slow runner (it still passes).
-- **Keys on the menu:** a screen you came back from remembers its focused item (since #380), so a script that walks the
-  menu presses Up six times first (the focus stops at the ends) and then Down to the item it wants.
+- **Keys on the menu:** the menu is a tab shell now ([menu shell](menu-shell.md)): a script walks it with
+  `smoke.menu_item(page, tab, steps)`, which presses E until the game reports the tab, so the first control of the tab has
+  the focus whatever the menu remembered, and then presses Down `steps` times.

@@ -16,6 +16,8 @@ const LOW_READY_TURN := 0.0
 ## The weapon shown when the saved one has no model.
 const DEFAULT_WEAPON := &"rifle"
 
+## The look on the soldier now.
+var look: CharacterLook
 var model: Node3D
 var weapon: Node3D
 var weapon_id := &""
@@ -42,11 +44,12 @@ static func saved_weapon() -> StringName:
 
 
 ## Dresses the soldier in `look` (the armband of `seat`) holding the weapon `id`.
-func show_look(look: CharacterLook, id: StringName, seat := 0) -> void:
+func show_look(worn: CharacterLook, id: StringName, seat := 0) -> void:
+	look = worn
 	if model != null:
 		remove_child(model)
 		model.queue_free()
-	model = CharacterAssembler.assemble(look, seat)
+	model = CharacterAssembler.assemble(worn, seat)
 	model.scale = Vector3.ONE * MODEL_SCALE
 	add_child(model)
 	_player = model.find_child("AnimationPlayer", true, false) as AnimationPlayer

@@ -62,11 +62,17 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
-		"touch": false
+		"touch": false,
+		"tab": "",
+		"stage": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
+	var menu := top as MainMenu
+	if menu != null and menu.shell != null:
+		data["tab"] = MenuTab.label(menu.shell.tab)
+		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
 	var together := top as TogetherScreen
 	if together != null:
 		# The invite of the night just made and what the screen says (a browser test reads both).

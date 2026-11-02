@@ -7,13 +7,21 @@ extends UIScreen
 ## without saving. Every change shows on the turntable at once. Locked options are drawn greyed
 ## and say how to get them; nothing here changes how a night plays.
 ##
+## With the param `embedded` it is only the pickers and the footer, without its own title,
+## turntable or Back: the main menu's Loadout tab hosts it and shows the look on its own stage.
+##
 ## Route to it with `UIRouter.push("res://ui/screens/customize_screen.tscn")`. Tests and captures
 ## drive it through `apply_preset`, `randomize`, `choose`, `save` and the strips themselves.
+
+## Emitted when the working look changes, so a stage somewhere else can show it.
+signal look_changed(look: CharacterLook)
 
 const PANEL_WIDTH := 1500
 const PICKER_WIDTH := 900
 ## The width of every picker strip: sixteen compact swatches.
 const STRIP_WIDTH := 540
+## The same in the main menu's Loadout tab, where the pickers have a column of their own.
+const EMBEDDED_STRIP_WIDTH := 380
 ## Height of the scrolling list of pickers.
 const SCROLL_HEIGHT := 640
 ## The keys of the strips: a prefix and the slot name.
@@ -38,6 +46,7 @@ var _status: UILabel
 var _armband_note: UILabel
 var _save_button: UIButton
 var _building := false
+var _embedded := false
 
 
 func _ready() -> void:
@@ -48,6 +57,7 @@ func _ready() -> void:
 		_rng.randomize()
 	if params.has("unlocks"):
 		unlocks = params["unlocks"]
+	_embedded = params.get("embedded", false)
 	saved = LookStore.load_look(unlocks)
 	look = saved.duplicate_look()
 	_build()
@@ -104,6 +114,11 @@ func is_dirty() -> bool:
 
 func _build() -> void:
 	_building = true
+	if _embedded:
+		_build_embedded()
+		_link_focus()
+		_building = false
+		return
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in [&"margin_left", &"margin_right", &"margin_top", &"margin_bottom"]:
@@ -125,6 +140,18 @@ func _build() -> void:
 	column.add_child(_build_footer())
 	_link_focus()
 	_building = false
+
+
+func _build_embedded() -> void:
+	var column := VBoxContainer.new()
+	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	column.add_theme_constant_override(&"separation", _tokens.space_md)
+	add_child(column)
+	var pickers := _build_pickers()
+	pickers.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(pickers)
+	column.add_child(_build_footer(false))
+	initial_focus = _preset_selector.get_path()
 
 
 ## Up and down walk the pickers row by row, then on to the footer; left to the engine, the nearest
@@ -159,7 +186,7 @@ func _build_stage() -> Control:
 func _build_pickers() -> Control:
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.RAISED
-	panel.custom_minimum_size.x = PICKER_WIDTH
+	panel.custom_minimum_size.x = 0.0 if _embedded else PICKER_WIDTH
 	var holder := VBoxContainer.new()
 	holder.add_theme_constant_override(&"separation", _tokens.space_sm)
 	panel.add_child(holder)
@@ -238,7 +265,7 @@ func _build_strip_row(key: String, title: String, entries: Array[Dictionary]) ->
 	var strip_control := ChoiceStrip.new()
 	strip_control.entries = entries
 	# Every strip is as wide as the longest palette, so all the rows line up.
-	strip_control.custom_minimum_size.x = STRIP_WIDTH
+	strip_control.custom_minimum_size.x = EMBEDDED_STRIP_WIDTH if _embedded else STRIP_WIDTH
 	strip_control.chosen.connect(_on_chosen.bind(key))
 	strip_control.blocked.connect(_on_blocked.bind(key))
 	strip_control.cursor_moved.connect(_on_cursor_moved.bind(key))
@@ -247,7 +274,7 @@ func _build_strip_row(key: String, title: String, entries: Array[Dictionary]) ->
 	return row
 
 
-func _build_footer() -> HBoxContainer:
+func _build_footer(with_back := true) -> HBoxContainer:
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override(&"separation", _tokens.space_md)
 	var random_button := UIButton.new()
@@ -260,11 +287,12 @@ func _build_footer() -> HBoxContainer:
 	_status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.add_child(_status)
-	var back := UIButton.new()
-	back.text = "Back"
-	back.variant = UIButton.Variant.GHOST
-	back.pressed.connect(func() -> void: UIRouter.pop())
-	footer.add_child(back)
+	if with_back:
+		var back := UIButton.new()
+		back.text = "Back"
+		back.variant = UIButton.Variant.GHOST
+		back.pressed.connect(func() -> void: UIRouter.pop())
+		footer.add_child(back)
 	_save_button = UIButton.new()
 	_save_button.text = "Save"
 	_save_button.pressed.connect(save)
@@ -298,6 +326,9 @@ func _sync_preset_selector() -> void:
 
 
 func _refresh_preview() -> void:
+	look_changed.emit(look)
+	if _preview == null:
+		return
 	_preview.show_look(look, 0)
 	var colour := LookCatalog.armband_colour(0)
 	_armband_note.text = "Armband: seat 1, always this colour"

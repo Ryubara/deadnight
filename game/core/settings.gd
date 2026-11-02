@@ -56,6 +56,9 @@ const LEFT_HANDED := &"controls/left_handed"
 const TOUCH_HINTS_SEEN := &"controls/touch_hints_seen"
 ## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
 const CHARACTER_LOOK := &"character/look"
+## The platform profile as last read, for the menu to show (`MenuProfile`): JSON, read-only on the
+## client, empty until the backend (or a test) fills it. Nothing in the game writes progress here.
+const PROFILE_CACHE := &"profile/cache"
 ## The weapon the menu's soldier holds (`WeaponCatalog` id, one that has a model). Cosmetic: a night
 ## starts with the starter program whatever is chosen here.
 const SHOWCASE_WEAPON := &"loadout/weapon"
@@ -89,6 +92,7 @@ const DEFAULTS := {
 	LEFT_HANDED: false,
 	TOUCH_HINTS_SEEN: 0,
 	CHARACTER_LOOK: "",
+	PROFILE_CACHE: "",
 	SHOWCASE_WEAPON: "rifle",
 	MENU_SCENE: 0,
 }

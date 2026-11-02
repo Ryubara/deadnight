@@ -61,8 +61,15 @@ live (2.6 a second, against 42 ms for today's menu), 47 ms still; that is why th
 there, and why the numbers say "it runs", never "it is fast". A weak laptop or phone GPU is not measured here: the
 governor is the guard until someone has one.
 
-## Left for the panels
+## What sits on it
 
-The tab bar, the panels and the input hints sit on this stage (the next pull requests). Placeholders at this step: the
-five dead and the sample paths, the showcase weapon is cosmetic (the night starts with the starter program), and the
-poses of Shop and Challenges are first guesses to be tuned against the panels.
+The tab bar, the panels and the input hints are on this stage now ([menu shell](menu-shell.md)). The showcase weapon is
+cosmetic (the night starts with the starter program), and the poses of Shop and Challenges were tuned against the
+panels: a phone gets its own Loadout and Challenges poses (`StagePose.for_tab(tab, compact)`) so the soldier stays
+clear of the wider panels. On a renderer that draws on the CPU the stage starts as a still, because the governor needed
+a few seconds to notice (`StageGovernor.is_software`). A browser hides the adapter from the engine ("WebKit WebGL"), so
+on the web the page asks WebGL for the unmasked renderer (`MenuStageView.detect_adapter`); the first CI run of the shell
+showed why: with the stage live on the runner's software renderer a screenshot of the page timed out at 30 s. The
+browser smoke run now fails when the stage is not a still on a software renderer (`window.deadnight.stage`). Firefox
+masks the renderer, so there the governor, which now also ends its warm-up after four seconds of long frames, is what
+catches it.
