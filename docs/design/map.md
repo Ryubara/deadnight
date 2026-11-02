@@ -335,7 +335,7 @@ pressure on the same ground, and the tank that feeds its lamps:
 | 10 | Midnight Stampede (runners only) | 21 / 60 | 2.22 / 0.89 s | 13 / 31 | 2.64 to 3.30 | x1.27 | and the road: all five |
 | 15 | Double Feature, a boss | 36 / 101 | 1.81 / 0.72 s | 17 / 35 | 3.44 to 4.30 | x1.42 | all |
 | 20 | Crawl Space (crawlers only) | 54 / 151 | 1.47 / 0.59 s | 21 / 39 | 4.24 to 5.30 | x1.57 | all |
-| 30 | | 101 / 282 | 0.98 / 0.39 s | 28 / 46 | 5.00 to 6.25 | x1.87 | all |
+| 30 | | 101 / 282 | 0.98 / 0.39 s | 28 / 40 | 5.00 to 6.25 | x1.87 | all |
 
 The columns are the rules' functions (`zombies_for_round`, `spawn_interval`, `alive_cap`, `speed_for_round`) and the
 fuel tuning's `round_strain`; the doors column is [the affordability column above](#areas-and-opening-order). The pace
@@ -446,17 +446,17 @@ afford at round 5 (one player at round 4), and have none to spare for the first 
 | 1 | 4 / 6 / 11 | 4.0 / 3.0 / 2.8 | 3.20 / 2.13 / 1.28 s | 6 / 12 / 24 |
 | 10 | 21 / 34 / 60 | 21 / 17 / 15 | 2.22 / 1.48 / 0.89 s | 13 / 19 / 31 |
 | 20 | 54 / 86 / 151 | 54 / 43 / 38 | 1.47 / 0.98 / 0.59 s | 21 / 27 / 39 |
-| 30 | 101 / 161 / 282 | 101 / 81 / 71 | 0.98 / 0.65 / 0.39 s | 28 / 34 / 46 |
+| 30 | 101 / 161 / 282 | 101 / 81 / 71 | 0.98 / 0.65 / 0.39 s | 28 / 34 / 40 |
 
 Four face 2.8 times the dead of one, each of them faces 30% fewer, and they come 2.5 times as fast, through six breaches
-(one and a half each). The cap of 46 alive at round 30 is above the 40 the crowds spike holds as the ceiling
-([zombies](zombies.md#crowd-budget)) and is #315.
+(one and a half each). The four-player cap is the solo cap plus 18 and stops at 40 from round 21,
+the ceiling of the lot ([zombies](zombies.md#crowd-budget), decided in #315: it was 46, six more than the lot ever stood).
 
 ### Is the lot too empty for four?
 
 The numbers do not say so. The field's 5,952 m² has 76 cars on 650 m² of it, and the ground that matters is its lit
-975 m²: 244 m² a head for four, a room 16 m on a side each. The four-player alive cap of 24 to 46 over the field is one
-dead to 130 to 250 m², but they come through six gaps to the same strip. The yard and the back lot, at 1,932 m² each, are
+975 m²: 244 m² a head for four, a room 16 m on a side each. The four-player alive cap of 24 to 40 over the field is one
+dead to 150 to 250 m², but they come through six gaps to the same strip. The yard and the back lot, at 1,932 m² each, are
 twice the lit pool and 23% and 5% lit: a team of four there is at the edge of a flickering sign, which is the late
 night's intent. Nobody has watched four players on it with the shoulder camera, so this is a reading of numbers and not
 a verdict: a four-player capture (bots in a `Night` of four) at rounds 1, 10 and 20 is the evidence still owed.

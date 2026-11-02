@@ -120,6 +120,7 @@ func _crowd_tuning() -> RulesTuning:
 	rounds.count_base = 120.0
 	rounds.alive_cap_start = float(_args.get("zombies", 40)) + 10.0
 	rounds.alive_cap_max = rounds.alive_cap_start
+	rounds.alive_cap_ceiling = int(rounds.alive_cap_start)
 	rounds.alive_cap_per_extra_player = 0.0
 	rounds.spawn_interval_start = 0.25
 	rounds.spawn_interval_min = 0.25
