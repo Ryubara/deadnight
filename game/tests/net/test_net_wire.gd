@@ -79,7 +79,14 @@ func test_wrong_sized_or_unknown_packets_read_as_nothing() -> void:
 	assert_object(NetWire.read_command(PackedByteArray())).is_null()
 	assert_object(NetWire.read_command(PackedByteArray([NetWire.Type.TICK, 1, 2]))).is_null()
 	assert_dict(NetWire.read_tick(PackedByteArray([NetWire.Type.TICK]))).is_empty()
-	assert_dict(NetWire.read_welcome(PackedByteArray([NetWire.Type.WELCOME, 1, 1, 60]))).is_empty()
+	(
+		assert_dict(
+			NetWire.read_welcome(
+				PackedByteArray([NetWire.Type.WELCOME, 1, 1, 60, 1, 2, 3, 4, 5, 6, 7, 8])
+			)
+		)
+		. is_empty()
+	)
 	# A compressed variable that claims four gigabytes is refused, not allocated.
 	var lie := PackedByteArray([NetWire.Type.TICK, 0, 0, 0, 0, 1, 255, 255, 255, 255, 1, 2, 3])
 	assert_dict(NetWire.read_tick(lie)).is_empty()
@@ -87,9 +94,11 @@ func test_wrong_sized_or_unknown_packets_read_as_nothing() -> void:
 
 func test_a_welcome_and_a_tick_round_trip_small_and_large() -> void:
 	var snapshot := {"round": 3, "players": {1: {"points": 500}}}
-	var welcome := NetWire.read_welcome(NetWire.welcome(2, 60, snapshot))
+	var token := PackedByteArray([1, 2, 3, 4, 5, 6, 7, 8])
+	var welcome := NetWire.read_welcome(NetWire.welcome(2, 60, token, snapshot))
 	assert_int(welcome["player_id"]).is_equal(2)
 	assert_int(welcome["tick_rate"]).is_equal(60)
+	assert_array(welcome["token"]).is_equal(token)
 	assert_dict(welcome["snapshot"]).is_equal(snapshot)
 	var big: Array = []
 	for i in 200:
@@ -150,3 +159,20 @@ func test_a_still_frame_is_much_smaller_as_a_delta() -> void:
 	var one := _frame(10, Vector3(1, 0, 0))
 	var two := _frame(12, Vector3(1, 0, 0))
 	assert_int(var_to_bytes(FrameDelta.diff(one, two)).size()).is_less(var_to_bytes(two).size() / 2)
+
+
+func test_a_hello_carries_the_resume_token_when_there_is_one() -> void:
+	var fresh := NetWire.read_hello(NetWire.hello())
+	assert_int(fresh["version"]).is_equal(NetWire.VERSION)
+	assert_int((fresh["token"] as PackedByteArray).size()).is_equal(0)
+	var token := PackedByteArray([8, 7, 6, 5, 4, 3, 2, 1])
+	var back := NetWire.read_hello(NetWire.hello(token))
+	assert_array(back["token"]).is_equal(token)
+	# A hello of another length, or a token of the wrong size, is nothing (and sent as none).
+	assert_dict(NetWire.read_hello(PackedByteArray([NetWire.Type.HELLO, 3, 1, 2, 3]))).is_empty()
+	assert_dict(NetWire.read_hello(PackedByteArray())).is_empty()
+	assert_int(NetWire.hello(PackedByteArray([1, 2, 3])).size()).is_equal(2)
+	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 2)).is_true()
+	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 10)).is_true()
+	assert_bool(PeerLimits.fits(NetWire.Type.HELLO, 5)).is_false()
+	assert_bool(PeerLimits.fits(NetWire.Type.COMMAND, 10)).is_false()

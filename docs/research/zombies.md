@@ -239,6 +239,21 @@ nothing is baked while the game runs:
   `tests/zombies/test_lot_navmeshes.gd` fails until you do (it names the tool). Changing the baker's sizes
   (`CELL_SIZE`, `AGENT_*`) does the same.
 
+The cost in the browser, measured by `tools/web_smoke/door_swap.py` (it exports a copy of the project that starts on
+`tests/captures/door_swap_bench.tscn`, builds the lot, joins the navigation and buys every door in turn; Chrome 156 with
+a real GPU, RTX 5080, three runs, medians):
+
+| In the browser | Saved meshes (the game) | Baked at run time (before) |
+| --- | --- | --- |
+| `DoorNavigation.setup`, the night's first mesh | 15 ms (7 ms to load the file) | 594 ms |
+| A door bought: the call that opens it | 10 ms | 365 ms |
+| A door bought: longest frame after it | 15 ms (worst 16 ms of 15 doors) | 370 ms (worst 474 ms) |
+
+The map answers one physics frame after the mesh is set, so the night no longer waits for it. `first_use.py`'s marks
+put "lot: settled" to "lot: navigation ready" at 40 ms in a whole Play. What is left of the frames over a second
+between Play and a running night is the lot's first draw, not navigation
+([First-use hitches](first-use-hitches.md#the-first-draw-of-the-lot-347)).
+
 ### What the long frame was
 
 - **The wait for the map.** `NightWorld.build` waited for the navigation map's iteration id to move two steps. In

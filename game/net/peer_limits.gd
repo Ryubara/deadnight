@@ -58,13 +58,21 @@ static func size_of(type: int) -> int:
 	return -1
 
 
+## Whether a message of this type may be this long: a hello is the version, with the resume token
+## after it when the client is coming back.
+static func fits(type: int, size: int) -> bool:
+	if type == NetWire.Type.HELLO:
+		return size == 2 or size == 2 + NetWire.TOKEN_SIZE
+	return size_of(type) == size
+
+
 ## What to do with a packet that came at time `now`.
 func judge(data: PackedByteArray, now: float) -> Verdict:
 	_forgive(now)
 	if data.is_empty() or data.size() > MAX_PACKET:
 		return _strike(STRIKE_BAD, true)
 	var type := data[0]
-	if size_of(type) != data.size():
+	if not fits(type, data.size()):
 		return _strike(STRIKE_BAD, true)
 	if not _buckets[type].take(now):
 		return _strike(STRIKE_RATE, false)
