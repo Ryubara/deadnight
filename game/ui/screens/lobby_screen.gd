@@ -469,15 +469,7 @@ func lobby_rules() -> MatchSettings:
 
 ## The rules on the panel as the web probe reads them: `2x|Auto|20 s`.
 func rules_text() -> String:
-	var shown := rules.settings()
-	return (
-		"%dx|%s|%d s"
-		% [
-			roundi(shown.count_multiplier),
-			MatchSettingsPanel.alive_text(shown.max_alive),
-			roundi(rules.break_slider.value)
-		]
-	)
+	return rules.text()
 
 
 ## A control of the host's panel moved: the change is sent once the host stops for a moment.

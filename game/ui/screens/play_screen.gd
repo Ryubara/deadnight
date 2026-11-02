@@ -8,22 +8,28 @@ extends UIScreen
 
 const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const PANEL_WIDTH := 1000.0
+## A canvas this high or lower is a phone held sideways (the phone factor makes it 540 units).
+const COMPACT_HEIGHT := 600.0
+const MARGIN_SIDES: Array[StringName] = [
+	&"margin_left", &"margin_right", &"margin_top", &"margin_bottom"
+]
 
 var panel: MatchSettingsPanel
 var start_button: UIButton
 var back_button: UIButton
 var reset_button: UIButton
 
+var _margin: MarginContainer
+var _overline: UILabel
+
 
 func _ready() -> void:
 	super._ready()
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in [&"margin_left", &"margin_right", &"margin_top", &"margin_bottom"]:
-		margin.add_theme_constant_override(side, _tokens.space_xl)
-	add_child(margin)
+	_margin = MarginContainer.new()
+	_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_margin)
 	var centre := CenterContainer.new()
-	margin.add_child(centre)
+	_margin.add_child(centre)
 	var card := UIPanel.new()
 	card.variant = UIPanel.Variant.MARQUEE
 	centre.add_child(card)
@@ -31,7 +37,8 @@ func _ready() -> void:
 	column.custom_minimum_size.x = PANEL_WIDTH
 	column.add_theme_constant_override(&"separation", _tokens.space_md)
 	card.add_child(column)
-	column.add_child(_label("NOW BOARDING", UILabel.Style.OVERLINE))
+	_overline = _label("NOW BOARDING", UILabel.Style.OVERLINE)
+	column.add_child(_overline)
 	column.add_child(_label("The night's rules", UILabel.Style.TITLE))
 	panel = MatchSettingsPanel.new()
 	column.add_child(panel)
@@ -52,12 +59,32 @@ func _ready() -> void:
 	footer.add_child(back_button)
 	_link_focus()
 	initial_focus = get_path_to(start_button)
+	resized.connect(_fit_for_fingers)
+	_fit_for_fingers()
+
+
+## The rules on the panel as the web probe reads them: `2x|Auto|20 s`.
+func rules_text() -> String:
+	return panel.text()
 
 
 ## Opens the night under the panel's settings.
 func start() -> void:
 	NightScreen.match_settings = panel.settings()
 	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
+
+
+## On a phone held sideways every row and button is a tap target high, and the overline, the hints
+## and the margins give their room back (the canvas is 540 units high).
+func _fit_for_fingers() -> void:
+	var phone := size.y <= COMPACT_HEIGHT
+	panel.set_compact(phone)
+	_overline.visible = not phone
+	var margin_size := _tokens.space_md if phone else _tokens.space_xl
+	for side in MARGIN_SIDES:
+		_margin.add_theme_constant_override(side, margin_size)
+	for button in [start_button, reset_button, back_button]:
+		(button as Control).custom_minimum_size.y = MenuLook.TAP_TARGET if phone else 0.0
 
 
 ## The arrow keys and the d-pad reach the buttons from the last row and the first row from them.

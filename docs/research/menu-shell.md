@@ -47,7 +47,8 @@ and `game/ui/screens/main_menu.gd`.
 - **The browser runs find the menu's items by key.** The seven scripts of `tools/web_smoke/` pressed Down and Up
   counts against the old column. They share `smoke.menu_item(page, tab, steps)` now: E walks to the tab (the game reports
   it as `window.deadnight.tab`), the tab's first control takes the focus whatever it was, and `steps` presses of Down
-  reach the item. `start_solo` is Play, then two Downs, then Enter.
+  reach the item. `start_solo` is Play, then two Downs, then Enter (Solo), then Enter again on the Play screen's
+  Start the night (#620).
 
 - **A panel holds its choices and writes them once, when the player leaves** (#489). The Loadout tab first wrote the
   showcase weapon on every click, which made the stage dress the soldier from the *saved* look (the weapon's
@@ -57,6 +58,15 @@ and `game/ui/screens/main_menu.gd`.
   change, on `MenuContext.leaving` (just before any action: Play, Settings, Credits, Quit), on a close request and when
   the window loses focus (a browser has no close request), and as it leaves the tree. A visit with no change writes
   nothing. A new panel with choices does the same: hold in memory, override `commit`, never write per click.
+- **Solo went to the night with no rules (#620).** `MainMenu.ROUTES[&"solo"]` pointed at the night screen since the
+  first menu (#33). The Play screen (`PlayScreen`, #449) holds the settings a room host sets (the same
+  `MatchSettingsPanel`) and was left unrouted ("a one-line change left to the menu work", #449); the menu rework
+  (#466) wrote "Solo opens the night" and the scenes table called the screen an old placeholder, so nothing owned the
+  line. Solo now opens it and Start opens the night. A headless run measures text as nothing, so a layout test there
+  cannot see a phone overflow: the Play screen's fit at 844 x 390 (540 units high) is checked by
+  `tests/captures/solo_settings_tour.tscn` (real fonts; it prints each control outside the window) and by
+  `tools/web_smoke/solo_settings.py` (a finger and a keyboard through the real build). On a phone the screen drops the
+  overline, the hints and the margins and makes every row and button a tap target (62 units).
 
 ## Tests
 

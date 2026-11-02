@@ -6,6 +6,9 @@ extends Node
 
 ## How often the object is refreshed, in seconds (a JS property write per field is not free).
 const PERIOD := 0.25
+## How far inside the right end of a setting's control a tap lands on an option selector's next
+## arrow, in units.
+const ARROW_INSET := 24.0
 
 var _object: JavaScriptObject
 var _since := 0.0
@@ -77,6 +80,9 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_buttons": "",
 		"lobby_rules": "",
 		"lobby_rules_editable": false,
+		"play_rules": "",
+		"spots": "",
+		"night_rules": "",
 		"notices": "",
 		"code_text": "",
 		"notice_log": "",
@@ -120,6 +126,9 @@ static func snapshot(top: Control) -> Dictionary:
 		else null
 	)
 	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
+	if top is MainMenu or top is PlayScreen:
+		# Where a finger taps each start and button, as fractions of the window.
+		data["spots"] = _spots(top)
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
@@ -149,12 +158,22 @@ static func snapshot(top: Control) -> Dictionary:
 		data["lobby_buttons"] = "|".join(buttons)
 		data["lobby_rules"] = lobby.rules_text() if lobby.rules.is_visible_in_tree() else ""
 		data["lobby_rules_editable"] = lobby.rules_editable()
+	var play := top as PlayScreen
+	if play != null:
+		# Solo's Play screen: the rules on its panel (the same panel the room host's lobby has).
+		data["play_rules"] = play.rules_text()
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
 	var state := night_screen.night.state
 	data["night"] = true
 	data["running"] = night_screen.night.running
+	if night_screen.night.server != null:
+		# The rules the night runs under (solo's come from the Play screen's panel).
+		var rules := night_screen.night.server.rules
+		data["night_rules"] = MatchSettingsPanel.text_for(
+			rules.settings, rules.settings.break_for(rules.tuning.rounds)
+		)
 	# The menu is open, and what the engine says the mouse is (2 is captured: a browser's pointer
 	# lock), so a browser test sees the first Esc open the menu.
 	data["paused"] = night_screen.night.is_paused()
@@ -201,12 +220,35 @@ static func snapshot(top: Control) -> Dictionary:
 ## Where the night's menu buttons are, as `Text:x,y` with x and y a fraction of the window (0 to 1),
 ## so a browser test taps them without knowing the layout.
 static func _button_spots(screen: NightScreen) -> String:
+	return _spots(screen)
+
+
+## The screen's shown buttons as `text:x,y` (the centre, as fractions of the window): the
+## `UIButton`s and the menu's `MenuItemButton`s (by their title).
+static func _spots(screen: Control) -> String:
 	if not screen.is_inside_tree():
 		return ""
 	var size := screen.get_viewport().get_visible_rect().size
 	var spots: Array[String] = []
-	for button: UIButton in screen.find_children("*", "UIButton", true, false):
-		if button.is_visible_in_tree():
-			var at := button.get_global_rect().get_center() / size
-			spots.append("%s:%.4f,%.4f" % [button.text, at.x, at.y])
+	for node in screen.find_children("*", "Button", true, false):
+		var button := node as Button
+		if not button.is_visible_in_tree():
+			continue
+		var text := button.text
+		if button is MenuItemButton:
+			text = (button as MenuItemButton).title
+		elif not button is UIButton:
+			continue
+		var at := button.get_global_rect().get_center() / size
+		spots.append("%s:%.4f,%.4f" % [text, at.x, at.y])
+	var play := screen as PlayScreen
+	if play != null:
+		# Each setting's control: its centre, and `key:end` a little inside its right end (an option
+		# selector's next arrow).
+		for key: String in play.panel.setting_keys():
+			var rect := play.panel.row_for(key).control.get_global_rect()
+			var middle := rect.get_center() / size
+			var end := Vector2(rect.end.x - ARROW_INSET, rect.get_center().y) / size
+			spots.append("%s:%.4f,%.4f" % [key, middle.x, middle.y])
+			spots.append("%s:end:%.4f,%.4f" % [key, end.x, end.y])
 	return "|".join(spots)
