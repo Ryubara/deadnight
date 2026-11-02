@@ -119,7 +119,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	var focused := get_viewport().gui_get_focus_owner()
-	if focused == null and top() != null and _is_focus_action(event):
+	if focused == null and _top_wants_focus_key() and _is_focus_action(event):
 		_focus_top()
 		get_viewport().set_input_as_handled()
 
@@ -133,6 +133,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	UIAudio.play(&"back")
 	pop()
 	get_viewport().set_input_as_handled()
+
+
+func _top_wants_focus_key() -> bool:
+	var screen := top()
+	if screen == null:
+		return false
+	var ui_screen := screen as UIScreen
+	return ui_screen == null or ui_screen.wants_focus_key()
 
 
 func _is_focus_action(event: InputEvent) -> bool:
