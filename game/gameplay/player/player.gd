@@ -43,6 +43,8 @@ const ACTION_LOOK_DOWN := &"look_down"
 
 ## The authoritative-looking result of the last tick. Read-only for everything but `tick()`.
 var state := PlayerMotionState.new()
+## False for a body made by `strip_model`: nothing to dress or animate.
+var has_model := true
 var last_command := PlayerCommand.new()
 
 var _controls_enabled := true
@@ -89,7 +91,7 @@ func _physics_process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not local_input:
 		return
-	if event is InputEventMouseMotion and _controls_enabled:
+	if event is InputEventMouseMotion and _controls_enabled and not TouchLook.is_stray(event):
 		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
 	elif event.is_action_pressed(&"pause") and capture_mouse and _controls_enabled:
 		set_controls_enabled(false)
@@ -107,10 +109,22 @@ func refresh_settings() -> void:
 	camera_rig.shake.scale = PlayerSettings.camera_shake(get_tree())
 
 
+## Takes the Soldier's model, skeleton and animation out of a body that is not in the tree yet,
+## leaving the collision and the simulation: what a game server needs of a player (`add_body`).
+func strip_model() -> void:
+	get_node("AnimationTree").free()
+	get_node("Model").free()
+	var stub := Node3D.new()
+	stub.name = "Model"
+	add_child(stub)
+	has_model = false
+
+
 ## Puts a look and the armband of a seat on the body's Soldier (`CharacterAssembler.dress`). A body
 ## wears the default look until the night says otherwise.
 func dress(look: CharacterLook, seat := 0) -> void:
-	CharacterAssembler.dress(_model, look, seat)
+	if has_model:
+		CharacterAssembler.dress(_model, look, seat)
 
 
 ## The lens is too close to the head (or clear again): draw or hide the body.
@@ -194,7 +208,6 @@ func tick(command: PlayerCommand) -> void:
 	rotation.y = state.facing
 	_ease_step(state.stepped_up, get_physics_process_delta_time())
 	camera_rig.aiming = state.aiming
-	camera_rig.aim_held = state.holds_aim(tuning.hip_fire_hold)
 	camera_rig.side = state.shoulder_side
 	camera_rig.sprinting = state.sprinting
 	camera_rig.crouching = state.crouching

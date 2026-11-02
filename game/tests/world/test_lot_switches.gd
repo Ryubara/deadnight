@@ -53,12 +53,12 @@ func test_a_post_stands_clear_of_every_door_slab() -> void:
 					(
 						assert_float(gap)
 						. override_failure_message("%s near %s" % [circuit_id, slab.get_path()])
-						. is_greater(NightTuning.new().use_reach)
+						. is_greater(NightTuning.shipped().use_reach)
 					)
 
 
 func test_a_post_is_reached_from_where_it_is_stood_at_and_not_from_afar() -> void:
-	var reach := NightTuning.new().use_reach
+	var reach := NightTuning.shipped().use_reach
 	for circuit_id in _switches.circuit_ids():
 		var found := _switches.within_reach(_switches.standing_point(circuit_id), reach)
 		assert_object(found).is_same(_switches.post(circuit_id))

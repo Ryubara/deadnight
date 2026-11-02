@@ -51,6 +51,9 @@ const HOLD_CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
 const SHOULDER_RATE := 14.0
 ## Recoil of a shot dies away at this rate (per second, exponential).
 const RECOIL_RATE := 16.0
+## How fast the tilt of a reload follows its curve, per second: a cancelled reload (a swap) lets the
+## weapon back up in a few frames instead of jumping.
+const RELOAD_FOLLOW := 30.0
 ## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount.
 ## Its hold file sizes it (a tool, larger than the size rule: docs/design/weapon-hold.md); the
 ## grip is the melee one tipped 20 degrees in the hammer's swing plane (about its Z), so the face
@@ -119,10 +122,6 @@ const CARRY_BLEND_PARAMETER := &"parameters/carry/blend_amount"
 const CARRY_SEEK_PARAMETER := &"parameters/carry_seek/seek_request"
 const RUN_POSITION_PARAMETER := &"parameters/body/locomotion/move/run/current_position"
 const RUN_DELTA_PARAMETER := &"parameters/body/locomotion/move/run/current_delta"
-## When the carry is out of step with the Run by more than a frame (the locomotion restarted on a
-## landing, the carry held still in the air) it catches up at this rate (per second, exponential)
-## instead of jumping; within a frame it is locked.
-const CARRY_CATCH_RATE := 12.0
 
 ## The grenade's clips, a file of their own on the same rig (`docs/design/animation.md`, Grenade):
 ## the pin and the cooking hold, the overarm throw and the underarm toss. Upper body, so the legs
@@ -179,6 +178,11 @@ var _hold: WeaponHold
 var _hands: WeaponHandsIK
 var _shoulder_blend := 0.0
 var _recoil := 0.0
+## Seconds of the reload left (0: not reloading), its length, and how far the weapon is tilted down
+## for it now, 0 to 1 (`WeaponHandsIK.reload_dip`).
+var _reload_left := 0.0
+var _reload_length := 1.0
+var _reload_dip := 0.0
 var _action_time := 0.0
 var _move_blend := 0.0
 var _was_on_floor := true
@@ -191,16 +195,18 @@ var _repair_time := 0.0
 var _repair_scale := 1.0
 var _repair_blend := 0.0
 ## The aim gait's weight over the free locomotion (0 free, 1 aiming), and its clips' ground speed.
+## It is also the weapon's pose weight: the aim button or a shot from the hip raises it, and the
+## camera does not follow it (the view zooms for the aim button only, #464).
 var _aim_blend := 0.0
+var _aim_spring := DampedSpring.new()
 var _aim_move_speed := 2.6
 var _aim_move := Vector2.ZERO
 ## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
 var _boards_due := 0
 var _carry_node: AnimationNodeAnimation
-## The sprint carry's weight, 0 to 1, moved linearly (the tree gets it through a smoothstep), and
-## where its clip is, in its own seconds (the Run clip's place, while the feet are on the ground).
-var _carry := 0.0
-var _carry_time := 0.0
+## The sprint carry's weight and the place of its clip (the Run clip's, while the feet are on the
+## ground); the tree gets the weight through a smoothstep.
+var _carry := SprintCarry.new()
 var _carry_on := false
 
 
@@ -213,7 +219,9 @@ func _ready() -> void:
 	_add_repair_clip(anim_player)
 	_add_grenade_clips(anim_player)
 	_add_aim_move_clips(anim_player)
-	_add_sprint_clips(anim_player)
+	SprintCarry.add_clips(
+		anim_player.get_animation_library(&""), CLASSES, SPRINT_GLB, SPRINT_SPEC, _spec
+	)
 	_loop_clips(anim_player)
 	_duck_bottom = _lowest_second(anim_player.get_animation(&"Duck"))
 	_mount = BoneAttachment3D.new()
@@ -266,11 +274,28 @@ func _process(delta: float) -> void:
 	var run_part := clampf((_move_blend - WALK_POINT) / (0.95 - WALK_POINT), 0.0, 1.0)
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
 	_advance_crouch()
-	_advance_aim_move(follow)
+	_advance_aim_move(follow, delta)
 	_advance_events(delta)
 	_advance_repair(delta)
 	_advance_carry(delta, on_floor)
+	_advance_reload(delta)
 	_advance_shoulder(delta)
+
+
+## The tilt for the reload: down over the first `reload_dip_in` of it, held, up over the last
+## `reload_dip_out`, each a smoothstep.
+func _advance_reload(delta: float) -> void:
+	var target := 0.0
+	if _reload_left > 0.0:
+		_reload_left = maxf(_reload_left - delta, 0.0)
+		var done := 1.0 - _reload_left / _reload_length
+		target = smoothstep(0.0, _tuning.reload_dip_in, done)
+		target *= 1.0 - smoothstep(1.0 - _tuning.reload_dip_out, 1.0, done)
+	_reload_dip = lerpf(_reload_dip, target, 1.0 - exp(-RELOAD_FOLLOW * delta))
+	if _reload_left <= 0.0 and _reload_dip < 0.001:
+		_reload_dip = 0.0
+	_hands.reload_dip = _reload_dip
+	_hands.reload_tilt_deg = _tuning.reload_tilt_degrees
 
 
 ## Into the crouch state when the body crouches on the ground, back to the locomotion when it
@@ -340,12 +365,12 @@ func sprint_carry_wanted(on_floor: bool) -> bool:
 
 ## The sprint carry's weight now, 0 to 1 (linear in time; the tree eases it), for tests.
 func sprint_carry() -> float:
-	return _carry
+	return _carry.weight
 
 
 ## Where the sprint carry's clip is, in its own seconds, for tests.
 func sprint_carry_time() -> float:
-	return _carry_time
+	return _carry.time
 
 
 ## Where the Run clip is in the locomotion, in its own seconds (the carry follows it).
@@ -405,8 +430,27 @@ func equip(weapon: StringName) -> void:
 	else:
 		push_error("PlayerAnimation: no weapon or class %s" % weapon)
 		return
+	cancel_reload()
 	_weapon_visible(false)
 	play_action(&"Equip")
+
+
+## The weapon is reloading for `seconds` (the server's `reload_started`): it tilts down, eased, and
+## is back up when they are over, whatever the aim weight is (the tilt is added to the pose the
+## aim weight gives, so a reload while aiming returns to the aim).
+func reload(seconds: float) -> void:
+	_reload_length = maxf(seconds, 0.01)
+	_reload_left = _reload_length
+
+
+## The reload stops (a swap abandons it, the server cancels it too).
+func cancel_reload() -> void:
+	_reload_left = 0.0
+
+
+## How far the weapon is tilted down for the reload now, 0 to 1, for tests.
+func reload_dip() -> float:
+	return _reload_dip
 
 
 ## Plays `<action>_<Class>` (Fire, Reload, Swing, Equip, Unequip) on the upper body. Returns
@@ -578,9 +622,9 @@ func _advance_shoulder(delta: float) -> void:
 		(action_clip == &"" or String(action_clip).begins_with("Fire_")) and not is_repairing()
 	)
 	var rig := _player.camera_rig
-	# The one aim weight (the aim button or a recent shot, eased by the camera) turns the weapon from
-	# the body's heading to the view and the barrel in to the crosshair's ray: no single-frame jump.
-	var weight := rig.aim_amount()
+	# The pose weight (the aim button or a recent shot from the hip, eased) turns the weapon from the
+	# body's heading to the view and the barrel in to the crosshair's ray: no single-frame jump.
+	var weight := _aim_blend
 	_hands.aim_yaw = lerp_angle(_player.rotation.y, rig.yaw, weight)
 	_hands.aim_pitch = rig.pitch
 	_hands.converge = weight
@@ -595,7 +639,7 @@ func _advance_shoulder(delta: float) -> void:
 	if absf(_shoulder_blend - target) < 0.001:
 		_shoulder_blend = target
 	# The sprint carry holds the arms itself: the shouldered pose gives way to it as it comes in.
-	_hands.influence = _shoulder_blend * (1.0 - _carry)
+	_hands.influence = _shoulder_blend * (1.0 - _carry.weight)
 	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
 	# so the clips that move them (the repair, Reload, Swing, the carry) never showed in a running
 	# game.
@@ -627,11 +671,14 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
-## Follows the aim: while the aim is held (the button, or a shot just fired) the legs take the aim
-## gait for the direction of travel (the body keeps facing the camera, so moving sideways or back is
-## a strafe or a backpedal). The weight is the camera's, already eased: the one aim weight.
-func _advance_aim_move(follow: float) -> void:
-	_aim_blend = _player.camera_rig.aim_amount()
+## Follows the aim: while the aim is held (the button, or a shot just fired from the hip) the legs
+## take the aim gait for the direction of travel (the body keeps facing the view, so moving sideways
+## or back is a strafe or a backpedal). The weight eases at the aim's speed, from the same answer
+## the body's turn reads (`PlayerMotionState.holds_aim`); the camera does not read it.
+func _advance_aim_move(follow: float, delta: float) -> void:
+	var held := _player.state.holds_aim(_tuning.hip_fire_hold)
+	_aim_spring.step(1.0 if held else 0.0, _tuning.aim_frequency, delta)
+	_aim_blend = clampf(_aim_spring.value, 0.0, 1.0)
 	set(AIM_BLEND_PARAMETER, _aim_blend)
 	var gait := aim_move_for(_player.state.velocity, _player.state.facing, _aim_move_speed)
 	_aim_move = _aim_move.lerp(gait["position"], follow)
@@ -647,20 +694,14 @@ func _advance_aim_move(follow: float) -> void:
 func _advance_carry(delta: float, on_floor: bool) -> void:
 	_carry_on = sprint_carry_wanted(on_floor)
 	var span := _tuning.sprint_carry_in if _carry_on else _tuning.sprint_carry_out
-	_carry = move_toward(_carry, 1.0 if _carry_on else 0.0, delta / maxf(span, 0.001))
-	set(CARRY_BLEND_PARAMETER, smoothstep(0.0, 1.0, _carry))
-	var length := _clip_seconds(_carry_node.animation)
+	_carry.advance_weight(delta, _carry_on, span)
+	set(CARRY_BLEND_PARAMETER, smoothstep(0.0, 1.0, _carry.weight))
 	if on_floor and current_state() == STATE_LOCOMOTION:
-		var step: float = get(RUN_DELTA_PARAMETER)
-		var target := fposmod(run_time() + step, length)
-		var error := wrapf(target - (_carry_time + step), -length * 0.5, length * 0.5)
-		if _carry == 0.0 or absf(error) < 1.0 / float(_spec["fps"]):
-			_carry_time = target
-		else:
-			_carry_time = fposmod(
-				_carry_time + step + error * (1.0 - exp(-CARRY_CATCH_RATE * delta)), length
-			)
-	set(CARRY_SEEK_PARAMETER, _carry_time)
+		var length := _clip_seconds(_carry_node.animation)
+		_carry.follow_run(
+			delta, run_time(), get(RUN_DELTA_PARAMETER), length, 1.0 / float(_spec["fps"])
+		)
+	set(CARRY_SEEK_PARAMETER, _carry.time)
 
 
 ## Moves the repair loop on by `delta` seconds: its events (`board_set` only for a board that is
@@ -775,25 +816,6 @@ func _add_grenade_clips(anim_player: AnimationPlayer) -> void:
 		if not library.has_animation(clip):
 			library.add_animation(clip, source.get_animation(clip))
 	holder.free()
-
-
-## Adds the sprint carry clips to the Soldier's own library (the repair clip's recipe) and their
-## entries to the clip spec.
-func _add_sprint_clips(anim_player: AnimationPlayer) -> void:
-	var spec: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SPRINT_SPEC))
-	var library := anim_player.get_animation_library(&"")
-	var holder: Node = null
-	for cls: StringName in CLASSES:
-		var clip := StringName(SPRINT_PREFIX + String(cls))
-		_spec["clips"][String(clip)] = spec["clips"][String(clip)]
-		if library.has_animation(clip):
-			continue
-		if holder == null:
-			holder = (load(SPRINT_GLB) as PackedScene).instantiate()
-		var source := holder.find_child("AnimationPlayer", true, false) as AnimationPlayer
-		library.add_animation(clip, source.get_animation(clip))
-	if holder != null:
-		holder.free()
 
 
 ## Adds the aim-move clips to the Soldier's own library (the repair clip's recipe) and their

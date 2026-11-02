@@ -30,6 +30,8 @@ extends Node
 ## Fraction (0 to 1) done and what is being done.
 signal progress(fraction: float, text: String)
 
+## How long the warm-up's sample flare burns (s): long enough to be drawn, then it frees itself.
+const WARMUP_LURE_SECONDS := 0.2
 ## The id of the sample flare the warm-up draws (a real shot never has it).
 const WARMUP_PROJECTILE := -1
 ## The stage is this high above the lot, out of reach of every lamp.
@@ -58,6 +60,17 @@ const SOUND_BUDGET_MSEC := 8
 ## Frames each shot is held, so the draw reaches the screen (and the renderer builds what it needs).
 const SHOT_FRAMES := 2
 ## Digits of the damage numbers: every glyph the numbers use is drawn once.
+## Zombie bodies made before the night, by look: the walkers' four looks come most (more are made
+## as the night needs them, and kept).
+const PARKED_BODIES := {
+	&"walker": 6,
+	&"greaser": 4,
+	&"usher": 4,
+	&"farmhand": 4,
+	&"runner": 3,
+	&"brute": 3,
+	&"crawler": 3
+}
 const DIGITS_NUMBER := 1234567890
 const BUSES_MUTED: Array[StringName] = [&"Effects", &"Voice"]
 
@@ -102,6 +115,10 @@ func run(night: Night) -> void:
 	await _load_sounds()
 	await _lot_pass()
 	await _stage_pass()
+	_say(_done, "Rousing the dead")
+	_night.view.horde.prewarm(PARKED_BODIES)
+	_night.view.effects.prewarm()
+	await get_tree().process_frame
 	_unmute(muted)
 	if is_instance_valid(_before):
 		_before.make_current()
@@ -252,9 +269,9 @@ func _stage_pass() -> void:
 		_keep_materials(_night.view)
 		_keep_materials(crane)
 		# The next condition starts clean: a flash left over would put an omni light on it.
-		# The pooled impacts stay: they are the view's own, the rest is what the replay drew.
+		_night.view.effects.stop_all()
 		for effect in _night.view.effects.get_children():
-			if effect != _night.view.effects.impacts:
+			if not _night.view.effects.owns(effect):
 				effect.free()
 		props.free()
 		crane.free()
@@ -377,15 +394,21 @@ func _replay_effects() -> void:
 		var ends: Array[Vector3] = []
 		for _p in maxi(def.pellets, 1):
 			ends.append(muzzle + Vector3(0.0, -0.3, -3.5))
+		# No shooter (no body to hang the flash on). Every other weapon's shots land on a zombie, the
+		# rest on a wall: the flash, the impact on a wall and the one on flesh are all drawn.
+		var flesh: Array[Vector3] = []
+		if i % 2 == 0:
+			flesh.append_array(ends)
 		(
 			view
 			. draw_event(
 				{
 					"type": &"shot_fired",
 					"weapon_id": def.id,
+					"shooter_id": -1,
 					"muzzle": muzzle,
 					"ends": ends,
-					"flesh": [muzzle + Vector3(0.0, -0.3, -1.5)],
+					"flesh": flesh,
 				}
 			)
 		)
@@ -433,6 +456,19 @@ func _replay_effects() -> void:
 	await _chunk()
 	view.draw_event(
 		{"type": &"projectile_burst", "projectile_id": WARMUP_PROJECTILE, "point": flare_at}
+	)
+	# A weapon that asks for a streak is not in the catalogue, but the pooled streaks are made.
+	view.effects.tracer(at + Vector3(4.0, 0.0, 0.0), at + Vector3(4.0, 0.0, -3.0))
+	await _chunk()
+	(
+		view
+		. draw_event(
+			{
+				"type": &"lure_started",
+				"point": flare_at,
+				"seconds": WARMUP_LURE_SECONDS,
+			}
+		)
 	)
 	await _chunk()
 	for def_path in _grenade_defs():

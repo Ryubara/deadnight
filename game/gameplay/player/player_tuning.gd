@@ -43,20 +43,27 @@ extends Resource
 @export var turn_speed := 14.0
 ## The same while sprinting: a wider arc (0.78 m at a sprint), more weight.
 @export var sprint_turn_speed := 9.0
-## Radians per second the body turns to face the view while the aim is held (the button, or the
+## Radians per second the body turns to face the view while the aim pose is held (the button, or the
 ## trigger and `hip_fire_hold` after it). Slow enough that the weapon in the hands, which turns with
 ## the body, moves a few degrees a tick and never jumps: a view 75 degrees away is faced in 0.16 s.
 @export var aim_turn_speed := 8.0
 
 @export_group("Hip fire")
-## Firing without aiming is the aim entered for a moment, not a second, partial aim: while the
-## trigger is held, and for `hip_fire_hold` after it, the character holds the aim, and the camera,
-## the body and the hands ease to the same pose and back at the same speed as for the aim button
-## (docs/research/hip-fire.md).
-## Seconds after the trigger is let go that the aim is still held: the body keeps facing the view
-## and the camera stays in, so a run of single shots (the slowest weapon fires every 0.9 s) does
-## not swing out and in between. After it everything eases out like a released aim button.
+## Firing without aiming turns the body to the view and raises the weapon, with no zoom and no
+## camera change (#464, docs/research/hip-fire.md): while the trigger is held, and for
+## `hip_fire_hold` after it, the body and the hands hold the aim pose.
+## Seconds after the trigger is let go that the pose is still held: the body keeps facing the view,
+## so a run of single shots (the slowest weapon fires every 0.9 s) does not swing out and in
+## between. After it everything eases out like a released aim button.
 @export var hip_fire_hold := 0.8
+
+@export_group("Reload")
+## The weapon tilts down about the grip while it reloads and comes back up when it is done, timed to
+## the weapon's reload time (`WeaponDef.reload_time`): degrees of the full tilt, and the shares of
+## the reload spent going down and coming back up (the rest holds it down).
+@export var reload_tilt_degrees := 35.0
+@export_range(0.05, 0.45, 0.01) var reload_dip_in := 0.2
+@export_range(0.05, 0.45, 0.01) var reload_dip_out := 0.25
 
 @export_group("Pivot")
 ## A change of direction wider than this (degrees) is a pivot, not an arc: the body plants,

@@ -28,6 +28,9 @@ func test_a_fire_command_turns_the_body_to_the_view_and_the_shot_still_hits() ->
 	assert_float(absf(angle_difference(player.state.facing, east))).is_less(0.02)
 	assert_float(player.state.fire_age).is_less(0.2)
 	assert_int(damaged["count"]).is_greater(0)
+	# Hip fire in the real night leaves the view alone: 60 degrees, no zoom (#464).
+	assert_float(player.camera_rig.camera().fov).is_equal_approx(player.tuning.fov, 0.0001)
+	assert_float(player.camera_rig.aim_amount()).is_equal_approx(0.0, 0.0001)
 	# The trigger let go: the body keeps the view for the hold, whatever it walks to afterwards.
 	var idle := NightCommand.new()
 	idle.motion.yaw = east

@@ -120,10 +120,10 @@ func test_each_shot_spins_and_scales_the_flash_a_little() -> void:
 		flash.fire(0.3, Vector3.FORWARD)
 		sizes[snappedf(flash.quads[0].global_transform.basis.x.length(), 0.0001)] = true
 	assert_int(sizes.size()).is_greater(1)
-	for size: float in sizes:
-		assert_float(size).is_between(
-			0.3 * flash.scale_range.x - 0.001, 0.3 * flash.scale_range.y + 0.001
-		)
+	# The rolls differ by at most the range's ratio (the rest of the size is the same each shot).
+	assert_float(sizes.keys().max() / sizes.keys().min()).is_less_equal(
+		flash.scale_range.y / flash.scale_range.x + 0.001
+	)
 
 
 func test_a_weapon_with_no_model_flashes_ahead_of_the_body_not_inside_it() -> void:
@@ -161,7 +161,7 @@ func test_the_flash_light_can_be_turned_off_in_the_editor_value() -> void:
 
 func test_every_gun_has_a_flash_and_heavier_guns_flash_bigger() -> void:
 	for id: StringName in [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]:
-		assert_float(_def(id).flash_size).is_between(0.1, 0.5)
+		assert_float(_def(id).flash_size).is_between(0.25, 0.7)
 	assert_float(_def(&"shotgun").flash_size).is_greater(_def(&"rifle").flash_size)
 	assert_float(_def(&"rifle").flash_size).is_greater(_def(&"pistol").flash_size)
 	# A swing has no muzzle flash.

@@ -97,8 +97,6 @@ func test_every_catalog_sound_is_on_a_bus_of_its_kind() -> void:
 		&"bed_highway": &"Ambience",
 		&"bed_projector": &"Ambience",
 		&"bed_score": &"Music",
-		&"player_hurt": &"Voice",
-		&"player_downed": &"Voice",
 		&"board_tear": &"Effects",
 		&"round_start": &"Music",
 		&"ui_press": &"UI",

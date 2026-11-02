@@ -5,6 +5,11 @@ extends Control
 ## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `interact`, `sprint`, `pause`), so
 ## the player and the night read them like a key or a pad and nothing else forks.
 ##
+## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
+## default: the weapon fires by itself with the crosshair on a zombie while aiming), and a toggle
+## when auto-fire is off: a tap aims, the next tap leaves the aim, so the player can aim and shoot
+## by hand. Fire shoots wherever the player aims, in both.
+##
 ## Every finger is tracked by its touch index and has one job until it lifts: the stick, the look,
 ## or one button. A finger that starts on Fire also looks while it drags, so one thumb can aim and
 ## shoot. Look goes out as mouse motion in mouse pixels (`TouchLook`), so the sensitivity setting,
@@ -12,7 +17,9 @@ extends Control
 ##
 ## The layer shows when `TouchMode.wanted`, in landscape, and while the night is live (`live`).
 ## While it is up the engine's touch-to-mouse emulation is off, or every touch would also click
-## Fire. The interact button shows only while the HUD has a prompt: what it does is its label.
+## Fire, and the player turns only for the layer's own look (`TouchLook.is_stray`): in a browser a
+## finger is also a pointer move, which the web runtime reads as a mouse motion (#470).
+## The interact button shows only while the HUD has a prompt: what it does is its label.
 ##
 ## While it is up the HUD shows no key hints (`UIInputMode.touch`), and `TouchHints` labels the
 ## controls the first time each is met, until it is used.
@@ -58,6 +65,7 @@ const VERBS := {
 	&"revive": "REVIVE",
 }
 const DEFAULT_VERB := "USE"
+const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
 
 ## The HUD state, for the interact button.
 var state: HudState
@@ -80,6 +88,9 @@ var hints: TouchHints
 ## () -> float, the factor on a look drag: the aim assist's friction near a zombie (1 without).
 var look_gain := Callable()
 
+## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
+var _aim_is_hold := true
+var _aim_latched := false
 var _enabled := false
 var _active := false
 var _circles := {}
@@ -116,6 +127,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_release_everything()
+	TouchLook.layer_up = false
 	Input.emulate_mouse_from_touch = true
 
 
@@ -124,6 +136,10 @@ func refresh() -> void:
 	touch_scale = _setting(&"controls/touch_scale", 1.0)
 	opacity = _setting(&"controls/touch_opacity", 0.7)
 	left_handed = _flag(SettingsService.LEFT_HANDED)
+	var hold := _setting(AUTO_FIRE_SETTING, 1.0) >= 1.0
+	if hold != _aim_is_hold:
+		_aim_is_hold = hold
+		_unlatch_aim()
 	_enabled = TouchMode.wanted(get_tree())
 	_relayout()
 	_refresh_active()
@@ -159,6 +175,11 @@ func stick_vector() -> Vector2:
 
 func is_sprinting() -> bool:
 	return _sprinting
+
+
+## True while the aim is toggled on (auto-fire off, Aim tapped once).
+func is_aim_latched() -> bool:
+	return _aim_latched
 
 
 func is_pressed(id: StringName) -> bool:
@@ -279,6 +300,7 @@ func _look(relative: Vector2, velocity: Vector2) -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.relative = get_viewport().get_final_transform().basis_xform(look)
 	motion.position = get_viewport().get_final_transform() * get_viewport().get_mouse_position()
+	motion.device = TouchLook.DEVICE
 	Input.parse_input_event(motion)
 
 
@@ -328,6 +350,13 @@ func _press_button(id: StringName) -> void:
 		_send_action(id, true)
 		_send_action.call_deferred(id, false)
 		return
+	if id == TouchLayout.AIM and not _aim_is_hold:
+		_aim_latched = not _aim_latched
+		if _aim_latched:
+			Input.action_press(id)
+		else:
+			Input.action_release(id)
+		return
 	_release_at.erase(id)
 	_pressed_at[id] = _clock
 	Input.action_press(id)
@@ -342,6 +371,12 @@ func _release_button(id: StringName) -> void:
 		Input.action_release(id)
 	else:
 		_release_at[id] = held_until
+
+
+func _unlatch_aim() -> void:
+	if _aim_latched:
+		_aim_latched = false
+		Input.action_release(TouchLayout.AIM)
 
 
 func _send_action(action: StringName, pressed: bool) -> void:
@@ -422,12 +457,14 @@ func _refresh_active() -> void:
 		mirrored_changed.emit(_was_mirrored)
 	# Touch-to-mouse emulation would also click Fire (left mouse) and look twice.
 	Input.emulate_mouse_from_touch = not _active
+	TouchLook.layer_up = _active
 
 
 func _release_everything() -> void:
 	_touches.clear()
 	_stick_index = -1
 	_set_stick(Vector2.ZERO)
+	_unlatch_aim()
 	for action: StringName in _pressed_at.keys():
 		Input.action_release(action)
 	_pressed_at.clear()
@@ -495,6 +532,8 @@ func _alpha(colour: Color, held: bool) -> Color:
 
 
 func _is_held(id: StringName) -> bool:
+	if id == TouchLayout.AIM and _aim_latched:
+		return true
 	for touch: Dictionary in _touches.values():
 		if touch.get(&"button", &"") == id:
 			return true

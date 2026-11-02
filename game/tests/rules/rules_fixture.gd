@@ -28,9 +28,12 @@ static func round_health(round_number: int) -> float:
 
 ## A night with `player_count` players (ids 1..n), not started.
 static func make_rules(
-	player_count: int = 1, seed_value: int = 1234, t: RulesTuning = null
+	player_count: int = 1,
+	seed_value: int = 1234,
+	t: RulesTuning = null,
+	settings: MatchSettings = null
 ) -> GameRules:
-	var rules := GameRules.new(t if t != null else tuning(), seed_value)
+	var rules := GameRules.new(t if t != null else tuning(), seed_value, settings)
 	for player_id in range(1, player_count + 1):
 		rules.apply(RulesAction.add_player(player_id))
 	return rules
@@ -139,3 +142,18 @@ func of(event_type: StringName) -> Array[Dictionary]:
 
 func count(event_type: StringName) -> int:
 	return of(event_type).size()
+
+
+## Plays the round out: ticks the fixed step and kills every zombie the moment it stands, until the
+## round ends (or `limit` seconds pass). Returns the seconds it took.
+static func clear_round(rules: GameRules, limit: float = 600.0) -> float:
+	var began_round := rules.round_number
+	var spent := 0.0
+	while rules.phase == GameRules.Phase.ACTIVE and rules.round_number == began_round:
+		if spent > limit:
+			break
+		rules.apply(RulesAction.tick(STEP))
+		spent += STEP
+		for zombie_id in rules.zombie_ids():
+			kill(rules, 1, zombie_id)
+	return spent

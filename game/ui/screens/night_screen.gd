@@ -24,9 +24,21 @@ static var join_url := ""
 static var join_ticket := ""
 ## With `join_url`: the autopilot plays this player (`--bot`), seen over its own shoulder.
 static var join_as_bot := false
+## The match settings of the next local night (the Play screen sets them); taken once, the way
+## `join_url` is. Joining a server ignores them: the server's are in its WELCOME.
+static var match_settings: MatchSettings
 ## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
 ## settings file); null wears the saved look.
 static var own_look: CharacterLook
+## Where the player's challenges are kept; empty (tests, captures) counts nothing and writes
+## nothing. The game's root sets it, so only the real game keeps a save.
+static var challenge_path := ""
+
+## How a night played alone starts, for a run that is not a person's (`KillBench`): the bot plays,
+## filmed from its shoulder, under this tuning (the defaults when null).
+static var start_mode := Night.Mode.HUMAN
+static var start_tuning: RulesTuning = null
+static var shoulder_camera := false
 
 var night: Night
 
@@ -57,6 +69,11 @@ func _ready() -> void:
 	night.warm_up = warm_up_enabled
 	night.touch_active = touch_active
 	night.own_look = own_look
+	if match_settings != null and join_url == "":
+		night.match_settings = match_settings
+	match_settings = null
+	if challenge_path != "":
+		night.challenge_board = ChallengeBoard.open(challenge_path)
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
@@ -84,7 +101,8 @@ func touch_active() -> bool:
 
 func screen_enter() -> void:
 	if join_url == "":
-		await night.start(Night.Mode.HUMAN)
+		night.shoulder_camera = shoulder_camera
+		await night.start(start_mode, Night.SEED, start_tuning)
 		return
 	var url := join_url
 	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN

@@ -33,6 +33,12 @@ var rows: Array[Dictionary] = []
 var room := WIDTH
 
 var _stack := HudRowStack.new()
+## Labels that left the list, kept for the next gains (a kill makes one every time): the plain
+## ones and the big ones, which are in another font.
+var _spare: Array[Array] = [[], []]
+## Where the spare labels wait, hidden: in the tree, so they are freed with the part and are never
+## orphans.
+var _shelf := Control.new()
 
 
 func _init() -> void:
@@ -40,6 +46,8 @@ func _init() -> void:
 	_stack.gap = HudStyle.XS
 	_stack.custom_minimum_size.x = room
 	add_child(_stack)
+	_shelf.visible = false
+	add_child(_shelf)
 	_stack.minimum_size_changed.connect(update_minimum_size)
 
 
@@ -75,7 +83,9 @@ func on_event(event: Dictionary) -> void:
 		return
 	if int(event["player_id"]) != state.local_player_id or int(event["delta"]) == 0:
 		return
+	var began := PerfProbe.begin()
 	add_gain(StringName(event.get("reason", &"")), int(event["delta"]))
+	PerfProbe.end(&"hud.gain", began)
 
 
 func add_gain(reason: StringName, amount: int) -> void:
@@ -90,7 +100,7 @@ func add_gain(reason: StringName, amount: int) -> void:
 	var gain := {"reason": reason, "amount": amount, "age": 0.0}
 	var big := amount >= 60
 	gain["size"] = HudStyle.MEDIUM if big else HudStyle.TEXT
-	gain["label"] = HudStyle.clip(HudStyle.label("", gain["size"], _colour(reason, amount), big))
+	gain["label"] = _label(gain["size"], _colour(reason, amount), big)
 	rows.append(gain)
 	_stack.add_row(gain["label"])
 	_write(gain)
@@ -119,7 +129,27 @@ func _write(row: Dictionary) -> void:
 
 func _drop(row: Dictionary) -> void:
 	rows.erase(row)
-	_stack.remove_row(row["label"])
+	var label: Label = row["label"]
+	_stack.take_row(label)
+	var spare: Array = _spare[1 if row["size"] == HudStyle.MEDIUM else 0]
+	if spare.size() < MAX_ROWS:
+		_shelf.add_child(label)
+		spare.append(label)
+	else:
+		label.queue_free()
+
+
+## A label for a row: one that left the list when there is one, made otherwise.
+func _label(size: int, colour: Color, big: bool) -> Label:
+	var spare: Array = _spare[1 if big else 0]
+	if spare.is_empty():
+		return HudStyle.clip(HudStyle.label("", size, colour, big))
+	var label: Label = spare.pop_back()
+	_shelf.remove_child(label)
+	label.add_theme_color_override(&"font_color", colour)
+	label.add_theme_font_size_override(&"font_size", size)
+	label.modulate.a = 1.0
+	return label
 
 
 func _colour(reason: StringName, amount: int) -> Color:

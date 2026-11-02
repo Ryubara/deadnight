@@ -80,8 +80,8 @@ lot at night, a tab bar runs along the top, the panels of the tab sit on one sid
 does. The maintainer's reference is a character-centred console menu (the character large in a lit 3D scene, a top tab
 bar, progress panels at the sides, level and currency top right, input hints at the bottom). We took that **layout and
 feel only**: the scene, names, art, type and text are Deadnight's own (the drive-in, the Marquee, stubs, Billing).
-Three steps: this design, the live stage (its page, `menu-stage.md`, comes with that pull request) and the tab shell
-with its panels.
+Three steps: this design, [the live stage](menu-stage.md) and
+[the tab shell with its panels](menu-shell.md).
 
 ### Structure
 
@@ -105,7 +105,7 @@ The picture is 1920 x 1080 design units (the canvas stretch). The soldier stands
 | Tab | Soldier at | Panel zone | Panels | What the player does there |
 | --- | --- | --- | --- | --- |
 | **Play** | left, 30% across, aiming into the lot | right column, 600 wide | **Play together**, **Quick join**, **Solo** (one flow object, the seam #391 fills with rooms: until it lands, Play opens a night and Quick join the join screen); **Today's challenges** under them: the three dailies, each with its progress and the time to the next refresh | start a night, see what today asks |
-| **Loadout** | centre-left, 36%, turning | right column, 700 wide | the wardrobe's content in this layout: preset, part selectors, colour strips, Randomize, Save and Revert; a **showcase weapon** row (the weapons that have a model) with that weapon's mastery steps | dress the soldier and see it turn; drag, right stick, or the turn keys |
+| **Loadout** | centre-left, 36%, turning | right column, 700 wide | the wardrobe's content in this layout: preset, part selectors, colour strips, Randomize (every choice is kept in memory while the tab is open and written once on leaving it); a **showcase weapon** row (the weapons that have a model) with that weapon's mastery steps | dress the soldier and see it turn; drag, right stick, or the turn keys |
 | **Shop** | left, 27% | right, 1100 wide | the prize counter: stub balance, categories (costumes, finishes, flashlight housings, reels, horn and emotes), a grid of items, each locked, owned or priced | browse and buy cosmetics; **placeholders until the economy exists** (marked "coming" on the screen, not hidden) |
 | **Challenges** | right, 74% | left, 1060 wide | the **dailies** with the time to the next refresh, the **Concession Orders** (three open), the **milestones**; a family filter (Light, Night, Together, Craft, Place) | see all progress, swap an order, browse by family |
 | **More** | left, 30%, small, wide shot | right column, 560 wide | Settings, Credits, Quit (not on the web), the account line (name; sign-in when the platform has it) | everything that is not a night or a look |
@@ -165,7 +165,7 @@ nothing on the menu is worded as a loss, and a daily left unfinished is not scol
 | Phone portrait | not a layout: the existing "turn your phone" prompt stays |
 
 The first mocks (a factor of 1.8) had 9 px captions on a 390 px phone, which is why the minimums are written here. The
-stage drops to half resolution or a still when frames run long (`menu-stage.md`), so the panels never wait
+stage drops to half resolution or a still when frames run long ([menu stage](menu-stage.md)), so the panels never wait
 on the 3D.
 
 ### Input per device
@@ -196,18 +196,28 @@ ground;
 
 ### Visual direction
 
-Two directions were mocked over the live stage for the maintainer (the captures are in the pull request): **A, the
-program** (paper tickets with notches, a punch card of holes for progress, the Billing level as a ring on a name plate)
-and **B, the letterboard** (no cards: dark hairline panels like a showtimes board, amber used sparingly, progress as a
-strip of film frames, marquee bulbs under the active tab). Which one is built is the maintainer's pick, recorded here
-when it comes; the layout, cameras, data and input above hold for both. Both avoid the generic look on purpose: no glow
-on everything, no rounded cards in a grid, no icons for their own sake; type does the work, one accent, one idea of how
-progress looks.
+Two directions were mocked over the live stage (the captures are in the first pull request): **A, the program**
+(paper tickets with notches, a punch card of holes for progress, the Billing level as a ring on a name plate) and **B,
+the letterboard** (dark hairline panels, film-frame strips). **The maintainer picked A.** The rules it sets:
+
+- **Surfaces are paper.** A ticket (a cream stub with a half-round notch cut in each side and a perforation) is the one
+  surface for a button, a plate and a challenge stub; the Challenges tab is one sheet of paper, "the program". Dark
+  surfaces are the stage and the scrim only; the wardrobe's pickers keep the game's dark components beside a paper
+  heading.
+- **Progress is a punch card:** a row of ten holes, punched from the left as the goal fills (a hole is a tenth of the
+  goal, rounded). The count beside it ("14/20", "1,850/3,000") is real type and the only place the exact number lives.
+- **One accent, red** (`hot`) on the primary ticket and on tags; amber only for the refresh countdown on the dark.
+- Type does the rest: Bungee Inline for titles and numbers, Barlow Condensed in wide-tracked capitals for labels.
+  No glow, no icons for their own sake, no cards in a grid.
+- **Numbers never clip.** A count sits in a container with the text beside it, never at a fixed offset: the text
+  takes what is left and is cut with an ellipsis, the count takes what it needs (the longest is `1,000,000/1,000,000`
+  in the display face, 331 units). The first mock placed counts by hand and ran off the paper; a test now fills a
+  row with the longest value on every canvas and checks the count is inside its row.
 
 ### Open questions
 
-- Dailies: how many a day, whether unfinished ones bank (proposed in #399: up to three), and the refresh hour; the menu
-  shows whatever the tracker decides.
+- Dailies: how many a day and the reset hour. **They expire at each reset** (the maintainer chose that over
+  banking), so the menu shows no "banked" or "leaves soon" state, only the time to the reset.
 - The showcase weapon is cosmetic. Should the Loadout tab also pick the weapon a night starts with, once the starter
   program lets a player choose a sidearm (progression, Billing 4)?
 - Shop prices and the shape of the economy are not designed; the Shop tab is a labelled placeholder.
@@ -304,5 +314,6 @@ the new `car()` of #380. Three browsers, 1920 x 1080:
   walked to the wrong item and waited for a screen that never opened. The tour holds each key for `--hold-ms` (500 in
   CI), gives each a moment to land, and when the wrong screen opens (or none) goes back with Escape and walks again,
   up to three times. `--throttle 6` slows a local Chromium to reproduce a slow runner (it still passes).
-- **Keys on the menu:** a screen you came back from remembers its focused item (since #380), so a script that walks the
-  menu presses Up six times first (the focus stops at the ends) and then Down to the item it wants.
+- **Keys on the menu:** the menu is a tab shell now ([menu shell](menu-shell.md)): a script walks it with
+  `smoke.menu_item(page, tab, steps)`, which presses E until the game reports the tab, so the first control of the tab has
+  the focus whatever the menu remembered, and then presses Down `steps` times.

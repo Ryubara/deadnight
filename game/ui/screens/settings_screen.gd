@@ -217,10 +217,11 @@ const TABS := [
 			{
 				"key": SettingsService.TOUCH_AUTO_FIRE,
 				"title": "Touch auto-fire",
-				"hint": "Fires by itself with the crosshair on a zombie. It spends ammunition.",
+				"hint":
+				"On: fires by itself while you aim at a zombie. Off: tap Aim to aim, tap again to leave.",
 				"kind": "option",
-				"labels": ["Off", "While aiming", "Always"],
-				"values": [0, 1, 2],
+				"labels": ["Off", "On"],
+				"values": [0, 1],
 			},
 		],
 	},

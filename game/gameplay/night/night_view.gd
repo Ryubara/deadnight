@@ -25,6 +25,8 @@ var barricade_points: Dictionary[StringName, Vector3] = {}
 var lamps: LotLamps
 ## The prize crane (`show_crane`).
 var crane: CraneView
+## Plays the re-cut bench and the soda fountain.
+var machines: MachineView
 ## The night's sounds besides the guns (`hear`).
 var sounds: NightSounds
 ## The dead's voices and feet, made from the frames (`ZombieVoices`).
@@ -90,6 +92,15 @@ func show_attack(player_id: int, weapon: WeaponDef) -> void:
 		animation.play_action(&"Swing" if weapon.is_melee() else &"Fire")
 
 
+## The shooter's weapon tilts down for the `seconds` of its reload and comes back up (every client
+## draws every player's reload from the same `reload_started` event).
+func show_reload(player_id: int, seconds: float) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.reload(seconds)
+
+
 ## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
 ## begins (the circuits on, the tank full), and following every circuit, the tank and the frames.
 func show_lamps(lot: Node, fuel: FuelTuning) -> void:
@@ -104,6 +115,9 @@ func show_crane(world: NightWorld, tuning: RulesTuning) -> void:
 	add_child(crane)
 	var item := tuning.economy.item(&"crane_play")
 	crane.setup(_state, world.shop_spots(), tuning.crane, item.pool if item != null else [])
+	# The lot's other machines (the re-cut bench, the soda fountain) play from the same events.
+	machines = MachineView.new()
+	machines.setup(_state, self)
 
 
 ## Draws the grenades the server throws, from its events (`GrenadeView`, `BlastEffect`): a copy of
@@ -153,13 +167,19 @@ func draw_event(event: Dictionary) -> void:
 
 
 func _on_event(event: Dictionary) -> void:
+	var began := PerfProbe.begin()
 	if lamps != null:
 		lamps.apply_event(event)
 	voices.on_event(event)
+	PerfProbe.end(&"view.lamps_voices", began)
 	match event["type"]:
 		&"frame":
+			began = PerfProbe.begin()
 			horde.apply_snapshot(event["zombies"], step)
+			PerfProbe.end(&"view.horde", began)
+			began = PerfProbe.begin()
 			voices.update(_state.zombies, step)
+			PerfProbe.end(&"view.voices", began)
 			_step_grenades()
 			_step_projectiles()
 		&"grenade_thrown", &"grenade_dropped":
@@ -171,13 +191,19 @@ func _on_event(event: Dictionary) -> void:
 		&"zombie_removed":
 			_gib(event)
 		&"shot_fired":
+			began = PerfProbe.begin()
 			_show_shot(event)
+			PerfProbe.end(&"fx.shot", began)
+		&"reload_started":
+			show_reload(event["shooter_id"], event["seconds"])
 		&"damage_dealt":
+			began = PerfProbe.begin()
 			if event["melee"]:
 				effects.spark(event["point"])
 			effects.number(
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
+			PerfProbe.end(&"fx.number", began)
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":
@@ -188,6 +214,8 @@ func _on_event(event: Dictionary) -> void:
 			_launch_projectile(event)
 		&"projectile_burst":
 			_burst_projectile(event)
+		&"lure_started":
+			_burn_lure(event)
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
@@ -231,6 +259,13 @@ func _burst_projectile(event: Dictionary) -> void:
 		_projectile_views.erase(id)
 	effects.spark(event["point"])
 	effects.muzzle_flash(event["point"])
+
+
+## The flare lies where it landed and burns for as long as the server's lure lasts.
+func _burn_lure(event: Dictionary) -> void:
+	var view := LureView.new()
+	add_child(view)
+	view.burn(event["point"], event["seconds"])
 
 
 func _launch_grenade(event: Dictionary) -> void:
