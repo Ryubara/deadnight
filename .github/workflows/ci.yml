@@ -17,8 +17,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Superseded pull request runs are cancelled; every run on main finishes, so each merge is checked (#290).
+  # A pull request's runs share one group and a superseded run is cancelled. Each push to main gets its own group (its
+  # commit): GitHub keeps one pending run per group and cancels the older pending one even without cancel-in-progress,
+  # so a shared group lost the checks of merges that landed while another run was going (#290, #329).
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -161,6 +163,10 @@ jobs:
     # Railway CLI pinned to the version the deploy was tested with.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [godot, web]
+    # One deploy at a time; a waiting older deploy may be replaced by a newer one, since only the head of main matters.
+    concurrency:
+      group: deploy-web
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
