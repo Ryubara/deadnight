@@ -97,6 +97,12 @@ var _paused := false
 var _warming := false
 
 
+func _init() -> void:
+	# The night hangs under a screen, and a Control is not physics-interpolated: left to inherit,
+	# the whole lot and everyone on it would be drawn at the last tick (issues #344 and #353).
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
+
+
 ## Builds the lot and the server, joins the player, and starts the night.
 func start(
 	p_mode: Mode = Mode.HUMAN, p_seed: int = SEED, p_rules_tuning: RulesTuning = null
