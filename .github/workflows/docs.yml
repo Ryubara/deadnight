@@ -1,14 +1,12 @@
-# Optional: the documentation site. Copy to .github/workflows/docs.yml with `mkdocs.yml` and `requirements-docs.txt`
-# from pack/optional/. It builds the site strictly (a broken link or a page missing from the nav fails), lints the
-# Markdown and the workflows, and a push to the default branch publishes the site to GitHub Pages (set Pages' source to
-# "GitHub Actions" once). Add `mkdocs`, `markdownlint` and `actionlint` to merge.required_checks to make them gates.
-# Actions are pinned to a full commit SHA; the tag is in the comment beside it.
+# The documentation site, published from the default branch: a push to it builds the site strictly (a broken link or a
+# page missing from the nav fails) and publishes it to GitHub Pages (Pages' source is "GitHub Actions"). The checks a
+# pull request needs (`mkdocs`, `markdownlint`, `actionlint`) are jobs of ci.yml, which starts each only when its files
+# change (#447). Actions are pinned to a full commit SHA; the tag is in the comment beside it.
 name: docs
 
 on:
   push:
     branches: [main]
-  pull_request:
 
 permissions:
   contents: read
@@ -49,27 +47,3 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
-
-  markdownlint:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # The rules are in .markdownlint.yaml; the files skipped in .markdownlint-cli2.yaml.
-      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
-        with:
-          globs: |
-            **/*.md
-            #.venv
-            #site
-
-  actionlint:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # The download script comes from the same commit as the release it fetches (v1.7.12).
-      - name: Download actionlint 1.7.12
-        run: >-
-          bash <(curl -sSfL
-          https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash)
-          1.7.12
-      - run: ./actionlint -color .github/workflows/*.yml

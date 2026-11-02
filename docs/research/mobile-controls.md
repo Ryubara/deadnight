@@ -55,7 +55,7 @@ thumbs, so most of the work is deciding what to remove, fold into another contro
   choosing.
 - Common practice for aim assist: a slight slowdown of the look speed while the crosshair is over a target (friction)
   and a small pull toward it while ADS (magnetism), strongest on touch, off for sniping. It is tuned by play, so make
-  the strength a number in settings.
+  the strength a number in settings (built in #286: [Touch aim assist](aim-assist.md)).
 
 ### Buttons: size, place and opacity
 
@@ -270,7 +270,10 @@ game does now:
   in all). The feed and notice columns at the top right are not checked: a long list can reach the Aim and Reload
   buttons.
 
-Still open from the questions below: 1 (auto-fire), 2 (aim assist), 3 (gyro) and 4 (Discord orientation, issue #287).
+Still open from the questions below: 3 (gyro) and 4 (Discord orientation, issue #287). Answered by #286: 1 (auto-fire is
+off by default, and a setting turns it on while Aim is held or always) and 2 (aim assist is friction plus magnetism at a
+gentle 0.5 by default, a slider from 0 to 1); how it works and what it is worth are in
+[Touch aim assist and auto-fire](aim-assist.md).
 Answered by the build: 5 (left hand: a setting from the first release, off by default, a full mirror of the buttons, the
 stick and the HUD's corner columns), 6 (haptics default is on, a setting turns it off; the web vibrates only on
 Android), 7 (keyboard glyphs hide on the first touch and return on a key, pad or real click) and 8 (auto detects a

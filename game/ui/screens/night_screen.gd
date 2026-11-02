@@ -55,6 +55,7 @@ func _ready() -> void:
 	allow_back = false
 	night = Night.new()
 	night.warm_up = warm_up_enabled
+	night.touch_active = touch_active
 	night.own_look = own_look
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
@@ -65,6 +66,7 @@ func _ready() -> void:
 	_touch.state = _hud.state
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
+	_touch.look_gain = _look_gain
 	add_child(_touch)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
@@ -124,6 +126,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_pause()
 		get_viewport().set_input_as_handled()
+
+
+## The factor on a touch look drag: the aim assist slows it near a zombie.
+func _look_gain() -> float:
+	return night.assist.friction() if night != null and night.assist != null else 1.0
 
 
 ## A left-handed layout swaps the HUD's corner columns with the buttons.
