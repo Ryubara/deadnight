@@ -22,6 +22,10 @@ var accumulated: float = 0.0
 var period: int = 1
 
 var _model: Node3D
+## Draws the outline through walls (`ZombieMarks`). A bare node under the model, made with the
+## body (a body is made once, in the warm-up), so marking a zombie in the middle of a night makes
+## nothing.
+var _outline: Outline
 var _boss := false
 ## The boss's lamp (its material, a copy of its own): dark once it is dead.
 var _lamp: StandardMaterial3D
@@ -79,6 +83,7 @@ func setup(
 ## Takes the zombie off the lot and keeps its body for the next one of its look (`ZombieHorde` keeps
 ## the parked views): hidden, with nothing to draw, move or animate.
 func park() -> void:
+	set_outlined(false)
 	visible = false
 	tree.active = false
 	_tearing = false
@@ -103,6 +108,8 @@ func _restart() -> void:
 ## Puts the zombie in another body (its look changed: the legs went). The pose starts over from
 ## what the next entry says.
 func dress(model_scene: PackedScene, p_look: StringName) -> void:
+	var outlined := _outline != null and _outline.enabled
+	var outline_style: OutlineStyle = _outline.style if _outline != null else null
 	if _model != null:
 		_model.free()
 	look = p_look
@@ -112,6 +119,10 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 	_model.scale = Vector3.ONE * ZombieModels.GAME_SCALE
 	add_child(_model)
 	_strip_for_crowd(_model)
+	_outline = Outline.new()
+	_outline.style = outline_style
+	_model.add_child(_outline)
+	_outline.enabled = outlined
 	if _boss:
 		tree = ZombieRig.attach_boss(_model)
 		_light_lamp(_model)
@@ -223,6 +234,22 @@ func tear_position() -> float:
 ## The body being drawn.
 func model() -> Node3D:
 	return _model
+
+
+## Draws the zombie's silhouette through walls in `style`, or stops (`Outline`).
+func set_outlined(on: bool, style: OutlineStyle = null) -> void:
+	if style != null:
+		_outline.style = style
+	_outline.enabled = on
+
+
+func is_outlined() -> bool:
+	return _outline.enabled
+
+
+## Whether the zombie is dead and falling (its entry's mode said so).
+func is_dying() -> bool:
+	return _mode == ZombieBody.Mode.DYING
 
 
 ## Spends the accumulated animation time.

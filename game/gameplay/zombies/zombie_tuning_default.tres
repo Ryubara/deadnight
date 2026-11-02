@@ -26,6 +26,7 @@ windup_seconds = 0.45
 swing_seconds = 1.2
 strike_slack = 0.4
 strike_damage = 20.0
+mark_last = 3
 emerge_seconds = 0.7
 stagger_seconds = 0.4
 boss_entrance_seconds = 2.75

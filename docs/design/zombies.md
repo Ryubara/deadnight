@@ -216,3 +216,11 @@ Checked in `game/tests/zombies/test_zombie_lure.gd` (the simulation alone), `gam
 (a flare shot in a night: no damage, a zombie walks to it, the view draws it, the server ends it) and
 `game/tests/weapons/test_combat_special.gd` (the event and the 0 damage). The numbers are in the flare's definition, not
 in the code, so a new lure weapon is a new `.tres`. Findings: [the flare lure](../research/flare-lure.md).
+
+## Finding the last ones: the outline through walls
+
+When a round is down to its last `ZombieTuning.mark_last` zombies (3), counting those still to spawn, every
+player sees them outlined in orange through walls, so a round is never stuck on one zombie in a corner. The
+outline is the silhouette's edge, a few pixels wide at any distance, with a soft glow; the body is not filled. It
+clears when the round ends or a zombie dies. How it is built, what it costs and the choices to retune (colour,
+width, glow, N) are on the [research page](../research/outline.md).

@@ -6,12 +6,13 @@ extends "res://tests/captures/zombie_chase.gd"
 ## tick and the shots), and the rest of the frame (the drawing and the engine). Not part of the
 ## game. In a browser `tools/web_smoke/crowd_cost.py` exports a copy of the project that starts on
 ## this scene, reads `window.__bench` and prints the numbers; the page's query takes the same
-## arguments as the command line (`?zombies=40&ablate=draw`). Arguments after `--`:
-## `--zombies=N` (the cap), `--frames=N` (measured, default 400), `--warmup=SECONDS` (simulated
-## before the first frame), `--ablate=draw|animation|navigation|views` (leave one system out to
-## read what it cost from the frame: `draw` hides the views, `animation` stops the throttle,
-## `navigation` walks in straight lines, `views` stops updating them), `--unpaced` (a desktop run:
-## no vertical sync and no frame limit, so a frame's time is its work, not the display's refresh).
+## arguments as the command line (`?zombies=40&ablate=draw`). Arguments after `--`: `--outline=N`
+## (the N zombies nearest the camera wear the outline through walls, `Outline`), `--zombies=N` (the
+## cap), `--frames=N` (measured, default 400), `--warmup=SECONDS` (simulated before the first
+## frame), `--ablate=draw|animation|navigation|views` (leave one system out to read what it cost
+## from the frame: `draw` hides the views, `animation` stops the throttle, `navigation` walks in
+## straight lines, `views` stops updating them), `--unpaced` (a desktop run: no vertical sync and no
+## frame limit, so a frame's time is its work, not the display's refresh).
 
 ## Frames let go by before the first one counts: the shaders and the crowd settle.
 const SETTLE_FRAMES := 240
@@ -20,6 +21,8 @@ const QUERY := "location.search.replace(/^\\?/, '')"
 
 var _timed: TimedPathing
 var _ablate := ""
+var _outline := 0
+var _marked_any := false
 var _ticks: Array[float] = []
 var _frame_rows: Array[Dictionary] = []
 var _stage := {}
@@ -54,6 +57,8 @@ func _ready() -> void:
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 		Engine.max_fps = 0
 	_ablate = String(_args.get("ablate", ""))
+	_outline = int(_args.get("outline", 0))
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	var sim := _horde.director.sim
 	if _ablate == "navigation":
 		sim.pathing = ZombiePathing.new()
@@ -108,6 +113,7 @@ func _process(delta: float) -> void:
 		_horde.throttle._process(delta)
 	_stage["animation"] += Time.get_ticks_usec() - started
 	_place_camera()
+	_mark_outlined()
 	var now := Time.get_ticks_usec()
 	_frame_seen += 1
 	if _frame_seen > SETTLE_FRAMES:
@@ -118,6 +124,32 @@ func _process(delta: float) -> void:
 			_report.call_deferred()
 	_last_frame_usec = now
 	_reset_stage()
+
+
+## The `--outline` zombies nearest the camera wear the outline (they are the ones in view).
+func _mark_outlined() -> void:
+	if _outline <= 0 and not _marked_any:
+		return
+	var views := _horde.views()
+	var eye := _camera.global_position
+	views.sort_custom(
+		func(a: ZombieView, b: ZombieView) -> bool:
+			return (
+				a.global_position.distance_squared_to(eye)
+				< b.global_position.distance_squared_to(eye)
+			)
+	)
+	for index in views.size():
+		views[index].set_outlined(index < _outline)
+	_marked_any = _outline > 0
+
+
+func _count_outlined() -> int:
+	var count := 0
+	for view in _horde.views():
+		if view.is_outlined():
+			count += 1
+	return count
 
 
 func _reset_stage() -> void:
@@ -145,6 +177,13 @@ func _record_row() -> void:
 		RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME
 	)
 	row["advanced"] = _horde.throttle.advanced_last_frame
+	row["gpu_ms"] = RenderingServer.viewport_get_measured_render_time_gpu(
+		get_viewport().get_viewport_rid()
+	)
+	row["cpu_render_ms"] = RenderingServer.viewport_get_measured_render_time_cpu(
+		get_viewport().get_viewport_rid()
+	)
+	row["outlined"] = _count_outlined()
 	row["alive"] = _horde.director.sim.standing_count()
 	_frame_rows.append(row)
 
@@ -198,6 +237,10 @@ func _report() -> void:
 			"navigation": snappedf(mean["navigation_ms"], 0.001),
 		},
 		"draw_calls": snappedf(mean["draws"], 0.1),
+		"outline_asked": _outline,
+		"outlined": snappedf(mean["outlined"], 0.1),
+		"gpu_ms": snappedf(mean["gpu_ms"], 0.001),
+		"cpu_render_ms": snappedf(mean["cpu_render_ms"], 0.001),
 		"animations_advanced_per_frame": snappedf(mean["advanced"], 0.1),
 		"navigation_calls_per_frame":
 		snappedf(_timed.calls / (n + SETTLE_FRAMES), 0.1) if _timed != null else 0.0,

@@ -68,6 +68,13 @@ func view_count() -> int:
 	return _views.size()
 
 
+## The views of the zombies drawn now.
+func views() -> Array[ZombieView]:
+	var found: Array[ZombieView] = []
+	found.assign(_views.values())
+	return found
+
+
 ## The view of a zombie, or null when none is drawn.
 func view_of(zombie_id: int) -> ZombieView:
 	return _views.get(zombie_id)
