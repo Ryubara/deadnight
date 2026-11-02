@@ -31,6 +31,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Everyone else | `RemoteAvatars`: a character in the player's look and seat armband, drawn **100 ms behind** the newest frame between two frames, walking or running by its speed. The model is stood the way `player.tscn` stands its own (turned half way round, scaled by `PlayerTuning.model_scale`, 0.8): the first version drew it at scale 1, a quarter taller than on the player's own screen and facing the camera; `test_a_player_is_as_tall_on_every_screen` holds it to a millimetre | the same delay, kept |
 | Looks | a client sends its look once after joining (`--look N` replaces the saved one for a run); `NightServer` owns the `LookServer` and answers with `look_packet` events, which the host sends only to the player they are for; every screen dresses every body, a client's own included, from the one `LookRegistry` table | |
 | Commands | a pressed edge is kept when two commands arrive together, a command not renewed for `NightTuning.command_ticks` (30) steps stops the player, the player is the connection's (#163) | |
+| Game over | when the night ends (`night_over`) a client closes its link on purpose (the server frees the seat, no resume) and reads what is still in flight to the floor; before, nothing read the socket and a browser logged `Buffer payload full` for every later snapshot (#467) | |
 
 Not in the game yet: lag compensation for shots (#54), interest
 management and a tighter packing of zombies (#57), the Discord proxy (#52).
