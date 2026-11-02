@@ -261,6 +261,8 @@ func _on_disconnected(transport_id: int) -> void:
 	if peer == null or peer.player_id == 0:
 		return
 	_by_player.erase(peer.player_id)
+	if server != null:
+		server.pings.erase(peer.player_id)
 	var on_purpose := listener.left_on_purpose(transport_id)
 	if (
 		server != null
@@ -319,8 +321,11 @@ func _on_packet(transport_id: int, data: PackedByteArray) -> void:
 				return
 			server.submit(peer.player_id, command)
 		NetWire.Type.PING:
-			if data.size() == 5:
+			if data.size() == NetWire.PING_SIZE:
 				listener.send(transport_id, NetWire.pong(data.decode_u32(1), server.tick_count))
+				var rtt := NetWire.read_ping_rtt(data)
+				if rtt >= 0:
+					server.pings[peer.player_id] = rtt
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))
