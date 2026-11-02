@@ -2,8 +2,8 @@ class_name TouchControls
 extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
 ## and buttons under the right thumb. They press the game's own input actions (`move_*`, `fire`,
-## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `interact`, `sprint`, `pause`,
-## `scoreboard`), so
+## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `quick_melee`, `interact`, `sprint`,
+## `pause`, `scoreboard`), so
 ## the player and the night read them like a key or a pad and nothing else forks.
 ##
 ## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
@@ -46,6 +46,7 @@ const LABELS := {
 	TouchLayout.SWAP: "SWAP",
 	TouchLayout.GRENADE: "GRENADE",
 	TouchLayout.SHOULDER: "SIDE",
+	TouchLayout.MELEE: "MELEE",
 }
 const VERBS := {
 	&"buy_door": "OPEN",
@@ -85,6 +86,8 @@ var persist_hints := true
 var hints: TouchHints
 ## () -> float, the factor on a look drag: the aim assist's friction near a zombie (1 without).
 var look_gain := Callable()
+## The look the finger has made and the view has not turned yet (`LookSmoother`).
+var look_smoother := LookSmoother.new()
 
 ## Auto-fire on: Aim is held. Off: Aim is a toggle (`_aim_latched`).
 var _aim_is_hold := true
@@ -203,6 +206,7 @@ func _canvas() -> Vector2:
 
 func _process(delta: float) -> void:
 	_clock += delta
+	_turn_view(look_smoother.step(delta))
 	for action: StringName in _release_at.keys():
 		if _clock >= float(_release_at[action]):
 			_release_at.erase(action)
@@ -314,13 +318,36 @@ func _look(relative: Vector2, velocity: Vector2) -> void:
 	looked.emit(look)
 	if relative != Vector2.ZERO:
 		hints.mark_used(TouchHints.LOOK)
+	# The view turns in `_process`, a share of what the fingers made each frame (#598).
+	TouchLook.samples += 1
+	look_smoother.time_constant = tuning.look_smoothing
+	look_smoother.frames = tuning.look_smoothing_frames
+	look_smoother.add(look)
+
+
+## Everything the fingers made and the view has not turned yet turns it now (a test, a menu that
+## opens).
+func flush_look() -> void:
+	_turn_view(look_smoother.take_all())
+
+
+## Sends what the view turns this frame as the mouse motion the player reads.
+func _turn_view(look: Vector2) -> void:
+	if look == Vector2.ZERO:
+		return
 	# Injected events are in window pixels and the viewport maps them back to canvas units, so
 	# the look is sent through the stretch in advance: the player receives exactly `look`.
 	var motion := InputEventMouseMotion.new()
 	motion.relative = get_viewport().get_final_transform().basis_xform(look)
 	motion.position = get_viewport().get_final_transform() * get_viewport().get_mouse_position()
 	motion.device = TouchLook.DEVICE
+	TouchLook.sent += 1
+	# Alone and at once: the engine adds a mouse motion in the input buffer to the next one that
+	# arrives, under the first one's device. A stray copy of a finger waiting there would take the
+	# layer's own motion in with it and the player would drop both.
+	Input.flush_buffered_events()
 	Input.parse_input_event(motion)
+	Input.flush_buffered_events()
 
 
 ## The stick follows the finger: a finger past the rim drags the base along, so the thumb never
@@ -480,6 +507,7 @@ func _refresh_active() -> void:
 
 
 func _release_everything() -> void:
+	look_smoother.take_all()
 	_touches.clear()
 	_stick_index = -1
 	_set_stick(Vector2.ZERO)

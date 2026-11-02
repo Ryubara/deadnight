@@ -21,6 +21,13 @@ const SHIPPED_PATH := "res://ui/touch/touch_tuning_default.tres"
 ## A finger's speed is trusted after this many drags (the first reads wrongly after a jump from
 ## another position).
 @export_range(0, 10, 1) var velocity_warmup_drags := 3
+## The view follows the finger this far behind, so a finger sampled at one rate and a page drawn at
+## another still turn it every frame, evenly (`LookSmoother`, #598). 0 turns the view the moment a
+## sample arrives.
+@export_range(0.0, 0.2, 0.005, "suffix:s") var look_smoothing := 0.04
+## ... and on a page that draws slowly, at least this many frames behind: a shorter window cannot
+## even out samples that fall unevenly between few frames.
+@export_range(1.0, 6.0, 0.1, "suffix:frames") var look_smoothing_frames := 2.5
 
 @export_group("Stick")
 ## The stick's dead zone, as a share of its radius.
