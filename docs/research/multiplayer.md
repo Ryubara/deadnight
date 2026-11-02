@@ -269,7 +269,8 @@ every tick: the animation saw a body that was always falling. `Player._physics_p
 (2) The body's state machine starts at `Start`, which has no automatic way out, and a body left it only by falling
 (a played body does when it drops onto the lot at the spawn). A puppet on the floor never fell, so it stayed at
 `Start` and the crouch (which starts from `locomotion`) never began; `PlayerAnimation` now starts the machine at
-`locomotion`.
+`locomotion`. The fall and crouch part of the animation is its own class, `StanceDrive`, which reads only the body's
+state (so a puppet and a played body share it) and keeps `PlayerAnimation` under the file-size limit.
 
 ### Lag compensation (#54)
 
