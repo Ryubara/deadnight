@@ -183,7 +183,10 @@ var _repair_time := 0.0
 var _repair_scale := 1.0
 var _repair_blend := 0.0
 ## The aim gait's weight over the free locomotion (0 free, 1 aiming), and its clips' ground speed.
+## It is also the weapon's pose weight: the aim button or a shot from the hip raises it, and the
+## camera does not follow it (the view zooms for the aim button only, #464).
 var _aim_blend := 0.0
+var _aim_spring := DampedSpring.new()
 var _aim_move_speed := 2.6
 var _aim_move := Vector2.ZERO
 ## Boards put back whose blow has not landed yet: each is one `board_set` the loop still owes.
@@ -251,7 +254,7 @@ func _process(delta: float) -> void:
 	var run_part := clampf((_move_blend - WALK_POINT) / (0.95 - WALK_POINT), 0.0, 1.0)
 	set(RUN_SPEED_PARAMETER, lerpf(1.0, run_scale, run_part))
 	_advance_crouch()
-	_advance_aim_move(follow)
+	_advance_aim_move(follow, delta)
 	_advance_events(delta)
 	_advance_repair(delta)
 	_advance_reload(delta)
@@ -566,9 +569,9 @@ func _advance_shoulder(delta: float) -> void:
 		(action_clip == &"" or String(action_clip).begins_with("Fire_")) and not is_repairing()
 	)
 	var rig := _player.camera_rig
-	# The one aim weight (the aim button or a recent shot, eased by the camera) turns the weapon from
-	# the body's heading to the view and the barrel in to the crosshair's ray: no single-frame jump.
-	var weight := rig.aim_amount()
+	# The pose weight (the aim button or a recent shot from the hip, eased) turns the weapon from the
+	# body's heading to the view and the barrel in to the crosshair's ray: no single-frame jump.
+	var weight := _aim_blend
 	_hands.aim_yaw = lerp_angle(_player.rotation.y, rig.yaw, weight)
 	_hands.aim_pitch = rig.pitch
 	_hands.converge = weight
@@ -613,11 +616,14 @@ func _advance_events(delta: float) -> void:
 		action_clip = &""
 
 
-## Follows the aim: while the aim is held (the button, or a shot just fired) the legs take the aim
-## gait for the direction of travel (the body keeps facing the camera, so moving sideways or back is
-## a strafe or a backpedal). The weight is the camera's, already eased: the one aim weight.
-func _advance_aim_move(follow: float) -> void:
-	_aim_blend = _player.camera_rig.aim_amount()
+## Follows the aim: while the aim is held (the button, or a shot just fired from the hip) the legs
+## take the aim gait for the direction of travel (the body keeps facing the view, so moving sideways
+## or back is a strafe or a backpedal). The weight eases at the aim's speed, from the same answer
+## the body's turn reads (`PlayerMotionState.holds_aim`); the camera does not read it.
+func _advance_aim_move(follow: float, delta: float) -> void:
+	var held := _player.state.holds_aim(_tuning.hip_fire_hold)
+	_aim_spring.step(1.0 if held else 0.0, _tuning.aim_frequency, delta)
+	_aim_blend = clampf(_aim_spring.value, 0.0, 1.0)
 	set(AIM_BLEND_PARAMETER, _aim_blend)
 	var gait := aim_move_for(_player.state.velocity, _player.state.facing, _aim_move_speed)
 	_aim_move = _aim_move.lerp(gait["position"], follow)

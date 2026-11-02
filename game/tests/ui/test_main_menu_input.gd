@@ -1,44 +1,27 @@
-# The main menu driven by real input events, the way a player does it: key presses move the focus
-# and stop at the ends, the mouse hovering an item takes the focus and a click opens it, Esc does
-# nothing at the root, and nothing answers before the entrance has brought the items in (#85).
+# The main menu driven by real keys and the mouse, the way a player does it: Down and Up walk the
+# Play tab's tickets, Up from the first goes to the tab bar, Enter opens the focused item, Esc does
+# nothing at the root, hovering an item takes the focus and a click opens it.
 extends GdUnitTestSuite
 
 const MENU := "res://ui/screens/main_menu.tscn"
-const CREDITS := "res://ui/screens/credits_screen.tscn"
-const ITEMS := ["Play", "Join", "Customize", "Settings", "Credits"]
 
 
 func before_test() -> void:
-	MainMenu.items_delay = 0.05
+	UIInputMode.reset()
+	MainMenu.board_factory = func() -> Object: return FakeChallengeBoard.new()
 
 
 func after_test() -> void:
-	MainMenu.items_delay = MainMenu.ITEMS_DELAY
+	UIInputMode.reset()
+	MainMenu.board_factory = Callable()
 	await RouterFixture.clear(get_tree())
 
 
-## Shows the menu and waits until its items are in and Play has the focus.
-func _menu_entered() -> MainMenu:
-	UIRouter.reset(MENU, UITransition.Kind.CUT)
-	await UIRouter.idle
-	var menu := UIRouter.top() as MainMenu
-	if not menu.has_entered():
-		await menu.entered
-	await await_idle_frame()
-	return menu
-
-
-## Shows the menu with an entrance that does not end during the test.
-func _menu_entering() -> MainMenu:
-	MainMenu.items_delay = 60.0
+func _menu() -> MainMenu:
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
 	await await_idle_frame()
 	return UIRouter.top() as MainMenu
-
-
-func _item(menu: MainMenu, item: String) -> UIButton:
-	return menu.find_child(item, true, false) as UIButton
 
 
 func _focused_name() -> String:
@@ -56,20 +39,12 @@ func _tap(keycode: Key) -> void:
 		await await_idle_frame()
 
 
-## Waits until the router has done what an input asked of it (or has nothing to do).
-func _settle() -> void:
-	await await_idle_frame()
-	if UIRouter.busy:
-		await UIRouter.idle
-
-
 func _centre(control: Control) -> Vector2:
 	return control.get_global_transform_with_canvas() * (control.size * 0.5)
 
 
 func _hover(control: Control) -> void:
-	# Pushed in the viewport's own coordinates: the headless window is 64 x 64 pixels, and a
-	# window position would be scaled by the stretch before it reached the menu.
+	# Pushed in the viewport's own coordinates: the headless window is 64 x 64 pixels.
 	var move := InputEventMouseMotion.new()
 	move.position = _centre(control)
 	move.global_position = move.position
@@ -89,96 +64,58 @@ func _click(control: Control) -> void:
 		await await_idle_frame()
 
 
-func test_down_walks_the_items_and_stops_at_the_last() -> void:
-	var menu := await _menu_entered()
-	var shown := ITEMS.duplicate()
-	if MainMenu.has_quit():
-		shown.append("Quit")
-	assert_str(_focused_name()).is_equal("Play")
-	for index in range(1, shown.size()):
-		await _tap(KEY_DOWN)
-		assert_str(_focused_name()).is_equal(shown[index])
+func test_down_walks_the_starts_and_on_into_the_challenges() -> void:
+	var menu := await _menu()
+	assert_str(_focused_name()).is_equal("together")
 	await _tap(KEY_DOWN)
-	assert_str(_focused_name()).is_equal(shown[-1])
-	assert_object(UIRouter.top()).is_same(menu)
+	assert_str(_focused_name()).is_equal("quick_join")
+	await _tap(KEY_DOWN)
+	assert_str(_focused_name()).is_equal("solo")
+	await _tap(KEY_DOWN)
+	var focus := get_viewport().gui_get_focus_owner()
+	assert_bool(focus is ChallengeRow).override_failure_message("focus is %s" % focus).is_true()
+	assert_bool(menu.shell.panel(MenuTab.Id.PLAY).is_ancestor_of(focus)).is_true()
 
 
-func test_up_walks_back_and_stops_at_play() -> void:
-	await _menu_entered()
+func test_up_from_the_first_start_goes_to_the_tab_bar_and_down_comes_back() -> void:
+	var menu := await _menu()
+	await _tap(KEY_UP)
+	assert_object(get_viewport().gui_get_focus_owner()).is_same(
+		menu.shell.tab_bar.button(MenuTab.Id.PLAY)
+	)
 	await _tap(KEY_DOWN)
-	await _tap(KEY_DOWN)
-	await _tap(KEY_UP)
-	assert_str(_focused_name()).is_equal("Join")
-	await _tap(KEY_UP)
-	await _tap(KEY_UP)
-	assert_str(_focused_name()).is_equal("Play")
+	assert_str(_focused_name()).is_equal("together")
 
 
 func test_enter_opens_the_focused_item() -> void:
-	await _menu_entered()
-	for _i in 4:
-		await _tap(KEY_DOWN)
-	assert_str(_focused_name()).is_equal("Credits")
+	var menu := await _menu()
+	menu.shell.show_tab(MenuTab.Id.MORE)
+	menu.shell.focus_panel()
 	await _tap(KEY_ENTER)
-	await _settle()
+	await UIRouter.idle
 	assert_int(UIRouter.depth()).is_equal(2)
-	assert_str(UIRouter.top().scene_file_path).is_equal(CREDITS)
+	assert_str(UIRouter.top().scene_file_path).is_equal("res://ui/screens/settings_screen.tscn")
 
 
 func test_escape_does_nothing_at_the_root() -> void:
-	var menu := await _menu_entered()
+	await _menu()
 	await _tap(KEY_ESCAPE)
 	assert_bool(UIRouter.busy).is_false()
 	assert_int(UIRouter.depth()).is_equal(1)
-	assert_object(UIRouter.top()).is_same(menu)
-	assert_str(_focused_name()).is_equal("Play")
 
 
 func test_the_mouse_over_an_item_takes_the_focus() -> void:
-	var menu := await _menu_entered()
-	await _hover(_item(menu, "Settings"))
-	assert_str(_focused_name()).is_equal("Settings")
-	await _hover(_item(menu, "Join"))
-	assert_str(_focused_name()).is_equal("Join")
+	var menu := await _menu()
+	var play := menu.shell.panel(MenuTab.Id.PLAY) as PlayPanel
+	await _hover(play.button(&"solo"))
+	assert_str(_focused_name()).is_equal("solo")
 
 
-func test_a_click_opens_the_item() -> void:
-	var menu := await _menu_entered()
-	await _click(_item(menu, "Credits"))
-	await _settle()
-	assert_int(UIRouter.depth()).is_equal(2)
-	assert_str(UIRouter.top().scene_file_path).is_equal(CREDITS)
-
-
-func test_a_key_during_the_entrance_takes_no_focus_and_opens_nothing() -> void:
-	var menu := await _menu_entering()
-	assert_bool(menu.has_entered()).is_false()
-	for key in [KEY_DOWN, KEY_UP, KEY_TAB, KEY_ENTER, KEY_SPACE]:
-		await _tap(key)
-	assert_str(_focused_name()).is_equal("")
-	assert_int(UIRouter.depth()).is_equal(1)
-	assert_bool(UIRouter.busy).is_false()
-
-
-func test_the_mouse_during_the_entrance_neither_hovers_nor_clicks() -> void:
-	var menu := await _menu_entering()
-	await _click(_item(menu, "Play"))
-	await _hover(_item(menu, "Settings"))
-	assert_str(_focused_name()).is_equal("")
-	assert_int(UIRouter.depth()).is_equal(1)
-	assert_bool(UIRouter.busy).is_false()
-
-
-func test_the_items_answer_again_once_the_entrance_ends() -> void:
-	var menu := await _menu_entering()
-	for item in ITEMS:
-		assert_int(_item(menu, item).focus_mode).is_equal(Control.FOCUS_NONE)
-		assert_int(_item(menu, item).mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
-	menu.finish_entrance()
+func test_a_click_on_a_tab_and_then_an_item_opens_it() -> void:
+	var menu := await _menu()
+	await _click(menu.shell.tab_bar.button(MenuTab.Id.MORE))
+	assert_int(menu.shell.tab).is_equal(MenuTab.Id.MORE)
 	await await_idle_frame()
-	for item in ITEMS:
-		assert_int(_item(menu, item).focus_mode).is_equal(Control.FOCUS_ALL)
-		assert_int(_item(menu, item).mouse_filter).is_equal(Control.MOUSE_FILTER_STOP)
-	assert_str(_focused_name()).is_equal("Play")
-	await _tap(KEY_DOWN)
-	assert_str(_focused_name()).is_equal("Join")
+	await _click((menu.shell.panel(MenuTab.Id.MORE) as MorePanel).button(&"credits"))
+	await UIRouter.idle
+	assert_str(UIRouter.top().scene_file_path).is_equal("res://ui/screens/credits_screen.tscn")

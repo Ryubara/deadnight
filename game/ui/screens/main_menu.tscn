@@ -1,11 +1,6 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://ui/screens/main_menu.gd" id="menu"]
-[ext_resource type="Script" path="res://ui/skin/night_sky.gd" id="sky"]
-[ext_resource type="Script" path="res://ui/skin/neon_sign.gd" id="sign"]
-[ext_resource type="Script" path="res://addons/gds_ui/components/ui_button.gd" id="button"]
-[ext_resource type="Script" path="res://addons/gds_ui/components/ui_label.gd" id="label"]
-[ext_resource type="Script" path="res://addons/gds_ui/components/ui_panel.gd" id="panel"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -16,106 +11,4 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("menu")
 allow_back = false
-
-[node name="Sky" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("sky")
-
-[node name="Centre" type="CenterContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Column" type="VBoxContainer" parent="Centre"]
-layout_mode = 2
-theme_override_constants/separation = 24
-alignment = 1
-
-[node name="Overline" type="Label" parent="Centre/Column"]
-unique_name_in_owner = true
-layout_mode = 2
-script = ExtResource("label")
-style = 5
-text = "NOW SHOWING  -  ONE NIGHT ONLY"
-horizontal_alignment = 1
-
-[node name="Board" type="PanelContainer" parent="Centre/Column"]
-unique_name_in_owner = true
-layout_mode = 2
-script = ExtResource("panel")
-variant = 2
-
-[node name="Sign" type="Control" parent="Centre/Column/Board"]
-unique_name_in_owner = true
-layout_mode = 2
-script = ExtResource("sign")
-
-[node name="Items" type="VBoxContainer" parent="Centre/Column"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/separation = 16
-
-[node name="Play" type="Button" parent="Centre/Column/Items"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(520, 0)
-layout_mode = 2
-script = ExtResource("button")
-text = "Play"
-
-[node name="Join" type="Button" parent="Centre/Column/Items"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(520, 0)
-layout_mode = 2
-script = ExtResource("button")
-variant = 1
-text = "Play together"
-
-[node name="Customize" type="Button" parent="Centre/Column/Items"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(520, 0)
-layout_mode = 2
-script = ExtResource("button")
-variant = 1
-text = "Customize"
-
-[node name="Settings" type="Button" parent="Centre/Column/Items"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(520, 0)
-layout_mode = 2
-script = ExtResource("button")
-variant = 1
-text = "Settings"
-
-[node name="Credits" type="Button" parent="Centre/Column/Items"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(520, 0)
-layout_mode = 2
-script = ExtResource("button")
-variant = 1
-text = "Credits"
-
-[node name="Quit" type="Button" parent="Centre/Column/Items"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(520, 0)
-layout_mode = 2
-script = ExtResource("button")
-variant = 2
-text = "Quit"
-
-[node name="Footer" type="Label" parent="Centre/Column"]
-unique_name_in_owner = true
-layout_mode = 2
-script = ExtResource("label")
-style = 4
-text = "Gates open at dusk. Bring a friend, keep the lights on."
-horizontal_alignment = 1
+stars = false

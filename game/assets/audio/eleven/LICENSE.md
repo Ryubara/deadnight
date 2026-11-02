@@ -8,10 +8,6 @@
 
 | Files | Prompt | Seconds |
 | --- | --- | --- |
-| `blast_pistol_1..3.ogg` | revolver gunshot, .44 magnum, single shot, outdoors at night in an open parking lot, punchy low-end body, short echo tail, no music | 1.4 |
-| `blast_smg_1..3.ogg` | tommy gun submachine gun single round, 1940s, single shot, outdoors at night in an open parking lot, punchy low-end body, short echo tail, no music | 1.2 |
-| `blast_rifle_1..3.ogg` | lever action rifle gunshot, heavy, single shot, outdoors at night in an open parking lot, punchy low-end body, short echo tail, no music | 1.6 |
-| `blast_shotgun_1..3.ogg` | 12 gauge pump shotgun blast, huge, single shot, outdoors at night in an open parking lot, punchy low-end body, short echo tail, no music | 1.8 |
 | `generator_hum_1.ogg` | portable gasoline generator running steadily at constant load, low engine drone, seamless loop, no voices | 4.0 |
 | `generator_down_1.ogg` | gasoline generator running out of fuel, sputtering and winding down to silence | 3.0 |
 | `generator_up_1.ogg` | gasoline generator being refuelled and roaring back to life, then settling to a steady run | 3.0 |

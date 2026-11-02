@@ -93,14 +93,16 @@ func test_the_view_is_60_degrees_at_rest_63_at_a_full_sprint_and_40_in_the_aim()
 	assert_float(_tuning.sprint_fov_kick).is_equal(3.0)
 
 
-func test_a_shot_from_the_hip_zooms_the_view_from_60_to_40_like_the_aim_button() -> void:
-	# One aim weight (#417) blends fov to fov_aim, whether the button or a shot holds the aim.
+func test_only_the_aim_button_zooms_the_view_from_60_to_40() -> void:
+	# The aim button blends the fov to fov_aim and back; a shot from the hip is no input of the
+	# camera at all (#464), so there is nothing else that could hold the zoom.
 	var camera := _rig.camera()
 	_render(1.0)
 	assert_float(camera.fov).is_equal_approx(60.0, 0.01)
-	_rig.aim_held = true
+	_rig.aiming = true
 	_render(1.5)
 	assert_float(camera.fov).is_equal_approx(40.0, 0.05)
-	_rig.aim_held = false
+	_rig.aiming = false
 	_render(1.5)
 	assert_float(camera.fov).is_equal_approx(60.0, 0.05)
+	assert_bool("aim_held" in _rig).is_false()

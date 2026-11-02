@@ -32,6 +32,9 @@ func _ready() -> void:
 	prompt_layer.add_child(TouchRotatePrompt.new())
 	add_child(prompt_layer)
 	await get_tree().process_frame
+	if KillBench.requested():
+		add_child(KillBench.new())
+		return
 	if args.has("stage"):
 		UIRouter.reset(STAGE, UITransition.Kind.CUT, {"still": args.get_string("stage") == "still"})
 		return
@@ -79,4 +82,15 @@ func _serve(args: NetArgs) -> void:
 	var host := NightHost.new()
 	host.port = port
 	host.seed_value = args.get_int("seed", -1)
+	host.match_settings = _match_from(args)
 	add_child(host)
+
+
+## The match settings a game server is started with: `--count 2`, `--max-alive 12`, `--break 10`
+## (each left out is the default), pulled into their bounds.
+func _match_from(args: NetArgs) -> MatchSettings:
+	var settings := MatchSettings.new()
+	settings.count_multiplier = args.get_float("count", settings.count_multiplier)
+	settings.max_alive = args.get_int("max-alive", settings.max_alive)
+	settings.break_seconds = args.get_float("break", settings.break_seconds)
+	return settings.clamped()

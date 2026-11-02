@@ -269,6 +269,16 @@ back (#53, protocol version 3):
   jitter and loss) of the spike: the tests cut the socket with `WebSocketLink.drop()`, which closes it with a private
   close code the server reads as "the network went", and `test_reconnect.gd` runs over a real socket.
 
+## Match settings
+
+The rules of a match (zombie intensity, alive cap, break: `MatchSettings`, #414) are the
+server's and travel inside the rules' snapshot, version 10, as `match_settings`.
+That is the whole protocol change: the WELCOME already carries `GameRules.to_dict()`, so the first player, a late
+joiner and a player coming back read the same settings from it (`MatchSettings.from_snapshot`), and the protocol
+version is not raised. The host sets them with `NightHost.configure_match` before the night starts; once it began
+the call changes nothing for this night. Tested over a real socket in `test_match_settings_net.gd`. Details and the
+numbers are in [rounds](../design/rounds.md#match-settings).
+
 ## Interpolation (everyone else)
 
 Remote players are drawn **100 ms (3 ticks) in the past** (kept after the Railway measurements: see

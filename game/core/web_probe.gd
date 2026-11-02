@@ -29,6 +29,7 @@ func _ready() -> void:
 	JavaScriptBridge.get_interface("window").deadnight = _object
 	add_child(JudderProbe.new())
 	add_child(FlashWebProbe.new())
+	add_child(ViewWebProbe.new())
 
 
 func _process(delta: float) -> void:
@@ -61,11 +62,19 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
-		"touch": false
+		"touch": false,
+		"tab": "",
+		"stage": "",
+		"gamepad": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
+	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var menu := top as MainMenu
+	if menu != null and menu.shell != null:
+		data["tab"] = MenuTab.label(menu.shell.tab)
+		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
 	var together := top as TogetherScreen
 	if together != null:
 		# The invite of the night just made and what the screen says (a browser test reads both).
