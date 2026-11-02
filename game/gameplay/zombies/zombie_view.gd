@@ -22,8 +22,9 @@ var accumulated: float = 0.0
 var period: int = 1
 
 var _model: Node3D
-## Draws the outline through walls (`ZombieMarks`); made at the first mark, so a zombie that is
-## never marked has none.
+## Draws the outline through walls (`ZombieMarks`). A bare node under the model, made with the
+## body (a body is made once, in the warm-up), so marking a zombie in the middle of a night makes
+## nothing.
 var _outline: Outline
 var _boss := false
 ## The boss's lamp (its material, a copy of its own): dark once it is dead.
@@ -107,6 +108,8 @@ func _restart() -> void:
 ## Puts the zombie in another body (its look changed: the legs went). The pose starts over from
 ## what the next entry says.
 func dress(model_scene: PackedScene, p_look: StringName) -> void:
+	var outlined := _outline != null and _outline.enabled
+	var outline_style: OutlineStyle = _outline.style if _outline != null else null
 	if _model != null:
 		_model.free()
 	look = p_look
@@ -116,8 +119,10 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 	_model.scale = Vector3.ONE * ZombieModels.GAME_SCALE
 	add_child(_model)
 	_strip_for_crowd(_model)
-	if _outline != null:
-		_outline.set_root(_model)
+	_outline = Outline.new()
+	_outline.style = outline_style
+	_model.add_child(_outline)
+	_outline.enabled = outlined
 	if _boss:
 		tree = ZombieRig.attach_boss(_model)
 		_light_lamp(_model)
@@ -233,19 +238,13 @@ func model() -> Node3D:
 
 ## Draws the zombie's silhouette through walls in `style`, or stops (`Outline`).
 func set_outlined(on: bool, style: OutlineStyle = null) -> void:
-	if _outline == null:
-		if not on:
-			return
-		_outline = Outline.new()
-		add_child(_outline)
-		_outline.set_root(_model)
 	if style != null:
 		_outline.style = style
 	_outline.enabled = on
 
 
 func is_outlined() -> bool:
-	return _outline != null and _outline.enabled
+	return _outline.enabled
 
 
 ## Whether the zombie is dead and falling (its entry's mode said so).

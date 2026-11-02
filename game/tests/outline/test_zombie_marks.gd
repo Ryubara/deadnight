@@ -163,8 +163,12 @@ func test_a_body_that_changes_look_keeps_its_outline() -> void:
 	assert_int(_overlays(view)).is_greater(0)
 
 
-func test_nothing_is_made_for_a_zombie_that_is_never_marked() -> void:
-	_frame(ACTIVE, 12, 5)
-	for view in _view.horde.views():
-		for child in view.get_children():
-			assert_bool(child is Outline).is_false()
+func test_marking_a_zombie_makes_no_node_and_no_material() -> void:
+	_frame(ACTIVE, 12, 3)
+	var before := get_tree().get_node_count()
+	var resources := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
+	_frame(ACTIVE, 3, 3)
+	assert_int(_marked()).is_equal(3)
+	assert_int(get_tree().get_node_count()).is_equal(before)
+	var now := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
+	assert_int(now - resources).is_less_equal(0)

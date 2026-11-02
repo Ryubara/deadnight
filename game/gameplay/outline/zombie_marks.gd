@@ -27,6 +27,8 @@ func setup(horde: ZombieHorde, p_mark_last: int) -> void:
 	mark_last = p_mark_last
 	if style == null:
 		style = load(Outline.DEFAULT_STYLE) as OutlineStyle
+	# The shaders' materials are made now, not at the first mark in the middle of a night.
+	style.chain()
 
 
 ## The rule: whether the zombies are marked in a frame of this phase with this many zombies left.
