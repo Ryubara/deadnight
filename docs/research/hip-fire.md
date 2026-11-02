@@ -123,8 +123,26 @@ gets the same ticks (`test_a_replay_from_an_older_state_is_ready_on_the_same_tic
 server's `shot_fired`, so nothing flashes or sounds before the shot exists. Bots are unaffected in practice: they send
 the walking direction as their view, so their body faces it from the first tick they hold the trigger.
 
+**Proof in the browser** (`tools/web_smoke/hip_fire.py`, scenario 4; software GL, 10 to 15 frames a second, 2026-11-02):
+the view is turned about 167 degrees from the body with the page's own mouse events, then the trigger is tapped (150
+ms) or held. Tap: the one shot is ready 0.28 s after the press, with the body within 10 degrees, on one drawn frame.
+Held: the first shot is ready 0.345 s after the press (the 0.37 s of the maths above, less the tolerance), then stays
+ready. Two traps the probe had to learn:
+
+- **A one-tick flag sampled once a frame misses a tap.** `shot_ready` is true for one physics tick on a tap, and a slow
+  browser draws a frame every 4 to 6 ticks, so reading it in `_process` saw the held trigger (many ticks) and lost the
+  tap. `ViewWebProbe` now latches it in `_physics_process` and clears it when it writes the row.
+- **A dead player measures nothing.** A night of zombies ends within a minute on the software renderer, and a run of
+  seven scenarios outlasts it: the turn-first screenshot was the "You did not make it" panel. `scenario()` starts a
+  fresh night when the old one is over (before the scenario, or under it) and runs it once more; `new_nights` in
+  `result.json` counts them.
+
 ## Open
 
+- Not measured: whether a very short click is lost. `Input.is_action_pressed("fire")` is read once per physics tick, so
+  a press and release that both land between two reads would leave nothing (the probe's tap is 150 ms, a real click's
+  length; its first try of 60 ms failed, but that was the sampling trap above, so it says nothing about the game).
+  A latched press (`Input.is_action_just_pressed` in `_input`) would close it if a slow device shows it.
 - Whether a sprinting player should lose the sprint when firing (many shooters do). Not changed here: the bots run and
   shoot together and the balance gate is tuned on it.
 - Touch (#272, #286): a drag-to-look phone player fires with a button; the turn works the same, and an auto-fire

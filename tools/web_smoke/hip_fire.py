@@ -12,8 +12,13 @@ player does while the game records the camera's field of view every drawn frame 
 5. aim, a tap of the trigger 0, 50 and 100 ms later, let go of the aim (#478): likewise, and the body's aim pose goes
    within `LEAVE_S` too (an aimed shot leaves no hip-fire hold).
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/hip_fire.py build/web build/hip-fire
-    uv run --with playwright==1.64.1 python tools/web_smoke/hip_fire.py https://... build/hip-fire-live --gpu
+Run it under `gds quiet` (the kit's `docs/godot/no-focus.md`): a page that takes pointer lock confines the real cursor.
+
+    uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/hip_fire.py         build/web build/hip-fire
+    ... hip_fire.py https://... build/hip-fire-live --gpu
+
+A night ends when the zombies get the player; the run starts a fresh one (`new_nights` in the result) and repeats the
+scenario, so every number comes from a living player.
 
 Writes `result.json` (the numbers per scenario and the build's address) and screenshots (`hip_idle.png`,
 `hip_fire_held.png`, `aim_held.png`) into the output folder. Exits 1 when a check fails. A build
@@ -43,8 +48,31 @@ HIP_TOLERANCE = 0.05
 # How close to the aim's field of view the zoom must get while the button is held, and to the hip's after it.
 ZOOM_TOLERANCE = 0.5
 CENTER = (640, 360)
+
 # The gaps between the aim button and a tap of the trigger that the maintainer's report (#478) is about.
 QUICK_GAPS_MS = (0, 50, 100)
+
+
+def night_over(page) -> bool:
+    return bool((probe(page) or {}).get("over"))
+
+
+def scenario(page, url: str, result: dict, name: str, run):
+    """Runs one scenario in a night where the player is alive. Zombies end a night within a minute (the software
+    renderer is slow, so the scenarios are too): a night that is over before the scenario, or that ended under it, is
+    replaced by a fresh one (`result["new_nights"]` counts them) and the scenario is run again once, because a body
+    that is down says nothing about the game."""
+    for attempt in range(2):
+        if night_over(page):
+            play(page, url)
+            page.mouse.move(*CENTER)
+            page.wait_for_timeout(500)
+            result["new_nights"] = result.get("new_nights", 0) + 1
+        found = run()
+        if not night_over(page):
+            break
+    result[name] = found
+    return found
 
 
 def clear_rows(page) -> None:
@@ -157,6 +185,7 @@ def quick_aim_tap(page, hip: float, aim: float, gap_ms: int) -> dict:
 
 
 TURN_STEP_PX = 15
+TAP_MS = 150
 FACING_AWAY = 2.9  # radians between the body and the view: nearly a half circle
 
 
@@ -192,7 +221,9 @@ def turn_first(page, out: Path, hold: bool) -> dict:
         page.wait_for_timeout(300)
         page.mouse.up()
     else:
-        page.wait_for_timeout(60)
+        # A real click lasts 80 to 150 ms, and the game reads the trigger once per physics tick: 150 ms is a tap that
+        # ends before the half-circle turn does.
+        page.wait_for_timeout(TAP_MS)
         page.mouse.up()
         page.wait_for_timeout(1000)
     page.wait_for_timeout(500)
@@ -264,15 +295,35 @@ def main() -> int:
                 page.mouse.move(*CENTER)
                 page.wait_for_timeout(500)
                 result["hip_fire"] = hip_fire(page, args.out)
-                result["aim_shoot_release"] = aim_shoot_release(page, args.hip_fov, args.aim_fov, args.out)
-                page.wait_for_timeout(1000)
-                result["hip_aim_release"] = hip_aim_release(page, args.hip_fov, args.aim_fov)
-                for gap in QUICK_GAPS_MS:
-                    page.wait_for_timeout(1000)
-                    result[f"quick_aim_tap_{gap}ms"] = quick_aim_tap(page, args.hip_fov, args.aim_fov, gap)
                 for hold in () if args.no_turn_first else (False, True):
                     page.wait_for_timeout(1500)
-                    result["turn_first_" + ("held" if hold else "tap")] = turn_first(page, args.out, hold)
+                    name = "turn_first_" + ("held" if hold else "tap")
+                    scenario(page, url, result, name, lambda hold=hold: turn_first(page, args.out, hold))
+                page.wait_for_timeout(1000)
+                scenario(
+                    page,
+                    url,
+                    result,
+                    "aim_shoot_release",
+                    lambda: aim_shoot_release(page, args.hip_fov, args.aim_fov, args.out),
+                )
+                page.wait_for_timeout(1000)
+                scenario(
+                    page,
+                    url,
+                    result,
+                    "hip_aim_release",
+                    lambda: hip_aim_release(page, args.hip_fov, args.aim_fov),
+                )
+                for gap in QUICK_GAPS_MS:
+                    page.wait_for_timeout(1000)
+                    scenario(
+                        page,
+                        url,
+                        result,
+                        f"quick_aim_tap_{gap}ms",
+                        lambda gap=gap: quick_aim_tap(page, args.hip_fov, args.aim_fov, gap),
+                    )
                 keys = ["hip_fire", "aim_shoot_release", "hip_aim_release"]
                 keys += [] if args.no_turn_first else ["turn_first_tap", "turn_first_held"]
                 keys += [f"quick_aim_tap_{g}ms" for g in QUICK_GAPS_MS]
