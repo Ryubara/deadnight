@@ -24,7 +24,7 @@ from pathlib import Path
 from PIL import Image
 from playwright.sync_api import Browser, ConsoleMessage, sync_playwright
 from playwright.sync_api import Error as PlaywrightError
-from smoke import SOFTWARE_GL, press, serve, wait_for
+from smoke import SOFTWARE_GL, menu_item, press, serve, wait_for
 
 LOAD_TIMEOUT_S = 150
 SCREEN_TIMEOUT_S = 40
@@ -71,11 +71,9 @@ def shot_at(browser: Browser, url: str, scale: int, out: Path, size: dict, conso
         wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
         page.mouse.click(5, 5)  # gives the canvas the keyboard
         page.wait_for_timeout(2500)
-        # Settings is the fourth item; the first tab is Video, whose first row on the web is the resolution scale.
-        for _ in range(6):
-            press(page, "ArrowUp")
-        for _ in range(3):
-            press(page, "ArrowDown")
+        # Settings is the first item of the More tab; the first tab is Video, whose first row on the web is the
+        # resolution scale.
+        menu_item(page, "More")
         press(page, "Enter")
         wait_for(page, "settings", lambda s: s.get("screen") == "settings_screen", SCREEN_TIMEOUT_S)
         page.wait_for_timeout(1500)
@@ -87,9 +85,8 @@ def shot_at(browser: Browser, url: str, scale: int, out: Path, size: dict, conso
         press(page, "Escape")
         wait_for(page, "the menu", lambda s: s.get("screen") == "main_menu", SCREEN_TIMEOUT_S)
         page.wait_for_timeout(1500)
-        for _ in range(6):
-            press(page, "ArrowUp")
-        press(page, "Enter")  # Play
+        menu_item(page, "Play", 2)
+        press(page, "Enter")  # Solo
         wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
         page.wait_for_timeout(4000)
         png = page.screenshot()

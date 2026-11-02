@@ -29,6 +29,7 @@ func _ready() -> void:
 	JavaScriptBridge.get_interface("window").deadnight = _object
 	add_child(JudderProbe.new())
 	add_child(FlashWebProbe.new())
+	add_child(ViewWebProbe.new())
 
 
 func _process(delta: float) -> void:
@@ -43,13 +44,15 @@ func _process(delta: float) -> void:
 
 ## What the top screen shows: its scene name, and for a night the round, the zombies still to
 ## kill, the zombies alive on the lot, the players in the frame, the player's own id and (online)
-## the round trip, the camera's yaw (radians) and whether the player's body is drawn between physics
-## ticks. Plain values only, so a page can read them.
+## the round trip, whether the menu is open, the mouse mode, the camera's yaw (radians) and whether
+## the player's body is drawn between physics ticks. Plain values only, so a page can read them.
 static func snapshot(top: Control) -> Dictionary:
 	var data := {
 		"screen": "none",
 		"night": false,
 		"running": false,
+		"paused": false,
+		"mouse_mode": 0,
 		"over": false,
 		"round": 0,
 		"remaining": 0,
@@ -61,11 +64,19 @@ static func snapshot(top: Control) -> Dictionary:
 		"interpolated": false,
 		"room_code": "",
 		"room_status": "",
-		"touch": false
+		"touch": false,
+		"tab": "",
+		"stage": "",
+		"gamepad": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
+	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var menu := top as MainMenu
+	if menu != null and menu.shell != null:
+		data["tab"] = MenuTab.label(menu.shell.tab)
+		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
 	var together := top as TogetherScreen
 	if together != null:
 		# The invite of the night just made and what the screen says (a browser test reads both).
@@ -79,6 +90,10 @@ static func snapshot(top: Control) -> Dictionary:
 	var state := night_screen.night.state
 	data["night"] = true
 	data["running"] = night_screen.night.running
+	# The menu is open, and what the engine says the mouse is (2 is captured: a browser's pointer
+	# lock), so a browser test sees the first Esc open the menu.
+	data["paused"] = night_screen.night.is_paused()
+	data["mouse_mode"] = Input.mouse_mode
 	var player: Player = night_screen.night.player() if night_screen.night.server != null else null
 	if player != null:
 		data["yaw"] = player.camera_rig.yaw  # so a browser test can see the mouse turn the view

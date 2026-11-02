@@ -188,6 +188,8 @@ it cannot move during the navigation bake, which blocks the page (Open).
 
 ## Open
 
+- **Every shot and kill** also cost a frame, for another reason (made and freed in the frame, sounds started):
+  [The lag on every shot and kill](kill-spike.md).
 - **Not covered**: the HUD's own (canvas) shaders and font glyphs for HUD numbers, which the browser run showed no
   links for in 20 s; grenades and the flare in the night (the night does not draw them yet, #257: the blast is warmed
   because its code exists, and a night view that draws a projectile is picked up by the same check once it plays one);

@@ -9,8 +9,6 @@ const CREDITS := "res://ui/screens/credits_screen.tscn"
 const FONTS := "res://assets/fonts"
 const SKIN := "res://ui/skin/deadnight_tokens.tres"
 ## WCAG's level AAA for normal text: the footer sits on a night sky and silhouettes.
-const READABLE := 7.0
-const PLATE_MIN_ALPHA := 0.7
 const WINDOW := Vector2i(1280, 720)
 
 var _window_before: Vector2i
@@ -19,52 +17,44 @@ var _window_before: Vector2i
 func before_test() -> void:
 	_window_before = get_tree().root.size
 	get_tree().root.size = WINDOW
-	MainMenu.items_delay = 0.0
 	await RouterFixture.clear(get_tree())
 
 
 func after_test() -> void:
 	get_tree().root.size = _window_before
-	MainMenu.items_delay = MainMenu.ITEMS_DELAY
 	await RouterFixture.clear(get_tree())
 
 
-func test_the_footer_has_a_plate_and_enough_contrast_and_size() -> void:
-	var tokens := UITokens.active()
-	var menu := await _show_menu()
-	var footer := menu.find_child("Footer", true, false) as Label
-	var plate := footer.get_theme_stylebox(&"normal") as StyleBoxFlat
-	assert_object(plate).is_not_null()
-	assert_float(plate.bg_color.a).is_greater_equal(PLATE_MIN_ALPHA)
-	assert_object(footer.get_theme_color(&"font_color")).is_equal(tokens.ink)
-	# The worst ground the plate can sit on is the lightest thing behind it: take white.
-	var ground := Color.WHITE.lerp(plate.bg_color, plate.bg_color.a)
-	assert_float(_contrast(tokens.ink, ground)).is_greater_equal(READABLE)
-	assert_int(footer.get_theme_font_size(&"font_size")).is_greater_equal(tokens.size_caption)
-	assert_bool(footer.get_combined_minimum_size().x <= menu.size.x).is_true()
-
-
-func test_the_sign_and_the_buttons_wear_the_games_faces() -> void:
+func test_the_sign_wears_the_game_face_and_fits_the_play_column() -> void:
 	var menu := await _show_menu()
 	var sign := menu.find_child("Sign", true, false) as NeonSign
 	assert_str(sign._font.base_font.get_font_name()).is_equal("Bungee Inline")
-	for item in ["Play", "Settings", "Credits"]:
-		var button := menu.find_child(item, true, false) as UIButton
-		var face := button.get_theme_font(&"font") as FontVariation
-		assert_str(face.base_font.get_font_name()).starts_with("Barlow Condensed")
-	var overline := menu.find_child("Overline", true, false) as Label
-	(
-		assert_str((overline.get_theme_font(&"font") as FontVariation).base_font.get_font_name())
-		. starts_with("Barlow Condensed")
-	)
+	var play := menu.shell.panel(MenuTab.Id.PLAY) as PlayPanel
+	assert_float(sign.custom_minimum_size.x).is_less_equal(play.width(false))
 
 
-func test_the_sign_fits_the_board_in_the_game_face() -> void:
+func test_the_tabs_and_tickets_wear_the_games_faces() -> void:
 	var menu := await _show_menu()
-	var board := menu.find_child("Board", true, false) as Control
-	var sign := menu.find_child("Sign", true, false) as NeonSign
-	assert_float(sign.custom_minimum_size.x).is_less(menu.size.x * 0.75)
-	assert_float(board.size.x).is_less(menu.size.x)
+	var tokens := UITokens.active()
+	var wide := MenuLook.wide_font() as FontVariation
+	assert_str(wide.base_font.get_font_name()).starts_with("Barlow Condensed")
+	assert_str(tokens.font_display.get_font_name()).is_equal("Bungee Inline")
+	# Every label the shell builds names one of the two faces.
+	for node in menu.shell.find_children("*", "Label", true, false):
+		var label := node as Label
+		if label.text == "":
+			continue
+		var face := label.get_theme_font(&"font")
+		var name := (
+			(face as FontVariation).base_font.get_font_name()
+			if face is FontVariation
+			else face.get_font_name()
+		)
+		(
+			assert_bool(name.begins_with("Barlow Condensed") or name == "Bungee Inline")
+			. override_failure_message("'%s' is set in %s" % [label.text, name])
+			. is_true()
+		)
 
 
 func test_the_credits_name_every_font_the_game_ships() -> void:
@@ -125,8 +115,6 @@ func _show_menu() -> MainMenu:
 	UIRouter.reset(MENU, UITransition.Kind.CUT)
 	await UIRouter.idle
 	var menu := UIRouter.top() as MainMenu
-	if not menu.has_entered():
-		await menu.entered
 	for _i in 3:
 		await get_tree().process_frame
 	return menu

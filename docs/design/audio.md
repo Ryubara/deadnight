@@ -15,7 +15,7 @@ commercial release
 | Where | Files | Source | Licence entry |
 | --- | --- | --- | --- |
 | `zombie/` `alert_4..6`, `attack_4..6`, `death_3..5`, `groan_5..7`, `groan_brute_4..5`, `groan_crawler_4..5`, `hurt_4..6`, `roar_3..4`, `shriek_3..5` | 24 | ElevenLabs (models v2 and v3), extra takes of the dead's voices | [`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), every prompt in `zombie/eleven.json` |
-| `eleven/` | 17 | ElevenLabs (model v2): the shots' blasts, the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
+| `eleven/` | 5 | ElevenLabs (model v2): the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
 | `voice/soldier/` | 115 | ElevenLabs text to speech (model `eleven_v4`, the premade voice Brian): the soldier's barks, see [The soldiers' voices](#the-soldiers-voices) | [`voice/soldier/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier/LICENSE.md), every line, setting and seed in `manifest.json` |
 | the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (3, 8, 72, 5, 2, 2, 32, 3, 9 and 35 files) | 219 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
 
@@ -71,14 +71,14 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Group | Ids | Notes |
 | --- | --- | --- |
 | UI | `ui_hover`, `ui_focus`, `ui_tick`, `ui_press`, `ui_back`, `ui_push`, `ui_pop` | relay clacks and a rising or falling film whoosh; hover and focus together make one sound |
-| Guns | `shot_<gun>`, `blast_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap` | see [The guns](#the-guns) |
+| Guns | `shot_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap` | see [The guns](#the-guns) |
 | Impacts | `impact_flesh`, `impact_head`, `impact_world` | a wet thump, the same with a crack and a knock, and a round on asphalt or sheet metal with a ricochet's whine |
 | Reloads | `reload_pistol_mag_out/_in`, `reload_smg_mag_out/_in`, `reload_rifle_round/_lever`, `reload_shotgun_open/_shells/_shut` | one sound for each event frame of the reload clip |
 | Steps | `step_asphalt`, `step_gravel`, `step_own_asphalt`, `step_own_gravel` | eight takes each; gravel is a spray of tiny grains; the `own` pair is the local player's softer set ([footsteps](#footsteps)) |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the groans, snarls, hurts, deaths, shrieks and roars also have ElevenLabs takes as extra variants (see above) |
 | Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_engine` (loops), `generator_start`, `generator_up`, `generator_sputter`, `generator_down`, `generator_down_air`, `breaker_on`, `breaker_off` | see [The lot's machines](#the-lots-machines) |
-| The shop | `door_unlock`, `door_buy`, `buy_weapon`, `buy_ammo`, `buy_fuel`, `buy_tonic`, `deny`, `points_tick`, `points_kill` | what each purchase sounds like (besides `till_ring`), the refusal's buzzer and the points |
+| The shop | `door_unlock`, `door_buy`, `buy_weapon`, `buy_ammo`, `buy_fuel`, `buy_tonic`, `buy_recut`, `deny`, `points_tick`, `points_kill` | what each purchase sounds like (besides `till_ring`), the refusal's buzzer and the points |
 | The crane | `crane_spin`, `crane_claw_drop`, `crane_claw_lift`, `crane_prize`, `crane_break`, `crane_move` | the prize crane's play, from the rules' `crane_*` events, at the crane: `crane_spin_started` is the claw going down and a carnival jingle that slows down (5.4 s, a bell at 4.6 s as the 4.5 s spin ends), `crane_prize_ready` the claw hauling up and, 0.35 s later, the prize ding, `crane_prize_taken` the rack's clack, `crane_breakdown` sputter, sparks and power-down, `crane_moved` a whoosh and a clunk, and a refused take the buzzer |
 | Boards | `board_tear`, `board_last`, `board_repair` | at the breach, from `board_torn` and `board_repaired`: a creak then a crack for each board pulled off, a bigger crack, a low thump and the board clattering for the last one, three knocks for one hammered back |
 | Doors | `door_open` | a bolt thrown, a rusty creak, the weight settling; from `door_opened`, at the door |
@@ -113,13 +113,17 @@ whole loop at once, so the seam is smaller than the largest step inside the file
 
 ### The guns
 
-Every shot of a firearm is **three voices**, each with its own random variant, pitch (within 0.6 to 1 semitone) and
-level (plus or minus 1.2 dB), so repeats do not machine-gun: the **report** (`shot_*`: a high-passed crack and a falling
-chest thump, five variants, 0.05 to 0.35 s, synthesised), the **blast** (`blast_*`: the body and the roll of the shot,
-three variants, generated with ElevenLabs, see [research](../research/audio.md)) and the **tail** (`tail_*`: the lot
-rolling the shot away and one slap off the screen tower, three variants, started 40 to 70 ms late). An automatic gun's
-blast and tail have a cooldown (the SMG's 0.14 s and 0.22 s), so twelve shots a second are twelve reports over one roll.
-The hitscan weapons have no tracer, so the report has to sell the shot. The flare gun is a hollow pop and a rising hiss;
+Every shot of a firearm is **two voices**, each with its own random variant: the **report** (`shot_*`: the whole shot
+as the shooter hears it a few feet from the muzzle, a click, a crack, a roar that darkens, a bark in the middle and a
+falling chest thump with a low note under it, five variants, 0.07 to 0.4 s, synthesised) and the **tail** (`tail_*`:
+the lot rolling the shot away and one slap off the screen tower, three variants, started 30 to 50 ms late and 14 dB
+under the report). The SMG's tail has a cooldown (0.22 s), so thirteen shots a second are thirteen reports over one
+roll. One rule for all of them ([Gun audio](../research/gun-audio.md)): the shooter's own shots play flat, at their
+trim, not from the muzzle; every firearm voice shifts in pitch by at most 0.15 semitones and in level by 0.5 dB, and
+the variants differ in their noise, not their note; the headroom and the power are in the files and the per-voice
+trims (the web build plays samples, which ignore bus effects), and a shot sits at least 14 LU over the night's beds
+(17 for a burst). The hitscan weapons have no tracer, so the report has to sell the shot. The flare gun is a hollow
+pop and a rising hiss;
 its burst sizzles where it lands (`projectile_burst`).
 
 - **Impacts.** A `damage_dealt` (not melee) thumps where the round hit; a headshot cracks. A hitscan pellet that ended

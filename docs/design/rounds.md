@@ -22,7 +22,14 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
 - **Time is an action.** Time passes only through `RulesAction.tick(delta)`, a fixed step the caller
   owns. Replays and tests do not need a clock.
 - **Seeded randomness only.** The seed picks every speed, spawn point roll and crane prize. Same seed
-  and same actions give the same night.
+  and same actions give the same night. The seed is a required argument of `GameRules.new(tuning, seed)`
+  (no default, so a night never starts on a forgotten 0): whoever builds the night, the server, chooses it,
+  and `to_dict()` records it as `seed`.
+- **One action at a time.** An action sent from inside an `event_emitted` listener, while the events of the
+  action before it are still being handed out, is answered with a `reentrant` rejection (returned to that
+  caller, never emitted) and changes nothing. Queuing it instead would hide its events from the caller
+  that sent it and let the order clients see depend on who listened first; a listener that wants a follow-up
+  tells its owner, which sends it once `apply` has returned.
 - **Snapshots.** `to_dict()` returns everything (the tuning table is left out because both sides
   load the same one; its fingerprint, `tuning_id`, and the snapshot `version` are in) and restoring
   brings back the random streams and each living zombie's health without emitting events. A restored
@@ -36,7 +43,8 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `malformed`, and leaves the night as it was. The version is checked first, so a snapshot of any older
   layout answers `bad_version`; the insides are checked before anything changes (a plan naming no type,
   a zombie without a `type`, a player or the generator missing a field answer `malformed`). The
-  version is 7 (5 added the plan and the zombies' type, 6 the players' health, 7 the fence's boards); 4 named two
+  version is 10 (5 added the plan and the zombies' type, 6 the players' health, 7 the fence's boards, 8 the
+  crane, 9 the re-cut weapons, 10 the match settings); 4 named two
   different layouts and is never used again.
 - **Reads change nothing.** `points_of`, `price_of`, `is_door_open` and `zombies_remaining` are
   queries; clients may call them on their mirror.
@@ -55,7 +63,7 @@ never raises. Names may arrive as Strings (JSON has no `StringName`); whole numb
 | `explosion` | `player_id`, `victims`: a list of `{zombie_id, damage, leg_damage}` (`leg_damage <= damage`) | the grenade code, for one blast ([Grenades](weapons.md#grenades)) |
 | `use_grenade` | `player_id` | the grenade code, when the pin is pulled; refused as `no_grenades` when the player has none |
 | `blow` | `player_id`, `damage` (float, `> 0`), optional `bearing` (radians clockwise from -z, seen from above; 0 when unknown), optional `source_id` (the zombie) | the night server, for a zombie's landed swing; refused as `wrong_phase`, `unknown_player` or `player_downed` |
-| `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
+| `repair` (`barricade_id`), `buy` (`item_id`, and for ammunition `rounds`), `set_circuit` (`circuit_id`, `on`) | `player_id`, ... | a downed player cannot buy: `purchase_denied` with `PLAYER_DOWNED`, nothing spent (doors, weapons, fuel, all of it); a player's request; the server fills in `rounds` ([ammunition](#ammunition)); a player uses a [breaker post](map.md#the-breaker-posts) to send `set_circuit` |
 | `tear_board` | `barricade_id`, `zombie_id` | the zombie simulation: a zombie finished pulling a board off; server only |
 | `tick` | `delta` (`0..1` s) | the server's fixed step only |
 | `start`, `skip_break`, `add_player`, `remove_player`, `set_downed`, `zombie_gone`, `grant_points` | ... | the server only; never forward these from a client |
@@ -157,6 +165,54 @@ when everyone still in it is down (`all_down`) or when the last player leaves du
 (`no_players`), so a server can free the match; `start` with nobody in the lot is rejected. Leaving before
 the start is not an end. A player still down when a round ends gets up, minus a tenth of their points, so
 being downed hurts but never locks you out.
+
+## Match settings
+
+What whoever starts a match chooses before the night: how intense it is, how many may stand at once and how long
+the breaks are. There is no round time limit: a round ends when its last zombie falls, whatever the settings.
+`MatchSettings` (`game/gameplay/rules/match_settings.gd`).
+The server owns them (`GameRules.settings`), they ride the rules' snapshot (`match_settings`, so the WELCOME of the
+first player, a late joiner and a player coming back all carry them) and they are set only while the night has not
+started. The defaults are today's game exactly, and every shipped test runs on them unchanged.
+
+| Setting | Values | Default | What it does |
+| --- | --- | --- | --- |
+| `count_multiplier` (the night's intensity) | 1x, 2x, 3x offered on the Play screen; any 0.25 to 5 | 1x | round N brings `RoundTuning`'s count for N and the players times this, rounded, at least one, and the dead come this many times as fast (below) |
+| `max_alive` | 0 (auto) or 1 to 40 | auto | a number replaces the round's alive cap and never goes above `alive_cap_ceiling` (40, the crowd the lot stands); auto is the tuned cap times the multiplier |
+| `break_seconds` | 0 (the tuned 5 s) or 1 to 120 | 0 | the break after each round; the wait before round 1 (12 s) and the 10 s extra before a special round are unchanged |
+
+- **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
+  from (a stampede is 140% of the scaled count, an escort party its share of it). A new type's first round still
+  brings its exact `intro_count`, and a boss round its own bosses (by players, not by the multiplier): the lesson of
+  meeting each type once stays whatever the crowd.
+- **The multiplier is intensity, not a longer round.** The spawn interval divides by the multiplier
+  (`MatchSettings.spawn_interval`) and the auto alive cap multiplies by it (`MatchSettings.alive_cap`, at most
+  `alive_cap_ceiling`), so 3x the dead arrive in about the time of 1x and 3 times as many stand at once. Without the
+  cap scaling the round still stretched: at round 10 the tuned cap (13) is the limit on 3x the spawn rate, and the
+  rounds ran 15 to 26% longer at 3x. The interval never goes below `RoundTuning.spawn_interval_floor`, **0.2 s** (5 a
+  second): it is what four players already reach at 1x (the tuned minimum 0.5 s over 2.5), so no crowd or multiplier
+  asks the spawner for more. The floor only holds a multiplier above 1x back, and never slows an interval already
+  under it, so the defaults (and a lot of 4 or more at 1x) change nothing. A cap the host chose is not scaled.
+  Proof (`test_a_round_lasts_about_as_long_at_2x_and_3x_as_at_1x`): a player who kills each zombie 7 s after it
+  stands, rounds 1 to 10, seed 7. Seconds per round at 1x / 2x / 3x: round 1 18.1 / 19.7 / 20.2, round 3 26.2 /
+  27.7 / 28.2, round 6 37.2 / 38.5 / 39.0, round 8 47.0 / 48.2 / 48.6, round 10 (the stampede) 43.0 / 44.2 / 44.2.
+  Every round from 2 is within 10% of 1x (round 2 at 3x is the edge, 10%; the rest are 1 to 8%) and
+  round 1, with 4 zombies at 1x, within 15% (12%): the wait before the first zombie and the last one's
+  life are fixed, and N zombies have N-1 gaps.
+- **Setting them.** `RulesAction.configure(settings)` (the one action, refused as `wrong_phase` once the night began,
+  as `out_of_range` with field `settings` for a value out of bounds; it answers `settings_changed`), or the
+  constructor `GameRules.new(tuning, seed, settings)`, which pulls values into bounds with `clamped()`.
+  `NightServer.new(..., settings)` and `Night.match_settings` (before `start`) carry them for a night on this machine,
+  and `NightScreen.match_settings` is the Play screen's hand-over, taken once.
+- **For a room host.** `NightHost.configure_match(settings)` is the hook: it applies at once to a night nobody has
+  started (returning true), otherwise keeps them for the next night the host builds (false). A `GameServer` room is
+  a `NightHost`, so it is `room.configure_match(settings)` after `room.built`, or `room.match_settings = settings`
+  before it is added to the tree. The panel for the host's lobby is `MatchSettingsPanel`
+  (`game/ui/components/match_settings_panel.gd`, built from `UIRow`, `UIOptionSelector` and `UISlider`): `settings()`
+  reads it, `set_settings()` shows a value without a signal, `set_editable(false)` is the guest's read-only view of
+  what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
+  `start_remote`), and `changed` fires when a control moves. A dedicated server takes `--count`, `--max-alive`
+  and `--break`.
 
 ## The tuning table
 
@@ -402,7 +458,7 @@ from the game:
 | What | Source |
 | --- | --- |
 | Damage, pellets, falloff, zone multipliers, fire interval, magazine, reload | the weapon definitions (`WeaponCatalog`, priced with `DamageModel`, the functions the combat server uses) |
-| A flare's blast on its neighbours | the definition's `splash_*`, on the zombies on the same side within its radius |
+| A flare's pull on the dead | the definition's `lure_radius` and `lure_seconds`; it hurts no one ([zombies](zombies.md#the-flare-lure)) |
 | Health, regeneration delay and rate | `HealthTuning` in the rules' table (100, 5 s, 25 a second) |
 | A zombie's blow and swing | the type's `damage` (the night reads the same since #191), `ZombieTuning.swing_seconds` |
 | Lit ground | `GeneratorState`: a circuit keeps the dead at their round's pace (off it they are faster) only while it is on and the tank has fuel, and every circuit burns fuel |
@@ -587,7 +643,7 @@ The ranges and the health, count and spawn curves are unchanged.
 - **The weapon limit** (two or three weapons) is still open: the weapons and their numbers are in
   [Weapons](weapons.md) (shots to kill per round are tabled there).
 - **The shop's weapons are barely better than the pistol.** Sustained, reloads included, the pistol does about 59
-  damage a second, the shotgun 68, the rifle 85, the SMG 101 and the flare gun 32 (plus its blast). With health
+  damage a second, the shotgun 68, the rifle 85, the SMG 101 (the flare gun hurts no one since #439). With health
   that compounds against weapons that do not grow, this is why the health curve had to come down (#188). The
   shop now sells them (#152) and the simulator can say what each is worth, so the question has numbers.
   Average solo players with 20,000 points (so price is no object and only the weapon counts), buying nothing but

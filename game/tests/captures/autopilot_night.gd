@@ -3,6 +3,7 @@ extends Node
 ## game. Arguments after `--`: `--rounds=N` (stop once round N has started, default 3),
 ## `--speed=N` (ticks per frame), `--seed=N`, `--seconds=S` (stop after S game seconds),
 ## `--log` (print every event), `--fast` (quick dead for a recording), `--trace`,
+## `--count`, `--max-alive`, `--break` (the match settings, see MatchSettings),
 ## `--shoulder` (film through the bot's own shoulder camera), `--cheap` (a cheap door and shotgun
 ## and no rounds in the pistol's reserve, so a short run shows the bot shopping).
 
@@ -18,12 +19,14 @@ var _hud: Hud
 
 func _ready() -> void:
 	_args = _parse_args()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	layer.add_child(_hud)
 	_night = Night.new()
 	_night.hud = _hud
+	_night.match_settings = _match_settings()
 	add_child(_night)
 	_night.ticks_per_frame = int(_args.get("speed", 1))
 	_night.shoulder_camera = _args.has("shoulder")
@@ -33,6 +36,15 @@ func _ready() -> void:
 	_night.ticked.connect(_on_tick)
 	if _args.has("log"):
 		_night.state.event_received.connect(_print_event)
+
+
+## `--count=N`, `--max-alive=N`, and `--break=S`: the match settings of the night.
+func _match_settings() -> MatchSettings:
+	var settings := MatchSettings.new()
+	settings.count_multiplier = float(_args.get("count", 1.0))
+	settings.max_alive = int(_args.get("max-alive", 0))
+	settings.break_seconds = float(_args.get("break", 0.0))
+	return settings.clamped()
 
 
 ## `--fast`: the dead walk faster, so a short recording meets them.

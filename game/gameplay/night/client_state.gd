@@ -25,8 +25,12 @@ var last_event: Dictionary = {}
 
 func apply_events(events: Array) -> void:
 	for event: Dictionary in events:
+		var began := PerfProbe.begin()
 		_apply(event)
 		event_received.emit(event)
+		if PerfProbe.enabled:
+			PerfProbe.end(StringName("event.%s" % event["type"]), began)
+			PerfProbe.count(StringName("ev.%s" % event["type"]))
 
 
 func _apply(event: Dictionary) -> void:
@@ -42,6 +46,8 @@ func _apply(event: Dictionary) -> void:
 		&"zombie_removed":
 			if event["killer_id"] == player_id:
 				kills += 1
+			if event["cause"] == &"killed":
+				PerfProbe.count(&"kill")
 		&"points_changed":
 			if event["player_id"] == player_id:
 				if event["delta"] > 0:

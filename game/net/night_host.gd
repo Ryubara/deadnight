@@ -47,6 +47,9 @@ var port := NetWire.DEFAULT_PORT
 ## The seed of the night's dice; -1 draws one for every night.
 var seed_value := -1
 var rules_tuning: RulesTuning
+## The rules of the match (zombie intensity, alive cap, break) the next night runs under.
+## Set it with `configure_match`, which also changes a night nobody has started.
+var match_settings := MatchSettings.new()
 var log_enabled := true
 ## Metres around a player within which the zombies are sent to their client (0: all of them).
 var interest_radius := 0.0
@@ -158,6 +161,18 @@ func away_count() -> int:
 	return _away.size()
 
 
+## The one way a room's host sets the match: its settings are the server's from here, in every
+## snapshot and so in every WELCOME (a late joiner or a client that came back reads them there),
+## and in every night this host builds after. Applies at once to a night nobody has started and
+## returns true; once the night began the settings wait for the next one and it returns false.
+func configure_match(settings: MatchSettings) -> bool:
+	match_settings = settings.clamped()
+	if server == null or _night_began():
+		return false
+	server.rules.apply(RulesAction.configure(match_settings))
+	return true
+
+
 ## Whether the first player has arrived and started the night.
 func _night_began() -> bool:
 	return server.rules.phase != GameRules.Phase.IDLE
@@ -169,7 +184,7 @@ func _build_night() -> void:
 	add_child(world)
 	await world.build()
 	var chosen := seed_value if seed_value >= 0 else randi()
-	server = NightServer.new(world, chosen, null, rules_tuning)
+	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
 	server.drawn_bodies = false
 	_events.clear()
 	nights += 1

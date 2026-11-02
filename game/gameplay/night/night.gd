@@ -31,6 +31,9 @@ signal connection_ended
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
 
+## Sounds that may start in one frame during the night (`AudioService.starts_per_frame`): the
+## frame of a kill starts six, and each costs about a millisecond in the browser.
+const SOUND_STARTS_PER_FRAME := 2
 ## Share of the loading bar the lot's own build takes, before the warm-up starts.
 const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
@@ -68,6 +71,9 @@ var view: NightView
 ## Where the grenade in the local player's hand would go (`show_throw`).
 var preview: GrenadePreview
 var autopilot: Autopilot
+## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
+## `start_remote` they are the ones the server's WELCOME carried.
+var match_settings := MatchSettings.new()
 ## () -> bool, whether the touch layer is up, set by the screen that owns it. The touch player's
 ## aim help (`assist`) works only while it says yes.
 var touch_active := Callable()
@@ -138,7 +144,7 @@ func start(
 	add_child(world)
 	await world.build()
 	loading.emit(BUILD_SHARE, "Setting up")
-	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning)
+	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	state = ClientState.new()
@@ -227,6 +233,7 @@ func start_remote(
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 		hud.state.load_snapshot(welcome["snapshot"])
+	match_settings = MatchSettings.from_snapshot(welcome["snapshot"])
 	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
 	_equip_sync = WeaponEquipSync.new(state, _body_of)
 	online.delivered.disconnect(keep)
@@ -350,6 +357,8 @@ func _go() -> void:
 		)
 		await warmup.run(self)
 		_warming = false
+	# Only the game limits them: a test that needs no pictures hears every sound at once.
+	Audio.starts_per_frame = SOUND_STARTS_PER_FRAME if warm_up else 0
 	if mode == Mode.HUMAN:
 		_make_assist()
 	running = true
@@ -466,6 +475,7 @@ func set_paused(paused: bool) -> void:
 
 
 func _exit_tree() -> void:
+	Audio.starts_per_frame = 0
 	running = false
 	if challenges != null:
 		challenges.flush()
@@ -491,11 +501,20 @@ func tick() -> void:
 	if remote:
 		_tick_remote()
 		return
+	var began := PerfProbe.begin()
 	link.pump()
-	link.broadcast(server.step(STEP))
+	PerfProbe.end(&"tick.pump", began)
+	began = PerfProbe.begin()
+	var events := server.step(STEP)
+	PerfProbe.end(&"tick.server", began)
+	began = PerfProbe.begin()
+	link.broadcast(events)
+	PerfProbe.end(&"tick.client", began)
 	match mode:
 		Mode.AUTOPILOT:
+			began = PerfProbe.begin()
 			var command := autopilot.decide(STEP)
+			PerfProbe.end(&"tick.bot", began)
 			if shoulder_camera:
 				_aim_rig(command)
 			link.send(command.to_dict())
@@ -682,6 +701,11 @@ func _make_autopilot() -> void:
 					autopilot.crane_pool.assign(item.pool)
 			ShopItem.Kind.AMMO:
 				autopilot.ammo_prices[item.weapon] = item.price
+			ShopItem.Kind.UPGRADE:
+				autopilot.recut_price = item.price
+			ShopItem.Kind.TONIC:
+				if item.health_bonus > 0.0:
+					autopilot.tonic_price = item.price
 	autopilot.wanted.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]

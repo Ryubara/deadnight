@@ -13,6 +13,9 @@ signal footstep(speed: float, sprinting: bool)
 signal jumped
 ## Back on the ground after a fall or jump; `impact_speed` is the downward speed in m/s.
 signal landed(impact_speed: float)
+## The platform took the mouse back (a browser's Esc frees the pointer lock without a key press,
+## a window lost focus) and the controls are off: the night opens its menu, as Esc would.
+signal grip_lost
 
 ## Below this the model counts as level with the body again.
 const STEP_LAG_REST := 0.0005
@@ -46,6 +49,8 @@ var state := PlayerMotionState.new()
 ## False for a body made by `strip_model`: nothing to dress or animate.
 var has_model := true
 var last_command := PlayerCommand.new()
+## Whether the mouse really is captured, as the platform says.
+var grip := MouseGrip.new()
 
 var _controls_enabled := true
 var _was_down := {}
@@ -88,17 +93,30 @@ func _physics_process(_delta: float) -> void:
 	tick(command)
 
 
+func _process(_delta: float) -> void:
+	if grip.poll():
+		release_grip()
+
+
+func _notification(what: int) -> void:
+	# A window that lost focus no longer has the cursor: the night is not played blind.
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and grip.is_wanted():
+		release_grip()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not local_input:
 		return
-	if event is InputEventMouseMotion and _controls_enabled:
+	if event is InputEventMouseMotion and controls_enabled() and not TouchLook.is_stray(event):
 		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
 	elif event.is_action_pressed(&"pause") and capture_mouse and _controls_enabled:
 		set_controls_enabled(false)
-	elif (
-		event is InputEventMouseButton and event.pressed and capture_mouse and not _controls_enabled
-	):
-		set_controls_enabled(true)
+	elif event is InputEventMouseButton and event.pressed and capture_mouse:
+		if not _controls_enabled:
+			set_controls_enabled(true)
+		elif grip.is_pending():
+			# The lock a click is needed for: asked again here, from the click.
+			grip.retry()
 
 
 ## Re-read sensitivity, invert Y and camera shake from the settings service (defaults when there
@@ -147,7 +165,13 @@ static func mouse_capture_allowed() -> bool:
 func set_controls_enabled(enabled: bool) -> void:
 	_controls_enabled = enabled
 	if capture_mouse and local_input and mouse_capture_allowed():
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if enabled else Input.MOUSE_MODE_VISIBLE
+		grip.want(enabled)
+
+
+## The controls go off because the platform freed the mouse; `grip_lost` tells the night.
+func release_grip() -> void:
+	set_controls_enabled(false)
+	grip_lost.emit()
 
 
 ## Use this command for the next physics tick instead of sampling the controls.
@@ -158,7 +182,7 @@ func submit_command(command: PlayerCommand) -> void:
 ## Read the controls into a command (also the stick look for the camera).
 func sample_command() -> PlayerCommand:
 	var command := PlayerCommand.new()
-	if not _controls_enabled:
+	if not controls_enabled():
 		camera_rig.set_stick(Vector2.ZERO)
 	else:
 		command.move = Input.get_vector(ACTION_LEFT, ACTION_RIGHT, ACTION_FORWARD, ACTION_BACK)
@@ -208,7 +232,6 @@ func tick(command: PlayerCommand) -> void:
 	rotation.y = state.facing
 	_ease_step(state.stepped_up, get_physics_process_delta_time())
 	camera_rig.aiming = state.aiming
-	camera_rig.aim_held = state.holds_aim(tuning.hip_fire_hold)
 	camera_rig.side = state.shoulder_side
 	camera_rig.sprinting = state.sprinting
 	camera_rig.crouching = state.crouching
@@ -252,8 +275,9 @@ func teleport(position: Vector3) -> void:
 	camera_rig.snap_to(position)
 
 
+## Whether the controls act: on, and the mouse is not waiting for a lock a click has to bring.
 func controls_enabled() -> bool:
-	return _controls_enabled
+	return _controls_enabled and not grip.is_pending()
 
 
 func is_sprinting() -> bool:
