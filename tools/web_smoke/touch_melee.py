@@ -34,6 +34,8 @@ VIEWPORT = {"width": 844, "height": 390}
 READY_TIMEOUT_S = 240
 # The quick melee's cooldown is 0.6 s: taps closer than this are one blow, a tap after it is another.
 COOLDOWN_S = 0.6
+# The last tap meant to land inside the cooldown must start before this many seconds after the first.
+INSIDE_S = 0.5
 RUNS = {"right": "touch=1&left=0", "left": "touch=1&left=1"}
 
 
@@ -75,22 +77,24 @@ def run_once(url: str, label: str, query: str, out: Path | None) -> dict:
         if out is not None:
             out.mkdir(parents=True, exist_ok=True)
             page.screenshot(path=str(out / f"touch_melee_{label}_before.png"))
+        # The taps inside the cooldown start within INSIDE_S of the first (the page's own clock says so below):
+        # each CDP call costs tens of milliseconds, so the gaps are short and checked, not trusted.
+        tap(page, client, taps, x, y, 0.1)
+        time.sleep(0.1)
+        steps["one_tap"] = state(page)["blows"]
+        for _ in range(2):
+            tap(page, client, taps, x, y, 0.1)
+            time.sleep(0.05)
+        time.sleep(0.1)
+        steps["three_taps"] = state(page)["blows"]
+        time.sleep(COOLDOWN_S + 0.6)
+        # The tap after the cooldown, with the button's capture while the finger is down.
         stamp(page, taps)
         touch_assist.touch(client, "touchStart", [(1, x, y)])
-        time.sleep(0.15)
+        time.sleep(0.1)
         if out is not None:
             page.screenshot(path=str(out / f"touch_melee_{label}_tap.png"))
         touch_assist.touch(client, "touchEnd", [])
-        time.sleep(0.3)
-        steps["one_tap"] = state(page)["blows"]
-        # Two more taps, 0.2 s apart: all inside the first blow's 0.6 s.
-        for _ in range(2):
-            tap(page, client, taps, x, y, 0.1)
-            time.sleep(0.1)
-        time.sleep(0.2)
-        steps["three_taps"] = state(page)["blows"]
-        time.sleep(COOLDOWN_S + 0.6)
-        tap(page, client, taps, x, y)
         time.sleep(0.4)
         steps["after_cooldown"] = state(page)["blows"]
         result = {"steps": steps, "end": state(page), "problems": problems, "taps": taps}
@@ -105,6 +109,11 @@ def verdict(label: str, result: dict) -> list[str]:
         wrong.append(f"{label}: the night paused ({end.get('grip_lost')} times the mouse was lost)")
     if not end.get("touch"):
         wrong.append(f"{label}: the game never saw a finger as the last input")
+    taps = result["taps"]
+    if taps[2] - taps[0] > INSIDE_S * 1000:
+        wrong.append(
+            f"{label}: the probe's third tap came {taps[2] - taps[0]:.0f} ms after the first, wanted under {INSIDE_S * 1000:.0f}"
+        )
     if steps["one_tap"] != 1:
         wrong.append(f"{label}: a tap made {steps['one_tap']} blows, wanted 1")
     if steps["three_taps"] != 1:
