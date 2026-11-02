@@ -78,6 +78,29 @@ def attach(path, kit, turn=(180, 0, 0), scale=1.0):
     return root
 
 
+def attach_grip(path, arm, hold):
+    """Import our weapon and hold it the way the game draws it: on the hand bone Index1.R, where the solved grip of
+    the hold file `hold` puts it (soldier_clips.game_grip); return its root object. The glTF import turns the model's
+    Y-up axes to Z up, so that turn is undone before the grip's transform (written in the model's own axes)."""
+    weapon, _left = sc.game_grip(hold)
+    before = set(bpy.data.objects)
+    kitlib.gltf_import(path)
+    new = [o for o in bpy.data.objects if o not in before]
+    root = next(o for o in new if o.parent is None or o.parent not in new)
+    for o in new:
+        for m in getattr(o.data, "materials", []) or []:
+            m.diffuse_color = (0.067, 0.122, 0.016, 1)
+    y_up = Matrix(((1, 0, 0), (0, 0, 1), (0, -1, 0))).to_4x4()  # Blender's Z up to the model's Y up
+    bpy.context.view_layer.update()
+    at = root.matrix_world.copy()
+    bone = sc._bone_matrix(arm, "Index1.R")
+    root.parent = arm
+    root.parent_type = "BONE"
+    root.parent_bone = "Index1.R"
+    root.matrix_world = bone @ weapon @ y_up @ at
+    return root
+
+
 def set_hidden(o, hidden):
     for x in (o, *o.children_recursive):
         x.hide_render = hidden
@@ -131,6 +154,13 @@ def main():
         help="front: from the Soldier's front right (the default); back: from behind his right shoulder, the way the "
         "third-person camera sees him; side: from his right; top: from above and behind (feet on a strafe)",
     )
+    ap.add_argument(
+        "--grip",
+        action="append",
+        default=[],
+        help="Class=path.glb=hold: hold one of our weapons for a class's sheet the way the game does, through the "
+        "solved grip of game/gameplay/player/holds/<hold>.tres (Rifle=game/assets/weapons/lever_rifle/lever_rifle.glb=rifle)",
+    )
     args = ap.parse_args(argv)
     args.out = args.out.resolve()
 
@@ -151,6 +181,9 @@ def main():
         scale = float(more[0]) if more else 1.0
         turn = tuple(float(v) for v in more[1].split(",")) if len(more) > 1 else (180, 0, 0)
         held[cls] = attach(path, kits[kit], turn, scale)
+    for spec in args.grip:
+        cls, path, hold = spec.split("=")
+        held[cls] = attach_grip(path, arm, hold)
     sc.build(arm)
     arm.animation_data.action = None
     for t in list(arm.animation_data.nla_tracks):
@@ -208,7 +241,7 @@ def main():
     sheets["Revive"] = [(n, None, None) for n in ("Downed", "Downed_Idle", "Downed_Crawl", "Revive_Kneel")]
     # The sprint carry: one stride (every second frame of Run's 17), each Sprint_<Class> over Run at the same frame
     # (the game plays them in phase); SprintBefore is what a sprint showed before them, Aim_<Class> over Run.
-    sheets["Sprint"] = [(f"Sprint_{c}", "Run", c) for c in sc.SPRINT_CLASSES]
+    sheets["Sprint"] = [(f"Sprint_{c}", "Run", c) for c in (*sc.SPRINT_CLASSES, *sc.SPRINT_MODELS)]
     sheets["SprintBefore"] = [(f"Aim_{c}", "Run", c) for c in sc.SPRINT_CLASSES]
     # The quick melee (#411): the one blow in every class's hands, each from its own aim pose.
     sheets["Strike"] = [(f"Strike_{c}", None, c) for c in sc.STRIKE]

@@ -58,6 +58,14 @@
       "seconds": 0.708,
       "events": {}
     },
+    "Sprint_tommy_gun": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Rifle",
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
     "Sprint_Pistol": {
       "layer": "upper",
       "loop": true,

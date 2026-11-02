@@ -64,6 +64,8 @@ var _model_rest := Vector3.ZERO
 @onready var camera_rig: ThirdPersonCamera = $CameraRig
 @onready var _model: Node3D = $Model
 @onready var _shape: CollisionShape3D = $CollisionShape3D
+## Null on a body stripped of its model (a game server's).
+@onready var _animation := get_node_or_null(^"AnimationTree") as PlayerAnimation
 
 
 func _ready() -> void:
@@ -268,6 +270,7 @@ func tick(command: PlayerCommand) -> void:
 	camera_rig.side = state.shoulder_side
 	camera_rig.sprinting = state.sprinting
 	camera_rig.crouching = state.crouching
+	camera_rig.downed = _animation != null and _animation.is_downed()
 	camera_rig.ground_speed = state.ground_speed()
 	camera_rig.grounded = state.on_floor
 	camera_rig.track(global_position)

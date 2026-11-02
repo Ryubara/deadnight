@@ -1,7 +1,7 @@
 <!-- markdownlint-disable-file MD041 -- a pull request body starts at the second heading level -->
 ## Summary
 
-<!-- One short paragraph: what this changes and why. If the change needs no documentation, add a line `Docs: none`. If this finishes an issue, add a line `Fixes #<number>` (one per issue). -->
+<!-- One short paragraph: what this changes and why. If the change needs no documentation, add a line `Docs: none`. If this finishes an issue, add a line `Fixes #<number>` (one per issue) and a line `Read first: <areas>` naming the areas of its labels (the kit's docs/lessons/areas.toml). A fix or rework, or a change after a failed check, adds `Lessons: docs/lessons/<file>.md` (the kit's lesson on what went wrong, written in this task). A fix or rework or a closed `bug` issue adds `Kit docs: <the kit pull request>` (or `Kit docs: none (reason)`). -->
 
 - ...
 
