@@ -179,3 +179,15 @@ test("the Discord proxy's /api prefix is dropped, whether or not the proxy strip
   assert.equal(proxied.json().user.name, plain.json().user.name);
   await app.close();
 });
+
+test("a rejected code is logged with the error name Discord gave, and never its message", async () => {
+  const rejecting = (body: string) => (async () => new Response(body, { status: 400 })) as unknown as typeof fetch;
+  const why = async (body: string) =>
+    new LiveDiscord("1", "2", rejecting(body)).exchangeCode("c").then(
+      () => "",
+      (error: Error) => error.message,
+    );
+  assert.equal(await why('{"error":"invalid_grant","error_description":"Invalid \\"code\\""}'), "discord token exchange rejected: 400 (invalid_grant)");
+  assert.equal(await why("<html>"), "discord token exchange rejected: 400");
+  assert.equal(await why('{"error":"Bad Thing! secret"}'), "discord token exchange rejected: 400");
+});
