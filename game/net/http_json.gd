@@ -15,6 +15,9 @@ static func send(
 ) -> Dictionary:
 	var http := HTTPRequest.new()
 	http.timeout = TIMEOUT_SECONDS
+	# The browser decodes gzip itself, but the answer still names `Content-Encoding: gzip` and Godot
+	# would decode it a second time and fail (Discord's proxy compresses the backend's answers).
+	http.accept_gzip = false
 	parent.add_child(http)
 	var lines := PackedStringArray()
 	for key: String in headers:
