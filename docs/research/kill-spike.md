@@ -64,12 +64,13 @@ Web, three runs each, the median of the frames in a fight, ms (an ordinary frame
 | A zombie arriving | 6.4 to 6.6 | 5.9 to 6.1 |
 | A zombie leaving | 5.8 to 6.2 | 5.1 to 5.5 |
 
-Both columns are from the same build of `main` of the day before; after merging `main` of the day (grenades, a new
-HUD) a quiet run gave 7.7 ms for a shot and 8.3 for a kill (an ordinary frame 4.3): the shot 3.4 over, the kill 4.0.
-A busier machine moves every number: the ordinary frame went to 5.4 and 5.7 ms in two runs, the shot and the kill with
-it. On a desktop (window, same GPU) the frame of a kill went from 11.1 ms to 6.7 (worst 15.4 to 9.6).
+Both columns are from the same build of `main` of the day before. After merging `main` of the last day (grenades, a new
+HUD, the lot drawn in pieces, #325 merged) three more runs gave, with an ordinary frame of 4.2 ms: a shot 7.6 to 7.75
+ms and a kill 7.8 to 8.0 ms (a zombie arriving 6.2 to 6.5, leaving 5.65 to 5.95); the shot is 3.4 to 3.5 over, the
+kill 3.6 to 3.8. A busier machine moves every number: the ordinary frame went to 5.4 and 5.7 ms in two runs, the shot
+and the kill with it. On a desktop (window, same GPU) the frame of a kill went from 11.1 ms to 6.7 (worst 15.4 to 9.6).
 
-**Not met:** the target was a shot or kill within 2 ms of an ordinary frame; it is within 3 to 4. What is left in the
+**Not met:** the target was a shot or kill within 2 ms of an ordinary frame; it is within 3.4 to 3.8. What is left in the
 frame, in ms: sounds starting 0.6, HUD 0.5, effects 0.5, the shot's ray and the rules 0.5, the engine's own drawing
 of the flash and the impacts the rest. The next steps are the HUD (a points change still rebuilds a box) and the
 flash's light. The round's sting (longer than 2.5 s, so still an Ogg) takes 6 ms to start at each round.
