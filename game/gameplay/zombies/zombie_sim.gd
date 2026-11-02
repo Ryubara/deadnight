@@ -129,6 +129,19 @@ func react_to_hit(zombie_id: int) -> void:
 		ZombieBrain.stagger(zombies[zombie_id])
 
 
+## A blast reached it (`blast_hit`): it is thrown along the ground by `impulse` (the push slows
+## down at `ZombieTuning.push_decay`) and held for `stun` seconds. Its height is not moved: the lot
+## is flat.
+func blast(zombie_id: int, impulse: Vector3, stun: float) -> void:
+	if not zombies.has(zombie_id):
+		return
+	var zombie := zombies[zombie_id]
+	if not zombie.is_alive():
+		return
+	ZombieBrain.stun(zombie, stun)
+	zombie.push = Vector3(impulse.x, 0.0, impulse.z).limit_length(tuning.push_max_speed)
+
+
 func position_of(zombie_id: int) -> Vector3:
 	return zombies[zombie_id].position if zombies.has(zombie_id) else Vector3.ZERO
 
@@ -189,7 +202,8 @@ func _think(
 		_work_the_boards(zombie, delta, events)
 	# Height stays where it spawned: the lot is flat. A path point sits above the floor by a baker
 	# offset (twice the cell height), so using its height needs that taken off first.
-	zombie.position += zombie.velocity * delta
+	zombie.position += (zombie.velocity + zombie.push) * delta
+	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
 
 
 ## A zombie that came for a breach stops short of its boards while any stand, and once at them

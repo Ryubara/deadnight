@@ -37,6 +37,9 @@ func test_a_chain_counts_from_the_item_that_added_it_not_from_the_step() -> void
 	# One big step still runs the whole chain: each link is 0.1 s after the one before.
 	schedule.advance(0.45)
 	assert_int(count[0]).is_equal(4)
+	# The lambda reaches itself through `chain`, a cycle nothing frees; cut it, or the test script
+	# is still in use when the engine quits.
+	chain[0] = Callable()
 
 
 func test_cancel_drops_only_the_tagged_items() -> void:

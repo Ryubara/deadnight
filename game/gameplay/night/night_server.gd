@@ -51,11 +51,29 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"projectile_burst",
 	&"fire_rejected",
 ]
+## What the grenade server answers that is worth sending on (its answer also repeats the rules'
+## events, which ride the rules signal). The night adds `throw_started` (player_id, underarm): the
+## button came up and the arm swings; the grenade leaves a moment later (`grenade_thrown`).
+const GRENADE_EVENTS: Array[StringName] = [
+	&"cook_started",
+	&"cook_rejected",
+	&"throw_rejected",
+	&"grenade_thrown",
+	&"grenade_dropped",
+	&"grenade_bounced",
+	&"grenade_exploded",
+	&"blast_hit",
+	&"player_blasted",
+]
+## The grenade the night throws.
+const GRENADE_DEF := "res://gameplay/grenades/defs/frag.tres"
 ## A held trigger meets these every tick; they are not news.
 const QUIET_REJECTIONS: Array[StringName] = [&"cooldown", &"reloading"]
 
 var rules: GameRules
 var combat: CombatServer
+## Every grenade: who is cooking one, the ones in the air, the blasts (`GrenadeServer`).
+var grenades: GrenadeServer
 var sim: ZombieSim
 var director: ZombieDirector
 var world: NightWorld
@@ -83,6 +101,10 @@ var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
+## Held here: a Callable does not keep its RefCounted alive.
+var _cast: WorldCast
+## Each player's side of a throw: the grenade buttons of their commands as cook and throw actions.
+var _throwers: Dictionary[int, GrenadeThrower] = {}
 
 
 func _init(
@@ -97,6 +119,10 @@ func _init(
 	rules = GameRules.new(p_rules_tuning, p_seed)
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
+	_cast = WorldCast.new(world.get_world_3d().direct_space_state)
+	grenades = GrenadeServer.new(
+		load(GRENADE_DEF) as GrenadeDef, rules, _cast.callable(), _probe.callable()
+	)
 	sim = ZombieSim.new(null, p_seed)
 	sim.rounds = rules.tuning.rounds
 	sim.pathing = NavmeshPathing.new(world.map())
@@ -182,6 +208,7 @@ func step(delta: float) -> Array[Dictionary]:
 	_combat(CombatAction.tick(delta))
 	for player_id in _bodies:
 		_act(player_id, delta)
+	_throw_grenades(delta)
 	_outbox.append(_frame())
 	return _outbox
 
@@ -197,6 +224,10 @@ func _join(player_id: int, local: bool) -> void:
 	_shot_seq[player_id] = 0
 	_hand_wait[player_id] = 0.0
 	_repairing[player_id] = &""
+	var thrower := GrenadeThrower.new(player_id, grenades.def)
+	thrower.release_over = tuning.grenade_release_over
+	thrower.release_under = tuning.grenade_release_under
+	_throwers[player_id] = thrower
 	rules.apply(RulesAction.add_player(player_id))
 	# The melee weapon first, so the firearm is the one in hand.
 	_combat(CombatAction.give_weapon(player_id, tuning.start_melee))
@@ -211,6 +242,7 @@ func _leave(player_id: int) -> void:
 		_silent.erase(player_id)
 		_acked.erase(player_id)
 		_repairing.erase(player_id)
+		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
 		_face_left.erase(player_id)
 		looks.leave(player_id)
@@ -324,6 +356,81 @@ func _on_rules_event(event: Dictionary) -> void:
 			_deliver(event["player_id"], event["detail"])
 		&"crane_prize_taken":
 			_deliver(event["player_id"], {"weapon": event["weapon"]})
+
+
+# --- Grenades ---
+
+
+## One tick of every grenade: tells the grenade server where the players and the dead stand, turns
+## each player's grenade buttons into cook and throw actions, and steps the fuses and the flights.
+## The blasts are the rules' (`explosion`), the thrower's own share reaches their health.
+func _throw_grenades(delta: float) -> void:
+	var standing: Array = []
+	for player_id in _bodies:
+		standing.append({"id": player_id, "pos": _bodies[player_id].global_position})
+	_grenade(GrenadeAction.players(standing))
+	_grenade(GrenadeAction.targets(_target_list()))
+	for player_id in _bodies:
+		_throw_of(player_id, delta)
+	_grenade(GrenadeAction.tick(delta))
+
+
+func _throw_of(player_id: int, delta: float) -> void:
+	var thrower: GrenadeThrower = _throwers[player_id]
+	var command := _pending.get(player_id) as NightCommand
+	var motion := PlayerCommand.new()
+	var look := Vector3.ZERO
+	if command != null:
+		look = command.dir
+		if not _is_downed(player_id):
+			motion = command.motion
+	var body := _bodies[player_id]
+	var launch := GrenadeThrower.launch(
+		grenades.def, tuning.grenade_hand_reach, body.global_position, body.state.facing, look
+	)
+	var actions := thrower.step(motion, launch["hand"], launch["aim"], body.state.velocity, delta)
+	if thrower.swing_began() != &"":
+		(
+			_outbox
+			. append(
+				{
+					"type": &"throw_started",
+					"player_id": player_id,
+					"underarm": thrower.swing_began() == &"under",
+				}
+			)
+		)
+	for action in actions:
+		_grenade(action)
+
+
+func _grenade(action: Dictionary) -> void:
+	var blast_at := Vector3.ZERO
+	for event in grenades.apply(action):
+		if not GRENADE_EVENTS.has(event["type"]):
+			continue
+		_outbox.append(event)
+		match event["type"]:
+			&"cook_rejected":
+				_throwers[event["player_id"]].abandon()
+			&"grenade_dropped":
+				_throwers[event["thrower_id"]].abandon()
+			&"grenade_exploded":
+				blast_at = event["point"]
+				if event["in_hand"]:
+					_throwers[event["thrower_id"]].abandon()
+			&"blast_hit":
+				sim.blast(event["target_id"], event["impulse"], event["stun"])
+			&"player_blasted":
+				_blast_player(event, blast_at)
+
+
+## The blast reached a player (the thrower, unless friendly fire is on): their health takes it.
+func _blast_player(event: Dictionary, from: Vector3) -> void:
+	var player_id: int = event["player_id"]
+	if not _bodies.has(player_id):
+		return
+	rules.apply(RulesAction.blow(player_id, event["damage"], _bearing(player_id, from)))
 
 
 # --- Weapons and hands ---

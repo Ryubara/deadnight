@@ -171,9 +171,11 @@ within 0.2 mm (what is left is the physics engine's own contact memory). Version
 
 A body moved by hand does not have the floor contact `CharacterBody3D.move_and_slide` keeps between calls (whether there
 was a floor, its normal). Rewinding the body to an older state and replaying commands from it without setting that
-contact left a replay up to 0.28 m off the run it replaces on a ramp (the body remembered "in the air" while the state
-stood on the ramp); `PlayerSimulation.restore(body, state, delta)` presses the body into the floor with the snap turned
-off (or lets it hang, for a state in the air), then puts it back, and the same replays end within 3 mm (the rest is the
+contact left a replay up to 0.28 m off the run it replaces on a ramp on Windows (the body remembered "in the air"
+while the state stood on the ramp; the same replay on the Linux CI runner followed the run exactly, so the effect depends
+on the platform's float results and is not pinned by a test); `PlayerSimulation.restore(body, state, delta)` presses
+the body into the floor with the snap turned off (or lets it hang, for a state in the air), then puts it back, and the
+same replays end within 3 mm (the rest is the
 seam where the ramp meets the floor). The game's `Reconciler` still does not replay, but takes the server's answer by
 moving the body and calls `restore` for the move, so a snap over 2.5 m (a respawn) lands with the right contact. A
 replaying client, when one is built, rewinds with the same call. The tests are `test_rewind_replay.gd` (from the ramp,

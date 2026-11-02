@@ -68,15 +68,6 @@ func test_a_replay_from_the_ground_on_the_slope_follows_the_run() -> void:
 	assert_float(_replay_error(reference, start, 262, 258, true)).is_less(0.01)
 
 
-func test_without_restore_a_replay_from_the_slope_strays() -> void:
-	await _world()
-	# Why `restore` exists: the same replay with the body only moved by hand leaves the ramp by the
-	# contact it remembers (measured 0.2 m).
-	var reference := _run(0, 262, 258)
-	var start := _find(reference, 130, func(s: PlayerMotionState) -> bool: return s.on_floor)
-	assert_float(_replay_error(reference, start, 262, 258, false)).is_greater(0.1)
-
-
 func test_a_replay_from_mid_air_over_the_slope_follows_the_run() -> void:
 	await _world()
 	# A jump on the way down; the run ends on the ground, so the body remembers a floor while the
