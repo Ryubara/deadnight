@@ -36,6 +36,8 @@ var _closing := false
 var _started_at := 0
 var _was_stuck: Dictionary = {}
 var _causes: Dictionary = {}
+## Ticks spent farther than `NEAR` from the nearest person, by what the bot was doing.
+var _far_notes: Dictionary = {}
 
 
 func _ready() -> void:
@@ -148,6 +150,11 @@ func _sample_distances() -> void:
 		if apart <= NEAR:
 			_near_ticks += 1
 			tally[0] += 1
+		else:
+			for bot in _host.bots:
+				if bot.state.player_id == id:
+					var note: String = bot.intent.note
+					_far_notes[note] = int(_far_notes.get(note, 0)) + 1
 	_per_round[round_number] = tally
 
 
@@ -245,6 +252,7 @@ func _finish(why: String) -> void:
 		"within_12m": snappedf(float(_near_ticks) / maxf(float(_sampled_ticks), 1.0), 0.0001),
 		"within_12m_by_round": rounds,
 		"stuck_causes": _causes,
+		"far_ticks_by_note": _far_notes,
 		"bots": bots,
 	}
 	print("SOAK ", JSON.stringify(all))
