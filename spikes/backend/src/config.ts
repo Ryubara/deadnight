@@ -16,6 +16,8 @@ export interface Config {
   production: boolean;
   /** `POST /auth/guest` signs in a visitor who has no Discord (the web build). */
   guestSignIn: boolean;
+  /** Web pages (their origins) that may call the API from a browser; the Activity proxy is same-origin and needs none. */
+  corsOrigins: string[];
 }
 
 function required(env: NodeJS.ProcessEnv, name: string, minLength = 1): string {
@@ -77,5 +79,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     databaseUrl: env.DATABASE_URL ?? null,
     production,
     guestSignIn,
+    corsOrigins: (env.CORS_ORIGINS ?? "").split(",").map((o) => o.trim()).filter((o) => o.length > 0),
   };
 }

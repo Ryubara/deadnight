@@ -66,7 +66,7 @@ func claims_of(ticket: String, now: int) -> Dictionary:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return {}
 	var claims: Dictionary = parsed
-	var sound := (
+	var sound: bool = (
 		claims.get("kind") == "ticket"
 		and typeof(claims.get("sub")) == TYPE_STRING
 		and typeof(claims.get("iat")) == TYPE_FLOAT

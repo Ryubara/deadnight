@@ -153,3 +153,19 @@ test("everyone who opens the Activity in one voice channel lands in the same nig
   assert.notEqual(other.id, first.id);
   await app.close();
 });
+
+test("only the pages named in CORS_ORIGINS may call the API from a browser", async () => {
+  const { app } = await platform({ CORS_ORIGINS: "https://play.example, http://127.0.0.1:8080" });
+  const ask = (origin: string, method: "OPTIONS" | "POST" = "OPTIONS") =>
+    app.inject({ method, url: "/auth/guest", headers: { origin, "access-control-request-method": "POST" }, payload: method === "POST" ? {} : undefined });
+  const allowed = await ask("https://play.example");
+  assert.equal(allowed.statusCode, 204);
+  assert.equal(allowed.headers["access-control-allow-origin"], "https://play.example");
+  assert.match(String(allowed.headers["access-control-allow-headers"]), /Authorization/);
+  const answer = await ask("http://127.0.0.1:8080", "POST");
+  assert.equal(answer.statusCode, 201);
+  assert.equal(answer.headers["access-control-allow-origin"], "http://127.0.0.1:8080");
+  const stranger = await ask("https://evil.example");
+  assert.equal(stranger.headers["access-control-allow-origin"], undefined);
+  await app.close();
+});

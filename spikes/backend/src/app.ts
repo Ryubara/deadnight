@@ -28,7 +28,7 @@ export function guestName(given: string | undefined): string {
 export const LOBBY_SWEEP_MS = 30_000;
 
 export interface Deps {
-  config: Pick<Config, "sessionSecret" | "ticketSecret" | "gameServerSecret"> & Partial<Pick<Config, "guestSignIn">>;
+  config: Pick<Config, "sessionSecret" | "ticketSecret" | "gameServerSecret"> & Partial<Pick<Config, "guestSignIn" | "corsOrigins">>;
   store: Store;
   discord: DiscordClient;
   registry: GameServerRegistry;
@@ -85,6 +85,23 @@ export function buildApp(deps: Deps): FastifyInstance {
   const sweeper = setInterval(() => lobbies.sweep(), LOBBY_SWEEP_MS);
   sweeper.unref();
   app.addHook("onClose", async () => clearInterval(sweeper));
+
+  // The web build is another origin than this API: the pages named in CORS_ORIGINS may call it from a browser (the
+  // answer to a preflight, and the allow header on every answer). Nobody else gets the header, so a page on another
+  // site cannot read what a signed-in player's browser asks for. The Authorization header is the only credential.
+  const corsOrigins = new Set(config.corsOrigins ?? []);
+  app.addHook("onRequest", async (request, reply) => {
+    const origin = request.headers.origin;
+    if (origin === undefined || !corsOrigins.has(origin)) return;
+    reply.header("Access-Control-Allow-Origin", origin);
+    reply.header("Vary", "Origin");
+    if (request.method === "OPTIONS") {
+      reply.header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
+      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      reply.header("Access-Control-Max-Age", "600");
+      return reply.code(204).send();
+    }
+  });
 
   const bearer = (request: FastifyRequest): string | null => {
     const header = request.headers.authorization;

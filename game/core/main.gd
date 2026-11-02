@@ -3,10 +3,11 @@ extends Control
 ## above the router, so grain and vignette cover every screen and every transition.
 ##
 ## Options after `--` on the command line (or in the page address on the web, `?connect=...`):
-## `--server [--port N] [--seed N]` runs a game server instead of the game (headless, no menu), and
-## `--connect [ws://host:port]` goes from the menu straight into the night of that server, and
-## `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of the saved
-## one, so two windows of one machine can differ.
+## `--server [--port N] [--seed N]` runs a game server instead of the game (headless, no menu),
+## `--room CODE` (or `?room=CODE`) joins the night of an invite code, `--dev` shows the server
+## address setting, `--connect [ws://host:port]` goes from the menu straight into the night of that
+## server, and `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of
+## the saved one, so two windows of one machine can differ.
 
 const MENU := "res://ui/screens/main_menu.tscn"
 const NIGHT := "res://ui/screens/night_screen.tscn"
@@ -27,6 +28,15 @@ func _ready() -> void:
 	add_child(prompt_layer)
 	await get_tree().process_frame
 	UIRouter.reset(MENU, UITransition.Kind.FADE)
+	TogetherScreen.dev_enabled = TogetherScreen.dev_enabled or args.has("dev")
+	if args.has("room"):
+		# An invite link (`?room=CODE`): the Play together screen joins that night at once.
+		TogetherScreen.auto_code = args.get_string("room")
+		UIRouter.push(TogetherScreen.SCREEN, UITransition.Kind.SLIDE)
+	elif args.has("instance_id"):
+		# Inside a Discord Activity: the night of the voice channel.
+		TogetherScreen.auto_instance = args.get_string("instance_id")
+		UIRouter.push(TogetherScreen.SCREEN, UITransition.Kind.SLIDE)
 	if args.has("connect"):
 		var url := args.get_string("connect")
 		NightScreen.join_url = JoinScreen.DEFAULT_URL if url == "true" else url
