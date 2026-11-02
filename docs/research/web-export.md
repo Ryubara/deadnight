@@ -171,6 +171,11 @@ how evenly the soldier moves on the screen in the page: the numbers and what the
 `physics-interpolation.md`. The smoke run also fails when the night's body is not drawn between physics ticks
 (`window.deadnight.interpolated`).
 
+`tools/web_smoke/hip_fire.py` (same arguments) drives the real mouse and reads the camera's field of view every drawn
+frame (`window.deadnight.viewRows`, `game/core/view_web_probe.gd`): hip fire must leave it at 60, and aim, shoot, release
+and hip shot, aim, release must be back at 60 within 0.9 s of the release (the spring takes 0.3 s; the rest is the
+browser's latency, and a held zoom would add 0.8 s). Run it on the deployed URL after a change to the camera (#464).
+
 ### Over the internet
 
 `smoke.py` pointed at the URL (Houston, Texas, on a home connection, headless Chromium with a fresh profile, so

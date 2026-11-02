@@ -1,6 +1,7 @@
-# One aim weight (#300): the aim button and a shot both hold the aim, and the camera, the body and
-# the weapon in the hands ease to the same pose and back at the same speed; the weapon never jumps
-# from one pose to the other. Stepped by hand with fixed ticks (no wall time).
+# The weapon's pose weight (#300, #464): the aim button and a shot from the hip both raise the
+# weapon and turn the body, and the pose eases in and out at the same speed and never jumps. Only
+# the aim button moves the camera (the zoom is for the aim, #464). Stepped by hand with fixed ticks
+# (no wall time).
 extends GdUnitTestSuite
 
 const TEST_ROOM := "res://world/test_room.tscn"
@@ -14,7 +15,7 @@ const LOOK_AWAY := 1.31
 ## in one tick, a shot from the hip 0.16 m and 21 degrees).
 const MAX_HAND_STEP := 0.15
 const MAX_BARREL_TURN_DEG := 25.0
-## Placement and pose of the held aim, hip fire against the aim button.
+## Pose of the held aim, hip fire against the aim button.
 const PLACE_TOLERANCE := 0.01
 const POSE_TOLERANCE := 0.01
 const WEIGHT_TOLERANCE := 0.03
@@ -77,7 +78,8 @@ func _view() -> Dictionary:
 	var pose := _pose()
 	var body := _player.global_position
 	return {
-		"weight": _rig.aim_amount(),
+		"weight": _animation.aim_weight(),
+		"camera_weight": _rig.aim_amount(),
 		"fov": camera.fov,
 		"lens_distance": _rig.lens_distance(),
 		"lens": camera.global_position - body,
@@ -100,27 +102,31 @@ func _sample_view_after(action: String, seconds: float) -> Array[Dictionary]:
 	return samples
 
 
-func test_hip_fire_reaches_the_camera_and_weapon_pose_of_the_aim() -> void:
+func test_hip_fire_raises_the_weapon_like_the_aim_and_leaves_the_camera_alone() -> void:
 	_turn_view_away()
+	await _ticks(2)
+	var rest := _view()
 	var aimed := await _sample_view_after("aim", 1.5)
 	_runner.simulate_action_release("aim")
 	await _seconds(_tuning.hip_fire_hold + 1.5)
-	assert_float(_rig.aim_amount()).is_equal_approx(0.0, 0.01)
+	assert_float(_animation.aim_weight()).is_equal_approx(0.0, 0.01)
 	var fired := await _sample_view_after("fire", 1.5)
 	var want: Dictionary = aimed.back()
 	var got: Dictionary = fired.back()
+	# The weapon and the body: the same pose as the aim.
 	assert_float(got["weight"]).is_equal_approx(want["weight"], 0.005)
-	assert_float(got["fov"]).is_equal_approx(want["fov"], 0.05)
-	assert_float(got["lens_distance"]).is_equal_approx(want["lens_distance"], PLACE_TOLERANCE)
-	assert_vector(got["lens"]).override_failure_message("camera placement").is_equal_approx(
-		want["lens"], Vector3.ONE * PLACE_TOLERANCE
-	)
 	assert_vector(got["grip"]).override_failure_message("grip").is_equal_approx(
 		want["grip"], Vector3.ONE * POSE_TOLERANCE
 	)
 	assert_vector(got["barrel"]).override_failure_message("barrel").is_equal_approx(
 		want["barrel"], Vector3.ONE * POSE_TOLERANCE
 	)
+	# The camera: where it was at the hip, tick after tick; the aim's zoom was another.
+	assert_float(want["fov"]).is_equal_approx(_tuning.fov_aim, 0.05)
+	for view: Dictionary in fired:
+		assert_float(view["camera_weight"]).is_equal_approx(0.0, 0.0001)
+		assert_float(view["fov"]).is_equal_approx(_tuning.fov, 0.0001)
+		assert_float(view["lens_distance"]).is_equal_approx(rest["lens_distance"], 0.0001)
 
 
 func test_the_weapon_pose_eases_in_without_a_jump_for_hip_fire_and_for_aim() -> void:
@@ -164,7 +170,7 @@ func _assert_smooth(samples: Array[Dictionary], label: String) -> void:
 	)
 
 
-func test_the_view_lets_go_after_the_last_shot_as_it_does_after_the_aim_button() -> void:
+func test_the_pose_lets_go_after_the_last_shot_as_it_does_after_the_aim_button() -> void:
 	# Release the aim: the weight falls at once. Release the trigger: it falls after the hold, along
 	# the same curve.
 	var aim_out: Array[float] = []
@@ -173,7 +179,7 @@ func test_the_view_lets_go_after_the_last_shot_as_it_does_after_the_aim_button()
 	_runner.simulate_action_release("aim")
 	for i in 90:
 		await _ticks(1)
-		aim_out.append(_rig.aim_amount())
+		aim_out.append(_animation.aim_weight())
 	await _seconds(1.0)
 	var fire_out: Array[float] = []
 	_runner.simulate_action_press("fire")
@@ -181,7 +187,7 @@ func test_the_view_lets_go_after_the_last_shot_as_it_does_after_the_aim_button()
 	_runner.simulate_action_release("fire")
 	for i in 90 + ceili(_tuning.hip_fire_hold / TICK) + 1:
 		await _ticks(1)
-		fire_out.append(_rig.aim_amount())
+		fire_out.append(_animation.aim_weight())
 	# Where the weight first drops below 95 percent: the same curve, `hold` later.
 	var aim_at := _first_below(aim_out, 0.95)
 	var fire_at := _first_below(fire_out, 0.95)
@@ -203,28 +209,36 @@ func _first_below(weights: Array[float], limit: float) -> int:
 	return -1
 
 
-func test_pressing_the_aim_button_during_a_burst_changes_nothing() -> void:
+func test_pressing_the_aim_button_during_a_burst_does_not_slow_the_pose_and_zooms_the_view(
+) -> void:
 	_turn_view_away()
 	_runner.simulate_action_press("fire")
 	await _seconds(0.1)
-	var weight := _rig.aim_amount()
+	var weight := _animation.aim_weight()
 	assert_float(weight).is_between(0.05, 0.95)
+	assert_float(_rig.camera().fov).is_equal_approx(_tuning.fov, 0.0001)
 	_runner.simulate_action_press("aim")
 	for i in 20:
 		await _ticks(1)
-		assert_float(_rig.aim_amount()).is_greater_equal(weight - 0.0001)
-		weight = _rig.aim_amount()
+		assert_float(_animation.aim_weight()).is_greater_equal(weight - 0.0001)
+		weight = _animation.aim_weight()
 	assert_float(weight).is_equal_approx(1.0, 0.01)
-	# The trigger lets go; the button keeps the aim.
+	# The button's zoom starts at the press, from 60, and reaches 40.
+	assert_float(_rig.camera().fov).is_between(_tuning.fov_aim, _tuning.fov)
+	await _seconds(0.5)
+	assert_float(_rig.camera().fov).is_equal_approx(_tuning.fov_aim, 0.05)
+	# The trigger lets go; the button keeps the aim: pose and view both stay.
 	_runner.simulate_action_release("fire")
 	await _seconds(_tuning.hip_fire_hold + 0.5)
-	assert_float(_rig.aim_amount()).is_equal_approx(1.0, 0.001)
+	assert_float(_animation.aim_weight()).is_equal_approx(1.0, 0.001)
+	assert_float(_rig.camera().fov).is_equal_approx(_tuning.fov_aim, 0.05)
 
 
 func test_the_look_steadiness_follows_only_the_aim_button() -> void:
 	_runner.simulate_action_press("fire")
 	await _seconds(1.0)
-	assert_float(_rig.aim_amount()).is_equal_approx(1.0, 0.01)
+	assert_float(_animation.aim_weight()).is_equal_approx(1.0, 0.01)
+	assert_float(_rig.aim_amount()).is_equal_approx(0.0, 0.001)
 	assert_float(_rig.steady_amount()).is_equal_approx(0.0, 0.001)
 	_runner.simulate_action_press("aim")
 	await _seconds(1.0)
