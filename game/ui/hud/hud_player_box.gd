@@ -37,6 +37,8 @@ var number_text: String:
 var ink := Color.BLACK
 
 var _tokens := UITokens.active()
+var _shown_seat := -1
+var _shown_look: Dictionary = {}
 var _name := HudStyle.clip(HudStyle.label("", HudStyle.SMALL, Color.BLACK, false, 1.0))
 var _number := HudStyle.clip(HudStyle.label("0", HudStyle.MEDIUM, Color.BLACK, true))
 
@@ -102,10 +104,16 @@ func show_player(id: int, member: Dictionary, local: bool) -> void:
 	colour = LookCatalog.armband_colour(seat)
 	ink = ink_for(fill())
 	custom_minimum_size = Vector2(HudStyle.COLUMN, height_for(local))
-	portrait.show_look(member.get("look", {}), seat)
+	# A points change comes here every kill: what did not change is left alone (a portrait builds
+	# a look and its key, a colour override tells the label to lay itself out again).
+	var look_data: Dictionary = member.get("look", {})
+	if seat != _shown_seat or look_data != _shown_look:
+		_shown_seat = seat
+		_shown_look = look_data
+		portrait.show_look(look_data, seat)
 	portrait.downed = downed
-	_name.add_theme_color_override(&"font_color", _tokens.danger if downed else ink)
-	_number.add_theme_color_override(&"font_color", ink)
+	_set_colour(_name, _tokens.danger if downed else ink)
+	_set_colour(_number, ink)
 	HudStyle.set_text(_name, "DOWN" if downed else str(member["name"]).to_upper())
 	HudStyle.set_fitted(
 		_number,
@@ -116,6 +124,12 @@ func show_player(id: int, member: Dictionary, local: bool) -> void:
 	)
 	_layout()
 	queue_redraw()
+
+
+## Sets a label's text colour when it is not already that.
+func _set_colour(label: Label, value: Color) -> void:
+	if label.get_theme_color(&"font_color") != value:
+		label.add_theme_color_override(&"font_color", value)
 
 
 ## The fill of the points box: the seat's colour, or a dark one of it while down.

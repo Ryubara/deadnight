@@ -209,6 +209,8 @@ a second pull request. The browser is the open part: a native driver builds a pr
 
 ## Open
 
+- **Every shot and kill** also cost a frame, for another reason (made and freed in the frame, sounds started):
+  [The lag on every shot and kill](kill-spike.md).
 - **Not covered**: the HUD's own (canvas) shaders and font glyphs for HUD numbers, which the browser run showed no
   links for in 20 s; other players' looks (the wardrobe parts) in a multiplayer night.
 - **Navigation bake**: solved by shipping baked meshes (#348, #335); it was never the long frame (0.5 s, #347). Nothing
