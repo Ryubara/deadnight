@@ -3,7 +3,12 @@ extends MenuPanel
 ## The Loadout tab: the wardrobe's pickers (the customize screen, embedded) beside a showcase
 ## weapon row, with the soldier on the stage showing every change at once. The showcase weapon is
 ## cosmetic: it is what the menu's soldier holds, and a night starts with the starter program
-## whatever is chosen. Leaving the tab without saving puts the saved look back on the stage.
+## whatever is chosen.
+##
+## Every choice on the tab (the wardrobe's parts and colours, the showcase weapon) is held in
+## memory while the tab is open: the wardrobe keeps the working look, `_weapon` the weapon, and the
+## stage shows both. Nothing is written per click. `commit` writes them once, when the player
+## leaves: another tab, a screen the menu opens, or closing the menu (`MenuShell`).
 
 const CUSTOMIZE := "res://ui/screens/customize_screen.tscn"
 
@@ -12,9 +17,12 @@ var wardrobe: CustomizeScreen
 var _weapon_selector: UIOptionSelector
 var _mastery_label: Label
 var _weapons: Array[StringName] = []
+## The showcase weapon chosen on the tab, saved or not yet.
+var _weapon: StringName = MenuHero.DEFAULT_WEAPON
 
 
 func _ready() -> void:
+	_weapon = MenuHero.saved_weapon()
 	var column := VBoxContainer.new()
 	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	column.add_theme_constant_override(&"separation", 14)
@@ -55,20 +63,37 @@ func mastery_text() -> String:
 	return _mastery_label.text
 
 
+## Shows the choices held now (the saved ones when the tab was just opened).
 func refresh() -> void:
 	if _weapon_selector == null:
 		return
-	var saved := MenuHero.saved_weapon()
-	_weapon_selector.select(maxi(_weapons.find(saved), 0), false)
-	_show_mastery(saved)
+	_weapon_selector.select(maxi(_weapons.find(_weapon), 0), false)
+	_show_mastery(_weapon)
+
+
+## The tab is shown again: what was committed on leaving is what is saved, so start from it.
+func on_show() -> void:
+	_weapon = MenuHero.saved_weapon()
+	super.on_show()
 
 
 func on_hide() -> void:
-	# What was not saved does not stay on the stage.
-	if context != null and context.stage != null:
-		context.stage.reload_look()
+	commit()
+
+
+## Whether a choice on the tab is not saved yet.
+func is_dirty() -> bool:
+	return _weapon != MenuHero.saved_weapon() or (wardrobe != null and wardrobe.is_dirty())
+
+
+## Writes every choice held on the tab with one write of the file, and nothing when none changed.
+func commit() -> void:
+	if not is_dirty():
+		return
 	if wardrobe != null and wardrobe.is_dirty():
-		wardrobe.look = wardrobe.saved.duplicate_look()
+		wardrobe.commit()
+	Settings.set_value(SettingsService.SHOWCASE_WEAPON, String(_weapon))
+	Settings.save()
 
 
 func _build_weapon_row() -> Control:
@@ -113,8 +138,10 @@ func _fit_for_fingers() -> void:
 func _on_weapon_selected(index: int) -> void:
 	if index < 0 or index >= _weapons.size():
 		return
-	Settings.set_value(SettingsService.SHOWCASE_WEAPON, String(_weapons[index]))
-	_show_mastery(_weapons[index])
+	_weapon = _weapons[index]
+	_show_mastery(_weapon)
+	if context.stage != null:
+		context.stage.preview_look(wardrobe.look, _weapon)
 
 
 func _show_mastery(weapon: StringName) -> void:
@@ -127,4 +154,4 @@ func _show_mastery(weapon: StringName) -> void:
 
 func _on_look_changed(look: CharacterLook) -> void:
 	if context.stage != null:
-		context.stage.preview_look(look)
+		context.stage.preview_look(look, _weapon)

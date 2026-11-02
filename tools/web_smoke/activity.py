@@ -12,6 +12,11 @@ error instead.
 `--encoding gzip` (default), `identity` and `chunked-gzip` choose how the API answers travel. Before `HttpJson` set
 `accept_gzip = false`, a gzip answer made every call fail with "Could not reach the game's servers" (Godot decoded a body
 the browser had decoded already). The WebSocket to the game server is not covered: it needs a Discord proxy.
+
+`--embed plain|gamepad|denied` loads the Activity in an iframe of another origin (as Discord's client does) without an
+`allow` attribute, with `allow="gamepad"`, or with the Activity's own answer saying `Permissions-Policy: gamepad=()`;
+`--pad` gives the page a virtual gamepad. The run prints what the page's gamepad probe reports and the line the Play
+together screen shows (`GamepadProbe`). A pointer lock is stubbed: the run never takes the real mouse.
 """
 
 from __future__ import annotations
@@ -36,6 +41,8 @@ import rooms
 import smoke
 
 HOST = "123456.discordsays.com"
+# The page around the Activity (Discord's client): another origin, as the iframe the browser client makes.
+PARENT = "discord-client.example"
 PORT = 8443
 KINDS = {
     ".wasm": "application/wasm",
@@ -44,6 +51,14 @@ KINDS = {
     ".png": "image/png",
     ".pck": "application/octet-stream",
 }
+# The page asks for the mouse when a night starts; here nothing is locked.
+NO_POINTER_LOCK = "Element.prototype.requestPointerLock = function () { return Promise.resolve(); };"
+# A pad the page can list, as a browser with a controller plugged in would.
+VIRTUAL_PAD = (
+    "const pad = {id: 'Virtual pad', index: 0, connected: true, mapping: 'standard', timestamp: 1,"
+    " axes: [0, 0, 0, 0], buttons: Array.from({length: 17}, () => ({pressed: false, touched: false, value: 0}))};"
+    "Object.defineProperty(navigator, 'getGamepads', {value: () => [pad, null, null, null]});"
+)
 # What the bridge leaves on the page when it cannot sign in: the game then plays as a guest.
 BRIDGE_STUB = (
     b"window.deadnightDiscord = {ready: true, code: '', error: 'no Discord client here', instanceId: 'emu-1'};"
@@ -67,7 +82,7 @@ def self_signed(folder: Path) -> tuple[Path, Path]:
         .serial_number(x509.random_serial_number())
         .not_valid_before(now - datetime.timedelta(minutes=5))
         .not_valid_after(now + datetime.timedelta(days=1))
-        .add_extension(x509.SubjectAlternativeName([x509.DNSName(HOST)]), critical=False)
+        .add_extension(x509.SubjectAlternativeName([x509.DNSName(HOST), x509.DNSName(PARENT)]), critical=False)
         .sign(key, hashes.SHA256())
     )
     key_file, cert_file = folder / "key.pem", folder / "cert.pem"
@@ -80,7 +95,9 @@ def self_signed(folder: Path) -> tuple[Path, Path]:
     return cert_file, key_file
 
 
-def make_handler(web: str, backend: str, encoding: str, log: list[str]) -> type[BaseHTTPRequestHandler]:
+def make_handler(
+    web: str, backend: str, encoding: str, log: list[str], embed: str, activity_url: str, parent_focus: bool = False
+) -> type[BaseHTTPRequestHandler]:
     cache: dict[str, tuple[int, str, bytes]] = {}
 
     def fetch(url: str, **kwargs) -> tuple[int, dict, bytes]:
@@ -103,6 +120,15 @@ def make_handler(web: str, backend: str, encoding: str, log: list[str]) -> type[
         do_POST = do_OPTIONS = do_GET
 
         def serve(self) -> None:
+            if self.headers.get("host", "").startswith(PARENT):
+                allow = ' allow="gamepad"' if embed == "gamepad" else ""
+                # A text box beside the frame that takes the keyboard focus back every 0.7 s, as a client that keeps it would.
+                chat = '<input id="chat" autofocus style="display:block;margin:4px">' if parent_focus else ""
+                page = (
+                    f'<!doctype html><body style="margin:0"><iframe src="{activity_url}" width="1280" height="720"{allow}>'
+                    f"</iframe>{chat}<script>window.onload=function(){{var c=document.getElementById('chat');if(c)setInterval(function(){{c.focus()}},700)}}</script>"
+                )
+                return self.reply(200, "text/html", page.encode())
             size = int(self.headers.get("content-length") or 0)
             body = self.rfile.read(size) if size else None
             if self.path.startswith("/api"):
@@ -147,6 +173,8 @@ def make_handler(web: str, backend: str, encoding: str, log: list[str]) -> type[
         ):
             self.send_response(status)
             self.send_header("content-type", kind)
+            if embed == "denied" and kind == "text/html":
+                self.send_header("permissions-policy", "gamepad=()")
             if encoding_name:
                 self.send_header("content-encoding", encoding_name)
             if chunked:
@@ -167,37 +195,75 @@ def main() -> int:
     parser.add_argument("backend", help="the platform backend's https address")
     parser.add_argument("out", type=Path)
     parser.add_argument("--encoding", choices=["gzip", "identity", "chunked-gzip"], default="gzip")
+    parser.add_argument(
+        "--embed",
+        choices=["none", "plain", "gamepad", "denied"],
+        default="none",
+        help="load the Activity in an iframe of another origin: plain (no allow attribute), with allow=gamepad, or denied"
+        " (the Activity's own answer says `Permissions-Policy: gamepad=()`, as a host that blocks it would)",
+    )
+    parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="a real window (run it under `gds quiet`): headless Chromium fakes the focus",
+    )
+    parser.add_argument(
+        "--parent-focus",
+        action="store_true",
+        help="the parent page keeps the focus in a text box, then the run clicks in the frame and reports the focus each time",
+    )
+    parser.add_argument("--pad", action="store_true", help="give the page a virtual gamepad (navigator.getGamepads)")
     parser.add_argument("--seconds", type=float, default=120.0, help="how long to wait for the night")
     parser.add_argument("--gpu", action="store_true", help="use the machine's Chrome and GPU")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     log: list[str] = []
+    stages: list[str] = []
     console: list[str] = []
+    # One night for each run: a voice channel's night holds four, and earlier runs sit in the one of an old instance.
+    instance = f"emu-{int(time.time())}"
+    activity_url = f"https://{HOST}/?frame_id=1&instance_id={instance}&guild_id=1&channel_id=1"
     with tempfile.TemporaryDirectory() as folder:
         cert, key = self_signed(Path(folder))
         server = ThreadingHTTPServer(
-            ("127.0.0.1", PORT), make_handler(args.web, args.backend.rstrip("/"), args.encoding, log)
+            ("127.0.0.1", PORT),
+            make_handler(
+                args.web, args.backend.rstrip("/"), args.encoding, log, args.embed, activity_url, args.parent_focus
+            ),
         )
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(str(cert), str(key))
         server.socket = context.wrap_socket(server.socket, server_side=True)
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        flags = [f"--host-resolver-rules=MAP {HOST} 127.0.0.1:{PORT}"]
+        flags = [f"--host-resolver-rules=MAP {HOST} 127.0.0.1:{PORT}, MAP {PARENT} 127.0.0.1:{PORT}"]
         with sync_playwright() as p:
             if args.gpu:
-                browser = p.chromium.launch(channel="chrome", headless=True, args=flags)
+                browser = p.chromium.launch(channel="chrome", headless=not args.headed, args=flags)
             else:
-                browser = p.chromium.launch(headless=True, args=smoke.SOFTWARE_GL + flags)
-            page = browser.new_context(viewport=smoke.VIEWPORT, ignore_https_errors=True).new_page()
+                browser = p.chromium.launch(headless=not args.headed, args=smoke.SOFTWARE_GL + flags)
+            browser_context = browser.new_context(viewport=smoke.VIEWPORT, ignore_https_errors=True)
+            # Never take the real mouse: a pointer lock in headless Chromium on Windows clips the person's cursor.
+            browser_context.add_init_script(NO_POINTER_LOCK)
+            if args.pad:
+                browser_context.add_init_script(VIRTUAL_PAD)
+            page = browser_context.new_page()
             page.on("console", lambda m: console.append(f"[{m.type}] {m.text}"))
-            # One night for each run: a voice channel's night holds four, and earlier runs sit in the one of an old instance.
-            instance = f"emu-{int(time.time())}"
-            page.goto(f"https://{HOST}/?frame_id=1&instance_id={instance}&guild_id=1&channel_id=1", wait_until="commit")
+            if args.embed == "none":
+                page.goto(activity_url, wait_until="commit")
+                frame = page
+            else:
+                page.goto(f"https://{PARENT}/", wait_until="commit")
+                waited = time.monotonic()
+                while len(page.frames) < 2:
+                    if time.monotonic() - waited > 30:
+                        raise SystemExit(f"the parent page never showed the Activity's frame: {page.content()[:300]!r}")
+                    page.wait_for_timeout(200)  # lets Playwright see the frame
+                frame = page.frames[1]
             deadline = time.monotonic() + args.seconds
             state: dict = {}
             failed = ""
             while time.monotonic() < deadline:
-                state = rooms.read_probe(page)
+                state = rooms.read_probe(frame)
                 if state.get("room_code"):
                     break
                 status = str(state.get("room_status", ""))
@@ -205,12 +271,27 @@ def main() -> int:
                     failed = status
                     break
                 time.sleep(1)
-            page.wait_for_timeout(1000)
-            page.screenshot(path=args.out / f"activity_{args.encoding}.png")
+            page.wait_for_timeout(2000)
+            if args.parent_focus and args.embed != "none":
+                probe = "window.deadnightGamepad ? window.deadnightGamepad() : ''"
+                stages.append(
+                    f"before a click: top has focus {page.evaluate('document.hasFocus()')}, frame {frame.evaluate(probe)}"
+                )
+                page.mouse.click(100, 360)  # the empty side of the Activity's frame (CDP input: the real cursor stays)
+                page.wait_for_timeout(1500)
+                stages.append(
+                    f"after a click in the frame: top has focus {page.evaluate('document.hasFocus()')}, frame {frame.evaluate(probe)}"
+                )
+                stages.append(f"line: {rooms.read_probe(frame).get('gamepad', '')}")
+            gamepad = frame.evaluate("window.deadnightGamepad ? window.deadnightGamepad() : ''")
+            note = rooms.read_probe(frame).get("gamepad", "")
+            page.screenshot(path=args.out / f"activity_{args.encoding}_{args.embed}{'_pad' if args.pad else ''}.png")
             browser.close()
         server.shutdown()
     (args.out / "console.txt").write_text("\n".join(console), encoding="utf-8")
     print("\n".join(log))
+    print(chr(10).join(stages))
+    print(f"gamepad page report: {gamepad}\ngamepad note: {note or '(none)'}")
     if state.get("room_code"):
         print(f"{args.encoding}: the Activity is in its night (room {state['room_code']})")
         return 0

@@ -7,6 +7,8 @@ extends RefCounted
 ## A panel asks for a route or an effect: `solo`, `together`, `quick_join`, `settings`,
 ## `credits` or `quit`.
 signal action(id: StringName)
+## Emitted just before `action`: the panel on show writes what it holds before the route leaves.
+signal leaving
 
 var profile := MenuProfile.new()
 ## A `ChallengeBoard` (or anything with the same reads: `dailies()`, `orders()`, `milestones()`,
@@ -18,4 +20,5 @@ var compact := false
 
 
 func request(id: StringName) -> void:
+	leaving.emit()
 	action.emit(id)
