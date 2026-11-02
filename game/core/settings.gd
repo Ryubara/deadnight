@@ -43,6 +43,11 @@ const TOUCH_CONTROLS := &"controls/touch_controls"
 const TOUCH_SCALE := &"controls/touch_scale"
 const TOUCH_OPACITY := &"controls/touch_opacity"
 const HAPTICS := &"controls/haptics"
+## Touch only: how strongly the view is helped toward a zombie (0 is off, 1 the most). `AimAssist`.
+const TOUCH_AIM_ASSIST := &"controls/touch_aim_assist"
+## Touch only: when the trigger pulls itself with the crosshair on a zombie: 0 never, 1 while the
+## Aim button is held, 2 whenever (`TouchAimAssist.AutoFire`). Off: ammunition is limited.
+const TOUCH_AUTO_FIRE := &"controls/touch_auto_fire"
 ## The touch layout flipped for a left hand: the stick on the right, Fire and its buttons on the
 ## left, and the HUD's corner columns swap sides with them.
 const LEFT_HANDED := &"controls/left_handed"
@@ -51,6 +56,12 @@ const LEFT_HANDED := &"controls/left_handed"
 const TOUCH_HINTS_SEEN := &"controls/touch_hints_seen"
 ## The player's character look as JSON (`CharacterLook.to_json`); empty means the default look.
 const CHARACTER_LOOK := &"character/look"
+## The weapon the menu's soldier holds (`WeaponCatalog` id, one that has a model). Cosmetic: a night
+## starts with the starter program whatever is chosen here.
+const SHOWCASE_WEAPON := &"loadout/weapon"
+## The live 3D stage behind the menu: 0 follows the machine (it falls back to a still when frames
+## run long), 1 always live, 2 always a still (`MenuStageQuality`).
+const MENU_SCENE := &"video/menu_scene"
 ## The longest saved text accepted, so a damaged file cannot fill memory.
 const MAX_TEXT := 4096
 
@@ -73,9 +84,13 @@ const DEFAULTS := {
 	TOUCH_SCALE: 1.0,
 	TOUCH_OPACITY: 0.7,
 	HAPTICS: true,
+	TOUCH_AIM_ASSIST: 0.5,
+	TOUCH_AUTO_FIRE: 0,
 	LEFT_HANDED: false,
 	TOUCH_HINTS_SEEN: 0,
 	CHARACTER_LOOK: "",
+	SHOWCASE_WEAPON: "rifle",
+	MENU_SCENE: 0,
 }
 
 ## Allowed range of each numeric value.
@@ -94,7 +109,10 @@ const RANGES := {
 	TOUCH_CONTROLS: Vector2(0, 2),
 	TOUCH_SCALE: Vector2(0.8, 1.4),
 	TOUCH_OPACITY: Vector2(0.3, 1.0),
+	TOUCH_AIM_ASSIST: Vector2(0.0, 1.0),
+	TOUCH_AUTO_FIRE: Vector2(0, 2),
 	TOUCH_HINTS_SEEN: Vector2(0, 255),
+	MENU_SCENE: Vector2(0, 2),
 }
 
 ## The audio bus each volume drives (the layout is `res://default_bus_layout.tres`).

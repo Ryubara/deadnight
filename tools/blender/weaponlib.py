@@ -14,6 +14,7 @@ import math
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
+from palette_import import ensure_import
 
 BEVEL = 0.017  # metres: the kit guns' median chamfer
 ROUGHNESS = 0.415
@@ -68,6 +69,7 @@ def palette_image(path):
     img.filepath_raw = str(path)
     img.file_format = "PNG"
     img.save()
+    ensure_import(path)  # lossless, no mipmaps, Detect 3D off (tools/check_texture_imports.py)
     return img
 
 

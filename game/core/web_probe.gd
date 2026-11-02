@@ -28,6 +28,7 @@ func _ready() -> void:
 	_object = JavaScriptBridge.create_object("Object")
 	JavaScriptBridge.get_interface("window").deadnight = _object
 	add_child(JudderProbe.new())
+	add_child(FlashWebProbe.new())
 
 
 func _process(delta: float) -> void:

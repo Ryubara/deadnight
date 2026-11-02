@@ -233,10 +233,10 @@ func test_a_player_is_as_tall_on_every_screen() -> void:
 		var other: Night = b if id == 1 else a
 		var on_own_screen := _stature(own._body.get_node("Model"))
 		var on_other_screen := _stature((other.avatars.avatar(id) as RemoteAvatars.Avatar).model())
-		var on_server := _stature(_host.server.body_of(id).get_node("Model"))
+		# The server draws nothing: its body has no skeleton to measure (`test_server_bodies.gd`).
+		assert_bool(_host.server.body_of(id).has_model).is_false()
 		assert_float(on_other_screen["height"]).is_equal_approx(on_own_screen["height"], 0.001)
-		assert_float(on_server["height"]).is_equal_approx(on_own_screen["height"], 0.001)
-		for stature: Dictionary in [on_other_screen, on_server]:
+		for stature: Dictionary in [on_other_screen]:
 			var scale: Vector3 = stature["scale"]
 			var want: Vector3 = on_own_screen["scale"]
 			assert_float(scale.x).is_equal_approx(want.x, 0.001)

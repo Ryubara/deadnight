@@ -27,6 +27,9 @@ static var join_as_bot := false
 ## A look to wear instead of the saved one (`--look`, for two windows of one machine that share a
 ## settings file); null wears the saved look.
 static var own_look: CharacterLook
+## Where the player's challenges are kept; empty (tests, captures) counts nothing and writes
+## nothing. The game's root sets it, so only the real game keeps a save.
+static var challenge_path := ""
 
 var night: Night
 
@@ -55,7 +58,10 @@ func _ready() -> void:
 	allow_back = false
 	night = Night.new()
 	night.warm_up = warm_up_enabled
+	night.touch_active = touch_active
 	night.own_look = own_look
+	if challenge_path != "":
+		night.challenge_board = ChallengeBoard.open(challenge_path)
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)
@@ -65,6 +71,7 @@ func _ready() -> void:
 	_touch.state = _hud.state
 	_touch.safe_insets_changed.connect(_on_safe_insets_changed)
 	_touch.mirrored_changed.connect(_on_mirrored_changed)
+	_touch.look_gain = _look_gain
 	add_child(_touch)
 	_build_overlay()
 	night.night_over.connect(_on_night_over)
@@ -124,6 +131,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_pause()
 		get_viewport().set_input_as_handled()
+
+
+## The factor on a touch look drag: the aim assist slows it near a zombie.
+func _look_gain() -> float:
+	return night.assist.friction() if night != null and night.assist != null else 1.0
 
 
 ## A left-handed layout swaps the HUD's corner columns with the buttons.

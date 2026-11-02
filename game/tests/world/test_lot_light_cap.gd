@@ -23,6 +23,7 @@ const LIGHT_SCRIPTS := {
 	"the warm-up's stage, 150 m above the lot, out of reach",
 	"res://ui/components/look_preview.gd": "own world: a viewport of its own",
 	"res://ui/hud/hud_portrait.gd": "own world: a viewport of its own",
+	"res://ui/stage/menu_stage.gd": "own world: the main menu's viewport of its own",
 }
 const LIGHT_SCENES := {
 	"res://world/drive_in_greybox.tscn": "the lot's lamps",

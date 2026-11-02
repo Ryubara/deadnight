@@ -361,54 +361,63 @@ material = ExtResource("screen_face")
 [node name="FenceN0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.000, 1.500, -52.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(24, 3, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceN1" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, -52.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(68, 3, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceN2" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 50.000, 1.500, -52.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(24, 3, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceW0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -50.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 4)
 material = ExtResource("field_fence")
 
 [node name="FenceW1" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -34.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 20)
 material = ExtResource("field_fence")
 
 [node name="FenceW2" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, -12.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 16)
 material = ExtResource("field_fence")
 
 [node name="FenceE0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -50.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 4)
 material = ExtResource("field_fence")
 
 [node name="FenceE1" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -34.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 20)
 material = ExtResource("field_fence")
 
 [node name="FenceE2" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, -12.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 16)
 material = ExtResource("field_fence")
 
@@ -679,24 +688,28 @@ material = ExtResource("field_fence")
 [node name="FenceS_W0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -52.000, 1.200, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(20, 2.4, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceS_W1" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 1.200, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(28, 2.4, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceS_E0" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 24.000, 1.200, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(28, 2.4, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceS_E1" type="CSGBox3D" parent="Field"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 52.000, 1.200, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(20, 2.4, 0.4)
 material = ExtResource("field_fence")
 
@@ -1135,96 +1148,112 @@ material = ExtResource("concession_ground")
 [node name="WallN0" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.550, 2.000, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(2.9, 4, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallN1" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 0.500, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(2.2, 1, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallN2" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 3.200, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(2.2, 1.6, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallN3" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.200, 2.000, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(3.4, 4, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallN4" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 3.300, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(3, 1.4, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallN5" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.200, 2.000, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(3.4, 4, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallN6" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 0.500, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(2.2, 1, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallN7" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 3.200, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(2.2, 1.6, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallN8" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.550, 2.000, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(2.9, 4, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallS0" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.000, 2.000, 8.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(4, 4, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallS1" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -5.000, 3.200, 8.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(2, 1.6, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallS2" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.000, 8.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(8, 4, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallS3" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.000, 3.200, 8.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(2, 1.6, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallS4" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 2.000, 8.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(4, 4, 0.4)
 material = ExtResource("concession_wall")
 
 [node name="WallW0" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.000, 2.000, 2.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 4, 12)
 material = ExtResource("concession_wall")
 
 [node name="WallE0" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.000, 2.000, 2.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 4, 12)
 material = ExtResource("concession_wall")
 
@@ -1357,36 +1386,42 @@ material = ExtResource("midway_ground")
 [node name="FenceW0" type="CSGBox3D" parent="Midway"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 1.300, 6.875)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 2.6, 21.75)
 material = ExtResource("midway_wall")
 
 [node name="FenceW1" type="CSGBox3D" parent="Midway"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 1.300, 30.125)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 2.6, 15.75)
 material = ExtResource("midway_wall")
 
 [node name="FenceE0" type="CSGBox3D" parent="Midway"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 1.300, 6.875)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 2.6, 21.75)
 material = ExtResource("midway_wall")
 
 [node name="FenceE1" type="CSGBox3D" parent="Midway"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 1.300, 30.125)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 2.6, 15.75)
 material = ExtResource("midway_wall")
 
 [node name="AlleyEndW0" type="CSGBox3D" parent="Midway"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -13.000, 1.300, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(6, 2.6, 0.4)
 material = ExtResource("midway_wall")
 
 [node name="AlleyEndE0" type="CSGBox3D" parent="Midway"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.000, 1.300, -4.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(6, 2.6, 0.4)
 material = ExtResource("midway_wall")
 
@@ -1435,60 +1470,70 @@ material = ExtResource("booth_ground")
 [node name="WallS0" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 3.700, 32.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(12, 7.4, 0.4)
 material = ExtResource("booth_wall")
 
 [node name="WallW0" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 3.700, 27.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 7.4, 10)
 material = ExtResource("booth_wall")
 
 [node name="WallE0" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 3.700, 27.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 7.4, 10)
 material = ExtResource("booth_wall")
 
 [node name="WallN0" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.750, 1.800, 22.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(4.5, 3.6, 0.4)
 material = ExtResource("booth_wall")
 
 [node name="WallN1" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 3.100, 22.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(3, 1, 0.4)
 material = ExtResource("booth_wall")
 
 [node name="WallN2" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.750, 1.800, 22.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(4.5, 3.6, 0.4)
 material = ExtResource("booth_wall")
 
 [node name="WallNUpper0" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.250, 5.500, 22.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(3.5, 3.8, 0.4)
 material = ExtResource("booth_wall")
 
 [node name="WallNUpper1" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.100, 22.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(5, 1, 0.4)
 material = ExtResource("booth_wall")
 
 [node name="WallNUpper2" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 6.800, 22.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(5, 1.2, 0.4)
 material = ExtResource("booth_wall")
 
 [node name="WallNUpper3" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.250, 5.500, 22.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(3.5, 3.8, 0.4)
 material = ExtResource("booth_wall")
 
@@ -1596,60 +1641,70 @@ material = ExtResource("yard_ground")
 [node name="FenceE0" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 1.500, 17.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 42)
 material = ExtResource("yard_wall")
 
 [node name="FenceS0" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, 1.200, 38.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(46, 2.4, 0.4)
 material = ExtResource("yard_wall")
 
 [node name="CageN0" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.000, 1.500, 15.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(8, 3, 0.4)
 material = ExtResource("yard_wall")
 
 [node name="CageS0" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.000, 1.500, 21.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(8, 3, 0.4)
 material = ExtResource("yard_wall")
 
 [node name="CageW0" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 1.500, 16.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 2)
 material = ExtResource("yard_wall")
 
 [node name="CageW1" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 2.700, 18.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 0.6, 2)
 material = ExtResource("yard_wall")
 
 [node name="CageW2" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 36.000, 1.500, 20.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 2)
 material = ExtResource("yard_wall")
 
 [node name="CageE0" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 44.000, 1.500, 16.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 2)
 material = ExtResource("yard_wall")
 
 [node name="CageE1" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 44.000, 2.700, 18.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 0.6, 2)
 material = ExtResource("yard_wall")
 
 [node name="CageE2" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 44.000, 1.500, 20.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 2)
 material = ExtResource("yard_wall")
 
@@ -1747,12 +1802,14 @@ material = ExtResource("backlot_ground")
 [node name="FenceW0" type="CSGBox3D" parent="BackLot"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 1.500, 17.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 3, 42)
 material = ExtResource("backlot_wall")
 
 [node name="FenceS0" type="CSGBox3D" parent="BackLot"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -39.000, 1.200, 38.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(46, 2.4, 0.4)
 material = ExtResource("backlot_wall")
 
@@ -1914,42 +1971,49 @@ material = ExtResource("road_ground")
 [node name="FenceS0" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -9.000, 1.300, 38.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(14, 2.6, 0.4)
 material = ExtResource("road_wall")
 
 [node name="FenceS1" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.000, 1.300, 38.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(14, 2.6, 0.4)
 material = ExtResource("road_wall")
 
 [node name="SideW0" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 1.300, 45.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 2.6, 14)
 material = ExtResource("road_wall")
 
 [node name="SideE0" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 1.300, 45.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 2.6, 14)
 material = ExtResource("road_wall")
 
 [node name="BarrierS0" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 0.800, 64.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(124, 1.6, 0.4)
 material = ExtResource("road_wall")
 
 [node name="EndW0" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -62.000, 0.800, 58.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 1.6, 12)
 material = ExtResource("road_wall")
 
 [node name="EndE0" type="CSGBox3D" parent="Road"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 62.000, 0.800, 58.000)
 use_collision = true
+collision_layer = 3
 size = Vector3(0.4, 1.6, 12)
 material = ExtResource("road_wall")
 
