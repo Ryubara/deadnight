@@ -65,12 +65,18 @@ static func snapshot(top: Control) -> Dictionary:
 		"touch": false,
 		"tab": "",
 		"stage": "",
-		"gamepad": ""
+		"gamepad": "",
+		"activity_room": "",
+		"activity_code": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var room := ActivityRoom.current
+	if room != null:
+		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
+		data["activity_code"] = str(room.lobby.get("code", ""))
 	var menu := top as MainMenu
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
