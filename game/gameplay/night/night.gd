@@ -461,6 +461,9 @@ func _tick_remote() -> void:
 				_aim_rig(command)
 	if command != null:
 		# The body moves with the command as the server will read it, not as it was sampled.
+		# The frame the player is looking at: the server judges the shot against it.
+		if state.has_frame():
+			command.view_step = int(state.frame.get("tick", 0)) & 0xFFFF
 		command = NetWire.quantize(command)
 		if _body != null:
 			_body.tick(command.motion)

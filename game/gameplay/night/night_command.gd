@@ -24,6 +24,14 @@ var swap := false
 var origin := Vector3.ZERO
 var dir := Vector3.FORWARD
 var muzzle := Vector3.ZERO
+## The server step of the newest frame the shooter had when this command was made (its low 16 bits
+## travel), which is the world the shot was aimed at: the server judges the shot against the dead
+## where they were then (`LagCompensator`). -1 when the sender does not say (the shot is judged
+## against the present, as in single-player).
+var view_step := -1
+## Set by the server on arrival when `view_step` is: the whole server step it means (see
+## `NightServer.submit`); may be negative early in a night, for a view older than the night.
+var view_tick := 0
 
 
 func to_dict() -> Dictionary:
@@ -40,6 +48,7 @@ func to_dict() -> Dictionary:
 		"origin": origin,
 		"dir": dir,
 		"muzzle": muzzle,
+		"view_step": view_step,
 	}
 
 
@@ -56,4 +65,5 @@ static func from_dict(data: Dictionary) -> NightCommand:
 	command.origin = data.get("origin", Vector3.ZERO)
 	command.dir = data.get("dir", Vector3.FORWARD)
 	command.muzzle = data.get("muzzle", Vector3.ZERO)
+	command.view_step = data.get("view_step", -1)
 	return command
