@@ -179,6 +179,15 @@ What the profile showed:
   Discord Activity cannot send the headers a threaded export needs) and the browser cannot build half a program, so the
   loading cannot be spread over cores; the programs can only be fewer.
 
+**What CI sees, and the gate.** The web job's night load on the runner after the cut: 24.3, 24.7, 29.9, 29.9, 32.1,
+38.8, 41.2, 41.4, 45.3 and 53.3 s over ten runs of `main` in one morning (the pull request's own run: 30.5 s), against 82
+to 107 s before. A shared runner moves the same build by 40 % and more: the 53.3 s run (the commit that added the
+soldier's crawl and revive clips) also took 19.2 s to reach the menu, the slowest of the ten, and the next two runs with
+the same clips took 29.9 and 32.1 s, so it was the runner, not the clips. The smoke fails when the load is more than twice
+`tools/web_smoke/night_load_baseline.json` (36 s, the mean of those runs; 72 s): a first limit of 52 s tripped on noise
+within hours. It catches a return towards the old 82 to 107 s; a rise of tens of percent is read from the recorded
+`loading` numbers of the runs, not gated.
+
 What is left with a GPU is 8 lit `StandardMaterial3D` settings combinations at 1.2 to 2 s each (an alpha-blended lit one,
 a double-sided textured one, the emissive-and-textured one of the soldier and the dead): the next cut is a material that
 looks different, so it is an artist's decision, not made here. `tests/night/test_load_cost.gd` fails when the night

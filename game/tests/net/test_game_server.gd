@@ -266,6 +266,7 @@ func test_the_server_is_set_up_from_its_environment() -> void:
 		"RAILWAY_SERVICE_ID": "abcdef0123456789",
 		"RAILWAY_PUBLIC_DOMAIN": "gs.example.app",
 		"ROOM_CAPACITY": "6",
+		"MAX_ALIVE": "60",
 	}
 	var config := ServerConfig.from_environment(
 		func(key: String) -> String: return env.get(key, "")
@@ -276,6 +277,11 @@ func test_the_server_is_set_up_from_its_environment() -> void:
 	assert_str(config.public_url).is_equal("wss://gs.example.app")
 	assert_str(config.activity_path).is_equal("/server")
 	assert_int(config.capacity).is_equal(6)
+	assert_int(config.max_alive).is_equal(60)
+	# Unset, or not a number, is no cap.
+	env["MAX_ALIVE"] = "lots"
+	var unset := ServerConfig.from_environment(func(key: String) -> String: return env.get(key, ""))
+	assert_int(unset.max_alive).is_equal(0)
 	var alone := ServerConfig.from_environment(func(_key: String) -> String: return "")
 	assert_bool(alone.uses_backend()).is_false()
 	assert_str(alone.problem()).is_equal("")

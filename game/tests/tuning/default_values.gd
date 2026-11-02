@@ -7,6 +7,8 @@ extends RefCounted
 const ZOMBIE_TUNING := {
 	"hard_cap": 40,
 	"repath_interval": 0.25,
+	"repath_far_distance": 14.0,
+	"repath_far_factor": 2.0,
 	"retarget_interval": 0.5,
 	"retarget_margin": 2.0,
 	"waypoint_reach": 0.4,
