@@ -148,6 +148,21 @@ A path variable set from Git Bash on Windows is rewritten (`/server` became `C:/
 server a Godot process of a few hundred MiB; at $10 per GB-month and $20 per vCPU-month that is roughly $3 to $6 a month
 with nobody playing, and a busy night adds a fraction of a core for each room in play.
 
+## Player names
+
+One name per player, the same on every screen of a night (#485).
+
+- **Where it comes from.** A web or desktop player with no saved name is asked on the first Play together ("Skip, call me
+  Guest" is an answer too) and can change it under More in the menu; it is kept in the profile and sent to
+  `POST /auth/guest`. In a Discord Activity the backend reads it from Discord: the player's nickname in the guild the
+  Activity runs in (`guildId` in `POST /auth/discord`, read with the `guilds.members.read` scope), else the global name,
+  else the username. If the player refuses the scope the bridge asks for `identify` alone and the name falls back; the
+  sign-in never fails for a name.
+- **Cleaning (`spikes/backend/src/names.ts`).** Letters, digits, spaces and a few marks only, spaces squeezed, at most
+  24 characters, a basic profanity filter; what is left empty becomes `Guest NNNN`. The backend is the one place that
+  does it: anyone can send anything.
+- **In the night.** The ticket carries the name; see [Names in a night](../design/networking.md#names-in-a-night).
+
 ## Save format
 
 A save is the envelope `{revision, schemaVersion, data}`. `PUT` needs all three; `GET` returns all three (404 when the

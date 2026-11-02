@@ -24,6 +24,14 @@ MultiplayerSynchronizer) and not netfox.
 - **Hosting:** the game server runs as a Docker image on Railway (TCP and WebSockets on its HTTPS domain); the platform
   backend is separate ([research](../research/platform-backend.md)).
 
+## Names in a night
+
+The game server puts the ticket's name on the player's seat, so every client shows the same names (#485). Two seats never
+show the same name in any case of letters: the later one becomes `Ann (2)`, `Ann (3)`, cut to the HUD's 20 characters
+first so the number is never lost. A WELCOME carries every seat's name (`names`: player id to name) so a player who joins
+late or comes back shows everyone at once; the others hear a new name as a `player_named` event. A seat with no name stays
+`PLAYER n`, and the seat keeps its name while the player is away. These are new keys, and the protocol version is 6.
+
 ## Before the night
 
 Players meet in a lobby on the platform backend, which polls rather than pushes and lets a night in progress take
