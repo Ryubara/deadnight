@@ -8,7 +8,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | Workflow | Jobs | Starts when |
 | --- | --- | --- |
 | `ci` | `conventions` (first, seconds, also decides the rest) | every push to a pull request |
-| | `godot`, `web` (about 15 minutes each) | the change touches something they can see |
+| | `godot` (17 to 20 minutes on 2026-11-02, limit 30), `web` (about 15) | the change touches something they can see |
 | | `mkdocs`, `markdownlint`, `actionlint` | their own files changed |
 | | `build-ok` | always: the one required name for the build |
 | `pr` (`pull_request_target`) | `pr-rules` (the four below as steps), `title`, `body`, `docs`, `commits` | every push and every edit of the description |
@@ -68,3 +68,12 @@ ended, cancelled ones included). Now: `ci` (`conventions` and the jobs above, `b
 the `pr` jobs and `labels`; none runs more than half a minute, so it is green in about two minutes where it waited for
 a 15-minute build before. The 15-minute jobs that remain are the ones that were cancelled and restarted on every push:
 a push that fails `conventions` now stops them from starting.
+
+## When the `godot` job looks hung
+
+A job cut at its `timeout-minutes` ends its log on whatever test was running, so the last `STARTED` line names an
+innocent test (#488: `test_night_shot_authority.gd` "hung" 15 ms before GitHub cancelled the job at exactly 20
+minutes; it passes alone and in its folder). Before suspecting the test, compare the cancel time with the job's start
+plus its limit, and list the longest gaps between log timestamps: a real hang leaves a gap of minutes, a cut leaves
+none. The test step has grown to 17 to 20 minutes, so #501 raised the limit to 30; a pull request that adds slow suites
+(real physics frames, about 2 s each case) says so in its description.

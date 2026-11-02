@@ -56,7 +56,9 @@ magnitude).
    they can only shoot where they look. A bot that shoots one way and walks another is superhuman, and the same hole is
    an anti-cheat hole for clients. Fix: the bot derives `dir` from its own yaw and pitch through the camera-rig
    function (`world/drive_in/camera_probe.gd`), and the server checks `dir` against `motion.yaw/pitch`
-   (with #55 and #163).
+   (with #55 and #163). Part done (#488): while it fires, the bot's `yaw` is the ray's heading and its walk is a stick
+   push under that view, because the server's shot now waits for the body to face the view (#477); `dir` is still
+   sent as it aims, not derived from the camera rig.
 **2. No turn-rate limit on the server**: `yaw` may jump any angle in a tick. The bot must limit itself.
 **3. No revive.** `set_downed` is server-only; there is no `revive` action, no bleed-out and no command for it. The
    design says "a downed player can be revived until the round ends" and the simulator models six seconds. Nothing

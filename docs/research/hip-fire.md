@@ -120,8 +120,15 @@ is buffered, and the body faces the view within the tolerance, or the aim button
 body and is unchanged). `NightServer._act` shoots when `shot_ready`, not when the trigger is down. A predicting client
 runs the same simulation from the same commands, so it knows the tick a shot leaves and a replay from an older state
 gets the same ticks (`test_a_replay_from_an_older_state_is_ready_on_the_same_ticks`). Effects stay driven by the
-server's `shot_fired`, so nothing flashes or sounds before the shot exists. Bots are unaffected in practice: they send
-the walking direction as their view, so their body faces it from the first tick they hold the trigger.
+server's `shot_fired`, so nothing flashes or sounds before the shot exists.
+
+**The bot had to look where it shoots.** The Autopilot sent its walking direction as the view (`motion.yaw`) and the
+target as the ray (`dir`), so the gate held its shots for every turn of its path, not of its aim: it took 574 frames to
+make 14 kills where `main` took 464, and the kill-allocation test (`test_kill_allocations.gd`) failed on the extra
+sounds of a slower fight (54 to 66 objects held against a slack of 48). With the gate opened wide the run was `main`'s
+to the frame, so the gate was the cause, not a leak. The bot now looks at what it fires at (`motion.yaw` is the ray's
+heading) and walks as a stick push under that view, as a person strafes: 367 frames, 43 shots for 14 kills (61 on
+`main`, whose body faced the path while it fired across it).
 
 **Proof in the browser** (`tools/web_smoke/hip_fire.py`, scenario 4; software GL, 10 to 15 frames a second, 2026-11-02):
 the view is turned about 167 degrees from the body with the page's own mouse events, then the trigger is tapped (150
