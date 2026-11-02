@@ -96,12 +96,12 @@ func test_stopping_on_purpose_ends_the_episode_too() -> void:
 func test_a_trace_that_creeps_and_stalls_counts_only_the_stalls() -> void:
 	var stuck := BotStuck.new()
 	# One second of progress, one second against a corner, repeated: a second in two is stuck (the
-	# half second it takes to notice counted, the half second it takes to see it move again too).
+	# half second it takes to notice counted, and the metre it must gain to be called free).
 	for _i in 5:
 		_feed(stuck, 1.0, RUN, RUN)
 		_feed(stuck, 1.0, RUN, 0.0)
 	assert_float(stuck.walking_seconds).is_equal_approx(10.0, 0.05)
-	assert_float(stuck.stuck_seconds).is_between(4.0, 5.6)
+	assert_float(stuck.stuck_seconds).is_between(4.0, 6.5)
 	assert_float(stuck.longest()).is_less(1.8)
 	assert_int(stuck.depth_max).is_less_equal(1)
 
@@ -113,4 +113,18 @@ func test_progress_measured_over_a_window_not_a_tick() -> void:
 		stuck.feed(STEP, RUN, 0.2)
 		for _j in 9:
 			stuck.feed(STEP, RUN, 0.0)
+	assert_bool(stuck.stuck).is_false()
+
+
+func test_a_bot_that_shuffles_back_and_forth_along_a_wall_stays_stuck() -> void:
+	var stuck := BotStuck.new()
+	# Half a second one way (2 m a second of progress), half a second back (the same lost): every
+	# window of half a second looks like progress or like loss, never like getting anywhere.
+	for _i in 12:
+		_feed(stuck, 0.5, RUN, 2.0)
+		_feed(stuck, 0.5, RUN, -2.0)
+	assert_bool(stuck.stuck).is_true()
+	assert_int(stuck.depth_max).is_greater_equal(4)
+	# Then it gets free: a metre and more of real progress ends the episode.
+	_feed(stuck, 1.0, RUN, RUN)
 	assert_bool(stuck.stuck).is_false()

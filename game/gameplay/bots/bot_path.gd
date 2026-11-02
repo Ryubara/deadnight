@@ -21,6 +21,8 @@ enum Status { NONE, OK, WAITING, HOLD, UNREACHABLE, NO_GOAL }
 const QUERY_BUDGET := 3.0
 ## Metres past which a path point counts as the one to walk to.
 const LOOK_AHEAD := 0.8
+## Metres short of a look-ahead point at which a wall still lets the bot walk to it.
+const OPEN_SLACK := 0.35
 ## Metres a path point may lie off the straight line to the look-ahead point and still be skipped.
 const CORNER := 0.15
 ## Metres the bot may be off its path before a new one is asked for, and the goal may move.
@@ -53,9 +55,12 @@ var empty_answers := 0
 ## Goals marked unreachable, and doors that dropped the cache.
 var unreachable_marks := 0
 var door_drops := 0
+## Paths made so far: a new one is a new number, so a caller can tell a path from the one before.
+var generation := 0
 ## What the last `ask` came to.
 var last_status := Status.NONE
 
+var _level: BotLevel
 var _last_query := -INF
 var _made_at := -INF
 var _blocked: Dictionary = {}
@@ -64,8 +69,9 @@ var _hold_since := -INF
 var _hold_iteration := 0
 
 
-func _init(p_map: RID = RID()) -> void:
+func _init(p_map: RID = RID(), p_level: BotLevel = null) -> void:
 	map = p_map
+	_level = p_level
 
 
 func has_map() -> bool:
@@ -180,9 +186,24 @@ func direction(here: Vector3) -> Vector3:
 		if _distance_to_segment(points[j], here, points[chosen]) > CORNER:
 			chosen = j
 			break
+	# And never straight at a point something solid stands in front of (a bot knocked off its path
+	# by another player would walk into the car's side): the one before it, and so on back.
+	while chosen > index and not _open_to(here, points[chosen]):
+		chosen -= 1
 	var flat := points[chosen] - here
 	flat.y = 0.0
 	return flat.normalized() if flat.length() > 0.01 else Vector3.ZERO
+
+
+## Whether nothing solid (at knee height) stands between `here` and `to`.
+func _open_to(here: Vector3, to: Vector3) -> bool:
+	if _level == null:
+		return true
+	var flat := Vector3(to.x - here.x, 0.0, to.z - here.z)
+	var length := flat.length()
+	if length < 0.01:
+		return true
+	return _level.room(here, flat / length, length) >= length - OPEN_SLACK
 
 
 ## Metres of path left from `here` to its end.
@@ -234,6 +255,7 @@ func _query(here: Vector3, to: Vector3, now: float) -> Status:
 	points = found
 	goal = to
 	index = 0
+	generation += 1
 	return Status.OK
 
 

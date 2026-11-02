@@ -7,7 +7,7 @@ extends RefCounted
 ##
 ## Stuck means: commanded to walk faster than `MIN_SPEED` and making less than `MIN_PROGRESS`
 ## metres a second of progress over the last `WINDOW` seconds. From then on the ladder climbs one
-## rung every `RUNG_SECONDS` while the bot still makes no progress:
+## rung every `RUNG_SECONDS` until the bot has got `RECOVER_GAIN` metres on its way:
 ##
 ##   1 sidestep    2 repath from scratch to a jittered goal    3 jump while moving
 ##   4 drop the goal    5 walk back along the breadcrumb trail    6 report (`bot_stuck`)
@@ -21,6 +21,9 @@ const MIN_SPEED := 1.0
 const MIN_PROGRESS := 0.25
 ## Seconds of samples the progress is averaged over.
 const WINDOW := 0.5
+## Metres of progress, net, since the episode began that end it: a bot that sidesteps back and
+## forth along a wall makes progress in every window and gets nowhere.
+const RECOVER_GAIN := 1.0
 ## Seconds on a rung before the next.
 const RUNG_SECONDS := 1.5
 const REPORT_RUNG := 6
@@ -45,6 +48,7 @@ var report_due := false
 ## Rungs reached in the current episode, in order (for the report).
 var climbed: Array[int] = []
 
+var _episode_gain := 0.0
 var _samples: Array[Vector2] = []
 var _span := 0.0
 var _gain := 0.0
@@ -69,9 +73,10 @@ func feed(delta: float, speed: float, progress: float) -> int:
 	var slow := full and _gain / _span < MIN_PROGRESS
 	if slow and not stuck:
 		_begin_episode()
-	elif not slow and stuck and full:
+	elif stuck and full and not slow and _episode_gain >= RECOVER_GAIN:
 		_end_episode()
 	if stuck:
+		_episode_gain += progress
 		episode_seconds += delta
 		stuck_seconds += delta
 		rung_age += delta
@@ -105,6 +110,7 @@ func _begin_episode() -> void:
 	rung_age = 0.0
 	# The window that showed it was already time spent not getting anywhere.
 	episode_seconds = _span
+	_episode_gain = _gain
 	stuck_seconds += _span
 	climbed.clear()
 	_note_rung()

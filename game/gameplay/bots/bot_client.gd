@@ -60,6 +60,7 @@ func _init(
 	perception = BotPerception.new(profile, level, rng)
 	motor = BotMotor.new(profile, rng)
 	legs = BotLegs.new(level, rng)
+	legs.seat = state.player_id
 	var fight := BotFightBrain.new(profile, level)
 	fight.legs = legs
 	brain = fight
@@ -158,6 +159,7 @@ func _hosted_command(delta: float) -> NightCommand:
 
 func _think() -> void:
 	var answer: Variant = null
+	perception.beliefs.rays = perception.rays_last
 	if brain_enabled:
 		answer = brain.think(perception.beliefs, state)
 	if not brain_enabled:
@@ -216,6 +218,7 @@ func _track_crew(delta: float) -> void:
 			moved.y = 0.0
 			velocity = before["velocity"].lerp(moved / maxf(delta, 0.0001), 0.5)
 		beliefs.teammates[id] = {
+			"id": id,
 			"pos": player["pos"],
 			"facing": player.get("facing", 0.0),
 			"health": player.get("health", 100.0),
@@ -244,6 +247,7 @@ func _walk(delta: float, me: Dictionary, may_query: bool) -> void:
 	intent.wish = legs.wish
 	intent.sprint = legs.sprint
 	intent.jump = legs.jump
+	intent.pace = legs.pace
 	if legs.path.queries != asked:
 		telemetry.count(&"path_queries", legs.path.queries - asked)
 	_report_legs()

@@ -228,7 +228,7 @@ func _walk(out: NightCommand, intent: BotIntent) -> void:
 		return
 	var heading := atan2(-intent.wish.x, -intent.wish.z)
 	var apart := yaw - heading
-	out.motion.move = Vector2(sin(apart), -cos(apart))
+	out.motion.move = Vector2(sin(apart), -cos(apart)) * clampf(intent.pace, 0.0, 1.0)
 	out.motion.sprint = intent.sprint
 
 

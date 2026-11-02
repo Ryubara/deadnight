@@ -203,26 +203,22 @@ func test_a_place_it_could_not_reach_is_not_chosen_again() -> void:
 
 
 func test_it_never_picks_a_place_inside_a_gap() -> void:
-	# A hall with a corridor leading off it: the corridor is two metres wide, a gap.
-	var rows: Array[String] = [
-		"########",
-		"########",
-		"########",
-		"########",
-		"########",
-		"########",
-		"#       ",
-		"#       ",
-	]
+	# A hall with an alley leading off its south side: two metres wide, a gap all along.
+	var rows: Array[String] = []
+	for _z in 10:
+		rows.append("##########")
+	for _z in 4:
+		rows.append("     #    ")
 	_arena = NavArena.from_rows(rows)
 	await _arena.settle(get_tree())
 	var level := _arena.level()
 	var follow := BotFollow.new(level)
-	# The leader at the mouth of the corridor, near the band, so places in it are candidates.
-	var leader := _person(_arena.centre(0, 5), 0.0)
+	# The leader in the hall just north of the alley's mouth, facing north, so the alley is behind
+	# them: the place a leader's back invites.
+	var leader := _person(_arena.centre(5, 8), 0.0)
 	var people: Array[Dictionary] = [leader]
 	var none: Array[Vector3] = []
-	for start in [Vector3(14.0, 0.0, 2.0), Vector3(12.0, 0.0, 10.0), Vector3(8.0, 0.0, 14.0)]:
+	for start in [Vector3(2.0, 0.0, 2.0), Vector3(18.0, 0.0, 3.0)]:
 		var spot := follow.plan(start, people, none, none, false, Vector3.INF)
-		if spot != Vector3.INF:
-			assert_bool(level.in_passage(spot)).is_false()
+		assert_bool(spot != Vector3.INF).is_true()
+		assert_bool(level.in_passage(spot)).is_false()

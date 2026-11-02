@@ -23,12 +23,21 @@ const SPACING := 2.5
 ## Candidates on the ring: this many directions at each of two radii in the band.
 const DIRECTIONS := 12
 const RADII := 2
-## The best this many by the cheap terms are looked at closely.
-const SHORTLIST := 4
+## The best this many (of the best `LOOKS`) by the cheap terms pass the close look.
+const SHORTLIST := 3
+## The most candidates looked at closely to find that many that pass.
+const LOOKS := 6
+## The tries of the walk toward the people, and the metres each moves the place nearer them.
+const FALLBACK_TRIES := 3
+const FALLBACK_STEP := 1.5
 ## A place held beats a better one by less than this.
 const KEEP_BONUS := 0.7
 ## Points of rating.
+## Seconds of a person's walk the anchor leads by, and the most it leads (metres).
+const LEAD_SECONDS := 0.8
+const LEAD_LIMIT := 4.0
 const W_BAND := 1.5
+const W_MIDDLE := 0.2
 const W_TRAVEL := 0.06
 const W_FRONT := 4.0
 const W_BEHIND := 0.3
@@ -38,6 +47,9 @@ const W_SPACING := 1.2
 const W_LIT := 0.6
 const W_BREACH := 0.5
 const W_PASSAGE := 4.0
+const W_SLOT := 1.2
+## The turn between the slots of two neighbouring bots (radians).
+const SLOT_SPREAD := 0.7
 const W_PASS_THROUGH := 1.0
 ## Metres: the breach range, the leader's line, the leader's body.
 const BREACH_RANGE := 5.0
@@ -66,7 +78,9 @@ static func anchor_of(people: Array[Dictionary]) -> Vector3:
 		if person.get("downed", false):
 			weight += 2.0
 		weight += 1.0 - clampf(float(person.get("health", 100.0)) / 100.0, 0.0, 1.0)
-		sum += (person["pos"] as Vector3) * weight
+		# Where they will be in a moment: the places are for the person, not for where they were.
+		var ahead: Vector3 = (person.get("velocity", Vector3.ZERO) as Vector3) * LEAD_SECONDS
+		sum += ((person["pos"] as Vector3) + ahead.limit_length(LEAD_LIMIT)) * weight
 		total += weight
 	return sum / total if total > 0.0 else Vector3.INF
 
@@ -87,7 +101,9 @@ static func leader_of(people: Array[Dictionary], anchor: Vector3) -> Dictionary:
 ## - `here`: the bot; `people`: who it follows; `others`: the places of the other bots (where they
 ##   stand or are going); `threats`: where the dead are; `fighting`: whether any is near;
 ##   `current`: the place it holds now (`Vector3.INF` for none); `avoid`: `Callable(spot) -> bool`
-##   for places not to take (the ones it could not reach or got stuck going to).
+##   for places not to take (the ones it could not reach or got stuck going to); `slot`: the turn
+##   (radians) from straight behind the leader at which this bot would like to stand, so that the
+##   bots of one team fan out behind a person instead of piling onto the same place.
 func plan(
 	here: Vector3,
 	people: Array[Dictionary],
@@ -95,7 +111,8 @@ func plan(
 	threats: Array[Vector3],
 	fighting: bool,
 	current: Vector3,
-	avoid: Callable = Callable()
+	avoid: Callable = Callable(),
+	slot := 0.0
 ) -> Vector3:
 	var anchor := anchor_of(people)
 	if anchor == Vector3.INF:
@@ -110,24 +127,50 @@ func plan(
 		"others": others,
 		"threat": _nearest(leader["pos"], threats),
 		"band": band,
+		"slot": slot,
 	}
 	if _well_placed(here, context):
 		return Vector3.INF
-	var shortlist := _shortlist(context, current, avoid)
 	var best := Vector3.INF
 	var best_score := -INF
-	for entry in shortlist:
+	var looked := 0
+	var seen := 0
+	for entry in _shortlist(context, current, avoid):
+		if seen >= SHORTLIST or looked >= LOOKS:
+			break
+		# The candidates come best first: when what is left cannot beat the best found even with
+		# every bonus the close look adds, the rest are not looked at.
+		if best_score > entry["score"] + W_LIT + KEEP_BONUS:
+			break
+		looked += 1
 		var spot: Vector3 = entry["spot"]
 		var detail := _close_look(spot, context)
 		if detail == Vector3.INF:
 			continue
+		seen += 1
 		var score: float = entry["score"] + _lit_and_gap(detail)
 		if current != Vector3.INF and _flat(spot, current) < 1.0:
 			score += KEEP_BONUS
 		if score > best_score:
 			best_score = score
 			best = detail
-	return best
+	return best if best != Vector3.INF else _toward_the_people(here, anchor, band, avoid)
+
+
+## No place on the ring is on the mesh and in the leader's sight (a room of walls and props): walk
+## toward the people to the edge of the band, wherever the mesh puts it.
+func _toward_the_people(here: Vector3, anchor: Vector3, band: Vector2, avoid: Callable) -> Vector3:
+	var away := Vector3(here.x - anchor.x, 0.0, here.z - anchor.z)
+	if away.length() <= band.y:
+		return Vector3.INF
+	var radius := band.y - 1.0
+	for _try in FALLBACK_TRIES:
+		var spot := _level.project(anchor + away.normalized() * radius)
+		if not _level.in_passage(spot) and not (avoid.is_valid() and avoid.call(spot)):
+			return spot
+		# Not in a gap, and not where it has been: a little nearer the people.
+		radius -= FALLBACK_STEP
+	return Vector3.INF
 
 
 ## The rating of a place by the cheap terms: higher is better. Public so a test reads the terms.
@@ -136,6 +179,8 @@ func rate(spot: Vector3, context: Dictionary) -> float:
 	var band: Vector2 = context["band"]
 	var distance := _flat(spot, anchor)
 	var score := -W_BAND * maxf(maxf(band.x - distance, distance - band.y), 0.0)
+	# Inside the band the middle is best: a bot at its far edge is a step from being too far.
+	score -= W_MIDDLE * absf(distance - (band.x + band.y) * 0.5)
 	score -= W_TRAVEL * _flat(spot, context["here"])
 	var leader: Vector3 = context["leader"]
 	var from_leader := Vector3(spot.x - leader.x, 0.0, spot.z - leader.z)
@@ -145,6 +190,11 @@ func rate(spot: Vector3, context: Dictionary) -> float:
 			score -= W_FRONT * (dot - FRONT_DOT)
 		elif dot < -0.2:
 			score += W_BEHIND
+	if from_leader.length() > 0.01:
+		var wanted: Vector3 = (-context["forward"] as Vector3).rotated(
+			Vector3.UP, context.get("slot", 0.0)
+		)
+		score -= W_SLOT * (1.0 - from_leader.normalized().dot(wanted))
 	var threat: Vector3 = context["threat"]
 	if threat != Vector3.INF:
 		if _flat(spot, threat) < _flat(leader, threat) - 0.5:
@@ -181,7 +231,7 @@ func _well_placed(here: Vector3, context: Dictionary) -> bool:
 	return not _level.in_passage(here)
 
 
-## The best `SHORTLIST` candidates by the cheap terms: `{spot, score}`, best first.
+## The best `LOOKS` candidates by the cheap terms: `{spot, score}`, best first.
 func _shortlist(context: Dictionary, current: Vector3, avoid: Callable) -> Array[Dictionary]:
 	var anchor: Vector3 = context["anchor"]
 	var band: Vector2 = context["band"]
@@ -199,7 +249,7 @@ func _shortlist(context: Dictionary, current: Vector3, avoid: Callable) -> Array
 			continue
 		scored.append({"spot": spot, "score": rate(spot, context)})
 	scored.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["score"] > b["score"])
-	return scored.slice(0, SHORTLIST)
+	return scored.slice(0, LOOKS)
 
 
 ## The candidate on the mesh and in sight of the leader's side of the world, or `Vector3.INF`.

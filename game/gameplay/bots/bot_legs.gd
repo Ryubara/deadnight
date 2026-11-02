@@ -20,11 +20,24 @@ const RUN_SPEED := 4.8
 const SPRINT_SPEED := 7.0
 ## Metres from a goal at which a bot counts as there, unless the brain says otherwise.
 const ARRIVED := 1.0
+## Players this far (metres) are looked at for a meeting; two that would pass within `MEET` metres
+## of each other inside `AHEAD` seconds meet; inside `APART` metres they are in each other's way
+## whatever their course. `DODGE` is the turn (radians) of the one that gives way.
+const LOOK_FOR := 6.0
+const AHEAD := 1.5
+const MEET := 1.1
+const APART := 1.6
+const DODGE := 0.8
 ## A person this close is given way; or this close and closing in a gap.
 const YIELD_CLOSE := 1.2
 const YIELD_NEAR := 2.5
 ## Closing speed (m/s) that counts as walking at the bot.
 const CLOSING := 0.4
+## Turn (radians) past which the body needs `TURN_GRACE` seconds before it is judged.
+const U_TURN := 1.5
+const TURN_GRACE := 0.6
+## Metres from a curated jump place at which the bot uses it.
+const LINK_REACH := 1.5
 ## Seconds a step out of the way lasts, a sidestep of the ladder, and the gap between two jumps.
 const YIELD_HOLD := 0.6
 const SIDESTEP_SECONDS := 0.6
@@ -39,6 +52,8 @@ const CRUMB_REACHED := 0.8
 const SPRINT_SAFE := 4.0
 ## Decisions put into a stuck report.
 const REPORT_DECISIONS := 20
+## Stuck episodes kept in the record.
+const EPISODES_KEPT := 60
 ## Seconds a dropped goal stays dropped.
 const DROP_SECONDS := 10.0
 ## Seconds between two looks at whether the bot stands in a gap, and how near a person must be.
@@ -49,6 +64,10 @@ const GAP_PEOPLE := 8.0
 var wish := Vector3.ZERO
 var sprint := false
 var jump := false
+## How hard to push the stick, 0 to 1 (a bot slows to let another by).
+var pace := 1.0
+## The seat this bot plays, set by its client: of two bots that meet, the higher seat gives way.
+var seat := 0
 var path: BotPath
 var stuck := BotStuck.new()
 var steering: BotSteering
@@ -60,6 +79,8 @@ var yielded_seconds := 0.0
 var blocking_seconds := 0.0
 ## The goals the ladder dropped, newest last (for the brain to see it must choose another).
 var dropped: Array[Vector3] = []
+## The last stuck episodes: `{at, position, goal, reflex, threat, note, seconds, depth}`.
+var episodes: Array[Dictionary] = []
 
 var _level: BotLevel
 var _rng: RandomNumberGenerator
@@ -71,6 +92,12 @@ var _yield_dir := Vector3.ZERO
 var _rung_seen := 0
 var _jitter := Vector3.ZERO
 var _goal_seen := Vector3.INF
+var _open: Dictionary = {}
+var _heading := Vector3.ZERO
+var _grace := 0.0
+var _last_base := Vector3.ZERO
+var _last_left := NAN
+var _last_generation := 0
 var _may_query := true
 var _gap_timer := 0.0
 var _in_gap := false
@@ -79,7 +106,7 @@ var _in_gap := false
 func _init(level: BotLevel, rng: RandomNumberGenerator) -> void:
 	_level = level
 	_rng = rng
-	path = BotPath.new(level.map)
+	path = BotPath.new(level.map, level)
 	steering = BotSteering.new(level)
 
 
@@ -115,20 +142,19 @@ func step(
 		_idle(here)
 		return
 	var base := _base_direction(here, intent, now)
+	base = _avoid_players(here, base, crew, intent.run)
 	_watch_the_gap(delta, here, base, crew)
 	# Giving way to a person who walks at the bot.
 	var given := _give_way(delta, here, crew)
 	var direction := given if given != Vector3.ZERO else base
-	var progress := 0.0
-	if _last_here != Vector3.INF and base != Vector3.ZERO and given == Vector3.ZERO:
-		var gone := here - _last_here
-		progress = Vector2(gone.x, gone.z).dot(Vector2(base.x, base.z))
+	var progress := _progress(here, base, intent, given)
 	_last_here = here
 	var run_wanted := intent.run
-	var walking := base != Vector3.ZERO and given == Vector3.ZERO
+	var walking := base != Vector3.ZERO and given == Vector3.ZERO and not _turning(delta, base)
 	var rung := stuck.feed(
 		delta, (SPRINT_SPEED if run_wanted else RUN_SPEED) if walking else 0.0, progress
 	)
+	_log_episode(rung, now, here, intent, threat, crew)
 	if rung > 0:
 		direction = _climb(delta, now, here, intent, base)
 		# The third rung sprints when nothing is near.
@@ -139,6 +165,81 @@ func step(
 	if direction != Vector3.ZERO:
 		wish = direction
 		sprint = run_wanted
+
+
+## Metres gained this tick toward where the bot is going. On a path it is the path left to walk
+## (the same path as last tick: a bend in it or a turn of the body does not count against the bot);
+## on a heading it is the way moved along the heading the bot was given last tick (it is what the
+## bot's last command made it do); zero while it gives way.
+func _progress(here: Vector3, base: Vector3, intent: BotIntent, given: Vector3) -> float:
+	var progress := 0.0
+	var on_path := intent.reflex == Vector3.ZERO and not path.points.is_empty()
+	if base != Vector3.ZERO and given == Vector3.ZERO and _last_here != Vector3.INF:
+		var left := path.remaining(here) if on_path else NAN
+		if on_path and path.generation == _last_generation and not is_nan(_last_left):
+			progress = _last_left - left
+		elif _last_base != Vector3.ZERO:
+			var gone := here - _last_here
+			progress = Vector2(gone.x, gone.z).dot(Vector2(_last_base.x, _last_base.z))
+		_last_left = left
+	else:
+		_last_left = NAN
+	_last_base = base if given == Vector3.ZERO else Vector3.ZERO
+	_last_generation = path.generation
+	return progress
+
+
+## Players are solid to each other (a body is stopped by another), so a bot looks ahead for one it
+## would meet: from where both are and how both are moving, the time and the distance of their
+## closest approach. If that is under `MEET` metres inside `AHEAD` seconds, one of the two must go
+## round and the other keeps on: a person never gives way (the bot does), and of two bots the higher
+## seat does, so no two step aside together. The one that gives way turns off by `DODGE` radians to
+## the side the other passes on (to the right if it is dead ahead) and slows if it is close.
+## Inside `APART` metres every player pushes the heading off a little more, whoever gives way.
+func _avoid_players(here: Vector3, base: Vector3, crew: Array[Dictionary], run: bool) -> Vector3:
+	pace = 1.0
+	if base == Vector3.ZERO:
+		return base
+	var mine := base * (SPRINT_SPEED if run else RUN_SPEED)
+	var way := base
+	for other in crew:
+		if other.get("downed", false):
+			continue
+		var to: Vector3 = other["pos"] - here
+		to.y = 0.0
+		var apart := to.length()
+		if apart < 0.01 or apart > LOOK_FOR or base.dot(to / apart) < -0.3:
+			continue
+		var theirs: Vector3 = other.get("velocity", Vector3.ZERO)
+		var gives_way: bool = not other.get("bot", false) or seat > int(other.get("id", 0))
+		if not gives_way:
+			continue
+		var relative := theirs - mine
+		var along := relative.length_squared()
+		var soonest := 0.0 if along < 0.0001 else clampf(-to.dot(relative) / along, 0.0, AHEAD)
+		var closest := (to + relative * soonest).length()
+		if closest >= MEET and apart >= APART:
+			continue
+		var side := signf(base.cross(to).y)
+		if absf(side) < 0.01 or absf(base.cross(to / apart).y) < 0.15:
+			side = 1.0
+		# Away from the side the other passes on: if it is to the left (cross > 0), turn right.
+		way = way.rotated(Vector3.UP, -side * DODGE * clampf(1.5 - apart / LOOK_FOR, 0.5, 1.0))
+		if apart < APART:
+			pace = minf(pace, clampf(apart / APART, 0.4, 1.0))
+	return way.normalized()
+
+
+## Whether the bot is still turning round: a new way more than `U_TURN` radians off the last one
+## (a new goal behind it, a bend) takes the body `TURN_GRACE` seconds to brake and swing round, at a
+## run more, and that is no time to ask whether it is stuck.
+func _turning(delta: float, base: Vector3) -> bool:
+	if _heading != Vector3.ZERO and base != Vector3.ZERO and absf(_heading.angle_to(base)) > U_TURN:
+		_grace = TURN_GRACE
+	if base != Vector3.ZERO:
+		_heading = base
+	_grace = maxf(_grace - delta, 0.0)
+	return _grace > 0.0
 
 
 ## Time spent standing in a gap with a person about, counted every quarter second: the rays that
@@ -195,7 +296,11 @@ func _give_way(delta: float, here: Vector3, crew: Array[Dictionary]) -> Vector3:
 		yielded_seconds += delta
 		return _yield_dir
 	for other in crew:
-		if other.get("bot", false) or other.get("downed", false):
+		# A person is given way always; of two bots, the higher seat gives way to the lower.
+		if (
+			other.get("downed", false)
+			or (other.get("bot", false) and seat < int(other.get("id", 0)))
+		):
 			continue
 		var at: Vector3 = other["pos"]
 		var apart := _flat(here, at)
@@ -213,6 +318,7 @@ func _give_way(delta: float, here: Vector3, crew: Array[Dictionary]) -> Vector3:
 			if heading != Vector3.ZERO:
 				_yield_dir = heading
 				_yield_left = YIELD_HOLD
+				yielded_seconds += delta
 				return _yield_dir
 	return Vector3.ZERO
 
@@ -239,6 +345,10 @@ func _climb(delta: float, now: float, here: Vector3, intent: BotIntent, base: Ve
 				way = _base_direction(here, intent, now)
 		3:
 			jump = fmod(stuck.rung_age, JUMP_EVERY) < delta * 2.0
+			# Near a curated place to jump, it jumps there, the way the place says.
+			var link := _link_near(here)
+			if link != null:
+				way = link.heading()
 		4:
 			if entered:
 				_drop(intent, now)
@@ -255,6 +365,45 @@ func _climb(delta: float, now: float, here: Vector3, intent: BotIntent, base: Ve
 					"episode": stuck.episode_seconds,
 				}
 	return way
+
+
+## Keeps a short record of each stuck episode: where it began, what the bot was doing, how long it
+## lasted, how far up the ladder it got. For a report and for finding where bots get stuck.
+func _log_episode(
+	rung: int, now: float, here: Vector3, intent: BotIntent, threat: float, crew: Array[Dictionary]
+) -> void:
+	if rung > 0 and _open.is_empty():
+		_open = {
+			"at": now,
+			"position": here,
+			"goal": intent.goal,
+			"reflex": intent.reflex != Vector3.ZERO,
+			"threat": threat,
+			"note": intent.note,
+			"nearest_player": _nearest_player(here, crew),
+		}
+	elif rung == 0 and not _open.is_empty():
+		_open["seconds"] = now - float(_open["at"])
+		_open["depth"] = stuck.depth_max
+		episodes.append(_open)
+		if episodes.size() > EPISODES_KEPT:
+			episodes.pop_front()
+		_open = {}
+
+
+func _nearest_player(here: Vector3, crew: Array[Dictionary]) -> float:
+	var best := INF
+	for other in crew:
+		best = minf(best, _flat(here, other["pos"]))
+	return best
+
+
+## The curated jump place the bot stands at, or null.
+func _link_near(here: Vector3) -> BotLink:
+	for link in _level.links:
+		if _flat(here, link.from) <= LINK_REACH:
+			return link
+	return null
 
 
 ## Repath from scratch: from the nearest mesh point, to a goal moved a little by the bot's own

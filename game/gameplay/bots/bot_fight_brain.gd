@@ -18,16 +18,21 @@ const LOW_MAGAZINE := 0.3
 const SWAP_EVERY := 20
 ## How much of the way to the people (or home) bends a retreat (so it circles the field, not a
 ## corner).
-const HOME_BEND := 0.35
+const HOME_BEND := 0.9
 ## Metres from the nearest dead within which the bot counts itself in a fight (the follow band is
 ## the closer one), and the seconds between two looks at where to stand.
 const FIGHT_RANGE := 12.0
-const REPLAN_EVERY := 0.8
+const REPLAN_EVERY := 0.5
 ## Metres the people may have moved before the place is chosen again.
-const ANCHOR_MOVED := 3.0
+const ANCHOR_MOVED := 2.0
 ## Metres beyond the follow band at which a bot hurries (runs) to catch up, if nothing is near.
 const LAG := 0.5
 const RUN_SAFE := 4.0
+## Rays a think may have cast and still plan a place, and the longest a plan is put off (seconds).
+const BUSY_LOOK := 2
+const PLAN_PATIENCE := 1.2
+## Seconds of a teammate's walk counted into the place it will be.
+const PREDICT_SECONDS := 1.0
 
 ## The legs the bot walks on, set by the client: the brain asks them which places are blocked.
 var legs: BotLegs
@@ -158,6 +163,10 @@ func _walk_to_people(
 		or blocked
 		or (_planned_anchor != Vector3.INF and _flat(anchor, _planned_anchor) > ANCHOR_MOVED)
 	)
+	# A think that already cast most of its rays leaves the choice of a place for the next one (a
+	# place is not urgent; the think's cost is, see the page's cost section), but not for long.
+	if due and beliefs.rays > BUSY_LOOK and now - _planned_at < PLAN_PATIENCE:
+		due = false
 	if due:
 		_planned_at = now
 		_planned_anchor = anchor
@@ -166,7 +175,14 @@ func _walk_to_people(
 		if legs != null:
 			avoid = Callable(legs.path, &"is_blocked").bind(now)
 		_spot = _follow.plan(
-			here, people, _bot_places(beliefs), _threat_places(beliefs), fighting, _spot, avoid
+			here,
+			people,
+			_bot_places(beliefs),
+			_threat_places(beliefs),
+			fighting,
+			_spot,
+			avoid,
+			_slot(beliefs)
 		)
 	if _spot != Vector3.INF:
 		intent.goal = _spot
@@ -176,13 +192,29 @@ func _walk_to_people(
 		intent.note = "follow"
 
 
+## Where the other bots are going to be in a moment: where they stand and a second of the way they
+## walk (a bot cannot see where a teammate means to go, only that it is moving).
 func _bot_places(beliefs: BotBeliefs) -> Array[Vector3]:
 	var places: Array[Vector3] = []
 	for id in beliefs.teammates:
 		var mate: Dictionary = beliefs.teammates[id]
 		if mate.get("bot", false) and id != beliefs.me:
-			places.append(mate["pos"])
+			places.append(mate["pos"] + mate["velocity"] * PREDICT_SECONDS)
 	return places
+
+
+## The bot's slot behind a person: the bots of the team (the roster labels them) take their turns in
+## the order of their seats, spread `BotFollow.SLOT_SPREAD` apart round straight behind.
+func _slot(beliefs: BotBeliefs) -> float:
+	var seats: Array[int] = []
+	for id in beliefs.teammates:
+		if beliefs.teammates[id].get("bot", false):
+			seats.append(id)
+	seats.sort()
+	var rank := seats.find(beliefs.me)
+	if rank < 0:
+		return 0.0
+	return (float(rank) - float(seats.size() - 1) * 0.5) * BotFollow.SLOT_SPREAD
 
 
 func _threat_places(beliefs: BotBeliefs) -> Array[Vector3]:

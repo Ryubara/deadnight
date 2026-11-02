@@ -59,7 +59,7 @@ static func start(
 		night.server.rules.tuning.rounds,
 		night.world.map()
 	)
-	night.level.home = Autopilot.HOME
+	LotBotData.fill(night.level, night.world)
 	# The bodies are indexed by the physics server on its next step.
 	await parent.get_tree().physics_frame
 	return night
@@ -87,6 +87,14 @@ func human(id: int) -> HumanWalker:
 	var walker := HumanWalker.new(server, world.map(), id)
 	walkers.append(walker)
 	return walker
+
+
+## Sells `door_id` to player 1 through the rules, as a purchase would: the lot opens it and the
+## navigation takes the mesh of the new set in. Give the engine a few frames (`settle`) after.
+func open_door(door_id: StringName) -> void:
+	server.rules.apply(RulesAction.grant_points(1, 100000))
+	var result := RulesFixture.buy(server.rules, 1, door_id)
+	assert(result == GameRules.BuyResult.OK, "could not buy %s: %d" % [door_id, result])
 
 
 ## Lets the engine take `frames` physics frames (the navigation map takes a new mesh in over a few).

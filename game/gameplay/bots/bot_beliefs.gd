@@ -27,6 +27,8 @@ var blows: Array[Dictionary] = []
 ## its own id in `me`.
 var teammates: Dictionary = {}
 var me := -1
+## Rays the last look cast: how busy this think already was.
+var rays := 0
 var now := 0.0
 
 

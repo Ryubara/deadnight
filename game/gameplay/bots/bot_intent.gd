@@ -20,6 +20,8 @@ var run := false
 var wish := Vector3.ZERO
 var sprint := false
 var jump := false
+## How hard to push the stick, 0 to 1.
+var pace := 1.0
 ## A view yaw to turn toward when there is no target; NAN to keep the view.
 var look_yaw := NAN
 var reload := false
