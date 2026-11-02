@@ -51,6 +51,7 @@ func _ready() -> void:
 	night = Night.new()
 	night.warm_up = warm_up_enabled
 	night.own_look = own_look
+	night.challenge_board = ChallengeBoard.open()
 	add_child(night)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
 	add_child(_hud)

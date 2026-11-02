@@ -65,6 +65,10 @@ var preview: GrenadePreview
 var autopilot: Autopilot
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
+## The player's challenges, set before `start` by the screen a person plays on (bots, captures and
+## tests leave it empty, so they never touch the save). The night counts into it as it plays.
+var challenge_board: ChallengeBoard
+var challenges: ChallengeSession
 ## Ticks run in each physics frame: 1 is real time; a test turns it up to play faster.
 ## (Engine.time_scale would scale the step itself, which is not the same night.)
 var ticks_per_frame := 1
@@ -122,6 +126,7 @@ func start(
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	state = ClientState.new()
 	state.player_id = PLAYER_ID
+	_track_challenges()
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
@@ -163,6 +168,7 @@ func start_remote(
 	var online := p_link if p_link != null else WebSocketLink.new()
 	link = online
 	state = ClientState.new()
+	_track_challenges()
 	var failure := {"reason": ""}
 	var welcome := {}
 	online.welcomed.connect(func(snapshot: Dictionary) -> void: welcome["snapshot"] = snapshot)
@@ -255,6 +261,13 @@ func _last_frame(events: Array) -> Dictionary:
 		if events[i].get("type") == &"frame":
 			return events[i]
 	return {}
+
+
+## Counts the night into the player's challenges, when there is a board to count into.
+func _track_challenges() -> void:
+	if challenge_board != null:
+		challenges = ChallengeSession.new(challenge_board, rules_tuning)
+		challenges.attach(state)
 
 
 ## The view and the sounds, once there is a camera to look through.
@@ -391,6 +404,8 @@ func set_paused(paused: bool) -> void:
 
 func _exit_tree() -> void:
 	running = false
+	if challenges != null:
+		challenges.flush()
 	if server != null:
 		server.close()
 	if remote and link != null:
