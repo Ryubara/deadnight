@@ -116,7 +116,16 @@ game looked finished and a player's throw key did nothing. The wiring, now:
   (14 m/s per second, capped at 8 m/s, so the 7 m/s of a blast in the core slides a zombie 1.75 m). The dying and the
   rising are left alone. The push does not look at walls (the separation push does not either).
 
-## Open
+- **The capture aims at a close blast.** At real size a grenade is small from the shoulder camera, and the capture
+  threw over the far end of the lot. `tests/captures/grenade_throw.tscn` now uses the underarm key (`H`), cooks 1.2 s
+  and tilts the camera while the key is held until the arc the preview draws comes down 6 m away (`_aim_close`), so
+  the pin, the arc and its ring, the grenade in flight, the blast and the zombie thrown back all fill the frame. It
+  keeps the real mouse out of the recording: the body is told `capture_mouse = false` the moment it enters the tree
+  (`node_added`), before its `_ready` would capture the cursor. `test_night_grenades.gd` holds the same throw: a toss
+  goes off within 9 m of the thrower, and a zombie 4 m from the centre gets a `blast_hit` with a stun (shorter than
+  the core's, which is 1.6 s) and an impulse away from the blast.
+
+## Open (not part of #357)
 
 - The crawler's hit zones are the standing zombie's. A crawler is lower than its zones; a separate low `Hitbox` table
   is needed once the zombie behaviour (#17) swaps the mesh.
