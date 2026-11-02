@@ -26,6 +26,11 @@ static func times(clip: StringName, event: StringName) -> Array[float]:
 	return found
 
 
+## Seconds the clip runs, as written in the spec (0 for an unknown clip).
+static func length(clip: StringName) -> float:
+	return float(_load()["clips"].get(String(clip), {}).get("seconds", 0.0))
+
+
 static func _load() -> Dictionary:
 	if _spec.is_empty():
 		_spec = JSON.parse_string(FileAccess.get_file_as_string(SPEC))

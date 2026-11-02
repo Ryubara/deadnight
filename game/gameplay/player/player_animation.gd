@@ -49,6 +49,9 @@ const HOLD_CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
 const SHOULDER_RATE := 14.0
 ## Recoil of a shot dies away at this rate (per second, exponential).
 const RECOIL_RATE := 16.0
+## How fast the tilt of a reload follows its curve, per second: a cancelled reload (a swap) lets the
+## weapon back up in a few frames instead of jumping.
+const RELOAD_FOLLOW := 30.0
 ## The claw hammer the repair puts in the right hand in place of the weapon, on the same mount.
 ## Its hold file sizes it (a tool, larger than the size rule: docs/design/weapon-hold.md); the
 ## grip is the melee one tipped 20 degrees in the hammer's swing plane (about its Z), so the face
@@ -163,6 +166,11 @@ var _hold: WeaponHold
 var _hands: WeaponHandsIK
 var _shoulder_blend := 0.0
 var _recoil := 0.0
+## Seconds of the reload left (0: not reloading), its length, and how far the weapon is tilted down
+## for it now, 0 to 1 (`WeaponHandsIK.reload_dip`).
+var _reload_left := 0.0
+var _reload_length := 1.0
+var _reload_dip := 0.0
 var _action_time := 0.0
 var _move_blend := 0.0
 var _was_on_floor := true
@@ -246,7 +254,24 @@ func _process(delta: float) -> void:
 	_advance_aim_move(follow)
 	_advance_events(delta)
 	_advance_repair(delta)
+	_advance_reload(delta)
 	_advance_shoulder(delta)
+
+
+## The tilt for the reload: down over the first `reload_dip_in` of it, held, up over the last
+## `reload_dip_out`, each a smoothstep.
+func _advance_reload(delta: float) -> void:
+	var target := 0.0
+	if _reload_left > 0.0:
+		_reload_left = maxf(_reload_left - delta, 0.0)
+		var done := 1.0 - _reload_left / _reload_length
+		target = smoothstep(0.0, _tuning.reload_dip_in, done)
+		target *= 1.0 - smoothstep(1.0 - _tuning.reload_dip_out, 1.0, done)
+	_reload_dip = lerpf(_reload_dip, target, 1.0 - exp(-RELOAD_FOLLOW * delta))
+	if _reload_left <= 0.0 and _reload_dip < 0.001:
+		_reload_dip = 0.0
+	_hands.reload_dip = _reload_dip
+	_hands.reload_tilt_deg = _tuning.reload_tilt_degrees
 
 
 ## Into the crouch state when the body crouches on the ground, back to the locomotion when it
@@ -350,8 +375,27 @@ func equip(weapon: StringName) -> void:
 	else:
 		push_error("PlayerAnimation: no weapon or class %s" % weapon)
 		return
+	cancel_reload()
 	_weapon_visible(false)
 	play_action(&"Equip")
+
+
+## The weapon is reloading for `seconds` (the server's `reload_started`): it tilts down, eased, and
+## is back up when they are over, whatever the aim weight is (the tilt is added to the pose the
+## aim weight gives, so a reload while aiming returns to the aim).
+func reload(seconds: float) -> void:
+	_reload_length = maxf(seconds, 0.01)
+	_reload_left = _reload_length
+
+
+## The reload stops (a swap abandons it, the server cancels it too).
+func cancel_reload() -> void:
+	_reload_left = 0.0
+
+
+## How far the weapon is tilted down for the reload now, 0 to 1, for tests.
+func reload_dip() -> float:
+	return _reload_dip
 
 
 ## Plays `<action>_<Class>` (Fire, Reload, Swing, Equip, Unequip) on the upper body. Returns

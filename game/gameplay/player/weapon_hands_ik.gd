@@ -30,6 +30,11 @@ var aim_pitch := 0.0
 ## eases into and out of it and never jumps.
 var converge := 0.0
 var converge_on := Vector3.ZERO
+## How far the weapon is tilted down for a reload, 0 to 1, and the angle of the full tilt in
+## degrees. The pitch is added to the hold's, about the grip, so the pose it tilts from is the
+## aim weight's (hip or aim) and it returns to that pose.
+var reload_dip := 0.0
+var reload_tilt_deg := 35.0
 ## Recoil of the last shot, 0 to 1: the weapon kicks back and up.
 var recoil := 0.0
 ## Metres the weapon kicks back at full recoil, and degrees it kicks up.
@@ -51,7 +56,8 @@ func weapon_target() -> Transform3D:
 	if converge > 0.0:
 		var toward := converge_on - (shoulder + aim * hold.grip_offset)
 		aim = aim.slerp(Basis.looking_at(toward.normalized(), Vector3.UP), minf(converge, 1.0))
-	var raise := Basis(aim.x, deg_to_rad(hold.pitch_offset_deg + recoil * recoil_up_deg))
+	var pitch := hold.pitch_offset_deg + recoil * recoil_up_deg - reload_dip * reload_tilt_deg
+	var raise := Basis(aim.x, deg_to_rad(pitch))
 	var forward_turn := Basis(Vector3.UP, -PI / 2.0)
 	var offset := hold.grip_offset + Vector3(0.0, 0.0, recoil * recoil_back)
 	return Transform3D(raise * aim * forward_turn, shoulder + aim * offset)
