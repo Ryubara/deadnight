@@ -11,6 +11,16 @@ var _object: JavaScriptObject
 var _since := 0.0
 
 
+## Writes `label` into `window.deadnight_marks` with the page's clock, so a browser run can line the
+## frames and the GL programs it recorded up with what the game was doing (the loading steps).
+## Does nothing outside a browser.
+static func mark(label: String) -> void:
+	if not OS.has_feature("web"):
+		return
+	var push := "(window.deadnight_marks = window.deadnight_marks || []).push([%s, performance.now()])"
+	JavaScriptBridge.eval(push % JSON.stringify(label))
+
+
 func _ready() -> void:
 	if not OS.has_feature("web"):
 		set_process(false)

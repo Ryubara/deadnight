@@ -190,6 +190,7 @@ func tick(command: PlayerCommand) -> void:
 	camera_rig.side = state.shoulder_side
 	camera_rig.sprinting = state.sprinting
 	camera_rig.crouching = state.crouching
+	camera_rig.ground_speed = state.ground_speed()
 	camera_rig.track(global_position)
 	if state.jumped:
 		jumped.emit()
