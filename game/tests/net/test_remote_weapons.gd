@@ -396,3 +396,6 @@ func _frame_with(weapon: StringName, aim: bool, pitch: int) -> Dictionary:
 func test_a_client_of_the_version_before_is_refused() -> void:
 	assert_bool(NetWire.accepts(NetWire.VERSION)).is_true()
 	assert_bool(NetWire.accepts(NetWire.VERSION - 1)).is_false()
+	# Version 5 drew the others without a weapon, aim or look: a server of this build refuses it.
+	assert_bool(NetWire.accepts(5)).is_false()
+	assert_int(NetWire.VERSION).is_greater(5)
