@@ -183,6 +183,57 @@ func test_rooms_put_their_crowds_steps_on_alternate_ticks() -> void:
 	assert_array(stepping).is_equal([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
 
+func test_rooms_share_the_processes_alive_budget() -> void:
+	await _start()
+	_server.alive_budget = 100
+	await _client("match-a", "ann")
+	var first := _server.room_of_match("match-a")
+	# A lone room of a desktop client stands the budget (its own ceiling is 120).
+	(
+		assert_bool(await _until(func() -> bool: return first.server.rules.crowd_ceiling == 100))
+		. is_true()
+	)
+	await _client("match-b", "bo")
+	var second := _server.room_of_match("match-b")
+	for room in [first, second]:
+		(
+			assert_bool(
+				await _until(
+					func() -> bool: return (room as NightHost).server.rules.crowd_ceiling == 50
+				)
+			)
+			. is_true()
+		)
+		assert_int((room as NightHost).server.sim.tuning.hard_cap).is_equal(50)
+	# The operator's cap still holds when it is the smaller.
+	first.max_alive = 30
+	first.set_alive_share(first.alive_share)
+	assert_int(first.server.rules.crowd_ceiling).is_equal(30)
+	# A room freed gives its share back.
+	_server._end_room("match-a")
+	(
+		assert_bool(await _until(func() -> bool: return second.server.rules.crowd_ceiling == 100))
+		. is_true()
+	)
+
+
+func test_the_server_takes_three_rooms_and_a_budget_of_120_unless_told() -> void:
+	var config := ServerConfig.from_environment(func(_key: String) -> String: return "")
+	assert_int(config.capacity).is_equal(3)
+	assert_int(config.alive_budget).is_equal(120)
+	var env := {"ALIVE_BUDGET": "90"}
+	var set_up := ServerConfig.from_environment(
+		func(key: String) -> String: return env.get(key, "")
+	)
+	assert_int(set_up.alive_budget).is_equal(90)
+	env["ALIVE_BUDGET"] = "0"
+	var off := ServerConfig.from_environment(func(key: String) -> String: return env.get(key, ""))
+	assert_int(off.alive_budget).is_equal(0)
+	env["ALIVE_BUDGET"] = "lots"
+	var junk := ServerConfig.from_environment(func(key: String) -> String: return env.get(key, ""))
+	assert_int(junk.alive_budget).is_equal(120)
+
+
 func test_a_ticket_that_is_not_good_is_turned_away() -> void:
 	await _start()
 	var good := _ticket("m", "ann")

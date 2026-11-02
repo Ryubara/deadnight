@@ -277,12 +277,13 @@ func _spread(prefix: String, values: Array[float]) -> Dictionary:
 
 ## The process's resident memory in megabytes (Linux; 0 elsewhere).
 func _rss_mb() -> float:
-	var status := FileAccess.get_file_as_string("/proc/self/status")
-	for line in status.split("\n"):
+	# /proc files have no length, so they are read line by line, not as a string.
+	var status := FileAccess.open("/proc/self/status", FileAccess.READ)
+	while status != null and not status.eof_reached():
+		var line := status.get_line()
 		if line.begins_with("VmRSS:"):
-			return snappedf(
-				float(line.get_slice(":", 1).strip_edges().get_slice(" ", 0)) / 1024.0, 0.1
-			)
+			var kilobytes := line.get_slice(":", 1).strip_edges().get_slice(" ", 0)
+			return snappedf(float(kilobytes) / 1024.0, 0.1)
 	return 0.0
 
 

@@ -56,6 +56,9 @@ var match_settings := MatchSettings.new()
 ## The most zombies alive at once in this room's night whatever the players are on; 0 is the rules'
 ## own (`CrowdCeiling.limit`).
 var max_alive := 0
+## This room's share of its process's alive budget (`GameServer.alive_budget` over its rooms); 0 is
+## no share. Set with `set_alive_share`, the smaller of it and `max_alive` caps the crowd.
+var alive_share := 0
 var log_enabled := true
 ## Metres around a player within which the zombies are sent to their client (0: all of them).
 var interest_radius := 0.0
@@ -215,12 +218,28 @@ func _build_night() -> void:
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
 	server.drawn_bodies = false
-	server.crowd.limit = max_alive
+	server.crowd.limit = alive_limit()
 	_events.clear()
 	nights += 1
 	serving = true
 	_log("night_ready", {"night": nights, "seed": chosen})
 	built.emit()
+
+
+## The cap on the crowd from the operator's `max_alive` and this room's share of the process's
+## budget, whichever is smaller; 0 is none.
+func alive_limit() -> int:
+	if max_alive > 0 and alive_share > 0:
+		return mini(max_alive, alive_share)
+	return maxi(max_alive, alive_share)
+
+
+## The process gave this room a new share (a room opened or closed). Takes effect at once: zombies
+## standing are not removed, but no more come until fewer than the new cap stand.
+func set_alive_share(share: int) -> void:
+	alive_share = maxi(share, 0)
+	if server != null:
+		server.crowd.limit = alive_limit()
 
 
 ## The last player left a night that began: a new lot, new rules, a new seed.
