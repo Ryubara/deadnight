@@ -14,6 +14,7 @@ const FINGERPRINT_LENGTH := 16
 @export var barricades: BarricadeTuning = BarricadeTuning.new()
 @export var health: HealthTuning = HealthTuning.new()
 @export var crane: CraneTuning = CraneTuning.new()
+@export var upgrade: UpgradeTuning = UpgradeTuning.new()
 
 
 ## A short hex fingerprint of every number in the table. Two sides with the same fingerprint run the
