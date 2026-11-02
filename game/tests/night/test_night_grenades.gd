@@ -15,6 +15,10 @@ const WIND_TICKS := 30
 const FLIGHT_LIMIT := 600
 ## The break before round one: long enough to throw in, short enough to wait out.
 const INTRO_SECONDS := 1.0
+## An underarm toss goes off within this many metres of the thrower; a zombie this far from the
+## blast's centre is inside the blast but outside its core.
+const CLOSE_BLAST := 9.0
+const EDGE_OFFSET := 4.0
 
 var _night: Night
 var _hud: Hud
@@ -66,6 +70,14 @@ func _play(ticks: int) -> void:
 		# The Soldier follows frames, which a hand-run night has none of: step him by the tick.
 		animation._process(Night.STEP)
 		animation.advance(Night.STEP)
+
+
+## The `blast_hit` that reached zombie `zombie_id`, or empty.
+func _hit_on(zombie_id: int) -> Dictionary:
+	for event in _heard:
+		if event["type"] == &"blast_hit" and event["target_id"] == zombie_id:
+			return event
+	return {}
 
 
 func _count(type: StringName) -> int:
@@ -162,6 +174,36 @@ func test_the_grenade_goes_off_and_kills_a_zombie_beside_it() -> void:
 	assert_int(_count(&"grenade_exploded")).is_equal(1)
 	assert_int(_count(&"blast_hit")).is_greater(0)
 	assert_bool(_night.server.rules.has_zombie(zombie_id)).is_false()
+
+
+func test_a_toss_goes_off_close_and_the_blast_throws_and_stuns_a_zombie_at_its_edge() -> void:
+	var zombie_id := _into_the_round()
+	var body: ZombieBody = _night.server.sim.zombies[zombie_id]
+	_key(KEY_H, true)
+	_play(COOK_TICKS)
+	_key(KEY_H, false)
+	_play(WIND_TICKS)
+	var thrown := _first(&"grenade_thrown")
+	assert_bool(thrown.is_empty()).is_false()
+	if thrown.is_empty():
+		return
+	var blast := _blast_point(thrown)
+	var from := _night.player().global_position
+	assert_float(Vector2(blast.x - from.x, blast.z - from.z).length()).is_less(CLOSE_BLAST)
+	var spot := blast + Vector3(EDGE_OFFSET, -0.1, 0.0)
+	for _i in FLIGHT_LIMIT:
+		if _count(&"grenade_exploded") > 0:
+			break
+		body.position = spot
+		body.velocity = Vector3.ZERO
+		_play(1)
+	var hit := _hit_on(zombie_id)
+	assert_bool(hit.is_empty()).is_false()
+	# The stun falls off with the distance from the blast: shorter than the core's, never none.
+	assert_float(hit.get("stun", 0.0)).is_between(0.1, _night.server.grenades.def.stun_seconds)
+	# Thrown away from the blast, along the ground's direction.
+	var away: Vector3 = hit.get("impulse", Vector3.ZERO)
+	assert_float(away.x).is_greater(0.0)
 
 
 func test_the_view_draws_the_grenade_while_it_flies() -> void:
