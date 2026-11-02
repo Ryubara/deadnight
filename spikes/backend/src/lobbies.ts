@@ -28,8 +28,12 @@ export interface Lobby {
   /** A public night is one Quick join may put a stranger in; a private one is for whoever has its code. */
   visibility: "private" | "public";
   members: Member[];
+  /** When each member was last heard from (create, join, a poll): who is still on the lobby screen. */
+  seen: Map<string, number>;
   /** Players on the game server now, as it last said (null until it has, or before the match starts). */
   players: number | null;
+  /** The round the night is in, as the game server last said (null until it has, or before the match starts). */
+  round: number | null;
   state: "open" | "started";
   match: Match | null;
   createdAt: number;
@@ -62,12 +66,23 @@ export interface LobbyLimits {
   openIdleMs: number;
   /** A started lobby is dropped at this age even when the game server never said its match ended. */
   startedMaxAgeMs: number;
+  /** A member of an open lobby not heard from for this long has gone (a closed tab) while someone else is still there. */
+  memberAwayMs: number;
+  /** Shown as `away` after this long without a poll: a client polls every couple of seconds. */
+  memberQuietMs: number;
 }
 
 /** Most people who may ever hold a seat of one started night (who left is not tracked, only who is there now). */
 export const MAX_SEATS_EVER = 32;
 
-export const DEFAULT_LOBBY_LIMITS: LobbyLimits = { openIdleMs: 10 * 60_000, startedMaxAgeMs: 2 * 60 * 60_000 };
+// A tab in the background stops polling (the game's frames stop), so a host who goes to a chat to paste the invite is
+// quiet for a while: a minute is long enough for that and short enough that a closed tab does not hold a seat for long.
+export const DEFAULT_LOBBY_LIMITS: LobbyLimits = {
+  openIdleMs: 10 * 60_000,
+  startedMaxAgeMs: 2 * 60 * 60_000,
+  memberAwayMs: 60_000,
+  memberQuietMs: 15_000,
+};
 
 export interface LobbyHooks {
   /** Assigns the match to a live game server with room, or returns null. */
@@ -75,7 +90,7 @@ export interface LobbyHooks {
   /** Gives the match's slot back. */
   release(matchId: string): void;
   now?: () => number;
-  limits?: LobbyLimits;
+  limits?: Partial<LobbyLimits>;
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -100,7 +115,7 @@ export class LobbyService {
   constructor(hooks: LobbyHooks) {
     this.hooks = hooks;
     this.now = hooks.now ?? Date.now;
-    this.limits = hooks.limits ?? DEFAULT_LOBBY_LIMITS;
+    this.limits = { ...DEFAULT_LOBBY_LIMITS, ...hooks.limits };
   }
 
   get size(): number {
@@ -134,6 +149,8 @@ export class LobbyService {
       if (this.expired(lobby)) {
         this.remove(lobby);
         dropped++;
+      } else {
+        this.dropAbsent(lobby);
       }
     }
     return dropped;
@@ -152,7 +169,9 @@ export class LobbyService {
       maxPlayers,
       visibility,
       members: [host],
+      seen: new Map([[host.userId, now]]),
       players: null,
+      round: null,
       state: "open",
       match: null,
       createdAt: now,
@@ -173,7 +192,40 @@ export class LobbyService {
       this.remove(lobby);
       throw new LobbyFailure("not_found");
     }
+    this.dropAbsent(lobby);
     return lobby;
+  }
+
+  /**
+   * Members of an open lobby who stopped polling have gone (a closed tab never says so). They leave as if they had
+   * pressed Leave, the host role passing on, but only while someone else is still there: a lobby whose members are all
+   * quiet (every tab in the background) is left to expire as an idle one does, never emptied by this.
+   */
+  private dropAbsent(lobby: Lobby): void {
+    if (lobby.state !== "open") return;
+    const now = this.now();
+    const absent = (m: Member) => now - (lobby.seen.get(m.userId) ?? 0) > this.limits.memberAwayMs;
+    if (lobby.members.every(absent)) return;
+    for (const gone of lobby.members.filter(absent)) this.removeMember(lobby, gone.userId);
+  }
+
+  /** Takes a member out: their place, their seat, and the host role when it was theirs (to the next seat). */
+  private removeMember(lobby: Lobby, userId: string): void {
+    lobby.members = lobby.members.filter((m) => m.userId !== userId);
+    lobby.seen.delete(userId);
+    if (this.openLobbyOf.get(userId) === lobby.id) this.openLobbyOf.delete(userId);
+    if (lobby.hostId === userId && lobby.members.length > 0) lobby.hostId = lobby.members[0]!.userId;
+  }
+
+  /** Whether another player cannot take a seat now: the game server's count once started, the seats before. */
+  isFull(lobby: Lobby): boolean {
+    if (lobby.state === "started") return (lobby.players ?? lobby.members.length) >= lobby.maxPlayers || lobby.members.length >= MAX_SEATS_EVER;
+    return lobby.members.length >= lobby.maxPlayers;
+  }
+
+  /** Whether the member was heard from in the last moments (a client polls every couple of seconds). */
+  isQuiet(lobby: Lobby, userId: string): boolean {
+    return this.now() - (lobby.seen.get(userId) ?? 0) > this.limits.memberQuietMs;
   }
 
   /** A member reads the lobby (a poll): that counts as activity. */
@@ -181,6 +233,7 @@ export class LobbyService {
     const lobby = this.get(id);
     if (!this.isMember(lobby, userId)) throw new LobbyFailure("not_member");
     lobby.lastActiveAt = this.now();
+    lobby.seen.set(userId, lobby.lastActiveAt);
     return lobby;
   }
 
@@ -208,17 +261,17 @@ export class LobbyService {
     if (lobby.members.some((m) => m.userId === member.userId)) return lobby;
     if (lobby.state === "started") {
       // A night in progress takes newcomers while it has room: the game server's own count when it has said one.
-      if ((lobby.players ?? lobby.members.length) >= lobby.maxPlayers || lobby.members.length >= MAX_SEATS_EVER) {
-        throw new LobbyFailure("full");
-      }
+      if (this.isFull(lobby)) throw new LobbyFailure("full");
       lobby.members.push(member);
       lobby.lastActiveAt = this.now();
+      lobby.seen.set(member.userId, lobby.lastActiveAt);
       return lobby;
     }
     if (this.openLobbyOf.has(member.userId)) throw new LobbyFailure("already_in_lobby");
-    if (lobby.members.length >= lobby.maxPlayers) throw new LobbyFailure("full");
+    if (this.isFull(lobby)) throw new LobbyFailure("full");
     lobby.members.push(member);
     lobby.lastActiveAt = this.now();
+    lobby.seen.set(member.userId, lobby.lastActiveAt);
     this.openLobbyOf.set(member.userId, lobby.id);
     return lobby;
   }
@@ -227,11 +280,9 @@ export class LobbyService {
   leave(id: string, userId: string): void {
     const lobby = this.get(id);
     if (!this.isMember(lobby, userId)) throw new LobbyFailure("not_member");
-    lobby.members = lobby.members.filter((m) => m.userId !== userId);
-    if (this.openLobbyOf.get(userId) === lobby.id) this.openLobbyOf.delete(userId);
+    this.removeMember(lobby, userId);
     lobby.lastActiveAt = this.now();
-    if (lobby.members.length === 0) return this.remove(lobby);
-    if (lobby.hostId === userId) lobby.hostId = lobby.members[0]!.userId;
+    if (lobby.members.length === 0) this.remove(lobby);
   }
 
   /** The host starts the match: a game server is allocated and the lobby is closed to newcomers. */
@@ -278,6 +329,13 @@ export class LobbyService {
     const lobbyId = this.byMatch.get(matchId);
     const lobby = lobbyId ? this.lobbies.get(lobbyId) : undefined;
     if (lobby) lobby.players = players;
+  }
+
+  /** The game server's round of a match, from its heartbeat. Unknown matches are ignored. */
+  setRound(matchId: string, round: number): void {
+    const lobbyId = this.byMatch.get(matchId);
+    const lobby = lobbyId ? this.lobbies.get(lobbyId) : undefined;
+    if (lobby) lobby.round = round;
   }
 
   /** The match is over (the game server said so, or stopped listing it): its lobby goes. Unknown ids are ignored. */
