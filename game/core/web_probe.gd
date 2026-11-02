@@ -86,6 +86,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"menu_buttons": "",
 		"tab": "",
 		"stage": "",
+		"quick_join": "",
 		"gamepad": "",
 		"activity_room": "",
 		"activity_code": "",
@@ -123,6 +124,9 @@ static func snapshot(top: Control) -> Dictionary:
 	if menu != null and menu.shell != null:
 		data["tab"] = MenuTab.label(menu.shell.tab)
 		data["stage"] = ["live", "half", "still"][menu.shell.view.level]
+		# Quick join's card over the menu: what it says while it searches or after it failed.
+		var card := menu.find_child("QuickJoin", false, false) as QuickJoinOverlay
+		data["quick_join"] = card.text() if card != null and card.visible else ""
 	var together := top as TogetherScreen
 	if together != null:
 		# What the screen says (a browser test reads it); the code is the lobby screen's.

@@ -27,9 +27,13 @@ static func start(
 ## A night with `players` seated (ids 1 to `players`) and a bot host to put bots on, with no client
 ## of its own (`SeatedNight`). Add the bots with `seat`, run it with `tick` and `run`.
 static func seat(
-	parent: Node, players: int, rules_tuning: RulesTuning = null, seed_value: int = 7
+	parent: Node,
+	players: int,
+	rules_tuning: RulesTuning = null,
+	seed_value: int = 7,
+	shopping: bool = false
 ) -> SeatedNight:
-	return await SeatedNight.start(parent, players, rules_tuning, seed_value)
+	return await SeatedNight.start(parent, players, rules_tuning, seed_value, shopping)
 
 
 ## Runs `count` ticks of a night driven by hand, sending `command` before each one.

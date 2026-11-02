@@ -22,15 +22,17 @@ extends RefCounted
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
 ## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
 ## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
-## held), pitch (the look up or down, `pitch_step`), ammo, reserve, reloading, arms (every weapon
-## carried: id to [ammo, reserve, tier]), points, prompt, reviving (the teammate this one is
-## raising, 0 for none), revive (0 to 1: how far the hold on this one, when downed, has got), ack
-## (the `seq` of the command this step used: a predicting client replays from it), kills, downs,
-## revives, dead (bled out), bleed (seconds a downed player has left) and reviver (who is raising
-## this one, 0 for nobody)}}.
+## held), pitch (the look up or down, `pitch_step`), stance (`PlayerStance` bits), ammo, reserve,
+## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
+## (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one,
+## when downed, has got), ack (the `seq` of the command this step used: a predicting client replays
+## from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player has left) and
+## reviver (who is raising this one, 0 for nobody)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
+## Ticks between the asks which areas the map has taken in (a quarter second).
+const SPAWN_RETRY_TICKS := 15
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
@@ -173,7 +175,6 @@ func _init(
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
 	world.bind(rules)
-	world.doors.door_opened.connect(_on_door_opened)
 	rules.event_emitted.connect(_on_rules_event)
 	crowd.bind(rules, sim)
 
@@ -185,9 +186,6 @@ func close() -> void:
 	director.close()
 	if rules.event_emitted.is_connected(_on_rules_event):
 		rules.event_emitted.disconnect(_on_rules_event)
-	# The lot may already be gone when the whole scene is freed together.
-	if is_instance_valid(world) and world.doors.door_opened.is_connected(_on_door_opened):
-		world.doors.door_opened.disconnect(_on_door_opened)
 
 
 ## The one way in. Returns the events the message caused. `from_id` is the player whose
@@ -274,6 +272,8 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	var began := PerfProbe.begin()
 	_move_players()
 	PerfProbe.end(&"server.move", began)
+	if tick_count % SPAWN_RETRY_TICKS == 0:
+		director.spawn_points = world.spawn_points()
 	began = PerfProbe.begin()
 	director.tick(delta, _chase_targets())
 	PerfProbe.end(&"server.zombies", began)
@@ -439,11 +439,6 @@ func _position_of_zombie(zombie_id: int) -> Vector3:
 
 
 # --- What the rules decided ---
-
-
-## The lot has opened a door (it follows the rules itself): the area behind it joins the spawns.
-func _on_door_opened(_door_id: StringName) -> void:
-	director.spawn_points = world.spawn_points()
 
 
 func _on_rules_event(event: Dictionary) -> void:
@@ -907,6 +902,7 @@ func _frame() -> Dictionary:
 			"weapon": weapon.def.id if weapon != null else &"",
 			"aim": body.state.holds_aim(body.tuning.hip_fire_hold),
 			"pitch": pitch_step(body.state.view_pitch),
+			"stance": PlayerStance.pack(body.state),
 			"ammo": weapon.ammo if weapon != null else 0,
 			"reserve": weapon.reserve if weapon != null else 0,
 			"reloading": weapon != null and weapon.is_reloading(),

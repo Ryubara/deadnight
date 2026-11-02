@@ -22,6 +22,10 @@ TUNING = Path("game/gameplay/rules/default_tuning.tres")
 
 # The map's purchase doors and the shop items (the rules' tuning) that price them. The price and the prerequisite
 # are read from the tuning, so the economy has one source and the map follows it.
+# Metres from a door's slab to the stand in front of it (`NightWorld.door_stands`): inside a hand's reach of the slab
+# (`NightTuning.use_reach`, 3.2) and well clear of the navigation mesh's cut-back from the wall (0.5 a side).
+DOOR_STAND_DISTANCE = 1.5
+
 DOOR_ITEMS = {
     "Door_Concession": "door_concession",
     "Door_GeneratorYard": "door_yard",
@@ -593,9 +597,15 @@ def fuel_stand(name: str, door_id: str, centre: tuple[float, float], yaw: float)
     node(f"Spot{name}", "Marker3D", "FuelSpots", spot)
 
 
-def slab(door_name: str, tag: str, centre, width: float, height: float, axis: str) -> None:
+def slab(door_name: str, tag: str, centre, width: float, height: float, axis: str, from_side: tuple[int, int]) -> None:
+    """One slab of a door, and the stand in front of it: `from_side` is the direction (dx, dz) from the slab to the
+    ground it is bought from (the area that is open before the door). The slab's middle is no place to walk to: the
+    navigation mesh is cut back from a wall on both sides alike, so a goal in the slab snaps to either side, and for
+    the booth's door it snapped to the shut booth (#590). The stand is on the open side, `DOOR_STAND_DISTANCE` out."""
     size = (width, height, 0.3) if axis == "x" else (0.3, height, width)
     box(f"Doors/{door_name}", tag, size, (centre[0], height / 2, centre[1]), "door")
+    at = (centre[0] + from_side[0] * DOOR_STAND_DISTANCE, 0.0, centre[1] + from_side[1] * DOOR_STAND_DISTANCE)
+    marker(f"Doors/{door_name}", f"Stand{tag}", at)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -1006,17 +1016,17 @@ def build() -> None:
     # has one door with a slab in each, so there is no way in that is not the door.
     node("Doors", "Node3D", ".", {"script": 'ExtResource("doors")'})
     door("Door_Concession", (0, 3.3, -6.0))
-    slab("Door_Concession", "Front", (0, -3.6), 3.0, 2.6, "x")
+    slab("Door_Concession", "Front", (0, -3.6), 3.0, 2.6, "x", (0, -1))
     door("Door_GeneratorYard", (40, 3.3, -6.5))
-    slab("Door_GeneratorYard", "Field", (40, -4), 4.0, 2.6, "x")
-    slab("Door_GeneratorYard", "Midway", (16, MIDWAY_LINK_Z), MIDWAY_LINK, 2.6, "z")
+    slab("Door_GeneratorYard", "Field", (40, -4), 4.0, 2.6, "x", (0, -1))
+    slab("Door_GeneratorYard", "Midway", (16, MIDWAY_LINK_Z), MIDWAY_LINK, 2.6, "z", (-1, 0))
     door("Door_ProjectionBooth", (0, 3.3, 19.5))
-    slab("Door_ProjectionBooth", "Front", (0, 22.2), 3.0, 2.6, "x")
+    slab("Door_ProjectionBooth", "Front", (0, 22.2), 3.0, 2.6, "x", (0, -1))
     door("Door_BackLot", (-40, 3.3, -6.5))
-    slab("Door_BackLot", "Field", (-40, -4), 4.0, 2.6, "x")
-    slab("Door_BackLot", "Midway", (-16, MIDWAY_LINK_Z), MIDWAY_LINK, 2.6, "z")
+    slab("Door_BackLot", "Field", (-40, -4), 4.0, 2.6, "x", (0, -1))
+    slab("Door_BackLot", "Midway", (-16, MIDWAY_LINK_Z), MIDWAY_LINK, 2.6, "z", (1, 0))
     door("Door_Road", (0, 3.3, 35.5))
-    slab("Door_Road", "Front", (0, 38), 4.0, 2.6, "x")
+    slab("Door_Road", "Front", (0, 38), 4.0, 2.6, "x", (0, -1))
 
     # --- Circuit switches: a breaker post for each circuit a player can switch ------------------------------------------
     # Each stands where the area's door is bought from, well clear of the door's slabs (a door's prompt is the first

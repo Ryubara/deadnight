@@ -42,7 +42,11 @@ var _probe: WorldProbe
 ## Builds the lot and the server and joins `players`; the night is started but still in its first
 ## break. A seated night is freed with `dispose()`.
 static func start(
-	parent: Node, players: int, rules_tuning: RulesTuning = null, seed_value: int = 7
+	parent: Node,
+	players: int,
+	rules_tuning: RulesTuning = null,
+	seed_value: int = 7,
+	shopping: bool = false
 ) -> SeatedNight:
 	var night := SeatedNight.new()
 	night.world = NightWorld.new()
@@ -62,7 +66,8 @@ static func start(
 		night.server.rules.tuning.rounds,
 		night.world.map()
 	)
-	LotBotData.fill(night.level, night.world)
+	# Bots do errands (shopping, boards, the generator) only when the level gives them the shop.
+	LotBotData.fill(night.level, night.world, night.server.rules.tuning if shopping else null)
 	# The bodies are indexed by the physics server on its next step.
 	await parent.get_tree().physics_frame
 	return night
@@ -247,6 +252,8 @@ static func _snap(point: Vector3) -> Vector3i:
 
 
 func dispose() -> void:
+	# A handler that names the night would keep it alive in a cycle.
+	on_event = Callable()
 	server.close()
 	world.queue_free()
 
