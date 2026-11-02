@@ -20,11 +20,16 @@ func before_test() -> void:
 	_runner = scene_runner(TEST_ROOM)
 	_player = _runner.find_child("Player") as Player
 	_player.capture_mouse = false
+	# The suite ticks the player by hand (PlayerHandStep), not at the physics clock's pace.
+	_player.set_physics_process(false)
 	_rig = _player.camera_rig
 	_tuning = _player.tuning
 	# The camera ease advances by the frame delta (wall time): step it by hand instead.
 	_rig.set_process(false)
 	_player.teleport(START)
+	# The physics server learns of the room's static bodies on its first step: take that one by
+	# the clock, then tick by hand.
+	await get_tree().physics_frame
 	await _ticks(20)
 
 
@@ -35,8 +40,9 @@ func after_test() -> void:
 
 func _ticks(count: int) -> void:
 	for i in count:
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 		_rig.step(TICK, 1.0)
+	await get_tree().process_frame
 
 
 func _seconds(seconds: float) -> void:
@@ -230,14 +236,14 @@ func test_the_same_commands_give_the_same_turn_and_trigger_age() -> void:
 		commands.append(command)
 	for command in commands:
 		_player.submit_command(command)
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 	var first := _player.state.duplicate_state()
 	assert_float(first.fire_age).is_greater(0.5)
 	_player.state.copy_from(start)
 	_player.global_position = start.position
 	for command in commands:
 		_player.submit_command(command)
-		await get_tree().physics_frame
+		PlayerHandStep.tick(_player)
 	assert_float(_player.state.facing).is_equal_approx(first.facing, 0.0001)
 	assert_float(_player.state.fire_age).is_equal_approx(first.fire_age, 0.0001)
 

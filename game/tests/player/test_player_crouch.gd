@@ -47,8 +47,7 @@ func _crouch_run(
 		command.sprint = sprint
 		command.aim = aim
 		command.jump = jump_first and i == 0
-		_player.submit_command(command)
-		await get_tree().physics_frame
+		_step(command)
 		_player.camera_rig.step(TICK, 1.0)
 		_animation._process(TICK)
 		_animation.advance(TICK)
@@ -93,6 +92,7 @@ func test_standing_up_beside_a_wall_is_not_blocked_by_it() -> void:
 	wall.add_child(shape)
 	_player.get_parent().add_child(wall)
 	wall.global_position = _player.global_position + Vector3(0.35 + 0.2 + 0.03, 1.5, 0.0)
+	await _flush_physics()
 	await _crouch_run(Vector2.ZERO, 6)
 	await _crouch_run(Vector2.ZERO, 3, false)
 	assert_bool(_player.state.crouching).is_false()
@@ -137,6 +137,7 @@ func test_jump_is_ignored_while_crouched() -> void:
 
 func test_a_standing_player_is_stopped_by_a_beam_a_crouched_one_walks_under() -> void:
 	_add_beam()
+	await _flush_physics()
 	await _run(Vector2(0.0, -1.0), 120)
 	assert_float(_player.state.position.z).is_greater(FACE_Z)  # stopped at the beam's face
 	_player.teleport(START)
@@ -147,6 +148,7 @@ func test_a_standing_player_is_stopped_by_a_beam_a_crouched_one_walks_under() ->
 
 func test_standing_up_under_a_beam_waits_for_the_way_out() -> void:
 	_add_beam()
+	await _flush_physics()
 	await _crouch_run(Vector2(0.0, -1.0), 130)  # under the beam, crouched
 	assert_float(_player.state.position.z).is_less(FACE_Z - 0.5)
 	await _crouch_run(Vector2.ZERO, 10, false)  # key let go: no room
@@ -161,6 +163,7 @@ func test_standing_up_under_a_beam_waits_for_the_way_out() -> void:
 
 func test_the_crouch_under_a_beam_slows_the_walk_even_with_the_key_up() -> void:
 	_add_beam()
+	await _flush_physics()
 	await _crouch_run(Vector2(0.0, -1.0), 130)
 	await _crouch_run(Vector2(0.0, -1.0), 30, false)
 	assert_float(_player.ground_speed()).is_equal_approx(_tuning.crouch_speed, 0.05)
@@ -170,9 +173,12 @@ func test_the_crouch_under_a_beam_slows_the_walk_even_with_the_key_up() -> void:
 
 
 func test_a_replay_crouches_and_stands_the_same() -> void:
-	# Recorded in physics frames, replayed from a standing start in an idle frame: the stance, the
-	# capsule and the position come out the same, with a beam that holds one crouch.
+	# Recorded in one physics callback, replayed from a standing start in a later one: the stance, the
+	# capsule and the position come out the same, with a beam that holds one crouch. (The idle frame
+	# of a message handler is the reconcile suite's: replayed in one, this test missed by 0.2 to 6 mm
+	# in one run of six, depending on that frame's wall-time delta, which the simulation rescales.)
 	_add_beam()
+	await _flush_physics()
 	var recorded: Array[PackedByteArray] = []
 	var start := _player.state.duplicate_state()
 	for i in 260:
@@ -183,11 +189,10 @@ func test_a_replay_crouches_and_stands_the_same() -> void:
 		command.sprint = i % 70 > 40
 		command.jump = i == 15 or i == 160
 		recorded.append(command.to_bytes())
-		_player.submit_command(command)
-		await get_tree().physics_frame
+		_step(command)
 	var first_end := _player.state.duplicate_state()
 	var first_height := _capsule().height
-	await get_tree().process_frame
+	await _flush_physics()  # the replay is a later physics callback; see the note above
 	_player.state.copy_from(start)
 	_player.global_position = start.position
 	_player.velocity = start.velocity

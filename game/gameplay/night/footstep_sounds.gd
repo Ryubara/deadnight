@@ -53,7 +53,8 @@ var _wired: Dictionary[int, Player] = {}
 var _seconds_per_tick := Night.STEP
 
 
-## `bodies` is `Callable(player_id) -> Player` (null for a player that is only a frame).
+## `bodies` is `Callable(player_id) -> Player` (null for a player that is only a frame; a puppet,
+## which never steps by itself, is only a frame to the feet too).
 func setup(state: ClientState, bodies: Callable, seed_value := 1) -> void:
 	_state = state
 	_bodies = bodies
@@ -82,7 +83,7 @@ func _on_event(event: Dictionary) -> void:
 	var players: Dictionary = event["players"]
 	for id: int in players:
 		var body: Player = _bodies.call(id) if _bodies.is_valid() else null
-		if body != null:
+		if body != null and not body.is_puppet:
 			_wire(id, body)
 			continue
 		var stride: FootStride = _strides.get(id)

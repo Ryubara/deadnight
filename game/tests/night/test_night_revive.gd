@@ -25,7 +25,8 @@ func _start(downed := true) -> Night:
 	night.server.body_of(2).teleport(here + Vector3(1.0, 0.0, 0.0))
 	NightFixture.run(night, 2)
 	if downed:
-		night.server.rules.apply(RulesAction.blow(2, 500.0))
+		# A blow outside a step reaches no client by itself: hand the clients its events.
+		night.state.apply_events(night.server.rules.apply(RulesAction.blow(2, 500.0)))
 	NightFixture.run(night, 2)
 	_events.clear()
 	return night
@@ -120,6 +121,27 @@ func test_a_reviver_who_goes_down_stops_the_channel() -> void:
 		)
 		. is_equal("down")
 	)
+	night.queue_free()
+
+
+func _pose_of(night: Night, player_id: int) -> PlayerAnimation:
+	return night.server.body_of(player_id).get_node(^"AnimationTree") as PlayerAnimation
+
+
+func test_the_bodies_lie_down_kneel_and_get_up_with_the_events() -> void:
+	var night := await _start()
+	var patient := _pose_of(night, 2)
+	var reviver := _pose_of(night, 1)
+	assert_bool(patient.is_downed()).is_true()
+	assert_bool(reviver.is_downed()).is_false()
+	_hold(night, 1.0)
+	assert_bool(reviver.is_reviving()).is_true()
+	_hold(night, 0.2, false)
+	assert_bool(reviver.is_reviving()).is_false()
+	_hold(night, _seconds_needed(night) + 0.5)
+	assert_bool(patient.is_downed()).is_false()
+	_hold(night, 0.5, false)
+	assert_bool(reviver.is_reviving()).is_false()
 	night.queue_free()
 
 

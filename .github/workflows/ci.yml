@@ -75,8 +75,14 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.godot == 'true'
     runs-on: ubuntu-24.04
-    # The suite takes 17 to 20 minutes on a runner: a limit it nearly met cancelled a green run (#501).
-    timeout-minutes: 30
+    # The suite is split over three parallel jobs by test folder (tools/ci_test_shards.py; one job took 15 to 20 minutes,
+    # #524): each shard takes about 7 minutes, and the limit is twice that. The jobs are `godot (1)` to `godot (3)`;
+    # `build-ok` waits for all of them and is the one required name, so the ruleset does not list them.
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -114,6 +120,8 @@ jobs:
           "$godot" --headless --path repos/deadnight/game --import 2>&1 | tee import.log
           ! grep -E "^(SCRIPT )?ERROR" import.log
       - name: Run the main scene
+        # Once per run, not per shard: the same project, the same engine.
+        if: matrix.shard == 1
         run: |
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
@@ -121,6 +129,7 @@ jobs:
           ! grep -E "^(SCRIPT )?ERROR" run.log
 
       - name: Play a night headless
+        if: matrix.shard == 1
         # A night builds the rules, the servers and the sounds; Godot prints a leak as a warning and an ERROR at exit,
         # after the game itself has finished, so only the log shows it.
         run: |
@@ -130,14 +139,17 @@ jobs:
           grep -q "^REPORT" night.log
           ! grep -E "^(SCRIPT )?ERROR|leaked at exit|still in use" night.log
 
-      - name: Run the tests (GdUnit4)
+      - name: Run the tests (GdUnit4), this shard's folders
         # No `-d`: with the debugger attached, the first script error stops the engine at a prompt and the job hangs.
         # `--ignoreHeadlessMode` is needed because GdUnit4 otherwise refuses to run headless; the report folder is
         # uploaded below even when a test fails.
         run: |
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
-          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
+          python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --self-test
+          read -r -a folders < <(python3 repos/deadnight/tools/ci_test_shards.py --root repos/deadnight/game --shard "${{ matrix.shard }}")
+          echo "shard ${{ matrix.shard }}: ${folders[*]}"
+          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
           # Godot prints a leak after the run has finished, so only the log shows it (see the night step).
           ! grep -E "leaked at exit|still in use" tests.log
       - name: List what leaked at exit
@@ -149,7 +161,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: gdunit4-report
+          name: gdunit4-report-${{ matrix.shard }}
           path: |
             repos/deadnight/game/reports
             tests.log

@@ -13,6 +13,9 @@ var _runner: GdUnitSceneRunner
 var _player: Player
 var _tuning: PlayerTuning
 var _yaw := 0.0
+## True for a suite about the engine's own physics callback: it ticks the player at the physics
+## clock (one command per physics frame) instead of by hand.
+var _by_clock := false
 
 
 func before_test() -> void:
@@ -23,8 +26,13 @@ func before_test() -> void:
 	_tuning = _player.tuning
 	_yaw = 0.0
 	_player.get_node("AnimationTree").set_process(false)
+	# The suite ticks the player itself (see `_step`): the engine's own physics frames would add ticks.
+	_player.set_physics_process(_by_clock)
 	_player.camera_rig.set_process(false)
 	_player.teleport(START)
+	# The physics server learns of the room's static bodies on its first step: take that one by
+	# the clock, then tick by hand.
+	await get_tree().physics_frame
 	await _run(Vector2.ZERO, 20)  # settle onto the floor
 
 
@@ -32,6 +40,19 @@ func after_test() -> void:
 	Engine.physics_ticks_per_second = int(
 		ProjectSettings.get_setting("physics/common/physics_ticks_per_second")
 	)
+
+
+## One fixed tick of the player with `command`, now. The tests step the simulation by hand, back to
+## back: waiting a physics frame per tick would tie a test to the clock (60 ticks a second), and
+## the simulation reads nothing but its arguments and the static world (`PlayerSimulation`).
+func _step(command: PlayerCommand) -> void:
+	_player.tick(command)
+
+
+## Lets the physics server take in the bodies a test has just added: it indexes a new body on its
+## next step, which hand ticks do not make. One real physics frame, once per setup and not per tick.
+func _flush_physics() -> void:
+	await get_tree().physics_frame
 
 
 ## Feeds the same command for `ticks` physics ticks.
@@ -43,8 +64,14 @@ func _run(move: Vector2, ticks: int, sprint := false, aim := false, jump_on_firs
 		command.sprint = sprint
 		command.aim = aim
 		command.jump = jump_on_first and i == 0
-		_player.submit_command(command)
-		await get_tree().physics_frame
+		if _by_clock:
+			_player.submit_command(command)
+			await get_tree().physics_frame
+		else:
+			_step(command)
+	if not _by_clock:
+		# One frame for what a frame does (deferred calls), once for the run and not per tick.
+		await get_tree().process_frame
 
 
 func _seconds(move: Vector2, seconds: float, sprint := false, aim := false) -> void:
