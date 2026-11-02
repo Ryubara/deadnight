@@ -145,7 +145,7 @@ Bigger figures (more zombies, four players, the manual run's server log) are in 
 
 - **The Discord proxy.** The server is reached directly; through a Discord Activity it goes through Discord's proxy,
   which waits for the Activity setup ([#287](https://github.com/Ryubara/deadnight/issues/287)).
-- **Reconnect** after a dropped socket ([#53](https://github.com/Ryubara/deadnight/issues/53)), hit rewind
+- Hit rewind
   ([#54](https://github.com/Ryubara/deadnight/issues/54)), the tighter packing of many zombies and projectiles
   ([#57](https://github.com/Ryubara/deadnight/issues/57)), and a lobby that picks the server (the
   [platform backend](platform-backend.md)): a client joins by typing an address.

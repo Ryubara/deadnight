@@ -5,7 +5,8 @@ extends GdUnitTestSuite
 
 const TEST_PATH := "user://settings_hardening_test.cfg"
 
-var _settings: SettingsService
+var _settings: QuietSettings
+var _made: Array[QuietSettings] = []
 
 
 func before_test() -> void:
@@ -17,6 +18,11 @@ func after_test() -> void:
 	get_tree().paused = false
 	_settings.reset_defaults()
 	_settings.apply_all()
+	# A service with an unsaved change writes the file as it is freed: free them first, then the file.
+	for service in _made:
+		if is_instance_valid(service):
+			service.free()
+	_made.clear()
 	_remove_file()
 
 
@@ -61,23 +67,23 @@ func test_set_value_refuses_nan_and_infinity() -> void:
 
 
 func test_window_mode_is_left_alone_in_a_browser() -> void:
-	var spy := _make_spy()
+	var spy := _make()
 	spy.is_web = true
 	spy.set_value(SettingsService.WINDOW_MODE, SettingsService.WindowMode.FULLSCREEN)
-	assert_array(spy.calls).is_empty()
+	assert_array(spy.window_calls).is_empty()
 	assert_int(spy.get_value(SettingsService.WINDOW_MODE)).is_equal(
 		SettingsService.WindowMode.FULLSCREEN
 	)
 
 
 func test_window_mode_reaches_the_window_on_the_desktop() -> void:
-	var spy := _make_spy()
+	var spy := _make()
 	spy.is_web = false
 	spy.set_value(SettingsService.WINDOW_MODE, SettingsService.WindowMode.FULLSCREEN)
 	spy.set_value(SettingsService.WINDOW_MODE, SettingsService.WindowMode.EXCLUSIVE)
 	spy.set_value(SettingsService.WINDOW_MODE, SettingsService.WindowMode.WINDOWED)
 	(
-		assert_array(spy.calls)
+		assert_array(spy.window_calls)
 		. is_equal(
 			[
 				DisplayServer.WINDOW_MODE_FULLSCREEN,
@@ -88,30 +94,9 @@ func test_window_mode_reaches_the_window_on_the_desktop() -> void:
 	)
 
 
-func _make() -> SettingsService:
-	var service := SettingsService.new()
-	service.path = TEST_PATH
-	add_child(service)
-	auto_free(service)
-	return service
-
-
-## Records the window calls instead of making them, so no test touches the real window.
-class SpyService:
-	extends SettingsService
-	var calls: Array[int] = []
-
-	func _set_window_mode(target: DisplayServer.WindowMode) -> void:
-		calls.append(target)
-
-
-func _make_spy() -> SpyService:
-	var service := SpyService.new()
-	service.path = TEST_PATH
-	add_child(service)
-	auto_free(service)
-	# Loading applied the defaults, which is not what the test is about.
-	service.calls.clear()
+func _make() -> QuietSettings:
+	var service := QuietSettings.make(self, TEST_PATH)
+	_made.append(service)
 	return service
 
 

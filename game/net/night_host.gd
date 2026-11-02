@@ -15,6 +15,9 @@ extends Node
 
 signal player_joined(player_id: int)
 signal player_left(player_id: int)
+## A player's socket dropped and the seat is held for them; and they came back on a new one.
+signal player_away(player_id: int)
+signal player_resumed(player_id: int)
 
 const MAX_PLAYERS := 4
 ## A TICK goes out every this many steps: 2 is 30 a second at the 60 Hz step.
@@ -27,6 +30,9 @@ const STATS_EVERY := 10.0
 const MAX_CONNECTIONS := 16
 ## Seconds a connection has to say hello before it is hung up on.
 const HELLO_WITHIN := 10.0
+## Seconds the seat of a player whose socket dropped is held, standing still in the lot, for them
+## to come back with their resume token.
+const RESUME_WITHIN := 30.0
 
 ## Set before the node enters the tree.
 var port := NetWire.DEFAULT_PORT
@@ -36,6 +42,8 @@ var rules_tuning: RulesTuning
 var log_enabled := true
 ## Seconds a connection has to say hello (`HELLO_WITHIN`; a test sets it shorter).
 var hello_within := HELLO_WITHIN
+## Seconds a dropped player's seat is held (`RESUME_WITHIN`); 0 frees it at once.
+var resume_within := RESUME_WITHIN
 ## The place to say who may join: called with `(transport_id: int, version: int)` once a client
 ## has said hello with a version this build takes, it returns 0 to let the client in or a
 ## `NetWire.Refusal` to turn it away. Unset, everyone is let in (the platform backend's ticket check
@@ -58,6 +66,8 @@ var kicked_count := 0
 
 var _peers: Dictionary[int, HostPeer] = {}
 var _by_player: Dictionary[int, HostPeer] = {}
+## Players whose socket dropped, by id: their seat, kept until they come back or the time is up.
+var _away: Dictionary[int, Away] = {}
 var _events: Array[Dictionary] = []
 var _stats_at := 0.0
 var _stats_bytes := 0
@@ -103,14 +113,20 @@ func _physics_process(_delta: float) -> void:
 	_stats_work += spent
 	_close_refused()
 	_close_silent()
+	_expire_away()
 	_stats_steps += 1
 	_log_stats()
-	if _peers.is_empty() and nights > 0 and _night_began():
+	if _peers.is_empty() and _away.is_empty() and nights > 0 and _night_began():
 		_rebuild()
 
 
 func player_count() -> int:
 	return _by_player.size()
+
+
+## Players whose seat is held while their socket is down.
+func away_count() -> int:
+	return _away.size()
 
 
 ## Whether the first player has arrived and started the night.
@@ -159,10 +175,38 @@ func _on_disconnected(transport_id: int) -> void:
 	if peer == null or peer.player_id == 0:
 		return
 	_by_player.erase(peer.player_id)
+	var on_purpose := listener.left_on_purpose(transport_id)
+	if (
+		server != null
+		and resume_within > 0.0
+		and not peer.kicked
+		and not on_purpose
+		and _night_began()
+	):
+		# The body stays where it is, with no commands coming (it stands still after a moment);
+		# the player takes it back with the token, or the time runs out.
+		_away[peer.player_id] = Away.new(peer.token, _now() + resume_within)
+		_log("away", {"player": peer.player_id, "players": _by_player.size()})
+		player_away.emit(peer.player_id)
+		return
+	_free_seat(peer.player_id)
+
+
+## Frees a seat for good: the body leaves the lot and the id can be given to someone new.
+func _free_seat(player_id: int) -> void:
+	_away.erase(player_id)
 	if server != null:
-		_collect(server.apply({"type": NightServer.LEAVE, "player_id": peer.player_id}))
-	_log("left", {"player": peer.player_id, "players": _by_player.size()})
-	player_left.emit(peer.player_id)
+		_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
+	_log("left", {"player": player_id, "players": _by_player.size()})
+	player_left.emit(player_id)
+
+
+func _expire_away() -> void:
+	var now := _now()
+	for player_id in _away.keys():
+		if now >= _away[player_id].until:
+			_log("expired", {"player": player_id})
+			_free_seat(player_id)
 
 
 func _on_packet(transport_id: int, data: PackedByteArray) -> void:
@@ -200,26 +244,68 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	if peer.player_id != 0 or peer.refused:
 		_fault(peer)
 		return
-	if not NetWire.accepts(data[1]):
+	var hello := NetWire.read_hello(data)
+	if not NetWire.accepts(hello["version"]):
 		_refuse(peer, NetWire.Refusal.VERSION)
 		return
 	if admit.is_valid():
-		var verdict: int = admit.call(peer.transport_id, data[1])
+		var verdict: int = admit.call(peer.transport_id, hello["version"])
 		if verdict != 0:
 			_refuse(peer, verdict as NetWire.Refusal)
 			return
+	var resumed := _claim_seat(hello["token"])
+	if resumed != 0:
+		_resume(peer, resumed)
+		return
 	var player_id := _free_player_id()
 	if player_id == 0:
 		_refuse(peer, NetWire.Refusal.FULL)
 		return
 	peer.player_id = player_id
+	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	_by_player[player_id] = peer
 	_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
-	listener.send(peer.transport_id, NetWire.welcome(player_id, _hz(), server.rules.to_dict()))
+	listener.send(
+		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, server.rules.to_dict())
+	)
 	_log("joined", {"player": player_id, "players": _by_player.size()})
 	player_joined.emit(player_id)
+
+
+## The id of the player this token is the seat of, taken from the held seats or (a client that
+## came back before the server noticed its old socket was dead) from a live connection, which is
+## hung up on; 0 when it is no one's.
+func _claim_seat(token: PackedByteArray) -> int:
+	if token.size() != NetWire.TOKEN_SIZE:
+		return 0
+	for player_id in _away:
+		if _away[player_id].token == token:
+			return player_id
+	for player_id in _by_player:
+		var old := _by_player[player_id]
+		if old.token == token:
+			old.player_id = 0
+			_by_player.erase(player_id)
+			listener.disconnect_peer(old.transport_id)
+			return player_id
+	return 0
+
+
+## The player comes back on this connection: the same body, a new token, the rules as they are
+## now and the looks again. The first frame it gets is whole (`last_frame` is empty).
+func _resume(peer: HostPeer, player_id: int) -> void:
+	_away.erase(player_id)
+	peer.player_id = player_id
+	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
+	_by_player[player_id] = peer
+	listener.send(
+		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, server.rules.to_dict())
+	)
+	_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
+	_log("resumed", {"player": player_id, "players": _by_player.size()})
+	player_resumed.emit(player_id)
 
 
 ## A refused client is given a moment to read why and hang up itself; then we do.
@@ -274,7 +360,7 @@ func _close_refused() -> void:
 
 func _free_player_id() -> int:
 	for id in range(1, MAX_PLAYERS + 1):
-		if not _by_player.has(id):
+		if not _by_player.has(id) and not _away.has(id):
 			return id
 	return 0
 
@@ -339,6 +425,18 @@ func _log(event: String, fields: Dictionary = {}) -> void:
 	print(JSON.stringify(line))
 
 
+## A seat held for a player whose socket dropped.
+class Away:
+	extends RefCounted
+	var token: PackedByteArray
+	## When the seat is given up (the host's clock, seconds).
+	var until: float
+
+	func _init(p_token: PackedByteArray, p_until: float) -> void:
+		token = p_token
+		until = p_until
+
+
 ## One connection to the server.
 class HostPeer:
 	extends RefCounted
@@ -354,6 +452,8 @@ class HostPeer:
 	## When the connection opened (seconds), for the time it has to say hello.
 	var connected_at := 0.0
 	var limits := PeerLimits.new()
+	## What the client was given at WELCOME to take its seat back with.
+	var token := PackedByteArray()
 
 	func _init(p_transport_id: int, now: float = 0.0) -> void:
 		transport_id = p_transport_id
