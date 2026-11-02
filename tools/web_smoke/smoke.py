@@ -34,8 +34,9 @@ VIEWPORT = {"width": 1280, "height": 720}
 LOAD_TIMEOUT_S = 150
 SCREEN_TIMEOUT_S = 40
 # Play builds the lot and warms up everything the night draws before it runs (docs/research/first-use-hitches.md):
-# about 31 s in Chrome with a GPU, far more with a software renderer.
-NIGHT_LOAD_TIMEOUT_S = 150
+# about 31 s in Chrome with a GPU, far more with a software renderer: 82 to 107 s on CI's runners (#509), so the wait is
+# about three times the usual and a slow runner does not turn main red.
+NIGHT_LOAD_TIMEOUT_S = 300
 NIGHT_SECONDS = 45
 WALK_LEG_S = 4.0
 WALK_KEYS = ("w", "d", "s", "a")  # a square, so the player does not stand facing one wall
