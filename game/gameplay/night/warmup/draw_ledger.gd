@@ -70,6 +70,11 @@ static func strings_of(root: Node) -> Dictionary[String, int]:
 	return found
 
 
+## What one node draws with, as strings (`kind|material`), without the nodes below it.
+static func keys_of(node: GeometryInstance3D) -> Array[String]:
+	return _geometry(node)
+
+
 static func _light(light: Light3D) -> String:
 	var kind := (
 		"omni" if light is OmniLight3D else ("spot" if light is SpotLight3D else "directional")
