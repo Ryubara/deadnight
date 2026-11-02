@@ -13,28 +13,43 @@ $godot --headless --path game --import                                  # once, 
 
 ## Playing online today
 
-A game server runs on Railway (project `gdstudio-net-test`, service `deadnight-server`), and every merge to `main` deploys
-it next to the web build. To play:
+The game has rooms: nobody types an address. The platform backend (project `gdstudio-net-test`, service `backend`, with
+Postgres) makes the nights and the game servers (`deadnight-server`) run them, one process hosting several nights
+(see [Platform backend](platform-backend.md#rooms-the-game-and-the-backend-together)). To play:
 
 1. Open the web build, <https://web-production-f401d1.up.railway.app>, and wait for the menu.
-2. Choose **Join** (the second item). The address field already holds
-   **`wss://deadnight-server-production.up.railway.app`** on the web; on the desktop type it (the field starts at
-   `ws://localhost:8910`, this machine's own server).
-3. Press **Join**. The first player to arrive starts the night, up to four share it, and a player who comes later joins
-   it where it is. Joining builds the lot and warms it up first (about 35 s in Chrome with a graphics card).
+2. Choose **Play together** (the second item). Then one of:
+   - **Quick join**: you land in a public night with room, or a new one starts.
+   - **Create a night**: the screen shows a code and an invite link; **Copy the link** and send it. A friend who opens
+     the link (`?room=CODE`) lands in your night at once, or types the code under **Join with the code**.
+3. **Play** (after Create) or the join itself builds the lot and warms it up (about 35 s in Chrome with a graphics card).
+   Up to four share a night, and a player who comes later joins it where it is.
+
+Inside a Discord Activity the same page lands everyone of the voice channel in one night with no code
+(`?instance_id=` from Discord).
+
+The server address is a developer setting: on the desktop the Play together screen has a **Server address** button
+(the old Join screen, `ws://localhost:8910` is this machine's own server), and on the web `?dev` shows it.
 
 From a desktop build or the editor, the same without the menu: `godot --path game -- --connect
 wss://deadnight-server-production.up.railway.app`, and `--bot` lets the autopilot play (`--headless` too, no window).
 `--report [seconds]` makes a client print a JSON line every few seconds (`player_id`, the `players` in the frame, the
 zombies, points, the round trip and the gaps between ticks), which is how a headless run is read.
 
-A web build and the server must speak the same protocol version (`NetWire.VERSION`), and a merge deploys both, a few
-minutes apart: for those minutes Join may answer that the server speaks another version (or that the game is out of
+The web build and the game server must speak the same protocol version (`NetWire.VERSION`), and a merge deploys both,
+a few minutes apart: for those minutes Join may answer that the server speaks another version (or that the game is out of
 date, when the server is the newer: reload). To read what the server sees: `railway logs --service deadnight-server`
-(one JSON line a `joined`, `left` and every ten seconds a `stats`).
+(one JSON line a `room_opened`, `joined`, `left` and every ten seconds a `stats` for each night).
 
-`tools/web_smoke/online.py` does the same in headless Chromium: the menu, Join, the address, then a night of walking and
-shooting, reading the page's probe (`players`, `alive`, `rtt_ms`) every second:
+`tools/web_smoke/rooms.py` plays the whole flow in headless Chromium with four pages (A creates a night, B opens the
+invite link, C and D press Quick join) and fails unless each pair sees exactly two players:
+
+```text
+uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py <web URL or build/web> <backend https address> <out folder> --gpu
+```
+
+`tools/web_smoke/online.py` joins one game server by its address (the developer path) and plays a night, reading the
+page's probe (`players`, `alive`, `rtt_ms`) every second:
 
 ```text
 uv run --with playwright==1.64.1 python tools/web_smoke/online.py <web URL or build/web> <server address> <out folder> --seconds 90 --gpu
@@ -146,7 +161,6 @@ Bigger figures (more zombies, four players, the manual run's server log) are in 
 - **The Discord proxy.** The server is reached directly; through a Discord Activity it goes through Discord's proxy,
   which waits for the Activity setup ([#287](https://github.com/Ryubara/deadnight/issues/287)).
 - The tighter packing of many zombies and projectiles
-  ([#57](https://github.com/Ryubara/deadnight/issues/57)), and a lobby that picks the server (the
-  [platform backend](platform-backend.md)): a client joins by typing an address.
+  ([#57](https://github.com/Ryubara/deadnight/issues/57)).
 - The server's players still have bodies with models, and the other players' repair and weapon animations are not
   drawn ([#153](https://github.com/Ryubara/deadnight/issues/153), [#245](https://github.com/Ryubara/deadnight/issues/245)).

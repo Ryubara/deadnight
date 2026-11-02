@@ -58,11 +58,20 @@ static func snapshot(top: Control) -> Dictionary:
 		"rtt_ms": -1.0,
 		"yaw": 0.0,
 		"interpolated": false,
+		"room_code": "",
+		"room_status": "",
 		"touch": false
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
+	var together := top as TogetherScreen
+	if together != null:
+		# The invite of the night just made and what the screen says (a browser test reads both).
+		data["room_code"] = (
+			together.invite_code.text if together.invite_code.is_visible_in_tree() else ""
+		)
+		data["room_status"] = together.status.text
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data

@@ -25,7 +25,7 @@ from pathlib import Path
 from PIL import Image
 from playwright.sync_api import ConsoleMessage, Page, sync_playwright
 from playwright.sync_api import Error as PlaywrightError
-from smoke import SOFTWARE_GL, UNPACED, press, serve, stats, wait_for
+from smoke import SOFTWARE_GL, UNPACED, probe, serve, stats, wait_for
 
 LOAD_TIMEOUT_S = 150
 SCREEN_TIMEOUT_S = 40
@@ -36,6 +36,11 @@ SHOTS_PER_TRANSITION = 8
 # near black) by design; the menu and the credits never come near it.
 BAD_SHARE = 0.98
 MEASURE_MS = 1500
+# Godot reads input once per frame, so a key must be held for more than one frame to be seen at all, and a software
+# renderer on a runner draws a frame in 200 to 250 ms. `--hold-ms` sets `KEY_TIMING`; each key is then given a moment to land.
+KEY_TIMING = {"hold_ms": 150}
+SETTLE_MS = 100
+ATTEMPTS = 3
 
 # Records the page's frame deltas from the start, with the page clock, so the run can ask for a slice afterwards.
 RECORDER_JS = """
@@ -76,24 +81,12 @@ def clock(page: Page) -> float:
     return page.evaluate("performance.now()")
 
 
-def transition(
-    page: Page, out: Path, name: str, key: str, report: list[dict], problems: list[str], result: dict
-) -> None:
-    """Presses `key`, takes a run of shots while the transition plays, and records the frames of that time.
-
-    Taking a shot stalls the page, so those frame times are not the transition's: `measure` does a pass of its own.
-    """
-    press(page, key)
-    for index in range(SHOTS_PER_TRANSITION):
-        shot(page, out, f"{name}_{index}", report, problems)
-
-
-def measure(page: Page, name: str, key: str, result: dict) -> None:
-    """Presses `key` and records the page's frames for the next 1.5 s, with nothing else asking the page for anything."""
-    start = clock(page)
-    press(page, key)
-    page.wait_for_timeout(MEASURE_MS)
-    result["frames"][name] = stats(page.evaluate(SLICE_JS, [start, clock(page)]))
+def press(page: Page, key: str) -> None:
+    """A key held for `KEY_TIMING["hold_ms"]`, then a moment for the game to act on it."""
+    page.keyboard.down(key)
+    page.wait_for_timeout(KEY_TIMING["hold_ms"])
+    page.keyboard.up(key)
+    page.wait_for_timeout(SETTLE_MS)
 
 
 def to_item(page: Page, steps: int) -> None:
@@ -103,6 +96,34 @@ def to_item(page: Page, steps: int) -> None:
         press(page, "ArrowUp")
     for _ in range(steps):
         press(page, "ArrowDown")
+
+
+def back_to_menu(page: Page) -> None:
+    """Escape until the menu is the screen again (a screen opened by mistake, a key lost on the way)."""
+    deadline = time.monotonic() + SCREEN_TIMEOUT_S
+    while probe(page).get("screen") != "main_menu" and time.monotonic() < deadline:
+        press(page, "Escape")
+        page.wait_for_timeout(1000)
+    page.wait_for_timeout(1500)
+
+
+def open_screen(page: Page, steps: int, expect: str, act) -> None:
+    """Walks to the menu item `steps` below Play, presses Enter, runs `act(start)` while the screen opens, and checks
+    the screen is `expect`. A key lost on a slow frame lands on another item (it opens another screen): the run goes
+    back and walks again, up to `ATTEMPTS` times. Play is never reached by a lost key (its screen is `night_screen`),
+    so it is asked for only by `steps` 0 and the last attempt."""
+    for attempt in range(ATTEMPTS):
+        to_item(page, steps)
+        start = clock(page)
+        press(page, "Enter")
+        act(start)
+        try:
+            wait_for(page, expect, lambda s: s.get("screen") == expect, SCREEN_TIMEOUT_S if attempt else 15)
+            return
+        except TimeoutError:
+            if attempt == ATTEMPTS - 1:
+                raise
+            back_to_menu(page)
 
 
 def run(page: Page, url: str, out: Path, result: dict, problems: list[str]) -> None:
@@ -118,39 +139,45 @@ def run(page: Page, url: str, out: Path, result: dict, problems: list[str]) -> N
     page.wait_for_timeout(3000)
     result["frames"]["menu"] = stats(page.evaluate(SLICE_JS, [begin, clock(page)]))
 
+    def measure(name: str):
+        """The frames of the next `MEASURE_MS`, with nothing else asking the page for anything."""
+
+        def act(start: float) -> None:
+            page.wait_for_timeout(MEASURE_MS)
+            result["frames"][name] = stats(page.evaluate(SLICE_JS, [start, clock(page)]))
+
+        return act
+
+    def shots(name: str):
+        """A run of shots while the screen opens. A shot stalls the page, so these frame times are not the screen's."""
+
+        def act(_start: float) -> None:
+            for index in range(SHOTS_PER_TRANSITION):
+                shot(page, out, f"{name}_{index}", report, problems)
+
+        return act
+
     # Settings is the fourth item (the slide), Credits the fifth (the burn), Play the first (the iris). Each of the
     # first two is entered twice: once to measure the frames, once to take the shots.
-    to_item(page, 3)
-    measure(page, "settings_slide", "Enter", result)
-    press(page, "Escape")
-    wait_for(page, "the menu", lambda s: s.get("screen") == "main_menu", SCREEN_TIMEOUT_S)
-    page.wait_for_timeout(1500)
-    to_item(page, 3)
-    transition(page, out, "settings_slide", "Enter", report, problems, result)
-    wait_for(page, "settings", lambda s: s.get("screen") == "settings_screen", SCREEN_TIMEOUT_S)
+    open_screen(page, 3, "settings_screen", measure("settings_slide"))
+    back_to_menu(page)
+    open_screen(page, 3, "settings_screen", shots("settings_slide"))
     page.wait_for_timeout(1500)
     shot(page, out, "settings", report, problems)
-    press(page, "Escape")
-    wait_for(page, "the menu", lambda s: s.get("screen") == "main_menu", SCREEN_TIMEOUT_S)
-    page.wait_for_timeout(1500)
+    back_to_menu(page)
 
-    to_item(page, 4)
-    measure(page, "credits_burn", "Enter", result)
-    press(page, "Escape")
-    wait_for(page, "the menu", lambda s: s.get("screen") == "main_menu", SCREEN_TIMEOUT_S)
-    page.wait_for_timeout(1500)
-    to_item(page, 4)
-    transition(page, out, "credits_burn", "Enter", report, problems, result)
-    wait_for(page, "the credits", lambda s: s.get("screen") == "credits_screen", SCREEN_TIMEOUT_S)
+    open_screen(page, 4, "credits_screen", measure("credits_burn"))
+    back_to_menu(page)
+    open_screen(page, 4, "credits_screen", shots("credits_burn"))
     page.wait_for_timeout(2000)
     shot(page, out, "credits", report, problems)
-    press(page, "Escape")
-    wait_for(page, "the menu", lambda s: s.get("screen") == "main_menu", SCREEN_TIMEOUT_S)
-    page.wait_for_timeout(1500)
+    back_to_menu(page)
 
     # Play builds the night behind the iris, so its frames are the loading's, not the iris's: only the shots are kept.
     to_item(page, 0)
-    transition(page, out, "play_iris", "Enter", report, problems, result)
+    press(page, "Enter")
+    for index in range(SHOTS_PER_TRANSITION):
+        shot(page, out, f"play_iris_{index}", report, problems)
 
 
 def main() -> int:
@@ -159,8 +186,11 @@ def main() -> int:
     parser.add_argument("out", type=Path)
     parser.add_argument("--browser", choices=("chromium", "chrome", "firefox"), default="chromium")
     parser.add_argument("--size", default="1920x1080")
+    parser.add_argument("--hold-ms", type=int, default=KEY_TIMING["hold_ms"], help="how long each key is held")
+    parser.add_argument("--throttle", type=float, default=1.0, help="slow the page down (Chromium): 4 is four times")
     parser.add_argument("--unpaced", action="store_true", help="with chrome: do not hold the page to the refresh rate")
     args = parser.parse_args()
+    KEY_TIMING["hold_ms"] = args.hold_ms
     args.out.mkdir(parents=True, exist_ok=True)
     width, height = (int(part) for part in args.size.split("x"))
     problems: list[str] = []
@@ -182,6 +212,9 @@ def main() -> int:
             browser = p.chromium.launch(headless=True, args=SOFTWARE_GL)
         page = browser.new_page(viewport={"width": width, "height": height})
         page.add_init_script("(" + RECORDER_JS.strip() + ")();")
+        if args.throttle > 1.0 and args.browser != "firefox":
+            session = page.context.new_cdp_session(page)
+            session.send("Emulation.setCPUThrottlingRate", {"rate": args.throttle})
         page.on("console", on_console)
         page.on("pageerror", lambda error: problems.append(f"[pageerror] {error}"))
         page.on("requestfailed", lambda r: problems.append(f"[requestfailed] {r.url} {r.failure}"))

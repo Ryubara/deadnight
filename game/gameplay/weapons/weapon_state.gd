@@ -72,6 +72,20 @@ func add_reserve(rounds: int) -> int:
 	return added
 
 
+## Re-cuts the weapon (`WeaponDef.upgraded`): the magazine and the reserve come back full at their
+## new size. The caller has checked `tier() == 0`.
+func upgrade(spec: UpgradeTuning) -> void:
+	def = def.upgraded(spec)
+	cancel_reload()
+	ammo = def.magazine_size
+	reserve = def.reserve_max
+
+
+## 0 as shipped, 1 once re-cut.
+func tier() -> int:
+	return def.tier
+
+
 ## Drops a reload in progress (the weapon was put away).
 func cancel_reload() -> void:
 	reload_left = 0.0

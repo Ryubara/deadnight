@@ -105,6 +105,49 @@ sequenceDiagram
     G-->>A: welcome, then the simulation ticks
 ```
 
+## Rooms: the game and the backend together
+
+Deployed on Railway in `gdstudio-net-test` (#391): the backend (`spikes/backend`, Postgres beside it) and the game
+server (`deadnight-server`, headless Godot). What a player does is [Playing online today](testing-multiplayer.md#playing-online-today);
+what happens underneath:
+
+1. **Sign in.** The web build calls `POST /auth/guest`: a random user in its own `guest:` id namespace (never a Discord
+   id), a name the player may choose or `Guest 1234`, limited to 30 sign-ins an hour from one address and 2000 in all.
+   The backend runs `DISCORD_MODE=live` with guests switched on (`GUEST_SIGN_IN=1`); `DISCORD_MODE=off` is the same
+   with no Discord at all. Browsers on another origin than the backend need it in `CORS_ORIGINS`; inside a Discord Activity
+   everything goes through the proxy (`/api`, `/server`) and is same-origin.
+2. **A night.** *Create a night* is `POST /lobbies` then `POST /lobbies/:id/start`: the backend allocates the least loaded
+   game server with room and the lobby keeps a short code. *Quick join* is `POST /lobbies/quick`: a public night with
+   room (open or already started), else a new public one. *Join with the code* is `POST /lobbies/join-by-code`, and it
+   works on a night that has already started (a started night takes newcomers while the game server says it has room:
+   its heartbeat carries `players`, the count in each match). A Discord Activity sends its `instanceId`: the first to
+   ask makes the lobby, the rest join it, started or not.
+3. **The handoff.** `POST /lobbies/:id/ticket` returns the server's address and a 60 s HS256 ticket (match, server, a
+   single-use `jti`). The client connects and puts the ticket in its first message (the hello, never the URL).
+4. **One process, several nights.** The game server (`GameServer`) owns the listener and a `NightHost` for each match,
+   each in a `SubViewport` of its own (its own physics and navigation), so one Godot process hosts several nights, and
+   no Railway service is made for a room. The first ticket of a match builds its night (a second ticket of the same
+   match waits for it), a hello with a resume token goes to the room that holds the seat, a ticket of the same user takes
+   the old seat instead of making a second player, and a night whose players have all gone is freed and reported with
+   `POST /internal/matches/:id/end`. `capacity` (rooms a process takes, `ROOM_CAPACITY`, 4) is what it reports in the
+   heartbeat; a fifth match is refused `FULL` and the backend does not give it a ticket (`no_server`) once the
+   heartbeats are full. A night costs about 2.6 ms of a 16 ms step with three players, so four rooms use about two
+   thirds of one core.
+
+Environment of the services (names only; the secrets are Railway variables, never in the repository):
+
+| Service | Variables |
+| --- | --- |
+| `backend` | `SESSION_SECRET`, `TICKET_SECRET`, `GAME_SERVER_SECRET` (all different, 32+ characters), `DATABASE_URL` (the Postgres reference), `DISCORD_MODE`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `GUEST_SIGN_IN=1`, `CORS_ORIGINS` |
+| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` |
+
+A path variable set from Git Bash on Windows is rewritten (`/server` became `C:/Program Files/Git/server`): set them with
+`MSYS_NO_PATHCONV=1` or from PowerShell.
+
+**Cost** (Railway, Hobby plan, measured on these services idle): backend about 35 MiB, Postgres about 35 MiB and the game
+server a Godot process of a few hundred MiB; at $10 per GB-month and $20 per vCPU-month that is roughly $3 to $6 a month
+with nobody playing, and a busy night adds a fraction of a core for each room in play.
+
 ## Save format
 
 A save is the envelope `{revision, schemaVersion, data}`. `PUT` needs all three; `GET` returns all three (404 when the
