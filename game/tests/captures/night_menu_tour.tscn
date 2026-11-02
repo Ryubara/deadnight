@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/night_menu_tour.gd" id="1"]
+
+[node name="NightMenuTour" type="Node"]
+script = ExtResource("1")

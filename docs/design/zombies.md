@@ -92,7 +92,9 @@ draws 120 zombies in 2.4 ms of frame (1080p, RTX 5080) and a server's 60 Hz tick
 The ceiling is the weakest client's in the match: a client says what it is after its welcome, one that says nothing
 counts as a browser, and the rules' cap and the director's hard cap move together. The default curve is unchanged; 100
 and more come from the "Most alive at once" match setting (its slider ends at the host's platform's ceiling) or from the
-intensity multiplier. A server operator can cap a small container with `MAX_ALIVE`.
+intensity multiplier. A game server also cuts each room to its share of an alive budget (`ALIVE_BUDGET`, 120 for the
+whole process: a lone desktop room stands 120, three rooms 40 each), and an operator can cap a small container with
+`MAX_ALIVE`; see the [crowd budget](../research/crowd-budget.md#rooms-in-one-process-561).
 
 ## Boss: the Projectionist
 
