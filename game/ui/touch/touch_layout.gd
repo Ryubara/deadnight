@@ -21,7 +21,9 @@ const INTERACT := &"interact"
 const PAUSE := &"pause"
 const SCOREBOARD := &"scoreboard"
 const SHOULDER := &"swap_shoulder"
-## The quick melee (#411, #588): a blow with whatever is in hand; the button presses its action.
+## The quick melee (#411, #588): a blow with whatever is in hand; the button presses its action. It
+## sits on the far right edge above the ammo card, close enough to the corner to be on screen on a
+## phone's 540 unit high canvas too (the menu's phone factor stays on while a night runs).
 const MELEE := &"quick_melee"
 
 ## Offset from the bottom right corner (left, up) and radius, by button. The order is the order a
@@ -35,7 +37,7 @@ const BUTTONS := [
 	[JUMP, Vector2(360.0, 150.0), 70.0],
 	[GRENADE, Vector2(520.0, 165.0), 56.0],
 	[SHOULDER, Vector2(565.0, 640.0), 52.0],
-	[MELEE, Vector2(130.0, 690.0), 52.0],
+	[MELEE, Vector2(60.0, 310.0), 44.0],
 ]
 ## Pause sits on the top edge, right of the HUD's left column.
 const PAUSE_OFFSET := Vector2(442.0, 80.0)

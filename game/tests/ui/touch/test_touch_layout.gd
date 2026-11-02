@@ -135,6 +135,26 @@ func test_the_left_hand_layout_is_the_right_hand_one_flipped_in_the_safe_area() 
 		assert_float(zone.position.x).is_equal_approx(safe.position.x, 0.01)
 
 
+func test_the_melee_button_is_on_screen_clear_of_fire_on_a_phones_540_unit_canvas() -> void:
+	# The menu's phone factor halves the canvas to 540 units high and stays on in the night.
+	var phone := Vector2(1168.5, 540.0)
+	for mirrored in HANDS:
+		var safe := TouchLayout.safe_rect(phone, Vector4.ZERO)
+		var circles := TouchLayout.buttons(safe, 1.0, mirrored)
+		var melee: Dictionary = circles[TouchLayout.MELEE]
+		var fire: Dictionary = circles[TouchLayout.FIRE]
+		var box := Rect2(melee[&"centre"], Vector2.ZERO).grow(melee[&"radius"])
+		(
+			assert_bool(safe.encloses(box))
+			. override_failure_message(
+				"melee leaves %s (mirrored %s): %s" % [safe, mirrored, melee]
+			)
+			. is_true()
+		)
+		var gap: float = (melee[&"centre"] as Vector2).distance_to(fire[&"centre"])
+		assert_float(gap).is_greater(float(melee[&"radius"]) + float(fire[&"radius"]))
+
+
 func test_the_shoulder_button_sits_clear_of_the_thumb_arc_and_the_look_area_stays_free() -> void:
 	for mirrored in HANDS:
 		var circles := _circles(CANVASES[1], Vector4.ZERO, 1.0, mirrored)
