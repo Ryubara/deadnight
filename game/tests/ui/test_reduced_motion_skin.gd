@@ -38,6 +38,8 @@ func test_the_overlay_and_the_stage_follow_the_setting_live() -> void:
 	assert_float(_motion_of(film)).is_equal(1.0)
 	assert_bool(stage.animated).is_true()
 	runner.invoke("queue_free")
+	# The router is shared by every suite: a menu left on it would answer the next suite's bumpers.
+	await RouterFixture.clear(get_tree())
 
 
 func test_a_skin_built_while_reduced_starts_calm() -> void:

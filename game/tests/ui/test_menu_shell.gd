@@ -498,3 +498,17 @@ func test_the_longest_count_fits_its_row_on_every_panel_and_canvas() -> void:
 			. x
 		)
 		assert_float(width).is_less(400.0)
+
+
+func test_a_menu_under_another_screen_does_not_answer_the_bumpers() -> void:
+	UIRouter.reset("res://ui/screens/main_menu.tscn", UITransition.Kind.CUT)
+	await UIRouter.idle
+	var menu := UIRouter.top() as MainMenu
+	UIRouter.push("res://ui/screens/credits_screen.tscn", UITransition.Kind.CUT)
+	await UIRouter.idle
+	await _tap(_pad(JOY_BUTTON_RIGHT_SHOULDER))
+	assert_int(menu.shell.tab).is_equal(MenuTab.Id.PLAY)
+	UIRouter.pop()
+	await UIRouter.idle
+	await _tap(_pad(JOY_BUTTON_RIGHT_SHOULDER))
+	assert_int(menu.shell.tab).is_equal(MenuTab.Id.LOADOUT)

@@ -87,7 +87,7 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	var step := MenuNav.tab_step(event)
-	if step == 0 or not is_visible_in_tree():
+	if step == 0 or not _is_on_top():
 		return
 	show_tab(MenuTab.neighbour(tab, step))
 	_focus_panel()
@@ -155,6 +155,15 @@ func is_compact() -> bool:
 ## Puts the focus on the tab's first control (after a tab change by bumper or key).
 func focus_panel() -> void:
 	_focus_panel()
+
+
+## Whether the shell is what the player is looking at: shown, and not under another screen of the
+## router (a menu left below Settings must not answer its bumpers).
+func _is_on_top() -> bool:
+	if not is_visible_in_tree():
+		return false
+	var top := UIRouter.top()
+	return top == null or top == self or top.is_ancestor_of(self)
 
 
 func _is_compact() -> bool:
