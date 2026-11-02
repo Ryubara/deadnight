@@ -1,11 +1,12 @@
 class_name ShopItem
 extends Resource
-## One thing the shop sells: a door, a weapon, a crane play, a tonic, fuel, grenades or ammunition.
+## One thing the shop sells: a door, a weapon, a crane play, a tonic, fuel, grenades, ammunition or
+## a weapon tune-up.
 ##
 ## Data only. The price is a base plus a rise per round, so fuel can get dearer as the night goes
 ## on.
 
-enum Kind { DOOR, WEAPON, CRANE, TONIC, FUEL, GRENADES, AMMO }
+enum Kind { DOOR, WEAPON, CRANE, TONIC, FUEL, GRENADES, AMMO, UPGRADE }
 
 ## A fuel purchase needs at least this much room in the tank.
 const MIN_FUEL_SPACE := 1.0
@@ -21,6 +22,9 @@ const MIN_FUEL_SPACE := 1.0
 @export var amount: float = 0.0
 ## AMMO: the weapon (a `WeaponCatalog` id, `rifle`) whose reserve the purchase fills.
 @export var weapon: StringName = &""
+## TONIC: health added to the buyer's most (and to their health now), so a perk can make a player
+## harder to kill. 0 is a tonic with no effect on health.
+@export var health_bonus: float = 0.0
 ## DOOR: another door that must be open first (the lot opens outward).
 @export var requires: StringName = &""
 ## CRANE: the weapons a play can give, with one weight each.
