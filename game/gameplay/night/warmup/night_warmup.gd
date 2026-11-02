@@ -276,7 +276,7 @@ func _stage_pass() -> void:
 		var cell: Dictionary = LIGHT_CELLS[i]
 		_say(_step("stage", float(i) / LIGHT_CELLS.size()), "Setting the scene: %s" % cell["label"])
 		var rig := _light_rig(cell)
-		var props := _stage_row()
+		var props := _stage_row(i == 0)
 		var crane := _stage_crane()
 		_show_crane(crane, CraneState.Stage.SPIN)
 		if i == 0:
@@ -341,8 +341,11 @@ func _light_rig(cell: Dictionary) -> Node3D:
 	return rig
 
 
-## A row of every zombie look, then the scenes the weapons and grenades bring, in front of it.
-func _stage_row() -> Node3D:
+## A row of every zombie look, then the scenes the weapons and grenades bring, in front of it. With
+## `outlined` the zombies wear the outline through walls, so its two programs (the mask and the
+## line, skinned) are built here, not in the middle of the night's last round; they are not lit, so
+## the first light condition is enough.
+func _stage_row(outlined: bool = false) -> Node3D:
 	var row := Node3D.new()
 	_stage.add_child(row)
 	var looks := ZombieModels.VARIANTS
@@ -367,6 +370,8 @@ func _stage_row() -> Node3D:
 			)
 		)
 		view.advance_animation()
+		if outlined:
+			view.set_outlined(true, _night.view.marks.style)
 	var at := 0
 	for path in WarmupManifest.drawable_dependencies(WarmupManifest.definition_paths()):
 		var item := _instance_of(path)

@@ -14,12 +14,14 @@ const DEFAULT_STYLE := "res://gameplay/outline/outline_style_default.tres"
 ## The look; empty uses the shipped one.
 @export var style: OutlineStyle:
 	set(value):
-		style = value
-		_apply()
+		if value != style:
+			style = value
+			_apply()
 @export var enabled := false:
 	set(value):
-		enabled = value
-		_apply()
+		if value != enabled:
+			enabled = value
+			_apply()
 
 var _root: Node
 var _meshes: Array[MeshInstance3D] = []
