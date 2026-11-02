@@ -73,7 +73,8 @@ func before_test() -> void:
 	_held = []
 	_jumps = 0
 	_controller = HumanController.new()
-	var tuning := RulesFixture.tuning()
+	# Two weapons from the start: the swap row needs a second one to swap to.
+	var tuning := RulesFixture.full_hands()
 	tuning.rounds.intro_seconds = INTRO_SECONDS
 	# A round that is on but whose first zombie is minutes away: nothing hurts the player here.
 	tuning.rounds.first_spawn_delay = FAR_OFF

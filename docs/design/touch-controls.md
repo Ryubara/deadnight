@@ -5,7 +5,7 @@ Deadnight is played on a phone held sideways. The research and the reasons are i
 
 ## What shows
 
-Not on the layer yet: the quick melee (`V`, #411); a phone has no button for it.
+Not on the layer yet: the quick melee (`V`, #411); a phone has no button for it (#588).
 
 The layer (`game/ui/touch/`) shows when the setting `controls/touch_controls` says so: **Auto** (a phone or tablet in a
 browser, an Android or iOS build), **On** or **Off** (Settings, Touch tab). To try it on a desktop pass `--touch`
