@@ -19,8 +19,9 @@ and `game/ui/screens/main_menu.gd`.
 
 - **The Shop** has three real entries (the look catalogue's gated colours, priced as `LookCatalog` says) and five
   placeholder rows marked "Coming"; a press buys nothing. Prices are the catalogue's first guesses.
-- **Play together and Quick join** open the same screen the old Join did, from one table (`MainMenu.ROUTES`) that the
-  rooms flow replaces.
+- **Play together** opens the Play together screen from one table (`MainMenu.ROUTES`). **Quick join** is not in it: the
+  menu opens `QuickJoinOverlay`, a card over the menu that finds the first open public night and goes in (#526; see
+  [the lobby](../design/lobby.md#quick-join-from-the-menu)).
 - **The profile** has no writer: nothing in the client sets XP, stubs or mastery; the backend (or a test) fills the cache.
 - **Mastery** shows the level and the way to the next one; trims do not exist yet.
 - **Account** says that signing in comes with the platform.
