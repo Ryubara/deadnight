@@ -119,7 +119,7 @@ func test_a_machine_that_draws_a_few_frames_a_second_goes_straight_to_the_still(
 func test_one_long_frame_is_not_a_trend() -> void:
 	var governor := StageGovernor.new()
 	for _i in StageGovernor.WARMUP:
-		governor.feed(0.5)
+		governor.feed(0.2)
 	for index in StageGovernor.WINDOW:
 		governor.feed(5.0 if index == 10 else 1.0 / 60.0)
 	assert_int(governor.level).is_equal(StageGovernor.Level.LIVE)
@@ -142,3 +142,16 @@ func test_a_cpu_renderer_is_told_by_its_name() -> void:
 		"ANGLE (NVIDIA, NVIDIA GeForce RTX 5080 Direct3D11 vs_5_0 ps_5_0)", "Adreno (TM) 650", ""
 	]:
 		assert_bool(StageGovernor.is_software(name)).is_false()
+
+
+func test_the_warm_up_ends_after_a_few_seconds_when_the_frames_are_long() -> void:
+	var governor := StageGovernor.new()
+	var frames := 0
+	# One frame a second: twelve of them would be twelve seconds of warm-up; four are enough.
+	while governor.level == StageGovernor.Level.LIVE and frames < 100:
+		governor.feed(1.0)
+		frames += 1
+	assert_int(governor.level).is_equal(StageGovernor.Level.STILL)
+	assert_int(frames).is_less_equal(
+		int(StageGovernor.WARMUP_SECONDS) + StageGovernor.MIN_FRAMES + 1
+	)

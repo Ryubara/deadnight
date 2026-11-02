@@ -24,7 +24,7 @@ var level := StageGovernor.Level.LIVE
 ## A mode that overrides the setting for this view (a run's own choice); -1 follows the setting.
 var forced_mode := -1
 ## The graphics adapter's name, as the engine reports it (a test sets another).
-var adapter_name := RenderingServer.get_video_adapter_name()
+var adapter_name := detect_adapter()
 
 var _viewport := SubViewport.new()
 var _mode := MODE_AUTO
@@ -43,6 +43,21 @@ func _init() -> void:
 	_viewport.size = Vector2i(1920, 1080)
 	add_child(_viewport)
 	_viewport.add_child(stage)
+
+
+## The graphics adapter's name. A browser hides it from the engine ("WebKit WebGL"), so on the web
+## the unmasked renderer the browser tells a page is added: that is where "SwiftShader" shows.
+static func detect_adapter() -> String:
+	var name := RenderingServer.get_video_adapter_name()
+	if OS.has_feature("web"):
+		var script := (
+			"(function(){var c=document.createElement('canvas');"
+			+ "var g=c.getContext('webgl2')||c.getContext('webgl');if(!g){return '';}"
+			+ "var e=g.getExtension('WEBGL_debug_renderer_info');"
+			+ "return e?String(g.getParameter(e.UNMASKED_RENDERER_WEBGL)):'';})()"
+		)
+		name += " " + str(JavaScriptBridge.eval(script, true))
+	return name
 
 
 func _ready() -> void:

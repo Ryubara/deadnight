@@ -111,7 +111,7 @@ PROBE_JS = """
   const d = window.deadnight;
   return d ? {screen: d.screen, night: d.night, running: d.running, over: d.over,
               round: d.round, remaining: d.remaining, alive: d.alive, yaw: d.yaw,
-              interpolated: d.interpolated, tab: d.tab} : null;
+              interpolated: d.interpolated, tab: d.tab, stage: d.stage} : null;
 }
 """
 
@@ -243,6 +243,11 @@ def main() -> int:
             if server:
                 server.shutdown()
 
+    if not args.gpu and result.get("stage_level") not in (None, "still"):
+        problems.append(
+            f"[stage] the menu's stage is {result['stage_level']} on a software renderer: it should start as a still"
+        )
+
     burst = result.get("loading", {}).get("most_programs_in_a_frame", 0)
     if burst > MAX_PROGRAMS_IN_A_LOADING_FRAME:
         problems.append(
@@ -273,6 +278,8 @@ def run(page: Page, url: str, out: Path, result: dict, night_seconds: float) -> 
     # The menu's panel arrives a moment after the screen does; a click gives the canvas the keyboard.
     page.mouse.click(5, 5)
     page.wait_for_timeout(2500)
+    # The menu's 3D stage: a still on a renderer that draws on the CPU, live with a GPU.
+    result["stage_level"] = probe(page).get("stage")
     page.screenshot(path=out / "menu.png")
     result["menu_frames"] = stats(page.evaluate(FRAME_TIMES_JS, MENU_FRAME_SECONDS))
 

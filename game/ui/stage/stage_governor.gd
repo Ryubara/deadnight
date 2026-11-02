@@ -8,8 +8,10 @@ extends RefCounted
 
 enum Level { LIVE, HALF, STILL }
 
-## Frames ignored at the start (the scene is still loading and compiling).
+## Frames ignored at the start (the scene is still loading and compiling), or the first few seconds
+## when the frames are so long that twelve of them would take a minute.
 const WARMUP := 12
+const WARMUP_SECONDS := 4.0
 ## A window ends after this many frames, or after `WINDOW_SECONDS` once it holds `MIN_FRAMES`, so
 ## a very slow machine is judged in a couple of seconds, not a minute.
 const WINDOW := 90
@@ -27,6 +29,7 @@ const CLAMP := 0.5
 var level := Level.LIVE
 
 var _seen := 0
+var _elapsed := 0.0
 var _sum := 0.0
 var _count := 0
 
@@ -46,7 +49,8 @@ func feed(delta: float) -> bool:
 	if level == Level.STILL:
 		return false
 	_seen += 1
-	if _seen <= WARMUP:
+	_elapsed += delta
+	if _seen <= WARMUP and _elapsed < WARMUP_SECONDS:
 		return false
 	_sum += minf(delta, CLAMP)
 	_count += 1

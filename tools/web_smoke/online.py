@@ -53,12 +53,21 @@ def probe_after(page: Page, seconds: float, what: str, test) -> dict:
 
 
 def join(page: Page, server: str, out: Path) -> None:
-    """Menu, then Play together (the first item of the Play tab), then the address, then Enter."""
+    """Menu, Play together, its developer button for the server address, then the address and Enter."""
     smoke.wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
     page.mouse.click(5, 5)  # gives the canvas the keyboard
     page.wait_for_timeout(2500)
     smoke.menu_item(page, "Play")
     page.screenshot(path=out / "menu_join.png")
+    smoke.press(page, "Enter")
+    smoke.wait_for(
+        page, "the Play together screen", lambda s: s.get("screen") == "together_screen", smoke.SCREEN_TIMEOUT_S
+    )
+    page.wait_for_timeout(1500)
+    # The server address is a developer setting, the last control of the Play together screen (the page is opened
+    # with `?dev`): Quick join, Create a night, the code field, Join, Back, then the address button.
+    for _ in range(5):
+        smoke.press(page, "ArrowDown")
     smoke.press(page, "Enter")
     smoke.wait_for(page, "the join screen", lambda s: s.get("screen") == "join_screen", smoke.SCREEN_TIMEOUT_S)
     page.wait_for_timeout(2000)
@@ -135,6 +144,8 @@ def main() -> int:
     if not args.web.startswith(("http://", "https://")):
         local, port = smoke.serve(Path(args.web))
         url = f"http://127.0.0.1:{port}/index.html"
+    # `?dev` shows the server address button of the Play together screen on the web.
+    url += ("&" if "?" in url else "?") + "dev"
     with sync_playwright() as p:
         if args.gpu:
             browser = p.chromium.launch(channel="chrome", headless=True)
