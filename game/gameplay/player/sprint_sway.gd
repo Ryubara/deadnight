@@ -11,6 +11,10 @@ extends RefCounted
 ## the sprint starts and out when it stops, and is none at all while walking, aiming, standing or
 ## downed. A function of the steps it was given, never of real time. The numbers are
 ## `PlayerTuning`'s "Sprint sway" group.
+##
+## It belongs to the feet on the ground: the first tick the body is in the air (a jump, a step off a
+## ledge, a fall) with the sprint held, the sway is gone at once, with no ease-out, and it comes
+## back with the normal ease-in after landing.
 
 ## 0 to 1 and linear in time: where the ease between still and swaying has got to.
 var level := 0.0
@@ -35,8 +39,12 @@ func reset() -> void:
 
 
 ## Moves the ease and the stride on by `delta` seconds. `sprinting` is the sprint state of the
-## body (never just the key) and `ground_speed` metres per second.
-func step(delta: float, sprinting: bool, ground_speed: float) -> void:
+## body (never just the key), `ground_speed` metres per second and `grounded` whether the body
+## stands on the ground (`PlayerMotionState.on_floor`): in the air the sway stops at once.
+func step(delta: float, sprinting: bool, ground_speed: float, grounded := true) -> void:
+	if not grounded:
+		reset()
+		return
 	var wanted := sprinting and ground_speed >= _tuning.sprint_sway_min_speed
 	var seconds := _tuning.sprint_sway_ease_in if wanted else _tuning.sprint_sway_ease_out
 	level = move_toward(level, 1.0 if wanted else 0.0, delta / maxf(seconds, 0.001))

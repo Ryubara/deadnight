@@ -1,6 +1,6 @@
 class_name MainMenu
 extends UIScreen
-## The first screen: the Deadnight sign, and Play, Settings, Credits and Quit.
+## The first screen: the Deadnight sign, and Play, Play together, Settings, Credits and Quit.
 ##
 ## Each item opens its screen with its own router transition (Play irises open like a projector
 ## gate, Settings slides in, Credits burns in like a reel). Quit is left out on the web, where a
@@ -10,7 +10,7 @@ extends UIScreen
 signal entered
 
 const PLAY_SCREEN := "res://ui/screens/night_screen.tscn"
-const JOIN_SCREEN := "res://ui/screens/join_screen.tscn"
+const JOIN_SCREEN := "res://ui/screens/together_screen.tscn"
 const CUSTOMIZE_SCREEN := "res://ui/screens/customize_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"

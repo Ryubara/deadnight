@@ -69,6 +69,11 @@ var view: NightView
 ## Where the grenade in the local player's hand would go (`show_throw`).
 var preview: GrenadePreview
 var autopilot: Autopilot
+## () -> bool, whether the touch layer is up, set by the screen that owns it. The touch player's
+## aim help (`assist`) works only while it says yes.
+var touch_active := Callable()
+## The touch player's aim help, once the night has begun (a human's night only).
+var assist: TouchAimAssist
 ## The HUD to feed, set before `start`: it hears the night from its first event.
 var hud: Hud
 ## The player's challenges, set before `start` by the screen a person plays on (bots, captures and
@@ -344,8 +349,19 @@ func _go() -> void:
 		)
 		await warmup.run(self)
 		_warming = false
+	if mode == Mode.HUMAN:
+		_make_assist()
 	running = true
 	ready_to_play.emit()
+
+
+## The touch player's aim help, over the picture of the night this client has.
+func _make_assist() -> void:
+	if _sight == null:
+		_sight = WorldProbe.new(get_world_3d().direct_space_state)
+	assist = TouchAimAssist.new(get_tree(), state, _sight.callable())
+	assist.touch_active = func() -> bool: return touch_active.is_valid() and touch_active.call()
+	_human.assist = assist
 
 
 ## The look this client wears: the one a test or `--look` set, else the saved one.

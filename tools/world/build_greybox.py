@@ -227,6 +227,13 @@ def lamps(parent: str, circuit: str, name: str = "Lamps") -> str:
 
 counter = {"n": 0}
 
+# Physics layers (bit values): everything solid is on the ground layer (1); the lot's walls and fences are also on the
+# occluder layer (2), the one a sound's ray reads (`Audio.occluder_mask`, docs/design/audio.md), so that a wall hides
+# a gunshot and a car or a crate does not.
+GROUND_LAYER = 1
+OCCLUDER_LAYER = 2
+WALL_LAYERS = GROUND_LAYER | OCCLUDER_LAYER
+
 
 def box(
     parent: str,
@@ -236,20 +243,34 @@ def box(
     mat: str,
     rot_y: float = 0.0,
     collide: bool = True,
+    layers: int = GROUND_LAYER,
 ) -> None:
     if name in drivein_props.REPLACED:  # a drive-in prop stands here, with this block's collision
         return
     props = {"transform": xform(pos, rot_y)}
     if collide:
         props["use_collision"] = "true"
+        if layers != GROUND_LAYER:
+            props["collision_layer"] = str(layers)
     props["size"] = vec(size)
     props["material"] = f'ExtResource("{mat}")'
     node(name, "CSGBox3D", parent, props)
 
 
-def block(parent: str, name: str, x0: float, x1: float, z0: float, z1: float, h: float, mat: str, y0: float = 0.0):
+def block(
+    parent: str,
+    name: str,
+    x0: float,
+    x1: float,
+    z0: float,
+    z1: float,
+    h: float,
+    mat: str,
+    y0: float = 0.0,
+    layers: int = GROUND_LAYER,
+):
     """A solid axis-aligned box from corner coordinates."""
-    box(parent, name, (x1 - x0, h, z1 - z0), ((x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2), mat)
+    box(parent, name, (x1 - x0, h, z1 - z0), ((x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2), mat, layers=layers)
 
 
 def floor_tiles(parent: str, prefix: str, x0: float, x1: float, z0: float, z1: float, mat: str, tile: float = 24.0):
@@ -301,9 +322,9 @@ def wall(
         pieces.append((cursor, a1, 0.0, height))
     for i, (p0, p1, b, t) in enumerate(pieces):
         if axis == "x":
-            block(parent, f"{name}{i}", p0, p1, fixed - thick / 2, fixed + thick / 2, t - b, mat, y0 + b)
+            block(parent, f"{name}{i}", p0, p1, fixed - thick / 2, fixed + thick / 2, t - b, mat, y0 + b, WALL_LAYERS)
         else:
-            block(parent, f"{name}{i}", fixed - thick / 2, fixed + thick / 2, p0, p1, t - b, mat, y0 + b)
+            block(parent, f"{name}{i}", fixed - thick / 2, fixed + thick / 2, p0, p1, t - b, mat, y0 + b, WALL_LAYERS)
 
 
 def omni(

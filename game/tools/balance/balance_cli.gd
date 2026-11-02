@@ -4,6 +4,7 @@ extends SceneTree
 ##   godot --headless --path game -s res://tools/balance/balance_cli.gd -- \
 ##     --skill=average --players=1 --nights=200 --seed=1 --out=cell.json [--step=0.25] [--rounds=30]
 ##     [--set=rounds.health_growth=1.05 ...] [--shopping=door_concession,weapon_rifle | none]
+##     [--assist=0.5]  (a touch player with the aim assist at that strength)
 ##
 ## `tools/balance/run_report.py` runs all nine cells in parallel and draws the charts.
 
@@ -25,7 +26,8 @@ func _init() -> void:
 		int(args.get("seed", "1")),
 		float(args.get("step", str(BalanceBatch.DEFAULT_STEP))),
 		int(args.get("rounds", str(BalanceBatch.DEFAULT_MAX_ROUNDS))),
-		_shopping(args.get("shopping", ""))
+		_shopping(args.get("shopping", "")),
+		float(args.get("assist", "0"))
 	)
 	cell["seconds"] = float(Time.get_ticks_msec() - started) / 1000.0
 	var out: String = args.get("out", "")

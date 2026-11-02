@@ -71,6 +71,14 @@ func jittered(rng: RandomNumberGenerator, spread: float) -> SimSkill:
 	return copy
 
 
+## The same player on a touch screen with the aim assist at `strength` (0 to 1): the misses the
+## assist wins back are added to the accuracy (`AimAssist.assisted_accuracy`, which is what
+## `test_aim_assist_bot.gd` measured). Nothing else about the player moves.
+func with_touch_assist(strength: float) -> SimSkill:
+	accuracy = AimAssist.assisted_accuracy(accuracy, strength, AimAssistTuning.new())
+	return self
+
+
 static func _wobble(value: float, rng: RandomNumberGenerator, spread: float) -> float:
 	return minf(value * rng.randf_range(1.0 - spread, 1.0 + spread), 0.95)
 
