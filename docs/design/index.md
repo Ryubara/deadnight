@@ -53,3 +53,7 @@ hands](weapon-hold.md).
 
 What a shot looks like and how the view answers it: [Shot feedback](shot-feedback.md) (the toon muzzle flash and the
 small pooled impacts) and [Camera shake](camera-shake.md) (the light, per-weapon kick of the view, and its setting).
+
+## Tuning the game
+
+Which scene is which, how to play from the editor and where every number lives: [Tuning in the editor](tuning.md).
