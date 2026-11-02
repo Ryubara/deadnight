@@ -153,6 +153,11 @@ docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 
 The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
 
+`tools/web_smoke/judder.py` (same arguments, `--gpu --unpaced` for the machine's GPU and no frame limit) measures
+how evenly the soldier moves on the screen in the page: the numbers and what they showed are in
+`physics-interpolation.md`. The smoke run also fails when the night's body is not drawn between physics ticks
+(`window.deadnight.interpolated`).
+
 ### Over the internet
 
 `smoke.py` pointed at the URL (Houston, Texas, on a home connection, headless Chromium with a fresh profile, so
