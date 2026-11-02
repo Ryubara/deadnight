@@ -13,9 +13,6 @@ extends RefCounted
 ## How far (metres) the probe of `restore` presses into the floor to find it again.
 const FLOOR_PROBE := 0.02
 
-## How far (metres) the probe of `restore` presses into the floor to find it again.
-const FLOOR_PROBE := 0.02
-
 
 static func simulate(
 	body: CharacterBody3D,
