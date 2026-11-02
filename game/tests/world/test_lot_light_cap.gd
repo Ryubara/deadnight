@@ -16,6 +16,9 @@ const LIGHT_SCRIPTS := {
 	"res://world/grenade_range/blast_effect.gd": "blast",
 	"res://world/grenade_range/grenade_view.gd": "grenade lamp",
 	"res://world/crane/prize_crane.gd": "the crane's lamp: counted at every crane spot",
+	"res://world/machines/recut_machine.gd": "the re-cut bench's lamp: in the booth, counted there",
+	"res://world/machines/soda_fountain.gd":
+	"the soda fountain's lamp: in the stand, counted there",
 	"res://gameplay/night/warmup/night_warmup.gd":
 	"the warm-up's stage, 150 m above the lot, out of reach",
 	"res://ui/components/look_preview.gd": "own world: a viewport of its own",

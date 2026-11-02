@@ -23,6 +23,7 @@ const GAMEPLAY: Array[StringName] = [
 	&"interact",
 	&"swap_weapon",
 	&"pause",
+	&"scoreboard",
 	&"throw_grenade",
 	&"toss_grenade",
 ]
@@ -71,6 +72,8 @@ func test_the_buttons_the_docs_name_are_the_ones_bound() -> void:
 	assert_str(_pad_of(&"interact")).is_equal("button 3")
 	assert_str(_pad_of(&"fire")).is_equal("axis 5+")
 	assert_str(_pad_of(&"pause")).is_equal("button 6")
+	# Back / Select, the small button on the left of the pad's middle.
+	assert_str(_pad_of(&"scoreboard")).is_equal("button 4")
 
 
 func _pad_of(action: StringName) -> String:

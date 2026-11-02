@@ -50,6 +50,7 @@ const ROWS: Array = [
 	[&"throw_grenade", &"throw_grenade"],
 	[&"toss_grenade", &""],
 	[&"pause", &""],
+	[&"scoreboard", &""],
 ]
 
 var _night: Night
@@ -296,7 +297,7 @@ func test_every_action_has_a_gamepad_binding() -> void:
 
 func test_the_keyboard_and_mouse_do_every_action() -> void:
 	for row in ROWS:
-		if row[0] == &"pause":
+		if row[0] == &"pause" or row[0] == &"scoreboard":
 			continue
 		for event in _bound(row[0], false):
 			_send(event, true)
@@ -307,7 +308,7 @@ func test_the_keyboard_and_mouse_do_every_action() -> void:
 
 func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 	for row in ROWS:
-		if row[0] == &"pause":
+		if row[0] == &"pause" or row[0] == &"scoreboard":
 			continue
 		for event in _bound(row[0], true):
 			_send(event, true)
@@ -355,7 +356,7 @@ func _push_stick(action: StringName) -> void:
 	_let_go()
 
 
-# --- Pause belongs to the screen, not the command ---
+# --- Pause and the scoreboard belong to the screen, not the command ---
 
 
 ## The game's own root, loaded as in a real run, with the night on top.
@@ -377,6 +378,27 @@ func _enter_night() -> NightScreen:
 func _leave() -> void:
 	UIRouter.pop()
 	await UIRouter.idle
+
+
+func test_the_scoreboard_shows_while_held_on_every_device() -> void:
+	var screen := await _enter_night()
+	var board := screen.night.hud.scoreboard
+	for pad in [false, true]:
+		for event in _bound(&"scoreboard", pad):
+			assert_bool(board.visible).is_false()
+			_send(event, true)
+			await get_tree().process_frame
+			await get_tree().process_frame
+			(
+				assert_bool(board.visible)
+				. override_failure_message("%s did not show the scoreboard" % event.as_text())
+				. is_true()
+			)
+			_send(event, false)
+			await get_tree().process_frame
+			await get_tree().process_frame
+			assert_bool(board.visible).is_false()
+	await _leave()
 
 
 func test_pause_on_every_device() -> void:

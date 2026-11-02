@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/machines/soda_fountain.gd" id="1_soda"]
+
+[node name="SodaFountain" type="Node3D"]
+script = ExtResource("1_soda")

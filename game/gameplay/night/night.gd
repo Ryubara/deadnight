@@ -31,6 +31,9 @@ signal connection_ended
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
 
+## Sounds that may start in one frame during the night (`AudioService.starts_per_frame`): the
+## frame of a kill starts six, and each costs about a millisecond in the browser.
+const SOUND_STARTS_PER_FRAME := 2
 ## Share of the loading bar the lot's own build takes, before the warm-up starts.
 const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
@@ -57,6 +60,8 @@ var remote := false
 var avatars: RemoteAvatars
 ## Online: how far the server's answers have disagreed with this client's own body.
 var reconciler := Reconciler.new()
+## Watches for this client's own loop freezing (`StallGuard`).
+var stalls := StallGuard.new()
 var state: ClientState
 ## Every player's look and seat as this client heard them from the server; the bodies are dressed
 ## from it.
@@ -354,6 +359,8 @@ func _go() -> void:
 		)
 		await warmup.run(self)
 		_warming = false
+	# Only the game limits them: a test that needs no pictures hears every sound at once.
+	Audio.starts_per_frame = SOUND_STARTS_PER_FRAME if warm_up else 0
 	if mode == Mode.HUMAN:
 		_make_assist()
 	running = true
@@ -470,6 +477,7 @@ func set_paused(paused: bool) -> void:
 
 
 func _exit_tree() -> void:
+	Audio.starts_per_frame = 0
 	running = false
 	if challenges != null:
 		challenges.flush()
@@ -495,11 +503,20 @@ func tick() -> void:
 	if remote:
 		_tick_remote()
 		return
+	var began := PerfProbe.begin()
 	link.pump()
-	link.broadcast(server.step(STEP))
+	PerfProbe.end(&"tick.pump", began)
+	began = PerfProbe.begin()
+	var events := server.step(STEP)
+	PerfProbe.end(&"tick.server", began)
+	began = PerfProbe.begin()
+	link.broadcast(events)
+	PerfProbe.end(&"tick.client", began)
 	match mode:
 		Mode.AUTOPILOT:
+			began = PerfProbe.begin()
 			var command := autopilot.decide(STEP)
+			PerfProbe.end(&"tick.bot", began)
 			if shoulder_camera:
 				_aim_rig(command)
 			link.send(command.to_dict())
@@ -516,6 +533,14 @@ func tick() -> void:
 ## server will check it), and send the next command.
 func _tick_remote() -> void:
 	link.pump()
+	match stalls.check(Time.get_ticks_msec()):
+		StallGuard.Verdict.RESYNC:
+			_resync_body()
+		StallGuard.Verdict.SKIP:
+			# A tick the engine ran to catch up with a freeze: the server would take the newest of
+			# these commands and none of the steps, so there is neither a step nor a command.
+			ticked.emit()
+			return
 	if not link.is_open():
 		# The socket is down: nothing to send, and the body waits where it is until the server's
 		# answer comes back.
@@ -548,6 +573,18 @@ func _tick_remote() -> void:
 	ticked.emit()
 
 
+## The loop froze and the server went on without us: the body is where the server has the player
+## (the newest frame the backlog held), and the commands in flight are forgotten, since the answers
+## to them are no longer about this body.
+func _resync_body() -> void:
+	reconciler.reset()
+	if _body == null or not state.has_frame() or state.me().is_empty():
+		return
+	_body.state.position = state.position()
+	_body.state.velocity = Vector3.ZERO
+	PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
+
+
 ## The seat is ours again: the rules as the server has them now, in place of the events missed.
 func _on_resumed(snapshot: Dictionary) -> void:
 	if hud != null:
@@ -564,7 +601,7 @@ func _on_remote_event(event: Dictionary) -> void:
 	var me: Dictionary = event["players"].get(state.player_id, {})
 	if _body == null or me.is_empty():
 		return
-	var shift := reconciler.correction(me["ack"], me["pos"])
+	var shift := reconciler.correction(me["ack"], me["pos"], _body.state.position)
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
@@ -686,6 +723,11 @@ func _make_autopilot() -> void:
 					autopilot.crane_pool.assign(item.pool)
 			ShopItem.Kind.AMMO:
 				autopilot.ammo_prices[item.weapon] = item.price
+			ShopItem.Kind.UPGRADE:
+				autopilot.recut_price = item.price
+			ShopItem.Kind.TONIC:
+				if item.health_bonus > 0.0:
+					autopilot.tonic_price = item.price
 	autopilot.wanted.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			return autopilot.prices_of_goods[a] < autopilot.prices_of_goods[b]
