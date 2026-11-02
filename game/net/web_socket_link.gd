@@ -9,16 +9,42 @@ extends GameLink
 ## with the frame whole (a delta is put together with `FrameDelta`). The look packets for this
 ## player come in those events (`look_packet`), as over the loopback. `refused` or `closed` say why
 ## the link is no more.
+##
+## A link that was welcomed and then loses its socket (not by `close()`, and not refused) tries to
+## get its seat back: it opens a new socket every `retry_every` seconds for `resume_within` seconds
+## and says hello with the resume token. `lost` says it began, `resumed` that the server gave the
+## same player back (with the rules' snapshot as they are now; the next frame is whole), and
+## `closed` that the time ran out or the server gave the seat to no one.
 
 ## The server accepted us: `snapshot` is the rules' state now (`GameRules.to_dict()`).
 signal welcomed(snapshot: Dictionary)
 signal refused(reason: int)
 signal closed
+signal lost
+## The seat is ours again: `snapshot` is the rules' state now.
+signal resumed(snapshot: Dictionary)
 
 ## Seconds between pings.
 const PING_EVERY := 0.5
+## Seconds to keep trying to get the seat back, and between tries (the server holds it for
+## `NightHost.RESUME_WITHIN`).
+const RESUME_WITHIN := 25.0
+const RETRY_EVERY := 1.0
+## The close code `drop` ends the socket with (the private range): neither a goodbye nor, for the
+## server, a reason to free the seat.
+const DROP_CODE := 4000
+## A gap between ticks over this many milliseconds is a stall.
+const STALL_MS := 100.0
 
 var player_id := 0
+var resume_within := RESUME_WITHIN
+var retry_every := RETRY_EVERY
+## False to give up at once when the socket drops.
+var reconnect := true
+## True from the socket dropping until the seat is back or given up.
+var resuming := false
+## What the last WELCOME gave to take the seat back with.
+var token := PackedByteArray()
 var tick_rate := 60
 
 # The numbers of this connection.
@@ -31,12 +57,20 @@ var rtt_ms := -1.0
 var rtt_samples: Array[float] = []
 ## The server step of the newest tick heard.
 var server_step := 0
+## Milliseconds between one TICK arriving and the next (30 a second is 33.3), since `take_stats`.
+var tick_gaps_ms: Array[float] = []
 ## The protocol version a server that turned us away speaks (0 until one has).
 var server_version := 0
 
 var _ws := WebSocketPeer.new()
+var _url := ""
 var _active := false
+var _closed_by_us := false
+var _refused := false
+var _lost_at := 0.0
+var _next_try := 0.0
 var _was_open := false
+var _last_tick_usec := 0
 var _frame: Dictionary = {}
 var _next_ping := 0.0
 
@@ -44,6 +78,7 @@ var _next_ping := 0.0
 ## Starts connecting; the result is the error of the start, not of the connection.
 func connect_to(url: String) -> Error:
 	_active = true
+	_url = url
 	return _ws.connect_to_url(url)
 
 
@@ -51,12 +86,50 @@ func is_open() -> bool:
 	return _active and _ws.get_ready_state() == WebSocketPeer.STATE_OPEN
 
 
+## The round trips (ping and pong) and the gaps between ticks since the last call, each as
+## `{n, mean, p95, max}` in milliseconds; the gaps also say how many were `stalls` (over 100 ms,
+## three ticks late). Clears them.
+func take_stats() -> Dictionary:
+	var out := {"rtt": _summary(rtt_samples), "gaps": _summary(tick_gaps_ms)}
+	var stalls := 0
+	for gap in tick_gaps_ms:
+		if gap > STALL_MS:
+			stalls += 1
+	out["gaps"]["stalls"] = stalls
+	rtt_samples.clear()
+	tick_gaps_ms.clear()
+	return out
+
+
+static func _summary(samples: Array[float]) -> Dictionary:
+	if samples.is_empty():
+		return {"n": 0, "mean": 0.0, "p95": 0.0, "max": 0.0}
+	var sorted := samples.duplicate()
+	sorted.sort()
+	var total := 0.0
+	for value in sorted:
+		total += value
+	return {
+		"n": sorted.size(),
+		"mean": snappedf(total / sorted.size(), 0.1),
+		"p95": snappedf(sorted[mini(int(sorted.size() * 0.95), sorted.size() - 1)], 0.1),
+		"max": snappedf(sorted[-1], 0.1),
+	}
+
+
 func is_welcomed() -> bool:
 	return player_id > 0
 
 
 func close() -> void:
+	_closed_by_us = true
 	_ws.close()
+
+
+## Closes the socket as if the network had gone: unlike `close()`, the link then tries to come
+## back. For tests and for a player who asks to reconnect.
+func drop() -> void:
+	_ws.close(DROP_CODE, "dropped")
 
 
 ## Only commands and the player's look travel from a client; joining and leaving are the
@@ -76,15 +149,42 @@ func pump() -> void:
 	var state := _ws.get_ready_state()
 	if state == WebSocketPeer.STATE_OPEN and not _was_open:
 		_was_open = true
-		_send(NetWire.hello())
+		_send(NetWire.hello(token))
 	# What came before a close is still read: a refusal arrives together with the close.
 	while state != WebSocketPeer.STATE_CONNECTING and _ws.get_available_packet_count() > 0:
 		_receive(_ws.get_packet())
 	if state == WebSocketPeer.STATE_OPEN:
 		_ping_when_due()
 	elif state == WebSocketPeer.STATE_CLOSED:
+		_on_socket_closed()
+
+
+## The socket is gone. A link that had a seat tries to take it back; any other is finished.
+func _on_socket_closed() -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if _closed_by_us or _refused:
+		resuming = false
 		_active = false
 		closed.emit()
+		return
+	if not resuming:
+		if not reconnect or not is_welcomed() or token.is_empty():
+			_active = false
+			closed.emit()
+			return
+		resuming = true
+		_lost_at = now
+		_next_try = now
+		lost.emit()
+	if now - _lost_at > resume_within:
+		resuming = false
+		_active = false
+		closed.emit()
+	elif now >= _next_try:
+		_next_try = now + retry_every
+		_was_open = false
+		_ws = WebSocketPeer.new()
+		_ws.connect_to_url(_url)
 
 
 func _send(data: PackedByteArray) -> void:
@@ -107,10 +207,23 @@ func _receive(data: PackedByteArray) -> void:
 	match data[0]:
 		NetWire.Type.WELCOME:
 			var welcome := NetWire.read_welcome(data)
-			if not welcome.is_empty() and player_id == 0:
+			if welcome.is_empty():
+				return
+			if player_id == 0:
 				player_id = welcome["player_id"]
 				tick_rate = welcome["tick_rate"]
+				token = welcome["token"]
 				welcomed.emit(welcome["snapshot"])
+			elif resuming:
+				resuming = false
+				if welcome["player_id"] != player_id:
+					# The seat was given up: this would be another player, not us.
+					close()
+					return
+				token = welcome["token"]
+				# The server begins again from a whole frame.
+				_frame = {}
+				resumed.emit(welcome["snapshot"])
 		NetWire.Type.TICK:
 			_on_tick(data)
 		NetWire.Type.PONG:
@@ -121,6 +234,7 @@ func _receive(data: PackedByteArray) -> void:
 			if data.size() >= 2:
 				if data.size() >= 3:
 					server_version = data[2]
+				_refused = true
 				refused.emit(data[1])
 				close()
 
@@ -129,6 +243,10 @@ func _on_tick(data: PackedByteArray) -> void:
 	var tick := NetWire.read_tick(data)
 	if tick.is_empty():
 		return
+	var now := Time.get_ticks_usec()
+	if _last_tick_usec > 0:
+		tick_gaps_ms.append((now - _last_tick_usec) / 1000.0)
+	_last_tick_usec = now
 	ticks_in += 1
 	server_step = tick["step"]
 	var events: Array = tick["events"]

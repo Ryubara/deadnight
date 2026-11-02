@@ -47,6 +47,13 @@ func join(player_id: int) -> int:
 	return seat
 
 
+## A player has come back on a new connection: sends them everyone's seat and look again (their
+## own included), which the new connection has not heard.
+func sync(player_id: int) -> void:
+	for id: int in looks:
+		_send.call(player_id, LookWire.player_look(id, seats[id], looks[id]))
+
+
 func leave(player_id: int) -> void:
 	looks.erase(player_id)
 	seats.erase(player_id)

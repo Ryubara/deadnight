@@ -21,6 +21,12 @@ signal night_over(round_reached: int)
 signal connect_failed(reason: String)
 ## After every tick of the night, whatever drove it.
 signal ticked
+## A game-server night lost its socket and is trying to get the seat back; it did; it could not
+## (the time ran out, or the server gave the seat away). The night is the server's and goes on
+## meanwhile; this client's player stands still until it is back.
+signal connection_lost
+signal connection_resumed
+signal connection_ended
 
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
@@ -215,6 +221,9 @@ func start_remote(
 	avatars.setup(looks, state.player_id if has_body else 0, Night.STEP)
 	online.delivered.connect(_on_delivered)
 	state.event_received.connect(_on_remote_event)
+	online.lost.connect(func() -> void: connection_lost.emit())
+	online.resumed.connect(_on_resumed)
+	online.closed.connect(func() -> void: connection_ended.emit())
 	looks.changed.connect(_dress_bodies)
 	online.send({"type": NightServer.LOOK, "packet": LookWire.look(_wanted_look())})
 	_on_delivered(early)
@@ -449,6 +458,13 @@ func tick() -> void:
 ## server will check it), and send the next command.
 func _tick_remote() -> void:
 	link.pump()
+	if not link.is_open():
+		# The socket is down: nothing to send, and the body waits where it is until the server's
+		# answer comes back.
+		if _body == null:
+			_follow(STEP)
+		ticked.emit()
+		return
 	var command: NightCommand = null
 	match mode:
 		Mode.HUMAN:
@@ -472,6 +488,13 @@ func _tick_remote() -> void:
 	if _body == null:
 		_follow(STEP)
 	ticked.emit()
+
+
+## The seat is ours again: the rules as the server has them now, in place of the events missed.
+func _on_resumed(snapshot: Dictionary) -> void:
+	if hud != null:
+		hud.state.load_snapshot(snapshot)
+	connection_resumed.emit()
 
 
 ## A frame from the server: the lot, the other players, and our own body's correction.
