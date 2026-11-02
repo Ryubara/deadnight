@@ -21,9 +21,9 @@ extends RefCounted
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
 ## barricades ({id: boards up}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health,
-## downed, weapon, ammo, reserve, reloading, arms (every weapon carried: id to [ammo, reserve]),
-## points, prompt, ack (the `seq` of the command this step used: a predicting client replays from
-## it)}}.
+## downed, weapon, ammo, reserve, reloading, arms (every weapon carried: id to [ammo, reserve,
+## tier]), points, prompt, ack (the `seq` of the command this step used: a predicting client
+## replays from it)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -788,7 +788,7 @@ func _arms_of(player_id: int) -> Dictionary:
 	var arms := {}
 	for weapon_id: StringName in combat.carried(player_id):
 		var state := combat.state_of(player_id, weapon_id)
-		arms[weapon_id] = [state.ammo, state.reserve]
+		arms[weapon_id] = [state.ammo, state.reserve, state.tier()]
 	return arms
 
 
