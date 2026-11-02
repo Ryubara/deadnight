@@ -196,8 +196,19 @@ func pinned_paths() -> Array[String]:
 	return paths
 
 
+## Whether the files are loaded by the loader's threads. A headless run draws with the dummy
+## renderer, whose mesh storage is not safe to fill from a thread while the main thread makes
+## meshes too: it printed "Initializing already initialized RID" and left one mesh behind at exit
+## ("RID allocations of type DummyMesh were leaked", #608), so there the files load on this thread.
+static func loads_in_threads() -> bool:
+	return DisplayServer.get_name() != "headless"
+
+
 func _load_resources() -> void:
 	var paths := WarmupManifest.resource_paths()
+	if not loads_in_threads():
+		await _load_here(paths)
+		return
 	var requested: Array[String] = []
 	for path in paths:
 		if ResourceLoader.exists(path) and ResourceLoader.load_threaded_request(path) == OK:
@@ -218,6 +229,24 @@ func _load_resources() -> void:
 		_say(
 			_step("load", share),
 			"Loading the lot (%d of %d)" % [requested.size() - waiting.size(), requested.size()]
+		)
+		await get_tree().process_frame
+	_finish("load")
+
+
+## Loads `paths` one after the other on this thread (what a headless run does), a frame for every
+## few so the loading bar still moves.
+func _load_here(paths: Array[String]) -> void:
+	var at := 0
+	while at < paths.size():
+		var until := Time.get_ticks_msec() + SOUND_BUDGET_MSEC
+		while at < paths.size() and Time.get_ticks_msec() < until:
+			if ResourceLoader.exists(paths[at]):
+				_pins.append(load(paths[at]))
+			at += 1
+		_say(
+			_step("load", float(at) / maxf(paths.size(), 1.0)),
+			"Loading the lot (%d of %d)" % [at, paths.size()]
 		)
 		await get_tree().process_frame
 	_finish("load")
