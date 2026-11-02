@@ -44,10 +44,24 @@ func _ready() -> void:
 	await _still(out, "preview-in-progress", "d", {"preview": _preview("started", 4, 3, false)})
 	await _still(out, "preview-waiting", "d", {"preview": _preview("open", null, 2, false)})
 	await _still(out, "preview-full", "d", {"preview": _preview("started", 2, 4, true)})
+	# The tallest the screen gets, on the web in a frame that refuses to copy: four seats, the
+	# page's link, the blocked-copy line and the selected text. It must fit a 720-high window.
+	var di := _member("d", "Di", 4)
+	await _still(out, "tallest", "a", {"lobby": _lobby([ann, bo, cy, di])}, _make_tallest)
 	get_tree().quit()
 
 
-func _still(out: String, label: String, me: String, params: Dictionary) -> void:
+func _make_tallest(screen: LobbyScreen) -> void:
+	screen.link_label.text = "https://example.invalid/deadnight/index.html?room=K7QM4X"
+	screen.link_label.visible = true
+	screen.copy_link_button.visible = true
+	screen.show_selected(screen.link_label.text)
+	screen.note.text = TogetherScreen.COPY_BLOCKED
+
+
+func _still(
+	out: String, label: String, me: String, params: Dictionary, adjust := Callable()
+) -> void:
 	var api := StandIn.new(self)
 	api.me = me
 	await RouterFixture.clear(get_tree())
@@ -55,6 +69,8 @@ func _still(out: String, label: String, me: String, params: Dictionary) -> void:
 	await UIRouter.idle
 	var screen := UIRouter.top() as LobbyScreen
 	screen.watch.every = 3600.0
+	if adjust.is_valid():
+		adjust.call(screen)
 	await get_tree().create_timer(SETTLE).timeout
 	await RenderingServer.frame_post_draw
 	var path := "%s/%s.png" % [out, label]

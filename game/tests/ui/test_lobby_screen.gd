@@ -107,11 +107,13 @@ func _preview(state: String, round_number: Variant, players: int, full := false)
 	}
 
 
+func _instance() -> LobbyScreen:
+	return (load("res://ui/screens/lobby_screen.tscn") as PackedScene).instantiate() as LobbyScreen
+
+
 func _screen(api: FakeApi, params: Dictionary) -> LobbyScreen:
 	await RouterFixture.clear(get_tree())
-	var screen := (
-		(load("res://ui/screens/lobby_screen.tscn") as PackedScene).instantiate() as LobbyScreen
-	)
+	var screen := _instance()
 	screen.params = params.merged({"api": api})
 	add_child(screen)
 	screen.watch.every = 3600.0
@@ -346,4 +348,47 @@ func test_a_copy_that_works_says_copied_and_shows_no_field() -> void:
 	await get_tree().create_timer(0.2).timeout
 	assert_str(screen.note.text).is_equal("Code copied.")
 	assert_bool(screen.copy_field.is_visible_in_tree()).is_false()
+	screen.free()
+
+
+## The tallest the screen gets (four seats, the web link, the blocked-copy line and the selected
+## text) still fits a 720-high window: the invite panel of the Together screen did not. What does
+## not fit scrolls, with Start and Leave in view.
+func test_the_tallest_lobby_fits_a_720_high_window() -> void:
+	var api := FakeApi.new(self)
+	var members := [
+		_member("a", "Ann", 1, true),
+		_member("b", "Bo", 2),
+		_member("c", "Cy", 3),
+		_member("d", "Di", 4),
+	]
+	api.lobby = _lobby(members)
+	await RouterFixture.clear(get_tree())
+	var window := auto_free(SubViewport.new()) as SubViewport
+	window.size = Vector2i(1280, 720)
+	add_child(window)
+	var screen := _instance()
+	screen.params = {"lobby": api.lobby, "api": api}
+	window.add_child(screen)
+	screen.watch.every = 3600.0
+	await screen.screen_enter()
+	screen.link_label.text = "https://example.invalid/deadnight/index.html?room=ABC234"
+	screen.link_label.visible = true
+	screen.copy_link_button.visible = true
+	screen.copy_field.text = screen.link_label.text
+	screen.copy_field.visible = true
+	screen.note.text = TogetherScreen.COPY_BLOCKED
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var panel := screen.find_children("*", "UIPanel", true, false)[0] as UIPanel
+	assert_float(panel.get_combined_minimum_size().y).is_less(720.0)
+	assert_float(panel.size.y).is_less(720.0)
+	var scroll := screen._scroll
+	assert_float(scroll.size.y).is_less_equal(720.0 - LobbyScreen.PANEL_MARGIN + 0.5)
+	# The buttons sit in two rows, the start beside Leave.
+	assert_bool(screen.start_button.get_parent() == screen.leave_button.get_parent()).is_true()
+	(
+		assert_bool(screen.copy_link_button.get_parent() == screen.copy_code_button.get_parent())
+		. is_true()
+	)
 	screen.free()

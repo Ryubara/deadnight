@@ -19,6 +19,9 @@ const NIGHT_SCREEN := "res://ui/screens/night_screen.tscn"
 const FIELD_WIDTH := 620.0
 const SEAT_NUMBER_WIDTH := 48.0
 const TAG_WIDTH := 96.0
+const LEAVE_WIDTH := 150.0
+## Kept free around the panel when the window is shorter than the screen is tall (it scrolls then).
+const PANEL_MARGIN := 120.0
 
 ## For a test: called instead of opening the night screen.
 static var opener := Callable()
@@ -47,6 +50,7 @@ var copy_field: LineEdit
 var leave_button: UIButton
 
 var _seats: VBoxContainer
+var _scroll: ScrollContainer
 var _seat_rows: Array[Dictionary] = []
 var _busy := false
 ## The player is on the way into the night: this screen is replaced, and nothing is left behind.
@@ -132,9 +136,17 @@ func _ready() -> void:
 	var panel := UIPanel.new()
 	panel.variant = UIPanel.Variant.MARQUEE
 	centre.add_child(panel)
+	# The panel never grows past the window: a screen taller than it (the copy field and the long
+	# link all up) scrolls rather than push Start and Leave off the bottom.
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.follow_focus = true
+	panel.add_child(_scroll)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override(&"separation", _tokens.space_md)
-	panel.add_child(box)
+	_scroll.add_child(box)
+	box.minimum_size_changed.connect(_fit)
+	get_viewport().size_changed.connect(_fit)
 	box.add_child(_label("TOGETHER", UILabel.Style.OVERLINE))
 	title_label = _label("The lobby", UILabel.Style.TITLE)
 	box.add_child(title_label)
@@ -143,7 +155,8 @@ func _ready() -> void:
 	box.add_child(code_label)
 	link_label = _label("", UILabel.Style.BODY)
 	link_label.name = "InviteLink"
-	link_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	link_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	link_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	link_label.custom_minimum_size.x = FIELD_WIDTH
 	box.add_child(link_label)
 	_seats = VBoxContainer.new()
@@ -160,32 +173,34 @@ func _ready() -> void:
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = FIELD_WIDTH
 	box.add_child(note)
+	var actions := _row(box, "Actions")
 	start_button = _button("Start the night", UIButton.Variant.PRIMARY, "Start")
 	start_button.pressed.connect(start)
-	box.add_child(start_button)
 	play_button = _button("Play", UIButton.Variant.PRIMARY, "Play")
 	play_button.pressed.connect(func() -> void: await _go_in(false))
-	box.add_child(play_button)
 	join_button = _button("Join", UIButton.Variant.PRIMARY, "Join")
 	join_button.pressed.connect(join)
-	box.add_child(join_button)
+	for primary: UIButton in [start_button, play_button, join_button]:
+		_in_row(actions, primary, FIELD_WIDTH - LEAVE_WIDTH - _tokens.space_md, true)
+	leave_button = _button("Leave", UIButton.Variant.GHOST, "Leave")
+	leave_button.pressed.connect(UIRouter.pop)
+	_in_row(actions, leave_button, LEAVE_WIDTH, false)
+	var copies := _row(box, "Copies")
+	var half := (FIELD_WIDTH - _tokens.space_md) / 2.0
 	copy_link_button = _button("Copy the link", UIButton.Variant.SECONDARY, "CopyLink")
 	copy_link_button.pressed.connect(
 		func() -> void: await _copy(link_label.text, "Link copied. Send it to your friends.")
 	)
-	box.add_child(copy_link_button)
+	_in_row(copies, copy_link_button, half, true)
 	copy_code_button = _button("Copy the code", UIButton.Variant.SECONDARY, "CopyCode")
 	copy_code_button.pressed.connect(func() -> void: await _copy(code_label.text, "Code copied."))
-	box.add_child(copy_code_button)
+	_in_row(copies, copy_code_button, half, true)
 	copy_field = LineEdit.new()
 	copy_field.name = "CopyField"
 	copy_field.editable = false
 	copy_field.custom_minimum_size.x = FIELD_WIDTH
 	copy_field.visible = false
 	box.add_child(copy_field)
-	leave_button = _button("Leave", UIButton.Variant.GHOST, "Leave")
-	leave_button.pressed.connect(UIRouter.pop)
-	box.add_child(leave_button)
 	watch = LobbyWatch.new()
 	watch.name = "Watch"
 	watch.changed.connect(_on_changed)
@@ -424,13 +439,22 @@ func _copy(text: String, done: String) -> void:
 		copy_field.visible = false
 		_say(done)
 		return
+	show_selected(text)
+	if WebClipboard.current != null:
+		WebClipboard.current.offer(text)
+	_say(TogetherScreen.COPY_BLOCKED)
+
+
+## Shows `text` selected in the copy field and scrolls the field into view, so Ctrl+C copies it.
+func show_selected(text: String) -> void:
 	copy_field.text = text
 	copy_field.visible = true
 	copy_field.grab_focus()
 	copy_field.select_all()
-	if WebClipboard.current != null:
-		WebClipboard.current.offer(text)
-	_say(TogetherScreen.COPY_BLOCKED)
+	# After the panel has taken its new height: until then the field is below the scroll's edge.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_scroll.ensure_control_visible(copy_field)
 
 
 static func _host_name(held: Dictionary) -> String:
@@ -445,6 +469,29 @@ func _label(text: String, style: UILabel.Style) -> UILabel:
 	label.text = text
 	label.style = style
 	return label
+
+
+func _row(box: VBoxContainer, row_name: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.name = row_name
+	row.add_theme_constant_override(&"separation", _tokens.space_md)
+	box.add_child(row)
+	return row
+
+
+func _in_row(row: HBoxContainer, button: UIButton, width: float, grow: bool) -> void:
+	button.custom_minimum_size.x = width
+	if grow:
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(button)
+
+
+## Caps the scrolling area at what the window leaves, and gives it all its content needs below that.
+func _fit() -> void:
+	if _scroll == null or _scroll.get_child_count() == 0:
+		return
+	var content := (_scroll.get_child(0) as Control).get_combined_minimum_size().y
+	_scroll.custom_minimum_size.y = minf(content, get_viewport_rect().size.y - PANEL_MARGIN)
 
 
 func _button(text: String, variant: UIButton.Variant, node_name: String) -> UIButton:
