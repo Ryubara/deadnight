@@ -95,11 +95,10 @@ static func _face(
 	tuning: PlayerTuning,
 	delta: float
 ) -> void:
-	if command.aim:
+	if state.holds_aim(tuning.hip_fire_hold):
+		# Aiming, or firing from the hip (the aim held for a moment): the body faces where the
+		# shots go, whichever way it walks, and turns there at one speed.
 		state.facing = rotate_toward(state.facing, command.yaw, tuning.aim_turn_speed * delta)
-	elif state.fire_age < tuning.hip_fire_hold:
-		# Firing from the hip: the body faces where the shots go, whichever way it walks.
-		state.facing = rotate_toward(state.facing, command.yaw, tuning.hip_fire_turn_speed * delta)
 	elif wish.length_squared() > 0.01:
 		var wanted := atan2(-wish.x, -wish.z)
 		var rate := tuning.sprint_turn_speed if state.sprinting else tuning.turn_speed
@@ -197,7 +196,7 @@ static func _move(
 	if not on_floor:
 		if wish.length_squared() > 0.0:
 			horizontal = horizontal.move_toward(wish * speed, tuning.air_acceleration * delta)
-	elif command.aim or state.fire_age < tuning.hip_fire_hold:
+	elif state.holds_aim(tuning.hip_fire_hold):
 		# Strafing (aiming, or firing from the hip): the body faces the view, so the velocity goes
 		# straight to the wish and the pivot rules, which follow the body's heading, do not apply.
 		horizontal = _approach(horizontal, wish * speed, tuning, delta)

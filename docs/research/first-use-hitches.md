@@ -194,6 +194,10 @@ it cannot move during the navigation bake, which blocks the page (Open).
   links for in 20 s; grenades and the flare in the night (the night does not draw them yet, #257: the blast is warmed
   because its code exists, and a night view that draws a projectile is picked up by the same check once it plays one);
   other players' looks (the wardrobe parts) in a multiplayer night.
-- **Navigation bake**: solved by shipping baked meshes (#348); it was never the long frame (0.5 s, #347).
+- **Navigation bake**: solved by shipping baked meshes (#348, #335); it was never the long frame (0.5 s, #347). Nothing
+  is baked on the web path any more: the night's first mesh takes 15 ms and a bought door 15 ms, against 594 and 370 ms
+  baked in the browser ([Zombies](zombies.md#the-meshes-are-baked-ahead-of-time-335)). The loading's longest frame is
+  2.2 to 2.3 s, the build of one lit shader (see "The floor"), so the issue's goal of under 1 s needs fewer lit shaders,
+  not navigation.
 - **Loading time** is the sum of the lit shaders (about 12 s of 19 in the browser, on this machine); the bar shows it.
   Fewer lit shaders is the only lever (see "The first draw of the lot").
