@@ -25,6 +25,8 @@ const PANEL_MARGIN := 120.0
 
 ## For a test: called instead of opening the night screen.
 static var opener := Callable()
+## The autopilot plays the night this screen opens (`--bot`, for browser probes).
+static var play_as_bot := false
 
 var api: TogetherApi
 var mode := Mode.LIVE
@@ -44,6 +46,9 @@ var play_button: UIButton
 var join_button: UIButton
 var copy_link_button: UIButton
 var copy_code_button: UIButton
+## In a Discord Activity: Discord's own window for sending the code to friends, which needs no
+## clipboard (`discord-bridge.js`, `shareLink`).
+var share_button: UIButton
 ## Where the text to copy is shown selected when the window cannot copy for the player (a Discord
 ## Activity whose host blocks the clipboard): Ctrl+C then copies it.
 var copy_field: LineEdit
@@ -58,6 +63,10 @@ var _entering := false
 ## The lobby ended for this player (dropped, or gone): no seat to give up.
 var _over := false
 var _me := ""
+var _play_shown := false
+var _shares: HBoxContainer
+var _preview_timer: Timer
+var _asking_preview := false
 
 
 ## Opens the lobby screen for a lobby the player is a member of.
@@ -125,7 +134,10 @@ static func event_text(event: Dictionary) -> String:
 func _ready() -> void:
 	super._ready()
 	if params.has("api"):
-		api = params["api"]
+		# Asks through an API that lives under this screen: the screen that opened it is covered, and
+		# the router stops the processing of a covered screen, which would leave every request its
+		# `HTTPRequest` children made waiting for ever.
+		api = (params["api"] as TogetherApi).detached(self)
 	mode = Mode.PREVIEW if params.has("preview") else Mode.LIVE
 	lobby = params.get("lobby", {})
 	preview = params.get("preview", {})
@@ -195,6 +207,10 @@ func _ready() -> void:
 	copy_code_button = _button("Copy the code", UIButton.Variant.SECONDARY, "CopyCode")
 	copy_code_button.pressed.connect(func() -> void: await _copy(code_label.text, "Code copied."))
 	_in_row(copies, copy_code_button, half, true)
+	_shares = _row(box, "Shares")
+	share_button = _button("Share in Discord", UIButton.Variant.SECONDARY, "ShareDiscord")
+	share_button.pressed.connect(_share)
+	_in_row(_shares, share_button, FIELD_WIDTH, true)
 	copy_field = LineEdit.new()
 	copy_field.name = "CopyField"
 	copy_field.editable = false
@@ -209,13 +225,31 @@ func _ready() -> void:
 	watch.trouble.connect(func() -> void: _say("Lost touch with the lobby. Trying again..."))
 	watch.recovered.connect(func() -> void: _on_changed(watch.lobby))
 	add_child(watch)
+	# A code looked at stays true while the screen is open: the night in progress it said "Waiting
+	# room" for is read again every couple of seconds until the player presses Join.
+	_preview_timer = Timer.new()
+	_preview_timer.wait_time = LobbyWatch.EVERY
+	_preview_timer.timeout.connect(refresh_preview)
+	add_child(_preview_timer)
 	_show()
+
+
+## The button a player most likely presses: Start, Play or Join, else Leave.
+func focus_initial() -> void:
+	var target: Control = leave_button
+	for button: UIButton in [start_button, play_button, join_button]:
+		if button.is_visible_in_tree():
+			target = button
+			break
+	target.grab_focus()
 
 
 func screen_enter() -> void:
 	super.screen_enter()
 	if mode == Mode.LIVE and api != null and not _over:
 		watch.watch(api, lobby, _me)
+	elif mode == Mode.PREVIEW and api != null:
+		_preview_timer.start()
 
 
 func _exit_tree() -> void:
@@ -245,6 +279,24 @@ func seat_texts() -> Array[String]:
 	return out
 
 
+## Reads the code again (the timer does this every two seconds in a preview): the state, the round
+## and whether there is room move on while the screen is open.
+func refresh_preview() -> void:
+	if mode != Mode.PREVIEW or _busy or _asking_preview or preview.is_empty() or api == null:
+		return
+	_asking_preview = true
+	var seen := await api.preview(str(preview.get("code", "")))
+	_asking_preview = false
+	if mode != Mode.PREVIEW or _busy:
+		return
+	if seen["ok"]:
+		preview = seen["preview"]
+		_show()
+	elif seen.get("error") == "not_found":
+		_preview_timer.stop()
+		_on_ended(str(seen.get("text", "")))
+
+
 ## The host presses Start: the backend gives the lobby a game server, and the host goes in.
 func start() -> void:
 	if _busy or not is_host():
@@ -268,6 +320,7 @@ func join() -> void:
 	if _busy or mode != Mode.PREVIEW:
 		return
 	_busy = true
+	_preview_timer.stop()
 	_set_enabled(false)
 	_say("Joining...")
 	var signed := await api.sign_in()
@@ -276,6 +329,8 @@ func join() -> void:
 		_busy = false
 		_set_enabled(true)
 		_say(joined["text"])
+		if joined.get("error") != "not_found":
+			_preview_timer.start()
 		return
 	lobby = joined["lobby"]
 	_me = api.my_id()
@@ -306,6 +361,7 @@ func _go_in(held: bool) -> void:
 		return
 	NightScreen.join_url = TogetherScreen.server_url_of(pass_to, TogetherScreen.in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
+	NightScreen.join_as_bot = play_as_bot
 	_entering = true
 	watch.stop()
 	if opener.is_valid():
@@ -334,8 +390,10 @@ func _on_ended(text: String) -> void:
 	_set_enabled(true)
 	start_button.visible = false
 	play_button.visible = false
+	join_button.visible = false
 	copy_link_button.visible = false
 	copy_code_button.visible = false
+	_shares.visible = false
 	copy_field.visible = false
 	leave_button.text = "Back"
 	status.text = text if text != "" else TogetherApi.TEXTS["not_found"]
@@ -357,9 +415,14 @@ func _show() -> void:
 	var started: bool = live and lobby.get("state") == "started"
 	start_button.visible = live and is_host() and not started
 	play_button.visible = live and started
+	if play_button.visible and not _play_shown:
+		# The host has started: the guest's next press is Play, wherever the focus was.
+		play_button.grab_focus.call_deferred()
+	_play_shown = play_button.visible
 	join_button.visible = (not live) and not preview.get("full", false)
 	copy_link_button.visible = live and link_label.visible
 	copy_code_button.visible = live
+	_shares.visible = live and TogetherScreen.can_share()
 	leave_button.text = "Leave" if live else "Back"
 	if not _over:
 		status.text = status_text(lobby, _me) if live else preview_text(preview)
@@ -421,7 +484,7 @@ func _make_seat_row() -> Dictionary:
 
 func _set_enabled(enabled: bool) -> void:
 	for button: UIButton in [
-		start_button, play_button, join_button, copy_link_button, copy_code_button
+		start_button, play_button, join_button, copy_link_button, copy_code_button, share_button
 	]:
 		button.disabled = not enabled
 	leave_button.disabled = false
@@ -443,6 +506,19 @@ func _copy(text: String, done: String) -> void:
 	if WebClipboard.current != null:
 		WebClipboard.current.offer(text)
 	_say(TogetherScreen.COPY_BLOCKED)
+
+
+## Opens Discord's share window with the lobby's code in the message: friends read it there and
+## paste it into Join with the code (or open the link). Does nothing outside an Activity.
+func _share() -> void:
+	var message := TogetherScreen.SHARE_MESSAGE % code_label.text
+	JavaScriptBridge.eval(
+		(
+			"window.deadnightDiscord.share(%s, %s)"
+			% [JSON.stringify(message), JSON.stringify(code_label.text)]
+		)
+	)
+	_say("Pick who to send it to in Discord's window.")
 
 
 ## Shows `text` selected in the copy field and scrolls the field into view, so Ctrl+C copies it.

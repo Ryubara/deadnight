@@ -70,9 +70,7 @@ func test_the_lobby_reports_its_code_its_seats_and_the_buttons_it_shows() -> voi
 			{"userId": "b", "name": "Bo", "seat": 2, "host": false, "away": false},
 		],
 	}
-	var screen := (
-		(load("res://ui/screens/lobby_screen.tscn") as PackedScene).instantiate() as LobbyScreen
-	)
+	var screen := (load(LobbyScreen.SCREEN) as PackedScene).instantiate() as LobbyScreen
 	var api := TogetherApi.new(self)
 	api.isolated = true
 	api._own_user = {"id": "a"}

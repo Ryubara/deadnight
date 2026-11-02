@@ -1,28 +1,32 @@
 class_name ActivityRoom
 extends Node
-## The night of a Discord Activity's voice channel, made ready while the player is on the main
-## menu: sign in (with Discord, else as a guest) and make or find the lobby of the Activity's
-## instance, so Play together shows the room code at once and one press of Play goes in. The game
-## opens on the main menu like on every other platform (#495); this node is added to the root when
-## the page address has `instance_id` and asks for nothing the player has to answer.
+## The Discord Activity's voice channel, made ready while the player is on the main menu: signed in
+## (with Discord, else as a guest) and told what the channel's lobby is (nothing yet, a waiting room
+## or a night in progress), so Play together goes to it at once. The game opens on the main menu
+## like on every other platform (#495); this node is added to the root when the page address has
+## `instance_id` and asks for nothing the player has to answer.
 ##
-## It is one node for the whole run: `current`. A night entered from it makes it stale (the lobby
-## of the next night may be another), and the screen prepares it again on the next visit.
+## It joins nothing: a seat in a lobby is taken when the player opens the lobby screen, so someone
+## who only opened the Activity is not a member (and not missed by the host's Start).
+##
+## It is one node for the whole run: `current`. The screen prepares it again on a visit after a
+## failure.
 
 ## Something about the room changed: `state` is the new state.
 signal changed
 
-enum State { PREPARING, READY, FAILED, STALE }
+enum State { PREPARING, READY, FAILED, IDLE }
 
 ## The room of this run, or null outside a Discord Activity.
 static var current: ActivityRoom
-## For a test: a Callable that answers `TogetherApi.create`'s `{"ok", "lobby"}` (or a failure)
-## instead of calling the backend.
+## For a test: a Callable that answers `TogetherApi.preview_instance`'s `{"ok", "preview"}` (or a
+## failure) instead of calling the backend.
 static var preparer := Callable()
 
-var state := State.STALE
-## The lobby of the instance once `state` is READY (`TogetherApi.create`'s).
-var lobby := {}
+var state := State.IDLE
+## What the channel's lobby looked like when the room got ready (`TogetherApi.preview_instance`'s
+## preview), or empty when nobody had opened one.
+var preview := {}
 ## What a player reads when `state` is FAILED.
 var failure := ""
 var instance_id := ""
@@ -45,33 +49,32 @@ func _exit_tree() -> void:
 		current = null
 
 
-## Signs in and makes or finds the instance's lobby. Safe to call again after a failure or a night.
+## Signs in and reads the channel's lobby. Safe to call again after a failure.
 func prepare() -> void:
 	if state == State.PREPARING:
 		return
 	_become(State.PREPARING)
-	var made := {}
+	var seen := {}
 	if preparer.is_valid():
-		made = await preparer.call()
+		seen = await preparer.call()
 	else:
 		var signed := await api.sign_in()
-		made = signed if not signed["ok"] else await api.create()
+		seen = signed if not signed["ok"] else await api.preview_instance()
 	if not is_inside_tree():
 		return
-	if made.get("ok", false):
-		lobby = made["lobby"]
+	if seen.get("ok", false):
+		preview = seen["preview"]
+		failure = ""
+		_become(State.READY)
+	elif seen.get("error", "") == "not_found":
+		# Nobody has opened the channel's lobby: the room is ready, with nothing to show yet.
+		preview = {}
 		failure = ""
 		_become(State.READY)
 	else:
-		lobby = {}
-		failure = str(made.get("text", "Something went wrong."))
+		preview = {}
+		failure = str(seen.get("text", "Something went wrong."))
 		_become(State.FAILED)
-
-
-## A night was entered from this room: the next visit makes a fresh one ready.
-func mark_used() -> void:
-	lobby = {}
-	_become(State.STALE)
 
 
 ## Waits until the room is no longer preparing; true when it is ready.
