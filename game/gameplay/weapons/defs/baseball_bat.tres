@@ -8,7 +8,7 @@ id = &"baseball_bat"
 display_name = "Baseball bat"
 kind = 2
 automatic = false
-damage = 38
+damage = 60
 pellets = 1
 spread_deg = 0
 falloff_start = 15
@@ -22,7 +22,7 @@ zone_multipliers = Dictionary[StringName, float]({
 &"head": 1.5,
 &"limb": 0.75
 })
-fire_interval = 0.45
+fire_interval = 0.4
 magazine_size = 0
 reserve_start = 0
 reserve_max = 0
@@ -38,4 +38,4 @@ splash_damage = 0
 splash_min_fraction = 0.25
 melee_range = 1.8
 melee_radius = 0.45
-melee_max_targets = 3
+melee_max_targets = 4

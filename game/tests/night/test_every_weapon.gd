@@ -71,6 +71,14 @@ func test_the_crane_holds_every_weapon_the_shop_and_the_start_do_not_give() -> v
 	)
 
 
+func test_the_bat_and_the_axe_come_only_from_the_crane() -> void:
+	# The maintainer's rule (#461): never at the start, never on a wall, and so a strong blow
+	# (not a free spare) for the slot they take.
+	var sources := _sources(RulesFixture.tuning())
+	for id: StringName in [&"baseball_bat", &"fire_axe"]:
+		assert_array(sources[id]).is_equal([&"crane"])
+
+
 func test_seeded_plays_draw_every_prize_of_the_crane() -> void:
 	var tuning := RulesFixture.steady_crane_tuning()
 	var drawn := {}

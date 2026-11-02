@@ -109,11 +109,11 @@ func test_a_player_out_of_rounds_falls_back_on_the_melee_weapon_that_kills_faste
 	# With only the crowbar, the crowbar, whatever the health.
 	assert_str(String(SimWeapons.best_armed(_melee_arms(crowbar), 50.0))).is_equal("crowbar")
 	# Against nothing in particular the heavy axe does the most a second; a round-1 walker (50) falls
-	# to two quick bat blows sooner than to two crowbar blows or a slow axe; a round-10 one (121)
-	# takes the crowbar three blows, the bat four and the axe two slow ones.
+	# to one quick bat blow sooner than to one slow axe blow or two crowbar blows; a round-10 one
+	# (121) takes the crowbar three blows, the bat three quick ones and the axe a single one.
 	assert_str(String(SimWeapons.best_armed(_melee_arms(all)))).is_equal("fire_axe")
 	assert_str(String(SimWeapons.best_armed(_melee_arms(all), 50.0))).is_equal("baseball_bat")
-	assert_str(String(SimWeapons.best_armed(_melee_arms(all), 121.0))).is_equal("crowbar")
+	assert_str(String(SimWeapons.best_armed(_melee_arms(all), 121.0))).is_equal("fire_axe")
 
 
 func test_a_firearm_with_rounds_beats_any_melee_weapon_in_hand() -> void:

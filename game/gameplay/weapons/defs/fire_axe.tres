@@ -8,7 +8,7 @@ id = &"fire_axe"
 display_name = "Fire axe"
 kind = 2
 automatic = false
-damage = 90
+damage = 150
 pellets = 1
 spread_deg = 0
 falloff_start = 15
@@ -19,7 +19,7 @@ penetration = 0
 penetration_falloff = 0.6
 zone_multipliers = Dictionary[StringName, float]({
 &"body": 1.0,
-&"head": 2.0,
+&"head": 2.5,
 &"limb": 0.7
 })
 fire_interval = 0.95
