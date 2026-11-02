@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]
 [ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]
 [ext_resource type="PackedScene" path="res://world/drive_in/lot_neon_sign.tscn" id="neon_sign"]
+[ext_resource type="PackedScene" path="res://world/machines/recut_machine.tscn" id="recut_machine"]
+[ext_resource type="PackedScene" path="res://world/machines/soda_fountain.tscn" id="soda_fountain"]
 [ext_resource type="PackedScene" path="res://world/drive_in/screen_fx.tscn" id="screen_fx"]
 [ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]
 [ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]
@@ -1252,6 +1254,7 @@ material = ExtResource("concession_roof")
 
 [node name="SodaFountain" type="CSGBox3D" parent="Concession"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.200, 0.800, 4.900)
+visible = false
 use_collision = true
 size = Vector3(2.4, 1.6, 1)
 material = ExtResource("concession_prop")
@@ -1515,6 +1518,7 @@ material = ExtResource("booth_prop")
 
 [node name="ReCutMachine" type="CSGBox3D" parent="ProjectionBooth"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.500, 0.900, 28.200)
+visible = false
 use_collision = true
 size = Vector3(3, 1.8, 2.4)
 material = ExtResource("booth_prop")
@@ -2452,6 +2456,22 @@ metadata/kind = "crane"
 metadata/shop_id = "crane_play"
 metadata/crane_spot = 3
 
+[node name="ReCut" parent="ShopProps" instance=ExtResource("recut_machine")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 3.500, 0.000, 28.200)
+
+[node name="SpotReCut" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 3.500, 0.000, 25.900)
+metadata/kind = "upgrade"
+metadata/shop_id = "upgrade_weapon"
+
+[node name="Soda" parent="ShopProps" instance=ExtResource("soda_fountain")]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.200, 0.000, 4.900)
+
+[node name="SpotSoda" type="Marker3D" parent="ShopSpots"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 8.200, 0.000, 3.700)
+metadata/kind = "perk"
+metadata/shop_id = "tonic_hearty"
+
 [node name="LockerField" type="CSGBox3D" parent="ShopProps"]
 transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 3.100, 0.500, -31.000)
 use_collision = true
@@ -2478,18 +2498,18 @@ metadata/kind = "ammo"
 metadata/shop_id = ""
 
 [node name="LockerStand" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 9.200, 0.500, 1.800)
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 9.200, 0.500, -1.800)
 use_collision = true
 size = Vector3(1.2, 1, 0.7)
 material = ExtResource("ammo_crate")
 
 [node name="LockerStandBand" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 9.200, 0.820, 1.800)
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 9.200, 0.820, -1.800)
 size = Vector3(1.24, 0.18, 0.74)
 material = ExtResource("ammo_band")
 
 [node name="LockerStandSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 8.830, 0.500, 1.800)
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 8.830, 0.500, -1.800)
 pixel_size = 0.006
 text = "AMMO"
 font_size = 60
@@ -2498,7 +2518,7 @@ modulate = Color(0.1, 0.07, 0.02, 1)
 outline_modulate = Color(1, 0.9, 0.6, 1)
 
 [node name="SpotLockerStand" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 8.100, 0.000, 1.800)
+transform = Transform3D(-0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, -0.0000, 8.100, 0.000, -1.800)
 metadata/kind = "ammo"
 metadata/shop_id = ""
 

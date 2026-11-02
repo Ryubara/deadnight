@@ -236,10 +236,13 @@ def box(
     mat: str,
     rot_y: float = 0.0,
     collide: bool = True,
+    visible: bool = True,
 ) -> None:
     if name in drivein_props.REPLACED:  # a drive-in prop stands here, with this block's collision
         return
     props = {"transform": xform(pos, rot_y)}
+    if not visible:  # the collision and the walking mesh keep it; a machine is drawn over it
+        props["visible"] = "false"
     if collide:
         props["use_collision"] = "true"
     props["size"] = vec(size)
@@ -247,9 +250,12 @@ def box(
     node(name, "CSGBox3D", parent, props)
 
 
-def block(parent: str, name: str, x0: float, x1: float, z0: float, z1: float, h: float, mat: str, y0: float = 0.0):
+def block(
+    parent: str, name: str, x0: float, x1: float, z0: float, z1: float, h: float, mat: str, y0: float = 0.0,
+    visible: bool = True,
+):  # fmt: skip
     """A solid axis-aligned box from corner coordinates."""
-    box(parent, name, (x1 - x0, h, z1 - z0), ((x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2), mat)
+    box(parent, name, (x1 - x0, h, z1 - z0), ((x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2), mat, visible=visible)
 
 
 def floor_tiles(parent: str, prefix: str, x0: float, x1: float, z0: float, z1: float, mat: str, tile: float = 24.0):
@@ -577,6 +583,8 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/board.tscn" id="board"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/circuit_switch.tscn" id="switch"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lot_neon_sign.tscn" id="neon_sign"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/machines/recut_machine.tscn" id="recut_machine"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/machines/soda_fountain.tscn" id="soda_fountain"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/screen_fx.tscn" id="screen_fx"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')
@@ -731,7 +739,8 @@ def build() -> None:
             box(con, f"Roof{i}_{j}", (xb - xa, 0.3, zb - za), ((xa + xb) / 2, 4.15, (za + zb) / 2), "concession_roof")
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
     # The prize crane is not part of the scene: it moves between four places, so `CraneView` draws it.
-    block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop")
+    # The fountain is drawn by `SodaFountain` (ShopProps); this block is its collision and its place in the walking mesh.
+    block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop", visible=False)
     cl = lamps(con, "concession")
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorE", (5, 3.3, 3), 1.6, 9, "#ffb866")
@@ -796,7 +805,8 @@ def build() -> None:
         "Ramp", "CSGBox3D", booth,
         {"transform": ramp, "use_collision": "true", "size": vec((RAMP_WIDTH, 0.3, ramp_len)), "material": 'ExtResource("booth_prop")'},
     )  # fmt: skip
-    block(booth, "ReCutMachine", 2, 5, 27, 29.4, 1.8, "booth_prop")
+    # The re-cut bench is drawn by `RecutMachine` (ShopProps); this block is its collision and its walking-mesh hull.
+    block(booth, "ReCutMachine", 2, 5, 27, 29.4, 1.8, "booth_prop", visible=False)
     block(booth, "FilmRacks", -3.4, -1, 30, 31.6, 2.2, "booth_prop")
     block(booth, "Projector", -1.0, 1.0, 24.5, 26.0, 1.3, "booth_prop", 4.05)
     bl = lamps(booth, "booth")
@@ -945,9 +955,15 @@ def build() -> None:
     shop_spot("SpotCraneMidway", "crane", "crane_play", (6.0, 0, 14.0), 90, crane_spot=1)
     shop_spot("SpotCraneField", "crane", "crane_play", (-24.0, 0, -14.0), 0, crane_spot=2)
     shop_spot("SpotCraneYard", "crane", "crane_play", (40.0, 0, 10.0), 270, crane_spot=3)
+    # The re-cut bench in the booth, over the block that holds its place (the weapon in hand is re-cut here), and the
+    # soda fountain in the stand (the hearty tonic). Both face the room: the door side. The spots are 1.2 m in front.
+    instance("ShopProps", "ReCut", "recut_machine", (3.5, 0, 28.2), 180)
+    shop_spot("SpotReCut", "upgrade", "upgrade_weapon", (3.5, 0, 25.9), 180)
+    instance("ShopProps", "Soda", "soda_fountain", (8.2, 0, 4.9), 180)
+    shop_spot("SpotSoda", "perk", "tonic_hearty", (8.2, 0, 3.7), 180)
     # Lockers: the avenue (the first one, in the open), the stand, the midway, the yard and the back lot.
     ammo_locker("LockerField", (3.1, -31.0), 270)
-    ammo_locker("LockerStand", (9.2, 1.8), 270)
+    ammo_locker("LockerStand", (9.2, -1.8), 270)
     ammo_locker("LockerMidway", (14.6, 12.0), 270)
     ammo_locker("LockerYard", (31.0, 20.0), 0)
     ammo_locker("LockerBackLot", (-24.0, 18.0), 0)

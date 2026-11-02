@@ -238,15 +238,23 @@ func _tap() -> void:
 
 
 func _sign() -> void:
-	# A neon heart over the back bar: two lobes and a point, and the word under it.
-	MachineParts.sphere(self, "HeartL", 0.15, Vector3(-0.11, 2.3, -0.4), _heart_material)
-	MachineParts.sphere(self, "HeartR", 0.15, Vector3(0.11, 2.3, -0.4), _heart_material)
+	# A neon heart over the back bar (two lobes and a point), and a board with the word under it,
+	# above the bottles and the tank.
+	MachineParts.box(
+		self,
+		"Board",
+		Vector3(1.1, 0.3, 0.06),
+		Vector3(0.0, 2.2, -0.43),
+		MachineParts.plain(Color(0.2, 0.05, 0.06), 0.5)
+	)
+	MachineParts.sphere(self, "HeartL", 0.13, Vector3(-0.1, 2.78, -0.4), _heart_material)
+	MachineParts.sphere(self, "HeartR", 0.13, Vector3(0.1, 2.78, -0.4), _heart_material)
 	var point := MachineParts.box(
-		self, "HeartPoint", Vector3(0.27, 0.27, 0.2), Vector3(0.0, 2.2, -0.4), _heart_material
+		self, "HeartPoint", Vector3(0.24, 0.24, 0.18), Vector3(0.0, 2.69, -0.4), _heart_material
 	)
 	point.rotation.z = PI / 4.0
 	var word := MachineParts.label(
-		self, "HEARTY", Vector3(0.0, 1.98, -0.4), 64, Color(1.0, 0.86, 0.9), Color(0.25, 0.02, 0.06)
+		self, "HEARTY", Vector3(0.0, 2.2, -0.39), 64, Color(1.0, 0.86, 0.9), Color(0.25, 0.02, 0.06)
 	)
 	word.name = "Sign"
 
