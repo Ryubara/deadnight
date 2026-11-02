@@ -11,7 +11,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | | `godot`, `web` (about 15 minutes each) | the change touches something they can see |
 | | `mkdocs`, `markdownlint`, `actionlint` | their own files changed |
 | | `build-ok` | always: the one required name for the build |
-| `pr` (`pull_request_target`) | `pr-rules` (the four below as steps), `title`, `body`, `docs`, `commits` | every push and every edit of the description |
+| `pr` (`pull_request_target`) | `pr-rules` (the title, description, docs and commits checks, as steps) | every push and every edit of the description |
 | `pr-status` | `labels` | the push, and once when `ci` ends (not when it was cancelled) |
 | `docs` | `mkdocs` (pages build), `deploy` | a push to `main` only |
 
@@ -27,8 +27,8 @@ passes four answers on: `godot`, `web`, `docs`, `markdown`, `workflows`.
   the markdownlint rules; `actionlint` for `.github/workflows/**`.
 - A list of no files, or of 3000 (the API's limit), turns everything on; so does a push to `main` or a manual run.
 
-A required check whose job is skipped by an `if` reports success, so every required name (`title`, `body`, `docs`,
-`commits`, `conventions`, `build-ok`, `mkdocs`, `markdownlint`, `actionlint`) is still reported. A path filter on the
+A required check whose job is skipped by an `if` reports success, so every required name (`pr-rules`, `conventions`,
+`build-ok`, `mkdocs`, `markdownlint`, `actionlint`) is still reported. A path filter on the
 whole workflow would leave the check missing and block the merge, which is why the filtering is done with `if`.
 `build-ok` fails when `conventions`, `godot` or `web` failed or was cancelled, so a skipped job after a failed
 `conventions` does not pass.
@@ -40,15 +40,18 @@ job would block every pull request until the ruleset is edited. Replacing the fo
 a push, in three steps, because `pr.yml` runs from the base branch (`pull_request_target`) and a new name only reports
 after its workflow is on `main`:
 
-1. **Done in this step:** `pr.yml` gains the `pr-rules` job (the four checks as steps of one job, a later step still
-   runs after a failed one so a run lists every refusal) beside the four old jobs. For a while a push starts five
-   `pr` jobs instead of four.
-2. The maintainer edits the ruleset once `pr-rules` has reported on `main`: add `pr-rules`, remove `title`, `body`,
-   `docs` and `commits`, in one edit.
-3. A pull request deletes the four old jobs and changes `merge.required_checks` in `.github/conventions.yml` to name
-   `pr-rules` (a manual path: a maintainer merges it by hand).
+1. **Done (#457):** `pr.yml` gained the `pr-rules` job (the four checks as steps of one job, a later step still runs
+   after a failed one so a run lists every refusal) beside the four old jobs.
+2. **Done:** the maintainer edited the ruleset once `pr-rules` had reported on `main`: it now requires `pr-rules`,
+   `conventions`, `build-ok`, `mkdocs`, `markdownlint` and `actionlint`, and the names `title`, `body`, `docs` and
+   `commits` are gone.
+3. **Done:** the four old jobs are deleted from `pr.yml` and `merge.required_checks` in `.github/conventions.yml` names
+   the ruleset's six checks (a manual path: a maintainer merges it by hand). Nothing else named the four jobs:
+   `pr_status.py` and the ruleset sync read `required_checks`, and the `pr-status` and `ci-failure` workflows watch
+   the `ci` and `docs` workflows, not any job of `pr`. Only `CONTRIBUTING.md`'s list of required checks was
+   updated by hand.
 
-Until step 3 the four jobs stay.
+A push to a pull request now starts one `pr` job (`pr-rules`) where it started four, then five.
 
 ## Measured
 
@@ -64,7 +67,8 @@ Jobs started (not skipped) per push to a pull request, from the runs of one pull
 Before, every pull request started the same 16: `ci` (`godot`, `web`, `build-ok`), `conventions`, `docs` (`mkdocs`,
 `markdownlint`, `actionlint`), `pr` (four) and `pr-status` (five runs: one for the push and one per workflow that
 ended, cancelled ones included). Now: `ci` (`conventions` and the jobs above, `build-ok`), the four `pr` jobs, and two
-`labels` runs. A documentation-only pull request starts `conventions`, `mkdocs`, `markdownlint` and `build-ok` besides
-the `pr` jobs and `labels`; none runs more than half a minute, so it is green in about two minutes where it waited for
+`labels` runs (these numbers were taken before step 3, which took three of the four `pr` jobs away). A
+documentation-only pull request starts `conventions`, `mkdocs`, `markdownlint` and `build-ok` besides the `pr` jobs
+and `labels`; none runs more than half a minute, so it is green in about two minutes where it waited for
 a 15-minute build before. The 15-minute jobs that remain are the ones that were cancelled and restarted on every push:
 a push that fails `conventions` now stops them from starting.
