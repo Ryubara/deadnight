@@ -6,7 +6,8 @@ running night and takes a screenshot. Then compares the shots: a lower scale dra
 it, so the picture differs and has less detail from pixel to pixel; the run fails when it does not. It is the web half
 of issue #36 (`tests/captures/resolution_scale.tscn` is the desktop half). Headless only, never a captured mouse.
 
-    uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/resolution_scale.py build/web <out>
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/resolution_scale.py build/web <out>
         [--scales 100 50] [--gpu] [--size 1280x720]
 
 `--gpu` uses the installed Chrome (this machine's GPU); without it the headless shell draws in software, which is far
@@ -24,7 +25,7 @@ from pathlib import Path
 from PIL import Image
 from playwright.sync_api import Browser, ConsoleMessage, sync_playwright
 from playwright.sync_api import Error as PlaywrightError
-from smoke import SOFTWARE_GL, menu_item, press, serve, wait_for
+from smoke import SOFTWARE_GL, open_settings, press, reach_menu, serve, start_solo, wait_for, wait_for_night
 
 LOAD_TIMEOUT_S = 150
 SCREEN_TIMEOUT_S = 40
@@ -68,15 +69,9 @@ def shot_at(browser: Browser, url: str, scale: int, out: Path, size: dict, conso
     page.on("pageerror", lambda error: problems.append(f"[pageerror] {error}"))
     try:
         page.goto(url, wait_until="commit")
-        wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
-        page.mouse.click(5, 5)  # gives the canvas the keyboard
-        page.wait_for_timeout(2500)
-        # Settings is the first item of the More tab; the first tab is Video, whose first row on the web is the
-        # resolution scale.
-        menu_item(page, "More")
-        press(page, "Enter")
-        wait_for(page, "settings", lambda s: s.get("screen") == "settings_screen", SCREEN_TIMEOUT_S)
-        page.wait_for_timeout(1500)
+        reach_menu(page)
+        # The first settings tab is Video, whose first row on the web is the resolution scale.
+        open_settings(page)
         press(page, "ArrowDown")  # from the tab strip to the first row
         for _ in range((100 - scale) // STEP):
             press(page, "ArrowLeft")
@@ -85,9 +80,8 @@ def shot_at(browser: Browser, url: str, scale: int, out: Path, size: dict, conso
         press(page, "Escape")
         wait_for(page, "the menu", lambda s: s.get("screen") == "main_menu", SCREEN_TIMEOUT_S)
         page.wait_for_timeout(1500)
-        menu_item(page, "Play", 2)
-        press(page, "Enter")  # Solo
-        wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
+        start_solo(page)
+        wait_for_night(page)
         page.wait_for_timeout(4000)
         png = page.screenshot()
         (out / f"night_{scale}.png").write_bytes(png)

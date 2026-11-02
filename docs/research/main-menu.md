@@ -306,8 +306,9 @@ the new `car()` of #380. Three browsers, 1920 x 1080:
   budget. **Still not run: a mobile GPU.** When a phone number says the sky costs too much, the SubViewport is the next
   step.
 - **How to run it:** export the web build (`godot --headless --path game --export-release Web`), then
-  `uv run --with playwright==1.64.1 --with pillow python tools/web_smoke/skin_tour.py build/web <out> --browser
-  chromium|chrome|firefox [--size 1920x1080] [--unpaced]`. Firefox needs `playwright install firefox` once. The CI `web`
+  `uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 --with pillow python
+  tools/web_smoke/skin_tour.py build/web <out> --browser chromium|chrome|firefox [--size 1920x1080]
+  [--unpaced]`. Firefox needs `playwright install firefox` once. The CI `web`
   job runs the Chromium tour at 1280 x 720 after the smoke run.
 - **A key is lost on a slow frame.** Godot reads input once per frame, and the runner's software renderer draws a frame
   in 200 to 250 ms, so the 150 ms key hold the smoke run uses can fall between two frames: the first CI runs of the tour

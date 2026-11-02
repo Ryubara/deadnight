@@ -68,16 +68,29 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_note": "",
 		"lobby_buttons": "",
 		"notices": "",
+		"code_text": "",
 		"touch": false,
+		"reticle": false,
 		"tab": "",
 		"stage": "",
 		"gamepad": "",
-		"controller_hint": false
+		"activity_room": "",
+		"activity_code": "",
+		"controller_hint": false,
+		"clipboard": "",
+		"clipboard_detail": ""
 	}
 	if top == null:
 		return data
 	data["screen"] = top.scene_file_path.get_file().get_basename()
 	data["gamepad"] = GamepadProbe.note(GamepadProbe.read())
+	var clipboard := WebClipboard.read()  # inside a frame only: what copy and paste can do there
+	data["clipboard"] = WebClipboard.note(clipboard)
+	data["clipboard_detail"] = WebClipboard.detail(clipboard)
+	var room := ActivityRoom.current
+	if room != null:
+		data["activity_room"] = ActivityRoom.State.keys()[room.state].to_lower()
+		data["activity_code"] = str(room.lobby.get("code", ""))
 	var tree := top.get_tree()
 	var hint: ControllerHint = (
 		tree.root.find_child("ControllerHint", true, false) as ControllerHint
@@ -96,6 +109,7 @@ static func snapshot(top: Control) -> Dictionary:
 			together.invite_code.text if together.invite_code.is_visible_in_tree() else ""
 		)
 		data["room_status"] = together.status.text
+		data["code_text"] = together.code_field.text  # what a paste put into the code field
 	var lobby := top as LobbyScreen
 	if lobby != null:
 		# The lobby: its code, the seats as `1  Ann  HOST|2  Bo|...`, the standing line, the last
@@ -129,6 +143,7 @@ static func snapshot(top: Control) -> Dictionary:
 		# Who joined or left, as the night's notices say it.
 		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
 	data["touch"] = night_screen.touch_active()
+	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)

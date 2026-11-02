@@ -41,6 +41,9 @@ var play_button: UIButton
 var join_button: UIButton
 var copy_link_button: UIButton
 var copy_code_button: UIButton
+## Where the text to copy is shown selected when the window cannot copy for the player (a Discord
+## Activity whose host blocks the clipboard): Ctrl+C then copies it.
+var copy_field: LineEdit
 var leave_button: UIButton
 
 var _seats: VBoxContainer
@@ -168,18 +171,18 @@ func _ready() -> void:
 	box.add_child(join_button)
 	copy_link_button = _button("Copy the link", UIButton.Variant.SECONDARY, "CopyLink")
 	copy_link_button.pressed.connect(
-		func() -> void:
-			DisplayServer.clipboard_set(link_label.text)
-			_say("Link copied. Send it to your friends.")
+		func() -> void: await _copy(link_label.text, "Link copied. Send it to your friends.")
 	)
 	box.add_child(copy_link_button)
 	copy_code_button = _button("Copy the code", UIButton.Variant.SECONDARY, "CopyCode")
-	copy_code_button.pressed.connect(
-		func() -> void:
-			DisplayServer.clipboard_set(code_label.text)
-			_say("Code copied.")
-	)
+	copy_code_button.pressed.connect(func() -> void: await _copy(code_label.text, "Code copied."))
 	box.add_child(copy_code_button)
+	copy_field = LineEdit.new()
+	copy_field.name = "CopyField"
+	copy_field.editable = false
+	copy_field.custom_minimum_size.x = FIELD_WIDTH
+	copy_field.visible = false
+	box.add_child(copy_field)
 	leave_button = _button("Leave", UIButton.Variant.GHOST, "Leave")
 	leave_button.pressed.connect(UIRouter.pop)
 	box.add_child(leave_button)
@@ -318,6 +321,7 @@ func _on_ended(text: String) -> void:
 	play_button.visible = false
 	copy_link_button.visible = false
 	copy_code_button.visible = false
+	copy_field.visible = false
 	leave_button.text = "Back"
 	status.text = text if text != "" else TogetherApi.TEXTS["not_found"]
 	note.text = ""
@@ -410,6 +414,23 @@ func _set_enabled(enabled: bool) -> void:
 
 func _say(text: String) -> void:
 	note.text = text
+
+
+## Copies `text` and says `done`; when the window cannot copy for the player (a Discord Activity
+## may block it) the text is shown selected with how to copy it: never "copied" for a copy that
+## did not happen.
+func _copy(text: String, done: String) -> void:
+	if await WebClipboard.copy_text(text):
+		copy_field.visible = false
+		_say(done)
+		return
+	copy_field.text = text
+	copy_field.visible = true
+	copy_field.grab_focus()
+	copy_field.select_all()
+	if WebClipboard.current != null:
+		WebClipboard.current.offer(text)
+	_say(TogetherScreen.COPY_BLOCKED)
 
 
 static func _host_name(held: Dictionary) -> String:

@@ -69,6 +69,13 @@ closes on `SIGTERM`.
 
 ## Join flow: from the Activity to a running match
 
+The Activity opens on the main menu, like every platform (#495). The sign-in, the instance's lobby and its start (all
+that comes before the ticket request below) run in the background from the menu (`ActivityRoom`, started by `main.gd`
+when the page has `instance_id`); Play together then shows the room code ready, and one press of Play asks for the
+ticket. If the room could not be
+made the screen says why and tries again on the next visit; a night entered from the room makes it stale, so the next
+visit makes a fresh one.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -303,6 +310,10 @@ mappings for the backend and each game server.
   and says which case it is (`GamepadProbe`: blocked, click first, press a button, connected), so the maintainer can
   read the cause in Discord. `tools/web_smoke/activity.py --embed denied` shows the blocked line; `--embed gamepad
   --pad` the connected one. What Discord's clients grant is not in its docs: read it from that line.
+- Copy and paste in an Activity (#516). The iframe may not use `navigator.clipboard` (a policy feature that
+  defaults to the page's own origin), and the engine's web runtime cancels every key press, so Ctrl+V never makes a
+  `paste` event. A page layer takes the paste event and copies from a gesture; the SDK's `shareLink` sends a room's
+  code with no clipboard. [Web export](web-export.md#copy-and-paste-inside-a-discord-activity-516).
 - Discord's proxy compresses the backend's answers (`Content-Encoding: gzip`), and Godot's `HTTPRequest` then decodes a
   body the browser has decoded already and fails, which the game reads as "Could not reach the game's servers": every
   call through `/api` failed while the backend logged a 200 or 201. `HttpJson` sets `accept_gzip = false`.

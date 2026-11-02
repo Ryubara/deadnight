@@ -310,3 +310,40 @@ func test_a_night_that_has_not_reported_a_round_says_only_that_it_is_on() -> voi
 	for round_number: Variant in [null, 0]:
 		var text := LobbyScreen.preview_text(_preview("started", round_number, 1))
 		assert_str(text).is_equal("Night in progress. 1 of 4 here.")
+
+
+## A page that refuses every copy, as a frame whose host blocks the clipboard.
+func _refusing_clipboard() -> WebClipboard:
+	var clipboard := auto_free(WebClipboard.new()) as WebClipboard
+	clipboard.in_frame = true
+	clipboard.eval_js = func(js: String) -> Variant:
+		return "NotAllowedError" if js.contains(".write") else null
+	add_child(clipboard)
+	return clipboard
+
+
+func test_a_copy_the_window_cannot_make_shows_the_code_selected_and_says_how() -> void:
+	var api := FakeApi.new(self)
+	api.lobby = _lobby([_member("a", "Ann", 1, true)])
+	var screen := await _screen(api, {"lobby": api.lobby})
+	var clipboard := _refusing_clipboard()
+	screen.copy_code_button.pressed.emit()
+	await get_tree().create_timer(0.3).timeout
+	assert_bool(screen.copy_field.is_visible_in_tree()).is_true()
+	assert_str(screen.copy_field.get_selected_text()).is_equal("ABC234")
+	assert_str(screen.note.text).is_equal(TogetherScreen.COPY_BLOCKED)
+	assert_str(screen.note.text).not_contains("copied")
+	assert_str(clipboard._offered).is_equal("ABC234")
+	screen.free()
+
+
+func test_a_copy_that_works_says_copied_and_shows_no_field() -> void:
+	var api := FakeApi.new(self)
+	api.lobby = _lobby([_member("a", "Ann", 1, true)])
+	var screen := await _screen(api, {"lobby": api.lobby})
+	WebClipboard.current = null  # a tab or the desktop: the engine's own copy
+	screen.copy_code_button.pressed.emit()
+	await get_tree().create_timer(0.2).timeout
+	assert_str(screen.note.text).is_equal("Code copied.")
+	assert_bool(screen.copy_field.is_visible_in_tree()).is_false()
+	screen.free()
