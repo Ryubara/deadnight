@@ -47,8 +47,13 @@ Things that were not obvious:
 - Godot reads input once per frame: a key tap shorter than a frame can be lost, so keys are held for 150 ms.
 - After Back from a screen, nothing has focus; the router spends the first arrow or accept key giving it focus. The
   run presses Down, Up, Up to get back to Play.
-- There is no pointer lock in headless Chromium, so the camera cannot be turned and the zombies are usually off screen:
-  the crowd is read from the probe, not seen.
+- Pointer lock works in headless Chromium (`document.pointerLockElement` is the canvas after the click that starts the
+  night), but on Linux (the CI runner) every synthetic `page.mouse.move` under lock arrives as a motion and then the
+  opposite motion (+15 px, -15 px), which cancel, so Playwright cannot turn the view there; Windows does not do it.
+  Godot's web runtime listens for `pointermove` on the window and reads `movementX/Y`, so the smoke dispatches
+  `PointerEvent('pointermove', {movementX})` on the canvas when the real moves did not turn the view
+  (`tools/web_smoke/smoke.py`, `mouse_look_via` in its result). The yaw is on `window.deadnight` for it.
+- The zombies are usually off screen: the crowd is read from the probe, not seen.
 - Playwright 1.64 launches `chromium-headless-shell`, which is always software-rendered. `--gpu` uses the installed
   Chrome (`channel="chrome"`) for numbers with a real GPU.
 
@@ -154,6 +159,11 @@ docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 
 
 The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
+
+`tools/web_smoke/judder.py` (same arguments, `--gpu --unpaced` for the machine's GPU and no frame limit) measures
+how evenly the soldier moves on the screen in the page: the numbers and what they showed are in
+`physics-interpolation.md`. The smoke run also fails when the night's body is not drawn between physics ticks
+(`window.deadnight.interpolated`).
 
 ### Over the internet
 
