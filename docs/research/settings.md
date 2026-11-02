@@ -84,6 +84,38 @@ New tokens (`UITokens`, group Controls): `control_height`, `control_width`, `tra
   scripts in tests need window pixels: `viewport.get_final_transform() * control.get_global_transform_with_canvas()`.
 - Movie Maker writes frame N after the scripted code for that moment ran: to see the state before a change, read N - 1.
 
+## Resolution scale in the Compatibility renderer (#36)
+
+Deadnight is Compatibility-only (desktop and the WebGL2 web build), and `video/resolution_scale` sets the root
+viewport's `scaling_3d_scale`. It works in both, at every step the slider offers (50 to 100 in steps of 5), and exactly
+0.5 is not a no-op:
+
+| Scale | Mean absolute difference from 100 % (1280 x 720) | Detail along a row of the floor |
+| --- | --- | --- |
+| 100 % | 0 | 0.144 |
+| 75 % | 0.117 | 0.135 |
+| 50 % | 0.151 | 0.126 |
+
+(A checker floor, a lit box and a sphere under one sun, bilinear scaling, Godot 4.7.2, RTX 5080.) At a 640 x 360 window
+the difference of 0.5 is 0.178, against 0.151 at 75 % there too. The probe in #26 saw a byte-identical picture at exactly
+0.5 and could not be reproduced with the real service, any number of frames after the change (0, 1, 2 and 6), any window
+size tried, or the root viewport's own scaling mode left alone; it was most likely a probe that read the picture before
+the viewport was resized. **The only way to get a picture from a change is to wait for the frame after it** (the capture
+waits six, and `RenderingServer.frame_post_draw`).
+
+- **The range stops at 50 on purpose.** The service clamps to `RANGES` (50 to 100); a 25 % request draws as 50 %.
+- **Web:** `tools/web_smoke/resolution_scale.py` opens the export in Chrome (WebGL2, the machine's GPU) in two fresh
+  contexts, lowers the slider with the keyboard to 50 % in one, starts a night in each and compares the middle of the
+  lower half of the screenshots: the 50 % picture differs by 0.017 and has 9 % less detail from pixel to pixel; the HUD
+  is as sharp in both (the interface is drawn at full size). Not in CI: starting a night in a software renderer takes
+  minutes.
+- **Guard:** `game/tests/captures/resolution_scale.tscn` (windowed, through the no-focus launcher) draws the scene at each
+  scale through the real `Settings` service and fails its run when a lower scale does not change the picture or does not
+  lose detail. It never touches the real display mode or the real mouse. A headless GdUnit test cannot do this: the
+  headless renderer draws nothing.
+- **Reading the numbers:** a mean difference of 0.01 or less means the picture did not change; the checks use that and
+  "less detail than the step above".
+
 ## Proof
 
 `game/tests/core/test_settings.gd` (defaults, round trip, file layout, bad entries, clamping, `changed`, reset, buses,

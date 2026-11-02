@@ -205,6 +205,30 @@ widths, a missing glyph falls back, and a token swap changes the face on a shown
 credits naming every committed font, a licence text and entry for each font folder, and the credits fitting one
 screen.
 
+## Button prompts (#10)
+
+`UIGlyph` and `UIHint` (`game/addons/gds_ui/components/`) are the generic form of the HUD's `HudGlyph`, which stays as it
+is: it draws the four face buttons only, in the HUD's face. What the addon version adds, and why:
+
+- **Drawn, not an image set.** A glyph is a rounded rect, a disc, a cross, a pill or a few lines from `UITokens`, so the
+  question the issue asked (a licence entry for each asset) does not arise, and a restyle reaches the prompts. The four
+  PlayStation shapes (cross, circle, square, triangle) are plain geometry; the letters of the other sets are letters.
+- **The set follows the pad, not just "gamepad".** `UIInputMode.family` is read from `Input.get_joy_name(device)` of the
+  last pad event (`PS3` to `PS5`, `DualShock`, `DualSense`, `Sony`: PlayStation; `Nintendo`, `Switch`, `Joy-Con`,
+  `Pro Controller`: Nintendo; anything else generic). The engine numbers face buttons by position (`JOY_BUTTON_A` is the
+  bottom one), so the Nintendo set swaps the letters: its bottom button reads B.
+- **Glyphs do not poll the device.** `UIInputMode` has a change signal (a static variable cannot declare one, so a small
+  `Bus` class carries it, as `UIMotion` does), emitted from the setters of `gamepad`, `touch` and `family`. A glyph that
+  is not on screen costs nothing; `HudGlyph` still polls each frame and could move to the signal.
+- **A rebinding is not announced.** The `InputMap` has no change signal, so a screen that rebinds calls `refresh()`.
+- **Hints hide under a finger** (`UIInputMode.touch`), as the `UIInputMode` comment always said they would.
+- **Sounds:** the cues (`hover`, `focus`, `press`, `back`, `push`, `pop`, `tick`) were wired to real sounds in #87; the
+  catalog and the night's sounds were not touched here.
+- **Tests and capture:** `game/tests/ui/test_ui_glyph.gd` (captions per kind of binding and family, follows the device
+  and the family, a rebound key, an unbound action, held sink, the change signal, pad names, the hint under a finger);
+  `game/tests/captures/gds_glyphs_tour.tscn` shows the sheet and the live hint line as the device changes (keyboard,
+  pad, PlayStation pad, Nintendo pad, finger).
+
 ## Left out
 
 Settings widgets (slider, toggle, option selector) came with the settings screen: see [Settings](settings.md).

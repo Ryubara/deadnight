@@ -2,9 +2,9 @@ class_name NightSounds
 extends Node3D
 ## What the night sounds like besides the guns, made only from what the server sent: the ambient
 ## bed (crickets and a distant highway everywhere, the projector in its booth), the score in the
-## breaks, the boards at the fence, doors, melee blows and the till. It holds no game state and
-## asks the server nothing. The soldiers' voices are `SoldierVoice`'s. The design is
-## `docs/design/audio.md`.
+## breaks, the boards at the fence, doors, melee blows, the till and every player's feet
+## (`FootstepSounds`, its child). It holds no game state and asks the server nothing. The soldiers'
+## voices are `SoldierVoice`'s. The design is `docs/design/audio.md`.
 
 ## Lifts a sound off the ground to the middle of the boards, and to a player's head.
 const BOARD_LIFT := Vector3(0.0, 1.3, 0.0)
@@ -15,6 +15,8 @@ const SCORE := &"bed_score"
 const PROJECTOR := &"bed_projector"
 ## The node of the lot's greybox that holds the projection booth.
 const BOOTH_NODE := "ProjectionBooth"
+## The seed of the feet's level wobble.
+const FEET_SEED := 239
 
 var _state: ClientState
 var _world: NightWorld
@@ -32,6 +34,18 @@ func setup(state: ClientState, world: NightWorld) -> void:
 	if state.phase() != GameRules.Phase.ACTIVE:
 		Audio.start_bed(SCORE)
 	_start_projector()
+	_add_footsteps()
+
+
+## Every player's feet (`FootstepSounds`), found by the bodies the view knows.
+func _add_footsteps() -> void:
+	var view := get_parent() as NightView
+	if view == null:
+		return
+	var feet := FootstepSounds.new()
+	feet.name = "FootstepSounds"
+	add_child(feet)
+	feet.setup(_state, view.bodies, FEET_SEED)
 
 
 func _exit_tree() -> void:
