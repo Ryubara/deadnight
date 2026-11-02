@@ -46,6 +46,7 @@ func before_test() -> void:
 	_player.capture_mouse = false
 	_rig = _player.camera_rig
 	_animation = _player.get_node("AnimationTree") as PlayerAnimation
+	_player.set_physics_process(false)
 	_rig.set_process(false)
 	_animation.set_process(false)
 	_animation.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
@@ -56,9 +57,13 @@ func before_test() -> void:
 	_contact = HandContact.new(_skeleton)
 
 
+## Steps the player, the camera and the animation by hand, `count` fixed ticks back to back, then
+## one frame so the skeleton draws the last one (the grip modifiers keep no clock, so the pose in
+## between is never needed). A wait for a physics frame per tick tied the test to the wall clock
+## (60 ticks a second): 38 s on CI, which pushed the suite past its time limit.
 func _ticks(count: int) -> void:
 	for i in count:
-		await get_tree().physics_frame
+		_player.tick(_player.sample_command())
 		_rig.step(TICK, 1.0)
 		_animation._process(TICK)
 		_animation.advance(TICK)
