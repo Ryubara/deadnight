@@ -237,7 +237,7 @@ The fix is that a remote player is the same body as ours: `RemoteAvatars` makes 
 takes the view) and `puppet_to` places it from the interpolated track. Wire cost: two new per-player frame fields,
 `aim` (the aim pose is held, the hip-fire hold included) and `pitch` (the look up or down in 3 degree steps,
 `NightServer.pitch_step`); both are delta-coded, so a player who keeps still adds nothing and a swap, an aim or a
-look costs under 40 bytes (a test pins it). No new event and no tier field: a weapon's tier (the re-cut) changes no
+look costs under 64 bytes (a test pins it). No new event and no tier field: a weapon's tier (the re-cut) changes no
 model, so the id is all a body needs. `NetWire.VERSION` was raised for the new frame fields, so a client that cannot
 draw them is told to reload instead of showing a gun-less crowd. A puppet is not a footstep source (`Player.is_puppet`:
 the feet stay on the frames' stride) and is dressed by `RemoteAvatars`, not by the night's `_dress_bodies`.

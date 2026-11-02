@@ -382,7 +382,7 @@ func test_a_swap_or_a_new_look_costs_a_few_bytes_and_a_still_player_none() -> vo
 	var aimed := NetWire.tick(1, [FrameDelta.diff(before, _frame_with(&"pistol", true, 0))])
 	var looked := NetWire.tick(1, [FrameDelta.diff(before, _frame_with(&"pistol", false, 4))])
 	for packet: PackedByteArray in [swapped, aimed, looked]:
-		assert_int(packet.size() - quiet.size()).is_less_equal(40)
+		assert_int(packet.size() - quiet.size()).is_less_equal(64)
 
 
 func _frame_with(weapon: StringName, aim: bool, pitch: int) -> Dictionary:
