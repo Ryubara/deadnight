@@ -32,6 +32,9 @@ func _ready() -> void:
 	prompt_layer.add_child(TouchRotatePrompt.new())
 	add_child(prompt_layer)
 	await get_tree().process_frame
+	if KillBench.requested():
+		add_child(KillBench.new())
+		return
 	if args.has("stage"):
 		UIRouter.reset(STAGE, UITransition.Kind.CUT, {"still": args.get_string("stage") == "still"})
 		return

@@ -466,6 +466,42 @@ def buy_tonic(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(mix, 0.001, 0.05)
 
 
+def buy_recut(rng: np.random.Generator) -> np.ndarray:
+    """The re-cut bench: the reels' motor winds up, the press groans down, strikes at 0.8 s with a hot hiss and
+    a shower of sparks, the sprockets ratchet round as it lets go, and a bell says it is done at 1.55 s."""
+    seconds = 2.5
+    n = dsp.samples(seconds)
+    # The reels' motor: a sawtooth that climbs 70 to 210 Hz in 0.8 s, hums, and sags at the end.
+    hz = dsp.curve([(0, 70), (0.3, 210), (0.7, 190), (1, 120)], n)
+    motor = dsp.filt(dsp.saw(hz, n), "low", 700) * 0.5 + dsp.sine(hz * 0.5, n) * 0.4
+    motor *= dsp.curve([(0, 0), (0.04, 0.7), (0.65, 0.8), (0.9, 0.25), (1, 0)], n)
+    mix = dsp.place(None, motor, 0.0, 0.5)[:n]
+    # The press coming down: a low groan, then the blow.
+    groan_n = dsp.samples(0.4)
+    groan = dsp.sine(np.linspace(150, 60, groan_n)) * dsp.attack_decay(groan_n, 0.05, 0.3)
+    groan += _rasp(rng, 0.4, 300, 1400) * 0.5
+    mix = dsp.place(mix, groan, 0.4, 0.7)[:n]
+    mix = dsp.place(mix, _thud(rng, 70, 0.28), 0.8, 1.0)[:n]
+    mix = dsp.place(mix, _metal_click(rng, _jv(rng, 520, 0.05), ring=0.09), 0.8, 0.9)[:n]
+    # Hot metal: a hiss that dies in half a second, with sparks spitting in it.
+    hiss_n = dsp.samples(0.6)
+    hiss = dsp.filt(dsp.white(rng, 0.6), "high", 4500) * dsp.decay(hiss_n, 0.22)
+    mix = dsp.place(mix, hiss, 0.8, 0.45)[:n]
+    for _ in range(int(rng.integers(10, 15))):
+        mix = dsp.place(
+            mix, _metal_click(rng, _jv(rng, 4200, 0.3), ring=0.006), 0.8 + rng.uniform(0.0, 0.5), rng.uniform(0.1, 0.35)
+        )[:n]
+    # The sprockets ratcheting as the press lifts: clicks that slow down.
+    at, gap = 1.05, 0.03
+    while at < 1.5:
+        mix = dsp.place(mix, _metal_click(rng, _jv(rng, 1800, 0.1), ring=0.012), at, 0.4)[:n]
+        at += gap
+        gap *= 1.18
+    mix = dsp.place(mix, _bell(1567.98, 0.8, ring=0.5), 1.55, 0.45)[:n]
+    mix = dsp.place(mix, _bell(2093.0, 0.6, ring=0.35), 1.6, 0.25)[:n]
+    return dsp.fade(dsp.room_tail(rng, mix, 0.5, wet=0.15, dark=5000), 0.003, 0.15)
+
+
 def deny(rng: np.random.Generator) -> np.ndarray:
     """A game-show buzzer, but dull: two low square pulses through a band-pass, and a relay clack before them."""
     mix = dsp.place(None, _metal_click(rng, 900, ring=0.02), 0.0, 0.6)
@@ -665,6 +701,7 @@ REGISTRY: list[Entry] = [
     Entry("world", "buy_ammo", 2, buy_ammo, -4.0),
     Entry("world", "buy_fuel", 1, buy_fuel, -5.0),
     Entry("world", "buy_tonic", 1, buy_tonic, -5.0),
+    Entry("world", "buy_recut", 1, buy_recut, -3.0),
     Entry("world", "deny", 1, deny, -6.0),
     Entry("world", "crane_spin", 1, crane_spin, -4.0),
     Entry("world", "crane_claw_drop", 1, crane_claw_drop, -5.0),

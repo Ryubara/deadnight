@@ -106,7 +106,7 @@ func test_firing_pulls_too_and_idling_does_not() -> void:
 
 func test_nothing_happens_without_the_touch_layer() -> void:
 	_touch_up = false
-	_assist.auto_fire = TouchAimAssist.AutoFire.ALWAYS
+	_assist.auto_fire = TouchAimAssist.AutoFire.WHILE_AIMING
 	var zombie := _zombie_on_view(8.0, 0.0)
 	_state.zombies = [zombie]
 	var yaw := _player.camera_rig.yaw
@@ -121,7 +121,7 @@ func test_nothing_happens_without_the_touch_layer() -> void:
 
 func test_nothing_happens_when_a_mouse_was_the_last_input() -> void:
 	UIInputMode.touch = false
-	_assist.auto_fire = TouchAimAssist.AutoFire.ALWAYS
+	_assist.auto_fire = TouchAimAssist.AutoFire.WHILE_AIMING
 	var zombie := _zombie_on_view(8.0, -0.6)
 	_state.zombies = [zombie]
 	var yaw := _player.camera_rig.yaw
@@ -168,16 +168,24 @@ func test_the_look_drag_is_slowed_near_a_zombie() -> void:
 	assert_float(_assist.friction()).is_equal(1.0)
 
 
-func test_auto_fire_is_off_by_default() -> void:
-	assert_int(TouchAimAssist.new(get_tree(), _state).auto_fire).is_equal(
-		TouchAimAssist.AutoFire.OFF
-	)
+func test_auto_fire_is_on_by_default_and_waits_for_the_aim() -> void:
+	var fresh := TouchAimAssist.new(get_tree(), _state)
+	assert_int(fresh.auto_fire).is_equal(TouchAimAssist.AutoFire.WHILE_AIMING)
 	_state.zombies = [_zombie_on_view(8.0, 0.0)]
+	assert_bool(_command().fire).is_false()
+	Input.action_press(&"aim")
+	assert_bool(_command().fire).is_true()
+
+
+func test_auto_fire_off_never_pulls_the_trigger_even_aiming_at_a_zombie() -> void:
+	_assist.auto_fire = TouchAimAssist.AutoFire.OFF
+	_state.zombies = [_zombie_on_view(8.0, 0.0)]
+	Input.action_press(&"aim")
 	assert_bool(_command().fire).is_false()
 
 
-func test_always_pulls_the_trigger_on_a_zombie_and_lets_go_when_it_is_off_it() -> void:
-	_assist.auto_fire = TouchAimAssist.AutoFire.ALWAYS
+func test_aiming_pulls_the_trigger_on_a_zombie_and_lets_go_when_it_is_off_it() -> void:
+	Input.action_press(&"aim")
 	_state.zombies = [_zombie_on_view(8.0, 0.0)]
 	var on := _command()
 	assert_bool(on.fire).is_true()
@@ -186,16 +194,19 @@ func test_always_pulls_the_trigger_on_a_zombie_and_lets_go_when_it_is_off_it() -
 	assert_bool(_command().fire).is_false()
 
 
-func test_while_aiming_waits_for_the_aim_button() -> void:
-	_assist.auto_fire = TouchAimAssist.AutoFire.WHILE_AIMING
-	_state.zombies = [_zombie_on_view(8.0, 0.0)]
-	assert_bool(_command().fire).is_false()
-	Input.action_press(&"aim")
-	assert_bool(_command().fire).is_true()
+func test_the_fire_button_shoots_wherever_the_player_aims_in_both_modes() -> void:
+	_state.zombies = [_zombie_on_view(8.0, 3.0)]
+	Input.action_press(&"fire")
+	for mode in [TouchAimAssist.AutoFire.OFF, TouchAimAssist.AutoFire.WHILE_AIMING]:
+		_assist.auto_fire = mode
+		assert_bool(_command().fire).is_true()
+		Input.action_press(&"aim")
+		assert_bool(_command().fire).is_true()
+		Input.action_release(&"aim")
 
 
 func test_auto_fire_does_not_spend_ammunition_it_cannot_use() -> void:
-	_assist.auto_fire = TouchAimAssist.AutoFire.ALWAYS
+	Input.action_press(&"aim")
 	_state.zombies = [_zombie_on_view(8.0, 0.0)]
 	var me: Dictionary = _state.frame["players"][1]
 	me["ammo"] = 0
@@ -209,13 +220,13 @@ func test_auto_fire_does_not_spend_ammunition_it_cannot_use() -> void:
 
 
 func test_auto_fire_keeps_to_its_reach() -> void:
-	_assist.auto_fire = TouchAimAssist.AutoFire.ALWAYS
+	Input.action_press(&"aim")
 	_state.zombies = [_zombie_on_view(_assist.tuning.auto_fire_reach + 6.0, 0.0)]
 	assert_bool(_command().fire).is_false()
 
 
 func test_a_crowbar_swings_at_a_zombie_within_its_arm() -> void:
-	_assist.auto_fire = TouchAimAssist.AutoFire.ALWAYS
+	Input.action_press(&"aim")
 	var me: Dictionary = _state.frame["players"][1]
 	me["weapon"] = CROWBAR
 	me["ammo"] = 0
@@ -240,15 +251,17 @@ func test_the_settings_set_the_strength_and_the_auto_fire() -> void:
 	var fresh := TouchAimAssist.new(get_tree(), _state)
 	assert_float(fresh.strength).is_equal_approx(0.5, 0.001)
 	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, 0.8)
-	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, 2)
+	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, 0)
 	assert_float(fresh.strength).is_equal_approx(0.8, 0.001)
-	assert_int(fresh.auto_fire).is_equal(TouchAimAssist.AutoFire.ALWAYS)
+	assert_int(fresh.auto_fire).is_equal(TouchAimAssist.AutoFire.OFF)
+	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, 2)  # a file saved before #470
+	assert_int(fresh.auto_fire).is_equal(TouchAimAssist.AutoFire.WHILE_AIMING)
 	settings.reset_defaults()
 	settings.save()
 	settings.path = saved_path
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_FILE))
 
 
-func test_the_defaults_are_gentle_assist_and_no_auto_fire() -> void:
+func test_the_defaults_are_gentle_assist_and_auto_fire_on() -> void:
 	assert_float(float(SettingsService.DEFAULTS[SettingsService.TOUCH_AIM_ASSIST])).is_equal(0.5)
-	assert_int(int(SettingsService.DEFAULTS[SettingsService.TOUCH_AUTO_FIRE])).is_equal(0)
+	assert_int(int(SettingsService.DEFAULTS[SettingsService.TOUCH_AUTO_FIRE])).is_equal(1)
