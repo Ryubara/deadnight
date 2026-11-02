@@ -123,8 +123,9 @@ the catalogue. A try of a multiplier: `--set upgrade.damage_multiplier=1.6 --set
 
 ## The two-weapon carry (#410)
 
-The maintainer approved these choices on 2026-11-02: the 1.5 replace margin below, the stampede cut to 110% of the
-count, the revolver and the crowbar in the crane pool at weight 1, and the starting crowbar kept until #411.
+Four choices made here are open for the maintainer, not decided: the 1.5 replace margin below, the stampede cut to
+110% of the count, the revolver and the crowbar in the crane pool at weight 1, and the starting crowbar kept until quick
+melee (#411).
 
 A player carries two weapons, and the modelled players follow it (`NightSim`, `REPLACE_GAIN`): a wall weapon or a
 crane prize replaces the weakest weapon they carry (by sustained damage for a firearm, by blows for a melee weapon),

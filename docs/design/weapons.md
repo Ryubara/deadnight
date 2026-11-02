@@ -113,10 +113,10 @@ the two never disagree even when the buyer names none (then the oldest goes).
 A re-cut goes with its weapon, but its price step stays (`recuts_lost`): a fresh copy can be re-cut again, and cycling
 weapons does not make re-cuts cheaper.
 
-The simulator's players follow the rule (maintainer-approved, 2026-11-02): they take a weapon only when it is worth
-1.5 times the weakest they carry, and play the crane only when some prize would be (`REPLACE_GAIN`). Without that
-margin they buy in circles. Quick melee (#411) is not in yet, so a player who carries no melee weapon falls back on a
-crowbar blow in the simulator.
+The simulator's players follow the rule (the 1.5 margin is an open question, below): they take a weapon only when it
+is worth 1.5 times the weakest they carry, and play the crane only when some prize would be (`REPLACE_GAIN`). Without
+that margin they buy in circles. Quick melee (#411) is not in yet, so a player who carries no melee weapon falls back
+on a crowbar blow in the simulator.
 
 ## The shoulder camera
 
@@ -263,11 +263,11 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
   the reasoning and the reference are in [round scaling](../research/round-scaling.md). What is still missing is a
   way for a weapon to keep pace with health that compounds (the original's Pack-a-Punch): an issue.
 - **The carry limit: built (#410), as the maintainer decided it.** Two weapons, no melee slot, a third replaces the
-  one in hand and goes back into the pool ([Carrying weapons](#carrying-weapons)). Four choices the maintainer
-  approved on 2026-11-02: the revolver and the crowbar are in the crane pool at weight 1 each (the only way back for
-  them), the stampede is cut from 140% to 110% of the count so the balance gate holds with two weapons, the simulator's
-  players replace a weapon only for one worth 1.5 times more, and the starting crowbar stays until quick melee
-  ([#411](https://github.com/Ryubara/deadnight/issues/411)) replaces it.
+  one in hand and goes back into the pool ([Carrying weapons](#carrying-weapons)). Four balance choices were made to
+  keep the balance gate and are **open for the maintainer**, not decided: the revolver and the crowbar are in the
+  crane pool at weight 1 each (the only way back for them), the stampede is cut from 140% to 110% of the count so the
+  gate holds with two weapons, the simulator's players replace a weapon only for one worth 1.5 times more, and the
+  starting crowbar stays until quick melee ([#411](https://github.com/Ryubara/deadnight/issues/411)) replaces it.
 - **The flare: no damage, a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe bomb, no damage for
   now. Where it bursts it burns for `lure_seconds` (8) and every zombie within `lure_radius` (25 m) walks to it
   instead of to a player ([how the dead behave](zombies.md#the-flare-lure)). Its damage and splash are 0 in the

@@ -362,7 +362,7 @@ and start again:
 | Round | Kind | What it is |
 | ---: | --- | --- |
 | 5 | **Double Feature** (boss) | 40% of a normal round's zombies as escorts, and the headliner walks in after the first 30% of them; one more headliner for every 3 players beyond the first (four players meet two) |
-| 10 | **Midnight Stampede** | nothing but runners, 110% of the normal count, spawning 1.8 times as often (140% before a player carried only two weapons, #410; maintainer-approved 2026-11-02) |
+| 10 | **Midnight Stampede** | nothing but runners, 110% of the normal count, spawning 1.8 times as often (140% before a player carried only two weapons, #410; an open question for the maintainer) |
 | 15 | Double Feature | the same kind again, with the round's health |
 | 20 | **Crawl Space** | nothing but crawlers, 110% of the count, spawning 1.5 times as often |
 
