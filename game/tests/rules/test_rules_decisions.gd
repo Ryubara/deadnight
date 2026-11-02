@@ -2,9 +2,22 @@ extends GdUnitTestSuite
 ## Three small rules the review of #39 left open (#94): an action sent from inside an event
 ## listener is refused, a downed player cannot buy, and a night cannot be built without a seed.
 
+## The rules a listener below captured: the listener holds the rules and the rules hold the
+## listener, a cycle that is never freed (the "resources still in use at exit" error), so
+## `after_test` cuts it.
+var _listened: GameRules
+
+
+func after_test() -> void:
+	if _listened != null:
+		for connection in _listened.event_emitted.get_connections():
+			_listened.event_emitted.disconnect(connection["callable"])
+		_listened = null
+
 
 func test_an_action_sent_from_an_event_listener_is_rejected_and_changes_nothing() -> void:
 	var rules := RulesFixture.make_rules(1)
+	_listened = rules
 	var heard: Array[StringName] = []
 	var inner: Array[Array] = []
 	rules.event_emitted.connect(
@@ -27,6 +40,7 @@ func test_an_action_sent_from_an_event_listener_is_rejected_and_changes_nothing(
 
 func test_apply_works_again_once_the_listeners_have_run() -> void:
 	var rules := RulesFixture.make_rules(1)
+	_listened = rules
 	rules.event_emitted.connect(
 		func(event: Dictionary) -> void:
 			if event["type"] == &"phase_changed":
