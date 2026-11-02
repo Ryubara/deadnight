@@ -65,6 +65,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"room_code": "",
 		"room_status": "",
 		"touch": false,
+		"reticle": false,
 		"tab": "",
 		"stage": "",
 		"gamepad": "",
@@ -109,6 +110,7 @@ static func snapshot(top: Control) -> Dictionary:
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
 	data["touch"] = night_screen.touch_active()
+	data["reticle"] = night_screen.reticle_shown()
 	if state.has_frame():
 		data["round"] = state.round_number()
 		data["remaining"] = state.frame.get("remaining", 0)
