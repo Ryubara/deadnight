@@ -52,6 +52,43 @@ func test_the_reticle_is_centred_and_symmetric() -> void:
 		assert_bool(rect.grow(-0.01).has_point(centre)).is_false()
 
 
+## A phone's safe area insets the cards, never the screen: the reticle is the camera's centre, where
+## the shots go, so it stays on the middle of the screen however uneven the insets are (#601: an
+## iPhone held sideways has the home bar under the picture and nothing over it, and the reticle sat
+## 14 units above the dot the shots came to).
+func test_the_reticle_stays_on_the_middle_of_the_screen_inside_any_safe_area() -> void:
+	var insets_to_try: Array[Vector4] = [
+		Vector4(81.0, 0.0, 81.0, 29.0), Vector4(66.0, 0.0, 0.0, 0.0), Vector4(0.0, 40.0, 0.0, 12.0)
+	]
+	for insets in insets_to_try:
+		_fixture.hud.set_safe_insets(insets)
+		await get_tree().process_frame
+		(
+			assert_vector(_reticle().get_global_rect().get_center())
+			. override_failure_message("insets %s moved the reticle" % insets)
+			. is_equal_approx(CANVAS * 0.5, Vector2(0.01, 0.01))
+		)
+		for overlay in _fixture.hud.screen_overlays():
+			assert_vector(overlay.get_global_rect().size).is_equal_approx(
+				CANVAS, Vector2(0.01, 0.01)
+			)
+		# The cards keep inside the safe area.
+		assert_float(_fixture.hud.get_global_rect().position.x).is_equal_approx(insets.x, 0.01)
+		assert_float(_fixture.hud.get_global_rect().end.y).is_equal_approx(
+			CANVAS.y - insets.w, 0.01
+		)
+	_fixture.hud.set_safe_insets(Vector4.ZERO)
+
+
+func test_the_point_gains_stay_beside_the_reticle_inside_a_safe_area() -> void:
+	await get_tree().process_frame
+	var before := _fixture.hud.gains.get_global_rect().position.y
+	_fixture.hud.set_safe_insets(Vector4(81.0, 0.0, 81.0, 29.0))
+	await get_tree().process_frame
+	assert_float(_fixture.hud.gains.get_global_rect().position.y).is_equal_approx(before, 0.5)
+	_fixture.hud.set_safe_insets(Vector4.ZERO)
+
+
 func test_the_reticle_is_small_static_and_edged_for_dark_and_lit_ground() -> void:
 	var style := _reticle().style
 	assert_float(style.radius() * 2.0).is_less(CANVAS.y * 0.04)

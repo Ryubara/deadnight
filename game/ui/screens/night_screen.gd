@@ -200,10 +200,7 @@ func _on_mirrored_changed(mirrored: bool) -> void:
 
 ## The HUD keeps inside the notch and the rounded corners.
 func _on_safe_insets_changed(insets: Vector4) -> void:
-	_hud.offset_left = insets.x
-	_hud.offset_top = insets.y
-	_hud.offset_right = -insets.z
-	_hud.offset_bottom = -insets.w
+	_hud.set_safe_insets(insets)
 
 
 ## The player's body takes the mouse back from the platform (a browser's first Esc, a window that

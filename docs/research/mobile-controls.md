@@ -261,8 +261,11 @@ game does now:
   with a touchscreen does not turn them on by itself; the setting and `?touch=1` do. Open question 8 stays open for
   hybrids.
 - **The safe area** comes from CSS `env(safe-area-inset-*)` on the web (needs `viewport-fit=cover`, set in the export
-  preset's head include) and from the display server on a phone build; the HUD moves in with the controls (capture
-  with a 96 unit notch). Not yet seen on a real notched phone.
+  preset's head include) and from the display server on a phone build; the HUD cards move in with the controls (capture
+  with a 96 unit notch). The overlays that are the screen itself do not: the reticle, hit marker, damage numbers and
+  world markers stay on the full screen (`Hud.set_safe_insets`). With the HUD inset as a whole the reticle sat in the
+  middle of the inset rectangle, 14.5 units above where the shots go on an iPhone held sideways (insets 59, 0, 59, 21 CSS
+  pixels; #601). `test_shot_on_crosshair.gd` and `tools/web_smoke/shot_on_crosshair.py` hold it.
 - **Browser checks that passed** (Chromium, mobile and touch emulation, 844 x 390): no scroll (0, 0), no zoom (scale
   1), `overscroll-behavior: none`, `touch-action: none`, no console errors, the portrait page shows the rotate prompt.
   Not testable there: haptics, `screen.orientation.lock`, a real notch, Discord's webview.
