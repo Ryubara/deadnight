@@ -15,7 +15,6 @@ const OVERRIDES := {
 	&"board_last": {"priority": 75, "max_distance": 90.0, "unit_size": 12.0},
 	&"board_repair": {"max_distance": 40.0, "unit_size": 7.0},
 	&"melee_hit": {"priority": 72, "max_distance": 35.0},
-	&"player_downed": {"priority": 88},
 	&"bed_score": {"bus": &"Music", "volume_db": BED_SCORE_DB},
 	&"bed_crickets": {"volume_db": BED_CRICKETS_DB},
 }
@@ -27,8 +26,6 @@ const NIGHT_SOUNDS: Array[StringName] = [
 	&"melee_swing",
 	&"melee_hit",
 	&"till_ring",
-	&"player_hurt",
-	&"player_downed",
 	&"bed_crickets",
 	&"bed_highway",
 	&"bed_projector",

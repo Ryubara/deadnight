@@ -33,6 +33,7 @@ from mathutils import Matrix, Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kitlib
 import soldier_clips as sc
+from palette_import import ensure_import
 
 BUDGET = 6000  # style bible: player character, gameplay LOD
 FAR_BUDGET = 2000  # style bible: player character, far LOD (#139); the build fails if a preset is over it
@@ -1071,6 +1072,7 @@ def main():
     atlas.filepath_raw = str(out / "soldier_parts_atlas.png")
     atlas.file_format = "PNG"
     atlas.save()
+    ensure_import(out / "soldier_parts_atlas.png")  # lossless, no mipmaps, Detect 3D off
     mat = atlas_material(atlas)
 
     tags = tag_body(body)

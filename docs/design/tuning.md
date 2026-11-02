@@ -9,6 +9,31 @@ was run against `main` on 2026-11-02 (Godot 4.7.2); what could not be run is mar
     run is made from `main`: a changed `.tres` or script goes live when a pull request with it merges (CI runs the
     tests and the balance gate first). Nothing you save in the editor changes the live game by itself.
 
+## Play a night now: `dev/play_night.tscn`
+
+Open `game/dev/play_night.tscn` and press **F6**: a solo night starts at once, with no menu, on the lot, with the
+HUD. Before you press it, select the `PlayNight` node and set what you want in the inspector:
+
+![The PlayNight node in the inspector](play-night-inspector.png)
+
+| Option | Does |
+| --- | --- |
+| Start Round | The round to start in (1 to 60). Round 7 starts at once with round 7's zombies. |
+| Seed Value | The night's dice (default `Night.SEED`, 1958). |
+| Autopilot | The bot plays, seen over its shoulder: watch what a change does. |
+| Skip Intro | Skip the break before round 1 (on). Off waits it out. |
+| Warm Up | Load and draw everything once behind the loading screen, as the game does (on). Off starts faster but the first shots hitch. |
+| Rules Tuning | Which `RulesTuning` `.tres` the night plays with (default `default_tuning.tres`). Point it at a copy to try a variant. |
+| Starting Points | Points to start with; -1 keeps the tuning's. |
+| God Mode | Health is topped up every tick. |
+| Infinite Ammo | Every carried gun is refilled every tick. |
+
+The scene copies the tuning before it applies an option, so no option ever edits a `.tres`. The player's own numbers
+(`PlayerTuning`, weapons, grenades) are the `.tres` files in the table below: edit one, press F6 again. It is not part
+of the shipped game (the menu's Play is `ui/screens/night_screen.tscn`), and `tests/dev/test_play_night.gd` starts it
+headless and checks each option. It plays from the editor with the real mouse and keys; the autopilot option needs
+neither.
+
 ## Which scene is which
 
 The project's main scene is `res://main.tscn` (`run/main_scene`). The game is a stack of screens on a router
@@ -49,11 +74,12 @@ switches and fuel spots are nodes of `drive_in_greybox.tscn` that the rules and 
 
 ## Play from the editor
 
+- **A night, straight away: F6 on `dev/play_night.tscn`** (above).
 - **The whole game: F5** (Run Project) opens `main.tscn`. Click Play (it takes about half a second for the items to
   appear). You are in the night, alone, on the seed `Night.SEED` (1958). Esc pauses; "Back to the menu" leaves.
 - **F6 on `night_screen.tscn` does not start a night.** The screen starts it when the router *enters* it (its
   `screen_enter`), and F6 only instances the scene. You get the loading card and nothing else (checked). Go through
-  the menu.
+  the menu, or use `dev/play_night.tscn`.
 - **Movement and camera only: F6 on `world/test_room.tscn`.** Real keys and mouse (WASD,
   mouse, Shift sprints, C crouches, Space jumps).
   The `Player` node's `Tuning` slot holds `player_tuning_default.tres`: change a value, press F6 again.

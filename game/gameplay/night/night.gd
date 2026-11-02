@@ -377,7 +377,8 @@ func _make_spectator() -> Camera3D:
 	return _spectator
 
 
-## The guns, the grenades and the lot's machines and shop sound from the same events as the view.
+## The guns, the grenades, the lot's machines and shop and the soldiers' voices sound from the same
+## events as the view.
 func _add_sounds() -> void:
 	var weapons := WeaponSounds.new()
 	weapons.name = "WeaponSounds"
@@ -393,6 +394,10 @@ func _add_sounds() -> void:
 	var tuning: RulesTuning = rules_tuning
 	var generator := world.greybox.get_node_or_null("GeneratorYard/Generator") as Node3D
 	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
+	var voice := SoldierVoice.new()
+	voice.name = "SoldierVoice"
+	add_child(voice)
+	voice.setup(state)
 
 
 ## Where the prize crane stands at `spot` (the rules' list of crane places), or null.
@@ -558,6 +563,9 @@ func _on_remote_event(event: Dictionary) -> void:
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
+	if me.get("turn", false):
+		_body.state.facing = me["facing"]
+		_body.rotation.y = _body.state.facing
 
 
 ## Shows, for the command the local player is about to send, where the grenade they are holding
