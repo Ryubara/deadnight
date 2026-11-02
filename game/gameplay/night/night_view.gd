@@ -67,7 +67,7 @@ func setup(
 	add_child(effects)
 	horde = ZombieHorde.new()
 	add_child(horde)
-	horde.setup_client(camera, ZombieTuning.new().emerge_seconds, telegraphs, board_seconds)
+	horde.setup_client(camera, ZombieTuning.shipped().emerge_seconds, telegraphs, board_seconds)
 	voices = ZombieVoices.new(Audio, 1)
 	voices.windups = telegraphs
 	state.event_received.connect(_on_event)

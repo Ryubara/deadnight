@@ -27,7 +27,7 @@ const WANDER := 0.9
 const LAG := 18
 
 var strength := 0.0
-var tuning := AimAssistTuning.new()
+var tuning := AimAssistTuning.shipped()
 var seed_value := 1
 
 var _rng := RandomNumberGenerator.new()

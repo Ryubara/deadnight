@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="HandGrip" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/hand_grip.gd" id="1_qye0j"]
+
+[resource]
+script = ExtResource("1_qye0j")
+hold = Transform3D(0.4895956, -0.87185174, -0.013065122, 0.87185174, 0.48926115, 0.022317301, -0.013065122, -0.022317301, 0.99966556, 0.08003748, 0.15488946, -0.09530801)
+model_scale = 0.55
+right = {
+"Index2.R": Quaternion(-0.64863247, -0.14677605, 0.097927585, 0.74036676),
+"Index3.R": Quaternion(-0.036970463, 0.009119548, -0.08459403, 0.99568766),
+"Middle2.R": Quaternion(-0.44392523, -0.03937052, 0.1230481, 0.8867016),
+"Middle3.R": Quaternion(-0.2837861, -0.012741423, 0.020385982, 0.95858616),
+"Pinky2.R": Quaternion(-0.54817706, 0.07385255, 0.28946772, 0.7811889),
+"Pinky3.R": Quaternion(-0.0661886, 0.009247489, -0.012989687, 0.9976798),
+"Thumb1.R": Quaternion(-0.2089004, -0.42555714, 0.44825763, 0.75784355),
+"Thumb2.R": Quaternion(-0.6076031, -0.16968119, -0.2526215, 0.7336275)
+}
+right_contacts = PackedStringArray("index_tip", "middle_tip", "pinky_tip", "thumb_tip", "palm")
+left_contacts = PackedStringArray()

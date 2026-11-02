@@ -19,7 +19,7 @@ var _ticks := 0
 
 
 func _ready() -> void:
-	_sim = ZombieSim.new(ZombieTuning.new(), 5)
+	_sim = ZombieSim.new(ZombieTuning.shipped(), 5)
 	for i in COUNT:
 		var zombie := _sim.spawn(i + 1, 2.0, Vector3.ZERO)
 		zombie.enter(ZombieBody.Mode.CHASE)

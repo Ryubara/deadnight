@@ -235,3 +235,12 @@ extends Resource
 ## While a shot shakes the view the sway gives way by up to this fraction (at full trauma), so the
 ## two add up without fighting.
 @export_range(0.0, 1.0) var sprint_sway_fire_duck := 0.5
+
+@export_group("Sprint carry")
+## While the body sprints on the ground the arms carry the weapon with the stride (`Sprint_<Class>`,
+## played at the Run clip's time): it eases in over `sprint_carry_in` seconds and gives way over
+## `sprint_carry_out` seconds to the aim, a shot, a reload, a swing or any other action (#459). In
+## the air it holds still; it does not start in the air. No carry below `sprint_carry_min_speed`.
+@export var sprint_carry_in := 0.2
+@export var sprint_carry_out := 0.15
+@export var sprint_carry_min_speed := 3.0
