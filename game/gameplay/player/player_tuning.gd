@@ -139,13 +139,15 @@ extends Resource
 @export var radius := 0.35
 
 @export_group("Animation")
-## Ground speed at which the Run clip's feet stay planted at time scale 1
-## (the kit has no Walk clip).
-@export var run_clip_speed := 5.5
+## Ground speed at which the Run clip's feet stay planted at time scale 1: the speed the planted
+## foot sweeps back at over its stance, measured off the clip at `model_scale` (4.28 m/s;
+## docs/research/run-clip-speed.md). `tests/player/test_run_gait.gd` fails when it drifts.
+@export var run_clip_speed := 4.3
 ## Ground speed at which the blend from Idle to Run is complete.
 @export var run_blend_speed := 2.2
-## Metres of travel per footstep event.
-@export var step_distance := 1.9
+## Metres of travel per footstep event: half the Run clip's cycle (0.708 s) at `run_clip_speed`, so
+## a footstep lands when a foot does (held to within 5% by the same test).
+@export var step_distance := 1.5
 ## How quickly animation blends follow their targets, per second.
 @export var blend_rate := 12.0
 ## Visual scale on the Soldier import (see docs/design/style.md: kit characters x0.8).

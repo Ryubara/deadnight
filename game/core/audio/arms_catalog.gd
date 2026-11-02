@@ -206,6 +206,9 @@ static func _build_world(add: Callable) -> void:
 	add.call(
 		&"buy_tonic", "world/buy_tonic_%d.ogg", 1, SoundCatalog._with(shop, {"volume_db": -3.0})
 	)
+	# The re-cut bench: the motor, the press' blow at 0.8 s (the machine strikes then), the bell
+	# at 1.55 s.
+	add.call(&"buy_recut", "world/buy_recut_%d.ogg", 1, SoundCatalog._with(shop, {"priority": 66}))
 
 	# The prize crane's moments (`WorldSounds`, from the rules' `crane_*` events): the wheel
 	# spinning down, the claw, the prize, a breakdown and the machine moving to a new spot.

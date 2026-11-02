@@ -93,7 +93,7 @@ sequenceDiagram
     A->>D: sdk.commands.authenticate(access_token)
     A->>B: POST /lobbies {instanceId} (friends in the same Activity land in one lobby)
     B-->>A: lobby
-    Note over A,B: the other players do the same and poll GET /lobbies/:id
+    Note over A,B: the other players do the same; every member polls GET /lobbies/:id (it is also their presence)
     A->>B: POST /lobbies/:id/start (host)
     B->>B: allocate the least loaded live game server
     B-->>A: lobby started, matchId
@@ -169,6 +169,33 @@ slot is empty). Both validate the slot (`[a-z0-9_-]`, 1 to 32 characters).
   [rounds](../design/rounds.md)). Strings come back unchanged, tested through the API and against Postgres. Floats
   below 2^53 and integers up to 2^53 - 1 are ordinary JSON numbers.
 
+## The lobby before the night
+
+Design: [the lobby](../design/lobby.md). *Create a night* is `POST /lobbies` alone: the lobby stays **open** until its
+host calls `POST /lobbies/:id/start`, and every member polls `GET /lobbies/:id` meanwhile.
+
+- **The view** (`GET /lobbies/:id`, members only) has `members` as `[{userId, name, seat, host, away}]` in the order people
+  came (seats close up when someone leaves), `hostId`, `state` (`open` or `started`), `players` (the game server's count
+  once started), `round` (the night's round, null until the game server has said one), `matchId` and the usual code.
+- **Start is the host's only** (`403 not_host`; a second one is `409 already_started`; every server busy is
+  `503 no_server` and the lobby stays open). Members get a ticket only after it (`409 not_started` before).
+- **Host handover.** A host who leaves, or who is dropped, passes the role to the next seat. The last member out closes
+  an open lobby.
+- **Presence.** Each poll (and a create or a join) marks the member as seen. In an **open** lobby, a member not seen for
+  `memberAwayMs` (60 s) is dropped as if they had left, host role and seats included, but only while someone else was seen
+  inside that minute: a lobby whose members are all quiet (every tab in the background, which stops the game's frames
+  and so its polls) is never emptied by this and expires after ten idle minutes as before. `away` in the view is a member
+  not seen for 15 s. A dropped member who polls again gets `403 not_member` and is free to open or join another lobby.
+- **The round.** The game server's heartbeat has an optional `rounds` (`{matchId: round}`, next to `players`); an older
+  server that sends none leaves `round` null.
+- **Looking before joining.** `POST /lobbies/preview {code}` (any signed-in user, a body so the code stays out of the
+  request log) answers `{code, state, round, players, maxPlayers, full, hostName, names}` and joins nobody; an unknown
+  code is `404 not_found`. A started night's `full` is the game server's count, the same test `join` applies.
+- **Late joiners.** Joining a started lobby is unchanged (`join-by-code` while the game server says there is room), and
+  the ticket is the same single-use one.
+
+Why polling and not a pushed channel: [the lobby design](../design/lobby.md#poll-or-push).
+
 ## Lobby and match lifecycle
 
 Nothing in memory grows without bound. Times are constants in `src/lobbies.ts` and `src/servers.ts`, and tests move an
@@ -176,7 +203,7 @@ injected clock.
 
 | What | Ends when |
 | --- | --- |
-| Open lobby | Idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity), or its last member leaves. |
+| Open lobby | Idle for 10 minutes (create, join, leave, start and a member's `GET` all count as activity), or its last member leaves. A member not seen for a minute is dropped while another is still there ([presence](#the-lobby-before-the-night)). |
 | Started lobby | The game server calls `POST /internal/matches/:id/end`, or its heartbeat stops listing the match, or it is 2 hours old, or its last member leaves. |
 | A user's place | A user is in one open lobby; starting the lobby, leaving it or its end frees them. The host role passes to the next member when the host leaves. |
 
@@ -266,6 +293,16 @@ mappings for the backend and each game server.
 
 ## Gotchas found while building it
 
+- The gamepad in an Activity (#479). The Activity is an iframe, and a browser lists a gamepad to an iframe only when
+  the Permissions-Policy feature `gamepad` allows it (the default in current Chromium is every origin, so a host
+  has to forbid it on purpose, by an `allow` attribute or a header, to block it); a blocked page's
+  `navigator.getGamepads()` throws, and Godot's web runtime swallows the error, so no pad ever shows. A page without the
+  keyboard focus is listed none either, and a pad needs one button press to appear. The Embedded App SDK has no
+  gamepad command (only key-binding types). The head include of the export defines `window.deadnightGamepad()` (frame,
+  focus, the policy's answer, pads, the exception's name) and the Play together screen reads it inside an Activity
+  and says which case it is (`GamepadProbe`: blocked, click first, press a button, connected), so the maintainer can
+  read the cause in Discord. `tools/web_smoke/activity.py --embed denied` shows the blocked line; `--embed gamepad
+  --pad` the connected one. What Discord's clients grant is not in its docs: read it from that line.
 - Discord's proxy compresses the backend's answers (`Content-Encoding: gzip`), and Godot's `HTTPRequest` then decodes a
   body the browser has decoded already and fails, which the game reads as "Could not reach the game's servers": every
   call through `/api` failed while the backend logged a 200 or 201. `HttpJson` sets `accept_gzip = false`.
