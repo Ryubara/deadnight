@@ -47,6 +47,8 @@ func _ready() -> void:
 	_compact = _is_compact()
 	context.compact = _compact
 	_apply_scale()
+	# Back on top after a night: the phone factor the night set aside comes back.
+	visibility_changed.connect(_apply_scale)
 	get_window().size_changed.connect(_on_window_resized)
 	Settings.changed.connect(_on_setting)
 	context.leaving.connect(commit)
@@ -191,7 +193,12 @@ func _is_compact() -> bool:
 	return MenuScale.is_phone(get_window().size)
 
 
+## The phone factor is the menu's: it is on while the menu shows, and a screen pushed over it (the
+## night) runs on the player's own scale, the one its HUD and touch layer are made for (#606: the
+## night at the factor was 540 units high, with half the touch buttons off the top).
 func _apply_scale() -> void:
+	if not is_visible_in_tree():
+		return
 	var ui_scale := float(Settings.get_value(SettingsService.UI_SCALE))
 	var window := get_window()
 	window.content_scale_factor = ui_scale * (MenuScale.PHONE_FACTOR if _compact else 1.0)
