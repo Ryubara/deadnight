@@ -64,6 +64,10 @@ var tick_gaps_ms: Array[float] = []
 ## The protocol version a server that turned us away speaks (0 until one has).
 var server_version := 0
 
+## A bad network to put between this client and the server, in each direction (tests and bots).
+var conditioner_in: LinkConditioner
+var conditioner_out: LinkConditioner
+
 var _ws := WebSocketPeer.new()
 var _url := ""
 var _active := false
@@ -154,7 +158,17 @@ func pump() -> void:
 		_send(NetWire.hello(token, ticket))
 	# What came before a close is still read: a refusal arrives together with the close.
 	while state != WebSocketPeer.STATE_CONNECTING and _ws.get_available_packet_count() > 0:
-		_receive(_ws.get_packet())
+		var packet := _ws.get_packet()
+		if conditioner_in != null:
+			conditioner_in.push(packet, _now())
+		else:
+			_receive(packet)
+	if conditioner_in != null:
+		for packet in conditioner_in.due(_now()):
+			_receive(packet)
+	if conditioner_out != null:
+		for packet in conditioner_out.due(_now()):
+			_put(packet)
 	if state == WebSocketPeer.STATE_OPEN:
 		_ping_when_due()
 	elif state == WebSocketPeer.STATE_CLOSED:
@@ -190,9 +204,20 @@ func _on_socket_closed() -> void:
 
 
 func _send(data: PackedByteArray) -> void:
+	if conditioner_out != null:
+		conditioner_out.push(data, _now())
+	else:
+		_put(data)
+
+
+func _put(data: PackedByteArray) -> void:
 	if is_open():
 		_ws.send(data, WebSocketPeer.WRITE_MODE_BINARY)
 		bytes_out += data.size()
+
+
+func _now() -> float:
+	return Time.get_ticks_usec() / 1000000.0
 
 
 func _ping_when_due() -> void:
