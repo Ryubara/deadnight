@@ -103,7 +103,7 @@ func _make_zombies(greybox: Node) -> void:
 	_rules = GameRules.new(tuning, int(_args.get("seed", 5)))
 	_rules.apply(RulesAction.add_player(1))
 	_rules.apply(RulesAction.add_player(2))
-	var cap := ZombieTuning.new()
+	var cap := ZombieTuning.shipped()
 	cap.hard_cap = int(_args.get("zombies", 40))
 	var sim := ZombieSim.new(cap, int(_args.get("seed", 5)))
 	sim.rounds = tuning.rounds

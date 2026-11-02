@@ -53,7 +53,7 @@ func _fire_and_wait() -> Dictionary:
 	var eye := _night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
 	var command := NightCommand.new()
 	command.origin = eye
-	command.dir = Vector3(0.0, 0.25, 1.0).normalized()
+	command.aim_along(Vector3(0.0, 0.25, 1.0))
 	command.fire = true
 	NightFixture.run(_night, 1, command)
 	var ticks := 0

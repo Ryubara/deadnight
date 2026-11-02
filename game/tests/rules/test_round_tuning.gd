@@ -150,7 +150,7 @@ func test_no_player_count_nor_round_lifts_a_browsers_cap_above_its_ceiling() -> 
 ## both from the weakest client in the match (`NightServer.set_platform`).
 func test_the_browsers_ceiling_is_the_crowds_hard_cap() -> void:
 	# The web build's measured crowd (docs/research/crowd-budget.md); a desktop has its own, above it.
-	assert_int(_t.web_alive_cap_ceiling).is_equal(ZombieTuning.new().hard_cap)
+	assert_int(_t.web_alive_cap_ceiling).is_equal(ZombieTuning.shipped().hard_cap)
 	assert_int(_t.alive_cap_ceiling).is_greater_equal(100)
 
 

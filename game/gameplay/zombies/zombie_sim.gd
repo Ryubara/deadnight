@@ -48,7 +48,7 @@ var _pending: float = 0.0
 
 
 func _init(p_tuning: ZombieTuning = null, p_seed: int = 0) -> void:
-	tuning = p_tuning if p_tuning != null else ZombieTuning.new()
+	tuning = p_tuning if p_tuning != null else ZombieTuning.shipped()
 	_rng.seed = p_seed
 
 

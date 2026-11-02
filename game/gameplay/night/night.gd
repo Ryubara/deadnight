@@ -117,11 +117,16 @@ var _seq := 0
 ## Held here: a Callable does not keep its RefCounted alive.
 var _sight: WorldProbe
 var _hud_binding: NightHudBinding
+## Held here: it listens to the session and the HUD, and nothing else keeps it alive.
+var _challenge_link: ChallengeHudLink
 ## Held here: it listens to the client state and nothing else keeps it alive.
 var _equip_sync: WeaponEquipSync
 var _paused := false
 ## True while the warm-up runs.
 var _warming := false
+## The night is over on a game server and this client has left the seat: the link is read to the
+## floor until its socket is closed (`_leave_server`).
+var _leaving := false
 
 
 func _init() -> void:
@@ -302,6 +307,8 @@ func _track_challenges() -> void:
 	if challenge_board != null:
 		challenges = ChallengeSession.new(challenge_board, rules_tuning)
 		challenges.attach(state)
+		if hud != null:
+			_challenge_link = ChallengeHudLink.new(challenges, hud)
 
 
 ## The view and the sounds, once there is a camera to look through.
@@ -321,8 +328,28 @@ func _build_view(camera: Camera3D) -> void:
 	view.hear(world)
 	if hud != null:
 		_add_markers()
-	night_over.connect(func(_r: int) -> void: running = false)
+	night_over.connect(_on_over)
 	state.event_received.connect(_on_event)
+
+
+## The night ended: the ticks stop. Online the client has nothing more to say or hear, so it
+## leaves the seat at once (the server frees it) instead of leaving the socket unread, where a
+## browser's buffer fills with snapshots ("Buffer payload full").
+func _on_over(_round_reached: int) -> void:
+	running = false
+	if remote:
+		_leave_server.call_deferred()
+
+
+## Closes the link and drops what is still in flight: the night has ended, so frames that arrive
+## now change nothing. `_physics_process` goes on reading until the socket has closed.
+func _leave_server() -> void:
+	if link == null or _leaving:
+		return
+	if link.delivered.is_connected(_on_delivered):
+		link.delivered.disconnect(_on_delivered)
+	_leaving = true
+	link.close()
 
 
 ## The world markers of the HUD: the other players' names and the next door, projected through
@@ -490,7 +517,7 @@ func _exit_tree() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if _warming and remote:
+	if (_warming or _leaving) and remote:
 		link.pump()
 	for _i in ticks_per_frame:
 		if not running:
@@ -559,6 +586,9 @@ func _tick_remote() -> void:
 				_aim_rig(command)
 	if command != null:
 		# The body moves with the command as the server will read it, not as it was sampled.
+		# The frame the player is looking at: the server judges the shot against it.
+		if state.has_frame():
+			command.view_step = int(state.frame.get("tick", 0)) & 0xFFFF
 		command = NetWire.quantize(command)
 		if _body != null:
 			_body.tick(command.motion)
@@ -628,7 +658,41 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 
 
 func _human_command() -> NightCommand:
-	return _human.command(player(), state.player_id)
+	var command := _human.command(player(), state.player_id)
+	if _human.ping_pressed(player()):
+		link.send(_ping_request(command))
+	return command
+
+
+## What the ping key marks: what the crosshair is on, else where its ray lands (`PingAim`).
+func _ping_request(aim: NightCommand) -> Dictionary:
+	var landed := Vector3.INF
+	var cast := PhysicsRayQueryParameters3D.create(
+		aim.origin, aim.origin + aim.dir * PingAim.REACH, CameraProbe.PLAYER_MASK
+	)
+	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
+	if not hit.is_empty():
+		landed = hit["position"]
+	var shut := {}
+	var index := 0
+	for door_id in world.door_ids():
+		if not state.frame.get("doors", []).has(door_id):
+			shut[index] = world.door_points(door_id)
+		index += 1
+	var ammo: Array[Vector3] = []
+	for spot in world.shop_spots():
+		if spot["kind"] == &"ammo":
+			ammo.append(spot["position"])
+	return PingAim.pick(
+		aim.origin,
+		aim.dir,
+		state.zombies,
+		state.frame.get("players", {}),
+		state.player_id,
+		shut,
+		ammo,
+		landed
+	)
 
 
 ## What the server answered: the look server's packets go to the look table, the rest to the

@@ -5,7 +5,8 @@ The browser has no worker threads, so a bake runs inside one frame of the page: 
 The run exports a copy of the project that starts on `game/tests/captures/door_swap_bench.tscn` (the real project's
 export leaves `tests/` out), plays it in a fresh headless Chrome with the machine's GPU, and prints the milliseconds.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/door_swap.py <godot> <work folder> [--runs 3]
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/door_swap.py <godot> <work folder> [--runs 3]
 
 `<godot>` is the pinned Godot (`gds tool path godot`); the copy and its export are made in `<work folder>`.
 """

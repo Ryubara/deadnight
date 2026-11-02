@@ -89,7 +89,9 @@ func say(event: StringName, speaker: int) -> bool:
 	var priority: int = SoldierVoiceCatalog.EVENTS[event]["priority"]
 	var cut := director.would_interrupt(priority)
 	var started: Variant = _play(
-		SoldierVoiceCatalog.take_id(event, take), at, SoldierVoiceCatalog.LOCAL_DB if own else 0.0
+		SoldierVoiceCatalog.take_id(event, take),
+		at,
+		SoundCatalog.mix().own_voice_db if own else 0.0
 	)
 	if started == null or (started is bool and not started):
 		return false

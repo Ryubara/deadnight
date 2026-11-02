@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="SoundMix" format=3]
+
+[ext_resource type="Script" path="res://core/audio/sound_mix.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+group_limits = Dictionary[StringName, int]({
+&"bed": 4,
+&"board": 4,
+&"breaker": 2,
+&"challenge": 1,
+&"door": 2,
+&"generator": 2,
+&"grenade": 8,
+&"gun": 12,
+&"gun_tail": 4,
+&"impact": 6,
+&"melee": 4,
+&"points": 2,
+&"reload": 4,
+&"shop": 4,
+&"soldier_voice": 3,
+&"step": 8,
+&"step_own": 2,
+&"sting": 1,
+&"swap": 2,
+&"till": 2,
+&"ui": 4,
+&"ui_hint": 1,
+&"zombie_boss": 2,
+&"zombie_step": 5,
+&"zombie_voice": 6
+})
+voice_db = -4.0
+own_voice_db = -2.0
+voice_max_distance = 40.0
+voice_unit_size = 6.0

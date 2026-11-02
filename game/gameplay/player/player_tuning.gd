@@ -56,6 +56,18 @@ extends Resource
 ## so a run of single shots (the slowest weapon fires every 0.9 s) does not swing out and in
 ## between. After it everything eases out like a released aim button.
 @export var hip_fire_hold := 0.8
+## A shot leaves only when the body faces within this many degrees of the view (the centre of the
+## screen): a press while the body faces away turns it first and the shot waits (#477). Wider than
+## one tick of the turn (`aim_turn_speed` is 7.6 degrees a tick at 60 Hz), so the body cannot step
+## over the window, and narrow enough that the muzzle, which sits 0.5 m from the body's centre, is
+## under half a degree off the aim ray at the 12 m the weapon converges on, less than the smallest
+## spread of any gun that has one (docs/research/hip-fire.md, "Turn first, then shoot").
+@export_range(1.0, 45.0, 0.5) var hip_fire_align_degrees := 10.0
+## Seconds a press made before the body faced the view is kept, so a tap during the turn is not
+## lost: it fires the moment the body is there. Longer than the slowest turn (a half circle takes
+## 0.4 s at `aim_turn_speed`) with room for the view to keep moving. A trigger still held needs no
+## buffer: it waits for as long as the body takes.
+@export var hip_fire_buffer := 0.6
 
 @export_group("Reload")
 ## The weapon tilts down about the grip while it reloads and comes back up when it is done, timed to
@@ -235,3 +247,12 @@ extends Resource
 ## While a shot shakes the view the sway gives way by up to this fraction (at full trauma), so the
 ## two add up without fighting.
 @export_range(0.0, 1.0) var sprint_sway_fire_duck := 0.5
+
+@export_group("Sprint carry")
+## While the body sprints on the ground the arms carry the weapon with the stride (`Sprint_<Class>`,
+## played at the Run clip's time): it eases in over `sprint_carry_in` seconds and gives way over
+## `sprint_carry_out` seconds to the aim, a shot, a reload, a swing or any other action (#459). In
+## the air it holds still; it does not start in the air. No carry below `sprint_carry_min_speed`.
+@export var sprint_carry_in := 0.2
+@export var sprint_carry_out := 0.15
+@export var sprint_carry_min_speed := 3.0

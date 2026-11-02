@@ -6,6 +6,8 @@ extends GdUnitTestSuite
 const SETTLE := 30
 ## From the trigger to the flare leaving: the server's shot is instant, the frames carry it.
 const FIRE_TICKS := 6
+## Ticks the body may take to turn to the view before the flare leaves (#477): a half turn is 24.
+const TURN_LIMIT := 60
 const FLIGHT_LIMIT := 400
 ## The copy stops a step short of the server's wall or ground hit, or stands on it: it may differ by
 ## the length of one step of the flare's flight (m), and a little for the fall.
@@ -44,14 +46,24 @@ func _of(type: StringName) -> Array[Dictionary]:
 	return found
 
 
-## Pulls the trigger once, looking level and away from the lot's buildings.
+## Pulls the trigger once, looking level and away from the lot's buildings: behind the body, so the
+## press waits for the turn (#477) and the flare leaves when the body faces the view.
 func _fire() -> void:
 	var eye := _night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
 	var command := NightCommand.new()
 	command.origin = eye
-	command.dir = Vector3(0.0, 0.25, 1.0).normalized()
+	command.aim_along(Vector3(0.0, 0.25, 1.0))
 	command.fire = true
 	NightFixture.run(_night, 1, command)
+	var ticks := 0
+	while _of(&"projectile_spawned").is_empty() and ticks < TURN_LIMIT:
+		NightFixture.run(_night, 1)
+		ticks += 1
+	(
+		assert_int(_of(&"projectile_spawned").size())
+		. override_failure_message("no flare left within %d ticks of the press" % TURN_LIMIT)
+		. is_equal(1)
+	)
 	NightFixture.run(_night, FIRE_TICKS)
 
 
@@ -71,6 +83,8 @@ func test_a_flare_in_the_air_is_drawn_and_gone_when_it_bursts() -> void:
 
 func test_the_drawn_flare_flies_where_the_server_says_and_follows_it_to_the_burst() -> void:
 	_fire()
+	if _of(&"projectile_spawned").is_empty():
+		return
 	var spawned := _of(&"projectile_spawned")[0]
 	var views := _night.view.find_children("*", "ProjectileView", true, false)
 	assert_int(views.size()).is_equal(1)
