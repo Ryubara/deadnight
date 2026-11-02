@@ -24,7 +24,7 @@ const MODELS := {
 	"hammer": {"hold": "res://gameplay/player/holds/hammer.tres", "kind": "hammer"},
 	"fire_axe":
 	{"scene": "res://assets/weapons/fire_axe/fire_axe.glb", "model_scale": 0.95, "kind": "melee"},
-	"grenade": {"kind": "ball", "model_scale": PlayerAnimation.GRENADE_HELD_SCALE},
+	"grenade": {"hold": "res://gameplay/player/holds/grenade.tres", "kind": "ball"},
 }
 
 var _args := {}
