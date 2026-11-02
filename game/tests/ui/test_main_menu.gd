@@ -96,7 +96,6 @@ func test_each_ask_opens_its_screen() -> void:
 	var menu := await _show()
 	var expected := {
 		&"together": "res://ui/screens/together_screen.tscn",
-		&"quick_join": "res://ui/screens/together_screen.tscn",
 		&"settings": "res://ui/screens/settings_screen.tscn",
 		&"credits": "res://ui/screens/credits_screen.tscn",
 	}
@@ -108,6 +107,11 @@ func test_each_ask_opens_its_screen() -> void:
 		UIRouter.pop()
 		await UIRouter.idle
 		assert_object(UIRouter.top()).is_same(menu)
+
+
+func test_quick_join_opens_no_screen_of_the_menu() -> void:
+	# It joins from a card over the menu (`test_quick_join.gd`); the route table has no entry for it.
+	assert_bool(MainMenu.ROUTES.has(&"quick_join")).is_false()
 
 
 func test_solo_opens_the_night_screen() -> void:

@@ -32,6 +32,7 @@ stateDiagram-v2
     Together --> Lobby: Create a night / the Activity's room
     Together --> Preview: Join with a code
     Together --> Night: Quick join (no waiting room)
+    Menu --> Night: Quick join (no Together screen)
     Preview --> Lobby: Join (night waiting)
     Preview --> Night: Join (night in progress)
     Preview --> Together: Back / night full
@@ -128,9 +129,29 @@ A background tab stops the game's frames, and with them the polls (a browser thr
 to a chat to paste the invite is therefore quiet for a while: the presence window is a minute, and a host who is alone
 is never dropped for it (the lobby expires after ten idle minutes, as before).
 
+## Quick join from the menu
+
+Pressing *Quick join* on the Play tab (Deadnight #526) does not open the Play together screen. A card
+(`QuickJoinOverlay`) opens over the menu and does what the Together screen's Quick join does, with the same calls:
+sign in (once), `POST /lobbies/quick`, `POST /lobbies/:id/ticket`, then the night.
+
+- **While it searches** the card says *Finding a night...* with **Cancel** (Esc or the pad's B does the same). A search
+  cancelled after the backend had put the player in a night leaves that night, so nobody holds a seat for a player who is
+  on the menu. Quick join pressed again while it searches is the same search.
+- **No name is asked** on this path. The saved name is used, else the backend calls the player `Guest NNNN`; the name is
+  set under More. (The Play together screen still asks on its first use.)
+- **If no night is found or the call fails** the card says the same words as the Together screen (`TogetherApi.TEXTS`) and
+  offers **Create a night** (a lobby of the player's own, opened on its lobby screen with the code) and **Close**.
+  The Together screen is therefore never in the path.
+- In a **Discord Activity** the card waits for the room that signed in on the menu (`ActivityRoom`), then asks as
+  above.
+- Proof: `game/tests/ui/test_quick_join.gd` (found, failed and cancelled paths with a stubbed `TogetherApi`, and a
+  press that lands in a joined room over a real socket) and the browser probe `tools/web_smoke/quick_join.py`.
+
 ## What is not in this
 
-- **Quick join** has no waiting room: it puts a stranger in a public night with room, or starts a new one. A public
-  waiting room strangers fill up is a separate decision (it needs a countdown or a minimum, and someone to be host).
+- **Quick join** (from the menu or the Together screen) has no waiting room: it puts a stranger in a public night with
+  room, or starts a new one. A public waiting room strangers fill up is a separate decision (it needs a countdown or a
+  minimum, and someone to be host).
 - **Kicking** a member, **ready** checks and **chat** are not built.
 - **Changing the rules after the start** is not possible: they are fixed when the night begins.
