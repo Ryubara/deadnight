@@ -178,12 +178,12 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 - **Shop weapons: stepped up (#254, #265).** The rifle (95, 0.5 s) and the shotgun (19 a pellet, 0.8 s) are applied;
   the reasoning and the reference are in [round scaling](../research/round-scaling.md). What is still missing is a
   way for a weapon to keep pace with health that compounds (the original's Pack-a-Punch): an issue.
-- **The carry limit: decided, not built (#410).** Two guns and the melee weapon; buying or taking a third gun replaces
-  the one in hand and its reserve. Today a player may carry every weapon, and the swap button (F, d-pad up) takes the
-  next one carried in hand.
-- **Friendly blast: decided.** The flare's blast hurts zombies only: no player takes damage from it, the thrower
-  included, and a zombie does not keep burning. A grenade still hurts the thrower alone (`player_blasted`). Revisit
-  when perks can change the flare.
+- **The carry limit: proposed, awaiting the maintainer (#410).** Two guns and the melee weapon; buying or taking a
+  third gun replaces the one in hand and its reserve. Today a player may carry every weapon, and the swap button (F,
+  d-pad up) takes the next one carried in hand.
+- **Friendly blast: proposed, awaiting the maintainer.** The flare's blast hurts zombies only: no player takes damage
+  from it, the thrower included, and a zombie does not keep burning. A grenade still hurts the thrower alone
+  (`player_blasted`). Revisit when perks can change the flare.
 - **Reload as a skill.** A magazine swap that rewards a timed second press, and cancelling a reload by sprinting, wait
   for the controller (#14).
 - **Quick melee: not built (#411).** On its own button, with the crowbar-style sweep and a fixed short cooldown; the
