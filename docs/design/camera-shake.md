@@ -99,7 +99,7 @@ every tick.
 | `sprint_sway_min_speed` | 3 m/s |
 | `sprint_sway_fire_duck` | 0.5 |
 
-Why so small: Godot's field of view is the vertical one, so 63 degrees over 1080 pixels is about 17 pixels a degree:
+Why so small: Godot's field of view is the vertical one, so 60 degrees over 1080 pixels is about 18 pixels a degree:
 0.2 degrees of bob moves the picture about 3 pixels up and down, and 0.14 degrees of roll about 2 pixels at the edge
 of the screen. That is felt as a little life in the picture and not read as a wobble. The sway has been halved twice
 as the maintainer played: first "very subtle, a bit more than a shot" (0.45 degrees at the largest, level with the
@@ -113,8 +113,10 @@ largest turn on the ground was 0.425 degrees before and 0.2125 after, and in the
 
 The sprint also widens the view and lets the camera out (`ThirdPersonCamera`, not shake): `sprint_fov_kick` is 3
 degrees (it was 6; the maintainer asked for half, issue #405) and `sprint_arm_extra` 0.15 m (already halved from 0.3).
-The default FOV is 63 degrees (it was 70, 10 percent narrower: the maintainer found the view too far outward and wanted
-it closer to the character), so a full sprint is 66 and the aim stays 60 (`fov_aim`). `arm_length` is unchanged. The
+The default FOV is 60 degrees (it was 70: the maintainer found the view too far outward and wanted it closer to the
+character), so a full sprint is 63 and the aim is 40 (`fov_aim`, it was 60). The one aim weight (#417) blends `fov` to
+`fov_aim` for the aim button and for a shot from the hip alike, so a hip shot zooms 60 to 40 too (and back after the
+0.8 s hold). `arm_length` is unchanged. The
 follow lag of the sprint (16 rad/s) is not a shake and stays. No other sprint-driven motion exists: footsteps make no
 trauma, and the only caller of `add_shake` is a local player's shot. Test: `test_sprint_camera.gd`. Captures: the pull
 request.

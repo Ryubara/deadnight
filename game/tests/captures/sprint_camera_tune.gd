@@ -11,7 +11,8 @@ extends Node
 ## Prints one `TRACE` line per physics tick: seconds, ground speed, sprinting, on the floor, the
 ## lens FOV, and the turn of the lens against the aim in degrees (pitch, yaw, roll). Reads only
 ## what the rig has always had (`camera()` and `aim_transform()`), so it runs on `main` too.
-## From `AIM_FROM` seconds on the player aims (the aim FOV in the trace).
+## A shot from the hip at `SHOT_AT` (the one aim weight zooms the view for the hold after it), then
+## from `AIM_FROM` seconds on the player holds the aim button (the aim FOV in the trace).
 
 const TICK := 1.0 / 60.0
 const START := Vector3(0.0, 0.05, 17.0)
@@ -19,8 +20,9 @@ const START := Vector3(0.0, 0.05, 17.0)
 const SPRINT_AT := 0.5
 const JUMP_AT := 2.5
 const SPRINT_END := 4.5
-const AIM_FROM := 5.0
-const END_AT := 6.0
+const SHOT_AT := 5.0
+const AIM_FROM := 7.5
+const END_AT := 9.0
 
 var _ticks := 0
 var _player: Player
@@ -48,6 +50,7 @@ func _physics_process(_delta: float) -> void:
 		command.move = Vector2(0.0, -1.0)
 		command.sprint = true
 		command.jump = absf(now - JUMP_AT) < TICK * 0.5
+	command.fire = now >= SHOT_AT and now < SHOT_AT + TICK * 2.0
 	command.aim = now >= AIM_FROM
 	_player.submit_command(command)
 	var rig := _player.camera_rig

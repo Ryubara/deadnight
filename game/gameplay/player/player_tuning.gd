@@ -152,11 +152,11 @@ extends Resource
 ## Distance behind the pivot, in metres, and the same while aiming.
 @export var arm_length := 2.3
 @export var arm_length_aim := 1.8
-## Vertical field of view in degrees, and the same while aiming. The default is 63 (it was 70, 10
-## percent narrower at the maintainer's word, issue #405: "too far outward", closer to the
-## character); the aim view stays 60.
-@export var fov := 63.0
-@export var fov_aim := 60.0
+## Vertical field of view in degrees, and the same while aiming. The default is 60 (it was 70) and
+## the aim view 40 (it was 60): at the maintainer's word, issue #405 ("too far outward", closer to
+## the character). The one aim weight blends the two, so a shot from the hip zooms 60 to 40 too.
+@export var fov := 60.0
+@export var fov_aim := 40.0
 ## Radius of the sphere swept from the pivot to the lens, so the camera never clips a wall.
 @export var arm_margin := 0.25
 ## The body is hidden when the lens is closer than this to the head, shown again beyond the

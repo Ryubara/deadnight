@@ -75,19 +75,32 @@ func test_the_camera_pulls_back_when_sprinting_in_every_direction() -> void:
 		)
 
 
-func test_the_view_is_63_degrees_at_rest_60_at_full_aim_and_66_at_a_full_sprint() -> void:
-	# The maintainer (issue #405): the default view was too far outward, so the FOV is 10 percent
-	# narrower (70 to 63), the sprint's widening is halved (6 to 3 degrees) and the aim stays at 60.
+func test_the_view_is_60_degrees_at_rest_63_at_a_full_sprint_and_40_in_the_aim() -> void:
+	# The maintainer (issue #405): the default view was too far outward, so the FOV is 60 (it was
+	# 70), the sprint's widening is halved (6 to 3 degrees) and the aim is 40 (it was 60).
 	var camera := _rig.camera()
 	_render(1.0)
-	assert_float(camera.fov).is_equal_approx(63.0, 0.01)
+	assert_float(camera.fov).is_equal_approx(60.0, 0.01)
 	_rig.sprinting = true
 	_render(1.5)
-	assert_float(camera.fov).is_equal_approx(66.0, 0.05)
+	assert_float(camera.fov).is_equal_approx(63.0, 0.05)
 	_rig.sprinting = false
 	_rig.aiming = true
 	_render(1.5)
-	assert_float(camera.fov).is_equal_approx(60.0, 0.05)
-	assert_float(_tuning.fov).is_equal(63.0)
-	assert_float(_tuning.fov_aim).is_equal(60.0)
+	assert_float(camera.fov).is_equal_approx(40.0, 0.05)
+	assert_float(_tuning.fov).is_equal(60.0)
+	assert_float(_tuning.fov_aim).is_equal(40.0)
 	assert_float(_tuning.sprint_fov_kick).is_equal(3.0)
+
+
+func test_a_shot_from_the_hip_zooms_the_view_from_60_to_40_like_the_aim_button() -> void:
+	# One aim weight (#417) blends fov to fov_aim, whether the button or a shot holds the aim.
+	var camera := _rig.camera()
+	_render(1.0)
+	assert_float(camera.fov).is_equal_approx(60.0, 0.01)
+	_rig.aim_held = true
+	_render(1.5)
+	assert_float(camera.fov).is_equal_approx(40.0, 0.05)
+	_rig.aim_held = false
+	_render(1.5)
+	assert_float(camera.fov).is_equal_approx(60.0, 0.05)
