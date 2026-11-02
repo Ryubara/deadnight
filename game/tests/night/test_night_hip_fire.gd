@@ -20,7 +20,8 @@ func test_a_fire_command_turns_the_body_to_the_view_and_the_shot_still_hits() ->
 	)
 	var command := NightFixture.shoot_at(night, spot)
 	command.motion.yaw = east
-	for _i in 8:
+	# 90 degrees at the aim turn speed (8 rad/s) is 12 ticks.
+	for _i in 16:
 		body.position = spot
 		body.velocity = Vector3.ZERO
 		NightFixture.run(night, 1, command)

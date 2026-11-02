@@ -24,6 +24,9 @@ The server decides every hit. The client shows the shot at once and the server's
   gains nothing beyond a quarter second.
 - **Projectiles are not rewound.** They fly in the present, stepped on the server's fixed step; clients draw a copy that
   follows the same code and end it on the server's `projectile_burst`.
+- **The server owns the muzzle.** A fire command's muzzle is never read: the night server places it on the body it
+  holds (`muzzle_offset`, turned to the body's facing), and the aim origin is pulled back to within `origin_slack`
+  (3 m) of the head (`test_night_shot_authority`).
 
 ## Hitscan and projectile weapons
 
@@ -175,15 +178,13 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 - **Shop weapons: stepped up (#254, #265).** The rifle (95, 0.5 s) and the shotgun (19 a pellet, 0.8 s) are applied;
   the reasoning and the reference are in [round scaling](../research/round-scaling.md). What is still missing is a
   way for a weapon to keep pace with health that compounds (the original's Pack-a-Punch): an issue.
-- **The carry limit** (two or three weapons) needs the player work; today a player may carry every weapon, and
-  the swap button (F, d-pad up) takes the next one carried in hand.
-- **Friendly blast.** The flare's blast hurts zombies only; whether it hurts players (and whether a zombie on fire
-  keeps burning) is a design call. A grenade hurts the thrower only (`player_blasted`); player health is not built yet,
-  so that event is the seam for it.
-- **Sound.** The shot sound request exists as a signal on the client; no audio is shipped yet.
+- **The carry limit: proposed, awaiting the maintainer (#410).** Two guns and the melee weapon; buying or taking a
+  third gun replaces the one in hand and its reserve. Today a player may carry every weapon, and the swap button (F,
+  d-pad up) takes the next one carried in hand.
+- **Friendly blast: proposed, awaiting the maintainer.** The flare's blast hurts zombies only: no player takes damage
+  from it, the thrower included, and a zombie does not keep burning. A grenade still hurts the thrower alone
+  (`player_blasted`). Revisit when perks can change the flare.
 - **Reload as a skill.** A magazine swap that rewards a timed second press, and cancelling a reload by sprinting, wait
   for the controller (#14).
-- **Quick melee** on its own button, with the crowbar-style sweep and a fixed short cooldown, needs the controller
-  too; the sweep and its damage are done.
-- **Shooter position check.** The server trusts the muzzle and camera in a `fire` action; once the controller's
-  position is authoritative on the server, the muzzle must be checked against it (a few metres) before a shot counts.
+- **Quick melee: not built (#411).** On its own button, with the crowbar-style sweep and a fixed short cooldown; the
+  sweep and its damage exist, the button, the command bit and the clip do not.

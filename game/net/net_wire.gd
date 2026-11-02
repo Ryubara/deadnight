@@ -1,12 +1,14 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 2; version 1 sent a command as 47 bytes of
-## floats), one message to a WebSocket frame: a type byte, then the fields. `LookWire` continues the
-## numbering with types 8 and 9.
+## The bytes of a night's connection (protocol version 3; version 2 had no resume token, version 1
+## sent a command as 47 bytes of floats), one message to a WebSocket frame: a type byte, then the
+## fields. `LookWire` continues the numbering with types 8 and 9.
 ##
-## HELLO    C->S  u8 type=1, u8 version                    the first message of a client
-## WELCOME  S->C  u8 type=2, u8 version, u8 player_id, u8 tick_rate, then a packed variable: the
-##                rules' snapshot (`GameRules.to_dict()`), for a HUD that joins in the middle
+## HELLO    C->S  u8 type=1, u8 version, then optionally the 8 bytes of the resume token the last
+##                WELCOME gave (a client that lost its socket asks for its seat back)
+## WELCOME  S->C  u8 type=2, u8 version, u8 player_id, u8 tick_rate, 8 bytes of resume token, then a
+##                packed variable: the rules' snapshot (`GameRules.to_dict()`), for a HUD that joins
+##                in the middle (or comes back)
 ## COMMAND  C->S  u8 type=3, u32 seq, s8 move x/y, u16 yaw, s16 pitch, u16 flags, s16 origin x/y/z
 ##                (centimetres), u16 shot yaw, s16 shot pitch (fixed, `COMMAND_SIZE` = 23 bytes in
 ##                all; the steps are `CommandCodec`'s)
@@ -31,15 +33,17 @@ enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 2
+const VERSION := 3
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 2
+const MIN_VERSION := 3
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
 const COMMAND_SIZE := 23
-const WELCOME_HEADER := 4
+## The resume token a WELCOME gives: random, one for each connection, good for taking back the seat.
+const TOKEN_SIZE := 8
+const WELCOME_HEADER := 4 + TOKEN_SIZE
 const TICK_HEADER := 5
 ## What a packed variable may be once unpacked, so a hostile length cannot ask for gigabytes.
 const MAX_UNPACKED := 4 * 1024 * 1024
@@ -61,8 +65,19 @@ const F_SWAP := 1 << 10
 const F_USE_HELD := 1 << 11
 
 
-static func hello() -> PackedByteArray:
-	return PackedByteArray([Type.HELLO, VERSION])
+static func hello(token: PackedByteArray = PackedByteArray()) -> PackedByteArray:
+	var out := PackedByteArray([Type.HELLO, VERSION])
+	if token.size() == TOKEN_SIZE:
+		out.append_array(token)
+	return out
+
+
+## `{"version", "token"}` (the token empty when the client is new), or `{}` when the packet is not
+## a hello.
+static func read_hello(data: PackedByteArray) -> Dictionary:
+	if (data.size() != 2 and data.size() != 2 + TOKEN_SIZE) or data[0] != Type.HELLO:
+		return {}
+	return {"version": data[1], "token": data.slice(2)}
 
 
 static func refused(reason: Refusal) -> PackedByteArray:
@@ -74,13 +89,16 @@ static func accepts(version: int) -> bool:
 	return version >= MIN_VERSION and version <= VERSION
 
 
-static func welcome(player_id: int, tick_rate: int, snapshot: Dictionary) -> PackedByteArray:
+static func welcome(
+	player_id: int, tick_rate: int, token: PackedByteArray, snapshot: Dictionary
+) -> PackedByteArray:
 	var out := PackedByteArray([Type.WELCOME, VERSION, player_id, tick_rate])
+	out.append_array(token)
 	out.append_array(pack_var(snapshot))
 	return out
 
 
-## `{"version", "player_id", "tick_rate", "snapshot"}`, or `{}`.
+## `{"version", "player_id", "tick_rate", "token", "snapshot"}`, or `{}`.
 static func read_welcome(data: PackedByteArray) -> Dictionary:
 	if data.size() < WELCOME_HEADER + 1 or data[0] != Type.WELCOME:
 		return {}
@@ -91,6 +109,7 @@ static func read_welcome(data: PackedByteArray) -> Dictionary:
 		"version": data[1],
 		"player_id": data[2],
 		"tick_rate": data[3],
+		"token": data.slice(4, WELCOME_HEADER),
 		"snapshot": snapshot,
 	}
 

@@ -324,7 +324,8 @@ the pillars.
   faster (`dark_speed_multiplier`), at most 6.25 m/s, still under the sprint. The brute, crawler and headliner keep
   their old pace in metres per second (x0.4, x0.4, x0.45): they are slow by design, not by round.
 - **The lot cap protects the web build and the player.** At most 6 alive in round 1, rising 0.8 a round to 28;
-  each extra player adds 6. Zombies wait their turn, so a big round is a long fight, not a
+  each extra player adds 6, and no count of players takes it past 40, the most the lot stands
+  ([crowd budget](zombies.md#crowd-budget)). Zombies wait their turn, so a big round is a long fight, not a
   wall of bodies.
 - **More players, more zombies, less per head.** Each extra player adds 60% of the solo count, and
   spawns come faster, so two people face about 1.6 times the zombies, four face 2.8 times. Points are
