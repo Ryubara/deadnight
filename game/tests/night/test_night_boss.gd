@@ -45,7 +45,7 @@ func _aim_at(night: Night, height: float, forward: float) -> NightCommand:
 	var eye := night.state.position() + Vector3(0.0, Autopilot.EYE, 0.0)
 	var command := NightCommand.new()
 	command.origin = eye
-	command.dir = (aim - eye).normalized()
+	command.aim_along(aim - eye)
 	command.fire = true
 	return command
 

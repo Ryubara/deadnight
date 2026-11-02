@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 class_name GameRules
 extends RefCounted
 ## The night's rules: rounds, spawn pacing, points, the shop and the generator. Server-first and
@@ -44,7 +45,8 @@ extends RefCounted
 ##     raised the most); regen sends one when the whole-unit health changes, about once per unit
 ##     mended
 ##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow)
-##   player_removed, player_revived: player_id
+##   player_removed: player_id
+##   player_revived: player_id (the one who got up), reviver_id (the teammate; 0 at a round's end)
 ##   points_changed: player_id, total, delta, reason
 ##   purchase_made: player_id, item_id, price, detail (a weapon: `weapon`; ammunition: `ammo`, the
 ##     catalogue weapon, and `rounds` into its reserve; a re-cut: `upgrade`, the catalogue weapon;
@@ -83,11 +85,12 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 10 added the match settings (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize
-## crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the
-## plan, special round and a zombie's type, health, speed. Two older layouts both called themselves
-## 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 10
+## 11 added each player's `downs` and the night's `night_time` (the scoreboard), 10 the match
+## settings (`match_settings`), 9 each player's `upgraded` weapons, 8 the prize crane (`crane`,
+## `crane_rng_state`), 7 the fence's `barricades`, 6 each player's health, 5 the plan, special round
+## and a zombie's type, health, speed. Two older layouts both called themselves 4; every older
+## snapshot is refused as `bad_version`.
+const SNAPSHOT_VERSION := 11
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -100,6 +103,7 @@ const SNAPSHOT_KEYS := {
 	"phase": TYPE_INT,
 	"round": TYPE_INT,
 	"break_left": TYPE_FLOAT,
+	"night_time": TYPE_FLOAT,
 	"plan": TYPE_ARRAY,
 	"special_id": TYPE_STRING,
 	"round_total": TYPE_INT,
@@ -137,6 +141,10 @@ var barricades: BarricadeState
 var crane: CraneState
 var players: Dictionary[int, PlayerState] = {}
 var doors_open: Array[StringName] = []
+
+## Seconds the night has run: counted in a break and in a round (not before the first break, not
+## after the end), so the scoreboard's clock is the same on every screen and in a snapshot.
+var night_time: float = 0.0
 
 var _break_left: float = 0.0
 ## The types still to spawn this round, in order.
@@ -215,6 +223,18 @@ func apply(action: Dictionary) -> Array[Dictionary]:
 func points_of(player_id: int) -> int:
 	var player := players.get(player_id) as PlayerState
 	return player.points if player != null else 0
+
+
+## Zombies this player has killed this night (a gun, a blow of the hand or a blast).
+func kills_of(player_id: int) -> int:
+	var player := players.get(player_id) as PlayerState
+	return player.kills if player != null else 0
+
+
+## Times this player has gone down this night.
+func downs_of(player_id: int) -> int:
+	var player := players.get(player_id) as PlayerState
+	return player.downs if player != null else 0
 
 
 func is_door_open(door_id: StringName) -> bool:
@@ -356,6 +376,8 @@ func _dispatch(action: Dictionary) -> void:
 				_check_game_over()
 		RulesAction.SET_DOWNED:
 			_set_downed(action["player_id"], action["downed"])
+		RulesAction.REVIVE:
+			_revive(action["player_id"], action["target_id"])
 		RulesAction.BLOW:
 			_blow(action)
 		RulesAction.HIT:
@@ -426,6 +448,7 @@ func _on_circuit_changed(circuit_id: StringName, on: bool) -> void:
 func _tick(delta: float) -> void:
 	match phase:
 		Phase.BREAK:
+			night_time += delta
 			generator.tick(delta, round_number, true)
 			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
@@ -433,6 +456,7 @@ func _tick(delta: float) -> void:
 			if _break_left <= 0.0:
 				_begin_round()
 		Phase.ACTIVE:
+			night_time += delta
 			generator.tick(delta, round_number, false)
 			CranePlay.tick(self, delta)
 			_events.append_array(PlayerHealth.mend(players, tuning.health, delta))
@@ -665,6 +689,29 @@ func _set_downed(player_id: int, downed: bool) -> void:
 		_check_game_over()
 	else:
 		_events.append_array(PlayerHealth.revive(player, tuning.health))
+
+
+## A teammate gets a downed player up for a share of their health, in a round only.
+func _revive(player_id: int, target_id: int) -> void:
+	var reviver := players.get(player_id) as PlayerState
+	var target := players.get(target_id) as PlayerState
+	var refusal := &""
+	if phase != Phase.ACTIVE:
+		refusal = &"wrong_phase"
+	elif reviver == null or target == null:
+		refusal = &"unknown_player"
+	elif player_id == target_id:
+		refusal = &"self_revive"
+	elif reviver.downed:
+		refusal = &"player_downed"
+	elif not target.downed:
+		refusal = &"not_downed"
+	if refusal != &"":
+		_reject(refusal, RulesAction.REVIVE)
+		return
+	_events.append_array(
+		PlayerHealth.revive(target, tuning.health, tuning.health.revive_fraction, player_id)
+	)
 
 
 ## A blow takes health off, restarts the wait before it mends, and downs the player at zero.
