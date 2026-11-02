@@ -45,6 +45,9 @@ func _ready() -> void:
 	if KillBench.requested():
 		add_child(KillBench.new())
 		return
+	if args.has(AutopilotRun.KEY):
+		add_child(AutopilotRun.new(args))
+		return
 	if args.has("stage"):
 		UIRouter.reset(STAGE, UITransition.Kind.CUT, {"still": args.get_string("stage") == "still"})
 		return
