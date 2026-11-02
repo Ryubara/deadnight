@@ -25,6 +25,8 @@ const PANEL_MARGIN := 120.0
 
 ## For a test: called instead of opening the night screen.
 static var opener := Callable()
+## The autopilot plays the night this screen opens (`--bot`, for browser probes).
+static var play_as_bot := false
 
 var api: TogetherApi
 var mode := Mode.LIVE
@@ -359,6 +361,7 @@ func _go_in(held: bool) -> void:
 		return
 	NightScreen.join_url = TogetherScreen.server_url_of(pass_to, TogetherScreen.in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
+	NightScreen.join_as_bot = play_as_bot
 	_entering = true
 	watch.stop()
 	if opener.is_valid():

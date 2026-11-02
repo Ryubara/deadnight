@@ -76,6 +76,8 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	LobbyScreen.play_as_bot = false
+	NightScreen.join_as_bot = false
 	LobbyScreen.opener = Callable()
 	NightScreen.join_url = ""
 	NightScreen.join_ticket = ""
@@ -219,10 +221,22 @@ func test_start_asks_the_backend_then_takes_a_ticket_and_goes_in() -> void:
 	assert_str(NightScreen.join_ticket).is_equal("t-1")
 	assert_str(NightScreen.join_url).is_equal("ws://127.0.0.1:1")
 	assert_int(_entered).is_equal(1)
+	assert_bool(NightScreen.join_as_bot).is_false()
 	# On the way into the night the seat is not given up when this screen goes.
 	screen.free()
 	await get_tree().process_frame
 	assert_array(api.left).is_empty()
+
+
+func test_the_autopilot_flag_reaches_the_night_the_lobby_opens() -> void:
+	var api := FakeApi.new(self)
+	api.lobby = _lobby([_member("a", "Ann", 1, true)])
+	api.started = _lobby([api.lobby["members"][0]], "started", 0)
+	LobbyScreen.play_as_bot = true
+	var screen := await _screen(api, {"lobby": api.lobby})
+	await screen.start()
+	assert_bool(NightScreen.join_as_bot).is_true()
+	screen.free()
 
 
 func test_a_start_the_backend_refuses_says_why_and_keeps_the_lobby_open() -> void:
