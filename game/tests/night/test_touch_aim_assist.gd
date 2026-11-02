@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const TEST_ROOM := "res://world/test_room.tscn"
 const PISTOL := &"pistol"
 const CROWBAR := &"crowbar"
+const SETTINGS_FILE := "user://touch_aim_assist_test.cfg"
 
 var _runner: GdUnitSceneRunner
 var _player: Player
@@ -231,17 +232,21 @@ func test_the_player_holding_fire_still_fires_with_the_assist_off() -> void:
 
 
 func test_the_settings_set_the_strength_and_the_auto_fire() -> void:
+	# A file of its own: the player's real settings are never written by a test.
 	var settings := get_tree().root.get_node("Settings")
-	var strength_before: Variant = settings.get_value(SettingsService.TOUCH_AIM_ASSIST)
-	var fire_before: Variant = settings.get_value(SettingsService.TOUCH_AUTO_FIRE)
+	var saved_path: String = settings.path
+	settings.path = SETTINGS_FILE
+	settings.reset_defaults()
 	var fresh := TouchAimAssist.new(get_tree(), _state)
-	assert_float(fresh.strength).is_equal_approx(float(strength_before), 0.001)
+	assert_float(fresh.strength).is_equal_approx(0.5, 0.001)
 	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, 0.8)
 	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, 2)
 	assert_float(fresh.strength).is_equal_approx(0.8, 0.001)
 	assert_int(fresh.auto_fire).is_equal(TouchAimAssist.AutoFire.ALWAYS)
-	settings.set_value(SettingsService.TOUCH_AIM_ASSIST, strength_before)
-	settings.set_value(SettingsService.TOUCH_AUTO_FIRE, fire_before)
+	settings.reset_defaults()
+	settings.save()
+	settings.path = saved_path
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_FILE))
 
 
 func test_the_defaults_are_gentle_assist_and_no_auto_fire() -> void:
