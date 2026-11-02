@@ -3,8 +3,7 @@ extends RefCounted
 ## A bot that plays the night through the same `NightCommand` a person sends. It sees only what a
 ## client sees (`ClientState`, and the level's navigation map): its own position, the zombies in
 ## the latest frame, its points and the prompt the server shows for what is in reach. It keeps
-## its distance from the nearest zombie, looks at it and shoots (walking where it must under that
-## view, as a player strafes), reloads when the magazine runs
+## its distance from the nearest zombie, turns to it and shoots, reloads when the magazine runs
 ## dry, walks to the next door when it can afford it and buys it, buys rounds when the gun in hand
 ## is nearly out, buys the weapons on the walls and the crane with points to spare, swaps to a gun
 ## that has rounds, re-cuts one weapon at the bench and drinks the hearty tonic when it can pay, and
@@ -109,20 +108,13 @@ func decide(delta: float) -> NightCommand:
 	wish = _unstuck(wish, here, delta)
 	if wish != Vector3.ZERO:
 		_yaw = atan2(-wish.x, -wish.z)
+		command.motion.move = Vector2(0.0, -1.0)
 		command.motion.sprint = fleeing
-	var view := _yaw
+	command.motion.yaw = _yaw
 	if not target.is_empty():
 		_aim(command, here, target["position"], target.get("look", ZombieModels.DEFAULT))
 		var close := _flat(here, target["position"]) < MELEE_RANGE
 		command.fire = not state.me().get("reloading", false) and (close or not melee)
-		if command.fire:
-			# It looks where it shoots, as a person does: the shot leaves when the body faces the
-			# view (#477), so a view that pointed where it walks would hold every shot for a turn.
-			view = _yaw_of(command.dir, _yaw)
-	command.motion.yaw = view
-	if wish != Vector3.ZERO:
-		# The way it walks, as a push of the stick under that view.
-		command.motion.move = Vector2(-sin(_yaw - view), -cos(_yaw - view))
 	if _swap_wait == 0 and _wants_swap(held):
 		command.swap = true
 		_swap_wait = SWAP_EVERY
@@ -362,8 +354,7 @@ func _clear(here: Vector3, target: Vector3, look: StringName) -> bool:
 		return true
 	var eye := here + Vector3(0.0, EYE, 0.0)
 	var aim := target + Vector3(0.0, _chest(look), 0.0)
-	# It turns to the target to shoot, so the barrel is where it will be then.
-	var barrel := here + Basis(Vector3.UP, _yaw_of(aim - eye, _yaw)) * MUZZLE
+	var barrel := here + Basis(Vector3.UP, _yaw) * MUZZLE
 	# The camera sees the target past a corner the barrel does not clear: both must be open.
 	return float(sight.call(eye, aim)) < 0.0 and float(sight.call(barrel, aim)) < 0.0
 
@@ -414,15 +405,14 @@ func _aim(command: NightCommand, here: Vector3, target: Vector3, look: StringNam
 	var eye := here + Vector3(0.0, EYE, 0.0)
 	var to := target + Vector3(0.0, _chest(look), 0.0) - eye
 	command.origin = eye
-	command.dir = to.normalized()
-	command.muzzle = here + Basis(Vector3.UP, _yaw_of(command.dir, _yaw)) * MUZZLE
-
-
-## The heading of `direction` on the ground, or `otherwise` when it points straight up or down.
-static func _yaw_of(direction: Vector3, otherwise: float) -> float:
-	if Vector2(direction.x, direction.z).length_squared() < 1.0e-6:
-		return otherwise
-	return atan2(-direction.x, -direction.z)
+	command.aim_along(to)
+	command.muzzle = here + Basis(Vector3.UP, _yaw) * MUZZLE
+	# The view turns to the target and the body goes on walking its way, as a person does with the
+	# camera on a zombie: the server refuses a shot that does not follow the view
+	# (`NightServer.aims_with_view`).
+	if command.motion.move != Vector2.ZERO:
+		var apart := command.motion.yaw - _yaw
+		command.motion.move = Vector2(sin(apart), -cos(apart))
 
 
 ## Where it aims on a zombie that stands as tall as the look says (a crawler lies low).

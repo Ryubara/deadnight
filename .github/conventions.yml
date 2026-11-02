@@ -116,7 +116,7 @@ merge:
   auto_merge: true
   delete_branch_on_merge: true
   linear_history: true
-  required_checks: [title, body, docs, commits, conventions, build-ok, mkdocs, markdownlint, actionlint]
+  required_checks: [pr-rules, conventions, build-ok, mkdocs, markdownlint, actionlint]
   # A pull request that changes one of these is merged by a maintainer by hand: tools and agent hooks refuse to turn
   # on auto-merge for it (`needs-maintainer`). The rules that judge agents are changed only by a person.
   manual_paths: [.github/conventions.yml, AGENTS.md, .claude/settings.json, .claude/hooks/]

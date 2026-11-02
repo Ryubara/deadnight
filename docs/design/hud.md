@@ -46,6 +46,7 @@ local player) into the direction on screen.
 | `HudMarquee` | top centre, under the banner | in the break before a special round, `COMING UP - ROUND 5 - IN 24` over the round's name in big letters that flicker like a failing neon sign (steady with reduced motion) over what it brings, between two rows of bulbs (the banner's); gone as the round starts. A HUD that joins in the break reads it from the schedule |
 | `HudBossBar` | top centre, under the banner | while a boss stands on the lot: its name (`THE PROJECTIONIST`, `+1` for more) over a bar that empties with its health, one bar a boss, up to three; hot orange under a quarter |
 | `HudPrompt` | bottom centre, between the two cards | a concession-menu card as high as its words need (a long name or line wraps, never cut; it grows upward): the key at its left, beside it the object, one line on what it does and the price (amber, or hot `NEED 350 POINTS`) |
+| `HudChallenge` | left edge, a third of the way down | a paper ticket that says a challenge moved a step (a quarter mark, a finish, a milestone step): the kind in small caps, the count, the words, four punch-card holes (one more punched at each quarter). One at a time, in from the edge, held about 2.4 s, out; see [the prompt](progression.md#the-progress-prompt-in-the-night) |
 | `HudGains` | beside the crosshair | "+100 HEADSHOT KILL", a short list that fades oldest first; runs of small hits merge into one row; at most three rows; rows slide into their slots (see Decisions) |
 | `HudReticle` | centre | the reticle (see Decisions): four short ticks round a gap and a dot, cream with a dark edge, static and small; hidden under the pause card and while you are down |
 | `HudCrosshair` | centre, over the reticle | hit marker (ticks: cream hit, amber headshot, larger red kill) and floating damage numbers, small, nudged apart, at most eight |
@@ -138,8 +139,10 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   *diagonal* ticks (starting 9 units out) and sit between the reticle's, so the two never overprint. Lengths are canvas
   units: it scales with the window and the UI scale like every other part (a test reads the viewport's stretch). It
   is shown **while aiming too**: the aim view has no reticle of its own, and hiding the only mark where the shots go
-  at the moment of precision would be wrong. It is hidden under the pause card (the screen calls `set_shown`) and
-  while you are down. Every number is on `ReticleStyle` (`ui/hud/reticle_style.tres`, also the *Reticle Style*
+  at the moment of precision would be wrong. It is hidden under every card the night screen shows (Joining,
+  Paused, the result: `_show_overlay` calls `set_shown`) and shown again by `_hide_overlay`, the one way a card goes,
+  together with the scoreboard and the touch controls (#517: a joined night once ran with none of them). It is also
+  hidden while you are down. Every number is on `ReticleStyle` (`ui/hud/reticle_style.tres`, also the *Reticle Style*
   property of the `Hud` node): arm length, gap, thickness, outline, dot size (0 for none), tint and opacity, with
   ranges in the inspector.
 - **A part never grows past its band.** The layout test once used short values and the fallback font and passed
@@ -164,6 +167,14 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   in one frame cannot overlap) and fades in as it rises. The height the stack reports eases too, so the notices under
   the event list follow. It is the view's motion: `advance(delta)` steps it with the fade (tests and captures pass the
   seconds), `HudState` knows nothing of it, and with reduced motion every line is in its slot at once.
+- **The challenge prompt sits where nothing else does (#399).** The left edge, a third of the way down, is the one
+  free band: the
+  round column ends above it, the players' column starts below it, the reticle, gains and prompt are in the middle and
+  at the bottom. It does not mirror for a left hand (the corner buttons are at the bottom). It is a paper ticket, not a
+  dark card, on purpose: it is rare, so it may be the one light thing at the edge, and it matches the main menu's
+  "The program". `HudChallenge` reads `challenge_advanced` events like every part; `ChallengeHudLink` makes them from the
+  night's challenges. A layout test puts it on the busiest HUD at every canvas, mirrored or not, beside the crosshair's
+  clear box (`test_hud_challenge.gd`).
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
 - **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with four players, an

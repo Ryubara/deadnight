@@ -23,6 +23,10 @@ const SCOREBOARD_ACTION := &"scoreboard"
 ## onto more lines instead). Every card shares the text grid of `HudStyle` (`PAD_LEFT` in, `PAD` in
 ## from the right) and every column the same `GAP` between its parts.
 const GAINS_OFFSET := Vector2(48.0, 4.0)
+## Where the challenge prompt starts, as a share of the screen's height: low enough to clear the
+## round and objective cards, high enough that a card of three lines ends above the players' column
+## on the smallest canvas (four players on 1536 x 864).
+const CHALLENGE_TOP := 0.36
 ## Space kept between the gains and the ammo card they must stay clear of.
 const GAINS_GAP := 9.0
 
@@ -41,6 +45,7 @@ const PART_NAMES := {
 	&"marquee": "Marquee",
 	&"prompt": "Prompt",
 	&"gains": "Gains",
+	&"challenge": "Challenge",
 	&"reticle": "Reticle",
 	&"crosshair": "Crosshair",
 	&"damage": "Damage",
@@ -77,6 +82,7 @@ var boss_bar := HudBossBar.new()
 var marquee := HudMarquee.new()
 var prompt := HudPrompt.new()
 var gains := HudGains.new()
+var challenge := HudChallenge.new()
 var reticle := HudReticle.new()
 var crosshair := HudCrosshair.new()
 var damage := HudDamage.new()
@@ -114,6 +120,7 @@ func _ready() -> void:
 	_stack([prompt], 0.5, 1.0, 0.0, -margin, gap)
 	_stack([gains], 0.5, 0.5, GAINS_OFFSET.x, GAINS_OFFSET.y, gap)
 	(gains.get_parent() as Control).grow_horizontal = Control.GROW_DIRECTION_END
+	_place_challenge(margin)
 	# Last, so it draws over every other part.
 	_centre(scoreboard)
 	for part in all_parts():
@@ -130,6 +137,39 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	UIInputMode.track(event)
+
+
+## The challenge prompt sits on the left edge about a third of the way down, in the band between
+## the round column and the players' column, and stays there for a left hand too (the corner
+## buttons are at the bottom; the gains and the reticle are at the middle of the screen, a card's
+## width away).
+func _place_challenge(margin: float) -> void:
+	add_child(challenge)
+	challenge.anchor_left = 0.0
+	challenge.anchor_right = 0.0
+	challenge.anchor_top = CHALLENGE_TOP
+	challenge.anchor_bottom = CHALLENGE_TOP
+	challenge.offset_left = margin
+	challenge.offset_right = margin + HudChallengeCard.WIDTH
+	challenge.offset_top = 0.0
+	challenge.offset_bottom = 0.0
+	challenge.grow_vertical = Control.GROW_DIRECTION_END
+	# The cards above it change height with their words: it follows them down.
+	for above in [round_part, objective]:
+		above.item_rect_changed.connect(_fit_challenge)
+	resized.connect(_fit_challenge)
+
+
+## Keeps the challenge prompt a gap under the left column's last card when that card reaches past
+## the prompt's usual place (the objective's two lines on the smallest canvas).
+func _fit_challenge() -> void:
+	var bottom := 0.0
+	for above in [round_part, objective]:
+		if above.is_visible_in_tree():
+			bottom = maxf(bottom, above.get_global_rect().end.y - get_global_rect().position.y)
+	var usual := CHALLENGE_TOP * size.y
+	challenge.offset_top = maxf(0.0, bottom + float(HudStyle.GAP) - usual)
+	challenge.offset_bottom = challenge.offset_top
 
 
 ## The gains list takes the width from its start (beside the crosshair) to the left edge of whatever
@@ -166,6 +206,7 @@ func all_parts() -> Array[HudPart]:
 		boss_bar,
 		prompt,
 		gains,
+		challenge,
 		scoreboard
 	]
 
@@ -185,7 +226,8 @@ func boxed_parts() -> Array[Control]:
 		marquee,
 		boss_bar,
 		prompt,
-		gains
+		gains,
+		challenge
 	]
 
 

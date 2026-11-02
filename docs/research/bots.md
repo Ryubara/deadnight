@@ -54,19 +54,18 @@ magnitude).
 **1. A shot's direction is not tied to the view.** `NightServer._shoot` takes `command.dir` as sent, and the Autopilot
    sets the camera ray at the target while its `yaw` is where it walks. A person's `dir` is the camera's forward, so
    they can only shoot where they look. A bot that shoots one way and walks another is superhuman, and the same hole is
-   an anti-cheat hole for clients. Fix: the bot derives `dir` from its own yaw and pitch through the camera-rig
-   function (`world/drive_in/camera_probe.gd`), and the server checks `dir` against `motion.yaw/pitch`
-   (with #55 and #163). Part done (#488): while it fires, the bot's `yaw` is the ray's heading and its walk is a stick
-   push under that view, because the server's shot now waits for the body to face the view (#477); `dir` is still
-   sent as it aims, not derived from the camera rig.
+   an anti-cheat hole for clients. Fix: the bot derives `dir` from its own yaw and pitch
+   (`NightCommand.aim_along`, the same basis as the camera rig), and the server refuses a shot whose
+   `dir` is more than `NightTuning.aim_slack_degrees` (10) off `motion.yaw/pitch` (*closed by Phase
+   0*; a person's camera measured under 1 degree off).
 **2. No turn-rate limit on the server**: `yaw` may jump any angle in a tick. The bot must limit itself.
-**3. No revive.** `set_downed` is server-only; there is no `revive` action, no bleed-out and no command for it. The
-   design says "a downed player can be revived until the round ends" and the simulator models six seconds. Nothing
-   issue-tracked yet.
+**3. No revive.** *Closed by Phase 0 (#224).* There is now a `revive` rules action, a channel on the held `use`
+   button beside a downed teammate, and no bleed-out: a downed player waits to be raised or for the round's end.
 **4. No circuit switches in the lot** (#206), **no fuel purchase spot** (the shop item exists, `use_target` offers
    none), **tonics do nothing**.
 **5. Crouch is carried and not acted on** (#73); **no step up of low ledges** (#78); the jump is 1.1 m.
-**6. No pings or callouts**; world markers and teammate names are still test positions (#134).
+**6. No pings or callouts.** *Pings closed by Phase 0 (#224); callouts are Phase 5.* World markers and teammate
+   names landed with #430.
 **7. The night is one player**: `Night` joins `PLAYER_ID = 1`. `NightServer` already takes any number of `join`s, so
    scenario tests can seat four; the networked match is #53 to #57.
 **8. The frame carries every zombie in the lot**, as it does for a person's client. Interest management is #57; until
@@ -360,7 +359,7 @@ things", so the set is small and each ping has one meaning.
 | **Trapped** (no path with 1 m of clearance for 2 s) | Fight with the best sustained weapon; use a grenade at 4 m or more from itself; jump onto a car roof or other curated link; call for cover; no teleport. |
 | **Last one alive** | See *Revives*. |
 | **Generator dry** | The view range collapses (8 m); the bot closes in on humans, shoots only seen targets, and a maintainer buys fuel. |
-| **A human goes idle or leaves** | The bot does not wait for them in a fight; it keeps following the largest group and, in a break, goes on errands. A human who leaves frees the slot: whether the bot keeps their points and weapons is an open question. |
+| **A human goes idle or leaves** | The bot does not wait for them in a fight; it keeps following the largest group and, in a break, goes on errands. A human who leaves frees the slot for a bot (decision 7: a human who joins inherits it). |
 | **Door rebake in progress** | Paths are dropped; the bot holds position and shoots until the mesh answers. |
 | **Telegraph and special round announcements** | `special_round_announced` is shown to people, so the bot may read it: it buys ammunition and repairs in the longer break, and sets its stance (choke for the stampede). |
 
@@ -508,7 +507,7 @@ timing) are ours too ([Ocio Barriales](http://www.gameaipro.com/GameAIPro3/GameA
 | Takes the team's resources | Vermintide 4.2, L4D medkits | Door etiquette, kill courtesy, repair purse rule, reserve |
 | Reaction shots, perfect aim | The problem Vermintide cites | Reaction floor 0.20 s, spring turn, noise, tests of the distributions |
 | Wallhack | Any bot with the full frame | Perception filter, event allow-list, firewall test, memory that is never shot at |
-| Teleports | Vermintide (stuck) | No teleport; report instead; the question is open for the maintainer |
+| Teleports | Vermintide (stuck) | No teleport; report instead (decided: no teleporting bots) |
 | Spams pings | B4B | Per-line and global callout cooldowns |
 | Cannot be told anything | B4B players, Vermintide tomes | A small set of single-meaning pings |
 | Does not do a job a human does | Killing Floor mutator, Toxic Commando | Coverage matrix test: every shop item, weapon and prompt kind needs a bot rule or a waiver |
@@ -533,6 +532,33 @@ yaw and pitch on the server (#55, #163), crouch (#73) and low ledge step-up (#78
 carry them, and the balance simulator models revive with the real numbers. **Tests**: rules tests for each new action
 (accept, reject, snapshot round trip), a night test of a revive through `NightCommand`, a test that a shot whose `dir`
 disagrees with the view is refused or clamped.
+
+**Built (#224).** By the time it was built, circuit switches (#206), the fuel spot, crouch (#73) and low ledge step-up
+(#78) were in the game, so the phase added what was left:
+
+- **Revive.** `RulesAction.revive(player_id, target_id)`: refused outside a round, for an unknown or downed reviver,
+  for oneself and for a target who is up. It gets the target up with `HealthTuning.revive_fraction` (0.5) of their
+  health and restarts the wait before mending; `player_revived` now names the `reviver_id` (0 at a round's end, which
+  still gets everyone up with all their health). The channel is the server's: holding `use` within
+  `NightTuning.revive_reach` (2.2 m) of a downed teammate for `HealthTuning.revive_seconds` (6.0), with the reviver
+  free to let go, step away or be struck down, which starts the time over. The frame carries `reviving` and `revive`
+  (0 to 1) per player, the prompt `{kind: revive, id, progress}` comes before a door's, and `revive_started` and
+  `revive_stopped` (reason `released`, `moved`, `down`, `done`) go to the clients. **No bleed-out** (the design says a
+  downed player waits to be raised or for the round's end), and **no points for a revive** (the rescue pay of the
+  progression design is XP, from `player_revived.reviver_id`). The snapshot gained no field, so its version stays 8.
+- **Pings.** `NightServer.PING` / `ping` {kind, pos, subject} and a ten-byte client message (`NetWire.Type.MARK`, rate
+  limited at 2 a second): `here`, `door` (by index), `ammo`, `enemy` (a live zombie's id) and `downed` (a downed
+  teammate). The server checks every claim (reach 70 m, a shut door, an ammunition spot within 4 m, a live zombie, a
+  downed player), snaps the position to the thing named, keeps one mark per player for 20 s and one new mark a second,
+  and puts them in the frame (`pings`) and the feed (`ping_placed`, `ping_cleared`). A person presses `Z`, the middle
+  mouse button or the pad's right D-pad; `PingAim` picks what the crosshair is on. Markers show over the view
+  (`NightMarkers`). The `NetWire` version does not change: a new type is additive.
+- **Shots follow the view.** `NightServer.aims_with_view`: a shot whose `dir` is more than 10 degrees from the view's
+  forward (`view_dir(yaw, pitch)`) is refused with `fire_rejected` / `aim_mismatch`. `NightCommand.aim_along` sets
+  both; the Autopilot now turns its view to the target and walks its own way. A person's camera measured at under one
+  degree from its own yaw and pitch over 15 poses.
+- **The balance simulator** raises a teammate with the rules' own `revive` action and reads the six seconds and the
+  half health from `HealthTuning`, so the two cannot drift.
 
 ### Phase 1: the bot host, perception, aim and the test harness
 
@@ -592,7 +618,7 @@ Issue: #230.
 
 The server fills empty slots with bots on a room setting (off, fill to two, fill to four), labels them in the lobby and
 the HUD, handles a human joining or leaving a bot's slot, gives the profiles names and looks, and exposes a kill-switch
-and a per-room bot cap. Resolves the open questions below with the maintainer. **Done when**: a networked match over
+and a per-room bot cap, to the [decisions](#decisions-of-the-maintainer). **Done when**: a networked match over
 the real transport with two humans and two bots runs 10 minutes in CI without a divergence or an `ERROR` (with #56);
 the server's measured bot cost is inside the budget; a human takes over a slot mid-round without losing the round.
 
@@ -606,19 +632,20 @@ make filled nights different from human ones. **Done when**: the parity gates in
 consecutive nightly runs; a written report lists each profile's measured numbers; the page is updated; known
 limitations are issues.
 
-## Open questions for the maintainer
+## Decisions of the maintainer
 
-**1. Teleport as a last resort?** Vermintide does; Ellie never. Recommendation: no.
-**2. Label bots?** Recommendation: yes, a mark in the lobby and the roster, never in the command.
-**3. Do bots earn account progression?** Recommendation: points in the night, yes; XP, rescue pay and mastery, no, and
-   a night with bots is marked in the stats (rescues pay 40 a revive in the [progression design](../design/progression.md);
-   a bot that revives a human must not farm it).
-**4. Player scaling.** The boss health, the alive cap and the spawns scale with the number of players; do bots count?
-   Recommendation: count them, then let Phase 7 decide whether to weight them below one.
-**5. Can people give bots orders?** Recommendation: the small ping set only.
-**6. Voice.** Text lines first; voiced barks need audio assets and a decision about voices.
-**7. When a human takes a bot's slot,** do they inherit its points and weapons? Recommendation: yes, to remove any
-   reason to leave and rejoin.
+The seven open questions of the first draft were answered on 2026-11-02: **all seven recommendations accepted**.
+They are decisions now, not options; the phases build to them.
+
+| # | Question | Decision | What it means in the build |
+| --- | --- | --- | --- |
+| 1 | Teleport as a last resort? | **No teleporting bots.** | The stuck ladder ends in a report (`bot_stuck`) and a walk back along the breadcrumb trail, never a jump to the humans. A bot that cannot reach anyone fights where it stands. |
+| 2 | Label bots? | **Yes, bots are labelled as bots.** | A mark in the lobby, the roster, the HUD's player box and the feed (`BOT` after the name); never in the command, which stays identical to a person's. The name comes from the profile (Phase 6). |
+| 3 | Do bots earn account progression? | **Bots earn points in the night, not XP.** | In-night points work as for a person (a bot buys doors with what it kills for). Account XP, rescue pay and mastery are never paid to a bot, and a night with bots is marked in the stats. The progression code reads `player_revived.reviver_id` and `player_added.bot` to skip bots; a bot that revives a human farms nothing. |
+| 4 | Player scaling | **Bots count for zombie scaling.** | The boss health, the alive cap and the spawn rate scale with the number of seated players, bots included (a bot is a player to the rules: `add_player`). Phase 7 may weight a bot below one; the default is one. |
+| 5 | Can people give bots orders? | **Orders by pings only.** | The five pings of Phase 0 (`PingBoard.KINDS`: here, door, ammo, enemy, downed) are the whole vocabulary; there is no command menu and no text. |
+| 6 | Voice | **No bot voice for now.** | Callouts are `bot_say` lines in the feed only; no audio assets are made for them until the maintainer asks. |
+| 7 | A human takes a bot's slot | **A joining human inherits the bot's slot.** | The human gets the bot's seat, body, points, weapons, ammunition, grenades and health as they stand, and the bot is removed in the same tick. No reason to leave and rejoin. A human who leaves leaves the slot to a bot again (Phase 6). |
 
 ## Sources
 
