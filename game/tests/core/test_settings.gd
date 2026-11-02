@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 
 const TEST_PATH := "user://settings_test.cfg"
 
-var _settings: SettingsService
+var _settings: QuietSettings
+var _made: Array[QuietSettings] = []
 
 
 func before_test() -> void:
@@ -16,6 +17,11 @@ func after_test() -> void:
 	# Put the engine back the way the suite found it.
 	_settings.reset_defaults()
 	_settings.apply_all()
+	# A service with an unsaved change writes the file as it is freed: free them first, then the file.
+	for service in _made:
+		if is_instance_valid(service):
+			service.free()
+	_made.clear()
 	_remove_file()
 
 
@@ -153,12 +159,11 @@ func test_startup_applies_the_saved_file() -> void:
 	assert_bool(UIMotion.reduced).is_true()
 
 
-## A service on the test file, in the tree so it can reach the root window.
-func _make() -> SettingsService:
-	var service := SettingsService.new()
-	service.path = TEST_PATH
-	add_child(service)
-	auto_free(service)
+## A service on the test file, in the tree so it can reach the root window; its window calls go to
+## a list, never to the display this runs on.
+func _make() -> QuietSettings:
+	var service := QuietSettings.make(self, TEST_PATH)
+	_made.append(service)
 	return service
 
 
