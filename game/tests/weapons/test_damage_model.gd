@@ -59,13 +59,25 @@ func test_a_shotgun_is_deadly_close_and_weak_far() -> void:
 
 
 func test_a_blast_hurts_most_at_the_centre_and_not_at_all_past_the_radius() -> void:
-	var flare := WeaponsFixture.def(&"flare_gun")
-	assert_float(DamageModel.splash(flare, 0.0)).is_equal(flare.splash_damage)
-	assert_float(DamageModel.splash(flare, flare.splash_radius)).is_equal_approx(
-		flare.splash_damage * flare.splash_min_fraction, 0.001
+	# No shipped weapon blasts since the flare became a lure (#439), so the model is tried on a
+	# definition that does.
+	var blaster := WeaponDef.new()
+	blaster.splash_radius = 3.0
+	blaster.splash_damage = 60.0
+	blaster.splash_min_fraction = 0.25
+	assert_float(DamageModel.splash(blaster, 0.0)).is_equal(blaster.splash_damage)
+	assert_float(DamageModel.splash(blaster, blaster.splash_radius)).is_equal_approx(
+		blaster.splash_damage * blaster.splash_min_fraction, 0.001
 	)
-	assert_float(DamageModel.splash(flare, flare.splash_radius + 0.1)).is_equal(0.0)
+	assert_float(DamageModel.splash(blaster, blaster.splash_radius + 0.1)).is_equal(0.0)
 	assert_float(DamageModel.splash(WeaponsFixture.def(&"pistol"), 0.0)).is_equal(0.0)
+
+
+func test_a_flare_hurts_no_one() -> void:
+	var flare := WeaponsFixture.def(&"flare_gun")
+	assert_bool(flare.is_lure()).is_true()
+	assert_float(DamageModel.damage(flare, 1.0, Hitbox.BODY)).is_equal(0.0)
+	assert_float(DamageModel.splash(flare, 0.0)).is_equal(0.0)
 
 
 func test_every_shipped_weapon_loads_with_sane_numbers() -> void:
@@ -73,7 +85,11 @@ func test_every_shipped_weapon_loads_with_sane_numbers() -> void:
 		var def := WeaponsFixture.def(id)
 		assert_object(def).is_not_null()
 		assert_str(def.id).is_equal(id)
-		assert_float(def.damage).is_greater(0.0)
+		# A lure (the flare) calls the dead and hurts none.
+		if def.is_lure():
+			assert_float(def.damage).is_equal(0.0)
+		else:
+			assert_float(def.damage).is_greater(0.0)
 		assert_float(def.fire_interval).is_greater(0.0)
 		assert_float(def.zone_multiplier(Hitbox.HEAD)).is_greater_equal(
 			def.zone_multiplier(Hitbox.LIMB)

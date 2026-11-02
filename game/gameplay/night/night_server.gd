@@ -52,6 +52,7 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"weapon_upgraded",
 	&"projectile_spawned",
 	&"projectile_burst",
+	&"lure_started",
 	&"fire_rejected",
 ]
 ## What the grenade server answers that is worth sending on (its answer also repeats the rules'
@@ -121,7 +122,7 @@ func _init(
 ) -> void:
 	world = p_world
 	looks = LookServer.new(_send_look)
-	tuning = p_tuning if p_tuning != null else NightTuning.new()
+	tuning = p_tuning if p_tuning != null else NightTuning.shipped()
 	rules = GameRules.new(p_rules_tuning, p_seed)
 	_probe = WorldProbe.new(world.get_world_3d().direct_space_state)
 	combat = CombatServer.new(WeaponCatalog.all(), rules, _probe.callable(), p_seed)
@@ -485,6 +486,8 @@ func _combat(action: Dictionary) -> void:
 			continue
 		if event["type"] == &"fire_rejected" and QUIET_REJECTIONS.has(event["reason"]):
 			continue
+		if event["type"] == &"lure_started":
+			sim.add_lure(event["lure_id"], event["point"], event["radius"], event["seconds"])
 		_outbox.append(event)
 
 

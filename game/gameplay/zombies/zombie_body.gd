@@ -38,6 +38,8 @@ var stagger_cooldown_left: float = 0.0
 ## The breach it came in by and has not yet walked through (`ZombieGate.id`), or none: it stands
 ## outside the fence tearing boards off until the way is open.
 var gate_id: StringName = &""
+## The lure it is walking to (`ZombieLure.id`), or 0 for none: a change makes it find a new way.
+var lure_id: int = 0
 ## Seconds of work spent on the board it is pulling at.
 var tear_progress: float = 0.0
 ## True while it stands at its boards working one loose this tick (a client plays the tear clip).

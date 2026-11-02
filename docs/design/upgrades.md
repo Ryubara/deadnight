@@ -18,7 +18,7 @@ Pay points to re-cut the weapon in your hand: it hits harder, holds more, and is
 | --- | --- |
 | Item | `upgrade_weapon` (`ShopItem.Kind.UPGRADE`) |
 | Price | **1,500**, and 1,500 more for each weapon you have already re-cut (1,500, then 3,000, then 4,500) |
-| Damage | x1.75 on every hit: each pellet, the flare gun's blast too |
+| Damage | x1.75 on every hit: each pellet (a flare does no damage, so it gains nothing) |
 | Magazine and reserve limit | x1.5, rounded up (the revolver holds 15 and carries 120, the Tommy gun 45 and 270) |
 | Filled | the magazine and the reserve come back full at the new size, a reload in progress is dropped |
 | Name | "Re-Cut " before the weapon's name ("Re-Cut Revolver") |

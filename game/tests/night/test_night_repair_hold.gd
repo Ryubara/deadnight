@@ -195,7 +195,7 @@ func test_going_down_stops_it_and_getting_up_needs_a_press() -> void:
 
 
 func test_without_the_hold_setting_a_press_is_a_board() -> void:
-	var tuning := NightTuning.new()
+	var tuning := NightTuning.shipped()
 	tuning.repair_hold = false
 	var night := await _start(TEAR_ALL, tuning)
 	_hold(night, _seconds(3.0))
@@ -204,7 +204,7 @@ func test_without_the_hold_setting_a_press_is_a_board() -> void:
 
 
 func test_a_longer_interval_slows_the_boards() -> void:
-	var tuning := NightTuning.new()
+	var tuning := NightTuning.shipped()
 	tuning.repair_interval = 2.0
 	var night := await _start(TEAR_ALL, tuning)
 	_hold(night, _seconds(4.5))
