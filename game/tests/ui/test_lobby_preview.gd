@@ -108,13 +108,3 @@ func test_a_night_that_has_not_reported_a_round_says_only_that_it_is_on() -> voi
 	for round_number: Variant in [null, 0]:
 		var text := LobbyScreen.preview_text(LobbyFixture.preview("started", round_number, 1))
 		assert_str(text).is_equal("Night in progress. 1 of 4 here.")
-
-
-## A page that refuses every copy, as a frame whose host blocks the clipboard.
-func _refusing_clipboard() -> WebClipboard:
-	var clipboard := auto_free(WebClipboard.new()) as WebClipboard
-	clipboard.in_frame = true
-	clipboard.eval_js = func(js: String) -> Variant:
-		return "NotAllowedError" if js.contains(".write") else null
-	add_child(clipboard)
-	return clipboard

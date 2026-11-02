@@ -252,6 +252,16 @@ func test_sharing_in_discord_is_offered_only_inside_an_activity() -> void:
 	screen.free()
 
 
+## A page that refuses every copy, as a frame whose host blocks the clipboard.
+func _refusing_clipboard() -> WebClipboard:
+	var clipboard := auto_free(WebClipboard.new()) as WebClipboard
+	clipboard.in_frame = true
+	clipboard.eval_js = func(js: String) -> Variant:
+		return "NotAllowedError" if js.contains(".write") else null
+	add_child(clipboard)
+	return clipboard
+
+
 func test_a_copy_the_window_cannot_make_shows_the_code_selected_and_says_how() -> void:
 	var api := LobbyFixture.FakeApi.new(self)
 	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
