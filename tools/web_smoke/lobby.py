@@ -211,7 +211,12 @@ def main() -> int:
                 problems.append(f"A and B should read that someone JOINED in the night's notices: {sorted(heard)}")
             for name in ("a", "b", "c"):
                 pages[name].wait_for_timeout(2000)
-                pages[name].screenshot(path=args.out / f"{name}_night.png")
+                # A page drawing a night in software GL may not answer a screenshot at once: this is a picture for a
+                # reader, not a check, so a late one is waited for and a missing one noted.
+                try:
+                    pages[name].screenshot(path=args.out / f"{name}_night.png", timeout=120_000)
+                except PlaywrightError as error:
+                    console.append(f"[{name}] no night screenshot: {error}")
                 result[f"{name}_player_id"] = read_probe(pages[name]).get("player_id")
             if sorted(result[f"{n}_player_id"] for n in "abc") != [1, 2, 3]:
                 problems.append(f"the three should be players 1, 2 and 3: {[result[f'{n}_player_id'] for n in 'abc']}")
