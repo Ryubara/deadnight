@@ -41,6 +41,9 @@ func _ready() -> void:
 	_night.state.apply_events(rules.apply(RulesAction.grant_points(1, 6000)))
 	for door in [&"door_concession", &"door_booth"]:
 		_night.state.apply_events(rules.apply(RulesAction.buy(1, door)))
+	# The booth's and the stand's lights on, so both are seen as a player who threw the breakers would.
+	for circuit in [&"concession", &"booth"]:
+		rules.apply(RulesAction.set_circuit(circuit, true))
 	var weapon := StringName(_args.get("weapon", ""))
 	if weapon != &"" and weapon != &"pistol":
 		_night.server.buy(1, StringName("weapon_" + String(weapon)))
