@@ -21,6 +21,12 @@ signal night_over(round_reached: int)
 signal connect_failed(reason: String)
 ## After every tick of the night, whatever drove it.
 signal ticked
+## A game-server night lost its socket and is trying to get the seat back; it did; it could not
+## (the time ran out, or the server gave the seat away). The night is the server's and goes on
+## meanwhile; this client's player stands still until it is back.
+signal connection_lost
+signal connection_resumed
+signal connection_ended
 
 ## MANUAL makes no commands: the caller sends them through `link` (the tests do).
 enum Mode { HUMAN, AUTOPILOT, MANUAL }
@@ -69,6 +75,9 @@ var hud: Hud
 ## tests leave it empty, so they never touch the save). The night counts into it as it plays.
 var challenge_board: ChallengeBoard
 var challenges: ChallengeSession
+## Puts the names and the next door on the HUD from the player's camera (made with the view, when
+## there is a HUD).
+var markers: NightMarkers
 ## Ticks run in each physics frame: 1 is real time; a test turns it up to play faster.
 ## (Engine.time_scale would scale the step itself, which is not the same night.)
 var ticks_per_frame := 1
@@ -204,6 +213,7 @@ func start_remote(
 		camera = _make_spectator()
 	if mode == Mode.AUTOPILOT:
 		_make_autopilot()
+	var open_doors: Array = welcome["snapshot"].get("doors_open", [])
 	if hud != null:
 		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
 		hud.state.load_snapshot(welcome["snapshot"])
@@ -211,6 +221,8 @@ func start_remote(
 	_equip_sync = WeaponEquipSync.new(state, _body_of)
 	online.delivered.disconnect(keep)
 	_build_view(camera)
+	if markers != null:
+		markers.load_doors(open_doors)
 	view.step = Night.STEP * NightHost.SEND_EVERY
 	_mirror = WorldMirror.new(world, view)
 	avatars = RemoteAvatars.new()
@@ -218,6 +230,9 @@ func start_remote(
 	avatars.setup(looks, state.player_id if has_body else 0, Night.STEP)
 	online.delivered.connect(_on_delivered)
 	state.event_received.connect(_on_remote_event)
+	online.lost.connect(func() -> void: connection_lost.emit())
+	online.resumed.connect(_on_resumed)
+	online.closed.connect(func() -> void: connection_ended.emit())
 	looks.changed.connect(_dress_bodies)
 	online.send({"type": NightServer.LOOK, "packet": LookWire.look(_wanted_look())})
 	_on_delivered(early)
@@ -285,8 +300,30 @@ func _build_view(camera: Camera3D) -> void:
 	add_child(NightLight.new(world.greybox.get_node("Lighting"), rules_tuning.rounds, state))
 	_add_sounds()
 	view.hear(world)
+	if hud != null:
+		_add_markers()
 	night_over.connect(func(_r: int) -> void: running = false)
 	state.event_received.connect(_on_event)
+
+
+## The world markers of the HUD: the other players' names and the next door, projected through
+## whichever camera is current; the damage numbers follow their hits the same way.
+func _add_markers() -> void:
+	markers = NightMarkers.new()
+	markers.name = "NightMarkers"
+	add_child(markers)
+	markers.setup(hud.state, state, world, rules_tuning)
+	markers.drawn = _drawn_player
+	hud.crosshair.projector = markers.screen_of
+
+
+## The node a player is drawn by on this client: their body here, or their avatar from the frames.
+func _drawn_player(player_id: int) -> Node3D:
+	if not remote:
+		return server.body_of(player_id)
+	if player_id == state.player_id:
+		return _body
+	return avatars.avatar(player_id) if avatars != null else null
 
 
 ## The warm-up (when asked for), then the first tick. A client on a game server goes on reading
@@ -449,6 +486,13 @@ func tick() -> void:
 ## server will check it), and send the next command.
 func _tick_remote() -> void:
 	link.pump()
+	if not link.is_open():
+		# The socket is down: nothing to send, and the body waits where it is until the server's
+		# answer comes back.
+		if _body == null:
+			_follow(STEP)
+		ticked.emit()
+		return
 	var command: NightCommand = null
 	match mode:
 		Mode.HUMAN:
@@ -472,6 +516,13 @@ func _tick_remote() -> void:
 	if _body == null:
 		_follow(STEP)
 	ticked.emit()
+
+
+## The seat is ours again: the rules as the server has them now, in place of the events missed.
+func _on_resumed(snapshot: Dictionary) -> void:
+	if hud != null:
+		hud.state.load_snapshot(snapshot)
+	connection_resumed.emit()
 
 
 ## A frame from the server: the lot, the other players, and our own body's correction.

@@ -24,9 +24,17 @@ carries `model_scale`, the factor from the model to the rule.
 | Lever rifle (Rifle) | 1.07 m | 0.94 m | 1.65 m | 0.71 | 0.94 m | 1.32 m |
 | Double shotgun (Shotgun) | 1.12 m | 0.99 m | 1.51 m | 0.82 | 0.99 m | 1.21 m |
 | Baseball bat (Melee) | 0.86 m | 0.76 m | 1.11 m | 0.86 | 0.76 m | 0.89 m |
+| Crowbar (Melee) | 0.75 m | 0.66 m | 0.75 m | 1.1 | 0.66 m | new |
+| Tommy gun (SMG) | 0.88 m | 0.78 m | 0.88 m | 1.1 | 0.78 m | new |
+| Revolver (Pistol), exception | 0.31 m | 0.27 m | 0.31 m | 1.76 | 0.44 m (1.6 times) | new |
+| Flare gun, exception | 0.26 m | 0.23 m | 0.26 m | 1.76 | 0.37 m (1.6 times) | new |
 | Claw hammer (the repair's tool) | 0.33 m | 0.29 m | 0.73 m | 0.85 | 0.50 m | new |
 
-**The hammer is the one exception, and a tool, not a weapon.** At the rule's 0.29 m the Soldier's chibi fist (about
+**Three exceptions, drawn larger on purpose.** The revolver and the flare gun are 1.6 times the rule
+(`WeaponHold.size_factor`, the test pins it): at the rule's size they hide in the Soldier's 0.15 m fist and only the
+barrel shows, and a player who cannot see his revolver thinks it is not there (#285). The hammer, below, is the third.
+
+**The hammer is a tool, not a weapon, and the first exception.** At the rule's 0.29 m the Soldier's chibi fist (about
 0.15 m across) hides all of the handle and half the head, and the repair clip is seen for a second at a time, so its
 hold file (`holds/hammer.tres`, class `Repair`) sizes it at 0.50 m, 1.7 times the rule, as the kit draws its own small
 things large. It is not in `HOLD_CLASSES`: the rule's test covers the weapons the player swaps between.
@@ -47,9 +55,11 @@ switched off (`active`) once the blend reaches 0, since at influence 0 it still 
 4. Firing kicks the weapon back 5 cm and up 4 degrees, dying away at 16 per second.
 
 **The aim.** At the hip the barrel is along the body (the body faces the movement; the camera's pitch still lifts
-it). While aiming it follows the camera's yaw and pitch and turns in a little (at most 5 degrees) to cross the
-crosshair's ray 12 m ahead of the camera: the camera is over the shoulder, the muzzle is not. The shot itself is
-the `AimResolver`'s, from the muzzle to what the camera ray is on.
+it). While the aim is held (the button, or a shot within the hold: [hip fire](../research/hip-fire.md)) it follows the
+camera's yaw and pitch and turns in a little (at most 5 degrees) to cross the crosshair's ray 12 m ahead of the camera:
+the camera is over the shoulder, the muzzle is not. The pose never flips: the camera's one aim weight blends the yaw
+(the body's heading to the view) and the turn toward the ray (`converge`, 0 to 1), so the weapon eases in and out as
+the zoom does. The shot itself is the `AimResolver`'s, from the muzzle to what the camera ray is on.
 
 ## Per weapon
 
@@ -57,7 +67,9 @@ the `AimResolver`'s, from the muzzle to what the camera ray is on.
 | --- | --- | --- | --- |
 | Lever rifle | right 0.05, down 0.09, forward 0.32 | -0.45, -0.05 (the fore-end) | stock at the shoulder, left hand under the barrel |
 | Double shotgun | right 0.05, down 0.09, forward 0.36 | -0.45, -0.03 | the same, the stock a little longer |
-| Baseball bat | the kit's grip, `shouldered = false` | none | one hand, as the Swing clip moves it; two hands on the grip is open work |
+| Tommy gun | right 0.05, down 0.09, forward 0.34 | -0.365, -0.04 (the foregrip) | stock at the shoulder, left hand on the foregrip |
+| Revolver, flare gun | right 0.10, down 0.05, forward 0.42 | none | one hand: the right arm out toward the aim, the left stays with the clip |
+| Baseball bat, crowbar | the kit's grip, `shouldered = false` | none | one hand, as the Swing clip moves it; two hands on the grip is open work |
 
 `muzzle` and `butt` (the ends of the model, origin the grip) are in every hold so the tests, and later the muzzle flash
 and the aim correction, read the same points.
@@ -81,28 +93,34 @@ the muzzle flash today ([Shot feedback](shot-feedback.md)), a tracer or smoke la
 
 ## Which weapon is which
 
-The class of each weapon id is one table, `WeaponHoldMap` (`game/gameplay/player/weapon_hold_map.gd`): lever rifle is
-Rifle, double shotgun Shotgun, every melee weapon (crowbar, bat, fire axe) Melee. `WeaponEquipSync`
-(`game/gameplay/night/weapon_equip_sync.gd`) reads the `weapon` of every player in each frame the server sends and, when
-it changes, calls `PlayerAnimation.equip` on that player's body: the local player and the others take the same line,
-and a player who joins late shows the weapon of his first frame. The test is `game/tests/night/test_weapon_equip.gd`
-(each id taken in hand through the real combat action, for the local player and a second one, and by a swap).
+Each weapon id of the catalogue has **its own hold file**, `game/gameplay/player/holds/<id>.tres` (class, model, size,
+grip), so no two weapons share a model: the crowbar is not the bat, the Tommy gun is not the lever rifle.
+`WeaponHoldMap` (`game/gameplay/player/weapon_hold_map.gd`) gives the clip class of each id (rifle Rifle, shotgun
+Shotgun, SMG Rifle, revolver and flare gun Pistol, every melee weapon Melee); `PlayerAnimation.equip(id)`
+takes the class's clips and the id's own hold (`WeaponHoldMap.hold_for`). A hold whose `scene` is not in
+`assets/weapons/` yet
+(`WeaponHold.has_model`) leaves the hand empty, never another weapon's model: `WeaponHoldMap.no_model()` lists those
+(none now). `holds/melee.tres` stays as the class-level hold for a weapon with no file of its own, the bat and the
+axe when they get an id. `WeaponEquipSync` (`game/gameplay/night/weapon_equip_sync.gd`) reads the `weapon` of every
+player in each frame the server sends and calls `equip` on that player's body when it changes: the local
+player and the others take the same line, and a player who joins late shows the weapon of his first frame. The test
+is `game/tests/night/test_weapon_equip.gd` (each id taken in hand through the real combat action, for the local
+player and a second one, by a swap, and no two ids sharing a model).
 
-## What has no model yet
+**The shoulder camera sees a gun end-on.** From behind the shoulder, with the barrel converging on the crosshair, every
+gun in the aim pose is a fist and the tip of a barrel; the revolver is no different from the rifle. The side, rear and
+other players' views (the capture sheet) show the guns whole.
 
-The catalogue has six weapons (pistol, SMG, shotgun, rifle, flare gun, crowbar) and three models. Three have none and are
-listed in `WeaponHoldMap.NO_MODEL`, each held as the nearest class until its own model and hold file land (see the open
-issue for the pistol, SMG and flare gun):
+## Attacks on the Soldier
 
-| Weapon | Held as | Shows |
-| --- | --- | --- |
-| SMG | Rifle | the lever rifle model, two-handed |
-| Pistol | Pistol (the one-handed clips) | the arm out toward the aim, the hand empty |
-| Flare gun | Pistol | the same |
-
-The fire axe has a model but no id in the catalogue yet; it is Melee as soon as it has a melee `WeaponDef`. Adding a
-weapon's model is a glb with its origin on the grip and a `.tres` here; then take its id off `NO_MODEL` and out of the
-table above.
+A weapon's attack is drawn from the server's `shot_fired` event, for every player alike (`NightView.show_attack`): a
+melee weapon plays `Swing_Melee` (wind-up, whoosh at frame 6, the blow at 9 to 12, follow-through), a gun plays
+`Fire_<Class>` and its recoil. A blow has no muzzle: `ShotEffects.shot` draws no flash and no impact for it, only a
+spark where it hurt (`damage_dealt` with `melee`). The blow itself is swept from the Soldier's head, not from the
+shoulder camera 2.3 m behind him: from the camera the crowbar's 1.9 m fell short of a zombie at the player's face,
+and no blow ever hurt in a real night (#285; the bots send their eye, so their tests passed). The tests are
+`game/tests/night/test_night_melee.gd` (the real attack button, a zombie in reach, the swing, no flash, a zombie out
+of reach left alone, a gun still flashes) and the capture `game/tests/captures/melee_swing.tscn`.
 
 ## Proof
 

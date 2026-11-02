@@ -45,7 +45,7 @@ crowd before it starts to run.
 
 The crowds spike (kit `docs/godot/crowds.md`) holds 40 zombies as the ceiling and 20 to 30 as the normal wave, with
 one mesh per zombie (the separate eyelid mesh cost 30 % of the browser frame at 80). The rounds cap a solo night at 28
-alive.
+alive and a night of any size at 40 (the decision below).
 
 | Zombies alive | All at gameplay LOD | Half far | Notes |
 | --- | ---: | ---: | --- |
@@ -56,6 +56,25 @@ alive.
 Every variant ships as one file with both levels of detail under one skeleton (`Zombie_Mesh`, `Zombie_Far`); the
 game switches them with visibility ranges (proposal: far beyond 18 m). Both meshes are skinned, so a zombie costs one
 skeleton and one draw call whichever is shown.
+
+### Decision: the rules' cap stops at 40 (#315)
+
+`RoundTuning.alive_cap` added 6 for each player after the first on the solo cap (28 at most), so four players asked
+for 41 to 46 alive from round 22. The lot never stood them: the director's `ZombieTuning.hard_cap` is 40, and the
+rules' extra zombies waited in its queue, counted alive by the rules and the balance model but not on the lot. In
+the web build the 46 cap peaked at 40 standing in every run. Three ways out, and what the numbers said
+([the measurement](../research/crowd-budget.md)):
+
+| Option | Verdict |
+| --- | --- |
+| Keep 46 and let far detail carry the six | No: the far level of detail is already in the 40 (a zombie past 18 m is the cheap mesh), and the six never reach the lot, so nothing would be shown to carry. |
+| Raise the ceiling to 46 | No: 40 at full detail costs 8 to 10 ms on a fast desktop in Chrome (2 to 3 ms as played), 6 more add about 1 ms there (0.15 ms a zombie) and three or four times that on the slower machine the budget is written for, which the crowds spike already named as the reason 40 is a ceiling and not a target. |
+| **Lower the cap to the ceiling** | **Yes.** `RoundTuning.alive_cap_ceiling` is 40, the same number as `hard_cap` (a test pins that they match), so the rules, the balance model and the lot agree on what is alive. |
+
+What changes: only four players are cut, from round 22 (round 21 is 40 already); three players reach 40 at round 29
+and stay there, one and two never do. The table in [rounds](rounds.md) and [the lot](map.md) show the
+cap per player count: 4 players are 24, 31, 39 and 40 in rounds 1, 10, 20 and 30 (46 at round 30 before).
+The director's queue stays as a safety net for a tuning that asks for more.
 
 ## Boss: the Projectionist
 
