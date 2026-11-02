@@ -91,7 +91,7 @@ func _physics_process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not local_input:
 		return
-	if event is InputEventMouseMotion and _controls_enabled:
+	if event is InputEventMouseMotion and _controls_enabled and not TouchLook.is_stray(event):
 		camera_rig.look_mouse((event as InputEventMouseMotion).relative)
 	elif event.is_action_pressed(&"pause") and capture_mouse and _controls_enabled:
 		set_controls_enabled(false)
