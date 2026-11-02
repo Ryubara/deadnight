@@ -24,7 +24,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
 | Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
-| Protocol | `NetWire`, version 3 (the layout is in its header); a command is a fixed 23 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
+| Protocol | `NetWire`, version 5 (the layout is in its header; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md)); a command is a fixed 23 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
 | Events | every client hears every event (shots, hits, rules); a late joiner gets the rules' snapshot in `WELCOME` (`HudState.load_snapshot`) and the doors, boards and circuits from the frames (`WorldMirror`) | |
 | The local player | **predicted**: the client moves its own body at once and records where each numbered command left it; the frame's `ack` says which command the server used, and `Reconciler` moves the body a share (25 %) of the way to the server's answer per frame, snapping over 2.5 m | the spike replays the unacknowledged inputs on the server's position; the game does not replay yet |
@@ -112,7 +112,7 @@ the handshake (`HELLO`/`WELCOME`); a server refuses a client of another version.
 | `SNAPSHOT` 4 full | S→C | `u32 tick, u32 ack_seq, u32 0, u8 count, count × (u8 id, i16 x_cm, i16 y_cm)` | 14 + 5 × players |
 | `SNAPSHOT` 4 delta | S→C | `u32 tick, u32 ack_seq, u32 baseline_tick, u8 count, count × (u8 id, i8 dx_cm, i8 dy_cm)` | 14 + 3 × moved |
 | `EVENT` 5 | S→C | `u8 kind (1 joined, 2 left), u8 player_id` | 3 |
-| `PING` 6 / `PONG` 7 | C→S / S→C | `u32 client_tick` / `u32 client_tick, u32 server_tick` | 5 / 9 |
+| `PING` 6 / `PONG` 7 | C→S / S→C | `u32 client_tick` / `u32 client_tick, u32 server_tick` | 7 / 9 |
 
 - Positions are whole **centimetres** (`i16` covers ±327 m; the arena is ±11 m), movement input is a direction
   quantised to `i8` per axis (`-127..127`). Nothing floating-point crosses the wire.
@@ -188,7 +188,7 @@ budget (`PeerLimits`, `TokenBucket`; `test_peer_limits.gd`, and a hostile client
 
 | Limit | Value | Why |
 | --- | --- | --- |
-| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 5, look 13); the socket's own buffer is 4 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
+| Packet size | 64 bytes at most, and each message type has its exact size (command 23, hello 2, ping 7, look 13); the socket's own buffer is 4 KB, so a frame of 200 KB is refused by the engine and the peer is gone | no client message is longer |
 | Commands | 90 a second sustained, 240 at once | a client sends 60 a second; a 3 s stall of the connection delivers 180 together and is forgiven |
 | Pings, looks, hellos | 4/s (burst 6), 1/s (burst 3), 1/s (burst 2) | a client pings twice a second and sends one look and one hello |
 | Strikes | a packet over its rate costs 0.5, one the server cannot read (empty, too long, unknown type, wrong size, before hello, hello twice) costs 5; they wear off at 5 a second; at 100 the server hangs up | a flood of commands is cut off after about 450 packets, an honest client never gets one |

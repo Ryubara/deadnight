@@ -77,6 +77,21 @@ alone (`UPDATE_ONCE`), so it costs nothing after its first frame. The state hold
 data (the look as `CharacterLook.to_dict`); a join gives the lowest free seat, as the server does, and a `player_look`
 event (`player_id`, `seat`, `look`) replaces it. Until a client sends looks, the seat's own preset shows.
 
+## The scoreboard
+
+Hold **Tab** (the pad's **Back / Select** button; on a phone a small button under Pause) and a ticket comes up over the
+middle of the night; let go and it leaves. One row per player in the night, in seat order on every screen:
+`[armband][name][kills][downs][points][ping]`, with the round and the night's clock above (`TIME 12:34`, hours after the
+first). A downed player's name goes red and says `(DOWN)`; your own row has a faint wash. **Ping** is a column only when
+some player has one (a night over a link), and each ping reads good, fair or bad in ink, accent and red. **Revives are
+not a column**: a downed player here gets up when the round ends and nobody's hand does it, so there is nothing to count
+(see [Scoreboard](../research/scoreboard.md)). Every number is the server's, never counted on the client.
+
+It is `HudScoreboard`, a part like the others, drawn last and not part of any column; it takes no space while hidden. It
+is held by the `scoreboard` input action, which the key, the pad and the touch button all press, so the HUD polls the
+action instead of listening for one kind of event. A pause menu or the result switches it off
+(`Hud.scoreboard_enabled`).
+
 ## The generator card
 
 The generator card is not always on. `HudFuel.is_progress` is the rule: fuel added (`fuel_changed` with a positive

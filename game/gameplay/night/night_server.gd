@@ -87,6 +87,9 @@ var tick_count := 0
 ## Whether the players' bodies have the Soldier's model. A game server draws nothing, so it leaves
 ## them out (`NightHost`); in one process with its client the same bodies are drawn.
 var drawn_bodies := true
+## The round trip each connected player last reported, milliseconds (the game server fills it from
+## their pings): a player with no entry has none to show, and a night on a loopback has no one's.
+var pings: Dictionary[int, int] = {}
 
 var _pending: Dictionary[int, NightCommand] = {}
 ## Steps since each player's last command arrived.
@@ -250,6 +253,7 @@ func _leave(player_id: int) -> void:
 		_pending.erase(player_id)
 		_silent.erase(player_id)
 		_acked.erase(player_id)
+		pings.erase(player_id)
 		_repairing.erase(player_id)
 		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
@@ -759,7 +763,11 @@ func _frame() -> Dictionary:
 			"points": rules.points_of(player_id),
 			"prompt": use_target(player_id),
 			"ack": _acked.get(player_id, 0),
+			"kills": rules.kills_of(player_id),
+			"downs": rules.downs_of(player_id),
 		}
+		if pings.has(player_id):
+			players[player_id]["ping"] = pings[player_id]
 		if _face_left.get(player_id, 0.0) > 0.0:
 			# The server is turning this body (toward a breach it is repairing); its owner's
 			# predicted body takes that facing (it cannot know, the turn is not in any command).
@@ -770,6 +778,7 @@ func _frame() -> Dictionary:
 		"phase": rules.phase,
 		"round": rules.round_number,
 		"remaining": rules.zombies_remaining(),
+		"clock": floori(rules.night_time),
 		"fuel": rules.generator.fuel,
 		"circuits": rules.generator.circuits.duplicate(),
 		"doors": rules.doors_open.duplicate(),

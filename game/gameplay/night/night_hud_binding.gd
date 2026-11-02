@@ -8,7 +8,8 @@ extends RefCounted
 ## added). Each `frame` carries what neither announces: which way the local player faces, what the
 ## hand would do (the prompt at a door, a breach or a breaker post), and the weapons' state, which
 ## `HudLoadout.sync` reads every tick, so the ammo card is the server's whatever changed it (a HUD
-## that joined after the events needs no replay).
+## that joined after the events needs no replay). The scoreboard's counts come the same way, from
+## the frame (`_show_stats`).
 
 ## What the player is told at each door: the name on the card (the shop ids are the shop's).
 const DOOR_NAMES := {
@@ -118,6 +119,7 @@ func _with_world_point(event: Dictionary) -> Dictionary:
 
 func _on_frame() -> void:
 	var state := _hud.state
+	_show_stats(state)
 	var me := _state.me()
 	if me.is_empty():
 		return
@@ -127,6 +129,23 @@ func _on_frame() -> void:
 	# late (it heard no event) takes the weapon in hand.
 	HudLoadout.sync(me, state)
 	show_prompt(me["prompt"])
+
+
+## The scoreboard's numbers, as the server counts them in its frame: every player's kills and downs
+## and the ping it last heard, and the night's clock. One batch, so the scoreboard redraws once.
+func _show_stats(state: HudState) -> void:
+	var players: Dictionary = _state.frame.get("players", {})
+	state.hold()
+	for player_id: int in players:
+		var player: Dictionary = players[player_id]
+		state.set_player_stats(
+			player_id,
+			int(player.get("kills", 0)),
+			int(player.get("downs", 0)),
+			int(player.get("ping", HudState.NO_PING))
+		)
+	state.set_night_clock(int(_state.frame.get("clock", 0)))
+	state.release()
 
 
 ## Puts what `NightServer.use_target` found on the HUD's prompt card, or clears it.
