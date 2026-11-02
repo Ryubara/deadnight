@@ -59,12 +59,15 @@ mirrored without overlap.
 
 ## Settings
 
-Touch controls (Auto, On, Off), button size (0.8 to 1.4), opacity at rest (0.3 to 1.0), left-handed layout and vibration
-on touch.
+Touch controls (Auto, On, Off), button size (0.8 to 1.4), opacity at rest (0.3 to 1.0), left-handed layout, vibration
+on touch, **aim assist** (0 to 1, default 0.5) and **auto-fire** (Off, While aiming, Always; default Off). The assist
+slows the look drag near a zombie, pulls the view a little toward its chest while Aim or Fire is held, and auto-fire
+holds the trigger with the crosshair on a zombie; all of it only while a finger was the last input
+([Touch aim assist](../research/aim-assist.md)).
 
 ## Not done yet
 
-Crouch (the simulation does not act on `crouch` yet, issue #73, so there is no button), aim assist, gyro, a layout
+Crouch (the simulation does not act on `crouch` yet, issue #73, so there is no button), gyro, a layout
 editor and asking Discord for landscape. Each is an open question on the research page.
 
 ## Gotchas found while building it

@@ -1,3 +1,5 @@
+# gdlint:disable=max-public-methods
+# The rig is where the view is read and set from outside: every method is one of those doors.
 class_name ThirdPersonCamera
 extends Node3D
 ## Over-the-shoulder camera rig: look (mouse and stick), spring-damped follow of the body, aim and
@@ -125,6 +127,17 @@ func apply_look(yaw_right: float, pitch_down: float) -> void:
 	var direction := 1.0 if invert_y else -1.0
 	pitch = clampf(
 		pitch + direction * pitch_down,
+		deg_to_rad(_tuning.pitch_min_degrees),
+		deg_to_rad(_tuning.pitch_max_degrees)
+	)
+
+
+## Turn the view by radians as they are, with no sensitivity and no invert: the aim assist's pull.
+## `yaw` and `pitch` themselves are the convention (yaw to the left and pitch up are positive).
+func nudge(yaw_delta: float, pitch_delta: float) -> void:
+	yaw = wrapf(yaw + yaw_delta, -PI, PI)
+	pitch = clampf(
+		pitch + pitch_delta,
 		deg_to_rad(_tuning.pitch_min_degrees),
 		deg_to_rad(_tuning.pitch_max_degrees)
 	)
