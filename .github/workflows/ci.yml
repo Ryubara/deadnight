@@ -73,7 +73,8 @@ jobs:
     needs: conventions
     if: needs.conventions.outputs.godot == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # The suite takes 17 to 20 minutes on a runner: a limit it nearly met cancelled a green run (#501).
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -117,7 +118,7 @@ jobs:
         run: |
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
-          "$godot" --headless --path repos/deadnight/game res://tests/captures/autopilot_night.tscn -- --rounds=1 --speed=40 2>&1 | tee night.log
+          "$godot" --headless --verbose --path repos/deadnight/game res://tests/captures/autopilot_night.tscn -- --rounds=1 --speed=40 2>&1 | tee night.log
           grep -q "^REPORT" night.log
           ! grep -E "^(SCRIPT )?ERROR|leaked at exit|still in use" night.log
 
@@ -128,9 +129,14 @@ jobs:
         run: |
           set -o pipefail
           godot=$(uv run --project repos/gdstudio/python gds tool path godot)
-          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests -c --ignoreHeadlessMode 2>&1 | tee tests.log
+          "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
           # Godot prints a leak after the run has finished, so only the log shows it (see the night step).
           ! grep -E "leaked at exit|still in use" tests.log
+      - name: List what leaked at exit
+        # `--verbose` (night and test steps) makes the engine name each leaked instance and resource; this keeps just
+        # those lines, so a failed leak check says which objects it was (issue #487).
+        if: always()
+        run: grep -h -E "leaked at exit|still in use|Leaked instance|Resource still in use" night.log tests.log > leaks.txt || true
       - name: Upload the test report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -139,6 +145,8 @@ jobs:
           path: |
             repos/deadnight/game/reports
             tests.log
+            night.log
+            leaks.txt
           if-no-files-found: warn
 
   web:
@@ -199,6 +207,10 @@ jobs:
       - name: Tour the skin shaders in the browser
         # The menu, the three transitions and the credits: fails on a console error or an all-black or all-white frame.
         run: uv run --with playwright==1.64.1 --with pillow python repos/deadnight/tools/web_smoke/skin_tour.py repos/deadnight/build/web smoke/skin-tour --size 1280x720 --hold-ms 500
+      - name: Start every web probe's menu path
+        # The menu paths the probes in tools/web_smoke walk (Loadout, Play together, settings, Solo, the ?dev join screen)
+        # through their shared helpers, once: a menu change that breaks one fails here, not the next time a probe is run.
+        run: uv run --with playwright==1.64.1 python repos/deadnight/tools/web_smoke/startup_check.py repos/deadnight/build/web smoke/startup-check
       - name: Upload the build
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

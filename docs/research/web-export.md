@@ -77,6 +77,12 @@ Things that were not obvious:
   phone-sized Chrome (844 x 390 CSS pixels, ratio 3, real touch events through `Input.dispatchTouchEvent`) and checks
   that the stick turns the view 0 and a 100 px look drag turns it as `TouchLook` promises (0.41 rad). Before the fix
   the stick turned it 0.37 rad and the drag 1.43 rad, one frame up to 0.43 rad.
+- **With two fingers the first drag of each finger has a wrong `relative` (Deadnight #497).** Logged in Chrome with
+  the stick finger and the look finger down: the look finger's first `InputEventScreenDrag` had `relative` equal to its
+  own position (measured from the origin), the stick finger's first drag was measured from the look finger's press
+  (`(-1080, 522)`), and the `velocity` of a finger was stale for its first three drags. One thumb is fine (the press
+  seeds the position). `TouchControls` now keeps each finger's last position and reads the step from that; the same
+  probe (`touch_look.py`, two-finger case) turned the view 2.42 rad for a 100 px drag before, 0.41 rad after.
 - The zombies are usually off screen: the crowd is read from the probe, not seen.
 - Playwright 1.64 launches `chromium-headless-shell`, which is always software-rendered. `--gpu` uses the installed
   Chrome (`channel="chrome"`) for numbers with a real GPU.
@@ -187,7 +193,8 @@ bash deploy/web/deploy.sh path/to/build/web <commit> <stage folder>   # needs RA
 docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 8080:8080 deadnight-web
 ```
 
-The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
+The smoke run takes the URL in place of a folder:
+`uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.
 
 `tools/web_smoke/judder.py` (same arguments, `--gpu --unpaced` for the machine's GPU and no frame limit) measures

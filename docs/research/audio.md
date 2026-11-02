@@ -98,6 +98,17 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
   sounds (a shot's tail 40 to 70 ms later, a reload's steps) that start from `_process` after `stop_all()`, so voices
   began again during the wait and were still playing at quit (CI: 10 objects, 4 resources, every run; 8 of 8 locally).
   The capture now frees the night, which frees those players, before it stops the audio and waits for the mixer.
+- **The exit leak check failed a passing suite at random** (#487; main's ci twice, #402 and #462 once each: 4 objects
+  and 2 resources, 8 and 2, 1 object, every test green). Whatever voice was playing or just stopped when the test run
+  quit was still held by the audio server: one Ogg voice is exactly 4 instances (the stream, its packet sequence and
+  the two playbacks) and 2 resources (the stream and the sequence). A suite cannot wait for the mixer after the last
+  test, since GdUnit quits itself, so the wait moved to the end of the process: `AudioService._exit_tree` of the
+  autoload calls `drain_mixer_blocking()`, the blocking twin of `wait_for_mixer()` (the mixer runs on its own
+  thread, so blocking the main thread for its few steps is safe). `tests/core/test_audio_quit.gd` runs a child Godot
+  that starts the beds and two sounds and quits at once: leaked instances and resources every time before (16 and 6
+  after `stop_all`), none after.
+  (The earlier note that waiting in `_exit_tree` did not help was a fixed real-time wait; counting the mixer's steps
+  does.) CI runs the night and the tests with `--verbose` and uploads `leaks.txt`, the engine's list of what leaked.
 - **A bed never goes quiet**, so an onset detector on the raw level finds nothing: `analyze.py` compares the short-term
   level with its own median over a second either side.
 

@@ -5,7 +5,8 @@ Page B opens that link (`?room=CODE`) and lands in A's night. Pages C and D neve
 join, and they land together in a night of their own. The script reads the game's probe (`window.deadnight`) on every
 page and fails unless A and B see two players, C and D see two players and A never sees more than two.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py build/web https://backend.example build/rooms
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/rooms.py build/web https://backend.example build/rooms
 
 The first argument is a folder with the export (served on a fixed local port, which the backend must list in
 `CORS_ORIGINS`) or the URL of a deployed build (then the backend's CORS already allows it). Writes `result.json`,
@@ -66,14 +67,9 @@ def open_page(browser: Browser, url: str, console: list[str], problems: list[str
 
 
 def to_together(page: Page) -> None:
-    """From the main menu to the Play together screen (the first item of the Play tab)."""
-    wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
-    page.mouse.click(5, 5)  # gives the canvas the keyboard
-    page.wait_for_timeout(2500)
-    smoke.menu_item(page, "Play")
-    smoke.press(page, "Enter")
-    wait_for(page, "the Play together screen", lambda s: s.get("screen") == "together_screen", smoke.SCREEN_TIMEOUT_S)
-    page.wait_for_timeout(1500)
+    """From a loading page to the Play together screen, by the shared start-up."""
+    smoke.reach_menu(page)
+    smoke.open_together(page)
 
 
 def in_night(state: dict) -> bool:

@@ -8,6 +8,7 @@ const ACTION_FIRE := &"fire"
 const ACTION_RELOAD := &"reload"
 const ACTION_USE := &"interact"
 const ACTION_SWAP := &"swap_weapon"
+const ACTION_PING := &"ping"
 
 ## The touch player's aim help (`TouchAimAssist`); null for a night that has none.
 var assist: TouchAimAssist
@@ -33,6 +34,11 @@ func command(player: Player, player_id: int) -> NightCommand:
 	result.origin = player.camera_rig.aim_transform().origin
 	result.dir = (-player.camera_rig.aim_transform().basis.z)
 	return result
+
+
+## Whether the ping key went down this tick (the controls must be on).
+func ping_pressed(player: Player) -> bool:
+	return player.controls_enabled() and _edge(ACTION_PING)
 
 
 func _edge(action: StringName) -> bool:

@@ -10,11 +10,12 @@ and checks that:
   3. Resume gives the pointer lock back and the night runs again (by key and by a mouse click);
   4. an Esc that does reach the page (Playwright's key press) still opens the menu, once.
 
-    uv run --with playwright==1.64.1 python tools/web_smoke/pointer_lock.py build/web build/pointer-lock
+    uv run --project <kit>/python gds quiet -- \\
+        uv run --with playwright==1.64.1 python tools/web_smoke/pointer_lock.py build/web build/pointer-lock
 
-Do not run it on a Windows machine someone is working at: headless Chromium there clips the real cursor to an
-invisible box at the top left of the screen on pointer lock, freed only by Esc. It runs in CI (Linux), and on Windows
-only under `gds quiet`, which frees the cursor every 5 ms and sets GDS_QUIET=1 (docs/godot/no-focus.md).
+Run it under `gds quiet`: headless Chromium on Windows clips the real cursor to an invisible box at the top left of the
+screen on pointer lock, freed only by Esc, and `gds quiet` keeps it free. It runs in CI (Linux), and on Windows it
+refuses to start outside `gds quiet` (`GDS_QUIET=1`) unless GDS_ALLOW_POINTER_LOCK=1 is set.
 
 Playwright cannot press the browser's own Esc (it sends the key to the page), so the lock is released by script; the
 engine sees the same thing, a pointer lock that is gone.
@@ -34,7 +35,7 @@ from pathlib import Path
 
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page, sync_playwright
-from smoke import start_solo
+from smoke import reach_menu, start_solo, wait_for_night
 
 VIEWPORT = {"width": 1280, "height": 720}
 SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
@@ -114,11 +115,9 @@ def menu_open(state: dict) -> bool:
 
 def run(page: Page, url: str, out: Path, result: dict) -> None:
     page.goto(url, wait_until="commit")
-    wait_for(page, "the main menu", lambda s: s.get("screen") == "main_menu", LOAD_TIMEOUT_S)
-    page.mouse.click(5, 5)
-    page.wait_for_timeout(2500)
+    reach_menu(page)
     start_solo(page)
-    wait_for(page, "a running night", lambda s: bool(s.get("night") and s.get("running")), NIGHT_LOAD_TIMEOUT_S)
+    wait_for_night(page)
     # The click that started the night is the user gesture a browser wants before it gives the lock.
     page.mouse.move(640, 360)
     page.mouse.down()
@@ -179,7 +178,8 @@ def run(page: Page, url: str, out: Path, result: dict) -> None:
 
 
 def main() -> int:
-    if sys.platform == "win32" and os.environ.get("GDS_QUIET") != "1":
+    quiet = os.environ.get("GDS_QUIET") == "1" or os.environ.get("GDS_ALLOW_POINTER_LOCK") == "1"
+    if sys.platform == "win32" and not quiet:
         print(
             "refusing to take pointer lock on Windows outside `gds quiet`: it clips the real cursor (see the docstring)",
             file=sys.stderr,
