@@ -2,8 +2,8 @@ class_name TouchControls
 extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
 ## and buttons under the right thumb. They press the game's own input actions (`move_*`, `fire`,
-## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `interact`, `sprint`, `pause`,
-## `scoreboard`), so
+## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `quick_melee`, `interact`, `sprint`,
+## `pause`, `scoreboard`), so
 ## the player and the night read them like a key or a pad and nothing else forks.
 ##
 ## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
@@ -46,6 +46,7 @@ const LABELS := {
 	TouchLayout.SWAP: "SWAP",
 	TouchLayout.GRENADE: "GRENADE",
 	TouchLayout.SHOULDER: "SIDE",
+	TouchLayout.MELEE: "MELEE",
 }
 const VERBS := {
 	&"buy_door": "OPEN",
