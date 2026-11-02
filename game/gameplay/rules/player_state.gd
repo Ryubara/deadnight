@@ -13,6 +13,7 @@ const SNAPSHOT_KEYS := {
 	"weapons": TYPE_ARRAY,
 	"tonics": TYPE_ARRAY,
 	"upgraded": TYPE_ARRAY,
+	"recuts_lost": TYPE_INT,
 	"grenades": TYPE_INT,
 	"repair_points_this_round": TYPE_INT,
 	"kills": TYPE_INT,
@@ -30,10 +31,14 @@ var health: float = 0.0
 var max_health: float = 0.0
 ## Seconds since the last blow, counted up to the regeneration delay and no further.
 var since_blow: float = 0.0
+## The weapons carried, as shop ids, at most `WeaponCatalog.CARRY_LIMIT`, the oldest first. The
+## start weapons are in it; one replaced by a third is taken out (`WeaponCarry`).
 var weapons: Array[StringName] = []
 var tonics: Array[StringName] = []
 ## The weapons (catalogue ids) this player has had re-cut this night.
 var upgraded: Array[StringName] = []
+## Re-cut weapons this player no longer carries; each still counts toward the next re-cut's price.
+var recuts_lost: int = 0
 var grenades: int = 0
 var repair_points_this_round: int = 0
 var kills: int = 0
@@ -67,6 +72,7 @@ func to_dict() -> Dictionary:
 		"weapons": weapons.duplicate(),
 		"tonics": tonics.duplicate(),
 		"upgraded": upgraded.duplicate(),
+		"recuts_lost": recuts_lost,
 		"grenades": grenades,
 		"repair_points_this_round": repair_points_this_round,
 		"kills": kills,
@@ -85,6 +91,7 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.weapons.assign(data["weapons"])
 	player.tonics.assign(data["tonics"])
 	player.upgraded.assign(data["upgraded"])
+	player.recuts_lost = data["recuts_lost"]
 	player.grenades = data["grenades"]
 	player.repair_points_this_round = data["repair_points_this_round"]
 	player.kills = data["kills"]

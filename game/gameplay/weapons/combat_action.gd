@@ -38,9 +38,16 @@ static func reload_weapon(shooter_id: int) -> Dictionary:
 	return {"type": RELOAD, "shooter_id": shooter_id}
 
 
-## Adds a weapon to the player (or tops up its reserve if carried) and takes it in hand.
-static func give_weapon(player_id: int, weapon_id: StringName) -> Dictionary:
-	return {"type": GIVE_WEAPON, "player_id": player_id, "weapon_id": weapon_id}
+## Adds a weapon to the player (or tops up its reserve if carried) and takes it in hand. With the
+## hands full (`WeaponCatalog.CARRY_LIMIT`) it replaces `replace`, a weapon carried, or the weapon
+## in hand when that is left out or not carried.
+static func give_weapon(
+	player_id: int, weapon_id: StringName, replace: StringName = &""
+) -> Dictionary:
+	var action := {"type": GIVE_WEAPON, "player_id": player_id, "weapon_id": weapon_id}
+	if replace != &"":
+		action["replace"] = replace
+	return action
 
 
 static func equip(player_id: int, weapon_id: StringName) -> Dictionary:

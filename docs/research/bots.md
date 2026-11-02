@@ -352,7 +352,7 @@ things", so the set is small and each ping has one meaning.
 | Case | Behaviour |
 | --- | --- |
 | **Boss night** (15 times a walker's health, +100% per extra player, a 1.2 s telegraphed blow, 4 m knockback, a lit weak spot taking x2.2) | Stay outside 6 m; read the telegraph from the zombie's attack mode and step out sideways on reaction time (0.25 to 0.55 s against a 1.2 s window); aim at the weak spot only when its bulb is in the view cone; add the escorts to the target utility with a lower weight than the boss's blows on a teammate; the boss's knockback is a reason to keep back from walls. |
-| **Midnight Stampede** (runners only, 140% count, spawning 1.8 times as often) | Do not run: runners are 1.4 times faster. Hold a choke or wall with the shotgun or SMG, back covered, boards up; kill by sustained damage. |
+| **Midnight Stampede** (runners only, 110% count, spawning 1.8 times as often) | Do not run: runners are 1.4 times faster. Hold a choke or wall with the shotgun or SMG, back covered, boards up; kill by sustained damage. |
 | **Crawl Space** (crawlers only) | Aim low from the look data; boards do not help (they go under); prefer grenades and the shotgun; keep moving, they are slow (x0.5). |
 | **Low ammunition** | Tactical reload; swap to the best weapon with ammunition; buy rounds in the next break; melee when everything is dry (the crowbar never runs out, 82 damage a second) but not into a pack of three or more. |
 | **Trapped** (no path with 1 m of clearance for 2 s) | Fight with the best sustained weapon; use a grenade at 4 m or more from itself; jump onto a car roof or other curated link; call for cover; no teleport. |

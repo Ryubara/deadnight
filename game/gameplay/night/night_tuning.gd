@@ -7,12 +7,6 @@ extends Resource
 
 const SHIPPED_PATH := "res://gameplay/night/night_tuning_default.tres"
 
-@export_group("Player")
-## The gun a player starts the night with (a weapon id from `WeaponCatalog`).
-@export var start_weapon: StringName = &"pistol"
-## Carried from the start and never out of rounds: what a player falls back on with a dry gun.
-@export var start_melee: StringName = &"crowbar"
-
 @export_group("Commands")
 ## Fixed steps a player's last command stays in force without a new one. After that the player
 ## stands, the trigger is released and only the view angles are kept (a stalled client does not walk

@@ -91,19 +91,19 @@ func test_a_reload_shows_while_it_runs_and_the_weapons_events_do_the_work() -> v
 	_finish(night, hud)
 
 
-func test_a_new_weapon_takes_the_card_and_the_old_one_goes_to_the_equipment_slot() -> void:
+func test_a_new_weapon_takes_the_card_and_replaces_the_one_in_hand() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	var pistol := WeaponCatalog.get_def(&"pistol")
 	var rifle := WeaponCatalog.get_def(&"rifle")
 	# The crowbar is carried from the start, put away behind the pistol.
 	assert_str(hud.health.equipment_text).is_equal("CROWBAR")
-	# What a purchase does: the combat server gives the weapon, its events reach the client.
+	# What a purchase does: the combat server gives the weapon, its events reach the client. Both
+	# hands are full (#410), so the rifle replaces the pistol in hand and the crowbar stays put away.
 	night.state.apply_events(night.server.combat.apply(CombatAction.give_weapon(1, &"rifle")))
 	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
 	assert_int(hud.state.ammo_magazine).is_equal(rifle.magazine_size)
-	assert_str(hud.health.equipment_text).is_equal(pistol.display_name.to_upper())
+	assert_str(hud.health.equipment_text).is_equal("CROWBAR")
 	NightFixture.run(night, 3)
 	assert_str(hud.state.weapon_name).is_equal(rifle.display_name)
 	_finish(night, hud)

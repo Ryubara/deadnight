@@ -32,13 +32,16 @@ func test_a_wall_weapon_bought_through_the_rules_is_carried_and_in_hand() -> voi
 func test_every_crane_prize_reaches_the_players_hands() -> void:
 	var night := await _start(RulesFixture.steady_crane_tuning())
 	var item := night.server.rules.tuning.economy.item(&"crane_play")
+	# Two hands (#410): each prize replaces the weapon in hand, and the hands follow the rules.
 	for _i in item.pool.size():
 		night.server.buy(1, &"crane_play")
 		NightFixture.run(night, 300)
-		night.server.rules.apply(RulesAction.crane_take(1))
-	NightFixture.run(night, 2)
-	for shop_id in item.pool:
-		assert_array(night.server.combat.carried(1)).contains([WeaponCatalog.catalog_id(shop_id)])
+		var prize := WeaponCatalog.catalog_id(night.server.rules.crane.weapon)
+		night.server.rules.apply(RulesAction.crane_take(1, night.state.me()["weapon"]))
+		NightFixture.run(night, 2)
+		assert_array(night.server.combat.carried(1)).has_size(WeaponCatalog.CARRY_LIMIT)
+		assert_array(night.server.combat.carried(1)).contains([prize])
+		assert_str(String(night.state.me()["weapon"])).is_equal(String(prize))
 	night.queue_free()
 
 
@@ -93,7 +96,7 @@ func test_ammunition_for_a_weapon_not_carried_is_refused() -> void:
 
 func test_ammunition_goes_to_the_weapon_named_not_the_one_in_hand() -> void:
 	var night := await _start()
-	night.server.buy(1, &"weapon_shotgun")
+	night.server.rules.apply(RulesAction.buy(1, &"weapon_shotgun", -1, &"crowbar"))
 	NightFixture.run(night, 2)
 	var pistol := night.server.combat.state_of(1, &"pistol")
 	pistol.reserve = 0
@@ -112,10 +115,12 @@ func test_swap_changes_the_weapon_in_hand_and_the_frame_lists_the_arms() -> void
 	NightFixture.run(night, 2)
 	assert_str(String(night.state.me()["weapon"])).is_equal("rifle")
 	var arms: Dictionary = night.state.me()["arms"]
-	assert_array(arms.keys()).contains_exactly_in_any_order([&"crowbar", &"pistol", &"rifle"])
+	# The rifle replaced the pistol in hand (#410).
+	assert_array(arms.keys()).contains_exactly_in_any_order([&"crowbar", &"rifle"])
 	# Magazine, reserve and the tier (0: not re-cut).
-	assert_array(arms[&"pistol"]).is_equal([10, 40, 0])
-	for expected in ["crowbar", "pistol", "rifle"]:
+	var rifle := WeaponCatalog.get_def(&"rifle")
+	assert_array(arms[&"rifle"]).is_equal([rifle.magazine_size, rifle.reserve_start, 0])
+	for expected in ["crowbar", "rifle", "crowbar"]:
 		_swap(night)
 		assert_str(String(night.state.me()["weapon"])).is_equal(expected)
 	night.queue_free()

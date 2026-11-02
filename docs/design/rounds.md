@@ -182,7 +182,7 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 | `break_seconds` | 0 (the tuned 5 s) or 1 to 120 | 0 | the break after each round; the wait before round 1 (12 s) and the 10 s extra before a special round are unchanged |
 
 - **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
-  from (a stampede is 140% of the scaled count, an escort party its share of it). A new type's first round still
+  from (a stampede is 110% of the scaled count, an escort party its share of it). A new type's first round still
   brings its exact `intro_count`, and a boss round its own bosses (by players, not by the multiplier): the lesson of
   meeting each type once stays whatever the crowd.
 - **The multiplier is intensity, not a longer round.** The spawn interval divides by the multiplier
@@ -340,7 +340,7 @@ and start again:
 | Round | Kind | What it is |
 | ---: | --- | --- |
 | 5 | **Double Feature** (boss) | 40% of a normal round's zombies as escorts, and the headliner walks in after the first 30% of them; one more headliner for every 3 players beyond the first (four players meet two) |
-| 10 | **Midnight Stampede** | nothing but runners, 140% of the normal count, spawning 1.8 times as often |
+| 10 | **Midnight Stampede** | nothing but runners, 110% of the normal count, spawning 1.8 times as often (140% before a player carried only two weapons, #410; maintainer-approved 2026-11-02) |
 | 15 | Double Feature | the same kind again, with the round's health |
 | 20 | **Crawl Space** | nothing but crawlers, 110% of the count, spawning 1.5 times as often |
 

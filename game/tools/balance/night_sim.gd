@@ -29,6 +29,9 @@ const REVIVE_HEALTH := 0.5
 const STUN_PER_METRE := 0.3
 ## Players mend fully between rounds. A player buys a fuel can when the tank is below this.
 const FUEL_BUY_BELOW := 35.0
+## A player gives up a weapon for another only when the new one is worth this many times more, so a
+## small difference (that comes and goes with the round's health) does not make them buy in circles.
+const REPLACE_GAIN := 1.5
 ## Seconds per tick while the shopper waits at the crane in a break.
 const CRANE_STEP := 0.25
 ## Seconds to put a dry weapon away and take another.
@@ -218,9 +221,15 @@ func _mend(player: SimPlayer, engaged: Dictionary) -> void:
 # --- Shooting ---
 
 
+## The weapon in hand: a carried one, or the knife when no melee weapon is carried and the firearms
+## are dry (the always-available blow, the crowbar's numbers until quick melee has its own, #411).
+func _held_arm(player: SimPlayer) -> SimArm:
+	return player.arms.get(player.weapon, player.knife)
+
+
 func _shoot(player: SimPlayer) -> void:
 	var weapon := player.weapon
-	var arm: SimArm = player.arms[weapon]
+	var arm := _held_arm(player)
 	if player.reload_left > 0.0:
 		# A reload runs on the clock, shooting or not; what is left of the step is shot time.
 		player.reload_left -= step
@@ -262,7 +271,7 @@ func _shoot(player: SimPlayer) -> void:
 ## costs a moment.
 func _switch_for(player: SimPlayer, zombie: SimZombie) -> bool:
 	var distance := maxf(zombie.distance, 0.0)
-	var held := _worth_at(player.arms[player.weapon], distance)
+	var held := _worth_at(_held_arm(player), distance)
 	var pick := player.weapon
 	var pick_worth := held * SWITCH_GAIN
 	for weapon_id: StringName in player.arms:
@@ -303,7 +312,7 @@ func _out_of_rounds(player: SimPlayer) -> void:
 	var left := (
 		0.0
 		if SimWeapons.is_melee(player.weapon)
-		else SimWeapons.sustained_dps_of(player.arms[player.weapon].def(), _health())
+		else SimWeapons.sustained_dps_of(_held_arm(player).def(), _health())
 	)
 	if left < best * RUN_BELOW and _resupply_run(player):
 		return
@@ -388,9 +397,7 @@ func _fire_at(player: SimPlayer, zombie: SimZombie) -> void:
 	if zombie.first_hit < 0.0:
 		zombie.first_hit = _clock
 	var melee := SimWeapons.is_melee(player.weapon)
-	var damage := SimWeapons.damage_of(
-		player.arms[player.weapon].def(), zone, maxf(zombie.distance, 0.0)
-	)
+	var damage := SimWeapons.damage_of(_held_arm(player).def(), zone, maxf(zombie.distance, 0.0))
 	_splash(player, zombie)
 	_handle(rules.apply(RulesAction.hit(player.id, zombie.id, zone, damage, melee)))
 
@@ -398,7 +405,7 @@ func _fire_at(player: SimPlayer, zombie: SimZombie) -> void:
 ## A bursting shot hurts the others on the same side near the one it hit (a flare); the one it hit
 ## takes the direct hit only, as in the combat server.
 func _splash(player: SimPlayer, hit: SimZombie) -> void:
-	var weapon: WeaponDef = player.arms[player.weapon].def()
+	var weapon: WeaponDef = _held_arm(player).def()
 	if weapon.splash_radius <= 0.0:
 		return
 	for other: SimZombie in _zombies.values().duplicate():
@@ -547,10 +554,16 @@ func _between_rounds() -> void:
 func _refresh(player: SimPlayer) -> void:
 	var owned: PlayerState = rules.players[player.id]
 	player.max_health = owned.max_health
+	var carried: Array[StringName] = []
 	for shop_id in owned.weapons:
 		var weapon_id := WeaponCatalog.catalog_id(shop_id)
+		carried.append(weapon_id)
 		if not player.arms.has(weapon_id):
 			player.arms[weapon_id] = SimArm.of(weapon_id)
+	# A weapon the rules released (the hands are full) is gone, rounds and all.
+	for weapon_id in player.arms.keys():
+		if not carried.has(weapon_id):
+			player.arms.erase(weapon_id)
 	# A player reloads in the break, for free.
 	for arm: SimArm in player.arms.values():
 		arm.reload()
@@ -653,6 +666,12 @@ func _ammo_item(weapon_id: StringName) -> ShopItem:
 ## game).
 func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
 	var weapon := _re_cut_weapon(player) if item_id == &"upgrade_weapon" else &""
+	if _is_weapon_item(item_id):
+		if not _worth_taking(player, item_id):
+			return 0
+		weapon = _weakest(player)
+	if item_id == &"crane_play" and not _crane_can_pay_off(player):
+		return 0
 	for event in rules.apply(RulesAction.buy(player.id, item_id, rounds, weapon)):
 		if event["type"] == &"purchase_made":
 			var spent: Dictionary = _result["spent_on"]
@@ -663,6 +682,46 @@ func _buy(player: SimPlayer, item_id: StringName, rounds: int = -1) -> int:
 				player.arms[weapon].upgrade(rules.tuning.upgrade)
 			return int(event["detail"].get("rounds", 1))
 	return 0
+
+
+## Whether the shop sells this item as a weapon.
+func _is_weapon_item(item_id: StringName) -> bool:
+	var item := rules.tuning.economy.item(item_id)
+	return item != null and item.kind == ShopItem.Kind.WEAPON
+
+
+## The carried weapon worth least: what the player gives up when the hands are full.
+func _weakest(player: SimPlayer) -> StringName:
+	var weakest: StringName = &""
+	var least := INF
+	for weapon_id: StringName in player.arms:
+		var worth := SimWeapons.worth_of(player.arms[weapon_id].def(), _health())
+		if worth < least:
+			least = worth
+			weakest = weapon_id
+	return weakest
+
+
+## Whether a weapon (a shop id) is worth taking: a free hand takes anything, full hands only a
+## weapon worth more than the one they would give up.
+func _worth_taking(player: SimPlayer, shop_id: StringName) -> bool:
+	if player.arms.size() < WeaponCatalog.CARRY_LIMIT:
+		return true
+	var weakest: SimArm = player.arms[_weakest(player)]
+	return (
+		SimWeapons.worth_of(SimWeapons.def(shop_id), _health())
+		> SimWeapons.worth_of(weakest.def(), _health()) * REPLACE_GAIN
+	)
+
+
+## Whether a play can give a weapon worth taking: some prize the player lacks beats their weakest.
+## Nobody pays for a prize they would leave on the glass.
+func _crane_can_pay_off(player: SimPlayer) -> bool:
+	var item := rules.tuning.economy.item(&"crane_play")
+	for shop_id in item.pool_without(rules.players[player.id].weapons):
+		if _worth_taking(player, shop_id):
+			return true
+	return false
 
 
 ## The weapon a player puts on the bench: the firearm that kills most, re-cut, among those not yet
@@ -689,6 +748,10 @@ func _re_cut_weapon(player: SimPlayer) -> StringName:
 func _can_ever_buy(player: SimPlayer, item_id: StringName) -> bool:
 	if item_id == &"upgrade_weapon":
 		return _re_cut_weapon(player) != &""
+	if item_id == &"crane_play":
+		return _crane_can_pay_off(player)
+	if _is_weapon_item(item_id):
+		return _worth_taking(player, item_id) and not rules.players[player.id].weapons.has(item_id)
 	return not rules.players[player.id].tonics.has(item_id)
 
 
@@ -702,8 +765,10 @@ func _play_crane(player: SimPlayer, price: int) -> bool:
 		var caused := rules.apply(RulesAction.tick(CRANE_STEP))
 		for event in caused:
 			if event["type"] == &"crane_prize_ready":
-				rules.apply(RulesAction.crane_take(player.id))
-				won = true
+				# The prize is taken when it beats the weakest weapon carried; else it fades.
+				if _worth_taking(player, event["weapon"]):
+					rules.apply(RulesAction.crane_take(player.id, _weakest(player)))
+					won = true
 			elif event["type"] == &"crane_breakdown":
 				broke = true
 		_handle(caused)
@@ -722,6 +787,8 @@ class SimPlayer:
 	var weapon: StringName = &"pistol"
 	## Every weapon carried (catalogue id to its magazine and reserve), the crowbar included.
 	var arms: Dictionary[StringName, SimArm] = {}
+	## The blow every player has whatever they carry.
+	var knife: SimArm = SimArm.of(&"crowbar")
 	## Ran out of every firearm this round and fought with the crowbar.
 	var dry: bool = false
 	## Shot time banked toward the next trigger pull, in seconds.

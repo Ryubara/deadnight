@@ -21,6 +21,9 @@ extends RefCounted
 ##   reload_started: shooter_id, weapon_id, seconds
 ##   reload_finished: shooter_id, weapon_id, ammo, reserve
 ##   reload_rejected: shooter_id, reason
+##   weapon_replaced: player_id, dropped (the weapon that was in hand), weapon_id (the new one); a
+##     third weapon replaces the one in hand (`WeaponCatalog.CARRY_LIMIT`); sent before the new
+##     weapon's weapon_equipped
 ##   weapon_equipped: player_id, weapon_id, ammo, reserve
 ##   ammo_added: player_id, weapon_id, added (rounds that fitted), ammo, reserve
 ##   weapon_upgraded: player_id, weapon_id, tier, display_name, ammo, reserve, magazine, damage
@@ -117,7 +120,7 @@ func _dispatch(action: Dictionary) -> void:
 		CombatAction.RELOAD:
 			_reload(action["shooter_id"])
 		CombatAction.GIVE_WEAPON:
-			_give(action["player_id"], action["weapon_id"])
+			_give(action["player_id"], action["weapon_id"], StringName(action.get("replace", &"")))
 		CombatAction.EQUIP:
 			_equip(action["player_id"], action["weapon_id"])
 		CombatAction.SWAP:
@@ -144,7 +147,7 @@ func _on_rules_event(event: Dictionary) -> void:
 		_dispatch(action)
 
 
-func _give(player_id: int, weapon_id: StringName) -> void:
+func _give(player_id: int, weapon_id: StringName, replace: StringName = &"") -> void:
 	if not _defs.has(weapon_id):
 		_emit(&"action_rejected", {"reason": &"unknown_weapon"})
 		return
@@ -153,8 +156,24 @@ func _give(player_id: int, weapon_id: StringName) -> void:
 		var owned: WeaponState = held[weapon_id]
 		owned.add_reserve(owned.def.magazine_size)
 	else:
+		if held.size() >= WeaponCatalog.CARRY_LIMIT:
+			_replace(player_id, held, weapon_id, replace)
 		held[weapon_id] = WeaponState.new(_defs[weapon_id])
 	_equip(player_id, weapon_id)
+
+
+## Hands full: `replace` (the weapon in hand when it is not carried, the first carried when none is)
+## is gone, with its rounds. It is not dropped on the ground; the rules put it back in the pool.
+func _replace(player_id: int, held: Dictionary, taken: StringName, replace: StringName) -> void:
+	var dropped := replace
+	if not held.has(dropped):
+		dropped = _current.get(player_id, &"")
+	if not held.has(dropped):
+		dropped = held.keys()[0]
+	held.erase(dropped)
+	if _current.get(player_id, &"") == dropped:
+		_current.erase(player_id)
+	_emit(&"weapon_replaced", {"player_id": player_id, "dropped": dropped, "weapon_id": taken})
 
 
 func _equip(player_id: int, weapon_id: StringName) -> void:

@@ -57,7 +57,7 @@ the real command, its own model drawn).
 | Model (`assets/weapons/`) | Definition | How it is obtained | Per hit / interval |
 | --- | --- | --- | --- |
 | `revolver` | `pistol`, the Revolver | **Start** (in hand) | 24 / 0.28 s |
-| `crowbar` | `crowbar` | **Start** (carried, never dry) | 45 / 0.55 s |
+| `crowbar` | `crowbar` | **Start** (carried, never dry), and the **crane** once given up (1) | 45 / 0.55 s |
 | `double_shotgun` | `shotgun`, the Pump shotgun | **Wall** 900, and the **crane** (weight 4) | 19 x 8 / 0.8 s |
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
 | `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
@@ -67,10 +67,10 @@ the real command, its own model drawn).
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
 
-**The crane gives every weapon the start and the wall do not**, the revolver and the crowbar excepted (the buyer
-owns them from the first second, and the crane never gives a weapon the buyer has). A buyer who has every prize of the
-pool gets "already owned" and no play. The pool and its weights are the shop item `crane_play`; the odds are
-[the mystery box page](../research/mystery-box.md).
+**The crane gives every weapon the start and the wall do not**, and the revolver and the crowbar once the buyer has
+given them up (they carry them from the first second, and the crane never gives a weapon the buyer carries). A player
+carries two weapons, so the pool is never empty for them. The pool and its weights are the shop item `crane_play`; the
+odds are [the mystery box page](../research/mystery-box.md).
 
 **The bat and the axe** were models with no definition. They are melee weapons held as `Melee` (the Swing clip, no
 flash, a spark on a hit) with their own hold files, so each shows its own model. They are **found only in the prize
@@ -86,11 +86,37 @@ runs dry. They are not re-cut at the projector (the re-cut list is the firearms)
 - The hammer is a cosmetic repair tool only: no definition, no slot.
 - No grenades from the crane: the grenade is thrown by its own system.
 - Carry ([#410](https://github.com/Ryubara/deadnight/issues/410)): a third weapon replaces the one in hand; the
-  replaced weapon is disposed of and **goes back into the weapon pool**, not dropped. This branch does not do the
-  carry; when it lands, the crane's pool and its "already owned" rule follow it (the revolver and the crowbar would
-  join the pool the moment a player can lose one).
+  replaced weapon is disposed of and **goes back into the weapon pool**, not dropped. See
+  [Carrying weapons](#carrying-weapons).
 - Quick melee on `V` ([#411](https://github.com/Ryubara/deadnight/issues/411)) is the always-available knife blow with
   whatever is in hand, so no melee weapon is needed in a slot for emergencies.
+
+## Carrying weapons
+
+A player carries **two weapons** (`WeaponCatalog.CARRY_LIMIT`), melee ones included: there is no melee slot, and the
+bat and the axe take a slot like a gun. A player starts with the crowbar and the revolver (the revolver in hand). The
+swap button (F, d-pad up) cycles the two.
+
+Buying a weapon at the wall or taking a prize from the crane with both hands full **replaces the weapon in hand**,
+with its magazine and reserve (and its re-cut). The replaced weapon is not dropped on the ground: it is gone, and it
+is in the pool again, so the wall sells it again (shotgun, rifle) and the crane can give it again (every crane weapon,
+the revolver and the crowbar too). The card of a wall weapon and of a prize on offer says **REPLACES <weapon>** before
+the points are paid or the prize is taken. A weapon the player already carries is not offered; the wall sells its
+rounds.
+
+Two parts keep it true, each with the weapon in hand as the one given up: the rules (`WeaponCarry`; `PlayerState.weapons`
+is the carried list in shop ids, the start weapons in it, and `weapon_released` names what went) and the combat server
+(`weapon_replaced`: the dropped weapon, then the new one's `weapon_equipped`; the HUD drops the dropped weapon's rounds
+and keeps the other as the one put away, the hands take the new model). The purchase carries the released weapon, so
+the two never disagree even when the buyer names none (then the oldest goes).
+
+A re-cut goes with its weapon, but its price step stays (`recuts_lost`): a fresh copy can be re-cut again, and cycling
+weapons does not make re-cuts cheaper.
+
+The simulator's players follow the rule (maintainer-approved, 2026-11-02): they take a weapon only when it is worth
+1.5 times the weakest they carry, and play the crane only when some prize would be (`REPLACE_GAIN`). Without that
+margin they buy in circles. Quick melee (#411) is not in yet, so a player who carries no melee weapon falls back on a
+crowbar blow in the simulator.
 
 ## The shoulder camera
 
@@ -236,9 +262,12 @@ every machine agrees. Gibs, decals and the fireball are client only and decide n
 - **Shop weapons: stepped up (#254, #265).** The rifle (95, 0.5 s) and the shotgun (19 a pellet, 0.8 s) are applied;
   the reasoning and the reference are in [round scaling](../research/round-scaling.md). What is still missing is a
   way for a weapon to keep pace with health that compounds (the original's Pack-a-Punch): an issue.
-- **The carry limit: proposed, awaiting the maintainer (#410).** Two guns and the melee weapon; buying or taking a
-  third gun replaces the one in hand and its reserve. Today a player may carry every weapon, and the swap button (F,
-  d-pad up) takes the next one carried in hand.
+- **The carry limit: built (#410), as the maintainer decided it.** Two weapons, no melee slot, a third replaces the
+  one in hand and goes back into the pool ([Carrying weapons](#carrying-weapons)). Four choices the maintainer
+  approved on 2026-11-02: the revolver and the crowbar are in the crane pool at weight 1 each (the only way back for
+  them), the stampede is cut from 140% to 110% of the count so the balance gate holds with two weapons, the simulator's
+  players replace a weapon only for one worth 1.5 times more, and the starting crowbar stays until quick melee
+  ([#411](https://github.com/Ryubara/deadnight/issues/411)) replaces it.
 - **The flare: no damage, a lure (#439).** The maintainer: it acts like a monkey bomb or a pipe bomb, no damage for
   now. Where it bursts it burns for `lure_seconds` (8) and every zombie within `lure_radius` (25 m) walks to it
   instead of to a player ([how the dead behave](zombies.md#the-flare-lure)). Its damage and splash are 0 in the

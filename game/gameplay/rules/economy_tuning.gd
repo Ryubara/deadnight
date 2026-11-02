@@ -5,6 +5,10 @@ extends Resource
 
 @export_group("Earning")
 @export var start_points: int = 200
+## What a player carries at the start, as shop ids, the firearm last so it is the one in hand.
+## They count as carried: a third weapon replaces the one in hand, and the replaced one is a prize
+## or a purchase again (`WeaponCarry`).
+@export var start_weapons: Array[StringName] = [&"weapon_crowbar", &"weapon_pistol"]
 ## A hit that does not kill.
 @export var hit: int = 4
 ## A hit to the head that does not kill.

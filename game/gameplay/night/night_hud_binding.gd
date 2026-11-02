@@ -146,11 +146,21 @@ func show_prompt(prompt: Dictionary) -> void:
 			if state.prompt.get("kind") != &"repair":
 				state.set_prompt(&"repair", BREACH_NAME)
 		&"weapon":
-			_offer(&"buy_weapon", _weapon_name(prompt["weapon"]), prompt["price"], "")
+			_offer(
+				&"buy_weapon",
+				_weapon_name(prompt["weapon"]),
+				prompt["price"],
+				_replaces_line(prompt)
+			)
 		&"crane":
 			_offer(&"buy_crane", CRANE_NAME, prompt["price"], "")
 		&"crane_take":
-			_offer(&"crane_take", _weapon_name(WeaponCatalog.catalog_id(prompt["weapon"])), 0, "")
+			_offer(
+				&"crane_take",
+				_weapon_name(WeaponCatalog.catalog_id(prompt["weapon"])),
+				0,
+				_replaces_line(prompt)
+			)
 		&"crane_busy":
 			_offer(&"crane_busy", CRANE_NAME, 0, _crane_busy_detail(prompt["buyer"]))
 		&"ammo":
@@ -186,6 +196,13 @@ func _crane_busy_detail(buyer: int) -> String:
 	if stage == CraneState.Stage.LEAVING:
 		return CRANE_BROKEN
 	return CRANE_DIGGING if buyer == _state.player_id else ""
+
+
+## What a weapon on offer costs the hands: "REPLACES CROWBAR" when the hands are full, else the
+## card's own line (an empty detail).
+func _replaces_line(prompt: Dictionary) -> String:
+	var replaced := StringName(prompt.get("replaces", &""))
+	return "REPLACES %s" % _weapon_name(replaced) if replaced != &"" else ""
 
 
 func _weapon_name(weapon: StringName) -> String:

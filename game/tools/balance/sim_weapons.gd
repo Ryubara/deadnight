@@ -105,6 +105,14 @@ static func melee_rate_of(weapon: WeaponDef, health: float = 0.0) -> float:
 	return health / (ceilf(health / per_blow) * weapon.fire_interval)
 
 
+## What a weapon is worth in the hands: a melee weapon by its blows, a firearm by its sustained
+## damage, against zombies of `health`. The player gives up the one worth least for a third weapon.
+static func worth_of(weapon: WeaponDef, health: float = 0.0) -> float:
+	if weapon.is_melee():
+		return melee_rate_of(weapon, health)
+	return sustained_dps_of(weapon, health)
+
+
 ## The melee weapon to fall back on from those carried: the one that kills fastest, the crowbar when
 ## no other is carried.
 static func best_melee(arms: Dictionary, health: float = 0.0) -> StringName:

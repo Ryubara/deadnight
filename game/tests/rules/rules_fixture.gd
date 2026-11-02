@@ -17,6 +17,11 @@ static func tuning() -> RulesTuning:
 	return (load(TUNING_PATH) as RulesTuning).duplicate(true)
 
 
+## What every player carries at the start, as shop ids (the shipped tuning's `start_weapons`).
+static func start_weapons() -> Array[StringName]:
+	return tuning().economy.start_weapons
+
+
 ## What the shipped tuning says a round holds: the zombies for `players`, and each one's health.
 static func round_count(round_number: int, players: int = 1) -> int:
 	return tuning().rounds.zombies_for_round(round_number, players)

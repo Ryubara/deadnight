@@ -397,6 +397,8 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_player_look
 		&"player_hurt":
 			handler = _on_player_hurt
+		&"weapon_replaced":
+			handler = func(e: Dictionary) -> void: HudLoadout.apply(e, self)
 		&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished", &"ammo_added":
 			handler = func(e: Dictionary) -> void: HudLoadout.apply(e, self)
 	return handler
