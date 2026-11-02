@@ -350,6 +350,12 @@ crawl is gone: the controller adds it only when its file is there.
   The downed head turns more than 15 degrees over a loop. The kneel presses 4 times in 2 s. A downed player does not
   kneel. Moving at 0.45 m/s while down plays the crawl at rate 1.0 and the heels move. Captures:
   `game/tests/captures/revive_poses.tscn`, in the night, from the shoulder camera, the side and above.
+- Checked over a real socket (`game/tests/net/test_night_revive_online.gd`, the pose test): the downed player's own
+  played body and the other client's drawn avatar of them reach the downed weight 1 from the server's events and
+  frames, the reviver's kneel reaches 1 on both screens while the hold lasts, and a walk-away, a finished hold and a
+  revive each ease their weights back to 0 on both. Captures of the same flow from the two screens:
+  `game/tests/captures/revive_poses_online.tscn` (the window is the downed player's screen, a second viewport is the
+  reviver's; the reviver is a bot that walks over and holds Use).
 
 ## Reloading
 
