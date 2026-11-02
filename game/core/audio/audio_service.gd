@@ -152,6 +152,13 @@ func _exit_tree() -> void:
 	_remove_duck_effect()
 	if UIAudio.handler == play_ui:
 		UIAudio.handler = Callable()
+	# The engine frees what the audio server still holds only once its mixer has taken a few steps,
+	# and a process that quits at once (a test run, a capture) leaves it held: reported at exit as
+	# `ObjectDB instances were leaked` and `resources still in use`, at random under load. Only the
+	# autoload waits: it leaves the tree last, and a service a test frees mid-run would add a wait
+	# to every test.
+	if is_inside_tree() and get_parent() == get_tree().root:
+		drain_mixer_blocking()
 
 
 func _process(delta: float) -> void:
@@ -485,6 +492,23 @@ func wait_for_mixer() -> void:
 			steps += 1
 		last = now
 	push_warning("Audio: the mixer took %d of %d steps in time" % [steps, DRAIN_MIX_STEPS])
+
+
+## `wait_for_mixer` for a place that cannot await, the end of the process: blocks this thread (the
+## mixer runs on its own) until the mixer has taken the steps or the polls run out. Returns whether
+## it did.
+func drain_mixer_blocking() -> bool:
+	var steps := 0
+	var last := AudioServer.get_time_since_last_mix()
+	for _i in DRAIN_MAX_POLLS:
+		if steps >= DRAIN_MIX_STEPS:
+			return true
+		OS.delay_msec(DRAIN_POLL_MS)
+		var now := AudioServer.get_time_since_last_mix()
+		if now < last:
+			steps += 1
+		last = now
+	return false
 
 
 func _play_3d(
