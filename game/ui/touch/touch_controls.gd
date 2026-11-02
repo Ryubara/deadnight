@@ -2,7 +2,8 @@ class_name TouchControls
 extends Control
 ## The touch controls of a night: a floating move stick on the left, a look area on the right,
 ## and buttons under the right thumb. They press the game's own input actions (`move_*`, `fire`,
-## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `interact`, `sprint`, `pause`), so
+## `aim`, `jump`, `reload`, `swap_weapon`, `throw_grenade`, `interact`, `sprint`, `pause`,
+## `scoreboard`), so
 ## the player and the night read them like a key or a pad and nothing else forks.
 ##
 ## Aim is held while the thumb is on it when auto-fire is on (`controls/touch_auto_fire`, the
@@ -560,6 +561,16 @@ func _draw_button(
 		var bar := Vector2(7.0, radius * 0.9)
 		draw_rect(Rect2(centre + Vector2(-13.0, -bar.y * 0.5), bar), _alpha(ink, held))
 		draw_rect(Rect2(centre + Vector2(6.0, -bar.y * 0.5), bar), _alpha(ink, held))
+		return
+	if id == TouchLayout.SCOREBOARD:
+		# Three rows of a table: a dot and a line each.
+		for row in 3:
+			var y := (float(row) - 1.0) * radius * 0.4
+			draw_circle(centre + Vector2(-radius * 0.45, y), 3.5, _alpha(ink, held))
+			draw_rect(
+				Rect2(centre + Vector2(-radius * 0.2, y - 2.5), Vector2(radius * 0.7, 5.0)),
+				_alpha(ink, held)
+			)
 		return
 	var px := int(radius * (0.34 if label.length() <= 4 else 0.27))
 	var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x

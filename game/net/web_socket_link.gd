@@ -224,7 +224,7 @@ func _ping_when_due() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	if now >= _next_ping:
 		_next_ping = now + PING_EVERY
-		_send(NetWire.ping(Time.get_ticks_msec()))
+		_send(NetWire.ping(Time.get_ticks_msec(), rtt_ms))
 
 
 func _receive(data: PackedByteArray) -> void:
