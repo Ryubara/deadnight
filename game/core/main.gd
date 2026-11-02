@@ -40,6 +40,11 @@ func _ready() -> void:
 		UIRouter.push(NIGHT, UITransition.Kind.IRIS)
 
 
+## The save is the real game's: leaving the root (a test frees it) puts the path away again.
+func _exit_tree() -> void:
+	NightScreen.challenge_path = ""
+
+
 ## A game server: one night for up to four players. The port is `--port`, else `$PORT` (Railway
 ## sets it), else the default.
 func _serve(args: NetArgs) -> void:

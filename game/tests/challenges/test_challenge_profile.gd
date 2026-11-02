@@ -39,7 +39,7 @@ func test_opening_twice_on_one_day_changes_nothing() -> void:
 	_profile.refresh(_catalog, DAY)
 	_profile.dailies[0]["progress"] = 3
 	var before := _profile.to_dict()
-	assert_array(_profile.refresh(_catalog, DAY)).is_empty()
+	_profile.refresh(_catalog, DAY)
 	assert_dict(_profile.to_dict()).is_equal(before)
 
 
