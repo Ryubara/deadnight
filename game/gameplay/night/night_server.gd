@@ -21,11 +21,11 @@ extends RefCounted
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
 ## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
-## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, ammo, reserve,
-## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
-## (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one,
-## when downed, has got), ack (the `seq` of the command this step used: a predicting client
-## replays from it)}}.
+## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
+## held), pitch (the look up or down, `pitch_step`), ammo, reserve, reloading, arms (every weapon
+## carried: id to [ammo, reserve, tier]), points, prompt, reviving (the teammate this one is
+## raising, 0 for none), revive (0 to 1: how far the hold on this one, when downed, has got), ack
+## (the `seq` of the command this step used: a predicting client replays from it)}}.
 ##
 ## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
@@ -77,6 +77,9 @@ const GRENADE_EVENTS: Array[StringName] = [
 const GRENADE_DEF := "res://gameplay/grenades/defs/frag.tres"
 ## A held trigger meets these every tick; they are not news.
 const QUIET_REJECTIONS: Array[StringName] = [&"cooldown", &"reloading"]
+## The frame names where a player looks up or down in steps of this many radians (3 degrees): a
+## drawn copy only needs the barrel to follow, and a field that did not change costs nothing.
+const PITCH_STEP := deg_to_rad(3.0)
 
 var rules: GameRules
 var combat: CombatServer
@@ -224,6 +227,16 @@ func submit(player_id: int, command: NightCommand) -> void:
 		command.motion.swap_shoulder = command.motion.swap_shoulder or old.motion.swap_shoulder
 	_pending[player_id] = command
 	_silent[player_id] = 0
+
+
+## The step of the frame's `pitch` for a look of `radians` (up is positive).
+static func pitch_step(radians: float) -> int:
+	return roundi(clampf(radians, -PI / 2.0, PI / 2.0) / PITCH_STEP)
+
+
+## The look up or down a step of the frame's `pitch` means.
+static func pitch_from_step(step: int) -> float:
+	return step * PITCH_STEP
 
 
 ## The server step a shooter's view step (the low 16 bits) means: the latest step with those bits
@@ -879,6 +892,8 @@ func _frame() -> Dictionary:
 			"health": rules.health_of(player_id),
 			"downed": _is_downed(player_id),
 			"weapon": weapon.def.id if weapon != null else &"",
+			"aim": body.state.holds_aim(body.tuning.hip_fire_hold),
+			"pitch": pitch_step(body.state.view_pitch),
 			"ammo": weapon.ammo if weapon != null else 0,
 			"reserve": weapon.reserve if weapon != null else 0,
 			"reloading": weapon != null and weapon.is_reloading(),
