@@ -94,7 +94,9 @@ func _process(delta: float) -> void:
 	if _controller_since < 1.0:
 		return
 	_controller_since = 0.0
-	_controller_note.text = GamepadProbe.note(GamepadProbe.read()) if in_discord() else ""
+	var report := GamepadProbe.read() if in_discord() else {}
+	var line := GamepadProbe.note(report)
+	_controller_note.text = line if line == "" else "%s (%s)" % [line, GamepadProbe.detail(report)]
 	_controller_note.visible = _controller_note.text != ""
 
 

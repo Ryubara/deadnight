@@ -26,6 +26,26 @@ func test_a_page_without_the_focus_is_told_to_click_first() -> void:
 	assert_str(GamepadProbe.note(report)).is_equal(GamepadProbe.UNFOCUSED)
 
 
+func test_a_page_clicked_that_still_lacks_the_focus_says_discord_holds_it() -> void:
+	var report := {"iframe": true, "focus": false, "clicks": 3, "policy": true, "pads": 0}
+	assert_str(GamepadProbe.note(report)).is_equal(GamepadProbe.NO_FOCUS)
+
+
+func test_the_detail_gives_the_counts_the_page_saw() -> void:
+	var report := {
+		"focus": false,
+		"clicks": 3,
+		"focus_events": 1,
+		"blur_events": 2,
+		"pad_events": 0,
+		"visible": "visible"
+	}
+	assert_str(GamepadProbe.detail(report)).is_equal(
+		"focus no, clicks 3, focus changes 1/2, controller events 0, visible"
+	)
+	assert_str(GamepadProbe.detail({})).is_empty()
+
+
 func test_a_listed_pad_is_connected() -> void:
 	var report := {"iframe": true, "policy": true, "pads": 1}
 	assert_str(GamepadProbe.note(report)).is_equal(GamepadProbe.READY)

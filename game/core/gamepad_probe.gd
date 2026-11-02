@@ -17,6 +17,12 @@ const BLOCKED := (
 const READY := "Controller: connected."
 const WAITING := "Controller: allowed. Press a button on it to wake it."
 const UNFOCUSED := "Controller: allowed. Click in the game first, then press a button on it."
+## The window was clicked and still does not hold the focus: Discord keeps it, and a browser lists
+## no pad to a window without it.
+const NO_FOCUS := (
+	"Controller: allowed, but Discord keeps the keyboard focus away from the game even after a"
+	+ " click, so no controller is listed. Play in a browser tab, or send this line to the makers."
+)
 const UNKNOWN := ""
 
 
@@ -32,8 +38,8 @@ static func read() -> Dictionary:
 
 
 ## The sentence for a report: blocked, connected, or allowed and waiting for a button press (a page
-## that does not have the focus is told to click first, since a browser lists no pad to it); empty
-## when there is no report.
+## that does not have the focus is told to click first, or, once it was clicked, that Discord holds
+## the focus; a browser lists no pad to a window without it); empty when there is no report.
 static func note(report: Dictionary) -> String:
 	if report.is_empty():
 		return UNKNOWN
@@ -41,4 +47,26 @@ static func note(report: Dictionary) -> String:
 		return BLOCKED
 	if int(report.get("pads", 0)) > 0:
 		return READY
-	return UNFOCUSED if report.get("focus") == false else WAITING
+	if report.get("focus") == false:
+		return NO_FOCUS if int(report.get("clicks", 0)) > 0 else UNFOCUSED
+	return WAITING
+
+
+## What the page saw, as one short line for whoever reads the screen: whether the window has the
+## focus, how many clicks reached it, how often it gained and lost the focus, how many controller
+## events came, whether it is shown. Empty when there is no report.
+static func detail(report: Dictionary) -> String:
+	if report.is_empty():
+		return ""
+	var focus := "?" if report.get("focus") == null else ("yes" if report["focus"] else "no")
+	return (
+		"focus %s, clicks %d, focus changes %d/%d, controller events %d, %s"
+		% [
+			focus,
+			int(report.get("clicks", 0)),
+			int(report.get("focus_events", 0)),
+			int(report.get("blur_events", 0)),
+			int(report.get("pad_events", 0)),
+			str(report.get("visible", "?")),
+		]
+	)
