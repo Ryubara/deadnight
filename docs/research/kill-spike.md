@@ -14,7 +14,8 @@ the page's address has `?bench` (or `--bench` on a desktop). `tools/web_smoke/ki
 runs it in a fresh headless Chrome profile on the real GPU (RTX 5080, unpaced, so a frame's time is its work), and
 reports the frames by what happened in them (a shot, a kill, a zombie arriving or leaving) with a chart lined up on the
 frame of the shot or the kill. The bot buys no door or weapon (a door starts a navigation bake; that is another cost).
-Three runs of 70 s each, 37 kills a run (28 for the older build, which also shopped).
+Three runs of 70 s each, 37 kills a run (28 for the build before, which also shopped: the frames around a
+purchase are left out).
 
 ## Where the time went (before)
 
@@ -63,12 +64,15 @@ Web, three runs each, the median of the frames in a fight, ms (an ordinary frame
 | A zombie arriving | 6.4 to 6.6 | 5.9 to 6.1 |
 | A zombie leaving | 5.8 to 6.2 | 5.1 to 5.5 |
 
-On a desktop (window, same GPU) the frame of a kill went from 11.1 ms to 6.7 (worst 15.4 to 9.6).
+Both columns are from the same build of `main` of the day before; after merging `main` of the day (grenades, a new
+HUD) a quiet run gave 7.7 ms for a shot and 8.3 for a kill (an ordinary frame 4.3): the shot 3.4 over, the kill 4.0.
+A busier machine moves every number: the ordinary frame went to 5.4 and 5.7 ms in two runs, the shot and the kill with
+it. On a desktop (window, same GPU) the frame of a kill went from 11.1 ms to 6.7 (worst 15.4 to 9.6).
 
-**Not met:** the target was a shot or kill within 2 ms of an ordinary frame; it is within 3 (the shot 2.9, the kill
-3.2 to 3.6). What is left in the frame, in ms: sounds starting 0.6, HUD 0.5, effects 0.5, the shot's ray and the
-rules 0.5, the engine's own drawing of the flash and the impacts the rest. The next steps are the HUD (a points change
-still rebuilds a box) and the flash's light.
+**Not met:** the target was a shot or kill within 2 ms of an ordinary frame; it is within 3 to 4. What is left in the
+frame, in ms: sounds starting 0.6, HUD 0.5, effects 0.5, the shot's ray and the rules 0.5, the engine's own drawing
+of the flash and the impacts the rest. The next steps are the HUD (a points change still rebuilds a box) and the
+flash's light. The round's sting (longer than 2.5 s, so still an Ogg) takes 6 ms to start at each round.
 
 ## What is still over 33 ms in a 70 s run
 
