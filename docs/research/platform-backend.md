@@ -69,12 +69,13 @@ closes on `SIGTERM`.
 
 ## Join flow: from the Activity to a running match
 
-The Activity opens on the main menu, like every platform (#495). The sign-in, the instance's lobby and its start (all
-that comes before the ticket request below) run in the background from the menu (`ActivityRoom`, started by `main.gd`
-when the page has `instance_id`); Play together then shows the room code ready, and one press of Play asks for the
-ticket. If the room could not be
-made the screen says why and tries again on the next visit; a night entered from the room makes it stale, so the next
-visit makes a fresh one.
+The Activity opens on the main menu, like every platform (#495). The sign-in runs in the background from the menu
+(`ActivityRoom`, started by `main.gd` when the page has `instance_id`), together with a read of what the voice channel's
+lobby is (`POST /lobbies/preview {instanceId}`); Play together then goes straight to the channel's lobby
+([the lobby](../design/lobby.md)): the first player there makes it and hosts, the others read it (waiting, or a night in
+progress and its round) and press Join. Nothing joins a lobby before a player opens that screen, so people who only
+opened the Activity hold no seat. If the room could not be made ready the screen says why and tries again on the next
+visit.
 
 ```mermaid
 sequenceDiagram
@@ -123,12 +124,13 @@ what happens underneath:
    The backend runs `DISCORD_MODE=live` with guests switched on (`GUEST_SIGN_IN=1`); `DISCORD_MODE=off` is the same
    with no Discord at all. Browsers on another origin than the backend need it in `CORS_ORIGINS`; inside a Discord Activity
    everything goes through the proxy (`/api`, `/server`) and is same-origin.
-2. **A night.** *Create a night* is `POST /lobbies` then `POST /lobbies/:id/start`: the backend allocates the least loaded
-   game server with room and the lobby keeps a short code. *Quick join* is `POST /lobbies/quick`: a public night with
+2. **A night.** *Create a night* is `POST /lobbies`: a lobby that waits ([the lobby](#the-lobby-before-the-night)) until
+   its host calls `POST /lobbies/:id/start`, which allocates the least loaded game server with room; the lobby keeps a
+   short code. *Quick join* is `POST /lobbies/quick`: a public night with
    room (open or already started), else a new public one. *Join with the code* is `POST /lobbies/join-by-code`, and it
    works on a night that has already started (a started night takes newcomers while the game server says it has room:
-   its heartbeat carries `players`, the count in each match). A Discord Activity sends its `instanceId`: the first to
-   ask makes the lobby, the rest join it, started or not.
+   its heartbeat carries `players`, the count in each match); the screen reads the code with `POST /lobbies/preview`
+   first. A Discord Activity sends its `instanceId`: the first to ask makes the lobby, the rest join it.
 3. **The handoff.** `POST /lobbies/:id/ticket` returns the server's address and a 60 s HS256 ticket (match, server, a
    single-use `jti`). The client connects and puts the ticket in its first message (the hello, never the URL).
 4. **One process, several nights.** The game server (`GameServer`) owns the listener and a `NightHost` for each match,
@@ -193,8 +195,8 @@ host calls `POST /lobbies/:id/start`, and every member polls `GET /lobbies/:id` 
   inside that minute: a lobby whose members are all quiet (every tab in the background, which stops the game's frames
   and so its polls) is never emptied by this and expires after ten idle minutes as before. `away` in the view is a member
   not seen for 15 s. A dropped member who polls again gets `403 not_member` and is free to open or join another lobby.
-- **The round.** The game server's heartbeat has an optional `rounds` (`{matchId: round}`, next to `players`); an older
-  server that sends none leaves `round` null.
+- **The round.** The game server's heartbeat has an optional `rounds` (`{matchId: round}`, next to `players`; `GameServer`
+  sends it from `NightHost.round_number()`, 0 before round 1); an older server that sends none leaves `round` null.
 - **Looking before joining.** `POST /lobbies/preview {code}` (any signed-in user, a body so the code stays out of the
   request log) answers `{code, state, round, players, maxPlayers, full, hostName, names}` and joins nobody; an unknown
   code is `404 not_found`. A started night's `full` is the game server's count, the same test `join` applies.

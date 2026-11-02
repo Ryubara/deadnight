@@ -102,14 +102,12 @@ func test_replaying_omni_commands_gives_the_same_result() -> void:
 		command.aim = (i / 30) % 5 == 4
 		command.jump = i % 97 == 0
 		recorded.append(command.to_bytes())
-		_player.submit_command(command)
-		await get_tree().physics_frame
+		_step(command)
 	var first_end := _player.state.duplicate_state()
 	_player.state.copy_from(start)
 	_player.global_position = start.position
 	for bytes in recorded:
-		_player.submit_command(PlayerCommand.from_bytes(bytes))
-		await get_tree().physics_frame
+		_step(PlayerCommand.from_bytes(bytes))
 	var replay_end := _player.state
 	assert_vector(replay_end.position).is_equal_approx(first_end.position, Vector3.ONE * 0.001)
 	assert_vector(replay_end.velocity).is_equal_approx(first_end.velocity, Vector3.ONE * 0.001)

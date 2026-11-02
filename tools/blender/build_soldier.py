@@ -14,6 +14,7 @@ not the rest pose, for every bone a clip leaves out (see soldier_clips.capture_s
 import argparse
 import json
 import re
+import struct
 import sys
 from pathlib import Path
 
@@ -22,6 +23,35 @@ import bpy
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kitlib
 import soldier_clips as sc
+
+
+def strip_channels(path, unkeyed):
+    """Take the channels of the bones a clip does not key out of a .glb: {clip: {bone, ...}}. Blender's exporter
+    samples every bone of every clip, so a clip that leaves the fingers to the game's HandGripPose would still carry
+    them, at the static pose. Unused samplers go too; their accessors stay in the buffer (unreferenced, valid glTF).
+    Returns {clip: channels removed}."""
+    data = path.read_bytes()
+    size = struct.unpack_from("<I", data, 12)[0]
+    gltf = json.loads(data[20 : 20 + size])
+    rest = data[20 + size :]
+    removed = {}
+    for anim in gltf.get("animations", []):
+        drop = unkeyed.get(anim["name"])
+        if not drop:
+            continue
+        keep = [c for c in anim["channels"] if gltf["nodes"][c["target"]["node"]].get("name") not in drop]
+        removed[anim["name"]] = len(anim["channels"]) - len(keep)
+        used = sorted({c["sampler"] for c in keep})
+        index = {old: new for new, old in enumerate(used)}
+        anim["samplers"] = [anim["samplers"][i] for i in used]
+        for c in keep:
+            c["sampler"] = index[c["sampler"]]
+        anim["channels"] = keep
+    text = json.dumps(gltf, separators=(",", ":")).encode("utf-8")
+    text += b" " * (-len(text) % 4)
+    chunk = struct.pack("<II", len(text), 0x4E4F534A) + text
+    path.write_bytes(struct.pack("<III", 0x46546C67, 2, 12 + len(chunk) + len(rest)) + chunk + rest)
+    return removed
 
 
 def main():
@@ -150,6 +180,7 @@ def main():
         export_reset_pose_bones=False,  # True resets to Blender's rest between clips: arms out on unkeyed bones
         export_optimize_animation_size=False,
     )
+    stripped = strip_channels(out, {k: v for k, v in sc.UNKEYED.items() if k in sc.CLIPS})
     spec = {
         "source": "Quaternius Toon Shooter Game Kit, Soldier (CC0); clips authored by tools/blender/soldier_clips.py",
         "fps": sc.FPS,
@@ -164,6 +195,7 @@ def main():
         {
             "bones": len(arm.data.bones),
             "clips": len(clips),
+            "unkeyed_channels_removed": stripped,
             "tris": sum(kitlib.tris(o) for o in meshes),
             "meshes": {o.name: kitlib.tris(o) for o in meshes},
         },

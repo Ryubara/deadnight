@@ -4,8 +4,8 @@
 extends GdUnitTestSuite
 
 
-func _start() -> Night:
-	var night := await NightFixture.start(self, Night.Mode.MANUAL)
+func _start(tuning: RulesTuning = null) -> Night:
+	var night := await NightFixture.start(self, Night.Mode.MANUAL, tuning)
 	NightFixture.run(night, 5)
 	night.server.rules.apply(RulesAction.grant_points(1, 5000))
 	NightFixture.run(night, 2)
@@ -115,7 +115,7 @@ func test_a_locker_has_nothing_for_the_crowbar() -> void:
 
 
 func test_the_crane_plays_until_it_has_nothing_left_to_give() -> void:
-	var night := await _start()
+	var night := await _start(RulesFixture.steady_crane_tuning())
 	var at := _spot(night, &"crane_play")
 	var prompt := _stand_at(night, at)
 	assert_str(String(prompt["kind"])).is_equal("crane")

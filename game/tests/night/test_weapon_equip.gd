@@ -16,6 +16,8 @@ const EXPECTED := {
 	&"smg": [&"Rifle", "res://assets/weapons/tommy_gun/tommy_gun.glb"],
 	&"pistol": [&"Pistol", "res://assets/weapons/revolver/revolver.glb"],
 	&"flare_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
+	&"baseball_bat": [&"Melee", "res://assets/weapons/baseball_bat/baseball_bat.glb"],
+	&"fire_axe": [&"Melee", "res://assets/weapons/fire_axe/fire_axe.glb"],
 }
 
 

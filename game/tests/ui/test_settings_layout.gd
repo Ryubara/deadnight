@@ -11,6 +11,10 @@ const SCALES: Array[float] = [0.8, 1.0, 1.25]
 const TICK_RATES: Array[int] = [1, 60]
 ## Longer than the rise of the last row of the longest page: the entrance has finished by then.
 const SETTLE_SECONDS := 0.8
+## The settle runs at this clock speed: the entrance is finished in a tenth of the wall time. Only
+## the settle is sped up; the clicks and the frames between them, where a page is caught mid-way,
+## run at the real pace.
+const SETTLE_TIME_SCALE := 10.0
 
 var _screen: SettingsScreen
 var _saved_path: String
@@ -35,6 +39,7 @@ func after_test() -> void:
 	var window := get_tree().root
 	window.size = _saved_size
 	Engine.physics_ticks_per_second = _saved_ticks
+	Engine.time_scale = 1.0
 	Settings.reset_defaults()
 	Settings.save()
 	Settings.path = _saved_path
@@ -242,7 +247,9 @@ func _recreate_screen() -> void:
 
 
 func _settle() -> void:
+	Engine.time_scale = SETTLE_TIME_SCALE
 	await get_tree().create_timer(SETTLE_SECONDS).timeout
+	Engine.time_scale = 1.0
 	await _frames(2)
 
 

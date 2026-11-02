@@ -206,6 +206,15 @@ func aim_transform() -> Transform3D:
 	return _aim_transform
 
 
+## For a rig that is not run (the drawn copy of another machine's player, `Player.make_puppet`): the
+## view it would aim along, from `origin`, turned `view_yaw` and `view_pitch`. The weapon's pose
+## reads it as it reads a run rig's.
+func aim_along(origin: Vector3, view_yaw: float, view_pitch: float) -> void:
+	yaw = view_yaw
+	pitch = view_pitch
+	_aim_transform = Transform3D(Basis.from_euler(Vector3(view_pitch, view_yaw, 0.0)), origin)
+
+
 ## Distance from the player's head (the pivot height) to the lens, after the walls.
 func lens_distance() -> float:
 	return _lens_distance

@@ -110,7 +110,9 @@ func test_the_same_climb_is_a_wall_when_the_re_cut_and_the_tonic_do_nothing() ->
 	inert.upgrade.price_step = 0
 	inert.economy.item(&"upgrade_weapon").price = 1
 	inert.economy.item(&"tonic_hearty").health_bonus = 0.0
-	assert_array(BalanceTargets.check(_batch(inert))).is_not_empty()
+	# 20 nights are enough to see a wall (median rounds one to six below range, a stampede killing
+	# two thirds): the gate itself keeps its 60.
+	assert_array(BalanceTargets.check(_batch(inert, 20))).is_not_empty()
 
 
 func test_the_gate_fails_when_ammunition_is_out_of_reach() -> void:

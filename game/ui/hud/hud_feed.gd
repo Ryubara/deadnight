@@ -14,6 +14,7 @@ const MAX_NOTICES := 1
 ## and reaches the point gains below it): a long text first shrinks toward the smallest size, then
 ## ends in an ellipsis. The space left of the column under the banner is empty, so it costs nothing.
 const ROW_WIDTH := 480.0
+const HISTORY := 8
 const LIFE := 4.5
 const FADE := 0.6
 const ITEM_NAMES := {
@@ -50,6 +51,9 @@ const CIRCUIT_WORDS := {
 @export var kind := Kind.EVENTS
 ## Rows alive, oldest first: {"label", "age"}.
 var rows: Array[Dictionary] = []
+## The last `HISTORY` lines ever pushed, oldest first: what a browser probe reads, since a row is
+## gone after a few seconds and a slow page may not look in time.
+var history: Array[String] = []
 
 var _stack := HudRowStack.new()
 var _pad := MarginContainer.new()
@@ -88,6 +92,9 @@ func on_event(event: Dictionary) -> void:
 
 
 func push(text: String, colour := Color.TRANSPARENT) -> void:
+	history.append(text)
+	if history.size() > HISTORY:
+		history.pop_front()
 	var plain := tokens.ink if kind == Kind.EVENTS else tokens.ink_muted
 	var label := HudStyle.clip(
 		HudStyle.label(text, HudStyle.TEXT, colour if colour.a > 0.0 else plain, false, 1.0)
@@ -149,7 +156,7 @@ func _text_for(event: Dictionary) -> String:
 
 func _notice(type: StringName, event: Dictionary) -> String:
 	if type == &"player_added":
-		return "%s CONNECTED" % _who(event)
+		return "%s JOINED" % _who(event)
 	if type == &"player_removed":
 		return "%s LEFT" % state.left_name.to_upper()
 	return ""

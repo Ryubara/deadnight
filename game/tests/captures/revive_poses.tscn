@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/revive_poses.gd" id="1"]
+
+[node name="RevivePoses" type="Node"]
+script = ExtResource("1")
