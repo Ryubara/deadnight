@@ -56,12 +56,12 @@ func test_a_prompt_comes_in_holds_and_leaves() -> void:
 	_queue.advance(STEP)
 	assert_int(_queue.phase).is_equal(ChallengePromptQueue.Phase.IN)
 	assert_float(_queue.shown()).is_between(0.0, 0.5)
-	_run(ChallengePromptQueue.IN_SECONDS)
+	_run(HudTuning.current().challenge_in)
 	assert_int(_queue.phase).is_equal(ChallengePromptQueue.Phase.HOLD)
 	assert_float(_queue.shown()).is_equal(1.0)
-	_run(ChallengePromptQueue.HOLD_SECONDS + STEP)
+	_run(HudTuning.current().challenge_hold + STEP)
 	assert_int(_queue.phase).is_equal(ChallengePromptQueue.Phase.OUT)
-	_run(ChallengePromptQueue.OUT_SECONDS + 2.0 * STEP)
+	_run(HudTuning.current().challenge_out + 2.0 * STEP)
 	assert_bool(_queue.current.is_empty()).is_true()
 	assert_float(_queue.shown()).is_equal(0.0)
 
@@ -169,7 +169,7 @@ func test_a_prompt_that_waited_too_long_is_dropped() -> void:
 	_run(0.3)
 	_queue.push(_mark(&"late", 25))
 	# Held while blocked, the late one waits past its time and is gone.
-	_run(ChallengePromptQueue.STALE_SECONDS + 1.0, true)
+	_run(HudTuning.current().challenge_stale + 1.0, true)
 	assert_int(_queue.waiting_count()).is_equal(0)
 
 
@@ -200,7 +200,7 @@ func test_there_is_a_quiet_gap_between_two_prompts() -> void:
 				break
 		elif seen_first:
 			gap += STEP
-	assert_float(gap).is_greater_equal(ChallengePromptQueue.GAP_SECONDS - STEP)
+	assert_float(gap).is_greater_equal(HudTuning.current().challenge_gap - STEP)
 
 
 func test_what_is_worth_a_prompt() -> void:

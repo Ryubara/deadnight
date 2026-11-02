@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 # The lobby screen: what each player reads and can press in the waiting room, the preview of a
 # code, the host's Start, a guest's Play, the host role moving, and the ways out.
 extends GdUnitTestSuite
@@ -330,3 +331,128 @@ func test_the_tallest_lobby_fits_a_720_high_window() -> void:
 		. is_true()
 	)
 	screen.free()
+
+
+func _rules(count: float, alive: int, break_seconds: float) -> Dictionary:
+	return {"count_multiplier": count, "max_alive": alive, "break_seconds": break_seconds}
+
+
+func test_the_host_moves_the_rules_and_they_go_to_the_backend_once_the_host_pauses() -> void:
+	var api := LobbyFixture.FakeApi.new(self)
+	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	var screen := await _screen(api, {"lobby": api.lobby})
+	assert_bool(screen.rules.is_visible_in_tree()).is_true()
+	assert_bool(screen.rules_editable()).is_true()
+	assert_str(screen.rules_text()).is_equal(
+		"1x|Auto|%d s" % roundi(screen.rules.break_slider.value)
+	)
+	# Two quick changes are one request: the last of them.
+	screen.rules.count_selector.select(2, true)
+	screen.rules.alive_slider.value = 14
+	assert_int(api.rules_sent.size()).is_equal(0)
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(1)
+	assert_float(api.rules_sent[0].count_multiplier).is_equal(3.0)
+	assert_int(api.rules_sent[0].max_alive).is_equal(14)
+	# The host's panel is not overwritten by the lobby's answer to their own request.
+	api.refreshed = api.lobby
+	await screen.watch.poll()
+	assert_int(screen.rules.settings().max_alive).is_equal(14)
+	assert_str(screen.rules_text()).starts_with("3x|14|")
+	screen.free()
+
+
+func test_a_refused_change_says_why_and_a_second_change_follows_the_first() -> void:
+	var api := LobbyFixture.FakeApi.new(self)
+	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	var screen := await _screen(api, {"lobby": api.lobby})
+	api.rules_failure = "bad_settings"
+	screen.rules.alive_slider.value = 5
+	await screen.send_rules()
+	assert_str(screen.note.text).is_equal(TogetherApi.TEXTS["bad_settings"])
+	api.rules_failure = ""
+	screen.rules.alive_slider.value = 6
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(1)
+	assert_int(api.rules_sent[0].max_alive).is_equal(6)
+	screen.free()
+
+
+func test_start_carries_the_rules_the_panel_shows_even_when_the_last_change_was_not_sent() -> void:
+	var api := LobbyFixture.FakeApi.new(self)
+	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	api.started = LobbyFixture.lobby([api.lobby["members"][0]], "started", 0)
+	var screen := await _screen(api, {"lobby": api.lobby})
+	screen.rules.count_selector.select(1, true)
+	await screen.start()
+	assert_int(api.started_with.size()).is_equal(1)
+	assert_float((api.started_with[0] as MatchSettings).count_multiplier).is_equal(2.0)
+	# The change that was waiting is not sent after the start.
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(0)
+	screen.free()
+
+
+func test_a_guest_reads_the_hosts_rules_and_cannot_move_them() -> void:
+	var api := LobbyFixture.FakeApi.new(self)
+	api.me = "b"
+	api.lobby = LobbyFixture.lobby(
+		[LobbyFixture.member("a", "Ann", 1, true), LobbyFixture.member("b", "Bo", 2)]
+	)
+	var screen := await _screen(api, {"lobby": api.lobby})
+	assert_bool(screen.rules.is_visible_in_tree()).is_true()
+	assert_bool(screen.rules_editable()).is_false()
+	assert_bool(screen.rules.alive_slider.editable).is_false()
+	api.refreshed = api.lobby.duplicate()
+	api.refreshed["settings"] = _rules(3.0, 14, 9.0)
+	await screen.watch.poll()
+	assert_str(screen.rules_text()).is_equal("3x|14|9 s")
+	assert_bool(screen.rules.alive_slider.editable).is_false()
+	# A change the host makes later shows within a poll.
+	api.refreshed = api.refreshed.duplicate()
+	api.refreshed["settings"] = _rules(2.0, 0, 0.0)
+	await screen.watch.poll()
+	assert_str(screen.rules_text()).starts_with("2x|Auto|")
+	# A guest's panel sends nothing, whatever moves it.
+	screen.rules.alive_slider.value = 20
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(0)
+	screen.free()
+
+
+func test_the_next_host_takes_the_panel_with_the_rules_the_lobby_holds() -> void:
+	var api := LobbyFixture.FakeApi.new(self)
+	api.me = "b"
+	api.lobby = LobbyFixture.lobby(
+		[LobbyFixture.member("a", "Ann", 1, true), LobbyFixture.member("b", "Bo", 2)]
+	)
+	api.lobby["settings"] = _rules(3.0, 14, 9.0)
+	var screen := await _screen(api, {"lobby": api.lobby})
+	assert_bool(screen.rules_editable()).is_false()
+	api.refreshed = LobbyFixture.lobby([LobbyFixture.member("b", "Bo", 1, true)])
+	api.refreshed["settings"] = _rules(3.0, 14, 9.0)
+	await screen.watch.poll()
+	assert_bool(screen.rules_editable()).is_true()
+	assert_bool(screen.rules.alive_slider.editable).is_true()
+	assert_str(screen.rules_text()).is_equal("3x|14|9 s")
+	screen.free()
+
+
+func test_the_rules_are_fixed_once_the_night_has_started_and_not_shown_in_a_preview() -> void:
+	var api := LobbyFixture.FakeApi.new(self)
+	api.me = "b"
+	api.lobby = LobbyFixture.lobby(
+		[LobbyFixture.member("a", "Ann", 1, true), LobbyFixture.member("b", "Bo", 2)]
+	)
+	var screen := await _screen(api, {"lobby": api.lobby})
+	api.refreshed = LobbyFixture.lobby(api.lobby["members"], "started", 2)
+	api.refreshed["settings"] = _rules(2.0, 10, 0.0)
+	await screen.watch.poll()
+	assert_bool(screen.rules_editable()).is_false()
+	assert_str(screen.rules_text()).starts_with("2x|10|")
+	screen.free()
+	var seen := LobbyFixture.FakeApi.new(self)
+	seen.preview_answer = LobbyFixture.preview("open", null, 1)
+	var previewing := await _screen(seen, {"preview": seen.preview_answer})
+	assert_bool(previewing.rules.is_visible_in_tree()).is_false()
+	previewing.free()

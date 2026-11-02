@@ -12,8 +12,6 @@ const BAR_GAP := 6.0
 const MAX_BARS := 3
 ## A type id to the name the bar shows; one without an entry shows its id in capitals.
 const NAMES := {&"headliner": "THE PROJECTIONIST"}
-## The bar turns hot under this fraction of the boss's health.
-const LOW_FRACTION := 0.25
 
 ## The fractions the bars show, one per boss.
 var fractions: Array[float] = []
@@ -21,6 +19,7 @@ var caption_text: String:
 	get:
 		return _caption.text
 
+var _t := HudTuning.current()
 var _caption := HudStyle.clip(
 	HudStyle.label("", HudStyle.SMALL, tokens.accent, false, HudStyle.TRACK_CAPTION)
 )
@@ -65,7 +64,7 @@ func _draw_bars() -> void:
 		var at := Vector2(0.0, float(row) * (BAR_HEIGHT + BAR_GAP))
 		var width := _bars.size.x
 		var fraction := fractions[row]
-		var colour := tokens.hot if fraction <= LOW_FRACTION else tokens.accent_bright
+		var colour := tokens.hot if fraction <= _t.boss_bar_low_fraction else tokens.accent_bright
 		_bars.draw_rect(Rect2(at, Vector2(width, BAR_HEIGHT)), tokens.outline)
 		if fraction > 0.0:
 			_bars.draw_rect(Rect2(at, Vector2(width * fraction, BAR_HEIGHT)), colour)

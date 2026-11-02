@@ -6,6 +6,7 @@
 // clock, so tests move time by hand.
 import { randomBytes, randomUUID } from "node:crypto";
 import type { GameServerInfo } from "./servers.ts";
+import { type MatchSettings, parseSettings } from "./settings.ts";
 
 export interface Member {
   userId: string;
@@ -35,6 +36,8 @@ export interface Lobby {
   /** The round the night is in, as the game server last said (null until it has, or before the match starts). */
   round: number | null;
   state: "open" | "started";
+  /** What the host chose for the night (null: the game's defaults); fixed when the match starts. */
+  settings: MatchSettings | null;
   match: Match | null;
   createdAt: number;
   /** Last create, join, leave, start or poll by a member; an open lobby expires when this is old. */
@@ -50,7 +53,8 @@ export type LobbyError =
   | "no_server"
   | "not_member"
   | "not_started"
-  | "already_in_lobby";
+  | "already_in_lobby"
+  | "bad_settings";
 
 export class LobbyFailure extends Error {
   readonly reason: LobbyError;
@@ -173,6 +177,7 @@ export class LobbyService {
       players: null,
       round: null,
       state: "open",
+      settings: null,
       match: null,
       createdAt: now,
       lastActiveAt: now,
@@ -285,16 +290,38 @@ export class LobbyService {
     if (lobby.members.length === 0) this.remove(lobby);
   }
 
-  /** The host starts the match: a game server is allocated and the lobby is closed to newcomers. */
-  start(id: string, userId: string): Lobby {
+  /**
+   * The host sets the rules of the night while the lobby waits: every member reads them on their next poll. Only the
+   * host, only before the start (they are fixed from then on), and only a value the game takes.
+   */
+  setSettings(id: string, userId: string, settings: unknown): Lobby {
     const lobby = this.get(id);
     if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
     if (lobby.state === "started") throw new LobbyFailure("already_started");
+    const chosen = parseSettings(settings);
+    if (chosen === null) throw new LobbyFailure("bad_settings");
+    lobby.settings = chosen;
+    lobby.lastActiveAt = this.now();
+    return lobby;
+  }
+
+  /**
+   * The host starts the match: a game server is allocated and the lobby is closed to newcomers. The rules are the
+   * ones sent with the start, else the ones the host set while waiting (`setSettings`), else the game's own.
+   */
+  start(id: string, userId: string, settings: unknown = undefined): Lobby {
+    const lobby = this.get(id);
+    if (lobby.hostId !== userId) throw new LobbyFailure("not_host");
+    if (lobby.state === "started") throw new LobbyFailure("already_started");
+    const given = settings !== undefined && settings !== null;
+    const chosen = given ? parseSettings(settings) : lobby.settings;
+    if (given && chosen === null) throw new LobbyFailure("bad_settings");
     const matchId = randomUUID();
     const server = this.hooks.allocate(matchId);
     if (!server) throw new LobbyFailure("no_server");
     const now = this.now();
     lobby.state = "started";
+    lobby.settings = chosen;
     lobby.startedAt = now;
     lobby.lastActiveAt = now;
     lobby.match = { id: matchId, server };

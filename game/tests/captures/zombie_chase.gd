@@ -13,8 +13,9 @@ const ROUTE: Array[Vector3] = [
 	Vector3(14, 0, -24),
 	Vector3(14, 0, -38),
 ]
-const LAMP_REACH := 6.0
 const BENCH_WARMUP_FRAMES := 120
+## Physics frames the map is given to answer before the crowd starts.
+const MAP_WAIT_FRAMES := 600
 const SHOOT_FROM_SECONDS := 8.0
 
 var _rules: GameRules
@@ -43,10 +44,16 @@ func _ready() -> void:
 	var region := NavigationRegion3D.new()
 	region.navigation_mesh = NavmeshBaker.bake(greybox)
 	var map := get_world_3d().navigation_map
-	var before := NavigationServer3D.map_get_iteration_id(map)
 	add_child(region)
-	# A new region reaches path queries after the map's second iteration.
-	while NavigationServer3D.map_get_iteration_id(map) < before + 2:
+	# The map answers once it finds a way between two spawn points (its iteration id is no sign of it:
+	# in the browser it stays at 1 while the map already answers, NightWorld._map_answers).
+	var spawns := greybox.get_node("Field/ZombieSpawns").get_children()
+	var from := (spawns[0] as Marker3D).global_position
+	var to := (spawns[1] as Marker3D).global_position
+	for _i in MAP_WAIT_FRAMES:
+		var way := NavigationServer3D.map_get_path(map, from, to, true)
+		if not way.is_empty() and way[way.size() - 1].distance_to(to) < NightWorld.NAV_REACHED:
+			break
 		await get_tree().physics_frame
 	_lamps = get_tree().get_nodes_in_group("powered_light")
 	_make_players()
@@ -96,6 +103,7 @@ func _make_zombies(greybox: Node) -> void:
 	_rules.apply(RulesAction.add_player(1))
 	_rules.apply(RulesAction.add_player(2))
 	var cap := ZombieTuning.shipped()
+	cap.hard_cap = int(_args.get("zombies", 40))
 	var sim := ZombieSim.new(cap, int(_args.get("seed", 5)))
 	sim.rounds = tuning.rounds
 	sim.pathing = NavmeshPathing.new(get_world_3d().navigation_map)
@@ -117,7 +125,7 @@ func _make_zombies(greybox: Node) -> void:
 func _crowd_tuning() -> RulesTuning:
 	var tuning: RulesTuning = load("res://gameplay/rules/default_tuning.tres").duplicate(true)
 	var rounds: RoundTuning = tuning.rounds
-	rounds.count_base = 120.0
+	rounds.count_base = maxf(120.0, float(_args.get("zombies", 40)) * 3.0)
 	rounds.alive_cap_start = float(_args.get("zombies", 40)) + 10.0
 	rounds.alive_cap_max = rounds.alive_cap_start
 	rounds.alive_cap_ceiling = int(rounds.alive_cap_start)
@@ -142,7 +150,7 @@ func _is_lit(point: Vector3) -> bool:
 			lamp.visible
 			and (
 				Vector2(point.x - lamp.global_position.x, point.z - lamp.global_position.z).length()
-				< LAMP_REACH
+				< LightTuning.current().lamp_reach
 			)
 		):
 			return true

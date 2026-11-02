@@ -141,14 +141,17 @@ what happens underneath:
    `POST /internal/matches/:id/end`. `capacity` (rooms a process takes, `ROOM_CAPACITY`, 4) is what it reports in the
    heartbeat; a fifth match is refused `FULL` and the backend does not give it a ticket (`no_server`) once the
    heartbeats are full. A night costs about 2.6 ms of a 16 ms step with three players, so four rooms use about two
-   thirds of one core.
+   thirds of one core. That is at 15 zombies: at 120 alive a night costs 7 ms of the step on the
+   Railway processor and at 40 about 3 ms ([crowd budget](crowd-budget.md#desktop-and-game-server-100-and-more-alive-453-156)),
+   and the rooms of a process share one tick, so `MAX_ALIVE` (the most alive in any night of the process; a room with a
+   browser in it stands 40 whatever it says) and `ROOM_CAPACITY` are sized together.
 
 Environment of the services (names only; the secrets are Railway variables, never in the repository):
 
 | Service | Variables |
 | --- | --- |
 | `backend` | `SESSION_SECRET`, `TICKET_SECRET`, `GAME_SERVER_SECRET` (all different, 32+ characters), `DATABASE_URL` (the Postgres reference), `DISCORD_MODE`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `GUEST_SIGN_IN=1`, `CORS_ORIGINS` |
-| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` |
+| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY`, optionally `MAX_ALIVE` |
 
 A path variable set from Git Bash on Windows is rewritten (`/server` became `C:/Program Files/Git/server`): set them with
 `MSYS_NO_PATHCONV=1` or from PowerShell.
@@ -275,6 +278,31 @@ only checks it is a `ws://` or `wss://` URL) and so receive players and their ti
 a ticket key per game server, derived as `HMAC(TICKET_SECRET, serverId)` so a server holds only its own and the
 backend signs with the target's, or Ed25519 tickets (the game server then holds only a public key, but Godot needs an
 extension for it). Neither is built; until then game servers are trusted and run only by us.
+
+## Match settings: the host's rules reach the room
+
+The host of a night chooses its rules (`MatchSettings`: zombie intensity, alive cap, break) and they travel with
+the ticket, so the game server needs no second channel:
+
+0. `PUT /lobbies/:id/settings` (the host only, while the lobby waits; the body is the three keys) keeps the rules on
+   the lobby as the host moves the panel of the lobby screen; every member reads them in `lobby.settings` on a poll.
+   `403 not_host`, `409 already_started` and `400 bad_settings` otherwise, and nothing changes.
+1. `POST /lobbies/:id/start` takes `{"settings": {"count_multiplier", "max_alive", "break_seconds"}}` from the
+   host (without it, the ones set while waiting; without those, today's game). The backend (`src/settings.ts`)
+   accepts exactly those three keys inside the game's bounds (0.25 to 5; a whole 0 to 120; 0 or 1 to 120) and answers
+   `400 bad_settings` otherwise, leaving the lobby open. They are fixed when the match starts; the lobby view shows
+   them.
+2. Every ticket of the match (`/lobbies/:id/ticket`) carries the same `settings` claim, signed with the rest.
+3. The game server's `TicketVerifier.admit` returns them as a `MatchSettings`; the ticket that opens the room gives
+   it to `NightHost.match_settings` before the night is built, and every WELCOME carries them from there. A ticket
+   whose rules the game cannot take (the two sides' bounds drifted) is refused as `ticket carries rules this server
+   does not take`, not played with other rules than the host asked for.
+
+`JSON.parse` gives every number as a float, so `max_alive` arrives as `12.0`: the verifier makes a whole one an int
+before `MatchSettings.from_dict` (strict) sees it. The first version of this change missed it and a ticket from the
+backend would have been refused; `tickets.json` now holds a ticket the backend signed with settings. What is not
+done: none. The lobby screen's panel is the host's way in (`LobbyScreen.rules`, `TogetherApi.set_settings`); a
+lobby reads its rules back with `MatchSettings.from_json`, which makes the whole float a whole number the same way.
 
 ## What is not decided or not proven
 

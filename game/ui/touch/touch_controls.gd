@@ -37,13 +37,6 @@ const MOVE_RIGHT := &"move_right"
 const MOVE_FORWARD := &"move_forward"
 const MOVE_BACK := &"move_back"
 const SPRINT := &"sprint"
-const SPRINT_ON := 0.95
-const SPRINT_OFF := 0.75
-const STICK_DEADZONE := 0.1
-## A press lasts at least this long, so a quick tap is still seen by the next physics tick.
-const MIN_HOLD := 0.09
-const INSET_PERIOD := 0.5
-const HAPTIC_MS := 12
 ## Captions on the buttons, and what the interact button says for each kind of prompt.
 const LABELS := {
 	TouchLayout.FIRE: "FIRE",
@@ -69,10 +62,9 @@ const DEFAULT_VERB := "USE"
 const AUTO_FIRE_SETTING := &"controls/touch_auto_fire"
 ## A finger that starts on one of these also looks while it drags, so one thumb can aim and shoot.
 const LOOKING_BUTTONS: Array[StringName] = [TouchLayout.FIRE, TouchLayout.AIM]
-## The engine's `velocity` of a finger is wrong for its first drags (the web runtime seeds it with
-## the jump from another position): it is trusted after this many.
-const VELOCITY_WARMUP_DRAGS := 3
 
+## The feel numbers (dead zone, sprint, hold, look): `touch_tuning_default.tres`.
+var tuning: TouchTuning = TouchLook.tuning
 ## The HUD state, for the interact button.
 var state: HudState
 ## False while a menu or the result is up: the layer hides and lets go of everything.
@@ -105,7 +97,7 @@ var _touches := {}
 var _pressed_at := {}
 var _release_at := {}
 var _clock := 0.0
-var _inset_clock := INSET_PERIOD
+var _inset_clock := INF
 var _stick_index := -1
 var _stick_origin := Vector2.ZERO
 var _stick_pos := Vector2.ZERO
@@ -217,7 +209,7 @@ func _process(delta: float) -> void:
 			_pressed_at.erase(action)
 			Input.action_release(action)
 	_inset_clock += delta
-	if _inset_clock >= INSET_PERIOD:
+	if _inset_clock >= tuning.inset_period:
 		_inset_clock = 0.0
 		_relayout()
 		_refresh_active()
@@ -312,7 +304,7 @@ func _touch_drag(index: int, point: Vector2, velocity: Vector2) -> void:
 
 
 func _trusted_velocity(touch: Dictionary, velocity: Vector2) -> Vector2:
-	return velocity if touch[&"drags"] > VELOCITY_WARMUP_DRAGS else Vector2.ZERO
+	return velocity if touch[&"drags"] > tuning.velocity_warmup_drags else Vector2.ZERO
 
 
 func _look(relative: Vector2, velocity: Vector2) -> void:
@@ -342,8 +334,8 @@ func _follow_stick() -> void:
 	var raw := offset / radius
 	var length := raw.length()
 	var vector := Vector2.ZERO
-	if length > STICK_DEADZONE:
-		vector = raw.normalized() * inverse_lerp(STICK_DEADZONE, 1.0, minf(length, 1.0))
+	if length > tuning.stick_deadzone:
+		vector = raw.normalized() * inverse_lerp(tuning.stick_deadzone, 1.0, minf(length, 1.0))
 	_set_stick(vector)
 
 
@@ -354,9 +346,9 @@ func _set_stick(vector: Vector2) -> void:
 	_axis(MOVE_BACK, maxf(vector.y, 0.0))
 	_axis(MOVE_FORWARD, maxf(-vector.y, 0.0))
 	var length := vector.length()
-	if length >= SPRINT_ON:
+	if length >= tuning.sprint_on:
 		_sprinting = true
-	elif length < SPRINT_OFF:
+	elif length < tuning.sprint_off:
 		_sprinting = false
 	if _sprinting:
 		Input.action_press(SPRINT)
@@ -392,7 +384,7 @@ func _press_button(id: StringName) -> void:
 func _release_button(id: StringName) -> void:
 	if id == TouchLayout.PAUSE or not _pressed_at.has(id):
 		return
-	var held_until: float = float(_pressed_at[id]) + MIN_HOLD
+	var held_until: float = float(_pressed_at[id]) + tuning.min_hold
 	if _clock >= held_until:
 		_pressed_at.erase(id)
 		Input.action_release(id)
@@ -432,7 +424,7 @@ func _buzz() -> void:
 	if service != null and service.has_method(&"get_value"):
 		if service.call(&"get_value", &"controls/haptics") == false:
 			return
-	Input.vibrate_handheld(HAPTIC_MS)
+	Input.vibrate_handheld(tuning.haptic_ms)
 
 
 func _verb_now() -> String:

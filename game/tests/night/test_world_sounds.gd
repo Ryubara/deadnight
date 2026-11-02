@@ -177,7 +177,7 @@ func test_the_crane_plays_its_moments_where_it_stands() -> void:
 		}
 	)
 	assert_array(_ids()).is_equal([&"crane_claw_lift"])
-	_run(WorldSounds.PRIZE_DING_DELAY + 0.1)
+	_run(NightSoundTuning.current().prize_ding_delay + 0.1)
 	assert_array(_ids()).is_equal([&"crane_claw_lift", &"crane_prize"])
 	_heard.clear()
 	_tell({"type": &"crane_prize_taken", "player_id": OWN, "spot": 1, "weapon": &"weapon_rifle"})
@@ -242,7 +242,7 @@ func test_the_tense_bed_fades_in_after_the_sting_and_out_when_the_round_ends() -
 			"boss_count": 0
 		}
 	)
-	_run(WorldSounds.BED_DELAY - 0.3)
+	_run(NightSoundTuning.current().bed_delay - 0.3)
 	assert_float(Audio.bed_fade_db(WorldSounds.BED)).is_equal(AudioService.BED_SILENT_DB)
 	_run(0.5)
 	_run(6.0)

@@ -10,13 +10,13 @@ extends Resource
 @export
 var spot_doors: Array[StringName] = [&"door_concession", &"door_concession", &"", &"door_yard"]
 ## Where the crane stands at the start of the night.
-@export var start_spot: int = 0
+@export_range(0, 20, 1, "or_greater") var start_spot: int = 0
 ## Seconds the claw digs and the prizes cycle above the glass before one is chosen.
-@export var spin_seconds: float = 4.5
+@export_range(0.5, 30.0, 0.5, "or_greater", "suffix:s") var spin_seconds: float = 4.5
 ## Seconds the chosen weapon floats for; only the buyer may take it, and it is lost after.
-@export var grab_seconds: float = 12.0
+@export_range(1.0, 60.0, 0.5, "or_greater", "suffix:s") var grab_seconds: float = 12.0
 ## Plays at one spot that cannot break down. The next one can.
-@export var safe_plays: int = 3
+@export_range(0, 20, 1, "or_greater") var safe_plays: int = 3
 ## The chance a play breaks the crane down, for the first play that can (the one after
 ## `safe_plays`), the second, and so on; the last entry repeats. Four at 15%, four at 30%, then 50%
 ## is the Mystery Box's table by uses since it moved.
@@ -24,9 +24,9 @@ var spot_doors: Array[StringName] = [&"door_concession", &"door_concession", &""
 	[0.15, 0.15, 0.15, 0.15, 0.3, 0.3, 0.3, 0.3, 0.5]
 )
 ## Seconds from the dud prize showing to the crane being gone (the power-down, then the hop).
-@export var breakdown_seconds: float = 4.0
+@export_range(0.5, 30.0, 0.5, "or_greater", "suffix:s") var breakdown_seconds: float = 4.0
 ## The share of the price a breakdown gives back.
-@export var refund_fraction: float = 1.0
+@export_range(0.0, 1.0, 0.05) var refund_fraction: float = 1.0
 
 
 func spot_count() -> int:

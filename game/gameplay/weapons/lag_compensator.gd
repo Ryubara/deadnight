@@ -17,6 +17,7 @@ extends RefCounted
 const DEFAULT_MAX_REWIND := 0.25
 ## History kept beyond the cap, so a rewind right at the cap still has a frame before it.
 const HISTORY_MARGIN := 0.1
+const PLACED_KEYS: Array[String] = ["pos", "yaw", "scale", "weak"]
 
 var max_rewind: float = DEFAULT_MAX_REWIND
 var _frames: Array[Dictionary] = []
@@ -32,18 +33,27 @@ func frame_count() -> int:
 
 ## Stores where the targets are at `time`. Times must not go backwards.
 func record(time: float, targets: Array) -> void:
-	var placed: Dictionary[int, Dictionary] = {}
+	var at: Dictionary[int, Dictionary] = {}
 	for target in targets:
-		placed[target["id"]] = {
-			"pos": target["pos"],
-			"yaw": target.get("yaw", 0.0),
-			"scale": target.get("scale", 1.0),
-			"weak": target.get("weak", false),
-		}
-	_frames.append({"time": time, "targets": placed})
+		at[target["id"]] = placed(target)
+	_frames.append({"time": time, "targets": at})
 	var oldest := time - max_rewind - HISTORY_MARGIN
 	while _frames.size() > 2 and _frames[1]["time"] < oldest:
 		_frames.pop_front()
+
+
+## A target as the history keeps it: `{"pos", "yaw", "scale", "weak"}` with the defaults filled in.
+## A target that has all four is kept as it is (nothing writes to one, and the server hands over a
+## new one for each zombie at every tick: copying each twice was most of the cost of the list).
+static func placed(target: Dictionary) -> Dictionary:
+	if target.has_all(PLACED_KEYS):
+		return target
+	return {
+		"pos": target["pos"],
+		"yaw": target.get("yaw", 0.0),
+		"scale": target.get("scale", 1.0),
+		"weak": target.get("weak", false),
+	}
 
 
 ## The targets as the shooter saw them at `view_time`, clamped to `[now - max_rewind, now]`.

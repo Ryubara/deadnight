@@ -9,13 +9,13 @@ extends Resource
 @export var weapons: Array[StringName] = [&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun"]
 ## Added to the item's price for each weapon the buyer has already re-cut, so the first is
 ## the bargain and a bench full of re-cut weapons is a rich player's.
-@export var price_step: int = 1500
+@export_range(0, 10000, 50, "or_greater", "suffix:pts") var price_step: int = 1500
 ## Damage of a hit (every pellet, the flare gun's blast too) is multiplied by this.
-@export var damage_multiplier: float = 1.75
+@export_range(0.1, 10.0, 0.05, "or_greater", "suffix:x") var damage_multiplier: float = 1.75
 ## The magazine and the most rounds a reserve holds are multiplied by these (rounded up), and the
 ## re-cut fills both.
-@export var magazine_multiplier: float = 1.5
-@export var reserve_multiplier: float = 1.5
+@export_range(0.1, 10.0, 0.05, "or_greater", "suffix:x") var magazine_multiplier: float = 1.5
+@export_range(0.1, 10.0, 0.05, "or_greater", "suffix:x") var reserve_multiplier: float = 1.5
 ## Put before the weapon's name once it is re-cut ("Re-Cut Revolver").
 @export var name_prefix: String = "Re-Cut "
 

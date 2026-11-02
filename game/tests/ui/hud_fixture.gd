@@ -121,7 +121,7 @@ func fill_worst_case() -> void:
 	for amount in [100, 60, 130, 60]:
 		hud.gains.add_gain(&"headshot_kill", amount)
 	hud.fuel.peek()
-	advance(HudBanner.IN_TIME + 0.1)
+	advance(HudTuning.current().banner_in + 0.1)
 
 
 ## The rules' `player_hurt` for the local player: a blow from `bearing`, `health` left of 100.

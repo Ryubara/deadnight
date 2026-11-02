@@ -5,6 +5,12 @@ extends Node3D
 
 ## How far under the ground a zombie starts, and rises from, in metres.
 const EMERGE_DEPTH := 1.4
+## A client of a server is sent an entry every second physics tick (30 Hz) and a view that jumped
+## to each one stood still every other tick: it walks to the entry over the ticks since the last
+## one instead. Past this many ticks since the last entry (a stall, a hidden tab) or this far away
+## (metres: a teleport, a new life) it is set down at once.
+const GLIDE_MAX_TICKS := 6
+const GLIDE_MAX_JUMP := 4.0
 
 var zombie_id: int = 0
 ## The look it is drawn in (`ZombieModels`).
@@ -33,6 +39,15 @@ var _speed_step: int = -1
 var _emerge_left: float = 0.0
 var _emerge_seconds: float = 0.7
 var _placed := false
+## The entry being walked to: where the view was, where it goes, the yaws, and the physics ticks
+## it has taken and will take (0 when it is not walking).
+var _glide_from := Vector3.ZERO
+var _glide_to := Vector3.ZERO
+var _glide_yaw_from := 0.0
+var _glide_yaw_to := 0.0
+var _glide_done := 0
+var _glide_total := 0
+var _last_entry_tick := -1
 
 
 ## `phase` (0 to 1) starts the walk part-way through its cycle so a crowd does not march in step.
@@ -58,6 +73,7 @@ func setup(
 	accumulated = phase * 1.3333  # the walk's length
 	visible = true
 	set_process(false)
+	set_physics_process(false)
 
 
 ## Takes the zombie off the lot and keeps its body for the next one of its look (`ZombieHorde` keeps
@@ -66,6 +82,9 @@ func park() -> void:
 	visible = false
 	tree.active = false
 	_tearing = false
+	_placed = false
+	_glide_total = 0
+	set_physics_process(false)
 
 
 ## The next life of a parked body: no mode, gait or clip yet, so the first entry starts them.
@@ -106,12 +125,7 @@ func dress(model_scene: PackedScene, p_look: StringName) -> void:
 
 ## Moves and animates from one decoded entry. `delta` is the time since the last entry.
 func apply(entry: Dictionary, delta: float) -> void:
-	position = entry["position"]
-	rotation.y = entry["yaw"]
-	if not _placed:
-		# The first entry is where it appears: drawn there, not slid in from the origin.
-		_placed = true
-		reset_physics_interpolation()
+	_move_to(entry["position"], entry["yaw"])
 	var mode: int = entry["mode"]
 	var tearing: bool = entry.get("tearing", false)
 	if tearing:
@@ -131,6 +145,48 @@ func apply(entry: Dictionary, delta: float) -> void:
 	_emerge_left = maxf(_emerge_left - delta, 0.0) if mode == ZombieBody.Mode.EMERGING else 0.0
 	if not _boss:
 		_model.position.y = -EMERGE_DEPTH * _emerge_left / _emerge_seconds
+
+
+## Sets the zombie down at `goal`, or when entries come every few physics ticks walks it there over
+## those ticks, so a 30 Hz snapshot moves it as evenly as a 60 Hz one (one entry behind).
+func _move_to(goal: Vector3, yaw: float) -> void:
+	var tick := Engine.get_physics_frames()
+	var gap := tick - _last_entry_tick
+	_last_entry_tick = tick
+	if not _placed:
+		# The first entry is where it appears: drawn there, not slid in from the origin.
+		_placed = true
+		position = goal
+		rotation.y = yaw
+		_glide_total = 0
+		reset_physics_interpolation()
+		return
+	if gap <= 1 or gap > GLIDE_MAX_TICKS or position.distance_to(goal) > GLIDE_MAX_JUMP:
+		position = goal
+		rotation.y = yaw
+		_glide_total = 0
+		set_physics_process(false)
+		return
+	_glide_from = position
+	_glide_to = goal
+	_glide_yaw_from = rotation.y
+	_glide_yaw_to = yaw
+	_glide_done = 0
+	_glide_total = gap
+	set_physics_process(true)
+
+
+func _physics_process(_delta: float) -> void:
+	if _glide_total == 0:
+		set_physics_process(false)
+		return
+	_glide_done += 1
+	var share := minf(float(_glide_done) / float(_glide_total), 1.0)
+	position = _glide_from.lerp(_glide_to, share)
+	rotation.y = lerp_angle(_glide_yaw_from, _glide_yaw_to, share)
+	if _glide_done >= _glide_total:
+		_glide_total = 0
+		set_physics_process(false)
 
 
 ## The gait for the speed it moves at: which clips are blended and how fast they are played, so

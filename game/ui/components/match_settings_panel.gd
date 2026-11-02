@@ -37,7 +37,8 @@ static func alive_text(max_alive: int) -> String:
 func _init() -> void:
 	var tuning := (load(GameRules.DEFAULT_TUNING_PATH) as RulesTuning).rounds
 	_standard_break = tuning.break_seconds
-	_alive_ceiling = tuning.alive_cap_ceiling
+	# The host's own platform: a browser host offers the browser's crowd, a desktop host the desktop's.
+	_alive_ceiling = tuning.ceiling_for(OS.has_feature("web"))
 	var tokens := UITokens.active()
 	add_theme_constant_override(&"separation", tokens.space_md)
 	count_row = _row("Zombie intensity", "More of the dead, and faster.")

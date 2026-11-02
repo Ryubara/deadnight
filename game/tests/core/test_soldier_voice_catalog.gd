@@ -65,7 +65,11 @@ func test_no_file_in_the_folder_is_left_out_of_the_catalog() -> void:
 		files += 1
 		var parts := file.trim_suffix(".ogg").rsplit("_", true, 1)
 		var event := StringName(parts[0])
-		assert_bool(SoldierVoiceCatalog.EVENTS.has(event)).override_failure_message(file).is_true()
+		(
+			assert_bool(SoldierVoiceCatalog.moments().has(event))
+			. override_failure_message(file)
+			. is_true()
+		)
 		assert_int(int(parts[1])).override_failure_message(file).is_between(
 			1, SoldierVoiceCatalog.takes_of(event)
 		)
@@ -80,7 +84,7 @@ func test_the_takes_are_voice_bus_sounds_ranked_by_their_moment() -> void:
 		var def := SoundCatalog.get_def(SoldierVoiceCatalog.take_id(event, 1))
 		assert_str(def.bus).is_equal(SoldierVoiceCatalog.BUS)
 		assert_str(def.group).is_equal(SoldierVoiceCatalog.GROUP)
-		assert_int(def.priority).is_equal(SoldierVoiceCatalog.EVENTS[event]["priority"])
+		assert_int(def.priority).is_equal(SoldierVoiceCatalog.moments()[event]["priority"])
 		assert_float(def.pitch_semitones).is_equal(0.0)
 	assert_bool(SoundCatalog.group_limits().has(SoldierVoiceCatalog.GROUP)).is_true()
 
@@ -160,7 +164,7 @@ func test_no_take_is_a_speech_and_the_commonest_calls_are_short() -> void:
 func test_the_moments_the_issue_names_all_have_lines() -> void:
 	for event in MOMENTS:
 		(
-			assert_bool(SoldierVoiceCatalog.EVENTS.has(event))
+			assert_bool(SoldierVoiceCatalog.moments().has(event))
 			. override_failure_message(String(event))
 			. is_true()
 		)

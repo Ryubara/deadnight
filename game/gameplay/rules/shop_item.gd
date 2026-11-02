@@ -14,17 +14,17 @@ const MIN_FUEL_SPACE := 1.0
 @export var id: StringName = &""
 @export var kind: Kind = Kind.DOOR
 ## Points at round 1.
-@export var price: int = 100
+@export_range(0, 10000, 5, "or_greater", "suffix:pts") var price: int = 100
 ## Points added to the price for each round after the first.
-@export var price_per_round: int = 0
+@export_range(0, 1000, 5, "or_greater", "suffix:pts") var price_per_round: int = 0
 ## FUEL: units one purchase adds to the tank. GRENADES: grenades one purchase adds. AMMO: rounds
 ## one purchase adds to the weapon's reserve (a partial purchase pays a part price).
-@export var amount: float = 0.0
+@export_range(0.0, 1000.0, 1.0, "or_greater") var amount: float = 0.0
 ## AMMO: the weapon (a `WeaponCatalog` id, `rifle`) whose reserve the purchase fills.
 @export var weapon: StringName = &""
 ## TONIC: health added to the buyer's most (and to their health now), so a perk can make a player
 ## harder to kill. 0 is a tonic with no effect on health.
-@export var health_bonus: float = 0.0
+@export_range(0.0, 1000.0, 1.0, "or_greater", "suffix:hp") var health_bonus: float = 0.0
 ## DOOR: another door that must be open first (the lot opens outward).
 @export var requires: StringName = &""
 ## CRANE: the weapons a play can give, with one weight each.

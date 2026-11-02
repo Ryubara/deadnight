@@ -67,7 +67,7 @@ func test_a_drag_on_the_right_looks_in_proportion_to_the_screen_height() -> void
 	assert_float(looks[0].y).is_equal(0.0)
 	assert_float(looks[1].y).is_greater(0.0)
 	# 100 units of a 1080 tall canvas, at 3.2 rad per height, in mouse pixels.
-	var turn := TouchLook.RADIANS_PER_HEIGHT * 100.0 / 1080.0
+	var turn := TouchLook.tuning.radians_per_height * 100.0 / 1080.0
 	assert_float(looks[0].x).is_equal_approx(turn / TouchLook.mouse_radians_per_pixel, 0.01)
 	await _fixture.lift(0)
 
@@ -75,7 +75,7 @@ func test_a_drag_on_the_right_looks_in_proportion_to_the_screen_height() -> void
 func test_a_fast_flick_turns_further_than_a_slow_drag() -> void:
 	var slow := TouchLook.mouse_equivalent(Vector2(100.0, 0.0), 200.0, 1080.0)
 	var fast := TouchLook.mouse_equivalent(Vector2(100.0, 0.0), 3000.0, 1080.0)
-	assert_float(fast.x / slow.x).is_equal_approx(TouchLook.MAX_GAIN, 0.001)
+	assert_float(fast.x / slow.x).is_equal_approx(TouchLook.tuning.max_gain, 0.001)
 
 
 func test_the_same_swipe_turns_the_same_on_any_screen_height() -> void:

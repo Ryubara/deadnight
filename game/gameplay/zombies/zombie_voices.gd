@@ -6,9 +6,9 @@ extends RefCounted
 ## are `SoundCatalog`'s, and the design is `docs/design/audio.md`.
 ##
 ## - **Idle voices** are rationed: each zombie has its own random timer, and the whole horde shares
-##   one gate, so at most one starts every `IDLE_GAP` seconds however many are due at once, chosen
+##   one gate, so at most one starts every `idle_gap_min` s however many are due at once, chosen
 ##   from the nearest few. (The service's `zombie_voice` group is the second guard: six voices.)
-## - **Noticed**: a zombie that is chasing and first comes within `ALERT_RANGE` metres snarls once
+## - **Noticed**: a zombie that is chasing and first comes within `alert_range` metres snarls once
 ##   (a runner shrieks). A snapshot carries no target, so this is the closest a client can get to
 ##   "it picked you".
 ## - **Swings**: the effort sound is started `windup - lead` seconds after the swing begins, so its
@@ -20,25 +20,6 @@ extends RefCounted
 ## Time is the caller's: `update(entries, delta)` moves the clock, so tests and replays do not
 ## depend on real time.
 
-## Metres within which a chasing zombie that has not yet snarled does so.
-const ALERT_RANGE := 22.0
-## Metres within which idle voices are considered, and feet are started.
-const IDLE_RANGE := 36.0
-const STEP_RANGE := 28.0
-## Seconds the horde waits between one idle voice and the next (min, max).
-const IDLE_GAP := Vector2(0.6, 1.6)
-## Seconds a zombie waits between its own idle voices (min, max).
-const IDLE_SELF := Vector2(5.0, 11.0)
-## An idle voice is picked at random among this many of the nearest zombies that are due.
-const IDLE_POOL := 3
-## No two snarls closer than this, so a pack coming into range is not one wall of sound.
-const ALERT_GAP := 0.35
-## A zombie's hurt voice is not repeated sooner than this.
-const HURT_GAP := 0.4
-## Seconds between a repeated swing's grunts while it keeps swinging (at a board).
-const SWING_REPEAT := 1.2
-## The headliner's fall is the roar, this much quieter than its entrance.
-const BOSS_DEATH_DB := -8.0
 ## Seconds a blow takes to land for a look with no telegraph (`ZombieTuning.windup_seconds`).
 const DEFAULT_WINDUP := 0.45
 
@@ -47,6 +28,7 @@ var windups: Dictionary[StringName, float] = {}
 ## How many times each sound was asked for (the service may drop it); tests and captures read it.
 var requested := {}
 
+var _t := NightSoundTuning.current()
 var _audio: AudioService
 var _rng := RandomNumberGenerator.new()
 var _now := 0.0
@@ -103,7 +85,7 @@ func on_event(event: Dictionary) -> void:
 	var state: ZState = _states.get(event["zombie_id"])
 	if state == null or state.mode == ZombieBody.Mode.DYING:
 		return
-	if float(event.get("health", 1.0)) <= 0.0 or _now - state.last_hurt < HURT_GAP:
+	if float(event.get("health", 1.0)) <= 0.0 or _now - state.last_hurt < _t.hurt_gap:
 		return
 	state.last_hurt = _now
 	_say(state, ZombieVoiceTable.get_role(state.look, "hurt"))
@@ -125,7 +107,7 @@ func _arrive(entry: Dictionary) -> ZState:
 	state.look = entry["look"]
 	state.position = entry["position"]
 	state.clip_phase = fposmod(float(state.id) * 0.618034, 1.0)
-	state.next_idle = _now + _rng.randf_range(IDLE_SELF.x * 0.3, IDLE_SELF.y)
+	state.next_idle = _now + _rng.randf_range(_t.idle_self_min * 0.3, _t.idle_self_max)
 	state.mode = entry["mode"]
 	state.episode = entry["episode"]
 	_states[state.id] = state
@@ -151,14 +133,14 @@ func _follow(state: ZState, entry: Dictionary, delta: float, listen: Vector3) ->
 			if changed or swung or state.swing_repeat_left <= 0.0:
 				_swing(state)
 		ZombieBody.Mode.STAGGER:
-			if changed and _now - state.last_hurt >= HURT_GAP:
+			if changed and _now - state.last_hurt >= _t.hurt_gap:
 				state.last_hurt = _now
 				_say(state, ZombieVoiceTable.get_role(state.look, "hurt"))
 		ZombieBody.Mode.DYING:
 			if changed:
 				_die(state)
 		ZombieBody.Mode.CHASE:
-			if not state.alerted and distance <= ALERT_RANGE:
+			if not state.alerted and distance <= _t.alert_range:
 				_notice(state)
 			_walk(state, delta, distance)
 	if mode != ZombieBody.Mode.ATTACK:
@@ -173,12 +155,12 @@ func _notice(state: ZState) -> void:
 	if _now < _alert_gate:
 		return
 	state.alerted = true
-	_alert_gate = _now + ALERT_GAP
+	_alert_gate = _now + _t.alert_gap
 	_say(state, cue)
 
 
 func _swing(state: ZState) -> void:
-	state.swing_repeat_left = SWING_REPEAT
+	state.swing_repeat_left = _t.swing_repeat
 	var windup: float = windups.get(state.look, DEFAULT_WINDUP)
 	var lead: float = ZombieVoiceTable.get_role(state.look, "swing_lead")
 	(
@@ -195,7 +177,7 @@ func _swing(state: ZState) -> void:
 
 func _die(state: ZState) -> void:
 	if ZombieModels.is_boss(state.look):
-		_play(&"zombie_roar", _mouth(state), BOSS_DEATH_DB)
+		_play(&"zombie_roar", _mouth(state), _t.boss_death_db)
 	else:
 		_say(state, ZombieVoiceTable.get_role(state.look, "death"))
 
@@ -207,7 +189,7 @@ func _walk(state: ZState, delta: float, distance: float) -> void:
 	var cycle := ZombieVoiceTable.cycle_seconds(state.look, state.speed)
 	var before := floorf(state.clip_phase * 2.0)
 	state.clip_phase += delta / cycle
-	if floorf(state.clip_phase * 2.0) == before or distance > STEP_RANGE:
+	if floorf(state.clip_phase * 2.0) == before or distance > _t.step_range:
 		return
 	_play(ZombieVoiceTable.step_sound(state.look, state.speed), state.position)
 
@@ -232,7 +214,7 @@ func _idle(listen: Vector3) -> void:
 	for state: ZState in _states.values():
 		if state.mode != ZombieBody.Mode.CHASE or _now < state.next_idle:
 			continue
-		if listen.distance_to(state.position) <= IDLE_RANGE:
+		if listen.distance_to(state.position) <= _t.idle_range:
 			due.append(state)
 	if due.is_empty():
 		return
@@ -240,11 +222,11 @@ func _idle(listen: Vector3) -> void:
 		func(a: ZState, b: ZState) -> bool:
 			return listen.distance_squared_to(a.position) < listen.distance_squared_to(b.position)
 	)
-	var chosen := due[_rng.randi_range(0, mini(due.size(), IDLE_POOL) - 1)]
+	var chosen := due[_rng.randi_range(0, mini(due.size(), _t.idle_pool) - 1)]
 	var sounds: Array = ZombieVoiceTable.get_role(chosen.look, "idle")
 	_say(chosen, sounds[_rng.randi_range(0, sounds.size() - 1)])
-	chosen.next_idle = _now + _rng.randf_range(IDLE_SELF.x, IDLE_SELF.y)
-	_idle_gate = _now + _rng.randf_range(IDLE_GAP.x, IDLE_GAP.y)
+	chosen.next_idle = _now + _rng.randf_range(_t.idle_self_min, _t.idle_self_max)
+	_idle_gate = _now + _rng.randf_range(_t.idle_gap_min, _t.idle_gap_max)
 
 
 ## A voice at the zombie's mouth; the headliner's cues go through the boss group's table entries.

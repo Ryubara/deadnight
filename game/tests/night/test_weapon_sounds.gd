@@ -68,7 +68,8 @@ func test_every_firearm_shot_is_a_report_and_a_late_tail() -> void:
 		_sounds.schedule.advance(0.2)
 		assert_array(_ids()).contains([StringName("tail_%s" % weapon)])
 		assert_float(_heard[-1]["t"] - start).is_between(
-			WeaponSounds.TAIL_DELAY, WeaponSounds.TAIL_DELAY + WeaponSounds.TAIL_SPREAD + 0.001
+			NightSoundTuning.current().tail_delay,
+			NightSoundTuning.current().tail_delay + NightSoundTuning.current().tail_spread + 0.001
 		)
 
 
@@ -198,7 +199,7 @@ func test_a_shotgun_blast_into_a_wall_ricochets_at_most_a_few_times() -> void:
 	_tell(_shot(&"shotgun", ends))
 	_sounds.schedule.advance(0.0)
 	var world := _heard.filter(func(h: Dictionary) -> bool: return h["id"] == &"impact_world")
-	assert_int(world.size()).is_equal(WeaponSounds.MAX_WORLD_IMPACTS)
+	assert_int(world.size()).is_equal(NightSoundTuning.current().max_world_impacts)
 
 
 func test_a_melee_blow_is_not_an_impact_of_ours() -> void:

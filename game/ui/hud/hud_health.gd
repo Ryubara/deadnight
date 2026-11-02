@@ -10,7 +10,6 @@ const TRACKING := 1.0
 const BAR_HEIGHT := 20.0
 const TICKS := 10
 const TICK_GAP := 4.0
-const LOW_FRACTION := 0.33
 const WIDTH := HudStyle.COLUMN
 ## Room kept at the end of the weapon's name.
 const JOIN_SLACK := 6.0
@@ -29,6 +28,7 @@ var hint_text: String:
 	get:
 		return _hint.text
 
+var _t := HudTuning.current()
 var _label := HudStyle.clip(
 	HudStyle.label("HEALTH", HudStyle.SMALL, tokens.accent, false, TRACKING)
 )
@@ -79,7 +79,7 @@ func refresh() -> void:
 		&"font_color", tokens.ink if state.grenades > 0 else tokens.ink_disabled
 	)
 	_equipment.visible = not shown_downed
-	var warned := shown_downed or fraction() <= LOW_FRACTION
+	var warned := shown_downed or fraction() <= _t.health_low_fraction
 	accent = tokens.danger if shown_downed else (tokens.hot if warned else tokens.accent)
 	_bar.queue_redraw()
 	queue_redraw()
@@ -121,7 +121,7 @@ func fraction() -> float:
 
 
 func _draw_bar() -> void:
-	var colour := tokens.hot if fraction() <= LOW_FRACTION else tokens.accent_bright
+	var colour := tokens.hot if fraction() <= _t.health_low_fraction else tokens.accent_bright
 	var tick := (_bar_width() + TICK_GAP) / TICKS
 	for i in TICKS:
 		var filled := clampf(fraction() * TICKS - i, 0.0, 1.0)

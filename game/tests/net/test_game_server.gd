@@ -61,16 +61,16 @@ func _url() -> String:
 	return "ws://127.0.0.1:%d" % _server.listener.port()
 
 
-func _ticket(match_id: String, user: String, name := "Tester") -> String:
-	return TicketMaker.make(SECRET, SERVER_ID, match_id, user, name)
+func _ticket(match_id: String, user: String, name := "Tester", settings := {}) -> String:
+	return TicketMaker.make(SECRET, SERVER_ID, match_id, user, name, 60, settings)
 
 
 ## A hand-driven client with a ticket (MANUAL): it sends `_commands[night]` every tick.
-func _client(match_id: String, user: String, name := "Tester") -> Night:
+func _client(match_id: String, user: String, name := "Tester", settings := {}) -> Night:
 	var night := Night.new()
 	_world().add_child(night)
 	var link := WebSocketLink.new()
-	link.ticket = _ticket(match_id, user, name)
+	link.ticket = _ticket(match_id, user, name, settings)
 	var joined := await night.start_remote(_url(), Night.Mode.MANUAL, 60.0, link)
 	assert_bool(joined).is_true()
 	_nights.append(night)
@@ -167,6 +167,39 @@ func test_a_ticket_that_is_not_good_is_turned_away() -> void:
 	assert_int((first["packet"] as PackedByteArray)[0]).is_equal(NetWire.Type.WELCOME)
 	var again := await _hello(good)
 	assert_int((again["packet"] as PackedByteArray)[0]).is_equal(NetWire.Type.REFUSED)
+
+
+func test_the_rules_the_host_chose_ride_the_ticket_into_the_room_and_every_welcome() -> void:
+	await _start()
+	var chosen := {"count_multiplier": 3.0, "max_alive": 9, "break_seconds": 11.0}
+	# The first ticket of the match opens the room with the host's rules; the JSON the backend signs
+	# gives numbers as floats, and a whole one still fits `max_alive`.
+	var ann := await _client("rules-a", "ann", "Tester", chosen)
+	var room := _server.room_of_match("rules-a")
+	assert_dict(room.server.rules.settings.to_dict()).is_equal(chosen)
+	assert_dict(ann.match_settings.to_dict()).is_equal(chosen)
+	# A friend's ticket carries the same rules (and even one without them changes nothing): the
+	# WELCOME reads what the room has.
+	var bo := await _client("rules-a", "bo")
+	assert_dict(bo.match_settings.to_dict()).is_equal(chosen)
+	# Another match on the same server has its own rules: none chosen is today's game.
+	var cy := await _client("rules-b", "cy")
+	assert_bool(cy.match_settings.is_default()).is_true()
+	assert_bool(_server.room_of_match("rules-b").server.rules.settings.is_default()).is_true()
+
+
+func test_a_ticket_with_rules_out_of_bounds_is_turned_away_and_no_room_opens() -> void:
+	await _start()
+	for settings in [
+		{"count_multiplier": 9.0, "max_alive": 9, "break_seconds": 11.0},
+		{"count_multiplier": 2.0, "max_alive": 9},
+		{"count_multiplier": 2.0, "max_alive": 3.5, "break_seconds": 0.0},
+	]:
+		var answer := await _hello(_ticket("bad-rules", "ann", "Ann", settings))
+		var packet: PackedByteArray = answer["packet"]
+		assert_int(packet[0]).is_equal(NetWire.Type.REFUSED)
+		assert_int(packet[1]).is_equal(NetWire.Refusal.DENIED)
+	assert_array(_server.match_ids()).is_empty()
 
 
 func test_every_client_shows_the_same_names_and_a_duplicate_gets_a_number() -> void:
@@ -266,6 +299,7 @@ func test_the_server_is_set_up_from_its_environment() -> void:
 		"RAILWAY_SERVICE_ID": "abcdef0123456789",
 		"RAILWAY_PUBLIC_DOMAIN": "gs.example.app",
 		"ROOM_CAPACITY": "6",
+		"MAX_ALIVE": "60",
 	}
 	var config := ServerConfig.from_environment(
 		func(key: String) -> String: return env.get(key, "")
@@ -276,6 +310,11 @@ func test_the_server_is_set_up_from_its_environment() -> void:
 	assert_str(config.public_url).is_equal("wss://gs.example.app")
 	assert_str(config.activity_path).is_equal("/server")
 	assert_int(config.capacity).is_equal(6)
+	assert_int(config.max_alive).is_equal(60)
+	# Unset, or not a number, is no cap.
+	env["MAX_ALIVE"] = "lots"
+	var unset := ServerConfig.from_environment(func(key: String) -> String: return env.get(key, ""))
+	assert_int(unset.max_alive).is_equal(0)
 	var alone := ServerConfig.from_environment(func(_key: String) -> String: return "")
 	assert_bool(alone.uses_backend()).is_false()
 	assert_str(alone.problem()).is_equal("")

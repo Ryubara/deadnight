@@ -57,22 +57,22 @@ const SHIPPED_PATH := "res://gameplay/night/night_tuning_default.tres"
 
 @export_group("Revive")
 ## Metres (on the ground) between two players that one can raise the other from.
-@export var revive_reach: float = 2.0
+@export_range(0.5, 10.0, 0.1, "or_greater", "suffix:m") var revive_reach: float = 2.0
 
 @export_group("Aim")
 ## A shot whose direction differs from where the shooter's view points (`motion.yaw` and `pitch`)
 ## by more than this many degrees is refused: a person's shot follows the camera, so only a client
 ## that shoots one way and looks another is turned away.
-@export var aim_slack_degrees: float = 10.0
+@export_range(0.0, 90.0, 0.5, "or_greater", "suffix:deg") var aim_slack_degrees: float = 10.0
 
 @export_group("Pings")
 ## Metres from the player that a place can be marked.
-@export var ping_range: float = 70.0
+@export_range(1.0, 300.0, 1.0, "or_greater", "suffix:m") var ping_range: float = 70.0
 ## Metres from a marked ammunition spot that counts as the spot.
-@export var ping_snap: float = 4.0
+@export_range(0.0, 30.0, 0.5, "or_greater", "suffix:m") var ping_snap: float = 4.0
 ## Seconds a mark stays up, and seconds before the same player can place another.
-@export var ping_seconds: float = 20.0
-@export var ping_gap: float = 1.0
+@export_range(1.0, 120.0, 1.0, "or_greater", "suffix:s") var ping_seconds: float = 20.0
+@export_range(0.0, 10.0, 0.1, "or_greater", "suffix:s") var ping_gap: float = 1.0
 
 @export_group("Spectator camera")
 ## Where the bot's camera hangs, relative to the bot (metres): above and behind it, so a recording

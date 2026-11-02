@@ -17,21 +17,8 @@ extends Node3D
 ## - **The pace** decides the level (`level_db`): a sprint is louder, a crouch much quieter, from
 ##   the ground speed (a remote player's crouch is read from their slow pace).
 
-## The pace the levels are measured from (m/s): `PlayerTuning.run_speed`.
-const RUN_SPEED := 4.8
-## dB of level per decade of speed: 25 makes a sprint (7 m/s) 4 dB up and a crouched run
-## (2.4 m/s) 7.5 down, the span a real foot spans between creeping and running.
-const DB_PER_DECADE := 25.0
-const LEVEL_MIN_DB := -18.0
-const LEVEL_MAX_DB := 5.0
-## Extra dB while the body says it is crouched (the pace already took 7.5).
-const CROUCH_EXTRA_DB := -4.0
-## Each step's level wanders by up to this much (dB) so a row of steps is not a row of equal ones.
-const LEVEL_JITTER_DB := 1.5
 ## Lifts the sound off the ground a little, so a ray from the listener to it is not under the floor.
 const FOOT_LIFT := Vector3(0.0, 0.1, 0.0)
-## Metres of ground per step for a player seen in frames.
-const STEP_DISTANCE := 1.9
 const OWN_PREFIX := "step_own_"
 const OTHER_PREFIX := "step_"
 
@@ -44,6 +31,7 @@ var surface_probe := Callable()
 ## How many steps each player's feet made here (tests and captures read it).
 var counts: Dictionary[int, int] = {}
 
+var _t := NightSoundTuning.current()
 var _state: ClientState
 var _bodies: Callable
 var _rng := RandomNumberGenerator.new()
@@ -64,12 +52,13 @@ func setup(state: ClientState, bodies: Callable, seed_value := 1) -> void:
 
 ## The level of a step at `speed` m/s, in dB from a walk at the run pace.
 static func level_db(speed: float, sprinting: bool, crouching: bool) -> float:
-	var db := DB_PER_DECADE * log(maxf(speed, 0.1) / RUN_SPEED) / log(10.0)
+	var t := NightSoundTuning.current()
+	var db := t.step_db_per_decade * log(maxf(speed, 0.1) / t.step_pace) / log(10.0)
 	if sprinting:
-		db = maxf(db, DB_PER_DECADE * log(7.0 / RUN_SPEED) / log(10.0))
+		db = maxf(db, t.step_db_per_decade * log(t.step_sprint_pace / t.step_pace) / log(10.0))
 	if crouching:
-		db += CROUCH_EXTRA_DB
-	return clampf(db, LEVEL_MIN_DB, LEVEL_MAX_DB)
+		db += t.step_crouch_db
+	return clampf(db, t.step_min_db, t.step_max_db)
 
 
 ## The sound for `surface`: the player's own set or the others'.
@@ -88,7 +77,7 @@ func _on_event(event: Dictionary) -> void:
 			continue
 		var stride: FootStride = _strides.get(id)
 		if stride == null:
-			stride = FootStride.new(STEP_DISTANCE)
+			stride = FootStride.new(_t.remote_step_distance)
 			_strides[id] = stride
 		var entry: Dictionary = players[id]
 		var feet := stride.advance(
@@ -119,7 +108,8 @@ func _step(id: int, feet: Vector3, speed: float, sprinting: bool, crouching: boo
 	var own := id == _state.player_id
 	var sound := sound_for(_surface_at(feet), own)
 	var extra := (
-		level_db(speed, sprinting, crouching) + _rng.randf_range(-LEVEL_JITTER_DB, LEVEL_JITTER_DB)
+		level_db(speed, sprinting, crouching)
+		+ _rng.randf_range(-_t.step_jitter_db, _t.step_jitter_db)
 	)
 	var at: Variant = null if own else feet + FOOT_LIFT
 	if play.is_valid():

@@ -32,6 +32,8 @@ const REFUSAL_GRACE := 1.0
 
 var port := NetWire.DEFAULT_PORT
 var capacity := DEFAULT_CAPACITY
+## The most zombies alive at once in a night here (`ServerConfig.max_alive`); 0 is the rules' own.
+var max_alive := 0
 var log_enabled := true
 var rules_tuning: RulesTuning
 ## The seed of every room's dice; -1 draws one for each.
@@ -69,6 +71,7 @@ static func make(config: ServerConfig, p_port: int, p_seed: int = -1) -> GameSer
 	server.port = p_port
 	server.seed_value = p_seed
 	server.capacity = config.capacity
+	server.max_alive = config.max_alive
 	server.server_id = config.server_id
 	server.public_url = config.public_url
 	server.activity_path = config.activity_path
@@ -211,7 +214,7 @@ func _route(transport_id: int, pending: Pending, data: PackedByteArray) -> void:
 			pending.routing = false
 			_refuse(transport_id, pending, NetWire.Refusal.FULL, "ROOMS")
 			return
-		room = await _open_room(match_id)
+		room = await _open_room(match_id, admitted.get("settings"))
 	if not _pending.has(transport_id):
 		return
 	_hand_over(transport_id, room, admitted["user"], admitted["name"], data)
@@ -237,8 +240,10 @@ func _refuse(transport_id: int, pending: Pending, reason: NetWire.Refusal, why: 
 # --- Rooms ---
 
 
-## Builds the night of a match (once: a second ticket of the same match waits for the first).
-func _open_room(match_id: String) -> NightHost:
+## Builds the night of a match (once: a second ticket of the same match waits for the first). The
+## first ticket's `settings` (the host's rules, null for the usual ones) are the room's: every
+## ticket of a match carries the same.
+func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	if _rooms.has(match_id):
 		return _rooms[match_id]
 	if _building.has(match_id):
@@ -259,6 +264,9 @@ func _open_room(match_id: String) -> NightHost:
 	room.log_enabled = log_enabled
 	room.seed_value = seed_value
 	room.rules_tuning = rules_tuning
+	if settings != null:
+		room.match_settings = settings
+	room.max_alive = max_alive
 	room.emptied.connect(func() -> void: _end_room(match_id))
 	viewport.add_child(room)
 	await room.built

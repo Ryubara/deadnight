@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="HudTuning" format=3]
+
+[ext_resource type="Script" path="res://ui/hud/hud_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+banner_in = 0.35
+banner_hold = 2.4
+banner_out = 0.5
+banner_pop_from = 0.92
+fuel_in = 0.3
+fuel_hold = 4.0
+fuel_out = 0.5
+feed_life = 4.5
+feed_fade = 0.6
+gains_life = 2.4
+gains_fade = 0.5
+gains_merge_window = 0.7
+hit_marker_life = 0.22
+hit_number_life = 0.9
+hit_number_rise = 33.0
+damage_arc_life = 1.3
+damage_low_fraction = 0.33
+damage_pulse_rate = 4.0
+health_low_fraction = 0.33
+ammo_low_fraction = 0.25
+boss_bar_low_fraction = 0.25
+prompt_denied_seconds = 1.8
+ping_good_ms = 80
+ping_fair_ms = 160
+challenge_in = 0.25
+challenge_out = 0.4
+challenge_hold = 2.4
+challenge_hold_complete = 3.2
+challenge_hold_busy = 1.6
+challenge_gap = 0.3
+challenge_stale = 20.0
