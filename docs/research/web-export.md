@@ -176,9 +176,16 @@ Until the secret exists the `deploy` job warns "Not deployed" and stops; it neve
 ### Running it locally
 
 ```sh
-bash deploy/web/deploy.sh path/to/build/web <commit> <stage folder>   # needs RAILWAY_TOKEN, or `railway link` in the shell
+bash deploy/web/deploy.sh [--force-branch] path/to/build/web <commit> <stage folder>   # needs RAILWAY_TOKEN, or `railway link` in the shell
 docker build -t deadnight-web <stage folder> && docker run --rm -e PORT=8080 -p 8080:8080 deadnight-web
 ```
+
+`deploy.sh` puts the real branch and short sha in the Railway message (`main 1a2b3c4`, `net-x 1a2b3c4`, `detached 1a2b3c4`:
+read `meta.cliMessage` in `railway deployment list --service web --json` to know which commit is live) and refuses to
+send any branch but `main` to the shared `web` service, with one line saying why, unless `--force-branch` is given; a
+forced deploy still names its branch. The branch is `$DEPLOY_BRANCH`, else CI's `$GITHUB_REF_NAME`, else the checkout's
+own, so the CI deploy of main is unchanged. `bash deploy/web/test_deploy.sh` tests this without Railway
+(`DEPLOY_DRY_RUN=1`); the `conventions` job runs it.
 
 The smoke run takes the URL in place of a folder: `uv run --with playwright==1.64.1 python tools/web_smoke/smoke.py
 https://web-production-f401d1.up.railway.app/index.html build/smoke-live`.

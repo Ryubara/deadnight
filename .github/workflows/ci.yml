@@ -52,6 +52,8 @@ jobs:
       - run: uv run --with pyyaml python .github/scripts/groundwork.py validate
       - run: uv run --with pyyaml python .github/scripts/groundwork.py render --check
       - run: uv run --with pyyaml python .github/scripts/groundwork.py check-files
+      - name: The web deploy script refuses a branch other than main
+        run: bash deploy/web/test_deploy.sh
       - name: Which parts of the repository the change touches
         id: scope
         env:
