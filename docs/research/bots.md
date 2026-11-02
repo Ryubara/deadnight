@@ -380,7 +380,7 @@ things", so the set is small and each ping has one meaning.
   either of two tied routes (0.75 m apart, in about a run in four). So the replay test seats bots that stand and fight
   (`retreat_margin = 0`) on the open field, compares the rules' state (the round, the dead left, each player's place in
   quarter metres, health, ammunition, points, kills) and leaves the dead's places out, and checks that a fight
-  happened; it passed ten runs in ten ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-02-a-walking-body-makes-two-runs-of-the-same-commands-differ.md)).
+  happened; it passed twelve runs in twelve ([lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-02-a-walking-body-makes-two-runs-of-the-same-commands-differ.md)).
 - **Firewall.** The source scan above, plus: the bot class takes a `ClientState`, a profile, a seed, an `apply`
   callable, a sight callable, a lit callable and the static level data, and has no other constructor argument.
 - **Balance simulator.** The model simulator stays the fast tuning tool (a night in 0.05 to 0.15 s). Bots run in the
