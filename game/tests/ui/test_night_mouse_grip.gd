@@ -180,9 +180,17 @@ func test_a_free_mouse_neither_looks_nor_fires_until_a_click_gets_the_lock_back(
 	_motion(300.0)
 	await get_tree().physics_frame
 	assert_float(player.camera_rig.yaw).is_equal(yaw)
-	Input.action_press(&"fire")
+	# The click, as the engine sends it: the left button down, which `fire` is bound to.
+	var held := InputEventMouseButton.new()
+	held.button_index = MOUSE_BUTTON_LEFT
+	held.pressed = true
+	Input.parse_input_event(held)
+	Input.flush_buffered_events()
 	var command := HumanController.new().command(player, Night.PLAYER_ID)
 	assert_bool(command.fire).is_false()
+	held.pressed = false
+	Input.parse_input_event(held)
+	Input.flush_buffered_events()
 	# A click asks for the lock again, from the click itself; the browser grants it this time.
 	_refuses = false
 	_asked.clear()

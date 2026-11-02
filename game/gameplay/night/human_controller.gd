@@ -22,9 +22,7 @@ func command(player: Player, player_id: int) -> NightCommand:
 		assist.prepare(player, player.get_physics_process_delta_time())
 	result.motion = player.sample_command()
 	if player.controls_enabled():
-		result.fire = (
-			Input.is_action_pressed(ACTION_FIRE) or (assist != null and assist.wants_fire())
-		)
+		result.fire = player.trigger_held() or (assist != null and assist.wants_fire())
 		# The body hears the trigger too (the hip-fire zoom and the pose follow it).
 		result.motion.fire = result.fire
 		result.reload = _edge(ACTION_RELOAD)

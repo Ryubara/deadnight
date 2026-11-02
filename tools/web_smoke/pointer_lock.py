@@ -13,8 +13,8 @@ and checks that:
     uv run --with playwright==1.64.1 python tools/web_smoke/pointer_lock.py build/web build/pointer-lock
 
 Do not run it on a Windows machine someone is working at: headless Chromium there clips the real cursor to an
-invisible box at the top left of the screen on pointer lock, freed only by Esc. It runs in CI (Linux), and refuses to
-start on Windows unless GDS_ALLOW_POINTER_LOCK=1 is set.
+invisible box at the top left of the screen on pointer lock, freed only by Esc. It runs in CI (Linux), and on Windows
+only under `gds quiet`, which frees the cursor every 5 ms and sets GDS_QUIET=1 (docs/godot/no-focus.md).
 
 Playwright cannot press the browser's own Esc (it sends the key to the page), so the lock is released by script; the
 engine sees the same thing, a pointer lock that is gone.
@@ -179,9 +179,9 @@ def run(page: Page, url: str, out: Path, result: dict) -> None:
 
 
 def main() -> int:
-    if sys.platform == "win32" and os.environ.get("GDS_ALLOW_POINTER_LOCK") != "1":
+    if sys.platform == "win32" and os.environ.get("GDS_QUIET") != "1":
         print(
-            "refusing to take pointer lock on Windows: it clips the real cursor (see the module's docstring)",
+            "refusing to take pointer lock on Windows outside `gds quiet`: it clips the real cursor (see the docstring)",
             file=sys.stderr,
         )
         return 2

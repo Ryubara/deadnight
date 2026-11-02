@@ -124,6 +124,12 @@ func screen_pause() -> void:
 		_pause()
 
 
+## A live night takes its keys itself: Start is `pause` and also `ui_accept`, and the router would
+## spend it on giving a menu its focus (#494). Only the overlay's buttons are navigated.
+func wants_focus_key() -> bool:
+	return _overlay.visible
+
+
 func screen_resume() -> void:
 	pass
 

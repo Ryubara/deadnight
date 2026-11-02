@@ -30,6 +30,7 @@ func _ready() -> void:
 	add_child(JudderProbe.new())
 	add_child(FlashWebProbe.new())
 	add_child(ViewWebProbe.new())
+	add_child(PadWebProbe.new())
 
 
 func _process(delta: float) -> void:

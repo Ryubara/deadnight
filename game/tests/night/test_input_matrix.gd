@@ -379,21 +379,30 @@ func _leave() -> void:
 	await UIRouter.idle
 
 
+## Each pause event, as the first press on a live night and again on the paused one. A gamepad's
+## Start is also `ui_accept`: the router once spent it on a menu's focus, so a Start pressed after
+## the keyboard's Esc (which had put a button in focus) looked fine here and did nothing on its
+## own (#494).
 func test_pause_on_every_device() -> void:
 	var screen := await _enter_night()
-	for pad in [false, true]:
+	for pad in [true, false]:
 		for event in _bound(&"pause", pad):
-			var before := screen.night.is_paused()
-			_send(event, true)
-			await get_tree().process_frame
-			await get_tree().process_frame
-			(
-				assert_bool(screen.night.is_paused() != before)
-				. override_failure_message("pause by %s did not toggle the night" % event.as_text())
-				. is_true()
-			)
-			_send(event, false)
-			await get_tree().process_frame
+			for expected_paused in [true, false]:
+				_send(event, true)
+				await get_tree().process_frame
+				await get_tree().process_frame
+				(
+					assert_bool(screen.night.is_paused())
+					. override_failure_message(
+						(
+							"pause by %s left the night %s"
+							% [event.as_text(), "running" if expected_paused else "paused"]
+						)
+					)
+					. is_equal(expected_paused)
+				)
+				_send(event, false)
+				await get_tree().process_frame
 	await _leave()
 
 
