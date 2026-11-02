@@ -25,11 +25,18 @@ const CABINET := Color(0.62, 0.1, 0.1)
 const CREAM := Color(0.92, 0.85, 0.66)
 const GLASS := Color(0.55, 0.8, 0.9, 0.16)
 const BEAM_HEIGHT := 36.0
-## Weapon models the lot has; the others are drawn as plain silhouettes (`_silhouette`).
+## The weapon models the crane shows, by shop id; a prize with none is drawn as a plain silhouette
+## (`_silhouette`). The tommy gun is the `smg`.
 const MODELS := {
 	&"weapon_rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"weapon_shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
+	&"weapon_smg": "res://assets/weapons/tommy_gun/tommy_gun.glb",
+	&"weapon_flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
 }
+## How long a model is drawn on the stage, in metres; the others use `MODEL_LENGTH`. The flare gun
+## is a pistol and stays small beside the long guns.
+const MODEL_LENGTH := 1.5
+const MODEL_LENGTHS := {&"weapon_flare_gun": 0.8}
 ## The cycling starts this quick (seconds between weapons) and slows to the slow one.
 const CYCLE_FAST := 0.07
 const CYCLE_SLOW := 0.46
@@ -323,7 +330,7 @@ func _stage() -> void:
 		if scene != null:
 			var model := scene.instantiate() as Node3D
 			holder.add_child(model)
-			_fit(model, 1.5)
+			_fit(model, MODEL_LENGTHS.get(id, MODEL_LENGTH))
 		else:
 			holder.add_child(_silhouette(id))
 		holder.visible = false
