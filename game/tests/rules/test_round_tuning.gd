@@ -1,3 +1,4 @@
+# gdlint:disable=max-public-methods
 extends GdUnitTestSuite
 ## The scaling curves: zombies, health, speed, spawn pacing, the cap on the living, the dark.
 
@@ -40,8 +41,9 @@ func test_more_players_bring_more_zombies_but_not_proportionally() -> void:
 func test_health_climbs_straight_to_the_knee_then_compounds() -> void:
 	assert_float(_t.health_for_round(1)).is_equal(50.0)
 	assert_float(_t.health_for_round(8)).is_equal(106.0)
-	assert_float(_t.health_for_round(9)).is_equal_approx(106.0 * 1.05, 0.001)
-	assert_float(_t.health_for_round(18)).is_equal_approx(106.0 * pow(1.05, 10.0), 0.01)
+	var growth := _t.health_growth
+	assert_float(_t.health_for_round(9)).is_equal_approx(106.0 * growth, 0.001)
+	assert_float(_t.health_for_round(18)).is_equal_approx(106.0 * pow(growth, 10.0), 0.01)
 
 
 func test_health_never_falls() -> void:
@@ -110,6 +112,45 @@ func test_the_living_cap_rises_then_holds_and_grows_with_players() -> void:
 	assert_int(_t.alive_cap(1, 1)).is_equal(6)
 	assert_int(_t.alive_cap(50, 1)).is_equal(28)
 	assert_int(_t.alive_cap(1, 3)).is_equal(18)
+
+
+## The cap for 1, 2, 3 and 4 players, by round: the table of docs/design/rounds.md and the lot's
+## ("One player to four" in docs/design/map.md). Pinned whole so a tuning change shows here.
+func test_the_living_cap_is_pinned_for_every_player_count() -> void:
+	var table := {
+		1: [6, 12, 18, 24],
+		10: [13, 19, 25, 31],
+		20: [21, 27, 33, 39],
+		21: [22, 28, 34, 40],
+		22: [23, 29, 35, 40],
+		29: [28, 34, 40, 40],
+		30: [28, 34, 40, 40],
+		99: [28, 34, 40, 40],
+	}
+	for round_number: int in table:
+		var expected: Array = table[round_number]
+		for players in range(1, 5):
+			assert_int(_t.alive_cap(round_number, players)).is_equal(expected[players - 1])
+
+
+func test_no_player_count_nor_round_lifts_the_cap_above_the_web_ceiling() -> void:
+	for round_number in range(1, 101):
+		for players in range(1, 9):
+			assert_int(_t.alive_cap(round_number, players)).is_less_equal(40)
+
+
+## The rules' ceiling and the crowd's hard cap are the same number: a rules cap above it (46 for
+## four players, #315) only queued the extra zombies in the director and told the balance model
+## about a crowd the lot never stood.
+func test_the_rules_ceiling_is_the_crowds_hard_cap() -> void:
+	assert_int(_t.alive_cap_ceiling).is_equal(ZombieTuning.new().hard_cap)
+
+
+func test_the_ceiling_only_trims_the_cap_and_never_lifts_it() -> void:
+	var loose := _t.duplicate() as RoundTuning
+	loose.alive_cap_ceiling = 1000
+	for players in range(1, 5):
+		assert_int(_t.alive_cap(30, players)).is_equal(mini(loose.alive_cap(30, players), 40))
 
 
 func test_the_night_gets_darker_to_a_floor() -> void:

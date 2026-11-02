@@ -27,7 +27,7 @@ var _press: UISpring
 var _focus: UISpring
 var _off: UISpring
 var _fill := StyleBoxFlat.new()
-var _ring := StyleBoxFlat.new()
+var _ring: UIFocusRing
 var _back := Control.new()
 
 
@@ -36,9 +36,7 @@ func _init() -> void:
 	_press = UISpring.new()
 	_focus = UISpring.new()
 	_off = UISpring.new()
-	for box in [_fill, _ring]:
-		box.anti_aliasing = true
-	_ring.draw_center = false
+	_fill.anti_aliasing = true
 	_apply_tokens()
 	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -106,10 +104,8 @@ func _apply_tokens() -> void:
 	_focus.damping = _tokens.spring_damping * 0.8
 	_off.stiffness = _tokens.spring_stiffness
 	_off.damping = _tokens.spring_damping
-	for box in [_fill, _ring]:
-		box.set_corner_radius_all(_tokens.radius_md)
-	_ring.set_border_width_all(_tokens.focus_border)
-	_ring.border_color = _tokens.accent_bright
+	_fill.set_corner_radius_all(_tokens.radius_md)
+	_ring = UIFocusRing.new(_tokens, _tokens.radius_md)
 	_fill.shadow_color = _tokens.shadow
 	_back.queue_redraw()
 
@@ -123,11 +119,7 @@ func _draw_back() -> void:
 	var rect := Rect2(Vector2.ZERO, size)
 	_paint_fill()
 	_back.draw_style_box(_fill, rect)
-	if _focus.value > 0.01:
-		var spread := float(_tokens.focus_gap) + (1.0 - _focus.value) * 10.0
-		_ring.border_color = _tokens.accent_bright
-		_ring.border_color.a = clampf(_focus.value, 0.0, 1.0)
-		_back.draw_style_box(_ring, rect.grow(spread))
+	_ring.draw(_back, rect, _focus.value)
 
 
 func _on_mouse_entered() -> void:

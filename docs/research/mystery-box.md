@@ -79,18 +79,30 @@ stands it at the spot the server's frame names, set back 1.5 m from that spot's 
 the frame's `crane` ({spot, stage, left, weapon}), so a late joiner sees the same crane:
 
 - **Spin.** The claw sweeps over the pile, drops, closes and lifts; weapon models cycle above the glass, one every
-  0.07 s at first and 0.46 s at the end (the Mystery Box slows the same way). The rifle and the shotgun use the lot's
-  models; the SMG and the flare gun, which have none yet, are plain silhouettes.
+  0.07 s at first and 0.46 s at the end (the Mystery Box slows the same way). Every prize shows its own model
+  (the rifle, the shotgun, the tommy gun that is the `smg`, the flare gun at half the length); a prize added to the
+  pool without a model is a plain silhouette until it has one (`PrizeCrane.MODELS`, checked by a test).
 - **Grab.** The chosen weapon rises from the claw to the stage and floats, blinking for the last 3 seconds.
 - **Breakdown.** A moth-eaten plush (our dud) shows on the stage, sparks fly, the marquee and the light flicker and the
   power goes; the crane then sinks where it stood and rises at the next spot.
+  The card at the glass says `OUT OF ORDER: REFUNDED` to everyone while it does (the buyer's `YOUR PRIZE IS COMING`
+  is for the dig only), read from the frame's crane stage, so the wire is unchanged.
 - **Beam.** A cheap additive cone (a ten-line shader: bright at the foot, fading up, blended additively, no depth
   write) stands over the crane's spot, so the way to it is a column of light in the night.
 
 `tests/captures/crane_tour.tscn` films it from the player's shoulder camera (physics ticks, 60 a second):
 `godot --path game res://tests/captures/crane_tour.tscn --fixed-fps 10 --write-movie out.png --quit-after 700`, with
 `-- --breakdown` for the breakdown and `-- --beam` for the crane on the open field. `test_crane_view.gd` checks the
-placement, the cycling and its slowing, the chosen weapon, the dud and the move without a window.
+placement, the cycling and its slowing, the chosen weapon, the dud and the move without a window. The tour switches
+off the real mouse and keys (`local_input`, `capture_mouse`) so a recording never holds the person's cursor.
+
+## The bot
+
+The autopilot buys a play when the crane stands where it is, a prize is left that the bot lacks and the points cover
+the price with ammunition money to spare, waits at the glass through the dig and presses use on the held-out prize
+(`Autopilot`, `_waiting_on_crane`). `test_autopilot_night.gd` plays the whole path with no hand action but the points:
+walk to the crane on the field, `crane_spin_started`, `crane_prize_ready`, `crane_prize_taken`, the weapon in its
+arms.
 
 ## Open
 

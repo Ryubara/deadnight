@@ -26,8 +26,9 @@ var aim_yaw := 0.0
 var aim_pitch := 0.0
 ## While aiming the barrel turns in a little to meet the crosshair's ray `CONVERGE_DISTANCE` ahead
 ## of the camera (the camera sits over the shoulder, the muzzle does not): `converge_on` is that
-## point, used when `converging`.
-var converging := false
+## point, and `converge` (0 to 1, the aim weight) is how far the aim turns toward it, so the pose
+## eases into and out of it and never jumps.
+var converge := 0.0
 var converge_on := Vector3.ZERO
 ## Recoil of the last shot, 0 to 1: the weapon kicks back and up.
 var recoil := 0.0
@@ -47,9 +48,9 @@ func weapon_target() -> Transform3D:
 	var skeleton := get_skeleton()
 	var aim := aim_basis()
 	var shoulder := _world(skeleton, skeleton.find_bone(RIGHT[0])).origin
-	if converging:
+	if converge > 0.0:
 		var toward := converge_on - (shoulder + aim * hold.grip_offset)
-		aim = Basis.looking_at(toward.normalized(), Vector3.UP)
+		aim = aim.slerp(Basis.looking_at(toward.normalized(), Vector3.UP), minf(converge, 1.0))
 	var raise := Basis(aim.x, deg_to_rad(hold.pitch_offset_deg + recoil * recoil_up_deg))
 	var forward_turn := Basis(Vector3.UP, -PI / 2.0)
 	var offset := hold.grip_offset + Vector3(0.0, 0.0, recoil * recoil_back)

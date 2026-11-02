@@ -1,20 +1,20 @@
 class_name ChallengeProfile
 extends RefCounted
-## One player's challenge state: the dailies they hold (today's and the banked), their three
+## One player's challenge state: the day's three dailies, their three
 ## Concession Orders, and the lifetime totals the milestones read. Plain data that round-trips
 ## through `to_dict` / `from_dict` (the save, `ChallengeSave`); it holds facts and derives the
 ## rest, so retuning a target or adding a milestone step needs no migration.
 ##
 ## The rules (docs/design/progression.md#daily-challenges-orders-and-milestones):
-## - A day deals three dailies (`DailyRotation`). At the next day the finished ones leave and the
-##   unfinished ones bank, up to three; a fourth retires the oldest. Banked dailies keep counting.
+## - A day deals three dailies (`DailyRotation`). They expire at the next day, finished or not:
+##   no banking, no carry-over, no streak (the maintainer's decision, #399). Nothing is owed for a
+##   missed day.
 ## - Three orders are open at a time, no timer. A finished order is replaced when the night is
 ##   settled; a player may swap one for another at any time, free, losing only its own progress.
 ## - Milestones are ladders over lifetime totals; the rung reached is derived, never stored.
 ## - `apply` advances everything the stat touches and answers what moved, for the prompt.
 
 const SCHEMA_VERSION := 1
-const BANK_LIMIT := 3
 const ORDER_SLOTS := 3
 ## An order finished lately is not dealt again at once.
 const RECENT_ORDERS := 3
@@ -25,8 +25,7 @@ const SEED_MASK := 0x7fffffff
 
 ## The last day dailies were dealt for (-1: never).
 var dealt_day := -1
-## Each: `{id, day (dealt), progress}`. Today's first, then the banked, newest first (the oldest is
-## last, and retires first).
+## Each: `{id, day (dealt), progress}`: the three of the day `dealt_day`.
 var dailies: Array[Dictionary] = []
 ## Each: `{id, progress}`; at most `ORDER_SLOTS`.
 var orders: Array[Dictionary] = []
@@ -64,32 +63,18 @@ static func checkpoint_crossed(before: int, after: int, target: int) -> int:
 # --- Dealing ---
 
 
-## Moves to `day`: finished dailies go, unfinished ones bank (the oldest retired past the limit),
-## and the day's three are dealt (a banked one dealt again is today's, its progress kept). Also
-## drops anything the catalogue no longer has and fills the order slots. Answers the ids retired.
-func refresh(catalog: ChallengeCatalog, day: int) -> Array[StringName]:
+## Moves to `day`: the dailies of the day before expire and the day's three are dealt, at zero.
+## Also drops anything the catalogue no longer has and fills the order slots. A day that is not
+## after the one dealt (a clock set back) changes no dailies.
+func refresh(catalog: ChallengeCatalog, day: int) -> void:
 	_prune(catalog)
 	fill_orders(catalog)
 	if day <= dealt_day:
-		return []
-	var today := DailyRotation.deal(catalog, day)
-	var open: Array[Dictionary] = []
-	for entry in dailies:
-		if not _is_done(entry, catalog):
-			open.append(entry)
-	var banked: Array[Dictionary] = []
-	var next: Array[Dictionary] = []
-	for id in today:
-		var carried := _take(open, id)
-		next.append({"id": id, "day": day, "progress": int(carried.get("progress", 0))})
-	banked.assign(open)
-	var retired: Array[StringName] = []
-	while banked.size() > BANK_LIMIT:
-		retired.append(StringName(banked.pop_back()["id"]))
-	next.append_array(banked)
-	dailies = next
+		return
+	dailies = []
+	for id in DailyRotation.deal(catalog, day):
+		dailies.append({"id": id, "day": day, "progress": 0})
 	dealt_day = day
-	return retired
 
 
 ## Tops the order slots up from the pool. Never deals two of one, and not one finished lately
@@ -151,13 +136,6 @@ func _draw_order(catalog: ChallengeCatalog, also_not: StringName) -> StringName:
 func _prune(catalog: ChallengeCatalog) -> void:
 	dailies = dailies.filter(func(e: Dictionary) -> bool: return catalog.has(e["id"]))
 	orders = orders.filter(func(e: Dictionary) -> bool: return catalog.has(e["id"]))
-
-
-func _take(entries: Array[Dictionary], id: StringName) -> Dictionary:
-	for i in entries.size():
-		if entries[i]["id"] == id:
-			return entries.pop_at(i)
-	return {}
 
 
 func _is_done(entry: Dictionary, catalog: ChallengeCatalog) -> bool:

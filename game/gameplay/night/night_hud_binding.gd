@@ -18,9 +18,16 @@ const DOOR_NAMES := {
 	&"door_back_lot": "Back lot",
 	&"door_road": "The road",
 }
+## How high over a zombie's feet its damage number starts: a headshot over the head, any other hit
+## at the chest.
+const HEAD_HEIGHT := 1.65
+const BODY_HEIGHT := 1.1
 const BREACH_NAME := "Broken fence"
 const FUEL_NAME := "Fuel can"
 const CRANE_NAME := "Prize crane"
+## The line on the crane's card while it breaks down (the play is refunded), and while it digs.
+const CRANE_BROKEN := "OUT OF ORDER: REFUNDED"
+const CRANE_DIGGING := "YOUR PRIZE IS COMING"
 ## What the player is told at each breaker post: the lights it switches.
 const CIRCUIT_NAMES := {
 	&"screen_lot": "Screen field lights",
@@ -91,7 +98,22 @@ func _on_event(event: Dictionary) -> void:
 				HudLoadout.EVENTS.has(event["type"])
 				or not NightServer.COMBAT_EVENTS.has(event["type"])
 			):
-				_hud.state.apply_event(event)
+				_hud.state.apply_event(_with_world_point(event))
+
+
+## A hit on a zombie also says where in the world it landed, so its number can stay there while
+## the camera moves (`HudCrosshair.projector`): the zombie's place in the last frame, lifted to the
+## head or the chest.
+func _with_world_point(event: Dictionary) -> Dictionary:
+	if event["type"] != &"zombie_damaged":
+		return event
+	for zombie in _state.zombies:
+		if zombie["id"] == event["zombie_id"]:
+			var lift := HEAD_HEIGHT if str(event.get("zone", "")) == "head" else BODY_HEIGHT
+			var marked := event.duplicate()
+			marked["world"] = zombie["position"] + Vector3(0.0, lift, 0.0)
+			return marked
+	return event
 
 
 func _on_frame() -> void:
@@ -126,8 +148,7 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"crane_take":
 			_offer(&"crane_take", _weapon_name(WeaponCatalog.catalog_id(prompt["weapon"])), 0, "")
 		&"crane_busy":
-			var own: bool = prompt["buyer"] == _state.player_id
-			_offer(&"crane_busy", CRANE_NAME, 0, "YOUR PRIZE IS COMING" if own else "")
+			_offer(&"crane_busy", CRANE_NAME, 0, _crane_busy_detail(prompt["buyer"]))
 		&"ammo":
 			var label := "%s rounds" % _weapon_name(prompt["weapon"])
 			_offer(
@@ -151,6 +172,15 @@ func _offer(kind: StringName, label: String, cost: int, detail: String) -> void:
 		or now.get("detail") != detail
 	):
 		state.set_prompt(kind, label, cost, detail)
+
+
+## What the card of a busy crane says: that it broke down (to everyone), or, to the buyer, that the
+## prize is on its way. Anyone else gets the card's own line, "only the buyer".
+func _crane_busy_detail(buyer: int) -> String:
+	var stage: int = _state.frame.get("crane", {}).get("stage", CraneState.Stage.SPIN)
+	if stage == CraneState.Stage.LEAVING:
+		return CRANE_BROKEN
+	return CRANE_DIGGING if buyer == _state.player_id else ""
 
 
 func _weapon_name(weapon: StringName) -> String:

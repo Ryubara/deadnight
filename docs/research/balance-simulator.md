@@ -56,8 +56,9 @@ then the charts; `--compare <folder>` draws a before and after).
   had to lower health, counts and the alive cap, not raise anything.
 - **Where the model is thin.** Players are bots, shoot only at what they can see (view range falls with the
   light), turn to one of four sides at a time, and ignore barricades, repairs, grenades, melee, the geometry of
-  doors and shop spots (which only cost points), penetration and where a player stands when they shoot. Tonics
-  do nothing in the game and so in the model. The report is a tool for comparing tunings, not a
+  doors and shop spots (which only cost points), penetration and where a player stands when they shoot. Only the
+  hearty tonic has an effect, and the model has it (the rules give the player the health). The report is a tool
+  for comparing tunings, not a
   prediction of a person's night; rerun it when the weapons, the player's health (#151) or the shop change.
 - **Finite ammunition changes who is hard pressed, not how the ranges look.** Free reloads hid that a weapon holds
   few rounds against a horde: with reserves the game gives (a revolver 90 at most, a shotgun 54) the average solo
@@ -109,6 +110,16 @@ player, not a promise: rerun with `--set=economy.items:crane_play.price=<n>`.
   which brought the medians to 5, 10, 11, 13 and 12 (weak solo, average 1, 2 and 4 players, strong solo). Health growth,
   steps and counts were tried and left alone (see [round
   scaling](round-scaling.md#7-what-the-simulator-showed-and-what-is-applied)).
+
+## The re-cut and the tonic (#281)
+
+The modelled players buy the weapon re-cut (`upgrade_weapon`) and the hearty tonic through the same `buy` the night
+does; `SimArm.upgrade` re-cuts with the same `WeaponDef.upgraded` the combat server uses, and the player's health is
+what the rules say (`PlayerState.max_health`). What it needed of the model, and what the sweep showed, is in
+[Weapon upgrades](weapon-upgrade.md): `SimSkill.saves_for` (nothing after the items a player saves for is bought),
+`re_cuts` (a list is read again at every break, so a repeatable item needs a stopping point), and weapon functions
+that take a `WeaponDef` (`SimWeapons.damage_of`, `sustained_dps_of`, `kill_rate_of`) because a re-cut weapon is not in
+the catalogue. A try of a multiplier: `--set upgrade.damage_multiplier=1.6 --set rounds.health_growth=1.07`.
 
 ## Using it
 

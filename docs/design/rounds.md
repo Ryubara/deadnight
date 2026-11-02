@@ -164,7 +164,8 @@ Defaults as shipped. Zombie counts show one, two and four players. "Light" is th
 world reads (1 is day): round 1 is the lot's night as built and round 14 the darkest it gets, with the ambient light,
 moon, sky and fog dimmed in step and eased over the break (`NightLight`). Counts follow
 `4 + 1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra player. Health climbs 8 a round to round 8, then
-compounds by 5% a round. The runner, crawler and brute columns are each type's share of the round (the first
+compounds by 7% a round (it was 5% until weapons could be re-cut, [the re-cut](upgrades.md)). The runner,
+crawler and brute columns are each type's share of the round (the first
 round of a type brings an exact number instead: see the types below); special rounds replace the mix.
 
 | Round | Zombies 1p / 2p / 4p | Health | Walk m/s, lit | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
@@ -176,10 +177,10 @@ round of a type brings an exact number instead: see the types below); special ro
 | 5 | 10 / 17 / 29 | 82 | 1.84 | 10% | 0% | 0% | 2.72 s | 9 | 0.46 |
 | 6 | 12 / 20 / 34 | 90 | 2.00 | 14% | 5% | 0% | 2.61 s | 10 | 0.42 |
 | 8 | 17 / 26 / 46 | 106 | 2.32 | 22% | 9% | 3% | 2.40 s | 12 | 0.35 |
-| 10 | 21 / 34 / 60 | 117 | 2.64 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
-| 15 | 36 / 57 / 101 | 149 | 3.44 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
-| 20 | 54 / 86 / 151 | 190 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
-| 30 | 101 / 161 / 282 | 310 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
+| 10 | 21 / 34 / 60 | 121 | 2.64 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
+| 15 | 36 / 57 / 101 | 170 | 3.44 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
+| 20 | 54 / 86 / 151 | 239 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
+| 30 | 101 / 161 / 282 | 470 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
 
 Points (everything is per player):
 
@@ -200,7 +201,8 @@ Shop (prices at round 1):
 | Door: concession stand / generator yard / booth / back lot / road | 350 / 500 / 750 / 1250 / 2000 | opens for everyone; the yard and booth need the concession, the back lot the booth, the road the back lot ([the lot](map.md)) |
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 550 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
-| Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most |
+| Re-cut of the weapon in hand | 1500, +1500 for each weapon already re-cut | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
+| Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most; only hearty does anything yet: +50 most health ([the hearty tonic](upgrades.md#the-hearty-tonic)) |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
 | Ammunition: revolver / tommy gun / shotgun / rifle / flare gun | 50 / 90 / 80 / 80 / 90 | rounds added: 20 / 60 / 8 / 8 / 2 (see [ammunition](#ammunition)) |
@@ -324,7 +326,8 @@ the pillars.
   faster (`dark_speed_multiplier`), at most 6.25 m/s, still under the sprint. The brute, crawler and headliner keep
   their old pace in metres per second (x0.4, x0.4, x0.45): they are slow by design, not by round.
 - **The lot cap protects the web build and the player.** At most 6 alive in round 1, rising 0.8 a round to 28;
-  each extra player adds 6. Zombies wait their turn, so a big round is a long fight, not a
+  each extra player adds 6, and no count of players takes it past 40, the most the lot stands
+  ([crowd budget](zombies.md#crowd-budget)). Zombies wait their turn, so a big round is a long fight, not a
   wall of bodies.
 - **More players, more zombies, less per head.** Each extra player adds 60% of the solo count, and
   spawns come faster, so two people face about 1.6 times the zombies, four face 2.8 times. Points are
@@ -412,8 +415,7 @@ ground and which circuits they keep on for it (weak: the screen lot; average: pl
 the booth), and what they buy, in order. Each night draws its own skill within 20% of the level's, so a level is
 a spread of nights. They shoot only what they can see (view range falls with the light), face one of four sides
 at a time, revive each other in six seconds and mend between rounds, and pick the weapon with the best sustained
-damage a second. **Not modelled, because the game has none of it yet:** tonic effects (the tonics are shop
-entries that do nothing, so the modelled players do not buy them). Grenades, repair, the fence's boards (the
+damage a second. **Not modelled:** the other three tonics (they do nothing yet). Grenades, repair, the fence's boards (the
 simulator keeps its own six-second barrier) and the doors' and spots' geometry (they only cost points) are not
 modelled either.
 
@@ -475,8 +477,9 @@ walker's health it was five in six, over the gate's limit, which is why the boss
 **Economy.** An average solo night earns about 14,400 points and spends about 7,300 of them (51%), 2,700 of that on
 ammunition (19% of what it earns); a strong one earns 26,600, spends 9,200 and 3,300 on ammunition. Before
 ammunition was sold the same player spent 4,700 of 16,800 (28%). The shop still runs out (doors, two wall weapons,
-the crane, rounds and fuel are all there is to buy; tonics do nothing), so the points glut in "Open questions"
-remains, smaller. Earnings per round climb from 350 in round 1 to 1,700 in round 5 and 3,500 in the stampede round.
+the crane, rounds and fuel were all there was to buy; the re-cut and the hearty tonic came later, see below), so
+the points glut in "Open questions" remains, smaller. Earnings per round climb from 350 in round 1 to 1,700 in
+round 5 and 3,500 in the stampede round.
 Light costs fuel: the average player buys cans for about 260 points a night.
 
 **Time to kill** (seconds under fire from the first hit, solo average): walker 1.5, runner 0.8, crawler 2.1,
@@ -552,6 +555,17 @@ little (a break is the time to spend points and mend), the most in the four-play
 was 7, mean 7.2 to 6.5), which no target covers. Points earned barely move for solo players and fall about 7% in a
 four-player average night (15,038 to 14,098). Nothing was retuned.
 
+## The re-cut and the faster health climb (#281)
+
+Zombie health now compounds at 7% a round after round 8 (it was 5%), because a player can pay to re-cut a weapon for
+x1.75 damage and hearty adds 50 health. The modelled players save for the re-cut after the wall weapons, the doors
+and the crane, re-cut the weapon that kills most, and buy the tonic ([upgrades](upgrades.md); the sweep is in
+[Weapon upgrades](../research/weapon-upgrade.md)). The report for 300 nights a cell (seed 1) moved the medians
+from 5 / 10 / 11 / 13 / 12 (weak solo, average 1, 2 and 4 players, strong solo) to 5 / 14 / 15 / 16 / 17: inside the
+gate's ranges, which are unchanged, with the end of an average night moving from the stampede and the rounds after
+it to the second boss night at round 15. The gate itself, with the same shopping and a re-cut that changes nothing,
+fails at 7% (a test).
+
 ## Retune after the speed rework and the crane (#265)
 
 The speed rework (#260, faster dead in the dark) and #271 (the crane at 550 points) turned the gate red: an average
@@ -564,8 +578,9 @@ The ranges and the health, count and spawn curves are unchanged.
 ## Open questions
 
 - **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, fuel and rounds absorb
-  points (a fifth of an average night's earnings goes on rounds), but upgrades (the re-cut in the projection booth)
-  are the sink that is still missing; they need their own issue.
+  points (a fifth of an average night's earnings goes on rounds); the re-cut and the hearty tonic
+  ([upgrades](upgrades.md)) are the first sinks that also make the player stronger, and the modelled average player
+  now spends 47% of what it earns (it was 62%) because the nights are longer.
 - **The weapon limit** (two or three weapons) is still open: the weapons and their numbers are in
   [Weapons](weapons.md) (shots to kill per round are tabled there).
 - **The shop's weapons are barely better than the pistol.** Sustained, reloads included, the pistol does about 59

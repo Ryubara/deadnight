@@ -136,6 +136,7 @@ func test_the_way_out_returns_to_the_menu() -> void:
 
 
 func test_a_night_keeps_challenges_only_where_the_game_asks_it_to() -> void:
+	NightScreen.challenge_path = ""
 	var screen := await _enter_night()
 	assert_object(screen.night.challenge_board).is_null()
 	await _leave(screen)
