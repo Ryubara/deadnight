@@ -864,8 +864,8 @@ Proof: scenarios 8, 9, 11, 21 and 22 and the care around them are in `tests/nigh
 the real lot with the real server: the grace for a person at the door, a refused buy in a frame that lies about the
 points backs off 30 s and does not loop, a repair that stops with a zombie at the boards and goes on after, one bot
 buys the can and the next takes over when the first is stuck, a ping buys the door where the control does not, the
-breakers, the wall shotgun, the hearty tonic, the crane, rounds at a locker and a dry bot with the crowbar in hand
-swapping to its gun at the locker); the coverage matrix (28) has a rule for every shop item and prompt, and one waiver
+breakers, the wall shotgun, the hearty tonic, the crane, rounds at a locker for a short reserve and for a dry
+gun); the coverage matrix (28) has a rule for every shop item and prompt, and one waiver
 (grenades, #577).
 
 **Measured.** The shopping soak (`tests/captures/bots_shop_soak.tscn`: four hosted bots, no person, 15 game minutes,

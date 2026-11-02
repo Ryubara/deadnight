@@ -1,7 +1,6 @@
 # What a bot buys at the spots of the lot (bots plan, phase 4): the wall shotgun, the hearty tonic,
-# a crane play, rounds at a locker, and a dry bot that swaps from its crowbar to its gun at the
-# locker. The scenarios of the errands themselves are in `test_bot_errands.gd`. Ticks are run by
-# hand.
+# a crane play, and rounds at a locker (a short reserve, a dry gun). The scenarios of the errands
+# themselves are in `test_bot_errands.gd`. Ticks are run by hand.
 extends GdUnitTestSuite
 
 const TICKS_PER_SECOND := 60
@@ -64,14 +63,16 @@ func _shopper(list: Array[StringName], points: int) -> SeatedNight:
 
 func test_a_bot_buys_the_wall_shotgun_and_carries_it() -> void:
 	var night := await _shopper([&"weapon_shotgun"], 1000)
-	# The hands are full: the weapon worth least is the one that goes, whichever is in hand.
 	night.run(2)
-	var weakest := BotEconomy.weakest_of(night.frame["players"][1]["arms"])
+	var before: Dictionary = night.frame["players"][1]["arms"]
+	var weakest := BotEconomy.weakest_of(before)
 	var took := _until(
 		night, 120.0, func() -> bool: return night.frame["players"][1]["arms"].has(&"shotgun")
 	)
 	assert_float(took).is_greater(0.0)
-	assert_bool(night.frame["players"][1]["arms"].has(weakest)).is_false()
+	var after: Dictionary = night.frame["players"][1]["arms"]
+	# With the hands full the weapon worth least goes, whichever is in hand; with a free hand none.
+	assert_bool(after.has(weakest)).is_equal(before.size() < WeaponCatalog.CARRY_LIMIT)
 	assert_int(night.server.rules.points_of(1)).is_less(200)
 	assert_array(_catcher.lines).is_empty()
 	night.dispose()
@@ -106,7 +107,7 @@ func test_a_bot_with_a_short_reserve_walks_to_a_locker_and_buys_rounds() -> void
 	night.dispose()
 
 
-func test_a_dry_bot_with_the_crowbar_in_hand_swaps_to_the_gun_at_the_locker_and_buys() -> void:
+func test_a_bot_with_a_dry_gun_walks_to_a_locker_and_buys_rounds() -> void:
 	var night := await _night(1)
 	_give(night, 1, 200)
 	var pistol = night.server.combat.state_of(1, &"pistol")
