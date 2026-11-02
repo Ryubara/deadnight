@@ -216,6 +216,8 @@ func submit(player_id: int, command: NightCommand) -> void:
 	if not _bodies.has(player_id):
 		return
 	command.player_id = player_id
+	if command.view_step >= 0:
+		command.view_tick = _view_tick_of(command.view_step)
 	var old: NightCommand = _pending.get(player_id)
 	if old != null:
 		command.reload = command.reload or old.reload
@@ -235,6 +237,13 @@ static func pitch_step(radians: float) -> int:
 ## The look up or down a step of the frame's `pitch` means.
 static func pitch_from_step(step: int) -> float:
 	return step * PITCH_STEP
+
+
+## The server step a shooter's view step (the low 16 bits) means: the latest step with those bits
+## that is not in the future, so the wrap of a long night is no matter.
+func _view_tick_of(view_step: int) -> int:
+	var behind := (tick_count - view_step) & 0xFFFF
+	return tick_count - behind if behind <= 0x7FFF else tick_count
 
 
 func body_of(player_id: int) -> Player:
@@ -580,7 +589,7 @@ func _act(player_id: int, delta: float) -> void:
 	if command.reload:
 		_combat(CombatAction.reload_weapon(player_id))
 	if command.fire:
-		_shoot(player_id, command)
+		_shoot(player_id, command, delta)
 	if command.swap:
 		_combat(CombatAction.swap(player_id))
 	if command.swap or command.fire or command.reload:
@@ -596,7 +605,7 @@ func _act(player_id: int, delta: float) -> void:
 	command.swap = false
 
 
-func _shoot(player_id: int, command: NightCommand) -> void:
+func _shoot(player_id: int, command: NightCommand, delta: float) -> void:
 	if not aims_with_view(command):
 		_outbox.append(
 			{"type": &"fire_rejected", "player_id": player_id, "reason": &"aim_mismatch"}
@@ -614,8 +623,12 @@ func _shoot(player_id: int, command: NightCommand) -> void:
 		origin = head
 	var muzzle := body.global_position + Basis(Vector3.UP, body.state.facing) * tuning.muzzle_offset
 	_shot_seq[player_id] += 1
+	# The shot is judged against the world the shooter saw (`LagCompensator` caps how far back).
+	var view_time := combat.now
+	if command.view_step >= 0:
+		view_time -= float(maxi(tick_count - command.view_tick, 0)) * delta
 	_combat(
-		CombatAction.fire(player_id, _shot_seq[player_id], origin, command.dir, muzzle, combat.now)
+		CombatAction.fire(player_id, _shot_seq[player_id], origin, command.dir, muzzle, view_time)
 	)
 
 

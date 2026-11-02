@@ -48,6 +48,8 @@ func _ready() -> void:
 
 
 func screen_enter() -> void:
+	# The sounds a night needs load while the player reads the menu, not behind the night's bar.
+	Audio.start_background_preload()
 	var sign_node := (shell.panel(MenuTab.Id.PLAY) as PlayPanel).sign_node
 	if sign_node != null:
 		sign_node.ignite()
