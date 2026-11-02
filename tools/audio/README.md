@@ -1,7 +1,7 @@
 # tools/audio
 
 Everything in `game/assets/audio/` is rendered by `generate.py` from the recipes in this folder (synthesised, seeded
-from each sound's name), except 41 files generated with ElevenLabs Sound Effects, fetched by `elevenlabs.py` into
+from each sound's name), except 29 files generated with ElevenLabs Sound Effects, fetched by `elevenlabs.py` into
 `game/assets/audio/eleven/` and by `elevenlabs_zombies.py` into `game/assets/audio/zombie/`, and the soldier's 115
 voice lines, made with ElevenLabs text to speech by `elevenlabs_voice.py` (lines, voice, model and settings are data in
 `soldier_voice.json`) into `game/assets/audio/voice/soldier/`. Those three folders carry a `LICENSE.md` (attribution

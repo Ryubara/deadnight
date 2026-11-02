@@ -1,0 +1,54 @@
+{
+  "bed_lufs": -35.2,
+  "guns": {
+    "pistol": {
+      "trims_db": {
+        "shot_pistol": -2.5,
+        "tail_pistol": -16.5
+      },
+      "single_momentary_lufs": -14.0,
+      "burst_lufs": -12.5,
+      "peak_dbfs": -1.5,
+      "centroid_hz": 2985
+    },
+    "smg": {
+      "trims_db": {
+        "shot_smg": -2.5,
+        "tail_smg": -16.5
+      },
+      "single_momentary_lufs": -16.4,
+      "burst_lufs": -9.4,
+      "peak_dbfs": -1.5,
+      "centroid_hz": 3019
+    },
+    "rifle": {
+      "trims_db": {
+        "shot_rifle": -3.5,
+        "tail_rifle": -17.5
+      },
+      "single_momentary_lufs": -13.3,
+      "burst_lufs": -14.6,
+      "peak_dbfs": -1.9,
+      "centroid_hz": 2781
+    },
+    "shotgun": {
+      "trims_db": {
+        "shot_shotgun": -3.0,
+        "tail_shotgun": -17.0
+      },
+      "single_momentary_lufs": -11.8,
+      "burst_lufs": -12.5,
+      "peak_dbfs": -1.5,
+      "centroid_hz": 2514
+    },
+    "flare_gun": {
+      "trims_db": {
+        "shot_flare": -1.5
+      },
+      "single_momentary_lufs": -16.4,
+      "burst_lufs": -17.6,
+      "peak_dbfs": -2.5,
+      "centroid_hz": 3103
+    }
+  }
+}
