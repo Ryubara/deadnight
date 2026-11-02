@@ -6,10 +6,10 @@ const DOOR := &"door_concession"
 const PRICE := 350
 
 
-func _start() -> Dictionary:
+func _start(tuning: RulesTuning = null) -> Dictionary:
 	var hud := (load(Hud.SCENE) as PackedScene).instantiate() as Hud
 	add_child(hud)
-	var night := await NightFixture.start(self, Night.Mode.MANUAL, null, 7, hud)
+	var night := await NightFixture.start(self, Night.Mode.MANUAL, tuning, 7, hud)
 	NightFixture.run(night, 30)
 	return {"night": night, "hud": hud}
 
@@ -215,6 +215,26 @@ func test_the_crane_card_follows_the_play_from_the_price_to_the_take() -> void:
 	NightFixture.run(night, 300)
 	assert_str(String(hud.state.prompt["kind"])).is_equal("crane_take")
 	assert_str(hud.prompt.title_text).is_not_equal("PRIZE CRANE")
+	_finish(night, hud)
+
+
+func test_the_crane_card_says_it_is_out_of_order_when_it_breaks_down() -> void:
+	var tuning := RulesFixture.tuning()
+	tuning.crane.safe_plays = 0
+	tuning.crane.leave_chances = PackedFloat32Array([1.0])
+	var made := await _start(tuning)
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	_act(night, RulesAction.grant_points(1, 5000))
+	_stand_at(night, &"crane_play")
+	var command := NightCommand.new()
+	command.use = true
+	NightFixture.run(night, 1, command)
+	NightFixture.run(night, 3)
+	assert_str(hud.prompt.detail_text).contains("YOUR PRIZE")
+	NightFixture.run(night, 300)
+	assert_str(String(hud.state.prompt["kind"])).is_equal("crane_busy")
+	assert_str(hud.prompt.detail_text).contains("OUT OF ORDER")
 	_finish(night, hud)
 
 

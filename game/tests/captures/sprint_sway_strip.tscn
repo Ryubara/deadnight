@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/captures/sprint_sway_strip.gd" id="1_strip"]
+
+[node name="SprintSwayStrip" type="Node"]
+script = ExtResource("1_strip")

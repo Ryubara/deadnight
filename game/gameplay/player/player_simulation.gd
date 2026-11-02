@@ -27,10 +27,13 @@ static func simulate(
 	state.stepped_up = 0.0
 	body.global_position = state.position
 	body.velocity = state.velocity
+	# The body's shape follows the carried state, so a rewind to a crouch (or a stand) restores it.
+	_set_stance(body, state.crouching, tuning)
 
 	state.view_yaw = command.yaw
 	state.view_pitch = command.pitch
-	state.crouching = command.crouch
+	state.crouching = _next_stance(body, state, command, tuning)
+	_set_stance(body, state.crouching, tuning)
 	state.aiming = command.aim
 	if command.fire:
 		state.fire_age = 0.0
@@ -79,6 +82,7 @@ static func _sprint_allowed(
 	return (
 		command.sprint
 		and not command.aim
+		and not state.crouching
 		and (state.on_floor or state.sprinting)
 		and command.move.length() >= tuning.sprint_min_input
 	)
@@ -109,11 +113,12 @@ static func _face(
 static func _target_speed(
 	state: PlayerMotionState, command: PlayerCommand, tuning: PlayerTuning
 ) -> float:
+	var crouch_scale := tuning.crouch_speed / tuning.run_speed if state.crouching else 1.0
 	if command.aim:
 		var push := command.move.length()
 		var back := maxf(command.move.y, 0.0) / push if push > 0.001 else 0.0
-		return tuning.aim_speed * lerpf(1.0, tuning.aim_backpedal_scale, back)
-	return tuning.sprint_speed if state.sprinting else tuning.run_speed
+		return tuning.aim_speed * lerpf(1.0, tuning.aim_backpedal_scale, back) * crouch_scale
+	return (tuning.sprint_speed if state.sprinting else tuning.run_speed) * crouch_scale
 
 
 ## Straight acceleration toward `target` (a velocity): gains at the ground or sprint rate, loses
@@ -208,7 +213,7 @@ static func _move(
 		velocity.y = 0.0
 	else:
 		velocity.y = maxf(velocity.y - gravity * delta, -tuning.terminal_velocity)
-	if state.jump_buffer > 0.0 and state.coyote > 0.0:
+	if state.jump_buffer > 0.0 and state.coyote > 0.0 and not state.crouching:
 		velocity.y = sqrt(2.0 * gravity * tuning.jump_height)
 		state.jump_buffer = 0.0
 		state.coyote = 0.0
@@ -326,3 +331,50 @@ static func _settle_step(
 		state.on_floor = true
 	elif state.on_floor:
 		state.step_settle = 0.0
+
+
+## Crouching starts on the ground when the key is down, and ends when it is let go and the standing
+## body fits where it is: under a low beam the crouch holds, key or not. In the air a crouch does
+## not start (one that was on the ground carries over until the body can stand).
+static func _next_stance(
+	body: CharacterBody3D, state: PlayerMotionState, command: PlayerCommand, tuning: PlayerTuning
+) -> bool:
+	if state.crouching:
+		return command.crouch or not _standing_fits(body, tuning)
+	return command.crouch and state.on_floor
+
+
+## The capsule of the body, resized to the stance: the feet stay where they are, so the shape grows
+## up from them. A body with no capsule (a test's stand-in) is left alone.
+static func _set_stance(body: CharacterBody3D, crouching: bool, tuning: PlayerTuning) -> void:
+	var node := _capsule_node(body)
+	if node == null:
+		return
+	var capsule := node.shape as CapsuleShape3D
+	var height := tuning.crouch_height if crouching else tuning.height
+	if not is_equal_approx(capsule.height, height):
+		capsule.height = height
+		node.position.y = height * 0.5
+
+
+static func _capsule_node(body: CharacterBody3D) -> CollisionShape3D:
+	for child in body.get_children():
+		if child is CollisionShape3D and child.shape is CapsuleShape3D:
+			return child
+	return null
+
+
+## Whether the standing capsule would be clear of the world from the body's feet: a probe of the
+## standing shape a `crouch_probe_skin` shorter at both ends and narrower, so the floor under the
+## feet and the walls beside them do not count, only what is overhead.
+static func _standing_fits(body: CharacterBody3D, tuning: PlayerTuning) -> bool:
+	var skin := tuning.crouch_probe_skin
+	var probe := CapsuleShape3D.new()
+	probe.radius = maxf(tuning.radius - skin, 0.05)
+	probe.height = maxf(tuning.height - 2.0 * skin, probe.radius * 2.0)
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = probe
+	query.transform = body.global_transform.translated_local(Vector3.UP * tuning.height * 0.5)
+	query.collision_mask = body.collision_mask
+	query.exclude = [body.get_rid()]
+	return body.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()

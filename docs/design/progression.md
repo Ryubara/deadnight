@@ -233,9 +233,10 @@ period references below are the era's general look, not another game's content.
 ## First ten hours: a tuning table
 
 Assumptions (to check against the rounds work when it lands): a round takes 75 s plus 6 s per round number, with its
-20 s break; a night has a 12 s intro and about two minutes in menus; the zombie count follows the in-review rounds
-tuning; a three-player team splits points about 0.75 of a solo count each; average nights reach the round shown. The
-numbers come from a small model, not play, and are expected to move.
+20 s break (the break is 5 s since #382, so each round is 15 s shorter and a night reaches the marks below a little
+sooner; the table is not worked out again); a night has a 12 s intro and about two minutes in menus; the zombie count
+follows the in-review rounds tuning; a three-player team splits points about 0.75 of a solo count each; average nights
+reach the round shown. The numbers come from a small model, not play, and are expected to move.
 
 | Hour | Nights done | Round reached | XP per night | Total XP | Billing level | Stubs (total) | Main weapon mastery | Just arrived |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

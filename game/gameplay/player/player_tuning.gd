@@ -108,6 +108,20 @@ extends Resource
 ## about 0.2 s to see (95 percent in 3 / rate) instead of a pop of the step height.
 @export var step_view_frequency := 14.0
 
+@export_group("Crouch")
+## The capsule's height while crouched (the standing one is `height`); its feet stay where they are.
+@export var crouch_height := 1.2
+## Walking speed while crouched; every pace (run, aim) is scaled by this over `run_speed`.
+@export var crouch_speed := 2.4
+## Height of the camera pivot above the feet while crouched (standing: `pivot_height`); the
+## pivot's vertical spring eases the change.
+@export var crouch_pivot_height := 1.1
+## How much of the Walk clip's stepping is laid over the held Duck pose while crouch-walking, at the
+## crouch speed (0 slides in the pose, 1 is a standing walk).
+@export_range(0.0, 1.0, 0.05) var crouch_walk_blend := 0.6
+## The room the stand-up test leaves under a ceiling and around the walls, in metres.
+@export var crouch_probe_skin := 0.02
+
 @export_group("Body")
 @export var height := 1.8
 @export var radius := 0.35
@@ -192,3 +206,27 @@ extends Resource
 @export var shake_frequency := 14.0
 ## The roll about the view axis, as a fraction of the pitch and yaw (roll reads as nausea).
 @export_range(0.0, 1.0) var shake_roll_fraction := 0.4
+
+@export_group("Sprint sway")
+## The gentle sway of the view while sprinting (`SprintSway`): a bob (pitch) every `bob_steps`
+## footfalls, and a roll and yaw (a quarter turn apart) every `sway_steps` footfalls. A footfall is
+## `step_distance` metres of travel, so the rate follows ground speed like the Run clip does.
+## Subtle on purpose: the peaks are under half a degree. The camera shake setting scales it and
+## Reduced motion turns it off. Amounts are degrees.
+@export var sprint_sway_pitch_degrees := 0.4
+@export var sprint_sway_yaw_degrees := 0.2
+@export var sprint_sway_roll_degrees := 0.28
+## Footfalls for one full bob (1: the head dips on every foot) and for one full roll and yaw (2:
+## once per left and right stride).
+@export var sprint_sway_bob_steps := 1.0
+@export var sprint_sway_sway_steps := 2.0
+## Where in the stride a foot lands, as a turn of the bob and the sway.
+@export var sprint_sway_phase_degrees := 0.0
+## Seconds to ease the sway in when the sprint starts and out when it stops.
+@export var sprint_sway_ease_in := 0.4
+@export var sprint_sway_ease_out := 0.3
+## No sway below this ground speed (m/s), whatever the sprint state says.
+@export var sprint_sway_min_speed := 3.0
+## While a shot shakes the view the sway gives way by up to this fraction (at full trauma), so the
+## two add up without fighting.
+@export_range(0.0, 1.0) var sprint_sway_fire_duck := 0.5

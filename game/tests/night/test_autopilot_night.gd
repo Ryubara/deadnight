@@ -11,6 +11,12 @@ const CHEAP_DOOR := 250
 ## The wall shotgun priced so that the bot can buy it in the first rounds.
 const CHEAP_SHOTGUN := 150
 const ROUNDS := 3
+## A crane play the bot can afford at once, the walls too dear to tempt it, and the open field,
+## where the crane stands without a door in the way.
+const CHEAP_CRANE := 120
+const BIG_WALL := 9000
+const CRANE_POINTS := 400
+const FIELD_SPOT := 2
 ## Game seconds after which a run gives up (a bot that stops advancing fails the test).
 const GIVE_UP_SECONDS := 900.0
 
@@ -93,3 +99,39 @@ func _assert_the_door_was_offered_then_bought(hud: Hud) -> void:
 	assert_int(_points_at_purchase).is_greater_equal(0)
 	# The card is gone once the door is.
 	assert_bool(hud.state.prompt.get("kind") == &"buy_door").is_false()
+
+
+## The bot walks to the crane, pays for a play, waits at the glass through the dig and takes the
+## prize it was dealt, as a person does: through the same commands, nothing set by hand.
+func test_the_bot_plays_the_crane_and_takes_the_weapon() -> void:
+	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
+	tuning.economy.item(&"crane_play").price = CHEAP_CRANE
+	for id in [&"weapon_shotgun", &"weapon_rifle"]:
+		if tuning.economy.item(id) != null:
+			tuning.economy.item(id).price = BIG_WALL
+	tuning.crane.start_spot = FIELD_SPOT
+	var night := await NightFixture.start(self, Night.Mode.AUTOPILOT, tuning, 7)
+	night.ticks_per_frame = TICKS_PER_FRAME
+	night.server.rules.apply(RulesAction.grant_points(1, CRANE_POINTS))
+	var events: Array[StringName] = []
+	var taken: Array[StringName] = []
+	night.state.event_received.connect(
+		func(event: Dictionary) -> void:
+			if str(event["type"]).begins_with("crane_"):
+				events.append(event["type"])
+			if event["type"] == &"crane_prize_taken":
+				taken.append(event["weapon"])
+	)
+	var ticks := 0
+	while (
+		not events.has(&"crane_prize_taken") and not night.state.over and ticks < 300.0 / Night.STEP
+	):
+		await get_tree().physics_frame
+		ticks = night.server.tick_count
+	assert_array(events).contains(
+		[&"crane_spin_started", &"crane_prize_ready", &"crane_prize_taken"]
+	)
+	assert_int(night.state.bought.get(&"crane_play", 0)).is_greater_equal(1)
+	assert_int(taken.size()).is_greater_equal(1)
+	assert_bool(night.state.me()["arms"].has(WeaponCatalog.catalog_id(taken[0]))).is_true()
+	night.queue_free()

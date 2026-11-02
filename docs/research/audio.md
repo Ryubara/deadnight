@@ -83,6 +83,10 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
   such lines once the beds played. The service now stops every voice, drops every player's stream and clears its cache
   in `_exit_tree`; waiting in `_exit_tree` did not help, letting go of the streams did. A loop that lives outside the
   service (the projector's player, under the night) is stopped by its node.
+  The test run checks it too (#211): `tests/net` built nights whose beds only fade out when the night is freed, so
+  `after_test` calls `Audio.stop_all()` and `after` waits `Audio.wait_for_mixer()`. CI fails a test run whose log has
+  `leaked at exit` or `still in use`. Another source in the same run was a test lambda that captured itself through
+  an array (`chain[0] = func ...`): a cycle nothing frees, which kept the test script in use; the test cuts it.
 - **A stopped voice is still held until the mixer thread has run a few steps** (#317). `stop()` only marks the playback
   for removal; the audio server keeps it, and its stream, until the mixer takes a step or two. Quitting first leaks
   every such stream, and a fixed real-time wait (the capture waited 0.3 s) is too short whenever the mixer thread is
@@ -197,6 +201,30 @@ analysed with `tools/audio/analyze.py capture`.
 | Voices held at once: zombie voices / feet / all | 6 of 6 / 5 of 5 / 10 of 32 |
 | Sounds started / culled over 54 s | 934 / 31 |
 | Mix peak, clipped samples | -0.4 dBFS, 0 (before the boss levels were trimmed: 0 dBFS, 268 clipped) |
+
+## The break's levels (#382)
+
+The score 25% louder (+1.9 dB, -22 to -20.1) and the crickets 25% quieter (-2.5 dB, -16 to -18.5). Measured with the
+pinned ffmpeg (`ebur128`, integrated loudness) on the files with the catalog's trims laid over them; Music and Ambience
+share the default slider (80), so the buses add the same to both
+(`ffmpeg -i f.ogg -af volume=<db>dB,ebur128=peak=true -f null -`; the mix is `amix` of the three with the score
+ramped by `volume='pow(10,min(0,-60+20*t)/20)':eval=frame`):
+
+| What | Before | After |
+| --- | ---: | ---: |
+| Score alone, 32 s | -34.5 LUFS | -32.6 LUFS |
+| Crickets alone, 24 s | -38.2 LUFS | -40.7 LUFS |
+| Score minus crickets, as heard | +3.7 LU | +8.1 LU |
+| Score + crickets, 24 s steady | -31.8 LUFS | -31.4 LUFS |
+| Score + crickets + highway, 24 s steady | -30.1 LUFS | -29.8 LUFS |
+| The 5 s break as heard (score fades in at 20 dB/s), the three beds | -32.3 LUFS | -32.1 LUFS |
+
+The score was already 3.7 LU above the crickets by the loudness meter (its file is much denser, so its catalog trim, 6 dB
+under the crickets', understates it) and is now 8.1 LU above: the two moves add to the 4.4 LU the maintainer asked for,
+while the whole bed moves only 0.3 to 0.4 LU. The break is not louder, it is the music over a quieter night.
+**A 5 s break is short for a 3 s fade-in**: the score reaches its level after 3 s and starts its 2 s
+fade-out at 5 s, so a break plays about 2 s of it at full level (a special round's 15 s plays it whole). A quicker fade
+is a one-number change (`AudioService.BED_FADE_IN_DB_PER_S`) if the maintainer wants the music heard in full.
 
 ## Godot facts
 

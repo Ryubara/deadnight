@@ -5,6 +5,7 @@ extends Control
 ## Options after `--` on the command line (or in the page address on the web, `?connect=...`):
 ## `--server [--port N] [--seed N]` runs a game server instead of the game (headless, no menu), and
 ## `--connect [ws://host:port]` goes from the menu straight into the night of that server, and
+## `--report [seconds]` prints a line of what the joined night looks like from here, and
 ## `--look N` (a preset) or `--look seed:N` (a random look) wears that look instead of the saved
 ## one, so two windows of one machine can differ.
 
@@ -27,6 +28,10 @@ func _ready() -> void:
 	add_child(prompt_layer)
 	await get_tree().process_frame
 	UIRouter.reset(MENU, UITransition.Kind.FADE)
+	if args.has("report"):
+		var report := ClientReport.new()
+		report.every = args.get_float("report", ClientReport.DEFAULT_EVERY)
+		add_child(report)
 	if args.has("connect"):
 		var url := args.get_string("connect")
 		NightScreen.join_url = JoinScreen.DEFAULT_URL if url == "true" else url

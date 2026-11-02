@@ -31,6 +31,6 @@ size came from `model length x scale x 0.8` against the Soldier's bounds. Tests 
 
 ## Not done
 
-- Pistol, SMG and flare gun have no model and no hold (issue #285); the Soldier shows the lever rifle for every gun.
+- The shoulder camera sees every gun end-on in the aim pose (a fist and a barrel tip); see [Weapons in the hands](../design/weapon-hold.md#which-weapon-is-which).
 - The bat and the fire axe are one-handed.
 - Hip fire keeps the body's forward (the body faces the movement), so the barrel at the hip is not on the crosshair.

@@ -173,8 +173,8 @@ only dead ends are deliberate: the midway's two alleys (6 m by 12 m, dark, for a
 - **Behind the car rows**: cars are 1.65 m tall. The shoulder camera at a level view sits 1.55 m up, below a roof, so
   it looks through the gaps, not over the cars; tilted down about 8 degrees (the arm swings the camera up by
   `2.8 x sin(pitch)`) it clears the roofs and sees the aisle behind. A standing player's head and shoulders show above
-  the cars to the dead, a pack's legs are hidden. Crouching (carried by the controller, not simulated yet) is not
-  designed against until it exists.
+  the cars to the dead, a pack's legs are hidden. Crouching is simulated now (capsule 1.2 m, pivot 1.1 m;
+  [Player controller](../research/player-controller.md#crouching)) but not yet designed against.
 - **The booth window** looks 70 m down the field at the screen and over the stand's roof. Nothing there is lit but the
   projector, so the roost sees the whole night and is seen by none of it.
 - **The stand's windows** let light out onto the field, and let the dead see in; they are 2.2 m wide with a 1 m sill.

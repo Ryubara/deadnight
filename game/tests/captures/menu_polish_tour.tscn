@@ -1,0 +1,25 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/menu_polish_tour.gd" id="1"]
+[ext_resource type="Script" path="res://ui/skin/film_overlay.gd" id="2"]
+
+[node name="MenuPolishTour" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="FilmLayer" type="CanvasLayer" parent="."]
+layer = 110
+
+[node name="Film" type="ColorRect" parent="FilmLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2")

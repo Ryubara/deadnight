@@ -11,6 +11,8 @@
 extends GdUnitTestSuite
 
 const PROBE := "res://tests/player/side_on_probe.tscn"
+## The same measure in the real night, under a screen as in the game (issues #344 and #353).
+const NIGHT_PROBE := "res://tests/player/night_side_on_probe.tscn"
 ## Frame rates that are not multiples of the 60 Hz tick (frames per tick: 1.7, 2.4, 2.75), so
 ## every fraction of a tick is drawn.
 const FRAME_RATES: Array[int] = [100, 144, 165]
@@ -21,6 +23,11 @@ const MAX_WANDER := 2.0
 ## The least the faults must show, so the measure is known to see them (measured: a body drawn at
 ## its tick 38 to 44 pixels, a rig blended twice 10 to 11).
 const MIN_FAULT_WANDER := 5.0
+## The most the soldier's path may be uneven in the real night: the RMS of the second difference
+## of its screen x, in pixels of a 1920x1080 view (measured 0.07 to 0.19; drawn at the last tick
+## 41 to 44).
+const MAX_NIGHT_UNEVEN := 1.0
+const MIN_NIGHT_FAULT_UNEVEN := 10.0
 
 
 ## Runs the probe at `fps` in `mode` and returns the pixels the soldier wandered.
@@ -86,3 +93,43 @@ func test_second_differences_of_a_steady_series_are_zero_and_of_a_sawtooth_are_n
 	var steps := PackedFloat64Array([0.0, 10.0, 10.0, 20.0, 20.0, 30.0])
 	assert_float(FrameJudder.peak(FrameJudder.second_differences(steps))).is_equal(10.0)
 	assert_float(FrameJudder.peak_to_peak(steps)).is_equal(30.0)
+
+
+## Runs the real-night probe at `fps` in `mode` and returns the RMS second difference of the
+## soldier's screen x, in pixels.
+func _night_unevenness(fps: int, mode: String) -> float:
+	var output: Array = []
+	var arguments := PackedStringArray(
+		[
+			"--headless",
+			"--path",
+			ProjectSettings.globalize_path("res://"),
+			"--fixed-fps",
+			str(fps),
+			NIGHT_PROBE,
+			"--",
+			"--mode=" + mode,
+		]
+	)
+	OS.execute(OS.get_executable_path(), arguments, output, true)
+	var text := "\n".join(PackedStringArray(output))
+	var found := RegEx.create_from_string("UNEVEN (-?[0-9.]+)").search(text)
+	(
+		assert_object(found)
+		. override_failure_message("the night probe printed no result:\n" + text)
+		. is_not_null()
+	)
+	return float(found.get_string(1)) if found != null else INF
+
+
+func test_the_soldier_is_even_on_the_screen_in_the_real_night_at_any_frame_rate() -> void:
+	for fps in FRAME_RATES:
+		(
+			assert_float(_night_unevenness(fps, "shipped"))
+			. override_failure_message("at %d fps" % fps)
+			. is_less(MAX_NIGHT_UNEVEN)
+		)
+
+
+func test_a_night_that_leaves_interpolation_to_its_screen_steps_on_the_screen() -> void:
+	assert_float(_night_unevenness(144, "inherit")).is_greater(MIN_NIGHT_FAULT_UNEVEN)

@@ -63,7 +63,7 @@ extends Resource
 ## The wait before round 1.
 @export var intro_seconds: float = 12.0
 ## The break after each round.
-@export var break_seconds: float = 20.0
+@export var break_seconds: float = 5.0
 
 @export_group("Night")
 ## Ambient light level in round 1 (0 dark, 1 day), read by the world (`NightLight`).

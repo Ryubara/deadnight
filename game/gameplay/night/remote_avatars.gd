@@ -41,6 +41,12 @@ var _newest := -1.0
 var _clock := -1.0
 
 
+func _init() -> void:
+	# Placed on the drawn frame from a track of its own: the engine's blend on top of that would
+	# draw them a tick late (the night above is interpolated, docs/research/physics-interpolation.md).
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+
 ## `skip_id` is the player this client plays, when it draws its own body itself (0 draws everyone).
 func setup(looks: LookRegistry, skip_id: int, step_seconds: float) -> void:
 	_looks = looks

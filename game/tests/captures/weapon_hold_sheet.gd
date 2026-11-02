@@ -10,7 +10,10 @@ extends Node
 
 const MOVIE_FPS := 10.0
 const SHOT_FRAMES := 8
-const CLASSES: Array[StringName] = [&"Rifle", &"Shotgun", &"Melee"]
+## Every catalogue weapon, each with its own model and hold (`PlayerAnimation.equip`).
+const WEAPONS: Array[StringName] = [
+	&"rifle", &"shotgun", &"pistol", &"smg", &"flare_gun", &"crowbar"
+]
 const POSES := ["idle", "run", "aim", "fire"]
 const VIEWS := ["side", "shoulder", "rear", "top"]
 
@@ -34,7 +37,7 @@ func _ready() -> void:
 	_side = _camera()
 	_top = _camera()
 	_rear = _camera()
-	for weapon_class in CLASSES:
+	for weapon_class in WEAPONS:
 		for pose in POSES:
 			for view in VIEWS:
 				_steps.append([weapon_class, pose, view])
@@ -92,7 +95,7 @@ func _begin(step: Array, index: int) -> void:
 		_player.teleport(Vector3(0.0, 0.05, 6.0))
 		_player.camera_rig.yaw = 0.0
 		_player.camera_rig.pitch = 0.0
-		if _animation.weapon_class != weapon_class or index == 0:
+		if _animation.weapon_hold() != WeaponHoldMap.hold_for(weapon_class) or index == 0:
 			_animation.equip(weapon_class)
 		match pose:
 			"run":
@@ -101,7 +104,7 @@ func _begin(step: Array, index: int) -> void:
 				Input.action_press("aim")
 			"fire":
 				Input.action_press("aim")
-				_animation.play_action(&"Swing" if weapon_class == &"Melee" else &"Fire")
+				_animation.play_action(&"Swing" if _animation.weapon_class == &"Melee" else &"Fire")
 	match step[2]:
 		"side":
 			_side.make_current()
