@@ -36,7 +36,8 @@ same code in-process behind a loopback transport. So the rules are shaped to be 
   `malformed`, and leaves the night as it was. The version is checked first, so a snapshot of any older
   layout answers `bad_version`; the insides are checked before anything changes (a plan naming no type,
   a zombie without a `type`, a player or the generator missing a field answer `malformed`). The
-  version is 7 (5 added the plan and the zombies' type, 6 the players' health, 7 the fence's boards); 4 named two
+  version is 9 (5 added the plan and the zombies' type, 6 the players' health, 7 the fence's boards, 8 the
+  crane, 9 the match settings and the round's clock); 4 named two
   different layouts and is never used again.
 - **Reads change nothing.** `points_of`, `price_of`, `is_door_open` and `zombies_remaining` are
   queries; clients may call them on their mirror.
@@ -157,6 +158,46 @@ when everyone still in it is down (`all_down`) or when the last player leaves du
 (`no_players`), so a server can free the match; `start` with nobody in the lot is rejected. Leaving before
 the start is not an end. A player still down when a round ends gets up, minus a tenth of their points, so
 being downed hurts but never locks you out.
+
+## Match settings
+
+What whoever starts a match chooses before the night: `MatchSettings` (`game/gameplay/rules/match_settings.gd`).
+The server owns them (`GameRules.settings`), they ride the rules' snapshot (`match_settings`, so the WELCOME of the
+first player, a late joiner and a player coming back all carry them) and they are set only while the night has not
+started. The defaults are today's game exactly, and every shipped test runs on them unchanged.
+
+| Setting | Values | Default | What it does |
+| --- | --- | --- | --- |
+| `count_multiplier` | 1x, 2x, 3x offered on the Play screen; any 0.25 to 5 | 1x | round N brings `RoundTuning`'s count for N and the players times this, rounded, at least one |
+| `max_alive` | 0 (auto) or 1 to 40 | auto | a number replaces the round's alive cap and never goes above `alive_cap_ceiling` (40, the crowd the lot stands) |
+| `break_seconds` | 0 (the tuned 5 s) or 1 to 120 | 0 | the break after each round; the wait before round 1 (12 s) and the 10 s extra before a special round are unchanged |
+| `round_time_limit` | 0 (off) or 30 to 3600 s | off | see below |
+
+- **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
+  from (a stampede is 140% of the scaled count, an escort party its share of it). A new type's first round still
+  brings its exact `intro_count`, and a boss round its own bosses (by players, not by the multiplier): the lesson of
+  meeting each type once stays whatever the crowd. The spawn interval is not scaled, so at 3x a round is about three
+  times as long and the same few stand at once: density is what `max_alive` is for.
+- **What happens when the time limit runs out (a proposal, off by default).** One `round_time_up` event (round,
+  limit, zombies still to spawn), then the dead keep coming faster: spawns come `RoundTuning.overtime_spawn_rate`
+  (3) times as often and the auto alive cap rises to its ceiling; a cap the host chose stays. Nobody loses, nothing
+  is taken away, and the round still ends when its last zombie falls. The clock (`round_elapsed` in the snapshot)
+  restarts with every round and counts only its active part. No fail state was chosen on purpose: the game has one
+  way to lose, being downed together.
+- **Setting them.** `RulesAction.configure(settings)` (the one action, refused as `wrong_phase` once the night began,
+  as `out_of_range` with field `settings` for a value out of bounds; it answers `settings_changed`), or the
+  constructor `GameRules.new(tuning, seed, settings)`, which pulls values into bounds with `clamped()`.
+  `NightServer.new(..., settings)` and `Night.match_settings` (before `start`) carry them for a night on this machine,
+  and `NightScreen.match_settings` is the Play screen's hand-over, taken once.
+- **For a room host.** `NightHost.configure_match(settings)` is the hook: it applies at once to a night nobody has
+  started (returning true), otherwise keeps them for the next night the host builds (false). A `GameServer` room is
+  a `NightHost`, so it is `room.configure_match(settings)` after `room.built`, or `room.match_settings = settings`
+  before it is added to the tree. The panel for the host's lobby is `MatchSettingsPanel`
+  (`game/ui/components/match_settings_panel.gd`, built from `UIRow`, `UIOptionSelector` and `UISlider`): `settings()`
+  reads it, `set_settings()` shows a value without a signal, `set_editable(false)` is the guest's read-only view of
+  what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
+  `start_remote`), and `changed` fires when a control moves. A dedicated server takes `--count`, `--max-alive`,
+  `--break` and `--round-limit`.
 
 ## The tuning table
 
@@ -563,6 +604,14 @@ scaling](../research/round-scaling.md)).
 The ranges and the health, count and spawn curves are unchanged.
 
 ## Open questions
+
+- **The round time limit's time-out (#414).** Implemented as a proposal, off by default: the dead come three times
+  as often and the cap lifts (see [match settings](#match-settings)). Other choices: a fail state (everyone is
+  downed at the end), a cap on how long a round's wave may take with no change, or fewer points for a slow round. The
+  maintainer decides; the setting and the `round_time_up` event stay the same for any of them.
+- **A multiplier of 2x or 3x runs longer rounds.** The spawn interval is not scaled with the count, so a 3x round
+  takes about three times as long at the same density. Scaling the interval with the multiplier (or its root) is one
+  line in `MatchSettings.spawn_interval`; it was left alone so that "3x" means only "more zombies".
 
 - **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, fuel and rounds absorb
   points (a fifth of an average night's earnings goes on rounds), but upgrades (the re-cut in the projection booth)

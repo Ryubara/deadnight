@@ -19,6 +19,7 @@ var _hud: Hud
 
 func _ready() -> void:
 	_args = _parse_args()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_hud = (load(Hud.SCENE) as PackedScene).instantiate()
