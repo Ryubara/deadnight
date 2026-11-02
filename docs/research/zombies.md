@@ -202,6 +202,16 @@ no physics body. The full-frame cost sits under the display floor here, so the 9
 with zombies 7.1 ms) is the number to watch; the browser was **not** measured: the spike's factor of about 3 applies
 until it is.
 
+## The glide between snapshots (#105)
+
+A client of a server is sent the zombies every second physics tick (`NightHost.SEND_EVERY`, 30 Hz), and a view that
+was set to each entry stood still every other tick: a zombie at 3 m/s moved 0 and 10 cm in turn (`physics_interpolation`
+smooths only between ticks that set a position). `ZombieView` now walks to an entry over the physics ticks since the last
+one (`GLIDE_MAX_TICKS`, up to 6; a longer stall, a jump over 4 m or a first entry sets it down at once), so it moves
+5 cm a tick, one entry (33 ms) behind the server. A view fed every tick, as on the loopback of single-player, is set at
+once as before. A parked body forgets where it was, so its next life starts where its first entry says. Pinned by
+`tests/zombies/test_zombie_glide.gd` (the steps of a 30 Hz run are within 0.045 to 0.055 m; before they were 0 and 0.1).
+
 ## Doors
 
 The lot's purchase doors are CSG slabs, and the navigation mesh is baked from the CSG boxes, so a closed slab is a
@@ -295,8 +305,11 @@ last in the mesh; and the control: a slab freed without a rebake leaves the dead
 
 ## Left open
 
-- Browser and weak-machine measurement of the full scene (the spike's follow-up still stands).
-- Client interpolation between 30 Hz snapshots: views jump to each decoded position. It belongs with the net client.
+- Browser and weak-machine measurement of the full scene: done in the browser (Chrome with a GPU, and the processor
+  slowed 4 times as a weak laptop's stand-in): [the crowd by system](crowd-budget.md#the-browser-by-system-and-on-a-weak-processor-105)
+  and [the autopilot night](web-export.md#big-crowds-in-the-browser-from-the-autopilot-171). A real weak laptop and
+  Firefox are still not measured.
+- Client interpolation between 30 Hz snapshots: done as a glide (below). The views are still one snapshot behind.
 - The model: done in #90. The views wear the committed variants (`ZombieModels`, walker by default; `ZombieHorde.variant`
   or `ZombieModels.scene(name)` picks another). Each variant has a near and a far mesh; `ZombieView` swaps them with
   visibility ranges at 18 m, so one mesh is drawn per zombie. Choosing a variant per zombie (by round or role) is
