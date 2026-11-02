@@ -1,11 +1,16 @@
 {
   "note": "Written by `gds sync` from the GDStudio kit; edit the kit, not these files.",
   "files": {
-    ".claude/agents/backend-engineer.md": "3559889655a18ab755afd35af1ccea0a668715e1757ef6543860dfb9bbaade0a",
-    ".claude/agents/blender-artist.md": "43c22d3ac0a293c145998ccb20db273f497af9dcc0a56c70ebf43b8bcb7be3d0",
-    ".claude/agents/godot-engineer.md": "e12648e711e83c51b4183f88e67724447a7fa129fb0e93166fd9e010b2589798",
+    ".claude/agents/backend-engineer.md": "bfb64149b9aaaf0e722d443525d34163ec0f6261e404474175f569d04dc102e0",
+    ".claude/agents/blender-artist.md": "26a01f25f282c9edab61c369f451cc6e7979206668279599b8281328f0d6e043",
+    ".claude/agents/godot-engineer.md": "a47642ebcc2595ca24f4d37dce9180e6944380c6781de65fed6761c21d63dc1a",
     ".claude/agents/reviewer.md": "68104931d795d954e189488015ffe07e23dd2e8b72a728e57fd503577826f988",
     ".claude/hooks/launch.py": "74bd821e242ccc840b1d1c4f9eb84bf6e8bc4731d1322cf688896e30fd0452fe",
-    ".claude/settings.json": "18c279c97d4714da7c0865fc942bc21aa6cfd87304f885d9edfbce9aabd911ec"
+    ".claude/settings.json": "5929bb537471f17406b4a4fe1e008bd4e42ed3a457cce5ead5cea057dfa9d628",
+    ".github/scripts/groundwork.py": "23d13238883135438c4810ef4c539b603df48c63e3ffe31f7f530362fd9c9a96"
+  },
+  "blocks": {
+    ".pre-commit-config.yaml#install-hooks": "1872b6359b8073a26ae3434b976e383e14c685884b42714754bee8bb08a61fec",
+    ".pre-commit-config.yaml#message-checks": "bda7ad2af02b56e57b21f70f0da74c93b7ff27da897cd1069a0c25b4af02d9f3"
   }
 }

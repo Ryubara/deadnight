@@ -28,8 +28,8 @@ LOAD_TIMEOUT_S = 150
 # The night's load on a CI runner took 82 s to 107 s, and over 150 s on a slow one (see smoke.py).
 NIGHT_LOAD_TIMEOUT_S = 300
 REACT_S = 8.0
-# The Resume button at this viewport (the card is centred; see pointer_lock.py).
-RESUME_BUTTON = (640, 382)
+# The Resume button at this viewport (the card is centred, three buttons: Resume, Settings, Leave night; see pointer_lock.py).
+RESUME_BUTTON = (640, 350)
 
 
 def run(page: Page, url: str, out: Path, result: dict, server: str) -> None:

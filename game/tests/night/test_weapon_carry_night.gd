@@ -9,7 +9,7 @@ const EQUIP_FRAMES := 120
 
 func _start(hud: Hud = null) -> Night:
 	var night := await NightFixture.start(
-		self, Night.Mode.MANUAL, RulesFixture.steady_crane_tuning(), 7, hud
+		self, Night.Mode.MANUAL, RulesFixture.full_hands(RulesFixture.steady_crane_tuning()), 7, hud
 	)
 	NightFixture.run(night, 5)
 	night.server.rules.apply(RulesAction.grant_points(1, 50000))

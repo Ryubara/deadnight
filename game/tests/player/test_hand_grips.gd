@@ -125,7 +125,7 @@ func _hand(tag: String, parts: Dictionary, contacts: PackedStringArray) -> Array
 
 
 func _release() -> void:
-	for action in ["aim", "move_forward", "fire"]:
+	for action in ["aim", "move_forward", "fire", "sprint"]:
 		_runner.simulate_action_release(action)
 
 
@@ -163,6 +163,22 @@ func test_hands_hold_every_weapon_in_every_pose() -> void:
 		_runner.simulate_action_press("move_forward")
 		await _ticks(30)
 		fails.append_array(await _check("%s run" % id, grip))
+		# The sprint carry (#527): the clip holds the weapon, both hands on its grip. It plays only
+		# on the floor, so the player starts on it: the ticks above never step the physics, and
+		# until one physics frame has passed the room's floor is not there to stand on.
+		_player.teleport(START)
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		_runner.simulate_action_press("sprint")
+		await _ticks(40)
+		for i in 3:
+			var tag := "%s sprint %d" % [id, i]
+			fails.append_array(await _check(tag, grip))
+			if _animation.sprint_carry() < 0.99:
+				fails.append("%s: not carrying (%.2f)" % [tag, _animation.sprint_carry()])
+			if grip.has_left and _measured.left_weight < 0.99:
+				fails.append("%s: left hand not on its grip (%.2f)" % [tag, _measured.left_weight])
+			await _ticks(9)
 		_release()
 		await _ticks(30)
 		if melee:

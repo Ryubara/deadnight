@@ -40,7 +40,7 @@ straight to the night of a server, `--room CODE` opens Play together on that cod
 | --- | --- | --- |
 | `main.tscn` | The root: film overlay, `core/main.gd` | the project (`run/main_scene`) |
 | `ui/screens/main_menu.tscn` | The menu: `MenuShell` (tabs Play, Loadout, Shop, Challenges, More) over `MenuStage`, a cheap live lot built in code | `main.gd` |
-| `ui/screens/night_screen.tscn` | **The game.** A bare `Control`; when the router enters it, `NightScreen` builds `Night`, the HUD and the touch controls and starts the night. Esc pauses; the result and "Back to the menu" are its overlay | the menu's Play, `together_screen`, `join_screen`, `--connect` |
+| `ui/screens/night_screen.tscn` | **The game.** A bare `Control`; when the router enters it, `NightScreen` builds `Night`, the HUD and the touch controls and starts the night. Esc, Start or the touch pause button open its menu (Resume, Settings, Leave night); the result is its overlay | the menu's Play, `together_screen`, `join_screen`, `--connect` |
 | `world/drive_in_greybox.tscn` | **The map**: the drive-in lot with lamps, doors, boards, breaker switches, fuel spots, spawn markers and navigation meshes. The rules and `NightWorld` find its nodes by name and by `meta` (`shop_id`, `barricade_id`): renaming one breaks the game and `tests/world/test_drive_in_greybox.gd` | `NightWorld` (`gameplay/night/night_world.gd`) |
 | `gameplay/player/player.tscn` | The player's body: camera rig, collision, the soldier model. One per player, local and remote | `NightWorld`, `world/test_room.tscn` |
 | `ui/hud/hud.tscn` | The HUD: health, ammo, round, points, markers, feed, prompts | `NightScreen` |

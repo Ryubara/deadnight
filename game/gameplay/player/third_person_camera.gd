@@ -42,6 +42,10 @@ var aiming := false
 var sprinting := false
 ## True while the body is crouched (`PlayerMotionState.crouching`): the pivot sits lower.
 var crouching := false
+## True while the player is down (`PlayerAnimation.is_downed`, set from the player's tick): the
+## pivot sinks toward the body lying on the ground and the view tips down, so the whole body is in
+## the picture (#532). The player's own pitch stays theirs; the tip is laid over it.
+var downed := false
 ## Horizontal speed of the body in metres per second, set by the player after each tick; the
 ## sprint sway keeps step with it.
 var ground_speed := 0.0
@@ -62,6 +66,7 @@ var _current := Vector3.ZERO
 var _pivot := DampedSpring3.new()
 var _aim := DampedSpring.new()
 var _sprint := DampedSpring.new()
+var _down := DampedSpring.new()
 var _side := DampedSpring.new(1.0)
 var _shoulder_cap := 1.0
 var _arm_cap := 1.0
@@ -109,6 +114,7 @@ func snap_to(position: Vector3) -> void:
 	_pivot.snap(head)
 	_aim.snap(1.0 if aiming else 0.0)
 	_sprint.snap(0.0)
+	_down.snap(1.0 if downed else 0.0)
 	sway.reset()
 	_side.snap(side)
 	_shoulder_cap = 1.0
@@ -184,6 +190,18 @@ func steady_amount() -> float:
 	return aim_amount()
 
 
+## How far the view has eased down to the body lying on the ground, 0 to 1: the weight of the
+## pivot's drop and the view's tip (`PlayerTuning.downed_pivot_height`, `downed_pitch_degrees`).
+func downed_amount() -> float:
+	return clampf(_down.value, 0.0, 1.0)
+
+
+## The pitch the view is drawn at: the player's own, tipped down by the downed weight.
+func view_pitch() -> float:
+	var tip := deg_to_rad(_tuning.downed_pitch_degrees) * downed_amount()
+	return maxf(pitch - tip, deg_to_rad(_tuning.pitch_min_degrees - _tuning.downed_pitch_degrees))
+
+
 ## How far the sprint pull-back has eased in, 0 to 1.
 func sprint_amount() -> float:
 	return clampf(_sprint.value, 0.0, 1.0)
@@ -252,6 +270,7 @@ func step(delta: float, fraction: float) -> void:
 	_aim.step(1.0 if aiming else 0.0, _tuning.aim_frequency, delta)
 	_sprint.step(1.0 if sprinting and not aiming else 0.0, _tuning.sprint_frequency, delta)
 	_side.step(side, _tuning.swap_frequency, delta)
+	_down.step(1.0 if downed else 0.0, _tuning.downed_frequency, delta)
 	var head := _previous.lerp(_current, fraction) + Vector3(0.0, _pivot_height(), 0.0)
 	var follow := lerpf(_tuning.follow_frequency, _tuning.sprint_follow_frequency, sprint_amount())
 	_pivot.step(head, Vector3(follow, _tuning.follow_frequency_vertical, follow), delta)
@@ -279,10 +298,12 @@ func _bodies() -> Array[RID]:
 	return bodies
 
 
-## Height of the pivot over the feet now: lower while the body crouches. The head target moves at
-## once and the pivot's own vertical spring eases it.
+## Height of the pivot over the feet now: lower while the body crouches, lower still down by the
+## downed weight. The crouch moves the head target at once and the pivot's own vertical spring
+## eases it; the downed weight has its own ease on top.
 func _pivot_height() -> float:
-	return _tuning.crouch_pivot_height if crouching else _tuning.pivot_height
+	var height := _tuning.crouch_pivot_height if crouching else _tuning.pivot_height
+	return lerpf(height, _tuning.downed_pivot_height, downed_amount())
 
 
 func _look_scale() -> float:
@@ -294,7 +315,7 @@ func _look_scale() -> float:
 func _place(head: Vector3, delta: float) -> void:
 	var aim := aim_amount()
 	var sprint := sprint_amount()
-	var basis := Basis.from_euler(Vector3(pitch, yaw, 0.0))
+	var basis := Basis.from_euler(Vector3(view_pitch(), yaw, 0.0))
 	var space := get_world_3d().direct_space_state
 	var mask := _target.collision_mask
 	var exclude := _bodies()

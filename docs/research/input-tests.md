@@ -20,6 +20,9 @@ tests. The same hole is open for any action.
   tested), held for 24 ticks of a real night through `HumanController`, and two things are asserted: the right field of
   the night's `NightCommand` was set, and the night shows the effect (a shot, a reload, a weapon swap, a pin, the
   shoulder flipped, the view turned, the body running the move).
+- **An action with a cooldown needs ticks between its bindings.** The quick melee (`V`, the mouse's back button,
+  the d-pad's down; #411) refuses a press made inside its 0.6 s, so the matrix lets 40 ticks pass after each binding
+  of it (`_after`), and the row sits before the grenades: an arm that is still throwing one refuses the blow.
 - Pause belongs to the screen: the real night screen is entered and each device's pause event must toggle it.
 - Touch is real touches on the real layer (`TouchFixture`); the interact button is only there with a prompt, so the
   test sets one.

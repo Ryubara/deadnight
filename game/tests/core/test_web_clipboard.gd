@@ -6,9 +6,10 @@ extends GdUnitTestSuite
 ## browser with `eval_js`; `tools/web_smoke/activity.py --clipboard` runs the real thing.
 
 
-func _clipboard(in_frame := true) -> WebClipboard:
+func _clipboard(in_frame := true, in_a_tab := false) -> WebClipboard:
 	var clipboard := auto_free(WebClipboard.new()) as WebClipboard
 	clipboard.in_frame = in_frame
+	clipboard.pastes_here = in_a_tab or in_frame
 	add_child(clipboard)
 	return clipboard
 
@@ -150,3 +151,41 @@ func test_the_detail_counts_what_the_page_saw() -> void:
 			"clipboard api read no, write no, button copy ok, Ctrl+V 2 seen 1 pasted, Ctrl+C 3 seen 3 copied"
 		)
 	)
+
+
+func test_a_paste_the_page_heard_in_a_tab_is_applied_too() -> void:
+	# #534: a tab used the engine's own Ctrl+V, which reads the clipboard asynchronously, so the
+	# first press pasted what was there before. The page's paste event reaches it in a tab as well.
+	var field := _field("")
+	var clipboard := _clipboard(false, true)
+	assert_bool(clipboard.in_frame).is_false()
+	clipboard.heard("QZXW2345")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_str(field.text).is_equal("QZXW2345")
+
+
+func test_a_tab_copies_with_the_engine_and_asks_the_page_for_nothing() -> void:
+	var clipboard := _clipboard(false, true)
+	var asked := [0]
+	clipboard.eval_js = func(_js: String) -> Variant:
+		asked[0] += 1
+		return null
+	WebClipboard.current = clipboard
+	assert_bool(await WebClipboard.copy_text("QZXW2345")).is_true()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	# Nothing offered to the page for Ctrl+C either: that half of the layer is a frame's.
+	assert_int(asked[0]).is_equal(0)
+	WebClipboard.current = null
+
+
+func test_the_report_is_read_in_a_tab_and_says_it_is_not_a_frame() -> void:
+	var clipboard := _clipboard(false, true)
+	clipboard.eval_js = func(_js: String) -> Variant:
+		return '{"iframe": false, "ctrl_v": 1, "pastes": 1}'
+	WebClipboard.current = clipboard
+	var report := WebClipboard.read()
+	assert_int(int(report["pastes"])).is_equal(1)
+	assert_str(WebClipboard.note(report)).is_equal("")
+	WebClipboard.current = null

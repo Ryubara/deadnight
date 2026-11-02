@@ -3,7 +3,7 @@ extends Control
 ## Play starts the night; the player turns to face the field, waits for the first dead, aims and
 ## shoots them with the real input actions (a hit with its damage number and tracer, a kill and
 ## the points), walks to the concession door when the round is over, and buys it at the prompt;
-## then Esc pauses, Resume goes on, and Back to the menu leaves. Not part of the game.
+## then Esc pauses, Resume goes on, and Leave night leaves. Not part of the game.
 ##
 ## The player is a person's stand-in: it reads only what a screen shows (the dead's places from the
 ## client's state, the prompt) and answers with key and button presses and mouse look, which turns

@@ -178,6 +178,14 @@ corrections in 20 s, and when the bots stop sending both bodies settle within 12
 more than 2.5 m of drift or snap, or when they do not settle; an engine error anywhere in it fails the CI job like any
 other test (the job reads the log). It runs with the rest of `tests/net` in the `godot` job.
 
+The scenario runs on **game time**, not wall time (#528). It once waited `20` and `8` wall-clock seconds while the
+conditioners held packets for real milliseconds; on a starved CI runner the game got a fraction of the frames in that
+time (a run there made 484 and 210 corrections where a quiet machine makes about 50 and 40) and the bodies did not
+settle in the 8 s. Now the link's `clock` (`WebSocketLink.clock`, the real clock when empty) is the physics frame count
+over the tick rate, every wait counts physics frames, and the same 20 s of bad network is the same frames at any speed.
+Slowing every frame by 0, 40 and 100 ms gave the same worst gap (1.12 to 1.17 m), the same corrections (41 to 53) and a
+round trip of 234 to 250 ms; before, a 100 ms slowdown moved the round trip to 382 ms and the corrections to 76.
+
 ## Numbers from a local run
 
 One Windows machine, loopback, server and clients in one process (`test_the_numbers_of_a_run_are_small`):

@@ -251,13 +251,17 @@ func test_the_slide_dim_and_parallax_come_from_the_tokens() -> void:
 	UIRouter.pop()
 	for _i in MID_SLIDE_FRAMES:
 		await get_tree().process_frame
-	assert_bool(below.position.x >= -width * 0.5).is_true()
-	assert_bool(below.position.x < -width * 0.45).is_true()
+	# How far the slide got is the frames' business (on a loaded machine they are long), so the
+	# check does not name a place: the position and the colour ride the same tween, so the share
+	# `done` of the way that the position shows (from the token's 0.5 of the width) must be the
+	# share the colour shows too (from the token's dim). Another parallax or dim breaks the match.
+	var done := 1.0 + below.position.x / (width * 0.5)
+	assert_float(done).is_between(0.0, 0.9)
 	# Red loses 0.8 and green 0.4 on the way to the dim colour, so their losses keep a 1 : 2 ratio.
 	var lost_red := 1.0 - below.modulate.r
 	var lost_green := 1.0 - below.modulate.g
-	assert_bool(lost_red > 0.5).is_true()
-	assert_float(lost_green / lost_red).is_equal_approx(0.5, 0.05)
+	assert_float(lost_red).is_equal_approx(0.8 * (1.0 - done), 0.02)
+	assert_float(lost_green).is_equal_approx(0.4 * (1.0 - done), 0.02)
 	Engine.time_scale = 1.0
 	assert_bool(await _settle()).is_true()
 

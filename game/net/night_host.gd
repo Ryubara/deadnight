@@ -56,6 +56,9 @@ var match_settings := MatchSettings.new()
 ## The most zombies alive at once in this room's night whatever the players are on; 0 is the rules'
 ## own (`CrowdCeiling.limit`).
 var max_alive := 0
+## This room's share of its process's alive budget (`GameServer.alive_budget` over its rooms); 0 is
+## no share. Set with `set_alive_share`, the smaller of it and `max_alive` caps the crowd.
+var alive_share := 0
 var log_enabled := true
 ## Metres around a player within which the zombies are sent to their client (0: all of them).
 var interest_radius := 0.0
@@ -68,6 +71,11 @@ var resume_within := RESUME_WITHIN
 ## `NetWire.Refusal` to turn it away. Unset, everyone is let in (the platform backend's ticket check
 ## plugs in here).
 var admit: Callable
+## Which half of the physics frames this room's heavy ticks (the zombies' step, and the frame built
+## after it) fall on: `Engine.get_physics_frames() % 2`, or -1 for whenever it started. A
+## `GameServer` gives its rooms alternate halves, so four rooms in one process never all step their
+## crowds in the same tick.
+var heavy_parity := -1
 ## One room of a `GameServer`: the listener is the server's, not this node's.
 var embedded := false
 ## What a room is called in the log (the match id of a `GameServer`'s room).
@@ -80,6 +88,8 @@ var server: NightServer
 var serving := false
 ## Steps taken, and milliseconds spent in them (the work, not the waiting), for the stats.
 var steps := 0
+## 1 when `heavy_parity` moved this room's cadence by one tick (sent and stepped a tick earlier).
+var phase := 0
 var work_ms := 0.0
 var worst_ms := 0.0
 ## The nights built so far.
@@ -135,7 +145,11 @@ func _physics_process(_delta: float) -> void:
 		return
 	# Clients are sent a frame every `SEND_EVERY` steps and only the last of them counts, so the
 	# steps between do not build one (it is half a millisecond or more at every step).
-	var sending := (steps + 1) % SEND_EVERY == 0
+	if steps == 0 and heavy_parity >= 0 and (Engine.get_physics_frames() & 1) == heavy_parity:
+		phase = 1
+		# One tick's time for the zombies' sim without a step: its 30 Hz step falls on this tick.
+		server.sim.tick(Night.STEP, {})
+	var sending := (steps + phase + 1) % SEND_EVERY == 0
 	var events := server.step(Night.STEP, sending)
 	var frame: Dictionary = events.pop_back() if sending else {}
 	_events.append_array(events)
@@ -204,12 +218,28 @@ func _build_night() -> void:
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
 	server.drawn_bodies = false
-	server.crowd.limit = max_alive
+	server.crowd.limit = alive_limit()
 	_events.clear()
 	nights += 1
 	serving = true
 	_log("night_ready", {"night": nights, "seed": chosen})
 	built.emit()
+
+
+## The cap on the crowd from the operator's `max_alive` and this room's share of the process's
+## budget, whichever is smaller; 0 is none.
+func alive_limit() -> int:
+	if max_alive > 0 and alive_share > 0:
+		return mini(max_alive, alive_share)
+	return maxi(max_alive, alive_share)
+
+
+## The process gave this room a new share (a room opened or closed). Takes effect at once: zombies
+## standing are not removed, but no more come until fewer than the new cap stand.
+func set_alive_share(share: int) -> void:
+	alive_share = maxi(share, 0)
+	if server != null:
+		server.crowd.limit = alive_limit()
 
 
 ## The last player left a night that began: a new lot, new rules, a new seed.

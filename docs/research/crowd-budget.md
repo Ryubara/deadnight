@@ -138,10 +138,9 @@ deltas. Bandwidth is not the limit at this size.
   desktop players takes the crowd down to 40 for what spawns next; one that leaves puts it back. The rules' cap
   (`GameRules.crowd_ceiling`) and the sim's hard cap are set together.
 - The match settings' slider offers the host's platform's ceiling (a browser host 40, a desktop host 120).
-- **A server operator's cap**: `MAX_ALIVE` (`ServerConfig`) caps every night of the process, because the rooms of one
-  process share one core's tick (`ROOM_CAPACITY`, 4): four rooms at 120 alive would need about 28 ms of a 16.7 ms tick on
-  the Railway processor above. Until the deployed server is sized (a service with more rooms than cores' worth of
-  ticks), set `MAX_ALIVE` or a small `ROOM_CAPACITY` for it; a room of browsers is 40 whatever it says.
+- **A server operator's cap**: `MAX_ALIVE` (`ServerConfig`) caps every night of the process. The rooms of one process
+  share one thread's tick, so what the deployed server takes is sized in [the last section](#rooms-in-one-process-561)
+  (`ROOM_CAPACITY`, `ALIVE_BUDGET`); a room of browsers is 40 whatever any of them says.
 - The default curve of the rules (28 alive for one player, 46 for four) is unchanged: the 120 is reached by the host's
   "Most alive at once" setting or by the intensity multiplier (a count of 3x asks for three times the curve).
 
@@ -168,3 +167,104 @@ ones carry the fixed costs of drawing a skinned model; 0.01 on the desktop), and
 89 ms a frame with 40 zombies in the shipped night ([above](web-export.md#big-crowds-in-the-browser-from-the-autopilot-171)),
 so read the bench for the share a crowd takes and the night for what a player gets. Not run: Firefox (not installed on
 the machine) and a real weak laptop; the slowed processor is the stand-in.
+
+## Rooms in one process (#561)
+
+The numbers above are one night in one process. A game server runs its rooms (`GameServer`, each a `NightHost` in a
+`SubViewport`) one after the other in one thread, so what has to fit the 16.7 ms tick is the **sum of the rooms**: four
+rooms at 120 alive would need about 28 ms. Measured on Railway, as the real server runs them.
+
+### How the rooms were measured
+
+`game/tests/captures/crowd_server_bench.tscn` now takes `--rooms=K`: K nights, each in a `SubViewport` of its own as
+`GameServer` builds a room, four players standing in each, the crowd filled to `--zombies=N` in every room, all stepped
+in the same physics frame; the snapshots each player would get are made as `NightHost` makes them. `tick_ms_*` is the
+whole process's work in a physics frame (every room's step and snapshots), which is the number that has to fit; 1200
+frames a run. `--web=1` makes the players browsers, `--stagger=1` is the change below. The image is the game server's
+own Dockerfile with the bench as its command, a service `deadnight-rooms-bench` in the test project (deleted after),
+`us-west2` like the real server. The container: 48 vCPUs shown, **a limit of 8 vCPUs** (`cpu.max` 800000 100000) and 8 GB
+memory, so the process has one busy core and seven idle.
+
+The processor was not the one of the earlier runs: **AMD EPYC 9655 and 9655P** (three containers, two of them at the
+same time, which made them noisier), against the Xeon Icelake the single-room numbers above came from. The same step
+costs **1.7 times** as much on that Icelake (p95 7.5 / 14.8 ms at 40 / 120 alive against 4.3 / 8.8 here). Size for the
+slower one.
+
+### Alternate heavy ticks
+
+A room's heavy tick is the zombies' 30 Hz step plus the frame built after it, every second 60 Hz tick, and every room
+began on the same parity, so with several rooms they all fell on one tick. `GameServer` now gives each room the half of
+the physics frames (`NightHost.heavy_parity`) that fewer rooms use, and a room begun on the wrong one lets its zombie sim
+count one tick early (`NightHost.phase`). The worst tick becomes about half the rooms' heavy work plus the other half's
+light work. A test (`test_rooms_put_their_crowds_steps_on_alternate_ticks`) opens four rooms and checks that two step
+their zombies in every frame.
+
+![The process tick against the rooms, with the rooms stepping together and alternating](crowd-budget-rooms.png)
+
+### Numbers
+
+p95 of the process tick in ms: the first container (the two settings interleaved, so like for like), then the range over
+the later runs of the alternating one (six runs, from two containers running together). The last column is the ticks over
+16.7 ms of 1200, over all alternating runs (5 percent, 60 ticks, is the p95 line).
+
+| Rooms x alive | Together, first container | Alternating, first container | Alternating, later runs | Over 16.7 ms, alternating |
+| --- | --- | --- | --- | --- |
+| 1 x 40 | 5.3 | 5.0 | 6.0 to 7.6 | 0 to 1 |
+| 2 x 40 | 8.1 | 5.7 | 7.2 to 9.0 | 0 to 2 |
+| 3 x 40 | 11.6 | 8.7 | 10.2 to 13.2 | 0 to 13 |
+| 4 x 40 | 13.7 | 9.7 | 12.1 to 15.8 | 2 to 43 |
+| 6 x 40 | 19.3 | 14.2 | 18.0 to 23.7 | 10 to 488 |
+| 8 x 40 | 27.2 | 17.4 | | 113 |
+| 1 x 120 | 10.4 | 9.2 | 10.9 to 15.3 | 0 to 36 |
+| 2 x 80 | 13.3 | 8.8 | 9.7 to 12.3 | 0 to 6 |
+| 2 x 120 | 16.0 | 10.5 | 11.6 to 17.2 | 1 to 70 |
+| 3 x 120 | 24.0 | 16.8 | 21.2 to 24.5 | 64 to 467 |
+
+- The tick follows the **total alive in the process** more than the room count: about 5 ms at 40 alive, 9 ms at 120, 10
+  at 160, 14 to 17 at 240 to 320 (alternating, quiet container). The players stand still in this bench, so a moving crowd
+  costs somewhat more in paths and less in separation.
+- A room costs about 26 MB of memory (261 MB for one, 299 MB for three, 366 MB for six): memory is not the limit.
+- The p99 is 2 to 5 ms above the p95, and the worst tick of a run is 15 to 30 ms (a room being built, the first zombie
+  spawns): a room opening can stall the others for a tick or two.
+- On the 1.7 times slower Icelake the 3 x 40 and 1 x 120 cases (8.7 and 9.2 ms in the quiet container) would be 15 to 16
+  ms: under the tick with almost nothing to spare. 4 x 40 (9.7 quiet, 12 to 16 loud) would be over it there.
+
+### Decision: three rooms, an alive budget of 120 for the process
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| `ROOM_CAPACITY` | 3 (the new default; set on `deadnight-server`) | three browser rooms of 40 are the most the Discord Activity can ask for, and they fit |
+| `ALIVE_BUDGET` | 120 (the new default; set on `deadnight-server`) | the most alive in all the rooms of the process together: each room is cut to its share (`GameServer`, at least 20), so a lone desktop room stands 120, two stand 60 each, three 40 each |
+| `MAX_ALIVE` | unset | a cap on one room, still there for a small container |
+
+The worst load this allows is 3 x 40 (or 1 x 120, or 2 x 60), which measured 8.7 to 13.2 ms at p95 on AMD (under 16.7 in
+every run) and is about 15 to 16 ms scaled to the older processor. The budget is a share, so a night in progress loses
+spawns, never zombies, when a room opens: the cap falls and nothing new comes until fewer stand. `ROOM_CAPACITY` above
+3 without a larger `ALIVE_BUDGET` cuts the rooms below 40 (down to 20) instead of going over the tick.
+
+Checked on the deployed service: with this branch deployed to `deadnight-server` the log says `capacity=3`, and a Godot
+client (`game/tests/captures/rooms_online_probe.tscn`) signed four guests in on the deployed backend, each starting a
+night of its own: three were welcomed by the server and the fourth got `no_server` from the backend.
+
+### Open question for the maintainer: more than three rooms costs money or work
+
+Not changed, because each option costs something. The container has 8 vCPUs and the process uses one.
+
+- **Keep three rooms** (3 rooms, 120 alive): nothing.
+- **`ROOM_CAPACITY` 4 and `ALIVE_BUDGET` 160** (4 rooms of 40): nothing, but p95 12 to 16 ms on AMD and over the tick on
+  an Icelake host, so it would drop ticks some of the time.
+- **A second service `deadnight-server-2`** with its own `SERVER_ID`, public domain and `ACTIVITY_PATH` (`/server2`, and
+  a second URL mapping in Discord's developer portal, which is the maintainer's): 6 rooms. Railway bills usage, $20 per
+  vCPU-month and $10 per GB-month ([plans](https://docs.railway.com/reference/pricing/plans)). A process is about 0.3 GB
+  ($3) and 0.1 to 0.2 vCPU idle ($2 to $4), up to about 0.7 vCPU with three busy rooms ($14): **about $5 to $17 a month
+  more** (estimates, not read off a bill).
+- **Replicas of `deadnight-server`**: not usable as is. Replicas share one `SERVER_ID` and one public domain, so a ticket
+  for a room on one replica can reach another.
+- **Several Godot processes in the one container** (a supervisor, one port each): about 7 x 3 rooms, no new money
+  (billing is by use), but work: Railway gives a service one public port, so a small proxy in front, and a heartbeat
+  per process.
+
+What this does not say: three containers on one processor family and one region; players standing still (no moving
+crowd, no shots); the Icelake figure is a ratio from one room, not a measured multi-room run (Railway does not let us
+pick the processor); the Discord proxy and a lossy link were not measured; a room being built while others run is not
+timed.

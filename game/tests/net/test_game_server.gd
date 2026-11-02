@@ -150,6 +150,90 @@ func test_two_matches_are_two_nights_that_know_nothing_of_each_other() -> void:
 	assert_bool((ann.state.frame["players"] as Dictionary).has(2)).is_true()
 
 
+func test_rooms_put_their_crowds_steps_on_alternate_ticks() -> void:
+	await _start()
+	for index in 4:
+		await _client("match-%d" % index, "user-%d" % index)
+	var rooms: Array[NightHost] = []
+	var lures: Array[ZombieLure] = []
+	var parities := [0, 0]
+	for match_id in _server.match_ids():
+		var room := _server.room_of_match(match_id)
+		rooms.append(room)
+		parities[room.heavy_parity] += 1
+		# A lure counts down by one step each time the room's zombies step, nothing else.
+		var lure := ZombieLure.new(1, Vector3.ZERO, 1.0, 1000.0)
+		room.server.sim.lures.append(lure)
+		lures.append(lure)
+	assert_array(parities).is_equal([2, 2])
+	await get_tree().physics_frame
+	var before: Array[float] = []
+	for lure in lures:
+		before.append(lure.left)
+	var stepping: Array[int] = []
+	for _frame in 20:
+		await get_tree().physics_frame
+		var count := 0
+		for index in lures.size():
+			if lures[index].left < before[index]:
+				count += 1
+			before[index] = lures[index].left
+		stepping.append(count)
+	# Two of the four rooms step their zombies in every frame, never all four or none.
+	assert_array(stepping).is_equal([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+
+
+func test_rooms_share_the_processes_alive_budget() -> void:
+	await _start()
+	_server.alive_budget = 100
+	await _client("match-a", "ann")
+	var first := _server.room_of_match("match-a")
+	# A lone room of a desktop client stands the budget (its own ceiling is 120).
+	(
+		assert_bool(await _until(func() -> bool: return first.server.rules.crowd_ceiling == 100))
+		. is_true()
+	)
+	await _client("match-b", "bo")
+	var second := _server.room_of_match("match-b")
+	for room in [first, second]:
+		(
+			assert_bool(
+				await _until(
+					func() -> bool: return (room as NightHost).server.rules.crowd_ceiling == 50
+				)
+			)
+			. is_true()
+		)
+		assert_int((room as NightHost).server.sim.tuning.hard_cap).is_equal(50)
+	# The operator's cap still holds when it is the smaller.
+	first.max_alive = 30
+	first.set_alive_share(first.alive_share)
+	assert_int(first.server.rules.crowd_ceiling).is_equal(30)
+	# A room freed gives its share back.
+	_server._end_room("match-a")
+	(
+		assert_bool(await _until(func() -> bool: return second.server.rules.crowd_ceiling == 100))
+		. is_true()
+	)
+
+
+func test_the_server_takes_three_rooms_and_a_budget_of_120_unless_told() -> void:
+	var config := ServerConfig.from_environment(func(_key: String) -> String: return "")
+	assert_int(config.capacity).is_equal(3)
+	assert_int(config.alive_budget).is_equal(120)
+	var env := {"ALIVE_BUDGET": "90"}
+	var set_up := ServerConfig.from_environment(
+		func(key: String) -> String: return env.get(key, "")
+	)
+	assert_int(set_up.alive_budget).is_equal(90)
+	env["ALIVE_BUDGET"] = "0"
+	var off := ServerConfig.from_environment(func(key: String) -> String: return env.get(key, ""))
+	assert_int(off.alive_budget).is_equal(0)
+	env["ALIVE_BUDGET"] = "lots"
+	var junk := ServerConfig.from_environment(func(key: String) -> String: return env.get(key, ""))
+	assert_int(junk.alive_budget).is_equal(120)
+
+
 func test_a_ticket_that_is_not_good_is_turned_away() -> void:
 	await _start()
 	var good := _ticket("m", "ann")

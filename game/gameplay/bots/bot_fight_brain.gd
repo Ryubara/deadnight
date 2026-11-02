@@ -97,6 +97,7 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	var plan := BotArsenal.plan(me, held, _distance_to(beliefs, intent.target_id, here), threat)
 	var pack := BotCombat.near_count(beliefs, here, _profile.memory_seconds)
 	intent.melee_ok = BotCombat.may_melee(pack, plan.dry)
+	intent.quick_melee_ok = plan.dry and held != null and not held.is_melee()
 	var ordered := _throw(intent, beliefs, here, targets, mates, threat, kind)
 	if not _step_away(intent, beliefs, here, anchor, held, threat, kind, pack, plan.dry, ordered):
 		_last_reflex = Vector3.ZERO
@@ -141,7 +142,8 @@ func _step_away(
 	var dodge := not swings.is_empty() and (kind != BotStance.Kind.HOLD or boss_blow)
 	var keeps_off := _boss_distance(beliefs, here) < _profile.boss_keep and not throwing
 	var margin := _profile.retreat_margin
-	var melee := held != null and held.is_melee()
+	# A bot with no round left stands to fight with the quick melee as one with a bat does.
+	var melee := (held != null and held.is_melee()) or dry
 	var backs := threat < margin and kind != BotStance.Kind.HOLD
 	if (melee and BotCombat.may_melee(pack, dry)) or throwing:
 		backs = false

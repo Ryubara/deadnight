@@ -194,3 +194,39 @@ func test_the_lot_is_drawn_in_pieces_and_nothing_is_left_out_of_the_picture() ->
 	assert_int(night.warmup.lot_steps).is_greater(8)
 	assert_int(night.warmup.held_back()).is_equal(0)
 	night.queue_free()
+
+
+func test_the_warm_up_draws_the_flares_embers_and_keeps_their_programs() -> void:
+	# A flare's lure is a particle system: its process material and the material of its quad are
+	# programs of their own, built when the system first runs and freed with the last material that
+	# uses them. The sample lure used to be gone (it expired by the frame times of the warm-up, which
+	# take seconds in a browser) before its first draw, so the first real flare built them: 10
+	# programs and a frame of 0.3 to 1.8 s in Chrome (#502).
+	var night := await _warmed_night()
+	var seen := night.warmup.ledger.seen.keys().filter(
+		func(string: String) -> bool: return string.begins_with("particles")
+	)
+	(
+		assert_array(seen)
+		. override_failure_message("the warm-up drew no particle system")
+		. is_not_empty()
+	)
+	assert_int(night.warmup.pinned_count(&"ParticleProcessMaterial")).is_greater(0)
+	assert_int(night.warmup.pinned_count(&"StandardMaterial3D")).is_greater(0)
+	# The sample is freed by hand, not left burning in the night.
+	assert_array(night.view.find_children("*", "LureView", true, false)).is_empty()
+	night.queue_free()
+
+
+func test_the_check_notices_a_particle_system_the_warm_up_never_drew() -> void:
+	var night := await _warmed_night()
+	var particles := GPUParticles3D.new()
+	var process := ParticleProcessMaterial.new()
+	process.turbulence_enabled = true
+	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	particles.process_material = process
+	particles.draw_pass_1 = QuadMesh.new()
+	night.view.add_child(particles)
+	var absent := night.warmup.ledger.missing(DrawLedger.strings_of(night))
+	assert_array(absent).contains(["particles|" + DrawLedger.process_key(process)])
+	night.queue_free()

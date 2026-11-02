@@ -12,16 +12,26 @@ extends Node
 ## needed. Every few seconds the server tells the backend which matches it runs and how many
 ## players each has (`heartbeat`), and tells it when a match is over.
 ##
-## The nights run one after the other in one thread, each costing about 3 ms of a 16 ms step with
-## three players, which is what `capacity` (rooms a process takes) is sized from.
+## The nights run one after the other in one thread, so their costs add up in one 16.7 ms tick:
+## `capacity` (rooms a process takes) and `max_alive` are sized from that
+## (`docs/research/crowd-budget.md`, "Rooms in one process"). Rooms put their heavy ticks on
+## alternate halves of the frames (`_lighter_parity`).
 
 signal room_opened(match_id: String)
 signal room_closed(match_id: String)
 
-## Rooms a process takes unless told otherwise.
-const DEFAULT_CAPACITY := 4
+## Rooms a process takes unless told otherwise: three nights of 40 zombies (a browser's ceiling)
+## are the most that fit the 16.7 ms tick on the slowest Railway processor seen.
+const DEFAULT_CAPACITY := 3
+## Zombies alive at once, in all the rooms of a process together, unless told otherwise: the
+## process runs its rooms in one thread, and this many fit the tick with room to spare on that
+## processor (`docs/research/crowd-budget.md`). One room may stand all of it; with three each
+## stands 40.
+const DEFAULT_ALIVE_BUDGET := 120
 ## Seconds between heartbeats (the default of `heartbeat_every`).
 const HEARTBEAT_EVERY := 5.0
+## The least a room is cut to by the budget (rooms beyond the budget over this stand this many).
+const MIN_SHARE := 20
 ## Connections that have not said hello yet; the next is hung up on.
 const MAX_PENDING := 32
 ## Seconds a connection has to say hello, and an empty room that never began is kept.
@@ -34,6 +44,9 @@ var port := NetWire.DEFAULT_PORT
 var capacity := DEFAULT_CAPACITY
 ## The most zombies alive at once in a night here (`ServerConfig.max_alive`); 0 is the rules' own.
 var max_alive := 0
+## The most zombies alive at once in all the rooms together (`ServerConfig.alive_budget`): each room
+## is cut to its share of it, so a lone room may stand the budget and four share it. 0 is no budget.
+var alive_budget := DEFAULT_ALIVE_BUDGET
 var log_enabled := true
 var rules_tuning: RulesTuning
 ## The seed of every room's dice; -1 draws one for each.
@@ -72,6 +85,7 @@ static func make(config: ServerConfig, p_port: int, p_seed: int = -1) -> GameSer
 	server.seed_value = p_seed
 	server.capacity = config.capacity
 	server.max_alive = config.max_alive
+	server.alive_budget = config.alive_budget
 	server.server_id = config.server_id
 	server.public_url = config.public_url
 	server.activity_path = config.activity_path
@@ -267,15 +281,43 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 	if settings != null:
 		room.match_settings = settings
 	room.max_alive = max_alive
+	room.alive_share = _share(_rooms.size() + _building.size())
+	room.heavy_parity = _lighter_parity()
 	room.emptied.connect(func() -> void: _end_room(match_id))
 	viewport.add_child(room)
 	await room.built
 	_rooms[match_id] = room
 	_opened_at[match_id] = _now()
 	_building.erase(match_id)
+	_share_budget()
 	_log("room_opened", {"match": match_id, "rooms": _rooms.size()})
 	room_opened.emit(match_id)
 	return room
+
+
+## A room's share of the alive budget when `rooms` rooms stand: the budget over the rooms, at least
+## `MIN_SHARE` (0 when there is no budget).
+func _share(rooms: int) -> int:
+	if alive_budget <= 0:
+		return 0
+	return maxi(alive_budget / maxi(rooms, 1), MIN_SHARE)
+
+
+## Gives every room its share, after a room opened or closed.
+func _share_budget() -> void:
+	var share := _share(_rooms.size())
+	for room: NightHost in _rooms.values():
+		room.set_alive_share(share)
+
+
+## The half of the physics frames (`NightHost.heavy_parity`) that fewer of the open rooms put their
+## heavy tick on, so the rooms' crowds step on alternate ticks and the process's worst tick is about
+## half its rooms' sum, not all of it.
+func _lighter_parity() -> int:
+	var on_even := 0
+	for room: NightHost in _rooms.values():
+		on_even += 1 if room.heavy_parity == 0 else -1
+	return 1 if on_even > 0 else 0
 
 
 ## A room whose night began and is empty is over; one that nobody ever came to is let go.
@@ -292,6 +334,7 @@ func _end_room(match_id: String) -> void:
 		return
 	_rooms.erase(match_id)
 	_opened_at.erase(match_id)
+	_share_budget()
 	for transport_id: int in _room_of.keys():
 		if _room_of[transport_id] == room:
 			_room_of.erase(transport_id)

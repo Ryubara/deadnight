@@ -30,6 +30,8 @@ const FOCUS_SECONDS := 1.0
 ## A head is aimed at only when the target moves slower than this (m/s) and is nearer than this (m).
 const HEAD_SPEED := 3.0
 const HEAD_RANGE := 12.0
+## How far inside the quick melee's reach a bot lets a zombie come before it strikes (metres).
+const QUICK_REACH_MARGIN := 0.2
 ## Limits of the pitch the view turns to (radians), and a melee swing's reach (metres).
 const PITCH_LIMIT := 1.2
 const MELEE_RANGE := 1.9
@@ -129,6 +131,7 @@ func command(
 		_throw(out)
 	else:
 		out.fire = _trigger(me, eye, contact, intent.melee_ok)
+		out.motion.melee = intent.quick_melee_ok and _in_quick_reach(eye, contact)
 	out.reload = intent.reload and not me.get("reloading", false)
 	out.swap = intent.swap
 	out.use = intent.use
@@ -299,6 +302,14 @@ func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool 
 		return false
 	triggers += 1
 	return true
+
+
+## Whether the target is near enough for the quick melee (its reach, `WeaponCatalog.quick_melee`).
+func _in_quick_reach(eye: Vector3, contact: Dictionary) -> bool:
+	if contact.is_empty():
+		return false
+	var flat := Vector2(contact["position"].x - eye.x, contact["position"].z - eye.z)
+	return flat.length() < WeaponCatalog.quick_melee().melee_range - QUICK_REACH_MARGIN
 
 
 # --- Grenades ---

@@ -23,6 +23,7 @@ static func simulate(
 ) -> void:
 	state.jumped = false
 	state.shot_ready = false
+	state.melee_ready = false
 	state.landed = false
 	state.footstep = false
 	state.stepped_up = 0.0
@@ -36,7 +37,7 @@ static func simulate(
 	state.crouching = _next_stance(body, state, command, tuning)
 	_set_stance(body, state.crouching, tuning)
 	state.aiming = command.aim
-	if command.fire and not command.aim:
+	if (command.fire or command.melee) and not command.aim:
 		# Only a shot from the hip starts the hip-fire hold; one fired while aiming leaves none
 		# behind, so letting go of the aim lets go of the zoom at once (#428).
 		state.fire_age = 0.0
@@ -110,6 +111,15 @@ static func _gate_shot(
 	state.shot_ready = (command.fire or state.shot_buffer > 0.0) and faces
 	if state.shot_ready:
 		state.shot_buffer = 0.0
+	# The quick melee turns the body to the view the way a shot from the hip does, and waits for
+	# the turn the same way, so the arm and the blow go where the camera looks.
+	if command.melee:
+		state.melee_buffer = tuning.hip_fire_buffer
+	else:
+		state.melee_buffer = maxf(state.melee_buffer - delta, 0.0)
+	state.melee_ready = state.melee_buffer > 0.0 and faces
+	if state.melee_ready:
+		state.melee_buffer = 0.0
 
 
 static func _face(
