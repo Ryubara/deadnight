@@ -6,7 +6,8 @@
 ## Prints `HAND` and `FIT` lines.
 extends SceneTree
 
-## Every weapon model and the size it is held at (its hold file, or a size for a model with none).
+## Every weapon model and the size it is held at (its hold file, or for a model with none its scene,
+## `model_scale` and `model_length`).
 const MODELS := {
 	"revolver": "res://gameplay/player/holds/pistol.tres",
 	"flare_gun": "res://gameplay/player/holds/flare_gun.tres",
@@ -18,6 +19,25 @@ const MODELS := {
 	"ppsh": "res://gameplay/player/holds/ppsh.tres",
 	"mp5": "res://gameplay/player/holds/mp5.tres",
 	"m4a1": "res://gameplay/player/holds/m4a1.tres",
+	# #797's models, at the size their holds will give them (docs/research/weapon-models.md).
+	"service_pistol":
+	{
+		"scene": "res://assets/weapons/service_pistol/service_pistol.glb",
+		"model_scale": 1.95,
+		"model_length": 0.25
+	},
+	"ray_gun":
+	{
+		"scene": "res://assets/weapons/ray_gun/ray_gun.glb",
+		"model_scale": 2.275,
+		"model_length": 0.278
+	},
+	"freeze_gun":
+	{
+		"scene": "res://assets/weapons/freeze_gun/freeze_gun.glb",
+		"model_scale": 1.3,
+		"model_length": 0.908
+	},
 }
 
 
@@ -30,7 +50,7 @@ func _run() -> void:
 	await process_frame
 	_hand(solver)
 	for name: String in MODELS:
-		var hold := load(MODELS[name]) as WeaponHold
+		var hold := _hold(MODELS[name])
 		var model := (load(hold.scene) as PackedScene).instantiate() as Node3D
 		root.add_child(model)
 		var fit := WeaponFit.measure(model, hold.model_scale, hold.model_length)
@@ -42,6 +62,17 @@ func _run() -> void:
 		)
 		model.free()
 	quit(0)
+
+
+## A model's hold file, or a hold made from a size for a model with none.
+func _hold(entry: Variant) -> WeaponHold:
+	if entry is String:
+		return load(entry) as WeaponHold
+	var hold := WeaponHold.new()
+	hold.scene = entry.scene
+	hold.model_scale = entry.model_scale
+	hold.model_length = entry.model_length
+	return hold
 
 
 ## The right hand in the game, along the handle line: the whole fist, the part below the index

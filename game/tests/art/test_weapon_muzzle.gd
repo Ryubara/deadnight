@@ -15,6 +15,9 @@ const FIREARMS: Array[String] = [
 	"ppsh",
 	"mp5",
 	"m4a1",
+	"service_pistol",
+	"ray_gun",
+	"freeze_gun",
 ]
 const NOT_FIREARMS: Array[String] = ["baseball_bat", "fire_axe", "grenade", "hammer", "crowbar"]
 const MUZZLE := "Muzzle"
