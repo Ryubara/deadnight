@@ -150,7 +150,9 @@ func test_the_weapon_stays_in_the_hand_and_travels_to_a_blow_ahead_of_the_body()
 		)
 		# It is carried by the hand all along: the mount is on the hand bone, never loose.
 		assert_float(hand_gap).override_failure_message("%s: left the hand" % id).is_less(0.6)
-		# And the hand is home again.
+		# And the hand is home again: the shouldered pose eases back over a few ticks (it used to snap
+		# back, an arm pop), so a gun is within a hand's breadth at the clip's end and home 10 ticks on.
+		await _ticks(10)
 		(
 			assert_float(_weapon_local().distance_to(rest))
 			. override_failure_message("%s: not back after the blow" % id)
