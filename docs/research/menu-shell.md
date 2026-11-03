@@ -58,6 +58,14 @@ and `game/ui/screens/main_menu.gd`.
   the window loses focus (a browser has no close request), and as it leaves the tree. A visit with no change writes
   nothing. A new panel with choices does the same: hold in memory, override `commit`, never write per click.
 
+- **A hovered button is paint, and a scroll area cuts paint** (#628). `UIButton` grows 3.5 percent on hover; the lobby's
+  rows are full-width buttons in a `ScrollContainer`, which clips at its own rectangle, so "Copy the link" lost its
+  left edge. Two shared rules: the button grows only by the room it has inside its nearest clipping ancestor, and the
+  theme keeps `UITokens.hover_room` free at the left and right of every `ScrollContainer` (not above and below: screens
+  compute a scroll area's height from its content). A button flush with the first or last row of an area grows
+  sideways only. The focus ring above the first and below the last row of an area is still cut (#644). `test_hover_room.gd`
+  hovers every button of every menu screen at 720p, 1080p and the phone canvas, scrolled to the top, end and middle.
+
 ## Tests
 
 `test_menu_shell.gd` (35 cases: tabs by keys, bumpers, D-pad and A, a click and a tap, hints per device, each panel
@@ -67,3 +75,6 @@ every panel inside every canvas, reduced motion, the longest count), `test_menu_
 clicks: an outfit survives a weapon change, another tab and a reload from the file, and a visit writes the file once,
 counted by `Settings.write_count`). Captures: `tests/captures/menu_shell_tour.tscn`,
 `tests/captures/menu_loadout_keep_tour.tscn` (pick, change weapon, other tab, back; prints what the soldier wears).
+`tests/captures/lobby_hover_tour.tscn` hovers the lobby's buttons with a real mouse event (windowed, through `gds godot`),
+and exported as the main scene of a web build it publishes where each button is (`window.hoverRects`) for a browser to
+hover (#628, before and after).
