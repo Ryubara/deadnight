@@ -5,6 +5,24 @@ extends GdUnitTestSuite
 
 const GATE := &"nw"
 const TARGETS := {1: Vector3(20.0, 0.0, 0.0)}
+## Two windows on one wall (the line x = 0), ten metres apart, each 1.5 m wide. The dead walk the
+## way a navigation mesh leads them: along the wall to the second window's gap and through it.
+const NEAR := &"win_a"
+const FAR := &"win_b"
+const FAR_Z := 10.0
+const GAP_HALF := 0.75
+const WINDOW_TARGETS := {1: Vector3(20.0, 0.0, FAR_Z)}
+
+
+## A path hugging the wall to the far window's gap, then through it.
+class AlongTheWall:
+	extends ZombiePathing
+
+	func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
+		if from.x > -0.5:  # in the gap: straight on
+			return PackedVector3Array([to])
+		return PackedVector3Array([Vector3(-1.0, 0.0, FAR_Z), Vector3(5.0, 0.0, FAR_Z), to])
+
 
 var _barricades: BarricadeState
 
@@ -138,3 +156,83 @@ func _hash_of_a_run() -> int:
 		sim.tick(ZombieFixture.STEP, TARGETS)
 		running = ZombieFixture.state_hash(sim, running)
 	return running
+
+
+func _two_windows(near_boards: int, far_boards: int) -> ZombieSim:
+	_barricades.boards[NEAR] = near_boards
+	_barricades.boards[FAR] = far_boards
+	var sim := ZombieFixture.sim()
+	sim.gates[NEAR] = ZombieGate.new(NEAR, Vector3.ZERO, Vector3.RIGHT, GAP_HALF)
+	sim.gates[FAR] = ZombieGate.new(FAR, Vector3(0.0, 0.0, FAR_Z), Vector3.RIGHT, GAP_HALF)
+	sim.barricades = _barricades
+	sim.board_seconds = 1.2
+	sim.pathing = AlongTheWall.new()
+	return sim
+
+
+func _tore_at(events: Array[Dictionary], gate: StringName) -> int:
+	var n := 0
+	for event in events:
+		if event["type"] == &"zombie_tore" and event["gate_id"] == gate:
+			n += 1
+	return n
+
+
+func test_a_dead_beside_the_wall_between_two_windows_tears_no_boards() -> void:
+	var sim := _two_windows(3, 3)
+	var profile := ZombieProfile.plain(sim.tuning)
+	var zombie := sim.spawn(1, 2.0, Vector3(-1.0, 0.0, 5.0), 0.0, profile, NEAR)
+	zombie.enter(ZombieBody.Mode.CHASE)
+	var events := ZombieFixture.run(sim, 1.0, WINDOW_TARGETS)
+	assert_int(_tore_at(events, NEAR)).is_equal(0)
+	assert_float(zombie.position.z).is_between(5.5, 8.0)
+	assert_float(zombie.tear_progress).is_equal(0.0)
+
+
+func test_a_dead_walking_along_the_wall_tears_the_window_it_comes_to() -> void:
+	var sim := _two_windows(3, 1)
+	var profile := ZombieProfile.plain(sim.tuning)
+	var zombie := sim.spawn(1, 2.0, Vector3(-1.0, 0.0, 5.0), 0.0, profile, NEAR)
+	zombie.enter(ZombieBody.Mode.CHASE)
+	var events := ZombieFixture.run(sim, 6.0, WINDOW_TARGETS)
+	assert_int(_tore_at(events, NEAR)).is_equal(0)
+	# It reached the far window, took that gate for its own and worked its boards.
+	assert_str(zombie.gate_id).is_equal(FAR)
+	assert_float(zombie.position.z).is_between(FAR_Z - GAP_HALF - 0.6, FAR_Z + GAP_HALF + 0.6)
+	assert_int(_tore_at(events, FAR)).is_greater(0)
+
+
+func test_a_dead_that_tore_the_far_window_down_walks_through_it() -> void:
+	var sim := _two_windows(3, 1)
+	var profile := ZombieProfile.plain(sim.tuning)
+	var zombie := sim.spawn(1, 2.0, Vector3(-1.0, 0.0, 5.0), 0.0, profile, NEAR)
+	zombie.enter(ZombieBody.Mode.CHASE)
+	var events := ZombieFixture.run(sim, 8.0, WINDOW_TARGETS)
+	_barricades.boards[FAR] = 0
+	events.append_array(ZombieFixture.run(sim, 4.0, WINDOW_TARGETS))
+	assert_int(_tore_at(events, NEAR)).is_equal(0)
+	assert_float(zombie.position.x).is_greater(2.0)
+	assert_str(zombie.gate_id).is_equal(&"")
+
+
+func test_a_dead_in_front_of_its_own_window_still_tears_it() -> void:
+	var sim := _two_windows(3, 3)
+	sim.pathing = ZombiePathing.new()
+	var profile := ZombieProfile.plain(sim.tuning)
+	var zombie := sim.spawn(1, 2.0, Vector3(-3.0, 0.0, 0.3), 0.0, profile, NEAR)
+	zombie.enter(ZombieBody.Mode.CHASE)
+	var events := ZombieFixture.run(sim, 3.0, TARGETS)
+	assert_int(_tore_at(events, NEAR)).is_greater(0)
+	assert_str(zombie.gate_id).is_equal(NEAR)
+
+
+func test_the_wrong_gates_boards_do_not_hold_a_dead_that_walks_through_another_gap() -> void:
+	# The near window is boarded and the far one is open: a dead that came for the near one but is
+	# in front of the open one walks in, and the near boards are not its business.
+	var sim := _two_windows(3, 0)
+	var profile := ZombieProfile.plain(sim.tuning)
+	var zombie := sim.spawn(1, 2.0, Vector3(-3.0, 0.0, FAR_Z), 0.0, profile, NEAR)
+	zombie.enter(ZombieBody.Mode.CHASE)
+	var events := ZombieFixture.run(sim, 5.0, WINDOW_TARGETS)
+	assert_float(zombie.position.x).is_greater(2.0)
+	assert_int(_tore_at(events, NEAR)).is_equal(0)

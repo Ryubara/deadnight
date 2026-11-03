@@ -18,7 +18,8 @@ extends Node
 ## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
 ## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke) and
-## `--quiet` (no trace line a minute).
+## `--quiet` (no trace line a minute) and `--map=ID` (a map of `MapRegistry`, played by its
+## scene and its rules overlay; default the lot).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -76,7 +77,10 @@ func _play(seed_value: int) -> Dictionary:
 	var bots := int(_args.get("bots", 4))
 	var seats := bots + (1 if person else 0)
 	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
-	var night := await SeatedNight.start(self, seats, tuning, seed_value, true)
+	var scene: PackedScene = null
+	if _args.has("map"):
+		scene = load(MapRegistry.of(StringName(String(_args["map"]))).scene_path) as PackedScene
+	var night := await SeatedNight.start(self, seats, tuning, seed_value, true, scene)
 	var people: Array[int] = []
 	var first_bot := 1
 	if person:
@@ -153,6 +157,7 @@ func _play(seed_value: int) -> Dictionary:
 	report["seed"] = seed_value
 	report["profile"] = String(_args.get("profile", "regular"))
 	report["order"] = String(order)
+	report["map"] = String(_args.get("map", "drive_in"))
 	report["person"] = person
 	report["reason"] = reason
 	report["errors"] = catcher.lines.size()
