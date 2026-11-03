@@ -38,3 +38,8 @@ louder at the same peak (the web build ignores a bus limiter). `docs/research/gu
 
 The flare gun's report (#761) is limited the same way (`limit_crest`); `gun_levels.py --table` also writes
 a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.
+
+The second batch of firearms (#790: PPSh, M249, M4A1, .50 calibre, MP5, 870 pump, dual pistols) is `gun_recipes_2.py`,
+built from `weapon_recipes.py`'s `report` and `tail` and listed by `generate.py`; its sounds are `shot_`, `tail_`,
+`equip_` and `dry_` plus the gun id, and `reload_<gun>_<step>`.
+`docs/research/gun-audio.md#the-second-batch-of-firearms-790`.
