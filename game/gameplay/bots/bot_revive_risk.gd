@@ -22,7 +22,7 @@ enum Kind { SAFE, CLEAR, UNSAFE, LATE }
 
 ## A zombie's health against the round's, and its speed against the round's, by look (the roster's
 ## `health_multiplier` and `speed_multiplier`; a test holds the two tables together).
-const HEALTH_BY_LOOK := {&"runner": 0.55, &"brute": 2.5, &"crawler": 0.7, &"headliner": 13.0}
+const HEALTH_BY_LOOK := {&"runner": 0.55, &"brute": 2.5, &"crawler": 0.7, &"headliner": 16.25}
 const SPEED_BY_LOOK := {&"runner": 1.4, &"brute": 0.4, &"crawler": 0.4, &"headliner": 0.45}
 ## The night's dark speed-up, assumed in full (the bot is careful).
 const DARK_SPEED := 1.25

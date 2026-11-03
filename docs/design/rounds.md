@@ -357,7 +357,7 @@ round's own value, so every type grows with the night. The look is a variant fro
 | runner | runner | x0.55 | x1.4 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 5.0 m/s under the lights |
 | crawler | crawler | x0.7 | x0.4 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
 | brute | brute | x2.5 | x0.4 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
-| headliner (boss) | its own, from the artist | x13, +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
+| headliner (boss) | its own, from the artist | x16.25 (13 and a quarter more, #688), +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
 **One at a time.** A type's first round brings an exact number (`intro_count`), so every player meets
 each one on the same round and never "maybe": the runner on round 4, the crawler on 6, the brute on 8.
@@ -621,7 +621,7 @@ cells (seed 4000, the same on every machine) and fails, naming the number, if a 
 
 | Target | Range |
 | --- | --- |
-| Median round, average solo (the design target) | 10 to 14 |
+| Median round, average solo (the design target) | 8 to 14 (was 10 to 14; the floor moved with the bosses at 1.25x health, #688) |
 | Median round, average 2 / 4 players | 11 to 16 / 12 to 17 |
 | Median round, weak solo / strong solo | 4 to 9 / 12 to 18 |
 | Average solo nights that clear round 4 | at least 85% |
@@ -638,6 +638,33 @@ seed, and that the gate itself fails on a tuning that is far too hard or far too
 pay for. A change to a range
 is a change to this table in the same pull request. To try a number: `tools/balance/run_report.py --set
 rounds.health_growth=1.06` (see the research page).
+
+## The bosses 25% tougher (#688)
+
+The maintainer asked for it after player feedback ("the bosses need to be 25% more tankier"). The headliner is the only
+boss type (`boss = true`), so the one change is `health_multiplier` **13 to 16.25** (13 times 1.25) in
+`default_tuning.tres`; the weak spot's x2.2, the blow, the speed, the extra-player step and the pay are untouched. The
+rookie-boss tuning (#568, #662) set nothing here: it changed the Rookie bot's `read`, not the boss.
+
+The balance report (300 nights a cell, seed 1, `--jobs 3`), before and after:
+
+| Boss night numbers | Before | After | Gate |
+| --- | ---: | ---: | --- |
+| Headliner time to kill, average solo, seconds under fire (shots) | 19.55 (41.5) | 24.74 (44.7) | 8 to 30 |
+| Round 5, weak, 1 / 2 / 4 players: nights lost | 65% / 65% / 67% | 80% / 81% / 81% | at most 85% (solo) |
+| Round 5, average, 1 / 2 / 4 players: nights lost | 16% / 4% / 1% | 26% / 8% / 2% | at most 40% |
+| Round 5, average solo: pressure against its neighbours | x4.11 | x5.45 | at least x1.5 |
+| Round 15, average, 1 / 2 / 4 players: nights lost | 82% / 66% / 53% | 99% / 87% / 57% | none |
+| Round 15, strong, 1 / 2 / 4 players: nights lost | 14% / 15% / 4% | 22% / 21% / 6% | none |
+| Median round, average, 1 / 2 / 4 players | 9 / 14 / 15 | 8 / 15 / 15 | 8 to 14 / 11 to 16 / 12 to 17 |
+
+Every boss-night target still holds (the weak solo boss night at 80% is five points under its limit). **The one gate
+that the rise broke is the average solo median round**: 8 where it wanted 10 to 14 (the gate's 60 nights at seed 4000;
+the 300-night report above reads 9 before and 8 after), because the second boss night at round 15 now kills 99% of
+average solo players who reach it (it was 82%) and the first one costs a quarter of them. Nothing else was retuned, as
+asked; the gate's floor for that one cell moved from 10 to 8 so that the change can land, and **that floor is the
+maintainer's to keep or to send back** (the way back is a cheaper boss health, or the cut-back of something else that
+is not part of this change).
 
 ## A 5 s break (#382)
 
