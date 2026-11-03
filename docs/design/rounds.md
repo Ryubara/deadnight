@@ -386,7 +386,7 @@ round's own value, so every type grows with the night. The look is a variant fro
 | runner | runner | x0.55 | x1.4 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 5.0 m/s under the lights |
 | crawler | crawler | x0.7 | x0.4 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low, shot at through zones fitted to its body on the ground, so no harder to hit than a walker (its `hit_chance` 0.6 only sizes an upright set; the simulator takes 1.0 for it, #745), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
 | brute | brute | x3 (was 2.5, #745) | x0.4 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
-| headliner (boss) | its own, from the artist | x16.25 (13 and a quarter more, #688), +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
+| headliner (boss) | its own, from the artist | x15 (was 16.25, #688; 15 since the six firearms, #793), +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
 **One at a time.** A type's first round brings an exact number (`intro_count`), so every player meets
 each one on the same round and never "maybe": the runner on round 4, the crawler on 6, the brute on 8.
@@ -710,6 +710,11 @@ The maintainer asked for it after player feedback ("the bosses need to be 25% mo
 boss type (`boss = true`), so the one change is `health_multiplier` **13 to 16.25** (13 times 1.25) in
 `default_tuning.tres`; the weak spot's x2.2, the blow, the speed, the extra-player step and the pay are untouched. The
 rookie-boss tuning (#568, #662) set nothing here: it changed the Rookie bot's `read`, not the boss.
+
+**Since #793 it is x15** (still 15% above the original 13): the six firearms with their rounds on sale put the headliner's
+time to kill in the gate at 31.5 s against its 30, and x15 with `health_growth` 1.16 brings it to 29.8 s
+([the numbers](../research/balance-simulator.md#the-six-firearms-793)). This was an agent's tuning choice, not the
+maintainer's: the alternative is a longer limit for the headliner's time in `BalanceTargets`.
 
 The balance report (300 nights a cell, seed 1, `--jobs 3`), before and after:
 

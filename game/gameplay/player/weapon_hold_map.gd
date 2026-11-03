@@ -13,6 +13,12 @@ const CLASS_OF := {
 	&"smg": &"Rifle",
 	&"pistol": &"Pistol",
 	&"flare_gun": &"Pistol",
+	&"mp5": &"Rifle",
+	&"ppsh": &"Rifle",
+	&"m4a1": &"Rifle",
+	&"m249": &"Rifle",
+	&"fifty_cal": &"Rifle",
+	&"pump_870": &"Shotgun",
 	&"dual_pistols": &"Dual",
 }
 const MELEE_CLASS := &"Melee"

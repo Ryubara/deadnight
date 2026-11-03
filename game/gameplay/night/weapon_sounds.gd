@@ -181,6 +181,8 @@ func _on_event(event: Dictionary) -> void:
 				_at_player(DRY.get(held, &"dry_fire"), event["shooter_id"])
 		&"reload_started":
 			_on_reload(event)
+		&"reload_interrupted":
+			schedule.cancel(_reload_tag(event["shooter_id"]))
 		&"weapon_equipped":
 			_on_equipped(event)
 		&"projectile_burst":
@@ -268,7 +270,7 @@ func _on_reload(event: Dictionary) -> void:
 	var lift := _t.own_reload_db if shooter_id == _state.player_id else _t.teammate_reload_db
 	for step: StringName in steps:
 		var sound: StringName = steps[step]
-		for share in motion.event_shares(step):
+		for share in motion.event_shares_for(step, int(event.get("rounds", 0))):
 			schedule.add(
 				share * seconds, func() -> void: _reload_step(sound, shooter_id, lift), tag
 			)
