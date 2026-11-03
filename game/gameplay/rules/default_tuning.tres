@@ -393,7 +393,7 @@ crawler_speed_fraction = 0.35
 
 [sub_resource type="Resource" id="Resource_barr1"]
 script = ExtResource("10_barr1")
-ids = Array[StringName]([&"nw", &"ne", &"w", &"e", &"n", &"n2"])
+ids = Array[StringName]([&"nw", &"ne", &"w", &"e", &"n", &"n2", &"mid_w", &"mid_e", &"yard_e1", &"yard_e2", &"yard_s", &"back_w1", &"back_w2", &"back_s", &"plaza_w", &"plaza_e"])
 boards = 5
 seconds_per_board = 1.2
 
