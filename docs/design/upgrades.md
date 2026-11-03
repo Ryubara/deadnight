@@ -28,6 +28,24 @@ Pay points to re-cut the weapon in your hand: it hits harder, holds more, and is
 What does not change: the fire interval, reload time, spread, falloff, zone multipliers and range. A re-cut weapon
 is the same weapon, hitting harder, so the model, the sounds and the shop still know it by its id.
 
+## The re-cut skin
+
+A re-cut weapon **looks re-cut for as long as it is held**: the metal goes ink-blue and hard, a lattice of diamond
+cells and traces lights up in cold cyan across the whole weapon (some cells burn and blink), a white-cyan pulse
+runs down the barrel every couple of seconds, a rim of light with a violet fringe says "upgraded" from across a
+room, and the whole thing breathes slowly. Every player sees it, in the player's own view, on the others' bodies and
+in the menu's stage. The shader is `gameplay/weapons/fx/recut_skin.gdshader`, put on by `RecutSkin`, tuned in
+`recut_style_default.tres` (`RecutStyle`); why it looks like this, what it costs and what the genre does:
+[the re-cut skin](../research/recut-skin.md).
+
+| | |
+| --- | --- |
+| Rule | the weapon in the hand wears the skin when its tier (`arms[weapon][2]` of the frame, the same number the ammo card reads) is above 0; a weapon swapped away, lost or bought again plain does not |
+| Who sees it | every client, from the frame: the local body, the other players' bodies, a late joiner (it shows finished) |
+| New weapon | none of the weapon's work: the shader stands in the surface's palette material (the same surface, no second pass), so a new model gets the skin with no texture, no scene and no code |
+| Ignition | a weapon re-cut in the hand has the skin sweep on from the butt to the muzzle in 0.7 s (a white front, a flash); a weapon put in the hand already re-cut shows it finished |
+| Cost | no draw call and no light more than the plain weapon: one lit opaque surface, one texture read (`tests/weapons/test_recut_skin.gd` pins it); the first use is paid in the warm-up |
+
 **Who decides.** The server. The buyer presses use at the machine, the server finds the weapon in their hand and
 sends the rules `RulesAction.buy(player, "upgrade_weapon", -1, weapon)`; the rules check (a weapon that can be
 re-cut, not yet re-cut, enough points), charge, remember the weapon in `PlayerState.upgraded`, and answer
@@ -55,7 +73,7 @@ other perks.
 | Where | the projection booth ([the lot](map.md#shop-spots)) | the concession stand |
 | Look | a cast-iron bench with two brass film reels on its tower, a sprocketed film strip along its front, a cradle under a press with a hot head, five ready lamps, a "RE-CUT / WHILE-U-WAIT" sign | a red and cream counter with a chrome band, a back bar of bottles, a tank of fizzing tonic, a tap with a lever, a neon heart over a "HEARTY" board |
 | Prompt | "Re-cut: Revolver, damage x1.75, rounds x1.5, 1500 points"; "this weapon is already re-cut"; "nothing to re-cut in your hand" | "Hearty tonic, +50 most health, 1000 points"; "you have had yours" |
-| On a purchase | the weapon lies on the cradle, the reels spin up, the press drops and strikes at 0.8 s with a flash and sparks, the weapon glows brass, the lamps chase, a bell at 1.55 s; 2.4 s in all | the lever pulls, the cork pops, the tumbler fills, the gulp at 0.55 s flashes the heart; 1.3 s in all |
+| On a purchase | the weapon lies on the cradle (plain), the reels spin up, the press drops and strikes at 0.8 s: a flash, a ring of light and sparks in the skin's cold blue, the head and the lamps and the bench's one light turn the same colour, and the weapon's skin sweeps on from butt to muzzle in 0.55 s; the lamps chase, a bell at 1.55 s; 2.4 s in all, the booth's amber back at the end | the lever pulls, the cork pops, the tumbler fills, the gulp at 0.55 s flashes the heart; 1.3 s in all |
 | Sound | `buy_recut` (a recipe: motor, groan, blow, hiss, ratchet, bell; no ElevenLabs) | `buy_tonic` (the cork and the gulp) |
 | HUD | the ammo card says "Re-Cut Revolver" and the bigger magazine and reserve; the feed says "had a weapon re-cut" | the health card reads the new most (150); the feed says "drank the hearty tonic" |
 

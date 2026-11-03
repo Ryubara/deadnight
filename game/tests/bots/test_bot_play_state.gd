@@ -12,7 +12,7 @@ func _me(share: float) -> Dictionary:
 
 
 func _states() -> BotPlayState:
-	return BotPlayState.new(BotProfile.regular())
+	return BotPlayState.new(BotProfile.veteran())
 
 
 ## Feeds one share a second for each of `shares`, starting at `from`; returns the states reached.
@@ -44,7 +44,7 @@ func test_health_takes_a_bot_down_through_careful_to_safe() -> void:
 
 
 func test_each_switch_has_two_numbers_so_a_bot_at_the_edge_does_not_flicker() -> void:
-	var profile := BotProfile.regular()
+	var profile := BotProfile.veteran()
 	var play := BotPlayState.new(profile)
 	play.update(_me(0.3), 0, 0.0)
 	assert_int(play.state).is_equal(BotPlayState.State.SAFE)
@@ -62,7 +62,7 @@ func test_each_switch_has_two_numbers_so_a_bot_at_the_edge_does_not_flicker() ->
 
 
 func test_health_wobbling_across_the_down_line_changes_the_state_once() -> void:
-	var profile := BotProfile.regular()
+	var profile := BotProfile.veteran()
 	var play := BotPlayState.new(profile)
 	var wobble: Array[float] = []
 	for i in 40:
@@ -74,7 +74,7 @@ func test_health_wobbling_across_the_down_line_changes_the_state_once() -> void:
 
 
 func test_a_bot_becomes_bolder_only_after_the_dwell_and_more_careful_at_once() -> void:
-	var profile := BotProfile.regular()
+	var profile := BotProfile.veteran()
 	var play := BotPlayState.new(profile)
 	play.update(_me(0.5), 0, 10.0)
 	assert_int(play.state).is_equal(BotPlayState.State.CAREFUL)
@@ -88,7 +88,7 @@ func test_a_bot_becomes_bolder_only_after_the_dwell_and_more_careful_at_once() -
 
 
 func test_the_dead_close_in_count_as_lost_health() -> void:
-	var profile := BotProfile.regular()
+	var profile := BotProfile.veteran()
 	var play := BotPlayState.new(profile)
 	# Full health with a crowd on it: the cost is capped, and it is enough to be careful.
 	play.update(_me(1.0), 20, 5.0)
@@ -125,9 +125,9 @@ func test_a_state_asks_more_distance_the_lower_the_health() -> void:
 	var play := _states()
 	assert_float(play.margin(1.25)).is_equal(1.25)
 	play.update(_me(0.5), 0, 1.0)
-	assert_float(play.margin(1.25)).is_equal(BotProfile.regular().careful_margin)
+	assert_float(play.margin(1.25)).is_equal(BotProfile.veteran().careful_margin)
 	play.update(_me(0.2), 0, 2.0)
-	assert_float(play.margin(1.25)).is_equal(BotProfile.regular().safe_margin)
+	assert_float(play.margin(1.25)).is_equal(BotProfile.veteran().safe_margin)
 	# A profile that already keeps more keeps it.
 	assert_float(play.margin(9.0)).is_equal(9.0)
 
@@ -159,7 +159,7 @@ func test_a_low_follower_keeps_the_near_side_of_the_band() -> void:
 	var play := _states()
 	assert_vector(play.follow_band()).is_equal(Vector2.ZERO)
 	play.update(_me(0.2), 0, 1.0)
-	assert_vector(play.follow_band()).is_equal(BotProfile.regular().safe_follow_band)
+	assert_vector(play.follow_band()).is_equal(BotProfile.veteran().safe_follow_band)
 	assert_float(play.follow_band().y).is_less(BotFollow.FIGHT_BAND.y)
 
 
@@ -167,7 +167,7 @@ func test_a_low_holder_may_back_off_a_few_metres_only() -> void:
 	var play := _states()
 	assert_bool(play.may_back_off_hold(0.0)).is_false()
 	play.update(_me(0.2), 0, 1.0)
-	var back := BotProfile.regular().hold_back
+	var back := BotProfile.veteran().hold_back
 	assert_bool(play.may_back_off_hold(back - 0.5)).is_true()
 	assert_bool(play.may_back_off_hold(back + 0.5)).is_false()
 	# It is not called back to the spot while it stands within the stretch.
@@ -199,11 +199,11 @@ func _wants_to_back_away(rig: BotRig) -> bool:
 
 
 func test_a_low_bot_backs_away_from_a_zombie_a_healthy_one_stands_and_shoots() -> void:
-	var healthy := BotRig.new(BotProfile.regular(), 4)
+	var healthy := BotRig.new(BotProfile.veteran(), 4)
 	healthy.put_zombie(1, Vector3(0, 0, -4))
 	healthy.run(90)
 	assert_bool(_wants_to_back_away(healthy)).is_false()
-	var low := BotRig.new(BotProfile.regular(), 4)
+	var low := BotRig.new(BotProfile.veteran(), 4)
 	low.health = 20.0
 	low.put_zombie(1, Vector3(0, 0, -4))
 	low.run(90)
@@ -216,7 +216,7 @@ func test_a_low_bot_backs_away_from_a_zombie_a_healthy_one_stands_and_shoots() -
 
 func test_with_the_states_off_a_low_bot_stands_like_a_healthy_one() -> void:
 	# The soak's before: the same night with `--no-states`.
-	var rig := BotRig.new(BotProfile.regular(), 4)
+	var rig := BotRig.new(BotProfile.veteran(), 4)
 	(rig.bot.brain as BotFightBrain).play.enabled = false
 	rig.health = 20.0
 	rig.put_zombie(1, Vector3(0, 0, -4))
@@ -227,11 +227,11 @@ func test_with_the_states_off_a_low_bot_stands_like_a_healthy_one() -> void:
 
 func test_a_hurt_bot_keeps_a_wider_margin_than_a_healthy_one() -> void:
 	# A zombie 2 m away: inside a careful bot's 2.5 m, outside a healthy one's 1.25 m.
-	var healthy := BotRig.new(BotProfile.regular(), 4)
+	var healthy := BotRig.new(BotProfile.veteran(), 4)
 	healthy.put_zombie(1, Vector3(0, 0, -2))
 	healthy.run(90)
 	assert_bool(_wants_to_back_away(healthy)).is_false()
-	var hurt := BotRig.new(BotProfile.regular(), 4)
+	var hurt := BotRig.new(BotProfile.veteran(), 4)
 	hurt.health = 50.0
 	hurt.put_zombie(1, Vector3(0, 0, -2))
 	hurt.run(90)
@@ -242,7 +242,7 @@ func test_a_hurt_bot_keeps_a_wider_margin_than_a_healthy_one() -> void:
 func _hold_rig(health: float, apart: float) -> BotRig:
 	var orders := BotOrders.new()
 	orders.issue(BotOrders.HOLD, 9, SPOT)
-	var rig := BotRig.new(BotProfile.regular(), 4)
+	var rig := BotRig.new(BotProfile.veteran(), 4)
 	rig.orders = orders.to_frame()
 	rig.health = health
 	rig.position = SPOT + Vector3(0.0, 0.0, apart)
@@ -260,7 +260,7 @@ func test_a_low_holder_steps_back_within_a_few_metres_of_the_spot_and_no_farther
 	var near := _hold_rig(20.0, 1.0)
 	assert_str((near.bot.brain as BotFightBrain).play_state_name()).is_equal("safe")
 	assert_bool(_wants_to_back_away(near)).is_true()
-	var far := _hold_rig(20.0, BotProfile.regular().hold_back + 1.5)
+	var far := _hold_rig(20.0, BotProfile.veteran().hold_back + 1.5)
 	assert_bool(_wants_to_back_away(far)).is_false()
 
 
@@ -274,7 +274,7 @@ func test_a_low_holders_retreat_is_not_pulled_back_to_the_spot() -> void:
 
 
 func test_the_state_is_counted_as_the_bot_changes_it() -> void:
-	var rig := BotRig.new(BotProfile.regular(), 4)
+	var rig := BotRig.new(BotProfile.veteran(), 4)
 	rig.run(30)
 	rig.health = 20.0
 	rig.run(30)
@@ -283,7 +283,7 @@ func test_the_state_is_counted_as_the_bot_changes_it() -> void:
 
 func test_a_bot_with_a_tonic_judges_its_health_against_its_own_full() -> void:
 	# 120 of 300 is 0.4 (safe), where 120 of a hundred would be a bot at its best.
-	var rig := BotRig.new(BotProfile.regular(), 4)
+	var rig := BotRig.new(BotProfile.veteran(), 4)
 	rig.max_health = 300.0
 	rig.health = 120.0
 	rig.run(30)
@@ -292,7 +292,7 @@ func test_a_bot_with_a_tonic_judges_its_health_against_its_own_full() -> void:
 
 
 func test_the_bot_reads_its_full_health_from_the_events_about_it_only() -> void:
-	var rig := BotRig.new(BotProfile.regular(), 4)
+	var rig := BotRig.new(BotProfile.veteran(), 4)
 	rig.step(
 		[
 			{
