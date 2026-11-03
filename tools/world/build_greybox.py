@@ -97,6 +97,14 @@ SWITCHES = [
 PROJECTOR_LENS = (0.0, 5.11, 24.37)
 SCREEN_CENTRE = (0.0, 10.0)
 SCREEN_FACE_Z = -47.4
+# The projector's spot stands just inside the booth's north wall, behind the port. A spot's forward is its -Z, and the
+# builder's yaw 0 leaves -Z pointing north: a yaw of 180 turned it to the road and lit the plaza through the wall (#840).
+# Its pitch equals its half-angle, so the cone's lower edge runs level at the spot's own height: nothing lower than
+# the port (the stand's roof, the cars, the ground) is in the cone, which is all the renderer knows of a spot (it lights
+# a mesh by the cone's box, and a mesh has at most `max_lights_per_object` lights). 70 m on, the axis meets the
+# screen's face 14 m up, and the cone, 8.6 m across from there, covers the middle of the screen.
+BOOTH_SPOT = (0.0, 5.4, 22.3)
+BOOTH_SPOT_ANGLE = 7.0
 # The ticket plaza behind the road door ends here, at the lot's wall (#686); the perk machine stands against it.
 PLAZA_END = 58.0
 WRECK_X = -9.0
@@ -921,7 +929,7 @@ def build() -> None:
     block(booth, "FilmRacks", -3.8, -1.4, 30, 31.6, 2.2, "booth_prop")
     block(booth, "Projector", -1.0, 1.0, 24.5, 26.0, 1.3, "booth_prop", 4.05)
     bl = lamps(booth, "booth")
-    spot(bl, "ProjectorBeam", (0, 5.4, 22.3), 180, -5.0, 6.0, 100, 7, "#e8f0ff")
+    spot(bl, "ProjectorBeam", BOOTH_SPOT, 0, BOOTH_SPOT_ANGLE, 6.0, 100, BOOTH_SPOT_ANGLE, "#e8f0ff")
     omni(bl, "Lower", (0, 3.0, 27), 1.0, 8, "#c9a8ff")
     omni(bl, "Upper", (0, 6.6, 27), 0.9, 7, "#c9a8ff")
     # The projector's beam from the port to the screen, burning with the screen's lamp.
