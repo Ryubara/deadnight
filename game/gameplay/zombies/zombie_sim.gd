@@ -35,6 +35,15 @@ const SWING_SLACK := 0.5
 ## player on another floor is as far as this many metres of floor for each metre of height.
 const STOREY_WEIGHT := 3.0
 
+## A zombie that is chasing, is `STRAND_FAR` metres or more from its target and whose path from the
+## map stops `STRAND_GAP` metres or more short of it, for `STRAND_SECONDS`, is stranded: the crowd
+## shoved it through a wall into a pocket of the walking mesh and it stands at the end of a path
+## that goes nowhere (the soak's rounds that went on for eight minutes, #770). The sim says so
+## (`zombie_stranded`) and the director puts it back on a spawn point (`relocate`).
+const STRAND_GAP := 3.0
+const STRAND_FAR := 12.0
+const STRAND_SECONDS := 12.0
+
 var tuning: ZombieTuning
 ## Used for the speed of a zombie off lit ground; without it light changes nothing.
 var rounds: RoundTuning
@@ -281,6 +290,7 @@ func _think(
 	elif has_target:
 		target_pos = targets[zombie.target_id]
 	_repath(zombie, delta, has_target, target_pos)
+	_watch_strand(zombie, delta, has_target and lure == null, target_pos, events)
 	var waypoint := _waypoint(zombie, target_pos)
 	# At a lure a zombie stands about it, facing it: no target to walk to and none to swing at.
 	var gathered := (
@@ -307,6 +317,46 @@ func _think(
 	zombie.position += (zombie.velocity + zombie.push) * delta
 	_settle_on_ground(zombie, delta)
 	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
+
+
+## Counts the seconds a chasing zombie has had no way to a far target; says `zombie_stranded` when
+## they reach `STRAND_SECONDS` (and counts again from nothing). One at its boards, at a lure, near
+## its target or with a way to it is not stranded.
+func _watch_strand(
+	zombie: ZombieBody, delta: float, chasing: bool, target_pos: Vector3, events: Array[Dictionary]
+) -> void:
+	var stranded := (
+		chasing
+		and zombie.mode == ZombieBody.Mode.CHASE
+		and zombie.gate_id == &""
+		and zombie.path_gap >= STRAND_GAP
+		and _flat(zombie.position, target_pos) >= STRAND_FAR
+	)
+	if not stranded:
+		zombie.stranded_for = 0.0
+		return
+	zombie.stranded_for += delta
+	if zombie.stranded_for >= STRAND_SECONDS:
+		zombie.stranded_for = 0.0
+		events.append({"type": &"zombie_stranded", "zombie_id": zombie.id})
+
+
+## Puts a stranded zombie back on `point` (a spawn point; `gate_id` the breach it comes in by, or
+## none), rising as a new one does, with no path and no memory of the pocket.
+func relocate(zombie_id: int, point: Vector3, gate_id: StringName = &"") -> void:
+	var zombie: ZombieBody = zombies.get(zombie_id)
+	if zombie == null or not zombie.is_alive():
+		return
+	zombie.position = point
+	zombie.gate_id = gate_id
+	zombie.path = PackedVector3Array()
+	zombie.path_index = 0
+	zombie.path_gap = 0.0
+	zombie.stranded_for = 0.0
+	zombie.repath_left = 0.0
+	zombie.tear_progress = 0.0
+	zombie.push = Vector3.ZERO
+	zombie.enter(ZombieBody.Mode.EMERGING)
 
 
 ## Lifts or lowers the zombie to the floor its path runs on, at most `tuning.climb_speed` a second.
@@ -490,6 +540,7 @@ func _repath(zombie: ZombieBody, delta: float, has_target: bool, target_pos: Vec
 	zombie.path = pathing.find_path(zombie.position, target_pos)
 	PerfProbe.end(&"sim.path", began)
 	zombie.path_index = 0
+	zombie.path_gap = _flat(zombie.path[-1], target_pos) if not zombie.path.is_empty() else INF
 	if lit_probe.is_valid():
 		zombie.lit = lit_probe.call(zombie.position)
 

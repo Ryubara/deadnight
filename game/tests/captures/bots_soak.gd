@@ -137,7 +137,14 @@ func _play(seed_value: int) -> Dictionary:
 			and ticks % int(_args.get("every", 60)) == 0
 			and ticks >= int(_args.get("from", 0))
 		):
-			_print_seat(night, int(_args["watch"]), ticks)
+			for seat_id in String(_args["watch"]).split(",", false):
+				_print_seat(night, int(seat_id), ticks)
+		if (
+			_args.has("tail")
+			and ticks % int(_args.get("every", 60)) == 0
+			and ticks - round_began >= int(float(_args["tail"]) * 60.0)
+		):
+			_print_tail(night, ticks)
 		# The navigation server takes a bought door's mesh in only on a physics frame.
 		if ticks % FRAME_EVERY == 0:
 			await get_tree().physics_frame
@@ -172,7 +179,7 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 		var me := bot.state.me()
 		var body := night.server.body_of(id)
 		var line := (
-			"WATCH t=%d seat %d note=%s at=(%.1f,%.1f) v=%.1f weapon=%s ammo=%s/%s target=%d"
+			"WATCH t=%d seat %d note=%s at=(%.1f,%.1f) v=%.1f weapon=%s ammo=%s/%s target=%d goal=%s"
 			% [
 				ticks,
 				id,
@@ -183,7 +190,8 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 				me.get("weapon", ""),
 				me.get("ammo", -1),
 				me.get("reserve", -1),
-				bot.intent.target_id
+				bot.intent.target_id,
+				bot.intent.goal.snappedf(0.1)
 			]
 		)
 		var arms: Dictionary = night.frame["players"][id].get("arms", {})
@@ -195,6 +203,48 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 		if zombie != null:
 			line += (" Z(%.1f,%.1f m%d)" % [zombie.position.x, zombie.position.z, zombie.mode])
 		print(line)
+
+
+## The dead left in a round that has gone on `--tail=SECONDS` and the people: where each one stands
+## and what it is doing, and where the people and the bots stand and what they are doing and hold.
+func _print_tail(night: SeatedNight, ticks: int) -> void:
+	var line := (
+		"TAIL t=%d round=%d left=%d"
+		% [ticks, night.server.rules.round_number, night.server.rules.zombies_remaining()]
+	)
+	for zombie: ZombieBody in night.server.sim.zombies.values():
+		line += (
+			" Z%d(%s %.1f,%.1f y%.1f m%d tgt%d path%d)"
+			% [
+				zombie.id,
+				zombie.profile.type,
+				zombie.position.x,
+				zombie.position.z,
+				zombie.position.y,
+				zombie.mode,
+				zombie.target_id,
+				zombie.path.size()
+			]
+		)
+	for id: int in night.frame["players"]:
+		var body := night.server.body_of(id)
+		var note := ""
+		for bot in night.host.bots:
+			if bot.state.player_id == id:
+				note = String(bot.intent.note)
+		var me: Dictionary = night.frame["players"][id]
+		line += (
+			" P%d(%.1f,%.1f %s %s%s)"
+			% [
+				id,
+				body.global_position.x,
+				body.global_position.z,
+				note,
+				str(me.get("arms", {})),
+				" down" if me.get("downed", false) else ""
+			]
+		)
+	print(line)
 
 
 func _profile() -> BotProfile:

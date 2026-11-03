@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dp5w8qpdppwm8"]
 
-[ext_resource type="Script" path="res://world/drive_in/glow_pane.gd" id="1_pane"]
+[ext_resource type="Script" uid="uid://cyifgl4r8lc1f" path="res://world/drive_in/glow_pane.gd" id="1_pane"]
 
 [sub_resource type="StandardMaterial3D" id="PaneMaterial"]
 transparency = 1
@@ -10,12 +10,12 @@ albedo_color = Color(0.55, 0.38, 0.19, 1)
 disable_receive_shadows = true
 
 [sub_resource type="QuadMesh" id="PaneMesh"]
+lightmap_size_hint = Vector2i(13, 9)
 size = Vector2(2.2, 1.4)
 
-[node name="GlowPane" type="Node3D"]
+[node name="GlowPane" type="Node3D" unique_id=1619829920]
 script = ExtResource("1_pane")
 
-[node name="Pane" type="MeshInstance3D" parent="."]
-mesh = SubResource("PaneMesh")
+[node name="Pane" type="MeshInstance3D" parent="." unique_id=1318261308]
 material_override = SubResource("PaneMaterial")
-cast_shadow = 0
+mesh = SubResource("PaneMesh")

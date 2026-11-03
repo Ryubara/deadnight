@@ -31,6 +31,11 @@ PALETTE = {
     "DarkWood": "#6b4f2c",
     "Green": "#496321",
     "Yellow": "#d1ab46",  # the kit Yellow: the grenade's explosive band
+    # The nine weapons of #786 (docs/research/weapon-models.md#the-palette): appended, so no older swatch moves.
+    "Blue": "#34609e",  # the ray gun's painted body
+    "Glow": "#7fe3ff",  # what burns: the ray gun's cell and lens, the freeze gun's coil and nozzle (lit by the game)
+    "Frost": "#c6dce4",  # the freeze gun's tank and frosted fins
+    "Tan": "#9c8562",  # polymer furniture (the M4A1's stock, grip, hand guard and magazine)
 }
 GRID = 4  # swatches per side
 SWATCH_PX = 8  # pixels per swatch side: the atlas is 32 x 32

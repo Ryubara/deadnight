@@ -12,10 +12,12 @@ const TICKS_PER_SECOND := 60
 const FLOOR_TICKS := 13
 ## A walker 14 m down the field from where the bot stands: open ground.
 const AVENUE := Vector3(0.0, 0.0, -14.0)
-## A spot 8 m to the side of home, behind the wall that stands 4.5 m from it.
-const BEHIND_THE_WALL := Vector3(-8.0, 0.0, 0.0)
-## Looking at the wall (yaw +90 degrees faces -x), and away from it.
-const FACING_THE_WALL := PI / 2.0
+## The solid thing the cover scenarios hide behind: the field's first lamp post, west of
+## home (the maintainer placed it by hand, so its spot is read from the lot, not written here).
+const COVER_NODE := "Lamp1"
+## How far beyond the cover the walker stands, in metres.
+const BEYOND_COVER := 3.5
+## Looking away from the cover (yaw -90 degrees faces +x).
 const FACING_AWAY := -PI / 2.0
 ## Zombies on the lot at the top of the cost measurement: the alive cap at four players.
 const CROWD := 46
@@ -44,6 +46,21 @@ func _lone(profile: BotProfile, bot_seed: int) -> SeatedNight:
 
 func _home() -> Vector3:
 	return Autopilot.HOME
+
+
+## Where the walker stands behind the cover: on the line from home through the cover, `BEYOND_COVER`
+## past it. The premise checks of the scenarios fail loudly if the cover moves off that line.
+func _behind_the_cover(night: SeatedNight) -> Vector3:
+	var cover := night.world.find_child(COVER_NODE, true, false) as Node3D
+	var line := cover.global_position - _home()
+	line.y = 0.0
+	return _home() + line + line.normalized() * BEYOND_COVER
+
+
+## The yaw that looks at the cover from home.
+func _facing_the_cover(night: SeatedNight) -> float:
+	var offset := _behind_the_cover(night) - _home()
+	return atan2(-offset.x, -offset.z)
 
 
 ## Whether a person standing where the bot does could see the zombie now: inside the view cone,
@@ -91,11 +108,11 @@ func test_scenario_1_a_walker_is_shot_dead_and_not_before_the_reaction_floor() -
 
 
 func test_scenario_2_a_walker_behind_a_wall_is_never_believed_or_aimed_at() -> void:
-	for facing in [FACING_AWAY, FACING_THE_WALL]:
+	for facing_away in [true, false]:
 		var night := await _lone(BotProfile.veteran(), 18)
 		var bot := night.host.bots[0]
-		var zombie := night.drop_zombie(_home() + BEHIND_THE_WALL, 0.0)
-		bot.motor.face(facing)
+		var zombie := night.drop_zombie(_behind_the_cover(night), 0.0)
+		bot.motor.face(FACING_AWAY if facing_away else _facing_the_cover(night))
 		# The premise: the wall really hides it, chest and head.
 		var eye := _home() + Vector3(0.0, 0.1 + BotLevel.EYE_HEIGHT, 0.0)
 		assert_bool(night.level.clear(eye, zombie.position + Vector3(0, 1.1, 0))).is_false()
@@ -118,8 +135,8 @@ func test_scenario_2_a_walker_behind_a_wall_is_never_believed_or_aimed_at() -> v
 func test_scenario_3_a_walker_from_behind_cover_is_believed_only_after_the_delay() -> void:
 	var night := await _lone(BotProfile.regular(), 19)
 	var bot := night.host.bots[0]
-	var zombie := night.drop_zombie(_home() + BEHIND_THE_WALL)
-	bot.motor.face(FACING_THE_WALL)
+	var zombie := night.drop_zombie(_behind_the_cover(night))
+	bot.motor.face(_facing_the_cover(night))
 	var first_clear := -1
 	var believed := -1
 	for _i in 30 * TICKS_PER_SECOND:

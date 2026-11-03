@@ -283,6 +283,7 @@ func _process(delta: float) -> void:
 	_reload.step(delta, _hands, _weapon != null and _weapon.visible)
 	_advance_shoulder(delta)
 	_advance_grip(delta)
+	_held.advance(delta)
 
 
 ## The aim gait for the player's velocity in the frame of its facing: where it sits in the 2D
@@ -357,6 +358,17 @@ func weapon_mount() -> BoneAttachment3D:
 ## The weapon model in the hand, or null (Pistol has none yet).
 func weapon() -> Node3D:
 	return _weapon
+
+
+## Whether the weapon in the hand wears the re-cut skin (`set_recut`).
+func is_recut() -> bool:
+	return _held.is_skinned()
+
+
+## Dresses the weapon in the hand in the re-cut skin, or takes it off; the weapons put in the hand
+## after wear it too until told otherwise (`HeldWeapon.set_recut`). `ignite` sweeps it on.
+func set_recut(on: bool, ignite: bool = false) -> void:
+	_held.set_recut(on, ignite)
 
 
 ## The repair hammer on the hand mount, shown only while the repair holds the arms.
