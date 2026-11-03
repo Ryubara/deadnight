@@ -51,6 +51,8 @@ func _busy_hud(canvas: Vector2, worst := false, mirrored := false) -> HudFixture
 	state.set_equipment("Flare", 2)
 	state.set_area("The Concession Stand", "Light the booth to open the back lot")
 	state.set_prompt(&"buy_door", "Projection booth door", 750)
+	# The most perks a player can have, beside the health card.
+	fixture.give_perks(fixture.rules.tuning.economy.max_tonics)
 	fixture.act(RulesAction.set_downed(2, true))
 	fixture.act(RulesAction.set_downed(1, true))
 	hud.banner.show_banner("ROUND 100 SURVIVED", "CATCH YOUR BREATH", HudBanner.Rank.ROUND)
