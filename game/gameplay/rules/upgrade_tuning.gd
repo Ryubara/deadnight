@@ -38,6 +38,16 @@ func profile_of(weapon_id: StringName) -> RecutProfile:
 	return null
 
 
+## The weapons of the catalogue that can be re-cut (a profile for a weapon not yet in the
+## catalogue is not listed: nothing can hold it).
+func catalogue_weapon_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for def in WeaponCatalog.all():
+		if allows(def.id):
+			ids.append(def.id)
+	return ids
+
+
 ## The catalogue ids of every weapon that can be re-cut.
 func weapon_ids() -> Array[StringName]:
 	var ids: Array[StringName] = []
