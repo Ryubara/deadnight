@@ -193,7 +193,16 @@ static func rookie() -> BotProfile:
 
 
 static func regular() -> BotProfile:
-	return BotProfile.new()  # The field defaults are the regular bot's.
+	# The field defaults are the regular bot's, but for the play states.
+	var profile := BotProfile.new()
+	# A Regular does not manage its health either: with the play states of #739 (it backs away when
+	# hurt) it reached round 16 in 7 nights of 8 where the simulator's average player is down by
+	# degrees from round 6 (median 19 against 15, Kolmogorov distance 0.85 alone, cap 20); without,
+	# the median is 14 against 15 alone and 17 against 15 for two (#768). Keeping its health in hand
+	# is the Veteran's.
+	profile.careful_below = 0.0
+	profile.safe_below = 0.0
+	return profile
 
 
 static func veteran() -> BotProfile:

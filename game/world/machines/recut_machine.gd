@@ -4,8 +4,10 @@ extends Node3D
 ## ([upgrades](docs/design/upgrades.md)). A cast-iron cabinet with two film reels on its tower, a
 ## strip of sprocketed film running along its front, a cradle under a press with a hot head, and a
 ## row of ready lamps. Idle, the reels turn slowly and the film creeps. A re-cut (`play`) lays the
-## weapon in the cradle, spins the reels up, drops the press, throws a flash and sparks at the
-## blow, glows the weapon brass and lifts it for a moment, with the lamps chasing.
+## weapon in the cradle, spins the reels up, drops the press, and at the blow throws a flash, a ring
+## and sparks in the re-cut's cold blue (`RecutStyle`) while the weapon's skin sweeps on from the
+## butt to the muzzle (`RecutSkin`: the look it keeps for as long as it is held); then it is lifted
+## and shown, with the lamps chasing.
 ##
 ## Built from primitives (`MachineParts`), drawn from fixed steps (`advance`), so a test can step
 ## it and a late joiner sees an idle machine. Local space: the front is +Z, the floor y = 0.
@@ -24,7 +26,17 @@ const BRASS := Color(0.8, 0.6, 0.24)
 const CREAM := Color(0.92, 0.85, 0.66)
 const AMBER := Color(1.0, 0.68, 0.2)
 const HOT := Color(1.0, 0.42, 0.1)
-const GOLD := Color(1.0, 0.78, 0.3)
+## The light of the blow once the re-cut is struck: the style's cold, lifted toward white.
+const COLD_LIGHT := Color(0.45, 0.8, 1.0)
+## Seconds the skin takes to sweep over the weapon on the cradle, from the blow.
+const SWEEP := 0.55
+## The skin's flash over the weapon at the blow (the style's cold, times this).
+const SKIN_FLASH := 3.0
+## The ring that leaves the blow: it grows from `RING_FROM` to `RING_TO` metres across in
+## `RING_SECONDS`.
+const RING_FROM := 0.3
+const RING_TO := 3.2
+const RING_SECONDS := 0.6
 ## Where the weapon lies, and its length on the cradle.
 const CRADLE := Vector3(0.0, 1.22, 0.45)
 const WEAPON_LENGTH := 1.45
@@ -59,13 +71,22 @@ var _ram: Node3D
 var _head_material := MachineParts.glow(HOT, 0.6)
 var _film_material: StandardMaterial3D
 var _lamps: Array[MeshInstance3D] = []
+var _lamp_colours: Array[Color] = []
 var _lamp_materials: Array[StandardMaterial3D] = []
 var _light: OmniLight3D
+var _spark_material: StandardMaterial3D
+var _ring: MeshInstance3D
+var _ring_material: StandardMaterial3D
+## Seconds since the blow while the ring grows, or -1 when it is gone.
+var _ring_t := -1.0
+## How far the blow has turned the machine's light cold, 0 (the booth's amber) to 1.
+var _cold := 0.0
 var _sparks: CPUParticles3D
 var _display: Node3D
 var _holders: Dictionary[StringName, Node3D] = {}
 var _shown: StringName = &""
-var _brass_glow := MachineParts.glow(Color(GOLD, 0.0), 2.0)
+## The skin on the weapon lying on the cradle (null when none): it sweeps on at the blow.
+var _skin: RecutSkin
 
 
 func _ready() -> void:
@@ -82,6 +103,10 @@ func play(weapon_id: StringName) -> void:
 	_t = 0.0
 	_struck = false
 	_show(weapon_id)
+	_skin = null
+	if _holders.has(weapon_id):
+		# The weapon lies plain on the cradle, in the skin's own material at no sweep yet.
+		_skin = RecutSkin.wear(_holders[weapon_id].get_child(0) as Node3D, 0.0)
 
 
 func is_playing() -> bool:
@@ -103,6 +128,21 @@ func flash() -> float:
 	return _flash
 
 
+## How far the weapon on the cradle has its skin, 0 to 1 (0 when none lies there).
+func skin_reveal() -> float:
+	return _skin.reveal if _skin != null else 0.0
+
+
+## How far the blow has turned the machine's light and lamps cold, 0 (amber) to 1.
+func coldness() -> float:
+	return _cold
+
+
+## The across of the last blow's ring in metres, or 0 when it is not showing.
+func ring_diameter() -> float:
+	return _ring.scale.x * RING_FROM if _ring != null and _ring.visible else 0.0
+
+
 ## Moves the machine on by `delta` seconds.
 func advance(delta: float) -> void:
 	_clock += delta
@@ -120,6 +160,7 @@ func advance(delta: float) -> void:
 	else:
 		_rest()
 	_flash = maxf(_flash - delta * FLASH_DECAY, 0.0)
+	_advance_ring(delta)
 	_reel_angle += spin * delta
 	_film_offset = fmod(_film_offset + creep * delta, 1.0)
 	_dress()
@@ -134,24 +175,43 @@ func _stage(t: float) -> void:
 	if t >= STRIKE and not _struck:
 		_struck = true
 		_flash = 1.0
+		_ring_t = 0.0
 		_sparks.restart()
 		_sparks.emitting = true
 		pressed.emit()
-	# The weapon: laid down in the first moments, brass from the blow on, then lifted and turned.
+	# The weapon: laid down in the first moments, in its new skin from the blow on, then lifted and
+	# turned.
 	var laid := smoothstep(0.0, LAY, t)
 	var lift := smoothstep(DISPLAY, DURATION, t)
 	_display.position = CRADLE + Vector3(0.0, lerpf(-0.25, 0.0, laid) + 0.4 * lift, 0.0)
 	_display.rotation.y = 0.9 * lift
 	_display.scale = Vector3.ONE * (lerpf(0.7, 1.0, laid) + (0.06 * _flash))
-	var gold := smoothstep(STRIKE, STRIKE + 0.25, t) * (1.0 - 0.55 * lift)
-	_brass_glow.albedo_color.a = gold * 0.55
-	_brass_glow.emission = GOLD
-	_brass_glow.emission_energy_multiplier = 2.0 * gold + 3.0 * _flash
+	if _skin != null:
+		_skin.reveal = smoothstep(STRIKE, STRIKE + SWEEP, t)
+		_skin.boost = SKIN_FLASH * _flash
+	# The light turns cold at the blow and stays so while the weapon is shown, then eases back.
+	_cold = smoothstep(STRIKE, STRIKE + 0.15, t) * (1.0 - smoothstep(DISPLAY, DURATION, t))
 
 
 func _rest() -> void:
 	_ram.position.y = RAM_UP
-	_brass_glow.albedo_color.a = 0.0
+	_cold = 0.0
+
+
+## The ring that leaves the blow: a thin ring of light on the floor of the cradle that opens out
+## and fades.
+func _advance_ring(delta: float) -> void:
+	if _ring_t >= 0.0:
+		_ring_t += delta
+	var share := _ring_t / RING_SECONDS
+	var on := _ring_t >= 0.0 and share < 1.0
+	if _ring_t >= 0.0 and not on:
+		_ring_t = -1.0
+	_ring.visible = on
+	if on:
+		var grown := lerpf(1.0, RING_TO / RING_FROM, 1.0 - pow(1.0 - share, 3.0))
+		_ring.scale = Vector3(grown, 1.0, grown)
+		_ring_material.albedo_color.a = 1.0 - share
 
 
 ## Everything that follows the clock and the flash: the lamps, the head's heat, the lamp's light.
@@ -159,7 +219,11 @@ func _dress() -> void:
 	for reel in _reels:
 		reel.rotation.z = _reel_angle
 	_film_material.uv1_offset.x = _film_offset
+	var cold := RecutStyle.shipped().cold
+	_head_material.emission = HOT.lerp(cold, _cold)
+	_head_material.albedo_color = _head_material.emission
 	_head_material.emission_energy_multiplier = 0.6 + 7.0 * _flash
+	_light.light_color = Color(1.0, 0.72, 0.4).lerp(COLD_LIGHT, _cold)
 	_light.light_energy = 0.9 + 0.1 * sin(_clock * 1.7) + 6.0 * _flash
 	for i in _lamps.size():
 		var lit := 0.55 + 0.1 * sin(_clock * 2.0 + float(i))
@@ -168,6 +232,10 @@ func _dress() -> void:
 			var at := fmod(_t * 9.0, float(_lamps.size()))
 			lit = 1.0 if absf(float(i) - at) < 1.0 else 0.15
 		_lamp_materials[i].emission_energy_multiplier = lit * 2.4
+		# Cold after the blow: the lamps the chase lights burn the skin's colour.
+		var lamp_colour := _lamp_colours[i].lerp(cold, _cold)
+		_lamp_materials[i].albedo_color = lamp_colour
+		_lamp_materials[i].emission = lamp_colour
 
 
 func _show(weapon_id: StringName) -> void:
@@ -186,6 +254,7 @@ func _build() -> void:
 	_reels.clear()
 	_lamps.clear()
 	_lamp_materials.clear()
+	_lamp_colours.clear()
 	_cabinet()
 	_tower()
 	_press()
@@ -381,6 +450,7 @@ func _lamp_row() -> void:
 		)
 		_lamps.append(lamp)
 		_lamp_materials.append(material)
+		_lamp_colours.append(material.albedo_color)
 
 
 func _effects() -> void:
@@ -406,12 +476,34 @@ func _effects() -> void:
 	spark.height = 0.036
 	var spark_material := StandardMaterial3D.new()
 	spark_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	spark_material.albedo_color = Color(1.0, 0.8, 0.35)
+	# The blow's sparks burn the skin's colour.
+	spark_material.albedo_color = RecutStyle.shipped().spark
 	spark.material = spark_material
+	_spark_material = spark_material
 	_sparks.mesh = spark
 	_sparks.position = Vector3(0.0, 1.3, CRADLE.z)
 	_sparks.emitting = false
 	add_child(_sparks)
+	# The ring: a flat ring of light on the cradle that the blow sends out. Unshaded and additive, so
+	# it
+	# takes no light's place and draws only while it shows.
+	var torus := TorusMesh.new()
+	torus.outer_radius = RING_FROM * 0.5
+	torus.inner_radius = RING_FROM * 0.5 - 0.012
+	torus.rings = 36
+	torus.ring_segments = 4
+	_ring_material = StandardMaterial3D.new()
+	_ring_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_ring_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_ring_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	_ring_material.albedo_color = Color(RecutStyle.shipped().cold, 1.0)
+	torus.material = _ring_material
+	_ring = MeshInstance3D.new()
+	_ring.name = "Ring"
+	_ring.mesh = torus
+	_ring.position = Vector3(0.0, 1.14, CRADLE.z)
+	_ring.visible = false
+	add_child(_ring)
 
 
 ## The weapons that can lie on the cradle, one model each, under a node that moves them all.
@@ -425,8 +517,5 @@ func _cradle_display() -> void:
 		if holder == null:
 			continue
 		holder.visible = false
-		MachineParts.overlay(holder, _brass_glow)
 		_display.add_child(holder)
 		_holders[id] = holder
-	_brass_glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_brass_glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

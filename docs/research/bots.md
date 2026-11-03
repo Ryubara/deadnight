@@ -1433,6 +1433,20 @@ Read from the first nights, in the order they were found; each is why a gate exi
   band the fit asked for; and again after main's #766 and #749, 16 of 30 (7, 6 and 3) with the change against 29 of 30
   (10, 9 and 10) without it. Tried and left: a Careful state from 30% of health and a Safe one from 15% (10 of 10), and
   the same with a track error of 20 degrees (3 of 10, no better than the one number).
+- **The Regular fell out of its fit the same way (#768).** Eight nights a cell at cap 20 on the code before this change:
+  Regular median 19, 19 and 18 rounds for one, two and four bots against the simulator's average level at 15, 15 and 17
+  (Kolmogorov distance 0.85, 0.59 and 0.44; five of eight single-bot nights reached the cap). The play states of #739
+  (a hurt bot backs away) are what a Regular did not have when it was fitted, and no player in the simulator manages
+  health. A **Regular does not manage its health either** (`careful_below` and `safe_below` 0, `BotProfile.regular`;
+  the play-state tests use the Veteran): medians **14, 17 and 16** against 15, 15 and 17 (distance 0.35, 0.32 and 0.43).
+  Tried and left, one number at a time on the same eight nights of one Regular: a track error of 8 degrees (5 of 8 at
+  the cap, the stampede of round 10 kills two or three either way), a reaction of 5 (3 of 8 stalled), a fire slop
+  (4 of 8 over round 18). The Veteran was left as it is: median 17, 20 and 18 against the strong level's 19, 20 and 20.
+  On other seeds (21 to 32, twelve nights, cap 20) the Regular reads median 16, 15 and 16 against 15, 15 and 17
+  (distance 0.39, 0.22 and 0.48; four and ten nights of the four-bot cell and the first Veteran nights were in when this
+  was written, the Veteran's one-bot median 20 against 19).
+  The distance of two curves from eight nights has a noise floor near 0.5, so the 0.2 gate is read on the nightly run's
+  hundred nights, not here.
 - **A soak that measures what the bot does must not look at what the bot believes.** `SoakWatch` reads the server's
   events and bodies; the bots' beliefs are used only to say that a zombie was in sight, which is the gate's own word.
 
