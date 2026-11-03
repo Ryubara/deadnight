@@ -46,9 +46,15 @@ static func apply(event: Dictionary, state: HudState) -> void:
 	var weapon_id := StringName(event.get("weapon_id", &""))
 	match event["type"]:
 		&"weapon_replaced":
-			# The weapon in hand is gone, not put away: the other one stays the one put away.
+			# The weapon in hand is gone, not put away: the other one stays the one put away. Its
+			# slot stays empty until the weapon that replaces it is equipped into it.
 			state.weapon_id = &""
 			state.rounds.erase(StringName(event["dropped"]))
+			var emptied := state.slot_ids.duplicate()
+			var at := emptied.find(StringName(event["dropped"]))
+			if at >= 0:
+				emptied[at] = &""
+			state.set_slots(emptied, 0)
 		&"weapon_equipped":
 			equip(weapon_id, int(event["ammo"]), int(event["reserve"]), state)
 		&"shot_fired", &"reload_finished":
@@ -79,6 +85,10 @@ static func sync(me: Dictionary, state: HudState) -> void:
 		return
 	state.hold()
 	var arms: Dictionary = me.get("arms", {})
+	# The server's order of the weapons carried is the order of the slots.
+	var placed: Array[StringName] = []
+	for carried: StringName in arms:
+		placed.append(carried)
 	for carried: StringName in arms:
 		var rounds: Array = arms[carried]
 		_count(state, carried, int(rounds[0]), int(rounds[1]))
@@ -88,7 +98,7 @@ static func sync(me: Dictionary, state: HudState) -> void:
 		state.holstered_id = state.weapon_id
 	state.weapon_id = weapon
 	_count(state, weapon, int(me["ammo"]), int(me["reserve"]))
-	_show(state, bool(me.get("reloading", false)))
+	_show_slots(state, bool(me.get("reloading", false)), placed)
 	state.release()
 
 
@@ -99,7 +109,7 @@ static func equip(weapon_id: StringName, ammo: int, reserve: int, state: HudStat
 		state.holstered_id = state.weapon_id
 	state.weapon_id = weapon_id
 	_count(state, weapon_id, ammo, reserve)
-	_show(state, false)
+	_show_slots(state, false, _seated(state, weapon_id))
 
 
 ## The name a weapon has as it is shipped, from the catalogue.
@@ -116,7 +126,28 @@ static func _count(state: HudState, weapon_id: StringName, ammo: int, reserve: i
 	state.rounds[weapon_id] = {"ammo": ammo, "reserve": reserve}
 
 
+## Puts a weapon taken in hand into the slot it is in, or the first empty one (the slot of the
+## weapon it replaced), or a new one after the last.
+static func _seated(state: HudState, weapon_id: StringName) -> Array[StringName]:
+	var seated := state.slot_ids.duplicate()
+	if seated.has(weapon_id):
+		return seated
+	var hole := seated.find(&"")
+	if hole >= 0:
+		seated[hole] = weapon_id
+	else:
+		seated.append(weapon_id)
+	return seated
+
+
 static func _show(state: HudState, reloading: bool) -> void:
+	_show_slots(state, reloading, state.slot_ids)
+
+
+## Writes the ammo card and the equipment slot from what the state holds, and the weapon slots
+## (`ids`, the weapons by slot).
+static func _show_slots(state: HudState, reloading: bool, ids: Array[StringName]) -> void:
+	state.set_slots(ids, ids.find(state.weapon_id) + 1)
 	var none := {"ammo": 0, "reserve": 0}
 	var held: Dictionary = state.rounds.get(state.weapon_id, none)
 	var used := not state.ammo_free.has(state.weapon_id)

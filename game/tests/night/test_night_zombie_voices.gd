@@ -37,7 +37,12 @@ func test_a_walker_at_the_player_snarls_swings_and_is_heard_hurt() -> void:
 	assert_bool(requested.has(&"zombie_grunt")).is_true()
 	assert_int(Audio.started).is_greater(started)
 	night.server.rules.apply(RulesAction.skip_break())
-	var shot := NightFixture.shoot_at(night, body.position)
-	NightFixture.run(night, 30, shot)
+	var held := body.position
+	var shot := NightFixture.shoot_at(night, held)
+	# Held where it was shot at: the player stands above the floor here, and a zombie lets itself
+	# down to the floor its path runs on.
+	for _i in 30:
+		body.position = held
+		NightFixture.run(night, 1, shot)
 	assert_bool(requested.has(&"zombie_hurt") or requested.has(&"zombie_death")).is_true()
 	await NightFixture.settle_bake(night)

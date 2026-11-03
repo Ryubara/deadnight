@@ -50,7 +50,7 @@ var port := NetWire.DEFAULT_PORT
 ## The seed of the night's dice; -1 draws one for every night.
 var seed_value := -1
 var rules_tuning: RulesTuning
-## The rules of the match (zombie intensity, alive cap, break) the next night runs under.
+## The rules of the match (zombie intensity, alive cap, break, map) the next night runs under.
 ## Set it with `configure_match`, which also changes a night nobody has started.
 var match_settings := MatchSettings.new()
 ## The most zombies alive at once in this room's night whatever the players are on; 0 is the rules'
@@ -59,7 +59,15 @@ var max_alive := 0
 ## This room's share of its process's alive budget (`GameServer.alive_budget` over its rooms); 0 is
 ## no share. Set with `set_alive_share`, the smaller of it and `max_alive` caps the crowd.
 var alive_share := 0
+## The most bots this room may seat whatever its settings ask (`GameServer.bot_limits`; 0 is the
+## kill-switch). Set with `set_bot_limit`.
+var bot_limit := MatchSettings.MAX_BOTS
 var log_enabled := true
+## The seconds the connection rules (a peer's rates, the hello, a seat held for a returning player)
+## are timed by. Empty is the machine's clock; a soak that plays faster than real time gives the
+## game's own (`Engine.get_physics_frames` over the tick rate), so a minute of play is a minute to
+## the limits too.
+var clock := Callable()
 ## Metres around a player within which the zombies are sent to their client (0: all of them).
 var interest_radius := 0.0
 ## Seconds a connection has to say hello (`HELLO_WITHIN`; a test sets it shorter).
@@ -205,9 +213,13 @@ func away_count() -> int:
 ## The one way a room's host sets the match: its settings are the server's from here, in every
 ## snapshot and so in every WELCOME (a late joiner or a client that came back reads them there),
 ## and in every night this host builds after. Applies at once to a night nobody has started and
-## returns true; once the night began the settings wait for the next one and it returns false.
+## returns true; once the night began the settings wait for the next one and it returns false. The
+## map is the room's, built when it opened: a map in `settings` that is another one is not taken
+## (the next night is built on the map in `match_settings`).
 func configure_match(settings: MatchSettings) -> bool:
 	match_settings = settings.clamped()
+	if world != null and world.map_info != null:
+		match_settings.map = world.map_info.id
 	if server == null or _night_began():
 		return false
 	server.rules.apply(RulesAction.configure(match_settings))
@@ -223,11 +235,12 @@ func _build_night() -> void:
 	serving = false
 	world = NightWorld.new()
 	add_child(world)
-	await world.build()
+	await world.build(MapRegistry.of(match_settings.map))
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
 	server.drawn_bodies = false
 	bots = NightBots.new(server, world, chosen, Callable(self, &"_collect"))
+	bots.limit = bot_limit
 	_unheard.clear()
 	server.crowd.limit = alive_limit()
 	_events.clear()
@@ -251,6 +264,16 @@ func set_alive_share(share: int) -> void:
 	alive_share = maxi(share, 0)
 	if server != null:
 		server.crowd.limit = alive_limit()
+
+
+## The operator's limit on bots changed (the kill-switch, a cap, this room's share of the budget):
+## takes effect at once, seating bots a raised limit allows and sending away those a lowered one
+## does not.
+func set_bot_limit(limit: int) -> void:
+	bot_limit = clampi(limit, 0, MatchSettings.MAX_BOTS)
+	if bots != null:
+		bots.limit = bot_limit
+		_fill_bots()
 
 
 ## The last player left a night that began: a new lot, new rules, a new seed.
@@ -347,8 +370,12 @@ func _free_seat(player_id: int) -> void:
 	_away.erase(player_id)
 	_names.erase(player_id)
 	if server != null:
-		_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
-		# The seat is free: a bot takes it again while the others are still here.
+		var inherited := _bot_inherits(player_id)
+		if inherited.is_empty():
+			_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
+		else:
+			_collect(inherited)
+		# Seats the people leave free fill with bots while the others are still here.
 		_fill_bots()
 	_log("left", {"player": player_id, "players": _by_player.size()})
 	player_left.emit(player_id)
@@ -411,6 +438,12 @@ func _on_player_packet(peer: HostPeer, data: PackedByteArray) -> void:
 				_fault(peer)
 			else:
 				_collect(server.apply(mark, peer.player_id))
+		NetWire.Type.ORDER:
+			var order := NetWire.read_order(data)
+			if order.is_empty():
+				_fault(peer)
+			else:
+				_collect(server.apply(order, peer.player_id))
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))
@@ -476,6 +509,18 @@ func _welcome_snapshot() -> Dictionary:
 	names.merge(_names, true)
 	snapshot["names"] = names
 	return snapshot
+
+
+## The events of a bot taking the seat of the person who just left, as it stands (body, points,
+## weapons): when the night has begun, other people are still here and the room wants one more bot.
+## Empty when not (the seat is then freed).
+func _bot_inherits(player_id: int) -> Array[Dictionary]:
+	var people := _people()
+	if not _night_began() or people.is_empty():
+		return []
+	if not bots.wants_more(server.rules.settings.bots, people.size()):
+		return []
+	return bots.adopt(player_id)
 
 
 ## The seats people hold, away or not.
@@ -618,6 +663,8 @@ func _close_silent() -> void:
 
 
 func _now() -> float:
+	if clock.is_valid():
+		return clock.call()
 	return Time.get_ticks_msec() / 1000.0
 
 
@@ -721,6 +768,7 @@ func _log_stats() -> void:
 				"out_bytes_per_s": roundi((listener.bytes_out - _stats_bytes) / seconds),
 				"work_ms_mean": snappedf(_stats_work / maxf(_stats_steps, 1), 0.01),
 				"work_ms_worst": snappedf(worst_ms, 0.1),
+				"bots": bots.count(),
 				"zombies": server.sim.zombies.size(),
 				"round": server.rules.round_number,
 			}

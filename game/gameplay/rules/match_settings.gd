@@ -1,8 +1,8 @@
 class_name MatchSettings
 extends Resource
 ## The rules of one match that whoever starts it chooses before the night begins: how intense the
-## night is (how many zombies, coming how fast), how many may stand at once and how long the
-## breaks last.
+## night is (how many zombies, coming how fast), how many may stand at once, how long the breaks
+## last, and the map it is played on (`MapRegistry`).
 ##
 ## The server owns them (`GameRules.settings`), they ride the rules' snapshot (so WELCOME and a
 ## late join carry them) and they are set only while the night has not started
@@ -24,16 +24,27 @@ const MAX_BREAK := 120.0
 ## people leave free (`NightBots.target`).
 const MIN_BOTS := 0
 const MAX_BOTS := 3
+## How well the bots play: an index into `BotProfile`'s three skills (`BotProfile.for_skill`).
+## Difficulty is the bots' player model and nothing else: zombies, damage and points never change
+## with it (`docs/research/bots.md#aim-and-difficulty`).
+const SKILL_ROOKIE := 0
+const SKILL_REGULAR := 1
+const SKILL_VETERAN := 2
+const DEFAULT_SKILL := SKILL_REGULAR
 ## The keys of `to_dict`, each with the type it must have (a whole number also fits a float).
 const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
 	"max_alive": TYPE_INT,
 	"break_seconds": TYPE_FLOAT,
+	"map": TYPE_STRING,
 	"bots": TYPE_INT,
+	"bot_skill": TYPE_INT,
 }
-## Keys a snapshot, a ticket or an action may leave out (a build from before the key): they mean
-## their default, so an older backend's ticket or server's WELCOME still carries the other settings.
-const OPTIONAL_KEYS: Array[String] = ["bots"]
+## Keys a snapshot, a ticket, a lobby or an action may leave out (a build from before the key): they
+## mean their default, so an older backend's ticket or server's WELCOME still carries the other
+## settings, and a server and a client of two builds still read each other (`to_dict` always
+## writes them).
+const OPTIONAL_KEYS: Array[String] = ["map", "bots", "bot_skill"]
 
 ## The night's intensity. Round N brings the tuned count times this (rounded, at least one) and the
 ## dead come this many times as fast (the spawn interval divides by it, down to
@@ -48,9 +59,13 @@ const OPTIONAL_KEYS: Array[String] = ["bots"]
 ## Seconds of break between rounds; 0 is the tuned break (`RoundTuning.break_seconds`). The wait
 ## before round 1 and the longer break before a special round are unchanged.
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
+## The id of the map the night is played on (`MapRegistry`); only a map that can be played is taken.
+@export var map: String = MapRegistry.DEFAULT
 ## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
 ## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
 @export_range(0, 3, 1) var bots: int = MIN_BOTS
+## How well every bot of the night plays: `SKILL_ROOKIE`, `SKILL_REGULAR` or `SKILL_VETERAN`.
+@export_range(0, 2, 1) var bot_skill: int = DEFAULT_SKILL
 
 
 ## The defaults: today's game.
@@ -59,7 +74,9 @@ func is_default() -> bool:
 		is_equal_approx(count_multiplier, 1.0)
 		and max_alive == AUTO
 		and is_zero_approx(break_seconds)
+		and map == MapRegistry.DEFAULT
 		and bots == MIN_BOTS
+		and bot_skill == DEFAULT_SKILL
 	)
 
 
@@ -109,7 +126,9 @@ func to_dict() -> Dictionary:
 		"count_multiplier": count_multiplier,
 		"max_alive": max_alive,
 		"break_seconds": break_seconds,
+		"map": map,
 		"bots": bots,
+		"bot_skill": bot_skill,
 	}
 
 
@@ -127,8 +146,12 @@ static func problem(data: Dictionary) -> StringName:
 		return &"max_alive"
 	if not _is_auto_or_in_range(data["break_seconds"], MIN_BREAK, MAX_BREAK):
 		return &"break_seconds"
+	if not MapRegistry.is_playable(str(data.get("map", MapRegistry.DEFAULT))):
+		return &"map"
 	if data.has("bots") and (data["bots"] < MIN_BOTS or data["bots"] > MAX_BOTS):
 		return &"bots"
+	if data.has("bot_skill") and not _in_range(data["bot_skill"], SKILL_ROOKIE, SKILL_VETERAN):
+		return &"bot_skill"
 	return &""
 
 
@@ -141,7 +164,9 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	out.count_multiplier = float(data["count_multiplier"])
 	out.max_alive = data["max_alive"]
 	out.break_seconds = float(data["break_seconds"])
+	out.map = str(data.get("map", MapRegistry.DEFAULT))
 	out.bots = int(data.get("bots", MIN_BOTS))
+	out.bot_skill = int(data.get("bot_skill", DEFAULT_SKILL))
 	return out
 
 
@@ -174,7 +199,9 @@ func clamped() -> MatchSettings:
 	out.count_multiplier = clampf(count_multiplier, MIN_COUNT_MULTIPLIER, MAX_COUNT_MULTIPLIER)
 	out.max_alive = clampi(max_alive, AUTO, _alive_ceiling())
 	out.break_seconds = _clamp_optional(break_seconds, MIN_BREAK, MAX_BREAK)
+	out.map = map if MapRegistry.is_playable(map) else MapRegistry.DEFAULT
 	out.bots = clampi(bots, MIN_BOTS, MAX_BOTS)
+	out.bot_skill = clampi(bot_skill, SKILL_ROOKIE, SKILL_VETERAN)
 	return out
 
 

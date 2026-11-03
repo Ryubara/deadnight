@@ -22,6 +22,10 @@ var hand_reach := 0.35
 ## Seconds the throw takes from the button coming up to the grenade leaving, as the server's.
 var release_over := 0.0
 var release_under := 0.0
+## The dead as the client knows them, `Callable() -> Array[Dictionary]` of `ClientState.zombies`
+## entries: the line stops at the first it meets, as the server's grenade will. Left unset, the line
+## flies through them.
+var zombies := Callable()
 ## What the client was told it carries (-1 until it is told): none left, no preview.
 var grenades_left := -1
 
@@ -74,12 +78,32 @@ func follow(command: NightCommand, body: Player, delta: float, downed: bool = fa
 	var release := release_under if underarm else release_over
 	var flight := clampf(_def.fuse - _cooked - release, 0.05, MAX_FLIGHT)
 	var result := GrenadeArc.predict(
-		_def, launch["hand"], launch["aim"], body.state.velocity, underarm, _cast, delta, flight
+		_def,
+		launch["hand"],
+		launch["aim"],
+		body.state.velocity,
+		underarm,
+		_cast,
+		delta,
+		flight,
+		3,
+		_bodies()
 	)
 	_points = result["points"]
 	_landing = result["landing"]
 	_draw()
 	visible = true
+
+
+## The dead where they stand now, as the grenade's `bodies` (frozen for the length of the line).
+func _bodies() -> Callable:
+	if not zombies.is_valid():
+		return Callable()
+	var targets := {}
+	for entry: Dictionary in zombies.call():
+		targets[entry["id"]] = {"pos": entry["position"], "scale": 1.0}
+	return func(from: Vector3, to: Vector3) -> Dictionary:
+		return ZombieBump.nearest(from, to, targets)
 
 
 func _hide() -> void:

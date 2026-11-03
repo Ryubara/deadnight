@@ -76,6 +76,9 @@ func _night(tuning: RulesTuning, flare: bool) -> SeatedNight:
 	night.start_round()
 	_place(night, 1, _home() + BODY)
 	_place(night, 2, _home() + BOT_AT)
+	# The pack is about the person's body and the bot was written to come to it as a follower does;
+	# a bot with no order roams the lot instead (#641).
+	night.give_order(BotOrders.FOLLOW, 1, _home() + BODY)
 	if flare:
 		night.server.combat.apply(CombatAction.give_weapon(2, &"flare_gun"))
 		night.server.combat.apply(CombatAction.equip(2, &"pistol"))

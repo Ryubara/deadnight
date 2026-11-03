@@ -30,6 +30,7 @@ func _home() -> Vector3:
 ## A night with one bot at `at` (home by default) and one zombie to a round, past the first break.
 func _lone(profile: BotProfile, bot_seed: int, at := Vector3.ZERO) -> SeatedNight:
 	var night := await NightFixture.seat(self, 1, SeatedNight.one_a_round(), 5)
+	night.stand_still = true
 	night.seat(1, profile, bot_seed)
 	night.server.rules.apply(RulesAction.skip_break())
 	night.server.body_of(1).teleport(_home() + at + Vector3(0.0, 0.1, 0.0))
@@ -195,6 +196,7 @@ func _boss_shoot(weak_rate: float) -> Dictionary:
 	# A boss that outlasts the test, so the hits are many.
 	tuning.roster.type_of(&"headliner").health_multiplier = 400.0
 	var night := await NightFixture.seat(self, 1, tuning, 61)
+	night.stand_still = true
 	night.seat(1, profile, 61)
 	night.server.rules.apply(RulesAction.grant_points(1, 100000))
 	night.server.buy(1, &"weapon_rifle")
@@ -257,6 +259,7 @@ func test_the_aim_and_fire_distributions_of_phase_1_hold_in_a_boss_fight() -> vo
 		BotProfile.rookie(), BotProfile.regular(), BotProfile.veteran(), BotProfile.regular()
 	]
 	for i in 4:
+		night.stand_still = true
 		night.seat(i + 1, profiles[i], 77 + i)
 	night.recording = true
 	night.stage_the_dead = true
@@ -300,6 +303,7 @@ func _stampede(named: StringName, profile: BotProfile, seconds: float) -> Dictio
 	tuning.rounds.first_spawn_delay = 0.5
 	tuning.rounds.speed_base = 2.0
 	var night := await NightFixture.seat(self, 1, tuning, 9)
+	night.stand_still = true
 	night.seat(1, profile, 9)
 	night.recording = true
 	night.start_round()
@@ -359,6 +363,7 @@ func test_scenario_14_crawlers_only_the_aim_is_low_and_the_hit_rate_is_in_the_ba
 	tuning.rounds.speed_base = 3.0
 	tuning.health.max_health = 100000.0
 	var night := await NightFixture.seat(self, 1, tuning, 14)
+	night.stand_still = true
 	night.seat(1, BotProfile.regular(), 14)
 	night.start_round()
 	night.server.body_of(1).teleport(_home() + Vector3(0.0, 0.1, 0.0))

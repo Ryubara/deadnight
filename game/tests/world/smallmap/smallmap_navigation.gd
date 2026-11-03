@@ -30,6 +30,11 @@ func _init(root: Node3D, mesh: NavigationMesh) -> void:
 	NavigationServer3D.region_set_navigation_mesh(_region, mesh)
 
 
+## The navigation map the mesh is on (for a `NavmeshPathing`).
+func map() -> RID:
+	return _map
+
+
 ## The zombies' mesh: the sizes the night bakes with.
 static func zombie_mesh() -> NavigationMesh:
 	return NavmeshBaker.new_navmesh()

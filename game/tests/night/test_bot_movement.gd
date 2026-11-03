@@ -175,6 +175,7 @@ func test_scenario_18_the_bots_follow_through_a_door_whose_mesh_was_just_swapped
 	# engine takes the new mesh in over the next few physics frames while the night goes on.
 	night.open_door(&"door_concession")
 	night.run(3)
+	night.give_order(BotOrders.FOLLOW, 1, _where(night, 1))
 	walker.goto(Vector3(0.0, 0.0, 6.0))
 	await night.settle(12)
 	var route: Array[Vector3] = [
@@ -329,6 +330,9 @@ func test_a_gap_the_mesh_does_not_know_is_shut_is_solved_by_the_ladder_without_a
 	# thin side along the way through).
 	_block(night, middle, Vector3(2.6, 2.2, 0.8)).rotate_y(atan2(-across.x, -across.z))
 	await night.settle(3)
+	# The path check (`BotPath.walkable`) would see this wall and mark the goal unreachable before the
+	# bot walks (`test_bot_fence.gd`): this control is the ladder's own, for a wall nothing looked at.
+	night.level.walk = Callable()
 	_place(night, 1, gap["from"])
 	night.run(5)
 	var brain := _goal_bot(night, 1)

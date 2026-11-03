@@ -61,6 +61,7 @@ func _ready() -> void:
 	add_child(log)
 	_read_arguments()
 	NightScreen.start_mode = Night.Mode.AUTOPILOT
+	NightScreen.start_seed = Night.SEED
 	NightScreen.start_tuning = tuning()
 	NightScreen.shoulder_camera = true
 	UIRouter.reset(NIGHT, UITransition.Kind.CUT)

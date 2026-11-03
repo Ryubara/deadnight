@@ -19,9 +19,17 @@
 //
 // When Discord refuses, `openInviteDialog` (Discord's channel invite window, no scope) is tried once as the other way to
 // reach friends; its answer is kept in `invite`.
+//
+// Discord's client refuses nearly every command, `shareLink` and `openInviteDialog` among them, with RPC error 4006
+// ("Not authenticated or invalid scope") until the Activity has run `authenticate` with an access token (Deadnight #627:
+// the first fix only reported the refusal; the cause was that the bridge never authenticated). `authorize` alone, which
+// gives the sign-in code, does not do it. The backend swaps the code for the token (`POST /auth/discord` returns it) and
+// the game hands it to `state.authenticate(token)`; `state.auth` keeps how that went (`none`, `pending`, `ok`, `unread`,
+// `failed`), and a share pressed while it is pending waits for it (AUTH_WAIT_MS).
 
 export const GRACE_MS = 1000;
 export const REFUSED_MS = 400;
+export const AUTH_WAIT_MS = 5000;
 
 /** What an SDK failure is, as text: `{kind, code, detail}`. */
 export function describeError(error) {
@@ -47,7 +55,13 @@ export function describeError(error) {
  */
 export function makeShare(sdk, state, clock = () => performance.now(), log = console, target = globalThis) {
   let seq = 0;
+  // How `authenticate` went: `none` (no token was ever given: a guest, or the backend could not swap the code), `pending`,
+  // `ok`, `unread` (Discord answered but the SDK could not read the answer: the client is authenticated all the same) and
+  // `failed` (Discord refused the token).
+  let auth = { status: "none", detail: "", scopes: [] };
+  let authPending = null;
   let askedAt = 0;
+  let sentAt = 0; // when the command went to Discord (0: still waiting for authenticate)
   let s = blank();
 
   function blank() {
@@ -63,8 +77,39 @@ export function makeShare(sdk, state, clock = () => performance.now(), log = con
       raw: "",
       invite: "",
       inviteDetail: "",
+      auth: auth.status,
+      authDetail: auth.detail,
     };
   }
+
+  state.authenticate = (accessToken) => {
+    if (!accessToken) return false;
+    auth = { status: "pending", detail: "", scopes: [] };
+    let pending;
+    try {
+      pending = Promise.resolve(sdk.commands.authenticate({ access_token: accessToken }));
+    } catch (error) {
+      pending = Promise.reject(error);
+    }
+    const mine = (authPending = pending.then(
+      (answer) => {
+        auth = { status: "ok", detail: "", scopes: Array.isArray(answer && answer.scopes) ? answer.scopes.map(String) : [] };
+        log.info("Discord authenticate: ok, scopes", auth.scopes.join(" "));
+      },
+      (error) => {
+        const why = describeError(error);
+        // A schema failure is Discord's answer arriving in a shape the SDK cannot read: the client did authenticate.
+        auth = { status: why.kind === "schema" ? "unread" : "failed", detail: `${why.code} ${why.detail}`.trim(), scopes: [] };
+        log.warn("Discord authenticate:", auth.status, auth.detail);
+      },
+    ));
+    mine.then(() => {
+      if (authPending === mine) authPending = null;
+    });
+    return true;
+  };
+
+  state.authJson = () => JSON.stringify(auth);
 
   // Discord's own frame for our command, whatever the SDK made of it. The SDK handles the event first (it listened
   // first); a promise still pending a moment later means the SDK could not read the frame.
@@ -116,8 +161,31 @@ export function makeShare(sdk, state, clock = () => performance.now(), log = con
   state.share = (message, customId) => {
     const token = ++seq;
     askedAt = clock();
+    sentAt = 0;
     s = { ...blank(), verdict: "asking" };
     log.info("Discord share: asking, message length", String(message).length, "custom_id", customId);
+    // Discord refuses every command (4006) from an Activity that has not authenticated: a press while that is still
+    // being answered waits for it (never longer than AUTH_WAIT_MS), so the refusal is never ours to cause.
+    if (authPending) {
+      const waited = authPending;
+      let timer;
+      const timeout = new Promise((resolve) => {
+        timer = setTimeout(resolve, AUTH_WAIT_MS);
+      });
+      Promise.race([waited, timeout]).then(() => {
+        clearTimeout(timer);
+        if (token === seq) send(token, message, customId);
+      });
+    } else {
+      send(token, message, customId);
+    }
+    return true;
+  };
+
+  function send(token, message, customId) {
+    sentAt = clock();
+    s.auth = auth.status;
+    s.authDetail = auth.detail;
     let pending;
     try {
       pending = Promise.resolve(sdk.commands.shareLink({ message, custom_id: customId }));
@@ -126,7 +194,7 @@ export function makeShare(sdk, state, clock = () => performance.now(), log = con
     }
     pending.then(
       (answer) => {
-        const elapsed = clock() - askedAt;
+        const elapsed = clock() - sentAt;
         const success = Boolean(answer && answer.success);
         const verdict = success ? "shared" : elapsed < REFUSED_MS ? "refused" : "closed";
         const detail = !success && verdict === "refused" ? "answered success=false at once" : "";
@@ -149,14 +217,13 @@ export function makeShare(sdk, state, clock = () => performance.now(), log = con
         }
       },
     );
-    return true;
-  };
+  }
 
   state.shareJson = () => {
     const now = Math.round(clock() - askedAt);
     if (s.verdict === "asking" || s.verdict === "open") {
       s.ms = now;
-      s.verdict = now >= GRACE_MS ? "open" : "asking";
+      s.verdict = sentAt && clock() - sentAt >= GRACE_MS ? "open" : "asking";
     }
     return JSON.stringify(s);
   };

@@ -143,14 +143,17 @@ what happens underneath:
    heartbeats are full. The rooms of a process share one tick, so they are sized together from a measurement on Railway
    ([rooms in one process](crowd-budget.md#rooms-in-one-process-561)): `ROOM_CAPACITY` 3 and `ALIVE_BUDGET` 120 (the most
    alive in all the rooms together, each cut to its share; a room with a browser in it stands 40 whatever it says),
-   and `MAX_ALIVE` for a cap on any one room.
+   and `MAX_ALIVE` for a cap on any one room. Bots are limited the same way, whatever the host's Bots setting asks
+   (`BotLimits`): `MAX_BOTS` (0 to 3, default 3) caps one room, `BOT_BUDGET` (default none) shares a number of bots
+   among the open rooms, and `BOTS_OFF=1` is the kill-switch: no room seats a bot, and a restart is the only thing it
+   needs. The measured cost of three bots is [in the bot research](bots.md#server-cost).
 
 Environment of the services (names only; the secrets are Railway variables, never in the repository):
 
 | Service | Variables |
 | --- | --- |
 | `backend` | `SESSION_SECRET`, `TICKET_SECRET`, `GAME_SERVER_SECRET` (all different, 32+ characters), `DATABASE_URL` (the Postgres reference), `DISCORD_MODE`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `GUEST_SIGN_IN=1`, `CORS_ORIGINS` |
-| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` (3), `ALIVE_BUDGET` (120), optionally `MAX_ALIVE` |
+| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` (3), `ALIVE_BUDGET` (120), optionally `MAX_ALIVE`, `MAX_BOTS`, `BOT_BUDGET`, `BOTS_OFF` |
 
 A path variable set from Git Bash on Windows is rewritten (`/server` became `C:/Program Files/Git/server`): set them with
 `MSYS_NO_PATHCONV=1` or from PowerShell.
@@ -280,16 +283,17 @@ extension for it). Neither is built; until then game servers are trusted and run
 
 ## Match settings: the host's rules reach the room
 
-The host of a night chooses its rules (`MatchSettings`: zombie intensity, alive cap, break, bots) and they travel with
-the ticket, so the game server needs no second channel:
+The host of a night chooses its rules (`MatchSettings`: zombie intensity, alive cap, break, bots and the map) and they
+travel with the ticket, so the game server needs no second channel:
 
 0. `PUT /lobbies/:id/settings` (the host only, while the lobby waits; the body is the three keys) keeps the rules on
    the lobby as the host moves the panel of the lobby screen; every member reads them in `lobby.settings` on a poll.
    `403 not_host`, `409 already_started` and `400 bad_settings` otherwise, and nothing changes.
 1. `POST /lobbies/:id/start` takes `{"settings": {"count_multiplier", "max_alive", "break_seconds"}}` from the
    host (without it, the ones set while waiting; without those, today's game). The backend (`src/settings.ts`)
-   accepts exactly those three keys, and a fourth `bots` (a whole 0 to 3; left out it means none and is kept left out,
-   so a client from before it still passes), inside the game's bounds (0.25 to 5; a whole 0 to 120; 0 or 1 to 120) and answers
+   accepts exactly those three keys, and optionally `bots` (a whole 0 to 3; left out it means none and is kept left out,
+   so a client from before it still passes) and `map` (an id of `PLAYABLE_MAPS`: the maps the game can play; a map that
+   is listed but not built is refused), inside the game's bounds (0.25 to 5; a whole 0 to 120; 0 or 1 to 120) and answers
    `400 bad_settings` otherwise, leaving the lobby open. They are fixed when the match starts; the lobby view shows
    them.
 2. Every ticket of the match (`/lobbies/:id/ticket`) carries the same `settings` claim, signed with the rest.
@@ -362,6 +366,10 @@ mappings for the backend and each game server.
   `shareLink` answers when its window is closed, rejects with a plain `{code, message}` object, and never settles on a
   reply the SDK cannot parse, so the button shows the hint only while Discord has not refused and the lobby's probe
   line quotes its answer (#627). [Web export](web-export.md#share-in-discord-what-discord-answered-627).
+  Discord's client answers every command, `shareLink` among them, with RPC 4006 "Not authenticated or invalid
+  scope" until the Activity has run `authenticate`: the sign-in code from `authorize` is swapped for a token here
+  (`POST /auth/discord` returns it as `access_token`, the client secret stays on the backend) and the game gives
+  the token back to the bridge ([#627](web-export.md#share-in-discord-the-activity-must-authenticate-627)).
 - Discord's proxy compresses the backend's answers (`Content-Encoding: gzip`), and Godot's `HTTPRequest` then decodes a
   body the browser has decoded already and fails, which the game reads as "Could not reach the game's servers": every
   call through `/api` failed while the backend logged a 200 or 201. `HttpJson` sets `accept_gzip = false`.

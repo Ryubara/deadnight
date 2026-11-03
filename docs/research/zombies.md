@@ -371,9 +371,36 @@ Proof: `game/tests/night/test_spawns_wait_for_the_map.gd` (no spawns in the new 
   the director's, still open. A body with other bone names needs the rig-sharing retarget player.
 - Hit reactions by zone, crawlers, window break-ins: the animation set is #40's.
 - The navmesh is baked ahead of time from the greybox's CSG boxes, one for each set of doors ([Doors](#doors)); only a
-  lot nothing was saved for is baked at run time (half a second in the browser). Heights are flat: a zombie
-  keeps the height it spawned at.
+  lot nothing was saved for is baked at run time (half a second in the browser). Heights follow the path ([Climbing](#climbing)).
 - Spawn point choice ignores whether an area is open (the rules' design): `spawn_points` is whatever the caller gives.
+
+## Climbing
+
+Players said the dead had trouble going upstairs (#681). On the booth's ramp (25 degrees, 2 m wide, the roost's one way
+up) a pack sent at a person on the roost climbed nothing: **0 of 6 at the top in 40 s**, from the ramp's foot and from the
+booth door, and 0 of 16 for a bigger pack; the small map's two stairs the same (0 of 6 each).
+
+- **Cause:** the sim kept every zombie at the height it spawned at ("the lot is flat"), but the lot is not. A zombie
+  walked the path's x and z at y = 0 while the ramp rose over it. Each repath (4 a second) snapped that ground-level
+  position to the *nearest* point of the mesh, and a little way up the ramp (z 25) the nearest point was the floor beside
+  and under it (1.1 m off) rather than the ramp surface (1.8 m over its head). The path from the floor led back to the
+  ramp's foot, so every zombie of the pack shuffled between z 23 and 25 for as long as the run lasted. The earlier tests
+  never saw it: the bots' ramp test walks a physics body, the walk soaks use players, and the sim's own tests ran on a
+  flat field.
+- **Fix:** `ZombieSim._settle_on_ground` reads the floor off the path (the segment ending at the zombie's waypoint, by
+  where it stands along it), takes off the baker's offset (`NavmeshPathing.GROUND_OFFSET`, 0.4 m: flat ground measures
+  0.35, the roost 0.45, the ramp 0.4 to 0.5) and moves the zombie there at `climb_speed` (6 m/s, so a 45 degree stair is
+  fine). A straight-line path (`ZombiePathing` base, the tests') has no offset (`NAN`) and keeps the height as before.
+  With a true height the repath snaps to the right layer.
+- **What a height changes elsewhere:** zombies more than `separation_height` (1 m) apart in height do not push each
+  other (the ramp over the floor beside it shared one x/z); and a swing needs the person within `reach_height` (2 m) of
+  the zombie's height, or the dead under the roost's floor would hit the person standing over their heads.
+- **Measured** (`tests/zombies/test_zombie_climb.gd`, six at 2.4 m/s, two abreast, the person on the roost; time until the
+  last zombie stands on the roost): ramp from its foot 5.6 s (first 2.5 s), from the booth door 6.3 s, sixteen from the
+  door 8.0 s; small map stair A 11.7 s, stair B 8.8 s. The longest any of them went without rising: 0.32 s. Before: never
+  (the test's control walks the same mesh with the heights left out, and the same file failed on `main`).
+- **Left open:** the views draw the zombie at its snapshot height, so a zombie on a ramp walks the ramp, but its feet
+  are placed within about 0.1 m of the surface (the baker rounds heights to a quarter of a cell).
 
 ## Reproduce
 

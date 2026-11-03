@@ -255,13 +255,15 @@ func test_a_ticket_that_is_not_good_is_turned_away() -> void:
 
 func test_the_rules_the_host_chose_ride_the_ticket_into_the_room_and_every_welcome() -> void:
 	await _start()
-	var chosen := {"count_multiplier": 3.0, "max_alive": 9, "break_seconds": 11.0}
+	var chosen := {
+		"count_multiplier": 3.0, "max_alive": 9, "break_seconds": 11.0, "map": MapRegistry.DEFAULT
+	}
 	# The first ticket of the match opens the room with the host's rules; the JSON the backend signs
 	# gives numbers as floats, and a whole one still fits `max_alive`.
 	var ann := await _client("rules-a", "ann", "Tester", chosen)
 	var room := _server.room_of_match("rules-a")
 	# A ticket from before the bot count (no `bots`) asks for none.
-	var held := chosen.merged({"bots": 0})
+	var held := chosen.merged({"bots": 0, "bot_skill": MatchSettings.DEFAULT_SKILL})
 	assert_dict(room.server.rules.settings.to_dict()).is_equal(held)
 	assert_dict(ann.match_settings.to_dict()).is_equal(held)
 	# A friend's ticket carries the same rules (and even one without them changes nothing): the

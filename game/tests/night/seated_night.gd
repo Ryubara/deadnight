@@ -30,11 +30,16 @@ var stage_the_dead := false
 ## When on, every command the bots send leaves with the trigger up: the bots move, look and dodge
 ## as they would but never shoot (a test of the legs alone, on a zombie a hit would stagger).
 var hold_fire := false
+## When on, the bots seated from now on hold where they stand unless an errand or a revive moves
+## them (`BotProfile.follows` off): with no order given a bot roams, and a test about the fight, or
+## about one errand, wants a bot that stays where it was put.
+var stand_still := false
 ## When above 0, the state hash after every this many steps is kept in `hashes`.
 var hash_every := 0
 var hashes: Array[int] = []
 
-## What the server answered to the actions the bots sent (a `bot_say`, a ping's mark): heard with
+## What the server answered to the actions the bots and the people sent (a `bot_say`, a ping's mark,
+## an order taken or refused): heard with
 ## the next step's events, as a server's broadcast would be.
 var _answers: Array[Dictionary] = []
 ## The dead already staged (`stage_the_dead`).
@@ -49,14 +54,22 @@ static func start(
 	players: int,
 	rules_tuning: RulesTuning = null,
 	seed_value: int = 7,
-	shopping: bool = false
+	shopping: bool = false,
+	scene: PackedScene = null
 ) -> SeatedNight:
 	var night := SeatedNight.new()
 	night.world = NightWorld.new()
+	night.world.scene = scene
 	parent.add_child(night.world)
 	await night.world.build()
+	# A map with its own rules overlay plays by it, over the table given (or the shipped one).
+	var table := rules_tuning if rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
 	night.server = NightServer.new(
-		night.world, seed_value, NightTuning.shipped(), rules_tuning, MatchSettings.new()
+		night.world,
+		seed_value,
+		NightTuning.shipped(),
+		night.world.rules_for(table),
+		MatchSettings.new()
 	)
 	night.server.drawn_bodies = false
 	for id in range(1, players + 1):
@@ -83,6 +96,8 @@ func seat(
 ) -> BotClient:
 	var state := ClientState.new()
 	state.player_id = id
+	if stand_still:
+		profile.follows = false
 	var bot := BotClient.new(state, profile, bot_seed, Callable(self, &"_send").bind(id), level)
 	if legacy:
 		var autopilot := Autopilot.new(state, world.map())
@@ -98,6 +113,15 @@ func human(id: int) -> HumanWalker:
 	var walker := HumanWalker.new(server, world.map(), id)
 	walkers.append(walker)
 	return walker
+
+
+## The person at seat `issuer` gives the bots `order`, as the command wheel does through
+## `BotOrders.issue`: the connection of that seat carries the action (bytes and back) and the server
+## decides. Returns what was sent. The bots read it from the next frame.
+func give_order(order: StringName, issuer: int, at: Vector3, bot_id := 0) -> Dictionary:
+	var orders := BotOrders.new()
+	orders.sender = Callable(self, &"_send").bind(issuer)
+	return orders.issue(order, issuer, at, bot_id)
 
 
 ## Sells `door_id` to player 1 through the rules, as a purchase would: the lot opens it and the
@@ -248,7 +272,10 @@ func state_hash() -> int:
 	ids.sort()
 	for id in ids:
 		var zombie: ZombieBody = server.sim.zombies[id]
-		parts.append_array([id, zombie.mode, _snap(zombie.position)])
+		# Its place is left out (the docstring says why): the live run and its replay differ by
+		# a centimetre or two, which the quarter-metre grid turns into a different hash whenever a
+		# value sits on a grid edge (a change in what the dead stand on moved the edges).
+		parts.append_array([id, zombie.mode])
 	return hash(var_to_bytes(parts))
 
 
@@ -294,5 +321,10 @@ func _send(action: Dictionary, id: int) -> void:
 	if recording and plain.get("type") != NightServer.SAY:
 		recorded.append({"tick": server.tick_count, "player_id": id, "action": plain})
 	for event in server.apply(plain, id):
-		if event["type"] == &"bot_say" or event["type"] == &"ping_placed":
+		if (
+			event["type"] == &"bot_say"
+			or event["type"] == &"ping_placed"
+			or event["type"] == BotOrders.EVENT_SET
+			or event["type"] == BotOrders.EVENT_REFUSED
+		):
 			_answers.append(event)

@@ -26,6 +26,8 @@ const FAR_OFF := 600.0
 const STICK_START := Vector2(300.0, 800.0)
 const STICK_WALK := 70.0
 const STICK_RIM := 150.0
+## The actions a keyboard has and a gamepad does not: the pad and the phone swap with one button.
+const KEYBOARD_ONLY: Array[StringName] = [&"weapon_slot_1", &"weapon_slot_2", &"weapon_slot_3"]
 ## Input actions of the map that belong to menus, not to the night.
 const MENU_PREFIX := "ui_"
 
@@ -48,6 +50,13 @@ const ROWS: Array = [
 	[&"reload", &"reload"],
 	[&"interact", &"interact"],
 	[&"swap_weapon", &"swap_weapon"],
+	# The numbered weapon slots (#682): the keys 1, 2 and 3 take that slot's weapon in hand. A pad
+	# and a phone go on swapping with the swap button, so these have no pad binding and no touch
+	# control (`KEYBOARD_ONLY`). The third slot is for the perk that carries three (#687): with two
+	# weapons carried its key picks nothing, which is what the row proves.
+	[&"weapon_slot_1", &""],
+	[&"weapon_slot_2", &""],
+	[&"weapon_slot_3", &""],
 	# The quick melee (#411, #588): V, the mouse's back button, the d-pad's down and the touch
 	# button. Before the grenades: the arm that is throwing one is busy, and a blow asked for then is
 	# refused (`test_night_quick_melee.gd`).
@@ -137,6 +146,8 @@ func _read(action: StringName, c: NightCommand) -> bool:
 			return c.use and c.use_held
 		&"swap_weapon":
 			return c.swap
+		&"weapon_slot_1", &"weapon_slot_2", &"weapon_slot_3":
+			return c.slot == WeaponSlots.slot_of(action)
 		&"throw_grenade":
 			return c.motion.throw_over
 		&"toss_grenade":
@@ -175,11 +186,31 @@ func _shown(action: StringName, before: Dictionary) -> bool:
 			return _count_since(&"reload_started", before) > 0
 		&"swap_weapon":
 			return _count_since(&"weapon_equipped", before) > 0
+		&"weapon_slot_1", &"weapon_slot_2":
+			# The weapon of that slot is in hand now (it was put away before the key went down).
+			return String(_night.state.me()["weapon"]) == String(_slot_weapon(action))
 		&"throw_grenade", &"toss_grenade":
 			return _count_since(&"cook_started", before) > 0
 		&"quick_melee":
 			return _count_since(&"quick_melee", before) > 0
 	return true
+
+
+## The weapon a slot key takes in hand, in the order the night carries them.
+func _slot_weapon(action: StringName) -> StringName:
+	return WeaponSlots.weapon_in(_night.server.combat.carried(1), WeaponSlots.slot_of(action))
+
+
+## Sets the night up for a row: a slot key needs its weapon put away to show anything, so the other
+## weapon is put in hand first.
+func _prepare(action: StringName) -> void:
+	var slot := WeaponSlots.slot_of(action)
+	if slot < 1 or slot > WeaponCatalog.CARRY_LIMIT:
+		return
+	var carried := _night.server.combat.carried(1)
+	var other: StringName = carried[1] if slot == 1 else carried[0]
+	_night.server.combat.apply(CombatAction.equip(1, other))
+	NightFixture.run(_night, 2)
 
 
 func _snapshot() -> Dictionary:
@@ -321,6 +352,8 @@ func test_every_action_but_the_look_stick_has_a_key_or_mouse_binding() -> void:
 func test_every_action_has_a_gamepad_binding() -> void:
 	for row in ROWS:
 		var action: StringName = row[0]
+		if KEYBOARD_ONLY.has(action):
+			continue
 		(
 			assert_array(_bound(action, true))
 			. override_failure_message("%s has no gamepad binding" % action)
@@ -336,6 +369,7 @@ func test_the_keyboard_and_mouse_do_every_action() -> void:
 		if row[0] == &"pause" or row[0] == &"scoreboard":
 			continue
 		for event in _bound(row[0], false):
+			_prepare(row[0])
 			_send(event, true)
 			await _hold("keyboard/mouse", row[0])
 			_send(event, false)
@@ -344,7 +378,7 @@ func test_the_keyboard_and_mouse_do_every_action() -> void:
 
 func test_a_gamepad_that_is_not_device_zero_does_every_action() -> void:
 	for row in ROWS:
-		if row[0] == &"pause" or row[0] == &"scoreboard":
+		if row[0] == &"pause" or row[0] == &"scoreboard" or KEYBOARD_ONLY.has(row[0]):
 			continue
 		for event in _bound(row[0], true):
 			_send(event, true)

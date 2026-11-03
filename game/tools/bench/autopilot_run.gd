@@ -47,6 +47,7 @@ var _rows: Array[Array] = []
 var _played := 0.0
 var _reached_at := -1.0
 var _done := false
+var _ablated := false
 
 
 func _init(args: NetArgs = null) -> void:
@@ -65,6 +66,7 @@ func _ready() -> void:
 	_out = _args.get_string("out")
 	NightScreen.match_settings = settings_from(_args)
 	NightScreen.start_mode = Night.Mode.AUTOPILOT
+	NightScreen.start_seed = Night.SEED
 	NightScreen.start_tuning = tuning(_args)
 	NightScreen.shoulder_camera = true
 	UIRouter.reset(NIGHT, UITransition.Kind.CUT)
@@ -74,6 +76,9 @@ func _process(delta: float) -> void:
 	var night := _night()
 	if _done or night == null or not night.running or night.state == null:
 		return
+	if not _ablated:
+		_ablated = true
+		BenchAblation.apply(_args, night, UIRouter.top())
 	_played += delta
 	_rows.append([delta * 1000.0, night.state.round_number(), night.state.zombies.size()])
 	if night.state.round_number() >= _rounds and _reached_at < 0.0:

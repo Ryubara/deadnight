@@ -20,10 +20,13 @@ const ZOMBIE_TUNING := {
 	"separation_radius": 0.8,
 	"separation_speed": 2.0,
 	"separation_max_speed": 4.0,
+	"separation_height": 1.0,
+	"climb_speed": 6.0,
 	"turn_rate": 9.0,
 	"board_stop": 0.9,
 	"board_slack": 0.25,
 	"reach": 1.4,
+	"reach_height": 2.0,
 	"windup_seconds": 0.45,
 	"swing_seconds": 1.2,
 	"strike_slack": 0.4,
@@ -70,8 +73,13 @@ const NIGHT_SOUND_TUNING := {
 	"max_world_impacts": 3,
 	"hit_match_radius": 1.5,
 	"range_margin": 0.5,
-	"tick_gap_start": 0.5,
-	"tick_gap_end": 0.1,
+	"teammate_reload_db": 6.0,
+	"own_reload_db": 0.0,
+	"beep_gap_start": 0.5,
+	"beep_gap_end": 0.09,
+	"beep_curve": 1.6,
+	"beep_db_start": -3.0,
+	"beep_db_end": 2.0,
 	"bounce_quiet_db": -9.0,
 	"bounce_loud_db": 0.0,
 	"bounce_fast_speed": 12.0,
@@ -304,6 +312,8 @@ const SOUND_MIX := {
 		&"breaker": 2,
 		&"shop": 4,
 		&"points": 2,
+		&"debris": 2,
+		&"yard": 2,
 	},
 	"voice_db": -4.0,
 	"own_voice_db": -2.0,
@@ -323,6 +333,9 @@ static func sounds() -> Dictionary:
 		var row: Dictionary = table[id]
 		if row["near_cap_db"] is String:
 			row["near_cap_db"] = INF
+		# Walls dull every sound in full unless its row says otherwise (the fuse's beep carries).
+		if not row.has("occlusion_scale"):
+			row["occlusion_scale"] = 1.0
 	return table
 
 

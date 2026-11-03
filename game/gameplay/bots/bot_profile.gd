@@ -58,8 +58,9 @@ const REACTION_FLOOR := 0.20
 @export_range(0.0, 1.0, 0.01, "suffix:s") var fire_jitter: float = 0.08
 
 @export_group("Movement")
-## Whether the bot walks to stay near the people. Off, it holds where it stands (a test that must
-## not walk: a body the physics engine moves does not repeat to the last bit).
+## Whether the bot walks to keep its order (follow its person, roam, hold a spot). Off, it holds
+## where it stands (a test that must not walk: a body the physics engine moves does not repeat to
+## the last bit).
 @export var follows: bool = true
 
 @export_group("Shopping")
@@ -103,6 +104,16 @@ const REACTION_FLOOR := 0.20
 ## Brain failures (a thought that comes back empty or broken) after which the brain is switched off
 ## and the motor goes on alone.
 @export_range(1, 10, 1) var brain_failure_limit: int = 1
+
+
+## The shipped profile of a room's `MatchSettings.bot_skill` (a value out of range is the nearest).
+static func for_skill(skill: int) -> BotProfile:
+	match clampi(skill, MatchSettings.SKILL_ROOKIE, MatchSettings.SKILL_VETERAN):
+		MatchSettings.SKILL_ROOKIE:
+			return rookie()
+		MatchSettings.SKILL_VETERAN:
+			return veteran()
+	return regular()
 
 
 static func rookie() -> BotProfile:
