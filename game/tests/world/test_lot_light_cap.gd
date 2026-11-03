@@ -29,6 +29,10 @@ const LIGHT_SCENES := {
 	"res://world/drive_in_greybox.tscn": "the lot's lamps",
 	"res://world/drive_in/lamp_post.tscn": "the lot's lamps",
 	"res://world/drive_in/lot_neon_sign.tscn": "the lot's lamps",
+	"res://world/smallmap/lights/pendant_light.tscn":
+	"the small map's lamps: one or two real ones a room (test_smallmap_lights.gd)",
+	"res://world/smallmap/lights/lantern_light.tscn":
+	"the small map's lamps: one or two real ones a room (test_smallmap_lights.gd)",
 }
 const SEARCH_ROOT := "res://"
 ## Folders that hold no game code or scenes of ours.
