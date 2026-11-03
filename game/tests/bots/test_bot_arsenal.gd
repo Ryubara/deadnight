@@ -188,3 +188,29 @@ func test_every_state_of_two_guns_asks_for_something_when_the_gun_in_hand_is_emp
 						assert_bool(plan.dry).override_failure_message(name).is_false()
 					else:
 						assert_bool(plan.dry).override_failure_message(name).is_true()
+
+
+func test_a_blade_with_no_gun_loaded_strikes_when_the_dead_are_near_else_goes_back_to_reload(
+) -> void:
+	# The axe in hand, the shotgun with 54 in reserve and an empty magazine: with a train at its
+	# heels the bot held the axe it was not allowed to swing into a pack and never took the gun
+	# back (#695).
+	var arms := {&"shotgun": [0, 54], &"fire_axe": [0, 0]}
+	var close := _plan(_me(&"fire_axe", arms), 1.0, 1.0)
+	assert_bool(close.cornered).is_true()
+	assert_bool(close.swap).is_false()
+	var near := _plan(_me(&"fire_axe", arms), 5.0, 5.0)
+	assert_bool(near.cornered).is_true()
+	assert_bool(near.swap).is_false()
+	var far := _plan(_me(&"fire_axe", arms), 9.0, 9.0)
+	assert_bool(far.cornered).is_false()
+	assert_bool(far.swap).is_true()
+
+
+func test_a_blade_with_a_loaded_gun_to_take_is_not_cornered_and_a_gun_in_hand_never_is() -> void:
+	var loaded := {&"shotgun": [4, 10], &"fire_axe": [0, 0]}
+	var plan := _plan(_me(&"fire_axe", loaded), 1.0, 1.0)
+	assert_bool(plan.cornered).is_false()
+	assert_bool(plan.swap).is_true()
+	var empty_gun := {&"shotgun": [0, 54], &"fire_axe": [0, 0]}
+	assert_bool(_plan(_me(&"shotgun", empty_gun), 1.0, 1.0).cornered).is_false()

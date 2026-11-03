@@ -1,10 +1,10 @@
 # A bot with an empty gun and a train of dead behind it on the second map's side room (issue
-# #695): a bot whose gun has nothing left, with another gun that only needs its reload, took the
-# other gun up and reloaded it (or struck) instead of kiting the train round the rack row for the
-# rest of the night, and the round ended.
+# #695): it reloads when it has the gap, or strikes, instead of kiting the train round the rack
+# row for the rest of the night, and the round ends. Two kits: a pistol with nothing at all and a
+# shotgun that only needs its reload; a shotgun that needs its reload and a fire axe (a bot with a
+# blade put the gun away for it and then never took the gun back with the dead at its heels).
 extends GdUnitTestSuite
 
-const STEP := Night.STEP
 const TICKS_PER_SECOND := 60
 ## Dead to the round, and the most of them that are on the lot when the bot is put in front of
 ## them (the rest come after).
@@ -15,8 +15,11 @@ const TRAIN_SPEED := 1.5
 ## The bot stands at the west end of the side room's south aisle; the train comes from the east.
 const BOT_AT := Vector3(2.0, 0.1, -2.0)
 const TRAIN_FROM := Vector3(9.0, 0.0, -2.0)
+## The train that is at the bot's heels: as fast as the bot's walk, starting a few metres behind.
+const HEELS_SPEED := 2.6
+const HEELS_FROM := Vector3(5.5, 0.0, -2.0)
 const TRAIN_GAP := 0.7
-## The Tommy gun's reserve; the shotgun in hand has nothing at all.
+## Rounds in reserve of the gun that needs its reload.
 const RESERVE := 120
 const SECONDS := 150
 ## Physics frames the bought door's walking mesh gets to reach the map.
@@ -34,15 +37,33 @@ func _night() -> SeatedNight:
 	return await SmallMapNight.seat(self, 1, tuning, 5)
 
 
-## Runs the train: the bot's gun in hand has no round anywhere and the other has `RESERVE` rounds
-## and an empty magazine. Returns what happened.
-func _play(bot_seed: int) -> Dictionary:
+## Gives the bot its kit: the shotgun with `RESERVE` rounds and an empty magazine, and `other`
+## beside it. With the pistol as `other` the pistol is the one in hand and has nothing at all; with
+## anything else the shotgun is in hand.
+func _kit(night: SeatedNight, other: StringName) -> void:
+	var combat := night.server.combat
+	combat.apply(CombatAction.give_weapon(1, &"shotgun"))
+	if other != &"pistol":
+		combat.apply(CombatAction.give_weapon(1, other, &"pistol"))
+	combat.apply(CombatAction.equip(1, other if other == &"pistol" else &"shotgun"))
+	night.run(3)
+	for id: StringName in combat.carried(1):
+		var state := combat.state_of(1, id)
+		state.cancel_reload()
+		state.ammo = 0
+		state.reserve = RESERVE if id == &"shotgun" else 0
+
+
+## Runs the train. Returns what happened.
+func _play(
+	bot_seed: int, other: StringName, speed := TRAIN_SPEED, from := TRAIN_FROM
+) -> Dictionary:
 	var night := await _night()
 	# The door to the side room is bought, as the bots' nights have it by now: the dead have a way in.
 	night.open_door(&"door_side")
 	await night.settle(MAP_FRAMES)
 	night.server.rules.apply(RulesAction.skip_break())
-	var seen := {"kills": 0, "reloads": [], "round_ended": false, "swaps": 0, "quick": 0}
+	var seen := {"kills": 0, "reloads": [], "round_ended": false}
 	night.on_event = func(event: Dictionary) -> void:
 		match event["type"]:
 			&"zombie_removed":
@@ -52,30 +73,18 @@ func _play(bot_seed: int) -> Dictionary:
 				seen["reloads"].append(event["weapon_id"])
 			&"round_ended":
 				seen["round_ended"] = true
-			&"quick_melee":
-				seen["quick"] += 1
 	for _i in 40 * TICKS_PER_SECOND:
 		night.tick()
 		if night.server.sim.standing_count() >= TRAIN_MIN:
 			break
-	# The pistol in hand has nothing at all; the shotgun only needs its reload.
-	night.server.combat.apply(CombatAction.give_weapon(1, &"shotgun"))
-	night.server.combat.apply(CombatAction.equip(1, &"pistol"))
-	night.run(3)
-	var held: StringName = night.frame["players"][1]["weapon"]
-	for id: StringName in night.server.combat.carried(1):
-		var state := night.server.combat.state_of(1, id)
-		state.cancel_reload()
-		state.ammo = 0
-		state.reserve = 0 if id == held else RESERVE
-	seen["held_at_start"] = held
+	_kit(night, other)
 	seen["carried"] = night.server.combat.carried(1)
 	night.server.body_of(1).teleport(BOT_AT)
 	var placed := 0
 	for zombie: ZombieBody in night.server.sim.zombies.values():
-		zombie.position = TRAIN_FROM + Vector3(TRAIN_GAP * placed, 0.0, 0.0)
+		zombie.position = from + Vector3(TRAIN_GAP * placed, 0.0, 0.0)
 		zombie.gate_id = &""
-		zombie.speed = TRAIN_SPEED
+		zombie.speed = speed
 		zombie.enter(ZombieBody.Mode.CHASE)
 		placed += 1
 	seen["placed"] = placed
@@ -86,28 +95,37 @@ func _play(bot_seed: int) -> Dictionary:
 		night.tick()
 		if seen["round_ended"]:
 			break
-	seen["held_at_end"] = night.frame["players"][1]["weapon"]
 	seen["downed"] = night.frame["players"][1].get("downed", false)
-	var left := []
-	for zombie: ZombieBody in night.server.sim.zombies.values():
-		if zombie.is_alive():
-			left.append(zombie.position)
-	seen["left"] = left
-	seen["bot_at"] = night.server.body_of(1).global_position
 	seen["remaining"] = night.server.rules.zombies_remaining()
 	night.on_event = Callable()
 	night.dispose()
 	return seen
 
 
-func test_a_bot_with_an_empty_gun_and_a_train_behind_it_takes_up_the_other_gun_and_ends_the_round(
-) -> void:
-	var seen := await _play(31)
-	print("TRAIN ", seen)
+func test_a_bot_with_an_empty_gun_and_a_train_takes_up_the_other_gun_and_ends_the_round() -> void:
+	var seen := await _play(31, &"pistol")
 	assert_int(seen["placed"]).is_greater_equal(TRAIN_MIN)
 	assert_array(seen["carried"]).has_size(2)
-	# It put the empty gun down and reloaded the one with rounds in reserve.
-	assert_array(seen["reloads"]).is_not_empty()
-	assert_bool(seen["held_at_end"] != seen["held_at_start"]).is_true()
+	# It put the empty pistol down and reloaded the shotgun, and the round ended.
+	assert_array(seen["reloads"]).contains([&"shotgun"])
 	assert_int(seen["kills"]).is_greater_equal(TRAIN)
-	assert_bool(seen["round_ended"] or seen["downed"]).is_true()
+	assert_bool(seen["round_ended"]).is_true()
+
+
+func test_a_bot_with_a_dry_gun_and_an_axe_and_a_train_reloads_and_ends_the_round() -> void:
+	var seen := await _play(31, &"fire_axe")
+	print("TRAIN axe ", seen)
+	assert_int(seen["placed"]).is_greater_equal(TRAIN_MIN)
+	assert_array(seen["carried"]).has_size(2)
+	assert_array(seen["reloads"]).contains([&"shotgun"])
+	assert_int(seen["kills"]).is_greater_equal(TRAIN)
+	assert_bool(seen["round_ended"]).is_true()
+
+
+func test_a_bot_with_a_dry_gun_and_an_axe_and_a_train_at_its_heels_strikes_and_ends_the_round(
+) -> void:
+	var seen := await _play(31, &"fire_axe", HEELS_SPEED, HEELS_FROM)
+	print("TRAIN heels ", seen)
+	assert_int(seen["placed"]).is_greater_equal(TRAIN_MIN)
+	assert_int(seen["kills"]).is_greater_equal(TRAIN)
+	assert_bool(seen["round_ended"]).is_true()

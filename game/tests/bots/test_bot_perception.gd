@@ -245,3 +245,13 @@ func test_only_a_swing_within_arms_reach_is_noticed_from_behind() -> void:
 	var other := _perception()
 	_watch(other, far, 3.0)
 	assert_array(other.beliefs.targets(HERE)).is_empty()
+
+
+func test_a_bot_with_a_target_in_front_keeps_to_it_and_does_not_turn_to_a_swing_behind() -> void:
+	var perception := _perception()
+	var zombies: Array[Dictionary] = [_zombie(1, Vector3(0, 0, -8))]
+	var now := _watch(perception, zombies, 2.0)
+	assert_array(perception.beliefs.targets(HERE)).has_size(1)
+	zombies.append(_zombie(2, Vector3(0, 0, 0.6), ZombieBody.Mode.ATTACK))
+	_watch(perception, zombies, 3.0, 0.0, now)
+	assert_bool(perception.beliefs.contact(2).is_empty()).is_true()
