@@ -793,6 +793,29 @@ which the first boss night (10% of nights lost, was 31%) mostly explains; the ta
 recommendation about the size of the head zone are in [the balance simulator
 research](../research/balance-simulator.md#the-headshot-retune-745).
 
+## The first 6 m on lit ground (#850)
+
+The six aprons each have a dim lamp 0.5 m from the spawn ([map](map.md#the-apron-lamps)): the field's circuit is on
+at the start, so a zombie leaves the breach on lit ground, at its round's pace, and is 25% faster only once it is past
+the lamp's 6 m (`lamp_reach`). On the 33 to 38 m walk to a player's start that is about a sixth of the way (6 of 35 m),
+so the lit share of the approach is the skill's `light_use` plus 16% of the rest (weak 0.10 to 0.24, average 0.35 to
+0.45, strong 0.55 to 0.62), for every skill, because every skill keeps the field's circuit on. The simulator models a
+share, not a position, so the check is that share replaced: 200 nights per cell, seed 1, by 1 and 4 players
+(`--skill-set=light_use=...`):
+
+| Cell | Median round, before | after | Nights reaching round 10, before | after |
+| --- | ---: | ---: | ---: | ---: |
+| weak, 1 player | 5 | 5 | 6 | 8 |
+| average, 1 player | 14 | 15 | 153 | 166 |
+| strong, 1 player | 19 | 19 | 199 | 197 |
+| weak, 4 players | 5 | 5 | 56 | 53 |
+| average, 4 players | 17 | 17 | 200 | 200 |
+| strong, 4 players | 22 | 22 | 200 | 200 |
+
+The medians move one round at most (the average solo night, which keeps two circuits lit and had the most of the
+dark approach to lose) and the others by nothing; that is inside the simulator's seed noise, so the rounds' pace and the
+fuel table above stand. The lamps are dim, not out, on purpose: dimming them does not change the rule, only the picture.
+
 ## Open questions
 
 - **Points glut after round 12 or so.** Once the doors, weapons and tonics are bought, fuel and rounds absorb
