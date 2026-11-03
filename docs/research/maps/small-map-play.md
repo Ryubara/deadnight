@@ -38,18 +38,21 @@ map.
 
 | Night | Round reached | How it ended | Links bought by the bots | Windows torn | Most dead at once | Box plays |
 | --- | ---: | --- | --- | ---: | ---: | ---: |
-| One bot, seed 1 | 8 | alive in round 8 when the 40 minutes ran out (the round never closed) | side (round 1), stair start (round 3), stair side (round 6) | 12 of 12 | 9 | 2 |
-| One bot, seed 2 | 10 | round 10 cleared at 9:15, stopped | side (round 1), stair start (round 2), stair side (round 8) | 12 of 12 | 10 | 3 |
-| One bot, seed 3 | 10 | round 10 cleared at 26:00, stopped | side (round 1), stair start (round 2), stair side (round 6) | 12 of 12 | 10 | 0 |
-| Four bots, seed 1 | 8 | all down in round 8 at 9:51 | side (round 1), stair start (round 2) | 12 of 12 | 20 | 5 |
-| Four bots, seed 2 | 10 | round 10 cleared at 11:06, stopped | side (round 1), stair start (round 2) | 12 of 12 | 22 | 7 |
-| Four bots, every link sold first, seed 1 | 10 | round 10 cleared at 9:55, stopped | all three, before the night | 12 of 12 | 20 | 6 |
-| Four bots, every link sold first, seed 2 | 10 | round 10 cleared at 10:43, stopped | all three, before the night | 12 of 12 | 20 | 7 |
+| One bot, seed 1 | 10 | all down in round 10 at 8:46 | side (round 1), stair start (round 2), stair side (round 3) | 12 of 12 | 9 | 1 |
+| One bot, seed 2 | 10 | all down in round 10 at 7:53 | side (round 1), stair start (round 3), stair side (round 4) | 12 of 12 | 10 | 7 |
+| One bot, seed 3 | 10 | all down in round 10 at 8:56 | side (round 1), stair start (round 2), stair side (round 3) | 12 of 12 | 9 | 6 |
+| Four bots, seed 1 | 10 | all down in round 10 at 9:36 | side (round 1), stair start (round 1), stair side (round 2) | 12 of 12 | 20 | 5 |
+| Four bots, seed 2 | 10 | round 10 cleared at 9:32, stopped | side (round 1), stair start and stair side (round 2) | 12 of 12 | 20 | 11 |
+| Four bots, every link sold first, seed 1 | 10 | round 10 cleared at 9:19, stopped | all three, before the night | 12 of 12 | 17 | 8 |
+| Four bots, every link sold first, seed 2 | 10 | round 10 cleared at 9:32, stopped | all three, before the night | 12 of 12 | 18 | 11 |
 
 All twelve windows were torn in every night that opened the upstairs (every one of these), and the first link was bought
-in round 1. The most dead at once never passed 24 (20 to 22 with four). The long runs take 15 s (one bot) to two minutes
+in round 1. The most dead at once never passed 24 (17 to 20 with four). The long runs take 15 s (one bot) to two minutes
 (four) of wall time for 8 to 10 game minutes; they are not deterministic to the last bit (the bodies are physics), so
-the table is a spread, not a number. Round 10 was reached in all seven nights and cleared in five.
+the table is a spread, not a number. Round 10 was reached in all seven nights and cleared in three. (The table was
+played again for #764, when the dead's swing check stopped ending on the player's own body: before it, round 10 was
+reached in all seven and cleared in five, and a lone bot cleared it twice in three nights. The map is harder now, the
+same way it is on the lot, and no number needed retuning.)
 
 The balance simulator's numbers for the map (`tools/balance/run_report.py --map small_indoor --nights 200 --brief`, the
 shared round table with the map's overlay, its bots' shopping list; the simulator knows prices and counts, not
@@ -63,6 +66,22 @@ geometry):
 
 A strong party of four reaches round 15 in 73% of nights and a pair in 22%; a strong player alone in none: the formula's
 ceiling (Nacht: "hard to push 20"), where the wall weapons stop improving and health grows 7% a round.
+
+## The dead's swing (#764)
+
+On a map with storeys a swing needs no wall between the zombie and the player, a ray at 1.3 m. It used to end on the
+player's capsule (the body was on the shots' layer), so a zombie began its swing only once its centre was inside the
+player's: 0.9 m away and not the 1.4 m reach. Taking the body out of the ray (`WorldProbe.static_callable`, walls
+only) gave, for four bots, six rounds, four seeds (`tests/captures/swing_rate.tscn`, `--ray=body` is the old check):
+
+| Map and ray | Swings begun | Landed | Landing rate | Median distance a swing begins at | Ticks in reach and not swinging | Damage taken |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Lot (no ray on a flat map) | 42 | 32 | 73% | 1.37 m | 86 | 482 |
+| Second map, ray meets the body (before) | 42 | 17 | 40% | 0.91 m | 739 | 313 |
+| Second map, walls only (now) | 67 | 43 | 63% | 1.36 m | 270 | 775 |
+
+The swings now begin at the lot's distance. The ticks in reach without a swing are down from 739 to 270 (the lot: 86):
+the rest are the counter and the racks, which the ray should stop at.
 
 ## What is open
 
