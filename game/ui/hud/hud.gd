@@ -39,6 +39,7 @@ const PART_NAMES := {
 	&"notices": "Notices",
 	&"points": "Points",
 	&"health": "Health",
+	&"perks": "Perks",
 	&"slots": "Slots",
 	&"ammo": "Ammo",
 	&"banner": "Banner",
@@ -72,6 +73,7 @@ var mirrored := false:
 					_place(column)
 			if is_node_ready():
 				_fit_gains()
+				_queue_perks()
 ## The touch controls are up: the weapon slots leave the bottom right corner, which the right
 ## thumb's buttons fill (Fire and Melee sit where the strip would), for the bottom of the players'
 ## column, under the health card, as wide as it. Set by the night screen from the touch layer; the
@@ -89,6 +91,8 @@ var events_feed := HudFeed.new()
 var notices := HudFeed.new()
 var points := HudPoints.new()
 var health := HudHealth.new()
+## The perks had, as badges beside the health card (a left hand flips it to the card's other side).
+var perks := HudPerks.new()
 ## The weapons carried, numbered, above the ammo card.
 var slots := HudSlots.new()
 var ammo := HudAmmo.new()
@@ -118,6 +122,7 @@ var _tokens := UITokens.active()
 var _columns: Array[Dictionary] = []
 ## The platform's safe area (left, top, right, bottom, canvas units) the cards keep inside.
 var _insets := Vector4.ZERO
+var _perks_queued := false
 
 
 func _ready() -> void:
@@ -139,6 +144,7 @@ func _ready() -> void:
 	_stack([banner, marquee, boss_bar], 0.5, 0.0, 0.0, margin, gap)
 	_stack([prompt], 0.5, 1.0, 0.0, -margin, gap)
 	_home_slots()
+	_hold_perks()
 	_stack([gains], 0.5, 0.5, GAINS_OFFSET.x, GAINS_OFFSET.y, gap)
 	(gains.get_parent() as Control).grow_horizontal = Control.GROW_DIRECTION_END
 	_place_challenge(margin)
@@ -236,6 +242,37 @@ func _home_slots() -> void:
 	_place(to)
 
 
+## Puts the perk badges beside the health card, at its bottom: right of it, or left of it for a left
+## hand. The card moves when the touch controls bring the slot strip under it and when the safe area
+## or the canvas changes, so the badges follow its rectangle instead of a number.
+func _hold_perks() -> void:
+	add_child(perks)
+	# The card's column is placed after the card is (its own rectangle moves last), so the badges are
+	# put once the layout has settled, whichever of them moved.
+	for moving: Control in [health, health.get_parent(), perks]:
+		moving.item_rect_changed.connect(_queue_perks)
+	resized.connect(_queue_perks)
+
+
+func _queue_perks() -> void:
+	if not _perks_queued:
+		_perks_queued = true
+		_place_perks.call_deferred()
+
+
+func _place_perks() -> void:
+	_perks_queued = false
+	if not is_node_ready() or not perks.visible:
+		return
+	var card := health.get_global_rect()
+	var origin := get_global_rect().position
+	var gap := float(HudStyle.GAP) + HudStyle.SHADOW.x
+	var x := card.end.x + gap if not mirrored else card.position.x - gap - perks.size.x
+	var at := Vector2(x, card.end.y - perks.size.y) - origin
+	if not perks.position.is_equal_approx(at):
+		perks.position = at
+
+
 ## Keeps the challenge prompt a gap under the left column's last card when that card reaches past
 ## the prompt's usual place (the objective's two lines on the smallest canvas).
 func _fit_challenge() -> void:
@@ -277,6 +314,7 @@ func all_parts() -> Array[HudPart]:
 		notices,
 		points,
 		health,
+		perks,
 		slots,
 		ammo,
 		banner,
@@ -299,6 +337,7 @@ func boxed_parts() -> Array[Control]:
 		notices,
 		points,
 		health,
+		perks,
 		slots,
 		ammo,
 		banner,

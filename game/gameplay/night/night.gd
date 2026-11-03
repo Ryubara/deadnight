@@ -485,6 +485,7 @@ func _add_sounds() -> void:
 	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
 	var voice := SoldierVoice.new()
 	voice.name = "SoldierVoice"
+	voice.looks = looks
 	add_child(voice)
 	voice.setup(state)
 

@@ -1392,8 +1392,17 @@ compare over all six seeds. Remaining stuck episodes are bot against bot (44 of 
 
 The bands test reads the Veteran's dodge from a few dozen blows: on `main` four seeds read 0.50 (34 blows due) and ten
 seeds read 0.67 (63), and with the tighter contour four seeds read 0.68 (19) and ten read 0.60 (45). The same fight is
-bit-identical from run to run, so the four-seed number is a draw, not noise to average. The test runs eight seeds
-(dodge 0.61 with the tighter contour, band 0.35 to 0.65). The Veteran's true dodge sits near the top of the band.
+bit-identical from run to run, so the four-seed number is a draw, not noise to average. The Veteran's true dodge sits
+near the top of the band.
+
+The same holds for every number of the test: any change to when the guns fire or where the zombies walk draws the seeds
+again. The CI runner is deterministic for one build (`main` read the Veteran's head share at 0.26 over eight seeds in
+every run), but a change draws different fights there and on a developer's machine alike. Carrying the tick's leftover
+in the weapons' cooldown (#708; the pistol went from a shot every 17 ticks to 16.8 on average) read the head share at
+0.22 on the runner over eight and over sixteen seeds (band 0.23 to 0.37), where sixteen seeds on a Windows machine read
+0.30 before and 0.28 after, dodge 0.60 and 0.61, hit rate 0.88 and 0.86, and the Regular's dodge 0.15 and 0.14. The
+runner's Veteran head share sits near the band's floor on any build, so the cure is the recalibration of the head
+share to the hit zones (#694), not more seeds.
 
 ### Within 12 m counts only the bots that are up
 

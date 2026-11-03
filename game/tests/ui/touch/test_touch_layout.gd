@@ -13,7 +13,7 @@ const CANVASES: Array[Vector2] = [
 ## A right hand and a left hand (the layout flipped).
 const HANDS: Array[bool] = [false, true]
 const KEPT_PARTS: Array[StringName] = [
-	&"ammo", &"prompt", &"health", &"points", &"round_part", &"slots"
+	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part", &"slots"
 ]
 
 
@@ -84,6 +84,7 @@ func test_the_buttons_leave_the_kept_hud_cards_alone_for_either_hand() -> void:
 			fixture.hud.mirrored = mirrored
 			fixture.hud.touch_layout = true
 			fixture.into_round_one()
+			fixture.give_perks(4)
 			var state := fixture.hud.state
 			state.set_ammo(30, 150, "Shotgun")
 			state.set_area("The Concession Stand", "Light the booth to open the back lot")

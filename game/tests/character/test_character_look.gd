@@ -3,12 +3,60 @@ extends GdUnitTestSuite
 ## and the wire form, bad input falls back instead of failing, and locked options never survive.
 
 
-func test_there_are_eight_distinct_presets() -> void:
+func test_there_are_eight_distinct_presets_of_his_then_four_of_hers() -> void:
 	var keys := {}
+	var bodies: Array[StringName] = []
 	for i in LookCatalog.presets().size():
-		keys[CharacterLook.from_preset(i).key()] = true
-	assert_int(LookCatalog.presets().size()).is_equal(8)
-	assert_int(keys.size()).is_equal(8)
+		var look := CharacterLook.from_preset(i)
+		keys[look.key()] = true
+		bodies.append(look.body())
+	assert_int(LookCatalog.presets().size()).is_equal(12)
+	assert_int(keys.size()).is_equal(12)
+	# His eight keep their places (a seat's starting look is the preset of its index).
+	for i in 8:
+		assert_str(String(bodies[i])).is_equal("male")
+	for i in range(8, 12):
+		assert_str(String(bodies[i])).is_equal("female")
+
+
+func test_switching_the_character_swaps_only_a_cut_of_the_other_one() -> void:
+	var look := CharacterLook.from_preset(0)  # Greaser: pompadour
+	var before := look.duplicate_look()
+	look.set_body(LookCatalog.FEMALE)
+	assert_str(String(look.body())).is_equal("female")
+	assert_str(String(look.parts[&"hair"])).is_equal("bob")
+	for slot in LookCatalog.part_slots():
+		if slot not in [LookCatalog.BODY_SLOT, &"hair"]:
+			assert_str(String(look.parts[slot])).is_equal(String(before.parts[slot]))
+	assert_dict(look.colours).is_equal(before.colours)
+	look.set_body(LookCatalog.MALE)
+	assert_str(String(look.parts[&"hair"])).is_equal("crew")
+	# A cut either character wears stays.
+	var soda := CharacterLook.from_preset(4)
+	assert_str(String(soda.parts[&"hair"])).is_equal("ponytail")
+	soda.set_body(LookCatalog.FEMALE)
+	assert_str(String(soda.parts[&"hair"])).is_equal("ponytail")
+	# An unknown character changes nothing.
+	soda.set_body(&"robot")
+	assert_str(String(soda.body())).is_equal("female")
+
+
+func test_a_look_saved_before_the_character_choice_is_his() -> void:
+	var data := CharacterLook.from_preset(3).to_dict()
+	(data["parts"] as Dictionary).erase("body")
+	data["version"] = 1
+	var look := CharacterLook.from_dict(data)
+	assert_str(String(look.body())).is_equal("male")
+	assert_str(String(look.parts[&"hair"])).is_equal("flattop")
+
+
+func test_a_random_look_for_her_is_hers_with_a_cut_she_wears() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	for i in 40:
+		var look := CharacterLook.randomized(rng, null, LookCatalog.FEMALE)
+		assert_str(String(look.body())).is_equal("female")
+		assert_bool(LookCatalog.hair_body(look.parts[&"hair"]) in [&"", &"female"]).is_true()
 
 
 func test_the_default_look_is_the_first_preset() -> void:

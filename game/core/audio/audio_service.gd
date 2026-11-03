@@ -37,6 +37,8 @@ const BACKGROUND_WAIT_S := 1.0
 const BACKGROUND_SHARE := 0.25
 const BACKGROUND_MIN_MSEC := 3.0
 const BACKGROUND_MAX_MSEC := 40.0
+## `AudioStreamPlayer3D.max_db` by default: how far over its file a sound may be boosted close up.
+const ENGINE_MAX_DB := 3.0
 const POOL_3D := 32
 const POOL_2D := 12
 ## Players for beds (looping ambience and score), which are outside the voice budget.
@@ -472,10 +474,14 @@ func bed_fade_db(id: StringName) -> float:
 	return _beds[id]["fade_db"] if _beds.has(id) else BED_SILENT_DB
 
 
-## Applies the sound's `near_cap_db` to `player`: re-call after changing its `volume_db`.
+## Sets the player's `max_db` for the sound: its level plus `near_cap_db`, or the engine's own
+## ceiling for a sound with no cap. It always sets it, so a pooled player never keeps the cap of the
+## sound it played before. Re-call after changing its `volume_db`.
 static func cap_near_level(player: AudioStreamPlayer3D, def: SoundDef) -> void:
 	if def.near_cap_db < INF:
 		player.max_db = player.volume_db + def.near_cap_db
+	else:
+		player.max_db = ENGINE_MAX_DB
 
 
 func listener_position() -> Vector3:

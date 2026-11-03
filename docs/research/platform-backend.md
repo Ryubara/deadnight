@@ -141,7 +141,9 @@ what happens underneath:
    `POST /internal/matches/:id/end`. `capacity` (rooms a process takes, `ROOM_CAPACITY`, 3) is what it reports in the
    heartbeat; a fourth match is refused `FULL` and the backend does not give it a ticket (`no_server`) once the
    heartbeats are full. The rooms of a process share one tick, so they are sized together from a measurement on Railway
-   ([rooms in one process](crowd-budget.md#rooms-in-one-process-561)): `ROOM_CAPACITY` 3 and `ALIVE_BUDGET` 120 (the most
+   ([rooms in one process](crowd-budget.md#rooms-in-one-process-561), and
+   [with eight players a room](crowd-budget.md#rooms-of-eight-on-railway-712)): `ROOM_CAPACITY` 3 and `ALIVE_BUDGET` 120
+   (the most
    alive in all the rooms together, each cut to its share; a room with a browser in it stands 40 whatever it says),
    and `MAX_ALIVE` for a cap on any one room. Bots are limited the same way, whatever the host's Bots setting asks
    (`BotLimits`): `MAX_BOTS` (0 to 7, default 7) caps one room, `BOT_BUDGET` (default none) shares a number of bots

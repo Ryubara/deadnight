@@ -57,7 +57,8 @@ are in the [animation page's table](animation.md#every-weapon).
 - **The player's own steps play flat**, as the player's own shots do: at the head, as a 3D voice, they were 6 dB down
   and partly lost under fire (the empty click and the swap keep their place). `NightSoundTuning.own_reload_db` is 0: at
   +2 they were as loud as the player's own shots. Another player's steps sound at his head, lifted by
-  `teammate_reload_db` (+6), since a teammate's reload tells the team he is exposed.
+  `teammate_reload_db` (+5; +6 until #718: with the guns 3 to 4 dB down, a step landing on a tommy gun shot still reached
+  -0.8 dBFS, 4 samples over -1), since a teammate's reload tells the team he is exposed.
 - **Heard under fire, measured.** `tests/captures/reload_under_fire.tscn` plays a reload and a tommy gun firing without
   a break (0.075 s), as a client plays them, through the audio service, heard from the shoulder camera; the gunfire and
   the reload are rendered apart (the buses have no effects, so the mix is their sum) and
@@ -67,15 +68,17 @@ are in the [animation page's table](animation.md#every-weapon).
 
 | Who reloads, under whose fire | Steps heard | Closest step |
 | --- | --- | --- |
-| The player, a teammate firing 3 m away | 23 of 24 | revolver eject -1.6 dB (the empties under a shot) |
-| A teammate 4 m away, another firing 6 m away | 23 of 24 | flare gun open -1.4 dB |
-| A teammate 4 m away, the player firing the tommy gun | 9 of 24 | the pouch, the bolt, the lever and one round in three stand out |
+| The player, a teammate firing 3 m away | 24 of 24 | shotgun pouch +5.5 dB |
+| A teammate 4 m away, another firing 6 m away | 24 of 24 | flare gun open +1.5 dB |
+| A teammate 4 m away, the player firing the tommy gun | 14 of 24 | the pouch, the bolt, the lever and one round in three stand out |
 
   The last is the hardest case on purpose: the player's own automatic fire, flat and at full level, masks a teammate's
   small sounds between them, as it does in life; the teammate's motion and his "Reloading!" are the cues there. The
-  first two mixes peak at -0.8 to -5.0 and -2.0 to -5.4 dBFS with no clipped sample; in the last the player's own tommy
-  gun alone peaks at -1.5 dBFS, and a step landing on a shot goes over full scale for 1 to 5 samples (+0.4 dBFS at
-  most): the gun's headroom, #718.
+  table is the state after #718 (the guns 3 to 4 dB lower, the teammate's lift +5, five weapons in each scene; before
+  it the last two rows read 23 and 9 of 24 at +6). The mixes peak at -2.2 to -7.3 dBFS, none at full scale: the player's
+  own tommy gun alone peaks at -5.7 dBFS now, not -1.5, so a step landing on a shot no longer goes over full scale (it
+  did for 1 to 5 samples, +0.4 dBFS at most). The headroom is measured in
+  [Gun audio](../research/gun-audio.md#headroom-under-other-sounds).
 
 ## Buses
 
@@ -158,10 +161,13 @@ under the report). The SMG's tail has a cooldown (0.22 s), so thirteen shots a s
 roll. One rule for all of them ([Gun audio](../research/gun-audio.md)): the shooter's own shots play flat, at their
 trim, not from the muzzle; every firearm voice shifts in pitch by at most 0.15 semitones and in level by 0.5 dB, and
 the variants differ in their noise, not their note; the headroom and the power are in the files and the per-voice
-trims (the web build plays samples, which ignore bus effects), and a shot sits at least 14 LU over the night's beds
-(17 for a burst). The hitscan weapons have no tracer, so the report has to sell the shot. The flare gun is a hollow
-pop and a rising hiss;
-its burst sizzles where it lands (`projectile_burst`).
+trims (the web build plays samples, which ignore bus effects, a limiter on Master included), a shot sits at least 14 LU
+over the night's beds (17 for a burst), and a gun that fires without a break (not the flare gun) peaks at least 4.5 dB
+under full scale, so a reload, a teammate's gun or a zombie's voice landing on its shots does not clip (#718: the report
+trims are -6.5 for the revolver, SMG and rifle, -7 for the shotgun and -1.5 for the flare gun; measured in
+[Gun audio](../research/gun-audio.md#headroom-under-other-sounds)). The hitscan weapons have no tracer, so the report
+has to sell the shot. The flare gun is a hollow pop and a rising hiss; its burst sizzles where it lands
+(`projectile_burst`).
 
 - **Impacts.** A `damage_dealt` (not melee) thumps where the round hit; a headshot cracks. A hitscan pellet that ended
   short of the weapon's range and was not claimed by a hit in the same batch ricochets where it struck the lot, at most
@@ -317,6 +323,8 @@ stride sooner, a crouched creep slower, standing and flight are silent.
   `max_db` (+3 dB over the file), so up close every sound sits at the same ceiling whatever its trim and a gun's three
   layers sum past full scale. A sound with a `near_cap_db` (the arms and the lot's sounds have 0) sets the player's
   `max_db` to its own level plus that, so close up the trim is the level and far away nothing changes.
+  A sound with no cap sets it to the engine's +3 dB on every play (`ENGINE_MAX_DB`): a pooled player keeps the cap
+  of whatever played on its slot before, and the level would depend on the pool's history (#752).
 - **Rear cue.** A sound with `rear_cue` is low-passed by how far behind the listener it is (`rear_amount`, from the
   listener node or the camera): 0 in front and at the side, 1 straight behind, where the cutoff is 1.8 kHz. Where the
   filter is not heard (the web build, below) it is also `NO_FILTER_REAR_DB` (3 dB) quieter straight behind.

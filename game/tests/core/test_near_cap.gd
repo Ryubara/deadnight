@@ -40,6 +40,56 @@ func test_a_sound_without_a_cap_keeps_the_engines_ceiling() -> void:
 	assert_float(player.max_db).is_equal(3.0)
 
 
+func test_a_sound_without_a_cap_after_a_capped_one_on_one_slot_keeps_the_engines_ceiling() -> void:
+	var capped := _audio.play(&"shot_rifle", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
+	assert_object(capped).is_not_null()
+	assert_float(capped.max_db).is_less(3.0)
+	# Everything stopped, so the next sound takes the same slot (the lowest free one).
+	_audio.stop_all()
+	var uncapped := _audio.play(&"board_tear", Vector3(0.0, 0.0, -2.0)) as AudioStreamPlayer3D
+	assert_object(uncapped).is_same(capped)
+	assert_float(uncapped.max_db).is_equal(AudioService.ENGINE_MAX_DB)
+
+
+func test_no_sounds_level_depends_on_what_the_slot_played_before() -> void:
+	var at := Vector3(0.0, 0.0, -2.0)
+	var played := 0
+	for id in SoundCatalog.ids():
+		# A loud capped sound has used the slot, then every sound in the catalog takes it in turn.
+		_audio.stop_all()
+		assert_object(_audio.play(&"shot_rifle", at)).is_not_null()
+		_audio.stop_all()
+		var player := _audio.play(id, at) as AudioStreamPlayer3D
+		if player == null:
+			continue
+		played += 1
+		var def := SoundCatalog.get_def(id)
+		var expected := AudioService.ENGINE_MAX_DB
+		if def.near_cap_db < INF:
+			expected = player.volume_db + def.near_cap_db
+		(
+			assert_float(player.max_db)
+			. override_failure_message(
+				"%s: max_db %.2f, expected %.2f" % [id, player.max_db, expected]
+			)
+			. is_equal_approx(expected, 0.001)
+		)
+		assert_float(player.unit_size).is_equal(def.unit_size)
+		assert_float(player.max_distance).is_equal(def.max_distance)
+	assert_int(played).is_greater(20)
+
+
+func test_a_flat_sound_after_another_on_one_slot_is_set_from_its_own_definition() -> void:
+	var first := _audio.play(&"zombie_attack", null, 6.0) as AudioStreamPlayer
+	assert_object(first).is_not_null()
+	_audio.stop_all()
+	var second := _audio.play(&"ui_press") as AudioStreamPlayer
+	assert_object(second).is_same(first)
+	var def := SoundCatalog.get_def(&"ui_press")
+	assert_str(String(second.bus)).is_equal(String(def.bus))
+	assert_float(second.volume_db).is_equal_approx(def.volume_db, 0.001)
+
+
 func test_every_arms_sound_carries_a_cap() -> void:
 	for id in SoundCatalog.ids():
 		var text := String(id)

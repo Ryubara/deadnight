@@ -10,7 +10,9 @@ const CANVASES: Array[Vector2] = [
 	Vector2(2400.0, 1080.0),
 	Vector2(2340.0, 1080.0 * 0.8),
 ]
-const KEPT_PARTS: Array[StringName] = [&"ammo", &"prompt", &"health", &"points", &"round_part"]
+const KEPT_PARTS: Array[StringName] = [
+	&"ammo", &"prompt", &"health", &"perks", &"points", &"round_part"
+]
 const ON_THE_STICK := Vector2(300.0, 760.0)
 const ON_THE_LOOK_AREA := Vector2(1700.0, 330.0)
 
@@ -228,6 +230,7 @@ func test_the_labels_keep_clear_of_the_buttons_and_the_hud_for_either_hand() -> 
 			state.set_ammo(30, 150, "Shotgun")
 			state.set_area("The Concession Stand", "Light the booth to open the back lot")
 			state.set_prompt(&"buy_door", "Projection booth door", 750)
+			hud_fixture.give_perks(4)
 			var fixture := TouchFixture.make(self, canvas, state)
 			if mirrored:
 				fixture.left_handed()

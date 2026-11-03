@@ -41,6 +41,7 @@ local player) into the direction on screen.
 | `HudFeed` | top right, under the generator card (at the top while it is away) | what happened on the lot ("RUBY OPENED THE CONCESSION STAND", someone down, generator warnings), then who joined or left; one line each, 480 units wide (wider than the column), ending on the cards' right text line: a long line shrinks toward 20, then ends in an ellipsis (a cleared special round adds `DOUBLE FEATURE CLEARED  +440 EACH`) |
 | `HudPoints` | bottom left | **a container per player**, `[portrait][points]` (see below), you first, then the others by id |
 | `HudHealth` | bottom left, under the players | a card: `HEALTH n` and the grenade count on one row, a bar of ten ticks (or `DOWN` and what to hope for). The weapon put away used to be named under the bar; the slot strip shows it now, one home for what is carried |
+| `HudPerks` | bottom left, **beside the health card** (right of it; left of it for a left hand), its bottom level with the card's | one small badge for each perk the player has (the machine's emblem on its colour), two to a row, rows going up; hidden with none, empty after a down that takes the perks ([see below](#the-perk-badges)) |
 | `HudSlots` | bottom right, **above the ammo card**, as wide as it (with the touch controls up: bottom left, under the health card, as wide as it) | the weapons carried, by slot ([see below](#the-weapon-slots)) |
 | `HudAmmo` | bottom right | magazine as a big numeral, reserve beside it on the same baseline, the weapon name on a coloured bar; hot orange when low; `RELOADING` while a reload runs; `--` for a weapon with no ammunition (the crowbar) |
 | `HudBanner` | top centre | a marquee board with chasing bulbs, on the top margin level with the corner cards: `ROUND N`, `ROUND N SURVIVED`, `THE LIGHTS GO OUT`, and an area's name as you enter it (an area never replaces a round banner). A special round starts with its name (`DOUBLE FEATURE`) over what it brings (`THE HEADLINER ARRIVES`, `2 HEADLINERS ARRIVE`, `ONLY RUNNERS`); clearing one puts `DOUBLE FEATURE CLEARED  +440` under `ROUND 5 SURVIVED`; a late joiner into one sees its banner once |
@@ -61,6 +62,19 @@ the new key. The glyph follows the **last device used**: a square keycap, a roun
 shakes the card and says why in place of the price. The breach's card
 says "HOLD TO NAIL BOARDS UP": holding the button keeps putting boards back
 ([rules](rounds.md#the-fences-boards)).
+
+## The perk badges
+
+`HudPerks` shows the perks the local player has (#707): a `HudPerkBadge` for each drink, **the machine's emblem drawn
+flat in the machine's glow on a dark ground of its colour** (two bullets, the revolver drum, three racked guns, the
+cross in its ring, the bolt, the soda fountain's heart), so the picture bought at the machine is the picture read,
+with no word. The frame's `perks` bits are all it reads (`PerkEffects.mask_tonics` in `NightHudBinding._on_frame`
+makes `HudState.perks`), so a purchase adds a badge and a down that takes the perks takes the badges: nothing is
+remembered on the client. They stand in the shop's order, two to a row (a player has four at most), rows going up from
+the card's bottom: 112 units wide at most, so they fit between the health card and the prompt on the smallest canvas
+(1536 x 864). `Hud._place_perks` puts them by the card's rectangle once the layout has settled, so they follow it when
+the touch controls bring the slot strip under it, when the safe area moves it, and for a left hand (on the card's
+left). Each badge is 52 units, 43 pixels at 720p and UI scale 1.25.
 
 ## The weapon slots
 
@@ -135,13 +149,14 @@ closed and is not in a column. The model, the driver and what was learned are in
 ## Revives
 
 What a player reads when someone is down (the rules are in [Revive](revive.md)). Every number is the server's: the frame
-carries each player's `bleed`, `revive` (the hold's progress), `reviver` and `dead`, and `HudState.team` keeps them
+carries each player's `bleed`, `revive` (the hold's progress), `reviver`, `self_revive` (seconds left of the revive
+perk's own, 0 for none) and `dead`, and `HudState.team` keeps them
 (`set_player_revive`), so every screen shows the same ring.
 
 | Where | What | Part |
 | --- | --- | --- |
-| Over the view, a little under the reticle | **The ring** (`HudRevive`). The reviver: a ring filling as the hold goes on, the seconds left inside, `REVIVING <NAME>` under it. The downed player: the bleed-out clock as a red ring draining, the seconds inside, `BLEEDING OUT`, and over it the teammate's ring filling while they are pulled up (`<NAME> IS PULLING YOU UP`). Bled out: `YOU BLED OUT`, `BACK NEXT ROUND`. Nothing for a player who is up and not reviving | `HudRevive` |
-| Health card, bottom left | While down: `DOWN` and `BLEEDING OUT 32 S`, or `BEING PULLED UP`, or `DEAD` and `BACK NEXT ROUND` | `HudHealth` |
+| Over the view, a little under the reticle | **The ring** (`HudRevive`). The reviver: a ring filling as the hold goes on, the seconds left inside, `REVIVING <NAME>` under it. The downed player: the bleed-out clock as a red ring draining, the seconds inside, `BLEEDING OUT`, and over it the teammate's ring filling while they are pulled up (`<NAME> IS PULLING YOU UP`). With the revive perk getting you up alone the clock stands still, so the ring is the perk's own count instead: it fills, the seconds left inside, `GETTING YOURSELF UP` under it. Bled out: `YOU BLED OUT`, `BACK NEXT ROUND`. Nothing for a player who is up and not reviving | `HudRevive` |
+| Health card, bottom left | While down: `DOWN` and `BLEEDING OUT 32 S`, or `GETTING YOURSELF UP 3 S` (the revive perk, alone), or `BEING PULLED UP`, or `DEAD` and `BACK NEXT ROUND` | `HudHealth` |
 | Prompt card, bottom middle | `REVIVE <NAME>`, `HOLD TO PULL THEM UP: 32 S LEFT`; it comes before a door or a shop | `HudPrompt` |
 | Over a downed teammate | A red ring with a cross, their name and the seconds they have left (`DEAD` once they bled out), the hold's ring filling over it; pinned to the screen edge with the other important markers while they are alive, so you know who is bleeding and where | `HudMarkers` |
 | Player boxes, left | `DOWN`, or `DEAD`; the portrait dims | `HudPlayerBox` |
