@@ -124,10 +124,13 @@ under the report). The SMG's tail has a cooldown (0.22 s), so thirteen shots a s
 roll. One rule for all of them ([Gun audio](../research/gun-audio.md)): the shooter's own shots play flat, at their
 trim, not from the muzzle; every firearm voice shifts in pitch by at most 0.15 semitones and in level by 0.5 dB, and
 the variants differ in their noise, not their note; the headroom and the power are in the files and the per-voice
-trims (the web build plays samples, which ignore bus effects), and a shot sits at least 14 LU over the night's beds
-(17 for a burst). The hitscan weapons have no tracer, so the report has to sell the shot. The flare gun is a hollow
-pop and a rising hiss;
-its burst sizzles where it lands (`projectile_burst`).
+trims (the web build plays samples, which ignore bus effects, a limiter on Master included), a shot sits at least 14 LU
+over the night's beds (17 for a burst), and a gun that fires without a break peaks at least 4.5 dB under full scale, so
+a reload, a teammate's gun or a zombie's voice landing on its shots does not clip (#718: the report trims are -6.5 for
+the revolver, SMG and rifle, -8.5 for the shotgun and -1.5 for the flare gun; measured in
+[Gun audio](../research/gun-audio.md#headroom-under-other-sounds)). The hitscan weapons have no tracer, so the report
+has to sell the shot. The flare gun is a hollow pop and a rising hiss; its burst sizzles where it lands
+(`projectile_burst`).
 
 - **Impacts.** A `damage_dealt` (not melee) thumps where the round hit; a headshot cracks. A hitscan pellet that ended
   short of the weapon's range and was not claimed by a hit in the same batch ricochets where it struck the lot, at most
