@@ -13,6 +13,7 @@ from __future__ import annotations
 import dsp
 import numpy as np
 from dsp import SAMPLE_RATE
+from limiter import limit_crest
 from night_recipes import _crack, _creak, _ring_lowpass, _ring_noise, _slow, _wrap_add
 from recipes import Entry, _jv, _metal_click, _thud
 
@@ -168,6 +169,9 @@ def yard_rattle(rng: np.random.Generator) -> np.ndarray:
 
 # ---- pieces -----------------------------------------------------------------------------------------------------
 
+# The blocker's highest sample over its loudest 400 ms, in dB (`limiter.limit_crest`, #762).
+DEBRIS_CLEAR_CREST_DB = 11.0
+
 
 def _drag(rng: np.random.Generator, seconds: float) -> np.ndarray:
     """Furniture dragged over a stone floor: band noise whose pitch wanders and which grabs and lets go."""
@@ -207,7 +211,7 @@ def debris_clear(rng: np.random.Generator) -> np.ndarray:
         mix = dsp.place(
             mix, _thud(rng, rng.uniform(65, 110), 0.22), slide_at + 0.05 + 0.18 * k + rng.uniform(0, 0.1), 0.9
         )
-    return dsp.fade(mix, 0.004, 0.25)
+    return dsp.fade(limit_crest(mix, DEBRIS_CLEAR_CREST_DB), 0.004, 0.25)
 
 
 def _wood_step(rng: np.random.Generator, bright: bool) -> np.ndarray:
@@ -252,7 +256,7 @@ REGISTRY: list[Entry] = [
     Entry("ambience", "yard_fire", 1, backdrop_fire, -3.0, loop=True),
     Entry("ambience", "yard_wire", 1, backdrop_wire, -3.0, loop=True),
     Entry("ambience", "yard_rattle", 3, yard_rattle, -6.0),
-    Entry("world", "debris_clear", 3, debris_clear, -2.0),
+    Entry("world", "debris_clear", 3, debris_clear, -6.0),
     Entry("steps", "wood", 8, step_wood, -6.0),
     Entry("steps", "own_wood", 8, step_own_wood, -6.0),
 ]

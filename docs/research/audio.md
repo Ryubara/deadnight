@@ -183,7 +183,8 @@ analysed with `tools/audio/analyze.py capture`.
   `tests/captures/audio_headroom.tscn --own=none --all-variants`: each sound's peak is now the same alone and after the
   guns, within 1.6 dB (the pitch draw). The close sounds' loudest files (`board_last`, `grenade_blast` -1.0,
   `door_open` -1.2 dBFS alone) left no room for a shot landing on them: that was #753, solved with a near cap on each
-  ([gun-audio](gun-audio.md#close-sounds-under-gunfire)).
+  ([gun-audio](gun-audio.md#close-sounds-under-gunfire)); the sharp ones (boards, door, debris blocker) were then
+  limited in their recipes to come back over the beds ([#762](gun-audio.md#the-sharp-sounds-limited-in-their-recipe-762)).
 - **No flesh hits at the fence.** Most of the tour's shots (38 ricochets against 3 impacts on a zombie) hit the boards
   or the lot: the dead stand behind the fence. The flesh and headshot impacts are covered by the tests; a capture in the
   open field would show more.

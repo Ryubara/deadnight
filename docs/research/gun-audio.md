@@ -226,9 +226,48 @@ beds are -35.3 LUFS:
 
 The dead's voices stay the cue they were: at 1.2 m they are -15.5 to -22.6 LUFS, 13 to 20 LU over the beds and where
 one shot of a gun is (-15.8 to -20.4 LUFS, 15 to 19 LU over), 6 to 10 dB under their level before; the order among them
-is the one the trims set. The boards, the door and the debris blocker are sharp (a crest factor of 20 to 25 dB), so
-under a peak ceiling they come to -25 to -30 LUFS, 5 to 10 LU over the beds at 1.2 m (12 to 19 before): a loud crack
-on a quiet night, not a loud noise. The cap holds only close up, so a board torn across the lot is as it was.
+is the one the trims set. The boards, the door and the debris blocker are sharp (a crest factor of 16 to 23 dB), so
+under a peak ceiling they came to -25 to -30 LUFS, 5 to 10 LU over the beds at 1.2 m (12 to 19 before): a loud crack
+on a quiet night, not a loud noise (the next section brings them back). The cap holds only close up, so a board torn
+across the lot is as it was.
+
+### The sharp sounds, limited in their recipe (#762)
+
+**What was done.** `tools/audio/limiter.py` (`limit_crest(x, crest_db)`, called at the end of the five recipes, not a bus
+effect: the web build ignores those) holds the highest sample of a file `crest_db` over its loudest 400 ms with a smooth
+gain curve (the gain each sample needs, cut to its minimum over 2 ms either side and then averaged over the same window,
+so it never steps and never rises into a peak, which keeps the Vorbis encode from overshooting a flat top). The crack
+comes down 6 to 10 dB and the body stays; the files are normalised lower by what was taken off (`peak_db`, so the far
+level is the one it was) and `near_cap_db` is raised by the same, then moved to put the measured close peak back under
+-9.8 dBFS. The nominal limits (dB over the loudest 400 ms) are 13 for a torn board, 10 for the last one, 8 for a
+hammered one, 12 for the door and 11 for the debris blocker; the other sounds' files are untouched (the recipes' seeds
+are the same, bit for bit). Crest factor of every file (highest sample over its loudest 400 ms, RMS): 15 to 23 dB before,
+12.6 to 16.6 now (`test_the_sharp_sounds_have_a_limited_crack_in_their_files`).
+
+**What was not obvious.** The give-back at 1.2 m is not the crest taken off the file. Before, the distance low-pass
+took off much of a crack's peak (a click loses 10 to 14 dB close up), so the close peak of a sharp sound was already
+under its file's; a limited file's highest sample is the body's, which the low-pass keeps. With the file's peak lowered
+and the cap raised by the crest taken off (a first try, limits of 16, 11, 9, 13 and 13 dB) the close peaks read 2.8 dB
+(torn board), 1.9, 1.2, 0.2 and 0.7 dB higher than before, three of them over the room, and the loudness had come
+back by only 2.1 to 7.7 dB. So the limits were cut again (13, 10, 8, 12, 11), the file levels and caps set from the
+measured peaks, and a second capture put every row at most -9.9 dBFS. The close crest (peak minus loudest 400 ms) is
+11.4 to 14.7 dB now, 14 to 20 before. Read the close peak again after limiting: the old cap does not carry over.
+
+Loudest 400 ms of any file, 1.2 m ahead, alone (LUFS, LU over the night's beds at -35.3 in brackets), and the highest
+sample of any file (dBFS), before then after, from `tools/audio/close_levels.py`:
+
+| Sound | Cap before | Cap now | Peak before | Peak now | Loudest 400 ms before | now |
+| --- | --- | --- | --- | --- | --- | --- |
+| `board_tear` | -4.5 | +3.2 | -10.0 | -10.3 | -27.3 (8.0) | -21.9 (13.4) |
+| `board_last` | -9.0 | -3.7 | -10.0 | -9.9 | -29.7 (5.6) | -23.3 (12.0) |
+| `board_repair` | -6.5 | -1.3 | -9.9 | -10.2 | -30.0 (5.3) | -24.9 (10.4) |
+| `door_open` | -3.0 | +3.2 | -10.5 | -10.0 | -27.6 (7.7) | -21.8 (13.5) |
+| `debris_clear` | -6.0 | -1.9 | -10.8 | -10.2 | -25.1 (10.2) | -21.6 (13.7) |
+
+(The caps are `near_cap_db`; the `volume_db` trims are as they were, so a board's ceiling over its file is the trim plus
+the cap.) A torn board is still the loudest board close up (a test pins it, with at least 10 LU over the beds for all
+five), and still outranks a groan (priority). Not done: `melee_hit` is also sharp (-27.4 LUFS, 8 LU over the beds) and
+is left as it was.
 
 **Measured**, `tests/captures/audio_headroom.tscn --all-variants` (`--close` for 1.2 m), every file of the 12 voices
 and the 10 lot's sounds, one at a time, under each own gun firing without a break; samples over -1 dBFS in the zombie
