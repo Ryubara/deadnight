@@ -38,6 +38,7 @@ const SHIPPED_PATH := "res://core/audio/sound_mix_default.tres"
 	&"points": 2,
 	&"debris": 2,
 	&"yard": 2,
+	&"recut": 4,
 	&"wind": 3,
 }
 

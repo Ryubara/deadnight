@@ -7,7 +7,14 @@ extends GdUnitTestSuite
 const DIR := "res://assets/weapons/"
 ## Every weapon folder is listed in one of the two, so a new model has to say whether it shoots.
 const FIREARMS: Array[String] = [
-	"lever_rifle", "double_shotgun", "revolver", "tommy_gun", "flare_gun"
+	"lever_rifle",
+	"double_shotgun",
+	"revolver",
+	"tommy_gun",
+	"flare_gun",
+	"service_pistol",
+	"ray_gun",
+	"freeze_gun",
 ]
 const NOT_FIREARMS: Array[String] = ["baseball_bat", "fire_axe", "grenade", "hammer", "crowbar"]
 const MUZZLE := "Muzzle"

@@ -517,6 +517,23 @@ Left for others: the moon lights the roof's underside with thin specular lines o
 the level's moon is lowered indoors, see [lamps and light cards](#lamps-and-light-cards)); the backdrop's shader is a
 new GL program the first frame of the map compiles (it is on screen from the start, so not mid-play).
 
+## As dressed (#792)
+
+The kit went onto the greybox's sockets as the parts list plans, with the collision, links, windows, spawns, buys and
+saved meshes kept (what moved is the table in [the design page](../../design/smallmap.md#dressed-792)). What the
+captures taught, for the next map:
+
+- **A module beside a patterned wall reads as plaster round a window.** The kit's flat window and doorway modules sit in
+  a brick-pattern shell as light panels. It reads as a repaired opening, which suits a ruin; a map that wants it quieter
+  gives the shell the module's tint.
+- **The kit's hanging height is the kit's.** A 2.8 m module and a 2.8 m pendant under a 3.2 m ceiling leave 0.4 m of
+  air above the cord: the lamp takes a `hang`, and the pool stays on the floor.
+- **Hidden meshes count for the light cap and the capture tools.** A fixture's rails switched off still count as lit
+  meshes; the room's real lights (8) and each machine's glow (the fountain and the re-cut carry one) are the
+  budget, so a machine's light must not reach the next storey's stair.
+- **Racks drawn at 2 m over 1.2 m of collision hid the box.** Drawn as tall as they are solid, they leave the view.
+- **A machine is 1.5 x 0.9 m and as tall as the ceiling.** The perk cooler's emblem is 3.55 m: 0.85 on this map.
+
 ## Sources
 
 - The maintainer's 15 images, `<workspace>/refs/deadnight/nacht-der-untoten/` (not committed). The floorplans are

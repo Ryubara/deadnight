@@ -132,7 +132,7 @@ breach_name = "Boarded window"
 [resource]
 script = ExtResource("1_map")
 id = &"small_indoor"
-dropped_kinds = Array[int]([0, 1, 2, 3, 4, 5, 7])
+dropped_kinds = Array[int]([0, 1, 2, 4, 5])
 items = Array[ExtResource("2_item")]([SubResource("Link_side"), SubResource("Link_stairs_start"), SubResource("Link_stairs_side"), SubResource("Wall_pistol"), SubResource("Wall_crowbar"), SubResource("Wall_shotgun"), SubResource("Wall_smg"), SubResource("Wall_bat"), SubResource("Wall_flare"), SubResource("Wall_axe"), SubResource("Cabinet_rifle"), SubResource("Box")])
 barricades = SubResource("Windows")
 crane = SubResource("TheBox")
