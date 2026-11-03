@@ -18,7 +18,9 @@ extends RefCounted
 ##     every zombie it hit); the damage follows as `damage_dealt` and `target_killed` with `melee`
 ##   fire_rejected: shooter_id, seq, reason (`reloading`, `cooldown`, `empty`, `no_weapon`,
 ##     `bad_aim`); a quick melee in its cooldown is one with reason `cooldown`
-##   damage_dealt: shooter_id, target_id, zone, damage, headshot, melee, pellets, health, point
+##   damage_dealt: shooter_id, target_id, zone, damage, headshot, melee, pellets, health, point,
+##     weapon_id, dir (the unit way the shot or blow travelled, ZERO for a burst: the view sprays
+##     blood along it and looks for a wall behind the zombie, `BloodFx`)
 ##   target_killed: shooter_id, target_id, zone, headshot, melee
 ##   reload_started: shooter_id, weapon_id, seconds
 ##   reload_finished: shooter_id, weapon_id, ammo, reserve
@@ -375,7 +377,7 @@ func _fire(action: Dictionary) -> void:
 	)
 	for target_id: int in damage:
 		var total: Dictionary = damage[target_id]
-		_hurt(shooter_id, target_id, total, def.is_melee())
+		_hurt(shooter_id, target_id, total, def.is_melee(), def.id, dir)
 
 
 ## The quick melee (#411): the same sweep as a melee weapon's, with the quick melee's own numbers,
@@ -415,7 +417,7 @@ func _quick_melee(action: Dictionary) -> void:
 		}
 	)
 	for target_id: int in damage:
-		_hurt(shooter_id, target_id, damage[target_id], true)
+		_hurt(shooter_id, target_id, damage[target_id], true, _quick_def.id, dir)
 
 
 ## The targets as the shooter saw them, without the ones already dead.
@@ -456,7 +458,14 @@ func _tally(damage: Dictionary, hits: Array) -> void:
 
 ## Applies one target's share of a shot: one `hit` action to the rules, which own the zombie's
 ## health, pay the points and decide the kill. A head pellet makes the whole hit a headshot.
-func _hurt(shooter_id: int, target_id: int, total: Dictionary, melee: bool) -> void:
+func _hurt(
+	shooter_id: int,
+	target_id: int,
+	total: Dictionary,
+	melee: bool,
+	weapon_id: StringName,
+	dir: Vector3 = Vector3.ZERO
+) -> void:
 	if rules == null or not _alive.has(target_id):
 		return
 	var head: bool = total["head"]
@@ -488,6 +497,8 @@ func _hurt(shooter_id: int, target_id: int, total: Dictionary, melee: bool) -> v
 			"pellets": total["pellets"],
 			"health": health,
 			"point": total["point"],
+			"weapon_id": weapon_id,
+			"dir": dir,
 		}
 	)
 	if killed:
@@ -597,7 +608,7 @@ func _burst(projectile: ProjectileState, result: Dictionary, alive: Dictionary) 
 				damage, [{"target_id": id, "zone": Hitbox.BODY, "damage": blast, "point": point}]
 			)
 	for target_id: int in damage:
-		_hurt(projectile.shooter_id, target_id, damage[target_id], false)
+		_hurt(projectile.shooter_id, target_id, damage[target_id], false, projectile.def.id)
 
 
 func _emit(type: StringName, fields: Dictionary = {}) -> void:

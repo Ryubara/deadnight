@@ -496,6 +496,9 @@ func _replay_effects() -> void:
 				"damage": float(DIGITS_NUMBER),
 				"headshot": false,
 				"melee": false,
+				"weapon_id": &"shotgun",
+				"dir": Vector3.FORWARD,
+				"pellets": 4,
 			}
 		)
 	)
@@ -508,10 +511,19 @@ func _replay_effects() -> void:
 				"damage": float(DIGITS_NUMBER),
 				"headshot": true,
 				"melee": false,
+				"weapon_id": &"rifle",
+				"dir": Vector3.FORWARD,
+				"pellets": 1,
 			}
 		)
 	)
-	await _chunk()
+	# A mark needs a wall or a floor to land on, which the stage does not have: put one by hand.
+	view.effects.blood.mark(at + Vector3(0.5, -1.0, -2.0), Vector3.UP, Vector3.FORWARD, 0.4)
+	view.effects.blood_burst(at + Vector3(2.0, 0.5, -2.0), float(DIGITS_NUMBER))
+	# The blood stands still while it is held, or a slow frame ends it before it is drawn.
+	view.effects.blood.set_process(false)
+	await _chunk(SHOT_FRAMES + 1)
+	view.effects.blood.stop_all()
 	var flare_at := at + Vector3(2.0, 0.0, -2.0)
 	var flare := WeaponCatalog.get_def(&"flare_gun")
 	(
