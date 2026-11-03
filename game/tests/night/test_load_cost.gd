@@ -6,6 +6,12 @@ extends GdUnitTestSuite
 ## (whatever it draws), so a new settings combination is a deliberate choice: reuse a material that
 ## exists, or raise this with the measurement of what it adds (`docs/research/web-export.md`).
 const LIT_SHADER_BUDGET := 8
+## Seconds of sound the night decodes to samples behind its loading bar (the sounds of the banks
+## that are not `deferred`, in their files' lengths). The web build decodes them in GDScript, one
+## loop pass for every sample, and a CI runner takes seconds for every ten of them. Measured
+## 152 s with the weapons' and the voices' banks deferred; the cut of #509 had 166 s. A new weapon's
+## sounds go in a bank with `deferred = true` (`docs/research/web-export.md`, "Loading a night").
+const WARM_DECODE_BUDGET_S := 170.0
 
 
 func _warmed_night() -> Night:
@@ -106,3 +112,64 @@ func test_the_sounds_load_in_the_background_before_a_night_asks() -> void:
 	service.start_background_preload()
 	assert_bool(service.background_preloading()).is_false()
 	service.queue_free()
+
+
+func test_the_sounds_decoded_behind_the_bar_stay_within_the_budget() -> void:
+	var seconds := 0.0
+	var by_bank := {}
+	for id: StringName in SoundCatalog.ids():
+		var def := SoundCatalog.get_def(id)
+		if def.loop or def.deferred:
+			continue
+		for variant in range(1, def.variants + 1):
+			var stream := load(def.path_for(variant)) as AudioStream
+			if PcmStream.fits(stream):
+				seconds += stream.get_length()
+				var folder := def.path_for(variant).get_base_dir().trim_prefix(SoundCatalog.ROOT)
+				by_bank[folder] = float(by_bank.get(folder, 0.0)) + stream.get_length()
+	var message := "%.0f s of sound decoded behind the loading bar (budget %.0f s): %s" + "\n"
+	message += "Put the new sounds in a bank with `deferred = true` (made once the night runs)."
+	message = message % [seconds, WARM_DECODE_BUDGET_S, by_bank]
+	assert_float(seconds).override_failure_message(message).is_less_equal(WARM_DECODE_BUDGET_S)
+
+
+func test_a_deferred_sound_waits_in_a_line_and_is_made_while_the_night_runs() -> void:
+	var service: AudioService = auto_free(AudioService.new())
+	add_child(service)
+	var id := &"shot_ppsh"
+	var def := SoundCatalog.get_def(id)
+	assert_bool(def.deferred).is_true()
+	var path := def.path_for(1)
+	# Behind the bar it only queues the files: nothing is read or decoded there.
+	assert_int(service.preload_sound_for_night(id)).is_equal(0)
+	assert_bool(service._streams.has(path)).is_false()
+	assert_bool(service._pcm.has(path)).is_false()
+	assert_int(service.decode_pending()).is_equal(def.variants)
+	# A sound played before its turn is the Ogg this time, and its takes go to the front of the line.
+	var other := SoundCatalog.get_def(&"shot_mp5")
+	service.preload_sound_for_night(other.id)
+	assert_str(service._decode_queue[0]).is_equal(def.path_for(1))
+	service._pick_stream(other, true)
+	assert_str(service._decode_queue[0]).is_equal(other.path_for(1))
+	service._pick_stream(def, true)
+	assert_str(service._decode_queue[0]).is_equal(def.path_for(1))
+	assert_object(service._pick_stream(def, true)).is_instanceof(AudioStreamOggVorbis)
+	# While the loading bar is up the line waits.
+	service.decode_held = true
+	for _i in 30:
+		service._process(1.0 / 60.0)
+	assert_bool(service._pcm.has(path)).is_false()
+	service.decode_held = false
+	# The service reads and decodes a few milliseconds of them every frame; the line empties.
+	var frames := 0
+	while service.decode_pending() > 0 and frames < 4000:
+		service._process(1.0 / 60.0)
+		frames += 1
+	assert_int(service.decode_pending()).is_equal(0)
+	assert_bool(service._pcm.has(path)).is_true()
+	assert_bool(service._pcm.has(other.path_for(1))).is_true()
+	# A sound outside the deferred banks is decoded at once.
+	var plain := &"ui_press"
+	assert_bool(SoundCatalog.get_def(plain).deferred).is_false()
+	service.preload_sound_for_night(plain)
+	assert_bool(service._pcm.has(SoundCatalog.get_def(plain).path_for(1))).is_true()
