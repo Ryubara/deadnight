@@ -258,7 +258,8 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
   points ([the re-cut](upgrades.md)). The table above is the weapon as shipped; a re-cut one has its damage in the
   column multiplied and its magazine and reserve limit grown, and kills in fewer shots (a re-cut revolver, 42 a hit,
   kills a round-10 zombie in 3 body shots). This is what lets the health curve climb faster than the shipped weapons
-  could follow.
+  could follow. Since #794 the re-cut is each weapon's own (`RecutProfile`): the revolver fires slower and bursts, the
+  flare gun leaves fire, and the flare gun carries 3 shots in all (1 and 2 in reserve), 6 re-cut.
 - **Each weapon has one job.** The SMG is volume at short range (the most damage a second, a short magazine of
   patience before the reload); the double-barrel is a close wall that holds two shells and is slow to reload; the
   rifle is the precision and the line (it passes through two zombies, each blow 40% weaker, which rewards lining the

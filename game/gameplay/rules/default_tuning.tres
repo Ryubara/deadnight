@@ -16,6 +16,10 @@
 [ext_resource type="Script" path="res://gameplay/rules/crane_tuning.gd" id="11_crane1"]
 [ext_resource type="Script" path="res://gameplay/rules/upgrade_tuning.gd" id="12_upgr1"]
 [ext_resource type="Script" path="res://gameplay/rules/perk_tuning.gd" id="14_perks"]
+[ext_resource type="Script" path="res://gameplay/rules/recut_profile.gd" id="15_recut"]
+[ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/explosive.tres" id="16_expl"]
+[ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/shock.tres" id="17_shock"]
+[ext_resource type="Resource" path="res://gameplay/weapons/elements/defs/ground_fire.tres" id="18_gfire"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -418,12 +422,117 @@ leave_chances = PackedFloat32Array(0.15, 0.15, 0.15, 0.15, 0.3, 0.3, 0.3, 0.3, 0
 breakdown_seconds = 4.0
 refund_fraction = 1.0
 
-[sub_resource type="Resource" id="Resource_upgt1"]
-script = ExtResource("12_upgr1")
-weapons = Array[StringName]([&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun", &"dual_pistols"])
+[sub_resource type="Resource" id="Resource_recut_pistol"]
+script = ExtResource("15_recut")
+weapon = &"pistol"
+recut_name = "Re-Cut Revolver"
 damage_multiplier = 1.75
 magazine_multiplier = 1.5
 reserve_multiplier = 1.5
+fire_interval = 0.4
+element = ExtResource("16_expl")
+
+[sub_resource type="Resource" id="Resource_recut_smg"]
+script = ExtResource("15_recut")
+weapon = &"smg"
+recut_name = "Re-Cut Tommy gun"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_shotgun"]
+script = ExtResource("15_recut")
+weapon = &"shotgun"
+recut_name = "Re-Cut Double-barrel"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_rifle"]
+script = ExtResource("15_recut")
+weapon = &"rifle"
+recut_name = "Re-Cut Hunting rifle"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_flare_gun"]
+script = ExtResource("15_recut")
+weapon = &"flare_gun"
+recut_name = "Re-Cut Flare gun"
+damage_multiplier = 1.75
+magazine_multiplier = 2.0
+reserve_multiplier = 2.0
+element = ExtResource("18_gfire")
+
+[sub_resource type="Resource" id="Resource_recut_mp5"]
+script = ExtResource("15_recut")
+weapon = &"mp5"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_ppsh"]
+script = ExtResource("15_recut")
+weapon = &"ppsh"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_m4a1"]
+script = ExtResource("15_recut")
+weapon = &"m4a1"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_m249"]
+script = ExtResource("15_recut")
+weapon = &"m249"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_fifty_cal"]
+script = ExtResource("15_recut")
+weapon = &"fifty_cal"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_pump_870"]
+script = ExtResource("15_recut")
+weapon = &"pump_870"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_dual_pistols"]
+script = ExtResource("15_recut")
+weapon = &"dual_pistols"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+element = ExtResource("17_shock")
+
+[sub_resource type="Resource" id="Resource_recut_ray_gun"]
+script = ExtResource("15_recut")
+weapon = &"ray_gun"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+
+[sub_resource type="Resource" id="Resource_recut_freeze_gun"]
+script = ExtResource("15_recut")
+weapon = &"freeze_gun"
+damage_multiplier = 1.75
+magazine_multiplier = 1.5
+reserve_multiplier = 1.5
+burst_radius_multiplier = 1.27
+
+[sub_resource type="Resource" id="Resource_upgt1"]
+script = ExtResource("12_upgr1")
+profiles = Array[ExtResource("15_recut")]([SubResource("Resource_recut_pistol"), SubResource("Resource_recut_smg"), SubResource("Resource_recut_shotgun"), SubResource("Resource_recut_rifle"), SubResource("Resource_recut_flare_gun"), SubResource("Resource_recut_mp5"), SubResource("Resource_recut_ppsh"), SubResource("Resource_recut_m4a1"), SubResource("Resource_recut_m249"), SubResource("Resource_recut_fifty_cal"), SubResource("Resource_recut_pump_870"), SubResource("Resource_recut_dual_pistols"), SubResource("Resource_recut_ray_gun"), SubResource("Resource_recut_freeze_gun")])
 price_step = 1500
 name_prefix = "Re-Cut "
 

@@ -222,6 +222,13 @@ two runs of the same commands are not bit-identical and a Veteran's dodge is rea
 dodge is the share of the blows that came due on the bot and did not hurt it: the bots step out of reach, as the early
 retreat of [phase 3](bots.md) was meant to make them, and they kill faster on the new zones.
 
+**Per-weapon re-cuts and the strong-solo ceiling (#794).** The re-cut is a profile for each weapon
+(`RecutProfile`); on the roster of `main` (five weapons that can be re-cut, the revolver now fires every 0.40 s once
+re-cut, the flare gun carries 3 shots, 6 re-cut) the gate's six cells read 5 / 10 / 15 / 16 / 18 / 18, as before. The
+simulator does not model the elements (a blast, an arc, a fire): they are held by their own tests. The maintainer allowed
+a strong-solo ceiling of 19 for the roster of seventeen (`BalanceTargets.MEDIAN_ROUND`, 12 to 19); the cell on the full
+roster is run when its weapons land (see the pull request of #794).
+
 **What it did to the gate.** Medians of the gate's six cells (60 nights, seed 4000; weak solo, average 1, 2, 4 and 8,
 strong solo), ranges 4 to 9, 8 to 14, 11 to 16, 12 to 17, 14 to 20, 12 to 19 (widened, #789):
 

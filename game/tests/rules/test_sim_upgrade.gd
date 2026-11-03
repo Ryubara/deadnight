@@ -14,7 +14,7 @@ func _rich_night(skill: StringName = SimSkill.STRONG) -> NightSim:
 
 
 func test_an_arm_re_cut_is_the_weapon_state_re_cut() -> void:
-	var spec := UpgradeTuning.new()
+	var spec := UpgradeTuning.shipped()
 	var arm := NightSim.SimArm.of(&"rifle")
 	arm.mag = 1
 	arm.reserve = 1
@@ -30,9 +30,11 @@ func test_an_arm_re_cut_is_the_weapon_state_re_cut() -> void:
 
 func test_a_re_cut_weapon_kills_faster_than_the_same_one_as_shipped() -> void:
 	var health := RulesFixture.round_health(15)
-	for id in UpgradeTuning.new().weapons:
+	for id in UpgradeTuning.shipped().weapon_ids():
+		if not WeaponCatalog.IDS.has(id):
+			continue
 		var plain := WeaponCatalog.get_def(id)
-		var tuned := plain.upgraded(UpgradeTuning.new())
+		var tuned := plain.upgraded(UpgradeTuning.shipped())
 		(
 			assert_float(SimWeapons.sustained_dps_of(tuned, health))
 			. override_failure_message(String(id))

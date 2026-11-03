@@ -19,7 +19,13 @@ static func show(
 	match prompt.get("kind", &""):
 		&"recut":
 			var weapon: String = weapon_names.get(prompt["weapon"], str(prompt["weapon"]))
-			_put(state, &"buy_recut", "Re-cut: %s" % weapon, prompt["price"], _gain(spec))
+			_put(
+				state,
+				&"buy_recut",
+				"Re-cut: %s" % weapon,
+				prompt["price"],
+				_gain(spec, StringName(prompt["weapon"]))
+			)
 		&"recut_done":
 			_put(state, &"recut_info", RECUT_NAME, 0, "THIS WEAPON IS ALREADY RE-CUT")
 		&"recut_none":
@@ -67,12 +73,12 @@ static func blurb(effect: int, bonus: float, perks: PerkTuning) -> String:
 	return ""
 
 
-## What a re-cut does, in the card's words: "DAMAGE x1.75, ROUNDS x1.5".
-static func _gain(spec: UpgradeTuning) -> String:
-	return (
-		"DAMAGE x%s, ROUNDS x%s"
-		% [String.num(spec.damage_multiplier, 2), String.num(spec.magazine_multiplier, 2)]
-	)
+## What a re-cut does to this weapon, in the card's words: "DAMAGE x1.75, ROUNDS x1.5".
+static func _gain(spec: UpgradeTuning, weapon: StringName) -> String:
+	var cut := spec.profile_of(WeaponCatalog.catalog_id(weapon))
+	if cut == null:
+		return ""
+	return cut.card_line(WeaponCatalog.get_def(WeaponCatalog.catalog_id(weapon)))
 
 
 static func _put(

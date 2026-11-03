@@ -50,6 +50,7 @@ var _state: ClientState
 var _projectile_views: Dictionary[int, ProjectileView] = {}
 ## Shocks drawn so far: each one's bolts start from a different seed.
 var _shocks := 0
+var _elements_shown := 0
 ## The world's first surface on a segment, as the server's shots see it (made on the first shot).
 var _probe: WorldProbe
 ## The grenades in the air, by the server's id: each a copy of the server's grenade, stepped with
@@ -241,9 +242,11 @@ func _on_event(event: Dictionary) -> void:
 				event["point"] + NUMBER_LIFT, str(roundi(event["damage"])), event["headshot"]
 			)
 			PerfProbe.end(&"fx.number", began)
-			began = PerfProbe.begin()
-			effects.blood_hit(event, _surfaces().callable())
-			PerfProbe.end(&"fx.blood", began)
+			var element := ElementCatalog.get_def(event.get("element", &""))
+			if element == null or element.bleeds:
+				began = PerfProbe.begin()
+				effects.blood_hit(event, _surfaces().callable())
+				PerfProbe.end(&"fx.blood", began)
 		&"round_started":
 			Audio.play(&"round_start")
 		&"round_ended":
@@ -256,6 +259,8 @@ func _on_event(event: Dictionary) -> void:
 			_burst_projectile(event)
 		&"lure_started":
 			_burn_lure(event)
+		&"element_burst", &"element_arc", &"fire_patch_started":
+			_show_element(event)
 		&"board_torn", &"board_repaired":
 			if event["type"] == &"board_torn":
 				horde.tore(event.get("zombie_id", -1))
@@ -312,6 +317,27 @@ func _burst_projectile(event: Dictionary) -> void:
 		_projectile_views.erase(id)
 	effects.spark(event["point"])
 	effects.muzzle_flash(event["point"])
+
+
+## A re-cut weapon's element, in its colour: the shell of a blast (and the spark and flash of a
+## burst), the crackle of an arc, the fire on the ground. Their sound layers are #791's.
+func _show_element(event: Dictionary) -> void:
+	var element := ElementCatalog.get_def(event["element"])
+	if element == null:
+		return
+	var fx: ElementFx
+	match event["type"]:
+		&"element_burst":
+			fx = ElementFx.blast(event["point"], event["radius"], element.tint)
+			effects.muzzle_flash(event["point"])
+		&"element_arc":
+			var ends: Array[Vector3] = []
+			ends.assign(event["to"])
+			fx = ElementFx.arc(event["from"], ends, element.tint, _elements_shown)
+		_:
+			fx = ElementFx.fire(event["point"], event["radius"], event["seconds"], element.tint)
+	_elements_shown += 1
+	add_child(fx)
 
 
 ## The flare lies where it landed and burns for as long as the server's lure lasts.
