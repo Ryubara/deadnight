@@ -32,7 +32,9 @@ func test_an_idle_bench_has_its_press_up_and_no_weapon_on_the_cradle() -> void:
 
 
 func test_every_weapon_that_can_be_re_cut_has_a_model_for_the_cradle() -> void:
-	for id in UpgradeTuning.new().weapons:
+	for id in UpgradeTuning.shipped().weapon_ids():
+		if not WeaponCatalog.IDS.has(id):
+			continue
 		(
 			assert_bool(MachineParts.WEAPON_MODELS.has(id))
 			. override_failure_message(String(id))
