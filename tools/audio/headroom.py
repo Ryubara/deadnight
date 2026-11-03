@@ -38,7 +38,20 @@ TAIL = 0.7  # seconds after the last (the capture's TAIL)
 SOUND_WINDOW = 0.3  # seconds after a sound starts that its own peak is looked for
 PEAK_WINDOW = 0.01  # seconds per peak-envelope window of the plot
 CELLS = ["alone", "reload", "mate", "zombie", "world"]
-GUNS = ["pistol", "smg", "rifle", "shotgun", "flare_gun"]
+GUNS = [
+    "pistol",
+    "smg",
+    "rifle",
+    "shotgun",
+    "flare_gun",
+    "ppsh",
+    "m249",
+    "m4a1",
+    "fifty_cal",
+    "mp5",
+    "pump_870",
+    "dual_pistols",
+]
 
 
 def read_cells(log: Path) -> list[dict]:

@@ -49,3 +49,8 @@ that takes a `variant` argument its file number, so one table of shapes makes th
 `game/tests/captures/audio_wind_night.tscn` (`night`, with the wind alone, the beds, and the beds without the wind).
 `audio_headroom.tscn --wind` runs the wind at its strongest under the headroom cells. `docs/research/wind.md` has the
 sources and the numbers.
+
+The second batch of firearms (#790: PPSh, M249, M4A1, .50 calibre, MP5, 870 pump, dual pistols) is `gun_recipes_2.py`,
+built from `weapon_recipes.py`'s `report` and `tail` and listed by `generate.py`; its sounds are `shot_`, `tail_`,
+`equip_` and `dry_` plus the gun id, and `reload_<gun>_<step>`.
+`docs/research/gun-audio.md#the-second-batch-of-firearms-790`.

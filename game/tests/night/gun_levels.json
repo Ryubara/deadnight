@@ -94,6 +94,146 @@
       "burst_lufs": -17.4,
       "peak_dbfs": -5.2,
       "centroid_hz": 3043
+    },
+    "ppsh": {
+      "trims_db": {
+        "shot_ppsh": -6.5,
+        "tail_ppsh": -20.5
+      },
+      "files_sha256": {
+        "shot_ppsh_1.ogg": "b68879c41772602fb582b56786aff4439cd36784bb05c23604f5acae1f0ca0b4",
+        "shot_ppsh_2.ogg": "81913ad9a5ce3d15df26a25621214d0df318314a1ece2cfbeb470c99d940cb67",
+        "shot_ppsh_3.ogg": "ca70cfece022c37dd5dffae5589e95e98fd4145822699ccf175f789c8b6ddda5",
+        "shot_ppsh_4.ogg": "ca21c5b2250f1f446e158972c16e2346827e171cdc2c796e7e3cb65d44e8f266",
+        "shot_ppsh_5.ogg": "7bd4aa6a4b9e746124d310a435ef0ef702244097fbc37646748a39669543b369",
+        "tail_ppsh_1.ogg": "3e9ef2a31c82c772f74599841164813591c639e1b9ae61a05950f13eb3b5bebe",
+        "tail_ppsh_2.ogg": "470c266122f56db1a0d8414ce976608d9f60a33d0a3f0b2d183af3a75a9080bb",
+        "tail_ppsh_3.ogg": "b50640894954b8611568e91c874ae001a89069d4440282d36cbc73f2f76e387a"
+      },
+      "single_momentary_lufs": -20.7,
+      "burst_lufs": -12.8,
+      "peak_dbfs": -5.4,
+      "centroid_hz": 3353
+    },
+    "m249": {
+      "trims_db": {
+        "shot_m249": -8.0,
+        "tail_m249": -22.0
+      },
+      "files_sha256": {
+        "shot_m249_1.ogg": "7f3de54cfb5897e901cf9d384953d45526e372de681342f2d07124c5495024a3",
+        "shot_m249_2.ogg": "c99f7764de5b2714c9991340be5ccd1d58f762c780d80aebc73e09efcc8da113",
+        "shot_m249_3.ogg": "a8f7099a814b30339e10b01e669ed127fe1d8797619b61b3e5e86b93861a8f56",
+        "shot_m249_4.ogg": "afe270d14cbb37cf7a1fb56452e9ab9e606463eefc9496af2f16908a67b89193",
+        "shot_m249_5.ogg": "b9ebc9edf712293692198a6cc493107a450a96c2bea9102c2ee7f8179a101db7",
+        "tail_m249_1.ogg": "ef906f4e8c1576efbe51b049193923a0e8f11f6a991529f923c325f9f9b9a293",
+        "tail_m249_2.ogg": "fba1a7c260c0b3bdd4d69550e2eca25981f59a3f3f7bfbaf01d4a6ed239f4b4a",
+        "tail_m249_3.ogg": "1eac14e4f4e452ba31358c1426243b3501efc62b074d9c036e34e523d0b5c768"
+      },
+      "single_momentary_lufs": -19.0,
+      "burst_lufs": -12.8,
+      "peak_dbfs": -6.6,
+      "centroid_hz": 2659
+    },
+    "m4a1": {
+      "trims_db": {
+        "shot_m4a1": -6.5,
+        "tail_m4a1": -20.5
+      },
+      "files_sha256": {
+        "shot_m4a1_1.ogg": "d067617ceb90e43d2e2405327417d121eba142a9adc7bd492378a0234ed85891",
+        "shot_m4a1_2.ogg": "b0b82a3672dac3ffa90e4c28c50944275c10add79b56ce731430ef3ee9570a07",
+        "shot_m4a1_3.ogg": "a4fa7103344b5cd21e92d2f6db8cd879663e5ad05132a3544b97b2ff1e40f4ec",
+        "shot_m4a1_4.ogg": "c615095f9b2dbeab49eda86663ae79e9eed9bedc48ab2b28884d2e6b76da026c",
+        "shot_m4a1_5.ogg": "cc4b00d114edd7225904aa3c3ba10ac116e3a41bb6a0739426245056ba8a18a4",
+        "tail_m4a1_1.ogg": "825d28022cf1d3a85e8b9d3da82250f54199fa898165e84c80ff61781266185c",
+        "tail_m4a1_2.ogg": "81d9d21e2d393ed7d200725d3d8f2f641d2f22355c5b1a650f4189c4ceec94d4",
+        "tail_m4a1_3.ogg": "a6a240209d0d124f2782a51514c24da12b6fa48d588a29570d88fa1dab11de06"
+      },
+      "single_momentary_lufs": -18.0,
+      "burst_lufs": -13.2,
+      "peak_dbfs": -5.4,
+      "centroid_hz": 2938
+    },
+    "fifty_cal": {
+      "trims_db": {
+        "shot_fifty_cal": -7.0,
+        "tail_fifty_cal": -21.0
+      },
+      "files_sha256": {
+        "shot_fifty_cal_1.ogg": "bbdbb9e3d7c78de31a32a7541e4a240ba03b58299f7e258166ca5679ac672e44",
+        "shot_fifty_cal_2.ogg": "79700d3cf3d9e399af9bdc9a3d2ab66ef293f6798bb8f4dd4297a88328540321",
+        "shot_fifty_cal_3.ogg": "d4043aaa645e575d6939d07671c2eae596d07f4ca50058c27a1a70cd97103cd6",
+        "shot_fifty_cal_4.ogg": "93c23b3588dbbda03d14c4c7e1602fd19218c60c00ba75819e9bb8eac280c1af",
+        "shot_fifty_cal_5.ogg": "ae64c59ac8a8bb7744fdc04217d85cd17736e5a5605df500cfd8e600b8df9944",
+        "tail_fifty_cal_1.ogg": "0908a623e83d5d094fcc65e8f88c5d994827ef9fc2a5c3137181565e9c0e5481",
+        "tail_fifty_cal_2.ogg": "608b46871f4e926904834bbd57d49fa86c8cf16ca9b27bc70b1ad6a2de73925e",
+        "tail_fifty_cal_3.ogg": "bb0dff19b0134379e198a60cf6a5cd502078c9125b85b629aa8efe9c2072f70a"
+      },
+      "single_momentary_lufs": -14.9,
+      "burst_lufs": -16.1,
+      "peak_dbfs": -5.1,
+      "centroid_hz": 2693
+    },
+    "mp5": {
+      "trims_db": {
+        "shot_mp5": -6.0,
+        "tail_mp5": -20.0
+      },
+      "files_sha256": {
+        "shot_mp5_1.ogg": "1ea9085301ff17925c51408060a2c30a40832889c43a88403bf1fac157b4ed46",
+        "shot_mp5_2.ogg": "32d31caf8f439c9e669a2449113e1cd2c5c24d42dc2ce7f9b2192f97e1a0b8cb",
+        "shot_mp5_3.ogg": "2a5f47cf3b59766622488604cfcc49064e8628c004a69e233d14268e3032df9e",
+        "shot_mp5_4.ogg": "6c9154f7623edd19c1a31cea764cba7f65bd6cee935ae0c41989aa988000d466",
+        "shot_mp5_5.ogg": "d667c2b3eff4685cdda4d7e1e93b1d18411d3694bcf00746805aa2ec1e9a4f28",
+        "tail_mp5_1.ogg": "45b744dd4f4f9ed0ffaf85f664842c122fd55c0fb09be5ff3e7cb444252ffd2a",
+        "tail_mp5_2.ogg": "29e69ffb1da981d4de17061a570b73146b832cebfb1a2bb54ece1b0161049027",
+        "tail_mp5_3.ogg": "cdeb94de61f2be51e643a9240489bf83e7ba00bf0e2e36cfa286cb3472caf3bc"
+      },
+      "single_momentary_lufs": -20.1,
+      "burst_lufs": -14.1,
+      "peak_dbfs": -5.2,
+      "centroid_hz": 3038
+    },
+    "pump_870": {
+      "trims_db": {
+        "shot_pump_870": -7.0,
+        "tail_pump_870": -21.0
+      },
+      "files_sha256": {
+        "shot_pump_870_1.ogg": "7e3932fefd0e973234b9b7718b118642e96df8ad3964af1e0cf6acc7a3d6dbed",
+        "shot_pump_870_2.ogg": "57c50335b3a52a22be266935a0a25a0f06588a7bcd1c6f098aa19aaaf97d762a",
+        "shot_pump_870_3.ogg": "56f1c069968206a0864bd76915d2f1b9907b9e920fb3f55548e15467c0a03998",
+        "shot_pump_870_4.ogg": "011a02008daffd417e21a68f179ecf2e30a32f719fcfa57685ac8261709320f5",
+        "shot_pump_870_5.ogg": "86e982160c796864dbccf5aa99a07f1bbff861b41c595a7da28431b9177bb08a",
+        "tail_pump_870_1.ogg": "9ced321c4f73c54d224aa823b478b5f933eec6cc5d44b9165ae662c11a5503e8",
+        "tail_pump_870_2.ogg": "db63222e025d8af4c8544a5eae8736158cd4234caa3edfb6e9d3d5b00aaf9ed0",
+        "tail_pump_870_3.ogg": "dd6ab63b28fd6b5c80735339d0e010679675618f7d0a8065f4e4816bcb7d523f"
+      },
+      "single_momentary_lufs": -15.7,
+      "burst_lufs": -16.9,
+      "peak_dbfs": -5.6,
+      "centroid_hz": 2639
+    },
+    "dual_pistols": {
+      "trims_db": {
+        "shot_dual_pistols": -6.5,
+        "tail_dual_pistols": -20.5
+      },
+      "files_sha256": {
+        "shot_dual_pistols_1.ogg": "1e967a4f40409e545e53e2a1cecbe6c923f7126dc62ccd48059bc6186054a0ac",
+        "shot_dual_pistols_2.ogg": "0b919f76dde3c87e1ab71e6e62a4f7b3f1bd985bd4a2db116fa6d1acaeec704e",
+        "shot_dual_pistols_3.ogg": "e38bc251cfc6a577f0bfdb7ca4577a0d245a9340e2166a446f2c6b26e071c541",
+        "shot_dual_pistols_4.ogg": "bec10c87342828b794483e13452b45baa531411de7f3115e6ef9183964745102",
+        "shot_dual_pistols_5.ogg": "f24e3dc7fe70339564ba6e92b784ea0f9a8cfe18c40e81f49b0011324876a28d",
+        "tail_dual_pistols_1.ogg": "9ad5fbe0f3f77f9513d9c0bb7598790320b55499302c0fdba725a21b1e09c525",
+        "tail_dual_pistols_2.ogg": "1a5f8a7cdc4f2cdec8e060cc87836c0a204f5c241aa80ef0e4b36b44ddcad60b",
+        "tail_dual_pistols_3.ogg": "bb37804d8eb7252f059705bae9c96ce73790796b7e783966234f814bb65125e7"
+      },
+      "single_momentary_lufs": -20.2,
+      "burst_lufs": -15.8,
+      "peak_dbfs": -5.2,
+      "centroid_hz": 2943
     }
   }
 }
