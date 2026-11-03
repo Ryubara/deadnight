@@ -77,6 +77,10 @@ SWITCHES = [
 PROJECTOR_LENS = (0.0, 5.11, 24.37)
 SCREEN_CENTRE = (0.0, 10.0)
 SCREEN_FACE_Z = -47.4
+# The ticket plaza behind the road door ends here, at the lot's wall (#686); the perk machine stands against it.
+PLAZA_END = 58.0
+WRECK_X = -9.0
+PERK_MACHINE_AT = (0.0, PLAZA_END - 0.8)  # the machine's middle; its spot is 1.2 m in front of it
 # The fuel can stands: (name, the shop door of the area, where, the way its front faces in degrees of yaw). A player
 # buys a can (the shop's `fuel_can`) from the spot 1.1 m in front of one (docs/design/map.md, The fuel cans).
 FUEL_STANDS = [
@@ -118,7 +122,7 @@ MATS = [
     "concession_ground", "concession_wall", "concession_roof", "concession_prop",
     "midway_ground", "midway_wall", "booth_ground", "booth_wall", "booth_prop",
     "yard_ground", "yard_wall", "yard_prop", "yard_gen", "backlot_ground", "backlot_wall", "backlot_prop", "neon",
-    "road_ground", "road_wall", "road_kiosk", "road_line", "door", "roadblock", "breach_ground", "line_paint",
+    "road_ground", "road_wall", "road_kiosk", "road_line", "door", "breach_ground", "line_paint",
     "plaque", "ammo_crate", "ammo_band",
 ]  # fmt: skip
 # Parking lines: a painted stripe between neighbouring stalls of a row, as long as a stall (one MultiMesh, one draw).
@@ -923,17 +927,16 @@ def build() -> None:
     marker(bz, "SpawnS", (-30, 0, 36))
     label(back, "Label", "6  BACK LOT  (dark)", (-39, 0.6, 12), 110)
 
-    # --- Road: ticket plaza, the gate, the way into town -------------------------------------------------------------
+    # --- Road: the ticket plaza behind the last door, closed off at its south end (#686) -------------------------------
+    # The lot used to run on into a road (a 124 m strip of asphalt, a roadblock, two wrecks) that was never finished and
+    # showed. It is gone: the plaza is all that is behind the road door, shut at PLAZA_END by the lot's own wall with
+    # junk stacked against it, and it holds the lot's own perk machine at the middle of that wall.
     road = group("Road", ".")
-    floor_tiles(road, "Plaza", -16, 16, 38, 52, "road_ground")
-    floor_tiles(road, "Asphalt", -62, 62, 52, 64, "road_ground")
+    floor_tiles(road, "Plaza", -16, 16, 38, PLAZA_END, "road_ground")
     wall(road, "FenceS", "x", 38, -16, 16, 2.6, "road_wall", [(0, 4, 0, 2.6)])
-    wall(road, "SideW", "z", -16, 38, 52, 2.6, "road_wall")
-    wall(road, "SideE", "z", 16, 38, 52, 2.6, "road_wall")
-    wall(road, "BarrierS", "x", 64, -62, 62, 1.6, "road_wall")
-    wall(road, "EndW", "z", -62, 52, 64, 1.6, "road_wall")
-    wall(road, "EndE", "z", 62, 52, 64, 1.6, "road_wall")
-    box(road, "RoadblockTown", (8, 2.6, 3), (58, 1.3, 58), "roadblock")
+    wall(road, "SideW", "z", -16, 38, PLAZA_END, PERIMETER_H, "road_wall")
+    wall(road, "SideE", "z", 16, 38, PLAZA_END, PERIMETER_H, "road_wall")
+    wall(road, "FenceEnd", "x", PLAZA_END, -16, 16, PERIMETER_H, "road_wall")
     for sx in (-1, 1):
         tag = "W" if sx < 0 else "E"
         block(road, f"Kiosk{tag}", sx * 6 - 1.2, sx * 6 + 1.2, 44, 46.4, 2.4, "road_kiosk")
@@ -941,10 +944,12 @@ def build() -> None:
     for i, px in enumerate((-9, 9)):
         box(road, f"CanopyPost{i}", (0.4, 3.6, 0.4), (px, 1.8, 47.8), "road_wall")
     box(road, "CentreLine", (0.3, 0.02, 12), (0, 0.01, 46), "road_line", collide=False)
-    # The road's broken centre line: 3 m dashes every 6 m.
-    painted_lines(road, "RoadDashes", "road_line", (0.15, 3.0), [(x + 1.5, 58.0, 90.0) for x in range(-60, 60, 6)])
-    instance(road, "Wreck", "wreck", (-32.0, 0, 58.0), 0)  # its headlights (below) are at its front, z 55.8
-    instance(road, "WreckB", "wreck", (22.3, 0, 60.0), 90)
+    # The perk machine (drawn by `SodaFountain` in ShopProps): this block is its collision and its place in the walking
+    # mesh. It runs to the wall (no slot behind it, `test_lot_gaps.gd`).
+    block(road, "PerkMachine", -1.2, 1.2, PLAZA_END - 1.4, PLAZA_END - 0.2, 1.6, "road_wall", visible=False)
+    # A wreck parked nose-in at the wall, west of the machine: its headlights (the `battery` circuit) are the last light
+    # on the lot when the tank is dry, and they shine up the plaza.
+    instance(road, "Wreck", "wreck", (WRECK_X, 0, PLAZA_END - 0.2 - 2.15), 0)
     rl = lamps(road, "back_lot")
     omni(rl, "Kiosk", (0, 3.0, 44), 1.0, 8, "#a8c4ff")
     # The entrance's bulbs and lamps burn with the kiosk's lamp, on the back lot's circuit (ModelGlow): the marquee's
@@ -961,14 +966,14 @@ def build() -> None:
              "model_path": f'NodePath("../../TicketBooth{tag}")', "amber_energy": "2.5"},
         )  # fmt: skip
     hl = lamps(road, "battery", "Headlights")
-    spot(hl, "WreckHeadlightL", (-31, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
-    spot(hl, "WreckHeadlightR", (-33, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
+    wreck_nose = PLAZA_END - 0.2 - 2.15 - 2.2  # the nose of the wreck, 2.2 m from its middle towards the plaza
+    spot(hl, "WreckHeadlightL", (WRECK_X + 1, 1.0, wreck_nose), 0, 0, 2.5, 18, 28, "#fff2cc")
+    spot(hl, "WreckHeadlightR", (WRECK_X - 1, 1.0, wreck_nose), 0, 0, 2.5, 18, 28, "#fff2cc")
     rz = group("ZombieSpawns", road)
-    marker(rz, "SpawnW", (-56, 0, 58))
-    marker(rz, "SpawnE", (50, 0, 62))
     marker(rz, "SpawnPlaza", (-14, 0, 50))
-    label(road, "Label", "7  THE ROAD", (0, 0.6, 58), 150)
-    label(road, "LabelPlaza", "TICKET PLAZA", (0, 0.6, 41), 90)
+    marker(rz, "SpawnPlazaE", (13.5, 0, 55))
+    marker(rz, "SpawnPlazaSW", (-13.5, 0, 55))
+    label(road, "Label", "7  TICKET PLAZA", (0, 0.6, 52), 110)
 
     # --- The drive-in's own props (tools/world/drivein_props.py): speaker posts, the counter, booths, the marquee ---
     drivein_props.write_scenes()
@@ -1007,6 +1012,9 @@ def build() -> None:
     shop_spot("SpotReCut", "upgrade", "upgrade_weapon", (3.5, 0, 25.9), 180)
     instance("ShopProps", "Soda", "soda_fountain", (8.2, 0, 4.9), 180)
     shop_spot("SpotSoda", "perk", "tonic_hearty", (8.2, 0, 3.7), 180)
+    # The plaza's perk machine, the road door's own: another soda fountain until the perks of #687 give it its own pour.
+    instance("ShopProps", "PlazaPerk", "soda_fountain", (PERK_MACHINE_AT[0], 0, PERK_MACHINE_AT[1]), 180)
+    shop_spot("SpotPlazaPerk", "perk", "tonic_hearty", (PERK_MACHINE_AT[0], 0, PERK_MACHINE_AT[1] - 1.2), 180)
     # Lockers: the avenue (the first one, in the open), the stand, the midway, the yard and the back lot.
     ammo_locker("LockerField", (3.1, -31.0), 270)
     ammo_locker("LockerStand", (9.45, -1.8), 270)

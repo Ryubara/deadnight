@@ -1,11 +1,12 @@
 class_name SoldierVoice
 extends Node
-## The soldiers talk: a person reacting to what just happened, made only from what the server sent
-## (like `WeaponSounds`). Each event of the night becomes one moment (`SoldierMoments`),
-## `VoiceDirector` says whether it is voiced and which take, and the take plays on the Voice bus:
-## flat for the player at this screen (their voice is in their head), where they stand for a
-## teammate. It holds no game state and asks the server nothing. The design is
-## `docs/design/audio.md`.
+## The soldiers talk, each in their own voice (the male or the female take set: `voice` in the
+## player's frame entry, `SoldierVoiceCatalog.voice_of`): a person reacting to what just happened,
+## made only from what the server sent (like `WeaponSounds`). Each event of the night becomes one
+## moment (`SoldierMoments`), `VoiceDirector` says whether it is voiced and which take, and the
+## take plays on the Voice bus: flat for the player at this screen (their voice is in their head),
+## where they stand for a teammate. It holds no game state and asks the server nothing. The design
+## is `docs/design/audio.md`.
 
 ## A voice comes from a player's head.
 const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
@@ -66,8 +67,9 @@ func say(event: StringName, speaker: int) -> bool:
 		at = player["pos"] + HEAD_LIFT
 	var priority: int = SoldierVoiceCatalog.moments()[event]["priority"]
 	var cut := director.would_interrupt(priority)
+	var voice := SoldierVoiceCatalog.voice_of(player)
 	var started: Variant = _play(
-		SoldierVoiceCatalog.take_id(event, take),
+		SoldierVoiceCatalog.take_id(event, take, voice),
 		at,
 		SoundCatalog.mix().own_voice_db if own else 0.0
 	)
@@ -76,7 +78,7 @@ func say(event: StringName, speaker: int) -> bool:
 	if cut and is_instance_valid(_speaking) and _speaking.has_method(&"stop"):
 		_speaking.stop()
 	_speaking = started
-	director.commit(event, speaker, take, SoldierVoiceCatalog.length(event, take))
+	director.commit(event, speaker, take, SoldierVoiceCatalog.length(event, take, voice))
 	return true
 
 

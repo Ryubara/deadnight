@@ -195,3 +195,28 @@ balance_cli.gd --shopping=weapon_rifle --set=economy.start_points=20000       (w
 ```
 
 A Godot `--import` must have run since the last new `class_name` script.
+
+## The double-barrel (#684)
+
+The pump shotgun (6 shells, 19 a pellet, 0.8 s, 2.4 s reload) became a double-barrel (2 shells, 22 a pellet, 0.3 s
+between barrels, 1.8 s reload, reserve 16 of 32 at most). A first try at 21 a pellet and a 2.0 s reload fell under
+the submachine gun in the weapon pick against round 10's health (`test_sim_weapons`), and the average
+four-player round-15 reach fell from 91% to 64%; 22 and 1.8 s give the pump's kills a second against that health.
+150 nights a cell, seed 1, `tools/balance/run_report.py --brief`, before (the pump) and after:
+
+| Skill, players | Median round before / after | Mean round before / after | Reach r15 before / after |
+| --- | --- | --- | --- |
+| weak, 1 | 4 / 4 | 4.3 / 4.3 | 0% / 0% |
+| weak, 2 | 5 / 5 | 5.3 / 5.4 | 0% / 0% |
+| weak, 4 | 5 / 5 | 6.0 / 6.3 | 0% / 1% |
+| average, 1 | 10 / 10 | 10.6 / 10.4 | 25% / 20% |
+| average, 2 | 13 / 13 | 12.5 / 12.6 | 41% / 36% |
+| average, 4 | 15 / 15 | 15.5 / 14.8 | 91% / 77% |
+| strong, 1 | 16 / 16 | 15.8 / 15.4 | 72% / 66% |
+| strong, 2 | 17 / 19 | 17.2 / 17.8 | 94% / 86% |
+| strong, 4 | 19 / 20 | 18.7 / 19.9 | 100% / 100% |
+
+Every median is the same or a round better; the means of the average and strong one-to-two player cells are a few
+tenths lower (a magazine of two leaves a player waiting under two seconds in a crowd more often), inside what 150
+nights a cell moves. A weapon's magazine and reload time reach the model through `WeaponDef` alone (`SimWeapons`,
+`SimArm.reload` is compared with `WeaponState` in a test), so no model code changed.

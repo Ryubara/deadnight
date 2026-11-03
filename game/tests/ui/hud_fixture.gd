@@ -13,10 +13,11 @@ var hud: Hud
 
 ## A HUD inside `host` (any Control the test owns) over a fresh night with `players` players, named
 ## Ruby, Moe, Dee, Cal, Ned, Ivy, Sal and Pat, the first being the local one. Not started. The
-## portraits build no 3D world unless `portraits` (a suite about them says so): the picture does
-## not change a layout.
+## portraits and the weapon silhouettes build no 3D world unless `portraits` (a suite about them
+## says so): the picture does not change a layout.
 static func make(host: Control, players := 1, seed_value := 1958, portraits := false) -> HudFixture:
 	HudPortrait.live = portraits
+	WeaponSilhouettes.live = portraits
 	var fixture := HudFixture.new()
 	var tuning := (load(TUNING) as RulesTuning).duplicate(true)
 	fixture.rules = GameRules.new(tuning, seed_value)

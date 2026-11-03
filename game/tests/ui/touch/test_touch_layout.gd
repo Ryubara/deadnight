@@ -12,7 +12,9 @@ const CANVASES: Array[Vector2] = [
 ## The cards that never move and that the buttons must not cover.
 ## A right hand and a left hand (the layout flipped).
 const HANDS: Array[bool] = [false, true]
-const KEPT_PARTS: Array[StringName] = [&"ammo", &"prompt", &"health", &"points", &"round_part"]
+const KEPT_PARTS: Array[StringName] = [
+	&"ammo", &"prompt", &"health", &"points", &"round_part", &"slots"
+]
 
 
 func before_test() -> void:
@@ -80,6 +82,7 @@ func test_the_buttons_leave_the_kept_hud_cards_alone_for_either_hand() -> void:
 			var fixture := HudFixture.make(host, NightHost.MAX_PLAYERS)
 			# A left hand flips the HUD's corner columns with the buttons.
 			fixture.hud.mirrored = mirrored
+			fixture.hud.touch_layout = true
 			fixture.into_round_one()
 			var state := fixture.hud.state
 			state.set_ammo(30, 150, "Shotgun")
