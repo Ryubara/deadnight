@@ -119,6 +119,7 @@ func _tally(id: int) -> Dictionary:
 			"deaths": 0,
 			"damage_taken": 0.0,
 			"spent": {},
+			"earned_by": {},
 			"revived_others": 0,
 		}
 	return _seat[id]
@@ -163,6 +164,10 @@ func hear(event: Dictionary) -> void:
 			landed[1] += float(event["damage"])
 			by_type[String(event["zombie_type"])] = landed
 			_round_blows[blow_round] = by_type
+		&"points_changed":
+			var earned_by: Dictionary = _tally(event["player_id"])["earned_by"]
+			var why := String(event["reason"])
+			earned_by[why] = int(earned_by.get(why, 0)) + maxi(int(event["delta"]), 0)
 		&"player_died":
 			_tally(event["player_id"])["deaths"] += 1
 		&"player_hurt":
@@ -252,15 +257,18 @@ func tick() -> void:
 			_spread_n += 1
 
 
-## What the bots carry now: the guns each holds (sorted, joined) and the points of all of them.
+## What the bots carry now: the guns each holds (sorted, joined), the points they hold and have
+## earned in all, and the doors open.
 func _kit() -> Dictionary:
 	var guns: Array[String] = []
 	var points := 0
+	var earned := 0
 	for bot in night.host.bots:
 		var id := bot.state.player_id
 		if people.has(id):
 			continue
 		points += night.server.rules.points_of(id)
+		earned += night.server.rules.players[id].points_earned
 		var arms: Dictionary = night.frame.get("players", {}).get(id, {}).get("arms", {})
 		var names: Array[String] = []
 		for weapon: StringName in arms:
@@ -268,7 +276,7 @@ func _kit() -> Dictionary:
 		names.sort()
 		guns.append("+".join(names))
 	guns.sort()
-	return {"guns": guns, "points": points}
+	return {"guns": guns, "points": points, "earned": earned, "doors": _doors.size()}
 
 
 func _humans_up() -> Array[Vector3]:
@@ -507,6 +515,7 @@ func report() -> Dictionary:
 					"buys": int(bot.telemetry.counters.get(&"buys", 0)),
 					"rejected_buys": int(bot.telemetry.counters.get(&"rejected_buys", 0)),
 					"spent": tally["spent"],
+					"earned_by": tally["earned_by"],
 					"points_earned": player.points_earned if player != null else 0,
 					"points_spent": player.points_spent if player != null else 0,
 					"think_us_p50": bot.telemetry.think_us(0.5),

@@ -104,6 +104,8 @@ var longest_glut := 0.0
 var glut_by_round: Dictionary = {}
 
 var _shop: BotShop
+## The health of the dead the last plan weighed its weapons by (0: it does not).
+var _round_health := 0.0
 var _profile: BotProfile
 var _economy: BotEconomy
 ## Item id (or a job's key) to the clock when it may be tried again.
@@ -294,6 +296,7 @@ func _crane_wait(intent: BotIntent, me: Dictionary, frame: Dictionary, me_id: in
 		var view := BotEconomy.View.new()
 		view.arms = me.get("arms", {})
 		view.held = me.get("weapon", &"")
+		view.zombie_health = _zombie_health(int(frame.get("round", 1)))
 		if BotEconomy.worth_taking(view, WeaponCatalog.catalog_id(prompt.get("weapon", &""))):
 			intent.use = true
 	return true
@@ -524,7 +527,7 @@ func _hands_wrong(pick: BotEconomy.Buy, prompt: Dictionary, me: Dictionary) -> b
 		return false
 	var held: StringName = me.get("weapon", &"")
 	var replaced: StringName = prompt.get("replaces", held)
-	return replaced != &"" and replaced != BotEconomy.weakest_of(arms)
+	return replaced != &"" and replaced != BotEconomy.weakest_of(arms, _round_health)
 
 
 ## At a locker with a blade in hand and the gun to feed in the pack: the rounds are sold for the
@@ -575,6 +578,8 @@ func _view(
 	view.points = state.points()
 	view.round_number = int(frame.get("round", 1))
 	view.prepared = beliefs.special_coming
+	view.zombie_health = _zombie_health(view.round_number)
+	_round_health = view.zombie_health
 	view.in_break = frame.get("phase", ACTIVE_PHASE) == BREAK_PHASE
 	view.remaining = int(frame.get("remaining", 0))
 	view.calm_at = calm_at(frame)
@@ -597,6 +602,14 @@ func _view(
 	view.heading = _heading
 	_etiquette(view, beliefs, frame, state.player_id)
 	return view
+
+
+## The health of the dead a round sends, for a bot that weighs its weapons by it (0 for one that
+## does not, or when the level has no round table).
+func _zombie_health(round_number: int) -> float:
+	if not _profile.weighs_by_round or _shop.rounds == null:
+		return 0.0
+	return _shop.rounds.health_for_round(round_number)
 
 
 ## The door manners: which doors the bot holds back from, and which a person asked it to buy.

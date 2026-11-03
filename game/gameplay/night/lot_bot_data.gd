@@ -33,6 +33,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 	var found := BotShop.new()
 	found.economy = tuning.economy
 	found.fuel = tuning.fuel
+	found.rounds = tuning.rounds
 	found.boards = tuning.barricades.boards
 	found.max_grenades = tuning.explosives.max_grenades
 	var overlay := world.layout.map_tuning() if world.layout != null else null

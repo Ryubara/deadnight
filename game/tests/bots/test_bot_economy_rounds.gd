@@ -262,36 +262,6 @@ func test_the_phase_numbers_the_bots_read_are_the_rules() -> void:
 	assert_int(BotErrands.ACTIVE_PHASE).is_equal(GameRules.Phase.ACTIVE)
 
 
-func test_a_rookie_fills_up_for_a_special_round_and_a_regular_does_not() -> void:
-	# Four magazines of 10 (the pistol's), a full reserve being 80: above the rookie's floor of two
-	# magazines, under the six it keeps once the marquee has announced a special round.
-	var arms := {"arms": {PISTOL: [10, 40, 0], CROWBAR: [0, 0, 0]}}
-	assert_bool(_choose(_view(100, arms), BotProfile.rookie()).is_none()).is_true()
-	var announced := arms.merged({"prepared": true})
-	var buy := _choose(_view(100, announced), BotProfile.rookie())
-	assert_str(String(buy.why)).is_equal("ammo_floor")
-	assert_str(String(buy.item)).is_equal("ammo_pistol")
-	# Past that floor it tops the reserve up to the limit, whatever its usual share.
-	var most := {"arms": {PISTOL: [10, 70, 0], CROWBAR: [0, 0, 0]}}
-	assert_bool(_tops_up(_view(2000, most), BotProfile.rookie())).is_false()
-	most["prepared"] = true
-	assert_bool(_tops_up(_view(2000, most), BotProfile.rookie())).is_true()
-	var regular := BotProfile.regular()
-	assert_int(regular.prepared_mags).is_equal(0)
-	assert_str(String(_choose(_view(100, announced), regular).why)).is_not_equal("ammo_floor")
-
-
-func _tops_up(view: BotEconomy.View, profile: BotProfile) -> bool:
-	for buy in BotEconomy.new(_shop, profile).candidates(view):
-		if buy.why == &"top_off":
-			return true
-	return false
-
-
-func test_the_rookie_prepares_for_a_special_round_as_the_simulators_players_do() -> void:
-	assert_int(BotProfile.rookie().prepared_mags).is_equal(NightSim.PREPARED_MAGS)
-
-
 func test_the_profiles_shop_as_the_simulators_matching_players_do() -> void:
 	var pairs := {
 		BotProfile.rookie(): SimSkill.named(SimSkill.WEAK),

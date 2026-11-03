@@ -93,6 +93,12 @@ const REACTION_FLOOR := 0.20
 ## modelled player does and so spends the points a weapon would cost on rounds. 0: the bot shops as
 ## in any break.
 @export_range(0, 8, 1) var prepared_mags: int = 0
+## Whether the bot weighs a weapon as the simulator's players do (`NightSim._worth_taking`): by the
+## health of the dead this round sends, and a free hand against the quick melee, not "anything".
+## Against the thin dead of the early rounds a shotgun's pellets overshoot and it is left on the
+## glass; the bot that takes every weapon offered enters the first boss night armed as the model's
+## players are not.
+@export var weighs_by_round: bool = false
 ## Grenades under which the bot buys more at a rack when it has points to spare (0: never).
 @export_range(0, 5, 1) var grenades_wanted: int = 2
 ## How many weapons the bot re-cuts in a night.
@@ -172,6 +178,7 @@ static func rookie() -> BotProfile:
 	profile.ammo_floor_mags = 2
 	profile.ammo_topoff = 0.5
 	profile.prepared_mags = 6
+	profile.weighs_by_round = true
 	# A rookie does not manage its health: the simulator's weak level stands where it is hit. With the
 	# play states of #739 it backed away when hurt and passed the first boss night 30 times of 30
 	# against the level's 40% (#231).

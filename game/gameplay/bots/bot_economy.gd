@@ -103,6 +103,8 @@ class View:
 	var crane_spot := 0
 	## Whether the break announced a special round (the profile may fill up for it).
 	var prepared := false
+	## The health of the dead this round sends, when the bot weighs its weapons by it (0: not).
+	var zombie_health := 0.0
 	var crane_ready := true
 	## Doors the etiquette holds the bot back from (a person's claim, a teammate down).
 	var blocked: Dictionary = {}
@@ -522,21 +524,26 @@ static func _rate(id: StringName) -> float:
 ## weapon worth `WeaponWorth.REPLACE_GAIN` times the weakest one carried. The hands give up the one
 ## in hand, so the bot puts the weakest in hand before it pays (`BotErrands`).
 static func worth_taking(view: View, weapon: StringName) -> bool:
+	var health := view.zombie_health
 	if view.arms.size() < WeaponCatalog.CARRY_LIMIT:
-		return true
-	var weakest := weakest_of(view.arms)
+		# A bot that weighs by the round puts a free hand against the quick melee it has anyway.
+		return (
+			health <= 0.0
+			or WeaponWorth.beats(WeaponCatalog.get_def(weapon), WeaponCatalog.quick_melee(), health)
+		)
+	var weakest := weakest_of(view.arms, health)
 	return (
 		weakest == &""
-		or WeaponWorth.beats(WeaponCatalog.get_def(weapon), WeaponCatalog.get_def(weakest))
+		or WeaponWorth.beats(WeaponCatalog.get_def(weapon), WeaponCatalog.get_def(weakest), health)
 	)
 
 
 ## The carried weapon worth least (a blade by its blows, a gun by its sustained damage), or empty.
-static func weakest_of(arms: Dictionary) -> StringName:
+static func weakest_of(arms: Dictionary, health := 0.0) -> StringName:
 	var weakest: StringName = &""
 	var least := INF
 	for id: StringName in arms:
-		var worth := WeaponWorth.of(WeaponCatalog.get_def(id))
+		var worth := WeaponWorth.of(WeaponCatalog.get_def(id), health)
 		if worth < least:
 			least = worth
 			weakest = id
