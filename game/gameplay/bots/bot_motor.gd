@@ -32,8 +32,10 @@ const FOCUS_SECONDS := 1.0
 ## A head is aimed at only when the target moves slower than this (m/s) and is nearer than this (m).
 const HEAD_SPEED := 3.0
 const HEAD_RANGE := 12.0
-## How far inside the quick melee's reach a bot lets a zombie come before it strikes (metres).
-const QUICK_REACH_MARGIN := 0.2
+## How far inside the quick melee's reach a bot lets a zombie come before it strikes (metres). None:
+## the dead swing from 1.4 m (`ZombieTuning.reach`) and the blow reaches 1.6, so a margin of 0.2
+## left a zombie at its own reach out of the bot's (the soak's bot idle beside a crawler, #770).
+const QUICK_REACH_MARGIN := 0.0
 ## Limits of the pitch the view turns to (radians), and a melee swing's reach (metres).
 const PITCH_LIMIT := 1.2
 const MELEE_RANGE := 1.9

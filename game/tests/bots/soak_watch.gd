@@ -32,12 +32,21 @@ const APPROACH_METRES := 1.0
 ## Seconds within which the same item refused again counts as a loop.
 const LOOP_WINDOW := 30.0
 ## What a bot is doing when it is on an errand (its `note` starts with one of these), which the
-## far-from-the-person gate leaves out.
-const ERRAND_NOTES: Array[String] = ["buy", "fuel", "breaker", "boards", "crane"]
+## far-from-the-person gate leaves out (the walk to look for the last of the dead is one).
+const ERRAND_NOTES: Array[String] = ["buy", "fuel", "breaker", "boards", "crane", "hunt"]
 ## Notes of a bot that stands the stance of the Hold order.
 const STANCE_NOTES: Array[String] = ["hold_order", "fight", "throw"]
 ## Notes of a bot with nothing to do.
 const IDLE_NOTES: Array[String] = ["", "hold", "roam"]
+
+## Samples of the Hold stance off the spot kept for a report, one every this many ticks.
+const TRIP_SAMPLES := 3
+const OFF_SAMPLES := 6
+const OFF_SAMPLE_EVERY := 120
+## Ticks within which an away note (a retreat, a revive) is named as why the bot is off the spot,
+## and the metres of a boss from the bot or the spot that count as "a boss about".
+const OFF_AFTER_TICKS := 900
+const BOSS_NEAR := 10.0
 
 const STEP := Night.STEP
 ## The categories points are counted in.
@@ -117,10 +126,26 @@ func _tally(id: int) -> Dictionary:
 			"far_run": 0,
 			"far_longest": 0,
 			"far_notes": {},
+			"far_samples": [],
 			"near12": 0,
 			"near12_of": 0,
 			"stance": 0,
 			"stance_held": 0,
+			"stance_all": 0,
+			"stance_all_held": 0,
+			"trip": false,
+			"trip_run": 0,
+			"trip_longest": 0,
+			"away": 0,
+			"away_notes": {},
+			"trip_notes": {},
+			"trips": [],
+			"off_notes": {},
+			"off_after": {},
+			"off_boss": 0,
+			"away_note": "",
+			"away_tick": -100000,
+			"off_samples": [],
 			"shots": 0,
 			"shot_hits": 0,
 			"pellet_hits": 0,
@@ -269,11 +294,12 @@ func tick() -> void:
 		var note: String = bot.intent.note
 		var standing := Vector2(body.velocity.x, body.velocity.z).length() < STANDING
 		_watch_idle(tally, bot, here, note, standing, me)
-		_watch_people(tally, here, note, humans)
-		if hold_spot != Vector3.INF and STANCE_NOTES.has(note):
-			tally["stance"] += 1
-			var off := Vector2(here.x - hold_spot.x, here.z - hold_spot.z)
-			tally["stance_held"] += 1 if off.length() <= GATE_HOLD_METRES else 0
+		_watch_people(tally, bot, here, note, humans)
+		if not STANCE_NOTES.has(note):
+			tally["away_note"] = note.get_slice(" ", 0)
+			tally["away_tick"] = ticks
+		if hold_spot != Vector3.INF:
+			_watch_stance(tally, bot, here, note)
 	for i in places.size():
 		for j in range(i + 1, places.size()):
 			_spread_sum += Vector2(places[i].x - places[j].x, places[i].z - places[j].z).length()
@@ -336,6 +362,109 @@ func _range_to_nearest_bot(zombie_id: int) -> float:
 	return snappedf(best, 0.1) if best < INF else 0.0
 
 
+## The Hold gate (`docs/research/bots.md#orders-follow-roam-and-hold-641`): within
+## `GATE_HOLD_METRES` of the spot for `GATE_HOLD_SHARE` of the time the bot is under the stance, not
+## on a trip. A trip starts when the bot does anything but stand the stance (a revive, a ping, a
+## dodge, a retreat, an errand) and ends when it is back within the gate's metres, so the walk home
+## is part of the trip. A trip is counted apart (`away`, its longest run), and the stance with the
+## walks home in it is kept as `stance_all`.
+func _watch_stance(tally: Dictionary, bot: BotClient, here: Vector3, note: String) -> void:
+	var off := Vector2(here.x - hold_spot.x, here.z - hold_spot.z).length()
+	var stands := STANCE_NOTES.has(note)
+	if not stands:
+		tally["trip"] = true
+	elif tally["trip"] and off <= GATE_HOLD_METRES:
+		_end_trip(tally)
+	if tally["trip"]:
+		tally["away"] += 1
+		tally["trip_run"] += 1
+		tally["trip_longest"] = maxi(tally["trip_longest"], tally["trip_run"])
+		var key := note.get_slice(" ", 0)
+		var notes: Dictionary = tally["trip_notes"]
+		notes[key] = int(notes.get(key, 0)) + 1
+		var away: Dictionary = tally["away_notes"]
+		away[key] = int(away.get(key, 0)) + 1
+	if not stands:
+		return
+	tally["stance_all"] += 1
+	tally["stance_all_held"] += 1 if off <= GATE_HOLD_METRES else 0
+	if not tally["trip"]:
+		tally["stance"] += 1
+		tally["stance_held"] += 1 if off <= GATE_HOLD_METRES else 0
+	if off > GATE_HOLD_METRES:
+		_note_off(tally, bot, note, off, here)
+
+
+## The trip is over: keep it among the three longest of the night, with what the bot did in it.
+func _end_trip(tally: Dictionary) -> void:
+	tally["trip"] = false
+	var trips: Array = tally["trips"]
+	trips.append(
+		{"seconds": snappedf(float(tally["trip_run"]) / 60.0, 0.1), "notes": tally["trip_notes"]}
+	)
+	trips.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool: return a["seconds"] > b["seconds"]
+	)
+	if trips.size() > TRIP_SAMPLES:
+		trips.resize(TRIP_SAMPLES)
+	tally["trip_run"] = 0
+	tally["trip_notes"] = {}
+
+
+## A tick of the Hold stance spent off the spot: what the bot was doing (its note, and what it
+## fought), for the report, so a share under the gate says why.
+func _note_off(
+	tally: Dictionary, bot: BotClient, note: String, apart: float, here: Vector3
+) -> void:
+	var notes: Dictionary = tally["off_notes"]
+	notes[note] = int(notes.get(note, 0)) + 1
+	var after: Dictionary = tally["off_after"]
+	var since: String = (
+		String(tally["away_note"]) if ticks - int(tally["away_tick"]) <= OFF_AFTER_TICKS else "none"
+	)
+	after[since] = int(after.get(since, 0)) + 1
+	if _boss_within(here, BOSS_NEAR) or _boss_within(hold_spot, BOSS_NEAR):
+		tally["off_boss"] += 1
+	var samples: Array = tally["off_samples"]
+	if samples.size() < OFF_SAMPLES and ticks % OFF_SAMPLE_EVERY == 0:
+		(
+			samples
+			. append(
+				{
+					"tick": ticks,
+					"note": note,
+					"apart": snappedf(apart, 0.1),
+					"at": [snappedf(here.x, 0.1), snappedf(here.z, 0.1)],
+					"state": String((bot.brain as BotFightBrain).play_state_name()),
+					"target_id": bot.intent.target_id,
+					"zombie": _zombie_card(bot.intent.target_id),
+				}
+			)
+		)
+
+
+## Whether a boss (a headliner) is within `metres` of `place` on the server.
+func _boss_within(place: Vector3, metres: float) -> bool:
+	for zombie: ZombieBody in night.server.sim.zombies.values():
+		if zombie.mode != ZombieBody.Mode.DYING and zombie.profile.type == &"headliner":
+			if Vector2(zombie.position.x - place.x, zombie.position.z - place.z).length() <= metres:
+				return true
+	return false
+
+
+## Whether the bot leaves the zombie to a person (`BotCombat.courtesy_holds`): the reason a bot with
+## a gun and rounds can stand with a zombie in view and no target.
+func _left_to_a_person(bot: BotClient, here: Vector3, zombie_id: int) -> bool:
+	var contact := bot.perception.beliefs.contact(zombie_id)
+	if contact.is_empty():
+		return false
+	var mates: Array[Dictionary] = []
+	for id in bot.perception.beliefs.teammates:
+		if id != bot.state.player_id:
+			mates.append(bot.perception.beliefs.teammates[id])
+	return BotCombat.courtesy_holds(contact, here, mates)
+
+
 func _humans_up() -> Array[Vector3]:
 	var found: Array[Vector3] = []
 	for id in people:
@@ -391,7 +520,8 @@ func _watch_idle(
 					"reserve": me.get("reserve", -1),
 					"goal": bot.intent.goal.snappedf(0.1),
 					"target_id": bot.intent.target_id,
-					"zombie": _zombie_card(bot.intent.target_id),
+					"zombie": _zombie_card(nearest.get("id", -1)),
+					"left_to_a_person": _left_to_a_person(bot, here, nearest.get("id", -1)),
 				}
 			)
 		)
@@ -409,6 +539,13 @@ func _watch_idle(
 					"goal": bot.intent.goal.snappedf(0.1),
 					"path": str(bot.legs.path.last_status),
 					"stuck": bot.legs.stuck.stuck,
+					"path_end":
+					(
+						bot.legs.path.points[bot.legs.path.points.size() - 1].snappedf(0.1)
+						if not bot.legs.path.points.is_empty()
+						else Vector3.INF
+					),
+					"stopped_short": bot.legs.stopped_short_of.is_finite(),
 					"round": night.server.rules.round_number,
 					"phase": night.server.rules.phase,
 				}
@@ -420,7 +557,9 @@ func _watch_idle(
 ## The distance to the nearest person on their feet: the 25 m gate (a run of ticks beyond it,
 ## outside
 ## an errand) and the share within 12 m (Follow's).
-func _watch_people(tally: Dictionary, here: Vector3, note: String, humans: Array[Vector3]) -> void:
+func _watch_people(
+	tally: Dictionary, bot: BotClient, here: Vector3, note: String, humans: Array[Vector3]
+) -> void:
 	if humans.is_empty():
 		tally["far_run"] = 0
 		return
@@ -439,8 +578,32 @@ func _watch_people(tally: Dictionary, here: Vector3, note: String, humans: Array
 	if nearest > GATE_FAR_METRES and not errand:
 		tally["far_run"] += 1
 		tally["far_longest"] = maxi(tally["far_longest"], tally["far_run"])
+		if tally["far_run"] == int(GATE_FAR_SECONDS * 60.0) and tally["far_samples"].size() < 3:
+			tally["far_samples"].append(_far_sample(bot, here, note, humans))
 	else:
 		tally["far_run"] = 0
+
+
+## What a bot far from the person was doing when it had been so for the gate's time (for the
+## report).
+func _far_sample(bot: BotClient, here: Vector3, note: String, humans: Array[Vector3]) -> Dictionary:
+	var nearest := Vector3.INF
+	for person in humans:
+		if nearest == Vector3.INF or person.distance_to(here) < nearest.distance_to(here):
+			nearest = person
+	var body := night.server.body_of(bot.state.player_id)
+	return {
+		"tick": ticks,
+		"note": note,
+		"at": [snappedf(here.x, 0.1), snappedf(here.z, 0.1)],
+		"person": [snappedf(nearest.x, 0.1), snappedf(nearest.z, 0.1)],
+		"goal": bot.intent.goal.snappedf(0.1),
+		"speed": snappedf(Vector2(body.velocity.x, body.velocity.z).length(), 0.1),
+		"path": str(bot.legs.path.last_status),
+		"stuck": bot.legs.stuck.stuck,
+		"round": night.server.rules.round_number,
+		"phase": night.server.rules.phase,
+	}
 
 
 ## The stuck episodes of a bot that lasted over five seconds, for the report.
@@ -550,13 +713,27 @@ func report() -> Dictionary:
 					"idle_roam_longest": snappedf(float(tally["idle_roam_longest"]) / 60.0, 0.1),
 					"far_longest": snappedf(float(tally["far_longest"]) / 60.0, 0.1),
 					"far_notes": tally["far_notes"],
+					"far_samples": tally["far_samples"],
 					"near12_share":
 					snappedf(float(tally["near12"]) / maxf(float(tally["near12_of"]), 1.0), 0.0001),
 					"stance_share":
 					snappedf(
 						float(tally["stance_held"]) / maxf(float(tally["stance"]), 1.0), 0.0001
 					),
+					"off_notes": tally["off_notes"],
+					"off_samples": tally["off_samples"],
+					"off_after": tally["off_after"],
+					"off_boss": tally["off_boss"],
 					"stance_seconds": snappedf(float(tally["stance"]) / 60.0, 0.1),
+					"stance_share_all":
+					snappedf(
+						float(tally["stance_all_held"]) / maxf(float(tally["stance_all"]), 1.0),
+						0.0001
+					),
+					"away_seconds": snappedf(float(tally["away"]) / 60.0, 0.1),
+					"trip_longest": snappedf(float(tally["trip_longest"]) / 60.0, 0.1),
+					"away_notes": tally["away_notes"],
+					"trips": tally["trips"],
 					"shots": tally["shots"],
 					"shot_hits": tally["shot_hits"],
 					"pellet_hits": tally["pellet_hits"],
@@ -587,6 +764,7 @@ func report() -> Dictionary:
 		"game_seconds": snappedf(float(ticks) / 60.0, 0.1),
 		"kills_total": _kills_total,
 		"doors": _doors.size(),
+		"relocated": night.server.director.relocated,
 		"denials": _denials,
 		"denial_loops": _loops,
 		"spread": snappedf(_spread_sum / maxf(float(_spread_n), 1.0), 0.1),

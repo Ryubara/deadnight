@@ -207,6 +207,11 @@ func _hosted_command(delta: float) -> NightCommand:
 	var spent := 0
 	var me := state.me()
 	perception.observe(now, think, me, state.zombies, state.round_number(), motor.yaw)
+	# The one thing about the dead that is told past the filter: the last few of a round, which every
+	# screen outlines through the walls (`BotHunt`).
+	perception.beliefs.last_dead = BotHunt.marked(
+		state.zombies, state.phase(), int(state.frame.get("remaining", 0)), level.mark_last
+	)
 	_track_crew(delta)
 	# The raw list of zombies stays behind the filter: the brain and everything after read beliefs.
 	state.zombies = []
