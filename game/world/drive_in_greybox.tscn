@@ -682,17 +682,17 @@ size = Vector3(20, 2.4, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceS_W1" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -24.000, 1.200, -4.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -27.103, 1.200, -4.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(28, 2.4, 0.4)
+size = Vector3(21.7948, 2.4, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceS_E0" type="CSGBox3D" parent="Field"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 24.000, 1.200, -4.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 27.103, 1.200, -4.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(28, 2.4, 0.4)
+size = Vector3(21.7949, 2.4, 0.4)
 material = ExtResource("field_fence")
 
 [node name="FenceS_E1" type="CSGBox3D" parent="Field"]
@@ -1011,10 +1011,10 @@ transform = Transform3D(-0.0872, 0, 0.9962, 0, 1, 0, -0.9962, 0, -0.0872, -38.00
 metadata/circuit = "screen_lot"
 
 [node name="Lamp1" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 0.000, -34.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 0.000, -35.269)
 
 [node name="Lamp2" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.600, 0.000, -34.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.600, 0.000, -35.334)
 
 [node name="Lamp3" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.600, 0.000, -22.000)
@@ -1033,6 +1033,66 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -22.500,
 
 [node name="Lamp8" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 22.500, 0.000, -28.000)
+
+[node name="Lamp9" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.056, 0.000, -15.008)
+
+[node name="Lamp10" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 55.151, -0.036, -44.590)
+
+[node name="Lamp11" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 56.373, -0.036, -15.066)
+
+[node name="Lamp12" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.060, -0.029, 14.622)
+
+[node name="Lamp13" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 16.652)
+
+[node name="Lamp14" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.100, -0.029, 24.079)
+
+[node name="Lamp15" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.030, -1.204)
+
+[node name="Lamp16" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -21.597, 0.563, -1.204)
+
+[node name="Lamp17" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 34.691)
+
+[node name="Lamp18" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 65.461, 0.563, -21.897)
+
+[node name="Lamp19" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 65.461, -0.036, -45.897)
+
+[node name="Lamp20" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 35.461, -0.029, -55.897)
+
+[node name="Lamp21" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -65.570, -0.034, -22.204)
+
+[node name="Lamp22" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -65.570, -0.040, -46.204)
+
+[node name="Lamp23" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -35.541, -0.038, -56.080)
+
+[node name="Lamp24" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.039, -37.204)
+
+[node name="Lamp25" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.029, -18.204)
+
+[node name="Lamp26" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -27.570, -0.031, -11.204)
+
+[node name="Lamp27" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -56.570, -0.040, -6.204)
+
+[node name="Lamp28" parent="Field/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 22.056, 0.000, -8.008)
 
 [node name="ScreenGlow" type="OmniLight3D" parent="Field/Lamps" groups=["powered_light"]]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 7.000, -44.000)
@@ -1265,9 +1325,15 @@ size = Vector3(6.4, 0.3, 5.4)
 material = ExtResource("concession_roof")
 
 [node name="Roof0_1" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.200, 4.150, 4.700)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.200, 4.150, 2.800)
 use_collision = true
-size = Vector3(6.4, 0.3, 7.4)
+size = Vector3(6.4, 0.3, 3.6)
+material = ExtResource("concession_roof")
+
+[node name="Roof0_2" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -7.200, 4.150, 6.500)
+use_collision = true
+size = Vector3(6.4, 0.3, 3.8)
 material = ExtResource("concession_roof")
 
 [node name="Roof1_0" type="CSGBox3D" parent="Concession"]
@@ -1277,9 +1343,15 @@ size = Vector3(14.4, 0.3, 5.4)
 material = ExtResource("concession_roof")
 
 [node name="Roof1_1" type="CSGBox3D" parent="Concession"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.200, 4.150, 4.700)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.200, 4.150, 2.800)
 use_collision = true
-size = Vector3(14.4, 0.3, 7.4)
+size = Vector3(14.4, 0.3, 3.6)
+material = ExtResource("concession_roof")
+
+[node name="Roof1_2" type="CSGBox3D" parent="Concession"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.200, 4.150, 6.500)
+use_collision = true
+size = Vector3(14.4, 0.3, 3.8)
 material = ExtResource("concession_roof")
 
 [node name="SodaFountain" type="CSGBox3D" parent="Concession"]
@@ -1349,27 +1421,39 @@ font_size = 80
 [node name="Midway" type="Node3D" parent="."]
 
 [node name="Ground0_0" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.000, -0.200, 15.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.000, -0.200, 13.500)
 use_collision = true
-size = Vector3(16, 0.4, 15)
+size = Vector3(8, 0.4, 11)
 material = ExtResource("midway_ground")
 
 [node name="Ground0_1" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.000, -0.200, 30.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.000, -0.200, 24.500)
 use_collision = true
-size = Vector3(16, 0.4, 15)
+size = Vector3(8, 0.4, 11)
+material = ExtResource("midway_ground")
+
+[node name="Ground0_2" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.000, -0.200, 34.000)
+use_collision = true
+size = Vector3(8, 0.4, 8)
 material = ExtResource("midway_ground")
 
 [node name="Ground1_0" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, -0.200, 15.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, -0.200, 13.500)
 use_collision = true
-size = Vector3(16, 0.4, 15)
+size = Vector3(24, 0.4, 11)
 material = ExtResource("midway_ground")
 
 [node name="Ground1_1" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, -0.200, 30.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, -0.200, 24.500)
 use_collision = true
-size = Vector3(16, 0.4, 15)
+size = Vector3(24, 0.4, 11)
+material = ExtResource("midway_ground")
+
+[node name="Ground1_2" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, -0.200, 34.000)
+use_collision = true
+size = Vector3(24, 0.4, 8)
 material = ExtResource("midway_ground")
 
 [node name="AlleyW0_0" type="CSGBox3D" parent="Midway"]
@@ -1616,27 +1700,21 @@ font_size = 100
 [node name="GeneratorYard" type="Node3D" parent="."]
 
 [node name="Ground0_0" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 27.500, -0.200, 6.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, 4.000)
 use_collision = true
-size = Vector3(23, 0.4, 21)
+size = Vector3(46, 0.4, 16)
 material = ExtResource("yard_ground")
 
 [node name="Ground0_1" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 27.500, -0.200, 27.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, 18.500)
 use_collision = true
-size = Vector3(23, 0.4, 21)
+size = Vector3(46, 0.4, 13)
 material = ExtResource("yard_ground")
 
-[node name="Ground1_0" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 50.500, -0.200, 6.500)
+[node name="Ground0_2" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, 31.500)
 use_collision = true
-size = Vector3(23, 0.4, 21)
-material = ExtResource("yard_ground")
-
-[node name="Ground1_1" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 50.500, -0.200, 27.500)
-use_collision = true
-size = Vector3(23, 0.4, 21)
+size = Vector3(46, 0.4, 13)
 material = ExtResource("yard_ground")
 
 [node name="FenceE0" type="CSGBox3D" parent="GeneratorYard"]
@@ -1777,27 +1855,21 @@ font_size = 110
 [node name="BackLot" type="Node3D" parent="."]
 
 [node name="Ground0_0" type="CSGBox3D" parent="BackLot"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.500, -0.200, 6.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -39.000, -0.200, 3.000)
 use_collision = true
-size = Vector3(23, 0.4, 21)
+size = Vector3(46, 0.4, 14)
 material = ExtResource("backlot_ground")
 
 [node name="Ground0_1" type="CSGBox3D" parent="BackLot"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -50.500, -0.200, 27.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -39.000, -0.200, 17.000)
 use_collision = true
-size = Vector3(23, 0.4, 21)
+size = Vector3(46, 0.4, 14)
 material = ExtResource("backlot_ground")
 
-[node name="Ground1_0" type="CSGBox3D" parent="BackLot"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -27.500, -0.200, 6.500)
+[node name="Ground0_2" type="CSGBox3D" parent="BackLot"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -39.000, -0.200, 31.000)
 use_collision = true
-size = Vector3(23, 0.4, 21)
-material = ExtResource("backlot_ground")
-
-[node name="Ground1_1" type="CSGBox3D" parent="BackLot"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -27.500, -0.200, 27.500)
-use_collision = true
-size = Vector3(23, 0.4, 21)
+size = Vector3(46, 0.4, 14)
 material = ExtResource("backlot_ground")
 
 [node name="FenceW0" type="CSGBox3D" parent="BackLot"]
@@ -2948,7 +3020,7 @@ transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -6.000, 
 transform = Transform3D(-0.5000, 0, 0.8660, 0, 1, 0, -0.8660, 0, -0.5000, 6.000, 0.000, 0.500)
 
 [node name="PapersC1" parent="Concession/Dressing" instance=ExtResource("prop_papers_c")]
-transform = Transform3D(-0.3420, 0, -0.9397, 0, 1, 0, 0.9397, 0, -0.3420, 0.000, 0.000, 6.000)
+transform = Transform3D(-0.3420, 0, -0.9397, 0, 1, 0, 0.9397, 0, -0.3420, 0.000, 0.003, 6.000)
 
 [node name="Dressing" type="Node3D" parent="Midway"]
 
