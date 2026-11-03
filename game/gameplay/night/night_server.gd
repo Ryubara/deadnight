@@ -547,9 +547,9 @@ func _grenade(action: Dictionary) -> void:
 				)
 
 
-## A blast reached a player (a grenade: the thrower and the team, every one by the same rule,
-## `PlayerBlast`): their health takes `damage`, and the rules' `player_hurt` (and `player_downed`)
-## says what it was (`harm`) and whose (`by_id`), for the HUD and the kill feed.
+## A blast reached a player (a grenade: its thrower alone, `PlayerBlast`; the ray gun's splash,
+## #788, its shooter): their health takes `damage`, and the rules' `player_hurt` (and
+## `player_downed`) says what it was (`harm`) and whose (`by_id`), for the HUD and the kill feed.
 func _blast_player(
 	player_id: int, damage: float, from: Vector3, harm: StringName, by_id: int
 ) -> void:

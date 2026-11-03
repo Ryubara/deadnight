@@ -69,6 +69,10 @@ MIDWAY_LINK_Z = 20.0
 # The lot's outer walls are higher than the tallest platform beside them (a car roof, 1.65 m) plus a full jump (the
 # player's 1.1 m, PlayerTuning.jump_height) plus a margin, so nobody leaves the map from a roof (docs/design/map.md).
 PERIMETER_H = 3.0
+# The midway's fences and alley ends are as high: a prop beside them (the alley's dumpster, 1.62 m) plus the 1.25 m the
+# real body climbs (`tools/world/ledge_probe.gd`: the jump is 1.1 m, the step-up and the capsule's foot add the rest) is
+# 2.87 m, so the old 2.6 m was a stair into the back lot and onto the wall (#846). The doors' slabs stay 2.6 m.
+MIDWAY_FENCE_H = PERIMETER_H
 # The plaza's end and side walls stand higher still (#845). The lot's junk is stacked against them (a small container,
 # 1.71 m, in the south-west corner), and the real body climbs 1.25 m, not the jump's 1.1 (docs/research/map-review.md):
 # from the container's top a 3.0 m wall was 1.29 m up, a sprint-jump over its corner. 4.2 m is the tallest prop plus
@@ -941,10 +945,10 @@ def build() -> None:
     cut_tiles(mid, "Ground", MIDWAY_CUT_X, MIDWAY_CUT_Z, "midway_ground")
     floor_tiles(mid, "AlleyW", -16, -10, -4, 8, "midway_ground")
     floor_tiles(mid, "AlleyE", 10, 16, -4, 8, "midway_ground")
-    wall(mid, "FenceW", "z", -16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
-    wall(mid, "FenceE", "z", 16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
-    wall(mid, "AlleyEndW", "x", -4, -16, -10, 2.6, "midway_wall")
-    wall(mid, "AlleyEndE", "x", -4, 10, 16, 2.6, "midway_wall")
+    wall(mid, "FenceW", "z", -16, -4, 38, MIDWAY_FENCE_H, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
+    wall(mid, "FenceE", "z", 16, -4, 38, MIDWAY_FENCE_H, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
+    wall(mid, "AlleyEndW", "x", -4, -16, -10, MIDWAY_FENCE_H, "midway_wall")
+    wall(mid, "AlleyEndE", "x", -4, 10, 16, MIDWAY_FENCE_H, "midway_wall")
     # Dumpsters, crate stacks: the kit's props (lot_props.DRESSING).
     ml = lamps(mid, "concession")
     omni(ml, "Court", (-10, 3.6, 14), 1.2, 9, "#ffd9a0")
