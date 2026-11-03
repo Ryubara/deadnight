@@ -43,6 +43,11 @@ var throw_yaw := 0.0
 var throw_pitch := 0.0
 ## The brain takes back a throw it ordered whose view is still turning (a teammate walked in).
 var throw_abort := false
+## A flare to fire: the view to fire along (a ground point, not a zombie). The motor turns, fires
+## once when the view is there, and the brain has put the flare gun in hand (`BotFlare`). NAN for
+## none.
+var flare_yaw := NAN
+var flare_pitch := 0.0
 ## The bot is boxed in (`BotTrapped`): the legs jump from a curated place when they stand at one.
 var trapped := false
 ## A line to call out, sent once by the client (`BotSay`): the action, or empty for none.
@@ -63,6 +68,11 @@ func is_sane() -> bool:
 	)
 
 
+## Whether a flare is ordered (the view is the flare's, and no gun is fired at a zombie).
+func ordering_flare() -> bool:
+	return not is_nan(flare_yaw)
+
+
 func to_dict() -> Dictionary:
 	return {
 		"target": target_id,
@@ -77,5 +87,6 @@ func to_dict() -> Dictionary:
 		"use": use,
 		"use_held": use_held,
 		"throw": throw_style,
+		"flare": flare_yaw,
 		"note": note,
 	}
