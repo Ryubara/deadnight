@@ -38,6 +38,9 @@ var stand_still := false
 var hash_every := 0
 var hashes: Array[int] = []
 
+## What the server answered to the actions the bots sent (a `bot_say`, a ping's mark): heard with
+## the next step's events, as a server's broadcast would be.
+var _answers: Array[Dictionary] = []
 ## The dead already staged (`stage_the_dead`).
 var _staged := {}
 ## The events the server answered to messages since the last step.
@@ -137,11 +140,9 @@ func settle(frames: int) -> void:
 
 ## One tick of the night: the server steps, the stand-ins and the bots hear it, decide and send.
 func tick() -> void:
-	# What the server answered to the messages since the last step (an order taken, one refused)
-	# comes first, then the step's own events with the frame last.
 	last_events.assign(_answers)
-	last_events.append_array(server.step(STEP))
 	_answers.clear()
+	last_events.append_array(server.step(STEP))
 	frame = last_events.back()
 	_stage()
 	if hash_every > 0 and server.tick_count % hash_every == 0:
@@ -307,6 +308,13 @@ func _send(action: Dictionary, id: int) -> void:
 	var plain: Dictionary = bytes_to_var(var_to_bytes(action))
 	if hold_fire:
 		plain["fire"] = false
-	if recording:
+	if recording and plain.get("type") != NightServer.SAY:
 		recorded.append({"tick": server.tick_count, "player_id": id, "action": plain})
-	_answers.append_array(server.apply(plain, id))
+	for event in server.apply(plain, id):
+		if (
+			event["type"] == &"bot_say"
+			or event["type"] == &"ping_placed"
+			or event["type"] == BotOrders.EVENT_SET
+			or event["type"] == BotOrders.EVENT_REFUSED
+		):
+			_answers.append(event)

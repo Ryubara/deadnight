@@ -20,8 +20,7 @@ extends RefCounted
 ## client or a HUD draws from.
 ##
 ## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
-## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), bot_orders ({team:
-## {order, issuer_id, at}, bots: {bot id: {...}}}, `BotOrders`), zombies
+## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
 ## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
 ## held), pitch (the look up or down, `pitch_step`), stance (`PlayerStance` bits), ammo, reserve,
 ## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
@@ -40,14 +39,14 @@ const LEAVE := &"leave"
 const START_NIGHT := &"start_night"
 ## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
 const PING := &"ping"
-## A person gives the bots an order: `order` {order, at, bot_id}, see `BotOrders`.
-const ORDER := BotOrders.ACTION
+const ORDER := BotOrders.ACTION  # `order` {order, at, bot_id}: a person orders the bots
+## A bot calls out a line of `BotSay`: `say` {line, subject, pos}, see `SayBoard`.
+const SAY := &"say"
 ## A player came back on a new connection: `resync` {player_id} tells it the looks again.
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
 const LOOK := &"look"
-## What the look server answers, as an event for one client: `look_packet` {to, packet}, the bytes
-## of a `LookWire.player_look`.
+## The look server's answer to one client: `look_packet` {to, packet (`LookWire.player_look`)}.
 const LOOK_PACKET := &"look_packet"
 ## The weapons events worth sending on (the rules events ride the rules signal; the weapons
 ## answer repeats them).
@@ -109,8 +108,8 @@ var tuning: NightTuning:
 var tick_count := 0
 ## The marks the players have put up.
 var ping_board := PingBoard.new()
-## The standing orders of the team's bots (`BotOrders`), in every frame.
 var bot_orders := BotOrders.new()
+var say_board := SayBoard.new()
 ## Whether the players' bodies have the Soldier's model. A game server draws nothing, so it leaves
 ## them out (`NightHost`); in one process with its client the same bodies are drawn.
 var drawn_bodies := true
@@ -128,13 +127,12 @@ var _acked: Dictionary[int, int] = {}
 var _bodies: Dictionary[int, Player] = {}
 var _shot_seq: Dictionary[int, int] = {}
 var _hand_wait: Dictionary[int, float] = {}
-## The breach each player's held `use` is repairing (`&""`: none). A hold begins with a press at a
-## breach and ends when the button comes up, the breach is whole or out of reach, or the player
-## fires, reloads, swaps, is hit or goes down.
+## The breach each player's held `use` is repairing (`&""`: none): from a press at a breach until
+## the button comes up, the breach is whole or out of reach, or the player acts, is hit or falls.
 var _repairing: Dictionary[int, StringName] = {}
 ## The breach each player last put a board back across, and how long (s) the body still turns to
 ## face it (#245): a repair is allowed by place, not by facing, so the body turns to the boards
-## while the repair clip hammers them. Walking or aiming turns it the player's way as before.
+## while the clip hammers them (walking or aiming turns it the player's way).
 var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
 ## The teammates raising downed players (held `use` beside a downed one).
@@ -214,6 +212,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			ping(from_id if from_id > 0 else action.get("player_id", 1), action)
 		ORDER:
 			_order_judge.give(from_id if from_id > 0 else action.get("player_id", 1), action)
+		SAY:
+			say(from_id if from_id > 0 else action.get("player_id", 1), action)
 		RESYNC:
 			if _bodies.has(action["player_id"]):
 				looks.sync(action["player_id"])
@@ -306,6 +306,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	began = PerfProbe.begin()
 	_outbox.append_array(ping_board.step(delta))
 	bot_orders.step(delta)
+	say_board.step(delta)
 	_throw_grenades(delta)
 	if with_frame:
 		_outbox.append(_frame())
@@ -347,8 +348,8 @@ func _leave(player_id: int) -> void:
 		_repairing.erase(player_id)
 		_revive.forget(player_id)
 		ping_board.forget(player_id)
-		bot_orders.forget_issuer(player_id)
-		bot_orders.forget_bot(player_id)
+		bot_orders.forget(player_id)
+		say_board.forget(player_id)
 		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
 		_face_left.erase(player_id)
@@ -853,6 +854,14 @@ func revive() -> ReviveChannel:
 ## up, else why not (`PingJudge`).
 func ping(player_id: int, action: Dictionary) -> StringName:
 	return _ping_judge.place(player_id, action)
+
+
+## A bot calls out a line (`say`): everyone hears a `bot_say` when `SayBoard` lets it through.
+func say(player_id: int, action: Dictionary) -> bool:
+	var event := say_board.from_action(player_id, action) if _bodies.has(player_id) else {}
+	if not event.is_empty():
+		_outbox.append(event)
+	return not event.is_empty()
 
 
 ## One board back if this hand is free: the first at the press, then one every `repair_interval`.

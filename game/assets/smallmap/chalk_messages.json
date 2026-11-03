@@ -1,0 +1,47 @@
+{
+ "size": 1024,
+ "messages": [
+  {
+   "text": "KEEP THE LIGHTS ON",
+   "x": 0,
+   "y": 0,
+   "w": 825,
+   "h": 128
+  },
+  {
+   "text": "STAY IN THE LIGHT",
+   "x": 0,
+   "y": 128,
+   "w": 775,
+   "h": 128
+  },
+  {
+   "text": "THEY COME AT DARK",
+   "x": 0,
+   "y": 256,
+   "w": 859,
+   "h": 128
+  },
+  {
+   "text": "NOT THIS WAY",
+   "x": 0,
+   "y": 384,
+   "w": 563,
+   "h": 128
+  },
+  {
+   "text": "HOLD THE WINDOWS",
+   "x": 0,
+   "y": 512,
+   "w": 741,
+   "h": 128
+  },
+  {
+   "text": "UP THERE >",
+   "x": 0,
+   "y": 640,
+   "w": 495,
+   "h": 128
+  }
+ ]
+}

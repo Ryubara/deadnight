@@ -30,12 +30,24 @@ func _fixture(piece: String) -> Node3D:
 	return node
 
 
+## The walls kit's pieces: the ones its build reports (`smallmap_walls.json`). The fixtures folder
+## also holds the other groups' pieces (the lamps, the props), which their own suites check.
 func _pieces() -> PackedStringArray:
+	var report: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(REPORT))
 	var out := PackedStringArray()
-	for file in DirAccess.get_files_at(FIXTURES):
-		if file.ends_with(".tscn"):
-			out.append(file.get_basename())
+	for piece: String in report:
+		out.append(piece)
+	out.sort()
 	return out
+
+
+func test_every_walls_piece_in_the_report_has_its_fixture() -> void:
+	for piece in _pieces():
+		(
+			assert_bool(FileAccess.file_exists(FIXTURES.path_join(piece + ".tscn")))
+			. override_failure_message(piece)
+			. is_true()
+		)
 
 
 func _box(shape: Node3D, size: Vector3) -> AABB:

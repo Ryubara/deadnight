@@ -109,15 +109,11 @@ func refused(player_id: int, order: StringName, reason: StringName) -> Dictionar
 	return _refused(player_id, order, reason)
 
 
-## A bot's seat was left: its own order goes with it.
-func forget_bot(bot_id: int) -> void:
-	_bots.erase(bot_id)
-
-
-## A person's seat was left: what they were waiting for goes (the bots notice that their follow is
-## gone from the frame and roam; a hold stays).
-func forget_issuer(issuer_id: int) -> void:
-	_wait.erase(issuer_id)
+## A seat was left: a bot's own order goes with it, and what a person was waiting for (the bots
+## notice that their follow is gone from the frame and roam; a hold stays).
+func forget(seat: int) -> void:
+	_bots.erase(seat)
+	_wait.erase(seat)
 
 
 ## The orders for the frame: `{team: {order, issuer_id, at}, bots: {bot id: {...}}}`, either empty.

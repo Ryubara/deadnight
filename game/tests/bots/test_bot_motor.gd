@@ -44,7 +44,10 @@ func _contacts(profile: BotProfile, bot_seed: int, count: int, hashing := false)
 	var result := {"latencies": [], "turned": 0.0, "missed": 0, "errors": [], "rig": rig}
 	rig.run(5)
 	for id in range(1, count + 1):
-		var around: float = rig.bot.motor.yaw + deg_to_rad(picker.randf_range(-45.0, 45.0))
+		# Up to 45 degrees off the view, and inside the profile's own view cone (the Rookie's is
+		# narrower).
+		var off := minf(45.0, profile.view_degrees * 0.5 - 5.0)
+		var around: float = rig.bot.motor.yaw + deg_to_rad(picker.randf_range(-off, off))
 		var distance := picker.randf_range(8.0, 16.0)
 		rig.put_zombie(id, Vector3(-sin(around), 0.0, -cos(around)) * distance)
 		var began := rig.tick_count
@@ -116,7 +119,7 @@ func test_the_shot_always_goes_where_the_view_points() -> void:
 
 func test_the_trigger_waits_for_the_view_to_come_onto_the_target() -> void:
 	var rig := BotRig.new(BotProfile.rookie(), 9)
-	rig.put_zombie(1, Vector3(-8, 0, -8))  # 45 degrees off the view: it has to turn first.
+	rig.put_zombie(1, Vector3(-4.6, 0, -8))  # 30 degrees off the view: it has to turn first.
 	var fired_off := 0
 	# A rookie fires when it is roughly on (`fire_slop` times the cone, and a panic shot at the most
 	# `PANIC_DEGREES`), not before.

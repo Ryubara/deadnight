@@ -103,5 +103,5 @@ func test_a_bots_seat_left_takes_its_own_order_with_it() -> void:
 	orders.issue(BotOrders.FOLLOW, 1, AT)
 	orders.step(1.0)
 	orders.issue(BotOrders.HOLD, 1, AT, 4)
-	orders.forget_bot(4)
+	orders.forget(4)
 	assert_str(str(orders.order_for(4)["order"])).is_equal("follow")

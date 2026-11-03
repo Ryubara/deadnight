@@ -162,6 +162,12 @@ func step(
 	else:
 		_rung_seen = 0
 		_note_crumb(here, base, progress)
+	if intent.trapped:
+		# Boxed in at a curated place to jump from: it jumps, the way the place says.
+		var out := _link_near(here)
+		if out != null:
+			direction = out.heading()
+			jump = true
 	if direction != Vector3.ZERO:
 		wish = direction
 		sprint = run_wanted

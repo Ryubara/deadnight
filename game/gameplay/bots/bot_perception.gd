@@ -144,6 +144,7 @@ func _sighted(zombie: Dictionary) -> void:
 	var id: int = zombie["id"]
 	var contact: Dictionary = beliefs.contacts.get(id, {})
 	if contact.is_empty():
+		beliefs.contact_seq += 1
 		beliefs.contacts[id] = {
 			"id": id,
 			"position": zombie["position"],
