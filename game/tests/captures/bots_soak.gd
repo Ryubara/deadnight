@@ -17,8 +17,9 @@ extends Node
 ## minutes after which a night is stopped, default 45), `--stall-minutes=M` (a round longer than
 ## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
-## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke) and
-## `--quiet` (no trace line a minute).
+## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke),
+## `--tune=NAME:NUMBER,...` (profile fields moved for a sweep) and `--quiet` (no trace line a
+## minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -137,7 +138,14 @@ func _play(seed_value: int) -> Dictionary:
 			and ticks % int(_args.get("every", 60)) == 0
 			and ticks >= int(_args.get("from", 0))
 		):
-			_print_seat(night, int(_args["watch"]), ticks)
+			for seat_id in String(_args["watch"]).split(",", false):
+				_print_seat(night, int(seat_id), ticks)
+		if (
+			_args.has("tail")
+			and ticks % int(_args.get("every", 60)) == 0
+			and ticks - round_began >= int(float(_args["tail"]) * 60.0)
+		):
+			_print_tail(night, ticks)
 		# The navigation server takes a bought door's mesh in only on a physics frame.
 		if ticks % FRAME_EVERY == 0:
 			await get_tree().physics_frame
@@ -172,7 +180,7 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 		var me := bot.state.me()
 		var body := night.server.body_of(id)
 		var line := (
-			"WATCH t=%d seat %d note=%s at=(%.1f,%.1f) v=%.1f weapon=%s ammo=%s/%s target=%d"
+			"WATCH t=%d seat %d note=%s at=(%.1f,%.1f) v=%.1f weapon=%s ammo=%s/%s target=%d goal=%s"
 			% [
 				ticks,
 				id,
@@ -183,7 +191,8 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 				me.get("weapon", ""),
 				me.get("ammo", -1),
 				me.get("reserve", -1),
-				bot.intent.target_id
+				bot.intent.target_id,
+				bot.intent.goal.snappedf(0.1)
 			]
 		)
 		var arms: Dictionary = night.frame["players"][id].get("arms", {})
@@ -197,13 +206,65 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 		print(line)
 
 
+## The dead left in a round that has gone on `--tail=SECONDS` and the people: where each one stands
+## and what it is doing, and where the people and the bots stand and what they are doing and hold.
+func _print_tail(night: SeatedNight, ticks: int) -> void:
+	var line := (
+		"TAIL t=%d round=%d left=%d"
+		% [ticks, night.server.rules.round_number, night.server.rules.zombies_remaining()]
+	)
+	for zombie: ZombieBody in night.server.sim.zombies.values():
+		line += (
+			" Z%d(%s %.1f,%.1f y%.1f m%d tgt%d path%d)"
+			% [
+				zombie.id,
+				zombie.profile.type,
+				zombie.position.x,
+				zombie.position.z,
+				zombie.position.y,
+				zombie.mode,
+				zombie.target_id,
+				zombie.path.size()
+			]
+		)
+	for id: int in night.frame["players"]:
+		var body := night.server.body_of(id)
+		var note := ""
+		for bot in night.host.bots:
+			if bot.state.player_id == id:
+				note = String(bot.intent.note)
+		var me: Dictionary = night.frame["players"][id]
+		line += (
+			" P%d(%.1f,%.1f %s %s%s)"
+			% [
+				id,
+				body.global_position.x,
+				body.global_position.z,
+				note,
+				str(me.get("arms", {})),
+				" down" if me.get("downed", false) else ""
+			]
+		)
+	print(line)
+
+
 func _profile() -> BotProfile:
+	var profile := BotProfile.regular()
 	match String(_args.get("profile", "regular")):
 		"rookie":
-			return BotProfile.rookie()
+			profile = BotProfile.rookie()
 		"veteran":
-			return BotProfile.veteran()
-	return BotProfile.regular()
+			profile = BotProfile.veteran()
+	# `--tune=track_error:6,head_rate:0.5`: numbers of the profile moved for a sweep, so a tuning is
+	# tried without editing the profile between runs.
+	for pair in String(_args.get("tune", "")).split(",", false):
+		var parts := pair.split(":")
+		assert(
+			parts.size() == 2 and parts[0] in profile,
+			"--tune wants name:number pairs of a profile field"
+		)
+		profile.set(parts[0], float(parts[1]))
+	return profile
 
 
 func _parse_args() -> Dictionary:

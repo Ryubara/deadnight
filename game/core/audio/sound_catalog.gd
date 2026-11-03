@@ -24,6 +24,7 @@ const BANKS: Array[String] = [
 	"res://core/audio/banks/beds.tres",
 	"res://core/audio/banks/smallmap.tres",
 	"res://core/audio/banks/energy.tres",
+	"res://core/audio/banks/wind.tres",
 ]
 
 ## What `UIAudio` cues play (the gds_ui addon names the cues and ships no sounds).

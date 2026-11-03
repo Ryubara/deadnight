@@ -315,6 +315,7 @@ const SOUND_MIX := {
 		&"debris": 2,
 		&"yard": 2,
 		&"recut": 4,
+		&"wind": 3,
 	},
 	"voice_db": -4.0,
 	"own_voice_db": -2.0,

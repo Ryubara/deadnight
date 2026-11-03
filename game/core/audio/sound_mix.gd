@@ -39,6 +39,7 @@ const SHIPPED_PATH := "res://core/audio/sound_mix_default.tres"
 	&"debris": 2,
 	&"yard": 2,
 	&"recut": 4,
+	&"wind": 3,
 }
 
 @export_group("Soldier voice")

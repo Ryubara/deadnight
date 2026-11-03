@@ -53,6 +53,37 @@ func test_a_goal_is_walked_to_along_the_path() -> void:
 	assert_bool(legs.stuck.stuck).is_false()
 
 
+func test_a_walk_that_ends_short_of_its_goal_says_so_instead_of_standing_unseen() -> void:
+	# A goal off the mesh by two metres is snapped onto it, the path ends there, and the bot is
+	# "arrived" at the end of its path with the goal still beyond its radius: it must say so, or a
+	# brain that waits for the goal to be near holds it there for good (the soak, a Roam bot that
+	# stood 92 s two metres from its place).
+	var level := await _hall()
+	var legs := BotLegs.new(level, RandomNumberGenerator.new())
+	legs.seat = ME
+	var intent := BotIntent.new()
+	intent.goal = _arena.centre(7, 3) + Vector3(3.0, 0.0, 0.0)
+	intent.goal_radius = 1.0
+	var here := _arena.centre(0, 3)
+	var crew: Array[Dictionary] = []
+	var now := 0.0
+	for _i in 900:
+		now += STEP
+		legs.step(STEP, now, _me(here), intent, crew, INF)
+		if legs.wish == Vector3.ZERO and now > 1.0:
+			break
+		here += legs.wish * 4.8 * STEP
+	assert_float(Vector2(here.x - intent.goal.x, here.z - intent.goal.z).length()).is_greater(1.0)
+	assert_bool(legs.stopped_short_of.is_equal_approx(intent.goal)).is_true()
+	# A new goal it can reach clears it.
+	intent.goal = _arena.centre(4, 3)
+	for _i in 120:
+		now += STEP
+		legs.step(STEP, now, _me(here), intent, crew, INF)
+		here += legs.wish * 4.8 * STEP
+	assert_bool(legs.stopped_short_of.is_finite()).is_false()
+
+
 func test_a_reflex_heading_is_walked_as_it_is() -> void:
 	var level := await _hall()
 	var legs := BotLegs.new(level, RandomNumberGenerator.new())

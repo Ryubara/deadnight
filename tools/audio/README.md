@@ -25,6 +25,10 @@ pair, the peak of the mix and the samples over -1 dBFS, then the gun alone (RMS,
 own peak; `gun_levels.py` measures the guns against the beds. `docs/research/gun-audio.md#headroom-under-other-sounds`
 has the numbers.
 
+The crickets (#781): `cricket_levels.py` measures them (`check`: the chirp rate range and whole chirps in the loop;
+`measure`: chirps a second, loudness and the level in their own band against the highway; `capture`: the same on the
+mix of `game/tests/captures/audio_quiet_night.tscn`, the beds alone). `docs/research/audio.md#the-crickets-cut-again-781`.
+
 Close sounds (#753): `close_levels.py` reads a run of the same capture with `--own=none --cells=zombie,world
 --all-variants --close` (every variant of the dead's voices and the lot's sounds, one at a time, 1.2 m from the
 listener, where the player's `max_db` holds the level) and prints each sound's ceiling, its highest sample and its
@@ -45,3 +49,10 @@ tail, bright band) and the close peaks; `--table game/tests/night/energy_levels.
 
 The flare gun's report (#761) is limited the same way (`limit_crest`); `gun_levels.py --table` also writes
 a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.
+
+The drive-in's wind (#782): `wind_recipes.py` renders the base loop, the eight gust files (`generate.py` hands a recipe
+that takes a `variant` argument its file number, so one table of shapes makes the eight) and the details;
+`wind_levels.py` reads them against the other beds (`files`) and a night's gusts in the Ambience bus of
+`game/tests/captures/audio_wind_night.tscn` (`night`, with the wind alone, the beds, and the beds without the wind).
+`audio_headroom.tscn --wind` runs the wind at its strongest under the headroom cells. `docs/research/wind.md` has the
+sources and the numbers.

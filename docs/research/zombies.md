@@ -358,6 +358,31 @@ bot's errand to a bought door is judged on the map the purchase left.
 Proof: `game/tests/night/test_spawns_wait_for_the_map.gd` (no spawns in the new room straight after the purchase or in
 600 ticks without frames; they join with frames; every door of the shop in order gives its area's markers to the dead).
 
+### Dead stranded in a pocket of the mesh (#770)
+
+The nightly soak's Follow nights ended three times by its "a round of eight minutes" stop with one dead walker alive:
+`mode CHASE`, no gate, `y -0.5`, standing for minutes 15 m from the person it chased, at (4.0, -52.8), (-66.2, 14.8)
+and (27.5, -60.5). The same query as in the section above says why: `map_get_path` from there is **two points**, the
+second at the pocket's edge (4.0, -53), and a grid of the lot's mesh finds stretches (the strip behind the screen, z
+below -53, and the strips beside the fence) that the walking mesh does not join to the field. The spawn points are
+joined to it, so how a dead one gets in is not proved (the sim moves the dead without colliding with walls: a crowd's
+push or a cut corner near a spawn point can take one across a wall's line); once in, it walks to the end of a path
+that goes nowhere and stays, and nothing a bot does reaches it: the pocket is a pocket for a bot too. A night is not
+repeatable by seed (the bake finishes on a physics frame), so it was read from the trace of the nights that broke
+(`bots_soak.tscn --tail=180`: one line every few seconds of a long round with every zombie's place, mode, target and
+path).
+
+The fix is on the zombie side. `ZombieSim` counts, for a chasing zombie with no gate and no lure, the seconds in which
+the path it was given ends `STRAND_GAP` (3 m) or more short of its target and the target is `STRAND_FAR` (12 m) or
+more away; at `STRAND_SECONDS` (12 s) it says `zombie_stranded` and `ZombieDirector` puts it back on a spawn point
+(`ZombieSim.relocate`: it rises as a new one does, with no path). A zombie near its target (a car roof, a prop), at
+its boards or with a way to the target is never counted. `director.relocated` counts them (the soak's nights report
+it).
+
+Proof: `game/tests/zombies/test_zombie_strand.gd` (the counting, on a pathing that stops short) and
+`game/tests/night/test_zombie_stranded.gd` (in the real lot: a zombie put in the pocket at (4.0, -0.5, -52.8) reaches the
+person; without the fix it stands there).
+
 ## Left open
 
 - Browser and weak-machine measurement of the full scene: done in the browser (Chrome with a GPU, and the processor
