@@ -72,6 +72,8 @@ var _result: Dictionary = {
 	"runs": 0,
 }
 var _earned_mark: int = 0
+var _kills_mark: int = 0
+var _heads_mark: int = 0
 var _spent_mark: int = 0
 var _over: bool = false
 
@@ -505,7 +507,9 @@ func _spawned(event: Dictionary) -> void:
 	zombie.damage = event["damage"]
 	zombie.knockback = event["knockback"]
 	zombie.telegraph = event["telegraph_seconds"]
-	zombie.hit_chance = event["hit_chance"]
+	# A crawling look is shot at through zones fitted to its body on the ground, so it is no harder to
+	# hit than a walker (`ZombieProfile.hit_scale`, #694): the type's chance sized an upright set.
+	zombie.hit_chance = 1.0 if ZombieModels.crawls(event["look"]) else event["hit_chance"]
 	zombie.barrier_speed = event["barrier_speed"]
 	zombie.barrier = BARRIER_SECONDS if zombie.barrier_speed > 0.0 else 0.0
 	zombie.distance = _rng.randf_range(SPAWN_DISTANCE_MIN, SPAWN_DISTANCE_MAX)
@@ -529,6 +533,8 @@ func _removed(event: Dictionary) -> void:
 func _open_round(event: Dictionary) -> void:
 	_round_start_clock = _clock
 	_earned_mark = _total("points_earned")
+	_kills_mark = _total("kills")
+	_heads_mark = _total("headshot_kills")
 	_spent_mark = _total("points_spent")
 	for player: SimPlayer in _players.values():
 		player.damage_taken = 0.0
@@ -554,6 +560,9 @@ func _close_round(cleared: bool) -> void:
 	_round["pressure"] = pressure / float(_players.size())
 	_round["duration"] = _clock - _round_start_clock
 	_round["earned"] = float(_total("points_earned") - _earned_mark) / float(_players.size())
+	# Zombies killed in the round (all players together), and the share of them shot in the head.
+	_round["kills"] = _total("kills") - _kills_mark
+	_round["head_kills"] = _total("headshot_kills") - _heads_mark
 	_round["cleared"] = cleared
 	_round = {}
 
