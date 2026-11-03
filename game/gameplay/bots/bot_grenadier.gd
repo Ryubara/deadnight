@@ -26,7 +26,7 @@ const CLUSTER_RADIUS := 3.0
 const MIN_PACK := 3
 const MIN_PACK_LOW := 2
 ## The farthest and nearest a throw is aimed (metres from the bot).
-const RANGE_MAX := 14.0
+const RANGE_MAX := 12.0
 const RANGE_MIN := 3.0
 ## Seconds between two throws.
 const COOLDOWN := 6.0
@@ -40,14 +40,14 @@ const COOK_SECONDS := 0.04
 ## Pitches tried for the table of flights, in radians: from this to that in steps, flown at this
 ## step.
 const PITCH_LOW := -0.6
-const PITCH_HIGH := 1.2
+const PITCH_HIGH := 1.45
 const PITCH_STEP := 0.03
 const FLIGHT_STEP := 1.0 / 60.0
 ## Metres by which the shortest throw in the table may overshoot a goal that is nearer still.
 const REACH_SLACK := 1.0
-## The farthest an underarm toss is used for (metres); beyond it, overarm. An underarm lob lies
-## 8 m out at most.
-const UNDERARM_UP_TO := 7.5
+## The farthest an underarm toss is used for (metres); beyond it, overarm. The heavy underarm toss
+## lies 4.5 m out at most (a blast that close is never planned: `SAFE_FROM_SELF`).
+const UNDERARM_UP_TO := 4.0
 ## Samples of the arc checked for walls.
 const ARC_SAMPLES := 6
 
@@ -175,9 +175,9 @@ func _where_then(contact: Dictionary) -> Vector3:
 
 
 ## The view pitch at which a throw of `style` ends `distance` metres from the bot when the fuse runs
-## out, or NAN when no pitch reaches it. A grenade bounces and rolls on from where it first
-## touches the ground (a flat throw lies 17 to 26 m out whatever its pitch), so a short throw is a
-## lob: the answer is the highest pitch that reaches the distance (the far side of the longest
+## out, or NAN when no pitch reaches it. A grenade bounces and rolls on from where it first touches
+## the ground (a flat throw lies 9 to 13 m out, the heavy grenade hardly rolls), so a short throw is
+## a lob: the answer is the highest pitch that reaches the distance (the far side of the longest
 ## throw). The server lifts the throw by the style's own angle above the view. Read from a table of
 ## flights, `landings`, made once with the real arc.
 func solve_pitch(distance: float, style: StringName) -> float:

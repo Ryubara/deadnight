@@ -15,7 +15,7 @@ const AREA_POINTS := {
 	"ProjectionBooth": [Vector3(0, 0, 25), Vector3(0, 0, 28), Vector3(-3, 0, 30)],
 	"GeneratorYard": [Vector3(30, 0, 18), Vector3(56, 0, 0), Vector3(22, 0, 34)],
 	"BackLot": [Vector3(-30, 0, 26), Vector3(-56, 0, 0), Vector3(-22, 0, 34)],
-	"Road": [Vector3(0, 0, 44), Vector3(-10, 0, 58), Vector3(10, 0, 58)],
+	"Road": [Vector3(0, 0, 41), Vector3(-10, 0, 50), Vector3(10, 0, 55), Vector3(0, 0, 56)],
 }
 ## The shop item whose door opens each area; the concession also opens the midway behind it.
 const AREA_DOOR := {
@@ -34,7 +34,7 @@ const GROUND_PREFIXES := {
 	"ProjectionBooth": ["Floor"],
 	"GeneratorYard": ["Ground"],
 	"BackLot": ["Ground"],
-	"Road": ["Plaza", "Asphalt"],
+	"Road": ["Plaza"],
 }
 const SETTLE_FRAMES := 3
 const POINTS_PER_PLAYER := 10000

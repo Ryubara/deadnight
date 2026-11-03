@@ -35,7 +35,7 @@ func test_no_sound_is_in_the_catalog_but_not_the_table() -> void:
 	var table := DefaultValues.sounds()
 	var extra := PackedStringArray()
 	for id: StringName in SoundCatalog.ids():
-		if not table.has(String(id)) and not String(id).begins_with(SoldierVoiceCatalog.PREFIX):
+		if not table.has(String(id)) and not SoldierVoiceCatalog.is_take(id):
 			extra.append(String(id))
 	assert_array(Array(extra)).is_empty()
 
@@ -43,14 +43,16 @@ func test_no_sound_is_in_the_catalog_but_not_the_table() -> void:
 func test_the_soldiers_takes_play_at_the_mixs_voice_numbers() -> void:
 	var mix := SoundCatalog.mix()
 	var took := 0
-	for event in SoldierVoiceCatalog.events():
-		for n in range(1, SoldierVoiceCatalog.takes_of(event) + 1):
-			var def := SoundCatalog.get_def(SoldierVoiceCatalog.take_id(event, n))
-			assert_float(def.volume_db).is_equal(mix.voice_db)
-			assert_float(def.max_distance).is_equal(mix.voice_max_distance)
-			assert_float(def.unit_size).is_equal(mix.voice_unit_size)
-			took += 1
-	assert_int(took).is_greater(80)
+	for voice in SoldierVoiceCatalog.voices():
+		for event in SoldierVoiceCatalog.events():
+			for n in range(1, SoldierVoiceCatalog.takes_of(event) + 1):
+				var def := SoundCatalog.get_def(SoldierVoiceCatalog.take_id(event, n, voice))
+				assert_float(def.volume_db).is_equal(mix.voice_db)
+				assert_float(def.max_distance).is_equal(mix.voice_max_distance)
+				assert_float(def.unit_size).is_equal(mix.voice_unit_size)
+				took += 1
+	# Both voices: the male soldier's 115 takes and the female soldier's 115.
+	assert_int(took).is_equal(230)
 
 
 func test_the_aim_assist_file_holds_the_old_constants() -> void:

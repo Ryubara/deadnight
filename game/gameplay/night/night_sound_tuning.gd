@@ -3,7 +3,7 @@ extends Resource
 ## How the night's sounds behave, as opposed to how loud each sound is (a sound's own level, pitch
 ## and reach are its `SoundDef` in a bank under `core/audio/banks/`; the voice budget and the
 ## soldier's voice level are `SoundMix`). Here: how the footsteps follow the pace, the guns' tail
-## and impacts, the grenade's tick and bounce, the generator's hum and the shop, the dead's voices
+## and impacts, the grenade's beep and bounce, the generator's hum and the shop, the dead's voices
 ## (how far they carry and how often they speak) and when the soldier speaks. The shipped values
 ## are in `night_sound_tuning_default.tres`: edit that file in the inspector;
 ## `NightSoundTuning.current()` is how the game and the tests read it.
@@ -53,10 +53,17 @@ static var _shipped: NightSoundTuning = null
 @export_range(0.0, 12.0, 0.5, "suffix:dB") var own_reload_db := 0.0
 
 @export_group("Grenades")
-## The fuse's tick: the gap between two ticks at the start of the fuse ...
-@export_range(0.05, 2.0, 0.05, "suffix:s") var tick_gap_start := 0.5
-## ... and at its end.
-@export_range(0.05, 2.0, 0.05, "suffix:s") var tick_gap_end := 0.1
+## The fuse's beep, a time bomb's: the gap between two beeps at the start of the fuse ...
+@export_range(0.05, 2.0, 0.01, "suffix:s") var beep_gap_start := 0.5
+## ... and at its end, just before the blast.
+@export_range(0.05, 2.0, 0.01, "suffix:s") var beep_gap_end := 0.09
+## How the gap shrinks between the two: 1 is evenly with the fuse left, more keeps it slow longer
+## and then quickens hard at the end, like a time bomb.
+@export_range(0.5, 4.0, 0.1) var beep_curve := 1.6
+## The beep's level against its own sound, at the start of the fuse ...
+@export_range(-12.0, 6.0, 0.5, "suffix:dB") var beep_db_start := -3.0
+## ... and at its end: it swells as the blast nears.
+@export_range(-12.0, 6.0, 0.5, "suffix:dB") var beep_db_end := 2.0
 ## A bounce's level goes from the quiet one at rest ...
 @export_range(-40.0, 0.0, 0.5, "suffix:dB") var bounce_quiet_db := -9.0
 ## ... to the loud one at `bounce_fast_speed`.

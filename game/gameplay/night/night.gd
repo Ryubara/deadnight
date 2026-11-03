@@ -476,6 +476,7 @@ func _add_sounds() -> void:
 	grenades.name = "GrenadeSounds"
 	add_child(grenades)
 	grenades.setup(state)
+	grenades.where_is = view.grenade_position
 	var lot := WorldSounds.new()
 	lot.name = "WorldSounds"
 	add_child(lot)
@@ -705,6 +706,7 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 	add_child(preview)
 	_throw_cast = WorldCast.new(get_world_3d().direct_space_state)
 	preview.setup(def, _throw_cast.callable())
+	preview.zombies = func() -> Array[Dictionary]: return state.zombies
 	preview.hand_reach = night_tuning.grenade_hand_reach
 	preview.release_over = night_tuning.grenade_release_over
 	preview.release_under = night_tuning.grenade_release_under

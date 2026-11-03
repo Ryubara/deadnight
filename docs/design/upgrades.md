@@ -72,4 +72,5 @@ tier]`, the second wire change of #281).
   then buys the tonic. The gate's ranges did not move, and a test fails the gate when the same shopping changes
   nothing.
 - **The places** are the lot's, in [the map](map.md#shop-spots): the re-cut in the projection booth and the tonics at the
-  concession's soda fountain.
+  concession's soda fountain and, until the perks of #687 give it its own, a second fountain in the ticket plaza behind
+  the road door.
