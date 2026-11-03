@@ -143,6 +143,28 @@ func test_a_blade_alone_has_no_need_for_rounds() -> void:
 	assert_int(BotNeeds.ammo_level({CROWBAR: [0, 0, 0]}, 3)).is_equal(NONE)
 
 
+# --- The need for a gun ---
+
+
+func test_only_the_starting_pistol_and_a_blade_is_a_need_for_a_gun() -> void:
+	assert_int(BotNeeds.gun_level({PISTOL: [10, 80, 0]})).is_equal(SHORT)
+	assert_int(BotNeeds.gun_level({PISTOL: [0, 0, 0], CROWBAR: [0, 0, 0]})).is_equal(SHORT)
+	assert_int(BotNeeds.gun_level({PISTOL: [10, 80, 0], SHOTGUN: [2, 8, 0]})).is_equal(NONE)
+	assert_int(BotNeeds.gun_level({SHOTGUN: [2, 8, 0], CROWBAR: [0, 0, 0]})).is_equal(NONE)
+
+
+func test_a_bot_that_holds_a_spot_goes_for_a_gun_near_or_far() -> void:
+	for near in [true, false]:
+		assert_int(BotNeeds.verdict(BotNeeds.Need.GUN, BotOrders.HOLD, SHORT, near)).is_equal(GO)
+		assert_int(BotNeeds.verdict(BotNeeds.Need.GUN, BotOrders.ROAM, SHORT, near)).is_equal(GO)
+		assert_int(BotNeeds.verdict(BotNeeds.Need.GUN, BotOrders.HOLD, NONE, near)).is_equal(STAY)
+
+
+func test_a_bot_that_follows_goes_for_a_gun_only_when_the_shop_is_near_the_leader() -> void:
+	assert_int(BotNeeds.verdict(BotNeeds.Need.GUN, BotOrders.FOLLOW, SHORT, true)).is_equal(GO)
+	assert_int(BotNeeds.verdict(BotNeeds.Need.GUN, BotOrders.FOLLOW, SHORT, false)).is_equal(STAY)
+
+
 # --- The nearest source, by the walk ---
 
 

@@ -17,9 +17,9 @@ extends Node
 ## minutes after which a night is stopped, default 45), `--stall-minutes=M` (a round longer than
 ## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
-## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke) and
-## `--quiet` (no trace line a minute) and `--map=ID` (a map of `MapRegistry`, played by its
-## scene and its rules overlay; default the lot).
+## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke),
+## `--tune=NAME:NUMBER,...` (profile fields moved for a sweep) and `--quiet` (no trace line a
+## minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -77,10 +77,7 @@ func _play(seed_value: int) -> Dictionary:
 	var bots := int(_args.get("bots", 4))
 	var seats := bots + (1 if person else 0)
 	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
-	var scene: PackedScene = null
-	if _args.has("map"):
-		scene = load(MapRegistry.of(StringName(String(_args["map"]))).scene_path) as PackedScene
-	var night := await SeatedNight.start(self, seats, tuning, seed_value, true, scene)
+	var night := await SeatedNight.start(self, seats, tuning, seed_value, true)
 	var people: Array[int] = []
 	var first_bot := 1
 	if person:
@@ -157,7 +154,6 @@ func _play(seed_value: int) -> Dictionary:
 	report["seed"] = seed_value
 	report["profile"] = String(_args.get("profile", "regular"))
 	report["order"] = String(order)
-	report["map"] = String(_args.get("map", "drive_in"))
 	report["person"] = person
 	report["reason"] = reason
 	report["errors"] = catcher.lines.size()
@@ -253,12 +249,22 @@ func _print_tail(night: SeatedNight, ticks: int) -> void:
 
 
 func _profile() -> BotProfile:
+	var profile := BotProfile.regular()
 	match String(_args.get("profile", "regular")):
 		"rookie":
-			return BotProfile.rookie()
+			profile = BotProfile.rookie()
 		"veteran":
-			return BotProfile.veteran()
-	return BotProfile.regular()
+			profile = BotProfile.veteran()
+	# `--tune=track_error:6,head_rate:0.5`: numbers of the profile moved for a sweep, so a tuning is
+	# tried without editing the profile between runs.
+	for pair in String(_args.get("tune", "")).split(",", false):
+		var parts := pair.split(":")
+		assert(
+			parts.size() == 2 and parts[0] in profile,
+			"--tune wants name:number pairs of a profile field"
+		)
+		profile.set(parts[0], float(parts[1]))
+	return profile
 
 
 func _parse_args() -> Dictionary:
