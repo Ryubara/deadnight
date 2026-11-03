@@ -591,10 +591,10 @@ size = Vector3(2.5, 1.2, 0.4)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="Rack1Shelf1" parent="Side" instance=ExtResource("md_shelf_rack")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 5.725, 0.000, -4.050)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6000, 0.0000, 0.0000, 0.0000, 1.0000, 5.725, 0.000, -4.050)
 
 [node name="Rack1Shelf2" parent="Side" instance=ExtResource("md_shelf_rack")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 6.975, 0.000, -4.050)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6000, 0.0000, 0.0000, 0.0000, 1.0000, 6.975, 0.000, -4.050)
 
 [node name="Pillar2" type="CSGBox3D" parent="Side"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 7.850, 1.600, -4.050)
@@ -620,10 +620,10 @@ size = Vector3(2.5, 1.2, 0.4)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="Rack2Shelf1" parent="Side" instance=ExtResource("md_shelf_rack")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 8.725, 0.000, -4.050)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6000, 0.0000, 0.0000, 0.0000, 1.0000, 8.725, 0.000, -4.050)
 
 [node name="Rack2Shelf2" parent="Side" instance=ExtResource("md_shelf_rack")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 9.975, 0.000, -4.050)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6000, 0.0000, 0.0000, 0.0000, 1.0000, 9.975, 0.000, -4.050)
 
 [node name="Pillar3" type="CSGBox3D" parent="Side"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.850, 1.600, -4.050)
@@ -649,10 +649,10 @@ size = Vector3(2.5, 1.2, 0.4)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="Rack3Shelf1" parent="Side" instance=ExtResource("md_shelf_rack")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 11.725, 0.000, -4.050)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6000, 0.0000, 0.0000, 0.0000, 1.0000, 11.725, 0.000, -4.050)
 
 [node name="Rack3Shelf2" parent="Side" instance=ExtResource("md_shelf_rack")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 12.975, 0.000, -4.050)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.6000, 0.0000, 0.0000, 0.0000, 1.0000, 12.975, 0.000, -4.050)
 
 [node name="Pillar4" type="CSGBox3D" parent="Side"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.850, 1.600, -4.050)
@@ -2597,7 +2597,7 @@ transform = Transform3D(-1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, -0.0000
 transform = Transform3D(-0.9397, 0.0000, 0.3420, 0.0000, 1.0000, 0.0000, -0.3420, 0.0000, -0.9397, 3.000, 0.000, -0.900)
 
 [node name="RubbleCone1" parent="Dressing" instance=ExtResource("fx_rubble_cone")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, -5.150, 0.000, -0.950)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, -13.000, 0.000, -4.200)
 
 [node name="RubbleA4" parent="Dressing" instance=ExtResource("md_rubble_a")]
 transform = Transform3D(0.0000, 0.0000, 1.0000, 0.0000, 1.0000, 0.0000, -1.0000, 0.0000, 0.0000, -5.400, 0.000, -4.200)

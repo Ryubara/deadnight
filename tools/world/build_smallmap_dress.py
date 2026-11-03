@@ -171,7 +171,15 @@ def rack(parent: str, name: str, rect, height: float, mat: str) -> None:
     hidden_box(parent, name, (x1 - x0, height, z1 - z0), (cx, height / 2, cz))
     width = x1 - x0
     for i, share in enumerate((0.25, 0.75)):
-        place(parent, f"{name}Shelf{i + 1}", model("shelf_rack"), (x0 + width * share, 0, cz))
+        # Squat as the hidden collision, so the view over the racks stays open (the kit's rack is 2.0 m).
+        place(
+            parent,
+            f"{name}Shelf{i + 1}",
+            model("shelf_rack"),
+            (x0 + width * share, 0, cz),
+            0.0,
+            (1.0, height / 2.0, 1.0),
+        )
 
 
 # --- Light ---------------------------------------------------------------------------------------------------------------
@@ -405,11 +413,11 @@ CLUTTER = [
     ("walk", "helmet", (5.2, 0.0, 12.9), 40),
     ("walk", "radio", (7.0, 1.2, 5.6), 20),
     ("walk", "lantern", (9.3, 1.2, 6.6), 0),
-    # the side room: cabinets and a chair on the south wall, rubble at the breach
+    # the side room: cabinets and a chair on the south wall, rubble in the breach's pocket
     ("solid", "filing_cabinet", (1.0, 0.0, -0.6), 180),
     ("solid", "filing_cabinet", (1.6, 0.0, -0.6), 180),
     ("solid", "chair", (3.0, 0.0, -0.9), 160),
-    ("solid", "rubble_cone", (-5.15, 0.0, -0.95), 0),
+    ("solid", "rubble_cone", (-13.0, 0.0, -4.2), 0),
     ("walk", "rubble_a", (-5.4, 0.0, -4.2), 90),
     ("walk", "rubble_b", (-5.0, 0.0, -3.9), 10),
     ("walk", "rubble_a", (14.8, 0.0, -2.6), 300),

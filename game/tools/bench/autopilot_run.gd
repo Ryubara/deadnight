@@ -16,6 +16,7 @@ extends Node
 ##   `crowd=N`    the first round brings N zombies (the tuned 6 otherwise); with `tough`, a crowd
 ##                that stands at once
 ##   `break=S`    seconds of break between rounds (0 is the tuned break)
+##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
 ##   `out=PATH`   on a desktop: write the report there and quit
 ## The report is `window.deadnightRounds` (JSON text) in a browser, and a `AUTOPILOT_RUN` line on a
@@ -109,6 +110,7 @@ static func settings_from(args: NetArgs) -> MatchSettings:
 	settings.count_multiplier = args.get_float("count", 1.0)
 	settings.max_alive = args.get_int("alive", MatchSettings.AUTO)
 	settings.break_seconds = args.get_float("break", 0.0)
+	settings.map = args.get_string("map", settings.map)
 	return settings.clamped()
 
 
