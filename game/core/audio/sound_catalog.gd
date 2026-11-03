@@ -73,6 +73,8 @@ static func _build() -> void:
 		assert(bank != null, "sound bank %s did not load" % path)
 		for def in bank.sounds:
 			assert(not _defs.has(def.id), "two sounds are called %s" % def.id)
+			if bank.deferred:
+				def.deferred = true
 			_defs[def.id] = def
 	SoldierVoiceCatalog.build(_add)
 

@@ -61,6 +61,7 @@ static func build(add: Callable) -> void:
 							"max_distance": mix.voice_max_distance,
 							"unit_size": mix.voice_unit_size,
 							"near_cap_db": 0.0,
+							"deferred": true,
 						}
 					)
 				)

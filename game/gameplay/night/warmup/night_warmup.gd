@@ -10,7 +10,9 @@ extends Node
 ## What it does, in order, each step a few frames behind `progress`:
 ##   1. loads every scene and resource the catalogues name (`WarmupManifest`) and holds on to them,
 ##      because a resource nothing references is freed and read again at its next use;
-##   2. loads every sound's files into the audio service's cache;
+##   2. loads every sound's files into the audio service's cache, and decodes to samples the
+##      sounds a night plays from its first second; a `deferred` bank's sounds (the weapons'
+##      and the voices') are decoded in the background once the night runs;
 ##   3. draws the whole lot from above with every lamp lit, then with every lamp dark (the
 ##      programs of a mesh differ with the lights that reach it, and the generator can fail). The
 ##      lot is held out of the picture first and brought in a kind of material at a time
@@ -109,6 +111,11 @@ var _held := DrawReveal.new()
 var _paused: Array[SubViewport] = []
 
 
+func _exit_tree() -> void:
+	# A warm-up that is freed half way (a test, a left night) does not leave the sounds waiting.
+	Audio.decode_held = false
+
+
 ## Runs every step; the night is not running meanwhile. The caller waits for it.
 func run(night: Night) -> void:
 	_night = night
@@ -132,6 +139,10 @@ func run(night: Night) -> void:
 	_camera.make_current()
 	var muted := _mute()
 	await _load_resources()
+	# The menu's load of the sounds ends here, and the deferred sounds' decode waits for the bar
+	# to go: a frame of it is slow enough without a slice of sound work in it.
+	Audio.stop_background_preload()
+	Audio.decode_held = true
 	await _load_sounds()
 	await _lot_pass()
 	await _stage_pass()
@@ -149,6 +160,7 @@ func run(night: Night) -> void:
 	if _stage != null:
 		_stage.queue_free()
 	await _shots(_night, 1)
+	Audio.decode_held = false
 	_say(1.0, "Ready")
 
 
@@ -262,7 +274,7 @@ func _load_sounds() -> void:
 	while at < ids.size():
 		var until := Time.get_ticks_msec() + SOUND_BUDGET_MSEC
 		while at < ids.size() and Time.get_ticks_msec() < until:
-			Audio.preload_sound(ids[at])
+			Audio.preload_sound_for_night(ids[at])
 			at += 1
 		_say(_step("sounds", float(at) / ids.size()), "Tuning the speakers")
 		await get_tree().process_frame
