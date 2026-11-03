@@ -136,12 +136,13 @@ FIELD_LAMPS = [
 FENCE_S_END = (-16.2052, 16.2051)
 # The ground and the roof that the maintainer's new lamps and the prize crane's lamp reach are cut where a search
 # (every cut on a 0.5 or 1 m grid, every crane place, `tests/world/test_lot_light_cap.gd`'s count of lights) left
-# no tile with more than 6 lights, and the fewest tiles: the midway moves its cuts, the back lot and the yard need
-# fewer tiles than before, the stand's roof one more cut.
-MIDWAY_CUT_X = (-16, -5, 16)
-MIDWAY_CUT_Z = (8, 21, 38)
+# no tile with more than 6 lights, and the fewest tiles. No cut lies within 1.3 m of a shop spot or a fuel stand's
+# standing point (`test_lot_fuel.gd` wants the stand a metre inside one tile). The midway has six tiles, the back lot
+# and the yard three each, the stand's roof six.
+MIDWAY_CUT_X = (-16, -8, 16)
+MIDWAY_CUT_Z = (8, 19, 30, 38)
 BACK_LOT_CUT_Z = (-4, 10, 24, 38)
-YARD_CUT_X = (16, 34, 62)
+YARD_CUT_Z = (-4, 12, 25, 38)
 STAND_ROOF_CUT_Z = (-4.4, STAND_CUT, 4.6, 8.4)
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
@@ -912,7 +913,7 @@ def build() -> None:
 
     # --- Generator yard (east) ----------------------------------------------------------------------------------------
     yard = group("GeneratorYard", ".")
-    cut_tiles(yard, "Ground", YARD_CUT_X, (-4, 38), "yard_ground")
+    cut_tiles(yard, "Ground", (16, 62), YARD_CUT_Z, "yard_ground")
     wall(yard, "FenceE", "z", 62, -4, 38, PERIMETER_H, "yard_wall")
     wall(yard, "FenceS", "x", 38, 16, 62, 2.4, "yard_wall")
     # The generator cage: 8 x 6 m, open on the west and east sides, roofless.

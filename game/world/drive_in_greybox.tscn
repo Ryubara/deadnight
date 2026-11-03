@@ -1408,27 +1408,39 @@ font_size = 80
 [node name="Midway" type="Node3D" parent="."]
 
 [node name="Ground0_0" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.500, -0.200, 14.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.000, -0.200, 13.500)
 use_collision = true
-size = Vector3(11, 0.4, 13)
+size = Vector3(8, 0.4, 11)
 material = ExtResource("midway_ground")
 
 [node name="Ground0_1" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -10.500, -0.200, 29.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.000, -0.200, 24.500)
 use_collision = true
-size = Vector3(11, 0.4, 17)
+size = Vector3(8, 0.4, 11)
+material = ExtResource("midway_ground")
+
+[node name="Ground0_2" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -12.000, -0.200, 34.000)
+use_collision = true
+size = Vector3(8, 0.4, 8)
 material = ExtResource("midway_ground")
 
 [node name="Ground1_0" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.500, -0.200, 14.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, -0.200, 13.500)
 use_collision = true
-size = Vector3(21, 0.4, 13)
+size = Vector3(24, 0.4, 11)
 material = ExtResource("midway_ground")
 
 [node name="Ground1_1" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.500, -0.200, 29.500)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, -0.200, 24.500)
 use_collision = true
-size = Vector3(21, 0.4, 17)
+size = Vector3(24, 0.4, 11)
+material = ExtResource("midway_ground")
+
+[node name="Ground1_2" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, -0.200, 34.000)
+use_collision = true
+size = Vector3(24, 0.4, 8)
 material = ExtResource("midway_ground")
 
 [node name="AlleyW0_0" type="CSGBox3D" parent="Midway"]
@@ -1675,15 +1687,21 @@ font_size = 100
 [node name="GeneratorYard" type="Node3D" parent="."]
 
 [node name="Ground0_0" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 25.000, -0.200, 17.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, 4.000)
 use_collision = true
-size = Vector3(18, 0.4, 42)
+size = Vector3(46, 0.4, 16)
 material = ExtResource("yard_ground")
 
-[node name="Ground1_0" type="CSGBox3D" parent="GeneratorYard"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 48.000, -0.200, 17.000)
+[node name="Ground0_1" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, 18.500)
 use_collision = true
-size = Vector3(28, 0.4, 42)
+size = Vector3(46, 0.4, 13)
+material = ExtResource("yard_ground")
+
+[node name="Ground0_2" type="CSGBox3D" parent="GeneratorYard"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 39.000, -0.200, 31.500)
+use_collision = true
+size = Vector3(46, 0.4, 13)
 material = ExtResource("yard_ground")
 
 [node name="FenceE0" type="CSGBox3D" parent="GeneratorYard"]
