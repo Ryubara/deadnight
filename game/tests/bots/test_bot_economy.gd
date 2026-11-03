@@ -103,6 +103,37 @@ func test_a_door_with_a_stand_a_flight_up_is_bought_from_the_stand_on_the_bots_f
 	assert_vector(upstairs.stand).is_equal(up)
 
 
+func test_a_weapon_sold_on_two_floors_is_bought_on_the_bots_floor() -> void:
+	# The second map sells the shotgun in the side room and upstairs. From the stair landing the two
+	# are about the same flat metres away, and the flat nearest flipped with every step: the bot
+	# walked to and fro on the landing and bought nothing (#811, #821). A metre of height counts.
+	var side := Vector3(14.65, 0.0, -6.0)
+	var upstairs := Vector3(5.0, 3.4, -6.5)
+	_shop.spots = [
+		_spot(&"wall", &"weapon_shotgun", side), _spot(&"wall", &"weapon_shotgun", upstairs)
+	]
+	for x in [8.9, 9.7, 10.3, 10.8]:
+		var view := _view(900, {"here": Vector3(x, 3.4, 0.9)})
+		var buy := _choose(view, _profile([&"weapon_shotgun"]))
+		assert_vector(buy.stand).override_failure_message("from x %s" % x).is_equal(upstairs)
+	var ground := _choose(
+		_view(900, {"here": Vector3(9.0, 0.0, 0.9)}), _profile([&"weapon_shotgun"])
+	)
+	assert_vector(ground.stand).is_equal(side)
+
+
+func test_the_stand_a_bot_is_walking_to_is_kept_against_a_second_seller() -> void:
+	# Two stands on one floor, 1 m nearer for the other as the bot moves: it keeps its heading.
+	var east := Vector3(10.0, 0.0, 0.0)
+	var west := Vector3(-10.0, 0.0, 0.0)
+	_shop.spots = [_spot(&"wall", &"weapon_shotgun", east), _spot(&"wall", &"weapon_shotgun", west)]
+	var profile := _profile([&"weapon_shotgun"])
+	var near_west := _view(900, {"here": Vector3(-1.0, 0.0, 0.0)})
+	assert_vector(_choose(near_west, profile).stand).is_equal(west)
+	near_west.heading = east
+	assert_vector(_choose(near_west, profile).stand).is_equal(east)
+
+
 func test_the_weak_bot_plan_buys_in_its_own_order() -> void:
 	# The weak player's list begins with the concession door, then a crane play, then the shotgun.
 	var rookie := BotProfile.rookie()

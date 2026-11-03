@@ -60,6 +60,9 @@ const AREA_EMPTY := 15.0
 ## door's stand is 1.5 m from the slab and a hand reaches 3.2 m, so it must come closer than 1.7).
 const ARRIVE := 1.0
 const ARRIVE_DOOR := 0.8
+## Metres of height at most between a bot and its stand for it to count as arrived (a bench above
+## the bot's head is a stair away).
+const ARRIVE_HEIGHT := 1.5
 ## Seconds at a stand with nothing to press before the item is left alone for a while, and the
 ## longest an errand may take.
 const AT_STAND_PATIENCE := 3.0
@@ -133,7 +136,8 @@ var _door_count := -1
 ## A stand's key to `{length, until}`: the metres of walk to it, asked of the legs.
 var _walks: Dictionary = {}
 var _walk_mesh := -1
-## The ammunition stand the bot is walking to for rounds of its own, and whether the callout for a
+## The stand the bot is walking to for a purchase (kept against a second seller of the same thing,
+## `BotEconomy.nearest_by_walk`), and whether the callout for a
 ## need it was held back from has been given since it last was free.
 var _heading := Vector3.INF
 var _announced := false
@@ -348,7 +352,7 @@ func _shopping(
 	if pick.why == BotEconomy.AMMO_PING:
 		_ammo_kept = pick.stand
 		_ammo_until = now + ERRAND_LIMIT
-	_heading = pick.stand if pick.prompt == &"ammo" else Vector3.INF
+	_heading = pick.stand
 	note = "buy %s (%s)" % [pick.item, pick.why]
 	return _carry_out(intent, pick, me, now)
 
@@ -451,7 +455,7 @@ func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: fl
 		back_off(pick.item, now)
 		return false
 	var radius := ARRIVE_DOOR if pick.prompt == &"door" else ARRIVE
-	if _flat(here, pick.stand) <= radius + 0.5:
+	if _flat(here, pick.stand) <= radius + 0.5 and absf(here.y - pick.stand.y) <= ARRIVE_HEIGHT:
 		if _arrived_at < 0.0:
 			_arrived_at = now
 		intent.keep_weapon = pick.prompt == &"ammo"

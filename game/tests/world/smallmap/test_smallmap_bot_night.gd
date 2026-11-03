@@ -30,14 +30,14 @@ func after_test() -> void:
 		_seated = null
 
 
-func _play(bots: int, seconds: float, open_all: bool) -> void:
+func _play(bots: int, seconds: float, open_all: bool, seed_value := 3) -> void:
 	_links.clear()
 	_tears.clear()
 	_buys.clear()
 	_link_rounds.clear()
 	_rounds_started = 0
 	_most_alive = 0
-	_seated = await SmallMapNight.seat(self, bots, null, 3)
+	_seated = await SmallMapNight.seat(self, bots, null, seed_value)
 	var profiles := [BotProfile.regular(), BotProfile.veteran(), BotProfile.rookie()]
 	for i in bots:
 		_seated.seat(i + 1, profiles[i % profiles.size()], 400 + i)
@@ -71,8 +71,14 @@ func _on_event(event: Dictionary) -> void:
 			_rounds_started = maxi(_rounds_started, int(event["round"]))
 
 
-func test_a_bot_alone_buys_a_link_and_a_weapon_holds_the_windows_and_reaches_round_4() -> void:
-	await _play(1, SOLO_SECONDS, false)
+## The seeds the solo night is held over: the one night that flaked (a bot that bought no weapon
+## because it paced the stair landing between two sellers of the shotgun, #821) was a matter of the
+## seed, so the test holds on every one of these and not on one picked to pass.
+func test_a_bot_alone_buys_a_link_and_a_weapon_holds_the_windows_and_reaches_round_4(
+	seed_value: int, test_parameters := [[1], [3], [4], [7]]
+) -> void:
+	assert_object(test_parameters).is_not_null()
+	await _play(1, SOLO_SECONDS, false, seed_value)
 	var rules := _seated.server.rules
 	(
 		assert_int(_rounds_started)
