@@ -17,7 +17,7 @@ const DOOR_NAMES := {
 	&"door_yard": "Generator yard",
 	&"door_booth": "Projection booth",
 	&"door_back_lot": "Back lot",
-	&"door_road": "The road",
+	&"door_road": "The ticket plaza",
 }
 ## How high over a zombie's feet its damage number starts: a headshot over the head, any other hit
 ## at the chest.

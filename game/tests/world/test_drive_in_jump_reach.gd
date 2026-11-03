@@ -12,9 +12,9 @@ const PERIMETER := [
 	"Field/FenceE",
 	"GeneratorYard/FenceE",
 	"BackLot/FenceW",
-	"Road/BarrierS",
-	"Road/EndW",
-	"Road/EndE",
+	"Road/FenceEnd",
+	"Road/SideW",
+	"Road/SideE",
 ]
 ## A platform is a spot the walking mesh reaches at least this high.
 const PLATFORM_FROM := 1.0

@@ -22,6 +22,11 @@ const DOORS := {
 	"Door_Road": "door_road",
 }
 
+## The ticket plaza behind the road door ends at its south wall: the lot has no road past it (#686).
+const PLAZA := Rect2(-16.0, 38.0, 32.0, 20.0)
+## The wall's outer face, the farthest south anything of the lot reaches (metres).
+const LOT_END_Z := 58.2
+
 var _lot: Node3D
 
 
@@ -59,3 +64,52 @@ func test_every_door_has_a_slab_in_each_way_in() -> void:
 			if child is CSGBox3D:
 				count += 1
 		assert_int(count).override_failure_message(door_name).is_equal(slabs.get(door_name, 1))
+
+
+func test_nothing_of_the_lot_lies_past_the_plazas_wall() -> void:
+	add_child(_lot)
+	var past: Array[String] = []
+	for node in _lot.find_children("*", "VisualInstance3D", true, false):
+		if (
+			node is Light3D
+			or node.name == &"Outskirts"
+			or not (node as Node3D).is_visible_in_tree()
+		):
+			continue
+		var far := _south_end(node as Node3D)
+		if far > LOT_END_Z + 0.01:
+			past.append("%s reaches z %.2f" % [_lot.get_path_to(node), far])
+	assert_array(past).is_empty()
+
+
+func test_the_plaza_is_shut_by_walls_at_the_height_of_the_perimeter() -> void:
+	# A closed room: the end wall and both sides at the perimeter's 3.0 m, so nobody leaves over them.
+	add_child(_lot)
+	for wall_name: String in ["FenceEnd0", "SideW0", "SideE0"]:
+		var wall := _lot.get_node("Road/%s" % wall_name) as CSGBox3D
+		assert_float(wall.size.y).override_failure_message(wall_name).is_equal(3.0)
+	var end := _lot.get_node("Road/FenceEnd0") as CSGBox3D
+	assert_float(end.size.x).is_equal(PLAZA.size.x)
+	assert_float(end.global_position.z).is_equal(PLAZA.end.y)
+
+
+func test_the_plazas_dead_come_from_inside_it() -> void:
+	add_child(_lot)
+	var spawns := _lot.get_node("Road/ZombieSpawns").get_children()
+	assert_int(spawns.size()).is_equal(3)
+	for spawn: Node3D in spawns:
+		var at := Vector2(spawn.global_position.x, spawn.global_position.z)
+		assert_bool(PLAZA.grow(-1.0).has_point(at)).override_failure_message(str(at)).is_true()
+
+
+## The farthest south (largest z) a drawn thing reaches. A CSG box by its size, a model by its box.
+static func _south_end(node: Node3D) -> float:
+	var box: AABB
+	if node is CSGBox3D:
+		box = AABB(-(node as CSGBox3D).size * 0.5, (node as CSGBox3D).size)
+	elif node is VisualInstance3D:
+		box = (node as VisualInstance3D).get_aabb()
+	var far := -INF
+	for corner in 8:
+		far = maxf(far, (node.global_transform * box.get_endpoint(corner)).z)
+	return far

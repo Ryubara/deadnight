@@ -23,7 +23,7 @@ const AREAS := {
 	&"ProjectionBooth": [[-6.0, 6.0, 22.0, 32.0]],
 	&"GeneratorYard": [[16.0, 62.0, -4.0, 38.0]],
 	&"BackLot": [[-62.0, -16.0, -4.0, 38.0]],
-	&"Road": [[-16.0, 16.0, 38.0, 52.0], [-62.0, 62.0, 52.0, 64.0]],
+	&"Road": [[-16.0, 16.0, 38.0, 58.0]],
 }
 const CIRCUITS: Array[StringName] = [
 	&"screen_lot", &"concession", &"booth", &"back_lot", &"mains", &"battery"

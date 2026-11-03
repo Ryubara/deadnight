@@ -25,8 +25,7 @@ func after_test() -> void:
 	_world.queue_free()
 
 
-func test_the_lot_has_two_wall_weapons_a_crane_lockers_the_two_machines_and_a_grenade_rack(
-) -> void:
+func test_the_lot_has_two_wall_weapons_a_crane_lockers_three_machines_and_a_grenade_rack() -> void:
 	var kinds := {}
 	for spot in _spots:
 		kinds[spot["kind"]] = kinds.get(spot["kind"], 0) + 1
@@ -34,7 +33,7 @@ func test_the_lot_has_two_wall_weapons_a_crane_lockers_the_two_machines_and_a_gr
 	assert_int(kinds[&"crane"]).is_equal(CraneTuning.new().spot_count())
 	assert_int(kinds[&"ammo"]).is_greater_equal(4)
 	assert_int(kinds[&"upgrade"]).is_equal(1)
-	assert_int(kinds[&"perk"]).is_equal(1)
+	assert_int(kinds[&"perk"]).is_equal(2)
 	assert_int(kinds[&"rack"]).is_equal(1)
 
 
@@ -104,7 +103,7 @@ func test_every_spot_stands_inside_the_lot() -> void:
 	for spot in _spots:
 		var at: Vector3 = spot["position"]
 		assert_float(absf(at.x)).is_less(62.0)
-		assert_float(at.z).is_between(-52.0, 64.0)
+		assert_float(at.z).is_between(-52.0, 58.0)
 		assert_float(at.y).is_equal(0.0)
 
 
@@ -121,21 +120,40 @@ static func _flat(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
 
 
-func test_the_machines_stand_in_the_booth_and_the_stand_over_their_blocks() -> void:
-	# The re-cut bench is in the projection booth, the soda fountain in the concession stand
-	# (docs/design/map.md), each drawn over the hidden block that holds its place in the walking mesh.
+func test_the_machines_stand_in_the_booth_the_stand_and_the_ticket_plaza_over_their_blocks(
+) -> void:
+	# The re-cut bench is in the projection booth, the soda fountain in the concession stand and the
+	# road door's perk machine against the south wall of the ticket plaza (docs/design/map.md), each
+	# drawn over the hidden block that holds its place in the walking mesh.
+	var perks := 0
 	for spot in _spots:
 		if spot["kind"] == &"upgrade":
 			assert_float(spot["position"].z).is_between(22.0, 32.0)
 			assert_float(spot["position"].x).is_between(-6.0, 6.0)
 		if spot["kind"] == &"perk":
-			assert_float(spot["position"].z).is_between(-4.0, 8.0)
-			assert_float(spot["position"].x).is_between(-10.0, 10.0)
+			perks += 1
+			var in_stand: bool = (
+				spot["position"].z > -4.0
+				and spot["position"].z < 8.0
+				and absf(spot["position"].x) < 10.0
+			)
+			var in_plaza: bool = (
+				spot["position"].z > 38.0
+				and spot["position"].z < 58.0
+				and absf(spot["position"].x) < 16.0
+			)
+			(
+				assert_bool(in_stand != in_plaza)
+				. override_failure_message(str(spot["position"]))
+				. is_true()
+			)
+	assert_int(perks).is_equal(2)
 	var greybox := _world.greybox
-	var blocks := ["ProjectionBooth/ReCutMachine", "Concession/SodaFountain"]
+	var blocks := ["ProjectionBooth/ReCutMachine", "Concession/SodaFountain", "Road/PerkMachine"]
 	for path: String in blocks:
 		var block := greybox.get_node(path) as CSGBox3D
 		assert_bool(block.visible).is_false()
 		assert_bool(block.use_collision).is_true()
 	assert_bool(greybox.get_node("ShopProps/ReCut") is RecutMachine).is_true()
 	assert_bool(greybox.get_node("ShopProps/Soda") is SodaFountain).is_true()
+	assert_bool(greybox.get_node("ShopProps/PlazaPerk") is SodaFountain).is_true()

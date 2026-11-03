@@ -7,7 +7,7 @@ The game as it stands. Each subject gets one page here, updated in place as the 
 1. **Light is survival.** The generator powers the lot's lights and the projector; the dead are faster off lit ground. Points
    buy fuel, doors and weapons, so every round asks what stays powered.
 2. **A night that closes in.** Rounds grow harder and the night darker; the map opens outward from the screen to the
-   road into town.
+   ticket plaza at the back of the lot.
 3. **Played together.** Built for two to four players in a browser or a Discord call; solo is supported, never the
    focus.
 
@@ -25,7 +25,7 @@ A downed player can be revived until the round ends.
 | Generator yard | early | the generator and the fuel; the safest ground, and the most to lose |
 | Projection booth | mid | the projector's beam; the re-cut (weapon upgrades) |
 | Back lot | mid to late | dark, wrecks and long lanes |
-| The road | late | the way into town |
+| The ticket plaza (the road door) | late | the lot's last door: a closed court with its own perk machine |
 
 The order, prices and layout are in [the lot](map.md).
 
