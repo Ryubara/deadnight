@@ -78,7 +78,11 @@ upstairs, the rifle (675) are all bought by the wall there, at prices that climb
 **The crane gives every weapon the start and the wall do not**, the revolver too once the buyer has given it up (they
 carry it from the first second, and the crane never gives a weapon the buyer carries). A player carries two weapons, so
 the pool is never empty for them. The pool and its weights are the shop item `crane_play`; the
-odds are [the mystery box page](../research/mystery-box.md).
+odds are [the mystery box page](../research/mystery-box.md). `game/tests/rules/test_crane_pool.gd` fails when a weapon
+of the catalogue is not in the pool (unless it is listed there as no prize, with the reason; none is) and when 10,000
+first rolls, each from the seed a solo night takes, are not spread by the weights. A solo night draws a new seed each
+time (`NightScreen.start_seed`, [#685](https://github.com/Ryubara/deadnight/issues/685)): with the old fixed one
+every night rolled the shotgun first.
 
 **The bat and the axe** were models with no definition. They are melee weapons held as `Melee` (the Swing clip, no
 flash, a spark on a hit) with their own hold files, so each shows its own model. They are **found only in the prize

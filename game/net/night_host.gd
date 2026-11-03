@@ -50,7 +50,7 @@ var port := NetWire.DEFAULT_PORT
 ## The seed of the night's dice; -1 draws one for every night.
 var seed_value := -1
 var rules_tuning: RulesTuning
-## The rules of the match (zombie intensity, alive cap, break) the next night runs under.
+## The rules of the match (zombie intensity, alive cap, break, map) the next night runs under.
 ## Set it with `configure_match`, which also changes a night nobody has started.
 var match_settings := MatchSettings.new()
 ## The most zombies alive at once in this room's night whatever the players are on; 0 is the rules'
@@ -84,6 +84,8 @@ var room_id := ""
 var listener := WsListener.new()
 var world: NightWorld
 var server: NightServer
+## The bots of this night, seated beside the people (`MatchSettings.bots`).
+var bots: NightBots
 ## False while a night is being built.
 var serving := false
 ## Steps taken, and milliseconds spent in them (the work, not the waiting), for the stats.
@@ -105,6 +107,9 @@ var _names: Dictionary = {}
 ## Players whose socket dropped, by id: their seat, kept until they come back or the time is up.
 var _away: Dictionary[int, Away] = {}
 var _events: Array[Dictionary] = []
+## What the server said outside a step (a join, a name, a ping a bot made) that the bots have not
+## heard yet: they hear it with the next step's events.
+var _unheard: Array[Dictionary] = []
 var _stats_at := 0.0
 var _stats_bytes := 0
 var _stats_steps := 0
@@ -150,9 +155,13 @@ func _physics_process(_delta: float) -> void:
 		# One tick's time for the zombies' sim without a step: its 30 Hz step falls on this tick.
 		server.sim.tick(Night.STEP, {})
 	var sending := (steps + phase + 1) % SEND_EVERY == 0
-	var events := server.step(Night.STEP, sending)
-	var frame: Dictionary = events.pop_back() if sending else {}
+	# The bots decide on every step, so with bots in the night the frame is built on every step
+	# (it is sent every `SEND_EVERY`).
+	var framed := sending or bots.count() > 0
+	var events := server.step(Night.STEP, framed)
+	var frame: Dictionary = events.pop_back() if framed else {}
 	_events.append_array(events)
+	_run_bots(events, frame)
 	steps += 1
 	if sending:
 		_send_ticks(frame)
@@ -196,9 +205,13 @@ func away_count() -> int:
 ## The one way a room's host sets the match: its settings are the server's from here, in every
 ## snapshot and so in every WELCOME (a late joiner or a client that came back reads them there),
 ## and in every night this host builds after. Applies at once to a night nobody has started and
-## returns true; once the night began the settings wait for the next one and it returns false.
+## returns true; once the night began the settings wait for the next one and it returns false. The
+## map is the room's, built when it opened: a map in `settings` that is another one is not taken
+## (the next night is built on the map in `match_settings`).
 func configure_match(settings: MatchSettings) -> bool:
 	match_settings = settings.clamped()
+	if world != null and world.map_info != null:
+		match_settings.map = world.map_info.id
 	if server == null or _night_began():
 		return false
 	server.rules.apply(RulesAction.configure(match_settings))
@@ -214,10 +227,12 @@ func _build_night() -> void:
 	serving = false
 	world = NightWorld.new()
 	add_child(world)
-	await world.build()
+	await world.build(MapRegistry.of(match_settings.map))
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
 	server.drawn_bodies = false
+	bots = NightBots.new(server, world, chosen, Callable(self, &"_collect"))
+	_unheard.clear()
 	server.crowd.limit = alive_limit()
 	_events.clear()
 	nights += 1
@@ -337,6 +352,8 @@ func _free_seat(player_id: int) -> void:
 	_names.erase(player_id)
 	if server != null:
 		_collect(server.apply({"type": NightServer.LEAVE, "player_id": player_id}))
+		# The seat is free: a bot takes it again while the others are still here.
+		_fill_bots()
 	_log("left", {"player": player_id, "players": _by_player.size()})
 	player_left.emit(player_id)
 
@@ -398,6 +415,12 @@ func _on_player_packet(peer: HostPeer, data: PackedByteArray) -> void:
 				_fault(peer)
 			else:
 				_collect(server.apply(mark, peer.player_id))
+		NetWire.Type.ORDER:
+			var order := NetWire.read_order(data)
+			if order.is_empty():
+				_fault(peer)
+			else:
+				_collect(server.apply(order, peer.player_id))
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))
@@ -430,11 +453,24 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 	peer.player_id = player_id
 	peer.token = Crypto.new().generate_random_bytes(NetWire.TOKEN_SIZE)
 	_by_player[player_id] = peer
-	# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
-	_name_seat(player_id, peer.user_name)
-	_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
+	if bots.holds(player_id):
+		# The seat is a bot's: the person takes it as it stands, and the round goes on. The name
+		# goes first, so the notice the others read says who, and a person without a name gets
+		# the usual `PLAYER n` in the bot's place.
+		_name_seat(player_id, peer.user_name)
+		if not _names.has(player_id):
+			_collect(
+				[{"type": &"player_named", "player_id": player_id, "name": "PLAYER %d" % player_id}]
+			)
+		_collect(bots.hand_over(player_id))
+		_collect(server.apply({"type": NightServer.RESYNC, "player_id": player_id}))
+	else:
+		# The name goes out before the join, so the others' notice reads "ANN JOINED", not "PLAYER 2".
+		_name_seat(player_id, peer.user_name)
+		_collect(server.apply({"type": NightServer.JOIN, "player_id": player_id, "local": false}))
 	if not _night_began():
 		_collect(server.apply({"type": NightServer.START_NIGHT}))
+	_fill_bots()
 	listener.send(
 		peer.transport_id, NetWire.welcome(player_id, _hz(), peer.token, _welcome_snapshot())
 	)
@@ -443,11 +479,42 @@ func _hello(peer: HostPeer, data: PackedByteArray) -> void:
 
 
 ## What a WELCOME carries: the rules' snapshot and the names of the seats (`names`: player id ->
-## name), so a client that joins late, or comes back, shows everyone by name at once.
+## name, the bots' too), so a client that joins late, or comes back, shows everyone by name at once.
 func _welcome_snapshot() -> Dictionary:
 	var snapshot := server.rules.to_dict()
-	snapshot["names"] = _names.duplicate()
+	var names := bots.names()
+	names.merge(_names, true)
+	snapshot["names"] = names
 	return snapshot
+
+
+## The seats people hold, away or not.
+func _people() -> Array:
+	var ids: Array = _by_player.keys()
+	ids.append_array(_away.keys())
+	return ids
+
+
+## Seats bots up to the setting, in the seats the people leave free. Only once the night has begun,
+## and never for a night with nobody in it.
+func _fill_bots() -> void:
+	if not _night_began() or _people().is_empty():
+		return
+	_collect(bots.fill(server.rules.settings.bots, _people()))
+
+
+## Lets the bots hear the step and decide. `frame` is this step's frame (built on every step when
+## there are bots).
+func _run_bots(events: Array[Dictionary], frame: Dictionary) -> void:
+	if bots.count() == 0:
+		_unheard.clear()
+		return
+	var heard: Array = _unheard.duplicate()
+	heard.append_array(events)
+	heard.append(frame)
+	_unheard.clear()
+	bots.hear(heard)
+	bots.tick(Night.STEP)
 
 
 ## Gives the seat the name the ticket said, made unique among the seats (`Ann`, `Ann (2)`, ...), and
@@ -571,6 +638,7 @@ func _close_refused() -> void:
 			listener.disconnect_peer(peer.transport_id)
 
 
+## The lowest seat no person holds: a seat a bot holds counts as free, since a person takes it.
 func _free_player_id() -> int:
 	for id in range(1, MAX_PLAYERS + 1):
 		if not _by_player.has(id) and not _away.has(id):
@@ -584,6 +652,7 @@ func _free_player_id() -> int:
 func _collect(events: Array) -> void:
 	for event: Dictionary in events:
 		_events.append(event)
+		_unheard.append(event)
 
 
 ## Every event goes to every client, except a look packet, which is for one.

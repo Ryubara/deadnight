@@ -65,6 +65,9 @@ var leave_button: UIButton
 ## The night's rules: the host's panel moves and is sent to the backend, a guest's shows what the
 ## host set (read only), and both are fixed once the night starts.
 var rules: MatchSettingsPanel
+## A night looked at by its code (the preview): the map it is on, as a ticket nobody can press. The
+## lobby of a member shows the map in `rules` (the host's picker, a guest's read-only one).
+var map_card: MapCard
 
 var _rules_title: UILabel
 var _rules_timer: Timer
@@ -196,6 +199,11 @@ func _ready() -> void:
 	_seats.name = "Seats"
 	_seats.add_theme_constant_override(&"separation", _tokens.space_sm)
 	box.add_child(_seats)
+	map_card = MapCard.new()
+	map_card.name = "RoomMap"
+	map_card.focus_mode = Control.FOCUS_NONE
+	map_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(map_card)
 	_rules_title = _label("THE NIGHT'S RULES", UILabel.Style.OVERLINE)
 	box.add_child(_rules_title)
 	rules = MatchSettingsPanel.new()
@@ -410,6 +418,7 @@ func _go_in(held: bool) -> void:
 		return
 	NightScreen.join_url = TogetherScreen.server_url_of(pass_to, TogetherScreen.in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
+	NightScreen.join_map = MapRegistry.of_lobby(lobby).id
 	NightScreen.join_as_bot = play_as_bot
 	_entering = true
 	watch.stop()
@@ -444,6 +453,7 @@ func _on_ended(text: String) -> void:
 	copy_code_button.visible = false
 	_shares.visible = false
 	copy_field.visible = false
+	map_card.visible = false
 	leave_button.text = "Back"
 	status.text = text if text != "" else TogetherApi.TEXTS["not_found"]
 	note.text = ""
@@ -462,6 +472,9 @@ func _show() -> void:
 	link_label.visible = live and page_link != code_label.text
 	_show_seats()
 	_show_rules()
+	map_card.visible = not live and not _over
+	if not live:
+		map_card.info = MapRegistry.of_lobby(preview)
 	var started: bool = live and lobby.get("state") == "started"
 	start_button.visible = live and is_host() and not started
 	play_button.visible = live and started
@@ -490,6 +503,15 @@ func lobby_rules() -> MatchSettings:
 	return out if out != null else MatchSettings.new()
 
 
+## How many bots the lobby shows: the setting, and never more than the seats people leave free.
+func bots_shown() -> int:
+	if mode != Mode.LIVE:
+		return 0
+	var wanted := rules.settings().bots if _rules_editable else lobby_rules().bots
+	var people: int = (lobby.get("members", []) as Array).size()
+	return maxi(mini(wanted, int(lobby.get("maxPlayers", 4)) - people), 0)
+
+
 ## The rules on the panel as the web probe reads them: `2x|Auto|20 s`.
 func rules_text() -> String:
 	return rules.text()
@@ -499,6 +521,7 @@ func rules_text() -> String:
 func _on_rules_changed(value: MatchSettings) -> void:
 	if not _rules_editable:
 		return
+	_show_seats()
 	_rules_waiting = value
 	_rules_timer.start()
 
@@ -558,11 +581,17 @@ func _show_seats() -> void:
 			away.append(false)
 	while _seat_rows.size() < max_players:
 		_seat_rows.append(_make_seat_row())
+	# The bots take the highest seats, as the server seats them (`NightBots`).
+	var bot_from := max_players - bots_shown()
 	for i in _seat_rows.size():
 		var row := _seat_rows[i]
 		(row["box"] as Control).visible = i < max_players
 		(row["number"] as Label).text = str(i + 1)
-		if i < names.size():
+		if i >= names.size() and i >= bot_from and i < max_players:
+			(row["name"] as Label).text = NightBots.name_for(i + 1)
+			(row["name"] as Label).modulate.a = 1.0
+			(row["tag"] as Label).text = "BOT"
+		elif i < names.size():
 			(row["name"] as Label).text = names[i]
 			(row["name"] as Label).modulate.a = 1.0
 			var tag := "HOST" if hosts[i] else ""
@@ -706,6 +735,7 @@ func _fit() -> void:
 	if _scroll == null or _scroll.get_child_count() == 0:
 		return
 	var content := (_scroll.get_child(0) as Control).get_combined_minimum_size().y
+	content += UIScroll.margins(_scroll).y
 	_scroll.custom_minimum_size.y = minf(content, get_viewport_rect().size.y - PANEL_MARGIN)
 
 

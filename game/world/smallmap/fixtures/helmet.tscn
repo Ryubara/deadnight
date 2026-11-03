@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/smallmap/helmet.gltf" id="model"]
+
+[node name="Helmet" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]

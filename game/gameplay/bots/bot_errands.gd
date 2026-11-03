@@ -81,6 +81,9 @@ var _denied: Dictionary = {}
 ## Door id to the clock when the bot first held its price; ping to when it was first seen.
 var _held_since: Dictionary = {}
 var _ping_seen: Dictionary = {}
+## The marked locker a bot set out for, kept until `_ammo_until` when the mark runs out on the way.
+var _ammo_kept := Vector3.INF
+var _ammo_until := -INF
 ## A job's key to the clock when it first waited, for the rotation of turns.
 var _waiting_since: Dictionary = {}
 ## Circuit id to the clock when its area was first found empty.
@@ -165,9 +168,11 @@ func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: flo
 	var crane := _crane_wait(intent, me, frame, state.player_id)
 	if crane:
 		return true
-	for job in [&"fuel", &"circuits", &"shopping", &"repairs"]:
+	for job in [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]:
 		var took := false
 		match job:
+			&"marked":
+				took = _shopping(intent, beliefs, state, me, frame, true)
 			&"fuel":
 				took = _fuel(intent, beliefs, state, me, frame)
 			&"circuits":
@@ -215,11 +220,18 @@ func _crane_wait(intent: BotIntent, me: Dictionary, frame: Dictionary, me_id: in
 
 
 func _shopping(
-	intent: BotIntent, beliefs: BotBeliefs, state: ClientState, me: Dictionary, frame: Dictionary
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	state: ClientState,
+	me: Dictionary,
+	frame: Dictionary,
+	marked_only := false
 ) -> bool:
 	var now := beliefs.now
 	var pick: BotEconomy.Buy = null
 	for buy in _found:
+		if marked_only and buy.why != BotEconomy.AMMO_PING:
+			continue
 		if _team_turn(buy, beliefs, frame, state.player_id):
 			if buy.item == _last_item:
 				pick = buy
@@ -235,6 +247,9 @@ func _shopping(
 	if pick.why == BotEconomy.PING:
 		_committed = pick.item
 		_committed_until = now + ERRAND_LIMIT
+	if pick.why == BotEconomy.AMMO_PING:
+		_ammo_kept = pick.stand
+		_ammo_until = now + ERRAND_LIMIT
 	note = "buy %s (%s)" % [pick.item, pick.why]
 	return _carry_out(intent, pick, me, now)
 
@@ -262,7 +277,7 @@ func _plan(beliefs: BotBeliefs, state: ClientState, me: Dictionary, frame: Dicti
 func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: float) -> bool:
 	var prompt: Dictionary = me.get("prompt", {})
 	var here: Vector3 = me["pos"]
-	if _sells(prompt, pick):
+	if _sells(prompt, pick) and _at_marked(pick, here):
 		var wrong := _hands_wrong(pick, prompt, me)
 		intent.keep_weapon = wrong or pick.prompt in [&"ammo", &"weapon", &"crane"]
 		if not wrong:
@@ -296,6 +311,12 @@ func _carry_out(intent: BotIntent, pick: BotEconomy.Buy, me: Dictionary, now: fl
 	intent.run = false
 	intent.note = note
 	return true
+
+
+## Whether the bot is where `pick` is to be bought when a person marked the place: any locker sells
+## the same rounds, but a mark is an order for that one, so a bot at another locker walks on.
+func _at_marked(pick: BotEconomy.Buy, here: Vector3) -> bool:
+	return pick.why != BotEconomy.AMMO_PING or _flat(here, pick.stand) <= _shop.use_reach
 
 
 ## Notes a stand the legs found no way to, so the plan looks elsewhere. True when it is one.
@@ -458,6 +479,15 @@ func _etiquette(view: BotEconomy.View, beliefs: BotBeliefs, frame: Dictionary, m
 		if claimed and held_for < CLAIM_GRACE:
 			view.blocked[door_id] = true
 	_pings(view, beliefs, frame, me_id)
+	_ammo_mark(view, beliefs, frame)
+
+
+## The locker a person marked for rounds. A bot that set out for it keeps going when the mark runs
+## out on the way (for at most `ERRAND_LIMIT`).
+func _ammo_mark(view: BotEconomy.View, beliefs: BotBeliefs, frame: Dictionary) -> void:
+	view.ammo_marked = BotPings.ammo(BotPings.marks(frame, beliefs.teammates))
+	if not view.ammo_marked.is_finite() and beliefs.now < _ammo_until:
+		view.ammo_marked = _ammo_kept
 
 
 ## A person's ping on a door asks the bot to buy it. The person gets `PING_DEFER` seconds to buy it

@@ -7,6 +7,9 @@ const CROWBAR := &"crowbar"
 const RIFLE := &"rifle"
 const SHOTGUN := &"shotgun"
 const NONE := &""
+## The marked locker, a second one farther from the bot than the shop's own.
+const MARKED := Vector3(90.0, 0.0, 20.0)
+const NEAR_LOCKER := Vector3(40.0, 0.0, 20.0)
 const ALL_DOORS: Array = [
 	&"door_concession", &"door_booth", &"door_back_lot", &"door_yard", &"door_road"
 ]
@@ -172,6 +175,62 @@ func test_a_door_a_person_pinged_comes_first_when_it_can_be_paid() -> void:
 	# The ping of a door that is locked, or that the etiquette holds, is no order.
 	var locked := _view(5000, {"doors_open": [], "pinged": &"door_road"})
 	assert_bool(_choose(locked, profile).item == &"door_road").is_false()
+
+
+func _with_second_locker() -> void:
+	_shop.spots.append(_spot(&"ammo", &"", MARKED))
+
+
+func test_a_bot_short_of_rounds_buys_at_the_locker_a_person_marked_not_the_nearest() -> void:
+	_with_second_locker()
+	var short := {"arms": {PISTOL: [10, 25, 0], CROWBAR: [0, 0, 0]}, "ammo_marked": MARKED}
+	var buy := _choose(_view(100, short))
+	assert_str(String(buy.item)).is_equal("ammo_pistol")
+	assert_str(String(buy.why)).is_equal("ammo_ping")
+	assert_vector(buy.stand).is_equal(MARKED)
+	# Without the mark the nearest locker is the one (the person is not asked).
+	short.erase("ammo_marked")
+	assert_vector(_choose(_view(100, short)).stand).is_equal(NEAR_LOCKER)
+
+
+func test_the_marked_locker_comes_before_a_door_and_before_the_floor_rounds_of_the_list() -> void:
+	_with_second_locker()
+	var profile := _profile([&"door_concession"])
+	var view := _view(
+		2000, {"doors_open": [], "arms": {PISTOL: [10, 25, 0]}, "ammo_marked": MARKED}
+	)
+	var found := BotEconomy.new(_shop, profile).candidates(view)
+	assert_str(String(found[0].why)).is_equal("ammo_ping")
+	assert_str(String(found[1].why)).is_equal("ammo_floor")
+
+
+func test_a_bot_with_full_reserves_ignores_the_marked_locker() -> void:
+	_with_second_locker()
+	var full := _view(2000, {"ammo_marked": MARKED})
+	for buy in BotEconomy.new(_shop, BotProfile.regular()).candidates(full):
+		assert_str(String(buy.why)).is_not_equal("ammo_ping")
+	# Exactly at the floor (three magazines of ten) is not short either.
+	var edge := _view(2000, {"arms": {PISTOL: [10, 30, 0]}, "ammo_marked": MARKED})
+	assert_bool(_choose(edge).why == &"ammo_ping").is_false()
+
+
+func test_a_mark_that_is_no_locker_the_hand_cannot_feed_or_a_wave_is_no_order() -> void:
+	_with_second_locker()
+	var arms := {"arms": {PISTOL: [10, 25, 0], CROWBAR: [0, 0, 0]}}
+	# A mark on a place the shop has no locker at.
+	var stray := _view(100, arms.merged({"ammo_marked": Vector3(5.0, 0.0, 5.0)}))
+	assert_bool(_choose(stray).why == &"ammo_ping").is_false()
+	# The rifle in hand is full; the locker sells for the weapon in hand, so the short pistol in the
+	# pack cannot be fed there.
+	var other := {"arms": {PISTOL: [10, 25, 0], RIFLE: [8, 80, 0]}, "held": RIFLE}
+	var wrong_hand := _view(100, other.merged({"ammo_marked": MARKED}))
+	assert_bool(_choose(wrong_hand).why == &"ammo_ping").is_false()
+	# In a wave with the dead about it waits for a lull, like the rest of the short-reserve buying.
+	var wave := _view(100, arms.merged({"ammo_marked": MARKED, "in_break": false, "remaining": 30}))
+	assert_bool(_choose(wave).why == &"ammo_ping").is_false()
+	# A blade in hand is put away at the locker (BotErrands): the locker counts.
+	var blade := _view(100, arms.merged({"ammo_marked": MARKED, "held": CROWBAR}))
+	assert_str(String(_choose(blade).why)).is_equal("ammo_ping")
 
 
 func test_a_door_is_bought_in_a_round_only_when_five_or_fewer_are_left() -> void:

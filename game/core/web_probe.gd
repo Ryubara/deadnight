@@ -83,8 +83,13 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_rules": "",
 		"lobby_rules_editable": false,
 		"play_rules": "",
+		"play_map": "",
+		"play_focus": "",
+		"lobby_map": "",
 		"spots": "",
 		"night_rules": "",
+		"night_map": "",
+		"bots": 0,
 		"notices": "",
 		"code_text": "",
 		"notice_log": "",
@@ -128,7 +133,7 @@ static func snapshot(top: Control) -> Dictionary:
 		else null
 	)
 	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
-	if top is MainMenu or top is PlayScreen:
+	if top is MainMenu or top is PlayScreen or top is LobbyScreen:
 		# Where a finger taps each start and button, as fractions of the window.
 		data["spots"] = _spots(top)
 	var menu := top as MainMenu
@@ -162,10 +167,19 @@ static func snapshot(top: Control) -> Dictionary:
 		data["lobby_buttons"] = "|".join(buttons)
 		data["lobby_rules"] = lobby.rules_text() if lobby.rules.is_visible_in_tree() else ""
 		data["lobby_rules_editable"] = lobby.rules_editable()
+		# The map the lobby shows: the picker's choice in a lobby, the ticket of a code looked at.
+		data["lobby_map"] = (
+			lobby.rules.map_picker.selected_id
+			if lobby.rules.is_visible_in_tree()
+			else (lobby.map_card.info.id if lobby.map_card.visible and lobby.map_card.info else "")
+		)
 	var play := top as PlayScreen
 	if play != null:
 		# Solo's Play screen: the rules on its panel (the same panel the room host's lobby has).
 		data["play_rules"] = play.rules_text()
+		data["play_map"] = play.panel.map_picker.selected_id
+		var focused := play.get_viewport().gui_get_focus_owner()
+		data["play_focus"] = str(focused.name) if focused != null else ""
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
@@ -178,6 +192,7 @@ static func snapshot(top: Control) -> Dictionary:
 		data["night_rules"] = MatchSettingsPanel.text_for(
 			rules.settings, rules.settings.break_for(rules.tuning.rounds)
 		)
+		data["night_map"] = night_screen.night.world.map_info.id
 	# The menu is open, and what the engine says the mouse is (2 is captured: a browser's pointer
 	# lock), so a browser test sees the first Esc open the menu.
 	data["paused"] = night_screen.night.is_paused()
@@ -189,6 +204,11 @@ static func snapshot(top: Control) -> Dictionary:
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
 	if night_screen.night.hud != null:
+		# Bots in the night, as the roster labels them.
+		var bots := 0
+		for member: Dictionary in night_screen.night.hud.state.team.values():
+			bots += 1 if member.get("bot", false) else 0
+		data["bots"] = bots
 		# Who joined or left, as the night's notices say it.
 		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
 		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
@@ -246,13 +266,21 @@ static func _spots(screen: Control) -> String:
 		var at := button.get_global_rect().get_center() / size
 		spots.append("%s:%.4f,%.4f" % [text, at.x, at.y])
 	var play := screen as PlayScreen
-	if play != null:
+	var lobby := screen as LobbyScreen
+	var panel: MatchSettingsPanel = (
+		play.panel if play != null else (lobby.rules if lobby != null else null)
+	)
+	if panel != null and panel.is_visible_in_tree():
 		# Each setting's control: its centre, and `key:end` a little inside its right end (an option
 		# selector's next arrow).
-		for key: String in play.panel.setting_keys():
-			var rect := play.panel.row_for(key).control.get_global_rect()
+		for key: String in panel.setting_keys():
+			var rect := panel.row_for(key).control.get_global_rect()
 			var middle := rect.get_center() / size
 			var end := Vector2(rect.end.x - ARROW_INSET, rect.get_center().y) / size
 			spots.append("%s:%.4f,%.4f" % [key, middle.x, middle.y])
 			spots.append("%s:end:%.4f,%.4f" % [key, end.x, end.y])
+		# Each map's card, to tap it: `map_<id>`.
+		for card in panel.map_picker.cards:
+			var middle := card.get_global_rect().get_center() / size
+			spots.append("map_%s:%.4f,%.4f" % [card.info.id, middle.x, middle.y])
 	return "|".join(spots)

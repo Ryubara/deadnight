@@ -161,6 +161,7 @@ transform = Transform3D(0.8321, -0.5547, 0, 0.5547, 0.8321, 0, 0, 0, 1, 5.633, 1
 use_collision = true
 size = Vector3(6.12944, 0.3, 2)
 material = ExtResource("booth_prop")
+metadata/surface = "wood"
 
 [node name="StairATread1" type="CSGBox3D" parent="Start"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.150, 0.170, 1.000)
@@ -280,6 +281,7 @@ transform = Transform3D(0.8321, -0.5547, 0, 0.5547, 0.8321, 0, 0, 0, 1, -0.367, 
 use_collision = true
 size = Vector3(6.12944, 0.3, 2)
 material = ExtResource("booth_prop")
+metadata/surface = "wood"
 
 [node name="StairBTread1" type="CSGBox3D" parent="Side"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.850, 0.170, -6.800)
@@ -401,42 +403,49 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 3
 use_collision = true
 size = Vector3(16.6, 0.2, 12.8)
 material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
 
 [node name="StartSlabW" type="CSGBox3D" parent="Ceilings"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 1.350, 3.300, 1.000)
 use_collision = true
 size = Vector3(3.3, 0.2, 2)
 material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
 
 [node name="StartSlabE" type="CSGBox3D" parent="Ceilings"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.200, 3.300, 1.000)
 use_collision = true
 size = Vector3(8.2, 0.2, 2)
 material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
 
 [node name="SideSlabN" type="CSGBox3D" parent="Ceilings"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.000, 3.300, -7.950)
 use_collision = true
 size = Vector3(22.6, 0.2, 0.3)
 material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
 
 [node name="SideSlabS" type="CSGBox3D" parent="Ceilings"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.000, 3.300, -2.900)
 use_collision = true
 size = Vector3(22.6, 0.2, 5.8)
 material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
 
 [node name="SideSlabW" type="CSGBox3D" parent="Ceilings"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.650, 3.300, -6.800)
 use_collision = true
 size = Vector3(3.3, 0.2, 2)
 material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
 
 [node name="SideSlabE" type="CSGBox3D" parent="Ceilings"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 9.200, 3.300, -6.800)
 use_collision = true
 size = Vector3(14.2, 0.2, 2)
 material = ExtResource("smallmap_floor_upper")
+metadata/surface = "wood"
 
 [node name="WallW0" type="CSGBox3D" parent="Start"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.150, 1.600, 7.400)

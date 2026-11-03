@@ -34,6 +34,9 @@ const FLOOR := &"ammo_floor"
 const PLAN := &"plan"
 const TOP_OFF := &"top_off"
 const PING := &"ping"
+const AMMO_PING := &"ammo_ping"
+## Metres within which a marked spot counts as the shop's locker.
+const LOCKER_SNAP := 1.0
 
 ## Sustained damage a second of each catalogue weapon, worked out once (the definitions are fixed).
 static var _dps: Dictionary = {}
@@ -91,6 +94,8 @@ class View:
 	var blocked: Dictionary = {}
 	## A door a person pinged ("buy it"), or empty.
 	var pinged: StringName = &""
+	## The ammunition spot a person marked ("buy rounds here"), or `Vector3.INF`.
+	var ammo_marked := Vector3.INF
 	## Items refused lately, to the clock when the bot may try again.
 	var denied: Dictionary = {}
 	var now := 0.0
@@ -125,6 +130,9 @@ func candidates(view: View) -> Array[Buy]:
 	var ping := _ping(view)
 	if ping != null:
 		found.append(ping)
+	var marked := _ammo_ping(view)
+	if marked != null:
+		found.append(marked)
 	for weapon in _useful(view.arms):
 		var urgent := _ammo(view, weapon, 1, URGENT, 0)
 		if urgent != null:
@@ -300,6 +308,33 @@ func _ping(view: View) -> Buy:
 	return buy
 
 
+## Rounds at the locker a person marked, for a gun the bot carries and is short of (under the
+## profile's floor of magazines), in a lull; the pinged locker, not the nearest one. Null when the
+## mark is no locker of the shop, the bot's hand cannot be fed there, or no gun is short.
+func _ammo_ping(view: View) -> Buy:
+	if not view.ammo_marked.is_finite() or not view.is_calm():
+		return null
+	var stand := _locker_at(view, view.ammo_marked)
+	if stand == Vector3.INF:
+		return null
+	for weapon in _useful(view.arms):
+		if not _locker_sells(view, weapon):
+			continue
+		var buy := _ammo(view, weapon, _profile.ammo_floor_mags, AMMO_PING, 0, stand)
+		if buy != null:
+			return buy
+	return null
+
+
+## The shop's locker within `LOCKER_SNAP` of a marked point that the bot can walk to, or INF.
+func _locker_at(view: View, point: Vector3) -> Vector3:
+	for spot in _shop.spots_by_kind(&"ammo"):
+		var at: Vector3 = spot["position"]
+		if Vector2(at.x - point.x, at.z - point.z).length() <= LOCKER_SNAP:
+			return Vector3.INF if view.is_avoided(at) else at
+	return Vector3.INF
+
+
 # --- Grenades ---
 
 
@@ -332,7 +367,9 @@ func _grenades(view: View, keep: int) -> Buy:
 ## Rounds for `weapon` when its reserve is under `mags` magazines (0: whenever there is room) and
 ## the purchase leaves `keep` points. Null when the weapon is not worth rounds, the refill would
 ## fill under a tenth of the cap, nothing sells them or the bot cannot pay.
-func _ammo(view: View, weapon: StringName, mags: int, why: StringName, keep: int) -> Buy:
+func _ammo(
+	view: View, weapon: StringName, mags: int, why: StringName, keep: int, at := Vector3.INF
+) -> Buy:
 	var item := _shop.economy.ammo_item_for(weapon)
 	if item == null or view.is_denied(item.id):
 		return null
@@ -345,7 +382,7 @@ func _ammo(view: View, weapon: StringName, mags: int, why: StringName, keep: int
 	):
 		return null
 	var price := item.ammo_price(view.round_number, mini(room, int(item.amount)))
-	var stand := _ammo_stand(view, weapon)
+	var stand := at if at != Vector3.INF else _ammo_stand(view, weapon)
 	if view.points - price < keep or stand == Vector3.INF:
 		return null
 	var buy := Buy.new()
@@ -378,10 +415,16 @@ func _ammo_stand(view: View, weapon: StringName) -> Vector3:
 			walls.append(spot)
 	if not walls.is_empty():
 		return _nearest(view, walls)
-	var held_is_blade := view.arms.has(view.held) and WeaponCatalog.get_def(view.held).is_melee()
-	if view.held == weapon or held_is_blade:
+	if _locker_sells(view, weapon):
 		return _nearest(view, _shop.spots_by_kind(&"ammo"))
 	return Vector3.INF
+
+
+## Whether a locker sells rounds for `weapon`: it sells for the weapon in hand, and a blade in hand
+## is put away at the locker (`BotErrands`) for the gun in the pack.
+func _locker_sells(view: View, weapon: StringName) -> bool:
+	var held_is_blade := view.arms.has(view.held) and WeaponCatalog.get_def(view.held).is_melee()
+	return view.held == weapon or held_is_blade
 
 
 ## The carried firearms worth rounds, best first: at least `USEFUL_SHARE` of the best one's

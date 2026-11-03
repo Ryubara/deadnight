@@ -83,7 +83,7 @@ func _read() -> void:
 
 
 func _name(player_id: int) -> String:
-	return str(state.team.get(player_id, {}).get("name", "SOMEONE")).to_upper()
+	return HudState.name_of(state.team.get(player_id, {}))
 
 
 func _ready() -> void:

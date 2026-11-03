@@ -29,6 +29,8 @@ static var opener := Callable()
 var state := State.IDLE
 var api: TogetherApi
 var status: UILabel
+## The map of the night it found, as a ticket, from the moment it has found one.
+var map_card: MapCard
 var cancel_button: UIButton
 var create_button: UIButton
 var close_button: UIButton
@@ -63,6 +65,13 @@ func _ready() -> void:
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status.custom_minimum_size.x = WIDTH
 	box.add_child(status)
+	map_card = MapCard.new()
+	map_card.name = "Map"
+	map_card.set_width(WIDTH)
+	map_card.focus_mode = Control.FOCUS_NONE
+	map_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_card.visible = false
+	box.add_child(map_card)
 	create_button = _button("Create a night", UIButton.Variant.PRIMARY, "CreateNight")
 	create_button.pressed.connect(create_night)
 	box.add_child(create_button)
@@ -86,6 +95,7 @@ func run() -> void:
 	state = State.SEARCHING
 	_cancelled = false
 	_lobby = {}
+	map_card.visible = false
 	show()
 	_say(SEARCHING)
 	_show_buttons()
@@ -164,9 +174,16 @@ func _search() -> Dictionary:
 	if not found["ok"]:
 		return found
 	_lobby = found["lobby"]
+	_show_map()
 	if _cancelled:
 		return found
 	return await api.ticket(_lobby)
+
+
+## The card of the night the search found: where the player is about to go.
+func _show_map() -> void:
+	map_card.info = MapRegistry.of_lobby(_lobby)
+	map_card.visible = true
 
 
 func _own_api() -> TogetherApi:
@@ -178,6 +195,7 @@ func _go_in(pass_to: Dictionary) -> void:
 	_say(GOING_IN)
 	NightScreen.join_url = TogetherScreen.server_url_of(pass_to, TogetherScreen.in_discord())
 	NightScreen.join_ticket = pass_to["ticket"]
+	NightScreen.join_map = MapRegistry.of_lobby(_lobby).id
 	if opener.is_valid():
 		opener.call()
 	else:
@@ -194,6 +212,7 @@ func _drop() -> void:
 
 func _fail(answer: Dictionary) -> void:
 	state = State.FAILED
+	map_card.visible = false
 	_say(str(answer.get("text", "Something went wrong.")))
 	_show_buttons()
 

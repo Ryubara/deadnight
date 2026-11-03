@@ -145,3 +145,33 @@ func test_the_play_screen_fits_a_desktop_window_and_a_phone_held_sideways() -> v
 			for control in wanted:
 				assert_float(control.size.y).is_greater_equal(MenuLook.TAP_TARGET - 0.5)
 		holder.free()
+
+
+func test_solo_and_the_room_both_offer_the_bots_setting() -> void:
+	var menu := await _open_menu()
+	await _press_solo(menu)
+	var solo := UIRouter.top() as PlayScreen
+	var lobby := _lobby()
+	for panel: MatchSettingsPanel in [solo.panel, lobby.rules]:
+		assert_object(panel.row_for("bots")).is_not_null()
+		assert_bool(panel.row_for("bots").is_visible_in_tree()).is_true()
+		panel.set_settings(MatchSettings.new())
+		panel.bots_selector.select(3, true)
+		assert_int(panel.settings().bots).is_equal(3)
+	lobby.free()
+
+
+func test_solo_with_three_bots_runs_a_night_with_three_bots() -> void:
+	var menu := await _open_menu()
+	await _press_solo(menu)
+	var solo := UIRouter.top() as PlayScreen
+	solo.panel.bots_selector.select(3, true)
+	solo.start_button.pressed.emit()
+	await UIRouter.idle
+	var night_screen := UIRouter.top() as NightScreen
+	assert_object(night_screen).is_not_null()
+	await night_screen.night.ready_to_play
+	var night := night_screen.night
+	assert_int(night.server.rules.settings.bots).is_equal(3)
+	assert_int(night.bots.count()).is_equal(3)
+	assert_int(night.server.rules.players.size()).is_equal(4)

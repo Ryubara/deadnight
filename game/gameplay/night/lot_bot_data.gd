@@ -6,6 +6,8 @@ extends RefCounted
 
 ## Metres from the walls of the generator cage or the booth that a loop for kiting runs.
 const LOOP_MARGIN := 3.0
+## Metres apart that two places a bot may roam to are at the least.
+const ROAM_SPACING := 5.0
 
 
 ## Fills `level` from `world`. With the rules' `tuning` the bots also get the shop (`shop`): a level
@@ -15,6 +17,7 @@ static func fill(level: BotLevel, world: NightWorld, tuning: RulesTuning = null)
 	level.breaches = world.repair_points()
 	level.loops = loops(world.greybox)
 	level.links = links(world.greybox)
+	level.roam_spots = roam_spots(world)
 	if tuning != null:
 		level.shop = shop(world, tuning)
 
@@ -58,6 +61,41 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 	for id in world.fuel.ids():
 		found.fuel_stands[id] = world.fuel.standing_point(id)
 		found.fuel_doors[id] = world.fuel.door_of(id)
+	return found
+
+
+## The places a roaming bot goes: the shop's spots, the breach stands, the doors' stands, the
+## breaker posts and the fuel crates, ground the walking mesh has (a spot is put on it), no two
+## less than `ROAM_SPACING` apart.
+static func roam_spots(world: NightWorld) -> Array[Vector3]:
+	var wanted: Array[Vector3] = []
+	for spot in world.shop_spots():
+		wanted.append(spot["position"])
+	for id in world.barricade_ids():
+		wanted.append(world.repair_spot(id))
+	for door_id in world.door_ids():
+		wanted.append_array(world.door_stands(door_id))
+	for circuit_id in world.switches.circuit_ids():
+		wanted.append(world.switches.standing_point(circuit_id))
+	for id in world.fuel.ids():
+		wanted.append(world.fuel.standing_point(id))
+	var found: Array[Vector3] = []
+	# A question put to a map before its first mesh is in prints an error: with none yet, the points
+	# are taken as the lot gives them (the walk to one that is off the mesh is snapped later).
+	var meshed := (
+		world.map().is_valid() and NavigationServer3D.map_get_iteration_id(world.map()) > 0
+	)
+	for point in wanted:
+		var on_mesh := (
+			NavigationServer3D.map_get_closest_point(world.map(), point) if meshed else point
+		)
+		var taken := false
+		for other in found:
+			if Vector2(other.x - on_mesh.x, other.z - on_mesh.z).length() < ROAM_SPACING:
+				taken = true
+				break
+		if not taken:
+			found.append(on_mesh)
 	return found
 
 

@@ -373,6 +373,12 @@ func _ground_height(zombie: ZombieBody) -> float:
 	return lerpf(from.y, path[next].y, clampf(share, 0.0, 1.0)) - NAV_LIFT
 
 
+## Puts the sim on a map with storeys (`storey`, 0 for none) and the way it sees walls (`sight`).
+func set_floors(height: float, probe: Callable) -> void:
+	storey = height
+	sight = probe
+
+
 ## Whether a zombie at `a` may swing at a target at `b`: always on a flat map; else within half a
 ## storey in height and, when the target is near enough to be struck, with no wall between them.
 func _can_swing(a: Vector3, b: Vector3) -> bool:

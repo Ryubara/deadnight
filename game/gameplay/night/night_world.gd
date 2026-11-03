@@ -1,13 +1,12 @@
 # gdlint: disable=max-public-methods
 class_name NightWorld
 extends Node3D
-## The place a night happens in: the map's greybox (the drive-in lot, or another scene given in
-## `scene`), its navigation mesh, its doors and spawn markers, and the players' bodies. The server
-## asks it where things are; it decides nothing itself. A door bought is the lot's own business:
-## `LotDoors` follows the rules (`bind`) and `DoorNavigation` swaps in the zombies' mesh for the new
-## set when one opens (`docs/research/zombies.md`, Doors).
+## The place a night happens in: the map's scene (the drive-in greybox, or another entry of
+## `MapRegistry`), its navigation mesh, its doors and spawn markers, and the players' bodies. The
+## server asks it where things are; it decides nothing itself. A door bought is the lot's own
+## business: `LotDoors` follows the rules (`bind`) and `DoorNavigation` swaps in the zombies' mesh
+## for the new set when one opens (`docs/research/zombies.md`, Doors).
 
-const GREYBOX := preload("res://world/drive_in_greybox.tscn")
 const PLAYER_SCENE := preload("res://gameplay/player/player.tscn")
 ## Static bodies of CSG shapes reach the physics space after a few steps.
 const SETTLE_FRAMES := 4
@@ -17,12 +16,15 @@ const NAV_WAIT_FRAMES := 600
 const NAV_REACHED := 1.0
 ## Metres into the field, from the boards, that a player puts them back from.
 const REPAIR_SPOT := 1.4
-## The scene the night is built from; the drive-in lot when it is not set. Set before `build`. A
-## map is a scene with the lot's nodes (`Doors`, `ShopSpots`, `Lighting`, the barricades) and
-## either the lot's `Field/` spawn groups or the flat ones of the second map (`MapLayout`).
+## A scene to build instead of the map's own (`MapInfo.scene_path`): a test or a capture that plays
+## a map the picker does not offer yet (the second map). Set before `build`. A map is a scene with
+## the lot's nodes (`Doors`, `ShopSpots`, `Lighting`, the barricades) and either the lot's `Field/`
+## spawn groups or the flat ones of the second map (`MapLayout`).
 var scene: PackedScene
 
 var greybox: Node3D
+## The map this world was built from (`build`).
+var map_info: MapInfo
 ## The lot's doors: they open when the rules sell them and tell the navigation (`door_opened`).
 var doors: LotDoors
 var navigation: DoorNavigation
@@ -44,10 +46,12 @@ var _lamps: LotLamps
 var _generator: GeneratorState
 
 
-## Builds the lot and waits until its collision and navigation are live.
-func build() -> void:
+## Builds the map (the default one when none is given) and waits until its collision and navigation
+## are live.
+func build(info: MapInfo = null) -> void:
+	map_info = info if info != null and info.is_playable() else MapRegistry.default_map()
 	WebProbe.mark("lot: instantiate")
-	greybox = (scene if scene != null else GREYBOX).instantiate()
+	greybox = (scene if scene != null else map_info.load_scene()).instantiate()
 	add_child(greybox)
 	layout = MapLayout.new(greybox)
 	WebProbe.mark("lot: in the tree")
@@ -85,9 +89,24 @@ func rules_for(base: RulesTuning) -> RulesTuning:
 	return overlay.apply(base) if overlay != null else base
 
 
+## Gives the zombie simulation what it needs of this map: which ground is lit, the breaches, the
+## storey (0 for one floor) and `sight`, the way it sees walls.
+func equip(sim: ZombieSim, sight: Callable) -> void:
+	sim.lit_probe = is_lit
+	sim.gates = gates()
+	sim.set_floors(storey(), sight)
+
+
 ## The height of one storey of the map, or 0 for a map of one floor (the lot).
 func storey() -> float:
 	return layout.storey() if layout != null else 0.0
+
+
+## How far a press at `a` reaches `b`: the flat distance, or infinity when `b` is on another floor.
+func reach_distance(a: Vector3, b: Vector3) -> float:
+	if not on_level(a, b):
+		return INF
+	return Vector2(a.x - b.x, a.z - b.z).length()
 
 
 ## Whether `a` and `b` are on one floor: always on a map of one, else within half a storey in
