@@ -27,11 +27,15 @@ const LOT_OUTSIDE: Array[Vector3] = [
 	Vector3(-75.0, 0.0, -20.0),
 	Vector3(66.0, 0.0, -34.0),
 	Vector3(-66.0, 0.0, -34.0),
-	Vector3(20.0, 0.0, 44.0),
+	Vector3(27.0, 0.0, 44.0),
 	Vector3(100.0, 0.0, 100.0),
 ]
 ## Points in the lot's corners and ends that are inside: the aprons' ends and the road's.
 const LOT_INSIDE: Array[Vector3] = [
+	Vector3(66.0, 0.0, 6.0),
+	Vector3(-66.0, 0.0, 34.0),
+	Vector3(36.0, 0.0, 42.0),
+	Vector3(20.0, 0.0, 49.5),
 	Vector3(-66.0, 0.0, -46.0),
 	Vector3(66.0, 0.0, -46.0),
 	Vector3(-36.0, 0.0, -56.0),
