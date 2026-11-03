@@ -37,7 +37,7 @@ Compatibility, Godot 4.7.2.
 | Camera to the axis | 1 m | 2 m | 3 m | 4 m | 6 m | 8 m |
 | --- | --- | --- | --- | --- | --- | --- |
 | Crane beam, before | in it (covers 100 %) | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| Crane beam, after | in it (covers 42 %) | 0.31 | 0.28 | 0.25 | 0.11 | 0.25 |
+| Crane beam, after | in it (covers 34 %, camera 1.4 m) | 0.34 | 0.27 | 0.23 | 0.12 | 0.31 |
 | Lamp7 cone (unchanged) | 0.23 | 0.16 | 0.15 | 0.08 | 0.08 | 0.06 |
 | Lamp8 cone | 0.19 | 0.15 | 0.16 | 0.20 | 0.08 | 0.15 |
 | Lamp6 cone | 0.08 | 0.15 | 0.21 | 0.19 | 0.12 | n/a (no clear spot) |

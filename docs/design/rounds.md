@@ -343,7 +343,8 @@ minutes, and the draw rises every round.
 ## The prize crane
 
 Modelled on the Call of Duty Zombies Mystery Box ([research](../research/mystery-box.md)): a play costs 550, the claw
-digs for 4.5 seconds, then the chosen weapon floats for 12 seconds and only the buyer can take it. A weapon the player
+digs for 4.5 seconds, then the chosen weapon slides out of the front on a lit board for 12 seconds and only the buyer
+can take it. A weapon the player
 carries is never drawn; the draw is seeded (its own stream, `crane_rng_state` in the snapshot). The first 3 plays at a
 place never break down; after that the chance is 15% for four plays, 30% for four more, then 50%. A breakdown refunds
 the whole price (not counted as earned), shows a dud prize for 4 seconds and moves the crane to one of the other
