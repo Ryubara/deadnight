@@ -15,6 +15,8 @@ const DOOR := &"door_concession"
 const PERSON := 1
 const BOT := 2
 const POINTS := 300
+## The points that pay for the first wall weapon with some to spare.
+const GUN_POINTS := 5000
 ## The lockers: at home, and in the concession.
 const HOME_LOCKER := Vector3(2.0, 0.0, -31.0)
 const CONCESSION_LOCKER := Vector3(8.35, 0.0, -1.8)
@@ -254,6 +256,48 @@ func test_a_holding_bot_under_a_magazine_goes_buys_and_returns_to_the_spot() -> 
 	assert_float(_flat(_bought[0], HOME_LOCKER)).is_less(AT_LOCKER)
 	assert_bool(_settle_near(night, spot, HOLD_RADIUS, 60.0)).is_true()
 	assert_array(_catcher.lines).is_empty()
+	night.dispose()
+
+
+## The items the bot has bought, by shop id.
+func _bought_items(night: SeatedNight) -> Array[StringName]:
+	var found: Array[StringName] = []
+	night.on_event = func(event: Dictionary) -> void:
+		if event["type"] == &"purchase_made" and event["player_id"] == BOT:
+			found.append(event["item_id"])
+	return found
+
+
+func test_a_holding_bot_with_only_the_pistol_goes_for_a_gun_and_returns_to_the_spot() -> void:
+	var night := await _night(false)
+	night.give_order(BotOrders.HOLD, PERSON, OUTSIDE)
+	night.run(int(15.0 * TICKS_PER_SECOND))
+	var spot: Vector3 = BotOrders.current(night.frame, BOT)["at"]
+	night.server.rules.players[BOT].points = GUN_POINTS
+	var items := _bought_items(night)
+	var got_gun := false
+	for _tick in int(TRIP * TICKS_PER_SECOND):
+		night.tick()
+		got_gun = items.any(func(id: StringName) -> bool: return String(id).begins_with("weapon_"))
+		if got_gun:
+			break
+	assert_bool(got_gun).is_true()
+	assert_bool(_settle_near(night, spot, HOLD_RADIUS, 60.0)).is_true()
+	assert_array(_catcher.lines).is_empty()
+	night.dispose()
+
+
+func test_a_holding_bot_with_a_second_gun_keeps_its_spot_with_points_to_spend() -> void:
+	var night := await _night(false)
+	night.give_order(BotOrders.HOLD, PERSON, OUTSIDE)
+	night.run(int(15.0 * TICKS_PER_SECOND))
+	var spot: Vector3 = BotOrders.current(night.frame, BOT)["at"]
+	night.server.combat.apply(CombatAction.give_weapon(BOT, &"shotgun"))
+	night.server.rules.players[BOT].points = GUN_POINTS
+	var items := _bought_items(night)
+	var farthest := _farthest_from(night, spot, PATIENCE)
+	assert_array(items).is_empty()
+	assert_float(farthest).is_less(HOLD_RADIUS)
 	night.dispose()
 
 
