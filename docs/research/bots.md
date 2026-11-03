@@ -306,7 +306,9 @@ tank is over 40%, and off again when everyone leaves; it burns 0.05 to 0.08 a se
 
 ## Revives
 
-No revive exists yet (Phase 0). When it does, these are the rules.
+The revive is the game's own (#224: the held `use` beside the body for `revive_seconds`, within `revive_reach`); the
+bot only decides when to go, what to clear first and when to let go. These are the rules; phase 5 built them
+(`BotRevive`, `BotReviveRisk`, `BotClaims`).
 
 **Priority.** A downed human before a downed bot; among equals the one with the least time left; the nearest bot
 claims (a shared claim table with a 3 s lease, ties by slot id), the others become *cover*.
@@ -824,6 +826,41 @@ logic, callouts and human pings. **Done when**: scenarios 4 to 7, 15, 16 and 23 
 the real zombie mix, revive success is at least 70% of attempts and `deaths_reviving` under 10% of attempts; no more
 than one bot at a time on an errand; the callout rate is under one line per bot per 10 s and none names an unseen
 zombie.
+
+**What shipped in part 1 (the revive; callouts, roles, the errand turn, trapped logic and pings are part 2).**
+
+- `BotReviveRisk` is the risk check as a pure function. The window is the walk there (the straight line stretched by
+  1.2 at 4.2 m/s), the 3.5 s hold and a margin (2.0 s cautious to 0.6 s bold by `revive_eagerness`). A zombie threatens
+  when it can reach the body or the reviver inside the window (speed from the round's public formula, the dark's
+  1.25 in full, the type's share from a table a test holds to the roster). Verdicts: `SAFE`; `CLEAR` (the dead that can
+  arrive can be killed in 7 to 16 s of the held weapon's sustained damage, `WeaponWorth`, times a 0.55 hit share, and
+  there are at most 5 to 12 of them); `UNSAFE` (more or tougher: a pack, the boss); `LATE` (the bleed-out clock is
+  shorter than the walk).
+- `BotClaims` is the claim table: bids of distance each think (1 s), the nearest takes the claim, ties to the lowest
+  seat, a 3 s lease renewed every think, a challenger must be 2 m nearer to take one and never takes one whose holder
+  is in its hold, and a seat that is released frees its claims at once (`BotHost.release`, scenario 23). The host
+  hands one `BotTeam` to every bot it seats, as it does the roster.
+- `BotRevive` is the behaviour. The reviver is `GO` (walk, run), `HOLD` (hold `use` within 1.6 m of the body; no shot,
+  swap or reload), or `CLEAR` (fight from within 7 m of the body, the zombies nearest the body first). The others are
+  `COVER` (stand within 4 m of the body and shoot the zombies nearest it first). The last one up with someone down
+  and the risk not clear is `SURVIVE`: no approach, a 5 m retreat margin (a downed player gets up at the round's end,
+  and the night is over when all are down). The walk is judged with the eagerness raised by 0.35, so a zombie that
+  shows up on the way does not turn it round at once; the hold ends only by the abort rule (more than one zombie on the
+  bot and 20 health lost in a second, or under 30% health; past 60% of the hold only the health), then the bot clears
+  and retries after 1.5 s.
+- A bot at the revive faces the body, so what hits it from behind is only *heard*: the count of zombies on the bot is
+  the larger of the believed ones within 2.5 m and the ones heard very near.
+- Telemetry: `revive_attempts` (a hold begun, from `revive_started`), `revive_successes` (`player_revived` with the
+  bot as reviver), `revive_aborts` (the rule), `deaths_reviving` (`revive_stopped` for the reason `down`).
+
+*Measured* (`tests/captures/bots_revive_soak.tscn`, four mixed bots, no person, the shipped zombie mix and health, a
+seeded player put on the ground every 20 s while two others stand so that the revive is tried in the middle of the
+fight, 12 game minutes, seeds 1 to 3, a shared machine): **99 holds begun, 92 raised (93%), 4 let go of by the rule,
+no bot went down while holding**; 94 of the falls were made by hand; two falls bled out with nobody raising them (seed
+3, a bot that was in a pack of the dead). Without forced falls the shipped mix rarely downs a bot before round 10
+(eight game minutes, none; at 35% health the four bots go down within 90 s and the night is over, so that is no
+measure of the revive). The scenarios (`tests/night/test_bot_revive.gd`) hold 4 to 7, 16 and 23; the risk function and
+the claim table have pure unit tests; a mutant that makes the risk check always say `SAFE` fails scenario 5.
 
 ### Phase 6: filling slots, difficulty and the server
 

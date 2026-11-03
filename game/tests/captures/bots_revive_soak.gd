@@ -1,0 +1,211 @@
+extends Node
+## The revive soak of the bots plan (phase 5): hosted bots alone in the lot (no person) play a night
+## against the real zombie mix, and what they did about each other's falls is printed: per bot the
+## revive attempts, successes, holds let go of, deaths at a revive, downs, the callout lines, and
+## for the team the most bots on an errand at once and how long two or more were. A local or nightly
+## measurement, not a test (`tests/night/test_bot_revive.gd` holds the scenarios).
+##
+## `godot --headless --path game res://tests/captures/bots_revive_soak.tscn
+##   -- --seed=1 --minutes=10`
+## Arguments after `--`: `--seed=N`, `--minutes=M` (game minutes), `--bots=N` (default 4),
+## `--human` (a stand-in person at seat 1 stands in the lot: the bots stay with it and raise it),
+## `--tough=X` (every player's health, a multiple of the shipped),
+## `--profile=rookie|regular|veteran|mixed` (default mixed), `--trace` (a line every 15 s),
+## `--forced=S` (every S game seconds a seeded pick of the players on their feet is put on the
+## ground while at least two others stand, so the revive is tried often, in the real fight).
+## Prints `REVIVE {json}` at the end.
+
+## Ticks between the physics frames the engine is given (a bought door needs one).
+const FRAME_EVERY := 30
+
+var _args := {}
+var _night: SeatedNight
+var _downs: Dictionary = {}
+var _raised: Dictionary = {}
+var _died: Dictionary = {}
+var _both_errands := 0
+var _most_errands := 0
+var _ticks_in_round := 0
+var _rounds := 0
+var _pick := RandomNumberGenerator.new()
+var _forced := 0
+
+
+func _ready() -> void:
+	_args = _parse_args()
+	var tuning: RulesTuning = load(GameRules.DEFAULT_TUNING_PATH).duplicate(true)
+	tuning.health.max_health *= float(_args.get("tough", 1.0))
+	var seed_value := int(_args.get("seed", 1))
+	var bots := int(_args.get("bots", 4))
+	var people := 1 if _args.has("human") else 0
+	_night = await SeatedNight.start(self, bots + people, tuning, seed_value, true)
+	if people > 0:
+		_night.human(1)
+	var profiles := _profiles(bots)
+	for i in profiles.size():
+		_night.seat(people + i + 1, profiles[i], 1000 + 100 * seed_value + i)
+	_night.gather()
+	_night.on_event = _on_event
+	_pick.seed = seed_value
+	_night.start_round()
+	var limit := int(float(_args.get("minutes", 10)) * 60.0 * 60.0)
+	var ticks := 0
+	while ticks < limit and _night.server.rules.phase != GameRules.Phase.OVER:
+		_night.tick()
+		ticks += 1
+		_watch_errands()
+		var every := int(float(_args.get("forced", 0.0)) * 60.0)
+		if every > 0 and ticks % every == 0 and _night.server.rules.phase == GameRules.Phase.ACTIVE:
+			_put_one_down()
+		if _args.has("trace") and ticks % 900 == 0:
+			_trace(ticks)
+		if ticks % FRAME_EVERY == 0:
+			await get_tree().physics_frame
+	_report(ticks)
+	for _i in 600:
+		if not _night.world.navigation.is_busy():
+			break
+		await get_tree().process_frame
+	_night.dispose()
+	await get_tree().process_frame
+	get_tree().quit()
+
+
+## A seeded pick of the bots on their feet goes down, if two others stay up.
+func _put_one_down() -> void:
+	var up: Array[int] = []
+	for id: int in _night.server.rules.players:
+		var player: PlayerState = _night.server.rules.players[id]
+		if not player.downed and not player.dead:
+			up.append(id)
+	up.sort()
+	if up.size() < 3:
+		return
+	var id := up[_pick.randi() % up.size()]
+	if id == 1 and _args.has("human"):
+		return
+	_forced += 1
+	_night.host.hear(_night.server.rules.apply(RulesAction.set_downed(id, true)))
+
+
+func _watch_errands() -> void:
+	var on := 0
+	for bot in _night.host.bots:
+		var brain := bot.brain as BotFightBrain
+		if brain != null and brain.on_errand:
+			on += 1
+	_most_errands = maxi(_most_errands, on)
+	if on >= 2:
+		_both_errands += 1
+
+
+func _trace(ticks: int) -> void:
+	var line := (
+		"TRACE t=%d round=%d remaining=%d"
+		% [ticks / 60, _night.server.rules.round_number, _night.server.rules.zombies_remaining()]
+	)
+	for bot in _night.host.bots:
+		var id := bot.state.player_id
+		var at := _night.server.body_of(id).global_position
+		line += (
+			" | %d hp=%d%s %s (%d,%d)"
+			% [
+				id,
+				_night.server.rules.health_of(id),
+				" DOWN" if _night.server.rules.players[id].downed else "",
+				bot.intent.note,
+				at.x,
+				at.z
+			]
+		)
+	print(line)
+
+
+func _profiles(count: int) -> Array[BotProfile]:
+	var found: Array[BotProfile] = []
+	var kind := String(_args.get("profile", "mixed"))
+	for i in count:
+		match kind:
+			"rookie":
+				found.append(BotProfile.rookie())
+			"regular":
+				found.append(BotProfile.regular())
+			"veteran":
+				found.append(BotProfile.veteran())
+			_:
+				found.append(
+					[BotProfile.regular(), BotProfile.veteran(), BotProfile.rookie()][i % 3]
+				)
+	return found
+
+
+func _on_event(event: Dictionary) -> void:
+	match event["type"]:
+		&"player_downed":
+			_downs[event["player_id"]] = int(_downs.get(event["player_id"], 0)) + 1
+		&"player_revived":
+			if int(event["reviver_id"]) > 0:
+				_raised[event["reviver_id"]] = int(_raised.get(event["reviver_id"], 0)) + 1
+		&"player_died":
+			_died[event["player_id"]] = int(_died.get(event["player_id"], 0)) + 1
+		&"round_started":
+			_rounds += 1
+
+
+func _report(ticks: int) -> void:
+	var bots: Array[Dictionary] = []
+	var attempts := 0
+	var successes := 0
+	var deaths := 0
+	var aborts := 0
+	for bot in _night.host.bots:
+		var counters := bot.telemetry.counters
+		attempts += int(counters.get(&"revive_attempts", 0))
+		successes += int(counters.get(&"revive_successes", 0))
+		deaths += int(counters.get(&"deaths_reviving", 0))
+		aborts += int(counters.get(&"revive_aborts", 0))
+		(
+			bots
+			. append(
+				{
+					"seat": bot.state.player_id,
+					"profile": bot.profile.title,
+					"downs": int(_downs.get(bot.state.player_id, 0)),
+					"attempts": int(counters.get(&"revive_attempts", 0)),
+					"successes": int(counters.get(&"revive_successes", 0)),
+					"aborts": int(counters.get(&"revive_aborts", 0)),
+					"deaths_reviving": int(counters.get(&"deaths_reviving", 0)),
+					"callouts": int(counters.get(&"callouts", 0)),
+					"stuck_longest": snappedf(bot.legs.stuck.longest(), 0.1),
+					"think_us_p99": bot.telemetry.think_us(0.99),
+				}
+			)
+		)
+	var report := {
+		"seed": int(_args.get("seed", 1)),
+		"game_seconds": snappedf(float(ticks) / 60.0, 0.1),
+		"round": _night.server.rules.round_number,
+		"over": _night.server.rules.phase == GameRules.Phase.OVER,
+		"forced_downs": _forced,
+		"downs": _downs,
+		"raised_by": _raised,
+		"bled_out": _died,
+		"attempts": attempts,
+		"successes": successes,
+		"success_share": snappedf(float(successes) / float(maxi(attempts, 1)), 0.01),
+		"aborts": aborts,
+		"deaths_reviving": deaths,
+		"deaths_share": snappedf(float(deaths) / float(maxi(attempts, 1)), 0.01),
+		"most_on_an_errand": _most_errands,
+		"ticks_two_on_errands": _both_errands,
+		"bots": bots,
+	}
+	print("REVIVE ", JSON.stringify(report))
+
+
+func _parse_args() -> Dictionary:
+	var parsed := {}
+	for arg in OS.get_cmdline_user_args():
+		var parts := arg.trim_prefix("--").split("=", true, 1)
+		parsed[parts[0]] = parts[1] if parts.size() > 1 else true
+	return parsed
