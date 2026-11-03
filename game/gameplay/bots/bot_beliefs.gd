@@ -116,5 +116,16 @@ func nearest_threat(from: Vector3, memory_seconds: float) -> float:
 	return best
 
 
+## Metres to the nearest headliner the bot believes in, or INF.
+func boss_distance(here: Vector3) -> float:
+	var best := INF
+	for id in contacts:
+		var contact_of: Dictionary = contacts[id]
+		if ZombieModels.is_boss(contact_of.get("look", ZombieModels.DEFAULT)):
+			if is_believed(contact_of):
+				best = minf(best, _flat(here, contact_of["position"]))
+	return best
+
+
 static func _flat(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()

@@ -694,12 +694,10 @@ can hurt a player; the grenade is its first user and the ray gun's splash on its
 - **Shown:** the thrower's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` on their own screen
   (a blast that does not down), and on a down `RUBY BLEW THEMSELVES UP` on every screen. The server's `player_hurt` and
   `player_downed` carry `harm` (`grenade`) and `by_id`.
-- **Bots** throw only where the blast takes under a tenth of their own health (`BotGrenadier.harmless_apart`, 5.8 m, so
-  6 m from the bot) and still keep 7.5 m from every teammate, which no longer protects anyone's health. The clearance
-  stays because taking it away doubled the throws per night (18 to 42 over six seeded nights) and the bots then hit
-  themselves with a third of them ([measured on the grenades page](../research/grenades.md#only-the-thrower-856)); a
-  follow-up fixes the short landings first. They do not yet back off from a live grenade of their own beyond the
-  existing dodge.
+- **Bots** throw only where the blast takes under a tenth of their own health (`BotGrenadier.harmless_apart`, 5.8 m,
+  planned 7 m from the bot) and keep no distance from their teammates, who take nothing. A bot keeps out of its own
+  live grenade: it steps out of reach, never retreats toward it, and stands and fights instead of walking on
+  ([measured on the grenades page](../research/grenades.md#the-bots-and-their-own-grenade-872)).
 
 A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m and a round-5 one (82) out to
 4.7 m; from round 12 (139) only near the centre of the blast, and no round-14 one (159) at all (the climb is 7% a round).
