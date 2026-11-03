@@ -30,6 +30,14 @@ extends Resource
 ## means it is only slowed.
 @export var crawls_into: StringName = &""
 
+@export_group("Cold")
+## Whether the freeze gun can freeze it (`StatusDef.kind_gated`). A type that cannot (a boss) is
+## only slowed by the same shots.
+@export var freezable: bool = true
+## How many of the freeze gun's bolts it takes to freeze one of this type: the bolts before the last
+## only slow it (`chilled`), the count is kept while the slow lasts. A brute takes three.
+@export_range(1, 10, 1) var freeze_bolts: int = 1
+
 @export_group("Attack")
 ## Health a landed blow takes from a player.
 @export_range(0.0, 500.0, 1.0, "or_greater") var damage: float = 20.0

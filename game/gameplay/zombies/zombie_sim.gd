@@ -189,6 +189,39 @@ func blast(zombie_id: int, impulse: Vector3, stun: float) -> void:
 	zombie.push = Vector3(impulse.x, 0.0, impulse.z).limit_length(tuning.push_max_speed)
 
 
+## A status effect changed what the zombie is under (`CombatServer`'s `status_applied` and
+## `status_ended`): `wire` is the id the snapshot carries (0 for none), `halts` whether it stands
+## still and does not attack, `speed_scale` the share of its speed it keeps.
+func set_status(zombie_id: int, wire: int, halts: bool, speed_scale: float) -> void:
+	if not zombies.has(zombie_id):
+		return
+	var zombie := zombies[zombie_id]
+	zombie.status = wire
+	zombie.halted = halts
+	zombie.slow = speed_scale
+	if halts:
+		ZombieBrain.hold(zombie)
+
+
+## A zombie the rules killed while it was frozen breaks apart: it is gone at once, with no corpse
+## and no fall. The answer is the `zombie_shattered` event the clients draw the pieces from (where
+## it stood, how it faced, its look and how tall its body was against a walker's), or `{}` for a
+## zombie the sim does not hold.
+func shatter(zombie_id: int) -> Dictionary:
+	if not zombies.has(zombie_id):
+		return {}
+	var zombie := zombies[zombie_id]
+	zombies.erase(zombie_id)
+	return {
+		"type": &"zombie_shattered",
+		"zombie_id": zombie_id,
+		"position": zombie.position,
+		"yaw": zombie.yaw,
+		"look": zombie.look(),
+		"scale": ZombieModels.aim_scale(zombie.look()),
+	}
+
+
 func position_of(zombie_id: int) -> Vector3:
 	return zombies[zombie_id].position if zombies.has(zombie_id) else Vector3.ZERO
 
@@ -226,6 +259,8 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 		zombie.stagger_cooldown_left = maxf(zombie.stagger_cooldown_left - STEP, 0.0)
 		if zombie.mode == ZombieBody.Mode.DYING:
 			zombie.mode_time += STEP
+		elif zombie.halted:
+			ZombieBrain.hold(zombie)
 		else:
 			_think(zombie, STEP, targets, events)
 	PerfProbe.end(&"sim.think", began)
@@ -476,7 +511,8 @@ func _keep_outside_the_boards() -> void:
 
 
 func _ground_speed(zombie: ZombieBody) -> float:
-	return rounds.speed_on_ground(zombie.speed, zombie.lit) if rounds != null else zombie.speed
+	var speed := zombie.speed * zombie.slow
+	return rounds.speed_on_ground(speed, zombie.lit) if rounds != null else speed
 
 
 ## Puts the sim on a map with storeys (`storey`, 0 for none) and the way it sees walls (`sight`).

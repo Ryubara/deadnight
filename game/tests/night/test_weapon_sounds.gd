@@ -160,6 +160,12 @@ func test_every_firearm_has_reload_steps_of_its_own_mechanism() -> void:
 			continue
 		var motion := ReloadMotion.for_weapon(id)
 		assert_object(motion).override_failure_message("%s: no motion" % id).is_not_null()
+		if EnergySounds.handles(id):
+			# The energy weapons' steps are `EnergySounds`' (its own test).
+			assert_array(motion.events.keys()).contains_exactly_in_any_order(
+				EnergySounds.RELOAD[id].keys()
+			)
+			continue
 		assert_bool(WeaponSounds.RELOAD.has(id)).override_failure_message(String(id)).is_true()
 		var steps: Dictionary = WeaponSounds.RELOAD[id]
 		(

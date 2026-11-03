@@ -78,7 +78,7 @@ const REQUIRED := {
 }
 ## Fields that may be left out; when present they must have the type.
 const OPTIONAL := {
-	HIT: {"melee": TYPE_BOOL},
+	HIT: {"melee": TYPE_BOOL, "keeps": TYPE_STRING_NAME},
 	BLOW: {"bearing": TYPE_FLOAT, "source_id": TYPE_INT},
 	GRANT_POINTS: {"reason": TYPE_STRING_NAME},
 	BUY: {"rounds": TYPE_INT, "weapon": TYPE_STRING_NAME},
@@ -173,11 +173,18 @@ static func blow(
 
 
 ## One hit on a zombie. `damage` is what the weapon dealt, zone multiplier included; the rules take
-## it off the zombie's health, pay for it, and decide whether it killed.
+## it off the zombie's health, pay for it, and decide whether it killed. `keeps` names a status
+## (`StatusDef` id) that this hit does not break: the freeze gun's own bolt only keeps a
+## zombie frozen.
 static func hit(
-	player_id: int, zombie_id: int, zone: StringName, damage: float, melee: bool = false
+	player_id: int,
+	zombie_id: int,
+	zone: StringName,
+	damage: float,
+	melee: bool = false,
+	keeps: StringName = &""
 ) -> Dictionary:
-	return {
+	var action := {
 		"type": HIT,
 		"player_id": player_id,
 		"zombie_id": zombie_id,
@@ -185,6 +192,9 @@ static func hit(
 		"damage": damage,
 		"melee": melee,
 	}
+	if keeps != &"":
+		action["keeps"] = keeps
+	return action
 
 
 ## A zombie died to something that is not a player (a trap, a fall): no points.
