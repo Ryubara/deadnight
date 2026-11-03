@@ -472,6 +472,14 @@ func _add_sounds() -> void:
 	weapons.name = "WeaponSounds"
 	add_child(weapons)
 	weapons.setup(state)
+	var energy := EnergySounds.new()
+	energy.name = "EnergySounds"
+	add_child(energy)
+	energy.setup(state)
+	var recut := RecutLayer.new()
+	recut.name = "RecutLayer"
+	add_child(recut)
+	recut.setup(state)
 	var grenades := GrenadeSounds.new()
 	grenades.name = "GrenadeSounds"
 	add_child(grenades)

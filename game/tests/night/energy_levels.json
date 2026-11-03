@@ -1,0 +1,257 @@
+{
+  "bed_lufs": -35.3,
+  "slots": {
+    "pistol_recut": {
+      "trims_db": {
+        "shot_pistol": -6.5,
+        "tail_pistol": -20.5,
+        "recut_layer": -22.0,
+        "recut_blast": -23.0
+      },
+      "files_sha256": {
+        "recut_layer_1.ogg": "d6b7567963805f111979fe978b09c8c4713887366c0c7bf33c7599a5890c2c32",
+        "recut_layer_2.ogg": "6e3c4ad80e6e760e1804630d463e907c35e7621aae4c333d4a9a9bd314021123",
+        "recut_layer_3.ogg": "7dee36e0bb4666a40e6935304946cefc85a4336117be1c304cbdca9ada88eed0",
+        "recut_layer_4.ogg": "12d938b4e42a2368d41bdb5862c79344d5c5cd6cf0819fa2432acfada9413cce",
+        "recut_layer_5.ogg": "99f08cb3f4de84f6f35b66dce638b304c0a9fa1f7128dae2342c000545f843e8",
+        "recut_blast_1.ogg": "8a4002c64a1639544764b49687e5d7ab1e9ac9e36be530bb2359b6bacdbac900",
+        "recut_blast_2.ogg": "ef948b53b584b6cd879c979f5b4a467cd5783d5dcda360d9bba43ca4e37a1a1a",
+        "recut_blast_3.ogg": "e8c8ec546db32dedb032d5c7b2738a6905519d385d0319a996e27d068eff0f01"
+      },
+      "single_momentary_lufs": -17.9,
+      "burst_lufs": -16.0,
+      "peak_dbfs": -5.6,
+      "centroid_hz": 6231,
+      "low_end_share": 0.23
+    },
+    "smg_recut": {
+      "trims_db": {
+        "shot_smg": -6.5,
+        "tail_smg": -20.5,
+        "recut_layer": -22.0
+      },
+      "files_sha256": {
+        "recut_layer_1.ogg": "d6b7567963805f111979fe978b09c8c4713887366c0c7bf33c7599a5890c2c32",
+        "recut_layer_2.ogg": "6e3c4ad80e6e760e1804630d463e907c35e7621aae4c333d4a9a9bd314021123",
+        "recut_layer_3.ogg": "7dee36e0bb4666a40e6935304946cefc85a4336117be1c304cbdca9ada88eed0",
+        "recut_layer_4.ogg": "12d938b4e42a2368d41bdb5862c79344d5c5cd6cf0819fa2432acfada9413cce",
+        "recut_layer_5.ogg": "99f08cb3f4de84f6f35b66dce638b304c0a9fa1f7128dae2342c000545f843e8"
+      },
+      "single_momentary_lufs": -19.6,
+      "burst_lufs": -13.2,
+      "peak_dbfs": -4.8,
+      "centroid_hz": 6044,
+      "low_end_share": 0.03
+    },
+    "rifle_recut": {
+      "trims_db": {
+        "shot_rifle": -6.5,
+        "tail_rifle": -20.5,
+        "recut_layer": -22.0
+      },
+      "files_sha256": {
+        "recut_layer_1.ogg": "d6b7567963805f111979fe978b09c8c4713887366c0c7bf33c7599a5890c2c32",
+        "recut_layer_2.ogg": "6e3c4ad80e6e760e1804630d463e907c35e7621aae4c333d4a9a9bd314021123",
+        "recut_layer_3.ogg": "7dee36e0bb4666a40e6935304946cefc85a4336117be1c304cbdca9ada88eed0",
+        "recut_layer_4.ogg": "12d938b4e42a2368d41bdb5862c79344d5c5cd6cf0819fa2432acfada9413cce",
+        "recut_layer_5.ogg": "99f08cb3f4de84f6f35b66dce638b304c0a9fa1f7128dae2342c000545f843e8"
+      },
+      "single_momentary_lufs": -16.6,
+      "burst_lufs": -17.5,
+      "peak_dbfs": -5.4,
+      "centroid_hz": 4116,
+      "low_end_share": 0.44
+    },
+    "shotgun_recut": {
+      "trims_db": {
+        "shot_shotgun": -7.0,
+        "tail_shotgun": -21.0,
+        "recut_layer": -22.0
+      },
+      "files_sha256": {
+        "recut_layer_1.ogg": "d6b7567963805f111979fe978b09c8c4713887366c0c7bf33c7599a5890c2c32",
+        "recut_layer_2.ogg": "6e3c4ad80e6e760e1804630d463e907c35e7621aae4c333d4a9a9bd314021123",
+        "recut_layer_3.ogg": "7dee36e0bb4666a40e6935304946cefc85a4336117be1c304cbdca9ada88eed0",
+        "recut_layer_4.ogg": "12d938b4e42a2368d41bdb5862c79344d5c5cd6cf0819fa2432acfada9413cce",
+        "recut_layer_5.ogg": "99f08cb3f4de84f6f35b66dce638b304c0a9fa1f7128dae2342c000545f843e8"
+      },
+      "single_momentary_lufs": -15.4,
+      "burst_lufs": -14.2,
+      "peak_dbfs": -5.2,
+      "centroid_hz": 3213,
+      "low_end_share": 0.62
+    },
+    "flare_gun_recut": {
+      "trims_db": {
+        "shot_flare": -6.0,
+        "recut_layer": -22.0,
+        "recut_fire": -23.0
+      },
+      "files_sha256": {
+        "recut_layer_1.ogg": "d6b7567963805f111979fe978b09c8c4713887366c0c7bf33c7599a5890c2c32",
+        "recut_layer_2.ogg": "6e3c4ad80e6e760e1804630d463e907c35e7621aae4c333d4a9a9bd314021123",
+        "recut_layer_3.ogg": "7dee36e0bb4666a40e6935304946cefc85a4336117be1c304cbdca9ada88eed0",
+        "recut_layer_4.ogg": "12d938b4e42a2368d41bdb5862c79344d5c5cd6cf0819fa2432acfada9413cce",
+        "recut_layer_5.ogg": "99f08cb3f4de84f6f35b66dce638b304c0a9fa1f7128dae2342c000545f843e8",
+        "recut_fire_1.ogg": "30b3f5e964da951d59c017c08faa7f8306e383e222e939fbfd5c5a881174c4ef",
+        "recut_fire_2.ogg": "eba580b8da213762d11d4fb8b6ede133a1429aa4f799160484d433a62f9e908c",
+        "recut_fire_3.ogg": "73e2f268f84b8c740981ed41561f4e888d09a3511c39106f0820962278a1afac"
+      },
+      "single_momentary_lufs": -16.1,
+      "burst_lufs": -17.5,
+      "peak_dbfs": -5.3,
+      "centroid_hz": 5912,
+      "low_end_share": 0.27
+    },
+    "ray_gun": {
+      "trims_db": {
+        "shot_ray": -7.5
+      },
+      "files_sha256": {
+        "shot_ray_1.ogg": "54383af4aba3d5bb25245391683d12b547ec4ad1dfb4eded6c84f30fb47e0991",
+        "shot_ray_2.ogg": "e332b1857fb5d9b25ab9365f808aaae58133e6c5f708d54f2167cc0f7e768069",
+        "shot_ray_3.ogg": "ed087f21da75899cfd283e0e5b7989d390c4c3d80b21e052f5d31795680152fa",
+        "shot_ray_4.ogg": "48258e5d68f80e8b2d72bbaa8d1abca01d36fe21314dbafd94abe0d79b28b25d"
+      },
+      "single_momentary_lufs": -13.8,
+      "burst_lufs": -14.2,
+      "peak_dbfs": -6.5,
+      "centroid_hz": 2884,
+      "low_end_share": 0.2
+    },
+    "ray_gun_recut": {
+      "trims_db": {
+        "shot_ray": -7.5,
+        "recut_deep": -22.0
+      },
+      "files_sha256": {
+        "shot_ray_1.ogg": "54383af4aba3d5bb25245391683d12b547ec4ad1dfb4eded6c84f30fb47e0991",
+        "shot_ray_2.ogg": "e332b1857fb5d9b25ab9365f808aaae58133e6c5f708d54f2167cc0f7e768069",
+        "shot_ray_3.ogg": "ed087f21da75899cfd283e0e5b7989d390c4c3d80b21e052f5d31795680152fa",
+        "shot_ray_4.ogg": "48258e5d68f80e8b2d72bbaa8d1abca01d36fe21314dbafd94abe0d79b28b25d",
+        "recut_deep_1.ogg": "e57ac64578686c422d1c38d63c8e9a94aac236b9fa3854ea7b5355e0a0e9c80a",
+        "recut_deep_2.ogg": "8943e9727698af07a3858141954104d35f22b93388c250c9232b55251fd4dd2f",
+        "recut_deep_3.ogg": "13b4c4e758be3c808dc0e97d7500e0ac17d893715fdcd7c1f2df1c5451d4529d"
+      },
+      "single_momentary_lufs": -13.7,
+      "burst_lufs": -14.2,
+      "peak_dbfs": -5.9,
+      "centroid_hz": 2936,
+      "low_end_share": 0.19
+    },
+    "freeze_gun": {
+      "trims_db": {
+        "shot_freeze": -6.5
+      },
+      "files_sha256": {
+        "shot_freeze_1.ogg": "f660a8017e2c4f052b4159c105b4443fbf7647b3d7a0945897279692348bce4f",
+        "shot_freeze_2.ogg": "a7ac737bc0e18f7259d740041b8306ef0b330298d873b4070578624720b2e64c",
+        "shot_freeze_3.ogg": "d339611637920d5ee6979ef3c6589c5cc0d073dd432fc08eaca413f91642c40d",
+        "shot_freeze_4.ogg": "2b77f9396118c9f0f3f1ccc27525d4ac721bb1888818678876609b2fc6aeed9a"
+      },
+      "single_momentary_lufs": -14.0,
+      "burst_lufs": -17.4,
+      "peak_dbfs": -5.5,
+      "centroid_hz": 5969,
+      "low_end_share": 0.01
+    },
+    "freeze_gun_recut": {
+      "trims_db": {
+        "shot_freeze": -6.5,
+        "recut_deep": -22.0
+      },
+      "files_sha256": {
+        "shot_freeze_1.ogg": "f660a8017e2c4f052b4159c105b4443fbf7647b3d7a0945897279692348bce4f",
+        "shot_freeze_2.ogg": "a7ac737bc0e18f7259d740041b8306ef0b330298d873b4070578624720b2e64c",
+        "shot_freeze_3.ogg": "d339611637920d5ee6979ef3c6589c5cc0d073dd432fc08eaca413f91642c40d",
+        "shot_freeze_4.ogg": "2b77f9396118c9f0f3f1ccc27525d4ac721bb1888818678876609b2fc6aeed9a",
+        "recut_deep_1.ogg": "e57ac64578686c422d1c38d63c8e9a94aac236b9fa3854ea7b5355e0a0e9c80a",
+        "recut_deep_2.ogg": "8943e9727698af07a3858141954104d35f22b93388c250c9232b55251fd4dd2f",
+        "recut_deep_3.ogg": "13b4c4e758be3c808dc0e97d7500e0ac17d893715fdcd7c1f2df1c5451d4529d"
+      },
+      "single_momentary_lufs": -14.5,
+      "burst_lufs": -17.0,
+      "peak_dbfs": -4.7,
+      "centroid_hz": 5966,
+      "low_end_share": 0.01
+    }
+  },
+  "recut": {
+    "pistol": {
+      "single_peak_added_db": 0.8,
+      "burst_peak_added_db": -0.1,
+      "tail_added_db": 9.3,
+      "bright_added_db": 18.4,
+      "deep_added_db": -7.0
+    },
+    "smg": {
+      "single_peak_added_db": 0.1,
+      "burst_peak_added_db": 0.9,
+      "tail_added_db": 16.2,
+      "bright_added_db": 23.0,
+      "deep_added_db": -17.6
+    },
+    "rifle": {
+      "single_peak_added_db": 0.1,
+      "burst_peak_added_db": -0.1,
+      "tail_added_db": 2.2,
+      "bright_added_db": 17.1,
+      "deep_added_db": 0.1
+    },
+    "shotgun": {
+      "single_peak_added_db": 0.3,
+      "burst_peak_added_db": 0.1,
+      "tail_added_db": -0.2,
+      "bright_added_db": 9.1,
+      "deep_added_db": 0.1
+    },
+    "flare_gun": {
+      "single_peak_added_db": 0.1,
+      "burst_peak_added_db": 0.4,
+      "tail_added_db": 8.2,
+      "bright_added_db": 16.5,
+      "deep_added_db": -0.4
+    },
+    "ray_gun": {
+      "single_peak_added_db": 1.2,
+      "burst_peak_added_db": 0.6,
+      "tail_added_db": 0.3,
+      "bright_added_db": -1.7,
+      "deep_added_db": 6.7
+    },
+    "freeze_gun": {
+      "single_peak_added_db": 0.2,
+      "burst_peak_added_db": 0.8,
+      "tail_added_db": -0.5,
+      "bright_added_db": -2.3,
+      "deep_added_db": 23.5
+    }
+  },
+  "close": {
+    "burst_ray": {
+      "max_db": -6.0,
+      "close_peak_dbfs": -11.0,
+      "close_lufs": -20.9
+    },
+    "freeze_creak": {
+      "max_db": -3.0,
+      "close_peak_dbfs": -11.8,
+      "close_lufs": -20.2
+    },
+    "freeze_hit": {
+      "max_db": -2.5,
+      "close_peak_dbfs": -10.7,
+      "close_lufs": -17.9
+    },
+    "freeze_shatter": {
+      "max_db": -5.0,
+      "close_peak_dbfs": -10.9,
+      "close_lufs": -19.0
+    },
+    "freeze_thaw": {
+      "max_db": -2.5,
+      "close_peak_dbfs": -10.9,
+      "close_lufs": -18.8
+    }
+  }
+}
