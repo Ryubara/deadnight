@@ -386,6 +386,36 @@ static func light_leaks(root: Node, lights: Array[Light3D] = []) -> Array[Dictio
 	return found
 
 
+## Every place a lamp's own cull mask takes away a light it gives a surface it can see (no wall
+## between): `{"lamp", "surface", "peak"}` with the most light the lamp would give there, the
+## cost of a room layer (issue #841). The surfaces are the same as `light_leaks`'s.
+static func lost_lights(root: Node, lights: Array[Light3D] = []) -> Array[Dictionary]:
+	var walls := solids(root)
+	var boxes := receivers(root)
+	var lamps := lights
+	if lamps.is_empty():
+		for node in root.find_children("*", "Light3D", true, false):
+			if (node is OmniLight3D or node is SpotLight3D) and (node as Light3D).visible:
+				lamps.append(node)
+	var found: Array[Dictionary] = []
+	for lamp in lamps:
+		var lost := {}
+		for box in boxes:
+			if lamp.light_cull_mask & box.layers != 0:
+				continue
+			for entry in face_points(box):
+				if _buried(boxes, box, entry[0]):
+					continue
+				var lit := light_at(lamp, entry[0], entry[1])
+				if lit < MIN_LIT or blocked(walls, lamp.global_position, entry[0]) != null:
+					continue
+				var key := str(root.get_path_to(box))
+				lost[key] = maxf(float(lost.get(key, 0.0)), lit)
+		for key: String in lost:
+			found.append({"lamp": str(root.get_path_to(lamp)), "surface": key, "peak": lost[key]})
+	return found
+
+
 ## `light_leaks` as lines of text, "path: lights surface through wall (points, peak)".
 static func bleeding_lights(root: Node, lights: Array[Light3D] = []) -> Array[String]:
 	var lines: Array[String] = []

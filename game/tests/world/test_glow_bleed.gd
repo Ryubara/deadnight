@@ -11,35 +11,56 @@ const GREYBOXES: Array[String] = [
 	"res://world/smallmap/smallmap_greybox.tscn",
 ]
 const SIGN := "Concession/Lamps/NeonSnacks"
-## A lamp's through-the-wall light that these tables allow: an unshadowed lamp inside a room
-## reaches the  next one by its range, which only a shadow (too dear on a phone) or a room's own
-## light layer would  stop. The numbers are what each lamp gives its worst surface today
-## (`GlowBleed.peaks`); the test fails  when one grows or a lamp not in the table leaks. Remove a
-## line when its lamp stops leaking.
+## What a lamp still lights through a wall after the room layers (issue #841;
+## docs/research/room-lights.md): `[the most it gives a surface, why it stays]`. A lamp lights the
+## default layer and its own room's, and a floor, wall or ceiling that must not take it sits on a
+## layer the lamp lacks; what stays is a box that is in two places at once (a mask is the whole
+## box's), or another issue's lamp. The test fails when a number grows, when a lamp not in the table
+## leaks (`GlowBleed.peaks`) and when a listed lamp stops.
 const LEAKS := {
 	"res://world/drive_in_greybox.tscn":
 	{
-		"Concession/Lamps/InteriorE": 0.25,
-		"Concession/Lamps/InteriorN": 0.40,
-		"Concession/Lamps/InteriorW": 0.25,
-		"Field/Lamps/Lamp12/Light": 0.22,
-		"Field/Lamps/Lamp5/Light": 0.30,
-		"Field/Lamps/Lamp6/Light": 0.30,
-		"ProjectionBooth/Lamps/Lower": 0.47,
-		"ProjectionBooth/Lamps/ProjectorBeam": 0.91,
-		"ShopProps/ReCut/Glow": 0.28,
-		"ShopProps/Soda/Glow": 0.19,
+		"ProjectionBooth/Lamps/Lower":
+		[
+			0.39,
+			"its walls are one box over both storeys: the lamp's light on the upper half is the wall's",
+		],
+		"ProjectionBooth/Lamps/ProjectorBeam":
+		[0.91, "the projector's spot faces the road, not the screen (issue #840)"],
+		"ShopProps/ReCut/Glow":
+		[0.28, "the booth's east wall is one box over both storeys, like the lower lamp's"],
 	},
 	"res://world/smallmap/smallmap_greybox.tscn":
 	{
-		"ShopProps/ReCut/Glow": 0.27,
-		"ShopProps/Soda/Glow": 0.23,
-		"Side/Lamp4/Light": 0.56,
-		"Side/Lamp5/Light": 0.70,
-		"Start/Lamp1/Light": 0.29,
-		"Start/Lamp2/Light": 0.40,
-		"Start/Lamp3/Light": 0.66,
-		"UpperA/Lamp6/Light": 0.26,
+		"UpperA/Lamp6/Light":
+		[
+			0.26,
+			"one slab is the upper hall's floor and the roof terrace past its south wall",
+		],
+	},
+}
+## What the room layers take from a lamp that it could see: `"lamp|surface"` and why it is let go. A
+## lamp that loses a surface not listed here is darkening a room it lights; the test fails on it and
+## on a line that no longer loses.
+const LOST := {
+	"res://world/drive_in_greybox.tscn":
+	{
+		"Concession/Lamps/InteriorW|Midway/Ground1_0":
+		"the doorway's spill is the glow cards' job, and the posts light that ground",
+		"Concession/Lamps/InteriorE|Midway/Ground1_0":
+		"the doorway's spill is the glow cards' job, and the posts light that ground",
+		"Concession/Lamps/InteriorN|Field/GroundC1_3":
+		"the window's spill: the sign's spot gives that ground 8 and the posts 1.5",
+	},
+	"res://world/smallmap/smallmap_greybox.tscn":
+	{
+		"Start/Lamp3/Light|UpperB/WallS0":
+		"up the stairwell onto the next hall's wall base, above a slab",
+		"Start/Lamp3/Light|Ceilings/SideSlabS":
+		"up the stairwell onto the next hall's floor, a room's glow in another room",
+		"UpperA/Lamp6/Light|Side/WallS4": "the wall below, seen through the slab: it was a leak",
+		"UpperA/Lamp6/Light|Ceilings/SideSlabS":
+		"the next hall's floor, seen through its own walls: it was a leak",
 	},
 }
 
@@ -170,14 +191,87 @@ func test_no_lamp_of_a_map_lights_through_a_wall_beyond_what_the_table_allows() 
 				over.append(
 					"%s lights through a wall (%.2f) and is not in the table" % [lamp, peaks[lamp]]
 				)
-			elif peaks[lamp] > allowed[lamp]:
+			elif peaks[lamp] > allowed[lamp][0]:
 				over.append(
 					(
 						"%s lights through a wall up to %.2f, over %.2f"
-						% [lamp, peaks[lamp], allowed[lamp]]
+						% [lamp, peaks[lamp], allowed[lamp][0]]
 					)
 				)
 		for lamp: String in allowed:
 			if not peaks.has(lamp):
 				over.append("%s no longer leaks: remove it from the table" % lamp)
+			elif String(allowed[lamp][1]).length() < 20:
+				over.append("%s stays in the table without a reason" % lamp)
 		assert_array(over).override_failure_message("%s: %s" % [path, over]).is_empty()
+
+
+func test_the_room_layers_take_no_light_from_a_lamp_beyond_the_table() -> void:
+	# A lamp that names layers must not darken what it lights: every surface it could see and
+	# loses to its mask is a line of the table, with its reason.
+	for path in GREYBOXES:
+		var allowed: Dictionary = LOST[path]
+		var found := {}
+		for lost in GlowBleed.lost_lights(_instance(path)):
+			found["%s|%s" % [lost["lamp"], lost["surface"]]] = lost["peak"]
+		var over: Array[String] = []
+		for key: String in found:
+			if not allowed.has(key):
+				over.append("%s loses a light (%.2f) and is not in the table" % [key, found[key]])
+		for key: String in allowed:
+			if not found.has(key):
+				over.append("%s no longer loses: remove it from the table" % key)
+			elif String(allowed[key]).length() < 20:
+				over.append("%s is let go without a reason" % key)
+		assert_array(over).override_failure_message("%s: %s" % [path, over]).is_empty()
+
+
+func test_a_lamp_that_names_layers_keeps_the_default_one() -> void:
+	# The dead, the player and the props are on the default layer: a lamp that dropped it would
+	# light a room's floor and leave everyone in it dark.
+	for path in GREYBOXES:
+		var map := _instance(path)
+		var named := 0
+		for node in map.find_children("*", "Light3D", true, false):
+			var light := node as Light3D
+			if light.light_cull_mask == 0xFFFFFFFF or light is DirectionalLight3D:
+				continue
+			named += 1
+			(
+				assert_int(light.light_cull_mask & 1)
+				. override_failure_message(
+					"%s names layers without the default one" % map.get_path_to(light)
+				)
+				. is_equal(1)
+			)
+		assert_int(named).override_failure_message("%s: no lamp names layers" % path).is_greater(5)
+
+
+func test_a_floor_on_a_room_layer_takes_no_light_through_a_wall_and_the_check_says_so() -> void:
+	# The synthetic scene: the omni a metre in front of the wall lights the floor behind it; with
+	# the floor on layer 2 and the omni on the default layer alone it does not, and the light it
+	# could not have seen is not counted as lost; a floor it can see on that layer is.
+	var root := Node3D.new()
+	add_child(root)
+	auto_free(root)
+	_wall_box(root)
+	var floor_box := CSGBox3D.new()
+	floor_box.name = "Floor0"
+	floor_box.size = Vector3(8.0, 0.4, 8.0)
+	floor_box.position = Vector3(0.0, -0.2, 0.0)
+	floor_box.use_collision = true
+	root.add_child(floor_box)
+	var omni := OmniLight3D.new()
+	omni.omni_range = 6.0
+	omni.light_energy = 3.0
+	omni.position = Vector3(0.0, 2.0, -1.0)
+	root.add_child(omni)
+	assert_array(GlowBleed.bleeding_lights(root, [omni] as Array[Light3D])).is_not_empty()
+	floor_box.layers = 2
+	omni.light_cull_mask = 1
+	assert_array(GlowBleed.bleeding_lights(root, [omni] as Array[Light3D])).is_empty()
+	var lost := GlowBleed.lost_lights(root, [omni] as Array[Light3D])
+	assert_array(lost).is_not_empty()
+	assert_str(lost[0]["surface"]).is_equal("Floor0")
+	omni.light_cull_mask = 3
+	assert_array(GlowBleed.lost_lights(root, [omni] as Array[Light3D])).is_empty()

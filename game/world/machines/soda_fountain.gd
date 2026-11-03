@@ -33,6 +33,11 @@ const DURATION := 1.3
 const FLASH_DECAY := 3.0
 const BUBBLES := 9
 
+## The render layers the machine's glow lights (`Light3D.light_cull_mask`): the default layer and
+## its room's, so the glow does not reach through the wall into the next room
+## (docs/research/room-lights.md).
+@export_flags_3d_render var light_layers := 0xFFFFFFFF
+
 var _clock := 0.0
 ## Seconds into a pour, or -1 when idle.
 var _t := -1.0
@@ -267,6 +272,7 @@ func _sign() -> void:
 func _effects() -> void:
 	_light = OmniLight3D.new()
 	_light.name = "Glow"
+	_light.light_cull_mask = light_layers
 	_light.light_color = Color(1.0, 0.55, 0.55)
 	_light.omni_range = 4.5
 	_light.position = Vector3(0.0, 1.8, 0.8)
