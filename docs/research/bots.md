@@ -938,9 +938,6 @@ inside the bodies' margin: bots walked into locker and prop corners. The last tw
 run's rounds differ by seed once the bots behave differently, so a few tenths of a percent between runs is noise;
 compare over all six seeds. Remaining stuck episodes are bot against bot (44 of 98) and no contact (42).
 
-Open: the Concession's east wall (x 9.8 to 10.2) and the soda fountain collider (x 7 to 9.4) leave a 0.4 m slot a
-bot can wedge in (#615).
-
 The bands test reads the Veteran's dodge from a few dozen blows: on `main` four seeds read 0.50 (34 blows due) and ten
 seeds read 0.67 (63), and with the tighter contour four seeds read 0.68 (19) and ten read 0.60 (45). The same fight is
 bit-identical from run to run, so the four-seed number is a draw, not noise to average. The test runs eight seeds
@@ -962,3 +959,14 @@ within 4 m) at about the speed of the person's own run: the person's sprint, a s
 and they catch up when it stops. Bots standing still while far (waiting for a path query, or a door) are about 5% of
 that time. Stuck seconds differ by half a point between two runs of one seed on a busy machine (the cause is not
 found; the runs are not bit-identical under load), so compare a change over all six seeds and several runs, not one.
+
+### The goals of #564 after the roam design
+
+Bots roam by default and come to a person for a revive or a ping; Follow, Roam and Hold become player orders (issues
+641 and 642). The goals of #564 are now:
+
+- Stuck seconds under 1% of walking time on seeds 1 to 6 (`--tough=3`).
+- Think p99 under 0.5 ms in the soak on an idle machine, or the budget in [Server cost](#server-cost) changed with the
+  measurement.
+- Within 12 m of the nearest person at 95%: moves to #641, where it belongs to the Follow order (0.92 now, counted over
+  the bots that are up).
