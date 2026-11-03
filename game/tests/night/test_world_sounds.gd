@@ -254,3 +254,21 @@ func test_the_tense_bed_fades_in_after_the_sting_and_out_when_the_round_ends() -
 
 func _count(id: StringName) -> int:
 	return _ids().filter(func(x: StringName) -> bool: return x == id).size()
+
+
+func test_an_item_a_map_gives_its_own_sounds_plays_those_not_its_kinds() -> void:
+	var buy := {
+		"type": &"purchase_made",
+		"player_id": OWN,
+		"item_id": &"door_concession",
+		"price": 1,
+		"detail": {}
+	}
+	_sounds.item_sounds = {&"door_concession": []}
+	_tell(buy)
+	_run(1.0)
+	assert_array(_ids()).is_empty()
+	_sounds.item_sounds = {}
+	_tell(buy)
+	_run(1.0)
+	assert_array(_ids()).is_equal([&"door_unlock", &"door_buy"])

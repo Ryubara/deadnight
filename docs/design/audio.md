@@ -5,7 +5,7 @@ every level and limit, is `sound_catalog.gd`.
 
 ## Where the sounds come from
 
-Of the 375 sound files in `game/assets/audio/`, **219 are synthesised** by the scripts in `tools/audio/` (how:
+Of the 402 sound files in `game/assets/audio/`, **246 are synthesised** by the scripts in `tools/audio/` (how:
 [research](../research/audio.md)): original work, committed, and changed by editing a number. **41 are generated with
 ElevenLabs Sound Effects** and **115 with ElevenLabs text to speech** (the soldier's voice) on the free tier, which is
 third-party output: attribution required, not licensed for commercial use, to be relicensed or replaced before a
@@ -17,7 +17,7 @@ commercial release
 | `zombie/` `alert_4..6`, `attack_4..6`, `death_3..5`, `groan_5..7`, `groan_brute_4..5`, `groan_crawler_4..5`, `hurt_4..6`, `roar_3..4`, `shriek_3..5` | 24 | ElevenLabs (models v2 and v3), extra takes of the dead's voices | [`zombie/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/zombie/LICENSE.md), every prompt in `zombie/eleven.json` |
 | `eleven/` | 5 | ElevenLabs (model v2): the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
 | `voice/soldier/` | 115 | ElevenLabs text to speech (model `eleven_v4`, the premade voice Brian): the soldier's barks, see [The soldiers' voices](#the-soldiers-voices) | [`voice/soldier/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier/LICENSE.md), every line, setting and seed in `manifest.json` |
-| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (3, 8, 72, 5, 2, 2, 32, 3, 9 and 35 files) | 219 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
+| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (11, 8, 72, 5, 2, 2, 48, 3, 9 and 38 files) | 246 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
 
 The decision to use the ElevenLabs takes is recorded in two places, which say it differently:
 [#252](https://github.com/Ryubara/deadnight/issues/252) states a maintainer decision of 2026-11-01 to use the free tier
@@ -54,7 +54,7 @@ Five buses with a slider each in the settings screen (`default_bus_layout.tres`,
 | Music | stings and the score | no | 80 |
 | Effects | guns, reloads, steps, the dead, the generator, boards, doors, blows, the till | yes | 100 |
 | Voice ("Voices") | the soldiers' voices: the player's own and the teammates' | no: what you hear of yourself is never ducked | 100 |
-| Ambience | the crickets, the highway and the projector | yes | 80 |
+| Ambience | the crickets, the highway and the projector; on the second map the room tone and the yard | yes | 80 |
 | UI ("Interface sounds") | menu and widget sounds | no | 80 |
 
 The ambience sits lowest on purpose (its sounds are 14 to 22 dB under a footstep), so a player who finds the night too
@@ -89,6 +89,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | The soldiers | `vox_<moment>_<n>` | 115 takes of 21 moments, played by `SoldierVoice`: see [The soldiers' voices](#the-soldiers-voices); they replace the synthesised `player_hurt` and `player_downed` |
 | Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
 | Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension` | loops under everything, see below |
+| The second map | `bed_room_tone`, `bed_roof_wind`, `yard_wind`, `yard_fire`, `yard_wire`, `yard_road`, `yard_rattle`, `debris_clear`, `step_wood`, `step_own_wood` | the depot's room tone, the wind under its roof and the cold yard heard through its windows, the debris blocker coming off a stair and feet on wood: [the second map's sound](../research/maps/small-map-audio.md) |
 
 ### The beds
 

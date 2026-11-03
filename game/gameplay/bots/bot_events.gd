@@ -51,6 +51,7 @@ const OWN: Array[StringName] = [
 	&"ammo_added",
 	&"weapon_upgraded",
 	&"grenade_count_changed",
+	&"lure_started",
 ]
 ## Event types that start with these are public too (the prize crane's whole play).
 const PUBLIC_PREFIXES: Array[String] = ["crane_"]

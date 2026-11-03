@@ -33,6 +33,8 @@ const SEED := 4242
 ## A night with one bot at home and one zombie to a round.
 func _lone(profile: BotProfile, bot_seed: int) -> SeatedNight:
 	var night := await NightFixture.seat(self, 1, SeatedNight.one_a_round(), 5)
+	# A bot with no order roams; this one stands and fights where it is.
+	profile.follows = false
 	night.seat(1, profile, bot_seed)
 	night.server.rules.apply(RulesAction.skip_break())
 	night.server.body_of(1).teleport(Autopilot.HOME + Vector3(0.0, 0.1, 0.0))
