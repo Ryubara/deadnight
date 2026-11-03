@@ -32,6 +32,136 @@ const PRESS_TICKS := 4
 ## Metres of ground beside a downed player a reviver may stand on.
 const REVIVE_SPOKE := 0.8
 
+## The map review's ray audit (#833): pairs of a shop spot's hand point and a place within reach
+## behind a wall, the nearest two for each spot that has any. The grid above is coarse (half a
+## metre); these are the exact places the audit found, the worst at 1.2 m.
+const AUDIT_LOT: Array[Vector3] = [
+	Vector3(-8.2, 0.0, -5.6),
+	Vector3(-8.4, 0.0, -3.3),
+	Vector3(-8.2, 0.0, -5.6),
+	Vector3(-8.9, 0.0, -3.3),
+	Vector3(11.4, 0.0, 3.0),
+	Vector3(9.2, 0.0, 2.8),
+	Vector3(11.4, 0.0, 3.0),
+	Vector3(9.2, 0.0, 2.3),
+	Vector3(-4.0, 0.0, 20.4),
+	Vector3(-4.2, 0.0, 22.7),
+	Vector3(-4.0, 0.0, 20.4),
+	Vector3(-4.7, 0.0, 22.7),
+	Vector3(3.5, 0.0, 25.9),
+	Vector3(5.3, 0.0, 27.7),
+	Vector3(3.5, 0.0, 25.9),
+	Vector3(1.3, 0.0, 27.7),
+	Vector3(8.2, 0.0, 3.7),
+	Vector3(6.5, 0.0, 5.0),
+	Vector3(8.2, 0.0, 3.7),
+	Vector3(6.0, 0.0, 5.0),
+	Vector3(-14.0, 0.0, 11.0),
+	Vector3(-15.2, 0.0, 9.8),
+	Vector3(-14.0, 0.0, 11.0),
+	Vector3(-15.2, 0.0, 9.3),
+	Vector3(4.15, 0.0, 30.5),
+	Vector3(5.45, 0.0, 29.3),
+	Vector3(4.15, 0.0, 30.5),
+	Vector3(5.45, 0.0, 28.8),
+	Vector3(24.0, 0.0, 36.0),
+	Vector3(22.8, 0.0, 37.3),
+	Vector3(24.0, 0.0, 36.0),
+	Vector3(22.8, 0.0, 37.8),
+	Vector3(-20.0, 0.0, 36.0),
+	Vector3(-21.2, 0.0, 37.3),
+	Vector3(-20.0, 0.0, 36.0),
+	Vector3(-21.2, 0.0, 37.8),
+	Vector3(0.0, 0.0, 56.0),
+	Vector3(-1.7, 0.0, 57.3),
+	Vector3(0.0, 0.0, 56.0),
+	Vector3(-2.2, 0.0, 57.3),
+	Vector3(2.0, 0.0, -31.0),
+	Vector3(3.8, 0.0, -28.7),
+	Vector3(8.35, 0.0, -1.8),
+	Vector3(10.15, 0.0, -2.0),
+	Vector3(8.35, 0.0, -1.8),
+	Vector3(10.15, 0.0, -2.5),
+]
+const AUDIT_SMALL: Array[Vector3] = [
+	Vector3(1.35, 0.0, 11.0),
+	Vector3(-0.85, 0.0, 10.8),
+	Vector3(1.35, 0.0, 11.0),
+	Vector3(-0.85, 0.0, 10.3),
+	Vector3(1.35, 0.0, 6.0),
+	Vector3(-0.85, 0.0, 5.8),
+	Vector3(1.35, 0.0, 6.0),
+	Vector3(-0.85, 0.0, 5.3),
+	Vector3(14.65, 0.0, -6.0),
+	Vector3(16.95, 0.0, -6.2),
+	Vector3(14.65, 0.0, -6.0),
+	Vector3(16.95, 0.0, -6.7),
+	Vector3(14.7, 3.4, 2.3),
+	Vector3(14.5, 3.4, 5.1),
+	Vector3(14.7, 3.4, 2.3),
+	Vector3(14.0, 3.4, 5.1),
+	Vector3(1.3, 3.4, 2.3),
+	Vector3(1.1, 3.4, 5.1),
+	Vector3(1.3, 3.4, 2.3),
+	Vector3(0.6, 3.4, 5.1),
+	Vector3(5.0, 3.4, -6.5),
+	Vector3(4.8, 3.4, -8.7),
+	Vector3(5.0, 3.4, -6.5),
+	Vector3(4.3, 3.4, -8.7),
+	Vector3(-4.7, 3.4, -4.0),
+	Vector3(-6.9, 3.4, -4.2),
+	Vector3(-4.7, 3.4, -4.0),
+	Vector3(-6.9, 3.4, -4.7),
+	Vector3(10.5, 0.0, -5.9),
+	Vector3(10.3, 0.0, -3.1),
+	Vector3(10.5, 0.0, -5.9),
+	Vector3(9.8, 0.0, -3.1),
+	Vector3(8.0, 0.0, 13.15),
+	Vector3(7.8, 0.0, 15.45),
+	Vector3(8.0, 0.0, 13.15),
+	Vector3(7.3, 0.0, 15.45),
+	Vector3(5.0, 0.0, -1.65),
+	Vector3(5.8, 0.0, 0.65),
+	Vector3(5.0, 0.0, -1.65),
+	Vector3(3.8, 0.53, 0.65),
+	Vector3(6.0, 3.4, -1.6),
+	Vector3(7.3, 2.87, 0.7),
+	Vector3(6.0, 3.4, -1.6),
+	Vector3(7.8, 3.2, 0.7),
+	Vector3(12.0, 3.4, 3.15),
+	Vector3(11.8, 3.4, 5.45),
+	Vector3(12.0, 3.4, 3.15),
+	Vector3(11.3, 3.4, 5.45),
+	Vector3(1.7, 0.0, 8.5),
+	Vector3(0.5, 0.0, 6.8),
+	Vector3(1.7, 0.0, 8.5),
+	Vector3(-1.0, 0.0, 8.3),
+	Vector3(2.94, 0.0, -6.32),
+	Vector3(1.74, 0.0, -6.51),
+	Vector3(2.94, 0.0, -6.32),
+	Vector3(1.74, 0.0, -7.01),
+	Vector3(7.6, 0.0, -6.32),
+	Vector3(7.4, 0.0, -3.52),
+	Vector3(7.6, 0.0, -6.32),
+	Vector3(6.9, 0.0, -3.52),
+	Vector3(-0.3, 3.4, -3.75),
+	Vector3(1.5, 3.4, -1.95),
+	Vector3(-0.3, 3.4, -3.75),
+	Vector3(-2.5, 3.4, -1.95),
+	Vector3(8.6, 3.4, -1.74),
+	Vector3(8.4, 3.4, 0.56),
+	Vector3(8.6, 3.4, -1.74),
+	Vector3(7.9, 3.27, 0.56),
+	Vector3(12.6, 3.4, -6.36),
+	Vector3(12.4, 3.4, -8.56),
+	Vector3(12.6, 3.4, -6.36),
+	Vector3(11.9, 3.4, -8.56),
+	Vector3(15.41, 3.4, -6.36),
+	Vector3(15.21, 3.4, -8.56),
+	Vector3(15.41, 3.4, -6.36),
+	Vector3(14.71, 3.4, -8.56),
+]
+
 var _space: PhysicsDirectSpaceState3D
 var _probe: WorldProbe
 var _night: SeatedNight
@@ -492,6 +622,54 @@ func test_the_lot_gives_no_prompt_and_takes_no_press_through_a_wall() -> void:
 
 func test_the_small_map_gives_no_prompt_and_takes_no_press_through_a_wall() -> void:
 	await _walk_all(SMALL)
+
+
+## Stands at each place the ray audit found behind a wall and asks for the spot it is behind.
+func _walk_audit(scene_path: String, audit: Array[Vector3]) -> void:
+	await _start(scene_path)
+	var things := _spot_things()
+	var problems: Array[String] = []
+	var checked := 0
+	for i in range(0, audit.size(), 2):
+		var hand := audit[i]
+		var point := audit[i + 1]
+		for thing in things:
+			var at: Vector3 = thing["target"]
+			if Vector2(at.x - hand.x, at.z - hand.z).length() > 0.1 or absf(at.y - hand.y) > 0.5:
+				continue
+			# The audit's line ends inside the machine's own block, which can hit it: only the
+			# places a wall (or a prop) stands at in the test's own line, as the hand's, count.
+			if not _walled(point, thing):
+				continue
+			checked += 1
+			var setup: Callable = thing["setup"]
+			if setup.is_valid():
+				setup.call()
+			_stand(point)
+			var prompt := _prompt()
+			var matches: Callable = thing["matches"]
+			if _on_floor_elsewhere(point, thing, things):
+				continue
+			if matches.call(prompt):
+				problems.append(
+					"%s: prompt through a wall at %s: %s" % [thing["name"], point, prompt]
+				)
+				continue
+			if not prompt.is_empty():
+				continue
+			var before := _fingerprint()
+			if _press(point) and _fingerprint() != before:
+				problems.append("%s: a press changed the night at %s" % [thing["name"], point])
+	_report(problems)
+	assert_int(checked).is_greater(audit.size() / 4)
+
+
+func test_the_lot_gives_nothing_at_the_places_the_ray_audit_found_behind_a_wall() -> void:
+	await _walk_audit(LOT, AUDIT_LOT)
+
+
+func test_the_small_map_gives_nothing_at_the_places_the_ray_audit_found_behind_a_wall() -> void:
+	await _walk_audit(SMALL, AUDIT_SMALL)
 
 
 ## The standing point within 1.5 m of `at` that is nearest a wall (with a body's room): a teammate
