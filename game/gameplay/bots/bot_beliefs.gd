@@ -35,6 +35,10 @@ var blows: Array[Dictionary] = []
 ## its own id in `me`.
 var teammates: Dictionary = {}
 var me := -1
+## The zombies every screen outlines through the walls (`BotHunt.marked`), as the frame's entries:
+## empty until the round is down to its last few. The one place the bot is told where the dead are
+## out of sight, because a person is (`ZombieMarks`).
+var last_dead: Array[Dictionary] = []
 ## The standing order of the team's bots for this one (`BotOrders.current`): `{order, issuer_id,
 ## at}`. Roam until a person says otherwise.
 var order: Dictionary = {"order": BotOrders.DEFAULT, "issuer_id": 0, "at": Vector3.INF}

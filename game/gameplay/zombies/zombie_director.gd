@@ -21,6 +21,9 @@ var spawn_points: Array[Vector3] = []
 ## in through its boards. A point not in it is already inside.
 var spawn_gates: Dictionary[Vector3, StringName] = {}
 
+## How many stranded zombies were put back on a spawn point (`ZombieSim.relocate`), for the reports.
+var relocated := 0
+
 var _waiting: Array[Dictionary] = []
 
 
@@ -69,6 +72,18 @@ func tick(delta: float, targets: Dictionary) -> void:
 				player_struck.emit(event["target_id"], event["zombie_id"], event["damage"])
 			&"zombie_tore":
 				port.tear_board(event["gate_id"], event["zombie_id"])
+			&"zombie_stranded":
+				_relocate(event["zombie_id"])
+
+
+## A zombie with no way to its target, far from it: back on a spawn point (the next one in turn, so
+## two in one pocket do not go to the same).
+func _relocate(zombie_id: int) -> void:
+	if spawn_points.is_empty():
+		return
+	var point := spawn_points[(zombie_id + relocated) % spawn_points.size()]
+	relocated += 1
+	sim.relocate(zombie_id, point, spawn_gates.get(point, &""))
 
 
 func _on_rules_event(event: Dictionary) -> void:

@@ -155,6 +155,41 @@ func test_courtesy_ends_when_the_zombie_is_near_or_swinging_and_for_bots() -> vo
 	assert_bool(BotCombat.courtesy_holds(_zombie(1, Vector3(3, 0, -14)), HERE, turned)).is_false()
 
 
+func test_a_zombie_left_to_a_person_is_the_bots_after_a_few_seconds() -> void:
+	# A person who keeps their aim on a zombie it does not kill (a dry gun, a wall in the way, a
+	# reload that never ends) must not hold the bots' fire for the whole night: the soak's Follow
+	# nights had bots idle 6 s with a loaded gun and a zombie 11 m off, all of them "theirs".
+	var combat := BotCombat.new(BotProfile.regular())
+	var mates: Array[Dictionary] = [_mate(Vector3(3, 0, 0), 0.0)]
+	var theirs: Array[Dictionary] = [_zombie(1, Vector3(3, 0, -14))]
+	var now := 10.0
+	var held_for := 0.0
+	var shot_at := -1.0
+	while now < 10.0 + 2.0 * BotCombat.COURTESY_SECONDS:
+		var picked := _choose(combat, theirs, mates, null, now)
+		if picked == 1:
+			shot_at = now - 10.0
+			break
+		held_for = now - 10.0
+		now += 0.1
+	assert_float(held_for).is_greater(BotCombat.COURTESY_SECONDS - 0.5)
+	assert_float(shot_at).is_between(BotCombat.COURTESY_SECONDS, BotCombat.COURTESY_SECONDS + 0.5)
+
+
+func test_courtesy_counts_each_zombie_on_its_own_and_starts_over_for_a_new_one() -> void:
+	var combat := BotCombat.new(BotProfile.regular())
+	var mates: Array[Dictionary] = [_mate(Vector3(3, 0, 0), 0.0)]
+	var first: Array[Dictionary] = [_zombie(1, Vector3(3, 0, -14))]
+	var now := 10.0
+	for _i in int(BotCombat.COURTESY_SECONDS * 10.0) + 5:
+		_choose(combat, first, mates, null, now)
+		now += 0.1
+	assert_int(_choose(combat, first, mates, null, now)).is_equal(1)
+	# Another zombie the person takes up is theirs for its own few seconds.
+	var second: Array[Dictionary] = [_zombie(2, Vector3(3, 0, -15))]
+	assert_int(_choose(combat, second, mates, null, now + 0.1)).is_equal(-1)
+
+
 # --- Melee ---
 
 
