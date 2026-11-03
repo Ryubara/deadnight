@@ -60,6 +60,52 @@ func test_a_share_that_went_out_says_sent() -> void:
 	assert_str(copied).contains("copied the link")
 
 
+func test_a_4006_refusal_with_no_sign_in_says_the_activity_is_not_signed_in() -> void:
+	# #627: the real client's answer to a bridge that never authenticated.
+	for auth in ["none", "failed"]:
+		var text := DiscordShare.says(
+			_state(
+				"refused",
+				{
+					"kind": "rpc",
+					"code": "4006",
+					"detail": "Not authenticated or invalid scope",
+					"auth": auth
+				}
+			),
+			CODE
+		)
+		assert_str(text).contains("not signed in with Discord").contains("Copy the code")
+		assert_str(text).not_contains(DiscordShare.HINT)
+
+
+func test_a_4006_refusal_after_a_good_sign_in_is_not_called_a_missing_sign_in() -> void:
+	var text := DiscordShare.says(
+		_state("refused", {"kind": "rpc", "code": "4006", "detail": "x", "auth": "ok"}), CODE
+	)
+	assert_str(text).not_contains("not signed in")
+	assert_str(text).contains("did not open")
+
+
+func test_the_probe_line_says_how_the_sign_in_with_discord_went() -> void:
+	var ok := DiscordShare.line(_state("shared", {"success": true, "auth": "ok"}))
+	assert_str(ok).contains("sign-in: ok")
+	var failed := DiscordShare.line(
+		_state(
+			"refused",
+			{
+				"kind": "rpc",
+				"code": "4006",
+				"detail": "Not authenticated or invalid scope",
+				"auth": "failed",
+				"authDetail": "4009 Invalid token"
+			}
+		)
+	)
+	assert_str(failed).contains("error rpc 4006: Not authenticated or invalid scope")
+	assert_str(failed).contains("sign-in: failed (4009 Invalid token)")
+
+
 func test_the_probe_line_has_discords_own_answer_and_error() -> void:
 	var line := DiscordShare.line(
 		_state(

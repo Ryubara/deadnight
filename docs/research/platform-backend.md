@@ -366,6 +366,10 @@ mappings for the backend and each game server.
   `shareLink` answers when its window is closed, rejects with a plain `{code, message}` object, and never settles on a
   reply the SDK cannot parse, so the button shows the hint only while Discord has not refused and the lobby's probe
   line quotes its answer (#627). [Web export](web-export.md#share-in-discord-what-discord-answered-627).
+  Discord's client answers every command, `shareLink` among them, with RPC 4006 "Not authenticated or invalid
+  scope" until the Activity has run `authenticate`: the sign-in code from `authorize` is swapped for a token here
+  (`POST /auth/discord` returns it as `access_token`, the client secret stays on the backend) and the game gives
+  the token back to the bridge ([#627](web-export.md#share-in-discord-the-activity-must-authenticate-627)).
 - Discord's proxy compresses the backend's answers (`Content-Encoding: gzip`), and Godot's `HTTPRequest` then decodes a
   body the browser has decoded already and fails, which the game reads as "Could not reach the game's servers": every
   call through `/api` failed while the backend logged a 200 or 201. `HttpJson` sets `accept_gzip = false`.
