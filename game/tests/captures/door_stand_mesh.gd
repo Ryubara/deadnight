@@ -6,7 +6,7 @@ extends Node3D
 ## Green is the walking mesh, red the slab's middle, blue the stand, yellow the path from the field,
 ## white where the path ends.
 
-const GREYBOX := preload("res://world/drive_in_greybox.tscn")
+const GREYBOX := "res://world/drive_in_greybox.tscn"
 const FIELD := Vector3(0.0, 0.0, -34.0)
 const DOOR := "Door_ProjectionBooth"
 const LIFT := 0.6
@@ -16,7 +16,7 @@ var _args := {}
 
 func _ready() -> void:
 	_args = _parse_args()
-	var lot := GREYBOX.instantiate()
+	var lot := (load(GREYBOX) as PackedScene).instantiate()
 	add_child(lot)
 	_hide_roofs(lot)
 	var doors := lot.get_node("Doors") as LotDoors
