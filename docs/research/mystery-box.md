@@ -73,30 +73,76 @@ the simulator chose.
 
 ## How it looks and how to film it
 
-`PrizeCrane` (`game/world/crane/prize_crane.gd`) is built from boxes and spheres, no asset: a red cabinet with a glass
-case, a pile of plush prizes, a claw on a gantry, a lit marquee. `CraneView` (`game/gameplay/night/crane_view.gd`)
-stands it at the spot the server's frame names, set back 1.5 m from that spot's marker, and the crane is a function of
-the frame's `crane` ({spot, stage, left, weapon}), so a late joiner sees the same crane. The cabinet is a drawing with no
-collision; the wall is `CraneBlock` (`game/gameplay/night/crane_block.gd`) in the world both a server and a client build,
-moved by `crane_moved` and by the frame, so the two bodies stop at the same place (#748):
+`PrizeCrane` (`game/world/crane/prize_crane.gd`) is built from boxes in code like the lot's other machines, with the
+weapons' own models in it: a red cabinet, a glass case of tiny weapons, a claw on a gantry, the **prize bay** over the
+case (a lit board behind a framed opening) and a lit marquee. `CraneView` (`game/gameplay/night/crane_view.gd`) stands
+it at the spot the server's frame names, set back 1.5 m from that spot's marker, and the crane is a function of the
+frame's `crane` ({spot, stage, left, weapon}), so a late joiner sees the same crane. The cabinet is a drawing with no
+collision; the wall is `CraneBlock` (`game/gameplay/night/crane_block.gd`) in the world both a server and a client
+build, moved by `crane_moved` and by the frame, so the two bodies stop at the same place (#748). The rework of #830
+changed the look only: the stages, timings, cycling, blink, dud and the server's state are as they were.
 
-- **Spin.** The claw sweeps over the pile, drops, closes and lifts; weapon models cycle above the glass, one every
-  0.07 s at first and 0.46 s at the end (the Mystery Box slows the same way). Every prize shows its own model
-  (the rifle, the shotgun, the tommy gun that is the `smg`, the flare gun at half the length); a prize added to the
-  pool without a model is a plain silhouette until it has one (`PrizeCrane.MODELS`, checked by a test).
-- **Grab.** The chosen weapon rises from the claw to the stage and floats, blinking for the last 3 seconds.
-- **Breakdown.** A moth-eaten plush (our dud) shows on the stage, sparks fly, the marquee and the light flicker and the
-  power goes; the crane then sinks where it stood and rises at the next spot.
+- **The case.** A tiny model of every prize in the pool lies in it, from each weapon's far level (`<model>_far.glb`
+  beside the model its hold file names, `holds/<id>.tres`), at half its length in the hands (0.24 to 0.56 m), side on to
+  the glass and heaped on a cream floor that rises 0.22 m to the back. Every prize lies there once, then the pool again
+  while the case has room (20) and triangles to spare (6,000); a weapon added to the pool with its hold file is in the
+  case with no edit, and one without a model yet lies there as a plain dark stand-in. All of them are merged into **one
+  mesh with the weapons' palette** (`weapons_palette.png`, the copy with every cell), so the case is one draw call and
+  adds no shader: the shipped pool's 8 prizes make 20 tiny models, 5,460 triangles, under the 6,912 of the 48 plush
+  spheres they replaced (48 draw calls), and the 17 planned would each lie there at least once. The warm-up's crane and
+  the night's share the merged mesh through the engine's resource cache.
+- **Spin.** The claw sweeps over the heap, drops, closes and lifts; the weapons cycle on the board inside the bay, one
+  every 0.07 s at first and 0.46 s at the end, and the board's light beats with them.
+- **Grab.** The board slides out of the front toward the player in 0.7 s (from 0.42 m to 1.12 m in front of the
+  cabinet's middle, a small bump as it stops) with the chosen weapon on it, side on, muzzle to the player's right,
+  at its length in the hands times 1.1 (0.7 to 1.2 m), turning 7 degrees either way at most so it is never seen end
+  on. It blinks, with the board, for the last 3 seconds; after the window the board goes back in, empty.
+- **Breakdown.** The board slides out with a moth-eaten plush (our dud) on it, sparks fly from the bay, the marquee and
+  the light flicker and the power goes; the crane then sinks where it stood and rises at the next spot.
   The card at the glass says `OUT OF ORDER: REFUNDED` to everyone while it does (the buyer's `YOUR PRIZE IS COMING`
   is for the dig only), read from the frame's crane stage, so the wire is unchanged.
 - **Beam.** A cheap additive cone (a ten-line shader: bright at the foot, fading up, blended additively, no depth
-  write) stands over the crane's spot, so the way to it is a column of light in the night.
+  write) stands over the crane's spot from the top of the marquee, so the way to it is a column of light in the night.
 
-`tests/captures/crane_tour.tscn` films it from the player's shoulder camera (physics ticks, 60 a second):
-`godot --path game res://tests/captures/crane_tour.tscn --fixed-fps 10 --write-movie out.png --quit-after 700`, with
-`-- --breakdown` for the breakdown and `-- --beam` for the crane on the open field. `test_crane_view.gd` checks the
-placement, the cycling and its slowing, the chosen weapon, the dud and the move without a window. The tour switches
-off the real mouse and keys (`local_input`, `capture_mouse`) so a recording never holds the person's cursor.
+### Why the prize comes out at eye height (#830)
+
+The prize used to float on a stage 3.25 m up, over the marquee, turning about its upright axis in front of the foot
+of the beam. From the shoulder camera of a player on the crane's marker (0.8 m from the glass, where the use prompt
+is) that stage was at the top edge of the frame, half of every turn showed the weapon end on, and the beam's brightest
+part washed it out; the Soldier's body covers the middle of the machine below its head. It had only been filmed from
+1.6 m back and 1.2 m aside with the camera pitched down to frame the whole machine.
+
+The board's middle is at 1.95 m and its bottom at 1.72 m: over the Soldier's hair (0.36 m over the `Head` bone) as the
+camera sees it from the marker, so the body never covers the prize, and well inside the frame. At grab height
+(1.35 m) the head covers 79 to 98 % of every prize. `test_crane_view.gd` measures it on a 1920 x 1080 view of the
+player's resting camera on the marker: every prize whole on the screen, at least 10 % of its width (the revolver 13.9 %,
+the long guns 20 to 24 %) and at most 10 % of it behind the body (0 % for all eight).
+
+| From the player's view | Before (stage) | After (board) |
+| --- | --- | --- |
+| Where the prize is, desktop, on the marker | the top edge of the frame, cut by it | the upper middle, whole |
+| Turning | a full turn every 7 s (end on twice) | 7 degrees either way |
+| Behind it | the beam's foot (additive, the brightest) | a lit cream board: a dark weapon on a light card |
+| Crane draw calls / triangles at rest (bench) | 67 / 13,300 | 18 / 6,300 |
+| ... in the grab window / the breakdown | 69 / 14,400; 78 / 167,000 | 20 / 7,300; 29 / 8,900 |
+
+The breakdown's 167,000 triangles were its 36 sparks, each a default `SphereMesh` (64 x 32, 4,000 triangles); a
+spark is now a small box. The numbers are `tests/captures/crane_cost_bench.tscn` (the crane alone before a camera,
+less the same frame without it), run windowed through `gds godot`. The night's load (the warm-up stage, three runs
+of each, alternated) was 5,446 to 6,121 ms on `main` and 5,317 to 6,039 ms with the rework: no change beyond the
+noise; building the crane takes 52 to 64 ms the first time and 18 to 20 ms with its models cached.
+
+### Filming it
+
+`tests/captures/crane_prize_view.tscn` takes one screenshot from the player's own shoulder camera for every weapon of
+the pool as it comes out, the cycling and the dud, standing where a player stands: `--stand=marker` (on the marker),
+`back` (1.6 m back, the edge of the reach), `side` (1.3 m aside) or `case` (looking down into the case); `--phone`
+draws the touch controls (run it at 2340 x 1080). `tests/captures/crane_tour.tscn` films a whole play from the
+shoulder camera (physics ticks, 60 a second): `godot --path game res://tests/captures/crane_tour.tscn --fixed-fps 10
+--write-movie out.png --quit-after 700`, with `-- --breakdown` for the breakdown and `-- --beam` for the crane on the
+open field. Both switch off the real mouse and keys (`local_input`, `capture_mouse`) so a recording never holds the
+person's cursor. `test_crane_view.gd` checks the placement, the cycling and its slowing, the chosen weapon, the dud,
+the move, the case's tiny models and the prize on the screen without a window.
 
 ## The bot
 

@@ -141,7 +141,8 @@ for the dead's slowdown (`LotLamps.lit_at`).
   excused from it. Another test reads every script and scene of the project for a light and fails on one that is not
   in its table, and checks that each weapon's shot, a blast and a grenade add exactly one light.
   The first run of the stronger test found 8 on two ground tiles, 7 on four more; no prop or car is above 6.
-- **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 5 m) is counted at each crane spot by
+- **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 4.6 m since #830: in front of the prize board it
+  reached a seventh light onto the stand's floor at 5 m) is counted at each crane spot by
   `test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget`: a crane is built at every spot, its lamp joins
   the lot's and its own meshes join the lit ones, and no mesh is over the fight budget. Beside the stand the lamp is one
   more light on the stand's floor and roof, which is why they are cut in four (below): each piece stays at 6 or fewer.
