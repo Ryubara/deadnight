@@ -13,7 +13,11 @@ extends Node
 ## `--tough=X` (every player's health, a multiple of the shipped),
 ## `--profile=rookie|regular|veteran|mixed` (default mixed), `--trace` (a line every 15 s),
 ## `--forced=S` (every S game seconds a seeded pick of the players on their feet is put on the
-## ground while at least two others stand, so the revive is tried often, in the real fight).
+## ground while at least two others stand, so the revive is tried often, in the real fight),
+## `--flares=1` (every bot starts with the flare gun beside its pistol; the soak that measures the
+## flare rule, #646, is run with `--flares=0` and `--flares=1` on the same seeds),
+## `--log` (a line for each fall, revive, flare and death, with what each bot is doing),
+## `--no-flare-rule` (the bots carry the flare gun but never fire it: the control of `--flares=1`).
 ## Prints `REVIVE {json}` at the end.
 
 ## Ticks between the physics frames the engine is given (a bought door needs one).
@@ -48,6 +52,12 @@ func _ready() -> void:
 	for i in profiles.size():
 		_night.seat(people + i + 1, profiles[i], 1000 + 100 * seed_value + i)
 	_night.gather()
+	_night.host.team.flares = not _args.has("no-flare-rule")
+	if int(_args.get("flares", 0)) > 0:
+		for bot in _night.host.bots:
+			var id := bot.state.player_id
+			_night.server.combat.apply(CombatAction.give_weapon(id, &"flare_gun"))
+			_night.server.combat.apply(CombatAction.equip(id, &"pistol"))
 	_night.on_event = _on_event
 	_pick.seed = seed_value
 	_night.host.team.one_errand_at_a_time = not _args.has("parallel")
@@ -114,6 +124,19 @@ func _watch_errands() -> void:
 		_both_errands += 1
 
 
+## What each bot is doing at the moment: `seat:note/revive mode`.
+func _bots_now() -> String:
+	var line := ""
+	for bot in _night.host.bots:
+		var brain := bot.brain as BotFightBrain
+		var down: bool = _night.server.rules.players[bot.state.player_id].downed
+		line += (
+			" %d:%s%s/%d"
+			% [bot.state.player_id, "DOWN " if down else "", bot.intent.note, brain.revive.mode]
+		)
+	return line
+
+
 func _trace(ticks: int) -> void:
 	var line := (
 		"TRACE t=%d round=%d remaining=%d"
@@ -155,6 +178,26 @@ func _profiles(count: int) -> Array[BotProfile]:
 
 
 func _on_event(event: Dictionary) -> void:
+	if (
+		_args.has("log")
+		and (
+			event["type"]
+			in [
+				&"player_downed",
+				&"player_died",
+				&"player_revived",
+				&"lure_started",
+				&"revive_started",
+				&"revive_stopped"
+			]
+		)
+	):
+		print(
+			(
+				"LOG t=%.1f %s %s"
+				% [float(_night.server.tick_count) / 60.0, event["type"], _bots_now()]
+			)
+		)
 	match event["type"]:
 		&"player_downed":
 			_downs[event["player_id"]] = int(_downs.get(event["player_id"], 0)) + 1
@@ -173,6 +216,9 @@ func _report(ticks: int) -> void:
 	var successes := 0
 	var deaths := 0
 	var aborts := 0
+	var flares := 0
+	var wanted := 0
+	var no_spot := 0
 	var lines := 0
 	for bot in _night.host.bots:
 		var counters := bot.telemetry.counters
@@ -181,6 +227,9 @@ func _report(ticks: int) -> void:
 		successes += int(counters.get(&"revive_successes", 0))
 		deaths += int(counters.get(&"deaths_reviving", 0))
 		aborts += int(counters.get(&"revive_aborts", 0))
+		flares += int(counters.get(&"flares_fired", 0))
+		wanted += int(counters.get(&"flares_wanted", 0))
+		no_spot += int(counters.get(&"flares_no_spot", 0))
 		(
 			bots
 			. append(
@@ -191,6 +240,7 @@ func _report(ticks: int) -> void:
 					"attempts": int(counters.get(&"revive_attempts", 0)),
 					"successes": int(counters.get(&"revive_successes", 0)),
 					"aborts": int(counters.get(&"revive_aborts", 0)),
+					"flares": int(counters.get(&"flares_fired", 0)),
 					"deaths_reviving": int(counters.get(&"deaths_reviving", 0)),
 					"callouts": int(counters.get(&"callouts", 0)),
 					"trapped": int(counters.get(&"bot_trapped", 0)),
@@ -213,6 +263,9 @@ func _report(ticks: int) -> void:
 		"successes": successes,
 		"success_share": snappedf(float(successes) / float(maxi(attempts, 1)), 0.01),
 		"aborts": aborts,
+		"flares_fired": flares,
+		"flares_wanted": wanted,
+		"flares_no_spot": no_spot,
 		"deaths_reviving": deaths,
 		"deaths_share": snappedf(float(deaths) / float(maxi(attempts, 1)), 0.01),
 		"callouts": lines,

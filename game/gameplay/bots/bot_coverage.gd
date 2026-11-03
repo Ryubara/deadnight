@@ -18,7 +18,11 @@ const SHOP_KINDS := {
 	"rule: BotEconomy buys the hearty tonic once; a tonic with no health in it is never bought",
 	"FUEL": "rule: BotErrands buys a can when the tank is under the low line; one bot at a time",
 	"GRENADES": "rule: BotEconomy buys a rack's worth when the pack is under the profile's want",
-	"AMMO": "rule: BotEconomy buys rounds for the guns it carries (below a magazine at once)",
+	"AMMO":
+	(
+		"rule: BotEconomy buys rounds for the guns it carries (below a magazine at once)"
+		+ "; at the locker a person marked first"
+	),
 	"UPGRADE": "rule: BotEconomy re-cuts the gun in hand at the bench, as many as the profile does",
 }
 ## `WeaponCatalog.IDS`: a weapon is covered when the motor can fire it as it is built.
@@ -28,16 +32,30 @@ const WEAPONS := {
 	"smg": "rule: BotMotor fires it in bursts of three to five (automatic)",
 	"shotgun": "rule: BotMotor fires it like the pistol (the cone is for the body, not the spread)",
 	"rifle": "rule: BotMotor fires it like the pistol",
-	"flare_gun": "waived until #646 (a flare to draw the dead off a downed teammate)",
+	"flare_gun":
+	"rule: BotRevive fires it (BotFlare) 12 m from a claimed body when the dead there are too many",
 	"crowbar": "rule: BotMotor swings it at a target inside its reach",
 	"baseball_bat": "rule: BotMotor swings it at a target inside its reach (melee)",
 	"fire_axe": "rule: BotMotor swings it at a target inside its reach (melee)",
+}
+## `PingBoard.KINDS`: what a bot does about each mark a person puts up.
+const PINGS := {
+	"here": "rule: BotPings sends the nearest bot to hold the place while the mark stands",
+	"door": "rule: BotErrands buys the door when it can be paid, after the person's grace",
+	"ammo":
+	"rule: BotEconomy sends a bot short of rounds to the marked locker, before other errands",
+	"enemy": "rule: BotPings names the marked zombie the first target while the bot sees it",
+	"downed": "rule: BotRevive raises the marked player first",
 }
 ## The `kind` of every prompt the server's `use_target` and the machines can show.
 const PROMPTS := {
 	"door": "rule: BotErrands presses use at the door BotEconomy chose, after the person's claim",
 	"weapon": "rule: BotErrands presses use at the wall BotEconomy chose",
-	"ammo": "rule: BotErrands presses use at the locker or the wall BotEconomy chose",
+	"ammo":
+	(
+		"rule: BotErrands presses use at the locker (the marked one, if a person marked it) or the wall"
+		+ " BotEconomy chose"
+	),
 	"grenades": "rule: BotErrands presses use at the rack BotEconomy chose",
 	"crane": "rule: BotErrands presses use when BotEconomy chose a play",
 	"crane_take": "rule: BotErrands takes the prize when it beats the weapon it would give up",

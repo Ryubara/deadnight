@@ -474,3 +474,90 @@ func test_settings_read_from_json_take_a_whole_float_for_the_alive_cap() -> void
 		"hard",
 	]:
 		assert_object(MatchSettings.from_json(bad)).is_null()
+
+
+# --- Bots (#643) ---
+
+
+func test_the_usual_night_has_no_bots_and_the_count_is_part_of_the_settings() -> void:
+	assert_int(MatchSettings.new().bots).is_equal(0)
+	assert_bool(MatchSettings.new().is_default()).is_true()
+	var with_bots := MatchSettings.new()
+	with_bots.bots = 2
+	assert_bool(with_bots.is_default()).is_false()
+	assert_bool(with_bots.same_as(MatchSettings.new())).is_false()
+	assert_int(with_bots.to_dict()["bots"]).is_equal(2)
+	assert_int(MatchSettings.from_dict(with_bots.to_dict()).bots).is_equal(2)
+
+
+func test_the_bot_count_is_zero_to_three_whole_bots() -> void:
+	var base := MatchSettings.new().to_dict()
+	for bots in [0, 1, 2, 3]:
+		base["bots"] = bots
+		(
+			assert_str(String(MatchSettings.problem(base)))
+			. override_failure_message(str(bots))
+			. is_empty()
+		)
+	for bad: Variant in [4, -1, 1.5, "2", null]:
+		base["bots"] = bad
+		assert_str(String(MatchSettings.problem(base))).override_failure_message(str(bad)).is_equal(
+			"bots"
+		)
+	var wild := MatchSettings.new()
+	wild.bots = 9
+	assert_int(wild.clamped().bots).is_equal(MatchSettings.MAX_BOTS)
+	wild.bots = -2
+	assert_int(wild.clamped().bots).is_equal(0)
+
+
+func test_settings_from_before_the_bot_count_are_taken_as_none() -> void:
+	# An older backend's ticket and an older server's WELCOME have the three keys only.
+	var old := {"count_multiplier": 2.0, "max_alive": 7, "break_seconds": 0.0}
+	assert_str(String(MatchSettings.problem(old))).is_empty()
+	var parsed := MatchSettings.from_dict(old)
+	assert_object(parsed).is_not_null()
+	assert_int(parsed.bots).is_equal(0)
+	assert_float(parsed.count_multiplier).is_equal(2.0)
+	var json := MatchSettings.from_json(
+		JSON.parse_string('{"count_multiplier":2,"max_alive":7,"break_seconds":0,"bots":3}')
+	)
+	assert_int(json.bots).is_equal(3)
+
+
+func test_the_snapshot_and_a_configure_action_carry_the_bot_count() -> void:
+	var settings := MatchSettings.new()
+	settings.bots = 3
+	var rules := RulesFixture.make_rules(1, 10, null, settings)
+	assert_int(rules.to_dict()["match_settings"]["bots"]).is_equal(3)
+	var other := RulesFixture.make_rules(1, 5)
+	assert_str(String(other.from_dict(rules.to_dict()))).is_empty()
+	assert_int(other.settings.bots).is_equal(3)
+	var idle := RulesFixture.make_rules(0, 5)
+	var log := RulesFixture.record(idle)
+	idle.apply(RulesAction.configure(settings))
+	assert_int(idle.settings.bots).is_equal(3)
+	assert_int(log.of(&"settings_changed").size()).is_equal(1)
+
+
+func test_a_bot_seat_is_told_and_a_person_takes_it_as_it_stands() -> void:
+	var rules := RulesFixture.make_rules(0, 5)
+	var log := RulesFixture.record(rules)
+	rules.apply(RulesAction.add_player(1))
+	rules.apply(RulesAction.add_player(2, true))
+	assert_bool(log.of(&"player_added")[0]["bot"]).is_false()
+	assert_bool(log.of(&"player_added")[1]["bot"]).is_true()
+	assert_bool(rules.players[2].bot).is_true()
+	assert_bool(rules.to_dict()["players"][2]["bot"]).is_true()
+	rules.apply(RulesAction.grant_points(2, 500))
+	var points := rules.players[2].points
+	rules.apply(RulesAction.seat_person(2))
+	assert_bool(rules.players[2].bot).is_false()
+	assert_int(rules.players[2].points).is_equal(points)
+	assert_int(log.of(&"bot_replaced").size()).is_equal(1)
+	# A seat that is no bot's, or none, cannot be taken again.
+	rules.apply(RulesAction.seat_person(2))
+	rules.apply(RulesAction.seat_person(1))
+	rules.apply(RulesAction.seat_person(9))
+	assert_int(log.of(&"bot_replaced").size()).is_equal(1)
+	assert_int(log.of(&"action_rejected").size()).is_equal(3)

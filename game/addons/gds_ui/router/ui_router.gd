@@ -67,6 +67,7 @@ func _ready() -> void:
 	add_child(_overlay)
 	_restyle(_tokens)
 	UITokens.active_changed().connect(_restyle)
+	get_viewport().gui_focus_changed.connect(_on_focus_changed)
 
 
 ## Applies tokens to what the router owns: the stage's theme (every screen under it inherits it) and
@@ -77,6 +78,13 @@ func _restyle(tokens: UITokens) -> void:
 	_tokens = tokens
 	RenderingServer.set_default_clear_color(tokens.bg)
 	_stage.theme = UIThemeBuilder.build(tokens)
+
+
+## A key or a pad moved the focus: a scroll area that follows it shows the whole ring of the row it
+## reached (after the area's own follow, which shows the row and stops at its edge).
+func _on_focus_changed(control: Control) -> void:
+	if not UIInputMode.pointer:
+		UIFocusRing.keep_in_view.call_deferred(control)
 
 
 func depth() -> int:

@@ -137,7 +137,7 @@ func _headings() -> Array[String]:
 func _cells(player_id: int) -> Array[String]:
 	var member: Dictionary = state.team[player_id]
 	var cells: Array[String] = [
-		str(member["name"]).to_upper() + _state_tag(member),
+		HudState.name_of(member) + _state_tag(member),
 		str(member["kills"]),
 		str(member["downs"]),
 		str(member["revives"]),
