@@ -24,6 +24,9 @@ var clear_from := BotErrands.CLEAR_FROM
 var calm_share := BotErrands.CALM_SHARE
 ## The health share under which a hurt teammate holds every door back.
 var hurt_share := BotErrands.HURT_SHARE
+## Whether the team buys the links together (`BotErrands._link`): off on the lot, where the door's
+## turn suits 100 m of open ground; a small map's overlay turns it on.
+var team_links := false
 ## What the bot buys, first to last, on this map; empty is the profile's own list
 ## (`BotProfile.shopping`, written for the lot).
 var shopping: Array[StringName] = []

@@ -37,6 +37,10 @@ const PING := &"ping"
 const AMMO_PING := &"ammo_ping"
 ## Metres within which a marked spot counts as the shop's locker.
 const LOCKER_SNAP := 1.0
+## Metres of walking a metre of height stands for when a door's stand is chosen: a link set in a
+## stair has a stand on each side, one a flight up, and the flat-nearest was a walk round the
+## whole map for a bot on the other floor.
+const RISE_WEIGHT := 8.0
 ## The most sources of rounds asked for their walk at one choice (the nearest by the straight line
 ## first), and the metres of walk the stand the bot is heading to is credited with.
 const WALK_LOOKS := 4
@@ -241,7 +245,7 @@ func _door(view: View, item: ShopItem) -> Buy:
 		return null
 	if not _shop.unlocked_doors(view.doors_open).has(item.id):
 		return null
-	var stand := _nearest_point(view, _shop.door_stands.get(item.id, []))
+	var stand := _nearest_point(view, _shop.door_stands.get(item.id, []), RISE_WEIGHT)
 	if stand == Vector3.INF:
 		return null
 	return _buy(view, item, stand, &"door", PLAN)
@@ -538,11 +542,11 @@ static func nearest_to(points: Array, from: Vector3) -> Vector3:
 
 
 ## The point nearest to the bot (flat) that it can walk to, or `Vector3.INF`.
-static func _nearest_point(view: View, points: Array) -> Vector3:
+static func _nearest_point(view: View, points: Array, rise := 0.0) -> Vector3:
 	var spots: Array[Dictionary] = []
 	for point: Vector3 in points:
 		spots.append({"position": point})
-	return _nearest(view, spots)
+	return _nearest(view, spots, rise)
 
 
 static func _apart(a: Vector3, b: Vector3) -> float:
@@ -550,7 +554,7 @@ static func _apart(a: Vector3, b: Vector3) -> float:
 
 
 ## The position of the spot nearest to the bot (flat) that it can walk to, or `Vector3.INF`.
-static func _nearest(view: View, spots: Array[Dictionary]) -> Vector3:
+static func _nearest(view: View, spots: Array[Dictionary], rise := 0.0) -> Vector3:
 	var from := view.here
 	var best := Vector3.INF
 	var best_apart := INF
@@ -558,6 +562,7 @@ static func _nearest(view: View, spots: Array[Dictionary]) -> Vector3:
 		if view.is_avoided(spot["position"]):
 			continue
 		var apart := Vector2(from.x - spot["position"].x, from.z - spot["position"].z).length()
+		apart += rise * absf(from.y - spot["position"].y)
 		if apart < best_apart:
 			best_apart = apart
 			best = spot["position"]

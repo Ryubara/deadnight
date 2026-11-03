@@ -85,6 +85,19 @@ func test_the_first_door_in_the_plan_is_bought_when_it_can_be_paid() -> void:
 	assert_vector(buy.stand).is_equal(_shop.door_stands[&"door_concession"][0])
 
 
+func test_a_door_with_a_stand_a_flight_up_is_bought_from_the_stand_on_the_bots_floor() -> void:
+	# A link set in a stair has a stand at its foot and one up the flight (the second map's): the
+	# bot on the ground floor goes to the foot though the upper stand is flat-nearer, the bot on
+	# the upper floor to the upper one.
+	var foot := Vector3(0.0, 0.0, 0.0)
+	var up := Vector3(3.0, 1.0, 0.0)
+	_shop.door_stands[&"door_concession"] = [foot, up]
+	var ground := _choose(_view(400, {"doors_open": [], "here": Vector3(4.0, 0.0, 0.0)}))
+	assert_vector(ground.stand).is_equal(foot)
+	var upstairs := _choose(_view(400, {"doors_open": [], "here": Vector3(9.0, 3.4, 0.0)}))
+	assert_vector(upstairs.stand).is_equal(up)
+
+
 func test_the_weak_bot_plan_buys_in_its_own_order() -> void:
 	# The weak player's list begins with the concession door, then a crane play, then the shotgun.
 	var rookie := BotProfile.rookie()
