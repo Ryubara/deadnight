@@ -5,8 +5,12 @@ extends SceneTree
 ##     --skill=average --players=1 --nights=200 --seed=1 --out=cell.json [--step=0.25] [--rounds=30]
 ##     [--set=rounds.health_growth=1.05 ...] [--shopping=door_concession,weapon_rifle | none]
 ##     [--assist=0.5]  (a touch player with the aim assist at that strength)
+##     [--map=small_indoor]  (the second map's rules over the table, and its bots' shopping list)
 ##
 ## `tools/balance/run_report.py` runs all nine cells in parallel and draws the charts.
+
+## The maps whose rules overlay `--map` lays over the shared table.
+const MAP_TUNINGS := {"small_indoor": "res://world/smallmap/smallmap_tuning.tres"}
 
 
 func _init() -> void:
@@ -15,6 +19,12 @@ func _init() -> void:
 	var tuning := (
 		(load(GameRules.DEFAULT_TUNING_PATH) as RulesTuning).duplicate(true) as RulesTuning
 	)
+	var shopping_default := ""
+	var map_path := String(MAP_TUNINGS.get(String(args.get("map", "")), ""))
+	if not map_path.is_empty():
+		var overlay := load(map_path) as MapTuning
+		tuning = overlay.apply(tuning)
+		shopping_default = ",".join(PackedStringArray(overlay.bot_shopping))
 	var failed := TuningOverrides.apply(tuning, _specs(OS.get_cmdline_user_args()))
 	if not failed.is_empty():
 		push_error("no such tuning: %s" % ", ".join(failed))
@@ -26,7 +36,7 @@ func _init() -> void:
 		int(args.get("seed", "1")),
 		float(args.get("step", str(BalanceBatch.DEFAULT_STEP))),
 		int(args.get("rounds", str(BalanceBatch.DEFAULT_MAX_ROUNDS))),
-		_shopping(args.get("shopping", "")),
+		_shopping(args.get("shopping", shopping_default)),
 		float(args.get("assist", "0"))
 	)
 	cell["seconds"] = float(Time.get_ticks_msec() - started) / 1000.0
