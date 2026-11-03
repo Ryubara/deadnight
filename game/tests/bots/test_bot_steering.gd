@@ -162,3 +162,50 @@ func test_a_loop_pulls_a_kite_round_it() -> void:
 	var from := here + Vector3(3.0, 0.0, 0.0)
 	var with := steering.pick(here, _threat(from), Vector3.ZERO, Vector3.ZERO)
 	assert_float(absf(with.z)).is_greater(0.4)
+
+
+func _pack_between(here: Vector3, person: Vector3) -> Array[Dictionary]:
+	# Eight dead running at the bot from the side of the person, three to four metres off.
+	var toward := (person - here).normalized()
+	var side := Vector3(-toward.z, 0.0, toward.x)
+	var pack: Array[Dictionary] = []
+	for i in 8:
+		var offset := side * (float(i) - 3.5) * 0.7 + toward * (3.0 + float(i % 2))
+		pack.append({"position": here + offset, "speed": 4.0})
+	return pack
+
+
+func test_a_far_pull_turns_the_flight_round_a_pack_toward_the_person() -> void:
+	var level := await _hall()
+	var steering := BotSteering.new(level)
+	var here := _arena.centre(3, 3)
+	# The person is to the north, past the pack: away from the pack is south.
+	var person := here + Vector3(0.0, 0.0, -30.0)
+	var pack := _pack_between(here, person)
+	var toward := (person - here).normalized()
+	var near := steering.pick(here, pack, toward * BotFightBrain.far_bend(10.0, 8), Vector3.ZERO)
+	var far := steering.pick(here, pack, toward * BotFightBrain.far_bend(40.0, 8), Vector3.ZERO)
+	assert_bool(near != Vector3.ZERO and far != Vector3.ZERO).is_true()
+	# The weak pull of a bot beside the person runs straight away; the far one bends it round
+	# (more of the way to the person) and still never closes on the pack.
+	assert_float(far.dot(toward)).is_greater(near.dot(toward) + 0.4)
+	var gain := 0.0
+	for threat in pack:
+		var at: Vector3 = threat["position"]
+		gain += (here + far * 2.5 - at).length() - (here - at).length()
+	assert_float(gain).is_greater(-BotSteering.BOXED_IN)
+
+
+func test_the_retreat_bend_grows_with_the_distance_from_the_person() -> void:
+	assert_float(BotFightBrain.far_bend(5.0, 8)).is_equal(BotFightBrain.HOME_BEND)
+	assert_float(BotFightBrain.far_bend(BotFightBrain.FAR_BEND_FROM, 8)).is_equal(
+		BotFightBrain.HOME_BEND
+	)
+	assert_float(BotFightBrain.far_bend(BotFightBrain.FAR_BEND_FULL + 30.0, 8)).is_equal(
+		BotFightBrain.FAR_BEND * 8.0
+	)
+	# One dead (or none) pulls by `FAR_BEND`, and between the two distances the pull is between.
+	assert_float(BotFightBrain.far_bend(100.0, 0)).is_equal(BotFightBrain.FAR_BEND)
+	assert_float(BotFightBrain.far_bend(26.0, 4)).is_between(
+		BotFightBrain.HOME_BEND, BotFightBrain.FAR_BEND * 4.0
+	)
