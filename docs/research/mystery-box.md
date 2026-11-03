@@ -88,7 +88,7 @@ changed the look only: the stages, timings, cycling, blink, dud and the server's
   while the case has room (20) and triangles to spare (6,000); a weapon added to the pool with its hold file is in the
   case with no edit, and one without a model yet lies there as a plain dark stand-in. All of them are merged into **one
   mesh with the weapons' palette** (`weapons_palette.png`, the copy with every cell), so the case is one draw call and
-  adds no shader: the shipped pool's 8 prizes make 20 tiny models, 5,460 triangles, under the 6,912 of the 48 plush
+  adds no shader: the shipped pool's 9 prizes make 20 tiny models, 5,352 triangles, under the 6,912 of the 48 plush
   spheres they replaced (48 draw calls), and the 17 planned would each lie there at least once. The warm-up's crane and
   the night's share the merged mesh through the engine's resource cache.
 - **Spin.** The claw sweeps over the heap, drops, closes and lifts; the weapons cycle on the board inside the bay, one
