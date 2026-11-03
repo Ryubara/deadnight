@@ -258,6 +258,9 @@ func start_remote(
 		online.close()
 		return _fail(failure["reason"])
 	await _use_map_of_server(MatchSettings.from_snapshot(welcome["snapshot"]).map)
+	# The map's own rules overlay over the shared table, as the server plays it (#792): the cards, the
+	# offers and the snapshot's tuning id all read it.
+	rules_tuning = world.rules_for(load(GameRules.DEFAULT_TUNING_PATH))
 	state.player_id = online.player_id
 	state.load_names(welcome["snapshot"])
 	var camera: Camera3D

@@ -115,3 +115,23 @@ func test_a_running_room_keeps_its_map_when_the_host_configures_another() -> voi
 	# The lot is built already: the other settings apply, the map stays the room's.
 	assert_str(_host.server.rules.settings.map).is_equal(MapRegistry.DEFAULT)
 	assert_float(_host.server.rules.settings.count_multiplier).is_equal(2.0)
+
+
+func test_the_second_map_is_a_room_s_map_and_a_client_builds_it_from_the_welcome() -> void:
+	await _server("small_indoor")
+	assert_str(_host.world.map_info.id).is_equal("small_indoor")
+	assert_str(_host.server.rules.settings.map).is_equal("small_indoor")
+	# The room plays by the map's own rules overlay (its three links), and so does the client that
+	# builds the map.
+	assert_object(_host.server.rules.tuning.economy.item(&"door_side")).is_not_null()
+	# Joined by an address: the client built the lot first, then builds the second map the WELCOME
+	# names.
+	var client := await _client("")
+	assert_str(client.match_settings.map).is_equal("small_indoor")
+	assert_str(client.world.map_info.id).is_equal("small_indoor")
+	assert_object(client.rules_tuning.economy.item(&"door_side")).is_not_null()
+	await get_tree().process_frame
+	assert_int(client.find_children("*", "NightWorld", false, false).size()).is_equal(1)
+	# A client that knew the map from its lobby builds it once.
+	var known := await _client("small_indoor")
+	assert_str(known.world.map_info.id).is_equal("small_indoor")

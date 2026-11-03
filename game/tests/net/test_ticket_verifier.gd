@@ -99,13 +99,19 @@ func test_a_ticket_without_rules_admits_with_none_and_one_with_rules_hands_them_
 	assert_dict((admitted["settings"] as MatchSettings).to_dict()).is_equal(
 		chosen.merged({"map": "drive_in", "bots": 0, "bot_skill": MatchSettings.DEFAULT_SKILL})
 	)
-	# With a map, the ticket hands it over; a map nobody can play refuses the ticket.
+	# With a map, the ticket hands it over (the second map too); a map nobody can play refuses the
+	# ticket.
 	var on_map := TicketMaker.make(
 		SECRET, "gs-test", "m", "cy", "Cy", 60, chosen.merged({"map": "drive_in"})
 	)
 	var given := _verifier().admit(on_map, int(Time.get_unix_time_from_system()))
 	assert_str((given["settings"] as MatchSettings).map).is_equal("drive_in")
-	for map_id in ["small_indoor", "nope", 7]:
+	var second := TicketMaker.make(
+		SECRET, "gs-test", "m", "ed", "Ed", 60, chosen.merged({"map": "small_indoor"})
+	)
+	var on_second := _verifier().admit(second, int(Time.get_unix_time_from_system()))
+	assert_str((on_second["settings"] as MatchSettings).map).is_equal("small_indoor")
+	for map_id in ["nope", 7]:
 		var bad := TicketMaker.make(
 			SECRET, "gs-test", "m", "di", "Di", 60, chosen.merged({"map": map_id})
 		)
