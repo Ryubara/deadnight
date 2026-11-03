@@ -255,13 +255,13 @@ Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot patte
 | 39 | Moon shaft and bar-shadow quads | a window's size | `glow.gdshader` and a new stripe texture | Godot | S | 4 |
 | 40 | Light under and behind a purchase door | the doorway | `GlowPane`, on the far room's circuit | Godot | S | 4 |
 | 41 | Chalk messages | 0.6-1.5 wide | a quad and our own lettering texture, Chalk | Godot | S | 4 |
-| 42 | Bare tree, three variants | 4-8 tall | the props' trees have leaves | Model | M | 5 |
-| 43 | Utility pole and wire | 0.3 x 0.3 x 7, crossbar | `street_light` in part | Model | S | 5 |
-| 44 | Barbed wire coil and fence post | 2 m runs | - | Model | S | 5 |
+| 42 | Bare tree, three variants | 4.7, 6.4 and 8.4 tall | `bare_tree_a`, `_b`, `_c`: 328, 444, 444 tris; far 56, 80, 80 | Exists | M | 5 |
+| 43 | Utility pole and wire | 0.3 x 7.05, a 2 m crossbar; the wire a 12 m span | `utility_pole` 334 (far 24), `utility_wire` 144 (far 72) | Exists | S | 5 |
+| 44 | Barbed wire coil and fence post | coil 2.0 x 0.9 x 0.9; post 1.7 tall; 2 m runs | `barbed_coil` 768, `fence_post` 104, `wire_fence` 872 (far 60) | Exists | S | 5 |
 | 45 | Plank and metal fences | as built | props `fence`, `fence_long` | Exists | - | - |
-| 46 | Roof: pitched, broken, rafters | 2 m bays | - | Model | L | 5 |
+| 46 | Roof: pitched, broken, rafters | 2 m bays, an 8 m span at 30 degrees | `roof_bay` 524, `roof_bay_broken` 812, `roof_gable` 124 | Exists | L | 5 |
 | 47 | A set-piece wreck | the design's choice | `broken_car` and `wreck.tscn` cover a car | Exists (a new one is L) | - | 5 |
-| 48 | Frosted ground outside | any | CSG + `gravel`, a cool pale tint | Material | S | 5 |
+| 48 | Frosted ground outside | any | CSG + `gravel`, `#7f8794` (`game/assets/smallmap/materials/frost_ground.tres`) | Exists | S | 5 |
 
 **48 parts: 32 to model in Blender, 6 materials on CSG, 4 Godot jobs, 6 already in the game.** Nine of the 32 have a
 blockout already.
@@ -277,6 +277,83 @@ blockout already.
 The groups share only `smallmap_kit.py` (the palette and the sizes) and the atlas, so five agents can work at once.
 Each builds its own script, writes its own files, and adds a fixture scene per piece. Group 4's light cards need
 group 1's doorway and window to sit in, but can be built against the blockout's sizes.
+
+## Roof and outside (group 5)
+
+Issue #638. `tools/blender/build_smallmap_outside.py` (pinned Blender, headless; the command is at its top) builds the
+pieces on the kit atlas (`smallmap_palette.png`) into `game/assets/smallmap/`, with `outside_pieces.json` (triangles,
+budget, bounds); `tools/world/build_smallmap_outside_fixtures.py` writes a fixture each with hidden CSG blockers. The
+repeated pieces are also written as `.obj` (one Mesh, for a MultiMesh).
+
+| Piece | Tris (far) | Budget | Size (m) | Notes |
+| --- | ---: | ---: | --- | --- |
+| `bare_tree_a`, `_b`, `_c` | 328 (56), 444 (80), 444 (80) | 1,500 (300) | 4.7, 6.4, 8.4 tall | a chunky trunk that forks two or three times, no leaves, frost on the forks and at the foot |
+| `utility_pole` | 334 (24) | 1,500 (300) | 0.3 across, 7.05 tall, 2 m crossbar | three green glass insulators across the line, step bolts, a transformer can |
+| `utility_wire` | 144 (72) | 800 (300) | a 12 m span, 0.55 m sag | from a pole's insulators along its +X to the next pole |
+| `barbed_coil` | 768 | 1,500 | 2.0 x 0.9 x 0.9 | a concertina on two rusty pickets |
+| `fence_post`, `wire_fence` | 104, 872 (60) | 800, 1,500 (300) | 1.7 tall; a 2 m run | a post and four barbed strands to +X; a lone post ends a run |
+| `neon_sign` | 492 | 5,000 | 8.9 x 8.1 | DRIVE-IN in Pink tubes (our own stroke lettering), an Amber arrow; the backdrop makes both glow |
+| `roof_bay` | 524 | 5,000 | 2 x 8.8, ridge 2.59 over the wall top | an 8 m span at 30 degrees, a 0.4 m overhang, rafters at 1 m centres, tie beam and king post, plank sheathing under tar-paper courses |
+| `roof_bay_broken` | 812 | 5,000 | as the bay | a 1.6 x 2.7 m hole in the front slope, one rafter snapped and hanging, battens across, charred lips |
+| `roof_gable` | 124 | 1,500 | 8.8 x 2.7 | the end wall under a row of bays, turned 90 degrees about Godot Y |
+
+The roof's origin is the bay's middle on the wall tops: a row of bays sits along X on walls 8 m apart outside to
+outside (a 7.4 m room between 0.3 m walls). A board at a bay's end runs 20 mm into the next bay: without the lap the
+moon showed through a crack between every two bays.
+
+![The pieces on the 0.5 m grid beside the Soldier, a fence, the ticket booth and a leafy tree](outside-sheet.png)
+
+## The backdrop
+
+The maintainer's decision (2026-11-02, in #638): the map is indoors, and through its windows, doors and broken walls the
+players see Deadnight's own world in the distance. `game/world/smallmap/backdrop.tscn`, written by
+`tools/world/build_smallmap_backdrop.py` (its places are constants at the top; the yard's size is the greybox's to
+set, #631), stands past the yard's fence and is never walked:
+
+- **The yard's edge** (31 x 27 m half sizes round a 29 x 21 m building): wire fence runs and posts, barbed coils across
+  a gate in the north side, 16 bare trees just outside, frosted ground (`frost_ground.tres`, the lot's `gravel` at
+  `#7f8794`).
+- **The drive-in, north** (the moon over it, as on the lot): its screen at 120 m with the lot's own screen shader and a
+  halo, the screen frame, 23 parked cars of the lot's five colours in curved rows, six lamps with halos, the marquee
+  (its bulbs glow), the ticket booth, the neon sign and a stretch of the lot's fence, on the lot's asphalt.
+- **Round it**: 70 far trees, two pole lines (one along the road south, one up to the drive-in), a wreck burning past
+  the yard's corner and a barrel fire south-west (flame and halo quads, no light).
+
+What keeps it cheap and readable in the Compatibility renderer:
+
+| Choice | Why |
+| --- | --- |
+| One `MultiMeshInstance3D` per model (`Backdrop` fills the glTF ones from `metadata/source` at load: a `.tscn` cannot point into an imported scene) | a draw for every copy of a model: 330 copies in 37 drawing nodes |
+| Unshaded `backdrop_haze.gdshader`, lit by the moon and the ambient in the shader | no light pass per mesh, a lamp indoors never lights the drive-in, and no slot in the light cap |
+| Its own haze: the scene's fog density, capped at 0.5 at 20 m rising to 0.82 at 150 m, brightening toward the horizon | the small map's fog (0.035) would sink everything past 40 m into the fog colour; capped, the screen, the cars and the trees read as layers |
+| `Backdrop` copies the environment's fog, ambient and moon into the materials every frame, each copy of the scene on its own materials | the round's darkening (`NightLight`) reaches the backdrop; two copies never change each other |
+| Colours passed as sRGB values, times their energies | the Compatibility renderer lights in sRGB space: the fog colour through `srgb_to_linear` drew ten times too dark |
+| Glow by atlas cell (Amber 6, Pink 19) in the drive-in and kit atlases | the marquee's bulbs and the neon light up with no extra mesh |
+| Far levels of detail for trees, poles, wires and the fence | 24 to 80 triangles where a near model is 300 to 870 |
+
+**Cost.** 62,227 triangles if all of it were in view; from the window spot 21,400 more primitives and 34 more draw calls
+(17 to 51). Chrome on an RTX 5080 (ANGLE D3D11, WebGL2), 1280 x 720, `tools/web_smoke/backdrop_web.py` unpaced, 600
+frames alternating 50 with the backdrop and 50 without, five runs over two exports on a shared machine: the median
+frame 2.0 to 2.5 ms without against 2.4 to 2.9 ms with it, about 0.4 ms (means 2.1 to 2.9 against 2.5 to 3.9, p95 3.5 to
+6.3 against 4.0 to 7.6). On SwiftShader (every pixel on the processor, a stand-in for a weak GPU), two runs of 300
+frames: 114 against 126 ms (about 10 %). The window bench holds a view through one window; looking out of the yard the
+whole drive-in is in view.
+
+Proof: `game/tests/captures/smallmap_backdrop_tour.tscn` puts the player's own shoulder camera in a blockout room (a
+zombie window, a broken wall, a doorway, the kit's roof with a broken bay) and in the yard, under the lot's night with
+the small map's fog (`--fog=0.035`), with the backdrop shown and hidden (`--off`); `test_smallmap_outside.gd` checks the
+budgets, the fixtures, that every model is filled, unshaded and outside the yard, the draw and triangle budget, and that
+the haze follows the scene's fog.
+
+![From the yard: the screen, the cars and lamps, the marquee, the fence and coils](backdrop-yard.png)
+
+![Through the broken wall: the fence, bare trees and the pole line in the haze](backdrop-broken-wall.png)
+
+![Through the zombie window: the screen and the cars beyond the coils](backdrop-window.png)
+
+Left for others: the moon lights the roof's underside with thin specular lines on the rafters (no shadows indoors;
+the level's moon is lowered indoors, see the kit's light cards); the backdrop's shader is a new GL program the first
+frame of the map compiles (it is on screen from the start, so not mid-play).
 
 ## Sources
 
