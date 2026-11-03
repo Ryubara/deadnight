@@ -1,7 +1,8 @@
 # The second map's economy and placement against rows 20 to 26 of
 # docs/research/maps/small-map-formula.md ("Economy and placement targets"): one price for the three
 # links that opens one at round 3, two at round 4 and three at round 5; the box in one place in the
-# side room that never moves; the wall weapons 2 / 2 / 4 and a cabinet at prices that climb;
+# side room that never moves; the wall weapons 1 / 2 / 2 and a cabinet at prices that climb
+# (no melee weapon on a wall, #910; the formula's 2 / 2 / 4 lost the crowbar, the bat and the axe);
 # the lot's machines (#792); at most 24 dead at once. Each test fails outside its tolerance,
 # and the map's tuning
 # (`smallmap_tuning.tres`) and the scene's markers must name the same things.
@@ -18,9 +19,9 @@ const LAST_ROUND := 60
 ## Row 24: each price within this share of its ratio of the link price.
 const PRICE_TOLERANCE := 0.10
 
-## Row 24: the ratio of the link price each wall weapon sells at, by room: the start room's two, the
-## side room's two, and the upstairs' range (the four and the cabinet).
-const START_RATIOS: Array[float] = [0.2, 0.6]
+## Row 24: the ratio of the link price each wall weapon sells at, by room: the start room's one, the
+## side room's two, and the upstairs' range (the two and the cabinet).
+const START_RATIOS: Array[float] = [0.2]
 const SIDE_RATIO := 1.2
 const UPSTAIRS_RATIO_FROM := 1.2
 const UPSTAIRS_RATIO_TO := 1.8
@@ -159,16 +160,16 @@ func test_row_22_the_box_costs_085_to_105_of_the_link_price() -> void:
 	assert_float(share).is_between(0.85, 1.05)
 
 
-# --- Row 23: wall weapons 2 / 2 / 4 and a cabinet ---
+# --- Row 23: wall weapons 1 / 2 / 2 and a cabinet (the formula's 2 / 2 / 4 less melee, #910) ---
 
 
-func test_row_23_wall_weapons_are_two_two_and_four_with_a_cabinet() -> void:
-	assert_int(_walls_in("start").size()).is_equal(2)
+func test_row_23_wall_weapons_are_one_two_and_two_with_a_cabinet() -> void:
+	assert_int(_walls_in("start").size()).is_equal(1)
 	assert_int(_walls_in("side").size()).is_equal(2)
 	var upstairs := _walls_in("upstairs")
 	var cabinets := upstairs.filter(func(spot: Dictionary) -> bool: return spot["cabinet"])
 	assert_int(cabinets.size()).is_equal(1)
-	assert_int(upstairs.size() - cabinets.size()).is_equal(4)
+	assert_int(upstairs.size() - cabinets.size()).is_equal(2)
 	for spot in _spots:
 		if spot["cabinet"]:
 			assert_str(spot["room"]).is_equal("upstairs")
@@ -187,7 +188,7 @@ func test_row_23_every_wall_spot_sells_a_weapon_the_tuning_prices() -> void:
 # --- Row 24: wall prices climb with the distance from the start ---
 
 
-func test_row_24_the_start_room_sells_at_a_fifth_and_three_fifths_of_a_link() -> void:
+func test_row_24_the_start_room_sells_at_a_fifth_of_a_link() -> void:
 	var prices: Array[float] = []
 	for spot in _walls_in("start"):
 		prices.append(float(_price(spot["shop_id"])) / _link_price())

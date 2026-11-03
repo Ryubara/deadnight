@@ -142,12 +142,9 @@ SPOT_IN = 1.35
 WALL_SPOTS = [
     # (name, shop id, sign, room, wall face (x, z), into, floor)
     ("PistolStart", "weapon_pistol", "REVOLVER", "start", (0.0, 11.0), (1, 0), 0.0),
-    ("CrowbarStart", "weapon_crowbar", "CROWBAR", "start", (0.0, 6.0), (1, 0), 0.0),
     ("ShotgunSide", "weapon_shotgun", "SHOTGUN", "side", (16.0, -6.0), (-1, 0), 0.0),
     ("SmgSide", "weapon_smg", "TOMMY GUN", "side", (5.5, -7.8), (0, 1), 0.0),
-    ("BatUpstairs", "weapon_baseball_bat", "BAT", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
     ("FlareUpstairs", "weapon_flare_gun", "FLARE GUN", "upstairs", (-0.05, 2.3), (1, 0), STOREY),
-    ("AxeUpstairs", "weapon_fire_axe", "FIRE AXE", "upstairs", (16.05, -4.0), (-1, 0), STOREY),
     ("ShotgunUpstairs", "weapon_shotgun", "SHOTGUN", "upstairs", (5.0, -7.85), (0, 1), STOREY),
 ]
 # The sniper cabinet: the rifle, at 1.5 P, in the upstairs half over the side room.

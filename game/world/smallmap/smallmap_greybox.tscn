@@ -2199,26 +2199,6 @@ metadata/kind = "wall"
 metadata/shop_id = "weapon_pistol"
 metadata/room = "start"
 
-[node name="CrowbarStartPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 0.060, 1.600, 6.000)
-size = Vector3(1.7, 0.9, 0.12)
-material = ExtResource("plaque")
-
-[node name="CrowbarStartSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 0.140, 1.600, 6.000)
-pixel_size = 0.006
-text = "CROWBAR"
-font_size = 60
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
-
-[node name="SpotCrowbarStart" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 1.350, 0.000, 6.000)
-metadata/kind = "wall"
-metadata/shop_id = "weapon_crowbar"
-metadata/room = "start"
-
 [node name="ShotgunSidePlaque" type="CSGBox3D" parent="ShopProps"]
 transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.940, 1.600, -6.000)
 size = Vector3(1.7, 0.9, 0.12)
@@ -2259,26 +2239,6 @@ metadata/kind = "wall"
 metadata/shop_id = "weapon_smg"
 metadata/room = "side"
 
-[node name="BatUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.990, 5.000, 2.300)
-size = Vector3(1.7, 0.9, 0.12)
-material = ExtResource("plaque")
-
-[node name="BatUpstairsSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.910, 5.000, 2.300)
-pixel_size = 0.006
-text = "BAT"
-font_size = 60
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
-
-[node name="SpotBatUpstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.700, 3.400, 2.300)
-metadata/kind = "wall"
-metadata/shop_id = "weapon_baseball_bat"
-metadata/room = "upstairs"
-
 [node name="FlareUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 0.010, 5.000, 2.300)
 size = Vector3(1.7, 0.9, 0.12)
@@ -2297,26 +2257,6 @@ outline_modulate = Color(1, 0.9, 0.6, 1)
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 1.300, 3.400, 2.300)
 metadata/kind = "wall"
 metadata/shop_id = "weapon_flare_gun"
-metadata/room = "upstairs"
-
-[node name="AxeUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.990, 5.000, -4.000)
-size = Vector3(1.7, 0.9, 0.12)
-material = ExtResource("plaque")
-
-[node name="AxeUpstairsSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 15.910, 5.000, -4.000)
-pixel_size = 0.006
-text = "FIRE AXE"
-font_size = 52
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
-
-[node name="SpotAxeUpstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 14.700, 3.400, -4.000)
-metadata/kind = "wall"
-metadata/shop_id = "weapon_fire_axe"
 metadata/room = "upstairs"
 
 [node name="ShotgunUpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
