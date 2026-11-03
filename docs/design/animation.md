@@ -182,12 +182,13 @@ gets its grip by placing three empties and running the solver, never by tuning n
 It writes the model's place under the right hand (`hold`, before the hold's `model_scale`), the size it was solved
 at, every finger rotation of both hands, the left hand bone's pose in the model's space, and which parts touch.
 
-**In the game** `PlayerAnimation` puts the model under the hand by its grip and gives the same hold to the arms' IK,
-and `HandGripPose` (a `SkeletonModifier3D` after `WeaponHandsIK`) closes the fingers: the right hand on the held
-item's grip (the weapon, the repair hammer or the grenade shell) while it shows, eased at 20 per second; the left hand
-on the weapon's while the IK holds it there. It also keeps the palm whole: the kit hand is four bones from the wrist
-(`Index1`, `Middle1`, `Pinky1`, `Thumb1`) and the weapon rides `Index1`, so when the IK turned only that one the other
-three stayed with the forearm and the palm tore (every gun's hand in the aim pose before #460).
+**In the game** `HeldWeapon` (what `PlayerAnimation` and the menu's stage both call, #621) puts the model under the
+hand by its grip and gives the same hold to the arms' IK, and `HandGripPose` (a `SkeletonModifier3D` after
+`WeaponHandsIK`) closes the fingers: the right hand on the held item's grip (the weapon, the repair hammer or the
+grenade shell) while it shows, eased at 20 per second; the left hand on the weapon's while the IK holds it there. It
+also keeps the palm whole: the kit hand is four bones from the wrist (`Index1`, `Middle1`, `Pinky1`, `Thumb1`) and the
+weapon rides `Index1`, so when the IK turned only that one the other three stayed with the forearm and the palm tore
+(every gun's hand in the aim pose before #460).
 The left hand goes to the grip's `left_hand` on the weapon where it is after the right arm, and a two-handed gun's
 hold turns the chest 20-30 degrees, left shoulder forward ([How a gun is held](weapon-hold.md#how-a-gun-is-held)):
 the Soldier's 0.66 m arm did not reach a fore-end 0.70-0.81 m from his shoulder, and the clamped hand ended inside the

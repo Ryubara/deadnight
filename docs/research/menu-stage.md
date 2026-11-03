@@ -9,7 +9,7 @@ The live drive-in behind the reworked main menu (issue #397; the design is in [M
 | Part | What it is |
 | --- | --- |
 | `MenuStage` | The lot built in code from the game's own models and materials: the movie screen (its own soft picture shader, `menu_screen.gdshader`), two rows of cars with an aisle, speaker posts, two lamps with additive glow quads, the booth and the counter, a fence, fog, the night sky shader of the lot. No physics body, no CSG, no navigation mesh, no shadows, 8 lights at most |
-| `MenuHero` | The Soldier from `CharacterAssembler` in the saved look (`LookStore`), the saved showcase weapon (`loadout/weapon`) on the same bone mount and hold data the night uses, posed by `WeaponHandsIK` over the Idle clip |
+| `MenuHero` | The Soldier from `CharacterAssembler` in the saved look (`LookStore`), the saved showcase weapon (`loadout/weapon`) put in the hands by `HeldWeapon`, the one builder the night's `PlayerAnimation` calls too (the weapon's own hold, its solved grip, `WeaponHandsIK`, `HandGripPose`), over the Idle clip |
 | `MenuZombie`, `WanderPath` | Five dead beyond the fence, each a Walk clip and a loop of two waypoints, a function of the stage's clock |
 | `StagePose`, `StageCameraRig` | One pose per tab (azimuth, distance, height, field of view, where the soldier sits across the picture, how he is turned) and critically damped springs between them |
 | `MenuStageView` | A `SubViewportContainer` with its own world; three levels and the setting `video/menu_scene` |
@@ -24,8 +24,13 @@ The live drive-in behind the reworked main menu (issue #397; the design is in [M
   hand, so the picture repeats (the [Tween lesson](https://github.com/Ryubara/gdstudio/blob/main/docs/lessons/2026-11-01-tweens-do-not-move-in-hand-stepped-tests.md)).
 - **The weapon is held by the game's own hand pose** at 0 degrees of pitch with the soldier turned side-on to the
   camera, so he reads as looking down the lot. The first try, the aim clip alone, held a rifle in one hand pointing at
-  the lens; the low-ready pose made him hunch. The showcase weapons are the ones whose class has a model today
-  (`MenuHero.available()`), so a weapon joins the list by getting its model.
+  the lens; the low-ready pose made him hunch. The showcase weapons are the ones the night puts in a hand today
+  (`MenuHero.available()` asks `WeaponHoldMap.hold_for`), so a weapon joins the list by getting its model.
+- **The menu has no hand placement of its own** (#621). It first copied the night's set-up, and #507's solved grips
+  reached `PlayerAnimation` only, so the menu kept the kit's fist. `HeldWeapon` is the one place that mounts the
+  weapon and poses the hands; `test_menu_grips.gd` measures the menu soldier's hands on all eight weapons against the
+  night's limits and fails when a menu file builds a hand pose itself. `tools/web_smoke/menu_grips.py` steps the
+  Loadout row in the browser.
 - **Own screen shader.** The lot's screen shader hashes with `sin` on pixel-sized arguments (grain that shimmered at
   1080p in the capture); the menu's is smooth waves only.
 - **Sky.** The lot's screen glow on the horizon turned the menu sky pale blue; it is turned down in the stage.
