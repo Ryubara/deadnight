@@ -3,9 +3,10 @@
     python3 tools/ci_test_shards.py --root game --shard 2      # prints "-a res://tests/net -a res://tests/world ..."
     python3 tools/ci_test_shards.py --root game --self-test    # every test folder and file belongs to exactly one shard
 
-The suite took 15 to 20 minutes in one job. The folders below are balanced by the time they took on a runner (the
-`godot` job's log, `docs/research/ci-time.md`); a folder that is not named goes to the last shard, so a new folder is
-never left out of CI. Re-balance the lists when one shard's job drifts well past the others.
+The suite took 15 to 20 minutes in one job, then 12 to 15 minutes in each of three. The folders and scripts below are
+balanced by the seconds they took on a runner (the `godot` job's log, `docs/research/ci-time.md`); a folder that is not
+named goes to the last shard, so a new folder is never left out of CI. Re-balance the lists when one shard's job drifts
+past the others or past about 9 minutes.
 """
 
 from __future__ import annotations
@@ -14,20 +15,49 @@ import argparse
 import sys
 from pathlib import Path
 
-SHARDS = 3
-# Shards 1 and 2 are named; shard 3 takes everything else.
+SHARDS = 6
+# Shards 1 to 5 are named; shard 6 takes everything else, so keep it a light one. Seconds are the mean of two runs of
+# `main` on the runner (1 = fast, 2 = a 15 % slower one); the job adds about a minute of setup (checkout, import).
 NAMED: dict[int, tuple[str, ...]] = {
-    1: ("night", "rules"),
-    2: ("net", "world", "zombies"),
+    # ~375 s: the rest of the night folder (those not moved below), and the once-per-run steps
+    1: ("night",),
+    # ~350 s
+    2: ("player",),
+    # ~355 s
+    3: ("zombies",),
+    # ~365 s: real sockets and real freezes, the time is the test
+    4: ("net",),
+    # ~350 s: ui and the small folders
+    5: (
+        "ui",
+        "bots",
+        "weapons",
+        "core",
+        "challenges",
+        "grenades",
+        "dev",
+        "outline",
+        "art",
+        "character",
+        "tuning",
+        "test_main_scene.gd",
+    ),
+    # ~370 s
+    6: ("rules", "world"),
 }
-# The `night` folder alone took 13 minutes of shard 1's 15 (the bot suites are minutes long each), so its heaviest
-# scripts are named one by one and move to the shards with room. Any other script of a split folder stays with the
-# folder's own shard, and a new one is never left out. GdUnit4 takes a folder or a script as `-a`, not "a folder
-# without these", hence the per-script entries.
+# The `night` folder alone is 900 s (the bot suites are minutes long each), so its heaviest scripts are named one by
+# one and move to the shards with room (#676, #775). Any other script of a split folder stays with the folder's own
+# shard (1), and a new one is never left out. GdUnit4 takes a folder or a script as `-a`, not "a folder without
+# these", hence the per-script entries. Seconds on the runner, mean of two runs.
 MOVED: dict[str, int] = {
-    "night/test_bot_bands.gd": 3,
-    "night/test_bot_soak.gd": 2,
-    "night/test_bot_orders_night.gd": 2,
+    "night/test_bot_bands.gd": 2,  # 206: eight seeded nights per band
+    "night/test_bot_soak.gd": 3,  # 80
+    "night/test_bot_orders_night.gd": 3,  # 68
+    "night/test_bot_combat.gd": 3,  # 51
+    "night/test_bot_team.gd": 3,  # 43
+    "night/test_bot_errand_buys.gd": 3,  # 31
+    "night/test_bot_own_ammo.gd": 5,  # 40
+    "night/test_bot_train.gd": 6,  # 18
 }
 
 

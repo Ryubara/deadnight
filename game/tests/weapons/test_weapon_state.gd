@@ -26,9 +26,10 @@ func test_fire_rate_follows_the_interval() -> void:
 	var state := WeaponState.new(smg)
 	state.ammo = 999
 	var shots := _hold_the_trigger(state, 2.0)
-	# 13.3 a second on paper; a 60 Hz step lands a shot every fifth step, 12 a second.
+	# The leftover of a tick is carried (#708), so the rate is the paper one (13.3 a second, not
+	# the 12 of a shot every fifth step); `test_weapon_fire_rate.gd` holds it for every weapon.
 	var on_paper := 2.0 * smg.rounds_per_second()
-	assert_int(shots).is_between(int(on_paper) - 4, ceili(on_paper))
+	assert_int(shots).is_between(int(on_paper), ceili(on_paper) + 1)
 
 
 func test_a_slow_weapon_cannot_be_fired_faster() -> void:

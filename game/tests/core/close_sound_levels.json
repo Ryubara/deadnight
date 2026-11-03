@@ -1,0 +1,114 @@
+{
+ "sounds": {
+  "board_last": {
+   "max_db": 0.3,
+   "close_peak_dbfs": -9.9,
+   "close_lufs": -23.3
+  },
+  "board_repair": {
+   "max_db": 1.7,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -24.9
+  },
+  "board_tear": {
+   "max_db": 3.2,
+   "close_peak_dbfs": -10.3,
+   "close_lufs": -21.9
+  },
+  "debris_clear": {
+   "max_db": -1.9,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -21.6
+  },
+  "door_open": {
+   "max_db": 1.2,
+   "close_peak_dbfs": -10.0,
+   "close_lufs": -21.8
+  },
+  "grenade_blast": {
+   "max_db": -7.0,
+   "close_peak_dbfs": -10.4,
+   "close_lufs": -20.4
+  },
+  "impact_flesh": {
+   "max_db": -3.0,
+   "close_peak_dbfs": -16.7,
+   "close_lufs": -36.1
+  },
+  "impact_head": {
+   "max_db": -1.0,
+   "close_peak_dbfs": -17.4,
+   "close_lufs": -37.3
+  },
+  "melee_hit": {
+   "max_db": -2.0,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -27.4
+  },
+  "till_ring": {
+   "max_db": -3.5,
+   "close_peak_dbfs": -10.4,
+   "close_lufs": -18.5
+  },
+  "zombie_alert": {
+   "max_db": -6.5,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -19.0
+  },
+  "zombie_attack": {
+   "max_db": -4.5,
+   "close_peak_dbfs": -10.0,
+   "close_lufs": -19.7
+  },
+  "zombie_breath_brute": {
+   "max_db": -3.0,
+   "close_peak_dbfs": -10.1,
+   "close_lufs": -18.4
+  },
+  "zombie_death": {
+   "max_db": -5.5,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -15.5
+  },
+  "zombie_groan": {
+   "max_db": -5.0,
+   "close_peak_dbfs": -10.4,
+   "close_lufs": -17.4
+  },
+  "zombie_groan_brute": {
+   "max_db": -5.0,
+   "close_peak_dbfs": -10.5,
+   "close_lufs": -17.5
+  },
+  "zombie_groan_crawler": {
+   "max_db": -4.5,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -16.7
+  },
+  "zombie_growl_boss": {
+   "max_db": -6.0,
+   "close_peak_dbfs": -10.0,
+   "close_lufs": -18.9
+  },
+  "zombie_grunt": {
+   "max_db": -4.5,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -22.6
+  },
+  "zombie_hurt": {
+   "max_db": -6.0,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -16.6
+  },
+  "zombie_roar": {
+   "max_db": -6.0,
+   "close_peak_dbfs": -10.5,
+   "close_lufs": -15.8
+  },
+  "zombie_shriek": {
+   "max_db": -6.5,
+   "close_peak_dbfs": -10.2,
+   "close_lufs": -15.8
+  }
+ }
+}

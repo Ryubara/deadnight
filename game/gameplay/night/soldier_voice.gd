@@ -17,6 +17,10 @@ const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
 var play := Callable()
 var director := VoiceDirector.new()
 var schedule := SoundSchedule.new()
+## Every player's look (the night's `LookRegistry`): a player whose frame entry names no `voice`
+## speaks with the voice of the character they chose (`CharacterLook.body`, which is also the
+## voice's name). Without it, the male voice.
+var looks: LookRegistry
 
 var _t := NightSoundTuning.current()
 var _state: ClientState
@@ -207,8 +211,22 @@ func _nearest_standing(who: int) -> int:
 	return best
 
 
+## The voice of the character player `id` chose (`SoldierVoiceCatalog.MALE` when their look has not
+## arrived), the one their frame entry gets when it names none.
+func look_voice(id: int) -> StringName:
+	if looks != null and looks.looks.has(id):
+		return (looks.looks[id] as CharacterLook).body()
+	return SoldierVoiceCatalog.MALE
+
+
+## The frame entry of player `id`, with the `voice` of the character they chose when the entry
+## names none.
 func _player(id: int) -> Dictionary:
-	return _state.frame.get("players", {}).get(id, {})
+	var player: Dictionary = _state.frame.get("players", {}).get(id, {})
+	if not player.has("voice") and looks != null and looks.looks.has(id):
+		player = player.duplicate()
+		player["voice"] = look_voice(id)
+	return player
 
 
 func _play(id: StringName, at: Variant, extra_db: float) -> Variant:

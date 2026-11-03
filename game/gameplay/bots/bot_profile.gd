@@ -166,6 +166,11 @@ static func rookie() -> BotProfile:
 	profile.revive_eagerness = 0.25
 	profile.ammo_floor_mags = 2
 	profile.ammo_topoff = 0.5
+	# A rookie does not manage its health: the simulator's weak level stands where it is hit. With the
+	# play states of #739 it backed away when hurt and passed the first boss night 30 times of 30
+	# against the level's 40% (#231).
+	profile.careful_below = 0.0
+	profile.safe_below = 0.0
 	profile.saves_for.clear()
 	(
 		profile

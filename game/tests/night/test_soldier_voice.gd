@@ -400,3 +400,42 @@ func test_lines_played_through_the_service_are_dropped_cleanly_when_it_says_no()
 	_voice.play = func(_id: StringName, _at: Variant, _db: float) -> Variant: return null
 	assert_bool(_voice.say(&"reload", OWN)).is_false()
 	assert_array(_moments()).is_empty()
+
+
+## Players wearing `bodies` ({player id: &"male" or &"female"}), heard the way a night hears looks.
+func _wearing(bodies: Dictionary) -> LookRegistry:
+	var looks := LookRegistry.new()
+	for id: int in bodies:
+		var look := CharacterLook.default_look()
+		look.set_body(bodies[id])
+		looks.receive(LookWire.player_look(id, id - 1, look))
+	return looks
+
+
+func test_the_character_a_player_chose_sets_the_voice_they_speak_with() -> void:
+	_voice.looks = _wearing({OWN: LookCatalog.FEMALE, MATE: LookCatalog.MALE})
+	assert_str(String(_voice._player(OWN)["voice"])).is_equal("female")
+	assert_str(String(_voice._player(MATE)["voice"])).is_equal("male")
+	# She speaks with her lines (voxf_), he with his (vox_), for the same moment.
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	assert_str(String(_heard[0]["id"])).starts_with("voxf_reload_")
+	_settle()
+	_heard.clear()
+	assert_bool(_say_until(&"reload", MATE)).is_true()
+	assert_str(String(_heard[0]["id"])).starts_with("vox_reload_")
+	assert_object(SoundCatalog.get_def(_heard[0]["id"])).is_not_null()
+
+
+## What the frame entry names wins over the look.
+func test_a_voice_the_frame_names_wins_over_the_look() -> void:
+	_voice.looks = _wearing({OWN: LookCatalog.FEMALE, MATE: LookCatalog.FEMALE})
+	_voices(&"male", &"male")
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	assert_str(String(_heard[0]["id"])).starts_with("vox_reload_")
+
+
+func test_a_player_whose_look_has_not_arrived_has_his_voice() -> void:
+	_voice.looks = _wearing({OWN: LookCatalog.FEMALE})
+	assert_str(String(_voice.look_voice(MATE))).is_equal("male")
+	assert_bool(_say_until(&"reload", MATE)).is_true()
+	assert_str(String(_heard[0]["id"])).starts_with("vox_reload_")

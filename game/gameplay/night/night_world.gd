@@ -33,6 +33,8 @@ var navigation: DoorNavigation
 var switches: LotSwitches
 ## The lot's fuel can spots, where a player buys fuel for the generator.
 var fuel: LotFuel
+## The prize crane's cabinet, solid in this world as in every other (`CraneBlock`).
+var crane_block: CraneBlock
 
 ## Where the dead rise and the players start (`MapLayout`), read from the scene.
 var layout: MapLayout
@@ -79,6 +81,9 @@ func build(info: MapInfo = null) -> void:
 	_lamps = LotLamps.new(greybox)
 	switches = LotSwitches.new(greybox)
 	fuel = LotFuel.new(greybox)
+	crane_block = CraneBlock.new()
+	add_child(crane_block)
+	crane_block.setup(shop_spots())
 
 
 func map() -> RID:
@@ -154,6 +159,7 @@ func bind(rules: GameRules) -> void:
 	switches.show_all(_generator)
 	for id: StringName in _barricades:
 		_barricades[id].set_boards(rules.barricades.boards_of(id), false)
+	crane_block.place(rules.crane.spot)
 	rules.event_emitted.connect(_on_rules_event)
 
 
@@ -321,6 +327,8 @@ func spawn_gates() -> Dictionary[Vector3, StringName]:
 func _on_rules_event(event: Dictionary) -> void:
 	switches.follow(event)
 	match event["type"]:
+		&"crane_moved":
+			crane_block.place(event["to_spot"])
 		&"board_torn", &"board_repaired":
 			var barricade: Barricade = _barricades.get(StringName(event["barricade_id"]))
 			if barricade != null:

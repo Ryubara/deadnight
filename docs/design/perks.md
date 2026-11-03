@@ -108,5 +108,7 @@ machine stands against the plaza's south wall over the area's own hidden block (
   bits); their lists are the simulator's.
 - **The balance gate** plays the modelled players buying them ([research](../research/perks.md)).
 - **The snapshot** is version 14 (`self_revives`, `self_revive_left`).
-- **The HUD** has no perk row yet: the card at the machine, the feed ("LOST THEIR PERKS", "IS GETTING THEMSELVES
-  UP") and the effects themselves say it. A row of badges is an issue of its own, beside the weapon slots of #682.
+- **The HUD** shows the perks had as [badges beside the health card](hud.md#the-perk-badges) (#707), read from the frame's
+  `perks` bits, gone with a down that takes them; the DOWN card and the ring over the view say `GETTING YOURSELF UP` and
+  count the seconds while the revive perk gets the holder up alone. The card at the machine and the feed ("LOST THEIR
+  PERKS", "IS GETTING THEMSELVES UP") say the same in words.

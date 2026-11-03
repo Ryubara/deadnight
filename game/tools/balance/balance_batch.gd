@@ -13,6 +13,7 @@ const SPIKE_FLOOR := 0.05
 ## `shopping`, when given, replaces what the skill buys (an item the shop lacks buys nothing): the
 ## way to ask what a weapon is worth. `assist`, above 0, is a touch player with the aim assist at
 ## that strength (`SimSkill.with_touch_assist`); the gate's own cells leave it at 0.
+## `skill_numbers` ({"head_rate": 0.7}) replaces numbers of the level to try them out.
 ## Runs `nights` nights with seeds `seed_start`, `seed_start + 1`, ... and returns the cell.
 ## `reached[r]` is how many nights started round r; `died_in[r]` how many ended in it; the other
 ## per-round lists are sums over the nights that reached the round (divide by `reached`).
@@ -25,7 +26,8 @@ static func run_cell(
 	step: float = DEFAULT_STEP,
 	max_rounds: int = DEFAULT_MAX_ROUNDS,
 	shopping: Array = [],
-	assist: float = 0.0
+	assist: float = 0.0,
+	skill_numbers: Dictionary = {}
 ) -> Dictionary:
 	var cell := {
 		"skill": skill_id,
@@ -41,6 +43,8 @@ static func run_cell(
 		"pressure": _zeros(max_rounds + 1),
 		"earned": _zeros(max_rounds + 1),
 		"duration": _zeros(max_rounds + 1),
+		"kills": _zeros(max_rounds + 1),
+		"head_kills": _zeros(max_rounds + 1),
 		"special": {},
 		"ttk": {},
 		"spent_on": {},
@@ -50,6 +54,8 @@ static func run_cell(
 		"runs": 0,
 	}
 	var skill := SimSkill.named(skill_id)
+	for key: String in skill_numbers:
+		skill.set(key, float(skill_numbers[key]))
 	if assist > 0.0:
 		skill.with_touch_assist(assist)
 	if not shopping.is_empty():
@@ -72,6 +78,8 @@ static func _add(cell: Dictionary, night: Dictionary, rules: GameRules) -> void:
 		cell["pressure"][r] += record.get("pressure", 0.0)
 		cell["earned"][r] += record.get("earned", 0.0)
 		cell["duration"][r] += record.get("duration", 0.0)
+		cell["kills"][r] += record.get("kills", 0)
+		cell["head_kills"][r] += record.get("head_kills", 0)
 		cell["special"][r] = String(record["special"])
 	cell["dry_rounds"] += night["dry_rounds"]
 	cell["runs"] += night["runs"]
@@ -127,6 +135,19 @@ static func dry_share(cell: Dictionary) -> float:
 	for r in range(1, cell["reached"].size()):
 		played += float(cell["reached"][r])
 	return float(cell["dry_rounds"]) / maxf(played * float(cell["players"]), 1.0)
+
+
+## Zombies killed in round `r`, the mean over the nights that reached it (all players together;
+## a round the night ended in counts the kills made before the end).
+static func kills_in(cell: Dictionary, r: int) -> float:
+	var reached: float = cell["reached"][r]
+	return float(cell["kills"][r]) / reached if reached > 0.0 else 0.0
+
+
+## Of the kills in round `r`, the share that were headshots.
+static func head_kill_share(cell: Dictionary, r: int) -> float:
+	var kills: float = cell["kills"][r]
+	return float(cell["head_kills"][r]) / kills if kills > 0.0 else 0.0
 
 
 ## The mean of the last round a night started (the round it ended in, or the cap).

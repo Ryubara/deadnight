@@ -61,6 +61,8 @@ FIXED = {
     "metal": "#8f92a0",
     "eye": "#161616",
     "amber": "#d1ab46",
+    "lips": "#b4504c",  # the female Soldier's mouth (#678)
+    "blush": "#e08c7c",  # her cheeks on the "Rosy" face
 }
 PALETTES = {
     "skin": ["#f1c9a5", "#d9a77a", "#b89359", "#a68450", "#8a5a3b", "#5e3b26"],
@@ -133,6 +135,9 @@ SLOTS = {
             "pompadour": "Pompadour",
             "flattop": "Flat top",
             "ponytail": "Ponytail",
+            "bob": "Bob",  # #678: appended, never reordered (the wire sends a part's index)
+            "curls": "Pin curls",
+            "bun": "Bun",
         },
     },
     "headwear": {
@@ -168,8 +173,34 @@ SLOTS = {
     },
     "neck": {"default": "none", "parts": {"none": "None", "scarf": "Scarf", "bowtie": "Bow tie"}},
     "arm": {"default": "none", "parts": {"none": "None", "armband": "Armband"}},
+    # The character (#678): the last slot, so the wire's slot order only grows. No mesh of its own: `female` shows
+    # the `<slot>__<part>__female` variant of every part that has one (BODY_VARIANTS), so every outfit fits both.
+    "body": {"default": "male", "parts": {"male": "Male", "female": "Female"}},
 }
 HIDES_HAIR = {"helmet", "ballcap", "ranger"}
+BODY_SLOT = "body"
+FEMALE = "female"
+# The slots whose every part has a female variant: her face, and the torso and legs shaped by female_shape.
+BODY_VARIANTS = ("head", "torso", "legs")
+# What the face choices are called on her: no beard; freckles and rosy cheeks instead.
+FEMALE_LABELS = {("head", "plain"): "Natural", ("head", "stubble"): "Freckles", ("head", "beard"): "Rosy"}
+# The hair each character starts from, so switching the character in the loadout swaps one for the other.
+BODY_HAIR = {"male": "crew", "female": "bob"}
+# Hair cut for one character: switching to the other puts that one's BODY_HAIR on. Untagged hair (the ponytail)
+# stays whichever character wears it.
+HAIR_BODY = {"none": "male", "crew": "male", "pompadour": "male", "flattop": "male", "bob": FEMALE,
+             "curls": FEMALE, "bun": FEMALE}  # fmt: skip
+
+# The clips this file carries: the set it shipped with (#130, #342). Later clips (sprint, strike, downed, revive,
+# aim-move) ship in their own files under characters/soldier/, finger channels stripped, and the controller adds
+# them by name only when the library lacks them: exporting them here too would shadow those files.
+FILE_CLIPS = (
+    "Aim_Melee", "Aim_Pistol", "Aim_Rifle", "Aim_Shotgun", "Death", "Downed", "Duck", "Equip_Melee", "Equip_Pistol",
+    "Equip_Rifle", "Equip_Shotgun", "Fire_Pistol", "Fire_Rifle", "Fire_Shotgun", "Grenade_Cook", "Grenade_Throw",
+    "Grenade_Toss", "HitReact", "Idle", "Idle_Shoot", "Jump", "Jump_Idle", "Jump_Land", "No", "Punch",
+    "Reload_Pistol", "Reload_Rifle", "Reload_Shotgun", "Repair_Board", "Run", "Run_Gun", "Swing_Melee",
+    "Unequip_Melee", "Unequip_Pistol", "Unequip_Rifle", "Unequip_Shotgun", "Walk", "Wave", "Yes",
+)  # fmt: skip
 
 
 def look(colours, **parts):
@@ -282,6 +313,61 @@ PRESETS = [
             arm="armband",
         ),
     ),
+    # Her starting looks (#678), after his eight so a preset's index never moves.
+    (
+        "carhop",
+        "Carhop",
+        look(
+            {"skin": 1, "hair": 3, "primary": 15, "secondary": 1, "accent": 6},
+            body=FEMALE,
+            hair="bob",
+            headwear="papercap",
+            torso="shirt",
+            legs="cuffed",
+            feet="sneakers",
+            neck="bowtie",
+        ),
+    ),
+    (
+        "usherette",
+        "Usherette",
+        look(
+            {"skin": 4, "hair": 4, "primary": 8, "secondary": 0, "accent": 11},
+            body=FEMALE,
+            hair="curls",
+            headwear="pillbox",
+            torso="jacket",
+            legs="striped",
+            feet="shoes",
+        ),
+    ),
+    (
+        "pit_crew",
+        "Pit crew",
+        look(
+            {"skin": 0, "hair": 2, "primary": 5, "secondary": 3, "accent": 10},
+            body=FEMALE,
+            head="stubble",
+            hair="bun",
+            torso="rolled",
+            legs="trousers",
+            feet="boots",
+            eyewear="goggles",
+        ),
+    ),
+    (
+        "pep_squad",
+        "Pep squad",
+        look(
+            {"skin": 5, "hair": 0, "primary": 7, "secondary": 1, "accent": 1},
+            body=FEMALE,
+            head="beard",
+            hair="ponytail",
+            torso="letterman",
+            legs="cuffed",
+            feet="sneakers",
+        ),
+    ),
 ]
 
 
@@ -379,7 +465,10 @@ def clean_soldier(path):
             bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     for a in kit_actions:
         a.name = re.sub(r"^.*\|", "", a.name)
+    for a in [a for a in bpy.data.actions if a.name not in FILE_CLIPS]:
+        bpy.data.actions.remove(a)
     clips = sorted(bpy.data.actions, key=lambda a: a.name)
+    assert [a.name for a in clips] == sorted(FILE_CLIPS), "a clip of this file is missing"
     for a in clips:
         a.use_fake_user = True
         for fc in sc.fcurves(a):
@@ -581,6 +670,23 @@ def feet_rule(kind):
 # Open-necked torsos fold the kit's tall collar down: its verts above the chin line drop and pull in.
 LOW_COLLAR = {"shirt", "rolled", "tank"}
 
+# The hand's vertices (main bone a finger's, as the grip test reads them) never move: the weapon grips (#507) were
+# solved on the kit's hand. Pushed in with the bare arm, every hand of a short-sleeved top floated 15-20 mm off its
+# grips; with only its faces spared, the wrist's border vertices and the cuff ring still moved and the palm sank
+# 3-13 mm into the rifle and shotgun (#678).
+HAND_BONES = ("Index", "Middle", "Pinky", "Thumb")
+
+
+def hand_vertices(o):
+    """Indices of the vertices whose main bone is a hand bone."""
+    names = [g.name for g in o.vertex_groups]
+    out = set()
+    for v in o.data.vertices:
+        if v.groups and names[max(v.groups, key=lambda g: g.weight).group].startswith(HAND_BONES):
+            out.add(v.index)
+    return out
+
+
 PUSH = {  # (slot, part): [(swatch the push applies to, metres along the normal)]: bare skin hugs the limb
     ("torso", "shirt"): [("skin", -0.025)],
     ("torso", "rolled"): [("skin", -0.025)],
@@ -602,6 +708,7 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
             u = uv_of(key)
             for li in p.loop_indices:
                 uv[li].uv = u
+    hands = hand_vertices(o)
     if push:
         offs = collections.defaultdict(Vector)
         for p, key in zip(me.polygons, keys):
@@ -610,7 +717,8 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
                     for vi in p.vertices:
                         offs[vi] = me.vertices[vi].normal * amount
         for vi, d in offs.items():
-            me.vertices[vi].co += d
+            if vi not in hands:
+                me.vertices[vi].co += d
     if low_collar:  # bare forearms: the kit's wrist cuffs pull in to the arm (arm axis along X at y 0.017, z 1.393)
         cuffs = {
             vi
@@ -618,7 +726,7 @@ def body_part(body, tags, region, rule, name, mat, arm, push=(), low_collar=Fals
             if t.mat == "Black" and t.size < 150 and abs(t.centre.x) > 0.8
             for vi in p.vertices
         }
-        for vi in cuffs:
+        for vi in cuffs - hands:
             co = me.vertices[vi].co
             co.y = 0.017 + (co.y - 0.017) * 0.72
             co.z = 1.393 + (co.z - 1.393) * 0.72
@@ -752,8 +860,9 @@ class Piece:
         self.bm = bmesh.new()
         self.uv = self.bm.loops.layers.uv.new("UVMap")
 
-    def add(self, make, swatch, at=(0, 0, 0), rot=None, scale=None, bevel=BEVEL, taper=None, under=None):
-        """`under`: a second swatch for the faces that point down (a shade underneath)."""
+    def add(self, make, swatch, at=(0, 0, 0), rot=None, scale=None, bevel=BEVEL, taper=None, under=None, smooth=False):
+        """`under`: a second swatch for the faces that point down (a shade underneath); `smooth`: smooth-shaded
+        (a rounded mass of hair, where flat faces showed every facet)."""
         tmp = bmesh.new()
         make(tmp)
         if taper:  # (factor_x, factor_y) for the verts above the centre: a narrower top
@@ -779,6 +888,7 @@ class Piece:
         self.bm.faces.ensure_lookup_table()
         for f in list(self.bm.faces)[start:]:
             colour = uv_of(under) if under and f.normal.z < UNDER_Z else u
+            f.smooth = smooth
             for loop in f.loops:
                 loop[self.uv].uv = colour
         return self
@@ -883,6 +993,8 @@ def build_pieces(arm, mat):
         .add(cyl(0.085, 0.085, 0.06, 8), "accent", at=(0, BACK + 0.04, TOP - 0.17), rot=rx(-25), bevel=0.01)
         .build("hair__ponytail", "Head", arm, mat)
     )
+    for pid, o in her_hair(arm, mat, crown).items():
+        P["hair", pid] = o
     # Headwear (Head).
     P["headwear", "pillbox"] = (
         Piece()
@@ -972,6 +1084,181 @@ def letter_patch(arm, mat):
     return p.build("letter_patch", "Torso", arm, mat)
 
 
+# --- the female Soldier (#678) ---------------------------------------------------------------------------------------
+#
+# One smooth field moves the kit body's vertices at rest, so the torso and the legs, and every outfit cut from them,
+# change the same way and still meet at the waist. The bones, the weights' bones and every clip stay his. Kit metres,
+# front -Y (the Soldier is 0.8 of this in the game).
+CHEST_X, CHEST_Z = 0.105, 1.145  # each side's centre: below the shoulder line (1.30), above the waist
+CHEST_SX, CHEST_SZ = 0.085, 0.068  # its spread across and up (a Gaussian's sigma); kept off z 1.28, where the
+# sprint carries lay the left forearm across the chest (#678: higher, the forearm sank 14 mm deeper than in his)
+CHEST_DEPTH = 0.09  # how far forward each side comes at its centre (7 cm in the game)
+CHEST_FRONT = (-0.04, -0.14)  # a vertex is pushed in full from y -0.14 forward, not at all behind y -0.04
+CHEST_TO_TORSO = 0.6  # share of the pushed vertices' weights moved to Torso, so the shoulders do not pull them
+WAIST_Z, WAIST_S, WAIST_IN = 1.04, 0.07, 0.13  # the waist: 13 % narrower at z 1.04
+HIPS_Z, HIPS_S, HIPS_OUT = 0.86, 0.05, 0.03  # the hips: 3 % wider at z 0.86 (5 % put the swinging hands into them)
+SHAPE_Z = (0.74, 1.34)  # nothing outside this band moves (the arms at rest are at z 1.39, the knees at 0.56)
+
+
+def gauss(d, s):
+    return math.exp(-(d * d) / (2 * s * s))
+
+
+def ramp(v, a, b):
+    t = min(max((v - a) / (b - a), 0.0), 1.0)
+    return t * t * (3 - 2 * t)
+
+
+def female_shape(co):
+    """(moved position, chest push 0-1) for one rest-pose vertex."""
+    x, y, z = co
+    if not SHAPE_Z[0] < z < SHAPE_Z[1] or abs(x) > 0.5:
+        return Vector(co), 0.0
+    scale = 1.0 - WAIST_IN * gauss(z - WAIST_Z, WAIST_S) + HIPS_OUT * gauss(z - HIPS_Z, HIPS_S)
+    depth = 1.0 - 0.5 * WAIST_IN * gauss(z - WAIST_Z, WAIST_S)
+    push = gauss(abs(x) - CHEST_X, CHEST_SX) * gauss(z - CHEST_Z, CHEST_SZ) * ramp(y, CHEST_FRONT[0], CHEST_FRONT[1])
+    return Vector((x * scale, 0.01 + (y - 0.01) * depth - CHEST_DEPTH * push, z)), push
+
+
+def female_copy(o, arm):
+    """Her variant of a torso or legs part: a copy moved by female_shape, the chest weighted toward Torso."""
+    f = o.copy()
+    f.data = o.data.copy()
+    f.name = f.data.name = o.name + "__" + FEMALE
+    bpy.context.collection.objects.link(f)
+    groups = {g.name: g for g in f.vertex_groups}
+    torso = groups.get("Torso") or f.vertex_groups.new(name="Torso")
+    for v in f.data.vertices:
+        v.co, push = female_shape(v.co)
+        k = CHEST_TO_TORSO * min(push * 1.5, 1.0)
+        if k <= 0.0:
+            continue
+        for g in v.groups:
+            g.weight *= 1.0 - k
+        torso.add([v.index], k, "ADD")
+    for m in f.modifiers:
+        if m.type == "ARMATURE":
+            m.object = arm
+    return f
+
+
+def thin_brows(features):
+    """Her brows: the kit's block brows, half as tall, lifted 12 mm and arched (higher in the middle of each)."""
+    me = features.data
+    brow = {vi for p in me.polygons if p.center.z >= 1.89 for vi in p.vertices}
+    for side in (-1, 1):
+        verts = [me.vertices[i] for i in brow if me.vertices[i].co.x * side > 0]
+        if not verts:
+            continue
+        cx = sum(v.co.x for v in verts) / len(verts)
+        cz = sum(v.co.z for v in verts) / len(verts)
+        hw = max(abs(v.co.x - cx) for v in verts) or 1.0
+        for v in verts:
+            t = (v.co.x - cx) / hw
+            v.co.z = cz + (v.co.z - cz) * 0.5 + 0.012 + 0.014 * (1 - t * t) - 0.006 * t * side
+    return features
+
+
+def face_surface(head, x, z):
+    """The y of the head's front surface at (x, z), from a ray along +Y (the face at rest)."""
+    from mathutils.bvhtree import BVHTree
+
+    me = head.data
+    tree = BVHTree.FromPolygons([v.co for v in me.vertices], [p.vertices for p in me.polygons])
+    hit, _n, _i, _d = tree.ray_cast(Vector((x, -2.0, z)), Vector((0, 1, 0)))
+    return hit.y if hit else FRONT
+
+
+def eye_bounds(features, side):
+    """(inner x, outer x, top z, y at the top) of one eye of the face features (|x| grows outward)."""
+    me = features.data
+    pts = [v.co for v in me.vertices if v.co.z < 1.89 and v.co.x * side > 0]
+    xs = [abs(p.x) for p in pts]
+    top = max(p.z for p in pts)
+    y_top = min(p.y for p in pts if p.z > top - 0.02)
+    return min(xs), max(xs), top, y_top
+
+
+def her_face(kind, features, head, arm, mat):
+    """Lashes over each eye, a small mouth, and freckles (stubble's place) or rosy cheeks (beard's)."""
+    p = Piece()
+    for side in (-1, 1):
+        x0, x1, top, y_top = eye_bounds(features, side)
+        cx, w = (x0 + x1) / 2, x1 - x0
+        p.add(cube((w * 0.92, 0.022, 0.024)), "eye", at=(side * cx, y_top - 0.004, top + 0.004), bevel=0)
+        for i, (length, angle) in enumerate(((0.062, 30), (0.045, 58))):
+            a = math.radians(angle)
+            along = Vector((side * math.cos(a), 0, math.sin(a)))
+            bx, bz = side * (x1 - 0.004 - 0.022 * i), top - 0.002 + 0.012 * i
+            base = Vector((bx, face_surface(head, bx, bz) - 0.006, bz))
+            p.add(cube((length, 0.02, 0.02)), "eye", at=base + along * (length / 2), rot=ry(-side * angle), bevel=0)
+    mouth_z = 1.712
+    p.add(cube((0.10, 0.026, 0.03)), "lips", at=(0, face_surface(head, 0, mouth_z) + 0.004, mouth_z), bevel=0.009)
+    if kind == "stubble":  # freckles: three dots under each eye
+        for side in (-1, 1):
+            for dx, dz in ((0.14, 1.752), (0.175, 1.738), (0.21, 1.754)):
+                y = face_surface(head, side * dx, dz)
+                p.add(cube((0.016, 0.012, 0.016)), "skin_shade", at=(side * dx, y + 0.001, dz), bevel=0.0)
+    if kind == "beard":  # rosy cheeks
+        for side in (-1, 1):
+            y = face_surface(head, side * 0.19, 1.745)
+            p.add(cyl(0.04, 0.04, 0.012, 10), "blush", at=(side * 0.19, y + 0.002, 1.745), rot=rx(90),
+                  scale=(1.0, 0.62, 1.0), bevel=0.0)  # fmt: skip
+    return p.build("her_face", "Head", arm, mat)
+
+
+def shell(r, centre, scale, keep_y=None, keep_z=None, segs=16, rings=10):
+    """A sphere scaled about `centre`, cut open where y < keep_y (the face) and below keep_z, the cuts closed:
+    in world terms, so Piece.add gets it at the origin with no further scale."""
+
+    def make(bm):
+        bmesh.ops.create_uvsphere(bm, u_segments=segs, v_segments=rings, radius=r)
+        bmesh.ops.scale(bm, vec=scale, verts=bm.verts)
+        bmesh.ops.translate(bm, vec=Vector(centre), verts=bm.verts)
+        for co, no, wanted in (((0, keep_y, 0), (0, -1, 0), keep_y), ((0, 0, keep_z), (0, 0, -1), keep_z)):
+            if wanted is None:
+                continue
+            geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no, clear_outer=True)
+            bmesh.ops.holes_fill(bm, edges=[e for e in bm.edges if e.is_boundary], sides=0)
+
+    return make
+
+
+def her_hair(arm, mat, crown):
+    """Three cuts kept above the shoulders (the hair is skinned to Head; the collar's top is z 1.68 at r 0.36)."""
+    hair = {}
+    hair["bob"] = (
+        Piece()
+        # Its ends flare (r 0.40 at z 1.72) past the collar's top (r 0.36 at z 1.68), so a tilted head never sinks the
+        # rim into the collar (it did at z 1.66, r 0.32, in the grenade throw).
+        .add(shell(0.40, (0, 0.0, 1.86), (1.06, 1.06, 1.0), keep_y=-0.19, keep_z=1.72), "hair", bevel=0,
+             under="hair_shade", smooth=True)
+        .add(sphere(0.36, 16, 8), "hair", at=(0, -0.10, 2.07), scale=(1.06, 0.8, 0.36), bevel=0, under="hair_shade",
+             smooth=True)
+        .build("hair__bob", "Head", arm, mat)
+    )  # fmt: skip
+    curls = crown().add(
+        shell(0.40, (0, 0.02, 1.88), (1.03, 1.0, 0.9), keep_y=-0.06, keep_z=1.70),
+        "hair",
+        bevel=0,
+        under="hair_shade",
+        smooth=True,
+    )
+    for side in (-1, 1):
+        curls.add(cyl(0.105, 0.105, 0.34, 12), "hair", at=(side * 0.165, -0.12, TOP + 0.0), rot=rx(90), bevel=0.02,
+                  under="hair_shade")  # fmt: skip
+    hair["curls"] = curls.build("hair__curls", "Head", arm, mat)
+    hair["bun"] = (
+        crown()
+        .add(sphere(0.16, 12, 8), "hair", at=(0, BACK - 0.04, TOP - 0.02), scale=(1.0, 0.95, 0.9), bevel=0,
+             under="hair_shade", smooth=True)
+        .add(cyl(0.13, 0.13, 0.045, 12), "accent", at=(0, BACK - 0.09, TOP - 0.06), rot=rx(-35), bevel=0.01)
+        .build("hair__bun", "Head", arm, mat)
+    )  # fmt: skip
+    return hair
+
+
 def join(base, extra):
     bpy.ops.object.select_all(action="DESELECT")
     base.select_set(True)
@@ -1011,9 +1298,10 @@ def far_copy(o, ratio):
 
 
 def far_parts(parts, presets_of):
-    """A far copy of every part, with one decimation ratio for every part bigger than FAR_KEEP, solved so the
-    heaviest preset's far parts come to FAR_AIM (`presets_of(tris)` gives each preset's sum for a {mesh: tris})."""
-    near = {f"{s}__{p}": kitlib.tris(o) for (s, p), o in parts.items()}
+    """A far copy of every part ({mesh name: object}), with one decimation ratio for every part bigger than
+    FAR_KEEP, solved so the heaviest preset's far parts come to FAR_AIM (`presets_of(tris)` gives each preset's sum
+    for a {mesh: tris})."""
+    near = {k: kitlib.tris(o) for k, o in parts.items()}
     big = {k: v for k, v in near.items() if v > FAR_KEEP}
     ratio = 1.0
     for _ in range(6):
@@ -1023,7 +1311,7 @@ def far_parts(parts, presets_of):
             break
         small = max(presets_of({k: (0 if k in big else v) for k, v in near.items()}).values())
         ratio = min(ratio, max((FAR_AIM - small) / max(worst - small, 1) * ratio, FAR_MIN_RATIO)) * 0.99
-    far = {key: far_copy(o, ratio if f"{key[0]}__{key[1]}" in big else 1.0) for key, o in parts.items()}
+    far = {key: far_copy(o, ratio if key in big else 1.0) for key, o in parts.items()}
     return far, ratio
 
 
@@ -1058,11 +1346,36 @@ def export(path, arm, meshes, images):
     )
 
 
+def part_entry(s, p, label, tris, tris_far, female):
+    """One part in parts.json; `female` holds her variant's meshes, `label_female` what she calls it, `body` the
+    character a hair cut belongs to."""
+    empty = p == "none" or s == BODY_SLOT
+    near = f"{s}__{p}"
+    entry = {
+        "label": label,
+        "mesh": None if empty else near,
+        "tris": tris.get(near, 0),
+        "mesh_far": None if empty else near + "__far",
+        "tris_far": tris_far.get(near, 0),
+    }
+    if s == "headwear" and p in HIDES_HAIR:
+        entry["hides_hair"] = True
+    if s == "hair" and p in HAIR_BODY:
+        entry["body"] = HAIR_BODY[p]
+    if (s, p) in female:
+        her = f"{near}__{FEMALE}"
+        entry[FEMALE] = {"mesh": her, "tris": tris[her], "mesh_far": her + "__far", "tris_far": tris_far[her]}
+    if (s, p) in FEMALE_LABELS:
+        entry["label_" + FEMALE] = FEMALE_LABELS[s, p]
+    return entry
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--soldier", required=True)
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--preview", type=Path, help="also write one .glb per preset here (for render_sheet.py)")
+    ap.add_argument("--preview-only", default="", help="comma-separated preset ids: write only these previews")
     args = ap.parse_args(sys.argv[sys.argv.index("--") + 1 :])
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -1093,12 +1406,38 @@ def main():
             )
     features = split_features(helmet)
     features.data.materials.append(mat)
+    her_features = features.copy()
+    her_features.data = features.data.copy()
+    bpy.context.collection.objects.link(her_features)
+    thin_brows(her_features)
+    female = {}  # (slot, part) -> her variant
+    # Her far heads decimate the head and its features only (as his do) and take her face pieces whole: a collapse
+    # turned the lashes and freckles into slivers that the glTF round trip dropped (Godot counted fewer triangles).
+    her_far_base, her_extras = {}, {}
     for pid in SLOTS["head"]["parts"]:
+        her = body_part(body, tags, "head", head_rule("plain"), f"head__{pid}__{FEMALE}", mat, arm)
+        extras = her_face(pid, her_features, her, arm, mat)
+        f = her_features.copy()
+        f.data = her_features.data.copy()
+        bpy.context.collection.objects.link(f)
+        join(her, f)
+        base = her.copy()
+        base.data = her.data.copy()
+        base.name = base.data.name = f"head__{pid}__{FEMALE}"  # far_copy names its copy after this
+        bpy.context.collection.objects.link(base)
+        her_far_base[pid], her_extras[pid] = base, extras
+        f = extras.copy()
+        f.data = extras.data.copy()
+        bpy.context.collection.objects.link(f)
+        join(her, f)
+        her.name = her.data.name = f"head__{pid}__{FEMALE}"
+        female["head", pid] = her
         f = features.copy()
         f.data = features.data.copy()
         bpy.context.collection.objects.link(f)
         join(parts["head", pid], f)
     bpy.data.objects.remove(features)
+    bpy.data.objects.remove(her_features)
     cut_stripe(parts["legs", "striped"])
     patch = letter_patch(arm, mat)
     join(parts["torso", "letterman"], patch)
@@ -1113,32 +1452,64 @@ def main():
     parts["torso", "vest"] = join(join(parts["torso", "vest"], pads[0]), pads[1])
     parts["torso", "vest"].name = parts["torso", "vest"].data.name = "torso__vest"
     parts.update(build_pieces(arm, mat))
+    for slot in ("torso", "legs"):
+        for pid in SLOTS[slot]["parts"]:
+            female[slot, pid] = female_copy(parts[slot, pid], arm)
 
-    missing = [(s, p) for s, spec in SLOTS.items() for p in spec["parts"] if p != "none" and (s, p) not in parts]
+    missing = [
+        (s, p)
+        for s, spec in SLOTS.items()
+        for p in spec["parts"]
+        if p != "none" and s != BODY_SLOT and (s, p) not in parts
+    ]
     assert not missing, f"parts with no mesh: {missing}"
-    tris = {f"{s}__{p}": kitlib.tris(o) for (s, p), o in parts.items()}
+    assert set(female) == {(s, p) for s in BODY_VARIANTS for p in SLOTS[s]["parts"]}, "a part has no female variant"
+    # Every mesh by its node name: `<slot>__<part>`, and hers `<slot>__<part>__female`.
+    by_name = {f"{s}__{p}": o for (s, p), o in parts.items()}
+    by_name.update({f"{s}__{p}__{FEMALE}": o for (s, p), o in female.items()})
+    tris = {k: kitlib.tris(o) for k, o in by_name.items()}
 
-    def look_tris(lk):
+    def shown(lk):
+        """The mesh names a look shows (SoldierLook.visible_meshes)."""
         hide_hair = lk["parts"]["headwear"] in HIDES_HAIR
-        return sum(tris.get(f"{s}__{p}", 0) for s, p in lk["parts"].items() if not (s == "hair" and hide_hair))
+        her = lk["parts"].get(BODY_SLOT) == FEMALE
+        out = []
+        for s, p in lk["parts"].items():
+            if s == BODY_SLOT or p == "none" or (s == "hair" and hide_hair):
+                continue
+            out.append(f"{s}__{p}__{FEMALE}" if her and (s, p) in female else f"{s}__{p}")
+        return out
 
     def look_sum(lk, counts):
-        hide_hair = lk["parts"]["headwear"] in HIDES_HAIR
-        return sum(counts.get(f"{s}__{p}", 0) for s, p in lk["parts"].items() if not (s == "hair" and hide_hair))
+        return sum(counts.get(k, 0) for k in shown(lk))
 
-    far, far_ratio = far_parts(parts, lambda counts: {pid: look_sum(lk, counts) for pid, _n, lk in PRESETS})
-    tris_far = {f"{s}__{p}": kitlib.tris(o) for (s, p), o in far.items()}
+    # Every preset, and each of them worn by the other character, must fit the budgets.
+    def worn_both(lk):
+        other = {**lk, "parts": {**lk["parts"], BODY_SLOT: "male" if lk["parts"][BODY_SLOT] == FEMALE else FEMALE}}
+        return (lk, other)
+
+    looks_checked = {f"{pid}/{i}": lk2 for pid, _n, lk in PRESETS for i, lk2 in enumerate(worn_both(lk))}
+    # The far ratio is solved over his eight looks as shipped (#342), so adding her leaves every far mesh of his as
+    # it was; her looks are checked against the far budget below.
+    his = {pid: lk for pid, _n, lk in PRESETS if lk["parts"][BODY_SLOT] != FEMALE}
+    far_sources = {**by_name, **{f"head__{pid}__{FEMALE}": o for pid, o in her_far_base.items()}}
+    far_by_name, far_ratio = far_parts(far_sources, lambda counts: {k: look_sum(lk, counts) for k, lk in his.items()})
+    for pid, extras in her_extras.items():
+        far = join(far_by_name[f"head__{pid}__{FEMALE}"], extras)
+        far.name = far.data.name = f"head__{pid}__{FEMALE}__far"
+        bpy.data.objects.remove(her_far_base[pid])
+    tris_far = {k: kitlib.tris(o) for k, o in far_by_name.items()}
 
     presets = []
     for pid, name, lk in PRESETS:
-        t = look_tris(lk)
-        assert t <= BUDGET, f"{pid}: {t} tris over the {BUDGET} budget"
-        t_far = look_sum(lk, tris_far)
-        assert t_far <= FAR_BUDGET, f"{pid}: {t_far} far tris over the {FAR_BUDGET} budget"
-        presets.append({"id": pid, "name": name, **lk, "tris": t, "tris_far": t_far})
+        for lk2 in worn_both(lk):
+            t, t_far = look_sum(lk2, tris), look_sum(lk2, tris_far)
+            assert t <= BUDGET, f"{pid} ({lk2['parts'][BODY_SLOT]}): {t} tris over the {BUDGET} budget"
+            assert t_far <= FAR_BUDGET, f"{pid} ({lk2['parts'][BODY_SLOT]}): {t_far} far tris over {FAR_BUDGET}"
+        presets.append({"id": pid, "name": name, **lk, "tris": look_sum(lk, tris), "tris_far": look_sum(lk, tris_far)})
 
     finish_pose(arm, factor)
-    meshes = list(parts.values()) + list(far.values())
+    meshes = list(by_name.values()) + list(far_by_name.values())
     export(out / "soldier_parts.glb", arm, meshes, images=False)
 
     catalog = {
@@ -1163,42 +1534,34 @@ def main():
         "slots": {
             s: {
                 "default": spec["default"],
-                "parts": {
-                    p: {
-                        "label": label,
-                        "mesh": None if p == "none" else f"{s}__{p}",
-                        "tris": tris.get(f"{s}__{p}", 0),
-                        "mesh_far": None if p == "none" else f"{s}__{p}__far",
-                        "tris_far": tris_far.get(f"{s}__{p}", 0),
-                        **({"hides_hair": True} if s == "headwear" and p in HIDES_HAIR else {}),
-                    }
-                    for p, label in spec["parts"].items()
-                },
+                "parts": {p: part_entry(s, p, label, tris, tris_far, female) for p, label in spec["parts"].items()},
             }
             for s, spec in SLOTS.items()
         },
+        # The character choice (#678): which slot holds it, and the hair each character starts from.
+        "body": {"slot": BODY_SLOT, "variant": FEMALE, "hair": BODY_HAIR},
         "presets": presets,
     }
     (out / "parts.json").write_text(json.dumps(catalog, indent=1) + "\n", encoding="utf-8", newline="\n")
     print("PARTS", json.dumps({"clips": n_clips, "bones": len(arm.data.bones), "tris": tris}))
     print("PRESETS", json.dumps({p["id"]: p["tris"] for p in presets}))
+    print("BOTH", json.dumps({k: [look_sum(lk, tris), look_sum(lk, tris_far)] for k, lk in looks_checked.items()}))
     print("FAR", json.dumps({"ratio": round(far_ratio, 3), "presets": {p["id"]: p["tris_far"] for p in presets},
                              "parts": tris_far}))  # fmt: skip
 
     if args.preview:
         args.preview.mkdir(parents=True, exist_ok=True)
+        only = set(filter(None, args.preview_only.split(",")))
         for p in presets:
+            if only and p["id"] not in only:
+                continue
             img = paint_atlas("atlas_" + p["id"], p["colours"])
             mat.node_tree.nodes["Image Texture"].image = img
-            hide_hair = p["parts"]["headwear"] in HIDES_HAIR
-            keep = [
-                parts[s, pid] for s, pid in p["parts"].items() if (s, pid) in parts and not (s == "hair" and hide_hair)
-            ]
-            export(args.preview / f"{p['id']}.glb", arm, keep, images=True)
-            keep_far = [
-                far[s, pid] for s, pid in p["parts"].items() if (s, pid) in far and not (s == "hair" and hide_hair)
-            ]
-            export(args.preview / f"{p['id']}_far.glb", arm, keep_far, images=True)
+            for lk2 in worn_both(p):
+                suffix = "" if lk2["parts"][BODY_SLOT] == p["parts"][BODY_SLOT] else "_" + lk2["parts"][BODY_SLOT]
+                export(args.preview / f"{p['id']}{suffix}.glb", arm, [by_name[k] for k in shown(lk2)], images=True)
+                keep_far = [far_by_name[k] for k in shown(lk2)]
+                export(args.preview / f"{p['id']}{suffix}_far.glb", arm, keep_far, images=True)
         mat.node_tree.nodes["Image Texture"].image = atlas
 
 

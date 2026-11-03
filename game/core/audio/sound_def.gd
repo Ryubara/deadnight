@@ -42,7 +42,10 @@ var bus: StringName = &"Effects"
 ## with `unit_size` 14 is 18 dB up) and only stops at the player's `max_db`, +3 dB over the file,
 ## whatever the trim: close sounds all end up equally hot and stack past full scale. A finite
 ## value here makes `volume_db` the near level (0) or a little above; `inf` leaves the engine's
-## default.
+## default. A negative value holds the near level under the trim: `volume_db + near_cap_db` is the
+## most the sound gets however close it comes, and from there out it falls as it always did. A loud
+## file takes one so a gun shot landing on it still leaves room under full scale
+## (`tests/core/test_close_sound_peaks.gd`).
 @export var near_cap_db: float = INF
 ## How much a wall between the sound and the listener dulls and quiets it: 1 is the service's full
 ## occlusion (9 dB down and a low-pass at 1.1 kHz), 0 none at all. A warning that must carry through

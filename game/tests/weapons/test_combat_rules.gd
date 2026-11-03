@@ -48,7 +48,7 @@ func test_a_headshot_hit_pays_double() -> void:
 func test_a_headshot_kill_pays_the_headshot_kill_and_removes_the_zombie() -> void:
 	var before := _rules.points_of(1)
 	var events := _fire(Vector3(0, 1.62, 0))
-	assert_int(_rules.points_of(1) - before).is_equal(100)
+	assert_int(_rules.points_of(1) - before).is_equal(70)
 	assert_array(WeaponsFixture.of(events, &"zombie_removed")).has_size(1)
 	assert_bool(_server.is_target_alive(_zombie)).is_false()
 

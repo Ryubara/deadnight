@@ -18,3 +18,23 @@ capture records) and `voice_sheet.py` (the script as a contact sheet; `--voice f
 The second map's sounds (the depot's room tone, the yard, a debris blocker, feet on wood) are `map_recipes.py`, synthesised
 like the rest; `smallmap_levels.py` measures them (`table`: level and reach from the banks and the files; `capture`: the
 mix of the walk through the map, level by stage). `docs/research/maps/small-map-audio.md` has the numbers.
+
+Headroom (#718): `headroom.py` reads recordings of `game/tests/captures/audio_headroom.tscn` (the player's own gun fired
+without a break while a reload, a teammate's gun, the dead's voices or the lot's sounds land on it) and prints, for each
+pair, the peak of the mix and the samples over -1 dBFS, then the gun alone (RMS, crest factor, loudness) and each sound's
+own peak; `gun_levels.py` measures the guns against the beds. `docs/research/gun-audio.md#headroom-under-other-sounds`
+has the numbers.
+
+Close sounds (#753): `close_levels.py` reads a run of the same capture with `--own=none --cells=zombie,world
+--all-variants --close` (every variant of the dead's voices and the lot's sounds, one at a time, 1.2 m from the
+listener, where the player's `max_db` holds the level) and prints each sound's ceiling, its highest sample and its
+loudest 400 ms; `--table game/tests/core/close_sound_levels.json` writes the table `test_close_sound_levels.gd` pins.
+`docs/research/gun-audio.md#close-sounds-under-gunfire` has the rule and the numbers.
+
+Sharp sounds (#762): `limiter.py` is a look-ahead peak limiter with a smooth gain curve for recipes (`limit_crest(x,
+crest_db)` holds the highest sample `crest_db` over the loudest 400 ms); the boards, the door and the debris blocker end
+their recipes with it, their `peak_db` lowered and `near_cap_db` raised by what it took off, so a close sharp sound is
+louder at the same peak (the web build ignores a bus limiter). `docs/research/gun-audio.md#the-sharp-sounds-limited-in-their-recipe-762`.
+
+The flare gun's report (#761) is limited the same way (`limit_crest`); `gun_levels.py --table` also writes
+a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.

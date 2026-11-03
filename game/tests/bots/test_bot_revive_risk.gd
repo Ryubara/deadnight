@@ -121,7 +121,7 @@ func test_health_and_speed_follow_the_rounds_public_formula() -> void:
 	var rounds := RulesFixture.tuning().rounds
 	var walker := BotReviveRisk.health_of(&"walker", 5, rounds)
 	assert_float(walker).is_equal(rounds.health_for_round(5))
-	assert_float(BotReviveRisk.health_of(&"brute", 5, rounds)).is_equal(walker * 2.5)
+	assert_float(BotReviveRisk.health_of(&"brute", 5, rounds)).is_equal(walker * 3.0)
 	var run := BotReviveRisk.speed_of(&"runner", 5, rounds)
 	assert_float(run).is_greater(BotReviveRisk.speed_of(&"walker", 5, rounds))
 

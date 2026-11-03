@@ -91,6 +91,16 @@ static func mask_has_effect(economy: EconomyTuning, mask: int, effect: ShopItem.
 	return false
 
 
+## The tonic ids a frame's `perks` mask holds, in the shop's order (what the HUD's badges follow).
+static func mask_tonics(economy: EconomyTuning, mask: int) -> Array[StringName]:
+	var held: Array[StringName] = []
+	var order := tonic_ids(economy)
+	for at in order.size():
+		if (mask & (1 << at)) != 0:
+			held.append(order[at])
+	return held
+
+
 ## How many tonics a frame's `perks` mask holds.
 static func mask_count(mask: int) -> int:
 	var count := 0

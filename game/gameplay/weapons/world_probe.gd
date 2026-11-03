@@ -4,8 +4,9 @@ extends RefCounted
 ## segment. It is the only place the weapons code touches the physics server, so everything else
 ## stays testable with a box and a Callable.
 
-## The physics layer of walls, props and doors that stop a shot (layer 1 by default).
-const WORLD_MASK := 1
+## The physics layers of what stops a shot or a sight line: walls, props and doors (layer 1) and
+## the bodies of players, which no body collides with but a ray still meets.
+const WORLD_MASK := PhysicsLayers.WORLD | PhysicsLayers.BODY
 ## Moving bodies `static_distance` looks past on one ray, at the most.
 const STATIC_TRIES := 6
 

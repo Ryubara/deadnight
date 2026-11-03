@@ -24,17 +24,15 @@ const SECONDS := 110
 const ZOMBIE_SPEED := 2.4
 ## Tolerances either side of the level's number.
 const HIT_TOLERANCE := 0.12
+## The head share and the dodge follow `SimSkill` again (#745). Both were re-measured on the zones
+## that follow the bodies (#694: the chibi head is half the figure, so a shot aimed at the chest
+## lands on it most of the time) and `SimSkill` was set to the middle of what eight seeds read:
+## head share 0.64 to 0.72 / 0.78 to 0.84 / 0.81 to 0.88 and dodge 0.15 to 0.21 / 0.47 to 0.68 /
+## 0.73 to 0.91 for the three levels, on this machine and on the CI runner (0.66 / 0.82 / 0.81 and
+## 0.16 / 0.47 / 0.79). Two runs of the same commands are not bit-identical, and a Veteran's dodge
+## is read from a few dozen blows, so the tolerances are the width of that spread; the three
+## levels stay apart in the same order.
 const HEAD_TOLERANCE := 0.1
-## The head share of the hits, measured on zones that follow the bodies (#694). The chibi head is
-## half the figure, so a shot aimed at the chest lands on it much more often than the old 0.22 m
-## ball let it: `SimSkill`'s head rates (0.06, 0.15, 0.30) no longer say what a bot does. The three
-## stay apart in the same order; retuning the simulator and the headshot economy to the new zones
-## is its own task (the head rate of each level is only printed here).
-const HEAD_SHARE := {&"weak": 0.66, &"average": 0.78, &"strong": 0.88}
-## The dodge, measured on the same zones: the bots land more of their hits, so fewer of the dead
-## live to complete a blow, and `SimSkill`'s dodge (0.12, 0.30, 0.50) no longer says what they do.
-## The wide tolerance is the few dozen blows a run has.
-const DODGE_SHARE := {&"weak": 0.15, &"average": 0.47, &"strong": 0.73}
 const DODGE_TOLERANCE := 0.2
 
 
@@ -126,19 +124,16 @@ func _check(profile: BotProfile, level: StringName) -> void:
 	(
 		assert_float(head)
 		. override_failure_message(
-			(
-				"%s head share %.2f, level %s has %.2f"
-				% [profile.title, head, level, HEAD_SHARE[level]]
-			)
+			"%s head share %.2f, level %s has %.2f" % [profile.title, head, level, skill.head_rate]
 		)
-		. is_between(HEAD_SHARE[level] - HEAD_TOLERANCE, HEAD_SHARE[level] + HEAD_TOLERANCE)
+		. is_between(skill.head_rate - HEAD_TOLERANCE, skill.head_rate + HEAD_TOLERANCE)
 	)
 	(
 		assert_float(dodge)
 		. override_failure_message(
-			"%s dodge %.2f, level %s has %.2f" % [profile.title, dodge, level, DODGE_SHARE[level]]
+			"%s dodge %.2f, level %s has %.2f" % [profile.title, dodge, level, skill.dodge]
 		)
-		. is_between(DODGE_SHARE[level] - DODGE_TOLERANCE, DODGE_SHARE[level] + DODGE_TOLERANCE)
+		. is_between(skill.dodge - DODGE_TOLERANCE, skill.dodge + DODGE_TOLERANCE)
 	)
 
 

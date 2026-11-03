@@ -239,6 +239,10 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
   headshots or four body shots and by round 10 (121) six body shots. The health curve was lowered to the weapons
   that exist (rounds.md, the balance simulator): the shop weapons were stepped up in #265 (rifle 95,
   shotgun 19 a pellet, now the double-barrel's 21) so that buying one is worth rounds.
+- **Aiming pays less than it was meant to since the hit zones follow the bodies** (#694): the head is half the chibi
+  figure, so the bots aimed at the chest land 64 to 88% of their hits on it. The multipliers stay as the table says and
+  the game was retuned around that ([rounds](rounds.md#the-headshot-retune-745)); whether to shrink the head zone is the
+  maintainer's ([hit zones](../research/hit-zones.md#not-done-and-what-it-moves)).
 - **A weapon can be re-cut once** at the projector: x1.75 damage, x1.5 magazine and reserve limit, filled, for 1,500
   points ([the re-cut](upgrades.md)). The table above is the weapon as shipped; a re-cut one has its damage in the
   column multiplied and its magazine and reserve limit grown, and kills in fewer shots (a re-cut revolver, 42 a hit,
