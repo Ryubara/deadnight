@@ -26,19 +26,6 @@ const SWAP_EVERY := 0.8
 const THROW_ABORT_NEAR := 3.0
 ## Seconds a grenade order is watched over: the longest a turn, the pin and the swing take.
 const THROW_WATCH := 2.5
-## How much of the way to the people (or home) bends a retreat (so it circles the field, not a
-## corner).
-const HOME_BEND := 0.9
-## A bot following a person that has got far from them (a pack on its heels led it away) bends its
-## retreat toward them more the farther it is: from `FAR_BEND_FROM` metres (the gate of the soak is
-## 25) the pull grows to `FAR_BEND` for each dead the steering feels at `FAR_BEND_FULL`. It is per
-## dead because the steering adds up what each one pushes (a pull of 8 does not turn the flight of a
-## bot with eight on its heels). The retreat never takes a heading that closes on the dead
-## (`BotSteering.BOXED_IN`), so the pull only turns the flight round the pack, and the pack is led
-## to the person instead of away from them (#784).
-const FAR_BEND_FROM := 16.0
-const FAR_BEND_FULL := 36.0
-const FAR_BEND := 4.0
 ## Metres from the nearest dead within which the bot counts itself in a fight (the follow band is
 ## the closer one), and the seconds between two looks at where to stand.
 const FIGHT_RANGE := 12.0
@@ -65,8 +52,6 @@ const HOLD_LEAVE := 1.0
 const HOLD_RUN_FROM := 8.0
 ## The `ROAM` order: how near counts as at a place, for the legs.
 const ROAM_RADIUS := 1.0
-## The weight of the room ahead in a Safe bot's retreat, against `BotSteering.W_ROOM`.
-const SAFE_ROOM_WEIGHT := 1.8
 
 ## The legs the bot walks on, set by the client: the brain asks them which places are blocked.
 var legs: BotLegs
@@ -104,14 +89,13 @@ var _holding := false
 var _following := false
 ## Whether the bot has reached its place of the `HOLD` order and stands there.
 var _at_hold := false
-var _steering: BotSteering
+var _retreat: BotRetreat
 var _spot := Vector3.INF
 var _planned_at := -INF
 var _planned_anchor := Vector3.INF
 var _was_fighting := false
 var _was_safe := false
 var _play_changes := 0
-var _last_reflex := Vector3.ZERO
 var _combat: BotCombat
 var _dodge: BotDodge
 var _grenadier: BotGrenadier
@@ -129,7 +113,7 @@ func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
 	_level = level
 	_follow = BotFollow.new(level)
 	_roam = BotRoam.new(level, dodge_seed ^ 0x40A3)
-	_steering = BotSteering.new(level)
+	_retreat = BotRetreat.new(profile, level)
 	_combat = BotCombat.new(profile)
 	_dodge = BotDodge.new(profile, dodge_seed)
 	_grenadier = BotGrenadier.new(level)
@@ -210,7 +194,7 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	)
 	_check_trapped(intent, beliefs, here, stepped and intent.reflex == Vector3.ZERO)
 	if not stepped:
-		_last_reflex = Vector3.ZERO
+		_retreat.forget()
 		if ordered:
 			intent.note = "throw"
 		elif rescue != BotRevive.Mode.NONE:
@@ -408,10 +392,11 @@ func _step_away(
 		backs = false
 	if not (dodge or keeps_off or backs or blast):
 		return false
-	intent.reflex = _retreat(here, beliefs, anchor)
+	intent.reflex = _retreat.heading(
+		here, beliefs, anchor, play, _live_blast_near(here, beliefs.now), _holding, _following
+	)
 	intent.run = true
 	intent.note = "dodge" if dodge else "retreat"
-	_last_reflex = intent.reflex
 	return true
 
 
@@ -420,75 +405,6 @@ func _step_away(
 func _live_blast_near(here: Vector3, now: float) -> Array[Vector3]:
 	var reach := _grenadier.harmless_apart() + BotGrenadier.THROW_MARGIN
 	return team.blasts_near(here, reach, now) if team != null else ([] as Array[Vector3])
-
-
-## A heading away from what the bot knows of, chosen among twelve on the walking mesh, with a pull
-## toward the people (or home) and toward the lot's loops. Zero when it knows of nothing or is
-## boxed in.
-func _retreat(here: Vector3, beliefs: BotBeliefs, anchor: Vector3) -> Vector3:
-	var threats: Array[Dictionary] = []
-	for id in beliefs.contacts:
-		var contact: Dictionary = beliefs.contacts[id]
-		if not beliefs.is_believed(contact):
-			continue
-		var speed := Vector2(contact["velocity"].x, contact["velocity"].z).length()
-		threats.append(
-			{"position": beliefs.guess(contact, _profile.memory_seconds), "speed": speed}
-		)
-	# A grenade about to go off is a threat that stands still (its blast is what to keep out of).
-	for point in _live_blast_near(here, beliefs.now):
-		threats.append({"position": point, "speed": 0.0})
-	if threats.is_empty():
-		return Vector3.ZERO
-	var toward := Vector3.ZERO
-	var pull := _retreat_pull(here, beliefs, anchor)
-	_steering.room_weight = SAFE_ROOM_WEIGHT if play.prefers_open_ground() else BotSteering.W_ROOM
-	if pull != Vector3.INF:
-		var bend := HOME_BEND
-		if _following:
-			var felt := 0
-			for threat in threats:
-				if _flat(here, threat["position"]) <= BotSteering.THREAT_RANGE:
-					felt += 1
-			bend = far_bend(_flat(here, pull), mini(felt, BotSteering.THREATS_KEPT))
-		toward = Vector3(pull.x - here.x, 0.0, pull.z - here.z).normalized() * bend
-	return _steering.pick(here, threats, toward, _last_reflex)
-
-
-## How hard a retreat bends toward the person it follows, `distance` metres away with `felt` dead
-## pushing the flight: `HOME_BEND` up to `FAR_BEND_FROM`, `FAR_BEND` for each of them (at least one)
-## from `FAR_BEND_FULL`, and between in a line.
-static func far_bend(distance: float, felt: int) -> float:
-	var far := clampf((distance - FAR_BEND_FROM) / (FAR_BEND_FULL - FAR_BEND_FROM), 0.0, 1.0)
-	return lerpf(HOME_BEND, FAR_BEND * float(maxi(felt, 1)), far)
-
-
-## Where a retreat bends toward: the people (or the hold's spot), else home. A Safe bot with no one
-## to stay with heads for its teammates, and a Safe holder is not pulled to the spot it backs from.
-func _retreat_pull(here: Vector3, beliefs: BotBeliefs, anchor: Vector3) -> Vector3:
-	if play.prefers_open_ground():
-		if _holding:
-			return here
-		if anchor == Vector3.INF:
-			var mates_at := _nearest_mate(beliefs, here)
-			if mates_at != Vector3.INF:
-				return mates_at
-	return anchor if anchor != Vector3.INF else _level.home
-
-
-## Where the nearest teammate that is up stands, or `Vector3.INF`.
-func _nearest_mate(beliefs: BotBeliefs, here: Vector3) -> Vector3:
-	var best := Vector3.INF
-	var best_apart := INF
-	for id in beliefs.teammates:
-		var mate: Dictionary = beliefs.teammates[id]
-		if id == beliefs.me or mate.get("downed", false) or mate.get("dead", false):
-			continue
-		var apart := _flat(here, mate["pos"])
-		if apart < best_apart:
-			best_apart = apart
-			best = mate["pos"]
-	return best
 
 
 ## The order the bot lives by: the team's (`BotOrders`), where a follow whose person is gone or
@@ -824,7 +740,12 @@ func _throw(
 			return false
 		return true
 	_order = null
-	if beliefs.grenades <= 0 or threat < BotGrenadier.SAFE_FROM_SELF or targets.is_empty():
+	if (
+		not _profile.throws_grenades
+		or beliefs.grenades <= 0
+		or threat < BotGrenadier.SAFE_FROM_SELF
+		or targets.is_empty()
+	):
 		return false
 	var throw := _grenadier.plan(
 		here, targets, mates, beliefs.grenades, now, kind == BotStance.Kind.LOW

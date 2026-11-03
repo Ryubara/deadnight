@@ -12,6 +12,10 @@ extends Node3D
 ##
 ## `NightWorld.bind` sets the count from the rules' events; nothing else changes it.
 ##
+## A board that is not up leaves its outline (`BoardOutline`): a faint ghost of the plank where it
+## was, drawn by the barricade itself, so every repairable entry reads the same whatever light its
+## window has. It goes when the board is back.
+##
 ## How a change looks (docs/design/map.md, Breaches): what is solid follows the count at once (the
 ## rules are the authority), and only the drawing moves. A torn board's body goes and a drawn copy
 ## of it (a pooled `MeshInstance3D` on the same mesh, no physics) is flung out of the field on a
@@ -66,6 +70,7 @@ var _mending: Dictionary[int, Tween] = {}
 var _copies: Array[MeshInstance3D] = []
 var _flying: Array[MeshInstance3D] = []
 var _flights: Dictionary[MeshInstance3D, Tween] = {}
+var _outline: BoardOutline
 
 
 func _ready() -> void:
@@ -86,6 +91,19 @@ func _ready() -> void:
 			_mesh_rest.append(mesh.transform if mesh != null else Transform3D.IDENTITY)
 	_up = _boards.size()
 	_make_pool()
+	var in_barricade: Array[Transform3D] = []
+	for i in _boards.size():
+		in_barricade.append(_boards[i].transform * _mesh_rest[i])
+	_outline = BoardOutline.new()
+	_outline.visibility_range_end = view_end
+	_outline.set_boards(_meshes, in_barricade)
+	add_child(_outline)
+	_outline.show_missing(_up)
+
+
+## The ghost of the missing boards.
+func outline() -> BoardOutline:
+	return _outline
 
 
 ## The most boards it holds.
@@ -110,6 +128,8 @@ func set_boards(count: int, animate: bool = true) -> void:
 		_boards[i].collision_layer = BOARD_LAYER if up else 0
 		if not up:
 			_rest_mesh(i)
+	if _outline != null:
+		_outline.show_missing(_up)
 	if not animate or not is_inside_tree() or _up == before:
 		return
 	if _up < before:

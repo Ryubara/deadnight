@@ -94,3 +94,19 @@ func test_the_longest_clear_line_ignores_a_line_through_a_wall() -> void:
 	var measure := SmallMapMeasure.new()
 	var longest := measure.longest_clear(world.get_world_3d().direct_space_state, points)
 	assert_float(longest["length"]).is_equal_approx(28.28, 0.05)
+
+
+func test_the_setting_check_skips_an_engine_made_name_and_reads_authored_ones() -> void:
+	# An unnamed child gets an engine name such as `@MeshInstance3D@31945`: a counter, not ours.
+	var parent := auto_free(Node3D.new()) as Node3D
+	var made := MeshInstance3D.new()
+	parent.add_child(made)
+	assert_str(String(made.name)).starts_with("@")
+	assert_str(SmallMapMeasure.setting_words(made)).is_empty()
+	var authored := auto_free(Node3D.new()) as Node3D
+	authored.name = "Bunker1945"
+	assert_bool(SmallMapMeasure.setting_words(authored).contains("1945")).is_true()
+	var sign := auto_free(Label3D.new()) as Label3D
+	sign.name = "@Label3D@2"
+	sign.text = "HELP"
+	assert_bool(SmallMapMeasure.setting_words(sign).contains("help")).is_true()
