@@ -113,7 +113,10 @@ WINDOWS = [
     ("side_2", "side", "x", -0.15, -1.6, (0, -1), 0.0, GROUND_WALL),
     ("upper_a1", "upstairs", "x", 4.6, 4.0, (0, -1), STOREY, UPPER_WALL),
     ("upper_a2", "upstairs", "x", 4.6, 12.0, (0, -1), STOREY, UPPER_WALL),
-    ("upper_b1", "upstairs", "x", -7.95, -1.0, (0, 1), STOREY, UPPER_WALL),
+    # West of the side stair's well (x -3.2 with its parapet), in the middle of the floor between the rack by the
+    # rifle cabinet and the parapet: over the well (x -1) it had no floor behind it, so the dead had no way in and
+    # nobody could stand behind it to hold it (#824).
+    ("upper_b1", "upstairs", "x", -7.95, -4.4, (0, 1), STOREY, UPPER_WALL),
     ("upper_b2", "upstairs", "x", -7.95, 9.0, (0, 1), STOREY, UPPER_WALL),
 ]
 # The side room's third entry: a broken wall onto a dead-end pocket the dead come out of (row 15).

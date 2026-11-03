@@ -93,6 +93,7 @@ const SMALL_SPOTS := [
 	["u07_window_north", Vector3(9.0, 3.4, -5.0), 0.0, -4.0],
 	["u08_perks_upper", Vector3(13.8, 3.4, -4.0), 0.0, -4.0],
 	["u09_stair_b_down", Vector3(3.4, 3.4, -6.8), 90.0, -4.0],
+	["u10_window_b1", Vector3(-4.4, 3.4, -4.6), 0.0, -2.0],
 ]
 
 var _night: Night

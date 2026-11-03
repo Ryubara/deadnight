@@ -741,24 +741,24 @@ size = Vector3(2.75, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN0" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.125, 5.000, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -5.825, 5.000, -7.950)
 use_collision = true
 collision_layer = 3
-size = Vector3(4.25, 3.2, 0.2)
+size = Vector3(0.85, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN1" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 6.400, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.400, 6.400, -7.950)
 use_collision = true
 collision_layer = 3
 size = Vector3(2, 0.4, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN2" type="CSGBox3D" parent="UpperB"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 5.000, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.300, 5.000, -7.950)
 use_collision = true
 collision_layer = 3
-size = Vector3(8, 3.2, 0.2)
+size = Vector3(11.4, 3.2, 0.2)
 material = ExtResource("smallmap_wall_upper")
 
 [node name="WallN3" type="CSGBox3D" parent="UpperB"]
@@ -1538,7 +1538,7 @@ metadata/barricade_id = "upper_a2"
 metadata/room = "upstairs"
 
 [node name="Window_upper_b1" type="Node3D" parent="Windows"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 3.400, -7.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.400, 3.400, -7.950)
 metadata/barricade_id = "upper_b1"
 metadata/room = "upstairs"
 metadata/kind = "window"
@@ -1616,7 +1616,7 @@ transform = Transform3D(0.9962, 0.0872, 0, -0.0872, 0.9962, 0, 0, 0, 1, -0.03, 1
 transform = Transform3D(0.9986, -0.0523, 0, 0.0523, 0.9986, 0, 0, 0, 1, 0.03, 2.03, 0.165)
 
 [node name="Spawn_upper_b1" type="Marker3D" parent="ZombieSpawns"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -1.000, 3.400, -14.950)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.400, 3.400, -14.950)
 metadata/barricade_id = "upper_b1"
 metadata/room = "upstairs"
 
@@ -2636,7 +2636,7 @@ transform = Transform3D(0.9659, 0.0000, 0.2588, 0.0000, 1.0000, 0.0000, -0.2588,
 transform = Transform3D(-0.9397, 0.0000, 0.3420, 0.0000, 1.0000, 0.0000, -0.3420, 0.0000, -0.9397, 12.200, 3.400, 4.000)
 
 [node name="RubbleA7" parent="Dressing" instance=ExtResource("md_rubble_a")]
-transform = Transform3D(0.3420, 0.0000, 0.9397, 0.0000, 1.0000, 0.0000, -0.9397, 0.0000, 0.3420, -1.000, 3.400, -7.400)
+transform = Transform3D(0.3420, 0.0000, 0.9397, 0.0000, 1.0000, 0.0000, -0.9397, 0.0000, 0.3420, -4.400, 3.400, -7.400)
 
 [node name="RubbleB5" parent="Dressing" instance=ExtResource("md_rubble_b")]
 transform = Transform3D(-0.7660, 0.0000, -0.6428, 0.0000, 1.0000, 0.0000, 0.6428, 0.0000, -0.7660, 9.000, 3.400, -7.400)

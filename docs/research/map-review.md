@@ -172,7 +172,7 @@ north, the pendant lamps whose haze cones are H.*
 | Hall (start room) | **Fix A.** Lit 90% by its lamps, five windows, a counter to run round: the counter is also a roost | [captures](maps/review/small-hall.jpg) h01 to h06 |
 | Side room | **Keep.** A 22 m lit corridor of pillars and racks with the box and the coolers on the north wall; the west end is dim and ends in the breach pocket | [captures](maps/review/small-side.jpg) s01 to s05 |
 | Stairs | **Keep.** Two flights of 17 risers, a wall each side | u01, u09 |
-| Upstairs, both halves | **Keep, fix H.** 77% and 93% lit; the shop wall of coolers reads at a distance; the pendants' haze cones read as solid white columns up close (H); `upper_b1` has no way in ([#824](https://github.com/Ryubara/deadnight/issues/824)) | [captures](maps/review/small-upstairs.jpg) u02 to u07, [more upstairs captures](maps/review/small-upstairs-2.jpg) |
+| Upstairs, both halves | **Keep, fix H.** 77% and 93% lit; the shop wall of coolers reads at a distance; the pendants' haze cones read as solid white columns up close (H); `upper_b1` opened over the side stair's well with no floor behind it, so its dead went round to `upper_b2`: moved 3.4 m west onto the floor beside the well, where a person can stand behind it and its dead tear its boards ([#824](https://github.com/Ryubara/deadnight/issues/824), u10) | [captures](maps/review/small-upstairs.jpg) u02 to u07, [more upstairs captures](maps/review/small-upstairs-2.jpg) |
 | Hall's roof and the yard | **Keep.** Dead spawn on the roof and in the yard, each 3 to 7 m from its window; nothing a body reaches goes out | spawns on the plan |
 
 **A, the counter roost.** The hall's counter (5 by 3.5 m, 1.2 m high, "a little over a jump") is climbed from the

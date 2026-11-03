@@ -147,7 +147,11 @@ the fence breaches' 2.05). The dead rise 6 to 7 m outside a window, walk to its 
 the hall's roof at the upper floor's height). A player puts a board back for points, as at the lot's fence; the
 players-only blocker in the opening keeps everyone in whatever the boards do (the sill is 0.9 m, a jump is 1.1 m).
 `test_smallmap_windows.gd` runs a night of 24 at once and fails unless every one of the twelve is torn and walked
-through, to the room it opens into and the height it is at.
+through, to the room it opens into and the height it is at, and asks each window's dead the way from their spawn to
+1.5 m behind it: a way that goes round to another window fails. A window has floor behind it, never a stairwell: the
+upper floor's west window (`upper_b1`) stands west of the side stair's well, between the rack by the rifle cabinet and
+the well's parapet, so a person can hold it from a throat 2.4 m wide with the room open behind them (#824).
+`tests/captures/window_hold.tscn` films one window held from inside, from the player's camera.
 
 ### The shop (formula rows 22 to 25)
 

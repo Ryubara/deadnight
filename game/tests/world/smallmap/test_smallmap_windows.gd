@@ -13,10 +13,12 @@ const SPAWN_TO := 15.0
 const BOARD_LAYER := 2
 ## Metres inside a window the player stands for the dead to come to it.
 const STAND_BEHIND := 2.5
-## Windows the walking mesh does not join to the room behind them (the floor there is the
-## stairwell's opening): a dead that rose at one comes in by the next window along, so its boards
-## stand (#824).
-const NO_WAY_IN: Array[StringName] = [&"upper_b1"]
+## Metres inside a window its dead are asked the way to: on the floor behind every window (2.5 m
+## behind `upper_a1` is the parapet of the hall's stair, 2.4 m in).
+const WAY_IN := 1.5
+## How much longer than the straight line from a window's spawn to there the dead's way may be:
+## the walking mesh rounds corners, it does not go to another window (#824).
+const DETOUR := 2.0
 
 var _night: Night
 var _seated: SeatedNight
@@ -150,6 +152,46 @@ func test_with_every_link_sold_the_map_leads_from_each_window_to_the_hall() -> v
 		)
 
 
+func test_the_dead_of_each_window_walk_straight_in_to_a_player_behind_it() -> void:
+	# The floor behind every window is on the walking mesh and joined to it: a dead asked for the
+	# way from its spawn to a player standing behind its window goes through that window, not along
+	# the wall outside to the next one. `upper_b1` opened over the side stair's well (#824): its dead
+	# walked 10 m outside to `upper_b2` and came in there.
+	_seated = await SmallMapNight.seat(self, 1, null, 5)
+	for item in _seated.server.rules.tuning.economy.items:
+		if item.kind == ShopItem.Kind.DOOR:
+			_seated.open_door(item.id)
+	await _seated.settle(10)
+	var map := _seated.world.map()
+	var gates := _seated.world.spawn_gates()
+	assert_int(gates.size()).is_equal(12)
+	for point: Vector3 in gates:
+		var id: StringName = gates[point]
+		var barricade := _seated.world.barricade(id)
+		var inside := barricade.centre() + barricade.inward() * WAY_IN
+		inside.y = barricade.global_position.y
+		var way := NavigationServer3D.map_get_path(map, point, inside, true)
+		assert_bool(way.is_empty()).override_failure_message(String(id)).is_false()
+		var end := way[way.size() - 1] if not way.is_empty() else point
+		var short := Vector2(end.x - inside.x, end.z - inside.z).length()
+		(
+			assert_float(short)
+			. override_failure_message("%s: the way ends %.1f m from behind it" % [id, short])
+			. is_less(0.5)
+		)
+		var walked := 0.0
+		for i in range(1, way.size()):
+			walked += Vector2(way[i].x - way[i - 1].x, way[i].z - way[i - 1].z).length()
+		var straight := Vector2(inside.x - point.x, inside.z - point.z).length()
+		(
+			assert_float(walked)
+			. override_failure_message(
+				"%s: %.1f m walked for %.1f m straight" % [id, walked, straight]
+			)
+			. is_less(straight + DETOUR)
+		)
+
+
 func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> void:
 	# A night of 24 dead at once on the whole map, a player who cannot fall standing in each window's
 	# room in turn, a metre or two behind it: the dead come to that window, tear its five boards and
@@ -176,9 +218,7 @@ func test_the_dead_come_in_through_every_window_to_the_room_it_opens_into() -> v
 		if event["type"] == &"board_torn":
 			torn[event["barricade_id"]] = true
 	var sim := _seated.server.sim
-	var windows: Array = _seated.world.spawn_gates().values().filter(
-		func(id: StringName) -> bool: return not NO_WAY_IN.has(id)
-	)
+	var windows: Array = _seated.world.spawn_gates().values()
 	var wanted := windows.size()
 	var turn := 0
 	_stand_behind(windows[turn])
