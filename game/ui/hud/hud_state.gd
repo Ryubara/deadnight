@@ -71,6 +71,8 @@ var weapon_id: StringName = &""
 var holstered_id: StringName = &""
 var rounds: Dictionary[StringName, Dictionary] = {}
 var weapon_names: Dictionary[StringName, String] = {}
+## The map's own names for its paid links (link id -> name), for the feed's line; empty on the lot.
+var link_names: Dictionary[StringName, String] = {}
 var ammo_free: Array[StringName] = []
 var points := 0
 ## The local player's grenades.
