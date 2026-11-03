@@ -21,6 +21,9 @@ const IDS: Array[StringName] = [
 	&"pump_870",
 ]
 
+## The weapon every player starts the night with.
+const START_WEAPON := &"pistol"
+
 ## The blow every player has on its own button (#411): a knife-like swing with whatever is in hand.
 ## It is a definition like the others (`defs/quick_melee.tres`, the server's sweep and cooldown) but
 ## it is not a weapon: nobody carries, buys or is given it, so it is not in `IDS`.

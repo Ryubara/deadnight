@@ -113,6 +113,52 @@ FIELD_CORE_Z = (-52, -38, -22, -10, -4)
 # and the field's posts all reach it, and these are the only cuts (searched on a 0.5 m grid) that leave each piece at 6.
 STAND_CUT_X = -4
 STAND_CUT = 1
+# The field's lamp posts (x, y, z), numbered from 1 in this order. Lamp9 on were placed by hand in the editor (the
+# maintainer's, Deadnight #703: out round the field, the back lot and the yard, with a hair of height from where they
+# were set on the ground) and Lamp1 and Lamp2 were moved a little: the numbers are theirs and are not to be tidied.
+FIELD_LAMPS = [
+    (-4.6, 0, -35.269028),
+    (4.6, 0, -35.334103),
+    (-4.6, 0, -22),
+    (4.6, 0, -22),
+    (-4.6, 0, -10),
+    (4.6, 0, -10),
+    (-22.5, 0, -28),
+    (22.5, 0, -28),
+    (40.056038, 0, -15.007768),
+    (55.15084, -0.03557825, -44.58985),
+    (56.373283, -0.03557825, -15.066178),
+    (-0.059612513, -0.028946877, 14.621942),
+    (-18.370749, -0.028946877, 16.652119),
+    (-40.099564, -0.028946877, 24.078869),
+    (-44.5698, -0.02993524, -1.2040081),
+    (-21.597113, 0.5631504, -1.2040081),
+    (-18.370749, -0.028946877, 34.69148),
+    (65.46086, 0.5631523, -21.896639),
+    (65.46086, -0.03557825, -45.896637),
+    (35.46086, -0.02894497, -55.896637),
+    (-65.5698, -0.0343498, -22.204008),
+    (-65.5698, -0.03989458, -46.20401),
+    (-35.541065, -0.037663937, -56.080067),
+    (-44.5698, -0.038969874, -37.20401),
+    (-44.5698, -0.02903986, -18.20401),
+    (-27.569801, -0.031407893, -11.20401),
+    (-56.5698, -0.03959632, -6.20401),
+    (22.056038, 0, -8.007768),
+]
+# The south fence leaves a wider opening between the field and the stand (the maintainer's, #703): it ends this far
+# from the middle on each side (the west piece at -16.2052, the east at 16.2051).
+FENCE_S_END = (-16.2052, 16.2051)
+# The ground and the roof that the maintainer's new lamps and the prize crane's lamp reach are cut where a search
+# (every cut on a 0.5 or 1 m grid, every crane place, `tests/world/test_lot_light_cap.gd`'s count of lights) left
+# no tile with more than 6 lights, and the fewest tiles. No cut lies within 1.3 m of a shop spot or a fuel stand's
+# standing point (`test_lot_fuel.gd` wants the stand a metre inside one tile). The midway has six tiles, the back lot
+# and the yard three each, the stand's roof six.
+MIDWAY_CUT_X = (-16, -8, 16)
+MIDWAY_CUT_Z = (8, 19, 30, 38)
+BACK_LOT_CUT_Z = (-4, 10, 24, 38)
+YARD_CUT_Z = (-4, 12, 25, 38)
+STAND_ROOF_CUT_Z = (-4.4, STAND_CUT, 4.6, 8.4)
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
@@ -699,8 +745,8 @@ def build() -> None:
     for tag, bx, bz in breaches:
         breach(field, tag, bx, bz)
     # Fence between the field and the yard / back lot, with the two purchase gates (doors listed below).
-    wall(field, "FenceS_W", "x", -4, -62, -10, fence_h, "field_fence", [(-40, 4, 0, 2.6)])
-    wall(field, "FenceS_E", "x", -4, 10, 62, fence_h, "field_fence", [(40, 4, 0, 2.6)])
+    wall(field, "FenceS_W", "x", -4, -62, FENCE_S_END[0], fence_h, "field_fence", [(-40, 4, 0, 2.6)])
+    wall(field, "FenceS_E", "x", -4, FENCE_S_END[1], 62, fence_h, "field_fence", [(40, 4, 0, 2.6)])
 
     rows = group("Rows", field)
     rng = random.Random(1958)
@@ -753,9 +799,9 @@ def build() -> None:
     for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
         instance(props, f"Wreck{i}", "wreck", (px, 0, pz), ry)
     lamps_f = lamps(field, "screen_lot")
-    field_lamps = [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)]
-    for i, (lx, lz) in enumerate(field_lamps, start=1):
-        instance(lamps_f, f"Lamp{i}", "lamp", (lx, 0, lz))
+    field_lamps_xz = [(x, z) for x, _, z in FIELD_LAMPS]
+    for i, at in enumerate(FIELD_LAMPS, start=1):
+        instance(lamps_f, f"Lamp{i}", "lamp", at)
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
     instance(
@@ -794,7 +840,7 @@ def build() -> None:
     wall(con, "WallW", "z", -10, -4, 8, 4.0, "concession_wall")
     wall(con, "WallE", "z", 10, -4, 8, 4.0, "concession_wall")
     for i, (xa, xb) in enumerate(itertools.pairwise((-10.4, STAND_CUT_X, 10.4))):
-        for j, (za, zb) in enumerate(itertools.pairwise((-4.4, STAND_CUT, 8.4))):
+        for j, (za, zb) in enumerate(itertools.pairwise(STAND_ROOF_CUT_Z)):
             box(con, f"Roof{i}_{j}", (xb - xa, 0.3, zb - za), ((xa + xb) / 2, 4.15, (za + zb) / 2), "concession_roof")
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
     # The prize crane is not part of the scene: it moves between four places, so `CraneView` draws it.
@@ -827,7 +873,7 @@ def build() -> None:
 
     # --- Midway: the courtyard behind the stand, the hub the other areas hang off ------------------------------
     mid = group("Midway", ".")
-    floor_tiles(mid, "Ground", -16, 16, 8, 38, "midway_ground")
+    cut_tiles(mid, "Ground", MIDWAY_CUT_X, MIDWAY_CUT_Z, "midway_ground")
     floor_tiles(mid, "AlleyW", -16, -10, -4, 8, "midway_ground")
     floor_tiles(mid, "AlleyE", 10, 16, -4, 8, "midway_ground")
     wall(mid, "FenceW", "z", -16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
@@ -885,7 +931,7 @@ def build() -> None:
 
     # --- Generator yard (east) ----------------------------------------------------------------------------------------
     yard = group("GeneratorYard", ".")
-    floor_tiles(yard, "Ground", 16, 62, -4, 38, "yard_ground")
+    cut_tiles(yard, "Ground", (16, 62), YARD_CUT_Z, "yard_ground")
     wall(yard, "FenceE", "z", 62, -4, 38, PERIMETER_H, "yard_wall")
     wall(yard, "FenceS", "x", 38, 16, 62, 2.4, "yard_wall")
     # The generator cage: 8 x 6 m, open on the west and east sides, roofless.
@@ -913,7 +959,7 @@ def build() -> None:
 
     # --- Back lot (west) --------------------------------------------------------------------------------------------
     back = group("BackLot", ".")
-    floor_tiles(back, "Ground", -62, -16, -4, 38, "backlot_ground")
+    cut_tiles(back, "Ground", (-62, -16), BACK_LOT_CUT_Z, "backlot_ground")
     wall(back, "FenceW", "z", -62, -4, 38, PERIMETER_H, "backlot_wall")
     wall(back, "FenceS", "x", 38, -62, -16, 2.4, "backlot_wall")
     wrecks = group("Wrecks", back)
@@ -993,7 +1039,7 @@ def build() -> None:
 
     # --- The drive-in's own props (tools/world/drivein_props.py): speaker posts, the counter, booths, the marquee ---
     drivein_props.write_scenes()
-    n_posts = drivein_props.place(instance, group, node, lines, car_slots, gaps, screen_c, field_lamps)
+    n_posts = drivein_props.place(instance, group, node, lines, car_slots, gaps, screen_c, field_lamps_xz)
 
     # --- Shop spots: wall weapons, the prize crane and the ammunition lockers ---------------------------------------
     # The weapons on the walls sell what the rules' tuning prices (weapon_shotgun, weapon_rifle); the crane is

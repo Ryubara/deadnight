@@ -131,14 +131,6 @@ static func fit(model: Node3D, length: float) -> void:
 	model.position = -(model.basis * bounds.get_center())
 
 
-## Puts `material` over every mesh under `node` (an overlay: the model keeps its own look beneath).
-static func overlay(node: Node, material: Material) -> void:
-	if node is MeshInstance3D:
-		(node as MeshInstance3D).material_overlay = material
-	for child in node.get_children():
-		overlay(child, material)
-
-
 static func _bounds(node: Node, to_root: Transform3D) -> AABB:
 	var bounds := AABB()
 	var first := true

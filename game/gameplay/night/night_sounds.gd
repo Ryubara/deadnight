@@ -21,6 +21,10 @@ const OCCLUDER_MASK := 2
 ## The seed of the feet's level wobble.
 const FEET_SEED := 239
 
+## The wind (`WindSounds`): a quiet base layer and random gusts. A test or a capture draws a night's
+## wind again with `wind.reseed(seed)`.
+var wind: WindSounds
+
 var _state: ClientState
 var _world: NightWorld
 var _over := false
@@ -40,7 +44,17 @@ func setup(state: ClientState, world: NightWorld) -> void:
 	if state.phase() != GameRules.Phase.ACTIVE:
 		Audio.start_bed(SCORE)
 	_start_projector()
+	_add_wind()
 	_add_footsteps()
+
+
+## The wind of the night (`WindSounds`), a child that starts with the night and stops with it.
+func _add_wind() -> void:
+	wind = WindSounds.new()
+	wind.name = "WindSounds"
+	add_child(wind)
+	wind.setup()
+	wind.start()
 
 
 ## Every player's feet (`FootstepSounds`), found by the bodies the view knows.
@@ -60,6 +74,8 @@ func _exit_tree() -> void:
 	for id in NIGHT_BEDS:
 		Audio.stop_bed(id)
 	Audio.stop_bed(SCORE)
+	if wind != null:
+		wind.stop()
 	for anchor in find_children("Projector", "Node3D", false, false):
 		for player in anchor.get_children():
 			if player is AudioStreamPlayer3D:
@@ -97,6 +113,7 @@ func _on_event(event: Dictionary) -> void:
 			for id in NIGHT_BEDS:
 				Audio.stop_bed(id)
 			Audio.stop_bed(SCORE)
+			wind.stop()
 
 
 func _at_breach(sound: StringName, barricade_id: Variant) -> void:

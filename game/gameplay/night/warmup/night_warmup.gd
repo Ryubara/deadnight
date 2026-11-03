@@ -425,6 +425,14 @@ func _stage_row(outlined: bool = false) -> Node3D:
 			row.add_child(item)
 			item.position = Vector3(-6.0 + at * 1.2, 1.0, 1.5)
 			at += 1
+			# A weapon is also drawn in the re-cut skin, a program of its own (its own shader), so the
+			# first re-cut weapon of a night never stops a frame to build it (#787).
+			if path.begins_with("res://assets/weapons/"):
+				var skinned := _instance_of(path)
+				row.add_child(skinned)
+				skinned.position = Vector3(-6.0 + at * 1.2, 1.0, 1.5)
+				RecutSkin.wear(skinned)
+				at += 1
 	return row
 
 
