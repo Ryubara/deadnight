@@ -88,6 +88,11 @@ const REACTION_FLOOR := 0.20
 ## and the share of a gun's reserve limit it tops up to with what is left over (`SimSkill`).
 @export_range(1, 6, 1) var ammo_floor_mags: int = 3
 @export_range(0.0, 1.0, 0.05) var ammo_topoff: float = 1.0
+## Magazines of reserve the bot keeps for each gun in the break before a special round (the
+## marquee announces it), and then tops up to the limit: the simulator's `PREPARED_MAGS`, what every
+## modelled player does and so spends the points a weapon would cost on rounds. 0: the bot shops as
+## in any break.
+@export_range(0, 8, 1) var prepared_mags: int = 0
 ## Grenades under which the bot buys more at a rack when it has points to spare (0: never).
 @export_range(0, 5, 1) var grenades_wanted: int = 2
 ## How many weapons the bot re-cuts in a night.
@@ -166,6 +171,7 @@ static func rookie() -> BotProfile:
 	profile.revive_eagerness = 0.25
 	profile.ammo_floor_mags = 2
 	profile.ammo_topoff = 0.5
+	profile.prepared_mags = 6
 	# A rookie does not manage its health: the simulator's weak level stands where it is hit. With the
 	# play states of #739 it backed away when hurt and passed the first boss night 30 times of 30
 	# against the level's 40% (#231).

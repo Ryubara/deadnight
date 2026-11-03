@@ -101,6 +101,8 @@ class View:
 	var perks := 0
 	## Where the crane stands (its place in the rules' list) and whether it can take a play.
 	var crane_spot := 0
+	## Whether the break announced a special round (the profile may fill up for it).
+	var prepared := false
 	var crane_ready := true
 	## Doors the etiquette holds the bot back from (a person's claim, a teammate down).
 	var blocked: Dictionary = {}
@@ -156,7 +158,7 @@ func candidates(view: View) -> Array[Buy]:
 		if urgent != null:
 			found.append(urgent)
 	for weapon in useful(view.arms):
-		var floor_buy := _ammo(view, weapon, _profile.ammo_floor_mags, FLOOR, 0)
+		var floor_buy := _ammo(view, weapon, _floor_mags(view), FLOOR, 0)
 		if floor_buy != null:
 			found.append(floor_buy)
 	var reserve := _fuel_reserve(view)
@@ -427,7 +429,23 @@ func _wants_rounds(view: View, def: WeaponDef, reserve: int, mags: int, why: Str
 		return false
 	if mags > 0 and reserve >= def.magazine_size * mags:
 		return false
-	return why != TOP_OFF or reserve < int(float(def.reserve_max) * _profile.ammo_topoff)
+	return why != TOP_OFF or reserve < int(float(def.reserve_max) * _topoff(view))
+
+
+## Magazines of reserve the bot keeps for each gun now: the profile's floor, or the larger one it
+## fills up to in the break before a special round (the simulator's `PREPARED_MAGS`).
+func _floor_mags(view: View) -> int:
+	if view.prepared:
+		return maxi(_profile.prepared_mags, _profile.ammo_floor_mags)
+	return _profile.ammo_floor_mags
+
+
+## The share of a gun's reserve limit a top-off fills to: all of it before a special round for a bot
+## that prepares for them (the simulator tops up to the limit then, whatever the usual share).
+func _topoff(view: View) -> float:
+	if view.prepared and _profile.prepared_mags > 0:
+		return 1.0
+	return _profile.ammo_topoff
 
 
 ## Where rounds for `weapon` are sold: the wall of a weapon the bot owns, or a locker (which sells

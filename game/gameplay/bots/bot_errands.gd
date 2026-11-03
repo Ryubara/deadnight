@@ -574,6 +574,7 @@ func _view(
 	var now := beliefs.now
 	view.points = state.points()
 	view.round_number = int(frame.get("round", 1))
+	view.prepared = beliefs.special_coming
 	view.in_break = frame.get("phase", ACTIVE_PHASE) == BREAK_PHASE
 	view.remaining = int(frame.get("remaining", 0))
 	view.calm_at = calm_at(frame)

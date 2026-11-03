@@ -144,8 +144,11 @@ func hear(events: Array) -> void:
 				telemetry.count(&"flares_fired")
 			&"grenade_count_changed":
 				perception.beliefs.grenades = int(event.get("count", 0))
+			&"special_round_announced":
+				perception.beliefs.special_coming = true
 			&"round_started":
 				perception.beliefs.special = event.get("special_id", &"")
+				perception.beliefs.special_coming = false
 			&"round_ended", &"special_round_cleared":
 				perception.beliefs.special = &""
 	state.apply_events(heard)
