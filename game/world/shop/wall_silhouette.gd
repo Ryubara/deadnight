@@ -15,11 +15,16 @@ var shape: MeshInstance3D
 func _ready() -> void:
 	shape = MeshInstance3D.new()
 	shape.name = "Shape"
-	shape.mesh = SilhouetteMesh.mesh_for(shop_id, upright)
+	shape.mesh = _map_meshes().mesh_for(shop_id, upright)
 	shape.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(shape)
 
 
 ## Whether the shape is the plain stand-in because the weapon's model is not in the game yet.
 func is_stand_in() -> bool:
-	return SilhouetteMesh.is_stand_in(shop_id, upright)
+	return _map_meshes().is_stand_in(shop_id, upright)
+
+
+## The set of meshes the map this plaque hangs in keeps (shared by its plaques, freed with it).
+func _map_meshes() -> SilhouetteMesh:
+	return SilhouetteMesh.of(owner if owner != null else self)

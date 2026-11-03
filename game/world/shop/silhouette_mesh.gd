@@ -26,17 +26,33 @@ const THICKNESS := 0.001
 ## One flat colour, dark brown as the plaque's name was, and lit by nothing: the plaque behind it
 ## glows amber, so the shape reads in the dark. Settings as a flat opaque material the night
 ## already draws, so it adds no shader program (`test_wall_silhouettes`).
-const MATERIAL := preload("res://assets/lot/materials/silhouette.tres")
+const MATERIAL_PATH := "res://assets/lot/materials/silhouette.tres"
 ## A quarter turn about the plaque's normal: the barrel from the right to up.
 const UPRIGHT := Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3.ZERO)
+## The meta name a map keeps its set under (`of`).
+const META := &"silhouette_meshes"
 ## The shop ids that are not `weapon_<id>`, and the weapon each sells.
 const OTHER_IDS := {&"grenades": &"grenade"}
 const MODEL_DIR := "res://assets/weapons/"
 
-## Weak, so the meshes live as long as a plaque shows them and no longer: a static that held them
-## would leave their RIDs allocated at exit (the CI exit-leak gate).
-static var _cache: Dictionary[StringName, WeakRef] = {}
-static var _stand_ins: Dictionary[StringName, bool] = {}
+## The meshes made so far, by weapon, and which of them are stand-ins. Not static: a static (or a
+## const preload) of a mesh or material is held until the script goes at exit, and in CI that left
+## the whole script graph and its RIDs "leaked at exit" (#837). The set lives on the map that uses
+## it (`of`), so it goes with the map.
+var _cache: Dictionary[StringName, ArrayMesh] = {}
+var _stand_ins: Dictionary[StringName, bool] = {}
+
+
+## The set that `holder` (the map a plaque hangs in) keeps; made the first time it is asked for.
+static func of(holder: Node) -> SilhouetteMesh:
+	if not holder.has_meta(META):
+		holder.set_meta(META, SilhouetteMesh.new())
+	return holder.get_meta(META) as SilhouetteMesh
+
+
+## The one flat material every silhouette uses (shared by the resource cache, held by no static).
+static func material() -> Material:
+	return load(MATERIAL_PATH) as Material
 
 
 ## The catalogue id a wall spot's shop id sells (`weapon_rifle` is `rifle`, `grenades` `grenade`).
@@ -46,25 +62,22 @@ static func weapon_of(shop_id: StringName) -> StringName:
 
 ## The silhouette mesh of what `shop_id` sells: the same instance every time, in the plaque's plane
 ## (x to the viewer's right, y up, z towards the viewer), centred on the origin.
-static func mesh_for(shop_id: StringName, upright := false) -> ArrayMesh:
+func mesh_for(shop_id: StringName, upright := false) -> ArrayMesh:
 	var weapon := weapon_of(shop_id)
 	var key := StringName("%s|up" % weapon if upright else String(weapon))
-	var held: ArrayMesh = _cache[key].get_ref() if _cache.has(key) else null
-	if held != null:
-		return held
-	var turn := UPRIGHT if upright else Transform3D.IDENTITY
-	var made := _from_model(weapon, turn)
-	_stand_ins[key] = made == null
-	held = made if made != null else stand_in(turn)
-	_cache[key] = weakref(held)
-	return held
+	if not _cache.has(key):
+		var turn := UPRIGHT if upright else Transform3D.IDENTITY
+		var made := _from_model(weapon, turn)
+		_stand_ins[key] = made == null
+		_cache[key] = made if made != null else stand_in(turn)
+	return _cache[key]
 
 
 ## Whether the silhouette of `shop_id` is the stand-in because its model is not in the game yet.
-static func is_stand_in(shop_id: StringName, upright := false) -> bool:
-	var held := mesh_for(shop_id, upright)  # keeps the mesh alive while the flag is read
+func is_stand_in(shop_id: StringName, upright := false) -> bool:
+	mesh_for(shop_id, upright)
 	var weapon := weapon_of(shop_id)
-	return held != null and _stand_ins[StringName("%s|up" % weapon if upright else String(weapon))]
+	return _stand_ins[StringName("%s|up" % weapon if upright else String(weapon))]
 
 
 ## The model file of a weapon: its own hold file's (`holds/<id>.tres`), else by the folder
@@ -101,7 +114,7 @@ static func stand_in(turn := Transform3D.IDENTITY) -> ArrayMesh:
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.surface_set_material(0, MATERIAL)
+	mesh.surface_set_material(0, material())
 	return mesh
 
 
@@ -121,7 +134,7 @@ static func _own_hold(weapon: StringName) -> WeaponHold:
 
 
 ## The weapon's model flattened into one surface, or null when it has no model.
-static func _from_model(weapon: StringName, turn: Transform3D) -> ArrayMesh:
+func _from_model(weapon: StringName, turn: Transform3D) -> ArrayMesh:
 	var path := model_path(weapon)
 	if path == "" or not ResourceLoader.exists(path):
 		return null
@@ -163,7 +176,7 @@ static func _from_model(weapon: StringName, turn: Transform3D) -> ArrayMesh:
 	var made := merged.commit()
 	if made == null or made.get_surface_count() == 0:
 		return null
-	made.surface_set_material(0, MATERIAL)
+	made.surface_set_material(0, material())
 	return made
 
 

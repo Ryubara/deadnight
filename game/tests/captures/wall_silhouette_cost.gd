@@ -53,7 +53,7 @@ func _ready() -> void:
 			% [(node as WallSilhouette).shop_id, "|up" if (node as WallSilhouette).upright else ""]
 		)
 		if not made.has(key):
-			SilhouetteMesh.mesh_for(
+			SilhouetteMesh.of(map).mesh_for(
 				(node as WallSilhouette).shop_id, (node as WallSilhouette).upright
 			)
 			made[key] = (Time.get_ticks_usec() - each) / 1000.0

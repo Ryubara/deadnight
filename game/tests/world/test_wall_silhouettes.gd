@@ -20,9 +20,15 @@ const FLAT_OPAQUE_KEY := (
 )
 
 var _night: Night
+var _meshes: SilhouetteMesh
+
+
+func before_test() -> void:
+	_meshes = SilhouetteMesh.new()
 
 
 func after_test() -> void:
+	_meshes = null
 	if _night != null:
 		_night.queue_free()
 		_night = null
@@ -97,7 +103,7 @@ func test_a_spot_is_one_draw_call_and_spots_of_one_weapon_share_a_mesh_and_a_mat
 		var silhouette := node as WallSilhouette
 		var mesh := silhouette.shape.mesh
 		assert_int(mesh.get_surface_count()).is_equal(1)
-		assert_object(mesh.surface_get_material(0)).is_same(SilhouetteMesh.MATERIAL)
+		assert_object(mesh.surface_get_material(0)).is_same(SilhouetteMesh.material())
 		var key := String(silhouette.shop_id) + ("|up" if silhouette.upright else "")
 		if by_weapon.has(key):
 			assert_object(mesh).is_same(by_weapon[key])
@@ -112,7 +118,7 @@ func test_the_silhouette_material_adds_no_shader_program_to_the_night() -> void:
 	# Unshaded, opaque, back faces culled, no texture or glow: the settings of the flat materials
 	# the night already draws, so the engine links nothing new for it (a browser pays 0.1 to 2 s
 	# for each program, docs/research/web-export.md).
-	var key := DrawLedger.material_key(SilhouetteMesh.MATERIAL)
+	var key := DrawLedger.material_key(SilhouetteMesh.material())
 	assert_str(key).is_equal(FLAT_OPAQUE_KEY)
 
 
@@ -125,8 +131,8 @@ func test_every_weapon_model_in_the_game_gets_a_silhouette_by_the_rule() -> void
 			continue
 		seen += 1
 		var id := StringName("weapon_" + folder)
-		assert_bool(SilhouetteMesh.is_stand_in(id)).override_failure_message(folder).is_false()
-		var box := SilhouetteMesh.mesh_for(id).get_aabb()
+		assert_bool(_meshes.is_stand_in(id)).override_failure_message(folder).is_false()
+		var box := _meshes.mesh_for(id).get_aabb()
 		assert_float(box.size.x).override_failure_message(folder).is_less_equal(
 			SilhouetteMesh.FRAME.x + EPSILON
 		)
@@ -143,20 +149,16 @@ func test_every_weapon_model_in_the_game_gets_a_silhouette_by_the_rule() -> void
 func test_every_catalogue_weapon_and_the_grenades_have_a_model_silhouette() -> void:
 	for id in WeaponCatalog.IDS:
 		var shop := StringName(WeaponCatalog.SHOP_PREFIX + String(id))
-		(
-			assert_bool(SilhouetteMesh.is_stand_in(shop))
-			. override_failure_message(String(id))
-			. is_false()
-		)
-	assert_bool(SilhouetteMesh.is_stand_in(&"grenades")).is_false()
+		assert_bool(_meshes.is_stand_in(shop)).override_failure_message(String(id)).is_false()
+	assert_bool(_meshes.is_stand_in(&"grenades")).is_false()
 
 
 func test_a_weapon_whose_model_has_not_landed_gets_a_stand_in_not_text() -> void:
 	var id := &"weapon_not_modelled_yet"
-	var mesh := SilhouetteMesh.mesh_for(id)
-	assert_bool(SilhouetteMesh.is_stand_in(id)).is_true()
+	var mesh := _meshes.mesh_for(id)
+	assert_bool(_meshes.is_stand_in(id)).is_true()
 	assert_int(SilhouetteMesh.triangle_count(mesh)).is_greater(0)
-	assert_object(mesh.surface_get_material(0)).is_same(SilhouetteMesh.MATERIAL)
+	assert_object(mesh.surface_get_material(0)).is_same(SilhouetteMesh.material())
 	var spot := WallSilhouette.new()
 	spot.shop_id = id
 	add_child(spot)
@@ -171,13 +173,13 @@ func test_a_model_without_a_hold_file_is_found_by_its_folder_not_by_another_weap
 	assert_str(SilhouetteMesh.model_path(&"ray_gun")).is_equal(
 		"res://assets/weapons/ray_gun/ray_gun.glb"
 	)
-	var ray := SilhouetteMesh.mesh_for(&"weapon_ray_gun")
-	assert_bool(ray == SilhouetteMesh.mesh_for(&"weapon_rifle")).is_false()
+	var ray := _meshes.mesh_for(&"weapon_ray_gun")
+	assert_bool(ray == _meshes.mesh_for(&"weapon_rifle")).is_false()
 
 
 func test_an_upright_plaque_lays_the_weapon_along_its_long_side() -> void:
-	var flat := SilhouetteMesh.mesh_for(&"weapon_rifle").get_aabb()
-	var upright := SilhouetteMesh.mesh_for(&"weapon_rifle", true).get_aabb()
+	var flat := _meshes.mesh_for(&"weapon_rifle").get_aabb()
+	var upright := _meshes.mesh_for(&"weapon_rifle", true).get_aabb()
 	assert_float(flat.size.x).is_greater(flat.size.y)
 	assert_float(upright.size.y).is_equal_approx(flat.size.x, EPSILON)
 	assert_float(upright.size.x).is_equal_approx(flat.size.y, EPSILON)

@@ -31,7 +31,9 @@ by a plaque, a model in `assets/weapons/` without a silhouette, and a prompt tha
 The HUD's silhouettes draw each model into a `SubViewport` once. For the world that would be a render pass and a shader
 per weapon at load (the web's cost is programs, [web export](web-export.md#loading-a-night-509)), a texture per
 weapon, and a draw per spot. The mesh is built from data already loaded, shared by every spot of the weapon (the small
-map sells the shotgun twice), drawn in one call, and needs no frame.
+map sells the shotgun twice), drawn in one call, and needs no frame. The meshes are kept on the map that shows them
+(`SilhouetteMesh.of`), not in a static, and the material is loaded, not preloaded: a static or a const preload held them
+until the script went at exit and CI's exit-leak gate failed (#837).
 
 ## What it costs
 
