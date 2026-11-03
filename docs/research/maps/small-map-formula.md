@@ -262,6 +262,27 @@ of measured values is on its page, and `test_smallmap_formula.gd` fails a row th
 measured: 585 m² inside (start 205, side 151, upstairs 228), the ring's lap 68 m, the loops 29 and 31 m, the longest
 sight line 23 m, 3.2 m ceilings, a 3.4 m rise, the players' start 5.2 m from a window, spawns 6 to 7 m outside.
 
+### Measured in the setup (M)
+
+The setup of the second map (#632, [Playing it](../../design/smallmap.md#playing-it-links-windows-buys-and-the-box))
+holds rows 20 to 26; `test_smallmap_economy.gd` fails a row that drifts out of its tolerance, and recomputes row 21
+from the tuning instead of trusting a typed number:
+
+| # | Target | Set to |
+| ---: | --- | --- |
+| 20 | Every link costs the same price P | 450 for all three (2.25 times the 200 starting points) |
+| 21 | One link at round 3, two at 4, three at 5 | 3, 4 and 5 by the count above (P may be 400 to 475) |
+| 22 | The box: one place, never moves, in the side room, 0.85 to 1.05 P | one place in the side room, no breakdown at any count, 425 (0.94 P) |
+| 23 | Wall weapons 2, 2, 4 and a cabinet | 2 in the hall, 2 in the side room, 4 and the cabinet upstairs (the shotgun on two walls: eight weapons make nine places) |
+| 24 | Prices climb with the distance, each within 10% | 0.2 and 0.6 P in the hall, 1.2 P in the side room, 1.2 to 1.6 P on the walls upstairs and 1.5 P for the cabinet |
+| 25 | Nothing else to buy | links, weapons, the box and ammunition only: **maintainer's call, the formula's default is in force** |
+| 26 | At most 24 dead at once | 24, whatever the round and the party, on a desktop and in the browser |
+
+**What it leaves out (rows 25 and 30), asked of the maintainer.** The setup was built to the formula's own answer, so
+nothing waited on it: no generator, circuits, fuel cans, tonics or re-cut on this map, the lamps always lit. The answer
+the maintainer gives goes here: *(open)*. If light is to matter on this map the choices are the generator with one
+circuit a room, or the whole map on one circuit; either is one more row in the map's tuning and the markers in its scene.
+
 Two of this page's rows overrule the kit's sizes on [the art page](small-map-art.md), and the greybox follows the
 rows: the ceiling (row 9) and the rise (row 19) make the storey 3.4 m, not the kit's 3.0 m; and row 27 makes the
 paid door, the upstairs opening and the stairs 2.0 m wide, not the kit's 1.4 m.
