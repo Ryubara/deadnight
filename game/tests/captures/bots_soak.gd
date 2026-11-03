@@ -172,7 +172,7 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 		var me := bot.state.me()
 		var body := night.server.body_of(id)
 		var line := (
-			"WATCH t=%d seat %d note=%s at=(%.1f,%.1f) v=%.1f weapon=%s ammo=%s/%s target=%d"
+			"WATCH t=%d seat %d note=%s at=(%.1f,%.1f) v=%.1f weapon=%s ammo=%s/%s target=%d goal=%s"
 			% [
 				ticks,
 				id,
@@ -183,7 +183,8 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 				me.get("weapon", ""),
 				me.get("ammo", -1),
 				me.get("reserve", -1),
-				bot.intent.target_id
+				bot.intent.target_id,
+				bot.intent.goal.snappedf(0.1)
 			]
 		)
 		var arms: Dictionary = night.frame["players"][id].get("arms", {})

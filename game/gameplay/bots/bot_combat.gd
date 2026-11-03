@@ -141,10 +141,14 @@ static func closing_speed(contact: Dictionary, here: Vector3) -> float:
 
 ## Whether the zombie is a person's to shoot: a person (not a bot) aims at it from no farther than
 ## `COURTESY_RANGE`, and it is still `COURTESY_NEAR` metres or more from the bot and not swinging.
-## A person who works on a zombie is earning their points on it; the bot takes what is near.
+## A person who works on a zombie is earning their points on it; the bot takes what is near. A boss
+## is never theirs alone: it takes the whole team's rounds, and a bot that waited for the person to
+## finish it stood idle for seconds at 6 to 8 metres from it (#769).
 static func courtesy_holds(contact: Dictionary, here: Vector3, mates: Array[Dictionary]) -> bool:
 	var at: Vector3 = contact["position"]
 	if _flat(here, at) < COURTESY_NEAR or contact["mode"] == ZombieBody.Mode.ATTACK:
+		return false
+	if ZombieModels.is_boss(contact.get("look", ZombieModels.DEFAULT)):
 		return false
 	for mate in mates:
 		if mate.get("bot", false) or mate.get("dead", false) or mate.get("downed", false):
