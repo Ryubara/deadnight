@@ -2,7 +2,7 @@ class_name WeaponHandsIK
 extends SkeletonModifier3D
 ## Poses the Soldier's arms on his weapon: the right hand on the grip, the left on the fore-end,
 ## the stock at the shoulder and the barrel along the camera's aim. A child of the Skeleton3D, it
-## runs after the clips and blends in by `influence` (0: the clip's arms, 1: this pose).
+## runs after the clips and blends in by `weight` (0: the clip's arms, 1: this pose).
 ##
 ## The weapon rides the right hand (`hand_hold`, the kit's grip). The aim pose is described as a
 ## world transform of the weapon (`weapon_target`), the right hand follows from it, and two-bone
@@ -12,6 +12,8 @@ const RIGHT: Array[String] = ["UpperArm.R", "LowerArm.R", "Index1.R"]
 ## The bone the stance turns (both shoulders hang from it).
 const CHEST := "Torso"
 const LEFT: Array[String] = ["UpperArm.L", "LowerArm.L", "Index1.L"]
+## Every bone the pose turns: the chest and both arms with their hands.
+const BLENDED: Array[String] = [CHEST] + RIGHT + LEFT
 ## Points the elbows out and down: this fraction of the shoulder width, plus straight down.
 const ELBOW_OUT := 0.45
 ## How far the support hand's bone sits behind the fore-end it holds, in metres.
@@ -29,6 +31,11 @@ const CONVERGE_DISTANCE := 12.0
 const HIP_CONVERGE_FULL := deg_to_rad(30.0)
 const HIP_CONVERGE_NONE := deg_to_rad(90.0)
 
+## How far the arms and the chest are on this pose, 0 (the clip's) to 1. The blend is done here,
+## bone by bone, and not by the modifier's own `influence` (left at 1): the engine blends the chest
+## and the hand by it but draws the upper and lower arms in this pose at any influence while the
+## modifier is on, so the arms snapped to the clip's the frame the modifier went off (#619).
+var weight := 1.0
 ## The weapon's hold (size, rest and support point).
 var hold: WeaponHold
 ## The hold of the weapon on the hand bone (the weapon's `HandGrip.hold`, or the kit's), in the
@@ -123,8 +130,27 @@ func _scale() -> float:
 
 func _process_modification() -> void:
 	var skeleton := get_skeleton()
-	if skeleton == null or hold == null or not hold.shouldered:
+	if skeleton == null or hold == null or not hold.shouldered or weight <= 0.0:
 		return
+	var clip := _pose_of(skeleton)
+	_solve(skeleton)
+	if weight < 1.0:
+		for bone: int in clip:
+			var solved := skeleton.get_bone_pose_rotation(bone)
+			skeleton.set_bone_pose_rotation(bone, (clip[bone] as Quaternion).slerp(solved, weight))
+
+
+## The local rotation of every bone this pose turns, as the clips left it.
+func _pose_of(skeleton: Skeleton3D) -> Dictionary:
+	var pose := {}
+	for name: String in BLENDED:
+		var bone := skeleton.find_bone(name)
+		pose[bone] = skeleton.get_bone_pose_rotation(bone)
+	return pose
+
+
+## The pose itself, at full weight: the chest's turn and lean, then both arms.
+func _solve(skeleton: Skeleton3D) -> void:
 	if hold.stance_turn_deg != 0.0:
 		_turn_chest(skeleton, hold.stance_turn_deg)
 	_pitch_chest(skeleton)

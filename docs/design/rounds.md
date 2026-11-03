@@ -225,7 +225,8 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   as `out_of_range` with field `settings` for a value out of bounds; it answers `settings_changed`), or the
   constructor `GameRules.new(tuning, seed, settings)`, which pulls values into bounds with `clamped()`.
   `NightServer.new(..., settings)` and `Night.match_settings` (before `start`) carry them for a night on this machine,
-  and `NightScreen.match_settings` is the Play screen's hand-over, taken once.
+  and `NightScreen.match_settings` is the Play screen's hand-over, taken once. The menu's Solo opens the Play screen (#620),
+  so a night on this machine and a room's host set the same settings on the same `MatchSettingsPanel`.
 - **For a room host.** `NightHost.configure_match(settings)` is the hook: it applies at once to a night nobody has
   started (returning true), otherwise keeps them for the next night the host builds (false). A `GameServer` room is
   a `NightHost`, so it is `room.configure_match(settings)` after `room.built`, or `room.match_settings = settings`
@@ -235,6 +236,11 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
   `start_remote`), and `changed` fires when a control moves. A dedicated server takes `--count`, `--max-alive`
   and `--break`.
+- **Adding a setting.** One definition serves rooms and solo: the Play screen (Solo) and the lobby both hold a
+  `MatchSettingsPanel`. A new setting is a key of `MatchSettings.KEYS` and a row in the panel (`_row(key, title)`, its
+  entry in `HINTS`); `test_solo_match_settings.gd` fails on a key without a row, and on a screen of the two that shows a
+  different list. The web probe publishes the panel as `play_rules` and the night's own as `night_rules`
+  (`tools/web_smoke/solo_settings.py` proves they agree on a desktop and on a phone).
 
 ## The tuning table
 
