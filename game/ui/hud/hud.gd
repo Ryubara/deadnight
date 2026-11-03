@@ -39,6 +39,7 @@ const PART_NAMES := {
 	&"notices": "Notices",
 	&"points": "Points",
 	&"health": "Health",
+	&"slots": "Slots",
 	&"ammo": "Ammo",
 	&"banner": "Banner",
 	&"boss_bar": "BossBar",
@@ -78,6 +79,8 @@ var events_feed := HudFeed.new()
 var notices := HudFeed.new()
 var points := HudPoints.new()
 var health := HudHealth.new()
+## The weapons carried, numbered, above the ammo card.
+var slots := HudSlots.new()
 var ammo := HudAmmo.new()
 var banner := HudBanner.new()
 var boss_bar := HudBossBar.new()
@@ -122,7 +125,7 @@ func _ready() -> void:
 	_stack([round_part, objective], 0.0, 0.0, margin, margin, gap)
 	_stack([fuel, events_feed, notices], 1.0, 0.0, -margin, margin, gap)
 	_stack([points, health], 0.0, 1.0, margin, -margin, gap)
-	_stack([ammo], 1.0, 1.0, -margin, -margin, gap)
+	_stack([slots, ammo], 1.0, 1.0, -margin, -margin, gap)
 	_stack([banner, marquee, boss_bar], 0.5, 0.0, 0.0, margin, gap)
 	_stack([prompt], 0.5, 1.0, 0.0, -margin, gap)
 	_stack([gains], 0.5, 0.5, GAINS_OFFSET.x, GAINS_OFFSET.y, gap)
@@ -234,6 +237,7 @@ func all_parts() -> Array[HudPart]:
 		notices,
 		points,
 		health,
+		slots,
 		ammo,
 		banner,
 		marquee,
@@ -255,6 +259,7 @@ func boxed_parts() -> Array[Control]:
 		notices,
 		points,
 		health,
+		slots,
 		ammo,
 		banner,
 		marquee,

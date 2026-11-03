@@ -2,8 +2,9 @@ class_name NightCommand
 extends RefCounted
 ## Everything one player asks of the server in one tick: how to move (a `PlayerCommand`), whether
 ## the trigger and the use button are held, the camera ray and barrel the shot would leave from,
-## and the three edges `reload`, `use` and `swap`. A human's controls and the autopilot both produce
-## exactly this, and it travels as plain data (`to_dict`), so the server cannot tell them apart.
+## and the edges `reload`, `use`, `swap` and `slot`. A human's controls and the autopilot both
+## produce exactly this, and it travels as plain data (`to_dict`), so the server cannot tell them
+## apart.
 
 var player_id := 1
 ## The client's own count of its commands (one per tick); the server hands it back in the frame
@@ -20,6 +21,9 @@ var use := false
 var use_held := false
 ## Pressed this tick: take the next weapon carried in hand.
 var swap := false
+## Pressed this tick: take the weapon in this slot in hand (1 is the first weapon carried, see
+## `WeaponSlots`), 0 for no slot.
+var slot := WeaponSlots.NONE
 ## The camera ray a shot follows, and where the barrel is.
 var origin := Vector3.ZERO
 var dir := Vector3.FORWARD
@@ -52,6 +56,16 @@ func look_along(yaw: float, pitch: float) -> void:
 	dir = Basis.from_euler(Vector3(pitch, yaw, 0.0)) * Vector3.FORWARD
 
 
+## Keeps the pressed edges (`reload`, `use`, `swap`, `slot`) of the command this one replaces that
+## no step has used yet.
+func inherit_edges(old: NightCommand) -> void:
+	reload = reload or old.reload
+	use = use or old.use
+	swap = swap or old.swap
+	if slot == WeaponSlots.NONE:
+		slot = old.slot
+
+
 func to_dict() -> Dictionary:
 	return {
 		"type": NightServer.COMMAND,
@@ -63,6 +77,7 @@ func to_dict() -> Dictionary:
 		"use": use,
 		"use_held": use_held,
 		"swap": swap,
+		"slot": slot,
 		"origin": origin,
 		"dir": dir,
 		"muzzle": muzzle,
@@ -80,6 +95,7 @@ static func from_dict(data: Dictionary) -> NightCommand:
 	command.use = data.get("use", false)
 	command.use_held = data.get("use_held", false)
 	command.swap = data.get("swap", false)
+	command.slot = data.get("slot", WeaponSlots.NONE)
 	command.origin = data.get("origin", Vector3.ZERO)
 	command.dir = data.get("dir", Vector3.FORWARD)
 	command.muzzle = data.get("muzzle", Vector3.ZERO)
