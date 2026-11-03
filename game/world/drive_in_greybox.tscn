@@ -3979,7 +3979,7 @@ metadata/circuit = "booth"
 metadata/door = "door_booth"
 
 [node name="Switch_back_lot" parent="Switches" instance=ExtResource("switch")]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -35.500, 0.000, -4.600)
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -45.000, 0.000, -4.600)
 metadata/circuit = "back_lot"
 metadata/door = "door_back_lot"
 

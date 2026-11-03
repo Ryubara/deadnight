@@ -94,7 +94,10 @@ SWITCHES = [
     ("screen_lot", "", (0.0, 0.0, -46.2), (0.0, 1.0)),  # behind the players' spawns, in the avenue below the screen
     ("concession", "door_concession", (8.5, 0.0, -4.6), (0.0, -1.0)),  # on the stand's front wall, field side
     ("booth", "door_booth", (4.6, 0.0, 21.5), (0.0, -1.0)),  # on the booth's north wall, midway side
-    ("back_lot", "door_back_lot", (-35.5, 0.0, -4.6), (0.0, -1.0)),  # on the field's south fence, by the gate
+    # On the field's south fence, west of the gate: a 1.5 m post flush with a 2.4 m fence is a step over it, so no
+    # prop a player stands on is within a sprint-jump (6.4 m) of it. East of the gate, 4 m behind the kerb wall
+    # (1.0 m), it was a stair into the back lot: wall, post, fence (#848).
+    ("back_lot", "door_back_lot", (-45.0, 0.0, -4.6), (0.0, -1.0)),
 ]
 # Where the projector model's lens is (its origin (0, 4.05, 25.25), the lens 0.88 m ahead and 1.06 m up on the model)
 # and the middle of the screen's face: the beam is aimed from one to the other.

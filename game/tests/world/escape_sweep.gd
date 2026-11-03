@@ -48,6 +48,8 @@ const NO_MOVE := 0.6
 ## the body's radius, rounded up): a door slab farther away cannot change where it lands.
 const SLAB_CLEAR := 7.5
 const MASK := PhysicsLayers.WORLD | PhysicsLayers.BOARDS
+## The map's solid boxes are kept in squares this many metres wide.
+const SOLID_CELL := 4.0
 
 ## The hops run (not read from the cache), the starts, and the standing places found.
 var hops := 0
@@ -64,6 +66,8 @@ var _barriers: Array[AABB]
 var _slabs: Array[AABB]
 var _present: Array[bool]
 var _cache: Dictionary
+## Vector2i square -> the bounds of the collidable CSG boxes over it.
+var _solids := {}
 
 
 ## `areas` and `barriers` are the map's, with the doors as they are in `root`; `slabs` every door
@@ -85,6 +89,21 @@ func _init(
 	_cache = cache
 	_tuning = CameraProbe.tuning()
 	_space = root.get_world_3d().direct_space_state
+	for node in root.find_children("*", "CSGBox3D", true, false):
+		var box := node as CSGBox3D
+		if not box.use_collision:
+			continue
+		var bounds := bounds_of(box)
+		for x in range(
+			floori(bounds.position.x / SOLID_CELL), floori(bounds.end.x / SOLID_CELL) + 1
+		):
+			for z in range(
+				floori(bounds.position.z / SOLID_CELL), floori(bounds.end.z / SOLID_CELL) + 1
+			):
+				var square := Vector2i(x, z)
+				if not _solids.has(square):
+					_solids[square] = []
+				_solids[square].append(bounds)
 	_body = CharacterBody3D.new()
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
@@ -184,7 +203,7 @@ func _starts(tops: Array[Vector3], floors: Array[Vector3]) -> void:
 					var rise := hit.y - floor_y
 					if rise < RAISED:
 						floor_cells.append(hit)
-					elif rise <= reach + 0.05:
+					elif rise <= reach + 0.01:
 						tops.append(hit)
 					elif rise <= CORNER_REACH:
 						tall.append(hit)
@@ -227,7 +246,20 @@ func _fits(at: Vector3) -> bool:
 	query.shape = capsule
 	query.collision_mask = MASK
 	query.transform = Transform3D(Basis.IDENTITY, at + Vector3(0, _tuning.height * 0.5 + 0.05, 0))
-	return _space.intersect_shape(query, 1).is_empty()
+	if not _space.intersect_shape(query, 1).is_empty():
+		return false
+	# A CSG box collides by its faces, one-sided: with its middle inside a thin wall, a capsule (or a
+	# ray) meets none of them and the query above passes a cell inside the wall. So the boxes are
+	# asked too, by their bounds.
+	var key := Vector2i(floori(at.x / SOLID_CELL), floori(at.z / SOLID_CELL))
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			for box: AABB in _solids.get(key + Vector2i(dx, dz), []):
+				if box.end.y <= at.y + 0.1 or box.position.y >= at.y + _tuning.height - 0.1:
+					continue
+				if _flat_distance(at, box) < _tuning.radius - 0.01:
+					return false
+	return true
 
 
 ## Files where a hop settled: a violation, or a new standing place off the floor to try again from.
@@ -245,8 +277,9 @@ func _file(
 		return
 	if hop["via"].size() >= depth or not _near_barrier(pos):
 		return
+	# A stair (an area with no one floor) is walked onto, not climbed: nothing new to try from.
 	var area := area_at(pos)
-	if is_nan(area["floor"]) or pos.y - float(area["floor"]) >= RAISED:
+	if not is_nan(area["floor"]) and pos.y - float(area["floor"]) >= RAISED:
 		next.append(hop)
 
 

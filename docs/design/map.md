@@ -378,7 +378,7 @@ is lit by walking to the wall beside the door, and clear of the door's slabs (a 
 | `screen_lot` | behind the players' spawns, in the avenue below the screen | the field (no door guards it) |
 | `concession` | the stand's front wall, 8.5 m east of its door, on the field side | the stand and the midway behind it |
 | `booth` | the booth's north wall, 4.6 m east of its door, on the midway side | the booth |
-| `back_lot` | the field's south fence, 4.5 m east of the back lot's gate | the back lot |
+| `back_lot` | the field's south fence, 5 m west of the back lot's gate (east of it, 4 m behind a 1.0 m kerb wall, the 1.5 m post was a step over the 2.4 m fence, #848) | the back lot |
 
 Using one (`use`, within `use_reach` of the post) sends `RulesAction.set_circuit` with the opposite of how the circuit
 stands; the rules answer with `circuit_changed` and the lamps, the post and the HUD follow. The HUD's card names the
