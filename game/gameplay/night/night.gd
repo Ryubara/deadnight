@@ -39,6 +39,7 @@ const BUILD_SHARE := 0.15
 ## The fixed step of the night, the physics step.
 const STEP := 1.0 / 60.0
 const PLAYER_ID := 1
+## The fixed seed of tests, benches and tours: a night that must play the same each time.
 const SEED := 1958
 ## How far past the low-tank line (a fraction of a full tank) the bot waits before it lights an
 ## area again.
@@ -138,6 +139,12 @@ var _warming := false
 ## The night is over on a game server and this client has left the seat: the link is read to the
 ## floor until its socket is closed (`_leave_server`).
 var _leaving := false
+
+
+## A seed for a night nobody asked to repeat: the dice of every stream (spawns, shop, crane) come
+## from it. The game server draws its nights' seeds the same way (`NightHost`).
+static func fresh_seed() -> int:
+	return randi()
 
 
 func _init() -> void:

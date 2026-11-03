@@ -45,6 +45,11 @@ static var challenge_path := ""
 ## filmed from its shoulder, under this tuning (the defaults when null).
 static var start_mode := Night.Mode.HUMAN
 static var start_tuning: RulesTuning = null
+## The seed of a night played alone. -1 (the game) draws a new one for every night, as a game
+## server does; before #685 every solo night used `Night.SEED`, so the crane's first prize, the
+## zombies' places and every roll after were the same each time. A bench or a tour that must
+## repeat sets a number.
+static var start_seed := -1
 static var shoulder_camera := false
 
 var night: Night
@@ -141,10 +146,15 @@ func reticle_shown() -> bool:
 	return _hud != null and _hud.reticle.is_visible_in_tree()
 
 
+## The seed the next solo night starts with: `start_seed`, or a fresh one.
+static func solo_seed() -> int:
+	return start_seed if start_seed >= 0 else Night.fresh_seed()
+
+
 func screen_enter() -> void:
 	if join_url == "":
 		night.shoulder_camera = shoulder_camera
-		await night.start(start_mode, Night.SEED, start_tuning)
+		await night.start(start_mode, solo_seed(), start_tuning)
 		return
 	var url := join_url
 	var mode := Night.Mode.AUTOPILOT if join_as_bot else Night.Mode.HUMAN
