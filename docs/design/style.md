@@ -280,6 +280,8 @@ number comes from) follows these numbers. They live in `tools/blender/smallmap_k
 | Files | `game/assets/smallmap/<name>.gltf` + `.bin` on `smallmap_palette.png` (sRGB swatches, 16 px, lossless, no mipmaps, Detect 3D off), a fixture each in `game/world/smallmap/fixtures/` with hidden CSG collision, written by the build script |
 | Walls and openings | 108-992 tris against 1.5k (`tools/blender/build_smallmap_walls.py`); openings in a ground (0.3 m, Concrete) and an `_upper` (0.2 m, Plaster) variant |
 | Cover and clutter | 16 props from `tools/blender/build_smallmap_props.py`, 44-1,320 tris against the 800 / 1.5k budgets (a 2 m sandbag line 1,320, a tall cabinet 420, a chair 184); sizes in [the parts list](../research/maps/small-map-art.md#modular-kit-parts-list) |
+| Lamps | a bulb is the lamp's Popcorn swatch, lit by an emission texture of the atlas's layout (`KitLamp`), never a second material; a pendant's shade is 0.6 m with its rim at 2.15 m, under 600 triangles |
+| Light | one or two real lights a room; every other light is an additive card on the lot's `glow.gdshader` or `beam.gdshader` (pools, haze, moon shafts with bar shadows, the far room's glow, chalk), so it takes no light slot and builds no new GL program ([lamps and light cards](../research/maps/small-map-art.md#lamps-and-light-cards)) |
 
 ## Measuring again
 

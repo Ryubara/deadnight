@@ -83,3 +83,40 @@ to 0.52) is the thing to beat: nothing drawn now passes 0.25 m, and the dust end
 Per shot: three quads and at most one light for three frames, and up to 24 slots of three quads, hidden unless alive. No
 textures, no per-frame allocation after a slot is made, no `Environment` features. The browser measure is in
 [Shot feedback research](../research/shot-feedback.md#the-web-check).
+
+## Blood
+
+A zombie that is hit bleeds where it was hit (#618): a **splash** at the wound and **marks** on the ground and the wall
+behind it. The code is `BloodFx` (`game/gameplay/weapons/fx/blood_fx.gd`, two shaders: `blood_splash.gdshader` and
+`blood_decal.gdshader`), reached through `ShotEffects.blood_hit` from the `damage_dealt` event; the numbers are in
+`blood_tuning_default.tres` (`BloodTuning`, five `BloodClass` rows) and `game/tests/weapons/test_blood_fx.gd` pins them.
+
+- **What the event carries.** `damage_dealt` has the wound's `point`, `headshot`, `melee`, `damage`, `pellets`, and now
+  `weapon_id` and `dir` (the unit way the shot or blow went; ZERO for a burst). Events are plain dictionaries, so new
+  keys need no `NetWire` version change (the policy is in `net_wire.gd`): every client that gets `damage_dealt` draws
+  the same splash at the same point, and a client that has not got the keys (an older server) bleeds all round as a
+  bullet does. A hit has no surface normal (a zombie is a set of hit shapes): the splash is flung along `dir`, and the
+  marks ask the client's own world (`WorldCast`) for the ground and the wall.
+- **By weapon** (`BloodTuning.kind_of`): a bullet (pistol, SMG), pellets (a gun that fires more than one: small drops, wide
+  cone, more drops for each pellet that landed, two wall marks), a rifle (a gun of 60 damage or more: a narrow cone,
+  long streaks, the farthest reach and two ground marks), a melee blow (a big blot and a tapering smear along the blow)
+  and a blast (a burst all round, marks under it). Damage scales the size between 70 and 100 percent.
+- **By headshot:** 1.5 times the drops, 1.3 times the reach and size, a third of the drops flung back as well, a brighter
+  arterial red, and 1.4 times the marks, and a rifle shot or a headshot looks for the wall 1.6 times as far.
+- **The splash** is one billboard quad and one shader, no texture and no particles (a `GPUParticles3D` costs two programs
+  of its own on the web, [first-use hitches](../research/first-use-hitches.md)). The drops are drawn in the fragment
+  shader as a function of `progress` and a seed, so a capture and a test see the same splash: up to 16 drops that fly on
+  an eased path with gravity, round or stretched into streaks that shrink, a lumpy blot at the wound, and for a melee blow
+  a smear. The shot's direction is taken into the camera's plane in `vertex()`; a shot straight away from the camera
+  (the usual one from the shoulder) has no sideways part, so the cone opens to all round and the splash is a burst.
+- **The marks** are flat quads lying on the surface (`+Z` is the normal) with a lumpy blot and satellite drops,
+  stretched along the flow (dripping down a wall, thrown along the shot on the ground). They dry from wet red to dark
+  and fade out over the last 40 percent of 30 s. They are lifted off the surface 1 cm plus 2 mm for each metre to the
+  camera, or they flicker in the depth buffer.
+- **Capped.** At most 24 splashes and `marks_desktop` = 64 / `marks_web` = 32 marks are alive; the one past the cap takes
+  over the oldest, nothing is made while a night is played (the pools are made in `prewarm`), and `BloodFx` stops
+  processing when nothing is alive. Both numbers name the platform they were measured on
+  ([Hit blood research](../research/hit-blood.md)).
+- **In the warm-up.** The warm-up replays a `damage_dealt` of a shotgun and of a rifle headshot, a mark and a blast burst
+  (the stage has no ground to cast to), held still for three frames, so the two shaders' programs are built behind the
+  loading screen.

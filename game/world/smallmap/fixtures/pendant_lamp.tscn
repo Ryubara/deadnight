@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/smallmap/pendant_lamp.gltf" id="model"]
+
+[node name="PendantLamp" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Blocker" type="CSGCylinder3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.27, 0)
+visible = false
+use_collision = true
+radius = 0.3
+height = 0.26
+sides = 12

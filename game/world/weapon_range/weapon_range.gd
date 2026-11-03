@@ -54,6 +54,8 @@ var rules: GameRules
 var server: CombatServer
 var link: LoopbackLink
 var effects: ShotEffects
+## The world as the blood sees it, for the marks; held here, a Callable does not keep it alive.
+var _surface: WorldCast
 
 var _rig := Vector3.ZERO
 var _look_at := Vector3(0, 1.1, -10)
@@ -210,6 +212,9 @@ func _on_events(events: Array) -> void:
 func _show_damage(event: Dictionary) -> void:
 	var text := str(roundi(event["damage"]))
 	effects.number(event["point"] + Vector3(0, 0.3, 0), text, event["headshot"])
+	if _surface == null:
+		_surface = WorldCast.new(get_world_3d().direct_space_state)
+	effects.blood_hit(event, _surface.callable())
 	var dummy := _dummies.get(event["target_id"]) as ZombieDummy
 	if dummy != null and is_instance_valid(dummy):
 		dummy.flash()
