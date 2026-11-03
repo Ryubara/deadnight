@@ -1,9 +1,9 @@
 # Characters
 
-Every player is the Soldier on one shared rig, dressed from swappable parts. A look is data: one part id per slot and
-one palette index per colour channel. The customization screen (#101) edits that data; the game assembles it on the
-model. Everything here is built by one script, `tools/blender/build_soldier_parts.py`, which also writes the catalog
-`parts.json` beside the model, so this page, the file and the screen cannot drift.
+Every player is the Soldier on one shared rig, dressed from swappable parts, as him or as her (#678). A look is data:
+one part id per slot and one palette index per colour channel. The customization screen (#101) edits that data; the game
+assembles it on the model. Everything here is built by one script, `tools/blender/build_soldier_parts.py`, which also
+writes the catalog `parts.json` beside the model, so this page, the file and the screen cannot drift.
 
 ## The files
 
@@ -11,7 +11,7 @@ model. Everything here is built by one script, `tools/blender/build_soldier_part
 | --- | --- |
 | `game/assets/characters/soldier_parts/soldier_parts.glb` | `CharacterArmature` (the Soldier's 43 bones), every clip of the Soldier (from `tools/blender/soldier_clips.py`, untouched) and one skinned mesh per part, all named `<slot>__<part>` |
 | `game/assets/characters/soldier_parts/soldier_parts_atlas.png` | the one palette atlas every part uses: a row of colour-channel swatches the game repaints per look, and rows of fixed colours |
-| `game/assets/characters/soldier_parts/parts.json` | the catalog: slots, parts, channels, palettes and the eight presets |
+| `game/assets/characters/soldier_parts/parts.json` | the catalog: slots, parts, channels, palettes, the character choice and the twelve presets |
 | `game/assets/characters/soldier_parts/soldier_look.gd` | `SoldierLook`: reads the catalog, applies a look to an instanced model, picks a default preset per player |
 
 ## A look
@@ -20,7 +20,7 @@ model. Everything here is built by one script, `tools/blender/build_soldier_part
 {
   "parts": {
     "head": "plain", "hair": "pompadour", "headwear": "none", "torso": "jacket",
-    "legs": "cuffed", "feet": "boots", "eyewear": "none", "neck": "none", "arm": "none"
+    "legs": "cuffed", "feet": "boots", "eyewear": "none", "neck": "none", "arm": "none", "body": "male"
   },
   "colours": {"skin": 2, "hair": 0, "primary": 0, "secondary": 9, "accent": 1}
 }
@@ -33,13 +33,14 @@ model. Everything here is built by one script, `tools/blender/build_soldier_part
 - A preset is a look with an `id` and a `name`. A saved or sent look is the two dictionaries above; it is a few dozen
   bytes, so it travels in the lobby state as it is.
 - Headwear that covers the head (`hides_hair: true` in the catalog) hides the hair part; the look keeps its hair id.
+- `body` is the character (below). A look saved before it existed has none and is his.
 
 ## Slots
 
 | Slot | Bone(s) | Parts |
 | --- | --- | --- |
 | head | Head, Neck | the face and neck: `plain`, `stubble`, `beard` |
-| hair | Head | `none`, `crew`, `pompadour`, `flattop`, `ponytail` |
+| hair | Head | `none`, `crew`, `pompadour`, `flattop`, `ponytail`, `bob`, `curls`, `bun` |
 | headwear | Head | `none`, `helmet` (the kit Soldier's), `pillbox`, `ballcap`, `papercap`, `ranger` |
 | torso | spine, arms, hands | `vest` (the kit Soldier's), `jacket`, `shirt`, `rolled`, `tank`, `letterman` |
 | legs | hips, legs | `trousers`, `cuffed`, `shorts`, `striped` |
@@ -47,19 +48,54 @@ model. Everything here is built by one script, `tools/blender/build_soldier_part
 | eyewear | Head | `none`, `sunglasses`, `glasses`, `goggles` |
 | neck | Neck, Torso | `none`, `scarf`, `bowtie` |
 | arm | UpperArm.L | `none`, `armband` |
+| body | - | `male`, `female`: the character (no mesh of its own) |
 
 Names: slot and part ids are lower-case ASCII words; the mesh node is `<slot>__<part>` (two underscores), so
 `torso__letterman`. A new part is a new entry in the build script's tables and a rebuild; ids are never renamed once
 shipped (saved looks refer to them).
 
+## The character
+
+The female Soldier (#678) is the same skeleton and every same clip with her own face, torso and legs. The `body`
+slot is last on the wire (the look's wire version is 2). A part with a variant for her has a `female` entry in
+`parts.json` (`mesh`, `tris`, `mesh_far`, `tris_far`: the node `<slot>__<part>__female`), and
+`SoldierLook.visible_meshes` shows it when the look's `body` is `female`; every other part (hair, hats, eyewear,
+neckwear, the armband, the shoes) is shared, so every outfit fits both.
+
+| Part | Hers |
+| --- | --- |
+| Face | the kit face with lashes over each eye, brows half as tall and arched, a small mouth (`lips`). Her names for the three head choices: Natural, Freckles (dots of `skin_shade` under the eyes) and Rosy (`blush` cheeks): no beard |
+| Torso, legs | his six tops and four trousers moved at rest by one warp (`female_shape`): a chest of two soft lobes, a 13 % narrower waist, 5 % wider hips. The chest's weights lean 60 % to `Torso`, so the shoulders do not pull it. Arms and hands do not move |
+| Hair | three cuts of hers, `bob` (ends flared clear of the collar), `curls` (two rolls on top, the back to the nape) and `bun`; each hair part names the character it belongs to (`body`), and the ponytail is either's |
+
+In the Loadout tab (and the wardrobe) the first row is **Character** (Male, Female). Switching it keeps the outfit and
+the colours and swaps a cut of the other character's for this one's own (crew cut for him, bob for her,
+`CharacterLook.set_body`); the Preset row offers that character's presets; Randomize keeps the character. The choice
+is part of the look, so it is saved with it when the player leaves the tab (#489), sent on join and drawn by every
+client, and the menu's soldier wears it at once.
+
+**Voice.** A soldier speaks with their character's voice (`SoldierVoiceCatalog.VOICES`). Hers is #679: until her lines
+exist she says nothing, never his voice (`SoldierVoice.say` returns before the director, so her silence takes no turn
+from a teammate).
+
+**Checked** (`tools/blender/measure_soldier_body.py`, all 55 clips of the Soldier's files, his against hers): her
+trunk stretches no more than his (the 99th percentile edge, within 10 %) in every clip; her cuts sit in the collar no
+more than his (the bob 13 vertices in the grenade throw, his ponytail 17); her forearms go no deeper into her chest
+than his into his (the ten deepest vertices, within 12 mm) in 53 clips. Walk and Run_Gun flag two vertices of her
+left forearm at the side of her waist (12 and 18 mm on that mean): the kit's own arm swing grazes the trunk there
+(his short-sleeved tops have one 61 mm vertex in Run_Gun), and nothing shows in the
+`tools/blender/render_soldier_views.py` sheets. Every
+weapon sits on its grips in every top for both (`test_menu_grips.gd`); no hair or hat reaches the lens before the
+camera hides the body (`test_hair_and_the_camera.gd`).
+
 ## Colour channels
 
 Faces of every part sit on one swatch of the atlas. Channel swatches are repainted per look; fixed swatches (black,
-greys, white, leather, lens, metal) never change.
+greys, white, leather, lens, metal, lips, blush) never change.
 
 | Channel | Palette | Used for |
 | --- | --- | --- |
-| skin | `skin` (6 tones) | face, hands, bare arms and legs; `skin_shade` (stubble, lips) is the same colour times `shade` |
+| skin | `skin` (6 tones) | face, hands, bare arms and legs; `skin_shade` (stubble, freckles) is the same colour times `shade` |
 | hair | `hair` (6) | hair, beard, brows |
 | primary | `cloth` (16) | the main garment: jacket, shirt, vest |
 | secondary | `cloth` | trousers, contrasting sleeves, hat |
@@ -73,24 +109,27 @@ one material per character for all its parts.
 ## Budget
 
 The [style bible](style.md#budgets-proposed-for-the-web) gives a player 6k triangles and one material. Every part's
-count and each preset's total are in `parts.json` (`tris`); the build fails if a preset goes over 6,000.
+count and each preset's total are in `parts.json` (`tris`); the build fails if a preset, as built or worn by the
+other character, goes over 6,000 near or 2,000 far.
 
 | Measured | Tris |
 | --- | --- |
-| Presets | 4,490 (Lifeguard) to 5,080 (Projectionist); the kit Soldier is 5,828 |
-| Far presets | 1,515 (Greaser) to 1,812 (Projectionist) against the 2,000 far budget; each part's `<slot>__<part>__far` shows past 18 m |
+| Presets | his 4,490 (Lifeguard) to 5,080 (Projectionist); hers 4,748 (Pep squad) to 5,428 (Pit crew); the kit Soldier is 5,828 |
+| Far presets | his 1,515 (Greaser) to 1,812 (Projectionist), hers 1,680 to 1,904; each part's `<slot>__<part>__far` shows past 18 m. The heaviest look of all is the Projectionist worn by her: 5,268 near, 2,000 far, at the far budget |
 | Torso | 2,288 (jacket, shirt, tank) to 2,754 (vest, with the kit's shoulder pads); letterman 2,344, rolled 2,520 |
 | Head, legs, feet | 736, 500, 702 (the kit Soldier's own faces, recoloured) |
 | Helmet | 1,136 (the kit's, eyes and brows moved to the head); original hats 88-292, hair 44-278, eyewear 220-436, scarf 152, bow tie 84, armband 92 |
+| Hers | face 852 (Natural) and 924 (Freckles, Rosy), far 361 and 433 (her face pieces kept whole); her torso and legs as many as his; bob 424, pin curls 448, bun 354 |
 
 Draw calls: one per visible part (5-7) with one shared material per character, near or far. The far level of detail
 (#139) is a copy of every part in the same file: `SoldierLook.apply` shows the far mesh of each shown part with the
 same material and swaps them by visibility ranges at `SoldierLook.FAR_FROM` (18 m, the zombies' distance).
 
-## The eight starting looks
+## The starting looks
 
-Directions from a 1958 drive-in's staff and crowd, all original. Each player who joins takes the next preset not
-already in use (`SoldierLook.default_preset(taken)`), so a group of up to eight starts out all different.
+Directions from a 1958 drive-in's staff and crowd, all original: his eight, then her four (#678), after his so a
+preset's index never moves. Each player who joins takes the next preset not already in use
+(`SoldierLook.default_preset(taken)`), so a group of up to eight starts out all different.
 
 | Preset | Head, hair | Headwear | Torso | Legs, feet | Extras |
 | --- | --- | --- | --- | --- | --- |
@@ -102,6 +141,10 @@ already in use (`SoldierLook.default_preset(taken)`), so a group of up to eight 
 | Ranger | beard, crew | ranger | olive shirt | tan trousers, boots | scarf |
 | Letterman | plain, crew | ballcap | letterman | cuffed, sneakers | - |
 | Projectionist | stubble, crew | none | rolled sleeves | trousers, shoes | glasses, armband |
+| Carhop (her) | natural, bob | papercap | pink shirt | cuffed cream, sneakers | bow tie |
+| Usherette (her) | natural, pin curls | pillbox | blue jacket, gold trim | striped, shoes | - |
+| Pit crew (her) | freckles, bun | none | green rolled sleeves | trousers, boots | goggles |
+| Pep squad (her) | rosy, ponytail | none | cherry letterman | cuffed, sneakers | - |
 
 ## Assembling in Godot
 

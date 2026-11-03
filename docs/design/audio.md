@@ -175,7 +175,9 @@ nearly had me, back off, back off!". Each line is first person with contractions
 uneven length, with the feeling in the words first and an ElevenLabs v4 audio tag (`[breathing hard]`, `[laughs]`) second
 (the first sample, written as instructions, read like a narrator: [research](../research/audio.md#the-soldiers-voice-384)).
 One voice, Brian,
-for everyone: the player's own comes flat (in their head), a teammate's from where they stand.
+for every male Soldier: the player's own comes flat (in their head), a teammate's from where they stand. The female
+Soldier (#678) speaks with her own voice, the folder `SoldierVoiceCatalog.VOICES` names for her character; her lines
+are #679, and until they exist she says nothing (never his voice), and her silence takes no turn from a teammate.
 `SoldierVoice` (`gameplay/night/`) turns what the server sent into **moments** and `VoiceDirector` decides whether
 and which take speaks; the table of moments, takes and ranks is `SoldierVoiceCatalog`.
 

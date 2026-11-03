@@ -7,7 +7,8 @@ extends RefCounted
 ## PLAYER_LOOK  S->C  u8 type=9, u8 player_id, u8 seat, then the look: to everyone when a player's
 ##                    look is accepted, and to a new player for each player already in the lot
 ##
-## A look is 12 bytes, so a join costs 13 bytes up and 15 bytes per player down.
+## A look is 16 bytes (version 2: ten part slots, the character's last, and five colours), so a join
+## costs 17 bytes up and 19 bytes per player down.
 
 enum Type { LOOK = 8, PLAYER_LOOK = 9 }
 

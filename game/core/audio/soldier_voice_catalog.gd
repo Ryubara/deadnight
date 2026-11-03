@@ -10,6 +10,9 @@ extends RefCounted
 ## The design is `docs/design/audio.md`.
 
 const FOLDER := "voice/soldier/"
+## The folder of each character's takes (`CharacterLook.body`), or "" for a character with no voice
+## yet. Hers (#679) waits for its lines: until then she says nothing, never his voice.
+const VOICES := {&"male": FOLDER, &"female": ""}
 const BUS := &"Voice"
 const GROUP := &"soldier_voice"
 const PREFIX := "vox_"
@@ -54,6 +57,11 @@ static func build(add: Callable) -> void:
 					}
 				)
 			)
+
+
+## Whether `body` has a voice (`VOICES`).
+static func has_voice(body: StringName) -> bool:
+	return String(VOICES.get(body, "")) != ""
 
 
 static func take_id(event: StringName, n: int) -> StringName:

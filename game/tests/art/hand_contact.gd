@@ -46,9 +46,14 @@ var _tri_low := PackedVector3Array()
 var _tri_high := PackedVector3Array()
 
 
-func _init(skeleton: Skeleton3D) -> void:
+## `near_only` leaves out the far level of detail (#139), which is drawn only from
+## `visibility_range_begin` metres away, where no grip can be seen. The default measures it too, as
+## the grips were solved (#678 found that; #716 re-solves them on the near hand).
+func _init(skeleton: Skeleton3D, near_only := false) -> void:
 	_skeleton = skeleton
 	for mi in _skinned_meshes(skeleton):
+		if near_only and mi.visibility_range_begin > 0.0:
+			continue
 		_add_mesh(mi)
 
 

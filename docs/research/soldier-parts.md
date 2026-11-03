@@ -54,3 +54,25 @@ and `soldier_clips.py`'s clips unchanged, then:
 - **Small pieces do not survive a collapse** (#139): at the far ratio (about a third) the ball cap (254 triangles)
   turned to slivers and lost its peak. Pieces of 260 triangles or fewer keep every triangle in the far level; the
   kit-body parts and the big pieces carry the cut.
+
+## The female Soldier (#678)
+
+How her parts are made is on [characters](../design/characters.md#the-character) and in the kit's
+[character variants](https://ryubara.github.io/gdstudio/blender/variants/#a-second-body-on-the-same-parts). What we
+learned:
+
+- **The file's clips are frozen.** `soldier_clips.py` grew after this file was last built (sprint, strike, downed,
+  revive, aim-move clips, each shipped in its own file with the finger channels stripped). A rebuild exported them
+  here too, and the controller only adds a clip a library lacks. `FILE_CLIPS` lists the 39 this file carries; they
+  rebuilt sample for sample identical to the committed ones.
+- **Her looks moved the far ratio** (0.333 to 0.299) of every part: the ratio is now solved over his eight looks, and
+  every look of both is asserted against the far budget. Her face pieces are joined whole into her far heads (a
+  collapse cut the lashes to slivers that the glTF round trip dropped, so Godot counted fewer triangles than
+  `parts.json`).
+- **The first bob sat inside the collar** in the grenade throw (26 of its vertices, against 17 for his ponytail): its
+  ends at z 1.66 were r 0.32, inside the collar's top (r 0.36 at z 1.68). Flared to r 0.40 at z 1.72: 13.
+- **A higher chest took the forearm of the sprint carries** (the shotgun carry laid it 14 mm deeper into her chest
+  than his): the lobes moved down to z 1.145 and tightened.
+- **The short-sleeved tops pushed the hands off the grips**, his as much as hers: the bare-arm push (25 mm along the
+  normals of every `skin` face) took the hands too, 15-20 mm off every weapon's grip. Hands (faces of the finger
+  bones) are no longer pushed, and `test_menu_grips.gd` holds every weapon in every top for both.

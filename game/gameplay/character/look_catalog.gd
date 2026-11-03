@@ -12,6 +12,10 @@ extends RefCounted
 ## as its index in its slot and a colour as its index in its palette, so entries are added at the
 ## end and never reordered or removed. A change that cannot follow that rule bumps the version.
 ## A slot with fewer than two parts is not shown on the customization screen.
+##
+## The character (#678) is the `body` part slot, the last on the wire: `male` is the Soldier as
+## built, `female` shows her variant of the face, torso and legs (`SoldierLook.visible_meshes`), so
+## every other choice fits both. It has a row of its own at the top of the screen, not a part row.
 
 const CATALOG_PATH := "res://assets/characters/soldier_parts/parts.json"
 
@@ -26,6 +30,7 @@ const PART_TITLES := {
 	&"eyewear": "Eyewear",
 	&"neck": "Neckwear",
 	&"arm": "Armwear",
+	&"body": "Character",
 }
 ## Screen titles of the colour channels.
 const COLOUR_TITLES := {
@@ -51,6 +56,10 @@ const PALETTE_GATES := {
 }
 ## The same for parts, by "<slot>/<id>". None is locked yet.
 const PART_GATES := {}
+## The slot that holds the character, and its two choices.
+const BODY_SLOT := &"body"
+const MALE := &"male"
+const FEMALE := &"female"
 
 static var _data: Dictionary = {}
 static var _slots: Array[StringName] = []
@@ -72,7 +81,8 @@ static func colour_slots() -> Array[StringName]:
 	return _channels
 
 
-## The parts of `slot` in wire order: `id`, `label`, `gate`.
+## The parts of `slot` in wire order: `id`, `label`, `label_female` (what she calls it), `gate`
+## and, for hair, `body` (the character the cut belongs to, or &"" for either).
 static func options(slot: StringName) -> Array:
 	_load()
 	return _options.get(slot, [])
@@ -100,13 +110,32 @@ static func option_index(slot: StringName, id: StringName) -> int:
 	return -1
 
 
-## The slots that give the player a real choice (two parts or more).
+## The slots that give the player a real choice (two parts or more), the character's apart (it
+## has its own row).
 static func choosable_part_slots() -> Array[StringName]:
 	var out: Array[StringName] = []
 	for slot in part_slots():
-		if options(slot).size() > 1:
+		if slot != BODY_SLOT and options(slot).size() > 1:
 			out.append(slot)
 	return out
+
+
+## What part `index` of `slot` is called on `body` (her face choices have names of their own).
+static func label(slot: StringName, index: int, body: StringName) -> String:
+	var option: Dictionary = options(slot)[index]
+	return option["label_female"] if body == FEMALE else option["label"]
+
+
+## The hair a character starts from (switching the character swaps one cut for the other).
+static func body_hair(body: StringName) -> StringName:
+	_load()
+	return StringName(_data.get("body", {}).get("hair", {}).get(String(body), "crew"))
+
+
+## The character a hair cut belongs to, or &"" when either wears it.
+static func hair_body(hair: StringName) -> StringName:
+	var index := option_index(&"hair", hair)
+	return options(&"hair")[index]["body"] if index >= 0 else &""
 
 
 static func armband_colour(seat: int) -> Color:
@@ -139,7 +168,19 @@ static func _load() -> void:
 		var parts: Dictionary = _data["slots"][slot_name]["parts"]
 		for id: String in parts:
 			var gate: Dictionary = PART_GATES.get("%s/%s" % [slot_name, id], {})
-			list.append({"id": StringName(id), "label": parts[id]["label"], "gate": gate})
+			var entry: Dictionary = parts[id]
+			(
+				list
+				. append(
+					{
+						"id": StringName(id),
+						"label": entry["label"],
+						"label_female": entry.get("label_female", entry["label"]),
+						"body": StringName(entry.get("body", "")),
+						"gate": gate,
+					}
+				)
+			)
 		_options[slot] = list
 	for channel_name: String in _data["channels"]:
 		var channel := StringName(channel_name)

@@ -16,6 +16,10 @@ const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
 var play := Callable()
 var director := VoiceDirector.new()
 var schedule := SoundSchedule.new()
+## Every player's look (the night's `LookRegistry`): a soldier speaks with the voice of their
+## character (`SoldierVoiceCatalog.VOICES`). Without it, or for a player it has not heard of yet,
+## the Soldier as built.
+var looks: LookRegistry
 
 var _t := NightSoundTuning.current()
 var _state: ClientState
@@ -52,8 +56,18 @@ func step(delta: float) -> void:
 		say(&"idle", _state.player_id)
 
 
-## Says `event` as `speaker` (a player id) if the director allows it. Returns whether it played.
+## The character whose voice `speaker` (a player id) speaks with.
+func voice_of(speaker: int) -> StringName:
+	if looks != null and looks.looks.has(speaker):
+		return (looks.looks[speaker] as CharacterLook).body()
+	return LookCatalog.MALE
+
+
+## Says `event` as `speaker` (a player id) if the director allows it. Returns whether it played. A
+## character with no voice yet says nothing, and uses up no turn of the director's.
 func say(event: StringName, speaker: int) -> bool:
+	if not SoldierVoiceCatalog.has_voice(voice_of(speaker)):
+		return false
 	var player := _player(speaker)
 	if bool(player.get("downed", false)) and event != &"downed":
 		return false

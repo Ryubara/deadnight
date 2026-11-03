@@ -341,3 +341,47 @@ func test_lines_played_through_the_service_are_dropped_cleanly_when_it_says_no()
 	_voice.play = func(_id: StringName, _at: Variant, _db: float) -> Variant: return null
 	assert_bool(_voice.say(&"reload", OWN)).is_false()
 	assert_array(_moments()).is_empty()
+
+
+## Players wearing `bodies` ({player id: &"male" or &"female"}), heard the way a night hears looks.
+func _wearing(bodies: Dictionary) -> LookRegistry:
+	var looks := LookRegistry.new()
+	for id: int in bodies:
+		var look := CharacterLook.default_look()
+		look.set_body(bodies[id])
+		looks.receive(LookWire.player_look(id, id - 1, look))
+	return looks
+
+
+func test_his_character_speaks_with_his_voice() -> void:
+	_voice.looks = _wearing({OWN: LookCatalog.MALE, MATE: LookCatalog.MALE})
+	assert_str(String(_voice.voice_of(MATE))).is_equal("male")
+	assert_bool(_voice.say(&"reload", MATE)).is_true()
+	(
+		assert_bool(String(_heard[0]["id"]).begins_with(SoldierVoiceCatalog.PREFIX + "reload_"))
+		. is_true()
+	)
+	assert_bool(SoldierVoiceCatalog.has_voice(LookCatalog.MALE)).is_true()
+
+
+## Her lines are #679: until they exist she says nothing, and never in his voice.
+func test_her_character_says_nothing_until_her_lines_exist_never_his_voice() -> void:
+	_voice.looks = _wearing({OWN: LookCatalog.FEMALE, MATE: LookCatalog.MALE})
+	assert_str(String(_voice.voice_of(OWN))).is_equal("female")
+	assert_bool(SoldierVoiceCatalog.has_voice(LookCatalog.FEMALE)).is_false()
+	for event: StringName in SoldierVoiceCatalog.events():
+		assert_bool(_voice.say(event, OWN)).is_false()
+		_settle()
+	_tell({"type": &"reload_started", "shooter_id": OWN, "weapon_id": &"rifle", "seconds": 2.0})
+	_tell(_hurt(OWN))
+	_settle()
+	assert_array(_heard).is_empty()
+	# Her silence takes no turn from anyone else: the teammate beside her is heard at once.
+	assert_bool(_voice.say(&"reload", MATE)).is_true()
+	assert_int(_heard.size()).is_equal(1)
+
+
+func test_a_player_whose_look_has_not_arrived_has_his_voice() -> void:
+	_voice.looks = _wearing({OWN: LookCatalog.FEMALE})
+	assert_str(String(_voice.voice_of(MATE))).is_equal("male")
+	assert_bool(_voice.say(&"reload", MATE)).is_true()
