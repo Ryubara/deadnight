@@ -65,7 +65,7 @@ place for stills of the lot.
 | `world/weapon_range/weapon_range.tscn` | A scripted demo fires every weapon at zombie dummies. Plays itself. Its root node's inspector has the camera and the barrel |
 | `world/grenade_range/grenade_range.tscn` | The same for the grenade: cook, throw, bounce, blast. Its inspector has the camera and the demo throw |
 | `ui/specimens/typography_specimen.tscn` | The skin's type specimen (needs font files kept outside the repository) |
-| `tools/bench/audio_gun_bench.tscn`, `tools/web_audio_load/web_audio_load.tscn` | Audio measurement rigs (the gun levels; the browser's voice load, which `tools/web_smoke/audio_load.py` drives) |
+| `tools/bench/audio_gun_bench.tscn`, `tools/bench/audio_energy_bench.tscn`, `tools/web_audio_load/web_audio_load.tscn` | Audio measurement rigs (the gun levels; the energy weapons and the re-cut layer; the browser's voice load, which `tools/web_smoke/audio_load.py` drives) |
 | `tests/captures/*.tscn`, `tests/tours/*.tscn`, `tests/player/capture_*.tscn`, `tests/art/capture_*.tscn` | Scripted captures and tours (Movie Maker): they play the game with the real input actions and write frames. Not shipped. `tests/captures/autopilot_night.tscn` plays a night with the bot |
 
 ## Where the night is built (for a developer)
