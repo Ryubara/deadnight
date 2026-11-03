@@ -240,7 +240,9 @@ func _build_night() -> void:
 	add_child(world)
 	await world.build(MapRegistry.of(match_settings.map))
 	var chosen := seed_value if seed_value >= 0 else randi()
-	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
+	# A map with its own rules overlay is played by it, over the shared table (#792).
+	var table := rules_tuning if rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
+	server = NightServer.new(world, chosen, null, world.rules_for(table), match_settings)
 	server.drawn_bodies = false
 	bots = NightBots.new(server, world, chosen, Callable(self, &"_collect"))
 	bots.limit = bot_limit

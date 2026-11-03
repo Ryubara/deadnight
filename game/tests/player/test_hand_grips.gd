@@ -30,7 +30,13 @@ const MODELS: Array[String] = [
 	"service_pistol",
 	"ray_gun",
 	"freeze_gun",
+	# The heavy batch (#796).
+	"m249",
+	"fifty_cal",
+	"pump_870",
 ]
+## The heavy batch's guns (#796): a trigger finger each.
+const HEAVY: Array[String] = ["m249", "fifty_cal", "pump_870"]
 
 var _runner: GdUnitSceneRunner
 var _player: Player
@@ -143,6 +149,7 @@ func test_every_model_has_a_grip_at_its_hold_size() -> void:
 	# A gun's trigger finger is on its trigger or along its frame, never left in the air.
 	var guns := ["revolver", "flare_gun", "tommy_gun", "lever_rifle", "double_shotgun"]
 	guns.append_array(["service_pistol", "ray_gun", "freeze_gun"])
+	guns.append_array(HEAVY)
 	for model in guns:
 		assert_str(HandGrip.for_name(model).trigger_finger).is_not_empty()
 

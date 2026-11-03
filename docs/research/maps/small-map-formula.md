@@ -280,7 +280,9 @@ from the tuning instead of trusting a typed number:
 
 **What it leaves out (rows 25 and 30), asked of the maintainer.** The setup was built to the formula's own answer, so
 nothing waited on it: no generator, circuits, fuel cans, tonics or re-cut on this map, the lamps always lit. The answer
-the maintainer gives goes here: *(open)*. If light is to matter on this map the choices are the generator with one
+the maintainer gives goes here: *(open for the generator)*; the machines (row 25) came with #792, which asked for the
+lot's re-cut bench, soda fountain and perk coolers on this map: [the design page](../../design/smallmap.md#machines).
+If light is to matter on this map the choices are the generator with one
 circuit a room, or the whole map on one circuit; either is one more row in the map's tuning and the markers in its scene.
 
 Two of this page's rows overrule the kit's sizes on [the art page](small-map-art.md), and the greybox follows the

@@ -1,9 +1,9 @@
 # Maps and the map choice
 
 A night is played on one map, and whoever starts it chooses which: a solo player on the Play screen, a room's host in
-the lobby. The drive-in lot ([the lot](map.md)) is the only shipped map; the second, a small indoor one
-([the formula](../research/maps/small-map-formula.md), greybox #631), is listed as a locked "coming soon" card until its
-scene lands. Issue #624.
+the lobby. There are two maps: the drive-in lot ([the lot](map.md)) and the small indoor one, "The back rooms"
+([the second map](smallmap.md), [the formula](../research/maps/small-map-formula.md)), shipped in #792. A map that is
+listed and not built is shown as a locked "coming soon" card (a `MapInfo` with `shipped = false`). Issue #624.
 
 ## The registry
 
@@ -13,10 +13,10 @@ scene lands. Issue #624.
 | --- | --- |
 | `id` | The id the settings, the backend and the wire carry (`drive_in`, `small_indoor`) |
 | `title`, `blurb` | The card's name and a line about the map |
-| `scene_path` | The scene `NightWorld` builds: the same node layout as `world/drive_in_greybox.tscn` (doors, spawns, lamps, switches, fuel) |
+| `scene_path` | The scene `NightWorld` builds: the lot's node layout (doors, spawns, lamps, switches, fuel), or a scene `MapLayout` reads (the second map's) |
 | `preview_path` | The card's picture, 16:9 (`assets/ui/maps/`); none draws the locked card's hatched stub |
 | `area_m2`, `min_players`, `max_players` | What the card says: `13,200 m² · 1 to 8 players` |
-| `shipped` | False while the map is not built: listed, locked, never loaded |
+| `shipped` | False while the map is not built: listed, locked, never loaded (both maps are shipped; the suites use a stub, `StubMaps`) |
 
 `MapRegistry.of(id)` is the map to load: an id nobody knows, or a map that is not playable yet, is the drive-in lot,
 so a night never fails to start over a map. `NightWorld.build(info)` instances the map's scene; `Night.start` builds
@@ -37,9 +37,8 @@ over a copy of the shared table by `NightWorld.rules_for`: the night and the bal
 that builds the map from a WELCOME must too, before the snapshot's tuning id is compared). A scene with floors, its own
 spawn groups and saved meshes is read through `MapLayout` ([the second map](smallmap.md#what-a-night-reads-from-a-map-scene)).
 
-The small indoor map's entry (`small_indoor.tres`) already exists with `shipped = false`; its name, "The back rooms",
-is a working title. Its scene plays (the links, windows, buys and box are set up, #632) and the tests and captures build
-it with `Night.scene` / `NightWorld.scene`; the picker unlocks it when its entry gets a `scene_path` and `shipped`.
+The small indoor map's entry (`small_indoor.tres`) has `scene_path`, a picture (`assets/ui/maps/small_indoor_preview.png`),
+`max_players = 8` (the room's seats, as the lot) and `shipped = true`; its id is in `PLAYABLE_MAPS` of the backend.
 
 ## The choice is a match setting
 
@@ -63,9 +62,9 @@ without a row). It is the first row, in the control column of a `UIRow`: one `Ma
 A card is a ticket drawn as the menu's are (`MenuLook.draw_ticket`, the cream paper with a notch in each side, the
 perforated stub, `MenuItemButton`'s amber outline for the focus or the pointer): the preview on the stub, the name in
 the display face, the size and the players under it, and `SELECTED` in red on the chosen card (with a red outline). A
-map that is not built is on shaded paper with a hatched stub, a padlock and a COMING SOON stamp; it takes the focus (a
-keyboard can read it) but a press chooses nothing (`MapPicker.blocked`). A phone held sideways gets the compact card:
-no picture, 74 units high, the name over one line of facts.
+map that is not built (none is today; the suites use a stub) is on shaded paper with a hatched stub, a padlock and a
+COMING SOON stamp; it takes the focus (a keyboard can read it) but a press chooses nothing (`MapPicker.blocked`). A
+phone held sideways gets the compact card: no picture, 74 units high, the name over one line of facts.
 
 | Input | What it does |
 | --- | --- |
@@ -84,7 +83,8 @@ A guest's lobby shows the host's choice and cannot move it (`set_editable(false)
   night, and a code is looked at with its preview.
 - **The lobby of a member** has the picker in its rules: the host's moves, a guest's is read only.
 
-Proof: `tests/world/test_map_registry.gd`, `test_map_night.gd` (a stub second map built by the world, the solo night,
-and the lot for a map that cannot be played), `tests/net/test_map_choice_net.gd` (a room on the stub map over a real
-socket; a client built on the wrong map builds again), `tests/ui/test_map_picker.gd` (keyboard, gamepad and touch),
-`spikes/backend/test/rooms.test.ts`, and the captures in the pull request.
+Proof: `tests/world/test_map_registry.gd`, `test_map_night.gd` (a stub map and the second map built by the world, the
+solo night, and the lot for a map that cannot be played), `tests/net/test_map_choice_net.gd` (a room on the stub map and
+on the second map over a real socket, and a client built on the wrong map builds again), `tests/ui/test_map_picker.gd`
+(keyboard, gamepad and touch, on stub maps, and the second map's card chosen), `spikes/backend/test/rooms.test.ts`, and
+the captures in the pull request.
