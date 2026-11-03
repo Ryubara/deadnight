@@ -63,6 +63,15 @@ func play() -> void:
 	_poured = false
 
 
+## The meshes of the machine that never move or change, which the map's batch draws with the rest of
+## the lot (`LotBatcher`). The lever, the cork, the tumbler's fill and the bubbles are the machine's
+## own.
+func still_meshes() -> Array[MeshInstance3D]:
+	var moving: Array = [_lever, _fill, _cork]
+	moving.append_array(_bubbles)
+	return MachineParts.meshes_outside(self, moving)
+
+
 func is_playing() -> bool:
 	return _t >= 0.0
 

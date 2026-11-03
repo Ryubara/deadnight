@@ -338,6 +338,9 @@ static func sounds() -> Dictionary:
 		# Walls dull every sound in full unless its row says otherwise (the fuse's beep carries).
 		if not row.has("occlusion_scale"):
 			row["occlusion_scale"] = 1.0
+		# Sounds are made behind the loading bar unless their row says they wait for the night to run.
+		if not row.has("deferred"):
+			row["deferred"] = false
 	return table
 
 

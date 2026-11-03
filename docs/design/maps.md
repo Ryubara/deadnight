@@ -27,7 +27,9 @@ address typed on the Join screen knows nothing of the map).
 
 ### Adding a map
 
-1. Build its scene with the lot's node layout and put it where `scene_path` says.
+1. Build its scene with the lot's node layout and put it where `scene_path` says. It carries the soda fountain, the
+   five perk coolers, the re-cut bench and a prize crane place, as every map does (the formula's row 25);
+   `test_map_machines.gd` reads the picker's list and fails a map without one.
 2. Add a `MapInfo` resource (copy `drive_in.tres`), the picture, and list it in `MapRegistry.PATHS`.
 3. Set `shipped = true` and `scene_path`; add its id to `PLAYABLE_MAPS` in `spikes/backend/src/settings.ts` (a test
    compares the two lists, `test_the_backend_lists_the_maps_the_game_can_play`).

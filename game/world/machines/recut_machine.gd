@@ -110,6 +110,14 @@ func play(weapon_id: StringName) -> void:
 		_skin = RecutSkin.wear(_holders[weapon_id].get_child(0) as Node3D, 0.0)
 
 
+## The meshes of the machine that never move or change, which the map's batch draws with the rest of
+## the lot (`LotBatcher`). The press, the reels and what lies on the cradle are the machine's own.
+func still_meshes() -> Array[MeshInstance3D]:
+	var moving: Array = [_ram, _display]
+	moving.append_array(_reels)
+	return MachineParts.meshes_outside(self, moving)
+
+
 func is_playing() -> bool:
 	return _t >= 0.0
 

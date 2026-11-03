@@ -38,8 +38,11 @@ upper floor over both, three links in a ring, so every layout is a box or an L):
 | B | off the hall's end, the door in its end wall | 36 m along its axis through the door |
 | C (built) | along the hall's north side and 6 m past its west end, the door where they overlap at the hall's north-east corner | nothing: the longest line is 23 m |
 
-The counter and the racks are solid to a little over a jump (1.2 m), so a loop round them is a loop, and they leave
-the view over them open.
+The counter is solid to 1.5 m and the racks to 1.2 m, so a loop round them is a loop, and they leave the view over
+them open. The body climbs 1.25 m from a standing start (the jump is 1.1 m), so a 1.2 m counter was climbed, and its
+middle, 1.75 m from every edge, is out of every zombie's reach (a centre stays 0.5 m off the counter, a swing is 1.4 m):
+a roost with nothing able to answer (#847). It stands above that now, and `test_smallmap_counter.gd` runs the body at it.
+A rack is no roost: its top is 0.2 m from an edge, so the dead strike a player on it.
 
 ## Measured against the formula
 
@@ -169,13 +172,19 @@ breaks it down; it needs no link (the walls around it are the side room's). The 
 heaviest). At most **24 dead stand at once**, whatever the round and the party (`alive_cap`, on a desktop and in the
 browser).
 
+**The nine places are all there are** (#858): a wall sells only the weaker guns ([the wall
+tier](weapons.md#the-wall-tier)), so the pump 870, the MP5 and the M4A1 get no place on this map; they come only from
+the box, with the other guns above the tier. `test_wall_tier.gd` fails on a tenth wall that sells one.
+
 ### What the map leaves out
 
-Nacht has no perks, no upgrade and no power. The map has no power either: no generator, breaker post or fuel can (the
-tank never drains, there are no circuits, and the lamps hang on the `battery` circuit that is always lit so the dead
-keep their lit pace under them). The formula's default for the machines (row 25) was "none", asked of the maintainer;
-issue 792 brings the lot's own (the six tonics and the re-cut bench) at the shared table's prices, so the overlay no
-longer drops the tonic and upgrade kinds ([Machines](#machines)).
+Nacht has no power, and neither has this map: no generator, breaker post or fuel can (the tank never drains, there are
+no circuits, and the lamps hang on the `battery` circuit that is always lit so the dead keep their lit pace under
+them). It does not leave out the machines: Nacht has no perks and no upgrade, but **every map has the soda fountain,
+the perks, the re-cut bench and the prize crane** (the maintainer, 2026-11-03, #859; row 25 of the formula). Issue 792
+brought the lot's own (the six tonics and the re-cut bench) at the shared table's prices, so the overlay does not drop
+the tonic and upgrade kinds ([Machines](#machines)), and `test_map_machines.gd` fails a map of the picker's list that
+lacks one.
 
 ### Floors for the dead
 
@@ -183,7 +192,7 @@ The dead were flat before this map: a zombie kept the height it spawned at, stru
 players by it. On a map that declares a storey (`metadata/storey`) `ZombieSim` now follows the walking mesh up and
 down its stairs (its path points less the baker's 0.35 m lift), weighs a player on another floor by three metres of
 walking a metre of height, and swings only at a target within half a storey in height and with no wall between them (a
-ray at 1.3 m, over the counter and the racks; on a stair beside a wall the dead had struck through it). The ray looks
+ray at 1.3 m, over the racks; on a stair beside a wall the dead had struck through it). The ray looks
 at walls only (`WorldProbe.static_callable`): it used to end on the player's own body, so the dead began a swing at
 0.9 m and not at their 1.4 m reach and landed 40% of them where the lot's land 73% (#764; the numbers are on the
 research page). A press reaches only the doors, spots and boards on the player's floor. The lot (storey 0) is
@@ -247,8 +256,9 @@ picture; a hole in a ceiling with moon through it is an art issue of its own.
 
 ### Machines
 
-The lot's machines, one to a place that has the room for it (each is its `ShopProps` instance, a hidden block that holds
-its place in the walking mesh and a `ShopSpots` marker 0.7 to 1.1 m in front of it):
+The lot's machines (every map has them all, with the box as the crane), one to a place that has the room for it
+(each is its `ShopProps` instance, a hidden block that holds its place in the walking mesh and a `ShopSpots`
+marker 0.7 to 1.1 m in front of it):
 
 | Where | Machine | Item and price |
 | --- | --- | --- |

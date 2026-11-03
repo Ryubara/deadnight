@@ -56,11 +56,11 @@ func test_the_warm_up_holds_what_it_loaded_and_the_sounds() -> void:
 	var pinned := night.warmup.pinned_paths()
 	for look in ZombieModels.VARIANTS:
 		assert_bool(pinned.has(ZombieModels.path_of(look))).is_true()
-	var later := WeaponSounds.on_demand_sound_ids()
 	for id: StringName in SoundCatalog.ids():
-		if later.has(id):
+		# 0 files left to load: every variant of every sound is already in the service's cache, except
+		# the deferred sounds' (their weapons' and voices'), which wait in the decode line.
+		if SoundCatalog.get_def(id).deferred:
 			continue
-		# 0 files left to load: every variant of every sound is already in the service's cache.
 		assert_int(Audio.preload_sound(id)).is_equal(0)
 	assert_int(night.warmup.shots).is_greater(20)
 	night.queue_free()
