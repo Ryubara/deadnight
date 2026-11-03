@@ -2,7 +2,7 @@
 
     uv run --with numpy --with scipy python tools/audio/cricket_levels.py check
     uv run --with numpy --with scipy python tools/audio/cricket_levels.py measure --ffmpeg <pinned ffmpeg>
-        --crickets <crickets.ogg> --crickets-db -24.5 [--highway <highway.ogg>] [--scale 1.0] [--label after]
+        --crickets <crickets.ogg> --crickets-db -26.0 [--highway <highway.ogg>] [--scale 1.0] [--label after]
 
     uv run --with numpy --with scipy python tools/audio/cricket_levels.py capture --ffmpeg <pinned ffmpeg> night.wav
         [--from 4] [--to 30]
