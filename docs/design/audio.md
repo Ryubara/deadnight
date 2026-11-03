@@ -78,7 +78,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Reloads | `reload_pistol_mag_out/_in`, `reload_smg_mag_out/_in`, `reload_rifle_round/_lever`, `reload_shotgun_open/_shells/_shut` | one sound for each event frame of the reload clip |
 | Steps | `step_asphalt`, `step_gravel`, `step_own_asphalt`, `step_own_gravel` | eight takes each; gravel is a spray of tiny grains; the `own` pair is the local player's softer set ([footsteps](#footsteps)) |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the groans, snarls, hurts, deaths, shrieks and roars also have ElevenLabs takes as extra variants (see above) |
-| Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
+| Grenades | `grenade_beep`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the beep is a time bomb's (a clean 2.6 kHz tone, 60 ms, one fixed pitch) from the pin to the blast, from the player's head while it is cooked and then from the grenade wherever it lies, every player hears it placed in 3D; its gap shrinks from 0.5 s to 0.09 s and it swells 5 dB, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
 | The lot | `generator_hum` (loops), `generator_engine` (loops), `generator_start`, `generator_up`, `generator_sputter`, `generator_down`, `generator_down_air`, `breaker_on`, `breaker_off` | see [The lot's machines](#the-lots-machines) |
 | The shop | `door_unlock`, `door_buy`, `buy_weapon`, `buy_ammo`, `buy_fuel`, `buy_tonic`, `buy_recut`, `deny`, `points_tick`, `points_kill` | what each purchase sounds like (besides `till_ring`), the refusal's buzzer and the points |
 | The crane | `crane_spin`, `crane_claw_drop`, `crane_claw_lift`, `crane_prize`, `crane_break`, `crane_move` | the prize crane's play, from the rules' `crane_*` events, at the crane: `crane_spin_started` is the claw going down and a carnival jingle that slows down (5.4 s, a bell at 4.6 s as the 4.5 s spin ends), `crane_prize_ready` the claw hauling up and, 0.35 s later, the prize ding, `crane_prize_taken` the rack's clack, `crane_breakdown` sputter, sparks and power-down, `crane_moved` a whoosh and a clunk, and a refused take the buzzer |
@@ -295,7 +295,9 @@ stride sooner, a crouched creep slower, standing and flight are silent.
   cars, crates and the ground are not on it, so a wall hides a shot and a car does not. A fully blocked sound is
   9 dB quieter and low-passed at 1.1 kHz, and counts as half as
   loud when the budget compares it (in the web build a further `NO_FILTER_OCCLUSION_DB`, 4 dB, below). Measured in a
-  capture: a rifle shot behind a wall was 10 dB down and its centre of energy fell from 3.1 kHz to 0.5 kHz.
+  capture: a rifle shot behind a wall was 10 dB down and its centre of energy fell from 3.1 kHz to 0.5 kHz. A sound
+  def's `occlusion_scale` (1 by default) takes only that share of it: a warning that has to carry through cover, the
+  grenade's fuse beep, has 0.35 (4 dB down at most, a low-pass at 3.6 kHz).
 - **Ducking.** A sting lowers the `Duck` bus, so Effects and Ambience, by its `duck_db` (9 dB for `round_start`, 5 for
   `round_end`) at 80 dB/s, holds it for the sting's front (1.6 s, 0.8 s) and lets go at 14 dB/s. The curve is pinned in
   `tests/core/test_audio_mix.gd`.

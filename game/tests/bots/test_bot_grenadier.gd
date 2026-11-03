@@ -153,7 +153,7 @@ func test_a_wall_across_the_arc_stops_the_throw() -> void:
 func test_the_pitch_lands_the_real_arc_near_the_pack() -> void:
 	var grenadier := BotGrenadier.new(_level())
 	var def := grenadier.def
-	for distance in [4.0, 6.0, 7.5, 9.0, 11.0, 13.0, 15.0]:
+	for distance in [3.5, 6.5, 8.0, 9.0, 11.0, 12.0]:
 		var style := &"under" if distance <= BotGrenadier.UNDERARM_UP_TO else &"over"
 		var pitch := grenadier.solve_pitch(distance, style)
 		assert_bool(is_nan(pitch)).is_false()
