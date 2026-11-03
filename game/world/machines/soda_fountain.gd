@@ -1,6 +1,6 @@
 class_name SodaFountain
 extends Node3D
-## The soda fountain at the concession stand: it pours the hearty tonic (more health). A red and
+## The soda fountain at the concession stand: it pours the hearty health tonic. A red and
 ## cream 1950s counter with a chrome band, a back bar of bottles under a neon heart, a glass tank of
 ## fizzing tonic and a tap with a lever. Idle, the heart breathes and bubbles rise in the tank. A
 ## purchase (`play`) pulls the lever, pops a cork, fills a tumbler, drains it at the gulp and
@@ -243,7 +243,7 @@ func _sign() -> void:
 	MachineParts.box(
 		self,
 		"Board",
-		Vector3(1.1, 0.3, 0.06),
+		Vector3(1.4, 0.3, 0.06),
 		Vector3(0.0, 2.2, -0.43),
 		MachineParts.plain(Color(0.2, 0.05, 0.06), 0.5)
 	)
@@ -254,7 +254,12 @@ func _sign() -> void:
 	)
 	point.rotation.z = PI / 4.0
 	var word := MachineParts.label(
-		self, "HEARTY", Vector3(0.0, 2.2, -0.39), 64, Color(1.0, 0.86, 0.9), Color(0.25, 0.02, 0.06)
+		self,
+		"HEARTY HEALTH",
+		Vector3(0.0, 2.2, -0.39),
+		48,
+		Color(1.0, 0.86, 0.9),
+		Color(0.25, 0.02, 0.06)
 	)
 	word.name = "Sign"
 

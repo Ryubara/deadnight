@@ -101,17 +101,19 @@ func test_a_hurt_player_keeps_the_hurt_and_gets_the_room() -> void:
 	assert_float(_rules.health_of(1)).is_equal(60.0 + bonus)
 
 
-func test_getting_up_after_a_down_restores_the_raised_most() -> void:
+func test_going_down_takes_the_tonic_and_its_health_and_getting_up_gives_the_plain_most() -> void:
 	_begin()
+	var base := _rules.max_health_of(1)
 	_rules.apply(RulesAction.buy(1, &"tonic_hearty"))
-	var most := _rules.max_health_of(1)
+	assert_float(_rules.max_health_of(1)).is_greater(base)
 	_rules.apply(RulesAction.set_downed(1, true))
 	_rules.apply(RulesAction.set_downed(1, false))
-	assert_float(_rules.health_of(1)).is_equal(most)
+	assert_float(_rules.max_health_of(1)).is_equal(base)
+	assert_float(_rules.health_of(1)).is_equal(base)
 
 
 func test_a_tonic_with_no_bonus_leaves_health_alone() -> void:
 	_begin()
 	var base := _rules.max_health_of(1)
-	_rules.apply(RulesAction.buy(1, &"tonic_fleet"))
+	_rules.apply(RulesAction.buy(1, &"tonic_double_shot"))
 	assert_float(_rules.max_health_of(1)).is_equal(base)

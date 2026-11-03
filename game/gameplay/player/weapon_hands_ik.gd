@@ -12,6 +12,9 @@ const RIGHT: Array[String] = ["UpperArm.R", "LowerArm.R", "Index1.R"]
 ## The bone the stance turns (both shoulders hang from it).
 const CHEST := "Torso"
 const LEFT: Array[String] = ["UpperArm.L", "LowerArm.L", "Index1.L"]
+## The hips and the legs that give the belt's place and the body's frame for a reload.
+const HIPS := "Hips"
+const LEGS: Array[String] = ["UpperLeg.L", "UpperLeg.R"]
 ## Every bone the pose turns: the chest and both arms with their hands.
 const BLENDED: Array[String] = [CHEST] + RIGHT + LEFT
 ## Points the elbows out and down: this fraction of the shoulder width, plus straight down.
@@ -55,11 +58,14 @@ var aim_pitch := 0.0
 var converge := 0.0
 var hip_converge := 0.0
 var converge_on := Vector3.ZERO
-## How far the weapon is tilted down for a reload, 0 to 1, and the angle of the full tilt in
-## degrees. The pitch is added to the hold's, about the grip, so the pose it tilts from is the
-## aim weight's (hip or aim) and it returns to that pose.
-var reload_dip := 0.0
-var reload_tilt_deg := 35.0
+## The reload's pose now (`ReloadMotion`, #683), or null, and how far it is in, 0 to 1 (a reload
+## cut short by a swap eases out). The weapon's move and turn are added to the hold's, about the
+## grip, so the pose it starts from is the aim weight's (hip or aim) and it returns to that pose;
+## the left hand goes to the reload's points on the weapon or at the belt.
+var reload: ReloadPose
+var reload_weight := 0.0
+## The weapon's moving part at rest, in the model's units (for a hand point on the part).
+var part_rest := Transform3D.IDENTITY
 ## Recoil of the last shot, 0 to 1: the weapon kicks back and up.
 var recoil := 0.0
 ## Metres the weapon kicks back at full recoil, and degrees it kicks up.
@@ -98,11 +104,24 @@ func weapon_target() -> Transform3D:
 		var toward := converge_on - (shoulder + aim * hold.grip_offset)
 		var meets := Basis.looking_at(toward.normalized(), Vector3.UP)
 		aim = aim.slerp(meets, clampf(maxf(converge, hip_converge), 0.0, 1.0))
-	var pitch := hold.pitch_offset_deg + recoil * recoil_up_deg - reload_dip * reload_tilt_deg
+	var pitch := hold.pitch_offset_deg + recoil * recoil_up_deg
 	var raise := Basis(aim.x, deg_to_rad(pitch))
 	var forward_turn := Basis(Vector3.UP, -PI / 2.0)
 	var offset := hold.grip_offset + Vector3(0.0, 0.0, recoil * recoil_back)
-	return Transform3D(raise * aim * forward_turn, shoulder + aim * offset)
+	var basis := raise * aim * forward_turn
+	if reload != null and reload_weight > 0.0:
+		offset += reload.weapon_offset * reload_weight
+		basis = _reload_turn(aim, reload.weapon_turn * reload_weight) * basis
+	return Transform3D(basis, shoulder + aim * offset)
+
+
+## The reload's turn of the weapon about the grip, in the aim's frame (degrees: x the muzzle up,
+## y to the left, z the top to the left).
+static func _reload_turn(aim: Basis, degrees: Vector3) -> Basis:
+	var yaw := Basis(aim.y.normalized(), deg_to_rad(degrees.y))
+	var pitch := Basis(aim.x.normalized(), deg_to_rad(degrees.x))
+	var roll := Basis(-aim.z.normalized(), deg_to_rad(degrees.z))
+	return yaw * pitch * roll
 
 
 ## How far the barrel turns toward the crosshair's point at the hip, 0 to 1, when the view is `gap`
@@ -151,8 +170,11 @@ func _pose_of(skeleton: Skeleton3D) -> Dictionary:
 
 ## The pose itself, at full weight: the chest's turn and lean, then both arms.
 func _solve(skeleton: Skeleton3D) -> void:
-	if hold.stance_turn_deg != 0.0:
-		_turn_chest(skeleton, hold.stance_turn_deg)
+	var stance := hold.stance_turn_deg
+	if reload != null:
+		stance += reload.chest_turn * reload_weight
+	if stance != 0.0:
+		_turn_chest(skeleton, stance)
 	_pitch_chest(skeleton)
 	var target := weapon_target()
 	_solved_target = skeleton.global_transform.affine_inverse() * target
@@ -167,11 +189,11 @@ func _solve(skeleton: Skeleton3D) -> void:
 	# The left hand: on the fore-end, turned to hold it (the grip's), or reaching the support point.
 	# It goes where the weapon is now, after the right arm (which may fall a little short of the
 	# target), so the two hands always hold the same weapon.
+	var right_hand := (
+		skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone(RIGHT[2]))
+	)
+	var weapon := right_hand * hand_hold.scaled_local(Vector3.ONE * hold.model_scale)
 	if grip != null and grip.has_left:
-		var right_hand := (
-			skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone(RIGHT[2]))
-		)
-		var weapon := right_hand * hand_hold.scaled_local(Vector3.ONE * hold.model_scale)
 		var left := left_hand_on(weapon)
 		_solved_left = skeleton.global_transform.affine_inverse() * left
 		_reach(skeleton, LEFT, left.origin, -side * ELBOW_OUT + Vector3.DOWN, left.basis, false)
@@ -179,6 +201,67 @@ func _solve(skeleton: Skeleton3D) -> void:
 		_reach(
 			skeleton, LEFT, support_point(target), -side * ELBOW_OUT + Vector3.DOWN, Basis(), true
 		)
+	if reload != null and reload_weight > 0.0 and reload.left > 0.0:
+		_reach_reload(skeleton, weapon, -side * ELBOW_OUT + Vector3.DOWN)
+
+
+## The left hand on the reload's point: reached from the pose the hold left it in, and blended
+## from it by the reload's `left` weight bone by bone, so the hand leaves the fore-end (or the
+## clip's arm) and comes back without a jump.
+func _reach_reload(skeleton: Skeleton3D, weapon: Transform3D, pole: Vector3) -> void:
+	var held := {}
+	for name: String in LEFT:
+		var bone := skeleton.find_bone(name)
+		held[bone] = skeleton.get_bone_pose_rotation(bone)
+	var a := reload_point(skeleton, weapon, reload.left_from)
+	var b := reload_point(skeleton, weapon, reload.left_to)
+	var goal := a.origin.lerp(b.origin, reload.left_mix)
+	_reach(skeleton, LEFT, goal, pole, Basis(), false)
+	# The hand turned as on the fore-end at a point on the weapon, as the arm leaves it at the belt.
+	var hand := skeleton.find_bone(LEFT[2])
+	var natural := _world(skeleton, hand).basis
+	var turn_a := natural if a.basis == Basis() else a.basis
+	var turn_b := natural if b.basis == Basis() else b.basis
+	var turned := Basis(
+		turn_a.get_rotation_quaternion().slerp(turn_b.get_rotation_quaternion(), reload.left_mix)
+	)
+	_set_world_basis(skeleton, hand, turned)
+	_solved_left = (
+		skeleton.global_transform.affine_inverse()
+		* Transform3D(turned, _world(skeleton, hand).origin)
+	)
+	var w := clampf(reload.left * reload_weight, 0.0, 1.0)
+	if w >= 1.0:
+		return
+	for bone: int in held:
+		var solved := skeleton.get_bone_pose_rotation(bone)
+		skeleton.set_bone_pose_rotation(bone, (held[bone] as Quaternion).slerp(solved, w))
+
+
+## Where a reload key puts the left hand bone, in the world: its origin, and its basis on the
+## weapon (the grip's `left_hand` turn) or `Basis()` where the arm keeps its own turn (the belt, or
+## a weapon with no left grip).
+func reload_point(skeleton: Skeleton3D, weapon: Transform3D, key: ReloadKey) -> Transform3D:
+	if key.left_space == ReloadKey.Space.BELT:
+		var hips := _world(skeleton, skeleton.find_bone(HIPS)).origin
+		var legs := (
+			_world(skeleton, skeleton.find_bone(LEGS[1])).origin
+			- _world(skeleton, skeleton.find_bone(LEGS[0])).origin
+		)
+		var right := Vector3(legs.x, 0.0, legs.z).normalized()
+		var back := right.cross(Vector3.UP)
+		var p := key.left_point
+		return Transform3D(Basis(), hips + right * p.x + Vector3.UP * p.y + back * p.z)
+	var point := key.left_point
+	var turn := Basis()
+	if key.left_on_part and reload.motion != null:
+		point = reload.motion.point_on_part(point, part_rest, reload.part)
+		var open := reload.motion.part_transform(part_rest, reload.part)
+		turn = open.basis * part_rest.basis.inverse()
+	var basis := Basis()
+	if grip != null and grip.has_left:
+		basis = (weapon.basis.orthonormalized() * turn * grip.left_hand.basis).orthonormalized()
+	return Transform3D(basis, weapon * point)
 
 
 ## Turns the chest `degrees` about the world's up, the left shoulder forward (toward the aim): a
@@ -200,6 +283,9 @@ func _turn_chest(skeleton: Skeleton3D, degrees: float) -> void:
 ## the upper body tips back, looking down it bends over the weapon. Pure geometry on `aim_pitch`.
 func _pitch_chest(skeleton: Skeleton3D) -> void:
 	var lean := clampf(aim_pitch * CHEST_PITCH_SHARE, -CHEST_PITCH_MAX, CHEST_PITCH_MAX)
+	if reload != null:
+		# A positive turn about the aim's right tips the chest back: a lean forward is negative.
+		lean -= deg_to_rad(reload.chest_lean * reload_weight)
 	if is_zero_approx(lean):
 		return
 	var chest := skeleton.find_bone(CHEST)

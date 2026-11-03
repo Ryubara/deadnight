@@ -1,3 +1,4 @@
+# gdlint:disable=max-file-lines
 class_name NightServer
 extends RefCounted
 ## The authority of one night: the rules, the zombies, the weapons and the players' bodies, joined
@@ -25,8 +26,9 @@ extends RefCounted
 ## prompt, reviving (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold
 ## on this one, when downed, has got), ack (the `seq` of the command this step used: a predicting
 ## client replays from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player
-## has left) and reviver (who is raising this one, 0 for nobody)}}. Single-player runs this beside
-## the client, joined by a `LoopbackLink`.
+## has left), reviver (who is raising this one, 0 for nobody), perks (the tonics had as bits, see
+## `PerkEffects.mask_of`) and self_revive (seconds left of the revive perk's own, 0 for none)}}.
+## Single-player runs this beside the client, joined by a `LoopbackLink`.
 
 ## Ticks between the asks which areas the map has taken in (a quarter second).
 const SPAWN_RETRY_TICKS := 15
@@ -146,6 +148,8 @@ var _probe: WorldProbe
 var _cast: WorldCast
 ## Each player's side of a throw: the grenade buttons of their commands as cook and throw actions.
 var _throwers: Dictionary[int, GrenadeThrower] = {}
+## The shock perk's waits (`ShockPlay`).
+var _shocks := ShockPlay.new()
 
 
 func _init(
@@ -203,8 +207,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
-		SEAT_PERSON:
-			rules.apply(RulesAction.seat_person(action["player_id"]))
+		SEAT_PERSON, RulesAction.SEAT_BOT:
+			rules.apply({"type": action["type"], "player_id": action["player_id"]})
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
@@ -288,6 +292,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	PerfProbe.end(&"server.zombies", began)
 	began = PerfProbe.begin()
 	rules.apply(RulesAction.tick(delta, _revive.held_targets()))
+	_shocks.step(delta)
 	PerfProbe.end(&"server.rules", began)
 	began = PerfProbe.begin()
 	var target_list := _target_list()
@@ -350,6 +355,7 @@ func _leave(player_id: int) -> void:
 		bot_orders.forget(player_id)
 		say_board.forget(player_id)
 		_throwers.erase(player_id)
+		_shocks.forget(player_id)
 		_facing_breach.erase(player_id)
 		_face_left.erase(player_id)
 		looks.leave(player_id)
@@ -587,6 +593,18 @@ func _combat(action: Dictionary) -> void:
 		if event["type"] == &"lure_started":
 			sim.add_lure(event["lure_id"], event["point"], event["radius"], event["seconds"])
 		_outbox.append(event)
+		if event["type"] == &"reload_started":
+			_shock(event["shooter_id"])
+
+
+## The shock perk (`ShockPlay`): a reload gives off a shock round the player.
+func _shock(player_id: int) -> void:
+	var body := _bodies.get(player_id) as Player
+	if body == null:
+		return
+	var burst := _shocks.fire(rules, sim, player_id, body.global_position)
+	if not burst.is_empty():
+		_outbox.append(burst)
 
 
 func _target_list() -> Array:
@@ -939,6 +957,8 @@ func _frame() -> Dictionary:
 			"revives": rules.revives_of(player_id),
 			"dead": rules.is_dead(player_id),
 			"bleed": rules.bleed_left_of(player_id),
+			"perks": PerkEffects.mask_of(rules, player_id),
+			"self_revive": rules.players[player_id].self_revive_left,
 		}
 		if pings.has(player_id):
 			players[player_id]["ping"] = pings[player_id]

@@ -64,6 +64,9 @@ func build(info: MapInfo = null) -> void:
 	for _i in SETTLE_FRAMES:
 		await get_tree().physics_frame
 	WebProbe.mark("lot: settled")
+	# The map takes a new mesh in on the physics step, not on a worker thread: the server's dead
+	# must path over the same map on every machine (#733, #736).
+	NavigationServer3D.map_set_use_async_iterations(map(), false)
 	navigation = DoorNavigation.new()
 	navigation.saved = layout.navmeshes()
 	add_child(navigation)

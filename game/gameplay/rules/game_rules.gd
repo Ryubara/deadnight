@@ -41,6 +41,7 @@ extends RefCounted
 ##   player_added: player_id, grenades (the count they start with), health, max_health, bot (true
 ##     when a bot plays the seat)
 ##   bot_replaced: player_id: a person took the seat of a bot, which is no bot's from now on
+##   bot_seated: player_id: a bot took the seat of a person who left, as it stood
 ##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
 ##     seen from above, where the blow came from), source_id (the zombie, -1 for none)
 ##   player_healed: player_id, health, max_health, reason (regen, revive or tonic: a health tonic
@@ -93,13 +94,11 @@ enum BuyResult {
 }
 
 const DEFAULT_TUNING_PATH := "res://gameplay/rules/default_tuning.tres"
-## 13 added the carry (`weapons` holds the start weapons, `recuts_lost`), 12 each player's
-## `revives`, `dead` and `bleed_left` (teammate revives), 11 each player's `downs` and the night's
-## `night_time` (the scoreboard), 10 the match settings (`match_settings`), 9 each player's
-## `upgraded` weapons, 8 the prize crane (`crane`, `crane_rng_state`), 7 the fence's `barricades`,
-## 6 each player's health, 5 the plan, special round and a zombie's type, health, speed. Two older
-## layouts both called themselves 4; every older snapshot is refused as `bad_version`.
-const SNAPSHOT_VERSION := 13
+## 14 added each player's `self_revives` and `self_revive_left` (the revive perk), 13 the carry
+## (`weapons`, `recuts_lost`), 12 `revives`, `dead`, `bleed_left`, 11 `downs` and `night_time`, 10
+## `match_settings`, 9 `upgraded` weapons, 8 the crane, 7 `barricades`, 6 health, 5 the plan and
+## a zombie's type. Two older layouts both called themselves 4; older snapshots are `bad_version`.
+const SNAPSHOT_VERSION := 14
 ## A snapshot restore answers with one of these (`&""` when it worked).
 const RESTORE_BAD_VERSION := &"bad_version"
 const RESTORE_WRONG_TUNING := &"wrong_tuning"
@@ -402,7 +401,9 @@ func _dispatch(action: Dictionary) -> void:
 		RulesAction.ADD_PLAYER:
 			_add_player(action["player_id"], action.get("bot", false))
 		RulesAction.SEAT_PERSON:
-			_seat_person(action["player_id"])
+			_seat(action["player_id"], false, RulesAction.SEAT_PERSON, &"bot_replaced")
+		RulesAction.SEAT_BOT:
+			_seat(action["player_id"], true, RulesAction.SEAT_BOT, &"bot_seated")
 		RulesAction.REMOVE_PLAYER:
 			if players.erase(action["player_id"]):
 				CranePlay.buyer_left(self, action["player_id"])
@@ -670,7 +671,7 @@ func _check_game_over() -> void:
 	if phase != Phase.ACTIVE:
 		return
 	for player: PlayerState in players.values():
-		if not player.downed:
+		if not player.downed or RevivePlay.can_self_revive(self, player):
 			return
 	_end_night(&"all_down")
 
@@ -718,14 +719,14 @@ func _add_player(player_id: int, bot := false) -> void:
 	)
 
 
-## A person sits where a bot sat: the seat keeps everything it had.
-func _seat_person(player_id: int) -> void:
+## A person takes a bot's seat (`bot_replaced`) or a bot a person's (`bot_seated`), as it stands.
+func _seat(player_id: int, bot: bool, action: StringName, told: StringName) -> void:
 	var seat := players.get(player_id) as PlayerState
-	if seat == null or not seat.bot:
-		_reject(&"unknown_player", RulesAction.SEAT_PERSON)
+	if seat == null or seat.bot == bot:
+		_reject(&"unknown_player", action)
 		return
-	seat.bot = false
-	_emit(&"bot_replaced", {"player_id": player_id})
+	seat.bot = bot
+	_emit(told, {"player_id": player_id})
 
 
 func _set_downed(player_id: int, downed: bool) -> void:
@@ -734,6 +735,7 @@ func _set_downed(player_id: int, downed: bool) -> void:
 		return
 	if downed:
 		_events.append(PlayerHealth.down(player, &"forced", 0.0, tuning.revive.bleed_out_seconds))
+		_events.append_array(PerkPlay.on_down(self, player))
 		_check_game_over()
 	else:
 		_events.append_array(PlayerHealth.revive(player, tuning.health))
@@ -786,6 +788,7 @@ func _blow(action: Dictionary) -> void:
 			)
 		)
 		if player.downed:
+			_events.append_array(PerkPlay.on_down(self, player))
 			_check_game_over()
 
 

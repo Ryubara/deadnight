@@ -60,3 +60,16 @@ func test_a_snapshot_marks_the_bots_for_a_late_joiner() -> void:
 	late.hud.state.load_snapshot(fixture.rules.to_dict())
 	assert_bool(late.hud.state.team[2]["bot"]).is_true()
 	assert_bool(late.hud.state.team[1]["bot"]).is_false()
+
+
+func test_a_person_who_leaves_for_a_bot_is_a_left_notice_and_the_seat_turns_into_a_bot() -> void:
+	var fixture := HudFixture.make(_host, 1)
+	fixture.hud.state.set_player_name(2, "Cy")
+	fixture.act(RulesAction.add_player(2))
+	assert_str(HudState.name_of(fixture.hud.state.team[2])).is_equal("CY")
+	fixture.act(RulesAction.seat_bot(2))
+	# The bot's own name is told right after the seat change.
+	fixture.hud.state.set_player_name(2, "Ash")
+	assert_bool(fixture.hud.state.team[2]["bot"]).is_true()
+	assert_str(HudState.name_of(fixture.hud.state.team[2])).is_equal("ASH BOT")
+	assert_str(fixture.hud.notices.history[-1]).is_equal("CY LEFT")

@@ -11,7 +11,8 @@ extends RefCounted
 ## option. `unlocks_for` is a Callable (player_id) -> LookUnlocks that the platform backend will
 ## answer; without one every player has the starting unlocks.
 
-const SEATS := 4
+## Seats in the lot: `NightHost.MAX_PLAYERS` (a test holds them equal).
+const SEATS := 8
 
 var looks: Dictionary = {}
 var seats: Dictionary = {}

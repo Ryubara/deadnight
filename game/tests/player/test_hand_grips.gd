@@ -212,11 +212,17 @@ func test_hands_hold_every_weapon_in_every_pose() -> void:
 		fails.append_array(await _check("%s fire" % id, grip))
 		_release()
 		await _ticks(30)
-		_animation.play_action(&"Reload")
-		for frame in [10, 30]:
-			await _ticks(10 if frame == 10 else 20)
-			fails.append_array(await _check("%s reload %d" % [id, frame], grip))
-		await _ticks(60)
+		# The reload's motion (#683): the right hand keeps its grip while the weapon turns and the
+		# left hand goes for ammunition (its fingers leave the fore-end, so it is not measured).
+		var seconds: float = WeaponCatalog.get_def(id).reload_time
+		_animation.reload(seconds)
+		var done := 0
+		for share: float in [0.25, 0.6]:
+			var tick := roundi(share * seconds / TICK)
+			await _ticks(tick - done)
+			done = tick + 1
+			fails.append_array(await _check("%s reload %.2f" % [id, share], grip))
+		await _ticks(roundi(seconds / TICK) - done + 30)
 	assert_array(fails).is_empty()
 
 

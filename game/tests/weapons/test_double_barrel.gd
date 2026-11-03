@@ -74,11 +74,13 @@ func test_a_barrel_fired_leaves_a_reload_that_loads_one_shell() -> void:
 
 
 func test_the_reload_has_the_break_open_steps() -> void:
-	var steps: Dictionary = WeaponSounds.RELOAD[&"shotgun"]["steps"]
+	# The break-open's own steps, with the empties kicked out and the hand at the belt (#683).
+	var steps: Dictionary = WeaponSounds.RELOAD[&"shotgun"]
 	assert_array(steps.keys()).contains_exactly_in_any_order(
-		[&"break_open", &"shells_in", &"snap_shut"]
+		[&"break_open", &"eject", &"pouch", &"shells_in", &"snap_shut"]
 	)
 	assert_str(String(steps[&"break_open"])).is_equal("reload_shotgun_open")
+	assert_str(String(ReloadMotion.for_weapon(&"shotgun").mechanism)).is_equal("break_open")
 
 
 func test_the_player_is_told_the_new_name_not_the_pump() -> void:
