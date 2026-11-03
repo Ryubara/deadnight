@@ -133,9 +133,12 @@ static func _line(button: UIButton, clip: Control, ring: bool) -> String:
 
 
 ## The button's rectangle as its clipper sees it, scale and pivot included, grown by `reach` in
-## the button's own units on every side first.
+## the button's own units on every side first (above and below for a scroll area).
 static func _bounds(button: Control, clip: Control, reach: float) -> Rect2:
-	var local := Rect2(Vector2.ZERO, button.size).grow(reach)
+	# Above and below only where an area scrolls: the edge of a screen is its own layout's fit
+	# (`solo_settings_tour`), not something a theme margin gives room at.
+	var up_down := reach if clip is ScrollContainer else 0.0
+	var local := Rect2(Vector2.ZERO, button.size).grow_individual(reach, up_down, reach, up_down)
 	var into := clip.get_global_transform().affine_inverse() * button.get_global_transform()
 	return into * local
 
