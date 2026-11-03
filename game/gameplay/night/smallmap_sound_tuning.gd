@@ -10,6 +10,11 @@ extends Resource
 const SHIPPED_PATH := "res://gameplay/night/smallmap_sound_tuning_default.tres"
 ## What a level of this or less means: silence (a bed's own floor).
 const SILENT_DB := -60.0
+## How far under its trim the roof wind rests, so that a gust can raise it up to this much: a bed
+## cannot be raised over its own level, so the trim of `bed_roof_wind` (-19 dB, as it was) was
+## raised by this much and every room's level is read this far lower. A room's heard level at rest
+## is the same as before. (`roof_gust_db` is at most this.)
+const ROOF_HEADROOM_DB := 3.0
 
 static var _shipped: SmallMapSoundTuning = null
 
@@ -19,8 +24,16 @@ static var _shipped: SmallMapSoundTuning = null
 @export var tone_db: Dictionary[StringName, float] = {
 	&"Start": 0.0, &"Side": 0.0, &"UpperA": -2.0, &"UpperB": -2.0
 }
-## The wind under the roof, the same way: heard upstairs only.
+## The wind under the roof, the same way (dB from its level before the gusts drove it: the loop's
+## trim is `ROOF_HEADROOM_DB` higher and the bed rests that much lower): heard upstairs only.
 @export var roof_db: Dictionary[StringName, float] = {&"UpperA": -4.0, &"UpperB": 0.0}
+
+@export_group("Gusts")
+## How much the blowing gust (`WindSounds.swell()`) raises the wind under the roof at its peak, the
+## way it raises the base layer (2 dB). The rooms' levels above are what it rests at.
+@export_range(0.0, 3.0, 0.5, "suffix:dB") var roof_gust_db := 3.0
+## ... and each of the yard's four wind loops, on top of the way it comes in at the window.
+@export_range(0.0, 12.0, 0.5, "suffix:dB") var yard_gust_db := 6.0
 
 @export_group("The yard")
 ## What a yard sound loses getting through a wall, on top of the distance.

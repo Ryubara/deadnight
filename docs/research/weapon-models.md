@@ -34,6 +34,19 @@ the hold's `model_scale` x the Soldier's 0.8.
 | Claw hammer (tool) | 508 / 168 (33) | 15 | 0.73 tall, 0.47 across | 0.85 | 0.50 m | 15 up | - | Grey 60, Wood 37, DarkGrey 4 | - | - |
 | Grenade | 1,172 / 374 (32) | 25 | 0.61 tall, 0.42 across | 0.51 | 0.25 m | 44 up | - | Green 47, Yellow 17, DarkGrey 14, Grey 13, Grey2 10 | `Spoon` 60, `Pin` 140 | - |
 
+The SMGs and the carbine of #795, measured from their build (the pistol grip, guard, trigger and their sockets are the
+Tommy gun's on the MP5 and the M4A1; all three are drawn at real length, `chunk` 1, and held at `model_scale` 1.3):
+
+| Model | Tris near / far (far %) | Parts near / far | Model L x H x W (m) | In the game | Grip to muzzle | Support (x, z) | Moving nodes | Ammo glb |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PPSh | 1,032 / 332 (32) | 40 / 21 | 0.87 x 0.31 x 0.11 | 0.90 m | 0.54 | -0.33, 0.0 | `Drum`, `Bolt` | the drum 244 |
+| MP5 | 1,164 / 428 (37) | 40 / 27 | 0.70 x 0.41 x 0.10 | 0.73 m | 0.44 | -0.30, 0.02 (clear of the curved magazine) | `Magazine`, `Bolt` | magazine 188 |
+| M4A1 | 1,236 / 420 (34) | 47 / 30 | 0.82 x 0.39 x 0.10 | 0.85 m | 0.51 | -0.25, 0.03 | `Magazine`, `Bolt` | magazine 100 |
+
+Held, each puts the stock 9.7-10.3 cm from the shoulder, as the Tommy gun's 10.1. A curved magazine in front of the
+fore-end pulls the solver's support hand onto it, so the support stays 7 cm or more ahead of the magazine's front; a
+stock's underside stays above the wrist (z 0.02 or higher) for about 20 cm behind the grip.
+
 What that says, as rules a new model keeps:
 
 | Rule | Measured |
@@ -311,6 +324,14 @@ the left side, the carry handle over the barrel, a long heavy body**. The heavie
 - **Ammo glb:** the box with a belt stub.
 - **Re-cut lights:** the receiver and the feed cover (a big flat top), the barrel and the carry handle; the pouch and
   the stock stay dark.
+- **Built (#796):** `weapon_specs/m249.py`, **1,324 / 476 tris** (target 1,450 / 480), 59 parts, 0.94 x 0.35 x 0.14 m
+  drawn, 0.98 m in the game at `model_scale` 1.3; cells Black 47 %, DarkGrey 36, Green 15, Yellow 3 (neutral 83 %).
+  Moved from the plan: **the stock ends at +0.31 (with its plate), not +0.42, and the hand guard runs back to -0.25 with
+  `Support` at (-0.30, 0, -0.025)** ([reach](#the-left-hands-reach)); the receiver is 0.12 high (bottom at z -0.02, the
+  Tommy gun's, so the guard keeps the finger's opening); the carry handle runs forward of the cover's hinge (-0.29 to
+  -0.40) so the opening cover never meets it; the folded bipod's legs stop at -0.45, clear of the left hand; the belt's
+  links are close-up detail (the five rounds stay in the far level). `Eject` (-0.10, 0.0435, 0.0) on the right face. The
+  ammo glb is the box and two rounds (132 tris).
 
 ### .50 calibre rifle (`fifty_cal`, #796)
 
@@ -332,6 +353,13 @@ the scope on top, the big double-chamber brake.**
 - **Ammo glb:** the magazine.
 - **Re-cut lights:** the upper receiver (the longest flat face of the nine), the barrel, the brake; the scope's lens
   ends could take the Glow cell (a lit lens reads far).
+- **Built (#796):** `weapon_specs/fifty_cal.py`, **1,332 / 460 tris** (target 1,400 / 460), 56 parts, 1.41 x 0.39 x 0.13
+  m drawn, 1.36 m in the game at `model_scale` 1.21; cells DarkGrey 45 %, Black 45, Grey 9, Glow 1 (the objective lens;
+  neutral 99 %). The brake is built as two slabs and three walls, so its two windows each side are open and show in the
+  outline at 42 px/m. Moved from the plan: **the stock ends at +0.345 (with its pad), not +0.40, and `Support` is at
+  (-0.28, 0, -0.01), not -0.32** ([reach](#the-left-hands-reach)), inside the upper receiver, which is 0.12 high (z
+  -0.02 to 0.10); the magazine sits at -0.125 (0.12 long), ahead of the guard; the scope's rings, the flutes and the
+  bolt's knob are close-up detail. The ammo glb is the magazine (56 tris).
 
 ### 870-style pump shotgun (`pump_870`, #796)
 
@@ -351,12 +379,21 @@ pistol-grip stock** (the double is wood with a straight stock and two fat barrel
   through the loading port at (-0.10, 0, -0.045), a new mechanism for the reload (`shells`).
 - **Re-cut lights:** the receiver's sides (a big Grey slab), the barrel and the tube; the pump and the stock stay
   dark.
+- **Built (#796):** `weapon_specs/pump_870.py`, **948 / 280 tris** (target 1,000 / 340), 37 parts, 0.93 x 0.23 x 0.11 m
+  drawn, 0.97 m in the game at `model_scale` 1.3; cells Black 50 %, DarkGrey 29, Grey 17, Red 3, Yellow 1 (neutral
+  96 %). The pump was first drawn just round the tube (6.4 cm deep): at 42 px/m the gun was a bar and a stock, the
+  double's outline. It is 8.8 cm deep now and hangs below the tube with bare tube either side, so the outline is its
+  own. **The stock ends at +0.30 (with its pad), not +0.36, the pump spans -0.43 to -0.27 and `Support` is at (-0.32, 0,
+  -0.02)** ([reach](#the-left-hands-reach)); the pump travels +X 0.045, its rear then 5 mm short of the receiver. Added:
+  a side saddle of four shells on the left (Red with Yellow heads, close-up detail), as on the police gun in the photos.
+  The ammo glb is one shell (152 tris).
 
 ### Service pistol (`service_pistol`, #797, for `dual_pistols`)
 
 A period semi-automatic service pistol of the 1911 type (references: five photos, `refs/weapons/service_pistol/`):
 fits the drive-in's 1958 and reads apart from the revolver. One model, held in both hands (#789); the left hand's copy
-is the same mesh, not mirrored (its port still faces right). The model folder is `service_pistol`, not `pistol`: that
+is the same mesh (one file), drawn mirrored for the left hand because that hand's fingers are the right
+hand's mirrored, so its ejection port faces left. The model folder is `service_pistol`, not `pistol`: that
 id is the revolver's.
 
 - **Layout:** muzzle -0.17 (bore z 0.045); the slide -0.17 to +0.04, top z 0.075, 0.045 deep, 0.04 wide (twice
@@ -371,6 +408,11 @@ id is the revolver's.
 - **Ammo glb:** the magazine.
 - **Budget:** two are drawn at once, so 700 / 250 each keeps the pair inside one weapon's 1.5k / 500.
 - **Re-cut lights:** the slide's sides (its biggest flat faces); the grips stay dark.
+- **Built (#797):** 692 / 256 tris (ammo 76), 35 parts; 0.25 x 0.20 x 0.05 m drawn (the chunky grip runs 3 cm
+  behind the slide); DarkGrey 52 %, Black 36, Wood 10 (the DarkGrey is mostly the magazine hidden in the grip).
+  The `Trigger` is (-0.03, 0, -0.012). Its grip measured 1.36 of the three fingers and a guard of 1.12 fingers at the
+  plan's factor 1.75, longer than the revolver's 1.22, so it is held at **size factor 1.5** (`model_scale` 1.95):
+  grip 1.17, guard 0.96, 0.39 m in the game, as the plan's 0.38.
 
 ### Ray gun (`ray_gun`, #797)
 
@@ -392,6 +434,12 @@ round the barrel, no dish, no green; its read is the wide round lens barrel and 
 - **Ammo glb:** a cell.
 - **Cells:** Blue about 55 %, Grey 20, Black 15, Glow 10 or less.
 - **Re-cut lights:** the Blue plates and the lens barrel; the Glow cell stays its own glow.
+- **Built (#797):** 956 / 360 tris (ammo 144), 28 parts; 0.28 x 0.22 x 0.09 m drawn, 0.51 m in the game at
+  `model_scale` 2.275 (grip 1.22 of the fingers, guard 1.06: the revolver's numbers). Blue 51 %, Grey 27, Black 14,
+  Glow 8.5. The side plates are notched over the cell (x -0.07 to +0.02 down to z 0.07), so its Glow core shows from
+  the side; the cell is 0.12 long, a 0.08 Glow core of radius 0.018 between Grey caps, to fit between the plates.
+  The bezel is a ring (`_revolve.revolve_x`, closed), the lens 3 mm inside its front. The `Trigger` is the flare
+  gun's (-0.023, 0, -0.012).
 
 ### Freeze gun (`freeze_gun`, #797)
 
@@ -411,6 +459,58 @@ guns: no glass bulb, no copper coils.
 - **Ammo glb:** a full tank.
 - **Cells:** Frost about 35 %, Grey 30, DarkGrey 20, Black 10, Glow 5-8.
 - **Re-cut lights:** the receiver, the tank and the fins; the Glow parts stay their own glow.
+- **Built (#797):** 1,304 / 460 tris (ammo 288), 37 parts; 0.91 x 0.34 x 0.10 m drawn, 0.94 m in the game at 1.3 (grip
+  0.78, guard 0.95: the Tommy gun's). Frost 30 %, DarkGrey 29, Grey 24, Black 13, Glow 4.4: the first build had 2.4 %
+  Glow, so the tank carries a sight strip on each side (not the right only), which a teammate sees from either side.
+  Frost stays under the plan's 35 % because the stock and barrel are DarkGrey. Moved to fit: the fins every 0.036 from
+  -0.51 (not 0.045 from -0.50) and the Tommy gun's foregrip 7.5 cm back, so they clear each other: `Support` (-0.295,
+  0, -0.045). The clamps' straps, saddles, the valve stem and the feed pipe are detail; the tank's far level has a
+  profile of its own (keeping every other point of a rounded end made the two ends unlike).
+
+### The holds for #797's three
+
+The hold files are the build issues' (`holds/dual_pistols.tres` is #789's, `holds/ray_gun.tres` and
+`holds/freeze_gun.tres` #788's, each on a stand-in model until these land). The grips are solved at these sizes
+(`gameplay/player/grips/<model>.tres`; `test_hand_grips.gd` fails when a hold's `model_scale` differs from its grip's),
+and `tests/captures/model_hold_sheet.tscn` holds each model with these numbers (its `MODELS`) on its class's file:
+
+| Hold | `scene` | Class | `model_scale` | `size_factor` | `real_length` | `model_length` | `muzzle` | `butt` | `support` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `dual_pistols` | `service_pistol.glb` | Pistol (Dual) | 1.95 | 1.75 | 0.216 | 0.25 | (-0.17, 0.045, 0) | (0.074, 0, 0) | none |
+| `ray_gun` | `ray_gun.glb` | Pistol | 2.275 | 1.75 | 0.28 | 0.278 | (-0.2, 0.05, 0) | (0.078, 0, 0) | none |
+| `freeze_gun` | `freeze_gun.glb` | Rifle | 1.3 | 1 | 0.90 | 0.908 | (-0.6, 0.05, 0) | (0.3, 0, 0) | (-0.295, -0.045, 0) |
+
+Points are Godot's (the model's units, up +Y, the gun's left +Z); `grip_offset` and `stance_turn_deg` stay the class's
+(the revolver's for the pistols, the Tommy gun's for the freeze gun).
+
+### The left hand's reach
+
+Measured on #796's first build: with the plan's supports (0.32-0.34 ahead of the grip) the three guns were held in
+the capture's holds with the left hand **3 to 29 mm into the weapon** (`HandContact`, the grip test's measure), while
+the Tommy gun and the double held clean. The plan's numbers are drawing units, and these guns are held at 1.3 (the
+.50 at 1.21), where the first long guns are at 0.84-0.96: 0.34 is 0.35 m in the game, against 0.24-0.28 m on the lever
+rifle and the double. Add a stock long enough to put the butt 0.44 m behind the grip and the support was 0.75-0.85 m
+from the shoulder; the Soldier's arm is 0.66 m with the chest turn giving some more, and the IK stopped short, inside
+the gun. The capture prints the gap (`left_gap`: the left hand bone to where `WeaponHandsIK` sent it): 3.4 cm on the
+.50 and 3 cm on the M249 still at 0.71 m, 1.7 cm on the pump at 0.72 m, 0 on the Tommy gun and the double.
+
+**The rule:** the shoulder to the support, `|grip_offset.z| + |support.x| x model_scale x 0.8`, about **0.70 m or
+less**, then measure the gap: the support's height and the chest turn move the limit by a few centimetres. Here
+`grip_offset.z` is the butt's distance behind the grip in the game and 5 cm (the Tommy gun's margin; the rifle's and
+the double's are 8). So on a gun held at 1.3: the support about 0.27-0.32 ahead of the grip and the butt at most
+about 0.30-0.34 behind it, whatever the real gun's stock is. The support can only come back as far as the hand
+clears the magazine or the box: at -0.26 on the .50 and -0.27 on the M249 the hand met them and the solver's left grip
+left the thumb 80 mm off. So the support moved back to just ahead of them, and the stock took the rest:
+
+| Model | `model_scale` | Butt (drawn) | `grip_offset.z` | Support (drawn) | Shoulder to support | `left_gap` |
+| --- | --- | --- | --- | --- | --- | --- |
+| Double shotgun | 0.96 | 0.43 | -0.41 | -0.36 | 0.69 m | 0 |
+| `m249` | 1.3 | 0.31 | -0.37 | -0.30 | 0.68 m | 0.2 cm |
+| `fifty_cal` | 1.21 | 0.345 | -0.385 | -0.28 | 0.66 m | 0 |
+| `pump_870` | 1.3 | 0.30 | -0.365 | -0.32 | 0.70 m | 0 |
+
+These `grip_offset`s are the ones `game/tests/captures/model_hands_sheet.gd` holds the three with; the holds of #793
+should start from them, and keep the `model_scale` the grips were solved at (the grip test compares the two).
 
 ## What a batch hands back
 
@@ -418,6 +518,12 @@ Per weapon, in the pull request: the module in `weapon_specs/`, the three glb fi
 and far against the table above), `measure_weapons.py`'s line for it, a capture of it beside the ten at the same scale
 (`render_weapon_plan.py`, then its silhouette at 42 px/m showing the signature mass), the Soldier holding it from the
 side and from the shoulder camera, the headless import with no `ERROR`, and `test_weapon_muzzle.gd` passing.
+
+Before the build issue writes a model's hold, `game/tests/captures/model_hands_sheet.tscn` films it in the Soldier's
+hands (#796): its `HOLDS` table builds the hold from the plan's numbers and hands it to `PlayerAnimation` the way
+`equip` does, beside catalogue weapons equipped the normal way, and prints `HANDS` per pose (`HandContact`, the grip
+test's measure, and `left_gap`, how far the left hand stopped from where the IK sent it). `render_weapon_plan.py --add
+<id>=<row>@<model_scale>` draws a model no hold file names yet.
 
 ## Reference photos
 

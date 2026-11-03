@@ -12,15 +12,17 @@ extends RefCounted
 ## combat events that caused them.
 ##
 ## Events (fields besides `type`):
-##   shot_fired: shooter_id, weapon_id, seq, muzzle, ends (one point per pellet), flesh (the point
-##     of every zombie the shot hit, for the view's impacts), ammo, reserve, rewound_by
+##   shot_fired: shooter_id, weapon_id, seq, hand (0 the right, 1 the left: a dual weapon's shots
+##     alternate), muzzle, ends (one point per pellet), flesh (the point of every zombie the shot
+##     hit, for the view's impacts), ammo, reserve, rewound_by
 ##   quick_melee: shooter_id, seq, muzzle, ends (one point: the blow's reach), flesh (the point of
 ##     every zombie it hit); the damage follows as `damage_dealt` and `target_killed` with `melee`
 ##   fire_rejected: shooter_id, seq, reason (`reloading`, `cooldown`, `empty`, `no_weapon`,
 ##     `bad_aim`); a quick melee in its cooldown is one with reason `cooldown`
 ##   damage_dealt: shooter_id, target_id, zone, damage, headshot, melee, pellets, health, point,
 ##     weapon_id, dir (the unit way the shot or blow travelled, ZERO for a burst: the view sprays
-##     blood along it and looks for a wall behind the zombie, `BloodFx`)
+##     blood along it and looks for a wall behind the zombie, `BloodFx`), element (the id of the
+##     element that made the damage, empty for the weapon's own hit)
 ##   target_killed: shooter_id, target_id, zone, headshot, melee
 ##   reload_started: shooter_id, weapon_id, seconds
 ##   reload_finished: shooter_id, weapon_id, ammo, reserve
@@ -31,7 +33,13 @@ extends RefCounted
 ##     weapon's weapon_equipped
 ##   weapon_equipped: player_id, weapon_id, ammo, reserve
 ##   ammo_added: player_id, weapon_id, added (rounds that fitted), ammo, reserve
-##   weapon_upgraded: player_id, weapon_id, tier, display_name, ammo, reserve, magazine, damage
+##   weapon_upgraded: player_id, weapon_id, tier, display_name, ammo, reserve, magazine, damage,
+##     fire_interval, element (the id of the element it carries, empty for none)
+##   element_burst: shooter_id, weapon_id, element, point, radius (a re-cut weapon's blast: the view
+##     draws the burst; the damage follows as `damage_dealt` with `element`)
+##   element_arc: shooter_id, weapon_id, element, from, to (a point for each zombie the arc reached)
+##   fire_patch_started: patch_id, shooter_id, weapon_id, element, point, radius, seconds (the
+##     ground a re-cut flare gun's burst sets burning; its hits are `damage_dealt` with `element`)
 ##   projectile_spawned: projectile_id, shooter_id, weapon_id, position, velocity
 ##   projectile_burst: projectile_id, shooter_id, weapon_id, point, radius, kind
 ##   action_rejected: reason
@@ -55,6 +63,8 @@ var _projectiles: Array[ProjectileState] = []
 var _quick_wait: Dictionary[int, float] = {}
 var _quick_def: WeaponDef
 var _next_projectile: int = 1
+## The fire patches a re-cut flare gun leaves, and the numbers of the blast and the arc.
+var _elements := ElementPlay.new()
 var _events: Array[Dictionary] = []
 
 
@@ -288,7 +298,7 @@ func _add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> void:
 ## rules). The rules have already charged; a weapon that is not carried, can not be re-cut or
 ## already is, is refused.
 func _upgrade(player_id: int, weapon_id: StringName) -> void:
-	var spec := rules.tuning.upgrade if rules != null else UpgradeTuning.new()
+	var spec := rules.tuning.upgrade if rules != null else UpgradeTuning.shipped()
 	var state := state_of(player_id, weapon_id)
 	if state == null:
 		_emit(&"action_rejected", {"reason": &"not_carried"})
@@ -308,6 +318,8 @@ func _upgrade(player_id: int, weapon_id: StringName) -> void:
 			"reserve": state.reserve,
 			"magazine": state.def.magazine_size,
 			"damage": state.def.damage,
+			"fire_interval": state.def.fire_interval,
+			"element": state.def.element.id if state.def.has_element() else &"",
 		}
 	)
 
@@ -356,6 +368,7 @@ func _tick(delta: float) -> void:
 					}
 				)
 	_step_projectiles(delta)
+	_burn_patches(delta)
 
 
 # --- Firing ---
@@ -416,6 +429,7 @@ func _fire(action: Dictionary) -> void:
 			"shooter_id": shooter_id,
 			"weapon_id": def.id,
 			"seq": seq,
+			"hand": state.hand,
 			"muzzle": muzzle,
 			"ends": ends,
 			"flesh": flesh,
@@ -427,6 +441,8 @@ func _fire(action: Dictionary) -> void:
 	for target_id: int in damage:
 		var total: Dictionary = damage[target_id]
 		_hurt(shooter_id, target_id, total, def.is_melee(), def.id, dir)
+	if def.has_element() and def.is_hitscan():
+		_element_hits(shooter_id, def, damage)
 
 
 ## The quick melee (#411): the same sweep as a melee weapon's, with the quick melee's own numbers,
@@ -548,6 +564,7 @@ func _hurt(
 			"point": total["point"],
 			"weapon_id": weapon_id,
 			"dir": dir,
+			"element": total.get("element", &""),
 		}
 	)
 	if killed:
@@ -658,6 +675,125 @@ func _burst(projectile: ProjectileState, result: Dictionary, alive: Dictionary) 
 			)
 	for target_id: int in damage:
 		_hurt(projectile.shooter_id, target_id, damage[target_id], false, projectile.def.id)
+	_start_patch(projectile, point)
+
+
+# --- Elements ---
+
+
+## The zombies the server counts as alive, with where they stand now.
+func _alive_targets() -> Dictionary:
+	var alive := {}
+	for id in _targets:
+		if _alive.has(id):
+			alive[id] = _targets[id]
+	return alive
+
+
+## What a re-cut weapon's element does for the hits of one shot (`damage`, one entry for each zombie
+## it hit): every hit bursts (`ElementDef.blast_radius`) and arcs (`arc_targets`) from the point
+## where it landed. Each blast and arc is one more hit for the zombies it reaches, for the shooter,
+## so the rules pay and kill as for any hit.
+func _element_hits(shooter_id: int, def: WeaponDef, damage: Dictionary) -> void:
+	var element := def.element
+	var hit_ids := damage.keys()
+	for target_id: int in damage:
+		var point: Vector3 = damage[target_id]["point"]
+		if element.has_blast():
+			_blast(shooter_id, def, point, target_id)
+		if element.has_arc():
+			_arc(shooter_id, def, point, hit_ids)
+
+
+func _blast(shooter_id: int, def: WeaponDef, point: Vector3, hit_id: int) -> void:
+	var alive := _alive_targets()
+	_emit(
+		&"element_burst",
+		{
+			"shooter_id": shooter_id,
+			"weapon_id": def.id,
+			"element": def.element.id,
+			"point": point,
+			"radius": def.element.blast_radius,
+		}
+	)
+	for victim in ElementPlay.blast_victims(def, point, alive, hit_id):
+		_hurt_by_element(shooter_id, def, victim["target_id"], victim["damage"], point)
+
+
+func _arc(shooter_id: int, def: WeaponDef, point: Vector3, hit_ids: Array) -> void:
+	var alive := _alive_targets()
+	var victims := ElementPlay.arc_victims(def, point, alive, hit_ids)
+	if victims.is_empty():
+		return
+	var ends: Array[Vector3] = []
+	for victim in victims:
+		ends.append(ElementPlay.arc_end(alive[victim["target_id"]]))
+	_emit(
+		&"element_arc",
+		{
+			"shooter_id": shooter_id,
+			"weapon_id": def.id,
+			"element": def.element.id,
+			"from": point,
+			"to": ends,
+		}
+	)
+	for victim in victims:
+		_hurt_by_element(shooter_id, def, victim["target_id"], victim["damage"], point)
+
+
+## One hit the element makes: a body hit of `damage` for the weapon's shooter.
+func _hurt_by_element(
+	shooter_id: int, def: WeaponDef, target_id: int, damage: float, point: Vector3
+) -> void:
+	var total := {
+		"damage": damage,
+		"zone": Hitbox.BODY,
+		"pellets": 1,
+		"head": false,
+		"point": point,
+		"element": def.element.id,
+	}
+	_hurt(shooter_id, target_id, total, false, def.id)
+
+
+## A burst of a weapon whose element burns the ground sets the ground alight for the weapon's lure
+## seconds (the dead stay in the fire while the lure holds them).
+func _start_patch(projectile: ProjectileState, point: Vector3) -> void:
+	var def := projectile.def
+	var patch := _elements.start_patch(
+		projectile.id, projectile.shooter_id, def, point, def.lure_seconds
+	)
+	if patch == null:
+		return
+	_emit(
+		&"fire_patch_started",
+		{
+			"patch_id": patch.id,
+			"shooter_id": patch.shooter_id,
+			"weapon_id": def.id,
+			"element": def.element.id,
+			"point": point,
+			"radius": patch.radius(),
+			"seconds": def.lure_seconds,
+		}
+	)
+
+
+func _burn_patches(delta: float) -> void:
+	var alive := _alive_targets()
+	for tick in _elements.step(delta, alive):
+		var patch: ElementPlay.Patch = tick["patch"]
+		var total := {
+			"damage": tick["damage"],
+			"zone": Hitbox.BODY,
+			"pellets": 1,
+			"head": false,
+			"point": ElementPlay.arc_end(alive[tick["target_id"]]),
+			"element": patch.element.id,
+		}
+		_hurt(patch.shooter_id, tick["target_id"], total, false, patch.weapon_id)
 
 
 func _emit(type: StringName, fields: Dictionary = {}) -> void:

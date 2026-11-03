@@ -341,6 +341,201 @@ fails when a file changed, or one was added or dropped, without a new measuremen
 new table fails it). A trim moved without measuring already failed. What the hash does not cover is the playing code
 (jitter, the audio service): the bench is re-run when that changes.
 
+## The second batch of firearms (#790)
+
+The PPSh, the M249 SAW, the M4A1, the .50 calibre rifle, the MP5, the 870 pump and the dual pistols have sounds before
+the weapons themselves are in the catalogue (#793, #789). Synthesised, in their own module
+`tools/audio/gun_recipes_2.py` (the energy weapons' are another's), built from `weapon_recipes.py`'s own `report` and
+`tail` and shared clicks, thuds and rasps, which that file keeps as they were: no existing file changed (the first
+guns' hashes are the same). Each gun has a report (`shot_<gun>`, five variants that differ in their noise and not
+their note), a tail (`tail_<gun>`, three), an equip (`equip_<gun>`, two), a dry click (`dry_<gun>`, two) and the steps
+of its reload (two variants each). A bank of their own, `core/audio/banks/firearms_2.tres`, holds the 49 sounds;
+`WeaponSounds` maps each gun id to them (`FIRE`, `RELOAD`, `EQUIP`, `DRY`; the dry click reads the shooter's weapon
+from the frame, the equip from the event), so the build issues only add the weapons.
+
+| Gun id | Kind | Report | Equip, dry click | Reload steps (the names of the weapon's `ReloadMotion` events) |
+| --- | --- | --- | --- | --- |
+| `ppsh` | fast light SMG | bright, a thin low end, the receiver's ring | light rustle; a bolt's clack | `drum_out`, `pouch`, `drum_in` (rounds rattling in the drum), `bolt` |
+| `m249` | heavy LMG | a rifle round through a long barrel: a thump that stays, a ring that chatters | a heavy rustle with the belt shifting; a heavy bolt thud | `cover_open`, `pouch`, `belt_in` (links chinking), `cover_shut` (the loudest), `charge` |
+| `m4a1` | carbine | a crack over a short boom, no ring | light; a sharp tick | `mag_out`, `pouch`, `mag_in`, `bolt` (the catch slapped) |
+| `fifty_cal` | huge rifle | a long roar, a thump an octave under the rifle's, a note that hangs, a 1.4 s tail | a very heavy rustle; a heavy clunk | `mag_out`, `pouch`, `mag_in` (box magazine), `bolt` (lift, back, forward, down: 0.43 s) |
+| `mp5` | tight 9 mm SMG | darker and meatier than the PPSh, a short boom | light; a small tick | `mag_out`, `pouch`, `mag_in`, `bolt` (a sharp slap) |
+| `pump_870` | one barrel of twelve gauge | the double-barrel's boom, shorter and sharper | the slide worked as it comes up; a hollow click | `pouch`, `shell_in` (once for each shell the motion lists), `pump` (back, a beat, forward) |
+| `dual_pistols` | two self-loading pistols | a quick pop, shorter than the revolver's | two guns drawn a moment apart; two hammers | `mag_out`, `pouch`, `mag_in`, `slide` (each two, the second hand a hair behind) |
+
+The step names are a proposal: #793 draws the motions and must give each event the name in `WeaponSounds.RELOAD` (or
+change the table); `test_every_firearm_has_reload_steps_of_its_own_mechanism` then holds the two together.
+
+**Rules they follow** (all of the table at the top): the pitch and level rules, the own shot flat, a tail 14 dB under
+its report (the fast guns share the tommy gun's 0.22 s tail cooldown), and a peak no closer to full scale than the
+loudest first gun's, **-4.9 dBFS** (the rifle's): the close sounds' room (-9.8 dBFS, `test_close_sound_levels.gd`) is
+derived from that figure, so every new gun peaks at -5.0 or lower, which also meets the -4.5 rule. Their trims were set
+from the first bench run: -6.5 dB for the PPSh, M4A1 and dual pistols, -6.0 for the MP5 (it had 0.7 LU to spare and
+0.7 dB of peak), -7.0 for the .50 calibre and the pump (-6.5 peaked at -4.6 and -4.9) and -8.0 for the SAW: at -6.5 it
+peaked at -5.0 alone, but its burst is dense (11 shots a second of a 0.2 s report, a crest factor of 9 dB), and a
+teammate's reload step landing on it reached -0.7 dBFS (2 samples over -1); at -7.0 it was -1.0 (1 sample), at -8.0
+-1.5 (0).
+
+**Fire intervals** are #785's ([the nine new weapons](../design/weapons.md)): the bench fires each gun at its
+`fire_interval`; the guns have no definition yet, so `audio_gun_bench.gd` has `PROVISIONAL_INTERVAL` (PPSh 0.055 s,
+M249 0.09, M4A1 0.11, MP5 0.10, .50 calibre 0.9, pump 0.65, dual pistols 0.15, alternating) and uses a definition's own
+when there is one. #785's reload times (PPSh 2.8 s, M249 5.0, M4A1 2.1, MP5 1.9, .50 calibre 3.4, pump 2.8 shell by
+shell, dual pistols 1.6 for both) are the motions' (#793), which place the steps. If a number changes, run the bench
+again (below) and update `gun_levels.json`; the test fails on a changed file or trim, not on an interval.
+
+**Measured**, `audio_gun_bench.tscn` through `tools/audio/gun_levels.py` (the own shots, flat, beds at -35.3 LUFS);
+the revolver and tommy gun are in the run and read as in the table above:
+
+| Gun | One shot, loudest 400 ms (LUFS) | LU over beds | Burst, 2 s (LUFS) | LU over beds | Peak (dBFS) | Centroid (Hz) | Energy under 250 Hz | In the first 50 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Revolver | -18.0 | 17.3 | -16.5 | 18.8 | -5.5 | 2986 | 0.44 | 0.96 |
+| Tommy gun | -20.4 | 14.9 | -13.4 | 21.9 | -5.5 | 3023 | 0.55 | 0.99 |
+| PPSh | -20.7 | 14.6 | -12.8 | 22.5 | -5.4 | 3353 | 0.38 | 0.99 |
+| M249 | -19.0 | 16.3 | -12.8 | 22.5 | -6.6 | 2659 | 0.77 | 0.90 |
+| M4A1 | -18.0 | 17.3 | -13.2 | 22.1 | -5.4 | 2938 | 0.71 | 0.97 |
+| .50 calibre | -14.9 | 20.4 | -16.1 | 19.2 | -5.1 | 2693 | 0.79 | 0.36 |
+| MP5 | -20.1 | 15.2 | -14.1 | 21.2 | -5.2 | 3038 | 0.61 | 1.00 |
+| 870 pump | -15.7 | 19.6 | -16.9 | 18.4 | -5.6 | 2639 | 0.65 | 0.67 |
+| Dual pistols | -20.2 | 15.1 | -15.8 | 19.5 | -5.2 | 2943 | 0.43 | 0.98 |
+
+The rules ask 14 LU for a shot, 17 for a burst, -4.5 dBFS peak. Kinds read in the numbers: the PPSh is the brightest
+and the thinnest (centroid 3353 Hz, 0.38 under 250 Hz); the SAW has the most low-end energy of the automatic guns and,
+even 1.5 dB under its first trim, the loudest burst; the .50 calibre's report is the longest (0.62 s, 0.36 of its
+energy in the first 50 ms against the shotgun's 0.58, a tail of 1.4 s) and its band energy peaks at 20-60 Hz. The
+burst's thump-pitch spread of the PPSh (2.2 semitones) is an artefact of its 55 ms interval being shorter than the
+60 ms window the figure reads; the applied pitch is within +-0.15 semitones as for every gun.
+
+**Reload steps, equips and dry clicks** are held to the first guns' ranges, not louder: file peaks -3.6 to -6.3 dBFS
+(the first guns' steps -3.0 to -6.0), loudest 400 ms -18.7 to -29.3 dB under full scale (-17.5 to -30.8). The heavy
+steps (the SAW's cover shut, the .50 calibre's bolt, the pump's stroke) say so in their length and low end, not in a
+hotter file (the loudest step landing on a gun is what #718 limited). Not measured: their audibility under fire, which
+needs each weapon's motion (#793); `reload_audibility.py` does it then.
+
+Run: `generate.py --only <the names in gun_recipes_2.py>`, then the bench with `weapons=pistol,smg,ppsh,m249,m4a1,
+fifty_cal,mp5,pump_870,dual_pistols`, recorded to `.avi` and the track pulled with ffmpeg (the PNG movie writes a file
+for every frame, thousands, and ran at half the speed), `gun_levels.py --table`, merged into `tests/night/gun_levels.json`.
+
+## The energy weapons and the re-cut layer (#791)
+
+The ray gun, the freeze gun and what an upgraded weapon sounds like. Recipes: `tools/audio/energy_recipes.py`; played by
+`EnergySounds` and `RecutLayer`; measured by `game/tools/bench/audio_energy_bench.tscn` through
+`tools/audio/energy_levels.py` (the gun bench's method, with each weapon plain and re-cut), pinned in
+`game/tests/night/energy_levels.json` by `test_energy_audio_rules.gd`. The design is
+[Sound](../design/audio.md#the-energy-weapons-and-the-re-cut-layer).
+
+### How the genre's upgraded weapons sound (design only)
+
+Read from fan wikis; no developer account or sound-design breakdown was found, and the pages disagree, so this is what
+can be said and no more:
+
+- The upgraded weapon's shot is audibly *processed*, a "strange" firing sound, and that is the one thing the sources
+  share. A fan wiki of the first game's mode lists, among the upgrade's changes, that the shots of bullet weapons are
+  **higher in pitch** ([Nazi Zombies wiki, Pack-a-Punch](https://nazizombies.fandom.com/wiki/Pack-a-Punch)); the
+  same family's wiki says a later game's upgraded weapons are **noticeably lower in pitch with a pulsating sound**, and
+  its shotguns have a unique **laser-like** sound
+  ([Call of Duty wiki, Pack-a-Punch Machine](https://callofduty.fandom.com/wiki/Pack-a-Punch_Machine)); a console
+  port's note there says some weapons lacked the strange firing sounds. A guide describes the sound as a "laser-like
+  pew-pew" added to the gun's
+  ([GameRant](https://gamerant.com/call-of-duty-cod-mw3-modern-warfare-3-zombies-how-pack-a-punch-start-upgrade-weapon/)).
+- So the direction of the pitch is not the signal (up in one game, down in another); what is: an electronic,
+  laser-like, pulsing character laid on the gun, and a machine whose own sound ends on a jingle.
+- **What we took:** the idea of a layer (not a re-pitched gun: our pitch rule stays within 0.15 semitones), the laser's
+  sweep and the pulse, and a bench whose last sound is the layer's own ring so the player learns the pair. Nothing of
+  any game's sound is copied; the layer and the elements are our own recipes.
+
+### What was made
+
+| Family | Sounds | Notes |
+| --- | --- | --- |
+| Ray gun | `shot_ray` (4), `bolt_ray` (loop), `burst_ray` (3), `reload_ray_cell_out`/`_in` (2 each), `equip_ray` | a charge (a sweep 350 Hz to 2.2 kHz in 90 ms) let go with a crack, a falling FM zap, a bark and a thump; a hum of two close notes beating at 7 Hz for the bolt; a boom and a shower of crackle for the burst |
+| Freeze gun | `shot_freeze` (4), `freeze_hit` (2), `freeze_creak` (4), `freeze_thaw` (2), `freeze_shatter` (4), `reload_freeze_out`/`_in`, `equip_freeze` | a valve's hiss, a bark and an icy crackle; glass notes rising over a thickening crackle; stick-slip creaks; drips; a crack and twenty-odd tinkling shards |
+| Re-cut layer | `recut_layer` (5), `recut_deep` (3, the wonder weapons'), accents `recut_blast`, `recut_shock`, `recut_fire` (3 each) | played over the shot of any re-cut weapon, 30 ms behind the report; the element accents over it |
+| The bench | `buy_recut` | follows [#787's bench](https://github.com/Ryubara/deadnight/pull/802): the strike at 0.8 s, the ring of light and the skin's sweep from butt to muzzle to 1.35 s, the layer's own ring at 1.55 s |
+
+Every shot keeps the firearms' rules: flat for the shooter, from the muzzle for a stranger, within 0.15 semitones and
+0.5 dB, the variants within 2 percent of one note, no bus effect (the shot is limited in its recipe, `limit_crest`, run
+three times to hold a crest of 7 dB: one pass leaves it 5 dB over because the limit also lowers the loudest 400 ms it is
+read against).
+
+### The shots, measured
+
+The gun bench's method (`tools/audio/energy_levels.py`: the listener 2.7 m behind the muzzle, 60 frames a second, the
+night's beds at -35.3 LUFS). The ray gun fires every 0.45 s and the freeze gun every 0.8 s in the bench (#785's numbers).
+
+| Weapon | Loudest 400 ms of a shot (LUFS) | Burst, 2 s (LUFS) | Peak of a shot / of a burst (dBFS) | Over the beds, shot / burst (LU) | Centroid (Hz) | Low end under 250 Hz |
+| --- | --- | --- | --- | --- | --- | --- |
+| Ray gun | -13.8 | -14.2 | -7.5 / -6.5 | 21.5 / 21.1 | 2884 | 0.20 |
+| Freeze gun | -14.0 | -17.4 | -6.0 / -5.5 | 21.3 / 17.9 | 5969 | 0.01 |
+
+Both clear the rules (14 LU for a shot, 17 for a burst, a peak under -4.5 dBFS). The ray gun is trimmed -7.5 dB (the
+loudest firearm, the shotgun, reads -15.3 for its loudest 400 ms) and the freeze gun -6.5 dB: a cold hiss has no low
+end to give it weight, so its burst is the one closest to the rule (17.9 LU against 17).
+
+### The re-cut layer, measured
+
+A first version, started with the shot and trimmed 18 dB under it, lifted a rifle's burst peak by 0.7 dB and was not
+heard (+0.3 dB in the tail of the revolver's shot): its loudest moment landed on the report's peak, and its body was
+25 dB under its own peak. It now starts 30 ms behind the shot, is made dense (a crest of 7 dB) and rings and pulses for
+half a second; its trim was chosen on a model (the rendered layer added to the recorded plain shots at a few gains,
+reading the peak added and the tail and band it adds) and then measured. At -22 dB (the accents -23; the layers start at
+most every 0.12 s, on a voice group of four) the bench reads, re-cut minus plain:
+
+| Weapon | Peak added, shot / burst (dB) | Loudest 400 ms / burst (LU) | Tail 0.08 to 0.5 s (dB) | 2 to 8 kHz band there (dB) | 250 to 500 Hz band (dB) | Centroid (Hz) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Revolver (+ explosive accent) | +0.8 / -0.1 | +0.3 / +0.4 | +9.3 | +18.4 | -7.0 | 3062 to 6231 |
+| Tommy gun | +0.1 / +0.9 | +0.3 / +0.3 | +16.2 | +23.0 | -17.6 | 3062 to 6044 |
+| Rifle | +0.1 / -0.1 | +0.3 / +0.1 | +2.2 | +17.1 | +0.1 | 2731 to 4116 |
+| Shotgun | +0.3 / +0.1 | -0.1 / +0.3 | -0.2 | +9.1 | +0.1 | 2458 to 3213 |
+| Flare gun (+ fire accent) | +0.1 / +0.4 | +0.3 / +0.1 | +8.2 | +16.5 | -0.4 | 3028 to 5912 |
+| Ray gun (`recut_deep`) | +1.2 / +0.6 | +0.1 / +0.0 | +0.3 | -1.7 | +6.7 | 2884 to 2936 |
+| Freeze gun (`recut_deep`) | +0.2 / +0.8 | -0.5 / +0.4 | -0.5 | -2.3 | +23.5 | 5969 to 5966 |
+
+- **Headroom kept.** The most the layer adds to a peak is 1.2 dB, and every re-cut shot or burst stays under -4.5 dBFS
+  (the Tommy gun's burst, -4.8, and the freeze gun's, -4.7, are the closest). The loudest 400 ms moves by at most
+  0.5 LU either way: the guns are as loud as they were, and the weapon is heard as upgraded by what rings after the
+  report.
+- **Heard.** The firearms gain 9 to 23 dB in the 2 to 8 kHz band of the tail. The shotgun's tail is its own 0.4 s of
+  boom, so the whole tail moves by nothing and only its bright band shows the layer (+9.1 dB). The two wonder weapons'
+  shots already fill that band with zaps and glass (the shared layer read -1.7 and -2.3 dB there: lost), so they have
+  the same idea an octave and a half lower (`recut_deep`: a falling sweep, three low partials that pulse, a longer sub
+  pulse): +6.7 dB and +23.5 dB in the 250 to 500 Hz band.
+- **Still the same gun.** The report keeps its front (the share of a shot's energy in its first 50 ms is 0.94 to 0.91 for
+  the revolver and 0.99 to 0.93 for the Tommy gun), but the window's energy is mostly the layer's ring: the bench's
+  low-end share falls (the Tommy gun's 0.52 to 0.03, because its report lasts 70 ms and the layer 500) and the centroid
+  roughly doubles. That is the audible difference, and why the layer is trimmed 22 dB and no more.
+- **Elements.** #785 gives four re-cut elements: explosive rounds (the revolver), shock (the dual pistols), fire (the
+  pump 870, and the flare gun's burning ground). Each plays an accent over the shared layer (`recut_blast`,
+  `recut_shock`, `recut_fire`: no ring of their own, a different noise and pulse); the wonder weapons have no element.
+  A weapon not yet in the catalogue (the dual pistols, the pump 870) has its element in `RecutLayer.WEAPON_ELEMENTS`
+  already; a test pins the table to the design.
+
+### The close sounds
+
+The burst, the freeze, the creak, the thaw and the shatter can sound a metre from the listener, so they follow
+[the close-sound rule](#close-sounds-under-gunfire): the loudest sample 1.2 m ahead leaves room for a shot. Read from a
+recording of the bench's close stage (every variant, one at a time):
+
+| Sound | Held to (dB over its file) | Highest sample (dBFS) | Loudest 400 ms (LUFS) |
+| --- | --- | --- | --- |
+| `burst_ray` | -6.0 | -11.0 | -20.9 |
+| `freeze_shatter` | -5.0 | -10.9 | -19.0 |
+| `freeze_thaw` | -2.5 | -10.9 | -18.8 |
+| `freeze_hit` | -2.5 | -10.7 | -17.9 |
+| `freeze_creak` | -3.0 | -11.8 | -20.2 |
+
+The room is -9.8 dBFS (what the loudest firearm's -4.9 leaves under -1 dBFS). The first versions of the freeze's quiet
+sounds read -31 to -37 LUFS, under the night's beds: made of ticks and drips (a crest of 25 dB), their body at the
+highest level a close sound may have was inaudible. They are now limited to a crest of 10 dB in their recipes.
+
+### What is left open
+
+- The wonder weapons' reload steps follow the events `cell_out`, `cell_in`, `canister_out` and `canister_in` of their
+  reload motions once those exist; until then they play at 0.12 and 0.55 of the reload.
+- The freeze events (`zombie_frozen`, `zombie_thawed`, `zombie_shattered`) are named in `EnergySounds`; the status
+  effect of [#788](https://github.com/Ryubara/deadnight/issues/788) sends them or calls the methods of the same names.
+- Nobody can listen here: the sounds are judged by these numbers, and the clips on the pull request are for the
+  maintainer's ears.
+
 ## Browser
 
 `tools/web_smoke/gun_levels_web.py` plays the same bench in headless Chromium (the web export plays sounds as samples)

@@ -43,9 +43,12 @@ func test_the_card_at_the_bench_names_the_weapon_the_price_and_what_it_gives() -
 	assert_str(String(prompt["kind"])).is_equal("buy_recut")
 	assert_str(prompt["label"]).is_equal("Re-cut: Revolver")
 	assert_int(prompt["cost"]).is_equal(night.server.rules.price_of(&"upgrade_weapon", 1))
-	var spec := night.server.rules.tuning.upgrade
+	var cut := night.server.rules.tuning.upgrade.profile_of(&"pistol")
 	assert_str(prompt["detail"]).is_equal(
-		"DAMAGE x%s, ROUNDS x%s" % [spec.damage_multiplier, spec.magazine_multiplier]
+		(
+			"DAMAGE x%s, ROUNDS x%s, FIRES SLOWER, EXPLOSIVE ROUNDS"
+			% [cut.damage_multiplier, cut.magazine_multiplier]
+		)
 	)
 	_finish(night, hud)
 

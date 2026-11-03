@@ -86,8 +86,8 @@ script = ExtResource("2_item")
 id = &"crane_play"
 kind = 2
 price = 425
-pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe", &"weapon_pistol", &"weapon_crowbar"])
-pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1)
+pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe", &"weapon_pistol", &"weapon_crowbar", &"weapon_dual_pistols"])
+pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1, 0.5)
 
 [sub_resource type="Resource" id="Windows"]
 script = ExtResource("3_barr")
@@ -132,7 +132,7 @@ breach_name = "Boarded window"
 [resource]
 script = ExtResource("1_map")
 id = &"small_indoor"
-dropped_kinds = Array[int]([0, 1, 2, 3, 4, 5, 7])
+dropped_kinds = Array[int]([0, 1, 2, 4, 5])
 items = Array[ExtResource("2_item")]([SubResource("Link_side"), SubResource("Link_stairs_start"), SubResource("Link_stairs_side"), SubResource("Wall_pistol"), SubResource("Wall_crowbar"), SubResource("Wall_shotgun"), SubResource("Wall_smg"), SubResource("Wall_bat"), SubResource("Wall_flare"), SubResource("Wall_axe"), SubResource("Cabinet_rifle"), SubResource("Box")])
 barricades = SubResource("Windows")
 crane = SubResource("TheBox")
@@ -141,6 +141,6 @@ bot_clear_from = 5.0
 bot_calm_share = 0.6
 bot_hurt_share = 0.0
 bot_team_links = true
-bot_shopping = Array[StringName]([&"door_side", &"weapon_shotgun", &"weapon_smg", &"door_stairs_start", &"weapon_rifle", &"door_stairs_side", &"crane_play", &"weapon_fire_axe", &"weapon_baseball_bat"])
+bot_shopping = Array[StringName]([&"door_side", &"weapon_shotgun", &"weapon_smg", &"door_stairs_start", &"weapon_rifle", &"door_stairs_side", &"crane_play", &"tonic_hearty", &"upgrade_weapon", &"tonic_swift_rescue", &"tonic_quick_load", &"weapon_fire_axe", &"weapon_baseball_bat"])
 fuel = SubResource("NoGenerator")
 words = SubResource("Words")

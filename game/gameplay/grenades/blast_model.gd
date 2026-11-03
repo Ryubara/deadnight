@@ -48,16 +48,25 @@ static func against_zombie(
 	return result
 
 
-## What a blast does to a player: a chest-high point, one line check. `{"damage", "distance"}`
-## with the damage before the thrower's reduction.
-static func against_point(
-	def: GrenadeDef, point: Vector3, target: Vector3, world_ray: Callable
+## What a blast does to a player whose chest is at `chest`: the share of their `max_health`
+## (`PlayerBlast`) at that distance, nothing when something solid stands in the line (the zombies'
+## cover check). A grenade that goes off in the player's own hand (`held`) takes all of it, wall or
+## no wall: it is in their hand. `{"damage", "share", "distance"}`.
+static func against_player(
+	def: GrenadeDef,
+	point: Vector3,
+	chest: Vector3,
+	max_health: float,
+	held: bool,
+	world_ray: Callable
 ) -> Dictionary:
-	var distance := point.distance_to(target)
-	var damage := 0.0
-	if def.falloff(distance) > 0.0 and sees(def, point, target, world_ray):
-		damage = def.damage * def.falloff(distance)
-	return {"damage": damage, "distance": distance}
+	var distance := point.distance_to(chest)
+	var share := 0.0
+	if held:
+		share = 1.0
+	elif sees(def, point, chest, world_ray):
+		share = PlayerBlast.share(distance, def.player_full_radius, def.blast_radius)
+	return {"damage": max_health * share, "share": share, "distance": distance}
 
 
 ## Whether nothing solid stands between the blast and `target` (the line check of the cover rule).

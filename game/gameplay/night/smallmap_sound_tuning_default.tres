@@ -14,6 +14,8 @@ roof_db = Dictionary[StringName, float]({
 &"UpperA": -4.0,
 &"UpperB": 0.0
 })
+roof_gust_db = 3.0
+yard_gust_db = 6.0
 wall_db = -15.0
 boarded_db = -8.0
 open_db = -1.5

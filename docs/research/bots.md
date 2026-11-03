@@ -803,7 +803,7 @@ timing) are ours too ([Ocio Barriales](http://www.gameaipro.com/GameAIPro3/GameA
 | Rots after release | The abandoned L4D bots mod; Vermintide's open reports | Soak in CI, the coverage test, and an owner in each phase |
 | Makes the night easier or harder than people | Ellie's "killing machine" | The parity batch against the simulator, damage left alone |
 | Predictable and exploitable | Practice bots | Seeded variety in positions and timing |
-| Fires or throws into teammates | Any shooter | No grenade within 4 m of a teammate; blasts spare the party for now, checked again if friendly fire arrives |
+| Fires or throws into teammates | Any shooter | No grenade where its blast reaches a teammate or the bot: under a tenth of their health at that spot (`BotGrenadier.harmless_apart`, 5.8 m; the blast hurts players out to 8 m, #805) |
 
 ## Phases
 
@@ -1433,6 +1433,20 @@ Read from the first nights, in the order they were found; each is why a gate exi
   band the fit asked for; and again after main's #766 and #749, 16 of 30 (7, 6 and 3) with the change against 29 of 30
   (10, 9 and 10) without it. Tried and left: a Careful state from 30% of health and a Safe one from 15% (10 of 10), and
   the same with a track error of 20 degrees (3 of 10, no better than the one number).
+- **The Regular fell out of its fit the same way (#768).** Eight nights a cell at cap 20 on the code before this change:
+  Regular median 19, 19 and 18 rounds for one, two and four bots against the simulator's average level at 15, 15 and 17
+  (Kolmogorov distance 0.85, 0.59 and 0.44; five of eight single-bot nights reached the cap). The play states of #739
+  (a hurt bot backs away) are what a Regular did not have when it was fitted, and no player in the simulator manages
+  health. A **Regular does not manage its health either** (`careful_below` and `safe_below` 0, `BotProfile.regular`;
+  the play-state tests use the Veteran): medians **14, 17 and 16** against 15, 15 and 17 (distance 0.35, 0.32 and 0.43).
+  Tried and left, one number at a time on the same eight nights of one Regular: a track error of 8 degrees (5 of 8 at
+  the cap, the stampede of round 10 kills two or three either way), a reaction of 5 (3 of 8 stalled), a fire slop
+  (4 of 8 over round 18). The Veteran was left as it is: median 17, 20 and 18 against the strong level's 19, 20 and 20.
+  On other seeds (21 to 32, twelve nights, cap 20) the Regular reads median 16, 15 and 16 against 15, 15 and 17
+  (distance 0.39, 0.22 and 0.48; four and ten nights of the four-bot cell and the first Veteran nights were in when this
+  was written, the Veteran's one-bot median 20 against 19).
+  The distance of two curves from eight nights has a noise floor near 0.5, so the 0.2 gate is read on the nightly run's
+  hundred nights, not here.
 - **A soak that measures what the bot does must not look at what the bot believes.** `SoakWatch` reads the server's
   events and bodies; the bots' beliefs are used only to say that a zombie was in sight, which is the gate's own word.
 
@@ -1572,6 +1586,44 @@ walks about. The samples are in the report (`far_samples`); the cause is not fou
 round of eight minutes: round 15 under Follow, two headliners alive, the person and two bots down and the last bot
 with rifle and shotgun dry (`rifle [0, 0, 1]`, buying rounds for 30 s at a time under `ammo_urgent`), a lost night
 rather than a lost zombie. Kills, hits and round reached are not compared: 23 nights do not rank a tuning.
+
+#### A Follow bot far from the person (#784)
+
+The one Follow gate #770 left, "a bot beyond 25 m of the person for over 20 s outside an errand", broke in about one night
+in ten. `--watch=far` (a line a second for every bot up and 20 m or more from a person up: its note, where the person
+is, the way it walks, the dead within 12 m and the nearest) found it: the runs are a bot with **six to twenty-four dead
+within 12 m of it** (the nearest 0.4 to 6 m), the notes `retreat` and `fight` in turn, at 7 m/s, 30 to 90 m from the person,
+in the late rounds (15 and up, the big packs). The catch-up after a far errand (`boards` 60 m away, then `follow` at
+7 m/s for 7 to 9 s) is inside the gate's 20 s, and the many far lines of a night where the stand-in is down are not the
+gate's (it counts persons on their feet): read the lines the gate would count, not the far ones.
+
+**Cause.** A retreat picks one of twelve headings (`BotSteering`). The rating adds up the push of each of the eight
+nearest dead; the pull toward the person was one flat `HOME_BEND` (0.9). With a pack on the bot's heels the sum is ten to
+thirty, so the pull decided nothing and the flight ran straight away from the pack, the way away from the person
+whenever the pack stood between. A probe of the steering (a hall, a pack of 2, 4 and 8 on the person's side, 3 to 4 m off):
+a flat pull of 8 turns the flight for 2 dead and not for 4 or 8; the pull must grow with the number of dead.
+
+**Fix.** `BotFightBrain.far_bend(distance, felt)`: under the order Follow the retreat's pull is `HOME_BEND` up to 16 m
+from the person and grows to `FAR_BEND` (4) for each dead felt (the steering looks at eight at most, so 32) at 36 m. The
+steering's own rule stays the guard: a heading that closes on the dead is never taken, so the pull only turns the flight
+round the pack (a pack straight between the bot and the person is circled, not run into), and the pack is led to the
+person. Hold and Roam keep `HOME_BEND`. Test: `test_bot_steering.gd` sends eight dead between the bot and a person 30 m
+off: the near pull runs straight away, the far one goes round (it failed first with a flat pull of 8).
+
+**Measured** (`--profile=regular --bots=3 --order=follow --person`, round cap 30, machine shared, ten nights of seeds 600
+to 604 and 700 to 704 each; the before is a detached checkout of this branch without the fix, with the same tracing; a
+night is not repeatable by seed, so these are different nights):
+
+| | Before (10 nights) | After (11 nights) |
+| --- | ---: | ---: |
+| Nights with a bot beyond 25 m of the person for over 20 s | 1 (23.9 s) | **0** |
+| Longest such run in a night, median (s) | 13.1 | **5.9** |
+| Seconds a bot is beyond 25 m of a person up outside an errand, per night | 158 | **81** |
+| Round reached, median | 16 | 16 |
+
+The far seconds that are left include the walk back after an errand (`boards`, `buy` and `fuel` are left out of the
+count while the errand lasts; the walk home is not). The round that would not end (two headliners, the last bot dry) is
+the lost night that #770 describes and is untouched.
 
 #### What is left, and how the three nights are read
 
@@ -1833,3 +1885,36 @@ changed here.
 
 Not changed, and seen once: a dry holder (0 rounds, 0 in reserve, a walker 2.3 m off) idle for 6.2 s in one baseline night
 (seed 25, none in the 12 after the change); the quick melee of a dry bot is `BotCombat.may_melee`'s and #770's.
+
+## Shopping at the second map's machines (#811, #821)
+
+The overlay's `bot_shopping` now ends, after the last link, the box and the guns, with the hearty tonic (the soda
+fountain), the re-cut (the bench upstairs), the swift rescue and the quick load tonics (ground floor coolers). The three
+dearest coolers (Third Holster, Double Shot, Reload Shock) are left to a person. The profiles' `saves_for` (re-cut,
+hearty) applies to the list, which is why the machines come after every link: a bot saving for a tonic holds back
+everything after it, and a held-back link would hold the whole team's stairs.
+
+**Cause of the flaky solo night (#821): a pick with no memory.** The chooser took "the nearest seller" by flat metres at
+each think. The second map sells the shotgun twice (side room, upstairs); from the stair landing the two are within a
+metre of each other, so the goal flipped every two seconds and the bot paced the landing for the whole break
+(40 s of walking at x 9 to 11 m, no purchase, and no tonic or re-cut either). The lot has one seller of each item, so it
+never showed. Three changes, all in the shopping code:
+
+- `BotEconomy` picks the stand of a weapon, the box, a tonic, the re-cut and a grenade rack with `nearest_by_walk`:
+  the walk length when the bot has legs, else the flat metres plus `RISE_WEIGHT` (8 m) a metre of height, and the
+  stand it is already walking to counts 6 m nearer (`HEADING_CREDIT`).
+- `BotErrands` keeps that heading for every purchase (it kept it for rounds only).
+- An arrival needs the bot within `ARRIVE_HEIGHT` (1.5 m) of the stand's height: a bot under the upstairs bench was
+  flat-close, "arrived", found no prompt and gave the re-cut up.
+
+Measured (`bots_soak.tscn --map=small_indoor`, Regular, seeds 1 to 5, headless; `main` at b96eab2a against this branch):
+
+| | rounds reached | tonics + re-cuts bought | longest stuck |
+| --- | --- | --- | --- |
+| one bot, before | 8, 9, 9, 8, 8 | none | 0.0 s |
+| one bot, after | 18, 9, 18, 18, 17 | tonics 5000 and re-cuts 1500 to 4500 points in 4 nights (seed 2 died at round 9 first) | 1.5 s |
+| four bots, before | 9, 9, 14, 12, 11 | none | 5.1 s |
+| four bots, after | 11, 13, 10, 15, 14 | tonics in 4 of 5 nights, re-cuts in 2 | 2.4 s |
+
+A lone bot that buys the tonics lasts twice the rounds it did: the machines are what the economy's late points are for.
+`test_smallmap_bot_night.gd` holds the solo night over seeds 1, 3, 4 and 7 (it flaked on a seed picked to pass).

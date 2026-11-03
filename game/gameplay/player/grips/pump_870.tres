@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="HandGrip" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/hand_grip.gd" id="1_5aw1n"]
+
+[resource]
+script = ExtResource("1_5aw1n")
+hold = Transform3D(-0.22509965, -0.973833, 0.031295817, -0.97418797, 0.22550882, 0.0101788975, -0.01697003, -0.028196739, -0.9994584, -0.028726514, 0.22170877, -0.14174822)
+model_scale = 1.3
+right = {
+"Index2.R": Quaternion(-0.38490877, -0.15715869, -0.100335754, 0.9039244),
+"Index3.R": Quaternion(-0.37404814, 0.024183314, 0.008054837, 0.92705894),
+"Middle2.R": Quaternion(-0.58624816, -0.055277236, 0.156179, 0.79301053),
+"Middle3.R": Quaternion(-0.0952998, -0.004340384, -0.0046718763, 0.9954283),
+"Pinky2.R": Quaternion(-0.5531801, 0.074509695, 0.2905874, 0.7771738),
+"Pinky3.R": Quaternion(-0.22645468, -0.008322187, -0.028398538, 0.97357213),
+"Thumb1.R": Quaternion(0.016756527, 0.0059929313, 0.5978882, 0.80138206),
+"Thumb2.R": Quaternion(-0.53847504, -0.15056986, -0.2498532, 0.79053575)
+}
+right_contacts = PackedStringArray("index_tip", "middle_tip", "pinky_tip", "thumb_tip")
+trigger_finger = "trigger"
+has_left = true
+left_hand = Transform3D(-0.67065483, -0.37635556, 0.017164296, -0.21407928, 0.35185346, -0.6496809, 0.3100132, -0.571202, -0.41150478, -0.31374773, -0.1727078, 0.06257281)
+left = {
+"Index2.L": Quaternion(-0.43256405, 0.111679316, -0.05801487, 0.8927767),
+"Index3.L": Quaternion(-0.045411296, -0.009508178, 0.082420066, 0.9955172),
+"Middle2.L": Quaternion(-0.4973129, 0.045301255, -0.13554558, 0.85571903),
+"Middle3.L": Quaternion(-0.06514007, 0.0029957797, 0.0086216945, 0.99783444),
+"Pinky2.L": Quaternion(-0.4846107, -0.065496646, -0.27465376, 0.8279058),
+"Pinky3.L": Quaternion(-0.10705286, -0.004809715, 0.016935477, 0.9940974),
+"Thumb1.L": Quaternion(-0.12470998, 0.26539817, -0.52324015, 0.8001443),
+"Thumb2.L": Quaternion(0.035340946, -0.008453637, 0.17524023, 0.98385495)
+}
+left_contacts = PackedStringArray("index_tip", "middle_tip", "pinky_tip", "thumb_tip", "palm")

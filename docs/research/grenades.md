@@ -77,8 +77,9 @@ game looked finished and a player's throw key did nothing. The wiring, now:
   every `grenade_count_changed` and every kill.
 - **A refused cook ends the hold.** On `cook_rejected`, a drop, or a blast in the hand the thrower is `abandon()`ed,
   so a held key does not pull a pin every tick until it is let go (`no_grenades`, `wrong_phase`, `player_downed`).
-- **The thrower's share of the blast reaches their health** through `RulesAction.blow` (40%, cover included); the
-  zombies a blast hits are thrown and stunned through `ZombieSim.blast` (see Polish below).
+- **A blast reaches every player's health** through `RulesAction.blow` (`PlayerBlast`: all of it in the hand and within
+  1 m, less to nothing at the blast radius; #805, [the rule](../design/weapons.md#blast-on-players)); the zombies a
+  blast hits are thrown and stunned through `ZombieSim.blast` (see Polish below).
 - **The view is a copy of the grenade.** `NightView` makes a `GrenadeView` from `grenade_thrown` / `grenade_dropped`,
   steps its own `GrenadeState` on every `frame` event with the same `WorldCast`, and swaps it for a `BlastEffect` at
   `grenade_exploded`. It is drawn at twice its size with a trail: at real size a hand grenade is lost from the shoulder
@@ -199,3 +200,27 @@ behind the pillar untouched. To record it: `godot --path game --write-movie <fol
 --quit-after 110 res://world/grenade_range/grenade_range.tscn`, and read the frames. `-- --log` prints every event.
 The movie's own audio track came out silent here (the capture runs without a sound device), so the sounds are checked
 by analysis instead: length, peak and where the energy sits (the blast has nine tenths of it under 150 Hz).
+
+## Blast on players (#805)
+
+- **The cover ray met the players.** The grenade server asked the weapons' `WorldProbe.callable()` (walls, props and the
+  bodies of players) whether the line from the blast to a chest was clear, so the ray ended inside the target's own
+  capsule and every player "stood behind a wall" of themselves: a teammate 2 m away was never blasted, and the old 40%
+  thrower share only worked because the thrower stood outside their own body. The server now asks `static_callable()`
+  (walls, props, boards): a person is no cover for a person or for a zombie. Found by the two-client test, where the
+  teammate stayed at full health beside a blast that downed the holder.
+- **One curve for every blast that hurts a player** (`PlayerBlast`, `game/gameplay/rules/player_blast.gd`): a share of
+  `max_health`, 1 inside a full radius, `(1 - t)^EASE_POWER` out to the edge, an `scale` for a weaker source. A caller
+  gives its own full and edge radii and scale: the grenade `player_full_radius` and `blast_radius`, the ray gun's splash
+  (#788) its own radii and `self_splash_share` as the scale. `NightServer._blast_player(player_id, damage, from, harm,
+  by_id)` turns the damage into the rules' `blow`, which names `harm` and `by_id` in `player_hurt` and `player_downed`
+  for the feed.
+- **In the hand is a rule, not a distance.** The hand is 0.7 to 1.0 m from the chest the blast is measured to, so
+  "within 1 m" would be luck: `BlastModel.against_player(..., held, ...)` takes all of the health for the thrower's own
+  in-hand blast and skips the cover line.
+- **A player on the ground is not counted** (the rules refuse a blow on a downed player), so the grenade a downed player
+  dropped hurts the reviver at their side, not them.
+- **The bots' distance is the curve's.** A blast hurts out to 8 m, so "not where it reaches" is a share, not a radius:
+  `BotGrenadier.HARMLESS_SHARE` (a tenth of the health, a graze that mends in 5 s) gives `harmless_apart` 5.8 m, and a
+  test holds `SAFE_FROM_SELF` and `SAFE_FROM_TEAMMATES` to it. Teammates keep the 1.5 m margin. The old 4 m from a
+  teammate would have taken 33% of their health.

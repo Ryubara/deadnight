@@ -284,7 +284,9 @@ func measure_parts(side: String, only: Array) -> Dictionary:
 	if _weapon == null or _tris.is_empty():
 		return out
 	var inverse := _weapon.global_transform.affine_inverse()
-	var scale := _weapon.global_basis.get_scale().x
+	# A weapon drawn in a mirror (the dual pistols' left gun) has a basis that turns the other way
+	# about: its scale reads negative.
+	var scale := absf(_weapon.global_basis.get_scale().x)
 	var margin := MARGIN / scale
 	var points := skin_points(side, only)
 	# Only triangles near the hand are looked at.

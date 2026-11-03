@@ -13,6 +13,7 @@ const WEAPON_MODELS := {
 	&"shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
+	&"dual_pistols": "res://assets/weapons/service_pistol/service_pistol.glb",
 }
 
 
@@ -138,14 +139,6 @@ static func fit(model: Node3D, length: float) -> void:
 		Basis(Vector3.UP, PI * 0.5 if turn else 0.0) * Basis.from_scale(Vector3.ONE * factor)
 	)
 	model.position = -(model.basis * bounds.get_center())
-
-
-## Puts `material` over every mesh under `node` (an overlay: the model keeps its own look beneath).
-static func overlay(node: Node, material: Material) -> void:
-	if node is MeshInstance3D:
-		(node as MeshInstance3D).material_overlay = material
-	for child in node.get_children():
-		overlay(child, material)
 
 
 static func _bounds(node: Node, to_root: Transform3D) -> AABB:
