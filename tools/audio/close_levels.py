@@ -9,8 +9,9 @@ listener, where the player's `max_db` holds every sound, not the distance). Writ
 - `close_levels.md`: each sound, loudest first, with the ceiling it was held to (`max_db`, dB over its file), the
   highest sample of any of its variants (dBFS) and the loudness of its loudest 400 ms (LUFS);
 - `close_levels.json`: the same numbers.
-`--table` also writes the pinned table the test `tests/core/test_close_sound_levels.gd` reads: `max_db` and
-`close_peak_dbfs` per sound, to be written again whenever a sound's cap or trim, or a file, changes.
+`--table` also writes the pinned table the test `tests/core/test_close_sound_levels.gd` reads: `max_db`,
+`close_peak_dbfs` and (with `--ffmpeg`) `close_lufs`, the loudest 400 ms, per sound, to be written again whenever a
+sound's cap or trim, or a file, changes.
 """
 
 from __future__ import annotations
@@ -88,6 +89,7 @@ def main() -> int:
     if args.table:
         table = {
             name: {"max_db": round(r["max_db"], 1), "close_peak_dbfs": round(r["close_peak_dbfs"], 1)}
+            | ({"close_lufs": round(r["loudest_400ms_lufs"], 1)} if "loudest_400ms_lufs" in r else {})
             for name, r in sorted(sounds.items())
         }
         write(args.table, json.dumps({"sounds": table}, indent=1) + "\n")
