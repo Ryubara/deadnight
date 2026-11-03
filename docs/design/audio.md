@@ -43,6 +43,38 @@ dry where you are, big and open everywhere else, and a little theatrical**.
 - **Everything is a cue for survival.** The generator carries far and is heard through walls; a groan tells you which
   way, a reload tells the team you are exposed.
 
+## Reloads
+
+Every firearm has the sounds of its own mechanism (#683; before it the revolver played a magazine's, the flare gun the
+shotgun's, and nothing sounded the belt or the empties). Each step is an event of the weapon's reload motion
+([animation](animation.md#reloading)), at a share of the reload, so it sounds on the moment the motion draws it and all
+are over when the reload is; putting the weapon away abandons them. Every reload reaches for the belt pouch
+(`reload_pouch`: a leather flap, a snap and the sleeve's cloth), the one step every gun shares. The steps per weapon
+are in the [animation page's table](animation.md#every-weapon).
+
+- **The player's own steps play flat**, as the player's own shots do: at the head, as a 3D voice, they were 6 dB down
+  and partly lost under fire (the empty click and the swap keep their place). `NightSoundTuning.own_reload_db` is 0: at
+  +2 they were as loud as the player's own shots. Another player's steps sound at his head, lifted by
+  `teammate_reload_db` (+6), since a teammate's reload tells the team he is exposed.
+- **Heard under fire, measured.** `tests/captures/reload_under_fire.tscn` plays a reload and a tommy gun firing without
+  a break (0.075 s), as a client plays them, through the audio service, heard from the shoulder camera; the gunfire and
+  the reload are rendered apart (the buses have no effects, so the mix is their sum) and
+  `tools/audio/reload_audibility.py` compares each step with the fire by octave band in the 80 ms around the step's
+  loudest moment (a window that always holds a whole shot). A step is heard when it is louder than the fire in some
+  band:
+
+| Who reloads, under whose fire | Steps heard | Closest step |
+| --- | --- | --- |
+| The player, a teammate firing 3 m away | 23 of 24 | revolver eject -1.6 dB (the empties under a shot) |
+| A teammate 4 m away, another firing 6 m away | 23 of 24 | flare gun open -1.4 dB |
+| A teammate 4 m away, the player firing the tommy gun | 9 of 24 | the pouch, the bolt, the lever and one round in three stand out |
+
+  The last is the hardest case on purpose: the player's own automatic fire, flat and at full level, masks a teammate's
+  small sounds between them, as it does in life; the teammate's motion and his "Reloading!" are the cues there. The
+  first two mixes peak at -0.8 to -5.0 and -2.0 to -5.4 dBFS with no clipped sample; in the last the player's own tommy
+  gun alone peaks at -1.5 dBFS, and a step landing on a shot goes over full scale for 1 to 5 samples (+0.4 dBFS at
+  most): the gun's headroom, #718.
+
 ## Buses
 
 Five buses with a slider each in the settings screen (`default_bus_layout.tres`, volumes owned by `Settings`), and the
@@ -75,7 +107,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | UI | `ui_hover`, `ui_focus`, `ui_tick`, `ui_press`, `ui_back`, `ui_push`, `ui_pop` | relay clacks and a rising or falling film whoosh; hover and focus together make one sound |
 | Guns | `shot_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap` | see [The guns](#the-guns) |
 | Impacts | `impact_flesh`, `impact_head`, `impact_world` | a wet thump, the same with a crack and a knock, and a round on asphalt or sheet metal with a ricochet's whine |
-| Reloads | `reload_pistol_mag_out/_in`, `reload_smg_mag_out/_in`, `reload_rifle_round/_lever`, `reload_shotgun_open/_shells/_shut` | one sound for each event frame of the reload clip |
+| Reloads | `reload_revolver_open/_eject/_rounds/_close`, `reload_smg_mag_out/_in/_bolt`, `reload_rifle_round/_lever`, `reload_shotgun_open/_eject/_shells/_shut`, `reload_flare_open/_eject/_in/_shut`, `reload_pouch` | one sound for each step of the weapon's reload motion ([reloads](#reloads)) |
 | Steps | `step_asphalt`, `step_gravel`, `step_own_asphalt`, `step_own_gravel` | eight takes each; gravel is a spray of tiny grains; the `own` pair is the local player's softer set ([footsteps](#footsteps)) |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the groans, snarls, hurts, deaths, shrieks and roars also have ElevenLabs takes as extra variants (see above) |
 | Grenades | `grenade_tick`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the tick is one fixed pitch whose rate rises with the fuse, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
@@ -132,15 +164,7 @@ its burst sizzles where it lands (`projectile_burst`).
 - **Impacts.** A `damage_dealt` (not melee) thumps where the round hit; a headshot cracks. A hitscan pellet that ended
   short of the weapon's range and was not claimed by a hit in the same batch ricochets where it struck the lot, at most
   three times for a shotgun's eight pellets.
-- **Reloads** sound on the reload clip's event frames from `clips.json` (`ClipEvents`), the same frames the player's
-  animation emits: the revolver and SMG on `mag_out` (6) and `mag_in` (22), the rifle on `round_in` (20, 32, 44) and
-  `lever` (56), the shotgun and flare gun on `break_open` (6), `shells_in` (26) and `snap_shut` (34), at 24 frames a
-  second, **stretched over the weapon's own `reload_time`** (the rifle's lever is at 2.33 s of its clip, after its 2.2 s
-  reload, and the shotgun's steps all fall in the first 1.4 s of 2.4), so the steps sound with the weapon's dip
-  ([reloading](animation.md#reloading)) and are over when the reload is. Putting the weapon away abandons them.
-  `test_night_reload.gd` counts the steps per gun in the real night. Level, from a Movie Maker mix of a rifle shot and
-  reload on the lot (`tools/audio/analyze.py capture`): the steps' peaks are -9 to -11 dBFS against the shot's -7 and
-  the beds' -30 to -37 dBFS RMS, so they are well over the beds and a little under the gun.
+- **Reloads**: see [Reloads](#reloads) below.
 - **Empty and swap.** A `fire_rejected` for an empty magazine clicks where the shooter stands; a `weapon_equipped`
   rustles.
 - The crowbar's swing and blow are the melee sounds above.
