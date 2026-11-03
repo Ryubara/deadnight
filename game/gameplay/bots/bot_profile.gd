@@ -105,6 +105,16 @@ const REACTION_FLOOR := 0.20
 @export_range(1, 10, 1) var brain_failure_limit: int = 1
 
 
+## The shipped profile of a room's `MatchSettings.bot_skill` (a value out of range is the nearest).
+static func for_skill(skill: int) -> BotProfile:
+	match clampi(skill, MatchSettings.SKILL_ROOKIE, MatchSettings.SKILL_VETERAN):
+		MatchSettings.SKILL_ROOKIE:
+			return rookie()
+		MatchSettings.SKILL_VETERAN:
+			return veteran()
+	return regular()
+
+
 static func rookie() -> BotProfile:
 	var profile := BotProfile.new()
 	profile.title = "Rookie"

@@ -22,7 +22,10 @@ const HINTS := {
 	"max_alive": "Auto follows the round.",
 	"break_seconds": "Time to spend points and get ready.",
 	"bots": "Teammates that fill the empty seats.",
+	"bot_skill": "How well the bots aim and dodge.",
 }
+## The skills' names on the selector, in `MatchSettings.SKILL_*` order.
+const SKILL_LABELS: Array[String] = ["Rookie", "Regular", "Veteran"]
 const BREAK_MAX := 30
 
 ## The row of each setting, by its key in `MatchSettings.KEYS`, in the order they are shown.
@@ -31,8 +34,10 @@ var count_row: UIRow
 var alive_row: UIRow
 var break_row: UIRow
 var bots_row: UIRow
+var skill_row: UIRow
 var count_selector: UIOptionSelector
 var bots_selector: UIOptionSelector
+var skill_selector: UIOptionSelector
 var alive_slider: UISlider
 var break_slider: UISlider
 
@@ -49,13 +54,19 @@ static func alive_text(max_alive: int) -> String:
 
 ## The settings as a browser test reads them, `2x|Auto|20 s`: the intensity, the cap and the break
 ## in seconds (`break_shown`, which a setting left on the tuned break does not hold), then `|3 bots`
-## when there are bots (none is the usual night and says nothing).
+## when there are bots (none is the usual night and says nothing), then `|rookie` or `|veteran`
+## when the bots are not the regular ones.
 static func text_for(value: MatchSettings, break_shown: float) -> String:
 	var text := (
 		"%dx|%s|%d s"
 		% [roundi(value.count_multiplier), alive_text(value.max_alive), roundi(break_shown)]
 	)
-	return text + "|%d bots" % value.bots if value.bots > 0 else text
+	if value.bots <= 0:
+		return text
+	text += "|%d bots" % value.bots
+	if value.bot_skill != MatchSettings.DEFAULT_SKILL:
+		text += "|" + SKILL_LABELS[value.bot_skill].to_lower()
+	return text
 
 
 func _init() -> void:
@@ -87,6 +98,11 @@ func _init() -> void:
 	bots_selector.options = bot_labels
 	bots_selector.selected_changed.connect(_on_changed.unbind(1))
 	bots_row.set_control(bots_selector)
+	skill_row = _row("bot_skill", "Bot skill")
+	skill_selector = UIOptionSelector.new()
+	skill_selector.options = PackedStringArray(SKILL_LABELS)
+	skill_selector.selected_changed.connect(_on_changed.unbind(1))
+	skill_row.set_control(skill_selector)
 	set_settings(MatchSettings.new())
 
 
@@ -102,6 +118,7 @@ func settings() -> MatchSettings:
 	out.max_alive = roundi(alive_slider.value)
 	out.break_seconds = break_slider.value if _break_set else 0.0
 	out.bots = bots_selector.selected
+	out.bot_skill = skill_selector.selected
 	return out.clamped()
 
 
@@ -110,6 +127,7 @@ func set_settings(value: MatchSettings) -> void:
 	var held := value.clamped()
 	count_selector.select(_nearest_choice(held.count_multiplier), false)
 	bots_selector.select(held.bots, false)
+	skill_selector.select(held.bot_skill, false)
 	alive_slider.set_value_no_signal(held.max_alive)
 	_break_set = held.break_seconds > 0.0
 	break_slider.set_value_no_signal(held.break_seconds if _break_set else _standard_break)
@@ -124,6 +142,8 @@ func set_editable(on: bool) -> void:
 	count_selector.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
 	bots_selector.focus_mode = Control.FOCUS_ALL if on else Control.FOCUS_NONE
 	bots_selector.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
+	skill_selector.focus_mode = Control.FOCUS_ALL if on else Control.FOCUS_NONE
+	skill_selector.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
 
 
 ## The keys of the settings the panel shows, in the order of its rows.
@@ -158,7 +178,7 @@ func first_control() -> Control:
 
 ## The last control, to link the focus to what follows the panel.
 func last_control() -> Control:
-	return bots_selector
+	return skill_selector
 
 
 func _row(key: String, title: String) -> UIRow:

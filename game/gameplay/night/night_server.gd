@@ -39,6 +39,8 @@ const LEAVE := &"leave"
 ## A person takes the seat of a bot: `seat_person` {player_id}. The seat, its body, points and
 ## weapons stay as they are; the rules say `bot_replaced`.
 const SEAT_PERSON := &"seat_person"
+## A bot takes the seat of a person who left, as it stands: `seat_bot` {player_id}.
+const SEAT_BOT := &"seat_bot"
 const START_NIGHT := &"start_night"
 ## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
 const PING := &"ping"
@@ -205,8 +207,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
-		SEAT_PERSON:
-			rules.apply(RulesAction.seat_person(action["player_id"]))
+		SEAT_PERSON, SEAT_BOT:
+			rules.apply({"type": action["type"], "player_id": action["player_id"]})
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:

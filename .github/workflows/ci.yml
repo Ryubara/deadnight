@@ -173,6 +173,59 @@ jobs:
             leaks.txt
           if-no-files-found: warn
 
+  bots-soak:
+    # Bots in a room (#230): a game server's room over a real WebSocket, autopilot clients as the people, ten game
+    # minutes (about three of wall time at a fixed frame rate). `pair` keeps two people and two bots; `churn` has people
+    # join and leave so the bots give way and come back. It fails on an engine error, on a divergence the soak checks for
+    # (a predicted body far from the server's, a seat a client shows that the server does not hold, a night rebuilt, a
+    # round that goes back, a bot count off the rule) and on a missing report.
+    needs: conventions
+    if: needs.conventions.outputs.godot == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [pair, churn]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repos/deadnight
+          persist-credentials: false
+          lfs: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Ryubara/gdstudio
+          path: repos/gdstudio
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: cache/downloads
+          key: tools-${{ runner.os }}-${{ hashFiles('repos/gdstudio/tools.toml') }}
+      - name: Make the workspace and fetch the pinned Godot
+        run: uv run --project repos/gdstudio/python gds workspace init --workspace . --no-clone --no-mcp --fetch godot
+      - name: Import the project
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --path repos/deadnight/game --import 2>&1 | tee import.log
+          ! grep -E "^(SCRIPT )?ERROR" import.log
+      - name: Play ten minutes in a room with bots
+        run: |
+          set -o pipefail
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          "$godot" --headless --verbose --path repos/deadnight/game res://tests/captures/bots_slots_soak.tscn --fixed-fps 60 -- --scenario=${{ matrix.scenario }} --minutes=10 2>&1 | tee soak.log
+          grep -q "^SLOTS {" soak.log
+          ! grep -E "^(SCRIPT )?ERROR|leaked at exit|still in use|^SLOTS FAIL" soak.log
+      - name: Upload the log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bots-soak-${{ matrix.scenario }}
+          path: soak.log
+          if-no-files-found: warn
+
   web:
     needs: conventions
     if: needs.conventions.outputs.web == 'true'
@@ -433,7 +486,7 @@ jobs:
 
   build-ok:
     if: always()
-    needs: [conventions, godot, web, backend]
+    needs: [conventions, godot, bots-soak, web, backend]
     runs-on: ubuntu-24.04
     steps:
       - name: Every job passed

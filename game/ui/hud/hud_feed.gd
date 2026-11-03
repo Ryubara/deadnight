@@ -167,7 +167,7 @@ func _notice(type: StringName, event: Dictionary) -> String:
 		return "%s JOINED" % _who(event)
 	if type == &"bot_replaced":
 		return "%s JOINED" % _who(event)
-	if type == &"player_removed":
+	if type == &"player_removed" or type == &"bot_seated":
 		return "%s LEFT" % state.left_name.to_upper()
 	return ""
 

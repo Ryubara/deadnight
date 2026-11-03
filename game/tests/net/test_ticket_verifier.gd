@@ -30,8 +30,14 @@ func test_the_rules_the_backend_signed_into_a_ticket_are_read_back() -> void:
 	var result := _verifier().admit(_tickets["with_settings"], NOW)
 	assert_bool(result["ok"]).is_true()
 	assert_str(result["match"]).is_equal("match-3")
-	# A ticket from before the bot count reads as no bots.
-	var expected := {"count_multiplier": 2.0, "max_alive": 12, "break_seconds": 0.0, "bots": 0}
+	# A ticket from before the bot count reads as no bots, of the regular skill.
+	var expected := {
+		"count_multiplier": 2.0,
+		"max_alive": 12,
+		"break_seconds": 0.0,
+		"bots": 0,
+		"bot_skill": MatchSettings.DEFAULT_SKILL,
+	}
 	assert_dict((result["settings"] as MatchSettings).to_dict()).is_equal(expected)
 
 
@@ -89,7 +95,7 @@ func test_a_ticket_without_rules_admits_with_none_and_one_with_rules_hands_them_
 	var admitted := _verifier().admit(with_rules, int(Time.get_unix_time_from_system()))
 	assert_bool(admitted["ok"]).is_true()
 	assert_dict((admitted["settings"] as MatchSettings).to_dict()).is_equal(
-		chosen.merged({"bots": 0})
+		chosen.merged({"bots": 0, "bot_skill": MatchSettings.DEFAULT_SKILL})
 	)
 	# A ticket that names the bots keeps them, and more than three is not a rule the game takes.
 	var bots := TicketMaker.make(SECRET, "gs-test", "m", "cy", "Cy", 60, chosen.merged({"bots": 3}))

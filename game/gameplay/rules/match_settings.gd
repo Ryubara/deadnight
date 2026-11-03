@@ -24,16 +24,24 @@ const MAX_BREAK := 120.0
 ## people leave free (`NightBots.target`).
 const MIN_BOTS := 0
 const MAX_BOTS := 3
+## How well the bots play: an index into `BotProfile`'s three skills (`BotProfile.for_skill`).
+## Difficulty is the bots' player model and nothing else: zombies, damage and points never change
+## with it (`docs/research/bots.md#aim-and-difficulty`).
+const SKILL_ROOKIE := 0
+const SKILL_REGULAR := 1
+const SKILL_VETERAN := 2
+const DEFAULT_SKILL := SKILL_REGULAR
 ## The keys of `to_dict`, each with the type it must have (a whole number also fits a float).
 const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
 	"max_alive": TYPE_INT,
 	"break_seconds": TYPE_FLOAT,
 	"bots": TYPE_INT,
+	"bot_skill": TYPE_INT,
 }
 ## Keys a snapshot, a ticket or an action may leave out (a build from before the key): they mean
 ## their default, so an older backend's ticket or server's WELCOME still carries the other settings.
-const OPTIONAL_KEYS: Array[String] = ["bots"]
+const OPTIONAL_KEYS: Array[String] = ["bots", "bot_skill"]
 
 ## The night's intensity. Round N brings the tuned count times this (rounded, at least one) and the
 ## dead come this many times as fast (the spawn interval divides by it, down to
@@ -51,6 +59,8 @@ const OPTIONAL_KEYS: Array[String] = ["bots"]
 ## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
 ## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
 @export_range(0, 3, 1) var bots: int = MIN_BOTS
+## How well every bot of the night plays: `SKILL_ROOKIE`, `SKILL_REGULAR` or `SKILL_VETERAN`.
+@export_range(0, 2, 1) var bot_skill: int = DEFAULT_SKILL
 
 
 ## The defaults: today's game.
@@ -60,6 +70,7 @@ func is_default() -> bool:
 		and max_alive == AUTO
 		and is_zero_approx(break_seconds)
 		and bots == MIN_BOTS
+		and bot_skill == DEFAULT_SKILL
 	)
 
 
@@ -110,6 +121,7 @@ func to_dict() -> Dictionary:
 		"max_alive": max_alive,
 		"break_seconds": break_seconds,
 		"bots": bots,
+		"bot_skill": bot_skill,
 	}
 
 
@@ -129,6 +141,8 @@ static func problem(data: Dictionary) -> StringName:
 		return &"break_seconds"
 	if data.has("bots") and (data["bots"] < MIN_BOTS or data["bots"] > MAX_BOTS):
 		return &"bots"
+	if data.has("bot_skill") and not _in_range(data["bot_skill"], SKILL_ROOKIE, SKILL_VETERAN):
+		return &"bot_skill"
 	return &""
 
 
@@ -142,6 +156,7 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	out.max_alive = data["max_alive"]
 	out.break_seconds = float(data["break_seconds"])
 	out.bots = int(data.get("bots", MIN_BOTS))
+	out.bot_skill = int(data.get("bot_skill", DEFAULT_SKILL))
 	return out
 
 
@@ -175,6 +190,7 @@ func clamped() -> MatchSettings:
 	out.max_alive = clampi(max_alive, AUTO, _alive_ceiling())
 	out.break_seconds = _clamp_optional(break_seconds, MIN_BREAK, MAX_BREAK)
 	out.bots = clampi(bots, MIN_BOTS, MAX_BOTS)
+	out.bot_skill = clampi(bot_skill, SKILL_ROOKIE, SKILL_VETERAN)
 	return out
 
 
