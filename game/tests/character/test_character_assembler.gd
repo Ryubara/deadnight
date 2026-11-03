@@ -2,6 +2,11 @@ extends GdUnitTestSuite
 ## The assembly of every preset: the right parts on, the palette on the atlas, the idle pose, the
 ## seat's armband, and no material shared between two characters.
 
+## The armband of every seat, eight of them (#690), is told from every other by more than this
+## colour distance (CIE76 in Lab: 2 is the least a person sees, 40 is red against orange): hue alone
+## cannot tell eight apart (a white band has none).
+const ARMBAND_APART := 30.0
+
 
 func _assemble(look: CharacterLook, seat := 0) -> Node3D:
 	var model := CharacterAssembler.assemble(look, seat)
@@ -83,13 +88,35 @@ func test_the_armband_ring_runs_along_the_arm() -> void:
 	assert_float(band.basis.y.normalized().dot(arm)).is_greater(0.99)
 
 
-func test_the_four_armband_colours_are_clearly_different() -> void:
+func test_the_eight_armband_colours_are_clearly_different() -> void:
 	var colours := LookCatalog.ARMBAND_COLOURS
+	assert_int(colours.size()).is_equal(NightHost.MAX_PLAYERS)
 	for a in colours.size():
 		for b in range(a + 1, colours.size()):
-			var gap := absf(colours[a].h - colours[b].h)
-			gap = minf(gap, 1.0 - gap)
-			assert_float(gap).is_greater(0.08)
+			(
+				assert_float(_lab_distance(colours[a], colours[b]))
+				. override_failure_message("seats %d and %d" % [a, b])
+				. is_greater(ARMBAND_APART)
+			)
+
+
+func _lab_distance(a: Color, b: Color) -> float:
+	return _lab(a).distance_to(_lab(b))
+
+
+func _lab(colour: Color) -> Vector3:
+	var linear := colour.srgb_to_linear()
+	var x := 0.4124 * linear.r + 0.3576 * linear.g + 0.1805 * linear.b
+	var y := 0.2126 * linear.r + 0.7152 * linear.g + 0.0722 * linear.b
+	var z := 0.0193 * linear.r + 0.1192 * linear.g + 0.9505 * linear.b
+	var fx := _lab_f(x / 0.95047)
+	var fy := _lab_f(y)
+	var fz := _lab_f(z / 1.08883)
+	return Vector3(116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz))
+
+
+func _lab_f(t: float) -> float:
+	return pow(t, 1.0 / 3.0) if t > 0.008856 else 7.787 * t + 16.0 / 116.0
 
 
 func test_two_characters_do_not_share_materials() -> void:

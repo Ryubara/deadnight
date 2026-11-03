@@ -12,8 +12,9 @@ var hud: Hud
 
 
 ## A HUD inside `host` (any Control the test owns) over a fresh night with `players` players, named
-## Ruby, Moe, Dee and Cal, the first being the local one. Not started. The portraits build no 3D
-## world unless `portraits` (a suite about them says so): the picture does not change a layout.
+## Ruby, Moe, Dee, Cal, Ned, Ivy, Sal and Pat, the first being the local one. Not started. The
+## portraits build no 3D world unless `portraits` (a suite about them says so): the picture does
+## not change a layout.
 static func make(host: Control, players := 1, seed_value := 1958, portraits := false) -> HudFixture:
 	HudPortrait.live = portraits
 	var fixture := HudFixture.new()
@@ -26,7 +27,7 @@ static func make(host: Control, players := 1, seed_value := 1958, portraits := f
 	state.configure(
 		tuning.fuel.capacity, tuning.fuel.circuit_drain.keys(), tuning.fuel.start_circuits
 	)
-	var names := ["Ruby", "Moe", "Dee", "Cal"]
+	var names := ["Ruby", "Moe", "Dee", "Cal", "Ned", "Ivy", "Sal", "Pat"]
 	for i in players:
 		state.set_player_name(i + 1, names[i])
 		fixture.act(RulesAction.add_player(i + 1))
@@ -89,7 +90,11 @@ func fill_worst_case() -> void:
 		"Maximiliana Rosewood",
 		"Bartholomew Okonkwo",
 		"Wolfgang Amadeus Zed",
-		"Persephone Q-Laneway"
+		"Persephone Q-Laneway",
+		"Guinevere Abernathy",
+		"Thaddeus Fontaine-Wu",
+		"Ottoline Brandybuck",
+		"Cornelius Vandermeer"
 	]
 	for i in names.size():
 		state.set_player_name(i + 1, names[i])

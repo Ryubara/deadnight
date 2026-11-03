@@ -490,16 +490,16 @@ func test_the_usual_night_has_no_bots_and_the_count_is_part_of_the_settings() ->
 	assert_int(MatchSettings.from_dict(with_bots.to_dict()).bots).is_equal(2)
 
 
-func test_the_bot_count_is_zero_to_three_whole_bots() -> void:
+func test_the_bot_count_is_zero_to_seven_whole_bots() -> void:
 	var base := MatchSettings.new().to_dict()
-	for bots in [0, 1, 2, 3]:
+	for bots in [0, 1, 2, 3, 7]:
 		base["bots"] = bots
 		(
 			assert_str(String(MatchSettings.problem(base)))
 			. override_failure_message(str(bots))
 			. is_empty()
 		)
-	for bad: Variant in [4, -1, 1.5, "2", null]:
+	for bad: Variant in [8, -1, 1.5, "2", null]:
 		base["bots"] = bad
 		assert_str(String(MatchSettings.problem(base))).override_failure_message(str(bad)).is_equal(
 			"bots"

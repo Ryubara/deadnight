@@ -23,7 +23,7 @@ const MAX_BREAK := 120.0
 ## Bots the night seats beside the people: none to `MAX_BOTS`. In a room they take only the seats
 ## people leave free (`NightBots.target`).
 const MIN_BOTS := 0
-const MAX_BOTS := 3
+const MAX_BOTS := 7
 ## The keys of `to_dict`, each with the type it must have (a whole number also fits a float).
 const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
@@ -50,7 +50,7 @@ const OPTIONAL_KEYS: Array[String] = ["bots"]
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
 ## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
 ## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
-@export_range(0, 3, 1) var bots: int = MIN_BOTS
+@export_range(0, 7, 1) var bots: int = MIN_BOTS
 
 
 ## The defaults: today's game.

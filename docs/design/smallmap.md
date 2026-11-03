@@ -66,7 +66,7 @@ godot --headless --path game -s res://tests/world/smallmap/smallmap_report.gd
 | 14 | Loop round the side room's rack row | 31.2 m | 25 to 36 m | yes |
 | 15 | Windows start / side (one a breach) / upstairs (both halves) | 5 / 3 / 4 | exact | yes |
 | 16 | Directions to watch start / side / upstairs | 3 / 3 / 2 | exact | yes |
-| 17 | Players' start to the nearest window | 5.2 m | 4 to 7 m | yes |
+| 17 | Players' start (the middle of the eight places) to the nearest window | 6.0 m | 4 to 7 m | yes |
 | 18 | A window's spawn outside it (and only its room reached) | 6.0 to 7.0 m | 5 to 15 m | yes |
 | 19 | Stairs, one from each ground room, rising 3.4 m | 2 | exactly 2 | yes |
 | 27 | Narrowest camera passage (doors 2.0 m) | 1.9 m | at least 1.8 m | yes |
@@ -114,7 +114,7 @@ tick outside the building. The bodies are on a physics layer of their own: in a 
 | `Windows/Window_<id>` | a window or the breach: on the wall's centre line at floor height, +Z into the room; `barricade_id`, `room`, `kind` (`window` or `breach`), `gap` (the wall's gap: 2.0 m wide, 2.2 m tall, 2.4 for the breach). Its frame, sill and the players-only blocker (layer 2, as the boards) are StaticBody3D children the bake never reads |
 | `ZombieSpawns/Spawn_<id>` | where the dead of each window rise: 6 to 7 m outside it, `barricade_id` and `room` |
 | `Doors` (`LotDoors`) | `Door_Side`, `Stairs_Start`, `Stairs_Side`: `shop_id` (`door_side`, `door_stairs_start`, `door_stairs_side`), `requires` (none), a placeholder `cost` of 450 until #632 puts the price in the shop; one slab each and a stand on each side |
-| `PlayerSpawns`, `CameraProbes`, `Measure` | the players' start; the camera's narrow places; the ring's and loops' markers and each room's middle |
+| `PlayerSpawns` (eight places: two rows south of the counter, 1.3 to 2 m apart), `CameraProbes`, `Measure` | the players' start; the camera's narrow places; the ring's and loops' markers and each room's middle |
 | `Ceilings`, `Roof`, `Outside` | the slabs, the roof, and the ground outside (yards, the bank, the breach's pocket): #638 dresses `Outside` |
 
 The zombies' meshes for the eight sets are saved in `game/world/smallmap/smallmap_navmeshes.res` (`LotNavmeshes`);

@@ -421,7 +421,10 @@ def build() -> None:
 
     # --- Players' start (row 17: 4 to 7 m from the nearest window) -------------------------------------------------
     bg.node("PlayerSpawns", "Node3D", ".")
-    for i, (sx, sz) in enumerate(((7.0, 10.5), (9.0, 10.5), (7.0, 12.0), (9.0, 12.0)), start=1):
+    # Eight places (the room's seats, `NightHost.MAX_PLAYERS`): the first four as they always were, the next four in a row
+    # north of them, 1.3 m clear of the counter's south edge and still 4 to 7 m from the nearest window.
+    spots = ((7.0, 10.5), (9.0, 10.5), (7.0, 12.0), (9.0, 12.0), (5.0, 9.2), (7.0, 9.2), (9.0, 9.2), (11.0, 9.2))
+    for i, (sx, sz) in enumerate(spots, start=1):
         bg.marker("PlayerSpawns", f"Player{i}", (sx, 0, sz), 180.0)
 
     # --- Lamps -----------------------------------------------------------------------------------------------------

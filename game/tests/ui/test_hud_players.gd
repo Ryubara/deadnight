@@ -1,9 +1,9 @@
-# A container per player, `[portrait][points in the player's colour]`, for one to four players: the
+# A container per player, `[portrait][points in the player's colour]`, for one to eight players: the
 # local player first, each in the colour of their seat, a downed player dimmed, the numbers on one
 # line. Driven by the rules' own events (#218).
 extends GdUnitTestSuite
 
-const NAMES := ["Ruby", "Moe", "Dee", "Cal"]
+const NAMES := ["Ruby", "Moe", "Dee", "Cal", "Ned", "Ivy", "Sal", "Pat"]
 
 var _host: Control
 
@@ -36,8 +36,8 @@ func _look(state: HudState, id: int, seat: int, look: CharacterLook) -> void:
 	)
 
 
-func test_one_to_four_players_each_get_a_box_in_their_seats_colour() -> void:
-	for players in range(1, 5):
+func test_one_to_eight_players_each_get_a_box_in_their_seats_colour() -> void:
+	for players in range(1, NightHost.MAX_PLAYERS + 1):
 		var fixture := _party(players)
 		var shown := fixture.hud.points.shown
 		assert_array(shown).override_failure_message("%d players" % players).has_size(players)
@@ -94,8 +94,33 @@ func test_a_seat_is_the_lowest_free_one_as_the_server_gives_it() -> void:
 	assert_object(entry[0]["colour"]).is_equal(LookCatalog.armband_colour(3))
 
 
+func test_a_party_of_eight_takes_compact_teammate_boxes_and_a_column_no_taller_than_the_room(
+) -> void:
+	var small := _party(HudPoints.COMPACT_FROM)
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_float(small.hud.points.box_of(2).size.y).is_equal(HudPlayerBox.OTHER_HEIGHT)
+	small.hud.get_parent().remove_child(small.hud)
+	var fixture := _party(NightHost.MAX_PLAYERS)
+	await await_idle_frame()
+	await await_idle_frame()
+	var points := fixture.hud.points
+	assert_array(points.order()).has_size(NightHost.MAX_PLAYERS)
+	assert_float(points.box_of(1).size.y).is_equal(HudPlayerBox.LOCAL_HEIGHT)
+	for id in range(2, NightHost.MAX_PLAYERS + 1):
+		assert_float(points.box_of(id).size.y).is_equal(HudPlayerBox.COMPACT_HEIGHT)
+		# The number still shows whole.
+		assert_float(points.box_of(id).number_width()).is_less_equal(
+			points.box_of(id).number_size().x + 0.5
+		)
+	# Eight players stand in less than twice the height of the four before them.
+	var four := HudPlayerBox.LOCAL_HEIGHT + 3.0 * (HudPlayerBox.OTHER_HEIGHT + float(HudStyle.GAP))
+	assert_float(points.size.y).is_less(four * 1.6)
+	fixture.hud.get_parent().remove_child(fixture.hud)
+
+
 func test_the_number_is_readable_on_every_seats_colour() -> void:
-	for seat in 4:
+	for seat in NightHost.MAX_PLAYERS:
 		var fill := LookCatalog.armband_colour(seat)
 		var ink := HudPlayerBox.ink_for(fill)
 		(

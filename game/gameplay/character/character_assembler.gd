@@ -25,7 +25,7 @@ const ARMBAND_STRETCH := 2.2
 const ARMBAND_GLOW := 0.9
 
 
-## Builds the character. `seat` is the player's place in the lot (0 to 3) and picks the armband.
+## Builds the character. `seat` is the player's place in the lot (0 to 7) and picks the armband.
 static func assemble(look: CharacterLook, seat := 0) -> Node3D:
 	var model := SoldierLook.instantiate()
 	dress(model, look, seat)

@@ -202,7 +202,7 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 | `count_multiplier` (the night's intensity) | 1x, 2x, 3x offered on the Play screen; any 0.25 to 5 | 1x | round N brings `RoundTuning`'s count for N and the players times this, rounded, at least one, and the dead come this many times as fast (below) |
 | `max_alive` | 0 (auto) or 1 to 40 | auto | a number replaces the round's alive cap and never goes above `alive_cap_ceiling` (40, the crowd the lot stands); auto is the tuned cap times the multiplier |
 | `break_seconds` | 0 (the tuned 5 s) or 1 to 120 | 0 | the break after each round; the wait before round 1 (12 s) and the 10 s extra before a special round are unchanged |
-| `bots` | 0 to 3 | 0 | bots that fill the night's seats ([below](#bots)); the key may be left out of a ticket or a snapshot from before it and then means 0 |
+| `bots` | 0 to 7 | 0 | bots that fill the night's seats ([below](#bots)); the key may be left out of a ticket or a snapshot from before it and then means 0 |
 
 - **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
   from (a stampede is 110% of the scaled count, an escort party its share of it). A new type's first round still
@@ -237,21 +237,24 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
   `start_remote`), and `changed` fires when a control moves. A dedicated server takes `--count`, `--max-alive`
   `--break` and `--bots`.
-- **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 3) is how many `BotClient`s the night seats beside the
-  people. `NightBots` (`game/gameplay/night/night_bots.gd`) is the one place that decides, for Solo (`Night`) and a room
-  (`NightHost`) alike. Solo seats the setting beside the person (seats 2 to 4). A room is four seats: the bots are
+- **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 7, one less than the seats: a person always holds
+  one) is how many `BotClient`s the night seats beside the people. `NightBots` (`game/gameplay/night/night_bots.gd`) is
+  the one place that decides, for Solo (`Night`) and a room (`NightHost`) alike. Solo seats the setting beside the
+  person, in the highest seats (3 asked: seats 6 to 8). A room is eight seats (`NightHost.MAX_PLAYERS`): the bots are
   `NightBots.target(setting, people)`, never more than the setting and never more than the seats the people leave free
-  (3 asked, 2 people: 2 bots, in seats 3 and 4). Bots take the highest free seat numbers, people the lowest, so the
-  people's numbers do not move. A person who joins when no seat is free takes the **lowest bot's seat as it stands**
-  (`NightBots.hand_over`: the same body, points, weapons and health; the rules' `seat_person` action answers
-  `bot_replaced`; the round, the night and the other bots go on, and the person is welcomed as any other with the
-  seat's looks re-sent), the bot leaves the `BotHost`, and a person who leaves hands the seat to a new bot while others
-  remain. A seat is a bot's when `player_added` says `bot: true` (`PlayerState.bot`, in the snapshot too): the HUD writes
-  `BOT` after the name everywhere (`HudState.name_of`), a bot seated at the start is no "joined" notice, and the lobby
-  shows the bots the host's setting will seat in the open seats (`LobbyScreen.bots_shown`). Every bot plays the
-  shipped regular profile for now and counts as a player for the rules (`add_player`). With bots in the night the
-  server builds the frame on every step (the bots decide on every step; clients still get it every `SEND_EVERY`).
-  Over a socket: `test_room_bots.gd`; solo: `test_night_bots.gd`.
+  (7 asked, 2 people: 6 bots, in seats 3 to 8). A bot is named from the top seat down (`NightBots.name_for`: the last
+  seat Ash, then Fern, Moss, Reed, Sage, Hazel, Birch), so the same bots answer to the same names whoever else sits in
+  the room. Bots take the highest free seat numbers, people the lowest, so the people's numbers do not move. A person
+  who joins when no seat is free takes the **lowest bot's seat as it stands** (`NightBots.hand_over`: the same body,
+  points, weapons and health; the rules' `seat_person` action answers `bot_replaced`; the round, the night and the
+  other bots go on, and the person is welcomed as any other with the seat's looks re-sent), the bot leaves the
+  `BotHost`, and a person who leaves hands the seat to a new bot while others remain. A seat is a bot's when
+  `player_added` says `bot: true` (`PlayerState.bot`, in the snapshot too): the HUD writes `BOT` after the name
+  everywhere (`HudState.name_of`), a bot seated at the start is no "joined" notice, and the lobby shows the bots the
+  host's setting will seat in the open seats (`LobbyScreen.bots_shown`). Every bot plays the shipped regular profile
+  for now and counts as a player for the rules (`add_player`). With bots in the night the server builds the frame on
+  every step (the bots decide on every step; clients still get it every `SEND_EVERY`). Over a socket:
+  `test_room_bots.gd`; solo: `test_night_bots.gd`.
 - **Adding a setting.** One definition serves rooms and solo: the Play screen (Solo) and the lobby both hold a
   `MatchSettingsPanel`. A new setting is a key of `MatchSettings.KEYS` and a row in the panel (`_row(key, title)`, its
   entry in `HINTS`); `test_solo_match_settings.gd` fails on a key without a row, and on a screen of the two that shows a
@@ -260,13 +263,13 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 
 ## The tuning table
 
-Defaults as shipped. Zombie counts show one, two and four players. "Light" is the ambient level the
-world reads (1 is day): round 1 is the lot's night as built and round 14 the darkest it gets, with the ambient light,
-moon, sky and fog dimmed in step and eased over the break (`NightLight`). Counts follow
-`4 + 1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra player. Health climbs 8 a round to round 8, then
-compounds by 7% a round (it was 5% until weapons could be re-cut, [the re-cut](upgrades.md)). The runner,
-crawler and brute columns are each type's share of the round (the first
-round of a type brings an exact number instead: see the types below); special rounds replace the mix.
+Defaults as shipped. Zombie counts show one, two and four players ([eight](#eight-players-690) below). "Light" is the
+ambient level the world reads (1 is day): round 1 is the lot's night as built and round 14 the darkest it gets, with
+the ambient light, moon, sky and fog dimmed in step and eased over the break (`NightLight`). Counts follow `4 +
+1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra player. Health climbs 8 a round to round 8, then compounds by 7%
+a round (it was 5% until weapons could be re-cut, [the re-cut](upgrades.md)). The runner, crawler and brute columns are
+each type's share of the round (the first round of a type brings an exact number instead: see the types below); special
+rounds replace the mix.
 
 | Round | Zombies 1p / 2p / 4p | Health | Walk m/s, lit | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -492,7 +495,8 @@ together.
 
 Balance is measured, not guessed. `game/tools/balance/` plays thousands of seeded nights through the real
 `GameRules` (the rules are node-free, so it runs headless and fast) with modelled players, and
-`tools/balance/run_report.py` turns nine cells (weak, average and strong players, by 1, 2 and 4 players) into
+`tools/balance/run_report.py` turns nine cells (weak, average and strong players, by 1, 2 and 4 players; the gate adds
+average players by 8, [below](#eight-players-690)) into
 tables and charts. The research page [balance simulator](../research/balance-simulator.md) has the speeds,
 the traps and how to run it; the numbers below are its report for 300 nights per cell (seed 1000).
 
@@ -616,13 +620,13 @@ two findings, and what was decided:
 
 ## Balance targets
 
-`BalanceTargets` holds these ranges and the GdUnit4 suite `test_balance_targets.gd` runs 60 nights of five
+`BalanceTargets` holds these ranges and the GdUnit4 suite `test_balance_targets.gd` runs 60 nights of six
 cells (seed 4000, the same on every machine) and fails, naming the number, if a tuning change leaves one:
 
 | Target | Range |
 | --- | --- |
 | Median round, average solo (the design target) | 10 to 14 |
-| Median round, average 2 / 4 players | 11 to 16 / 12 to 17 |
+| Median round, average 2 / 4 / 8 players | 11 to 16 / 12 to 17 / 14 to 20 |
 | Median round, weak solo / strong solo | 4 to 9 / 12 to 18 |
 | Average solo nights that clear round 4 | at least 85% |
 | A special round up to round 10 kills (average players) | at most 40% of the nights that reach it |
@@ -638,6 +642,39 @@ seed, and that the gate itself fails on a tuning that is far too hard or far too
 pay for. A change to a range
 is a change to this table in the same pull request. To try a number: `tools/balance/run_report.py --set
 rounds.health_growth=1.06` (see the research page).
+
+## Eight players (#690)
+
+A room and a solo night hold up to eight seats, people and bots together (the maintainer's decision, 2026-11-03). The
+scaling is the same four numbers, linear in the players after the first, and was **not retuned**: each player adds 0.6
+of the solo count, 0.5 of the solo spawn rate and 6 to the alive cap, and a boss night one headliner for every 3 beyond
+the first (three at eight) with +100% boss health each. What they come to at 1, 2, 4 and 8 players:
+
+| Round | Zombies 1p / 2p / 4p / 8p | Spawn every 1p / 4p / 8p | Alive cap 1p / 4p / 8p |
+| ---: | --- | --- | --- |
+| 1 | 6 / 10 / 17 / 31 | 2.40 / 0.96 / 0.53 s | 10 / 28 / 52 |
+| 5 | 18 / 28 / 49 / 91 | 1.72 / 0.69 / 0.38 s | 16 / 34 / 58 |
+| 10 | 37 / 60 / 104 / 194 | 1.13 / 0.45 / 0.25 s | 24 / 42 / 66 |
+| 20 | 95 / 152 / 266 / 494 | 0.50 / 0.20 / 0.11 s | 28 / 46 / 70 |
+
+The alive cap an eight-player room asks for (52 to 70) is above what a room stands: a browser in the match caps it at 40
+and a server's alive budget gives each of three rooms 40 ([crowd budget](../research/crowd-budget.md)), so the crowd at
+eight is the cap's 40 with the rest queued, and the pressure per player is lower than at four. The simulator says it
+does not matter for the rounds reached (with the ceiling at 40 the average eight-player median is 18 either way; four
+players 15).
+
+The simulator at 1 to 8 players, average modelled players, 120 nights a cell (seed 1):
+
+| Players | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Median round | 10 | 14 | 15 | 15 | 16 | 17 | 17 | 18 |
+
+Each player adds less than the one before (the points are shared and the crowd is capped), so the curve flattens instead
+of running away. The nights of eight end in rounds 15 to 20 (8, 25, 17, 26, 21 and 23 of 120 in rounds 15 to 20), four
+players' in rounds 15 to 19 with 58 of 120 at the second boss night (round 15) alone: no round before the wall kills
+anyone at eight, and the boss night is a spike for four and not for eight. Weak players at eight reach a median of 8 and
+strong players 20 (100 nights a cell). The gate runs an `average:8` cell (60 nights,
+seed 4000: median 17) against the range **14 to 20** and checks that eight players go further than four.
 
 ## A 5 s break (#382)
 

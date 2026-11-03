@@ -77,7 +77,7 @@ func test_the_buttons_leave_the_kept_hud_cards_alone_for_either_hand() -> void:
 			var host: Control = auto_free(Control.new())
 			host.size = canvas
 			add_child(host)
-			var fixture := HudFixture.make(host, 4)
+			var fixture := HudFixture.make(host, NightHost.MAX_PLAYERS)
 			# A left hand flips the HUD's corner columns with the buttons.
 			fixture.hud.mirrored = mirrored
 			fixture.into_round_one()

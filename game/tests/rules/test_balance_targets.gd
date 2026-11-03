@@ -12,6 +12,7 @@ const CELLS := [
 	["average", 1],
 	["average", 2],
 	["average", 4],
+	["average", 8],
 	["strong", 1],
 ]
 
@@ -61,6 +62,9 @@ func test_better_players_and_more_players_go_further() -> void:
 	assert_float(BalanceBatch.mean_round(cells["average:2"])).is_greater(average)
 	assert_float(BalanceBatch.mean_round(cells["average:4"])).is_greater(
 		BalanceBatch.mean_round(cells["average:2"])
+	)
+	assert_float(BalanceBatch.mean_round(cells["average:8"])).is_greater(
+		BalanceBatch.mean_round(cells["average:4"])
 	)
 
 

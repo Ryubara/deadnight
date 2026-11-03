@@ -91,11 +91,15 @@ func test_a_ticket_without_rules_admits_with_none_and_one_with_rules_hands_them_
 	assert_dict((admitted["settings"] as MatchSettings).to_dict()).is_equal(
 		chosen.merged({"bots": 0})
 	)
-	# A ticket that names the bots keeps them, and more than three is not a rule the game takes.
-	var bots := TicketMaker.make(SECRET, "gs-test", "m", "cy", "Cy", 60, chosen.merged({"bots": 3}))
+	# A ticket that names the bots keeps them, and more than `MAX_BOTS` is not a rule the game takes.
+	var bots := TicketMaker.make(
+		SECRET, "gs-test", "m", "cy", "Cy", 60, chosen.merged({"bots": MatchSettings.MAX_BOTS})
+	)
 	var bot_rules := _verifier().admit(bots, int(Time.get_unix_time_from_system()))
-	assert_int((bot_rules["settings"] as MatchSettings).bots).is_equal(3)
-	var many := TicketMaker.make(SECRET, "gs-test", "m", "di", "Di", 60, chosen.merged({"bots": 4}))
+	assert_int((bot_rules["settings"] as MatchSettings).bots).is_equal(MatchSettings.MAX_BOTS)
+	var many := TicketMaker.make(
+		SECRET, "gs-test", "m", "di", "Di", 60, chosen.merged({"bots": MatchSettings.MAX_BOTS + 1})
+	)
 	assert_bool(_verifier().admit(many, int(Time.get_unix_time_from_system()))["ok"]).is_false()
 
 

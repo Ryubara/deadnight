@@ -1527,6 +1527,18 @@ transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 7.000,
 [node name="Player4" type="Marker3D" parent="PlayerSpawns"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.000, 0.000, 12.000)
 
+[node name="Player5" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 5.000, 0.000, 9.200)
+
+[node name="Player6" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 7.000, 0.000, 9.200)
+
+[node name="Player7" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.000, 0.000, 9.200)
+
+[node name="Player8" type="Marker3D" parent="PlayerSpawns"]
+transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 11.000, 0.000, 9.200)
+
 [node name="Lamp1" type="OmniLight3D" parent="Start"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 4.000, 2.900, 10.500)
 light_color = Color(1.000, 0.851, 0.627, 1)

@@ -50,7 +50,7 @@ inside the bunker of the campaign mission and multiplayer map Airfield (W). Its 
 | Mystery Box | 950 points, in the Help room's far corner, never moves (it moves from the next map on) | W |
 | Wall weapons | start: 200 and 600; Help room: 1200 and 1200; upstairs: 250 (grenades), 1200, 1500, 1800 and the sniper cabinet at 1500 | W |
 | Power-ups | Max Ammo, Insta-Kill, Double Points, Nuke (Carpenter added in the *Black Ops* port) | W |
-| Players | 1 to 4, all spawning in the start room | W |
+| Players | 1 to 8, all spawning in the start room | W |
 | Zombie health | 150, +100 a round to 950 at round 9, then x1.1 a round | W ([round scaling](../round-scaling.md)) |
 | Zombies a round, at once | a concurrent cap of 24; on solo the maps before Der Riese stop at 24 a round | W |
 | Repair | 10 points a board, capped per round | W |
@@ -260,7 +260,7 @@ player's points reach 170, 382, 680, 1062 and 1487 by the end of rounds 1 to 5, 
 The greybox (#631, [the second map](../../design/smallmap.md)) holds every row from 1 to 19 and 27 to 29; the table
 of measured values is on its page, and `test_smallmap_formula.gd` fails a row that drifts out. The numbers it
 measured: 585 m² inside (start 205, side 151, upstairs 228), the ring's lap 68 m, the loops 29 and 31 m, the longest
-sight line 23 m, 3.2 m ceilings, a 3.4 m rise, the players' start 5.2 m from a window, spawns 6 to 7 m outside.
+sight line 23 m, 3.2 m ceilings, a 3.4 m rise, X, spawns 6 to 7 m outside.
 
 Two of this page's rows overrule the kit's sizes on [the art page](small-map-art.md), and the greybox follows the
 rows: the ceiling (row 9) and the rise (row 19) make the storey 3.4 m, not the kit's 3.0 m; and row 27 makes the

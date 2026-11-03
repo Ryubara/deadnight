@@ -8,7 +8,7 @@ extends Node
 ## `SEND_EVERY` steps tells each client the events since the last time and the frame, as a
 ## difference against the frame that client had (`FrameDelta`). The first player to arrive starts
 ## the night; when the last one leaves, the next night is built afresh (a night is not resumed).
-## Players get the lowest free id of 1 to 4, which is also their seat in the lot.
+## Players get the lowest free id of 1 to `MAX_PLAYERS`, which is also their seat in the lot.
 ##
 ## The server speaks plain `ws://`: on Railway the edge terminates TLS and clients use `wss://`.
 ## It reads its port from the command line (`--port N`) or `$PORT`, and logs one JSON object a line.
@@ -27,7 +27,10 @@ signal built
 ## An embedded room's night began and everyone has gone: the `GameServer` ends and frees it.
 signal emptied
 
-const MAX_PLAYERS := 4
+## Seats in a room: people and bots together. The one place the limit is written: `NightBots.SEATS`
+## and `LookServer.SEATS` are held equal to it by a test, `MatchSettings.MAX_BOTS` is one less (a
+## person always holds a seat), and the backend's `MAX_PLAYERS` (spikes/backend) mirrors it.
+const MAX_PLAYERS := 8
 ## The longest name a seat shows, as the HUD keeps it (`HudStyle.NAME_LIMIT`), so the ` (2)` of a
 ## duplicate is never cut off.
 const NAME_MAX := 20

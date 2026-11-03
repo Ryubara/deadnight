@@ -743,8 +743,10 @@ def build() -> None:
         props={"light_path": 'NodePath("../Lamps/ScreenGlow")', "panel_path": 'NodePath("../ScreenPanel")'},
     )  # fmt: skip
     spawns = group("PlayerSpawns", field)
-    for i, sx in enumerate((-6, -2, 2, 6), start=1):
-        marker(spawns, f"Player{i}", (sx, 0, -43))
+    # Eight places (the room's seats, `NightHost.MAX_PLAYERS`): the first four on the apron's row, the next four a row
+    # of 3 m south of it, so a night of one to eight takes them in order and no two stand closer than 3 m.
+    for i, (sx, sz) in enumerate([(x, -43) for x in (-6, -2, 2, 6)] + [(x, -40) for x in (-6, -2, 2, 6)], start=1):
+        marker(spawns, f"Player{i}", (sx, 0, sz))
     zs = group("ZombieSpawns", field)
     for tag, bx, bz in breaches:
         # Outside the fence, on the apron: the dead come to the boards from the dark.

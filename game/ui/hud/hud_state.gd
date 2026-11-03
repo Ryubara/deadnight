@@ -757,12 +757,12 @@ static func name_of(member: Dictionary) -> String:
 	return shown + " BOT" if member.get("bot", false) else shown
 
 
-## The lowest seat no one in the party has, as the server gives it (0 when all four are taken).
+## The lowest seat no one in the party has, as the server gives it (0 when all are taken).
 func _free_seat() -> int:
 	var taken: Array = []
 	for member: Dictionary in team.values():
 		taken.append(member["seat"])
-	for seat in 4:
+	for seat in NightHost.MAX_PLAYERS:
 		if not taken.has(seat):
 			return seat
 	return 0

@@ -83,7 +83,7 @@ func _exit_tree() -> void:
 
 
 ## A game server: with a backend (`ServerConfig`) the nights of its matches, else one night for
-## up to four players. The port is `--port`, else `$PORT` (Railway sets it), else the default.
+## up to eight players. The port is `--port`, else `$PORT` (Railway sets it), else the default.
 func _serve(args: NetArgs) -> void:
 	var from_environment := OS.get_environment("PORT")
 	var port := args.get_int(

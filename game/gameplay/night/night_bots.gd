@@ -8,7 +8,7 @@ extends RefCounted
 ## through `NightServer.apply` like a socket, so nothing here changes how a bot plays. This class
 ## only seats and unseats them and runs the `BotHost` each tick.
 ##
-## The count: `MatchSettings.bots` (0 to 3) is the most; in a room it is also bounded by the seats
+## The count: `MatchSettings.bots` (0 to 7) is the most; in a room it is also bounded by the seats
 ## the people leave free (`target`). Bots take the highest free seat numbers, so the people's
 ## lowest-numbered seats stay theirs, and a person who finds no free seat takes the lowest bot's
 ## seat as it stands (`hand_over`): the same body, points and weapons, the round goes on.
@@ -16,9 +16,9 @@ extends RefCounted
 
 ## Seats in a night: the room's capacity (`NightHost.MAX_PLAYERS`, which a test holds equal; the
 ## host's script is not named here so the two do not need each other to load).
-const SEATS := 4
+const SEATS := 8
 ## The names the bots wear (a seat is called by one of these, then shown with BOT after it).
-const NAMES: Array[String] = ["Ash", "Fern", "Moss"]
+const NAMES: Array[String] = ["Ash", "Fern", "Moss", "Reed", "Sage", "Hazel", "Birch"]
 
 var host := BotHost.new()
 var server: NightServer
@@ -53,9 +53,11 @@ static func target(wanted: int, people: int) -> int:
 	return mini(asked, maxi(SEATS - people, 0))
 
 
-## The name the bot at seat `player_id` wears (the lobby shows it before the night begins).
+## The name the bot at seat `player_id` wears (the lobby shows it before the night begins). Bots
+## take the highest seats, so the names go from the top: the bot in the last seat is always `Ash`,
+## the next `Fern`, and so on, whoever else sits in the room (up to seven bots, seven names).
 static func name_for(player_id: int) -> String:
-	return NAMES[(player_id - 1) % NAMES.size()]
+	return NAMES[posmod(SEATS - player_id, NAMES.size())]
 
 
 ## The seats the bots hold, lowest first.

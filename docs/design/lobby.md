@@ -14,10 +14,10 @@ guests).
 
 ## The rules in one place
 
-- A **lobby** has a short code, up to **4 seats**, one **host** (the first seat) and a status: **open** (waiting for the
-  host) or **started** (a night is running, with a round).
+- A **lobby** has a short code, up to **8 seats** (people and bots together: `NightHost.MAX_PLAYERS`), one **host**
+  (the first seat) and a status: **open** (waiting for the host) or **started** (a night is running, with a round).
 - **Only the host starts.** Guests wait and can leave.
-- **Late joining stays on.** A started night takes newcomers while the game server has room (the same 4). The code says
+- **Late joining stays on.** A started night takes newcomers while the game server has room (the same 8). The code says
   *Night in progress, round N* before the newcomer presses Join, and Join goes straight in.
 - The lobby screen **polls** the backend every 2 seconds. A member who has not polled for a minute has left (a closed
   tab never says so), while someone else is still there; the host role passes on.
@@ -47,10 +47,10 @@ Together has the three ways in it already: *Quick join*, *Create a night*, *Join
 longer starts the night. It opens the **lobby** with the player as host:
 
 - The code in large type and the invite link (the web), with *Copy the link* and *Copy the code*.
-- **Seats**: four rows, `1 Ann  HOST`, `2 (open)`, `3 (open)`, `4 (open)`. The host's Bots setting shows as bots
-  in the highest open seats, `3 Moss  BOT`, never more than the seats people leave free; a person who joins takes
-  one of them ([the rules](rounds.md#bots)). A name is as long as the backend has it
-  (guest names, Discord names; #485 will make them the player's own).
+- **Seats**: eight rows, `1 Ann  HOST`, `2 (open)`, `3 (open)`, ... `8 (open)`. The host's Bots setting shows as bots
+  in the highest open seats, `8 Ash  BOT`, `7 Fern  BOT`, never more than the seats people leave free; a person who
+  joins takes one of them ([the rules](rounds.md#bots)). A name is as long as the backend has it (guest names, Discord
+  names; #485 will make them the player's own).
 - **The night's rules** (`MatchSettingsPanel`, shared with the Play screen): zombie intensity, most alive at once,
   break between rounds, bots. Only the host's panel moves; guests see the same values, read only, as the host sets them.
   A change goes to the backend a third of a second after the host stops (`PUT /lobbies/:id/settings`, one request
@@ -120,7 +120,7 @@ only opened the Activity are not seats.
 - *Discord's proxy and the web.* A poll is a plain HTTPS request on the path that already works (the `/api` mapping,
   gzip answers, `accept_gzip = false`). A push channel is a second WebSocket through the same proxy, with its own
   reconnection, its own auth and a way to be wrong that polls do not have.
-- *Cost.* A lobby has at most 4 members, an answer is about 400 bytes: four screens use 2 requests a second, and a poll
+- *Cost.* A lobby has at most 8 members, an answer is about 700 bytes: eight screens use 4 requests a second, and a poll
   is also the member's heartbeat, which gives presence for free.
 - *Latency.* A join shows within 2 s. For a waiting room that is as good as instant; the start is also seen within 2 s,
   which the guests' *Play* press hides.

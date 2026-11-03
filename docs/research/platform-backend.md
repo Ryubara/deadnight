@@ -203,6 +203,11 @@ host calls `POST /lobbies/:id/start`, and every member polls `GET /lobbies/:id` 
 - **The view** (`GET /lobbies/:id`, members only) has `members` as `[{userId, name, seat, host, away}]` in the order people
   came (seats close up when someone leaves), `hostId`, `state` (`open` or `started`), `players` (the game server's count
   once started), `round` (the night's round, null until the game server has said one), `matchId` and the usual code.
+- **Seats.** A lobby holds 1 to `MAX_PLAYERS` = 8 (`src/lobbies.ts`, the game server's `NightHost.MAX_PLAYERS`; #690): the
+  default for a lobby made without `maxPlayers` and for Quick join, and the most `POST /lobbies` takes (`400` above). The
+  seats are people and bots together: the host's `bots` setting (0 to 7) fills the open ones on the game server. A
+  lobby's own `MAX_SEATS_EVER` (32) stays the guard on a started night's member list. The tests (`lobby.test.ts`) fill a
+  default room with eight, turn the ninth away with `409 full` and refuse a limit of nine.
 - **Start is the host's only** (`403 not_host`; a second one is `409 already_started`; every server busy is
   `503 no_server` and the lobby stays open). Members get a ticket only after it (`409 not_started` before).
 - **Host handover.** A host who leaves, or who is dropped, passes the role to the next seat. The last member out closes
@@ -288,7 +293,7 @@ the ticket, so the game server needs no second channel:
    `403 not_host`, `409 already_started` and `400 bad_settings` otherwise, and nothing changes.
 1. `POST /lobbies/:id/start` takes `{"settings": {"count_multiplier", "max_alive", "break_seconds"}}` from the
    host (without it, the ones set while waiting; without those, today's game). The backend (`src/settings.ts`)
-   accepts exactly those three keys, and a fourth `bots` (a whole 0 to 3; left out it means none and is kept left out,
+   accepts exactly those three keys, and a fourth `bots` (a whole 0 to 7; left out it means none and is kept left out,
    so a client from before it still passes), inside the game's bounds (0.25 to 5; a whole 0 to 120; 0 or 1 to 120) and answers
    `400 bad_settings` otherwise, leaving the lobby open. They are fixed when the match starts; the lobby view shows
    them.

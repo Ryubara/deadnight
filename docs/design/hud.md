@@ -64,13 +64,17 @@ says "HOLD TO NAIL BOARDS UP": holding the button keeps putting boards back
 ## Players' points
 
 Each player in the lot has a container: a square **portrait** on the left and the **points box** on its right, in the
-colour of the player's seat (`LookCatalog.armband_colour`: red, cyan, yellow, green, the colour of the armband they wear
-in the lot, so the colour on the HUD and on the arm is one). The box carries the name small at its left and the points at
-its right, on one baseline; the number takes the dark or the light ink, whichever has the better contrast on the seat's
-colour (at least 4.5, a test checks all four). Your own container is first and larger (66 units high, a teammate's 48),
-the others follow by player id; one to four are shown, a row made when a player joins and freed when they leave. A downed
-player's portrait dims, their box darkens and the name says `DOWN`. There is no party ticket any more: the containers
-are the party list.
+colour of the player's seat (`LookCatalog.armband_colour`: red, cyan, yellow, green, orange, violet, pink, white: eight
+seats, eight colours; the colour of the armband they wear in the lot, so the colour on the HUD and on the arm is one).
+The box carries the name small at its left and the points at its right, on one baseline; the number takes the dark or
+the light ink, whichever has the better contrast on the seat's colour (at least 4.5, a test checks all eight). Your own
+container is first and larger (66 units high, a teammate's 48), the others follow by player id; one to eight are shown,
+a row made when a player joins and freed when they leave. With more than four players the teammates' boxes are the
+**compact** size (`HudPlayerBox.COMPACT_HEIGHT`, 32 units, the name and the points one size smaller,
+`HudPoints.COMPACT_FROM`), so a party of eight stands in the height of about five boxes of the old size: 66 + 7 x 32 +
+the gaps is 296 units, and the left column still ends under the health card on the smallest canvas (1536 x 864) with
+the challenge prompt between it and the round card. A downed player's portrait dims, their box darkens and the name
+says `DOWN`. There is no party ticket any more: the containers are the party list.
 
 The portrait is the Soldier as the player wears it, a head-and-shoulders render of the game's own model
 (`CharacterAssembler`, the assembler the wardrobe and the lot use) in a tiny 3D world of its own, drawn once and then left
@@ -207,7 +211,7 @@ fades without sliding. A new step of the generator's quest (the circuit switches
   clear box (`test_hud_challenge.gd`).
 - **Caps keep a 28-zombie round readable.** Three gain rows, eight damage numbers, six damage arcs, three events and one
   notice at a time; the oldest goes first.
-- **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with four players, an
+- **Notices on the right.** Joins and leaves sit under the event list, not at the left edge: with eight players, an
   objective and a downed health stack, the left column is full on a 1536 x 864 canvas.
 - **Outlined text.** Every label has a dark outline and a hard shadow so it holds on the lit lot and on the dark.
 - **Colour means something.** Amber is points and light, hot orange or red is danger and low (round numeral, low
@@ -218,7 +222,7 @@ fades without sliding. A new step of the generator's quest (the circuit switches
 The project stretches the canvas to 1920 x 1080 (and wider or taller for other window shapes); the UI scale setting
 divides it (0.8 to 1.25). The HUD lays out in canvas units with anchors; `HudStyle.UNIT` is the one number that sizes
 it against the first draft. A test builds the busiest
-HUD (four players, you down, a long prompt, a banner, full lists), and the same with the longest content the game allows
+HUD (eight players, you down, a long prompt, a banner, full lists), and the same with the longest content the game allows
 (20-character names, round 123, 99,999,999 points, 999 / 9999 ammo, a 23-character weapon, a long prompt and notices),
 at every window from 1024 x 768 to 4K at each UI scale, in three typefaces, and checks that every part is inside the
 screen and none overlaps another. The smallest text is 20 canvas units: 13 px
@@ -247,7 +251,7 @@ chasing bulbs, no pulsing (the low-health frame and low-fuel tank hold steady); 
 marquee, the banner, the reward line and a late joiner into a special round), `test_hud_snapshot.gd` (a late joiner
 against the HUD that saw every event), `test_hud_refresh.gd` (changes announced, nodes made and a time budget for
 the break and a kill batch), `test_hud_parts.gd` (every part, the prompt with simulated input and device switching),
-`test_hud_players.gd` (a container per player, one to four: colours, local first, down, the portrait),
+`test_hud_players.gd` (a container per player, one to eight: colours, local first, down, the portrait),
 `test_hud_reticle.gd` (the reticle: present, centred, small, scaled by the viewport stretch, hidden under a menu or
 while down, editable), `test_hud_generator_panel.gd` (when the card shows and its stepped timing),
 `test_hud_grid.gd` (the grid, measured at every canvas: shared edges, gaps, text lines, no label leaving its part),

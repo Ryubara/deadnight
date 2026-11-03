@@ -12,7 +12,7 @@ export interface MatchSettings {
   max_alive: number;
   /** Seconds of break between rounds; 0 is the tuned break, else 1 to 120. */
   break_seconds: number;
-  /** Bots that fill the empty seats of the night, 0 to 3 (the room takes only as many as the people leave free). Absent: 0. */
+  /** Bots that fill the empty seats of the night, 0 to 7 (the room takes only as many as the people leave free). Absent: 0. */
   bots?: number;
 }
 
@@ -21,7 +21,7 @@ export const MAX_COUNT_MULTIPLIER = 5;
 export const MAX_ALIVE = 120;
 export const MIN_BREAK = 1;
 export const MAX_BREAK = 120;
-export const MAX_BOTS = 3;
+export const MAX_BOTS = 7;
 
 /** The keys every settings object has; `bots` may be left out by a client from before it (it means 0). */
 const KEYS = ["count_multiplier", "max_alive", "break_seconds"];
