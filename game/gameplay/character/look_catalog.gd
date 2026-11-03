@@ -44,7 +44,14 @@ const COLOUR_TITLES := {
 ## The fixed armband colour of each seat in the lot. Never part of the look: a teammate stays
 ## readable in the dark whatever they wear.
 const ARMBAND_COLOURS: Array[Color] = [
-	Color("ff4b3e"), Color("38d6ff"), Color("ffe14a"), Color("9cff57")
+	Color("ff4b3e"),
+	Color("38d6ff"),
+	Color("ffe14a"),
+	Color("9cff57"),
+	Color("ff9a2e"),
+	Color("b57bff"),
+	Color("ff6fc8"),
+	Color("f2f2f2"),
 ]
 
 ## What a locked palette entry asks for, by "<channel>/<index>" (see `LookUnlocks` for the forms).

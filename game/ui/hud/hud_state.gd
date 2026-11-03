@@ -100,7 +100,7 @@ var fuel_empty := false
 ## Circuit id -> lit, in the order the generator lists them.
 var circuits: Dictionary[StringName, bool] = {}
 ## Player id -> {"name": String, "downed": bool, "points": int, "grenades": int, "seat": int,
-## "look": Dictionary}, the local player included. The seat (0 to 3) picks the player's colour (the
+## "look": Dictionary}, the local player included. The seat (0 to 7) picks the player's colour (the
 ## armband's); the server gives the lowest free one, so the state does too until it is told
 ## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
 ## "bot" (true when a bot plays the seat: the roster shows BOT after the name, `name_of`) is the
@@ -792,12 +792,12 @@ static func name_of(member: Dictionary) -> String:
 	return shown + " BOT" if member.get("bot", false) else shown
 
 
-## The lowest seat no one in the party has, as the server gives it (0 when all four are taken).
+## The lowest seat no one in the party has, as the server gives it (0 when all are taken).
 func _free_seat() -> int:
 	var taken: Array = []
 	for member: Dictionary in team.values():
 		taken.append(member["seat"])
-	for seat in 4:
+	for seat in NightHost.MAX_PLAYERS:
 		if not taken.has(seat):
 			return seat
 	return 0

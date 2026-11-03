@@ -86,7 +86,9 @@ func test_seats_are_the_lowest_free_and_kept_while_others_leave() -> void:
 	assert_int(hub.server.seats[b]).is_equal(1)
 	var d := hub.connect_client()
 	assert_int(hub.server.seats[d]).is_equal(0)
-	hub.connect_client()
+	# b, c and d are here: the rest of the lot fills, and the next player has no seat.
+	for _i in NightHost.MAX_PLAYERS - 3:
+		hub.connect_client()
 	assert_int(hub.server.join(99)).is_equal(-1)
 
 

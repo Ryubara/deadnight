@@ -19,9 +19,9 @@ func _finish(night: Night, hud: Hud) -> void:
 	hud.queue_free()
 
 
-func _stand_at(night: Night, kind: StringName) -> void:
+func _stand_at(night: Night, kind: StringName, shop_id: StringName = &"") -> void:
 	for spot in night.world.shop_spots():
-		if spot["kind"] == kind:
+		if spot["kind"] == kind and (shop_id == &"" or spot["shop_id"] == shop_id):
 			night.player().teleport(spot["position"] + Vector3(0.0, 0.1, 0.0))
 			break
 	NightFixture.run(night, 3)
@@ -84,8 +84,9 @@ func test_the_card_at_the_fountain_says_the_health_it_gives() -> void:
 	var made := await _start()
 	var night: Night = made["night"]
 	var hud: Hud = made["hud"]
-	_stand_at(night, &"perk")
+	_stand_at(night, &"perk", &"tonic_hearty")
 	assert_str(String(hud.state.prompt["kind"])).is_equal("buy_tonic")
+	assert_str(hud.state.prompt["label"]).is_equal("Hearty Health Tonic")
 	assert_str(hud.state.prompt["detail"]).is_equal("+50 MOST HEALTH")
 	assert_int(hud.state.prompt["cost"]).is_equal(1000)
 	_use(night)
@@ -102,4 +103,46 @@ func test_a_crowbar_in_hand_says_there_is_nothing_to_re_cut() -> void:
 	night.server.combat.apply(CombatAction.give_weapon(1, &"crowbar"))
 	_stand_at(night, &"upgrade")
 	assert_str(hud.state.prompt["detail"]).is_equal("NOTHING TO RE-CUT IN YOUR HAND")
+	_finish(night, hud)
+
+
+func test_every_perk_machine_shows_its_name_its_price_and_one_plain_line() -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	var rules := night.server.rules
+	var lines := {
+		&"tonic_double_shot": "FIRES 33% FASTER",
+		&"tonic_quick_load": "RELOADS 100% FASTER",
+		&"tonic_third_holster": "CARRY 3 WEAPONS INSTEAD OF 2",
+		&"tonic_swift_rescue": "REVIVE TEAMMATES 100% FASTER. GETS YOU UP ALONE, 3 TIMES A NIGHT",
+		&"tonic_reload_shock": "RELOADING SHOCKS THE DEAD WITHIN 4.0 M",
+	}
+	for item_id: StringName in lines:
+		_stand_at(night, &"perk", item_id)
+		var item := rules.tuning.economy.item(item_id)
+		(
+			assert_str(String(hud.state.prompt["kind"]))
+			. override_failure_message(String(item_id))
+			. is_equal("buy_tonic")
+		)
+		assert_str(hud.state.prompt["label"]).is_equal(item.display_name)
+		assert_int(hud.state.prompt["cost"]).is_equal(rules.price_of(item_id, 1))
+		assert_str(hud.state.prompt["detail"]).is_equal(lines[item_id])
+	_finish(night, hud)
+
+
+func test_the_weapon_slots_grow_to_three_with_the_third_holster_and_shrink_when_it_is_lost(
+) -> void:
+	var made := await _start()
+	var night: Night = made["night"]
+	var hud: Hud = made["hud"]
+	assert_int(hud.state.slot_count).is_equal(2)
+	night.server.buy(1, &"tonic_third_holster")
+	NightFixture.run(night, 3)
+	assert_int(hud.state.slot_count).is_equal(3)
+	night.server.rules.apply(RulesAction.skip_break())
+	night.state.apply_events(night.server.rules.apply(RulesAction.blow(1, 9999.0)))
+	NightFixture.run(night, 3)
+	assert_int(hud.state.slot_count).is_equal(2)
 	_finish(night, hud)

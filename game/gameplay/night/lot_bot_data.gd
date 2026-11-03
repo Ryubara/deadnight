@@ -40,6 +40,7 @@ static func shop(world: NightWorld, tuning: RulesTuning) -> BotShop:
 		found.clear_from = overlay.bot_clear_from
 		found.calm_share = overlay.bot_calm_share
 		found.hurt_share = overlay.bot_hurt_share
+		found.team_links = overlay.bot_team_links
 		found.shopping.assign(overlay.bot_shopping)
 	var night_tuning := NightTuning.shipped()
 	found.use_reach = night_tuning.use_reach

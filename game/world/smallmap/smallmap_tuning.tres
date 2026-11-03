@@ -140,6 +140,7 @@ alive_cap = 24
 bot_clear_from = 5.0
 bot_calm_share = 0.6
 bot_hurt_share = 0.0
+bot_team_links = true
 bot_shopping = Array[StringName]([&"door_side", &"weapon_shotgun", &"weapon_smg", &"door_stairs_start", &"weapon_rifle", &"door_stairs_side", &"crane_play", &"weapon_fire_axe", &"weapon_baseball_bat"])
 fuel = SubResource("NoGenerator")
 words = SubResource("Words")

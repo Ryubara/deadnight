@@ -31,10 +31,12 @@ func _hosted(members: int) -> LobbyFixture.FakeApi:
 	return api
 
 
-func test_the_hosts_panel_has_a_bots_row_from_zero_to_three() -> void:
+func test_the_hosts_panel_has_a_bots_row_from_zero_to_seven() -> void:
 	var screen := await _screen(_hosted(1))
 	assert_object(screen.rules.row_for("bots")).is_not_null()
-	assert_array(Array(screen.rules.bots_selector.options)).is_equal(["0", "1", "2", "3"])
+	assert_array(Array(screen.rules.bots_selector.options)).is_equal(
+		["0", "1", "2", "3", "4", "5", "6", "7"]
+	)
 	assert_int(screen.rules.settings().bots).is_equal(0)
 	assert_bool(screen.rules.bots_selector.focus_mode == Control.FOCUS_ALL).is_true()
 	screen.free()

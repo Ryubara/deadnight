@@ -80,6 +80,7 @@ static func revive(
 	player.downed = false
 	player.dead = false
 	player.bleed_left = 0.0
+	player.self_revive_left = 0.0
 	player.health = player.max_health * fraction
 	# Getting up at a round's end is a fresh start; a teammate's hand leaves the wait for mending
 	# to run from the revive.

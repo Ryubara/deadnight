@@ -587,6 +587,25 @@ func _replay_effects() -> void:
 		blast.play(at + Vector3(3.0, -1.0, -2.0), load(def_path) as GrenadeDef)
 		blast.gibs(at, Vector3.UP, 1)
 		await _chunk()
+	# The shock perk's shader, alone in frames of its own (a new shader's first draw builds a few GL
+	# programs at once, docs/research/first-use-hitches.md), held still at its brightest.
+	(
+		view
+		. draw_event(
+			{
+				"type": &"shock_burst",
+				"player_id": -1,
+				"point": at + Vector3(0.0, -1.2, -1.0),
+				"radius": 4.0,
+				"hits": [],
+			}
+		)
+	)
+	for shock: ShockEffect in view.find_children("*", "ShockEffect", true, false):
+		shock.freeze(0.3)
+	await _chunk(SHOT_FRAMES + 1)
+	for shock: ShockEffect in view.find_children("*", "ShockEffect", true, false):
+		shock.queue_free()
 
 
 ## One frame of what was just made. The materials are kept first: an effect frees itself a fraction

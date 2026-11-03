@@ -279,10 +279,7 @@ func test_distance_is_the_same_at_30_60_and_120_ticks_per_second() -> void:
 	var distances: Array[float] = []
 	for hz in [30, 60, 120]:
 		Engine.physics_ticks_per_second = hz
-		# The engine reads the new rate when it plans a step: let two steps run so the delta the
-		# simulation reads is the new one.
-		await get_tree().physics_frame
-		await get_tree().physics_frame
+		await _until_physics_delta_is(1.0 / hz)
 		assert_float(_player.get_physics_process_delta_time()).is_equal_approx(1.0 / hz, 0.0001)
 		_player.teleport(START)
 		for i in hz / 6:
@@ -294,6 +291,16 @@ func test_distance_is_the_same_at_30_60_and_120_ticks_per_second() -> void:
 	assert_float(distances[1]).is_greater(5.0)  # it walked, so the comparison below means something
 	assert_float(distances[0]).is_equal_approx(distances[1], 0.1)
 	assert_float(distances[2]).is_equal_approx(distances[1], 0.1)
+
+
+## The engine reads a new tick rate when it plans a loop iteration, once, and a loaded machine runs
+## several physics steps in one iteration, all with the old delta: two physics frames are not
+## always enough. Waits physics frames until the delta the simulation reads is `delta` (or 60).
+func _until_physics_delta_is(delta: float) -> void:
+	for i in 60:
+		await get_tree().physics_frame
+		if absf(_player.get_physics_process_delta_time() - delta) < 0.0001:
+			return
 
 
 # --- look ---

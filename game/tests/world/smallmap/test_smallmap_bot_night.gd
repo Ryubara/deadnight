@@ -7,6 +7,8 @@ extends GdUnitTestSuite
 ## Game seconds of the solo night, and of the night of four on the whole map.
 const SOLO_SECONDS := 240.0
 const FOUR_SECONDS := 150.0
+## Game seconds in which four bots on the shut map have bought every link (round 4 at the latest).
+const FOUR_LINKS_SECONDS := 210.0
 const FRAME_EVERY := 30
 
 var _seated: SeatedNight
@@ -15,6 +17,8 @@ var _tears: Dictionary = {}
 var _buys: Dictionary = {}
 var _rounds_started := 0
 var _most_alive := 0
+## The round each link was bought in (#696).
+var _link_rounds: Dictionary = {}
 
 
 func after_test() -> void:
@@ -27,6 +31,7 @@ func _play(bots: int, seconds: float, open_all: bool) -> void:
 	_links.clear()
 	_tears.clear()
 	_buys.clear()
+	_link_rounds.clear()
 	_rounds_started = 0
 	_most_alive = 0
 	_seated = await SmallMapNight.seat(self, bots, null, 3)
@@ -54,6 +59,7 @@ func _on_event(event: Dictionary) -> void:
 	match event["type"]:
 		&"door_opened":
 			_links.append(event["door_id"])
+			_link_rounds[event["door_id"]] = _seated.server.rules.round_number
 		&"board_torn":
 			_tears[event["barricade_id"]] = int(_tears.get(event["barricade_id"], 0)) + 1
 		&"purchase_made":
@@ -92,3 +98,19 @@ func test_four_bots_on_the_whole_map_hold_it_for_several_rounds() -> void:
 		. override_failure_message("torn %s" % [_tears.keys()])
 		. is_greater_equal(5)
 	)
+
+
+func test_four_bots_buy_all_three_links_together_in_the_first_rounds() -> void:
+	# The team rule (`bot_team_links`): the door's rotation and the one-errand turn left the
+	# second stair unbought for the whole night; now the nearest free bot buys each link in the
+	# first lulls.
+	await _play(4, FOUR_LINKS_SECONDS, false)
+	assert_int(_link_rounds.size()).override_failure_message("links %s" % [_link_rounds]).is_equal(
+		3
+	)
+	for link: StringName in _link_rounds:
+		(
+			assert_int(_link_rounds[link])
+			. override_failure_message("%s" % [_link_rounds])
+			. is_less_equal(4)
+		)

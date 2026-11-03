@@ -13,6 +13,7 @@ const SWAP := &"swap"
 const SELECT_SLOT := &"select_slot"
 const ADD_AMMO := &"add_ammo"
 const UPGRADE_WEAPON := &"upgrade_weapon"
+const REMOVE_WEAPONS := &"remove_weapons"
 const TICK := &"tick"
 const TARGETS := &"targets"
 const TRACK_TARGET := &"track_target"
@@ -94,6 +95,12 @@ static func upgrade_weapon(player_id: int, weapon_id: StringName) -> Dictionary:
 	return {"type": UPGRADE_WEAPON, "player_id": player_id, "weapon_id": weapon_id}
 
 
+## Takes weapons the player carries away (the third-weapon perk is gone): `weapon_ids` are
+## catalogue ids. The weapon in hand, if it is one of them, is replaced by one that is left.
+static func remove_weapons(player_id: int, weapon_ids: Array) -> Dictionary:
+	return {"type": REMOVE_WEAPONS, "player_id": player_id, "weapon_ids": weapon_ids}
+
+
 ## One fixed step of the combat clock: cooldowns, reloads, projectiles in flight.
 static func tick(delta: float) -> Dictionary:
 	return {"type": TICK, "delta": delta}
@@ -123,4 +130,10 @@ static func from_rules_event(event: Dictionary) -> Dictionary:
 			return track_target(event["zombie_id"])
 		&"zombie_removed":
 			return untrack_target(event["zombie_id"])
+		&"perks_lost":
+			if not event["weapons"].is_empty():
+				var ids: Array = []
+				for shop_id: StringName in event["weapons"]:
+					ids.append(WeaponCatalog.catalog_id(shop_id))
+				return remove_weapons(event["player_id"], ids)
 	return {}

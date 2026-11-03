@@ -22,7 +22,7 @@ What the game has now (`game/net/`, `game/gameplay/night/`), against what the sp
 | | The game (issue #302) | Still the spike's design |
 | --- | --- | --- |
 | Transport | `WebSocketLink` (client) and `WsListener` (server) from the spike's `WebSocketPeer`/`TCPServer` code; `GameLink` is the interface `LoopbackLink` (single-player) and `WebSocketLink` share. Port 8910 | `ConditionedTransport` (delay, jitter, loss) is not ported |
-| Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 4 players, the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
+| Server | `NightHost`: `godot --headless --path game -- --server [--port N]`, one `NightServer`, up to 8 players (`NightHost.MAX_PLAYERS`, [measured](#eight-players-690)), the lowest free id is the seat, a new night is built when the last player leaves | `GameServer`'s per-client baselines and acks |
 | Tick | the night's own **60 Hz** step; a `TICK` to each client every 2nd step (30 a second) | the spike's 30 Hz tick |
 | Protocol | `NetWire`, version 13 (the layout is in its header; 13 added the `ORDER` message and the frame's `bot_orders`, [bot orders](bots.md#orders-follow-roam-and-hold-641); 11 put the quick melee in a flag of the command, #411; 5 put the client's measured round trip in the ping, [Scoreboard](scoreboard.md); 6 put the view step in a command; 7 sent the zombies of a frame as deltas, #57; 8 added the aim pose and look to each player of the frame, [below](#other-players-weapons-518); 9 put every seat's name in the WELCOME and a `player_named` event on a join, #485; 10 added the `PLATFORM` message; 12 added each player's `stance` to the frame, [below](#other-players-sprint-crouch-and-jump-549)); a command is a fixed 25 bytes, snapped by `CommandCodec` (#77, [below](#command-quantization-and-rewinding-the-body)); a `TICK` is a packed array of the events since the last one with the frame last; `LookWire` types 8 and 9 for looks; a `PLATFORM` message (type 12, two bytes) says after the welcome whether the client is a browser, because the crowd a night stands is the weakest client's ([crowd budget](crowd-budget.md#decision-120-for-a-desktop-and-a-server-40-with-a-browser-in-the-match-453)); a client that does not send it counts as a browser; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `MARK` (type 11, ten bytes) a client's ping, rate limited at 2 a second and answered with a `ping_placed` event for everyone; `ORDER` (type 13, nine bytes: the order's index, the spot in centimetres, the bot it is for) a person's order to the bots, rate limited at 2 a second and answered with a `bot_order_set` event for everyone | the version only in the handshake; refusal of another version |
 | Snapshots | the `NightServer` frame, sent as a **difference against the frame that client had before** (`FrameDelta`): TCP never reorders or loses, so the previous frame is the baseline and no ack is needed. Compressed with Zstandard above 256 bytes | the spike's centimetre deltas against an acked baseline (they were for a protocol over an unreliable link) |
@@ -452,6 +452,58 @@ version of this spike. We measured it, then dropped it:
 
 We keep Godot for what it is good at here: `WebSocketPeer`, `TCPServer`, `StreamPeerBuffer`, the fixed physics tick, the
 headless server and the single-threaded web export.
+
+## Eight players (#690)
+
+A room holds eight seats, people and bots together (`NightHost.MAX_PLAYERS`; the maintainer's decision of 2026-11-03).
+**The wire did not change** (still version 12): a frame is a keyed variable, so more players are more entries and no
+layout moved; a command is still 25 bytes, a player's entry in the frame is the same, the protocol's player id is a
+byte (the limit is 255). What moved is how many entries a client is sent, and the places that assumed four seats
+(the limit and its mirrors, the seats' looks and armband colours, the spawn markers, the lobby and the backend's
+default, the HUD's list). The rest of this section is the numbers.
+
+**Over real sockets** (`tests/net/test_room_eight.gd`: a `NightHost` and hand-driven `Night` clients in one process,
+every client walking its own circle and holding the trigger two ticks in three, the dead let into round 1 for 8 s and
+then 10 s of game time counted; bytes per person per second of game time, so a loaded machine does not change them).
+Per person:
+
+| Room | Zombies alive | Down, B/s | Up, B/s |
+| --- | ---: | ---: | ---: |
+| 4 people | 11 | 10,007 | 1,513 |
+| the same night, 8 people | 11 | 12,654 | 1,519 |
+| 5 people and 3 bots (the bots' frames are made on every step) | 21 | 14,147 | 1,520 |
+
+Eight players send each person 26% more than four at the same crowd (the extra entries are four more players' state, the
+zombies are the same), about 14 KB/s down and 1.5 KB/s up for a person: a phone's link takes that. The test
+fails above 30 KB/s down and 2 KB/s up and fails if eight are not under three times four. Upstream does not move with
+the room (commands only); the server's total out grows with people times people's share, 72 KB/s for eight at 40 alive
+and 138 KB/s at 120 alive (`crowd_server_bench.tscn --players=8`, standing players, snapshots of 300 and 576 bytes a
+person, the same as four's).
+
+**The server's step** (`crowd_server_bench.tscn`, standing players, 40 alive, 1200 ticks, this machine with other
+agents running, two runs each): one room of four had a 2.1 to 2.2 ms median step and 4.4 to 4.9 ms at p95 (tick with
+the snapshots 5.2 to 6.0 ms at p95, 6 to 24 ticks of 1200 over the 16.7 ms budget); one room of eight 2.8 to 2.9 ms and
+7.2 to 7.3 ms (tick 10.2 to 11.2 ms at p95, 35 to 38 over): about 1.3 times the work at the median and 1.6 at p95, from
+the bytes, the bots' and the zombies' targets over more players. Three rooms of 40 in one process (`--rooms=3
+--stagger=1`), the worst load `ROOM_CAPACITY` 3 allows: mean tick 9.2 ms with four players a room and 12.1 ms with
+eight (p95 26.4 ms both: the machine was loaded, so the p95 says little; ticks over the budget 109 and 158 of 1200).
+**That is less headroom than the crowd budget's three rooms were chosen with** (measured on a quiet machine at four
+players), and it was not measured on Railway: a follow-up issue asks for it before `ROOM_CAPACITY` is trusted at 3 with
+rooms of eight. Each bot costs about what [bots](bots.md) measured (85 microseconds a step). A room of eight asks for
+more alive than any room stands ([crowd budget](crowd-budget.md): 40 with a browser, a share of 120 for the process),
+so what a room of eight adds is people, not crowd.
+
+**Soak** (`tests/captures/players8_soak.tscn`, 10 game minutes on the drive-in lot, `--fixed-fps 60`, 8 seats held the
+whole run: 3 autopilot people over sockets and 5 bots, every player's health 50 times the shipped so the night does not
+end): the seats never dropped below eight, no peer was kicked, one night was built, the room reached round 7 with up to
+40 dead alive, a person was sent 5.7 to 19.5 KB/s (median 13.9). The process's memory went from 246 to 333 MB and its
+node count from 12,577 to 15,705, in steps that follow the biggest crowd each round brought (14, 28, 30, 40 alive: so
+probably the dead's bodies kept for reuse in the host's and the three clients' worlds, not checked), and stood still
+between rounds; 10 minutes does not show whether it ends there, and a night's 40 alive is the most a room stands. Its
+server step's mean was 5 to 18 ms (median 7.8) and a second run of 6 minutes (seed 2) had 34 steps over 100 ms (worst
+388 ms, clustered where the crowd was largest; the first run's worst was 2.6 s), all in one process that also holds the
+three clients' worlds, eight players' worth of bots and the machine's other work: they say the room holds together, not
+that a server's step is that long (the bench above is the server alone).
 
 ## Measured
 

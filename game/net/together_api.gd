@@ -11,16 +11,21 @@ extends RefCounted
 ## The backend the project runs on Railway (guests only until Discord is set up there too).
 const DEFAULT_BACKEND := "https://backend-production-bd67a.up.railway.app"
 ## What the bridge has: the code, '!' when it failed or there is none, '' while it is still asking.
+## The bridge is a module the page adds after load, so a page that has not run it yet has no
+## `deadnightDiscord` object: that is '' (wait), not '!' (a slow device or runner signed in as a
+## guest because of it, and never authenticated, #627). A bridge that fails to load sets the error.
 const DISCORD_STATE_JS := (
 	"window.deadnightDiscord ? (window.deadnightDiscord.code"
-	+ " || (window.deadnightDiscord.error ? '!' : '')) : '!'"
+	+ " || (window.deadnightDiscord.error ? '!' : '')) : ''"
 )
+## How many times a sign-in request is sent when it does not reach the backend.
+const SIGN_IN_TRIES := 3
 ## Seconds to wait for Discord's answer to the Activity's sign-in.
 const DISCORD_WAIT_SECONDS := 30.0
 ## What a player reads for each reason the backend gives.
 const TEXTS := {
 	"not_found": "There is no night with that code. Check it and try again.",
-	"full": "That night is full (4 of 4).",
+	"full": "That night is full.",
 	"no_server": "All the servers are busy. Try again in a minute.",
 	"already_in_lobby": "You are in another night already.",
 	"bad_settings": "Those rules are not ones the game takes. Change them and try again.",
@@ -92,13 +97,28 @@ func sign_in(display_name: String = "") -> Dictionary:
 			var guild := _discord_guild()
 			if guild != "":
 				body["guildId"] = guild
-			var with_discord := await _call("POST", "/auth/discord", body, false)
+			var with_discord := await _sign_in_call("/auth/discord", body)
 			if with_discord["ok"]:
 				_keep(with_discord["token"], with_discord["user"])
+				_authenticate_discord(str(with_discord.get("access_token", "")))
 				return with_discord
-	var answer := await _call("POST", "/auth/guest", {"name": display_name}, false)
+	var answer := await _sign_in_call("/auth/guest", {"name": display_name})
 	if answer["ok"]:
 		_keep(answer["token"], answer["user"])
+	return answer
+
+
+## A sign-in request, sent again (up to `SIGN_IN_TRIES` times) while it never reaches the backend
+## (a connection that failed, a browser busy loading): falling to a guest after one lost request
+## loses the nickname, and Share in Discord, which needs the player's token (#627). A code Discord
+## took answers 401, which is not tried again.
+func _sign_in_call(path: String, body: Dictionary) -> Dictionary:
+	var answer := await _call("POST", path, body, false)
+	var tries := 1
+	while answer.get("error") == "network" and tries < SIGN_IN_TRIES:
+		await _parent.get_tree().create_timer(0.5).timeout
+		tries += 1
+		answer = await _call("POST", path, body, false)
 	return answer
 
 
@@ -107,7 +127,9 @@ func sign_in(display_name: String = "") -> Dictionary:
 ## lobby and signs them into every ticket, and the game server's room starts with them. Null is
 ## the usual rules. A night of this Activity that is already started keeps the rules it began with.
 func create(settings: MatchSettings = null) -> Dictionary:
-	var made := await _call("POST", "/lobbies", {"maxPlayers": 4, "instanceId": instance_id})
+	var made := await _call(
+		"POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS, "instanceId": instance_id}
+	)
 	if not made["ok"]:
 		return made
 	if made["state"] != "started":
@@ -126,7 +148,9 @@ func create(settings: MatchSettings = null) -> Dictionary:
 ## until `start`. In a Discord Activity the lobby of the voice channel is found or made.
 ## `{"ok", "lobby"}`.
 func create_lobby() -> Dictionary:
-	var made := await _call("POST", "/lobbies", {"maxPlayers": 4, "instanceId": instance_id})
+	var made := await _call(
+		"POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS, "instanceId": instance_id}
+	)
 	return {"ok": true, "lobby": made} if made["ok"] else made
 
 
@@ -237,6 +261,24 @@ func _discord_guild() -> String:
 		JavaScriptBridge.eval("window.deadnightDiscord ? window.deadnightDiscord.guildId : ''")
 	)
 	return raw if raw.is_valid_int() and raw.length() <= 20 else ""
+
+
+## Hands the player's own access token (the backend swapped the code for it) to the bridge, which
+## runs the SDK's `authenticate`: Discord's client refuses Share in Discord and every other
+## command with RPC error 4006 until the Activity has authenticated (#627). Nothing waits for the
+## answer; the bridge's share waits for it. The token is never printed.
+func _authenticate_discord(access_token: String) -> void:
+	if access_token == "" or not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval(
+		(
+			(
+				"window.deadnightDiscord && window.deadnightDiscord.authenticate"
+				+ " && window.deadnightDiscord.authenticate(%s)"
+			)
+			% JSON.stringify(access_token)
+		)
+	)
 
 
 ## The OAuth code the Discord bridge got from the Activity's `authorize()`: waits for it (the

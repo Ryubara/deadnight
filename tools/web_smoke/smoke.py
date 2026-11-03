@@ -45,6 +45,10 @@ WALK_KEYS = ("w", "d", "s", "a")  # a square, so the player does not stand facin
 SAMPLE_SECONDS = 1.0
 MENU_FRAME_SECONDS = 3.0
 KEY_HOLD_MS = 150
+# The game publishes its state every 0.25 s: a key pressed shows in `window.deadnight` within that.
+FOCUS_PUBLISH_MS = 400
+# Presses `focus_control` makes at most; a screen has fewer controls than this in a column.
+FOCUS_TRIES = 14
 # With --gpu --unpaced the page is not held to the display's refresh rate, so frame times show the GPU's work.
 UNPACED = ["--disable-gpu-vsync", "--disable-frame-rate-limit"]
 SOFTWARE_GL = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
@@ -204,6 +208,44 @@ def press(page: Page, key: str) -> None:
     page.keyboard.down(key)
     page.wait_for_timeout(KEY_HOLD_MS)
     page.keyboard.up(key)
+
+
+def focused_control(page: Page) -> str:
+    """The name of the control that has the keyboard, as the game publishes it (`window.deadnight.focus`, the control's
+    own name or its nearest named parent's). Waits one publish first, so a key pressed just before has been seen."""
+    page.wait_for_timeout(FOCUS_PUBLISH_MS)
+    return str(page.evaluate("() => (window.deadnight ? window.deadnight.focus : '')") or "")
+
+
+def focus_control(page: Page, wanted: str, key: str, tries: int = FOCUS_TRIES) -> None:
+    """Presses `key` (an arrow) until the control called `wanted` has the keyboard, never counting presses: a control
+    added to the screen only makes the walk one press longer. Fails after `tries` presses naming the wanted control,
+    the one reached, and every control passed on the way (#743)."""
+    seen = [focused_control(page)]
+    for _ in range(tries):
+        if seen[-1] == wanted:
+            return
+        press(page, key)
+        seen.append(focused_control(page))
+    if seen[-1] != wanted:
+        raise TimeoutError(
+            f"the keyboard never reached {wanted!r} with {key} in {tries} presses; it reached {seen[-1]!r} "
+            f"(passed: {' > '.join(seen)})"
+        )
+
+
+def step_value(page: Page, wanted: str, key: str, times: int) -> None:
+    """Presses `key` `times` times on the control called `wanted`, which must have the keyboard before and after (a
+    value key that moved the focus to another control would set the wrong setting)."""
+    for when in ("before", "after"):
+        if when == "after":
+            for _ in range(times):
+                press(page, key)
+        reached = focused_control(page)
+        if reached != wanted:
+            raise TimeoutError(
+                f"{times} presses of {key} were meant for {wanted!r}; the keyboard was on {reached!r} {when}"
+            )
 
 
 def wait_for(page: Page, what: str, test, seconds: float) -> dict:
