@@ -89,6 +89,10 @@ var _boss_first: Dictionary = {}
 var _boss_ttk: Array[float] = []
 ## The metres from the nearest bot to each headliner at its first hit.
 var _boss_range: Array[float] = []
+## Seconds the headliners spent in each mode, the swings they began, and the mode each was last in.
+var _boss_modes: Dictionary = {}
+var _boss_swings := 0
+var _boss_last: Dictionary = {}
 var _round_kit: Dictionary = {}
 
 
@@ -243,6 +247,7 @@ func tick() -> void:
 		var team: Dictionary = held.get("team", {})
 		if not team.is_empty():
 			hold_spot = team["at"]
+	_watch_bosses()
 	var humans := _humans_up()
 	var places: Array[Vector3] = []
 	for bot in night.host.bots:
@@ -273,6 +278,18 @@ func tick() -> void:
 		for j in range(i + 1, places.size()):
 			_spread_sum += Vector2(places[i].x - places[j].x, places[i].z - places[j].z).length()
 			_spread_n += 1
+
+
+## The headliners' modes this tick: where their seconds go, and how many swings they begin.
+func _watch_bosses() -> void:
+	for zombie: ZombieBody in night.server.sim.zombies.values():
+		if zombie.profile.type != &"headliner":
+			continue
+		var mode_name: String = ZombieBody.Mode.keys()[zombie.mode]
+		_boss_modes[mode_name] = float(_boss_modes.get(mode_name, 0.0)) + 1.0 / 60.0
+		if zombie.mode == ZombieBody.Mode.ATTACK and _boss_last.get(zombie.id, -1) != zombie.mode:
+			_boss_swings += 1
+		_boss_last[zombie.id] = zombie.mode
 
 
 ## What the bots carry now: the guns each holds (sorted, joined), the points they hold and have
@@ -581,6 +598,8 @@ func report() -> Dictionary:
 		"boss_damage": snappedf(_boss_damage, 1.0),
 		"boss_ttk": _boss_ttk,
 		"boss_range": _boss_range,
+		"boss_modes": _boss_modes,
+		"boss_swings": _boss_swings,
 		"round_kit": _round_kit,
 		"end": _end_state(),
 		"bots": bots,

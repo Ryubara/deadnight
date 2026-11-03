@@ -51,6 +51,10 @@ const REACTION_FLOOR := 0.20
 ## Chance that the bot makes out a telegraphed blow (the boss's) at all: the simulator's `read`, as
 ## a rookie misses most of them. A blow it makes out is stepped out of after the reaction time.
 @export_range(0.0, 1.0, 0.01) var telegraph_read: float = 1.0
+## Whether the bot aims a boss at the hips, not the chest, when it is not going for the lens. The
+## lens sits on the chest, so a bot that aims at the middle of the body hits it most of the time;
+## the simulator's `weak_spot_rate` is the share of hits on the lens, whatever the aim.
+@export var aims_off_weak_spot: bool = false
 ## Share of the headliner's contacts the bot aims at the weak spot (the lit lens) of, when it
 ## faces the bot: the simulator's `weak_spot_rate` of the matching skill.
 @export_range(0.0, 1.0, 0.01) var weak_spot_rate: float = 0.5
