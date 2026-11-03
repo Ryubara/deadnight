@@ -15,9 +15,6 @@ const GRENADE_SCALE := 2.0
 const BLAST_NUMBER_LIFT := Vector3(0.0, 2.0, 0.0)
 ## How hard the shock perk shakes the local player's view (trauma, 0 to 1).
 const SHOCK_SHAKE := 0.25
-## The sound of a frozen zombie breaking: a stand-in (the head crack) until the wonder weapons'
-## own sounds land (#791).
-const SHATTER_SOUND := &"impact_head"
 ## Where the gibs of a zombie a blast killed start, and how hard they are thrown up.
 const GIB_LIFT := Vector3(0.0, 1.0, 0.0)
 const GIB_THROW := 2.0
@@ -333,7 +330,6 @@ func _def_of(event: Dictionary) -> WeaponDef:
 ## A frozen zombie the server killed breaks into pieces of ice where it stood.
 func _shatter(event: Dictionary) -> void:
 	effects.shatter(event["position"], event.get("scale", 1.0), event["zombie_id"])
-	Audio.play(SHATTER_SOUND, event["position"])
 
 
 ## The flare lies where it landed and burns for as long as the server's lure lasts.

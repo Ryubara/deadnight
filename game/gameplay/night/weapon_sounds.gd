@@ -24,10 +24,6 @@ const FIRE := {
 	&"pump_870": {"shot": &"shot_pump_870", "tail": &"tail_pump_870"},
 	&"dual_pistols": {"shot": &"shot_dual_pistols", "tail": &"tail_dual_pistols"},
 	&"flare_gun": {"shot": &"shot_flare"},
-	# Stand-ins until the wonder weapons' own sounds land (#791): the flare's report and the
-	# revolver's.
-	&"ray_gun": {"shot": &"shot_flare"},
-	&"freeze_gun": {"shot": &"shot_pistol", "tail": &"tail_pistol"},
 }
 ## The sound of a weapon coming up, and of its trigger pulled on nothing, where it has its own; any
 ## other weapon rustles and clicks the common way (`weapon_swap`, `dry_fire`).
@@ -144,22 +140,6 @@ const RELOAD := {
 		&"pouch": &"reload_pouch",
 		&"shells_in": &"reload_flare_in",
 		&"snap_shut": &"reload_flare_shut",
-	},
-	&"ray_gun":
-	{
-		&"break_open": &"reload_flare_open",
-		&"eject": &"reload_flare_eject",
-		&"pouch": &"reload_pouch",
-		&"shells_in": &"reload_flare_in",
-		&"snap_shut": &"reload_flare_shut",
-	},
-	&"freeze_gun":
-	{
-		&"cylinder_out": &"reload_revolver_open",
-		&"eject": &"reload_revolver_eject",
-		&"pouch": &"reload_pouch",
-		&"rounds_in": &"reload_revolver_rounds",
-		&"cylinder_in": &"reload_revolver_close",
 	},
 }
 ## Lifts a sound off the ground to a player's head.

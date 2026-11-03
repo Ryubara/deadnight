@@ -177,7 +177,8 @@ not worth a slot or its price.
 
 The ray gun and the freeze gun ([#788](https://github.com/Ryubara/deadnight/issues/788)); the numbers and why are
 [below](#the-wonder-weapons), the code is this. Their models are #797's (the freeze gun is held as a rifle, the
-ray gun as a pistol), and their sounds are the flare's and the revolver's until #791.
+ray gun as a pistol), and their sounds are #791's
+(`EnergySounds`, which hears the combat server's `status_applied` and `status_ended` for the freeze).
 
 - **Ray gun** (`ray_gun`): a `PROJECTILE` weapon like the flare gun, but fast, straight and blue: the bolt is drawn in
   `bolt_core_colour` and `bolt_halo_colour` (`ProjectileView`) and bursts in a swelling blue sphere (`BoltBurst`) the

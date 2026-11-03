@@ -123,9 +123,6 @@ ammo_offset = Vector3(0, 0.3, 0)
 ammo_turn = Vector3(0, 0, 90)
 keys = Array[ExtResource("1_ji7rb")]([SubResource("Resource_agwep"), SubResource("Resource_3o72h"), SubResource("Resource_12547"), SubResource("Resource_h36vc"), SubResource("Resource_hu3jy"), SubResource("Resource_h7o70"), SubResource("Resource_4swgj"), SubResource("Resource_syhyr"), SubResource("Resource_5x8rj"), SubResource("Resource_1gjxl"), SubResource("Resource_g1gjg")])
 events = Dictionary[StringName, PackedFloat32Array]({
-&"break_open": PackedFloat32Array(0.14),
-&"eject": PackedFloat32Array(0.26),
-&"pouch": PackedFloat32Array(0.4),
-&"shells_in": PackedFloat32Array(0.6),
-&"snap_shut": PackedFloat32Array(0.76)
+&"cell_in": PackedFloat32Array(0.6),
+&"cell_out": PackedFloat32Array(0.16)
 })

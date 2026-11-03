@@ -134,9 +134,6 @@ part_slide = Vector3(0.0, 0.2, 0.06)
 ammo_scene = "res://assets/weapons/freeze_gun/freeze_gun_ammo.glb"
 keys = Array[ExtResource("1_re01k")]([SubResource("Resource_1xnqi"), SubResource("Resource_vyy5f"), SubResource("Resource_0mlks"), SubResource("Resource_ge0tw"), SubResource("Resource_pa2rx"), SubResource("Resource_k0aou"), SubResource("Resource_knqjs"), SubResource("Resource_133ir"), SubResource("Resource_ch8vb"), SubResource("Resource_3vcw7"), SubResource("Resource_8mrsa"), SubResource("Resource_apclq")])
 events = Dictionary[StringName, PackedFloat32Array]({
-&"cylinder_in": PackedFloat32Array(0.83),
-&"cylinder_out": PackedFloat32Array(0.2),
-&"eject": PackedFloat32Array(0.3),
-&"pouch": PackedFloat32Array(0.4),
-&"rounds_in": PackedFloat32Array(0.66)
+&"canister_in": PackedFloat32Array(0.66),
+&"canister_out": PackedFloat32Array(0.2)
 })
