@@ -1,8 +1,9 @@
 class_name MachineView
 extends RefCounted
 ## Plays the lot's machines when the server says a purchase was made: the re-cut bench on
-## `weapon_upgraded` (with the weapon that was re-cut), the soda fountain on the purchase of its
-## tonic. The machines draw and step themselves (`RecutMachine`, `SodaFountain`); this only starts
+## `weapon_upgraded` (with the weapon that was re-cut), the soda fountain and the five perk machines
+## (`PerkMachine`) on the purchase of their tonic. The machines draw and step themselves
+## (`RecutMachine`, `SodaFountain`); this only starts
 ## them, from events every client hears, so everyone sees the bench go.
 
 ## The shop item the fountain pours.
@@ -26,3 +27,6 @@ func _on_event(event: Dictionary) -> void:
 			if event["item_id"] == TONIC_ITEM:
 				for fountain in _root.get_tree().get_nodes_in_group(SodaFountain.GROUP):
 					(fountain as SodaFountain).play()
+			for machine in _root.get_tree().get_nodes_in_group(PerkMachine.GROUP):
+				if (machine as PerkMachine).item_id() == event["item_id"]:
+					(machine as PerkMachine).play()

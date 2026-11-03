@@ -13,6 +13,7 @@ const MEDIAN_ROUND := {
 	"average:1": [8, 14],
 	"average:2": [11, 16],
 	"average:4": [12, 17],
+	"average:8": [14, 20],
 	"strong:1": [12, 18],
 }
 ## The first rounds are a lesson, not a test: this share of average solo nights clears round 4.

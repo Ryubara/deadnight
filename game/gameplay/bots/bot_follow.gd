@@ -112,13 +112,16 @@ func plan(
 	fighting: bool,
 	current: Vector3,
 	avoid: Callable = Callable(),
-	slot := 0.0
+	slot := 0.0,
+	band_override := Vector2.ZERO
 ) -> Vector3:
 	var anchor := anchor_of(people)
 	if anchor == Vector3.INF:
 		return Vector3.INF
 	var leader := leader_of(people, anchor)
 	var band := FIGHT_BAND if fighting else CALM_BAND
+	if band_override != Vector2.ZERO:
+		band = band_override
 	var context := {
 		"here": here,
 		"anchor": anchor,

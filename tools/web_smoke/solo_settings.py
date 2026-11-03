@@ -75,24 +75,22 @@ def desktop_run(page: Page, out: Path, label: str, result: dict) -> None:
     if result["screen_after_solo"] != "play_screen":
         return
     result["play_rules_at_open"] = full(page).get("play_rules")
-    # Start has the focus: Up reaches the bots, the break slider, the cap and the intensity; Down walks back.
-    for _ in range(4):
-        smoke.press(page, "ArrowUp")
-    for _ in range(2):
-        smoke.press(page, "ArrowRight")  # 1x -> 3x
-    smoke.press(page, "ArrowDown")
-    for _ in range(8):
-        smoke.press(page, "ArrowRight")  # a cap of 8
-    smoke.press(page, "ArrowDown")
-    for _ in range(4):
-        smoke.press(page, "ArrowRight")  # a break set
-    smoke.press(page, "ArrowDown")
-    for _ in range(3):
-        smoke.press(page, "ArrowRight")  # 0 -> 3 bots
+    # Start has the focus. Each setting's control is found by its name (`window.deadnight.focus`), never by counting
+    # presses, so a control added to the screen leaves this walk as it is (#743).
+    # The walk goes up from Start: Down from the break slider lands on the skill selector beside the bot count, which
+    # only Up from the skill reaches.
+    smoke.focus_control(page, "bots", "ArrowUp")
+    smoke.step_value(page, "bots", "ArrowRight", 3)  # 0 -> 3 bots
+    smoke.focus_control(page, "break_seconds", "ArrowUp")
+    smoke.step_value(page, "break_seconds", "ArrowRight", 4)  # a break set
+    smoke.focus_control(page, "max_alive", "ArrowUp")
+    smoke.step_value(page, "max_alive", "ArrowRight", 8)  # a cap of 8
+    smoke.focus_control(page, "count_multiplier", "ArrowUp")
+    smoke.step_value(page, "count_multiplier", "ArrowRight", 2)  # 1x -> 3x
     page.wait_for_timeout(600)
     result["play_rules"] = full(page).get("play_rules")
     page.screenshot(path=out / f"{label}-desktop-solo-3x.png")
-    smoke.press(page, "ArrowDown")  # back to Start
+    smoke.focus_control(page, "Start", "ArrowDown")
     smoke.press(page, "Enter")
     smoke.wait_for_night(page)
     result["night_rules"] = full(page).get("night_rules")

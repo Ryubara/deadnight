@@ -141,6 +141,8 @@ static func named(skill_id: StringName) -> SimSkill:
 						&"upgrade_weapon",
 						&"tonic_hearty",
 						&"door_back_lot",
+						&"tonic_quick_load",
+						&"tonic_swift_rescue",
 					]
 				)
 			)
@@ -160,6 +162,8 @@ static func named(skill_id: StringName) -> SimSkill:
 						&"upgrade_weapon",
 						&"tonic_hearty",
 						&"door_back_lot",
+						&"tonic_quick_load",
+						&"tonic_swift_rescue",
 					]
 				)
 			)

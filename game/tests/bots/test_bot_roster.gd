@@ -1,4 +1,4 @@
-# Who the bots are (#230): a name and a look for each of the three skills' three bots, and the
+# Who the bots are (#230): a name and a look for each of the three skills' eight bots, and the
 # profile a room's skill means. A name is a person's, short and plain, so a lobby and a HUD can
 # write BOT after it; a look is a preset of the catalogue, so every client dresses it the same.
 extends GdUnitTestSuite
@@ -8,32 +8,32 @@ const SKILLS := [
 ]
 
 
-func test_each_skill_has_three_bots_with_names_and_looks_of_their_own() -> void:
+func test_each_skill_has_eight_bots_with_names_and_looks_of_their_own() -> void:
 	for skill: int in SKILLS:
 		var names := {}
 		var looks := {}
-		for seat in range(1, 5):
+		for seat in range(1, NightHost.MAX_PLAYERS + 1):
 			var who := BotRoster.identity(skill, seat)
 			names[who["name"]] = true
 			looks[BotRoster.look_for(skill, seat).key()] = true
-		# Four seats, three people: the seats take them in turn, so a night's three bots differ.
-		assert_int(names.size()).override_failure_message("names of skill %d" % skill).is_equal(3)
-		assert_int(looks.size()).override_failure_message("looks of skill %d" % skill).is_equal(3)
+		# One bot a seat: a full room has no two bots of one name, and none dressed alike.
+		assert_int(names.size()).override_failure_message("names of skill %d" % skill).is_equal(8)
+		assert_int(looks.size()).override_failure_message("looks of skill %d" % skill).is_equal(8)
 
 
-func test_the_three_bots_of_a_night_differ_in_every_seat_choice() -> void:
+func test_any_seven_seats_of_a_night_hold_seven_different_bots() -> void:
 	for skill: int in SKILLS:
 		for first in range(1, 3):
 			var seen := {}
-			for seat in [first + 1, first + 2, first + 3]:
+			for seat in range(first, first + 7):
 				seen[BotRoster.name_for(skill, seat)] = true
-			assert_int(seen.size()).is_equal(3)
+			assert_int(seen.size()).is_equal(7)
 
 
 func test_a_name_is_short_and_plain_and_no_two_skills_share_one() -> void:
 	var all := {}
 	for skill: int in SKILLS:
-		for seat in range(1, 4):
+		for seat in range(1, NightHost.MAX_PLAYERS + 1):
 			var bot_name := BotRoster.name_for(skill, seat)
 			assert_int(bot_name.length()).is_between(2, 8)
 			assert_bool(bot_name == bot_name.strip_edges()).is_true()
@@ -54,7 +54,7 @@ func test_every_look_is_a_real_preset_of_the_catalogue_and_free_to_wear() -> voi
 				. override_failure_message(who["name"])
 				. is_true()
 			)
-		for seat in range(1, 4):
+		for seat in range(1, NightHost.MAX_PLAYERS + 1):
 			var look := BotRoster.look_for(skill, seat)
 			# The server takes the look as a person's look arrives: nothing in it may be locked.
 			assert_bool(look.equals(look.without_locked(unlocks))).is_true()

@@ -78,6 +78,8 @@ export interface LobbyLimits {
 
 /** Most people who may ever hold a seat of one started night (who left is not tracked, only who is there now). */
 export const MAX_SEATS_EVER = 32;
+/** Seats in a room, people and bots together: the game server's `NightHost.MAX_PLAYERS`, which a lobby may not exceed. */
+export const MAX_PLAYERS = 8;
 
 // A tab in the background stops polling (the game's frames stop), so a host who goes to a chat to paste the invite is
 // quiet for a while: a minute is long enough for that and short enough that a closed tab does not hold a seat for long.
@@ -332,7 +334,7 @@ export class LobbyService {
   }
 
   /** Quick join: a public night with room (open or started), else a new public one, started at once. */
-  quick(member: Member, maxPlayers = 4): Lobby {
+  quick(member: Member, maxPlayers = MAX_PLAYERS): Lobby {
     for (const lobby of this.lobbies.values()) {
       if (lobby.visibility !== "public" || this.expired(lobby)) continue;
       if (lobby.members.some((m) => m.userId === member.userId)) return lobby;

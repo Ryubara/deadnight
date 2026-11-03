@@ -59,7 +59,7 @@ func test_an_unknown_or_locked_map_falls_back_to_the_lot() -> void:
 func test_a_map_is_described_in_words() -> void:
 	var lot := MapRegistry.default_map()
 	assert_str(lot.size_text()).is_equal("13,200 m²")
-	assert_str(lot.facts_text()).is_equal("13,200 m² · 1 to 4 players")
+	assert_str(lot.facts_text()).is_equal("13,200 m² · 1 to 8 players")
 	var one := MapInfo.new()
 	one.min_players = 1
 	one.max_players = 1

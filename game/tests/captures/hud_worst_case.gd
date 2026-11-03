@@ -36,11 +36,15 @@ func _ready() -> void:
 	host.size = canvas
 	viewport.add_child(host)
 	var fixture := HudFixture.make(
-		host, clampi(int(str(args.get("players", "4"))), 1, 4), 1958, true
+		host, clampi(int(str(args.get("players", "4"))), 1, NightHost.MAX_PLAYERS), 1958, true
 	)
 	fixture.into_round_one()
 	if args.has("night"):
-		_night(fixture, args.has("quiet"), clampi(int(str(args.get("players", "4"))), 1, 4))
+		_night(
+			fixture,
+			args.has("quiet"),
+			clampi(int(str(args.get("players", "4"))), 1, NightHost.MAX_PLAYERS)
+		)
 	elif args.has("busy"):
 		_busy(fixture)
 	else:
@@ -79,7 +83,9 @@ func _night(fixture: HudFixture, quiet: bool, players: int) -> void:
 		)
 	hud.events_feed.push("RUBY OPENED THE CONCESSION STAND")
 	if players > 1:
-		hud.notices.push("%s CONNECTED" % ["", "MOE", "DEE", "CAL"][players - 1])
+		hud.notices.push(
+			"%s CONNECTED" % ["", "MOE", "DEE", "CAL", "NED", "IVY", "SAL", "PAT"][players - 1]
+		)
 	for amount in [100, 60]:
 		hud.gains.add_gain(&"kill", amount)
 	# The generator card only shows for progress: `--quiet` leaves it away, as most of a night is.

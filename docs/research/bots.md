@@ -404,7 +404,7 @@ pings only) is superseded: pings stay, and three standing orders are added. The 
 | --- | --- | --- |
 | **Roam** (the default) | Does its own thing: fights what it meets, shops, mends boards, looks after the generator, and walks from place to place across the lot (`BotRoam`), away from the person and from the other bots. | Rung 6. A fight, an errand, a revive and a ping come first, as for every order. |
 | **Follow** | Sticks with the person who gave the order: `BotFollow`, with the band #564 tuned (4 to 10 m calm, 3 to 7 m in a fight). The person leaves, or is dead: the bot roams. | Rung 6. Roles (anchor, flank) are Follow's. |
-| **Hold** | Stands at the spot the order was given, a place of a ring of 1.4 m about it by seat order, and fights from there; it does not back away, chase or shop, and leaves for a revive, a ping or a dodge, then comes back. | Rung 6. |
+| **Hold** | Stands at the spot the order was given, a place of a ring of 1.4 m about it by seat order, and fights from there; it does not back away, chase or shop, and leaves for a revive, a ping, a dodge or, with its reserve under a magazine, rounds ([needs](#needs-against-orders-692)), then comes back. | Rung 6. |
 
 A downed person still pulls the nearest free bot through the claim table (`BotClaims`) and a ping pulls a bot, in
 every order; the bot goes back to its order afterwards.
@@ -447,7 +447,7 @@ the second digit as noise):
 | Mean distance between two bots | 38 to 39 m | 11 to 17 m | 2.6 to 2.9 m |
 | Within 3 m of the spot | n/a | n/a | 0.94, 0.94, 0.89 of the time up; 0.97, 0.97, 0.93 on the spot |
 | Kills by the bots (20 min) | 505, 489, 205 | 306, 166, 277 | 103, 140, 106 |
-| Buys by the bots | 139, 137, 83 | 98, 110, 131 | none (a holding bot shops only for a pinged door) |
+| Buys by the bots | 139, 137, 83 | 98, 110, 131 | none (a holding bot shops only for a pinged door, and for rounds when its reserve is under a magazine, from #692) |
 | Think p99 | 5.7 to 6.0 ms | 1.6 to 2.3 ms | 0.5 to 0.9 ms |
 
 Follow without errands (`--order=follow`, seeds 1 to 6, the #564 soak): within 12 m of the person **0.91 to 0.93 of the
@@ -477,6 +477,139 @@ parts' tests that stood still because no person was near started to roam when th
 Not done here: the wheel and the HUD's word for the current order are #642 (on `main`, through `BotOrderLink`). The
 roles of #229 (anchor, flank) are Follow's: a roaming or holding bot has none. The ping replies of #229 (hold here, shoot
 that one, raise that one) and the claim table sit above every order.
+
+## Play states: aggressive, careful, safe (#693)
+
+The maintainer, 2026-11-03: "Bots need different playstates, aggressive if they're high on health, but more safe e.g.
+keeping their distance when they're low health." The seed was #676's soak: a Hold bot is the one most often downed,
+because it never backs away.
+
+**The states.** `BotPlayState` (`game/gameplay/bots/bot_play_state.gd`, plain data, the only file with the logic; the
+brain asks it and has no branch of its own). A bot's *share* is its health over its own full health (read from
+`player_added`, `player_hurt` and `player_healed`, which carry `max_health` where the frame does not, so a health tonic
+counts), less what danger costs: each zombie believed beyond the first within 4 m takes 0.08 off, at most 0.24.
+
+| State | Enters below | Back up above | What the bot does |
+| --- | --- | --- | --- |
+| **Aggressive** | (the start) | 0.90 (from Careful) | As it always was: takes kills, may walk up to a zombie that is not coming (the crowbar's chase), keeps the profile's retreat margin (0 to 1.5 m). |
+| **Careful** | 0.70 | 0.75 (from Safe) | Holds its range: retreat margin 2.5 m, no chase. Errands and the order go on. |
+| **Safe** | 0.50 | | Keeps its distance: retreat margin 6 m, the retreat weighs room ahead 1.8 against 0.6 (open ground, not a dead end), and with no one to stay with it heads for the nearest teammate. No roaming and no errands. A revive is given up (or not begun) with a zombie within 8 m, unless it is the last one up. It stands and fights a zombie it cannot step back from, and a bot with a melee weapon backs away from a pack where a healthy one would swing. |
+
+Each switch has two numbers (hysteresis), and a bot becomes bolder only after 2 s in its state (more careful at once),
+so a bot on the edge does not flicker. All of it is on `BotProfile` under "Play states", editable in the inspector.
+
+**How it ranks against the orders (#641).** The order is what the bot is for, the state is how it carries it out; a
+revive claim, a ping and a dodge still sit above both, as for every order.
+
+| Order | Safe | Careful |
+| --- | --- | --- |
+| **Follow** | Keeps the near side of the leader: a band of 2.5 to 4.5 m (against 3 to 7 m in a fight), so it stays inside the group; the leader's band is not left. | The usual band, a wider margin from the dead. |
+| **Hold** | May step back from the held spot, at most 4 m (`hold_back`): the retreat is not bent toward the spot, and the bot does not walk back until it is better (the 3 m of the order's gate is given up while it is Safe). It returns when it is Careful again. | Holds the spot; backs off nothing. |
+| **Roam** | Free: it stops wandering (no new roam goal, no errand) and fights where it stands, with the wide margin, until it is better. | Roams as usual, wider margin, no chase. |
+
+**Needs against orders (#692).** The self-resupply of #692 is a table of need by order (`BotNeeds.RULES`). The play
+state sits beside it, not in it (it is a state of the bot, not a need with a level and a place): a Safe bot's errands
+are cut to a person's ping and its own need for rounds (`BotErrands.keeps_distance`, set by the brain from
+`play.may_wander()`), and rounds count only with an **empty gun** (`Level.EMPTY`): a bot with nothing to shoot cannot
+keep its distance by fighting, so it goes, whatever the order says; at `LOW` or `SHORT` it stays, silently. So under
+every order a Safe bot with a gun that has rounds does not shop, and one with none goes to the nearest locker (by walk)
+and comes back.
+
+**Measured** (`bots_move_soak.tscn`, 20 game minutes, **the shipped health** (`--tough=1`: a tough night has no downs to
+count), four bots (Regular, Veteran, Rookie, Regular) and the old autopilot as the person, the same seeds with the
+states off (`--no-states`: the state is still read, nothing follows from it) and on. A night ends when everyone is
+down, so a run is shorter than 20 minutes when it ends early; the rate is downs per bot per round reached. Seeds are
+not reproducible to the digit (two runs of a seed are not the same night), so one seed's number says little: read the
+total):
+
+| Order | Seeds | Downs per bot per round, before | After | Downs per bot-minute, before | After | Kills per bot-minute, before | After |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Hold** | 8 | 0.340 (91 downs) | **0.209** (61) | 0.157 | 0.120 | 1.08 | 1.25 |
+| **Follow** | 4 | 0.288 (38) | **0.150** (21) | 0.138 | 0.080 | 1.03 | 1.40 |
+| **Roam** | 4 | 0.524 (65) | **0.140** (19) | 0.326 | 0.065 | 2.30 | 2.53 |
+
+Two other sets were tried on Hold. The first (enter Careful below 0.60, Safe below 0.35, back up above 0.85 and 0.65)
+gave 0.229 over the 8 seeds (54 downs). A wider margin and hold-back on the shipped thresholds (8 m, 3.5 m, 6 m) gave
+0.283 over seeds 1 to 4, where the shipped set gave 0.186 and no states 0.333 on the same seeds: farther is not safer,
+the bot leaves the spot's cover. The shipped set (0.70, 0.90, 0.50, 0.75) is the best of the three, though the gap to
+the first set is inside the noise. The Hold gate of #641 (within 3 m of the spot for 92% of the time the bot is under
+the stance) read 0.89 before and 0.92 after (the mean over the seeds of the share on the spot; a seed is 0.65 to 0.96,
+the low ones are nights in which the person's walk and the first rounds take the bots away). Follow's gate (within 12
+m of the person, 95% of the time up) was 0.92 before and 0.90 after: a Safe follower keeps to the near side, a Careful
+one the usual band, and a bot that steps back from a zombie leaves the band for a moment. State changes were 0.5 to 2
+a bot-minute on Hold and Follow (up to 4 on Roam, where a bot meets more of the dead): one change every 30 to 120 s a
+bot (the test that pins the hysteresis: a wobble across a line changes the state once).
+
+**What is left.** The `--downs` probe (seed 2, Hold, first thresholds) printed each bot's health over the four seconds
+before it went down: of nine downs, five were a bot already Safe and stepping back (`hold_back`) at 10 to 30% health,
+three were Aggressive (one went from full to half and then down inside two seconds), one was Careful. The states cut
+the downs by a third to a half, they do not end them: a pack the bot cannot step away from still downs it, and the
+regeneration (5 s without a blow, then 25 a second) does not start while a zombie keeps hitting.
+
+**Proof.** `tests/bots/test_bot_play_state.gd` (23 cases): each switch and its hysteresis, a wobble across a line
+changing the state once, the dwell, the pressure of a pack, the share of a bot with a tonic, every answer under each
+order, the states-off bot answering as an aggressive one, a low bot backing away where a healthy one stands, a hurt bot's
+wider margin, a holder stepping back within 4 m and no farther, and its retreat not bent toward the spot. The film:
+`tests/captures/bots_play_states.tscn` (a Regular is hurt when a zombie comes near; the label names the state and the
+health; `--trace` prints the metres to the nearest zombie). The trace of the run, from the second the zombie was 10 m
+off: the bot was Safe at 25% and held 6.3 m from it (the zombie came on from 10 to 6.1 m, then stood off), regenerated
+through Careful to Aggressive, and an aggressive bot stood while the zombie came from 5.8 m to 2.7 m.
+
+**Not done here.** A Safe bot still stands against a zombie it cannot step back from (a wall behind it, a pack on every
+side), and still shoots. The thresholds are one set for the three skills; a Veteran could be bolder and a Rookie more
+careful (the profile fields allow it, nothing sets them apart yet). Safe does not yet go looking for a health tonic or a
+medic spot (there is none in the lot).
+
+## Needs against orders (#692)
+
+The maintainer, 2026-11-03: "Bots should be smart enough to get their own ammo e.g. find the nearest ammo stash when
+ammo is running low. Basically setting their task to grab ammo, but this needs a consideration on how it will conflict
+when player requests to "follow" etc."
+
+**What was there.** The economy (`BotEconomy`, #597) already bought rounds for a bot in a lull (the floor of
+`BotProfile.ammo_floor_mags` magazines) and at once under one magazine, and a person's ammunition ping (#647/#670)
+named the locker. What it lacked: no order was consulted (a bot that follows went anywhere, a bot that holds never
+went), the nearest locker was the nearest by the straight line, and a bot held back by nothing had nothing to say.
+
+**The table.** One place decides whether a need may take a bot from its order: `BotNeeds.RULES` (`bot_needs.gd`), a
+table of need by order, each cell `{go, near, say}`. A need has a level (`BotNeeds.Level`), and the answer
+(`BotNeeds.verdict`) is `GO`, `STAY` or `STAY_AND_SAY`. A person's ping is not in the table: it sits above every order
+(`BotPings`), and `BotErrands` lets the marked rounds through under all three.
+
+| Level of the need for rounds | Meaning |
+| --- | --- |
+| `LOW` | A gun worth rounds has less than `ammo_floor_mags` magazines in reserve. |
+| `SHORT` | One has less than a magazine in reserve (the economy's "urgent"). |
+| `EMPTY` | No round is left in any gun worth rounds, magazine and reserve alike. |
+
+| Order | Goes when | Otherwise |
+| --- | --- | --- |
+| **Roam** | `LOW` or worse, anywhere: it does its own thing. | |
+| **Follow** | The source is near the leader (within the follow leash, `BotCombat.LEASH` 12 m, of them, or within 3 m of the straight way to them) and the need is `LOW` or worse; or the gun is `EMPTY` (it goes anyway, then walks back to the leader). | Stays with the leader and says "I'M RUNNING LOW ON ROUNDS" (the callout of `BotSay.NEED_AMMO`, once, again after it was free of the hold); goes when the leader comes near a source. |
+| **Hold** | `SHORT` or `EMPTY`: under a magazine it leaves the spot, buys and returns to it. | Keeps the spot at `LOW`, says nothing. |
+
+In every order the trip begins only where the economy lets any errand begin: no dead within `CLEAR_FROM` (12 m), no
+target in sight; a `LOW` reserve is filled only in a lull (a break, five zombies left or a quarter of the round, ten
+seconds without a sight of the dead); under a magazine it goes in a round too, wherever the dead are not. So a bot
+never walks through a horde for rounds. A trip begun gets four metres more leash, so a leader at the edge does not turn
+the bot round on every step. The stand is the one with the shortest **walk** (`BotPath.walk_length`, asked of the legs
+for the four nearest by the straight line, kept three seconds; a stand it cannot walk to is passed over), not the
+nearest by the line, and the one the bot is heading to counts six metres nearer, so a trip does not change its mind.
+
+**Adding a need (#693's health stances).** Add a key to `RULES` with a row for each order, a level function that reads
+the bot (`BotNeeds.ammo_level` is the model: pure, the bot's own state in, a `Level` out) and, where the need is acted
+on, one call to `BotNeeds.verdict`; `BotErrands._verdict` is the call for rounds. The brain has no branch for it.
+
+**Proof.** `tests/bots/test_bot_needs.gd`: every cell of the table, the levels from the guns, what is near the leader,
+the choice by walk (22 cases). `tests/night/test_bot_own_ammo.gd`, in the real lot with a person and a bot: Roam walks
+to the locker that is the shorter walk (not the nearer one by the line, east of the concession's fence) and buys;
+Follow stays and says it with no locker near, goes when the leader walks to one and comes back, and goes anyway with an
+empty gun and comes back; Hold keeps the spot at `LOW`, leaves under a magazine and returns, and goes to a marked
+locker at `LOW` (the ping wins). The film of a bot running low, walking to the locker, buying and coming back under each
+order: `tests/captures/bots_own_ammo.tscn`.
+
+**How it fits the ping rule (#670).** The ping names the place and wins over any order; the need names no place, takes
+the nearest by walk and answers to the order. A ping to a bot that is not short is still ignored.
 
 ## Edge cases
 
@@ -736,7 +869,9 @@ is under 0.5 ms at 40 zombies; the page's cost section is updated with the measu
   light (`BotLevel.view_range`: 8 m plus 25 m times the round's ambient, or 33 m on lit ground), a ray from the eye to
   the chest and then the head, at most six rays a think (nearest first), a per-contact reaction drawn log-normal around
   the profile's mean and never under 0.20 s, a memory of three seconds that is never shot at, and hearing within 4 m
-  as a direction and a range class (no position, no id). A contact seen for less than its reaction is dropped.
+  as a direction and a range class (no position, no id). A contact seen for less than its reaction is dropped, except a
+  zombie in its swing within 2 m (`ARM_REACH`), which is noticed from any side: out of the cone it was dropped at every
+  think and its reaction began again, so dead swinging at a bot's back were never believed in (#695, seed 7).
 - **`BotMotor`** (aim and trigger; movement is phase 2): a critically damped spring on yaw and pitch with a hard cap on
   the speed of the turn, so no 100 ms window beats `BotProfile.max_aim_speed`; the shot's `dir` is derived from the
   view (`NightCommand.look_along`), never the other way; seeded filtered tracking noise that grows with distance, the
@@ -858,7 +993,14 @@ decides, the others hold a rule each, so a test pins them one by one):
   and another weapon loaded (the swap is quicker); a tactical reload under 30% of a magazine with nothing within 8 m,
   and a top-up under 70% when nothing is within 16 m; a swap to the loaded weapon that is 1.4 times better at the
   range of the fight (the simulator's `SWITCH_GAIN`) and to the crowbar when every gun is dry; the crowbar goes back
-  to a gun that can fire.
+  to a gun that can fire. A held gun with nothing left (magazine and reserve) is put down for a gun that has rounds in
+  reserve only, which is reloaded next (#695: the old plan held the empty gun for the rest of the night, kiting
+  whatever followed it, because reload needs reserve in the held gun, swap needs a loaded gun and `dry` counts the
+  other gun's reserve). `Plan.unloaded` (no gun can fire this moment) lets the quick melee fill the wait. A blade in
+  hand with no gun loaded goes back to the gun that needs its reload once the nearest zombie is past 6 m
+  (`RELOAD_GAP`); nearer, the bot is `cornered` and strikes with the blade, a pack of three or not (before, the pack
+  rule forbade the swing, the swap back waited for 8 m clear, and a bot kited ten dead for 500 s with a fire axe in
+  hand and a shotgun at 0/54).
 - **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 12 m away, as
   the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
   **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is
@@ -1135,18 +1277,18 @@ before this rule too; it is #673.
 
 Issue: #230 (the room setting and the seating came first, with #643).
 
-**What shipped.** The room's **Bots** setting (0 to 3, #643) and a **Bot skill** setting (rookie, regular, veteran) fill
-the empty seats of a night, for Solo and for a host's room alike, in [Rounds, points and fuel](../design/rounds.md#bots).
-It is not the "off, fill to two, fill to four" of the first draft: the count is the host's, and the server's own limits
-sit above it.
+**What shipped.** The room's **Bots** setting (0 to 3, #643; 0 to 7 since #690 with eight seats) and a **Bot skill**
+setting (rookie, regular, veteran) fill the empty seats of a night, for Solo and for a host's room alike, in [Rounds,
+points and fuel](../design/rounds.md#bots). It is not the "off, fill to two, fill to four" of the first draft: the
+count is the host's, and the server's own limits sit above it.
 
 | Part | How it is built |
 | --- | --- |
 | Slot filling | `NightBots` seats bots in the highest free seats up to `target(setting, people, limit)`; a person with no free seat takes the lowest bot's seat as it stands (`hand_over`, `bot_replaced`), and **a person who leaves hands the seat to a bot as it stands** (`adopt`, `bot_seated`: the same body, points, weapons and health), so decision 7 holds both ways |
 | Difficulty | `MatchSettings.bot_skill` picks the `BotProfile` of every bot (`BotProfile.for_skill`); the rules never read it, a test holds the night's numbers equal across skills |
-| Names and looks | `BotRoster`: a cast of three per skill (Pip, Dale, Moe; Ash, Fern, Moss; Rex, Sarge, Hawk), each a name and a catalogue preset look sent through the look server like a person's; the lobby shows the same names before the night begins |
+| Names and looks | `BotRoster`: a cast of eight per skill, one per seat (Pip, Dale, Moe, ...; Ash, Fern, Moss, ...; Rex, Sarge, Hawk, ...; #690), each a name and a different catalogue preset look sent through the look server like a person's; the lobby shows the same names before the night begins |
 | Labels | `BOT` after the name in the HUD, the scoreboard, the lobby and the feed; `PlayerState.bot` rides every snapshot, so the roster API marks the seat; no bot flag exists in a command (the bots send the same plain actions through `apply`, and a person's seat is told apart only by the rules) |
-| Limits | `MAX_BOTS` caps one room (0 to 3), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
+| Limits | `MAX_BOTS` caps one room (0 to 7 since #690, with eight seats), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
 | Marked in the stats | the room's stats line carries `bots`; the rules mark every bot seat, so nothing that reads `player_added.bot` can pay a bot account progression (there is none yet) |
 
 **Proof.**
@@ -1296,6 +1438,30 @@ the scratch folder of the task, not in the repository.
 The two gates still open on #564 need a quiet machine to settle: stuck under 1% per seed needs several batches of each
 setup to see a change smaller than the noise, and the think p99 read 1 to 14 ms in these runs because other agents
 were running. Measure both with nothing else running.
+
+## Forty-minute nights on the second map (#695)
+
+`smallmap_bot_night.tscn` with `--minutes=40 --rounds=10 --trace --short --zombies`, ten seeds each of one and of four
+bots. A night "ends" when the bots all fall or round 10 closes; a stall runs the whole 2,400 s.
+
+| | one bot | four bots |
+| --- | --- | --- |
+| before (`main`) | 2 of 10 stalled (seeds 2, 9) | 3 of 10 stalled (seeds 5, 7, 9) |
+| after, this change | 9 of 10 end (seed 2 stalled) | 8 of 10 end (seeds 7 and 9 stalled) |
+| after, with #709 (stairs) merged on top, the stalled seeds rerun | seed 2 ends | seeds 7 and 9 end |
+
+What a stall looked like in the trace, and what each cost:
+
+- A bot whose `arms` read `[0, 0]` for the gun in hand and `[0, n]` for the other (or the axe in hand, the shotgun at
+  `[0, 54]` and ten dead within 8 m): `BotArsenal` had no rule for it (see above). Fixed here.
+- `ctc=1 vis=1 tg=0` with the dead at 0.3 to 0.6 m: contacts in their reaction delay erased at every look
+  (`BotPerception.ARM_REACH`). Fixed here.
+- One dead one at (7, 1.5) in chase mode against the side wall of the stair along the hall's north wall, the bots at a
+  "choke" beside it, the ray from the zombie to the bot blocked by `StairASide`: the dead climbing the stair
+  ([#681](https://github.com/Ryubara/deadnight/issues/681), #709). Not this change; it ends once #709 is in.
+
+Read a stall from the beliefs (`ctc`, `vis`, `tg`, the contact's age) and the plan's inputs (`arms`, the weapon in hand,
+the nearest dead one) before guessing a cause: the first guess here (a train that gives no gap) was wrong.
 
 ## Revive return soak (#673)
 

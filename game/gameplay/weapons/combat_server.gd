@@ -25,8 +25,9 @@ extends RefCounted
 ##   reload_started: shooter_id, weapon_id, seconds
 ##   reload_finished: shooter_id, weapon_id, ammo, reserve
 ##   reload_rejected: shooter_id, reason
-##   weapon_replaced: player_id, dropped (the weapon that was in hand), weapon_id (the new one); a
-##     third weapon replaces the one in hand (`WeaponCatalog.CARRY_LIMIT`); sent before the new
+##   weapon_replaced: player_id, dropped (the weapon that was in hand), weapon_id (the new one, or
+##     empty when a weapon is given up and nothing takes its place: the third-weapon perk is lost);
+##     a third weapon replaces the one in hand (`PerkEffects.carry_limit`); sent before the new
 ##     weapon's weapon_equipped
 ##   weapon_equipped: player_id, weapon_id, ammo, reserve
 ##   ammo_added: player_id, weapon_id, added (rounds that fitted), ammo, reserve
@@ -140,6 +141,8 @@ func _dispatch(action: Dictionary) -> void:
 			_add_ammo(action["player_id"], action["weapon_id"], action["rounds"])
 		CombatAction.UPGRADE_WEAPON:
 			_upgrade(action["player_id"], action["weapon_id"])
+		CombatAction.REMOVE_WEAPONS:
+			_remove(action["player_id"], action["weapon_ids"])
 		CombatAction.TICK:
 			_tick(action["delta"])
 		CombatAction.TARGETS:
@@ -168,7 +171,7 @@ func _give(player_id: int, weapon_id: StringName, replace: StringName = &"") -> 
 		owned.add_reserve(owned.def.magazine_size)
 	else:
 		var slot := -1
-		if held.size() >= WeaponCatalog.CARRY_LIMIT:
+		if held.size() >= PerkEffects.carry_limit(rules, player_id):
 			slot = _replace(player_id, held, weapon_id, replace)
 		held[weapon_id] = WeaponState.new(_defs[weapon_id])
 		if slot >= 0:
@@ -204,6 +207,22 @@ func _seat(held: Dictionary, weapon_id: StringName, slot: int) -> void:
 	held.clear()
 	for id: StringName in order:
 		held[id] = kept[id]
+
+
+## Weapons given up (`CombatAction.remove_weapons`): each goes with its rounds. When the one in hand
+## is among them, the first that is left is taken in hand.
+func _remove(player_id: int, weapon_ids: Array) -> void:
+	var held: Dictionary = _loadouts.get(player_id, {})
+	var in_hand := _current.get(player_id, &"") as StringName
+	for weapon_id: StringName in weapon_ids:
+		if not held.has(weapon_id):
+			continue
+		held.erase(weapon_id)
+		_emit(&"weapon_replaced", {"player_id": player_id, "dropped": weapon_id, "weapon_id": &""})
+	if not held.has(in_hand):
+		_current.erase(player_id)
+		if not held.is_empty():
+			_equip(player_id, held.keys()[held.size() - 1])
 
 
 func _equip(player_id: int, weapon_id: StringName) -> void:
@@ -306,10 +325,10 @@ func _reload(shooter_id: int) -> void:
 
 
 func _begin_reload(shooter_id: int, state: WeaponState) -> void:
-	state.start_reload()
+	state.start_reload(PerkEffects.reload_time_scale(rules, shooter_id))
 	_emit(
 		&"reload_started",
-		{"shooter_id": shooter_id, "weapon_id": state.def.id, "seconds": state.def.reload_time}
+		{"shooter_id": shooter_id, "weapon_id": state.def.id, "seconds": state.reload_left}
 	)
 
 
@@ -359,7 +378,7 @@ func _fire(action: Dictionary) -> void:
 		if block == &"empty" and state.reload_block() == &"":
 			_begin_reload(shooter_id, state)
 		return
-	state.fire()
+	state.fire(PerkEffects.fire_interval_scale(rules, shooter_id))
 	var view := _view_at(action["view_time"])
 	var origin: Vector3 = action["origin"]
 	dir = dir.normalized()

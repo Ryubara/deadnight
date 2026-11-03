@@ -15,7 +15,7 @@ scene lands. Issue #624.
 | `title`, `blurb` | The card's name and a line about the map |
 | `scene_path` | The scene `NightWorld` builds: the same node layout as `world/drive_in_greybox.tscn` (doors, spawns, lamps, switches, fuel) |
 | `preview_path` | The card's picture, 16:9 (`assets/ui/maps/`); none draws the locked card's hatched stub |
-| `area_m2`, `min_players`, `max_players` | What the card says: `13,200 m² · 1 to 4 players` |
+| `area_m2`, `min_players`, `max_players` | What the card says: `13,200 m² · 1 to 8 players` |
 | `shipped` | False while the map is not built: listed, locked, never loaded |
 
 `MapRegistry.of(id)` is the map to load: an id nobody knows, or a map that is not playable yet, is the drive-in lot,

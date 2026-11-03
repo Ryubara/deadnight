@@ -25,7 +25,7 @@ static func resolve(looks: Dictionary) -> Dictionary:
 		var look: CharacterLook = (looks[id] as CharacterLook).duplicate_look()
 		look.shift = 0
 		# More players than palette places cannot all differ in the torso colour alone; stop
-		# there and let the rest repeat (a lot has at most four players).
+		# there and let the rest repeat (a lot has at most eight players).
 		while taken.has(look.key()) and look.shift < palette_size:
 			look.shift_colour(SHIFTED_SLOT, SHIFT_STEP)
 			look.shift += 1

@@ -87,9 +87,13 @@ plaque only names the weapon).
 | Rifle, on the wall | the booth's front wall, midway side | `weapon_rifle`; once owned, its rounds | past the concession: the long gun waits for the middle rounds and the player who has opened the lot |
 | Prize crane | one of four places (below); it starts inside the stand, beside the cabinet that was there | `crane_play`: a play, a spin, then a weapon the player lacks that only the buyer can take; it can break down and move | the stand is the first door; a gamble to spend the first thousand on |
 | Re-cut bench | the projection booth, in the middle of its floor at `(3.5, 28.2)`, facing the door, spot at `(3.5, 25.9)` | `upgrade_weapon`: re-cuts the weapon in hand ([the re-cut](upgrades.md)) | past the booth's door (750), mid rounds: the first thing the booth is for besides the rifle and the roost |
-| Soda fountain | the concession stand, behind the counter at `(8.2, 4.9)`, facing the door, spot at `(8.2, 3.7)` | `tonic_hearty`: more health ([the hearty tonic](upgrades.md#the-hearty-tonic)) | in the first area that opens: a first thing to save for after the shotgun |
+| Soda fountain | the concession stand, behind the counter at `(8.2, 4.9)`, facing the door, spot at `(8.2, 3.7)` | `tonic_hearty`: more health ([perks](perks.md)) | in the first area that opens: a first thing to save for after the shotgun |
+| Swift Rescue machine | the midway, on the west fence at `(-15.2, 11)`, facing east | `tonic_swift_rescue`: faster revives, and a solo self-revive ([perks](perks.md)) | opens with the concession: a team's first extra |
+| Quick Load machine | the projection booth, on the east wall at `(5.35, 30.5)`, facing west | `tonic_quick_load`: faster reloads | past the booth's door (750), a few steps from the bench |
+| Double Shot machine | the generator yard, against the south fence at `(24, 37.2)`, facing north | `tonic_double_shot`: faster fire | past the yard's door (500), the far side of the lamps |
+| Reload Shock machine | the back lot, against the south fence at `(-20, 37.2)`, facing north | `tonic_reload_shock`: a shock when you reload | in the dark area (1,250): a reason to go there |
 | Grenade rack | the stand's east wall, in the alley on the midway side, plaque at `(10.26, 3.0)`, spot at `(11.4, 3.0)` | `grenades`: as many as fit the pack (two a purchase, up to five), at their share of the price | a place to restock the throwable, opened with the concession; the stand's front wall is full (windows, door, shotgun, breaker) |
-| Perk machine, ticket plaza | the middle of the plaza's south wall, at `(0, 57.2)`, facing the gate, spot at `(0, 56.0)` | `tonic_hearty` for now ([the plaza](#the-ticket-plaza)) | the last door's own machine, at the far end of the court from its gate |
+| Third Holster machine (the plaza's) | the middle of the plaza's south wall, at `(0, 57.2)`, facing the gate, spot at `(0, 56.0)` | `tonic_third_holster`: a third weapon ([the perks](perks.md)) | the last door's own machine (2,000), at the far end of the court from its gate: the dearest perk behind the dearest door |
 | Ammunition lockers (5) | the avenue (field), the stand (its north-east corner), the midway, the yard, the back lot | rounds for the weapon in hand, as many as fit | one in the open from the start, one more in each area that opens, so a fight is never a long walk from rounds |
 
 ### The crane's places
@@ -109,11 +113,11 @@ beam over the current place says where it is.
 A play can only break down while another place is open to move to. The tests (`test_shop_spots.gd`) hold the markers to
 one for each index and to the rules above.
 
-The machines are `RecutMachine` and `SodaFountain` (`game/world/machines/`; the plaza's perk machine is a second
-fountain), drawn from primitives like the crane and placed in the greybox over the hidden blocks (`ReCutMachine`,
-`SodaFountain`, `Road/PerkMachine`) that keep their collision and their place in the zombies' walking mesh. Each has a
-spot marker of its own kind (`upgrade`, `perk`); the marker of the
-stand's locker moved 3.6 m north so the fountain's spot is farther than a reach from it.
+The machines are `RecutMachine`, `SodaFountain` and five `PerkMachine`s (`game/world/machines/`, [the
+perks](perks.md)), drawn from primitives like the crane and placed in the greybox over the hidden blocks
+(`ReCutMachine`, `SodaFountain`, `Road/PerkMachine`) that keep their collision and their place in the zombies'
+walking mesh. Each has a spot marker of its own kind (`upgrade`, `perk`); the marker of the stand's locker moved 3.6
+m north so the fountain's spot is farther than a reach from it.
 
 A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
 real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one
@@ -248,11 +252,12 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 | Back lot | 1,932 m² | 104 m² (5%) | one flickering neon sign |
 | Ticket plaza | 640 m² | 271 m² (42%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
 
-"Lit" is the rules' word, not the eye's: ground within 6 m (`LotLamps.LAMP_REACH`) of a lamp whose circuit is on, counted
-on a 0.5 m grid over each floor. It is the ground where the dead keep their round's pace, and
-`game/tools/lot/lot_report.gd` prints this table and the ones in the two sections below. The glow in the capture above
-reaches further than 6 m, so the picture looks lighter than the rule is; the table replaces the shares that were read
-off that capture by eye (a third of the field, four fifths of the yard), which the measurement did not bear out.
+"Lit" is the rules' word, not the eye's: ground within 6 m (`LotLamps.LAMP_REACH`) of a lamp whose circuit is on,
+counted on a 0.5 m grid over each floor. It is the ground where the dead keep their round's pace, and
+`game/tools/lot/lot_report.gd` prints this table and the ones in the two sections below. The glow in the capture
+above reaches further than 6 m, so the picture looks lighter than the rule is; the table replaces the shares that
+were read off that capture by eye (a third of the field, four fifths of the yard), which the measurement did not
+bear out.
 
 The dead come in at the field's breaches ([below](#the-fences-breaches)), 31 to 47 m from the nearest lamp: they
 arrive out of the dark 25% faster than their round's pace, and under a lit lamp they drop back to it: the light does not
@@ -461,7 +466,8 @@ the side the player arrives from, and four capsules abreast need 2.8 m (2 x 0.35
 
 The yard's and the back lot's gates are the odd ones. They stand in the field's far south fence, 30 m from the nearest
 field lamp and 32 m from the nearest breach, so buying them is a team move into the dark where the dead are 25% faster,
-not an errand for one. The start is no closer to danger: the players spawn 33 to 36 m from the nearest breach.
+not an errand for one. The start is no closer to danger: the players spawn 33 to 38 m from the nearest breach (eight
+places, two rows of four, 3 m apart: #690).
 
 ### Where a downed player can be revived
 
@@ -494,18 +500,20 @@ afford at round 5 (one player at round 4), and have none to spare for the first 
 | 20 | 54 / 86 / 151 | 54 / 43 / 38 | 1.47 / 0.98 / 0.59 s | 21 / 27 / 39 |
 | 30 | 101 / 161 / 282 | 101 / 81 / 71 | 0.98 / 0.65 / 0.39 s | 28 / 34 / 40 |
 
-Four face 2.8 times the dead of one, each of them faces 30% fewer, and they come 2.5 times as fast, through six breaches
-(one and a half each). The four-player cap is the solo cap plus 18 and stops at 40 from round 21,
-the ceiling of the lot ([zombies](zombies.md#crowd-budget), decided in #315: it was 46, six more than the lot ever stood).
+Four face 2.8 times the dead of one, each of them faces 30% fewer, and they come 2.5 times as fast, through six
+breaches (one and a half each). The four-player cap is the solo cap plus 18 and stops at 40 from round 21, the
+ceiling of the lot ([zombies](zombies.md#crowd-budget), decided in #315: it was 46, six more than the lot ever
+stood).
 
 ### Is the lot too empty for four?
 
-The numbers do not say so. The field's 5,952 m² has 76 cars on 650 m² of it, and the ground that matters is its lit
-975 m²: 244 m² a head for four, a room 16 m on a side each. The four-player alive cap of 24 to 40 over the field is one
-dead to 150 to 250 m², but they come through six gaps to the same strip. The yard and the back lot, at 1,932 m² each, are
-twice the lit pool and 23% and 5% lit: a team of four there is at the edge of a flickering sign, which is the late
-night's intent. Nobody has watched four players on it with the shoulder camera, so this is a reading of numbers and not
-a verdict: a four-player capture (bots in a `Night` of four) at rounds 1, 10 and 20 is the evidence still owed.
+The numbers do not say so. The field's 5,952 m² has 76 cars on 650 m² of it, and the ground that matters is its
+lit 975 m²: 244 m² a head for four, a room 16 m on a side each. The four-player alive cap of 24 to 40 over the
+field is one dead to 150 to 250 m², but they come through six gaps to the same strip. The yard and the back lot, at
+1,932 m² each, are twice the lit pool and 23% and 5% lit: a team of four there is at the edge of a flickering sign,
+which is the late night's intent. Nobody has watched four players on it with the shoulder camera, so this is a
+reading of numbers and not a verdict: a four-player capture (bots in a `Night` of four) at rounds 1, 10 and 20 is
+the evidence still owed.
 
 ## The greybox
 
@@ -518,7 +526,7 @@ and the field's stalls have painted lines.
 | --- | --- |
 | `Field`, `Concession`, `Midway`, `ProjectionBooth`, `GeneratorYard`, `BackLot`, `Road` (the ticket plaza; the node and the door keep the old name) | an area: ground, walls, props, `Lamps`, `ZombieSpawns`, a hidden `Label` |
 | `Field/Breach*`, `Field/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it; each field spawn marker carries the `barricade_id` of the breach it lies outside |
-| `Field/PlayerSpawns` | four markers on the apron below the screen |
+| `Field/PlayerSpawns` | eight markers on the apron below the screen, two rows of four, 3 m apart |
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
 | `Field/ParkingLines` | the painted lines between the stalls: one `MultiMesh`, no collision |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |
@@ -535,11 +543,12 @@ of the line the shoulder camera takes through one nor within 1.5 m of a lamp pos
 (the counter, projector, kiosks, screen frame) keeps that block's collision box exactly.
 
 `game/world/drive_in/` holds the parts (`car.tscn`, `lamp_post.tscn`, `lot_lamps.gd`), the capture rig and
-`camera_probe.gd` (the player's camera rig as a function: arm sweep plus shoulder). The scene is written by `tools/world/build_greybox.py`
-(run it from the repository root and commit what it writes; the run must leave `git diff` empty), so a layout change is
-a change to a constant or coordinate there, not hand edits to a 380-node scene. A change to any collision box also
-needs the zombies' navigation meshes baked again (`tools/world/bake_lot_navmeshes.gd`, see
-[the zombies](../research/zombies.md#the-meshes-are-baked-ahead-of-time-335)); a test fails until it is.
+`camera_probe.gd` (the player's camera rig as a function: arm sweep plus shoulder). The scene is written by
+`tools/world/build_greybox.py` (run it from the repository root and commit what it writes; the run must leave `git
+diff` empty), so a layout change is a change to a constant or coordinate there, not hand edits to a 380-node scene.
+A change to any collision box also needs the zombies' navigation meshes baked again
+(`tools/world/bake_lot_navmeshes.gd`, see [the
+zombies](../research/zombies.md#the-meshes-are-baked-ahead-of-time-335)); a test fails until it is.
 `game/tests/world/` checks:
 
 - the areas and that the doors' prices and prerequisites equal the shop's (`test_drive_in_greybox.gd`);
@@ -559,9 +568,10 @@ needs the zombies' navigation meshes baked again (`tools/world/bake_lot_navmeshe
 - the camera: the arm and the shoulder camera swept through every probe, both ways, both shoulders
   (`test_drive_in_camera.gd`), with a negative control that a 1.4 m gap between cars is caught.
 
-To capture: `capture_rig.tscn` takes `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`,
-or `--view=tp:<probe>` for the shoulder camera at a probe (`--offset`, `--turn`, `--side`, `--y`, `--doors=closed`,
-`--flood`; see the script's header).
+To capture: `capture_rig.tscn` takes `--
+--view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`, or `--view=tp:<probe>` for the
+shoulder camera at a probe (`--offset`, `--turn`, `--side`, `--y`, `--doors=closed`, `--flood`; see the script's
+header).
 
 ### Props
 

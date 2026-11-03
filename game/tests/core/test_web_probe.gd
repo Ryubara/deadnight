@@ -1,6 +1,8 @@
 extends GdUnitTestSuite
 ## What the web probe publishes, without a browser: a plain function of the top screen.
 
+const PLAY := "res://ui/screens/play_screen.tscn"
+
 
 func test_no_screen_reads_as_none() -> void:
 	var data := WebProbe.snapshot(null)
@@ -66,6 +68,55 @@ func test_the_probe_names_the_control_that_has_the_keyboard() -> void:
 	assert_str(WebProbe.snapshot(screen)["focus"]).is_equal("CopyCode")
 	button.release_focus()
 	assert_str(WebProbe.snapshot(screen)["focus"]).is_equal("")
+
+
+func _play_screen() -> PlayScreen:
+	var screen := (load(PLAY) as PackedScene).instantiate() as PlayScreen
+	add_child(screen)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return screen
+
+
+## A browser smoke walks the Play screen by these names (#743): a control added to the screen
+## leaves the names of the others as they are.
+func test_the_play_screen_controls_are_named_by_their_setting_for_the_smokes() -> void:
+	var screen := await _play_screen()
+	var panel := screen.panel
+	var wanted := {
+		"count_multiplier": panel.count_selector,
+		"max_alive": panel.alive_slider,
+		"break_seconds": panel.break_slider,
+		"bots": panel.bots_selector,
+		"bot_skill": panel.skill_selector,
+		"Start": screen.start_button,
+		"Reset": screen.reset_button,
+		"Back": screen.back_button,
+	}
+	for name: String in wanted:
+		(wanted[name] as Control).grab_focus()
+		assert_str(WebProbe.snapshot(screen)["focus"]).is_equal(name)
+	for card in panel.map_picker.cards:
+		card.grab_focus()
+		assert_str(WebProbe.snapshot(screen)["focus"]).is_equal(card.info.id)
+	screen.queue_free()
+
+
+## The bot count and the bot skill share a row; a smoke taps each selector's arrow by its own name.
+func test_the_play_screen_spots_the_bot_count_and_the_skill_apart() -> void:
+	var screen := await _play_screen()
+	var spots := {}
+	for entry in str(WebProbe.snapshot(screen)["spots"]).split("|"):
+		var key := entry.rsplit(":", true, 1)
+		spots[key[0]] = key[1]
+	assert_bool(spots.has("bots:end")).is_true()
+	assert_bool(spots.has("bot_skill:end")).is_true()
+	var bots_end := float(str(spots["bots:end"]).split(",")[0])
+	var skill_end := float(str(spots["bot_skill:end"]).split(",")[0])
+	var skill_centre := float(str(spots["bot_skill"]).split(",")[0])
+	assert_float(bots_end).is_less(skill_centre)
+	assert_float(skill_end).is_greater(skill_centre)
+	screen.queue_free()
 
 
 func test_an_online_night_reports_where_the_body_and_the_server_have_the_player() -> void:

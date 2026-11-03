@@ -41,9 +41,10 @@ func fire_block() -> StringName:
 	return &""
 
 
-## Spends the round and starts the wait. Call only when `fire_block()` is empty.
-func fire() -> void:
-	cooldown = def.fire_interval
+## Spends the round and starts the wait (`interval_scale` is the fire-rate perk's share of it, 1
+## without). Call only when `fire_block()` is empty.
+func fire(interval_scale: float = 1.0) -> void:
+	cooldown = def.fire_interval * interval_scale
 	if uses_ammo():
 		ammo -= 1
 
@@ -61,8 +62,9 @@ func reload_block() -> StringName:
 	return &""
 
 
-func start_reload() -> void:
-	reload_left = def.reload_time
+## Starts the reload; `time_scale` is the reload perk's share of its time (1 without).
+func start_reload(time_scale: float = 1.0) -> void:
+	reload_left = def.reload_time * time_scale
 
 
 ## Adds rounds to the reserve, never past the weapon's limit. Returns how many fit.

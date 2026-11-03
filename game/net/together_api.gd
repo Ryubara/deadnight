@@ -25,7 +25,7 @@ const DISCORD_WAIT_SECONDS := 30.0
 ## What a player reads for each reason the backend gives.
 const TEXTS := {
 	"not_found": "There is no night with that code. Check it and try again.",
-	"full": "That night is full (4 of 4).",
+	"full": "That night is full.",
 	"no_server": "All the servers are busy. Try again in a minute.",
 	"already_in_lobby": "You are in another night already.",
 	"bad_settings": "Those rules are not ones the game takes. Change them and try again.",
@@ -127,7 +127,9 @@ func _sign_in_call(path: String, body: Dictionary) -> Dictionary:
 ## lobby and signs them into every ticket, and the game server's room starts with them. Null is
 ## the usual rules. A night of this Activity that is already started keeps the rules it began with.
 func create(settings: MatchSettings = null) -> Dictionary:
-	var made := await _call("POST", "/lobbies", {"maxPlayers": 4, "instanceId": instance_id})
+	var made := await _call(
+		"POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS, "instanceId": instance_id}
+	)
 	if not made["ok"]:
 		return made
 	if made["state"] != "started":
@@ -146,7 +148,9 @@ func create(settings: MatchSettings = null) -> Dictionary:
 ## until `start`. In a Discord Activity the lobby of the voice channel is found or made.
 ## `{"ok", "lobby"}`.
 func create_lobby() -> Dictionary:
-	var made := await _call("POST", "/lobbies", {"maxPlayers": 4, "instanceId": instance_id})
+	var made := await _call(
+		"POST", "/lobbies", {"maxPlayers": NightHost.MAX_PLAYERS, "instanceId": instance_id}
+	)
 	return {"ok": true, "lobby": made} if made["ok"] else made
 
 

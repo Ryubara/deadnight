@@ -39,12 +39,12 @@ func test_the_kill_switch_reads_the_usual_words_for_yes_and_stops_every_room() -
 
 func test_a_budget_is_shared_by_the_open_rooms_and_never_raises_the_cap() -> void:
 	var limits := BotLimits.from_config(_config({"BOT_BUDGET": "4"}))
-	assert_int(limits.for_room(1)).is_equal(3)
+	assert_int(limits.for_room(1)).is_equal(4)
 	assert_int(limits.for_room(2)).is_equal(2)
 	assert_int(limits.for_room(3)).is_equal(1)
 	assert_int(limits.for_room(5)).is_equal(0)
 	# A room count of zero (a server with no room yet) is read as one.
-	assert_int(limits.for_room(0)).is_equal(3)
+	assert_int(limits.for_room(0)).is_equal(4)
 	var capped := BotLimits.from_config(_config({"BOT_BUDGET": "9", "MAX_BOTS": "2"}))
 	assert_int(capped.for_room(1)).is_equal(2)
 	assert_int(capped.for_room(3)).is_equal(2)
@@ -53,9 +53,9 @@ func test_a_budget_is_shared_by_the_open_rooms_and_never_raises_the_cap() -> voi
 
 
 func test_the_seats_a_night_fills_obey_the_setting_the_free_seats_and_the_cap() -> void:
-	for wanted in range(0, 4):
+	for wanted in range(0, MatchSettings.MAX_BOTS + 1):
 		for people in range(1, NightBots.SEATS + 1):
-			for cap in range(0, 4):
+			for cap in range(0, MatchSettings.MAX_BOTS + 1):
 				var seated := NightBots.target(wanted, people, cap)
 				assert_int(seated).is_less_equal(wanted)
 				assert_int(seated).is_less_equal(cap)

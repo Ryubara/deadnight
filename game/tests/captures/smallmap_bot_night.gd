@@ -10,14 +10,14 @@ extends Node
 ## Arguments after `--`: `--seed=N`, `--bots=N` (default 1), `--rounds=N` (stop after this round
 ## ends; default 10), `--minutes=M` (game minutes at most; default 60), `--profile=rookie|regular|
 ## veteran|mixed` (default mixed), `--tough=X` (every player's health as a multiple of the shipped),
-## `--open=all` (or link ids, comma separated: sold before the night), `--trace` (a line every 15 s;
-## with `--short` without what each bot wants, with `--zombies` with each standing zombie).
+## `--open=all` (or link ids, comma separated: sold before the night), `--trace` (a line every
+## 15 s, or `--every=S`; with `--short` without what each bot wants, with `--zombies` with each
+## standing zombie).
 ## Prints `SMALLMAP {json}` at the end.
 
 const SCENE := "res://world/smallmap/smallmap_greybox.tscn"
 ## Ticks between the physics frames the engine is given (a bought link needs one).
 const FRAME_EVERY := 30
-const TRACE_EVERY := 900
 
 var _args := {}
 var _night: SeatedNight
@@ -35,6 +35,10 @@ var _box_plays := 0
 var _most_alive := 0
 var _box_spots: Dictionary = {}
 var _entered: Dictionary = {}
+## Seat to the game second its points last went over twice the next link's price (-1 when under),
+## and the longest stretch each stayed over (#696: no more than a round).
+var _glut_since: Dictionary = {}
+var _glut_longest: Dictionary = {}
 
 
 func _ready() -> void:
@@ -70,7 +74,8 @@ func _ready() -> void:
 		_night.tick()
 		ticks += 1
 		_most_alive = maxi(_most_alive, _night.server.sim.standing_count())
-		if _args.has("trace") and ticks % TRACE_EVERY == 0:
+		_watch_glut(float(ticks) / 60.0)
+		if _args.has("trace") and ticks % (int(_args.get("every", 15)) * 60) == 0:
 			_trace(ticks)
 		if ticks % FRAME_EVERY == 0:
 			await get_tree().physics_frame
@@ -84,6 +89,35 @@ func _ready() -> void:
 	_night.dispose()
 	await get_tree().process_frame
 	get_tree().quit()
+
+
+## The price of the next link to buy (the cheapest shut door whose own door is open), or 0 when
+## every link is bought.
+func _next_link_price() -> int:
+	var rules := _night.server.rules
+	var price := 0
+	for item in rules.tuning.economy.items:
+		if item.kind != ShopItem.Kind.DOOR or rules.is_door_open(item.id):
+			continue
+		if item.requires != &"" and not rules.is_door_open(item.requires):
+			continue
+		var cost := item.price_at(rules.round_number)
+		price = cost if price == 0 else mini(price, cost)
+	return price
+
+
+func _watch_glut(now: float) -> void:
+	var price := _next_link_price()
+	for bot in _night.host.bots:
+		var id: int = bot.state.player_id
+		if price > 0 and _night.server.rules.points_of(id) > 2 * price:
+			if not _glut_since.has(id):
+				_glut_since[id] = now
+			_glut_longest[id] = maxf(
+				float(_glut_longest.get(id, 0.0)), now - float(_glut_since[id])
+			)
+		else:
+			_glut_since.erase(id)
 
 
 func _profiles(count: int) -> Array[BotProfile]:
@@ -235,6 +269,7 @@ func _report(ticks: int, wall_seconds: float) -> void:
 	var bots: Array[Dictionary] = []
 	for bot in _night.host.bots:
 		var id: int = bot.state.player_id
+		var errands: BotErrands = (bot.brain as BotFightBrain).get(&"_errands")
 		(
 			bots
 			. append(
@@ -248,6 +283,8 @@ func _report(ticks: int, wall_seconds: float) -> void:
 					"buys": int(bot.telemetry.counters.get(&"buys", 0)),
 					"rejected": int(bot.telemetry.counters.get(&"rejected_buys", 0)),
 					"stuck_longest": snappedf(bot.legs.stuck.longest(), 0.1),
+					"glut_longest": snappedf(errands.longest_glut, 0.1) if errands != null else 0.0,
+					"link_glut_longest": snappedf(float(_glut_longest.get(id, 0.0)), 0.1),
 				}
 			)
 		)
