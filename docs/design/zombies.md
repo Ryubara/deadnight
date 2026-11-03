@@ -199,9 +199,11 @@ zombie updated every third frame drifts against its neighbours.
 
 ## The flare lure
 
-A flare does no damage (#439). Where it bursts it burns for `WeaponDef.lure_seconds` (8 s), and for that time every zombie
-within `lure_radius` (25 m, along the ground) walks to it instead of to a player; the maintainer's model is a monkey bomb
-or a pipe bomb. The server owns it: the combat server sends `lure_started` (id, point, radius, seconds) with the burst,
+A flare does no damage (#439); a **re-cut** flare gun leaves a patch of fire for the same
+seconds ([the burning ground](upgrades.md#the-four-elements)). Where it bursts it burns for
+`WeaponDef.lure_seconds` (8 s), and for that time every zombie within `lure_radius` (25 m, along the
+ground) walks to it instead of to a player; the maintainer's model is a monkey bomb or a pipe bomb.
+The server owns it: the combat server sends `lure_started` (id, point, radius, seconds) with the burst,
 `ZombieSim` holds the `ZombieLure`s and counts them down, and the client's `LureView` only draws the burning flare.
 
 | Rule | What happens |

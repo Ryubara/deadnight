@@ -90,7 +90,7 @@ func test_a_swap_away_and_back_shows_a_re_cut_weapon_finished_and_the_other_plai
 
 func test_every_weapon_that_can_be_re_cut_wears_it_in_the_hand() -> void:
 	var night := await _start()
-	for id in UpgradeTuning.new().weapons:
+	for id in UpgradeTuning.shipped().catalogue_weapon_ids():
 		await _equip(night, 1, id)
 		var animation := _animation(night.player())
 		assert_bool(animation.is_recut()).override_failure_message("%s plain" % id).is_false()

@@ -28,7 +28,7 @@ import kitlib
 import weaponlib as wl
 
 SOLDIER_SCALE = 0.8  # the player scene's scale on the Soldier (docs/design/weapon-hold.md)
-SOCKETS = ("Muzzle", "Grip", "Trigger", "Support", "Face")
+SOCKETS = ("Muzzle", "Grip", "Trigger", "Support", "Face", "Eject")
 
 
 def hold_scales(root):

@@ -22,7 +22,7 @@ func _ready() -> void:
 	await super._ready()
 	_recut = int(_args.get("recut", 1)) != 0
 	var copies := int(_args.get("copies", 2))
-	var ids: Array = UpgradeTuning.new().weapons
+	var ids: Array = UpgradeTuning.shipped().catalogue_weapon_ids()
 	var at := 0
 	for copy in copies:
 		for id in ids:

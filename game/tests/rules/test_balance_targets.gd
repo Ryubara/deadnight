@@ -111,9 +111,12 @@ func test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing(
 	# fell outside the ranges; the bots now land most shots on the head and take fewer blows, so the
 	# climb alone is no longer a wall, and the test reads how much of it the upgrade carries.)
 	var inert := RulesFixture.tuning()
-	inert.upgrade.damage_multiplier = 1.0
-	inert.upgrade.magazine_multiplier = 1.0
-	inert.upgrade.reserve_multiplier = 1.0
+	for profile in inert.upgrade.profiles:
+		profile.damage_multiplier = 1.0
+		profile.magazine_multiplier = 1.0
+		profile.reserve_multiplier = 1.0
+		profile.fire_interval = 0.0
+		profile.element = null
 	inert.upgrade.price_step = 0
 	inert.economy.item(&"upgrade_weapon").price = 1
 	inert.economy.item(&"tonic_hearty").health_bonus = 0.0
