@@ -34,6 +34,19 @@ the hold's `model_scale` x the Soldier's 0.8.
 | Claw hammer (tool) | 508 / 168 (33) | 15 | 0.73 tall, 0.47 across | 0.85 | 0.50 m | 15 up | - | Grey 60, Wood 37, DarkGrey 4 | - | - |
 | Grenade | 1,172 / 374 (32) | 25 | 0.61 tall, 0.42 across | 0.51 | 0.25 m | 44 up | - | Green 47, Yellow 17, DarkGrey 14, Grey 13, Grey2 10 | `Spoon` 60, `Pin` 140 | - |
 
+The SMGs and the carbine of #795, measured from their build (the pistol grip, guard, trigger and their sockets are the
+Tommy gun's on the MP5 and the M4A1; all three are drawn at real length, `chunk` 1, and held at `model_scale` 1.3):
+
+| Model | Tris near / far (far %) | Parts near / far | Model L x H x W (m) | In the game | Grip to muzzle | Support (x, z) | Moving nodes | Ammo glb |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PPSh | 1,032 / 332 (32) | 40 / 21 | 0.87 x 0.31 x 0.11 | 0.90 m | 0.54 | -0.33, 0.0 | `Drum`, `Bolt` | the drum 244 |
+| MP5 | 1,164 / 428 (37) | 40 / 27 | 0.70 x 0.41 x 0.10 | 0.73 m | 0.44 | -0.30, 0.02 (clear of the curved magazine) | `Magazine`, `Bolt` | magazine 188 |
+| M4A1 | 1,236 / 420 (34) | 47 / 30 | 0.82 x 0.39 x 0.10 | 0.85 m | 0.51 | -0.25, 0.03 | `Magazine`, `Bolt` | magazine 100 |
+
+Held, each puts the stock 9.7-10.3 cm from the shoulder, as the Tommy gun's 10.1. A curved magazine in front of the
+fore-end pulls the solver's support hand onto it, so the support stays 7 cm or more ahead of the magazine's front; a
+stock's underside stays above the wrist (z 0.02 or higher) for about 20 cm behind the grip.
+
 What that says, as rules a new model keeps:
 
 | Rule | Measured |
