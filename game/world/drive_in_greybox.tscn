@@ -1096,21 +1096,6 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -0.060, 
 [node name="Light" parent="Field/Lamps/Lamp12"]
 light_cull_mask = 5
 
-[node name="Lamp13" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 16.652)
-
-[node name="Lamp14" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.100, -0.029, 24.079)
-
-[node name="Lamp15" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.030, -1.204)
-
-[node name="Lamp16" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -21.597, 0.563, -1.204)
-
-[node name="Lamp17" parent="Field/Lamps" instance=ExtResource("lamp")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 34.691)
-
 [node name="Lamp18" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 65.461, 0.563, -21.897)
 dim = 0.4
@@ -2063,6 +2048,34 @@ material = ExtResource("neon")
 
 [node name="Lamps" type="Node3D" parent="BackLot"]
 metadata/circuit = "back_lot"
+metadata/flicker = "failing_battery"
+
+[node name="Lamp13" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 16.652)
+away = Vector3(-1.0000, 0, 0.0000)
+pool_half = 4.69
+aim_tilt = 32.0
+
+[node name="Lamp14" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -40.100, -0.029, 24.079)
+
+[node name="Lamp15" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.030, -1.204)
+away = Vector3(0.0000, 0, 1.0000)
+pool_half = 5.54
+aim_tilt = 32.0
+
+[node name="Lamp16" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -21.597, 0.563, -1.204)
+away = Vector3(-0.7071, 0, 0.7071)
+pool_half = 4.28
+aim_tilt = 47.0
+
+[node name="Lamp17" parent="BackLot/Lamps" instance=ExtResource("lamp")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371, -0.029, 34.691)
+away = Vector3(-0.7071, 0, -0.7071)
+pool_half = 3.62
+aim_tilt = 47.0
 
 [node name="NeonSign" type="OmniLight3D" parent="BackLot/Lamps" groups=["powered_light"]]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -47.000, 3.500, 33.500)
@@ -2089,7 +2102,7 @@ no_depth_test = true
 modulate = Color(1, 1, 1, 1)
 outline_modulate = Color(0, 0, 0, 1)
 outline_size = 48
-text = "6  BACK LOT  (dark)"
+text = "6  BACK LOT  (dim)"
 font_size = 110
 
 [node name="Road" type="Node3D" parent="."]
