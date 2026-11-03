@@ -140,8 +140,10 @@ func _text_for(event: Dictionary) -> String:
 				text = "%s OPENED THE %s" % [who, state.link_names[item].to_upper()]
 			else:
 				text = "%s %s" % [who, ITEM_NAMES.get(item, "BOUGHT SOMETHING")]
+		&"player_hurt":
+			text = _grenade_hurt(event)
 		&"player_downed":
-			text = "%s IS DOWN" % who
+			text = _grenade_down(event, who)
 		&"player_revived":
 			var reviver := int(event.get("reviver_id", 0))
 			if reviver > 0:
@@ -171,6 +173,30 @@ func _text_for(event: Dictionary) -> String:
 			var title := HudSpecials.title(state, StringName(event.get("special_id", &"")))
 			text = "%s CLEARED  +%d EACH" % [title.to_upper(), int(event.get("reward", 0))]
 	return text
+
+
+## What a grenade did to the local player and left them standing, in words: whose it was. A blow
+## that downs them is the down line's (`_grenade_down`), and a zombie's blow is no news here.
+func _grenade_hurt(event: Dictionary) -> String:
+	if event.get("harm", &"") != &"grenade" or int(event["player_id"]) != state.local_player_id:
+		return ""
+	if float(event.get("health", 0.0)) <= 0.0:
+		return ""
+	var hurt := "-%d" % roundi(float(event["damage"]))
+	var by := int(event.get("by_id", 0))
+	if by == int(event["player_id"]):
+		return "YOUR OWN GRENADE HIT YOU  %s" % hurt
+	return "%s'S GRENADE HIT YOU  %s" % [_name_of(by), hurt]
+
+
+## A player who was downed, in words: by a grenade (their own or a teammate's) or just down.
+func _grenade_down(event: Dictionary, who: String) -> String:
+	if event.get("harm", &"") != &"grenade":
+		return "%s IS DOWN" % who
+	var by := int(event.get("by_id", 0))
+	if by == int(event["player_id"]):
+		return "%s BLEW THEMSELVES UP" % who
+	return "%s WAS BLOWN UP BY %s'S GRENADE" % [who, _name_of(by)]
 
 
 func _notice(type: StringName, event: Dictionary) -> String:

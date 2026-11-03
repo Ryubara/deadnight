@@ -266,21 +266,38 @@ func test_the_hud_counts_the_grenades_down() -> void:
 	assert_str(_hud.health.grenade_text).is_equal("GRENADES x%d" % (before - 1))
 
 
-func test_a_grenade_held_until_it_goes_off_hurts_the_thrower_once() -> void:
+func test_a_grenade_held_until_it_goes_off_downs_the_thrower_once() -> void:
 	_into_the_round()
-	var health := _night.server.health_of(1)
+	assert_float(_night.server.health_of(1)).is_equal(_night.server.rules.players[1].max_health)
 	_key(KEY_G, true)
 	var fuse := _night.server.grenades.def.fuse
 	_play(roundi(fuse * TICKS_PER_SECOND) + 20)
 	assert_bool(_first(&"grenade_exploded").get("in_hand", false)).is_true()
-	assert_float(_night.server.health_of(1)).is_less(health)
+	# All of it, from full health: the holder is down, and the events say whose grenade it was.
+	assert_float(_night.server.health_of(1)).is_equal(0.0)
+	assert_bool(_night.server.rules.players[1].downed).is_true()
+	assert_int(_count(&"player_downed")).is_equal(1)
+	var hurt := _first(&"player_hurt")
+	assert_str(String(hurt["harm"])).is_equal("grenade")
+	assert_int(hurt["by_id"]).is_equal(1)
+	assert_str(String(_first(&"player_downed")["harm"])).is_equal("grenade")
 	# The key is still down: it does not pull another pin until it is let go.
 	assert_int(_count(&"cook_started")).is_equal(1)
 	_key(KEY_G, false)
 	_play(WIND_TICKS)
+	assert_int(_count(&"cook_started")).is_equal(1)
+
+
+func test_the_hud_says_the_player_blew_themselves_up() -> void:
+	_into_the_round()
 	_key(KEY_G, true)
-	_play(COOK_TICKS)
-	assert_int(_count(&"cook_started")).is_equal(2)
+	_play(roundi(_night.server.grenades.def.fuse * TICKS_PER_SECOND) + 20)
+	var feed := _hud.events_feed.texts()
+	(
+		assert_bool(feed.any(func(row: String) -> bool: return row.ends_with("BLEW THEMSELVES UP")))
+		. is_true()
+	)
+	assert_float(_hud.state.health).is_equal(0.0)
 
 
 func test_with_none_left_the_key_throws_nothing_and_says_so_once() -> void:

@@ -22,6 +22,9 @@ const FULL_HEALTH := 100.0
 const HOLD_RADIUS := 1.0
 ## Seconds between two swaps.
 const SWAP_EVERY := 0.8
+## Seconds past the fuse a thrown grenade is still counted live (the grenade lies where it landed
+## a moment after the throw leaves the hand, and the blast is not to be walked into).
+const BLAST_SLACK := 0.6
 ## Metres to the nearest dead inside which an ordered throw is given up.
 const THROW_ABORT_NEAR := 3.0
 ## Seconds a grenade order is watched over: the longest a turn, the pin and the swing take.
@@ -383,6 +386,9 @@ func _step_away(
 	var keeps_off := (
 		_boss_distance(beliefs, here) < _profile.boss_keep and not throwing and not leashed
 	)
+	# A grenade a bot threw (its own or a teammate's) is about to go off where it was aimed: the bot
+	# that is inside what the blast reaches steps out of it, it never follows a person into it.
+	var blast := not throwing and not _live_blast_near(here, beliefs.now).is_empty()
 	var margin := play.margin(maxf(_profile.retreat_margin, revive.kite_margin()))
 	# A bot with no round left stands to fight with the quick melee as one with a bat does.
 	var melee := (held != null and held.is_melee()) or dry
@@ -392,13 +398,28 @@ func _step_away(
 	var stands_to_swing := melee and BotCombat.may_melee(pack, dry)
 	if (stands_to_swing and not play.prefers_open_ground()) or throwing:
 		backs = false
-	if not (dodge or keeps_off or backs):
+	if not (dodge or keeps_off or backs or blast):
 		return false
 	intent.reflex = _retreat(here, beliefs, anchor)
 	intent.run = true
 	intent.note = "dodge" if dodge else "retreat"
 	_last_reflex = intent.reflex
 	return true
+
+
+## Where the live grenade is that the bot stands inside the reach of (`BotGrenadier.harmless_apart`
+## and the throw margin: it steps out before the blast's edge, not at it, so a walk to a fight or to
+## a person never carries it in), as a list, or an empty one. Only grenades the team's bots threw
+## are known.
+func _live_blast_near(here: Vector3, now: float) -> Array[Vector3]:
+	var near: Array[Vector3] = []
+	if team == null:
+		return near
+	var reach := _grenadier.harmless_apart() + BotGrenadier.THROW_MARGIN
+	for blast in team.live_blasts(now):
+		if _flat(here, blast["point"]) < reach:
+			near.append(blast["point"])
+	return near
 
 
 ## A heading away from what the bot knows of, chosen among twelve on the walking mesh, with a pull
@@ -414,6 +435,9 @@ func _retreat(here: Vector3, beliefs: BotBeliefs, anchor: Vector3) -> Vector3:
 		threats.append(
 			{"position": beliefs.guess(contact, _profile.memory_seconds), "speed": speed}
 		)
+	# A grenade about to go off is a threat that stands still (its blast is what to keep out of).
+	for point in _live_blast_near(here, beliefs.now):
+		threats.append({"position": point, "speed": 0.0})
 	if threats.is_empty():
 		return Vector3.ZERO
 	var toward := Vector3.ZERO
@@ -798,6 +822,8 @@ func _throw(
 	_order = throw
 	_ordered_at = now
 	_grenadier.last_throw = now
+	if team != null:
+		team.add_blast(throw.landing, now + _grenadier.def.fuse + BLAST_SLACK)
 	intent.note = "throw"
 	return true
 
