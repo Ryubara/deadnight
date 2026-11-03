@@ -11,5 +11,5 @@ scene_path = "res://world/drive_in_greybox.tscn"
 preview_path = "res://assets/ui/maps/drive_in_preview.png"
 area_m2 = 13216
 min_players = 1
-max_players = 4
+max_players = 8
 shipped = true

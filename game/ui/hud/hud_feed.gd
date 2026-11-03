@@ -29,7 +29,12 @@ const ITEM_NAMES := {
 	&"ammo_flare_gun": "BOUGHT AMMUNITION",
 	&"fuel_can": "FILLED THE GENERATOR",
 	&"upgrade_weapon": "HAD A WEAPON RE-CUT",
-	&"tonic_hearty": "DRANK THE HEARTY TONIC",
+	&"tonic_hearty": "DRANK THE HEARTY HEALTH TONIC",
+	&"tonic_double_shot": "DRANK THE DOUBLE SHOT SODA",
+	&"tonic_quick_load": "DRANK THE QUICK LOAD COLA",
+	&"tonic_third_holster": "DRANK THE THIRD HOLSTER ALE",
+	&"tonic_swift_rescue": "DRANK THE SWIFT RESCUE LEMONADE",
+	&"tonic_reload_shock": "DRANK THE RELOAD SHOCK ORANGE",
 }
 ## What each mark says in the feed (one meaning each, `PingBoard`).
 const PING_WORDS := {
@@ -145,6 +150,10 @@ func _text_for(event: Dictionary) -> String:
 				text = "%s IS BACK UP" % who
 		&"player_died":
 			text = "%s BLED OUT" % who
+		&"perks_lost":
+			text = "%s LOST THEIR PERKS" % who
+		&"self_revive_started":
+			text = "%s IS GETTING THEMSELVES UP" % who
 		&"ping_placed":
 			text = "%s: %s" % [who, PING_WORDS.get(event.get("kind", &""), "LOOK")]
 		&"bot_say":

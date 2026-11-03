@@ -98,9 +98,9 @@ func test_a_tonic_is_bought_once_and_four_at_most() -> void:
 	assert_int(RulesFixture.buy(_rules, 1, &"tonic_hearty")).is_equal(
 		GameRules.BuyResult.ALREADY_OWNED
 	)
-	RulesFixture.buy(_rules, 1, &"tonic_second_wind")
-	RulesFixture.buy(_rules, 1, &"tonic_quick_hands")
-	RulesFixture.buy(_rules, 1, &"tonic_fleet")
+	RulesFixture.buy(_rules, 1, &"tonic_swift_rescue")
+	RulesFixture.buy(_rules, 1, &"tonic_double_shot")
+	RulesFixture.buy(_rules, 1, &"tonic_quick_load")
 	assert_int((_rules.players[1] as PlayerState).tonics.size()).is_equal(4)
 	var tuning := RulesFixture.tuning()
 	tuning.economy.max_tonics = 3
@@ -108,9 +108,9 @@ func test_a_tonic_is_bought_once_and_four_at_most() -> void:
 	capped.apply(RulesAction.start())
 	capped.apply(RulesAction.grant_points(1, 10000))
 	RulesFixture.buy(capped, 1, &"tonic_hearty")
-	RulesFixture.buy(capped, 1, &"tonic_second_wind")
-	RulesFixture.buy(capped, 1, &"tonic_quick_hands")
-	assert_int(RulesFixture.buy(capped, 1, &"tonic_fleet")).is_equal(
+	RulesFixture.buy(capped, 1, &"tonic_swift_rescue")
+	RulesFixture.buy(capped, 1, &"tonic_double_shot")
+	assert_int(RulesFixture.buy(capped, 1, &"tonic_quick_load")).is_equal(
 		GameRules.BuyResult.LIMIT_REACHED
 	)
 

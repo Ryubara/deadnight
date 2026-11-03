@@ -11,6 +11,9 @@ extends Control
 ## Height of your own box and of a teammate's; the portrait is a square of that height.
 const LOCAL_HEIGHT := 66.0
 const OTHER_HEIGHT := 48.0
+## A teammate's box once the party is bigger than `HudPoints.COMPACT_FROM`: eight players still
+## fit the column on the smallest canvas, with the name and the points set a size smaller.
+const COMPACT_HEIGHT := 32.0
 ## Space between the portrait and the points box, and the box's padding.
 const SPLIT := float(HudStyle.SM)
 const PADDING := float(HudStyle.MD)
@@ -26,6 +29,8 @@ var player_id := 0
 var colour := Color.WHITE
 var downed := false
 var is_local := false
+## The smaller teammate box of a big party (`HudPoints.COMPACT_FROM`).
+var compact := false
 var portrait := HudPortrait.new()
 var name_text: String:
 	get:
@@ -91,19 +96,22 @@ func number_size() -> Vector2:
 
 
 ## The box's own height.
-static func height_for(local: bool) -> float:
-	return LOCAL_HEIGHT if local else OTHER_HEIGHT
+static func height_for(local: bool, small := false) -> float:
+	if local:
+		return LOCAL_HEIGHT
+	return COMPACT_HEIGHT if small else OTHER_HEIGHT
 
 
 ## Fills the box from one entry of the party (`HudState.team`).
-func show_player(id: int, member: Dictionary, local: bool) -> void:
+func show_player(id: int, member: Dictionary, local: bool, small := false) -> void:
 	player_id = id
 	is_local = local
+	compact = small and not local
 	downed = bool(member["downed"])
 	var seat := int(member.get("seat", 0))
 	colour = LookCatalog.armband_colour(seat)
 	ink = ink_for(fill())
-	custom_minimum_size = Vector2(HudStyle.COLUMN, height_for(local))
+	custom_minimum_size = Vector2(HudStyle.COLUMN, height_for(local, compact))
 	# A points change comes here every kill: what did not change is left alone (a portrait builds
 	# a look and its key, a colour override tells the label to lay itself out again).
 	var look_data: Dictionary = member.get("look", {})
@@ -119,7 +127,7 @@ func show_player(id: int, member: Dictionary, local: bool) -> void:
 	HudStyle.set_fitted(
 		_number,
 		str(member["points"]),
-		HudStyle.POINTS if local else HudStyle.MEDIUM,
+		HudStyle.POINTS if local else (HudStyle.TEXT if compact else HudStyle.MEDIUM),
 		_box().size.x - 2.0 * PADDING - NAME_ROOM,
 		HudStyle.MIN_TEXT
 	)
@@ -140,7 +148,7 @@ func fill() -> Color:
 
 ## The points box: its rectangle, right of the portrait.
 func _box() -> Rect2:
-	var h := height_for(is_local)
+	var h := height_for(is_local, compact)
 	var left := h + SPLIT
 	return Rect2(left, 0.0, maxf(size.x, custom_minimum_size.x) - left, h)
 

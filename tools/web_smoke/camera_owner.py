@@ -1,8 +1,9 @@
 """The view is the person's own soldier in a solo night with 3 bots, in the web build, in headless Chromium (#702).
 
-Presses Solo on the menu's Play tab, sets the Bots row to 3 on the Play screen with the keyboard, starts the night and
-waits for it to run. Then, for a few seconds, it reads the game's probe: `bots` must be 3 and `view_is_players` (the
-viewport's current camera is the person's own body's camera) must be true every time it is read. A build where a bot's
+Presses Solo on the menu's Play tab, sets the Bots row to 3 on the Play screen with the keyboard (it moves the focus to
+the control called `bots`, which the game publishes as `window.deadnight.focus`), starts the night and waits for it to
+run. Then, for a few seconds, it reads the game's probe: `bots` must be 3 and `view_is_players` (the viewport's current
+camera is the person's own body's camera) must be true every time it is read. A build where a bot's
 body took the camera reports false. Takes a screenshot of the start of the night.
 
     uv run --project <kit>/python gds quiet -- uv run --with playwright==1.64.1 python \\
@@ -43,14 +44,11 @@ def start_with_three_bots(page: Page) -> None:
     smoke.press(page, "Enter")
     smoke.wait_for(page, "the Play screen", lambda s: s.get("screen") == "play_screen", 60)
     page.wait_for_timeout(1500)
-    # Start has the focus: Up reaches the bot skill (the Bots row's second selector, #715), Up again the count.
-    smoke.press(page, "ArrowUp")
-    smoke.press(page, "ArrowUp")
-    for _ in range(3):
-        smoke.press(page, "ArrowRight")  # 0 -> 3 bots
+    # Start has the focus: the Bots row's count is found by its name, not by counting presses (#743).
+    smoke.focus_control(page, "bots", "ArrowUp")
+    smoke.step_value(page, "bots", "ArrowRight", 3)  # 0 -> 3 bots
     page.wait_for_timeout(600)
-    smoke.press(page, "ArrowDown")  # the skill
-    smoke.press(page, "ArrowDown")  # back to Start
+    smoke.focus_control(page, "Start", "ArrowDown")
     smoke.press(page, "Enter")
     smoke.wait_for_night(page)
 

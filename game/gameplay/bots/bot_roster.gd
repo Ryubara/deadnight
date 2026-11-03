@@ -1,6 +1,6 @@
 class_name BotRoster
 extends RefCounted
-## Who the bots of a room are: for each skill, three people with a name and a look of their own, so
+## Who the bots of a room are: for each skill, eight people with a name and a look of their own, so
 ## a lobby, a HUD and a screen show a bot as someone, and the skill can be read from the clothes
 ## (the rookie is a kid in a letterman jacket, the veteran a ranger). Pure data; the server wears
 ## them on the bots' seats (`NightBots`), the lobby shows the names before the night begins.
@@ -9,31 +9,49 @@ extends RefCounted
 ## wears the same one is told apart from the bot by the resolver (`LookResolver`), as two people
 ## are.
 
-## Skill (`MatchSettings.SKILL_*`) -> the three identities, each `{name, look}`.
+## Skill (`MatchSettings.SKILL_*`) -> the eight identities, one per seat, each `{name, look}`. The
+## looks of one skill are the eight presets of the catalogue each once, so a full room has no two
+## bots dressed alike; the skill's own look (rookie letterman or soda jerk, veteran ranger) comes
+## first.
 const CAST := {
 	MatchSettings.SKILL_ROOKIE:
 	[
 		{"name": "Pip", "look": &"soda_jerk"},
 		{"name": "Dale", "look": &"letterman"},
 		{"name": "Moe", "look": &"usher"},
+		{"name": "Kit", "look": &"greaser"},
+		{"name": "Tad", "look": &"lifeguard"},
+		{"name": "Lou", "look": &"mechanic"},
+		{"name": "Jo", "look": &"projectionist"},
+		{"name": "Bud", "look": &"ranger"},
 	],
 	MatchSettings.SKILL_REGULAR:
 	[
 		{"name": "Ash", "look": &"ranger"},
 		{"name": "Fern", "look": &"soda_jerk"},
 		{"name": "Moss", "look": &"projectionist"},
+		{"name": "Reed", "look": &"greaser"},
+		{"name": "Sage", "look": &"lifeguard"},
+		{"name": "Hazel", "look": &"usher"},
+		{"name": "Birch", "look": &"letterman"},
+		{"name": "Wren", "look": &"mechanic"},
 	],
 	MatchSettings.SKILL_VETERAN:
 	[
 		{"name": "Rex", "look": &"ranger"},
 		{"name": "Sarge", "look": &"projectionist"},
 		{"name": "Hawk", "look": &"mechanic"},
+		{"name": "Gus", "look": &"greaser"},
+		{"name": "Boone", "look": &"lifeguard"},
+		{"name": "Colt", "look": &"usher"},
+		{"name": "Brick", "look": &"letterman"},
+		{"name": "Walt", "look": &"soda_jerk"},
 	],
 }
 
 
-## The identity of the bot at seat `player_id` (1 to 4) in a room of `skill`: seats take the three
-## in turn, so the bots of one night are always three different people.
+## The identity of the bot at seat `player_id` (1 to 8) in a room of `skill`: the cast member of
+## that number, so the bots of one night are always different people.
 static func identity(skill: int, player_id: int) -> Dictionary:
 	var cast: Array = CAST[clampi(skill, MatchSettings.SKILL_ROOKIE, MatchSettings.SKILL_VETERAN)]
 	return cast[posmod(player_id - 1, cast.size())]

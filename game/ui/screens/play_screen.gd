@@ -51,15 +51,18 @@ func _ready() -> void:
 	column.add_child(footer)
 	start_button = _button("Start the night", UIButton.Variant.PRIMARY)
 	start_button.pressed.connect(start)
+	start_button.name = &"Start"
 	footer.add_child(start_button)
 	reset_button = _button("Usual rules", UIButton.Variant.SECONDARY)
 	reset_button.pressed.connect(panel.set_settings.bind(MatchSettings.new()))
+	reset_button.name = &"Reset"
 	footer.add_child(reset_button)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(spacer)
 	back_button = _button("Back", UIButton.Variant.GHOST)
 	back_button.pressed.connect(UIRouter.pop)
+	back_button.name = &"Back"
 	footer.add_child(back_button)
 	_link_focus()
 	initial_focus = get_path_to(start_button)

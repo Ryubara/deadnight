@@ -8,7 +8,7 @@ extends RefCounted
 ## through `NightServer.apply` like a socket, so nothing here changes how a bot plays. This class
 ## only seats and unseats them and runs the `BotHost` each tick.
 ##
-## The count: `MatchSettings.bots` (0 to 3) is the most; in a room it is also bounded by the seats
+## The count: `MatchSettings.bots` (0 to 7) is the most; in a room it is also bounded by the seats
 ## the people leave free (`target`). Bots take the highest free seat numbers, so the people's
 ## lowest-numbered seats stay theirs, and a person who finds no free seat takes the lowest bot's
 ## seat as it stands (`hand_over`): the same body, points and weapons, the round goes on.
@@ -16,7 +16,7 @@ extends RefCounted
 
 ## Seats in a night: the room's capacity (`NightHost.MAX_PLAYERS`, which a test holds equal; the
 ## host's script is not named here so the two do not need each other to load).
-const SEATS := 4
+const SEATS := 8
 
 var host := BotHost.new()
 var server: NightServer

@@ -11,7 +11,10 @@ extends RefCounted
 ##   log-normal around the profile's mean, never under `BotProfile.REACTION_FLOOR`);
 ## - a believed zombie that is no longer seen is *remembered* for the memory time, then forgotten;
 ##   it is never shot at while it is only remembered;
-## - a zombie out of sight and near is *heard*: a direction and a range class, never a position.
+## - a zombie out of sight and near is *heard*: a direction and a range class, never a position;
+## - a zombie swinging at the bot from within arm's reach (`ARM_REACH`) is felt whichever way the
+##   bot faces, when the bot has no target in view: it counts as seen (its reaction time runs once,
+##   not again at every think).
 ##
 ## The brain gets the `BotBeliefs` and nothing else. All randomness is the bot's own seeded stream.
 
@@ -23,6 +26,11 @@ const HEARING_ERROR := 0.15
 const BLOW_MEMORY := 2.0
 ## Longest a reaction may be, in means.
 const REACTION_CEILING := 3.0
+## Metres within which a zombie in its swing is noticed from any side by a bot with no target in
+## view: it is being hit and has nobody else to fight. (Out of the cone the zombie was dropped at
+## every think and its reaction began again, so three dead around a bot that looked away were
+## never believed in. A bot with a target in front keeps to it, as before.)
+const ARM_REACH := 2.0
 
 var beliefs := BotBeliefs.new()
 ## Rays cast in the last think, and in all.
@@ -110,6 +118,9 @@ func _look(zombies: Array[Dictionary], here: Vector3, round_number: int, view_ya
 		if flat <= BotLevel.MAX_VIEW and forward.dot(offset) >= cos_half * flat:
 			candidates.append(Vector2(flat, float(index)))
 			continue
+		if flat <= ARM_REACH and zombie["mode"] == ZombieBody.Mode.ATTACK and _no_target(here):
+			_sighted(zombie)
+			continue
 		_lost(zombie["id"])
 		if flat <= _profile.hearing_range:
 			_hear(zombie, here, flat)
@@ -125,6 +136,11 @@ func _look(zombies: Array[Dictionary], here: Vector3, round_number: int, view_ya
 		if pair.x <= _profile.hearing_range:
 			_hear(zombie, here, pair.x)
 	rays_total += rays_last
+
+
+## Whether nothing is believed and in view as it stands (before this look's sightings).
+func _no_target(here: Vector3) -> bool:
+	return beliefs.targets(here).is_empty()
 
 
 ## A ray from the eye reaches the chest, else the head.

@@ -24,6 +24,9 @@ var clear_from := BotErrands.CLEAR_FROM
 var calm_share := BotErrands.CALM_SHARE
 ## The health share under which a hurt teammate holds every door back.
 var hurt_share := BotErrands.HURT_SHARE
+## Whether the team buys the links together (`BotErrands._link`): off on the lot, where the door's
+## turn suits 100 m of open ground; a small map's overlay turns it on.
+var team_links := false
 ## What the bot buys, first to last, on this map; empty is the profile's own list
 ## (`BotProfile.shopping`, written for the lot).
 var shopping: Array[StringName] = []
@@ -47,6 +50,16 @@ var lamp_reach := 12.0
 var fuel_stands: Dictionary[StringName, Vector3] = {}
 var fuel_doors: Dictionary[StringName, StringName] = {}
 var fuel_item: ShopItem
+
+var _tonic_order: Array[StringName] = []
+
+
+## The tonics' ids in the shop's order, the bits of a frame's `perks` (`PerkEffects.mask_of`): made
+## once, because a think asks for it for every tonic on the list.
+func tonic_order() -> Array[StringName]:
+	if _tonic_order.is_empty() and economy != null:
+		_tonic_order = PerkEffects.tonic_ids(economy)
+	return _tonic_order
 
 
 ## The shop item with `item_id`, or null.

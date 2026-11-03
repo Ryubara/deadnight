@@ -399,6 +399,16 @@ booth door, and 0 of 16 for a bigger pack; the small map's two stairs the same (
 - **Left open:** the views draw the zombie at its snapshot height, so a zombie on a ramp walks the ramp, but its feet
   are placed within about 0.1 m of the surface (the baker rounds heights to a quarter of a cell).
 
+## The navigation map is not synchronised on a thread (#733, #736)
+
+The server's dead path over the world's navigation map, so `NightWorld.build` turns
+`NavigationServer3D.map_set_use_async_iterations` off for it. With the default on, a run that sold every link in one
+loop (three saved meshes swapped into the region in one go) sometimes ended on a map lacking the last doors: the
+dead's paths stopped 3 m short of the players, the upper floor and the side room cut off, and they stood still. It
+failed a CI shard of `test_smallmap_windows` (7 of 12 windows torn) and about one run in two of
+`test_smallmap_bot_night`'s four bots. Six runs of `tests/world/smallmap` passed after it. The suite
+`test_smallmap_windows` asserts the setting and that a path from every window ends at the hall.
+
 ## Reproduce
 
 ```text

@@ -36,8 +36,13 @@ func before_test() -> void:
 		_spot(&"ammo", &"", Vector3(40.0, 0.0, 20.0)),
 		_spot(&"upgrade", &"upgrade_weapon", Vector3(50.0, 0.0, 20.0)),
 		_spot(&"perk", &"tonic_hearty", Vector3(60.0, 0.0, 20.0)),
-		_spot(&"perk", &"tonic_second_wind", Vector3(70.0, 0.0, 20.0)),
 	]
+	# One machine for every other tonic, further along the same row.
+	var at := 70.0
+	for tonic_id in PerkEffects.tonic_ids(_shop.economy):
+		if tonic_id != &"tonic_hearty":
+			_shop.spots.append(_spot(&"perk", tonic_id, Vector3(at, 0.0, 20.0)))
+			at += 10.0
 
 
 func _spot(kind: StringName, shop_id: StringName, at: Vector3, crane_spot := 0) -> Dictionary:

@@ -578,6 +578,25 @@ def buy_tonic(rng: np.random.Generator) -> np.ndarray:
     return dsp.fade(mix, 0.001, 0.05)
 
 
+def shock_zap(rng: np.random.Generator) -> np.ndarray:
+    """The reload shock perk: a bright crackle that gates on and off at random, over a mains buzz that sags and a
+    low thump at the start, ending in a few snaps."""
+    seconds = 0.7
+    n = dsp.samples(seconds)
+    crackle = dsp.filt(dsp.white(rng, seconds), "high", 2500)
+    gate = (rng.random(n // 220 + 2) > 0.45).astype(float)
+    gate = np.repeat(gate, 220)[:n]
+    crackle = crackle * gate * dsp.curve([(0, 1), (0.5, 0.7), (1, 0)], n)
+    hz = dsp.curve([(0, 420), (0.15, 300), (1, 110)], n)
+    buzz = dsp.filt(dsp.saw(hz, n), "band", 900, 1200) * dsp.curve([(0, 0.9), (0.4, 0.5), (1, 0)], n)
+    mix = dsp.place(None, crackle * 0.8, 0.0, 1.0)[:n]
+    mix = dsp.place(mix, buzz, 0.0, 0.6)[:n]
+    mix = dsp.place(mix, _thud(rng, 90, 0.12), 0.0, 0.7)[:n]
+    for at in (0.12, 0.27, 0.41):
+        mix = dsp.place(mix, _metal_click(rng, _jv(rng, 3800, 0.2), ring=0.008), at, 0.5)[:n]
+    return dsp.fade(mix, 0.001, 0.12)
+
+
 def buy_recut(rng: np.random.Generator) -> np.ndarray:
     """The re-cut bench: the reels' motor winds up, the press groans down, strikes at 0.8 s with a hot hiss and
     a shower of sparks, the sprockets ratchet round as it lets go, and a bell says it is done at 1.55 s."""
@@ -823,6 +842,7 @@ REGISTRY: list[Entry] = [
     Entry("world", "buy_fuel", 1, buy_fuel, -5.0),
     Entry("world", "buy_tonic", 1, buy_tonic, -5.0),
     Entry("world", "buy_recut", 1, buy_recut, -3.0),
+    Entry("world", "shock_zap", 1, shock_zap, -4.0),
     Entry("world", "deny", 1, deny, -6.0),
     Entry("world", "crane_spin", 1, crane_spin, -4.0),
     Entry("world", "crane_claw_drop", 1, crane_claw_drop, -5.0),

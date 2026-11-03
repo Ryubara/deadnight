@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://gameplay/rules/revive_tuning.gd" id="13_revive"]
 [ext_resource type="Script" path="res://gameplay/rules/crane_tuning.gd" id="11_crane1"]
 [ext_resource type="Script" path="res://gameplay/rules/upgrade_tuning.gd" id="12_upgr1"]
+[ext_resource type="Script" path="res://gameplay/rules/perk_tuning.gd" id="14_perks"]
 
 [sub_resource type="Resource" id="Resource_jrviv"]
 script = ExtResource("1_skww1")
@@ -74,31 +75,57 @@ pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1)
 
 [sub_resource type="Resource" id="Resource_0d3wl"]
 script = ExtResource("1_skww1")
-id = &"tonic_second_wind"
+id = &"tonic_swift_rescue"
 kind = 3
-price = 750
+display_name = "Swift Rescue Lemonade"
+price = 1500
+effect = 5
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_p8fbk"]
 script = ExtResource("1_skww1")
 id = &"tonic_hearty"
 kind = 3
+display_name = "Hearty Health Tonic"
 price = 1000
+effect = 1
 health_bonus = 50.0
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_lpb0c"]
 script = ExtResource("1_skww1")
-id = &"tonic_quick_hands"
+id = &"tonic_double_shot"
 kind = 3
-price = 1500
+display_name = "Double Shot Soda"
+price = 3000
+effect = 2
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_x1sef"]
 script = ExtResource("1_skww1")
-id = &"tonic_fleet"
+id = &"tonic_quick_load"
 kind = 3
-price = 1500
+display_name = "Quick Load Cola"
+price = 2500
+effect = 3
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_tri1"]
+script = ExtResource("1_skww1")
+id = &"tonic_third_holster"
+kind = 3
+display_name = "Third Holster Ale"
+price = 3000
+effect = 4
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_arc1"]
+script = ExtResource("1_skww1")
+id = &"tonic_reload_shock"
+kind = 3
+display_name = "Reload Shock Orange"
+price = 2000
+effect = 6
 pool_weights = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_upgr1"]
@@ -185,7 +212,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_tri1"), SubResource("Resource_arc1"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")
@@ -391,6 +418,21 @@ reserve_multiplier = 1.5
 price_step = 1500
 name_prefix = "Re-Cut "
 
+[sub_resource type="Resource" id="Resource_perks1"]
+script = ExtResource("14_perks")
+fire_rate_multiplier = 1.33
+reload_time_scale = 0.5
+extra_weapons = 1
+revive_time_scale = 0.5
+self_revive_seconds = 4.0
+self_revive_uses = 3
+shock_radius = 4.0
+shock_damage = 140.0
+shock_stun_seconds = 1.6
+shock_push = 5.0
+shock_cooldown = 4.0
+lost_on_down = 2
+
 [resource]
 script = ExtResource("5_3ukcj")
 rounds = SubResource("Resource_1fk4k")
@@ -404,3 +446,4 @@ health = SubResource("Resource_ptune1")
 revive = SubResource("Resource_revive1")
 crane = SubResource("Resource_crane1")
 upgrade = SubResource("Resource_upgt1")
+perks = SubResource("Resource_perks1")
