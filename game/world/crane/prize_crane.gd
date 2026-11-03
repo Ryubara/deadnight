@@ -258,15 +258,7 @@ func _cabinet() -> void:
 		var offset := Vector3(side.x * WIDTH / 2.0, 0.0, side.z * DEPTH / 2.0)
 		node.position = Vector3(offset.x, 0.9 + height / 2.0, offset.z)
 		add_child(node)
-	# Collision: a player and a shot meet the cabinet.
-	var body := StaticBody3D.new()
-	var shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	box.size = Vector3(WIDTH, 2.6, DEPTH)
-	shape.shape = box
-	shape.position = Vector3(0.0, 1.3, 0.0)
-	body.add_child(shape)
-	add_child(body)
+	# No collision: this is a drawing. The wall is the world's (`CraneBlock`), the same on a server.
 
 
 ## Plush prizes in the case: spheres with ears, in the five colours, from a fixed seed.
