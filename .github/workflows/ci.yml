@@ -174,13 +174,24 @@ jobs:
             echo "RESULT $*: leak lines $(grep -cE 'leaked at exit|still in use' one.log), passed $(grep -c PASSED one.log)"
             grep -E "ObjectDB instances|RID allocations|resources still in use" one.log | head -4 || true
           }
-          sh6="-a res://tests/captures -a res://tests/night/test_bot_train.gd -a res://tests/rules -a res://tests/tours -a res://tests/world"
-          echo "A: the whole shard"
+          sh6="-a res://tests/captures -a res://tests/tours -a res://tests/world"
+          cd repos/deadnight/game/tests/captures
+          mkdir -p /tmp/held
+          cp wall_silhouette_cost.gd wall_silhouette_cost.tscn wall_silhouette_tour.gd wall_silhouette_tour.tscn *.uid /tmp/held/ 2>/dev/null || true
+          cd - > /dev/null
+          cap=repos/deadnight/game/tests/captures
+          echo "D: as it is"
           one $sh6
-          echo "B: the whole shard without the wall silhouette suite"
-          one $sh6 -i tests/world/test_wall_silhouettes.gd
-          echo "C: world, rules and the bot train, no captures or tours"
-          one -a res://tests/night/test_bot_train.gd -a res://tests/rules -a res://tests/world
+          echo "E: both wall silhouette captures removed"
+          rm -f $cap/wall_silhouette_cost.* $cap/wall_silhouette_tour.*
+          one $sh6
+          echo "F: only the tour back"
+          cp /tmp/held/wall_silhouette_tour.* $cap/
+          one $sh6
+          echo "G: only the cost back"
+          rm -f $cap/wall_silhouette_tour.*
+          cp /tmp/held/wall_silhouette_cost.* $cap/
+          one $sh6
       - name: List what leaked at exit
         # `--verbose` (night and test steps) makes the engine name each leaked instance and resource; this keeps just
         # those lines, so a failed leak check says which objects it was (issue #487).
