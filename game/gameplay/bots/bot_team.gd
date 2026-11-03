@@ -6,6 +6,8 @@ extends RefCounted
 ## has a team of its own. Plain data: nothing here reads a frame or the rules.
 
 var claims := BotClaims.new()
+## The place each roaming bot is walking to (`BotRoam`), by player id, so two do not pick one.
+var roam: Dictionary = {}
 ## The flares burning now, as `{point, radius, until, shooter}` (the clock of the bots, all the same
 ## step): the dead within a flare's radius walk to it, so a bot judging a revive counts them as far.
 var lures: Array[Dictionary] = []
@@ -34,4 +36,5 @@ func active_lures(now: float) -> Array[Dictionary]:
 ## A bot left the team (its seat was taken by a person, or it was removed): what it held is open.
 func release(bot: int) -> void:
 	claims.release(bot)
+	roam.erase(bot)
 	turn.release(bot)

@@ -255,7 +255,9 @@ func test_a_ticket_that_is_not_good_is_turned_away() -> void:
 
 func test_the_rules_the_host_chose_ride_the_ticket_into_the_room_and_every_welcome() -> void:
 	await _start()
-	var chosen := {"count_multiplier": 3.0, "max_alive": 9, "break_seconds": 11.0}
+	var chosen := {
+		"count_multiplier": 3.0, "max_alive": 9, "break_seconds": 11.0, "map": MapRegistry.DEFAULT
+	}
 	# The first ticket of the match opens the room with the host's rules; the JSON the backend signs
 	# gives numbers as floats, and a whole one still fits `max_alive`.
 	var ann := await _client("rules-a", "ann", "Tester", chosen)

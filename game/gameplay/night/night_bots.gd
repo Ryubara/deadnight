@@ -126,7 +126,7 @@ func adopt(player_id: int) -> Array[Dictionary]:
 	if seat == null or seat.bot or holds(player_id):
 		return []
 	var events: Array[Dictionary] = server.apply(
-		{"type": NightServer.SEAT_BOT, "player_id": player_id}
+		{"type": RulesAction.SEAT_BOT, "player_id": player_id}
 	)
 	events.append_array(_enlist(player_id))
 	return events

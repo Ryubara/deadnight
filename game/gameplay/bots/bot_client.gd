@@ -270,6 +270,7 @@ func _fallback() -> BotIntent:
 func _track_crew(delta: float) -> void:
 	var beliefs := perception.beliefs
 	beliefs.me = state.player_id
+	beliefs.order = BotOrders.current(state.frame, state.player_id)
 	var players: Dictionary = state.frame.get("players", {})
 	for id: int in players:
 		var player: Dictionary = players[id]
