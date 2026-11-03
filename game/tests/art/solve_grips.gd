@@ -30,11 +30,23 @@ const MODELS := {
 	"grenade": {"hold": "res://gameplay/player/holds/grenade.tres", "kind": "ball"},
 	# The heavy batch (#796), at the plan's sizes (docs/research/weapon-models.md#the-nine) until
 	# #793 adds their holds: a hold must keep this `model_scale` or the grip is solved again.
-	"m249": {"scene": "res://assets/weapons/m249/m249.glb", "model_scale": 1.3, "kind": "gun"},
 	"fifty_cal":
 	{"scene": "res://assets/weapons/fifty_cal/fifty_cal.glb", "model_scale": 1.21, "kind": "gun"},
 	"pump_870":
 	{"scene": "res://assets/weapons/pump_870/pump_870.glb", "model_scale": 1.3, "kind": "gun"},
+	"m249": {"scene": "res://assets/weapons/m249/m249.glb", "model_scale": 1.3, "kind": "gun"},
+	# #797's models, at the size their holds will give them (docs/research/weapon-models.md): the
+	# holds are #788's and #789's, so the size is written here until they point at these models.
+	"service_pistol":
+	{
+		"scene": "res://assets/weapons/service_pistol/service_pistol.glb",
+		"model_scale": 1.95,
+		"kind": "gun"
+	},
+	"ray_gun":
+	{"scene": "res://assets/weapons/ray_gun/ray_gun.glb", "model_scale": 2.275, "kind": "gun"},
+	"freeze_gun":
+	{"scene": "res://assets/weapons/freeze_gun/freeze_gun.glb", "model_scale": 1.3, "kind": "gun"},
 }
 
 var _args := {}
