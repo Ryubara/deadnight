@@ -6,4 +6,3 @@
 script = ExtResource("1_style")
 color = Color(1, 0.35, 0.12, 1)
 thickness = 3.0
-glow = 0.6

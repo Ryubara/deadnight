@@ -2,9 +2,10 @@ class_name Outline
 extends Node
 ## Outlines a model through walls: every mesh under `target` (a skinned or static one, whatever the
 ## model; nothing in it is edited) gets the style's materials as its overlay while `enabled`. The
-## outline is the silhouette's edge only, drawn without a depth test; its colour, thickness and glow
-## are the `style`'s (`OutlineStyle`), which every mesh that wears it shares. Nothing runs and
-## nothing is drawn while it is off: the overlay is taken off the meshes.
+## outline is the silhouette's edge only, a line with no glow, drawn only on the pixels where the
+## model is hidden behind something (a depth test against the scene's depth, per pixel); its colour
+## and thickness are the `style`'s (`OutlineStyle`), which every mesh that wears it shares. Nothing
+## runs and nothing is drawn while it is off: the overlay is taken off the meshes.
 
 ## The shipped look (`outline_style_default.tres`), for an outline given no style of its own.
 const DEFAULT_STYLE := "res://gameplay/outline/outline_style_default.tres"
