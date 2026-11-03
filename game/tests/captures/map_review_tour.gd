@@ -29,8 +29,8 @@ const LOT_SPOTS := [
 	["f08_breach_n", Vector3(-36, 0, -46), 0.0, -4.0],
 	["f12_apron_w_inside", Vector3(-66, 0, -22), -90.0, -4.0],
 	["f13_apron_n_inside", Vector3(-36, 0, -56), 0.0, -4.0],
-	["f09_field_south_west", Vector3(-30, 0, -9), 180.0, -4.0],
-	["f10_field_south_east", Vector3(30, 0, -9), 180.0, -4.0],
+	["f09_field_south_west", Vector3(-30, 0, -12.5), 180.0, -4.0],
+	["f10_field_south_east", Vector3(30, 0, -12.5), 180.0, -4.0],
 	["f11_field_look_back", Vector3(0, 0, -10), 0.0, 4.0],
 	["c01_front", Vector3(0, 0, -10), 180.0, -4.0],
 	["c02_door_in", Vector3(0, 0, -6.5), 180.0, -4.0],
@@ -68,6 +68,19 @@ const LOT_SPOTS := [
 	["p02_plaza_booths", Vector3(0, 0, 41), 180.0, -4.0],
 	["p03_plaza_end", Vector3(0, 0, 50), 180.0, -4.0],
 	["p04_plaza_back", Vector3(0, 0, 55), 0.0, -4.0],
+	# The thin stretches (#855): the same spots before and after their loops and cover.
+	["t01_flank_w_from_rows", Vector3(-44, 0, -17), 100.0, -4.0],
+	["t02_flank_w_from_breach", Vector3(-58, 0, -21), -80.0, -4.0],
+	["t03_flank_e_from_rows", Vector3(45, 0, -15), -100.0, -4.0],
+	["t04_flank_e_channel", Vector3(58, 0, -27), 170.0, -4.0],
+	["t05_south_w_front", Vector3(-27, 0, -14), 160.0, -4.0],
+	["t06_south_w_lane", Vector3(-38, 0, -6.6), -90.0, -4.0],
+	["t07_south_e_front", Vector3(27, 0, -15), -160.0, -4.0],
+	["t08_south_e_lane", Vector3(17.5, 0, -7), -90.0, -4.0],
+	["t09_yard_east_from_cage", Vector3(47, 0, 20), -90.0, -4.0],
+	["t10_yard_east_from_south", Vector3(55, 0, 34), 10.0, -4.0],
+	["t11_plaza_from_booths", Vector3(0, 0, 48.6), 180.0, -4.0],
+	["t12_plaza_from_west", Vector3(-12.5, 0, 45.5), -128.0, -4.0],
 ]
 
 const SMALL_SPOTS := [

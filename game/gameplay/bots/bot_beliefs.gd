@@ -50,6 +50,9 @@ var max_health := 100.0
 var grenades := START_GRENADES
 ## The special round in play (`round_started`'s `special_id`), or empty in an ordinary round.
 var special: StringName = &""
+## Whether the break the bot is in announced a special round (`special_round_announced`): the
+## marquee every player reads, which the profile may shop for (`BotProfile.prepared_mags`).
+var special_coming := false
 ## The purchases the server refused since the brain last looked: `{item, result}`.
 var denials: Array[Dictionary] = []
 ## Things that happened to the bot or the night since the brain last looked, for the callouts:
@@ -110,6 +113,17 @@ func nearest_threat(from: Vector3, memory_seconds: float) -> float:
 			best = minf(best, _flat(from, guess(contact_of, memory_seconds)))
 	for sound in heard:
 		best = minf(best, 2.0 if sound["range_class"] == VERY_NEAR else 4.0)
+	return best
+
+
+## Metres to the nearest headliner the bot believes in, or INF.
+func boss_distance(here: Vector3) -> float:
+	var best := INF
+	for id in contacts:
+		var contact_of: Dictionary = contacts[id]
+		if ZombieModels.is_boss(contact_of.get("look", ZombieModels.DEFAULT)):
+			if is_believed(contact_of):
+				best = minf(best, _flat(here, contact_of["position"]))
 	return best
 
 

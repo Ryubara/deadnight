@@ -10,7 +10,9 @@ extends Node
 
 const SECOND := 60
 const MATE := 2
-const GUNS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]
+const GUNS: Array[StringName] = [
+	&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun", &"ray_gun", &"freeze_gun"
+]
 ## The shares of the reload the sheet shows.
 const SHARES: Array[float] = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 const CELL := Vector2i(800, 450)

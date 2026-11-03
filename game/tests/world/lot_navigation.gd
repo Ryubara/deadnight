@@ -75,12 +75,18 @@ func settle(tree: SceneTree) -> void:
 ## The polygon corners of the way from `from` to the nearest reachable point to `to`. The plain
 ## `map_get_path` stops its search after 4096 polygons, which a 0.05 m mesh of the whole lot exceeds
 ## when the target cannot be reached (an engine error, and a wrong answer): search without a limit.
-func path(from: Vector3, to: Vector3) -> PackedVector3Array:
+## `shortest` pulls the way tight round the corners (the funnel), for measuring its length; the edge
+## centres it goes through by default zigzag.
+func path(from: Vector3, to: Vector3, shortest := false) -> PackedVector3Array:
 	var query := NavigationPathQueryParameters3D.new()
 	query.map = _map
 	query.start_position = from
 	query.target_position = to
-	query.path_postprocessing = NavigationPathQueryParameters3D.PATH_POSTPROCESSING_EDGECENTERED
+	query.path_postprocessing = (
+		NavigationPathQueryParameters3D.PATH_POSTPROCESSING_CORRIDORFUNNEL
+		if shortest
+		else NavigationPathQueryParameters3D.PATH_POSTPROCESSING_EDGECENTERED
+	)
 	query.path_search_max_polygons = SEARCH_POLYGONS
 	var result := NavigationPathQueryResult3D.new()
 	NavigationServer3D.query_path(query, result)

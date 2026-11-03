@@ -125,6 +125,16 @@ func test_the_report_is_one_line_of_json_with_the_think_times() -> void:
 	assert_int(rig.bot.telemetry.think_us(0.99)).is_greater_equal(rig.bot.telemetry.think_us(0.5))
 
 
+func test_the_marquee_of_a_break_is_remembered_until_the_round_starts() -> void:
+	var rig := BotRig.new(BotProfile.rookie(), 3)
+	assert_bool(rig.bot.perception.beliefs.special_coming).is_false()
+	rig.step([{"type": &"special_round_announced", "round": 5, "special_id": &"double_feature"}])
+	assert_bool(rig.bot.perception.beliefs.special_coming).is_true()
+	rig.step([{"type": &"round_started", "round": 5, "special_id": &"double_feature"}])
+	assert_bool(rig.bot.perception.beliefs.special_coming).is_false()
+	assert_str(String(rig.bot.perception.beliefs.special)).is_equal("double_feature")
+
+
 func test_a_downed_bot_sends_a_command_that_does_nothing() -> void:
 	var rig := BotRig.new()
 	rig.put_zombie(1, Vector3(0, 0, -6))

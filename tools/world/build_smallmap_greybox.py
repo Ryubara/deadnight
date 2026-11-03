@@ -140,18 +140,18 @@ BOARD_OUT = 0.05  # metres outside the wall's centre line, on the dead's side
 # it, as (dx, dz). Start 2 (0.2 and 0.6 P), side 2 (1.2 P), upstairs 4 and a cabinet (1.2 to 1.8 P).
 SPOT_IN = 1.35
 WALL_SPOTS = [
-    # (name, shop id, sign, room, wall face (x, z), into, floor)
-    ("PistolStart", "weapon_pistol", "REVOLVER", "start", (0.0, 11.0), (1, 0), 0.0),
-    ("CrowbarStart", "weapon_crowbar", "CROWBAR", "start", (0.0, 6.0), (1, 0), 0.0),
-    ("ShotgunSide", "weapon_shotgun", "SHOTGUN", "side", (16.0, -6.0), (-1, 0), 0.0),
-    ("SmgSide", "weapon_smg", "TOMMY GUN", "side", (5.5, -7.8), (0, 1), 0.0),
-    ("BatUpstairs", "weapon_baseball_bat", "BAT", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
-    ("FlareUpstairs", "weapon_flare_gun", "FLARE GUN", "upstairs", (-0.05, 2.3), (1, 0), STOREY),
-    ("AxeUpstairs", "weapon_fire_axe", "FIRE AXE", "upstairs", (16.05, -4.0), (-1, 0), STOREY),
-    ("ShotgunUpstairs", "weapon_shotgun", "SHOTGUN", "upstairs", (5.0, -7.85), (0, 1), STOREY),
+    # (name, shop id, room, wall face (x, z), into, floor)
+    ("PistolStart", "weapon_pistol", "start", (0.0, 11.0), (1, 0), 0.0),
+    ("CrowbarStart", "weapon_crowbar", "start", (0.0, 6.0), (1, 0), 0.0),
+    ("ShotgunSide", "weapon_shotgun", "side", (16.0, -6.0), (-1, 0), 0.0),
+    ("SmgSide", "weapon_smg", "side", (5.5, -7.8), (0, 1), 0.0),
+    ("BatUpstairs", "weapon_baseball_bat", "upstairs", (16.05, 2.3), (-1, 0), STOREY),
+    ("FlareUpstairs", "weapon_flare_gun", "upstairs", (-0.05, 2.3), (1, 0), STOREY),
+    ("AxeUpstairs", "weapon_fire_axe", "upstairs", (16.05, -4.0), (-1, 0), STOREY),
+    ("ShotgunUpstairs", "weapon_shotgun", "upstairs", (5.0, -7.85), (0, 1), STOREY),
 ]
 # The sniper cabinet: the rifle, at 1.5 P, in the upstairs half over the side room.
-CABINET = ("RifleCabinet", "weapon_rifle", "RIFLE", "upstairs", (-6.05, -4.0), (1, 0), STOREY)
+CABINET = ("RifleCabinet", "weapon_rifle", "upstairs", (-6.05, -4.0), (1, 0), STOREY)
 # The box (the crane, one place, never moves, formula row 22): in the side room, set back 1.5 m from its marker.
 BOX_MARKER = (10.5, 0.0, -5.9)
 BOX_YAW = 180.0  # toward the wall the box stands against (the marker faces its box)
@@ -198,6 +198,38 @@ LAMPS = [
     ("UpperB", (-2.0, STOREY + 2.9, -4.0)),
     ("UpperB", (10.0, STOREY + 2.9, -4.0)),
 ]
+
+# Render layers (`build_greybox.render_layers`, docs/research/room-lights.md): a layer for each room, one for what is
+# outdoors. A room's lamps light the default layer (the dead, the props) and their room's; a slab or a wall that two
+# rooms share is on both, and a wall that is above a lamp's room is not on its layer, so no lamp lights the room
+# over it or beside it through the slab or the wall.
+START_LAYER = 2
+SIDE_LAYER = 4
+UPPER_A_LAYER = 8
+UPPER_B_LAYER = 16
+OUTDOORS_LAYER = 32
+RENDER_RULES = [
+    (r"Start/(Floor|Wall[WSE]\d)", START_LAYER),
+    (r"Side/Floor", SIDE_LAYER),
+    (r"Side/WallS\d", START_LAYER | SIDE_LAYER),
+    (r"Side/Wall[NEW]\d", SIDE_LAYER),
+    (r"UpperA/Wall\w+", UPPER_A_LAYER),
+    (r"UpperB/WallS\d", UPPER_A_LAYER | UPPER_B_LAYER),
+    (r"UpperB/Wall[NWE]\d", UPPER_B_LAYER),
+    (r"Ceilings/StartSlab\w", START_LAYER | UPPER_A_LAYER),
+    (r"Ceilings/SideSlab\w", SIDE_LAYER | UPPER_B_LAYER),
+    (r"Roof/Slab", UPPER_A_LAYER | UPPER_B_LAYER),
+    (r"Roof/Parapet\w", OUTDOORS_LAYER),
+    (r"Outside/GroundNotch", OUTDOORS_LAYER),
+]
+ROOM_LAYER = {"Start": START_LAYER, "Side": SIDE_LAYER, "UpperA": UPPER_A_LAYER, "UpperB": UPPER_B_LAYER}
+# The lamps, by the lamp's index in `LAMPS` (`Lamp1`..), take their room's layer and the default one; the soda fountain
+# glows in the hall, the re-cut bench's in the upper rewind room.
+LIGHT_MASKS = {
+    **{f"{room}/Lamp{i}/Light": bg.DEFAULT_RENDER | ROOM_LAYER[room] for i, (room, _at) in enumerate(LAMPS, start=1)},
+    "ShopProps/Soda/Glow": bg.DEFAULT_RENDER | START_LAYER,
+    "ShopProps/ReCut/Glow": bg.DEFAULT_RENDER | UPPER_B_LAYER,
+}
 
 # The kit's shell materials (#633) on the walls, floors and ceilings; the lot's for the rest until the kit's pieces
 # replace the boxes.
@@ -267,11 +299,12 @@ def wood_box(parent: str, name: str, rect, y0: float, y1: float, mat: str) -> No
     x0, x1, z0, z1 = rect
     size = (x1 - x0, y1 - y0, z1 - z0)
     pos = ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
-    bg.node(
-        name, "CSGBox3D", parent,
-        {"transform": bg.xform(pos), "use_collision": "true", "size": bg.vec(size),
-         "material": f'ExtResource("{mat}")', "metadata/surface": '"wood"'},
-    )  # fmt: skip
+    props = {"transform": bg.xform(pos)}
+    if (render := bg.render_layers(f"{parent}/{name}")) != bg.DEFAULT_RENDER:
+        props["layers"] = str(render)
+    props.update({"use_collision": "true", "size": bg.vec(size), "material": f'ExtResource("{mat}")',
+                  "metadata/surface": '"wood"'})  # fmt: skip
+    bg.node(name, "CSGBox3D", parent, props)
 
 
 def slab_with_hole(parent: str, name: str, rect, hole, y0: float, mat: str) -> None:
@@ -403,29 +436,23 @@ def window(spec, breach: bool = False) -> tuple[float, float, float]:
     return pos
 
 
-def sign_size(text: str) -> int:
-    """The font size of a plaque's name: 60, smaller for a long name so it stays within the 1.7 m plaque (a letter is
-    about 0.21 m wide at 60)."""
-    return min(60, int(420 / len(text)))
-
-
 def _yaw_of(into: tuple[int, int]) -> float:
     return math.degrees(math.atan2(into[0], into[1]))
 
 
-def wall_spot(name, shop_id, text, room, face, into, floor, cabinet: bool = False) -> None:
-    """A weapon on a wall: a plaque (a cabinet for the rifle) with its name, and the marker a player buys from. Nothing
+def wall_spot(name, shop_id, room, face, into, floor, cabinet: bool = False) -> None:
+    """A weapon on a wall: a plaque (a cabinet for the rifle) with its silhouette, and the marker a player buys from. Nothing
     here is CSG, so the walking mesh does not change; the cabinet is solid to players and shots."""
     x, z = face
     dx, dz = into
     yaw = _yaw_of(into)
     spot = (x + dx * SPOT_IN, floor, z + dz * SPOT_IN)
     if cabinet:
-        dress.cabinet(name, text, face, into, floor, yaw, MATS["plaque"])
+        dress.cabinet(name, shop_id, face, into, floor, yaw, MATS["plaque"])
     else:
         bg.box("ShopProps", f"{name}Plaque", (1.7, 0.9, 0.12), (x + dx * 0.06, floor + 1.6, z + dz * 0.06), MATS["plaque"],
                yaw, collide=False)  # fmt: skip
-        bg.sign("ShopProps", f"{name}Sign", text, (x + dx * 0.14, floor + 1.6, z + dz * 0.14), yaw, sign_size(text))
+        bg.silhouette("ShopProps", f"{name}Silhouette", shop_id, (x + dx * 0.14, floor + 1.6, z + dz * 0.14), yaw)
     props = {"transform": bg.xform(spot, yaw), "metadata/kind": '"wall"', "metadata/shop_id": f'"{shop_id}"',
              "metadata/room": f'"{room}"'}  # fmt: skip
     if cabinet:
@@ -452,6 +479,9 @@ def locker(name, room, face, into, floor) -> None:
 
 
 def build() -> None:
+    bg.RENDER_RULES[:] = RENDER_RULES
+    bg.LIGHT_MASKS.clear()
+    bg.LIGHT_MASKS.update(LIGHT_MASKS)
     lines = bg.lines
     lines.append("[gd_scene format=3]")
     lines.append("")
@@ -459,6 +489,7 @@ def build() -> None:
     lines.append('[ext_resource type="Script" path="res://world/drive_in/barricade.gd" id="barricade"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/smallmap/fixtures/window_board.tscn" id="board"]')
     lines.append('[ext_resource type="Shader" path="res://world/drive_in/night_sky.gdshader" id="night_sky"]')
+    lines.append('[ext_resource type="Script" path="res://world/shop/wall_silhouette.gd" id="silhouette"]')
     for mid in sorted(set(MATS.values())):
         folder = "smallmap" if mid == "frost_ground" else "lot"
         lines.append(f'[ext_resource type="Material" path="res://assets/{folder}/materials/{mid}.tres" id="{mid}"]')
@@ -653,8 +684,8 @@ def build() -> None:
     # --- The shop (rows 22 to 24) ----------------------------------------------------------------------------------
     bg.node("ShopSpots", "Node3D", ".")
     bg.node("ShopProps", "Node3D", ".")
-    for name, shop_id, text, room, face, into, floor in [*WALL_SPOTS, CABINET]:
-        wall_spot(name, shop_id, text, room, face, into, floor, cabinet=(name == CABINET[0]))
+    for name, shop_id, room, face, into, floor in [*WALL_SPOTS, CABINET]:
+        wall_spot(name, shop_id, room, face, into, floor, cabinet=(name == CABINET[0]))
     bx, by, bz = BOX_MARKER
     bg.node("SpotBox", "Marker3D", "ShopSpots",
             {"transform": bg.xform((bx, by, bz), BOX_YAW), "metadata/kind": '"crane"', "metadata/shop_id": '"crane_play"',

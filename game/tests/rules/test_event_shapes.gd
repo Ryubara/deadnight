@@ -22,7 +22,17 @@ const DOCUMENTED := {
 	],
 	&"zombie_damaged":
 	["zombie_id", "zombie_type", "player_id", "zone", "damage", "health", "max_health"],
-	&"zombie_removed": ["zombie_id", "zombie_type", "boss", "cause", "killer_id", "zone", "melee"],
+	&"zombie_removed":
+	[
+		"zombie_id",
+		"zombie_type",
+		"boss",
+		"cause",
+		"killer_id",
+		"zone",
+		"melee",
+		"shattered",
+	],
 	&"zombie_crippled":
 	["zombie_id", "zombie_type", "look", "player_id", "cause", "health", "speed_scale"],
 }

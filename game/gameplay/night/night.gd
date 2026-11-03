@@ -701,6 +701,11 @@ func _on_remote_event(event: Dictionary) -> void:
 	if shift != Vector3.ZERO:
 		_body.state.position += shift
 		PlayerSimulation.restore(_body, _body.state, get_physics_process_delta_time())
+		if shift.length() > Reconciler.SNAP:
+			# The server moved the player (back at the start after leaving the map): the body is
+			# drawn there from this frame on, not blended across the map from its last tick. The
+			# camera snaps by itself past `PlayerTuning.snap_distance`.
+			_body.reset_physics_interpolation()
 	if me.get("turn", false):
 		_body.state.facing = me["facing"]
 		_body.rotation.y = _body.state.facing
