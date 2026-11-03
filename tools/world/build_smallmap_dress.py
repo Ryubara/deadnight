@@ -396,6 +396,11 @@ def cabinet(name: str, shop_id: str, face, into, floor: float, yaw: float, plaqu
              "shop_id": f'&"{shop_id}"', "upright": "true"})  # fmt: skip
 
 
+# The hall's counter: its top, where the radio and the lantern stand (the greybox builds the counter to this height).
+# Above what the body climbs from a standing start (1.25 m, `tools/world/ledge_probe.gd`) and above the dead's reach, so
+# nobody can stand on it where they cannot be struck (#847).
+COUNTER_TOP = 1.5
+
 # What lies about, by room: (kind, piece, where, yaw, floor). `solid` pieces carry the fixture's hidden collision and sit
 # against a wall or in a corner (the walking mesh goes round them); the rest are walked over and have none.
 CLUTTER = [
@@ -410,8 +415,8 @@ CLUTTER = [
     ("walk", "rubble_b", (15.2, 0.0, 4.0), 75),
     ("walk", "rubble_a", (15.1, 0.0, 12.0), 250),
     ("walk", "helmet", (5.2, 0.0, 12.9), 40),
-    ("walk", "radio", (7.0, 1.2, 5.6), 20),
-    ("walk", "lantern", (9.3, 1.2, 6.6), 0),
+    ("walk", "radio", (7.0, COUNTER_TOP, 5.6), 20),
+    ("walk", "lantern", (9.3, COUNTER_TOP, 6.6), 0),
     # the side room: cabinets and a chair on the south wall, rubble in the breach's pocket
     ("solid", "filing_cabinet", (1.0, 0.0, -0.6), 180),
     ("solid", "filing_cabinet", (1.6, 0.0, -0.6), 180),

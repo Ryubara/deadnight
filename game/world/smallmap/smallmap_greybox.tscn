@@ -487,21 +487,21 @@ size = Vector3(0.3, 3.2, 1.2)
 material = ExtResource("smallmap_wall_ground")
 
 [node name="DispatchCounter" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 0.600, 6.250)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.000, 0.750, 6.250)
 use_collision = true
-size = Vector3(4, 1.2, 3.5)
+size = Vector3(4, 1.5, 3.5)
 material = ExtResource("concession_prop")
 
 [node name="DispatchCounterW" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.750, 0.600, 6.250)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 5.750, 0.750, 6.250)
 use_collision = true
-size = Vector3(0.5, 1.2, 2.5)
+size = Vector3(0.5, 1.5, 2.5)
 material = ExtResource("concession_prop")
 
 [node name="DispatchCounterE" type="CSGBox3D" parent="Start"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.250, 0.600, 6.250)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 10.250, 0.750, 6.250)
 use_collision = true
-size = Vector3(0.5, 1.2, 2.5)
+size = Vector3(0.5, 1.5, 2.5)
 material = ExtResource("concession_prop")
 
 [node name="Pillar1" type="CSGBox3D" parent="Start"]
@@ -2548,10 +2548,10 @@ transform = Transform3D(-0.3420, 0.0000, -0.9397, 0.0000, 1.0000, 0.0000, 0.9397
 transform = Transform3D(0.7660, 0.0000, 0.6428, 0.0000, 1.0000, 0.0000, -0.6428, 0.0000, 0.7660, 5.200, 0.000, 12.900)
 
 [node name="Radio1" parent="Dressing" instance=ExtResource("md_radio")]
-transform = Transform3D(0.9397, 0.0000, 0.3420, 0.0000, 1.0000, 0.0000, -0.3420, 0.0000, 0.9397, 7.000, 1.200, 5.600)
+transform = Transform3D(0.9397, 0.0000, 0.3420, 0.0000, 1.0000, 0.0000, -0.3420, 0.0000, 0.9397, 7.000, 1.500, 5.600)
 
 [node name="Lantern1" parent="Dressing" instance=ExtResource("md_lantern")]
-transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 9.300, 1.200, 6.600)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 9.300, 1.500, 6.600)
 
 [node name="FilingCabinet3" parent="Dressing" instance=ExtResource("fx_filing_cabinet")]
 transform = Transform3D(-1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, -0.0000, 0.0000, -1.0000, 1.000, 0.000, -0.600)
