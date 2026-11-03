@@ -103,11 +103,15 @@ func _still(step: String, check := true) -> void:
 func _check_fit(screen: Node) -> void:
 	var canvas := get_viewport().get_visible_rect()
 	var cut := 0
+	var tokens := UITokens.active()
+	var ring := float(tokens.focus_gap + tokens.focus_border)
 	for node in screen.find_children("*", "Control", true, false):
 		var control := node as Control
 		if not control.is_visible_in_tree() or control is ColorRect:
 			continue
 		var rect := control.get_global_rect()
+		if control is BaseButton:
+			rect = rect.grow(ring)  # the focus ring is drawn outside the button
 		if rect.size.x > 0.0 and rect.size.y > 0.0 and not canvas.grow(0.5).encloses(rect):
 			cut += 1
 			print("  outside the window: ", control.get_class(), " ", control.name, " ", rect)

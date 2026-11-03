@@ -161,9 +161,10 @@ func set_compact(on: bool) -> void:
 		row.custom_minimum_size.y = MenuLook.TAP_TARGET if on else 0.0
 		row.hint = "" if on else HINTS[key]
 	map_picker.set_compact(on)
-	# A phone's canvas is 540 units high: the rows sit closer together.
+	# A phone's canvas is 540 units high: the rows sit close together (a row is a tap target high
+	# either way).
 	var tokens := UITokens.active()
-	add_theme_constant_override(&"separation", tokens.space_sm if on else tokens.space_md)
+	add_theme_constant_override(&"separation", tokens.space_xs if on else tokens.space_md)
 
 
 ## The controls Up leaves the panel from: the first row of map cards.

@@ -53,6 +53,8 @@ func _ready() -> void:
 	await _quick_join()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.reset_defaults()
+	# A lambda left in a static variable crashes the engine at quit (docs/godot/exit-code-139.md).
+	MainMenu.board_factory = Callable()
 	get_tree().quit()
 
 
@@ -183,11 +185,15 @@ func _still(step: String) -> void:
 func _check_fit(screen: Node) -> void:
 	var canvas := get_viewport().get_visible_rect()
 	var cut := 0
+	var tokens := UITokens.active()
+	var ring := float(tokens.focus_gap + tokens.focus_border)
 	for node in screen.find_children("*", "Control", true, false):
 		var control := node as Control
 		if not control.is_visible_in_tree() or control is ColorRect or screen is LobbyScreen:
 			continue
 		var rect := control.get_global_rect()
+		if control is BaseButton:
+			rect = rect.grow(ring)  # the focus ring is drawn outside the button
 		if rect.size.x > 0.0 and rect.size.y > 0.0 and not canvas.grow(0.5).encloses(rect):
 			cut += 1
 			print("  outside the window: ", control.get_class(), " ", control.name, " ", rect)

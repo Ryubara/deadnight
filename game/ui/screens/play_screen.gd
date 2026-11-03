@@ -22,6 +22,7 @@ var reset_button: UIButton
 var _margin: MarginContainer
 var _column: VBoxContainer
 var _overline: UILabel
+var _title: UILabel
 
 
 func _ready() -> void:
@@ -41,7 +42,8 @@ func _ready() -> void:
 	card.add_child(column)
 	_overline = _label("NOW BOARDING", UILabel.Style.OVERLINE)
 	column.add_child(_overline)
-	column.add_child(_label("The night's rules", UILabel.Style.TITLE))
+	_title = _label("The night's rules", UILabel.Style.TITLE)
+	column.add_child(_title)
 	panel = MatchSettingsPanel.new()
 	column.add_child(panel)
 	var footer := HBoxContainer.new()
@@ -76,12 +78,14 @@ func start() -> void:
 	UIRouter.push(NIGHT_SCREEN, UITransition.Kind.IRIS)
 
 
-## On a phone held sideways every row and button is a tap target high, and the overline, the hints
-## and the margins give their room back (the canvas is 540 units high).
+## On a phone held sideways every row and button is a tap target high, and the overline, the title,
+## the hints and the margins give their room back (the canvas is 540 units high and the five rows,
+## the buttons and the panel's edge already fill most of it, #671).
 func _fit_for_fingers() -> void:
 	var phone := size.y <= COMPACT_HEIGHT
 	panel.set_compact(phone)
 	_overline.visible = not phone
+	_title.visible = not phone
 	_column.add_theme_constant_override(
 		&"separation", _tokens.space_sm if phone else _tokens.space_md
 	)
