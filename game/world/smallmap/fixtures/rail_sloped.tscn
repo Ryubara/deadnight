@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/smallmap/rail_sloped.gltf" id="model"]
+
+[node name="RailSloped" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Blocker" type="CSGBox3D" parent="."]
+transform = Transform3D(0, -0.5547, 0.8321, 0, 0.8321, 0.5547, -1, 0, 0, -0.2308, 0.3462, 0)
+visible = false
+use_collision = true
+collision_layer = 2
+size = Vector3(0.1, 0.8321, 2.4037)

@@ -276,6 +276,8 @@ number comes from) follows these numbers. They live in `tools/blender/smallmap_k
 | Atlas | the drive-in palette in its own cells plus Plaster `#b3a588`, Sandbag `#a88d62`, Chalk `#ece6d2`, Rust `#7d4b2f` and Soot `#2f2c2a` in its five empty cells, so drive-in props share it |
 | Chamfers | 60 mm on wall pieces and frames, 30 mm on props of 1-3 m |
 | Flat surfaces | plain walls, floors and ceilings stay CSG with a lot pattern, cut per room for the light cap; only shaped pieces are modelled |
+| Stairs | timber treads (Wood) on DarkWood stringers, Grey pipe rails 1.0 m over the nosings with Rust shoes; the collision is one hidden ramp per flight through the treads' middles, the rail a player-only blocker on the open side (`build_kit_stairs.py`) |
+| Debris blocker | furniture and rubble filling the opening in parts named in the order they come away, gaps at the top for the far room's light, 1,300 tris |
 
 ## Measuring again
 

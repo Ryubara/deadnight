@@ -1,0 +1,35 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/smallmap/kit_stair.gd" id="script"]
+[ext_resource type="PackedScene" path="res://assets/smallmap/stair_straight.gltf" id="model"]
+
+[node name="StairStraight" type="Node3D"]
+script = ExtResource("script")
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Ramp" type="CSGBox3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0.8321, 0.5547, 0, 0.5547, -0.8321, 0, 1.4168, 0.0945)
+visible = false
+use_collision = true
+size = Vector3(1.4, 0.2, 5.4083)
+
+[node name="Top" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.9, -2.175)
+visible = false
+use_collision = true
+size = Vector3(1.4, 0.2, 0.15)
+
+[node name="RailLeftBlocker" type="CSGBox3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0.8321, 0.5547, 0, 0.5547, -0.8321, -0.66, 1.8462, 0.3808)
+visible = false
+use_collision = true
+collision_layer = 2
+size = Vector3(0.1, 0.8321, 5.0478)
+
+[node name="RailRightBlocker" type="CSGBox3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0.8321, 0.5547, 0, 0.5547, -0.8321, 0.66, 1.8462, 0.3808)
+visible = false
+use_collision = true
+collision_layer = 2
+size = Vector3(0.1, 0.8321, 5.0478)

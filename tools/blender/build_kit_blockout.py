@@ -414,4 +414,5 @@ def main():
     print("BLOCKOUT", out)
 
 
-main()
+if __name__ == "__main__":  # build_kit_stairs.py imports the staging helpers
+    main()

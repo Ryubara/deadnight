@@ -206,6 +206,38 @@ head and a half over his helmet: the room is close without being cramped, which 
 proportions. The palette holds at night: the Yellow door stays the warmest thing on the wall, and the zombie's green
 reads against both the plaster and the block.
 
+## Stairs, rails and blockers (group 2)
+
+`tools/blender/build_kit_stairs.py` (pinned Blender, headless; the command is at its top) builds parts 19-23 into
+`game/assets/smallmap/` and writes each fixture scene in `game/world/smallmap/fixtures/` from the same numbers, so the
+collision always matches the model. Timber treads (Wood) on DarkWood stringers and risers, Grey pipe rails with Rust
+shoes and elbows, one material on the kit atlas.
+
+| Piece | Tris | Budget | Origin, and what the fixture holds |
+| --- | ---: | ---: | --- |
+| `stair_straight` | 1,308 | 5,000 | middle of the 1.4 x 4.5 footprint, foot at +Z (Godot), top at -Z 3.0 m up; `KitStair` shows the rail on `rail_left` (default) or `rail_right` and turns its blocker on with it |
+| `stair_l_left`, `stair_l_right` | 1,612 | 5,000 | middle of the 3.5 x 3.5 footprint; the lower flight's foot at +Z, the upper flight turns to -X (left) or +X (right); the rail and a newel post on the inside of the turn, the outside against two walls |
+| `rail_flat`, `rail_sloped` | 128 | 1,500 | 2 m along X; posts at +-0.5 m, so joined runs keep a post every metre; the sloped one rises 1.33 m to +X at the stairs' slope, its origin on the nosing line |
+| `landing_edge` | 208 | 1,500 | the last 0.3 m of an upper floor (its top at the origin, the floor at +Z, the drop at -Z), a rail on it |
+| `debris_blocker` | 1,300 | 1,500 | the wall's plane through the origin, the room at +Z; nodes `Part1_Planks` to `Part6_Rubble` in the order they come away, each with its origin at its own middle; one 1.4 x 2.4 x 1.0 blocker |
+
+- **Each flight walks on one ramp**, a hidden CSG box whose top runs through the middle of every tread (R/2 + u R/T),
+  from half a tread before the first riser to the top level half a tread past the last, then a flat strip. A landing's
+  box starts where its ramp ends and the upper ramp starts half a tread into the landing, so no seam is a ledge.
+  `test_smallmap_stairs.gd` walks the real player body up and down every stair, at a run, a sprint and across the L's
+  corner: no step-up and no tick off the floor. Where a slope meets the flat, the capsule's round foot settles by at
+  most 8 mm in one tick (a riser is 200 mm). The same flight with its treads as collision steps fifteen times.
+- **The ramp is 33.7 degrees**, under the body's 45 degree floor limit and the zombies' 45 degree bake slope.
+- **Rails are player-only** (collision layer 2, the boards' layer): a player cannot walk off an open side, a shot and
+  the shoulder camera pass the pipes, and the walking mesh goes round them.
+- **The space under a flight is open.** The level closes it (a wall, a cupboard) where the dead or a player could
+  wedge into the low end.
+- **A right-handed L is its own model**, never a mirrored instance: Godot's physics does not take negative scale.
+
+![The stairs, rails, edge and debris blocker on the 0.5 m grid beside the Soldier, the trash can, a crate and the ticket booth](kit-stairs-sheet.png)
+
+![In Godot under the lot's night: the room, the blocker in a doorway, and the player walking up and back down the straight stair](kit-stairs-room.png)
+
 ## Modular kit parts list
 
 Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot pattern, maybe a new pattern or tint),
@@ -232,11 +264,11 @@ Coverage: **Exists** (in the game now), **Material** (a CSG box with a lot patte
 | 16 | Upper floor | any, 0.2 slab | CSG + `planks` | Material | S | 1 |
 | 17 | Broken floor edge, joists showing | 2 x 2 x 0.2 | - | Model | M | 1 |
 | 18 | Ceiling underside | any | CSG + `concrete` or `plaster` | Material | S | 1 |
-| 19 | Straight stair, one storey | 1.4 x 4.5 x 3.0 | blockout | Model | M | 2 |
-| 20 | L stair with landing | 1.4 wide, landing 1.4 x 1.4 at 1.6 | - | Model | M | 2 |
-| 21 | Pipe rail, flat and sloped | 2 m runs, 1.0 tall, posts | blockout (rail) | Model | S | 2 |
-| 22 | Landing or balcony edge | 2 x 0.3 with rail | - | Model | S | 2 |
-| 23 | Debris blocker (purchase) | fills 1.4 x 2.4, 1.0 deep | - | Model | M | 2 |
+| 19 | Straight stair, one storey | 1.4 x 4.5 x 3.0 | `stair_straight`, 1,308 tris (a rail each side, the open one shown) | Exists | M | 2 |
+| 20 | L stair with landing | 3.5 x 3.5 x 3.0, landing 1.4 x 1.4 at 1.6 | `stair_l_left`, `stair_l_right`, 1,612 tris each | Exists | M | 2 |
+| 21 | Pipe rail, flat and sloped | 2 m runs, 1.0 tall, posts at +-0.5 | `rail_flat`, `rail_sloped`, 128 tris each | Exists | S | 2 |
+| 22 | Landing or balcony edge | 2 x 0.3 x 0.2 with a 1.0 rail | `landing_edge`, 208 tris | Exists | S | 2 |
+| 23 | Debris blocker (purchase) | fills 1.4 x 2.4, 1.0 deep (drawn 1.74 x 1.27 x 2.53) | `debris_blocker`, 1,300 tris in six parts | Exists | M | 2 |
 | 24 | Sandbag line | 1 and 2 x 0.6 x 0.9 | blockout; replaces the kit's Sack Trench | Model | S | 3 |
 | 25 | Table, and tipped over | 1.6 x 0.8 x 0.78 | - | Model | S | 3 |
 | 26 | Chair | 0.45 x 0.45 x 0.9 | - | Model | S | 3 |
