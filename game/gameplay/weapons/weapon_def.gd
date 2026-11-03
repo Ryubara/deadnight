@@ -48,6 +48,13 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export_range(0, 500, 1, "or_greater") var reserve_start: int = 32
 @export_range(0, 1000, 1, "or_greater") var reserve_max: int = 96
 @export_range(0.1, 8.0, 0.05, "or_greater", "suffix:s") var reload_time: float = 1.6
+## The reload loads one round at a time (a pump's tube): `reload_time` is the whole magazine from
+## empty, so each round takes `reload_time / magazine_size`, every round is in the magazine the
+## moment it is loaded, and a shot with at least one round in it ends the reload there (#793).
+@export var reload_by_round: bool = false
+## Extra half-angle of the cone, in degrees, at a full run: the shooter moving widens the spread
+## (a belt-fed gun fired from the hip); 0 for a weapon that shoots as true on the move (#793).
+@export_range(0.0, 30.0, 0.05, "or_greater", "suffix:deg") var moving_spread_deg: float = 0.0
 
 @export_group("Feel")
 ## Trauma one shot adds to the shooter's view shake, 0 to 1 (`CameraShake`;
@@ -120,6 +127,16 @@ func upgraded(spec: UpgradeTuning) -> WeaponDef:
 ## The damage multiplier of a hit zone; a zone the weapon does not list counts one.
 func zone_multiplier(zone: StringName) -> float:
 	return zone_multipliers.get(zone, 1.0)
+
+
+## Seconds one round of a by-round reload takes (`reload_by_round`).
+func round_seconds() -> float:
+	return reload_time / float(maxi(magazine_size, 1))
+
+
+## The half-angle of the cone for a shooter moving at `move` (0 standing, 1 at a full run).
+func spread_at(move: float) -> float:
+	return spread_deg + moving_spread_deg * clampf(move, 0.0, 1.0)
 
 
 func has_element() -> bool:

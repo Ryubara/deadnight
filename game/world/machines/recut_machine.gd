@@ -102,6 +102,7 @@ func _physics_process(delta: float) -> void:
 func play(weapon_id: StringName) -> void:
 	_t = 0.0
 	_struck = false
+	_add_holder(weapon_id)
 	_show(weapon_id)
 	_skin = null
 	if _holders.has(weapon_id):
@@ -521,9 +522,18 @@ func _cradle_display() -> void:
 	_display.position = CRADLE
 	add_child(_display)
 	for id: StringName in MachineParts.WEAPON_MODELS:
-		var holder := MachineParts.weapon_model(id, WEAPON_LENGTH)
-		if holder == null:
-			continue
-		holder.visible = false
-		_display.add_child(holder)
-		_holders[id] = holder
+		if not MachineParts.ON_DEMAND.has(id):
+			_add_holder(id)
+
+
+## The model of `id` on the cradle, made the first time it is needed (the models of
+## `MachineParts.ON_DEMAND` are not loaded with the night).
+func _add_holder(id: StringName) -> void:
+	if _holders.has(id) or not MachineParts.WEAPON_MODELS.has(id):
+		return
+	var holder := MachineParts.weapon_model(id, WEAPON_LENGTH)
+	if holder == null:
+		return
+	holder.visible = false
+	_display.add_child(holder)
+	_holders[id] = holder

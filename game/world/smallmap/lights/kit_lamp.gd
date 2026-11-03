@@ -19,6 +19,10 @@ const BULB_INDEX := 16
 const BULB := Color("#f2dc8c")
 const SHADE_INDEX := 4
 const SHADE := Color("#e6d8b0")
+## How far from a lamp a wall can clip its cards, and the height above its origin the lamp is
+## taken at (a pendant's bulb; the cards all hang from or lie under it).
+const CARD_REACH := 2.0
+const CARD_HEIGHT := 1.0
 
 ## The fixture's model, whose bulb glows.
 @export var model_path: NodePath = ^"Lamp/Model"
@@ -134,6 +138,17 @@ func _make_cards() -> void:
 			haze_top_radius, haze_bottom_radius, haze_length + hang, 1.0, 0.15
 		)
 		haze_at.add_child(LightCards.node("Cone", cone, material))
+	_keep_cards_off_the_walls()
+
+
+## Clips every card at the walls the lamp stands in front of, so a pool, a halo or a cone beside a
+## wall stops at it and does not show in the room behind (`GlowClip`).
+func _keep_cards_off_the_walls() -> void:
+	var planes := GlowClip.planes_around(
+		global_position + Vector3.UP * CARD_HEIGHT, CARD_REACH, GlowClip.walls(owner)
+	)
+	for key in _cards:
+		GlowClip.apply(_cards[key], planes)
 
 
 func _apply() -> void:

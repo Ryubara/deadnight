@@ -154,7 +154,8 @@ and a small one, a dumpster, crates, tyres), so nothing of the lot lies past it 
 | What | Where |
 | --- | --- |
 | The gate | the door's slab at `(0, 38)`, 4 m, from the midway |
-| The ticket booths and canopy | two booths at x = ±6, z 44 to 46.4, under an 18 m canopy at 3.6 m, queue barriers between them: a lap round both booths is about 45 m, a place to run round, not a kiting ground (the loops table is below) |
+| The ticket booths and canopy | two booths at x = ±6, z 44 to 46.4, under an 18 m canopy at 3.6 m, queue barriers between them: a lap round both booths is 52 m on the dead's walking mesh (the loops table is below) |
+| The carton rows | two rows of four carton stacks (1.40 m) across the south half at z 51.6, x 1.2 to 5.7 each side, with the machine's line clear between them ([#855](https://github.com/Ryubara/deadnight/issues/855)): the machine is reached round them from both sides, and they add a lap of 30 m round the rows and one of 60 m round the rows and the booths |
 | The marquee | the east wall, `(12.4, 50.6)` |
 | The perk machine | against the south wall at `(0, 57.2)`, facing the gate; its block, `Road/PerkMachine`, runs to the wall |
 | The wreck | nose-in at `(-9, 55.7)`: its headlights are the `battery` circuit, the only light on the lot with the tank dry, shining up the court |
@@ -224,9 +225,17 @@ near a wall or a fence is placed touching it or a body's width off, never in bet
 | Concession, midway, back lot, field | about 120 m | the back lot |
 | Round the generator cage (open on two sides) | about 50 m | the yard |
 | Round the booth | about 85 m | the booth |
-| Round the ticket booths | about 45 m | the road door |
+| Round the ticket booths | 52 m | the road door |
+| Round the plaza's carton rows; round the rows and the booths | 30 m; 60 m | the road door |
 | Back lot's wreck lanes | three of 30 to 40 m | the back lot |
 | Car rows: aisle to aisle behind a row | 20 to 60 m | the start |
+| Round the west flank's wreck row; the east flank's | 44 m; 44 m | the start |
+| Round each pair of the south strip's kerb walls (west; east) | 45 m; 44 m | the start |
+| Round the yard's carton row and container B | 41 m | the yard |
+
+The lengths without "about" are measured and held by `test_lot_loops.gd`: the shortest lap a pack can cut to, on a
+walking mesh for the dead's agent (0.5 m) with every door sold, through waypoints at the outside corners of what the
+loop circles. The others are from the plan.
 
 A loop under about 40 m is too short for a pack to string out; the counter loop is the exception, for one player
 buying time. Two loops share the concession, so a team splits across them and the stand is never a dead end. The
@@ -236,8 +245,12 @@ only dead ends are deliberate: the midway's two alleys (6 m by 12 m, dark, for a
 
 - **The avenue** (x = 0, 35 m of cleared ground from the apron to the stand): the longest clear line, lit. The first
   rounds are shot down it.
-- **The field's flanks**: open ground beyond the outer rows, with the playground and the picnic shelter as the only
-  cover. The dead are seen coming from far off, but only the head and shoulders show over the cars.
+- **The field's flanks**: open ground beyond the outer rows, with the playground, the picnic shelter and a row of four
+  wrecks on each flank ([#855](https://github.com/Ryubara/deadnight/issues/855)). The wrecks are 1.3 m, under the
+  shoulder camera, so the breaches behind them stay in view; the dead come round the rows' ends. The dead are seen
+  coming from far off, but only the head and shoulders show over the cars.
+- **The south strip**: four kerb walls (1.0 m) in two pairs, 5 to 6 m in front of the fence: low cover to shoot over,
+  with a lane behind.
 - **Behind the car rows**: cars are 1.65 m tall. The shoulder camera at a level view sits 1.55 m up, below a roof, so
   it looks through the gaps, not over the cars; tilted down about 8 degrees (the arm swings the camera up by
   `2.8 x sin(pitch)`) it clears the roofs and sees the aisle behind. A standing player's head and shoulders show above
@@ -620,11 +633,11 @@ size where it stands in the way).
 
 | Where | What |
 | --- | --- |
-| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
+| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); a straight row of four wrecks on each flank and one wreck among the cars (`FIELD_WRECKS` in the generator); four kerb walls on the south strip (`KERB_WALLS`, concrete blocks); ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); a sofa in the open between the east cars and the wrecks; barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
 | Midway | a dumpster at the end of each alley, cartons where crate stack A was, a small container where B was, cones at the road gate |
-| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
+| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank on the east fence, a row of nine carton stacks in the east third, 2.6 m short of container B, and tyres in the south-east corner; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
 | Back lot | the wreck rows are the kit's Broken Car (`wreck.tscn`); tyres, debris, a spilt drum |
-| Ticket plaza (`Road`) | crates and litter by the kiosks; queue barriers to the kiosks, a tree in each north corner, street lights on its side walls (models only, no light); against the end wall, either side of the machine: a broken-down wreck nose-in (the battery headlights sit at its front), a small container, crates, a dumpster, a container and tyres, with cones and planks in front |
+| Ticket plaza (`Road`) | crates, tyres and litter by the kiosks; queue barriers to the kiosks, a tree in each north corner, street lights on its side walls (models only, no light); two rows of carton stacks across the south half; against the end wall, either side of the machine: a broken-down wreck nose-in (the battery headlights sit at its front), a small container, loose cartons, a dumpster and a container, with cones and planks in front |
 
 Rules the placement keeps, all checked by the world tests:
 
@@ -638,6 +651,13 @@ Rules the placement keeps, all checked by the world tests:
   all, and from low walls (the west alley's drums stand at its open end, 7 m from the dumpster): a barrier by a
   low wall, or a climbable wreck beside it, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box
   1.3 m tall (no step at the bonnet), so it cannot be climbed from the ground.
+- **No step to a top over the reach, and no inside corner of one.** A prop taller than the body's reach (1.25 m: a
+  wreck, a carton stack at 1.40 m, a container) has nothing a body stands on within a sprint-jump (6 m) of it, and two
+  of them meet square and end to end, never in an L. The body got onto a wreck from the floor at the inside corner of
+  a car turned across a row's end, and onto the plaza's containers, dumpster, machine and wreck from two crates and a
+  stack of tyres beside them; the container's back edge, against the wall, was a roost (no blow from ten dead in 40
+  s). `test_plaza_escape.gd` fails on any standing place over the reach in the plaza
+  ([#855](https://github.com/Ryubara/deadnight/issues/855)).
 - **No slots.** Props stand against a wall or touch each other, or leave at least a passage's width: nothing on the
   map is single file, and no prop stands in a door, a breach or its apron, a camera passage or a shop spot.
 

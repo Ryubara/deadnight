@@ -23,10 +23,14 @@ static func shot_seed(match_seed: int, shooter_id: int, seq: int) -> int:
 	return (match_seed * 73856093) ^ (shooter_id * 19349663) ^ (seq * 83492791)
 
 
-## One direction per pellet, scattered in a cone of `spread_deg` around `dir`.
-static func spread_dirs(def: WeaponDef, dir: Vector3, seed_value: int) -> Array[Vector3]:
+## One direction per pellet, scattered in a cone of `spread_deg` around `dir` (wider by
+## `moving_spread_deg` for a shooter at a full run: `move` 1, standing 0).
+static func spread_dirs(
+	def: WeaponDef, dir: Vector3, seed_value: int, move: float = 0.0
+) -> Array[Vector3]:
 	var dirs: Array[Vector3] = []
-	if def.spread_deg <= 0.0:
+	var cone := def.spread_at(move)
+	if cone <= 0.0:
 		for _i in def.pellets:
 			dirs.append(dir)
 		return dirs
@@ -34,7 +38,7 @@ static func spread_dirs(def: WeaponDef, dir: Vector3, seed_value: int) -> Array[
 	rng.seed = seed_value
 	var up := Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT
 	var frame := Basis.looking_at(dir, up)
-	var half := deg_to_rad(def.spread_deg)
+	var half := deg_to_rad(cone)
 	for _i in def.pellets:
 		var theta := half * sqrt(rng.randf())
 		var phi := rng.randf() * TAU
@@ -76,10 +80,11 @@ static func trace_hitscan(
 	muzzle: Vector3,
 	targets: Dictionary,
 	world_ray: Callable,
-	seed_value: int
+	seed_value: int,
+	move: float = 0.0
 ) -> Dictionary:
 	var pellets: Array[Dictionary] = []
-	for pellet_dir in spread_dirs(def, dir, seed_value):
+	for pellet_dir in spread_dirs(def, dir, seed_value, move):
 		pellets.append(trace_one(def, origin, pellet_dir, muzzle, targets, world_ray))
 	return {"pellets": pellets}
 
