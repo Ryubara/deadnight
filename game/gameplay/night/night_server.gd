@@ -174,7 +174,7 @@ func _init(
 	sim = ZombieSim.new(null, p_seed)
 	sim.rounds = rules.tuning.rounds
 	sim.pathing = NavmeshPathing.new(world.map())
-	world.equip(sim, _probe.callable())
+	world.equip(sim, _probe.static_callable())
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
