@@ -143,12 +143,7 @@ func test_window_boards_work_in_a_barricade() -> void:
 
 
 func test_every_piece_is_within_its_triangle_budget() -> void:
-	# Each kit group's build script writes its own report beside the models (this one's is REPORT).
-	var report := {}
-	for file in DirAccess.get_files_at(REPORT.get_base_dir()):
-		if file.ends_with(".json"):
-			var path := REPORT.get_base_dir().path_join(file)
-			report.merge(JSON.parse_string(FileAccess.get_file_as_string(path)))
+	var report: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(REPORT))
 	for piece in _pieces():
 		assert_bool(report.has(piece)).override_failure_message(piece).is_true()
 		var info: Dictionary = report[piece]
