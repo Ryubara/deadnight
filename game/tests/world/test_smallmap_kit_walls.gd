@@ -30,11 +30,13 @@ func _fixture(piece: String) -> Node3D:
 	return node
 
 
+## The walls build's own pieces: the keys of its report. Every kit group writes its fixtures into
+## the same folder and checks its own list (the props: test_smallmap_props.gd).
 func _pieces() -> PackedStringArray:
+	var report: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(REPORT))
 	var out := PackedStringArray()
-	for file in DirAccess.get_files_at(FIXTURES):
-		if file.ends_with(".tscn"):
-			out.append(file.get_basename())
+	for piece: String in report:
+		out.append(piece)
 	return out
 
 
