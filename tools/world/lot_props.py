@@ -20,9 +20,12 @@ ASSETS = Path("game/assets/props")
 SCENES = Path("game/world/drive_in/props")
 
 # prop -> its blocker: "box", "cyl" (round drums and tanks), "trunk" (a tree: only its trunk, TRUNK_RADIUS wide and up to
-# TRUNK_HEIGHT, above a jump, so nobody climbs a tree) or None (clutter, nothing to walk into).
+# TRUNK_HEIGHT) or None (clutter, nothing to walk into). A trunk's top is out of the body's reach (1.25 m, more than the
+# jump) from the tallest prop a player stands on (a container, 1.71 m) with a margin: at 2.4 m a car roof 1.65 m up
+# beside the small tree by the screen was a step onto it, and the trunk's top a step over the north fence (#848). Every
+# tree model is over 4 m, so the trunk stays inside the tree.
 TRUNK_RADIUS = 0.3
-TRUNK_HEIGHT = 2.4
+TRUNK_HEIGHT = 4.0
 BLOCKERS = {
     "barrier": "box",
     "crate": "box",

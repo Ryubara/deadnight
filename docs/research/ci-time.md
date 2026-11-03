@@ -69,6 +69,13 @@ the 25 to 35 s suites outside
 the next place to look when a shard drifts: `test_bot_bands` alone is a third of a shard (`BOTS_BANDS_SEEDS` shortens it
 by hand).
 
+**The world shard grew the body sweeps (#848).** By 2026-11-03 shard 6 ran 663 s of suites (12.2 min of job) on a fast
+run of `main`: `rules/test_balance_targets` 189, `world/test_midway_fence_reach` 132, `world/smallmap/test_smallmap_bot_night`
+90. #848 adds two sweeps of the real player body at the walls, `world/test_drive_in_escape_sweep` (about 60 s) and
+`world/smallmap/test_smallmap_escape_sweep` (about 37 s), which would have put the job near 14 minutes, so the lot's
+sweep and the midway's go to shard 2 (`player`, 4.6 min of job). `MOVED` now splits `world`: its scripts are listed one
+by one and its subfolders (`world/smallmap`) whole, with the folder's shard; the self-test checks every one is run.
+
 ## What a fast test does
 
 1. **Tick by hand, back to back.** A suite that steps the player itself switches its `_physics_process` off once and

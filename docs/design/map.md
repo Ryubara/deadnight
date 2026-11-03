@@ -75,15 +75,20 @@ Rules the greybox is built to:
   (`PLAZA_WALL_H`): the junk stacked against them reaches 1.71 m and a 3.0 m wall was one container and a corner away
   ([#845](https://github.com/Ryubara/deadnight/issues/845); `test_plaza_escape.gd` runs the old hops and a sweep of
   hops from the plaza's floor, and pins the margin of 0.5 m over the reach above the tallest prop at each wall).
-  `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump as its climb for each door still closed (and
-  what needs it), finds the platforms a player can reach, checks that no closed slab, closed area's wall, field
-  fence or perimeter wall has its top within a jump of one, and runs the real player body (`PlayerSimulation`,
-  sprinting and jumping) from the middle and edges of every car roof near a perimeter wall. Before the change the
-  body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top). `test_midway_fence_reach.gd` runs
-  the real body from the ground beside the midway's fences, up to three hops deep, with none, the concession,
-  the concession and the booth, and every door but the road's sold, and fails on a standing place inside a closed
-  area or on top of a wall; it also replays the old hops. (The walking-mesh test above still reads the jump, 1.1
-  m; the map review's [#848](https://github.com/Ryubara/deadnight/issues/848) moves it to 1.25 m.)
+  The reach is one number, `CameraProbe.BODY_REACH` (1.25 m), pinned by `tests/player/test_jump_reach.gd` and
+  read by every test below. `test_drive_in_jump_reach.gd` bakes the walking mesh with 1.25 m as its climb for each
+  door still closed (and what needs it), finds the platforms a player can reach, checks that no closed slab, closed
+  area's wall, field fence or perimeter wall has its top within 1.25 m of one, and runs the real player body
+  (`PlayerSimulation`, sprinting and jumping) from the middle and edges of every car roof near a perimeter wall.
+  Before the change the body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top).
+  `test_drive_in_escape_sweep.gd` runs the real body at every prop beside the walls
+  ([#848](https://github.com/Ryubara/deadnight/issues/848)): it stands it on every top of 1.25 m or less within
+  6 m of a perimeter wall, a closed door's slab or a closed area's wall, and on the floor beside every taller top,
+  sprints and jumps at whatever is solid ahead (every 45 degrees, three jump moments and a walking jump), and
+  chains the hops three deep, for each of the nine sets of doors the shop can sell; it fails on a standing place
+  beyond the map, inside a closed area or 2 m and more over the floor (on a wall). It ran red on the lot with the
+  midway's old fence put back. `test_midway_fence_reach.gd` and `test_plaza_escape.gd` keep the old hops of
+  #846 and #845 and a finer sweep of their own stretch.
 - Zombies spawn only in open areas, and always in the field.
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
 
@@ -589,7 +594,8 @@ zombies](../research/zombies.md#the-meshes-are-baked-ahead-of-time-335)); a test
 - the areas and that the doors' prices and prerequisites equal the shop's (`test_drive_in_greybox.gd`);
 - reachability: a navigation mesh baked per set of sold doors, each area reached only through its door
   (`test_drive_in_opening_order.gd`, with a negative control), and that an agent as wide as the shoulder camera still
-  reaches every area; the doors themselves (`test_lot_doors.gd`); jumps (`test_drive_in_jump_reach.gd`); and the
+  reaches every area; the doors themselves (`test_lot_doors.gd`); the body's climb (`test_drive_in_jump_reach.gd`,
+  `test_drive_in_escape_sweep.gd`); and the
   affordability column above (`test_door_affordability.gd`);
 - the lamps: each on a known circuit, ground lit only by a circuit that is on and a tank with fuel, the flicker
   (`test_lot_lamps.gd`, and in a whole night with the dead's speed, `tests/night/test_night_lamps.gd`);
