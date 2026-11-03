@@ -16,9 +16,18 @@ const TABLE := "res://tests/night/gun_levels.json"
 ## loudest 400 ms, and a two second burst as a whole.
 const MIN_SHOT_ABOVE_BEDS_LU := 14.0
 const MIN_BURST_ABOVE_BEDS_LU := 17.0
-## No bus effect is relied on (the web build plays samples, which ignore them): the headroom is
-## in the files and the trims, so a shot or a burst never gets closer to full scale than this.
-const MAX_PEAK_DBFS := -1.0
+## No bus effect is relied on (the web build plays samples, which ignore them, a limiter on Master
+## included: `docs/research/gun-audio.md`), so the headroom is in the files and the trims. A shot
+## or a burst of a gun that fires without a break peaks no closer to full scale than this, which
+## leaves room for a teammate's gun, a reload, a zombie's scream or a door landing on one of its
+## shots without any sample over -1 dBFS (#718; measured with `tests/captures/audio_headroom.tscn`
+## and `tools/audio/headroom.py`).
+const MAX_PEAK_DBFS := -4.5
+## The flare gun fires one shot a long while apart and its report is a sharp crack (a crest factor
+## of 20 dB: cutting its peak 1.2 dB takes 2.5 dB off its burst's loudness), so it only keeps clear
+## of -1 dBFS.
+const MAX_SLOW_GUN_PEAK_DBFS := -1.0
+const SLOW_GUNS: Array[String] = ["flare_gun"]
 ## The whole pitch rule in semitones, and the level rule in dB (either way).
 const PITCH_RANGE := 0.2
 const LEVEL_RANGE := 0.6
@@ -183,8 +192,16 @@ func test_the_guns_stay_above_the_night_beds_by_the_documented_loudness() -> voi
 			)
 			. is_greater_equal(MIN_BURST_ABOVE_BEDS_LU)
 		)
-		assert_float(float(gun["peak_dbfs"])).override_failure_message(weapon).is_less_equal(
-			MAX_PEAK_DBFS
+		var ceiling := MAX_SLOW_GUN_PEAK_DBFS if weapon in SLOW_GUNS else MAX_PEAK_DBFS
+		(
+			assert_float(float(gun["peak_dbfs"]))
+			. override_failure_message(
+				(
+					"%s peaks at %s dBFS, over the %s that leaves room for other sounds"
+					% [weapon, gun["peak_dbfs"], ceiling]
+				)
+			)
+			. is_less_equal(ceiling)
 		)
 
 
