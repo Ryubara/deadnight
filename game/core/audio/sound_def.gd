@@ -17,6 +17,9 @@ extends Resource
 var bus: StringName = &"Effects"
 ## The sound plays on a loop until stopped (beds, the generator's hum).
 @export var loop := false
+## Not decoded to samples behind the night's loading bar (a bank sets it for all its sounds:
+## `SoundBank.deferred`). Its files are loaded there; the samples come in the background.
+@export var deferred := false
 
 @export_group("Level")
 ## Trim on top of the file's own level (files are all normalised, the catalog balances them).

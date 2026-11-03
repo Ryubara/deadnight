@@ -8,6 +8,15 @@
   ],
   "tris": 564
  },
+ "generator": {
+  "budget": 5000,
+  "size_xyz_blender": [
+   3.2,
+   1.52,
+   5.51
+  ],
+  "tris": 1872
+ },
  "marquee": {
   "budget": 5000,
   "size_xyz_blender": [
