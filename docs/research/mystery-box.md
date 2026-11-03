@@ -110,3 +110,14 @@ arms.
 - Fire Sale: a second event on the same rules (price 10, every spot at once, no breakdown) once the game has timed
   events.
 - Whether the other players should be able to take a prize the buyer left for the last seconds (some titles allow it).
+
+## The first roll was always the shotgun (#685)
+
+Players said the crane gave the shotgun first too often and not every weapon. The pool held all eight weapons and the
+draw is fair: over 10,000 first rolls of a buyer who carries the revolver (seven prizes, weights 4, 3, 2, 1, 0.5, 0.5,
+1 of 12) the shares were shotgun 33.0 to 33.7%, rifle 24.8 to 25.4, SMG 16.6 to 16.7, flare gun 8.4 to 8.6, bat 3.8 to
+3.9, axe 3.9 to 4.3, crowbar 8.3 to 8.6, for seeds 0 to 9999 and for random ones. The cause was the seed: a solo night
+always started from `Night.SEED` (1958), whose crane draws, for that buyer, are shotgun, rifle, SMG, rifle, flare gun,
+shotgun, SMG, flare gun. Every person's first play gave the shotgun, and the bat, the axe and the crowbar did not come
+in their first eight. A solo night now starts from a fresh seed (the game server always did). What stays: the weights
+give the shotgun a third of first rolls, the highest share; that is the balance choice above, not a bug.
