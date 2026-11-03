@@ -102,11 +102,11 @@ func test_each_can_be_re_cut_once_by_the_shop_rule() -> void:
 		assert_bool(cut.reload_by_round).is_equal(def.reload_by_round)
 
 
-func test_the_shop_sells_the_walls_and_the_box_draws_all_six() -> void:
+func test_no_wall_sells_the_six_and_the_box_draws_all_of_them() -> void:
+	# The maintainer's rule (#858): a wall sells only the weaker guns; these come from the box.
 	var economy := RulesFixture.tuning().economy
-	var walls := {&"weapon_pump_870": 700, &"weapon_mp5": 1300, &"weapon_m4a1": 1600}
-	for id: StringName in walls:
-		assert_int(economy.item(id).price).override_failure_message(String(id)).is_equal(walls[id])
+	for id in IDS:
+		assert_object(economy.item(StringName("weapon_" + String(id)))).is_null()
 	var pool := economy.item(&"crane_play").pool
 	for id in IDS:
 		assert_array(pool).override_failure_message(String(id)).contains(

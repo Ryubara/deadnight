@@ -4,8 +4,7 @@ extends Node
 ## beside the player so the plaque, the crate and the card read together. Not part of the game.
 ## Run it with Movie Maker: `godot --path game res://tests/captures/shop_spots_tour.tscn
 ## --fixed-fps 10 --write-movie out.png --quit-after 400 -- [--bare] [--only=avenue]`. `--bare`
-## takes the shop props away (the "before" of the avenue); `--only=avenue` is one still of it;
-## `--walls` visits the three walls of #793.
+## takes the shop props away (the "before" of the avenue); `--only=avenue` is one still of it.
 
 const HOLD := 60
 const AFTER_BUY := 40
@@ -41,8 +40,6 @@ func _ready() -> void:
 		_night.world.greybox.get_node("ShopProps").queue_free()
 	if _args.get("only", "") == "avenue":
 		await _avenue()
-	elif _args.has("walls"):
-		await _new_walls()
 	else:
 		await _tour()
 	get_tree().quit()
@@ -55,16 +52,6 @@ func _tour() -> void:
 	await _visit(&"weapon_rifle", &"", Vector3(0.0, 0.0, 1.0), "rifle on the booth wall")
 
 
-## The three walls of the second batch of firearms (#793): the pump inside the stand, the MP5 in
-## the yard and the M4A1 in the back lot (`--walls`).
-func _new_walls() -> void:
-	await _visit(&"weapon_pump_870", &"", Vector3(-1.0, 0.0, 0.0), "pump on the stand's wall")
-	await _visit(&"weapon_mp5", &"", Vector3(0.0, 0.0, 1.0), "MP5 on the yard's fence")
-	await _visit(
-		&"weapon_m4a1", &"", Vector3(0.0, 0.0, 1.0), "M4A1 on the back lot's fence", 2.4, -1.0
-	)
-
-
 func _avenue() -> void:
 	_night.player().teleport(Vector3(0.0, 0.1, -41.0))
 	_yaw = PI
@@ -73,14 +60,7 @@ func _avenue() -> void:
 
 
 ## Stands at a spot facing `facing`, shows the card, buys, shows what came of it.
-func _visit(
-	shop_id: StringName,
-	kind: StringName,
-	facing: Vector3,
-	what: String,
-	back := 3.4,
-	side_sign := 1.0
-) -> void:
+func _visit(shop_id: StringName, kind: StringName, facing: Vector3, what: String) -> void:
 	var at := Vector3.INF
 	for spot in _night.world.shop_spots():
 		if (shop_id == &"" or spot["shop_id"] == shop_id) and (kind == &"" or spot["kind"] == kind):
@@ -91,7 +71,7 @@ func _visit(
 	_night.player().teleport(at + Vector3(0.0, 0.1, 0.0))
 	var side := facing.cross(Vector3.UP)
 	_camera.look_at_from_position(
-		at - facing * back + side * 2.3 * side_sign + Vector3(0.0, 2.1, 0.0),
+		at - facing * 3.4 + side * 2.3 + Vector3(0.0, 2.1, 0.0),
 		at + facing * 1.4 + Vector3(0.0, 1.1, 0.0)
 	)
 	print("frame ", Engine.get_process_frames(), ": ", what)

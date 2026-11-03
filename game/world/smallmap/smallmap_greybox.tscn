@@ -2275,66 +2275,6 @@ metadata/kind = "wall"
 metadata/shop_id = "weapon_shotgun"
 metadata/room = "upstairs"
 
-[node name="PumpSidePlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.500, 1.600, -0.360)
-size = Vector3(1.7, 0.9, 0.12)
-material = ExtResource("plaque")
-
-[node name="PumpSideSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.500, 1.600, -0.440)
-pixel_size = 0.006
-text = "PUMP 870"
-font_size = 52
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
-
-[node name="SpotPumpSide" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, 9.500, 0.000, -1.650)
-metadata/kind = "wall"
-metadata/shop_id = "weapon_pump_870"
-metadata/room = "side"
-
-[node name="MP5UpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.800, 5.000, -7.790)
-size = Vector3(1.7, 0.9, 0.12)
-material = ExtResource("plaque")
-
-[node name="MP5UpstairsSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.800, 5.000, -7.710)
-pixel_size = 0.006
-text = "MP5"
-font_size = 60
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
-
-[node name="SpotMP5Upstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 12.800, 3.400, -6.500)
-metadata/kind = "wall"
-metadata/shop_id = "weapon_mp5"
-metadata/room = "upstairs"
-
-[node name="M4A1UpstairsPlaque" type="CSGBox3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.500, 5.000, -7.790)
-size = Vector3(1.7, 0.9, 0.12)
-material = ExtResource("plaque")
-
-[node name="M4A1UpstairsSign" type="Label3D" parent="ShopProps"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.500, 5.000, -7.710)
-pixel_size = 0.006
-text = "M4A1"
-font_size = 60
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
-
-[node name="SpotM4A1Upstairs" type="Marker3D" parent="ShopSpots"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.500, 3.400, -6.500)
-metadata/kind = "wall"
-metadata/shop_id = "weapon_m4a1"
-metadata/room = "upstairs"
-
 [node name="RifleCabinetCase" parent="ShopProps" instance=ExtResource("fx_tall_cabinet")]
 transform = Transform3D(0.0000, 0.0000, 1.0000, 0.0000, 1.0000, 0.0000, -1.0000, 0.0000, 0.0000, -5.785, 3.400, -4.000)
 

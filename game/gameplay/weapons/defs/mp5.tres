@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"mp5"
-display_name = "MP5"
+display_name = "Usher SMG"
 kind = 0
 automatic = true
 damage = 15

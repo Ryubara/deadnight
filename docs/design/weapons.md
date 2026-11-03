@@ -65,12 +65,12 @@ the real command, its own model drawn).
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
-| `mp5` ([models](../research/weapon-models.md)) | `mp5`, the MP5 | **Wall** 1,300 (the yard), and the **crane** (2) | 15 / 0.10 s |
-| `ppsh` | `ppsh`, the PPSh | **Crane** only (2) | 10 / 0.055 s |
-| `m4a1` | `m4a1`, the M4A1 | **Wall** 1,600 (the back lot), and the **crane** (1.5) | 20 / 0.11 s |
-| `m249` | `m249`, the M249 | **Crane** only (1.5) | 15 / 0.09 s, pierces 1 |
+| `mp5` ([models](../research/weapon-models.md)) | `mp5`, the Usher SMG | **Crane** only (2) | 15 / 0.10 s |
+| `ppsh` | `ppsh`, the Reel Gun | **Crane** only (2) | 10 / 0.055 s |
+| `m4a1` | `m4a1`, the Matinee Carbine | **Crane** only (1.5) | 20 / 0.11 s |
+| `m249` | `m249`, the Double-Feature Gun | **Crane** only (1.5) | 15 / 0.09 s, pierces 1 |
 | `fifty_cal` | `fifty_cal`, the .50 calibre rifle | **Crane** only (1.5) | 220 / 0.9 s, pierces 4 |
-| `pump_870` | `pump_870`, the Pump 870 | **Wall** 700 (the stand), and the **crane** (2) | 22 x 6 / 0.65 s |
+| `pump_870` | `pump_870`, the Popper | **Crane** only (2) | 22 x 6 / 0.65 s |
 | `service_pistol` twice (#797) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
@@ -315,7 +315,7 @@ in [the arsenal](#the-arsenal); the limb multiplier is x0.6 unless a row says ot
 ### The numbers
 
 Per hit is the body zone at point blank; the head multiplier is per pellet. "Working id" is the catalogue id and the
-shop id suffix (`weapon_<id>`); the display name is a tuning string ([names](#display-names-the-maintainers-choice)).
+shop id suffix (`weapon_<id>`); the display name is a tuning string ([names](#display-names-original-names-the-same-guns)).
 
 | Weapon (working id) | Kind | Per hit | Interval | Magazine / reserve (max) | Reload | Spread | Head | Falloff start to end (floor) | Range |
 | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: |
@@ -352,6 +352,9 @@ What each one is for (the genre's role, in our numbers):
 - **Ray gun and freeze gun, the pair**: [below](#the-wonder-weapons).
 
 ### Where they are and what they cost
+
+**Walls (decided after this page, #858):** a wall sells only the weaker guns, so the pump, MP5 and M4A1 are the box's alone
+on both maps; the wall prices and places below are #785's plan and are not built.
 
 The lot's prices are in points; the second map's are its own ratios to its link price **P = 450**
 ([the shop formula](smallmap.md#the-shop-formula-rows-22-to-25)) and each stays within 10% of its ratio
@@ -439,14 +442,13 @@ The six are `defs/<id>.tres` (`mp5`, `ppsh`, `m4a1`, `m249`, `fifty_cal`, `pump_
   each, and a shorter reload plays the lead-in, that many cycles and the rack of the pump.
 - **The bots** fire a pump that is still loading as soon as it has a round (`BotMotor`); every other weapon waits for its
   reload to end.
-- **Where they are**: the pump on the stand's west wall (past the concession's door), the MP5 on the yard's south
-  fence, the M4A1 on the back lot's south fence, each a plaque with the name and a spot that sells it (the price is the
-  shop's); on the second map three more walls, the pump in the side room (405), the MP5 (765) and the M4A1 (945)
-  upstairs ([the shop](smallmap.md#the-shop-formula-rows-22-to-25)). All six are in both maps' box. Their rounds are
-  sold at the locker or the weapon's own wall at #785's prices.
-- **Names are strings.** `display_name` is "PPSh", "MP5", "M4A1", "M249", "Fifty cal" and "Pump 870": the maintainer
-  decides the shipped ones ([below](#display-names-the-maintainers-choice)); the HUD, the cards, the wall prompts and the
-  feed read them from the definition.
+- **Where they are**: the box of both maps, at #785's weights, and nowhere else: the maintainer decided (#858) that a wall
+  sells only the weaker guns, so the pump, MP5 and M4A1 are not sold (#785's wall prices of 700, 1,300 and 1,600 and the
+  second map's three wall places were taken out before the build merged). Their rounds are sold at the locker or in the
+  shop's ammunition items at #785's prices.
+- **Names are strings.** `display_name` is "Reel Gun", "Usher SMG", "Matinee Carbine", "Double-Feature Gun", "Fifty cal"
+  and "Popper" (the maintainer's choice, #857; the ids stay `ppsh`, `mp5`, `m4a1`, `m249`, `fifty_cal`, `pump_870`); the
+  HUD, the cards, the prompts and the feed read them from the definition.
 
 ### The dual pistols
 
@@ -514,25 +516,40 @@ not holding a re-cut rifle, and the re-cut it takes is 1,500 or 3,000 the player
 and special rounds keep their shape**: the freeze does not hold a headliner, and a Stampede or a Crawl Space still
 sends more than 30 bolts. (6) **The ray's blast hurts the shooter**: close shots are a choice.
 
-### Display names: the maintainer's choice
+### Display names: original names, the same guns
 
-Several real names are trademarks (Barrett, Remington, probably MP5 and M4A1). **Which display names ship is the
-maintainer's decision** and is not made here: `display_name` is a tuning string of each definition, so the choice
-changes one line of a `.tres` and the HUD, card and feed follow (`WeaponCatalog` ids stay the working ids). The options,
-for each, as the real name, a generic name and a name in the drive-in's style (these are options, not recommendations,
-and none is checked for a trademark):
+Several real names are trademarks (Barrett, Remington, probably MP5 and M4A1). **The maintainer's decision
+([#857](https://github.com/Ryubara/deadnight/issues/857)): use alternative names and keep the same gun design.** A
+gun whose name is a maker's name, a brand or a model designation gets an original name in the drive-in's voice
+(a concession stand, a projectionist, the picture show); ids, models, stats and sounds stay as they are, and the
+working ids below are what the code, the shop (`weapon_<id>`) and the tests call it. `display_name` is the one string
+the HUD, the prompt cards, the crane's reveal, the feed and "Re-Cut <name>" read (`WeaponDef.display_name`; the
+re-cut is the word Re-Cut before it). The wall plaques are the lot's own text, which the test below reads as well.
 
-| Working id | The real name | A generic name | In the drive-in's style |
-| --- | --- | --- | --- |
-| `ppsh` | PPSh-41 (a Soviet designation, not a brand) | Drum SMG; Burp gun | Reel Gun; Film-Drum SMG |
-| `m249` | M249 SAW (the US designation; its maker's brand is another) | Squad machine gun; Belt-fed LMG | Marathon; Double-Feature Gun |
-| `m4a1` | M4A1 (a Colt designation) | Carbine; Service carbine | Matinee Carbine; Usher's Carbine |
-| `fifty_cal` | Barrett .50cal (a registered brand); ".50 BMG" is a cartridge | Fifty cal; Anti-materiel rifle | Widescreen; Big Screen |
-| `dual_pistols` | none (two pistols) | Dual pistols; Twin pistols | Double Bill; Twin Feature |
-| `mp5` | MP5 (a Heckler and Koch brand) | Submachine gun; 9 mm SMG | Usher SMG; Concession SMG |
-| `pump_870` | Remington 870 MCS (a Remington brand) | Pump shotgun; Pump gun | Popper; Concession Pump |
-| `ray_gun` | Ray Gun (the genre's famous name) | Ray pistol; Blue ray gun | Atom Blaster; Moon-Beam Pistol; Monster-Movie Ray |
-| `freeze_gun` | Freeze Gun (a plain name) | Freeze gun; Frost blaster | Snow-Cone Gun; Cold-Snap Blaster |
+| Working id | Shown to the player as | Why |
+| --- | --- | --- |
+| `mp5` | **Usher SMG** | A Heckler and Koch designation; the ushers carry the reliable, bought-not-gambled gun |
+| `ppsh` | **Reel Gun** | A Soviet designation (not a brand), but a model name: the round drum is a film reel |
+| `m4a1` | **Matinee Carbine** | A Colt designation; the all-rounder of the early show |
+| `m249` | **Double-Feature Gun** | The US designation and a maker's brand; two reels' worth of belt (100 rounds). "Marathon" is another game's title, so it is not used |
+| `pump_870` | **Popper** | A Remington model; the pump is the concession stand's popcorn popper |
+| `fifty_cal` | Fifty cal (unchanged) | A calibre, not a brand: "Barrett" is dropped, the plain word stays |
+| `ray_gun` | **Moonbeam Pistol** | "Ray Gun" is the reference genre's famous name, which GDStudio games do not copy |
+| `freeze_gun` | **Snow-Cone Gun** | Paired with the ray gun's rename: the cold gun is the concession's snow-cone machine |
+| `dual_pistols`, `pistol`, `shotgun`, `rifle`, `flare_gun`, `crowbar`, `baseball_bat`, `fire_axe` | unchanged | Plain words of the language, no maker in them |
+| `smg` | Tommy gun (unchanged) | The Thompson's nickname became the plain word for the gun; "Thompson" itself, the maker, is on the banned list. **Kept for the maintainer to confirm** |
+
+The pull requests that add the guns ([#826](https://github.com/Ryubara/deadnight/pull/826) the six firearms,
+[#823](https://github.com/Ryubara/deadnight/pull/823) the ray and freeze guns) take these names when they land: until
+a gun is in the catalogue its row is only a promise, and the moment its id is, `test_weapon_names` fails unless its
+`display_name` is the chosen one.
+
+**The gate** is `game/tests/weapons/test_weapon_names.gd` with `weapon_name_rules.json` beside it: the `banned` list
+(makers, brands, model designations and other games' famous names, matched as whole words, so "Colton" and "Sawmill"
+pass) and the `chosen` names above. It reads the name of every catalogue weapon and its re-cut, the text of every wall
+plaque and sign in both maps, the feed's lines and the challenges' texts, and fails on any that holds a banned term,
+on two weapons with one name, and on a chosen name that is not shown. To add a name to the list, add a line to the
+JSON; to name a new gun, pick a name that is not on it.
 
 ## Grenades
 

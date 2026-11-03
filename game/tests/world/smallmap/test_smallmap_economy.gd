@@ -25,11 +25,6 @@ const SIDE_RATIO := 1.2
 const UPSTAIRS_RATIO_FROM := 1.2
 const UPSTAIRS_RATIO_TO := 1.8
 
-## The three walls of the second batch of firearms (#793): the pump in the side room, the MP5
-## and the M4A1 upstairs, at the ratios of docs/design/weapons.md (0.9, 1.7 and 2.1 of the link
-## price). Rows 23 and 24 are about the formula's eight walls and count these apart.
-const NEW_WALLS := {&"weapon_pump_870": 0.9, &"weapon_mp5": 1.7, &"weapon_m4a1": 2.1}
-
 var _map: MapTuning
 var _rules: RulesTuning
 var _lot: Node3D
@@ -77,15 +72,9 @@ func _first_affordable_round(total: int) -> int:
 	return -1
 
 
-## The formula's walls in a room: the new firearms' are counted apart (`NEW_WALLS`).
 func _walls_in(room: String) -> Array[Dictionary]:
 	return _spots.filter(
-		func(spot: Dictionary) -> bool:
-			return (
-				spot["kind"] == &"wall"
-				and spot["room"] == room
-				and not NEW_WALLS.has(spot["shop_id"])
-			)
+		func(spot: Dictionary) -> bool: return spot["kind"] == &"wall" and spot["room"] == room
 	)
 
 
@@ -183,27 +172,6 @@ func test_row_23_wall_weapons_are_two_two_and_four_with_a_cabinet() -> void:
 	for spot in _spots:
 		if spot["cabinet"]:
 			assert_str(spot["room"]).is_equal("upstairs")
-
-
-func test_the_new_firearms_walls_sell_at_their_ratios_in_the_rooms_beyond_the_formulas() -> void:
-	var found := {}
-	for spot in _spots:
-		if spot["kind"] == &"wall" and NEW_WALLS.has(spot["shop_id"]):
-			found[spot["shop_id"]] = spot["room"]
-			var ratio := float(_price(spot["shop_id"])) / _link_price()
-			assert_float(ratio).override_failure_message(String(spot["name"])).is_equal_approx(
-				NEW_WALLS[spot["shop_id"]], NEW_WALLS[spot["shop_id"]] * PRICE_TOLERANCE
-			)
-	assert_dict(found).is_equal(
-		{&"weapon_pump_870": "side", &"weapon_mp5": "upstairs", &"weapon_m4a1": "upstairs"}
-	)
-	# The other three of the six are the box's alone on this map.
-	var pool := _rules.economy.item(&"crane_play").pool
-	for id in [&"ppsh", &"m249", &"fifty_cal", &"pump_870", &"mp5", &"m4a1"]:
-		assert_array(pool).contains([StringName("weapon_" + String(id))])
-	for id: StringName in [&"weapon_ppsh", &"weapon_m249", &"weapon_fifty_cal"]:
-		for spot in _spots:
-			assert_bool(spot["shop_id"] == id).is_false()
 
 
 func test_row_23_every_wall_spot_sells_a_weapon_the_tuning_prices() -> void:

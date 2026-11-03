@@ -5,10 +5,7 @@
 extends GdUnitTestSuite
 
 ## Game seconds of the solo night, and of the night of four on the whole map.
-## Five minutes (was four): with three more wall spots (#793) the solo bot's seeded walk reached
-## its first weapon in round 7 instead of round 3 (it held 4,000 points by then: it saves for the
-## re-cut and does not shop past it), so the minutes cover a late first purchase.
-const SOLO_SECONDS := 300.0
+const SOLO_SECONDS := 240.0
 const FOUR_SECONDS := 150.0
 ## Game seconds in which four bots on the shut map have bought every link (round 4 at the latest).
 const FOUR_LINKS_SECONDS := 210.0

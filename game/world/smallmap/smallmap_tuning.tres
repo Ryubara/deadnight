@@ -81,27 +81,6 @@ kind = 1
 price = 675
 pool_weights = PackedFloat32Array()
 
-[sub_resource type="Resource" id="Wall_pump"]
-script = ExtResource("2_item")
-id = &"weapon_pump_870"
-kind = 1
-price = 405
-pool_weights = PackedFloat32Array()
-
-[sub_resource type="Resource" id="Wall_mp5"]
-script = ExtResource("2_item")
-id = &"weapon_mp5"
-kind = 1
-price = 765
-pool_weights = PackedFloat32Array()
-
-[sub_resource type="Resource" id="Wall_m4a1"]
-script = ExtResource("2_item")
-id = &"weapon_m4a1"
-kind = 1
-price = 945
-pool_weights = PackedFloat32Array()
-
 [sub_resource type="Resource" id="Box"]
 script = ExtResource("2_item")
 id = &"crane_play"
@@ -154,7 +133,7 @@ breach_name = "Boarded window"
 script = ExtResource("1_map")
 id = &"small_indoor"
 dropped_kinds = Array[int]([0, 1, 2, 4, 5])
-items = Array[ExtResource("2_item")]([SubResource("Link_side"), SubResource("Link_stairs_start"), SubResource("Link_stairs_side"), SubResource("Wall_pistol"), SubResource("Wall_crowbar"), SubResource("Wall_shotgun"), SubResource("Wall_smg"), SubResource("Wall_bat"), SubResource("Wall_flare"), SubResource("Wall_axe"), SubResource("Cabinet_rifle"), SubResource("Wall_pump"), SubResource("Wall_mp5"), SubResource("Wall_m4a1"), SubResource("Box")])
+items = Array[ExtResource("2_item")]([SubResource("Link_side"), SubResource("Link_stairs_start"), SubResource("Link_stairs_side"), SubResource("Wall_pistol"), SubResource("Wall_crowbar"), SubResource("Wall_shotgun"), SubResource("Wall_smg"), SubResource("Wall_bat"), SubResource("Wall_flare"), SubResource("Wall_axe"), SubResource("Cabinet_rifle"), SubResource("Box")])
 barricades = SubResource("Windows")
 crane = SubResource("TheBox")
 alive_cap = 24

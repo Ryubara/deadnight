@@ -398,12 +398,7 @@ func _ping_pull(order: StringName) -> void:
 		. override_failure_message("%s: the pinged door was not bought" % order)
 		. is_greater(0.0)
 	)
-	# A roaming bot picks its next place among the shop's spots and the doors' stands, so it may
-	# come back to this door's stand by chance: it is judged by how far it went in the time.
-	var farthest := 0.0
-	for _second in 40:
-		night.run(60)
-		farthest = maxf(farthest, _flat(_where(night, 2), at))
+	night.run(60 * 40)
 	var here := _where(night, 2)
 	match order:
 		BotOrders.HOLD:
@@ -422,8 +417,8 @@ func _ping_pull(order: StringName) -> void:
 			)
 		_:
 			(
-				assert_float(farthest)
-				. override_failure_message("roam: never left the door (%.1f m)" % farthest)
+				assert_float(_flat(here, at))
+				. override_failure_message("roam: still %.1f m from the door" % _flat(here, at))
 				. is_greater(3.0)
 			)
 	assert_array(_catcher.lines).is_empty()

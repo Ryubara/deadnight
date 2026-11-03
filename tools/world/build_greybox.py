@@ -1069,18 +1069,6 @@ def build() -> None:
     box("ShopProps", "RiflePlaque", (1.7, 0.9, 0.12), (-4.0, 1.6, 21.74), "plaque", collide=False)
     sign("ShopProps", "RifleSign", "RIFLE", (-4.0, 1.6, 21.66), 180)
     shop_spot("SpotRifle", "wall", "weapon_rifle", (-4.0, 0, 20.4), 180)
-    # The three new walls (#793), each past a door: the pump on the stand's west wall, inside (the concession's door),
-    # the MP5 on the yard's south fence (the yard's door) and the M4A1 on the back lot's south fence (the back lot's
-    # door). The plaques name the weapon; the shop table prices it (the dearer the further in).
-    box("ShopProps", "PumpPlaque", (1.7, 0.9, 0.12), (-9.74, 1.6, -1.0), "plaque", 90, collide=False)
-    sign("ShopProps", "PumpSign", "PUMP 870", (-9.66, 1.6, -1.0), 90, 60)
-    shop_spot("SpotPump", "wall", "weapon_pump_870", (-8.6, 0, -1.0), 90)
-    box("ShopProps", "MP5Plaque", (1.7, 0.9, 0.12), (52.0, 1.6, 37.74), "plaque", collide=False)
-    sign("ShopProps", "MP5Sign", "MP5", (52.0, 1.6, 37.66), 180)
-    shop_spot("SpotMP5", "wall", "weapon_mp5", (52.0, 0, 36.4), 180)
-    box("ShopProps", "M4A1Plaque", (1.7, 0.9, 0.12), (-41.0, 1.6, 37.74), "plaque", collide=False)
-    sign("ShopProps", "M4A1Sign", "M4A1", (-41.0, 1.6, 37.66), 180)
-    shop_spot("SpotM4A1", "wall", "weapon_m4a1", (-41.0, 0, 36.4), 180)
     # The prize crane, inside the stand, beside the cabinet that was already there.
     shop_spot("SpotCrane", "crane", "crane_play", (-6.4, 0, 5.0), 270, crane_spot=0)
     # The crane's other places (rules: `crane.spot_doors`): the midway, the open field and the yard. A breakdown moves
