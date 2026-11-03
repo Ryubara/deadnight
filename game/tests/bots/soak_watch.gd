@@ -84,6 +84,11 @@ var _round_blows: Dictionary = {}
 ## Where the headliners were hit (zone to hits) and the damage those hits did, over the night.
 var _boss_zones: Dictionary = {}
 var _boss_damage := 0.0
+## Each headliner's first hit (game seconds, by zombie id) and the seconds from it to its death.
+var _boss_first: Dictionary = {}
+var _boss_ttk: Array[float] = []
+## The metres from the nearest bot to each headliner at its first hit.
+var _boss_range: Array[float] = []
 var _round_kit: Dictionary = {}
 
 
@@ -144,6 +149,10 @@ func hear(event: Dictionary) -> void:
 			if id > 0 and event.get("zombie_type", &"") == &"headliner":
 				_boss_zones[String(zone)] = int(_boss_zones.get(String(zone), 0)) + 1
 				_boss_damage += float(event.get("damage", 0.0))
+				var boss_id: int = event["zombie_id"]
+				if not _boss_first.has(boss_id):
+					_boss_first[boss_id] = float(night.server.tick_count) / 60.0
+					_boss_range.append(_range_to_nearest_bot(boss_id))
 			if id > 0 and zone != RulesAction.ZONE_BLAST:
 				var tally := _tally(id)
 				tally["pellet_hits"] += 1
@@ -153,6 +162,9 @@ func hear(event: Dictionary) -> void:
 				elif zone == RulesAction.ZONE_WEAK:
 					tally["weak"] += 1
 		&"zombie_removed":
+			if event["cause"] == &"killed" and _boss_first.has(event["zombie_id"]):
+				var first: float = _boss_first[event["zombie_id"]]
+				_boss_ttk.append(snappedf(float(night.server.tick_count) / 60.0 - first, 0.1))
 			if event["cause"] == &"killed":
 				_kills_total += 1
 				var killer: int = event["killer_id"]
@@ -283,6 +295,28 @@ func _kit() -> Dictionary:
 		guns.append("+".join(names))
 	guns.sort()
 	return {"guns": guns, "points": points, "earned": earned, "doors": _doors.size()}
+
+
+## Flat metres from zombie `zombie_id` to the nearest bot standing (0 if it is gone).
+func _range_to_nearest_bot(zombie_id: int) -> float:
+	var zombie: ZombieBody = night.server.sim.zombies.get(zombie_id)
+	if zombie == null:
+		return 0.0
+	var best := INF
+	for bot in night.host.bots:
+		var body := night.server.body_of(bot.state.player_id)
+		if body != null:
+			best = minf(
+				best,
+				(
+					Vector2(
+						body.global_position.x - zombie.position.x,
+						body.global_position.z - zombie.position.z
+					)
+					. length()
+				)
+			)
+	return snappedf(best, 0.1) if best < INF else 0.0
 
 
 func _humans_up() -> Array[Vector3]:
@@ -545,6 +579,8 @@ func report() -> Dictionary:
 		"round_blows": _round_blows,
 		"boss_zones": _boss_zones,
 		"boss_damage": snappedf(_boss_damage, 1.0),
+		"boss_ttk": _boss_ttk,
+		"boss_range": _boss_range,
 		"round_kit": _round_kit,
 		"end": _end_state(),
 		"bots": bots,
