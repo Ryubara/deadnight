@@ -7,7 +7,8 @@ through the windows (the drive-in's world in the distance) is #638's; doors, buy
 
 The greybox is `game/world/smallmap/smallmap_greybox.tscn`, written by `tools/world/build_smallmap_greybox.py`
 (run it from the repository root; a rerun leaves the scene unchanged). It is its own scene: the map picker (#624)
-wires it into the night later.
+wires it into the night later. Its walls, floors and ceilings already wear the kit's shell materials (#633); the
+kit's modelled pieces (`game/world/smallmap/fixtures/`) go into its sockets later.
 
 ![The greybox from above: the ground floor, and the upper floor with the ring's lap in yellow](smallmap-plan.png)
 

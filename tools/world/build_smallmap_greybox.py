@@ -137,12 +137,14 @@ LAMPS = [
 ]
 BULB = "#ffd9a0"
 
+# The kit's shell materials (#633) on the walls, floors and ceilings; the lot's for the rest until the kit's pieces
+# replace the boxes.
 MATS = {
-    "floor": "concession_ground",
-    "wall": "concession_wall",
-    "upper_wall": "midway_wall",
-    "upper_floor": "booth_ground",
-    "ceiling": "concession_roof",
+    "floor": "smallmap_floor_ground",
+    "wall": "smallmap_wall_ground",
+    "upper_wall": "smallmap_wall_upper",
+    "upper_floor": "smallmap_floor_upper",
+    "ceiling": "smallmap_ceiling",
     "stair": "booth_prop",
     "prop": "concession_prop",
     "rack": "yard_prop",
@@ -327,8 +329,8 @@ def build() -> None:
     stair_a = stair("Start", "StairA", STAIR_A[0], STAIR_A[1], 0.0)
     stair_b = stair("Side", "StairB", STAIR_B[0], STAIR_B[1], 0.0)
     bg.node("Ceilings", "Node3D", ".")
-    slab_with_hole("Ceilings", "StartSlab", (-0.3, 16.3, 0.0, 14.8), stair_a, CEILING, MATS["ceiling"])
-    slab_with_hole("Ceilings", "SideSlab", (-6.3, 16.3, -8.1, 0.0), stair_b, CEILING, MATS["ceiling"])
+    slab_with_hole("Ceilings", "StartSlab", (-0.3, 16.3, 0.0, 14.8), stair_a, CEILING, MATS["upper_floor"])
+    slab_with_hole("Ceilings", "SideSlab", (-6.3, 16.3, -8.1, 0.0), stair_b, CEILING, MATS["upper_floor"])
 
     # Ground walls: (group, name, axis, fixed, from, to, gaps). A gap is (centre, width, bottom, top).
     win = {w[0]: w for w in WINDOWS}
