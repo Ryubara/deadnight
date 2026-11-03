@@ -7,7 +7,7 @@ extends BotBrain
 ## mesh, `BotSteering`) and steps out of a blow it saw start (`BotDodge`), keeps the headliner at
 ## arm's length, looks toward a blow it felt or a sound it heard, handles its weapons (`BotArsenal`:
 ## reloads, swaps, the crowbar when the guns are dry, never into a pack), throws a grenade at a
-## pack when no teammate is near the blast (`BotGrenadier`), holds a choke in the stampede
+## pack (`BotGrenadier`), holds a choke in the stampede
 ## (`BotStance`), and otherwise walks to a place near the people (`BotFollow`) and stands there.
 
 ## A chase with the crowbar: from how near it starts (the swing reaches the rest), how far it goes,
@@ -195,7 +195,9 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	intent.quick_melee_ok = (plan.dry or plan.unloaded) and held != null and not held.is_melee()
 	# A flare ordered (`BotRevive`) holds the bot still, like a throw, and takes the weapon's handling.
 	var flaring := rescue == BotRevive.Mode.LURE
-	var ordered := not flaring and _throw(intent, beliefs, here, targets, mates, threat, kind)
+	var ordered := not flaring and _throw(intent, beliefs, here, targets, threat, kind)
+	intent.keep_out = _live_blast_near(here, beliefs)
+	intent.keep_out_reach = _grenadier.step_out_reach()
 	var stepped := _step_away(
 		intent,
 		beliefs,
@@ -215,6 +217,8 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 			intent.note = "throw"
 		elif rescue != BotRevive.Mode.NONE:
 			pass  # `BotRevive` set the goal and the note.
+		elif not _live_blast_near(here, beliefs, BotGrenadier.WAIT_RANGE).is_empty():
+			intent.note = "blast_wait"  # stands and fights; no walk toward its own grenade.
 		elif _hold_ping(intent, beliefs, marks, here):
 			pass
 		elif (
@@ -394,9 +398,9 @@ func _step_away(
 	# boss and walks back to it is not holding anything (#769).
 	var leashed := _holding and _flat(here, anchor) >= _profile.hold_back
 	var keeps_off := (
-		_boss_distance(beliefs, here) < _profile.boss_keep and not throwing and not leashed
+		beliefs.boss_distance(here) < _profile.boss_keep and not throwing and not leashed
 	)
-	var blast := not throwing and not _live_blast_near(here, beliefs.now).is_empty()  # steps out
+	var blast := not throwing and not _live_blast_near(here, beliefs).is_empty()  # steps out
 	var margin := play.margin(maxf(_profile.retreat_margin, revive.kite_margin()))
 	# A bot with no round left stands to fight with the quick melee as one with a bat does.
 	var melee := (held != null and held.is_melee()) or dry
@@ -415,11 +419,13 @@ func _step_away(
 	return true
 
 
-## Where the live grenades are that the bot stands in reach of (`BotGrenadier.harmless_apart` and
-## the throw margin: it steps out before the blast's edge). Only the team's bots' grenades.
-func _live_blast_near(here: Vector3, now: float) -> Array[Vector3]:
-	var reach := _grenadier.harmless_apart() + BotGrenadier.THROW_MARGIN
-	return team.blasts_near(here, reach, now) if team != null else ([] as Array[Vector3])
+## Where the bot's own live grenades are within `reach` metres (by default where it steps out,
+## `BotGrenadier.step_out_reach`). Only its own: a grenade hurts its thrower alone (#856).
+func _live_blast_near(here: Vector3, beliefs: BotBeliefs, reach := -1.0) -> Array[Vector3]:
+	if team == null:
+		return [] as Array[Vector3]
+	var within := reach if reach >= 0.0 else _grenadier.step_out_reach()
+	return team.blasts_near(here, within, beliefs.now, beliefs.me)
 
 
 ## A heading away from what the bot knows of, chosen among twelve on the walking mesh, with a pull
@@ -435,9 +441,12 @@ func _retreat(here: Vector3, beliefs: BotBeliefs, anchor: Vector3) -> Vector3:
 		threats.append(
 			{"position": beliefs.guess(contact, _profile.memory_seconds), "speed": speed}
 		)
-	# A grenade about to go off is a threat that stands still (its blast is what to keep out of).
-	for point in _live_blast_near(here, beliefs.now):
+	# A grenade about to go off is a threat that stands still, and a heading toward it is no way out.
+	var blasts := _live_blast_near(here, beliefs)
+	for point in blasts:
 		threats.append({"position": point, "speed": 0.0})
+	_steering.keep_out = blasts
+	_steering.keep_out_reach = _grenadier.step_out_reach()
 	if threats.is_empty():
 		return Vector3.ZERO
 	var toward := Vector3.ZERO
@@ -569,7 +578,7 @@ func _stand_at_spot(intent: BotIntent, beliefs: BotBeliefs, here: Vector3, threa
 		return
 	# A holder that kept off a boss does not walk back into it: it stands and fights from where it
 	# is, and goes back to its place when the boss is not at it (#769).
-	if _boss_distance(beliefs, place) < _profile.boss_keep:
+	if beliefs.boss_distance(place) < _profile.boss_keep:
 		intent.note = "hold_back"
 		return
 	intent.goal = place
@@ -793,42 +802,28 @@ static func _mates(beliefs: BotBeliefs, me: int) -> Array[Dictionary]:
 	return mates
 
 
-## Metres to the nearest headliner the bot believes in, or INF.
-static func _boss_distance(beliefs: BotBeliefs, here: Vector3) -> float:
-	var best := INF
-	for id in beliefs.contacts:
-		var contact: Dictionary = beliefs.contacts[id]
-		if ZombieModels.is_boss(contact.get("look", ZombieModels.DEFAULT)):
-			if beliefs.is_believed(contact):
-				best = minf(best, _flat(here, contact["position"]))
-	return best
-
-
 ## Orders a grenade at a pack when the throw is safe, and watches an order given a moment ago:
-## the bot stands still for it, and takes it back if a teammate walks into the blast. True while an
-## order is in force.
+## the bot stands still for it, and takes it back while the view still turns if a zombie comes
+## within `THROW_ABORT_NEAR`. True while an order is in force.
 func _throw(
 	intent: BotIntent,
 	beliefs: BotBeliefs,
 	here: Vector3,
 	targets: Array[Dictionary],
-	mates: Array[Dictionary],
 	threat: float,
 	kind: BotStance.Kind
 ) -> bool:
 	var now := beliefs.now
 	if _order != null and now - _ordered_at < THROW_WATCH:
-		if threat < THROW_ABORT_NEAR or not _grenadier.is_safe(_order.landing, here, mates):
+		if threat < THROW_ABORT_NEAR or not _grenadier.is_safe(_order.landing, here):
 			intent.throw_abort = true
 			_order = null
 			return false
 		return true
 	_order = null
-	if beliefs.grenades <= 0 or threat < BotGrenadier.SAFE_FROM_SELF or targets.is_empty():
+	if beliefs.grenades <= 0 or threat < BotGrenadier.NEAR_ZOMBIE or targets.is_empty():
 		return false
-	var throw := _grenadier.plan(
-		here, targets, mates, beliefs.grenades, now, kind == BotStance.Kind.LOW
-	)
+	var throw := _grenadier.plan(here, targets, beliefs.grenades, now, kind == BotStance.Kind.LOW)
 	if throw == null:
 		return false
 	intent.throw_style = throw.style
@@ -838,7 +833,7 @@ func _throw(
 	_ordered_at = now
 	_grenadier.last_throw = now
 	if team != null:
-		team.add_blast(throw.landing, now + _grenadier.def.fuse + BotTeam.BLAST_SLACK)
+		team.add_blast(throw.landing, now + _grenadier.def.fuse + BotTeam.BLAST_SLACK, beliefs.me)
 	intent.note = "throw"
 	return true
 

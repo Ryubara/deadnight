@@ -803,7 +803,7 @@ timing) are ours too ([Ocio Barriales](http://www.gameaipro.com/GameAIPro3/GameA
 | Rots after release | The abandoned L4D bots mod; Vermintide's open reports | Soak in CI, the coverage test, and an owner in each phase |
 | Makes the night easier or harder than people | Ellie's "killing machine" | The parity batch against the simulator, damage left alone |
 | Predictable and exploitable | Practice bots | Seeded variety in positions and timing |
-| Fires or throws into teammates | Any shooter | A grenade hurts its thrower alone (#856): none where its blast reaches the bot, under a tenth of its health at that spot (`BotGrenadier.harmless_apart`, 5.8 m; the blast hurts the thrower out to 8 m, #805). The 7.5 m kept from every teammate no longer protects health and stays for now ([measured](grenades.md#only-the-thrower-856)) |
+| Fires or throws into teammates | Any shooter | A grenade hurts its thrower alone (#856): none where its blast reaches the bot, under a tenth of its health at that spot (`BotGrenadier.harmless_apart`, 5.8 m; the blast hurts the thrower out to 8 m, #805), planned 7 m off. The bots keep no distance from teammates (nothing to protect), and keep out of their own live grenade ([#872](grenades.md#the-bots-and-their-own-grenade-872)) |
 
 ## Phases
 
@@ -1005,14 +1005,18 @@ decides, the others hold a rule each, so a test pins them one by one):
   rule forbade the swing, the swap back waited for 8 m clear, and a bot kited ten dead for 500 s with a fire axe in
   hand and a shotgun at 0/54).
 - **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 12 m away, as
-  the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
-  **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is
-  the scatter of a real throw, see the lesson on the rolling grenade), with an open arc and 6 s since the last. The
+  the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 7 m or more from the bot (a
+  blast that lands exactly there takes 2% of its health; the grenade lands a metre or so off, see the lesson on the
+  rolling grenade) and wherever the teammates are (only the thrower takes the damage, #856; #872 took the old
+  clearance away), with an open arc and 6 s since the last. The
   pitch comes from a table of real flights made once with `GrenadeArc` on flat ground: the heavy grenade (#680) lies
   4 to 12 m out and hardly rolls, so a short throw is a lob (underarm up to 4 m, steep overarm to 12 m). The plan flies
-  the walls only; a zombie in the way stops the real grenade at its feet. The motor turns, holds the
-  button for two ticks and keeps the view still while the arm swings; the brain takes the order back if a teammate
-  walks in.
+  the walls, and the dead where they will stand as the arc passes (`ZombieBump`): a zombie that would stop the real
+  grenade nearer than 7 m from the bot drops it at the bot's feet, so the throw is not made (#872). The motor turns,
+  holds the button for two ticks and keeps the view still while the arm swings; the brain takes the order back while
+  the view still turns if a zombie comes within 3 m. From the order to the blast the bot keeps out of its own grenade
+  (`BotFightBrain`): it steps out of reach, never takes a retreat heading toward it (`BotSteering.keep_out`), and
+  within 20 m of it stands and fights (`blast_wait`) instead of following, chasing or running an errand.
 - **`BotDodge`**: a swing that began on the frame (`attack_at` on the contact) and that would still reach the bot
   (within 1.4 + 0.4 m, plus 0.3 of drift) is stepped out of after the profile's reaction time, if there is time before
   the blow (0.45 s a plain zombie, **1.2 s the headliner**): a retreat heading on the mesh at a sprint. A telegraphed

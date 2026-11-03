@@ -39,6 +39,11 @@ const THREAT_SPEED := 4.0
 ## The weight of the room ahead in a heading's score: a Safe bot raises it so that a retreat
 ## prefers open ground over a dead end (`BotPlayState`).
 var room_weight := W_ROOM
+## Points the bot must not walk toward while it stands within `keep_out_reach` metres of them (its
+## own live grenade, #872): a heading that ends nearer to one than the bot is now is no candidate.
+## Set by the caller before each `pick` or `rate`.
+var keep_out: Array[Vector3] = []
+var keep_out_reach := 0.0
 
 var _level: BotLevel
 
@@ -89,6 +94,8 @@ func _rated(
 		if open < WALL_STOP:
 			continue
 		var aimed := here + heading * minf(STEP, open - 0.3)
+		if _toward_keep_out(here, aimed):
+			continue
 		(
 			rated
 			. append(
@@ -103,6 +110,16 @@ func _rated(
 		)
 	rated.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["score"] > b["score"])
 	return rated
+
+
+## Whether a heading ending at `aimed` takes the bot closer to a point it keeps out of, from inside
+## its reach.
+func _toward_keep_out(here: Vector3, aimed: Vector3) -> bool:
+	for point in keep_out:
+		var before := _flat(here, point)
+		if before < keep_out_reach and _flat(aimed, point) < before:
+			return true
+	return false
 
 
 ## Whether the end of a rated heading is on the mesh; its `end` becomes the projected point.
