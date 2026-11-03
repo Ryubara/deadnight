@@ -17,8 +17,9 @@ extends Node
 ## minutes after which a night is stopped, default 45), `--stall-minutes=M` (a round longer than
 ## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
-## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke) and
-## `--quiet` (no trace line a minute).
+## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke),
+## `--tune=NAME:NUMBER,...` (profile fields moved for a sweep) and `--quiet` (no trace line a
+## minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -248,12 +249,22 @@ func _print_tail(night: SeatedNight, ticks: int) -> void:
 
 
 func _profile() -> BotProfile:
+	var profile := BotProfile.regular()
 	match String(_args.get("profile", "regular")):
 		"rookie":
-			return BotProfile.rookie()
+			profile = BotProfile.rookie()
 		"veteran":
-			return BotProfile.veteran()
-	return BotProfile.regular()
+			profile = BotProfile.veteran()
+	# `--tune=track_error:6,head_rate:0.5`: numbers of the profile moved for a sweep, so a tuning is
+	# tried without editing the profile between runs.
+	for pair in String(_args.get("tune", "")).split(",", false):
+		var parts := pair.split(":")
+		assert(
+			parts.size() == 2 and parts[0] in profile,
+			"--tune wants name:number pairs of a profile field"
+		)
+		profile.set(parts[0], float(parts[1]))
+	return profile
 
 
 func _parse_args() -> Dictionary:

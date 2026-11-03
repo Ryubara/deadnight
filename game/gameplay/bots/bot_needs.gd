@@ -18,12 +18,13 @@ extends RefCounted
 ## Pure data and arithmetic: no clock, no frame, no server.
 
 ## What the bot needs. Another need is another key of `RULES`.
-enum Need { AMMO }
+enum Need { AMMO, GUN }
 
 ## How badly. Ordered: a rule compares levels.
 ## - `LOW`: a firearm worth rounds is under the profile's floor of magazines in reserve;
 ## - `SHORT`: one is under a single magazine in reserve;
 ## - `EMPTY`: no round is left in any firearm worth rounds, magazine and reserve alike.
+## The gun need has one level, `SHORT`: the bot carries no firearm but the one it started with.
 enum Level { NONE, LOW, SHORT, EMPTY }
 
 ## What to do about the need.
@@ -36,11 +37,21 @@ enum Verdict { GO, STAY, STAY_AND_SAY }
 ## - Roam does its own thing, so it goes freely.
 ## - Follow goes when the source is near the leader, or when the gun is empty (then it comes back).
 ## - Hold keeps its spot until the reserve is under a magazine, then goes and comes back.
+## - A bot with only the starting pistol goes for a better gun whatever it is ordered, when it can
+##   pay for one, except a bot that follows and has a far shop: it fights on with the pistol, and
+##   goes as soon as the shop is near the leader. A pistol held by a spot-holder is rounds bought
+##   eight times a night (#768).
 const RULES := {
 	Need.AMMO:
 	{
 		BotOrders.ROAM: {"go": Level.LOW, "near": Level.LOW, "say": false},
 		BotOrders.FOLLOW: {"go": Level.EMPTY, "near": Level.LOW, "say": true},
+		BotOrders.HOLD: {"go": Level.SHORT, "near": Level.SHORT, "say": false},
+	},
+	Need.GUN:
+	{
+		BotOrders.ROAM: {"go": Level.SHORT, "near": Level.SHORT, "say": false},
+		BotOrders.FOLLOW: {"go": Level.EMPTY, "near": Level.SHORT, "say": false},
 		BotOrders.HOLD: {"go": Level.SHORT, "near": Level.SHORT, "say": false},
 	},
 }
@@ -102,6 +113,15 @@ static func ammo_level(arms: Dictionary, floor_mags: int) -> Level:
 	if not guns.is_empty() and rounds == 0:
 		return Level.EMPTY
 	return level
+
+
+## Whether the bot has no better gun than the one every player starts with: `SHORT`, else `NONE`.
+## A bot with a pistol and a blade has no better gun; a bot with a second firearm has.
+static func gun_level(arms: Dictionary) -> Level:
+	for id: StringName in arms:
+		if id != WeaponCatalog.START_WEAPON and not WeaponCatalog.get_def(id).is_melee():
+			return Level.NONE
+	return Level.SHORT
 
 
 static func _flat(a: Vector3, b: Vector3) -> float:
