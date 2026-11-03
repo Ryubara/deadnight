@@ -63,6 +63,8 @@ var team: BotTeam:
 	set(value):
 		team = value
 		revive.team = value
+		if _errands != null and value != null:
+			_errands.links = value.links
 var telemetry: BotTelemetry:
 	set(value):
 		telemetry = value
@@ -687,11 +689,13 @@ func _errand(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat:
 	beliefs.denials.clear()
 	if intent.target_id >= 0:
 		return false
-	# One bot at a time goes (the maintainer): the others wait for their turn.
-	if team != null and team.one_errand_at_a_time and not team.turn.may_go(beliefs.me, beliefs.now):
-		return false
-	var went := _errands.run(intent, beliefs, state, threat)
-	if went and team != null:
+	# One bot at a time goes (the maintainer): the others wait for their turn, except to buy a link
+	# the team holds for them (`BotErrands` link job).
+	var may_go := (
+		team == null or not team.one_errand_at_a_time or team.turn.may_go(beliefs.me, beliefs.now)
+	)
+	var went := _errands.run(intent, beliefs, state, threat, may_go)
+	if went and may_go and team != null and not _errands.linking:
 		team.turn.took(beliefs.me, beliefs.now)
 	return went
 

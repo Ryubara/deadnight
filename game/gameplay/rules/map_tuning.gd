@@ -37,6 +37,9 @@ extends Resource
 @export var bot_shopping: Array[StringName] = []
 ## A hurt teammate holds every link back while their health is under this share of full.
 @export_range(0.0, 1.0, 0.05) var bot_hurt_share: float = 0.5
+## The bots buy the links as a team: whenever one is affordable and the dead are clear of the
+## nearest free bot, that bot goes (the lot's door turn rotates every 40 s and the break is short).
+@export var bot_team_links: bool = false
 @export_group("")
 
 ## The map's generator: the shared table's when empty, else this one (a map with no generator

@@ -65,6 +65,10 @@ const SWAP_GAP := 1.0
 
 ## The legs the bot walks on (set by the brain): their word that a stand cannot be reached.
 var legs: BotLegs
+## The team's claims on the links to buy (set by the brain), and whether the errand just run was a
+## link bought for the team (it does not take the one-errand turn).
+var links: BotClaims
+var linking := false
 ## What the bot decided last, for the ring buffer, and how many of each kind it began.
 var note := ""
 var counts: Dictionary = {}
@@ -145,7 +149,10 @@ func back_off(item_id: StringName, now: float) -> void:
 
 ## Sets the intent for an errand and returns true, or returns false when the bot has none (or is
 ## in a fight). `threat` is the metres to the nearest dead it knows of.
-func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+func run(
+	intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float, may_go := true
+) -> bool:
+	linking = false
 	var me := state.me()
 	if me.is_empty() or me.get("downed", false) or not state.has_frame():
 		return false
@@ -168,7 +175,13 @@ func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: flo
 	var crane := _crane_wait(intent, me, frame, state.player_id)
 	if crane:
 		return true
-	for job in [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]:
+	if _link(intent, beliefs, state, me):
+		linking = true
+		counts["links"] = int(counts.get("links", 0)) + 1
+		return true
+	# Without the turn the link job above is all the bot may do.
+	var jobs: Array[StringName] = [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]
+	for job in jobs if may_go else []:
 		var took := false
 		match job:
 			&"marked":
@@ -252,6 +265,29 @@ func _shopping(
 		_ammo_until = now + ERRAND_LIMIT
 	note = "buy %s (%s)" % [pick.item, pick.why]
 	return _carry_out(intent, pick, me, now)
+
+
+## The team's link rule (a map whose overlay sets `BotShop.team_links`): a link the bot can pay for
+## in a calm with no dead near is bought by the nearest bot that is free, whatever the one-errand
+## turn says; the bots busy or far away cover. Claims go by distance (`BotClaims`), and a bot that
+## stops being free lets go of its claim within the lease.
+func _link(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, me: Dictionary) -> bool:
+	if links == null or not _shop.team_links:
+		return false
+	var now := beliefs.now
+	for buy in _found:
+		if buy.prompt != &"door" or (buy.why != BotEconomy.PLAN and buy.why != BotEconomy.PING):
+			continue
+		var apart := _flat(me["pos"], buy.stand)
+		if not links.request(String(buy.item).hash(), state.player_id, apart, now):
+			continue
+		if buy.item != _last_item:
+			_last_item = buy.item
+			_begun = now
+			_arrived_at = -1.0
+		note = "link %s" % buy.item
+		return _carry_out(intent, buy, me, now)
+	return false
 
 
 ## Looks at the shop again: what the bot would buy now, and how long it has held more than twice
