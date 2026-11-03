@@ -281,6 +281,8 @@ number comes from) follows these numbers. They live in `tools/blender/smallmap_k
 | Walls and openings | 108-992 tris against 1.5k (`tools/blender/build_smallmap_walls.py`); openings in a ground (0.3 m, Concrete) and an `_upper` (0.2 m, Plaster) variant |
 | Stairs | timber treads (Wood) on DarkWood stringers, Grey pipe rails 1.0 m over the nosings with Rust shoes; the collision is one hidden ramp per flight through the treads' middles, the rail a player-only blocker on the open side (`build_kit_stairs.py`) |
 | Debris blocker | furniture and rubble filling the opening in parts named in the order they come away, gaps at the top for the far room's light, 1,300 tris |
+| Lamps | a bulb is the lamp's Popcorn swatch, lit by an emission texture of the atlas's layout (`KitLamp`), never a second material; a pendant's shade is 0.6 m with its rim at 2.15 m, under 600 triangles |
+| Light | one or two real lights a room; every other light is an additive card on the lot's `glow.gdshader` or `beam.gdshader` (pools, haze, moon shafts with bar shadows, the far room's glow, chalk), so it takes no light slot and builds no new GL program ([lamps and light cards](../research/maps/small-map-art.md#lamps-and-light-cards)) |
 
 ## Measuring again
 
