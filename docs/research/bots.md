@@ -970,3 +970,22 @@ Bots roam by default and come to a person for a revive or a ping; Follow, Roam a
   measurement.
 - Within 12 m of the nearest person at 95%: moves to #641, where it belongs to the Follow order (0.92 now, counted over
   the bots that are up).
+
+### A bot walks round a bot that stands still: not shipped
+
+The idea: of two bots the higher seat gives way, so a bot that meets a lower-seat bot standing still walks into it and
+waits. The rule made a bot give way to any bot slower than 0.6 m/s. Six seeds, `--tough=3`, 20 minutes, on `main`
+with the slot fix (#625):
+
+| | stuck (share of walking time) | worst bot, by seed |
+| --- | --- | --- |
+| without the rule | 1.46% (1.09 to 1.74 by seed) | 1.5 to 3.0% |
+| with the rule | 1.28% (0.89 to 1.61 by seed) | 1.2 to 3.6% |
+
+The 0.18 point gap is inside the half point two runs of one seed differ by, so the rule is not shipped. (An earlier
+trial wedged a bot in the fountain slot; the slot is closed now and the wedge did not come back.) The patch is kept in
+the scratch folder of the task, not in the repository.
+
+The two gates still open on #564 need a quiet machine to settle: stuck under 1% per seed needs several batches of each
+setup to see a change smaller than the noise, and the think p99 read 1 to 14 ms in these runs because other agents
+were running. Measure both with nothing else running.
