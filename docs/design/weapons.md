@@ -65,6 +65,7 @@ the real command, its own model drawn).
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
+| `service_pistol` twice (#797) | `dual_pistols`, the Dual Pistols | **Crane** only (2.5), on both maps | 17 / 0.15 s, a hand each shot |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
@@ -83,6 +84,16 @@ of the catalogue is not in the pool (unless it is listed there as no prize, with
 first rolls, each from the seed a solo night takes, are not spread by the weights. A solo night draws a new seed each
 time (`NightScreen.start_seed`, [#685](https://github.com/Ryubara/deadnight/issues/685)): with the old fixed one
 every night rolled the shotgun first.
+
+**The dual pistols** (#789) are two semi-automatic pistols, one in each hand, with the numbers of the roster plan
+(#785, the nine new weapons). One fire button, held to keep firing: the shots **alternate**,
+right hand first (`WeaponDef.dual`; the server numbers the shot's `hand`, 0 right and 1 left, and each client flashes and
+kicks that gun). The two guns share **one counter and one reserve**: 24 rounds, 72 to start, 120 at most, a round a
+shot whichever hand fires it, and one reload (1.6 s, both cylinders open) fills the counter for both; ammunition is the
+shop's `ammo_dual_pistols` (24 for 70). Per hit 17 (head x2.25, limb x0.6) every 0.15 s, spread 2.4 degrees, falloff 10
+to 28 m to half, range 45 m. A crane prize (weight 2.5) on both maps, no wall sells it; it is re-cut like the others
+(it is in `UpgradeTuning.weapons`: 29.75 a hit, 36 rounds, 108 reserve; its shock arc is #794's). How it is held:
+[Weapons in the hands](weapon-hold.md#the-dual-pistols).
 
 **The bat and the axe** were models with no definition. They are melee weapons held as `Melee` (the Swing clip, no
 flash, a spark on a hit) with their own hold files, so each shows its own model. They are **found only in the prize
@@ -489,15 +500,16 @@ grenade. A grenade held while walking goes with the player, so one that goes off
 Which zombies a blast can hit is the rules' answer, never a list the server keeps.
 
 **Down with the pin out.** A player who is downed (or leaves) while cooking **drops the grenade at their feet and its
-fuse keeps running**: it is spent, it is not given back, and it hurts whoever is near, the downed player included (40%),
-which makes a revive during a cook a risk the team can see. The throw that follows is refused (`player_downed`); a
+fuse keeps running**: it is spent, it is not given back, and it hurts whoever is near by the player blast rule below
+(a player already on the ground takes no blow), which makes a revive during a cook a risk the team can see: a teammate
+kneeling at the downed player is inside the full radius. The throw that follows is refused (`player_downed`); a
 revived player starts again with a fresh pin.
 
 **In the night.** The server throws for every player on their command's grenade buttons (G, the right shoulder
 button and the touch Grenade button for the overarm throw; H and the left shoulder button for the toss), only while a
 round is on and the player is up and has one. The count drops at the pin, so a grenade cooked to the end and let go
-in the hand is spent and costs the thrower 40% of the blast. The Soldier cooks and throws with his own clips. Wired
-and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351).
+in the hand is spent and downs the thrower ([blast on players](#blast-on-players)). The Soldier cooks and throws
+with his own clips. Wired and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351).
 
 | Thing | Number |
 | --- | --- |
@@ -510,10 +522,40 @@ and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351
 | Cover | a line from the blast (0.25 m up) to each of the six hit parts; a part with something solid in the way takes nothing |
 | Shares of the blast | legs 25% each, body 25%, arms 10% each, head 5% (a blast goes off low) |
 | Knockback, stun | up to 7 m/s along the ground and 3 m/s up, 1.6 s stun, both falling off like the damage |
-| Thrower | takes 40% of what a zombie would at that spot, cover included; other players take nothing (a server flag turns friendly fire on) |
+| Players | all of their health in the hand and within 1 m of the blast, then less to nothing at 8 m, the thrower and the team alike, none behind a wall ([blast on players](#blast-on-players)) |
 | Authority | hand within 1 m of 1.45 m above the server's feet; client speed at most 7.5 m/s; a dropped grenade starts 0.3 m above the feet |
 | Carry | start with 2, every round start tops up to 3, at most 5; the shop sells 2 for 150 (+5 a round) |
 | Kill points | 40 for a zombie the blast kills (a hit that does not kill pays the usual 4) |
+
+### Blast on players
+
+The maintainer, 2026-11-03: grenades hurt the player too; 100% if it blows up in the hand, full damage only super close,
+falling off with distance. One rule (`PlayerBlast`, `game/gameplay/rules/player_blast.gd`) serves every blast that can
+hurt a player; the grenade is its first user and the ray gun's splash on its own shooter (25%) is the second.
+
+- **A share of the player's health bar**, not a damage number: full is always "down", from full health or not, and a
+  tonic that raises the bar does not make a grenade at the feet safer.
+- **In the hand: all of it**, wall or no wall (the grenade is in their hand), the thrower alone.
+- **Full radius 1 m** (`player_full_radius`): a body's width and an arm's reach, so a grenade in the hand, at the feet or
+  against the player takes all of it and one a pace away is already less. A grenade dropped at a downed player's feet
+  takes a kneeling reviver whole.
+- **Then it eases out to nothing at the blast radius (8 m)**: `(1 - t)^2`, t the way across from 1 m to 8 m. 2 m away is
+  73% of the health, 3 m 51%, 4 m 33%, 5 m 18%, 6 m 8%, 7 m 2%: a few metres off hurts and rarely downs, and two close
+  ones in a row will. The ease is steep first so that "close" stays deadly and the long tail is a graze that mends.
+- **Walls:** the line from the blast to the chest (1 m up) must be clear of walls and props (cover slack 0.12 m); a
+  player is no cover, a teammate does not shield another.
+- **Teammates take the same as the thrower.** The task's brief says so and the maintainer's words name "the player", not
+  the thrower; the genre is not one answer (some co-op zombie games keep only self damage, others hurt everyone), so
+  this is the brief's choice and **open for the maintainer** if a team should be spared. There is no friendly-fire flag
+  any more: one rule is easier to read on the screen and to test.
+- **Shown:** the hurt player's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` or `MOE'S
+  GRENADE HIT YOU  -42` on the hurt player's own screen (a blast that does not down), and on a down `RUBY BLEW THEMSELVES
+  UP` or `MOE WAS BLOWN UP BY RUBY'S GRENADE` on every screen. The server's `player_hurt` and `player_downed` carry
+  `harm` (`grenade`) and `by_id`.
+- **Bots** throw only where the blast takes under a tenth of anyone's health at the bot's and a teammate's spot, with a
+  margin for the grenade not landing where it was aimed and the teammate walking on (`BotGrenadier.harmless_apart`, 5.8
+  m, so 6 m from itself and 7.5 m from a teammate). They do not yet back off from a live grenade; no dodge of that kind
+  existed and the parity work tunes the bots.
 
 A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m and a round-5 one (82) out to
 4.7 m; from round 12 (139) only near the centre of the blast, and no round-14 one (159) at all (the climb is 7% a round).
