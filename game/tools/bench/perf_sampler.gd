@@ -118,6 +118,7 @@ func _row() -> Dictionary:
 		"cap": int(state.get("cap", 0)),
 		"players": int(state.get("players", 0)),
 		"count_multiplier": float(state.get("count_multiplier", 0.0)),
+		"unix": snappedf(Time.get_unix_time_from_system(), 0.01),
 		"frames": _window_frames.size(),
 		"calibration_ms": calibration_ms,
 		"frame_ms": snappedf(_window_time * 1000.0 / frames, 0.01),
