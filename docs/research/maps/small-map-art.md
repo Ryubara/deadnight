@@ -110,6 +110,10 @@ purchase (a door, a buy, the box).
 Budget rules from the lot that bind here ([lamps and glow](../night-environment.md#lamps-and-glow-issue-244)):
 at most 8 lights reach a mesh, 6 so a fight has room. Tight rooms help: walls, floors and ceilings are cut per room,
 so a room's mesh is reached by its own one or two lamps and a neighbour's spill. Most "lights" are quads.
+The greybox's lamps are counted the same way (`tests/world/smallmap/test_smallmap_light_cap.gd`), and its
+directional moon is 0.1 against the lot's 0.36: indoors, with no shadow, it would lift every floor evenly (kit
+`docs/godot/compat-lighting.md`, Light cards indoors). A new scene with a light is listed in the lot suite's
+`LIGHT_SCENES`, which walks the whole project.
 
 ## Scale
 
@@ -138,6 +142,11 @@ cross-check the storey height.
 | Box | about 1.5 m long, top about 0.8 m | the box image | the crane (exists) | the crane |
 
 ![Openings against a 1.8 m player: the reference dashed, the kit solid, the lot grey](kit-scale.png)
+
+**The greybox overruled three of these targets** (#631, [the second map](../../design/smallmap.md#where-it-parts-from-the-kit-page)):
+the formula's rows are hard targets, and they ask more room than the reference estimate here. The storey is 3.4 m
+(a 3.2 m ceiling, row 9 of [the formula](small-map-formula.md)), and the purchase doorway and the stairs are 2.0 m wide
+(row 27). The windows, the sill, the risers and treads, the pillars and the sandbags keep the sizes above.
 
 What the tight sizes mean for our game, checked against the code:
 
