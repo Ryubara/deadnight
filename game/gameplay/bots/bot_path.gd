@@ -342,6 +342,26 @@ func probe(here: Vector3, to: Vector3, now: float) -> bool:
 	return not found.is_empty() and _flat(found[found.size() - 1], target) <= REACHED_SHORT
 
 
+## The metres of walk from `here` to `to` on the mesh as it is now, or `INF` when it does not get
+## there (as `probe` judges it). With no map, or a mesh on its way, the straight line. Counts as a
+## path query: the errands ask once for a few stands and keep the answer for a while.
+func walk_length(here: Vector3, to: Vector3, now: float) -> float:
+	if not has_map() or _iteration() < 1 or holding(now):
+		return _flat(here, to)
+	var target := snap(to)
+	if target == Vector3.INF:
+		return INF
+	queries += 1
+	var start := NavigationServer3D.map_get_closest_point(map, here)
+	var found := NavigationServer3D.map_get_path(map, start, target, true)
+	if found.is_empty() or _flat(found[found.size() - 1], target) > REACHED_SHORT:
+		return INF
+	var length := 0.0
+	for i in range(found.size() - 1):
+		length += found[i].distance_to(found[i + 1])
+	return length
+
+
 ## The navigation map's iteration (it counts each new mesh).
 func iteration() -> int:
 	return _iteration()
