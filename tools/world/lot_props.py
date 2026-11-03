@@ -99,12 +99,12 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("tires", 10.75, 6.4, 90),
         ("debris", 12.6, 1.2, 120),
         # Behind the stand, between and beside its rear exits (x -5 and 5 stay clear).
-        ("boxes", -9.35, 8.9, 0),  # beside the trash can of #264
+        ("boxes", -9.35, 8.59, 0),  # beside the trash can of #264
         ("crate", -6.95, 8.75, 10),
         ("barrel", -9.6, 9.7, 0),
         ("gas_can", -8.2, 10.2, 300),
         ("pallet", -2.0, 9.3, 0),
-        ("boxes", 0.6, 8.9, 0),
+        ("boxes", 0.6, 8.59, 0),
         ("box", 2.0, 8.95, 20),
         ("barrel", 7.2, 8.75, 0),
         ("barrel", 7.85, 8.75, 0),
@@ -125,7 +125,7 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("gas_tank", 15.3, 31.6, 0),
         # Along the booth: a container on its west side, film crates on its east side.
         ("container", -7.15, 27.5, 90),
-        ("boxes", 7.0, 30.6, 90),
+        ("boxes", 6.59, 30.6, 90),
         ("crate", 6.75, 28.4, 0),
         ("crate", 6.75, 29.05, 10),
         ("barrel", 7.0, 24.6, 0),
@@ -157,12 +157,12 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
     ],
     "Concession": [
         # Behind the counter (its south side; the kiting lane behind it stays 3.8 m wide): cartons and crates of stock.
-        ("boxes", -3.0, 3.75, 0),
+        ("boxes", -3.0, 3.39, 0),
         ("box", -1.2, 3.6, 10),
         ("crate", 2.6, 3.5, 0),
         ("crate", 3.3, 3.5, 5),
         # The back corners, clear of the rear exits, the crane's spot and the locker.
-        ("boxes", -8.6, 7.4, 0),
+        ("boxes", -9.24, 7.4, 0),
         ("crate", 9.4, 7.4, 0),
         ("crate", 8.75, 7.4, 10),
         ("gas_can", 7.6, 7.5, 80),
@@ -209,7 +209,7 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("gas_tank", 38.8, 14.35, 0),
         ("gas_tank", 39.65, 14.35, 0),
         ("water_tank", 60.85, 18.0, 90),
-        ("tires", 61.05, 24.0, 90),
+        ("tires", 61.34, 24.0, 90),
         ("cone", 38.0, -1.6, 0),
         ("cone", 42.0, -1.6, 0),
         # Density pass: pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence,
@@ -235,7 +235,7 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("papers_b", 22.0, 26.0, 110),
     ],
     "BackLot": [
-        ("tires", -61.05, 22.5, 90),
+        ("tires", -61.34, 22.5, 90),
         ("debris", -36.0, 26.6, 10),
         ("barrel_spill", -46.0, 26.5, 160),
         ("pallet_broken", -29.0, 33.2, 50),
@@ -389,12 +389,12 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("tree_small", -24.0, -50.5, 0),
         ("tree_small", 24.0, -50.5, 0),
         # Junk against the perimeter fence (3.0 m): nothing in it is a step to a fence top.
-        ("tires", -61.05, -40.0, 90),
+        ("tires", -61.34, -40.0, 90),
         ("sofa", -61.2, -31.0, 90),
         ("trash_open", -60.75, -14.0, 90),
         ("barrel", -61.4, -6.0, 0),
         ("barrel", -60.77, -6.0, 0),
-        ("tires", 61.05, -40.0, 90),
+        ("tires", 61.34, -40.0, 90),
         ("sofa_small", 61.2, -30.0, 90),
         ("pipes", 61.4, -12.0, 0),
         ("sofa_small", 48.0, -26.0, 0),
