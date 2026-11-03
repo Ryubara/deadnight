@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MapInfo" format=3]
+
+[ext_resource type="Script" path="res://world/maps/map_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "drive_in"
+title = "Drive-in lot"
+blurb = "Open ground, a screen to light and a generator to keep fed."
+scene_path = "res://world/drive_in_greybox.tscn"
+preview_path = "res://assets/ui/maps/drive_in_preview.png"
+area_m2 = 13216
+min_players = 1
+max_players = 4
+shipped = true

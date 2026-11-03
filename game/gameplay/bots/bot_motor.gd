@@ -14,6 +14,8 @@ extends RefCounted
 ## - the bot aims at the chest, and at the head with the profile's head-aim rate when the target
 ##   is slow and near; at the headliner's lit lens (its weak spot) at the profile's rate while the
 ##   boss faces it;
+## - a flare is fired by turning to the view the brain chose (a ground point, not a zombie) and
+##   pulling the trigger once when the view is there; the flare gun is never fired at a zombie;
 ## - a grenade is thrown by turning to the view the brain chose, pulling the pin when the view is
 ##   there, letting go a moment after and holding the view while the arm swings.
 ##
@@ -45,6 +47,8 @@ const THROW_AIM_DEGREES := 3.0
 const THROW_COOK_TICKS := 2
 const THROW_SWING_SECONDS := 0.5
 const THROW_TURN_SECONDS := 1.5
+## A flare: degrees the view may be off the order's when the trigger is pulled.
+const FLARE_AIM_DEGREES := 1.0
 ## The widest the view may be off a target for a panic shot (degrees).
 const PANIC_DEGREES := 25.0
 ## Shots in a burst of an automatic weapon.
@@ -81,6 +85,7 @@ var _throw_ticks := 0
 var _throw_left := 0.0
 var _throw_style: StringName = &""
 var _throw_view := Vector2.ZERO
+var _flare_fired := false
 var _shots_seen := 0
 var _last_position := Vector3.INF
 var _last_bearing := 0.0
@@ -118,7 +123,14 @@ func command(
 	var eye := here + Vector3(0.0, BotLevel.EYE_HEIGHT, 0.0)
 	var contact := _target(intent, beliefs)
 	var throwing := _throwing(intent, delta)
-	var wanted := _throw_view if throwing else _wanted_view(delta, eye, contact, intent, own_speed)
+	var flaring := intent.ordering_flare() and not throwing
+	if not flaring:
+		_flare_fired = false
+	var wanted := _throw_view
+	if flaring:
+		wanted = Vector2(intent.flare_yaw, intent.flare_pitch)
+	elif not throwing:
+		wanted = _wanted_view(delta, eye, contact, intent, own_speed)
 	_turn(delta, wanted)
 	out.origin = eye
 	out.look_along(yaw, pitch)
@@ -129,6 +141,8 @@ func command(
 	_walk(out, intent)
 	if throwing:
 		_throw(out)
+	elif flaring:
+		out.fire = _flare_trigger(me, wanted)
 	else:
 		out.fire = _trigger(me, eye, contact, intent.melee_ok)
 		out.motion.melee = intent.quick_melee_ok and _in_quick_reach(eye, contact)
@@ -290,7 +304,7 @@ func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool 
 	if contact.is_empty() or me.get("reloading", false):
 		return false
 	var weapon := _weapon_of(me)
-	if weapon == null:
+	if weapon == null or weapon.is_lure():
 		return false
 	var distance := Vector2(contact["position"].x - eye.x, contact["position"].z - eye.z).length()
 	if weapon.is_melee():
@@ -300,6 +314,22 @@ func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool 
 	var limit := PANIC_DEGREES if _panicky else _cone_degrees(distance) * _profile.fire_slop
 	if error_degrees > limit:
 		return false
+	triggers += 1
+	return true
+
+
+## Whether to pull the trigger for the flare ordered: the flare gun is in hand with a round in it,
+## the view is on the order's, and it has not been fired for this order already (the order stays in
+## force until the brain hears the flare burst).
+func _flare_trigger(me: Dictionary, wanted: Vector2) -> bool:
+	var weapon := _weapon_of(me)
+	if weapon == null or not weapon.is_lure() or _flare_fired:
+		return false
+	if int(me.get("ammo", 0)) <= 0 or me.get("reloading", false):
+		return false
+	if _view_error_degrees(wanted) > FLARE_AIM_DEGREES:
+		return false
+	_flare_fired = true
 	triggers += 1
 	return true
 

@@ -10,8 +10,10 @@ extends RefCounted
 
 ## Advances `zombie` by `delta`. `target_pos` is where its target stands (ignored without one);
 ## `waypoint` the next point on the way there; `move_speed` its speed on the ground it stands on.
-## Returns the strike that landed this tick as `{"zombie_id", "target_id", "damage", "knockback"}`
-## (the zombie's own, from its profile), or `{}`.
+## `same_level` is false when the target stands on another storey (a floor between them): the
+## zombie walks on but neither starts a swing at it nor lands one. Returns the strike that landed
+## this tick as `{"zombie_id", "target_id", "damage", "knockback"}` (the zombie's own, from its
+## profile), or `{}`.
 static func step(
 	zombie: ZombieBody,
 	tuning: ZombieTuning,
@@ -19,7 +21,8 @@ static func step(
 	has_target: bool,
 	target_pos: Vector3,
 	waypoint: Vector3,
-	move_speed: float
+	move_speed: float,
+	same_level: bool = true
 ) -> Dictionary:
 	zombie.mode_time += delta
 	zombie.velocity = Vector3.ZERO
@@ -29,9 +32,9 @@ static func step(
 			if zombie.mode_time >= zombie.profile.emerge:
 				zombie.enter(ZombieBody.Mode.CHASE)
 		ZombieBody.Mode.CHASE:
-			_chase(zombie, tuning, delta, has_target, target_pos, waypoint, move_speed)
+			_chase(zombie, tuning, delta, has_target, target_pos, waypoint, move_speed, same_level)
 		ZombieBody.Mode.ATTACK:
-			strike = _attack(zombie, tuning, delta, has_target, target_pos)
+			strike = _attack(zombie, tuning, delta, has_target, target_pos, same_level)
 		ZombieBody.Mode.STAGGER:
 			if zombie.mode_time >= maxf(zombie.profile.stagger, zombie.stun_seconds):
 				zombie.enter(ZombieBody.Mode.CHASE)
@@ -74,11 +77,12 @@ static func _chase(
 	has_target: bool,
 	target_pos: Vector3,
 	waypoint: Vector3,
-	move_speed: float
+	move_speed: float,
+	same_level: bool
 ) -> void:
 	if not has_target:
 		return
-	if _flat_distance(zombie.position, target_pos) <= tuning.reach:
+	if same_level and _flat_distance(zombie.position, target_pos) <= tuning.reach:
 		zombie.enter(ZombieBody.Mode.ATTACK)
 		return
 	var to_waypoint := waypoint - zombie.position
@@ -89,7 +93,12 @@ static func _chase(
 
 
 static func _attack(
-	zombie: ZombieBody, tuning: ZombieTuning, delta: float, has_target: bool, target_pos: Vector3
+	zombie: ZombieBody,
+	tuning: ZombieTuning,
+	delta: float,
+	has_target: bool,
+	target_pos: Vector3,
+	same_level: bool
 ) -> Dictionary:
 	var strike := {}
 	var profile := zombie.profile
@@ -99,7 +108,7 @@ static func _attack(
 		_turn_toward(zombie, to_target, tuning.turn_rate * delta)
 		if not zombie.struck and zombie.mode_time >= profile.windup:
 			zombie.struck = true
-			if to_target.length() <= tuning.reach + tuning.strike_slack:
+			if same_level and to_target.length() <= tuning.reach + tuning.strike_slack:
 				strike = {
 					"zombie_id": zombie.id,
 					"target_id": zombie.target_id,

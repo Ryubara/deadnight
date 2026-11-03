@@ -178,7 +178,7 @@ func choose(view: View) -> Buy:
 ## table's order.
 func plan(_view: View = null) -> Array[StringName]:
 	var ids: Array[StringName] = []
-	for item_id in _profile.shopping:
+	for item_id in _shop.shopping if not _shop.shopping.is_empty() else _profile.shopping:
 		ids.append(item_id)
 	for door_id in _shop.doors:
 		if not ids.has(door_id):

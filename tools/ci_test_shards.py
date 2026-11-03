@@ -20,14 +20,27 @@ NAMED: dict[int, tuple[str, ...]] = {
     1: ("night", "rules"),
     2: ("net", "world", "zombies"),
 }
+# The `night` folder alone took 13 minutes of shard 1's 15 (the bot suites are minutes long each), so its heaviest
+# scripts are named one by one and move to the shards with room. Any other script of a split folder stays with the
+# folder's own shard, and a new one is never left out. GdUnit4 takes a folder or a script as `-a`, not "a folder
+# without these", hence the per-script entries.
+MOVED: dict[str, int] = {
+    "night/test_bot_bands.gd": 3,
+    "night/test_bot_soak.gd": 2,
+    "night/test_bot_orders_night.gd": 2,
+}
 
 
 def entries(root: Path) -> list[str]:
     """Every test folder and every test script directly under tests/, as `res://` paths."""
     tests = root / "tests"
     found = []
+    split = {name.split("/")[0] for name in MOVED}
     for path in sorted(tests.iterdir()):
         if path.name.startswith("."):
+            continue
+        if path.is_dir() and path.name in split:
+            found.extend(f"res://tests/{path.name}/{test.name}" for test in sorted(path.glob("test_*.gd")))
             continue
         if path.is_dir() or (path.suffix == ".gd" and path.name.startswith("test_")):
             found.append(f"res://tests/{path.name}")
@@ -36,8 +49,10 @@ def entries(root: Path) -> list[str]:
 
 def shard_of(entry: str) -> int:
     name = entry.removeprefix("res://tests/")
+    if name in MOVED:
+        return MOVED[name]
     for shard, names in NAMED.items():
-        if name in names:
+        if name in names or name.split("/")[0] in names:
             return shard
     return SHARDS
 
@@ -59,7 +74,9 @@ def self_test(root: Path) -> None:
     assert sorted(seen) == sorted(every), "a test folder is in no shard, or in two"
     for names in NAMED.values():
         for name in names:
-            assert f"res://tests/{name}" in every, f"{name} is named in a shard but is not a test folder"
+            assert any(e.startswith(f"res://tests/{name}") for e in every), f"{name} is named but is not a test folder"
+    for name in MOVED:
+        assert f"res://tests/{name}" in every, f"{name} is moved to a shard but is not a test script"
     print(f"ok: {len(every)} entries in {SHARDS} shards")
 
 
