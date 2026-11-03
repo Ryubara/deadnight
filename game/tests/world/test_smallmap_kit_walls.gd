@@ -30,10 +30,12 @@ func _fixture(piece: String) -> Node3D:
 	return node
 
 
+## This group's fixtures: the folder also holds the other kit groups' (the roof and outside, #638).
 func _pieces() -> PackedStringArray:
+	var report: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(REPORT))
 	var out := PackedStringArray()
 	for file in DirAccess.get_files_at(FIXTURES):
-		if file.ends_with(".tscn"):
+		if file.ends_with(".tscn") and report.has(file.get_basename()):
 			out.append(file.get_basename())
 	return out
 
