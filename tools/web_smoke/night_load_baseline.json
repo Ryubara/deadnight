@@ -1,5 +1,6 @@
 {
-  "seconds": 36.0,
-  "allowed_rise": 1.0,
-  "note": "Seconds from Play to a running night in the web job (headless shell, SwiftShader, 1280x720); the smoke fails above seconds * (1 + allowed_rise), 72 s. 36 is the mean of the ten main runs of 2026-11-02 after the load was cut (24.3 to 53.3 s, the runner moves by 40 % or more between runs of the same build); before the cut a green run took 82 to 107 s. Issue #509."
+  "max_ratio": 5.5,
+  "menu_floor_s": 8.0,
+  "ceiling_s": 150,
+  "note": "The web smoke fails when the night's load (Play to a running night) divided by the same run's load to the menu is over max_ratio, or when the night alone is over ceiling_s (a backstop for a hang). Set from the 28 main runs of 2 and 3 Nov 2026 (the headless shell, SwiftShader, 1280x720): night 24.8 to 75.3 s, menu 8.6 to 17.5 s, ratio 2.23 to 4.56 (median 3.1); 5.5 is 20 % over the worst. The slowest run seen is 75.3 s, so 150 s is twice that. menu_floor_s (below every menu seen) keeps a lucky fast menu from inflating the ratio. Before this the gate was a flat 72 s (twice a 36 s mean of one morning, issue #509) and four runs tripped it with nothing wrong. Issue #873."
 }

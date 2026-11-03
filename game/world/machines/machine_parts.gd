@@ -13,8 +13,17 @@ const WEAPON_MODELS := {
 	&"shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
+	&"mp5": "res://assets/weapons/mp5/mp5.glb",
+	&"ppsh": "res://assets/weapons/ppsh/ppsh.glb",
+	&"m4a1": "res://assets/weapons/m4a1/m4a1.glb",
+	&"m249": "res://assets/weapons/m249/m249.glb",
+	&"fifty_cal": "res://assets/weapons/fifty_cal/fifty_cal.glb",
+	&"pump_870": "res://assets/weapons/pump_870/pump_870.glb",
 	&"dual_pistols": "res://assets/weapons/service_pistol/service_pistol.glb",
 }
+
+## The weapons whose models the bench loads when one is re-cut, not with the night (#793).
+const ON_DEMAND: Array[StringName] = [&"mp5", &"ppsh", &"m4a1", &"m249", &"fifty_cal", &"pump_870"]
 
 
 ## The meshes under `machine` that are not any of `moving` nor under one: what a machine's batch

@@ -58,6 +58,8 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"damage_dealt",
 	&"target_killed",
 	&"reload_started",
+	&"reload_round",
+	&"reload_interrupted",
 	&"reload_finished",
 	&"reload_rejected",
 	&"weapon_replaced",
@@ -547,9 +549,9 @@ func _grenade(action: Dictionary) -> void:
 				)
 
 
-## A blast reached a player (a grenade: the thrower and the team, every one by the same rule,
-## `PlayerBlast`): their health takes `damage`, and the rules' `player_hurt` (and `player_downed`)
-## says what it was (`harm`) and whose (`by_id`), for the HUD and the kill feed.
+## A blast reached a player (a grenade: its thrower alone, `PlayerBlast`; the ray gun's splash,
+## #788, its shooter): their health takes `damage`, and the rules' `player_hurt` (and
+## `player_downed`) says what it was (`harm`) and whose (`by_id`), for the HUD and the kill feed.
 func _blast_player(
 	player_id: int, damage: float, from: Vector3, harm: StringName, by_id: int
 ) -> void:
@@ -680,8 +682,11 @@ func _shoot(player_id: int, command: NightCommand, delta: float) -> void:
 	var view_time := combat.now
 	if command.view_step >= 0:
 		view_time -= float(maxi(tick_count - command.view_tick, 0)) * delta
+	var move := clampf(body.state.ground_speed() / body.tuning.run_speed, 0.0, 1.0)
 	_combat(
-		CombatAction.fire(player_id, _shot_seq[player_id], origin, command.dir, muzzle, view_time)
+		CombatAction.fire(
+			player_id, _shot_seq[player_id], origin, command.dir, muzzle, view_time, move
+		)
 	)
 
 

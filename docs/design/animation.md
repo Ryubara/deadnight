@@ -419,9 +419,24 @@ the left shoulder forward so the short left arm still reaches it.
 | Tommy gun (`smg`, 1.9 s) | magazine | raised muzzle up, the drum toward the camera; drum off and stowed, a full one on; bolt pulled | `Drum`, slid down and out to the right | the drum | `mag_out` `reload_smg_mag_out`, `pouch` `reload_pouch`, `mag_in` `reload_smg_mag_in`, `bolt` `reload_smg_bolt` |
 | Lever rifle (`rifle`, 2.2 s) | lever | rolled 60 degrees so the loading gate faces up; three rounds pushed in; lever thrown | `Lever`, 50 degrees down on its pin | one round | `pouch` `reload_pouch`, `round_in` (3) `reload_rifle_round`, `lever` `reload_rifle_lever` |
 | Double-barrel (`shotgun`, 2.4 s) | break-open | out right, muzzle down; barrels broken open; two shells in; flicked shut | `Barrels` with the forend, 45 degrees on the hinge pin | two shells | `break_open` `reload_shotgun_open`, `eject` `reload_shotgun_eject`, `pouch` `reload_pouch`, `shells_in` `reload_shotgun_shells`, `snap_shut` `reload_shotgun_shut` |
+| PPSh (`ppsh`, 2.8 s) | magazine | like the Tommy gun's: the drum taken off and a full one put on, the bolt pulled | `Drum` | the drum | `drum_out`, `pouch`, `drum_in`, `bolt` |
+| MP5, M4A1 (`mp5` 1.9 s, `m4a1` 2.1 s) | magazine | muzzle up, the magazine toward the camera; out, a full one in, the bolt | `Magazine` | the magazine | `mag_out`, `pouch`, `mag_in`, `bolt` |
+| M249 (`m249`, 5.0 s) | belt | the feed cover up, the belt laid in, the cover shut, the charging handle | `Cover` | a belt of rounds | `cover_open`, `pouch`, `belt_in`, `cover_shut`, `charge` |
+| .50 calibre (`fifty_cal`, 3.4 s) | magazine | the box magazine out and in, the long bolt | `Magazine` | the magazine | `mag_out`, `pouch`, `mag_in`, `bolt` |
+| Pump 870 (`pump_870`, 2.8 s from empty) | by the round | rolled so the loading port faces up; a shell from the belt into the port, six times; the pump racked | `Pump` | one shell | `pouch`, `shell_in` (once a round), `pump` |
 | Flare gun (`flare_gun`, 2.0 s) | break-open | up beside the shoulder; barrel broken open, the case shaken out; a flare in; snapped shut | `Barrel`, 50 degrees on its hinge | one flare cartridge | `break_open` `reload_flare_open`, `eject` `reload_flare_eject`, `pouch` `reload_pouch`, `shells_in` `reload_flare_in`, `snap_shut` `reload_flare_shut` |
 
 The melee weapons do not reload. The sounds and their levels under fire are on the [audio page](audio.md#reloads).
+
+**A reload that loads one round at a time (#793, the pump).** The server's reload is a clock a round long
+(`WeaponDef.reload_by_round`: `reload_time / magazine_size`), puts each round in the magazine as its time comes
+(`reload_round`) and ends when a shot is fired with a round in (`reload_interrupted`) or the tube is full
+(`reload_finished`). `reload_started` says how many rounds it will load (`rounds`) and its `seconds` are that many round
+times. The motion is the pump's full reload from empty, with a lead-in, six identical cycles (one shell fetched from the
+belt pouch and put in the port) and a lead-out (the pump racked): `ReloadMotion.loop_rounds`, `loop_from` and `loop_to`
+say which stretch loops, and a reload of fewer rounds plays the lead-in, that many cycles and the lead-out
+(`ReloadMotion.playhead` maps the time, `event_shares_for` the sounds, so a two-round top-up sounds two shells). An
+interrupted reload lets the arms back to the hold in a few frames, as a swap does (`NightView.show_reload_stopped`).
 
 ### Proof
 
