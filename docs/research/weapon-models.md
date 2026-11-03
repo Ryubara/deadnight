@@ -356,7 +356,8 @@ pistol-grip stock** (the double is wood with a straight stock and two fat barrel
 
 A period semi-automatic service pistol of the 1911 type (references: five photos, `refs/weapons/service_pistol/`):
 fits the drive-in's 1958 and reads apart from the revolver. One model, held in both hands (#789); the left hand's copy
-is the same mesh, not mirrored (its port still faces right). The model folder is `service_pistol`, not `pistol`: that
+is the same mesh (one file), drawn mirrored for the left hand because that hand's fingers are the right
+hand's mirrored, so its ejection port faces left. The model folder is `service_pistol`, not `pistol`: that
 id is the revolver's.
 
 - **Layout:** muzzle -0.17 (bore z 0.045); the slide -0.17 to +0.04, top z 0.075, 0.045 deep, 0.04 wide (twice
@@ -439,7 +440,7 @@ and `tests/captures/model_hold_sheet.tscn` holds each model with these numbers (
 
 | Hold | `scene` | Class | `model_scale` | `size_factor` | `real_length` | `model_length` | `muzzle` | `butt` | `support` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dual_pistols` | `service_pistol.glb` | Pistol (Dual) | 1.95 | 1.5 | 0.216 | 0.25 | (-0.17, 0.045, 0) | (0.074, 0, 0) | none |
+| `dual_pistols` | `service_pistol.glb` | Pistol (Dual) | 1.95 | 1.75 | 0.216 | 0.25 | (-0.17, 0.045, 0) | (0.074, 0, 0) | none |
 | `ray_gun` | `ray_gun.glb` | Pistol | 2.275 | 1.75 | 0.28 | 0.278 | (-0.2, 0.05, 0) | (0.078, 0, 0) | none |
 | `freeze_gun` | `freeze_gun.glb` | Rifle | 1.3 | 1 | 0.90 | 0.908 | (-0.6, 0.05, 0) | (0.3, 0, 0) | (-0.295, -0.045, 0) |
 
