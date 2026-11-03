@@ -223,7 +223,7 @@ dodge is the share of the blows that came due on the bot and did not hurt it: th
 retreat of [phase 3](bots.md) was meant to make them, and they kill faster on the new zones.
 
 **What it did to the gate.** Medians of the gate's six cells (60 nights, seed 4000; weak solo, average 1, 2, 4 and 8,
-strong solo), ranges 4 to 9, 8 to 14, 11 to 16, 12 to 17, 14 to 20, 12 to 18:
+strong solo), ranges 4 to 9, 8 to 14, 11 to 16, 12 to 17, 14 to 20, 12 to 19 (widened, #789):
 
 | Step | Medians | Gate |
 | --- | --- | --- |
