@@ -13,6 +13,10 @@ extends RefCounted
 ## The generator's circuits and the lamps' own kinds.
 const MAINS := &"mains"
 const BATTERY := &"battery"
+## The seconds in a tick (the rules run at 60 a second): the flicker keeps time by the tick.
+const TICKS_PER_SECOND := 60.0
+## The value of a `metadata/flicker` that makes a group's lights burn dimmed and failing.
+const FAILING_BATTERY := &"failing_battery"
 ## The step of the golden-ratio sequence that spreads each lamp's flicker out of step with the rest.
 const _SPREAD := 0.6180339887
 const _SLOT_PRIME := 7919.0
@@ -33,6 +37,9 @@ class Lamp:
 	var level := -1.0
 	## A lamp that is only seen (a sign's glow): it lights no ground for the dead's slowdown.
 	var decor := false
+	## A lamp of a failing battery (`FailingBattery`, the back lot's) and its number among them.
+	var failing := false
+	var slot := 0
 
 
 var lamps: Array[Lamp] = []
@@ -41,6 +48,7 @@ var circuits: Dictionary[StringName, bool] = {}
 ## The tank, as the frames report it; what the lights fail by.
 var fuel := 0.0
 
+var _failing_count := 0
 var _capacity := 100.0
 var _brownout := 0.1
 var _tick := 0
@@ -134,8 +142,15 @@ func refresh(tick: int) -> void:
 	_tick = tick
 	for i in lamps.size():
 		var lamp := lamps[i]
+		var on := _is_on(lamp.circuit)
+		var power_level := _power_for(lamp.circuit)
 		var level := maxf(
-			brightness(_is_on(lamp.circuit), _power_for(lamp.circuit), tick, i), lamp.afterglow
+			(
+				failing_brightness(on, power_level, tick, lamp.slot)
+				if lamp.failing
+				else brightness(on, power_level, tick, i)
+			),
+			lamp.afterglow
 		)
 		if not is_equal_approx(level, lamp.level):
 			_show(lamp, level)
@@ -153,6 +168,17 @@ static func brightness(on: bool, power_level: float, tick: int, index: int) -> f
 	var roll := fposmod((slot * _SLOT_PRIME + float(index) * _LAMP_PRIME) * _SPREAD, 1.0)
 	var sag := lerpf(LightTuning.current().sag_floor, 1.0, power_level)
 	return sag if roll < power_level else sag * LightTuning.current().dropout
+
+
+## How bright a lamp of a failing battery burns (`FailingBattery`): 0 when its circuit is off or the
+## tank is dry, else the battery's dimmed flicker, a function of the tick and the lamp's `slot`
+## alone. A low tank lowers it by the sag but never adds the brownout's quick flicker to it: the
+## back lot already flickers, and the two together would strobe.
+static func failing_brightness(on: bool, power_level: float, tick: int, slot: int) -> float:
+	if not on or power_level <= 0.0:
+		return 0.0
+	var sag := lerpf(LightTuning.current().sag_floor, 1.0, minf(power_level, 1.0))
+	return sag * FailingBattery.level(float(tick) / TICKS_PER_SECOND, slot)
 
 
 ## A battery's lights do not ride the tank.
@@ -184,16 +210,25 @@ func _lamp_of(light: Light3D) -> Lamp:
 	lamp.afterglow = float(light.get_meta(&"afterglow", 0.0))
 	lamp.post = light.get_parent() as LampPost
 	lamp.decor = bool(light.get_meta(&"decor", false))
+	lamp.failing = _meta_above(light, &"flicker") == FAILING_BATTERY
+	if lamp.failing:
+		lamp.slot = _failing_count
+		_failing_count += 1
 	lamp.position = light.global_position
 	return lamp
 
 
 ## The circuit of the first node at or above `node` that names one; empty when none does.
 static func _circuit_above(node: Node) -> StringName:
+	return _meta_above(node, &"circuit")
+
+
+## The value of the first `key` metadata at or above `node`; empty when none has one.
+static func _meta_above(node: Node, key: StringName) -> StringName:
 	var at := node
 	while at != null:
-		if at.has_meta(&"circuit"):
-			return StringName(at.get_meta(&"circuit"))
+		if at.has_meta(key):
+			return StringName(at.get_meta(key))
 		at = at.get_parent()
 	return &""
 
