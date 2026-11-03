@@ -292,9 +292,10 @@ and proven in #351: [Grenades research](../research/grenades.md#in-the-night-351
 | Thing | Number |
 | --- | --- |
 | Fuse | 3.0 s from the pin; cooking spends it in the hand; held to the end it goes off in the hand |
-| Overarm | 15 m/s, lifted 8 degrees; keeps half of the thrower's speed |
-| Underarm | 7 m/s, lifted 22 degrees; it rolls |
-| Flight | gravity 16 m/s2; floor bounce keeps 42%, wall bounce 50%, 20% lost along the surface; under 1.4 m/s it rolls, 3.5 m/s2 of friction, stops under 0.2 m/s |
+| Overarm | 14 m/s, lifted 5 degrees; keeps half of the thrower's speed; a level throw lies 10 m out, the longest lob 12 m |
+| Underarm | 7 m/s, lifted 18 degrees; lies 4 to 5 m out |
+| Flight | a heavy shell: gravity 22 m/s2; floor bounce keeps 22%, wall bounce 30%, 45% lost along the surface; under 2.5 m/s it rolls, 9 m/s2 of friction, stops under 0.3 m/s |
+| Zombies | a zombie is an upright capsule (0.4 m across the arms, as tall as its head); running into it leaves 4% of the speed into it, 5% along it and a 0.2 m/s shove away, so the grenade drops at its feet or bounces off under 1 m, never through and never far |
 | Blast | 150 at the centre and out to 2 m, sliding to 0 at 8 m |
 | Cover | a line from the blast (0.25 m up) to each of the six hit parts; a part with something solid in the way takes nothing |
 | Shares of the blast | legs 25% each, body 25%, arms 10% each, head 5% (a blast goes off low) |

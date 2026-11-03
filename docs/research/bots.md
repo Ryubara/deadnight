@@ -845,12 +845,13 @@ decides, the others hold a rule each, so a test pins them one by one):
   and a top-up under 70% when nothing is within 16 m; a swap to the loaded weapon that is 1.4 times better at the
   range of the fight (the simulator's `SWITCH_GAIN`) and to the crowbar when every gun is dry; the crowbar goes back
   to a gun that can fire.
-- **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 14 m away, as
+- **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 12 m away, as
   the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
   **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is
   the scatter of a real throw, see the lesson on the rolling grenade), with an open arc and 6 s since the last. The
-  pitch comes from a table of real flights made once with `GrenadeArc` on flat ground: a grenade bounces and rolls for
-  the whole fuse, so a short throw is a lob (underarm up to 7.5 m, steep overarm to 14 m). The motor turns, holds the
+  pitch comes from a table of real flights made once with `GrenadeArc` on flat ground: the heavy grenade (#680) lies
+  4 to 12 m out and hardly rolls, so a short throw is a lob (underarm up to 4 m, steep overarm to 12 m). The plan flies
+  the walls only; a zombie in the way stops the real grenade at its feet. The motor turns, holds the
   button for two ticks and keeps the view still while the arm swings; the brain takes the order back if a teammate
   walks in.
 - **`BotDodge`**: a swing that began on the frame (`attack_at` on the contact) and that would still reach the bot

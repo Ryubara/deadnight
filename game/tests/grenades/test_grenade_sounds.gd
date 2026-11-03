@@ -1,13 +1,13 @@
 extends GdUnitTestSuite
-## The grenade sounds: the four ids exist, load, have the shape their job needs (a short tick, a
+## The grenade sounds: the four ids exist, load, have the shape their job needs (a short beep, a
 ## bounce, a throw, a blast with a tail) and the service plays each on a pooled player.
 
 const IDS: Array[StringName] = [
-	&"grenade_tick", &"grenade_throw", &"grenade_bounce", &"grenade_blast"
+	&"grenade_beep", &"grenade_throw", &"grenade_bounce", &"grenade_blast"
 ]
 ## Seconds a variant may last: [shortest, longest].
 const LENGTHS := {
-	&"grenade_tick": [0.01, 0.15],
+	&"grenade_beep": [0.01, 0.15],
 	&"grenade_throw": [0.15, 0.7],
 	&"grenade_bounce": [0.04, 0.4],
 	&"grenade_blast": [0.8, 3.0],
@@ -48,8 +48,8 @@ func test_each_plays_on_a_pooled_player_near_the_listener() -> void:
 		assert_object(player).override_failure_message(String(id)).is_not_null()
 
 
-func test_the_blast_carries_further_than_the_tick() -> void:
-	var tick := SoundCatalog.get_def(&"grenade_tick")
+func test_the_blast_carries_further_than_the_beep() -> void:
+	var beep := SoundCatalog.get_def(&"grenade_beep")
 	var blast := SoundCatalog.get_def(&"grenade_blast")
-	assert_float(blast.max_distance).is_greater(tick.max_distance * 2.0)
-	assert_int(blast.priority).is_greater(tick.priority)
+	assert_float(blast.max_distance).is_greater(beep.max_distance * 2.0)
+	assert_int(blast.priority).is_greater(beep.priority)
