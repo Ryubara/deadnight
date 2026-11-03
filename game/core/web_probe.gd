@@ -74,6 +74,8 @@ static func snapshot(top: Control) -> Dictionary:
 		"naming": false,
 		"lobby_seats": "",
 		"lobby_note": "",
+		"share_says": "",
+		"share_line": "",
 		"lobby_buttons": "",
 		"lobby_rules": "",
 		"lobby_rules_editable": false,
@@ -142,6 +144,8 @@ static func snapshot(top: Control) -> Dictionary:
 		data["room_status"] = lobby.status.text
 		data["lobby_seats"] = "|".join(lobby.seat_texts())
 		data["lobby_note"] = lobby.note.text
+		data["share_says"] = lobby.share_says.text
+		data["share_line"] = lobby.share_probe.text
 		var buttons: Array[String] = []
 		for button: UIButton in [lobby.start_button, lobby.play_button, lobby.join_button]:
 			if button.is_visible_in_tree():
