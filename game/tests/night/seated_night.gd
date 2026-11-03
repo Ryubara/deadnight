@@ -38,13 +38,12 @@ var stand_still := false
 var hash_every := 0
 var hashes: Array[int] = []
 
-## What the server answered to the actions the bots sent (a `bot_say`, a ping's mark): heard with
+## What the server answered to the actions the bots and the people sent (a `bot_say`, a ping's mark,
+## an order taken or refused): heard with
 ## the next step's events, as a server's broadcast would be.
 var _answers: Array[Dictionary] = []
 ## The dead already staged (`stage_the_dead`).
 var _staged := {}
-## The events the server answered to messages since the last step.
-var _answers: Array[Dictionary] = []
 var _probe: WorldProbe
 
 

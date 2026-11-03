@@ -16,6 +16,15 @@ func test_a_night_with_no_order_given_roams() -> void:
 	assert_str(str(BotOrders.current({}, 3)["order"])).is_equal("roam")
 
 
+func test_the_wheel_reads_the_order_with_a_string_name_key() -> void:
+	# `BotOrderLink` asks `answer.get(&"order")`: the keys are strings here and must still be found.
+	var orders := BotOrders.new()
+	orders.issue(BotOrders.HOLD, 1, AT)
+	var frame := {BotOrders.FRAME_KEY: orders.to_frame()}
+	assert_str(str(BotOrders.current(frame).get(&"order", &""))).is_equal("hold")
+	assert_str(str(BotOrders.current({}).get(&"order", &""))).is_equal("roam")
+
+
 func test_the_three_orders_are_the_only_ones() -> void:
 	assert_array(BotOrders.ORDERS).is_equal([&"follow", &"roam", &"hold"])
 	assert_bool(BotOrders.is_order(&"charge")).is_false()

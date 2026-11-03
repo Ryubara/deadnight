@@ -447,9 +447,9 @@ think, remembers the ones it cannot reach until a door changes the mesh, and wan
 parts' tests that stood still because no person was near started to roam when the default changed
 ([lesson](https://github.com/Ryubara/gdstudio/pull/257), tests now say what stance they stand for).
 
-Not done here: the HUD's word for the current order and the wheel are #642; the roles of #229 (anchor, flank) are
-Follow's and arrive with that pull request; the ping replies of #229 (hold here, shoot that one, raise that one) sit
-above every order.
+Not done here: the wheel and the HUD's word for the current order are #642 (on `main`, through `BotOrderLink`). The
+roles of #229 (anchor, flank) are Follow's: a roaming or holding bot has none. The ping replies of #229 (hold here, shoot
+that one, raise that one) and the claim table sit above every order.
 
 ## Edge cases
 

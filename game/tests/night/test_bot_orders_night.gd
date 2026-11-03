@@ -488,3 +488,56 @@ func test_a_roaming_bot_shoots_what_comes_and_goes_on_roaming() -> void:
 		. is_greater(6.0)
 	)
 	night.dispose()
+
+
+# --- A "hold here" ping pulls a bot in every order, and it goes back (#229's reply) ---
+
+
+func _here_ping(order: StringName) -> void:
+	var night := await _night(2)
+	var spot := Autopilot.HOME + Vector3(0.0, 0.0, 2.0)
+	var marked := Autopilot.HOME + Vector3(-14.0, 0.0, -12.0)
+	_place(night, PERSON, spot)
+	_place(night, 2, spot + Vector3(1.5, 0.0, 0.0))
+	_place(night, 3, spot + Vector3(-1.5, 0.0, 0.0))
+	_give(night, order, spot)
+	night.run(60 * 15)
+	var answer := night.server.ping(PERSON, {"kind": &"here", "pos": marked, "subject": 0})
+	assert_str(String(answer)).is_equal("")
+	var near := -1.0
+	for t in 60 * 30:
+		night.tick()
+		for id in [2, 3]:
+			if _flat(_where(night, id), marked) < 3.5:
+				near = float(t) / TICKS_PER_SECOND
+		if near >= 0.0:
+			break
+	assert_float(near).override_failure_message("%s: no bot went to the ping" % order).is_greater(
+		0.0
+	)
+	# The mark runs out and the bot takes up its order again.
+	night.run(60 * 45)
+	var back := 0
+	for id in [2, 3]:
+		var here := _where(night, id)
+		match order:
+			BotOrders.HOLD:
+				back += 1 if _flat(here, spot) < HOLD_RADIUS else 0
+			BotOrders.FOLLOW:
+				back += 1 if _flat(here, _where(night, PERSON)) <= FOLLOW_NEAR else 0
+			_:
+				back += 1 if _flat(here, marked) > 3.5 else 0
+	assert_int(back).override_failure_message("%s: only %d went back" % [order, back]).is_greater(0)
+	night.dispose()
+
+
+func test_a_here_ping_pulls_a_roaming_bot_and_it_roams_on() -> void:
+	await _here_ping(BotOrders.ROAM)
+
+
+func test_a_here_ping_pulls_a_following_bot_and_it_follows_again() -> void:
+	await _here_ping(BotOrders.FOLLOW)
+
+
+func test_a_here_ping_pulls_a_holding_bot_and_it_goes_back_to_the_spot() -> void:
+	await _here_ping(BotOrders.HOLD)
