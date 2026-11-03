@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/prompt_through_walls.gd" id="1"]
+
+[node name="PromptThroughWalls" type="Node"]
+script = ExtResource("1")

@@ -24,6 +24,9 @@ const MODELS: Array[String] = [
 	"lever_rifle",
 	"revolver",
 	"tommy_gun",
+	"ppsh",
+	"mp5",
+	"m4a1",
 	"service_pistol",
 	"ray_gun",
 	"freeze_gun",
@@ -147,6 +150,7 @@ func test_every_model_has_a_grip_at_its_hold_size() -> void:
 	var guns := ["revolver", "flare_gun", "tommy_gun", "lever_rifle", "double_shotgun"]
 	guns.append_array(["service_pistol", "ray_gun", "freeze_gun"])
 	guns.append_array(HEAVY)
+	guns.append_array(["ppsh", "mp5", "m4a1"])
 	for model in guns:
 		assert_str(HandGrip.for_name(model).trigger_finger).is_not_empty()
 
