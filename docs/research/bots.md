@@ -932,7 +932,21 @@ the claim table have pure unit tests; a mutant that makes the risk check always 
   8 m (`BotLink`), goes there and jumps (`BotIntent.trapped`, in the legs). There is no teleport.
 - `BotPings`: a person's `here` sends the nearest bot to hold the place while the mark stands, `enemy` names the first
   target while the bot sees the zombie, `downed` names the body to raise first, `door` is the errands' (it was
-  already). `ammo` is left to #647.
+  already). `ammo` is the next item (#647, below).
+- **The ammunition ping (#647).** `BotPings.ammo` reads the locker a person marked. A bot that is short of rounds for a
+  gun it carries (under `BotProfile.ammo_floor_mags` magazines of reserve), in a lull, with the gun (or a blade, which
+  is put away at the locker) in hand, walks to *that* locker and buys there, before every other errand (`BotErrands`
+  runs a `marked` job ahead of the generator, the breakers, the shop list and the boards; a mark lasts 20 s and a bot
+  that set out keeps going for at most `ERRAND_LIMIT` if it runs out on the way). It buys only within the use reach of
+  the marked locker: every locker sells the same rounds, but a mark is an order for one, so a bot standing at another
+  locker walks on. A bot that is not short, whose hand cannot be fed there (the locker sells for the weapon in hand), in
+  a wave with the dead about it (the urgent rounds below a magazine are still bought at once, wherever) or with no way to
+  the locker (the shop's own `avoided` rule) ignores the mark. Pure table:
+  `tests/bots/test_bot_economy_rounds.gd`; scenario in the real lot with a person and a bot, and the same bot with no
+  mark going to the near locker: `tests/night/test_bot_errand_buys.gd`; film through the person's camera:
+  `tests/captures/bots_ammo_ping.tscn`. The ping crosses the wire as before (`NetWire.Type.MARK`, no new message), so
+  no network test was added. Two bots that are both short both go (rounds are personal); the errand turn of the brain
+  still lets one bot at a time leave.
 
 *Measured* (same soak, 12 game minutes, seeds 1 to 3, a shared machine on which every think p99 was 5 to 40 ms, so no
 cost figure is taken from it): **at most one bot on an errand at any tick in all four runs (the same soak with the
@@ -994,10 +1008,9 @@ seconds) is not one to take to the bank: what the soak says is that the rule cha
 revive numbers. Bleed-outs were 17 with it and 10 without out of about 280 forced falls each. The one night read through
 (`--log`, seed 1 with the rule: five of them) has none near a flare: they are bodies that two bots left alone for 45 s
 while the dead stood about them (a verdict of `UNSAFE` sends nobody unless the bot is the last up), which the bots did
-before this rule too; it is opened as its own issue.
+before this rule too; it is #673.
 
-**Left for later.** The ammunition ping (#647), the voice of the lines, and the bot's own "downed bot waits for a
-human" being only one call.
+**Left for later.** The voice of the lines, and the bot's own "downed bot waits for a human" being only one call.
 
 ### Phase 6: filling slots, difficulty and the server
 
@@ -1008,6 +1021,14 @@ the HUD, handles a human joining or leaving a bot's slot, gives the profiles nam
 and a per-room bot cap, to the [decisions](#decisions-of-the-maintainer). **Done when**: a networked match over
 the real transport with two humans and two bots runs 10 minutes in CI without a divergence or an `ERROR` (with #56);
 the server's measured bot cost is inside the budget; a human takes over a slot mid-round without losing the round.
+
+**Slot filling shipped early (#643).** The room setting and the seating part of this phase landed with the match
+settings: a **Bots** setting of 0 to 3 (`MatchSettings.bots`, one panel for Solo and a host's room), seated by
+`NightBots` in the seats people leave free, a person who joins taking a bot's seat as it stands, bots labelled `BOT`
+in the HUD and the lobby, all in [Rounds, points and fuel](../design/rounds.md#bots). It is not the "off, fill to two,
+fill to four" of the first draft: the count is the host's. What stays with #230: the per-room cap and kill-switch,
+the cost budget, a human who leaves handing the body (not a new body) to a bot, names and looks per profile, and the
+maintainer's open questions. All seated bots play the shipped regular profile; a room has no difficulty setting yet.
 
 ### Phase 7: validation at scale and tuning
 

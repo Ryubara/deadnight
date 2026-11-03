@@ -85,6 +85,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"play_rules": "",
 		"spots": "",
 		"night_rules": "",
+		"bots": 0,
 		"notices": "",
 		"code_text": "",
 		"notice_log": "",
@@ -128,7 +129,7 @@ static func snapshot(top: Control) -> Dictionary:
 		else null
 	)
 	data["controller_hint"] = hint != null and hint.label.is_visible_in_tree()
-	if top is MainMenu or top is PlayScreen:
+	if top is MainMenu or top is PlayScreen or top is LobbyScreen:
 		# Where a finger taps each start and button, as fractions of the window.
 		data["spots"] = _spots(top)
 	var menu := top as MainMenu
@@ -189,6 +190,11 @@ static func snapshot(top: Control) -> Dictionary:
 		data["interpolated"] = player.is_physics_interpolated_and_enabled()
 	data["over"] = state.over
 	if night_screen.night.hud != null:
+		# Bots in the night, as the roster labels them.
+		var bots := 0
+		for member: Dictionary in night_screen.night.hud.state.team.values():
+			bots += 1 if member.get("bot", false) else 0
+		data["bots"] = bots
 		# Who joined or left, as the night's notices say it.
 		data["notices"] = "|".join(night_screen.night.hud.notices.texts())
 		data["notice_log"] = "|".join(night_screen.night.hud.notices.history)
@@ -246,11 +252,15 @@ static func _spots(screen: Control) -> String:
 		var at := button.get_global_rect().get_center() / size
 		spots.append("%s:%.4f,%.4f" % [text, at.x, at.y])
 	var play := screen as PlayScreen
-	if play != null:
+	var lobby := screen as LobbyScreen
+	var panel: MatchSettingsPanel = (
+		play.panel if play != null else (lobby.rules if lobby != null else null)
+	)
+	if panel != null and panel.is_visible_in_tree():
 		# Each setting's control: its centre, and `key:end` a little inside its right end (an option
 		# selector's next arrow).
-		for key: String in play.panel.setting_keys():
-			var rect := play.panel.row_for(key).control.get_global_rect()
+		for key: String in panel.setting_keys():
+			var rect := panel.row_for(key).control.get_global_rect()
 			var middle := rect.get_center() / size
 			var end := Vector2(rect.end.x - ARROW_INSET, rect.get_center().y) / size
 			spots.append("%s:%.4f,%.4f" % [key, middle.x, middle.y])

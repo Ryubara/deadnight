@@ -11,7 +11,9 @@ extends RefCounted
 ##   out of reach of any it must not fight);
 ## - `downed`: raise this one first, whatever the order of need says (`BotRevive.pinged`);
 ## - `door`: buy it when it can be paid, which the errands do (`BotErrands`);
-## - `ammo`: an ammunition spot, left to the shop errands for now.
+## - `ammo`: this is where to buy rounds: a bot that is low on rounds for a gun it carries goes to
+##   that locker next, in a lull, and buys there (`BotEconomy`, `BotErrands`); one that is not low
+##   ignores it.
 ##
 ## Pure functions of the frame's marks and the bot's beliefs.
 
@@ -63,6 +65,14 @@ static func downed(found: Array[Dictionary]) -> int:
 		if mark["kind"] == PingBoard.DOWNED:
 			return int(mark["subject"])
 	return 0
+
+
+## The ammunition spot a person marked, or `Vector3.INF` (the lowest seat's when several stand).
+static func ammo(found: Array[Dictionary]) -> Vector3:
+	for mark in found:
+		if mark["kind"] == PingBoard.AMMO and (mark["pos"] as Vector3).is_finite():
+			return mark["pos"]
+	return Vector3.INF
 
 
 ## The place this bot is sent to hold, or `Vector3.INF`: the bot nearest the mark of kind `here`
