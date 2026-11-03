@@ -1674,7 +1674,7 @@ thirty, so the pull decided nothing and the flight ran straight away from the pa
 whenever the pack stood between. A probe of the steering (a hall, a pack of 2, 4 and 8 on the person's side, 3 to 4 m off):
 a flat pull of 8 turns the flight for 2 dead and not for 4 or 8; the pull must grow with the number of dead.
 
-**Fix.** `BotFightBrain.far_bend(distance, felt)`: under the order Follow the retreat's pull is `HOME_BEND` up to 16 m
+**Fix.** `BotRetreat.far_bend(distance, felt)`: under the order Follow the retreat's pull is `HOME_BEND` up to 16 m
 from the person and grows to `FAR_BEND` (4) for each dead felt (the steering looks at eight at most, so 32) at 36 m. The
 steering's own rule stays the guard: a heading that closes on the dead is never taken, so the pull only turns the flight
 round the pack (a pack straight between the bot and the person is circled, not run into), and the pack is led to the
