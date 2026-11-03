@@ -13,6 +13,11 @@ const ROAM_SPACING := 5.0
 ## Fills `level` from `world`. With the rules' `tuning` the bots also get the shop (`shop`): a level
 ## made without it is one whose bots do no errands (the suites that measure the fight alone).
 static func fill(level: BotLevel, world: NightWorld, tuning: RulesTuning = null) -> void:
+	# What a body is stopped by: the walls, and the boards across a breach (a shot goes through them).
+	level.walk_probe = WorldProbe.new(
+		world.get_world_3d().direct_space_state, WorldProbe.WORLD_MASK | Barricade.BOARD_LAYER
+	)
+	level.walk = (level.walk_probe as WorldProbe).static_callable()
 	level.home = Autopilot.HOME
 	level.breaches = world.repair_points()
 	level.loops = loops(world.greybox)

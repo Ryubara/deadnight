@@ -25,6 +25,13 @@ const LOOP_REACH := 6.0
 
 ## `Callable(from: Vector3, to: Vector3) -> float`: metres to the first wall on the way, or -1.0.
 var sight: Callable = Callable()
+## `Callable(from: Vector3, to: Vector3) -> float`: metres to the first thing a body cannot walk
+## through on the way, or -1.0. It sees what `sight` does and the boards across a breach, which a
+## shot passes and a person does not, and the walking mesh does not know. Empty for a level whose
+## paths are not checked (`BotPath`).
+var walk: Callable = Callable()
+## What `walk` calls, held here: a Callable does not keep its RefCounted alive.
+var walk_probe: RefCounted
 ## `Callable(point: Vector3) -> bool`: whether the ground there is lit.
 var lit: Callable = Callable()
 ## The rounds table: how dark the night is in each round (`ambient_for_round`).
@@ -77,6 +84,12 @@ func clear(from: Vector3, to: Vector3) -> bool:
 
 
 # --- The walking mesh and the lot's shape, for a bot's feet ---
+
+
+## Metres from `from` to the first thing a body cannot walk through on the way to `to`, or -1.0
+## when the way is open (or nothing says).
+func walk_hit(from: Vector3, to: Vector3) -> float:
+	return float(walk.call(from, to)) if walk.is_valid() else -1.0
 
 
 ## The closest point on the walking mesh, or `point` when there is no mesh to ask.
