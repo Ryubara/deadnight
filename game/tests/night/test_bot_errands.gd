@@ -105,18 +105,19 @@ func test_a_bot_with_the_price_walks_to_the_first_door_and_buys_it() -> void:
 	night.dispose()
 
 
-func test_a_bot_in_the_ticket_plaza_buys_the_tonic_at_its_machine_and_stays_inside() -> void:
+func test_a_bot_in_the_ticket_plaza_buys_the_holster_at_its_machine_and_stays_inside() -> void:
 	# The road door's area is the plaza and nothing past it (#686): the bot's way to the machine at
 	# the south wall is the lot's mesh, and no tick of the walk is past the wall.
 	var profile := BotProfile.regular()
-	profile.shopping.assign([&"tonic_hearty"])
+	# The plaza's machine is the Third Holster (#687), the dearest perk.
+	profile.shopping.assign([&"tonic_third_holster"])
 	var night := await _night(0, 1, profile)
 	await _open(night, DOORS)
 	await night.settle(SETTLE_FRAMES * 4)
 	# The plaza is lit by the back lot's circuit; with it on the bot has no breaker to go and throw.
 	for circuit in [&"concession", &"booth", &"back_lot"]:
 		night.server.rules.apply(RulesAction.set_circuit(circuit, true))
-	_give(night, 1, 3000)
+	_give(night, 1, 6000)
 	var machine := Vector3(0.0, 0.0, 56.0)
 	var start := NavigationServer3D.map_get_closest_point(night.world.map(), Vector3(-10, 0, 45))
 	assert_float(start.z).override_failure_message("no plaza in the mesh: %s" % start).is_greater(
@@ -129,7 +130,7 @@ func test_a_bot_in_the_ticket_plaza_buys_the_tonic_at_its_machine_and_stays_insi
 		60.0,
 		func() -> bool:
 			farthest = maxf(farthest, night.server.body_of(1).global_position.z)
-			return night.server.rules.players[1].tonics.has(&"tonic_hearty")
+			return night.server.rules.players[1].tonics.has(&"tonic_third_holster")
 	)
 	assert_float(took).is_greater(0.0)
 	var at := night.server.body_of(1).global_position
