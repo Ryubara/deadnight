@@ -401,6 +401,9 @@ What it says:
   14) and the headliner's health (x16.25 to x15, the boss at 92%: its time 29.8 s). Both are in `default_tuning.tres`;
   the bots' risk table (`bot_revive_risk.gd`) follows the boss. The maintainer's decision of the strong solo ceiling
   (19) is in `BalanceTargets`; the cell read 18, so it is headroom.
+- **Box only** (the maintainer's rule, #858: a wall sells only the weaker guns): the pump, MP5 and M4A1 have no wall on
+  either map. The simulator's players never bought the walls (they reach the guns through the box), so every number above
+  is the shipped shop's; the gate was read again after the walls were taken out and is the same.
 - **Not modelled**: the .50's and the M249's piercing, the M249's wider shot on the move, the pump's interrupted reload
   (the simulator reloads a pump when it is empty, the 2.8 s of its definition).
 
