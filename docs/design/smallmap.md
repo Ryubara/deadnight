@@ -177,11 +177,14 @@ back is one more row in this overlay plus its marker in the scene.
 ### Floors for the dead
 
 The dead were flat before this map: a zombie kept the height it spawned at, struck at the flat distance and weighed
-players by it. On a map that declares a storey (`metadata/storey`) `ZombieSim` now follows the walking mesh up and down
-its stairs (its path points less the baker's 0.35 m lift), weighs a player on another floor by three metres of walking
-a metre of height, and swings only at a target within half a storey in height and with no wall between them (a ray at
-1.3 m, over the counter and the racks; on a stair beside a wall the dead had struck through it). A press reaches only
-the doors, spots and boards on the player's floor. The lot (storey 0) is untouched; `test_zombie_storeys.gd` holds both.
+players by it. On a map that declares a storey (`metadata/storey`) `ZombieSim` now follows the walking mesh up and
+down its stairs (its path points less the baker's 0.35 m lift), weighs a player on another floor by three metres of
+walking a metre of height, and swings only at a target within half a storey in height and with no wall between them (a
+ray at 1.3 m, over the counter and the racks; on a stair beside a wall the dead had struck through it). The ray looks
+at walls only (`WorldProbe.static_callable`): it used to end on the player's own body, so the dead began a swing at
+0.9 m and not at their 1.4 m reach and landed 40% of them where the lot's land 73% (#764; the numbers are on the
+research page). A press reaches only the doors, spots and boards on the player's floor. The lot (storey 0) is
+untouched; `test_zombie_storeys.gd` holds both.
 
 ### What a night reads from a map scene
 
@@ -209,8 +212,9 @@ foot, not the flat-nearer stand it would reach only by going round the whole map
 `tests/captures/smallmap_bot_night.tscn` plays a night of hosted bots to a round and prints the numbers (`--bots`,
 `--rounds`, `--seed`, `--open=all` to sell the links first, `--trace`); the numbers and what they showed are
 [the research page](../research/maps/small-map-play.md). In seven long nights (one bot, four bots, and four with every
-link sold first) **round 10 was reached in all seven and cleared in five**; the first link was bought in round 1, the
-first stair by round 3, all twelve windows were torn, and the most dead at once was 22. `test_smallmap_bot_night.gd`
+link sold first) **round 10 was reached in all seven and cleared in three** (before the dead's swing check stopped
+meeting the player's body it was five: #764); the first link was bought in round 1, the first stair by round 2, all
+twelve windows were torn, and the most dead at once was 20. `test_smallmap_bot_night.gd`
 plays a short night of one and of four in the tests; `test_smallmap_economy.gd`, `_links.gd`, `_buys.gd` and
 `_windows.gd` pin rows 20 to 26 and every link, buy and window; the shoulder-camera captures are on the pull request.
 

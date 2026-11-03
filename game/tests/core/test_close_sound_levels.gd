@@ -23,6 +23,21 @@ const RESAMPLING_DB := 1.0
 ## The decode rate; the highest sample of a file does not depend on it to within a fraction of a dB.
 const RATE := 48000
 const SLOW_GUNS: Array[String] = ["flare_gun"]
+## The night's beds in LUFS (`docs/research/gun-audio.md`), what a loudest 400 ms is read against.
+const BEDS_LUFS := -35.3
+## The sounds whose files are limited in their recipe (`tools/audio/limiter.py`, #762): a crack
+## 20 dB over its body left them 5 to 10 LU over the beds once held under the room (-9.8 dBFS).
+const SHARP_SOUNDS: Array[StringName] = [
+	&"board_tear", &"board_last", &"board_repair", &"door_open", &"debris_clear"
+]
+## At least this many LU over the beds in the loudest 400 ms, 1.2 m from the listener (5 to 10
+## before the limiter, 10.4 to 13.7 now; the dead's voices are 13 to 20).
+const SHARP_MIN_LU_OVER_BEDS := 10.0
+## The most a sharp file's highest sample may be over its loudest 400 ms (RMS), dB: the files were
+## 15 to 23 before the limiter, and are 12.6 to 16.6 now.
+const SHARP_MAX_CREST_DB := 17.5
+## A loudness window, seconds (the momentary loudness of EBU R128).
+const LOUD_WINDOW := 0.4
 
 var _table: Dictionary
 var _close_ids: Array[StringName] = []
@@ -53,18 +68,37 @@ func _ceiling_db(def: SoundDef) -> float:
 	return AudioService.ENGINE_MAX_DB
 
 
-## The highest sample of a decoded file, dBFS.
-func _file_peak_dbfs(path: String) -> float:
+## A file decoded to frames at `RATE`.
+func _decode(path: String) -> PackedVector2Array:
 	var ogg := load(path) as AudioStream
 	var playback := ogg.instantiate_playback()
 	playback.start(0.0)
-	var frames: PackedVector2Array = playback.mix_audio(
-		1.0, ceili(ogg.get_length() * RATE) + RATE / 20
-	)
+	return playback.mix_audio(1.0, ceili(ogg.get_length() * RATE) + RATE / 20)
+
+
+## The highest sample of a decoded file, dBFS.
+func _file_peak_dbfs(path: String) -> float:
 	var peak := 0.0
-	for frame in frames:
+	for frame in _decode(path):
 		peak = maxf(peak, maxf(absf(frame.x), absf(frame.y)))
 	return linear_to_db(peak)
+
+
+## How far a file's highest sample is over its loudest 400 ms (RMS), dB.
+func _file_crest_db(path: String) -> float:
+	var frames := _decode(path)
+	var window := mini(frames.size(), int(LOUD_WINDOW * RATE))
+	var sums := PackedFloat64Array()
+	sums.resize(frames.size() + 1)
+	var peak := 0.0
+	for i in frames.size():
+		var f := frames[i]
+		peak = maxf(peak, maxf(absf(f.x), absf(f.y)))
+		sums[i + 1] = sums[i] + 0.5 * (f.x * f.x + f.y * f.y)
+	var loudest := 0.0
+	for i in range(window, frames.size() + 1):
+		loudest = maxf(loudest, sums[i] - sums[i - window])
+	return linear_to_db(peak) - 10.0 * log(loudest / window) / log(10.0)
 
 
 func test_the_room_is_what_the_loudest_gun_at_its_peak_leaves() -> void:
@@ -134,3 +168,42 @@ func test_a_measured_peak_is_no_louder_than_the_loudest_file_at_its_ceiling() ->
 			)
 			. is_less_equal(possible)
 		)
+
+
+func test_the_sharp_sounds_have_a_limited_crack_in_their_files() -> void:
+	for id in SHARP_SOUNDS:
+		var def := SoundCatalog.get_def(id)
+		for variant in range(1, def.variants + 1):
+			var crest := _file_crest_db(def.path_for(variant))
+			(
+				assert_float(crest)
+				. override_failure_message(
+					(
+						"%s file %d has its highest sample %.1f dB over its loudest 400 ms: limit it in its recipe"
+						% [id, variant, crest]
+					)
+				)
+				. is_less_equal(SHARP_MAX_CREST_DB)
+			)
+
+
+func test_the_sharp_sounds_stay_over_the_beds_close_up() -> void:
+	for id in SHARP_SOUNDS:
+		var over: float = float(_table[String(id)]["close_lufs"]) - BEDS_LUFS
+		(
+			assert_float(over)
+			. override_failure_message(
+				(
+					"%s is %.1f LU over the beds in its loudest 400 ms close up, under %.1f"
+					% [id, over, SHARP_MIN_LU_OVER_BEDS]
+				)
+			)
+			. is_greater_equal(SHARP_MIN_LU_OVER_BEDS)
+		)
+
+
+func test_a_board_torn_is_the_loudest_of_the_boards_close_up() -> void:
+	# As it was when #753 took the peaks down: the torn board over the last one over the hammered one.
+	var tear: float = _table["board_tear"]["close_lufs"]
+	assert_float(tear).is_greater(float(_table["board_last"]["close_lufs"]))
+	assert_float(tear).is_greater(float(_table["board_repair"]["close_lufs"]))

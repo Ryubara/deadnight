@@ -30,3 +30,8 @@ Close sounds (#753): `close_levels.py` reads a run of the same capture with `--o
 listener, where the player's `max_db` holds the level) and prints each sound's ceiling, its highest sample and its
 loudest 400 ms; `--table game/tests/core/close_sound_levels.json` writes the table `test_close_sound_levels.gd` pins.
 `docs/research/gun-audio.md#close-sounds-under-gunfire` has the rule and the numbers.
+
+Sharp sounds (#762): `limiter.py` is a look-ahead peak limiter with a smooth gain curve for recipes (`limit_crest(x,
+crest_db)` holds the highest sample `crest_db` over the loudest 400 ms); the boards, the door and the debris blocker end
+their recipes with it, their `peak_db` lowered and `near_cap_db` raised by what it took off, so a close sharp sound is
+louder at the same peak (the web build ignores a bus limiter). `docs/research/gun-audio.md#the-sharp-sounds-limited-in-their-recipe-762`.
