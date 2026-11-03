@@ -4,8 +4,9 @@ extends Node
 ## `PlayerAnimation`) from a hold made here (`HOLDS`, the plan's numbers), beside catalogue weapons
 ## equipped the normal way, from the side (third person), the player's shoulder camera, behind, and
 ## close on each hand, at the hip, aimed and running; then `parts` with each moving node moved off
-## its rest. Not a test. Run with Movie Maker; each view lasts SHOT_FRAMES and prints
-## `SHOT <weapon> <pose> <view> <frame>` for its last frame, the one to keep:
+## its rest, and `recut` in the re-cut skin (#787). Not a test. Run with Movie Maker; each view
+## lasts SHOT_FRAMES and prints `SHOT <weapon> <pose> <view> <frame>` for its last frame, the one
+## to keep:
 ##
 ##     gds godot -- --path game --write-movie <abs>/held.png --fixed-fps 10 --quit-after N \
 ##         res://tests/captures/model_hold_sheet.tscn [-- --only=m249,smg] [--views=side,shoulder]
@@ -21,7 +22,7 @@ const SHOULDER_PITCH := -0.3
 const SOLDIER_SCALE := 0.8
 ## A model with no hold file yet: its hold, from docs/research/weapon-models.md (model units,
 ## Godot's axes: x along the gun, y up). `grip_offset` puts the butt at the shoulder: the butt's
-## distance behind the grip in the game and 5-6 cm, as the Tommy gun's and the double's are.
+## distance behind the grip in the game and 5 cm, as the Tommy gun's is.
 const HOLDS := {
 	"m249":
 	{
@@ -72,6 +73,7 @@ const SHOTS := {
 	"aim": ["side", "shoulder", "rear", "right", "front"],
 	"run": ["side"],
 	"parts": ["side"],
+	"recut": ["side", "right"],
 }
 ## Each moving node's way off its rest for `parts` (model units, Godot's axes; degrees about z).
 const MOVES := {
@@ -199,6 +201,17 @@ func _move_parts() -> void:
 		part.transform = Transform3D(turned, rest.origin + move.get("slide", Vector3.ZERO))
 
 
+## Every moved part back at its rest.
+func _rest_parts() -> void:
+	var weapon := _animation.weapon()
+	if weapon == null:
+		return
+	for node_name: String in MOVES:
+		var part := weapon.find_child(node_name, true, false) as Node3D
+		if part != null and part.has_meta("rest"):
+			part.transform = part.get_meta("rest")
+
+
 func _bone(name: String) -> Vector3:
 	return (
 		_skeleton.global_transform
@@ -244,10 +257,12 @@ func _begin(step: Array, index: int) -> void:
 		_player.camera_rig.pitch = SHOULDER_PITCH
 		if index == 0 or _steps[index - 1][0] != weapon or pose == "idle":
 			_hold(weapon)
+		_rest_parts()
+		_animation.set_recut(pose == "recut")
 		match pose:
 			"run":
 				Input.action_press("move_forward")
-			"aim", "parts":
+			"aim", "parts", "recut":
 				Input.action_press("aim")
 	match step[2]:
 		"side":
