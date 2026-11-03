@@ -145,6 +145,16 @@ generator writes), and a navigation agent as wide as the shoulder camera must re
 Where the arm shortens (the generator cage, which is 2.4 m deep between its opening and the generator; the ramp's
 foot, 2.3 m from the north wall) the spring arm pulls the camera in: that is the arm doing its job, not clipping.
 
+## Slots a body wedges in
+
+A gap narrower than a body but wider than a seam is a trap: a bot (or a person) that is pushed in cannot walk out. The
+soda fountain's hidden block stopped 0.4 m short of the stand's east wall, and a bot sat in that slot for most of a soak
+(#615). `test_lot_gaps.gd` reads every collision box and cylinder of the lot as a shape on the ground and fails on any
+two box faces that face each other for 0.5 m or more at 0.24 m up to a body's width (0.7 m), unless another collider
+stands between them (a roof, 1.75 m up and more, and a kerb under 0.4 m are walked under or over). A prop that stands
+near a wall or a fence is placed touching it or a body's width off, never in between. The scan found twelve such slots
+(the fountain, an ammo locker, five dressing boxes, a rack, four tyre stacks) and the generator now closes them.
+
 ## Choke points
 
 | Where | Width | What it does |
