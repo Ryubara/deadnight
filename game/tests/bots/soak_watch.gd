@@ -75,6 +75,11 @@ var _spread_sum := 0.0
 var _spread_n := 0
 var _doors: Array[StringName] = []
 var _round_marks: Dictionary = {}
+## By round: the damage the bots took, the downs, and what the bots carried when it began, so a
+## night is read round by round against the simulator's own (`damage`, `died_in`).
+var _round_damage: Dictionary = {}
+var _round_downs: Dictionary = {}
+var _round_kit: Dictionary = {}
 
 
 func _init(p_night: SeatedNight, p_people: Array[int], p_order: StringName) -> void:
@@ -146,10 +151,16 @@ func hear(event: Dictionary) -> void:
 					_tally(killer)["kills"] += 1
 		&"player_downed":
 			_tally(event["player_id"])["downs"] += 1
+			var down_round: int = night.server.rules.round_number
+			_round_downs[down_round] = int(_round_downs.get(down_round, 0)) + 1
 		&"player_died":
 			_tally(event["player_id"])["deaths"] += 1
 		&"player_hurt":
 			_tally(event["player_id"])["damage_taken"] += float(event["damage"])
+			var hurt_round: int = night.server.rules.round_number
+			_round_damage[hurt_round] = (
+				float(_round_damage.get(hurt_round, 0.0)) + float(event["damage"])
+			)
 		&"player_revived":
 			var reviver := int(event.get("reviver_id", 0))
 			if reviver > 0:
@@ -170,6 +181,7 @@ func hear(event: Dictionary) -> void:
 			_doors.append(event["door_id"])
 		&"round_started":
 			_round_marks[event["round"]] = float(night.server.tick_count) / 60.0
+			_round_kit[event["round"]] = _kit()
 
 
 ## An action a bot sent (`SeatedNight.on_action`): the same command as the one before, or not.
@@ -228,6 +240,25 @@ func tick() -> void:
 		for j in range(i + 1, places.size()):
 			_spread_sum += Vector2(places[i].x - places[j].x, places[i].z - places[j].z).length()
 			_spread_n += 1
+
+
+## What the bots carry now: the guns each holds (sorted, joined) and the points of all of them.
+func _kit() -> Dictionary:
+	var guns: Array[String] = []
+	var points := 0
+	for bot in night.host.bots:
+		var id := bot.state.player_id
+		if people.has(id):
+			continue
+		points += night.server.rules.points_of(id)
+		var arms: Dictionary = night.frame.get("players", {}).get(id, {}).get("arms", {})
+		var names: Array[String] = []
+		for weapon: StringName in arms:
+			names.append(String(weapon))
+		names.sort()
+		guns.append("+".join(names))
+	guns.sort()
+	return {"guns": guns, "points": points}
 
 
 func _humans_up() -> Array[Vector3]:
@@ -484,6 +515,9 @@ func report() -> Dictionary:
 		"denial_loops": _loops,
 		"spread": snappedf(_spread_sum / maxf(float(_spread_n), 1.0), 0.1),
 		"round_marks": _round_marks,
+		"round_damage": _round_damage,
+		"round_downs": _round_downs,
+		"round_kit": _round_kit,
 		"end": _end_state(),
 		"bots": bots,
 	}

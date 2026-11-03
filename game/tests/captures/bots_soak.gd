@@ -18,7 +18,9 @@ extends Node
 ## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
 ## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
 ## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke) and
-## `--quiet` (no trace line a minute).
+## `--quiet` (no trace line a minute), `--tune=field=value,field=value` (profile fields set on top
+## of the shipped profile, for trying a tuning without editing the code between two runs of one
+## session; a list is `a|b|c`).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -198,12 +200,36 @@ func _print_seat(night: SeatedNight, id: int, ticks: int) -> void:
 
 
 func _profile() -> BotProfile:
+	var profile := BotProfile.regular()
 	match String(_args.get("profile", "regular")):
 		"rookie":
-			return BotProfile.rookie()
+			profile = BotProfile.rookie()
 		"veteran":
-			return BotProfile.veteran()
-	return BotProfile.regular()
+			profile = BotProfile.veteran()
+	for pair in String(_args.get("tune", "")).split(",", false):
+		var parts := pair.split("=", true, 1)
+		if parts.size() == 2:
+			_tune(profile, parts[0], parts[1])
+	return profile
+
+
+## Sets one profile field from its text, by the type the field already has.
+func _tune(profile: BotProfile, field: String, text: String) -> void:
+	var current: Variant = profile.get(field)
+	match typeof(current):
+		TYPE_INT:
+			profile.set(field, int(text))
+		TYPE_FLOAT:
+			profile.set(field, float(text))
+		TYPE_BOOL:
+			profile.set(field, text == "true")
+		TYPE_ARRAY:
+			var names: Array[StringName] = []
+			for part in text.split("|", false):
+				names.append(StringName(part))
+			profile.set(field, names)
+		_:
+			push_error("--tune: no field %s on the profile" % field)
 
 
 func _parse_args() -> Dictionary:
