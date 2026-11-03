@@ -939,7 +939,8 @@ def build() -> None:
     wall(yard, "CageS", "x", 21, 36, 44, 3.0, "yard_wall")
     wall(yard, "CageW", "z", 36, 15, 21, 3.0, "yard_wall", [(18, REAR_EXIT, 0, 2.4)])
     wall(yard, "CageE", "z", 44, 15, 21, 3.0, "yard_wall", [(18, REAR_EXIT, 0, 2.4)])
-    box(yard, "Generator", (3.2, 1.8, 1.6), (40, 0.9, 18), "yard_gen")
+    # The generator's block: hidden, its collision only; the generator set (drivein_props, `GeneratorSet`) is drawn.
+    box(yard, "Generator", (3.2, 1.8, 1.6), (40, 0.9, 18), "yard_gen", visible=False)
     for i, ty in enumerate((6, 12)):
         node(
             f"FuelTank{i + 1}", "CSGCylinder3D", yard,
@@ -951,6 +952,15 @@ def build() -> None:
     for i, (lx, lz) in enumerate([(35, 12), (45, 12), (35, 24), (45, 24)], start=1):
         instance(yl, f"WorkLamp{i}", "lamp", (lx, 0, lz))
     omni(yl, "GeneratorGlow", (40, 2.4, 18), 1.4, 8, "#f0e26a")
+    # The generator's running light and panel lamps burn with its glow (ModelGlow): `mains` follows the tank, so they
+    # are steady while it is healthy, flicker in the brown-out and go dark when it is dry. Its halo (1.6 m) sits round
+    # the beacon 4.68 m up, so its lowest edge (3.88 m) stays over the cage's 3.0 m walls from every side.
+    node(
+        "GeneratorSetGlow", "Node3D", yl,
+        {"script": 'ExtResource("model_glow")', "light_path": 'NodePath("../GeneratorGlow")',
+         "model_path": 'NodePath("../../GeneratorSet")', "amber_energy": "1.6", "cream_glow": "0.25",
+         "steady": "true", "halo_size": "1.6", "halo_at": "Vector3(0.6, 4.68, 0)", "halo_energy": "1.2"},
+    )  # fmt: skip
     yz = group("ZombieSpawns", yard)
     marker(yz, "SpawnNE", (60, 0, -2))
     marker(yz, "SpawnSE", (60, 0, 36))
