@@ -134,8 +134,9 @@ func test_a_teammate_at_the_edge_of_the_rule() -> void:
 
 
 func test_the_safe_distances_keep_a_blast_from_reaching_anyone() -> void:
-	# A blast hurts a player all the way out to its radius (`PlayerBlast`), so the bot's distances
+	# A blast hurts its thrower all the way out to its radius (`PlayerBlast`), so the bot's distances
 	# are where it takes under a tenth of the health: held to the real curve, not a number to tune.
+	# (A teammate takes nothing, #856; the teammate distance stays for now, see the grenades page.)
 	var grenadier := BotGrenadier.new(_level())
 	var harmless := grenadier.harmless_apart()
 	assert_float(BotGrenadier.SAFE_FROM_SELF).is_greater_equal(harmless)

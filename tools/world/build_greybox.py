@@ -69,6 +69,10 @@ MIDWAY_LINK_Z = 20.0
 # The lot's outer walls are higher than the tallest platform beside them (a car roof, 1.65 m) plus a full jump (the
 # player's 1.1 m, PlayerTuning.jump_height) plus a margin, so nobody leaves the map from a roof (docs/design/map.md).
 PERIMETER_H = 3.0
+# The midway's fences and alley ends are as high: a prop beside them (the alley's dumpster, 1.62 m) plus the 1.25 m the
+# real body climbs (`tools/world/ledge_probe.gd`: the jump is 1.1 m, the step-up and the capsule's foot add the rest) is
+# 2.87 m, so the old 2.6 m was a stair into the back lot and onto the wall (#846). The doors' slabs stay 2.6 m.
+MIDWAY_FENCE_H = PERIMETER_H
 # The plaza's end and side walls stand higher still (#845). The lot's junk is stacked against them (a small container,
 # 1.71 m, in the south-west corner), and the real body climbs 1.25 m, not the jump's 1.1 (docs/research/map-review.md):
 # from the container's top a 3.0 m wall was 1.29 m up, a sprint-jump over its corner. 4.2 m is the tallest prop plus
@@ -159,6 +163,12 @@ FIELD_LAMPS = [
     (-56.5698, -0.03959632, -6.20401),
     (22.056038, 0, -8.007768),
 ]
+# The six lamps over the breach aprons (`Lamp18` to `Lamp23`, 0.5 m from each zombie spawn, #703) burn dim: the
+# breach reads, so the dead are seen coming, without the dead arriving in a spotlight (the maintainer's, #850).
+# This is the share of a post's light (its omni light, lens, halo and pool) they give; `tests/world/test_apron_lamps.gd`
+# holds it. The rules' reach (`LightTuning.lamp_reach`, 6 m) is unchanged: the first 6 m of the dead's walk are lit.
+APRON_LAMPS = range(18, 24)
+APRON_LAMP_DIM = 0.4
 # The south fence leaves a wider opening between the field and the stand (the maintainer's, #703): it ends this far
 # from the middle on each side (the west piece at -16.2052, the east at 16.2051).
 FENCE_S_END = (-16.2052, 16.2051)
@@ -882,7 +892,8 @@ def build() -> None:
     lamps_f = lamps(field, "screen_lot")
     field_lamps_xz = [(x, z) for x, _, z in FIELD_LAMPS]
     for i, at in enumerate(FIELD_LAMPS, start=1):
-        instance(lamps_f, f"Lamp{i}", "lamp", at)
+        props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
+        instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
         override_light(f"{lamps_f}/Lamp{i}/Light")
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
@@ -958,10 +969,10 @@ def build() -> None:
     cut_tiles(mid, "Ground", MIDWAY_CUT_X, MIDWAY_CUT_Z, "midway_ground")
     floor_tiles(mid, "AlleyW", -16, -10, -4, 8, "midway_ground")
     floor_tiles(mid, "AlleyE", 10, 16, -4, 8, "midway_ground")
-    wall(mid, "FenceW", "z", -16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
-    wall(mid, "FenceE", "z", 16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
-    wall(mid, "AlleyEndW", "x", -4, -16, -10, 2.6, "midway_wall")
-    wall(mid, "AlleyEndE", "x", -4, 10, 16, 2.6, "midway_wall")
+    wall(mid, "FenceW", "z", -16, -4, 38, MIDWAY_FENCE_H, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
+    wall(mid, "FenceE", "z", 16, -4, 38, MIDWAY_FENCE_H, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
+    wall(mid, "AlleyEndW", "x", -4, -16, -10, MIDWAY_FENCE_H, "midway_wall")
+    wall(mid, "AlleyEndE", "x", -4, 10, 16, MIDWAY_FENCE_H, "midway_wall")
     # Dumpsters, crate stacks: the kit's props (lot_props.DRESSING).
     ml = lamps(mid, "concession")
     omni(ml, "Court", (-10, 3.6, 14), 1.2, 9, "#ffd9a0")

@@ -69,9 +69,10 @@ ROOMS = {
 }
 
 # The start room's counter: four pillars and a counter between them, 5 x 3.5 m, the thing a train runs round (row 8:
-# a 25 to 36 m loop). The counter is higher than a jump so nobody stands on it.
+# a 25 to 36 m loop). The counter is higher than the body climbs (1.25 m from a standing start, not the 1.1 m of the jump)
+# so nobody stands on it, where the dead cannot come within reach (#847).
 COUNTER = (5.5, 10.5, 4.5, 8.0)
-COUNTER_H = 1.2
+COUNTER_H = dress.COUNTER_TOP
 PILLAR = 0.5
 # The side room's racks: four pillars in a row 3 m apart joined by film racks (row 14: a 25 to 36 m loop).
 RACK_ROW = (4.6, 14.1, -4.3, -3.8)

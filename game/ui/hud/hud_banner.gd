@@ -35,6 +35,8 @@ var _age := 0.0
 var _hold := _t.banner_hold
 var _rank := Rank.AREA
 var _clock := 0.0
+## The bulbs' chase step the board was last drawn at (-1: draw at the next frame).
+var _drawn_phase := -1
 ## The last restore of a special round the banner showed (`HudState.special_restored`).
 var _restored_shown := 0
 
@@ -117,6 +119,7 @@ func show_banner(main: String, sub: String, rank: Rank, hold := -1.0) -> void:
 	_hold = hold if hold >= 0.0 else _t.banner_hold
 	_age = 0.0
 	showing = true
+	_drawn_phase = -1
 	var wanted := ROUND_SIZE if rank == Rank.ROUND else HudStyle.BIG
 	_title.add_theme_font_size_override(&"font_size", _fit_size(main, wanted))
 	_title.add_theme_color_override(
@@ -148,7 +151,12 @@ func advance(delta: float) -> void:
 		visible = false
 		return
 	_apply()
-	queue_redraw()
+	# The board is redrawn when the bulbs step on, not every frame: a redraw rebuilds every bulb's
+	# polygon in the renderer (#834).
+	var phase := 0 if UIMotion.reduced else int(_clock * CHASE)
+	if phase != _drawn_phase:
+		_drawn_phase = phase
+		queue_redraw()
 
 
 ## 0 to 1 how much of the banner shows: in, held, out.
