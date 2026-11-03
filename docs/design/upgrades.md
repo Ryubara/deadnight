@@ -67,8 +67,9 @@ tier]`, the second wire change of #281).
 
 ## What it asks of the rest
 
-- **Zombie health compounds at 7% a round** after round 8 (it was 5%), the genre's own order of magnitude, because
-  weapons now grow in a step. [The table](rounds.md#the-tuning-table) has the numbers.
+- **Zombie health compounds at 15% a round** after round 8 (7% when this page was written, 5% before,
+  [#745](rounds.md#the-headshot-retune-745)), the genre's own order of magnitude, because weapons now grow in a step.
+  [The table](rounds.md#the-tuning-table) has the numbers.
 - **The balance gate** plays the modelled players buying both ([balance simulator](../research/balance-simulator.md)):
   an average player saves for the re-cut after the wall weapons and the crane, re-cuts the weapon that kills most,
   then buys the tonic. The gate's ranges did not move, and a test fails the gate when the same shopping changes
@@ -76,3 +77,76 @@ tier]`, the second wire change of #281).
 - **The places** are the lot's, in [the map](map.md#shop-spots): the re-cut in the projection booth and the tonics at the
   concession's soda fountain and, until the perks of #687 give it its own, a second fountain in the ticket plaza behind
   the road door.
+
+## The re-cut plan for seventeen weapons (#785)
+
+**Planned, not built** (the build is [#794](https://github.com/Ryubara/deadnight/issues/794)). The research
+([the roster](../research/weapon-roster.md#the-upgrade-station-what-the-genre-does-and-what-ours-does)) found no reason
+to change the re-cut: it stays **1,500 points (+1,500 per weapon already re-cut), x1.75 damage, x1.5 magazine and
+reserve limit, filled, once a weapon**. What the plan adds is which weapons it goes on, what each one becomes, and the
+**elements**.
+
+- **Fourteen of the seventeen are re-cut**: the five that are now plus the nine new ones. `UpgradeTuning.weapons` (the list
+  `UpgradeTuning.allows` reads) gains `mp5`, `ppsh`, `m4a1`, `m249`, `fifty_cal`, `pump_870`, `dual_pistols`, `ray_gun`
+  and `freeze_gun`; without them the bench refuses them and the simulator never re-cuts them (the first run of the
+  research found it). The crowbar, the baseball bat and the fire axe have no magazine and are **not** re-cut, as
+  today; the quick melee is no weapon.
+- **The special effects go only to the weakest guns**, the maintainer's rule, and the genre's own (its start pistol, the
+  weakest weapon, is the one that gets explosive rounds, and nothing stronger does). "The weakest" is read off the kill
+  rate on round 15 with reloads and the head-shot rate there, after the re-cut ([the table](weapons.md#where-each-stands-against-the-others)):
+  the flare gun (no damage at all), the revolver, the pump 870 and the dual pistols are the four. **Every other weapon gets
+  the numbers only.**
+- **One element each, four in all**, no weapon gets two, a re-cut weapon shows its element (a tint of the
+  flash and the hit, the name "Re-Cut ..." as today) and the HUD card names it.
+
+### The four elements
+
+| Element | On | What a hit does (numbers on the re-cut hit `H`) | Why it is on this weapon |
+| --- | --- | --- | --- |
+| **Explosive rounds** | Revolver | every hit that lands bursts a **2.0 m blast** for 50% of `H` at the centre sliding to 25% at the edge, on the other zombies only (the one hit takes the hit alone, as the flare's burst does); **the interval goes from 0.28 s to 0.40 s** (the genre's explosive pistol fires slower); the shooter and teammates take nothing | the start weapon, the weakest firearm (57 a second on round 15): the genre's own explosive start pistol; the slower rate is its price, so the best re-cut in the simulator stays inside it |
+| **Shock** | Dual pistols | a hit **arcs to up to two other zombies within 3 m** for 50% of `H` each (an instant, one arc, no chain), shown as a blue-white line; the arc counts as a hit for pay | a box pair of small hits (29.75 re-cut): the arc turns two guns' rate into a crowd's |
+| **Fire** | Pump 870 | a hit sets the zombie **burning: 30 damage a second for 3 s** (90 in all), not stacking (a new hit restarts the 3 s); a zombie that burns dies on its own clock and pays its killer | the cheapest wall and the weakest late (84 a second on round 15): the 90 of burn finishes what a 231 shell leaves standing |
+| **Burning ground** | Flare gun | the burst leaves a **fire patch of 3 m radius** for the lure's whole time (`lure_seconds`, 8 s), **25 damage a second** to every zombie in it; the lure keeps the dead inside the fire | the flare does no damage at all (#439) and is the weakest weapon; the re-cut is its first reason to carry it into a late round |
+
+Elements are statuses the status system of [#788](https://github.com/Ryubara/deadnight/issues/788) already needs for the
+freeze: **burning** (a damage over time with a duration) is the one more it adds; the **blast** and the **arc** are
+instant extra hits made by the combat server on the hit's own event; the burning ground is a lure-like area
+(`lure_started` already carries the point, radius and seconds). None needs a new rules action: every damage is one more
+`hit` for the zombie it hits, so the pay and the rounds' health stay the rules'.
+
+### What each weapon becomes
+
+The re-cut hit, magazine and reserve (limit in brackets), and the shots to kill a round-15 zombie (282 health) on the
+body and on the head (all the pellets of a shell count as one pull). The first eight rows are the weapons as shipped; the
+simulator's worth of each is in [the research](../research/weapon-roster.md#what-a-weapon-is-worth-average-solo-150-nights-seed-1).
+
+| Weapon | Re-cut hit | Magazine | Reserve (limit) | Round 15, body / head | Element or special |
+| --- | ---: | ---: | --- | ---: | --- |
+| Revolver | 42 | 15 | 60 (120) | 7 / 3 | **explosive rounds** (0.40 s) |
+| Tommy gun | 24.5 | 45 | 180 (270) | 12 / 6 | numbers only |
+| Double-barrel | 38.5 x 8 | 3 | 24 (48) | 1 / 1 | numbers only: it is a close one-pull kill already |
+| Hunting rifle | 166 | 12 | 60 (120) | 2 / 1 | numbers only |
+| Flare gun | 0 | 2 | 9 (18) | none | **burning ground**; its damage multiplier stays nothing |
+| Crowbar, baseball bat, fire axe | 45, 60, 150 | none | none | | **not re-cut**: no magazine to grow (today's rule) |
+| MP5 | 26.25 | 45 | 180 (270) | 11 / 6 | numbers only |
+| PPSh | 17.5 | 75 | 150 (300) | 17 / 11 | numbers only: the drum is the re-cut |
+| M4A1 | 35 | 45 | 135 (225) | 9 / 5 | numbers only |
+| M249 | 26.25 | 150 | 225 (375) | 11 / 7 | numbers only: the long belt is the re-cut; the reload stays 5.0 s |
+| Fifty cal | 385 | 8 | 30 (60) | 1 / 1 | numbers only: a body kill to round 17 and a head kill to 22 |
+| Pump 870 | 38.5 x 6 | 9 | 63 (99) | 2 / 2 | **fire** |
+| Dual pistols | 29.75 | 36 | 108 (180) | 10 / 5 | **shock** |
+| Ray gun | 525, blast 280 | 15 | 60 (90) | 1 / 1 | numbers only: a body kill to round 19, a head kill to 22; the blast's 3.0 m does not grow |
+| Freeze gun | 52.5 | 9 | 36 (54) | none | numbers only, **and the freeze's one-bolt band grows from 10 rounds to 20** and the bloom from 2.2 m to 2.8 m (a wonder weapon's "more devastating effect", never an element) |
+
+- **Wonder weapons get no element**: the ray gun and the freeze gun are the strongest weapons and the rule keeps
+  elements for the weakest. Their re-cut is numbers, as the genre's (doubled damage, a bigger magazine).
+- **The numbers of the new weapons are re-cut like the old**: `WeaponDef.upgraded` multiplies the damage, the blast, the
+  magazine and the reserve of any definition, so the nine need no code for it; the elements are fields of the
+  definition (an `element`, its numbers) that `upgraded` switches on and the interval change of the revolver is one of
+  them.
+- **Worth keeping, measured**: in the simulator a re-cut MP5, M4A1 or M249 is worth 14.5 rounds to the average solo
+  player against 12.4 for the re-cut revolver, the ray gun 16.3, the dual pistols 13.8 and the PPSh 13.1
+  ([the table](../research/weapon-roster.md#what-a-weapon-is-worth-average-solo-150-nights-seed-1)). The simulator
+  does not model the elements; a weapon whose element is not measurable is held by the numbers above, not by the model.
+- **The cost does not change** with the roster: 1,500 for the first, then +1,500 each. A weapon given up loses its re-cut
+  (`recuts_lost`) and a fresh copy can be re-cut again at the stepped price.
