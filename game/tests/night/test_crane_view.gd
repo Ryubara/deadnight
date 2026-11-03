@@ -94,6 +94,26 @@ func test_a_breakdown_shows_the_dud_then_the_crane_moves_to_its_next_spot() -> v
 	night.queue_free()
 
 
+func test_the_cabinet_is_a_wall_in_the_world_and_moves_with_the_crane() -> void:
+	var night := await _start(true)
+	var block := night.world.crane_block
+	assert_int(block.spot()).is_equal(0)
+	var marker := _marker(night, 0)
+	var apart := Vector2(
+		block.global_position.x - marker["position"].x,
+		block.global_position.z - marker["position"].z
+	)
+	assert_float(apart.length()).is_equal_approx(CraneView.SET_BACK, 0.01)
+	# The drawing is not the wall: the prop has no collision of its own to differ between machines.
+	assert_array(night.view.crane.crane.find_children("*", "CollisionObject3D")).is_empty()
+	night.server.buy(1, &"crane_play")
+	NightFixture.run(night, SPIN_TICKS + 330)
+	var spot: int = night.server.rules.crane.spot
+	assert_int(spot).is_not_equal(0)
+	assert_int(block.spot()).is_equal(spot)
+	night.queue_free()
+
+
 func test_every_prize_the_crane_can_give_has_a_model_of_its_own() -> void:
 	var item := RulesFixture.tuning().economy.item(&"crane_play")
 	assert_array(item.pool).is_not_empty()

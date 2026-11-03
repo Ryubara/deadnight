@@ -22,6 +22,9 @@ func follow(frame: Dictionary) -> void:
 		return
 	for door_id: StringName in frame["doors"]:
 		_world.doors.open(door_id)
+	var crane: Dictionary = frame.get("crane", {})
+	if not crane.is_empty():
+		_world.crane_block.place(crane["spot"])
 	var barricades: Dictionary = frame["barricades"]
 	for id: Variant in barricades:
 		var key := StringName(id)
