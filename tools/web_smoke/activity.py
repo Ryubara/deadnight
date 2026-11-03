@@ -42,6 +42,19 @@ settles). `--invite-fails` makes `openInviteDialog` fail too. The run makes a ni
 the lobby's sentence and probe line until the client has answered (6 s after the press): the hint to pick who to send
 it to must show only while Discord has not refused, a refusal must say Discord opened nothing and point to Copy the
 code, and the probe line must carry Discord's answer.
+
+`--share --real-bridge [DIR]` runs the whole chain with nothing stubbed on the Activity's side (#627, which the stand-in
+clients above passed while the real press failed: they faked Discord's answers and so never met the one refusal that
+matters). DIR (default `deploy/web`) holds `discord-bridge.js` and `discord-share.js`; they are bundled with the real
+`@discord/embedded-app-sdk` by esbuild at the versions of `deploy/web/Dockerfile`, as the web image builds them. The page
+around the frame is `fake_discord_client.js`, a Discord client that refuses every command with RPC error 4006 ("Not
+authenticated or invalid scope", the frame the real client sent) until the Activity has run `authenticate` with the access
+token of its sign-in. The backend is a local one (`--local-backend`, DISCORD_MODE=stub: the code of AUTHORIZE is swapped
+for a token). `--host-mode strict` expects the share to go through (SDK frames: AUTHORIZE, AUTHENTICATE, SHARE_LINK; the
+lobby says it was sent); `reject-token` has the client refuse the token (4009) and `refuse-authorize` has it refuse the
+sign-in (the game plays as a guest): both must end with the lobby saying the Activity is not signed in with Discord, with
+Discord's 4006 and the sign-in state on the probe line. Pointed at the bridge of the commit before the fix, `strict`
+fails with the maintainer's own line: `error rpc 4006: Not authenticated or invalid scope`.
 """
 
 from __future__ import annotations
@@ -50,7 +63,13 @@ import argparse
 import datetime
 import gzip
 import json
+import os
+import re
+import secrets
+import shutil
+import socket
 import ssl
+import subprocess
 import sys
 import tempfile
 import threading
@@ -68,7 +87,8 @@ import smoke
 
 HOST = "123456.discordsays.com"
 # The page around the Activity (Discord's client): another origin, as the iframe the browser client makes.
-PARENT = "discord-client.example"
+# `discord.com`: one of the origins the Embedded App SDK takes messages from (the name only resolves in this browser).
+PARENT = "discord.com"
 PORT = 8443
 KINDS = {
     ".wasm": "application/wasm",
@@ -89,6 +109,10 @@ VIRTUAL_PAD = (
 # `deploy/web/discord-share.js` on a stand-in for the SDK (`SHARE_CLIENTS`): the harness runs the code that ships.
 SHARE_SOURCE = Path(__file__).resolve().parents[2] / "deploy" / "web" / "discord-share.js"
 SHARE_CLIENTS = ("shared", "closed", "refused", "error", "silent", "unreadable")
+HOST_MODES = ("strict", "reject-token", "refuse-authorize")
+REPO = Path(__file__).resolve().parents[2]
+FAKE_CLIENT = Path(__file__).with_name("fake_discord_client.js")
+HOST_WINDOW_MS = 3000  # how long the fake client's share window stays open before it reports a send
 BRIDGE_STUB = """
 import {{ makeShare }} from "./discord-share.js";
 const mode = {mode};
@@ -168,6 +192,90 @@ class Driver:
         self.evaluate = frame.evaluate
 
 
+def build_bridge(source: Path) -> bytes:
+    """`discord-bridge.js` of `source` bundled with the real SDK, as `deploy/web/Dockerfile` does (same versions)."""
+    dockerfile = (REPO / "deploy" / "web" / "Dockerfile").read_text(encoding="utf-8")
+    versions = re.search(r"@discord/embedded-app-sdk@([\w.-]+) esbuild@([\w.-]+)", dockerfile)
+    if not versions:
+        raise SystemExit("deploy/web/Dockerfile no longer names the SDK and esbuild versions the harness bundles with")
+    sdk, esbuild = versions.groups()
+    work = Path(tempfile.gettempdir()) / f"deadnight-bridge-{sdk}-{esbuild}"
+    work.mkdir(exist_ok=True)
+    npm, npx = shutil.which("npm"), shutil.which("npx")
+    if not npm or not npx:
+        raise SystemExit("--real-bridge needs node (npm and npx on the PATH)")
+    if not (work / "node_modules" / "@discord").is_dir():
+        subprocess.run(
+            [
+                npm,
+                "install",
+                "--no-save",
+                "--no-audit",
+                "--no-fund",
+                f"@discord/embedded-app-sdk@{sdk}",
+                f"esbuild@{esbuild}",
+            ],
+            cwd=work,
+            check=True,
+            timeout=300,
+        )
+    for name in ("discord-bridge.js", "discord-share.js"):
+        shutil.copyfile(source / name, work / name)
+    out = work / "discord-bridge.out.js"
+    subprocess.run(
+        [
+            npx,
+            "--no-install",
+            "esbuild",
+            "discord-bridge.js",
+            "--bundle",
+            "--format=esm",
+            "--target=es2022",
+            f"--outfile={out.name}",
+        ],
+        cwd=work,
+        check=True,
+        timeout=120,
+    )
+    return out.read_bytes()
+
+
+def start_local_backend() -> tuple[subprocess.Popen, str]:
+    """The platform backend (spikes/backend) on a free local port with the stub Discord sign-in: the code of the fake
+    client's AUTHORIZE (`stub:<id>:<name>:...`) is swapped for the access token `stub-access-<id>`."""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    env = {
+        **os.environ,
+        "DISCORD_MODE": "stub",
+        "ALLOW_STUB_SIGN_IN": "1",
+        "GUEST_SIGN_IN": "1",
+        "SESSION_SECRET": secrets.token_hex(24),
+        "TICKET_SECRET": secrets.token_hex(24),
+        "GAME_SERVER_SECRET": secrets.token_hex(24),
+        "HOST": "127.0.0.1",
+        "PORT": str(port),
+        "LOG_LEVEL": "warn",
+    }
+    env.pop("NODE_ENV", None)
+    node = shutil.which("node")
+    if not node:
+        raise SystemExit("--local-backend needs node on the PATH")
+    process = subprocess.Popen([node, "src/main.ts"], cwd=REPO / "spikes" / "backend", env=env)
+    url = f"http://127.0.0.1:{port}"
+    for _ in range(100):
+        try:
+            urllib.request.urlopen(f"{url}/health", timeout=1).read()
+            return process, url
+        except OSError:
+            if process.poll() is not None:
+                raise SystemExit("the local backend exited (did `npm ci --prefix spikes/backend` run?)")
+            time.sleep(0.2)
+    process.terminate()
+    raise SystemExit("the local backend never answered /health")
+
+
 def make_handler(
     web: str,
     backend: str,
@@ -179,6 +287,8 @@ def make_handler(
     fake_start: bool = False,
     share_client: str = "shared",
     invite_fails: bool = False,
+    bridge_js: bytes | None = None,
+    host_mode: str = "strict",
 ) -> type[BaseHTTPRequestHandler]:
     cache: dict[str, tuple[int, str, bytes]] = {}
     made: dict = {}  # the lobby the backend just made, for `fake_start`
@@ -200,18 +310,26 @@ def make_handler(
         def do_GET(self) -> None:
             self.serve()
 
-        do_POST = do_OPTIONS = do_GET
+        do_POST = do_PUT = do_OPTIONS = do_GET
 
         def serve(self) -> None:
             if self.headers.get("host", "").startswith(PARENT):
+                if self.path.startswith("/fake_discord_client.js"):
+                    return self.reply(200, "text/javascript", FAKE_CLIENT.read_bytes(), parent=True)
                 allow = {"gamepad": ' allow="gamepad"', "clipboard": ' allow="clipboard-read; clipboard-write"'}.get(
                     embed, ""
                 )
                 # A text box beside the frame that takes the keyboard focus back every 0.7 s, as a client that keeps it would.
+                host = (
+                    f"<script>window.discordHostOptions={json.dumps({'mode': host_mode, 'windowMs': HOST_WINDOW_MS})}</script>"
+                    '<script src="/fake_discord_client.js"></script>'
+                    if bridge_js is not None
+                    else ""
+                )
                 chat = '<input id="chat" autofocus style="display:block;margin:4px">' if parent_focus else ""
                 page = (
                     f'<!doctype html><body style="margin:0"><iframe src="{activity_url}" width="1280" height="720"{allow}>'
-                    f"</iframe>{chat}<script>window.onload=function(){{var c=document.getElementById('chat');if(c)setInterval(function(){{c.focus()}},700)}}</script>"
+                    f"</iframe>{chat}{host}<script>window.onload=function(){{var c=document.getElementById('chat');if(c)setInterval(function(){{c.focus()}},700)}}</script>"
                 )
                 return self.reply(200, "text/html", page.encode(), parent=True)
             size = int(self.headers.get("content-length") or 0)
@@ -220,7 +338,8 @@ def make_handler(
                 return self.api(body)
             path = self.path.split("?")[0]
             if path.endswith("discord-bridge.js"):
-                status, kind, content = 200, "text/javascript", bridge_stub(share_client, invite_fails)
+                content = bridge_js if bridge_js is not None else bridge_stub(share_client, invite_fails)
+                status, kind = 200, "text/javascript"
             elif path.endswith("discord-share.js"):
                 status, kind, content = 200, "text/javascript", SHARE_SOURCE.read_bytes()
             else:
@@ -509,6 +628,86 @@ def share_flow(page, frame, out: Path, mode: str, invite_fails: bool) -> tuple[l
     return lines, not failures
 
 
+SENT = "Sent through Discord."
+NOT_SIGNED_IN = "not signed in with Discord"
+
+
+def share_real_flow(page: Page, frame, out: Path, mode: str) -> tuple[list[str], bool]:
+    """The Activity as Discord's client sees it (`--real-bridge`): from the main menu to the voice channel's lobby,
+    Share in Discord pressed once, and the commands the fake client received are read back from its page."""
+    lines: list[str] = []
+    rooms.wait_for(frame, "the main menu, ready", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
+    rooms.wait_for(frame, "the voice channel's night ready", lambda s: s.get("activity_room") == "ready", 90)
+    page.mouse.click(5, 5)
+    page.wait_for_timeout(1500)
+    rooms.to_together(Driver(page, frame))
+    state = rooms.wait_for(
+        frame, "the lobby with its code", lambda s: s.get("screen") == "lobby_screen" and bool(s.get("room_code")), 60
+    )
+    code = state["room_code"]
+    page.wait_for_timeout(1500)
+    # The host's lobby has the rules panel (a row of options for each rule), which the keyboard walks through first.
+    focus_on(page, frame, "ShareDiscord", steps=40)
+    smoke.press(page, "Enter")
+    seen: list[tuple[float, str, str]] = []
+    started = time.monotonic()
+    final = ("shared", "closed", "refused", "unreadable")
+    while time.monotonic() - started < 15:
+        state = rooms.read_probe(frame)
+        says = state.get("share_says") or state.get("lobby_note", "")
+        line = state.get("share_line", "")
+        seen.append((time.monotonic() - started, says, line))
+        if any(line.startswith(f"share: {verdict}") for verdict in final) and "invite window: asking" not in line:
+            break
+        page.wait_for_timeout(250)
+    for at, says, line in seen[:: max(1, len(seen) // 6)] + seen[-1:]:
+        lines.append(f"after {at:.1f} s: the lobby says {says!r}; probe line {line!r}")
+    page.screenshot(path=out / f"share_real_{mode}.png")
+    host = page.evaluate("window.discordHost")
+    sent = [c["cmd"] for c in host["commands"]]
+    lines.append(
+        f"Discord's client received {sent}; authenticated {host['authenticated']}; refusals {host['refusals']}"
+    )
+    lines.append(f"authorize asked for {host['authorizedScopes']}; invite window opened {host['invited']} time(s)")
+    failures: list[str] = []
+
+    def check(ok: bool, what: str) -> None:
+        lines.append(f"{what}: {'ok' if ok else 'FAILED'}")
+        if not ok:
+            failures.append(what)
+
+    says_last, line_last = seen[-1][1], seen[-1][2]
+    check("SHARE_LINK" in sent, "the Activity asked Discord's client for the share window")
+    if mode == "strict":
+        check(
+            "AUTHENTICATE" in sent and sent.index("AUTHENTICATE") < sent.index("SHARE_LINK"),
+            "the Activity authenticated before it asked for the share window",
+        )
+        check(host["refusals"] == 0, "Discord's client refused nothing")
+        check(bool(host["shared"]) and code in host["shared"]["message"], "the client's window got the room's code")
+        check(says_last == SENT, "the lobby says it was sent through Discord")
+        check(
+            "sign-in: ok" in line_last and "success=true" in line_last, "the probe line has the sign-in and the answer"
+        )
+        check(
+            any(HINT in look[1] for look in seen), "the hint to pick who to send it to showed while the window was open"
+        )
+    else:
+        refused = "AUTHENTICATE" in sent if mode == "reject-token" else "AUTHENTICATE" not in sent
+        check(refused, "the Activity's sign-in went as the mode says")
+        check("error rpc 4006: Not authenticated or invalid scope" in line_last, "the probe line has Discord's 4006")
+        check(
+            NOT_SIGNED_IN in says_last and "Copy the code" in says_last,
+            "the lobby says the Activity is not signed in and points to Copy the code",
+        )
+        check(not any(HINT in look[1] for look in seen), "no hint to pick who to send it to after the refusal")
+        check(
+            "sign-in: failed (4009" in line_last if mode == "reject-token" else "sign-in: none" in line_last,
+            "the probe line says how the sign-in went",
+        )
+    return lines, not failures
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("web", help="folder with the export, or the URL of a deployed web build")
@@ -550,19 +749,54 @@ def main() -> int:
     parser.add_argument(
         "--share-client", choices=SHARE_CLIENTS, default="shared", help="how the stand-in client answers shareLink"
     )
+    parser.add_argument(
+        "--real-bridge",
+        nargs="?",
+        const=str(REPO / "deploy" / "web"),
+        metavar="DIR",
+        help="with --share: run the real bridge and SDK (see the top of this file) from DIR (default deploy/web)",
+    )
+    parser.add_argument(
+        "--host-mode", choices=HOST_MODES, default="strict", help="with --real-bridge: how Discord's client behaves"
+    )
+    parser.add_argument(
+        "--local-backend",
+        action="store_true",
+        help="run spikes/backend with the stub Discord sign-in (backend argument: -)",
+    )
     parser.add_argument("--invite-fails", action="store_true", help="the stand-in client's openInviteDialog fails too")
     parser.add_argument("--pad", action="store_true", help="give the page a virtual gamepad (navigator.getGamepads)")
     parser.add_argument("--seconds", type=float, default=120.0, help="how long to wait for the night")
     parser.add_argument("--gpu", action="store_true", help="use the machine's Chrome and GPU")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    backend_process = None
+    bridge_js = None
+    if args.real_bridge:
+        if not args.share:
+            raise SystemExit("--real-bridge goes with --share")
+        bridge_js = build_bridge(Path(args.real_bridge))
+    if args.local_backend:
+        backend_process, args.backend = start_local_backend()
+    try:
+        return run(args, bridge_js)
+    finally:
+        if backend_process is not None:
+            backend_process.terminate()
+            backend_process.wait(timeout=20)
+
+
+def run(args: argparse.Namespace, bridge_js: bytes | None) -> int:
     log: list[str] = []
     stages: list[str] = []
     console: list[str] = []
     # One night for each run: a voice channel's night holds four, and earlier runs sit in the one of an old instance.
     instance = f"emu-{int(time.time())}"
     # The clipboard check starts on the main menu, as a player who made a night himself does: no instance to join.
-    instance_part = "" if (args.clipboard or args.share) else f"&instance_id={instance}"
+    # The real SDK needs an instance and a platform in the address, as Discord gives them.
+    instance_part = (
+        "" if ((args.clipboard or args.share) and bridge_js is None) else f"&instance_id={instance}&platform=desktop"
+    )
     activity_url = f"https://{HOST}/?frame_id=1{instance_part}&guild_id=1&channel_id=1"
     with tempfile.TemporaryDirectory() as folder:
         cert, key = self_signed(Path(folder))
@@ -576,9 +810,11 @@ def main() -> int:
                 args.embed,
                 activity_url,
                 args.parent_focus,
-                args.clipboard or args.share,
+                (args.clipboard or args.share) and bridge_js is None,
                 args.share_client,
                 args.invite_fails,
+                bridge_js,
+                args.host_mode,
             ),
         )
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -621,6 +857,21 @@ def main() -> int:
                         raise SystemExit(f"the parent page never showed the Activity's frame: {page.content()[:300]!r}")
                     page.wait_for_timeout(200)  # lets Playwright see the frame
                 frame = page.frames[1]
+            if args.share and bridge_js is not None:
+                try:
+                    lines, ok = share_real_flow(page, frame, args.out, args.host_mode)
+                except Exception:
+                    # What the page and the backend did up to the failure is the first thing to read.
+                    page.screenshot(path=args.out / "share_real_failed.png")
+                    (args.out / "console.txt").write_text(chr(10).join(console), encoding="utf-8")
+                    print(chr(10).join(log))
+                    raise
+                browser.close()
+                server.shutdown()
+                (args.out / "console.txt").write_text(chr(10).join(console), encoding="utf-8")
+                print(chr(10).join(log + lines))
+                print(f"share, real bridge ({args.host_mode}): {'held' if ok else 'FAILED'}")
+                return 0 if ok else 1
             if args.share:
                 lines, ok = share_flow(page, frame, args.out, args.share_client, args.invite_fails)
                 browser.close()

@@ -95,6 +95,7 @@ func sign_in(display_name: String = "") -> Dictionary:
 			var with_discord := await _call("POST", "/auth/discord", body, false)
 			if with_discord["ok"]:
 				_keep(with_discord["token"], with_discord["user"])
+				_authenticate_discord(str(with_discord.get("access_token", "")))
 				return with_discord
 	var answer := await _call("POST", "/auth/guest", {"name": display_name}, false)
 	if answer["ok"]:
@@ -237,6 +238,24 @@ func _discord_guild() -> String:
 		JavaScriptBridge.eval("window.deadnightDiscord ? window.deadnightDiscord.guildId : ''")
 	)
 	return raw if raw.is_valid_int() and raw.length() <= 20 else ""
+
+
+## Hands the player's own access token (the backend swapped the code for it) to the bridge, which
+## runs the SDK's `authenticate`: Discord's client refuses Share in Discord and every other
+## command with RPC error 4006 until the Activity has authenticated (#627). Nothing waits for the
+## answer; the bridge's share waits for it. The token is never printed.
+func _authenticate_discord(access_token: String) -> void:
+	if access_token == "" or not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval(
+		(
+			(
+				"window.deadnightDiscord && window.deadnightDiscord.authenticate"
+				+ " && window.deadnightDiscord.authenticate(%s)"
+			)
+			% JSON.stringify(access_token)
+		)
+	)
 
 
 ## The OAuth code the Discord bridge got from the Activity's `authorize()`: waits for it (the
