@@ -336,6 +336,17 @@ the end of the round, and it does not hold back from a revive that is safe.
 
 **A downed bot** waits for a human: it does not crawl (no mechanic), and its callout fires once.
 
+**Coming back for an unsafe body (#673).** A body judged `UNSAFE` (a pack, or one or two bosses whose kill time is 34 s
+and 67 s) sends nobody to the hold, and until #673 a bot that was not the last one up went on as before, so when the
+pack had gone the walk was longer than the clock had left (`LATE`). Now the nearest bot that is not the last one
+*stages* (`BotRevive.Mode.STAGE`): 14 m from the body (a walk of about 5 s of the 45), shooting the zombies nearest the
+body first, and the usual verdict, claim and hold take over the moment it is clear. A claimant on its way that has come
+no nearer than 0.5 m in 5 s is stuck (seed 7 of the soak: a bot three metres from a body with a zero wish held the claim
+for 30 s while the two others only covered): it gives the claim up and stays out of that body for 20 s. The revive soak
+prints a `BLEED` line for every body that bleeds out: per bot the seconds by reason and mode over the whole fall
+(`unsafe/STAGE`, `late/NONE`, `claim_lost/COVER`...), the closest it came, and its last account (why, verdict, how many
+zombies and the kill seconds, distance, claim). Measure: [the numbers](#revive-return-soak-673).
+
 ## Team roles and communication
 
 **Roles are stances, not classes**, reassigned by utility every few seconds and sticky for at least 10 s:
@@ -1098,3 +1109,43 @@ the scratch folder of the task, not in the repository.
 The two gates still open on #564 need a quiet machine to settle: stuck under 1% per seed needs several batches of each
 setup to see a change smaller than the noise, and the think p99 read 1 to 14 ms in these runs because other agents
 were running. Measure both with nothing else running.
+
+## Revive return soak (#673)
+
+Two parts, measured differently.
+
+**The scenarios** (`tests/bots/test_bot_revive_return.gd`, the bots' beliefs on a clock with walking bots, so a rule is
+the only difference between two runs). A person lies by a pack of 14 (`UNSAFE`), two bots stand 45 m off, the pack
+goes at a given second of the 45 s clock:
+
+| Pack goes at | Raised at, rules off | Raised at, staging on |
+| --- | --- | --- |
+| 30 s | 42.3 s | 36.3 s |
+| 32 s | never (bled out) | 38.3 s |
+| 34 s | never | 40.3 s |
+| 36 s | never | 42.3 s |
+| 38 s | never | 44.3 s |
+| 40 s | never | never |
+
+Staging moves the last second a pack can go and still leave a body to raise from between 30 s and 32 s
+to between 38 s and 40 s. A stuck claimant
+(nearer the body, its position never changes; the bot behind it is not 2 m nearer, so it never steals): without the
+stall rule the person is never raised, with it the bot behind takes the claim after 5 s and raises at 9.6 s.
+
+**The soak** (`tests/captures/bots_revive_soak.tscn`, four mixed bots, a fall forced every 10 s, 12 minutes, seeds 1 to
+48, off = `--no-stage --no-stall`): bodies that bled out with a bot still up, per 1000 forced falls, by cause read from
+the `BLEED` lines (the cause scheme is in the pull request):
+
+| Cause | Off (49 of 2193) | On (46 of 2348) |
+| --- | --- | --- |
+| All | 22.3 | 19.6 |
+| The last bot up, risk not clear (not for this rule) | 8.2 | 6.0 |
+| Claimant stuck on `GO` | 0.9 | 0.9 |
+| Unsafe for 10 s or more, then `LATE` | 5.0 | 6.0 |
+| `LATE` without a long unsafe spell | 7.3 | 4.7 |
+| Other | 0.9 | 2.1 |
+
+The soak does not show the gain the scenarios do: 49 and 46 bleed-outs are within what the seeds move between runs (the
+untargeted rows move by as much). The bleed-outs that stay are mostly packs and bosses that keep the body to the end
+(a staged bot 12 m away with under 4 s left is `LATE`), which no rule here can help. Staging costs no raises: raises per
+forced fall 0.94 off, 1.01 on; the nights that ended early were 15 of 24 either way in the first 24 seeds.
