@@ -27,7 +27,8 @@ const _PAIR_ANGLE_B := 0.5698402910
 ## floors are at 0 and 3.4 m.
 const NAV_LIFT := 0.35
 ## Metres over the feet at which a swing is judged to have a clear way to its target: over the
-## second map's counter and racks (1.2 m), under its ceiling.
+## second map's racks (1.2 m), under its ceiling. The hall's counter is higher (1.5 m) and stops
+## it, but no swing crosses a counter 3.5 m deep.
 const SWING_HEIGHT := 1.3
 ## Metres past the longest swing within which the way to a target is looked at.
 const SWING_SLACK := 0.5
@@ -293,7 +294,7 @@ func _watch_strand(
 	var stranded := (
 		chasing
 		and zombie.mode == ZombieBody.Mode.CHASE
-		and zombie.gate_id == &""
+		and not _is_at_its_gate(zombie)
 		and zombie.path_gap >= STRAND_GAP
 		and _flat(zombie.position, target_pos) >= STRAND_FAR
 	)
@@ -304,6 +305,12 @@ func _watch_strand(
 	if zombie.stranded_for >= STRAND_SECONDS:
 		zombie.stranded_for = 0.0
 		events.append({"type": &"zombie_stranded", "zombie_id": zombie.id})
+
+
+## Whether the zombie has a gate and is in front of its gap: at its boards, or walking through.
+func _is_at_its_gate(zombie: ZombieBody) -> bool:
+	var gate: ZombieGate = gates.get(zombie.gate_id)
+	return gate != null and gate.spans(zombie.position)
 
 
 ## Puts a stranded zombie back on `point` (a spawn point; `gate_id` the breach it comes in by, or
@@ -386,8 +393,15 @@ func _lure_for(zombie: ZombieBody) -> ZombieLure:
 ## pulls them off: a swing at a time, the work of a board adding up at its `barrier_speed`. A type
 ## that cannot tear (a crawler) is not held; it goes under. Through the line, the gate is behind it.
 func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary]) -> void:
-	var gate: ZombieGate = gates.get(zombie.gate_id)
-	var depth := gate.depth_of(zombie.position) if gate != null else 0.0
+	var gate := _gate_in_front_of(zombie)
+	if gate == null:
+		# Beside the wall, in front of no gap: nothing to tear here (#810). A breach nobody told
+		# the sim about is behind the zombie.
+		zombie.tear_progress = 0.0
+		if not gates.has(zombie.gate_id):
+			zombie.gate_id = &""
+		return
+	var depth := gate.depth_of(zombie.position)
 	if depth >= 0.0:
 		zombie.gate_id = &""
 		zombie.tear_progress = 0.0
@@ -414,6 +428,31 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 		events.append({"type": &"zombie_tore", "zombie_id": zombie.id, "gate_id": zombie.gate_id})
 
 
+## The gate this zombie is in front of: its own while it is within that gap's width, otherwise the
+## one whose gap it has come up to (outside the line, in front of the gap, within
+## `ZombieGate.REACH`), which becomes its own, or null beside the wall. A gate is a line with the
+## width of its gap: as the whole wall's line, a dead on its way along the wall to another window
+## stopped out of sight at its first gate's line and tore that gate's boards from there for ever
+## (#810).
+func _gate_in_front_of(zombie: ZombieBody) -> ZombieGate:
+	var own: ZombieGate = gates.get(zombie.gate_id)
+	if own != null and own.spans(zombie.position):
+		return own
+	var best: ZombieGate
+	var best_along := INF
+	for gate: ZombieGate in gates.values():
+		if gate == own or not gate.is_at(zombie.position):
+			continue
+		var along := absf(gate.along_of(zombie.position))
+		if along < best_along:
+			best_along = along
+			best = gate
+	if best != null:
+		zombie.gate_id = best.id
+		zombie.tear_progress = 0.0
+	return best
+
+
 ## Whether boards stand across `gate` that this zombie has to tear down.
 func _boards_hold(zombie: ZombieBody, gate: ZombieGate) -> bool:
 	if zombie.profile.barrier_speed <= 0.0 or barricades == null:
@@ -428,7 +467,7 @@ func _keep_outside_the_boards() -> void:
 		if zombie.gate_id == &"" or not zombie.is_alive():
 			continue
 		var gate: ZombieGate = gates.get(zombie.gate_id)
-		if gate == null or not _boards_hold(zombie, gate):
+		if gate == null or not gate.spans(zombie.position) or not _boards_hold(zombie, gate):
 			continue
 		var depth := gate.depth_of(zombie.position)
 		var stop := -tuning.board_stop

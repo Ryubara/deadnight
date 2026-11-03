@@ -1,7 +1,7 @@
 # A grenade that goes off in a player's hand, in a night of two players over a real WebSocket
-# (#805): the server judges the blast (all the holder's health, part of a teammate's by distance),
-# and both screens show it from the events: the holder is down and the feed says they blew
-# themselves up, the teammate is hurt and their HUD names whose grenade it was. The curve is
+# (#805, #856): the server judges the blast (all the holder's health; a teammate beside them takes
+# none), and both screens show it from the events: the holder is down and the feed says they blew
+# themselves up, the teammate is untouched and no line says otherwise. The curve is
 # `tests/rules/ test_player_blast.gd`; the server's blast is `tests/grenades/test_blast.gd`.
 extends GdUnitTestSuite
 
@@ -152,7 +152,8 @@ func _scene(apart: float) -> Array[Night]:
 	return [a, b]
 
 
-func test_a_grenade_in_the_hand_downs_the_holder_and_hurts_the_teammate_on_both_screens() -> void:
+func test_a_grenade_in_the_hand_downs_the_holder_and_leaves_the_teammate_alone_on_both_screens(
+) -> void:
 	var pair := await _scene(2.0)
 	var a := pair[0]
 	var b := pair[1]
@@ -161,11 +162,11 @@ func test_a_grenade_in_the_hand_downs_the_holder_and_hurts_the_teammate_on_both_
 	var downed := func() -> bool: return _rules().players[1].downed
 	assert_bool(await _until(downed, 15.0)).is_true()
 	command.motion.throw_over = false
-	# The server judged it: all of the holder's health, part of the teammate's.
+	# The server judged it: all of the holder's health, none of the teammate's two metres off.
 	var max_health: float = _rules().players[2].max_health
 	assert_float(_rules().health_of(1)).is_equal(0.0)
-	assert_float(_rules().health_of(2)).is_between(1.0, max_health - 10.0)
-	# Both screens heard the blast and the blows, with whose grenade it was.
+	assert_float(_rules().health_of(2)).is_equal(max_health)
+	# Both screens heard the blow on the holder, with whose grenade it was, and none on the teammate.
 	for night: Night in [a, b]:
 		(
 			assert_bool(await _until(func() -> bool: return _count(night, &"player_downed") == 1))
@@ -175,23 +176,19 @@ func test_a_grenade_in_the_hand_downs_the_holder_and_hurts_the_teammate_on_both_
 		assert_str(String(down["harm"])).is_equal("grenade")
 		assert_int(down["by_id"]).is_equal(1)
 		assert_bool(_player_in(night, 1).get("downed", false)).is_true()
-	assert_bool(await _until(func() -> bool: return _count(b, &"player_hurt") >= 1)).is_true()
-	var mate_hurt: Dictionary = {}
-	for event: Dictionary in _heard[b]:
-		if event["type"] == &"player_hurt" and event["player_id"] == 2:
-			mate_hurt = event
-	assert_str(String(mate_hurt["harm"])).is_equal("grenade")
-	assert_int(mate_hurt["by_id"]).is_equal(1)
-	assert_float(mate_hurt["health"]).is_equal_approx(_rules().health_of(2), 0.01)
-	# The teammate's HUD says whose grenade hurt them, and the feed says what happened to the holder.
+		for event: Dictionary in _heard[night]:
+			if event["type"] == &"player_blasted":
+				assert_int(event["player_id"]).is_equal(1)
+			if event["type"] in [&"player_hurt", &"player_downed"]:
+				assert_int(event["player_id"]).is_equal(1)
+	# The feed says what happened to the holder, on both screens, and says nothing of a hit on the
+	# teammate.
 	var name_of_holder: String = _huds[b].state.team[1]["name"].to_upper()
-	assert_array(_feed(b)).contains(
-		["%s'S GRENADE HIT YOU  -%d" % [name_of_holder, roundi(mate_hurt["damage"])]]
-	)
 	assert_array(_feed(b)).contains(["%s BLEW THEMSELVES UP" % name_of_holder])
 	assert_array(_feed(a)).contains(["%s BLEW THEMSELVES UP" % name_of_holder])
-	# Both screens show the same health for the teammate: the server's.
-	assert_float(_huds[b].state.health).is_equal_approx(_rules().health_of(2), 0.6)
+	for line in _feed(b):
+		assert_bool(line.contains("GRENADE HIT YOU")).is_false()
+	assert_float(_huds[b].state.health).is_equal_approx(max_health, 0.6)
 
 
 func test_a_teammate_far_from_the_blast_is_not_touched() -> void:

@@ -58,6 +58,7 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/fixtures/concession_counter.tscn" id="fx_concession_counter"]
 [ext_resource type="PackedScene" path="res://world/drive_in/fixtures/projector.tscn" id="fx_projector"]
 [ext_resource type="PackedScene" path="res://world/drive_in/fixtures/screen_frame.tscn" id="fx_screen_frame"]
+[ext_resource type="PackedScene" path="res://world/drive_in/fixtures/generator.tscn" id="fx_generator"]
 [ext_resource type="PackedScene" path="res://world/drive_in/fixtures/marquee.tscn" id="fx_marquee"]
 [ext_resource type="ArrayMesh" path="res://assets/drivein/speaker_post.obj" id="speaker_mesh"]
 [ext_resource type="Texture2D" path="res://assets/drivein/drivein_palette.png" id="drivein_palette"]
@@ -1063,21 +1064,27 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371,
 
 [node name="Lamp18" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 65.461, 0.563, -21.897)
+dim = 0.4
 
 [node name="Lamp19" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 65.461, -0.036, -45.897)
+dim = 0.4
 
 [node name="Lamp20" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 35.461, -0.029, -55.897)
+dim = 0.4
 
 [node name="Lamp21" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -65.570, -0.034, -22.204)
+dim = 0.4
 
 [node name="Lamp22" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -65.570, -0.040, -46.204)
+dim = 0.4
 
 [node name="Lamp23" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -35.541, -0.038, -56.080)
+dim = 0.4
 
 [node name="Lamp24" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.039, -37.204)
@@ -1469,45 +1476,59 @@ size = Vector3(6, 0.4, 12)
 material = ExtResource("midway_ground")
 
 [node name="FenceW0" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 1.300, 6.875)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 1.500, 6.875)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 2.6, 21.75)
+size = Vector3(0.4, 3, 21.75)
 material = ExtResource("midway_wall")
 
 [node name="FenceW1" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 1.300, 30.125)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 2.800, 20.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 2.6, 15.75)
+size = Vector3(0.4, 0.4, 4.5)
+material = ExtResource("midway_wall")
+
+[node name="FenceW2" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 1.500, 30.125)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 3, 15.75)
 material = ExtResource("midway_wall")
 
 [node name="FenceE0" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 1.300, 6.875)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 1.500, 6.875)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 2.6, 21.75)
+size = Vector3(0.4, 3, 21.75)
 material = ExtResource("midway_wall")
 
 [node name="FenceE1" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 1.300, 30.125)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 2.800, 20.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 2.6, 15.75)
+size = Vector3(0.4, 0.4, 4.5)
+material = ExtResource("midway_wall")
+
+[node name="FenceE2" type="CSGBox3D" parent="Midway"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 1.500, 30.125)
+use_collision = true
+collision_layer = 3
+size = Vector3(0.4, 3, 15.75)
 material = ExtResource("midway_wall")
 
 [node name="AlleyEndW0" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -13.000, 1.300, -4.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -13.000, 1.500, -4.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(6, 2.6, 0.4)
+size = Vector3(6, 3, 0.4)
 material = ExtResource("midway_wall")
 
 [node name="AlleyEndE0" type="CSGBox3D" parent="Midway"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.000, 1.300, -4.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 13.000, 1.500, -4.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(6, 2.6, 0.4)
+size = Vector3(6, 3, 0.4)
 material = ExtResource("midway_wall")
 
 [node name="Lamps" type="Node3D" parent="Midway"]
@@ -1789,6 +1810,7 @@ material = ExtResource("yard_wall")
 
 [node name="Generator" type="CSGBox3D" parent="GeneratorYard"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.000, 0.900, 18.000)
+visible = false
 use_collision = true
 size = Vector3(3.2, 1.8, 1.6)
 material = ExtResource("yard_gen")
@@ -1829,6 +1851,17 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.000, 
 light_color = Color(0.941, 0.886, 0.416, 1)
 light_energy = 1.4
 omni_range = 8
+
+[node name="GeneratorSetGlow" type="Node3D" parent="GeneratorYard/Lamps"]
+script = ExtResource("model_glow")
+light_path = NodePath("../GeneratorGlow")
+model_path = NodePath("../../GeneratorSet")
+amber_energy = 1.6
+cream_glow = 0.25
+steady = true
+halo_size = 1.6
+halo_at = Vector3(0.6, 4.68, 0)
+halo_energy = 1.2
 
 [node name="ZombieSpawns" type="Node3D" parent="GeneratorYard"]
 
@@ -2445,6 +2478,9 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 8.400, 0
 
 [node name="Projector" parent="ProjectionBooth" instance=ExtResource("fx_projector")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 4.050, 25.250)
+
+[node name="GeneratorSet" parent="GeneratorYard" instance=ExtResource("fx_generator")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 40.000, 0.000, 18.000)
 
 [node name="TicketBoothW" parent="Road" instance=ExtResource("fx_ticket_booth")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 0.000, 45.200)
@@ -3064,13 +3100,13 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -3.000, 
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.000, 0.000, 36.600)
 
 [node name="Barrel1" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 0.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 3.600)
 
 [node name="Barrel2" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 0.700)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.300, 0.000, 4.300)
 
 [node name="Barrel3" parent="Midway/Dressing" instance=ExtResource("prop_barrel")]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.600, 0.000, 0.350)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -14.600, 0.000, 3.950)
 
 [node name="Crate1" parent="Midway/Dressing" instance=ExtResource("prop_crate")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -15.350, 0.000, 6.000)

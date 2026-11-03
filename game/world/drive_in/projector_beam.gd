@@ -30,6 +30,10 @@ func _ready() -> void:
 	if halo != null:
 		_halo = (halo.material_override as ShaderMaterial).duplicate()
 		halo.material_override = _halo
+		# The lens sits on the booth's upper floor: the halo stops at the floor and at a wall near it.
+		var around := GlowClip.walls(owner)
+		var reach := (halo.mesh as QuadMesh).size.x * 0.5
+		GlowClip.apply(_halo, GlowClip.planes_around(halo.global_position, reach, around))
 	super._ready()
 
 

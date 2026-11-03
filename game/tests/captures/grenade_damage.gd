@@ -1,11 +1,11 @@
 extends Node
-## A grenade hurts the players it reaches (#805), from the player's own shoulder camera with the
+## A grenade hurts its thrower alone (#805, #856), from the player's own shoulder camera with the
 ## HUD: 1. the player holds the pin until it goes off in the hand (all of the health, the feed says
-## so); 2. a teammate throws a grenade and the player stands 3 m from where it lands (a close
-## blast); 3. the same throw with the player 6 m from where it lands (a far blast). Each stage
-## starts the player at full health. The throw is the teammate's real command (the server throws for
-## every player on the command's grenade button), the blast the server's. Not part of the game. Run
-## with Movie Maker through the kit's `gds godot`: `gds godot -- --path game
+## so); 2. a teammate throws a grenade and the player stands 0.5 m from where it lands (a close
+## blast: no damage, no red arc, no feed line); 3. the same throw with the player 3 m from where it
+## lands. Each stage starts the player at full health. The throw is the teammate's real command (the
+## server throws for every player on the command's grenade button), the blast the server's. Not
+## part of the game. Run with Movie Maker through the kit's `gds godot`: `gds godot -- --path game
 ## res://tests/captures/grenade_damage.tscn --fixed-fps 10 --write-movie out.png --quit-after 420`.
 ## Each stage prints its name and the movie frame it began on.
 
@@ -16,8 +16,8 @@ const LEAD_IN := 1.0
 const HELD_FOR := 3.4
 const AFTER_BLAST := 2.4
 const FLIGHT_LIMIT := 600
-const CLOSE := 3.0
-const FAR := 6.0
+const CLOSE := 0.5
+const FAR := 3.0
 ## Where the player stands for the film, on open ground; the teammate throws from this far behind
 ## and to the side, along the view.
 const MATE_BEHIND := 9.0
@@ -66,12 +66,12 @@ func _ready() -> void:
 	_report("hand")
 	await _seconds(AFTER_BLAST)
 	await _get_up()
-	_stage("a close blast: the teammate's grenade lands %.0f m from the player" % CLOSE)
+	_stage("a close blast: the teammate's grenade lands %.1f m from the player" % CLOSE)
 	await _teammate_throws(CLOSE)
 	_report("close")
 	await _seconds(AFTER_BLAST)
 	await _get_up()
-	_stage("a far blast: the teammate's grenade lands %.0f m from the player" % FAR)
+	_stage("a farther blast: the teammate's grenade lands %.1f m from the player" % FAR)
 	await _teammate_throws(FAR)
 	_report("far")
 	await _seconds(AFTER_BLAST)
@@ -216,6 +216,7 @@ func _send() -> void:
 
 
 func _stage(stage: String) -> void:
+	_log.clear()
 	print("%s at frame %d" % [stage, Engine.get_frames_drawn()])
 
 

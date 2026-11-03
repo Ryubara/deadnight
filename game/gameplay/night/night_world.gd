@@ -321,7 +321,7 @@ func gates() -> Dictionary[StringName, ZombieGate]:
 	var found: Dictionary[StringName, ZombieGate] = {}
 	for id: StringName in _barricades:
 		var barricade := _barricades[id]
-		found[id] = ZombieGate.new(id, barricade.centre(), barricade.inward())
+		found[id] = ZombieGate.new(id, barricade.centre(), barricade.inward(), barricade.board_half)
 	return found
 
 

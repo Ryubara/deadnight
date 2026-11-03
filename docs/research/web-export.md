@@ -181,17 +181,77 @@ What the profile showed:
 
 **What CI sees, and the gate.** The web job's night load on the runner after the cut: 24.3, 24.7, 29.9, 29.9, 32.1,
 38.8, 41.2, 41.4, 45.3 and 53.3 s over ten runs of `main` in one morning (the pull request's own run: 30.5 s), against 82
-to 107 s before. A shared runner moves the same build by 40 % and more: the 53.3 s run (the commit that added the
-soldier's crawl and revive clips) also took 19.2 s to reach the menu, the slowest of the ten, and the next two runs with
-the same clips took 29.9 and 32.1 s, so it was the runner, not the clips. The smoke fails when the load is more than twice
-`tools/web_smoke/night_load_baseline.json` (36 s, the mean of those runs; 72 s): a first limit of 52 s tripped on noise
-within hours. It catches a return towards the old 82 to 107 s; a rise of tens of percent is read from the recorded
-`loading` numbers of the runs, not gated.
+to 107 s before. A shared runner moves the same build by 40 % and more, and the first two gates were seconds: 52 s (twice
+a 26 s mean) tripped on noise within hours, then 72 s (twice a 36 s mean of those ten runs) tripped on four runs of 75 to
+89 s in two days with nothing wrong.
+
+**The gate is a ratio (#873).** Across 28 `main` runs of 2 and 3 Nov (the `web-smoke` artifacts) the night took 24.8
+to 75.3 s and the menu 8.6 to 17.5 s: a slow runner is slow at both. The night's load divided by the same run's load
+to the menu was 2.23 to 4.56 (median 3.1). `tools/web_smoke/night_load.py` fails the smoke when that ratio is over
+**5.5**, 20 % over the worst of the 28; it writes `night_load` (both times, the ratio and the limits) into
+`result.json`. A backstop of **150 s** (twice the slowest run) fails a night that hangs whatever the menu did. The
+menu time is floored at 8 s in the ratio (no run was under 8.6 s), so one lucky fast page load does not inflate it.
+The limits and how they were set are in `tools/web_smoke/night_load_baseline.json`; `python -I
+tools/web_smoke/night_load.py <result.json>...` replays the gate on saved results (none of the 28 fails; the flat 72 s
+failed the 75.3 s run).
+
+What the ratio catches and what it does not: a night whose loading grows by about 80 % over the median (a ratio of 5.5
+from 3.1), or by 20 % in the noisiest run. The 107 s of before the cut on a 15 s menu (7.1) trips it; its 82 s on the same
+menu (5.5) is on the line. It does **not** catch a few seconds: the sounds decoded behind the loading bar cost about 4 s
+(up to 8) of some 40 in a 4x-throttled local run, a ratio 0.3 to 0.5 higher, inside the spread of the runner. What holds
+that line is a count, not a time: `tests/night/test_load_cost.gd` caps the seconds of sound decoded behind the bar
+(deferred sound banks, #828), and a rise of tens of percent is read from the recorded `loading` numbers of the runs, not
+gated.
 
 What is left with a GPU is 8 lit `StandardMaterial3D` settings combinations at 1.2 to 2 s each (an alpha-blended lit one,
 a double-sided textured one, the emissive-and-textured one of the soldier and the dead): the next cut is a material that
 looks different, so it is an artist's decision, not made here. `tests/night/test_load_cost.gd` fails when the night
 draws more than 8, and lists them.
+
+### The load grew again, and where (#828)
+
+Four `web` runs in one day failed the gate (75.3, 79.2, 82.6, 88.8 s; limit 72) on changes that load nothing new (a bot
+fix, glow panes, three models no weapon uses yet). What the numbers say, so the next red run starts from here:
+
+- **The runner is most of it.** The 28 `web-smoke` artifacts of 2 to 3 November: the night took 24.8 to 75.3 s (median
+  about 45 s) with 8.6 to 17.5 s to the menu; a run's night divided by its menu is 2.2 to 4.6. The 36 s baseline was the
+  mean of a good morning, so a gate at twice it sits inside the spread of the runner pool: it will trip on a slow
+  runner whatever a change does. The smoke now writes the loading steps into `result.json` (`loading.steps`: seconds
+  after Play of each step the game marked), so a failure shows which step took the time.
+- **The content grew too, in sounds.** The seconds of sound decoded to samples behind the bar were 166 s at the cut
+  (366 files), 267 s before the weapon work (671 files) and 297 s on 3 November (722: seven firearms, the energy weapons,
+  a second soldier's voice lines): +78 %. Each decode is a GDScript loop over every sample and each file is a read of
+  the pack, so every weapon or voice added to every night, played or not. The three models of #816 are not loaded by
+  the night (no weapon names them yet).
+- **A clean A/B, one machine, same Chrome:** unthrottled, Play to a running night, the build before the weapon work
+  (`7d22fea`) 18.1, 18.7, 19.2 s against `main` 17.8, 19.6, 20.2 s (3 runs each: no difference). With the processor
+  throttled 4 times (a stand-in for a runner, `Emulation.setCPUThrottlingRate`), runs alternated one after the other,
+  the sounds step took 4.2 s on `main` (3.8 to 8.2 s over two sets of six) and the whole load 39.2 s and 56.5 s.
+  The machine is shared and its load moves a run by 20 s, so these are read as steps, not as totals.
+
+**The rule: a family of sounds that a night does not play from its first second is a `deferred` bank**
+(`SoundBank.deferred`, set on the weapons' and the voices' banks). Behind the bar `Audio.preload_sound_for_night` only
+queues a deferred sound's files; the audio service reads and decodes them 2 to 6 ms a frame once the bar has gone
+(`decode_held`), and a sound played first is read on the spot and goes to the front of the line (the first play is the
+Ogg, 0.8 ms, the next ones samples). The menu's own background load stops where it is when the night starts loading.
+`tests/night/test_load_cost.gd` caps the seconds decoded behind the bar (`WARM_DECODE_BUDGET_S`, 170 s; 152 s now), so
+a new weapon's sounds in an ordinary bank fail the test with the bank-by-bank list and the instruction.
+
+| What the bar does for sounds | Before | After |
+| --- | ---: | ---: |
+| Files read behind the bar | 722 | 316 |
+| Seconds decoded behind the bar | 297 | 152 |
+| One pass, native, this machine (read + decode) | 4.5 s | 2.0 s |
+| The sounds step in the browser (4 times throttled, `Tuning the speakers` to the first lot step) | 4.2 s, 8.2 s | 0.4 s, 1.3 s |
+| Play to a running night (4 times throttled, 6 alternated runs, median) | 39.8 s, 55.5 s | 39.8 s, 50.4 s |
+
+The totals differ by less than the machine's own spread (a run moved by 20 s), the sounds step by an order of
+magnitude: the step is cut by what the table says, and what that is on a runner is `loading.steps` of the next runs.
+
+**#728's batching of the lot's meshes at load costs nothing measurable.** `LotBatcher.batch` takes 175 to 510 ms natively
+on the busy machine (867 pieces in 228 cells), and Play to a running night with the processor throttled 4 times was 36.4,
+37.3 and 38.8 s with it against 39.2, 38.5 and 36.7 s on the commit it is built on (3 runs each, alternated). No bake at
+import is needed for the load.
 
 ## Big crowds in the browser, from the autopilot (#171)
 
