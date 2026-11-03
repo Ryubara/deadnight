@@ -25,8 +25,6 @@ const LEAKS := {
 			0.39,
 			"its walls are one box over both storeys: the lamp's light on the upper half is the wall's",
 		],
-		"ProjectionBooth/Lamps/ProjectorBeam":
-		[0.91, "the projector's spot faces the road, not the screen (issue #840)"],
 		"ShopProps/ReCut/Glow":
 		[0.28, "the booth's east wall is one box over both storeys, like the lower lamp's"],
 	},

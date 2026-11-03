@@ -49,6 +49,5 @@ The halo's billboard fault was already cured by hand in #703. The scene's halo e
 
 Unshadowed lamps inside a room lit the next room through the wall by their range (0.2 to 0.7 energy): the stand's three
 lamps, the field's posts 5, 6 and 12, the booth's lower lamp and the second map's pendants. A light layer per room cured
-all of it but five lines, in [room lights](room-lights.md) (issue #841). The projector's spot (`ProjectorBeam`, yaw 180)
-faces the road, not the screen: it lights the booth's south door and the road plaza (0.9) through the booth's wall; that
-is issue #840's.
+all of it but three lines, in [room lights](room-lights.md) (issue #841). The projector's spot (`ProjectorBeam`) faced
+the road and lit the booth's south door and the road plaza (0.9) through the booth's wall; issue #840 turned it.

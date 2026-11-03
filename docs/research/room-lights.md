@@ -52,7 +52,6 @@ and from inside each room, with the difference drawn.
 | --- | --- | --- |
 | Booth's lower lamp, the re-cut glow | 0.37, 0.26 | the booth's south, west and east walls are one box over both storeys; splitting one costs a draw call |
 | Second map, upper hall lamp | 0.24 | one slab box is the upper hall's floor and the terrace past its south wall |
-| Projector's spot | 0.91 | issue #840 |
 
 ## What it costs (the frame)
 
