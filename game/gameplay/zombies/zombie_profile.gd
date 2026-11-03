@@ -82,6 +82,10 @@ static func from_type(type: ZombieType, look: StringName, tuning: ZombieTuning) 
 	return profile
 
 
-## The size of its hit zones against the walker's: its hit chance, and how tall its model stands.
+## The size of its hit zones against the walker's: how tall its model stands and, upright, its hit
+## chance. A crawler's zones are fitted to its body lying on the ground, which is as small and low
+## as its hit chance (0.6) meant to make it, so the chance does not shrink them twice.
 func hit_scale() -> float:
+	if ZombieModels.crawls(look):
+		return ZombieModels.height_of(look)
 	return hit_chance * ZombieModels.height_of(look)

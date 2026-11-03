@@ -220,7 +220,6 @@ func _wanted_view(
 
 func _aim_point(contact: Dictionary, eye: Vector3) -> Vector3:
 	var look: StringName = contact.get("look", ZombieModels.DEFAULT)
-	var scale := ZombieModels.aim_scale(look)
 	var at: Vector3 = contact["position"]
 	if _weak and ZombieModels.is_boss(look):
 		var lens := weak_spot(contact, eye)
@@ -229,7 +228,9 @@ func _aim_point(contact: Dictionary, eye: Vector3) -> Vector3:
 	var apart := Vector2(at.x - eye.x, at.z - eye.z).length()
 	var speed := Vector2(contact["velocity"].x, contact["velocity"].z).length()
 	var head := _head and speed < HEAD_SPEED and apart < HEAD_RANGE
-	return at + Vector3(0.0, (BotLevel.HEAD_HEIGHT if head else BotLevel.CHEST_HEIGHT) * scale, 0.0)
+	var zone := Hitbox.HEAD if head else Hitbox.BODY
+	var mode: int = contact.get("mode", ZombieBody.Mode.CHASE)
+	return at + ZombiePose.aim_offset(look, mode, float(contact.get("yaw", 0.0)), zone)
 
 
 ## Where the boss's lens is, or `Vector3.INF` when the boss does not face `eye` enough for the bot

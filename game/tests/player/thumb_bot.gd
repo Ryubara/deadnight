@@ -111,6 +111,8 @@ func _arrival() -> Dictionary:
 		"position": Vector3(sin(angle) * distance, 0.0, -cos(angle) * distance),
 		"yaw": 0.0,
 		"scale": 1.0,
+		# The assist is measured on the plain standing target the simulator's numbers were taken on.
+		"pose": Hitbox.STANDING,
 		"phase": _rng.randf() * TAU,
 	}
 

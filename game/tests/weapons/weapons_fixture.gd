@@ -31,7 +31,7 @@ static func box_world(box: AABB) -> Callable:
 static func targets_of(positions: Dictionary) -> Dictionary:
 	var placed := {}
 	for id in positions:
-		placed[id] = {"pos": positions[id], "yaw": 0.0}
+		placed[id] = {"pos": positions[id], "yaw": 0.0, "pose": Hitbox.STANDING}
 	return placed
 
 
@@ -60,7 +60,7 @@ static func step(server: CombatServer, positions: Dictionary, steps: int = 1) ->
 static func list_of(positions: Dictionary) -> Array:
 	var list: Array = []
 	for id in positions:
-		list.append({"id": id, "pos": positions[id], "yaw": 0.0})
+		list.append({"id": id, "pos": positions[id], "yaw": 0.0, "pose": Hitbox.STANDING})
 	return list
 
 
