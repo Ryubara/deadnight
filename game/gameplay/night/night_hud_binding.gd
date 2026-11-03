@@ -42,6 +42,7 @@ var _state: ClientState
 var _weapon_names: Dictionary[StringName, String] = {}
 var _fuel: FuelTuning
 var _upgrade: UpgradeTuning
+var _perks: PerkTuning
 ## Units a whole can adds, by shop item: what the card says a can is worth.
 var _can_units: Dictionary[StringName, int] = {}
 
@@ -62,6 +63,7 @@ func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistr
 	var fuel: FuelTuning = tuning.fuel
 	_fuel = fuel
 	_upgrade = tuning.upgrade
+	_perks = tuning.perks
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
@@ -209,7 +211,7 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"fuel":
 			_set_fuel_prompt(prompt)
 		_:
-			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade):
+			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade, _perks):
 				state.clear_prompt()
 
 

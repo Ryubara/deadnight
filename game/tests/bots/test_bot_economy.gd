@@ -34,9 +34,14 @@ func before_test() -> void:
 		_spot(&"ammo", &"", Vector3(40.0, 0.0, 20.0)),
 		_spot(&"upgrade", &"upgrade_weapon", Vector3(50.0, 0.0, 20.0)),
 		_spot(&"perk", &"tonic_hearty", Vector3(60.0, 0.0, 20.0)),
-		_spot(&"perk", &"tonic_second_wind", Vector3(70.0, 0.0, 20.0)),
 		_spot(&"rack", &"grenades", Vector3(80.0, 0.0, 20.0)),
 	]
+	# One machine for every other tonic, further along the same row.
+	var at := 70.0
+	for tonic_id in PerkEffects.tonic_ids(_shop.economy):
+		if tonic_id != &"tonic_hearty":
+			_shop.spots.append(_spot(&"perk", tonic_id, Vector3(at, 0.0, 20.0)))
+			at += 10.0
 
 
 func _spot(kind: StringName, shop_id: StringName, at: Vector3, crane_spot := 0) -> Dictionary:
@@ -218,15 +223,25 @@ func test_a_pack_with_room_for_one_buys_one_at_its_share_of_the_price() -> void:
 	assert_int(buy.price).is_equal(ceili(float(item.price_at(1)) / item.amount))
 
 
-func test_only_a_tonic_that_does_something_is_bought_and_only_once() -> void:
+func test_a_tonic_is_bought_while_the_bot_lacks_it_and_a_lost_one_again() -> void:
+	var order := PerkEffects.tonic_ids(_shop.economy)
+	var hearty := 1 << order.find(&"tonic_hearty")
+	var encore := 1 << order.find(&"tonic_swift_rescue")
+	var rewind := 1 << order.find(&"tonic_quick_load")
+	var arc := 1 << order.find(&"tonic_reload_shock")
 	assert_str(String(_choose(_view(1000), _profile([&"tonic_hearty"])).item)).is_equal(
 		"tonic_hearty"
 	)
-	(
-		assert_bool(
-			_choose(_view(1500), _profile([&"tonic_second_wind", &"tonic_fleet"])).is_none()
-		)
-		. is_true()
-	)
-	var had := _view(1000, {"bought": {&"tonic_hearty": 1}})
+	# Had: not again. Lost on a down (the mask no longer has it): bought again.
+	var had := _view(1000, {"perks": hearty})
 	assert_bool(_choose(had, _profile([&"tonic_hearty"])).is_none()).is_true()
+	var lost := _view(1000, {"perks": 0})
+	assert_str(String(_choose(lost, _profile([&"tonic_hearty"])).item)).is_equal("tonic_hearty")
+	# A perk with an effect other than health is a purchase too, at the price the table has.
+	var revive := _choose(_view(1500, {"perks": hearty}), _profile([&"tonic_swift_rescue"]))
+	assert_str(String(revive.item)).is_equal("tonic_swift_rescue")
+	assert_int(revive.price).is_equal(_shop.economy.item(&"tonic_swift_rescue").price)
+	# The limit: a bot that carries as many as the rules allow buys no more.
+	var full := hearty | encore | rewind | arc
+	var more := _choose(_view(5000, {"perks": full}), _profile([&"tonic_double_shot"]))
+	assert_bool(more.is_none()).is_true()

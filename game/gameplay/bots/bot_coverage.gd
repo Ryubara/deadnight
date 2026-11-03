@@ -15,7 +15,7 @@ const SHOP_KINDS := {
 	"WEAPON": "rule: BotEconomy buys a wall weapon worth more than the one it would replace",
 	"CRANE": "rule: BotEconomy plays the crane when a prize it lacks beats the weapon in hand",
 	"TONIC":
-	"rule: BotEconomy buys the hearty tonic once; a tonic with no health in it is never bought",
+	"rule: BotEconomy buys a tonic with an effect it lacks, up to the limit, again after a down",
 	"FUEL": "rule: BotErrands buys a can when the tank is under the low line; one bot at a time",
 	"GRENADES": "rule: BotEconomy buys a rack's worth when the pack is under the profile's want",
 	"AMMO":
@@ -63,8 +63,9 @@ const PROMPTS := {
 	"recut": "rule: BotErrands presses use at the bench BotEconomy chose",
 	"recut_done": "rule: nothing to do (BotEconomy does not choose a re-cut for a re-cut gun)",
 	"recut_none": "rule: nothing to do (BotEconomy re-cuts a firearm only)",
-	"tonic": "rule: BotErrands presses use at the fountain when BotEconomy chose the hearty tonic",
-	"tonic_owned": "rule: nothing to do (BotEconomy buys a tonic once)",
+	"tonic": "rule: BotErrands presses use at the machine BotEconomy chose the tonic of",
+	"tonic_owned": "rule: nothing to do (BotEconomy buys a tonic it lacks)",
+	"tonic_full": "rule: nothing to do (BotEconomy buys no tonic past the limit)",
 	"repair":
 	"rule: BotErrands holds use at a breach with a board down, in a break, away from people",
 	"circuit": "rule: BotErrands throws a breaker the generator care wants the other way",

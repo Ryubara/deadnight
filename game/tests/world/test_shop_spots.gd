@@ -34,7 +34,8 @@ func test_the_lot_has_two_wall_weapons_a_crane_lockers_the_two_machines_and_a_gr
 	assert_int(kinds[&"crane"]).is_equal(CraneTuning.new().spot_count())
 	assert_int(kinds[&"ammo"]).is_greater_equal(4)
 	assert_int(kinds[&"upgrade"]).is_equal(1)
-	assert_int(kinds[&"perk"]).is_equal(1)
+	# The soda fountain and the five other perk machines, one to a tonic of the shop.
+	assert_int(kinds[&"perk"]).is_equal(PerkEffects.tonic_ids(RulesFixture.tuning().economy).size())
 	assert_int(kinds[&"rack"]).is_equal(1)
 
 
@@ -128,7 +129,7 @@ func test_the_machines_stand_in_the_booth_and_the_stand_over_their_blocks() -> v
 		if spot["kind"] == &"upgrade":
 			assert_float(spot["position"].z).is_between(22.0, 32.0)
 			assert_float(spot["position"].x).is_between(-6.0, 6.0)
-		if spot["kind"] == &"perk":
+		if spot["shop_id"] == &"tonic_hearty":
 			assert_float(spot["position"].z).is_between(-4.0, 8.0)
 			assert_float(spot["position"].x).is_between(-10.0, 10.0)
 	var greybox := _world.greybox
@@ -139,3 +140,31 @@ func test_the_machines_stand_in_the_booth_and_the_stand_over_their_blocks() -> v
 		assert_bool(block.use_collision).is_true()
 	assert_bool(greybox.get_node("ShopProps/ReCut") is RecutMachine).is_true()
 	assert_bool(greybox.get_node("ShopProps/Soda") is SodaFountain).is_true()
+
+
+func test_the_five_other_perk_machines_stand_one_to_an_area_over_their_blocks() -> void:
+	# Each sells its own tonic, faces its spot, has a hidden block and a look of its own.
+	var areas := {
+		&"tonic_swift_rescue": [-16.0, 16.0, 8.0, 38.0],
+		&"tonic_quick_load": [-6.0, 6.0, 22.0, 32.0],
+		&"tonic_double_shot": [16.0, 62.0, -4.0, 38.0],
+		&"tonic_reload_shock": [-62.0, -16.0, -4.0, 38.0],
+		&"tonic_third_holster": [-16.0, 16.0, 38.0, 52.0],
+	}
+	var seen := {}
+	for machine in _world.greybox.find_children("*", "PerkMachine", true, false):
+		var perk_machine := machine as PerkMachine
+		var item := perk_machine.item_id()
+		assert_bool(areas.has(item)).override_failure_message(String(item)).is_true()
+		var box: Array = areas[item]
+		assert_float(perk_machine.position.x).is_between(box[0], box[1])
+		assert_float(perk_machine.position.z).is_between(box[2], box[3])
+		var block := _world.greybox.get_node("ShopProps/%sBlock" % perk_machine.name) as CSGBox3D
+		assert_bool(block.visible).is_false()
+		assert_bool(block.use_collision).is_true()
+		seen[item] = true
+		var found := false
+		for spot in _spots:
+			found = found or spot["shop_id"] == item
+		assert_bool(found).override_failure_message(String(item)).is_true()
+	assert_int(seen.size()).is_equal(areas.size())

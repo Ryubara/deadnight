@@ -73,9 +73,10 @@ func holder_of(target_id: int) -> int:
 	return 0
 
 
-## How far a downed player's revive has got, 0 to 1.
+## How far a downed player's revive has got, 0 to 1. The hold takes the reviver's own time: shorter
+## for a reviver with the revive perk (`PerkEffects.revive_seconds`).
 func progress(target_id: int) -> float:
-	var seconds := _rules.tuning.health.revive_seconds
+	var seconds := PerkEffects.revive_seconds(_rules, holder_of(target_id))
 	return clampf(_time.get(target_id, 0.0) / seconds, 0.0, 1.0)
 
 
@@ -128,9 +129,9 @@ func finish_tick(delta: float) -> void:
 			_time.erase(target_id)
 	for target_id in _seen:
 		_time[target_id] = _time.get(target_id, 0.0) + delta
-		if _time[target_id] < _rules.tuning.health.revive_seconds:
-			continue
 		var reviver: int = _seen[target_id]
+		if _time[target_id] < PerkEffects.revive_seconds(_rules, reviver):
+			continue
 		_time.erase(target_id)
 		_rules.apply(RulesAction.revive(reviver, target_id))
 		for holder in _holding.keys():

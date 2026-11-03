@@ -184,3 +184,14 @@ balance_cli.gd --shopping=weapon_rifle --set=economy.start_points=20000       (w
 ```
 
 A Godot `--import` must have run since the last new `class_name` script.
+
+## The perks (#687)
+
+The six perks are played by the same `buy` the night uses and the effects are read from `PerkEffects`: the wait between
+shots and the reload per player, a revive held for the helper's own time, the shock as a blast on every dead thing in
+reach when a reload starts (with its cooldown and a hold), the carry limit, and what a down takes. What it showed, the
+prices, the limit and the loss are in [Perks: what the simulator said](perks.md). Two things for the next change to the
+model: **a solo night's median round is not a stable number on a hundred nights** (the same seed gave 13 and 10 on 100
+and 150 nights), so compare the mean round and the share of nights that reach round 10 and 14; and **a perk's value
+shows in a team**, not a solo night (the loss on a down is the same 11.8 solo with all three settings and 18.6 to 20.2
+for four).

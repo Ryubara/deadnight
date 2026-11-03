@@ -34,6 +34,22 @@ DOOR_ITEMS = {
     "Door_Road": "door_road",
 }
 
+# The perk machines: node name, the perk (a `PerkMachine` look), the shop item, where it stands, its yaw and the block
+# (x0, x1, z0, z1) that holds its place. Yaw 90 faces +x, 180 faces -z, 270 faces -x.
+PERK_MACHINES = [
+    ("PerkRescue", "swift_rescue", "tonic_swift_rescue", (-15.2, 11.0), 90, (-15.7, -14.55, 10.2, 11.8)),
+    ("PerkLoad", "quick_load", "tonic_quick_load", (5.35, 30.5), 270, (4.85, 5.85, 29.7, 31.3)),
+    ("PerkShot", "double_shot", "tonic_double_shot", (24.0, 37.2), 180, (23.2, 24.8, 36.7, 37.7)),
+    ("PerkShock", "reload_shock", "tonic_reload_shock", (-20.0, 37.2), 180, (-20.8, -19.2, 36.7, 37.7)),
+    ("PerkHolster", "third_holster", "tonic_third_holster", (-15.2, 46.5), 90, (-15.7, -14.55, 45.7, 47.3)),
+]
+
+
+def spot_in_front(x: float, z: float, yaw: float, dist: float) -> tuple[float, float, float]:
+    """The point `dist` metres in front of a prop at (x, z) turned by `yaw` (its front is +Z before it turns)."""
+    return (x + math.sin(math.radians(yaw)) * dist, 0, z + math.cos(math.radians(yaw)) * dist)
+
+
 # Bodies and the camera rig, mirrored from the player (PlayerTuning: pivot 1.55, shoulder 0.75, arm 2.8, margin 0.25).
 # A passage is sized for the camera, not the capsule: the shoulder offset is applied after the spring arm, so the
 # camera sits SHOULDER m to one side of the player and needs CAMERA_CLEAR m of air beyond that.
@@ -622,6 +638,7 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lot_neon_sign.tscn" id="neon_sign"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/machines/recut_machine.tscn" id="recut_machine"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/machines/soda_fountain.tscn" id="soda_fountain"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/machines/perk_machine.tscn" id="perk_machine"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/screen_fx.tscn" id="screen_fx"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')
@@ -1005,6 +1022,15 @@ def build() -> None:
     shop_spot("SpotReCut", "upgrade", "upgrade_weapon", (3.5, 0, 25.9), 180)
     instance("ShopProps", "Soda", "soda_fountain", (8.2, 0, 4.9), 180)
     shop_spot("SpotSoda", "perk", "tonic_hearty", (8.2, 0, 3.7), 180)
+    # The five other perk machines (`PerkMachine`, docs/design/perks.md), one to an area so the perks arrive with the
+    # doors: faster revives in the midway (the stand's door), the quick reload in the booth, the double shot in the
+    # yard, the reload shock in the back lot and the third holster on the ticket plaza (the road's door, the last
+    # and dearest). Each stands over a hidden block that holds its place in the walking mesh, faces the room and has
+    # its spot 1.2 m in front.
+    for name, perk, item, (mx, mz), yaw, bx in PERK_MACHINES:
+        instance("ShopProps", name, "perk_machine", (mx, 0, mz), yaw, props={"perk": f'&"{perk}"'})
+        block("ShopProps", f"{name}Block", *bx, 2.1, "ammo_crate", visible=False)
+        shop_spot(f"Spot{name}", "perk", item, spot_in_front(mx, mz, yaw, 1.2), yaw)
     # Lockers: the avenue (the first one, in the open), the stand, the midway, the yard and the back lot.
     ammo_locker("LockerField", (3.1, -31.0), 270)
     ammo_locker("LockerStand", (9.45, -1.8), 270)

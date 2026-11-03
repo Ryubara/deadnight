@@ -7,7 +7,8 @@ are these: [Weapon upgrades](../research/weapon-upgrade.md). Where the zombies' 
 [Rounds, points and fuel](rounds.md).
 
 The idea is studied from the genre's upgrade station and perks and made our own: the weapon is **re-cut** at the
-projector, the way a film is re-cut, and health is a **tonic** from the soda fountain. Nothing here is taken from another
+projector, the way a film is re-cut, and health is a **tonic** from the soda fountain. The tonic is now one of six
+[perks](perks.md). Nothing here is taken from another
 game.
 
 ## The re-cut
@@ -44,7 +45,8 @@ combat server re-cuts its `WeaponState` and answers `weapon_upgraded` (`tier`, `
 Tonics were shop entries that did nothing. The first with an effect is **hearty** (1,000 points, one per player):
 **+50 most health** (100 to 150), and the same 50 health now, so it is never a wasted purchase. A player who is down
 buys the room only and stands up to all of it. Getting up after a down restores the raised most. The effect is the
-item's `health_bonus`; the other three tonics (second wind, quick hands, fleet) have none yet and no machine sells them.
+item's `health_bonus`. A player who goes down loses it again ([perks](perks.md#rules)); the other five tonics are the
+other perks.
 
 ## The machines
 
