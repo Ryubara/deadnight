@@ -12,6 +12,8 @@ export interface MatchSettings {
   max_alive: number;
   /** Seconds of break between rounds; 0 is the tuned break, else 1 to 120. */
   break_seconds: number;
+  /** Bots that fill the empty seats of the night, 0 to 3 (the room takes only as many as the people leave free). Absent: 0. */
+  bots?: number;
 }
 
 export const MIN_COUNT_MULTIPLIER = 0.25;
@@ -19,20 +21,27 @@ export const MAX_COUNT_MULTIPLIER = 5;
 export const MAX_ALIVE = 120;
 export const MIN_BREAK = 1;
 export const MAX_BREAK = 120;
+export const MAX_BOTS = 3;
 
+/** The keys every settings object has; `bots` may be left out by a client from before it (it means 0). */
 const KEYS = ["count_multiplier", "max_alive", "break_seconds"];
+const OPTIONAL_KEYS = ["bots"];
 
 const inRange = (value: unknown, low: number, high: number): value is number =>
   typeof value === "number" && Number.isFinite(value) && value >= low && value <= high;
 
-/** The settings `value` holds, or null when it is not exactly the three keys, each in its bounds. */
+/** The settings `value` holds, or null when it is not exactly these keys (`bots` optional), each in its bounds. */
 export function parseSettings(value: unknown): MatchSettings | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
   const given = value as Record<string, unknown>;
-  if (Object.keys(given).length !== KEYS.length || !KEYS.every((key) => key in given)) return null;
+  const known = [...KEYS, ...OPTIONAL_KEYS];
+  if (!KEYS.every((key) => key in given) || !Object.keys(given).every((key) => known.includes(key))) return null;
   const { count_multiplier, max_alive, break_seconds } = given;
+  const bots = "bots" in given ? given.bots : undefined;
   if (!inRange(count_multiplier, MIN_COUNT_MULTIPLIER, MAX_COUNT_MULTIPLIER)) return null;
   if (!inRange(max_alive, 0, MAX_ALIVE) || !Number.isInteger(max_alive)) return null;
   if (break_seconds !== 0 && !inRange(break_seconds, MIN_BREAK, MAX_BREAK)) return null;
-  return { count_multiplier, max_alive, break_seconds: break_seconds as number };
+  if (bots !== undefined && (!inRange(bots, 0, MAX_BOTS) || !Number.isInteger(bots))) return null;
+  const out: MatchSettings = { count_multiplier, max_alive, break_seconds: break_seconds as number };
+  return bots === undefined ? out : { ...out, bots };
 }

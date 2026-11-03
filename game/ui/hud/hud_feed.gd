@@ -160,7 +160,10 @@ func _text_for(event: Dictionary) -> String:
 
 
 func _notice(type: StringName, event: Dictionary) -> String:
-	if type == &"player_added":
+	# A bot seated at the start of the night is no news; a person who takes its seat is.
+	if type == &"player_added" and not event.get("bot", false):
+		return "%s JOINED" % _who(event)
+	if type == &"bot_replaced":
 		return "%s JOINED" % _who(event)
 	if type == &"player_removed":
 		return "%s LEFT" % state.left_name.to_upper()
@@ -168,9 +171,8 @@ func _notice(type: StringName, event: Dictionary) -> String:
 
 
 func _name_of(player_id: int) -> String:
-	return str(state.team.get(player_id, {}).get("name", "SOMEONE")).to_upper()
+	return HudState.name_of(state.team.get(player_id, {}))
 
 
 func _who(event: Dictionary) -> String:
-	var member: Dictionary = state.team.get(int(event.get("player_id", -1)), {})
-	return str(member.get("name", "SOMEONE")).to_upper()
+	return HudState.name_of(state.team.get(int(event.get("player_id", -1)), {}))
