@@ -16,6 +16,7 @@ const BUS_AMBIENCE := &"Ambience"
 const BANKS: Array[String] = [
 	"res://core/audio/banks/ui.tres",
 	"res://core/audio/banks/weapons.tres",
+	"res://core/audio/banks/firearms_2.tres",
 	"res://core/audio/banks/steps.tres",
 	"res://core/audio/banks/zombies.tres",
 	"res://core/audio/banks/world.tres",

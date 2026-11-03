@@ -341,6 +341,80 @@ fails when a file changed, or one was added or dropped, without a new measuremen
 new table fails it). A trim moved without measuring already failed. What the hash does not cover is the playing code
 (jitter, the audio service): the bench is re-run when that changes.
 
+## The second batch of firearms (#790)
+
+The PPSh, the M249 SAW, the M4A1, the .50 calibre rifle, the MP5, the 870 pump and the dual pistols have sounds before
+the weapons themselves are in the catalogue (#793, #789). Synthesised, in their own module
+`tools/audio/gun_recipes_2.py` (the energy weapons' are another's), built from `weapon_recipes.py`'s own `report` and
+`tail` and shared clicks, thuds and rasps, which that file keeps as they were: no existing file changed (the first
+guns' hashes are the same). Each gun has a report (`shot_<gun>`, five variants that differ in their noise and not
+their note), a tail (`tail_<gun>`, three), an equip (`equip_<gun>`, two), a dry click (`dry_<gun>`, two) and the steps
+of its reload (two variants each). A bank of their own, `core/audio/banks/firearms_2.tres`, holds the 49 sounds;
+`WeaponSounds` maps each gun id to them (`FIRE`, `RELOAD`, `EQUIP`, `DRY`; the dry click reads the shooter's weapon
+from the frame, the equip from the event), so the build issues only add the weapons.
+
+| Gun id | Kind | Report | Equip, dry click | Reload steps (the names of the weapon's `ReloadMotion` events) |
+| --- | --- | --- | --- | --- |
+| `ppsh` | fast light SMG | bright, a thin low end, the receiver's ring | light rustle; a bolt's clack | `drum_out`, `pouch`, `drum_in` (rounds rattling in the drum), `bolt` |
+| `m249` | heavy LMG | a rifle round through a long barrel: a thump that stays, a ring that chatters | a heavy rustle with the belt shifting; a heavy bolt thud | `cover_open`, `pouch`, `belt_in` (links chinking), `cover_shut` (the loudest), `charge` |
+| `m4a1` | carbine | a crack over a short boom, no ring | light; a sharp tick | `mag_out`, `pouch`, `mag_in`, `bolt` (the catch slapped) |
+| `fifty_cal` | huge rifle | a long roar, a thump an octave under the rifle's, a note that hangs, a 1.4 s tail | a very heavy rustle; a heavy clunk | `mag_out`, `pouch`, `mag_in` (box magazine), `bolt` (lift, back, forward, down: 0.43 s) |
+| `mp5` | tight 9 mm SMG | darker and meatier than the PPSh, a short boom | light; a small tick | `mag_out`, `pouch`, `mag_in`, `bolt` (a sharp slap) |
+| `pump_870` | one barrel of twelve gauge | the double-barrel's boom, shorter and sharper | the slide worked as it comes up; a hollow click | `pouch`, `shell_in` (once for each shell the motion lists), `pump` (back, a beat, forward) |
+| `dual_pistols` | two self-loading pistols | a quick pop, shorter than the revolver's | two guns drawn a moment apart; two hammers | `mag_out`, `pouch`, `mag_in`, `slide` (each two, the second hand a hair behind) |
+
+The step names are a proposal: #793 draws the motions and must give each event the name in `WeaponSounds.RELOAD` (or
+change the table); `test_every_firearm_has_reload_steps_of_its_own_mechanism` then holds the two together.
+
+**Rules they follow** (all of the table at the top): the pitch and level rules, the own shot flat, a tail 14 dB under
+its report (the fast guns share the tommy gun's 0.22 s tail cooldown), and a peak no closer to full scale than the
+loudest first gun's, **-4.9 dBFS** (the rifle's): the close sounds' room (-9.8 dBFS, `test_close_sound_levels.gd`) is
+derived from that figure, so every new gun peaks at -5.0 or lower, which also meets the -4.5 rule. Their trims were set
+from the first bench run: -6.5 dB for the PPSh, M4A1 and dual pistols, -6.0 for the MP5 (it had 0.7 LU to spare and
+0.7 dB of peak), -7.0 for the .50 calibre and the pump (-6.5 peaked at -4.6 and -4.9) and -8.0 for the SAW: at -6.5 it
+peaked at -5.0 alone, but its burst is dense (11 shots a second of a 0.2 s report, a crest factor of 9 dB), and a
+teammate's reload step landing on it reached -0.7 dBFS (2 samples over -1); at -7.0 it was -1.0 (1 sample), at -8.0
+-1.5 (0).
+
+**Fire intervals** are #785's ([the nine new weapons](../design/weapons.md)): the bench fires each gun at its
+`fire_interval`; the guns have no definition yet, so `audio_gun_bench.gd` has `PROVISIONAL_INTERVAL` (PPSh 0.055 s,
+M249 0.09, M4A1 0.11, MP5 0.10, .50 calibre 0.9, pump 0.65, dual pistols 0.15, alternating) and uses a definition's own
+when there is one. #785's reload times (PPSh 2.8 s, M249 5.0, M4A1 2.1, MP5 1.9, .50 calibre 3.4, pump 2.8 shell by
+shell, dual pistols 1.6 for both) are the motions' (#793), which place the steps. If a number changes, run the bench
+again (below) and update `gun_levels.json`; the test fails on a changed file or trim, not on an interval.
+
+**Measured**, `audio_gun_bench.tscn` through `tools/audio/gun_levels.py` (the own shots, flat, beds at -35.3 LUFS);
+the revolver and tommy gun are in the run and read as in the table above:
+
+| Gun | One shot, loudest 400 ms (LUFS) | LU over beds | Burst, 2 s (LUFS) | LU over beds | Peak (dBFS) | Centroid (Hz) | Energy under 250 Hz | In the first 50 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Revolver | -18.0 | 17.3 | -16.5 | 18.8 | -5.5 | 2986 | 0.44 | 0.96 |
+| Tommy gun | -20.4 | 14.9 | -13.4 | 21.9 | -5.5 | 3023 | 0.55 | 0.99 |
+| PPSh | -20.7 | 14.6 | -12.8 | 22.5 | -5.4 | 3353 | 0.38 | 0.99 |
+| M249 | -19.0 | 16.3 | -12.8 | 22.5 | -6.6 | 2659 | 0.77 | 0.90 |
+| M4A1 | -18.0 | 17.3 | -13.2 | 22.1 | -5.4 | 2938 | 0.71 | 0.97 |
+| .50 calibre | -14.9 | 20.4 | -16.1 | 19.2 | -5.1 | 2693 | 0.79 | 0.36 |
+| MP5 | -20.1 | 15.2 | -14.1 | 21.2 | -5.2 | 3038 | 0.61 | 1.00 |
+| 870 pump | -15.7 | 19.6 | -16.9 | 18.4 | -5.6 | 2639 | 0.65 | 0.67 |
+| Dual pistols | -20.2 | 15.1 | -15.8 | 19.5 | -5.2 | 2943 | 0.43 | 0.98 |
+
+The rules ask 14 LU for a shot, 17 for a burst, -4.5 dBFS peak. Kinds read in the numbers: the PPSh is the brightest
+and the thinnest (centroid 3353 Hz, 0.38 under 250 Hz); the SAW has the most low-end energy of the automatic guns and,
+even 1.5 dB under its first trim, the loudest burst; the .50 calibre's report is the longest (0.62 s, 0.36 of its
+energy in the first 50 ms against the shotgun's 0.58, a tail of 1.4 s) and its band energy peaks at 20-60 Hz. The
+burst's thump-pitch spread of the PPSh (2.2 semitones) is an artefact of its 55 ms interval being shorter than the
+60 ms window the figure reads; the applied pitch is within +-0.15 semitones as for every gun.
+
+**Reload steps, equips and dry clicks** are held to the first guns' ranges, not louder: file peaks -3.6 to -6.3 dBFS
+(the first guns' steps -3.0 to -6.0), loudest 400 ms -18.7 to -29.3 dB under full scale (-17.5 to -30.8). The heavy
+steps (the SAW's cover shut, the .50 calibre's bolt, the pump's stroke) say so in their length and low end, not in a
+hotter file (the loudest step landing on a gun is what #718 limited). Not measured: their audibility under fire, which
+needs each weapon's motion (#793); `reload_audibility.py` does it then.
+
+Run: `generate.py --only <the names in gun_recipes_2.py>`, then the bench with `weapons=pistol,smg,ppsh,m249,m4a1,
+fifty_cal,mp5,pump_870,dual_pistols`, recorded to `.avi` and the track pulled with ffmpeg (the PNG movie writes a file
+for every frame, thousands, and ran at half the speed), `gun_levels.py --table`, merged into `tests/night/gun_levels.json`.
+
 ## Browser
 
 `tools/web_smoke/gun_levels_web.py` plays the same bench in headless Chromium (the web export plays sounds as samples)
