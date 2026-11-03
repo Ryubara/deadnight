@@ -561,3 +561,81 @@ func test_a_bot_seat_is_told_and_a_person_takes_it_as_it_stands() -> void:
 	rules.apply(RulesAction.seat_person(9))
 	assert_int(log.of(&"bot_replaced").size()).is_equal(1)
 	assert_int(log.of(&"action_rejected").size()).is_equal(3)
+
+
+func test_the_bot_skill_is_rookie_regular_or_veteran_and_the_regular_is_the_usual() -> void:
+	assert_int(MatchSettings.new().bot_skill).is_equal(MatchSettings.SKILL_REGULAR)
+	assert_bool(MatchSettings.new().is_default()).is_true()
+	var base := MatchSettings.new().to_dict()
+	for skill in [0, 1, 2]:
+		base["bot_skill"] = skill
+		(
+			assert_str(String(MatchSettings.problem(base)))
+			. override_failure_message(str(skill))
+			. is_empty()
+		)
+	for bad: Variant in [3, -1, 0.5, "1", null]:
+		base["bot_skill"] = bad
+		assert_str(String(MatchSettings.problem(base))).override_failure_message(str(bad)).is_equal(
+			"bot_skill"
+		)
+	var veteran := MatchSettings.new()
+	veteran.bot_skill = MatchSettings.SKILL_VETERAN
+	assert_bool(veteran.is_default()).is_false()
+	assert_int(MatchSettings.from_dict(veteran.to_dict()).bot_skill).is_equal(2)
+	veteran.bot_skill = 9
+	assert_int(veteran.clamped().bot_skill).is_equal(MatchSettings.SKILL_VETERAN)
+
+
+func test_settings_from_before_the_bot_skill_are_taken_as_regular() -> void:
+	var old := {"count_multiplier": 1.0, "max_alive": 0, "break_seconds": 0.0, "bots": 2}
+	assert_str(String(MatchSettings.problem(old))).is_empty()
+	assert_int(MatchSettings.from_dict(old).bot_skill).is_equal(MatchSettings.SKILL_REGULAR)
+	var json := MatchSettings.from_json(
+		JSON.parse_string(
+			'{"count_multiplier":1,"max_alive":0,"break_seconds":0,"bots":1,"bot_skill":2}'
+		)
+	)
+	assert_int(json.bot_skill).is_equal(MatchSettings.SKILL_VETERAN)
+
+
+func test_the_skill_never_changes_the_night_only_the_bots_profile() -> void:
+	# Difficulty is the bots' player model and nothing else: the rules ignore it.
+	var rookie := MatchSettings.new()
+	rookie.bot_skill = MatchSettings.SKILL_ROOKIE
+	var veteran := MatchSettings.new()
+	veteran.bot_skill = MatchSettings.SKILL_VETERAN
+	var rounds := RoundTuning.new()
+	for round_number in [1, 5, 12]:
+		assert_int(rookie.scaled_count(10)).is_equal(veteran.scaled_count(10))
+		assert_int(rookie.alive_cap(rounds, round_number, 3)).is_equal(
+			veteran.alive_cap(rounds, round_number, 3)
+		)
+		assert_float(rookie.spawn_interval(rounds, round_number, 3)).is_equal(
+			veteran.spawn_interval(rounds, round_number, 3)
+		)
+		assert_float(rookie.break_for(rounds)).is_equal(veteran.break_for(rounds))
+
+
+func test_a_person_who_leaves_gives_the_seat_to_a_bot_as_it_stands() -> void:
+	var rules := RulesFixture.make_rules(0, 5)
+	var log := RulesFixture.record(rules)
+	rules.apply(RulesAction.add_player(1))
+	rules.apply(RulesAction.add_player(2))
+	rules.apply(RulesAction.grant_points(2, 700))
+	var points := rules.players[2].points
+	rules.apply(RulesAction.seat_bot(2))
+	assert_bool(rules.players[2].bot).is_true()
+	assert_int(rules.players[2].points).is_equal(points)
+	assert_int(log.of(&"bot_seated").size()).is_equal(1)
+	assert_int(log.of(&"bot_seated")[0]["player_id"]).is_equal(2)
+	assert_bool(rules.to_dict()["players"][2]["bot"]).is_true()
+	# A seat that is a bot's already, or none, cannot be given to a bot again.
+	rules.apply(RulesAction.seat_bot(2))
+	rules.apply(RulesAction.seat_bot(9))
+	assert_int(log.of(&"bot_seated").size()).is_equal(1)
+	assert_int(log.of(&"action_rejected").size()).is_equal(2)
+	# And back: the seat goes round as many times as people and bots come and go.
+	rules.apply(RulesAction.seat_person(2))
+	assert_bool(rules.players[2].bot).is_false()
+	assert_int(rules.players[2].points).is_equal(points)

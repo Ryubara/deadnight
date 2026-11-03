@@ -128,6 +128,12 @@ above (a press reaches only what is on its floor: `NightWorld.on_level`). Each l
 rooms it leads to (`metadata/opens`): the side room's three for the door, the upstairs' four for the first stair, both
 for the stair between the side room and the upstairs. The hall's five are open from the start.
 
+A link's card speaks in the map's own words, not the lot's: `MapWords` (`smallmap_tuning.tres`, `words`) names each link
+("Side room door", "Hall stairs", "Side room stairs"), says what it opens ("Opens the side room"), and calls a breach a
+boarded window. The card, the marker over the link and the feed's line all read it (`NightHudBinding.door_name`); the
+lot has no `MapWords` and keeps the HUD's defaults. `test_hud_link_words.gd` fails when a link has no words or a card of
+the map names the lot (#697).
+
 ### The windows
 
 The twelve windows are `Barricade`s of five boards each (`Windows/Window_<id>/Boards`, the rules'

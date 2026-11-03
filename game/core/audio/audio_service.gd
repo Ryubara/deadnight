@@ -592,7 +592,7 @@ func _play_3d(
 		culled += 1
 		return null
 	var began := PerfProbe.begin()
-	var occlusion := occlusion_between(from, at)
+	var occlusion := occlusion_between(from, at) * def.occlusion_scale
 	PerfProbe.end(&"audio.occlusion", began)
 	var loudness := def.linear_gain() * def.unit_size / (def.unit_size + distance)
 	loudness *= 1.0 - OCCLUSION_LOUDNESS * occlusion

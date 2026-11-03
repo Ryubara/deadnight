@@ -12,6 +12,7 @@ const SKIP_BREAK := &"skip_break"
 const ADD_PLAYER := &"add_player"
 const REMOVE_PLAYER := &"remove_player"
 const SEAT_PERSON := &"seat_person"
+const SEAT_BOT := &"seat_bot"
 const SET_DOWNED := &"set_downed"
 const REVIVE := &"revive"
 const BLOW := &"blow"
@@ -59,6 +60,7 @@ const REQUIRED := {
 	ADD_PLAYER: {"player_id": TYPE_INT},
 	REMOVE_PLAYER: {"player_id": TYPE_INT},
 	SEAT_PERSON: {"player_id": TYPE_INT},
+	SEAT_BOT: {"player_id": TYPE_INT},
 	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
 	REVIVE: {"player_id": TYPE_INT, "target_id": TYPE_INT},
 	BLOW: {"player_id": TYPE_INT, "damage": TYPE_FLOAT},
@@ -121,6 +123,12 @@ static func add_player(player_id: int, bot := false) -> Dictionary:
 ## bot's (`bot_replaced`). Refused as `unknown_player` when the seat is no bot's.
 static func seat_person(player_id: int) -> Dictionary:
 	return {"type": SEAT_PERSON, "player_id": player_id}
+
+
+## A bot takes the seat of the person `player_id` who left, as it stands (`bot_seated`). Refused as
+## `unknown_player` when the seat is no person's.
+static func seat_bot(player_id: int) -> Dictionary:
+	return {"type": SEAT_BOT, "player_id": player_id}
 
 
 static func remove_player(player_id: int) -> Dictionary:
