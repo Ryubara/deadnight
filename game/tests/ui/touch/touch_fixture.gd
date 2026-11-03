@@ -120,13 +120,26 @@ func touch(index: int, position: Vector2, pressed := true) -> void:
 
 
 func drag(index: int, position: Vector2, relative: Vector2, speed := 0.0) -> void:
+	Input.parse_input_event(_drag_event(index, position, relative, speed))
+	await _suite.get_tree().process_frame
+
+
+## A drag the layer has read when this returns, with no frame passing (a test that keeps its own
+## clock steps the frames itself).
+func send_drag(index: int, position: Vector2, relative: Vector2, speed := 0.0) -> void:
+	Input.parse_input_event(_drag_event(index, position, relative, speed))
+	Input.flush_buffered_events()
+
+
+func _drag_event(
+	index: int, position: Vector2, relative: Vector2, speed: float
+) -> InputEventScreenDrag:
 	var event := InputEventScreenDrag.new()
 	event.index = index
 	event.position = _window() * position
 	event.relative = _window().basis_xform(relative)
 	event.velocity = _window().basis_xform(relative.normalized() * speed)
-	Input.parse_input_event(event)
-	await _suite.get_tree().process_frame
+	return event
 
 
 ## What the browser's web runtime does for every finger: the page reports the finger as a pointer
