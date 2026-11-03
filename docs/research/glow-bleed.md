@@ -51,5 +51,6 @@ Unshadowed lamps inside a room still light the next room through the wall by the
 field's posts 5, 6 and 12 give 0.2 to 0.4 energy on the other side, the small map's pendants up to 0.7 on the upper
 rooms' wall bases (a ground-floor lamp lights the wall above its ceiling slab). Shadows are too dear on a phone
 (`compat-lighting.md`); the cure is a light layer per room (floors and ceilings on their own layer, a room's lamps
-cull the others) or ceiling lamps as downward spots. The projector's spot (`ProjectorBeam`, yaw 180) faces the road,
-not the screen: it lights the booth's south door and the road plaza (0.9) through the booth's wall.
+cull the others) or ceiling lamps as downward spots. The projector's spot (`ProjectorBeam`) faced the road, not the
+screen, and lit the booth's south door and the road plaza (0.9) through the booth's wall; #860 turned it to the screen,
+so it left the table.

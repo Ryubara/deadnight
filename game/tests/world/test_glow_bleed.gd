@@ -26,7 +26,6 @@ const LEAKS := {
 		"Field/Lamps/Lamp5/Light": 0.30,
 		"Field/Lamps/Lamp6/Light": 0.30,
 		"ProjectionBooth/Lamps/Lower": 0.47,
-		"ProjectionBooth/Lamps/ProjectorBeam": 0.91,
 		"ShopProps/ReCut/Glow": 0.28,
 		"ShopProps/Soda/Glow": 0.19,
 	},
