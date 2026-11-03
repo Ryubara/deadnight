@@ -88,7 +88,7 @@ func test_there_is_a_card_for_every_map_and_the_lot_is_chosen() -> void:
 	assert_bool(picker.card_for(StubMaps.ID).is_locked()).is_false()
 	# A screen reader gets the name, the facts and the state of each card.
 	assert_str(picker.card_for("drive_in").accessibility_name).is_equal(
-		"Drive-in lot, 13,200 m² · 1 to 4 players, selected"
+		"Drive-in lot, 13,200 m² · 1 to 8 players, selected"
 	)
 	assert_str(picker.card_for("small_indoor").accessibility_name).is_equal(
 		"The back rooms, 600 m² · 1 to 4 players, coming soon"
