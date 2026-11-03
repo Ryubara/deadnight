@@ -142,7 +142,6 @@ func test_a_bot_with_a_dry_gun_walks_to_a_locker_and_buys_rounds() -> void:
 
 func _dry_bot_with_a_dead_one_at(metres: float) -> SeatedNight:
 	var night := await _night(1)
-	_give(night, 1, 200)
 	var pistol = night.server.combat.state_of(1, &"pistol")
 	pistol.ammo = 0
 	pistol.reserve = 0
@@ -158,6 +157,10 @@ func _dry_bot_with_a_dead_one_at(metres: float) -> SeatedNight:
 func test_a_dry_bot_runs_for_rounds_with_a_dead_one_in_sight_but_not_in_reach() -> void:
 	# The soak found bots dying with thousands of points and empty guns: they shopped only in a lull.
 	var night := await _dry_bot_with_a_dead_one_at(8.0)
+	_give(night, 1, 0)
+	# The bot has made the dead one out before it holds the price.
+	_seconds(night, 3.0)
+	_give(night, 1, 200)
 	var pistol = night.server.combat.state_of(1, &"pistol")
 	var bought := _purchases(night, &"ammo_pistol")
 	_seconds(night, 90.0)

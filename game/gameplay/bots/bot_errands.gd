@@ -30,6 +30,11 @@ const BREAK_PHASE := 1
 const ACTIVE_PHASE := 2
 ## Metres to the nearest dead inside which no errand is begun or kept.
 const CLEAR_FROM := 12.0
+## A bot with no round left goes for rounds, and for nothing else, with the dead this many metres
+## away or more, running: the lot never goes quiet in a late round or a boss fight, and a bot that
+## waits for the dead to be `CLEAR_FROM` away dies, or stalls the night, holding its points (the
+## nightly soak, #231).
+const DASH_FROM := 4.0
 ## Seconds a refused item is left alone.
 const BACK_OFF := 30.0
 ## Seconds a bot that holds a door's price waits for a person at the door who holds it too.
@@ -250,6 +255,24 @@ func run(
 	note = ""
 	_forget_old(now)
 	return false
+
+
+## The supply dash: sets the intent and returns true for a bot with no round left, or returns false.
+func dash(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+	var me := state.me()
+	if me.is_empty() or me.get("downed", false) or not state.has_frame() or threat < DASH_FROM:
+		return false
+	if BotNeeds.ammo_level(me.get("arms", {}), _profile.ammo_floor_mags) != BotNeeds.Level.EMPTY:
+		return false
+	_clock = beliefs.now
+	_here = me["pos"]
+	if beliefs.now - _planned_at >= PLAN_EVERY or beliefs.purchased_at > _planned_at:
+		_plan(beliefs, state, me, state.frame)
+	if not _shopping(intent, beliefs, state, me, state.frame, Scope.NEEDS):
+		return false
+	intent.run = true
+	counts["dash"] = int(counts.get("dash", 0)) + 1
+	return true
 
 
 # --- The crane ---

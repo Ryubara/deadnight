@@ -14,11 +14,11 @@ extends Node
 ## `--person` (a stand-in for a person, the old autopilot, takes seat 1 and the bots take the seats
 ## after it: the Follow and Hold gates need one), `--max-round=R` (a night that starts round R is
 ## counted as reaching it and stopped, default 30, the simulator's cap), `--max-minutes=M` (game
-## minutes after which a night is stopped, default 45), `--budget=S` (wall seconds after which no
-## new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat is doing,
-## from
-## `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke) and `--quiet` (no
-## trace line a minute).
+## minutes after which a night is stopped, default 45), `--stall-minutes=M` (a round longer than
+## this is stopped and reported as a stalled round, default 8), `--budget=S` (wall seconds after
+## which no new night starts, default 0: none), `--watch=SEAT` (a line a second of what that seat
+## is doing, from `--from=TICK` and every `--every=TICKS`, for finding out why a gate broke) and
+## `--quiet` (no trace line a minute).
 ## Prints `SOAKNIGHT {json}` for each night and `SOAKCELL {json}` at the end.
 
 const STEP := Night.STEP
@@ -95,6 +95,9 @@ func _play(seed_value: int) -> Dictionary:
 		night.give_order(order, PERSON, night.server.body_of(PERSON).global_position)
 	var max_round := int(_args.get("max-round", 30))
 	var limit := int(float(_args.get("max-minutes", 45)) * 3600.0)
+	var stall := int(float(_args.get("stall-minutes", 8)) * 3600.0)
+	var round_seen := 0
+	var round_began := 0
 	var ticks := 0
 	var reason := "over"
 	while true:
@@ -105,6 +108,14 @@ func _play(seed_value: int) -> Dictionary:
 			break
 		if ticks >= limit:
 			reason = "cap_time"
+			break
+		if night.server.rules.round_number != round_seen:
+			round_seen = night.server.rules.round_number
+			round_began = ticks
+		elif ticks - round_began >= stall:
+			# A round that has gone on this long is a round that will not end: the last of the dead
+			# are not found, or not reachable. The night is stopped and the gate names it.
+			reason = "stalled_round"
 			break
 		night.tick()
 		watch.tick()

@@ -213,6 +213,9 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 			and _chase(intent, beliefs, here, held, mates, pack, plan.dry, order)
 		):
 			intent.note = "chase"
+		elif plan.dry and _dash(intent, beliefs, state, threat):
+			# Out of rounds with points to spend: run for them (`BotErrands.DASH_FROM`).
+			on_errand = true
 		elif _errand(
 			intent, beliefs, state, threat, order, anchor, _holding and not _pinged_door(state)
 		):
@@ -814,6 +817,15 @@ func _errand(
 	if went and may_go and team != null and not _errands.linking:
 		team.turn.took(beliefs.me, beliefs.now)
 	return went
+
+
+## The supply dash of a bot with no round left (see `BotErrands.dash`).
+func _dash(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+	if _errands == null:
+		return false
+	_errands.legs = legs
+	_errands.order = _standing_order(beliefs)
+	return _errands.dash(intent, beliefs, state, threat)
 
 
 ## A bot with a crowbar in hand walks up to a zombie that is not coming to it (one tearing boards,

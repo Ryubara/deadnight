@@ -361,10 +361,13 @@ func _long_episodes(bot: BotClient) -> Array[Dictionary]:
 ## How the night stands: the dead left by type, and what each bot holds. Read when it is lost.
 func _end_state() -> Dictionary:
 	var left: Dictionary = {}
+	var cards: Array[Dictionary] = []
 	for zombie: ZombieBody in night.server.sim.zombies.values():
 		if zombie.mode != ZombieBody.Mode.DYING:
 			var key := String(zombie.profile.type)
 			left[key] = int(left.get(key, 0)) + 1
+			if cards.size() < 6:
+				cards.append(_zombie_card(zombie.id))
 	var bots: Array[Dictionary] = []
 	for bot in night.host.bots:
 		if people.has(bot.state.player_id):
@@ -383,7 +386,7 @@ func _end_state() -> Dictionary:
 				}
 			)
 		)
-	return {"left": left, "bots": bots}
+	return {"left": left, "cards": cards, "bots": bots}
 
 
 ## What the server holds of a zombie: where it is and what it is doing (the soak's word on a bot
@@ -494,6 +497,8 @@ static func verdict(
 	var broken: Array[String] = []
 	if int(night_report.get("errors", 0)) > 0:
 		broken.append("engine errors: %d" % int(night_report["errors"]))
+	if night_report.get("reason", "") == "stalled_round":
+		broken.append("a round that would not end (round %d)" % int(night_report["round"]))
 	if int(night_report.get("denial_loops", 0)) > 0:
 		broken.append("rejected-buy loops: %d" % int(night_report["denial_loops"]))
 	for bot: Dictionary in night_report.get("bots", []):

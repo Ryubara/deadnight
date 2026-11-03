@@ -103,7 +103,9 @@ def chunk_file(out: Path, cell: Cell, seed: int) -> Path:
     return out / "chunks" / f"{cell.name}_{seed}.jsonl"
 
 
-def run_chunk(godot: str, out: Path, cell: Cell, seed: int, nights: int, max_round: int, timeout: int) -> str:
+def run_chunk(
+    godot: str, out: Path, cell: Cell, seed: int, nights: int, max_round: int, timeout: int, stall: int = 8
+) -> str:
     """Plays `nights` nights of `cell` from `seed` and keeps what the soak printed. Returns a line for the log."""
     path = chunk_file(out, cell, seed)
     if path.exists() and '"SOAKCELL"' in path.read_text(encoding="utf-8"):
@@ -124,6 +126,7 @@ def run_chunk(godot: str, out: Path, cell: Cell, seed: int, nights: int, max_rou
         f"--nights={nights}",
         f"--seed={seed}",
         f"--max-round={max_round}",
+        f"--stall-minutes={stall}",
         "--quiet",
     ]
     if cell.person:
@@ -205,7 +208,7 @@ def command_run(args: argparse.Namespace) -> None:
     print(f"{len(jobs)} chunks of up to {args.chunk} nights on {args.jobs} processes", flush=True)
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
         futures = [
-            pool.submit(run_chunk, godot, out, cell, seed, count, args.max_round, args.timeout)
+            pool.submit(run_chunk, godot, out, cell, seed, count, args.max_round, args.timeout, args.stall)
             for cell, seed, count in jobs
         ]
         for future in futures:
@@ -336,6 +339,7 @@ def gate_key(broken: str) -> str:
         ("stuck for", "stuck episode over 10 s"),
         ("with a zombie in view", "idle with a zombie in view over 5 s"),
         ("lost its brain", "brain disabled"),
+        ("would not end", "a round that would not end"),
         ("under Roam", "idle under Roam over 8 s"),
         ("beyond 25 m", "beyond 25 m of the person over 20 s"),
         ("held the spot", "off the Hold spot"),
@@ -496,6 +500,7 @@ def main() -> None:
     run.add_argument("--jobs", type=int, default=3)
     run.add_argument("--set", choices=["parity", "orders", "all"], default="all")
     run.add_argument("--cells", default="", help="only these cells, by name, comma separated")
+    run.add_argument("--stall", type=int, default=8, help="game minutes after which a round counts as stalled")
     run.add_argument("--timeout", type=int, default=3600, help="seconds one chunk may take")
     args = parser.parse_args()
     {"run": command_run, "merge": command_merge}[args.command](args)
