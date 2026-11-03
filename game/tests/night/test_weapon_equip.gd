@@ -27,12 +27,8 @@ const EXPECTED := {
 	&"dual_pistols": [&"Dual", "res://assets/weapons/service_pistol/service_pistol.glb"],
 }
 ## A weapon drawn with another's model until its own lands: it may share that model, and is taken
-## off this list with its own glb. None now (the pair has the service pistol, #797).
-const STAND_INS := {}
-
-## Weapons held as another's model until their own is on main (#795): the one rule they are excused
-## is that no two weapons share a model. Delete the ids as their models land.
-const STAND_INS: Array[StringName] = [&"mp5", &"ppsh", &"m4a1"]
+## off this list with its own glb: the PPSh, MP5 and M4A1 wear the Tommy gun's until #795 lands.
+const STAND_INS := {&"mp5": &"smg", &"ppsh": &"smg", &"m4a1": &"smg"}
 
 
 func _start() -> Night:
@@ -99,8 +95,6 @@ func test_the_table_covers_the_whole_catalogue() -> void:
 func test_no_two_weapons_share_a_model() -> void:
 	var seen := {}
 	for id in WeaponCatalog.IDS:
-		if id in STAND_INS:
-			continue
 		var model: String = EXPECTED[id][1]
 		if STAND_INS.has(id):
 			# Its model is the stand-in's, until its own lands.
