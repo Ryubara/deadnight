@@ -1,0 +1,45 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/smallmap/lights/kit_lamp.gd" id="1_lamp"]
+[ext_resource type="PackedScene" path="res://world/smallmap/fixtures/wall_lantern.tscn" id="2_fixture"]
+
+[sub_resource type="QuadMesh" id="HaloMesh"]
+size = Vector2(0.6, 0.6)
+
+[sub_resource type="QuadMesh" id="PoolMesh"]
+size = Vector2(2.4, 2.4)
+orientation = 1
+
+[sub_resource type="QuadMesh" id="WashMesh"]
+size = Vector2(1.8, 1.8)
+
+[node name="LanternLight" type="Node3D"]
+script = ExtResource("1_lamp")
+halo_energy = 0.7
+pool_energy = 0.2
+haze_energy = 0.0
+wash_energy = 0.3
+
+[node name="Lamp" parent="." instance=ExtResource("2_fixture")]
+
+[node name="Halo" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.94, 0.125)
+cast_shadow = 0
+mesh = SubResource("HaloMesh")
+
+[node name="Wash" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0.015)
+cast_shadow = 0
+mesh = SubResource("WashMesh")
+
+[node name="Pool" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0.7)
+cast_shadow = 0
+mesh = SubResource("PoolMesh")
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0.35)
+light_color = Color(1, 0.76, 0.48, 1)
+light_energy = 1.0
+omni_range = 4.5
+omni_attenuation = 1.3

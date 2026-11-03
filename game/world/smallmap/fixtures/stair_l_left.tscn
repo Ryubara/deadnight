@@ -1,0 +1,52 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/smallmap/stair_l_left.gltf" id="model"]
+
+[node name="StairLLeft" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("model")]
+
+[node name="Ramp" type="CSGBox3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0.8321, 0.5547, 0, 0.5547, -0.8321, 1.05, 0.7168, 0.6445)
+visible = false
+use_collision = true
+size = Vector3(1.4, 0.2, 2.8844)
+
+[node name="Landing" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.05, 1.5, -1.125)
+visible = false
+use_collision = true
+size = Vector3(1.4, 0.2, 1.25)
+
+[node name="Ramp2" type="CSGBox3D" parent="."]
+transform = Transform3D(0, 0.5547, -0.8321, 0, 0.8321, 0.5547, 1, 0, 0, -0.6055, 2.2168, -1.125)
+visible = false
+use_collision = true
+size = Vector3(1.25, 0.2, 2.5239)
+
+[node name="Top" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.675, 2.9, -1.05)
+visible = false
+use_collision = true
+size = Vector3(0.15, 0.2, 1.4)
+
+[node name="RailBlocker" type="CSGBox3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0.8321, 0.5547, 0, 0.5547, -0.8321, 0.39, 1.1462, 0.9308)
+visible = false
+use_collision = true
+collision_layer = 2
+size = Vector3(0.1, 0.8321, 2.5239)
+
+[node name="RailBlocker2" type="CSGBox3D" parent="."]
+transform = Transform3D(0, 0.5547, -0.8321, 0, 0.8321, 0.5547, 1, 0, 0, -0.3192, 2.6462, -0.39)
+visible = false
+use_collision = true
+collision_layer = 2
+size = Vector3(0.1, 0.8321, 2.1633)
+
+[node name="Newel" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.39, 1.35, -0.39)
+visible = false
+use_collision = true
+collision_layer = 2
+size = Vector3(0.14, 2.7, 0.14)

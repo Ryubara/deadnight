@@ -36,9 +36,14 @@ const SPAWN_RETRY_TICKS := 15
 const COMMAND := &"command"
 const JOIN := &"join"
 const LEAVE := &"leave"
+## A person takes the seat of a bot: `seat_person` {player_id}. The seat, its body, points and
+## weapons stay as they are; the rules say `bot_replaced`.
+const SEAT_PERSON := &"seat_person"
 const START_NIGHT := &"start_night"
 ## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
 const PING := &"ping"
+## A bot calls out a line of `BotSay`: `say` {line, subject, pos}, see `SayBoard`.
+const SAY := &"say"
 ## A player came back on a new connection: `resync` {player_id} tells it the looks again.
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
@@ -105,6 +110,8 @@ var tuning: NightTuning:
 var tick_count := 0
 ## The marks the players have put up.
 var ping_board := PingBoard.new()
+## The lines the bots call out.
+var say_board := SayBoard.new()
 ## Whether the players' bodies have the Soldier's model. A game server draws nothing, so it leaves
 ## them out (`NightHost`); in one process with its client the same bodies are drawn.
 var drawn_bodies := true
@@ -195,15 +202,19 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 	_outbox = []
 	match action.get("type"):
 		JOIN:
-			_join(action["player_id"], action.get("local", false))
+			_join(action["player_id"], action.get("local", false), action.get("bot", false))
 		LEAVE:
 			_leave(action["player_id"])
+		SEAT_PERSON:
+			rules.apply(RulesAction.seat_person(action["player_id"]))
 		START_NIGHT:
 			rules.apply(RulesAction.start())
 		LOOK:
 			looks.receive(action["player_id"], action["packet"])
 		PING:
 			ping(from_id if from_id > 0 else action.get("player_id", 1), action)
+		SAY:
+			say(from_id if from_id > 0 else action.get("player_id", 1), action)
 		RESYNC:
 			if _bodies.has(action["player_id"]):
 				looks.sync(action["player_id"])
@@ -295,6 +306,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	PerfProbe.end(&"server.act", began)
 	began = PerfProbe.begin()
 	_outbox.append_array(ping_board.step(delta))
+	say_board.step(delta)
 	_throw_grenades(delta)
 	if with_frame:
 		_outbox.append(_frame())
@@ -305,7 +317,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 # --- Players ---
 
 
-func _join(player_id: int, local: bool) -> void:
+func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
 	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
@@ -318,7 +330,7 @@ func _join(player_id: int, local: bool) -> void:
 	thrower.release_over = tuning.grenade_release_over
 	thrower.release_under = tuning.grenade_release_under
 	_throwers[player_id] = thrower
-	rules.apply(RulesAction.add_player(player_id))
+	rules.apply(RulesAction.add_player(player_id, bot))
 	# What the rules say the player starts with, the firearm last so it is the one in hand.
 	for shop_id in rules.players[player_id].weapons:
 		_combat(CombatAction.give_weapon(player_id, WeaponCatalog.catalog_id(shop_id)))
@@ -336,6 +348,7 @@ func _leave(player_id: int) -> void:
 		_repairing.erase(player_id)
 		_revive.forget(player_id)
 		ping_board.forget(player_id)
+		say_board.forget(player_id)
 		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
 		_face_left.erase(player_id)
@@ -840,6 +853,14 @@ func revive() -> ReviveChannel:
 ## up, else why not (`PingJudge`).
 func ping(player_id: int, action: Dictionary) -> StringName:
 	return _ping_judge.place(player_id, action)
+
+
+## A bot calls out a line (`say`): everyone hears a `bot_say` when `SayBoard` lets it through.
+func say(player_id: int, action: Dictionary) -> bool:
+	var event := say_board.from_action(player_id, action) if _bodies.has(player_id) else {}
+	if not event.is_empty():
+		_outbox.append(event)
+	return not event.is_empty()
 
 
 ## One board back if this hand is free: the first at the press, then one every `repair_interval`.

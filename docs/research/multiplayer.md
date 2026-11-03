@@ -403,6 +403,11 @@ version is not raised. The host sets them with `NightHost.configure_match` befor
 the call changes nothing for this night. Tested over a real socket in `test_match_settings_net.gd`. Details and the
 numbers are in [rounds](../design/rounds.md#match-settings).
 
+The Bots setting (#643) adds no byte and no version: `bots` is a key of `match_settings` (a snapshot without it reads
+as 0, and a ticket or snapshot with it is taken by a build that does not know it, which ignores the key), a
+`player_added` event carries `bot`, a `bot_replaced` event says a person took a bot's seat, and each player of the
+snapshot has `bot`. The bots' names ride the WELCOME's `names` like any seat's. See [rounds](../design/rounds.md#bots).
+
 ## Revives
 
 A teammate's revive (#486, [Revive](../design/revive.md)) is made of what is already on the wire. The hold is the

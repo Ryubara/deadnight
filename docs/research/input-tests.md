@@ -23,6 +23,11 @@ tests. The same hole is open for any action.
 - **An action with a cooldown needs ticks between its bindings.** The quick melee (`V`, the mouse's back button,
   the d-pad's down; #411) refuses a press made inside its 0.6 s, so the matrix lets 40 ticks pass after each binding
   of it (`_after`), and the row sits before the grenades: an arm that is still throwing one refuses the blow.
+- **The bot wheel and the ping** have rows too (#642): `bot_wheel` (Q, the d-pad left, the BOTS touch button) and `ping`
+  (Z, the middle mouse button, the d-pad right, the PING touch button). The night reads the ping key as its own edge
+  (`HumanController.ping_pressed`, once a tick beside `command`), so the matrix reads both each tick the way
+  `Night._human_command` does (`_tick_command`); a second binding of a ping would otherwise find the first one's edge
+  still held. What the wheel does with a hold is `tests/ui/test_bot_wheel_input.gd` ([bot wheel](bot-wheel.md)).
 - Pause belongs to the screen: the real night screen is entered and each device's pause event must toggle it.
 - Touch is real touches on the real layer (`TouchFixture`); the interact button is only there with a prompt, so the
   test sets one.

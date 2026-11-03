@@ -25,6 +25,14 @@ const SHOULDER := &"swap_shoulder"
 ## sits on the far right edge above the ammo card, close enough to the corner to be on screen on a
 ## phone's 540 unit high canvas too (the menu's phone factor stays on while a night runs).
 const MELEE := &"quick_melee"
+## The ping (#642): marks what the crosshair is on for the team; the button presses `ping`. It sits
+## on the top edge beside Pause, where the other thumb reaches it between fights; the right thumb's
+## corner is full (Reload takes the bottom of MELEE's column on a 1080 unit canvas).
+const PING := &"ping"
+## The bot command wheel (#642): held, it opens the wheel, and the thumb's drag picks an order; the
+## button presses `bot_wheel`. It sits in MELEE's column on the far right edge, above the ammo card
+## and clear of Reload, so it is on screen on a phone's 540 unit high canvas too.
+const BOT_WHEEL := &"bot_wheel"
 
 ## Offset from the bottom right corner (left, up) and radius, by button. The order is the order a
 ## touch tests them in: the contextual button first, so it wins where it overlaps.
@@ -38,10 +46,15 @@ const BUTTONS := [
 	[GRENADE, Vector2(520.0, 165.0), 56.0],
 	[SHOULDER, Vector2(565.0, 640.0), 52.0],
 	[MELEE, Vector2(60.0, 310.0), 44.0],
+	[BOT_WHEEL, Vector2(60.0, 405.0), 40.0],
 ]
 ## Pause sits on the top edge, right of the HUD's left column.
 const PAUSE_OFFSET := Vector2(442.0, 80.0)
 const PAUSE_RADIUS := 36.0
+## The ping button sits right of Pause on the top edge, clear of the HUD's left column and of the
+## middle of the screen.
+const PING_OFFSET := Vector2(538.0, 80.0)
+const PING_RADIUS := 36.0
 ## The scoreboard button sits under Pause, held to show the board (it presses the `scoreboard`
 ## action while a finger is on it).
 const SCOREBOARD_OFFSET := Vector2(442.0, 178.0)
@@ -72,6 +85,10 @@ static func buttons(safe: Rect2, touch_scale: float, mirrored := false) -> Dicti
 	var pause_radius := PAUSE_RADIUS * touch_scale
 	var pause_x := safe.end.x - PAUSE_OFFSET.x if mirrored else safe.position.x + PAUSE_OFFSET.x
 	found[PAUSE] = _circle(Vector2(pause_x, safe.position.y + PAUSE_OFFSET.y), pause_radius)
+	var ping_x := safe.end.x - PING_OFFSET.x if mirrored else safe.position.x + PING_OFFSET.x
+	found[PING] = _circle(
+		Vector2(ping_x, safe.position.y + PING_OFFSET.y), PING_RADIUS * touch_scale
+	)
 	var board_x := (
 		safe.end.x - SCOREBOARD_OFFSET.x if mirrored else safe.position.x + SCOREBOARD_OFFSET.x
 	)
@@ -101,7 +118,7 @@ static func stick_rest(safe: Rect2, touch_scale: float, mirrored := false) -> Ve
 
 ## The button under `point`, or "" (the first in `BUTTONS` order wins; `skip` lists hidden ones).
 static func button_at(point: Vector2, circles: Dictionary, skip: Array = []) -> StringName:
-	var order: Array = [PAUSE, SCOREBOARD]
+	var order: Array = [PAUSE, PING, SCOREBOARD]
 	for row in BUTTONS:
 		order.append(row[0])
 	for id: StringName in order:

@@ -67,7 +67,7 @@ func _night(tuning: RulesTuning, bot_ids: Array[int], spots: Array[Vector3]) -> 
 	_events.clear()
 	night.on_event = func(event: Dictionary) -> void: _events.append(event)
 	night.run(12)
-	await night.settle(12)
+	await night.settle(60)
 	_catcher.start()
 	return night
 
