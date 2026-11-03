@@ -8,7 +8,9 @@ extends RefCounted
 ## out.
 ##
 ## - A forced reload when the magazine is dry and there is reserve; but with a zombie close and
-##   another gun loaded, the swap is quicker than the reload, so the bot swaps.
+##   another gun loaded, the swap is quicker than the reload, so the bot swaps. A gun with no round
+##   anywhere is put down for a gun that has rounds in reserve only, which is then reloaded (a
+##   bot never holds an empty gun while another can be loaded).
 ## - A tactical reload when the magazine is low and nothing is near (`LOW_MAGAZINE`, `RELOAD_SAFE`),
 ##   and a top-up in a lull when it is not full (`TOP_UP_BELOW`, `LULL`).
 ## - The flare gun is put away for a loaded gun as soon as it is in hand (it is held for one shot).
@@ -38,6 +40,10 @@ class Plan:
 	var swap := false
 	## True when no firearm has a round left, so a melee swing is all the bot can do.
 	var dry := false
+	## True when no firearm can fire this moment (the one in hand is empty and no other has a
+	## loaded magazine), though a reload or a swap may bring one back: the quick melee fills the
+	## time.
+	var unloaded := false
 
 
 ## Plans one think. `distance` is how far the zombie it fights is (INF for none), `threat` how
@@ -53,6 +59,7 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 	var here_range := distance if distance < INF else 0.0
 	out.dry = not has_rounds(arms)
 	var best := best_loaded(arms, held, here_range)
+	out.unloaded = not (held.is_melee() or held.is_lure()) and ammo <= 0 and best == &""
 	if held.is_lure():
 		# The flare gun is a tool for one shot (`BotFlare`), not a gun for the fight: put it away
 		# for a loaded gun (or the blade) as soon as it is in hand and no flare is ordered.
@@ -72,7 +79,9 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 		if reserve > 0 and not (other and threat <= SWAP_INSTEAD):
 			out.reload = true
 		else:
-			out.swap = other
+			# Nothing in this gun at all: another with a round (or the blade), else one that only
+			# needs its reload.
+			out.swap = other or reserve_gun(arms, held) != &""
 		return out
 	if best != &"" and best != held.id and _better(best, held, here_range):
 		out.swap = true

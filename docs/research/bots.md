@@ -711,7 +711,9 @@ is under 0.5 ms at 40 zombies; the page's cost section is updated with the measu
   light (`BotLevel.view_range`: 8 m plus 25 m times the round's ambient, or 33 m on lit ground), a ray from the eye to
   the chest and then the head, at most six rays a think (nearest first), a per-contact reaction drawn log-normal around
   the profile's mean and never under 0.20 s, a memory of three seconds that is never shot at, and hearing within 4 m
-  as a direction and a range class (no position, no id). A contact seen for less than its reaction is dropped.
+  as a direction and a range class (no position, no id). A contact seen for less than its reaction is dropped, except a
+  zombie in its swing within 2 m (`ARM_REACH`), which is noticed from any side: out of the cone it was dropped at every
+  think and its reaction began again, so dead swinging at a bot's back were never believed in (#695, seed 7).
 - **`BotMotor`** (aim and trigger; movement is phase 2): a critically damped spring on yaw and pitch with a hard cap on
   the speed of the turn, so no 100 ms window beats `BotProfile.max_aim_speed`; the shot's `dir` is derived from the
   view (`NightCommand.look_along`), never the other way; seeded filtered tracking noise that grows with distance, the
@@ -833,7 +835,10 @@ decides, the others hold a rule each, so a test pins them one by one):
   and another weapon loaded (the swap is quicker); a tactical reload under 30% of a magazine with nothing within 8 m,
   and a top-up under 70% when nothing is within 16 m; a swap to the loaded weapon that is 1.4 times better at the
   range of the fight (the simulator's `SWITCH_GAIN`) and to the crowbar when every gun is dry; the crowbar goes back
-  to a gun that can fire.
+  to a gun that can fire. A held gun with nothing left (magazine and reserve) is put down for a gun that has rounds in
+  reserve only, which is reloaded next (#695: the old plan held the empty gun for the rest of the night, kiting
+  whatever followed it, because reload needs reserve in the held gun, swap needs a loaded gun and `dry` counts the
+  other gun's reserve). `Plan.unloaded` (no gun can fire this moment) lets the quick melee fill the wait.
 - **`BotGrenadier`**: a grenade at a pack of three (two in Crawl Space) within 3 m of each other, 3 to 14 m away, as
   the pack will stand when the 3 s fuse runs out (it keeps walking), when the blast is 6 m or more from the bot and
   **4 m plus a margin of 1.5 m from every teammate** (where they stand and where they will be by then; the margin is

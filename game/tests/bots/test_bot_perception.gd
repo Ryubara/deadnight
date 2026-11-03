@@ -221,3 +221,27 @@ func test_a_zombie_going_down_or_coming_out_of_the_ground_is_not_a_contact() -> 
 	zombies = [_zombie(3, Vector3(0, 0, -6), ZombieBody.Mode.DYING)]
 	_watch(perception, zombies, 0.2, 0.0, now)
 	assert_bool(perception.beliefs.contacts.has(3)).is_false()
+
+
+# --- A swing at the bot's back (#695) ---
+
+
+func test_a_zombie_swinging_at_the_bot_from_behind_is_noticed_and_becomes_a_target() -> void:
+	# Out of the cone, so it was dropped at every think and its reaction time began again each
+	# time: three of the dead around a bot that looked the other way were never believed in, and
+	# the bot stood among them for the rest of the night.
+	var perception := _perception()
+	var zombies: Array[Dictionary] = [_zombie(1, Vector3(0, 0, 0.6), ZombieBody.Mode.ATTACK)]
+	_watch(perception, zombies, 3.0)
+	assert_array(perception.beliefs.targets(HERE)).has_size(1)
+
+
+func test_only_a_swing_within_arms_reach_is_noticed_from_behind() -> void:
+	var perception := _perception()
+	var chasing: Array[Dictionary] = [_zombie(1, Vector3(0, 0, 0.6), ZombieBody.Mode.CHASE)]
+	_watch(perception, chasing, 3.0)
+	assert_array(perception.beliefs.targets(HERE)).is_empty()
+	var far: Array[Dictionary] = [_zombie(2, Vector3(0, 0, 6.0), ZombieBody.Mode.ATTACK)]
+	var other := _perception()
+	_watch(other, far, 3.0)
+	assert_array(other.beliefs.targets(HERE)).is_empty()
