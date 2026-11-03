@@ -497,6 +497,13 @@ def ext_resources() -> list[str]:
     ]
 
 
+# Props the maintainer lifted by hand in the editor (Deadnight #703): (area, node name) -> height in metres. The sheet of
+# papers in the concession was raised 0.003 m, a hair above the floor (the editor kept 0.0027), and is not to be tidied.
+HAND_LIFT: dict[tuple[str, str], float] = {
+    ("Concession", "PapersC1"): 0.003,
+}
+
+
 def dress(area: str, group, instance) -> None:
     """Place the area's props under `<area>/Dressing`, with the generator's `group` and `instance` helpers."""
     spots = DRESSING.get(area, [])
@@ -506,4 +513,5 @@ def dress(area: str, group, instance) -> None:
     counts: dict[str, int] = {}
     for prop, x, z, yaw in spots:
         counts[prop] = counts.get(prop, 0) + 1
-        instance(parent, f"{camel(prop)}{counts[prop]}", f"prop_{prop}", (x, 0, z), yaw)
+        name = f"{camel(prop)}{counts[prop]}"
+        instance(parent, name, f"prop_{prop}", (x, HAND_LIFT.get((area, name), 0), z), yaw)
