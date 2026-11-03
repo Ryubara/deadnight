@@ -487,9 +487,12 @@ the snapshots 5.2 to 6.0 ms at p95, 6 to 24 ticks of 1200 over the 16.7 ms budge
 the bytes, the bots' and the zombies' targets over more players. Three rooms of 40 in one process (`--rooms=3
 --stagger=1`), the worst load `ROOM_CAPACITY` 3 allows: mean tick 9.2 ms with four players a room and 12.1 ms with
 eight (p95 26.4 ms both: the machine was loaded, so the p95 says little; ticks over the budget 109 and 158 of 1200).
-**That is less headroom than the crowd budget's three rooms were chosen with** (measured on a quiet machine at four
-players), and it was not measured on Railway: a follow-up issue asks for it before `ROOM_CAPACITY` is trusted at 3 with
-rooms of eight. Each bot costs about what [bots](bots.md) measured (85 microseconds a step). A room of eight asks for
+**That was less headroom than the crowd budget's three rooms were chosen with** (four players, a quiet machine), so it
+was measured on Railway ([crowd budget](crowd-budget.md#rooms-of-eight-on-railway-712), #712): three rooms of 40 with
+eight players a room, in the deployed container, three runs: mean tick 8.4 to 9.3 ms, p95 11.5 to 13.3 ms, 2 to 5 ticks
+of 1200 over the 16.7 ms budget (four players: 6.0 to 6.2 and 8.7 to 8.9). **`ROOM_CAPACITY` stays 3** with rooms of
+eight; four rooms of eight are the edge (p95 13.6 to 15.6 ms, 8 to 40 ticks over). Each bot costs about what
+[bots](bots.md) measured (85 microseconds a step). A room of eight asks for
 more alive than any room stands ([crowd budget](crowd-budget.md): 40 with a browser, a share of 120 for the process),
 so what a room of eight adds is people, not crowd.
 
