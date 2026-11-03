@@ -1,0 +1,22 @@
+{
+  "_about": "The list kept beside test_weapon_names.gd (#857). `banned`: makers, brands and model names that are trademarks, and the names other games made famous; a display name the player sees may not hold one as a word (or as the words in a row). `chosen`: the display name of a weapon that has no free name of its own (its id is a real designation); once the id is in the catalogue its display_name must be this.",
+  "banned": [
+    "barrett", "remington", "winchester", "colt", "smith & wesson", "ruger", "mossberg", "savage", "marlin",
+    "browning", "springfield", "thompson", "auto-ordnance", "heckler", "koch", "heckler & koch", "h&k", "fn herstal",
+    "sig sauer", "sig", "glock", "beretta", "walther", "luger", "mauser", "kalashnikov", "ak-47", "ak47", "ak-74",
+    "uzi", "ingram", "mac-10", "steyr", "colt 1911", "m1911", "m16", "ar-15", "desert eagle", "magnum research",
+    "sten", "bren", "lee-enfield", "garand", "m1 garand",
+    "mp5", "mp7", "mp40", "m4a1", "m4", "m249", "saw", "minimi", "ppsh", "ppsh-41", "ppsh41", "870", "pump 870",
+    "mcs", "m82", "m107", "m1928",
+    "ray gun", "wunderwaffe", "thundergun", "winter's howl"
+  ],
+  "chosen": {
+    "mp5": "Usher SMG",
+    "ppsh": "Reel Gun",
+    "m4a1": "Matinee Carbine",
+    "m249": "Double-Feature Gun",
+    "pump_870": "Popper",
+    "ray_gun": "Moonbeam Pistol",
+    "freeze_gun": "Snow-Cone Gun"
+  }
+}
