@@ -1063,21 +1063,27 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -18.371,
 
 [node name="Lamp18" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 65.461, 0.563, -21.897)
+dim = 0.4
 
 [node name="Lamp19" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 65.461, -0.036, -45.897)
+dim = 0.4
 
 [node name="Lamp20" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 35.461, -0.029, -55.897)
+dim = 0.4
 
 [node name="Lamp21" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -65.570, -0.034, -22.204)
+dim = 0.4
 
 [node name="Lamp22" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -65.570, -0.040, -46.204)
+dim = 0.4
 
 [node name="Lamp23" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -35.541, -0.038, -56.080)
+dim = 0.4
 
 [node name="Lamp24" parent="Field/Lamps" instance=ExtResource("lamp")]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -44.570, -0.039, -37.204)
