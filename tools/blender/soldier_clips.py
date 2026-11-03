@@ -304,6 +304,7 @@ def build(arm):
     aim_moves(arm, acts, aim, every)
     revive(arm, acts)
     sprint_carries(arm, acts, aim, up)
+    dual(arm, up, idle, idle_mid, pistol)
     return CLIPS
 
 
@@ -749,6 +750,8 @@ SPRINT_CLASSES = ("Rifle", "Shotgun", "Pistol", "Melee")
 SPRINT_LOW = (5, 14)
 # The frame of Run whose chest is the reference for the carry targets below (Torso turned least: 1 degree).
 SPRINT_REF = 4
+# Sprint_Pistol's keys, for the dual pistols' carry (`dual`).
+PISTOL_SPRINT = []
 # The two-handed carry, per class: the weapon's pose, in the world's axes at SPRINT_REF (the Soldier faces -Y, his
 # right is -X), turned with the chest: where its grip is from the waist (the Torso bone's head, metres), the way the
 # muzzle points and the top of the gun faces, how far it swings across with the chest (degrees each way, on top of
@@ -998,6 +1001,8 @@ def sprint_carries(arm, acts, aim, up):
         p["UpperArm.R"]["rot"] = p["UpperArm.R"]["rot"] @ Quaternion().slerp(mirrored, SPRINT_PISTOL_SWING)
         keys.append((f, p))
     write(arm, "Sprint_Pistol", keys, up, "upper", True, "Pistol")
+    PISTOL_SPRINT.clear()
+    PISTOL_SPRINT.extend(keys)
 
     # Melee: the runner's arm, from the gun hold's arm (the bat upright in the fist) turned by the shortest way, then
     # the forearm rolled so the shaft leans where SPRINT_MELEE says. The shaft is the kit Shovel's long axis (its local
@@ -1030,3 +1035,82 @@ def sprint_carries(arm, acts, aim, up):
         keys.append((f, _read_pose(arm, start)))
     write(arm, "Sprint_Melee", keys, up, "upper", True, "Melee")
     print("SPRINT", {k: CLIPS[f"Sprint_{k}"]["frames"] for k in (*SPRINT_CLASSES, *SPRINT_MODELS)}, report)
+
+
+# ---- Dual pistols (Deadnight #789) -----------------------------------------------------------------------------------
+# A pistol in each hand: the Pistol clips with the left arm doing what the right does. The rig is an exact mirror (each
+# left bone's local rotation is its right one's with y and z negated: measured on the file and in Godot, where the same
+# sign flip mirrors the finger poses), so a mirrored pose is the right arm's rotations with that flip, bone by bone, and
+# the chest, which both arms hang from, keeps its own. While a weapon is up the game's hand IK (WeaponHandsIK) holds the
+# arms, so these are what they do around it: equipping and putting away, the sprint and the quick melee, and the pose
+# the IK is blended from. 6 clips in their own file, built with
+#   --clips Aim_Dual,Fire_Dual,Equip_Dual,Unequip_Dual,Strike_Dual,Sprint_Dual
+DUAL_ARM = ("Shoulder", "UpperArm", "LowerArm", "Index1")
+
+
+def mirror_arm(pose):
+    """Copy of `pose` with the left arm's rotations the right arm's mirrored."""
+    out = {b: {"rot": v["rot"].copy(), "loc": v["loc"].copy()} for b, v in pose.items()}
+    for bone in DUAL_ARM:
+        q = pose[f"{bone}.R"]["rot"]
+        out[f"{bone}.L"]["rot"] = Quaternion((q.w, q.x, -q.y, -q.z))
+    return out
+
+
+def check_mirror(arm, pose):
+    """How far (metres) the left hand ends from the right hand's reflection across the body's middle plane, in the
+    pose `pose` mirrored: 0 for an exact mirror rig."""
+    _pose_arm(arm, mirror_arm(pose))
+    right, left = _world(arm, "Index1.R")[1], _world(arm, "Index1.L")[1]
+    middle = (_world(arm, "UpperArm.R")[1] + _world(arm, "UpperArm.L")[1]) / 2
+    side = (_world(arm, "UpperArm.R")[1] - _world(arm, "UpperArm.L")[1]).normalized()
+    reflected = right - 2 * side * (right - middle).dot(side)
+    return (reflected - left).length
+
+
+def shifted(keys, n, shift):
+    """The pose `shift` frames on (fractions blended) of a looped key list of frames 0..n (n the same as 0)."""
+    out = []
+    for f, _pose in keys:
+        at = (f + shift) % n
+        lo = math.floor(at)
+        out.append((f, blend(keys[lo][1], keys[(lo + 1) % n][1], at - lo) if at != lo else keys[lo][1]))
+    return out
+
+
+def dual(arm, up, idle, idle_mid, pistol):
+    """Aim_Dual, Fire_Dual, Equip_Dual, Unequip_Dual, Strike_Dual and Sprint_Dual from the Pistol poses."""
+    gap = check_mirror(arm, pistol)
+    assert gap < 0.002, f"the rig is not a mirror: the hands end {gap:.4f} m from each other's reflection"
+    base = mirror_arm(pistol)
+    write(arm, "Aim_Dual", [(0, base), (24, mirror_arm(offset(pistol, Abdomen=(1, 1, 0)))), (48, base)], up, "upper",
+          True, "Dual")  # fmt: skip
+    kicked = mirror_arm(offset(pistol, LowerArm_R=(0, 0, 15), Torso=(-3, 0, 0)))
+    write(arm, "Fire_Dual", [(0, base), (2, kicked), (6, base)], up, "upper", False, "Dual",
+          {"muzzle": 0, "can_fire_again": 6})  # fmt: skip
+    write(arm, "Equip_Dual", [(0, idle), (4, blend(idle, base, 0.45)), (10, base)], up, "upper", False, "Dual",
+          {"weapon_visible": 2, "ready": 10})  # fmt: skip
+    write(arm, "Unequip_Dual", [(0, base), (6, blend(base, idle_mid, 0.55)), (10, idle_mid)], up, "upper", False,
+          "Dual", {"weapon_hidden": 8})  # fmt: skip
+    k = STRIKE["Pistol"]
+    windup = offset(pistol, UpperArm_R=(35 * k, 0, 0), LowerArm_R=(0, 0, 25 * k), Torso=(-8, 14, 0), Abdomen=(-2, 6, 0))
+    blow = offset(
+        pistol, UpperArm_R=(-15 * k, 0, 0), LowerArm_R=(0, 0, -15 * k), Torso=(15, -11, 0), Abdomen=(5, -5, 0)
+    )
+    follow = offset(pistol, UpperArm_R=(-22 * k, 0, 0), LowerArm_R=(0, 0, -18 * k), Torso=(19, -15, 0),
+                    Abdomen=(6, -7, 0))  # fmt: skip
+    keys = [(0, base), (3, mirror_arm(windup)), (6, mirror_arm(blow)), (8, mirror_arm(follow)), (13, base)]
+    write(arm, "Strike_Dual", keys, up, "upper", False, "Dual", dict(STRIKE_EVENTS))
+    # The sprint: Sprint_Pistol's gun arm on the right, and on the left the same arm mirrored half a stride on, so
+    # the two pistols pump against each other as a runner's arms do.
+    n = len(PISTOL_SPRINT) - 1
+    opposite = shifted(PISTOL_SPRINT, n, n / 2)
+    keys = []
+    for (f, right), (_f, other) in zip(PISTOL_SPRINT, opposite):
+        pose = {b: {"rot": v["rot"].copy(), "loc": v["loc"].copy()} for b, v in right.items()}
+        for bone in DUAL_ARM:
+            q = other[f"{bone}.R"]["rot"]
+            pose[f"{bone}.L"]["rot"] = Quaternion((q.w, q.x, -q.y, -q.z))
+        keys.append((f, pose))
+    write(arm, "Sprint_Dual", keys, up, "upper", True, "Dual")
+    print("DUAL", {k: CLIPS[k]["frames"] for k in CLIPS if k.endswith("_Dual")}, "mirror gap (m)", round(gap, 5))

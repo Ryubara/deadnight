@@ -13,6 +13,7 @@ const IDS: Array[StringName] = [
 	&"crowbar",
 	&"baseball_bat",
 	&"fire_axe",
+	&"dual_pistols",
 ]
 
 ## The weapon every player starts the night with.

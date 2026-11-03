@@ -15,6 +15,10 @@ const FIREARMS: Array[String] = [
 	"service_pistol",
 	"ray_gun",
 	"freeze_gun",
+	# The heavy batch (#796).
+	"m249",
+	"fifty_cal",
+	"pump_870",
 ]
 const NOT_FIREARMS: Array[String] = ["baseball_bat", "fire_axe", "grenade", "hammer", "crowbar"]
 const MUZZLE := "Muzzle"

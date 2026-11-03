@@ -19,6 +19,9 @@ var grip: HandGrip
 ## How far each hand is on the grip, 0 (the clip's fingers) to 1.
 var right_weight := 0.0
 var left_weight := 0.0
+## The left hand holds a mirror of the weapon the right holds (the dual pistols): its fingers are
+## the grip's right-hand ones mirrored (`HandGrip.mirrored`), not the grip's own `left`.
+var left_mirrors := false
 
 
 func _process_modification() -> void:
@@ -26,7 +29,12 @@ func _process_modification() -> void:
 	if skeleton == null:
 		return
 	_close(skeleton, "R", grip.right if grip != null else {}, right_weight)
-	_close(skeleton, "L", grip.left if grip != null and grip.has_left else {}, left_weight)
+	var left := {}
+	if grip != null and left_mirrors:
+		left = grip.mirrored()
+	elif grip != null and grip.has_left:
+		left = grip.left
+	_close(skeleton, "L", left, left_weight)
 
 
 func _close(skeleton: Skeleton3D, side: String, fingers: Dictionary, weight: float) -> void:
