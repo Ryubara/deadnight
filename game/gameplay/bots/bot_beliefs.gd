@@ -35,6 +35,9 @@ var blows: Array[Dictionary] = []
 ## its own id in `me`.
 var teammates: Dictionary = {}
 var me := -1
+## The standing order of the team's bots for this one (`BotOrders.current`): `{order, issuer_id,
+## at}`. Roam until a person says otherwise.
+var order: Dictionary = {"order": BotOrders.DEFAULT, "issuer_id": 0, "at": Vector3.INF}
 ## Grenades the bot carries: the count a player starts with until the rules say otherwise
 ## (`grenade_count_changed`: a throw, a refill at a round's start, a purchase).
 var grenades := START_GRENADES

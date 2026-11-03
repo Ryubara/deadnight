@@ -419,6 +419,10 @@ func _repath(here: Vector3, intent: BotIntent, now: float) -> void:
 	if intent.goal == Vector3.INF:
 		return
 	_jitter = Vector3(_rng.randf_range(-JITTER, JITTER), 0.0, _rng.randf_range(-JITTER, JITTER))
+	# The moved goal stays on the walking mesh: one moved past the fence (a goal at the fence's stand)
+	# has the bot walk to the mesh's edge and stand against the posts.
+	_jitter = _level.project(intent.goal + _jitter) - intent.goal
+	_jitter.y = 0.0
 	path.ask(here, intent.goal + _jitter, now, true)
 
 

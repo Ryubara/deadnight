@@ -30,6 +30,7 @@ const RATES := {
 	NetWire.Type.PLATFORM: Vector2(1.0, 2.0),
 	LookWire.Type.LOOK: Vector2(1.0, 3.0),
 	NetWire.Type.MARK: Vector2(2.0, 4.0),
+	NetWire.Type.ORDER: Vector2(2.0, 3.0),
 }
 
 ## Counts, for the log and the tests.
@@ -59,6 +60,8 @@ static func size_of(type: int) -> int:
 			return NetWire.PLATFORM_SIZE
 		NetWire.Type.MARK:
 			return NetWire.MARK_SIZE
+		NetWire.Type.ORDER:
+			return NetWire.ORDER_SIZE
 		LookWire.Type.LOOK:
 			return 1 + CharacterLook.wire_size()
 	return -1
