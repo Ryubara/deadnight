@@ -38,14 +38,15 @@ func door_of(id: StringName) -> StringName:
 	return StringName(_spots[id].get_meta(&"door", ""))
 
 
-## The nearest spot that lies within `reach` metres (flat) of `point`, or empty for none.
-func within_reach(point: Vector3, reach: float) -> StringName:
+## The nearest spot that lies within `reach` metres (flat) of `point` and, when `sight` is given, in
+## reach of the hand without a wall between (#831), or empty for none.
+func within_reach(point: Vector3, reach: float, sight: UseSight = null) -> StringName:
 	var best: StringName = &""
 	var best_distance := reach
 	for id in _spots:
 		var at := _spots[id].global_position
 		var distance := Vector2(point.x - at.x, point.z - at.z).length()
-		if distance <= best_distance:
+		if distance <= best_distance and (sight == null or sight.clear(point, at)):
 			best_distance = distance
 			best = id
 	return best

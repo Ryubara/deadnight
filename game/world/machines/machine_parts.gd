@@ -13,7 +13,23 @@ const WEAPON_MODELS := {
 	&"shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
+	&"dual_pistols": "res://assets/weapons/service_pistol/service_pistol.glb",
 }
+
+
+## The meshes under `machine` that are not any of `moving` nor under one: what a machine's batch
+## draws (`LotBatcher`, `still_meshes`), the machine keeping the parts it moves, hides or turns.
+static func meshes_outside(machine: Node, moving: Array) -> Array[MeshInstance3D]:
+	var found: Array[MeshInstance3D] = []
+	for node in machine.find_children("*", "MeshInstance3D", true, false):
+		var held := false
+		for part: Variant in moving:
+			if part != null and (part == node or (part as Node).is_ancestor_of(node)):
+				held = true
+				break
+		if not held:
+			found.append(node as MeshInstance3D)
+	return found
 
 
 static func plain(

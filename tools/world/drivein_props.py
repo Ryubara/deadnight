@@ -37,6 +37,10 @@ FIXTURES = {
         ("box", (0.8, 0.8, 7.0), (-14, 3.0, -4.8)),
         ("box", (0.8, 0.8, 7.0), (14, 3.0, -4.8)),
     ],
+    # The yard's generator (#853): drawn only. The greybox's `Generator` block stays where it was, hidden, as its
+    # collision, so the walking mesh's key, the camera probes and the slot scan see the same lot; nothing above the
+    # block (the frame, the day tank, the stack) is solid.
+    "generator": [],
     "marquee": [
         ("box", (0.4, 5.6, 0.4), (-2.6, 2.8, 0)),
         ("box", (0.4, 5.6, 0.4), (2.6, 2.8, 0)),
@@ -187,6 +191,8 @@ def place(instance, group, node, lines, car_slots, gaps, screen_c, lamps) -> int
     put("Midway", "CanE", "trash_can", (8.4, 0, 9.3))
     # The booth's projector (the greybox's block), its lens at the port.
     put("ProjectionBooth", "Projector", "projector", (0, 4.05, 25.25))
+    # The generator in its cage, over the greybox's block (40, 0.9, 18).
+    put("GeneratorYard", "GeneratorSet", "generator", (40, 0, 18))
     # The entrance: the two ticket booths (the greybox's kiosks), the marquee by the road, cans on the plaza.
     put("Road", "TicketBoothW", "ticket_booth", (-6, 0, 45.2))
     put("Road", "TicketBoothE", "ticket_booth", (6, 0, 45.2))

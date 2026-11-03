@@ -142,6 +142,9 @@ What it says:
   playtest.
 - **The pump's simulated value is zero or less**, like the double-barrel's; it is priced as the cheapest wall (700) for
   its early value, a close one-shell kill to round 9.
+  Superseded by the maintainer on [#858](https://github.com/Ryubara/deadnight/issues/858): no wall sells the pump,
+  the MP5 or the M4A1 ([the wall tier](../design/weapons.md#the-wall-tier)); they are box only, so the run above,
+  which put them on walls, is to be read again with them in the box.
 
 ### The shipped gate with the new crane pool
 
@@ -233,9 +236,9 @@ hold, and one more finding: a magazine of 1 or 2 gains little from the x1.5 (the
 
 ## Display names
 
-Several real names are trademarks. The options for each of the nine (the real name, a generic name, a name in the
-drive-in's style) are listed on [the design page](../design/weapons.md#display-names-the-maintainers-choice) and left
-to the maintainer. A `display_name` is one line of a definition.
+Several real names are trademarks. The maintainer chose original names with the same guns (#857); the names, the
+reason and the test that keeps a maker's name out are on [the design page](../design/weapons.md#display-names-original-names-the-same-guns).
+A `display_name` is one line of a definition.
 
 ## Not done, and open
 
