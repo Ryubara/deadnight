@@ -45,6 +45,8 @@ const OWN: Array[StringName] = [
 	&"shot_fired",
 	&"fire_rejected",
 	&"reload_started",
+	&"reload_round",
+	&"reload_interrupted",
 	&"reload_finished",
 	&"reload_rejected",
 	&"weapon_equipped",
