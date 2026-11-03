@@ -16,6 +16,7 @@ const BUS_AMBIENCE := &"Ambience"
 const BANKS: Array[String] = [
 	"res://core/audio/banks/ui.tres",
 	"res://core/audio/banks/weapons.tres",
+	"res://core/audio/banks/firearms_2.tres",
 	"res://core/audio/banks/steps.tres",
 	"res://core/audio/banks/zombies.tres",
 	"res://core/audio/banks/world.tres",
@@ -23,6 +24,8 @@ const BANKS: Array[String] = [
 	"res://core/audio/banks/stings.tres",
 	"res://core/audio/banks/beds.tres",
 	"res://core/audio/banks/smallmap.tres",
+	"res://core/audio/banks/energy.tres",
+	"res://core/audio/banks/wind.tres",
 ]
 
 ## What `UIAudio` cues play (the gds_ui addon names the cues and ships no sounds).

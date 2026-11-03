@@ -40,5 +40,24 @@ crest_db)` holds the highest sample `crest_db` over the loudest 400 ms); the boa
 their recipes with it, their `peak_db` lowered and `near_cap_db` raised by what it took off, so a close sharp sound is
 louder at the same peak (the web build ignores a bus limiter). `docs/research/gun-audio.md#the-sharp-sounds-limited-in-their-recipe-762`.
 
+The energy weapons, the re-cut layer and the bench's sequence (#791) are `energy_recipes.py` (the ray gun, the freeze
+gun, `recut_layer` and its element layers, `buy_recut`), in `game/assets/audio/energy/` (and `world/buy_recut_1.ogg`);
+`energy_levels.py` reads a recording of `game/tools/bench/audio_energy_bench.tscn` (each weapon plain and re-cut, the beds,
+then the close sounds one at a time) and prints what `gun_levels.py` prints plus what the layer adds to a shot (peak,
+tail, bright band) and the close peaks; `--table game/tests/night/energy_levels.json` writes what
+`test_energy_audio_rules.gd` pins. `docs/research/gun-audio.md#the-energy-weapons-and-the-re-cut-layer-791` has the numbers.
+
 The flare gun's report (#761) is limited the same way (`limit_crest`); `gun_levels.py --table` also writes
 a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.
+
+The drive-in's wind (#782): `wind_recipes.py` renders the base loop, the eight gust files (`generate.py` hands a recipe
+that takes a `variant` argument its file number, so one table of shapes makes the eight) and the details;
+`wind_levels.py` reads them against the other beds (`files`) and a night's gusts in the Ambience bus of
+`game/tests/captures/audio_wind_night.tscn` (`night`, with the wind alone, the beds, and the beds without the wind).
+`audio_headroom.tscn --wind` runs the wind at its strongest under the headroom cells. `docs/research/wind.md` has the
+sources and the numbers.
+
+The second batch of firearms (#790: PPSh, M249, M4A1, .50 calibre, MP5, 870 pump, dual pistols) is `gun_recipes_2.py`,
+built from `weapon_recipes.py`'s `report` and `tail` and listed by `generate.py`; its sounds are `shot_`, `tail_`,
+`equip_` and `dry_` plus the gun id, and `reload_<gun>_<step>`.
+`docs/research/gun-audio.md#the-second-batch-of-firearms-790`.

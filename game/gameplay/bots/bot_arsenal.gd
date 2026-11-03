@@ -93,7 +93,7 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 			# needs its reload.
 			out.swap = other or reserve_gun(arms, held) != &""
 		return out
-	if best != &"" and best != held.id and _better(best, held, here_range):
+	if best != &"" and best != held.id and _better(best, arms, held, here_range):
 		out.swap = true
 		return out
 	if reserve > 0:
@@ -126,8 +126,8 @@ static func best_loaded(arms: Dictionary, held: WeaponDef, distance: float) -> S
 	for id: StringName in arms:
 		if id == held.id:
 			continue
-		var def := WeaponCatalog.get_def(id)
 		var counts: Array = arms[id]
+		var def := WeaponCatalog.get_def_at(id, _tier_of(counts))
 		if def.is_melee() or def.is_lure() or int(counts[0]) <= 0:
 			continue
 		var worth := worth_at(def, distance)
@@ -164,5 +164,11 @@ static func worth_at(def: WeaponDef, distance: float) -> float:
 	return WeaponWorth.of(def) * far / maxf(near, 0.001)
 
 
-static func _better(id: StringName, held: WeaponDef, distance: float) -> bool:
-	return worth_at(WeaponCatalog.get_def(id), distance) >= worth_at(held, distance) * SWITCH_GAIN
+static func _better(id: StringName, arms: Dictionary, held: WeaponDef, distance: float) -> bool:
+	var other := WeaponCatalog.get_def_at(id, _tier_of(arms[id]))
+	return worth_at(other, distance) >= worth_at(held, distance) * SWITCH_GAIN
+
+
+## The re-cut tier a frame's `arms` entry (`[ammo, reserve, tier]`) carries; 0 for a shorter one.
+static func _tier_of(counts: Array) -> int:
+	return int(counts[2]) if counts.size() > 2 else 0

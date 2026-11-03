@@ -5,7 +5,7 @@ every level and limit, is `sound_catalog.gd`.
 
 ## Where the sounds come from
 
-Of the 508 sound files in `game/assets/audio/`, **249 are synthesised** by the scripts in `tools/audio/` (how:
+Of the 576 sound files in `game/assets/audio/`, **317 are synthesised** by the scripts in `tools/audio/` (how:
 [research](../research/audio.md)): original work, committed, and changed by editing a number. **29 are generated with
 ElevenLabs Sound Effects** and **230 with ElevenLabs text to speech** (the male and the female soldier's
 voices) on the free tier, which is third-party output: attribution required, not licensed for commercial use, to be
@@ -19,7 +19,7 @@ commercial release
 | `eleven/` | 5 | ElevenLabs (model v2): the generator's engine loop, power-down and power-up, the door purchase | [`eleven/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/eleven/LICENSE.md), every prompt in it |
 | `voice/soldier/` | 115 | ElevenLabs text to speech (model `eleven_v4`, the premade voice Brian): the male soldier's barks, see [The soldiers' voices](#the-soldiers-voices) | [`voice/soldier/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier/LICENSE.md), every line, setting and seed in `manifest.json` |
 | `voice/soldier_female/` | 115 | ElevenLabs text to speech, Free tier (model `eleven_v4`, the premade voice Sarah): the same moments and takes in the female soldier's voice | [`voice/soldier_female/LICENSE.md`](https://github.com/Ryubara/deadnight/blob/main/game/assets/audio/voice/soldier_female/LICENSE.md), every line, setting and seed in `manifest.json` |
-| the other 48 files in `zombie/`, and `ambience/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (11, 8, 72, 5, 2, 2, 48, 3, 11 and 39 files) | 249 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
+| the other 48 files in `zombie/`, and `ambience/`, `energy/`, `grenade/`, `guns/`, `melee/`, `music/`, `shop/`, `steps/`, `stings/`, `ui/`, `world/` (11, 48, 8, 91, 5, 2, 2, 48, 3, 11 and 40 files) | 317 | synthesised by `tools/audio/` (`generate.py` and the recipe files), seeded from each sound's name | none: nothing in them is third-party (see [`tools/audio/README.md`](https://github.com/Ryubara/deadnight/blob/main/tools/audio/README.md)) |
 
 The decision to use the ElevenLabs takes is recorded in two places, which say it differently:
 [#252](https://github.com/Ryubara/deadnight/issues/252) states a maintainer decision of 2026-11-01 to use the free tier
@@ -110,9 +110,11 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | Group | Ids | Notes |
 | --- | --- | --- |
 | UI | `ui_hover`, `ui_focus`, `ui_tick`, `ui_press`, `ui_back`, `ui_push`, `ui_pop` | relay clacks and a rising or falling film whoosh; hover and focus together make one sound |
-| Guns | `shot_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap` | see [The guns](#the-guns) |
+| Guns | `shot_<gun>`, `tail_<gun>` for the pistol (the revolver), SMG, rifle and shotgun; `shot_flare`, `burst_flare`; `dry_fire`, `weapon_swap`; for the PPSh, M249, M4A1, .50 calibre, MP5, 870 pump and dual pistols (`ppsh`, `m249`, `m4a1`, `fifty_cal`, `mp5`, `pump_870`, `dual_pistols`) `shot_`, `tail_`, `equip_` and `dry_` plus the id | see [The guns](#the-guns) |
+| The energy weapons | `shot_ray`, `bolt_ray` (loops), `burst_ray`, `reload_ray_cell_out/_in`, `equip_ray`; `shot_freeze`, `freeze_hit`, `freeze_creak`, `freeze_thaw`, `freeze_shatter`, `reload_freeze_out/_in`, `equip_freeze` | the ray gun and the freeze gun: [below](#the-energy-weapons-and-the-re-cut-layer) |
+| The re-cut layer | `recut_layer`, `recut_blast`, `recut_shock`, `recut_fire` | what every re-cut weapon adds to its shot: [below](#the-energy-weapons-and-the-re-cut-layer) |
 | Impacts | `impact_flesh`, `impact_head`, `impact_world` | a wet thump, the same with a crack and a knock, and a round on asphalt or sheet metal with a ricochet's whine |
-| Reloads | `reload_revolver_open/_eject/_rounds/_close`, `reload_smg_mag_out/_in/_bolt`, `reload_rifle_round/_lever`, `reload_shotgun_open/_eject/_shells/_shut`, `reload_flare_open/_eject/_in/_shut`, `reload_pouch` | one sound for each step of the weapon's reload motion ([reloads](#reloads)) |
+| Reloads | `reload_revolver_open/_eject/_rounds/_close`, `reload_smg_mag_out/_in/_bolt`, `reload_rifle_round/_lever`, `reload_shotgun_open/_eject/_shells/_shut`, `reload_flare_open/_eject/_in/_shut`, `reload_pouch`; the second batch's `reload_ppsh_drum_out/_drum_in/_bolt`, `reload_m249_cover_open/_belt/_cover_shut/_charge`, `reload_m4a1_mag_out/_mag_in/_bolt`, `reload_fifty_mag_out/_mag_in/_bolt`, `reload_mp5_mag_out/_mag_in/_bolt`, `reload_pump_shell/_stroke`, `reload_dual_mag_out/_mag_in/_slide` | one sound for each step of the weapon's reload motion ([reloads](#reloads)) |
 | Steps | `step_asphalt`, `step_gravel`, `step_own_asphalt`, `step_own_gravel` | eight takes each; gravel is a spray of tiny grains; the `own` pair is the local player's softer set ([footsteps](#footsteps)) |
 | The dead | `zombie_groan`, `zombie_attack`, `zombie_hurt`, `zombie_death` and the per-type sounds below | one throat model, different pitch curves, vowels, rasp and growl; the groans, snarls, hurts, deaths, shrieks and roars also have ElevenLabs takes as extra variants (see above) |
 | Grenades | `grenade_beep`, `grenade_throw`, `grenade_bounce`, `grenade_blast` | the beep is a time bomb's (a clean 2.6 kHz tone, 60 ms, one fixed pitch) from the pin to the blast, from the player's head while it is cooked and then from the grenade wherever it lies, every player hears it placed in 3D; its gap shrinks from 0.5 s to 0.09 s and it swells 5 dB, so a cook can be timed by ear; the blast is a crack, a roar that darkens and a deep boom (nine tenths of its energy under 150 Hz) |
@@ -126,6 +128,7 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 | The soldiers | `vox_<moment>_<n>` | 115 takes of 21 moments, played by `SoldierVoice`: see [The soldiers' voices](#the-soldiers-voices); they replace the synthesised `player_hurt` and `player_downed` |
 | Stings | `round_start`, `round_end`, `special_round` | stereo, on Music; `round_start` ducks Effects 9 dB; `special_round` (3.5 s, on the rules' `special_round_announced`, a higher priority so it takes the one sting voice from the `round_end` that is still sounding) 9 dB for 2.2 s |
 | Beds | `bed_crickets`, `bed_highway`, `bed_projector`, `bed_score`, `bed_tension` | loops under everything, see below |
+| The wind | `bed_wind`, `wind_gust`, `wind_creak`, `wind_rattle`, `wind_flap` | a quiet base layer and gusts that come and go at random, with a detail now and then: see [The wind](#the-wind) |
 | The second map | `bed_room_tone`, `bed_roof_wind`, `yard_wind`, `yard_fire`, `yard_wire`, `yard_road`, `yard_rattle`, `debris_clear`, `step_wood`, `step_own_wood` | the depot's room tone, the wind under its roof and the cold yard heard through its windows, the debris blocker coming off a stair and feet on wood: [the second map's sound](../research/maps/small-map-audio.md) |
 
 ### The beds
@@ -154,6 +157,33 @@ footstep (14 to 22 dB), so they are felt when they stop rather than heard.
   rate is half the original, the same insects with every other chirp gone. The score is now 5.9 dB over them by trim.
   Why the first cut fell short, and the numbers:
   [the crickets, cut again](../research/audio.md#the-crickets-cut-again-781).
+
+### The wind
+
+The drive-in has a wind that is never the same twice, built the way shipped games build theirs: a quiet steady base and
+gusts on top, each gust a played sound, never an effect on a bus ([the research](../research/wind.md)). `WindSounds`
+(a child of `NightSounds`) starts with the night and stops with it like the beds.
+
+- **The base** (`bed_wind`, 30 s loop, Ambience): low air, under the crickets and the highway, felt more than heard. Its
+  level wanders by a quarter of a dB at a time over a 3 dB range, and swells 2 dB with a gust that is blowing.
+- **Gusts** (`wind_gust`, eight files from 3.6 to 11.5 s): each file has its own rise and fall and its own colour (the
+  low-pass opens from 130 Hz to 400 to 1400 Hz as the gust strengthens; one file has a thin whistle that only shows
+  at its top). Each play is a 3D sound 10 to 16 m from the listener on a random bearing that drifts round while it lasts
+  (so it crosses the stereo field and follows a walking player), at its own pitch (plus or minus 2 semitones, which
+  changes its length and colour again) and its own level (0 to 4 dB under the strongest). The lull between gusts is
+  1.5 to 26 s, skewed short, and now and then (8%) 35 to 60 s: the empty minute. A night rolls its own character
+  first (the lulls scaled 0.7 to 1.4, the whole wind -2.5 to +1 dB). Gusts never overlap; a night's draws come from
+  one seed (`WindPlan`), so a test or a capture replays them.
+- **Details** (`wind_creak`, `wind_rattle`, `wind_flap`: a sign on a rusted hinge, a loose sheet of tin, a tarp): on
+  about one gust in seven, a strong one, 14 to 30 m off, a quarter to over half way into it.
+- **Levels** ([measured](../research/wind.md#levels), a quiet night's Ambience bus): the base about -50 LUFS
+  (momentary), 16 LU under the beds together (-33); a gust peaks at -40.5 to -37.6, 9 to 12 LU over the base and 0.6
+  to 4 LU over the beds at that moment; the wind adds 0.2 LU to the night's loudness. A gun shot (-12 to -17 LUFS in
+  its loudest 400 ms) is 21 LU or more over a gust.
+- **On the second map** the wind under the roof and the yard's four wind loops swell with the gust that is blowing: 3 dB
+  for the roof wind, 6 dB for the yard loops, at the gust's peak, so the located wind follows the same gusts as the open-air
+  layer ([measured](../research/wind.md#the-gust-drives-the-loops-809): the bus rises 1.3 to 2.0 LU upstairs, 0.3 to 0.6
+  through a boarded window and 0.6 to 1.3 through an open one at a gust's peak; at rest nothing changed).
 
 All four are built to loop: every event that runs past the end wraps to the start and every filter is applied to the
 whole loop at once, so the seam is smaller than the largest step inside the file (measured in
@@ -184,6 +214,36 @@ where it lands (`projectile_burst`).
 - **Empty and swap.** A `fire_rejected` for an empty magazine clicks where the shooter stands; a `weapon_equipped`
   rustles.
 - The crowbar's swing and blow are the melee sounds above.
+
+### The energy weapons and the re-cut layer
+
+Made in `tools/audio/energy_recipes.py` (#791), played by `EnergySounds` and `RecutLayer`, from the same events as the
+firearms' sounds. Numbers and the research: [Gun
+audio](../research/gun-audio.md#the-energy-weapons-and-the-re-cut-layer-791).
+
+- **The ray gun.** The shot is a charge (a sweep climbing in 90 ms) let go with a crack, a falling FM zap over a
+  barking roar and a thump: `shot_ray`, flat for the shooter and from the muzzle for a stranger, under every firearm
+  rule above. The bolt hums while it flies (`bolt_ray`, a loop on a node that flies with the bolt's own numbers and is
+  freed by the burst or after six seconds); the burst is a boom, a falling zap and a shower of electric crackle that
+  spreads and thins (`burst_ray`, which `WeaponSounds` leaves alone: the flare's burst is the flare's). The reload is
+  a cell going out on a falling whine and a fresh one in on a rising charge that ends in a ping (`cell_out`, `cell_in`
+  of its reload motion); raised, its cell wakes (`equip_ray`).
+- **The freeze gun.** The shot is a gas valve and a cold hiss with a bark of pressure, an icy crackle and a glassy
+  ring (`shot_freeze`). A freeze taking hold is a crackle that thickens as glass notes rise over it and a hard crack
+  as it locks (`freeze_hit`); while it holds, every 0.7 to 1.2 s the ice creaks (`freeze_creak`: stick-slip groans,
+  never in the last 0.4 s); the thaw is a soft crack and a trickle of drips (`freeze_thaw`); a blow that breaks it is
+  a crack, a thump and twenty-odd shards of glass tinkling down (`freeze_shatter`, four variants). The reload is a
+  coolant canister twisted off in a hiss and a fresh one locked in under rising pressure (`canister_out`,
+  `canister_in`).
+- **The re-cut layer.** A weapon that was re-cut sounds so for good: its every shot is followed, 30 ms behind the
+  report, by `recut_layer`: a sweep that climbs and dives (a laser's pew, bent), a ring of three cold partials that
+  pulses at 14 Hz and outlasts the shot, a shimmer and a short sub pulse. It plays over **any** weapon (the melee
+  swing and the flare's launch too) when the shooter's frame says its tier is above 0, so no weapon needs a recipe of
+  its own; five variants, within 2% of one note. A re-cut weapon whose element the roster's design gives it
+  ([upgrades](upgrades.md): the revolver's explosive rounds, the dual pistols' shock arc, the pump 870's and the flare
+  gun's fire) adds that element's accent over the shared layer, on its own voice (`RecutLayer.WEAPON_ELEMENTS`):
+  `recut_blast` is a dull crump and scattered debris, `recut_shock` a buzzing arc with snaps, `recut_fire` an ember
+  whoosh with spitting sparks. The wonder weapons have no element. The bench ends on the same ring (`buy_recut`).
 
 ### The lot's machines
 

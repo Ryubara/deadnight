@@ -425,6 +425,14 @@ func _stage_row(outlined: bool = false) -> Node3D:
 			row.add_child(item)
 			item.position = Vector3(-6.0 + at * 1.2, 1.0, 1.5)
 			at += 1
+			# A weapon is also drawn in the re-cut skin, a program of its own (its own shader), so the
+			# first re-cut weapon of a night never stops a frame to build it (#787).
+			if path.begins_with("res://assets/weapons/"):
+				var skinned := _instance_of(path)
+				row.add_child(skinned)
+				skinned.position = Vector3(-6.0 + at * 1.2, 1.0, 1.5)
+				RecutSkin.wear(skinned)
+				at += 1
 	return row
 
 
@@ -606,6 +614,39 @@ func _replay_effects() -> void:
 	await _chunk(SHOT_FRAMES + 1)
 	for shock: ShockEffect in view.find_children("*", "ShockEffect", true, false):
 		shock.queue_free()
+	# The elements of the re-cut: a blast, an arc and a fire, held still like the shock.
+	var sample := at + Vector3(0.0, -1.2, -1.0)
+	view.draw_event(
+		{"type": &"element_burst", "element": &"explosive", "point": sample, "radius": 2.0}
+	)
+	(
+		view
+		. draw_event(
+			{
+				"type": &"element_arc",
+				"element": &"shock",
+				"from": sample,
+				"to": [sample + Vector3(1.0, 0.0, 0.0)],
+			}
+		)
+	)
+	(
+		view
+		. draw_event(
+			{
+				"type": &"fire_patch_started",
+				"element": &"ground_fire",
+				"point": sample,
+				"radius": 3.0,
+				"seconds": WARMUP_LURE_SECONDS,
+			}
+		)
+	)
+	for fx: ElementFx in view.find_children("*", "ElementFx", true, false):
+		fx.freeze(0.3)
+	await _chunk(SHOT_FRAMES + 1)
+	for fx: ElementFx in view.find_children("*", "ElementFx", true, false):
+		fx.queue_free()
 
 
 ## One frame of what was just made. The materials are kept first: an effect frees itself a fraction

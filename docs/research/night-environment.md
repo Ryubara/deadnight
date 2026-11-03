@@ -170,6 +170,15 @@ for the dead's slowdown (`LotLamps.lit_at`).
   | this branch, 3 runs | 2.7 / 2.9 / 2.7 ms | 2.5 / 2.7 / 2.3 ms | 3.7 / 4.1 / 3.7 ms | 5.3 / 6.4 / 5.6 ms |
 
   No difference beyond the run-to-run spread (the spread of one build is larger than the gap between the two).
+- **Twenty hand-placed lamps, more cuts** (#703, #719). The maintainer added 20 lamp posts round the field in the
+  editor (`FIELD_LAMPS` in the builder holds their numbers: `Lamp9` to `Lamp28`, and `Lamp1` and `Lamp2` moved), which put
+  the midway's ground, the back lot's, the yard's (with the crane's lamp) and the stand's roof at 7 and 8. Lamps, ranges
+  and energies are as they set them; the tiles were cut again, by a search that dumps every light and mesh box to a
+  file and tries cuts on a 0.5 or 1 m grid with the test's reach rule: the midway in six tiles (cuts x -8, z 19 and 30),
+  the back lot in three (z 10 and 24, from four), the yard in three (z 12 and 25, from four), the stand's roof in six
+  (one more cut, z 4.6). No cut lies within 1.3 m of a fuel stand or shop spot (`test_lot_fuel.gd` wants the stand a
+  metre inside one tile). Two more CSG boxes than before (18 against 16), and the same pictures: nine night views
+  before and after differ only in the projector screen's animated noise.
 - **Pools are quads, not light range.** Raising the lamp range to 14 m to get a bigger pool put 12 lights on one tile.
   The pool is now the quad, the light stays at 11 m.
 - **The screen shows the circuit.** With `screen_lot` off the face keeps the 0.3 afterglow of its lamp and the posts,

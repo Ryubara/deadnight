@@ -5,6 +5,10 @@ extends RefCounted
 ## hands the same to every bot it seats (like `BotHost.bot_ids`), so a lone `BotClient` in a test
 ## has a team of its own. Plain data: nothing here reads a frame or the rules.
 
+## Seconds past the fuse a thrown grenade is still counted live (it lies where it landed a moment
+## after the throw leaves the hand).
+const BLAST_SLACK := 0.6
+
 var claims := BotClaims.new()
 ## The place each roaming bot is walking to (`BotRoam`), by player id, so two do not pick one.
 var roam: Dictionary = {}
@@ -47,10 +51,16 @@ func add_blast(point: Vector3, until: float) -> void:
 	blasts.append({"point": point, "until": until})
 
 
-## The grenades still to go off at `now`; the ones that went off are forgotten.
-func live_blasts(now: float) -> Array[Dictionary]:
+## Where the grenades still to go off at `now` are, within `reach` metres (flat) of `here`; the ones
+## that went off are forgotten.
+func blasts_near(here: Vector3, reach: float, now: float) -> Array[Vector3]:
 	blasts = blasts.filter(func(blast: Dictionary) -> bool: return float(blast["until"]) > now)
-	return blasts
+	var near: Array[Vector3] = []
+	for blast: Dictionary in blasts:
+		var point: Vector3 = blast["point"]
+		if Vector2(here.x - point.x, here.z - point.z).length() < reach:
+			near.append(point)
+	return near
 
 
 ## A bot left the team (its seat was taken by a person, or it was removed): what it held is open.

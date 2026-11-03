@@ -19,13 +19,31 @@ extends Node
 ## `--close` puts the sounds of those two cells `CLOSE_METRES` from the listener, where every
 ## sound's near level (the player's `max_db`) is what holds it, not the distance, and leaves the
 ## whole file of each variant room (its length and `CLOSE_TAIL`) before the next one starts (#753).
-## Prints `CELL <own> <cell> <start> <end>`, `PLAY <seconds> <own> <cell> <sound>` and, for a 3D
-## sound, `MAXDB <sound> <the player's max_db>`.
+## `--wind` runs the night's wind under every cell at its strongest (#782): the base layer at its
+## own level and a strongest gust (`+0 dB`, a random file) every `WIND_EVERY` seconds, 11 m off, so
+## a sum with the wind can be read against the same run without it. Prints `CELL <own> <cell>
+## <start> <end>`, `PLAY <seconds> <own> <cell> <sound>` and, for a 3D sound, `MAXDB <sound> <the
+## player's max_db>`.
 
 const OWN := 1
 const MATE := 2
+## The bench that knows the guns the catalogue does not have yet (#790) and how fast they fire.
+const GUN_BENCH := preload("res://tools/bench/audio_gun_bench.gd")
 const FPS := 60.0
-const OWN_GUNS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]
+const OWN_GUNS: Array[StringName] = [
+	&"pistol",
+	&"smg",
+	&"rifle",
+	&"shotgun",
+	&"flare_gun",
+	&"ppsh",
+	&"m249",
+	&"m4a1",
+	&"fifty_cal",
+	&"mp5",
+	&"pump_870",
+	&"dual_pistols",
+]
 const CELLS: Array[StringName] = [&"alone", &"reload", &"mate", &"zombie", &"world"]
 const MATE_GUNS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun"]
 const ZOMBIE_SOUNDS: Array[StringName] = [
@@ -67,6 +85,8 @@ const GAP := 1.0
 const VARIANT_GAP := 0.8
 const CLOSE_METRES := 1.2
 const CLOSE_TAIL := 0.2
+const WIND_EVERY := 3.0
+const WIND_AT := Vector3(11.0, 0.0, 0.0)
 const ALONE_SECONDS := 3.0
 const TAIL := 0.7
 
@@ -74,6 +94,7 @@ var _own: Array[StringName] = OWN_GUNS.duplicate()
 var _cells: Array[StringName] = CELLS.duplicate()
 var _all_variants := false
 var _close := false
+var _wind := false
 var _state := ClientState.new()
 var _sounds: WeaponSounds
 var _frames := 0
@@ -92,6 +113,8 @@ func _ready() -> void:
 			_all_variants = true
 		elif argument == "--close":
 			_close = true
+		elif argument == "--wind":
+			_wind = true
 		elif argument.begins_with("--cells="):
 			_cells.clear()
 			for cell in argument.trim_prefix("--cells=").split(","):
@@ -135,14 +158,21 @@ func _run() -> void:
 			var events := _events(cell)
 			var interval := 0.1
 			if own != &"none":
-				interval = WeaponCatalog.get_def(own).fire_interval
+				interval = GUN_BENCH.interval_of(own)
 			# One second more than the last event needs, so a reload's last step and a tail end inside.
 			var end := start + LEAD + _span(events) + TAIL
 			print("CELL %s %s %.3f %.3f" % [own, cell, start, end])
 			var next_shot := start
 			var next_event := 0
+			var next_gust := start
+			if _wind:
+				Audio.start_bed(WindSounds.BASE)
+				Audio.advance(4.0)
 			while _now() < end:
 				var now := _now()
+				if _wind and now >= next_gust:
+					Audio.play(WindSounds.GUST, LISTENER + WIND_AT, 0.0)
+					next_gust += WIND_EVERY
 				while own != &"none" and next_shot <= now and now < end - TAIL:
 					_fire(own, OWN)
 					next_shot += interval
