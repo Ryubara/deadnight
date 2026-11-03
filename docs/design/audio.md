@@ -178,6 +178,10 @@ gusts on top, each gust a played sound, never an effect on a bus ([the research]
   (momentary), 16 LU under the beds together (-33); a gust peaks at -40.5 to -37.6, 9 to 12 LU over the base and 0.6
   to 4 LU over the beds at that moment; the wind adds 0.2 LU to the night's loudness. A gun shot (-12 to -17 LUFS in
   its loudest 400 ms) is 21 LU or more over a gust.
+- **On the second map** the wind under the roof and the yard's four wind loops swell with the gust that is blowing: 3 dB
+  for the roof wind, 6 dB for the yard loops, at the gust's peak, so the located wind follows the same gusts as the open-air
+  layer ([measured](../research/wind.md#the-gust-drives-the-loops-809): the bus rises 1.3 to 2.0 LU upstairs, 0.3 to 0.6
+  through a boarded window and 0.6 to 1.3 through an open one at a gust's peak; at rest nothing changed).
 
 All four are built to loop: every event that runs past the end wraps to the start and every filter is applied to the
 whole loop at once, so the seam is smaller than the largest step inside the file (measured in
