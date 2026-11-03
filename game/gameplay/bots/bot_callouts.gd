@@ -133,6 +133,9 @@ func plan(
 					wanted.append({"line": BotSay.LOW_FUEL})
 			&"breach_open":
 				wanted.append({"line": BotSay.BREACH_OPEN})
+			BotErrands.NEED_HELD_BACK:
+				# Low on rounds and ordered to stay: it says so, the person may walk it to a locker.
+				wanted.append({"line": BotSay.NEED_AMMO})
 	beliefs.moments.clear()
 	if reloading and beliefs.nearest_threat(here, profile.memory_seconds) < 12.0:
 		wanted.append({"line": BotSay.RELOADING})

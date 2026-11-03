@@ -198,7 +198,9 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 			pass
 		elif not _holding and _chase(intent, beliefs, here, held, mates, pack, plan.dry, order):
 			intent.note = "chase"
-		elif (not _holding or _pinged_door(state)) and _errand(intent, beliefs, state, threat):
+		elif _errand(
+			intent, beliefs, state, threat, order, anchor, _holding and not _pinged_door(state)
+		):
 			on_errand = true
 			intent.note = intent.note if intent.note != "" else "errand"
 		elif kind == BotStance.Kind.HOLD:
@@ -687,10 +689,22 @@ func _throw(
 
 ## The errands of a lull (fuel, breakers, shopping, boards), when the level gave the bot a shop and
 ## nothing is near. A refusal the server told the bot about leaves the item alone for a while.
-func _errand(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+## A bot that holds a spot (`needs_only`) leaves it only for a person's ping and for what its
+## needs allow (`BotNeeds`): rounds when its reserve is under a magazine.
+func _errand(
+	intent: BotIntent,
+	beliefs: BotBeliefs,
+	state: ClientState,
+	threat: float,
+	order: StringName,
+	anchor: Vector3,
+	needs_only: bool
+) -> bool:
 	if _errands == null:
 		return false
 	_errands.legs = legs
+	_errands.order = order
+	_errands.anchor = anchor
 	for denial in beliefs.denials:
 		_errands.back_off(denial["item"], beliefs.now)
 	beliefs.denials.clear()
@@ -699,7 +713,7 @@ func _errand(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat:
 	# One bot at a time goes (the maintainer): the others wait for their turn.
 	if team != null and team.one_errand_at_a_time and not team.turn.may_go(beliefs.me, beliefs.now):
 		return false
-	var went := _errands.run(intent, beliefs, state, threat)
+	var went := _errands.run(intent, beliefs, state, threat, needs_only)
 	if went and team != null:
 		team.turn.took(beliefs.me, beliefs.now)
 	return went
