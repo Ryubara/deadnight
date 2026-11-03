@@ -668,14 +668,15 @@ The simulator at 1 to 8 players, average modelled players, 120 nights a cell (se
 
 | Players | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Median round | 10 | 14 | 15 | 15 | 16 | 17 | 17 | 18 |
+| Median round | 9 | 15 | 15 | 15 | 16 | 17 | 17 | 18 |
 
 Each player adds less than the one before (the points are shared and the crowd is capped), so the curve flattens instead
-of running away. The nights of eight end in rounds 15 to 20 (8, 25, 17, 26, 21 and 23 of 120 in rounds 15 to 20), four
-players' in rounds 15 to 19 with 58 of 120 at the second boss night (round 15) alone: no round before the wall kills
-anyone at eight, and the boss night is a spike for four and not for eight. Weak players at eight reach a median of 8 and
-strong players 20 (100 nights a cell). The gate runs an `average:8` cell (60 nights,
-seed 4000: median 17) against the range **14 to 20** and checks that eight players go further than four.
+of running away. With the bosses at 1.25x health (#688) the second boss night (round 15) is the wall for one to
+four players (32, 56, 54 and 56 of 120 nights end in round 15 at 1, 2, 3 and 4 players) and for eight it is
+not (5 of 120): the nights of eight end across rounds 16 to 20 (29, 17, 27, 20 and 20 of 120), and no round before
+15 kills anyone. Weak players at eight reach a median of 8 and strong players 20 (100 nights a cell, run before the
+bosses' change). The gate runs an `average:8` cell (60 nights, seed 4000: median 17, again after the bosses change)
+against the range **14 to 20** and checks that eight players go further than four.
 
 ## The bosses 25% tougher (#688)
 
