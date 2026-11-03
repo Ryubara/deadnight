@@ -17,6 +17,13 @@ signal landed(impact_speed: float)
 ## a window lost focus) and the controls are off: the night opens its menu, as Esc would.
 signal grip_lost
 
+## The physics layer of a played body (the scene sets it: 4, bit 3). The world's layers are 1 and
+## 2 (what a body's mask lists) and a body is on neither, so bodies never block one another: another
+## player on a client is a drawing with no collision, so on the server it stops nobody either, or
+## a sprint into a teammate ends metres from the server's body (#760). A shot's ray looks at layer
+## 1, so it flies through a teammate as well; the zombies have no bodies at all.
+const BODY_LAYER := 4
+
 ## The downward speed (m/s) a puppet's landing is told with: the frames carry no speed, and the
 ## animation's landing does not read it.
 const PUPPET_LANDING_SPEED := 4.0

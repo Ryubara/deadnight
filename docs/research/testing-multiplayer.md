@@ -165,6 +165,14 @@ never adds collision of its own: the prize crane's cabinet did, only on the clie
 from the server's body (#748); the cabinet is now `CraneBlock` in `NightWorld`, moved by the rules on a server and by
 the frame on a client.
 
+The bodies are held to the same rule (#760): the client draws the other players as puppets that stop nobody, so a played
+body sits on a physics layer of its own (`Player.BODY_LAYER`, 4) that no body's mask lists, and the server's bodies pass
+through each other. They used to stop at one another on the server alone (layer 1, mask 1 and 2): a sprint into a
+teammate or a bot ended the server's body in place while the client's went on, and at the next corner of a car the two
+went round different sides, 2.5 m apart (the reconciler's snap, so the soak's bound). `WorldSolids` lists the walls under
+a viewport; the bots-slots soak compares every client's with the server's every 300 ticks, and its failure line says
+what each body last slid on.
+
 To use a server in your own test: add a `NightHost` (`port = 0` picks a free port, read back from
 `host.listener.port()`) and join with `Night.start_remote(url, Night.Mode.MANUAL)`; in `MANUAL` the test sends the
 commands through `night.link`.

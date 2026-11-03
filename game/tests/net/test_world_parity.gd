@@ -34,27 +34,6 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 	return true
 
 
-## What a player's body can bump into under `root`, one line each: kind, layer and place.
-func _solids(root: Node, mask: int) -> Array[String]:
-	var found: Array[String] = []
-	for node in root.find_children("*", "CollisionObject3D", true, false):
-		var body := node as CollisionObject3D
-		if body is CharacterBody3D or body is Area3D or body.collision_layer & mask == 0:
-			continue
-		found.append(_line(body, body.collision_layer))
-	for node in root.find_children("*", "CSGShape3D", true, false):
-		var csg := node as CSGShape3D
-		if csg.use_collision and csg.is_visible_in_tree() and csg.collision_layer & mask != 0:
-			found.append(_line(csg, csg.collision_layer))
-	found.sort()
-	return found
-
-
-func _line(node: Node3D, layer: int) -> String:
-	var at := node.global_position
-	return "%s layer %d at (%.2f, %.2f, %.2f)" % [node.get_class(), layer, at.x, at.y, at.z]
-
-
 func test_the_client_and_the_server_hold_the_same_solid_things() -> void:
 	_host = NightHost.new()
 	_host.port = 0
@@ -73,7 +52,37 @@ func test_the_client_and_the_server_hold_the_same_solid_things() -> void:
 	for _i in 30:
 		await get_tree().physics_frame
 	var mask := _host.server.body_of(1).collision_mask
-	var server := _solids(_host.get_parent(), mask)
-	var client := _solids(_night.get_parent(), mask)
+	var server := WorldSolids.of(_host.get_parent(), mask)
+	var client := WorldSolids.of(_night.get_parent(), mask)
 	assert_array(client).is_not_empty()
-	assert_array(client).contains_exactly(server)
+	assert_array(WorldSolids.differences(client, server)).is_empty()
+
+
+## The other players on a client are drawings that stop nobody, so on the server they must stop
+## nobody either: a body the server blocks and the client walks through ends metres apart
+## (#760: a sprint into a teammate or a bot standing in the way).
+func test_a_player_walks_through_another_player_as_on_the_clients_screen() -> void:
+	var world := NightWorld.new()
+	add_child(world)
+	await world.build()
+	var spawn := world.player_spawn(0)
+	var walker := world.add_body(spawn, false, false)
+	var standing := world.add_body(spawn + Vector3(0.0, 0.0, -1.5), false, false)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	for tick in 90:
+		var command := PlayerCommand.new()
+		command.move = Vector2(0.0, -1.0)
+		command.sprint = true
+		walker.tick(command)
+		standing.tick(PlayerCommand.new())
+	var travelled := spawn.distance_to(walker.global_position)
+	assert_float(travelled).is_greater(5.0)
+	world.queue_free()
+
+
+func test_the_layer_of_a_body_is_not_one_a_body_collides_with() -> void:
+	var body: Player = load("res://gameplay/player/player.tscn").instantiate()
+	assert_int(body.collision_layer).is_equal(Player.BODY_LAYER)
+	assert_int(body.collision_layer & body.collision_mask).is_equal(0)
+	body.free()
