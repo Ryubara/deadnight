@@ -543,7 +543,10 @@ func _flare_shot(
 	round_number: int
 ) -> BotFlare.Shot:
 	var here: Vector3 = me["pos"]
-	if not _carries_flare(me) or beliefs.nearest_threat(here, _profile.memory_seconds) < FLARE_NEAR:
+	if not team.flares or not _carries_flare(me):
+		_order = null
+		return null
+	if beliefs.nearest_threat(here, _profile.memory_seconds) < FLARE_NEAR:
 		_order = null
 		return null
 	var mates := _others(beliefs)
@@ -599,6 +602,10 @@ func _new_order(
 	var shot := _flare.plan(here, mate["pos"], lured, mates, level, _dead_by_id(beliefs))
 	# A place that cannot be shot at is not looked for again at once.
 	_flare_ready_at = now + (0.0 if shot != null else PLAN_RETRY)
+	if telemetry != null:
+		telemetry.count(&"flares_wanted")
+		if shot == null:
+			telemetry.count(&"flares_no_spot")
 	if shot != null:
 		_order = shot
 		_ordered_at = now

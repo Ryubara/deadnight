@@ -85,3 +85,25 @@ func test_a_landed_blow_turns_into_a_direction_to_look_toward() -> void:
 	# The rules' bearing is clockwise from -z; a view yaw is counter-clockwise.
 	assert_float(rig.bot.perception.beliefs.blows[0]["yaw"]).is_equal_approx(-0.5, 0.0001)
 	assert_float(rig.bot.damage_taken()).is_equal(12.0)
+
+
+func test_a_flare_is_heard_by_the_bot_that_fired_it_and_by_no_other() -> void:
+	var burst := {
+		"type": &"lure_started",
+		"shooter_id": ME,
+		"point": Vector3.ZERO,
+		"radius": 25.0,
+		"seconds": 8.0
+	}
+	assert_bool(BotEvents.allows(burst, ME)).is_true()
+	assert_bool(BotEvents.allows(burst, OTHER)).is_false()
+	var rig := BotRig.new()
+	var fired := burst.duplicate()
+	fired["shooter_id"] = BotRig.ME
+	rig.bot.hear([fired])
+	assert_int(rig.bot.team.active_lures(0.0).size()).is_equal(1)
+	assert_int(rig.bot.telemetry.counters.get(&"flares_fired", 0)).is_equal(1)
+	var others := burst.duplicate()
+	others["shooter_id"] = 9
+	rig.bot.hear([others])
+	assert_int(rig.bot.team.active_lures(0.0).size()).is_equal(1)

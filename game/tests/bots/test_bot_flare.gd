@@ -68,8 +68,7 @@ func test_on_open_ground_the_flare_lands_where_it_was_aimed_far_from_the_body_an
 	var mates: Array[Dictionary] = [_mate(BODY), _mate(Vector3(10.0, 0.0, 14.0))]
 	var shot := _flare.plan(HERE, BODY, lured, mates, _level())
 	assert_object(shot).is_not_null()
-	assert_float(_flat(shot.landing, shot.spot)).is_less(BotFlare.TOLERANCE)
-	assert_float(_flat(shot.spot, BODY)).is_greater_equal(BotFlare.MIN_FROM_BODY)
+	assert_float(_flat(shot.landing, HERE)).is_greater_equal(BotFlare.FIRE_MIN)
 	assert_float(_flat(shot.landing, BODY)).is_greater_equal(BotFlare.LANDED_FROM_BODY)
 	for mate in mates:
 		assert_float(_flat(shot.landing, mate["pos"])).is_greater(4.0)

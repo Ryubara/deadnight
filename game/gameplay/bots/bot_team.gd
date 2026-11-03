@@ -15,6 +15,9 @@ var turn := BotTurn.new()
 var one_errand_at_a_time := true
 ## What each bot is for now: anchor, flank or maintainer.
 var roles := BotRoles.new()
+## Whether a claimant that carries a flare gun may fire it to draw the dead off a body (off only to
+## measure what the flare rule is worth, #646).
+var flares := true
 
 
 ## A flare began to burn (a bot fired it and heard it burst).

@@ -17,10 +17,12 @@ extends RefCounted
 ##
 ## The shot is the view the bot looks along. A flare leaves the barrel toward what the view meets
 ## (`AimResolver.aim_direction`) and falls (`projectile_gravity`), so the pitch comes from a table
-## of flights made once with the real projectile on flat ground, and the chosen shot is flown again
-## in the bot's own world (the walls the level can see) before it is ordered: a wall in the way, or
-## a landing that is not near the spot, gives the shot up. Pure: positions in, a `Shot` out, or
-## null. The motor turns and fires (`BotMotor`); the brain decides when (`BotRevive`).
+## of flights made once with the real projectile on flat ground, to find the lines worth trying.
+## Each is then flown in the bot's own world (the walls the level can see, the dead it knows of)
+## and the rules are asked of where the flare really lands, and of where it lands with the view
+## turned a little to each side, so a car in the way does not spoil a shot that lands well anyway.
+## Pure: positions in, a `Shot` out, or null. The motor turns and fires (`BotMotor`); the brain
+## decides when (`BotRevive`).
 
 const WEAPON := &"flare_gun"
 ## The nearest the spot may be to the body, to another player and to the bot, and the farthest from
@@ -41,8 +43,9 @@ const PATH_CLEAR := 2.5
 ## Degrees at the body between the way to the spot and the way to the bot: the spot lies no nearer
 ## the bot's side than this.
 const BEHIND_DEGREES := 60.0
-## Metres by which the flown landing may differ from the spot.
-const TOLERANCE := 3.0
+## The share of the distance aimed at under which a flare that landed counts as taken by something
+## on the way.
+const SHORT_SHARE := 0.7
 ## Headings and distances (from the bot) of the spots tried.
 const HEADINGS := 24
 const RINGS: Array[float] = [10.0, 13.0, 16.0, 19.0, 22.0]
@@ -55,7 +58,7 @@ const WOBBLES: Array[Vector2] = [
 const FLOWN_AT_MOST := 8
 ## Radians either side of a heading that failed in which no other spot is flown for (a wall in the
 ## way of one shot is in the way of its neighbours).
-const BLOCKED_ARC := 0.3
+const BLOCKED_ARC := 0.15
 ## A spot is rated by its distance from the body up to this far.
 const BODY_RATED_TO := 16.0
 ## Seconds ahead a player is taken to stand for the distances to the spot.
@@ -74,8 +77,8 @@ static var _table: Array[Vector2] = []
 var def: WeaponDef = WeaponCatalog.get_def(WEAPON)
 
 
-## What to do: look along `yaw` and `pitch` and fire. `landing` is where the flight ended in the
-## bot's world, `spot` where the bot meant it to land.
+## What to do: look along `yaw` and `pitch` and fire. `landing` is where the flight ends in the
+## bot's world (`spot` is the same, kept for the callers that read it).
 class Shot:
 	extends RefCounted
 	var yaw := 0.0
@@ -108,18 +111,27 @@ func plan(
 	rated.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["score"] > b["score"])
 	var blocked: Array[float] = []
 	var flown := 0
+	var world := Callable(BotFlare, &"_floor")
+	if level != null and level.sight.is_valid():
+		world = level.sight
 	for entry in rated:
-		var heading := atan2(here.x - entry["spot"].x, here.z - entry["spot"].z)
+		var spot: Vector3 = entry["spot"]
+		var heading := atan2(here.x - spot.x, here.z - spot.z)
 		var shut := false
 		for wall in blocked:
 			shut = shut or absf(angle_difference(heading, wall)) < BLOCKED_ARC
 		if shut:
 			continue
 		flown += 1
-		var shot := _flown(here, entry["spot"], body, lured, mates, level, dead)
-		if shot != null:
-			return shot
-		blocked.append(heading)
+		var pitch := pitch_for(_flat(here, spot))
+		var landing := fly(here, heading, pitch, world, dead)
+		if _flat(here, landing) < _flat(here, spot) * SHORT_SHARE:
+			# Something took the flare on the way (a car, a wall): its neighbours are shut too.
+			blocked.append(heading)
+		elif _lands_fit(landing, here, body, lured, mates):
+			var shot := _steady(here, heading, pitch, landing, body, lured, mates, world, dead)
+			if shot != null:
+				return shot
 		if flown >= FLOWN_AT_MOST:
 			break
 	return null
@@ -130,10 +142,9 @@ func plan(
 func _lands_well(
 	landing: Vector3, body: Vector3, lured: Array[Vector3], mates: Array[Dictionary]
 ) -> bool:
-	if (
-		_flat(landing, body) < LANDED_FROM_BODY
-		or not _far_from_mates(landing, mates, LANDED_FROM_MATE)
-	):
+	if _flat(landing, body) < LANDED_FROM_BODY:
+		return false
+	if not _far_from_mates(landing, mates, LANDED_FROM_MATE):
 		return false
 	var reach := def.lure_radius - 1.0
 	for at in lured:
@@ -220,43 +231,49 @@ func fly(
 	return flare.position
 
 
-# --- Checking a spot ---
+# --- Checking a shot ---
 
 
-## The shot at `spot`, flown in the bot's world, or null when the landing is not near the spot or
-## breaks the rules.
-func _flown(
+## The shot, when the flare lands well from the order and from the turns of the view a little to
+## each side (the motor fires within a degree of the order, and a corner a hand's breadth off the
+## line is the end of a flare), or null.
+func _steady(
 	here: Vector3,
-	spot: Vector3,
+	yaw: float,
+	pitch: float,
+	landing: Vector3,
 	body: Vector3,
 	lured: Array[Vector3],
 	mates: Array[Dictionary],
-	level: BotLevel,
+	world: Callable,
 	dead: Dictionary
 ) -> Shot:
-	var apart := _flat(here, spot)
-	var pitch := pitch_for(apart)
-	if is_nan(pitch):
-		return null
-	var yaw := atan2(here.x - spot.x, here.z - spot.z)
-	var world := Callable(BotFlare, &"_floor")
-	if level != null and level.sight.is_valid():
-		world = level.sight
-	var landing := fly(here, yaw, pitch, world, dead)
-	if _flat(landing, spot) > TOLERANCE or not _lands_well(landing, body, lured, mates):
-		return null
-	# The view is never quite on the order's when the trigger is pulled, and a corner a hand's
-	# breadth off the line is the end of the flare: the shot is flown again a little to each side.
 	for wobble: Vector2 in WOBBLES:
 		var off := fly(here, yaw + wobble.x, pitch + wobble.y, world, dead)
-		if _flat(off, spot) > TOLERANCE * 2.0 or not _lands_well(off, body, lured, mates):
+		if _flat(here, off) < FIRE_MIN or not _lands_well(off, body, lured, mates):
 			return null
 	var shot := Shot.new()
 	shot.yaw = yaw
 	shot.pitch = pitch
 	shot.landing = landing
-	shot.spot = spot
+	shot.spot = landing
 	return shot
+
+
+## Whether a flare that really landed at `landing` is a good one: far enough from the bot, far from
+## the body and from every player, the dead to be drawn within its reach, not on the reviver's side
+## of the body, and the dead not drawn past the bot.
+func _lands_fit(
+	landing: Vector3, here: Vector3, body: Vector3, lured: Array[Vector3], mates: Array[Dictionary]
+) -> bool:
+	if _flat(here, landing) < FIRE_MIN or not _lands_well(landing, body, lured, mates):
+		return false
+	if _behind_the_reviver(landing, here, body):
+		return false
+	for at in lured:
+		if not _walks_clear(at, landing, here):
+			return false
+	return true
 
 
 ## Whether `spot` is at least `least` metres from every living player, where each stands and where
