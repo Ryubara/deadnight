@@ -379,7 +379,7 @@ pings only) is superseded: pings stay, and three standing orders are added. The 
 | --- | --- | --- |
 | **Roam** (the default) | Does its own thing: fights what it meets, shops, mends boards, looks after the generator, and walks from place to place across the lot (`BotRoam`), away from the person and from the other bots. | Rung 6. A fight, an errand, a revive and a ping come first, as for every order. |
 | **Follow** | Sticks with the person who gave the order: `BotFollow`, with the band #564 tuned (4 to 10 m calm, 3 to 7 m in a fight). The person leaves, or is dead: the bot roams. | Rung 6. Roles (anchor, flank) are Follow's. |
-| **Hold** | Stands at the spot the order was given, a place of a ring of 1.4 m about it by seat order, and fights from there; it does not back away, chase or shop, and leaves for a revive, a ping or a dodge, then comes back. | Rung 6. |
+| **Hold** | Stands at the spot the order was given, a place of a ring of 1.4 m about it by seat order, and fights from there; it does not back away, chase or shop, and leaves for a revive, a ping, a dodge or, with its reserve under a magazine, rounds ([needs](#needs-against-orders-692)), then comes back. | Rung 6. |
 
 A downed person still pulls the nearest free bot through the claim table (`BotClaims`) and a ping pulls a bot, in
 every order; the bot goes back to its order afterwards.
@@ -422,7 +422,7 @@ the second digit as noise):
 | Mean distance between two bots | 38 to 39 m | 11 to 17 m | 2.6 to 2.9 m |
 | Within 3 m of the spot | n/a | n/a | 0.94, 0.94, 0.89 of the time up; 0.97, 0.97, 0.93 on the spot |
 | Kills by the bots (20 min) | 505, 489, 205 | 306, 166, 277 | 103, 140, 106 |
-| Buys by the bots | 139, 137, 83 | 98, 110, 131 | none (a holding bot shops only for a pinged door) |
+| Buys by the bots | 139, 137, 83 | 98, 110, 131 | none (a holding bot shops only for a pinged door, and for rounds when its reserve is under a magazine, from #692) |
 | Think p99 | 5.7 to 6.0 ms | 1.6 to 2.3 ms | 0.5 to 0.9 ms |
 
 Follow without errands (`--order=follow`, seeds 1 to 6, the #564 soak): within 12 m of the person **0.91 to 0.93 of the
@@ -452,6 +452,57 @@ parts' tests that stood still because no person was near started to roam when th
 Not done here: the wheel and the HUD's word for the current order are #642 (on `main`, through `BotOrderLink`). The
 roles of #229 (anchor, flank) are Follow's: a roaming or holding bot has none. The ping replies of #229 (hold here, shoot
 that one, raise that one) and the claim table sit above every order.
+
+## Needs against orders (#692)
+
+The maintainer, 2026-11-03: "Bots should be smart enough to get their own ammo e.g. find the nearest ammo stash when
+ammo is running low. Basically setting their task to grab ammo, but this needs a consideration on how it will conflict
+when player requests to "follow" etc."
+
+**What was there.** The economy (`BotEconomy`, #597) already bought rounds for a bot in a lull (the floor of
+`BotProfile.ammo_floor_mags` magazines) and at once under one magazine, and a person's ammunition ping (#647/#670)
+named the locker. What it lacked: no order was consulted (a bot that follows went anywhere, a bot that holds never
+went), the nearest locker was the nearest by the straight line, and a bot held back by nothing had nothing to say.
+
+**The table.** One place decides whether a need may take a bot from its order: `BotNeeds.RULES` (`bot_needs.gd`), a
+table of need by order, each cell `{go, near, say}`. A need has a level (`BotNeeds.Level`), and the answer
+(`BotNeeds.verdict`) is `GO`, `STAY` or `STAY_AND_SAY`. A person's ping is not in the table: it sits above every order
+(`BotPings`), and `BotErrands` lets the marked rounds through under all three.
+
+| Level of the need for rounds | Meaning |
+| --- | --- |
+| `LOW` | A gun worth rounds has less than `ammo_floor_mags` magazines in reserve. |
+| `SHORT` | One has less than a magazine in reserve (the economy's "urgent"). |
+| `EMPTY` | No round is left in any gun worth rounds, magazine and reserve alike. |
+
+| Order | Goes when | Otherwise |
+| --- | --- | --- |
+| **Roam** | `LOW` or worse, anywhere: it does its own thing. | |
+| **Follow** | The source is near the leader (within the follow leash, `BotCombat.LEASH` 12 m, of them, or within 3 m of the straight way to them) and the need is `LOW` or worse; or the gun is `EMPTY` (it goes anyway, then walks back to the leader). | Stays with the leader and says "I'M RUNNING LOW ON ROUNDS" (the callout of `BotSay.NEED_AMMO`, once, again after it was free of the hold); goes when the leader comes near a source. |
+| **Hold** | `SHORT` or `EMPTY`: under a magazine it leaves the spot, buys and returns to it. | Keeps the spot at `LOW`, says nothing. |
+
+In every order the trip begins only where the economy lets any errand begin: no dead within `CLEAR_FROM` (12 m), no
+target in sight; a `LOW` reserve is filled only in a lull (a break, five zombies left or a quarter of the round, ten
+seconds without a sight of the dead); under a magazine it goes in a round too, wherever the dead are not. So a bot
+never walks through a horde for rounds. A trip begun gets four metres more leash, so a leader at the edge does not turn
+the bot round on every step. The stand is the one with the shortest **walk** (`BotPath.walk_length`, asked of the legs
+for the four nearest by the straight line, kept three seconds; a stand it cannot walk to is passed over), not the
+nearest by the line, and the one the bot is heading to counts six metres nearer, so a trip does not change its mind.
+
+**Adding a need (#693's health stances).** Add a key to `RULES` with a row for each order, a level function that reads
+the bot (`BotNeeds.ammo_level` is the model: pure, the bot's own state in, a `Level` out) and, where the need is acted
+on, one call to `BotNeeds.verdict`; `BotErrands._verdict` is the call for rounds. The brain has no branch for it.
+
+**Proof.** `tests/bots/test_bot_needs.gd`: every cell of the table, the levels from the guns, what is near the leader,
+the choice by walk (22 cases). `tests/night/test_bot_own_ammo.gd`, in the real lot with a person and a bot: Roam walks
+to the locker that is the shorter walk (not the nearer one by the line, east of the concession's fence) and buys;
+Follow stays and says it with no locker near, goes when the leader walks to one and comes back, and goes anyway with an
+empty gun and comes back; Hold keeps the spot at `LOW`, leaves under a magazine and returns, and goes to a marked
+locker at `LOW` (the ping wins). The film of a bot running low, walking to the locker, buying and coming back under each
+order: `tests/captures/bots_own_ammo.tscn`.
+
+**How it fits the ping rule (#670).** The ping names the place and wins over any order; the need names no place, takes
+the nearest by walk and answers to the order. A ping to a bot that is not short is still ignored.
 
 ## Edge cases
 

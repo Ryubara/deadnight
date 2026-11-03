@@ -12,8 +12,17 @@ extends RefCounted
 ## can do it), and the turn moves on to the next every `TURN_SECONDS` the job stays undone
 ## (`docs/research/bots.md#economy`).
 ##
+## A need of the bot's own (rounds, `BotNeeds`) is let through only as the standing order allows: a
+## roaming bot goes freely, one that follows goes when the stand is near the person (or its gun is
+## empty), one that holds goes when its reserve is under a magazine. A bot held back says so once
+## (`NEED_HELD_BACK`). The rule is the table of `BotNeeds`, not a branch here.
+##
 ## It reads the frame the bot is shown (the players, their points, the prompt, the circuits, the
 ## tank, the boards, the doors, the pings) and the shop it was given; nothing of the rules.
+
+## What `_shopping` may pick: anything on the list, only the rounds a person marked, or only what a
+## bot that holds a spot may leave for (the marked rounds and its own need for rounds).
+enum Scope { ALL, MARKED, NEEDS }
 
 ## The frame's `phase` for a break and for a round (a bot names no rules class; a test holds these
 ## to the rules' phase enum).
@@ -60,9 +69,18 @@ const CALM_SHARE := 0.25
 const PLAN_EVERY := 0.5
 ## Seconds between two swaps asked for at a locker.
 const SWAP_GAP := 1.0
+## Seconds a walk to a stand is remembered, before the legs are asked again.
+const WALK_KEEP := 3.0
+## The moment a bot held back from a need puts in its beliefs (the callouts say it).
+const NEED_HELD_BACK := &"need_held_back"
 
 ## The legs the bot walks on (set by the brain): their word that a stand cannot be reached.
 var legs: BotLegs
+## The standing order of the bot (`BotOrders`) and the place its people are at (the person it
+## follows, or the spot it holds; `Vector3.INF` for none): set by the brain each think, read by the
+## table of needs.
+var order: StringName = BotOrders.ROAM
+var anchor := Vector3.INF
 ## What the bot decided last, for the ring buffer, and how many of each kind it began.
 var note := ""
 var counts: Dictionary = {}
@@ -93,6 +111,13 @@ var _clock := 0.0
 ## A stand's key to the clock until which the bot leaves it alone (it found no way there).
 var _unreachable: Dictionary = {}
 var _door_count := -1
+## A stand's key to `{length, until}`: the metres of walk to it, asked of the legs.
+var _walks: Dictionary = {}
+var _walk_mesh := -1
+## The ammunition stand the bot is walking to for rounds of its own, and whether the callout for a
+## need it was held back from has been given since it last was free.
+var _heading := Vector3.INF
+var _announced := false
 ## A stand's key to whether a walk reaches it on the mesh as it is (asked once for each new mesh).
 var _probed: Dictionary = {}
 var _mesh := -1
@@ -142,8 +167,12 @@ func back_off(item_id: StringName, now: float) -> void:
 
 
 ## Sets the intent for an errand and returns true, or returns false when the bot has none (or is
-## in a fight). `threat` is the metres to the nearest dead it knows of.
-func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float) -> bool:
+## in a fight). `threat` is the metres to the nearest dead it knows of. With `needs_only` (a bot
+## that holds a spot) only what a person's ping names and the bot's own need for rounds are looked
+## at: the rest of the errands wait for an order that lets the bot go.
+func run(
+	intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: float, needs_only := false
+) -> bool:
 	var me := state.me()
 	if me.is_empty() or me.get("downed", false) or not state.has_frame():
 		return false
@@ -161,28 +190,35 @@ func run(intent: BotIntent, beliefs: BotBeliefs, state: ClientState, threat: flo
 		_plan(beliefs, state, me, frame)
 	if threat < CLEAR_FROM:
 		_last_item = &""
+		_heading = Vector3.INF
 		_arrived_at = -1.0
 		return false
 	var crane := _crane_wait(intent, me, frame, state.player_id)
 	if crane:
 		return true
-	for job in [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]:
+	var jobs: Array[StringName] = [&"marked", &"fuel", &"circuits", &"shopping", &"repairs"]
+	if needs_only:
+		jobs = [&"marked", &"needs"]
+	for job in jobs:
 		var took := false
 		match job:
 			&"marked":
-				took = _shopping(intent, beliefs, state, me, frame, true)
+				took = _shopping(intent, beliefs, state, me, frame, Scope.MARKED)
+			&"needs":
+				took = _shopping(intent, beliefs, state, me, frame, Scope.NEEDS)
 			&"fuel":
 				took = _fuel(intent, beliefs, state, me, frame)
 			&"circuits":
 				took = _circuits(intent, beliefs, state, me, frame)
 			&"shopping":
-				took = _shopping(intent, beliefs, state, me, frame)
+				took = _shopping(intent, beliefs, state, me, frame, Scope.ALL)
 			&"repairs":
 				took = _repairs(intent, beliefs, state, me, frame)
 		if took:
 			counts[job] = int(counts.get(job, 0)) + 1
 			return true
 	_last_item = &""
+	_heading = Vector3.INF
 	_arrived_at = -1.0
 	_post_arrived = -1.0
 	note = ""
@@ -223,19 +259,29 @@ func _shopping(
 	state: ClientState,
 	me: Dictionary,
 	frame: Dictionary,
-	marked_only := false
+	scope: Scope
 ) -> bool:
 	var now := beliefs.now
 	var pick: BotEconomy.Buy = null
+	var held_back := false
 	for buy in _found:
-		if marked_only and buy.why != BotEconomy.AMMO_PING:
+		if scope == Scope.MARKED and buy.why != BotEconomy.AMMO_PING:
 			continue
+		if scope == Scope.NEEDS and buy.why != BotEconomy.AMMO_PING and not _is_ammo_need(buy):
+			continue
+		if _is_ammo_need(buy):
+			var verdict := _verdict(buy, me)
+			held_back = held_back or verdict == BotNeeds.Verdict.STAY_AND_SAY
+			if verdict != BotNeeds.Verdict.GO:
+				continue
 		if _team_turn(buy, beliefs, frame, state.player_id):
 			if buy.item == _last_item:
 				pick = buy
 				break
 			if pick == null:
 				pick = buy
+	if scope != Scope.MARKED:
+		_announce(beliefs, held_back)
 	if pick == null:
 		return false
 	if pick.item != _last_item:
@@ -248,8 +294,32 @@ func _shopping(
 	if pick.why == BotEconomy.AMMO_PING:
 		_ammo_kept = pick.stand
 		_ammo_until = now + ERRAND_LIMIT
+	_heading = pick.stand if pick.prompt == &"ammo" else Vector3.INF
 	note = "buy %s (%s)" % [pick.item, pick.why]
 	return _carry_out(intent, pick, me, now)
+
+
+## Whether `buy` is rounds the bot wants for itself: not a person's ping (which sits above the
+## orders) but a need or a top-off. A top-off of a gun the bot is short of is that gun's need.
+func _is_ammo_need(buy: BotEconomy.Buy) -> bool:
+	return buy.prompt == &"ammo" and buy.why != BotEconomy.AMMO_PING
+
+
+## What the table of needs says about this purchase of rounds under the standing order. A trip
+## begun is given a little more leash.
+func _verdict(buy: BotEconomy.Buy, me: Dictionary) -> BotNeeds.Verdict:
+	var level := BotNeeds.ammo_level(me.get("arms", {}), _profile.ammo_floor_mags)
+	var slack := BotNeeds.UNDERWAY_SLACK if _flat(_heading, buy.stand) < 1.0 else 0.0
+	var near := BotNeeds.is_near(buy.stand, _here, anchor, slack)
+	return BotNeeds.verdict(BotNeeds.Need.AMMO, order, level, near)
+
+
+## A bot held back from its need says so once, and again only after it has been free of the hold.
+func _announce(beliefs: BotBeliefs, held_back: bool) -> void:
+	if held_back and not _announced:
+		beliefs.moments.append({"kind": NEED_HELD_BACK})
+		counts["held_back"] = int(counts.get("held_back", 0)) + 1
+	_announced = held_back
 
 
 ## Looks at the shop again: what the bot would buy now, and how long it has held more than twice
@@ -339,6 +409,20 @@ func _avoided(stand: Vector3) -> bool:
 	if not _probed.has(key):
 		_probed[key] = legs.path.probe(_here, stand, _clock)
 	return not _probed[key]
+
+
+## The metres of walk to `stand` (`INF` for none), asked of the legs and kept for `WALK_KEEP`
+## seconds; the answers go with the mesh.
+func _walk_to(stand: Vector3) -> float:
+	if legs.path.iteration() != _walk_mesh:
+		_walk_mesh = legs.path.iteration()
+		_walks.clear()
+	var key := _key(stand)
+	var kept: Dictionary = _walks.get(key, {})
+	if kept.is_empty() or float(kept["until"]) <= _clock:
+		kept = {"length": legs.path.walk_length(_here, stand, _clock), "until": _clock + WALK_KEEP}
+		_walks[key] = kept
+	return float(kept["length"])
 
 
 static func _key(stand: Vector3) -> Vector2i:
@@ -432,6 +516,9 @@ func _view(
 	view.denied = _denied
 	view.now = now
 	view.avoid = Callable(self, &"_avoided")
+	if legs != null:
+		view.walk = Callable(self, &"_walk_to")
+	view.heading = _heading
 	_etiquette(view, beliefs, frame, state.player_id)
 	return view
 

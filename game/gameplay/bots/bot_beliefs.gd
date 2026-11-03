@@ -46,7 +46,7 @@ var special: StringName = &""
 ## The purchases the server refused since the brain last looked: `{item, result}`.
 var denials: Array[Dictionary] = []
 ## Things that happened to the bot or the night since the brain last looked, for the callouts:
-## `{kind}` (`revived`, `door_bought`, `fuel_low`, `breach_open`, `trapped`).
+## `{kind}` (`revived`, `door_bought`, `fuel_low`, `breach_open`, `trapped`, `need_held_back`).
 var moments: Array[Dictionary] = []
 ## The clock when the bot last bought something.
 var purchased_at := -INF
