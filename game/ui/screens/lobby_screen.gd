@@ -735,6 +735,7 @@ func _fit() -> void:
 	if _scroll == null or _scroll.get_child_count() == 0:
 		return
 	var content := (_scroll.get_child(0) as Control).get_combined_minimum_size().y
+	content += UIScroll.margins(_scroll).y
 	_scroll.custom_minimum_size.y = minf(content, get_viewport_rect().size.y - PANEL_MARGIN)
 
 
