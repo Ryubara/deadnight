@@ -1195,18 +1195,18 @@ before this rule too; it is #673.
 
 Issue: #230 (the room setting and the seating came first, with #643).
 
-**What shipped.** The room's **Bots** setting (0 to 3, #643) and a **Bot skill** setting (rookie, regular, veteran) fill
-the empty seats of a night, for Solo and for a host's room alike, in [Rounds, points and fuel](../design/rounds.md#bots).
-It is not the "off, fill to two, fill to four" of the first draft: the count is the host's, and the server's own limits
-sit above it.
+**What shipped.** The room's **Bots** setting (0 to 3, #643; 0 to 7 since #690 with eight seats) and a **Bot skill**
+setting (rookie, regular, veteran) fill the empty seats of a night, for Solo and for a host's room alike, in [Rounds,
+points and fuel](../design/rounds.md#bots). It is not the "off, fill to two, fill to four" of the first draft: the
+count is the host's, and the server's own limits sit above it.
 
 | Part | How it is built |
 | --- | --- |
 | Slot filling | `NightBots` seats bots in the highest free seats up to `target(setting, people, limit)`; a person with no free seat takes the lowest bot's seat as it stands (`hand_over`, `bot_replaced`), and **a person who leaves hands the seat to a bot as it stands** (`adopt`, `bot_seated`: the same body, points, weapons and health), so decision 7 holds both ways |
 | Difficulty | `MatchSettings.bot_skill` picks the `BotProfile` of every bot (`BotProfile.for_skill`); the rules never read it, a test holds the night's numbers equal across skills |
-| Names and looks | `BotRoster`: a cast of three per skill (Pip, Dale, Moe; Ash, Fern, Moss; Rex, Sarge, Hawk), each a name and a catalogue preset look sent through the look server like a person's; the lobby shows the same names before the night begins |
+| Names and looks | `BotRoster`: a cast of eight per skill, one per seat (Pip, Dale, Moe, ...; Ash, Fern, Moss, ...; Rex, Sarge, Hawk, ...; #690), each a name and a different catalogue preset look sent through the look server like a person's; the lobby shows the same names before the night begins |
 | Labels | `BOT` after the name in the HUD, the scoreboard, the lobby and the feed; `PlayerState.bot` rides every snapshot, so the roster API marks the seat; no bot flag exists in a command (the bots send the same plain actions through `apply`, and a person's seat is told apart only by the rules) |
-| Limits | `MAX_BOTS` caps one room (0 to 3), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
+| Limits | `MAX_BOTS` caps one room (0 to 7 since #690, with eight seats), `BOT_BUDGET` shares a number of bots among the open rooms, `BOTS_OFF` is the kill-switch; a limit that drops sends the highest seats' bots away at once and the night goes on (`BotLimits`, `GameServer.set_bot_limits`, `NightHost.set_bot_limit`) |
 | Marked in the stats | the room's stats line carries `bots`; the rules mark every bot seat, so nothing that reads `player_added.bot` can pay a bot account progression (there is none yet) |
 
 **Proof.**

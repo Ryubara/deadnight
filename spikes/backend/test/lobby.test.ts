@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { buildApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { OffDiscord } from "../src/discord.ts";
-import { DEFAULT_LOBBY_LIMITS, LobbyService } from "../src/lobbies.ts";
+import { DEFAULT_LOBBY_LIMITS, LobbyService, MAX_PLAYERS } from "../src/lobbies.ts";
 import { GameServerRegistry } from "../src/servers.ts";
 import { MemoryStore } from "../src/store.ts";
 
@@ -131,6 +131,24 @@ test("a full room turns the next player away with 409 full, and a seat that free
   assert.equal(turned.json().error, "full");
   await call("POST", `/lobbies/${made.id}/leave`, players[3]!);
   assert.equal((await call("POST", "/lobbies/join-by-code", players[4]!, { code: made.code })).statusCode, 200);
+  await app.close();
+});
+
+test("a room holds eight by default, people and bots together; a ninth player is turned away and a limit above eight is refused", async () => {
+  const { app, guest, call } = await platform();
+  const players = [];
+  for (let i = 0; i < 9; i++) players.push(await guest(`p${i}`));
+  const made = (await call("POST", "/lobbies", players[0]!, {})).json();
+  assert.equal(made.maxPlayers, MAX_PLAYERS);
+  assert.equal(made.maxPlayers, 8);
+  for (const player of players.slice(1, 8)) {
+    assert.equal((await call("POST", "/lobbies/join-by-code", player, { code: made.code })).statusCode, 200);
+  }
+  const turned = await call("POST", "/lobbies/join-by-code", players[8]!, { code: made.code });
+  assert.equal(turned.statusCode, 409);
+  assert.equal(turned.json().error, "full");
+  const wide = await call("POST", "/lobbies", players[8]!, { maxPlayers: MAX_PLAYERS + 1 });
+  assert.equal(wide.statusCode, 400);
   await app.close();
 });
 

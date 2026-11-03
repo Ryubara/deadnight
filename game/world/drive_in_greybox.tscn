@@ -1059,6 +1059,18 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.000, 0
 [node name="Player4" type="Marker3D" parent="Field/PlayerSpawns"]
 transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 0.000, -43.000)
 
+[node name="Player5" type="Marker3D" parent="Field/PlayerSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -6.000, 0.000, -40.000)
+
+[node name="Player6" type="Marker3D" parent="Field/PlayerSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -2.000, 0.000, -40.000)
+
+[node name="Player7" type="Marker3D" parent="Field/PlayerSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 2.000, 0.000, -40.000)
+
+[node name="Player8" type="Marker3D" parent="Field/PlayerSpawns"]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.000, 0.000, -40.000)
+
 [node name="ZombieSpawns" type="Node3D" parent="Field"]
 
 [node name="SpawnNW" type="Marker3D" parent="Field/ZombieSpawns"]

@@ -42,7 +42,7 @@ func _busy_hud(canvas: Vector2, worst := false, mirrored := false) -> HudFixture
 	var host: Control = auto_free(Control.new())
 	host.size = canvas
 	add_child(host)
-	var fixture := HudFixture.make(host, 4)
+	var fixture := HudFixture.make(host, NightHost.MAX_PLAYERS)
 	var hud := fixture.hud
 	hud.mirrored = mirrored
 	fixture.into_round_one()
@@ -273,7 +273,7 @@ func test_every_hud_label_is_at_least_the_minimum_size() -> void:
 	var host: Control = auto_free(Control.new())
 	host.size = BASE
 	add_child(host)
-	var fixture := HudFixture.make(host, 4)
+	var fixture := HudFixture.make(host, NightHost.MAX_PLAYERS)
 	var small: Array[String] = []
 	_collect_small_labels(fixture.hud, small)
 	assert_array(small).is_empty()

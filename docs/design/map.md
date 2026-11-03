@@ -461,7 +461,8 @@ the side the player arrives from, and four capsules abreast need 2.8 m (2 x 0.35
 
 The yard's and the back lot's gates are the odd ones. They stand in the field's far south fence, 30 m from the nearest
 field lamp and 32 m from the nearest breach, so buying them is a team move into the dark where the dead are 25% faster,
-not an errand for one. The start is no closer to danger: the players spawn 33 to 36 m from the nearest breach.
+not an errand for one. The start is no closer to danger: the players spawn 33 to 38 m from the nearest breach (eight
+places, two rows of four, 3 m apart: #690).
 
 ### Where a downed player can be revived
 
@@ -518,7 +519,7 @@ and the field's stalls have painted lines.
 | --- | --- |
 | `Field`, `Concession`, `Midway`, `ProjectionBooth`, `GeneratorYard`, `BackLot`, `Road` (the ticket plaza; the node and the door keep the old name) | an area: ground, walls, props, `Lamps`, `ZombieSpawns`, a hidden `Label` |
 | `Field/Breach*`, `Field/Apron*` | a breach's boards (a `Barricade` with `metadata/barricade_id`) and the walled apron outside it; each field spawn marker carries the `barricade_id` of the breach it lies outside |
-| `Field/PlayerSpawns` | four markers on the apron below the screen |
+| `Field/PlayerSpawns` | eight markers on the apron below the screen, two rows of four, 3 m apart |
 | `Doors` | the `LotDoors` script: `bind(rules)` opens a door when the rules sell it; signal `door_opened(door_id)` |
 | `Field/ParkingLines` | the painted lines between the stalls: one `MultiMesh`, no collision |
 | `Doors/Door_*` | the five purchase doors: a group of slabs (one per way into the area) and a price label, with `metadata/cost`, `shop_id` and `requires`, written from the shop's tuning. `LotDoors.open` frees them; free `Doors` to walk everywhere (a test) |

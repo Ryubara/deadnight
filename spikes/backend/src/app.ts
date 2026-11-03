@@ -4,7 +4,7 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import type { Config } from "./config.ts";
 import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { RateLimit } from "./limits.ts";
-import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService } from "./lobbies.ts";
+import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService, MAX_PLAYERS } from "./lobbies.ts";
 import { chooseName } from "./names.ts";
 import { DEFAULT_MAP } from "./settings.ts";
 import { GameServerRegistry } from "./servers.ts";
@@ -258,12 +258,12 @@ export function buildApp(deps: Deps): FastifyInstance {
       schema: {
         body: {
           type: "object",
-          properties: { maxPlayers: { type: "integer", minimum: 1, maximum: 8 }, instanceId: { type: "string", maxLength: 128 } },
+          properties: { maxPlayers: { type: "integer", minimum: 1, maximum: MAX_PLAYERS }, instanceId: { type: "string", maxLength: 128 } },
         },
       },
     },
     async (request, reply) => {
-      const { maxPlayers = 4, instanceId = null } = request.body ?? {};
+      const { maxPlayers = MAX_PLAYERS, instanceId = null } = request.body ?? {};
       // One open lobby per Activity instance: friends in the same voice-channel Activity land in the same lobby.
       const existing = instanceId ? lobbies.findByInstance(instanceId) : null;
       const lobby = existing ? lobbies.join(existing.id, await member(request.userId)) : lobbies.create(await member(request.userId), maxPlayers, instanceId);
