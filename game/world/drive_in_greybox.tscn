@@ -1663,7 +1663,7 @@ material = ExtResource("booth_prop")
 metadata/circuit = "booth"
 
 [node name="ProjectorBeam" type="SpotLight3D" parent="ProjectionBooth/Lamps" groups=["powered_light"]]
-transform = Transform3D(-1.0000, -0.0000, 0.0000, 0.0000, 0.9962, 0.0872, -0.0000, 0.0872, -0.9962, 0.000, 5.400, 22.300)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.9925, -0.1219, -0.0000, 0.1219, 0.9925, 0.000, 5.400, 22.300)
 light_color = Color(0.910, 0.941, 1.000, 1)
 light_energy = 6
 spot_range = 100

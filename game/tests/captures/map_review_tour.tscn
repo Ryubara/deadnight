@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/map_review_tour.gd" id="1"]
+
+[node name="MapReviewTour" type="Node"]
+script = ExtResource("1")
