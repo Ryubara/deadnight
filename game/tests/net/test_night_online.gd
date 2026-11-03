@@ -202,6 +202,49 @@ func test_every_player_looks_the_same_on_every_screen() -> void:
 	assert_bool(on_a.is_equal_approx(on_b)).is_true()
 
 
+## The character choice (#678) is part of the look: the other client draws her as her, both
+## screens' voices know she has none yet, and his body beside her stays his.
+func test_her_character_is_seen_by_the_other_player_and_has_her_voice() -> void:
+	await _server()
+	var hers := CharacterLook.from_preset(8)  # Carhop
+	var his := CharacterLook.from_preset(5)
+	assert_str(String(hers.body())).is_equal("female")
+	var a := await _wearing(hers)
+	var b := await _wearing(his)
+	assert_bool(await _until_sees(b, 1, hers)).is_true()
+	assert_bool(await _until_sees(a, 2, his)).is_true()
+	assert_str(String((_host.server.looks.looks[1] as CharacterLook).body())).is_equal("female")
+	await _ticks(10)
+	# On the other screen her avatar shows her face, torso and legs and none of his.
+	var avatar := b.avatars.avatar(1).get_node("Model")
+	var shown := _shown(avatar)
+	for mesh in [
+		"head__plain__female", "torso__shirt__female", "legs__cuffed__female", "hair__bob"
+	]:
+		assert_array(shown).contains([mesh])
+	for mesh in ["head__plain", "torso__shirt", "legs__cuffed"]:
+		assert_array(shown).not_contains([mesh])
+	# Her own screen draws her the same way.
+	var resolved := LookResolver.resolve(_host.server.looks.looks)
+	var expected: Array[String] = SoldierLook.visible_meshes(
+		(resolved[1] as CharacterLook).to_soldier_look()
+	)
+	expected.sort()
+	assert_array(_shown(a._body.get_node("Model"))).is_equal(expected)
+	assert_array(shown).is_equal(expected)
+	# The voice each screen picks: hers is the female voice (voxf_), his the male one.
+	for night: Night in [a, b]:
+		var voice := SoldierVoice.new()
+		voice.looks = night.looks
+		assert_str(String(SoldierVoiceCatalog.voice_of({"voice": voice.look_voice(1)}))).is_equal(
+			"female"
+		)
+		assert_str(String(SoldierVoiceCatalog.voice_of({"voice": voice.look_voice(2)}))).is_equal(
+			"male"
+		)
+		voice.free()
+
+
 ## How tall the character is in the world: the highest bone of its skeleton at rest above the
 ## model's own origin (the feet), and its global scale.
 func _stature(model: Node3D) -> Dictionary:

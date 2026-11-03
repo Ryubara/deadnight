@@ -24,8 +24,16 @@ const SECONDS := 110
 const ZOMBIE_SPEED := 2.4
 ## Tolerances either side of the level's number.
 const HIT_TOLERANCE := 0.12
-const HEAD_TOLERANCE := 0.07
-const DODGE_TOLERANCE := 0.15
+## The head share and the dodge follow `SimSkill` again (#745). Both were re-measured on the zones
+## that follow the bodies (#694: the chibi head is half the figure, so a shot aimed at the chest
+## lands on it most of the time) and `SimSkill` was set to the middle of what eight seeds read:
+## head share 0.64 to 0.72 / 0.78 to 0.84 / 0.81 to 0.88 and dodge 0.15 to 0.21 / 0.47 to 0.68 /
+## 0.73 to 0.91 for the three levels, on this machine and on the CI runner (0.66 / 0.82 / 0.81 and
+## 0.16 / 0.47 / 0.79). Two runs of the same commands are not bit-identical, and a Veteran's dodge
+## is read from a few dozen blows, so the tolerances are the width of that spread; the three
+## levels stay apart in the same order.
+const HEAD_TOLERANCE := 0.1
+const DODGE_TOLERANCE := 0.2
 
 
 func _seeds() -> int:

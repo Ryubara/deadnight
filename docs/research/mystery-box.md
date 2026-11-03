@@ -76,7 +76,9 @@ the simulator chose.
 `PrizeCrane` (`game/world/crane/prize_crane.gd`) is built from boxes and spheres, no asset: a red cabinet with a glass
 case, a pile of plush prizes, a claw on a gantry, a lit marquee. `CraneView` (`game/gameplay/night/crane_view.gd`)
 stands it at the spot the server's frame names, set back 1.5 m from that spot's marker, and the crane is a function of
-the frame's `crane` ({spot, stage, left, weapon}), so a late joiner sees the same crane:
+the frame's `crane` ({spot, stage, left, weapon}), so a late joiner sees the same crane. The cabinet is a drawing with no
+collision; the wall is `CraneBlock` (`game/gameplay/night/crane_block.gd`) in the world both a server and a client build,
+moved by `crane_moved` and by the frame, so the two bodies stop at the same place (#748):
 
 - **Spin.** The claw sweeps over the pile, drops, closes and lifts; weapon models cycle above the glass, one every
   0.07 s at first and 0.46 s at the end (the Mystery Box slows the same way). Every prize shows its own model

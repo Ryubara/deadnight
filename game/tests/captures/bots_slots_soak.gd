@@ -30,6 +30,8 @@ const SETTLE_TICKS := 120
 const SEATS := NightHost.MAX_PLAYERS
 ## Ticks the lot takes to warm up; the host's worst step is read after them.
 const WARM_TICKS := 1200
+## Ticks between two comparisons of the solid things the clients' worlds and the server's hold.
+const SOLIDS_EVERY := 300
 
 var _args := {}
 var _host: NightHost
@@ -38,6 +40,8 @@ var _clients: Dictionary = {}
 var _started_at := 0
 var _failures: Array[String] = []
 var _worst_gap := 0.0
+## Player id -> what the last check of the solid things found different.
+var _solids_apart := {}
 var _worst_step_ms := 0.0
 var _seat_checks := 0
 var _last_change := 0
@@ -207,9 +211,64 @@ func _watch(first_night: int) -> void:
 		var gap := night.player().state.position.distance_to(body.global_position)
 		_worst_gap = maxf(_worst_gap, gap)
 		if gap > MOST_AHEAD:
-			_fail("client %d is %.2f m from the server at tick %d" % [id, gap, _tick()])
+			_fail(
+				(
+					"client %d is %.2f m from the server at tick %d (%s)"
+					% [id, gap, _tick(), _why_apart(id, night, body)]
+				)
+			)
 	if _tick() % 30 == 0 and _tick() - _last_change > SETTLE_TICKS:
 		_check_seats()
+	if _tick() % SOLIDS_EVERY == 0:
+		_check_solids()
+
+
+## What the two bodies were doing when they were far apart, for the failure line: the nearest
+## other body to the server's, and what each of the two last slid along.
+func _why_apart(id: int, night: Night, body: Player) -> String:
+	var mine := night.player()
+	return (
+		"server body %s, nearest other body %.2f m, client slid on %s, server slid on %s"
+		% [body.global_position, _nearest_other(id, body), _slid_on(mine), _slid_on(body)]
+	)
+
+
+func _slid_on(body: Player) -> String:
+	var hit := body.get_last_slide_collision()
+	if hit == null:
+		return "nothing"
+	var collider := hit.get_collider() as Node3D
+	return "%s at %s" % [collider.name, collider.global_position]
+
+
+func _nearest_other(id: int, body: Node3D) -> float:
+	var best := INF
+	for other: int in _host.server.rules.players.keys():
+		var other_body := _host.server.body_of(other)
+		if other != id and other_body != null:
+			best = minf(best, other_body.global_position.distance_to(body.global_position))
+	return best
+
+
+## Every solid thing a client's world holds is in the server's too, and the other way round: a wall
+## one of them lacks stops one body and not the other (#748, #760). A board torn a moment ago may
+## not have reached a client yet, so a difference counts when two checks in a row find the same.
+func _check_solids() -> void:
+	var mask := 0
+	for id: int in _host.server.rules.players.keys():
+		var any := _host.server.body_of(id)
+		if any != null:
+			mask = any.collision_mask
+			break
+	var server := WorldSolids.of(_host.get_parent(), mask)
+	for id: int in _clients:
+		var night: Night = _clients[id]
+		if night.world == null or not is_instance_valid(night.get_parent()):
+			continue
+		var apart := str(WorldSolids.differences(WorldSolids.of(night.get_parent(), mask), server))
+		if apart != "[]" and apart == _solids_apart.get(id, ""):
+			_fail("client %d and the server hold different solid things: %s" % [id, apart])
+		_solids_apart[id] = apart if apart != "[]" else ""
 
 
 ## The seats a client's frame holds are the seats the server holds.

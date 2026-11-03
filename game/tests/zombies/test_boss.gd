@@ -8,6 +8,11 @@ const HEADLINER := &"headliner"
 const SCALE := 1.45
 
 
+## A ray against the headliner's moving hit set, with or without its weak spot.
+func _ray(origin: Vector3, dir: Vector3, at: Vector3, yaw: float, weak: bool) -> Dictionary:
+	return Hitbox.ray(origin, dir, 10.0, at, yaw, 0.0, SCALE, weak, &"headliner.move")
+
+
 func _view(telegraph: float = ZombieRig.BOSS_HIT_SECONDS) -> ZombieView:
 	var view := ZombieView.new()
 	add_child(auto_free(view))
@@ -155,20 +160,20 @@ func test_the_weak_spot_is_a_zone_only_a_zombie_with_one_has() -> void:
 	var lamp := _lamp_at(Vector3.ZERO, 0.0)
 	var from_front := Vector3(0.0, lamp.y, 6.0)
 	var dir := Vector3.FORWARD
-	var with_it := Hitbox.ray(from_front, dir, 10.0, Vector3.ZERO, 0.0, 0.0, SCALE, true)
+	var with_it := _ray(from_front, dir, Vector3.ZERO, 0.0, true)
 	assert_str(String(with_it["zone"])).is_equal("weak")
-	var without := Hitbox.ray(from_front, dir, 10.0, Vector3.ZERO, 0.0, 0.0, SCALE)
+	var without := _ray(from_front, dir, Vector3.ZERO, 0.0, false)
 	assert_str(String(without["zone"])).is_not_equal("weak")
 
 
 func test_the_weak_spot_is_on_the_front_and_hidden_from_behind() -> void:
 	var height := _lamp_at(Vector3.ZERO, 0.0).y
 	var eye := Vector3(0.0, height, -6.0)
-	var behind := Hitbox.ray(eye, Vector3.BACK, 10.0, Vector3.ZERO, 0.0, 0.0, SCALE, true)
+	var behind := _ray(eye, Vector3.BACK, Vector3.ZERO, 0.0, true)
 	assert_bool(behind.is_empty()).is_false()
 	assert_str(String(behind["zone"])).is_not_equal("weak")
 	# Turned round, the same ray from the same side finds the lamp.
-	var turned := Hitbox.ray(eye, Vector3.BACK, 10.0, Vector3.ZERO, PI, 0.0, SCALE, true)
+	var turned := _ray(eye, Vector3.BACK, Vector3.ZERO, PI, true)
 	assert_str(String(turned["zone"])).is_equal("weak")
 
 
@@ -177,7 +182,7 @@ func test_the_weak_spot_moves_with_the_boss() -> void:
 	var yaw := PI * 0.5
 	var lamp := _lamp_at(at, yaw)
 	var eye := lamp + Basis(Vector3.UP, yaw) * Vector3(0.0, 0.0, 5.0)
-	var hit := Hitbox.ray(eye, (lamp - eye).normalized(), 10.0, at, yaw, 0.0, SCALE, true)
+	var hit := _ray(eye, (lamp - eye).normalized(), at, yaw, true)
 	assert_str(String(hit["zone"])).is_equal("weak")
 
 

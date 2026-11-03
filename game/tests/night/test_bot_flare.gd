@@ -20,6 +20,8 @@ const BODY := Vector3(-12.0, 0.0, -4.0)
 const BOT_AT := Vector3(2.0, 0.0, 6.0)
 ## The pack, and the rounds in the bot's pistol (none in reserve).
 const PACK := 8
+## Health of each of them.
+const STURDY := 600.0
 const ROUNDS := 3
 ## Metres within which a zombie is of the pack about the body.
 const ABOUT_THE_BODY := 10.0
@@ -56,6 +58,9 @@ func _pack() -> RulesTuning:
 	tuning.rounds.speed_base = 1.3
 	tuning.rounds.speed_step = 0.0
 	tuning.rounds.speed_jitter = 0.0
+	# Sturdy: with zones that follow the bodies the bot's blows (a sweep, which the fatter zones catch
+	# more of) would clear a plain pack on their own.
+	tuning.rounds.health_base = STURDY
 	return tuning
 
 

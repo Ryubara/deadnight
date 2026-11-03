@@ -84,6 +84,7 @@ func _init(
 	hud.state.local_player_id = state.player_id
 	hud.state.revive_seconds = tuning.health.revive_seconds
 	hud.state.bleed_total = tuning.revive.bleed_out_seconds
+	hud.state.self_revive_total = tuning.perks.self_revive_seconds
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.event_received.connect(_on_event)
@@ -155,6 +156,9 @@ func _on_frame() -> void:
 	if PerkEffects.mask_has_effect(_economy, int(me.get("perks", 0)), ShopItem.Effect.EXTRA_WEAPON):
 		places += _perks.extra_weapons
 	state.set_slot_count(places)
+	# The badges beside the health card are the frame's perk bits, so a purchase adds one and a down
+	# that takes the perks takes the badges with them.
+	state.set_perks(PerkEffects.mask_tonics(_economy, int(me.get("perks", 0))))
 	show_prompt(me["prompt"])
 
 
@@ -178,7 +182,8 @@ func _show_stats(state: HudState) -> void:
 			bool(player.get("dead", false)),
 			float(player.get("bleed", 0.0)),
 			float(player.get("revive", 0.0)),
-			int(player.get("reviver", 0))
+			int(player.get("reviver", 0)),
+			float(player.get("self_revive", 0.0))
 		)
 	state.set_night_clock(int(_state.frame.get("clock", 0)))
 	state.release()

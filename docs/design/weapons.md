@@ -180,10 +180,14 @@ beside the corner makes the same shot land (both are tested and in the capture).
 
 ## Hit zones
 
-Zombies are shot at through their zones, not their meshes: a head sphere, a body capsule and four limb capsules
-(`Hitbox`); the headliner has a fifth, `weak`, a ball on its lit lamp that no other zombie has (the weapons list no
-multiplier for it: the rules' x2.2 is the one). The test range draws them as they are. The whole set is sized to the
-zombie: a brute's zones are 1.18 times a walker's, a crawler's 0.6 (its look's height times its type's `hit_chance`).
+Zombies are shot at through their zones, not their meshes (`Hitbox`), but the zones are fitted to the meshes: each
+look has a set of spheres and capsules (head, body, limbs) for each pose its mode puts it in (moving, striking,
+staggering, tearing boards, a boss roaring), the envelope of its bones through that pose's clips, so a shot that touches
+the body the player sees counts, on the right zone ([hit zones research](../research/hit-zones.md)). A crawler's zones
+are its body on the ground (low, the head half a metre across ahead of its feet), the brute's are 1.18 times a walker's.
+The headliner has one more zone, `weak`, a ball on its lit lamp that no other zombie has (the weapons list no
+multiplier for it: the rules' x2.2 is the one). The test range draws them as they are. A limb the ray meets first gives
+way to the body or head right behind it.
 
 | Zone | Pistol | SMG | Shotgun (per pellet) | Rifle | Flare gun | Crowbar | Bat | Axe |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -235,6 +239,10 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
   headshots or four body shots and by round 10 (121) six body shots. The health curve was lowered to the weapons
   that exist (rounds.md, the balance simulator): the shop weapons were stepped up in #265 (rifle 95,
   shotgun 19 a pellet, now the double-barrel's 21) so that buying one is worth rounds.
+- **Aiming pays less than it was meant to since the hit zones follow the bodies** (#694): the head is half the chibi
+  figure, so the bots aimed at the chest land 64 to 88% of their hits on it. The multipliers stay as the table says and
+  the game was retuned around that ([rounds](rounds.md#the-headshot-retune-745)); whether to shrink the head zone is the
+  maintainer's ([hit zones](../research/hit-zones.md#not-done-and-what-it-moves)).
 - **A weapon can be re-cut once** at the projector: x1.75 damage, x1.5 magazine and reserve limit, filled, for 1,500
   points ([the re-cut](upgrades.md)). The table above is the weapon as shipped; a re-cut one has its damage in the
   column multiplied and its magazine and reserve limit grown, and kills in fewer shots (a re-cut revolver, 42 a hit,

@@ -4,8 +4,8 @@ extends RefCounted
 ## normal. Like `WorldProbe` for shots, it is the only place the grenades touch the physics server,
 ## so everything else stays testable with plain functions.
 
-## The physics layer of walls, props and floors (layer 1, the same the shots use).
-const WORLD_MASK := 1
+## The physics layers of walls, props and floors and of players' bodies (the same the shots use).
+const WORLD_MASK := PhysicsLayers.WORLD | PhysicsLayers.BODY
 
 var _space: PhysicsDirectSpaceState3D
 var _mask: int

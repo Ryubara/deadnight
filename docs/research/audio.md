@@ -172,6 +172,18 @@ analysed with `tools/audio/analyze.py capture`.
   the lot), which sets the player's `max_db` to its own level, so the trim is what you hear up close; far away nothing
   changes. The generator's loops move their `max_db` with their level. Measured by playing each gun alone at 1.7 m at
   three offsets (`game/tests/captures/audio_gun_levels.tscn`): the peaks follow the offsets once the cap is on.
+- **A pooled player kept the last sound's cap (#752).** `cap_near_level` set `max_db` only for a capped sound, so the
+  dead's voices, boards, door and the till took the cap of whatever used their slot before (a gun's trim): the same
+  voice read 2.5 to 15 dB lower after the guns than played alone (`zombie_growl_boss` -6.8 to -20.2 dBFS, `board_tear`
+  -4.1 to -19.2) and moved with the gun trims. It now sets `max_db` on every play (`ENGINE_MAX_DB`, the engine's +3 dB,
+  for a sound with no cap). Every other property a play can set was already set on every play (3D: stream, bus,
+  `volume_db`, `pitch_scale`, `unit_size`, `max_distance`, the filter cutoff, position; flat: stream, bus,
+  `volume_db`, `pitch_scale`; beds: stream, bus, `volume_db`, and `stream_paused` on release), and
+  `test_near_cap.gd` checks the cap of every sound in the catalog after a rifle shot on the same slot. Measured with
+  `tests/captures/audio_headroom.tscn --own=none --all-variants`: each sound's peak is now the same alone and after the
+  guns, within 1.6 dB (the pitch draw). The close sounds' loudest files (`board_last`, `grenade_blast` -1.0,
+  `door_open` -1.2 dBFS alone) left no room for a shot landing on them: that was #753, solved with a near cap on each
+  ([gun-audio](gun-audio.md#close-sounds-under-gunfire)).
 - **No flesh hits at the fence.** Most of the tour's shots (38 ricochets against 3 impacts on a zombie) hit the boards
   or the lot: the dead stand behind the fence. The flesh and headshot impacts are covered by the tests; a capture in the
   open field would show more.

@@ -74,7 +74,9 @@ func refresh() -> void:
 	queue_redraw()
 
 
-## What the card says while down: DOWN and the clock, being pulled up, or DEAD until the round ends.
+## What the card says while down: DOWN and the clock, the revive perk getting the holder up alone
+## (its seconds, while the bleed-out clock stands still), being pulled up, or DEAD until the round
+## ends.
 func _say_down() -> void:
 	var me: Dictionary = state.team.get(state.local_player_id, {})
 	if me.is_empty() or not shown_downed:
@@ -82,6 +84,9 @@ func _say_down() -> void:
 	if bool(me["dead"]):
 		HudStyle.set_text(_down, "DEAD")
 		HudStyle.set_text(_hint, "BACK NEXT ROUND")
+	elif float(me["self_revive"]) > 0.0:
+		HudStyle.set_text(_down, "DOWN")
+		HudStyle.set_text(_hint, "GETTING YOURSELF UP  %d S" % ceili(float(me["self_revive"])))
 	elif int(me["reviver"]) != 0:
 		HudStyle.set_text(_down, "DOWN")
 		HudStyle.set_text(_hint, "BEING PULLED UP")

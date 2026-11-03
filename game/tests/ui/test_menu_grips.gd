@@ -138,6 +138,37 @@ func test_no_menu_file_poses_the_weapon_on_its_own() -> void:
 
 
 func test_the_hands_are_on_the_grips_of_every_weapon_with_the_nights_limits() -> void:
+	assert_array(await _hands_on_grips()).is_empty()
+
+
+## Every top (the hands are in the torso part) holds every weapon on its grips, his and the
+## female Soldier's (#678): the grips were solved on the default jacket, and the short-sleeved tops
+## once thinned the hands with the bare arm, 15-20 mm off every grip.
+func test_every_top_holds_every_weapon_on_its_grips_for_him_and_her() -> void:
+	var fails: Array[String] = []
+	for body in [LookCatalog.MALE, LookCatalog.FEMALE]:
+		for option: Dictionary in LookCatalog.options(&"torso"):
+			var look := CharacterLook.default_look()
+			look.set_body(body)
+			look.parts[&"torso"] = option["id"]
+			# A soldier of its own for each look, made the way `before_test` makes his. The one
+			# before goes first: a skeleton left connected could fire the measurement before this
+			# soldier's skeleton has finished its update (the tank and the rifle read 10 mm "into").
+			_skeleton.skeleton_updated.disconnect(_on_updated)
+			remove_child(_hero)
+			_hero.free()
+			_hero = MenuHero.new()
+			add_child(_hero)
+			_hero.show_look(look, &"rifle")
+			_skeleton = _hero.model.find_child("Skeleton3D", true, false) as Skeleton3D
+			_skeleton.skeleton_updated.connect(_on_updated)
+			await get_tree().process_frame
+			for fail in await _hands_on_grips():
+				fails.append("%s %s: %s" % [body, option["id"], fail])
+	assert_array(fails).is_empty()
+
+
+func _hands_on_grips() -> Array[String]:
 	var fails: Array[String] = []
 	for id in MenuHero.available():
 		await _hold(id)
@@ -154,4 +185,4 @@ func test_the_hands_are_on_the_grips_of_every_weapon_with_the_nights_limits() ->
 			if m.left_weight < 0.99:
 				fails.append("%s: left hand not on its grip (%.2f)" % [id, m.left_weight])
 			fails.append_array(HandContact.failures(id + " L", m.L, grip.left_contacts))
-	assert_array(fails).is_empty()
+	return fails

@@ -40,8 +40,8 @@ Two messages continue the numbering of the [own protocol](networking.md) (types 
 
 | Message | Direction | Fields |
 | --- | --- | --- |
-| `LOOK` (8) | client to server, once on join | the look (16 bytes with the type) |
-| `PLAYER_LOOK` (9) | server to everyone | player id, seat, the look (18 bytes with the type) |
+| `LOOK` (8) | client to server, once on join | the look (17 bytes with the type; 16 before the character, #678) |
+| `PLAYER_LOOK` (9) | server to everyone | player id, seat, the look (19 bytes with the type) |
 
 On join the server gives the player the lowest free **seat** (0 to 7), tells everyone, and tells the newcomer who is
 already there; until the newcomer's own look arrives they wear the preset of their seat. Every client keeps a

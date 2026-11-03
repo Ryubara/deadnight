@@ -70,10 +70,17 @@ func _on_node_added(node: Node) -> void:
 		_kinds["at " + str(node.get_path())] = 1
 
 
+## The bot buys what the walls offer with its points, and a weapon bought is a model made once, not
+## a kill's cost: the points never gather.
+func _no_points(night: Night) -> void:
+	night.server.rules.players[1].points = 0
+
+
 ## Frames until the bot has made `kills` kills.
 func _play_until(night: Night, kills: int) -> void:
 	var frames := 0
 	while night.state.kills < kills and frames < GIVE_UP_FRAMES and not night.state.over:
+		_no_points(night)
 		await get_tree().physics_frame
 		frames += 1
 	(
@@ -102,6 +109,7 @@ func test_a_run_of_kills_adds_no_node_and_holds_no_more_resources() -> void:
 		and frames < GIVE_UP_FRAMES
 		and not night.state.over
 	):
+		_no_points(night)
 		await get_tree().physics_frame
 		frames += 1
 		peak_objects = maxi(peak_objects, int(Performance.get_monitor(Performance.OBJECT_COUNT)))

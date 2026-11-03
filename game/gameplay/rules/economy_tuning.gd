@@ -14,11 +14,11 @@ extends Resource
 ## A hit to the head that does not kill.
 @export_range(0, 100, 1, "or_greater", "suffix:pts") var headshot_hit: int = 8
 ## Hits that do not kill pay for at most this many per zombie, so one zombie is a bounded purse
-## (4 headshot hits and the kill are worth 132 at most) however many shots it soaks up.
+## (4 headshot hits and the kill are worth 102 at most) however many shots it soaks up.
 @export_range(0, 20, 1, "or_greater") var max_paid_hits: int = 4
 ## The killing blow (shot, not a headshot, not melee).
 @export_range(0, 1000, 1, "or_greater", "suffix:pts") var kill: int = 60
-@export_range(0, 1000, 1, "or_greater", "suffix:pts") var headshot_kill: int = 100
+@export_range(0, 1000, 1, "or_greater", "suffix:pts") var headshot_kill: int = 70
 ## Melee pays best: it is the riskiest.
 @export_range(0, 1000, 1, "or_greater", "suffix:pts") var melee_kill: int = 130
 ## One barricade board put back (in a break or a round).

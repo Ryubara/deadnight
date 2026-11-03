@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 const OVERRIDES := {
 	&"ui_tick": {"pitch_semitones": 1.0, "cooldown": 0.02},
 	&"ui_press": {"pitch_semitones": 0.3},
-	&"shot_smg": {"pitch_semitones": ArmsCatalog.FIREARM_PITCH_SEMITONES, "volume_db": -2.5},
+	&"shot_smg": {"pitch_semitones": ArmsCatalog.FIREARM_PITCH_SEMITONES, "volume_db": -6.5},
 	&"dry_fire": {"priority": 70, "max_distance": 20.0, "cooldown": 0.12},
 	&"grenade_throw": {"priority": 70, "max_distance": 30.0},
 	&"generator_hum": {"loop": true, "volume_db": -8.0},

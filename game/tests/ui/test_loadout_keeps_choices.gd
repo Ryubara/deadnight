@@ -110,6 +110,29 @@ func test_the_outfit_survives_changing_the_showcase_weapon() -> void:
 	assert_str(String(shell.view.stage.hero.weapon_id)).is_equal(String(weapon))
 
 
+func test_the_character_survives_the_weapon_another_tab_and_a_restart() -> void:
+	var shell := await _open()
+	await _go_to(shell, MenuTab.Id.LOADOUT)
+	var panel := shell.panel(MenuTab.Id.LOADOUT) as LoadoutPanel
+	await _click(panel.wardrobe.body_selector())
+	assert_str(String(panel.wardrobe.look.body())).is_equal("female")
+	var picked := panel.wardrobe.look.duplicate_look()
+	await _pick_weapon(shell)
+	assert_bool(panel.wardrobe.look.equals(picked)).is_true()
+	# The menu's soldier is her at once, before anything is saved.
+	assert_bool(shell.view.stage.hero.look.equals(picked)).is_true()
+	var hero := shell.view.stage.hero.model
+	assert_bool((hero.find_child("head__plain__female", true, false) as Node3D).visible).is_true()
+	await _go_to(shell, MenuTab.Id.SHOP)
+	await _go_to(shell, MenuTab.Id.LOADOUT)
+	assert_str(String(panel.wardrobe.look.body())).is_equal("female")
+	assert_str(panel.wardrobe.body_selector().text()).is_equal("Female")
+	# As after a restart: the file read back from its path.
+	Settings.load_from_disk()
+	assert_str(String(LookStore.load_look().body())).is_equal("female")
+	assert_bool(LookStore.load_look().equals(picked)).is_true()
+
+
 func test_every_choice_survives_another_tab_and_coming_back() -> void:
 	var shell := await _open()
 	await _go_to(shell, MenuTab.Id.LOADOUT)

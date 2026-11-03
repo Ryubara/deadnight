@@ -111,8 +111,8 @@ round), announced as `player_healed` whenever the whole-unit value changes. Gett
 whether a player bled out are in the snapshot.
 
 **What a zombie is worth.** The first 4 hits that do not kill pay 4 (8 to the head); the hit that
-kills pays the kill (60, head 100, melee 130) instead of a hit. Any hits after the fourth, and hits
-on a dead zombie, pay nothing, so a zombie is worth at most 4 hits and a kill (132 with the head)
+kills pays the kill (60, head 70, melee 130) instead of a hit. Any hits after the fourth, and hits
+on a dead zombie, pay nothing, so a zombie is worth at most 4 hits and a kill (102 with the head)
 however many shots it takes; tiny hits cannot farm it. The tables below still hold.
 
 Not the rules' job: whether a client could really have fired that shot (aim, range, rate of fire,
@@ -315,7 +315,7 @@ Points (everything is per player):
 | --- | ---: |
 | Starting points | 200 |
 | Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
-| Kill / headshot kill / melee kill | 60 / 100 / 130 |
+| Kill / headshot kill / melee kill | 60 / 70 / 130 (the head was 100 until the hit zones grew, #745) |
 | Kill by a grenade blast | 40 (times the type's pay, like a bullet's) |
 | Repair one board (at most 120 from one round's end to the next) | 12 |
 | Round survived, standing | 20 + 10 per round |
@@ -382,8 +382,8 @@ round's own value, so every type grows with the night. The look is a variant fro
 | --- | --- | ---: | ---: | --- | ---: | ---: | --- | --- |
 | walker | walker, greaser, usher, farmhand | x1 | x1 | 15 / none | x1 | 1 | the rest | a blast that takes its legs ([grenades](weapons.md#grenades)) turns it into a crawler, `zombie_crippled` |
 | runner | runner | x0.55 | x1.4 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 5.0 m/s under the lights |
-| crawler | crawler | x0.7 | x0.4 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
-| brute | brute | x2.5 | x0.4 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
+| crawler | crawler | x0.7 | x0.4 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low, shot at through zones fitted to its body on the ground, so no harder to hit than a walker (its `hit_chance` 0.6 only sizes an upright set; the simulator takes 1.0 for it, #745), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
+| brute | brute | x3 (was 2.5, #745) | x0.4 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
 | headliner (boss) | its own, from the artist | x16.25 (13 and a quarter more, #688), +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
 **One at a time.** A type's first round brings an exact number (`intro_count`), so every player meets
@@ -396,7 +396,8 @@ the counts' remainders, the speed jitter and the look all come from the seeded s
 player may read and dodge; 0 is the ordinary swing), `barrier_speed` (1 is a walker; 0 skips barriers)
 and `hit_chance` (the shot-landing factor for hitboxes). The rules never move a zombie; they say what it
 is. The night reads all of them: damage, knockback, the telegraph, the look, `barrier_speed` (how fast it
-tears the fence's boards, below) and `hit_chance` (which sizes the zones;
+tears the fence's boards, below) and `hit_chance` (which sizes the zones of an upright zombie; a crawler's zones
+are fitted to its body on the ground, [hit zones](../research/hit-zones.md);
 [zombies research](../research/zombies.md#types-in-the-night)). A `weak` hit (the boss's lit bulb) is a zone like
 `head`: the weapon sends it when the ray hits that box (`Hitbox.WEAK`, only on a zombie that has a weak spot: the
 headliner), and the rules multiply the damage by the type's
@@ -767,6 +768,28 @@ the weak boss night at 94% deaths. The retune is the shop weapons of #254 (rifle
 0.8 s) with the simulator choosing weapons by what they kill, not by damage a second ([round
 scaling](../research/round-scaling.md)).
 The ranges and the health, count and spawn curves are unchanged.
+
+## The headshot retune (#745)
+
+The hit zones follow the bodies since #694 and the chibi head is half the figure, so the bots land 64 to 88% of their
+hits on the head. The simulator's players were set to that (`SimSkill` head rate 0.68 / 0.81 / 0.85 and dodge 0.17 /
+0.55 / 0.80 for weak, average and strong) and four numbers of the game moved to keep a night as hard as the table of
+balance targets says, with the zones and the weapons' multipliers (x2.5 pistol and rifle, x2 SMG, x1.5 shotgun) as
+they were:
+
+| Number | Before | After | Why |
+| --- | --- | --- | --- |
+| Headshot kill | 100 | 70 | most kills are headshots now; a kill pays what the old mix of heads and bodies paid |
+| Health growth after round 8 | 7% a round | 15% | good players and companies were no longer stopped late |
+| Brute health | x2.5 | x3 | its time to kill had fallen under 3 s |
+| The crawler in the simulator | 0.6 to hit | 1.0 | its zones are its body on the ground |
+
+The gate's medians (weak solo, average 1, 2, 4 and 8 players, strong solo) are 5 / 10 / 15 / 16 / 18 / 18 (they were 4
+/ 9 / 14 / 16 / 18 / 18 before the new `SimSkill`, and 5 / 15 / 17 / 20 / 20 / 20 with it and nothing else). Over 300
+nights an average solo night is a little easier than it was (median 15 against 10, 182 kills a night against 127),
+which the first boss night (10% of nights lost, was 31%) mostly explains; the tables, the levers that did not work and the
+recommendation about the size of the head zone are in [the balance simulator
+research](../research/balance-simulator.md#the-headshot-retune-745).
 
 ## Open questions
 

@@ -1,3 +1,4 @@
+# gdlint: disable=max-public-methods
 extends GdUnitTestSuite
 ## The customization screen driven with simulated keyboard, gamepad and mouse input: pickers move
 ## the look, locked options refuse, presets and Randomize apply, Save and a fresh screen restore.
@@ -97,16 +98,56 @@ func test_it_starts_on_the_saved_look_and_shows_it() -> void:
 	assert_bool(_screen.is_dirty()).is_false()
 	assert_object(_screen.preview().model).is_not_null()
 	# The default look is the first preset, so the selector reads its name.
-	var selector := (
-		_screen.find_children("*", "UIOptionSelector", true, false)[0] as UIOptionSelector
-	)
+	var selector := _screen.preset_selector()
 	assert_str(selector.text()).is_equal("Greaser")
 
 
-func test_the_first_focus_is_the_preset_selector() -> void:
+func test_the_first_focus_is_the_character_selector() -> void:
 	await await_idle_frame()
 	_screen.focus_initial()
-	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_instanceof(UIOptionSelector)
+	assert_object(_screen.get_viewport().gui_get_focus_owner()).is_same(_screen.body_selector())
+
+
+func test_the_character_row_switches_to_her_and_everything_follows() -> void:
+	assert_str(_screen.body_selector().text()).is_equal("Male")
+	_screen.body_selector().grab_focus()
+	await _key(KEY_RIGHT)
+	assert_str(String(_screen.look.body())).is_equal("female")
+	assert_str(_screen.body_selector().text()).is_equal("Female")
+	# The Greaser's pompadour is his: she gets her bob; the outfit stays.
+	assert_str(String(_screen.look.parts[&"hair"])).is_equal("bob")
+	assert_str(String(_screen.look.parts[&"torso"])).is_equal("jacket")
+	# Her presets, her face's names and her model on the turntable.
+	var presets := _screen.preset_selector().options
+	assert_array(Array(presets)).is_equal(
+		["Carhop", "Usherette", "Pit crew", "Pep squad", "Custom"]
+	)
+	assert_str(_screen.selector(&"head").text()).is_equal("Natural")
+	var shown := SoldierLook.visible_meshes(_screen.look.to_soldier_look())
+	assert_array(shown).contains(
+		["head__plain__female", "torso__jacket__female", "legs__cuffed__female"]
+	)
+	var model := _screen.preview().model
+	(
+		assert_bool((model.find_child("torso__jacket__female", true, false) as Node3D).visible)
+		. is_true()
+	)
+	assert_bool((model.find_child("torso__jacket", true, false) as Node3D).visible).is_false()
+	# And back: his crew cut, his presets.
+	await _key(KEY_LEFT)
+	assert_str(String(_screen.look.body())).is_equal("male")
+	assert_str(String(_screen.look.parts[&"hair"])).is_equal("crew")
+	assert_str(_screen.preset_selector().options[0]).is_equal("Greaser")
+	assert_str(_screen.selector(&"head").text()).is_equal("Clean-shaven")
+
+
+func test_her_preset_picks_her_and_randomize_keeps_her() -> void:
+	_screen.apply_preset(9)
+	assert_str(_screen.body_selector().text()).is_equal("Female")
+	assert_str(_screen.preset_selector().text()).is_equal("Usherette")
+	for i in 20:
+		_screen.randomize()
+		assert_str(String(_screen.look.body())).is_equal("female")
 
 
 func test_every_choosable_slot_has_a_strip() -> void:
@@ -204,9 +245,7 @@ func test_locked_swatches_are_flagged_and_unlocking_opens_them() -> void:
 
 
 func test_a_preset_picked_with_the_keyboard_applies_and_shows_its_name() -> void:
-	var selector := (
-		_screen.find_children("*", "UIOptionSelector", true, false)[0] as UIOptionSelector
-	)
+	var selector := _screen.preset_selector()
 	selector.grab_focus()
 	await _key(KEY_RIGHT)
 	assert_bool(_screen.look.equals(CharacterLook.from_preset(1))).is_true()

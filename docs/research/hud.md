@@ -113,6 +113,22 @@ see [the slice](../design/slice.md#the-hud). Things the binding taught:
   `weapon_slot_1` to `_3`, keyboard only: a pad and a phone swap with one button); `test_weapon_slots.gd` proves what the
   server does with a pick (in hand, empty slot, mid-reload, replaced weapon, wire bits).
 
+## Perk badges and the self-revive (#707)
+
+- **A part placed from another part's rectangle waits for the layout.** The badges follow the health card, which moves
+  when the touch layer puts the slot strip under it. Placing them in `item_rect_changed` of the card read a stale
+  position (the card's column, anchored at the bottom, is placed after its children): the badges stayed 70 units low.
+  `Hud._place_perks` runs deferred, once, from the card's, its column's and its own `item_rect_changed`.
+- **The frame's bits are the single source.** The badges carry no memory: `HudState.perks` is set from the frame every
+  tick and a no-op when the same, so a purchase, a down that takes the perks, a late join and a left hand all agree.
+  A test buys at the real machine with the real press of use and reads the badges; another downs the player with and
+  without a teammate on their feet.
+- **The ring said BLEEDING OUT too.** The DOWN card was the issue's subject, but the ring over the view (`HudRevive`)
+  also drew the frozen clock and `HOLD ON FOR A REVIVE` during the self-revive; it now shows the perk's own count filling.
+  Any new state that stops a clock needs every part that shows the clock looked at (search `"bleed"`).
+- **Badges are drawn, not textured.** Six flat shapes in `_draw` on the machines' own colours (`PerkMachine.LOOKS`, the
+  soda fountain's constants): no import, no asset, and a retinted machine retints its badge.
+
 ## Ammunition and equipment from the weapons
 
 The ammo card and the equipment slot are fed by the weapons' events and the frame (`HudLoadout`), with no change to the
