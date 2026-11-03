@@ -42,6 +42,13 @@ var now := 0.0
 ## The seats that are bots, by player id: the roster labels them (a person sees `BOT` after the
 ## name), so a bot may know. The host fills it; the same table is shared by every bot of a night.
 var bot_ids: Dictionary = {}
+## What the bots of the night share (the claims on downed players): the host hands every bot the
+## same one; a bot on its own has a team of its own.
+var team := BotTeam.new():
+	set(value):
+		team = value
+		if brain is BotFightBrain:
+			(brain as BotFightBrain).team = value
 
 var _send: Callable
 var _step := 1.0 / 60.0
@@ -63,6 +70,8 @@ func _init(
 	legs.seat = state.player_id
 	var fight := BotFightBrain.new(profile, level, bot_seed ^ 0xD0D6E)
 	fight.legs = legs
+	fight.telemetry = telemetry
+	fight.team = team
 	brain = fight
 	slot = state.player_id
 
@@ -83,6 +92,19 @@ func hear(events: Array) -> void:
 				# The roster labels a bot (`bot`), whoever seated it.
 				if event.get("bot", false):
 					bot_ids[int(event["player_id"])] = true
+			&"player_removed":
+				# A seat that is left holds no claim and is no bot's any more.
+				team.release(int(event["player_id"]))
+				bot_ids.erase(int(event["player_id"]))
+			&"revive_started":
+				if int(event["player_id"]) == state.player_id:
+					telemetry.count(&"revive_attempts")
+			&"revive_stopped":
+				if int(event["player_id"]) == state.player_id and event["reason"] == &"down":
+					telemetry.count(&"deaths_reviving")
+			&"player_revived":
+				if int(event.get("reviver_id", -1)) == state.player_id:
+					telemetry.count(&"revive_successes")
 			&"purchase_denied":
 				perception.beliefs.denials.append(
 					{"item": event.get("item_id", &""), "result": event.get("result", -1)}
@@ -246,6 +268,9 @@ func _track_crew(delta: float) -> void:
 			"dead": player.get("dead", false),
 			"bot": bot_ids.has(id),
 			"velocity": velocity,
+			"bleed": player.get("bleed", 0.0),
+			"reviver": player.get("reviver", 0),
+			"revive": player.get("revive", 0.0),
 		}
 	for id: int in beliefs.teammates.keys():
 		if not players.has(id):

@@ -8,9 +8,6 @@ extends GdUnitTestSuite
 const TEST_ROOM := "res://world/test_room.tscn"
 const TICK := 1.0 / 60.0
 const START := Vector3(0.0, 0.05, 10.0)
-## The limits, metres: deepest a part may go into the weapon, farthest a contact may float.
-const MAX_DEPTH := 0.002
-const MAX_FLOAT := 0.005
 ## Every weapon the player holds, by catalogue id (and `Melee` for the class hold, the bat).
 const WEAPONS: Array[StringName] = [
 	&"pistol", &"flare_gun", &"smg", &"rifle", &"shotgun", &"crowbar", &"Melee"
@@ -114,14 +111,7 @@ func _check(tag: String, grip: HandGrip) -> Array[String]:
 
 
 func _hand(tag: String, parts: Dictionary, contacts: PackedStringArray) -> Array[String]:
-	var fails: Array[String] = []
-	for part: String in parts:
-		var d: float = parts[part].distance
-		if d < -MAX_DEPTH:
-			fails.append("%s %s %.1f mm into the weapon" % [tag, part, -d * 1000.0])
-		elif part in contacts and d > MAX_FLOAT:
-			fails.append("%s %s %.1f mm off the weapon" % [tag, part, d * 1000.0])
-	return fails
+	return HandContact.failures(tag, parts, contacts)
 
 
 func _release() -> void:

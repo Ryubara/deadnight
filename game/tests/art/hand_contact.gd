@@ -21,6 +21,10 @@ const PARTS := {
 	"thumb_base": ["Thumb1.%s"],
 	"palm": ["Index1.%s", "Middle1.%s", "Pinky1.%s"],
 }
+## The limits every view of a held weapon keeps, metres: deepest a part may go into the weapon,
+## farthest a part the grip says touches may float off it (the night's and the menu's tests).
+const MAX_DEPTH := 0.002
+const MAX_FLOAT := 0.005
 ## A vertex counts for a part when its main bone carries at least this share of its weight.
 const MIN_WEIGHT := 0.5
 ## Triangles farther than this from the hand (metres, in the world) are not looked at.
@@ -238,6 +242,20 @@ func _skin(mesh: int, v: int, poses: Dictionary) -> Vector3:
 ## A part farther than `MARGIN` reads `MARGIN`.
 func measure(side: String) -> Dictionary:
 	return measure_parts(side, [])
+
+
+## What is wrong with one hand's `parts` (the result of `measure`) against the grip's `contacts`
+## (`HandGrip.right_contacts` or `left_contacts`): a part more than `MAX_DEPTH` into the weapon, or
+## a contact more than `MAX_FLOAT` off it. One sentence each, tagged with `tag`; empty when held.
+static func failures(tag: String, parts: Dictionary, contacts: PackedStringArray) -> Array[String]:
+	var fails: Array[String] = []
+	for part: String in parts:
+		var d: float = parts[part].distance
+		if d < -MAX_DEPTH:
+			fails.append("%s %s %.1f mm into the weapon" % [tag, part, -d * 1000.0])
+		elif part in contacts and d > MAX_FLOAT:
+			fails.append("%s %s %.1f mm off the weapon" % [tag, part, d * 1000.0])
+	return fails
 
 
 ## `measure` for some parts only (all of them when `only` is empty).

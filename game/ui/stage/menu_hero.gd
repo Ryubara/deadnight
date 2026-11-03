@@ -1,16 +1,18 @@
 class_name MenuHero
 extends Node3D
-## The player's soldier on the menu's stage: the saved look and the showcase weapon, in the class's
-## ready pose (the `Aim_<Class>` clip, which already holds the weapon in the hands). Built with the
-## same assembler and weapon mount the wardrobe and the night use, so what the menu shows is what
-## the night will.
+## The player's soldier on the menu's stage: the saved look and the showcase weapon at the low
+## ready. Built with the same assembler the wardrobe and the night use, and the weapon is put in the
+## hands by `HeldWeapon`, the one builder of the night's `PlayerAnimation` too: the weapon's own
+## hold, its solved grip, the arms' pose and the fingers on it. The menu has no hand placement of
+## its own, so what it shows is how the night holds the weapon (Deadnight #621).
 
 ## Metres per unit of the model: the same scale as the player's body.
 const MODEL_SCALE := 0.8
-## The pose clip of a weapon class when it has none of its own.
+## The body's clip under a carried gun: the arms are the hand pose's.
 const FALLBACK_CLIP := &"Idle"
 
-## How far the carried gun is lowered (radians below the level) and turned across the body.
+## Where the carried gun points, as the night's aim does: the pitch the view gives it (radians
+## below the level) and a turn across the body. The hold's own rise and stance come on top of it.
 const LOW_READY_PITCH := 0.04
 const LOW_READY_TURN := 0.0
 ## The weapon shown when the saved one has no model.
@@ -23,16 +25,17 @@ var weapon: Node3D
 var weapon_id := &""
 
 var _player: AnimationPlayer
-var _mount: BoneAttachment3D
-var _hands: WeaponHandsIK
+## The weapon in the hands and the nodes that pose them (`HeldWeapon`: the night's builder).
+var _held: HeldWeapon
 
 
-## The weapons that can be shown: those whose class has a model in the hand today, so a weapon
-## gets onto the list by getting its model, not by a change here.
+## The weapons that can be shown: those the night puts in a hand today (`WeaponHoldMap.hold_for`:
+## the weapon's own model), so a weapon gets onto the list by getting its model, not by a change
+## here.
 static func available() -> Array[StringName]:
 	var out: Array[StringName] = []
 	for id in WeaponCatalog.IDS:
-		if PlayerAnimation.hold_of(WeaponHoldMap.class_of(id)) != null:
+		if WeaponHoldMap.hold_for(id) != null:
 			out.append(id)
 	return out
 
@@ -60,17 +63,14 @@ func show_look(worn: CharacterLook, id: StringName, seat := 0) -> void:
 ## Puts the weapon `id` in the hands and the matching ready pose on the body.
 func hold(id: StringName) -> void:
 	weapon_id = id
-	if _mount != null:
-		_mount.queue_free()
-		_mount = null
+	if _held != null:
+		_held.release()
+		_held = null
 	weapon = null
-	if _hands != null:
-		_hands.queue_free()
-		_hands = null
 	var weapon_class := WeaponHoldMap.class_of(id)
-	var hold_data := PlayerAnimation.hold_of(weapon_class)
-	# A gun is carried at the low ready by the game's own hand pose (`WeaponHandsIK`) over the idle;
-	# a melee weapon keeps the arm of its aim clip.
+	var hold_data := WeaponHoldMap.hold_for(id)
+	# A gun is carried by the game's own hand pose over the idle; a melee weapon keeps the arm of
+	# its aim clip, as in the night.
 	var carried := hold_data != null and hold_data.shouldered
 	var clip := FALLBACK_CLIP if carried else StringName("Aim_%s" % weapon_class)
 	if not _player.has_animation(clip):
@@ -80,27 +80,17 @@ func hold(id: StringName) -> void:
 	if hold_data == null:
 		return
 	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
-	_mount = BoneAttachment3D.new()
-	_mount.name = "WeaponMount"
-	_mount.bone_name = PlayerAnimation.HAND_BONE
-	skeleton.add_child(_mount)
-	weapon = (load(hold_data.scene) as PackedScene).instantiate() as Node3D
-	var grip := PlayerAnimation.HOLD_MELEE if weapon_class == &"Melee" else PlayerAnimation.HOLD_GUN
-	weapon.transform = grip.scaled_local(Vector3.ONE * hold_data.model_scale)
-	_mount.add_child(weapon)
-	if carried:
-		_hands = WeaponHandsIK.new()
-		_hands.name = "WeaponHandsIK"
-		_hands.hold = hold_data
-		_hands.hand_hold = PlayerAnimation.HOLD_GUN
-		_hands.aim_pitch = LOW_READY_PITCH
-		skeleton.add_child(_hands)
+	_held = HeldWeapon.new(skeleton)
+	weapon = _held.hold_weapon(weapon_class, hold_data)
+	_held.close_hands()
+	_held.hands.active = carried
+	_held.hands.aim_pitch = LOW_READY_PITCH
 
 
 ## Steps the idle by `delta` seconds.
 func advance(delta: float) -> void:
 	if _player != null:
 		_player.advance(delta)
-	if _hands != null:
+	if _held != null:
 		# The hand pose aims in the world: forward is the soldier's own front (+Z), plus the turn.
-		_hands.aim_yaw = global_rotation.y + PI + LOW_READY_TURN
+		_held.hands.aim_yaw = global_rotation.y + PI + LOW_READY_TURN
