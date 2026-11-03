@@ -12,8 +12,8 @@ The live drive-in behind the reworked main menu (issue #397; the design is in [M
 | `MenuHero` | The Soldier from `CharacterAssembler` in the saved look (`LookStore`), the saved showcase weapon (`loadout/weapon`) put in the hands by `HeldWeapon`, the one builder the night's `PlayerAnimation` calls too (the weapon's own hold, its solved grip, `WeaponHandsIK`, `HandGripPose`), over the Idle clip |
 | `MenuZombie`, `WanderPath` | Five dead beyond the fence, each a Walk clip and a loop of two waypoints, a function of the stage's clock |
 | `StagePose`, `StageCameraRig` | One pose per tab (azimuth, distance, height, field of view, where the soldier sits across the picture, how he is turned) and critically damped springs between them |
-| `MenuStageView` | A `SubViewportContainer` with its own world; three levels and the setting `video/menu_scene` |
-| `StageGovernor` | Steps the stage down on a slow machine (auto mode) |
+| `MenuStageView` | A control with a `SubViewport` of its own world, drawn into a `TextureRect`; three levels and the setting `video/menu_scene` |
+| `StageGovernor` | Steps the stage down on a slow machine and back up when frames recover (auto mode) |
 
 ## Decisions and what they cost
 
@@ -39,13 +39,48 @@ The live drive-in behind the reworked main menu (issue #397; the design is in [M
 
 | Level | What it draws | When |
 | --- | --- | --- |
-| Live | every frame, full size | default |
-| Half | every frame at half the width and height | the governor, when the mean frame is over 25 ms |
-| Still | one frame per change (a tab, a turn, a new look), the camera cuts, the dead stand | the setting `video/menu_scene` set to still, or the governor when the mean frame is over 40 ms at Half, or over 120 ms at Live (a software renderer) |
+| Live | every frame, at the window's own pixels, 4x multisampling | default |
+| Half | every frame at half the width and height (4x multisampling too: a quarter of the pixels) | the governor, when the mean frame is over 25 ms for two windows (3 s) |
+| Still | one frame per change (a tab, a turn, a new look), the camera cuts, the dead stand | the setting `video/menu_scene` set to still, or the governor when the mean frame is over 40 ms at Half for two windows, or over 120 ms at Live (a software renderer) |
 
-The governor reads the page's own frame time over 1.5 s windows, ignores the first 12 frames, clamps one long frame,
-never steps back up in a session and does not run under Movie Maker. A covered menu (another screen on the router)
+The governor reads the page's own frame time over 1.5 s windows (or 90 frames), ignores the first 12 frames and the
+first 2 s, clamps one long frame, and does not run under Movie Maker. A covered menu (another screen on the router)
 draws nothing (`set_active(false)`). Reduced motion cuts the camera and stops the dead.
+
+**It steps back up** (#893). Half to Live after 4.5 s of windows at 20 ms or less (a 60 Hz display held; counted in
+seconds, because a 240 Hz display fills a window of 90 frames in 0.4 s). A climb that fails (Live drops again within
+30 s) doubles the wait for the next (4.5, 9, 18 s), and after two failures the stage stays at Half for the session, so a
+machine that cannot hold Live changes look at most three times. The still is final (nothing is drawn to measure).
+Before this, one window over 25 ms (a few seconds of other programs when the menu opened) left Half for the whole
+session: a probe that busied the main thread for 5 s at launch read Half at 3 s and still Half at 15 s with 4.2 ms
+frames; now it reads Live again at about 9.5 s (`tests/captures/menu_stage_sharp.tscn --level=auto --load=30
+--load_for=5`).
+
+## Sharpness (#893)
+
+The maintainer saw a pixelated menu character with jaggies. Three things were stacked, each reproduced with
+`tests/captures/menu_stage_sharp.tscn` (a real window, the real view, one pose) on an RTX 5080:
+
+- **The viewport was not the window's pixels.** The view is sized in the project's 1920 x 1080 canvas
+  (`canvas_items`, expand), and a `SubViewportContainer` with `stretch` drew its viewport at that size: 1920 x 1080
+  in a 2560 x 1440 window (stretched by a third), and 2337 x 1080 for the phone page's 1688 x 780 canvas (more
+  pixels than the screen has). The view now sizes the viewport itself, from its rectangle times the window's
+  stretch scale (`get_final_transform`), at most 1440 tall, and shows it in a `TextureRect`; a
+  `SubViewportContainer` cannot do that (stretch on: it owns the size, a warning says so; off: it grows to the
+  viewport's size).
+- **2x multisampling** (the viewport has its own `msaa_3d`; the project setting does not reach it): the hair's and
+  the brow's edges still stair-stepped at 1080p. Now 4x, as the HUD portrait and the look preview.
+- **Half for the session** (above).
+
+The film grain is not a cause: it is an additive speckle over the finished picture (`film_grain.gdshader`).
+
+Cost of 4x, SwiftShader (fill-bound, so a ratio, never a frame rate; `tools/web_smoke/menu_stage.py --cases ...`, two
+runs of each build interleaved, mean frame in ms): 1080p before 371, 2x 383, 4x 373 (the same pixels); phone page
+(844 x 390 at a pixel ratio of 2) before 426, 2x 265, 4x 274. The phone draws 1.3 million pixels where it drew
+2.5 million, so 4x there costs less than the old 2x. On the RTX 5080 through ANGLE (`--gpu --unpaced`) every arm
+is 6 to 8 ms with the machine busy, no difference to read; natively at 1080p a frame is 0.70 ms with no
+multisampling, 0.75 with 2x and 0.86 with 4x.
+A weak laptop GPU is still not measured: Half, and now the climb back, are the guard.
 
 ## Frame time in the web build
 
