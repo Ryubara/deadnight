@@ -49,7 +49,7 @@ and what loads it are in [Scenes: which is which](scenes.md).
   player stands in it). The screen starts the night itself when it is the scene you run; inside the menu's router the
   router starts it. `dev/play_night.tscn` is still the one with options.
 - **Movement and camera only: F6 on `world/test_room.tscn`.** Real keys and mouse (WASD,
-  mouse, Shift sprints, C crouches, Space jumps).
+  mouse, Shift sprints, Ctrl crouches, C swaps the shoulder, Space jumps).
   The `Player` node's `Tuning` slot holds `player_tuning_default.tres`: change a value, press F6 again.
 - **Weapons and grenades:** F6 on `weapon_range.tscn` or `grenade_range.tscn`; the demo runs on its own.
 - **A night played by the bot, to see what a change does to the numbers:** F6 on
