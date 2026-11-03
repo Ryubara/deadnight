@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import dsp
 import numpy as np
 from dsp import SAMPLE_RATE
+from limiter import limit_crest
 from recipes import Entry, _jv, _metal_click, _rasp, _thud
 
 # ---- gunshots: report (transient + body) and tail ---------------------------------------------------------------
@@ -177,9 +178,17 @@ def tail(rng: np.random.Generator, spec: Tail) -> np.ndarray:
     return dsp.fade(out, 0.004, 0.1)
 
 
+# The flare gun's report is a sharp crack over a body: normalised to its crack (a crest factor of 20 dB), its body was
+# quiet, and a trim low enough for its crack to leave room for other sounds (#761) took it under the loudness rule.
+# So the body is fuller (a louder puff and bark, a harder drive) and a look-ahead limiter (`limiter.py`) holds the
+# crack to this many dB over the loudest 400 ms of the shot. A limiter in the file, not on a bus: the web build
+# ignores bus effects.
+FLARE_CREST_DB = 5.0
+
+
 def flare_shot(rng: np.random.Generator) -> np.ndarray:
     """A flare pistol's report: a crack, a hollow thump and a puff of the short barrel, then the rocket's ignition, a
-    hiss that climbs as the flare takes off."""
+    hiss that climbs as the flare takes off. The crack is limited to `FLARE_CREST_DB` over the body."""
     n = dsp.samples(0.9)
     crack = dsp.filt(dsp.white(rng, 0.9), "high", _jv(rng, 1400, FREQUENCY_SPREAD)) * dsp.decay(n, 0.014)
     puff = dsp.filt(dsp.white(rng, 0.9), "low", np.linspace(_jv(rng, 3200, FREQUENCY_SPREAD), 500, n)) * dsp.decay(
@@ -190,10 +199,10 @@ def flare_shot(rng: np.random.Generator) -> np.ndarray:
     click = _metal_click(rng, _jv(rng, 1400, FREQUENCY_SPREAD), ring=0.02)
     centre = np.linspace(1800, 5200, n)
     hiss = dsp.filt(dsp.white(rng, 0.9), "band", centre, centre * 0.9) * dsp.attack_decay(n, 0.04, 0.4) * 0.5
-    body = 0.6 * crack + 2.4 * puff + 2.2 * bark + 0.7 * thump
-    mix = dsp.place(None, dsp.drive(body, 2.5) + hiss, 0.0)
+    body = 0.6 * crack + 3.5 * puff + 3.0 * bark + 0.7 * thump
+    mix = dsp.place(None, dsp.drive(body, 6.0) + hiss, 0.0)
     mix = dsp.place(mix, click, 0.0, 0.4)
-    return dsp.fade(mix, 0.0003, 0.12)
+    return limit_crest(dsp.fade(mix, 0.0003, 0.12), FLARE_CREST_DB)
 
 
 def flare_burst(rng: np.random.Generator) -> np.ndarray:

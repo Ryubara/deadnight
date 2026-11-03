@@ -16,6 +16,7 @@ between the burst's shots as recorded, the left-right balance, and whether the s
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -41,6 +42,7 @@ SINGLE_SECONDS = 1.6
 BURST_TAIL_SECONDS = 1.2
 PITCH_BAND_HZ = (40.0, 400.0)
 BED_SETTLE_SECONDS = 4.0
+GUN_FILES = Path(__file__).resolve().parents[2] / "game" / "assets" / "audio" / "guns"
 
 
 def read_wav(path: Path) -> tuple[np.ndarray, int]:
@@ -247,8 +249,18 @@ def analyse(mix: Path, log: Path, ffmpeg: str, scratch: Path, clips: Path | None
     return result
 
 
-def level_table(result: dict, log: Path) -> dict:
-    """What the game's test pins: the trims the catalog had when this was measured, and the loudness of each gun."""
+def file_hashes(sounds: list[str], folder: Path) -> dict[str, str]:
+    """SHA-256 of every variant file of the given sounds (`<sound>_<n>.ogg`): the files the bench played."""
+    hashes = {}
+    for sound in sounds:
+        for path in sorted(folder.glob(f"{sound}_[0-9]*.ogg")):
+            hashes[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashes
+
+
+def level_table(result: dict, log: Path, folder: Path = GUN_FILES) -> dict:
+    """What the game's test pins: the trims and the files the catalog had when this was measured, and the loudness of
+    each gun. `test_gun_audio_rules.gd` fails when either moved without a new measurement."""
     trims: dict[str, dict[str, float]] = {}
     for line in log.read_text(errors="replace").splitlines():
         parts = line.split()
@@ -258,6 +270,7 @@ def level_table(result: dict, log: Path) -> dict:
     for weapon, g in result["guns"].items():
         guns[weapon] = {
             "trims_db": trims.get(weapon, {}),
+            "files_sha256": file_hashes(list(trims.get(weapon, {})), folder),
             "single_momentary_lufs": round(g["single"]["momentary_max"], 1),
             "burst_lufs": round(g["burst"]["lufs"], 1),
             "peak_dbfs": round(max(g["single"]["peak"], g["burst"]["peak"]), 1),
@@ -307,7 +320,9 @@ def main() -> None:
     if args.json:
         args.json.write_text(json.dumps(result, indent=2))
     if args.table:
-        args.table.write_text(json.dumps(level_table(result, args.log), indent=2) + chr(10))
+        args.table.write_text(
+            json.dumps(level_table(result, args.log), indent=2) + chr(10), encoding="utf-8", newline=""
+        )
 
 
 if __name__ == "__main__":
