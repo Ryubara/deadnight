@@ -10,7 +10,7 @@ extends RefCounted
 ## Median round (the round half the nights reach), by skill and players: [low, high].
 const MEDIAN_ROUND := {
 	"weak:1": [4, 9],
-	"average:1": [10, 14],
+	"average:1": [8, 14],
 	"average:2": [11, 16],
 	"average:4": [12, 17],
 	"average:8": [14, 20],

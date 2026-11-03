@@ -3,7 +3,8 @@
 Deadnight's second map is small, close-quarters and indoors, built to the hard targets of
 [the small-map formula](../research/maps/small-map-formula.md) (measured from Nacht der Untoten) on a floorplan of
 our own. The look and its kit are [small map: art and kit](../research/maps/small-map-art.md); the outside seen
-through the windows (the drive-in's world in the distance) is #638's; doors, buys and the box are #632's.
+through the windows (the drive-in's world in the distance) is #638's; the links, windows, buys and the box are
+[Playing it](#playing-it-links-windows-buys-and-the-box) below (#632).
 
 The greybox is `game/world/smallmap/smallmap_greybox.tscn`, written by `tools/world/build_smallmap_greybox.py`
 (run it from the repository root; a rerun leaves the scene unchanged). It is its own scene: the map picker (#624)
@@ -106,14 +107,110 @@ Four bodies for 20 game minutes (44 s of wall time): 1242 legs, all 1242 reached
 tick outside the building. The bodies are on a physics layer of their own: in a first run, two that met head-on on a
 2 m stair stood on each other for 36 s, which is a steering question (the bots' meeting rule), not the map's.
 
-## Sockets for the kit and for #632
+## Playing it: links, windows, buys and the box
+
+The map plays by the lot's rules table with an **overlay** of its own (`MapTuning`,
+`game/world/smallmap/smallmap_tuning.tres`, laid over a copy of `default_tuning.tres` by `MapTuning.apply`): what the
+maps share (rounds, points, health, the dead, ammunition) stays in one place, and the map holds only what it
+changes. The scene names its overlay in `metadata/tuning`, and `test_smallmap_economy.gd` fails when the scene's
+markers and the overlay disagree. The night, a seated night and the balance simulator (`--map=small_indoor`) all lay
+it over the table the same way (`NightWorld.rules_for`).
+
+### The links
+
+Three links, one price **P = 450**, 2.25 times the 200 starting points (Nacht: 2.0). By the lot's affordability count
+(one player, half the points on doors) 450 opens one link at round 3, two at round 4 and three at round 5, each
+within a round (formula rows 20 and 21); `test_smallmap_economy.gd` recomputes it from the tuning and fails a price
+outside 400 to 475. None needs another (`requires` is empty): the team picks the order, and the third closes the ring.
+A link is bought like a lot door: stand by its slab, press use, pay; the slab goes and the walking mesh of the new set
+is swapped in. A stair's slab sits at the foot, so it is bought from below or from its own flight, never from the floor
+above (a press reaches only what is on its floor: `NightWorld.on_level`). Each link also opens the dead's windows of the
+rooms it leads to (`metadata/opens`): the side room's three for the door, the upstairs' four for the first stair, both
+for the stair between the side room and the upstairs. The hall's five are open from the start.
+
+### The windows
+
+The twelve windows are `Barricade`s of five boards each (`Windows/Window_<id>/Boards`, the rules'
+`BarricadeTuning.ids`), with the kit's 1.5 m boards (so a mended board swings about 0.75 m, `Barricade.board_half`, not
+the fence breaches' 2.05). The dead rise 6 to 7 m outside a window, walk to its boards and tear them off one by one
+(1.2 s a board, as on the lot), then come in, up to the floor the window is on (the upper windows open onto the bank and
+the hall's roof at the upper floor's height). A player puts a board back for points, as at the lot's fence; the
+players-only blocker in the opening keeps everyone in whatever the boards do (the sill is 0.9 m, a jump is 1.1 m).
+`test_smallmap_windows.gd` runs a night of 24 at once and fails unless every one of the twelve is torn and walked
+through, to the room it opens into and the height it is at.
+
+### The shop (formula rows 22 to 25)
+
+| Where | What | Price | Ratio to P |
+| --- | --- | ---: | ---: |
+| Hall, west wall | Revolver (back in the pool once given up) | 90 | 0.2 |
+| Hall, west wall | Crowbar | 270 | 0.6 |
+| Side room, east and north walls | Pump shotgun, Tommy gun | 540 each | 1.2 |
+| Upstairs, four walls | Baseball bat | 540 | 1.2 |
+| | Flare gun | 630 | 1.4 |
+| | Fire axe | 720 | 1.6 |
+| | Pump shotgun (a second wall of it) | 540 | 1.2 |
+| Upstairs, the cabinet (over the side room) | Hunting rifle | 675 | 1.5 |
+| Side room, north wall: the box (our crane) | a random gun you lack | 425 | 0.94 |
+| An ammunition locker in each room and one more upstairs | rounds for the weapon in hand | the shared table's | |
+
+Prices climb room by room as the formula asks, each within 10% of its ratio (`test_smallmap_economy.gd`). Eight
+weapons make nine places, so the shotgun hangs on two walls (same price, different rooms): the wall of a weapon already
+carried sells its rounds. The box has **one place and never moves**: its `leave_chances` are empty, so no play breaks
+it down; it needs no link (the walls around it are the side room's). The prizes are the lot's (the shotgun heaviest).
+At most **24 dead stand at once**, whatever the round and the party (`alive_cap`, on a desktop and in the browser).
+
+### What the map leaves out
+
+Nacht has no perks, no upgrade and no power, and so far neither has this map: no generator, breaker post, fuel can,
+tonic or re-cut bench (the tank never drains, there are no circuits, and the lamps hang on the `battery` circuit that
+is always lit so the dead keep their lit pace under them). Whether any of it comes to this map is the **maintainer's**
+decision (formula rows 25 and 30); this is the formula's default, in force until it is answered, and adding any of it
+back is one more row in this overlay plus its marker in the scene.
+
+### Floors for the dead
+
+The dead were flat before this map: a zombie kept the height it spawned at, struck at the flat distance and weighed
+players by it. On a map that declares a storey (`metadata/storey`) `ZombieSim` now follows the walking mesh up and down
+its stairs (its path points less the baker's 0.35 m lift), weighs a player on another floor by three metres of walking
+a metre of height, and swings only at a target within half a storey in height and with no wall between them (a ray at
+1.3 m, over the counter and the racks; on a stair beside a wall the dead had struck through it). A press reaches only
+the doors, spots and boards on the player's floor. The lot (storey 0) is untouched; `test_zombie_storeys.gd` holds both.
+
+### What a night reads from a map scene
+
+`MapLayout` reads the scene once: the lot's `<Area>/ZombieSpawns` and `Field/PlayerSpawns`, or this map's flat
+`ZombieSpawns` (each marker's `room`) and `PlayerSpawns`; the root's `metadata/start_areas`, `storey`, `navmeshes`
+(the saved meshes) and `tuning`; each door's `opens`. The picker (#624) wires the scene in; the tests and captures give
+it to the night with `Night.scene` or `SeatedNight`'s `scene`.
+
+### Bots on the map
+
+The bots were written for 100 m of open ground: no errand while a dead one is within 12 m, a lull to shop in only when
+a quarter of the round is left, and every profile's list names the lot's doors. On a 600 m² map the dead are always
+near, so the overlay gives them their own numbers (`bot_clear_from` 5 m, `bot_calm_share` 0.6, `bot_hurt_share` 0 and
+its own `bot_shopping` list: the first link, the shotgun, the Tommy gun, the first stair, the rifle, the second stair, the
+box). The numbers are in the overlay, not in the bots, and the lot's are unchanged.
+
+### Proof
+
+`tests/captures/smallmap_bot_night.tscn` plays a night of hosted bots to a round and prints the numbers (`--bots`,
+`--rounds`, `--seed`, `--open=all` to sell the links first, `--trace`); the numbers and what they showed are
+[the research page](../research/maps/small-map-play.md). In seven long nights (one bot, four bots, and four with every
+link sold first) **round 10 was reached in all seven and cleared in five**; the first link was bought in round 1, the
+first stair by round 3, all twelve windows were torn, and the most dead at once was 22. `test_smallmap_bot_night.gd`
+plays a short night of one and of four in the tests; `test_smallmap_economy.gd`, `_links.gd`, `_buys.gd` and
+`_windows.gd` pin rows 20 to 26 and every link, buy and window; the shoulder-camera captures are on the pull request.
+
+## Sockets for the kit and for the night
 
 | Node | What it is |
 | --- | --- |
 | `Start`, `Side`, `UpperA`, `UpperB` | a room each, with `room`, `rect` (x, z, width, depth) and `floor` metadata; walls, floors, pillars, counter, racks and stairs under it |
-| `Windows/Window_<id>` | a window or the breach: on the wall's centre line at floor height, +Z into the room; `barricade_id`, `room`, `kind` (`window` or `breach`), `gap` (the wall's gap: 2.0 m wide, 2.2 m tall, 2.4 for the breach). Its frame, sill and the players-only blocker (layer 2, as the boards) are StaticBody3D children the bake never reads |
+| `Windows/Window_<id>` | a window or the breach: on the wall's centre line at floor height, +Z into the room; `barricade_id`, `room`, `kind` (`window` or `breach`), `gap` (the wall's gap: 2.0 m wide, 2.2 m tall, 2.4 for the breach). Its frame, sill and the players-only blocker (layer 2, as the boards) are StaticBody3D children the bake never reads. Its `Boards` child is the `Barricade` (five `window_board` slots, `board_half` 0.75) |
 | `ZombieSpawns/Spawn_<id>` | where the dead of each window rise: 6 to 7 m outside it, `barricade_id` and `room` |
-| `Doors` (`LotDoors`) | `Door_Side`, `Stairs_Start`, `Stairs_Side`: `shop_id` (`door_side`, `door_stairs_start`, `door_stairs_side`), `requires` (none), a placeholder `cost` of 450 until #632 puts the price in the shop; one slab each and a stand on each side |
+| `Doors` (`LotDoors`) | `Door_Side`, `Stairs_Start`, `Stairs_Side`: `shop_id` (`door_side`, `door_stairs_start`, `door_stairs_side`), `requires` (none), `cost` (read from the map's tuning when the scene is written), `opens` (the rooms whose dead may rise once it is open); one slab each and a stand on each side |
+| `ShopSpots`, `ShopProps` | the markers a player buys from (`kind` `wall`, `crane` or `ammo`, `shop_id`, `room`; the cabinet also `cabinet`, the box `crane_spot` 0) and their plaques, signs, crates and cabinet: none of it is CSG, so the walking mesh does not change |
 | `PlayerSpawns` (eight places: two rows south of the counter, 1.3 to 2 m apart), `CameraProbes`, `Measure` | the players' start; the camera's narrow places; the ring's and loops' markers and each room's middle |
 | `Ceilings`, `Roof`, `Outside` | the slabs, the roof, and the ground outside (yards, the bank, the breach's pocket): #638 dresses `Outside` |
 

@@ -174,6 +174,15 @@ look, and moving `SimSkill`'s `read` alone would not fix them: a change to the b
 `rounds.md` and this gate, not to the bots. The gate's own limit (at most 85% of weak solo nights die in the first boss
 night) is untouched.
 
+## The bosses at 1.25 times the health (#688)
+
+The headliner's `health_multiplier` went from 13 to 16.25 and nothing else moved. 300 nights a cell, seed 1: the
+headliner's time to kill (average solo) 19.55 s to 24.74 s, the weak boss night 65% to 80% deaths, the second boss night
+(round 15) 82% to 99% deaths for an average solo player, and the gate's average solo median round from 10 to 8 (the gate
+floor moved to 8, flagged for the maintainer). All the numbers are in
+[the rounds page](../design/rounds.md#the-bosses-25-tougher-688). A boss's health is the one number this page's
+simulator and the real server read from the same file, so the rise needs no separate model change.
+
 ## Using it
 
 ```text

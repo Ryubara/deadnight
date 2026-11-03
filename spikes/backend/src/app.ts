@@ -6,6 +6,7 @@ import { type DiscordClient, DiscordUnavailable } from "./discord.ts";
 import { RateLimit } from "./limits.ts";
 import { type Lobby, LobbyFailure, type LobbyLimits, LobbyService, MAX_PLAYERS } from "./lobbies.ts";
 import { chooseName } from "./names.ts";
+import { DEFAULT_MAP } from "./settings.ts";
 import { GameServerRegistry } from "./servers.ts";
 import { checkSave, SaveRejected } from "./saves.ts";
 import { RevisionConflict, type Store } from "./store.ts";
@@ -225,6 +226,8 @@ export function buildApp(deps: Deps): FastifyInstance {
     })),
     state: lobby.state,
     settings: lobby.settings,
+    // The map the night is on, for a screen that does not read the settings (`settings` is null for the usual rules).
+    map: lobby.settings?.map ?? DEFAULT_MAP,
     round: lobby.round,
     matchId: lobby.match?.id ?? null,
   });
@@ -234,6 +237,7 @@ export function buildApp(deps: Deps): FastifyInstance {
     code: lobby.code,
     state: lobby.state,
     round: lobby.round,
+    map: lobby.settings?.map ?? DEFAULT_MAP,
     players: lobby.players ?? lobby.members.length,
     maxPlayers: lobby.maxPlayers,
     full: lobbies.isFull(lobby),

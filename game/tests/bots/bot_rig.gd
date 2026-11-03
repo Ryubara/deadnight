@@ -45,6 +45,9 @@ func _init(
 	p_rounds: RoundTuning = null
 ) -> void:
 	profile = p_profile if p_profile != null else BotProfile.regular()
+	# The parts' tests watch one bot fight where it stands: with no order given it roams, and a
+	# roaming bot turns to where it walks (a test of the roam builds the rig and turns this on).
+	profile.follows = false
 	_sight = sight
 	_rng_seed = bot_seed
 	lit_ground = lit

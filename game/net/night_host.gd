@@ -53,7 +53,7 @@ var port := NetWire.DEFAULT_PORT
 ## The seed of the night's dice; -1 draws one for every night.
 var seed_value := -1
 var rules_tuning: RulesTuning
-## The rules of the match (zombie intensity, alive cap, break) the next night runs under.
+## The rules of the match (zombie intensity, alive cap, break, map) the next night runs under.
 ## Set it with `configure_match`, which also changes a night nobody has started.
 var match_settings := MatchSettings.new()
 ## The most zombies alive at once in this room's night whatever the players are on; 0 is the rules'
@@ -208,9 +208,13 @@ func away_count() -> int:
 ## The one way a room's host sets the match: its settings are the server's from here, in every
 ## snapshot and so in every WELCOME (a late joiner or a client that came back reads them there),
 ## and in every night this host builds after. Applies at once to a night nobody has started and
-## returns true; once the night began the settings wait for the next one and it returns false.
+## returns true; once the night began the settings wait for the next one and it returns false. The
+## map is the room's, built when it opened: a map in `settings` that is another one is not taken
+## (the next night is built on the map in `match_settings`).
 func configure_match(settings: MatchSettings) -> bool:
 	match_settings = settings.clamped()
+	if world != null and world.map_info != null:
+		match_settings.map = world.map_info.id
 	if server == null or _night_began():
 		return false
 	server.rules.apply(RulesAction.configure(match_settings))
@@ -226,7 +230,7 @@ func _build_night() -> void:
 	serving = false
 	world = NightWorld.new()
 	add_child(world)
-	await world.build()
+	await world.build(MapRegistry.of(match_settings.map))
 	var chosen := seed_value if seed_value >= 0 else randi()
 	server = NightServer.new(world, chosen, null, rules_tuning, match_settings)
 	server.drawn_bodies = false
@@ -414,6 +418,12 @@ func _on_player_packet(peer: HostPeer, data: PackedByteArray) -> void:
 				_fault(peer)
 			else:
 				_collect(server.apply(mark, peer.player_id))
+		NetWire.Type.ORDER:
+			var order := NetWire.read_order(data)
+			if order.is_empty():
+				_fault(peer)
+			else:
+				_collect(server.apply(order, peer.player_id))
 		LookWire.Type.LOOK:
 			var action := {"type": NightServer.LOOK, "player_id": peer.player_id, "packet": data}
 			_collect(server.apply(action, peer.player_id))
