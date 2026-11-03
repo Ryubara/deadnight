@@ -27,7 +27,8 @@ const _PAIR_ANGLE_B := 0.5698402910
 ## floors are at 0 and 3.4 m.
 const NAV_LIFT := 0.35
 ## Metres over the feet at which a swing is judged to have a clear way to its target: over the
-## second map's counter and racks (1.2 m), under its ceiling.
+## second map's racks (1.2 m), under its ceiling. The hall's counter is higher (1.5 m) and stops
+## it, but no swing crosses a counter 3.5 m deep.
 const SWING_HEIGHT := 1.3
 ## Metres past the longest swing within which the way to a target is looked at.
 const SWING_SLACK := 0.5

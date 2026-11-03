@@ -37,6 +37,11 @@ const BACKGROUND_WAIT_S := 1.0
 const BACKGROUND_SHARE := 0.25
 const BACKGROUND_MIN_MSEC := 3.0
 const BACKGROUND_MAX_MSEC := 40.0
+## The decode of the deferred sounds (`preload_sound_for_night`) while a night runs: a tenth of a
+## frame, between these (ms). It is slower than the menu's load because a night is being played.
+const DEFERRED_SHARE := 0.1
+const DEFERRED_MIN_MSEC := 2.0
+const DEFERRED_MAX_MSEC := 6.0
 ## `AudioStreamPlayer3D.max_db` by default: how far over its file a sound may be boosted close up.
 const ENGINE_MAX_DB := 3.0
 const POOL_3D := 32
@@ -103,12 +108,17 @@ var starts_per_frame := 0
 ## Counters for tests and the debug overlay.
 var started := 0
 var culled := 0
+## Whether the deferred sounds wait, because the night's loading bar is up and every frame of it is
+## already paid for (`NightWarmup`): the line is made once the bar is gone.
+var decode_held := false
 
 ## While the player is in a menu the service loads the sounds a night uses, a slice of each frame
 ## (`start_background_preload`), so the night's loading screen has less to do.
 var _background_ids: Array = []
 var _background_at := 0
 var _background_wait := 0.0
+## Files of deferred sounds waiting to be decoded to samples: the ones played already first.
+var _decode_queue: Array[String] = []
 var _rng := RandomNumberGenerator.new()
 var _now := 0.0
 var _streams := {}
@@ -198,6 +208,7 @@ func _exit_tree() -> void:
 func _process(delta: float) -> void:
 	advance(delta)
 	_background_preload(delta)
+	_decode_queued(delta)
 
 
 ## Starts loading every sound into the cache in the background, a slice of each frame, after a
@@ -209,6 +220,12 @@ func start_background_preload() -> void:
 		return
 	_background_ids = SoundCatalog.ids()
 	_background_wait = BACKGROUND_WAIT_S
+
+
+## Ends the menu's background load where it is: a night is loading, and its bar takes over (what
+## is not in the cache yet is loaded or queued by `preload_sound_for_night`).
+func stop_background_preload() -> void:
+	_background_at = _background_ids.size()
 
 
 ## Whether the background load has been asked for and has not finished.
@@ -227,6 +244,19 @@ func _background_preload(delta: float) -> void:
 	while background_preloading() and Time.get_ticks_msec() < until:
 		preload_sound(_background_ids[_background_at])
 		_background_at += 1
+
+
+func _decode_queued(delta: float) -> void:
+	if _decode_queue.is_empty() or decode_held:
+		return
+	var slice := clampf(delta * 1000.0 * DEFERRED_SHARE, DEFERRED_MIN_MSEC, DEFERRED_MAX_MSEC)
+	var until := Time.get_ticks_msec() + int(slice)
+	while not _decode_queue.is_empty() and Time.get_ticks_msec() < until:
+		var path: String = _decode_queue.pop_front()
+		if not _streams.has(path):
+			_streams[path] = load(path) if ResourceLoader.exists(path) else null
+		if not _pcm.has(path) and PcmStream.fits(_streams[path]):
+			_pcm[path] = PcmStream.decode(_streams[path], int(AudioServer.get_mix_rate()))
 
 
 ## Moves the service's clock: frees finished voices and steps the ducking.
@@ -349,6 +379,30 @@ func _start(id: StringName, position: Variant, extra_db: float) -> Node:
 	if position is Vector3:
 		return _play_3d(def, stream, position, pitch, duration, extra_db)
 	return _play_2d(def, stream, pitch, duration, extra_db)
+
+
+## What the night's loading bar does for a sound: loads its files and decodes them to samples,
+## unless the sound is `deferred` (its bank says so): then it only queues the files, and the
+## background makes them while the night runs (`_decode_queued`, a few milliseconds a frame), or at
+## once for a sound that is played first (`_pick_stream`). Reading a file of the pack and decoding
+## it to samples cost about the same, and both grew with every weapon's and every voice's
+## sounds (`docs/research/web-export.md`, "Loading a night"). Returns how many files it loaded.
+func preload_sound_for_night(id: StringName) -> int:
+	var def := SoundCatalog.get_def(id)
+	if def == null:
+		return 0
+	if not def.deferred:
+		return preload_sound(id)
+	for variant in range(1, def.variants + 1):
+		var path := def.path_for(variant)
+		if not _pcm.has(path) and not _decode_queue.has(path):
+			_decode_queue.append(path)
+	return 0
+
+
+## Sounds whose samples are still to be made (the deferred ones), for tests and the loading bar.
+func decode_pending() -> int:
+	return _decode_queue.size()
 
 
 ## Loads every variant of a sound into the cache, so its first play has nothing to read. Returns
@@ -725,6 +779,14 @@ func _pick_stream(def: SoundDef, samples := false) -> AudioStream:
 		_warn_once("missing file %s" % path)
 	if samples and _pcm.has(path):
 		return _pcm[path]
+	if samples and def.deferred and _decode_queue.has(path):
+		# Played before its turn: this play is the Ogg, and the next ones are samples; the sound's
+		# other takes follow it to the front of the line.
+		for take in range(def.variants, 0, -1):
+			var queued := def.path_for(take)
+			if _decode_queue.has(queued):
+				_decode_queue.erase(queued)
+				_decode_queue.push_front(queued)
 	return _streams[path]
 
 
