@@ -1046,7 +1046,10 @@ sit above it.
   piece of GDScript 1.6 times slower than the machine the budget was set on: **mean 628 microseconds a tick (3.8% of a
   60 Hz tick), worst 1.25 ms**. The budget it holds, scaled by the machine's speed: mean under 5% of the tick, worst
   tick under 1.5 ms (a half millisecond for each bot's think). Scaled back to the reference machine the mean is about
-  2.3%.
+  2.3%. After main's flare rule landed the same test reads mean 780 to 870 microseconds (about 5% of the tick on that
+  machine, 1.6 times slower than the reference) and a 99th percentile of 1.8 to 2.4 ms, right at the scaled budget. The
+  test judges the 99th percentile instead of the single worst tick, which on a shared machine is a tick the scheduler
+  took (3 to 70 ms in runs with the flare rule on and off alike, the median unchanged at about 0.73 ms).
 - **The seating, skill and limits**: `test_room_bot_slots.gd` (a room over a socket: the skill names, dresses and drives
   the bots; a cap; the kill-switch at the start and thrown mid-night and lifted; a budget shared by two rooms; a person
   leaving hands the body to a bot and a third person takes it back), `test_night_bot_skill.gd`, `test_bot_limits.gd`,
