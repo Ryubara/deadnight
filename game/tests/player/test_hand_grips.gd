@@ -23,7 +23,10 @@ const MODELS: Array[String] = [
 	"hammer",
 	"lever_rifle",
 	"revolver",
-	"tommy_gun"
+	"tommy_gun",
+	"ppsh",
+	"mp5",
+	"m4a1",
 ]
 
 var _runner: GdUnitSceneRunner

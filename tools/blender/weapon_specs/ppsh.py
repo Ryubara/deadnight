@@ -51,12 +51,11 @@ def body(b):
 
 
 def drum(b):
-    """The drum: a short wide cylinder across Y in Grey2 with DarkGrey rims, a hub and a winding key each side, and its
-    neck into the well. The reload's part (`ammo_is_part`, as the Tommy's): off down and forward."""
+    """The drum: a short wide cylinder across Y in Grey2 with a DarkGrey band round its rim, a hub and a winding key
+    each side, and its neck into the well. The reload's part (`ammo_is_part`, as the Tommy's): off down and forward."""
     c = (-0.15, -0.10)
-    b.cyl((c[0], -0.031, c[1]), (c[0], 0.031, c[1]), 0.093, G2, segs=16, bevel=0.008)
-    for y0, y1 in ((-0.036, -0.026), (0.026, 0.036)):
-        b.cyl((c[0], y0, c[1]), (c[0], y1, c[1]), 0.095, D, segs=16, bevel=0)  # rims
+    b.cyl((c[0], -0.036, c[1]), (c[0], 0.036, c[1]), 0.093, G2, segs=16, bevel=0.008)
+    b.cyl((c[0], -0.016, c[1]), (c[0], 0.016, c[1]), 0.096, D, segs=16, bevel=0)  # the band round the rim
     b.cyl((c[0], -0.04, c[1]), (c[0], 0.04, c[1]), 0.03, D, segs=10, bevel=0)  # hub
     b.box((c[0], -0.043, c[1]), (0.05, 0.006, 0.014), K, bevel=0, detail=True)  # winding key
     b.box((c[0], 0, -0.012), (0.056, 0.04, 0.03), D, bevel=0)  # the neck into the well

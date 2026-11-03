@@ -68,7 +68,8 @@ def body(b):
     for x in (-0.3, -0.18):
         b.box((x, 0, 0.0), (0.016, 0.077, 0.016), K, bevel=0, detail=True)  # the guard's pin heads
     # The lower: the trigger group and the magazine well.
-    b.box((-0.045, 0, -0.0), (0.17, 0.06, 0.05), K, bevel=0.008)  # x -0.13..0.04, z -0.025..0.025
+    # x -0.13..0.04, z -0.02..0.025 (the Tommy's guard gap)
+    b.box((-0.045, 0, 0.0025), (0.17, 0.06, 0.045), K, bevel=0.008)
     b.box((-0.1, 0, -0.035), (0.054, 0.05, 0.04), K, bevel=0.004)  # the well
     b.box((-0.06, 0, -0.03), (0.014, 0.024, 0.012), D, bevel=0, detail=True)  # magazine release
     for y in (-0.031, 0.031):
@@ -109,7 +110,8 @@ SPEC = {
     "eject": (-0.06, 0.036, 0.06),
     "grip": ((0.036, 0.0, -0.085), (-0.28, 0.0, 0.96), (-1.0, 0.0, 0.0)),  # the Tommy gun's
     "trigger": (-0.018, 0.0, -0.038),
-    # The hand guard's rear, held from below.
-    "support": ((-0.24, 0.0, 0.02), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.6)),
+    # The hand guard's middle, held from below: 4 cm ahead of the plan's -0.24, clear of the curved magazine's foot
+    # (its front edge reaches -0.23), which the solver's seat search met under the hand.
+    "support": ((-0.30, 0.0, 0.02), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.6)),
     "ammo": (magazine, (-0.13, 0.0, -0.12)),
 }

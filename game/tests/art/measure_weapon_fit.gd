@@ -15,6 +15,9 @@ const MODELS := {
 	"double_shotgun": "res://gameplay/player/holds/shotgun.tres",
 	"baseball_bat": "res://gameplay/player/holds/melee.tres",
 	"crowbar": "res://gameplay/player/holds/crowbar.tres",
+	"ppsh": "res://gameplay/player/holds/ppsh.tres",
+	"mp5": "res://gameplay/player/holds/mp5.tres",
+	"m4a1": "res://gameplay/player/holds/m4a1.tres",
 }
 
 

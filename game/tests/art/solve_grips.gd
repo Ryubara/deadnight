@@ -28,6 +28,9 @@ const MODELS := {
 	"fire_axe":
 	{"scene": "res://assets/weapons/fire_axe/fire_axe.glb", "model_scale": 0.95, "kind": "melee"},
 	"grenade": {"hold": "res://gameplay/player/holds/grenade.tres", "kind": "ball"},
+	"ppsh": {"hold": "res://gameplay/player/holds/ppsh.tres", "kind": "gun"},
+	"mp5": {"hold": "res://gameplay/player/holds/mp5.tres", "kind": "gun"},
+	"m4a1": {"hold": "res://gameplay/player/holds/m4a1.tres", "kind": "gun"},
 }
 
 var _args := {}

@@ -40,7 +40,8 @@ ROW_HEIGHT = {"pistols": 0.55, "smgs": 0.55, "long": 0.75, "melee": 0.45}
 DOTS = {"Grip": (0.1, 0.75, 0.2), "Trigger": (0.95, 0.8, 0.1), "Support": (0.15, 0.4, 0.95), "Muzzle": (0.9, 0.1, 0.1)}
 
 
-def hold_scales(root):
+def hold_scales(root, classes=None):
+    """{model: model_scale} from the hold files; `classes` (a dict) also gets {model: (weapon_class, real_length)}."""
     out = {}
     for f in sorted((root / "game/gameplay/player/holds").glob("*.tres")):
         text = f.read_text(encoding="utf-8")
@@ -48,7 +49,29 @@ def hold_scales(root):
         scale = re.search(r"model_scale = ([0-9.]+)", text)
         if scene and scale:
             out.setdefault(scene.group(1), float(scale.group(1)))
+            if classes is not None:
+                kind = re.search(r'weapon_class = &"(\w+)"', text)
+                real = re.search(r"real_length = ([0-9.]+)", text)
+                classes.setdefault(scene.group(1), (kind.group(1) if kind else "", float(real.group(1)) if real else 0))
     return out
+
+
+def rows_with_new(root, classes):
+    """`ROWS` plus every held model it does not list, in the row of its hold's class (#795): a pistol with the
+    pistols, a rifle-class gun under 0.95 m real with the SMGs and carbines, any other gun with the long guns. So a
+    new weapon shows once its glb and hold file are in, and the model batches never edit the same lines here."""
+    rows = {row: list(names) for row, names in ROWS.items()}
+    listed = {n for names in ROWS.values() for n in names}
+    for name, (kind, real) in sorted(classes.items()):
+        if name in listed or not (root / f"game/assets/weapons/{name}/{name}.glb").exists():
+            continue
+        if kind == "Pistol":
+            rows["pistols"].append(name)
+        elif kind == "Rifle" and real < 0.95:
+            rows["smgs"].append(name)
+        elif kind in ("Rifle", "Shotgun"):
+            rows["long"].append(name)
+    return rows
 
 
 def flat_material(name, rgb):
@@ -135,13 +158,14 @@ def main():
     tick = flat_material("Tick", (0.55, 0.55, 0.55))
     plan_mat = flat_material("Plan", (0.75, 0.2, 0.55))
     dots = {k: flat_material(k, c) for k, c in DOTS.items()}
-    scales = hold_scales(args.root)
+    classes = {}
+    scales = hold_scales(args.root, classes)
     plan = json.loads(args.plan.read_text(encoding="utf-8")) if args.plan else []
     label = not args.silhouette
 
     base, width, left = 0.0, 0.0, 0.45
     row_bases = []
-    for row, names in ROWS.items():
+    for row, names in rows_with_new(args.root, classes).items():
         base -= ROW_HEIGHT[row]
         row_bases.append(base)
         cursor = left
