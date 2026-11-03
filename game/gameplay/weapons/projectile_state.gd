@@ -37,13 +37,8 @@ func step(delta: float, targets: Dictionary, world_ray: Callable) -> Dictionary:
 		var best := {}
 		var best_distance := limit
 		for id_key in targets:
-			var hit := Hitbox.ray(
-				position,
-				dir,
-				best_distance,
-				targets[id_key]["pos"],
-				targets[id_key]["yaw"],
-				def.projectile_radius
+			var hit := Hitbox.ray_at(
+				position, dir, best_distance, targets[id_key], def.projectile_radius
 			)
 			if not hit.is_empty():
 				best_distance = hit["distance"]

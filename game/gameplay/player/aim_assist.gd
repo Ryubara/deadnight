@@ -43,7 +43,7 @@ static func pick(
 	var best := {}
 	var best_share := 1.0
 	for target: Dictionary in targets:
-		var size: float = target.get("scale", 1.0)
+		var size: float = target.get("aim_scale", target.get("scale", 1.0))
 		var point: Vector3 = target["position"] + Vector3.UP * tuning.aim_height * size
 		var to_point := point - eye
 		var distance := to_point.length()
@@ -127,7 +127,9 @@ static func on_target(
 			target["position"],
 			target.get("yaw", 0.0),
 			0.0,
-			target.get("scale", 1.0)
+			target.get("scale", 1.0),
+			false,
+			target.get("pose", Hitbox.DEFAULT_SET)
 		)
 		if hit.is_empty():
 			continue

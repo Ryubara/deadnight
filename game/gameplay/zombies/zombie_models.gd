@@ -69,7 +69,8 @@ static func height_of(look: StringName) -> float:
 	return HEIGHTS.get(look, 1.0)
 
 
-## How high to aim on the look against a walker: how tall it stands, and a crawler is low.
+## How high to aim on the look against a walker: how tall it stands, and a crawler is low. (Not the
+## size of its hit zones, which are fitted to each body: `ZombieProfile.hit_scale`.)
 static func aim_scale(look: StringName) -> float:
 	return height_of(look) * (CRAWL_HEIGHT if crawls(look) else 1.0)
 

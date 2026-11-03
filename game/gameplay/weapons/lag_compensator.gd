@@ -4,10 +4,11 @@ extends RefCounted
 ## they at time T" so a shot is judged against what the shooter saw, not against the present.
 ##
 ## Plain data in, plain data out. A frame is `record(time, targets)` with `targets` a list of
-## `{"id": int, "pos": Vector3, "yaw": float, "scale": float, "weak": bool}` (`scale`, the size of
-## the hit zones, defaults to 1; `weak`, whether it has a weak spot, to false); `rewind(view_time,
-## now)` answers `{"time", "rewound_by", "clamped", "targets": {id: {"pos", "yaw", "scale",
-## "weak"}}}`. No node, no peer, no clock of its own: `time` is whatever seconds the caller counts
+## `{"id": int, "pos": Vector3, "yaw": float, "scale": float, "weak": bool, "pose": StringName}`
+## (`scale`, the size of the hit zones, defaults to 1; `weak`, whether it has a weak spot, to false;
+## `pose`, the id of its hit set, to `Hitbox.DEFAULT_SET`); `rewind(view_time, now)` answers
+## `{"time", "rewound_by", "clamped", "targets": {id: {"pos", "yaw", "scale", "weak", "pose"}}}`.
+## No node, no peer, no clock of its own: `time` is whatever seconds the caller counts
 ## (the server's tick clock).
 ##
 ## The rewind is capped at `max_rewind` seconds, so a laggy or lying client cannot make the server
@@ -17,7 +18,7 @@ extends RefCounted
 const DEFAULT_MAX_REWIND := 0.25
 ## History kept beyond the cap, so a rewind right at the cap still has a frame before it.
 const HISTORY_MARGIN := 0.1
-const PLACED_KEYS: Array[String] = ["pos", "yaw", "scale", "weak"]
+const PLACED_KEYS: Array[String] = ["pos", "yaw", "scale", "weak", "pose"]
 
 var max_rewind: float = DEFAULT_MAX_REWIND
 var _frames: Array[Dictionary] = []
@@ -42,9 +43,10 @@ func record(time: float, targets: Array) -> void:
 		_frames.pop_front()
 
 
-## A target as the history keeps it: `{"pos", "yaw", "scale", "weak"}` with the defaults filled in.
-## A target that has all four is kept as it is (nothing writes to one, and the server hands over a
-## new one for each zombie at every tick: copying each twice was most of the cost of the list).
+## A target as the history keeps it: `{"pos", "yaw", "scale", "weak", "pose"}` with the defaults
+## filled in. A target that has all five is kept as it is (nothing writes to one, and the server
+## hands over a new one for each zombie at every tick: copying each twice was most of the cost of
+## the list).
 static func placed(target: Dictionary) -> Dictionary:
 	if target.has_all(PLACED_KEYS):
 		return target
@@ -53,6 +55,7 @@ static func placed(target: Dictionary) -> Dictionary:
 		"yaw": target.get("yaw", 0.0),
 		"scale": target.get("scale", 1.0),
 		"weak": target.get("weak", false),
+		"pose": target.get("pose", Hitbox.DEFAULT_SET),
 	}
 
 
@@ -100,6 +103,7 @@ func _blend(earlier: Dictionary, later: Dictionary, weight: float) -> Dictionary
 				"yaw": lerp_angle(a["yaw"], b["yaw"], weight),
 				"scale": lerpf(a["scale"], b["scale"], weight),
 				"weak": b["weak"],
+				"pose": b["pose"],
 			}
 		elif weight < 0.5:
 			blended[id] = earlier[id]

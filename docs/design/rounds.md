@@ -396,7 +396,8 @@ the counts' remainders, the speed jitter and the look all come from the seeded s
 player may read and dodge; 0 is the ordinary swing), `barrier_speed` (1 is a walker; 0 skips barriers)
 and `hit_chance` (the shot-landing factor for hitboxes). The rules never move a zombie; they say what it
 is. The night reads all of them: damage, knockback, the telegraph, the look, `barrier_speed` (how fast it
-tears the fence's boards, below) and `hit_chance` (which sizes the zones;
+tears the fence's boards, below) and `hit_chance` (which sizes the zones of an upright zombie; a crawler's zones
+are fitted to its body on the ground, [hit zones](../research/hit-zones.md);
 [zombies research](../research/zombies.md#types-in-the-night)). A `weak` hit (the boss's lit bulb) is a zone like
 `head`: the weapon sends it when the ray hits that box (`Hitbox.WEAK`, only on a zombie that has a weak spot: the
 headliner), and the rules multiply the damage by the type's
