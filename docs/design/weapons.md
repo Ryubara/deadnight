@@ -36,8 +36,9 @@ The server decides every hit. The client shows the shot at once and the server's
   player sees a muzzle flash on the weapon, then a small spark, puff and mark where it ended on something (when it
   ended short of its range) or a small red puff on a zombie, and no bullet and no streak ([Shot
   feedback](shot-feedback.md), [Camera shake](camera-shake.md)). A weapon may set `WeaponDef.tracer` (off by default) to
-  draw a streak from the muzzle to each end, for a future beam-like hitscan weapon; none of the shipped weapons does.
-- **`PROJECTILE`** (the flare gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
+  draw a streak from the muzzle to each end, for a beam-like hitscan weapon: only the freeze gun does, in its own
+  icy colour (`bolt_core_colour`).
+- **`PROJECTILE`** (the flare gun, the ray gun): a body that flies on the server's fixed step and bursts (`projectile_spawned`,
   `projectile_burst`); the shot itself draws only the muzzle flash. **Future launchers and ray guns use `PROJECTILE`**,
   so a travelling shot is always a real body with its own flight, not a drawn line. In the night `NightView` draws
   each one as a `ProjectileView` (a hot core, a flickering halo and a short spark trail), flown with the server's
@@ -63,6 +64,8 @@ the real command, its own model drawn).
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
 | `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
+| `flare_gun` (stand-in model) | `ray_gun`, the Ray gun | **Crane** only (0.2); [wonder weapons](#wonder-weapons-and-status-effects) | 100 + splash 55 / 0.5 s |
+| `revolver` (stand-in model) | `freeze_gun`, the Freeze gun | **Crane** only (0.2) | 30 + freezes / 0.5 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
@@ -169,6 +172,44 @@ is worth 1.5 times the weakest they carry, and play the crane only when some pri
 that margin they buy in circles. A player who carries no melee weapon falls back on the quick melee's blow in the
 simulator (the same definition the server sweeps with), and a free hand is worth that blow: a weapon that does less is
 not worth a slot or its price.
+
+## Wonder weapons and status effects
+
+Two crane-only weapons (#788); their numbers are provisional, in their `.tres` files, until the roster research
+(#785) decides them, and their models are stand-ins (the flare gun's and the revolver's) until the art lands (#797).
+
+- **Ray gun** (`ray_gun`): a `PROJECTILE` weapon like the flare gun, but fast (60 m/s), straight (no gravity) and
+  blue: the bolt is drawn in `bolt_core_colour` and `bolt_halo_colour` (`ProjectileView`) and bursts in a swelling
+  blue sphere (`BoltBurst`) the size of its splash. The bolt hurts the zombie it meets, and the burst hurts every
+  other zombie within `splash_radius` (3 m) by `splash_damage` sliding to `splash_min_fraction` at the edge
+  (`DamageModel.splash`, the same code as the flare's blast). Players are not targets on the combat server, so the
+  splash never reaches the shooter or a teammate; hurting the shooter would be a rule added to
+  `CombatServer._burst`.
+- **Freeze gun** (`freeze_gun`): a hitscan shot with an icy streak that goes through one zombie
+  (`penetration` 1). Each zombie it hits is **frozen for 3 s** (`WeaponDef.status` and `status_seconds`): it stops
+  moving and attacking, keeps its pose, and wears an ice shell. **Any hit on a frozen zombie kills it**: a shot of
+  any weapon, a melee blow, the quick melee, a grenade's blast. The hit takes all the health the zombie has left,
+  pays the kill the hit pays (a headshot kill, a melee kill, an explosion kill), and the zombie **shatters**: it is
+  gone at once, with no corpse and no blood, and the pieces of ice fly and fade (`zombie_shattered`,
+  `IceShatter`). The hit that freezes never shatters.
+- **Bosses** are **chilled**, not frozen: they keep walking at half speed for the same 3 s and a hit does not
+  shatter them. A boss that died to one hit would end the boss night the round curve is built on; the slow is still
+  worth a shot (`StatusDef.boss_status`).
+
+**Status effects** are one system, not a freeze: a `StatusDef` (`weapons/status/defs/<id>.tres`: `frozen`,
+`chilled`) says what a status does while it lasts (`halts`, `speed_scale`, `shatters`, what a boss gets instead, the
+shell's colour) and a `WeaponDef` says which one it puts on and for how long. The server's `StatusBoard` (owned by
+`CombatServer`) keeps the seconds left of every status on every zombie, runs them down on the combat clock and
+answers `status_applied` and `status_ended` events; the night server tells the zombie simulation
+(`ZombieSim.set_status`), and the rules read the board (`GameRules.statuses`) to kill a hit zombie that is under one
+that shatters. The snapshot carries the status in the zombie's mode byte (`ZombieCodec`, protocol 14), so every
+client draws it (`ZombieView.set_status`, `StatusLook`: one shell material for every zombie under a status, built in
+the warm-up). A new element for the re-cut (#794) is a new `StatusDef` file, an id in `StatusCatalog` and a `status`
+on the weapon; [what it taught](../research/status-effects.md).
+
+Bots (`BotMotor`, `WeaponWorth`): a frozen zombie is a contact with a `status`; one shot kills it, so the bot
+shoots it once and waits half a second for the kill before it tries again, and never in a burst. `WeaponWorth` rates
+a weapon whose hit shatters by two pulls to a kill at most. The ray gun is fired like any gun.
 
 ## The shoulder camera
 

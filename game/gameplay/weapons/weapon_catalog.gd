@@ -13,6 +13,8 @@ const IDS: Array[StringName] = [
 	&"crowbar",
 	&"baseball_bat",
 	&"fire_axe",
+	&"ray_gun",
+	&"freeze_gun",
 ]
 
 ## The blow every player has on its own button (#411): a knife-like swing with whatever is in hand.

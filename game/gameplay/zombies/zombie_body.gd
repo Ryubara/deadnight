@@ -44,6 +44,13 @@ var lure_id: int = 0
 var tear_progress: float = 0.0
 ## True while it stands at its boards working one loose this tick (a client plays the tear clip).
 var tearing: bool = false
+## The status effect it is drawn under, as the wire id of a `StatusDef` (0 for none); the snapshot
+## carries it. `ZombieSim.set_status` sets it with what the status does.
+var status: int = 0
+## It stands still and does not attack (a status that halts it: frozen).
+var halted: bool = false
+## The share of its walking speed it keeps (a status that slows it: chilled).
+var slow: float = 1.0
 
 
 func enter(new_mode: Mode) -> void:
@@ -87,4 +94,5 @@ func view_entry() -> Dictionary:
 		"speed": move_speed,
 		"look": look(),
 		"tearing": tearing,
+		"status": status,
 	}

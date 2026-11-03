@@ -6,7 +6,9 @@ extends Resource
 ## in the combat server and in the balance simulator alike.
 
 ## The weapons that can be re-cut, by catalogue id. A melee weapon has no magazine to grow.
-@export var weapons: Array[StringName] = [&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun"]
+@export var weapons: Array[StringName] = [
+	&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun", &"ray_gun", &"freeze_gun"
+]
 ## Added to the item's price for each weapon the buyer has already re-cut, so the first is
 ## the bargain and a bench full of re-cut weapons is a rich player's.
 @export_range(0, 10000, 50, "or_greater", "suffix:pts") var price_step: int = 1500
@@ -16,6 +18,8 @@ extends Resource
 ## re-cut fills both.
 @export_range(0.1, 10.0, 0.05, "or_greater", "suffix:x") var magazine_multiplier: float = 1.5
 @export_range(0.1, 10.0, 0.05, "or_greater", "suffix:x") var reserve_multiplier: float = 1.5
+## A weapon that puts a status on a burst (the freeze gun): its burst radius is multiplied by this.
+@export_range(1.0, 3.0, 0.01) var bloom_multiplier: float = 1.27
 ## Put before the weapon's name once it is re-cut ("Re-Cut Revolver").
 @export var name_prefix: String = "Re-Cut "
 

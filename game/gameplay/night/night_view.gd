@@ -15,6 +15,9 @@ const GRENADE_SCALE := 2.0
 const BLAST_NUMBER_LIFT := Vector3(0.0, 2.0, 0.0)
 ## How hard the shock perk shakes the local player's view (trauma, 0 to 1).
 const SHOCK_SHAKE := 0.25
+## The sound of a frozen zombie breaking: a stand-in (the head crack) until the wonder weapons'
+## own sounds land (#791).
+const SHATTER_SOUND := &"impact_head"
 ## Where the gibs of a zombie a blast killed start, and how hard they are thrown up.
 const GIB_LIFT := Vector3(0.0, 1.0, 0.0)
 const GIB_THROW := 2.0
@@ -222,6 +225,8 @@ func _on_event(event: Dictionary) -> void:
 			_show_blast_hit(event)
 		&"zombie_removed":
 			_gib(event)
+		&"zombie_shattered":
+			_shatter(event)
 		&"shot_fired":
 			began = PerfProbe.begin()
 			_show_shot(event)
@@ -241,7 +246,9 @@ func _on_event(event: Dictionary) -> void:
 			)
 			PerfProbe.end(&"fx.number", began)
 			began = PerfProbe.begin()
-			effects.blood_hit(event, _surfaces().callable())
+			# Ice does not bleed: a frozen zombie that is broken shows its pieces instead.
+			if not event.get("shattered", false):
+				effects.blood_hit(event, _surfaces().callable())
 			PerfProbe.end(&"fx.blood", began)
 		&"round_started":
 			Audio.play(&"round_start")
@@ -310,7 +317,23 @@ func _burst_projectile(event: Dictionary) -> void:
 		view.queue_free()
 		_projectile_views.erase(id)
 	effects.spark(event["point"])
-	effects.muzzle_flash(event["point"])
+	var def := _def_of(event)
+	if def != null and def.has_bolt_colours() and def.splash_radius > 0.0:
+		effects.bolt_burst(event["point"], def)
+	else:
+		effects.muzzle_flash(event["point"])
+
+
+## The definition of the weapon an event names, or null when it names none (a warm-up's sample).
+func _def_of(event: Dictionary) -> WeaponDef:
+	var id: StringName = event.get("weapon_id", &"")
+	return WeaponCatalog.get_def(id) if id in WeaponCatalog.IDS else null
+
+
+## A frozen zombie the server killed breaks into pieces of ice where it stood.
+func _shatter(event: Dictionary) -> void:
+	effects.shatter(event["position"], event.get("scale", 1.0), event["zombie_id"])
+	Audio.play(SHATTER_SOUND, event["position"])
 
 
 ## The flare lies where it landed and burns for as long as the server's lure lasts.
@@ -385,7 +408,7 @@ func _surfaces() -> WorldCast:
 
 ## A zombie a blast killed bursts into gibs where it stood.
 func _gib(event: Dictionary) -> void:
-	if event.get("zone", &"") != RulesAction.ZONE_BLAST:
+	if event.get("zone", &"") != RulesAction.ZONE_BLAST or event.get("shattered", false):
 		return
 	var at := _zombie_position(event["zombie_id"])
 	if at == Vector3.ZERO:

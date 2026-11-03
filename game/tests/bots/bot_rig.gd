@@ -31,6 +31,8 @@ var max_health := 100.0
 var downed := false
 ## The standing order the frame carries (`BotOrders.to_frame`), when a test gives one.
 var orders := {}
+## The weapon in the bot's hand (the revolver unless a test gives another).
+var weapon: StringName = WEAPON
 ## Whether the rig answers a pulled trigger with a shot (turn off to watch the aim alone).
 var shooting := true
 ## Whether the ground is lit everywhere.
@@ -106,12 +108,12 @@ func step(extra_events: Array = []) -> NightCommand:
 	bot.hear(events)
 	var command := bot.tick(STEP)
 	if shooting and command.fire and _cooldown <= 0.0 and _ammo > 0:
-		_cooldown = WeaponCatalog.get_def(WEAPON).fire_interval
+		_cooldown = WeaponCatalog.get_def(weapon).fire_interval
 		_ammo -= 1
 		shot_ticks.append(tick_count)
-		bot.hear([{"type": &"shot_fired", "shooter_id": ME, "weapon_id": WEAPON}])
+		bot.hear([{"type": &"shot_fired", "shooter_id": ME, "weapon_id": weapon}])
 		if _ammo == 0:
-			_ammo = WeaponCatalog.get_def(WEAPON).magazine_size  # An instant reload.
+			_ammo = WeaponCatalog.get_def(weapon).magazine_size  # An instant reload.
 	return command
 
 
@@ -142,11 +144,11 @@ func _frame_body() -> Dictionary:
 				"facing": facing,
 				"health": health,
 				"downed": downed,
-				"weapon": WEAPON,
+				"weapon": weapon,
 				"ammo": _ammo,
 				"reserve": 32,
 				"reloading": false,
-				"arms": {WEAPON: [_ammo, 32, 0]},
+				"arms": {weapon: [_ammo, 32, 0]},
 				"points": 0,
 				"prompt": {},
 			}

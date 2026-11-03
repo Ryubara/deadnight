@@ -51,6 +51,9 @@ const THROW_TURN_SECONDS := 1.5
 const FLARE_AIM_DEGREES := 1.0
 ## The widest the view may be off a target for a panic shot (degrees).
 const PANIC_DEGREES := 25.0
+## Seconds a shot at a frozen zombie is given to kill it (the answer and the next frame) before the
+## bot shoots that zombie again: one hit shatters it, so a burst would only spend rounds.
+const FROZEN_WAIT := 0.5
 ## Shots in a burst of an automatic weapon.
 const BURST_MIN := 3
 const BURST_MAX := 5
@@ -76,6 +79,11 @@ var _started := false
 var _retarget_left := 0.0
 var _pause_left := 0.0
 var _burst_left := 0
+## The shot just asked for was at a frozen zombie: one hit kills it, so it is not a burst.
+var _lone_shot := false
+## The frozen zombie last shot at, and the seconds left of the wait before it may be shot again.
+var _lone_id := -1
+var _lone_left := 0.0
 var _focus := 0.0
 var _head := false
 var _weak := false
@@ -315,9 +323,27 @@ func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool 
 	if int(me.get("ammo", 0)) <= 0 or _retarget_left > 0.0 or _pause_left > 0.0:
 		return false
 	var limit := PANIC_DEGREES if _panicky else _cone_degrees(distance) * _profile.fire_slop
-	if error_degrees > limit:
+	var off_target := error_degrees > limit or _inside_own_splash(weapon, distance)
+	if off_target or not _may_shoot_frozen(contact):
 		return false
 	triggers += 1
+	return true
+
+
+## A burst that would hurt the shooter (the ray gun's) is not fired inside its own splash.
+static func _inside_own_splash(weapon: WeaponDef, distance: float) -> bool:
+	return weapon.self_splash_share > 0.0 and distance < weapon.splash_radius
+
+
+## A frozen zombie is shot once and then given `FROZEN_WAIT` to break; any other contact is free.
+func _may_shoot_frozen(contact: Dictionary) -> bool:
+	_lone_shot = is_shatterable(contact)
+	if not _lone_shot:
+		return true
+	if _lone_left > 0.0 and contact["id"] == _lone_id:
+		return false
+	_lone_id = contact["id"]
+	_lone_left = FROZEN_WAIT
 	return true
 
 
@@ -409,6 +435,13 @@ func _weapon_of(me: Dictionary) -> WeaponDef:
 	return _weapon_def
 
 
+## Whether any hit kills this zombie as it stands: it is frozen (a status that shatters, by the wire
+## id its entry in the frame carries), so one shot is all it takes.
+static func is_shatterable(contact: Dictionary) -> bool:
+	var status := StatusCatalog.by_wire(int(contact.get("status", 0)))
+	return status != null and status.shatters
+
+
 ## Half the angle the weapon's hit covers at this distance.
 static func _cone_degrees(distance: float) -> float:
 	return clampf(rad_to_deg(atan2(HIT_RADIUS, maxf(distance, 0.1))), CONE_MIN, CONE_MAX)
@@ -428,6 +461,9 @@ func _count_shots(shots: int, automatic: bool) -> void:
 		_panicky = _profile.panic_rate > 0.0 and _rng.randf() < _profile.panic_rate
 		if not automatic:
 			continue
+		if _lone_shot:
+			_burst_left = 0
+			continue
 		if _burst_left <= 0:
 			_burst_left = _rng.randi_range(BURST_MIN, BURST_MAX)
 		_burst_left -= 1
@@ -437,5 +473,6 @@ func _count_shots(shots: int, automatic: bool) -> void:
 
 
 func _tick_timers(delta: float) -> void:
+	_lone_left = maxf(_lone_left - delta, 0.0)
 	_retarget_left = maxf(_retarget_left - delta, 0.0)
 	_pause_left = maxf(_pause_left - delta, 0.0)

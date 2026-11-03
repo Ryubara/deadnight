@@ -36,6 +36,9 @@ const MODELS := {
 	&"weapon_fire_axe": "res://assets/weapons/fire_axe/fire_axe.glb",
 	&"weapon_pistol": "res://assets/weapons/revolver/revolver.glb",
 	&"weapon_crowbar": "res://assets/weapons/crowbar/crowbar.glb",
+	# Stand-in models until the wonder weapons' own land (#797).
+	&"weapon_ray_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
+	&"weapon_freeze_gun": "res://assets/weapons/revolver/revolver.glb",
 }
 ## How long a model is drawn on the stage, in metres; the others use `MODEL_LENGTH`. The flare gun
 ## is a pistol and stays small beside the long guns.
@@ -46,6 +49,8 @@ const MODEL_LENGTHS := {
 	&"weapon_fire_axe": 1.3,
 	&"weapon_pistol": 0.8,
 	&"weapon_crowbar": 1.3,
+	&"weapon_ray_gun": 0.8,
+	&"weapon_freeze_gun": 0.8,
 }
 ## The cycling starts this quick (seconds between weapons) and slows to the slow one.
 const CYCLE_FAST := 0.07

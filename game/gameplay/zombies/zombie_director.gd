@@ -11,6 +11,8 @@ extends RefCounted
 ## player count): requests wait here until a zombie falls, in the order they came.
 
 signal player_struck(player_id: int, zombie_id: int, damage: float)
+## A frozen zombie was killed and broke apart: the `zombie_shattered` event (`ZombieSim.shatter`).
+signal zombie_shattered(event: Dictionary)
 
 var rules: GameRules
 var sim: ZombieSim
@@ -77,7 +79,7 @@ func _on_rules_event(event: Dictionary) -> void:
 			_waiting.append(event)
 			_admit_waiting()
 		&"zombie_removed":
-			_remove(event["zombie_id"], event["cause"])
+			_remove(event["zombie_id"], event["cause"], event.get("shattered", false))
 		&"zombie_crippled":
 			_cripple(event)
 		&"zombie_damaged":
@@ -94,12 +96,16 @@ func _cripple(event: Dictionary) -> void:
 	sim.cripple(event["zombie_id"], profile, event["speed_scale"])
 
 
-func _remove(zombie_id: int, cause: StringName) -> void:
+func _remove(zombie_id: int, cause: StringName, shattered: bool = false) -> void:
 	var index := _waiting.find_custom(
 		func(e: Dictionary) -> bool: return e["zombie_id"] == zombie_id
 	)
 	if index != -1:
 		_waiting.remove_at(index)
+	elif cause == &"killed" and shattered:
+		var broken := sim.shatter(zombie_id)
+		if not broken.is_empty():
+			zombie_shattered.emit(broken)
 	elif cause == &"killed":
 		sim.begin_death(zombie_id)
 	else:
