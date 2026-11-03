@@ -93,7 +93,7 @@ Besides the doors, the lot sells at fixed spots: the markers of `ShopSpots` in t
 `shop_id`, read by `NightWorld.shop_spots()`. A player in reach (3.2 m, `NightTuning.use_reach`) of one is offered what
 it sells on the prompt card and buys with `interact`, the same press as a door; a door in reach wins, then the nearest
 spot with something to sell. What a spot offers comes from the rules' tuning, so the price is never in the scene (the
-plaque only names the weapon).
+plaque shows the weapon's silhouette, never its name: [wall silhouettes](../research/wall-silhouettes.md)).
 
 | Spot | Where | Sells | Why there |
 | --- | --- | --- | --- |
@@ -138,8 +138,9 @@ m north so the fountain's spot is farther than a reach from it.
 
 A locker never sells the crowbar anything (it never runs dry). The tests (`test_shop_spots.gd`) hold every spot to a
 real shop item, to the lot, and farther than a reach from every door slab and from every spot of another kind, so one
-press never means two things. The lockers are a green crate with a yellow band, the wall weapons an amber plaque, all
-lit by their own colour so they read in the dark (captures in the pull request).
+press never means two things. The lockers are a green crate with a yellow band, the wall weapons an amber plaque with
+the weapon's own silhouette on it in dark brown (no weapon text from a distance; the prompt card gives the name and
+the price from reach), all lit by their own colour so they read in the dark (captures in the pull request).
 
 ## The ticket plaza
 

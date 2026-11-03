@@ -15,6 +15,7 @@
 [ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]
 [ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]
 [ext_resource type="Script" path="res://world/drive_in/model_glow.gd" id="model_glow"]
+[ext_resource type="Script" path="res://world/shop/wall_silhouette.gd" id="silhouette"]
 [ext_resource type="PackedScene" path="res://world/drive_in/wreck.tscn" id="wreck"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrel.tscn" id="prop_barrel"]
 [ext_resource type="PackedScene" path="res://world/drive_in/props/barrel_spill.tscn" id="prop_barrel_spill"]
@@ -2587,14 +2588,10 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -8.200, 
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
-[node name="ShotgunSign" type="Label3D" parent="ShopProps"]
+[node name="ShotgunSilhouette" type="Node3D" parent="ShopProps"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -8.200, 1.600, -4.340)
-pixel_size = 0.006
-text = "SHOTGUN"
-font_size = 72
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
+script = ExtResource("silhouette")
+shop_id = &"weapon_shotgun"
 
 [node name="SpotShotgun" type="Marker3D" parent="ShopSpots"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -8.200, 0.000, -5.600)
@@ -2606,14 +2603,10 @@ transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 10.260, 
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
-[node name="GrenadeSign" type="Label3D" parent="ShopProps"]
+[node name="GrenadeSilhouette" type="Node3D" parent="ShopProps"]
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 10.340, 1.600, 3.000)
-pixel_size = 0.006
-text = "GRENADES"
-font_size = 56
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
+script = ExtResource("silhouette")
+shop_id = &"grenades"
 
 [node name="SpotGrenades" type="Marker3D" parent="ShopSpots"]
 transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, 11.400, 0.000, 3.000)
@@ -2625,14 +2618,10 @@ transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -4.000, 
 size = Vector3(1.7, 0.9, 0.12)
 material = ExtResource("plaque")
 
-[node name="RifleSign" type="Label3D" parent="ShopProps"]
+[node name="RifleSilhouette" type="Node3D" parent="ShopProps"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 1.600, 21.660)
-pixel_size = 0.006
-text = "RIFLE"
-font_size = 72
-outline_size = 24
-modulate = Color(0.1, 0.07, 0.02, 1)
-outline_modulate = Color(1, 0.9, 0.6, 1)
+script = ExtResource("silhouette")
+shop_id = &"weapon_rifle"
 
 [node name="SpotRifle" type="Marker3D" parent="ShopSpots"]
 transform = Transform3D(-1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, -1.0000, -4.000, 0.000, 20.400)
