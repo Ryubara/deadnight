@@ -29,6 +29,10 @@ var on_action := Callable()
 ## has a fight in it without waiting for the dead to walk the lot, and no route round an obstacle
 ## to choose between. Done the same way in `replay`.
 var stage_the_dead := false
+## How far in front of a player the staged dead are put: from `stage_near` metres, each further one
+## `stage_step` metres beyond the one before, four steps round (10 to 16 m by default).
+var stage_near := 10.0
+var stage_step := 2.0
 ## When on, every command the bots send leaves with the trigger up: the bots move, look and dodge
 ## as they would but never shoot (a test of the legs alone, on a zombie a hit would stagger).
 var hold_fire := false
@@ -308,7 +312,9 @@ func _stage() -> void:
 		_staged[id] = true
 		var owner := server.body_of(seats[id % seats.size()]).global_position
 		var around := deg_to_rad(float((id * 37) % 80) - 40.0)
-		var ahead := Vector3(-sin(around), 0.0, -cos(around)) * (10.0 + float(id % 4) * 2.0)
+		var ahead := (
+			Vector3(-sin(around), 0.0, -cos(around)) * (stage_near + float(id % 4) * stage_step)
+		)
 		zombie.position = NavigationServer3D.map_get_closest_point(world.map(), owner + ahead)
 		zombie.gate_id = &""
 		zombie.enter(ZombieBody.Mode.CHASE)
