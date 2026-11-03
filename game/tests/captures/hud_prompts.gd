@@ -3,8 +3,11 @@ extends Node
 ## the cards around it, at the canvas a window gives (see `hud_worst_case.gd` for how).
 ##
 ## `godot --path game res://tests/captures/hud_prompts.tscn -- --out=<png>
-## [--case=locker|wall|refused|circuit|fuel] [--window=WxH] [--crop=x,y,w,h]`. The canvas is the
-## project's: 1920 x 1080 stretched to the window, so `--window=844x390` is a phone held sideways.
+## [--case=locker|wall|refused|circuit|fuel|link] [--window=WxH] [--crop=x,y,w,h]`. `--case=link`
+## shows a paid link's card (`--link=<shop id>`, `--map=lot|small|bare`: the map's own words, or the
+## lot's defaults, which is how the second map's card read before it had words of its own).
+## The canvas is the project's: 1920 x 1080 stretched to the window, so `--window=844x390` is a
+## phone held sideways.
 
 const GROUND := Color("2a2f3a")
 const BASE := Vector2(1920.0, 1080.0)
@@ -34,7 +37,7 @@ func _ready() -> void:
 	state.set_ammo(6, 20, "Revolver")
 	state.set_health(80.0, 100.0)
 	state.apply_event({"type": &"points_changed", "player_id": 1, "total": 1250, "delta": 0})
-	_case(fixture, str(args.get("case", "locker")))
+	_case(fixture, str(args.get("case", "locker")), args)
 	for _i in 10:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
@@ -48,9 +51,18 @@ func _ready() -> void:
 	get_tree().quit()
 
 
-func _case(fixture: HudFixture, name: String) -> void:
+func _case(fixture: HudFixture, name: String, args: Dictionary) -> void:
 	var state := fixture.hud.state
 	match name:
+		"link":
+			var words: MapWords = null
+			if str(args.get("map", "lot")) == "small":
+				words = (load("res://world/smallmap/smallmap_tuning.tres") as MapTuning).words
+			var binding := NightHudBinding.new(
+				fixture.hud, ClientState.new(), fixture.rules.tuning, null, words
+			)
+			var id := StringName(str(args.get("link", "door_concession")))
+			binding.show_prompt({"kind": &"door", "id": id, "price": int(args.get("price", 350))})
 		"wall":
 			state.set_prompt(&"buy_weapon", "Double-Barrel Coach Gun", 1200)
 		"refused":

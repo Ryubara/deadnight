@@ -44,6 +44,10 @@ var bus: StringName = &"Effects"
 ## value here makes `volume_db` the near level (0) or a little above; `inf` leaves the engine's
 ## default.
 @export var near_cap_db: float = INF
+## How much a wall between the sound and the listener dulls and quiets it: 1 is the service's full
+## occlusion (9 dB down and a low-pass at 1.1 kHz), 0 none at all. A warning that must carry through
+## cover (a grenade's fuse beep) takes less than 1; every other sound keeps 1.
+@export_range(0.0, 1.0, 0.05) var occlusion_scale := 1.0
 ## A sound behind the listener is darker (a low-pass), the cue by which front and back are told
 ## apart on two speakers, which panning alone cannot do.
 @export var rear_cue := false

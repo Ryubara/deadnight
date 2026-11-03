@@ -73,8 +73,11 @@ const NIGHT_SOUND_TUNING := {
 	"max_world_impacts": 3,
 	"hit_match_radius": 1.5,
 	"range_margin": 0.5,
-	"tick_gap_start": 0.5,
-	"tick_gap_end": 0.1,
+	"beep_gap_start": 0.5,
+	"beep_gap_end": 0.09,
+	"beep_curve": 1.6,
+	"beep_db_start": -3.0,
+	"beep_db_end": 2.0,
 	"bounce_quiet_db": -9.0,
 	"bounce_loud_db": 0.0,
 	"bounce_fast_speed": 12.0,
@@ -328,6 +331,9 @@ static func sounds() -> Dictionary:
 		var row: Dictionary = table[id]
 		if row["near_cap_db"] is String:
 			row["near_cap_db"] = INF
+		# Walls dull every sound in full unless its row says otherwise (the fuse's beep carries).
+		if not row.has("occlusion_scale"):
+			row["occlusion_scale"] = 1.0
 	return table
 
 

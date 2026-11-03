@@ -131,7 +131,10 @@ func _text_for(event: Dictionary) -> String:
 	match type:
 		&"purchase_made":
 			var item := StringName(event.get("item_id", &""))
-			text = "%s %s" % [who, ITEM_NAMES.get(item, "BOUGHT SOMETHING")]
+			if state.link_names.has(item):
+				text = "%s OPENED THE %s" % [who, state.link_names[item].to_upper()]
+			else:
+				text = "%s %s" % [who, ITEM_NAMES.get(item, "BOUGHT SOMETHING")]
 		&"player_downed":
 			text = "%s IS DOWN" % who
 		&"player_revived":

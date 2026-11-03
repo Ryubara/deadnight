@@ -92,12 +92,12 @@ func test_it_never_passes_through_the_floor_even_when_thrown_hard() -> void:
 
 func test_a_rolling_grenade_runs_off_a_ledge_and_falls() -> void:
 	var ledge := func(from: Vector3, to: Vector3) -> Dictionary:
-		# A floor that ends at z = -3 (nothing beyond), at y = 0.
+		# A floor that ends at z = -1.5 (nothing beyond), at y = 0; the heavy grenade stops in under 3 m.
 		var length := from.distance_to(to)
 		if from.y >= 0.0 and to.y < 0.0:
 			var t := from.y / (from.y - to.y)
 			var at: Vector3 = from.lerp(to, t)
-			if at.z > -3.0:
+			if at.z > -1.5:
 				return {"distance": length * t, "normal": Vector3.UP}
 		return {}
 	var state := GrenadeState.new(1, 1, _def, Vector3(0, _def.radius, 0), Vector3(0, 0, -7), 99.0)

@@ -345,6 +345,10 @@ func add_body(spawn: Vector3, local_input: bool, drawn: bool = true) -> Player:
 	body.capture_mouse = local_input
 	if not drawn:
 		body.strip_model()
+	if not local_input:
+		# Only the person's own body owns the current camera: a bot's, which enters the tree after
+		# it, would take the view (#702).
+		body.release_view()
 	add_child(body)
 	body.teleport(spawn)
 	body.set_physics_process(false)
