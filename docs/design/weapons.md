@@ -65,9 +65,20 @@ the real command, its own model drawn).
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
+| `mp5` ([models](../research/weapon-models.md)) | `mp5`, the MP5 | **Wall** 1,300 (the yard), and the **crane** (2) | 15 / 0.10 s |
+| `ppsh` | `ppsh`, the PPSh | **Crane** only (2) | 10 / 0.055 s |
+| `m4a1` | `m4a1`, the M4A1 | **Wall** 1,600 (the back lot), and the **crane** (1.5) | 20 / 0.11 s |
+| `m249` | `m249`, the M249 | **Crane** only (1.5) | 15 / 0.09 s, pierces 1 |
+| `fifty_cal` | `fifty_cal`, the .50 calibre rifle | **Crane** only (1.5) | 220 / 0.9 s, pierces 4 |
+| `pump_870` | `pump_870`, the Pump 870 | **Wall** 700 (the stand), and the **crane** (2) | 22 x 6 / 0.65 s |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
+
+**The six firearms of [#793](https://github.com/Ryubara/deadnight/issues/793)** (the MP5, PPSh, M4A1, M249, .50 calibre
+rifle and Pump 870) are built: [their numbers](#the-nine-new-weapons-785) and [what is special about three of
+them](#the-six-firearms-793). The dual pistols, ray gun and freeze gun are [#789](https://github.com/Ryubara/deadnight/issues/789)
+and [#788](https://github.com/Ryubara/deadnight/issues/788).
 
 **On the second map the walls sell more** ([the shop of the small map](smallmap.md#the-shop-formula-rows-22-to-25)):
 nine places for eight weapons, so the revolver (90, back in the pool after it is given up), the crowbar (270), the
@@ -214,6 +225,12 @@ distance down to the floor and holds there to the range.
 | Crowbar | melee sweep, 2 targets | 45 | 0.55 s | none | none | none | 1.9 m |
 | Baseball bat | melee sweep, 4 targets | 60 | 0.4 s | none | none | none | 1.8 m |
 | Fire axe | melee sweep, 2 targets | 150 | 0.9 s | none | none | none | 1.8 m |
+| MP5 | hitscan, auto | 15 | 0.10 s | 30 / 120 (max 180) | 1.9 s | 12 to 34 m (55%) | 55 m |
+| PPSh | hitscan, auto | 10 | 0.055 s | 50 / 100 (max 200) | 2.8 s | 8 to 24 m (45%) | 40 m |
+| M4A1 | hitscan, auto | 20 | 0.11 s | 30 / 90 (max 150) | 2.1 s | 22 to 55 m (65%) | 90 m |
+| M249 | hitscan, auto, pierces 1 | 15 | 0.09 s | 100 / 150 (max 250) | 5.0 s | 14 to 40 m (55%) | 70 m |
+| Fifty cal | hitscan, semi, pierces 4 | 220 | 0.9 s | 5 / 20 (max 40) | 3.4 s | none | 150 m |
+| Pump 870 | 6 pellets, 5 degrees, loads by the round | 22 x 6 | 0.65 s | 6 / 42 (max 66) | 2.8 s | 10 to 26 m (45%) | 35 m |
 
 Shots to kill at close range (head / body), against the health in [the rounds table](rounds.md#the-tuning-table):
 
@@ -227,6 +244,12 @@ Shots to kill at close range (head / body), against the health in [the rounds ta
 | Crowbar | 1 / 2 | 1 / 2 | 3 / 4 | 82 | 82 |
 | Baseball bat | 1 / 1 | 1 / 2 | 2 / 3 | 150 | 150 |
 | Fire axe | 1 / 1 | 1 / 1 | 1 / 1 | 167 | 167 |
+| MP5 | 2 / 4 | 3 / 6 | 5 / 10 | 150 | 92 |
+| PPSh | 4 / 5 | 6 / 9 | 10 / 14 | 182 | 90 |
+| M4A1 | 2 / 3 | 3 / 5 | 4 / 7 | 182 | 111 |
+| M249 | 2 / 4 | 4 / 6 | 6 / 10 | 167 | 107 |
+| Fifty cal | 1 / 1 | 1 / 1 | 1 / 1 | 244 | 139 |
+| Pump 870 (all six pellets) | 1 / 1 | 1 / 1 | 1 / 2 | 203 | 118 |
 
 The shots are the health of the zombie (the table in the page above; `rounds.md` is the source) over the weapon's
 damage, rounded up. "With reloads" is the sustained rate over a whole magazine and its reload, the number the
@@ -269,9 +292,9 @@ damage, rounded up. "With reloads" is the sustained rate over a whole magazine a
 
 ## The nine new weapons (#785)
 
-**Planned, not built.** Nine weapons are added to the eight (seventeen in all): six firearms
-([#793](https://github.com/Ryubara/deadnight/issues/793)), the two wonder weapons and the status effects they need
-([#788](https://github.com/Ryubara/deadnight/issues/788)) and the dual pistols
+**Six are built, three are planned.** Nine weapons are added to the eight (seventeen in all): six firearms
+([#793](https://github.com/Ryubara/deadnight/issues/793), **built**), the two wonder weapons and the status effects they
+need ([#788](https://github.com/Ryubara/deadnight/issues/788)) and the dual pistols
 ([#789](https://github.com/Ryubara/deadnight/issues/789)). This section is the one place their numbers are decided; the
 build issues copy them into `defs/<id>.tres`. The evidence is [the roster research](../research/weapon-roster.md), the
 re-cut of each is [on the re-cut page](upgrades.md#the-re-cut-plan-for-seventeen-weapons-785). Falloff and zones read as
@@ -381,6 +404,37 @@ revolver on rate and magazine and lose it the one-shot head (the revolver kills 
 **fifty cal** is the slowest and the leanest of all and the only one that kills a line of zombies and a late
 round's heavy ones in one hit. The only exception to "at its price" is the **wonder pair**, which are one-hit kills
 for most of the night and are held down by rarity and ammunition, not by price ([below](#the-wonder-weapons)).
+
+### The six firearms (#793)
+
+The six are `defs/<id>.tres` (`mp5`, `ppsh`, `m4a1`, `m249`, `fifty_cal`, `pump_870`) with the numbers above, in
+`WeaponCatalog.IDS` and `UpgradeTuning.weapons` (so each is re-cut once, [the plan](upgrades.md#what-each-weapon-becomes)).
+`game/tests/weapons/test_new_firearms.gd` pins every number and the three behaviours below.
+
+- **The .50 calibre goes through four zombies.** `penetration` 4, each one 0.7 of the one before (220, 154, 108, 76,
+  53 on the body): the shot is the rifle's (`AimResolver.trace_one`) with a longer line, so a wall still stops it.
+- **The M249 shoots wider on the move.** `moving_spread_deg` 2.4: its 2.6 degree cone grows by that much at a full run
+  (0 standing, linearly between): 5.0 degrees at a run. The night server gives the fire action a `move` share
+  (`CombatAction.fire`, the body's ground speed over `run_speed`), and the spread is still seeded by the match, the
+  shooter and the shot number, so a client that replays a shot scatters it the same way. No other weapon has one.
+  Its **5 second reload** is the other cost, and it pierces one zombie.
+- **The pump loads a round at a time, and a shot ends the reload.** `reload_by_round`: `reload_time` (2.8 s) is the whole
+  tube from empty, so a round takes 2.8 / 6 = 0.47 s, each is in the magazine the moment it goes in (the HUD's count
+  rises a round at a time: `reload_round`), and a pull of the trigger with at least one round in ends the reload and
+  fires (`reload_interrupted`, the rounds loaded stay). With none in, the shot is refused as before (`reloading`). A
+  reload of two rounds takes 0.93 s. The reload perk quickens each round. The motion is a loop of one cycle a round
+  (`ReloadMotion.loop_rounds`): the shell is fetched from the belt and put in the port, `shell_in` and `pouch` sound for
+  each, and a shorter reload plays the lead-in, that many cycles and the rack of the pump.
+- **The bots** fire a pump that is still loading as soon as it has a round (`BotMotor`); every other weapon waits for its
+  reload to end.
+- **Where they are**: the pump on the stand's west wall (past the concession's door), the MP5 on the yard's south
+  fence, the M4A1 on the back lot's south fence, each a plaque with the name and a spot that sells it (the price is the
+  shop's); on the second map three more walls, the pump in the side room (405), the MP5 (765) and the M4A1 (945)
+  upstairs ([the shop](smallmap.md#the-shop-formula-rows-22-to-25)). All six are in both maps' box. Their rounds are
+  sold at the locker or the weapon's own wall at #785's prices.
+- **Names are strings.** `display_name` is "PPSh", "MP5", "M4A1", "M249", "Fifty cal" and "Pump 870": the maintainer
+  decides the shipped ones ([below](#display-names-the-maintainers-choice)); the HUD, the cards, the wall prompts and the
+  feed read them from the definition.
 
 ### The dual pistols
 

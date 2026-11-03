@@ -157,10 +157,16 @@ through, to the room it opens into and the height it is at.
 | | Fire axe | 720 | 1.6 |
 | | Pump shotgun (a second wall of it) | 540 | 1.2 |
 | Upstairs, the cabinet (over the side room) | Hunting rifle | 675 | 1.5 |
+| Side room, south wall | Pump 870 (#793) | 405 | 0.9 |
+| Upstairs, north wall | MP5 (#793) | 765 | 1.7 |
+| Upstairs, north wall, west end | M4A1 (#793) | 945 | 2.1 |
 | Side room, north wall: the box (our crane) | a random gun you lack | 425 | 0.94 |
 | An ammunition locker in each room and one more upstairs | rounds for the weapon in hand | the shared table's | |
 
-Prices climb room by room as the formula asks, each within 10% of its ratio (`test_smallmap_economy.gd`). Eight
+The three rows marked #793 are the new firearms' walls at the ratios of
+[their table](weapons.md#where-they-are-and-what-they-cost); they are counted apart from the formula's eight (rows 23
+and 24 are about those), and the PPSh, M249 and .50 calibre are the box's alone. Prices climb room by room as the
+formula asks, each within 10% of its ratio (`test_smallmap_economy.gd`). Eight
 weapons make nine places, so the shotgun hangs on two walls (same price, different rooms): the wall of a weapon already
 carried sells its rounds. The box has **one place and never moves**: its `leave_chances` are empty, so no play breaks
 it down; it needs no link (the walls around it are the side room's). The prizes are the lot's (the shotgun heaviest).

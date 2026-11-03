@@ -361,3 +361,42 @@ Every median is the same or a round better; the means of the average and strong 
 tenths lower (a magazine of two leaves a player waiting under two seconds in a crowd more often), inside what 150
 nights a cell moves. A weapon's magazine and reload time reach the model through `WeaponDef` alone (`SimWeapons`,
 `SimArm.reload` is compared with `WeaponState` in a test), so no model code changed.
+
+## The six firearms (#793)
+
+The MP5, PPSh, M4A1, M249, .50 calibre rifle and 870 pump go into the box's pool at #785's weights (10.5 on top of the
+old 13) with their rounds on sale at #785's prices, and the re-cut on all six (`UpgradeTuning.weapons`). The gate's six
+cells (60 nights, seed 4000; weak solo, average 1, 2, 4 and 8, strong solo; the medians in that order), the baseline
+taken from a separate checkout of `main` (`6eb77065`) before any change, every row the same seeds:
+
+| Step | Medians | Average solo mean, headliner time to kill | The gate |
+| --- | --- | --- | --- |
+| `main` (the control: the six defined and left out of the pool gives these exactly) | 5 / 10 / 15 / 16 / 18 / 18 | 11.57, 29.1 s | passes |
+| the six in the pool, their rounds on sale | 5 / **15** / 15 / 17 / 18 / 18 | 12.20, **31.5 s** | average solo 15 (to 14), the boss night kills 85% of weak players (at most 85%), the headliner takes 31.5 s (at most 30) |
+| the same without their rounds on sale | 5 / 12 / 14 / 16 / 18 / 18 | 11.13, 31.5 s | only the headliner's time |
+| the rounds at x1.5 / x2 the price | 5 / 14 / 15 / 17 / 18 / 18 and 5 / 15 / 15 / 17 / 18 / 18 | 12.08 / 12.13 | the headliner's time (31.2, 31.0 s) and the weak boss night |
+| the new weights x0.75 | 5 / 14 / 15 / 17 / 18 / 18 | 11.78, 31.0 s | the headliner's time |
+| health growth 1.16 alone | 5 / 14 / 15 / 16 / 18 / 18 | 11.93, 32.2 s | the headliner's time, the weak boss night |
+| the headliner at x15 alone | 5 / 15 / 15 / 17 / 18 / 18 | 12.37, 29.4 s | average solo 15 |
+| **health growth 1.16 and the headliner at x15** (shipped) | 5 / 14 / 15 / 15 / 18 / 18 | 11.88, 29.8 s | passes (the weak boss night 82%) |
+
+What it says:
+
+- **#785's gate run left the rounds out of the box's pool.** It gave the new guns no ammunition to buy (its players bought
+  through the crane and the walls and re-cut), so a weapon ran dry at its reserve; with the rounds on sale the average solo
+  night is half a round longer on average and the median jumps from 10 to 15 (the distribution is two humps, so a half
+  round is five in the median). The ammunition's own share of the spending stays in its range.
+- **Each gun alone moves the headliner's time by a second either way** (the PPSh 30.0, the MP5 31.5, the M4A1 28.9 s,
+  pairs 29.9 to 30.7): about 60 headliners are killed in a cell, so the number is good to a second and a half and the
+  baseline sits 0.9 under its limit. No single gun is the cause, which is why no number of the guns was moved: they are
+  #785's.
+- **The lever is the rounds' table, as #785 said it might be** (`health_growth` 1.15 to 1.16 puts the median back to
+  14) and the headliner's health (x16.25 to x15, the boss at 92%: its time 29.8 s). Both are in `default_tuning.tres`;
+  the bots' risk table (`bot_revive_risk.gd`) follows the boss. The maintainer's decision of the strong solo ceiling
+  (19) is in `BalanceTargets`; the cell read 18, so it is headroom.
+- **Not modelled**: the .50's and the M249's piercing, the M249's wider shot on the move, the pump's interrupted reload
+  (the simulator reloads a pump when it is empty, the 2.8 s of its definition).
+
+Run it: `godot --headless --path game -s <script> -- --set=rounds.health_growth=1.16 --set=roster.types:headliner.health_multiplier=15`
+with the six cells of `test_balance_targets.gd` run on worker threads; the sample behind every number above is
+60 nights a cell, seed 4000, except where a row says otherwise.

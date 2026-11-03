@@ -33,6 +33,8 @@ func test_a_wall_weapon_bought_through_the_rules_is_carried_and_in_hand() -> voi
 func test_every_crane_prize_reaches_the_players_hands() -> void:
 	var night := await _start(RulesFixture.steady_crane_tuning())
 	var item := night.server.rules.tuning.economy.item(&"crane_play")
+	# Enough points for a play of every prize, whatever the pool's size.
+	night.server.rules.apply(RulesAction.grant_points(1, item.price * item.pool.size()))
 	# Two hands (#410): each prize replaces the weapon in hand, and the hands follow the rules.
 	for _i in item.pool.size():
 		night.server.buy(1, &"crane_play")

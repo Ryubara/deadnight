@@ -14,7 +14,7 @@ const MEDIAN_ROUND := {
 	"average:2": [11, 16],
 	"average:4": [12, 17],
 	"average:8": [14, 20],
-	"strong:1": [12, 18],
+	"strong:1": [12, 19],
 }
 ## The first rounds are a lesson, not a test: this share of average solo nights clears round 4.
 const MIN_SURVIVE_ROUND_4 := 0.85

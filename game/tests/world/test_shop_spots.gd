@@ -25,17 +25,39 @@ func after_test() -> void:
 	_world.queue_free()
 
 
-func test_the_lot_has_two_wall_weapons_a_crane_lockers_three_machines_and_a_grenade_rack() -> void:
+func test_the_lot_has_five_wall_weapons_a_crane_lockers_three_machines_and_a_grenade_rack() -> void:
 	var kinds := {}
 	for spot in _spots:
 		kinds[spot["kind"]] = kinds.get(spot["kind"], 0) + 1
-	assert_int(kinds[&"wall"]).is_equal(2)
+	# The shotgun and the rifle, and the pump, the MP5 and the M4A1 of #793.
+	assert_int(kinds[&"wall"]).is_equal(5)
 	assert_int(kinds[&"crane"]).is_equal(CraneTuning.new().spot_count())
 	assert_int(kinds[&"ammo"]).is_greater_equal(4)
 	assert_int(kinds[&"upgrade"]).is_equal(1)
 	# The soda fountain and the five other perk machines, one to a tonic of the shop.
 	assert_int(kinds[&"perk"]).is_equal(PerkEffects.tonic_ids(RulesFixture.tuning().economy).size())
 	assert_int(kinds[&"rack"]).is_equal(1)
+
+
+func test_the_new_firearms_walls_stand_in_their_areas() -> void:
+	# The pump inside the stand (past the concession's door), the MP5 in the yard, the M4A1 in the
+	# back lot (#793): x and z of each area's floor.
+	var areas := {
+		&"weapon_pump_870": Rect2(-10, -4, 20, 12),
+		&"weapon_mp5": Rect2(16, -4, 46, 42),
+		&"weapon_m4a1": Rect2(-62, -4, 46, 42),
+	}
+	for id: StringName in areas:
+		var found := _spots.filter(
+			func(spot: Dictionary) -> bool: return spot["shop_id"] == id and spot["kind"] == &"wall"
+		)
+		assert_int(found.size()).override_failure_message(String(id)).is_equal(1)
+		var at: Vector3 = found[0]["position"]
+		(
+			assert_bool((areas[id] as Rect2).has_point(Vector2(at.x, at.z)))
+			. override_failure_message(String(id))
+			. is_true()
+		)
 
 
 func test_every_spot_has_a_known_kind_and_wall_and_crane_name_shop_items() -> void:

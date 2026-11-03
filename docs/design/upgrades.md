@@ -98,7 +98,9 @@ tier]`, the second wire change of #281).
 
 ## The re-cut plan for seventeen weapons (#785)
 
-**Planned, not built** (the build is [#794](https://github.com/Ryubara/deadnight/issues/794)). The research
+**Planned** (the build is [#794](https://github.com/Ryubara/deadnight/issues/794)); the six firearms are already in
+`UpgradeTuning.weapons` ([#793](https://github.com/Ryubara/deadnight/issues/793)), so they are re-cut by the numbers
+below without their elements (they have none). The research
 ([the roster](../research/weapon-roster.md#the-upgrade-station-what-the-genre-does-and-what-ours-does)) found no reason
 to change the re-cut: it stays **1,500 points (+1,500 per weapon already re-cut), x1.75 damage, x1.5 magazine and
 reserve limit, filled, once a weapon**. What the plan adds is which weapons it goes on, what each one becomes, and the
