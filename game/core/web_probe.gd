@@ -84,6 +84,7 @@ static func snapshot(top: Control) -> Dictionary:
 		"lobby_rules_editable": false,
 		"play_rules": "",
 		"play_map": "",
+		"play_focus": "",
 		"lobby_map": "",
 		"spots": "",
 		"night_rules": "",
@@ -176,6 +177,8 @@ static func snapshot(top: Control) -> Dictionary:
 		# Solo's Play screen: the rules on its panel (the same panel the room host's lobby has).
 		data["play_rules"] = play.rules_text()
 		data["play_map"] = play.panel.map_picker.selected_id
+		var focused := play.get_viewport().gui_get_focus_owner()
+		data["play_focus"] = str(focused.name) if focused != null else ""
 	var night_screen := top as NightScreen
 	if night_screen == null or night_screen.night == null or night_screen.night.state == null:
 		return data
