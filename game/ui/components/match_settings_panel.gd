@@ -5,17 +5,27 @@ extends VBoxContainer
 ## `UIOptionSelector`, `UISlider`) and bound to nothing: it holds a `MatchSettings`, says `changed`
 ## when a control moves and hands the result out with `settings()`.
 ##
-## The Play screen uses it for a night on this machine. The room host's lobby (#391) puts the same
-## panel on its screen, reads `settings()` and hands it to the server with
-## `NightHost.configure_match`; a guest's lobby calls `set_settings` with what the WELCOME carried
-## and `set_editable(false)`.
+## The Play screen (Solo) and the room host's lobby (#391) use this one panel, so solo and rooms
+## offer the same settings from one definition. Each setting of `MatchSettings.KEYS` has a row in
+## `rows` (`setting_keys()`, `row_for()`) and `missing_keys()` names any that lack one; a test fails
+## on a setting added to `MatchSettings` without a row, so it cannot reach rooms and miss solo. The
+## lobby reads `settings()` and hands it to the server with `NightHost.configure_match`; a guest's
+## lobby calls `set_settings` with what the WELCOME carried and `set_editable(false)`.
 
 ## A control moved: the settings as they now stand.
 signal changed(settings: MatchSettings)
 
 const ALIVE_STEP := 1
+## The line under each row's title (a phone leaves them out).
+const HINTS := {
+	"count_multiplier": "More of the dead, and faster.",
+	"max_alive": "Auto follows the round.",
+	"break_seconds": "Time to spend points and get ready.",
+}
 const BREAK_MAX := 30
 
+## The row of each setting, by its key in `MatchSettings.KEYS`, in the order they are shown.
+var rows := {}
 var count_row: UIRow
 var alive_row: UIRow
 var break_row: UIRow
@@ -34,6 +44,15 @@ static func alive_text(max_alive: int) -> String:
 	return "Auto" if max_alive <= MatchSettings.AUTO else str(max_alive)
 
 
+## The settings as a browser test reads them, `2x|Auto|20 s`: the intensity, the cap and the break
+## in seconds (`break_shown`, which a setting left on the tuned break does not hold).
+static func text_for(value: MatchSettings, break_shown: float) -> String:
+	return (
+		"%dx|%s|%d s"
+		% [roundi(value.count_multiplier), alive_text(value.max_alive), roundi(break_shown)]
+	)
+
+
 func _init() -> void:
 	var tuning := (load(GameRules.DEFAULT_TUNING_PATH) as RulesTuning).rounds
 	_standard_break = tuning.break_seconds
@@ -41,7 +60,7 @@ func _init() -> void:
 	_alive_ceiling = tuning.ceiling_for(OS.has_feature("web"))
 	var tokens := UITokens.active()
 	add_theme_constant_override(&"separation", tokens.space_md)
-	count_row = _row("Zombie intensity", "More of the dead, and faster.")
+	count_row = _row("count_multiplier", "Zombie intensity")
 	count_selector = UIOptionSelector.new()
 	var labels := PackedStringArray()
 	for choice in MatchSettings.COUNT_CHOICES:
@@ -49,13 +68,18 @@ func _init() -> void:
 	count_selector.options = labels
 	count_selector.selected_changed.connect(_on_changed.unbind(1))
 	count_row.set_control(count_selector)
-	alive_row = _row("Most alive at once", "Auto follows the round.")
+	alive_row = _row("max_alive", "Most alive at once")
 	alive_slider = _slider(0, _alive_ceiling, ALIVE_STEP)
 	alive_row.set_control(alive_slider)
-	break_row = _row("Break between rounds", "Time to spend points and get ready.")
+	break_row = _row("break_seconds", "Break between rounds")
 	break_slider = _slider(int(MatchSettings.MIN_BREAK), BREAK_MAX, 1)
 	break_row.set_control(break_slider)
 	set_settings(MatchSettings.new())
+
+
+## What the controls show, as `text_for` writes it.
+func text() -> String:
+	return text_for(settings(), break_slider.value)
 
 
 ## The settings the controls show.
@@ -85,6 +109,31 @@ func set_editable(on: bool) -> void:
 	count_selector.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
 
 
+## The keys of the settings the panel shows, in the order of its rows.
+func setting_keys() -> Array:
+	return rows.keys()
+
+
+## The row of the setting `key` (a key of `MatchSettings.KEYS`), or null.
+func row_for(key: String) -> UIRow:
+	return rows.get(key)
+
+
+## The settings `MatchSettings` has that the panel shows no row for (none, or a setting was added
+## without its row).
+func missing_keys() -> Array:
+	return MatchSettings.KEYS.keys().filter(func(key: String) -> bool: return not rows.has(key))
+
+
+## The phone's form: every row a tap target high (`MenuLook.TAP_TARGET`) and the hints left out,
+## which gives the canvas of a phone held sideways (540 units) its room. `false` is the desktop's.
+func set_compact(on: bool) -> void:
+	for key: String in rows:
+		var row := rows[key] as UIRow
+		row.custom_minimum_size.y = MenuLook.TAP_TARGET if on else 0.0
+		row.hint = "" if on else HINTS[key]
+
+
 ## The first control, for the screen's initial focus.
 func first_control() -> Control:
 	return count_selector
@@ -95,11 +144,12 @@ func last_control() -> Control:
 	return break_slider
 
 
-func _row(title: String, hint: String) -> UIRow:
+func _row(key: String, title: String) -> UIRow:
 	var row := UIRow.new()
 	row.title = title
-	row.hint = hint
+	row.hint = HINTS[key]
 	add_child(row)
+	rows[key] = row
 	return row
 
 
