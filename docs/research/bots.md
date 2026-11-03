@@ -1294,3 +1294,14 @@ The soak does not show the gain the scenarios do: 49 and 46 bleed-outs are withi
 untargeted rows move by as much). The bleed-outs that stay are mostly packs and bosses that keep the body to the end
 (a staged bot 12 m away with under 4 s left is `LATE`), which no rule here can help. Staging costs no raises: raises per
 forced fall 0.94 off, 1.01 on; the nights that ended early were 15 of 24 either way in the first 24 seeds.
+
+## A breaker the bot walks away from (#706)
+
+An area's breaker is wanted only while a person (the bot itself when none is up) is within a lamp's reach of the
+area. The breaker's stand can lie outside that reach, so the walk to it ended the want: the bot turned to its shopping,
+walked back in, wanted the breaker again, and flipped between `breaker <area>` and `buy <item>` at every plan (the ticket
+plaza's perk machine showed it). `BotErrands` now keeps the breaker it set out to throw on (`_breaker_id`, for one
+`ERRAND_LIMIT`) until the circuit is on; one it goes to throw off is not kept. Test:
+`test_a_bot_with_a_purchase_in_a_dark_area_throws_the_breaker_then_buys` in
+`tests/night/test_bot_errands.gd` (the lamps' reach is cut to 4 m on the shipped lot so the breaker stands outside the
+area). A want that depends on where the bot stands needs a commitment for the walk it causes.
