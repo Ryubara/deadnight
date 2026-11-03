@@ -127,7 +127,11 @@ func _on_event(event: Dictionary) -> void:
 		ZOMBIE_THAWED:
 			thawed(event["zombie_id"], event["point"])
 		ZOMBIE_SHATTERED:
-			shattered(event["zombie_id"], event["point"])
+			shattered(event["zombie_id"], event.get("point", event.get("position", Vector3.ZERO)))
+		&"status_applied":
+			_on_status(event, true)
+		&"status_ended":
+			_on_status(event, false)
 		&"game_over":
 			schedule.clear()
 			for id: int in _bolts.keys():
@@ -230,6 +234,28 @@ func _stop_bolt(projectile_id: int) -> void:
 
 
 # --- The freeze ---
+
+
+## The combat server's status events (`StatusBoard`): the frozen status is the freeze, heard where
+## the zombie stands in the last frame; a chilled one only gets the cold touch.
+func _on_status(event: Dictionary, applied: bool) -> void:
+	var id: int = event["target_id"]
+	var point := Vector3.ZERO
+	for entry in _state.zombies:
+		if entry["id"] == id:
+			point = entry["position"]
+			break
+	if point == Vector3.ZERO:
+		return
+	match event["status"]:
+		&"frozen":
+			if applied:
+				frozen(id, point, event.get("seconds", FREEZE_SECONDS))
+			else:
+				thawed(id, point)
+		&"chilled":
+			if applied:
+				_play(FREEZE_HIT, point)
 
 
 ## A zombie froze at `point` for `seconds`: the freeze takes hold, and the ice creaks now and then

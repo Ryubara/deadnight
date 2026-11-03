@@ -78,7 +78,7 @@ claim: it is the hit that empties the health, decided by the server. There is no
 | --- | --- | --- |
 | `zombie_spawn_requested` | `zombie_id`, `zombie_type`, `look`, `boss`, `health`, `speed`, `point_roll`, `damage`, `knockback`, `telegraph_seconds`, `barrier_speed`, `hit_chance` | build the zombie in its `look`; pick the spawn point with `point_roll % count`; its attack, knockback and barrier work come from the same event |
 | `zombie_damaged` | `zombie_id`, `zombie_type`, `player_id`, `zone`, `damage` (taken off), `health` (left), `max_health` | play the hit reaction; drive the health bar (a boss's bar is `health / max_health`) |
-| `zombie_removed` | `zombie_id`, `zombie_type`, `boss`, `cause` (`killed` or `gone`), `killer_id`, `zone`, `melee` | play the death for `killed` (by `zone`, `melee`), vanish quietly for `gone` |
+| `zombie_removed` | `zombie_id`, `zombie_type`, `boss`, `cause` (`killed` or `gone`), `killer_id`, `zone`, `melee`, `shattered` | play the death for `killed` (by `zone`, `melee`), vanish quietly for `gone`; a `shattered` one was frozen and breaks into ice (the `zombie_shattered` event) |
 | `special_round_announced` | `round`, `special_id`, `title`, `kind` (`boss` or `only`), `boss_type`, `boss_count`, `seconds` | in the break before a special round: the HUD marquee, the sting, the lights flicker. `seconds` is the whole break, 10 s longer than usual |
 | `round_started` | `round`, `zombie_count`, `special_id` (`""` in a normal round), `boss_count` | show the round; a non-empty `special_id` keeps the marquee lit |
 | `special_round_cleared` | `round`, `special_id`, `reward` | the reward line; `reward` was paid to each player on their feet as `points_changed` with reason `special_reward` |
@@ -343,7 +343,8 @@ minutes, and the draw rises every round.
 ## The prize crane
 
 Modelled on the Call of Duty Zombies Mystery Box ([research](../research/mystery-box.md)): a play costs 550, the claw
-digs for 4.5 seconds, then the chosen weapon floats for 12 seconds and only the buyer can take it. A weapon the player
+digs for 4.5 seconds, then the chosen weapon slides out of the front on a lit board for 12 seconds and only the buyer
+can take it. A weapon the player
 carries is never drawn; the draw is seeded (its own stream, `crane_rng_state` in the snapshot). The first 3 plays at a
 place never break down; after that the chance is 15% for four plays, 30% for four more, then 50%. A breakdown refunds
 the whole price (not counted as earned), shows a dud prize for 4 seconds and moves the crane to one of the other
@@ -385,7 +386,7 @@ round's own value, so every type grows with the night. The look is a variant fro
 | runner | runner | x0.55 | x1.4 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 5.0 m/s under the lights |
 | crawler | crawler | x0.7 | x0.4 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low, shot at through zones fitted to its body on the ground, so no harder to hit than a walker (its `hit_chance` 0.6 only sizes an upright set; the simulator takes 1.0 for it, #745), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
 | brute | brute | x3 (was 2.5, #745) | x0.4 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
-| headliner (boss) | its own, from the artist | x16.25 (13 and a quarter more, #688), +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
+| headliner (boss) | its own, from the artist | x15 (was 16.25, #688; 15 since the six firearms, #793), +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
 **One at a time.** A type's first round brings an exact number (`intro_count`), so every player meets
 each one on the same round and never "maybe": the runner on round 4, the crawler on 6, the brute on 8.
@@ -710,6 +711,11 @@ boss type (`boss = true`), so the one change is `health_multiplier` **13 to 16.2
 `default_tuning.tres`; the weak spot's x2.2, the blow, the speed, the extra-player step and the pay are untouched. The
 rookie-boss tuning (#568, #662) set nothing here: it changed the Rookie bot's `read`, not the boss.
 
+**Since #793 it is x15** (still 15% above the original 13): the six firearms with their rounds on sale put the headliner's
+time to kill in the gate at 31.5 s against its 30, and x15 with `health_growth` 1.16 brings it to 29.8 s
+([the numbers](../research/balance-simulator.md#the-six-firearms-793)). This was an agent's tuning choice, not the
+maintainer's: the alternative is a longer limit for the headliner's time in `BalanceTargets`.
+
 The balance report (300 nights a cell, seed 1, `--jobs 3`), before and after:
 
 | Boss night numbers | Before | After | Gate |
@@ -791,6 +797,29 @@ nights an average solo night is a little easier than it was (median 15 against 1
 which the first boss night (10% of nights lost, was 31%) mostly explains; the tables, the levers that did not work and the
 recommendation about the size of the head zone are in [the balance simulator
 research](../research/balance-simulator.md#the-headshot-retune-745).
+
+## The first 6 m on lit ground (#850)
+
+The six aprons each have a dim lamp 0.5 m from the spawn ([map](map.md#the-apron-lamps)): the field's circuit is on
+at the start, so a zombie leaves the breach on lit ground, at its round's pace, and is 25% faster only once it is past
+the lamp's 6 m (`lamp_reach`). On the 33 to 38 m walk to a player's start that is about a sixth of the way (6 of 35 m),
+so the lit share of the approach is the skill's `light_use` plus 16% of the rest (weak 0.10 to 0.24, average 0.35 to
+0.45, strong 0.55 to 0.62), for every skill, because every skill keeps the field's circuit on. The simulator models a
+share, not a position, so the check is that share replaced: 200 nights per cell, seed 1, by 1 and 4 players
+(`--skill-set=light_use=...`):
+
+| Cell | Median round, before | after | Nights reaching round 10, before | after |
+| --- | ---: | ---: | ---: | ---: |
+| weak, 1 player | 5 | 5 | 6 | 8 |
+| average, 1 player | 14 | 15 | 153 | 166 |
+| strong, 1 player | 19 | 19 | 199 | 197 |
+| weak, 4 players | 5 | 5 | 56 | 53 |
+| average, 4 players | 17 | 17 | 200 | 200 |
+| strong, 4 players | 22 | 22 | 200 | 200 |
+
+The medians move one round at most (the average solo night, which keeps two circuits lit and had the most of the
+dark approach to lose) and the others by nothing; that is inside the simulator's seed noise, so the rounds' pace and the
+fuel table above stand. The lamps are dim, not out, on purpose: dimming them does not change the rule, only the picture.
 
 ## Open questions
 

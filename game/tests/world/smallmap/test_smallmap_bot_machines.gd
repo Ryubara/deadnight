@@ -6,6 +6,12 @@ extends GdUnitTestSuite
 
 ## Game seconds a bot is given in the break to walk to all of them.
 const SECONDS := 240.0
+## The break (and the intro before it) is longer than the run: the bot shops in the break the test
+## names, with no dead on the lot. In a night that went on into its rounds, the errands were held
+## by whichever dead were near (a bot starts none with a dead within 12 m), so what was bought in
+## the 240 seconds followed where the dead happened to stand, and a change to how they stand at the
+## windows (#810) moved the bench trip out of the run.
+const BREAK_SECONDS := 600.0
 const FRAME_EVERY := 30
 
 var _seated: SeatedNight
@@ -26,7 +32,10 @@ func _on_event(event: Dictionary) -> void:
 ## One regular bot in the break of a night with every link open and `points` to spend.
 func _play(points: int, seconds: float) -> void:
 	_buys.clear()
-	_seated = await SmallMapNight.seat(self, 1, null, 3)
+	var tuning := RulesFixture.tuning()
+	tuning.rounds.intro_seconds = BREAK_SECONDS
+	tuning.rounds.break_seconds = BREAK_SECONDS
+	_seated = await SmallMapNight.seat(self, 1, tuning, 3)
 	_seated.seat(1, BotProfile.regular(), 401)
 	for item in _seated.server.rules.tuning.economy.items:
 		if item.kind == ShopItem.Kind.DOOR:

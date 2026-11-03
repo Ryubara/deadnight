@@ -61,18 +61,29 @@ Rules the greybox is built to:
   (three or more) of the reachable areas is reached, and that no way towards any point of a closed area's whole
   footprint (a grid four metres apart, and the samples) enters it: the field, plus the stand and midway once the
   concession is sold, plus each sold door's area.
-- **Nobody leaves by jumping.** The player jumps 1.1 m and a car roof is 1.65 m, so a jump from a roof lifts the feet
-  to 2.75 m: the outer walls (the field's north, west and east fences, the yard's east and the back lot's west) are
-  3.0 m, `PERIMETER_H` in the generator, up from 2.4 m. The fences between the field and the yard and back lot stay
-  2.4 m: nothing reachable stands within a jump of them, and a door's slab is 2.6 m. The plaza's end and side walls
-  are 4.2 m (`PLAZA_WALL_H`): the junk stacked against them reaches 1.71 m and the real body climbs 1.25 m, not the
-  jump's 1.1 m, so a 3.0 m wall was one container and a corner away ([#845](https://github.com/Ryubara/deadnight/issues/845);
-  `test_plaza_escape.gd` runs the old hops and a sweep of hops from the plaza's floor, and pins the margin of 0.5 m over
-  the reach above the tallest prop at each wall). `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump
-  as its climb for each door still closed (and what needs it), finds the platforms a player can reach, checks that no
-  closed slab, closed area's wall, field fence or perimeter wall has its top within a jump of one, and runs the real
-  player body (`PlayerSimulation`, sprinting and jumping) from the middle and edges of every car roof near a perimeter
-  wall. Before the change the body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top).
+- **Nobody leaves by jumping.** The player jumps 1.1 m but the real body gets onto a ledge **1.25 m** high
+  (the step-up at an edge and the capsule's rounded foot add the rest: `tools/world/ledge_probe.gd`, measured by
+  the map review, [#833](https://github.com/Ryubara/deadnight/issues/833)), and a car roof is 1.65 m, so a jump
+  from a roof lifts the feet to 2.9 m: the outer walls (the field's north, west and east fences, the yard's east
+  and the back lot's west) are 3.0 m, `PERIMETER_H` in the generator, up from 2.4 m. So are the midway's fences
+  and alley ends (`MIDWAY_FENCE_H`; they were 2.6 m, and the alley's dumpster at 1.62 m, reached by the barrels
+  beside it at 0.82 m, was a stair over the west fence into the back lot with only the concession bought: four
+  hops, [#846](https://github.com/Ryubara/deadnight/issues/846)). The fences between the field and the yard and
+  back lot stay 2.4 m, and a door's slab is 2.6 m: **nothing reachable stands within 1.25 m of their tops** (a
+  prop is a step too: a platform 0.82 m high lets the body climb to 2.07 m, one 1.62 m high to 2.87 m), and a
+  prop a player can climb is kept far from any taller one. The plaza's end and side walls are 4.2 m
+  (`PLAZA_WALL_H`): the junk stacked against them reaches 1.71 m and a 3.0 m wall was one container and a corner away
+  ([#845](https://github.com/Ryubara/deadnight/issues/845); `test_plaza_escape.gd` runs the old hops and a sweep of
+  hops from the plaza's floor, and pins the margin of 0.5 m over the reach above the tallest prop at each wall).
+  `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump as its climb for each door still closed (and
+  what needs it), finds the platforms a player can reach, checks that no closed slab, closed area's wall, field
+  fence or perimeter wall has its top within a jump of one, and runs the real player body (`PlayerSimulation`,
+  sprinting and jumping) from the middle and edges of every car roof near a perimeter wall. Before the change the
+  body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top). `test_midway_fence_reach.gd` runs
+  the real body from the ground beside the midway's fences, up to three hops deep, with none, the concession,
+  the concession and the booth, and every door but the road's sold, and fails on a standing place inside a closed
+  area or on top of a wall; it also replays the old hops. (The walking-mesh test above still reads the jump, 1.1
+  m; the map review's [#848](https://github.com/Ryubara/deadnight/issues/848) moves it to 1.25 m.)
 - Zombies spawn only in open areas, and always in the field.
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
 
@@ -144,7 +155,8 @@ and a small one, a dumpster, crates, tyres), so nothing of the lot lies past it 
 | What | Where |
 | --- | --- |
 | The gate | the door's slab at `(0, 38)`, 4 m, from the midway |
-| The ticket booths and canopy | two booths at x = ±6, z 44 to 46.4, under an 18 m canopy at 3.6 m, queue barriers between them: a lap round both booths is about 45 m, a place to run round, not a kiting ground (the loops table is below) |
+| The ticket booths and canopy | two booths at x = ±6, z 44 to 46.4, under an 18 m canopy at 3.6 m, queue barriers between them: a lap round both booths is 52 m on the dead's walking mesh (the loops table is below) |
+| The carton rows | two rows of four carton stacks (1.40 m) across the south half at z 51.6, x 1.2 to 5.7 each side, with the machine's line clear between them ([#855](https://github.com/Ryubara/deadnight/issues/855)): the machine is reached round them from both sides, and they add a lap of 30 m round the rows and one of 60 m round the rows and the booths |
 | The marquee | the east wall, `(12.4, 50.6)` |
 | The perk machine | against the south wall at `(0, 57.2)`, facing the gate; its block, `Road/PerkMachine`, runs to the wall |
 | The wreck | nose-in at `(-9, 55.7)`: its headlights are the `battery` circuit, the only light on the lot with the tank dry, shining up the court |
@@ -214,9 +226,17 @@ near a wall or a fence is placed touching it or a body's width off, never in bet
 | Concession, midway, back lot, field | about 120 m | the back lot |
 | Round the generator cage (open on two sides) | about 50 m | the yard |
 | Round the booth | about 85 m | the booth |
-| Round the ticket booths | about 45 m | the road door |
+| Round the ticket booths | 52 m | the road door |
+| Round the plaza's carton rows; round the rows and the booths | 30 m; 60 m | the road door |
 | Back lot's wreck lanes | three of 30 to 40 m | the back lot |
 | Car rows: aisle to aisle behind a row | 20 to 60 m | the start |
+| Round the west flank's wreck row; the east flank's | 44 m; 44 m | the start |
+| Round each pair of the south strip's kerb walls (west; east) | 45 m; 44 m | the start |
+| Round the yard's carton row and container B | 41 m | the yard |
+
+The lengths without "about" are measured and held by `test_lot_loops.gd`: the shortest lap a pack can cut to, on a
+walking mesh for the dead's agent (0.5 m) with every door sold, through waypoints at the outside corners of what the
+loop circles. The others are from the plan.
 
 A loop under about 40 m is too short for a pack to string out; the counter loop is the exception, for one player
 buying time. Two loops share the concession, so a team splits across them and the stand is never a dead end. The
@@ -226,8 +246,12 @@ only dead ends are deliberate: the midway's two alleys (6 m by 12 m, dark, for a
 
 - **The avenue** (x = 0, 35 m of cleared ground from the apron to the stand): the longest clear line, lit. The first
   rounds are shot down it.
-- **The field's flanks**: open ground beyond the outer rows, with the playground and the picnic shelter as the only
-  cover. The dead are seen coming from far off, but only the head and shoulders show over the cars.
+- **The field's flanks**: open ground beyond the outer rows, with the playground, the picnic shelter and a row of four
+  wrecks on each flank ([#855](https://github.com/Ryubara/deadnight/issues/855)). The wrecks are 1.3 m, under the
+  shoulder camera, so the breaches behind them stay in view; the dead come round the rows' ends. The dead are seen
+  coming from far off, but only the head and shoulders show over the cars.
+- **The south strip**: four kerb walls (1.0 m) in two pairs, 5 to 6 m in front of the fence: low cover to shoot over,
+  with a lane behind.
 - **Behind the car rows**: cars are 1.65 m tall. The shoulder camera at a level view sits 1.55 m up, below a roof, so
   it looks through the gaps, not over the cars; tilted down about 8 degrees (the arm swings the camera up by
   `2.8 x sin(pitch)`) it clears the roofs and sees the aisle behind. A standing player's head and shoulders show above
@@ -252,26 +276,40 @@ the lamps are the warm pools in it ([night environment](../research/night-enviro
 
 | Area | Floor | Lit by the rules, every circuit on | What lights it |
 | --- | ---: | ---: | --- |
-| Screen field | 5,952 m² | 975 m² (16%) | eight lamp posts and the screen's glow: a strip 21 m wide and 36 m long down the avenue, and a disc at each flank post; the rim is dark |
+| Screen field | 5,952 m² | 1,953 m² (33%) | 28 lamp posts and the screen's glow: 22 across the rows and the flanks, and **six dim ones, one over each breach's spawn** ([below](#the-fences-breaches)); the rim between them is dark |
 | Concession | 240 m² | 217 m² (90%) | three warm lights; window spill on the field |
-| Midway | 1,104 m² | 373 m² (34%) | two dim lamps and the booth's front light; the alleys dark |
+| Midway | 1,104 m² | 487 m² (44%) | two dim lamps and the booth's front light, and the field's posts at its north end; the alleys dark |
 | Booth | 120 m² | 110 m² (92%) | two lights, and the projector beam (the brightest thing on the map) |
-| Generator yard | 1,932 m² | 451 m² (23%) | four work lamps and the generator's glow, the generator set in its cage (its day tank, stack and running light show over the walls): lit while the tank has fuel, and the most to lose |
-| Back lot | 1,932 m² | 104 m² (5%) | one flickering neon sign |
-| Ticket plaza | 640 m² | 271 m² (42%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
+| Generator yard | 1,932 m² | 463 m² (24%) | four work lamps and the generator's glow, the generator set in its cage (its day tank, stack and running light show over the walls): lit while the tank has fuel, and the most to lose |
+| Back lot | 1,932 m² | 580 m² (30%) | posts of the field's circuit round its edge (476 m²) and one flickering neon sign (104 m²) |
+| Ticket plaza | 640 m² | 274 m² (43%) | the ticket kiosk, and a wreck's headlights (127 m², the only ground lit with the tank dry) |
 
-"Lit" is the rules' word, not the eye's: ground within 6 m (`LotLamps.LAMP_REACH`) of a lamp whose circuit is on,
+"Lit" is the rules' word, not the eye's: ground within 6 m (`LightTuning.lamp_reach`) of a lamp whose circuit is on,
 counted on a 0.5 m grid over each floor. It is the ground where the dead keep their round's pace, and
 `game/tools/lot/lot_report.gd` prints this table and the ones in the two sections below. The glow in the capture
 above reaches further than 6 m, so the picture looks lighter than the rule is; the table replaces the shares that
 were read off that capture by eye (a third of the field, four fifths of the yard), which the measurement did not
 bear out.
 
-The dead come in at the field's breaches ([below](#the-fences-breaches)), 31 to 47 m from the nearest lamp: they
-arrive out of the dark 25% faster than their round's pace, and under a lit lamp they drop back to it: the light does not
-slow the dead, it only withholds the speed-up, which is why every lamp costs fuel
-([rounds](rounds.md#why-these-numbers)). When the generator dies the
-lamps go with it: the field is dark but for the screen, the yard goes black, and the only fuel is across the lot.
+The dead come in at the field's breaches ([below](#the-fences-breaches)), each with a dim lamp over its spawn, and the
+next lamp 11 to 23 m away. Under a lit lamp they keep to their round's pace and out of its 6 m they are 25% faster: the
+light does not slow the dead, it only withholds the speed-up, which is why every lamp costs fuel
+([rounds](rounds.md#why-these-numbers)). So the rule at a breach is: **the breach is dimly lit, the field is dark**. The
+dead are seen coming out of the apron, and for their first 6 m they walk at their round's pace, then they are fast.
+When the generator dies the lamps go with it: the field is dark but for the screen, the yard goes black, and the only
+fuel is across the lot.
+
+### The apron lamps
+
+The maintainer placed a lamp post inside each of the six aprons, 0.5 m from the spawn (#703). They burn dim (#850: keep
+them, but dim, so the dead are seen coming without arriving in a spotlight). A post's `dim` (0 to 1) scales its omni
+light, its lens, its halo and its pool of glow on the ground together; the six are set to **0.4**
+(`APRON_LAMP_DIM` in `tools/world/build_greybox.py`, held by `tests/world/test_apron_lamps.gd`, which allows 0.25 to 0.5):
+the light's energy 2.8 becomes 1.12, the lens 3.0 becomes 1.2, the halo 0.9 becomes 0.36 and the pool 0.5 becomes 0.2.
+Nothing is added: the same six lights and the same cards, so the draw calls and each mesh's light count are the ones
+the lot had. The lamps stay on the field's circuit and the rules' 6 m is untouched, so the aprons still count as lit
+while the circuit is on and the tank has fuel; the simulator confirms the pace barely moves
+([rounds](rounds.md#the-first-6-m-on-lit-ground-850)).
 
 ## The fence's breaches
 
@@ -305,7 +343,7 @@ Each `Lamps` group carries `metadata/circuit`, and every light below it takes th
 
 | Circuit | Lamps |
 | --- | --- |
-| `screen_lot` (on at the start) | the field's eight lamp posts, the screen's glow |
+| `screen_lot` (on at the start) | the field's 28 lamp posts (six of them the dim [apron lamps](#the-apron-lamps)), the screen's glow |
 | `concession` | the stand's three interior lights, the midway's two lamps |
 | `booth` | the projector beam, the booth's two lights |
 | `back_lot` | the neon sign, the ticket kiosk in the ticket plaza |
@@ -408,7 +446,7 @@ go dark when the tank runs dry. A player choosing what to give up wants the grou
 
 | Circuit | Lights | Ground it lights | Draw a minute, round 1 / 30 | Ground per unit of draw |
 | --- | --- | --- | --- | ---: |
-| `screen_lot` | the field's posts and the screen's glow | 969 m² of the field | 3.6 / 6.7 | 269 m² |
+| `screen_lot` | the field's posts and the screen's glow | 1,947 m² of the field, 476 in the back lot, 169 in the midway, 16 elsewhere | 3.6 / 6.7 | 724 m² |
 | `concession` | the stand, the midway's two lamps | 217 m² in the stand, 206 m² in the midway, 69 m² outside them | 3.0 / 5.6 | 164 m² |
 | `booth` | the booth and the projector beam | 110 m² in the booth, 168 m² in the midway | 4.8 / 9.0 | 58 m² |
 | `back_lot` | the neon sign, the ticket kiosk | 104 m² in the back lot, 112 m² in the plaza | 4.2 / 7.9 | 51 m² |
@@ -429,10 +467,10 @@ A new door adds its area's spawns to the pool, and a spawn is chosen by an equal
 
 | Area | Spawns | Metres from the nearest lamp | Boards to tear |
 | --- | ---: | --- | --- |
-| Field (the six aprons) | 6 | 31 to 47 | yes, five at each breach |
-| Midway (with the concession) | 2 | 3 and 16 | no |
-| Generator yard | 3 | 14 to 21 | no |
-| Back lot | 3 | 13 to 38 | no |
+| Field (the six aprons) | 6 | 0.5 (the apron's dim lamp); the next lamp 11 to 23 | yes, five at each breach |
+| Midway (with the concession) | 2 | 3 and 5 | no |
+| Generator yard | 3 | 14 to 19 | no |
+| Back lot | 3 | 5 to 13 | no |
 | Ticket plaza | 3 | 4 to 17 | no |
 
 | Doors bought | Spawns in the pool | At the field's breaches |
@@ -444,8 +482,9 @@ A new door adds its area's spawns to the pool, and a spawn is chosen by an equal
 | and the plaza | 17 | 35% |
 
 So buying a door moves the dead toward the light, and off the boards: a spawn inside an area has nothing to tear, and
-it is 3 to 21 m from a lamp where a breach is 31 to 47 m. A team that opens every area has the field's breaches as a
-third of the pressure. That is the closing in: the lot opens outward and the dead open with it.
+it is 3 to 19 m from a lamp where a breach is 0.5 m from its dim one and 11 to 23 m from the next. A team that opens
+every area has the field's breaches as a third of the pressure. That is the closing in: the lot opens outward and the
+dead open with it.
 
 ### Proposed, not built
 
@@ -467,15 +506,15 @@ the side the player arrives from, and four capsules abreast need 2.8 m (2 x 0.35
 | Door | Slab | Opening | Nearest lamp of the circuit that serves it | Nearest field breach spawn |
 | --- | --- | ---: | --- | ---: |
 | Concession (350) | the stand's front, (0, -3.6) | 3 m | 1.6 m (the stand's light): bought in the light | 64 m |
-| Generator yard (500) | the gate in the field's south fence, (40, -4) | 4 m | 17 m (the work lamps): bought in the dark | 32 m |
+| Generator yard (500) | the gate in the field's south fence, (40, -4) | 4 m | 17 m (the work lamps); the field's nearest post is 11 m away: bought in the dark | 32 m |
 | Booth (750) | the booth's front, (0, 22.2), in the midway | 3 m | 0.1 m (the booth's light) | 79 m |
-| Back lot (1250) | the gate in the field's south fence, (-40, -4) | 4 m | 38 m (the neon sign): bought in the dark | 32 m |
+| Back lot (1250) | the gate in the field's south fence, (-40, -4) | 4 m | 38 m (the neon sign); the field's post is 5 m away: bought at the edge of the field's light | 32 m |
 | Plaza (2000) | the plaza's gate, (0, 38) | 4 m | 6.0 m (the kiosk): at the edge of lit | 89 m |
 
-The yard's and the back lot's gates are the odd ones. They stand in the field's far south fence, 30 m from the nearest
-field lamp and 32 m from the nearest breach, so buying them is a team move into the dark where the dead are 25% faster,
-not an errand for one. The start is no closer to danger: the players spawn 33 to 38 m from the nearest breach (eight
-places, two rows of four, 3 m apart: #690).
+The yard's and the back lot's gates are the odd ones. They stand in the field's far south fence, 11 m and 5 m from the
+nearest field lamp and 32 m from the nearest breach, so buying the yard's is a team move into the dark where the dead
+are 25% faster, not an errand for one (the back lot's gate is at the edge of a post's 6 m). The start is no closer to
+danger: the players spawn 33 to 38 m from the nearest breach (eight places, two rows of four, 3 m apart: #690).
 
 ### Where a downed player can be revived
 
@@ -485,11 +524,13 @@ the lit ground at least 30 m from every spawn that is open, which is little:
 
 | Pocket | Size | Where | When |
 | --- | ---: | --- | --- |
-| The avenue | 858 m² | centre (0, -25), the lit strip below the screen | always, while the field's circuit is on |
+| The avenue | 1,107 m² (1,069 once the back lot is open) | centre (-1, -22), the lit ground below the screen | always, while the field's circuit is on |
 | The stand | 192 m² | centre (0, 2) | after the concession, while its circuit is on |
+| The back lot's lit edge | 79 m² | centre (-22, 0), by the field's posts | after the back lot |
 
-There is none in the yard, the booth, the back lot or the plaza: the yard's door puts three spawns in the safest ground,
-14 to 21 m from its lamps. A team that goes deeper than the stand has nowhere to put a downed player down safely.
+The yard (7 m²) and the midway (1 m²) have specks, the booth and the plaza none: the yard's door puts three spawns in
+the safest ground, 14 to 19 m from its lamps. A team that goes deeper than the stand has little to put a downed player
+down in. (`lot_report.gd` prints these; the six apron lamps are 0.5 m from their spawns and change none of them.)
 
 ### How the team shares the loops
 
@@ -591,11 +632,11 @@ size where it stands in the way).
 
 | Where | What |
 | --- | --- |
-| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); the four wrecks on the flanks; ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
+| Field | the 76 parked cars: the lot's own 1950s sedan (`car.tscn`, five paints picked from where each car stands, never random); a straight row of four wrecks on each flank and one wreck among the cars (`FIELD_WRECKS` in the generator); four kerb walls on the south strip (`KERB_WALLS`, concrete blocks); ten trees on the flanks and beside the screen; junk against the perimeter fence (tyres, sofas, a skip, pipes, drums); a sofa in the open between the east cars and the wrecks; barriers on the north fence beyond the last car; low junk on the south strip; litter in the aisles |
 | Midway | a dumpster at the end of each alley, cartons where crate stack A was, a small container where B was, cones at the road gate |
-| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank and tyres on the east fence; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
+| Generator yard | two pairs of containers where A and B were, six drums in two touching rows where the drum row was, cartons and pallets, two gas bottles on the generator cage's north wall, a water tank on the east fence, a row of nine carton stacks in the east third, 2.6 m short of container B, and tyres in the south-east corner; pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence, crates on the cage's south wall, a tree, litter |
 | Back lot | the wreck rows are the kit's Broken Car (`wreck.tscn`); tyres, debris, a spilt drum |
-| Ticket plaza (`Road`) | crates and litter by the kiosks; queue barriers to the kiosks, a tree in each north corner, street lights on its side walls (models only, no light); against the end wall, either side of the machine: a broken-down wreck nose-in (the battery headlights sit at its front), a small container, crates, a dumpster, a container and tyres, with cones and planks in front |
+| Ticket plaza (`Road`) | crates, tyres and litter by the kiosks; queue barriers to the kiosks, a tree in each north corner, street lights on its side walls (models only, no light); two rows of carton stacks across the south half; against the end wall, either side of the machine: a broken-down wreck nose-in (the battery headlights sit at its front), a small container, loose cartons, a dumpster and a container, with cones and planks in front |
 
 Rules the placement keeps, all checked by the world tests:
 
@@ -604,10 +645,18 @@ Rules the placement keeps, all checked by the world tests:
   and bakes. A `StaticBody3D` would be solid for the player and invisible to the dead.
 - **Clutter has no collision**: cones, pallets, planks, debris, papers, signs, a lone carton, a spilt drum, a gas can,
   the street lights. It never closes a path or makes a slot. A tree is solid only at its trunk (0.3 m, 2.4 m tall).
-- **No stairs out.** A prop a player can jump onto (a crate 0.63 m, a drum 0.82 m, tyres 0.87 m, a barrier 0.5 m) is
-  kept away from anything taller and from low walls: a barrier by a low wall, or a climbable wreck
-  beside it, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box 1.3 m tall (no step at the bonnet),
-  so it cannot be climbed from the ground.
+- **No stairs out.** A prop a player can climb onto (a crate 0.63 m, a drum 0.82 m, tyres 0.87 m, a barrier
+  0.5 m; the body gets onto 1.25 m) is kept away from anything taller, a dumpster (1.62 m) or a container above
+  all, and from low walls (the west alley's drums stand at its open end, 7 m from the dumpster): a barrier by a
+  low wall, or a climbable wreck beside it, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box
+  1.3 m tall (no step at the bonnet), so it cannot be climbed from the ground.
+- **No step to a top over the reach, and no inside corner of one.** A prop taller than the body's reach (1.25 m: a
+  wreck, a carton stack at 1.40 m, a container) has nothing a body stands on within a sprint-jump (6 m) of it, and two
+  of them meet square and end to end, never in an L. The body got onto a wreck from the floor at the inside corner of
+  a car turned across a row's end, and onto the plaza's containers, dumpster, machine and wreck from two crates and a
+  stack of tyres beside them; the container's back edge, against the wall, was a roost (no blow from ten dead in 40
+  s). `test_plaza_escape.gd` fails on any standing place over the reach in the plaza
+  ([#855](https://github.com/Ryubara/deadnight/issues/855)).
 - **No slots.** Props stand against a wall or touch each other, or leave at least a passage's width: nothing on the
   map is single file, and no prop stands in a door, a breach or its apron, a camera passage or a shop spot.
 

@@ -189,6 +189,39 @@ func blast(zombie_id: int, impulse: Vector3, stun: float) -> void:
 	zombie.push = Vector3(impulse.x, 0.0, impulse.z).limit_length(tuning.push_max_speed)
 
 
+## A status effect changed what the zombie is under (`CombatServer`'s `status_applied` and
+## `status_ended`): `wire` is the id the snapshot carries (0 for none), `halts` whether it stands
+## still and does not attack, `speed_scale` the share of its speed it keeps.
+func set_status(zombie_id: int, wire: int, halts: bool, speed_scale: float) -> void:
+	if not zombies.has(zombie_id):
+		return
+	var zombie := zombies[zombie_id]
+	zombie.status = wire
+	zombie.halted = halts
+	zombie.slow = speed_scale
+	if halts:
+		ZombieBrain.hold(zombie)
+
+
+## A zombie the rules killed while it was frozen breaks apart: it is gone at once, with no corpse
+## and no fall. The answer is the `zombie_shattered` event the clients draw the pieces from (where
+## it stood, how it faced, its look and how tall its body was against a walker's), or `{}` for a
+## zombie the sim does not hold.
+func shatter(zombie_id: int) -> Dictionary:
+	if not zombies.has(zombie_id):
+		return {}
+	var zombie := zombies[zombie_id]
+	zombies.erase(zombie_id)
+	return {
+		"type": &"zombie_shattered",
+		"zombie_id": zombie_id,
+		"position": zombie.position,
+		"yaw": zombie.yaw,
+		"look": zombie.look(),
+		"scale": ZombieModels.aim_scale(zombie.look()),
+	}
+
+
 func position_of(zombie_id: int) -> Vector3:
 	return zombies[zombie_id].position if zombies.has(zombie_id) else Vector3.ZERO
 
@@ -226,6 +259,8 @@ func _step(targets: Dictionary) -> Array[Dictionary]:
 		zombie.stagger_cooldown_left = maxf(zombie.stagger_cooldown_left - STEP, 0.0)
 		if zombie.mode == ZombieBody.Mode.DYING:
 			zombie.mode_time += STEP
+		elif zombie.halted:
+			ZombieBrain.hold(zombie)
 		else:
 			_think(zombie, STEP, targets, events)
 	PerfProbe.end(&"sim.think", began)
@@ -294,7 +329,7 @@ func _watch_strand(
 	var stranded := (
 		chasing
 		and zombie.mode == ZombieBody.Mode.CHASE
-		and zombie.gate_id == &""
+		and not _is_at_its_gate(zombie)
 		and zombie.path_gap >= STRAND_GAP
 		and _flat(zombie.position, target_pos) >= STRAND_FAR
 	)
@@ -305,6 +340,12 @@ func _watch_strand(
 	if zombie.stranded_for >= STRAND_SECONDS:
 		zombie.stranded_for = 0.0
 		events.append({"type": &"zombie_stranded", "zombie_id": zombie.id})
+
+
+## Whether the zombie has a gate and is in front of its gap: at its boards, or walking through.
+func _is_at_its_gate(zombie: ZombieBody) -> bool:
+	var gate: ZombieGate = gates.get(zombie.gate_id)
+	return gate != null and gate.spans(zombie.position)
 
 
 ## Puts a stranded zombie back on `point` (a spawn point; `gate_id` the breach it comes in by, or
@@ -387,8 +428,15 @@ func _lure_for(zombie: ZombieBody) -> ZombieLure:
 ## pulls them off: a swing at a time, the work of a board adding up at its `barrier_speed`. A type
 ## that cannot tear (a crawler) is not held; it goes under. Through the line, the gate is behind it.
 func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary]) -> void:
-	var gate: ZombieGate = gates.get(zombie.gate_id)
-	var depth := gate.depth_of(zombie.position) if gate != null else 0.0
+	var gate := _gate_in_front_of(zombie)
+	if gate == null:
+		# Beside the wall, in front of no gap: nothing to tear here (#810). A breach nobody told
+		# the sim about is behind the zombie.
+		zombie.tear_progress = 0.0
+		if not gates.has(zombie.gate_id):
+			zombie.gate_id = &""
+		return
+	var depth := gate.depth_of(zombie.position)
 	if depth >= 0.0:
 		zombie.gate_id = &""
 		zombie.tear_progress = 0.0
@@ -415,6 +463,31 @@ func _work_the_boards(zombie: ZombieBody, delta: float, events: Array[Dictionary
 		events.append({"type": &"zombie_tore", "zombie_id": zombie.id, "gate_id": zombie.gate_id})
 
 
+## The gate this zombie is in front of: its own while it is within that gap's width, otherwise the
+## one whose gap it has come up to (outside the line, in front of the gap, within
+## `ZombieGate.REACH`), which becomes its own, or null beside the wall. A gate is a line with the
+## width of its gap: as the whole wall's line, a dead on its way along the wall to another window
+## stopped out of sight at its first gate's line and tore that gate's boards from there for ever
+## (#810).
+func _gate_in_front_of(zombie: ZombieBody) -> ZombieGate:
+	var own: ZombieGate = gates.get(zombie.gate_id)
+	if own != null and own.spans(zombie.position):
+		return own
+	var best: ZombieGate
+	var best_along := INF
+	for gate: ZombieGate in gates.values():
+		if gate == own or not gate.is_at(zombie.position):
+			continue
+		var along := absf(gate.along_of(zombie.position))
+		if along < best_along:
+			best_along = along
+			best = gate
+	if best != null:
+		zombie.gate_id = best.id
+		zombie.tear_progress = 0.0
+	return best
+
+
 ## Whether boards stand across `gate` that this zombie has to tear down.
 func _boards_hold(zombie: ZombieBody, gate: ZombieGate) -> bool:
 	if zombie.profile.barrier_speed <= 0.0 or barricades == null:
@@ -429,7 +502,7 @@ func _keep_outside_the_boards() -> void:
 		if zombie.gate_id == &"" or not zombie.is_alive():
 			continue
 		var gate: ZombieGate = gates.get(zombie.gate_id)
-		if gate == null or not _boards_hold(zombie, gate):
+		if gate == null or not gate.spans(zombie.position) or not _boards_hold(zombie, gate):
 			continue
 		var depth := gate.depth_of(zombie.position)
 		var stop := -tuning.board_stop
@@ -438,7 +511,8 @@ func _keep_outside_the_boards() -> void:
 
 
 func _ground_speed(zombie: ZombieBody) -> float:
-	return rounds.speed_on_ground(zombie.speed, zombie.lit) if rounds != null else zombie.speed
+	var speed := zombie.speed * zombie.slow
+	return rounds.speed_on_ground(speed, zombie.lit) if rounds != null else speed
 
 
 ## Puts the sim on a map with storeys (`storey`, 0 for none) and the way it sees walls (`sight`).

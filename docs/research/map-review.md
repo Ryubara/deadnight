@@ -24,7 +24,7 @@ findings below.
 | 8 | **F.** The back lot's neon sign is a flat orange greybox block, bright with its circuit off | lot, back lot | [#852](https://github.com/Ryubara/deadnight/issues/852) |
 | 9 | **G.** The generator, the game's second pillar, reads as a blank olive wall from the yard's gate | lot, yard | [#853](https://github.com/Ryubara/deadnight/issues/853) |
 | 10 | **H.** The second map's pendant lamps' haze cones read as solid white columns when the camera is 2 to 3 m from one (upstairs) | second map | [#854](https://github.com/Ryubara/deadnight/issues/854) |
-| 11 | **I.** Thin ground: the yard's east third, the plaza, the field's flanks and its south strip hold little to run round or fight from | lot | [#855](https://github.com/Ryubara/deadnight/issues/855) |
+| 11 | **I.** Thin ground: the yard's east third, the plaza, the field's flanks and its south strip hold little to run round or fight from (reworked, [below](#the-thin-ground-reworked-855)) | lot | [#855](https://github.com/Ryubara/deadnight/issues/855) |
 
 Already filed and not repeated: prompts through walls ([#831](https://github.com/Ryubara/deadnight/issues/831); the
 audit below gives it the worst places), a sign's glow through walls
@@ -85,14 +85,14 @@ are at the seams: the walls and the props beside them, and what happens at the s
 | --- | --- | --- |
 | Field: start apron and avenue | **Keep.** The best-read place on the lot: the SNACKS neon is the lit landmark at the end of a cleared 35 m avenue, the beam points up behind it, the cars at the sides are low cover with gaps. The start faces the stand | [captures](maps/review/lot-field-1.jpg) f01 to f03 |
 | Field: car rows | **Keep.** A fan of 76 cars: loops between the rows, shoulder camera under the roofs as the page says; the dark set stays readable (moon and screen) | f04, f03 dark |
-| Field: flanks, south strip | **Thin (I).** Wide dark ground, a few trees, a wreck, a playground frame; the south strip is a 40 m blank wooden fence. The largest empty circle on the field is 7.2 m radius and 0.5% of its ground is more than 6 m from cover, so the field is not too wide; the flanks are just empty | [captures](maps/review/lot-field-2.jpg) f05 to f10 |
+| Field: flanks, south strip | **Thin (I).** Wide dark ground, a few trees, a wreck, a playground frame; the south strip is a 40 m blank wooden fence. The largest empty circle on the field is 7.2 m radius and 0.5% of its ground is more than 6 m from cover, so the field is not too wide; the flanks are just empty. **Reworked (#855):** a row of four wrecks on each flank and two pairs of kerb walls on the strip, each a lap of 44 to 45 m | [captures](maps/review/lot-field-2.jpg) f05 to f10; [#855](maps/review/thin-ground.jpg) |
 | Field: aprons and breaches | **Keep the form, fix D.** Six walled aprons, boards across the gaps, readable from the field; each has a lamp 0.5 m from the spawn | f07, f08; plan |
 | Concession | **Keep.** Warm, lit, a counter to run round, windows 1.0 to 2.4 m up that nothing can enter (the sweeps landed no body inside from the field in any state) | [captures](maps/review/lot-concession.jpg) c01 to c05 |
 | Midway | **Fix B2.** An open 32 by 42 m court, grey tiles, two lamps, two alleys with barrels and dumpsters at their ends; the west alley is the door skip. The spawns at the south corners are bare ground (C) | [captures](maps/review/lot-midway.jpg) m01 to m05 |
 | Projection booth | **Keep.** The one roost by design (the ramp, the window over the field, the projector); the camera is against the wall on the ramp (known, the player swaps shoulder). The projector spot lights the plaza through the wall ([#840](https://github.com/Ryubara/deadnight/issues/840)) | [captures](maps/review/lot-booth.jpg) b01 to b05 |
-| Generator yard | **Rework G, I.** Four lamps round a cage, 24% lit; the cage from the gate is a blank olive wall with propane tanks, and the east third of the yard is empty ground (only 7% of the yard is solid) | [captures](maps/review/lot-yard.jpg) y01 to y06 |
+| Generator yard | **Rework G, I.** Four lamps round a cage, 24% lit; the cage from the gate is a blank olive wall with propane tanks, and the east third of the yard is empty ground (only 7% of the yard is solid). **Reworked (#855):** a carton row in the east third, a 41 m lap with container B | [captures](maps/review/lot-yard.jpg) y01 to y06; [#855](maps/review/thin-ground.jpg) |
 | Back lot | **Rework E, F.** Six rows of wrecks and a dark mood, but 30% of it is lit by the field's lamps and its one neon is a flat orange block | [captures](maps/review/lot-backlot.jpg) l01 to l04, l03 dark |
-| Ticket plaza | **Fix B1, thin I.** The perk machine at the end of the court is a good landmark from the gate; the end wall's south-west corner is the way out; the court is 640 m² with 11% solid; three bare spawn points | [captures](maps/review/lot-plaza.jpg) p01 to p04 |
+| Ticket plaza | **Fix B1, thin I.** The perk machine at the end of the court is a good landmark from the gate; the end wall's south-west corner is the way out; the court is 640 m² with 11% solid; three bare spawn points. **Reworked (#855):** two carton rows in the south half (a lap of 60 m with the booths), and the container by the end wall was a roost, now out of reach | [captures](maps/review/lot-plaza.jpg) p01 to p04; [#855](maps/review/thin-ground.jpg) |
 
 ### What the sweeps found on the lot
 
@@ -144,6 +144,45 @@ say the same thing.
 you step over): field 31 and 17, concession 5 and 6, midway 12 and 33, booth 2 and 4, yard 12 and 13, back lot 3 and
 32, plaza 9 and 7. The back lot is clutter with three pieces of cover besides the wreck rows; the booth is a roost
 with two. Every one of them has a material.
+
+### The thin ground, reworked (#855)
+
+The maintainer chose to add loops and cover to the four stretches rather than shrink them. Each new piece is either
+taller than the body's reach and narrow or square to its neighbours (a wreck at 1.3 m, a carton stack at 1.40 m: run
+round and seen over, never stood on) or low cover a player shoots over (kerb walls at 1.0 m). Nothing a body can stand
+on is within a sprint-jump (6 m) of a piece over the reach.
+
+| Stretch | Added | Solid before / after | Ground > 6 m from cover | Largest empty circle | Lap (dead's mesh) |
+| --- | --- | ---: | ---: | --- | ---: |
+| Field, west flank (x < -45) | a row of four wrecks, x -52, z -25 to -8 | 11.6% / 14.8% | 0.1% / 0.0% | 6.0 / 5.7 m | 44 m |
+| Field, east flank (x > 45) | a row of four wrecks, x 53.5, z -24.5 to -7.3; a sofa moved off the row | 7.8% / 11.2% | 0.8% / 0.2% | 6.7 / 6.2 m | 44 m |
+| Field, south strip (z -10 to -4) | two pairs of kerb walls (1.0 m) in front of the fence, with a lane behind | 8.4% / 11.6% | 0.0% / 0.0% | 5.8 / 5.1 m | 45 m and 44 m |
+| Yard, east third (x > 50) | a row of nine carton stacks, 2.6 m short of container B; tyres moved to the corner | 11.6% / 14.1% | 1.2% / 0.4% | 6.8 / 6.3 m | 41 m |
+| Ticket plaza | two rows of four carton stacks across the south half, the machine's line clear between them | 11.6% / 13.2% | 0.1% / 0.0% | 6.2 / 4.5 m | 30 m; 60 m with the booths |
+
+Measured from `map_inventory.gd` (solids 0.45 to 1.9 m, a 0.25 m grid); the laps by `test_lot_loops.gd`, the
+shortest lap round each on a walking mesh for the dead's agent. The plaza's booths lap is 52 m, not the page's "about
+45". The field as a whole: 26.9% to 27.8% solid, largest circle 7.2 to 6.9 m.
+
+**A roost on the plaza's end wall, found and fixed.** The region sweep (1.0 m cells, depth 4, every door sold) stood
+the body on the small container, the container, the dumpster, the machine and the wreck at the end wall, from two
+crates and a stack of tyres beside them. A player on the container's back edge, against the wall, took **no blow from
+ten dead in 40 s** (`roost_probe.gd` at 2.4 m/s); the machine's top and the small container's took 5. The crates are
+loose cartons now and the tyres stand by the booths; `test_plaza_escape.gd` fails on any standing place over the reach
+in the plaza, and failed on the old props.
+
+**A wreck climbed at an inside corner.** The first west row ended in a wreck turned across it; the body got onto 1.3 m
+from the floor at the inside corner of the two (one sprint-jump), though a lone 1.3 m block is out of reach. The rows
+are straight now, and the sweep stands nothing on a row.
+
+**Sweeps** (`map_escape_probe.gd --region`, 1.0 m cells, depth 4), before and after, on the stretches: the field with no
+door sold 20,340 and 22,795 hops, nothing over a wall or in a closed area, no wreck row stood on (the one wreck stood on
+is the north-east one among the cars, from a car's bonnet, before and after; ten dead landed 5 blows there, so it is no
+roost); the yard's east third and the plaza with every door sold 8,940 and 8,800 hops, the junk tops before and none
+after. Sixteen ground points beside the fuel tanks are flagged in both: the probe bakes a cylinder as its box, so the
+corners of a tank's box read as closed ground. A kerb wall's top is no roost (5 blows in 40 s).
+
+![The thin stretches, before and after, from the player's camera](maps/review/thin-ground.jpg)
 
 **Prompts through walls.** The audit reproduces #831 on the lot: the stand's shotgun plaque (-8.2, -5.6) reaches a
 standing place inside the stand 2.3 m away, behind the wall; the grenade rack (11.4, 3.0) one inside the stand at 2.2

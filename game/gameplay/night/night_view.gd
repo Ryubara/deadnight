@@ -117,11 +117,19 @@ func show_strike(player_id: int) -> void:
 
 ## The shooter's weapon tilts down for the `seconds` of its reload and comes back up (every client
 ## draws every player's reload from the same `reload_started` event).
-func show_reload(player_id: int, seconds: float) -> void:
+func show_reload(player_id: int, seconds: float, rounds := 0) -> void:
 	var body: Node3D = bodies.call(player_id)
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 	if animation != null:
-		animation.reload(seconds)
+		animation.reload(seconds, rounds)
+
+
+## A shot ended a reload that was loading one round at a time: the arms come back to the hold.
+func show_reload_stopped(player_id: int) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.cancel_reload()
 
 
 ## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
@@ -224,6 +232,8 @@ func _on_event(event: Dictionary) -> void:
 			_show_blast_hit(event)
 		&"zombie_removed":
 			_gib(event)
+		&"zombie_shattered":
+			_shatter(event)
 		&"shot_fired":
 			began = PerfProbe.begin()
 			_show_shot(event)
@@ -231,7 +241,9 @@ func _on_event(event: Dictionary) -> void:
 		&"quick_melee":
 			show_strike(event["shooter_id"])
 		&"reload_started":
-			show_reload(event["shooter_id"], event["seconds"])
+			show_reload(event["shooter_id"], event["seconds"], int(event.get("rounds", 0)))
+		&"reload_interrupted":
+			show_reload_stopped(event["shooter_id"])
 		&"shock_burst":
 			_show_shock(event)
 		&"damage_dealt":
@@ -243,7 +255,8 @@ func _on_event(event: Dictionary) -> void:
 			)
 			PerfProbe.end(&"fx.number", began)
 			var element := ElementCatalog.get_def(event.get("element", &""))
-			if element == null or element.bleeds:
+			# Ice does not bleed: a frozen zombie that is broken shows its pieces instead.
+			if (element == null or element.bleeds) and not event.get("shattered", false):
 				began = PerfProbe.begin()
 				effects.blood_hit(event, _surfaces().callable())
 				PerfProbe.end(&"fx.blood", began)
@@ -316,7 +329,22 @@ func _burst_projectile(event: Dictionary) -> void:
 		view.queue_free()
 		_projectile_views.erase(id)
 	effects.spark(event["point"])
-	effects.muzzle_flash(event["point"])
+	var def := _def_of(event)
+	if def != null and def.has_bolt_colours() and def.splash_radius > 0.0:
+		effects.bolt_burst(event["point"], def)
+	else:
+		effects.muzzle_flash(event["point"])
+
+
+## The definition of the weapon an event names, or null when it names none (a warm-up's sample).
+func _def_of(event: Dictionary) -> WeaponDef:
+	var id: StringName = event.get("weapon_id", &"")
+	return WeaponCatalog.get_def(id) if id in WeaponCatalog.IDS else null
+
+
+## A frozen zombie the server killed breaks into pieces of ice where it stood.
+func _shatter(event: Dictionary) -> void:
+	effects.shatter(event["position"], event.get("scale", 1.0), event["zombie_id"])
 
 
 ## A re-cut weapon's element, in its colour: the shell of a blast (and the spark and flash of a
@@ -412,7 +440,7 @@ func _surfaces() -> WorldCast:
 
 ## A zombie a blast killed bursts into gibs where it stood.
 func _gib(event: Dictionary) -> void:
-	if event.get("zone", &"") != RulesAction.ZONE_BLAST:
+	if event.get("zone", &"") != RulesAction.ZONE_BLAST or event.get("shattered", false):
 		return
 	var at := _zombie_position(event["zombie_id"])
 	if at == Vector3.ZERO:

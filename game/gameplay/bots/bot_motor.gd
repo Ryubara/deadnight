@@ -43,6 +43,8 @@ const MELEE_RANGE := 1.9
 ## feet, and the least a boss must face the bot (dot product) for the lens to be seen.
 const WEAK_SPOT := Vector3(0.0, 1.16, 0.29)
 const WEAK_FACING := 0.35
+## Metres over the boss's feet (at scale 1) a bot that keeps off the lens aims at: the hips.
+const BOSS_BODY_AIM := 0.6
 ## A grenade throw: degrees the view may be off the throw's, ticks the pin is held, seconds the view
 ## is held after the button comes up (the arm's swing), and the longest the turn may take.
 const THROW_AIM_DEGREES := 3.0
@@ -53,6 +55,9 @@ const THROW_TURN_SECONDS := 1.5
 const FLARE_AIM_DEGREES := 1.0
 ## The widest the view may be off a target for a panic shot (degrees).
 const PANIC_DEGREES := 25.0
+## Seconds a shot at a frozen zombie is given to kill it (the answer and the next frame) before the
+## bot shoots that zombie again: one hit shatters it, so a burst would only spend rounds.
+const FROZEN_WAIT := 0.5
 ## Shots in a burst of an automatic weapon.
 const BURST_MIN := 3
 const BURST_MAX := 5
@@ -78,6 +83,11 @@ var _started := false
 var _retarget_left := 0.0
 var _pause_left := 0.0
 var _burst_left := 0
+## The shot just asked for was at a frozen zombie: one hit kills it, so it is not a burst.
+var _lone_shot := false
+## The frozen zombie last shot at, and the seconds left of the wait before it may be shot again.
+var _lone_id := -1
+var _lone_left := 0.0
 var _focus := 0.0
 var _head := false
 var _weak := false
@@ -235,7 +245,12 @@ func _aim_point(contact: Dictionary, eye: Vector3) -> Vector3:
 	var head := _head and speed < HEAD_SPEED and apart < HEAD_RANGE
 	var zone := Hitbox.HEAD if head else Hitbox.BODY
 	var mode: int = contact.get("mode", ZombieBody.Mode.CHASE)
-	return at + ZombiePose.aim_offset(look, mode, float(contact.get("yaw", 0.0)), zone)
+	var point := at + ZombiePose.aim_offset(look, mode, float(contact.get("yaw", 0.0)), zone)
+	if _profile.aims_off_weak_spot and ZombieModels.is_boss(look) and not head:
+		# The chest is where the boss's lens is: a bot that does not go for the lens aims at the
+		# hips, so its hits on the lens are the ones it aimed at (the simulator's `weak_spot_rate`).
+		point.y = at.y + BOSS_BODY_AIM * ZombieModels.aim_scale(look)
+	return point
 
 
 ## Where the boss's lens is, or `Vector3.INF` when the boss does not face `eye` enough for the bot
@@ -307,10 +322,12 @@ func _walk(out: NightCommand, intent: BotIntent) -> void:
 ## Whether to hold the trigger: on a target, view inside the hit cone, nothing in the way of the
 ## gun, and the pauses of the last shot and the last switch over.
 func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool = true) -> bool:
-	if contact.is_empty() or me.get("reloading", false):
-		return false
 	var weapon := _weapon_of(me)
-	if weapon == null or weapon.is_lure():
+	if contact.is_empty() or weapon == null or weapon.is_lure():
+		return false
+	# A reload that loads a round at a time (the pump) gives way to a shot once one is in.
+	var gives_way := weapon.reload_by_round and int(me.get("ammo", 0)) > 0
+	if me.get("reloading", false) and not gives_way:
 		return false
 	var distance := Vector2(contact["position"].x - eye.x, contact["position"].z - eye.z).length()
 	if weapon.is_melee():
@@ -318,9 +335,27 @@ func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool 
 	if int(me.get("ammo", 0)) <= 0 or _retarget_left > 0.0 or _pause_left > 0.0:
 		return false
 	var limit := PANIC_DEGREES if _panicky else _cone_degrees(distance) * _profile.fire_slop
-	if error_degrees > limit:
+	var off_target := error_degrees > limit or _inside_own_splash(weapon, distance)
+	if off_target or not _may_shoot_frozen(contact):
 		return false
 	triggers += 1
+	return true
+
+
+## A burst that would hurt the shooter (the ray gun's) is not fired inside its own splash.
+static func _inside_own_splash(weapon: WeaponDef, distance: float) -> bool:
+	return weapon.self_splash_share > 0.0 and distance < weapon.splash_radius
+
+
+## A frozen zombie is shot once and then given `FROZEN_WAIT` to break; any other contact is free.
+func _may_shoot_frozen(contact: Dictionary) -> bool:
+	_lone_shot = is_shatterable(contact)
+	if not _lone_shot:
+		return true
+	if _lone_left > 0.0 and contact["id"] == _lone_id:
+		return false
+	_lone_id = contact["id"]
+	_lone_left = FROZEN_WAIT
 	return true
 
 
@@ -415,6 +450,13 @@ func _weapon_of(me: Dictionary) -> WeaponDef:
 	return _weapon_def
 
 
+## Whether any hit kills this zombie as it stands: it is frozen (a status that shatters, by the wire
+## id its entry in the frame carries), so one shot is all it takes.
+static func is_shatterable(contact: Dictionary) -> bool:
+	var status := StatusCatalog.by_wire(int(contact.get("status", 0)))
+	return status != null and status.shatters
+
+
 ## Half the angle the weapon's hit covers at this distance.
 static func _cone_degrees(distance: float) -> float:
 	return clampf(rad_to_deg(atan2(HIT_RADIUS, maxf(distance, 0.1))), CONE_MIN, CONE_MAX)
@@ -434,6 +476,9 @@ func _count_shots(shots: int, automatic: bool) -> void:
 		_panicky = _profile.panic_rate > 0.0 and _rng.randf() < _profile.panic_rate
 		if not automatic:
 			continue
+		if _lone_shot:
+			_burst_left = 0
+			continue
 		if _burst_left <= 0:
 			_burst_left = _rng.randi_range(BURST_MIN, BURST_MAX)
 		_burst_left -= 1
@@ -443,5 +488,6 @@ func _count_shots(shots: int, automatic: bool) -> void:
 
 
 func _tick_timers(delta: float) -> void:
+	_lone_left = maxf(_lone_left - delta, 0.0)
 	_retarget_left = maxf(_retarget_left - delta, 0.0)
 	_pause_left = maxf(_pause_left - delta, 0.0)

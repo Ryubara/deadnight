@@ -15,6 +15,9 @@ extends SceneTree
 ##     --scene=res://world/drive_in_greybox.tscn --start=0,0,-43 --doors=none --out=<abs>.json
 ##
 ## `--doors` is `none`, `all`, or door ids separated by commas (opened before the walk).
+## `--region=x0,z0,x1,z1[;x0,z0,x1,z1...]` keeps only the launch cells inside those rectangles (a
+## stretch swept finer than the whole map). The report lists every standing place 0.9 m or more up
+## (`raised`, with the hops that got there), the tops a roost check starts from.
 
 const HOP_TICKS := 54
 const SETTLE_TICKS := 24
@@ -22,6 +25,8 @@ const SURFACE_STEP := 0.05
 const TOP := 9.0
 const JUMP_TICKS := [0, 9, 20]
 const NAV_CELL := 0.2
+## A start this high (the walkable ground is 0.2 up) is on a prop.
+const PERCH_FROM := 0.3
 
 var _cell := 1.5
 var _scene_path := ""
@@ -34,6 +39,8 @@ var _limit := 0
 var _replay := ""
 var _shard := 0
 var _shards := 1
+var _regions: Array[Rect2] = []
+var _raised: Array = []
 
 var _tuning: PlayerTuning
 var _scene: Node3D
@@ -70,6 +77,17 @@ func _initialize() -> void:
 			var parts := argument.trim_prefix("--shard=").split("/")
 			_shard = int(parts[0])
 			_shards = int(parts[1])
+		elif argument.begins_with("--region="):
+			for rect in argument.trim_prefix("--region=").split(";"):
+				var c := rect.split(",")
+				_regions.append(
+					Rect2(
+						float(c[0]),
+						float(c[1]),
+						float(c[2]) - float(c[0]),
+						float(c[3]) - float(c[1])
+					)
+				)
 		elif argument.begins_with("--limit="):
 			_limit = int(argument.trim_prefix("--limit="))
 	_tuning = CameraProbe.tuning()
@@ -137,6 +155,7 @@ func _run() -> void:
 		"hops": _hops,
 		"standing_places": _nodes.size(),
 		"violations": _violations,
+		"raised": _raised,
 		"seconds": (Time.get_ticks_msec() - started) / 1000.0,
 	}
 	var file := FileAccess.open(_out, FileAccess.WRITE)
@@ -275,6 +294,8 @@ func _launch_cells(bounds: AABB) -> Array:
 		while z <= bounds.end.z:
 			for level in _levels(x, z):
 				var ground := _ground(Vector3(x, level, z))
+				if not _in_regions(ground):
+					continue
 				if ground != Vector3.INF and _reachable(ground):
 					query.transform = Transform3D(Basis.IDENTITY, ground + Vector3(0, 0.95, 0))
 					if not _space.intersect_shape(query, 1).is_empty():
@@ -354,7 +375,13 @@ func _run_hop(
 ) -> Vector3:
 	_hops += 1
 	var state := PlayerMotionState.new()
-	state.position = Vector3(from.x, _floor_under(from) + 0.02, from.z)
+	# A standing place on a prop is where the body stood: start there exactly. The floor under a
+	# capsule that rests on a rim is the ground, inside the prop, and a hop from there is not one a
+	# player can make (it tunnelled through a 0.4 m fence, #846).
+	if from.y > PERCH_FROM:
+		state.position = from
+	else:
+		state.position = Vector3(from.x, _floor_under(from) + 0.02, from.z)
 	state.on_floor = true
 	var command := PlayerCommand.new()
 	command.move = Vector2(0, -1)
@@ -404,6 +431,17 @@ func _consider(hop: Dictionary, depth: int, frontier: Array) -> void:
 		return
 	_nodes[key] = true
 	var open := _distance(_open_map, pos)
+	if pos.y >= 0.9:
+		(
+			_raised
+			. append(
+				{
+					"pos": [snappedf(pos.x, 0.01), snappedf(pos.y, 0.01), snappedf(pos.z, 0.01)],
+					"depth": depth,
+					"via": hop["via"],
+				}
+			)
+		)
 	var kind := ""
 	if pos.y < -0.6:
 		kind = "fell_off_the_map"
@@ -508,3 +546,12 @@ func _hops_from_all(at: Vector3) -> Array:
 		var angle := TAU * i / 16
 		results.append_array(_hops_from(at, Vector3(sin(angle), 0, cos(angle)), []))
 	return results
+
+
+func _in_regions(at: Vector3) -> bool:
+	if _regions.is_empty() or at == Vector3.INF:
+		return true
+	for rect in _regions:
+		if rect.has_point(Vector2(at.x, at.z)):
+			return true
+	return false

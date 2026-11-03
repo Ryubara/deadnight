@@ -66,6 +66,54 @@
       "seconds": 0.708,
       "events": {}
     },
+    "Sprint_ppsh": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Rifle",
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
+    "Sprint_mp5": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Rifle",
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
+    "Sprint_m4a1": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Rifle",
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
+    "Sprint_m249": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Rifle",
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
+    "Sprint_fifty_cal": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Rifle",
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
+    "Sprint_pump_870": {
+      "layer": "upper",
+      "loop": true,
+      "class": "Shotgun",
+      "frames": 17,
+      "seconds": 0.708,
+      "events": {}
+    },
     "Sprint_Pistol": {
       "layer": "upper",
       "loop": true,
