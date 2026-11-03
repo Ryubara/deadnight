@@ -47,6 +47,8 @@ var max_alive := 0
 ## The most zombies alive at once in all the rooms together (`ServerConfig.alive_budget`): each room
 ## is cut to its share of it, so a lone room may stand the budget and four share it. 0 is no budget.
 var alive_budget := DEFAULT_ALIVE_BUDGET
+## How many bots the rooms may seat (`ServerConfig`: `MAX_BOTS`, `BOTS_OFF`, `BOT_BUDGET`).
+var bot_limits := BotLimits.new()
 var log_enabled := true
 var rules_tuning: RulesTuning
 ## The seed of every room's dice; -1 draws one for each.
@@ -86,6 +88,7 @@ static func make(config: ServerConfig, p_port: int, p_seed: int = -1) -> GameSer
 	server.capacity = config.capacity
 	server.max_alive = config.max_alive
 	server.alive_budget = config.alive_budget
+	server.bot_limits = BotLimits.from_config(config)
 	server.server_id = config.server_id
 	server.public_url = config.public_url
 	server.activity_path = config.activity_path
@@ -282,6 +285,7 @@ func _open_room(match_id: String, settings: MatchSettings = null) -> NightHost:
 		room.match_settings = settings
 	room.max_alive = max_alive
 	room.alive_share = _share(_rooms.size() + _building.size())
+	room.bot_limit = bot_limits.for_room(_rooms.size() + _building.size())
 	room.heavy_parity = _lighter_parity()
 	room.emptied.connect(func() -> void: _end_room(match_id))
 	viewport.add_child(room)
@@ -306,8 +310,17 @@ func _share(rooms: int) -> int:
 ## Gives every room its share, after a room opened or closed.
 func _share_budget() -> void:
 	var share := _share(_rooms.size())
+	var bots := bot_limits.for_room(_rooms.size())
 	for room: NightHost in _rooms.values():
 		room.set_alive_share(share)
+		room.set_bot_limit(bots)
+
+
+## The kill-switch and the caps are changed while the server runs (a test, an admin hook): every
+## room takes the new limits at once and sends its extra bots away.
+func set_bot_limits(limits: BotLimits) -> void:
+	bot_limits = limits
+	_share_budget()
 
 
 ## The half of the physics frames (`NightHost.heavy_parity`) that fewer of the open rooms put their

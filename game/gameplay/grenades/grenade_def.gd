@@ -52,6 +52,15 @@ extends Resource
 ## How far below it the floor still counts as under it while rolling (a ledge ends the roll).
 @export_range(0.0, 1.0, 0.01, "or_greater", "suffix:m") var ground_reach: float = 0.12
 
+@export_group("Zombies")
+## Running into a zombie (`ZombieBump`) kills the grenade's speed: it keeps this share of its speed
+## along the body (sliding), this share of its speed into the body (rebounding), and is shoved
+## `zombie_shove` m/s out from the body, so it drops at the zombie's feet or bounces off a short
+## way.
+@export_range(0.0, 1.0) var zombie_slide: float = 0.05
+@export_range(0.0, 1.0) var zombie_restitution: float = 0.06
+@export_range(0.0, 5.0, 0.05, "or_greater", "suffix:m/s") var zombie_shove: float = 0.3
+
 @export_group("Blast")
 ## Full damage inside the core radius, sliding to nothing at the radius.
 @export_range(0.0, 30.0, 0.1, "or_greater", "suffix:m") var core_radius: float = 2.0

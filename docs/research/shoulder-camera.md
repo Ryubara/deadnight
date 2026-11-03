@@ -170,6 +170,16 @@ theirs), and what a car or a wall puts between the lens and the body (the wall s
 projects every bone of the player's skeleton (fingers apart) through the real camera: all inside the frame, at four looks,
 where the standing camera cuts some. The capture `game/tests/captures/downed_camera.tscn` saves the stages.
 
+## Who owns the view (#702)
+
+Every body is `player.tscn`, and its `Camera3D` is saved `current`; a camera that enters the tree as current takes the
+viewport, so with bots the last body seated had the view ("my camera is stuck to a bot"). Only the person's body owns
+a camera: `NightWorld.add_body` calls `Player.release_view()` on every body that is not the person's (a puppet does the
+same). `game/tests/night/test_night_camera_owner.gd` asks the viewport's current camera which body owns it, after the
+spawn, a bot downed and raised, the person downed and raised, a late seat, and through the Play screen's own path;
+`tools/web_smoke/camera_owner.py` reads `view_is_players` from the page in the web job. Captures no longer need
+`make_current()` for this; the capture `game/tests/captures/camera_owner_tour.tscn` plays the real Solo flow with 3 bots.
+
 ## Things found the hard way
 
 - `PhysicsDirectSpaceState3D.cast_motion` ignores a body the sweep already starts inside, so every sweep must start

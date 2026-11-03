@@ -39,6 +39,9 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var bot_hurt_share: float = 0.5
 @export_group("")
 
+## What the map calls its links and breaches on the HUD; null for the lot (the HUD's own words).
+@export var words: MapWords
+
 ## The map's generator: the shared table's when empty, else this one (a map with no generator
 ## gives a tank that never drains and no circuits).
 @export var fuel: FuelTuning

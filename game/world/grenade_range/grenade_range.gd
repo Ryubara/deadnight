@@ -178,7 +178,10 @@ func _step_predicted() -> void:
 		view.follow(STEP)
 	for id in _views:
 		var view := _views[id]
-		view.state.step(STEP, _cast.callable())
+		if view.settled:
+			view.settled = false
+		else:
+			view.state.step(STEP, _cast.callable())
 		view.follow(STEP)
 
 
@@ -191,7 +194,7 @@ func _play_cook_ticks() -> void:
 	var period := lerpf(0.5, 0.07, progress * progress)
 	if _tick_clock >= period:
 		_tick_clock = 0.0
-		sound_requested.emit(&"grenade_tick", hand())
+		sound_requested.emit(&"grenade_beep", hand())
 
 
 # --- The server's answers ---
@@ -209,6 +212,8 @@ func _on_events(events: Array) -> void:
 				_adopt(event)
 			&"grenade_bounced":
 				sound_requested.emit(&"grenade_bounce", event["point"])
+			&"grenade_struck":
+				_take_the_servers(event)
 			&"grenade_exploded":
 				_explode(event)
 			&"blast_hit":
@@ -243,6 +248,14 @@ func _adopt(event: Dictionary) -> void:
 		)
 	view.state.id = event["grenade_id"]
 	_views[event["grenade_id"]] = view
+
+
+## A zombie stopped the grenade: the copy flies without the dead, so it takes the server's state.
+func _take_the_servers(event: Dictionary) -> void:
+	var view: GrenadeView = _views.get(event["grenade_id"])
+	if view != null:
+		view.state = GrenadeState.from_dict(_def, event["state"])
+		view.settled = true
 
 
 func _explode(event: Dictionary) -> void:
