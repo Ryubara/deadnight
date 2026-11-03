@@ -28,7 +28,8 @@ const WEAPONS := {
 	"smg": "rule: BotMotor fires it in bursts of three to five (automatic)",
 	"shotgun": "rule: BotMotor fires it like the pistol (the cone is for the body, not the spread)",
 	"rifle": "rule: BotMotor fires it like the pistol",
-	"flare_gun": "waived until #229 (team play: a flare to draw the dead off a downed teammate)",
+	"flare_gun":
+	"rule: BotRevive fires it (BotFlare) 12 m from a claimed body when the dead there are too many",
 	"crowbar": "rule: BotMotor swings it at a target inside its reach",
 	"baseball_bat": "rule: BotMotor swings it at a target inside its reach (melee)",
 	"fire_axe": "rule: BotMotor swings it at a target inside its reach (melee)",

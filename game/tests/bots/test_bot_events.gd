@@ -15,7 +15,6 @@ const DROPPED: Array[StringName] = [
 	&"headshot_hit",
 	&"projectile_spawned",
 	&"projectile_burst",
-	&"lure_started",
 	&"blast_hit",
 	&"player_damaged",
 	&"look_packet",
