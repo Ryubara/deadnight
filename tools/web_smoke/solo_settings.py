@@ -75,8 +75,9 @@ def desktop_run(page: Page, out: Path, label: str, result: dict) -> None:
     if result["screen_after_solo"] != "play_screen":
         return
     result["play_rules_at_open"] = full(page).get("play_rules")
-    # Start has the focus: Up reaches the bots, the break slider, the cap and the intensity; Down walks back.
-    for _ in range(4):
+    # Start has the focus: Up reaches the bot skill and the bot count (one row), the break slider, the cap and the
+    # intensity; Down walks back.
+    for _ in range(5):
         smoke.press(page, "ArrowUp")
     for _ in range(2):
         smoke.press(page, "ArrowRight")  # 1x -> 3x
@@ -92,6 +93,7 @@ def desktop_run(page: Page, out: Path, label: str, result: dict) -> None:
     page.wait_for_timeout(600)
     result["play_rules"] = full(page).get("play_rules")
     page.screenshot(path=out / f"{label}-desktop-solo-3x.png")
+    smoke.press(page, "ArrowDown")  # the skill
     smoke.press(page, "ArrowDown")  # back to Start
     smoke.press(page, "Enter")
     smoke.wait_for_night(page)

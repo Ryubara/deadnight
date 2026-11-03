@@ -43,10 +43,13 @@ def start_with_three_bots(page: Page) -> None:
     smoke.press(page, "Enter")
     smoke.wait_for(page, "the Play screen", lambda s: s.get("screen") == "play_screen", 60)
     page.wait_for_timeout(1500)
-    smoke.press(page, "ArrowUp")  # Start has the focus: Up reaches the Bots row
+    # Start has the focus: Up reaches the bot skill (the Bots row's second selector, #715), Up again the count.
+    smoke.press(page, "ArrowUp")
+    smoke.press(page, "ArrowUp")
     for _ in range(3):
         smoke.press(page, "ArrowRight")  # 0 -> 3 bots
     page.wait_for_timeout(600)
+    smoke.press(page, "ArrowDown")  # the skill
     smoke.press(page, "ArrowDown")  # back to Start
     smoke.press(page, "Enter")
     smoke.wait_for_night(page)
