@@ -593,18 +593,7 @@ func _target_list() -> Array:
 	var list: Array = []
 	for zombie: ZombieBody in sim.zombies.values():
 		if zombie.is_alive():
-			(
-				list
-				. append(
-					{
-						"id": zombie.id,
-						"pos": zombie.position,
-						"yaw": zombie.yaw,
-						"scale": zombie.profile.hit_scale(),
-						"weak": zombie.profile.weak,
-					}
-				)
-			)
+			list.append(zombie.hit_target())
 	return list
 
 

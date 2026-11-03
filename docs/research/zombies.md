@@ -92,10 +92,13 @@ The rules say what a zombie is (`ZombieType`, carried by `zombie_spawn_requested
   height: the walker stands 1.77 m, the brute 2.09 m, the headliner 2.56 m, which is what the hit zones are sized for.
   Until the headliner's pull request the night drew them at the file's size (about 1.36 m for a walker), so the zones
   stood a third above the bodies; the captures had always applied the scale and hid it.
-- **Hit zones take the zombie's size.** `Hitbox.shapes(position, yaw, scale)` sizes the whole set about the feet; the
-  scale is the look's height (brute 1.18, runner 1.07) times the type's `hit_chance` (the crawler's 0.6 makes it low
-  and small). The server sends it with each target (`"scale"`), the lag compensator keeps it, and the bot aims at the
-  height the look stands at. Grenade blasts still use the walker's zones.
+- **Hit zones take the zombie's size and pose.** `Hitbox.shapes(position, yaw, scale, weak, set)` sizes the set about
+  the feet; the scale is the look's height (brute 1.18, runner 1.07) times the type's `hit_chance` when it stands (a
+  crawler's zones are its body on the ground, so its 0.6 does not shrink them again), and the set is the look's, in
+  the pose its mode and speed put it in (`ZombiePose`: moving, running, sprinting, striking, staggering, tearing,
+  roaring), fitted to the skinned mesh ([hit zones](hit-zones.md)). The server sends both with each target
+  (`"scale"`, `"pose"`, from `ZombieBody.hit_target`), the lag compensator keeps them, and the bots aim at the height
+  the look stands at (a crawler's is low). Grenade blasts still use the six standing shapes.
 - `barrier_speed` is carried on the profile and read at the fence's boards ([below](#the-fences-boards)).
 
 ## The fence's boards

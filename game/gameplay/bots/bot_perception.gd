@@ -129,15 +129,17 @@ func _look(zombies: Array[Dictionary], here: Vector3, round_number: int, view_ya
 
 ## A ray from the eye reaches the chest, else the head.
 func _sees(eye: Vector3, zombie: Dictionary) -> bool:
-	var scale := ZombieModels.aim_scale(zombie.get("look", ZombieModels.DEFAULT))
+	var look: StringName = zombie.get("look", ZombieModels.DEFAULT)
+	var mode: int = zombie.get("mode", ZombieBody.Mode.CHASE)
+	var yaw := float(zombie.get("yaw", 0.0))
 	var base: Vector3 = zombie["position"]
 	rays_last += 1
-	if _level.clear(eye, base + Vector3(0.0, BotLevel.CHEST_HEIGHT * scale, 0.0)):
+	if _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.BODY)):
 		return true
 	if rays_last >= _profile.rays_per_think:
 		return false
 	rays_last += 1
-	return _level.clear(eye, base + Vector3(0.0, BotLevel.HEAD_HEIGHT * scale, 0.0))
+	return _level.clear(eye, base + ZombiePose.aim_offset(look, mode, yaw, Hitbox.HEAD))
 
 
 func _sighted(zombie: Dictionary) -> void:

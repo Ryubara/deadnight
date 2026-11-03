@@ -8,6 +8,9 @@ extends GdUnitTestSuite
 ## How far (canvas units) the end of a shot may be drawn from the reticle's centre: well under the
 ## reticle's own gap, so a player sees the shot land on the dot.
 const TOLERANCE := 1.5
+## A head is a big ball and the muzzle's ray, a shoulder to the side of the camera's, meets its
+## surface a little to the side of where the camera's does: a head on the dot is allowed more.
+const HEAD_TOLERANCE := 3.0
 const DISTANCES: Array[float] = [4.0, 10.0, 22.0]
 const DESKTOP := Vector2i(1920, 1080)
 ## A phone held sideways: the canvas is 540 units high there (`MenuScale`).
@@ -114,7 +117,7 @@ func _assert_on_the_dot(found: Dictionary) -> void:
 			. override_failure_message(
 				"%s: the shot is drawn %s units off the reticle (%s)" % [key, off, found[key]]
 			)
-			. is_less(TOLERANCE)
+			. is_less(HEAD_TOLERANCE if _zones_wanted else TOLERANCE)
 		)
 
 

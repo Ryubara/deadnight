@@ -63,6 +63,19 @@ func is_alive() -> bool:
 	return mode != Mode.DYING
 
 
+## The zombie as the weapons shoot at it (`Hitbox.ray_at`): where it stands, the size and set of
+## its hit zones.
+func hit_target() -> Dictionary:
+	return {
+		"id": id,
+		"pos": position,
+		"yaw": yaw,
+		"scale": profile.hit_scale(),
+		"weak": profile.weak,
+		"pose": ZombiePose.hit_set(look(), mode, tearing, move_speed),
+	}
+
+
 ## What a client draws from: plain values, the same ones the wire format carries.
 func view_entry() -> Dictionary:
 	return {
