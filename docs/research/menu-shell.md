@@ -47,7 +47,8 @@ and `game/ui/screens/main_menu.gd`.
 - **The browser runs find the menu's items by key.** The seven scripts of `tools/web_smoke/` pressed Down and Up
   counts against the old column. They share `smoke.menu_item(page, tab, steps)` now: E walks to the tab (the game reports
   it as `window.deadnight.tab`), the tab's first control takes the focus whatever it was, and `steps` presses of Down
-  reach the item. `start_solo` is Play, then two Downs, then Enter.
+  reach the item. `start_solo` is Play, then two Downs, then Enter (Solo), then Enter again on the Play screen's
+  Start the night (#620).
 
 - **A panel holds its choices and writes them once, when the player leaves** (#489). The Loadout tab first wrote the
   showcase weapon on every click, which made the stage dress the soldier from the *saved* look (the weapon's
@@ -57,6 +58,23 @@ and `game/ui/screens/main_menu.gd`.
   change, on `MenuContext.leaving` (just before any action: Play, Settings, Credits, Quit), on a close request and when
   the window loses focus (a browser has no close request), and as it leaves the tree. A visit with no change writes
   nothing. A new panel with choices does the same: hold in memory, override `commit`, never write per click.
+- **Solo went to the night with no rules (#620).** `MainMenu.ROUTES[&"solo"]` pointed at the night screen since the
+  first menu (#33). The Play screen (`PlayScreen`, #449) holds the settings a room host sets (the same
+  `MatchSettingsPanel`) and was left unrouted ("a one-line change left to the menu work", #449); the menu rework
+  (#466) wrote "Solo opens the night" and the scenes table called the screen an old placeholder, so nothing owned the
+  line. Solo now opens it and Start opens the night. A headless run measures text as nothing, so a layout test there
+  cannot see a phone overflow: the Play screen's fit at 844 x 390 (540 units high) is checked by
+  `tests/captures/solo_settings_tour.tscn` (real fonts; it prints each control outside the window) and by
+  `tools/web_smoke/solo_settings.py` (a finger and a keyboard through the real build). On a phone the screen drops the
+  overline, the hints and the margins and makes every row and button a tap target (62 units).
+
+- **A hovered button is paint, and a scroll area cuts paint** (#628). `UIButton` grows 3.5 percent on hover; the lobby's
+  rows are full-width buttons in a `ScrollContainer`, which clips at its own rectangle, so "Copy the link" lost its
+  left edge. Two shared rules: the button grows only by the room it has inside its nearest clipping ancestor, and the
+  theme keeps `UITokens.hover_room` free at the left and right of every `ScrollContainer` (not above and below: screens
+  compute a scroll area's height from its content). A button flush with the first or last row of an area grows
+  sideways only. The focus ring above the first and below the last row of an area is still cut (#644). `test_hover_room.gd`
+  hovers every button of every menu screen at 720p, 1080p and the phone canvas, scrolled to the top, end and middle.
 
 ## Tests
 
@@ -67,3 +85,6 @@ every panel inside every canvas, reduced motion, the longest count), `test_menu_
 clicks: an outfit survives a weapon change, another tab and a reload from the file, and a visit writes the file once,
 counted by `Settings.write_count`). Captures: `tests/captures/menu_shell_tour.tscn`,
 `tests/captures/menu_loadout_keep_tour.tscn` (pick, change weapon, other tab, back; prints what the soldier wears).
+`tests/captures/lobby_hover_tour.tscn` hovers the lobby's buttons with a real mouse event (windowed, through `gds godot`),
+and exported as the main scene of a web build it publishes where each button is (`window.hoverRects`) for a browser to
+hover (#628, before and after).

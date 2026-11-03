@@ -276,6 +276,9 @@ number comes from) follows these numbers. They live in `tools/blender/smallmap_k
 | Atlas | the drive-in palette in its own cells plus Plaster `#b3a588`, Sandbag `#a88d62`, Chalk `#ece6d2`, Rust `#7d4b2f` and Soot `#2f2c2a` in its five empty cells, so drive-in props share it |
 | Chamfers | 60 mm on wall pieces and frames, 30 mm on props of 1-3 m |
 | Flat surfaces | plain walls, floors and ceilings stay CSG with a lot pattern, cut per room for the light cap; only shaped pieces are modelled |
+| Shell materials | `smallmap_wall_ground` (`blocks`, Concrete), `smallmap_wall_upper` (`plaster`, Plaster), `smallmap_floor_ground` (`concrete`), `smallmap_floor_upper` (`planks`), `smallmap_ceiling` (`plaster`) |
+| Files | `game/assets/smallmap/<name>.gltf` on `smallmap_palette.png` (sRGB swatches), a fixture each in `game/world/smallmap/fixtures/` with hidden CSG collision |
+| Walls and openings | 108-992 tris against 1.5k (`tools/blender/build_smallmap_walls.py`); openings in a ground (0.3 m, Concrete) and an `_upper` (0.2 m, Plaster) variant |
 | Roof | 2 m bays along the ridge, an 8 m span outside to outside at 30 degrees, a 0.4 m overhang, the ridge 2.59 m over the wall top; rafters at 1 m centres; boards at a bay's end lap 20 mm into the next so no crack shows the sky |
 | Outside | bare trees 4.7 to 8.4 m, a utility pole 7 m with 12 m wire spans, wire fence runs of 2 m with a post, coils 2 m; a far level of detail of 300 tris or fewer for what the backdrop repeats |
 | Backdrop | past the yard's fence, unshaded (`backdrop_haze.gdshader`: lit by the moon and ambient, its own capped haze), one MultiMesh a model; at most 75k triangles and 40 drawing nodes in all ([the backdrop](../research/maps/small-map-art.md#the-backdrop)) |
