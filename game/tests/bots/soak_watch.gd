@@ -32,8 +32,8 @@ const APPROACH_METRES := 1.0
 ## Seconds within which the same item refused again counts as a loop.
 const LOOP_WINDOW := 30.0
 ## What a bot is doing when it is on an errand (its `note` starts with one of these), which the
-## far-from-the-person gate leaves out.
-const ERRAND_NOTES: Array[String] = ["buy", "fuel", "breaker", "boards", "crane"]
+## far-from-the-person gate leaves out (the walk to look for the last of the dead is one).
+const ERRAND_NOTES: Array[String] = ["buy", "fuel", "breaker", "boards", "crane", "hunt"]
 ## Notes of a bot that stands the stance of the Hold order.
 const STANCE_NOTES: Array[String] = ["hold_order", "fight", "throw"]
 ## Notes of a bot with nothing to do.
@@ -107,6 +107,7 @@ func _tally(id: int) -> Dictionary:
 			"far_run": 0,
 			"far_longest": 0,
 			"far_notes": {},
+			"far_samples": [],
 			"near12": 0,
 			"near12_of": 0,
 			"stance": 0,
@@ -243,7 +244,7 @@ func tick() -> void:
 		var note: String = bot.intent.note
 		var standing := Vector2(body.velocity.x, body.velocity.z).length() < STANDING
 		_watch_idle(tally, bot, here, note, standing, me)
-		_watch_people(tally, here, note, humans)
+		_watch_people(tally, bot, here, note, humans)
 		if not STANCE_NOTES.has(note):
 			tally["away_note"] = note.get_slice(" ", 0)
 			tally["away_tick"] = ticks
@@ -432,6 +433,13 @@ func _watch_idle(
 					"goal": bot.intent.goal.snappedf(0.1),
 					"path": str(bot.legs.path.last_status),
 					"stuck": bot.legs.stuck.stuck,
+					"path_end":
+					(
+						bot.legs.path.points[bot.legs.path.points.size() - 1].snappedf(0.1)
+						if not bot.legs.path.points.is_empty()
+						else Vector3.INF
+					),
+					"stopped_short": bot.legs.stopped_short_of.is_finite(),
 					"round": night.server.rules.round_number,
 					"phase": night.server.rules.phase,
 				}
@@ -443,7 +451,9 @@ func _watch_idle(
 ## The distance to the nearest person on their feet: the 25 m gate (a run of ticks beyond it,
 ## outside
 ## an errand) and the share within 12 m (Follow's).
-func _watch_people(tally: Dictionary, here: Vector3, note: String, humans: Array[Vector3]) -> void:
+func _watch_people(
+	tally: Dictionary, bot: BotClient, here: Vector3, note: String, humans: Array[Vector3]
+) -> void:
 	if humans.is_empty():
 		tally["far_run"] = 0
 		return
@@ -462,8 +472,32 @@ func _watch_people(tally: Dictionary, here: Vector3, note: String, humans: Array
 	if nearest > GATE_FAR_METRES and not errand:
 		tally["far_run"] += 1
 		tally["far_longest"] = maxi(tally["far_longest"], tally["far_run"])
+		if tally["far_run"] == int(GATE_FAR_SECONDS * 60.0) and tally["far_samples"].size() < 3:
+			tally["far_samples"].append(_far_sample(bot, here, note, humans))
 	else:
 		tally["far_run"] = 0
+
+
+## What a bot far from the person was doing when it had been so for the gate's time (for the
+## report).
+func _far_sample(bot: BotClient, here: Vector3, note: String, humans: Array[Vector3]) -> Dictionary:
+	var nearest := Vector3.INF
+	for person in humans:
+		if nearest == Vector3.INF or person.distance_to(here) < nearest.distance_to(here):
+			nearest = person
+	var body := night.server.body_of(bot.state.player_id)
+	return {
+		"tick": ticks,
+		"note": note,
+		"at": [snappedf(here.x, 0.1), snappedf(here.z, 0.1)],
+		"person": [snappedf(nearest.x, 0.1), snappedf(nearest.z, 0.1)],
+		"goal": bot.intent.goal.snappedf(0.1),
+		"speed": snappedf(Vector2(body.velocity.x, body.velocity.z).length(), 0.1),
+		"path": str(bot.legs.path.last_status),
+		"stuck": bot.legs.stuck.stuck,
+		"round": night.server.rules.round_number,
+		"phase": night.server.rules.phase,
+	}
 
 
 ## The stuck episodes of a bot that lasted over five seconds, for the report.
@@ -573,6 +607,7 @@ func report() -> Dictionary:
 					"idle_roam_longest": snappedf(float(tally["idle_roam_longest"]) / 60.0, 0.1),
 					"far_longest": snappedf(float(tally["far_longest"]) / 60.0, 0.1),
 					"far_notes": tally["far_notes"],
+					"far_samples": tally["far_samples"],
 					"near12_share":
 					snappedf(float(tally["near12"]) / maxf(float(tally["near12_of"]), 1.0), 0.0001),
 					"stance_share":
@@ -622,6 +657,7 @@ func report() -> Dictionary:
 		"game_seconds": snappedf(float(ticks) / 60.0, 0.1),
 		"kills_total": _kills_total,
 		"doors": _doors.size(),
+		"relocated": night.server.director.relocated,
 		"denials": _denials,
 		"denial_loops": _loops,
 		"spread": snappedf(_spread_sum / maxf(float(_spread_n), 1.0), 0.1),

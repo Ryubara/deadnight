@@ -52,6 +52,9 @@ var home := Vector3.INF
 ## posts and the fuel crates, a few metres apart at the least): where a roaming bot goes
 ## (`BotRoam`). Empty for a level without them; a roaming bot then wanders.
 var roam_spots: Array[Vector3] = []
+## How many of a round's last zombies every screen outlines through the walls
+## (`ZombieTuning.mark_last`), which the bots hunt for (`BotHunt`).
+var mark_last := 3
 ## The shop, the breaches, the breaker posts and the fuel crates (`LotBotData.fill` with the rules'
 ## tuning); null for a bot that does no errands.
 var shop: BotShop
