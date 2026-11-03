@@ -11,7 +11,20 @@ extends Node
 ## `--speed=N` (ticks per frame, default 40), `--count=X` (the dead's number, a fraction of the
 ## shipped), `--tough=X` (every player's health, a multiple of the shipped: the soak measures how
 ## bots walk, not whether they live), `--episodes` (print each bot's stuck episodes) and
-## `--trace=FILE` (write every bot's position twice a second, one line each, to FILE).
+## `--trace=FILE` (write every bot's position twice a second, one line each, to FILE),
+## `--shop` (the bots do errands too: shopping, boards, the generator), `--idle` (print each time a
+## bot has stood with nothing to do for six seconds), `--map=FILE` (write the footprints of the
+## lot's solid things above the ground, one polygon a line, and the roam spots, for the top-down
+## picture of a trace) and `--order=roam|follow|hold` (the standing order the person gives the bots
+## through the same `BotOrders` the command wheel calls, once, at the start: default `follow`, which
+## is what this soak was written to measure and what the #564 numbers are; the game's own default is
+## `roam`. The within-12 m gate is Follow's, Roam and Hold have their own numbers below).
+##
+## Per bot the report also has `idle_longest` (the longest seconds standing with nothing to do),
+## `cells` (10 m squares walked through), `kills`, `buys`, and `mean_distance`; for the run
+## `spread` (the mean distance between two bots) and, for a hold, `within_hold_3m` (the share of the
+## ticks a bot that is up stood within 3 m of the spot) and `within_hold_3m_on_the_spot` (the same
+## of the ticks it was not on a trip for a revive, a ping or a dodge).
 ## Prints `SOAK {json}` at the end: one object per bot and one for the whole run.
 
 ## The distance from the nearest person that counts as staying with them (metres).
@@ -20,6 +33,9 @@ const NEAR := 12.0
 const BAKE_WAIT_FRAMES := 600
 ## Ticks between two trace lines.
 const TRACE_EVERY := 30
+## Metres from the held spot that the order promises, and the speed (m/s) under which a bot stands.
+const HOLD_RADIUS := 3.0
+const STANDING := 0.05
 
 var _args := {}
 var _night: Night
@@ -41,6 +57,25 @@ var _was_stuck: Dictionary = {}
 var _causes: Dictionary = {}
 ## Ticks spent farther than `NEAR` from the nearest person, by what the bot was doing.
 var _far_notes: Dictionary = {}
+## The standing order of the run, and the spot a hold keeps.
+var _order: StringName = BotOrders.ROAM
+var _hold_spot := Vector3.INF
+## By seat: ticks standing with nothing to do in a row, the longest such run, the 10 m squares
+## walked through, the sum of the distances to the nearest person and its count, the ticks up and
+## the ticks up within the hold's radius of the spot.
+var _still: Dictionary = {}
+var _idle_longest: Dictionary = {}
+var _cells: Dictionary = {}
+var _distance_sum: Dictionary = {}
+var _distance_n: Dictionary = {}
+var _up_ticks := 0
+var _held_ticks := 0
+## Of the ticks up, the ones the bot was under the stance itself (not on a trip for a revive, a
+## ping, a dodge or an errand), and of those the ones within the hold's radius.
+var _stance_ticks := 0
+var _stance_held := 0
+var _spread_sum := 0.0
+var _spread_n := 0
 
 
 func _ready() -> void:
@@ -64,10 +99,51 @@ func _ready() -> void:
 		_night.link.send({"type": NightServer.JOIN, "player_id": id, "local": false})
 	await _wait(3)
 	_seat_the_bots()
+	_give_the_order()
+	if _args.has("map"):
+		_write_map(String(_args["map"]))
 	if _args.has("trace"):
 		_trace = FileAccess.open(String(_args["trace"]), FileAccess.WRITE)
 	_night.state.event_received.connect(_on_event)
 	_night.ticked.connect(_on_tick)
+
+
+## The person's word, once, as the wheel gives it. A roam is the game's default and sends nothing.
+func _give_the_order() -> void:
+	_order = StringName(String(_args.get("order", "follow")))
+	var body := _night.server.body_of(Night.PLAYER_ID)
+	_night.bot_orders.issue(_order, Night.PLAYER_ID, body.global_position)
+
+
+## The lot seen from above: `box x1 z1 x2 z2 x3 z3 x4 z4` for every solid box that rises above the
+## ground, `spot x z` for every place a roaming bot may go.
+func _write_map(path: String) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	for node in _night.world.find_children("*", "CollisionShape3D", true, false):
+		var shape := node as CollisionShape3D
+		if shape.disabled or not (shape.shape is BoxShape3D):
+			continue
+		if not (shape.get_parent() is StaticBody3D):
+			continue
+		var size := (shape.shape as BoxShape3D).size
+		var top := shape.global_transform * Vector3(0.0, size.y * 0.5, 0.0)
+		if top.y < 0.4:
+			continue
+		var line := PackedStringArray(["box"])
+		for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+			var at := (
+				shape.global_transform
+				* Vector3(corner.x * size.x * 0.5, 0.0, corner.y * size.z * 0.5)
+			)
+			line.append("%.2f %.2f" % [at.x, at.z])
+		file.store_line(" ".join(line))
+	for spot in _seats_level_spots():
+		file.store_line("spot %.2f %.2f" % [spot.x, spot.z])
+	file.close()
+
+
+func _seats_level_spots() -> Array[Vector3]:
+	return _host.bots[0].level.roam_spots if not _host.bots.is_empty() else []
 
 
 func _match_settings() -> MatchSettings:
@@ -87,7 +163,8 @@ func _seat_the_bots() -> void:
 	var level := BotLevel.new(
 		_probe.callable(), _night.world.is_lit, _night.rules_tuning.rounds, _night.world.map()
 	)
-	LotBotData.fill(level, _night.world)
+	# The shop (errands: doors, boards, the generator, what to buy) only with `--shop`.
+	LotBotData.fill(level, _night.world, _night.rules_tuning if _args.has("shop") else null)
 	var profiles: Array[BotProfile] = [
 		BotProfile.regular(), BotProfile.veteran(), BotProfile.rookie(), BotProfile.regular()
 	]
@@ -121,6 +198,7 @@ func _on_tick() -> void:
 	_ticks += 1
 	_host.tick(Night.STEP)
 	_sample_distances()
+	_sample_orders()
 	_classify_stuck()
 	if _trace != null and _ticks % TRACE_EVERY == 0:
 		_write_trace()
@@ -168,6 +246,81 @@ func _sample_distances() -> void:
 					var note: String = bot.intent.note
 					_far_notes[note] = int(_far_notes.get(note, 0)) + 1
 	_per_round[round_number] = tally
+
+
+## Per tick, per bot that is up: standing with nothing to do, the squares walked through, the
+## distance to the person, the share within the hold's radius, and the spread of the team.
+func _sample_orders() -> void:
+	if _hold_spot == Vector3.INF and _order == BotOrders.HOLD:
+		var held: Dictionary = _night.state.frame.get(BotOrders.FRAME_KEY, {})
+		var team: Dictionary = held.get("team", {})
+		if not team.is_empty():
+			_hold_spot = team["at"]
+	var human := _night.server.body_of(Night.PLAYER_ID)
+	var places: Array[Vector3] = []
+	for bot in _host.bots:
+		var id := bot.state.player_id
+		var me := bot.state.me()
+		var body := _night.server.body_of(id)
+		if body == null or me.is_empty() or me.get("downed", false) or me.get("dead", false):
+			_still[id] = 0
+			continue
+		places.append(body.global_position)
+		_up_ticks += 1
+		var note: String = bot.intent.note
+		# Idle is standing with nothing to do: a fight, a revive, an errand, a look about and a held
+		# place are all something; a bot that says it roams (or holds, or nothing) and does not move is
+		# waiting for no reason.
+		var idle_note := note == "" or note == "hold" or note == "roam"
+		var standing := body.velocity.length() < STANDING and idle_note
+		_still[id] = int(_still.get(id, 0)) + 1 if standing else 0
+		_idle_longest[id] = maxi(int(_idle_longest.get(id, 0)), int(_still[id]))
+		if _args.has("idle") and int(_still[id]) == 360:
+			print(
+				(
+					"IDLE seat %d note %s goal %s at %s tick %d status %s wish %s stuck %s"
+					% [
+						id,
+						note,
+						bot.intent.goal.snappedf(0.1),
+						body.global_position.snappedf(0.1),
+						_ticks,
+						bot.legs.path.last_status,
+						bot.legs.wish.snappedf(0.1),
+						bot.legs.stuck.stuck
+					]
+				)
+			)
+		var cells: Dictionary = _cells.get(id, {})
+		var at := body.global_position
+		cells[Vector2i(floori(at.x / 10.0), floori(at.z / 10.0))] = true
+		_cells[id] = cells
+		if human != null:
+			_distance_sum[id] = float(_distance_sum.get(id, 0.0)) + _flat_apart(body, human)
+			_distance_n[id] = int(_distance_n.get(id, 0)) + 1
+		if _hold_spot != Vector3.INF:
+			var off := Vector2(
+				body.global_position.x - _hold_spot.x, body.global_position.z - _hold_spot.z
+			)
+			if off.length() <= HOLD_RADIUS:
+				_held_ticks += 1
+			if note == "hold_order" or note == "fight" or note == "throw":
+				_stance_ticks += 1
+				if off.length() <= HOLD_RADIUS:
+					_stance_held += 1
+	for i in places.size():
+		for j in range(i + 1, places.size()):
+			_spread_sum += Vector2(places[i].x - places[j].x, places[i].z - places[j].z).length()
+			_spread_n += 1
+
+
+func _flat_apart(a: Node3D, b: Node3D) -> float:
+	return (
+		Vector2(
+			a.global_position.x - b.global_position.x, a.global_position.z - b.global_position.z
+		)
+		. length()
+	)
 
 
 ## What each stuck episode ran into when it began, by the physics engine's word: another player (a
@@ -266,6 +419,11 @@ func _finish(why: String) -> void:
 		"within_12m_up":
 		snappedf(float(_up_near_ticks) / maxf(float(_sampled_ticks - _down_ticks), 1.0), 0.0001),
 		"within_12m_by_round": rounds,
+		"order": String(_order),
+		"spread": snappedf(_spread_sum / maxf(float(_spread_n), 1.0), 0.1),
+		"within_hold_3m": snappedf(float(_held_ticks) / maxf(float(_up_ticks), 1.0), 0.0001),
+		"within_hold_3m_on_the_spot":
+		snappedf(float(_stance_held) / maxf(float(_stance_ticks), 1.0), 0.0001),
 		"stuck_causes": _causes,
 		"far_ticks_by_note": _far_notes,
 		"bots": bots,
@@ -321,6 +479,17 @@ func _bot_report(bot: BotClient) -> Dictionary:
 		"bot_stuck_reports": stuck_reports,
 		"brain_disabled": bot.telemetry.has_event(BotClient.BRAIN_DISABLED),
 		"kills": bot.state.kills,
+		"buys": int(bot.telemetry.counters.get(&"buys", 0)),
+		"idle_longest": snappedf(float(_idle_longest.get(bot.state.player_id, 0)) / 60.0, 0.1),
+		"cells": (_cells.get(bot.state.player_id, {}) as Dictionary).size(),
+		"mean_distance":
+		snappedf(
+			(
+				float(_distance_sum.get(bot.state.player_id, 0.0))
+				/ maxf(float(_distance_n.get(bot.state.player_id, 0)), 1.0)
+			),
+			0.1
+		),
 	}
 
 

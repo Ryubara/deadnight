@@ -66,6 +66,14 @@ func inherit_edges(old: NightCommand) -> void:
 		slot = old.slot
 
 
+## Spends the pressed edges: each is used by one step.
+func clear_edges() -> void:
+	reload = false
+	use = false
+	swap = false
+	slot = WeaponSlots.NONE
+
+
 func to_dict() -> Dictionary:
 	return {
 		"type": NightServer.COMMAND,

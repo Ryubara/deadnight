@@ -23,6 +23,8 @@ class FakeQuickApi:
 	var ticket_calls := 0
 	var created := 0
 	var left: Array[String] = []
+	## The map the lobby it finds says (its settings), when not the default.
+	var found_map := ""
 
 	func sign_in(display_name: String = "") -> Dictionary:
 		signed_as.append(display_name)
@@ -34,7 +36,12 @@ class FakeQuickApi:
 			await released
 		if failure != "":
 			return TogetherApi._failed(failure)
-		return {"ok": true, "lobby": {"id": "q1", "code": "QUICK1", "state": "started"}}
+		var found := {"id": "q1", "code": "QUICK1", "state": "started"}
+		if found_map != "":
+			found["settings"] = {
+				"count_multiplier": 1.0, "max_alive": 0, "break_seconds": 0.0, "map": found_map
+			}
+		return {"ok": true, "lobby": found}
 
 	func ticket(_held: Dictionary) -> Dictionary:
 		ticket_calls += 1
@@ -341,3 +348,38 @@ func test_pressing_quick_join_lands_in_a_joined_room() -> void:
 	assert_bool(screen.night.is_paused()).is_false()
 	assert_int(_together_screens()).is_equal(0)
 	assert_bool(await _until(func() -> bool: return _host.player_count() >= 1, 10.0)).is_true()
+
+
+func test_quick_join_shows_the_map_of_the_night_it_found_and_opens_the_night_on_it() -> void:
+	StubMaps.install()
+	_api.found_map = StubMaps.ID
+	_api.hold = true
+	var menu := await _menu()
+	_press_quick_join(menu)
+	await _until(func() -> bool: return _api.quick_calls > 0)
+	var card := _card(menu)
+	assert_bool(card.map_card.visible).is_false()
+	_api.released.emit()
+	await _until(func() -> bool: return _entered > 0)
+	assert_str(NightScreen.join_map).is_equal(StubMaps.ID)
+	NightScreen.join_map = ""
+	StubMaps.remove()
+
+
+func test_quick_join_card_names_the_map_while_the_night_is_being_found() -> void:
+	# The card sits under the status line from the moment the backend answers: the lot when the
+	# night's lobby says nothing (a night nobody set rules for), the lobby's own map otherwise.
+	StubMaps.install()
+	var overlay := QuickJoinOverlay.new()
+	add_child(overlay)
+	await get_tree().process_frame
+	overlay._lobby = {"id": "q1", "code": "QUICK1", "state": "started"}
+	overlay._show_map()
+	assert_bool(overlay.map_card.visible).is_true()
+	assert_str(overlay.map_card.info.id).is_equal("drive_in")
+	overlay._lobby = {"id": "q1", "map": StubMaps.ID, "settings": null}
+	overlay._show_map()
+	assert_str(overlay.map_card.info.title).is_equal("Stub lot")
+	assert_int(overlay.map_card.focus_mode).is_equal(Control.FOCUS_NONE)
+	overlay.free()
+	StubMaps.remove()

@@ -167,6 +167,8 @@ func send(action: Dictionary) -> void:
 			_send(action["packet"])
 		NightServer.PING:
 			_send(NetWire.mark(action["kind"], action["pos"], int(action.get("subject", 0))))
+		NightServer.ORDER:
+			_send(NetWire.order(action["order"], action["at"], int(action.get("bot_id", 0))))
 
 
 func pump() -> void:
