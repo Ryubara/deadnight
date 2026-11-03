@@ -7,7 +7,10 @@ extends RefCounted
 ##   from every teammate (where they stand and where they walk to by then) and `SAFE_FROM_SELF`
 ##   metres from the bot itself. A blast hurts a player by `PlayerBlast`, all the way out to the
 ##   blast radius, so "not reach" is the distance where it takes `HARMLESS_SHARE` of their health
-##   (`harmless_apart`), which both numbers are at least (a test holds them to it);
+##   (`harmless_apart`), which both numbers are at least (a test holds them to it). Only the
+##   thrower takes a grenade's damage (#856), so the teammate distance no longer protects anyone's
+##   health; it stays because taking it away doubled the throws and the bots then hit themselves
+##   (`docs/research/grenades.md`, "Only the thrower");
 ## - the way to it is open (the arc is clear of walls);
 ## - the pack is big enough (`MIN_PACK`; the crawlers of Crawl Space, which are hard to hit with a
 ##   gun, count from `MIN_PACK_LOW`), and the bot has waited out the last throw (`COOLDOWN`).
@@ -19,13 +22,14 @@ extends RefCounted
 
 const DEF_PATH := "res://gameplay/grenades/defs/frag.tres"
 ## The blast must be this far from every teammate, and from the bot (metres): the rule is that it
-## takes under `HARMLESS_SHARE` of anyone's health there, and the throw is planned `THROW_MARGIN`
+## takes under `HARMLESS_SHARE` of the bot's health there, and the throw is planned `THROW_MARGIN`
 ## further off from a teammate, for the way the grenade lands a metre or so from where it was aimed
-## (hops, view not quite on) and the teammate walks on.
+## (hops, view not quite on) and the teammate walks on. A teammate takes nothing (#856); the bots
+## walk with the people, so the distance also keeps the throws to packs away from the bot itself.
 const SAFE_FROM_TEAMMATES := 6.0
 const SAFE_FROM_SELF := 6.0
-## The share of a player's health a blast may take at the bot's or a teammate's spot and still not
-## "reach" them: 10%, a graze that mends in seconds.
+## The share of a player's health a blast may take at the bot's spot and still not "reach" it: 10%,
+## a graze that mends in seconds.
 const HARMLESS_SHARE := 0.1
 const THROW_MARGIN := 1.5
 ## Metres across a pack, and the zombies that make one.
