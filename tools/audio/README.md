@@ -13,3 +13,7 @@ beeps' times, whether their gaps shrink to the blast, their level in the mix aga
 
 The voice's other tools: `voice_report.py` (the voice's loudness against the guns and the beds, from the stems a night
 capture records) and `voice_sheet.py` (the script as a contact sheet).
+
+The second map's sounds (the depot's room tone, the yard, a debris blocker, feet on wood) are `map_recipes.py`, synthesised
+like the rest; `smallmap_levels.py` measures them (`table`: level and reach from the banks and the files; `capture`: the
+mix of the walk through the map, level by stage). `docs/research/maps/small-map-audio.md` has the numbers.

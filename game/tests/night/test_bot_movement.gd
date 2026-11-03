@@ -175,6 +175,7 @@ func test_scenario_18_the_bots_follow_through_a_door_whose_mesh_was_just_swapped
 	# engine takes the new mesh in over the next few physics frames while the night goes on.
 	night.open_door(&"door_concession")
 	night.run(3)
+	night.give_order(BotOrders.FOLLOW, 1, _where(night, 1))
 	walker.goto(Vector3(0.0, 0.0, 6.0))
 	await night.settle(12)
 	var route: Array[Vector3] = [

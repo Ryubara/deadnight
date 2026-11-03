@@ -33,6 +33,14 @@ about a minute; the main-scene run and the night run happen in shard 1 only. `bu
 `godot` job and is the one required name, so the ruleset needs no change. The timing per folder to balance by is in the
 job log: re-balance when one shard drifts past the others by more than a few minutes.
 
+**The night folder is split by script (#676).** Shard 1 (`night` and `rules`) ran 14 min 15 s on `main` already, against
+a limit of 15, so the bot orders suites tipped it over and the job was cancelled with no test failing. The `night`
+folder is 13 minutes of it, almost all in a few bot suites (`test_bot_bands` 185 s, `test_bot_soak` 78 s,
+`test_bot_orders_night` 70 s), so `MOVED` in `tools/ci_test_shards.py` names those scripts and sends them to the shards
+with room: after the move the three shards' suites take about 530, 560 and 580 s. A script of a split folder that is not
+named stays with the folder's shard, so a new bot suite is still run. Check the shard times in the job log before a PR
+adds minutes of suites; the step takes a minute of setup on top.
+
 ## What a fast test does
 
 1. **Tick by hand, back to back.** A suite that steps the player itself switches its `_physics_process` off once and

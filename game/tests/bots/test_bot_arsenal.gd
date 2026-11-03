@@ -100,3 +100,25 @@ func test_the_weapons_are_ranked_by_the_range_of_the_fight() -> void:
 	assert_bool(_plan(_me(&"rifle", arms), 3.0, 3.0).swap).is_false()
 	assert_bool(_plan(_me(&"shotgun", arms), 3.0, 3.0).swap).is_false()
 	assert_bool(_plan(_me(&"shotgun", arms), 40.0, 40.0).swap).is_true()
+
+
+func test_the_flare_gun_in_hand_is_put_away_for_a_loaded_gun_and_is_never_swapped_to() -> void:
+	var arms := {&"pistol": [6, 20], &"flare_gun": [1, 6]}
+	var plan := _plan(_me(&"flare_gun", arms))
+	assert_bool(plan.swap).is_true()
+	assert_bool(plan.reload).is_false()
+	# A bot with a pistol in hand does not take the flare gun in the fight, loaded or not.
+	assert_bool(_plan(_me(&"pistol", arms), 6.0, 6.0).swap).is_false()
+	assert_bool(_plan(_me(&"pistol", arms), INF, 20.0).swap).is_false()
+
+
+func test_the_flare_gun_is_no_firearm_for_the_fight_so_a_bot_with_only_it_is_dry() -> void:
+	var spent := {&"pistol": [0, 0], &"flare_gun": [0, 6]}
+	var plan := _plan(_me(&"flare_gun", spent))
+	# Its round is spent and nothing else shoots: it reloads the flare (the one thing it can do)
+	# and counts as dry, so the quick melee is its fight.
+	assert_bool(plan.reload).is_true()
+	assert_bool(plan.swap).is_false()
+	assert_bool(plan.dry).is_true()
+	var loaded := {&"pistol": [0, 0], &"flare_gun": [1, 6]}
+	assert_bool(_plan(_me(&"flare_gun", loaded)).dry).is_true()

@@ -52,6 +52,8 @@ func _tuning() -> RulesTuning:
 ## One bot of `profile` fighting the stream for `seconds`.
 func _fight(profile: BotProfile, seed_value: int, seconds: int) -> CombatProbe:
 	var night := await NightFixture.seat(self, 1, _tuning(), seed_value)
+	# The numbers are about the aim of a bot that stands and fights: with no order it would roam.
+	profile.follows = false
 	night.seat(1, profile, seed_value)
 	night.start_round()
 	night.server.body_of(1).teleport(Autopilot.HOME + Vector3(0.0, 0.1, 0.0))

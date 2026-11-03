@@ -456,6 +456,17 @@ func is_bed_running(id: StringName) -> bool:
 	return _beds.has(id) and not _beds[id].get("parked", false)
 
 
+## Moves a bed to `db` under its own level (0 is its own level, `BED_SILENT_DB` or less is silence),
+## fading at the bed's usual rates: a room's tone follows the room the listener stands in. A silent
+## target fades the bed out like `stop_bed`; a level on a bed not running starts it (from silence).
+func set_bed_level(id: StringName, db: float) -> void:
+	if db <= BED_SILENT_DB + 0.5:
+		stop_bed(id)
+		return
+	if _start_bed(id) != null:
+		_beds[id]["target_db"] = minf(db, 0.0)
+
+
 ## A bed's fade in dB: -60 is silent, 0 is its own level.
 func bed_fade_db(id: StringName) -> float:
 	return _beds[id]["fade_db"] if _beds.has(id) else BED_SILENT_DB

@@ -52,6 +52,8 @@ func _ready() -> void:
 	await _still("5-night-round-1")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.reset_defaults()
+	# A lambda of this script left in the menu's static variable crashes the quit (#667).
+	MainMenu.board_factory = Callable()
 	get_tree().quit()
 
 
