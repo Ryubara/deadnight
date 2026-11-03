@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The guns' sounds, driven like a client: events in, sounds out, on a clock the test steps by
-## hand. Every shot is a report and a late tail, a reload sounds on its clip's event frames, an
+## hand. Every shot is a report and a late tail, a reload sounds on its motion's moments, an
 ## empty trigger clicks, and a round that hits the lot ricochets while one that hits a zombie
 ## thumps.
 
@@ -95,25 +95,25 @@ func test_repeats_differ_in_level() -> void:
 	assert_int(levels.size()).is_greater(6)
 
 
-func test_a_reload_sounds_on_the_frames_of_its_clip() -> void:
+func test_a_reload_sounds_on_the_moments_of_its_motion() -> void:
 	for weapon: StringName in [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]:
 		_heard.clear()
 		_sounds.schedule.clear()
 		_tell({"type": &"reload_started", "shooter_id": OWN, "weapon_id": weapon, "seconds": 2.0})
 		assert_array(_heard).is_empty()
-		var table: Dictionary = WeaponSounds.RELOAD[weapon]
+		var steps: Dictionary = WeaponSounds.RELOAD[weapon]
+		var motion := ReloadMotion.for_weapon(weapon)
 		var expected: Array[Dictionary] = []
-		# The clip's frames are stretched over the reload's seconds (2.0 here).
-		var scale := 2.0 / ClipEvents.length(table["clip"])
-		for step: StringName in table["steps"]:
-			for seconds in ClipEvents.times(table["clip"], step):
-				expected.append({"id": table["steps"][step], "t": seconds * scale})
+		# The motion's shares are stretched over the reload's seconds (2.0 here).
+		for step: StringName in steps:
+			for share in motion.event_shares(step):
+				expected.append({"id": steps[step], "t": share * 2.0})
 		# ...and every step is over before the reload is.
 		for entry in expected:
 			assert_float(entry["t"]).is_less(2.0)
 		expected.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["t"] < b["t"])
-		assert_int(expected.size()).is_greater(1)
-		# Just before each frame nothing new has sounded; just after, exactly that step has.
+		assert_int(expected.size()).is_greater(2)
+		# Just before each moment nothing new has sounded; just after, exactly that step has.
 		var now := 0.0
 		for entry in expected:
 			var before := _heard.size()
@@ -134,15 +134,66 @@ func test_the_rifle_loads_three_rounds_then_throws_the_lever() -> void:
 	_tell({"type": &"reload_started", "shooter_id": OWN, "weapon_id": &"rifle", "seconds": 2.2})
 	_sounds.schedule.advance(5.0)
 	assert_array(_ids()).is_equal(
-		[&"reload_rifle_round", &"reload_rifle_round", &"reload_rifle_round", &"reload_rifle_lever"]
+		[
+			&"reload_pouch",
+			&"reload_rifle_round",
+			&"reload_rifle_round",
+			&"reload_rifle_round",
+			&"reload_rifle_lever"
+		]
 	)
-	# Frames 20, 32 and 44, then the lever at 56, at 24 frames a second, stretched from the clip's
-	# length to the reload's 2.2 s.
-	var scale := 2.2 / ClipEvents.length(&"Reload_Rifle")
-	assert_float(_heard[0]["t"]).is_equal_approx(20.0 / 24.0 * scale, 0.001)
-	assert_float(_heard[1]["t"]).is_equal_approx(32.0 / 24.0 * scale, 0.001)
-	assert_float(_heard[3]["t"]).is_equal_approx(56.0 / 24.0 * scale, 0.001)
-	assert_float(_heard[3]["t"]).is_less(2.2)
+	# The motion's moments, stretched over the reload's 2.2 s; the lever before the reload is over.
+	var motion := ReloadMotion.for_weapon(&"rifle")
+	var rounds := motion.event_shares(&"round_in")
+	assert_float(_heard[1]["t"]).is_equal_approx(rounds[0] * 2.2, 0.001)
+	assert_float(_heard[3]["t"]).is_equal_approx(rounds[2] * 2.2, 0.001)
+	assert_float(_heard[4]["t"]).is_equal_approx(motion.event_shares(&"lever")[0] * 2.2, 0.001)
+	assert_float(_heard[4]["t"]).is_less(2.2)
+
+
+func test_every_firearm_has_reload_steps_of_its_own_mechanism() -> void:
+	# Every gun of the catalogue that reloads has a motion and a sound for each of its steps, the
+	# motion has no step without a sound, and the revolver no longer sounds like a magazine.
+	for id in WeaponCatalog.IDS:
+		var def := WeaponCatalog.get_def(id)
+		if def.is_melee() or def.reload_time <= 0.0:
+			continue
+		var motion := ReloadMotion.for_weapon(id)
+		assert_object(motion).override_failure_message("%s: no motion" % id).is_not_null()
+		assert_bool(WeaponSounds.RELOAD.has(id)).override_failure_message(String(id)).is_true()
+		var steps: Dictionary = WeaponSounds.RELOAD[id]
+		(
+			assert_array(motion.events.keys())
+			. override_failure_message(String(id))
+			. contains_exactly_in_any_order(steps.keys())
+		)
+		assert_bool(steps.has(&"pouch")).override_failure_message(String(id)).is_true()
+	assert_array(WeaponSounds.RELOAD[&"pistol"].values()).not_contains(
+		[&"reload_smg_mag_out", &"reload_smg_mag_in"]
+	)
+
+
+func test_the_players_own_reload_is_flat_and_a_teammates_is_at_his_head() -> void:
+	# The own hands play flat like the own shots (a centred 3D voice costs 6 dB under fire, #683);
+	# a teammate's reload sounds where he stands.
+	_state.apply_events(
+		[
+			{
+				"type": &"frame",
+				"players": {OWN: {"pos": Vector3(1, 0, 2)}, 2: {"pos": Vector3(5, 0, 2)}},
+				"zombies": []
+			}
+		]
+	)
+	_tell({"type": &"reload_started", "shooter_id": OWN, "weapon_id": &"smg", "seconds": 1.9})
+	_tell({"type": &"reload_started", "shooter_id": 2, "weapon_id": &"smg", "seconds": 1.9})
+	_sounds.schedule.advance(2.0)
+	var own := _heard.filter(func(h: Dictionary) -> bool: return h["at"] == null)
+	var mate := _heard.filter(func(h: Dictionary) -> bool: return h["at"] is Vector3)
+	assert_int(own.size()).is_equal(mate.size())
+	assert_int(own.size()).is_greater(3)
+	for h: Dictionary in mate:
+		assert_vector(h["at"] as Vector3).is_equal(Vector3(5, 0, 2) + WeaponSounds.HEAD_LIFT)
 
 
 func test_putting_the_weapon_away_abandons_the_reload() -> void:
@@ -212,7 +263,7 @@ func test_every_sound_these_tables_name_exists_with_its_files() -> void:
 	for weapon: StringName in WeaponSounds.FIRE:
 		names.append_array(WeaponSounds.FIRE[weapon].values())
 	for weapon: StringName in WeaponSounds.RELOAD:
-		names.append_array(WeaponSounds.RELOAD[weapon]["steps"].values())
+		names.append_array(WeaponSounds.RELOAD[weapon].values())
 	names.append_array(
 		[
 			&"dry_fire",

@@ -103,11 +103,11 @@ func _sample(now: float) -> void:
 	var barrel := -_hands.weapon_target().basis.x
 	print(
 		(
-			"SAMPLE %.4f pitch=%.3f dip=%.4f aim=%.4f"
+			"SAMPLE %.4f pitch=%.3f reload=%.4f aim=%.4f"
 			% [
 				now,
 				rad_to_deg(asin(clampf(barrel.y, -1.0, 1.0))),
-				_animation.reload_dip(),
+				_animation.reload_weight(),
 				_night.player().camera_rig.aim_amount()
 			]
 		)
