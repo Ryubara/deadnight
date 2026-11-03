@@ -176,6 +176,7 @@ static func rookie() -> BotProfile:
 	profile.fire_slop = 6.0
 	profile.head_rate = 0.0
 	profile.weak_spot_rate = 0.25
+	profile.aims_off_weak_spot = true
 	profile.telegraph_read = 0.0
 	profile.boss_keep = 0.0
 	profile.fire_jitter = 0.15
