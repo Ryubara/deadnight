@@ -111,13 +111,11 @@ func _fill(joined: Array[Night], more: int, seats: int) -> Array[Night]:
 	for _i in more:
 		joined.append(await _client())
 	for night in joined:
+		var seen := func() -> bool:
+			return (night.state.frame["players"] as Dictionary).size() == seats
+		var saw: bool = await _until(seen)
 		(
-			assert_bool(
-				await _until(
-					func() -> bool:
-						return (night.state.frame["players"] as Dictionary).size() == seats
-				)
-			)
+			assert_bool(saw)
 			. override_failure_message("a client never saw all %d seats" % seats)
 			. is_true()
 		)
