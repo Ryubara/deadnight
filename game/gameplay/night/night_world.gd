@@ -66,6 +66,14 @@ func build(info: MapInfo = null) -> void:
 	for _i in SETTLE_FRAMES:
 		await get_tree().physics_frame
 	WebProbe.mark("lot: settled")
+	if LotBatcher.wanted(map_info):
+		var batched := LotBatcher.batch(greybox, MeshBatch.DEFAULT_CELL, LotBatcher.small_range)
+		WebProbe.mark(
+			(
+				"lot: batched %d to %d surfaces"
+				% [batched["surfaces_before"], batched["surfaces_after"]]
+			)
+		)
 	# The map takes a new mesh in on the physics step, not on a worker thread: the server's dead
 	# must path over the same map on every machine (#733, #736).
 	NavigationServer3D.map_set_use_async_iterations(map(), false)

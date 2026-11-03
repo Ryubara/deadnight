@@ -267,10 +267,23 @@ after a palette change, `game/tests/captures/drivein_props_night.tscn` frames th
 | Concession counter | 564 | 5,000 | 10.2 x 2.0 x 1.2 |
 | Marquee | 980 | 5,000 | 6.2 x 0.6 x 6.3 |
 | Screen frame, truss, legs, stays | 1,448 | 5,000 | 33.6 x 9.7 x 16.8 |
+| Generator set (yard cage, #853) | 1,872 | 5,000 | 3.2 x 1.52 x 5.51 |
 
 Chamfers: 30 mm on props of 1-3 m, 80 mm on the booth, the screen and the marquee; none on parts under 0.1 m. No
 emissive: the marquee's bulbs and the booth's sign are amber and cream swatches; lighting them is the lighting pass's.
 `tools/blender/render_drivein_sheet.py` renders the contact sheet beside the kit Soldier at 0.8.
+
+The generator set stands in the greybox's 3.2 x 1.6 x 1.8 m `Generator` block, which stays where it was, hidden, as its
+collision: nothing of the model below 1.8 m leaves the block, and the frame, day tank and stack above it have no
+collision (the cage's openings, the camera probes, the slot scan and the walking mesh's key are unchanged). Its parts
+are sized by the sight line over the cage's 3.0 m walls: from the gate (19 m off, the camera about 2.2 m up) the line
+over the wall reaches 3.1 m at the generator, so the red day tank sits with its belly at 3.18 m (axis 3.68 m), the
+amber running light at 4.68 m and the stack's lip at 5.3 m. Below the wall the radiator faces the west opening (the
+midway link sees its fan ring) and the control panel the east one. The running light is the model's amber swatch lit
+by `ModelGlow` from `GeneratorGlow` (`steady`: no shimmer of its own, so it is steady on a healthy tank, flickers with
+the brown-out and is dark when dry), with a 1.6 m halo whose lowest edge (3.88 m) stays over the walls from any side.
+Cost: one surface where the block was one, plus the halo (one draw while lit): +1 draw call, +1,860 triangles in every
+view that sees it (`game/tests/captures/generator_views.tscn` prints the renderer's counts at nine views).
 
 ## Small-map kit
 
