@@ -34,6 +34,19 @@ the hold's `model_scale` x the Soldier's 0.8.
 | Claw hammer (tool) | 508 / 168 (33) | 15 | 0.73 tall, 0.47 across | 0.85 | 0.50 m | 15 up | - | Grey 60, Wood 37, DarkGrey 4 | - | - |
 | Grenade | 1,172 / 374 (32) | 25 | 0.61 tall, 0.42 across | 0.51 | 0.25 m | 44 up | - | Green 47, Yellow 17, DarkGrey 14, Grey 13, Grey2 10 | `Spoon` 60, `Pin` 140 | - |
 
+The SMGs and the carbine of #795, measured from their build (the pistol grip, guard, trigger and their sockets are the
+Tommy gun's on the MP5 and the M4A1; all three are drawn at real length, `chunk` 1, and held at `model_scale` 1.3):
+
+| Model | Tris near / far (far %) | Parts near / far | Model L x H x W (m) | In the game | Grip to muzzle | Support (x, z) | Moving nodes | Ammo glb |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PPSh | 1,032 / 332 (32) | 40 / 21 | 0.87 x 0.31 x 0.11 | 0.90 m | 0.54 | -0.33, 0.0 | `Drum`, `Bolt` | the drum 244 |
+| MP5 | 1,164 / 428 (37) | 40 / 27 | 0.70 x 0.41 x 0.10 | 0.73 m | 0.44 | -0.30, 0.02 (clear of the curved magazine) | `Magazine`, `Bolt` | magazine 188 |
+| M4A1 | 1,236 / 420 (34) | 47 / 30 | 0.82 x 0.39 x 0.10 | 0.85 m | 0.51 | -0.25, 0.03 | `Magazine`, `Bolt` | magazine 100 |
+
+Held, each puts the stock 9.7-10.3 cm from the shoulder, as the Tommy gun's 10.1. A curved magazine in front of the
+fore-end pulls the solver's support hand onto it, so the support stays 7 cm or more ahead of the magazine's front; a
+stock's underside stays above the wrist (z 0.02 or higher) for about 20 cm behind the grip.
+
 What that says, as rules a new model keeps:
 
 | Rule | Measured |
@@ -379,7 +392,8 @@ pistol-grip stock** (the double is wood with a straight stock and two fat barrel
 
 A period semi-automatic service pistol of the 1911 type (references: five photos, `refs/weapons/service_pistol/`):
 fits the drive-in's 1958 and reads apart from the revolver. One model, held in both hands (#789); the left hand's copy
-is the same mesh, not mirrored (its port still faces right). The model folder is `service_pistol`, not `pistol`: that
+is the same mesh (one file), drawn mirrored for the left hand because that hand's fingers are the right
+hand's mirrored, so its ejection port faces left. The model folder is `service_pistol`, not `pistol`: that
 id is the revolver's.
 
 - **Layout:** muzzle -0.17 (bore z 0.045); the slide -0.17 to +0.04, top z 0.075, 0.045 deep, 0.04 wide (twice
@@ -462,7 +476,7 @@ and `tests/captures/model_hold_sheet.tscn` holds each model with these numbers (
 
 | Hold | `scene` | Class | `model_scale` | `size_factor` | `real_length` | `model_length` | `muzzle` | `butt` | `support` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dual_pistols` | `service_pistol.glb` | Pistol (Dual) | 1.95 | 1.5 | 0.216 | 0.25 | (-0.17, 0.045, 0) | (0.074, 0, 0) | none |
+| `dual_pistols` | `service_pistol.glb` | Pistol (Dual) | 1.95 | 1.75 | 0.216 | 0.25 | (-0.17, 0.045, 0) | (0.074, 0, 0) | none |
 | `ray_gun` | `ray_gun.glb` | Pistol | 2.275 | 1.75 | 0.28 | 0.278 | (-0.2, 0.05, 0) | (0.078, 0, 0) | none |
 | `freeze_gun` | `freeze_gun.glb` | Rifle | 1.3 | 1 | 0.90 | 0.908 | (-0.6, 0.05, 0) | (0.3, 0, 0) | (-0.295, -0.045, 0) |
 

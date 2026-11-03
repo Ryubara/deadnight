@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import statistics
 import sys
 import time
@@ -42,6 +43,8 @@ PHONE_AGENT = (
 NIGHT_WAIT_S = 420.0
 DRAIN_S = 5.0
 SAMPLE_S = 5.0
+# With `--gc`, the page's garbage is collected this often and the heap read after it.
+GC_EVERY_S = 60.0
 # A frame longer than this is a visible hitch at 60 Hz (two frames).
 HITCH_MS = 33.4
 
@@ -62,9 +65,10 @@ RECORDER_JS = """
 DRAIN_JS = "() => { const d = window.__d; window.__d = []; return d; }"
 # Switches the stand-in to an arm: the pixel ratio the page reports (the build's cap) and the 3D anti-aliasing.
 SWITCH_JS = """
-([cap, msaa]) => {
+([cap, msaa, batch]) => {
   if (window.deadnightPixels) { window.deadnightPixels.cap = cap; }
   window.deadnight_msaa = msaa;
+  if (batch >= 0) { window.deadnight_batch = batch; }
   window.dispatchEvent(new Event('resize'));
   return performance.now();
 }
@@ -78,7 +82,10 @@ SAMPLE_JS = """
   for (const k in d) { if (k.startsWith('perf.')) perf[k] = d[k]; }
   return {perf: perf, running: !!d.running, alive: d.alive || 0, round: d.round || 0, draw_calls: d.draw_calls || 0, draw_calls_3d: d.draw_calls_3d || 0,
           primitives: d.primitives || 0, objects: d.objects || 0, process_ms: d.process_ms || 0,
-          physics_ms: d.physics_ms || 0, render_cpu_ms: d.render_cpu_ms || 0, render_gpu_ms: d.render_gpu_ms || 0, canvas: [d.canvas_w || 0, d.canvas_h || 0], heap_mb: m};
+          physics_ms: d.physics_ms || 0,
+          mem: {static_mb: d.mem_static_mb || 0, objects: d.mem_objects || 0, nodes: d.mem_nodes || 0, orphans: d.mem_orphans || 0,
+                resources: d.mem_resources || 0, texture_mb: d.mem_texture_mb || 0, buffer_mb: d.mem_buffer_mb || 0},
+          render_cpu_ms: d.render_cpu_ms || 0, render_gpu_ms: d.render_gpu_ms || 0, canvas: [d.canvas_w || 0, d.canvas_h || 0], heap_mb: m};
 }
 """
 
@@ -104,14 +111,19 @@ def describe(deltas: list[float]) -> dict:
     }
 
 
-def parse_arms(text: str) -> list[tuple[str, float, int]]:
-    """`native:3:2,capped:2:2` -> [(name, pixel ratio cap, msaa)], the arms a run alternates between."""
+def parse_arms(text: str) -> list[tuple[str, float, int, int]]:
+    """`native:3:2,capped:2:2:1` -> [(name, pixel ratio cap, msaa, batch)], the arms a run alternates between.
+
+    `batch` is 0 or 1 (draw the map from the nodes it is written with, or from its batches; the page needs
+    `batch=toggle` in its query), and -1 when the arm leaves it as it was.
+    """
     if not text:
-        return [("run", 0.0, 2)]
+        return [("run", 0.0, 2, -1)]
     arms = []
     for part in text.split(","):
-        name, cap, msaa = part.split(":")
-        arms.append((name, float(cap), int(msaa)))
+        fields = part.split(":")
+        name, cap, msaa = fields[:3]
+        arms.append((name, float(cap), int(msaa), int(fields[3]) if len(fields) > 3 else -1))
     return arms
 
 
@@ -149,9 +161,7 @@ def run(args: argparse.Namespace) -> dict:
             page = context.new_page()
             page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
             page.on("pageerror", lambda e: errors.append(str(e)))
-            if args.throttle > 1.0:
-                session = context.new_cdp_session(page)
-                session.send("Emulation.setCPUThrottlingRate", {"rate": args.throttle})
+            session = context.new_cdp_session(page)
             page.add_init_script("(" + RECORDER_JS.strip() + ")();")
             page.goto(url, wait_until="commit")
             if args.real:
@@ -165,26 +175,48 @@ def run(args: argparse.Namespace) -> dict:
                 time.sleep(1.0)
             else:
                 raise TimeoutError("the night never ran")
+            if args.throttle > 1.0:
+                # After the load: a phone's load is long, but a probe that spends minutes loading a night at a
+                # quarter of the speed has no minutes left to measure it (#728).
+                session.send("Emulation.setCPUThrottlingRate", {"rate": args.throttle})
             page.evaluate(DRAIN_JS)  # the loading frames are not the night
             page.screenshot(path=out / f"{args.label}_start.png")
             gl = smoke.gl_info(page)
             run_began = time.monotonic()
             next_sample = run_began
+            next_gc = run_began + GC_EVERY_S
             arms = parse_arms(args.arms)
-            arm_deltas: dict[str, list[float]] = {name: [] for name, _, _ in arms}
-            arm_minutes: dict[str, dict[int, list[float]]] = {name: {} for name, _, _ in arms}
+            arm_deltas: dict[str, list[float]] = {name: [] for name, *_ in arms}
+            arm_minutes: dict[str, dict[int, list[float]]] = {name: {} for name, *_ in arms}
             block = 0
+            order_rng = random.Random(728)
+            order: list[int] = []
             while time.monotonic() - run_began < args.minutes * 60:
-                name, cap, msaa = arms[block % len(arms)]
-                switched = page.evaluate(SWITCH_JS, [cap, msaa]) if args.arms else 0.0
+                if block % len(arms) == 0:
+                    # Each round takes the arms in a new order: a night has its own beat (a wave about every
+                    # minute), and a fixed order of 30 s blocks falls on it the same way every time.
+                    order = list(range(len(arms)))
+                    order_rng.shuffle(order)
+                name, cap, msaa, batch = arms[order[block % len(arms)]]
+                switched = page.evaluate(SWITCH_JS, [cap, msaa, batch]) if args.arms else 0.0
                 block += 1
+                block_began = time.monotonic()
                 block_end = time.monotonic() + (args.block if args.arms else args.minutes * 60)
                 while time.monotonic() < min(block_end, run_began + args.minutes * 60):
                     time.sleep(DRAIN_S)
                     if time.monotonic() >= next_sample:
                         sample = page.evaluate(SAMPLE_JS)
                         sample["t"] = round(time.monotonic() - run_began, 1)
+                        if args.gc and time.monotonic() >= next_gc:
+                            # What the page holds once the collector has run: a rise here is a leak, a rise in
+                            # `heap_mb` alone is garbage waiting.
+                            session.send("HeapProfiler.collectGarbage")
+                            sample["heap_gc_mb"] = page.evaluate(
+                                "() => performance.memory ? performance.memory.usedJSHeapSize / 1048576 : -1"
+                            )
+                            next_gc += GC_EVERY_S
                         sample["arm"] = name
+                        sample["since_switch"] = time.monotonic() - block_began
                         samples.append(sample)
                         next_sample += SAMPLE_S
                     elapsed = time.monotonic() - run_began
@@ -226,6 +258,25 @@ def run(args: argparse.Namespace) -> dict:
         "arms": {
             name: {
                 **describe(d),
+                "render": {
+                    key: round(
+                        statistics.fmean(
+                            [s[key] for s in live if s.get("arm") == name and s.get("since_switch", 0) > SETTLE_S]
+                            or [0.0]
+                        ),
+                        2,
+                    )
+                    for key in (
+                        "alive",
+                        "draw_calls",
+                        "draw_calls_3d",
+                        "primitives",
+                        "objects",
+                        "process_ms",
+                        "physics_ms",
+                        "render_cpu_ms",
+                    )
+                },
                 "minutes": [dict(minute=m, **describe(v)) for m, v in sorted(arm_minutes[name].items())],
             }
             for name, d in arm_deltas.items()
@@ -249,11 +300,22 @@ def run(args: argparse.Namespace) -> dict:
                 key: round(statistics.fmean(s["perf"].get(key, 0.0) for s in live), 3)
                 for key in sorted({k for s in live for k in s["perf"]})
             },
+            "memory": [
+                {
+                    "t": s["t"],
+                    "heap_mb": round(s["heap_mb"], 1),
+                    "heap_gc_mb": round(s.get("heap_gc_mb", -1), 1),
+                    **s["mem"],
+                }
+                for s in live
+                if "heap_gc_mb" in s
+            ],
             "heap_mb_first": live[0]["heap_mb"] if live else -1,
             "heap_mb_last": live[-1]["heap_mb"] if live else -1,
         },
         "samples": samples,
         "console_errors": errors[:5],
+        "_deltas": everything,
     }
 
 
@@ -267,6 +329,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--size", default="844x390")
     parser.add_argument("--unpaced", action="store_true")
     parser.add_argument("--software", action="store_true")
+    parser.add_argument(
+        "--gc", action="store_true", help="collect the page's garbage every minute and read the heap after it"
+    )
     parser.add_argument("--real", action="store_true", help="go through the menu to a solo night, no autopilot")
     parser.add_argument(
         "--arms",
@@ -283,8 +348,8 @@ def main() -> int:
     args = parse_args()
     report = run(args)
     path = Path(args.out) / f"{args.label}.json"
-    path.write_text(json.dumps(report, indent=1))
-    print(json.dumps({k: v for k, v in report.items() if k != "samples"}, indent=1))
+    path.write_text(json.dumps({k: v for k, v in report.items() if k != "_deltas"}, indent=1))
+    print(json.dumps({k: v for k, v in report.items() if k not in ("samples", "_deltas")}, indent=1))
     return 0
 
 

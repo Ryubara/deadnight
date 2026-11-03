@@ -40,6 +40,11 @@ const CHUNK := 1.3
 @export var butt := Vector3.ZERO
 ## Degrees the barrel is raised above the aim line (the aim line runs through the crosshair).
 @export_range(-90.0, 90.0, 0.5, "or_greater", "suffix:deg") var pitch_offset_deg := 0.0
+## A second copy of the model in the left hand, mirrored: the dual pistols. `grip_offset` is the
+## right gun's (from the right shoulder joint); the left gun's is its mirror from the left one, and
+## the left hand holds it as the right holds the first (`HandGrip.mirrored`), so both hands close
+## on the same grip and the left arm is posed like the right (`WeaponHandsIK`).
+@export var dual := false
 ## Degrees the chest turns while the arms hold the weapon, the left shoulder forward (a shooter's
 ## stance): the Soldier's arm is short for a two-handed gun's fore-end (docs/design/weapon-hold.md).
 @export_range(-180.0, 180.0, 0.5, "or_greater", "suffix:deg") var stance_turn_deg := 0.0

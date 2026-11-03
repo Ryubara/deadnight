@@ -29,12 +29,13 @@ const LEARNING_ROUNDS := 10
 const MAX_WEAK_FIRST_BOSS_DEATH := 0.85
 ## A boss night is at least this much harder than its neighbours (BalanceBatch.spike).
 const MIN_BOSS_SPIKE := 1.5
-## Time under fire to kill one, seconds, solo average: [low, high].
+## Time under fire to kill one, seconds, solo average: [low, high]. The headliner's high is 31 s for
+## the dual pistols (#789): accepted as is, 2026-11-03, the maintainer will tune after play.
 const TIME_TO_KILL := {
 	"walker": [0.5, 3.0],
 	"runner": [0.2, 2.0],
 	"brute": [3.0, 12.0],
-	"headliner": [8.0, 30.0],
+	"headliner": [8.0, 31.0],
 }
 ## Points spent over points earned, solo average: players spend a good part, never all. The floor is
 ## low because there is little to buy (doors, two wall weapons, the crane, fuel and ammunition;

@@ -239,7 +239,7 @@ style adds the last block.
 | 22 | The box: one place, never moves, in the side room | Help room corner, 950 (W) | exact; price 0.85 to 1.05 P | the crane's places |
 | 23 | Wall weapons: 2 in the start room, 2 in the side room, 4 and a cabinet upstairs | 2, 2, 4 + 1 (W) | exact counts | the shop spots |
 | 24 | Wall prices climb with distance from the start | start 0.2 and 0.6 P, side 1.2 P, upstairs 1.2 to 1.8 P (W) | each within 10% of its ratio | the shop's tuning |
-| 25 | Nothing else to buy: no perk, no upgrade, no power to switch | none (W) | maintainer's call (below) | |
+| 25 | Every map carries the machines: the soda fountain, the perk coolers, the re-cut bench and the prize crane (our box) | Nacht has none of the first three (W); ours keep all four, **the maintainer's decision of 2026-11-03 (#859)** | exact: one fountain, one cooler for each other tonic, one bench, a crane place | `test_map_machines.gd`, over the picker's list |
 | 26 | At most 24 dead at once on this map | 24 (W) | exact | the map's alive cap |
 
 With today's tuning (85 points a zombie, the solo counts 4, 5, 7, 9, 10: [the lot](../../design/map.md)), half of a
@@ -253,7 +253,7 @@ player's points reach 170, 382, 680, 1062 and 1487 by the end of rounds 1 to 5, 
 | 27 | Every passage the camera goes through is at least 1.8 m wide, doors 2.0 m | the shoulder camera ([the lot](../../design/map.md#widths-and-the-camera)); Nacht's doors are narrower, and the camera wins, inside rows 1 to 6 |
 | 28 | The camera probes of the lot (`CameraProbes`) at every door, stair and corner | the same test as the lot |
 | 29 | The setting is Deadnight's 1958 world, not a 1945 bunker: no German writing, no war wreck, no names from Nacht | original work |
-| 30 | Light is ours: the maintainer decides whether the generator and circuits come along | light is Deadnight's first pillar; Nacht has no power |
+| 30 | Light is ours: the maintainer decides whether the generator and circuits come along (the machines are decided: row 25) | light is Deadnight's first pillar; Nacht has no power |
 
 ### Measured in the greybox (M)
 
@@ -275,14 +275,15 @@ from the tuning instead of trusting a typed number:
 | 22 | The box: one place, never moves, in the side room, 0.85 to 1.05 P | one place in the side room, no breakdown at any count, 425 (0.94 P) |
 | 23 | Wall weapons 2, 2, 4 and a cabinet | 2 in the hall, 2 in the side room, 4 and the cabinet upstairs (the shotgun on two walls: eight weapons make nine places) |
 | 24 | Prices climb with the distance, each within 10% | 0.2 and 0.6 P in the hall, 1.2 P in the side room, 1.2 to 1.6 P on the walls upstairs and 1.5 P for the cabinet |
-| 25 | Nothing else to buy | links, weapons, the box and ammunition only: **maintainer's call, the formula's default is in force** |
+| 25 | Every map carries the machines | links, weapons, the box and ammunition, and (#792) the soda fountain, five perk coolers and the re-cut bench at the shared prices ([the machines](../../design/smallmap.md#machines)); `test_map_machines.gd` fails a map of the picker's list without one |
 | 26 | At most 24 dead at once | 24, whatever the round and the party, on a desktop and in the browser |
 
-**What it leaves out (rows 25 and 30), asked of the maintainer.** The setup was built to the formula's own answer, so
-nothing waited on it: no generator, circuits, fuel cans, tonics or re-cut on this map, the lamps always lit. The answer
-the maintainer gives goes here: *(open for the generator)*; the machines (row 25) came with #792, which asked for the
-lot's re-cut bench, soda fountain and perk coolers on this map: [the design page](../../design/smallmap.md#machines).
-If light is to matter on this map the choices are the generator with one
+**What it leaves out (row 30), asked of the maintainer.** The setup first followed Nacht and sold no tonics or re-cut;
+issue 792 then brought the lot's re-cut bench, soda fountain and perk coolers to this map, and the maintainer ruled on
+2026-11-03 (#859) that this was right and the formula wrong: **every map has the soda fountain, the perks, the re-cut
+bench and the prize crane** (row 25, [the design page](../../design/smallmap.md#machines)). Still open is the power:
+no generator, circuits or fuel cans on this map, the lamps always lit; the answer the maintainer gives goes here:
+*(open for the generator)*. If light is to matter on this map the choices are the generator with one
 circuit a room, or the whole map on one circuit; either is one more row in the map's tuning and the markers in its scene.
 
 Two of this page's rows overrule the kit's sizes on [the art page](small-map-art.md), and the greybox follows the
@@ -310,7 +311,7 @@ paid door, the upstairs opening and the stairs 2.0 m wide, not the kit's 1.4 m.
 | The big loop | about 60 m | 110 to 120 m | 2 |
 | Wall weapons | 8 and a cabinet | 2 | |
 | Random weapon | the box, one fixed place, 950 | the crane, four places, 550 | |
-| Other things to buy | none | fuel, tonics, the re-cut, grenades, ammunition | |
+| Other things to buy | none | fuel, tonics, the re-cut, grenades, ammunition (the tonics, the re-cut and the crane on every map, row 25) | |
 | Most dead at once | 24 | 6 to 40 by round and party | |
 | Floor a zombie at the cap | 25 m² | 330 m² (40 on 13,100 m²) | 13 |
 
@@ -319,6 +320,9 @@ paid door, the upstairs opening and the stairs 2.0 m wide, not the kit's 1.4 m.
 - **Takes:** the numbers and rules of the formula above: the area, the rooms and their sizes, the ring and its
   links, the window counts, the flat door price, the box in the side room, the climb of wall prices, the short
   distances, the low ceiling and the one floor up.
+- **Keeps from Deadnight, on every map:** the soda fountain, the perk coolers, the re-cut bench and the prize crane
+  (row 25), though Nacht has no perks and no upgrade; the formula follows Nacht for the floorplan and the numbers, and
+  these four are the game's, not a thing to take away from a map.
 - **Never takes:** Nacht's floorplan or the shape of any room, its names ("Help", the cave), its wall writing, the
   bomber, the bunker, its weapons and their names, its textures, models or sounds. The map's shapes, setting and story
   are Deadnight's; the follow-up issues ask for an original layout that hits the formula.

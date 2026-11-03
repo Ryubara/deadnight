@@ -65,6 +65,9 @@ func _ready() -> void:
 	_hold = _args.get_float("hold", DEFAULT_HOLD)
 	_cap_seconds = _args.get_float("seconds", DEFAULT_SECONDS)
 	_out = _args.get_string("out")
+	LotBatcher.enabled = _args.get_string("batch", "1") != "0"
+	LotBatcher.keep_sources = _args.get_string("batch") == "toggle"
+	LotBatcher.small_range = _args.get_float("smallrange", 0.0)
 	NightScreen.match_settings = settings_from(_args)
 	NightScreen.start_mode = Night.Mode.AUTOPILOT
 	NightScreen.start_seed = Night.SEED

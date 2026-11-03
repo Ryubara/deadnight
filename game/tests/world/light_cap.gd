@@ -64,21 +64,7 @@ static func bounds(node: GeometryInstance3D) -> AABB:
 
 ## Whether `light` can touch `box`: an omni's sphere, a spot's cone (by its box).
 static func reaches(light: Light3D, box: AABB) -> bool:
-	if light is OmniLight3D:
-		var at := light.global_position
-		var nearest := at.clamp(box.position, box.end)
-		return at.distance_to(nearest) <= (light as OmniLight3D).omni_range
-	var spot := light as SpotLight3D
-	var forward := -spot.global_basis.z
-	var centre := light.global_position + forward * spot.spot_range
-	var radius := spot.spot_range * tan(deg_to_rad(spot.spot_angle))
-	var extent := Vector3(
-		radius * sqrt(1.0 - forward.x * forward.x),
-		radius * sqrt(1.0 - forward.y * forward.y),
-		radius * sqrt(1.0 - forward.z * forward.z)
-	)
-	var cone := AABB(light.global_position, Vector3.ZERO).merge(AABB(centre - extent, extent * 2.0))
-	return cone.intersects(box)
+	return LightReach.reaches(light, box)
 
 
 ## The names of the lights in `lights` that reach `box`, as paths from `root`.
