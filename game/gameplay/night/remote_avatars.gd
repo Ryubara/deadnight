@@ -31,6 +31,10 @@ const PLAYER_TUNING := preload("res://gameplay/player/player_tuning_default.tres
 const PLAYER_SCENE := preload("res://gameplay/player/player.tscn")
 ## A player on the ground is turned over to lie there.
 const DOWNED_TILT := -1.4
+## A move of more than this (metres) between two frames is the server putting the player somewhere
+## (back at the start after leaving the map), not a walk, even a sprint at a stall: the avatar is
+## there at once, not slid across the map, and does not run on the spot for it.
+const JUMP := 6.0
 
 ## Draws that found no frame at the clock's time, and all draws, for the numbers of a run.
 var starved := 0
@@ -85,11 +89,16 @@ func apply_frame(frame: Dictionary) -> void:
 			_tracks[id] = []
 			_make(id)
 		var track: Array = _tracks[id]
+		var moved: bool = (
+			not track.is_empty()
+			and (track[track.size() - 1]["pos"] as Vector3).distance_to(player["pos"]) > JUMP
+		)
 		(
 			track
 			. append(
 				{
 					"t": time,
+					"warp": moved,
 					"pos": player["pos"],
 					"facing": player["facing"],
 					"downed": player["downed"],
@@ -169,6 +178,8 @@ func _place(player_id: int, delta: float) -> void:
 			if before["t"] <= _clock:
 				var span: float = after["t"] - before["t"]
 				var amount := clampf((_clock - before["t"]) / span, 0.0, 1.0) if span > 0.0 else 1.0
+				if after["warp"]:
+					amount = 0.0  # it waits where it was, and is there when the clock reaches it
 				pos = (before["pos"] as Vector3).lerp(after["pos"], amount)
 				facing = lerp_angle(before["facing"], after["facing"], amount)
 				pitch = lerpf(before["pitch"], after["pitch"], amount)
@@ -212,6 +223,9 @@ class Drawn:
 	) -> void:
 		if _placed and delta > 0.0:
 			var flat := Vector3(pos.x - _was.x, 0.0, pos.z - _was.z) / delta
+			if pos.distance_to(_was) > RemoteAvatars.JUMP:
+				flat = Vector3.ZERO
+				_speed = Vector3.ZERO
 			_speed = _speed.lerp(flat, 1.0 - exp(-RemoteAvatars.SPEED_FOLLOW * delta))
 			_pitch = lerpf(_pitch, pitch, 1.0 - exp(-RemoteAvatars.PITCH_FOLLOW * delta))
 		else:
