@@ -18,6 +18,10 @@ extends RefCounted
 ##   is not the last one up *stages* (`STAGE`): it keeps `STAGE_FROM` metres from the body (never
 ##   farther), shooting the zombies nearest the body first, so that when the pack has gone or been
 ##   killed it is a short walk away and the body has time left (#673); the others go on as before.
+## - the reviver that carries a flare and finds the dead at the body too many to clear in time fires
+##   it at a spot far from the body (`BotFlare`, mode `LURE`): the dead within the flare's radius
+##   walk to it for its seconds, the risk check counts them as far away, and the revive goes on.
+##   The flare goes through the claim table like the revive: only the claimant fires.
 ##
 ## Commit and abort have hysteresis: once the hold has begun only the abort rule lets go of it (more
 ## than one zombie on the bot and 20 health lost in a second, or under 30% health; past 60% of the
@@ -28,7 +32,7 @@ extends RefCounted
 ## It reads the bot's beliefs (the teammates' entries carry `bleed`, `reviver`, `revive`) and never
 ## the frame; it writes only into the intent.
 
-enum Mode { NONE, GO, HOLD, CLEAR, COVER, SURVIVE, STAGE }
+enum Mode { NONE, GO, HOLD, CLEAR, COVER, SURVIVE, LURE, STAGE }
 
 ## The hold's length and the reach, as the game has them (`HealthTuning.revive_seconds`,
 ## `NightTuning.revive_reach`; a test holds the two together).
@@ -75,6 +79,21 @@ const RETRY_PAUSE := 1.5
 const COMMIT_BOOST := 0.35
 ## A full health, as the frame counts it.
 const FULL_HEALTH := 100.0
+## The fewest zombies a flare must draw off to be fired (one or two are shot).
+const MIN_LURED := 2
+## Metres to the nearest dead within which a flare is not begun, or an order given up (the turn and
+## the shot take a second or two).
+const FLARE_NEAR := 3.0
+## Seconds an order is kept before it is given up (the swap, a reload of 2 s, the turn, the shot),
+## and the wait after a flare is fired before the next.
+const FLARE_WATCH := 5.0
+const FLARE_GAP := 4.0
+## Seconds before the next look for a spot after a look that found none.
+const PLAN_RETRY := 1.0
+## Seconds from the order to the flare's burst, counted into when the dead are drawn off.
+const FLARE_LEAD := 1.5
+## Seconds between two swaps asked for.
+const SWAP_PAUSE := 0.8
 
 ## Switches for the soak's A/B runs (`--no-stage`, `--no-stall`); both on in the game.
 static var stage_on := true
@@ -84,6 +103,7 @@ static var stall_on := true
 var team: BotTeam
 var telemetry: BotTelemetry
 var rounds: RoundTuning
+var level: BotLevel
 
 ## The downed player a person pinged (`BotPings.downed`), raised first; 0 for none.
 var pinged := 0
@@ -107,6 +127,13 @@ var _best_at := 0.0
 var _stalled_until := -INF
 var _stalled_victim := 0
 var _health_log: Array[Vector2] = []
+var _flare := BotFlare.new()
+## The flare ordered and when, the clock before which none is ordered, and the last swap asked for.
+var _order: BotFlare.Shot
+var _ordered_at := -INF
+var _flare_ready_at := -INF
+var _armed := false
+var _swapped_at := -INF
 
 
 func _init(profile: BotProfile) -> void:
@@ -133,9 +160,11 @@ func run(
 	if team != null and victim != 0 and not _still_down(beliefs, victim):
 		team.claims.release_victim(victim)
 	if down.is_empty() or team == null:
+		_order = null
 		return _end(Mode.NONE, 0)
 	var last := _last_standing(beliefs, me_id)
 	var threats := _threats(beliefs, round_number)
+	var gun := _gun(me, held)
 	var cover_for := 0
 	var stage_for := 0
 	for mate: Dictionary in down:
@@ -151,11 +180,15 @@ func run(
 			_account(id, "claim_on_other", null, apart, me_id)
 			continue
 		var holding := mode == Mode.HOLD and victim == id
-		var judged := _judge(mate, here, threats, held, round_number)
+		var judged := _judge(mate, here, threats, gun, round_number)
 		if judged.kind == BotReviveRisk.Kind.LATE and not holding:
 			_account(id, "late", judged, apart, team.claims.holder_of(id, now))
 			continue
-		if judged.kind == BotReviveRisk.Kind.UNSAFE and not holding:
+		var shot: BotFlare.Shot = null
+		var claimed_by_another := team.claims.holder_of(id, now) not in [0, me_id]
+		if not holding and not claimed_by_another and judged.kind != BotReviveRisk.Kind.SAFE:
+			shot = _flare_shot(beliefs, me, mate, judged, threats, gun, round_number)
+		if judged.kind == BotReviveRisk.Kind.UNSAFE and not holding and shot == null:
 			_account(id, "unsafe", judged, apart, team.claims.holder_of(id, now))
 			if last:
 				return _survive(intent, id, judged)
@@ -168,11 +201,13 @@ func run(
 			_account(id, "stalled", judged, apart, team.claims.holder_of(id, now))
 			continue
 		if not team.claims.request(id, me_id, apart, now, holding):
+			_order = null
 			cover_for = cover_for if cover_for != 0 else id
 			_account(id, "claim_lost", judged, apart, team.claims.holder_of(id, now))
 			continue
 		_account(id, "claimant", judged, apart, me_id)
-		return _claimant(intent, beliefs, me, mate, judged, last, step)
+		return _claimant(intent, beliefs, me, mate, judged, last, step, shot)
+	_order = null
 	if cover_for != 0:
 		return _cover(intent, beliefs.teammates[cover_for], here)
 	if stage_for != 0:
@@ -187,6 +222,7 @@ func reset() -> void:
 	mode = Mode.NONE
 	victim = 0
 	verdict = null
+	_order = null
 	_health_log.clear()
 
 
@@ -194,7 +230,9 @@ func reset() -> void:
 ## body: the one nearest the body within `BIAS_RADIUS` of it, unless `current` already is one or a
 ## zombie is on the bot. -1 for no change.
 func prefer(targets: Array[Dictionary], beliefs: BotBeliefs, here: Vector3, current: int) -> int:
-	if mode == Mode.NONE or mode == Mode.HOLD or not beliefs.teammates.has(victim):
+	if mode == Mode.NONE or mode == Mode.HOLD or mode == Mode.LURE:
+		return -1
+	if not beliefs.teammates.has(victim):
 		return -1
 	var body: Vector3 = beliefs.teammates[victim]["pos"]
 	var best := -1
@@ -226,7 +264,8 @@ func _claimant(
 	mate: Dictionary,
 	judged: BotReviveRisk.Verdict,
 	last: bool,
-	step: float
+	step: float,
+	shot: BotFlare.Shot
 ) -> Mode:
 	var now := beliefs.now
 	var id: int = mate["id"]
@@ -242,12 +281,31 @@ func _claimant(
 			return _clear(intent, id, body, apart, step)
 		return _hold(intent, id, body)
 	if now < _retry_at or judged.kind != BotReviveRisk.Kind.SAFE:
-		if last:
-			return _survive(intent, id, judged)
-		return _clear(intent, id, body, apart, step)
+		return _not_yet(intent, me, mate, judged, last, step, shot, now)
 	if apart <= HOLD_FROM:
 		return _hold(intent, id, body)
 	return _go(intent, id, body)
+
+
+## The reviver when the hold is not to begin yet: the flare when one is ordered, else (the last
+## one up) survive, else clear the dead from the body.
+func _not_yet(
+	intent: BotIntent,
+	me: Dictionary,
+	mate: Dictionary,
+	judged: BotReviveRisk.Verdict,
+	last: bool,
+	step: float,
+	shot: BotFlare.Shot,
+	now: float
+) -> Mode:
+	var id: int = mate["id"]
+	if shot != null:
+		return _lure(intent, me, shot, id, now)
+	if last:
+		return _survive(intent, id, judged)
+	var body: Vector3 = mate["pos"]
+	return _clear(intent, id, body, _flat(me["pos"], body), step)
 
 
 func _go(intent: BotIntent, id: int, body: Vector3) -> Mode:
@@ -282,6 +340,25 @@ func _clear(intent: BotIntent, id: int, body: Vector3, apart: float, step: float
 	intent.note = "revive_clear"
 	clear_seconds += step
 	return _end(Mode.CLEAR, id)
+
+
+## The flare ordered: the bot stands where it is, puts the flare gun in hand (reloading it first if
+## its round is spent), turns to the shot's view and fires; the motor does the last two.
+func _lure(intent: BotIntent, me: Dictionary, shot: BotFlare.Shot, id: int, now: float) -> Mode:
+	intent.flare_yaw = shot.yaw
+	intent.flare_pitch = shot.pitch
+	intent.target_id = -1
+	intent.melee_ok = false
+	intent.quick_melee_ok = false
+	intent.keep_weapon = true
+	intent.note = "flare"
+	if me.get("weapon", &"") != BotFlare.WEAPON:
+		if now - _swapped_at >= SWAP_PAUSE:
+			intent.swap = true
+			_swapped_at = now
+	elif int(me.get("ammo", 0)) <= 0 and not me.get("reloading", false):
+		intent.reload = true
+	return _end(Mode.LURE, id)
 
 
 func _survive(intent: BotIntent, id: int, judged: BotReviveRisk.Verdict) -> Mode:
@@ -502,6 +579,9 @@ func _last_standing(beliefs: BotBeliefs, me_id: int) -> bool:
 ## function wants them.
 func _threats(beliefs: BotBeliefs, round_number: int) -> Array[BotReviveRisk.Threat]:
 	var found: Array[BotReviveRisk.Threat] = []
+	var lures: Array[Dictionary] = []
+	if team != null:
+		lures = team.active_lures(beliefs.now)
 	for id in beliefs.contacts:
 		var contact: Dictionary = beliefs.contacts[id]
 		if not beliefs.is_believed(contact):
@@ -510,11 +590,23 @@ func _threats(beliefs: BotBeliefs, round_number: int) -> Array[BotReviveRisk.Thr
 		if mode_now == ZombieBody.Mode.DYING:
 			continue
 		var look: StringName = contact.get("look", ZombieModels.DEFAULT)
+		var at := beliefs.guess(contact, _profile.memory_seconds)
+		var lurable := not ZombieModels.is_boss(look) and mode_now != ZombieBody.Mode.ATTACK
+		var delay := 0.0
+		if lurable:
+			# A flare burning has drawn it: it starts for the people when the lure goes out.
+			for lure in lures:
+				if _flat(lure["point"], at) <= float(lure["radius"]):
+					at = lure["point"]
+					delay = maxf(float(lure["until"]) - beliefs.now, 0.0)
+					break
 		found.append(
 			BotReviveRisk.Threat.make(
-				beliefs.guess(contact, _profile.memory_seconds),
+				at,
 				BotReviveRisk.speed_of(look, round_number, rounds),
-				BotReviveRisk.health_of(look, round_number, rounds)
+				BotReviveRisk.health_of(look, round_number, rounds),
+				delay,
+				lurable
 			)
 		)
 	return found
@@ -535,6 +627,168 @@ func _nearest_bot(beliefs: BotBeliefs, body: Vector3, here: Vector3) -> int:
 			best = id
 			best_apart = apart
 	return best
+
+
+# --- The flare ---
+
+
+## The weapon the bot fights with: the one in hand, or (the flare gun being a tool for one shot) the
+## best loaded firearm it carries.
+func _gun(me: Dictionary, held: WeaponDef) -> WeaponDef:
+	if held == null or not held.is_lure():
+		return held
+	var arms: Dictionary = me.get("arms", {})
+	var other := BotArsenal.best_loaded(arms, held, 0.0)
+	return WeaponCatalog.get_def(other) if other != &"" else held
+
+
+## The shot to fire for `mate`'s body now, or null: the order in force, or a new one when the
+## verdict is not safe, the bot carries a flare with a round, no flare is burning or just fired, the
+## dead are not yet on the bot, enough of the dead at the body can be drawn off, drawing them off
+## would make the revive better (safe, or clearable when it was not), and `BotFlare` finds a spot.
+func _flare_shot(
+	beliefs: BotBeliefs,
+	me: Dictionary,
+	mate: Dictionary,
+	judged: BotReviveRisk.Verdict,
+	threats: Array[BotReviveRisk.Threat],
+	gun: WeaponDef,
+	round_number: int
+) -> BotFlare.Shot:
+	var here: Vector3 = me["pos"]
+	if not team.flares or not _carries_flare(me):
+		_order = null
+		return null
+	if beliefs.nearest_threat(here, _profile.memory_seconds) < FLARE_NEAR:
+		_order = null
+		return null
+	var mates := _others(beliefs)
+	if _order != null:
+		return _kept_order(beliefs.now, me, mates)
+	return _new_order(beliefs, me, mate, judged, threats, gun, round_number, mates)
+
+
+## The order in force, or null when it is done (the round that was in the gun is gone: the flare
+## flew, and the lure is heard when it bursts a moment later), has run out or a player walked
+## near its landing. An order that ends holds the next off for `FLARE_GAP`.
+func _kept_order(now: float, me: Dictionary, mates: Array[Dictionary]) -> BotFlare.Shot:
+	var counts: Array = (me.get("arms", {}) as Dictionary).get(BotFlare.WEAPON, [0, 0, 0])
+	if int(counts[0]) > 0:
+		_armed = true
+	var gone := int(counts[0]) <= 0 and _armed
+	var fit := (
+		now - _ordered_at < FLARE_WATCH
+		and team.active_lures(now).is_empty()
+		and _flare.is_clear_of_mates(_order.landing, mates)
+	)
+	if fit and not gone:
+		return _order
+	_order = null
+	_flare_ready_at = now + FLARE_GAP
+	return null
+
+
+## A new order, or null.
+func _new_order(
+	beliefs: BotBeliefs,
+	me: Dictionary,
+	mate: Dictionary,
+	judged: BotReviveRisk.Verdict,
+	threats: Array[BotReviveRisk.Threat],
+	gun: WeaponDef,
+	round_number: int,
+	mates: Array[Dictionary]
+) -> BotFlare.Shot:
+	var now := beliefs.now
+	var here: Vector3 = me["pos"]
+	if now < _flare_ready_at or not team.active_lures(now).is_empty():
+		return null
+	var lured: Array[Vector3] = []
+	for index in judged.danger:
+		var threat := threats[index]
+		if threat.lurable and threat.delay <= 0.0:
+			lured.append(threat.position)
+	if lured.size() < MIN_LURED:
+		return null
+	if not _would_help(mate, here, threats, gun, round_number, judged.kind):
+		return null
+	var shot := _flare.plan(here, mate["pos"], lured, mates, level, _dead_by_id(beliefs))
+	# A place that cannot be shot at is not looked for again at once.
+	_flare_ready_at = now + (0.0 if shot != null else PLAN_RETRY)
+	if telemetry != null:
+		telemetry.count(&"flares_wanted")
+		if shot == null:
+			telemetry.count(&"flares_no_spot")
+	if shot != null:
+		_order = shot
+		_ordered_at = now
+		_armed = false
+	return shot
+
+
+## The zombies the bot believes in as the weapons code takes targets (`{id: {pos, yaw, scale}}`).
+func _dead_by_id(beliefs: BotBeliefs) -> Dictionary:
+	var found := {}
+	for id in beliefs.contacts:
+		var contact: Dictionary = beliefs.contacts[id]
+		if not beliefs.is_believed(contact) or contact["mode"] == ZombieBody.Mode.DYING:
+			continue
+		var look: StringName = contact.get("look", ZombieModels.DEFAULT)
+		found[id] = {
+			"pos": beliefs.guess(contact, _profile.memory_seconds),
+			"yaw": float(contact.get("yaw", 0.0)),
+			"scale": ZombieModels.aim_scale(look)
+		}
+	return found
+
+
+## Whether the bot has a flare gun with a round in it or in reserve.
+static func _carries_flare(me: Dictionary) -> bool:
+	var arms: Dictionary = me.get("arms", {})
+	if not arms.has(BotFlare.WEAPON):
+		return false
+	var counts: Array = arms[BotFlare.WEAPON]
+	return int(counts[0]) + int(counts[1]) > 0
+
+
+## Whether the revive would be judged better with every zombie a flare can draw standing at the
+## lure's place (the lure lasts, and they start for the body again from 12 m away): safe, or at
+## least clearable when it was not.
+func _would_help(
+	mate: Dictionary,
+	here: Vector3,
+	threats: Array[BotReviveRisk.Threat],
+	gun: WeaponDef,
+	round_number: int,
+	now_kind: BotReviveRisk.Kind
+) -> bool:
+	var body: Vector3 = mate["pos"]
+	var away := Vector3(body.x - here.x, 0.0, body.z - here.z)
+	away = away.normalized() if away.length() > 0.5 else Vector3.RIGHT
+	var spot := body + away * BotFlare.MIN_FROM_BODY
+	var after: Array[BotReviveRisk.Threat] = []
+	for threat in threats:
+		if threat.lurable and threat.delay <= 0.0:
+			after.append(
+				BotReviveRisk.Threat.make(
+					spot, threat.speed, threat.health, FLARE_LEAD + _flare.def.lure_seconds, true
+				)
+			)
+		else:
+			after.append(threat)
+	var judged := _judge(mate, here, after, gun, round_number)
+	if judged.kind == BotReviveRisk.Kind.SAFE:
+		return true
+	return now_kind == BotReviveRisk.Kind.UNSAFE and judged.kind == BotReviveRisk.Kind.CLEAR
+
+
+## The other players, as the beliefs keep them.
+func _others(beliefs: BotBeliefs) -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	for id in beliefs.teammates:
+		if id != beliefs.me:
+			found.append(beliefs.teammates[id])
+	return found
 
 
 static func _flat(a: Vector3, b: Vector3) -> float:

@@ -1,12 +1,11 @@
 class_name NightWorld
 extends Node3D
-## The place a night happens in: the drive-in greybox, its navigation mesh, its doors and spawn
-## markers, and the players' bodies. The server asks it where things are; it decides nothing
-## itself. A door bought is the lot's own business: `LotDoors` follows the rules (`bind`) and
-## `DoorNavigation` swaps in the zombies' mesh for the new set when one opens
-## (`docs/research/zombies.md`, Doors).
+## The place a night happens in: the map's scene (the drive-in greybox, or another entry of
+## `MapRegistry`), its navigation mesh, its doors and spawn markers, and the players' bodies. The
+## server asks it where things are; it decides nothing itself. A door bought is the lot's own
+## business: `LotDoors` follows the rules (`bind`) and `DoorNavigation` swaps in the zombies' mesh
+## for the new set when one opens (`docs/research/zombies.md`, Doors).
 
-const GREYBOX := preload("res://world/drive_in_greybox.tscn")
 const PLAYER_SCENE := preload("res://gameplay/player/player.tscn")
 ## Static bodies of CSG shapes reach the physics space after a few steps.
 const SETTLE_FRAMES := 4
@@ -26,6 +25,8 @@ const DOOR_AREAS := {
 }
 
 var greybox: Node3D
+## The map this world was built from (`build`).
+var map_info: MapInfo
 ## The lot's doors: they open when the rules sell them and tell the navigation (`door_opened`).
 var doors: LotDoors
 var navigation: DoorNavigation
@@ -44,10 +45,12 @@ var _lamps: LotLamps
 var _generator: GeneratorState
 
 
-## Builds the lot and waits until its collision and navigation are live.
-func build() -> void:
+## Builds the map (the default one when none is given) and waits until its collision and navigation
+## are live.
+func build(info: MapInfo = null) -> void:
+	map_info = info if info != null and info.is_playable() else MapRegistry.default_map()
 	WebProbe.mark("lot: instantiate")
-	greybox = GREYBOX.instantiate()
+	greybox = map_info.load_scene().instantiate()
 	add_child(greybox)
 	WebProbe.mark("lot: in the tree")
 	doors = greybox.get_node("Doors") as LotDoors

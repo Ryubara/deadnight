@@ -17,19 +17,16 @@ extends RefCounted
 ## weapons events (`CombatServer`), `player_damaged` (the blow as the world saw it: `from`, where it
 ## came from, and the zombie's id, type and `knockback`: metres the blow throws the player, recorded
 ## for the player's own motion to apply), and last a `frame`. A frame carries the whole picture a
-## client or a HUD draws from.
-##
-## Frame fields: tick, phase, round, remaining, fuel, circuits ({id: on}), doors (open ids),
-## barricades ({id: boards up}), pings ({player_id: {kind, pos, subject, left}}), zombies
-## (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim (the aim pose is
-## held), pitch (the look up or down, `pitch_step`), stance (`PlayerStance` bits), ammo, reserve,
-## reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points, prompt, reviving
-## (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold on this one,
-## when downed, has got), ack (the `seq` of the command this step used: a predicting client replays
-## from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player has left) and
-## reviver (who is raising this one, 0 for nobody)}}.
-##
-## Single-player runs this beside the client, joined by a `LoopbackLink`.
+## client or a HUD draws from. Frame fields: tick, phase, round, remaining, fuel, circuits ({id:
+## on}), doors (open ids), barricades ({id: boards up}), pings ({player_id: {kind, pos, subject,
+## left}}), zombies (`ZombieCodec` bytes), players {id: {pos, facing, health, downed, weapon, aim
+## (the aim pose is held), pitch (the look up or down, `pitch_step`), stance (`PlayerStance` bits),
+## ammo, reserve, reloading, arms (every weapon carried: id to [ammo, reserve, tier]), points,
+## prompt, reviving (the teammate this one is raising, 0 for none), revive (0 to 1: how far the hold
+## on this one, when downed, has got), ack (the `seq` of the command this step used: a predicting
+## client replays from it), kills, downs, revives, dead (bled out), bleed (seconds a downed player
+## has left) and reviver (who is raising this one, 0 for nobody)}}. Single-player runs this beside
+## the client, joined by a `LoopbackLink`.
 
 ## Ticks between the asks which areas the map has taken in (a quarter second).
 const SPAWN_RETRY_TICKS := 15
@@ -42,14 +39,14 @@ const SEAT_PERSON := &"seat_person"
 const START_NIGHT := &"start_night"
 ## A player marks something for the others: `ping` {kind, pos, subject}, see `PingBoard`.
 const PING := &"ping"
+const ORDER := BotOrders.ACTION  # `order` {order, at, bot_id}: a person orders the bots
 ## A bot calls out a line of `BotSay`: `say` {line, subject, pos}, see `SayBoard`.
 const SAY := &"say"
 ## A player came back on a new connection: `resync` {player_id} tells it the looks again.
 const RESYNC := &"resync"
 ## A client's look, as `LookWire.look` bytes: `look` {player_id, packet}.
 const LOOK := &"look"
-## What the look server answers, as an event for one client: `look_packet` {to, packet}, the bytes
-## of a `LookWire.player_look`.
+## The look server's answer to one client: `look_packet` {to, packet (`LookWire.player_look`)}.
 const LOOK_PACKET := &"look_packet"
 ## The weapons events worth sending on (the rules events ride the rules signal; the weapons
 ## answer repeats them).
@@ -110,7 +107,7 @@ var tuning: NightTuning:
 var tick_count := 0
 ## The marks the players have put up.
 var ping_board := PingBoard.new()
-## The lines the bots call out.
+var bot_orders := BotOrders.new()
 var say_board := SayBoard.new()
 ## Whether the players' bodies have the Soldier's model. A game server draws nothing, so it leaves
 ## them out (`NightHost`); in one process with its client the same bodies are drawn.
@@ -129,19 +126,19 @@ var _acked: Dictionary[int, int] = {}
 var _bodies: Dictionary[int, Player] = {}
 var _shot_seq: Dictionary[int, int] = {}
 var _hand_wait: Dictionary[int, float] = {}
-## The breach each player's held `use` is repairing (`&""`: none). A hold begins with a press at a
-## breach and ends when the button comes up, the breach is whole or out of reach, or the player
-## fires, reloads, swaps, is hit or goes down.
+## The breach each player's held `use` is repairing (`&""`: none): from a press at a breach until
+## the button comes up, the breach is whole or out of reach, or the player acts, is hit or falls.
 var _repairing: Dictionary[int, StringName] = {}
 ## The breach each player last put a board back across, and how long (s) the body still turns to
 ## face it (#245): a repair is allowed by place, not by facing, so the body turns to the boards
-## while the repair clip hammers them. Walking or aiming turns it the player's way as before.
+## while the clip hammers them (walking or aiming turns it the player's way).
 var _facing_breach: Dictionary[int, StringName] = {}
 var _face_left: Dictionary[int, float] = {}
 ## The teammates raising downed players (held `use` beside a downed one).
 var _revive: ReviveChannel
-## What decides whether a ping is true.
+## What decides whether a ping is true, and whether an order to the bots is taken.
 var _ping_judge: PingJudge
+var _order_judge: OrderJudge
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
 ## Held here: a Callable does not keep its RefCounted alive.
@@ -178,6 +175,7 @@ func _init(
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
+	_order_judge = OrderJudge.new(_ping_judge, bot_orders, rules, world, _bodies, _announce)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
 	director.spawn_gates = world.spawn_gates()
 	director.player_struck.connect(_on_player_struck)
@@ -213,6 +211,8 @@ func apply(action: Dictionary, from_id: int = 0) -> Array[Dictionary]:
 			looks.receive(action["player_id"], action["packet"])
 		PING:
 			ping(from_id if from_id > 0 else action.get("player_id", 1), action)
+		ORDER:
+			_order_judge.give(from_id if from_id > 0 else action.get("player_id", 1), action)
 		SAY:
 			say(from_id if from_id > 0 else action.get("player_id", 1), action)
 		RESYNC:
@@ -306,6 +306,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	PerfProbe.end(&"server.act", began)
 	began = PerfProbe.begin()
 	_outbox.append_array(ping_board.step(delta))
+	bot_orders.step(delta)
 	say_board.step(delta)
 	_throw_grenades(delta)
 	if with_frame:
@@ -348,6 +349,7 @@ func _leave(player_id: int) -> void:
 		_repairing.erase(player_id)
 		_revive.forget(player_id)
 		ping_board.forget(player_id)
+		bot_orders.forget(player_id)
 		say_board.forget(player_id)
 		_throwers.erase(player_id)
 		_facing_breach.erase(player_id)
@@ -708,13 +710,12 @@ func aims_with_view(command: NightCommand) -> bool:
 
 
 ## What `use` would do for a player right now: `{}`, a door to buy, a weapon on a wall, the crane
-## or rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id",
-## "boards"}` for a breach with a board down that the player stands inside, in reach of, or
-## `{"kind": &"circuit", "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or
-## `{"kind": &"fuel", "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell
-## now: `units` is 0 and `price` 0 when the tank is full), or `{"kind": &"revive", "id",
-## "progress", "bleed"}` beside a downed teammate (`progress`: 0 to 1 of the hold, `bleed`: the
-## seconds they have left; first of all, a life comes before a door).
+## or rounds to buy (the nearest shop spot in reach), `{"kind": &"repair", "id", "boards"}` for a
+## breach with a board down that the player stands inside, in reach of, or `{"kind": &"circuit",
+## "id", "on"}` for a breaker post in reach (`on`: how the circuit is now), or `{"kind": &"fuel",
+## "id", "item", "price", "units"}` at a fuel can spot (what the rules would sell now: `units` and
+## `price` are 0 when the tank is full), or `{"kind": &"revive", "id", "progress", "bleed"}` beside
+## a downed teammate (`progress`: 0 to 1 of the hold, `bleed`: seconds left; it comes first).
 func use_target(player_id: int) -> Dictionary:
 	var body := _bodies.get(player_id) as Player
 	if body == null:
@@ -959,6 +960,7 @@ func _frame() -> Dictionary:
 		"doors": rules.doors_open.duplicate(),
 		"crane": _crane_frame(),
 		"pings": ping_board.marks(),
+		BotOrders.FRAME_KEY: bot_orders.to_frame(),
 		"barricades": rules.barricades.to_dict(),
 		"zombies": _encode_zombies(),
 		"players": players,

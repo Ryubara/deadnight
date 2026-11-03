@@ -103,3 +103,28 @@ func test_stop_all_stops_a_loop_that_lives_on_a_node() -> void:
 	assert_bool(player.playing).is_true()
 	_audio.stop_all()
 	assert_bool(player.playing).is_false()
+
+
+func test_a_bed_level_moves_the_bed_to_that_many_db_under_its_own() -> void:
+	var player := _audio.start_bed(&"bed_room_tone")
+	_audio.set_bed_level(&"bed_room_tone", -12.0)
+	_audio.advance(5.0)
+	assert_float(_audio.bed_fade_db(&"bed_room_tone")).is_equal_approx(-12.0, 0.01)
+	var level := SoundCatalog.get_def(&"bed_room_tone").volume_db
+	assert_float(player.volume_db).is_equal_approx(level - 12.0, 0.01)
+	_audio.set_bed_level(&"bed_room_tone", -4.0)
+	_audio.advance(0.2)
+	assert_float(_audio.bed_fade_db(&"bed_room_tone")).is_equal_approx(-8.0, 0.01)
+
+
+func test_a_bed_level_of_silence_stops_it_and_a_level_starts_it_again() -> void:
+	_audio.start_bed(&"bed_room_tone", true)
+	_audio.set_bed_level(&"bed_room_tone", 0.0)
+	_audio.advance(4.0)
+	_audio.set_bed_level(&"bed_room_tone", AudioService.BED_SILENT_DB)
+	_audio.advance(3.0)
+	assert_bool(_audio.is_bed_running(&"bed_room_tone")).is_false()
+	_audio.set_bed_level(&"bed_room_tone", -6.0)
+	_audio.advance(3.0)
+	assert_bool(_audio.is_bed_running(&"bed_room_tone")).is_true()
+	assert_float(_audio.bed_fade_db(&"bed_room_tone")).is_equal_approx(-6.0, 0.01)
