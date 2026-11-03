@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import challenge_recipes
 import dsp
 import energy_recipes
+import gun_recipes_2
 import map_recipes
 import night_recipes
 import recipes
@@ -38,6 +39,7 @@ REGISTRY: list[Entry] = [
     *recipes.REGISTRY,
     *night_recipes.REGISTRY,
     *weapon_recipes.REGISTRY,
+    *gun_recipes_2.REGISTRY,
     *zombie_recipes.REGISTRY,
     *step_recipes.REGISTRY,
     *map_recipes.REGISTRY,

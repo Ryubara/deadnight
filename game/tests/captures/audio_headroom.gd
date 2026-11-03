@@ -27,8 +27,23 @@ extends Node
 
 const OWN := 1
 const MATE := 2
+## The bench that knows the guns the catalogue does not have yet (#790) and how fast they fire.
+const GUN_BENCH := preload("res://tools/bench/audio_gun_bench.gd")
 const FPS := 60.0
-const OWN_GUNS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]
+const OWN_GUNS: Array[StringName] = [
+	&"pistol",
+	&"smg",
+	&"rifle",
+	&"shotgun",
+	&"flare_gun",
+	&"ppsh",
+	&"m249",
+	&"m4a1",
+	&"fifty_cal",
+	&"mp5",
+	&"pump_870",
+	&"dual_pistols",
+]
 const CELLS: Array[StringName] = [&"alone", &"reload", &"mate", &"zombie", &"world"]
 const MATE_GUNS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun"]
 const ZOMBIE_SOUNDS: Array[StringName] = [
@@ -143,7 +158,7 @@ func _run() -> void:
 			var events := _events(cell)
 			var interval := 0.1
 			if own != &"none":
-				interval = WeaponCatalog.get_def(own).fire_interval
+				interval = GUN_BENCH.interval_of(own)
 			# One second more than the last event needs, so a reload's last step and a tail end inside.
 			var end := start + LEAD + _span(events) + TAIL
 			print("CELL %s %s %.3f %.3f" % [own, cell, start, end])
