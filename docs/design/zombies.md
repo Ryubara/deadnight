@@ -221,6 +221,7 @@ in the code, so a new lure weapon is a new `.tres`. Findings: [the flare lure](.
 
 When a round is down to its last `ZombieTuning.mark_last` zombies (3), counting those still to spawn, every
 player sees them outlined in orange through walls, so a round is never stuck on one zombie in a corner. The
-outline is the silhouette's edge, a few pixels wide at any distance, with a soft glow; the body is not filled. It
-clears when the round ends or a zombie dies. How it is built, what it costs and the choices to retune (colour,
-width, glow, N) are on the [research page](../research/outline.md).
+outline is the silhouette's edge, a few pixels wide at any distance, with no glow; the body is not filled. It
+is drawn only where the zombie is hidden (a zombie half behind a car is outlined below the car's edge only; one
+in the open has none). It clears when the round ends or a zombie dies. How it is built, what it costs and the
+choices to retune (colour, width, N) are on the [research page](../research/outline.md).
