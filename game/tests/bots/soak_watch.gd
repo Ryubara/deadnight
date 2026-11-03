@@ -84,6 +84,25 @@ var _spread_sum := 0.0
 var _spread_n := 0
 var _doors: Array[StringName] = []
 var _round_marks: Dictionary = {}
+## By round: the damage the bots took, the downs, and what the bots carried when it began, so a
+## night is read round by round against the simulator's own (`damage`, `died_in`).
+var _round_damage: Dictionary = {}
+var _round_downs: Dictionary = {}
+## By round, then zombie type: [blows that landed, their damage].
+var _round_blows: Dictionary = {}
+## Where the headliners were hit (zone to hits) and the damage those hits did, over the night.
+var _boss_zones: Dictionary = {}
+var _boss_damage := 0.0
+## Each headliner's first hit (game seconds, by zombie id) and the seconds from it to its death.
+var _boss_first: Dictionary = {}
+var _boss_ttk: Array[float] = []
+## The metres from the nearest bot to each headliner at its first hit.
+var _boss_range: Array[float] = []
+## Seconds the headliners spent in each mode, the swings they began, and the mode each was last in.
+var _boss_modes: Dictionary = {}
+var _boss_swings := 0
+var _boss_last: Dictionary = {}
+var _round_kit: Dictionary = {}
 
 
 func _init(p_night: SeatedNight, p_people: Array[int], p_order: StringName) -> void:
@@ -138,6 +157,7 @@ func _tally(id: int) -> Dictionary:
 			"deaths": 0,
 			"damage_taken": 0.0,
 			"spent": {},
+			"earned_by": {},
 			"revived_others": 0,
 		}
 	return _seat[id]
@@ -156,6 +176,13 @@ func hear(event: Dictionary) -> void:
 		&"zombie_damaged":
 			var id: int = event["player_id"]
 			var zone: StringName = event["zone"]
+			if id > 0 and event.get("zombie_type", &"") == &"headliner":
+				_boss_zones[String(zone)] = int(_boss_zones.get(String(zone), 0)) + 1
+				_boss_damage += float(event.get("damage", 0.0))
+				var boss_id: int = event["zombie_id"]
+				if not _boss_first.has(boss_id):
+					_boss_first[boss_id] = float(night.server.tick_count) / 60.0
+					_boss_range.append(_range_to_nearest_bot(boss_id))
 			if id > 0 and zone != RulesAction.ZONE_BLAST:
 				var tally := _tally(id)
 				tally["pellet_hits"] += 1
@@ -165,6 +192,9 @@ func hear(event: Dictionary) -> void:
 				elif zone == RulesAction.ZONE_WEAK:
 					tally["weak"] += 1
 		&"zombie_removed":
+			if event["cause"] == &"killed" and _boss_first.has(event["zombie_id"]):
+				var first: float = _boss_first[event["zombie_id"]]
+				_boss_ttk.append(snappedf(float(night.server.tick_count) / 60.0 - first, 0.1))
 			if event["cause"] == &"killed":
 				_kills_total += 1
 				var killer: int = event["killer_id"]
@@ -172,10 +202,28 @@ func hear(event: Dictionary) -> void:
 					_tally(killer)["kills"] += 1
 		&"player_downed":
 			_tally(event["player_id"])["downs"] += 1
+			var down_round: int = night.server.rules.round_number
+			_round_downs[down_round] = int(_round_downs.get(down_round, 0)) + 1
+		&"player_damaged":
+			var blow_round: int = night.server.rules.round_number
+			var by_type: Dictionary = _round_blows.get(blow_round, {})
+			var landed: Array = by_type.get(String(event["zombie_type"]), [0, 0.0])
+			landed[0] += 1
+			landed[1] += float(event["damage"])
+			by_type[String(event["zombie_type"])] = landed
+			_round_blows[blow_round] = by_type
+		&"points_changed":
+			var earned_by: Dictionary = _tally(event["player_id"])["earned_by"]
+			var why := String(event["reason"])
+			earned_by[why] = int(earned_by.get(why, 0)) + maxi(int(event["delta"]), 0)
 		&"player_died":
 			_tally(event["player_id"])["deaths"] += 1
 		&"player_hurt":
 			_tally(event["player_id"])["damage_taken"] += float(event["damage"])
+			var hurt_round: int = night.server.rules.round_number
+			_round_damage[hurt_round] = (
+				float(_round_damage.get(hurt_round, 0.0)) + float(event["damage"])
+			)
 		&"player_revived":
 			var reviver := int(event.get("reviver_id", 0))
 			if reviver > 0:
@@ -196,6 +244,7 @@ func hear(event: Dictionary) -> void:
 			_doors.append(event["door_id"])
 		&"round_started":
 			_round_marks[event["round"]] = float(night.server.tick_count) / 60.0
+			_round_kit[event["round"]] = _kit()
 
 
 ## An action a bot sent (`SeatedNight.on_action`): the same command as the one before, or not.
@@ -224,6 +273,7 @@ func tick() -> void:
 		var team: Dictionary = held.get("team", {})
 		if not team.is_empty():
 			hold_spot = team["at"]
+	_watch_bosses()
 	var humans := _humans_up()
 	var places: Array[Vector3] = []
 	for bot in night.host.bots:
@@ -255,6 +305,62 @@ func tick() -> void:
 		for j in range(i + 1, places.size()):
 			_spread_sum += Vector2(places[i].x - places[j].x, places[i].z - places[j].z).length()
 			_spread_n += 1
+
+
+## The headliners' modes this tick: where their seconds go, and how many swings they begin.
+func _watch_bosses() -> void:
+	for zombie: ZombieBody in night.server.sim.zombies.values():
+		if zombie.profile.type != &"headliner":
+			continue
+		var mode_name: String = ZombieBody.Mode.keys()[zombie.mode]
+		_boss_modes[mode_name] = float(_boss_modes.get(mode_name, 0.0)) + 1.0 / 60.0
+		if zombie.mode == ZombieBody.Mode.ATTACK and _boss_last.get(zombie.id, -1) != zombie.mode:
+			_boss_swings += 1
+		_boss_last[zombie.id] = zombie.mode
+
+
+## What the bots carry now: the guns each holds (sorted, joined), the points they hold and have
+## earned in all, and the doors open.
+func _kit() -> Dictionary:
+	var guns: Array[String] = []
+	var points := 0
+	var earned := 0
+	for bot in night.host.bots:
+		var id := bot.state.player_id
+		if people.has(id):
+			continue
+		points += night.server.rules.points_of(id)
+		earned += night.server.rules.players[id].points_earned
+		var arms: Dictionary = night.frame.get("players", {}).get(id, {}).get("arms", {})
+		var names: Array[String] = []
+		for weapon: StringName in arms:
+			names.append(String(weapon))
+		names.sort()
+		guns.append("+".join(names))
+	guns.sort()
+	return {"guns": guns, "points": points, "earned": earned, "doors": _doors.size()}
+
+
+## Flat metres from zombie `zombie_id` to the nearest bot standing (0 if it is gone).
+func _range_to_nearest_bot(zombie_id: int) -> float:
+	var zombie: ZombieBody = night.server.sim.zombies.get(zombie_id)
+	if zombie == null:
+		return 0.0
+	var best := INF
+	for bot in night.host.bots:
+		var body := night.server.body_of(bot.state.player_id)
+		if body != null:
+			best = minf(
+				best,
+				(
+					Vector2(
+						body.global_position.x - zombie.position.x,
+						body.global_position.z - zombie.position.z
+					)
+					. length()
+				)
+			)
+	return snappedf(best, 0.1) if best < INF else 0.0
 
 
 ## The Hold gate (`docs/research/bots.md#orders-follow-roam-and-hold-641`): within
@@ -646,6 +752,7 @@ func report() -> Dictionary:
 					"buys": int(bot.telemetry.counters.get(&"buys", 0)),
 					"rejected_buys": int(bot.telemetry.counters.get(&"rejected_buys", 0)),
 					"spent": tally["spent"],
+					"earned_by": tally["earned_by"],
 					"points_earned": player.points_earned if player != null else 0,
 					"points_spent": player.points_spent if player != null else 0,
 					"think_us_p50": bot.telemetry.think_us(0.5),
@@ -665,6 +772,16 @@ func report() -> Dictionary:
 		"denial_loops": _loops,
 		"spread": snappedf(_spread_sum / maxf(float(_spread_n), 1.0), 0.1),
 		"round_marks": _round_marks,
+		"round_damage": _round_damage,
+		"round_downs": _round_downs,
+		"round_blows": _round_blows,
+		"boss_zones": _boss_zones,
+		"boss_damage": snappedf(_boss_damage, 1.0),
+		"boss_ttk": _boss_ttk,
+		"boss_range": _boss_range,
+		"boss_modes": _boss_modes,
+		"boss_swings": _boss_swings,
+		"round_kit": _round_kit,
 		"end": _end_state(),
 		"bots": bots,
 	}

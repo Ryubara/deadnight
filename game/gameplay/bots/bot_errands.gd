@@ -122,8 +122,8 @@ var _waiting_since: Dictionary = {}
 ## Circuit id to the clock when its area was first found empty.
 var _empty_since: Dictionary = {}
 ## The breaker the bot set out to throw on, and the clock until which it keeps wanting it: the walk
-## to a breaker that stands outside its area's lamps takes the bot out of the area, and without this
-## the bot would stop wanting the circuit, turn back to the shop, and want it again on the way in.
+## to a breaker outside its area's lamps takes the bot out of the area, and without this it would
+## stop wanting the circuit, turn back to the shop, and want it again on the way in.
 var _breaker_id: StringName = &""
 var _breaker_until := -INF
 var _fuelling := false
@@ -298,6 +298,7 @@ func _crane_wait(intent: BotIntent, me: Dictionary, frame: Dictionary, me_id: in
 		var view := BotEconomy.View.new()
 		view.arms = me.get("arms", {})
 		view.held = me.get("weapon", &"")
+		view.zombie_health = _economy.zombie_health(int(frame.get("round", 1)))
 		if BotEconomy.worth_taking(view, WeaponCatalog.catalog_id(prompt.get("weapon", &""))):
 			intent.use = true
 	return true
@@ -545,7 +546,7 @@ func _hands_wrong(pick: BotEconomy.Buy, prompt: Dictionary, me: Dictionary) -> b
 		return false
 	var held: StringName = me.get("weapon", &"")
 	var replaced: StringName = prompt.get("replaces", held)
-	return replaced != &"" and replaced != BotEconomy.weakest_of(arms)
+	return replaced != &"" and replaced != BotEconomy.weakest_of(arms, _economy.last_health)
 
 
 ## At a locker with a blade in hand and the gun to feed in the pack: the rounds are sold for the
@@ -592,9 +593,10 @@ func _view(
 	beliefs: BotBeliefs, state: ClientState, me: Dictionary, frame: Dictionary
 ) -> BotEconomy.View:
 	var view := BotEconomy.View.new()
-	var now := beliefs.now
 	view.points = state.points()
 	view.round_number = int(frame.get("round", 1))
+	view.prepared = beliefs.special_coming
+	view.zombie_health = _economy.zombie_health(view.round_number)
 	view.in_break = frame.get("phase", ACTIVE_PHASE) == BREAK_PHASE
 	view.remaining = int(frame.get("remaining", 0))
 	view.calm_at = calm_at(frame)
@@ -610,7 +612,7 @@ func _view(
 	view.crane_spot = int(crane.get("spot", 0))
 	view.crane_ready = int(crane.get("stage", CraneState.Stage.READY)) == CraneState.Stage.READY
 	view.denied = _denied
-	view.now = now
+	view.now = beliefs.now
 	view.avoid = Callable(self, &"_avoided")
 	if legs != null:
 		view.walk = Callable(self, &"_walk_to")
