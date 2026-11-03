@@ -123,6 +123,10 @@ MIDDLES = {
     "UpperB": (5.0, STOREY, -4.0),
 }
 
+# The moon indoors: low, against the lot's 0.36. Nothing casts a shadow in the Compatibility renderer, so the moon
+# lifts every floor under the roof evenly (kit docs/godot/compat-lighting.md, Light cards indoors).
+INDOOR_MOON_ENERGY = 0.1
+
 # Lamps: plain warm lights, one or two a room, on no circuit (whether the generator comes to this map is the
 # maintainer's call, formula row 30).
 LAMPS = [
@@ -311,7 +315,7 @@ def build() -> None:
     bg.node("WorldEnvironment", "WorldEnvironment", "Lighting", {"environment": 'SubResource("night")'})
     bg.node(
         "Moon", "DirectionalLight3D", "Lighting",
-        {"transform": bg.moon_transform(), "light_color": bg.color(bg.MOON_LIGHT), "light_energy": f"{bg.MOON_ENERGY:g}"},
+        {"transform": bg.moon_transform(), "light_color": bg.color(bg.MOON_LIGHT), "light_energy": f"{INDOOR_MOON_ENERGY:g}"},
     )  # fmt: skip
 
     # --- The rooms: each a group with its rectangle, floor height and room id (what the tests measure by) ----------

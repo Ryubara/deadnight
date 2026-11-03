@@ -110,6 +110,10 @@ purchase (a door, a buy, the box).
 Budget rules from the lot that bind here ([lamps and glow](../night-environment.md#lamps-and-glow-issue-244)):
 at most 8 lights reach a mesh, 6 so a fight has room. Tight rooms help: walls, floors and ceilings are cut per room,
 so a room's mesh is reached by its own one or two lamps and a neighbour's spill. Most "lights" are quads.
+The greybox's lamps are counted the same way (`tests/world/smallmap/test_smallmap_light_cap.gd`), and its
+directional moon is 0.1 against the lot's 0.36: indoors, with no shadow, it would lift every floor evenly (kit
+`docs/godot/compat-lighting.md`, Light cards indoors). A new scene with a light is listed in the lot suite's
+`LIGHT_SCENES`, which walks the whole project.
 
 ## Scale
 

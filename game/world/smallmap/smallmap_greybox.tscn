@@ -99,7 +99,7 @@ environment = SubResource("night")
 [node name="Moon" type="DirectionalLight3D" parent="Lighting"]
 transform = Transform3D(-0.9231, -0.2393, 0.3011, 0.0000, 0.7828, 0.6222, -0.3846, 0.5744, -0.7226, 0, 20, 0)
 light_color = Color(0.616, 0.706, 0.910, 1)
-light_energy = 0.36
+light_energy = 0.1
 
 [node name="Start" type="Node3D" parent="."]
 metadata/room = "start"
