@@ -75,10 +75,11 @@ func setup(ways: SmallMapWays, tuning: SmallMapSoundTuning, backdrop: Node3D) ->
 
 
 ## Moves every loop for a listener at `ear`: where it plays from, how loud and how dull, and
-## whether it plays at all. `delta` is the time since the last call (the level's slew).
-func update(ear: Vector3, delta: float) -> void:
+## whether it plays at all. `delta` is the time since the last call (the level's slew). `wind_db`
+## is what the blowing gust adds to each wind loop now (0: no gust).
+func update(ear: Vector3, delta: float, wind_db := 0.0) -> void:
 	for source in sources:
-		_follow(source, ear, delta)
+		_follow(source, ear, delta, wind_db if source.id == WIND else 0.0)
 
 
 ## Fades the yard out and stops it (the night is over).
@@ -112,7 +113,7 @@ func _add(id: StringName, at: Vector3, offset := 0.0, pitch := 1.0) -> void:
 	sources.append(source)
 
 
-func _follow(source: Source, ear: Vector3, delta: float) -> void:
+func _follow(source: Source, ear: Vector3, delta: float, gust_db := 0.0) -> void:
 	var player := source.player
 	if player == null:
 		return
@@ -125,7 +126,7 @@ func _follow(source: Source, ear: Vector3, delta: float) -> void:
 		return
 	var way := _ways.route(ear, true_at, source.def.unit_size)
 	source.way = way
-	var target := source.def.volume_db + way.extra_db
+	var target := source.def.volume_db + way.extra_db + gust_db
 	if not Audio.filters_apply and way.kind != &"outside":
 		target += _t.no_filter_db
 	source.db = (
