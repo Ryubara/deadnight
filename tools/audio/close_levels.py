@@ -90,7 +90,7 @@ def main() -> int:
             name: {"max_db": round(r["max_db"], 1), "close_peak_dbfs": round(r["close_peak_dbfs"], 1)}
             for name, r in sorted(sounds.items())
         }
-        args.table.write_text(json.dumps({"sounds": table}, indent=1) + "\n")
+        write(args.table, json.dumps({"sounds": table}, indent=1) + "\n")
     return 0
 
 
