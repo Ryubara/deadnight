@@ -72,35 +72,62 @@ func _build(weapon_id: StringName) -> SubViewport:
 	flat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	flat.albedo_color = Color.WHITE
 	flat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var bounds := AABB()
-	var first := true
+	var meshes: Array[MeshInstance3D] = []
 	for node in model.find_children("*", "MeshInstance3D", true, false):
-		var mesh := node as MeshInstance3D
-		mesh.material_override = flat
-		var box := _in_model(mesh, model)
-		bounds = box if first else bounds.merge(box)
-		first = false
+		(node as MeshInstance3D).material_override = flat
+		meshes.append(node as MeshInstance3D)
+	# Lay the weapon along the picture's width with the long side from its grip to the right: a gun
+	# already is (its barrel is its -X), a club stands on its end in the model.
+	model.rotation.z = _turn_to_the_right(_bounds(meshes, model))
+	var bounds := _bounds(meshes, view)
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.near = 0.05
 	camera.far = STANDOFF * 4.0
 	view.add_child(camera)
-	# From the -Z side, the barrel (the model's -X) points to the right of the picture.
 	var centre := bounds.get_center()
 	var px_per_metre := minf(
 		width_share(hold) * PICTURE.x / maxf(bounds.size.x, 0.001),
 		FILL.y * PICTURE.y / maxf(bounds.size.y, 0.001)
 	)
 	camera.size = PICTURE.y / px_per_metre
+	# From the -Z side, the model's -X is the picture's right.
 	camera.look_at_from_position(centre + Vector3(0.0, 0.0, -STANDOFF), centre, Vector3.UP)
 	return view
 
 
-## `mesh`'s box in `model`'s own space (the model is at the origin and unrotated in its view).
-static func _in_model(mesh: MeshInstance3D, model: Node3D) -> AABB:
-	var local := mesh.get_aabb()
-	var to_model := model.global_transform.affine_inverse() * mesh.global_transform
-	var box := AABB(to_model * local.position, Vector3.ZERO)
-	for i in 8:
-		box = box.expand(to_model * local.get_endpoint(i))
-	return box
+## The turn about Z (radians) that lays a model with these `bounds` (origin on the grip) along the
+## picture's width, its longer side from the grip pointing to the picture's right (the model's -X).
+static func _turn_to_the_right(bounds: AABB) -> float:
+	var along := Vector2.RIGHT if bounds.size.x >= bounds.size.y else Vector2.UP
+	var low := -(bounds.position.x if along.x != 0.0 else bounds.position.y)
+	var high := bounds.end.x if along.x != 0.0 else bounds.end.y
+	var long_side := along * (-1.0 if low >= high else 1.0)
+	return PI - long_side.angle()
+
+
+## The box of `meshes` in the space of `frame`, one of their ancestors.
+static func _bounds(meshes: Array[MeshInstance3D], frame: Node) -> AABB:
+	var bounds := AABB()
+	var first := true
+	for mesh in meshes:
+		var to_frame := _relative(mesh, frame)
+		var local := mesh.get_aabb()
+		var box := AABB(to_frame * local.position, Vector3.ZERO)
+		for i in 8:
+			box = box.expand(to_frame * local.get_endpoint(i))
+		bounds = box if first else bounds.merge(box)
+		first = false
+	return bounds
+
+
+## `node`'s transform in the space of `ancestor`, by the chain of transforms between them (so it
+## also works for a node that is not in the tree yet).
+static func _relative(node: Node3D, ancestor: Node) -> Transform3D:
+	var result := Transform3D.IDENTITY
+	var step: Node = node
+	while step != null and step != ancestor:
+		if step is Node3D:
+			result = (step as Node3D).transform * result
+		step = step.get_parent()
+	return result

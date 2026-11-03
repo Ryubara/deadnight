@@ -8,7 +8,7 @@ extends Control
 ## The number's type.
 const NUMBER_SIZE := HudStyle.SMALL
 ## How far in from the cell's edges the silhouette stays.
-const PICTURE_PAD := 4.0
+const PICTURE_PAD := 3.0
 ## The cell's corner cut, a little smaller than a card's.
 const NOTCH := HudStyle.NOTCH * 0.6
 

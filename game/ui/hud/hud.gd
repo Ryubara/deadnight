@@ -72,6 +72,16 @@ var mirrored := false:
 					_place(column)
 			if is_node_ready():
 				_fit_gains()
+## The touch controls are up: the weapon slots leave the bottom right corner, which the right
+## thumb's buttons fill (Fire and Melee sit where the strip would), for the bottom of the players'
+## column, under the health card, as wide as it. Set by the night screen from the touch layer; the
+## corner columns keep their sides (a left hand flips the column and the strip with it).
+var touch_layout := false:
+	set(value):
+		if value != touch_layout:
+			touch_layout = value
+			if is_node_ready():
+				_home_slots()
 var round_part := HudRound.new()
 var objective := HudObjective.new()
 var fuel := HudFuel.new()
@@ -128,6 +138,7 @@ func _ready() -> void:
 	_stack([slots, ammo], 1.0, 1.0, -margin, -margin, gap)
 	_stack([banner, marquee, boss_bar], 0.5, 0.0, 0.0, margin, gap)
 	_stack([prompt], 0.5, 1.0, 0.0, -margin, gap)
+	_home_slots()
 	_stack([gains], 0.5, 0.5, GAINS_OFFSET.x, GAINS_OFFSET.y, gap)
 	(gains.get_parent() as Control).grow_horizontal = Control.GROW_DIRECTION_END
 	_place_challenge(margin)
@@ -194,6 +205,35 @@ func _place_challenge(margin: float) -> void:
 	for above in [round_part, objective]:
 		above.item_rect_changed.connect(_fit_challenge)
 	resized.connect(_fit_challenge)
+
+
+## Puts the weapon slots where they belong: over the ammo card, or under the health card with the
+## touch controls up.
+func _home_slots() -> void:
+	var ammo_column: Dictionary = {}
+	var players_column: Dictionary = {}
+	for entry in _columns:
+		if entry[&"parts"].has(ammo):
+			ammo_column = entry
+		elif entry[&"parts"].has(points):
+			players_column = entry
+	var from := players_column if touch_layout == false else ammo_column
+	var to := ammo_column if touch_layout == false else players_column
+	if slots.get_parent() == to[&"node"]:
+		return
+	if slots.get_parent() != null:
+		from[&"parts"].erase(slots)
+		slots.get_parent().remove_child(slots)
+	if touch_layout:
+		slots.size_flags_horizontal = Control.SIZE_FILL
+		to[&"parts"].append(slots)
+		to[&"node"].add_child(slots)
+	else:
+		to[&"parts"].insert(0, slots)
+		to[&"node"].add_child(slots)
+		to[&"node"].move_child(slots, 0)
+	_place(from)
+	_place(to)
 
 
 ## Keeps the challenge prompt a gap under the left column's last card when that card reaches past

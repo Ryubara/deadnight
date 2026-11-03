@@ -10,7 +10,7 @@ extends HudPart
 ## it: two places of about 120 units, three of about 78.
 
 const WIDTH := HudAmmo.WIDTH
-const HEIGHT := 60.0
+const HEIGHT := 64.0
 const GAP := float(HudStyle.SM)
 
 ## The silhouettes, drawn from the weapon models the first time each is needed.

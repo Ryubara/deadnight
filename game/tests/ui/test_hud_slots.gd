@@ -162,3 +162,23 @@ func test_a_longer_weapon_is_drawn_wider_and_none_fills_the_whole_picture() -> v
 	for id in WeaponCatalog.IDS:
 		var share := WeaponSilhouettes.width_share(WeaponHoldMap.hold_for(id))
 		assert_float(share).is_less_equal(WeaponSilhouettes.FILL.x + 0.001)
+
+
+func test_with_the_touch_controls_up_the_strip_sits_under_the_health_card_as_wide_as_it() -> void:
+	for mirrored in [false, true]:
+		var hud := _fixture.hud
+		hud.mirrored = mirrored
+		hud.touch_layout = true
+		HudLoadout.sync(_frame(&"pistol", [&"crowbar", &"pistol"]), _state())
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var strip := hud.slots.get_global_rect()
+		var health := hud.health.get_global_rect()
+		assert_float(strip.position.y).is_greater_equal(health.end.y)
+		assert_float(strip.position.x).is_equal_approx(health.position.x, 1.0)
+		assert_float(strip.size.x).is_equal_approx(health.size.x, 1.0)
+		# The right thumb's corner is the ammo card's alone.
+		assert_bool(hud.slots.get_parent() == hud.ammo.get_parent()).is_false()
+	_fixture.hud.touch_layout = false
+	await get_tree().process_frame
+	assert_bool(_fixture.hud.slots.get_parent() == _fixture.hud.ammo.get_parent()).is_true()
