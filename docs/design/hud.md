@@ -163,6 +163,11 @@ perk's own, 0 for none) and `dead`, and `HudState.team` keeps them
 | Feed, top right | `RUBY REVIVED PAUL`, `PAUL BLED OUT` (a round's end: `PAUL IS BACK UP`) | `HudFeed` |
 | Scoreboard | A REVIVES column | `HudScoreboard` |
 
+A grenade's blast is named in the feed (#805): on the hurt player's own screen `YOUR OWN GRENADE HIT YOU  -42` or
+`MOE'S GRENADE HIT YOU  -42` (a blast that does not down them, from `player_hurt`'s `harm` and `by_id`), and on every
+screen a down by one reads `RUBY BLEW THEMSELVES UP` or `MOE WAS BLOWN UP BY RUBY'S GRENADE` instead of `IS DOWN`. The red
+arc points at the blast as for any blow. [The rule](weapons.md#blast-on-players).
+
 Names come from one place, `HudState.team[id]["name"]` (the prompt, the ring, the feed, the markers and the scoreboard all
 read it), so a replicated display name (#485) shows everywhere once it fills that field.
 

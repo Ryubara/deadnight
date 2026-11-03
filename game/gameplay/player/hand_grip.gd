@@ -30,6 +30,8 @@ const DIR := "res://gameplay/player/grips/"
 @export var left := {}
 @export var left_contacts := PackedStringArray()
 
+var _mirrored := {}
+
 
 ## The grip of a model by its scene path (`res://assets/weapons/revolver/revolver.glb` is
 ## `grips/revolver.tres`), or null when it has none yet.
@@ -43,3 +45,15 @@ static func for_name(model: String) -> HandGrip:
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as HandGrip
+
+
+## The right hand's fingers as the left hand's, for a weapon held in each hand (the dual pistols):
+## the rig is an exact mirror (each left bone's rest rotation is its right one's with y and z
+## turned about), so a pose is mirrored by the same sign flip, bone by bone. The weapon in the left
+## hand is the right one mirrored (`HeldWeapon`), so the same fingers close on it.
+func mirrored() -> Dictionary:
+	if _mirrored.is_empty():
+		for key: String in right:
+			var q: Quaternion = right[key]
+			_mirrored[key.trim_suffix(".R") + ".L"] = Quaternion(q.x, -q.y, -q.z, q.w)
+	return _mirrored

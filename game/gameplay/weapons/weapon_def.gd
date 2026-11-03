@@ -11,6 +11,10 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export var kind: Kind = Kind.HITSCAN
 ## Holding the trigger keeps firing (the client repeats; the server's fire interval is the limit).
 @export var automatic: bool = false
+## Two weapons, one in each hand (the dual pistols): the shots alternate hands, right first, and
+## the magazine is one count for both. The Soldier holds a second copy of the model in his left
+## hand (`WeaponHold.dual`); the server numbers the hand of each shot (`WeaponState.hand`).
+@export var dual: bool = false
 ## Draws a streak from the muzzle to where the shot ended. Off by default: a hitscan shot is
 ## instant and shows a flash and an impact, never a visible bullet. A launcher or a ray gun is a
 ## `PROJECTILE` weapon instead; this flag is for the rare hitscan weapon whose beam should show.
@@ -65,6 +69,11 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 @export_range(0.0, 500.0, 1.0, "or_greater") var splash_damage: float = 0.0
 @export_range(0.0, 1.0) var splash_min_fraction: float = 0.25
 
+@export_group("Element")
+## What a hit does besides its damage (`ElementDef`): none as shipped; a re-cut weapon may carry one
+## (`RecutProfile.element`).
+@export var element: ElementDef
+
 @export_group("Lure")
 ## Metres round a burst within which zombies leave what they chase for the burst point, and the
 ## seconds they stay (`ZombieLure`); 0 makes no lure. A lure does no damage.
@@ -82,24 +91,39 @@ enum Kind { HITSCAN, PROJECTILE, MELEE }
 var tier: int = 0
 
 
-## This weapon re-cut: a copy with more damage (the pellets, the blast), a bigger magazine and
-## reserve, and the spec's prefix on its name. The id stays, so the model, the sounds and the shop
-## still know it. The server's `WeaponState` and the balance simulator both make it here.
+## This weapon re-cut: a copy with the numbers of its `RecutProfile` (more damage in the pellets and
+## the blast, a bigger magazine and reserve, a changed rate or reload), its re-cut name and its
+## element. The id stays, so the model, the sounds and the shop still know it. The server's
+## `WeaponState` and the balance simulator both make it here. A weapon the spec has no profile for
+## comes back as a plain copy one tier up.
 func upgraded(spec: UpgradeTuning) -> WeaponDef:
 	var copy := duplicate() as WeaponDef
 	copy.tier = tier + 1
-	copy.display_name = spec.name_prefix + display_name
-	copy.damage = damage * spec.damage_multiplier
-	copy.splash_damage = splash_damage * spec.damage_multiplier
-	copy.magazine_size = ceili(float(magazine_size) * spec.magazine_multiplier)
-	copy.reserve_start = ceili(float(reserve_start) * spec.reserve_multiplier)
-	copy.reserve_max = ceili(float(reserve_max) * spec.reserve_multiplier)
+	var cut := spec.profile_of(id)
+	if cut == null:
+		return copy
+	copy.display_name = cut.name_of(display_name, spec.name_prefix)
+	copy.damage = damage * cut.damage_multiplier
+	copy.splash_damage = splash_damage * cut.damage_multiplier
+	copy.magazine_size = ceili(float(magazine_size) * cut.magazine_multiplier)
+	copy.reserve_start = ceili(float(reserve_start) * cut.reserve_multiplier)
+	copy.reserve_max = ceili(float(reserve_max) * cut.reserve_multiplier)
+	if cut.fire_interval > 0.0:
+		copy.fire_interval = cut.fire_interval
+	if cut.reload_time > 0.0:
+		copy.reload_time = cut.reload_time
+	copy.splash_radius = splash_radius * cut.burst_radius_multiplier
+	copy.element = cut.element
 	return copy
 
 
 ## The damage multiplier of a hit zone; a zone the weapon does not list counts one.
 func zone_multiplier(zone: StringName) -> float:
 	return zone_multipliers.get(zone, 1.0)
+
+
+func has_element() -> bool:
+	return element != null
 
 
 func is_lure() -> bool:

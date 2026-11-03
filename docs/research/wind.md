@@ -138,7 +138,48 @@ window and 18.8 dB for a boarded one):
   through a boarded window, and gusts at the level of the yard's wind through an open one (-39.6) and 6 to 9 dB over
   it through a boarded one. In the depot's quiet a gust is the one thing that varies, and it does not bury the located
   loops. The loops repeat every 20 and 24 s; what plays over them is what the drive-in's base has too.
-- Not done, a follow-up if the maintainer hears the loops repeat: let the blowing gust drive `bed_roof_wind` and the
-  yard's loops (the swell the base takes), so the second map's located wind follows the same gusts. It needs the
-  rooms' levels in `SmallMapSoundTuning` read against it, which a measurement of the second map's night (not this
-  issue's) can do.
+- Then, when the loops were heard to repeat (#809): the blowing gust drives them, below.
+
+### The gust drives the loops (#809)
+
+`SmallMapSounds` reads `WindSounds.swell()` (0 to 1, the blowing gust's envelope) ten times a second and raises the roof
+wind and the yard's four wind loops by it, the way the base layer follows it (2 dB there): **the roof wind 3 dB and each
+yard wind loop 6 dB at the gust's peak** (`SmallMapSoundTuning.roof_gust_db`, `yard_gust_db`). The rooms' levels
+(`roof_db`) are where the roof wind rests and the #657 reach numbers (`max_distance`, the ways) are not touched: with no
+wind, or no gust, the sound is what it was (a test checks the rest level against the old -19 dB trim plus the room's, that
+nothing swells with no wind, and that a gust does not make the yard carry further).
+
+A bed cannot be raised over its own level, and the roof wind's upstairs room rests at 0 dB, so its trim went from -19 to
+-16 dB (`SmallMapSoundTuning.ROOF_HEADROOM_DB`) and every room reads 3 dB lower: the heard level at rest is the same
+(kit [Swelling a bed][kit-swell]). The yard loops are 3D players and have no such limit.
+
+[kit-swell]: https://github.com/Ryubara/gdstudio/blob/main/docs/godot/audio.md#swelling-a-bed-with-an-event
+
+**Why 6 dB on the yard and 3 on the roof.** A first try had both at 3 dB, and the yard's swell barely showed: the
+loops there are heard through a window, 10 dB or more under the rest of the bus, and a 3 dB swell on a sound that far
+under raised the bus by 0.1 to 0.2 LU, not heard (that run also had the lot's crickets and highway under it, which
+this map does not play, so its numbers are not kept). At 6 dB the swell is heard through an open window and stays a
+texture through a boarded one; the roof wind is the loudest located wind and 3 dB is all the headroom the trim has.
+
+Measured on `tests/captures/audio_smallmap_gusts.tscn` with `tools/audio/gust_levels.py`: the second map as it will play
+(its room tone, roof wind, yard and the night's wind, **without the lot's crickets and highway**, which the map's sound
+replaces), 120 s, seed 785, the listener in one place, the Ambience bus recorded, once with the swell and once without
+(the same gusts, six in each run); momentary loudness (LUFS, 400 ms):
+
+| Where | The loop's own level at rest, at the gust's peak | The bus between gusts | A gust's peak on the bus, without / with the swell | The swell raises the bus at the peak | The night's integrated loudness |
+| --- | --- | ---: | ---: | ---: | ---: |
+| upstairs, under the hole (roof wind) | -19.0, -16.0 dB (+3.0) | -34.3 | -31.2 / -30.7 | +1.3 to +2.0 LU (median 1.7) | -33.6 to -33.3 (+0.3 LU) |
+| the hall, in line with a boarded window (yard wind) | -37.7, -31.7 dB (+6.0) | -34.8 | -33.2 / -32.8 | +0.3 to +0.6 LU (median 0.5) | -34.5 to -34.4 (+0.1 LU) |
+| the same window, boards off (yard wind) | -31.2, -25.2 dB (+6.0) | -32.8 | -31.4 / -30.8 | +0.6 to +1.3 LU (median 1.1) | -32.8 to -32.6 (+0.2 LU) |
+
+The loop's level follows the gust's swell (a test checks it within 0.6 dB of `swell * size` all through a gust; the
+captures' traces read +2.9 to +3.0 and +6.0 at every gust's peak). Without a gust the loops are where they were.
+Upstairs the roof wind's own moan (a 20 s loop, the bus wobbling by 2 to 3 dB in the plot) is the loudest thing in the
+room, and a gust now lifts it with the rest of the wind: the loudest 400 ms upstairs rises 1.1 LU (-30.1 to -29.0
+LUFS), still far under a shot's loudest 400 ms (-12 to -17). A gust's peak stands 3.6 LU over the bus between gusts
+upstairs (3.1 before), 2.0 LU in the hall (1.6 before) and 2.0 LU at the open window (1.4 before).
+
+![The second map's night with and without the swell](gust-levels.png)
+
+*The Ambience bus of three stands over two minutes, the gusts shaded: grey, the loops as they were; dark, the gust
+driving them.*

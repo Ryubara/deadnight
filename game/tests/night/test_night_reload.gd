@@ -3,7 +3,9 @@
 # reload's steps sound, counted per weapon, all before the reload is over.
 extends GdUnitTestSuite
 
-const GUNS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]
+const GUNS: Array[StringName] = [
+	&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun", &"dual_pistols"
+]
 const STEP_SECONDS := 0.05
 
 
