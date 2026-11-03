@@ -1,12 +1,15 @@
 class_name HudPoints
 extends HudPart
 ## The party's points, a container per player: `[portrait][points in the player's colour]`
-## (`HudPlayerBox`). Your own comes first and is the larger; the others follow by player id, one to
-## three, each in the colour of their seat. A row is made when a player joins and freed when they
+## (`HudPlayerBox`). Your own comes first and is the larger; the others follow by player id, up to
+## seven, each in the colour of their seat. A row is made when a player joins and freed when they
 ## leave; a points change or a down state only rewrites its box. The gains are listed beside the
 ## crosshair (`HudGains`), where the eye already is.
 
 const WIDTH := HudStyle.COLUMN
+## With more players than this the teammates' boxes are the compact size, so a party of eight
+## takes about the height four did before.
+const COMPACT_FROM := 4
 
 ## The boxes as {"id", "name", "points", "seat", "colour", "downed", "local"}, top to bottom, for
 ## tests and tools.
@@ -73,7 +76,7 @@ func refresh() -> void:
 		var box := _boxes[player_id]
 		_column.move_child(box, i)
 		var local := player_id == state.local_player_id
-		box.show_player(player_id, member, local)
+		box.show_player(player_id, member, local, ids.size() > COMPACT_FROM)
 		(
 			shown
 			. append(

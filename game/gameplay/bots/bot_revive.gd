@@ -115,6 +115,10 @@ var verdict: BotReviveRisk.Verdict
 ## Seconds a clearing bot was at it, for the metrics.
 var clear_seconds := 0.0
 
+## The brain's word that the bot is low on health with the dead near (`BotPlayState`): it does not
+## go for a body, and lets go of the walk to one, unless it is the last one up.
+var retreating := false
+
 ## For each downed player the bot looked at in its last think: why it did or did not go (`why`),
 ## the verdict, the metres to the body and who holds the claim, so a bleed-out can say why nobody
 ## came (the revive soak prints it).
@@ -159,10 +163,18 @@ func run(
 	account.clear()
 	if team != null and victim != 0 and not _still_down(beliefs, victim):
 		team.claims.release_victim(victim)
-	if down.is_empty() or team == null:
+	var last := _last_standing(beliefs, me_id)
+	# A low bot with the dead near leaves the body to the others (`BotPlayState`), unless it is the
+	# last one up or has the hold begun.
+	var giving_up := retreating and not last and mode != Mode.HOLD and team != null
+	if giving_up:
+		for mate: Dictionary in down:
+			_account(int(mate["id"]), "retreating", null, _flat(here, mate["pos"]), 0)
+		if victim != 0:
+			team.claims.release_victim(victim)
+	if down.is_empty() or team == null or giving_up:
 		_order = null
 		return _end(Mode.NONE, 0)
-	var last := _last_standing(beliefs, me_id)
 	var threats := _threats(beliefs, round_number)
 	var gun := _gun(me, held)
 	var cover_for := 0

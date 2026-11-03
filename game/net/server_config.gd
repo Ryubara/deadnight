@@ -16,7 +16,7 @@ extends RefCounted
 ##                       process's CPU is shared by its rooms, so a small container takes less
 ##   ALIVE_BUDGET        the most zombies alive at once in all the nights of this process together
 ##                       (default 120): each night is cut to its share, 0 turns it off
-##   MAX_BOTS            the most bots one room seats, 0 to 3 (default 3): the host's Bots setting
+##   MAX_BOTS            the most bots one room seats, 0 to 7 (default 7): the host's Bots setting
 ##                       can ask for fewer, never more
 ##   BOTS_OFF            1, true, yes or on: the kill-switch, no room seats a bot and the bots
 ##                       standing leave (default off)

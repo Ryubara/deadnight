@@ -45,6 +45,12 @@ static var _shipped: NightSoundTuning = null
 @export_range(0.1, 5.0, 0.1, "suffix:m") var hit_match_radius := 1.5
 ## A pellet that ends within this of the weapon's range hit nothing at all (the sky).
 @export_range(0.0, 3.0, 0.05, "suffix:m") var range_margin := 0.5
+## A reload's steps are this much louder than their own level: another player's, so the team hears
+## who is exposed through gunfire (+6: 23 of 24 steps over a tommy gun 6 m off), and the player's
+## own, which play flat and already stand out (+2 made them as loud as the player's own shots).
+## Measured with `tools/audio/reload_audibility.py` (#683).
+@export_range(0.0, 18.0, 0.5, "suffix:dB") var teammate_reload_db := 6.0
+@export_range(0.0, 12.0, 0.5, "suffix:dB") var own_reload_db := 0.0
 
 @export_group("Grenades")
 ## The fuse's beep, a time bomb's: the gap between two beeps at the start of the fuse ...

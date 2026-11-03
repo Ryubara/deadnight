@@ -101,18 +101,18 @@ func test_the_rooms_skill_names_dresses_and_drives_its_bots() -> void:
 	var ann := await _client("skill", "Ann", 3, MatchSettings.SKILL_VETERAN)
 	var room := _server.room_of_match("skill")
 	await _ticks(20)
-	assert_array(_bots_of(room)).is_equal([2, 3, 4])
+	assert_array(_bots_of(room)).is_equal([6, 7, 8])
 	for bot in room.bots.host.bots:
 		assert_str(bot.profile.title).is_equal("Veteran")
 	# Every seat's name reaches the client, the bots' in the skill's cast.
-	assert_str(ann.state.names[2]).is_equal(BotRoster.name_for(MatchSettings.SKILL_VETERAN, 2))
-	assert_str(ann.state.names[3]).is_equal(BotRoster.name_for(MatchSettings.SKILL_VETERAN, 3))
+	assert_str(ann.state.names[6]).is_equal(BotRoster.name_for(MatchSettings.SKILL_VETERAN, 6))
+	assert_str(ann.state.names[7]).is_equal(BotRoster.name_for(MatchSettings.SKILL_VETERAN, 7))
 	# Their looks reach the client's table as the server holds them.
-	var wanted := BotRoster.look_for(MatchSettings.SKILL_VETERAN, 4).key()
-	assert_bool(await _until(func() -> bool: return _look_key(ann, 4) == wanted)).is_true()
+	var wanted := BotRoster.look_for(MatchSettings.SKILL_VETERAN, 8).key()
+	assert_bool(await _until(func() -> bool: return _look_key(ann, 8) == wanted)).is_true()
 	# The roster API marks them (the snapshot a WELCOME carries); a person's seat is no bot's.
 	var players: Dictionary = room.server.rules.to_dict()["players"]
-	assert_bool(bool(players[2]["bot"])).is_true()
+	assert_bool(bool(players[6]["bot"])).is_true()
 	assert_bool(bool(players[1]["bot"])).is_false()
 
 
@@ -123,7 +123,7 @@ func test_a_cap_per_room_holds_whatever_the_host_asked_for() -> void:
 	await _client("cap", "Ann", 3)
 	var room := _server.room_of_match("cap")
 	await _ticks(20)
-	assert_array(_bots_of(room)).is_equal([4])
+	assert_array(_bots_of(room)).is_equal([8])
 	assert_int(room.server.rules.settings.bots).is_equal(3)
 
 
@@ -144,7 +144,7 @@ func test_the_kill_switch_thrown_mid_night_sends_the_bots_away_and_lifting_it_br
 	var ann := await _client("live", "Ann", 2)
 	var room := _server.room_of_match("live")
 	await _ticks(20)
-	assert_array(_bots_of(room)).is_equal([3, 4])
+	assert_array(_bots_of(room)).is_equal([7, 8])
 	var round_before := room.server.rules.round_number
 	var nights_before := room.nights
 	var off := BotLimits.new()
@@ -157,12 +157,12 @@ func test_the_kill_switch_thrown_mid_night_sends_the_bots_away_and_lifting_it_br
 	assert_int(room.nights).is_equal(nights_before)
 	assert_int(room.server.rules.round_number).is_equal(round_before)
 	(
-		assert_bool(await _until(func() -> bool: return not ann.state.frame["players"].has(3)))
+		assert_bool(await _until(func() -> bool: return not ann.state.frame["players"].has(7)))
 		. is_true()
 	)
 	_server.set_bot_limits(BotLimits.new())
 	await _ticks(10)
-	assert_array(_bots_of(room)).is_equal([3, 4])
+	assert_array(_bots_of(room)).is_equal([7, 8])
 	assert_int(room.nights).is_equal(nights_before)
 
 
@@ -185,11 +185,11 @@ func test_the_budget_is_shared_by_the_open_rooms() -> void:
 
 func test_a_person_who_leaves_hands_the_body_to_a_bot_as_it_stands() -> void:
 	await _start()
-	var ann := await _client("leave", "Ann", 3, MatchSettings.SKILL_VETERAN)
-	var bo := await _client("leave", "Bo", 3, MatchSettings.SKILL_VETERAN)
+	var ann := await _client("leave", "Ann", MatchSettings.MAX_BOTS, MatchSettings.SKILL_VETERAN)
+	var bo := await _client("leave", "Bo", MatchSettings.MAX_BOTS, MatchSettings.SKILL_VETERAN)
 	var room := _server.room_of_match("leave")
 	await _ticks(20)
-	assert_array(_bots_of(room)).is_equal([3, 4])
+	assert_array(_bots_of(room)).is_equal([3, 4, 5, 6, 7, 8])
 	room.server.rules.apply(RulesAction.skip_break())
 	room.server.rules.apply(RulesAction.grant_points(2, 4321))
 	var body := room.server.body_of(2)
@@ -200,7 +200,7 @@ func test_a_person_who_leaves_hands_the_body_to_a_bot_as_it_stands() -> void:
 	assert_bool(await _until(func() -> bool: return room.player_count() == 1)).is_true()
 	await _ticks(20)
 	# Seat 2 is a bot's now, in the same body with the same points; the others stayed.
-	assert_array(_bots_of(room)).is_equal([2, 3, 4])
+	assert_array(_bots_of(room)).is_equal([2, 3, 4, 5, 6, 7, 8])
 	assert_object(room.server.body_of(2)).is_same(body)
 	assert_int(room.server.rules.players[2].points).is_equal(points)
 	assert_int(room.server.rules.round_number).is_equal(round_before)
@@ -210,10 +210,10 @@ func test_a_person_who_leaves_hands_the_body_to_a_bot_as_it_stands() -> void:
 	assert_str(room.server.looks.looks[2].key()).is_equal(
 		BotRoster.look_for(MatchSettings.SKILL_VETERAN, 2).key()
 	)
-	assert_int(room.bots.count()).is_equal(3)
+	assert_int(room.bots.count()).is_equal(7)
 	assert_str(room.bots.host.bots[0].profile.title).is_equal("Veteran")
 	# A third person takes the seat back, as it stands.
-	var cy := await _client("leave", "Cy", 3, MatchSettings.SKILL_VETERAN)
+	var cy := await _client("leave", "Cy", MatchSettings.MAX_BOTS, MatchSettings.SKILL_VETERAN)
 	await _ticks(20)
 	assert_int(cy.state.player_id).is_equal(2)
 	assert_object(room.server.body_of(2)).is_same(body)

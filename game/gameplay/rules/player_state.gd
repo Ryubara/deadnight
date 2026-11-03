@@ -22,6 +22,8 @@ const SNAPSHOT_KEYS := {
 	"revives": TYPE_INT,
 	"dead": TYPE_BOOL,
 	"bleed_left": TYPE_FLOAT,
+	"self_revives": TYPE_INT,
+	"self_revive_left": TYPE_FLOAT,
 	"points_earned": TYPE_INT,
 	"points_spent": TYPE_INT,
 }
@@ -38,6 +40,8 @@ var since_blow: float = 0.0
 ## The weapons carried, as shop ids, at most `WeaponCatalog.CARRY_LIMIT`, the oldest first. The
 ## start weapons are in it; one replaced by a third is taken out (`WeaponCarry`).
 var weapons: Array[StringName] = []
+## The tonics (perks, `ShopItem.Kind.TONIC`) this player has had and still has, in the order they
+## were had. A player who goes down loses some or all of them (`PerkTuning.lost_on_down`).
 var tonics: Array[StringName] = []
 ## The weapons (catalogue ids) this player has had re-cut this night.
 var upgraded: Array[StringName] = []
@@ -57,6 +61,10 @@ var revives: int = 0
 var dead: bool = false
 ## Seconds a downed player has left before they are dead (0 when up or dead).
 var bleed_left: float = 0.0
+## How many times the revive perk has got this player up alone this night, and the seconds left of
+## the one under way (0 when none is).
+var self_revives: int = 0
+var self_revive_left: float = 0.0
 var points_earned: int = 0
 var points_spent: int = 0
 ## Whether a bot plays this seat. A person who joins takes a bot's seat as it stands (points,
@@ -98,6 +106,8 @@ func to_dict() -> Dictionary:
 		"revives": revives,
 		"dead": dead,
 		"bleed_left": bleed_left,
+		"self_revives": self_revives,
+		"self_revive_left": self_revive_left,
 		"points_earned": points_earned,
 		"points_spent": points_spent,
 		"bot": bot,
@@ -122,6 +132,8 @@ static func from_dict(data: Dictionary) -> PlayerState:
 	player.revives = data["revives"]
 	player.dead = data["dead"]
 	player.bleed_left = data["bleed_left"]
+	player.self_revives = data["self_revives"]
+	player.self_revive_left = data["self_revive_left"]
 	player.points_earned = data["points_earned"]
 	player.points_spent = data["points_spent"]
 	player.bot = bool(data.get("bot", false))

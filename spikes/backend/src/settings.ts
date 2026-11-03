@@ -16,7 +16,7 @@ export interface MatchSettings {
   break_seconds: number;
   /** The id of the map the night is played on; absent means `DEFAULT_MAP`. */
   map?: string;
-  /** Bots that fill the empty seats of the night, 0 to 3 (the room takes only as many as the people leave free). Absent: 0. */
+  /** Bots that fill the empty seats of the night, 0 to 7 (the room takes only as many as the people leave free). Absent: 0. */
   bots?: number;
   /** How well the bots play: 0 rookie, 1 regular, 2 veteran. Absent: 1. */
   bot_skill?: number;
@@ -27,7 +27,7 @@ export const MAX_COUNT_MULTIPLIER = 5;
 export const MAX_ALIVE = 120;
 export const MIN_BREAK = 1;
 export const MAX_BREAK = 120;
-export const MAX_BOTS = 3;
+export const MAX_BOTS = 7;
 export const MAX_BOT_SKILL = 2;
 
 /** The map every night had before there was a choice. */

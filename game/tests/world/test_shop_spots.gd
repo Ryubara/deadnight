@@ -33,7 +33,8 @@ func test_the_lot_has_two_wall_weapons_a_crane_lockers_three_machines_and_a_gren
 	assert_int(kinds[&"crane"]).is_equal(CraneTuning.new().spot_count())
 	assert_int(kinds[&"ammo"]).is_greater_equal(4)
 	assert_int(kinds[&"upgrade"]).is_equal(1)
-	assert_int(kinds[&"perk"]).is_equal(2)
+	# The soda fountain and the five other perk machines, one to a tonic of the shop.
+	assert_int(kinds[&"perk"]).is_equal(PerkEffects.tonic_ids(RulesFixture.tuning().economy).size())
 	assert_int(kinds[&"rack"]).is_equal(1)
 
 
@@ -132,22 +133,13 @@ func test_the_machines_stand_in_the_booth_the_stand_and_the_ticket_plaza_over_th
 			assert_float(spot["position"].x).is_between(-6.0, 6.0)
 		if spot["kind"] == &"perk":
 			perks += 1
-			var in_stand: bool = (
-				spot["position"].z > -4.0
-				and spot["position"].z < 8.0
-				and absf(spot["position"].x) < 10.0
-			)
-			var in_plaza: bool = (
-				spot["position"].z > 38.0
-				and spot["position"].z < 58.0
-				and absf(spot["position"].x) < 16.0
-			)
-			(
-				assert_bool(in_stand != in_plaza)
-				. override_failure_message(str(spot["position"]))
-				. is_true()
-			)
-	assert_int(perks).is_equal(2)
+		if spot["shop_id"] == &"tonic_hearty":
+			assert_float(spot["position"].z).is_between(-4.0, 8.0)
+			assert_float(spot["position"].x).is_between(-10.0, 10.0)
+		if spot["shop_id"] == &"tonic_third_holster":
+			assert_float(spot["position"].z).is_between(38.0, 58.0)
+			assert_float(spot["position"].x).is_between(-16.0, 16.0)
+	assert_int(perks).is_equal(PerkEffects.tonic_ids(RulesFixture.tuning().economy).size())
 	var greybox := _world.greybox
 	var blocks := ["ProjectionBooth/ReCutMachine", "Concession/SodaFountain", "Road/PerkMachine"]
 	for path: String in blocks:
@@ -156,4 +148,38 @@ func test_the_machines_stand_in_the_booth_the_stand_and_the_ticket_plaza_over_th
 		assert_bool(block.use_collision).is_true()
 	assert_bool(greybox.get_node("ShopProps/ReCut") is RecutMachine).is_true()
 	assert_bool(greybox.get_node("ShopProps/Soda") is SodaFountain).is_true()
-	assert_bool(greybox.get_node("ShopProps/PlazaPerk") is SodaFountain).is_true()
+	assert_bool(greybox.get_node("ShopProps/PlazaPerk") is PerkMachine).is_true()
+
+
+func test_the_five_other_perk_machines_stand_one_to_an_area_over_their_blocks() -> void:
+	# Each sells its own tonic, faces its spot, has a hidden block and a look of its own.
+	var areas := {
+		&"tonic_swift_rescue": [-16.0, 16.0, 8.0, 38.0],
+		&"tonic_quick_load": [-6.0, 6.0, 22.0, 32.0],
+		&"tonic_double_shot": [16.0, 62.0, -4.0, 38.0],
+		&"tonic_reload_shock": [-62.0, -16.0, -4.0, 38.0],
+		&"tonic_third_holster": [-16.0, 16.0, 38.0, 58.0],
+	}
+	var seen := {}
+	for machine in _world.greybox.find_children("*", "PerkMachine", true, false):
+		var perk_machine := machine as PerkMachine
+		var item := perk_machine.item_id()
+		assert_bool(areas.has(item)).override_failure_message(String(item)).is_true()
+		var box: Array = areas[item]
+		assert_float(perk_machine.position.x).is_between(box[0], box[1])
+		assert_float(perk_machine.position.z).is_between(box[2], box[3])
+		# The plaza's machine stands over the road area's own block, the rest over one of their own.
+		var block_path := (
+			"Road/PerkMachine"
+			if perk_machine.name == &"PlazaPerk"
+			else "ShopProps/%sBlock" % perk_machine.name
+		)
+		var block := _world.greybox.get_node(block_path) as CSGBox3D
+		assert_bool(block.visible).is_false()
+		assert_bool(block.use_collision).is_true()
+		seen[item] = true
+		var found := false
+		for spot in _spots:
+			found = found or spot["shop_id"] == item
+		assert_bool(found).override_failure_message(String(item)).is_true()
+	assert_int(seen.size()).is_equal(areas.size())
