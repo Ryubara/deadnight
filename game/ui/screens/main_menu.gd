@@ -10,7 +10,7 @@ extends UIScreen
 ## The shell is built and the screen is the one on show.
 signal entered
 
-const PLAY_SCREEN := "res://ui/screens/night_screen.tscn"
+const PLAY_SCREEN := "res://ui/screens/play_screen.tscn"
 const JOIN_SCREEN := "res://ui/screens/together_screen.tscn"
 const SETTINGS_SCREEN := "res://ui/screens/settings_screen.tscn"
 const CREDITS_SCREEN := "res://ui/screens/credits_screen.tscn"

@@ -476,7 +476,8 @@ issue #534)**; the desktop keeps the engine's own calls and a tab keeps the engi
 - **Share in Discord.** `discord-bridge.js` offers `window.deadnightDiscord.share`, the SDK's `shareLink`
   (no OAuth scope; the answer is `{success, didCopyLink, didSendMessage}`), with the room's code in the message and as
   `custom_id` (the SDK reads it back from the page address as `customId`; nothing joins by it yet). Discord's own window
-  sends the code, so it needs no clipboard at all. `openInviteDialog` invites to the channel, not to a room code.
+  sends the code, so it needs no clipboard at all. `openInviteDialog` invites to the channel, not to a room code. What
+  the button shows is in [Share in Discord, what Discord answered (#627)](#share-in-discord-what-discord-answered-627).
 - **The probe line.** The Play together screen shows what the clipboard can do inside an Activity, and
   `window.deadnight.clipboard` and `clipboard_detail` carry it (`clipboard api read no, write no, button copy ok,
   Ctrl+V 1 seen 1 pasted, Ctrl+C 0 seen 0 copied`), so the maintainer can read Discord's real answer.
@@ -502,8 +503,67 @@ the frame modes still hold (`plain`, `clipboard-denied`, `clipboard`, `--exec-re
 The probe walks to a button by its name now (`window.deadnight.focus`, the nearest named ancestor of the control that has
 the keyboard): it counted Down presses, and a Rules panel and a row of two copy buttons had made the counts wrong.
 
+### Share in Discord: what Discord answered (#627)
+
+The maintainer pressed **Share in Discord** in the Play together lobby inside the Activity: the game said "Pick who to
+send it to in Discord's window." and Discord opened nothing. The button had called `shareLink` and shown that sentence
+**whatever came back** (`_say(...)` after a fire-and-forget `JavaScriptBridge.eval`), and the bridge turned every
+failure into `false` after `console.warn(String(error))`.
+
+What the contract is (SDK `@discord/embedded-app-sdk` 2.5.0, the version the web image installs; read from the package
+and from [Discord's reference](https://docs.discord.com/developers/developer-tools/embedded-app-sdk#sharelink)):
+
+- `shareLink({message, custom_id?, link_id?})`: `message` at most 1000 characters, `custom_id` at most 64 (ours are
+  about 45 and 6). "Presents a modal for the user to share a link to your activity", web, iOS and Android, **no
+  OAuth scopes**. The reference names no user-gesture requirement and no Developer Portal setting for it (the Custom
+  Links page is for `link_id`, which we do not use). The only changelog entry that mentions it is
+  [2025-04-11](https://docs.discord.com/developers/change-log) (`custom_id` added; `referrer_id` removed, and passing it
+  "will silently fail"). Community reports of a silent `shareLink`: none found (the SDK's and the docs' repositories
+  searched).
+- **It answers when the window is closed, not when it opens.** `success` is true when the player shared or copied the
+  link. So a command still pending is the only sign of an open window, and `{success: false}` after a few seconds is
+  "the player closed it".
+- **A failure is not an `Error`.** The SDK rejects with the client's own `{code, message}` object, so
+  `String(error)` read "[object Object]" in the old warning.
+- **A reply the SDK cannot parse never settles.** `handleFrame` parses the frame, logs `Failed to parse` and returns;
+  the command's promise stays pending for ever. The 2.5.0 schema needs `didCopyLink` and `didSendMessage` as well as
+  `success` (`generated/schemas.ts`); a client that answers `{success}` only (an older client, if one does) hangs
+  the call. With the old code that looked exactly like an open window.
+- `openInviteDialog()` opens the channel invite window (invite a friend or copy the invite link), returns nothing and
+  throws in DMs or without `CREATE_INSTANT_INVITE`. It carries no room code, so it is the fallback, not the way.
+
+What `deploy/web/discord-share.js` does now (the bridge imports it; the harness runs the same file): it keeps Discord's
+real answer and reduces it to a `verdict` the lobby reads every 0.2 s (`DiscordShare`):
+
+| verdict | meaning | the lobby says |
+| --- | --- | --- |
+| `asking` | sent under a second ago, not refused | "Asking Discord..." |
+| `open` | no answer after 1 s and no refusal: a window may be up | the hint, "Pick who to send it to in Discord's window." |
+| `shared` | the window answered `success` | "Sent through Discord." |
+| `closed` | `success: false` after 0.4 s: the player closed it | "closed without sending" |
+| `refused` | an error, or `success: false` at once | "did not open its share window", points to Copy the code |
+| `unreadable` | Discord's frame arrived and the SDK could not read it | "may have opened, but its answer could not be read" |
+
+On `refused` it asks `openInviteDialog` once and keeps that answer (`invite`). A listener on `message` events keeps the
+last `SHARE_LINK` frame as `raw`, because the SDK throws the raw answer away when it cannot parse it. The probe line
+under the button (`window.deadnight.share_line`) quotes it all: `share: refused after 38 ms; error rpc 4002: Invalid
+command; Discord's frame: {...}; invite window: opened`. The hint shows for `open` only: Discord has no "window
+opened" signal, so a command that has not been refused after a second is the nearest there is, and the line says
+`open after N ms` so a silent client is not mistaken for a window.
+
+Checked with the **real SDK 2.5.0 and the real `discord-share.js`** against a fake Discord host that answers on the
+page's `postMessage` (a scratch script, not committed): the full answer is `shared`; `success: false` at once is
+`refused`; an `ERROR` frame is `refused` with `rpc 4002`; a `{success: true}` answer makes the SDK log `Failed to parse`
+and the call never settles, and the module reports `unreadable` with the raw frame.
+
+`tools/web_smoke/activity.py --share --share-client shared|closed|refused|error|silent|unreadable [--invite-fails]`
+runs the real `discord-share.js` on a stand-in SDK that answers the way each client can, makes a night, presses the
+button and reads the lobby 0.3 s, 1.5 s and 4 s later. Against `main`'s build every mode fails (the sentence is the
+hint from the first frame, the probe line is empty); against this build all hold.
+
 Not run: Discord's real clients (desktop, browser, phone). What Discord's iframe grants is not in its docs; the line
-above says it. A real long press on a phone is not covered (its keyboard is the engine's text box).
+above says it. What the real client answers to `shareLink` was never seen before #627: the probe line of the lobby now
+carries it. A real long press on a phone is not covered (its keyboard is the engine's text box).
 
 ## Sources
 

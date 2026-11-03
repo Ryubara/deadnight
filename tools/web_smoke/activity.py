@@ -32,6 +32,16 @@ only Ctrl+C is left. With `--embed none` (a plain tab) the clipboard layer is th
 clipboard's text on the first press, #534) and the engine's own copy puts the code on the clipboard. It exits 1 when a
 check fails. It needs the headless shell (the
 default): its clipboard lives in the browser, so the run never touches the person's own.
+
+`--share --share-client shared|closed|refused|error|silent|unreadable` checks Share in Discord (#627). The Discord
+bridge is replaced by a stub that runs the real `deploy/web/discord-share.js` on a stand-in for the SDK that answers
+`shareLink` the way a client can: `shared` (the window sends after a while), `closed` (the player closes it),
+`refused` (success false at once), `error` (the client rejects with its own `{code, message}`, as the SDK passes it
+on), `silent` (no answer ever: a window may be up) and `unreadable` (a frame the SDK cannot parse: its promise never
+settles). `--invite-fails` makes `openInviteDialog` fail too. The run makes a night, presses Share in Discord and reads
+the lobby's sentence and probe line until the client has answered (6 s after the press): the hint to pick who to send
+it to must show only while Discord has not refused, a refusal must say Discord opened nothing and point to Copy the
+code, and the probe line must carry Discord's answer.
 """
 
 from __future__ import annotations
@@ -75,12 +85,47 @@ VIRTUAL_PAD = (
     " axes: [0, 0, 0, 0], buttons: Array.from({length: 17}, () => ({pressed: false, touched: false, value: 0}))};"
     "Object.defineProperty(navigator, 'getGamepads', {value: () => [pad, null, null, null]});"
 )
-# What the bridge leaves on the page when it cannot sign in: the game then plays as a guest.
-BRIDGE_STUB = (
-    b"window.deadnightDiscord = {ready: true, code: '', error: 'no Discord client here', instanceId: 'emu-1',"
-    b" canShare: true, share: (message, customId) => { window.deadnightShared = {message, customId};"
-    b" return Promise.resolve(true); }};"
-)
+# What the bridge leaves on the page when it cannot sign in: the game then plays as a guest. The share half is the real
+# `deploy/web/discord-share.js` on a stand-in for the SDK (`SHARE_CLIENTS`): the harness runs the code that ships.
+SHARE_SOURCE = Path(__file__).resolve().parents[2] / "deploy" / "web" / "discord-share.js"
+SHARE_CLIENTS = ("shared", "closed", "refused", "error", "silent", "unreadable")
+BRIDGE_STUB = """
+import {{ makeShare }} from "./discord-share.js";
+const mode = {mode};
+const STAND_IN_DELAY_MS = 6000; // the window is open this long before the player acts
+const state = {{ ready: true, code: "", error: "no Discord client here", instanceId: "emu-1", guildId: "", canShare: true }};
+window.deadnightDiscord = state;
+const later = (ms, then) => new Promise((resolve, reject) => setTimeout(() => then(resolve, reject), ms));
+const nothing = {{ success: false, didCopyLink: false, didSendMessage: false }};
+const answers = {{
+  shared: () => later(STAND_IN_DELAY_MS, (ok) => ok({{ success: true, didCopyLink: false, didSendMessage: true }})),
+  closed: () => later(STAND_IN_DELAY_MS, (ok) => ok(nothing)),
+  refused: () => Promise.resolve(nothing),
+  // The SDK rejects with the client's own {{code, message}} object, not an Error.
+  error: () => Promise.reject({{ code: 4002, message: "Invalid command: SHARE_LINK" }}),
+  silent: () => new Promise(() => {{}}),
+  // A reply the SDK cannot parse: it logs "Failed to parse" and the command's promise never settles. Only the
+  // frame on the page's `message` events shows it.
+  unreadable: () => {{
+    const frame = [1, {{ cmd: "SHARE_LINK", evt: null, nonce: "n", data: {{ success: true }} }}];
+    setTimeout(() => window.postMessage(frame, "*"), STAND_IN_DELAY_MS);
+    return new Promise(() => {{}});
+  }},
+}};
+const sdk = {{ commands: {{
+  shareLink: (args) => {{ window.deadnightShared = {{ message: args.message, customId: args.custom_id }}; return answers[mode](); }},
+  openInviteDialog: () => {{
+    window.deadnightInvited = (window.deadnightInvited || 0) + 1;
+    return {invite};
+  }},
+}} }};
+makeShare(sdk, state);
+"""
+
+
+def bridge_stub(mode: str, invite_fails: bool) -> bytes:
+    invite = 'Promise.reject({ code: 50013, message: "Missing Permissions" })' if invite_fails else "Promise.resolve()"
+    return BRIDGE_STUB.format(mode=json.dumps(mode), invite=invite).encode()
 
 
 def self_signed(folder: Path) -> tuple[Path, Path]:
@@ -132,6 +177,8 @@ def make_handler(
     activity_url: str,
     parent_focus: bool = False,
     fake_start: bool = False,
+    share_client: str = "shared",
+    invite_fails: bool = False,
 ) -> type[BaseHTTPRequestHandler]:
     cache: dict[str, tuple[int, str, bytes]] = {}
     made: dict = {}  # the lobby the backend just made, for `fake_start`
@@ -173,7 +220,9 @@ def make_handler(
                 return self.api(body)
             path = self.path.split("?")[0]
             if path.endswith("discord-bridge.js"):
-                status, kind, content = 200, "text/javascript", BRIDGE_STUB
+                status, kind, content = 200, "text/javascript", bridge_stub(share_client, invite_fails)
+            elif path.endswith("discord-share.js"):
+                status, kind, content = 200, "text/javascript", SHARE_SOURCE.read_bytes()
             else:
                 if path not in cache:
                     if web.startswith("http"):
@@ -303,17 +352,22 @@ def hold_keys(page, *keys: str) -> None:
         page.keyboard.up(key)
 
 
-def clipboard_flow(page, frame, out: Path) -> tuple[list[str], bool]:
-    """From the main menu to Play together, then the clipboard checks of `--clipboard`; the lines and whether both held."""
-    lines: list[str] = []
+def start_together(page, frame) -> None:
+    """From the main menu to the Play together screen, a click given (the user gesture, and the keyboard for the canvas)."""
     rooms.wait_for(frame, "the main menu", lambda s: s.get("screen") == "main_menu", smoke.LOAD_TIMEOUT_S)
-    page.mouse.click(5, 5)  # the user gesture, and the keyboard for the canvas
+    page.mouse.click(5, 5)
     page.wait_for_timeout(2500)
     smoke.menu_item(Driver(page, frame), "Play")
     smoke.press(page, "Enter")
     rooms.wait_for(frame, "the Play together screen", lambda s: s.get("screen") == "together_screen", 30)
     page.wait_for_timeout(1500)
     page.mouse.click(5, 5)
+
+
+def clipboard_flow(page, frame, out: Path) -> tuple[list[str], bool]:
+    """From the main menu to Play together, then the clipboard checks of `--clipboard`; the lines and whether both held."""
+    lines: list[str] = []
+    start_together(page, frame)
     tab = frame is page  # no iframe: a plain browser tab
     layer = frame.evaluate("typeof window.deadnightClipboard")
     lines.append(f"the clipboard layer in {'a tab' if tab else 'the frame'}: {layer}")
@@ -374,6 +428,87 @@ def clipboard_flow(page, frame, out: Path) -> tuple[list[str], bool]:
     return lines, pasted and copied and sent
 
 
+HINT = "Pick who to send it to"
+
+
+def share_flow(page, frame, out: Path, mode: str, invite_fails: bool) -> tuple[list[str], bool]:
+    """Make a night, press Share in Discord and read the lobby until the stand-in client has answered (`--share`): what
+    the lobby says and what its probe line quotes must follow what that client answered."""
+    lines: list[str] = []
+    start_together(page, frame)
+    focus_on(page, frame, "CreateNight")
+    smoke.press(page, "Enter")
+    state = rooms.wait_for(frame, "a night's code", lambda s: bool(s.get("room_code")), 60)
+    code = state["room_code"]
+    page.wait_for_timeout(1500)
+    focus_on(page, frame, "ShareDiscord")
+    smoke.press(page, "Enter")
+    # Every look at the lobby until the stand-in client has answered (or 8 s, for one that never does): its answers come
+    # late (STAND_IN_DELAY_MS) so that a slow machine still sees the window open.
+    seen: list[tuple[float, str, str]] = []
+    started = time.monotonic()
+    final = ("shared", "closed", "refused", "unreadable")
+    while time.monotonic() - started < 8:
+        state = rooms.read_probe(frame)
+        # The lobby's own sentence under the button; a build without it says everything in the note line.
+        says = state.get("share_says") or state.get("lobby_note", "")
+        line = state.get("share_line", "")
+        seen.append((time.monotonic() - started, says, line))
+        if mode != "silent" and any(line.startswith(f"share: {verdict}") for verdict in final):
+            break
+        page.wait_for_timeout(250)
+    for at, says, line in seen[:: max(1, len(seen) // 6)] + seen[-1:]:
+        lines.append(f"after {at:.1f} s: the lobby says {says!r}; probe line {line!r}")
+    page.screenshot(path=out / f"share_{mode}.png")
+    shared = frame.evaluate("window.deadnightShared || null")
+    lines.append(f"the SDK got {shared}; invite window asked {frame.evaluate('window.deadnightInvited || 0')} time(s)")
+    failures: list[str] = []
+
+    def check(ok: bool, what: str) -> None:
+        lines.append(f"{what}: {'ok' if ok else 'FAILED'}")
+        if not ok:
+            failures.append(what)
+
+    check(bool(shared) and code in shared.get("message", ""), "the SDK got the room's code")
+    late, line_late = seen[-1][1], seen[-1][2]
+    hint_any = any(HINT in look[1] for look in seen)
+    hint_late = HINT in late
+    # The looks while the client has been asked and has not answered: the hint belongs in each of them.
+    open_looks = [look for look in seen if look[2].startswith("share: open")]
+    hint_open = bool(open_looks) and all(HINT in look[1] for look in open_looks)
+    check(HINT not in seen[0][1], "no hint to pick who to send it to before Discord has had a moment")
+    if mode in ("refused", "error"):
+        check(not hint_any, "no hint to pick who to send it to at any time after Discord refused")
+        check(
+            "did not open" in late and "Copy the code" in late,
+            "the lobby says Discord opened nothing and points to Copy the code",
+        )
+        check(
+            mode == "refused" or ("4002" in line_late and "Invalid command" in line_late),
+            "the probe line quotes the client's error",
+        )
+        check("refused" in line_late, "the probe line says the verdict")
+        wanted = "invite window: failed" if invite_fails else "invite window: opened"
+        check(wanted in line_late, "the probe line says what the invite window did")
+    elif mode == "silent":
+        check(hint_open and hint_late, "the hint stays while Discord has not refused")
+        check("open after" in line_late, "the probe line says the window may be open and no answer came")
+    elif mode == "shared":
+        check(hint_open, "the hint shows while the window is open")
+        check("Sent" in late and not hint_late, "the lobby says it was sent when the window answered success")
+        check("success=true" in line_late, "the probe line quotes the answer")
+    elif mode == "closed":
+        check(hint_open, "the hint shows while the window is open")
+        check(
+            "closed without sending" in late and "Sent" not in late, "the lobby says the window closed without sending"
+        )
+        check("success=false" in line_late, "the probe line quotes the answer")
+    elif mode == "unreadable":
+        check("could not be read" in late, "the lobby says the answer could not be read")
+        check("Discord's frame" in line_late and "success" in line_late, "the probe line quotes the raw frame")
+    return lines, not failures
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("web", help="folder with the export, or the URL of a deployed web build")
@@ -407,6 +542,15 @@ def main() -> int:
         action="store_true",
         help="with --clipboard: the frame's `document.execCommand` refuses too, so only a native Ctrl+C can copy",
     )
+    parser.add_argument(
+        "--share",
+        action="store_true",
+        help="check Share in Discord against a stand-in client (--share-client) instead of waiting for a night",
+    )
+    parser.add_argument(
+        "--share-client", choices=SHARE_CLIENTS, default="shared", help="how the stand-in client answers shareLink"
+    )
+    parser.add_argument("--invite-fails", action="store_true", help="the stand-in client's openInviteDialog fails too")
     parser.add_argument("--pad", action="store_true", help="give the page a virtual gamepad (navigator.getGamepads)")
     parser.add_argument("--seconds", type=float, default=120.0, help="how long to wait for the night")
     parser.add_argument("--gpu", action="store_true", help="use the machine's Chrome and GPU")
@@ -418,7 +562,7 @@ def main() -> int:
     # One night for each run: a voice channel's night holds four, and earlier runs sit in the one of an old instance.
     instance = f"emu-{int(time.time())}"
     # The clipboard check starts on the main menu, as a player who made a night himself does: no instance to join.
-    instance_part = "" if args.clipboard else f"&instance_id={instance}"
+    instance_part = "" if (args.clipboard or args.share) else f"&instance_id={instance}"
     activity_url = f"https://{HOST}/?frame_id=1{instance_part}&guild_id=1&channel_id=1"
     with tempfile.TemporaryDirectory() as folder:
         cert, key = self_signed(Path(folder))
@@ -432,7 +576,9 @@ def main() -> int:
                 args.embed,
                 activity_url,
                 args.parent_focus,
-                args.clipboard,
+                args.clipboard or args.share,
+                args.share_client,
+                args.invite_fails,
             ),
         )
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -475,6 +621,14 @@ def main() -> int:
                         raise SystemExit(f"the parent page never showed the Activity's frame: {page.content()[:300]!r}")
                     page.wait_for_timeout(200)  # lets Playwright see the frame
                 frame = page.frames[1]
+            if args.share:
+                lines, ok = share_flow(page, frame, args.out, args.share_client, args.invite_fails)
+                browser.close()
+                server.shutdown()
+                (args.out / "console.txt").write_text(chr(10).join(console), encoding="utf-8")
+                print(chr(10).join(log + lines))
+                print(f"share ({args.share_client}): {'held' if ok else 'FAILED'}")
+                return 0 if ok else 1
             if args.clipboard:
                 lines, ok = clipboard_flow(page, frame, args.out)
                 page.screenshot(path=args.out / f"clipboard_{args.embed}.png")

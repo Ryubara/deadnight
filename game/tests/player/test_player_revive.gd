@@ -115,7 +115,7 @@ func test_going_down_eases_the_body_to_the_ground_and_back_up() -> void:
 	assert_float(down).is_less(standing * 0.6)
 	assert_float(_height("Body")).is_less(standing * 0.3)
 	assert_bool(_animation.weapon().visible).is_false()
-	assert_float(_animation.hands().influence).is_less(0.01)
+	assert_float(_animation.hands().weight).is_less(0.01)
 	_animation.set_downed(false)
 	_step(90)
 	assert_float(_animation.downed_weight()).is_equal(0.0)

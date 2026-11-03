@@ -7,10 +7,10 @@ extends Node
 ##
 ##     gds godot -- --path game res://tests/captures/outline_tour.tscn \
 ##         --write-movie <abs>/o.png --fixed-fps 10 --quit-after 34 -- \
-##         [--off] [--hud] [--glow=N] [--thickness=N]
+##         [--off] [--hud] [--thickness=N]
 ##
-## `--off` switches the outline off (the "before" picture of the same spots); `--glow` and
-## `--thickness` set the style. Prints SPOT <name> <frame> as each spot starts.
+## `--off` switches the outline off (the "before" picture of the same spots); `--thickness` sets the
+## style. Prints SPOT <name> <frame> as each spot starts.
 ## In a browser (`tools/web_smoke/outline_capture.py` exports a copy of the project that starts
 ## here) the page's query gives the same arguments, `?spot=near&off=1&hold=60`: only that spot is
 ## held, and then `window.__outline` says so and the page is photographed.
@@ -24,6 +24,7 @@ const SPOTS := [
 	{"name": "near", "at": Vector3(0, 0, -6), "yaw": 180.0, "pitch": 6.0, "behind": 3.0},
 	{"name": "far", "at": Vector3(0, 0, -34), "yaw": 180.0, "pitch": 4.0, "behind": 5.0},
 	{"name": "open", "at": Vector3(0, 0, -34), "yaw": 180.0, "pitch": 6.0, "ahead": 14.0},
+	{"name": "half", "at": Vector3(-9.4, 0, -30), "yaw": 180.0, "pitch": 0.0, "behind": -1.3},
 ]
 const DEAD_SPACING := 1.6
 ## The page's query is read as the arguments of the command line.
@@ -70,8 +71,6 @@ func _ready() -> void:
 	_night.server.rules.apply(RulesAction.skip_break())
 	var marks := _night.view.marks
 	marks.enabled = not _args.has("off")
-	if _args.has("glow"):
-		marks.style.glow = float(_args["glow"])
 	if _args.has("thickness"):
 		marks.style.thickness = float(_args["thickness"])
 	_night.ticked.connect(_pose)
@@ -119,9 +118,12 @@ func _pose() -> void:
 		var query := PhysicsRayQueryParameters3D.create(
 			camera.global_position, camera.global_position + forward * 80.0
 		)
+		query.exclude = [player.get_rid()]
 		var hit := space.intersect_ray(query)
 		if hit.is_empty():
+			print("NO HIT from ", camera.global_position, " fwd ", forward)
 			return
+		print("HIT ", hit["collider"], " at ", hit["position"])
 		base = hit["position"] + ahead * float(spot["behind"])
 	var right := ahead.cross(Vector3.UP).normalized() * -1.0
 	var dead: Array[ZombieBody] = []

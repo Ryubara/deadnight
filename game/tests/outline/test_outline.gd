@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The universal outline: any mesh, skinned or static, wears it without a change to its model; the
-## style (colour, thickness, glow) is shared and tunable live; the enabled flag puts it on and takes
+## style (colour, thickness) is shared and tunable live; the enabled flag puts it on and takes
 ## it off; and a mesh that does not wear it draws nothing of it.
 
 
@@ -73,14 +73,16 @@ func test_every_mesh_that_wears_a_style_shares_its_materials() -> void:
 	assert_object(_meshes(b)[1].material_overlay).is_same(style.chain())
 
 
-func test_the_chain_is_a_mask_then_rings_of_copies_with_no_depth_test() -> void:
+func test_the_chain_is_a_mask_then_a_ring_of_copies_that_read_the_scene_depth() -> void:
 	var style := OutlineStyle.new()
-	assert_int(style.pass_count()).is_equal(1 + 2 * OutlineStyle.DIRECTIONS)
+	assert_int(style.pass_count()).is_equal(1 + OutlineStyle.DIRECTIONS)
 	var materials := style.materials()
 	assert_int(materials.size()).is_equal(style.pass_count())
 	assert_object(materials[0].shader).is_same(OutlineStyle.MASK_SHADER)
 	assert_str(OutlineStyle.MASK_SHADER.code).contains("depth_test_disabled")
 	assert_str(OutlineStyle.LINE_SHADER.code).contains("depth_test_disabled")
+	# The line is kept off the visible parts by comparing with the scene's depth, and has no halo.
+	assert_str(OutlineStyle.LINE_SHADER.code).contains("hint_depth_texture")
 	assert_str(OutlineStyle.MASK_SHADER.code).contains("stencil_mode write")
 	# The passes are chained in the order they are drawn.
 	var at: Material = style.chain()
@@ -91,26 +93,7 @@ func test_the_chain_is_a_mask_then_rings_of_copies_with_no_depth_test() -> void:
 	assert_int(chained).is_equal(style.pass_count())
 
 
-func test_no_glow_leaves_the_halo_out_of_the_chain() -> void:
-	var style := OutlineStyle.new()
-	style.glow = 0.0
-	assert_int(style.pass_count()).is_equal(1 + OutlineStyle.DIRECTIONS)
-	var at: Material = style.chain()
-	var chained := 0
-	while at != null:
-		chained += 1
-		at = at.next_pass
-	assert_int(chained).is_equal(1 + OutlineStyle.DIRECTIONS)
-	style.glow = 1.0
-	at = style.chain()
-	chained = 0
-	while at != null:
-		chained += 1
-		at = at.next_pass
-	assert_int(chained).is_equal(1 + 2 * OutlineStyle.DIRECTIONS)
-
-
-func test_colour_thickness_and_glow_reach_every_pass_live() -> void:
+func test_colour_and_thickness_reach_every_pass_live() -> void:
 	var style := OutlineStyle.new()
 	var root := _static_body()
 	_outline_of(root, style).enabled = true
@@ -120,13 +103,6 @@ func test_colour_thickness_and_glow_reach_every_pass_live() -> void:
 	assert_that(line.get_shader_parameter(&"color")).is_equal(Color(0.1, 0.9, 0.2, 1.0))
 	var radius: float = 6.0 / cos(PI / OutlineStyle.DIRECTIONS)
 	assert_float(line.get_shader_parameter(&"reach")).is_equal_approx(radius, 0.001)
-	style.glow = 1.0
-	var halo := style.materials()[-1]
-	var alpha: float = (halo.get_shader_parameter(&"color") as Color).a
-	assert_float(alpha).is_equal_approx(OutlineStyle.GLOW_ALPHA, 0.001)
-	assert_float(halo.get_shader_parameter(&"reach")).is_greater(
-		line.get_shader_parameter(&"reach")
-	)
 
 
 func test_the_copies_ring_the_body_in_even_directions() -> void:

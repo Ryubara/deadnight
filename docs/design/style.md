@@ -276,6 +276,9 @@ number comes from) follows these numbers. They live in `tools/blender/smallmap_k
 | Atlas | the drive-in palette in its own cells plus Plaster `#b3a588`, Sandbag `#a88d62`, Chalk `#ece6d2`, Rust `#7d4b2f` and Soot `#2f2c2a` in its five empty cells, so drive-in props share it |
 | Chamfers | 60 mm on wall pieces and frames, 30 mm on props of 1-3 m |
 | Flat surfaces | plain walls, floors and ceilings stay CSG with a lot pattern, cut per room for the light cap; only shaped pieces are modelled |
+| Shell materials | `smallmap_wall_ground` (`blocks`, Concrete), `smallmap_wall_upper` (`plaster`, Plaster), `smallmap_floor_ground` (`concrete`), `smallmap_floor_upper` (`planks`), `smallmap_ceiling` (`plaster`) |
+| Files | `game/assets/smallmap/<name>.gltf` on `smallmap_palette.png` (sRGB swatches), a fixture each in `game/world/smallmap/fixtures/` with hidden CSG collision |
+| Walls and openings | 108-992 tris against 1.5k (`tools/blender/build_smallmap_walls.py`); openings in a ground (0.3 m, Concrete) and an `_upper` (0.2 m, Plaster) variant |
 | Lamps | a bulb is the lamp's Popcorn swatch, lit by an emission texture of the atlas's layout (`KitLamp`), never a second material; a pendant's shade is 0.6 m with its rim at 2.15 m, under 600 triangles |
 | Light | one or two real lights a room; every other light is an additive card on the lot's `glow.gdshader` or `beam.gdshader` (pools, haze, moon shafts with bar shadows, the far room's glow, chalk), so it takes no light slot and builds no new GL program ([lamps and light cards](../research/maps/small-map-art.md#lamps-and-light-cards)) |
 
