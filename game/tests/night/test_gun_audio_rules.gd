@@ -21,9 +21,11 @@ const MIN_BURST_ABOVE_BEDS_LU := 17.0
 ## or a burst of a gun that fires without a break peaks no closer to full scale than this, which
 ## leaves room for a teammate's gun, a reload, a zombie's scream or a door landing on one of its
 ## shots without any sample over -1 dBFS (#718; measured with `tests/captures/audio_headroom.tscn`
-## and `tools/audio/headroom.py`). The flare gun fires once in a long while: it only keeps clear
-## of -1 dBFS.
+## and `tools/audio/headroom.py`).
 const MAX_PEAK_DBFS := -4.5
+## The flare gun fires one shot a long while apart and its report is a sharp crack (a crest factor
+## of 20 dB: cutting its peak 1.2 dB takes 2.5 dB off its burst's loudness), so it only keeps clear
+## of -1 dBFS.
 const MAX_SLOW_GUN_PEAK_DBFS := -1.0
 const SLOW_GUNS: Array[String] = ["flare_gun"]
 ## The whole pitch rule in semitones, and the level rule in dB (either way).

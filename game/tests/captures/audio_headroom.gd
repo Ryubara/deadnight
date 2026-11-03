@@ -3,7 +3,8 @@ extends Node
 ## break, flat, as a client plays it (`WeaponSounds`, the audio service, the buses), while other
 ## sounds land on its shots. One cell for each pair of own gun and what lands on it:
 ## - `alone`: the gun by itself;
-## - `reload`: a teammate 4 m ahead reloads each weapon in turn (the steps lifted as in #683);
+## - `reload`: a teammate 4 m ahead reloads each weapon in turn (his steps lifted by
+##   `teammate_reload_db`);
 ## - `mate`: a teammate 4 m ahead fires each weapon, one second at its rate of fire;
 ## - `zombie`: every zombie voice, a zombie 2 m ahead, and the boss;
 ## - `world`: a door, a board, a blow, an impact, a grenade blast 4 m off, the till.
@@ -57,8 +58,6 @@ const MATE_AT := Vector3(1.4, 0.0, -3.8)
 const ZOMBIE_AT := Vector3(0.0, 1.6, -2.0)
 const BLAST_AT := Vector3(2.0, 0.5, -4.0)
 const WORLD_AT := Vector3(-1.0, 1.0, -3.0)
-## What a teammate's reload steps are lifted by (`NightSoundTuning.teammate_reload_db`, #683).
-const RELOAD_LIFT_DB := 6.0
 const LEAD := 0.5
 const GAP := 1.0
 const VARIANT_GAP := 0.8
@@ -263,11 +262,8 @@ func _play_variant(id: StringName, at: Variant, variant: int) -> void:
 
 
 func _play_sound(id: StringName, at: Variant, extra_db: float) -> void:
-	var db := extra_db
-	if String(id).begins_with("reload_") and at != null:
-		db += RELOAD_LIFT_DB
 	print("PLAY %.3f %s %s %s" % [_now(), _label, _cell, id])
-	Audio.play(id, at, db)
+	Audio.play(id, at, extra_db)
 
 
 func _now() -> float:

@@ -58,7 +58,7 @@ pinned by `game/tests/night/test_gun_audio_rules.gd`:
 - **Own shots are flat.** `WeaponSounds` plays the shooter's own report and tail with no position.
 - **Trims.** First revolver -1, SMG -2, rifle -1, shotgun -1 (the strongest: its file is the longest and lowest), flare
   gun -2 dB, tails 14 dB under their report. Now (#718, [headroom](#headroom-under-other-sounds)) the reports sit at
-  revolver -6.5, SMG -6.5, rifle -6.5, shotgun -8.5 and flare gun -1.5 dB, the tails 14 dB under.
+  revolver -6.5, SMG -6.5, rifle -6.5, shotgun -7.0 and flare gun -1.5 dB, the tails 14 dB under.
 - **The flare gun** gets the same treatment (crack, bark, thump, then the hiss).
 
 ## Measured
@@ -100,7 +100,7 @@ Read "a to b" as before to after. Over the beds now: one shot 19 to 23 LU, a bur
   peak -0.5 dBFS, 0 clipped samples, with the guns this loud (before the change the same tour peaked at -0.4).
 - Without a limiter, nothing clips: every shot and burst peaked at -1.5 dBFS or lower (the trims were -2.5 to -3.5 dB),
   and the Ogg of a driven file decodes up to 1.5 dB over its PCM peak. That left too little for a second sound: see
-  [headroom](#headroom-under-other-sounds), where the trims are 4 to 5.5 dB lower.
+  [headroom](#headroom-under-other-sounds), where the trims are 3 to 4 dB lower.
 
 ## Headroom under other sounds
 
@@ -123,47 +123,63 @@ output):
 played together; the phases after are the figures.) Only bus volume acts in both builds, so the gun's headroom is its
 trim, and the mix stays a plain sum (the reload audibility measurement of #683 relies on that).
 
-**What was set.** Report trims (tails 14 dB under): revolver -2.5 to -6.5, SMG -2.5 to -6.5, rifle -3.5 to -6.5 (each
-a 4 dB cut, the rifle 3: a 4 dB cut left its two second burst 16.7 LU over the beds, the test asks 17), shotgun -3.0
-to -8.5 (a 4 dB cut still reached -0.5 dBFS, 8 samples over -1, under a teammate's reload; 5.5 dB clears it). The
-flare gun stays at -1.5: it peaks at -3.1 dBFS and fires once in a long while, and a 1 dB cut would take its burst
-under the 17 LU. A cut in trim is a cut in gain: peak, RMS and loudness fall together, the crest factor of a burst
-does not move.
+**What was set.** Report trims (tails 14 dB under): revolver -2.5 to -6.5, SMG -2.5 to -6.5, shotgun (the
+double-barrel) -3.0 to -7.0, each a 4 dB cut, and the rifle -3.5 to -6.5, a 3 dB cut (4 dB left its two second burst
+16.7 LU over the beds, the test asks 17). The flare gun stays at -1.5: its report is a sharp crack (a crest factor of 20
+dB: a 1.2 dB cut of its peak takes 2.5 dB off its burst's loudness, under the 17 LU), and it fires once in a long while.
+A teammate's reload steps are lifted by 5 dB (`teammate_reload_db`, was 6): the loudest step landed on a tommy gun
+shot at -0.8 dBFS (4 samples over -1 dBFS) with 6, and with 5 every step of five weapons is still heard under a tommy
+gun 6 m off ([design](../design/audio.md#reloads)). A cut in trim is a cut in gain: peak, RMS and loudness fall
+together, the crest factor of a burst does not move.
 
 **Measured**, `tests/captures/audio_headroom.tscn` through `WeaponSounds`, the audio service and the buses (60 frames a
-second, a recording of the plain sum), `tools/audio/headroom.py`. Each own gun fires without a break (at its rate of
-fire) for five cells: alone; a teammate 4 m ahead reloads each of four weapons (his steps lifted +6 dB as #683 will
-set); a teammate 4 m ahead fires each of four weapons for a second; every zombie voice, one at a time, a zombie 2 m
-ahead (and the boss); a door, boards, a blow, an impact, a grenade blast 4 m off, the till and a debris blocker. Peak
-of the mix in dBFS, and the samples over -1 dBFS, before then after:
+second, a recording of the plain sum), `tools/audio/headroom.py`, the same capture on `main` (before) and with the
+change (after). Each own gun fires without a break (at its rate of fire) for five cells: alone; a teammate 4 m ahead
+reloads each of four weapons; a teammate 4 m ahead fires each of four weapons for a second; every zombie voice, one at
+a time, a zombie 2 m ahead (and the boss); a door, boards, a blow, an impact, a grenade blast 4 m off, the till and a
+debris blocker. Peak of the mix in dBFS, with the samples over -1 dBFS in brackets, before then after:
 
 | Own gun | alone | + reload | + teammate's gun | + zombie voices | + lot's sounds |
 | --- | --- | --- | --- | --- | --- |
-| Revolver | -1.9 to **-5.9** | -0.1 (5) to **-2.6** (0) | 0.0 (48) to **-1.9** (0) | 0.0 (18) to **-4.3** (0) | 0.0 (11) to **-2.8** (0) |
-| Tommy gun | -1.7 to **-5.7** | -0.4 (7) to **-3.2** (0) | 0.0 (167) to **-2.9** (0) | 0.0 (146) to **-4.3** (0) | 0.0 (54) to **-2.6** (0) |
-| Rifle | -2.4 to **-5.4** | -1.6 (0) to **-3.2** (0) | 0.0 (52) to **-3.0** (0) | -0.5 (4) to **-3.9** (0) | -1.4 (0) to **-4.4** (0) |
-| Shotgun | -1.9 to **-7.4** | 0.0 (58) to **-1.2** (0) | 0.0 (97) to **-3.5** (0) | 0.0 (47) to **-5.4** (0) | -1.4 (0) to **-5.3** (0) |
-| Flare gun (unchanged) | -3.1 | -1.8 (0) | -0.3 (5) to **-1.9** (0) | -1.3 (0) to **-2.1** (0) | -2.7 (0) |
+| Revolver | -1.9 to **-5.9** | -0.4 (8) to **-4.0** (0) | 0.0 (68) to **-2.2** (0) | -0.1 (39) to **-4.0** (0) | -1.3 (0) to **-4.0** (0) |
+| Tommy gun | -1.7 to **-5.7** | 0.0 (25) to **-1.2** (0) | 0.0 (286) to **-2.7** (0) | 0.0 (106) to **-3.6** (0) | 0.0 (56) to **-2.0** (0) |
+| Rifle | -2.4 to **-5.4** | -1.3 (0) to **-3.5** (0) | 0.0 (50) to **-2.3** (0) | -1.2 (0) to **-4.4** (0) | -1.9 (0) to **-4.8** (0) |
+| Shotgun | -1.6 to **-5.6** | -0.4 (17) to **-3.0** (0) | 0.0 (170) to **-3.0** (0) | 0.0 (113) to **-3.1** (0) | 0.0 (35) to **-2.3** (0) |
+| Flare gun (trim unchanged) | -3.1 | -1.9 (0) | 0.0 (35) to **-0.2 (8)** | -0.1 (10) to **-1.3** (0) | -2.1 (0) to **-2.4** (0) |
 
-(The number of samples over -1 dBFS in brackets.) Before, 14 of the 25 cells had samples over -1 dBFS, most of them at
-0.0 dBFS; after, none, the worst being the shotgun under a reload at -1.2 and the revolver under a teammate's gun at
--1.9. The sounds that landed peak, alone: a reload step -5.8 to -13.0 dBFS (the rifle's lever the loudest), a teammate's
-gun -8.2 to -10.5 (was -3.9 to -5.2), a grenade blast -7.3.
+Before, 14 of the 25 cells had samples over -1 dBFS, most of them at 0.0 dBFS; after, one: the flare gun's crack landing
+on a teammate's revolver shot at -0.2 dBFS (8 samples, none at full scale), the one gun whose trim was not cut. The
+worst of the others is -1.2 (the tommy gun under a teammate's reload) and -2.0 to -2.2 under a teammate's gun or the
+lot's sounds. The sounds that landed peak, alone, before then after: a teammate's gun -4.6 to -5.1 then -8.0 to -9.5, a
+reload step -5.8 to -12 then -6.8 to -13 (the SMG's magazine going in the loudest), a grenade blast -7.2.
+
+The issue's own measure, `tests/captures/reload_under_fire.tscn` in its `mate` scene (a teammate reloads while the
+player fires the tommy gun), for the five weapons reloaded: before -0.0 dBFS for the rifle (53 samples over -1 dBFS, 7
+at full scale), -0.6 and -0.7 for the revolver and shotgun (5 and 2 samples over), -1.5 and -1.3 for the SMG and flare
+gun; after -2.2 to -5.4, none over -1 dBFS.
 
 **Punch is kept.** The cut is the same number of dB on every number, so the crest factor of the gun alone (peak minus
-RMS) is unchanged, 11.1 dB for the tommy gun and 14.6 to 15.6 dB for the revolver, rifle and shotgun. Against the night's
-beds (-35.3 LUFS, `tools/audio/gun_levels.py`, now `tests/night/gun_levels.json`): one shot's loudest 400 ms is 14.9 LU
-over the beds (tommy gun) to 19.0 (rifle), a two second burst 17.3 LU (shotgun) to 21.9 (tommy gun), against the 14 and
-17 the test asks.
+RMS) is unchanged: 11.1 dB for the tommy gun, 11.3 for the double-barrel, 14.6 for the revolver and 15.6 for the rifle.
+Against the night's beds (-35.3 LUFS, `tools/audio/gun_levels.py`, now `tests/night/gun_levels.json`): one shot's
+loudest 400 ms is 14.9 LU over the beds (tommy gun) to 19.5 (double-barrel), a two second burst 17.7 LU (rifle) to 21.9
+(tommy gun), against the 14 and 17 the test asks. `test_gun_audio_rules.gd` now also asks every gun but the flare gun
+to peak at -4.5 dBFS or lower.
 
-**What this does not cover: the loudest variants of close sounds.** A sound picks one of its variant files at random and
-the files of a sound differ by 5 to 15 dB in peak, so the matrix above, which plays each sound once, shows what the
-game plays on a run, not its worst draw. `--all-variants` plays every file of every zombie voice and lot sound under
-each own gun (after the change): the revolver, tommy gun, rifle and flare gun still reach 0.0 dBFS (31 to 135 samples
-over -1 dBFS in the zombie cell, 40 to 127 in the lot's cell), the shotgun -1.1 and -0.4. Solo, close, these peak at
-`zombie_attack` -2.2, `zombie_death` -3.5, `zombie_groan_brute` -4.0, `board_last` -1.1, `door_open` -1.9, `board_tear`
--2.1 and `grenade_blast` -1.0 dBFS: they are as loud as the player's gun was, so two of them, or one of them and a shot,
-can still clip, whatever the gun's trim. Levelling the variants of those sounds is a follow-up (issue below).
+**What this does not cover.** The matrix plays each zombie voice and lot sound once, in a pool that has already played
+guns (the game's usual state). Two things make the close sounds louder than that, and both are follow-ups
+(#752 and #753):
+
+- *A pooled player keeps the last sound's `max_db`.* `AudioService.cap_near_level` sets it only for a sound that has a
+  near cap, so after a gun (trim -2.5, now -6.5) used a slot, an uncapped sound (the dead, boards, the door) played in
+  it is capped at that trim. The same zombie voices played alone peak 4 to 10 dB higher, and the dead, boards, doors
+  and blows in the matrix fell 3.7 to 4.3 dB with the guns, whatever the change did to them (their balance against the
+  guns stayed, against the beds it did not). Fixing it makes the dead's loud level the normal one.
+- *The files of a sound differ by 3 to 9 dB in peak.* `--all-variants` plays every file of every zombie voice and lot
+  sound, in a clean pool, under each own gun: the revolver, tommy gun, rifle and flare gun reach 0.0 dBFS (31 to 135
+  samples over -1 dBFS in the zombie cell, 40 to 127 in the lot's), the shotgun 56 and 190. Solo, close, the loudest
+  files peak at `grenade_blast` -1.0, `board_last` -1.1, `door_open` -1.9, `board_tear` -2.1, `zombie_attack` -2.2,
+  `zombie_death` -3.5 and `zombie_groan_brute` -4.0 dBFS: as loud as the player's gun was, so one of them, or two,
+  landing on a shot can still clip whatever the gun's trim.
 
 ## Browser
 

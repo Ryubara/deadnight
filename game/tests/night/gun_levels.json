@@ -33,12 +33,12 @@
     },
     "shotgun": {
       "trims_db": {
-        "shot_shotgun": -8.5,
-        "tail_shotgun": -22.5
+        "shot_shotgun": -7.0,
+        "tail_shotgun": -21.0
       },
-      "single_momentary_lufs": -17.3,
-      "burst_lufs": -18.0,
-      "peak_dbfs": -7.0,
+      "single_momentary_lufs": -15.8,
+      "burst_lufs": -14.3,
+      "peak_dbfs": -5.5,
       "centroid_hz": 2514
     },
     "flare_gun": {
@@ -48,7 +48,7 @@
       "single_momentary_lufs": -16.4,
       "burst_lufs": -17.6,
       "peak_dbfs": -2.5,
-      "centroid_hz": 3107
+      "centroid_hz": 3103
     }
   }
 }
