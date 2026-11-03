@@ -861,7 +861,7 @@ decides, the others hold a rule each, so a test pins them one by one):
 
 **Measured.** *Bands* (`tests/night/test_bot_bands.gd`; one bot with the pistol and endless rounds and health against a
 stream of walkers at 2.4 m/s, about round 8; hit rate and head share from the shots at a zombie 5 to 20 m away, since
-nearer a shot lands whatever the aim; dodge from the blows that came due on the bot, the share that missed; four seeds
+nearer a shot lands whatever the aim; dodge from the blows that came due on the bot, the share that missed; sixteen seeds
 of 110 s in the test, six of 150 s for the numbers below):
 
 | | Rookie (weak) | Regular (average) | Veteran (strong) |
@@ -1194,8 +1194,15 @@ compare over all six seeds. Remaining stuck episodes are bot against bot (44 of 
 
 The bands test reads the Veteran's dodge from a few dozen blows: on `main` four seeds read 0.50 (34 blows due) and ten
 seeds read 0.67 (63), and with the tighter contour four seeds read 0.68 (19) and ten read 0.60 (45). The same fight is
-bit-identical from run to run, so the four-seed number is a draw, not noise to average. The test runs eight seeds
-(dodge 0.61 with the tighter contour, band 0.35 to 0.65). The Veteran's true dodge sits near the top of the band.
+bit-identical from run to run, so the four-seed number is a draw, not noise to average. The Veteran's true dodge sits
+near the top of the band.
+
+The same holds for every number of the test: any change to when the guns fire or where the zombies walk draws the seeds
+again. Carrying the tick's leftover in the weapons' cooldown (#708; the pistol went from a shot every 17 ticks to 16.8
+on average) read the Veteran's head share at 0.22 (band 0.23 to 0.37) on the CI runner over eight seeds, where sixteen
+seeds read 0.30 before and 0.28 after, dodge 0.60 and 0.61, hit rate 0.88 and 0.86, and the Regular's dodge 0.15 and
+0.14 (0.15 under the level's, so its band is 0.20, not 0.15). The test therefore runs sixteen seeds (about 420 hits and
+45 to 70 blows for the Veteran).
 
 ### Within 12 m counts only the bots that are up
 
