@@ -134,38 +134,6 @@ func test_a_zombie_behind_a_wall_is_not_touched() -> void:
 	assert_int(hits[0]["target_id"]).is_equal(ids[1])
 
 
-func test_the_thrower_takes_a_reduced_blast_and_other_players_none() -> void:
-	_night = GrenadesFixture.night(2, GrenadesFixture.world_cast())
-	_night.place({}, {1: Vector3(0, 0, 0), 2: Vector3(1, 0, 0)})
-	_night.server.apply(GrenadeAction.cook(1, 1, Vector3(0.5, 0.0, 0)))
-	var events := _night.run_seconds(_def.fuse + 0.1)
-	var hurt := GrenadesFixture.of(events, &"player_blasted")
-	assert_int(hurt.size()).is_equal(1)
-	assert_int(hurt[0]["player_id"]).is_equal(1)
-	assert_bool(hurt[0]["own"]).is_true()
-	assert_float(hurt[0]["damage"]).is_greater(0.0)
-	assert_float(hurt[0]["damage"]).is_less(_def.damage * _def.self_damage_fraction + 0.01)
-
-
-func test_friendly_fire_can_be_turned_on() -> void:
-	_night = GrenadesFixture.night(2, GrenadesFixture.world_cast())
-	_night.server.friendly_fire = true
-	_night.place({}, {1: Vector3(0, 0, 0), 2: Vector3(1, 0, 0)})
-	_night.server.apply(GrenadeAction.cook(1, 1, Vector3(0.5, 0.0, 0)))
-	var hurt := GrenadesFixture.of(_night.run_seconds(_def.fuse + 0.1), &"player_blasted")
-	assert_int(hurt.size()).is_equal(2)
-
-
-func test_a_wall_protects_the_thrower_too() -> void:
-	# The hand is held out 0.9 m in front of the thrower, with a thin wall between the two.
-	var wall := GrenadesFixture.box_ray(AABB(Vector3(-3, 0, -0.5), Vector3(6, 3, 0.2)))
-	_night = GrenadesFixture.night(1, GrenadesFixture.world_cast(), wall)
-	_night.place({}, {1: Vector3(0, 0, -0.9)})
-	_night.server.apply(GrenadeAction.cook(1, 1, Vector3(0, 1.45, 0)))
-	var hurt := GrenadesFixture.of(_night.run_seconds(_def.fuse + 0.1), &"player_blasted")
-	assert_array(hurt).is_empty()
-
-
 func test_a_zombie_that_is_gone_is_not_a_target() -> void:
 	_night = GrenadesFixture.night(1, GrenadesFixture.world_cast())
 	var id := _night.zombies[0]

@@ -146,5 +146,7 @@ func test_a_blast_does_no_damage_at_a_distance_that_is_not_a_number() -> void:
 	var centre := Vector3(0, 1, 0)
 	var broken := BlastModel.against_zombie(_def, centre, Vector3(NAN, 0, 0), 0.0, Callable())
 	assert_float(broken["damage"]).is_equal(0.0)
-	var point := BlastModel.against_point(_def, centre, Vector3(NAN, 1, 0), Callable())
+	var point := BlastModel.against_player(
+		_def, centre, Vector3(NAN, 1, 0), 100.0, false, Callable()
+	)
 	assert_float(point["damage"]).is_equal(0.0)

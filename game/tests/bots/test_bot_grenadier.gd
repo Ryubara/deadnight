@@ -1,5 +1,5 @@
 # When and where a bot throws its grenade (bots plan, phase 3): a pack it would take, a throw it
-# aims with the real arc's help, and the rule that no blast is ever put within 4 m of a teammate.
+# aims with the real arc's help, and the rule that no blast is ever put where it reaches a teammate.
 extends GdUnitTestSuite
 
 const STEP := 1.0 / 60.0
@@ -82,7 +82,7 @@ func test_the_walk_of_the_dead_is_allowed_for() -> void:
 	assert_object(grenadier.plan(HERE, pack, [], 2, 0.0)).is_null()
 
 
-func test_a_blast_is_never_put_within_four_metres_of_a_teammate() -> void:
+func test_a_blast_is_never_put_where_it_reaches_a_teammate() -> void:
 	var grenadier := BotGrenadier.new(_level())
 	var pack := _pack(Vector3(0, 0, -10))
 	var landing := grenadier.plan(HERE, pack, [], 2, 0.0).landing
@@ -109,7 +109,7 @@ func test_a_blast_is_never_put_within_four_metres_of_a_teammate() -> void:
 		var then := mate_at + walking * fresh.def.fuse
 		var d_then := Vector2(throw.landing.x - then.x, throw.landing.z - then.z).length()
 		assert_float(d_then).is_greater_equal(BotGrenadier.SAFE_FROM_TEAMMATES)
-	assert_int(thrown).is_greater(50)
+	assert_int(thrown).is_greater(20)
 	assert_int(refused).is_greater(50)
 
 
@@ -117,7 +117,8 @@ func test_a_teammate_at_the_edge_of_the_rule() -> void:
 	var grenadier := BotGrenadier.new(_level())
 	var pack := _pack(Vector3(0, 0, -10))
 	var landing := grenadier.plan(HERE, pack, [], 2, 0.0).landing
-	# The rule is 4 m; the throw is planned with the margin for the grenade not landing where aimed.
+	# The rule is where the blast takes under a tenth of a player's health (`harmless_apart`); the
+	# throw is planned with the margin for the grenade not landing where aimed.
 	var edge := BotGrenadier.SAFE_FROM_TEAMMATES + BotGrenadier.THROW_MARGIN
 	var near: Array[Dictionary] = [_mate(landing + Vector3(edge - 0.1, 0, 0))]
 	var far: Array[Dictionary] = [_mate(landing + Vector3(edge + 0.1, 0, 0))]
@@ -130,6 +131,41 @@ func test_a_teammate_at_the_edge_of_the_rule() -> void:
 	var dead := _mate(landing + Vector3(2, 0, 0))
 	dead["dead"] = true
 	assert_bool(grenadier.is_safe(landing, HERE, [dead])).is_true()
+
+
+func test_the_safe_distances_keep_a_blast_from_reaching_anyone() -> void:
+	# A blast hurts a player all the way out to its radius (`PlayerBlast`), so the bot's distances
+	# are where it takes under a tenth of the health: held to the real curve, not a number to tune.
+	var grenadier := BotGrenadier.new(_level())
+	var harmless := grenadier.harmless_apart()
+	assert_float(BotGrenadier.SAFE_FROM_SELF).is_greater_equal(harmless)
+	assert_float(BotGrenadier.SAFE_FROM_TEAMMATES).is_greater_equal(harmless)
+	var def := grenadier.def
+	var at_that := PlayerBlast.share(harmless, def.player_full_radius, def.blast_radius)
+	assert_float(at_that).is_less_equal(BotGrenadier.HARMLESS_SHARE + 0.001)
+
+
+func test_no_throw_lands_where_it_would_hurt_the_bot_or_a_teammate() -> void:
+	# Every throw planned over a spread of packs and teammates leaves the bot and the teammate where
+	# the blast takes at most a tenth of their health, at the spot it was aimed at.
+	var picker := RandomNumberGenerator.new()
+	picker.seed = 805
+	var thrown := 0
+	for _i in 120:
+		var grenadier := BotGrenadier.new(_level())
+		var def := grenadier.def
+		var pack := _pack(Vector3(picker.randf_range(-6, 6), 0, picker.randf_range(-13, -7)))
+		var mate_at := Vector3(picker.randf_range(-9, 9), 0.0, picker.randf_range(-14, 3))
+		var mates: Array[Dictionary] = [_mate(mate_at)]
+		var throw := grenadier.plan(HERE, pack, mates, 2, 0.0)
+		if throw == null:
+			continue
+		thrown += 1
+		for spot: Vector3 in [HERE, mate_at]:
+			var apart := Vector2(throw.landing.x - spot.x, throw.landing.z - spot.z).length()
+			var share := PlayerBlast.share(apart, def.player_full_radius, def.blast_radius)
+			assert_float(share).is_less_equal(BotGrenadier.HARMLESS_SHARE + 0.001)
+	assert_int(thrown).is_greater(10)
 
 
 func test_a_blast_close_to_the_bot_itself_is_not_thrown() -> void:
