@@ -21,6 +21,9 @@ const WEAPON_MODELS := {
 	&"pump_870": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 }
 
+## The weapons whose models the bench loads when one is re-cut, not with the night (#793).
+const ON_DEMAND: Array[StringName] = [&"mp5", &"ppsh", &"m4a1", &"m249", &"fifty_cal", &"pump_870"]
+
 
 static func plain(
 	colour: Color, roughness: float = 0.7, metallic: float = 0.0

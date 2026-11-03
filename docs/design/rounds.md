@@ -710,6 +710,11 @@ boss type (`boss = true`), so the one change is `health_multiplier` **13 to 16.2
 `default_tuning.tres`; the weak spot's x2.2, the blow, the speed, the extra-player step and the pay are untouched. The
 rookie-boss tuning (#568, #662) set nothing here: it changed the Rookie bot's `read`, not the boss.
 
+**Since #793 it is x15** (still 15% above the original 13): the six firearms with their rounds on sale put the headliner's
+time to kill in the gate at 31.5 s against its 30, and x15 with `health_growth` 1.16 brings it to 29.8 s
+([the numbers](../research/balance-simulator.md#the-six-firearms-793)). This was an agent's tuning choice, not the
+maintainer's: the alternative is a longer limit for the headliner's time in `BalanceTargets`.
+
 The balance report (300 nights a cell, seed 1, `--jobs 3`), before and after:
 
 | Boss night numbers | Before | After | Gate |

@@ -43,6 +43,16 @@ const MODELS := {
 	&"weapon_fifty_cal": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"weapon_pump_870": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 }
+## The prizes whose models are loaded when the first play starts, not when the night does (a night
+## that never plays the crane never loads them: #793, the web's night-load time).
+const ON_DEMAND: Array[StringName] = [
+	&"weapon_mp5",
+	&"weapon_ppsh",
+	&"weapon_m4a1",
+	&"weapon_m249",
+	&"weapon_fifty_cal",
+	&"weapon_pump_870",
+]
 ## How long a model is drawn on the stage, in metres; the others use `MODEL_LENGTH`. The flare gun
 ## is a pistol and stays small beside the long guns.
 const MODEL_LENGTH := 1.5
@@ -69,6 +79,7 @@ var leave_seconds := 4.0
 
 var _pool: Array[StringName] = []
 var _models: Dictionary = {}
+var _on_demand_loaded := false
 var _stage_node: Node3D
 var _dud: Node3D
 var _carriage: Node3D
@@ -103,6 +114,8 @@ func configure(tuning: CraneTuning, pool: Array[StringName]) -> void:
 func show_state(crane: Dictionary, delta: float) -> void:
 	_clock += delta
 	_phase = int(crane.get("stage", CraneState.Stage.READY))
+	if _phase != CraneState.Stage.READY and not _on_demand_loaded:
+		_load_on_demand()
 	var left := float(crane.get("left", 0.0))
 	var weapon := StringName(crane.get("weapon", &""))
 	match _phase:
@@ -332,18 +345,32 @@ func _stage() -> void:
 	_stage_node = Node3D.new()
 	_stage_node.position = Vector3(0.0, STAGE_Y, 0.0)
 	add_child(_stage_node)
+	_on_demand_loaded = false
 	for id in _pool:
-		var holder := Node3D.new()
-		var scene: PackedScene = load(MODELS[id]) if MODELS.has(id) else null
-		if scene != null:
-			var model := scene.instantiate() as Node3D
-			holder.add_child(model)
-			_fit(model, MODEL_LENGTHS.get(id, MODEL_LENGTH))
-		else:
-			holder.add_child(_silhouette(id))
-		holder.visible = false
-		_stage_node.add_child(holder)
-		_models[id] = holder
+		if not ON_DEMAND.has(id):
+			_add_prize(id)
+
+
+## Loads the prizes of `ON_DEMAND` that the pool holds, once, when a play starts.
+func _load_on_demand() -> void:
+	_on_demand_loaded = true
+	for id in _pool:
+		if ON_DEMAND.has(id) and not _models.has(id):
+			_add_prize(id)
+
+
+func _add_prize(id: StringName) -> void:
+	var holder := Node3D.new()
+	var scene: PackedScene = load(MODELS[id]) if MODELS.has(id) else null
+	if scene != null:
+		var model := scene.instantiate() as Node3D
+		holder.add_child(model)
+		_fit(model, MODEL_LENGTHS.get(id, MODEL_LENGTH))
+	else:
+		holder.add_child(_silhouette(id))
+	holder.visible = false
+	_stage_node.add_child(holder)
+	_models[id] = holder
 
 
 ## A plain stand-in for a weapon with no model yet: a body, a barrel and a grip, in one colour.

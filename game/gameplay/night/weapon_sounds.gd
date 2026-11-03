@@ -142,6 +142,10 @@ const RELOAD := {
 		&"snap_shut": &"reload_flare_shut",
 	},
 }
+## The guns whose own sounds are loaded when one is first carried or heard (`preload_for`), not
+## with the night: six guns' 49 sounds are most of a second bank, and a night that never carries
+## one does not pay for them (#793, the web's night-load time).
+const ON_DEMAND: Array[StringName] = [&"ppsh", &"m249", &"m4a1", &"fifty_cal", &"mp5", &"pump_870"]
 ## Lifts a sound off the ground to a player's head.
 const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
 
@@ -198,6 +202,7 @@ func _on_shot(event: Dictionary) -> void:
 	var layers: Dictionary = FIRE.get(weapon_id, {})
 	if layers.is_empty():
 		return
+	preload_for(weapon_id)
 	var at: Vector3 = event["muzzle"]
 	# The shooter's own gun is in their hands: flat, at full level, whatever the distance from the
 	# camera to the muzzle and the pan law of a 3D voice (which costs a centred sound 6 dB).
@@ -277,10 +282,50 @@ func _on_reload(event: Dictionary) -> void:
 
 
 func _on_equipped(event: Dictionary) -> void:
+	preload_for(event["weapon_id"])
 	# A weapon put away abandons its reload (the server cancels it too).
 	schedule.cancel(_reload_tag(event["player_id"]))
 	if _state.has_frame():
 		_at_player(EQUIP.get(event["weapon_id"], &"weapon_swap"), event["player_id"])
+
+
+## The sounds only the on-demand guns use: their shot, tail, equip, dry click and reload steps,
+## less any a gun that loads with the night also uses (the belt pouch).
+static func on_demand_sound_ids() -> Array[StringName]:
+	var shared := {}
+	for weapon_id: StringName in RELOAD:
+		if not ON_DEMAND.has(weapon_id):
+			for sound: StringName in RELOAD[weapon_id].values():
+				shared[sound] = true
+	var found: Array[StringName] = []
+	for weapon_id in ON_DEMAND:
+		for sound in sound_ids_of(weapon_id):
+			if not shared.has(sound) and not found.has(sound):
+				found.append(sound)
+	return found
+
+
+## Every sound `weapon_id` makes.
+static func sound_ids_of(weapon_id: StringName) -> Array[StringName]:
+	var found: Array[StringName] = []
+	for layer: StringName in FIRE.get(weapon_id, {}).values():
+		found.append(layer)
+	if EQUIP.has(weapon_id):
+		found.append(EQUIP[weapon_id])
+	if DRY.has(weapon_id):
+		found.append(DRY[weapon_id])
+	for sound: StringName in RELOAD.get(weapon_id, {}).values():
+		found.append(sound)
+	return found
+
+
+## Loads an on-demand gun's sounds into the audio service's cache (nothing for any other gun,
+## and nothing twice: a loaded sound costs a lookup).
+static func preload_for(weapon_id: StringName) -> void:
+	if not ON_DEMAND.has(weapon_id):
+		return
+	for sound in sound_ids_of(weapon_id):
+		Audio.preload_sound(sound)
 
 
 static func _reload_tag(player_id: int) -> StringName:

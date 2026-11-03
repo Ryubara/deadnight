@@ -257,7 +257,9 @@ func _load_here(paths: Array[String]) -> void:
 
 
 func _load_sounds() -> void:
-	var ids := SoundCatalog.ids()
+	# The on-demand guns' sounds wait for the first carrier (`WeaponSounds.preload_for`).
+	var later := WeaponSounds.on_demand_sound_ids()
+	var ids := SoundCatalog.ids().filter(func(id: StringName) -> bool: return not later.has(id))
 	var at := 0
 	while at < ids.size():
 		var until := Time.get_ticks_msec() + SOUND_BUDGET_MSEC

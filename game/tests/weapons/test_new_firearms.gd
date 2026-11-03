@@ -328,3 +328,39 @@ func test_a_swap_abandons_the_pump_reload() -> void:
 	assert_bool(state.is_reloading()).is_true()
 	_server.apply(CombatAction.equip(1, &"pistol"))
 	assert_bool(state.is_reloading()).is_false()
+
+
+# --- Loaded when first carried, not with the night ---
+
+
+func test_the_guns_sounds_load_on_demand_and_the_shared_ones_with_the_night() -> void:
+	var later := WeaponSounds.on_demand_sound_ids()
+	assert_array(later).contains(
+		[&"shot_ppsh", &"shot_mp5", &"reload_m249_belt", &"equip_pump_870"]
+	)
+	# The pouch is every reload's: it loads with the night.
+	assert_array(later).not_contains([&"reload_pouch"])
+	for sound in later:
+		(
+			assert_object(SoundCatalog.get_def(sound))
+			. override_failure_message(String(sound))
+			. is_not_null()
+		)
+	WeaponSounds.preload_for(&"mp5")
+	assert_int(Audio.preload_sound(&"shot_mp5")).is_equal(0)
+	assert_int(Audio.preload_sound(&"reload_mp5_bolt")).is_equal(0)
+	# A gun that loads with the night has nothing to load.
+	assert_array(WeaponSounds.on_demand_sound_ids()).not_contains([&"shot_pistol"])
+
+
+func test_the_crane_and_the_bench_load_the_guns_models_when_first_needed() -> void:
+	var crane := PrizeCrane.new()
+	add_child(crane)
+	var pool: Array[StringName] = [&"weapon_shotgun", &"weapon_mp5", &"weapon_pump_870"]
+	crane.configure(CraneTuning.new(), pool)
+	assert_bool(crane._models.has(&"weapon_shotgun")).is_true()
+	assert_bool(crane._models.has(&"weapon_mp5")).is_false()
+	crane.show_state({"stage": CraneState.Stage.SPIN, "left": 2.0}, 0.1)
+	assert_bool(crane._models.has(&"weapon_mp5")).is_true()
+	assert_bool(crane._models.has(&"weapon_pump_870")).is_true()
+	crane.free()
