@@ -276,7 +276,9 @@ number comes from) follows these numbers. They live in `tools/blender/smallmap_k
 | Atlas | the drive-in palette in its own cells plus Plaster `#b3a588`, Sandbag `#a88d62`, Chalk `#ece6d2`, Rust `#7d4b2f` and Soot `#2f2c2a` in its five empty cells, so drive-in props share it |
 | Chamfers | 60 mm on wall pieces and frames, 30 mm on props of 1-3 m |
 | Flat surfaces | plain walls, floors and ceilings stay CSG with a lot pattern, cut per room for the light cap; only shaped pieces are modelled |
-| Files | `game/assets/smallmap/<name>.gltf` + `.bin` on one `smallmap_palette.png` there (16 px swatches, lossless, no mipmaps, Detect 3D off), a fixture scene each in `game/world/smallmap/fixtures/` written by the build script |
+| Shell materials | `smallmap_wall_ground` (`blocks`, Concrete), `smallmap_wall_upper` (`plaster`, Plaster), `smallmap_floor_ground` (`concrete`), `smallmap_floor_upper` (`planks`), `smallmap_ceiling` (`plaster`) |
+| Files | `game/assets/smallmap/<name>.gltf` + `.bin` on `smallmap_palette.png` (sRGB swatches, 16 px, lossless, no mipmaps, Detect 3D off), a fixture each in `game/world/smallmap/fixtures/` with hidden CSG collision, written by the build script |
+| Walls and openings | 108-992 tris against 1.5k (`tools/blender/build_smallmap_walls.py`); openings in a ground (0.3 m, Concrete) and an `_upper` (0.2 m, Plaster) variant |
 | Cover and clutter | 16 props from `tools/blender/build_smallmap_props.py`, 44-1,320 tris against the 800 / 1.5k budgets (a 2 m sandbag line 1,320, a tall cabinet 420, a chair 184); sizes in [the parts list](../research/maps/small-map-art.md#modular-kit-parts-list) |
 
 ## Measuring again

@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://assets/smallmap/window_board.obj" id="mesh"]
+[ext_resource type="Texture2D" path="res://assets/smallmap/smallmap_palette.png" id="palette"]
+
+[sub_resource type="StandardMaterial3D" id="kit"]
+albedo_texture = ExtResource("palette")
+roughness = 0.415
+texture_filter = 0
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(1.5, 0.19, 0.05)
+
+[node name="Board" type="StaticBody3D"]
+collision_layer = 2
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("shape")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("mesh")
+material_override = SubResource("kit")
