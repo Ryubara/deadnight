@@ -42,13 +42,22 @@ func follow(event: Dictionary) -> void:
 		found.set_on(event["on"])
 
 
-## The post nearest to `point` that lies within `reach` metres (flat), or null.
-func within_reach(point: Vector3, reach: float) -> CircuitSwitch:
+## The post nearest to `point` that lies within `reach` metres (flat) and, when `sight` is given, in
+## reach of the hand without a wall between (#831), or null.
+func within_reach(point: Vector3, reach: float, sight: UseSight = null) -> CircuitSwitch:
 	var best: CircuitSwitch = null
 	var best_distance := reach
 	for circuit_id in _posts:
 		var distance := _flat(point, _posts[circuit_id].global_position)
-		if distance <= best_distance:
+		if (
+			distance <= best_distance
+			and (
+				sight == null
+				or sight.clear_mounted(
+					point, _posts[circuit_id].global_position, _posts[circuit_id].global_basis.z
+				)
+			)
+		):
 			best_distance = distance
 			best = _posts[circuit_id]
 	return best
