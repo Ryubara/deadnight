@@ -16,9 +16,9 @@ const WEAPON_MODELS := {
 	&"mp5": "res://assets/weapons/tommy_gun/tommy_gun.glb",
 	&"ppsh": "res://assets/weapons/tommy_gun/tommy_gun.glb",
 	&"m4a1": "res://assets/weapons/tommy_gun/tommy_gun.glb",
-	&"m249": "res://assets/weapons/lever_rifle/lever_rifle.glb",
-	&"fifty_cal": "res://assets/weapons/lever_rifle/lever_rifle.glb",
-	&"pump_870": "res://assets/weapons/double_shotgun/double_shotgun.glb",
+	&"m249": "res://assets/weapons/m249/m249.glb",
+	&"fifty_cal": "res://assets/weapons/fifty_cal/fifty_cal.glb",
+	&"pump_870": "res://assets/weapons/pump_870/pump_870.glb",
 }
 
 ## The weapons whose models the bench loads when one is re-cut, not with the night (#793).

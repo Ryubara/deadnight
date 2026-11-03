@@ -28,7 +28,7 @@ const GUNS: Array[StringName] = [&"rifle", &"shotgun", &"pistol", &"smg", &"flar
 ## The weapons given a size other than the rule's (docs/design/weapon-hold.md, "The size rule").
 ## The grenade's own size exception: drawn 2.2 times the rule so it fills the fist.
 const GRENADE_SIZE_FACTOR := 2.2
-const SIZE_EXCEPTIONS := {&"pistol": 1.75, &"flare_gun": 1.7}
+const SIZE_EXCEPTIONS := {&"pistol": 1.75, &"flare_gun": 1.7, &"fifty_cal": 0.93}
 
 var _runner: GdUnitSceneRunner
 var _player: Player

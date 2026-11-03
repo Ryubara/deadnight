@@ -39,9 +39,9 @@ const MODELS := {
 	&"weapon_mp5": "res://assets/weapons/tommy_gun/tommy_gun.glb",
 	&"weapon_ppsh": "res://assets/weapons/tommy_gun/tommy_gun.glb",
 	&"weapon_m4a1": "res://assets/weapons/tommy_gun/tommy_gun.glb",
-	&"weapon_m249": "res://assets/weapons/lever_rifle/lever_rifle.glb",
-	&"weapon_fifty_cal": "res://assets/weapons/lever_rifle/lever_rifle.glb",
-	&"weapon_pump_870": "res://assets/weapons/double_shotgun/double_shotgun.glb",
+	&"weapon_m249": "res://assets/weapons/m249/m249.glb",
+	&"weapon_fifty_cal": "res://assets/weapons/fifty_cal/fifty_cal.glb",
+	&"weapon_pump_870": "res://assets/weapons/pump_870/pump_870.glb",
 }
 ## The prizes whose models are loaded when the first play starts, not when the night does (a night
 ## that never plays the crane never loads them: #793, the web's night-load time).
