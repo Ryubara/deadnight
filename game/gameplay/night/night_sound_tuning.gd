@@ -48,8 +48,8 @@ static var _shipped: NightSoundTuning = null
 ## A reload's steps are this much louder than their own level: another player's, so the team hears
 ## who is exposed through gunfire (+5: every step of five weapons heard over a tommy gun 6 m off),
 ## and the player's own, which play flat and already stand out (+2 made them as loud as the
-## player's own shots). Measured with `tools/audio/reload_audibility.py` (#683); +6 took a step to
-## full scale for 4 samples when it landed on a tommy gun shot (#718).
+## player's own shots). Measured with `tools/audio/reload_audibility.py` (#683); with +6 a step
+## landing on a tommy gun shot reached -0.8 dBFS (#718).
 @export_range(0.0, 18.0, 0.5, "suffix:dB") var teammate_reload_db := 5.0
 @export_range(0.0, 12.0, 0.5, "suffix:dB") var own_reload_db := 0.0
 

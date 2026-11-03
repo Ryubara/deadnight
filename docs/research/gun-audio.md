@@ -127,7 +127,7 @@ trim, and the mix stays a plain sum (the reload audibility measurement of #683 r
 double-barrel) -3.0 to -7.0, each a 4 dB cut, and the rifle -3.5 to -6.5, a 3 dB cut (4 dB left its two second burst
 16.7 LU over the beds, the test asks 17). The flare gun stays at -1.5: its report is a sharp crack (a crest factor of 20
 dB: a 1.2 dB cut of its peak takes 2.5 dB off its burst's loudness, under the 17 LU), and it fires once in a long while.
-A teammate's reload steps are lifted by 5 dB (`teammate_reload_db`, was 6): the loudest step landed on a tommy gun
+A teammate's reload steps are lifted by 5 dB (`teammate_reload_db`, was 6): a rifle round step landed on a tommy gun
 shot at -0.8 dBFS (4 samples over -1 dBFS) with 6, and with 5 every step of five weapons is still heard under a tommy
 gun 6 m off ([design](../design/audio.md#reloads)). A cut in trim is a cut in gain: peak, RMS and loudness fall
 together, the crest factor of a burst does not move.

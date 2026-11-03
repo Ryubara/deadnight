@@ -57,8 +57,8 @@ are in the [animation page's table](animation.md#every-weapon).
 - **The player's own steps play flat**, as the player's own shots do: at the head, as a 3D voice, they were 6 dB down
   and partly lost under fire (the empty click and the swap keep their place). `NightSoundTuning.own_reload_db` is 0: at
   +2 they were as loud as the player's own shots. Another player's steps sound at his head, lifted by
-  `teammate_reload_db` (+5; +6 until #718 took the guns 4 dB down, and took a step to full scale for 4 samples when it
-  landed on a tommy gun shot), since a teammate's reload tells the team he is exposed.
+  `teammate_reload_db` (+5; +6 until #718: with the guns 3 to 4 dB down, a step landing on a tommy gun shot still reached
+  -0.8 dBFS, 4 samples over -1), since a teammate's reload tells the team he is exposed.
 - **Heard under fire, measured.** `tests/captures/reload_under_fire.tscn` plays a reload and a tommy gun firing without
   a break (0.075 s), as a client plays them, through the audio service, heard from the shoulder camera; the gunfire and
   the reload are rendered apart (the buses have no effects, so the mix is their sum) and
