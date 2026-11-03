@@ -772,6 +772,19 @@ SPRINT_CARRY = {
     # SprintCarry.clip_for picks it for that model and the class's for the rest.
     "tommy_gun": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
                   "swing": 6.0, "dip": 4.0, "hold": "smg", "class": "Rifle"},
+    # The six firearms of #793: pistol-grip guns like the Tommy gun, each carried through its own grip.
+    "ppsh": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+                  "swing": 6.0, "dip": 4.0, "hold": "ppsh", "class": "Rifle"},
+    "mp5": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+                  "swing": 6.0, "dip": 4.0, "hold": "mp5", "class": "Rifle"},
+    "m4a1": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+                  "swing": 6.0, "dip": 4.0, "hold": "m4a1", "class": "Rifle"},
+    "m249": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+                  "swing": 6.0, "dip": 4.0, "hold": "m249", "class": "Rifle"},
+    "fifty_cal": {"grip": (0.1, -0.33, 0.0), "muzzle": (0.85, -0.5, 0.45), "top": (-0.3, 0.2, 1.0),
+                  "swing": 6.0, "dip": 4.0, "hold": "fifty_cal", "class": "Rifle"},
+    "pump_870": {"grip": (0.1, -0.33, -0.03), "muzzle": (0.85, -0.52, 0.4), "top": (-0.3, 0.2, 1.0),
+                 "swing": 7.0, "dip": 5.0, "hold": "pump_870", "class": "Shotgun"},
 }  # fmt: skip
 # The carries of single models, after the class ones (named Sprint_<model>).
 SPRINT_MODELS = tuple(k for k, c in SPRINT_CARRY.items() if "class" in c)

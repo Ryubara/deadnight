@@ -10,6 +10,9 @@
 # plaza's floor and
 # fail when any chain of hops leaves the plaza, and pin the margin between the tallest prop at a
 # wall and its top.
+# The same sweep fails when a chain stands on anything over the body's reach: the containers, the
+# dumpster, the machine and the wreck at the end wall were climbed from a crate and a stack of tyres
+# beside them, and a player on the container's back edge took no blow from ten dead in 40 s (#855).
 extends GdUnitTestSuite
 
 ## The plaza's walls: the end wall's and the side walls' middle lines, and the gate's line it opens
@@ -67,6 +70,7 @@ var _lot: Node3D
 var _body: CharacterBody3D
 var _tuning: PlayerTuning
 var _seen := {}
+var _hops := 0
 
 
 func before_test() -> void:
@@ -87,6 +91,7 @@ func before_test() -> void:
 	_body.floor_snap_length = 0.3
 	_lot.add_child(_body)
 	_seen.clear()
+	_hops = 0
 
 
 func test_the_old_hops_out_of_the_corner_no_longer_leave_the_lot() -> void:
@@ -111,6 +116,7 @@ func test_no_chain_of_hops_from_the_plaza_floor_leaves_it() -> void:
 				. override_failure_message("a hop from %s lands at %s" % [start, place])
 				. is_false()
 			)
+			_assert_within_reach(start, place)
 			if _is_new_standing_place(place):
 				frontier.append(place)
 	var depth := 1
@@ -125,12 +131,27 @@ func test_no_chain_of_hops_from_the_plaza_floor_leaves_it() -> void:
 					)
 					. is_false()
 				)
+				_assert_within_reach(from, place)
 				if _is_new_standing_place(place):
 					next.append(place)
 		frontier = next
 		depth += 1
-	# The sweep must have looked at something: the stack by the wall is there to be climbed onto.
-	assert_int(_seen.size()).is_greater(3)
+	# The sweep must have looked at something: every floor cell by the walls, each heading and jump.
+	assert_int(_hops).is_greater(2000)
+
+
+## Nothing over the body's reach is stood on: a prop that tall was got onto from a step beside it.
+func _assert_within_reach(from: Vector3, place: Vector3) -> void:
+	(
+		assert_float(place.y)
+		. override_failure_message(
+			(
+				"from %s a body stands at %s, over its reach: a step to the top of a prop"
+				% [from, place]
+			)
+		)
+		. is_less_equal(BODY_REACH + 0.05)
+	)
 
 
 func test_each_plaza_wall_stands_well_over_the_tallest_prop_beside_it() -> void:
@@ -211,7 +232,15 @@ func _solid_floor_at(x: float, z: float) -> bool:
 	query.shape = shape
 	query.collision_mask = PhysicsLayers.WORLD | PhysicsLayers.BOARDS
 	query.transform = Transform3D(Basis.IDENTITY, Vector3(x, _tuning.radius + 0.1, z))
-	return _lot.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+	var space := _lot.get_world_3d().direct_space_state
+	if not space.intersect_shape(query, 1).is_empty():
+		return false
+	# The first thing under a point 3 m up is the floor, not a prop's top (a body set down inside a
+	# prop the sphere missed is pushed out onto it).
+	var ray := PhysicsRayQueryParameters3D.create(Vector3(x, 3.0, z), Vector3(x, -1.0, z))
+	ray.collision_mask = PhysicsLayers.WORLD | PhysicsLayers.BOARDS
+	var hit := space.intersect_ray(ray)
+	return not hit.is_empty() and hit["position"].y < 0.05
 
 
 ## Where the body ends up after each way of hopping at each of `count` headings from `from`.
@@ -228,6 +257,7 @@ func _hops_from(from: Vector3, count: int) -> Array[Vector3]:
 ## One hop of the real body: run at `yaw`, jump pressed for three ticks from `jump_tick`, then
 ## settle.
 func _run(from: Vector3, yaw: float, sprint: bool, jump_tick: int) -> Vector3:
+	_hops += 1
 	var state := PlayerMotionState.new()
 	state.position = Vector3(from.x, from.y + 0.02, from.z)
 	state.on_floor = true

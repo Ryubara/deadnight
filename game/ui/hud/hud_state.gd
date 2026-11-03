@@ -568,6 +568,8 @@ func _handler(type: StringName) -> Callable:
 			handler = func(e: Dictionary) -> void: HudLoadout.apply(e, self)
 		&"weapon_equipped", &"shot_fired", &"reload_started", &"reload_finished", &"ammo_added":
 			handler = func(e: Dictionary) -> void: HudLoadout.apply(e, self)
+		&"reload_round", &"reload_interrupted":
+			handler = func(e: Dictionary) -> void: HudLoadout.apply(e, self)
 	return handler
 
 

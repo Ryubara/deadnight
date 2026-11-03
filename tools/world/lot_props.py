@@ -215,7 +215,13 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("gas_tank", 38.8, 14.35, 0),
         ("gas_tank", 39.65, 14.35, 0),
         ("water_tank", 60.85, 18.0, 90),
-        ("tires", 61.34, 24.0, 90),
+        # Tyres (0.87 m, a step) in the south-east corner, beyond a sprint-jump of the cartons below (#855).
+        ("tires", 61.34, 36.0, 90),
+        # The east third's run (#855): a row of carton stacks (1.40 m: over the body's reach, under its eye) along the
+        # east side, 2.6 m short of container B, so a pack is led round the row and the container (a lap of 40 m and
+        # more, `test_lot_loops.gd`) or through the gap between them. Clear of the fuel tank by 1.9 m and of the water
+        # tank by 2.1 m, both passages the shoulder camera fits (1.8 m).
+        *[("boxes", 57.4, 15.165 + 1.13 * i, 90 + (3, -2, 1, -3, 2, 0, -1, 3, -2)[i]) for i in range(9)],
         ("cone", 38.0, -1.6, 0),
         ("cone", 42.0, -1.6, 0),
         # Density pass: pipes on the north fence, a skip by the fuel tanks, hoardings and drums on the south fence,
@@ -336,15 +342,26 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("sign", 2.6, 39.0, 0),
         ("papers", -5.0, 49.0, 20),
         ("papers_c", 6.0, 50.5, 80),
+        # Stock for the stand waiting in the court (#855): two rows of carton stacks (1.40 m: over the body's reach,
+        # under its eye) across the south half, either side of the machine's line, so the machine is reached round
+        # them from both sides, a pack is led round the rows or the rows and the booths (a loop of 40 m and more), and
+        # the gap between them looks straight at the machine from the gate.
+        *[
+            ("boxes", x, 51.6, (2, -1, 3, 0, -2, 1, -3, 2)[i])
+            for i, x in enumerate((-5.155, -4.025, -2.895, -1.765, 1.765, 2.895, 4.025, 5.155))
+        ],
         # The south wall, where the road used to run on: the lot's junk stacked against it, a wreck nose-in (the greybox's),
         # clear of the machine at x -1.2 to 1.2 and the ground in front of it. Each solid prop touches the wall or stands
         # a body's width off it (`test_lot_gaps.gd`), and none is a step towards the wall's top (`test_drive_in_jump_reach.gd`).
+        # Nothing a body can step up on stands beside the junk: from two crates and a stack of tyres here a player got
+        # onto the containers, the dumpster, the machine and the wreck, and the container's back edge, against the wall,
+        # was a roost (no blow from ten dead in 40 s, #855). Loose cartons (no collision) stand where the crates were.
         ("container_small", -14.92, 56.97, 0),
-        ("crate", -12.5, 57.485, 0),
-        ("crate", -11.8, 57.485, 0),
+        ("box", -12.4, 57.35, 5),
+        ("box", -11.6, 57.4, 350),
         ("dumpster", 5.0, 57.28, 0),
         ("container", 10.5, 56.95, 0),
-        ("tires", 15.1, 57.34, 0),
+        ("tires", 11.5, 41.0, 0),
         ("planks", 3.6, 56.9, 0),
         ("cone", -4.0, 53.6, 0),
         ("cone", 4.0, 53.6, 0),
@@ -391,7 +408,9 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("tires", 61.34, -40.0, 90),
         ("sofa_small", 61.2, -30.0, 90),
         ("pipes", 61.4, -12.0, 0),
-        ("sofa_small", 48.0, -26.0, 0),
+        # A sofa (1.06 m, a step) dumped in the open between the cars and the flank's wreck row, 6.4 m from the row:
+        # more than a sprint-jump, so it is low cover, not a stair onto a wreck (#855).
+        ("sofa_small", 45.6, -22.6, 90),
         # Barriers along the north fence on either side of the screen, beyond the last car.
         ("barrier", -44.0, -51.3, 0),
         ("barrier", -45.52, -51.3, 0),

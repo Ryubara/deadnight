@@ -396,3 +396,40 @@ func test_the_scoreboard_button_is_held_while_the_thumb_is_on_it() -> void:
 	await _fixture.lift(0, point)
 	await await_millis(250)
 	assert_bool(Input.is_action_pressed(&"scoreboard")).is_false()
+
+
+## Counts how often the controls were drawn over `frames` frames, from now.
+func _draws_over(frames: int) -> int:
+	var draws := [0]
+	var count := func() -> void: draws[0] += 1
+	_fixture.controls.draw.connect(count)
+	for i in frames:
+		await get_tree().process_frame
+	_fixture.controls.draw.disconnect(count)
+	return draws[0]
+
+
+# Each `draw_circle` and `draw_arc` is a polygon the Compatibility renderer builds into buffers of
+# its own, so a redraw every frame made the web page create a couple of hundred WebGL objects a
+# frame, which its id tables keep for good (#834): the buttons are drawn when they change.
+func test_idle_controls_are_not_redrawn_every_frame() -> void:
+	await get_tree().process_frame
+	assert_int(await _draws_over(30)).is_less(3)
+
+
+func test_a_held_button_and_a_moving_stick_are_redrawn() -> void:
+	await get_tree().process_frame
+	var point := _fixture.at(TouchLayout.AIM)
+	var draws := [0]
+	_fixture.controls.draw.connect(func() -> void: draws[0] += 1)
+	await _fixture.touch(0, point)
+	await get_tree().process_frame
+	assert_int(draws[0]).is_greater(0)
+	await _fixture.lift(0, point)
+	var start := Vector2(300.0, 800.0)
+	draws[0] = 0
+	await _fixture.touch(1, start)
+	await _fixture.drag(1, start + Vector2(60.0, 0.0), Vector2(60.0, 0.0))
+	await get_tree().process_frame
+	assert_int(draws[0]).is_greater(1)
+	await _fixture.lift(1)

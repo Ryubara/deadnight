@@ -82,10 +82,12 @@ material_override = SubResource("HaloMaterial")
 cast_shadow = 0
 mesh = SubResource("HaloMesh")
 
-[node name="Light" type="OmniLight3D" parent="." unique_id=875916273 groups=["powered_light"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 1.2)
+[node name="Light" type="SpotLight3D" parent="." unique_id=875916273 groups=["powered_light"]]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, -0.3, 1.2)
 light_color = Color(1, 0.25, 0.5, 1)
-light_energy = 9.647
-omni_range = 10.0
-omni_attenuation = 1.4
+light_energy = 16.0
+spot_range = 10.0
+spot_attenuation = 1.4
+spot_angle = 85.0
+spot_angle_attenuation = 0.4
 metadata/decor = true

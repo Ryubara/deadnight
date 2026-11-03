@@ -23,10 +23,18 @@ const UNTRACK_TARGET := &"untrack_target"
 ## The trigger. `origin` and `dir` are the camera ray, `muzzle` where the barrel is, `view_time`
 ## the server time of the world the shooter was looking at (the lag compensation rewinds to it).
 ## It also swings a melee weapon: `dir` is then the facing and `origin` the chest.
+## `move` is how fast the shooter runs, 0 standing to 1 at a full run: a weapon with a
+## `moving_spread_deg` widens its cone by it.
 static func fire(
-	shooter_id: int, seq: int, origin: Vector3, dir: Vector3, muzzle: Vector3, view_time: float
+	shooter_id: int,
+	seq: int,
+	origin: Vector3,
+	dir: Vector3,
+	muzzle: Vector3,
+	view_time: float,
+	move: float = 0.0
 ) -> Dictionary:
-	return {
+	var action := {
 		"type": FIRE,
 		"shooter_id": shooter_id,
 		"seq": seq,
@@ -35,6 +43,9 @@ static func fire(
 		"muzzle": muzzle,
 		"view_time": view_time,
 	}
+	if move > 0.0:
+		action["move"] = move
+	return action
 
 
 ## The quick melee button (#411): a blow with whatever is in hand, swept from `origin` (the head)

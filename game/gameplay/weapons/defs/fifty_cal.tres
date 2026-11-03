@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://gameplay/weapons/weapon_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"fifty_cal"
+display_name = "Fifty cal"
+kind = 0
+automatic = false
+damage = 220
+pellets = 1
+spread_deg = 0.15
+falloff_start = 150
+falloff_end = 151
+min_damage_fraction = 1.0
+max_range = 150
+penetration = 4
+penetration_falloff = 0.7
+zone_multipliers = Dictionary[StringName, float]({
+&"body": 1.0,
+&"head": 2.0,
+&"limb": 0.8
+})
+fire_interval = 0.9
+magazine_size = 5
+reserve_start = 20
+reserve_max = 40
+reload_time = 3.4
+shake_trauma = 0.55
+flash_size = 0.6

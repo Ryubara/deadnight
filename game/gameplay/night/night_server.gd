@@ -58,6 +58,8 @@ const COMBAT_EVENTS: Array[StringName] = [
 	&"damage_dealt",
 	&"target_killed",
 	&"reload_started",
+	&"reload_round",
+	&"reload_interrupted",
 	&"reload_finished",
 	&"reload_rejected",
 	&"weapon_replaced",
@@ -130,6 +132,10 @@ var _silent: Dictionary[int, int] = {}
 ## The `seq` of the command each player's last step used.
 var _acked: Dictionary[int, int] = {}
 var _bodies: Dictionary[int, Player] = {}
+## Which start marker each player came in on (`NightWorld.player_spawn`): where they are put back.
+var _slots: Dictionary[int, int] = {}
+## Seconds each player has been outside the playable space (`_return_strays`).
+var _out_for: Dictionary[int, float] = {}
 var _shot_seq: Dictionary[int, int] = {}
 var _hand_wait: Dictionary[int, float] = {}
 ## The breach each player's held `use` is repairing (`&""`: none): from a press at a breach until
@@ -291,6 +297,7 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 	tick_count += 1
 	var began := PerfProbe.begin()
 	_move_players()
+	_return_strays(delta)
 	PerfProbe.end(&"server.move", began)
 	if tick_count % SPAWN_RETRY_TICKS == 0:
 		director.spawn_points = world.spawn_points()
@@ -331,7 +338,8 @@ func step(delta: float, with_frame := true) -> Array[Dictionary]:
 func _join(player_id: int, local: bool, bot := false) -> void:
 	if _bodies.has(player_id):
 		return
-	_bodies[player_id] = world.add_body(world.player_spawn(_bodies.size()), local, drawn_bodies)
+	_slots[player_id] = _bodies.size()
+	_bodies[player_id] = world.add_body(world.player_spawn(_slots[player_id]), local, drawn_bodies)
 	crowd.join(player_id, OS.has_feature("web") if local else true)
 	looks.join(player_id)
 	_shot_seq[player_id] = 0
@@ -351,6 +359,8 @@ func _leave(player_id: int) -> void:
 	if _bodies.has(player_id):
 		_bodies[player_id].queue_free()
 		_bodies.erase(player_id)
+		_slots.erase(player_id)
+		_out_for.erase(player_id)
 		crowd.leave(player_id)
 		_pending.erase(player_id)
 		_silent.erase(player_id)
@@ -405,6 +415,26 @@ func _move_players() -> void:
 			command.motion.jump = false
 			command.motion.melee = false
 			command.motion.swap_shoulder = false
+
+
+## The server's rule for a player who has left the playable space (a hop past a fence, a physics
+## glitch, a desync): after `NightTuning.out_of_bounds_seconds` outside, the body is put back on the
+## start marker it came in on, at rest. A state change only the server makes; clients follow it as
+## they follow any move of the server's (`Reconciler` for the player's own body, the next frame for
+## the others). The rules' state is not touched: a player on the ground is still on the ground, with
+## the bleed-out running, and a player standing is still standing.
+func _return_strays(delta: float) -> void:
+	if world.bounds == null:
+		return
+	for player_id in _bodies:
+		var body := _bodies[player_id]
+		if not world.bounds.is_out(body.global_position):
+			_out_for.erase(player_id)
+			continue
+		_out_for[player_id] = _out_for.get(player_id, 0.0) + delta
+		if _out_for[player_id] >= tuning.out_of_bounds_seconds:
+			_out_for.erase(player_id)
+			body.teleport(world.player_spawn(_slots.get(player_id, 0)))
 
 
 ## What a command that was not renewed becomes: standing still with the trigger released, looking
@@ -680,8 +710,11 @@ func _shoot(player_id: int, command: NightCommand, delta: float) -> void:
 	var view_time := combat.now
 	if command.view_step >= 0:
 		view_time -= float(maxi(tick_count - command.view_tick, 0)) * delta
+	var move := clampf(body.state.ground_speed() / body.tuning.run_speed, 0.0, 1.0)
 	_combat(
-		CombatAction.fire(player_id, _shot_seq[player_id], origin, command.dir, muzzle, view_time)
+		CombatAction.fire(
+			player_id, _shot_seq[player_id], origin, command.dir, muzzle, view_time, move
+		)
 	)
 
 

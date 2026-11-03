@@ -7,7 +7,19 @@ extends GdUnitTestSuite
 const TEST_ROOM := "res://world/test_room.tscn"
 const TICK := 1.0 / 60.0
 const START := Vector3(0.0, 0.05, 10.0)
-const GUNS: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]
+const GUNS: Array[StringName] = [
+	&"pistol",
+	&"smg",
+	&"rifle",
+	&"shotgun",
+	&"flare_gun",
+	&"ppsh",
+	&"mp5",
+	&"m4a1",
+	&"m249",
+	&"fifty_cal",
+	&"pump_870",
+]
 ## The weapon turns at least this far from its hold (degrees) and its grip moves at least this far
 ## (metres): enough to come out from behind the head of the shoulder camera's view.
 const MIN_TURN_DEG := 30.0
@@ -236,3 +248,70 @@ func test_every_motion_starts_and_ends_on_the_hold_and_names_its_parts() -> void
 		)
 		model.free()
 		assert_bool(ResourceLoader.exists(motion.ammo_scene)).is_true()
+
+
+# --- The pump: one cycle a round (#793) ---
+
+
+func test_the_pump_motion_is_a_loop_of_one_cycle_a_round_over_its_magazine() -> void:
+	var motion := ReloadMotion.for_weapon(&"pump_870")
+	var def := WeaponCatalog.get_def(&"pump_870")
+	assert_bool(motion.is_by_round()).is_true()
+	assert_int(motion.loop_rounds).is_equal(def.magazine_size)
+	assert_float(motion.loop_from).is_greater(0.0)
+	assert_float(motion.loop_to).is_less(1.0)
+	# A shell goes in, and the belt is reached for, once in each cycle; the pump is racked once.
+	assert_int(motion.event_shares(&"shell_in").size()).is_equal(def.magazine_size)
+	assert_int(motion.event_shares(&"pouch").size()).is_equal(def.magazine_size)
+	assert_int(motion.event_shares(&"pump").size()).is_equal(1)
+
+
+func test_a_reload_of_fewer_rounds_plays_the_lead_in_that_many_cycles_and_the_lead_out() -> void:
+	var motion := ReloadMotion.for_weapon(&"pump_870")
+	for rounds in range(1, motion.loop_rounds + 1):
+		assert_float(motion.playhead(0.0, rounds)).is_equal(0.0)
+		assert_float(motion.playhead(1.0, rounds)).is_equal_approx(1.0, 0.0001)
+		var last := -1.0
+		for i in 101:
+			var at := motion.playhead(float(i) / 100.0, rounds)
+			assert_float(at).is_greater_equal(last)
+			last = at
+		assert_int(motion.event_shares_for(&"shell_in", rounds).size()).is_equal(rounds)
+		assert_int(motion.event_shares_for(&"pouch", rounds).size()).is_equal(rounds)
+		assert_int(motion.event_shares_for(&"pump", rounds).size()).is_equal(1)
+		for event: StringName in motion.events:
+			for share in motion.event_shares_for(event, rounds):
+				assert_float(share).is_between(0.01, 0.99)
+	# The whole reload is the identity, and a magazine gun's motion ignores the count.
+	assert_float(motion.playhead(0.37, motion.loop_rounds)).is_equal(0.37)
+	assert_float(ReloadMotion.for_weapon(&"smg").playhead(0.37, 3)).is_equal(0.37)
+
+
+func test_the_pump_reload_of_two_rounds_shows_two_shells_going_in() -> void:
+	await _equip(&"pump_870")
+	var def := WeaponCatalog.get_def(&"pump_870")
+	var seconds := def.round_seconds() * 2.0
+	_animation.reload(seconds, 2)
+	var shown := 0
+	var last := false
+	for i in roundi(seconds / TICK) + 20:
+		await _ticks(1)
+		var ammo := _animation.reload_ammo()
+		var now := ammo != null and ammo.visible
+		if last and not now:
+			shown += 1
+		last = now
+	# The shell is in the hand twice (taken from the belt, put in), and the reload ends clean.
+	assert_int(shown).is_equal(2)
+	assert_float(_animation.reload_weight()).is_equal_approx(0.0, 0.001)
+
+
+func test_a_shot_that_ends_the_pump_reload_lets_the_arms_back_to_the_hold() -> void:
+	await _equip(&"pump_870")
+	_animation.reload(2.8, 6)
+	await _seconds(0.8)
+	assert_float(_animation.reload_weight()).is_greater(0.9)
+	_animation.cancel_reload()
+	await _seconds(0.5)
+	assert_float(_animation.reload_weight()).is_equal_approx(0.0, 0.001)
+	assert_object(_animation.hands().reload).is_null()
