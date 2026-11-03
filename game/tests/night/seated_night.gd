@@ -30,11 +30,16 @@ var stage_the_dead := false
 ## When on, every command the bots send leaves with the trigger up: the bots move, look and dodge
 ## as they would but never shoot (a test of the legs alone, on a zombie a hit would stagger).
 var hold_fire := false
+## When on, the bots seated from now on hold where they stand unless an errand or a revive moves
+## them (`BotProfile.follows` off): with no order given a bot roams, and a test about the fight, or
+## about one errand, wants a bot that stays where it was put.
+var stand_still := false
 ## When above 0, the state hash after every this many steps is kept in `hashes`.
 var hash_every := 0
 var hashes: Array[int] = []
 
-## What the server answered to the actions the bots sent (a `bot_say`, a ping's mark): heard with
+## What the server answered to the actions the bots and the people sent (a `bot_say`, a ping's mark,
+## an order taken or refused): heard with
 ## the next step's events, as a server's broadcast would be.
 var _answers: Array[Dictionary] = []
 ## The dead already staged (`stage_the_dead`).
@@ -83,6 +88,8 @@ func seat(
 ) -> BotClient:
 	var state := ClientState.new()
 	state.player_id = id
+	if stand_still:
+		profile.follows = false
 	var bot := BotClient.new(state, profile, bot_seed, Callable(self, &"_send").bind(id), level)
 	if legacy:
 		var autopilot := Autopilot.new(state, world.map())
@@ -98,6 +105,15 @@ func human(id: int) -> HumanWalker:
 	var walker := HumanWalker.new(server, world.map(), id)
 	walkers.append(walker)
 	return walker
+
+
+## The person at seat `issuer` gives the bots `order`, as the command wheel does through
+## `BotOrders.issue`: the connection of that seat carries the action (bytes and back) and the server
+## decides. Returns what was sent. The bots read it from the next frame.
+func give_order(order: StringName, issuer: int, at: Vector3, bot_id := 0) -> Dictionary:
+	var orders := BotOrders.new()
+	orders.sender = Callable(self, &"_send").bind(issuer)
+	return orders.issue(order, issuer, at, bot_id)
 
 
 ## Sells `door_id` to player 1 through the rules, as a purchase would: the lot opens it and the
@@ -297,5 +313,10 @@ func _send(action: Dictionary, id: int) -> void:
 	if recording and plain.get("type") != NightServer.SAY:
 		recorded.append({"tick": server.tick_count, "player_id": id, "action": plain})
 	for event in server.apply(plain, id):
-		if event["type"] == &"bot_say" or event["type"] == &"ping_placed":
+		if (
+			event["type"] == &"bot_say"
+			or event["type"] == &"ping_placed"
+			or event["type"] == BotOrders.EVENT_SET
+			or event["type"] == BotOrders.EVENT_REFUSED
+		):
 			_answers.append(event)

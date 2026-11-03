@@ -456,3 +456,81 @@ func test_the_rules_are_fixed_once_the_night_has_started_and_not_shown_in_a_prev
 	var previewing := await _screen(seen, {"preview": seen.preview_answer})
 	assert_bool(previewing.rules.is_visible_in_tree()).is_false()
 	previewing.free()
+
+
+# --- The map (#624) ---
+
+
+func test_the_host_picks_the_map_and_it_goes_to_the_backend_with_the_other_rules() -> void:
+	StubMaps.install()
+	var api := LobbyFixture.FakeApi.new(self)
+	api.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	var screen := await _screen(api, {"lobby": api.lobby})
+	assert_str(screen.rules.map_picker.selected_id).is_equal("drive_in")
+	assert_bool(screen.rules.map_picker.is_editable()).is_true()
+	screen.rules.map_picker.card_for(StubMaps.ID).pressed.emit()
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(1)
+	assert_str(api.rules_sent[0].map).is_equal(StubMaps.ID)
+	assert_str(api.lobby["settings"]["map"]).is_equal(StubMaps.ID)
+	# The card of a map that is not built chooses nothing, so nothing is sent.
+	screen.rules.map_picker.card_for("small_indoor").pressed.emit()
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(1)
+	screen.free()
+	StubMaps.remove()
+
+
+func test_a_guest_sees_the_hosts_map_and_cannot_change_it() -> void:
+	StubMaps.install()
+	var api := LobbyFixture.FakeApi.new(self)
+	api.me = "b"
+	api.lobby = LobbyFixture.lobby(
+		[LobbyFixture.member("a", "Ann", 1, true), LobbyFixture.member("b", "Bo", 2)]
+	)
+	var screen := await _screen(api, {"lobby": api.lobby})
+	assert_str(screen.rules.map_picker.selected_id).is_equal("drive_in")
+	api.refreshed = api.lobby.duplicate()
+	api.refreshed["settings"] = _rules(1.0, 0, 0.0).merged({"map": StubMaps.ID})
+	await screen.watch.poll()
+	assert_str(screen.rules.map_picker.selected_id).is_equal(StubMaps.ID)
+	assert_bool(screen.rules.map_picker.is_editable()).is_false()
+	screen.rules.map_picker.card_for("drive_in").pressed.emit()
+	assert_str(screen.rules.map_picker.selected_id).is_equal(StubMaps.ID)
+	await screen.send_rules()
+	assert_int(api.rules_sent.size()).is_equal(0)
+	# Play opens the night on the map the lobby holds, so the world is built on it before the WELCOME.
+	api.refreshed = LobbyFixture.lobby(api.lobby["members"], "started", null)
+	api.refreshed["settings"] = _rules(1.0, 0, 0.0).merged({"map": StubMaps.ID})
+	await screen.watch.poll()
+	await screen._go_in(false)
+	assert_str(NightScreen.join_map).is_equal(StubMaps.ID)
+	NightScreen.join_map = ""
+	screen.free()
+	StubMaps.remove()
+
+
+func test_a_code_looked_at_shows_the_map_of_the_room_before_joining() -> void:
+	StubMaps.install()
+	var api := LobbyFixture.FakeApi.new(self)
+	api.preview_answer = LobbyFixture.preview("open", null, 1)
+	var plain := await _screen(api, {"preview": api.preview_answer})
+	assert_bool(plain.map_card.is_visible_in_tree()).is_true()
+	assert_str(plain.map_card.info.id).is_equal("drive_in")
+	assert_int(plain.map_card.focus_mode).is_equal(Control.FOCUS_NONE)
+	plain.free()
+	var other := LobbyFixture.preview("open", null, 2)
+	other["map"] = StubMaps.ID
+	api.preview_answer = other
+	var shown := await _screen(api, {"preview": other})
+	assert_str(shown.map_card.info.id).is_equal(StubMaps.ID)
+	assert_str(shown.map_card.info.title).is_equal("Stub lot")
+	# A lobby of the player's own shows the map in its rules, not as a second card.
+	shown.free()
+	var held := LobbyFixture.FakeApi.new(self)
+	held.lobby = LobbyFixture.lobby([LobbyFixture.member("a", "Ann", 1, true)])
+	var live := await _screen(held, {"lobby": held.lobby})
+	assert_bool(live.map_card.visible).is_false()
+	assert_bool(live.rules.map_picker.is_visible_in_tree()).is_true()
+	live.free()
+	StubMaps.remove()
