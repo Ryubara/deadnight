@@ -16,6 +16,13 @@ extends Node
 ##   `crowd=N`    the first round brings N zombies (the tuned 6 otherwise); with `tough`, a crowd
 ##                that stands at once
 ##   `break=S`    seconds of break between rounds (0 is the tuned break)
+##   `bots=N`     N hosted bots beside the autopilot (a night of N + 1 players; default 0)
+##   `startround=R` the night starts at round R (the rules' round counter is set to R - 1 before the
+##                first round), with `points=P` points for every player (default 20000 once
+##                `startround` is given) so the bots have bought what a late round has
+##   `ceiling=desktop` the bots say they are not browsers, so the desktop's 120 dead may stand (they
+##                count as browsers otherwise: the ceiling is 40)
+##   `sample=1`   a `PerfSampler` row each second (monitors, counts, labelled times) in the report
 ##   `map=ID`     the map of the night (`MapRegistry`: `drive_in`, `small_indoor`; default the lot)
 ##   `seconds=S`  stop after S seconds of night whatever round it is (default 600)
 ##   `out=PATH`   on a desktop: write the report there and quit
@@ -49,6 +56,8 @@ var _played := 0.0
 var _reached_at := -1.0
 var _done := false
 var _ablated := false
+var _sampler: PerfSampler
+var _jumped := false
 
 
 func _init(args: NetArgs = null) -> void:
@@ -83,6 +92,13 @@ func _process(delta: float) -> void:
 	if not _ablated:
 		_ablated = true
 		BenchAblation.apply(_args, night, UIRouter.top())
+		if _args.get_int("sample") == 1:
+			_sampler = PerfSampler.new()
+			_sampler.night_state = _state_of_night
+			add_child(_sampler)
+	if not _jumped:
+		_jumped = true
+		_start_at_round(night)
 	_played += delta
 	_rows.append([delta * 1000.0, night.state.round_number(), night.state.zombies.size()])
 	if night.state.round_number() >= _rounds and _reached_at < 0.0:
@@ -110,6 +126,7 @@ static func tuning(args: NetArgs = null) -> RulesTuning:
 ## The match settings the arguments ask for (`count`, `alive`, `break`), pulled into their bounds.
 static func settings_from(args: NetArgs) -> MatchSettings:
 	var settings := MatchSettings.new()
+	settings.bots = args.get_int("bots", settings.bots)
 	settings.count_multiplier = args.get_float("count", 1.0)
 	settings.max_alive = args.get_int("alive", MatchSettings.AUTO)
 	settings.break_seconds = args.get_float("break", 0.0)
@@ -207,6 +224,42 @@ static func _percentile(sorted: Array, share: float) -> float:
 	return sorted[mini(int(sorted.size() * share), sorted.size() - 1)]
 
 
+## Puts the night at the round `startround` asks for (the counter is set before the first round
+## begins, so round R is the first one played) and gives every player `points`.
+func _start_at_round(night: Night) -> void:
+	var rules := night.server.rules
+	if _args.get_string("ceiling") == "desktop":
+		# The bots count as browsers (`NightServer._join`): a desktop crowd needs them to say not.
+		for id: int in rules.players:
+			night.server.crowd.set_platform(id, false)
+	if not _args.has("startround"):
+		return
+	rules.round_number = maxi(_args.get_int("startround") - 1, 0)
+	var points := _args.get_int("points", 20000)
+	for id: int in rules.players:
+		(rules.players[id] as PlayerState).points = points
+
+
+func _state_of_night() -> Dictionary:
+	var night := _night()
+	if night == null or night.state == null:
+		return {}
+	var rules := night.server.rules
+	return {
+		"round": night.state.round_number(),
+		"alive": night.state.zombies.size(),
+		"cap":
+		rules.settings.alive_cap(
+			rules.tuning.rounds,
+			rules.round_number,
+			rules.get("_round_players"),
+			rules.crowd_ceiling
+		),
+		"players": rules.players.size(),
+		"count_multiplier": rules.settings.count_multiplier,
+	}
+
+
 func _night() -> Night:
 	var screen := UIRouter.top() as NightScreen
 	return screen.night if screen != null else null
@@ -221,12 +274,21 @@ func _publish(night: Night) -> void:
 		"seconds": snappedf(_played, 0.1),
 		"count": _args.get_float("count", 1.0),
 		"alive_asked": _args.get_int("alive", MatchSettings.AUTO),
+		"adapter": RenderingServer.get_video_adapter_name(),
+		"vendor": RenderingServer.get_video_adapter_vendor(),
+		"driver": RenderingServer.get_current_rendering_driver_name(),
+		"debug_build": OS.is_debug_build(),
+		"cores": OS.get_processor_count(),
 	}
+	if _sampler != null:
+		report["samples"] = _sampler.rows
 	var json := JSON.stringify(report)
 	if OS.has_feature("web"):
 		JavaScriptBridge.get_interface("window").deadnightRounds = json
 		return
-	print("AUTOPILOT_RUN ", json)
+	if _sampler != null:
+		report.erase("samples")
+	print("AUTOPILOT_RUN ", JSON.stringify(report))
 	if _out != "":
 		var file := FileAccess.open(_out, FileAccess.WRITE)
 		file.store_string(json)
