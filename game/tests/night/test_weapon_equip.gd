@@ -18,12 +18,9 @@ const EXPECTED := {
 	&"flare_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
 	&"baseball_bat": [&"Melee", "res://assets/weapons/baseball_bat/baseball_bat.glb"],
 	&"fire_axe": [&"Melee", "res://assets/weapons/fire_axe/fire_axe.glb"],
-	&"ray_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
-	&"freeze_gun": [&"Pistol", "res://assets/weapons/revolver/revolver.glb"],
+	&"ray_gun": [&"Pistol", "res://assets/weapons/ray_gun/ray_gun.glb"],
+	&"freeze_gun": [&"Rifle", "res://assets/weapons/freeze_gun/freeze_gun.glb"],
 }
-## The wonder weapons wear another weapon's model until their own land (#816); the one table
-## that says no two share a model leaves them out until then.
-const STAND_INS: Array[StringName] = [&"ray_gun", &"freeze_gun"]
 
 
 func _start() -> Night:
@@ -90,8 +87,6 @@ func test_the_table_covers_the_whole_catalogue() -> void:
 func test_no_two_weapons_share_a_model() -> void:
 	var seen := {}
 	for id in WeaponCatalog.IDS:
-		if id in STAND_INS:
-			continue
 		var model: String = EXPECTED[id][1]
 		(
 			assert_bool(seen.has(model))

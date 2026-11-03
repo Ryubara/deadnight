@@ -115,11 +115,10 @@ at = 1.0
 
 [resource]
 script = ExtResource("2_n7i62")
-mechanism = &"break_open"
-part_node = &"Barrel"
-part_axis = Vector3(0, 0, 1)
-part_turn = 50.0
-ammo_scene = "res://assets/weapons/flare_gun/flare_gun_ammo.glb"
+mechanism = &"cell"
+part_node = &"Cell"
+part_slide = Vector3(0.1, 0.08, 0)
+ammo_scene = "res://assets/weapons/ray_gun/ray_gun_ammo.glb"
 ammo_offset = Vector3(0, 0.3, 0)
 ammo_turn = Vector3(0, 0, 90)
 keys = Array[ExtResource("1_ji7rb")]([SubResource("Resource_agwep"), SubResource("Resource_3o72h"), SubResource("Resource_12547"), SubResource("Resource_h36vc"), SubResource("Resource_hu3jy"), SubResource("Resource_h7o70"), SubResource("Resource_4swgj"), SubResource("Resource_syhyr"), SubResource("Resource_5x8rj"), SubResource("Resource_1gjxl"), SubResource("Resource_g1gjg")])

@@ -37,8 +37,8 @@ const MODELS := {
 	&"weapon_pistol": "res://assets/weapons/revolver/revolver.glb",
 	&"weapon_crowbar": "res://assets/weapons/crowbar/crowbar.glb",
 	# Stand-in models until the wonder weapons' own land (#797).
-	&"weapon_ray_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
-	&"weapon_freeze_gun": "res://assets/weapons/revolver/revolver.glb",
+	&"weapon_ray_gun": "res://assets/weapons/ray_gun/ray_gun.glb",
+	&"weapon_freeze_gun": "res://assets/weapons/freeze_gun/freeze_gun.glb",
 }
 ## How long a model is drawn on the stage, in metres; the others use `MODEL_LENGTH`. The flare gun
 ## is a pistol and stays small beside the long guns.

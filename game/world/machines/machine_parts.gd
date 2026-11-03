@@ -13,9 +13,8 @@ const WEAPON_MODELS := {
 	&"shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
-	# Stand-ins until the wonder weapons' own models land (#816).
-	&"ray_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
-	&"freeze_gun": "res://assets/weapons/revolver/revolver.glb",
+	&"ray_gun": "res://assets/weapons/ray_gun/ray_gun.glb",
+	&"freeze_gun": "res://assets/weapons/freeze_gun/freeze_gun.glb",
 }
 
 

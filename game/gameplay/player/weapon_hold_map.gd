@@ -14,7 +14,7 @@ const CLASS_OF := {
 	&"pistol": &"Pistol",
 	&"flare_gun": &"Pistol",
 	&"ray_gun": &"Pistol",
-	&"freeze_gun": &"Pistol",
+	&"freeze_gun": &"Rifle",
 }
 const MELEE_CLASS := &"Melee"
 

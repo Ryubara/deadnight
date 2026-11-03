@@ -64,8 +64,8 @@ the real command, its own model drawn).
 | `lever_rifle` | `rifle`, the Hunting rifle | **Wall** 1,200, and the **crane** (3) | 95 / 0.5 s |
 | `tommy_gun` | `smg`, the Tommy gun | **Crane** only (2) | 14 / 0.075 s |
 | `flare_gun` | `flare_gun` | **Crane** only (1); becomes a lure (#439) | 90 + blast 60 / 0.8 s |
-| `flare_gun` (stand-in model) | `ray_gun`, the Ray gun | **Crane** only (1.5); [wonder weapons](#wonder-weapons-and-status-effects) | 300 + blast 160 / 0.45 s |
-| `revolver` (stand-in model) | `freeze_gun`, the Freeze gun | **Crane** only (1.5) | 30 + bloom freezes / 0.8 s |
+| `ray_gun` | `ray_gun`, the Ray gun | **Crane** only (1.5); [wonder weapons](#wonder-weapons-and-status-effects) | 300 + blast 160 / 0.45 s |
+| `freeze_gun` | `freeze_gun`, the Freeze gun | **Crane** only (1.5) | 30 + bloom freezes / 0.8 s |
 | `baseball_bat` | `baseball_bat` | **Crane** only (0.5) | 60 / 0.4 s, sweeps 4 |
 | `fire_axe` | `fire_axe` | **Crane** only (0.5) | 150 / 0.9 s, head x2.5 |
 | none: not a weapon | `quick_melee` (`QUICK_MELEE`, not in `IDS`) | Every player, on `V`; never carried, bought or won | 40 / 0.6 s, 1.6 m |
@@ -176,8 +176,8 @@ not worth a slot or its price.
 ## Wonder weapons and status effects
 
 The ray gun and the freeze gun ([#788](https://github.com/Ryubara/deadnight/issues/788)); the numbers and why are
-[below](#the-wonder-weapons), the code is this. Their models are stand-ins (the flare gun's and the revolver's) until
-the art lands (#797), and their sounds are the flare's and the revolver's until #791.
+[below](#the-wonder-weapons), the code is this. Their models are #797's (the freeze gun is held as a rifle, the
+ray gun as a pistol), and their sounds are the flare's and the revolver's until #791.
 
 - **Ray gun** (`ray_gun`): a `PROJECTILE` weapon like the flare gun, but fast, straight and blue: the bolt is drawn in
   `bolt_core_colour` and `bolt_halo_colour` (`ProjectileView`) and bursts in a swelling blue sphere (`BoltBurst`) the
