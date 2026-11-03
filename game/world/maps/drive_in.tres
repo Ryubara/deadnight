@@ -13,3 +13,4 @@ area_m2 = 13216
 min_players = 1
 max_players = 8
 shipped = true
+batch_still = true

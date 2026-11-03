@@ -21,8 +21,8 @@ var _bench := false
 
 
 ## Writes `label` into `window.deadnight_marks` with the page's clock, so a browser run can line the
-## frames and the GL programs it recorded up with what the game was doing (the loading steps).
-## Does nothing outside a browser.
+## frames and the GL programs it recorded up with what the game was doing (the loading steps). Does
+## nothing outside a browser.
 static func mark(label: String) -> void:
 	if not OS.has_feature("web"):
 		return
@@ -80,6 +80,7 @@ func _publish_render_cost() -> void:
 	_object["objects"] = rendering.get_rendering_info(
 		RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME
 	)
+	_publish_memory()
 	for key: String in _cost_sums:
 		_object[key] = _cost_sums[key] / maxf(_frames, 1.0)
 	_cost_sums = {}
@@ -90,7 +91,9 @@ func _publish_render_cost() -> void:
 
 
 ## A profile run (`tools/web_smoke/phone_frames.py`) flips the 3D anti-aliasing while the page
-## runs, to compare it in the same minutes: `window.deadnight_msaa` is 0 (off) or 2 (2x).
+## runs, to compare it in the same minutes: `window.deadnight_msaa` is 0 (off) or 2 (2x). With
+## `?batch=toggle`, `window.deadnight_batch` (0 or 1) draws the map from its batches or from the
+## nodes they replace.
 func _follow_bench_switch() -> void:
 	var window := JavaScriptBridge.get_interface("window")
 	var asked: Variant = window.deadnight_msaa
@@ -99,6 +102,27 @@ func _follow_bench_switch() -> void:
 	var mode := Viewport.MSAA_DISABLED if int(asked) == 0 else Viewport.MSAA_2X
 	if get_viewport().msaa_3d != mode:
 		get_viewport().msaa_3d = mode
+	var batch: Variant = window.deadnight_batch
+	if batch != null:
+		LotBatcher.switch(int(batch) != 0)
+
+
+## What the engine holds, to tell a leak from the browser's garbage collector (#728): the engine's
+## own heap (only in a debug export; 0 in a release one), the objects, nodes, orphan nodes and
+## resources, and the video memory of textures and buffers, in megabytes. A page's `usedJSHeapSize`
+## rises and falls with the collector and says nothing of these.
+func _publish_memory() -> void:
+	_object["mem_static_mb"] = Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0
+	_object["mem_objects"] = Performance.get_monitor(Performance.OBJECT_COUNT)
+	_object["mem_nodes"] = Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
+	_object["mem_orphans"] = Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
+	_object["mem_resources"] = Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)
+	_object["mem_texture_mb"] = (
+		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0
+	)
+	_object["mem_buffer_mb"] = (
+		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1048576.0
+	)
 
 
 ## Adds this frame's script, physics and render times (ms) to the sums the next publish averages.
@@ -229,7 +253,7 @@ static func snapshot(top: Control) -> Dictionary:
 		data["code_text"] = together.code_field.text  # what a paste put into the code field
 	var lobby := top as LobbyScreen
 	if lobby != null:
-		# The lobby: its code, the seats as `1  Ann  HOST|2  Bo|...`, the standing line, the last
+		# The lobby: its code, the seats as `1 Ann HOST|2  Bo|...`, the standing line, the last
 		# thing that happened and which buttons are up (`Start`, `Play`, `Join`).
 		data["room_code"] = lobby.code_label.text
 		data["room_status"] = lobby.status.text
@@ -356,8 +380,8 @@ static func _spots(screen: Control) -> String:
 	)
 	if panel != null and panel.is_visible_in_tree():
 		# Each setting's control: its centre, and `key:end` a little inside its right end (an option
-		# selector's next arrow). The control is the one named by the key (`bots` and `bot_skill` share
-		# a row, and each has its own selector), else the row's.
+		# selector's next arrow). The control is the one named by the key (`bots` and `bot_skill`
+		# share a row, and each has its own selector), else the row's.
 		for key: String in panel.setting_keys():
 			var control := panel.find_child(key, true, false) as Control
 			if control == null:
