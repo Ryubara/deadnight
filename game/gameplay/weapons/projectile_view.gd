@@ -12,13 +12,20 @@ var fx := ShotFxTuning.shipped()
 var state: ProjectileState
 
 var _halo: MeshInstance3D
+var _halo_colour: Color
 var _steps := 0
 
 
 func _ready() -> void:
 	var radius := state.def.projectile_radius
-	add_child(_ball(radius * fx.flare_core_scale, fx.flare_core_colour, 1.0))
-	_halo = _ball(radius * fx.flare_halo_scale, fx.flare_halo_colour, fx.flare_halo_alpha)
+	var core := fx.flare_core_colour
+	_halo_colour = fx.flare_halo_colour
+	# A weapon with colours of its own (the ray gun's blue bolt) draws them instead of the flare's.
+	if state.def.has_bolt_colours():
+		core = state.def.bolt_core_colour
+		_halo_colour = state.def.bolt_halo_colour
+	add_child(_ball(radius * fx.flare_core_scale, core, 1.0))
+	_halo = _ball(radius * fx.flare_halo_scale, _halo_colour, fx.flare_halo_alpha)
 	add_child(_halo)
 	follow()
 
@@ -54,7 +61,7 @@ static func _ball(radius: float, colour: Color, alpha: float) -> MeshInstance3D:
 
 
 func _drop_trail_dot() -> void:
-	var dot := _ball(fx.flare_trail_radius, fx.flare_halo_colour, 1.0)
+	var dot := _ball(fx.flare_trail_radius, _halo_colour, 1.0)
 	var material := (dot.mesh as SphereMesh).material as StandardMaterial3D
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	dot.top_level = true

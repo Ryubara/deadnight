@@ -53,6 +53,8 @@ static var _dps: Dictionary = {}
 ## The price of the first thing on the list the last `candidates` call found the bot wants (0 when
 ## none), whether or not it could pay.
 var last_next := 0
+## The health of the dead the last `candidates` call weighed the weapons by (0 for none).
+var last_health := 0.0
 
 var _shop: BotShop
 var _profile: BotProfile
@@ -101,6 +103,10 @@ class View:
 	var perks := 0
 	## Where the crane stands (its place in the rules' list) and whether it can take a play.
 	var crane_spot := 0
+	## Whether the break announced a special round (the profile may fill up for it).
+	var prepared := false
+	## The health of the dead this round sends, when the bot weighs its weapons by it (0: not).
+	var zombie_health := 0.0
 	var crane_ready := true
 	## Doors the etiquette holds the bot back from (a person's claim, a teammate down).
 	var blocked: Dictionary = {}
@@ -156,7 +162,7 @@ func candidates(view: View) -> Array[Buy]:
 		if urgent != null:
 			found.append(urgent)
 	for weapon in useful(view.arms):
-		var floor_buy := _ammo(view, weapon, _profile.ammo_floor_mags, FLOOR, 0)
+		var floor_buy := _ammo(view, weapon, _floor_mags(view), FLOOR, 0)
 		if floor_buy != null:
 			found.append(floor_buy)
 	var reserve := _fuel_reserve(view)
@@ -172,6 +178,7 @@ func candidates(view: View) -> Array[Buy]:
 		elif _profile.saves_for.has(item_id):
 			break
 	last_next = next
+	last_health = view.zombie_health
 	for weapon in useful(view.arms):
 		var top := _ammo(view, weapon, 0, TOP_OFF, next)
 		if top != null:
@@ -427,7 +434,31 @@ func _wants_rounds(view: View, def: WeaponDef, reserve: int, mags: int, why: Str
 		return false
 	if mags > 0 and reserve >= def.magazine_size * mags:
 		return false
-	return why != TOP_OFF or reserve < int(float(def.reserve_max) * _profile.ammo_topoff)
+	return why != TOP_OFF or reserve < int(float(def.reserve_max) * _topoff(view))
+
+
+## The health of the dead a round sends, for a bot that weighs its weapons by it (0 for one that
+## does not, or when the level has no round table).
+func zombie_health(round_number: int) -> float:
+	if not _profile.weighs_by_round or _shop.rounds == null:
+		return 0.0
+	return _shop.rounds.health_for_round(round_number)
+
+
+## Magazines of reserve the bot keeps for each gun now: the profile's floor, or the larger one it
+## fills up to in the break before a special round (the simulator's `PREPARED_MAGS`).
+func _floor_mags(view: View) -> int:
+	if view.prepared:
+		return maxi(_profile.prepared_mags, _profile.ammo_floor_mags)
+	return _profile.ammo_floor_mags
+
+
+## The share of a gun's reserve limit a top-off fills to: all of it before a special round for a bot
+## that prepares for them (the simulator tops up to the limit then, whatever the usual share).
+func _topoff(view: View) -> float:
+	if view.prepared and _profile.prepared_mags > 0:
+		return 1.0
+	return _profile.ammo_topoff
 
 
 ## Where rounds for `weapon` are sold: the wall of a weapon the bot owns, or a locker (which sells
@@ -504,21 +535,26 @@ static func _rate(id: StringName) -> float:
 ## weapon worth `WeaponWorth.REPLACE_GAIN` times the weakest one carried. The hands give up the one
 ## in hand, so the bot puts the weakest in hand before it pays (`BotErrands`).
 static func worth_taking(view: View, weapon: StringName) -> bool:
+	var health := view.zombie_health
 	if view.arms.size() < WeaponCatalog.CARRY_LIMIT:
-		return true
-	var weakest := weakest_of(view.arms)
+		# A bot that weighs by the round puts a free hand against the quick melee it has anyway.
+		return (
+			health <= 0.0
+			or WeaponWorth.beats(WeaponCatalog.get_def(weapon), WeaponCatalog.quick_melee(), health)
+		)
+	var weakest := weakest_of(view.arms, health)
 	return (
 		weakest == &""
-		or WeaponWorth.beats(WeaponCatalog.get_def(weapon), WeaponCatalog.get_def(weakest))
+		or WeaponWorth.beats(WeaponCatalog.get_def(weapon), WeaponCatalog.get_def(weakest), health)
 	)
 
 
 ## The carried weapon worth least (a blade by its blows, a gun by its sustained damage), or empty.
-static func weakest_of(arms: Dictionary) -> StringName:
+static func weakest_of(arms: Dictionary, health := 0.0) -> StringName:
 	var weakest: StringName = &""
 	var least := INF
 	for id: StringName in arms:
-		var worth := WeaponWorth.of(WeaponCatalog.get_def(id))
+		var worth := WeaponWorth.of(WeaponCatalog.get_def(id), health)
 		if worth < least:
 			least = worth
 			weakest = id

@@ -358,6 +358,66 @@ GROUND_LAYER = 1
 OCCLUDER_LAYER = 2
 WALL_LAYERS = GROUND_LAYER | OCCLUDER_LAYER
 
+# Render layers (`GeometryInstance3D.layers`, `Light3D.light_cull_mask`; not the physics layers above). The renderer
+# casts no shadow, so a room's lamp lights the next room through the wall by its range; a lamp that names its own
+# layers lights only the default layer (the dead, the props) and those, and a floor, wall or ceiling that must not
+# take a room's light is moved to a layer the lamp lacks (docs/research/room-lights.md). Each map fills these in its
+# own build: `RENDER_RULES` is (regex over "Group/Name", layers) for a box, first match wins; `LIGHT_MASKS` is the
+# light's own path to its cull mask. Layer n is the bit 1 << (n - 1); the default layer (bit 1) is every box's today.
+DEFAULT_RENDER = 1
+RENDER_RULES: list[tuple[str, int]] = []
+LIGHT_MASKS: dict[str, int] = {}
+
+
+# The lot's render layers: the stand's own (its floors and its end walls, which no lamp outside may light) and the lot's
+# outdoors (what the lamp posts light and the stand's and the booth's lamps do not: the ground and the alleys beside the
+# stand, and the booth's walls and roof above its ceiling, which only the lamp up there and the posts outside reach).
+STAND_LAYER = 2
+OUTDOORS_LAYER = 4
+LOT_RENDER_RULES: list[tuple[str, int]] = [
+    (r"Concession/Floor\d_\d", STAND_LAYER),
+    (r"Concession/Wall[WE]\d", STAND_LAYER),
+    (r"Midway/(Ground1_[01]|Alley[WE]0_0)", OUTDOORS_LAYER),
+    (r"Field/GroundC1_3", OUTDOORS_LAYER),
+    (r"ProjectionBooth/(WallNUpper\d|Roof)", OUTDOORS_LAYER),
+]
+# Each lamp that reached through a wall names the layers it lights: the default layer and its own room's. The booth's
+# lower lamp and the re-cut bench's glow name only the default one (nothing is on a layer of the booth's lower storey).
+LOT_LIGHT_MASKS: dict[str, int] = {
+    "Field/Lamps/Lamp5/Light": DEFAULT_RENDER | OUTDOORS_LAYER,
+    "Field/Lamps/Lamp6/Light": DEFAULT_RENDER | OUTDOORS_LAYER,
+    "Field/Lamps/Lamp12/Light": DEFAULT_RENDER | OUTDOORS_LAYER,
+    "Concession/Lamps/InteriorW": DEFAULT_RENDER | STAND_LAYER,
+    "Concession/Lamps/InteriorE": DEFAULT_RENDER | STAND_LAYER,
+    "Concession/Lamps/InteriorN": DEFAULT_RENDER | STAND_LAYER,
+    "ShopProps/Soda/Glow": DEFAULT_RENDER | STAND_LAYER,
+    "ProjectionBooth/Lamps/Lower": DEFAULT_RENDER,
+    "ShopProps/ReCut/Glow": DEFAULT_RENDER,
+}
+
+
+def render_layers(path: str) -> int:
+    """The render layers of the box at `path` ("Group/Name"): the first rule that matches, else the default layer."""
+    for pattern, layers in RENDER_RULES:
+        if re.fullmatch(pattern, path):
+            return layers
+    return DEFAULT_RENDER
+
+
+def light_layers(machine: str) -> dict[str, str]:
+    """The `light_layers` a machine's glow takes (`machine` is its path), as the props of its instance."""
+    mask = LIGHT_MASKS.get(f"{machine}/Glow")
+    return {} if mask is None else {"light_layers": str(mask)}
+
+
+def override_light(path: str) -> None:
+    """The cull mask of a light inside an instanced scene (a lamp post's `Light`), when the map gives it one."""
+    if path in LIGHT_MASKS:
+        parent, _, name = path.rpartition("/")
+        lines.append(f'[node name="{name}" parent="{parent}"]')
+        lines.append(f"light_cull_mask = {LIGHT_MASKS[path]}")
+        lines.append("")
+
 
 def box(
     parent: str,
@@ -373,6 +433,9 @@ def box(
     if name in drivein_props.REPLACED:  # a drive-in prop stands here, with this block's collision
         return
     props = {"transform": xform(pos, rot_y)}
+    render = render_layers(f"{parent}/{name}")
+    if render != DEFAULT_RENDER:
+        props["layers"] = str(render)
     if not visible:  # the collision and the walking mesh keep it; a machine is drawn over it
         props["visible"] = "false"
     if collide:
@@ -476,6 +539,8 @@ def omni(
     }
     if afterglow:
         props["metadata/afterglow"] = f"{afterglow:g}"
+    if f"{parent}/{name}" in LIGHT_MASKS:
+        props["light_cull_mask"] = str(LIGHT_MASKS[f"{parent}/{name}"])
     node(name, "OmniLight3D", parent, props, ' groups=["powered_light"]' if powered else "")
 
 
@@ -730,6 +795,9 @@ def slab(door_name: str, tag: str, centre, width: float, height: float, axis: st
 
 # ---------------------------------------------------------------------------------------------------------------
 def build() -> None:
+    RENDER_RULES[:] = LOT_RENDER_RULES
+    LIGHT_MASKS.clear()
+    LIGHT_MASKS.update(LOT_LIGHT_MASKS)
     lines.append("[gd_scene format=3]")
     lines.append("")
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/car.tscn" id="car"]')
@@ -861,6 +929,7 @@ def build() -> None:
     for i, at in enumerate(FIELD_LAMPS, start=1):
         props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
         instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
+        override_light(f"{lamps_f}/Lamp{i}/Light")
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
     instance(
@@ -1139,9 +1208,9 @@ def build() -> None:
     shop_spot("SpotCraneYard", "crane", "crane_play", (40.0, 0, 10.0), 270, crane_spot=3)
     # The re-cut bench in the booth, over the block that holds its place (the weapon in hand is re-cut here), and the
     # soda fountain in the stand (the hearty tonic). Both face the room: the door side. The spots are 1.2 m in front.
-    instance("ShopProps", "ReCut", "recut_machine", (3.5, 0, 28.2), 180)
+    instance("ShopProps", "ReCut", "recut_machine", (3.5, 0, 28.2), 180, light_layers("ShopProps/ReCut"))
     shop_spot("SpotReCut", "upgrade", "upgrade_weapon", (3.5, 0, 25.9), 180)
-    instance("ShopProps", "Soda", "soda_fountain", (8.2, 0, 4.9), 180)
+    instance("ShopProps", "Soda", "soda_fountain", (8.2, 0, 4.9), 180, light_layers("ShopProps/Soda"))
     shop_spot("SpotSoda", "perk", "tonic_hearty", (8.2, 0, 3.7), 180)
     # The five other perk machines (`PerkMachine`, docs/design/perks.md), one to an area so the perks arrive with the
     # doors: faster revives in the midway (the stand's door), the quick reload in the booth, the double shot in the

@@ -199,6 +199,38 @@ LAMPS = [
     ("UpperB", (10.0, STOREY + 2.9, -4.0)),
 ]
 
+# Render layers (`build_greybox.render_layers`, docs/research/room-lights.md): a layer for each room, one for what is
+# outdoors. A room's lamps light the default layer (the dead, the props) and their room's; a slab or a wall that two
+# rooms share is on both, and a wall that is above a lamp's room is not on its layer, so no lamp lights the room
+# over it or beside it through the slab or the wall.
+START_LAYER = 2
+SIDE_LAYER = 4
+UPPER_A_LAYER = 8
+UPPER_B_LAYER = 16
+OUTDOORS_LAYER = 32
+RENDER_RULES = [
+    (r"Start/(Floor|Wall[WSE]\d)", START_LAYER),
+    (r"Side/Floor", SIDE_LAYER),
+    (r"Side/WallS\d", START_LAYER | SIDE_LAYER),
+    (r"Side/Wall[NEW]\d", SIDE_LAYER),
+    (r"UpperA/Wall\w+", UPPER_A_LAYER),
+    (r"UpperB/WallS\d", UPPER_A_LAYER | UPPER_B_LAYER),
+    (r"UpperB/Wall[NWE]\d", UPPER_B_LAYER),
+    (r"Ceilings/StartSlab\w", START_LAYER | UPPER_A_LAYER),
+    (r"Ceilings/SideSlab\w", SIDE_LAYER | UPPER_B_LAYER),
+    (r"Roof/Slab", UPPER_A_LAYER | UPPER_B_LAYER),
+    (r"Roof/Parapet\w", OUTDOORS_LAYER),
+    (r"Outside/GroundNotch", OUTDOORS_LAYER),
+]
+ROOM_LAYER = {"Start": START_LAYER, "Side": SIDE_LAYER, "UpperA": UPPER_A_LAYER, "UpperB": UPPER_B_LAYER}
+# The lamps, by the lamp's index in `LAMPS` (`Lamp1`..), take their room's layer and the default one; the soda fountain
+# glows in the hall, the re-cut bench's in the upper rewind room.
+LIGHT_MASKS = {
+    **{f"{room}/Lamp{i}/Light": bg.DEFAULT_RENDER | ROOM_LAYER[room] for i, (room, _at) in enumerate(LAMPS, start=1)},
+    "ShopProps/Soda/Glow": bg.DEFAULT_RENDER | START_LAYER,
+    "ShopProps/ReCut/Glow": bg.DEFAULT_RENDER | UPPER_B_LAYER,
+}
+
 # The kit's shell materials (#633) on the walls, floors and ceilings; the lot's for the rest until the kit's pieces
 # replace the boxes.
 MATS = {
@@ -267,11 +299,12 @@ def wood_box(parent: str, name: str, rect, y0: float, y1: float, mat: str) -> No
     x0, x1, z0, z1 = rect
     size = (x1 - x0, y1 - y0, z1 - z0)
     pos = ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
-    bg.node(
-        name, "CSGBox3D", parent,
-        {"transform": bg.xform(pos), "use_collision": "true", "size": bg.vec(size),
-         "material": f'ExtResource("{mat}")', "metadata/surface": '"wood"'},
-    )  # fmt: skip
+    props = {"transform": bg.xform(pos)}
+    if (render := bg.render_layers(f"{parent}/{name}")) != bg.DEFAULT_RENDER:
+        props["layers"] = str(render)
+    props.update({"use_collision": "true", "size": bg.vec(size), "material": f'ExtResource("{mat}")',
+                  "metadata/surface": '"wood"'})  # fmt: skip
+    bg.node(name, "CSGBox3D", parent, props)
 
 
 def slab_with_hole(parent: str, name: str, rect, hole, y0: float, mat: str) -> None:
@@ -452,6 +485,9 @@ def locker(name, room, face, into, floor) -> None:
 
 
 def build() -> None:
+    bg.RENDER_RULES[:] = RENDER_RULES
+    bg.LIGHT_MASKS.clear()
+    bg.LIGHT_MASKS.update(LIGHT_MASKS)
     lines = bg.lines
     lines.append("[gd_scene format=3]")
     lines.append("")

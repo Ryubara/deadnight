@@ -10,6 +10,9 @@ extends RefCounted
 ## The shop table and the generator's numbers.
 var economy: EconomyTuning
 var fuel: FuelTuning
+## The round table: the health of the dead a round sends (a bot that weighs its weapons by it,
+## `BotProfile.weighs_by_round`).
+var rounds: RoundTuning
 ## Boards a whole barricade holds.
 var boards := 1
 ## Grenades a pack holds (`ExplosiveTuning.max_grenades`).

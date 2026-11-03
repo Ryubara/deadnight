@@ -45,12 +45,9 @@ The halo's billboard fault was already cured by hand in #703. The scene's halo e
   leaks, or if a listed lamp stops).
 - Both halves have a synthetic scene (a wall, a pool, an omni and a spot) so a check that sees nothing cannot pass.
 
-## What is left (a real limit, not fixed here)
+## What was left, and what became of it
 
-Unshadowed lamps inside a room still light the next room through the wall by their range: the stand's three lamps and the
-field's posts 5, 6 and 12 give 0.2 to 0.4 energy on the other side, the small map's pendants up to 0.7 on the upper
-rooms' wall bases (a ground-floor lamp lights the wall above its ceiling slab). Shadows are too dear on a phone
-(`compat-lighting.md`); the cure is a light layer per room (floors and ceilings on their own layer, a room's lamps
-cull the others) or ceiling lamps as downward spots. The projector's spot (`ProjectorBeam`) faced the road, not the
-screen, and lit the booth's south door and the road plaza (0.9) through the booth's wall; #860 turned it to the screen,
-so it left the table.
+Unshadowed lamps inside a room lit the next room through the wall by their range (0.2 to 0.7 energy): the stand's three
+lamps, the field's posts 5, 6 and 12, the booth's lower lamp and the second map's pendants. A light layer per room cured
+all of it but three lines, in [room lights](room-lights.md) (issue #841). The projector's spot (`ProjectorBeam`) faced
+the road and lit the booth's south door and the road plaza (0.9) through the booth's wall; issue #840 turned it.
