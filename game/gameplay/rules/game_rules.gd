@@ -44,12 +44,13 @@ extends RefCounted
 ##   bot_replaced: player_id: a person took the seat of a bot, which is no bot's from now on
 ##   bot_seated: player_id: a bot took the seat of a person who left, as it stood
 ##   player_hurt: player_id, damage, health (left), max_health, bearing (radians clockwise from -z,
-##     seen from above, where the blow came from), source_id (the zombie, -1 for none)
+##     seen from above, where the blow came from), source_id (the zombie, -1 for none), harm
+##     (`grenade`; empty for a zombie), by_id (whose grenade, 0 for none)
 ##   player_healed: player_id, health, max_health, reason (regen, revive or tonic: a health tonic
 ##     raised the most); regen sends one when the whole-unit health changes, about once per unit
 ##     mended
 ##   player_downed: player_id, cause (blow or forced), bearing (0 unless a blow), bleed_seconds (the
-##     time they have before they are dead)
+##     time they have before they are dead), harm and by_id (as `player_hurt`)
 ##   player_died: player_id, cause (bleed_out): a downed player nobody got up in time; down until
 ##     the round ends
 ##   player_removed: player_id
@@ -789,15 +790,7 @@ func _blow(action: Dictionary) -> void:
 	elif player.downed:
 		_reject(&"player_downed", RulesAction.BLOW)
 	else:
-		_events.append_array(
-			PlayerHealth.hurt(
-				player,
-				action["damage"],
-				action.get("bearing", 0.0),
-				action.get("source_id", -1),
-				tuning.revive.bleed_out_seconds
-			)
-		)
+		_events.append_array(PlayerHealth.hurt(player, action, tuning.revive.bleed_out_seconds))
 		if player.downed:
 			_events.append_array(PerkPlay.on_down(self, player))
 			_check_game_over()

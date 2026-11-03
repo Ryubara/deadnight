@@ -89,14 +89,14 @@ func test_the_layer_follows_the_weapon_not_the_player() -> void:
 
 
 func test_every_weapon_that_can_be_re_cut_gets_the_layer_in_its_shot() -> void:
-	var spec := UpgradeTuning.new()
-	assert_array(spec.weapons).is_not_empty()
-	for weapon: StringName in spec.weapons:
+	var weapons := UpgradeTuning.shipped().catalogue_weapon_ids()
+	assert_array(weapons).is_not_empty()
+	for weapon: StringName in weapons:
 		_heard.clear()
 		_frame({weapon: 1})
 		_shot(weapon)
 		assert_array(_ids()).override_failure_message("%s: %s" % [weapon, _ids()]).contains(
-			[&"recut_layer"]
+			[RecutLayer.layers_for(weapon)[0]]
 		)
 
 
@@ -108,15 +108,8 @@ func test_every_catalogue_weapon_gets_it_once_it_is_re_cut() -> void:
 		_frame({weapon: 1})
 		_shot(weapon)
 		assert_array(_ids()).override_failure_message("%s: %s" % [weapon, _ids()]).contains(
-			[_layer_of(weapon)]
+			[RecutLayer.layers_for(weapon)[0]]
 		)
-
-
-## The layer a weapon gets: the energy weapons' deeper one, or the shared one.
-func _layer_of(weapon: StringName) -> StringName:
-	return (
-		RecutLayer.WONDER_LAYER if weapon in RecutLayer.WONDER_WEAPONS else RecutLayer.DEFAULT_LAYER
-	)
 
 
 func test_the_own_layer_is_flat_and_a_strangers_comes_from_the_muzzle() -> void:

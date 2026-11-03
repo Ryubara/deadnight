@@ -81,6 +81,20 @@ func test_a_blow_that_empties_health_downs_the_player_with_the_direction() -> vo
 	assert_float(_rules.health_of(1)).is_equal(0.0)
 
 
+func test_a_blow_says_what_it_was_and_whose_and_a_zombie_swing_says_none() -> void:
+	var swing := _blow(1, 10.0, 0.0, 4)
+	assert_str(swing[0]["harm"]).is_equal("")
+	assert_int(swing[0]["by_id"]).is_equal(0)
+	var blast := _rules.apply(RulesAction.blow(2, 30.0, 0.5, -1, &"grenade", 1))
+	assert_str(blast[0]["harm"]).is_equal("grenade")
+	assert_int(blast[0]["by_id"]).is_equal(1)
+	# The down that follows carries the same, so the feed can say "blown up by".
+	var downing := _rules.apply(RulesAction.blow(2, 500.0, 0.5, -1, &"grenade", 1))
+	assert_array(_types(downing)).contains_exactly([&"player_hurt", &"player_downed"])
+	assert_str(downing[1]["harm"]).is_equal("grenade")
+	assert_int(downing[1]["by_id"]).is_equal(1)
+
+
 func test_the_last_player_going_down_ends_the_night() -> void:
 	_blow(1, 500.0)
 	var events := _blow(2, 500.0)

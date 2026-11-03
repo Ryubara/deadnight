@@ -3,8 +3,11 @@ extends RefCounted
 ## When and where a bot throws its grenade. It looks for a pack the blast would take (the dead
 ## within `CLUSTER_RADIUS` of each other, as they will stand when the fuse runs out: they keep
 ## coming), and throws only when
-## - the blast would land at least `SAFE_FROM_TEAMMATES` metres from every teammate (where they
-##   stand and where they walk to by then) and `SAFE_FROM_SELF` metres from the bot itself;
+## - the blast would land where it does not reach a player: at least `SAFE_FROM_TEAMMATES` metres
+##   from every teammate (where they stand and where they walk to by then) and `SAFE_FROM_SELF`
+##   metres from the bot itself. A blast hurts a player by `PlayerBlast`, all the way out to the
+##   blast radius, so "not reach" is the distance where it takes `HARMLESS_SHARE` of their health
+##   (`harmless_apart`), which both numbers are at least (a test holds them to it);
 ## - the way to it is open (the arc is clear of walls);
 ## - the pack is big enough (`MIN_PACK`; the crawlers of Crawl Space, which are hard to hit with a
 ##   gun, count from `MIN_PACK_LOW`), and the bot has waited out the last throw (`COOLDOWN`).
@@ -15,11 +18,15 @@ extends RefCounted
 ## Pure: positions in, a `Throw` out, or null. The motor does the throwing (`BotMotor`).
 
 const DEF_PATH := "res://gameplay/grenades/defs/frag.tres"
-## The blast must be this far from every teammate, and from the bot (metres): the first is the rule
-## (never within 4 m of a teammate), and the throw is planned `THROW_MARGIN` further off, for the
-## way the grenade lands a metre or so from where it was aimed (hops, view not quite on).
-const SAFE_FROM_TEAMMATES := 4.0
+## The blast must be this far from every teammate, and from the bot (metres): the rule is that it
+## takes under `HARMLESS_SHARE` of anyone's health there, and the throw is planned `THROW_MARGIN`
+## further off from a teammate, for the way the grenade lands a metre or so from where it was aimed
+## (hops, view not quite on) and the teammate walks on.
+const SAFE_FROM_TEAMMATES := 6.0
 const SAFE_FROM_SELF := 6.0
+## The share of a player's health a blast may take at the bot's or a teammate's spot and still not
+## "reach" them: 10%, a graze that mends in seconds.
+const HARMLESS_SHARE := 0.1
 const THROW_MARGIN := 1.5
 ## Metres across a pack, and the zombies that make one.
 const CLUSTER_RADIUS := 3.0
@@ -163,6 +170,12 @@ func is_safe(landing: Vector3, here: Vector3, mates: Array[Dictionary]) -> bool:
 		if _flat(landing, then) < apart:
 			return false
 	return true
+
+
+## The distance from a blast beyond which it takes under `HARMLESS_SHARE` of a player's health
+## (`PlayerBlast`): the least `SAFE_FROM_SELF` and `SAFE_FROM_TEAMMATES` may be.
+func harmless_apart() -> float:
+	return PlayerBlast.distance_for(HARMLESS_SHARE, def.player_full_radius, def.blast_radius)
 
 
 ## Where a contact will stand when the fuse runs out: it walks on at its speed, and stops a body's

@@ -147,12 +147,19 @@ static func revive(player_id: int, target_id: int) -> Dictionary:
 	return {"type": REVIVE, "player_id": player_id, "target_id": target_id}
 
 
-## One blow on a player (a zombie's swing). `damage` is what it does; `bearing` is where it came
-## from, radians clockwise from -z seen from above (0 when unknown), and `source_id` the zombie
-## that dealt it (-1 for none). The rules take it off the player's health, restart the wait before
-## health mends, and down the player at zero.
+## One blow on a player (a zombie's swing, a blast). `damage` is what it does; `bearing` is where it
+## came from, radians clockwise from -z seen from above (0 when unknown), and `source_id` the zombie
+## that dealt it (-1 for none). `harm` names what hurt them when it was not a zombie (`grenade`) and
+## `by_id` the player whose it was (the thrower; 0 for none): the HUD and the kill feed say so. The
+## rules take it off the player's health, restart the wait before health mends, and down the player
+## at zero.
 static func blow(
-	player_id: int, damage: float, bearing: float = 0.0, source_id: int = -1
+	player_id: int,
+	damage: float,
+	bearing: float = 0.0,
+	source_id: int = -1,
+	harm: StringName = &"",
+	by_id: int = 0
 ) -> Dictionary:
 	return {
 		"type": BLOW,
@@ -160,6 +167,8 @@ static func blow(
 		"damage": damage,
 		"bearing": bearing,
 		"source_id": source_id,
+		"harm": harm,
+		"by_id": by_id,
 	}
 
 

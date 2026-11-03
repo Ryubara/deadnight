@@ -34,6 +34,13 @@ const CONVERGE_DISTANCE := 12.0
 const HIP_CONVERGE_FULL := deg_to_rad(30.0)
 const HIP_CONVERGE_NONE := deg_to_rad(90.0)
 
+## The reflection that makes a left-hand thing from a right-hand one: the rig is an exact mirror
+## (each left bone is its right one with x turned about), so a weapon held mirrored in the left hand
+## sits there as its right-hand place with this applied, and the model itself is flipped across its
+## own side (`MODEL_FLIP`).
+const MIRROR := Basis(Vector3(-1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 0.0, 1.0))
+const MODEL_FLIP := Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 0.0, -1.0))
+
 ## How far the arms and the chest are on this pose, 0 (the clip's) to 1. The blend is done here,
 ## bone by bone, and not by the modifier's own `influence` (left at 1): the engine blends the chest
 ## and the hand by it but draws the upper and lower arms in this pose at any influence while the
@@ -68,6 +75,8 @@ var reload_weight := 0.0
 var part_rest := Transform3D.IDENTITY
 ## Recoil of the last shot, 0 to 1: the weapon kicks back and up.
 var recoil := 0.0
+## The left gun's recoil of a dual weapon (the shots alternate hands, so each gun kicks on its own).
+var recoil_left := 0.0
 ## Metres the weapon kicks back at full recoil, and degrees it kicks up.
 var recoil_back := 0.05
 var recoil_up_deg := 4.0
@@ -75,6 +84,7 @@ var recoil_up_deg := 4.0
 ## skeleton's space (read them with `solved_target()` and `solved_left()`).
 var _solved_target := Transform3D.IDENTITY
 var _solved_left := Transform3D.IDENTITY
+var _solved_offhand := Transform3D.IDENTITY
 
 
 ## The weapon's pose the last modification reached for, in the world where the body is now (for
@@ -89,6 +99,12 @@ func solved_left() -> Transform3D:
 	return get_skeleton().global_transform * _solved_left
 
 
+## The left gun's pose of a dual weapon the last modification reached for, likewise (the rigid
+## pose: the model drawn there is flipped across its side).
+func solved_offhand() -> Transform3D:
+	return get_skeleton().global_transform * _solved_offhand
+
+
 ## The aim basis: the camera's, whose -Z is the crosshair ray.
 func aim_basis() -> Basis:
 	return Basis.from_euler(Vector3(aim_pitch, aim_yaw, 0.0))
@@ -96,22 +112,30 @@ func aim_basis() -> Basis:
 
 ## Where the weapon rests in the world (origin the grip, muzzle along its -X), from the shoulder
 ## joint of the current pose. Needs the skeleton's pose to be current.
-func weapon_target() -> Transform3D:
+func weapon_target(offhand := false) -> Transform3D:
 	var skeleton := get_skeleton()
 	var aim := aim_basis()
-	var shoulder := _world(skeleton, skeleton.find_bone(RIGHT[0])).origin
+	var shoulder := _world(skeleton, skeleton.find_bone(LEFT[0] if offhand else RIGHT[0])).origin
+	# The left gun of a dual weapon is the right one's mirror: from the left shoulder, out to the
+	# left, turned the other way in a reload.
+	var side := MIRROR if offhand else Basis.IDENTITY
+	var rest := side * hold.grip_offset
 	if not converge_on.is_zero_approx():
-		var toward := converge_on - (shoulder + aim * hold.grip_offset)
+		var toward := converge_on - (shoulder + aim * rest)
 		var meets := Basis.looking_at(toward.normalized(), Vector3.UP)
 		aim = aim.slerp(meets, clampf(maxf(converge, hip_converge), 0.0, 1.0))
-	var pitch := hold.pitch_offset_deg + recoil * recoil_up_deg
+	var kick := recoil_left if offhand else recoil
+	var pitch := hold.pitch_offset_deg + kick * recoil_up_deg
 	var raise := Basis(aim.x, deg_to_rad(pitch))
 	var forward_turn := Basis(Vector3.UP, -PI / 2.0)
-	var offset := hold.grip_offset + Vector3(0.0, 0.0, recoil * recoil_back)
+	var offset := rest + Vector3(0.0, 0.0, kick * recoil_back)
 	var basis := raise * aim * forward_turn
 	if reload != null and reload_weight > 0.0:
-		offset += reload.weapon_offset * reload_weight
-		basis = _reload_turn(aim, reload.weapon_turn * reload_weight) * basis
+		offset += side * reload.weapon_offset * reload_weight
+		var turn := reload.weapon_turn
+		if offhand:  # the muzzle up stays up; to the left and the top to the left turn the other way
+			turn = Vector3(turn.x, -turn.y, -turn.z)
+		basis = _reload_turn(aim, turn * reload_weight) * basis
 	return Transform3D(basis, shoulder + aim * offset)
 
 
@@ -193,7 +217,9 @@ func _solve(skeleton: Skeleton3D) -> void:
 		skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.find_bone(RIGHT[2]))
 	)
 	var weapon := right_hand * hand_hold.scaled_local(Vector3.ONE * hold.model_scale)
-	if grip != null and grip.has_left:
+	if hold.dual:
+		_reach_offhand(skeleton, -side * ELBOW_OUT + Vector3.DOWN, model_scale)
+	elif grip != null and grip.has_left:
 		var left := left_hand_on(weapon)
 		_solved_left = skeleton.global_transform.affine_inverse() * left
 		_reach(skeleton, LEFT, left.origin, -side * ELBOW_OUT + Vector3.DOWN, left.basis, false)
@@ -203,6 +229,20 @@ func _solve(skeleton: Skeleton3D) -> void:
 		)
 	if reload != null and reload_weight > 0.0 and reload.left > 0.0:
 		_reach_reload(skeleton, weapon, -side * ELBOW_OUT + Vector3.DOWN)
+
+
+## The left arm of a dual weapon: the left gun's own place (`weapon_target(true)`) and the left hand
+## bone turned so the mirrored gun sits in it as the right gun sits in the right hand. The right
+## hand's place is the grip's (`hand_hold`); the left's is its reflection, the rig being an exact
+## mirror: the model's side flipped, the bone's frame mirrored.
+func _reach_offhand(skeleton: Skeleton3D, pole: Vector3, model_scale: float) -> void:
+	var target := weapon_target(true)
+	_solved_offhand = skeleton.global_transform.affine_inverse() * target
+	var held := hand_hold.basis.orthonormalized()
+	var basis := target.basis * MODEL_FLIP * held.inverse() * MIRROR
+	var origin := target.origin - basis * (MIRROR * hand_hold.origin * model_scale)
+	_solved_left = skeleton.global_transform.affine_inverse() * Transform3D(basis, origin)
+	_reach(skeleton, LEFT, origin, pole, basis, false)
 
 
 ## The left hand on the reload's point: reached from the pose the hold left it in, and blended

@@ -33,5 +33,5 @@ cover_slack = 0.12
 knockback_speed = 7.0
 knockback_lift = 3.0
 stun_seconds = 1.6
-self_damage_fraction = 0.4
+player_full_radius = 1.0
 player_chest = 1.0

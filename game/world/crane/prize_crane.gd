@@ -36,6 +36,7 @@ const MODELS := {
 	&"weapon_fire_axe": "res://assets/weapons/fire_axe/fire_axe.glb",
 	&"weapon_pistol": "res://assets/weapons/revolver/revolver.glb",
 	&"weapon_crowbar": "res://assets/weapons/crowbar/crowbar.glb",
+	&"weapon_dual_pistols": "res://assets/weapons/service_pistol/service_pistol.glb",
 	# Stand-in models until the wonder weapons' own land (#797).
 	&"weapon_ray_gun": "res://assets/weapons/ray_gun/ray_gun.glb",
 	&"weapon_freeze_gun": "res://assets/weapons/freeze_gun/freeze_gun.glb",
@@ -49,6 +50,7 @@ const MODEL_LENGTHS := {
 	&"weapon_fire_axe": 1.3,
 	&"weapon_pistol": 0.8,
 	&"weapon_crowbar": 1.3,
+	&"weapon_dual_pistols": 0.8,
 	&"weapon_ray_gun": 0.8,
 	&"weapon_freeze_gun": 0.8,
 }

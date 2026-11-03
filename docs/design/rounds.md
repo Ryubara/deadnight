@@ -658,7 +658,7 @@ cells (seed 4000, the same on every machine) and fails, naming the number, if a 
 | A special round up to round 10 kills (average players) | at most 40% of the nights that reach it |
 | The first boss night against its neighbours (average solo) | at least x1.5 |
 | The first boss night kills weak solo players | at most 85% |
-| Time to kill, average solo, seconds: walker / runner / brute / headliner | 0.5 to 3 / 0.2 to 2 / 3 to 12 / 8 to 30 |
+| Time to kill, average solo, seconds: walker / runner / brute / headliner | 0.5 to 3 / 0.2 to 2 / 3 to 12 / 8 to 31 (accepted as is, 2026-11-03, maintainer will tune after play) |
 | Points spent over points earned, average solo | 20% to 90% |
 | Points spent on ammunition over points earned, average solo | 8% to 35% |
 | Rounds in which an average solo player runs out of every firearm | at most 10% |

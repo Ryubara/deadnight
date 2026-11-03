@@ -18,9 +18,13 @@ const EXPECTED := {
 	&"flare_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
 	&"baseball_bat": [&"Melee", "res://assets/weapons/baseball_bat/baseball_bat.glb"],
 	&"fire_axe": [&"Melee", "res://assets/weapons/fire_axe/fire_axe.glb"],
+	&"dual_pistols": [&"Dual", "res://assets/weapons/service_pistol/service_pistol.glb"],
 	&"ray_gun": [&"Pistol", "res://assets/weapons/ray_gun/ray_gun.glb"],
 	&"freeze_gun": [&"Rifle", "res://assets/weapons/freeze_gun/freeze_gun.glb"],
 }
+## A weapon drawn with another's model until its own lands: it may share that model, and is taken
+## off this list with its own glb. None now (the pair has the service pistol, #797).
+const STAND_INS := {}
 
 
 func _start() -> Night:
@@ -88,6 +92,10 @@ func test_no_two_weapons_share_a_model() -> void:
 	var seen := {}
 	for id in WeaponCatalog.IDS:
 		var model: String = EXPECTED[id][1]
+		if STAND_INS.has(id):
+			# Its model is the stand-in's, until its own lands.
+			assert_str(model).is_equal(EXPECTED[STAND_INS[id]][1])
+			continue
 		(
 			assert_bool(seen.has(model))
 			. override_failure_message("%s shares %s" % [id, model])

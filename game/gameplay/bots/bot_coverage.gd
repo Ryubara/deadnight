@@ -37,6 +37,7 @@ const WEAPONS := {
 	"crowbar": "rule: BotMotor swings it at a target inside its reach",
 	"baseball_bat": "rule: BotMotor swings it at a target inside its reach (melee)",
 	"fire_axe": "rule: BotMotor swings it at a target inside its reach (melee)",
+	"dual_pistols": "rule: BotMotor fires it like the pistol (the hands alternate on the server)",
 	"ray_gun": "rule: BotMotor fires it like the pistol (the bolt's splash forgives the aim)",
 	"freeze_gun": "rule: BotMotor fires it like the pistol; a frozen zombie is shot once",
 }
