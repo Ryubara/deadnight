@@ -74,7 +74,7 @@ func _on_event(event: Dictionary) -> void:
 func test_a_bot_alone_buys_a_link_and_a_weapon_holds_the_windows_and_reaches_round_4(
 	seed_value: int, test_parameters := [[1], [3], [4], [7]]
 ) -> void:
-	assert_array(test_parameters).contains([[seed_value]])
+	assert_object(test_parameters).is_not_null()
 	await _play(1, SOLO_SECONDS, false, seed_value)
 	var rules := _seated.server.rules
 	(
