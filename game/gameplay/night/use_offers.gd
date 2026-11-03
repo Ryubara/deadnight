@@ -5,6 +5,9 @@ extends RefCounted
 ## to buy, a breach to mend or a breaker post to switch, a fuel can. Each answers a dictionary
 ## (`kind`, `id` and what the card shows) or `{}`.
 
+## Metres from the floor to the middle of a door's slab (2.4 m doors).
+const DOOR_MIDDLE := 1.2
+
 
 ## The shut door in reach that can be bought now (the one before it is open), or `{}`.
 static func door(
@@ -17,7 +20,11 @@ static func door(
 		if item.requires != &"" and not rules.is_door_open(item.requires):
 			continue
 		for point in world.door_points(door_id):
-			if _flat(here, point) <= tuning.use_reach:
+			# The slab's middle is half a door above the floor it stands on.
+			if (
+				_flat(here, point) <= tuning.use_reach
+				and world.on_level(here, point - Vector3(0.0, DOOR_MIDDLE, 0.0))
+			):
 				return {"kind": &"door", "id": door_id, "price": rules.price_of(door_id)}
 	return {}
 
@@ -31,7 +38,10 @@ static func post(
 		if boards >= rules.tuning.barricades.boards:
 			continue
 		var barricade := world.barricade(id)
-		var near := _flat(here, barricade.centre()) <= tuning.use_reach
+		var near := (
+			_flat(here, barricade.centre()) <= tuning.use_reach
+			and world.on_level(here, barricade.centre())
+		)
 		if barricade.depth_of(here) > 0.0 and near:
 			return {"kind": &"repair", "id": id, "boards": boards}
 	var post := world.switches.within_reach(here, tuning.use_reach)
