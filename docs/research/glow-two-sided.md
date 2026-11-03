@@ -27,7 +27,7 @@ Captures: `game/tests/captures/glow_pane_views.tscn` (`--view=out|in|beside|wall
   material with `cull_mode` Disabled, or a shader with `cull_disabled`. `test_glow_two_sided.gd` checks every such mesh
   of the drive-in and the small map's greyboxes and the glow scenes; a closed vessel (the soda glass, the perk coolers'
   thin box of glass) keeps back-face culling, its far wall shows through its near one; the test skips box, cylinder,
-  sphere, capsule and prism meshes for that reason.
+  sphere, capsule, prism and torus meshes (the re-cut bench ring is a thin torus) for that reason.
 - Two-sided means it can show through a wall if it overlaps one: a pane lies in its opening, not in the brick. The
   test samples the pane's face against every wall box of the lot.
 - Capture a flat glow from **behind** as well as from the front before calling it done.

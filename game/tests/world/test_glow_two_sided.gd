@@ -41,8 +41,9 @@ func _is_see_through(material: Material) -> bool:
 	return false
 
 
-## A closed primitive (a box, cylinder or sphere, like the perk coolers' thin glass front) has a
-## near face from every side, so culling its back faces is right even when it is thin.
+## A closed primitive (a box, cylinder, sphere or torus: the perk coolers' thin glass front, the
+## re-cut bench's ring of light) has a near face from every side, so culling its back faces is right
+## even when it is thin.
 func _is_closed(mesh: Mesh) -> bool:
 	return (
 		mesh is BoxMesh
@@ -50,6 +51,7 @@ func _is_closed(mesh: Mesh) -> bool:
 		or mesh is SphereMesh
 		or mesh is CapsuleMesh
 		or mesh is PrismMesh
+		or mesh is TorusMesh
 	)
 
 
