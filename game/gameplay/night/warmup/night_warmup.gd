@@ -423,6 +423,9 @@ func _stage_row(outlined: bool = false) -> Node3D:
 					"episode": 0,
 					"speed": 1.0,
 					"look": look,
+					# Every other zombie is frozen: the ice shell's program is built here (and the
+					# plain body's, in the ones between).
+					"status": StatusCatalog.get_def(&"frozen").wire if i % 2 == 1 else 0,
 				},
 				0.0
 			)
@@ -583,6 +586,38 @@ func _replay_effects() -> void:
 	view.draw_event(
 		{"type": &"projectile_burst", "projectile_id": WARMUP_PROJECTILE, "point": flare_at}
 	)
+	# The ray gun's burst (its own colours, a swelling sphere) and a frozen zombie breaking apart.
+	(
+		view
+		. draw_event(
+			{
+				"type": &"projectile_burst",
+				"projectile_id": WARMUP_PROJECTILE,
+				"weapon_id": &"ray_gun",
+				"point": flare_at,
+				"radius": WeaponCatalog.get_def(&"ray_gun").splash_radius,
+				"kind": &"target",
+			}
+		)
+	)
+	await _chunk()
+	view.effects.bolt_bursts.stop_all()
+	(
+		view
+		. draw_event(
+			{
+				"type": &"zombie_shattered",
+				"zombie_id": WARMUP_PROJECTILE,
+				"position": flare_at + Vector3(0.0, -1.0, 0.0),
+				"yaw": 0.0,
+				"look": ZombieModels.DEFAULT,
+				"scale": 1.0,
+			}
+		)
+	)
+	view.effects.shards.set_process(false)
+	await _chunk()
+	view.effects.shards.stop_all()
 	# A weapon that asks for a streak is not in the catalogue, but the pooled streaks are made.
 	view.effects.tracer(at + Vector3(4.0, 0.0, 0.0), at + Vector3(4.0, 0.0, -3.0))
 	await _chunk()
