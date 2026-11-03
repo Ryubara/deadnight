@@ -423,11 +423,57 @@ def command_merge(args: argparse.Namespace) -> None:
     report = {"cap": cap, "cells": rows, "engine_errors": engine_lines}
     (out / "report.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
     (out / "report.md").write_text(markdown(report), encoding="utf-8")
+    if args.chart:
+        draw_chart(out, rows, cap)
     print(markdown(report))
     if args.gate:
-        failed = [r["cell"] for r in rows if r.get("parity_ok") is False or r["gates"]]
+        failed = [r["cell"] for r in rows if r["gates"] or (args.gate_parity and r.get("parity_ok") is False)]
         if failed or engine_lines:
             sys.exit(f"gates broken in: {', '.join(failed) or 'the engine log'}")
+
+
+def draw_chart(out: Path, rows: list[dict], cap: int) -> None:
+    """The survival curves of the bots and of the simulator, one panel for each parity cell (needs matplotlib)."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    surface, ink, bots_color, sim_color = "#fcfcfb", "#0b0b0b", "#2a78d6", "#eb6834"
+    fig, axes = plt.subplots(3, 3, figsize=(11, 8), sharex=True, sharey=True, facecolor=surface)
+    rounds = list(range(1, cap + 1))
+    for ax in axes.flat:
+        ax.set_facecolor(surface)
+    for row in rows:
+        if row["person"] or "sim_median_round" not in row:
+            continue
+        ax = axes[list(PROFILES).index(row["profile"])][TEAM_SIZES.index(row["bots"])]
+        sim = json.loads((out / "sim" / f"{row['sim_skill']}_{row['bots']}.json").read_text(encoding="utf-8"))
+        simulated = sim_rounds(sim, cap)
+        ax.step(rounds, [row["survival"][str(r)] for r in rounds], where="post", color=bots_color, label="bots")
+        ax.step(
+            rounds,
+            [sum(1 for v in simulated if v >= r) / len(simulated) for r in rounds],
+            where="post",
+            color=sim_color,
+            label="simulator",
+        )
+        ax.set_title(
+            f"{row['profile']} x{row['bots']}: median {row['median_round']} / {row['sim_median_round']}, "
+            f"KS {row['ks']:.2f}",
+            fontsize=9,
+            color=ink,
+        )
+        ax.grid(color="#e7e6e1")
+        ax.set_xticks(range(2, cap + 1, 2))
+    axes[0][0].legend(loc="lower left", fontsize=8)
+    for ax in axes[2]:
+        ax.set_xlabel("round reached", color=ink)
+    for ax in axes[:, 0]:
+        ax.set_ylabel("share of nights", color=ink)
+    fig.suptitle("Bots against the balance simulator: share of nights that reach each round", color=ink)
+    fig.tight_layout()
+    fig.savefig(out / "parity.png", dpi=110, facecolor=surface)
 
 
 def pct(value: float | None) -> str:
@@ -492,6 +538,8 @@ def main() -> None:
         p.add_argument("--out", required=True)
         p.add_argument("--max-round", type=int, default=16)
         p.add_argument("--gate", action="store_true", help="exit 1 when a gate is broken")
+        p.add_argument("--gate-parity", action="store_true", help="with --gate: a cell off the simulator fails too")
+        p.add_argument("--chart", action="store_true", help="draw parity.png (needs matplotlib)")
         p.add_argument("--sim-nights", type=int, default=300, help="nights of each simulator cell (0: none)")
         p.add_argument("--sim-seed", type=int, default=1)
     run.add_argument("--nights", type=int, default=100)

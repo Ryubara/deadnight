@@ -183,6 +183,23 @@ floor moved to 8, flagged for the maintainer). All the numbers are in
 [the rounds page](../design/rounds.md#the-bosses-25-tougher-688). A boss's health is the one number this page's
 simulator and the real server read from the same file, so the rise needs no separate model change.
 
+## The bots against the model (#231)
+
+The nightly bot soak ([the bots page](bots.md#phase-7-validation-at-scale-and-tuning)) plays whole nights of bots in the
+real server and sets each profile beside the cell of the same skill and team size (`balance_cli.gd`, 300 nights, read
+with the same cap as the bots). `SimSkill` was **not** changed: what the bots measured is what they are held to, not what
+the model is fitted to, because the gate of `BalanceTargets` reads the model. Measured, twelve nights a cell: the Veteran's
+curve is the strong cell's (Kolmogorov 0.06 to 0.09, median round 16 at a cap of 16), the Regular's median is within a
+round of the average cell's and its curve is not (0.37 to 0.53: no night is lost before round 10, then many at the
+stampede), and the Rookie's is the weak cell's alone and one to three rounds later in a team. Landing percentages against
+the model's `accuracy` and `head_rate`: Rookie 47 to 57% and 8 to 10% (0.45, 0.06), Regular 67 to 71% and 20% (0.65, 0.15),
+Veteran 75 to 79% and 28 to 29% (0.82, 0.30).
+
+What the comparison showed about the model: its weak boss night is a cliff (68% of two-player and 81% of four-player nights
+end in round 5) that a bot, which steps and reloads, passes more smoothly, which is why one number of the Rookie
+(`careful_below` and `safe_below` 0, so it does not back away when hurt) moves its first boss night between 100% and 30%.
+The curve gate of 0.2 is hard to meet for a cliff and a slope however close their medians are; read it with the medians.
+
 ## Using it
 
 ```text

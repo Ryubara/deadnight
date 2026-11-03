@@ -81,7 +81,7 @@ jobs:
       - name: Play ten nights of the cell
         run: |
           uv run python repos/deadnight/tools/bots/soak_report.py run --out out --set all --cells "${{ matrix.cell }}" \
-            --nights 10 --seed ${{ matrix.seed }} --chunk 10 --jobs 1 --timeout 6000 --sim-nights 0
+            --nights 10 --seed ${{ matrix.seed }} --chunk 10 --jobs 1 --timeout 6000 --sim-nights 0 --max-round 20
       - name: Upload the chunk
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -126,7 +126,7 @@ jobs:
           mkdir -p out/chunks
           cp downloaded/*/*.jsonl out/chunks/
           set +e
-          uv run python repos/deadnight/tools/bots/soak_report.py merge --out out --gate --sim-nights 300 | tee report.txt
+          uv run --with matplotlib python repos/deadnight/tools/bots/soak_report.py merge --out out --gate --sim-nights 300 --max-round 20 --chart | tee report.txt
           status=${PIPESTATUS[0]}
           cp out/report.md "$GITHUB_STEP_SUMMARY"
           exit "$status"
@@ -138,5 +138,6 @@ jobs:
           path: |
             out/report.json
             out/report.md
+            out/parity.png
             out/sim
           if-no-files-found: warn
