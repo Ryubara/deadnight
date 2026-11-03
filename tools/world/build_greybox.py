@@ -69,6 +69,11 @@ MIDWAY_LINK_Z = 20.0
 # The lot's outer walls are higher than the tallest platform beside them (a car roof, 1.65 m) plus a full jump (the
 # player's 1.1 m, PlayerTuning.jump_height) plus a margin, so nobody leaves the map from a roof (docs/design/map.md).
 PERIMETER_H = 3.0
+# The plaza's end and side walls stand higher still (#845). The lot's junk is stacked against them (a small container,
+# 1.71 m, in the south-west corner), and the real body climbs 1.25 m, not the jump's 1.1 (docs/research/map-review.md):
+# from the container's top a 3.0 m wall was 1.29 m up, a sprint-jump over its corner. 4.2 m is the tallest prop plus
+# the reach plus 1.2 m, so no chain of hops from the plaza floor gets over (`test_plaza_escape.gd` pins the margin).
+PLAZA_WALL_H = 4.2
 # The breaches in the field's fence: a gap of BREACH_WIDTH closed by BOARDS boards, each BOARD_PITCH above the last (from
 # the ground to the fence's top, so nobody jumps out over the boards), and
 # an apron outside (APRON_DEPTH deep, APRON_WIDTH wide, walled in) where the dead stand before they tear the boards off.
@@ -92,6 +97,14 @@ SWITCHES = [
 PROJECTOR_LENS = (0.0, 5.11, 24.37)
 SCREEN_CENTRE = (0.0, 10.0)
 SCREEN_FACE_Z = -47.4
+# The projector's spot stands just inside the booth's north wall, behind the port. A spot's forward is its -Z, and the
+# builder's yaw 0 leaves -Z pointing north: a yaw of 180 turned it to the road and lit the plaza through the wall (#840).
+# Its pitch equals its half-angle, so the cone's lower edge runs level at the spot's own height: nothing lower than
+# the port (the stand's roof, the cars, the ground) is in the cone, which is all the renderer knows of a spot (it lights
+# a mesh by the cone's box, and a mesh has at most `max_lights_per_object` lights). 70 m on, the axis meets the
+# screen's face 14 m up, and the cone, 8.6 m across from there, covers the middle of the screen.
+BOOTH_SPOT = (0.0, 5.4, 22.3)
+BOOTH_SPOT_ANGLE = 7.0
 # The ticket plaza behind the road door ends here, at the lot's wall (#686); the perk machine stands against it.
 PLAZA_END = 58.0
 WRECK_X = -9.0
@@ -916,7 +929,7 @@ def build() -> None:
     block(booth, "FilmRacks", -3.8, -1.4, 30, 31.6, 2.2, "booth_prop")
     block(booth, "Projector", -1.0, 1.0, 24.5, 26.0, 1.3, "booth_prop", 4.05)
     bl = lamps(booth, "booth")
-    spot(bl, "ProjectorBeam", (0, 5.4, 22.3), 180, -5.0, 6.0, 100, 7, "#e8f0ff")
+    spot(bl, "ProjectorBeam", BOOTH_SPOT, 0, BOOTH_SPOT_ANGLE, 6.0, 100, BOOTH_SPOT_ANGLE, "#e8f0ff")
     omni(bl, "Lower", (0, 3.0, 27), 1.0, 8, "#c9a8ff")
     omni(bl, "Upper", (0, 6.6, 27), 0.9, 7, "#c9a8ff")
     # The projector's beam from the port to the screen, burning with the screen's lamp.
@@ -996,9 +1009,9 @@ def build() -> None:
     road = group("Road", ".")
     floor_tiles(road, "Plaza", -16, 16, 38, PLAZA_END, "road_ground")
     wall(road, "FenceS", "x", 38, -16, 16, 2.6, "road_wall", [(0, 4, 0, 2.6)])
-    wall(road, "SideW", "z", -16, 38, PLAZA_END, PERIMETER_H, "road_wall")
-    wall(road, "SideE", "z", 16, 38, PLAZA_END, PERIMETER_H, "road_wall")
-    wall(road, "FenceEnd", "x", PLAZA_END, -16, 16, PERIMETER_H, "road_wall")
+    wall(road, "SideW", "z", -16, 38, PLAZA_END, PLAZA_WALL_H, "road_wall")
+    wall(road, "SideE", "z", 16, 38, PLAZA_END, PLAZA_WALL_H, "road_wall")
+    wall(road, "FenceEnd", "x", PLAZA_END, -16, 16, PLAZA_WALL_H, "road_wall")
     for sx in (-1, 1):
         tag = "W" if sx < 0 else "E"
         block(road, f"Kiosk{tag}", sx * 6 - 1.2, sx * 6 + 1.2, 44, 46.4, 2.4, "road_kiosk")

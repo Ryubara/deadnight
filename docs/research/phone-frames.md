@@ -101,12 +101,74 @@ measurement.
 per-minute medians of one arm swing from 23 to 1 238 ms when the machine is busy). The change helps where the pixels
 are the limit and does nothing where the processor is. A phone that is CPU-bound will not feel it.
 
+## Batching the lot's still meshes (#728)
+
+`LotBatcher` (`game/world/batch/`) folds the drive-in's still scenery into a few meshes when a night builds the map:
+the models of props, fixtures, cars and wrecks, the lamp posts' poles, the solid CSG boxes' meshes and the parts of the
+three machines that never move (`still_meshes()` on each). `MeshBatch` sorts the pieces into 12 m cells and, in a cell,
+by material (a signature of every stored property, so two imported models that wear one palette share a surface) and
+builds one `MeshInstance3D` per cell. A box is hidden, not removed: it stays the wall. Nothing in the scene files
+changes, a prop moved in the editor moves in the night, and what a script or the rules reach (doors, barricades, lamp
+bulbs, the screen, the moving parts of the machines) is left alone. A map asks for it (`MapInfo.batch_still`, only the
+lot); a headless game server does not batch.
+
+- **Lights decide the cells.** The Compatibility renderer lights a mesh by its box with at most 8 lights, so a cell
+  that more than 6 of the map's lights reach (the cap less the room a fight needs, as `test_lot_light_cap.gd` holds)
+  is split in four, and pieces that stand in one place (a floor and the ceiling over it) are packed by what they add to
+  the reach. Without this a view differed on 70 % of its pixels because the renderer kept other lights for a bigger box.
+- **Same picture:** 14 views (the field, the aisles, the machines, the plaza, two overhead) rendered before and after
+  under the lights a night starts with differ by a mean of 0 to 0.0006 on 0 to 0.14 % of the pixels; the largest
+  region (the machines' breathing glow, a frame apart) is under 1 %. The same view rendered twice differs by up to 4 %,
+  so that is noise (`tools/lot/batch_capture.gd`, attached to the pull request).
+- **Counts** (14 capture views, summed): draw calls 5 427 to 3 828 (29 % fewer), triangles 964 000 to 1 325 000 (37 %
+  more: a cell is drawn whole, so a view draws what is behind the frustum edge). That trade helps a processor-bound
+  phone and may hurt a weak GPU, which was not measured. `batch_report.gd`: 867 pieces into 448 surfaces, built in 170
+  to 190 ms at the start of a night.
+
+CPU x4, 10 minutes in one page, `?batch=toggle` flips between the nodes and the batches every 20 s, the order shuffled
+each round (`--arms "unbatched:2:0:0,batched:2:0:1"`), 4 s dropped after each switch:
+
+| Arm | frames | p50 | p95 | p99 | draw calls | 3D draw calls | objects | process ms | render CPU ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| nodes | 4 613 | 46.8 | 109.3 | 172.3 | 628 | 441 | 1 098 | 46.8 | 9.9 |
+| batched | 3 867 | 48.2 | 111.3 | 157.0 | 488 | 302 | 946 | 47.8 | 9.2 |
+
+**No win in the median, said plainly.** Draw calls fell 22 % and render CPU 7 %, the median and p95 are inside noise and
+p99 fell 9 %. The batched arm also met more zombies on screen (4.1 alive against 3.2), which is the script cost, so the
+two are not clean. The frame at x4 is script and physics (47 and 21 ms), not draw calls. For scale, hiding the whole lot
+moved the median 93 to 62 ms (draw calls 834 to 240) in the earlier ablation, so the lot's meshes cost something and
+this batch took about a quarter of its calls. The cell size was swept (8, 12, 16, 24 m): bigger cells save a few calls
+and draw many more triangles; 12 m is the pick. A range of sight for small props (`?smallrange=D`, in the bench
+only) saves 150 to 250 more calls in views but is not on: it hides the far props.
+
+## The heap growth over a night (#728)
+
+`performance.memory.usedJSHeapSize` rises and falls with the browser's collector (93, 158, 117 MB in three samples a few
+seconds apart), so it says nothing alone. `phone_frames.py --gc` forces a collection every minute
+(`HeapProfiler.collectGarbage`) and reads the heap after it next to the engine's own monitors (`WebProbe` publishes
+objects, nodes, orphans, resources, texture and buffer memory when the page is a profile). One 13-minute run of the
+autopilot night at full speed (89 000 frames, no throttle, batched map):
+
+| Minute | JS heap after a forced GC | Engine objects | Nodes | Orphans | Resources | Texture MB | Buffer MB |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 148 MB | 12 491 | 3 479 | 0 | 2 244 | 60.2 | 53.2 |
+| 5 | 448 MB | 12 722 | 3 493 | 0 | 2 255 | 62.7 | 53.2 |
+| 9 | 679 MB | 12 935 | 3 516 | 0 | 2 268 | 64.5 | 53.6 |
+| 13 | 815 MB | 13 506 | 3 636 | 0 | 2 268 | 65.0 | 54.9 |
+
+- **It is not in the engine.** Nodes, orphans, resources and the video memory the engine counts are flat (nodes +4 %,
+  texture +8 %, no orphans), and the object count moves with the crowd. The page's heap after a forced collection
+  grows 148 to 815 MB, about 50 MB a minute at full speed, and slows after minute 10 (811 to 815 MB in the last three).
+- **So it is something the page holds** that a collection cannot free. Candidates: the `JavaScriptBridge` objects the
+  probe and the game publish every few frames (`WebProbe`, `ViewWebProbe`, the judder and flash probes), the profile's
+  own page recorder (not ruled out: no run without it), or the engine's own interop. It is **not found or fixed
+  here**: the issue's third item moved to [#834](https://github.com/Ryubara/deadnight/issues/834). The earlier figure
+  of 100 to 185 MB in 10 minutes was an unforced reading and mixed garbage with what stays.
+
 ## What is not done, and why
 
-- The processor cost of a night (the draw-call count above, the crowd's views, the audio) is the other half of a phone's
-  lag and is not changed by this pull request: a CPU-throttled profile of the lot is roughly 100 to 130 ms a frame at
-  x4. The next step is fewer, larger meshes (the lot's props merged by area into `MultiMesh` or one mesh) and distance
-  culling of small props; a follow-up issue holds it.
+- The processor cost of a night is mostly script and physics (47 and 21 ms of a 47 to 60 ms frame at x4), not the draw
+  calls the batch cut; the next lever is there (see the batching section for what was measured).
 - A real phone has not been used. Run `phone_frames.py` on desktop Chrome with remote debugging pointed at a phone
   when one is at hand.
 

@@ -1663,7 +1663,7 @@ material = ExtResource("booth_prop")
 metadata/circuit = "booth"
 
 [node name="ProjectorBeam" type="SpotLight3D" parent="ProjectionBooth/Lamps" groups=["powered_light"]]
-transform = Transform3D(-1.0000, -0.0000, 0.0000, 0.0000, 0.9962, 0.0872, -0.0000, 0.0872, -0.9962, 0.000, 5.400, 22.300)
+transform = Transform3D(1.0000, 0.0000, 0.0000, 0.0000, 0.9925, -0.1219, -0.0000, 0.1219, 0.9925, 0.000, 5.400, 22.300)
 light_color = Color(0.910, 0.941, 1.000, 1)
 light_energy = 6
 spot_range = 100
@@ -2020,24 +2020,24 @@ size = Vector3(14, 2.6, 0.4)
 material = ExtResource("road_wall")
 
 [node name="SideW0" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 1.500, 48.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, -16.000, 2.100, 48.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 3, 20)
+size = Vector3(0.4, 4.2, 20)
 material = ExtResource("road_wall")
 
 [node name="SideE0" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 1.500, 48.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 16.000, 2.100, 48.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(0.4, 3, 20)
+size = Vector3(0.4, 4.2, 20)
 material = ExtResource("road_wall")
 
 [node name="FenceEnd0" type="CSGBox3D" parent="Road"]
-transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 1.500, 58.000)
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.000, 2.100, 58.000)
 use_collision = true
 collision_layer = 3
-size = Vector3(32, 3, 0.4)
+size = Vector3(32, 4.2, 0.4)
 material = ExtResource("road_wall")
 
 [node name="Canopy" type="CSGBox3D" parent="Road"]

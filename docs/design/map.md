@@ -65,7 +65,10 @@ Rules the greybox is built to:
   to 2.75 m: the outer walls (the field's north, west and east fences, the yard's east and the back lot's west) are
   3.0 m, `PERIMETER_H` in the generator, up from 2.4 m. The fences between the field and the yard and back lot stay
   2.4 m: nothing reachable stands within a jump of them, and a door's slab is 2.6 m. The plaza's end and side walls
-  are 3.0 m as well. `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump
+  are 4.2 m (`PLAZA_WALL_H`): the junk stacked against them reaches 1.71 m and the real body climbs 1.25 m, not the
+  jump's 1.1 m, so a 3.0 m wall was one container and a corner away ([#845](https://github.com/Ryubara/deadnight/issues/845);
+  `test_plaza_escape.gd` runs the old hops and a sweep of hops from the plaza's floor, and pins the margin of 0.5 m over
+  the reach above the tallest prop at each wall). `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump
   as its climb for each door still closed (and what needs it), finds the platforms a player can reach, checks that no
   closed slab, closed area's wall, field fence or perimeter wall has its top within a jump of one, and runs the real
   player body (`PlayerSimulation`, sprinting and jumping) from the middle and edges of every car roof near a perimeter
@@ -129,8 +132,9 @@ lit by their own colour so they read in the dark (captures in the pull request).
 The road door (`door_road`, 2,000, the back lot first) opens the lot's last area: a court 32 m by 20 m behind the
 midway's south fence, `Road` in the scene. It used to open onto a road, a 124 m strip of asphalt with a roadblock, two
 wrecks and walls 1.6 m high that stopped in the dark. Nobody had decided what the road was for, and it showed from the
-plaza ([#686](https://github.com/Ryubara/deadnight/issues/686)). The road is gone: the plaza ends at a 3.0 m wall at
-z = 58, the lot's perimeter height, with the lot's own junk stacked against it (a broken-down wreck nose-in, a container
+plaza ([#686](https://github.com/Ryubara/deadnight/issues/686)). The road is gone: the plaza ends at a 4.2 m wall at
+z = 58 (the side walls too: higher than the lot's 3.0 m perimeter, see "Nobody leaves by jumping" above),
+with the lot's own junk stacked against it (a broken-down wreck nose-in, a container
 and a small one, a dumpster, crates, tyres), so nothing of the lot lies past it and nothing is seen to end.
 
 | What | Where |

@@ -19,6 +19,10 @@ extends Resource
 @export var area_m2 := 0
 @export var min_players := 1
 @export var max_players := 4
+## Whether a night folds the map's still scenery into a few meshes when it builds it (`LotBatcher`),
+## to cost a phone fewer draw calls. Only for a map whose scene was written for it (what moves is
+## left alone).
+@export var batch_still := false
 ## False for a map that is listed but not built: its card is locked, "coming soon".
 @export var shipped := true
 
