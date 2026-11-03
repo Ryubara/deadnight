@@ -15,6 +15,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | `pr` (`pull_request_target`) | `pr-rules` (the title, description, docs and commits checks, as steps) | every push and every edit of the description |
 | `pr-status` | `labels` | the push, and once when `ci` ends (not when it was cancelled) |
 | `docs` | `mkdocs` (pages build), `deploy` | a push to `main` only |
+| `bots-nightly` | `plan`, `soak` (a matrix job of ten nights for each cell), `report` | 03:17 UTC every day and by hand; never on a pull request ([the bot soak](bots.md#the-nightly-soak-and-the-parity-batch)) |
 
 ## Which files start which job
 

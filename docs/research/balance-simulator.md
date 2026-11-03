@@ -183,6 +183,24 @@ floor moved to 8, flagged for the maintainer). All the numbers are in
 [the rounds page](../design/rounds.md#the-bosses-25-tougher-688). A boss's health is the one number this page's
 simulator and the real server read from the same file, so the rise needs no separate model change.
 
+## The bots against the model (#231)
+
+The nightly bot soak ([the bots page](bots.md#phase-7-validation-at-scale-and-tuning)) plays whole nights of bots in the
+real server and sets each profile beside the cell of the same skill and team size (`balance_cli.gd`, 300 nights, read
+with the same cap as the bots). `SimSkill` was **not** changed: what the bots measured is what they are held to, not what
+the model is fitted to, because the gate of `BalanceTargets` reads the model. Measured on the code after #766, eight
+nights a cell: the Veteran's curve is the strong cell's (Kolmogorov 0.00 to 0.05, median round 16 at a cap of 16), the
+Regular's median is within a round of the average cell's and its curve is not (0.34 to 0.89: seven or eight of eight
+nights reach the cap), and the Rookie is two rounds better than the weak cell alone and four or five in a team. Landing
+percentages and head shares against the model's `accuracy` and `head_rate` (0.45 and 0.68, 0.65 and 0.81, 0.82 and 0.85):
+Rookie 49 to 60% and 62 to 68%, Regular 74 to 76% and 72 to 76%, Veteran 81 to 84% and 73 to 83%.
+
+What the comparison showed about the model: its weak boss night is a cliff (68% of two-player and 81% of four-player nights
+ended in round 5 before #766) that a bot, which steps and reloads, passes more smoothly, which is why one number of the
+Rookie (`careful_below` and `safe_below` 0, so it does not back away when hurt) moves its first boss night between
+97% and 53% of passes. The curve gate of 0.2 is hard to meet for a cliff and a slope however close their medians are;
+read it with the medians.
+
 ## The headshot retune (#745)
 
 The hit zones that follow the bodies ([hit zones](hit-zones.md), #694) made the chibi head half the figure, so a bot

@@ -1336,11 +1336,185 @@ count is the host's, and the server's own limits sit above it.
 
 Issue: #231.
 
-The nightly soak (100 nights a cell), the parity batch against the simulator for every profile and team size, a human
-playtest with telemetry, fitting `SimSkill` to the measured bots, and the retune of the rules' player scaling if bots
-make filled nights different from human ones. **Done when**: the parity gates in the testing section hold for three
-consecutive nightly runs; a written report lists each profile's measured numbers; the page is updated; known
-limitations are issues.
+#### The nightly soak and the parity batch
+
+**What shipped.** `game/tests/captures/bots_soak.tscn` plays whole nights of hosted bots in the real server (the lot,
+the rules and the zombies; the bots shop, fight and revive; ticks are run by hand with no clock), one cell at a time: a
+profile, a team size, an order, and with or without a stand-in for a person (the old autopilot). Each night prints one
+`SOAKNIGHT` line of plain data: the round reached, the gates it broke, and for each bot its shots, hits, heads, kills,
+downs, revives, points by category, stuck and idle time, and the think cost. `SoakWatch`
+(`game/tests/bots/soak_watch.gd`) reads the night from outside the bots (the server's events and positions, never a
+bot's beliefs) and holds a night to the gates; `tools/bots/soak_report.py` runs the cells in chunks of a few nights per
+Godot process, rebuilds the balance simulator's matching cell (`balance_cli.gd`, 300 nights), and writes `report.json`
+and `report.md`: median round, the Kolmogorov distance of the two survival curves, the measured numbers of each profile,
+and the gates each cell broke. `.github/workflows/bots-nightly.yml` runs it every night at 03:17 UTC, 100 nights for
+each of the 12 cells in jobs of ten nights, and its last job fails when a gate is broken and writes the report to the
+run's summary.
+
+```text
+uv run python tools/bots/soak_report.py run --out <folder> --set parity|orders|all --nights 100 --jobs 3
+uv run python tools/bots/soak_report.py merge --out <folder> --gate        (read the chunks again; exit 1 on a broken gate)
+godot --headless --path game res://tests/captures/bots_soak.tscn --fixed-fps 60 -- --profile=regular --bots=4 --nights=5
+  ... --watch=SEAT --from=TICK --every=TICKS     (a line of what one seat is doing, for finding out why a gate broke)
+```
+
+**The cells.** The parity batch is each profile (Rookie, Regular, Veteran) with 1, 2 and 4 bots alone in the lot,
+against the simulator's weak, average and strong cell for the same number of players (a room with no person is Roam,
+which is what a bot does with nobody to follow). The order soaks are a person stand-in with three Regular bots under
+Roam, Follow and Hold. A night is stopped when it starts the round cap (16 in the report below, 20 in the nightly run;
+in the bots and in the simulator alike, a night that starts it counts as reaching it), when it has run 45 game minutes,
+or when one round has gone on for 8 game minutes (a stalled round, below). A night is 40 to 130 s of wall time for one
+to four bots on an idle machine (a game minute takes 5 to 8 s).
+
+**The gates, and how each is read.**
+
+| Gate | Read as |
+| --- | --- |
+| No engine `ERROR` | An `ErrorCatcher` (a `Logger`) is installed for the night; any line fails it |
+| No stuck episode over 10 s, stuck under 1% of walking time | The bot's own telemetry (`longest_stuck`; stuck over walking seconds). The share is judged over a cell, not a bot: one five-second episode in a four-minute walk is 2% |
+| No bot idle with a zombie in view for over 5 s | A zombie it has made out within 12 m, and the same command (`BotTelemetry.signature`) sent tick after tick with the body standing, no shot, no use. A zombie that comes a metre nearer while the bot waits ends the count: a dry bot or one with a crowbar waits for the blow where it stands |
+| Follow only: no bot beyond 25 m of the person for over 20 s outside an errand | The server's positions; an errand is a bot whose note is buy, fuel, breaker, boards or crane |
+| Roam: no bot standing with nothing to do (note roam, hold or none) over 8 s | The body's speed under 0.05 m/s |
+| Hold: within 3 m of the spot for 92% of the time under the stance | Not on a trip for a revive, a ping, a dodge or an errand; the 1% stuck share is not asked of a bot holding a spot, which walks a few seconds a night |
+| No rejected-buy loop | The same item refused to the same bot twice inside 29 s |
+| No round that will not end | A round over 8 game minutes. New in this phase: see below |
+| Parity | The median round within 1.5 of the simulator cell's, and a Kolmogorov distance of the two curves under 0.2 |
+
+The gates that need people (`--person`) are only asked of the cells that have one.
+
+#### What the soak found
+
+Read from the first nights, in the order they were found; each is why a gate exists as it does.
+
+- **A bot stood with an empty gun while another held its rounds in reserve** (`rifle [0, 24]`, a shotgun at `0/0`, a
+  boss fight). `BotArsenal` swapped away from a dry gun only to a loaded magazine or a crowbar. It came out as bots idle
+  with a zombie in view and as four Regular bots reaching round 9 (the simulator's 15); with the swap fixed (four nights
+  each), kills a bot-minute went from 3.7 to 6.0 and the median round from 9 to 12. #744 landed the same fix while this
+  was being built, so main's is the one in the code; the unit test of the case stays. Lesson in the kit
+  (`a-bot-stood-with-an-empty-gun`).
+- **Bots with thousands of points and no round left, in a round that did not end.** After main's own ammunition rule
+  (#730) the bots still shopped only when the nearest dead one was 12 m away, and in a boss fight or a late round it
+  never is: five of eight Regular nights (seeds 31 to 38, in the first boss night and the one at 15) stalled with the
+  headliner alive for five minutes, bots without a round holding 400 to 11,000 points. A bot with no round left now
+  **runs** for rounds (and for nothing else) with the dead 4 m away or more (`BotErrands.dash`, `DASH_FROM`), under any
+  order. The same eight seeds: **0 stalled**, seven reached round 16
+  (`test_a_dry_bot_runs_for_rounds_with_a_dead_one_in_sight_but_not_in_reach` fails without it). The soak counts a round
+  over 8 game minutes as a gate broken (a night of 45 game minutes in a single round was the first sign).
+- **The Rookie fell out of its fit.** #568 fitted the Rookie to the simulator's weak level (the first boss night passed
+  in 40% of nights); after main's play states (#739, a hurt bot goes Careful and then Safe and backs away) and the
+  ammunition and reload fixes it passed 30 of 30. A Rookie now **does not manage its health** (`careful_below` and
+  `safe_below` 0, `BotProfile.rookie`): 9 of 30 (3, 4 and 2 of ten nights, seeds 1, 101 and 201), inside the 25 to 55%
+  band the fit asked for; and again after main's #766 and #749, 16 of 30 (7, 6 and 3) with the change against 29 of 30
+  (10, 9 and 10) without it. Tried and left: a Careful state from 30% of health and a Safe one from 15% (10 of 10), and
+  the same with a track error of 20 degrees (3 of 10, no better than the one number).
+- **A soak that measures what the bot does must not look at what the bot believes.** `SoakWatch` reads the server's
+  events and bodies; the bots' beliefs are used only to say that a zombie was in sight, which is the gate's own word.
+
+#### Measured
+
+Eight nights a cell on the code of this change merged with main at the hit zones that follow the bodies (#749), the
+simulator's retune (#766) and the bodies that pass through each other (#763): seeds 1 to 8 for a cell, 300 nights of the
+simulator (seed 1), round cap 16, a machine shared with other work (so read wall times as an upper bound). The curves
+of the bots and of the simulator are `parity.png` of the report.
+
+**Parity with the simulator** (bots alone, Roam; the bots' median round against the simulator's cell, the Kolmogorov
+distance of the two curves, and how many of the eight nights reached the cap):
+
+| Cell | Nights | Median round | Sim median | Gap | Kolmogorov | Parity | Capped |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | ---: |
+| rookie x1 (sim weak) | 8 | 7 | 5 | 2 | 0.34 | NO | 0 |
+| rookie x2 (sim weak) | 8 | 10 | 5 | 5 | 0.77 | NO | 0 |
+| rookie x4 (sim weak) | 8 | 9 | 5 | 4 | 0.52 | NO | 0 |
+| regular x1 (sim average) | 8 | 16 | 15 | 1 | 0.89 | NO | 8 |
+| regular x2 (sim average) | 8 | 16 | 15 | 1 | 0.59 | NO | 7 |
+| regular x4 (sim average) | 8 | 16 | 16 | 0 | 0.34 | NO | 8 |
+| veteran x1 (sim strong) | 8 | 16 | 16 | 0 | 0.02 | yes | 7 |
+| veteran x2 (sim strong) | 8 | 16 | 16 | 0 | 0.05 | yes | 8 |
+| veteran x4 (sim strong) | 8 | 16 | 16 | 0 | 0.00 | yes | 8 |
+
+Six of nine cells are inside the median gate (1.5 rounds) and three of nine inside the curve gate (0.2). The Veteran
+matches the simulator's strong level from one bot to four. The Regular is within a round of the average cell's median,
+and its curve is not the model's: seven or eight of its eight nights reach round 16 where the model's average player is
+down by degrees from round 5 (the curve distance is 0.34 to 0.89), so a room filled with Regular bots is easier than the
+model's average team ([#768](https://github.com/Ryubara/deadnight/issues/768)). The Rookie is two rounds better than the
+weak level alone and four or five in a team ([#767](https://github.com/Ryubara/deadnight/issues/767)). The gate for each
+is a failure of the nightly only with `--gate-parity`, which waits for those two issues.
+
+**What each profile measured** (shots that land of the shots fired, heads of the hits, kills and downs for the bots in
+the cell, revive success of the tries, points spent over earned against the simulator's cell in brackets, and the stuck
+share of walking time):
+
+| Cell | Hit rate | Head share | Kills per bot-minute | Revive success (tries) | Downs per bot-hour | Spend ratio (sim) | Stuck share | Wall s a night |
+| --- | ---: | ---: | ---: | --- | ---: | --- | ---: | ---: |
+| rookie_1 | 49% | 62% | 4.28 | n/a | 6.2 | 0.81 (0.70) | 0.00% | 20 |
+| rookie_2 | 58% | 68% | 5.91 | 87% (15) | 9.6 | 0.65 (0.73) | 0.04% | 58 |
+| rookie_4 | 60% | 62% | 5.02 | 87% (54) | 14.9 | 0.54 (0.72) | 0.05% | 98 |
+| regular_1 | 74% | 76% | 9.78 | n/a | 0.3 | 0.74 (0.64) | 0.08% | 58 |
+| regular_2 | 74% | 73% | 8.23 | 100% (3) | 0.9 | 0.68 (0.69) | 0.04% | 94 |
+| regular_4 | 76% | 72% | 6.85 | 89% (9) | 1.0 | 0.68 (0.71) | 0.14% | 180 |
+| veteran_1 | 82% | 83% | 10.10 | n/a | 0.3 | 0.67 (0.55) | 0.14% | 50 |
+| veteran_2 | 81% | 79% | 8.52 | 100% (4) | 0.7 | 0.67 (0.57) | 0.16% | 87 |
+| veteran_4 | 84% | 73% | 7.09 | 100% (6) | 0.5 | 0.69 (0.54) | 0.07% | 156 |
+| regular_3_roam_person | 74% | 72% | 6.24 | 84% (19) | 0.9 | 0.71 (n/a) | 0.06% | 164 |
+| regular_3_follow_person | 73% | 73% | 5.49 | 100% (8) | 2.1 | 0.66 (n/a) | 0.35% | 187 |
+| regular_3_hold_person | 66% | 60% | 3.12 | 100% (5) | 5.2 | 0.08 (n/a) | 1.94% | 92 |
+
+Against the model's assumptions (`SimSkill` accuracy and head rate, after #766): the Rookie lands 49 to 60% of its shots
+and 62 to 68% of the hits are the head (weak: 0.45 and 0.68); the Regular 74 to 76% and 72 to 76% (average: 0.65 and
+0.81); the Veteran 81 to 84% and 73 to 83% (strong: 0.82 and 0.85). Kills a bot-minute are 4 to 6 (Rookie), 7 to 10
+(Regular) and 7 to 10 (Veteran): they fall with the team size because the dead are shared. A revive succeeds in 84 to
+100% of tries (the tries are few for the Regular and Veteran: nobody is down much). The Rookie spends 0.54 to 0.81 of
+what it earns against the model's 0.70 to 0.73 and the Regular 0.68 to 0.74 against 0.64 to 0.71: the shop gap of #228
+(0.5 to 0.6 against 0.8 to 0.87) is closed, and the spend gate carried from #228 (points spent over earned within 20% of
+the simulator's) holds for the Regular in all three team sizes and for the Rookie in the team of one and two (not four:
+0.54 against 0.72); the split by category is in `report.json` of each run. `SimSkill` is not changed.
+
+**Gates** (a person stand-in and three Regular bots for the last three rows, Follow and Hold given by the person at the
+start):
+
+| Cell | Nights | Nights that broke a gate | Which |
+| --- | ---: | ---: | --- |
+| rookie_1 | 8 | 0 | none |
+| rookie_2 | 8 | 0 | none |
+| rookie_4 | 8 | 0 | none |
+| regular_1 | 8 | 0 | none |
+| regular_2 | 8 | 1 | idle under Roam over 8 s x1 |
+| regular_4 | 8 | 0 | none |
+| veteran_1 | 8 | 0 | none |
+| veteran_2 | 8 | 0 | none |
+| veteran_4 | 8 | 0 | none |
+| regular_3_roam_person | 8 | 1 | a round that would not end x1 |
+| regular_3_follow_person | 8 | 2 | a round that would not end x2, idle with a zombie in view over 5 s x1 |
+| regular_3_hold_person | 8 | 7 | off the Hold spot x7 |
+
+The nine parity cells hold the hard gates in 71 of 72 nights; the one is a Regular idle for over 8 s under Roam. No
+engine `ERROR` in any of the 96 nights, no stuck episode over 10 s, no rejected-buy loop, stuck share under 0.16% of
+walking time in every cell without a person. The cells with a person do not hold all their gates: Hold keeps the spot
+for 86 to 96% of the time under the stance (median 92%, 10 of 24 bots under the 92% gate;
+[#769](https://github.com/Ryubara/deadnight/issues/769)) and Follow and Roam with a person left, in three nights of
+sixteen, a round that did not end (a boss alive in round 14 or 15) and once a bot idle beside a zombie
+([#770](https://github.com/Ryubara/deadnight/issues/770)).
+
+**Think cost.** `test_bot_server_cost` fails on `main` too (mean 1020 microseconds, 6.1% of the tick, budget 5%), and
+the soak's think p50 is 260 microseconds a bot and its p99 1.7 to 2.1 ms (worst 2.8 ms) on a busy machine:
+[#771](https://github.com/Ryubara/deadnight/issues/771).
+
+#### What is left, and how the three nights are read
+
+- **Three consecutive nightly runs.** The workflow is new; its hard gates (every row of the gates table except parity)
+  fail the run, and parity turns on with `--gate-parity` when #767 and #768 are done. The run history is where three in
+  a row are read ([#772](https://github.com/Ryubara/deadnight/issues/772)). The first runs will fail on the cells with a
+  person until #769 and #770 are fixed, which is the soak doing its job.
+- **A bot-filled night against a human one.** Not measurable until there is telemetry of people; until then "neither
+  easier nor harder than a human one" is the simulator's own levels, read as above: the Veteran is the strong level, the
+  Regular is the average level made easier, the Rookie is the weak level made two to five rounds easier in a team. The
+  rules' player scaling is **not retuned**: nothing measured says a bot weighted below one would bring a team nearer the
+  model, and no night of people exists to say it from ([#772](https://github.com/Ryubara/deadnight/issues/772)).
+- **The cap.** The report above is at round 16 because the nights past it cost 5 to 8 s of wall time a game minute; 7 or
+  8 of the 8 Veteran nights reach it. The nightly run uses 20.
+- **A soak is a sample of nights**: eight a cell is enough to see a gate break and not enough to rank two tunings that
+  are a round apart (the median of four Regular bots moved between 10 and 12 between runs of 12 and of 4 nights). The
+  nightly run's 100 nights are for that.
 
 ## Decisions of the maintainer
 
