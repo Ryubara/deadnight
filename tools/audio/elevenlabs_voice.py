@@ -1,17 +1,22 @@
-"""The soldier's voice lines: ElevenLabs text to speech, one request per line, encoded for the game.
+"""The soldiers' voice lines: ElevenLabs text to speech, one request per line, encoded for the game.
 
     ELEVENLABS_API_KEY=... uv run --with requests python tools/audio/elevenlabs_voice.py
-        --ffmpeg <pinned ffmpeg> --cache <folder for the raw takes> <command> [--only event,...] [--budget N]
+        --ffmpeg <pinned ffmpeg> --cache <folder for the raw takes> [--voice male|female]
+        <command> [--only event,...] [--budget N]
+
+Two voices, the same events and number of takes each: `male` (default; `soldier_voice.json` into
+`game/assets/audio/voice/soldier/`) and `female` (`soldier_voice_female.json` into
+`game/assets/audio/voice/soldier_female/`). Each voice has its own cache folder.
 
 Commands:
 
 - `plan`      the table of every take (file, event, characters, text) and the characters still to be requested;
               nothing is sent. Refuses when the characters to request are over `--budget`.
 - `generate`  requests every take that is not in `--cache` yet (a take is never requested twice: the raw mp3 and the
-              request that made it are kept), then runs `encode`.
-- `encode`    trims, levels (to `target_lufs` in `soldier_voice.json`, peak limited to -1 dBFS) and writes Ogg Vorbis
-              into `game/assets/audio/voice/soldier/`, plus `manifest.json` (file -> event, text, characters, model,
-              voice, settings, seed, seconds, loudness).
+              request that made it are kept); run `encode` after it.
+- `encode`    trims, levels (to `target_lufs` in the voice's json, peak limited to -1 dBFS) and writes Ogg Vorbis
+              into the voice's folder, plus `manifest.json` (file -> event, text, characters, model, voice,
+              settings, seed, seconds, loudness).
 - `check`     transcribes each take (`POST /v1/speech-to-text`, model `scribe_v1`; it costs credits, about 8 a
               take, so a transcript is kept in `--cache` and never fetched twice) and flags the takes where an audio
               tag was spoken aloud (its words in the transcript outside Scribe's own `[laughs]` marks) or words are
@@ -20,7 +25,8 @@ Commands:
 
 The key is read from the environment and never printed or written. The lines, voice, model and settings are data in
 `tools/audio/soldier_voice.json` (the maintainer approved them on 2026-11-01); the two `samples` are takes the
-maintainer listened to, copied into the cache and encoded like the rest, not requested again.
+maintainer listened to, copied into the cache and encoded like the rest, not requested again. The female voice's
+settings are the male voice's (same model and settings, a premade female voice) and it has no samples.
 """
 
 from __future__ import annotations
@@ -35,8 +41,11 @@ import tempfile
 import wave
 from pathlib import Path
 
-DATA = Path(__file__).parent / "soldier_voice.json"
-OUT = Path("game/assets/audio/voice/soldier")
+HERE = Path(__file__).parent
+VOICES = {
+    "male": (HERE / "soldier_voice.json", Path("game/assets/audio/voice/soldier")),
+    "female": (HERE / "soldier_voice_female.json", Path("game/assets/audio/voice/soldier_female")),
+}
 API = "https://api.elevenlabs.io/v1"
 TAG = re.compile(r"\[[^\]]*\]")
 SEED_BASE = 1958
@@ -45,8 +54,8 @@ FADE_IN = 0.004
 FADE_OUT = 0.06
 
 
-def load() -> dict:
-    return json.loads(DATA.read_text(encoding="utf-8"))
+def load(voice: str = "male") -> dict:
+    return json.loads(VOICES[voice][0].read_text(encoding="utf-8"))
 
 
 def takes(data: dict) -> list[dict]:
@@ -152,8 +161,8 @@ def seconds_of(wav: Path) -> float:
         return f.getnframes() / f.getframerate()
 
 
-def encode(all_takes: list[dict], data: dict, cache: Path, exe: str, samples_dir: Path) -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+def encode(all_takes: list[dict], data: dict, cache: Path, exe: str, samples_dir: Path, out: Path) -> None:
+    out.mkdir(parents=True, exist_ok=True)
     manifest = {}
     trim = (
         "silenceremove=start_periods=1:start_threshold=-48dB:start_silence=0.02,"
@@ -171,7 +180,7 @@ def encode(all_takes: list[dict], data: dict, cache: Path, exe: str, samples_dir
             lufs = loudness(exe, trimmed)
             gain = data["target_lufs"] - lufs
             length = seconds_of(trimmed)
-            ogg = OUT / f"{t['name']}.ogg"
+            ogg = out / f"{t['name']}.ogg"
             chain = (
                 f"volume={gain:.2f}dB,alimiter=limit={PEAK_LIMIT}:level=disabled,"
                 f"afade=t=in:d={FADE_IN},afade=t=out:st={max(length - FADE_OUT, 0):.3f}:d={FADE_OUT}"
@@ -198,7 +207,7 @@ def encode(all_takes: list[dict], data: dict, cache: Path, exe: str, samples_dir
             }
             print(f"{ogg.name}: {length:.2f} s, {lufs:.1f} LUFS -> {data['target_lufs']}")
     text = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
-    (OUT / "manifest.json").write_text(text, encoding="utf-8", newline="\n")
+    (out / "manifest.json").write_text(text, encoding="utf-8", newline="\n")
 
 
 def words(text: str) -> list[str]:
@@ -246,13 +255,14 @@ def check(all_takes: list[dict], cache: Path) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=["plan", "generate", "encode", "check", "credits"])
+    parser.add_argument("--voice", choices=sorted(VOICES), default="male")
     parser.add_argument("--ffmpeg")
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--samples", type=Path, help="folder of the approved sample mp3s (default: the cache)")
     parser.add_argument("--only", help="comma-separated events")
     parser.add_argument("--budget", type=int, default=6500)
     args = parser.parse_args()
-    data = load()
+    data = load(args.voice)
     if args.command == "credits":
         used, limit = credits()
         print(f"{used} of {limit} characters used, {limit - used} left")
@@ -271,7 +281,7 @@ def main() -> None:
     elif args.command == "encode":
         if not args.ffmpeg:
             sys.exit("--ffmpeg is required")
-        encode(all_takes, data, args.cache, args.ffmpeg, samples_dir)
+        encode(all_takes, data, args.cache, args.ffmpeg, samples_dir, VOICES[args.voice][1])
     elif args.command == "check":
         check(all_takes, args.cache)
 
