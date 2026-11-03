@@ -41,6 +41,18 @@ func _is_see_through(material: Material) -> bool:
 	return false
 
 
+## A closed primitive (a box, cylinder or sphere, like the perk coolers' thin glass front) has a
+## near face from every side, so culling its back faces is right even when it is thin.
+func _is_closed(mesh: Mesh) -> bool:
+	return (
+		mesh is BoxMesh
+		or mesh is CylinderMesh
+		or mesh is SphereMesh
+		or mesh is CapsuleMesh
+		or mesh is PrismMesh
+	)
+
+
 func _is_double_sided(material: Material) -> bool:
 	if material is StandardMaterial3D:
 		return (material as StandardMaterial3D).cull_mode == BaseMaterial3D.CULL_DISABLED
@@ -55,7 +67,7 @@ func _one_sided_glows(root: Node) -> Array[String]:
 	var found: Array[String] = []
 	for node in root.find_children("*", "MeshInstance3D", true, false):
 		var instance := node as MeshInstance3D
-		if instance.mesh == null:
+		if instance.mesh == null or _is_closed(instance.mesh):
 			continue
 		var size := instance.mesh.get_aabb().size
 		if minf(size.x, minf(size.y, size.z)) > FLAT:
