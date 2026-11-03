@@ -69,10 +69,20 @@ the real command, its own model drawn).
 | `hammer` | none | A tool: the repair clip's prop, not a weapon (see below) | |
 | `grenade` | none (`frag.tres` is its own system) | Thrown, not a crane prize: the start (2) and the shop's grenades | 150 blast |
 
+**On the second map the walls sell more** ([the shop of the small map](smallmap.md#the-shop-formula-rows-22-to-25)):
+nine places for eight weapons, so the revolver (90, back in the pool after it is given up), the crowbar (270), the
+shotgun (540, on two walls), the Tommy gun (540), the bat (540), the flare gun (630), the axe (720) and, in the cabinet
+upstairs, the rifle (675) are all bought by the wall there, at prices that climb from room to room, and its box
+(425, one place) gives any weapon the buyer lacks. The tuning is the map's own overlay; the lot's walls are unchanged.
+
 **The crane gives every weapon the start and the wall do not**, the revolver too once the buyer has given it up (they
 carry it from the first second, and the crane never gives a weapon the buyer carries). A player carries two weapons, so
 the pool is never empty for them. The pool and its weights are the shop item `crane_play`; the
-odds are [the mystery box page](../research/mystery-box.md).
+odds are [the mystery box page](../research/mystery-box.md). `game/tests/rules/test_crane_pool.gd` fails when a weapon
+of the catalogue is not in the pool (unless it is listed there as no prize, with the reason; none is) and when 10,000
+first rolls, each from the seed a solo night takes, are not spread by the weights. A solo night draws a new seed each
+time (`NightScreen.start_seed`, [#685](https://github.com/Ryubara/deadnight/issues/685)): with the old fixed one
+every night rolled the shotgun first.
 
 **The bat and the axe** were models with no definition. They are melee weapons held as `Melee` (the Swing clip, no
 flash, a spark on a hit) with their own hold files, so each shows its own model. They are **found only in the prize
@@ -133,7 +143,10 @@ weapon: it is not in the catalogue's `IDS`, nobody buys, carries or wins it, and
 A player carries **two weapons** (`WeaponCatalog.CARRY_LIMIT`), melee ones included: there is no melee slot, and the
 bat and the axe take a slot like a gun. A player starts with the revolver alone and a free second hand: the crowbar that
 used to fill it is replaced by the [quick melee](#quick-melee), which takes no slot. The swap button (F, d-pad up)
-cycles the two weapons once there are two.
+cycles the two weapons once there are two. The keys **1** and **2** take the first and the second weapon in hand (3 is
+the third slot's, for the perk that carries three, #687); the slot already in hand, and an empty slot, change nothing. A
+slot keeps its place: a weapon bought with full hands takes the slot of the weapon it replaces. The
+[HUD](hud.md#the-weapon-slots) shows both slots, the one in hand lit.
 
 Buying a weapon at the wall or taking a prize from the crane with both hands full **replaces the weapon in hand**,
 with its magazine and reserve (and its re-cut). The replaced weapon is not dropped on the ground: it is gone, and it

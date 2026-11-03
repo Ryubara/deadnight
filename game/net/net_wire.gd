@@ -1,6 +1,7 @@
 class_name NetWire
 extends RefCounted
-## The bytes of a night's connection (protocol version 12 carries each player's stance, sprint,
+## The bytes of a night's connection (protocol version 13 has the ORDER message, a person's order to
+## the bots, and the `bot_orders` of the frame; version 12 carries each player's stance, sprint,
 ## crouch and in the air, in the frame; version 11 has the quick melee flag in a command's flags
 ## (`F_MELEE`); version 10 has the client's PLATFORM message; version
 ## 9 had a WELCOME and events that carry every seat's name; version 8 carried each player's aim pose
@@ -30,6 +31,10 @@ extends RefCounted
 ## MARK     C->S  u8 type=11, u8 kind (an index of `PingBoard.KINDS`), s16 x/y/z (centimetres), u16
 ##                the thing marked (an index of the lot's doors, a zombie's or a player's id);
 ##                `MARK_SIZE` = 10 bytes. The server answers with a `ping_placed` event for everyone
+## ORDER    C->S  u8 type=13, u8 order (an index of `BotOrders.ORDERS`), s16 x/y/z (centimetres:
+##                where the person stands, the spot a Hold keeps), u8 the bot it is for (0 for the
+##                team's bots); `ORDER_SIZE` = 9 bytes. The server answers with a `bot_order_set`
+##                event for everyone
 ## REFUSED  S->C  u8 type=10, u8 reason (`Refusal`), u8 the server's protocol version; the server
 ##                closes the connection after it
 ## PLATFORM C->S  u8 type=12, u8 1 for a browser and 0 for any other client (2 bytes), sent once
@@ -53,22 +58,24 @@ enum Type {
 	PONG = 7,
 	REFUSED = 10,
 	MARK = 11,
-	PLATFORM = 12
+	PLATFORM = 12,
+	ORDER = 13
 }
 enum Refusal { VERSION = 1, FULL = 2, DENIED = 3 }
 
 ## The protocol version of this build. Raise it whenever a layout above changes (a field added,
 ## resized or reordered, a type renumbered). New keys in the events and the frame do not need it:
 ## clients ignore keys they do not know. The policy is in docs/research/multiplayer.md.
-const VERSION := 12
+const VERSION := 13
 ## The oldest client version a server of this build still takes. Equal to `VERSION` while the web
 ## client and the server ship from one commit; lower it only for a layout both versions can read.
-const MIN_VERSION := 12
+const MIN_VERSION := 13
 ## Port of a game server unless told otherwise. (Not 9080: the Godot editor's MCP bridge listens
 ## there on the maintainer's machine and Windows lets a second listener bind it silently.)
 const DEFAULT_PORT := 8910
 const COMMAND_SIZE := 25
 const MARK_SIZE := 10
+const ORDER_SIZE := 9
 const PING_SIZE := 7
 const PLATFORM_SIZE := 2
 ## What a ping says when the client has not measured a round trip yet, and the most it can say.
@@ -105,6 +112,11 @@ const F_USE_HELD := 1 << 11
 const F_VIEW := 1 << 12
 ## The quick melee button went down (`PlayerCommand.melee`, #411).
 const F_MELEE := 1 << 13
+## The last two bits are the weapon slot picked this tick (`NightCommand.slot`, 0 for none, 1 to 3):
+## a number, not a flag, so the three slot keys cost no more than two bits. A client that does not
+## know the field sends zeros, which pick nothing.
+const SLOT_SHIFT := 14
+const SLOT_MASK := (1 << WeaponSlots.BITS) - 1
 
 
 static func hello(
@@ -243,6 +255,36 @@ static func read_mark(data: PackedByteArray) -> Dictionary:
 	}
 
 
+## An order to the bots (`BotOrders.ORDERS`): `at` is where the person stands, `bot_id` the bot it
+## is for (0 for the team's bots).
+static func order(order_name: StringName, at: Vector3, bot_id := 0) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(ORDER_SIZE)
+	out[0] = Type.ORDER
+	out[1] = maxi(BotOrders.ORDERS.find(order_name), 0)
+	out.encode_s16(2, CommandCodec.point_step(at.x))
+	out.encode_s16(4, CommandCodec.point_step(at.y))
+	out.encode_s16(6, CommandCodec.point_step(at.z))
+	out[8] = clampi(bot_id, 0, 0xFF)
+	return out
+
+
+## The `order` action an order packet asks for, or `{}` when the packet is not one (an order that is
+## not in the list included).
+static func read_order(data: PackedByteArray) -> Dictionary:
+	if data.size() != ORDER_SIZE or data[0] != Type.ORDER or data[1] >= BotOrders.ORDERS.size():
+		return {}
+	return BotOrders.command(
+		BotOrders.ORDERS[data[1]],
+		Vector3(
+			CommandCodec.point_from_step(data.decode_s16(2)),
+			CommandCodec.point_from_step(data.decode_s16(4)),
+			CommandCodec.point_from_step(data.decode_s16(6))
+		),
+		data[8]
+	)
+
+
 ## The round trip a client reported in its ping, in milliseconds, or -1 for none (or a ping of the
 ## wrong size).
 static func read_ping_rtt(data: PackedByteArray) -> int:
@@ -288,6 +330,7 @@ static func command(value: NightCommand) -> PackedByteArray:
 	flags |= F_USE_HELD if value.use_held else 0
 	flags |= F_VIEW if value.view_step >= 0 else 0
 	flags |= F_MELEE if motion.melee else 0
+	flags |= (clampi(value.slot, 0, WeaponSlots.MAX) & SLOT_MASK) << SLOT_SHIFT
 	out.encode_u16(11, flags)
 	out.encode_s16(13, CommandCodec.point_step(value.origin.x))
 	out.encode_s16(15, CommandCodec.point_step(value.origin.y))
@@ -325,6 +368,7 @@ static func read_command(data: PackedByteArray) -> NightCommand:
 	result.reload = flags & F_RELOAD != 0
 	result.use = flags & F_USE != 0
 	result.swap = flags & F_SWAP != 0
+	result.slot = mini((flags >> SLOT_SHIFT) & SLOT_MASK, WeaponSlots.MAX)
 	result.use_held = flags & F_USE_HELD != 0
 	result.view_step = data.decode_u16(23) if flags & F_VIEW != 0 else -1
 	result.origin = Vector3(

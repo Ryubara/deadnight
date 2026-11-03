@@ -59,8 +59,9 @@ const PING_RADIUS := 36.0
 ## action while a finger is on it).
 const SCOREBOARD_OFFSET := Vector2(442.0, 178.0)
 const SCOREBOARD_RADIUS := 34.0
-## The floating stick: its resting place (a faint ring), its radius and where it may start.
-const STICK_REST := Vector2(330.0, 330.0)
+## The floating stick: its resting place (a faint ring, above the HUD's players column and the
+## weapon strip under it), its radius and where it may start.
+const STICK_REST := Vector2(330.0, 390.0)
 const STICK_RADIUS := 105.0
 const STICK_ZONE_WIDTH := 0.45
 const STICK_ZONE_TOP := 0.2

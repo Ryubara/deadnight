@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://world/drive_in_greybox.tscn" id="1_lot"]
+
+[node name="StubLot" instance=ExtResource("1_lot")]
+
+[node name="StubMarker" type="Node3D" parent="."]

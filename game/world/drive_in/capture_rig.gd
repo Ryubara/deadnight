@@ -1,8 +1,11 @@
 extends Node3D
 ## Places the camera for a greybox capture. Pick the view with a user argument after `--`:
-## `-- --view=top|night_top|start|concession|concession_in|booth|yard|backlot|plaza|road`, and the
-## props' views `yard_drums|yard_east|backlot_rows|road_block|alley|midway_court|field_west|`
-## `field_east|screen_apron|road_west`.
+## `-- --view=top|night_top|map_card|start|concession|concession_in|booth|yard|backlot|plaza|road`,
+## the ticket plaza's `plaza_east|plaza_west|perk|door|roost` and the props' views
+## `yard_drums|yard_east|backlot_rows|alley|midway_court|field_west|field_east|screen_apron`.
+## Add `--doors=open` to a view to take the purchase doors away first. In the browser the rig reads
+## the page's query for the same words (`?view=plaza&doors=open`,
+## `tools/web_smoke/lot_views.py`).
 ## Not used in the game.
 ##
 ## Third-person views (`--view=tp:<CameraProbes marker>`) put the camera where the player's shoulder
@@ -13,24 +16,30 @@ extends Node3D
 ## Camera spots for the player-height views: position, then the point looked at (metres).
 const VIEWS := {
 	"start": [Vector3(0, 1.7, -12), Vector3(0, 6.0, -48)],
+	# The lot from above the road toward the screen: the map picker's card (`MapInfo.preview_path`).
+	"map_card": [Vector3(0, 34.0, 56.0), Vector3(0, 0.0, -10.0)],
 	"concession": [Vector3(0, 1.7, -20), Vector3(0, 2.0, -4)],
 	"concession_in": [Vector3(0, 1.7, 6.5), Vector3(0, 1.6, -3)],
 	"booth": [Vector3(0, 5.6, 24.5), Vector3(0, 3.5, -30)],
 	"yard": [Vector3(22, 1.7, 13), Vector3(40, 1.4, 18)],
 	"backlot": [Vector3(-20, 1.7, 34), Vector3(-46, 2.0, 12)],
-	"road": [Vector3(8, 1.7, 56), Vector3(-34, 1.2, 57)],
-	"plaza": [Vector3(0, 1.7, 58), Vector3(0, 2.5, 40)],
+	"road": [Vector3(0, 1.7, 40), Vector3(0, 1.4, 58)],
+	"plaza": [Vector3(0, 1.7, 55), Vector3(0, 2.5, 40)],
+	"plaza_east": [Vector3(-12, 1.7, 41), Vector3(10, 1.2, 56)],
+	"plaza_west": [Vector3(12, 1.7, 41), Vector3(-10, 1.2, 56)],
+	"perk": [Vector3(0, 1.7, 49), Vector3(0, 1.3, 58)],
+	"door": [Vector3(0, 1.7, 33), Vector3(0, 1.5, 40)],
+	# The roost: the booth's upper room, at its window, off the projector's beam. It looks north.
+	"roost": [Vector3(-2.2, 4.9, 23.4), Vector3(-2.2, 3.0, -30)],
 	# The props (tools/world/lot_props.py), at the player's eye height.
 	"yard_drums": [Vector3(25, 1.7, 15), Vector3(23, 0.8, 4)],
 	"yard_east": [Vector3(45, 1.7, 21), Vector3(56, 1.0, 24)],
 	"backlot_rows": [Vector3(-19, 1.7, 9), Vector3(-45, 1.0, 13)],
-	"road_block": [Vector3(38, 1.7, 55), Vector3(54, 1.0, 56)],
 	"alley": [Vector3(-12.5, 1.7, 6), Vector3(-13.5, 0.8, -3)],
 	"midway_court": [Vector3(14, 1.7, 17), Vector3(9, 1.0, 29)],
 	"field_west": [Vector3(-42, 1.7, -18), Vector3(-60, 1.0, -30)],
 	"field_east": [Vector3(46, 1.7, -16), Vector3(60, 1.0, -34)],
 	"screen_apron": [Vector3(30, 1.7, -40), Vector3(48, 1.0, -51)],
-	"road_west": [Vector3(-30, 1.7, 54), Vector3(-58, 1.0, 57)],
 }
 const TOP_SIZE := 128.0  # orthographic size (the vertical extent in metres) of the whole-lot view
 const TOP_CENTRE := Vector3(0, 0, 6)
@@ -40,6 +49,8 @@ const TOP_CENTRE := Vector3(0, 0, 6)
 
 func _ready() -> void:
 	var view := _view_from_args()
+	if OS.has_feature("web"):
+		_announce_when_drawn()
 	var camera := $Camera3D as Camera3D
 	if view == "top" or view == "night_top":
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -51,6 +62,8 @@ func _ready() -> void:
 	elif view.begins_with("tp:"):
 		_third_person(view.trim_prefix("tp:"), camera)
 	elif VIEWS.has(view):
+		if _arg("doors", "closed") == "open":
+			$DriveInGreybox/Doors.queue_free()
 		camera.fov = 80.0
 		camera.look_at_from_position(VIEWS[view][0], VIEWS[view][1])
 	else:
@@ -89,7 +102,7 @@ func _third_person(probe_name: String, camera: Camera3D) -> void:
 
 
 func _arg(key: String, fallback: String) -> String:
-	for arg in OS.get_cmdline_user_args():
+	for arg in _args():
 		if arg == "--" + key:
 			return "1"
 		if arg.begins_with("--%s=" % key):
@@ -98,10 +111,19 @@ func _arg(key: String, fallback: String) -> String:
 
 
 func _view_from_args() -> String:
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--view="):
-			return arg.trim_prefix("--view=")
-	return "start"
+	return _arg("view", "start")
+
+
+## The command line's user arguments, or in the browser the page's query
+## (`?view=plaza&doors=open`) as the same `--key=value` words.
+func _args() -> PackedStringArray:
+	if not OS.has_feature("web"):
+		return OS.get_cmdline_user_args()
+	var query := str(JavaScriptBridge.eval("location.search.substring(1)", true))
+	var found := PackedStringArray()
+	for pair in query.split("&", false):
+		found.append("--" + pair)
+	return found
 
 
 func _set_labels_visible(on: bool) -> void:
@@ -118,3 +140,10 @@ func _flood_light() -> void:
 	moon.light_energy = 1.0
 	for light in get_tree().get_nodes_in_group("powered_light"):
 		light.visible = false
+
+
+## Tells the page (`window.lotViewReady`) once a few frames of the view have been drawn.
+func _announce_when_drawn() -> void:
+	for _i in 30:
+		await get_tree().process_frame
+	JavaScriptBridge.eval("window.lotViewReady = true", true)

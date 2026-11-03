@@ -380,6 +380,15 @@ Chrome profile, with the machine's GPU. Play now builds the lot and warms up eve
 screen, which takes about 31 s there (24 s before): `smoke.py` waits up to 150 s for it. The numbers are in
 [First-use hitches](first-use-hitches.md).
 
+## A view of the lot in the browser
+
+`tools/web_smoke/lot_views.py` (#686) shows what a place on the lot looks like in the page: it exports a copy of the
+project that starts on the greybox's capture rig (`world/drive_in/capture_rig.tscn`), loads
+`index.html?view=plaza&doors=open` once per view in a fresh headless Chrome and saves a screenshot when the rig sets
+`window.lotViewReady`. The rig reads the page's query (`JavaScriptBridge.eval`) as the same `--key=value` words it
+reads from the command line, so a view is one name on the desktop and in the browser. Run it under `gds quiet`, with
+Playwright 1.64.1, the pinned Godot and a work folder; it takes a few minutes, most of them the export.
+
 ## Audio in the browser
 
 Asked by #88: does the web build play a night's voices without crackle on a modest laptop, and do the things the mix

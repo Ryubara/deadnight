@@ -117,10 +117,6 @@ def hex_rgb(h):
     return tuple(int(h[i : i + 2], 16) / 255 for i in (1, 3, 5))
 
 
-def srgb_to_linear(c):
-    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-
-
 def swatch_uv(name):
     i = list(PALETTE).index(name)
     col, row = i % GRID, i // GRID
@@ -139,8 +135,9 @@ def palette_image(path):
             for x in range(SWATCH_PX):
                 py = size - 1 - (row * SWATCH_PX + y)  # Blender's pixel rows start at the bottom
                 k = (py * size + col * SWATCH_PX + x) * 4
-                # Float pixels are linear in a byte sRGB image's buffer: convert so the PNG holds the sRGB value.
-                px[k : k + 4] = [srgb_to_linear(c) for c in rgb] + [1.0]
+                # A byte image's `pixels` are its stored values: write the sRGB swatch as it is (converting to
+                # linear first saved every swatch far too dark, #651; build_props.py writes them the same way).
+                px[k : k + 4] = [*rgb, 1.0]
     img.pixels = px
     img.filepath_raw = str(path)
     img.file_format = "PNG"

@@ -71,6 +71,8 @@ func test_the_movement_soak_three_bots_follow_a_person_round_the_field() -> void
 		catcher.start()
 		night.gather()
 		night.server.rules.apply(RulesAction.skip_break())
+		# Follow is the stance this measures (the default is to roam).
+		night.give_order(BotOrders.FOLLOW, 1, walker.position())
 		var leg := 0
 		walker.goto(Autopilot.HOME + TOUR[0])
 		var near := 0
