@@ -188,17 +188,18 @@ simulator and the real server read from the same file, so the rise needs no sepa
 The nightly bot soak ([the bots page](bots.md#phase-7-validation-at-scale-and-tuning)) plays whole nights of bots in the
 real server and sets each profile beside the cell of the same skill and team size (`balance_cli.gd`, 300 nights, read
 with the same cap as the bots). `SimSkill` was **not** changed: what the bots measured is what they are held to, not what
-the model is fitted to, because the gate of `BalanceTargets` reads the model. Measured, twelve nights a cell: the Veteran's
-curve is the strong cell's (Kolmogorov 0.06 to 0.09, median round 16 at a cap of 16), the Regular's median is within a
-round of the average cell's and its curve is not (0.37 to 0.53: no night is lost before round 10, then many at the
-stampede), and the Rookie's is the weak cell's alone and one to three rounds later in a team. Landing percentages against
-the model's `accuracy` and `head_rate`: Rookie 47 to 57% and 8 to 10% (0.45, 0.06), Regular 67 to 71% and 20% (0.65, 0.15),
-Veteran 75 to 79% and 28 to 29% (0.82, 0.30).
+the model is fitted to, because the gate of `BalanceTargets` reads the model. Measured on the code after #766, eight
+nights a cell: the Veteran's curve is the strong cell's (Kolmogorov 0.00 to 0.05, median round 16 at a cap of 16), the
+Regular's median is within a round of the average cell's and its curve is not (0.34 to 0.89: seven or eight of eight
+nights reach the cap), and the Rookie is two rounds better than the weak cell alone and four or five in a team. Landing
+percentages and head shares against the model's `accuracy` and `head_rate` (0.45 and 0.68, 0.65 and 0.81, 0.82 and 0.85):
+Rookie 49 to 60% and 62 to 68%, Regular 74 to 76% and 72 to 76%, Veteran 81 to 84% and 73 to 83%.
 
 What the comparison showed about the model: its weak boss night is a cliff (68% of two-player and 81% of four-player nights
-end in round 5) that a bot, which steps and reloads, passes more smoothly, which is why one number of the Rookie
-(`careful_below` and `safe_below` 0, so it does not back away when hurt) moves its first boss night between 100% and 30%.
-The curve gate of 0.2 is hard to meet for a cliff and a slope however close their medians are; read it with the medians.
+ended in round 5 before #766) that a bot, which steps and reloads, passes more smoothly, which is why one number of the
+Rookie (`careful_below` and `safe_below` 0, so it does not back away when hurt) moves its first boss night between
+97% and 53% of passes. The curve gate of 0.2 is hard to meet for a cliff and a slope however close their medians are;
+read it with the medians.
 
 ## The headshot retune (#745)
 
