@@ -129,6 +129,154 @@ func test_the_sweep_sees_a_button_that_sticks_out() -> void:
 	assert_array(found).is_not_empty()
 
 
+## A scroll area with room at its sides only (what the theme gave before #644) around a button
+## that fills the area's height, or the theme's own: the measure reads the focus ring all round.
+func _ring_found(sides_only: bool) -> Array[String]:
+	var scroll := ScrollContainer.new()
+	scroll.theme = UIThemeBuilder.build()
+	if sides_only:
+		var room := StyleBoxEmpty.new()
+		room.content_margin_left = UITokens.active().hover_room
+		room.content_margin_right = UITokens.active().hover_room
+		scroll.add_theme_stylebox_override(&"panel", room)
+	add_child(scroll)
+	var button := UIButton.new()
+	button.text = "Only row"
+	scroll.add_child(button)
+	scroll.size = Vector2(400.0, button.get_combined_minimum_size().y + UIScroll.margins(scroll).y)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var found := HoverSweep.overflows(scroll, true)
+	scroll.free()
+	return found
+
+
+func test_the_sweep_sees_a_ring_cut_above_and_below_the_only_row() -> void:
+	var cut := await _ring_found(true)
+	assert_array(cut).is_not_empty()
+	assert_str(cut[0]).contains("focused")
+	assert_array(await _ring_found(false)).is_empty()
+
+
+func test_a_scroll_area_keeps_room_for_the_ring_above_and_below() -> void:
+	var tokens := UITokens.active()
+	var ring := float(tokens.focus_gap + tokens.focus_border)
+	assert_float(float(tokens.scroll_room)).is_greater(ring)
+	var scroll := ScrollContainer.new()
+	scroll.theme = UIThemeBuilder.build()
+	add_child(scroll)
+	var margins := UIScroll.margins(scroll)
+	scroll.free()
+	assert_vector(margins).is_equal(Vector2(tokens.hover_room * 2.0, tokens.scroll_room * 2.0))
+
+
+func test_the_last_row_of_the_lobby_keeps_its_ring_at_the_end() -> void:
+	# The maintainer's capture: "Share in Discord", the last row of a lobby in an Activity, focused
+	# with the keyboard, its ring cut off at the bottom by the scroll area.
+	for canvas: String in CANVASES:
+		_canvas(canvas)
+		var api := _api("a")
+		api.lobby = LobbyFixture.lobby(_members(2))
+		var screen := (await _open(LOBBY, {"lobby": api.lobby, "api": api})) as LobbyScreen
+		screen.watch.every = 3600.0
+		screen.link_label.visible = true
+		screen.copy_link_button.visible = true
+		screen._shares.visible = true
+		await _settle()
+		var scroll := screen._scroll
+		scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
+		scroll.notification(Container.NOTIFICATION_SORT_CHILDREN)
+		var tokens := UITokens.active()
+		var ring := float(tokens.focus_gap + tokens.focus_border)
+		for button: UIButton in [screen.share_button]:
+			button.preview_state = UIButton.Preview.FOCUS
+			button.snap_to_targets()
+			var rect := (
+				scroll.get_global_transform().affine_inverse()
+				* button.get_global_transform()
+				* Rect2(Vector2.ZERO, button.size).grow(ring)
+			)
+			button.preview_state = UIButton.Preview.NONE
+			button.snap_to_targets()
+			(
+				assert_float(rect.end.y)
+				. override_failure_message(
+					(
+						"%s '%s' ring ends at %s of %s"
+						% [canvas, button.text, rect.end.y, scroll.size.y]
+					)
+				)
+				. is_less_equal(scroll.size.y + HoverSweep.TOLERANCE)
+			)
+
+
+## A list of buttons in a scroll area under the real theme, taller than the area, the first
+## focused: the way a player starts.
+func _list(rows: int) -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.theme = UIThemeBuilder.build()
+	scroll.follow_focus = true
+	scroll.custom_minimum_size = Vector2(500.0, 260.0)
+	add_child(scroll)
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(box)
+	for index in rows:
+		var button := UIButton.new()
+		button.text = "Row %d" % index
+		box.add_child(button)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return scroll
+
+
+func test_the_focus_walks_a_list_with_its_whole_ring_from_the_first_row_to_the_last() -> void:
+	# Down and Up through a list taller than its area: each row the area follows to is whole with
+	# its ring, the first and the last too (the area stops at the row's edge, not the ring's).
+	var scroll := await _list(8)
+	var lines: Array[String] = await HoverSweep.walk(scroll)
+	var rows := scroll.get_child(0).get_children()
+	rows.reverse()
+	for row: UIButton in rows:
+		row.grab_focus()
+		await get_tree().process_frame
+		await get_tree().process_frame
+	var first := scroll.get_child(0).get_child(0) as UIButton
+	first.snap_to_targets()
+	var tokens := UITokens.active()
+	var top := (
+		scroll.get_global_transform().affine_inverse()
+		* first.get_global_transform()
+		* Rect2(Vector2.ZERO, first.size).grow(float(tokens.focus_gap + tokens.focus_border))
+	)
+	scroll.free()
+	assert_array(lines).is_empty()
+	assert_float(top.position.y).is_greater_equal(-HoverSweep.TOLERANCE)
+
+
+func test_the_keyboard_walk_shows_every_ring_whole_on_the_menu_screens() -> void:
+	for canvas: String in CANVASES:
+		_canvas(canvas)
+		var lines: Array[String] = []
+		var api := _api("a")
+		api.lobby = LobbyFixture.lobby(_members(2))
+		var lobby := (await _open(LOBBY, {"lobby": api.lobby, "api": api})) as LobbyScreen
+		lobby.watch.every = 3600.0
+		lobby.link_label.visible = true
+		lobby.copy_link_button.visible = true
+		lobby._shares.visible = true
+		await _settle()
+		var seen := _count(lobby)
+		for line in await HoverSweep.walk(lobby):
+			lines.append("lobby at %s: %s" % [canvas, line])
+		for path: String in [PLAY, TOGETHER, JOIN, CUSTOMIZE, CREDITS]:
+			var screen := await _open(path)
+			seen += _count(screen)
+			for line in await HoverSweep.walk(screen):
+				lines.append("%s at %s: %s" % [path.get_file(), canvas, line])
+		_expect_none(lines, seen)
+
+
 ## The hover of a button in a clipping control with `free` units around it, settled.
 func _hovered_scale(free: Vector2) -> Vector2:
 	var holder := Control.new()

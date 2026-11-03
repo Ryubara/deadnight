@@ -48,17 +48,26 @@ const BLEED_SLACK := 0.5
 
 
 ## A zombie the bot knows of: where it is (or will be), how fast it comes, how much health it has.
+## One that a flare is drawing away has the flare's place and the seconds the flare still burns as
+## its `delay` (it starts for the body only when the lure ends); `lurable` says a flare would draw
+## it (a boss and a zombie in the middle of a swing are not).
 class Threat:
 	extends RefCounted
 	var position := Vector3.ZERO
 	var speed := 0.0
 	var health := 0.0
+	var delay := 0.0
+	var lurable := false
 
-	static func make(at: Vector3, p_speed: float, p_health: float) -> Threat:
+	static func make(
+		at: Vector3, p_speed: float, p_health: float, p_delay := 0.0, p_lurable := false
+	) -> Threat:
 		var threat := Threat.new()
 		threat.position = at
 		threat.speed = p_speed
 		threat.health = p_health
+		threat.delay = p_delay
+		threat.lurable = p_lurable
 		return threat
 
 
@@ -126,7 +135,7 @@ static func walk_seconds(from: Vector3, victim: Vector3, reach: float) -> float:
 ## Seconds a zombie needs to be within striking distance of `point`.
 static func _arrival(threat: Threat, point: Vector3) -> float:
 	var apart := maxf(_flat(threat.position, point) - STRIKE_REACH, 0.0)
-	return apart / maxf(threat.speed, 0.05)
+	return threat.delay + apart / maxf(threat.speed, 0.05)
 
 
 ## What a zombie of `look` has for health in `round_number`, from the round's public formula.

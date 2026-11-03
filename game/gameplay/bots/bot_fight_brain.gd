@@ -114,6 +114,7 @@ func _init(profile: BotProfile, level: BotLevel, dodge_seed: int = 1) -> void:
 	_stance = BotStance.new(level)
 	revive = BotRevive.new(profile)
 	revive.rounds = level.rounds
+	revive.level = level
 	if level.shop != null and profile.errands:
 		_errands = BotErrands.new(level.shop, profile)
 
@@ -165,9 +166,11 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 	var pack := BotCombat.near_count(beliefs, here, _profile.memory_seconds)
 	intent.melee_ok = BotCombat.may_melee(pack, plan.dry)
 	intent.quick_melee_ok = plan.dry and held != null and not held.is_melee()
-	var ordered := _throw(intent, beliefs, here, targets, mates, threat, kind)
+	# A flare ordered (`BotRevive`) holds the bot still, like a throw, and takes the weapon's handling.
+	var flaring := rescue == BotRevive.Mode.LURE
+	var ordered := not flaring and _throw(intent, beliefs, here, targets, mates, threat, kind)
 	var stepped := _step_away(
-		intent, beliefs, here, anchor, held, threat, kind, pack, plan.dry, ordered
+		intent, beliefs, here, anchor, held, threat, kind, pack, plan.dry, ordered or flaring
 	)
 	_check_trapped(intent, beliefs, here, stepped and intent.reflex == Vector3.ZERO)
 	if not stepped:
@@ -597,6 +600,8 @@ func _glance(beliefs: BotBeliefs, here: Vector3) -> float:
 
 
 func _handle_weapon(intent: BotIntent, plan: BotArsenal.Plan, now: float) -> void:
+	if intent.ordering_flare():
+		return  # `BotRevive` swaps and reloads for the flare.
 	intent.reload = plan.reload
 	if plan.swap and not intent.keep_weapon and now - _swapped_at >= SWAP_EVERY:
 		intent.swap = true

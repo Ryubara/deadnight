@@ -123,6 +123,15 @@ func hear(events: Array) -> void:
 			&"board_torn":
 				if int(event.get("boards", 1)) == 0:
 					perception.beliefs.moments.append({"kind": &"breach_open"})
+			&"lure_started":
+				# Its own flare burst: the dead within its radius walk to it for its seconds.
+				team.add_lure(
+					event["point"],
+					float(event["radius"]),
+					now + float(event["seconds"]),
+					state.player_id
+				)
+				telemetry.count(&"flares_fired")
 			&"grenade_count_changed":
 				perception.beliefs.grenades = int(event.get("count", 0))
 			&"round_started":

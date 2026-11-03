@@ -50,6 +50,9 @@ func _ready() -> void:
 	await _still("4-night")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.reset_defaults()
+	# The lambda belongs to this script, which the engine frees before the menu's static variable: a
+	# variable still holding it at quit crashes the process (exit 139, #667).
+	MainMenu.board_factory = Callable()
 	get_tree().quit()
 
 
