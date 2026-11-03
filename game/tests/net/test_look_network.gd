@@ -17,8 +17,9 @@ func test_messages_round_trip() -> void:
 
 func test_the_messages_are_small() -> void:
 	var look := CharacterLook.new()
-	assert_int(LookWire.look(look).size()).is_less_equal(16)
-	assert_int(LookWire.player_look(1, 0, look).size()).is_less_equal(18)
+	# Version 2 (#678) added the character's slot: one byte more each way.
+	assert_int(LookWire.look(look).size()).is_less_equal(17)
+	assert_int(LookWire.player_look(1, 0, look).size()).is_less_equal(19)
 
 
 func test_malformed_packets_decode_to_nothing() -> void:
@@ -169,4 +170,4 @@ func test_a_join_costs_a_handful_of_bytes() -> void:
 	var up := 0
 	for packet in hub.uplink:
 		up += packet.size()
-	assert_int(up).is_less_equal(16)
+	assert_int(up).is_less_equal(17)

@@ -9,8 +9,9 @@ extends RefCounted
 ## `from_dict` and `from_bytes` never fail on a bad entry, they put that slot back to its first
 ## option.
 
-## Bump when the catalogue stops being append-only or a slot is added.
-const VERSION := 1
+## Bump when the catalogue stops being append-only or a slot is added (2: the character's `body`
+## slot, #678).
+const VERSION := 2
 ## Part option id by part slot.
 var parts: Dictionary = {}
 ## Palette index by colour slot.
@@ -49,12 +50,19 @@ static func default_look() -> CharacterLook:
 
 
 ## A random look from the free options only, so it can always be saved. `rng` makes it repeatable.
-static func randomized(rng: RandomNumberGenerator, unlocks: LookUnlocks = null) -> CharacterLook:
+## With a `body` the character is that one and the hair one of its cuts; without, either.
+static func randomized(
+	rng: RandomNumberGenerator, unlocks: LookUnlocks = null, body: StringName = &""
+) -> CharacterLook:
 	var look := CharacterLook.new()
 	var open := unlocks if unlocks != null else LookUnlocks.new()
 	for slot in LookCatalog.part_slots():
 		var choices: Array = []
 		for option: Dictionary in LookCatalog.options(slot):
+			if body != &"" and slot == LookCatalog.BODY_SLOT and option["id"] != body:
+				continue
+			if body != &"" and slot == &"hair" and option["body"] not in [&"", body]:
+				continue
 			if open.is_unlocked(slot, option["id"], option["gate"]):
 				choices.append(option["id"])
 		look.parts[slot] = choices[rng.randi_range(0, choices.size() - 1)]
@@ -83,6 +91,22 @@ func key() -> String:
 
 func equals(other: CharacterLook) -> bool:
 	return other != null and key() == other.key()
+
+
+## The character: `LookCatalog.MALE` or `LookCatalog.FEMALE`.
+func body() -> StringName:
+	return parts.get(LookCatalog.BODY_SLOT, LookCatalog.MALE)
+
+
+## Makes this look `body`'s. A hair cut of the other character's is swapped for this one's own
+## (crew cut for him, bob for her); every other part fits both and stays.
+func set_body(value: StringName) -> void:
+	if LookCatalog.option_index(LookCatalog.BODY_SLOT, value) < 0 or value == body():
+		return
+	parts[LookCatalog.BODY_SLOT] = value
+	var cut := LookCatalog.hair_body(parts[&"hair"])
+	if cut != &"" and cut != value:
+		parts[&"hair"] = LookCatalog.body_hair(value)
 
 
 ## The palette entry of `slot` that this look uses.
