@@ -4,12 +4,16 @@ extends RefCounted
 ## material whose pattern is a texture (`assets/lot/textures/`), so a gravel yard and an asphalt
 ## field are told apart by the ray that finds the floor under a foot and the pattern of its
 ## material. Everything that is not gravel steps like asphalt: concrete, tile and planks are all
-## hard ground, and the two files are the two sounds the game has. A floor can say it outright with
-## metadata `surface` (`"asphalt"` or `"gravel"`).
+## hard ground, and the two files are the two sounds the game has, but for wood: a floor that says
+## so with metadata (the second map's stairs and upper floor) steps with the hollow knock of a
+## plank over a gap. A floor can say it outright with metadata `surface` (`"asphalt"`, `"gravel"` or
+## `"wood"`); the pattern of its material decides only gravel (the lot's wood-patterned crates and
+## fences are not floors).
 
 const ASPHALT := &"asphalt"
 const GRAVEL := &"gravel"
-const SURFACES: Array[StringName] = [ASPHALT, GRAVEL]
+const WOOD := &"wood"
+const SURFACES: Array[StringName] = [ASPHALT, GRAVEL, WOOD]
 ## The pattern texture's name that makes ground gravel.
 const GRAVEL_PATTERN := "gravel"
 ## The ray starts this far above the foot (clear of the floor it stands on) and ends this far below.
