@@ -280,7 +280,7 @@ static func _spots(screen: Control) -> String:
 			spots.append("%s:%.4f,%.4f" % [key, middle.x, middle.y])
 			spots.append("%s:end:%.4f,%.4f" % [key, end.x, end.y])
 		# Each map's card, to tap it: `map_<id>`.
-		for card in play.panel.map_picker.cards:
+		for card in panel.map_picker.cards:
 			var middle := card.get_global_rect().get_center() / size
 			spots.append("map_%s:%.4f,%.4f" % [card.info.id, middle.x, middle.y])
 	return "|".join(spots)
