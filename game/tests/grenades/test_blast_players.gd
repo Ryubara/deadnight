@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
-## What a blast does to players: the holder, a teammate, cover, and how much of their health it
-## takes (`PlayerBlast`).
+## What a blast does to players: it hurts its thrower alone (#856), a teammate takes nothing however
+## near; cover, and how much of the thrower's health it takes (`PlayerBlast`).
 
 ## Player 1 holds a grenade that goes off in the hand at `FEET` and the chest-high spot `BLAST`
 ## (hand 1.45 m up, the blast 0.25 m above it); a teammate at `apart` metres from that spot on the
@@ -46,44 +46,43 @@ func test_the_holder_takes_it_even_with_a_shelf_between_the_hand_and_the_chest()
 	assert_float(_of_player(hurt, 1)["share"]).is_equal(1.0)
 
 
-func test_a_player_inside_the_inner_radius_takes_all_of_it() -> void:
-	var hurt := _held_blast(_def.player_full_radius - 0.05)
-	assert_float(_of_player(hurt, 2)["share"]).is_equal(1.0)
-	assert_float(_of_player(hurt, 2)["damage"]).is_equal(_night.rules.players[2].max_health)
+func test_a_teammate_takes_no_damage_however_near() -> void:
+	# Player 2 stands at 0 to 5 m from the blast in the holder's hand: nothing is sent for them,
+	# their health is whole, and the holder still takes all of theirs.
+	for apart: float in [0.0, 0.5, 0.9, 2.0, 3.0, 5.0]:
+		var hurt := _held_blast(apart)
+		assert_dict(_of_player(hurt, 2)).is_empty()
+		assert_float(_night.rules.health_of(2)).is_equal(_night.rules.players[2].max_health)
+		assert_float(_of_player(hurt, 1)["share"]).is_equal(1.0)
 
 
-func test_halfway_out_a_player_takes_a_part_of_it() -> void:
-	var halfway := (_def.player_full_radius + _def.blast_radius) / 2.0
-	var hurt := _held_blast(halfway)
-	var event := _of_player(hurt, 2)
-	assert_float(event["share"]).is_equal_approx(
-		PlayerBlast.share(halfway, _def.player_full_radius, _def.blast_radius), 0.001
-	)
-	assert_float(event["share"]).is_between(0.05, 0.6)
-	assert_float(event["damage"]).is_equal_approx(
-		_night.rules.players[2].max_health * event["share"], 0.01
-	)
+func test_at_half_a_metre_the_teammate_takes_0_and_the_thrower_the_full_share() -> void:
+	var hurt := _held_blast(0.5)
+	assert_int(hurt.size()).is_equal(1)
+	assert_dict(_of_player(hurt, 2)).is_empty()
+	var thrower := _of_player(hurt, 1)
+	assert_float(thrower["share"]).is_equal(1.0)
+	assert_float(thrower["damage"]).is_equal(_night.rules.players[1].max_health)
+	assert_float(_night.rules.health_of(2)).is_equal(_night.rules.players[2].max_health)
 
 
-func test_a_grenade_a_few_metres_away_hurts_but_does_not_down() -> void:
-	var event := _of_player(_held_blast(3.0), 2)
-	assert_float(event["damage"]).is_greater(20.0)
-	assert_float(event["damage"]).is_less(_night.rules.players[2].max_health)
+func test_the_thrower_beside_a_teammate_at_a_thrown_blast_takes_it_alone() -> void:
+	# A grenade thrown at the thrower's own feet with a teammate at their side, both within the
+	# inner radius: the thrower takes all of it by distance (`PlayerBlast`), the teammate none.
+	_night = GrenadesFixture.night(2, GrenadesFixture.world_cast())
+	_night.place({}, {1: Vector3(0, 0, 0), 2: Vector3(0.5, 0, 0)})
+	_night.cook_and_throw(1, Vector3(0, 1.45, 0), Vector3(0, -1, 0), 0.0, true)
+	var hurt := GrenadesFixture.of(_night.run_seconds(_def.fuse + 0.1), &"player_blasted")
+	assert_dict(_of_player(hurt, 2)).is_empty()
+	assert_int(hurt.size()).is_equal(1)
+	assert_bool(hurt[0]["own"]).is_true()
+	assert_bool(hurt[0]["in_hand"]).is_false()
+	assert_float(hurt[0]["distance"]).is_less_equal(_def.player_full_radius)
+	assert_float(hurt[0]["share"]).is_equal(1.0)
+	assert_float(hurt[0]["damage"]).is_equal(_night.rules.players[1].max_health)
 
 
-func test_at_the_edge_of_the_blast_a_player_takes_nothing() -> void:
-	assert_dict(_of_player(_held_blast(_def.blast_radius), 2)).is_empty()
-	assert_dict(_of_player(_held_blast(_def.blast_radius + 2.0), 2)).is_empty()
-
-
-func test_a_teammate_takes_what_the_thrower_would_at_that_spot() -> void:
-	var hurt := _held_blast(0.9)
-	assert_float(_of_player(hurt, 2)["share"]).is_equal(1.0)
-	assert_bool(_of_player(hurt, 2)["own"]).is_false()
-	assert_int(_of_player(hurt, 2)["thrower_id"]).is_equal(1)
-
-
-func test_a_wall_protects_a_teammate_but_not_the_holder() -> void:
+func test_a_wall_does_not_matter_to_the_holder_and_a_teammate_behind_it_takes_none_anyway() -> void:
 	var wall := GrenadesFixture.box_ray(AABB(Vector3(2.0, 0, -3), Vector3(0.2, 3, 6)))
 	var hurt := _held_blast(4.0, wall)
 	assert_dict(_of_player(hurt, 2)).is_empty()
@@ -92,7 +91,7 @@ func test_a_wall_protects_a_teammate_but_not_the_holder() -> void:
 
 func test_a_thrown_grenade_hurts_its_thrower_by_distance_not_by_a_discount() -> void:
 	# Thrown, let go with the pin only just pulled, it lies where it lands: the thrower a few metres
-	# off takes the same share a teammate would at that distance.
+	# off takes the curve's share at that distance, no discount for the throw.
 	_night = GrenadesFixture.night(1, GrenadesFixture.world_cast())
 	_night.place({}, {1: Vector3(0, 0, 0)})
 	_night.cook_and_throw(1, Vector3(0, 1.45, 0), Vector3(0, -0.3, -1), 0.0, true)

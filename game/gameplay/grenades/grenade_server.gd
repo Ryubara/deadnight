@@ -38,10 +38,10 @@ extends RefCounted
 ##     which a zombie stopped it: a client flies its copy without the dead, and takes this as truth)
 ##   grenade_exploded: grenade_id, thrower_id, point, core_radius, radius, in_hand
 ##   blast_hit: grenade_id, target_id, damage, leg_damage, exposure, distance, impulse, stun
-##   player_blasted: grenade_id, thrower_id, player_id, damage (a share of the player's
-##     `max_health`, `PlayerBlast`: all of it in the hand and within `player_full_radius`, less to
-##     nothing at the blast radius, none behind a wall), share (0 to 1), distance, impulse, stun,
-##     own (the thrower's), in_hand (the thrower's, and it went off in the hand)
+##   player_blasted: grenade_id, thrower_id, player_id (the thrower: a blast hurts no one else),
+##     damage (a share of the player's `max_health`, `PlayerBlast`: all of it in the hand and within
+##     `player_full_radius`, less to nothing at the blast radius, none behind a wall), share (0 to
+##     1), distance, impulse, stun, own (always true), in_hand (it went off in the hand)
 
 signal event_emitted(event: Dictionary)
 
@@ -523,37 +523,34 @@ func _explode(grenade_id: int, thrower_id: int, where: Vector3, in_hand: bool) -
 		_events.append_array(rules.apply(RulesAction.explosion(thrower_id, victims)))
 
 
-## Every player the blast reaches takes it, the thrower and the team alike (`PlayerBlast`): the same
-## rule for all, all of the health in the hand that holds the grenade.
+## The thrower alone takes the blast (`PlayerBlast`; the maintainer, #856): a teammate in it takes
+## nothing and sees nothing, however near. All of the thrower's health in the hand that holds the
+## grenade, less with the distance, none behind a wall.
 func _blast_players(grenade_id: int, thrower_id: int, point: Vector3, in_hand: bool) -> void:
-	var ids := _players.keys()
-	ids.sort()
-	for player_id: int in ids:
-		if _is_downed(player_id):
-			continue
-		var own: bool = player_id == thrower_id
-		var chest: Vector3 = _players[player_id] + Vector3.UP * def.player_chest
-		var hurt := BlastModel.against_player(
-			def, point, chest, _max_health_of(player_id), own and in_hand, world_ray
-		)
-		if hurt["damage"] <= 0.0:
-			continue
-		var reach := def.falloff(hurt["distance"])
-		_emit(
-			&"player_blasted",
-			{
-				"grenade_id": grenade_id,
-				"thrower_id": thrower_id,
-				"player_id": player_id,
-				"damage": hurt["damage"],
-				"share": hurt["share"],
-				"distance": hurt["distance"],
-				"impulse": BlastModel.impulse(def, point, chest, reach),
-				"stun": def.stun_seconds * reach,
-				"own": own,
-				"in_hand": own and in_hand,
-			}
-		)
+	if not _players.has(thrower_id) or _is_downed(thrower_id):
+		return
+	var chest: Vector3 = _players[thrower_id] + Vector3.UP * def.player_chest
+	var hurt := BlastModel.against_player(
+		def, point, chest, _max_health_of(thrower_id), in_hand, world_ray
+	)
+	if hurt["damage"] <= 0.0:
+		return
+	var reach := def.falloff(hurt["distance"])
+	_emit(
+		&"player_blasted",
+		{
+			"grenade_id": grenade_id,
+			"thrower_id": thrower_id,
+			"player_id": thrower_id,
+			"damage": hurt["damage"],
+			"share": hurt["share"],
+			"distance": hurt["distance"],
+			"impulse": BlastModel.impulse(def, point, chest, reach),
+			"stun": def.stun_seconds * reach,
+			"own": true,
+			"in_hand": in_hand,
+		}
+	)
 
 
 ## A player on the ground takes no blow (the rules refuse it): the blast does not count them.

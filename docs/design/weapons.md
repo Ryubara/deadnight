@@ -607,7 +607,7 @@ with his own clips. Wired and proven in #351: [Grenades research](../research/gr
 | Cover | a line from the blast (0.25 m up) to each of the six hit parts; a part with something solid in the way takes nothing |
 | Shares of the blast | legs 25% each, body 25%, arms 10% each, head 5% (a blast goes off low) |
 | Knockback, stun | up to 7 m/s along the ground and 3 m/s up, 1.6 s stun, both falling off like the damage |
-| Players | all of their health in the hand and within 1 m of the blast, then less to nothing at 8 m, the thrower and the team alike, none behind a wall ([blast on players](#blast-on-players)) |
+| Players | the thrower alone: all of their health in the hand and within 1 m of the blast, then less to nothing at 8 m, none behind a wall; a teammate takes nothing ([blast on players](#blast-on-players)) |
 | Authority | hand within 1 m of 1.45 m above the server's feet; client speed at most 7.5 m/s; a dropped grenade starts 0.3 m above the feet |
 | Carry | start with 2, every round start tops up to 3, at most 5; the shop sells 2 for 150 (+5 a round) |
 | Kill points | 40 for a zombie the blast kills (a hit that does not kill pays the usual 4) |
@@ -615,12 +615,13 @@ with his own clips. Wired and proven in #351: [Grenades research](../research/gr
 ### Blast on players
 
 The maintainer, 2026-11-03: grenades hurt the player too; 100% if it blows up in the hand, full damage only super close,
-falling off with distance. One rule (`PlayerBlast`, `game/gameplay/rules/player_blast.gd`) serves every blast that can
-hurt a player; the grenade is its first user and the ray gun's splash on its own shooter (25%) is the second.
+falling off with distance. And, the same day (#856), **only the thrower takes it**: a teammate in a player's blast takes
+nothing and sees no hurt line. One rule (`PlayerBlast`, `game/gameplay/rules/player_blast.gd`) serves every blast that
+can hurt a player; the grenade is its first user and the ray gun's splash on its own shooter (25%) is the second.
 
 - **A share of the player's health bar**, not a damage number: full is always "down", from full health or not, and a
   tonic that raises the bar does not make a grenade at the feet safer.
-- **In the hand: all of it**, wall or no wall (the grenade is in their hand), the thrower alone.
+- **In the hand: all of it**, wall or no wall (the grenade is in their hand).
 - **Full radius 1 m** (`player_full_radius`): a body's width and an arm's reach, so a grenade in the hand, at the feet or
   against the player takes all of it and one a pace away is already less. A grenade dropped at a downed player's feet
   takes a kneeling reviver whole.
@@ -628,19 +629,21 @@ hurt a player; the grenade is its first user and the ray gun's splash on its own
   73% of the health, 3 m 51%, 4 m 33%, 5 m 18%, 6 m 8%, 7 m 2%: a few metres off hurts and rarely downs, and two close
   ones in a row will. The ease is steep first so that "close" stays deadly and the long tail is a graze that mends.
 - **Walls:** the line from the blast to the chest (1 m up) must be clear of walls and props (cover slack 0.12 m); a
-  player is no cover, a teammate does not shield another.
-- **Teammates take the same as the thrower.** The task's brief says so and the maintainer's words name "the player", not
-  the thrower; the genre is not one answer (some co-op zombie games keep only self damage, others hurt everyone), so
-  this is the brief's choice and **open for the maintainer** if a team should be spared. There is no friendly-fire flag
-  any more: one rule is easier to read on the screen and to test.
-- **Shown:** the hurt player's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` or `MOE'S
-  GRENADE HIT YOU  -42` on the hurt player's own screen (a blast that does not down), and on a down `RUBY BLEW THEMSELVES
-  UP` or `MOE WAS BLOWN UP BY RUBY'S GRENADE` on every screen. The server's `player_hurt` and `player_downed` carry
-  `harm` (`grenade`) and `by_id`.
-- **Bots** throw only where the blast takes under a tenth of anyone's health at the bot's and a teammate's spot, with a
-  margin for the grenade not landing where it was aimed and the teammate walking on (`BotGrenadier.harmless_apart`, 5.8
-  m, so 6 m from itself and 7.5 m from a teammate). They do not yet back off from a live grenade; no dodge of that kind
-  existed and the parity work tunes the bots.
+  player is no cover.
+- **Only the thrower takes damage (the maintainer, #856).** #835 first hurt the team on the same curve and asked; the
+  answer is no friendly fire from a grenade. A teammate at 0.5 m takes 0, gets no red arc, no `player_hurt` and no feed
+  line; the thrower at 0.5 m takes the full share. The server does not even name a teammate (`player_blasted` is sent
+  for the thrower only). A downed thrower is not counted (the rules refuse a blow on them), so the grenade a downed
+  player dropped at their reviver's knees hurts no one. The dead are untouched by this: they take the blast as before.
+- **Shown:** the thrower's red arc points at the blast; the feed says `YOUR OWN GRENADE HIT YOU  -42` on their own screen
+  (a blast that does not down), and on a down `RUBY BLEW THEMSELVES UP` on every screen. The server's `player_hurt` and
+  `player_downed` carry `harm` (`grenade`) and `by_id`.
+- **Bots** throw only where the blast takes under a tenth of their own health (`BotGrenadier.harmless_apart`, 5.8 m, so
+  6 m from the bot) and still keep 7.5 m from every teammate, which no longer protects anyone's health. The clearance
+  stays because taking it away doubled the throws per night (18 to 42 over six seeded nights) and the bots then hit
+  themselves with a third of them ([measured on the grenades page](../research/grenades.md#only-the-thrower-856)); a
+  follow-up fixes the short landings first. They do not yet back off from a live grenade of their own beyond the
+  existing dodge.
 
 A grenade is a sure kill only early: at 150 it kills a round-1 zombie (50) out to 6.0 m and a round-5 one (82) out to
 4.7 m; from round 12 (139) only near the centre of the blast, and no round-14 one (159) at all (the climb is 7% a round).
