@@ -190,8 +190,8 @@ of the round ([Revive](revive.md#the-states)).
 
 ## Match settings
 
-What whoever starts a match chooses before the night: how intense it is, how many may stand at once and how long
-the breaks are. There is no round time limit: a round ends when its last zombie falls, whatever the settings.
+What whoever starts a match chooses before the night: which map it is on, how intense it is, how many may stand at
+once and how long the breaks are. There is no round time limit: a round ends when its last zombie falls, whatever the settings.
 `MatchSettings` (`game/gameplay/rules/match_settings.gd`).
 The server owns them (`GameRules.settings`), they ride the rules' snapshot (`match_settings`, so the WELCOME of the
 first player, a late joiner and a player coming back all carry them) and they are set only while the night has not
@@ -202,6 +202,7 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 | `count_multiplier` (the night's intensity) | 1x, 2x, 3x offered on the Play screen; any 0.25 to 5 | 1x | round N brings `RoundTuning`'s count for N and the players times this, rounded, at least one, and the dead come this many times as fast (below) |
 | `max_alive` | 0 (auto) or 1 to 40 | auto | a number replaces the round's alive cap and never goes above `alive_cap_ceiling` (40, the crowd the lot stands); auto is the tuned cap times the multiplier |
 | `break_seconds` | 0 (the tuned 5 s) or 1 to 120 | 0 | the break after each round; the wait before round 1 (12 s) and the 10 s extra before a special round are unchanged |
+| `map` | the id of a playable map of `MapRegistry` | `drive_in` | the map the night is built on; optional when read (a ticket or lobby from before the choice means the lot); [maps](maps.md) |
 | `bots` | 0 to 3 | 0 | bots that fill the night's seats ([below](#bots)); the key may be left out of a ticket or a snapshot from before it and then means 0 |
 
 - **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
