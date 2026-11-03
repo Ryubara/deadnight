@@ -23,8 +23,14 @@ const MODELS: Array[String] = [
 	"hammer",
 	"lever_rifle",
 	"revolver",
-	"tommy_gun"
+	"tommy_gun",
+	# The heavy batch (#796).
+	"m249",
+	"fifty_cal",
+	"pump_870",
 ]
+## The heavy batch's guns (#796): a trigger finger each.
+const HEAVY: Array[String] = ["m249", "fifty_cal", "pump_870"]
 
 var _runner: GdUnitSceneRunner
 var _player: Player
@@ -135,7 +141,7 @@ func test_every_model_has_a_grip_at_its_hold_size() -> void:
 			. is_equal_approx(hold.model_scale, 0.001)
 		)
 	# A gun's trigger finger is on its trigger or along its frame, never left in the air.
-	for model in ["revolver", "flare_gun", "tommy_gun", "lever_rifle", "double_shotgun"]:
+	for model in ["revolver", "flare_gun", "tommy_gun", "lever_rifle", "double_shotgun"] + HEAVY:
 		assert_str(HandGrip.for_name(model).trigger_finger).is_not_empty()
 
 

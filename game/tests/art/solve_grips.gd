@@ -28,6 +28,13 @@ const MODELS := {
 	"fire_axe":
 	{"scene": "res://assets/weapons/fire_axe/fire_axe.glb", "model_scale": 0.95, "kind": "melee"},
 	"grenade": {"hold": "res://gameplay/player/holds/grenade.tres", "kind": "ball"},
+	# The heavy batch (#796), at the plan's sizes (docs/research/weapon-models.md#the-nine) until
+	# #793 adds their holds: a hold must keep this `model_scale` or the grip is solved again.
+	"m249": {"scene": "res://assets/weapons/m249/m249.glb", "model_scale": 1.3, "kind": "gun"},
+	"fifty_cal":
+	{"scene": "res://assets/weapons/fifty_cal/fifty_cal.glb", "model_scale": 1.21, "kind": "gun"},
+	"pump_870":
+	{"scene": "res://assets/weapons/pump_870/pump_870.glb", "model_scale": 1.3, "kind": "gun"},
 }
 
 var _args := {}
