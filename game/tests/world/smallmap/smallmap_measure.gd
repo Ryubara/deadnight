@@ -613,6 +613,18 @@ func _ground(space: PhysicsDirectSpaceState3D, at: Vector3) -> float:
 # --- Rows 9 and 10: ceilings and sight lines ---------------------------------------------------
 
 
+## Whether `node` is a slab of the ceilings or roof, not a stair, lamp or prop hanging under one.
+func _is_ceiling(node: Node) -> bool:
+	if String(node.name).begins_with("Stair"):
+		return false
+	var parent := node.get_parent()
+	while parent != null:
+		if parent.name == &"Ceilings" or parent.name == &"Roof":
+			return true
+		parent = parent.get_parent()
+	return false
+
+
 func _measure_sight_and_ceilings(lot: Node3D) -> void:
 	var space := lot.get_world_3d().direct_space_state
 	var points: Array[Vector3] = []
@@ -632,8 +644,9 @@ func _measure_sight_and_ceilings(lot: Node3D) -> void:
 					Vector3(p.x, ground + 0.1, p.y), Vector3(p.x, ground + 12.0, p.y)
 				)
 			)
-			# A stair overhead is no ceiling: the room's ceiling is what is over its floor.
-			if not up.is_empty() and not String((up["collider"] as Node).name).begins_with("Stair"):
+			# A stair overhead, a lamp or a machine's hidden block is no ceiling: the room's ceiling
+			# is the slab over its floor (`Ceilings` over the ground floor, `Roof` over the upper).
+			if not up.is_empty() and _is_ceiling(up["collider"] as Node):
 				var clear: float = (up["position"] as Vector3).y - ground
 				low = minf(low, clear)
 				high = maxf(high, clear)

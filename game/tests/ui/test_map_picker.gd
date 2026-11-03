@@ -1,7 +1,8 @@
 # The map picker (#624), driven the way a player drives it: the keyboard, a gamepad and a finger
 # move the focus over the cards and choose, a card for a map that is not built yet can be read but
 # chooses nothing, and the settings panel hands the choice out with the other rules. A stub second
-# map makes the choice real (the lot is the one map that ships).
+# map makes the choice real, and a locked stub stands for a map that is listed and not built (the
+# real second map ships: its own tests are at the end).
 extends GdUnitTestSuite
 
 const PHONE_CANVAS := Vector2(1168.0, 540.0)
@@ -11,7 +12,7 @@ var _blocked: Array[String] = []
 
 
 func before_test() -> void:
-	StubMaps.install()
+	StubMaps.install_picker_set()
 	UIInputMode.reset()
 	_heard.clear()
 	_blocked.clear()
@@ -83,15 +84,15 @@ func test_there_is_a_card_for_every_map_and_the_lot_is_chosen() -> void:
 	assert_int(picker.cards.size()).is_equal(MapRegistry.all().size())
 	assert_str(picker.selected_id).is_equal("drive_in")
 	assert_bool(picker.card_for("drive_in").selected).is_true()
-	assert_bool(picker.card_for("small_indoor").selected).is_false()
-	assert_bool(picker.card_for("small_indoor").is_locked()).is_true()
+	assert_bool(picker.card_for(StubMaps.LOCKED_ID).selected).is_false()
+	assert_bool(picker.card_for(StubMaps.LOCKED_ID).is_locked()).is_true()
 	assert_bool(picker.card_for(StubMaps.ID).is_locked()).is_false()
 	# A screen reader gets the name, the facts and the state of each card.
 	assert_str(picker.card_for("drive_in").accessibility_name).is_equal(
 		"Drive-in lot, 13,200 m² · 1 to 8 players, selected"
 	)
-	assert_str(picker.card_for("small_indoor").accessibility_name).is_equal(
-		"The back rooms, 600 m² · 1 to 4 players, coming soon"
+	assert_str(picker.card_for(StubMaps.LOCKED_ID).accessibility_name).is_equal(
+		"Locked stub, 600 m² · 1 to 4 players, coming soon"
 	)
 
 
@@ -99,7 +100,7 @@ func test_the_keyboard_walks_the_cards_and_chooses_with_enter() -> void:
 	var picker := await _picker()
 	picker.card_for("drive_in").grab_focus()
 	await _key(KEY_DOWN)
-	assert_str(_focused(picker)).is_equal("small_indoor")
+	assert_str(_focused(picker)).is_equal(StubMaps.LOCKED_ID)
 	await _key(KEY_DOWN)
 	assert_str(_focused(picker)).is_equal(StubMaps.ID)
 	# Down at the last card and left and right stay on the card.
@@ -124,13 +125,13 @@ func test_a_card_that_is_not_built_can_be_read_but_chooses_nothing() -> void:
 	var picker := await _picker()
 	picker.card_for("drive_in").grab_focus()
 	await _key(KEY_DOWN)
-	assert_str(_focused(picker)).is_equal("small_indoor")
+	assert_str(_focused(picker)).is_equal(StubMaps.LOCKED_ID)
 	await _key(KEY_ENTER)
 	assert_str(picker.selected_id).is_equal("drive_in")
 	assert_array(_heard).is_empty()
-	assert_array(_blocked).is_equal(["small_indoor"])
+	assert_array(_blocked).is_equal([StubMaps.LOCKED_ID])
 	assert_bool(picker.card_for("drive_in").selected).is_true()
-	assert_bool(picker.card_for("small_indoor").selected).is_false()
+	assert_bool(picker.card_for(StubMaps.LOCKED_ID).selected).is_false()
 
 
 func test_a_gamepad_walks_the_cards_and_chooses_with_a() -> void:
@@ -142,10 +143,10 @@ func test_a_gamepad_walks_the_cards_and_chooses_with_a() -> void:
 	await _pad(JOY_BUTTON_A)
 	assert_str(picker.selected_id).is_equal(StubMaps.ID)
 	await _pad(JOY_BUTTON_DPAD_UP)
-	assert_str(_focused(picker)).is_equal("small_indoor")
+	assert_str(_focused(picker)).is_equal(StubMaps.LOCKED_ID)
 	await _pad(JOY_BUTTON_A)
 	assert_str(picker.selected_id).is_equal(StubMaps.ID)
-	assert_array(_blocked).is_equal(["small_indoor"])
+	assert_array(_blocked).is_equal([StubMaps.LOCKED_ID])
 	await _pad(JOY_BUTTON_DPAD_UP)
 	await _pad(JOY_BUTTON_A)
 	assert_str(picker.selected_id).is_equal("drive_in")
@@ -158,9 +159,9 @@ func test_a_finger_chooses_a_card_and_a_tap_on_a_locked_one_does_nothing() -> vo
 	await _tap(picker.card_for(StubMaps.ID))
 	assert_str(picker.selected_id).is_equal(StubMaps.ID)
 	assert_array(_heard).is_equal([StubMaps.ID])
-	await _tap(picker.card_for("small_indoor"))
+	await _tap(picker.card_for(StubMaps.LOCKED_ID))
 	assert_str(picker.selected_id).is_equal(StubMaps.ID)
-	assert_array(_blocked).is_equal(["small_indoor"])
+	assert_array(_blocked).is_equal([StubMaps.LOCKED_ID])
 	await _tap(picker.card_for("drive_in"))
 	assert_str(picker.selected_id).is_equal("drive_in")
 	# A tap on the card already chosen says nothing new.
@@ -184,7 +185,7 @@ func test_set_selected_says_nothing_and_an_unplayable_id_is_the_lot() -> void:
 	var picker := await _picker()
 	picker.set_selected(StubMaps.ID)
 	assert_str(picker.selected_id).is_equal(StubMaps.ID)
-	picker.set_selected("small_indoor")
+	picker.set_selected(StubMaps.LOCKED_ID)
 	assert_str(picker.selected_id).is_equal("drive_in")
 	picker.set_selected("nope")
 	assert_str(picker.selected_id).is_equal("drive_in")
@@ -224,7 +225,7 @@ func test_the_phone_form_puts_the_cards_two_to_a_row_and_the_arrows_follow() -> 
 	await get_tree().process_frame
 	assert_int(picker.columns).is_equal(2)
 	var lot := picker.card_for("drive_in")
-	var small := picker.card_for("small_indoor")
+	var small := picker.card_for(StubMaps.LOCKED_ID)
 	var stub := picker.card_for(StubMaps.ID)
 	# Two cards fit the 440 units a row's control column has, side by side.
 	assert_float(small.global_position.y).is_equal_approx(lot.global_position.y, 0.5)
@@ -234,9 +235,9 @@ func test_the_phone_form_puts_the_cards_two_to_a_row_and_the_arrows_follow() -> 
 	assert_float(stub.global_position.y).is_greater(lot.global_position.y)
 	lot.grab_focus()
 	await _key(KEY_RIGHT)
-	assert_str(_focused(picker)).is_equal("small_indoor")
+	assert_str(_focused(picker)).is_equal(StubMaps.LOCKED_ID)
 	await _key(KEY_RIGHT)
-	assert_str(_focused(picker)).is_equal("small_indoor")
+	assert_str(_focused(picker)).is_equal(StubMaps.LOCKED_ID)
 	await _key(KEY_DOWN)
 	assert_str(_focused(picker)).is_equal(StubMaps.ID)
 	await _key(KEY_LEFT)
@@ -279,7 +280,7 @@ func test_the_panel_hands_the_choice_out_with_the_other_rules() -> void:
 	assert_str(panel.map_picker.selected_id).is_equal("drive_in")
 	# A map nobody can play is shown as the lot.
 	var locked := MatchSettings.new()
-	locked.map = "small_indoor"
+	locked.map = StubMaps.LOCKED_ID
 	panel.set_settings(locked)
 	assert_str(panel.map_picker.selected_id).is_equal("drive_in")
 	assert_str(panel.row_for("map").hint).is_not_empty()
@@ -304,4 +305,41 @@ func test_the_compact_panel_fits_a_phone_held_sideways() -> void:
 		assert_float(rect.position.y).is_greater_equal(-0.5)
 		assert_float(rect.end.y).is_less_equal(PHONE_CANVAS.y + 0.5)
 		assert_float(rect.size.y).is_greater_equal(MenuLook.TAP_TARGET - 0.5)
+	holder.free()
+
+
+# --- The second map is shipped: its card is chosen like any other ---
+
+
+func test_the_second_map_card_is_open_and_the_keyboard_chooses_it() -> void:
+	StubMaps.remove()
+	var picker := await _picker()
+	var card := picker.card_for("small_indoor")
+	assert_bool(card.is_locked()).is_false()
+	assert_str(card.accessibility_name).is_equal("The back rooms, 600 m² · 1 to 8 players")
+	picker.card_for("drive_in").grab_focus()
+	await _key(KEY_DOWN)
+	assert_str(_focused(picker)).is_equal("small_indoor")
+	await _key(KEY_ENTER)
+	assert_str(picker.selected_id).is_equal("small_indoor")
+	assert_array(_heard).is_equal(["small_indoor"])
+	assert_array(_blocked).is_empty()
+	assert_bool(card.selected).is_true()
+
+
+func test_the_panel_hands_the_second_map_out_and_shows_it_back() -> void:
+	StubMaps.remove()
+	var holder := Control.new()
+	add_child(holder)
+	var panel := MatchSettingsPanel.new()
+	holder.add_child(panel)
+	await get_tree().process_frame
+	panel.map_picker.card_for("small_indoor").pressed.emit()
+	assert_str(panel.settings().map).is_equal("small_indoor")
+	assert_bool(panel.settings().is_default()).is_false()
+	assert_str(String(MatchSettings.problem(panel.settings().to_dict()))).is_equal("")
+	var given := MatchSettings.new()
+	given.map = "small_indoor"
+	panel.set_settings(given)
+	assert_str(panel.map_picker.selected_id).is_equal("small_indoor")
 	holder.free()

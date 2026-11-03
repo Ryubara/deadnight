@@ -33,7 +33,7 @@ export const MAX_BOT_SKILL = 2;
 /** The map every night had before there was a choice. */
 export const DEFAULT_MAP = "drive_in";
 /** The maps the game can play now (its `MapRegistry.playable`, which a game test compares this list with). */
-export const PLAYABLE_MAPS = ["drive_in"];
+export const PLAYABLE_MAPS = ["drive_in", "small_indoor"];
 
 /** The keys every settings object has; `map` and `bots` may be left out by a client from before them (default map, 0 bots). */
 const KEYS = ["count_multiplier", "max_alive", "break_seconds"];
