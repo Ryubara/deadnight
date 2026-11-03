@@ -160,6 +160,33 @@ jobs:
           "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "${folders[@]}" -c --ignoreHeadlessMode --verbose 2>&1 | tee tests.log
           # Godot prints a leak after the run has finished, so only the log shows it (see the night step).
           ! grep -E "leaked at exit|still in use" tests.log
+      - name: Find which suite leaves the exit leak (temporary, #837)
+        # Runs of parts of shard 6, each in its own Godot, printing only the leak counts: the leak shows in CI and not on
+        # the machines it was tried on, so CI is the reproducer. Removed with the fix.
+        if: always() && matrix.shard == 6
+        continue-on-error: true
+        timeout-minutes: 20
+        run: |
+          godot=$(uv run --project repos/gdstudio/python gds tool path godot)
+          one() {
+            "$godot" --headless --path repos/deadnight/game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd "$@" -c --ignoreHeadlessMode --verbose > one.log 2>&1 || true
+            echo "RESULT $*: leak lines $(grep -cE 'leaked at exit|still in use' one.log), passed $(grep -c PASSED one.log)"
+            grep -E "ObjectDB instances|RID allocations|resources still in use" one.log | head -4 || true
+          }
+          s=res://tests/world/test_wall_silhouettes.gd
+          one -a $s
+          names=$(grep -o "^func test_[a-z0-9_]*" repos/deadnight/game/tests/world/test_wall_silhouettes.gd | sed 's/func //')
+          for t in $names; do
+            skip=()
+            for o in $names; do [ "$o" = "$t" ] || skip+=(-i "tests/world/test_wall_silhouettes.gd:$o"); done
+            echo "only $t"
+            one -a $s "${skip[@]}"
+          done
+          one -a res://tests/world/test_shop_spots.gd
+          one -a res://tests/captures
+          one -a res://tests/tours
+          one -a res://tests/world
+          one -a res://tests/rules
       - name: List what leaked at exit
         # `--verbose` (night and test steps) makes the engine name each leaked instance and resource; this keeps just
         # those lines, so a failed leak check says which objects it was (issue #487).
