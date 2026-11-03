@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://6d257gpw07y6"
-path="res://.godot/imported/kit_palette.png-b26aba3e4e92157113941fd910a1eca5.ctex"
+uid="uid://dd7xmw3jtw56o"
+path="res://.godot/imported/smallmap_palette.png-da0b002d9e95839d5aed17e71f0213ed.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/smallmap/kit_palette.png"
-dest_files=["res://.godot/imported/kit_palette.png-b26aba3e4e92157113941fd910a1eca5.ctex"]
+source_file="res://assets/smallmap/smallmap_palette.png"
+dest_files=["res://.godot/imported/smallmap_palette.png-da0b002d9e95839d5aed17e71f0213ed.ctex"]
 
 [params]
 

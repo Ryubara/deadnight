@@ -5,7 +5,7 @@ Run with the pinned Blender, headless, from the repository root:
     blender -b --factory-startup -P tools/blender/build_kit_stairs.py -- [--out game/assets/smallmap] \
         [--fixtures game/world/smallmap/fixtures] [--sheet <scratch folder>] [--only a,b]
 
-It writes, for each piece, `<out>/<name>.gltf` + `.bin` on the kit atlas (`<out>/kit_palette.png`, the drive-in
+It writes, for each piece, `<out>/<name>.gltf` + `.bin` on the kit atlas (`<out>/smallmap_palette.png`, the drive-in
 cells plus five; `smallmap_kit.py`), `<out>/stairs_kit.json` (triangles, budget, size), and the piece's fixture scene
 `<fixtures>/<name>.tscn`: the model and its collision as hidden CSG boxes, computed here from the same numbers as the
 mesh. With `--sheet` it also renders the pieces on the 0.5 m grid beside the Soldier and three drive-in props
@@ -673,7 +673,7 @@ def main():
     fixtures = Path(a.fixtures).resolve()
     fixtures.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    palette = out / "kit_palette.png"
+    palette = out / "smallmap_palette.png"  # the kit's one atlas, shared with the walls
     img = palette_image(palette)
     ensure_import(palette)  # lossless, no mipmaps, Detect 3D off (tools/check_texture_imports.py)
     mat = atlas_material(img)

@@ -68,6 +68,7 @@ A `StyleBox` cannot ease between states, so the theme gives the button's states 
 | What | Value | Why |
 | --- | --- | --- |
 | Hover lift | scale +3.5%, shadow 14 to 26 px | Reads as "raised" without moving layout |
+| Room for the lift | the scale stops at the nearest clipping ancestor (per axis); a `ScrollContainer` keeps `hover_room` (24) free at its sides | A scale is paint, so no container reserves room for it: the lobby's full-width buttons lost their edges (#628, `test_hover_room.gd`) |
 | Press squash | scale -5%, shadow to 0 | Immediate, so it uses the stiffer spring |
 | Focus ring | gap 6 px, closes in from 16 px, 3 px stroke | The ring "lands" on the button |
 | Spring | stiffness 360, damping 24, fixed 1/240 s step | Settles in about 0.3 s, no visible overshoot; the fixed step makes captures repeat |

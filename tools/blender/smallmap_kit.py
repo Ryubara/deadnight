@@ -134,7 +134,9 @@ def palette_image(path):
             for x in range(SWATCH_PX):
                 py = size - 1 - (row * SWATCH_PX + y)
                 k = (py * size + col * SWATCH_PX + x) * 4
-                px[k : k + 4] = [srgb_to_linear(c) for c in rgb] + [1.0]
+                # A byte image's `pixels` are its stored values: write the sRGB swatch as it is (converting to
+                # linear first saved every swatch far too dark; build_props.py writes them the same way).
+                px[k : k + 4] = [*rgb, 1.0]
     img.pixels = px
     img.filepath_raw = str(path)
     img.file_format = "PNG"

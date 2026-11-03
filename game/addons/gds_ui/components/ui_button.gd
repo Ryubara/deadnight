@@ -57,7 +57,7 @@ func _ready() -> void:
 	mouse_entered.connect(_on_mouse_entered)
 	focus_entered.connect(UIAudio.play.bind(&"focus"))
 	pressed.connect(UIAudio.play.bind(&"press"))
-	_snap_to_targets()
+	snap_to_targets()
 
 
 func _process(delta: float) -> void:
@@ -66,13 +66,54 @@ func _process(delta: float) -> void:
 	for spring in [_hover, _press, _focus, _off]:
 		spring.step(delta)
 		settled = settled and spring.is_settled()
-	scale = (
-		Vector2.ONE
-		* (1.0 + _hover.value * _tokens.hover_scale - _press.value * _tokens.press_squash)
-	)
+	_apply_scale()
 	_back.queue_redraw()
 	if settled:
 		set_process(false)
+
+
+## Sets the scale the springs ask for: grown by the hover, squashed by the press. A grown button
+## stays inside the nearest ancestor that clips it (a ScrollContainer, or any control with
+## `clip_contents`): the part that sticks out is not drawn, and a button that fills its slot edge
+## to edge lost its sides when hovered (#628). The theme gives scrolling areas room at their sides
+## for the whole growth (`UITokens.hover_room`); this is the guarantee where nothing has, and each
+## axis grows by what room there is, so a button on the last row of a scroll area still widens.
+func _apply_scale() -> void:
+	var factor := 1.0 + _hover.value * _tokens.hover_scale - _press.value * _tokens.press_squash
+	var scale_now := Vector2.ONE * factor
+	if factor > 1.0:
+		var room := _room_factor()
+		scale_now = Vector2(minf(factor, room.x), minf(factor, room.y))
+	scale = scale_now
+
+
+## The largest scale on each axis that keeps the button, grown about its centre, inside the nearest
+## ancestor that clips it: 1 plus twice the free room at the tighter side, over the button's own
+## size. Without such an ancestor it is unbounded.
+func _room_factor() -> Vector2:
+	var parent := get_parent() as CanvasItem
+	var clip := _clipper()
+	if parent == null or clip == null or size.x <= 0.0 or size.y <= 0.0:
+		return Vector2.INF
+	var into := clip.get_global_transform().affine_inverse() * parent.get_global_transform()
+	var slot := into * Rect2(position, size)
+	var free := (
+		Vector2(
+			minf(slot.position.x, clip.size.x - slot.end.x),
+			minf(slot.position.y, clip.size.y - slot.end.y)
+		)
+		. max(Vector2.ZERO)
+	)
+	return Vector2.ONE + 2.0 * free / slot.size
+
+
+func _clipper() -> Control:
+	var up := get_parent()
+	while up != null:
+		if up is Control and ((up as Control).clip_contents or up is ScrollContainer):
+			return up as Control
+		up = up.get_parent()
+	return null
 
 
 func _notification(what: int) -> void:
@@ -160,14 +201,13 @@ func _all_at_target() -> bool:
 	return _hover.is_settled() and _press.is_settled() and _focus.is_settled() and _off.is_settled()
 
 
-func _snap_to_targets() -> void:
+## Jumps every spring to where its state says it ends up, so the next frame is the settled look
+## (a static capture, a test; `_ready` uses it too).
+func snap_to_targets() -> void:
 	_update_targets()
 	for spring in [_hover, _press, _focus, _off]:
 		spring.snap(spring.target)
-	scale = (
-		Vector2.ONE
-		* (1.0 + _hover.value * _tokens.hover_scale - _press.value * _tokens.press_squash)
-	)
+	_apply_scale()
 
 
 ## Colours the fill box for the current spring values.
