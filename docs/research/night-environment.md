@@ -116,7 +116,7 @@ kept for lighting the dead and the player.
 | Pool on the asphalt | additive flat quad, 15 m, radial falloff (`glow.gdshader`) | one transparent quad per lit post, no light slot |
 | Lens and halo | emissive lens under a dark housing, plus a billboard glow quad (same shader) | two small quads |
 | Screen face | `screen.gdshader`: drifting patches of cool and warm light, vignette, grain at 12 Hz; `LotScreen` adds a slow flicker | one shader on the existing panel |
-| Projector beam | `ProjectorBeam`: a 29-vertex elliptical cone of additive haze from the booth's port to the screen (`beam.gdshader`), a halo at the lens | one draw, no light |
+| Projector beam | `ProjectorBeam`: a 29-vertex elliptical cone of additive haze from the booth's port to the screen (`beam.gdshader`), a halo at the lens | one draw; the booth's spot (below) is its only light |
 | Neon | `LotNeonSign` over the concession door: tubes, `Label3D`, halo, and an omni that hangs on the concession circuit | one light, only while powered |
 | Windows | `GlowPane`: an additive pane in each front window of the stand | one quad each |
 | Breaker posts | a billboard halo round the lamp, green on and dull red off, so a post reads across the lot | one quad each |
@@ -141,6 +141,19 @@ for the dead's slowdown (`LotLamps.lit_at`).
   excused from it. Another test reads every script and scene of the project for a light and fails on one that is not
   in its table, and checks that each weapon's shot, a blast and a grenade add exactly one light.
   The first run of the stronger test found 8 on two ground tiles, 7 on four more; no prop or car is above 6.
+- **The booth's spot** (`ProjectionBooth/Lamps/ProjectorBeam`, issue #840) is the beam's one real light: a
+  `SpotLight3D` (energy 6, 7 degrees, range 100) 0.1 m inside the booth's north wall behind the port, facing the
+  screen 70 m off. Two things about it are not obvious. A spot's forward is its -Z, so the builder's `yaw 180` turned it
+  to the road and it lit the booth's south door and the plaza through the wall (0.9 energy at most, found by
+  `GlowBleed`; Compatibility has no shadow to stop it). And a mesh is lit by the box of the cone, not its shape
+  (`LightCap.reaches`): aimed at the middle of the screen the cone's lower edge dipped under the stand's roof (4.3 m)
+  and the cars, a seventh light on meshes the cap leaves six for. Its pitch is therefore its half-angle (the lower edge
+  runs level at 5.4 m): the axis meets the screen's face 14 m up, the cone covers the middle of the screen, and the
+  stand, the cars and the ground are outside its box. What it visibly lights is the screen's frame and the posts in
+  its path: the screen's face is unshaded (`screen.gdshader`) and takes no light. `tests/world/test_projector_spot.gd`
+  holds the aim, the level edge and that no wall or roof of the lot is inside the cone;
+  `tests/captures/projector_spot_tour.tscn` shoots the lot from the field, the road and the booth (`--hide-spot` frees
+  the light for a second run to count what it alone changes: free it, do not hide it, see the lesson).
 - **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 4.6 m since #830: in front of the prize board it
   reached a seventh light onto the stand's floor at 5 m) is counted at each crane spot by
   `test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget`: a crane is built at every spot, its lamp joins

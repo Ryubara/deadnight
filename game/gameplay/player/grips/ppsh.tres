@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="HandGrip" format=3]
+
+[ext_resource type="Script" path="res://gameplay/player/hand_grip.gd" id="1_ieuub"]
+
+[resource]
+script = ExtResource("1_ieuub")
+hold = Transform3D(0.7272769, -0.6856303, 0.031295687, -0.6861627, -0.727377, 0.010178996, 0.015784733, -0.02887688, -0.9994584, 0.0110407, 0.1681065, -0.13482578)
+model_scale = 1.3
+right = {
+"Index2.R": Quaternion(-0.4754522, -0.14959921, -0.059686076, 0.8648717),
+"Index3.R": Quaternion(-0.12600227, 0.013191253, -0.06130209, 0.99004614),
+"Middle2.R": Quaternion(-0.57274985, -0.053754527, 0.1530639, 0.803517),
+"Middle3.R": Quaternion(-0.16385777, -0.007396493, 0.004366832, 0.9864467),
+"Pinky2.R": Quaternion(-0.47754213, 0.06456679, 0.27294308, 0.83263844),
+"Pinky3.R": Quaternion(-0.24323459, -0.010187918, -0.03000134, 0.9694499),
+"Thumb1.R": Quaternion(-0.022707505, -0.06998006, 0.5830111, 0.8091262),
+"Thumb2.R": Quaternion(-0.067998715, -0.020225711, -0.19411197, 0.97841084)
+}
+right_contacts = PackedStringArray("index_tip", "middle_tip", "pinky_tip", "thumb_tip", "palm")
+trigger_finger = "trigger"
+has_left = true
+left_hand = Transform3D(-0.67065483, -0.37635556, 0.017164296, -0.21407928, 0.35185346, -0.6496809, 0.3100132, -0.571202, -0.41150478, -0.3237478, -0.1868872, 0.042065196)
+left = {
+"Index2.L": Quaternion(-0.36513552, 0.100176014, -0.04585029, 0.92441255),
+"Index3.L": Quaternion(-0.6348739, -0.035039954, -0.089888185, 0.7665686),
+"Middle2.L": Quaternion(-0.59459406, 0.056220412, -0.15810171, 0.7863211),
+"Middle3.L": Quaternion(-0.31878823, 0.014301037, -0.02511385, 0.9473854),
+"Pinky2.L": Quaternion(-0.3446221, -0.047058426, -0.23873381, 0.90665716),
+"Pinky3.L": Quaternion(-0.6258834, 0.054375347, 0.06589252, 0.77522343),
+"Thumb1.L": Quaternion(-0.20890133, 0.42555654, -0.44825774, 0.7578435),
+"Thumb2.L": Quaternion(-0.2029694, 0.05765886, 0.21545613, 0.9534451)
+}
+left_contacts = PackedStringArray("middle_tip", "thumb_tip", "palm")
