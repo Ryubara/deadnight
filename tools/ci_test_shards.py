@@ -60,7 +60,7 @@ MOVED: dict[str, int] = {
     "night/test_bot_train.gd": 6,  # 18
     # The real body run at the walls (#846, #848): shard 6 was 11 minutes of suites, shard 2 under 4.
     "world/test_midway_fence_reach.gd": 2,  # 132
-    "world/test_drive_in_escape_sweep.gd": 2,  # about 60
+    "world/test_drive_in_escape_sweep.gd": 2,  # 76
 }
 
 
