@@ -434,6 +434,14 @@ func _wants_rounds(view: View, def: WeaponDef, reserve: int, mags: int, why: Str
 	return why != TOP_OFF or reserve < int(float(def.reserve_max) * _topoff(view))
 
 
+## The health of the dead a round sends, for a bot that weighs its weapons by it (0 for one that
+## does not, or when the level has no round table).
+func zombie_health(round_number: int) -> float:
+	if not _profile.weighs_by_round or _shop.rounds == null:
+		return 0.0
+	return _shop.rounds.health_for_round(round_number)
+
+
 ## Magazines of reserve the bot keeps for each gun now: the profile's floor, or the larger one it
 ## fills up to in the break before a special round (the simulator's `PREPARED_MAGS`).
 func _floor_mags(view: View) -> int:

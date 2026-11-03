@@ -82,6 +82,8 @@ empty's local +Y, because the glTF export turns Z up into Y up). A gun with two 
 centred between them. Melee weapons and grenades get none. The held and far levels carry it at the same place. The
 flash and the shot leave from it; the numbers and the test are in [Weapons](../research/weapons.md#the-muzzle). A
 tool carries the point it strikes with the same way: the repair hammer's `Face`, -Z out of the face.
+A gun with an ejection port carries `Eject` at the port's centre, keeping the weapon's axes, so its -Z in Godot
+points out of the gun's right side ([Weapon models](../research/weapon-models.md#hand-and-effect-points)).
 
 ## Bevels
 

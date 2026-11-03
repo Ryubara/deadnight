@@ -89,7 +89,7 @@ yard_rattle         -37.8   -8.5   -46.3   8.0     70     10    -65.7  -59.2  -7
 debris_clear        -25.1    0.0   -25.1  10.0     60     60
 step_wood           -23.2   -2.0   -25.2   4.0     30     30
 step_own_wood       -20.7  -14.0   -34.7   8.0     30     30
-bed_crickets        -25.5  -18.5   -44.0   8.0     50     13   (existing)
+bed_crickets        -27.4  -26.0   -53.4   8.0     50      4   (existing; cut again in #781)
 bed_highway         -17.6  -18.0   -35.6   8.0     50     33   (existing)
 bed_projector       -17.6  -14.0   -31.6   4.0     35     27   (existing)
 board_tear          -26.7    2.0   -24.7   9.0     70     70   (existing)

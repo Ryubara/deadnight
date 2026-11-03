@@ -104,8 +104,7 @@ var longest_glut := 0.0
 var glut_by_round: Dictionary = {}
 
 var _shop: BotShop
-## The health of the dead the last plan weighed its weapons by (0: it does not).
-var _round_health := 0.0
+var _round_health := 0.0  # The health of the dead the last plan weighed its weapons by.
 var _profile: BotProfile
 var _economy: BotEconomy
 ## Item id (or a job's key) to the clock when it may be tried again.
@@ -296,7 +295,7 @@ func _crane_wait(intent: BotIntent, me: Dictionary, frame: Dictionary, me_id: in
 		var view := BotEconomy.View.new()
 		view.arms = me.get("arms", {})
 		view.held = me.get("weapon", &"")
-		view.zombie_health = _zombie_health(int(frame.get("round", 1)))
+		view.zombie_health = _economy.zombie_health(int(frame.get("round", 1)))
 		if BotEconomy.worth_taking(view, WeaponCatalog.catalog_id(prompt.get("weapon", &""))):
 			intent.use = true
 	return true
@@ -319,9 +318,14 @@ func _shopping(
 	for buy in _found:
 		if scope == Scope.MARKED and buy.why != BotEconomy.AMMO_PING:
 			continue
-		if scope == Scope.NEEDS and buy.why != BotEconomy.AMMO_PING and not _is_ammo_need(buy):
+		if (
+			scope == Scope.NEEDS
+			and buy.why != BotEconomy.AMMO_PING
+			and not _is_ammo_need(buy)
+			and not _is_gun_need(buy, me)
+		):
 			continue
-		if _is_ammo_need(buy):
+		if _is_ammo_need(buy) or (scope == Scope.NEEDS and _is_gun_need(buy, me)):
 			var verdict := _verdict(buy, me)
 			held_back = held_back or verdict == BotNeeds.Verdict.STAY_AND_SAY
 			if verdict != BotNeeds.Verdict.GO:
@@ -380,15 +384,27 @@ func _is_ammo_need(buy: BotEconomy.Buy) -> bool:
 	return buy.prompt == &"ammo" and buy.why != BotEconomy.AMMO_PING
 
 
-## What the table of needs says about this purchase of rounds under the standing order. A trip
-## begun is given a little more leash.
+## Whether `buy` is a gun for a bot that has only the one it started with: a need of its own, as
+## rounds are, so a bot that holds a spot goes for it (#768).
+func _is_gun_need(buy: BotEconomy.Buy, me: Dictionary) -> bool:
+	var level := BotNeeds.gun_level(me.get("arms", {}))
+	return buy.prompt == &"weapon" and level != BotNeeds.Level.NONE
+
+
+## What the table of needs says about this purchase (rounds or a gun) under the standing order. A
+## trip begun is given a little more leash.
 func _verdict(buy: BotEconomy.Buy, me: Dictionary) -> BotNeeds.Verdict:
-	var level := BotNeeds.ammo_level(me.get("arms", {}), _profile.ammo_floor_mags)
+	var need := BotNeeds.Need.AMMO if _is_ammo_need(buy) else BotNeeds.Need.GUN
+	var level := (
+		BotNeeds.ammo_level(me.get("arms", {}), _profile.ammo_floor_mags)
+		if need == BotNeeds.Need.AMMO
+		else BotNeeds.gun_level(me.get("arms", {}))
+	)
 	if keeps_distance and level < BotNeeds.Level.EMPTY:
 		return BotNeeds.Verdict.STAY
 	var slack := BotNeeds.UNDERWAY_SLACK if _flat(_heading, buy.stand) < 1.0 else 0.0
 	var near := BotNeeds.is_near(buy.stand, _here, anchor, slack)
-	return BotNeeds.verdict(BotNeeds.Need.AMMO, order, level, near)
+	return BotNeeds.verdict(need, order, level, near)
 
 
 ## A bot held back from its need says so once, and again only after it has been free of the hold.
@@ -578,7 +594,7 @@ func _view(
 	view.points = state.points()
 	view.round_number = int(frame.get("round", 1))
 	view.prepared = beliefs.special_coming
-	view.zombie_health = _zombie_health(view.round_number)
+	view.zombie_health = _economy.zombie_health(view.round_number)
 	_round_health = view.zombie_health
 	view.in_break = frame.get("phase", ACTIVE_PHASE) == BREAK_PHASE
 	view.remaining = int(frame.get("remaining", 0))
@@ -602,14 +618,6 @@ func _view(
 	view.heading = _heading
 	_etiquette(view, beliefs, frame, state.player_id)
 	return view
-
-
-## The health of the dead a round sends, for a bot that weighs its weapons by it (0 for one that
-## does not, or when the level has no round table).
-func _zombie_health(round_number: int) -> float:
-	if not _profile.weighs_by_round or _shop.rounds == null:
-		return 0.0
-	return _shop.rounds.health_for_round(round_number)
 
 
 ## The door manners: which doors the bot holds back from, and which a person asked it to buy.

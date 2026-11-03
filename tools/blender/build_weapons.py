@@ -19,6 +19,7 @@ carries a `Face` the same way, at the centre of its striking face, -Z out of the
 """
 
 import argparse
+import importlib.util
 import json
 import math
 import sys
@@ -552,6 +553,68 @@ WEAPONS = {
 }
 
 
+# Where the spent case leaves (#786): the centre of the ejection port, in drawing units like MUZZLES. The `Eject` empty
+# keeps the weapon's axes, so its local +Y points out of the gun's right side (+Y in Blender), which is the
+# node's -Z in Godot. A gun with no port (a revolver, the energy weapons) has none.
+EJECTS = {}
+EJECT = "Eject"
+
+
+def add_eject(o, name, chunk):
+    if name not in EJECTS:
+        return None
+    m = bpy.data.objects.new(EJECT, None)
+    m.empty_display_type = "ARROWS"
+    m.empty_display_size = 0.04
+    bpy.context.scene.collection.objects.link(m)
+    m.parent = o
+    m.location = Vector(EJECTS[name]) * Vector(chunk)
+    return m
+
+
+# ---- one module a weapon (#786, docs/research/weapon-models.md#one-module-a-weapon) ----------------------------------
+# A weapon added after the first ten lives in `weapon_specs/<id>.py`: its builders and one `SPEC` dict, so the model
+# batches never edit the same lines of this file. Keys: `build` (the builder) and optionally `chunk` (default 1, 1, 1),
+# `nodes` ({node: (builder, pivot)}), `muzzle`, `eject` (points), `grip` and `support` ((origin, up, front)),
+# `trigger` (a point) and `ammo` ((builder, centre)): the same values as the tables above, in drawing units.
+SPEC_DIR = Path(__file__).resolve().parent / "weapon_specs"
+SPEC_TABLES = {
+    "nodes": NODES,
+    "muzzle": MUZZLES,
+    "eject": EJECTS,
+    "grip": GRIPS,
+    "trigger": TRIGGERS,
+    "support": SUPPORTS,
+    "ammo": AMMO,
+}
+
+
+def load_specs(folder=SPEC_DIR):
+    """Add every `weapon_specs/<id>.py` (not those whose name starts with `_`) to the tables; returns the ids."""
+    ids = []
+    for path in sorted(folder.glob("*.py")) if folder.is_dir() else []:
+        if path.name.startswith("_"):
+            continue
+        name = path.stem
+        module_spec = importlib.util.spec_from_file_location(f"weapon_specs.{name}", path)
+        module = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(module)
+        spec = module.SPEC
+        if name in WEAPONS:
+            raise SystemExit(f"{path}: {name} is already a weapon")
+        unknown = set(spec) - {"build", "chunk", *SPEC_TABLES}
+        if unknown:
+            raise SystemExit(f"{path}: unknown SPEC keys {sorted(unknown)}")
+        if "ammo" in spec and spec["ammo"][0] is None:
+            raise SystemExit(f"{path}: the ammo needs its own builder (reuse the node's)")
+        WEAPONS[name] = (spec["build"], tuple(spec.get("chunk", (1.0, 1.0, 1.0))))
+        for key, table in SPEC_TABLES.items():
+            if key in spec:
+                table[name] = spec[key]
+        ids.append(name)
+    return ids
+
+
 def stats(o, offset=(0.0, 0.0, 0.0)):
     """Triangles, loose parts (after welding coincident vertices), bounding box (moved by `offset`)."""
     me = o.data
@@ -627,6 +690,9 @@ def main():
                 kids.append(k)
             muzzle = add_muzzle(o, name, chunk) or add_muzzle(o, name, chunk, FACES, FACE)
             sockets = add_sockets(o, name, chunk)
+            eject = add_eject(o, name, chunk)
+            if eject:
+                sockets.append(eject)
             tris, parts, mn, mx = stats(o)
             for k in kids:
                 kt, kp, kmn, kmx = stats(k, offset=k.location)
@@ -673,4 +739,5 @@ def main():
     print("REPORT " + json.dumps(report))
 
 
+load_specs()
 main()

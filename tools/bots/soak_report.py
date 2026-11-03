@@ -558,8 +558,12 @@ def main() -> None:
     run.add_argument("--jobs", type=int, default=3)
     run.add_argument("--set", choices=["parity", "orders", "all"], default="all")
     run.add_argument("--cells", default="", help="only these cells, by name, comma separated")
-    run.add_argument("--tune", default="", help="profile fields set for every bot, field=value,field=value")
     run.add_argument("--stall", type=int, default=8, help="game minutes after which a round counts as stalled")
+    run.add_argument(
+        "--tune",
+        default="",
+        help="profile fields moved for a sweep, name:value pairs, comma separated (a number, true, false, a|b|c)",
+    )
     run.add_argument("--timeout", type=int, default=3600, help="seconds one chunk may take")
     args = parser.parse_args()
     {"run": command_run, "merge": command_merge}[args.command](args)

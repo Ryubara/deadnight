@@ -3,8 +3,9 @@ extends Node
 ## second burst at its own rate of fire through the night's own `WeaponSounds` and the audio
 ## service, with the listener where the shoulder camera sits behind the shooter. Then the night's
 ## ambient beds run alone, so the guns can be read against them. Run with Movie Maker
-## (`--write-movie out.png --fixed-fps 60`; time is the sum of the frames' deltas, so a browser run
-## works too), which writes the mix to `out.wav`. Prints
+## (`--write-movie out.avi --fixed-fps 60 --resolution 160x90`, then `ffmpeg -i out.avi -vn -c:a
+## pcm_s32le out.wav`: an `out.png` movie writes a file for each frame and ran at half the speed;
+## time is the sum of the frames' deltas, so a browser run works too). Prints
 ## `SLOT <weapon> <single start> <burst start> <burst end>` for each weapon (seconds into the
 ## movie), `SHOT <seconds> <weapon> <sound> <pitch> <volume_db> <flat|3d> <distance>` for each
 ## sound a shot started, `TRIM <weapon> <sound> <volume_db>` for the catalog's trim of each voice
@@ -22,8 +23,33 @@ const CAMERA_AT := Vector3(0.6, 1.6, 2.3)
 const MUZZLE := Vector3(0.3, 1.45, -0.4)
 const OWN := 1
 const OTHER := 2
+## Seconds between the shots of the guns the catalogue does not have yet (#790 before #793): the
+## intervals of #785's table (`docs/design/weapons.md`, the nine new weapons); a weapon with a
+## definition fires at its own `fire_interval`.
+const PROVISIONAL_INTERVAL := {
+	&"ppsh": 0.055,
+	&"m249": 0.09,
+	&"m4a1": 0.11,
+	&"fifty_cal": 0.9,
+	&"mp5": 0.1,
+	&"pump_870": 0.65,
+	&"dual_pistols": 0.15,
+}
 
-var _weapons: Array[StringName] = [&"pistol", &"smg", &"rifle", &"shotgun", &"flare_gun"]
+var _weapons: Array[StringName] = [
+	&"pistol",
+	&"smg",
+	&"rifle",
+	&"shotgun",
+	&"flare_gun",
+	&"ppsh",
+	&"m249",
+	&"m4a1",
+	&"fifty_cal",
+	&"mp5",
+	&"pump_870",
+	&"dual_pistols",
+]
 var _state := ClientState.new()
 var _sounds: WeaponSounds
 var _now := 0.0
@@ -91,7 +117,7 @@ func _step_slots(now: float) -> void:
 	var weapon := _weapons[_weapon_index]
 	var start := _weapon_index * SLOT_SECONDS
 	var local := now - start
-	var def := WeaponCatalog.get_def(weapon)
+	var interval := interval_of(weapon)
 	if not _single_done and local >= SINGLE_AT:
 		_single_done = true
 		print(
@@ -106,11 +132,21 @@ func _step_slots(now: float) -> void:
 			_next_shot = BURST_AT
 		while _next_shot <= local:
 			_fire(weapon)
-			_next_shot += def.fire_interval
+			_next_shot += interval
 	if local >= SLOT_SECONDS:
 		_weapon_index += 1
 		_next_shot = -1.0
 		_single_done = false
+
+
+## How long the weapon waits between shots: its definition's, or the provisional one.
+static func interval_of(weapon: StringName) -> float:
+	if (
+		PROVISIONAL_INTERVAL.has(weapon)
+		and not ResourceLoader.exists("%s%s.tres" % [WeaponCatalog.DIR, weapon])
+	):
+		return PROVISIONAL_INTERVAL[weapon]
+	return WeaponCatalog.get_def(weapon).fire_interval
 
 
 func _step_bed(now: float) -> void:
