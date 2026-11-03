@@ -1316,6 +1316,17 @@ count is the host's, and the server's own limits sit above it.
   shared machine is a tick the scheduler took (3 to 70 ms with the flare rule on and off alike, the median unchanged
   at about 0.73 ms); the budget of the 99th percentile failed under load from other jobs, as did the decision-cost
   scenario 26 of `test_bot_night.gd`.
+- **The test failed on `main` from #744 to #771, with a real cost, not a tight budget.** Same machine and session,
+  five alternating runs of `test_bot_server_cost.gd` on each commit: the commit before #744 (`b7dffa62`) read 697 to
+  741 microseconds mean, #744 (`7538779b`) 1,577 to 1,631, `main` at the time (`82eac9bd`) 1,323 to 1,511 (8 to 9% of the
+  tick, 95th percentile 3.2 to 3.5 ms), and the fix 647 to 705 (3.9 to 4.2%, 95th percentile 0.93 to 1.0 ms); the commit
+  of the test (#715) read 645 to 815 in the same session. The cause: #744 made a bot with an empty gun strike with the
+  quick melee, and `BotMotor` asked `WeaponCatalog.quick_melee().melee_range` on every tick of such a bot. The definition
+  is a `.tres` that nobody holds until the server's first quick melee, so each ask read the file again, 0.8 ms
+  (`quick_melee()` 797 microseconds a call unheld, 2.7 held). The motor now reads the reach once. The motor's own
+  95th percentile went from 1,036 to 30 microseconds; the think (p50 about 400 microseconds with 40 zombies in view,
+  `bots_move_soak.tscn --shop`: p50 240 to 300, p99 1.0 to 1.9 ms) did not change, so the soak's think numbers do not see
+  this cost, which is in the motor. The budget stays at 5% and 1.5 ms.
 - **The seating, skill and limits**: `test_room_bot_slots.gd` (a room over a socket: the skill names, dresses and drives
   the bots; a cap; the kill-switch at the start and thrown mid-night and lifted; a budget shared by two rooms; a person
   leaving hands the body to a bot and a third person takes it back), `test_night_bot_skill.gd`, `test_bot_limits.gd`,
