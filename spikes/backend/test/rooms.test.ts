@@ -278,3 +278,39 @@ test("settings sent with the start win over the ones set while waiting", async (
   assert.deepEqual(started.settings, mine);
   await app.close();
 });
+
+test("the host's map is checked, kept on the lobby, shown in its view and preview, and signed into the ticket", async () => {
+  const { app, guest, call, config } = await platform();
+  const host = await guest("host");
+  const lobby = (await call("POST", "/lobbies", host.headers, {})).json();
+  // A night nobody set a map for is on the default one, in the lobby's view and in what a code says before joining.
+  assert.equal(lobby.settings, null);
+  assert.equal(lobby.map, "drive_in");
+  const code = { code: lobby.code };
+  assert.equal((await call("POST", "/lobbies/preview", host.headers, code)).json().map, "drive_in");
+
+  // Only a map the game can play is taken: a map that is listed but not built, a made-up one and a wrong type are refused.
+  const rules = { count_multiplier: 1, max_alive: 0, break_seconds: 0 };
+  const put = (body: object) => call("PUT", `/lobbies/${lobby.id}/settings`, host.headers, body);
+  for (const map of ["small_indoor", "nope", "", 7, null]) {
+    const refused = await put({ ...rules, map });
+    assert.equal(refused.statusCode, 400, JSON.stringify(map));
+    assert.equal(refused.json().error, "bad_settings");
+  }
+  const set = await put({ ...rules, map: "drive_in" });
+  assert.equal(set.statusCode, 200);
+  assert.deepEqual(set.json().settings, { ...rules, map: "drive_in" });
+  assert.equal(set.json().map, "drive_in");
+
+  // The map rides the ticket with the other rules, so the game server builds the room on it.
+  const started = await call("POST", `/lobbies/${lobby.id}/start`, host.headers, {});
+  assert.equal(started.statusCode, 200);
+  const answer = (await call("POST", `/lobbies/${lobby.id}/ticket`, host.headers)).json();
+  assert.deepEqual(verifyToken(config.ticketSecret, "ticket", answer.ticket)?.settings, { ...rules, map: "drive_in" });
+
+  // Quick join shows the map of the night it finds.
+  const friend = await guest("friend", "10.0.0.2");
+  const quick = (await call("POST", "/lobbies/quick", friend.headers)).json();
+  assert.equal(quick.map, "drive_in");
+  await app.close();
+});

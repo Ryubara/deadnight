@@ -84,6 +84,10 @@ var bot: BotClient
 ## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
 ## `start_remote` they are the ones the server's WELCOME carried.
 var match_settings := MatchSettings.new()
+## `start_remote` only: the map to build before the server's WELCOME says which it is on (the lobby
+## the player joined knows it); empty is the default map. A WELCOME that names another one has the
+## world built again on that map.
+var map_id := ""
 ## () -> bool, whether the touch layer is up, set by the screen that owns it. The touch player's
 ## aim help (`assist`) works only while it says yes.
 var touch_active := Callable()
@@ -157,7 +161,7 @@ func start(
 		await get_tree().process_frame
 	world = NightWorld.new()
 	add_child(world)
-	await world.build()
+	await world.build(MapRegistry.of(match_settings.map))
 	loading.emit(BUILD_SHARE, "Setting up")
 	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
 	rules_tuning = server.rules.tuning
@@ -203,7 +207,7 @@ func start_remote(
 		night_tuning = NightTuning.shipped()
 	world = NightWorld.new()
 	add_child(world)
-	await world.build()
+	await world.build(MapRegistry.of(map_id))
 	rules_tuning = load(GameRules.DEFAULT_TUNING_PATH)
 	var online := p_link if p_link != null else WebSocketLink.new()
 	link = online
@@ -231,6 +235,7 @@ func start_remote(
 	if failure["reason"] != "":
 		online.close()
 		return _fail(failure["reason"])
+	await _use_map_of_server(MatchSettings.from_snapshot(welcome["snapshot"]).map)
 	state.player_id = online.player_id
 	state.load_names(welcome["snapshot"])
 	var camera: Camera3D
@@ -271,6 +276,19 @@ func start_remote(
 	_on_delivered(early)
 	await _go()
 	return true
+
+
+## The night the server welcomed us to is on the map `id`: when the world built before the WELCOME
+## is another one (the player joined by an address, or a lobby that did not say), it is built again
+## on the right one.
+func _use_map_of_server(id: String) -> void:
+	var wanted := MapRegistry.of(id)
+	if world.map_info == wanted:
+		return
+	world.queue_free()
+	world = NightWorld.new()
+	add_child(world)
+	await world.build(wanted)
 
 
 func _fail(reason: String) -> bool:

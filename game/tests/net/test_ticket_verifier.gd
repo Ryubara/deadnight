@@ -30,7 +30,10 @@ func test_the_rules_the_backend_signed_into_a_ticket_are_read_back() -> void:
 	var result := _verifier().admit(_tickets["with_settings"], NOW)
 	assert_bool(result["ok"]).is_true()
 	assert_str(result["match"]).is_equal("match-3")
-	var expected := {"count_multiplier": 2.0, "max_alive": 12, "break_seconds": 0.0}
+	# A ticket signed before the map choice has no map: it is the drive-in lot.
+	var expected := {
+		"count_multiplier": 2.0, "max_alive": 12, "break_seconds": 0.0, "map": "drive_in"
+	}
 	assert_dict((result["settings"] as MatchSettings).to_dict()).is_equal(expected)
 
 
@@ -87,7 +90,22 @@ func test_a_ticket_without_rules_admits_with_none_and_one_with_rules_hands_them_
 	var with_rules := TicketMaker.make(SECRET, "gs-test", "m", "bo", "Bo", 60, chosen)
 	var admitted := _verifier().admit(with_rules, int(Time.get_unix_time_from_system()))
 	assert_bool(admitted["ok"]).is_true()
-	assert_dict((admitted["settings"] as MatchSettings).to_dict()).is_equal(chosen)
+	assert_dict((admitted["settings"] as MatchSettings).to_dict()).is_equal(
+		chosen.merged({"map": "drive_in"})
+	)
+	# With a map, the ticket hands it over; a map nobody can play refuses the ticket.
+	var on_map := TicketMaker.make(
+		SECRET, "gs-test", "m", "cy", "Cy", 60, chosen.merged({"map": "drive_in"})
+	)
+	var given := _verifier().admit(on_map, int(Time.get_unix_time_from_system()))
+	assert_str((given["settings"] as MatchSettings).map).is_equal("drive_in")
+	for map_id in ["small_indoor", "nope", 7]:
+		var bad := TicketMaker.make(
+			SECRET, "gs-test", "m", "di", "Di", 60, chosen.merged({"map": map_id})
+		)
+		var refused := _verifier().admit(bad, int(Time.get_unix_time_from_system()))
+		assert_bool(refused["ok"]).is_false()
+		assert_str(refused["reason"]).is_equal(TicketVerifier.BAD_SETTINGS)
 
 
 func test_a_ticket_whose_rules_this_server_does_not_take_is_refused_and_not_spent() -> void:

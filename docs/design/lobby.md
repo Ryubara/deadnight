@@ -138,6 +138,9 @@ sign in (once), `POST /lobbies/quick`, `POST /lobbies/:id/ticket`, then the nigh
 - **While it searches** the card says *Finding a night...* with **Cancel** (Esc or the pad's B does the same). A search
   cancelled after the backend had put the player in a night leaves that night, so nobody holds a seat for a player who is
   on the menu. Quick join pressed again while it searches is the same search.
+- **The map of the night it found** shows as a ticket under the line (`MapCard`, from the lobby's `settings.map` or
+  `map`) until the night opens: the lot today, and the host's choice once there is another map
+  ([maps](maps.md#where-else-the-map-shows)).
 - **No name is asked** on this path. The saved name is used, else the backend calls the player `Guest NNNN`; the name is
   set under More. (The Play together screen still asks on its first use.)
 - **If no night is found or the call fails** the card says the same words as the Together screen (`TogetherApi.TEXTS`) and

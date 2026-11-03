@@ -1,8 +1,8 @@
 class_name MatchSettings
 extends Resource
 ## The rules of one match that whoever starts it chooses before the night begins: how intense the
-## night is (how many zombies, coming how fast), how many may stand at once and how long the
-## breaks last.
+## night is (how many zombies, coming how fast), how many may stand at once, how long the breaks
+## last, and the map it is played on (`MapRegistry`).
 ##
 ## The server owns them (`GameRules.settings`), they ride the rules' snapshot (so WELCOME and a
 ## late join carry them) and they are set only while the night has not started
@@ -25,7 +25,12 @@ const KEYS := {
 	"count_multiplier": TYPE_FLOAT,
 	"max_alive": TYPE_INT,
 	"break_seconds": TYPE_FLOAT,
+	"map": TYPE_STRING,
 }
+## The keys a dictionary may leave out, each meaning its default: a ticket, a lobby or a WELCOME
+## from before the setting existed has none, and a server and a client of two builds still read each
+## other (`to_dict` always writes them).
+const OPTIONAL_KEYS: Array[String] = ["map"]
 
 ## The night's intensity. Round N brings the tuned count times this (rounded, at least one) and the
 ## dead come this many times as fast (the spawn interval divides by it, down to
@@ -40,6 +45,8 @@ const KEYS := {
 ## Seconds of break between rounds; 0 is the tuned break (`RoundTuning.break_seconds`). The wait
 ## before round 1 and the longer break before a special round are unchanged.
 @export_range(0.0, 120.0, 1.0) var break_seconds: float = 0.0
+## The id of the map the night is played on (`MapRegistry`); only a map that can be played is taken.
+@export var map: String = MapRegistry.DEFAULT
 
 
 ## The defaults: today's game.
@@ -48,10 +55,11 @@ func is_default() -> bool:
 		is_equal_approx(count_multiplier, 1.0)
 		and max_alive == AUTO
 		and is_zero_approx(break_seconds)
+		and map == MapRegistry.DEFAULT
 	)
 
 
-## Whether `other` holds the same three values.
+## Whether `other` holds the same values.
 func same_as(other: MatchSettings) -> bool:
 	return other != null and to_dict() == other.to_dict()
 
@@ -97,6 +105,7 @@ func to_dict() -> Dictionary:
 		"count_multiplier": count_multiplier,
 		"max_alive": max_alive,
 		"break_seconds": break_seconds,
+		"map": map,
 	}
 
 
@@ -104,6 +113,8 @@ func to_dict() -> Dictionary:
 ## `&""` when it is fine. Strict: a value outside the bounds is refused, not clamped.
 static func problem(data: Dictionary) -> StringName:
 	for key: String in KEYS:
+		if not data.has(key) and key in OPTIONAL_KEYS:
+			continue
 		if not data.has(key) or not SnapshotCheck.fits_type(data[key], KEYS[key]):
 			return StringName(key)
 	if not _in_range(data["count_multiplier"], MIN_COUNT_MULTIPLIER, MAX_COUNT_MULTIPLIER):
@@ -112,6 +123,8 @@ static func problem(data: Dictionary) -> StringName:
 		return &"max_alive"
 	if not _is_auto_or_in_range(data["break_seconds"], MIN_BREAK, MAX_BREAK):
 		return &"break_seconds"
+	if not MapRegistry.is_playable(str(data.get("map", MapRegistry.DEFAULT))):
+		return &"map"
 	return &""
 
 
@@ -124,6 +137,7 @@ static func from_dict(data: Dictionary) -> MatchSettings:
 	out.count_multiplier = float(data["count_multiplier"])
 	out.max_alive = data["max_alive"]
 	out.break_seconds = float(data["break_seconds"])
+	out.map = str(data.get("map", MapRegistry.DEFAULT))
 	return out
 
 
@@ -156,6 +170,7 @@ func clamped() -> MatchSettings:
 	out.count_multiplier = clampf(count_multiplier, MIN_COUNT_MULTIPLIER, MAX_COUNT_MULTIPLIER)
 	out.max_alive = clampi(max_alive, AUTO, _alive_ceiling())
 	out.break_seconds = _clamp_optional(break_seconds, MIN_BREAK, MAX_BREAK)
+	out.map = map if MapRegistry.is_playable(map) else MapRegistry.DEFAULT
 	return out
 
 

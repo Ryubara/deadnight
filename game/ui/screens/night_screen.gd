@@ -29,6 +29,9 @@ static var join_url := ""
 ## With `join_url`: the platform backend's ticket for the night, said in the hello (empty for a
 ## server with no backend, as on a developer's machine).
 static var join_ticket := ""
+## With `join_url`: the id of the map the night is on, as the lobby says (the world is built on it
+## before the server's WELCOME); empty is the default map.
+static var join_map := ""
 ## With `join_url`: the autopilot plays this player (`--bot`), seen over its own shoulder.
 static var join_as_bot := false
 ## The match settings of the next local night (the Play screen sets them); taken once, the way
@@ -143,8 +146,10 @@ func screen_enter() -> void:
 	night.shoulder_camera = join_as_bot
 	var link := WebSocketLink.new()
 	link.ticket = join_ticket
+	night.map_id = join_map
 	join_url = ""
 	join_ticket = ""
+	join_map = ""
 	join_as_bot = false
 	_show_overlay("Joining", "" if link.ticket != "" else url, false)
 	night.connect_failed.connect(_on_connect_failed)

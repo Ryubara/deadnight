@@ -20,6 +20,7 @@ var back_button: UIButton
 var reset_button: UIButton
 
 var _margin: MarginContainer
+var _column: VBoxContainer
 var _overline: UILabel
 
 
@@ -34,6 +35,7 @@ func _ready() -> void:
 	card.variant = UIPanel.Variant.MARQUEE
 	centre.add_child(card)
 	var column := VBoxContainer.new()
+	_column = column
 	column.custom_minimum_size.x = PANEL_WIDTH
 	column.add_theme_constant_override(&"separation", _tokens.space_md)
 	card.add_child(column)
@@ -80,21 +82,30 @@ func _fit_for_fingers() -> void:
 	var phone := size.y <= COMPACT_HEIGHT
 	panel.set_compact(phone)
 	_overline.visible = not phone
+	_column.add_theme_constant_override(
+		&"separation", _tokens.space_sm if phone else _tokens.space_md
+	)
 	var margin_size := _tokens.space_md if phone else _tokens.space_xl
 	for side in MARGIN_SIDES:
 		_margin.add_theme_constant_override(side, margin_size)
+	if phone:
+		# The canvas is only 540 units high: the panel keeps a thin edge above and below.
+		_margin.add_theme_constant_override(&"margin_top", _tokens.space_sm)
+		_margin.add_theme_constant_override(&"margin_bottom", _tokens.space_sm)
 	for button in [start_button, reset_button, back_button]:
 		(button as Control).custom_minimum_size.y = MenuLook.TAP_TARGET if phone else 0.0
+	# The phone's map cards sit two to a row: the first row is the one Up leaves from.
+	_link_focus()
 
 
 ## The arrow keys and the d-pad reach the buttons from the last row and the first row from them.
 func _link_focus() -> void:
 	var last := panel.last_control()
-	var first := panel.first_control()
 	for button in [start_button, reset_button, back_button]:
 		button.focus_neighbor_top = button.get_path_to(last)
 	last.focus_neighbor_bottom = last.get_path_to(start_button)
-	first.focus_neighbor_top = first.get_path_to(start_button)
+	for first in panel.first_controls():
+		first.focus_neighbor_top = first.get_path_to(start_button)
 
 
 func _label(text: String, style: UILabel.Style) -> UILabel:
