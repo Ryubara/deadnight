@@ -83,10 +83,12 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         # Along the fence by the road gate.
         ("cone", -3.0, 36.6, 0),
         ("cone", 3.0, 36.6, 0),
-        # The west alley, a dead end for ambushes: drums and crates on the fence, a pallet on the stand's wall.
-        ("barrel", -15.3, 0.0, 0),
-        ("barrel", -15.3, 0.7, 0),
-        ("barrel", -14.6, 0.35, 0),
+        # The west alley, a dead end for ambushes: drums and crates on the fence, a pallet on the stand's wall. The
+        # drums (0.82 m, a step) stand at the open end, 7 m from the dumpster (1.62 m): beside it they were the first
+        # of the four hops over the fence into the back lot (#846).
+        ("barrel", -15.3, 3.6, 0),
+        ("barrel", -15.3, 4.3, 0),
+        ("barrel", -14.6, 3.95, 0),
         ("crate", -15.35, 6.0, 0),
         ("crate", -14.7, 6.05, 15),
         ("pallet", -10.9, 5.4, 90),
