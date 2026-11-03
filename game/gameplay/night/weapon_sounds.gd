@@ -176,7 +176,9 @@ func _on_reload(event: Dictionary) -> void:
 	for step: StringName in steps:
 		var sound: StringName = steps[step]
 		for share in motion.event_shares(step):
-			schedule.add(share * seconds, func() -> void: _at_player(sound, shooter_id, lift), tag)
+			schedule.add(
+				share * seconds, func() -> void: _reload_step(sound, shooter_id, lift), tag
+			)
 
 
 func _on_equipped(event: Dictionary) -> void:
@@ -190,17 +192,24 @@ static func _reload_tag(player_id: int) -> StringName:
 	return StringName("reload_%d" % player_id)
 
 
-## A sound where `player_id` stands: flat for this screen's own player, at the head of anyone else,
-## and nothing for a stranger who is not in the frame.
+## A sound where `player_id` stands; flat when it is this screen's own player and the frame has
+## no position yet, and nothing for a stranger who is not in the frame.
 func _at_player(sound: StringName, player_id: int, lift_db := 0.0) -> void:
-	# The player's own hands are at their own ears: flat, as their own shots are (a centred 3D voice
-	# costs 6 dB, and under fire a reload step was then lost in the guns: #683).
-	if player_id == _state.player_id:
-		_play(sound, null, lift_db)
-		return
 	var player: Dictionary = _state.frame.get("players", {}).get(player_id, {})
 	if player.has("pos"):
 		_play(sound, player["pos"] + HEAD_LIFT, lift_db)
+	elif player_id == _state.player_id:
+		_play(sound, null, lift_db)
+
+
+## A reload step: the player's own hands are at their own ears, flat as their own shots are (a
+## centred 3D voice costs 6 dB, and under fire a step was then lost in the guns: #683); anyone
+## else's at his head.
+func _reload_step(sound: StringName, player_id: int, lift_db: float) -> void:
+	if player_id == _state.player_id:
+		_play(sound, null, lift_db)
+	else:
+		_at_player(sound, player_id, lift_db)
 
 
 func _play(sound: StringName, at: Variant, lift_db := 0.0) -> void:

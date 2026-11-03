@@ -70,7 +70,7 @@ const NIGHT_SOUND_TUNING := {
 	"max_world_impacts": 3,
 	"hit_match_radius": 1.5,
 	"range_margin": 0.5,
-	"teammate_reload_db": 8.0,
+	"teammate_reload_db": 6.0,
 	"own_reload_db": 2.0,
 	"tick_gap_start": 0.5,
 	"tick_gap_end": 0.1,

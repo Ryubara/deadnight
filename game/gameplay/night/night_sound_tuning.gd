@@ -48,7 +48,7 @@ static var _shipped: NightSoundTuning = null
 ## A reload's steps are this much louder than their own level: another player's, so the team hears
 ## who is exposed through a teammate's gunfire, and the player's own (flat) a little, so they stand
 ## out of a teammate's fire close by (#683; measured with `tools/audio/reload_audibility.py`).
-@export_range(0.0, 18.0, 0.5, "suffix:dB") var teammate_reload_db := 8.0
+@export_range(0.0, 18.0, 0.5, "suffix:dB") var teammate_reload_db := 6.0
 @export_range(0.0, 12.0, 0.5, "suffix:dB") var own_reload_db := 2.0
 
 @export_group("Grenades")
