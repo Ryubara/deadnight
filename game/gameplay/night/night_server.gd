@@ -152,6 +152,8 @@ var _ping_judge: PingJudge
 var _order_judge: OrderJudge
 var _outbox: Array[Dictionary] = []
 var _probe: WorldProbe
+## Whether a hand reaches what a prompt offers without a wall between (#831).
+var _sight: UseSight
 ## Held here: a Callable does not keep its RefCounted alive.
 var _cast: WorldCast
 ## Each player's side of a throw: the grenade buttons of their commands as cook and throw actions.
@@ -185,7 +187,9 @@ func _init(
 	world.equip(sim, _probe.static_callable())
 	sim.barricades = rules.barricades
 	sim.board_seconds = rules.tuning.barricades.seconds_per_board
+	_sight = UseSight.new(_probe.static_callable())
 	_revive = ReviveChannel.new(tuning, rules, _bodies, _announce)
+	_revive.sight = _sight
 	_ping_judge = PingJudge.new(tuning, ping_board, rules, world, sim, _bodies, _announce)
 	_order_judge = OrderJudge.new(_ping_judge, bot_orders, rules, world, _bodies, _announce)
 	director = ZombieDirector.new(rules, sim, world.spawn_points())
@@ -772,16 +776,16 @@ func use_target(player_id: int) -> Dictionary:
 			"progress": _revive.progress(raise),
 			"bleed": rules.bleed_left_of(raise),
 		}
-	var door := UseOffers.door(world, rules, tuning, here)
+	var door := UseOffers.door(world, rules, tuning, here, _sight)
 	if not door.is_empty():
 		return door
 	var offer := _spot_offer(player_id, here)
 	if not offer.is_empty():
 		return offer
-	var post := UseOffers.post(world, rules, tuning, here)
+	var post := UseOffers.post(world, rules, tuning, here, _sight)
 	if not post.is_empty():
 		return post
-	return UseOffers.fuel(world, rules, tuning, here)
+	return UseOffers.fuel(world, rules, tuning, here, _sight)
 
 
 ## The offer of the nearest shop spot in reach that has one, or `{}`.
@@ -791,6 +795,8 @@ func _spot_offer(player_id: int, here: Vector3) -> Dictionary:
 	for spot in world.shop_spots():
 		var apart := world.reach_distance(here, spot["position"])
 		if apart > tuning.use_reach or apart >= best_apart:
+			continue
+		if not _sight.clear(here, spot["position"]):
 			continue
 		var offer := _offer_at(player_id, spot)
 		if not offer.is_empty():
