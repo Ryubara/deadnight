@@ -11,6 +11,8 @@ extends RefCounted
 ## - `closed`: the window answered success=false after a while: it was open and was closed;
 ## - `refused`: an error, or success=false at once: Discord opened nothing;
 ## - `unreadable`: the SDK could not read the client's answer.
+## `auth` is how the Activity's `authenticate` went (`none`, `pending`, `ok`, `unread`, `failed`):
+## Discord refuses a command with error 4006 until that is done (the cause of #627).
 ## The hint to pick who to send it to is shown for `open` only. `says` is the sentence for the
 ## player; `line` is the probe line with Discord's own numbers and error, so a report shows it.
 
@@ -71,6 +73,11 @@ static func says(state: Dictionary, code: String) -> String:
 			)
 		"refused":
 			var out := "Discord did not open its share window. Press Copy the code and send it yourself."
+			if _not_signed_in(state):
+				out = (
+					"Discord did not open its share window: this Activity is not signed in with"
+					+ " Discord yet. Press Copy the code and send it yourself."
+				)
 			if invite == "opened":
 				out = (
 					"Discord did not open its share window, but its invite window opened: invite"
@@ -78,6 +85,14 @@ static func says(state: Dictionary, code: String) -> String:
 				)
 			return out
 	return ""
+
+
+## Discord refused with 4006 ("Not authenticated or invalid scope") and the sign-in with Discord had
+## not completed (a guest, or `authenticate` failed): the refusal is the missing sign-in.
+static func _not_signed_in(state: Dictionary) -> bool:
+	return (
+		str(state.get("code", "")) == "4006" and str(state.get("auth", "ok")) in ["none", "failed"]
+	)
 
 
 ## The probe line: what Discord answered, as it answered it.
@@ -105,6 +120,11 @@ static func line(state: Dictionary) -> String:
 		parts.append(str(state.get("detail")))
 	if str(state.get("raw", "")) != "":
 		parts.append("Discord's frame: %s" % state.get("raw"))
+	if str(state.get("auth", "")) != "":
+		var auth_why := str(state.get("authDetail", ""))
+		parts.append(
+			"sign-in: %s%s" % [state.get("auth"), (" (" + auth_why + ")") if auth_why != "" else ""]
+		)
 	var invite := str(state.get("invite", ""))
 	if invite != "":
 		var why := str(state.get("inviteDetail", ""))

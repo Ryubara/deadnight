@@ -23,7 +23,7 @@ const MAX_BREAK := 120.0
 ## Bots the night seats beside the people: none to `MAX_BOTS`. In a room they take only the seats
 ## people leave free (`NightBots.target`).
 const MIN_BOTS := 0
-const MAX_BOTS := 3
+const MAX_BOTS := 7
 ## How well the bots play: an index into `BotProfile`'s three skills (`BotProfile.for_skill`).
 ## Difficulty is the bots' player model and nothing else: zombies, damage and points never change
 ## with it (`docs/research/bots.md#aim-and-difficulty`).
@@ -63,7 +63,7 @@ const OPTIONAL_KEYS: Array[String] = ["map", "bots", "bot_skill"]
 @export var map: String = MapRegistry.DEFAULT
 ## Bots at the start of the night, 0 to `MAX_BOTS`. Solo seats this many beside the person; a room
 ## seats as many as the people leave seats free, and a person who joins takes a bot's seat.
-@export_range(0, 3, 1) var bots: int = MIN_BOTS
+@export_range(0, 7, 1) var bots: int = MIN_BOTS
 ## How well every bot of the night plays: `SKILL_ROOKIE`, `SKILL_REGULAR` or `SKILL_VETERAN`.
 @export_range(0, 2, 1) var bot_skill: int = DEFAULT_SKILL
 

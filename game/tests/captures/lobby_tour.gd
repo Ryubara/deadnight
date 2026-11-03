@@ -48,6 +48,18 @@ func _ready() -> void:
 	# page's link, the blocked-copy line and the selected text. It must fit a 720-high window.
 	var di := _member("d", "Di", 4)
 	await _still(out, "tallest", "a", {"lobby": _lobby([ann, bo, cy, di])}, _make_tallest)
+	# The room's eight seats (#690): five people, the host's Bots setting at 3 in the open ones.
+	var people := [ann, bo, cy, di, _member("e", "Ed", 5), _member("f", "Fay", 6)]
+	await _still(
+		out, "eight-seats-bots", "a", {"lobby": _lobby(people.slice(0, 5), "open", null, 8, 3)}
+	)
+	await _still(
+		out,
+		"eight-seats-tallest",
+		"a",
+		{"lobby": _lobby(people, "open", null, 8, 2)},
+		_make_tallest
+	)
 	get_tree().quit()
 
 
@@ -84,12 +96,15 @@ func _member(
 	return {"userId": id, "name": member_name, "seat": seat, "host": host, "away": away}
 
 
-func _lobby(members: Array, state := "open", round_number: Variant = null) -> Dictionary:
+func _lobby(
+	members: Array, state := "open", round_number: Variant = null, seats := 4, bots := 0
+) -> Dictionary:
 	return {
 		"id": "l1",
 		"code": "K7QM4X",
 		"hostId": "a",
-		"maxPlayers": 4,
+		"maxPlayers": seats,
+		"settings": {"count_multiplier": 1.0, "max_alive": 0, "break_seconds": 0.0, "bots": bots},
 		"members": members,
 		"state": state,
 		"round": round_number,

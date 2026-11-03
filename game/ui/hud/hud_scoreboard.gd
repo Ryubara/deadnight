@@ -22,7 +22,7 @@ const PING_CELL := 5
 const CHIP := Vector2(10.0, 34.0)
 const ROW_HEIGHT := 46.0
 ## The most players a night holds (the rows kept).
-const MAX_ROWS := 4
+const MAX_ROWS := NightHost.MAX_PLAYERS
 ## A row of the local player is laid on a faint wash of the accent.
 const LOCAL_WASH := 0.14
 

@@ -137,3 +137,95 @@ func test_the_flare_gun_is_no_firearm_for_the_fight_so_a_bot_with_only_it_is_dry
 	assert_bool(plan.dry).is_true()
 	var loaded := {&"pistol": [0, 0], &"flare_gun": [1, 6]}
 	assert_bool(_plan(_me(&"flare_gun", loaded)).dry).is_true()
+
+
+# --- A gun with nothing left at all (#695) ---
+
+
+func test_an_empty_gun_with_no_reserve_is_swapped_for_a_gun_that_has_only_reserve() -> void:
+	# The shotgun has no round anywhere and the Tommy gun an empty magazine with 158 in reserve:
+	# neither is loaded, so the old plan held the empty shotgun for good (no reload, no swap, and
+	# `dry` false because rounds exist, so no quick melee either).
+	var arms := {&"shotgun": [0, 0], &"smg": [0, 158]}
+	for threat: float in [INF, 20.0, 8.0, 3.0]:
+		var plan := _plan(_me(&"shotgun", arms), threat, threat)
+		assert_bool(plan.swap).override_failure_message("no swap at %s" % threat).is_true()
+		assert_bool(plan.reload).is_false()
+
+
+func test_the_gun_taken_up_for_its_reserve_is_reloaded_not_swapped_back() -> void:
+	var arms := {&"shotgun": [0, 0], &"smg": [0, 158]}
+	for threat: float in [INF, 20.0, 3.0]:
+		var plan := _plan(_me(&"smg", arms), threat, threat)
+		assert_bool(plan.reload).is_true()
+		assert_bool(plan.swap).is_false()
+
+
+func test_a_bot_with_nothing_loaded_may_strike_with_the_quick_melee_while_the_reload_comes(
+) -> void:
+	var arms := {&"shotgun": [0, 0], &"smg": [0, 158]}
+	var plan := _plan(_me(&"smg", arms), 2.0, 2.0)
+	assert_bool(plan.dry).is_false()
+	assert_bool(plan.unloaded).is_true()
+	(
+		assert_bool(_plan(_me(&"smg", {&"shotgun": [4, 10], &"smg": [0, 158]}), 2.0, 2.0).unloaded)
+		. is_false()
+	)
+	(
+		assert_bool(_plan(_me(&"smg", {&"shotgun": [0, 0], &"smg": [3, 158]}), 2.0, 2.0).unloaded)
+		. is_false()
+	)
+
+
+func test_every_state_of_two_guns_asks_for_something_when_the_gun_in_hand_is_empty() -> void:
+	# The whole product: the gun in hand and the other gun each with a magazine or none and a
+	# reserve or none, near and far. An empty hand with rounds anywhere reloads or swaps; with no
+	# round anywhere the bot is dry (the quick melee is all it has).
+	var counts := [0, 7]
+	for held_reserve: int in counts:
+		for other_magazine: int in counts:
+			for other_reserve: int in counts:
+				for threat: float in [INF, 20.0, 8.0, 3.0]:
+					var arms := {
+						&"shotgun": [0, held_reserve], &"smg": [other_magazine, other_reserve]
+					}
+					var plan := _plan(_me(&"shotgun", arms), threat, threat)
+					var name := (
+						"held 0/%d, other %d/%d, threat %s"
+						% [held_reserve, other_magazine, other_reserve, threat]
+					)
+					if held_reserve + other_magazine + other_reserve > 0:
+						(
+							assert_bool(plan.reload or plan.swap)
+							. override_failure_message(name)
+							. is_true()
+						)
+						assert_bool(plan.dry).override_failure_message(name).is_false()
+					else:
+						assert_bool(plan.dry).override_failure_message(name).is_true()
+
+
+func test_a_blade_with_no_gun_loaded_strikes_when_the_dead_are_near_else_goes_back_to_reload(
+) -> void:
+	# The axe in hand, the shotgun with 54 in reserve and an empty magazine: with a train at its
+	# heels the bot held the axe it was not allowed to swing into a pack and never took the gun
+	# back (#695).
+	var arms := {&"shotgun": [0, 54], &"fire_axe": [0, 0]}
+	var close := _plan(_me(&"fire_axe", arms), 1.0, 1.0)
+	assert_bool(close.cornered).is_true()
+	assert_bool(close.swap).is_false()
+	var near := _plan(_me(&"fire_axe", arms), 5.0, 5.0)
+	assert_bool(near.cornered).is_true()
+	assert_bool(near.swap).is_false()
+	var far := _plan(_me(&"fire_axe", arms), 9.0, 9.0)
+	assert_bool(far.cornered).is_false()
+	assert_bool(far.swap).is_true()
+
+
+func test_a_blade_with_a_loaded_gun_to_take_is_not_cornered_and_a_gun_in_hand_never_is() -> void:
+	var loaded := {&"shotgun": [4, 10], &"fire_axe": [0, 0]}
+	var plan := _plan(_me(&"fire_axe", loaded), 1.0, 1.0)
+	assert_bool(plan.cornered).is_false()
+	assert_bool(plan.swap).is_true()
+	var empty_gun := {&"shotgun": [0, 54], &"fire_axe": [0, 0]}
+	assert_bool(_plan(_me(&"shotgun", empty_gun), 1.0, 1.0).cornered).is_false()

@@ -365,21 +365,21 @@ func _pump(links: Array[WebSocketLink]) -> void:
 		link.pump()
 
 
-func test_a_fifth_player_is_turned_away() -> void:
+func test_a_player_past_the_limit_is_turned_away() -> void:
 	await _server()
 	var links: Array[WebSocketLink] = []
-	for _i in 4:
+	for _i in NightHost.MAX_PLAYERS:
 		var link := WebSocketLink.new()
 		link.connect_to(_url())
 		links.append(link)
-	var four := false
+	var full := false
 	for _i in 600:
 		_pump(links)
-		if _host.player_count() == 4:
-			four = true
+		if _host.player_count() == NightHost.MAX_PLAYERS:
+			full = true
 			break
 		await get_tree().physics_frame
-	assert_bool(four).is_true()
+	assert_bool(full).is_true()
 	var fifth := WebSocketLink.new()
 	var why := {"reason": -1}
 	fifth.refused.connect(func(reason: int) -> void: why["reason"] = reason)
@@ -391,7 +391,7 @@ func test_a_fifth_player_is_turned_away() -> void:
 			break
 		await get_tree().physics_frame
 	assert_int(why["reason"]).is_equal(NetWire.Refusal.FULL)
-	assert_int(_host.player_count()).is_equal(4)
+	assert_int(_host.player_count()).is_equal(NightHost.MAX_PLAYERS)
 	for link in links:
 		link.close()
 

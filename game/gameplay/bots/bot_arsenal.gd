@@ -8,13 +8,17 @@ extends RefCounted
 ## out.
 ##
 ## - A forced reload when the magazine is dry and there is reserve; but with a zombie close and
-##   another gun loaded, the swap is quicker than the reload, so the bot swaps.
+##   another gun loaded, the swap is quicker than the reload, so the bot swaps. A gun with no round
+##   anywhere is put down for a gun that has rounds in reserve only, which is then reloaded (a
+##   bot never holds an empty gun while another can be loaded).
+## - A blade in hand with no gun loaded goes back to the gun that needs its reload once the nearest
+##   zombie is farther than `RELOAD_GAP` (a reload takes about two seconds to close); nearer, the
+##   bot strikes with the blade, a pack or not (`Plan.cornered`): nothing else is left to do.
 ## - A tactical reload when the magazine is low and nothing is near (`LOW_MAGAZINE`, `RELOAD_SAFE`),
 ##   and a top-up in a lull when it is not full (`TOP_UP_BELOW`, `LULL`).
 ## - The flare gun is put away for a loaded gun as soon as it is in hand (it is held for one shot).
 ## - A swap to the better loaded weapon when it is `SWITCH_GAIN` times better at this range, and to
-##   whatever has rounds when the weapon in hand has none (a gun with rounds in reserve only counts:
-##   it is reloaded once in hand); the crowbar when every gun is dry.
+##   whatever has rounds when the weapon in hand has none; the crowbar when every gun is dry.
 
 ## Metres from a zombie inside which a tactical reload waits.
 const RELOAD_SAFE := 8.0
@@ -25,6 +29,9 @@ const TOP_UP_BELOW := 0.7
 const LULL := 16.0
 ## The distance at which a dry gun is swapped rather than reloaded, when another weapon is loaded.
 const SWAP_INSTEAD := 4.5
+## Metres from the nearest zombie beyond which a blade is put away for a gun that needs its reload:
+## more than `SWAP_INSTEAD`, so a bot does not swap there and back.
+const RELOAD_GAP := 6.0
 ## How many times better a loaded weapon must be to be taken in place of one that has rounds
 ## (`NightSim.SWITCH_GAIN`).
 const SWITCH_GAIN := 1.4
@@ -39,6 +46,13 @@ class Plan:
 	var swap := false
 	## True when no firearm has a round left, so a melee swing is all the bot can do.
 	var dry := false
+	## True when no firearm can fire this moment (the one in hand is empty and no other has a
+	## loaded magazine), though a reload or a swap may bring one back: the quick melee fills the
+	## time.
+	var unloaded := false
+	## True when the bot holds a blade, no gun is loaded and the zombies are too near to go back to
+	## a gun for its reload: it strikes, into a pack too.
+	var cornered := false
 
 
 ## Plans one think. `distance` is how far the zombie it fights is (INF for none), `threat` how
@@ -54,6 +68,8 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 	var here_range := distance if distance < INF else 0.0
 	out.dry = not has_rounds(arms)
 	var best := best_loaded(arms, held, here_range)
+	out.unloaded = not held.is_lure() and (held.is_melee() or ammo <= 0) and best == &""
+	out.cornered = held.is_melee() and out.unloaded and threat <= RELOAD_GAP
 	if held.is_lure():
 		# The flare gun is a tool for one shot (`BotFlare`), not a gun for the fight: put it away
 		# for a loaded gun (or the blade) as soon as it is in hand and no flare is ordered.
@@ -62,8 +78,8 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 		return out
 	if held.is_melee():
 		# Take a gun that can fire, whenever one can (it hits from afar); a gun with no magazine
-		# but rounds in reserve is taken too when nothing is near enough to need the blow.
-		if best != &"" or (reserve_gun(arms, held) != &"" and threat > RELOAD_SAFE):
+		# but rounds in reserve is taken too when the dead are far enough for its reload.
+		if best != &"" or (reserve_gun(arms, held) != &"" and threat > RELOAD_GAP):
 			out.swap = true
 		return out
 	if reloading:
@@ -73,9 +89,9 @@ static func plan(me: Dictionary, held: WeaponDef, distance: float, threat: float
 		if reserve > 0 and not (other and threat <= SWAP_INSTEAD):
 			out.reload = true
 		else:
-			# Nothing loaded to swap to: a gun with rounds only in reserve is taken to be reloaded,
-			# rather than standing with an empty one in hand (the nightly soak found bots doing so).
-			out.swap = other or (reserve <= 0 and reserve_gun(arms, held) != &"")
+			# Nothing in this gun at all: another with a round (or the blade), else one that only
+			# needs its reload.
+			out.swap = other or reserve_gun(arms, held) != &""
 		return out
 	if best != &"" and best != held.id and _better(best, held, here_range):
 		out.swap = true
