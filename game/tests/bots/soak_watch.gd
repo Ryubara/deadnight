@@ -106,6 +106,7 @@ func _tally(id: int) -> Dictionary:
 			"idle_roam_longest": 0,
 			"far_run": 0,
 			"far_longest": 0,
+			"far_ticks": 0,
 			"far_notes": {},
 			"far_samples": [],
 			"near12": 0,
@@ -471,6 +472,7 @@ func _watch_people(
 		far_notes[key] = int(far_notes.get(key, 0)) + 1
 	if nearest > GATE_FAR_METRES and not errand:
 		tally["far_run"] += 1
+		tally["far_ticks"] += 1
 		tally["far_longest"] = maxi(tally["far_longest"], tally["far_run"])
 		if tally["far_run"] == int(GATE_FAR_SECONDS * 60.0) and tally["far_samples"].size() < 3:
 			tally["far_samples"].append(_far_sample(bot, here, note, humans))
@@ -606,6 +608,7 @@ func report() -> Dictionary:
 					"stuck_episodes": _long_episodes(bot),
 					"idle_roam_longest": snappedf(float(tally["idle_roam_longest"]) / 60.0, 0.1),
 					"far_longest": snappedf(float(tally["far_longest"]) / 60.0, 0.1),
+					"far_seconds": snappedf(float(tally["far_ticks"]) / 60.0, 0.1),
 					"far_notes": tally["far_notes"],
 					"far_samples": tally["far_samples"],
 					"near12_share":

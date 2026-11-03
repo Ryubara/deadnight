@@ -56,9 +56,8 @@ part_axis = Vector3(1, 0, 0)
 part_turn = 85.0
 keys = Array[ExtResource("1_key")]([SubResource("Key_0"), SubResource("Key_1"), SubResource("Key_2"), SubResource("Key_3"), SubResource("Key_4"), SubResource("Key_5"), SubResource("Key_6")])
 events = Dictionary[StringName, PackedFloat32Array]({
-&"cylinder_in": PackedFloat32Array(0.77),
-&"cylinder_out": PackedFloat32Array(0.16),
-&"eject": PackedFloat32Array(0.3),
+&"slide": PackedFloat32Array(0.77),
+&"mag_out": PackedFloat32Array(0.16),
 &"pouch": PackedFloat32Array(0.4),
-&"rounds_in": PackedFloat32Array(0.5)
+&"mag_in": PackedFloat32Array(0.5)
 })

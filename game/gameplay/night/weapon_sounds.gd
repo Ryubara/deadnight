@@ -15,9 +15,37 @@ const FIRE := {
 	&"smg": {"shot": &"shot_smg", "tail": &"tail_smg"},
 	&"rifle": {"shot": &"shot_rifle", "tail": &"tail_rifle"},
 	&"shotgun": {"shot": &"shot_shotgun", "tail": &"tail_shotgun"},
+	# The second batch of firearms (#790, `tools/audio/gun_recipes_2.py`).
+	&"ppsh": {"shot": &"shot_ppsh", "tail": &"tail_ppsh"},
+	&"m249": {"shot": &"shot_m249", "tail": &"tail_m249"},
+	&"m4a1": {"shot": &"shot_m4a1", "tail": &"tail_m4a1"},
+	&"fifty_cal": {"shot": &"shot_fifty_cal", "tail": &"tail_fifty_cal"},
+	&"mp5": {"shot": &"shot_mp5", "tail": &"tail_mp5"},
+	&"pump_870": {"shot": &"shot_pump_870", "tail": &"tail_pump_870"},
+	&"dual_pistols": {"shot": &"shot_dual_pistols", "tail": &"tail_dual_pistols"},
 	&"flare_gun": {"shot": &"shot_flare"},
 	# The revolver's report until the pair has its own (#790).
 	&"dual_pistols": {"shot": &"shot_pistol", "tail": &"tail_pistol"},
+}
+## The sound of a weapon coming up, and of its trigger pulled on nothing, where it has its own; any
+## other weapon rustles and clicks the common way (`weapon_swap`, `dry_fire`).
+const EQUIP := {
+	&"ppsh": &"equip_ppsh",
+	&"m249": &"equip_m249",
+	&"m4a1": &"equip_m4a1",
+	&"fifty_cal": &"equip_fifty_cal",
+	&"mp5": &"equip_mp5",
+	&"pump_870": &"equip_pump_870",
+	&"dual_pistols": &"equip_dual_pistols",
+}
+const DRY := {
+	&"ppsh": &"dry_ppsh",
+	&"m249": &"dry_m249",
+	&"m4a1": &"dry_m4a1",
+	&"fifty_cal": &"dry_fifty_cal",
+	&"mp5": &"dry_mp5",
+	&"pump_870": &"dry_pump_870",
+	&"dual_pistols": &"dry_dual_pistols",
 }
 ## What each of a reload's steps sounds like, per firearm (#683): the step names are the events of
 ## the weapon's `ReloadMotion` (`reload/<id>.tres`), which also says when each happens, so a step
@@ -54,14 +82,58 @@ const RELOAD := {
 		&"shells_in": &"reload_shotgun_shells",
 		&"snap_shut": &"reload_shotgun_shut",
 	},
-	# The revolver's steps until the pair has its own (#790).
+	# The second batch (#790). The step names are the events of each weapon's `ReloadMotion`: the
+	# magazine guns' are the revolver's and the tommy gun's, the SAW's are its cover and belt, the
+	# pump's `shell_in` sounds once for each shell the motion lists (the reload is shell by shell)
+	# and `pump` is the forend racked.
+	&"ppsh":
+	{
+		&"drum_out": &"reload_ppsh_drum_out",
+		&"pouch": &"reload_pouch",
+		&"drum_in": &"reload_ppsh_drum_in",
+		&"bolt": &"reload_ppsh_bolt",
+	},
+	&"m249":
+	{
+		&"cover_open": &"reload_m249_cover_open",
+		&"pouch": &"reload_pouch",
+		&"belt_in": &"reload_m249_belt",
+		&"cover_shut": &"reload_m249_cover_shut",
+		&"charge": &"reload_m249_charge",
+	},
+	&"m4a1":
+	{
+		&"mag_out": &"reload_m4a1_mag_out",
+		&"pouch": &"reload_pouch",
+		&"mag_in": &"reload_m4a1_mag_in",
+		&"bolt": &"reload_m4a1_bolt",
+	},
+	&"fifty_cal":
+	{
+		&"mag_out": &"reload_fifty_mag_out",
+		&"pouch": &"reload_pouch",
+		&"mag_in": &"reload_fifty_mag_in",
+		&"bolt": &"reload_fifty_bolt",
+	},
+	&"mp5":
+	{
+		&"mag_out": &"reload_mp5_mag_out",
+		&"pouch": &"reload_pouch",
+		&"mag_in": &"reload_mp5_mag_in",
+		&"bolt": &"reload_mp5_bolt",
+	},
+	&"pump_870":
+	{
+		&"pouch": &"reload_pouch",
+		&"shell_in": &"reload_pump_shell",
+		&"pump": &"reload_pump_stroke",
+	},
 	&"dual_pistols":
 	{
-		&"cylinder_out": &"reload_revolver_open",
-		&"eject": &"reload_revolver_eject",
+		&"mag_out": &"reload_dual_mag_out",
 		&"pouch": &"reload_pouch",
-		&"rounds_in": &"reload_revolver_rounds",
-		&"cylinder_in": &"reload_revolver_close",
+		&"mag_in": &"reload_dual_mag_in",
+		&"slide": &"reload_dual_slide",
 	},
 	&"flare_gun":
 	{
@@ -105,7 +177,10 @@ func _on_event(event: Dictionary) -> void:
 			_on_damage(event)
 		&"fire_rejected":
 			if event["reason"] == &"empty":
-				_at_player(&"dry_fire", event["shooter_id"])
+				var held: StringName = (
+					_state.frame.get("players", {}).get(event["shooter_id"], {}).get("weapon", &"")
+				)
+				_at_player(DRY.get(held, &"dry_fire"), event["shooter_id"])
 		&"reload_started":
 			_on_reload(event)
 		&"weapon_equipped":
@@ -130,9 +205,16 @@ func _on_shot(event: Dictionary) -> void:
 		var tail: StringName = layers["tail"]
 		var delay := _t.tail_delay + _rng.randf() * _t.tail_spread
 		schedule.add(delay, func() -> void: _play(tail, heard_at))
-	var def := WeaponCatalog.get_def(weapon_id)
+	# A weapon the catalogue does not have yet has a sound and no definition (#790 before #793).
+	var def := _def_of(weapon_id)
 	if def != null and def.is_hitscan():
 		_note_ends(at, event["ends"], def.max_range)
+
+
+func _def_of(weapon_id: StringName) -> WeaponDef:
+	if not ResourceLoader.exists("%s%s.tres" % [WeaponCatalog.DIR, weapon_id]):
+		return null
+	return WeaponCatalog.get_def(weapon_id)
 
 
 ## A pellet that ended short of the weapon's range hit something; the zombies' hits are known a
@@ -196,7 +278,7 @@ func _on_equipped(event: Dictionary) -> void:
 	# A weapon put away abandons its reload (the server cancels it too).
 	schedule.cancel(_reload_tag(event["player_id"]))
 	if _state.has_frame():
-		_at_player(&"weapon_swap", event["player_id"])
+		_at_player(EQUIP.get(event["weapon_id"], &"weapon_swap"), event["player_id"])
 
 
 static func _reload_tag(player_id: int) -> StringName:
