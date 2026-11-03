@@ -257,9 +257,10 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   (`add_player`). With bots in the night the server builds the frame on every step (the bots decide on every step;
   clients still get it every `SEND_EVERY`). Over a socket: `test_room_bots.gd`; solo: `test_night_bots.gd`.
     - **Skill.** `bot_skill` picks the profile of every bot of the night (`BotProfile.for_skill`: Rookie, Regular,
-      Veteran), on the Bots row's neighbour in the panel. It is the bots' player model and nothing else: the rules never
-      read it (`test_the_skill_never_changes_the_night_only_the_bots_profile`), so zombies, damage and points are the same
-      at every skill ([aim and difficulty](../research/bots.md#aim-and-difficulty)).
+      Veteran), beside the count on the Bots row of the panel (a sixth row did not fit a phone held sideways or a 720p
+      window, `test_play_screen.gd`; the key `bot_skill` names the same row). It is the bots' player model and nothing
+      else: the rules never read it (`test_the_skill_never_changes_the_night_only_the_bots_profile`), so zombies, damage
+      and points are the same at every skill ([aim and difficulty](../research/bots.md#aim-and-difficulty)).
     - **Names and looks.** Each skill has a cast of three (`BotRoster`): Rookie Pip, Dale and Moe, Regular Ash, Fern and
       Moss, Veteran Rex, Sarge and Hawk. A seat takes the cast in turn (`player_id - 1` modulo 3), so a night's three
       bots are three different people, and the lobby shows the same name before the night begins

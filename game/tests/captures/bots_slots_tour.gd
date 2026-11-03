@@ -1,8 +1,8 @@
 extends Node
 ## Stills of the bots' skill and cast (#230), at the window's real pixel size, one PNG each into
-## `--out=<folder>` named `<--label=><step>`: Solo's Play screen with the Bots and Bot skill
-## rows, the same with 3 veteran bots chosen, the room host's lobby with 3 veteran bots asked for
-## and 2 people in it (the 2 open seats show the veterans by name), and the night that starts
+## `--out=<folder>` named `<--label=><step>`: Solo's Play screen with the Bots count and the skill
+## beside it, the same with 3 veteran bots chosen, the room host's lobby with 3 veteran bots asked
+## for and 2 people in it (the 2 open seats show the veterans by name), and the night that starts
 ## with 3 veteran bots, in the break and a few seconds into round 1. Run it through the no-focus
 ## launcher, not headless: `gds godot -- --path game res://tests/captures/bots_slots_tour.tscn
 ## --windowed --resolution 1280x720 -- --out=<folder> --label=desktop`. Never moves the real
@@ -63,6 +63,7 @@ func _ready() -> void:
 	await _still("5-night-round-1")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	Settings.reset_defaults()
+	MainMenu.board_factory = Callable()
 	get_tree().quit()
 
 

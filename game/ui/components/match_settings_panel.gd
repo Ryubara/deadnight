@@ -17,14 +17,16 @@ extends VBoxContainer
 signal changed(settings: MatchSettings)
 
 const ALIVE_STEP := 1
+## The line under the Bots row's title: the count and the skill share the row.
+const BOTS_HINT := "Teammates, and how well they play."
 ## The line under each row's title (a phone leaves them out).
 const HINTS := {
 	"map": "Where the night is held.",
 	"count_multiplier": "More of the dead, and faster.",
 	"max_alive": "Auto follows the round.",
 	"break_seconds": "Time to spend points and get ready.",
-	"bots": "Teammates that fill the empty seats.",
-	"bot_skill": "How well the bots aim and dodge.",
+	"bots": BOTS_HINT,
+	"bot_skill": BOTS_HINT,
 }
 ## The skills' names on the selector, in `MatchSettings.SKILL_*` order.
 const SKILL_LABELS: Array[String] = ["Rookie", "Regular", "Veteran"]
@@ -38,7 +40,6 @@ var alive_row: UIRow
 var break_row: UIRow
 var map_picker: MapPicker
 var bots_row: UIRow
-var skill_row: UIRow
 var count_selector: UIOptionSelector
 var bots_selector: UIOptionSelector
 var skill_selector: UIOptionSelector
@@ -105,12 +106,23 @@ func _init() -> void:
 		bot_labels.append(str(count))
 	bots_selector.options = bot_labels
 	bots_selector.selected_changed.connect(_on_changed.unbind(1))
-	bots_row.set_control(bots_selector)
-	skill_row = _row("bot_skill", "Bot skill")
+	# The skill sits beside the count in the same row: a sixth row would not fit a phone held
+	# sideways or a 720p window (`test_play_screen.gd`), and the two settings belong together.
 	skill_selector = UIOptionSelector.new()
 	skill_selector.options = PackedStringArray(SKILL_LABELS)
 	skill_selector.selected_changed.connect(_on_changed.unbind(1))
-	skill_row.set_control(skill_selector)
+	skill_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bots_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var bots_pair := HBoxContainer.new()
+	bots_pair.add_theme_constant_override(&"separation", UITokens.active().space_sm)
+	bots_row.set_control(bots_pair)
+	bots_pair.add_child(bots_selector)
+	bots_pair.add_child(skill_selector)
+	# Left and right change a selector's value, so the two are linked up and down.
+	bots_selector.focus_neighbor_bottom = bots_selector.get_path_to(skill_selector)
+	skill_selector.focus_neighbor_top = skill_selector.get_path_to(bots_selector)
+	# `bot_skill` is a key of the settings: its row is the Bots row.
+	rows["bot_skill"] = bots_row
 	set_settings(MatchSettings.new())
 
 
