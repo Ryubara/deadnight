@@ -139,6 +139,11 @@ cross-check the storey height.
 
 ![Openings against a 1.8 m player: the reference dashed, the kit solid, the lot grey](kit-scale.png)
 
+**The greybox overruled three of these targets** (#631, [the second map](../../design/smallmap.md#where-it-parts-from-the-kit-page)):
+the formula's rows are hard targets, and they ask more room than the reference estimate here. The storey is 3.4 m
+(a 3.2 m ceiling, row 9 of [the formula](small-map-formula.md)), and the purchase doorway and the stairs are 2.0 m wide
+(row 27). The windows, the sill, the risers and treads, the pillars and the sandbags keep the sizes above.
+
 What the tight sizes mean for our game, checked against the code:
 
 - **The shoulder camera fits a 1.4 m doorway.** The lens is swept sideways to the shoulder as well as back
