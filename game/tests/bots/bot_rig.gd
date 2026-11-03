@@ -24,6 +24,8 @@ var sent: Array[Dictionary] = []
 var shot_ticks: Array[int] = []
 var tick_count := 0
 var round_number := 1
+## The dead alive and still to spawn, as the frame says; -1 for those in `zombies`.
+var remaining := -1
 var health := 100.0
 ## The bot's full health: said in a `player_healed` event on the first step and when it changes
 ## (the frame does not carry it).
@@ -133,6 +135,7 @@ func _frame_body() -> Dictionary:
 		"tick": tick_count,
 		"phase": GameRules.Phase.ACTIVE,
 		"round": round_number,
+		"remaining": zombies.size() if remaining < 0 else remaining,
 		"zombies": ZombieCodec.encode(zombies),
 		"players":
 		{
