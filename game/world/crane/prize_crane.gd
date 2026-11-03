@@ -25,6 +25,10 @@ const CABINET := Color(0.62, 0.1, 0.1)
 const CREAM := Color(0.92, 0.85, 0.66)
 const GLASS := Color(0.55, 0.8, 0.9, 0.16)
 const BEAM_HEIGHT := 36.0
+## The beam's edge fades as the facing of its wall to the eye to this power (a flat additive wall
+## has a rim), and the beam nearer the camera than this (metres) fades out.
+const BEAM_RIM_POWER := 2.0
+const BEAM_NEAR_FADE := 2.5
 ## The weapon models the crane shows, by shop id; a prize with none is drawn as a plain silhouette
 ## (`_silhouette`). The tommy gun is the `smg`.
 const MODELS := {
@@ -421,18 +425,29 @@ shader_type spatial;
 render_mode blend_add, unshaded, cull_disabled, depth_draw_never;
 uniform vec4 tint : source_color = vec4(0.45, 0.8, 1.0, 0.32);
 uniform float strength = 1.0;
+// The beam is soft at its edge and gone from a camera that is in it: a flat additive wall with a
+// rim reads as a solid column from the shoulder camera (#854).
+uniform float rim_power = 0.0;
+uniform float near_fade = 0.0;
 varying float up;
 void vertex() { up = clamp(0.5 + VERTEX.y / %f, 0.0, 1.0); }
 void fragment() {
 	float fade = pow(1.0 - up, 1.4);
+	float face = abs(dot(normalize(NORMAL), normalize(VIEW)));
+	float soft = pow(face, rim_power);
+	if (near_fade > 0.0) {
+		soft *= smoothstep(0.2 * near_fade, near_fade, -VERTEX.z);
+	}
 	ALBEDO = tint.rgb;
-	ALPHA = tint.a * fade * strength;
+	ALPHA = tint.a * fade * strength * soft;
 }
 """
 		% BEAM_HEIGHT
 	)
 	_beam_material = ShaderMaterial.new()
 	_beam_material.shader = shader
+	_beam_material.set_shader_parameter(&"rim_power", BEAM_RIM_POWER)
+	_beam_material.set_shader_parameter(&"near_fade", BEAM_NEAR_FADE)
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.18
 	cone.bottom_radius = 0.95
