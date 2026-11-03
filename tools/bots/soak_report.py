@@ -104,7 +104,15 @@ def chunk_file(out: Path, cell: Cell, seed: int) -> Path:
 
 
 def run_chunk(
-    godot: str, out: Path, cell: Cell, seed: int, nights: int, max_round: int, timeout: int, stall: int = 8
+    godot: str,
+    out: Path,
+    cell: Cell,
+    seed: int,
+    nights: int,
+    max_round: int,
+    timeout: int,
+    stall: int = 8,
+    tune: str = "",
 ) -> str:
     """Plays `nights` nights of `cell` from `seed` and keeps what the soak printed. Returns a line for the log."""
     path = chunk_file(out, cell, seed)
@@ -131,6 +139,8 @@ def run_chunk(
     ]
     if cell.person:
         args.append("--person")
+    if tune:
+        args.append(f"--tune={tune}")
     started = time.time()
     try:
         done = subprocess.run(
@@ -208,7 +218,7 @@ def command_run(args: argparse.Namespace) -> None:
     print(f"{len(jobs)} chunks of up to {args.chunk} nights on {args.jobs} processes", flush=True)
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
         futures = [
-            pool.submit(run_chunk, godot, out, cell, seed, count, args.max_round, args.timeout, args.stall)
+            pool.submit(run_chunk, godot, out, cell, seed, count, args.max_round, args.timeout, args.stall, args.tune)
             for cell, seed, count in jobs
         ]
         for future in futures:
@@ -549,6 +559,7 @@ def main() -> None:
     run.add_argument("--set", choices=["parity", "orders", "all"], default="all")
     run.add_argument("--cells", default="", help="only these cells, by name, comma separated")
     run.add_argument("--stall", type=int, default=8, help="game minutes after which a round counts as stalled")
+    run.add_argument("--tune", default="", help="profile fields moved for a sweep, name:number pairs, comma separated")
     run.add_argument("--timeout", type=int, default=3600, help="seconds one chunk may take")
     args = parser.parse_args()
     {"run": command_run, "merge": command_merge}[args.command](args)
