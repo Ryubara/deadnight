@@ -167,6 +167,12 @@ BACK_LOT_LAMP_NUMBERS = range(13, 18)
 BACK_LOT_WALLS = [((1, 0, 0), -16.0), ((0, 0, -1), -4.0), ((0, 0, 1), 38.0), ((-1, 0, 0), -62.0)]
 LAMP_CONE = 30.0  # the half angle of an aimed post's light, degrees (`LampPost.AWAY_CONE`)
 WALL_REACH = 10.0  # a light of range 11 hung 3.9 m up reaches 10.3 m along the ground
+# The six lamps over the breach aprons (`Lamp18` to `Lamp23`, 0.5 m from each zombie spawn, #703) burn dim: the
+# breach reads, so the dead are seen coming, without the dead arriving in a spotlight (the maintainer's, #850).
+# This is the share of a post's light (its omni light, lens, halo and pool) they give; `tests/world/test_apron_lamps.gd`
+# holds it. The rules' reach (`LightTuning.lamp_reach`, 6 m) is unchanged: the first 6 m of the dead's walk are lit.
+APRON_LAMPS = range(18, 24)
+APRON_LAMP_DIM = 0.4
 # The south fence leaves a wider opening between the field and the stand (the maintainer's, #703): it ends this far
 # from the middle on each side (the west piece at -16.2052, the east at 16.2051).
 FENCE_S_END = (-16.2052, 16.2051)
@@ -859,7 +865,8 @@ def build() -> None:
     field_lamps_xz = [(x, z) for x, _, z in FIELD_LAMPS]
     for i, at in enumerate(FIELD_LAMPS, start=1):
         if i not in BACK_LOT_LAMP_NUMBERS:
-            instance(lamps_f, f"Lamp{i}", "lamp", at)
+            props = {"dim": str(APRON_LAMP_DIM)} if i in APRON_LAMPS else None
+            instance(lamps_f, f"Lamp{i}", "lamp", at, props=props)
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
     instance(
