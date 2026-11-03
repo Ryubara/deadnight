@@ -33,10 +33,6 @@ const EVENTS: Array[StringName] = [
 ## The equipment count of a weapon that has no rounds to count.
 const NO_COUNT := -1
 
-## The prefix a re-cut weapon's name carries ("Re-Cut Revolver"), the tuning's own default; the
-## `weapon_upgraded` event brings the server's name and wins over it.
-static var _recut_prefix := UpgradeTuning.new().name_prefix
-
 
 ## Mirrors one weapons' event for the local player; any other is left alone.
 static func apply(event: Dictionary, state: HudState) -> void:
@@ -93,7 +89,7 @@ static func sync(me: Dictionary, state: HudState) -> void:
 		var rounds: Array = arms[carried]
 		_count(state, carried, int(rounds[0]), int(rounds[1]))
 		if rounds.size() > 2 and int(rounds[2]) > 0:
-			state.weapon_names[carried] = _recut_prefix + _base_name(carried)
+			state.weapon_names[carried] = _recut_name(carried)
 	if weapon != state.weapon_id and state.weapon_id != &"":
 		state.holstered_id = state.weapon_id
 	state.weapon_id = weapon
@@ -110,6 +106,16 @@ static func equip(weapon_id: StringName, ammo: int, reserve: int, state: HudStat
 	state.weapon_id = weapon_id
 	_count(state, weapon_id, ammo, reserve)
 	_show_slots(state, false, _seated(state, weapon_id))
+
+
+## The name a re-cut weapon has, from the shipped table (its profile's own, or the prefix and its
+## name): what a late joiner shows until the `weapon_upgraded` event, which brings the server's
+## name, would have said it.
+static func _recut_name(weapon_id: StringName) -> String:
+	var spec := UpgradeTuning.shipped()
+	var cut := spec.profile_of(weapon_id)
+	var plain := _base_name(weapon_id)
+	return cut.name_of(plain, spec.name_prefix) if cut != null else spec.name_prefix + plain
 
 
 ## The name a weapon has as it is shipped, from the catalogue.
