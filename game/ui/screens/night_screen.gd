@@ -10,9 +10,9 @@ extends UIScreen
 ## Leave night. Played alone the night stands still behind it; played with others it keeps running
 ## and only this player's controls are off.
 ##
-## Route to it with `UIRouter.push("res://ui/screens/night_screen.tscn")`; the main menu's Play
-## does. To join a game server instead, set `join_url` first (the Join screen does): the screen
-## takes it once and joins that night.
+## Route to it with `UIRouter.push("res://ui/screens/night_screen.tscn")`; the Play screen (the
+## menu's Solo) does, after it sets `match_settings`. To join a game server instead, set `join_url`
+## first (the Join screen does): the screen takes it once and joins that night.
 
 const PANEL_WIDTH := 520.0
 const DIM := Color(0.0, 0.0, 0.0, 0.55)

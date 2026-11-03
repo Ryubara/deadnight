@@ -114,7 +114,8 @@ func test_quick_join_opens_no_screen_of_the_menu() -> void:
 	assert_bool(MainMenu.ROUTES.has(&"quick_join")).is_false()
 
 
-func test_solo_opens_the_night_screen() -> void:
-	# The route table is the check: starting the night here would build the whole lot.
+func test_solo_opens_the_play_screen() -> void:
+	# The route table is the check: the Play screen sets the night's rules and then opens the night
+	# (`test_solo_match_settings.gd` presses Solo and runs it).
 	assert_str(MainMenu.ROUTES[&"solo"][0]).is_equal(MainMenu.PLAY_SCREEN)
-	assert_str(MainMenu.PLAY_SCREEN).is_equal("res://ui/screens/night_screen.tscn")
+	assert_str(MainMenu.PLAY_SCREEN).is_equal("res://ui/screens/play_screen.tscn")

@@ -2,7 +2,8 @@ class_name PlayPanel
 extends MenuPanel
 ## The Play tab: start a night (Play together, Quick join, Solo) and see today's challenges. The
 ## three starts only ask the main menu (`MenuContext.action`): Play together opens its screen,
-## Quick join joins from the menu itself (`QuickJoinOverlay`) and Solo starts a night.
+## Quick join joins from the menu itself (`QuickJoinOverlay`) and Solo opens the Play screen, where
+## the night's rules are set before the night starts.
 
 const ROUTES := [
 	[&"together", "Play together", "Open a room, bring friends"],

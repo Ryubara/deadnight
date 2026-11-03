@@ -243,7 +243,7 @@ func _ready() -> void:
 	_mount = _held.mount
 	_hands = _held.hands
 	_fingers = _held.fingers
-	_hands.influence = 0.0
+	_hands.weight = 0.0
 	var hammer_hold := load(HAMMER_HOLD) as WeaponHold
 	_hammer = (load(hammer_hold.scene) as PackedScene).instantiate() as Node3D
 	_hammer.name = "Hammer"
@@ -445,7 +445,7 @@ func strike() -> bool:
 	var played := play_action(&"Strike")
 	if played:
 		_shoulder_blend = 0.0
-		_hands.influence = 0.0
+		_hands.weight = 0.0
 		_hands.active = false
 	return played
 
@@ -710,12 +710,13 @@ func _advance_shoulder(delta: float) -> void:
 	_shoulder_blend = lerpf(_shoulder_blend, target, 1.0 - exp(-SHOULDER_RATE * delta))
 	if absf(_shoulder_blend - target) < 0.001:
 		_shoulder_blend = target
-	# The sprint carry holds the arms itself: the shouldered pose gives way to it as it comes in.
-	_hands.influence = _shoulder_blend * (1.0 - _carry.weight)
-	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
-	# so the clips that move them (the repair, Reload, Swing, the carry) never showed in a running
-	# game.
-	_hands.active = _hands.influence > 0.0
+	# The sprint carry holds the arms itself: the shouldered pose gives way to it as it comes in, on
+	# the curve the tree brings the carry clip in on, so the two cross over and neither leads (#619).
+	_hands.weight = _shoulder_blend * (1.0 - smoothstep(0.0, 1.0, _carry.weight))
+	# Off at 0 as well, so the modifier costs nothing while a clip holds the arms. The pose is
+	# blended by `weight` inside it (the engine's `influence` left the arms in the gun pose at any
+	# value), so it ends on the clip's arms and switching it off moves nothing.
+	_hands.active = _hands.weight > 0.0
 
 
 ## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible

@@ -340,7 +340,7 @@ func _button(holder: Control, variant: UIButton.Variant, state: UIButton.Preview
 	button.variant = variant
 	button.preview_state = state
 	holder.add_child(button)
-	button._snap_to_targets()
+	button.snap_to_targets()
 	button._paint_fill()
 	return button
 
