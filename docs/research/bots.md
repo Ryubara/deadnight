@@ -1573,6 +1573,60 @@ round of eight minutes: round 15 under Follow, two headliners alive, the person 
 with rifle and shotgun dry (`rifle [0, 0, 1]`, buying rounds for 30 s at a time under `ammo_urgent`), a lost night
 rather than a lost zombie. Kills, hits and round reached are not compared: 23 nights do not rank a tuning.
 
+#### Rookie parity (#767)
+
+The Rookie in a team lived two to five rounds past the simulator's weak players (median 7, 9 and 10 for one, two and
+four bots against 5). The weak level loses the first boss night (round 5) in 81, 73 and 64% of nights and is hardly
+touched in the rounds before it; the Rookies passed it in most of theirs. Every measure below is the soak with the round
+cap 6 (`--max-round=6`, the first boss night in a minute or two a night) or 16, on one checkout, with a lever set by
+`--tune field=value` (the soak and the harness take profile fields from the command line) so two arms never differ in
+code.
+
+**What was not the cause.** The model's players fill up for a special round (`NightSim._shop`: six magazines a gun and a
+top-up to the limit before it) and leave a shotgun on the crane's glass in the early rounds (a free hand is weighed
+against the quick melee at the round's zombie health, `WeaponWorth.beats`: 59 shotgun prizes shown in 40 nights of the
+model, none taken), where the bots took anything offered. 78% of the weak level's players enter round 5 with the pistol
+only, 30 to 40% of the bots did not. Both are now the Rookie's (`prepared_mags`, `weighs_by_round`, below), the kit
+matched (pistol only for 62 to 77%), and the boss night was passed in 23 of 24 nights at two bots and 20 of 24 at four,
+as before. Earned points were the same (1,790 a bot to round 5 against the model's 1,903). Not the grenades either
+(`throws_grenades`: 23 of 24 with none), nor a Rookie that never revives (14 of 16), nor a longer gap between shots (16
+of 16).
+
+**What it was.** In the model nearly all the damage a weak team takes is the headliner's (222 of 226 points a night at two
+players, 1,243 of 1,252 at four) and a loss needs about six blows; the bots took two to three, because they killed the
+boss on its way in. The soak now counts the headliner (hits by zone, seconds in each mode, the range at the first hit,
+the time to kill, the swings it began) and the blows by round and zombie type: the boss's lens took **6 hits of 10**
+where the model's weak player puts 2 of 10 on it (`SimSkill.weak_spot_rate`), whatever the aim (`weak_spot_rate` 0 still
+gave 59%): the lens is on the chest, and `Hitbox.WEAK_SLACK` counts a ray that passes it. A hit on the lens does 2.2
+times the damage and staggers the boss, so the Rookie's boss died a third sooner than the model's.
+
+**The lever.** `aims_off_weak_spot`: a bot that is not going for the lens aims the boss at the hips (`BotMotor._aim_point`,
+`BOSS_BODY_AIM`), so the hits it lands on the lens are the ones it aimed at. The share of hits on the lens went from
+0.6 to 0.25 to 0.30. In the boss-night harness (`bots_boss_night.tscn`, four Rookies, 20 nights, main after #801): 13 of
+20 nights passed (65%) before, 8 of 20 (40%) with it, inside the 25 to 55% the fit of #568 asks for (the harness had gone
+to 65% after the changes to the hit zones and the play states).
+
+**The Rookie's levers now.**
+
+| Field | Rookie | What it follows in the model |
+| --- | --- | --- |
+| `prepared_mags` | 6 (the others 0) | `NightSim.PREPARED_MAGS`: a magazine floor and a full top-up in the break before a special round |
+| `weighs_by_round` | true | `NightSim._worth_taking`: a weapon by the health of the round's dead, a free hand against the quick melee (`BotShop.rounds`, `BotEconomy.View.zombie_health`) |
+| `aims_off_weak_spot` | true | `SimSkill.weak_spot_rate`: the share of boss hits on the lens |
+| `throws_grenades` | true (not used) | the model's players never throw one; a switch for the next fit |
+
+Shared code touched: `bot_economy.gd` (`View.prepared`, `View.zombie_health`, `_floor_mags`, `_topoff`, `worth_taking`,
+`weakest_of`), `bot_errands.gd` (`_view`, `_zombie_health`, the crane take, `_hands_wrong`), `bot_client.gd` and
+`bot_beliefs.gd` (the marquee of a break), `bot_shop.gd` and `lot_bot_data.gd` (the round table), `bot_motor.gd`
+(`_aim_point`), `bot_fight_brain.gd` (the grenade switch); every one is off for a profile that does not set its field, so
+the Regular and the Veteran play as they did. The model does both shopping things for every skill, so #768 should set
+`prepared_mags` and `weighs_by_round` for them.
+
+**Parity** (24 nights a cell, round cap 16, one checkout, the three fields on and off by `--tune`, the model's 300
+nights; `rookie_parity.png`):
+
+@@TABLE@@
+
 #### What is left, and how the three nights are read
 
 - **Three consecutive nightly runs.** The workflow is new; its hard gates (every row of the gates table except parity)
