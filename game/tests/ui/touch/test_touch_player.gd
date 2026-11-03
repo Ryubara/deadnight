@@ -44,24 +44,52 @@ func test_a_drag_turns_the_player_through_the_real_input_path() -> void:
 	)
 
 
+## The drag is ten samples of 10 units, one per frame, on a clock the test keeps: the touch layer's
+## `_process` is stepped by hand at 60 Hz, so a turn does not depend on how long this machine's real
+## frames take. The smoothing's window is in seconds, so with real frames one hitch longer than the
+## window (40 ms) let out the whole backlog in one step, 3.4 degrees, and the check for small steps
+## failed on a busy machine (#889).
 func test_a_100_unit_drag_turns_about_8_degrees_in_small_steps_at_the_default_sensitivity() -> void:
 	var runner := scene_runner(TEST_ROOM)
 	var player := runner.find_child("Player") as Player
 	player.capture_mouse = false
 	var rig := player.camera_rig
 	await _fixture.touch(0, Vector2(1700.0, 300.0))
+	_fixture.controls.set_process(false)
 	var biggest := 0.0
 	var start := rig.yaw
 	for step in 10:
 		var before := rig.yaw
-		await _fixture.drag(0, Vector2(1700.0 + 10.0 * (step + 1), 300.0), Vector2(10.0, 0.0))
+		_fixture.send_drag(0, Vector2(1700.0 + 10.0 * (step + 1), 300.0), Vector2(10.0, 0.0))
+		_fixture.controls._process(1.0 / 60.0)
 		biggest = maxf(biggest, absf(angle_difference(before, rig.yaw)))
+	_fixture.controls.set_process(true)
 	await _fixture.lift(0)
 	await _fixture.settle_look()
 	# 1.6 rad per full height at sensitivity 1: 100 of 1080 units is 0.148 rad, 8.5 degrees. The
 	# first design turned twice that and a phone flew round.
 	assert_float(rad_to_deg(absf(angle_difference(start, rig.yaw)))).is_equal_approx(8.5, 0.3)
 	assert_float(rad_to_deg(biggest)).is_less(1.0)
+
+
+## A frame longer than the smoothing's window lets out what the finger made and the view has not
+## turned yet, and no more: the turn is the same however the frames fall, a slow phone turns what a
+## fast one does (the drag above, with one 120 ms frame in the middle).
+func test_a_hitched_frame_in_a_drag_turns_what_was_due_and_the_total_is_unchanged() -> void:
+	var runner := scene_runner(TEST_ROOM)
+	var player := runner.find_child("Player") as Player
+	player.capture_mouse = false
+	var rig := player.camera_rig
+	await _fixture.touch(0, Vector2(1700.0, 300.0))
+	_fixture.controls.set_process(false)
+	var start := rig.yaw
+	for step in 10:
+		_fixture.send_drag(0, Vector2(1700.0 + 10.0 * (step + 1), 300.0), Vector2(10.0, 0.0))
+		_fixture.controls._process(0.12 if step == 5 else 1.0 / 60.0)
+	_fixture.controls.set_process(true)
+	await _fixture.lift(0)
+	await _fixture.settle_look()
+	assert_float(rad_to_deg(absf(angle_difference(start, rig.yaw)))).is_equal_approx(8.5, 0.3)
 
 
 func test_a_drag_turns_once_when_the_browser_also_reports_it_as_mouse_motion() -> void:
@@ -152,6 +180,9 @@ func test_two_thumbs_turn_the_view_by_the_look_drag_alone_whatever_the_first_dra
 	var yaw := rig.yaw
 	await _fixture.touch(0, stick_at)
 	await _fixture.touch(1, look_at)
+	# The touch layer is stepped by hand at 60 Hz, one frame a step: with real frames, one longer than
+	# the smoothing's window let out the whole backlog in one step (#892, as #889).
+	_fixture.controls.set_process(false)
 	var biggest := 0.0
 	for step in 10:
 		stick_at += Vector2(8.0, -3.0)
@@ -164,9 +195,11 @@ func test_two_thumbs_turn_the_view_by_the_look_drag_alone_whatever_the_first_dra
 			stick_step = stick_at - Vector2(1700.0, 300.0)
 			look_step = look_at
 		var before := rig.yaw
-		await _fixture.drag(0, stick_at, stick_step)
-		await _fixture.drag(1, look_at, look_step)
+		_fixture.send_drag(0, stick_at, stick_step)
+		_fixture.send_drag(1, look_at, look_step)
+		_fixture.controls._process(1.0 / 60.0)
 		biggest = maxf(biggest, absf(angle_difference(before, rig.yaw)))
+	_fixture.controls.set_process(true)
 	await _fixture.lift(0)
 	await _fixture.lift(1)
 	await _fixture.settle_look()

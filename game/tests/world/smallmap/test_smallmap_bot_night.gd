@@ -4,8 +4,13 @@
 # the long ones to round 10 and prints the numbers for the design page).
 extends GdUnitTestSuite
 
-## Game seconds of the solo night, and of the night of four on the whole map.
-const SOLO_SECONDS := 240.0
+## Game seconds of the solo night, and of the night of four on the whole map. The solo bot pays for
+## its two links first and the shotgun (or the box) comes in the break of round 4, at 140 to 170 s
+## on twenty seeds; a bot starts no errand with a dead within 12 m, so that one break is a matter of
+## luck in the fight (it was missed on CI, with the same purchases, and not on a rerun). The night
+## runs past the breaks of rounds 5 and 6, which the bot has the points for, so the weapon is bought
+## in one of three breaks and not in one.
+const SOLO_SECONDS := 330.0
 const FOUR_SECONDS := 150.0
 ## Game seconds in which four bots on the shut map have bought every link (round 4 at the latest).
 const FOUR_LINKS_SECONDS := 210.0

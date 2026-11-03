@@ -50,6 +50,9 @@ var max_health := 100.0
 var grenades := START_GRENADES
 ## The special round in play (`round_started`'s `special_id`), or empty in an ordinary round.
 var special: StringName = &""
+## Whether the break the bot is in announced a special round (`special_round_announced`): the
+## marquee every player reads, which the profile may shop for (`BotProfile.prepared_mags`).
+var special_coming := false
 ## The purchases the server refused since the brain last looked: `{item, result}`.
 var denials: Array[Dictionary] = []
 ## Things that happened to the bot or the night since the brain last looked, for the callouts:
