@@ -120,6 +120,7 @@ kept for lighting the dead and the player.
 | Neon | `LotNeonSign` over the concession door: tubes, `Label3D`, halo, and an omni that hangs on the concession circuit | one light, only while powered |
 | Windows | `GlowPane`: an additive pane in each front window of the stand | one quad each |
 | Breaker posts | a billboard halo round the lamp, green on and dull red off, so a post reads across the lot | one quad each |
+| Dim post | `LampPost.dim` (0 to 1, 1 by default) scales a post's light, lens, halo and pool together; the six lamps over the breach aprons use 0.4 (#850) | none: the same light and quads at lower energy |
 
 What carries the circuits: every glowing thing is a `LightFollower` that reads the **lamp it follows** (its
 `light_energy` over the energy the scene gave it, 0 when `LotLamps` hid it), so a switched circuit, a failing tank and
@@ -127,6 +128,12 @@ the screen's afterglow reach the glow with no second path to keep in step. The f
 (Movie Maker steps it at a fixed rate) and every flicker curve is a function of the phase alone, so a test calls
 `advance` and gets the same light. A lamp that is only seen (the sign's) carries `metadata/decor` and lights no ground
 for the dead's slowdown (`LotLamps.lit_at`).
+
+A dimmed post is dimmed at its source: `LampPost` multiplies its `Light`'s energy once in `_ready` (so `LotLamps`, which
+reads the energy when it gathers the lamps, drives the lower level through a flicker and a switch like any other) and
+the three glow energies in `set_glow`. The rules do not see it: `lit_at` asks only for a lamp's position, so a dim lamp
+lights its 6 m for the dead's pace exactly as a bright one does. Moving a lamp's *reach* with its level would be a rule
+change (`LightTuning.lamp_reach` is one number for the lot), not a lighting one.
 
 - **The cap per mesh is tested** (`test_lot_light_cap.gd`, helpers in `light_cap.gd`): with every circuit on, every
   mesh a light shades is reached by at most 8 lights (the project's `max_lights_per_object`; omni by sphere, spot by
@@ -154,7 +161,8 @@ for the dead's slowdown (`LotLamps.lit_at`).
   holds the aim, the level edge and that no wall or roof of the lot is inside the cone;
   `tests/captures/projector_spot_tour.tscn` shoots the lot from the field, the road and the booth (`--hide-spot` frees
   the light for a second run to count what it alone changes: free it, do not hide it, see the lesson).
-- **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 5 m) is counted at each crane spot by
+- **The prize crane's lamp** (`PrizeCrane`, one `OmniLight3D`, 4.6 m since #830: in front of the prize board it
+  reached a seventh light onto the stand's floor at 5 m) is counted at each crane spot by
   `test_the_crane_at_any_of_its_spots_keeps_the_lot_within_the_budget`: a crane is built at every spot, its lamp joins
   the lot's and its own meshes join the lit ones, and no mesh is over the fight budget. Beside the stand the lamp is one
   more light on the stand's floor and roof, which is why they are cut in four (below): each piece stays at 6 or fewer.
