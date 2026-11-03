@@ -129,7 +129,7 @@ func test_an_unknown_look_on_the_wire_is_a_walker() -> void:
 	assert_int(ZombieModels.look_index(&"nonsense")).is_equal(0)
 
 
-func test_hit_zones_follow_the_size_of_the_look_and_its_hit_chance() -> void:
+func test_hit_zones_follow_the_size_of_the_look_and_its_hit_chance_upright() -> void:
 	var rules := _rules()
 	var tuning := ZombieTuning.shipped()
 	var walker := ZombieProfile.from_event(_request(&"walker", rules), tuning)
@@ -137,12 +137,22 @@ func test_hit_zones_follow_the_size_of_the_look_and_its_hit_chance() -> void:
 	var crawler := ZombieProfile.from_event(_request(&"crawler", rules), tuning)
 	assert_float(walker.hit_scale()).is_equal(1.0)
 	assert_float(brute.hit_scale()).is_equal(1.18)
-	assert_float(crawler.hit_scale()).is_equal_approx(0.6, 0.0001)
+	# A crawler's zones are fitted to its body on the ground: its hit chance does not shrink them.
+	assert_float(crawler.hit_chance).is_equal(0.6)
+	assert_float(crawler.hit_scale()).is_equal(1.0)
 	var ray_high := Hitbox.ray(
 		Vector3(0, 1.3, 5), Vector3.FORWARD, 10.0, Vector3.ZERO, 0.0, 0.0, 1.0
 	)
 	var ray_high_crawl := Hitbox.ray(
-		Vector3(0, 1.3, 5), Vector3.FORWARD, 10.0, Vector3.ZERO, 0.0, 0.0, crawler.hit_scale()
+		Vector3(0, 1.3, 5),
+		Vector3.FORWARD,
+		10.0,
+		Vector3.ZERO,
+		0.0,
+		0.0,
+		crawler.hit_scale(),
+		false,
+		&"crawler.move"
 	)
 	assert_bool(ray_high.is_empty()).is_false()
 	assert_bool(ray_high_crawl.is_empty()).is_true()

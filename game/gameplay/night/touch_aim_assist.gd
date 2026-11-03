@@ -140,16 +140,16 @@ func _gather_targets() -> void:
 		if int(zombie.get("mode", 0)) == ZombieBody.Mode.DYING:
 			continue
 		var look: StringName = zombie.get("look", ZombieModels.DEFAULT)
-		(
-			_targets
-			. append(
-				{
-					"position": zombie["position"],
-					"yaw": zombie.get("yaw", 0.0),
-					"scale": ZombieModels.aim_scale(look),
-				}
-			)
-		)
+		var mode: int = zombie.get("mode", ZombieBody.Mode.CHASE)
+		var yaw: float = zombie.get("yaw", 0.0)
+		var target := {
+			"position": zombie["position"],
+			"yaw": yaw,
+			"scale": ZombieModels.height_of(look),
+			"aim_scale": ZombieModels.aim_scale(look),
+			"pose": ZombiePose.hit_set(look, mode),
+		}
+		_targets.append(target)
 
 
 func _read_settings() -> void:

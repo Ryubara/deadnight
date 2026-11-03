@@ -120,7 +120,7 @@ func decide(delta: float) -> NightCommand:
 		command.motion.sprint = fleeing
 	command.motion.yaw = _yaw
 	if not target.is_empty():
-		_aim(command, here, target["position"], target.get("look", ZombieModels.DEFAULT))
+		_aim(command, here, target)
 		var close := _flat(here, target["position"]) < MELEE_RANGE
 		command.fire = not state.me().get("reloading", false) and (close or not melee)
 	if _swap_wait == 0 and _wants_swap(held):
@@ -391,19 +391,18 @@ func _nearest(here: Vector3, shootable: bool) -> Dictionary:
 		if zombie["mode"] == ZombieBody.Mode.DYING or zombie["mode"] == ZombieBody.Mode.EMERGING:
 			continue
 		var d := _flat(here, zombie["position"])
-		var look: StringName = zombie.get("look", ZombieModels.DEFAULT)
-		var in_sight := shootable and d < SHOOT_RANGE and _clear(here, zombie["position"], look)
+		var in_sight := shootable and d < SHOOT_RANGE and _clear(here, zombie)
 		if d < best_d and (not shootable or in_sight):
 			best_d = d
 			best = zombie
 	return best
 
 
-func _clear(here: Vector3, target: Vector3, look: StringName) -> bool:
+func _clear(here: Vector3, zombie: Dictionary) -> bool:
 	if not sight.is_valid():
 		return true
 	var eye := here + Vector3(0.0, EYE, 0.0)
-	var aim := target + Vector3(0.0, _chest(look), 0.0)
+	var aim := _body_of(zombie)
 	# It turns to the target to shoot, so the barrel is where it will be then.
 	var to := aim - eye
 	var barrel := here + Basis(Vector3.UP, atan2(-to.x, -to.z)) * MUZZLE
@@ -453,9 +452,9 @@ func _unstuck(wish: Vector3, here: Vector3, delta: float) -> Vector3:
 	return wish
 
 
-func _aim(command: NightCommand, here: Vector3, target: Vector3, look: StringName) -> void:
+func _aim(command: NightCommand, here: Vector3, zombie: Dictionary) -> void:
 	var eye := here + Vector3(0.0, EYE, 0.0)
-	var to := target + Vector3(0.0, _chest(look), 0.0) - eye
+	var to := _body_of(zombie) - eye
 	command.origin = eye
 	command.aim_along(to)
 	command.muzzle = here + Basis(Vector3.UP, _yaw) * MUZZLE
@@ -467,9 +466,13 @@ func _aim(command: NightCommand, here: Vector3, target: Vector3, look: StringNam
 		command.motion.move = Vector2(sin(apart), -cos(apart))
 
 
-## Where it aims on a zombie that stands as tall as the look says (a crawler lies low).
-static func _chest(look: StringName) -> float:
-	return CHEST * ZombieModels.aim_scale(look)
+## Where it aims on a zombie: the middle of its body as its look and pose have it (a crawler lies
+## low and its body is ahead of its feet).
+static func _body_of(zombie: Dictionary) -> Vector3:
+	var look: StringName = zombie.get("look", ZombieModels.DEFAULT)
+	var mode: int = zombie.get("mode", ZombieBody.Mode.CHASE)
+	var offset := ZombiePose.aim_offset(look, mode, float(zombie.get("yaw", 0.0)))
+	return (zombie["position"] as Vector3) + offset
 
 
 static func _flat(a: Vector3, b: Vector3) -> float:
