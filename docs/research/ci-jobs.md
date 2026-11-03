@@ -28,7 +28,7 @@ passes its answers on: `godot`, `web`, `docs`, `markdown`, `workflows`, `backend
 - `backend` runs the platform backend's own tests (`npm run typecheck`, `npm test` of `spikes/backend`, Node 24, with a
   Postgres 17 service so the two store tests do not skip; a skipped test fails the step) when `spikes/backend/**` other
   than Markdown, or `ci.yml`, changed, and on every push to `main` (#558). It waits for `conventions` only, so it runs
-  beside the three Godot shards and never lengthens the critical path (about a minute against 5 to 6 minutes for a
+  beside the six Godot shards and never lengthens the critical path (about a minute against 5 to 6 minutes for a
   shard), and `build-ok` waits for it. Before it, nothing ran `node --test`: `godot` only installs the packages so the
   lobby's real-socket test can start the backend, so a backend change that broke a lobby, presence or ticket rule
   merged green.

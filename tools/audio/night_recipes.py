@@ -12,6 +12,7 @@ from __future__ import annotations
 import dsp
 import numpy as np
 from dsp import SAMPLE_RATE
+from limiter import limit_crest
 from recipes import Entry, _jv, _metal_click, _rasp, _thud
 
 # ---- helpers for loops ------------------------------------------------------------------------------------------
@@ -180,6 +181,13 @@ def score(rng: np.random.Generator) -> np.ndarray:
 
 # ---- boards at the fence ----------------------------------------------------------------------------------------
 
+# The highest sample of each sharp sound, over its loudest 400 ms, in dB (`limiter.limit_crest`): without it the crack
+# was 20 dB over the body and the body, at the level the crack is allowed close up (#753), was too quiet (#762).
+BOARD_TEAR_CREST_DB = 13.0
+BOARD_LAST_CREST_DB = 10.0
+BOARD_REPAIR_CREST_DB = 8.0
+DOOR_OPEN_CREST_DB = 12.0
+
 
 def _creak(rng: np.random.Generator, seconds: float, lo: float, hi: float) -> np.ndarray:
     """Wood and nails giving way: a stick-slip pitch (a stuttering pulse train) through a wooden resonance."""
@@ -218,7 +226,7 @@ def board_tear(rng: np.random.Generator) -> np.ndarray:
     at = creak_s * 0.92
     mix = dsp.place(mix, _crack(rng, _jv(rng, 420, 0.1)), at, 1.0)
     mix = dsp.place(mix, _thud(rng, _jv(rng, 130, 0.1), 0.12), at + 0.17, 0.55)
-    return dsp.fade(mix, 0.004, 0.06)
+    return dsp.fade(limit_crest(mix, BOARD_TEAR_CREST_DB), 0.004, 0.06)
 
 
 def board_last(rng: np.random.Generator) -> np.ndarray:
@@ -232,7 +240,7 @@ def board_last(rng: np.random.Generator) -> np.ndarray:
     for k, delay in enumerate((0.2, 0.34, 0.44)):
         mix = dsp.place(mix, _thud(rng, _jv(rng, 150 + 25 * k, 0.1), 0.08), at + delay, 0.6 - 0.15 * k)
         mix = dsp.place(mix, _crack(rng, _jv(rng, 600, 0.1), 0.4)[: dsp.samples(0.1)], at + delay, 0.3)
-    return dsp.fade(mix, 0.004, 0.08)
+    return dsp.fade(limit_crest(mix, BOARD_LAST_CREST_DB), 0.004, 0.08)
 
 
 def board_repair(rng: np.random.Generator) -> np.ndarray:
@@ -248,7 +256,7 @@ def board_repair(rng: np.random.Generator) -> np.ndarray:
         mix = dsp.place(mix, wood * 1.0 + slap * 0.6, at, 0.75 + 0.15 * i)
         mix = dsp.place(mix, nail, at, 0.3 + 0.1 * i)
         at += rng.uniform(0.17, 0.23)
-    return dsp.fade(mix, 0.0008, 0.05)
+    return dsp.fade(limit_crest(mix, BOARD_REPAIR_CREST_DB), 0.0008, 0.05)
 
 
 # ---- doors -----------------------------------------------------------------------------------------------------
@@ -262,7 +270,7 @@ def door_open(rng: np.random.Generator) -> np.ndarray:
     mix = dsp.place(mix, creak, 0.2, 0.5)
     mix = dsp.place(mix, _thud(rng, _jv(rng, 70, 0.1), 0.25), 1.05, 0.7)
     mix = dsp.place(mix, _rasp(rng, 0.25, 500, 1200), 0.95, 0.15)
-    return dsp.fade(mix, 0.002, 0.1)
+    return dsp.fade(limit_crest(mix, DOOR_OPEN_CREST_DB), 0.002, 0.1)
 
 
 # ---- melee ------------------------------------------------------------------------------------------------------
@@ -320,10 +328,10 @@ REGISTRY: list[Entry] = [
     Entry("ambience", "highway", 1, night_highway, -3.0, loop=True),
     Entry("ambience", "projector", 1, night_projector, -3.0, loop=True),
     Entry("music", "score", 1, score, -3.0, loop=True),
-    Entry("world", "board_tear", 3, board_tear, -2.0),
-    Entry("world", "board_last", 2, board_last, -1.0),
-    Entry("world", "board_repair", 3, board_repair, -3.0),
-    Entry("world", "door_open", 2, door_open, -3.0),
+    Entry("world", "board_tear", 3, board_tear, -10.5),
+    Entry("world", "board_last", 2, board_last, -8.2),
+    Entry("world", "board_repair", 3, board_repair, -9.5),
+    Entry("world", "door_open", 2, door_open, -8.9),
     Entry("melee", "swing", 3, melee_swing, -5.0),
     Entry("melee", "hit", 2, melee_hit, -3.0),
     Entry("shop", "till", 2, till_ring, -3.0),
