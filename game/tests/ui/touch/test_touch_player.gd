@@ -180,6 +180,9 @@ func test_two_thumbs_turn_the_view_by_the_look_drag_alone_whatever_the_first_dra
 	var yaw := rig.yaw
 	await _fixture.touch(0, stick_at)
 	await _fixture.touch(1, look_at)
+	# The touch layer is stepped by hand at 60 Hz, one frame a step: with real frames, one longer than
+	# the smoothing's window let out the whole backlog in one step (#892, as #889).
+	_fixture.controls.set_process(false)
 	var biggest := 0.0
 	for step in 10:
 		stick_at += Vector2(8.0, -3.0)
@@ -192,9 +195,11 @@ func test_two_thumbs_turn_the_view_by_the_look_drag_alone_whatever_the_first_dra
 			stick_step = stick_at - Vector2(1700.0, 300.0)
 			look_step = look_at
 		var before := rig.yaw
-		await _fixture.drag(0, stick_at, stick_step)
-		await _fixture.drag(1, look_at, look_step)
+		_fixture.send_drag(0, stick_at, stick_step)
+		_fixture.send_drag(1, look_at, look_step)
+		_fixture.controls._process(1.0 / 60.0)
 		biggest = maxf(biggest, absf(angle_difference(before, rig.yaw)))
+	_fixture.controls.set_process(true)
 	await _fixture.lift(0)
 	await _fixture.lift(1)
 	await _fixture.settle_look()
