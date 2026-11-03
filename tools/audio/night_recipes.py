@@ -60,33 +60,50 @@ def _slow(rng: np.random.Generator, seconds: float, hz: float) -> np.ndarray:
 # ---- the ambient bed --------------------------------------------------------------------------------------------
 
 CRICKET_SECONDS = 24.0
+# The chirps a second each cricket is drawn at, and the share of them it keeps: the maintainer halved the rate (#781), so
+# the eight are the same insects (pitch, bursts, place) with every other chirp gone, and each now sings 1.0 to 2.1 a second.
+CRICKET_DRAW_HZ = (2.0, 4.2)
+CRICKET_RATE_SCALE = 0.5
+CRICKET_RATE_HZ = (CRICKET_DRAW_HZ[0] * CRICKET_RATE_SCALE, CRICKET_DRAW_HZ[1] * CRICKET_RATE_SCALE)
+CRICKET_PEAK_DB = -5.0
 HIGHWAY_SECONDS = 32.0
 PROJECTOR_SECONDS = 12.0  # 288 frames at 24 a second
 PROJECTOR_FPS = 24
 SCORE_SECONDS = 32.0
 
 
-def night_crickets(rng: np.random.Generator) -> np.ndarray:
-    """Eight crickets in a field: each chirps three pulses at its own pitch and rate, and sings in bursts."""
+def night_crickets(rng: np.random.Generator, plan: list[tuple[float, int, int]] | None = None) -> np.ndarray:
+    """Eight crickets in a field: each chirps three pulses at its own pitch and rate, and sings in bursts.
+
+    `plan`, when given, collects each cricket's (pitch in Hz, chirps in the loop, chirps sung) for `cricket_levels.py`."""
     n = dsp.samples(CRICKET_SECONDS)
     mix = np.zeros(n)
     pulse_n = dsp.samples(0.016)
     window = np.hanning(pulse_n)
     for _ in range(8):
         freq = rng.uniform(3700, 5300)
-        rate = round(rng.uniform(2.0, 4.2) * CRICKET_SECONDS) / CRICKET_SECONDS  # a whole number of chirps in the loop
+        drawn = round(rng.uniform(*CRICKET_DRAW_HZ) * CRICKET_SECONDS)  # chirps before the cut, a whole number a loop
+        chirps = round(drawn * CRICKET_RATE_SCALE)
+        rate = chirps / CRICKET_SECONDS
         singing = np.clip((_slow(rng, CRICKET_SECONDS, 0.35) - 0.4) * 2.6, 0.0, 1.0)
         pan_gain = rng.uniform(0.35, 1.0)
         pulse = np.sin(2 * np.pi * freq * np.arange(pulse_n) / SAMPLE_RATE) * window
         pulse += 0.25 * np.sin(2 * np.pi * freq * 2 * np.arange(pulse_n) / SAMPLE_RATE) * window
-        phase = rng.uniform(0, 1 / rate)
-        for k in range(round(rate * CRICKET_SECONDS)):
+        phase = rng.uniform(0, CRICKET_SECONDS / drawn)
+        loudness = rng.uniform(0.7, 1.0, drawn)  # one draw per chirp there was, so the later crickets stay the same
+        sung = 0
+        for k in range(chirps):
             at = phase + k / rate
-            level = singing[int(at * SAMPLE_RATE) % n] * pan_gain * rng.uniform(0.7, 1.0)
+            level = (
+                singing[int(at * SAMPLE_RATE) % n] * pan_gain * loudness[min(round(k / CRICKET_RATE_SCALE), drawn - 1)]
+            )
             if level < 0.02:
                 continue
+            sung += 1
             for p in range(3):
                 _wrap_add(mix, pulse, at + p * 0.024, level * (1.0 - 0.18 * p))
+        if plan is not None:
+            plan.append((float(freq), chirps, sung))
     air = _ring_noise(rng, CRICKET_SECONDS, 300, 2500, -6.0) * 0.012
     return mix * 0.5 + air
 
@@ -324,7 +341,9 @@ def till_ring(rng: np.random.Generator) -> np.ndarray:
 # ---- registry ---------------------------------------------------------------------------------------------------
 
 REGISTRY: list[Entry] = [
-    Entry("ambience", "crickets", 1, night_crickets, -3.0, loop=True),
+    # -5 dBFS, not -3: with half the chirps overlapping, the file normalises up 2 dB, so this keeps each chirp as loud in the
+    # file as it was and the catalog's volume_db is the whole cut of a chirp (#781).
+    Entry("ambience", "crickets", 1, night_crickets, CRICKET_PEAK_DB, loop=True),
     Entry("ambience", "highway", 1, night_highway, -3.0, loop=True),
     Entry("ambience", "projector", 1, night_projector, -3.0, loop=True),
     Entry("music", "score", 1, score, -3.0, loop=True),

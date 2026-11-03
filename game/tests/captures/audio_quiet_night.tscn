@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/captures/audio_quiet_night.gd" id="1"]
+
+[node name="AudioQuietNight" type="Node"]
+script = ExtResource("1")

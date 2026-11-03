@@ -32,9 +32,11 @@ const NIGHT_SOUNDS: Array[StringName] = [
 	&"bed_score",
 ]
 ## The break's two beds as the maintainer tuned them (#382): the score 25% louder in amplitude
-## (+1.9 dB from -22) and the crickets 25% quieter (-2.5 dB from -16).
+## (+1.9 dB from -22) and the crickets 25% quieter (-2.5 dB from -16). The crickets were cut again
+## by half in amplitude (-6 dB, to -24.5) and half the chirps a second (#781; the rate is pinned
+## by `tools/audio/cricket_levels.py check`).
 const BED_SCORE_DB := -20.1
-const BED_CRICKETS_DB := -18.5
+const BED_CRICKETS_DB := -24.5
 const BEDS: Array[StringName] = [&"bed_crickets", &"bed_highway", &"bed_projector", &"bed_score"]
 
 
@@ -72,11 +74,13 @@ func test_the_break_score_is_louder_and_the_crickets_quieter() -> void:
 	var crickets := SoundCatalog.get_def(&"bed_crickets").volume_db
 	assert_float(score).is_equal_approx(BED_SCORE_DB, 0.001)
 	assert_float(crickets).is_equal_approx(BED_CRICKETS_DB, 0.001)
-	# 25% in amplitude, read in decibels: +1.94 and -2.5.
+	# 25% in amplitude, read in decibels: +1.94 and -2.5 (#382), then the crickets half the amplitude
+	# again, -6.02 (#781).
 	assert_float(score - -22.0).is_equal_approx(20.0 * log(1.25) / log(10.0), 0.06)
-	assert_float(crickets - -16.0).is_equal_approx(20.0 * log(0.75) / log(10.0), 0.06)
-	# By trim the score was 6 dB under the crickets, and is 1.6 dB under them now.
-	assert_float(score - crickets).is_equal_approx(-1.6, 0.001)
+	assert_float(crickets - -16.0).is_equal_approx(20.0 * log(0.75 * 0.5) / log(10.0), 0.06)
+	assert_float(crickets - -18.5).is_equal_approx(20.0 * log(0.5) / log(10.0), 0.06)
+	# By trim the score was 6 dB under the crickets, then 1.6 dB under them, and is 4.4 dB over them.
+	assert_float(score - crickets).is_equal_approx(4.4, 0.001)
 
 
 func test_a_board_torn_outranks_a_groan() -> void:

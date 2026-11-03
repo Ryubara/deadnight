@@ -133,7 +133,8 @@ random pitch. Levels are trims on files that are all normalised, so balancing is
 The night is never silent. Three looping beds start with the night and fade in over three seconds; all sit well under a
 footstep (14 to 22 dB), so they are felt when they stop rather than heard.
 
-- **Crickets** (24 s): eight insects, each its own pitch (3.7 to 5.3 kHz) and chirp rate, singing in bursts.
+- **Crickets** (24 s): eight insects, each its own pitch (3.7 to 5.3 kHz) and chirp rate (1.0 to 2.1 chirps a second
+  each), singing in bursts, at -24.5 dB: half the amplitude and half the chirps of what they were (maintainer, #781).
 - **A distant highway** (32 s): a low rumble that swells and thins, and six passes of a car or truck whose pitch falls.
 - **The projector** (12 s, a loop in the world, not flat): the gate's 24 clatters a second over a motor and a fan, from
   the middle of the projection booth, so it is only heard near it (35 m, `unit_size` 4).
@@ -146,6 +147,9 @@ footstep (14 to 22 dB), so they are felt when they stop rather than heard.
   3.7 to 8.1 LU above the crickets ([measured](../research/audio.md#the-breaks-levels-382)), so the intermission reads as
   music over a quieter night. A bed fades in at 20 dB/s, so in a 5 s break the score is at full level for only the
   last two seconds or so before it fades out at 30 dB/s; a special round's break (15 s) plays it in full.
+- **The crickets again** (maintainer, #781). Still too much after that cut, so half the amplitude again (-6 dB, -18.5 to
+  -24.5) and half the chirps a second, the same insects with every other chirp gone. The score is now 4.4 dB over them
+  by trim. Why the first cut fell short, and the numbers: [the crickets, cut again](../research/audio.md#the-crickets-cut-again-781).
 
 All four are built to loop: every event that runs past the end wraps to the start and every filter is applied to the
 whole loop at once, so the seam is smaller than the largest step inside the file (measured in
