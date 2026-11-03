@@ -26,6 +26,8 @@ const EVENTS: Array[StringName] = [
 	&"weapon_equipped",
 	&"shot_fired",
 	&"reload_started",
+	&"reload_round",
+	&"reload_interrupted",
 	&"reload_finished",
 	&"ammo_added",
 	&"weapon_upgraded"
@@ -64,6 +66,15 @@ static func apply(event: Dictionary, state: HudState) -> void:
 		&"reload_started":
 			if weapon_id == state.weapon_id:
 				_show(state, true)
+		&"reload_round":
+			# A by-round reload put one more round in the magazine; it goes on.
+			if weapon_id == state.weapon_id:
+				_count(state, weapon_id, int(event["ammo"]), int(event["reserve"]))
+				_show(state, true)
+		&"reload_interrupted":
+			if weapon_id == state.weapon_id:
+				_count(state, weapon_id, int(event["ammo"]), int(event["reserve"]))
+				_show(state, false)
 		&"weapon_upgraded":
 			# A re-cut: the name changes, and the magazine and reserve come back full.
 			state.weapon_names[weapon_id] = String(event["display_name"])

@@ -24,6 +24,8 @@ var ammo: Node3D
 var _motion: ReloadMotion
 var _left := 0.0
 var _length := 1.0
+## How many rounds the reload loads, for a by-round motion (0: not told).
+var _rounds := 0
 var _part_rest := Transform3D.IDENTITY
 var _mount: BoneAttachment3D
 ## The ammunition is the part, taken where it was (the drum): placed by the hand, not the motion.
@@ -64,9 +66,10 @@ func setup(weapon_id: StringName, weapon: Node3D, model_scale: float) -> void:
 		_place_ammo()
 
 
-## A reload of `seconds` starts.
-func start(seconds: float) -> void:
+## A reload of `seconds` starts (`rounds`: how many it loads, for a by-round weapon).
+func start(seconds: float, rounds := 0) -> void:
 	_length = maxf(seconds, 0.01)
+	_rounds = rounds
 	_left = _length
 	if ammo != null and _ammo_from_part:
 		_place_ammo()
@@ -87,7 +90,7 @@ func step(delta: float, hands: WeaponHandsIK, weapon_shown: bool) -> void:
 	var target := 0.0
 	if _left > 0.0 and _motion != null:
 		_left = maxf(_left - delta, 0.0)
-		_motion.sample(1.0 - _left / _length, pose)
+		_motion.sample(_motion.playhead(1.0 - _left / _length, _rounds), pose)
 		target = 1.0 if _left > 0.0 else 0.0
 	weight = lerpf(weight, target, 1.0 - exp(-FOLLOW * delta))
 	if target == 0.0 and weight < 0.001:

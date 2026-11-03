@@ -65,13 +65,34 @@ kind = 1
 price = 1200
 pool_weights = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_wall_pump"]
+script = ExtResource("1_skww1")
+id = &"weapon_pump_870"
+kind = 1
+price = 700
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_wall_mp5"]
+script = ExtResource("1_skww1")
+id = &"weapon_mp5"
+kind = 1
+price = 1300
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_wall_m4a1"]
+script = ExtResource("1_skww1")
+id = &"weapon_m4a1"
+kind = 1
+price = 1600
+pool_weights = PackedFloat32Array()
+
 [sub_resource type="Resource" id="Resource_uh4jk"]
 script = ExtResource("1_skww1")
 id = &"crane_play"
 kind = 2
 price = 550
-pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe", &"weapon_pistol", &"weapon_crowbar"])
-pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1)
+pool = Array[StringName]([&"weapon_shotgun", &"weapon_rifle", &"weapon_smg", &"weapon_flare_gun", &"weapon_baseball_bat", &"weapon_fire_axe", &"weapon_pistol", &"weapon_crowbar", &"weapon_pump_870", &"weapon_mp5", &"weapon_m4a1", &"weapon_ppsh", &"weapon_m249", &"weapon_fifty_cal"])
+pool_weights = PackedFloat32Array(4, 3, 2, 1, 0.5, 0.5, 1, 1, 2, 2, 1.5, 2, 1.5, 1.5)
 
 [sub_resource type="Resource" id="Resource_0d3wl"]
 script = ExtResource("1_skww1")
@@ -197,6 +218,60 @@ amount = 2.0
 weapon = &"flare_gun"
 pool_weights = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_ammo_ppsh"]
+script = ExtResource("1_skww1")
+id = &"ammo_ppsh"
+kind = 6
+price = 110
+amount = 75.0
+weapon = &"ppsh"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_mp5"]
+script = ExtResource("1_skww1")
+id = &"ammo_mp5"
+kind = 6
+price = 90
+amount = 45.0
+weapon = &"mp5"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_m4a1"]
+script = ExtResource("1_skww1")
+id = &"ammo_m4a1"
+kind = 6
+price = 90
+amount = 30.0
+weapon = &"m4a1"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_m249"]
+script = ExtResource("1_skww1")
+id = &"ammo_m249"
+kind = 6
+price = 150
+amount = 100.0
+weapon = &"m249"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_fifty_cal"]
+script = ExtResource("1_skww1")
+id = &"ammo_fifty_cal"
+kind = 6
+price = 100
+amount = 5.0
+weapon = &"fifty_cal"
+pool_weights = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ammo_pump_870"]
+script = ExtResource("1_skww1")
+id = &"ammo_pump_870"
+kind = 6
+price = 80
+amount = 6.0
+weapon = &"pump_870"
+pool_weights = PackedFloat32Array()
+
 [sub_resource type="Resource" id="Resource_6sif2"]
 script = ExtResource("2_tud1d")
 start_points = 200
@@ -212,7 +287,7 @@ round_bonus_base = 20
 round_bonus_per_round = 10
 down_penalty_fraction = 0.1
 max_tonics = 4
-items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_tri1"), SubResource("Resource_arc1"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun")])
+items = Array[ExtResource("1_skww1")]([SubResource("Resource_jrviv"), SubResource("Resource_kge2d"), SubResource("Resource_t6haa"), SubResource("Resource_yard1"), SubResource("Resource_road1"), SubResource("Resource_fw883"), SubResource("Resource_wg87f"), SubResource("Resource_wall_pump"), SubResource("Resource_wall_mp5"), SubResource("Resource_wall_m4a1"), SubResource("Resource_uh4jk"), SubResource("Resource_0d3wl"), SubResource("Resource_p8fbk"), SubResource("Resource_lpb0c"), SubResource("Resource_x1sef"), SubResource("Resource_tri1"), SubResource("Resource_arc1"), SubResource("Resource_upgr1"), SubResource("Resource_utxut"), SubResource("Resource_gren1"), SubResource("Resource_ammo_pistol"), SubResource("Resource_ammo_smg"), SubResource("Resource_ammo_shotgun"), SubResource("Resource_ammo_rifle"), SubResource("Resource_ammo_flare_gun"), SubResource("Resource_ammo_ppsh"), SubResource("Resource_ammo_mp5"), SubResource("Resource_ammo_m4a1"), SubResource("Resource_ammo_m249"), SubResource("Resource_ammo_fifty_cal"), SubResource("Resource_ammo_pump_870")])
 
 [sub_resource type="Resource" id="Resource_df3qj"]
 script = ExtResource("3_bgcg8")
@@ -411,7 +486,7 @@ refund_fraction = 1.0
 
 [sub_resource type="Resource" id="Resource_upgt1"]
 script = ExtResource("12_upgr1")
-weapons = Array[StringName]([&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun"])
+weapons = Array[StringName]([&"pistol", &"smg", &"shotgun", &"rifle", &"flare_gun", &"mp5", &"ppsh", &"m4a1", &"m249", &"fifty_cal", &"pump_870"])
 damage_multiplier = 1.75
 magazine_multiplier = 1.5
 reserve_multiplier = 1.5

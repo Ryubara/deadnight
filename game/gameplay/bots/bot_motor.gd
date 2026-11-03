@@ -306,10 +306,12 @@ func _walk(out: NightCommand, intent: BotIntent) -> void:
 ## Whether to hold the trigger: on a target, view inside the hit cone, nothing in the way of the
 ## gun, and the pauses of the last shot and the last switch over.
 func _trigger(me: Dictionary, eye: Vector3, contact: Dictionary, melee_ok: bool = true) -> bool:
-	if contact.is_empty() or me.get("reloading", false):
-		return false
 	var weapon := _weapon_of(me)
-	if weapon == null or weapon.is_lure():
+	if contact.is_empty() or weapon == null or weapon.is_lure():
+		return false
+	# A reload that loads a round at a time (the pump) gives way to a shot once one is in.
+	var gives_way := weapon.reload_by_round and int(me.get("ammo", 0)) > 0
+	if me.get("reloading", false) and not gives_way:
 		return false
 	var distance := Vector2(contact["position"].x - eye.x, contact["position"].z - eye.z).length()
 	if weapon.is_melee():

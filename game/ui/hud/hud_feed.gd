@@ -127,6 +127,20 @@ func _drop(row: Dictionary) -> void:
 	_stack.remove_row(row["label"])
 
 
+## What buying shop item `item` says: the table's line, else the catalogue's own (a wall weapon
+## is "BOUGHT THE <NAME>" from its definition's display name, a tuning string; its rounds are
+## ammunition), else a plain one.
+static func item_text(item: StringName) -> String:
+	if ITEM_NAMES.has(item):
+		return ITEM_NAMES[item]
+	var weapon := WeaponCatalog.catalog_id(item)
+	if String(item).begins_with(WeaponCatalog.SHOP_PREFIX) and weapon in WeaponCatalog.IDS:
+		return "BOUGHT THE %s" % WeaponCatalog.get_def(weapon).display_name.to_upper()
+	if String(item).begins_with("ammo_"):
+		return "BOUGHT AMMUNITION"
+	return "BOUGHT SOMETHING"
+
+
 func _text_for(event: Dictionary) -> String:
 	var type := StringName(event.get("type", &""))
 	if kind == Kind.NOTICES:
@@ -139,7 +153,7 @@ func _text_for(event: Dictionary) -> String:
 			if state.link_names.has(item):
 				text = "%s OPENED THE %s" % [who, state.link_names[item].to_upper()]
 			else:
-				text = "%s %s" % [who, ITEM_NAMES.get(item, "BOUGHT SOMETHING")]
+				text = "%s %s" % [who, item_text(item)]
 		&"player_downed":
 			text = "%s IS DOWN" % who
 		&"player_revived":

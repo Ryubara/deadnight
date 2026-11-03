@@ -36,6 +36,12 @@ const MODELS := {
 	&"weapon_fire_axe": "res://assets/weapons/fire_axe/fire_axe.glb",
 	&"weapon_pistol": "res://assets/weapons/revolver/revolver.glb",
 	&"weapon_crowbar": "res://assets/weapons/crowbar/crowbar.glb",
+	&"weapon_mp5": "res://assets/weapons/tommy_gun/tommy_gun.glb",
+	&"weapon_ppsh": "res://assets/weapons/tommy_gun/tommy_gun.glb",
+	&"weapon_m4a1": "res://assets/weapons/tommy_gun/tommy_gun.glb",
+	&"weapon_m249": "res://assets/weapons/lever_rifle/lever_rifle.glb",
+	&"weapon_fifty_cal": "res://assets/weapons/lever_rifle/lever_rifle.glb",
+	&"weapon_pump_870": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 }
 ## How long a model is drawn on the stage, in metres; the others use `MODEL_LENGTH`. The flare gun
 ## is a pistol and stays small beside the long guns.

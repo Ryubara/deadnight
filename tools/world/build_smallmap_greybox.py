@@ -142,6 +142,14 @@ WALL_SPOTS = [
     ("AxeUpstairs", "weapon_fire_axe", "FIRE AXE", "upstairs", (16.05, -4.0), (-1, 0), STOREY),
     ("ShotgunUpstairs", "weapon_shotgun", "SHOTGUN", "upstairs", (5.0, -7.85), (0, 1), STOREY),
 ]
+# The second batch of firearms (#793): three more walls, at the ratios of #785's table (the pump 0.9 P in the side room,
+# the MP5 1.7 P and the M4A1 2.1 P upstairs); the other three are the box's alone. The formula's rows 23 and 24 are
+# about the eight walls above; these are counted apart (`test_smallmap_economy.gd`).
+NEW_WALL_SPOTS = [
+    ("PumpSide", "weapon_pump_870", "PUMP 870", "side", (9.5, -0.3), (0, -1), 0.0),
+    ("MP5Upstairs", "weapon_mp5", "MP5", "upstairs", (12.8, -7.85), (0, 1), STOREY),
+    ("M4A1Upstairs", "weapon_m4a1", "M4A1", "upstairs", (-3.5, -7.85), (0, 1), STOREY),
+]
 # The sniper cabinet: the rifle, at 1.5 P, in the upstairs half over the side room.
 CABINET = ("RifleCabinet", "weapon_rifle", "RIFLE", "upstairs", (-6.05, -4.0), (1, 0), STOREY)
 # The box (the crane, one place, never moves, formula row 22): in the side room, set back 1.5 m from its marker.
@@ -608,7 +616,7 @@ def build() -> None:
     # --- The shop (rows 22 to 24) ----------------------------------------------------------------------------------
     bg.node("ShopSpots", "Node3D", ".")
     bg.node("ShopProps", "Node3D", ".")
-    for name, shop_id, text, room, face, into, floor in [*WALL_SPOTS, CABINET]:
+    for name, shop_id, text, room, face, into, floor in [*WALL_SPOTS, *NEW_WALL_SPOTS, CABINET]:
         wall_spot(name, shop_id, text, room, face, into, floor, cabinet=(name == CABINET[0]))
     bx, by, bz = BOX_MARKER
     bg.node("SpotBox", "Marker3D", "ShopSpots",

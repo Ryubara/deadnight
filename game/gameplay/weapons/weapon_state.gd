@@ -19,6 +19,13 @@ var cooldown: float = 0.0
 ## a pause banks nothing.
 var carry: float = 0.0
 var reload_left: float = 0.0
+## By-round reload (`WeaponDef.reload_by_round`): seconds each round takes, the wait until the next
+## one is in, and how many went in during the last tick (the server says so, a round at a time).
+var round_time: float = 0.0
+var round_left: float = 0.0
+var loaded_last_tick: int = 0
+## The reload the last shot ended (a by-round reload a round had been loaded into).
+var interrupted: bool = false
 
 
 func _init(p_def: WeaponDef) -> void:
@@ -36,8 +43,9 @@ func is_reloading() -> bool:
 
 
 ## Why a shot cannot happen now (`&"reloading"`, `&"cooldown"`, `&"empty"`), or `&""` when it can.
+## A by-round reload gives way to a shot once a round is in the magazine.
 func fire_block() -> StringName:
-	if is_reloading():
+	if is_reloading() and not (def.reload_by_round and ammo > 0):
 		return &"reloading"
 	if cooldown > READY_EPSILON:
 		return &"cooldown"
@@ -51,6 +59,9 @@ func fire_block() -> StringName:
 ## `fire_block()` is empty. The wait never ends inside the tick of the shot, so a weapon fires at
 ## most once a tick however short its interval.
 func fire(interval_scale: float = 1.0) -> void:
+	interrupted = is_reloading()
+	if interrupted:
+		cancel_reload()
 	cooldown = maxf(def.fire_interval * interval_scale - carry, 2.0 * READY_EPSILON)
 	carry = 0.0
 	if uses_ammo():
@@ -72,7 +83,17 @@ func reload_block() -> StringName:
 
 ## Starts the reload; `time_scale` is the reload perk's share of its time (1 without).
 func start_reload(time_scale: float = 1.0) -> void:
+	if def.reload_by_round:
+		round_time = def.round_seconds() * time_scale
+		round_left = round_time
+		reload_left = round_time * float(rounds_to_load())
+		return
 	reload_left = def.reload_time * time_scale
+
+
+## How many rounds a reload now would load.
+func rounds_to_load() -> int:
+	return maxi(mini(def.magazine_size - ammo, reserve), 0)
 
 
 ## Adds rounds to the reserve, never past the weapon's limit. Returns how many fit.
@@ -99,13 +120,17 @@ func tier() -> int:
 ## Drops a reload in progress (the weapon was put away).
 func cancel_reload() -> void:
 	reload_left = 0.0
+	round_left = 0.0
 
 
 ## Advances the clocks. Returns true on the step the reload completes.
 func tick(delta: float) -> bool:
 	_run_cooldown(delta)
+	loaded_last_tick = 0
 	if not is_reloading():
 		return false
+	if def.reload_by_round:
+		return _tick_rounds(delta)
 	reload_left -= delta
 	if reload_left > READY_EPSILON:
 		return false
@@ -113,6 +138,22 @@ func tick(delta: float) -> bool:
 	var moved := mini(def.magazine_size - ammo, reserve)
 	ammo += moved
 	reserve -= moved
+	return true
+
+
+## A by-round reload: a round goes in each `round_time`; true on the tick the last one does.
+func _tick_rounds(delta: float) -> bool:
+	round_left -= delta
+	while round_left <= READY_EPSILON and ammo < def.magazine_size and reserve > 0:
+		ammo += 1
+		reserve -= 1
+		loaded_last_tick += 1
+		round_left += round_time
+	if ammo < def.magazine_size and reserve > 0:
+		reload_left = round_left + float(rounds_to_load() - 1) * round_time
+		return false
+	reload_left = 0.0
+	round_left = 0.0
 	return true
 
 

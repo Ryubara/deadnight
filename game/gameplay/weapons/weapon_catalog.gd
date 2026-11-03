@@ -13,6 +13,12 @@ const IDS: Array[StringName] = [
 	&"crowbar",
 	&"baseball_bat",
 	&"fire_axe",
+	&"mp5",
+	&"ppsh",
+	&"m4a1",
+	&"m249",
+	&"fifty_cal",
+	&"pump_870",
 ]
 
 ## The blow every player has on its own button (#411): a knife-like swing with whatever is in hand.

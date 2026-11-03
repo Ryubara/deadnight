@@ -13,6 +13,12 @@ const WEAPON_MODELS := {
 	&"shotgun": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 	&"rifle": "res://assets/weapons/lever_rifle/lever_rifle.glb",
 	&"flare_gun": "res://assets/weapons/flare_gun/flare_gun.glb",
+	&"mp5": "res://assets/weapons/tommy_gun/tommy_gun.glb",
+	&"ppsh": "res://assets/weapons/tommy_gun/tommy_gun.glb",
+	&"m4a1": "res://assets/weapons/tommy_gun/tommy_gun.glb",
+	&"m249": "res://assets/weapons/lever_rifle/lever_rifle.glb",
+	&"fifty_cal": "res://assets/weapons/lever_rifle/lever_rifle.glb",
+	&"pump_870": "res://assets/weapons/double_shotgun/double_shotgun.glb",
 }
 
 

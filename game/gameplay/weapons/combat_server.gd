@@ -22,7 +22,10 @@ extends RefCounted
 ##     weapon_id, dir (the unit way the shot or blow travelled, ZERO for a burst: the view sprays
 ##     blood along it and looks for a wall behind the zombie, `BloodFx`)
 ##   target_killed: shooter_id, target_id, zone, headshot, melee
-##   reload_started: shooter_id, weapon_id, seconds
+##   reload_started: shooter_id, weapon_id, seconds, rounds (how many it will load: all of them at
+##     the end for a magazine, one at a time for a `reload_by_round` weapon)
+##   reload_round: shooter_id, weapon_id, ammo, reserve (a by-round reload put one more round in)
+##   reload_interrupted: shooter_id, weapon_id, ammo, reserve (a shot ended a by-round reload)
 ##   reload_finished: shooter_id, weapon_id, ammo, reserve
 ##   reload_rejected: shooter_id, reason
 ##   weapon_replaced: player_id, dropped (the weapon that was in hand), weapon_id (the new one, or
@@ -328,7 +331,12 @@ func _begin_reload(shooter_id: int, state: WeaponState) -> void:
 	state.start_reload(PerkEffects.reload_time_scale(rules, shooter_id))
 	_emit(
 		&"reload_started",
-		{"shooter_id": shooter_id, "weapon_id": state.def.id, "seconds": state.reload_left}
+		{
+			"shooter_id": shooter_id,
+			"weapon_id": state.def.id,
+			"seconds": state.reload_left,
+			"rounds": state.rounds_to_load(),
+		}
 	)
 
 
@@ -345,16 +353,17 @@ func _tick(delta: float) -> void:
 		_quick_wait[player_id] = maxf(_quick_wait[player_id] - delta, 0.0)
 	for player_id in _loadouts:
 		for state: WeaponState in _loadouts[player_id].values():
-			if state.tick(delta):
-				_emit(
-					&"reload_finished",
-					{
-						"shooter_id": player_id,
-						"weapon_id": state.def.id,
-						"ammo": state.ammo,
-						"reserve": state.reserve,
-					}
-				)
+			var done := state.tick(delta)
+			var fields := {
+				"shooter_id": player_id,
+				"weapon_id": state.def.id,
+				"ammo": state.ammo,
+				"reserve": state.reserve,
+			}
+			if state.loaded_last_tick > 0 and not done:
+				_emit(&"reload_round", fields)
+			if done:
+				_emit(&"reload_finished", fields)
 	_step_projectiles(delta)
 
 
@@ -379,6 +388,16 @@ func _fire(action: Dictionary) -> void:
 			_begin_reload(shooter_id, state)
 		return
 	state.fire(PerkEffects.fire_interval_scale(rules, shooter_id))
+	if state.interrupted:
+		_emit(
+			&"reload_interrupted",
+			{
+				"shooter_id": shooter_id,
+				"weapon_id": state.def.id,
+				"ammo": state.ammo,
+				"reserve": state.reserve,
+			}
+		)
 	var view := _view_at(action["view_time"])
 	var origin: Vector3 = action["origin"]
 	dir = dir.normalized()
@@ -391,7 +410,14 @@ func _fire(action: Dictionary) -> void:
 		WeaponDef.Kind.HITSCAN:
 			var seed_value := AimResolver.shot_seed(rng_seed, shooter_id, seq)
 			var shot := AimResolver.trace_hitscan(
-				def, origin, dir, muzzle, view["targets"], world_ray, seed_value
+				def,
+				origin,
+				dir,
+				muzzle,
+				view["targets"],
+				world_ray,
+				seed_value,
+				float(action.get("move", 0.0))
 			)
 			for pellet: Dictionary in shot["pellets"]:
 				ends.append(pellet["end"])

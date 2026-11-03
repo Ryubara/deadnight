@@ -116,11 +116,19 @@ func show_strike(player_id: int) -> void:
 
 ## The shooter's weapon tilts down for the `seconds` of its reload and comes back up (every client
 ## draws every player's reload from the same `reload_started` event).
-func show_reload(player_id: int, seconds: float) -> void:
+func show_reload(player_id: int, seconds: float, rounds := 0) -> void:
 	var body: Node3D = bodies.call(player_id)
 	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
 	if animation != null:
-		animation.reload(seconds)
+		animation.reload(seconds, rounds)
+
+
+## A shot ended a reload that was loading one round at a time: the arms come back to the hold.
+func show_reload_stopped(player_id: int) -> void:
+	var body: Node3D = bodies.call(player_id)
+	var animation := body.get_node_or_null(^"AnimationTree") as PlayerAnimation if body else null
+	if animation != null:
+		animation.cancel_reload()
 
 
 ## Draws the lamps of `lot` as the rules' events switch them: starting as `fuel` says the night
@@ -229,7 +237,9 @@ func _on_event(event: Dictionary) -> void:
 		&"quick_melee":
 			show_strike(event["shooter_id"])
 		&"reload_started":
-			show_reload(event["shooter_id"], event["seconds"])
+			show_reload(event["shooter_id"], event["seconds"], int(event.get("rounds", 0)))
+		&"reload_interrupted":
+			show_reload_stopped(event["shooter_id"])
 		&"shock_burst":
 			_show_shock(event)
 		&"damage_dealt":
