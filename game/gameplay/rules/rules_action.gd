@@ -11,6 +11,7 @@ const TICK := &"tick"
 const SKIP_BREAK := &"skip_break"
 const ADD_PLAYER := &"add_player"
 const REMOVE_PLAYER := &"remove_player"
+const SEAT_PERSON := &"seat_person"
 const SET_DOWNED := &"set_downed"
 const REVIVE := &"revive"
 const BLOW := &"blow"
@@ -57,6 +58,7 @@ const REQUIRED := {
 	SKIP_BREAK: {},
 	ADD_PLAYER: {"player_id": TYPE_INT},
 	REMOVE_PLAYER: {"player_id": TYPE_INT},
+	SEAT_PERSON: {"player_id": TYPE_INT},
 	SET_DOWNED: {"player_id": TYPE_INT, "downed": TYPE_BOOL},
 	REVIVE: {"player_id": TYPE_INT, "target_id": TYPE_INT},
 	BLOW: {"player_id": TYPE_INT, "damage": TYPE_FLOAT},
@@ -107,8 +109,18 @@ static func skip_break() -> Dictionary:
 	return {"type": SKIP_BREAK}
 
 
-static func add_player(player_id: int) -> Dictionary:
-	return {"type": ADD_PLAYER, "player_id": player_id}
+## `bot` seats the player as a bot's (a flag the rules keep and tell: the roster labels it).
+static func add_player(player_id: int, bot := false) -> Dictionary:
+	var action := {"type": ADD_PLAYER, "player_id": player_id}
+	if bot:
+		action["bot"] = true
+	return action
+
+
+## A person takes the seat of the bot `player_id`: the seat goes on as it stands, only no longer a
+## bot's (`bot_replaced`). Refused as `unknown_player` when the seat is no bot's.
+static func seat_person(player_id: int) -> Dictionary:
+	return {"type": SEAT_PERSON, "player_id": player_id}
 
 
 static func remove_player(player_id: int) -> Dictionary:

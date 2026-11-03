@@ -26,6 +26,9 @@ const GAMEPLAY: Array[StringName] = [
 	&"scoreboard",
 	&"throw_grenade",
 	&"toss_grenade",
+	&"quick_melee",
+	&"ping",
+	&"bot_wheel",
 ]
 
 
@@ -74,6 +77,39 @@ func test_the_buttons_the_docs_name_are_the_ones_bound() -> void:
 	assert_str(_pad_of(&"pause")).is_equal("button 6")
 	# Back / Select, the small button on the left of the pad's middle.
 	assert_str(_pad_of(&"scoreboard")).is_equal("button 4")
+
+
+func test_the_wheel_the_ping_and_the_shoulder_are_on_the_keys_the_maintainer_asked_for() -> void:
+	assert_array(_keys_of(&"bot_wheel")).contains_exactly([KEY_Q])
+	assert_array(_keys_of(&"swap_shoulder")).contains_exactly([KEY_C])
+	assert_array(_keys_of(&"crouch")).contains_exactly([KEY_CTRL])
+	assert_array(_keys_of(&"ping")).contains_exactly([KEY_Z])
+	assert_bool(_has_mouse_button(&"ping", MOUSE_BUTTON_MIDDLE)).is_true()
+	assert_str(_pad_of(&"bot_wheel")).is_equal("button 13")
+	assert_str(_pad_of(&"ping")).is_equal("button 14")
+	# Every pad event answers every pad (device -1), so a reconnected or second pad plays too.
+	for action in [&"bot_wheel", &"ping", &"swap_shoulder"]:
+		for event in InputMap.action_get_events(action):
+			if event is InputEventJoypadButton:
+				assert_int(event.device).is_equal(-1)
+
+
+func _keys_of(action: StringName) -> Array[int]:
+	var keys: Array[int] = []
+	for event in InputMap.action_get_events(action):
+		if event is InputEventKey:
+			keys.append((event as InputEventKey).physical_keycode)
+	return keys
+
+
+func _has_mouse_button(action: StringName, button: int) -> bool:
+	for event in InputMap.action_get_events(action):
+		if (
+			event is InputEventMouseButton
+			and (event as InputEventMouseButton).button_index == button
+		):
+			return true
+	return false
 
 
 func _pad_of(action: StringName) -> String:

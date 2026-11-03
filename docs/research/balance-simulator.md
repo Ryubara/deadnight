@@ -152,6 +152,26 @@ revolver and `SimPlayer.knife` the quick melee. Two numbers moved the gate and o
   the median round is 4 (weak, solo), 13 (average, solo), 14, 15 (average, two and four) and 15 (strong), inside every
   range, and 97% of average solo nights clear round 4. The 1.5 margin and the stampede's 110% stay as they were.
 
+## The weak boss night against the bots (#568)
+
+The simulator says 40% of weak four-player nights that reach round 5 pass it; four Rookie bots passed 16 of 16 in the
+real server. `SimSkill` was **not** changed: the Rookie was, to 40% over 90 nights (the fit and the table of what was
+tried are in [the bots page](bots.md#rookie-and-the-weak-boss-night)). The bots started high for reasons the model
+leaves out, and the model is a tool for comparing tunings, not a measurement of the real boss:
+
+- **No movement.** Simulated players stand where they are hit; a bot that makes out the headliner's telegraph steps out
+  of a 1.2 s swing at a sprint and the boss, at 0.45 of a walker's speed, does not catch up. The Rookie now never makes
+  the telegraph out, so its blows land (the simulator's weak `read` 0.25 lets 26% miss).
+- **No stagger.** The real boss is held off its swing by hits (`boss_stagger_seconds`, with a cooldown for the weak
+  spot); the model's zombies are never held.
+- **One approach.** Every simulated zombie arrives, queues for a barrier and hits; in the lot they arrive in a stream,
+  by their routes.
+
+If the real boss is later found too easy for weak players (a person's playtest, phase 7), these three are where to
+look, and moving `SimSkill`'s `read` alone would not fix them: a change to the boss's health or blow is a change to
+`rounds.md` and this gate, not to the bots. The gate's own limit (at most 85% of weak solo nights die in the first boss
+night) is untouched.
+
 ## Using it
 
 ```text

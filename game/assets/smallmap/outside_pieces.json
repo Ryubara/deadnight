@@ -1,0 +1,344 @@
+{
+ "barbed_coil": {
+  "budget": 1500,
+  "max_xyz_blender": [
+   1.01,
+   0.43,
+   0.9
+  ],
+  "min_xyz_blender": [
+   -1.03,
+   -0.45,
+   -0.06
+  ],
+  "size_xyz_blender": [
+   2.04,
+   0.88,
+   0.96
+  ],
+  "tris": 768
+ },
+ "bare_tree_a": {
+  "budget": 1500,
+  "max_xyz_blender": [
+   1.4,
+   0.99,
+   4.62
+  ],
+  "min_xyz_blender": [
+   -1.71,
+   -0.72,
+   -0.1
+  ],
+  "size_xyz_blender": [
+   3.11,
+   1.71,
+   4.72
+  ],
+  "tris": 328
+ },
+ "bare_tree_a_far": {
+  "budget": 300,
+  "max_xyz_blender": [
+   1.24,
+   0.66,
+   4.16
+  ],
+  "min_xyz_blender": [
+   -1.2,
+   -0.2,
+   -0.1
+  ],
+  "size_xyz_blender": [
+   2.44,
+   0.86,
+   4.26
+  ],
+  "tris": 56
+ },
+ "bare_tree_b": {
+  "budget": 1500,
+  "max_xyz_blender": [
+   2.31,
+   2.24,
+   6.28
+  ],
+  "min_xyz_blender": [
+   -1.7,
+   -2.26,
+   -0.12
+  ],
+  "size_xyz_blender": [
+   4.01,
+   4.5,
+   6.4
+  ],
+  "tris": 444
+ },
+ "bare_tree_b_far": {
+  "budget": 300,
+  "max_xyz_blender": [
+   1.72,
+   1.57,
+   5.48
+  ],
+  "min_xyz_blender": [
+   -0.73,
+   -1.62,
+   -0.12
+  ],
+  "size_xyz_blender": [
+   2.45,
+   3.19,
+   5.6
+  ],
+  "tris": 80
+ },
+ "bare_tree_c": {
+  "budget": 1500,
+  "max_xyz_blender": [
+   3.26,
+   2.28,
+   8.23
+  ],
+  "min_xyz_blender": [
+   -2.24,
+   -3.4,
+   -0.12
+  ],
+  "size_xyz_blender": [
+   5.5,
+   5.68,
+   8.35
+  ],
+  "tris": 444
+ },
+ "bare_tree_c_far": {
+  "budget": 300,
+  "max_xyz_blender": [
+   2.87,
+   1.77,
+   7.3
+  ],
+  "min_xyz_blender": [
+   -1.45,
+   -2.08,
+   -0.12
+  ],
+  "size_xyz_blender": [
+   4.32,
+   3.85,
+   7.42
+  ],
+  "tris": 80
+ },
+ "fence_post": {
+  "budget": 800,
+  "max_xyz_blender": [
+   0.06,
+   0.06,
+   1.65
+  ],
+  "min_xyz_blender": [
+   -0.06,
+   -0.06,
+   -0.05
+  ],
+  "size_xyz_blender": [
+   0.12,
+   0.12,
+   1.7
+  ],
+  "tris": 104
+ },
+ "neon_sign": {
+  "budget": 5000,
+  "max_xyz_blender": [
+   4.43,
+   0.35,
+   8.05
+  ],
+  "min_xyz_blender": [
+   -4.43,
+   -0.17,
+   0.0
+  ],
+  "size_xyz_blender": [
+   8.86,
+   0.52,
+   8.05
+  ],
+  "tris": 492
+ },
+ "roof_bay": {
+  "budget": 5000,
+  "max_xyz_blender": [
+   1.02,
+   4.41,
+   2.73
+  ],
+  "min_xyz_blender": [
+   -1.02,
+   -4.41,
+   -0.12
+  ],
+  "size_xyz_blender": [
+   2.04,
+   8.82,
+   2.85
+  ],
+  "tris": 524
+ },
+ "roof_bay_broken": {
+  "budget": 5000,
+  "max_xyz_blender": [
+   1.02,
+   4.41,
+   2.73
+  ],
+  "min_xyz_blender": [
+   -1.02,
+   -4.41,
+   -0.12
+  ],
+  "size_xyz_blender": [
+   2.04,
+   8.82,
+   2.85
+  ],
+  "tris": 812
+ },
+ "roof_gable": {
+  "budget": 1500,
+  "max_xyz_blender": [
+   4.41,
+   0.16,
+   2.7
+  ],
+  "min_xyz_blender": [
+   -4.41,
+   -0.1,
+   -0.02
+  ],
+  "size_xyz_blender": [
+   8.82,
+   0.26,
+   2.72
+  ],
+  "tris": 124
+ },
+ "utility_pole": {
+  "budget": 1500,
+  "max_xyz_blender": [
+   0.56,
+   1.0,
+   7.05
+  ],
+  "min_xyz_blender": [
+   -0.3,
+   -1.0,
+   0.0
+  ],
+  "size_xyz_blender": [
+   0.86,
+   2.0,
+   7.05
+  ],
+  "tris": 334
+ },
+ "utility_pole_far": {
+  "budget": 300,
+  "max_xyz_blender": [
+   0.13,
+   1.0,
+   7.0
+  ],
+  "min_xyz_blender": [
+   -0.13,
+   -1.0,
+   0.0
+  ],
+  "size_xyz_blender": [
+   0.26,
+   2.0,
+   7.0
+  ],
+  "tris": 24
+ },
+ "utility_wire": {
+  "budget": 800,
+  "max_xyz_blender": [
+   12.0,
+   0.82,
+   6.59
+  ],
+  "min_xyz_blender": [
+   -0.0,
+   -0.81,
+   6.0
+  ],
+  "size_xyz_blender": [
+   12.0,
+   1.63,
+   0.59
+  ],
+  "tris": 144
+ },
+ "utility_wire_far": {
+  "budget": 300,
+  "max_xyz_blender": [
+   12.0,
+   0.83,
+   6.6
+  ],
+  "min_xyz_blender": [
+   -0.0,
+   -0.81,
+   5.99
+  ],
+  "size_xyz_blender": [
+   12.0,
+   1.64,
+   0.61
+  ],
+  "tris": 72
+ },
+ "wire_fence": {
+  "budget": 1500,
+  "max_xyz_blender": [
+   1.94,
+   0.06,
+   1.65
+  ],
+  "min_xyz_blender": [
+   -0.06,
+   -0.07,
+   -0.05
+  ],
+  "size_xyz_blender": [
+   2.0,
+   0.13,
+   1.7
+  ],
+  "tris": 872
+ },
+ "wire_fence_far": {
+  "budget": 300,
+  "max_xyz_blender": [
+   1.94,
+   0.06,
+   1.65
+  ],
+  "min_xyz_blender": [
+   -0.06,
+   -0.07,
+   -0.05
+  ],
+  "size_xyz_blender": [
+   2.0,
+   0.13,
+   1.7
+  ],
+  "tris": 60
+ }
+}

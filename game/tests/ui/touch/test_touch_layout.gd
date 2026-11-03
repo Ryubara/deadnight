@@ -155,6 +155,44 @@ func test_the_melee_button_is_on_screen_clear_of_fire_on_a_phones_540_unit_canva
 		assert_float(gap).is_greater(float(melee[&"radius"]) + float(fire[&"radius"]))
 
 
+func test_the_bots_and_ping_buttons_are_on_screen_clear_of_the_rest_on_a_phones_540_unit_canvas(
+) -> void:
+	var phone := Vector2(1168.5, 540.0)
+	for mirrored in HANDS:
+		var safe := TouchLayout.safe_rect(phone, Vector4.ZERO)
+		var circles := TouchLayout.buttons(safe, 1.0, mirrored)
+		for id in [TouchLayout.BOT_WHEEL, TouchLayout.PING]:
+			var circle: Dictionary = circles[id]
+			var box := Rect2(circle[&"centre"], Vector2.ZERO).grow(circle[&"radius"])
+			(
+				assert_bool(safe.encloses(box))
+				. override_failure_message("%s leaves %s (mirrored %s)" % [id, safe, mirrored])
+				. is_true()
+			)
+			# Clear of every other button.
+			for other: StringName in circles:
+				if other == id:
+					continue
+				var gap: float = (circle[&"centre"] as Vector2).distance_to(
+					circles[other][&"centre"]
+				)
+				gap -= float(circle[&"radius"]) + float(circles[other][&"radius"])
+				(
+					assert_float(gap)
+					. override_failure_message("%s touches %s on %s" % [id, other, phone])
+					. is_greater(0.0)
+				)
+			# Off the view: on the top edge band (the ping, beside Pause) or at the side (the wheel).
+			var centre: Vector2 = circle[&"centre"]
+			(
+				assert_bool(
+					centre.y < phone.y * 0.25 or absf(centre.x - phone.x * 0.5) > phone.x * 0.4
+				)
+				. override_failure_message("%s is over the view on %s" % [id, phone])
+				. is_true()
+			)
+
+
 func test_the_shoulder_button_sits_clear_of_the_thumb_arc_and_the_look_area_stays_free() -> void:
 	for mirrored in HANDS:
 		var circles := _circles(CANVASES[1], Vector4.ZERO, 1.0, mirrored)
