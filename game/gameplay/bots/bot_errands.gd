@@ -88,6 +88,11 @@ var _ammo_until := -INF
 var _waiting_since: Dictionary = {}
 ## Circuit id to the clock when its area was first found empty.
 var _empty_since: Dictionary = {}
+## The breaker the bot set out to throw on, and the clock until which it keeps wanting it: the walk
+## to a breaker that stands outside its area's lamps takes the bot out of the area, and without this
+## the bot would stop wanting the circuit, turn back to the shop, and want it again on the way in.
+var _breaker_id: StringName = &""
+var _breaker_until := -INF
 var _fuelling := false
 var _last_item: StringName = &""
 var _begun := 0.0
@@ -624,6 +629,7 @@ func _circuits(
 	if prompt.get("kind", &"") == &"circuit" and prompt.get("id", &"") == best_id:
 		intent.use = true
 		intent.note = note
+		_commit_breaker(best_id, circuits, now)
 		return true
 	if best_apart <= ARRIVE + 0.5:
 		# At the post but the prompt names another (a door or a spot is nearer): give it a moment.
@@ -633,13 +639,25 @@ func _circuits(
 			_denied["circuit:%s" % best_id] = now + BACK_OFF
 			_post_arrived = -1.0
 			return false
+		_commit_breaker(best_id, circuits, now)
 		return true
 	if _cannot_reach(_shop.circuit_stands[best_id], now):
 		return false
 	intent.goal = _shop.circuit_stands[best_id]
 	intent.goal_radius = ARRIVE
 	intent.note = note
+	_commit_breaker(best_id, circuits, now)
 	return true
+
+
+## Keeps the breaker wanted while the bot is on its way to throw it on (for one errand limit from
+## the start); one the bot goes to throw off is not kept: it would be thrown back on at once.
+func _commit_breaker(circuit_id: StringName, circuits: Dictionary, now: float) -> void:
+	if circuits.get(circuit_id, false):
+		return
+	if circuit_id != _breaker_id or now >= _breaker_until:
+		_breaker_id = circuit_id
+		_breaker_until = now + ERRAND_LIMIT
 
 
 ## Whether the bot wants `circuit_id` on. The field's stays on; an area's is on while a person is in
@@ -654,6 +672,8 @@ func _wants_circuit(
 		return fraction > 0.0 or on_now
 	if not frame.get("doors", []).has(door):
 		return false
+	if on_now and circuit_id == _breaker_id:
+		_breaker_id = &""
 	var line := _shop.fuel.low_fraction + (0.0 if on_now else FILL_MARGIN)
 	if fraction < line:
 		return false
@@ -661,7 +681,8 @@ func _wants_circuit(
 		_empty_since.erase(circuit_id)
 		return true
 	if not on_now:
-		return false
+		# The bot is on its way to this breaker and the walk took it out of the area: it goes on.
+		return circuit_id == _breaker_id and beliefs.now < _breaker_until
 	if not _empty_since.has(circuit_id):
 		_empty_since[circuit_id] = beliefs.now
 	return beliefs.now - float(_empty_since[circuit_id]) < AREA_EMPTY

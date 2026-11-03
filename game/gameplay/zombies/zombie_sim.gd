@@ -22,8 +22,9 @@ const COINCIDENT_DISTANCE := 0.001
 const _PAIR_ANGLE_A := 0.7548776662
 const _PAIR_ANGLE_B := 0.5698402910
 ## How far above the floor the navigation map's path points run (the baker's walkable surface sits
-## a cell and a bit over the geometry's top): taken off a path point to get the ground a zombie
-## stands on. Measured on the second map, whose floors are at 0 and 3.4 m.
+## a cell and a bit over the geometry's top), for a pathing that does not say (`ground_offset`):
+## taken off a path point to get the ground a zombie stands on. Measured on the second map, whose
+## floors are at 0 and 3.4 m.
 const NAV_LIFT := 0.35
 ## Metres over the feet at which a swing is judged to have a clear way to its target: over the
 ## second map's counter and racks (1.2 m), under its ceiling.
@@ -50,7 +51,8 @@ var board_seconds: float = 1.2
 ## The height of one storey of the map, or 0 for a flat map (the lot). A map with floors above one
 ## another (the second map) sets it: the dead then follow the walking mesh up and down its stairs,
 ## are as far from a player on another floor as the stair makes them, and neither start nor land a
-## swing across a floor. A flat map is untouched, whatever the heights in it.
+## swing across a floor. On a map without it (the lot) the dead still follow the floor of a path
+## from the navigation map (its ramps) and swing only within `tuning.reach_height`.
 var storey := 0.0
 ## `Callable(from: Vector3, to: Vector3) -> float`: metres to the first wall on the way, or -1.0
 ## when clear (a `WorldProbe`). On a map with storeys a zombie swings only at a target it has a
@@ -267,13 +269,43 @@ func _think(
 	zombie.tearing = false
 	if zombie.gate_id != &"":
 		_work_the_boards(zombie, delta, events)
-	# On a flat map the height stays where it spawned; a map with storeys sets it below
-	# (`_ground_height`). A path point sits above the floor by a baker offset, so using its
-	# height needs that taken off first (`NAV_LIFT`).
 	zombie.position += (zombie.velocity + zombie.push) * delta
+	_settle_on_ground(zombie, delta)
 	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
-	if storey > 0.0:
-		zombie.position.y = _ground_height(zombie)
+
+
+## Lifts or lowers the zombie to the floor its path runs on, at most `tuning.climb_speed` a second.
+## The path lies on the navigation mesh, above the floor by `pathing.ground_offset()` (on a map with
+## storeys and a pathing that does not say, `NAV_LIFT`); the height is read off the segment of the
+## path the zombie is on, so a ramp or a stair is a ramp. A zombie that kept the height it spawned
+## at walked the booth's ramp under it: the next repath snapped its ground-level position to the
+## floor beside the ramp, and that path led back to the ramp's foot. A path that is a straight line
+## to a target (no ground offset) carries no floor, and the zombie keeps its height.
+func _settle_on_ground(zombie: ZombieBody, delta: float) -> void:
+	var offset := pathing.ground_offset()
+	if is_nan(offset) and storey > 0.0:
+		offset = NAV_LIFT
+	if is_nan(offset) or zombie.path.is_empty() or not zombie.is_alive():
+		return
+	var ground := _ground_under(zombie) - offset
+	zombie.position.y = move_toward(zombie.position.y, ground, tuning.climb_speed * delta)
+
+
+## The height of the path under the zombie: the segment it walks is the one that ends at its
+## waypoint, and the height is where the zombie's shadow falls along it.
+func _ground_under(zombie: ZombieBody) -> float:
+	var path := zombie.path
+	var to_index := mini(zombie.path_index, path.size() - 1)
+	if to_index == 0:
+		return path[0].y
+	var from := path[to_index - 1]
+	var to := path[to_index]
+	var along := Vector2(to.x - from.x, to.z - from.z)
+	var length_squared := along.length_squared()
+	if length_squared < COINCIDENT_DISTANCE * COINCIDENT_DISTANCE:
+		return to.y
+	var here := Vector2(zombie.position.x - from.x, zombie.position.z - from.z)
+	return lerpf(from.y, to.y, clampf(here.dot(along) / length_squared, 0.0, 1.0))
 
 
 ## The nearest lure that calls this zombie, or null: one within its radius, unless the zombie is
@@ -358,32 +390,18 @@ func _ground_speed(zombie: ZombieBody) -> float:
 	return rounds.speed_on_ground(zombie.speed, zombie.lit) if rounds != null else zombie.speed
 
 
-## The ground a zombie stands on after it moved: along the segment of its path it is on, from the
-## last point it passed to the next, so a stair is a ramp. Where there is no path it stays.
-func _ground_height(zombie: ZombieBody) -> float:
-	var path := zombie.path
-	if path.is_empty():
-		return zombie.position.y
-	var next := mini(zombie.path_index, path.size() - 1)
-	if next == 0:
-		return path[0].y - NAV_LIFT
-	var from := path[next - 1]
-	var span := _flat(from, path[next])
-	var share := 1.0 if span < COINCIDENT_DISTANCE else _flat(from, zombie.position) / span
-	return lerpf(from.y, path[next].y, clampf(share, 0.0, 1.0)) - NAV_LIFT
-
-
 ## Puts the sim on a map with storeys (`storey`, 0 for none) and the way it sees walls (`sight`).
 func set_floors(height: float, probe: Callable) -> void:
 	storey = height
 	sight = probe
 
 
-## Whether a zombie at `a` may swing at a target at `b`: always on a flat map; else within half a
-## storey in height and, when the target is near enough to be struck, with no wall between them.
+## Whether a zombie at `a` may swing at a target at `b`: on a flat map, within `reach_height` (the
+## lot's roost floor is over the heads of the dead under it); else within half a storey in height
+## and, when the target is near enough to be struck, with no wall between them.
 func _can_swing(a: Vector3, b: Vector3) -> bool:
 	if storey <= 0.0:
-		return true
+		return absf(a.y - b.y) <= tuning.reach_height
 	if absf(a.y - b.y) > storey * 0.5:
 		return false
 	if not sight.is_valid() or _flat(a, b) > tuning.reach + tuning.strike_slack + SWING_SLACK:
@@ -479,7 +497,11 @@ func _push_on(zombie: ZombieBody, radius: float) -> Vector3:
 				# Most of the neighbours in the nine cells are farther than the radius: no square
 				# root for them.
 				var away := here - other.position
-				if away.x * away.x + away.z * away.z < radius_squared:
+				# One above the other (the ramp over the floor beside it) do not touch.
+				if (
+					away.x * away.x + away.z * away.z < radius_squared
+					and absf(away.y) < tuning.separation_height
+				):
 					push += _push_from(zombie, other, radius)
 	# A pile of coincident zombies adds up a push from each; the sum is bounded so no tick throws one.
 	return push.limit_length(tuning.separation_max_speed)

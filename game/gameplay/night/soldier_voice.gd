@@ -1,11 +1,12 @@
 class_name SoldierVoice
 extends Node
-## The soldiers talk: a person reacting to what just happened, made only from what the server sent
-## (like `WeaponSounds`). Each event of the night becomes one moment (`SoldierMoments`),
-## `VoiceDirector` says whether it is voiced and which take, and the take plays on the Voice bus:
-## flat for the player at this screen (their voice is in their head), where they stand for a
-## teammate. It holds no game state and asks the server nothing. The design is
-## `docs/design/audio.md`.
+## The soldiers talk, each in their own voice (the male or the female take set: `voice` in the
+## player's frame entry, `SoldierVoiceCatalog.voice_of`): a person reacting to what just happened,
+## made only from what the server sent (like `WeaponSounds`). Each event of the night becomes one
+## moment (`SoldierMoments`), `VoiceDirector` says whether it is voiced and which take, and the
+## take plays on the Voice bus: flat for the player at this screen (their voice is in their head),
+## where they stand for a teammate. It holds no game state and asks the server nothing. The design
+## is `docs/design/audio.md`.
 
 ## A voice comes from a player's head.
 const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
@@ -16,9 +17,9 @@ const HEAD_LIFT := Vector3(0.0, 1.6, 0.0)
 var play := Callable()
 var director := VoiceDirector.new()
 var schedule := SoundSchedule.new()
-## Every player's look (the night's `LookRegistry`): a soldier speaks with the voice of their
-## character (`SoldierVoiceCatalog.VOICES`). Without it, or for a player it has not heard of yet,
-## the Soldier as built.
+## Every player's look (the night's `LookRegistry`): a player whose frame entry names no `voice`
+## speaks with the voice of the character they chose (`CharacterLook.body`, which is also the
+## voice's name). Without it, the male voice.
 var looks: LookRegistry
 
 var _t := NightSoundTuning.current()
@@ -56,18 +57,8 @@ func step(delta: float) -> void:
 		say(&"idle", _state.player_id)
 
 
-## The character whose voice `speaker` (a player id) speaks with.
-func voice_of(speaker: int) -> StringName:
-	if looks != null and looks.looks.has(speaker):
-		return (looks.looks[speaker] as CharacterLook).body()
-	return LookCatalog.MALE
-
-
-## Says `event` as `speaker` (a player id) if the director allows it. Returns whether it played. A
-## character with no voice yet says nothing, and uses up no turn of the director's.
+## Says `event` as `speaker` (a player id) if the director allows it. Returns whether it played.
 func say(event: StringName, speaker: int) -> bool:
-	if not SoldierVoiceCatalog.has_voice(voice_of(speaker)):
-		return false
 	var player := _player(speaker)
 	if bool(player.get("downed", false)) and event != &"downed":
 		return false
@@ -80,8 +71,9 @@ func say(event: StringName, speaker: int) -> bool:
 		at = player["pos"] + HEAD_LIFT
 	var priority: int = SoldierVoiceCatalog.moments()[event]["priority"]
 	var cut := director.would_interrupt(priority)
+	var voice := SoldierVoiceCatalog.voice_of(player)
 	var started: Variant = _play(
-		SoldierVoiceCatalog.take_id(event, take),
+		SoldierVoiceCatalog.take_id(event, take, voice),
 		at,
 		SoundCatalog.mix().own_voice_db if own else 0.0
 	)
@@ -90,7 +82,7 @@ func say(event: StringName, speaker: int) -> bool:
 	if cut and is_instance_valid(_speaking) and _speaking.has_method(&"stop"):
 		_speaking.stop()
 	_speaking = started
-	director.commit(event, speaker, take, SoldierVoiceCatalog.length(event, take))
+	director.commit(event, speaker, take, SoldierVoiceCatalog.length(event, take, voice))
 	return true
 
 
@@ -219,8 +211,22 @@ func _nearest_standing(who: int) -> int:
 	return best
 
 
+## The voice of the character player `id` chose (`SoldierVoiceCatalog.MALE` when their look has not
+## arrived), the one their frame entry gets when it names none.
+func look_voice(id: int) -> StringName:
+	if looks != null and looks.looks.has(id):
+		return (looks.looks[id] as CharacterLook).body()
+	return SoldierVoiceCatalog.MALE
+
+
+## The frame entry of player `id`, with the `voice` of the character they chose when the entry
+## names none.
 func _player(id: int) -> Dictionary:
-	return _state.frame.get("players", {}).get(id, {})
+	var player: Dictionary = _state.frame.get("players", {}).get(id, {})
+	if not player.has("voice") and looks != null and looks.looks.has(id):
+		player = player.duplicate()
+		player["voice"] = look_voice(id)
+	return player
 
 
 func _play(id: StringName, at: Variant, extra_db: float) -> Variant:

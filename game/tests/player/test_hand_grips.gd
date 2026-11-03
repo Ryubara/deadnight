@@ -139,6 +139,22 @@ func test_every_model_has_a_grip_at_its_hold_size() -> void:
 		assert_str(HandGrip.for_name(model).trigger_finger).is_not_empty()
 
 
+func test_the_hands_are_measured_on_the_near_meshes_only() -> void:
+	# The far level of detail (#139) is hidden by its range, not by `visible`: measured with it, a
+	# fingertip 6.9 mm off the rifle passed on the decimated hand's longer tip (#716).
+	var far := SoldierLook.far_meshes(_player)
+	assert_bool(far.is_empty()).override_failure_message("no far meshes found").is_false()
+	var measured := _contact.meshes()
+	assert_bool(measured.is_empty()).is_false()
+	for mi: MeshInstance3D in measured:
+		(
+			assert_bool(mi in far.values())
+			. override_failure_message("%s is the far level of detail" % mi.name)
+			. is_false()
+		)
+		assert_float(mi.visibility_range_begin).is_equal(0.0)
+
+
 func test_hands_hold_every_weapon_in_every_pose() -> void:
 	var fails: Array[String] = []
 	for id in WEAPONS:

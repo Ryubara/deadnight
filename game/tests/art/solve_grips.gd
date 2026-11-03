@@ -5,7 +5,10 @@
 ## `tests/player/test_hand_grips.gd`.
 ##
 ##     godot --headless --path game -s res://tests/art/solve_grips.gd
-##         [-- --only revolver,crowbar] [--dry] [--dump <dir>]
+##         [-- --only revolver,crowbar] [--dry] [--dump <dir>] [--fingers]
+## `--fingers` keeps each model's written hold and left hand and solves the right hand's fingers
+## only: the sprint carries are built from the hold (`tools/blender/soldier_clips.py`), so a finger
+## fix that keeps it needs no new carry.
 ## Give it a timeout: a script that fails to parse leaves headless Godot running. `--dump` writes
 ## an OBJ of each solved hand and `table.json` for `tools/blender/render_grips.py`.
 ## Prints a `GRIP` line per model and a `FINGER` line per finger; `--dry` writes nothing.
@@ -39,6 +42,8 @@ func _init() -> void:
 			_args["dry"] = true
 		elif argv[i] == "--dump":
 			_args["dump"] = argv[i + 1]
+		elif argv[i] == "--fingers":
+			_args["fingers"] = true
 	_run.call_deferred()
 
 
@@ -62,6 +67,10 @@ func _run() -> void:
 		spec["name"] = name
 		var started := Time.get_ticks_msec()
 		var grip := HandGrip.new()
+		var written := HandGrip.for_name(name) if _args.has("fingers") else null
+		if written != null:
+			spec["keep_hold"] = written.hold
+			grip = written.duplicate(true) as HandGrip
 		grip.model_scale = spec.model_scale
 		var right := solver.solve("R", _instance(scene), spec)
 		grip.hold = right.hold
@@ -70,7 +79,9 @@ func _run() -> void:
 		grip.trigger_finger = right.trigger_finger
 		rows.append(right.row)
 		var model := _instance(scene)
-		if model.find_child("Support", true, false) != null:
+		if written != null:
+			model.free()
+		elif model.find_child("Support", true, false) != null:
 			var left_spec := spec.duplicate()
 			left_spec["grip"] = "Support"
 			left_spec.erase("reference")

@@ -150,6 +150,13 @@ func grenades_in_flight() -> int:
 	return _grenade_views.size()
 
 
+## Where the grenade with this id is now on this client (a Vector3), or null when none is drawn:
+## the fuse's beep comes from there.
+func grenade_position(grenade_id: int) -> Variant:
+	var grenade: GrenadeView = _grenade_views.get(grenade_id)
+	return grenade.state.position if grenade != null else null
+
+
 ## How many projectiles (flares) are in the air on this client.
 func projectiles_in_flight() -> int:
 	return _projectile_views.size()
@@ -203,6 +210,8 @@ func _on_event(event: Dictionary) -> void:
 			_step_projectiles()
 		&"grenade_thrown", &"grenade_dropped":
 			_launch_grenade(event)
+		&"grenade_struck":
+			_strike_grenade(event)
 		&"grenade_exploded":
 			_blast(event)
 		&"blast_hit":
@@ -313,8 +322,21 @@ func _launch_grenade(event: Dictionary) -> void:
 
 func _step_grenades() -> void:
 	for view in _grenade_views.values():
-		view.state.step(step, _cast.callable())
+		if view.settled:
+			view.settled = false
+		else:
+			view.state.step(step, _cast.callable())
 		view.follow(step)
+
+
+## A zombie stopped a grenade: the copy flies without the dead, so it takes the server's grenade as
+## it stands at the end of that tick and skips this tick's own step (the frame follows the event).
+func _strike_grenade(event: Dictionary) -> void:
+	var view: GrenadeView = _grenade_views.get(event["grenade_id"])
+	if view == null:
+		return
+	view.state = GrenadeState.from_dict(_grenade_def, event["state"])
+	view.settled = true
 
 
 func _blast(event: Dictionary) -> void:

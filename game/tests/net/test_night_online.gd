@@ -232,13 +232,16 @@ func test_her_character_is_seen_by_the_other_player_and_has_her_voice() -> void:
 	expected.sort()
 	assert_array(_shown(a._body.get_node("Model"))).is_equal(expected)
 	assert_array(shown).is_equal(expected)
-	# The voice each screen picks: hers has no lines yet (#679), his is his.
+	# The voice each screen picks: hers is the female voice (voxf_), his the male one.
 	for night: Night in [a, b]:
 		var voice := SoldierVoice.new()
 		voice.looks = night.looks
-		assert_str(String(voice.voice_of(1))).is_equal("female")
-		assert_str(String(voice.voice_of(2))).is_equal("male")
-		assert_bool(SoldierVoiceCatalog.has_voice(voice.voice_of(1))).is_false()
+		assert_str(String(SoldierVoiceCatalog.voice_of({"voice": voice.look_voice(1)}))).is_equal(
+			"female"
+		)
+		assert_str(String(SoldierVoiceCatalog.voice_of({"voice": voice.look_voice(2)}))).is_equal(
+			"male"
+		)
 		voice.free()
 
 

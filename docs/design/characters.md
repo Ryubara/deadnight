@@ -74,9 +74,10 @@ the colours and swaps a cut of the other character's for this one's own (crew cu
 is part of the look, so it is saved with it when the player leaves the tab (#489), sent on join and drawn by every
 client, and the menu's soldier wears it at once.
 
-**Voice.** A soldier speaks with their character's voice (`SoldierVoiceCatalog.VOICES`). Hers is #679: until her lines
-exist she says nothing, never his voice (`SoldierVoice.say` returns before the director, so her silence takes no turn
-from a teammate).
+**Voice.** A soldier speaks with their character's voice: her lines are the female takes (`voxf_`, #679), his the male
+ones (`vox_`). `SoldierVoice` gives a player whose frame entry names no `voice` the voice of the character they chose
+(`look_voice`, read from the night's look table), so choosing her is all it takes; a `voice` in the frame wins, and a
+player whose look has not arrived yet speaks as the male Soldier.
 
 **Checked** (`tools/blender/measure_soldier_body.py`, all 55 clips of the Soldier's files, his against hers): her
 trunk stretches no more than his (the 99th percentile edge, within 10 %) in every clip; her cuts sit in the collar no

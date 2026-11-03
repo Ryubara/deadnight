@@ -104,6 +104,65 @@ func test_a_take_is_a_sound_of_the_catalog_and_names_its_moment() -> void:
 	assert_object(SoundCatalog.get_def(_heard[0]["id"])).is_not_null()
 
 
+## A frame in which `OWN` speaks with `own_voice` and `MATE` with `mate_voice`.
+func _voices(own_voice: StringName, mate_voice: StringName) -> void:
+	(
+		_state
+		. apply_events(
+			[
+				{
+					"type": &"frame",
+					"phase": GameRules.Phase.ACTIVE,
+					"players":
+					{
+						OWN:
+						{"pos": Vector3.ZERO, "downed": false, "health": 100.0, "voice": own_voice},
+						MATE:
+						{"pos": AT_MATE, "downed": false, "health": 100.0, "voice": mate_voice},
+					},
+					"zombies": [],
+				}
+			]
+		)
+	)
+	_state.zombies.assign([{"position": Vector3(4.0, 0.0, 0.0)}])
+
+
+func test_a_player_speaks_with_the_voice_their_frame_names() -> void:
+	_voices(&"female", &"male")
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	assert_str(_heard[0]["id"]).starts_with("voxf_reload_")
+	_settle()
+	assert_bool(_say_until(&"reload", MATE)).is_true()
+	assert_str(_heard[1]["id"]).starts_with("vox_reload_")
+	_settle()
+	_voices(&"male", &"female")
+	assert_bool(_say_until(&"dry", MATE)).is_true()
+	assert_str(_heard[2]["id"]).starts_with("voxf_dry_")
+
+
+func test_every_moment_is_voiced_for_both_characters_with_a_file_for_each() -> void:
+	for voice: StringName in SoldierVoiceCatalog.voices():
+		_voices(voice, voice)
+		for event: StringName in SoldierVoiceCatalog.events():
+			_settle(30.0)
+			var before := _heard.size()
+			(
+				assert_bool(_say_until(event, OWN))
+				. override_failure_message("%s %s" % [voice, event])
+				. is_true()
+			)
+			var id: StringName = _heard[before]["id"]
+			assert_str(id).starts_with(SoldierVoiceCatalog.VOICES[voice]["prefix"] + String(event))
+			var def := SoundCatalog.get_def(id)
+			assert_object(def).override_failure_message(String(id)).is_not_null()
+			(
+				assert_bool(ResourceLoader.exists(def.path_for(1)))
+				. override_failure_message(String(id))
+				. is_true()
+			)
+
+
 func test_the_local_player_is_flat_and_a_little_lower() -> void:
 	assert_bool(_say_until(&"reload", OWN)).is_true()
 	assert_object(_heard[0]["at"]).is_null()
@@ -353,35 +412,30 @@ func _wearing(bodies: Dictionary) -> LookRegistry:
 	return looks
 
 
-func test_his_character_speaks_with_his_voice() -> void:
-	_voice.looks = _wearing({OWN: LookCatalog.MALE, MATE: LookCatalog.MALE})
-	assert_str(String(_voice.voice_of(MATE))).is_equal("male")
-	assert_bool(_voice.say(&"reload", MATE)).is_true()
-	(
-		assert_bool(String(_heard[0]["id"]).begins_with(SoldierVoiceCatalog.PREFIX + "reload_"))
-		. is_true()
-	)
-	assert_bool(SoldierVoiceCatalog.has_voice(LookCatalog.MALE)).is_true()
-
-
-## Her lines are #679: until they exist she says nothing, and never in his voice.
-func test_her_character_says_nothing_until_her_lines_exist_never_his_voice() -> void:
+func test_the_character_a_player_chose_sets_the_voice_they_speak_with() -> void:
 	_voice.looks = _wearing({OWN: LookCatalog.FEMALE, MATE: LookCatalog.MALE})
-	assert_str(String(_voice.voice_of(OWN))).is_equal("female")
-	assert_bool(SoldierVoiceCatalog.has_voice(LookCatalog.FEMALE)).is_false()
-	for event: StringName in SoldierVoiceCatalog.events():
-		assert_bool(_voice.say(event, OWN)).is_false()
-		_settle()
-	_tell({"type": &"reload_started", "shooter_id": OWN, "weapon_id": &"rifle", "seconds": 2.0})
-	_tell(_hurt(OWN))
+	assert_str(String(_voice._player(OWN)["voice"])).is_equal("female")
+	assert_str(String(_voice._player(MATE)["voice"])).is_equal("male")
+	# She speaks with her lines (voxf_), he with his (vox_), for the same moment.
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	assert_str(String(_heard[0]["id"])).starts_with("voxf_reload_")
 	_settle()
-	assert_array(_heard).is_empty()
-	# Her silence takes no turn from anyone else: the teammate beside her is heard at once.
-	assert_bool(_voice.say(&"reload", MATE)).is_true()
-	assert_int(_heard.size()).is_equal(1)
+	_heard.clear()
+	assert_bool(_say_until(&"reload", MATE)).is_true()
+	assert_str(String(_heard[0]["id"])).starts_with("vox_reload_")
+	assert_object(SoundCatalog.get_def(_heard[0]["id"])).is_not_null()
+
+
+## What the frame entry names wins over the look.
+func test_a_voice_the_frame_names_wins_over_the_look() -> void:
+	_voice.looks = _wearing({OWN: LookCatalog.FEMALE, MATE: LookCatalog.FEMALE})
+	_voices(&"male", &"male")
+	assert_bool(_say_until(&"reload", OWN)).is_true()
+	assert_str(String(_heard[0]["id"])).starts_with("vox_reload_")
 
 
 func test_a_player_whose_look_has_not_arrived_has_his_voice() -> void:
 	_voice.looks = _wearing({OWN: LookCatalog.FEMALE})
-	assert_str(String(_voice.voice_of(MATE))).is_equal("male")
-	assert_bool(_voice.say(&"reload", MATE)).is_true()
+	assert_str(String(_voice.look_voice(MATE))).is_equal("male")
+	assert_bool(_say_until(&"reload", MATE)).is_true()
+	assert_str(String(_heard[0]["id"])).starts_with("vox_reload_")
