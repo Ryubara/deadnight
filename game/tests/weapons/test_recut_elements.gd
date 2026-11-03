@@ -21,10 +21,11 @@ func before_test() -> void:
 func _start(spec: UpgradeTuning) -> void:
 	var tuning := RulesFixture.tuning()
 	tuning.upgrade = spec
+	tuning.rounds.count_base = 12.0
 	_rules = RulesFixture.make_rules(1, 1234, tuning)
-	RulesFixture.into_round_one(_rules)
-	RulesFixture.run(_rules, WeaponsFixture.SPAWN_SECONDS * FIVE)
 	_server = CombatServer.new(WeaponsFixture.all_defs(), _rules, Callable(), WeaponsFixture.SEED)
+	RulesFixture.into_round_one(_rules)
+	RulesFixture.run(_rules, WeaponsFixture.SPAWN_SECONDS * FIVE * 2.0)
 	_ids = _rules.zombie_ids().slice(0, FIVE)
 	assert_int(_ids.size()).is_equal(FIVE)
 
@@ -67,7 +68,7 @@ func test_a_re_cut_revolver_hit_bursts_on_the_zombies_beside_the_one_it_hit() ->
 	var near := _damage_of(events, _ids[1])
 	assert_array(near).has_size(1)
 	assert_str(near[0]["element"]).is_equal("explosive")
-	var reach := Hitbox.distance_from(CHEST, placed[_ids[1]], 0.0)
+	var reach := Hitbox.distance_from(hit[0]["point"], placed[_ids[1]], 0.0)
 	var share := lerpf(1.0, 0.5, reach / 2.0)
 	assert_float(near[0]["damage"]).is_equal_approx(def.damage * 0.5 * share, 0.01)
 	assert_float(near[0]["damage"]).is_between(def.damage * 0.25, def.damage * 0.5)
