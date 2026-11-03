@@ -283,6 +283,9 @@ number comes from) follows these numbers. They live in `tools/blender/smallmap_k
 | Debris blocker | furniture and rubble filling the opening in parts named in the order they come away, gaps at the top for the far room's light, 1,300 tris |
 | Lamps | a bulb is the lamp's Popcorn swatch, lit by an emission texture of the atlas's layout (`KitLamp`), never a second material; a pendant's shade is 0.6 m with its rim at 2.15 m, under 600 triangles |
 | Light | one or two real lights a room; every other light is an additive card on the lot's `glow.gdshader` or `beam.gdshader` (pools, haze, moon shafts with bar shadows, the far room's glow, chalk), so it takes no light slot and builds no new GL program ([lamps and light cards](../research/maps/small-map-art.md#lamps-and-light-cards)) |
+| Roof | 2 m bays along the ridge, an 8 m span outside to outside at 30 degrees, a 0.4 m overhang, the ridge 2.59 m over the wall top; rafters at 1 m centres; boards at a bay's end lap 20 mm into the next so no crack shows the sky |
+| Outside | bare trees 4.7 to 8.4 m, a utility pole 7 m with 12 m wire spans, wire fence runs of 2 m with a post, coils 2 m; a far level of detail of 300 tris or fewer for what the backdrop repeats |
+| Backdrop | past the yard's fence, unshaded (`backdrop_haze.gdshader`: lit by the moon and ambient, its own capped haze), one MultiMesh a model; at most 75k triangles and 40 drawing nodes in all ([the backdrop](../research/maps/small-map-art.md#the-backdrop)) |
 
 ## Measuring again
 
