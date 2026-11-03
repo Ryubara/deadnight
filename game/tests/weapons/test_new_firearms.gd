@@ -364,3 +364,15 @@ func test_the_crane_and_the_bench_load_the_guns_models_when_first_needed() -> vo
 	assert_bool(crane._models.has(&"weapon_mp5")).is_true()
 	assert_bool(crane._models.has(&"weapon_pump_870")).is_true()
 	crane.free()
+
+
+func test_each_gun_is_carried_through_its_own_sprint_clip() -> void:
+	var file := FileAccess.get_file_as_string("res://assets/characters/soldier/sprint/clips.json")
+	for id in IDS:
+		var clip := StringName(SprintCarry.PREFIX + String(id))
+		assert_array(SprintCarry.CLIPS).override_failure_message(String(clip)).contains([clip])
+		assert_bool(file.contains(String(clip))).override_failure_message(String(clip)).is_true()
+	# A gun held as another's model (until its own lands) is carried as that model is.
+	var hold := WeaponHoldMap.hold_for(&"mp5")
+	var own := StringName(SprintCarry.PREFIX + hold.scene.get_file().get_basename())
+	assert_array(SprintCarry.CLIPS).contains([own])

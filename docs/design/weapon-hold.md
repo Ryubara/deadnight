@@ -143,7 +143,8 @@ the muzzle flash today ([Shot feedback](shot-feedback.md)), a tracer or smoke la
 Each weapon id of the catalogue has **its own hold file**, `game/gameplay/player/holds/<id>.tres` (class, model, size,
 grip), so no two weapons share a model: the crowbar is not the bat, the Tommy gun is not the lever rifle.
 `WeaponHoldMap` (`game/gameplay/player/weapon_hold_map.gd`) gives the clip class of each id (rifle Rifle, shotgun
-Shotgun, SMG Rifle, revolver and flare gun Pistol, every melee weapon Melee); `PlayerAnimation.equip(id)`
+Shotgun, SMG Rifle, the PPSh, MP5, M4A1, M249 and .50 calibre Rifle, the 870 pump Shotgun, revolver and flare gun
+Pistol, every melee weapon Melee); `PlayerAnimation.equip(id)`
 takes the class's clips and the id's own hold (`WeaponHoldMap.hold_for`). A hold whose `scene` is not in
 `assets/weapons/` yet
 (`WeaponHold.has_model`) leaves the hand empty, never another weapon's model: `WeaponHoldMap.no_model()` lists those
@@ -155,6 +156,13 @@ calls `equip` on that player's body when it changes: the local player and the ot
 who joins late shows the weapon of his first frame. The test is `game/tests/night/test_weapon_equip.gd` (each id taken
 in hand through the real combat action, for the local player and a second one, by a swap, and no two ids sharing a
 model).
+
+**The six firearms of #793** have a hold each (`holds/{ppsh,mp5,m4a1,m249,fifty_cal,pump_870}.tres`), from the model batches'
+numbers ([the holds of the nine](../research/weapon-models.md)): `model_scale` 1.3 (the .50's 1.21 with its size factor
+0.93, the one exception of `test_weapon_hold.gd`), `real_length` the drawn length (the M249's stock is shorter than the
+real one so its butt stays at the shoulder), the support just ahead of the magazine, the box or the pump so the left hand
+clears it. The .50 is as long as the Soldier is tall (1.40 m in the game). A weapon whose model has not landed holds
+another's (`STAND_INS` in `test_weapon_equip.gd` lists them, and only they may share a model).
 
 **The shoulder camera sees a gun end-on.** From behind the shoulder, with the barrel converging on the crosshair, every
 gun in the aim pose is a fist and the tip of a barrel; the revolver is no different from the rifle. The side, rear and
