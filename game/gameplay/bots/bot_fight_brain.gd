@@ -29,6 +29,16 @@ const THROW_WATCH := 2.5
 ## How much of the way to the people (or home) bends a retreat (so it circles the field, not a
 ## corner).
 const HOME_BEND := 0.9
+## A bot following a person that has got far from them (a pack on its heels led it away) bends its
+## retreat toward them more the farther it is: from `FAR_BEND_FROM` metres (the gate of the soak is
+## 25) the pull grows to `FAR_BEND` for each dead the steering feels at `FAR_BEND_FULL`. It is per
+## dead because the steering adds up what each one pushes (a pull of 8 does not turn the flight of a
+## bot with eight on its heels). The retreat never takes a heading that closes on the dead
+## (`BotSteering.BOXED_IN`), so the pull only turns the flight round the pack, and the pack is led
+## to the person instead of away from them (#784).
+const FAR_BEND_FROM := 16.0
+const FAR_BEND_FULL := 36.0
+const FAR_BEND := 4.0
 ## Metres from the nearest dead within which the bot counts itself in a fight (the follow band is
 ## the closer one), and the seconds between two looks at where to stand.
 const FIGHT_RANGE := 12.0
@@ -90,6 +100,8 @@ var _follow: BotFollow
 var _roam: BotRoam
 ## Whether the order in force is `HOLD` (set each think; `_step_away` reads it).
 var _holding := false
+## Whether the order in force is `FOLLOW` and the anchor is a person (set each think).
+var _following := false
 ## Whether the bot has reached its place of the `HOLD` order and stands there.
 var _at_hold := false
 var _steering: BotSteering
@@ -171,6 +183,7 @@ func think(beliefs: BotBeliefs, state: ClientState) -> BotIntent:
 		intent.target_id = marked
 	var order := _standing_order(beliefs)
 	_holding = order == BotOrders.HOLD
+	_following = order == BotOrders.FOLLOW
 	_hunter.watch(beliefs)
 	var people := _people(beliefs, order)
 	var anchor := BotFollow.anchor_of(people)
@@ -414,8 +427,23 @@ func _retreat(here: Vector3, beliefs: BotBeliefs, anchor: Vector3) -> Vector3:
 	var pull := _retreat_pull(here, beliefs, anchor)
 	_steering.room_weight = SAFE_ROOM_WEIGHT if play.prefers_open_ground() else BotSteering.W_ROOM
 	if pull != Vector3.INF:
-		toward = Vector3(pull.x - here.x, 0.0, pull.z - here.z).normalized() * HOME_BEND
+		var bend := HOME_BEND
+		if _following:
+			var felt := 0
+			for threat in threats:
+				if _flat(here, threat["position"]) <= BotSteering.THREAT_RANGE:
+					felt += 1
+			bend = far_bend(_flat(here, pull), mini(felt, BotSteering.THREATS_KEPT))
+		toward = Vector3(pull.x - here.x, 0.0, pull.z - here.z).normalized() * bend
 	return _steering.pick(here, threats, toward, _last_reflex)
+
+
+## How hard a retreat bends toward the person it follows, `distance` metres away with `felt` dead
+## pushing the flight: `HOME_BEND` up to `FAR_BEND_FROM`, `FAR_BEND` for each of them (at least one)
+## from `FAR_BEND_FULL`, and between in a line.
+static func far_bend(distance: float, felt: int) -> float:
+	var far := clampf((distance - FAR_BEND_FROM) / (FAR_BEND_FULL - FAR_BEND_FROM), 0.0, 1.0)
+	return lerpf(HOME_BEND, FAR_BEND * float(maxi(felt, 1)), far)
 
 
 ## Where a retreat bends toward: the people (or the hold's spot), else home. A Safe bot with no one
