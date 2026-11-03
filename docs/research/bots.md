@@ -980,10 +980,54 @@ inside the bodies' margin: bots walked into locker and prop corners. The last tw
 run's rounds differ by seed once the bots behave differently, so a few tenths of a percent between runs is noise;
 compare over all six seeds. Remaining stuck episodes are bot against bot (44 of 98) and no contact (42).
 
-Open: the Concession's east wall (x 9.8 to 10.2) and the soda fountain collider (x 7 to 9.4) leave a 0.4 m slot a
-bot can wedge in (#615).
-
 The bands test reads the Veteran's dodge from a few dozen blows: on `main` four seeds read 0.50 (34 blows due) and ten
 seeds read 0.67 (63), and with the tighter contour four seeds read 0.68 (19) and ten read 0.60 (45). The same fight is
 bit-identical from run to run, so the four-seed number is a draw, not noise to average. The test runs eight seeds
 (dodge 0.61 with the tighter contour, band 0.35 to 0.65). The Veteran's true dodge sits near the top of the band.
+
+### Within 12 m counts only the bots that are up
+
+A bot that is downed or dead cannot follow, and the soak counted its time as far: on seed 3 of `main`, 35 000 of about
+290 000 samples. The soak now also prints `down_ticks` and `within_12m_up` (the share of the samples of bots that were
+up). Six seeds, `--tough=3`, 20 minutes:
+
+| | within 12 m, all samples | within 12 m, bots up |
+| --- | --- | --- |
+| `main` before the new contour | 0.83 to 0.93 | 0.90 to 0.93 (mean 0.92) |
+| the new contour | 0.86 to 0.93 | 0.915 to 0.93 (mean 0.92) |
+
+Of the time a bot that is up is far, 83 to 87% is the follow state, running (a bot that is far runs unless a dead one is
+within 4 m) at about the speed of the person's own run: the person's sprint, a shop trip or a door outpaces the bots,
+and they catch up when it stops. Bots standing still while far (waiting for a path query, or a door) are about 5% of
+that time. Stuck seconds differ by half a point between two runs of one seed on a busy machine (the cause is not
+found; the runs are not bit-identical under load), so compare a change over all six seeds and several runs, not one.
+
+### The goals of #564 after the roam design
+
+Bots roam by default and come to a person for a revive or a ping; Follow, Roam and Hold become player orders (issues
+641 and 642). The goals of #564 are now:
+
+- Stuck seconds under 1% of walking time on seeds 1 to 6 (`--tough=3`).
+- Think p99 under 0.5 ms in the soak on an idle machine, or the budget in [Server cost](#server-cost) changed with the
+  measurement.
+- Within 12 m of the nearest person at 95%: moves to #641, where it belongs to the Follow order (0.92 now, counted over
+  the bots that are up).
+
+### A bot walks round a bot that stands still: not shipped
+
+The idea: of two bots the higher seat gives way, so a bot that meets a lower-seat bot standing still walks into it and
+waits. The rule made a bot give way to any bot slower than 0.6 m/s. Six seeds, `--tough=3`, 20 minutes, on `main`
+with the slot fix (#625):
+
+| | stuck (share of walking time) | worst bot, by seed |
+| --- | --- | --- |
+| without the rule | 1.46% (1.09 to 1.74 by seed) | 1.5 to 3.0% |
+| with the rule | 1.28% (0.89 to 1.61 by seed) | 1.2 to 3.6% |
+
+The 0.18 point gap is inside the half point two runs of one seed differ by, so the rule is not shipped. (An earlier
+trial wedged a bot in the fountain slot; the slot is closed now and the wedge did not come back.) The patch is kept in
+the scratch folder of the task, not in the repository.
+
+The two gates still open on #564 need a quiet machine to settle: stuck under 1% per seed needs several batches of each
+setup to see a change smaller than the noise, and the think p99 read 1 to 14 ms in these runs because other agents
+were running. Measure both with nothing else running.

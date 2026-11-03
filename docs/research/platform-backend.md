@@ -358,6 +358,9 @@ mappings for the backend and each game server.
   defaults to the page's own origin), and the engine's web runtime cancels every key press, so Ctrl+V never makes a
   `paste` event. A page layer takes the paste event and copies from a gesture; the SDK's `shareLink` sends a room's
   code with no clipboard. [Web export](web-export.md#copy-and-paste-inside-a-discord-activity-516).
+  `shareLink` answers when its window is closed, rejects with a plain `{code, message}` object, and never settles on a
+  reply the SDK cannot parse, so the button shows the hint only while Discord has not refused and the lobby's probe
+  line quotes its answer (#627). [Web export](web-export.md#share-in-discord-what-discord-answered-627).
 - Discord's proxy compresses the backend's answers (`Content-Encoding: gzip`), and Godot's `HTTPRequest` then decodes a
   body the browser has decoded already and fails, which the game reads as "Could not reach the game's servers": every
   call through `/api` failed while the backend logged a 200 or 201. `HttpJson` sets `accept_gzip = false`.

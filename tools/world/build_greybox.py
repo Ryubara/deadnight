@@ -777,7 +777,8 @@ def build() -> None:
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
     # The prize crane is not part of the scene: it moves between four places, so `CraneView` draws it.
     # The fountain is drawn by `SodaFountain` (ShopProps); this block is its collision and its place in the walking mesh.
-    block(con, "SodaFountain", 7.0, 9.4, 4.4, 5.4, 1.6, "concession_prop", visible=False)
+    # It runs to the east wall (x 9.8): a 0.4 m slot between them held a bot fast (#615, `test_lot_gaps.gd`).
+    block(con, "SodaFountain", 7.0, 9.8, 4.4, 5.4, 1.6, "concession_prop", visible=False)
     cl = lamps(con, "concession")
     omni(cl, "InteriorW", (-5, 3.3, 3), 1.6, 9, "#ffb866")
     omni(cl, "InteriorE", (5, 3.3, 3), 1.6, 9, "#ffb866")
@@ -844,7 +845,7 @@ def build() -> None:
     )  # fmt: skip
     # The re-cut bench is drawn by `RecutMachine` (ShopProps); this block is its collision and its walking-mesh hull.
     block(booth, "ReCutMachine", 2, 5, 27, 29.4, 1.8, "booth_prop", visible=False)
-    block(booth, "FilmRacks", -3.4, -1, 30, 31.6, 2.2, "booth_prop")
+    block(booth, "FilmRacks", -3.8, -1.4, 30, 31.6, 2.2, "booth_prop")
     block(booth, "Projector", -1.0, 1.0, 24.5, 26.0, 1.3, "booth_prop", 4.05)
     bl = lamps(booth, "booth")
     spot(bl, "ProjectorBeam", (0, 5.4, 22.3), 180, -5.0, 6.0, 100, 7, "#e8f0ff")
@@ -1006,7 +1007,7 @@ def build() -> None:
     shop_spot("SpotSoda", "perk", "tonic_hearty", (8.2, 0, 3.7), 180)
     # Lockers: the avenue (the first one, in the open), the stand, the midway, the yard and the back lot.
     ammo_locker("LockerField", (3.1, -31.0), 270)
-    ammo_locker("LockerStand", (9.2, -1.8), 270)
+    ammo_locker("LockerStand", (9.45, -1.8), 270)
     ammo_locker("LockerMidway", (14.6, 12.0), 270)
     ammo_locker("LockerYard", (31.0, 20.0), 0)
     ammo_locker("LockerBackLot", (-24.0, 18.0), 0)
