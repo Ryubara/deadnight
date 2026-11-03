@@ -17,9 +17,12 @@ const GAP_URGENT := 5.0
 ## in ten seconds on average, and the first of a burst is never held back.
 const WINDOW := 25.0
 const WINDOW_LINES := 2
+## Seconds the contacts are looked over after a new one was made out (a contact is believed only
+## after its reaction time, and a pack of runners comes one by one).
+const SCAN_SECONDS := 1.0
 ## Runners that make a pack worth a call, and the metres inside which a boss is "coming".
 const RUNNERS_MIN := 3
-const BOSS_NEAR := 30.0
+const BOSS_NEAR := 40.0
 ## Share of full health under which a bot in trouble asks for cover, and the zombies on it.
 const COVER_HEALTH := 0.6
 const COVER_ATTACKERS := 2
@@ -34,6 +37,8 @@ var refused_unseen := 0
 var _last := {}
 var _last_any := -INF
 var _times: Array[float] = []
+var _seen_seq := -1
+var _scan_until := -INF
 var _was_holding := false
 var _was_down := false
 
@@ -77,24 +82,42 @@ func plan(
 	lowest_bot: bool
 ) -> Dictionary:
 	var now := beliefs.now
-	var here: Vector3 = me.get("pos", Vector3.ZERO)
-	var believed := _believed(beliefs)
-	var threat := beliefs.nearest_threat(here, profile.memory_seconds)
 	var wanted: Array[Dictionary] = []
 	if holding and not _was_holding:
 		wanted.append({"line": BotSay.REVIVING})
 	_was_holding = holding
-	for contact_id: int in believed:
-		var contact := beliefs.contact(contact_id)
-		if (
-			ZombieModels.is_boss(contact.get("look", ZombieModels.DEFAULT))
+	# Inside the shortest gap nothing can be said: the zombies are not even looked at (a think pays
+	# for this with a crowd in view).
+	if now - _last_any < GAP_URGENT:
+		beliefs.moments.clear()
+		return {}
+	var here: Vector3 = me.get("pos", Vector3.ZERO)
+	var boss := -1
+	var runners: Array[Vector2] = []
+	if beliefs.contact_seq != _seen_seq:
+		_seen_seq = beliefs.contact_seq
+		_scan_until = now + SCAN_SECONDS
+	for id in beliefs.contacts if now <= _scan_until else {}:
+		var contact: Dictionary = beliefs.contacts[id]
+		if not beliefs.is_believed(contact):
+			continue
+		var look: StringName = contact.get("look", ZombieModels.DEFAULT)
+		if look == &"runner":
+			runners.append(Vector2(_flat(here, contact["position"]), float(id)))
+		elif (
+			boss < 0
+			and ZombieModels.is_boss(look)
 			and _flat(here, contact["position"]) <= BOSS_NEAR
 		):
-			wanted.append({"line": BotSay.BOSS_COMING, "subject": contact_id})
-			break
-	var runners := _nearest_runners(beliefs, here, believed)
+			boss = id
+	var believed: Array = []
+	if boss >= 0:
+		believed.append(boss)
+		wanted.append({"line": BotSay.BOSS_COMING, "subject": boss})
 	if runners.size() >= RUNNERS_MIN:
-		wanted.append({"line": BotSay.RUNNERS, "subject": runners[0]})
+		runners.sort()
+		believed.append(int(runners[0].y))
+		wanted.append({"line": BotSay.RUNNERS, "subject": int(runners[0].y)})
 	if _in_trouble(beliefs, me, here):
 		wanted.append({"line": BotSay.COVER_ME})
 	for moment in beliefs.moments:
@@ -111,9 +134,10 @@ func plan(
 			&"breach_open":
 				wanted.append({"line": BotSay.BREACH_OPEN})
 	beliefs.moments.clear()
-	if reloading and threat < 12.0:
+	if reloading and beliefs.nearest_threat(here, profile.memory_seconds) < 12.0:
 		wanted.append({"line": BotSay.RELOADING})
-	if threat == INF and _low_on_rounds(me):
+	var quiet := beliefs.contacts.is_empty() and beliefs.heard.is_empty()
+	if quiet and wanted.is_empty() and _low_on_rounds(me):
 		wanted.append({"line": BotSay.NEED_AMMO})
 	for want in wanted:
 		var action := say(want["line"], now, believed, int(want.get("subject", -1)), here)
@@ -136,28 +160,6 @@ func downed(beliefs: BotBeliefs, me: Dictionary) -> Dictionary:
 ## The bot is on its feet again.
 func up() -> void:
 	_was_down = false
-
-
-func _believed(beliefs: BotBeliefs) -> Array:
-	var ids: Array = []
-	for id in beliefs.contacts:
-		if beliefs.is_believed(beliefs.contacts[id]):
-			ids.append(id)
-	return ids
-
-
-## Ids of the believed runners, nearest first.
-func _nearest_runners(beliefs: BotBeliefs, here: Vector3, believed: Array) -> Array:
-	var pairs: Array[Vector2] = []
-	for id: int in believed:
-		var contact := beliefs.contact(id)
-		if contact.get("look", &"") == &"runner":
-			pairs.append(Vector2(_flat(here, contact["position"]), float(id)))
-	pairs.sort()
-	var ids: Array = []
-	for pair in pairs:
-		ids.append(int(pair.y))
-	return ids
 
 
 ## Hurt, with zombies on it: the believed ones within `ON_SELF` metres, or the ones heard very near.

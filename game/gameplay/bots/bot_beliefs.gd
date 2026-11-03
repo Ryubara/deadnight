@@ -22,6 +22,9 @@ const VERY_NEAR := &"very_near"
 const START_GRENADES := 2
 
 var contacts: Dictionary[int, Dictionary] = {}
+## How many contacts have ever been made out (a counter that moves when a new one appears), so that
+## what only matters at the first sight is looked at then and not every think.
+var contact_seq := 0
 ## `{yaw, range_class, at}` per zombie heard out of sight at the last look: a direction, never a
 ## position.
 var heard: Array[Dictionary] = []
