@@ -18,10 +18,16 @@ const EXPECTED := {
 	&"flare_gun": [&"Pistol", "res://assets/weapons/flare_gun/flare_gun.glb"],
 	&"baseball_bat": [&"Melee", "res://assets/weapons/baseball_bat/baseball_bat.glb"],
 	&"fire_axe": [&"Melee", "res://assets/weapons/fire_axe/fire_axe.glb"],
+	&"mp5": [&"Rifle", "res://assets/weapons/mp5/mp5.glb"],
+	&"ppsh": [&"Rifle", "res://assets/weapons/ppsh/ppsh.glb"],
+	&"m4a1": [&"Rifle", "res://assets/weapons/m4a1/m4a1.glb"],
+	&"m249": [&"Rifle", "res://assets/weapons/m249/m249.glb"],
+	&"fifty_cal": [&"Rifle", "res://assets/weapons/fifty_cal/fifty_cal.glb"],
+	&"pump_870": [&"Shotgun", "res://assets/weapons/pump_870/pump_870.glb"],
 	&"dual_pistols": [&"Dual", "res://assets/weapons/service_pistol/service_pistol.glb"],
 }
 ## A weapon drawn with another's model until its own lands: it may share that model, and is taken
-## off this list with its own glb. None now (the pair has the service pistol, #797).
+## off this list with its own glb. None now: all six of #793 have theirs.
 const STAND_INS := {}
 
 

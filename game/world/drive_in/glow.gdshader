@@ -28,12 +28,20 @@ uniform float shadow = 0.3;
 // A greyscale picture over the card (the red channel), read from `mask_rect` (offset, size) of the texture.
 uniform sampler2D mask : hint_default_white, filter_linear_mipmap, repeat_disable;
 uniform vec4 mask_rect = vec4(0.0, 0.0, 1.0, 1.0);
+// Two world-space clip planes (`GlowClip`): a point is not drawn where dot(point, xyz) > w, so a glow
+// stops at the wall it hangs on or stands near instead of showing in the room behind it. A plane with a
+// zero normal is off (the defaults draw the picture the lot always had).
+uniform vec4 clip_a = vec4(0.0);
+uniform vec4 clip_b = vec4(0.0);
+
+varying vec3 world_at;
 
 void vertex() {
 	if (billboard) {
 		MODELVIEW_MATRIX = VIEW_MATRIX * mat4(
 			INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
 	}
+	world_at = (INV_VIEW_MATRIX * (MODELVIEW_MATRIX * vec4(VERTEX, 1.0))).xyz;
 }
 
 // 1 in the light between bars, 0 in a bar's shadow: `count` bars across 0..1, soft by a little of a cell.
@@ -45,6 +53,12 @@ float bar_light(float at, float count) {
 }
 
 void fragment() {
+	if (dot(world_at, clip_a.xyz) > clip_a.w && dot(clip_a.xyz, clip_a.xyz) > 0.0) {
+		discard;
+	}
+	if (dot(world_at, clip_b.xyz) > clip_b.w && dot(clip_b.xyz, clip_b.xyz) > 0.0) {
+		discard;
+	}
 	float shape;
 	if (card) {
 		vec2 inside = min(UV, 1.0 - UV);

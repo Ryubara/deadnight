@@ -12,7 +12,17 @@ const CATCH_RATE := 12.0
 ## has its own, `Sprint_<model>`, #527), in `soldier_sprint.glb`.
 const PREFIX := "Sprint_"
 const CLIPS: Array[StringName] = [
-	&"Sprint_Rifle", &"Sprint_Shotgun", &"Sprint_Pistol", &"Sprint_Melee", &"Sprint_tommy_gun"
+	&"Sprint_Rifle",
+	&"Sprint_Shotgun",
+	&"Sprint_Pistol",
+	&"Sprint_Melee",
+	&"Sprint_tommy_gun",
+	&"Sprint_ppsh",
+	&"Sprint_mp5",
+	&"Sprint_m4a1",
+	&"Sprint_m249",
+	&"Sprint_fifty_cal",
+	&"Sprint_pump_870",
 ]
 
 var weight := 0.0

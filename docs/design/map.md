@@ -61,18 +61,29 @@ Rules the greybox is built to:
   (three or more) of the reachable areas is reached, and that no way towards any point of a closed area's whole
   footprint (a grid four metres apart, and the samples) enters it: the field, plus the stand and midway once the
   concession is sold, plus each sold door's area.
-- **Nobody leaves by jumping.** The player jumps 1.1 m and a car roof is 1.65 m, so a jump from a roof lifts the feet
-  to 2.75 m: the outer walls (the field's north, west and east fences, the yard's east and the back lot's west) are
-  3.0 m, `PERIMETER_H` in the generator, up from 2.4 m. The fences between the field and the yard and back lot stay
-  2.4 m: nothing reachable stands within a jump of them, and a door's slab is 2.6 m. The plaza's end and side walls
-  are 4.2 m (`PLAZA_WALL_H`): the junk stacked against them reaches 1.71 m and the real body climbs 1.25 m, not the
-  jump's 1.1 m, so a 3.0 m wall was one container and a corner away ([#845](https://github.com/Ryubara/deadnight/issues/845);
-  `test_plaza_escape.gd` runs the old hops and a sweep of hops from the plaza's floor, and pins the margin of 0.5 m over
-  the reach above the tallest prop at each wall). `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump
-  as its climb for each door still closed (and what needs it), finds the platforms a player can reach, checks that no
-  closed slab, closed area's wall, field fence or perimeter wall has its top within a jump of one, and runs the real
-  player body (`PlayerSimulation`, sprinting and jumping) from the middle and edges of every car roof near a perimeter
-  wall. Before the change the body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top).
+- **Nobody leaves by jumping.** The player jumps 1.1 m but the real body gets onto a ledge **1.25 m** high
+  (the step-up at an edge and the capsule's rounded foot add the rest: `tools/world/ledge_probe.gd`, measured by
+  the map review, [#833](https://github.com/Ryubara/deadnight/issues/833)), and a car roof is 1.65 m, so a jump
+  from a roof lifts the feet to 2.9 m: the outer walls (the field's north, west and east fences, the yard's east
+  and the back lot's west) are 3.0 m, `PERIMETER_H` in the generator, up from 2.4 m. So are the midway's fences
+  and alley ends (`MIDWAY_FENCE_H`; they were 2.6 m, and the alley's dumpster at 1.62 m, reached by the barrels
+  beside it at 0.82 m, was a stair over the west fence into the back lot with only the concession bought: four
+  hops, [#846](https://github.com/Ryubara/deadnight/issues/846)). The fences between the field and the yard and
+  back lot stay 2.4 m, and a door's slab is 2.6 m: **nothing reachable stands within 1.25 m of their tops** (a
+  prop is a step too: a platform 0.82 m high lets the body climb to 2.07 m, one 1.62 m high to 2.87 m), and a
+  prop a player can climb is kept far from any taller one. The plaza's end and side walls are 4.2 m
+  (`PLAZA_WALL_H`): the junk stacked against them reaches 1.71 m and a 3.0 m wall was one container and a corner away
+  ([#845](https://github.com/Ryubara/deadnight/issues/845); `test_plaza_escape.gd` runs the old hops and a sweep of
+  hops from the plaza's floor, and pins the margin of 0.5 m over the reach above the tallest prop at each wall).
+  `test_drive_in_jump_reach.gd` bakes the walking mesh with the jump as its climb for each door still closed (and
+  what needs it), finds the platforms a player can reach, checks that no closed slab, closed area's wall, field
+  fence or perimeter wall has its top within a jump of one, and runs the real player body (`PlayerSimulation`,
+  sprinting and jumping) from the middle and edges of every car roof near a perimeter wall. Before the change the
+  body cleared the north fence from a roof (feet at 2.70 m over a 2.40 m top). `test_midway_fence_reach.gd` runs
+  the real body from the ground beside the midway's fences, up to three hops deep, with none, the concession,
+  the concession and the booth, and every door but the road's sold, and fails on a standing place inside a closed
+  area or on top of a wall; it also replays the old hops. (The walking-mesh test above still reads the jump, 1.1
+  m; the map review's [#848](https://github.com/Ryubara/deadnight/issues/848) moves it to 1.25 m.)
 - Zombies spawn only in open areas, and always in the field.
 - Every purchased area adds at least one loop, so buying a door always buys somewhere to run.
 
@@ -620,10 +631,11 @@ Rules the placement keeps, all checked by the world tests:
   and bakes. A `StaticBody3D` would be solid for the player and invisible to the dead.
 - **Clutter has no collision**: cones, pallets, planks, debris, papers, signs, a lone carton, a spilt drum, a gas can,
   the street lights. It never closes a path or makes a slot. A tree is solid only at its trunk (0.3 m, 2.4 m tall).
-- **No stairs out.** A prop a player can jump onto (a crate 0.63 m, a drum 0.82 m, tyres 0.87 m, a barrier 0.5 m) is
-  kept away from anything taller and from low walls: a barrier by a low wall, or a climbable wreck
-  beside it, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box 1.3 m tall (no step at the bonnet),
-  so it cannot be climbed from the ground.
+- **No stairs out.** A prop a player can climb onto (a crate 0.63 m, a drum 0.82 m, tyres 0.87 m, a barrier
+  0.5 m; the body gets onto 1.25 m) is kept away from anything taller, a dumpster (1.62 m) or a container above
+  all, and from low walls (the west alley's drums stand at its open end, 7 m from the dumpster): a barrier by a
+  low wall, or a climbable wreck beside it, failed `test_drive_in_jump_reach.gd`. The wreck's block is one box
+  1.3 m tall (no step at the bonnet), so it cannot be climbed from the ground.
 - **No slots.** Props stand against a wall or touch each other, or leave at least a passage's width: nothing on the
   map is single file, and no prop stands in a door, a breach or its apron, a camera passage or a shop spot.
 
