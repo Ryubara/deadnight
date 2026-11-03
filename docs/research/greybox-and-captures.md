@@ -84,6 +84,12 @@ Where they stand and what they sell is in [the lot](../design/map.md#the-fuel-ca
   (`rules.apply(set_circuit)`) never reach the client, so pass them to `night.state.apply_events` or the lamps stay lit.
 - One rig scene and a user argument (`-- --view=top`) give every view from one command, so a layout change is
   re-captured by rerunning the same list.
+- **A capture exits with code 0.** A tour that saved every frame and then exited with 139 (0xC0000005, #667) had set
+  `MainMenu.board_factory` (a static variable) to a lambda of its own script and quit without clearing it; the engine frees
+  the tour's script before the game's statics and quitting released a dead lambda. Clear every hook a capture sets
+  (`= Callable()`) before `quit()`. `tests/core/test_capture_quit.gd` runs a reduced script in a child Godot for the exit
+  code and checks every capture and tour script for a lambda set on a class and never cleared. The page for the engine
+  side is the kit's `docs/godot/exit-code-139.md`.
 
 ## Testing a baked navigation mesh headless
 
