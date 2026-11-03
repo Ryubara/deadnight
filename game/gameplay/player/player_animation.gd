@@ -170,6 +170,8 @@ var _hammer: Node3D
 var _grenade: Node3D
 var _hold: WeaponHold
 var _hands: WeaponHandsIK
+## The weapon in the hand and the nodes that pose it (`HeldWeapon`, shared with the menu).
+var _held: HeldWeapon
 ## The fingers on what the hands hold (`HandGrip` of the weapon, the hammer or the grenade).
 var _fingers: HandGripPose
 var _weapon_grip: HandGrip
@@ -235,30 +237,23 @@ func _ready() -> void:
 		_down.crawl_speed = revive_specs[String(DownedPose.CRAWL_CLIP)]["ground_speed"]
 	_loop_clips(anim_player)
 	_duck_bottom = SoldierClipFile.lowest_second(anim_player.get_animation(&"Duck"))
-	_mount = BoneAttachment3D.new()
-	_mount.name = "WeaponMount"
-	_mount.bone_name = HAND_BONE
 	var skeleton := model.find_child("Skeleton3D", true, false) as Skeleton3D
-	skeleton.add_child(_mount)
+	# The mount, the arms' pose and the fingers' pose, built the way the menu's soldier gets them.
+	_held = HeldWeapon.new(skeleton)
+	_mount = _held.mount
+	_hands = _held.hands
+	_fingers = _held.fingers
+	_hands.weight = 0.0
 	var hammer_hold := load(HAMMER_HOLD) as WeaponHold
 	_hammer = (load(hammer_hold.scene) as PackedScene).instantiate() as Node3D
 	_hammer.name = "Hammer"
 	_hammer_grip = HandGrip.for_scene(hammer_hold.scene)
-	_hammer.transform = _grip_hold(_hammer_grip, HOLD_HAMMER).scaled_local(
+	_hammer.transform = HeldWeapon.grip_hold(_hammer_grip, HOLD_HAMMER).scaled_local(
 		Vector3.ONE * hammer_hold.model_scale
 	)
 	_hammer.visible = false
 	_mount.add_child(_hammer)
 	_build_grenade()
-	_hands = WeaponHandsIK.new()
-	_hands.name = "WeaponHandsIK"
-	_hands.hand_hold = HOLD_GUN
-	_hands.influence = 0.0
-	skeleton.add_child(_hands)
-	# After the arms' IK: the fingers close on what the hand holds, the palm turns as one.
-	_fingers = HandGripPose.new()
-	_fingers.name = "HandGripPose"
-	skeleton.add_child(_fingers)
 	self.anim_player = get_path_to(anim_player)
 	tree_root = _build_tree(SoldierClipFile.skeleton_track_path(anim_player))
 	set(&"parameters/split/blend_amount", 1.0)
@@ -450,7 +445,7 @@ func strike() -> bool:
 	var played := play_action(&"Strike")
 	if played:
 		_shoulder_blend = 0.0
-		_hands.influence = 0.0
+		_hands.weight = 0.0
 		_hands.active = false
 	return played
 
@@ -613,7 +608,7 @@ func _build_grenade() -> void:
 	_grenade = (load(hold.scene) as PackedScene).instantiate() as Node3D
 	_grenade.name = "Grenade"
 	_grenade_grip = HandGrip.for_name(GRENADE_GRIP)
-	var held := _grip_hold(_grenade_grip, Transform3D(Basis(), HOLD_MELEE.origin))
+	var held := HeldWeapon.grip_hold(_grenade_grip, Transform3D(Basis(), HOLD_MELEE.origin))
 	_grenade.transform = held.scaled_local(Vector3.ONE * hold.model_scale)
 	_grenade.visible = false
 	_mount.add_child(_grenade)
@@ -645,32 +640,11 @@ func _set_class(new_class: StringName, hold: WeaponHold) -> void:
 	weapon_class = new_class
 	_aim_node.animation = StringName("Aim_%s" % new_class)
 	_carry_node.animation = SprintCarry.clip_for(new_class, hold)
-	if _weapon != null:
-		_weapon.free()
-		_weapon = null
 	_hold = hold
-	_hands.hold = _hold
-	_weapon_grip = null
-	_hands.grip = null
-	if _hold != null:
-		_weapon = (load(_hold.scene) as PackedScene).instantiate() as Node3D
-		_weapon.name = "Weapon"
-		_weapon_grip = HandGrip.for_scene(_hold.scene)
-		_hands.grip = _weapon_grip
-		var grip := _grip_hold(_weapon_grip, HOLD_MELEE if new_class == &"Melee" else HOLD_GUN)
-		_weapon.transform = grip.scaled_local(Vector3.ONE * _hold.model_scale)
-		# The arms' IK works the hand out from the weapon's pose through the same grip.
-		_hands.hand_hold = grip
+	_weapon = _held.hold_weapon(new_class, hold)
+	_weapon_grip = _held.grip
+	if _weapon != null:
 		_weapon.visible = not is_repairing()
-		if _weapon.find_child(MUZZLE_NODE, true, false) == null:
-			_weapon.add_child(_make_muzzle(_hold))
-		_mount.add_child(_weapon)
-
-
-## The model's place under the hand bone: its grip's (solved from its sockets), or `fallback` (the
-## kit's hold) for a model with no grip file yet.
-static func _grip_hold(grip: HandGrip, fallback: Transform3D) -> Transform3D:
-	return grip.hold if grip != null else fallback
 
 
 ## The grip of the weapon in the hand, or null.
@@ -708,15 +682,6 @@ func _advance_grip(delta: float) -> void:
 	_fingers.left_weight = maxf(on, smoothstep(0.0, 1.0, _carry.weight)) if left else 0.0
 
 
-## The muzzle point of a hold: at its `muzzle` (the model's units), turned so `-Z` runs out of the
-## barrel (the model's `-X`).
-func _make_muzzle(hold: WeaponHold) -> Marker3D:
-	var marker := Marker3D.new()
-	marker.name = MUZZLE_NODE
-	marker.transform = Transform3D(Basis.looking_at(Vector3.LEFT, Vector3.UP), hold.muzzle)
-	return marker
-
-
 ## Eases the arms onto the shouldered pose while the weapon is up and the clip does not use the
 ## hands (Reload, Equip, Unequip, Swing and the repair do), and gives the pose the camera's aim.
 func _advance_shoulder(delta: float) -> void:
@@ -745,12 +710,13 @@ func _advance_shoulder(delta: float) -> void:
 	_shoulder_blend = lerpf(_shoulder_blend, target, 1.0 - exp(-SHOULDER_RATE * delta))
 	if absf(_shoulder_blend - target) < 0.001:
 		_shoulder_blend = target
-	# The sprint carry holds the arms itself: the shouldered pose gives way to it as it comes in.
-	_hands.influence = _shoulder_blend * (1.0 - _carry.weight)
-	# Off, not only at influence 0: at 0 the modifier still overrode the arms in the drawn pose,
-	# so the clips that move them (the repair, Reload, Swing, the carry) never showed in a running
-	# game.
-	_hands.active = _hands.influence > 0.0
+	# The sprint carry holds the arms itself: the shouldered pose gives way to it as it comes in, on
+	# the curve the tree brings the carry clip in on, so the two cross over and neither leads (#619).
+	_hands.weight = _shoulder_blend * (1.0 - smoothstep(0.0, 1.0, _carry.weight))
+	# Off at 0 as well, so the modifier costs nothing while a clip holds the arms. The pose is
+	# blended by `weight` inside it (the engine's `influence` left the arms in the gun pose at any
+	# value), so it ends on the clip's arms and switching it off moves nothing.
+	_hands.active = _hands.weight > 0.0
 
 
 ## While repairing the hammer is in the hand and the weapon put away; a clip's weapon_visible

@@ -30,12 +30,17 @@ var _ticks := 0
 var _limit := 0
 var _near_ticks := 0
 var _sampled_ticks := 0
+## Of those, the ticks a bot was down or dead (it cannot follow), and the ones it was up and near.
+var _down_ticks := 0
+var _up_near_ticks := 0
 var _per_round: Dictionary = {}
 var _trace: FileAccess
 var _closing := false
 var _started_at := 0
 var _was_stuck: Dictionary = {}
 var _causes: Dictionary = {}
+## Ticks spent farther than `NEAR` from the nearest person, by what the bot was doing.
+var _far_notes: Dictionary = {}
 
 
 func _ready() -> void:
@@ -145,9 +150,23 @@ func _sample_distances() -> void:
 		)
 		_sampled_ticks += 1
 		tally[1] += 1
+		var down := false
+		for bot in _host.bots:
+			if bot.state.player_id == id:
+				var me := bot.state.me()
+				down = me.is_empty() or me.get("downed", false) or me.get("dead", false)
+		if down:
+			_down_ticks += 1
 		if apart <= NEAR:
 			_near_ticks += 1
 			tally[0] += 1
+			if not down:
+				_up_near_ticks += 1
+		elif not down:
+			for bot in _host.bots:
+				if bot.state.player_id == id:
+					var note: String = bot.intent.note
+					_far_notes[note] = int(_far_notes.get(note, 0)) + 1
 	_per_round[round_number] = tally
 
 
@@ -243,8 +262,12 @@ func _finish(why: String) -> void:
 		"wall_seconds": snappedf(float(Time.get_ticks_msec() - _started_at) / 1000.0, 0.1),
 		"round": _night.state.round_number(),
 		"within_12m": snappedf(float(_near_ticks) / maxf(float(_sampled_ticks), 1.0), 0.0001),
+		"down_ticks": _down_ticks,
+		"within_12m_up":
+		snappedf(float(_up_near_ticks) / maxf(float(_sampled_ticks - _down_ticks), 1.0), 0.0001),
 		"within_12m_by_round": rounds,
 		"stuck_causes": _causes,
+		"far_ticks_by_note": _far_notes,
 		"bots": bots,
 	}
 	print("SOAK ", JSON.stringify(all))
