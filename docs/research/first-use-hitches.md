@@ -239,6 +239,14 @@ each trigger. Three runs each, the warm-up on in both:
   `test_the_check_notices_a_particle_system_the_warm_up_never_drew` (a headless run has fast frames, so only the
   pins, the ledger and the hand-freed sample are held there; the browser probe is the real test).
 
+## The small map's lamps and light cards (#636)
+
+The lamps and cards of the second map are drawn with the lot's own shaders and materials (`glow.gdshader`,
+`beam.gdshader`, the kit atlas with an emission texture), extended with uniforms rather than new shader files, so they
+build no program the warm-up does not already build. `test_the_lamps_and_cards_draw_nothing_the_nights_warm_up_does_not`
+warms a night and finds every key of the five card scenes in its ledger. In the browser, the capture links its programs
+in its first frames and none while it measures ([small map: art and kit](maps/small-map-art.md#lamps-and-light-cards)).
+
 ## Open
 
 - **Every shot and kill** also cost a frame, for another reason (made and freed in the frame, sounds started):
