@@ -323,6 +323,8 @@ stride sooner, a crouched creep slower, standing and flight are silent.
   `max_db` (+3 dB over the file), so up close every sound sits at the same ceiling whatever its trim and a gun's three
   layers sum past full scale. A sound with a `near_cap_db` (the arms and the lot's sounds have 0) sets the player's
   `max_db` to its own level plus that, so close up the trim is the level and far away nothing changes.
+  A sound with no cap sets it to the engine's +3 dB on every play (`ENGINE_MAX_DB`): a pooled player keeps the cap
+  of whatever played on its slot before, and the level would depend on the pool's history (#752).
 - **Rear cue.** A sound with `rear_cue` is low-passed by how far behind the listener it is (`rear_amount`, from the
   listener node or the camera): 0 in front and at the side, 1 straight behind, where the cutoff is 1.8 kHz. Where the
   filter is not heard (the web build, below) it is also `NO_FILTER_REAR_DB` (3 dB) quieter straight behind.
