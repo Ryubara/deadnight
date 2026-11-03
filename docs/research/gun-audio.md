@@ -45,6 +45,7 @@ pinned by `game/tests/night/test_gun_audio_rules.gd`:
 | Nothing relies on a bus effect for its power or its headroom | the web build plays samples, which ignore them | the files and the trims |
 | A gun that fires without a break peaks no closer to full scale than (the flare gun, one shot in a long while: -1 dBFS) | -4.5 dBFS | the trims (#718, [below](#headroom-under-other-sounds)) |
 | Another sound landing on that gun's shots (a reload, a teammate's gun, a zombie's voice, a door) | no sample over -1 dBFS | the same trims; `tests/captures/audio_headroom.tscn` |
+| A close sound (a voice of the dead, a board, the door, the blast) | its loudest file at most -9.8 dBFS 1.2 m ahead, what the loudest own gun leaves under -1 dBFS | a negative `near_cap_db` (#753, [below](#close-sounds-under-gunfire)) |
 
 ## What changed
 
@@ -165,21 +166,90 @@ loudest 400 ms is 14.9 LU over the beds (tommy gun) to 19.5 (double-barrel), a t
 (tommy gun), against the 14 and 17 the test asks. `test_gun_audio_rules.gd` now also asks every gun but the flare gun
 to peak at -4.5 dBFS or lower.
 
-**What this does not cover.** The matrix plays each zombie voice and lot sound once, in a pool that has already played
-guns (the game's usual state). Two things make the close sounds louder than that, and both are follow-ups
-(#752 and #753):
+**What this did not cover (both are done now).** The matrix plays each zombie voice and lot sound once, in a pool that
+had already played guns. Two things made the close sounds louder than that: *a pooled player kept the last sound's
+`max_db`* (a gun's trim capped the dead; fixed in #752, where every play sets it) and *the loudest files of the close
+sounds peak at -1 to -5 dBFS by themselves* (#753, [next section](#close-sounds-under-gunfire)).
 
-- *A pooled player keeps the last sound's `max_db`.* `AudioService.cap_near_level` sets it only for a sound that has a
-  near cap, so after a gun (trim -2.5, now -6.5) used a slot, an uncapped sound (the dead, boards, the door) played in
-  it is capped at that trim. The same zombie voices played alone peak 4 to 10 dB higher, and the dead, boards, doors
-  and blows in the matrix fell 3.7 to 4.3 dB with the guns, whatever the change did to them (their balance against the
-  guns stayed, against the beds it did not). Fixing it makes the dead's loud level the normal one.
-- *The files of a sound differ by 3 to 9 dB in peak.* `--all-variants` plays every file of every zombie voice and lot
-  sound, in a clean pool, under each own gun: the revolver, tommy gun, rifle and flare gun reach 0.0 dBFS (31 to 135
-  samples over -1 dBFS in the zombie cell, 40 to 127 in the lot's), the shotgun 56 and 190. Solo, close, the loudest
-  files peak at `grenade_blast` -1.0, `board_last` -1.1, `door_open` -1.9, `board_tear` -2.1, `zombie_attack` -2.2,
-  `zombie_death` -3.5 and `zombie_groan_brute` -4.0 dBFS: as loud as the player's gun was, so one of them, or two,
-  landing on a shot can still clip whatever the gun's trim.
+## Close sounds under gunfire
+
+**The cause.** A close 3D sound sits at its player's `max_db`, +3 dB over its file when it has no `near_cap_db`,
+whatever its trim, and the files are normalised to peak at -2 to -4 dBFS. Dead ahead that is 0 to 3 dB under the
+file's peak: every zombie voice, the boards, the door and the blast peaked at -0.6 to -3 dBFS by themselves, as loud as
+the player's own gun was before #718, and one landing on a shot (-5.5 dBFS alone) clips. #718's matrix played each once
+in a pool that capped them (#752), so it did not show.
+
+**The rule.** The highest sample of any file of a close sound, right beside the listener (1.2 m, where the cap and not
+the distance sets the level), is at most what the loudest own gun leaves under -1 dBFS when the two peaks land
+together (amplitudes add): `10^(-1/20) - 10^(-4.9/20)` is 0.32, **-9.8 dBFS** (the rifle's -4.9 in
+`tests/night/gun_levels.json`; the capture's own gun alone is -5.4 to -5.9). It is pinned by
+`tests/core/test_close_sound_levels.gd` from `tests/core/close_sound_levels.json`, which `tools/audio/close_levels.py`
+measures from the capture's `--close` run. A table and not arithmetic on the files: how much of a file's peak reaches
+the mix is 0 to 3 dB for a voice and 10 to 14 for a 70 ms click such as an impact, whose peak the distance low-pass
+takes off. The test fails when a cap or a trim moves without a new measurement, when a row leaves no room, and when a
+row is louder than its loudest file could be. No limiter: the web build ignores bus effects (above).
+
+**What was set.** A negative `near_cap_db`: `volume_db + near_cap_db` is the most the sound gets however close, and from
+where the cap stops holding it falls as it always did (a sound's far reach is the same). One cap for each sound, not
+for each file: the files of a sound differ by about 1 dB in peak (the 3 to 9 dB the first sweep showed were mostly a
+window that missed a late peak or caught the next sound). Twenty sounds changed (the impacts were already under
+the rule). Peak of any file 1.2 m ahead, alone, and the loudest 400 ms of any (LUFS), before then after; the night's
+beds are -35.3 LUFS:
+
+| Sound | Trim | Cap before | Cap now | Peak before | Peak now | Loudest 400 ms before | now |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `grenade_blast` | +0.0 | none | -7.0 | -0.6 | -10.4 | -10.2 | -20.4 |
+| `board_last` | +4.0 | none | -9.0 | -0.7 | -10.0 | -21.6 | -29.7 |
+| `debris_clear` | +0.0 | none | -6.0 | -1.5 | -10.8 | -16.0 | -25.1 |
+| `zombie_roar` | -7.0 | none | +1.0 | -1.5 | -10.5 | -7.0 | -15.8 |
+| `zombie_growl_boss` | -6.0 | none | +0.0 | -1.6 | -10.0 | -10.2 | -18.9 |
+| `zombie_shriek` | -5.0 | none | -1.5 | -1.7 | -10.2 | -6.8 | -15.8 |
+| `board_tear` | +2.0 | none | -4.5 | -1.8 | -10.0 | -21.6 | -27.3 |
+| `zombie_hurt` | -2.0 | none | -4.0 | -1.9 | -10.2 | -7.9 | -16.6 |
+| `zombie_alert` | -2.0 | none | -4.5 | -2.0 | -10.2 | -9.4 | -19.0 |
+| `till_ring` | -4.0 | none | +0.5 | -2.3 | -10.4 | -12.2 | -18.5 |
+| `zombie_groan_brute` | -3.0 | none | -2.0 | -2.4 | -10.5 | -9.3 | -17.5 |
+| `door_open` | -2.0 | none | -3.0 | -2.5 | -10.5 | -19.8 | -27.6 |
+| `board_repair` | +3.0 | none | -6.5 | -2.6 | -9.9 | -23.4 | -30.0 |
+| `zombie_death` | -2.0 | none | -3.5 | -2.6 | -10.2 | -7.3 | -15.5 |
+| `zombie_groan` | -4.0 | none | -1.0 | -2.6 | -10.4 | -9.6 | -17.4 |
+| `zombie_attack` | +0.0 | none | -4.5 | -2.8 | -10.0 | -12.5 | -19.7 |
+| `zombie_groan_crawler` | -4.0 | none | -0.5 | -2.9 | -10.2 | -9.4 | -16.7 |
+| `zombie_grunt` | -3.0 | none | -1.5 | -3.1 | -10.2 | -15.2 | -22.6 |
+| `zombie_breath_brute` | -3.0 | none | +0.0 | -4.7 | -10.1 | -12.8 | -18.4 |
+| `melee_hit` | +0.0 | none | -2.0 | -5.3 | -10.2 | -22.1 | -27.4 |
+| `impact_flesh` | -3.0 | +0.0 | +0.0 | -16.7 | -16.7 | -36.1 | -36.1 |
+| `impact_head` | -1.0 | +0.0 | +0.0 | -17.4 | -17.4 | -37.3 | -37.3 |
+
+The dead's voices stay the cue they were: at 1.2 m they are -15.5 to -22.6 LUFS, 13 to 20 LU over the beds and where
+one shot of a gun is (-15.8 to -20.4 LUFS, 15 to 19 LU over), 6 to 10 dB under their level before; the order among them
+is the one the trims set. The boards, the door and the debris blocker are sharp (a crest factor of 20 to 25 dB), so
+under a peak ceiling they come to -25 to -30 LUFS, 5 to 10 LU over the beds at 1.2 m (12 to 19 before): a loud crack
+on a quiet night, not a loud noise. The cap holds only close up, so a board torn across the lot is as it was.
+
+**Measured**, `tests/captures/audio_headroom.tscn --all-variants` (`--close` for 1.2 m), every file of the 12 voices
+and the 10 lot's sounds, one at a time, under each own gun firing without a break; samples over -1 dBFS in the zombie
+cell then the lot's cell, before then after (peak of the mix in dBFS after):
+
+| Own gun | ordinary geometry (2 to 6 m) | close (1.2 m) |
+| --- | --- | --- |
+| Revolver | 59, 78 then 0, 0 (-2.5, -3.9) | 833, 62 then 0, 0 (-2.8, -4.2) |
+| Tommy gun | 45, 205 then 0, 0 (-2.2, -3.1) | 1837, 348 then 0, 0 (-2.3, -3.2) |
+| Rifle | 31, 49 then 0, 0 (-2.6, -3.4) | 1085, 214 then 0, 0 (-1.8, -2.6) |
+| Shotgun | 56, 323 then 0, 0 (-2.1, -3.6) | 1881, 166 then 0, 0 (-2.7, -4.0) |
+| Flare gun | 135, 59 then **4, 2** (-0.6, -0.8) | 928, 48 then **2, 1** (-0.9, -0.8) |
+
+The ordinary run of the matrix (each sound once, a random file) has no sample over -1 dBFS for four guns in any cell;
+the flare gun's crack on a teammate's revolver shot is still -0.2 dBFS (8 samples), as before.
+
+**The flare gun is not solved.** Its crack peaks at -3.1 dBFS alone (a crest factor of 20 dB), 2.6 dB over the others,
+so it needs the others to be at -14 dBFS or lower, which no close sound can be, or itself to be at about -5.5 dBFS.
+That takes 2.4 dB off its burst, which the 17 LU rule does not allow: the table says its burst is 17.7 LU over the beds
+(0.7 to spare), and a fresh bench on `main` measures 16.7 (-18.6 LUFS, peak -2.3; the other four guns reproduce the
+table to the decibel). Cutting its trim 0.6 dB measured -19.2. A look-ahead limiter in the file (in the recipe, so it
+holds in the web build), tried on the three files off the pipeline, took 1.3 dB off their decoded peaks for 0.5 LU, the
+best trade found, and would still leave the dead on it near -0.7 dBFS. It stays a known exception (3 samples over -1
+dBFS in 110 s of the close sweep, 8 in the ordinary run), in the issue that follows this one.
 
 ## Browser
 

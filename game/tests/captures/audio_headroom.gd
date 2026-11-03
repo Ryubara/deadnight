@@ -16,7 +16,11 @@ extends Node
 ## `--all-variants` plays every variant file of each sound of the `zombie` and `world` cells (each
 ## play of a sound otherwise picks one at random, and the files of one sound differ by 15 dB or
 ## more), one every `VARIANT_GAP` seconds.
-## Prints `CELL <own> <cell> <start> <end>` and `PLAY <seconds> <own> <cell> <sound>`.
+## `--close` puts the sounds of those two cells `CLOSE_METRES` from the listener, where every
+## sound's near level (the player's `max_db`) is what holds it, not the distance, and leaves the
+## whole file of each variant room (its length and `CLOSE_TAIL`) before the next one starts (#753).
+## Prints `CELL <own> <cell> <start> <end>`, `PLAY <seconds> <own> <cell> <sound>` and, for a 3D
+## sound, `MAXDB <sound> <the player's max_db>`.
 
 const OWN := 1
 const MATE := 2
@@ -61,12 +65,15 @@ const WORLD_AT := Vector3(-1.0, 1.0, -3.0)
 const LEAD := 0.5
 const GAP := 1.0
 const VARIANT_GAP := 0.8
+const CLOSE_METRES := 1.2
+const CLOSE_TAIL := 0.2
 const ALONE_SECONDS := 3.0
 const TAIL := 0.7
 
 var _own: Array[StringName] = OWN_GUNS.duplicate()
 var _cells: Array[StringName] = CELLS.duplicate()
 var _all_variants := false
+var _close := false
 var _state := ClientState.new()
 var _sounds: WeaponSounds
 var _frames := 0
@@ -83,6 +90,8 @@ func _ready() -> void:
 				_own.append(StringName(gun))
 		elif argument == "--all-variants":
 			_all_variants = true
+		elif argument == "--close":
+			_close = true
 		elif argument.begins_with("--cells="):
 			_cells.clear()
 			for cell in argument.trim_prefix("--cells=").split(","):
@@ -181,14 +190,24 @@ func _sound_events(out: Array[Dictionary], ids: Array[StringName], at: float) ->
 		var pos := ZOMBIE_AT if id in ZOMBIE_SOUNDS else WORLD_AT
 		if id == &"grenade_blast":
 			pos = BLAST_AT
+		if _close:
+			pos = LISTENER + (pos - LISTENER).normalized() * CLOSE_METRES
 		if _all_variants:
 			for variant in range(1, SoundCatalog.get_def(id).variants + 1):
 				out.append({"at": at, "kind": &"sound", "id": id, "pos": pos, "variant": variant})
-				at += VARIANT_GAP
+				at += _variant_gap(id, variant)
 		else:
 			out.append({"at": at, "kind": &"sound", "id": id, "pos": pos, "variant": 0})
 			at += GAP + 0.037
 	return at
+
+
+## Seconds before the next variant: `VARIANT_GAP`, or with `--close` the length of this one's file.
+func _variant_gap(id: StringName, variant: int) -> float:
+	if not _close:
+		return VARIANT_GAP
+	var length := (load(SoundCatalog.get_def(id).path_for(variant)) as AudioStream).get_length()
+	return maxf(VARIANT_GAP, length + CLOSE_TAIL)
 
 
 func _span(events: Array[Dictionary]) -> float:
@@ -263,7 +282,9 @@ func _play_variant(id: StringName, at: Variant, variant: int) -> void:
 
 func _play_sound(id: StringName, at: Variant, extra_db: float) -> void:
 	print("PLAY %.3f %s %s %s" % [_now(), _label, _cell, id])
-	Audio.play(id, at, extra_db)
+	var player := Audio.play(id, at, extra_db)
+	if player is AudioStreamPlayer3D:
+		print("MAXDB %s %.2f" % [id, player.max_db])
 
 
 func _now() -> float:
