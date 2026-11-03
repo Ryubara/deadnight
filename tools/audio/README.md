@@ -38,3 +38,10 @@ louder at the same peak (the web build ignores a bus limiter). `docs/research/gu
 
 The flare gun's report (#761) is limited the same way (`limit_crest`); `gun_levels.py --table` also writes
 a SHA-256 of every gun file it played, which `test_gun_audio_rules.gd` checks.
+
+The drive-in's wind (#782): `wind_recipes.py` renders the base loop, the eight gust files (`generate.py` hands a recipe
+that takes a `variant` argument its file number, so one table of shapes makes the eight) and the details;
+`wind_levels.py` reads them against the other beds (`files`) and a night's gusts in the Ambience bus of
+`game/tests/captures/audio_wind_night.tscn` (`night`, with the wind alone, the beds, and the beds without the wind).
+`audio_headroom.tscn --wind` runs the wind at its strongest under the headroom cells. `docs/research/wind.md` has the
+sources and the numbers.
