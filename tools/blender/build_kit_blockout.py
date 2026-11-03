@@ -414,4 +414,5 @@ def main():
     print("BLOCKOUT", out)
 
 
-main()
+if __name__ == "__main__":  # the kit's build scripts import its staging helpers
+    main()
