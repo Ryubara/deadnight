@@ -29,6 +29,7 @@ func _ready() -> void:
 	NightScreen.challenge_path = ChallengeSave.DEFAULT_PATH
 	if args.has("look"):
 		NightScreen.own_look = NightScreen.look_from_flag(args.get_string("look"))
+	PhoneRender.apply(get_viewport())
 	add_child(WebProbe.new())
 	add_child(WebClipboard.new())  # copy and paste inside a Discord Activity's frame (#516)
 	# Above the router, below the film: "turn your phone" when a touch device is held upright.
@@ -83,7 +84,7 @@ func _exit_tree() -> void:
 
 
 ## A game server: with a backend (`ServerConfig`) the nights of its matches, else one night for
-## up to four players. The port is `--port`, else `$PORT` (Railway sets it), else the default.
+## up to eight players. The port is `--port`, else `$PORT` (Railway sets it), else the default.
 func _serve(args: NetArgs) -> void:
 	var from_environment := OS.get_environment("PORT")
 	var port := args.get_int(

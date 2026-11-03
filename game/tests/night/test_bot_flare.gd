@@ -4,8 +4,10 @@
 # has no grenade, so it cannot shoot the pack down, but it carries the flare gun. It fires at a
 # spot far from the body (never within 4 m of a player), the dead walk to the flare, and the
 # revive is held and finished. The same night without the flare gun is the control: the pack
-# cannot be cleared and the person is not raised. Outcomes are judged in game ticks, never in
-# seconds of a clock.
+# cannot be cleared in the time the flare night raised the person. (A bot that backs off when hurt,
+# #693, draws the dead after it, wins them down one by one and raises the person alone at about
+# 37 s, so the control is judged on the time, not on the person never being raised.) Outcomes are
+# judged in game ticks, never in seconds of a clock.
 extends GdUnitTestSuite
 
 const TICKS_PER_SECOND := 60
@@ -18,6 +20,8 @@ const BODY := Vector3(-12.0, 0.0, -4.0)
 const BOT_AT := Vector3(2.0, 0.0, 6.0)
 ## The pack, and the rounds in the bot's pistol (none in reserve).
 const PACK := 8
+## Health of each of them.
+const STURDY := 600.0
 const ROUNDS := 3
 ## Metres within which a zombie is of the pack about the body.
 const ABOUT_THE_BODY := 10.0
@@ -25,6 +29,9 @@ const ABOUT_THE_BODY := 10.0
 const DRAWN_AFTER := 4.0
 ## Game seconds the night is given: under the bleed-out clock (45 s), which the control must reach.
 const WATCH_SECONDS := 40.0
+## Game seconds in which the flare night raises the person (it takes about 8), and the control must
+## not: alone, the bot needs well over twice this.
+const FLARE_WINDOW := 15.0
 
 var _catcher := ErrorCatcher.new()
 var _events: Array[Dictionary] = []
@@ -51,6 +58,9 @@ func _pack() -> RulesTuning:
 	tuning.rounds.speed_base = 1.3
 	tuning.rounds.speed_step = 0.0
 	tuning.rounds.speed_jitter = 0.0
+	# Sturdy: with zones that follow the bodies the bot's blows (a sweep, which the fatter zones catch
+	# more of) would clear a plain pack on their own.
+	tuning.rounds.health_base = STURDY
 	return tuning
 
 
@@ -150,7 +160,7 @@ static func _flat(a: Vector3, b: Vector3) -> float:
 ## `lure_started` and of the first `revive_started`, where the players stood at the flare, how many
 ## of the dead had come at least 3 m nearer it `DRAWN_AFTER` seconds on, and the blows the bot took
 ## from the start of the hold on.
-func _play(night: SeatedNight) -> Dictionary:
+func _play(night: SeatedNight, seconds := WATCH_SECONDS) -> Dictionary:
 	var seen := {
 		"lure_tick": -1,
 		"hold_tick": -1,
@@ -161,7 +171,7 @@ func _play(night: SeatedNight) -> Dictionary:
 	}
 	var lure_at := Vector3.ZERO
 	var first := {}
-	for _i in int(WATCH_SECONDS * TICKS_PER_SECOND):
+	for _i in int(seconds * TICKS_PER_SECOND):
 		night.tick()
 		for event in night.last_events:
 			if event["type"] == &"lure_started" and seen["lure_tick"] < 0:
@@ -199,7 +209,7 @@ func test_a_bot_that_cannot_clear_the_pack_fires_a_flare_and_raises_the_person()
 	var body := _home() + BODY
 	_surround(night)
 	_down(night, 1)
-	var seen := _play(night)
+	var seen := _play(night, FLARE_WINDOW)
 	assert_bool(_raised(night)).is_true()
 	# The bot's flare burst far from the body and from every player (never within 4 m of one).
 	var lures := _of(&"lure_started")
@@ -226,7 +236,7 @@ func test_the_same_night_without_the_flare_gun_the_pack_cannot_be_cleared() -> v
 	var night := await _night(_pack(), false)
 	_surround(night)
 	_down(night, 1)
-	var seen := _play(night)
+	var seen := _play(night, FLARE_WINDOW)
 	assert_int(_of(&"lure_started").size()).is_equal(0)
 	assert_int(_counted(night, &"flares_fired")).is_equal(0)
 	# Without it the person is not raised in the time the flare night raised them.

@@ -21,6 +21,28 @@ const COINCIDENT_DISTANCE := 0.001
 ## Multipliers of the golden-ratio family that spread a pair of ids evenly round a circle.
 const _PAIR_ANGLE_A := 0.7548776662
 const _PAIR_ANGLE_B := 0.5698402910
+## How far above the floor the navigation map's path points run (the baker's walkable surface sits
+## a cell and a bit over the geometry's top), for a pathing that does not say (`ground_offset`):
+## taken off a path point to get the ground a zombie stands on. Measured on the second map, whose
+## floors are at 0 and 3.4 m.
+const NAV_LIFT := 0.35
+## Metres over the feet at which a swing is judged to have a clear way to its target: over the
+## second map's counter and racks (1.2 m), under its ceiling.
+const SWING_HEIGHT := 1.3
+## Metres past the longest swing within which the way to a target is looked at.
+const SWING_SLACK := 0.5
+## Metres of walking a step up or down one storey counts for when a zombie picks its target: a
+## player on another floor is as far as this many metres of floor for each metre of height.
+const STOREY_WEIGHT := 3.0
+
+## A zombie that is chasing, is `STRAND_FAR` metres or more from its target and whose path from the
+## map stops `STRAND_GAP` metres or more short of it, for `STRAND_SECONDS`, is stranded: the crowd
+## shoved it through a wall into a pocket of the walking mesh and it stands at the end of a path
+## that goes nowhere (the soak's rounds that went on for eight minutes, #770). The sim says so
+## (`zombie_stranded`) and the director puts it back on a spawn point (`relocate`).
+const STRAND_GAP := 3.0
+const STRAND_FAR := 12.0
+const STRAND_SECONDS := 12.0
 
 var tuning: ZombieTuning
 ## Used for the speed of a zombie off lit ground; without it light changes nothing.
@@ -35,6 +57,16 @@ var gates: Dictionary[StringName, ZombieGate] = {}
 var barricades: BarricadeState
 ## Seconds of work one board takes a walker (a type's `barrier_speed` makes it quicker).
 var board_seconds: float = 1.2
+## The height of one storey of the map, or 0 for a flat map (the lot). A map with floors above one
+## another (the second map) sets it: the dead then follow the walking mesh up and down its stairs,
+## are as far from a player on another floor as the stair makes them, and neither start nor land a
+## swing across a floor. On a map without it (the lot) the dead still follow the floor of a path
+## from the navigation map (its ramps) and swing only within `tuning.reach_height`.
+var storey := 0.0
+## `Callable(from: Vector3, to: Vector3) -> float`: metres to the first wall on the way, or -1.0
+## when clear (a `WorldProbe`). On a map with storeys a zombie swings only at a target it has a
+## clear way to, so the dead on a stair do not hit a player beside it through the wall.
+var sight: Callable = Callable()
 var zombies: Dictionary[int, ZombieBody] = {}
 ## The lures burning now (`add_lure`, `ZombieLure`).
 var lures: Array[ZombieLure] = []
@@ -223,6 +255,7 @@ func _think(
 	elif has_target:
 		target_pos = targets[zombie.target_id]
 	_repath(zombie, delta, has_target, target_pos)
+	_watch_strand(zombie, delta, has_target and lure == null, target_pos, events)
 	var waypoint := _waypoint(zombie, target_pos)
 	# At a lure a zombie stands about it, facing it: no target to walk to and none to swing at.
 	var gathered := (
@@ -237,7 +270,8 @@ func _think(
 		has_target and not gathered,
 		target_pos,
 		waypoint,
-		_ground_speed(zombie)
+		_ground_speed(zombie),
+		_can_swing(zombie.position, target_pos)
 	)
 	if not strike.is_empty():
 		strike["type"] = &"zombie_struck"
@@ -245,10 +279,83 @@ func _think(
 	zombie.tearing = false
 	if zombie.gate_id != &"":
 		_work_the_boards(zombie, delta, events)
-	# Height stays where it spawned: the lot is flat. A path point sits above the floor by a baker
-	# offset (twice the cell height), so using its height needs that taken off first.
 	zombie.position += (zombie.velocity + zombie.push) * delta
+	_settle_on_ground(zombie, delta)
 	zombie.push = zombie.push.move_toward(Vector3.ZERO, tuning.push_decay * delta)
+
+
+## Counts the seconds a chasing zombie has had no way to a far target; says `zombie_stranded` when
+## they reach `STRAND_SECONDS` (and counts again from nothing). One at its boards, at a lure, near
+## its target or with a way to it is not stranded.
+func _watch_strand(
+	zombie: ZombieBody, delta: float, chasing: bool, target_pos: Vector3, events: Array[Dictionary]
+) -> void:
+	var stranded := (
+		chasing
+		and zombie.mode == ZombieBody.Mode.CHASE
+		and zombie.gate_id == &""
+		and zombie.path_gap >= STRAND_GAP
+		and _flat(zombie.position, target_pos) >= STRAND_FAR
+	)
+	if not stranded:
+		zombie.stranded_for = 0.0
+		return
+	zombie.stranded_for += delta
+	if zombie.stranded_for >= STRAND_SECONDS:
+		zombie.stranded_for = 0.0
+		events.append({"type": &"zombie_stranded", "zombie_id": zombie.id})
+
+
+## Puts a stranded zombie back on `point` (a spawn point; `gate_id` the breach it comes in by, or
+## none), rising as a new one does, with no path and no memory of the pocket.
+func relocate(zombie_id: int, point: Vector3, gate_id: StringName = &"") -> void:
+	var zombie: ZombieBody = zombies.get(zombie_id)
+	if zombie == null or not zombie.is_alive():
+		return
+	zombie.position = point
+	zombie.gate_id = gate_id
+	zombie.path = PackedVector3Array()
+	zombie.path_index = 0
+	zombie.path_gap = 0.0
+	zombie.stranded_for = 0.0
+	zombie.repath_left = 0.0
+	zombie.tear_progress = 0.0
+	zombie.push = Vector3.ZERO
+	zombie.enter(ZombieBody.Mode.EMERGING)
+
+
+## Lifts or lowers the zombie to the floor its path runs on, at most `tuning.climb_speed` a second.
+## The path lies on the navigation mesh, above the floor by `pathing.ground_offset()` (on a map with
+## storeys and a pathing that does not say, `NAV_LIFT`); the height is read off the segment of the
+## path the zombie is on, so a ramp or a stair is a ramp. A zombie that kept the height it spawned
+## at walked the booth's ramp under it: the next repath snapped its ground-level position to the
+## floor beside the ramp, and that path led back to the ramp's foot. A path that is a straight line
+## to a target (no ground offset) carries no floor, and the zombie keeps its height.
+func _settle_on_ground(zombie: ZombieBody, delta: float) -> void:
+	var offset := pathing.ground_offset()
+	if is_nan(offset) and storey > 0.0:
+		offset = NAV_LIFT
+	if is_nan(offset) or zombie.path.is_empty() or not zombie.is_alive():
+		return
+	var ground := _ground_under(zombie) - offset
+	zombie.position.y = move_toward(zombie.position.y, ground, tuning.climb_speed * delta)
+
+
+## The height of the path under the zombie: the segment it walks is the one that ends at its
+## waypoint, and the height is where the zombie's shadow falls along it.
+func _ground_under(zombie: ZombieBody) -> float:
+	var path := zombie.path
+	var to_index := mini(zombie.path_index, path.size() - 1)
+	if to_index == 0:
+		return path[0].y
+	var from := path[to_index - 1]
+	var to := path[to_index]
+	var along := Vector2(to.x - from.x, to.z - from.z)
+	var length_squared := along.length_squared()
+	if length_squared < COINCIDENT_DISTANCE * COINCIDENT_DISTANCE:
+		return to.y
+	var here := Vector2(zombie.position.x - from.x, zombie.position.z - from.z)
+	return lerpf(from.y, to.y, clampf(here.dot(along) / length_squared, 0.0, 1.0))
 
 
 ## The nearest lure that calls this zombie, or null: one within its radius, unless the zombie is
@@ -333,6 +440,33 @@ func _ground_speed(zombie: ZombieBody) -> float:
 	return rounds.speed_on_ground(zombie.speed, zombie.lit) if rounds != null else zombie.speed
 
 
+## Puts the sim on a map with storeys (`storey`, 0 for none) and the way it sees walls (`sight`).
+func set_floors(height: float, probe: Callable) -> void:
+	storey = height
+	sight = probe
+
+
+## Whether a zombie at `a` may swing at a target at `b`: on a flat map, within `reach_height` (the
+## lot's roost floor is over the heads of the dead under it); else within half a storey in height
+## and, when the target is near enough to be struck, with no wall between them.
+func _can_swing(a: Vector3, b: Vector3) -> bool:
+	if storey <= 0.0:
+		return absf(a.y - b.y) <= tuning.reach_height
+	if absf(a.y - b.y) > storey * 0.5:
+		return false
+	if not sight.is_valid() or _flat(a, b) > tuning.reach + tuning.strike_slack + SWING_SLACK:
+		return true
+	var lift := Vector3(0.0, SWING_HEIGHT, 0.0)
+	return float(sight.call(a + lift, b + lift)) < 0.0
+
+
+## The distance a zombie weighs a player by: the flat distance, and on a map with storeys more for
+## every metre of height between them (the stair is a long way round).
+func _target_distance(a: Vector3, b: Vector3) -> float:
+	var flat := _flat(a, b)
+	return flat + STOREY_WEIGHT * absf(a.y - b.y) if storey > 0.0 else flat
+
+
 ## Keeps the nearest target, switching only to one clearly nearer (`retarget_margin`).
 func _retarget(zombie: ZombieBody, delta: float, targets: Dictionary) -> void:
 	zombie.retarget_left -= delta
@@ -342,13 +476,13 @@ func _retarget(zombie: ZombieBody, delta: float, targets: Dictionary) -> void:
 	var best_id := -1
 	var best_dist := INF
 	for player_id: int in targets:
-		var d := _flat(zombie.position, targets[player_id])
+		var d := _target_distance(zombie.position, targets[player_id])
 		if d < best_dist:
 			best_dist = d
 			best_id = player_id
 	var current := INF
 	if targets.has(zombie.target_id):
-		current = _flat(zombie.position, targets[zombie.target_id])
+		current = _target_distance(zombie.position, targets[zombie.target_id])
 	if best_dist + tuning.retarget_margin < current or current == INF:
 		zombie.target_id = best_id
 
@@ -370,6 +504,7 @@ func _repath(zombie: ZombieBody, delta: float, has_target: bool, target_pos: Vec
 	zombie.path = pathing.find_path(zombie.position, target_pos)
 	PerfProbe.end(&"sim.path", began)
 	zombie.path_index = 0
+	zombie.path_gap = _flat(zombie.path[-1], target_pos) if not zombie.path.is_empty() else INF
 	if lit_probe.is_valid():
 		zombie.lit = lit_probe.call(zombie.position)
 
@@ -413,7 +548,11 @@ func _push_on(zombie: ZombieBody, radius: float) -> Vector3:
 				# Most of the neighbours in the nine cells are farther than the radius: no square
 				# root for them.
 				var away := here - other.position
-				if away.x * away.x + away.z * away.z < radius_squared:
+				# One above the other (the ramp over the floor beside it) do not touch.
+				if (
+					away.x * away.x + away.z * away.z < radius_squared
+					and absf(away.y) < tuning.separation_height
+				):
 					push += _push_from(zombie, other, radius)
 	# A pile of coincident zombies adds up a push from each; the sum is bounded so no tick throws one.
 	return push.limit_length(tuning.separation_max_speed)

@@ -201,3 +201,43 @@ func test_with_no_map_the_way_is_the_straight_line() -> void:
 	assert_int(path.ask(here, goal, 0.0)).is_equal(BotPath.Status.OK)
 	assert_float(path.direction(here).x).is_equal_approx(1.0, 0.001)
 	assert_int(path.queries).is_equal(0)
+
+
+## A path of three legs along x, 4 m each, and a level whose `walk` finds a wall across x = `wall_x`
+## (as a ray along the way would: the distance to it, or -1.0 when it is not on the segment).
+func _walled_way(wall_x: float) -> Array:
+	var level := BotLevel.new()
+	level.walk = func(from: Vector3, to: Vector3) -> float:
+		var low := minf(from.x, to.x)
+		var high := maxf(from.x, to.x)
+		return absf(wall_x - from.x) if wall_x >= low and wall_x <= high else -1.0
+	var way := PackedVector3Array(
+		[Vector3.ZERO, Vector3(4.0, 0.0, 0.0), Vector3(8.0, 0.0, 0.0), Vector3(12.0, 0.0, 0.0)]
+	)
+	return [BotPath.new(RID(), level), way]
+
+
+func test_a_path_through_a_wall_with_more_than_a_metre_past_it_is_not_walkable() -> void:
+	var made := _walled_way(5.0)
+	var way: PackedVector3Array = (made[0] as BotPath).walkable(made[1])
+	assert_bool(way.is_empty()).is_true()
+
+
+func test_a_path_stopped_by_a_wall_at_its_end_is_cut_short_of_it() -> void:
+	var made := _walled_way(11.5)
+	var way: PackedVector3Array = (made[0] as BotPath).walkable(made[1])
+	assert_int(way.size()).is_equal(4)
+	assert_float(way[way.size() - 1].x).is_equal_approx(11.5 - BotPath.BODY_STANDOFF, 0.001)
+
+
+func test_a_path_with_nothing_in_the_way_is_walkable_as_it_is() -> void:
+	var made := _walled_way(20.0)
+	var way: PackedVector3Array = (made[0] as BotPath).walkable(made[1])
+	assert_int(way.size()).is_equal(4)
+	assert_float(way[3].x).is_equal_approx(12.0, 0.001)
+
+
+func test_a_level_that_does_not_check_walks_lets_every_path_through() -> void:
+	var path := BotPath.new(RID(), BotLevel.new())
+	var way := PackedVector3Array([Vector3.ZERO, Vector3(4.0, 0.0, 0.0)])
+	assert_int(path.walkable(way).size()).is_equal(2)

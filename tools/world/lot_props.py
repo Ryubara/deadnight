@@ -314,49 +314,37 @@ DRESSING: dict[str, list[tuple[str, float, float, float]]] = {
         ("papers_b", -33.0, 21.0, 10),
     ],
     "Road": [
-        # Barriers before the roadblock to town, cones leading to them; kept off the road's low end walls (1.6 m), which
-        # a barrier's top would put within a jump.
-        ("barrier", 52.0, 54.0, 90),
-        ("barrier", 52.0, 55.6, 90),
-        ("cone", 50.0, 53.4, 0),
-        ("cone", 47.0, 53.4, 0),
-        ("cone", 44.0, 53.4, 0),
-        ("debris", 26.0, 56.0, 30),
+        # The ticket plaza behind the road door (#686): litter by the kiosks, queue barriers to them, a tree in each north
+        # corner, street lights (models only: the lot's lights are the lamps) on the side walls, a sign at the gate.
         ("box", -9.6, 41.0, 15),
         ("crate", 9.6, 45.0, 0),
         ("crate", 9.6, 45.64, 10),
-        # Density pass. The plaza: queue barriers to the kiosks, a tree in each north corner, street lights (models
-        # only: the lot's lights are the lamps) on the side walls, a sign at the gate, litter.
         ("fence_long", -3.0, 42.0, 90),
         ("fence_long", 3.0, 42.0, 90),
         ("tree_small", -14.0, 40.0, 0),
         ("tree_small", 14.0, 40.0, 0),
         ("street_light", -15.4, 46.0, 0),
         ("street_light", 15.4, 46.0, 0),
+        ("street_light", -15.4, 53.0, 0),
+        ("street_light", 15.4, 53.0, 0),
         ("sign", 2.6, 39.0, 0),
         ("papers", -5.0, 49.0, 20),
         ("papers_c", 6.0, 50.5, 80),
-        # The road: hoardings at the west end, junk on the north verge (away from the wrecks and the 1.6 m walls, so
-        # nothing is a step up), a skip, barriers, cones on the centre line, crates, litter.
-        ("barrier_fixed", -59.0, 55.0, 90),
-        ("barrier_large", -59.0, 61.0, 90),
-        ("sofa", -48.0, 53.2, 0),
-        ("tires", -44.5, 53.0, 0),
-        ("barrier", -20.0, 55.0, 0),
-        ("barrier", -18.49, 55.0, 0),
-        ("pipes", 10.0, 53.3, 90),
-        ("trash_open", 30.0, 53.4, 0),
-        ("crate", 40.0, 53.0, 0),
-        ("crate", 40.63, 53.0, 0),
-        ("street_light", -20.0, 52.6, 0),
-        ("street_light", 20.0, 52.6, 0),
-        ("cone", -10.0, 58.0, 0),
-        ("cone", -4.0, 58.0, 0),
-        ("cone", 2.0, 58.0, 0),
-        ("planks", 49.0, 57.5, 30),
-        ("papers_b", -26.0, 61.0, 40),
-        ("papers", 12.0, 60.0, 0),
-        ("debris", -8.0, 62.0, 120),
+        # The south wall, where the road used to run on: the lot's junk stacked against it, a wreck nose-in (the greybox's),
+        # clear of the machine at x -1.2 to 1.2 and the ground in front of it. Each solid prop touches the wall or stands
+        # a body's width off it (`test_lot_gaps.gd`), and none is a step towards the wall's top (`test_drive_in_jump_reach.gd`).
+        ("container_small", -14.92, 56.97, 0),
+        ("crate", -12.5, 57.485, 0),
+        ("crate", -11.8, 57.485, 0),
+        ("dumpster", 5.0, 57.28, 0),
+        ("container", 10.5, 56.95, 0),
+        ("tires", 15.1, 57.34, 0),
+        ("planks", 3.6, 56.9, 0),
+        ("cone", -4.0, 53.6, 0),
+        ("cone", 4.0, 53.6, 0),
+        ("debris", 12.0, 52.5, 30),
+        ("papers_b", -3.0, 55.0, 40),
+        ("papers", 7.0, 53.5, 0),
     ],
     "Field": [
         ("pallet_broken", -49.0, -24.5, 30),
@@ -509,6 +497,13 @@ def ext_resources() -> list[str]:
     ]
 
 
+# Props the maintainer lifted by hand in the editor (Deadnight #703): (area, node name) -> height in metres. The sheet of
+# papers in the concession was raised 0.003 m, a hair above the floor (the editor kept 0.0027), and is not to be tidied.
+HAND_LIFT: dict[tuple[str, str], float] = {
+    ("Concession", "PapersC1"): 0.003,
+}
+
+
 def dress(area: str, group, instance) -> None:
     """Place the area's props under `<area>/Dressing`, with the generator's `group` and `instance` helpers."""
     spots = DRESSING.get(area, [])
@@ -518,4 +513,5 @@ def dress(area: str, group, instance) -> None:
     counts: dict[str, int] = {}
     for prop, x, z, yaw in spots:
         counts[prop] = counts.get(prop, 0) + 1
-        instance(parent, f"{camel(prop)}{counts[prop]}", f"prop_{prop}", (x, 0, z), yaw)
+        name = f"{camel(prop)}{counts[prop]}"
+        instance(parent, name, f"prop_{prop}", (x, HAND_LIFT.get((area, name), 0), z), yaw)

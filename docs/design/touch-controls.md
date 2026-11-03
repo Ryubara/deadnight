@@ -48,6 +48,11 @@ Tests check every rule of the layout for both hands: safe area, thumb-sized hit 
 the kept HUD cards, the mirror equal to the flipped original, and the busiest and the longest HUD fit every canvas
 mirrored without overlap.
 
+The HUD's weapon slot strip (#682) is over the ammo card on a keyboard, where the right thumb's corner is empty. With the
+touch controls up (`TouchControls.active_changed`, which the night screen hands to `Hud.touch_layout`) it moves under the
+health card, as wide as it, because Fire and Melee sit where it would; `slots` is one of the kept cards the buttons are
+tested against. The stick's resting ring is 60 units higher so it clears the players' column and the strip under it.
+
 ## First run and key hints
 
 - **No keycap on a phone.** `UIInputMode.touch` is true while a finger was the last input (and when the layer comes up

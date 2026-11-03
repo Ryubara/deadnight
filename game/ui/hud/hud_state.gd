@@ -26,6 +26,8 @@ const TEAM := &"team"
 const FUEL := &"fuel"
 const HEALTH := &"health"
 const AMMO := &"ammo"
+## The weapon slots: what sits in each and which one is in hand (`HudSlots`).
+const SLOTS := &"slots"
 const POINTS := &"points"
 const PROMPT := &"prompt"
 const MARKERS := &"markers"
@@ -37,6 +39,8 @@ const STATS := &"stats"
 ## Each player's bleed-out clock and the progress of the hold on them, which change every tick while
 ## someone is down: apart from `TEAM` so a part that only draws the ring is not rebuilt for a name.
 const REVIVE := &"revive"
+## The perks the local player has (`HudPerks`).
+const PERKS := &"perks"
 
 ## A ping the server has not reported: a night alone, or before the first answer.
 const NO_PING := -1
@@ -53,6 +57,9 @@ var local_player_id := 1
 ## tuning (the binding sets them): the rings are drawn against them.
 var revive_seconds := 3.5
 var bleed_total := 45.0
+## The seconds the revive perk takes to get its holder up alone (the shared tuning's, set by the
+## binding): the DOWN card and the ring count them down from it.
+var self_revive_total := 4.0
 ## Which way the local player faces, radians (their yaw): the frame sets it, a blow's bearing is
 ## turned by it. Not a topic: nothing redraws for it.
 var facing := 0.0
@@ -71,7 +78,19 @@ var weapon_id: StringName = &""
 var holstered_id: StringName = &""
 var rounds: Dictionary[StringName, Dictionary] = {}
 var weapon_names: Dictionary[StringName, String] = {}
+## The map's own names for its paid links (link id -> name), for the feed's line; empty on the lot.
+var link_names: Dictionary[StringName, String] = {}
 var ammo_free: Array[StringName] = []
+## The weapons carried by slot, slot 1 first, `&""` for an empty place (`WeaponSlots`), and the
+## slot (1-based) the weapon in hand is in, 0 for none. How many places the player has: the carry
+## limit, raised by the perk that carries one more (#687).
+var slot_ids: Array[StringName] = []
+var slot_held := 0
+var slot_count := WeaponSlots.count()
+## The perks the local player has: the ids of the shop's tonics, in the shop's order. The frame says
+## them as bits (`PerkEffects.mask_of`); the binding turns the bits into these. A down that takes
+## the perks empties it.
+var perks: Array[StringName] = []
 var points := 0
 ## The local player's grenades.
 var grenades := 0
@@ -90,15 +109,16 @@ var fuel_empty := false
 ## Circuit id -> lit, in the order the generator lists them.
 var circuits: Dictionary[StringName, bool] = {}
 ## Player id -> {"name": String, "downed": bool, "points": int, "grenades": int, "seat": int,
-## "look": Dictionary}, the local player included. The seat (0 to 3) picks the player's colour (the
+## "look": Dictionary}, the local player included. The seat (0 to 7) picks the player's colour (the
 ## armband's); the server gives the lowest free one, so the state does too until it is told
 ## (a `player_look` event). The look is a `CharacterLook.to_dict` ({} for the seat's own preset).
 ## "bot" (true when a bot plays the seat: the roster shows BOT after the name, `name_of`) is the
 ## server's too. "kills", "downs", "revives" and "ping" (milliseconds, `NO_PING` when the night has
 ## no link to measure) are the server's counts, set from its frames and snapshot
 ## (`set_player_stats`), never counted here. "dead" (bled out), "bleed" (seconds a downed player has
-## left), "revive" (the hold's progress, 0 to 1) and "reviver" (who holds it, 0 for nobody) are the
-## server's too (`set_player_revive`).
+## left), "revive" (the hold's progress, 0 to 1), "reviver" (who holds it, 0 for nobody) and
+## "self_revive" (seconds left of the revive perk's own, 0 for none) are the server's too
+## (`set_player_revive`).
 var team: Dictionary[int, Dictionary] = {}
 ## Whole seconds the night has run, as the server counts them (a break and a round both count).
 var night_clock := 0
@@ -218,6 +238,20 @@ func set_ammo(magazine: int, reserve: int, weapon := "", reloading := false, use
 	_flush()
 
 
+## The weapons by slot and the slot in hand. The HUD draws the places up to `slot_count` (or as
+## many as there are weapons).
+func set_slots(ids: Array[StringName], held: int) -> void:
+	_assign(&"slot_ids", ids, SLOTS)
+	_assign(&"slot_held", held, SLOTS)
+	_flush()
+
+
+## How many places the player carries weapons in (the carry limit, a perk adds one).
+func set_slot_count(count: int) -> void:
+	_assign(&"slot_count", clampi(count, 1, WeaponSlots.MAX), SLOTS)
+	_flush()
+
+
 func set_equipment(equipment: String, count: int) -> void:
 	_assign(&"equipment_name", equipment, HEALTH)
 	_assign(&"equipment_count", count, HEALTH)
@@ -262,26 +296,48 @@ func set_player_stats(
 
 
 ## The server's word on one player's revive: whether they bled out, the seconds a downed player has
-## left, how far the hold on them has got (0 to 1) and who holds it (0 for nobody). Whole values,
-## not changes, so a frame said twice changes nothing.
+## left, how far the hold on them has got (0 to 1), who holds it (0 for nobody) and the seconds left
+## of the revive perk getting them up alone (0 for none; the bleed-out clock stands still).
+## Whole values, not changes, so a frame said twice changes nothing.
 func set_player_revive(
-	player_id: int, dead: bool, bleed: float, progress: float, reviver: int
+	player_id: int, dead: bool, bleed: float, progress: float, reviver: int, self_revive := 0.0
 ) -> void:
 	var member := _member(player_id)
-	if member["dead"] != dead or member["reviver"] != reviver:
+	if (
+		member["dead"] != dead
+		or member["reviver"] != reviver
+		or (float(member["self_revive"]) > 0.0) != (self_revive > 0.0)
+	):
 		_mark(TEAM)
 	if (
 		member["dead"] != dead
 		or not is_equal_approx(member["bleed"], bleed)
 		or not is_equal_approx(member["revive"], progress)
 		or member["reviver"] != reviver
+		or not is_equal_approx(member["self_revive"], self_revive)
 	):
 		member["dead"] = dead
 		member["bleed"] = bleed
 		member["revive"] = progress
 		member["reviver"] = reviver
+		member["self_revive"] = self_revive
 		_mark(REVIVE)
 	_flush()
+
+
+## The perks the local player has now (shop tonic ids in the shop's order); the parts hear of a
+## change only.
+func set_perks(ids: Array[StringName]) -> void:
+	if perks != ids:
+		perks = ids.duplicate()
+		_mark(PERKS)
+	_flush()
+
+
+## Whether the revive perk is getting the local player up alone now.
+func is_local_self_reviving() -> bool:
+	var me: Dictionary = team.get(local_player_id, {})
+	return bool(me.get("downed", false)) and float(me.get("self_revive", 0.0)) > 0.0
 
 
 ## The night's clock in whole seconds, from the server.
@@ -383,6 +439,7 @@ func load_snapshot(data: Dictionary) -> void:
 		member["downed"] = bool(saved.get("downed", false))
 		member["dead"] = bool(saved.get("dead", false))
 		member["bleed"] = float(saved.get("bleed_left", 0.0))
+		member["self_revive"] = float(saved.get("self_revive_left", 0.0))
 		member["revives"] = int(saved.get("revives", 0))
 		member["points"] = int(saved.get("points", 0))
 		member["grenades"] = int(saved.get("grenades", 0))
@@ -468,6 +525,8 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_player_added
 		&"bot_replaced":
 			handler = _on_bot_replaced
+		&"bot_seated":
+			handler = _on_bot_seated
 		&"grenade_count_changed":
 			handler = _on_grenade_count_changed
 		&"player_removed":
@@ -480,6 +539,8 @@ func _handler(type: StringName) -> Callable:
 			handler = _on_player_revived
 		&"player_died":
 			handler = _on_player_died
+		&"self_revive_started":
+			handler = _on_self_revive_started
 		&"points_changed":
 			handler = _on_points_changed
 		&"fuel_changed":
@@ -655,6 +716,7 @@ func _on_player_downed(event: Dictionary) -> void:
 	member["bleed"] = float(event.get("bleed_seconds", bleed_total))
 	member["revive"] = 0.0
 	member["reviver"] = 0
+	member["self_revive"] = 0.0
 	_mark(REVIVE)
 	if player_id == local_player_id:
 		_assign(&"health", 0.0, HEALTH)
@@ -668,6 +730,15 @@ func _on_player_revived(event: Dictionary) -> void:
 	member["bleed"] = 0.0
 	member["revive"] = 0.0
 	member["reviver"] = 0
+	member["self_revive"] = 0.0
+	_mark(REVIVE)
+
+
+## The revive perk began to count: the DOWN card says so at once, the frame keeps the count.
+func _on_self_revive_started(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	member["self_revive"] = float(event.get("seconds", self_revive_total))
+	_mark(TEAM)
 	_mark(REVIVE)
 
 
@@ -677,6 +748,7 @@ func _on_player_died(event: Dictionary) -> void:
 	member["bleed"] = 0.0
 	member["revive"] = 0.0
 	member["reviver"] = 0
+	member["self_revive"] = 0.0
 	_mark(TEAM)
 	_mark(REVIVE)
 
@@ -736,6 +808,7 @@ func _member(player_id: int) -> Dictionary:
 			"bleed": 0.0,
 			"revive": 0.0,
 			"reviver": 0,
+			"self_revive": 0.0,
 			"bot": false,
 		}
 		_mark(TEAM)
@@ -750,6 +823,15 @@ func _on_bot_replaced(event: Dictionary) -> void:
 		_mark(TEAM)
 
 
+## A bot took the seat of a person who left: the person is gone from the roster (their name is kept
+## for the notice) and the seat is a bot's; the bot's own name arrives as a `player_named`.
+func _on_bot_seated(event: Dictionary) -> void:
+	var member := _member(int(event["player_id"]))
+	left_name = str(member.get("name", "PLAYER %d" % int(event["player_id"])))
+	member["bot"] = true
+	_mark(TEAM)
+
+
 ## The name a roster shows for a team member (an entry of `team`): the name, then BOT for a bot, so
 ## a bot is never taken for a person. Every part of the HUD that writes a name calls this.
 static func name_of(member: Dictionary) -> String:
@@ -757,12 +839,12 @@ static func name_of(member: Dictionary) -> String:
 	return shown + " BOT" if member.get("bot", false) else shown
 
 
-## The lowest seat no one in the party has, as the server gives it (0 when all four are taken).
+## The lowest seat no one in the party has, as the server gives it (0 when all are taken).
 func _free_seat() -> int:
 	var taken: Array = []
 	for member: Dictionary in team.values():
 		taken.append(member["seat"])
-	for seat in 4:
+	for seat in NightHost.MAX_PLAYERS:
 		if not taken.has(seat):
 			return seat
 	return 0

@@ -206,6 +206,47 @@ func test_a_toss_goes_off_close_and_the_blast_throws_and_stuns_a_zombie_at_its_e
 	assert_float(away.x).is_greater(0.0)
 
 
+func test_a_grenade_thrown_at_a_zombie_drops_by_it_and_the_view_agrees() -> void:
+	var zombie_id := _into_the_round()
+	var body: ZombieBody = _night.server.sim.zombies[zombie_id]
+	_key(KEY_G, true)
+	_play(COOK_TICKS)
+	_key(KEY_G, false)
+	_play(WIND_TICKS)
+	var thrown := _first(&"grenade_thrown")
+	assert_bool(thrown.is_empty()).is_false()
+	if thrown.is_empty():
+		return
+	# The dead walk; this one waits four metres down the throw.
+	var velocity: Vector3 = thrown["velocity"]
+	var spot: Vector3 = thrown["position"] + Vector3(velocity.x, 0.0, velocity.z).normalized() * 4.0
+	spot.y = body.position.y
+	for _i in 100:
+		body.position = spot
+		body.velocity = Vector3.ZERO
+		_play(1)
+	assert_int(_count(&"grenade_struck")).is_equal(1)
+	assert_int(_first(&"grenade_struck")["zombie_id"]).is_equal(zombie_id)
+	var server_side := _night.server.grenades.grenade(thrown["grenade_id"])
+	assert_object(server_side).is_not_null()
+	if server_side == null:
+		return
+	var apart := Vector2(server_side.position.x - spot.x, server_side.position.z - spot.z)
+	assert_float(apart.length()).is_less(1.0)
+	var drawn: Variant = _night.view.grenade_position(thrown["grenade_id"])
+	assert_bool(drawn is Vector3).is_true()
+	assert_vector(drawn).is_equal_approx(server_side.position, Vector3.ONE * 0.02)
+	# It goes off there, on the fuse it always had, and the zombie is in the blast.
+	for _i in FLIGHT_LIMIT:
+		if _count(&"grenade_exploded") > 0:
+			break
+		body.position = spot
+		body.velocity = Vector3.ZERO
+		_play(1)
+	assert_int(_count(&"grenade_exploded")).is_equal(1)
+	assert_int(_hit_on(zombie_id).get("target_id", -1)).is_equal(zombie_id)
+
+
 func test_the_view_draws_the_grenade_while_it_flies() -> void:
 	_into_the_round()
 	_key(KEY_G, true)

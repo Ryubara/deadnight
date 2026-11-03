@@ -17,7 +17,7 @@ const DOOR_NAMES := {
 	&"door_yard": "Generator yard",
 	&"door_booth": "Projection booth",
 	&"door_back_lot": "Back lot",
-	&"door_road": "The road",
+	&"door_road": "The ticket plaza",
 }
 ## How high over a zombie's feet its damage number starts: a headshot over the head, any other hit
 ## at the chest.
@@ -39,19 +39,33 @@ const CIRCUIT_NAMES := {
 
 var _hud: Hud
 var _state: ClientState
+## What the map calls its links and breaches; null on the lot, whose words are the defaults above.
+var _words: MapWords
 var _weapon_names: Dictionary[StringName, String] = {}
 var _fuel: FuelTuning
 var _upgrade: UpgradeTuning
+var _perks: PerkTuning
+var _economy: EconomyTuning
 ## Units a whole can adds, by shop item: what the card says a can is worth.
 var _can_units: Dictionary[StringName, int] = {}
 
 
 ## `hud` is in the tree or about to be; `state` is the client's; `tuning` is read once, for the
 ## numbers both sides know from the shared tuning (the fuel tank), and not after.
-## `looks` is the client's table of looks: the HUD shows each player's portrait from it.
-func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistry = null) -> void:
+## `looks` is the client's table of looks: the HUD shows each player's portrait from it. `words` is
+## the map's own names for its links and breaches (`MapLayout.words`), null for the lot.
+func _init(
+	hud: Hud,
+	state: ClientState,
+	tuning: RulesTuning,
+	looks: LookRegistry = null,
+	words: MapWords = null
+) -> void:
 	_hud = hud
 	_state = state
+	_words = words
+	if words != null:
+		hud.state.link_names = words.link_names
 	var ammo_free: Array[StringName] = []
 	for def in WeaponCatalog.all():
 		_weapon_names[def.id] = def.display_name
@@ -62,12 +76,15 @@ func _init(hud: Hud, state: ClientState, tuning: RulesTuning, looks: LookRegistr
 	var fuel: FuelTuning = tuning.fuel
 	_fuel = fuel
 	_upgrade = tuning.upgrade
+	_perks = tuning.perks
+	_economy = tuning.economy
 	for item in tuning.economy.items:
 		if item.kind == ShopItem.Kind.FUEL:
 			_can_units[item.id] = int(item.amount)
 	hud.state.local_player_id = state.player_id
 	hud.state.revive_seconds = tuning.health.revive_seconds
 	hud.state.bleed_total = tuning.revive.bleed_out_seconds
+	hud.state.self_revive_total = tuning.perks.self_revive_seconds
 	hud.state.configure(fuel.capacity, fuel.circuit_drain.keys(), fuel.start_circuits)
 	hud.state.special_schedule = HudSpecials.schedule_of(tuning.specials)
 	state.event_received.connect(_on_event)
@@ -134,6 +151,14 @@ func _on_frame() -> void:
 	# server holds, every tick, so rounds that came by any road show now, and a HUD that joined
 	# late (it heard no event) takes the weapon in hand.
 	HudLoadout.sync(me, state)
+	# The third weapon perk adds a place to the weapon slots; losing it takes the place away.
+	var places := WeaponSlots.count()
+	if PerkEffects.mask_has_effect(_economy, int(me.get("perks", 0)), ShopItem.Effect.EXTRA_WEAPON):
+		places += _perks.extra_weapons
+	state.set_slot_count(places)
+	# The badges beside the health card are the frame's perk bits, so a purchase adds one and a down
+	# that takes the perks takes the badges with them.
+	state.set_perks(PerkEffects.mask_tonics(_economy, int(me.get("perks", 0))))
 	show_prompt(me["prompt"])
 
 
@@ -157,7 +182,8 @@ func _show_stats(state: HudState) -> void:
 			bool(player.get("dead", false)),
 			float(player.get("bleed", 0.0)),
 			float(player.get("revive", 0.0)),
-			int(player.get("reviver", 0))
+			int(player.get("reviver", 0)),
+			float(player.get("self_revive", 0.0))
 		)
 	state.set_night_clock(int(_state.frame.get("clock", 0)))
 	state.release()
@@ -169,12 +195,13 @@ func show_prompt(prompt: Dictionary) -> void:
 	var kind: StringName = prompt.get("kind", &"")
 	match kind:
 		&"door":
-			var label: String = DOOR_NAMES.get(prompt["id"], "A way through")
-			if state.prompt.get("label") != label or state.prompt.get("cost") != prompt["price"]:
-				state.set_prompt(&"buy_door", label, prompt["price"])
+			var id := StringName(prompt["id"])
+			var detail := _words.link_detail(id) if _words != null else ""
+			_offer(&"buy_door", door_name(id, _words), prompt["price"], detail)
 		&"repair":
 			if state.prompt.get("kind") != &"repair":
-				state.set_prompt(&"repair", BREACH_NAME)
+				var breach := _words.breach_name if _words != null else ""
+				state.set_prompt(&"repair", breach if breach != "" else BREACH_NAME)
 		&"revive":
 			_set_revive_prompt(prompt)
 		&"weapon":
@@ -209,8 +236,17 @@ func show_prompt(prompt: Dictionary) -> void:
 		&"fuel":
 			_set_fuel_prompt(prompt)
 		_:
-			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade):
+			if not MachinePrompts.show(state, prompt, _weapon_names, _upgrade, _perks):
 				state.clear_prompt()
+
+
+## The name of the door `id` on its card and its marker: the map's own, else the lot's, else a
+## plain one. `words` is the map's (null on the lot).
+static func door_name(id: StringName, words: MapWords = null) -> String:
+	var own := words.link_name(id) if words != null else ""
+	if own != "":
+		return own
+	return DOOR_NAMES.get(id, "A way through")
 
 
 ## A downed teammate in reach: whose, and how long they have (the ring itself is `HudRevive`'s).

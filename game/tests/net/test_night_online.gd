@@ -202,6 +202,49 @@ func test_every_player_looks_the_same_on_every_screen() -> void:
 	assert_bool(on_a.is_equal_approx(on_b)).is_true()
 
 
+## The character choice (#678) is part of the look: the other client draws her as her, both
+## screens' voices know she has none yet, and his body beside her stays his.
+func test_her_character_is_seen_by_the_other_player_and_has_her_voice() -> void:
+	await _server()
+	var hers := CharacterLook.from_preset(8)  # Carhop
+	var his := CharacterLook.from_preset(5)
+	assert_str(String(hers.body())).is_equal("female")
+	var a := await _wearing(hers)
+	var b := await _wearing(his)
+	assert_bool(await _until_sees(b, 1, hers)).is_true()
+	assert_bool(await _until_sees(a, 2, his)).is_true()
+	assert_str(String((_host.server.looks.looks[1] as CharacterLook).body())).is_equal("female")
+	await _ticks(10)
+	# On the other screen her avatar shows her face, torso and legs and none of his.
+	var avatar := b.avatars.avatar(1).get_node("Model")
+	var shown := _shown(avatar)
+	for mesh in [
+		"head__plain__female", "torso__shirt__female", "legs__cuffed__female", "hair__bob"
+	]:
+		assert_array(shown).contains([mesh])
+	for mesh in ["head__plain", "torso__shirt", "legs__cuffed"]:
+		assert_array(shown).not_contains([mesh])
+	# Her own screen draws her the same way.
+	var resolved := LookResolver.resolve(_host.server.looks.looks)
+	var expected: Array[String] = SoldierLook.visible_meshes(
+		(resolved[1] as CharacterLook).to_soldier_look()
+	)
+	expected.sort()
+	assert_array(_shown(a._body.get_node("Model"))).is_equal(expected)
+	assert_array(shown).is_equal(expected)
+	# The voice each screen picks: hers is the female voice (voxf_), his the male one.
+	for night: Night in [a, b]:
+		var voice := SoldierVoice.new()
+		voice.looks = night.looks
+		assert_str(String(SoldierVoiceCatalog.voice_of({"voice": voice.look_voice(1)}))).is_equal(
+			"female"
+		)
+		assert_str(String(SoldierVoiceCatalog.voice_of({"voice": voice.look_voice(2)}))).is_equal(
+			"male"
+		)
+		voice.free()
+
+
 ## How tall the character is in the world: the highest bone of its skeleton at rest above the
 ## model's own origin (the feet), and its global scale.
 func _stature(model: Node3D) -> Dictionary:
@@ -365,21 +408,21 @@ func _pump(links: Array[WebSocketLink]) -> void:
 		link.pump()
 
 
-func test_a_fifth_player_is_turned_away() -> void:
+func test_a_player_past_the_limit_is_turned_away() -> void:
 	await _server()
 	var links: Array[WebSocketLink] = []
-	for _i in 4:
+	for _i in NightHost.MAX_PLAYERS:
 		var link := WebSocketLink.new()
 		link.connect_to(_url())
 		links.append(link)
-	var four := false
+	var full := false
 	for _i in 600:
 		_pump(links)
-		if _host.player_count() == 4:
-			four = true
+		if _host.player_count() == NightHost.MAX_PLAYERS:
+			full = true
 			break
 		await get_tree().physics_frame
-	assert_bool(four).is_true()
+	assert_bool(full).is_true()
 	var fifth := WebSocketLink.new()
 	var why := {"reason": -1}
 	fifth.refused.connect(func(reason: int) -> void: why["reason"] = reason)
@@ -391,7 +434,7 @@ func test_a_fifth_player_is_turned_away() -> void:
 			break
 		await get_tree().physics_frame
 	assert_int(why["reason"]).is_equal(NetWire.Refusal.FULL)
-	assert_int(_host.player_count()).is_equal(4)
+	assert_int(_host.player_count()).is_equal(NightHost.MAX_PLAYERS)
 	for link in links:
 		link.close()
 

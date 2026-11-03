@@ -12,6 +12,7 @@ const CELLS := [
 	["average", 1],
 	["average", 2],
 	["average", 4],
+	["average", 8],
 	["strong", 1],
 ]
 
@@ -62,6 +63,9 @@ func test_better_players_and_more_players_go_further() -> void:
 	assert_float(BalanceBatch.mean_round(cells["average:4"])).is_greater(
 		BalanceBatch.mean_round(cells["average:2"])
 	)
+	assert_float(BalanceBatch.mean_round(cells["average:8"])).is_greater(
+		BalanceBatch.mean_round(cells["average:4"])
+	)
 
 
 func test_cells_on_threads_are_the_cells_one_after_another() -> void:
@@ -100,9 +104,12 @@ func test_zombie_health_climbs_faster_than_it_used_to_because_weapons_can_be_re_
 	assert_array(BalanceTargets.check(_shipped)).is_empty()
 
 
-func test_the_same_climb_is_a_wall_when_the_re_cut_and_the_tonic_do_nothing() -> void:
+func test_the_same_climb_goes_less_far_when_the_re_cut_and_the_tonic_do_nothing() -> void:
 	# The same shopping at the same price, but the bench changes nothing and the tonic gives no
-	# health: the gate must fail, so it is the upgrade that carries the climb and not luck.
+	# health: the good and the many nights must end rounds sooner, so it is the upgrade that carries
+	# part of the climb and not luck. (Before the hit zones followed the bodies, #745, this batch
+	# fell outside the ranges; the bots now land most shots on the head and take fewer blows, so the
+	# climb alone is no longer a wall, and the test reads how much of it the upgrade carries.)
 	var inert := RulesFixture.tuning()
 	inert.upgrade.damage_multiplier = 1.0
 	inert.upgrade.magazine_multiplier = 1.0
@@ -110,9 +117,20 @@ func test_the_same_climb_is_a_wall_when_the_re_cut_and_the_tonic_do_nothing() ->
 	inert.upgrade.price_step = 0
 	inert.economy.item(&"upgrade_weapon").price = 1
 	inert.economy.item(&"tonic_hearty").health_bonus = 0.0
-	# 20 nights are enough to see a wall (median rounds one to six below range, a stampede killing
-	# two thirds): the gate itself keeps its 60.
-	assert_array(BalanceTargets.check(_batch(inert, 20))).is_not_empty()
+	var without := _batch(inert)
+	for key in ["average:4", "average:8", "strong:1"]:
+		var shipped_mean := BalanceBatch.mean_round(_shipped[key])
+		var inert_mean := BalanceBatch.mean_round(without[key])
+		(
+			assert_float(inert_mean)
+			. override_failure_message(
+				(
+					"%s: %.2f rounds without the re-cut and the tonic, %.2f with"
+					% [key, inert_mean, shipped_mean]
+				)
+			)
+			. is_less(shipped_mean - 1.0)
+		)
 
 
 func test_the_gate_fails_when_ammunition_is_out_of_reach() -> void:

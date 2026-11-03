@@ -37,6 +37,8 @@ var _hint := HudStyle.label("", HudStyle.SMALL, tokens.hot, false, HudStyle.TRAC
 ## Holds the reserve above the card's bottom by what puts its baseline on the magazine's.
 var _reserve_lift := MarginContainer.new()
 var _magazine_size := 0
+## The weapon `_magazine_size` was counted for: a new weapon starts its own count (#684).
+var _sized_for := ""
 
 
 func _init() -> void:
@@ -68,6 +70,11 @@ func topics() -> Array[StringName]:
 
 
 func refresh() -> void:
+	# The largest magazine seen is the weapon's full one (it empties as it fires), but only of the
+	# weapon in hand: a full double-barrel after a bigger magazine is not "low".
+	if state.weapon_name != _sized_for:
+		_sized_for = state.weapon_name
+		_magazine_size = 0
 	_magazine_size = maxi(_magazine_size, state.ammo_magazine)
 	is_low = state.ammo_magazine <= maxi(1, int(_magazine_size * _t.ammo_low_fraction))
 	HudStyle.set_fitted(_weapon, state.weapon_name.to_upper(), HudStyle.SMALL, _bar_room())

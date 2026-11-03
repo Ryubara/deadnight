@@ -274,3 +274,49 @@ func test_the_flare_gun_is_never_fired_at_a_zombie_and_an_empty_one_is_not_fired
 		if empty.command(STEP, _holding(&"flare_gun", 0), order, BotBeliefs.new(), 0).fire:
 			fired_empty += 1
 	assert_int(fired_empty).is_equal(0)
+
+
+func test_the_quick_melee_reaches_a_zombie_standing_where_it_swings_from() -> void:
+	# The dead swing from `ZombieTuning.reach` (1.4 m) and a dry bot struck only inside 1.4 m: a zombie
+	# standing at its reach was never hit back, and the soak found a bot idle beside a crawler for 8 s
+	# (#770). The bot's reach is past the zombie's, and a zombie at the zombie's own reach is struck.
+	var zombie_reach := ZombieTuning.shipped().reach
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var motor := BotMotor.new(BotProfile.regular(), rng)
+	var intent := BotIntent.new()
+	intent.target_id = 1
+	intent.quick_melee_ok = true
+	var standing := _beliefs_with_a_zombie()
+	standing.contacts[1]["position"] = Vector3(0.0, 0.0, -(zombie_reach + 0.02))
+	var struck := 0
+	for _i in 30:
+		if motor.command(STEP, _holding(&"pistol", 0), intent, standing, 0).motion.melee:
+			struck += 1
+	assert_int(struck).is_equal(30)
+
+
+func test_the_quick_melee_strikes_a_zombie_inside_its_reach_and_reads_the_catalogue_once() -> void:
+	# The reach was asked of the catalogue every tick; nothing held the definition, so each ask read
+	# the file again (0.8 ms): three bots with a dry gun cost twice the budget (#771).
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var motor := BotMotor.new(BotProfile.regular(), rng)
+	var intent := BotIntent.new()
+	intent.target_id = 1
+	intent.quick_melee_ok = true
+	var reach := WeaponCatalog.quick_melee().melee_range - BotMotor.QUICK_REACH_MARGIN
+	var near := _beliefs_with_a_zombie()
+	near.contacts[1]["position"] = Vector3(0.0, 0.0, -(reach - 0.3))
+	var far := _beliefs_with_a_zombie()
+	far.contacts[1]["position"] = Vector3(0.0, 0.0, -(reach + 0.3))
+	var struck := 0
+	var struck_far := 0
+	for _i in 30:
+		if motor.command(STEP, _holding(&"pistol", 0), intent, near, 0).motion.melee:
+			struck += 1
+		if motor.command(STEP, _holding(&"pistol", 0), intent, far, 0).motion.melee:
+			struck_far += 1
+	assert_int(struck).is_equal(30)
+	assert_int(struck_far).is_equal(0)
+	assert_float(motor._quick_reach).is_equal_approx(reach, 0.0001)

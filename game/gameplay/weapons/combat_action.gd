@@ -10,8 +10,10 @@ const QUICK_MELEE := &"quick_melee"
 const GIVE_WEAPON := &"give_weapon"
 const EQUIP := &"equip"
 const SWAP := &"swap"
+const SELECT_SLOT := &"select_slot"
 const ADD_AMMO := &"add_ammo"
 const UPGRADE_WEAPON := &"upgrade_weapon"
+const REMOVE_WEAPONS := &"remove_weapons"
 const TICK := &"tick"
 const TARGETS := &"targets"
 const TRACK_TARGET := &"track_target"
@@ -77,6 +79,12 @@ static func swap(player_id: int) -> Dictionary:
 	return {"type": SWAP, "player_id": player_id}
 
 
+## Takes the weapon in carry slot `slot` (1 is the first carried, `WeaponSlots`) in hand. An empty
+## slot, and the slot already in hand, change nothing and say nothing.
+static func select_slot(player_id: int, slot: int) -> Dictionary:
+	return {"type": SELECT_SLOT, "player_id": player_id, "slot": slot}
+
+
 ## Puts up to `rounds` into the reserve of a weapon the player carries (never past its limit).
 static func add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> Dictionary:
 	return {"type": ADD_AMMO, "player_id": player_id, "weapon_id": weapon_id, "rounds": rounds}
@@ -85,6 +93,12 @@ static func add_ammo(player_id: int, weapon_id: StringName, rounds: int) -> Dict
 ## Re-cuts a weapon the player carries: more damage, a bigger magazine and reserve, both filled.
 static func upgrade_weapon(player_id: int, weapon_id: StringName) -> Dictionary:
 	return {"type": UPGRADE_WEAPON, "player_id": player_id, "weapon_id": weapon_id}
+
+
+## Takes weapons the player carries away (the third-weapon perk is gone): `weapon_ids` are
+## catalogue ids. The weapon in hand, if it is one of them, is replaced by one that is left.
+static func remove_weapons(player_id: int, weapon_ids: Array) -> Dictionary:
+	return {"type": REMOVE_WEAPONS, "player_id": player_id, "weapon_ids": weapon_ids}
 
 
 ## One fixed step of the combat clock: cooldowns, reloads, projectiles in flight.
@@ -116,4 +130,10 @@ static func from_rules_event(event: Dictionary) -> Dictionary:
 			return track_target(event["zombie_id"])
 		&"zombie_removed":
 			return untrack_target(event["zombie_id"])
+		&"perks_lost":
+			if not event["weapons"].is_empty():
+				var ids: Array = []
+				for shop_id: StringName in event["weapons"]:
+					ids.append(WeaponCatalog.catalog_id(shop_id))
+				return remove_weapons(event["player_id"], ids)
 	return {}

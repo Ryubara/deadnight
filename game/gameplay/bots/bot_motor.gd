@@ -32,8 +32,10 @@ const FOCUS_SECONDS := 1.0
 ## A head is aimed at only when the target moves slower than this (m/s) and is nearer than this (m).
 const HEAD_SPEED := 3.0
 const HEAD_RANGE := 12.0
-## How far inside the quick melee's reach a bot lets a zombie come before it strikes (metres).
-const QUICK_REACH_MARGIN := 0.2
+## How far inside the quick melee's reach a bot lets a zombie come before it strikes (metres). None:
+## the dead swing from 1.4 m (`ZombieTuning.reach`) and the blow reaches 1.6, so a margin of 0.2
+## left a zombie at its own reach out of the bot's (the soak's bot idle beside a crawler, #770).
+const QUICK_REACH_MARGIN := 0.0
 ## Limits of the pitch the view turns to (radians), and a melee swing's reach (metres).
 const PITCH_LIMIT := 1.2
 const MELEE_RANGE := 1.9
@@ -91,6 +93,8 @@ var _last_position := Vector3.INF
 var _last_bearing := 0.0
 var _weapon_id: StringName = &""
 var _weapon_def: WeaponDef
+## The quick melee's reach less the margin, read from the catalogue once (-1 until then).
+var _quick_reach := -1.0
 
 
 func _init(profile: BotProfile, rng: RandomNumberGenerator) -> void:
@@ -220,7 +224,6 @@ func _wanted_view(
 
 func _aim_point(contact: Dictionary, eye: Vector3) -> Vector3:
 	var look: StringName = contact.get("look", ZombieModels.DEFAULT)
-	var scale := ZombieModels.aim_scale(look)
 	var at: Vector3 = contact["position"]
 	if _weak and ZombieModels.is_boss(look):
 		var lens := weak_spot(contact, eye)
@@ -229,7 +232,9 @@ func _aim_point(contact: Dictionary, eye: Vector3) -> Vector3:
 	var apart := Vector2(at.x - eye.x, at.z - eye.z).length()
 	var speed := Vector2(contact["velocity"].x, contact["velocity"].z).length()
 	var head := _head and speed < HEAD_SPEED and apart < HEAD_RANGE
-	return at + Vector3(0.0, (BotLevel.HEAD_HEIGHT if head else BotLevel.CHEST_HEIGHT) * scale, 0.0)
+	var zone := Hitbox.HEAD if head else Hitbox.BODY
+	var mode: int = contact.get("mode", ZombieBody.Mode.CHASE)
+	return at + ZombiePose.aim_offset(look, mode, float(contact.get("yaw", 0.0)), zone)
 
 
 ## Where the boss's lens is, or `Vector3.INF` when the boss does not face `eye` enough for the bot
@@ -339,7 +344,9 @@ func _in_quick_reach(eye: Vector3, contact: Dictionary) -> bool:
 	if contact.is_empty():
 		return false
 	var flat := Vector2(contact["position"].x - eye.x, contact["position"].z - eye.z)
-	return flat.length() < WeaponCatalog.quick_melee().melee_range - QUICK_REACH_MARGIN
+	if _quick_reach < 0.0:
+		_quick_reach = WeaponCatalog.quick_melee().melee_range - QUICK_REACH_MARGIN
+	return flat.length() < _quick_reach
 
 
 # --- Grenades ---

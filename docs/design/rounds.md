@@ -111,8 +111,8 @@ round), announced as `player_healed` whenever the whole-unit value changes. Gett
 whether a player bled out are in the snapshot.
 
 **What a zombie is worth.** The first 4 hits that do not kill pay 4 (8 to the head); the hit that
-kills pays the kill (60, head 100, melee 130) instead of a hit. Any hits after the fourth, and hits
-on a dead zombie, pay nothing, so a zombie is worth at most 4 hits and a kill (132 with the head)
+kills pays the kill (60, head 70, melee 130) instead of a hit. Any hits after the fourth, and hits
+on a dead zombie, pay nothing, so a zombie is worth at most 4 hits and a kill (102 with the head)
 however many shots it takes; tiny hits cannot farm it. The tables below still hold.
 
 Not the rules' job: whether a client could really have fired that shot (aim, range, rate of fire,
@@ -203,7 +203,8 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 | `max_alive` | 0 (auto) or 1 to 40 | auto | a number replaces the round's alive cap and never goes above `alive_cap_ceiling` (40, the crowd the lot stands); auto is the tuned cap times the multiplier |
 | `break_seconds` | 0 (the tuned 5 s) or 1 to 120 | 0 | the break after each round; the wait before round 1 (12 s) and the 10 s extra before a special round are unchanged |
 | `map` | the id of a playable map of `MapRegistry` | `drive_in` | the map the night is built on; optional when read (a ticket or lobby from before the choice means the lot); [maps](maps.md) |
-| `bots` | 0 to 3 | 0 | bots that fill the night's seats ([below](#bots)); the key may be left out of a ticket or a snapshot from before it and then means 0 |
+| `bots` | 0 to 7 | 0 | bots that fill the night's seats ([below](#bots)); the key may be left out of a ticket or a snapshot from before it and then means 0 |
+| `bot_skill` | 0 rookie, 1 regular, 2 veteran | 1 | how well every bot of the night plays ([below](#bots)); the key may be left out and then means regular |
 
 - **Where the multiplier applies.** To the tuned count of a normal round, which is also what a special round starts
   from (a stampede is 110% of the scaled count, an escort party its share of it). A new type's first round still
@@ -223,12 +224,13 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   Every round from 2 is within 10% of 1x (round 2 at 3x is the edge, 10%; the rest are 1 to 8%) and
   round 1, with 4 zombies at 1x, within 15% (12%): the wait before the first zombie and the last one's
   life are fixed, and N zombies have N-1 gaps.
-- **Setting them.** `RulesAction.configure(settings)` (the one action, refused as `wrong_phase` once the night began,
-  as `out_of_range` with field `settings` for a value out of bounds; it answers `settings_changed`), or the
+- **Setting them.** `RulesAction.configure(settings)` (the one action, refused as `wrong_phase` once the night
+  began, as `out_of_range` with field `settings` for a value out of bounds; it answers `settings_changed`), or the
   constructor `GameRules.new(tuning, seed, settings)`, which pulls values into bounds with `clamped()`.
-  `NightServer.new(..., settings)` and `Night.match_settings` (before `start`) carry them for a night on this machine,
-  and `NightScreen.match_settings` is the Play screen's hand-over, taken once. The menu's Solo opens the Play screen (#620),
-  so a night on this machine and a room's host set the same settings on the same `MatchSettingsPanel`.
+  `NightServer.new(..., settings)` and `Night.match_settings` (before `start`) carry them for a night on this
+  machine, and `NightScreen.match_settings` is the Play screen's hand-over, taken once. The menu's Solo opens the
+  Play screen (#620), so a night on this machine and a room's host set the same settings on the same
+  `MatchSettingsPanel`.
 - **For a room host.** `NightHost.configure_match(settings)` is the hook: it applies at once to a night nobody has
   started (returning true), otherwise keeps them for the next night the host builds (false). A `GameServer` room is
   a `NightHost`, so it is `room.configure_match(settings)` after `room.built`, or `room.match_settings = settings`
@@ -238,21 +240,45 @@ started. The defaults are today's game exactly, and every shipped test runs on t
   what the WELCOME carried (`MatchSettings.from_snapshot(welcome["snapshot"])`; `Night.match_settings` after
   `start_remote`), and `changed` fires when a control moves. A dedicated server takes `--count`, `--max-alive`
   `--break` and `--bots`.
-- **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 3) is how many `BotClient`s the night seats beside the
-  people. `NightBots` (`game/gameplay/night/night_bots.gd`) is the one place that decides, for Solo (`Night`) and a room
-  (`NightHost`) alike. Solo seats the setting beside the person (seats 2 to 4). A room is four seats: the bots are
+- **Bots.** <a id="bots"></a>`bots` (`MatchSettings.MAX_BOTS` = 7, one less than the seats: a person always holds
+  one) is how many `BotClient`s the night seats beside the people. `NightBots` (`game/gameplay/night/night_bots.gd`) is
+  the one place that decides, for Solo (`Night`) and a room (`NightHost`) alike. Solo seats the setting beside the
+  person, in the highest seats (3 asked: seats 6 to 8). A room is eight seats (`NightHost.MAX_PLAYERS`): the bots are
   `NightBots.target(setting, people)`, never more than the setting and never more than the seats the people leave free
-  (3 asked, 2 people: 2 bots, in seats 3 and 4). Bots take the highest free seat numbers, people the lowest, so the
+  (7 asked, 2 people: 6 bots, in seats 3 to 8). Bots take the highest free seat numbers, people the lowest, so the
   people's numbers do not move. A person who joins when no seat is free takes the **lowest bot's seat as it stands**
   (`NightBots.hand_over`: the same body, points, weapons and health; the rules' `seat_person` action answers
   `bot_replaced`; the round, the night and the other bots go on, and the person is welcomed as any other with the
-  seat's looks re-sent), the bot leaves the `BotHost`, and a person who leaves hands the seat to a new bot while others
-  remain. A seat is a bot's when `player_added` says `bot: true` (`PlayerState.bot`, in the snapshot too): the HUD writes
-  `BOT` after the name everywhere (`HudState.name_of`), a bot seated at the start is no "joined" notice, and the lobby
-  shows the bots the host's setting will seat in the open seats (`LobbyScreen.bots_shown`). Every bot plays the
-  shipped regular profile for now and counts as a player for the rules (`add_player`). With bots in the night the
-  server builds the frame on every step (the bots decide on every step; clients still get it every `SEND_EVERY`).
-  Over a socket: `test_room_bots.gd`; solo: `test_night_bots.gd`.
+  seat's looks re-sent), the bot leaves the `BotHost`, and a person who leaves hands the seat to a bot while others
+  remain: the bot inherits it as it stands, the same body, points, weapons and health (`NightBots.adopt`; the rules'
+  `seat_bot` action answers `bot_seated`, the feed says the person left, and the bot takes a name and a look of the
+  room's cast), so a slot is inherited both ways and nothing is lost to a leave and a rejoin. A seat is a bot's when
+  `player_added` says `bot: true` (`PlayerState.bot`, in the snapshot too): the HUD writes `BOT` after the name
+  everywhere (`HudState.name_of`), a bot seated at the start is no "joined" notice, and the lobby shows the bots the
+  host's setting will seat in the open seats (`LobbyScreen.bots_shown`). Bots count as players for the rules
+  (`add_player`). With bots in the night the server builds the frame on every step (the bots decide on every step;
+  clients still get it every `SEND_EVERY`). Over a socket: `test_room_bots.gd`; solo: `test_night_bots.gd`.
+    - **Skill.** `bot_skill` picks the profile of every bot of the night (`BotProfile.for_skill`: Rookie, Regular,
+      Veteran), beside the count on the Bots row of the panel (a sixth row did not fit a phone held sideways or a 720p
+      window, `test_play_screen.gd`; the key `bot_skill` names the same row). It is the bots' player model and nothing
+      else: the rules never read it (`test_the_skill_never_changes_the_night_only_the_bots_profile`), so zombies, damage
+      and points are the same at every skill ([aim and difficulty](../research/bots.md#aim-and-difficulty)).
+    - **Names and looks.** Each skill has a cast of eight (`BotRoster`, one per seat, each wearing a different preset
+      of the catalogue): Rookie Pip, Dale, Moe, Kit, Tad, Lou, Jo and Bud, Regular Ash, Fern, Moss, Reed, Sage, Hazel,
+      Birch and Wren, Veteran Rex, Sarge, Hawk, Gus, Boone, Colt, Brick and Walt. A seat takes the cast member of its
+      number (`player_id - 1` modulo 8), so a night's bots are always different people, and the lobby shows the same
+      name before the night begins (`NightBots.name_for(seat, skill)`). A bot's look is a preset of the character
+      catalogue chosen for the skill (the rookie in a letterman jacket or a soda jerk's cap, the veteran a ranger),
+      sent to the look server as a person's look is, so every client dresses it the same; the resolver tells it apart
+      from a person who wears the same one.
+    - **The server's limits.** The host's setting is a request. An operator limits it with three variables
+      (`ServerConfig`, `BotLimits`, [platform backend](../research/platform-backend.md)): `MAX_BOTS` caps one room
+      (0 to 7, default 7), `BOT_BUDGET` shares a number of bots among the open rooms (default none; the budget over
+      the rooms, rounded down, at most the cap), and `BOTS_OFF` is the kill-switch (no room seats a bot). A room takes
+      its limit when it opens and again whenever a room opens or closes (`GameServer.set_bot_limits` for a change
+      made while it runs); a limit that drops sends the highest seats' bots away at once (`NightBots.fill`) and the
+      night goes on, one that rises seats them again. The limit never reaches Solo, where the person's machine is the
+      only one it costs.
 - **Adding a setting.** One definition serves rooms and solo: the Play screen (Solo) and the lobby both hold a
   `MatchSettingsPanel`. A new setting is a key of `MatchSettings.KEYS` and a row in the panel (`_row(key, title)`, its
   entry in `HINTS`); `test_solo_match_settings.gd` fails on a key without a row, and on a screen of the two that shows a
@@ -261,13 +287,14 @@ started. The defaults are today's game exactly, and every shipped test runs on t
 
 ## The tuning table
 
-Defaults as shipped. Zombie counts show one, two and four players. "Light" is the ambient level the
-world reads (1 is day): round 1 is the lot's night as built and round 14 the darkest it gets, with the ambient light,
-moon, sky and fog dimmed in step and eased over the break (`NightLight`). Counts follow
-`4 + 1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra player. Health climbs 8 a round to round 8, then
-compounds by 7% a round (it was 5% until weapons could be re-cut, [the re-cut](upgrades.md)). The runner,
-crawler and brute columns are each type's share of the round (the first
-round of a type brings an exact number instead: see the types below); special rounds replace the mix.
+Defaults as shipped. Zombie counts show one, two and four players ([eight](#eight-players-690) below). "Light" is the
+ambient level the world reads (1 is day): round 1 is the lot's night as built and round 14 the darkest it gets, with
+the ambient light, moon, sky and fog dimmed in step and eased over the break (`NightLight`). Counts follow `4 +
+1.3(r-1) + 0.07(r-1)²`, times `1 + 0.6` for each extra player. Health climbs 8 a round to round 8, then compounds by
+**15%** a round (it was 5%, then 7% until the headshot retune, [#745](#the-headshot-retune-745); this table showed the
+7% curve until [#785](../research/weapon-roster.md) corrected it: round 10 is 140, not 121). The runner, crawler and
+brute columns are each type's share of the round (the first round of a type brings an exact number instead: see the
+types below); special rounds replace the mix.
 
 | Round | Zombies 1p / 2p / 4p | Health | Walk m/s, lit | Runners | Crawlers | Brutes | Spawn every | Alive cap 1p | Light |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -278,10 +305,10 @@ round of a type brings an exact number instead: see the types below); special ro
 | 5 | 10 / 17 / 29 | 82 | 1.84 | 10% | 0% | 0% | 2.72 s | 9 | 0.46 |
 | 6 | 12 / 20 / 34 | 90 | 2.00 | 14% | 5% | 0% | 2.61 s | 10 | 0.42 |
 | 8 | 17 / 26 / 46 | 106 | 2.32 | 22% | 9% | 3% | 2.40 s | 12 | 0.35 |
-| 10 | 21 / 34 / 60 | 121 | 2.64 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
-| 15 | 36 / 57 / 101 | 170 | 3.44 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
-| 20 | 54 / 86 / 151 | 239 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
-| 30 | 101 / 161 / 282 | 470 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
+| 10 | 21 / 34 / 60 | 140 | 2.64 | 30% | 10% | 5% | 2.22 s | 13 | 0.28 |
+| 15 | 36 / 57 / 101 | 282 | 3.44 | 30% | 10% | 6% | 1.81 s | 17 | 0.15 |
+| 20 | 54 / 86 / 151 | 567 | 4.24 | 30% | 10% | 6% | 1.47 s | 21 | 0.15 |
+| 30 | 101 / 161 / 282 | 2,294 | 5.00 | 30% | 10% | 6% | 0.98 s | 28 | 0.15 |
 
 Points (everything is per player):
 
@@ -289,7 +316,7 @@ Points (everything is per player):
 | --- | ---: |
 | Starting points | 200 |
 | Hit that does not kill / headshot hit (first 4 per zombie) | 4 / 8 |
-| Kill / headshot kill / melee kill | 60 / 100 / 130 |
+| Kill / headshot kill / melee kill | 60 / 70 / 130 (the head was 100 until the hit zones grew, #745) |
 | Kill by a grenade blast | 40 (times the type's pay, like a bullet's) |
 | Repair one board (at most 120 from one round's end to the next) | 12 |
 | Round survived, standing | 20 + 10 per round |
@@ -303,7 +330,7 @@ Shop (prices at round 1):
 | Wall weapons: shotgun / rifle | 900 / 1200 | per player |
 | Crane play | 550 | a spin, then a random weapon the player lacks to take (shotgun 4, rifle 3, SMG 2, flare gun 1); may break down and refund ([the crane](#the-prize-crane)) |
 | Re-cut of the weapon in hand | 1500, +1500 for each weapon already re-cut | x1.75 damage, x1.5 magazine and reserve limit, filled; once a weapon ([the re-cut](upgrades.md)) |
-| Tonics: second wind / hearty / quick hands / fleet | 750 / 1000 / 1500 / 1500 | one of each, four at most; only hearty does anything yet: +50 most health ([the hearty tonic](upgrades.md#the-hearty-tonic)) |
+| Perks (tonics): hearty / double shot / quick load / third holster / swift rescue / reload shock | 1000 / 3000 / 2500 / 3000 / 1500 / 2000 | one of each, four at most, all lost on a down ([perks](perks.md), the prices [from the simulator](../research/perks.md#numbers)) |
 | Fuel can (+25 units) | 100 + 20 per round | a partial fill pays only for the room |
 | Grenades (+2) | 150 + 5 per round | up to 5 carried; a part purchase pays a part price |
 | Ammunition: revolver / tommy gun / shotgun / rifle / flare gun | 50 / 90 / 80 / 80 / 90 | rounds added: 20 / 60 / 8 / 8 / 2 (see [ammunition](#ammunition)) |
@@ -356,8 +383,8 @@ round's own value, so every type grows with the night. The look is a variant fro
 | --- | --- | ---: | ---: | --- | ---: | ---: | --- | --- |
 | walker | walker, greaser, usher, farmhand | x1 | x1 | 15 / none | x1 | 1 | the rest | a blast that takes its legs ([grenades](weapons.md#grenades)) turns it into a crawler, `zombie_crippled` |
 | runner | runner | x0.55 | x1.4 | 12 / none | x1.2 | 4 (one) | 6%, +4% a round, at most 30% | fast and fragile; replaces the old "sprinter" roll; never above 5.0 m/s under the lights |
-| crawler | crawler | x0.7 | x0.4 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low (`hit_chance` 0.6 of a walker's), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
-| brute | brute | x2.5 | x0.4 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
+| crawler | crawler | x0.7 | x0.4 | 12 / none | x1 | 6 (two) | 5%, +2% a round, at most 10% | low, shot at through zones fitted to its body on the ground, so no harder to hit than a walker (its `hit_chance` 0.6 only sizes an upright set; the simulator takes 1.0 for it, #745), goes under barriers (`barrier_speed` 0); also what a crippled walker becomes |
+| brute | brute | x3 (was 2.5, #745) | x0.4 | 35 / knocks back 2.5 m | x2.5 | 8 (one) | 3%, +1% a round, at most 6% | tears barriers 2.5 times as fast; up to 8 hits pay |
 | headliner (boss) | its own, from the artist | x16.25 (13 and a quarter more, #688), +100% per extra player | x0.45 | 40 / knocks back 4 m, 1.2 s telegraph | x6 | boss nights | boss nights only | weak spot: `weak` hits do x2.2; barriers 4 times as fast; up to 20 hits pay |
 
 **One at a time.** A type's first round brings an exact number (`intro_count`), so every player meets
@@ -370,7 +397,8 @@ the counts' remainders, the speed jitter and the look all come from the seeded s
 player may read and dodge; 0 is the ordinary swing), `barrier_speed` (1 is a walker; 0 skips barriers)
 and `hit_chance` (the shot-landing factor for hitboxes). The rules never move a zombie; they say what it
 is. The night reads all of them: damage, knockback, the telegraph, the look, `barrier_speed` (how fast it
-tears the fence's boards, below) and `hit_chance` (which sizes the zones;
+tears the fence's boards, below) and `hit_chance` (which sizes the zones of an upright zombie; a crawler's zones
+are fitted to its body on the ground, [hit zones](../research/hit-zones.md);
 [zombies research](../research/zombies.md#types-in-the-night)). A `weak` hit (the boss's lit bulb) is a zone like
 `head`: the weapon sends it when the ray hits that box (`Hitbox.WEAK`, only on a zombie that has a weak spot: the
 headliner), and the rules multiply the damage by the type's
@@ -493,7 +521,8 @@ together.
 
 Balance is measured, not guessed. `game/tools/balance/` plays thousands of seeded nights through the real
 `GameRules` (the rules are node-free, so it runs headless and fast) with modelled players, and
-`tools/balance/run_report.py` turns nine cells (weak, average and strong players, by 1, 2 and 4 players) into
+`tools/balance/run_report.py` turns nine cells (weak, average and strong players, by 1, 2 and 4 players; the gate adds
+average players by 8, [below](#eight-players-690)) into
 tables and charts. The research page [balance simulator](../research/balance-simulator.md) has the speeds,
 the traps and how to run it; the numbers below are its report for 300 nights per cell (seed 1000).
 
@@ -509,20 +538,20 @@ from the game:
 | Lit ground | `GeneratorState`: a circuit keeps the dead at their round's pace (off it they are faster) only while it is on and the tank has fuel, and every circuit burns fuel |
 | Everything else (where zombies are, whether a shot lands, who buys what) | the model: `SimSkill` and `NightSim` |
 
-**The players.** Three levels of `SimSkill`: how many shots land and where (head, limb, a boss's weak spot),
-how much of the time they shoot (reloads are in the weapon, so this is the time not spent moving or looking),
-how often a blow misses them, how well they read a telegraphed blow, how much of the walk to them is on lit
-ground and which circuits they keep on for it (weak: the screen lot; average: plus the concession; strong: plus
-the booth), and what they buy, in order. Each night draws its own skill within 20% of the level's, so a level is
-a spread of nights. A touch player with the aim assist (`--assist=`, `SimSkill.with_touch_assist`) has the misses
-the assist wins back added to the accuracy, by what a thumb bot measured
-([Touch aim assist](../research/aim-assist.md#how-much-it-is-worth)); the gate's cells never use it. They shoot
-only what they can see (view range falls with the light), face one of four sides
-at a time, revive each other in `ReviveTuning.revive_seconds` (a player nobody reaches within
-`bleed_out_seconds` is dead until the round ends) and mend between rounds, and pick the weapon with the best sustained
-damage a second. **Not modelled:** the other three tonics (they do nothing yet). Grenades, repair, the fence's boards (the
-simulator keeps its own six-second barrier) and the doors' and spots' geometry (they only cost points) are not
-modelled either.
+**The players.** Three levels of `SimSkill`: how many shots land and where (head, limb, a boss's weak spot), how
+much of the time they shoot (reloads are in the weapon, so this is the time not spent moving or looking), how often
+a blow misses them, how well they read a telegraphed blow, how much of the walk to them is on lit ground and which
+circuits they keep on for it (weak: the screen lot; average: plus the concession; strong: plus the booth), and what
+they buy, in order. Each night draws its own skill within 20% of the level's, so a level is a spread of nights. A
+touch player with the aim assist (`--assist=`, `SimSkill.with_touch_assist`) has the misses the assist wins back
+added to the accuracy, by what a thumb bot measured ([Touch aim
+assist](../research/aim-assist.md#how-much-it-is-worth)); the gate's cells never use it. They shoot only what they
+can see (view range falls with the light), face one of four sides at a time, revive each other in
+`ReviveTuning.revive_seconds` (a player nobody reaches within `bleed_out_seconds` is dead until the round ends) and
+mend between rounds, and pick the weapon with the best sustained damage a second. **Not modelled:** the double shot,
+the third holster and the reload shock are in the simulator but on no modelled player's list ([perks
+research](../research/perks.md#what-the-gate-sees)). Grenades, repair, the fence's boards (the simulator keeps its
+own six-second barrier) and the doors' and spots' geometry (they only cost points) are not modelled either.
 
 **Ammunition and the shop** (#152). The players carry the revolver from the start and every weapon
 they buy or win with the reserve the weapon gives; rounds only come from the shop, at the shop's price for the
@@ -617,13 +646,13 @@ two findings, and what was decided:
 
 ## Balance targets
 
-`BalanceTargets` holds these ranges and the GdUnit4 suite `test_balance_targets.gd` runs 60 nights of five
+`BalanceTargets` holds these ranges and the GdUnit4 suite `test_balance_targets.gd` runs 60 nights of six
 cells (seed 4000, the same on every machine) and fails, naming the number, if a tuning change leaves one:
 
 | Target | Range |
 | --- | --- |
 | Median round, average solo (the design target) | 8 to 14 (was 10 to 14; the floor moved with the bosses at 1.25x health, #688) |
-| Median round, average 2 / 4 players | 11 to 16 / 12 to 17 |
+| Median round, average 2 / 4 / 8 players | 11 to 16 / 12 to 17 / 14 to 20 |
 | Median round, weak solo / strong solo | 4 to 9 / 12 to 18 |
 | Average solo nights that clear round 4 | at least 85% |
 | A special round up to round 10 kills (average players) | at most 40% of the nights that reach it |
@@ -639,6 +668,40 @@ seed, and that the gate itself fails on a tuning that is far too hard or far too
 pay for. A change to a range
 is a change to this table in the same pull request. To try a number: `tools/balance/run_report.py --set
 rounds.health_growth=1.06` (see the research page).
+
+## Eight players (#690)
+
+A room and a solo night hold up to eight seats, people and bots together (the maintainer's decision, 2026-11-03). The
+scaling is the same four numbers, linear in the players after the first, and was **not retuned**: each player adds 0.6
+of the solo count, 0.5 of the solo spawn rate and 6 to the alive cap, and a boss night one headliner for every 3 beyond
+the first (three at eight) with +100% boss health each. What they come to at 1, 2, 4 and 8 players:
+
+| Round | Zombies 1p / 2p / 4p / 8p | Spawn every 1p / 4p / 8p | Alive cap 1p / 4p / 8p |
+| ---: | --- | --- | --- |
+| 1 | 6 / 10 / 17 / 31 | 2.40 / 0.96 / 0.53 s | 10 / 28 / 52 |
+| 5 | 18 / 28 / 49 / 91 | 1.72 / 0.69 / 0.38 s | 16 / 34 / 58 |
+| 10 | 37 / 60 / 104 / 194 | 1.13 / 0.45 / 0.25 s | 24 / 42 / 66 |
+| 20 | 95 / 152 / 266 / 494 | 0.50 / 0.20 / 0.11 s | 28 / 46 / 70 |
+
+The alive cap an eight-player room asks for (52 to 70) is above what a room stands: a browser in the match caps it at 40
+and a server's alive budget gives each of three rooms 40 ([crowd budget](../research/crowd-budget.md)), so the crowd at
+eight is the cap's 40 with the rest queued, and the pressure per player is lower than at four. The simulator says it
+does not matter for the rounds reached (with the ceiling at 40 the average eight-player median is 18 either way; four
+players 15).
+
+The simulator at 1 to 8 players, average modelled players, 120 nights a cell (seed 1):
+
+| Players | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Median round | 9 | 15 | 15 | 15 | 16 | 17 | 17 | 18 |
+
+Each player adds less than the one before (the points are shared and the crowd is capped), so the curve flattens instead
+of running away. With the bosses at 1.25x health (#688) the second boss night (round 15) is the wall for one to
+four players (32, 56, 54 and 56 of 120 nights end in round 15 at 1, 2, 3 and 4 players) and for eight it is
+not (5 of 120): the nights of eight end across rounds 16 to 20 (29, 17, 27, 20 and 20 of 120), and no round before
+15 kills anyone. Weak players at eight reach a median of 8 and strong players 20 (100 nights a cell, run before the
+bosses' change). The gate runs an `average:8` cell (60 nights, seed 4000: median 17, again after the bosses change)
+against the range **14 to 20** and checks that eight players go further than four.
 
 ## The bosses 25% tougher (#688)
 
@@ -706,6 +769,28 @@ the weak boss night at 94% deaths. The retune is the shop weapons of #254 (rifle
 0.8 s) with the simulator choosing weapons by what they kill, not by damage a second ([round
 scaling](../research/round-scaling.md)).
 The ranges and the health, count and spawn curves are unchanged.
+
+## The headshot retune (#745)
+
+The hit zones follow the bodies since #694 and the chibi head is half the figure, so the bots land 64 to 88% of their
+hits on the head. The simulator's players were set to that (`SimSkill` head rate 0.68 / 0.81 / 0.85 and dodge 0.17 /
+0.55 / 0.80 for weak, average and strong) and four numbers of the game moved to keep a night as hard as the table of
+balance targets says, with the zones and the weapons' multipliers (x2.5 pistol and rifle, x2 SMG, x1.5 shotgun) as
+they were:
+
+| Number | Before | After | Why |
+| --- | --- | --- | --- |
+| Headshot kill | 100 | 70 | most kills are headshots now; a kill pays what the old mix of heads and bodies paid |
+| Health growth after round 8 | 7% a round | 15% | good players and companies were no longer stopped late |
+| Brute health | x2.5 | x3 | its time to kill had fallen under 3 s |
+| The crawler in the simulator | 0.6 to hit | 1.0 | its zones are its body on the ground |
+
+The gate's medians (weak solo, average 1, 2, 4 and 8 players, strong solo) are 5 / 10 / 15 / 16 / 18 / 18 (they were 4
+/ 9 / 14 / 16 / 18 / 18 before the new `SimSkill`, and 5 / 15 / 17 / 20 / 20 / 20 with it and nothing else). Over 300
+nights an average solo night is a little easier than it was (median 15 against 10, 182 kills a night against 127),
+which the first boss night (10% of nights lost, was 31%) mostly explains; the tables, the levers that did not work and the
+recommendation about the size of the head zone are in [the balance simulator
+research](../research/balance-simulator.md#the-headshot-retune-745).
 
 ## Open questions
 

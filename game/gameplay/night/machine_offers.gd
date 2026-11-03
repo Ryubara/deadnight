@@ -7,9 +7,11 @@ extends RefCounted
 ##     `{kind: recut, id, weapon, price}`   a weapon in hand that can be re-cut, and its price
 ##     `{kind: recut_done, weapon}`         the weapon in hand is already re-cut
 ##     `{kind: recut_none, weapon}`         the weapon in hand cannot be (the crowbar)
-##   the soda fountain (spot kind `perk`):
-##     `{kind: tonic, id, price, bonus}`    the tonic the fountain pours, not yet had
-##     `{kind: tonic_owned, id}`            the player has it
+##   a perk machine (spot kind `perk`, `docs/design/perks.md`):
+##     `{kind: tonic, id, name, effect, price, bonus}`  the tonic it pours, not yet had (`effect`
+##                                          a `ShopItem.Effect`, `bonus` the health it gives)
+##     `{kind: tonic_owned, id, name}`      the player has it
+##     `{kind: tonic_full, id, name, limit}` the player carries as many tonics as they may
 ##   the grenade rack (spot kind `rack`):
 ##     `{kind: grenades, id, count, price}` the grenades that fit the pack (one purchase's worth
 ##                                          at most) and their price; nothing when it is full
@@ -45,7 +47,7 @@ static func weapon_for(server: NightServer, player_id: int) -> StringName:
 static func replaces(server: NightServer, player_id: int, weapon_id: StringName) -> StringName:
 	if server.combat.state_of(player_id, weapon_id) != null:
 		return &""
-	if server.combat.carried(player_id).size() < WeaponCatalog.CARRY_LIMIT:
+	if server.combat.carried(player_id).size() < PerkEffects.carry_limit(server.rules, player_id):
 		return &""
 	return weapon_for(server, player_id)
 
@@ -92,11 +94,21 @@ static func _tonic(server: NightServer, player_id: int, item_id: StringName) -> 
 	var item := rules.tuning.economy.item(item_id)
 	if item == null:
 		return {}
-	if rules.players[player_id].tonics.has(item_id):
-		return {"kind": &"tonic_owned", "id": item_id}
+	var tonics := rules.players[player_id].tonics
+	if tonics.has(item_id):
+		return {"kind": &"tonic_owned", "id": item_id, "name": item.display_name}
+	if tonics.size() >= rules.tuning.economy.max_tonics:
+		return {
+			"kind": &"tonic_full",
+			"id": item_id,
+			"name": item.display_name,
+			"limit": rules.tuning.economy.max_tonics,
+		}
 	return {
 		"kind": &"tonic",
 		"id": item_id,
+		"name": item.display_name,
+		"effect": item.effect,
 		"price": rules.price_of(item_id, player_id),
 		"bonus": item.health_bonus,
 	}

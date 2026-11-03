@@ -21,7 +21,8 @@ extends Resource
 ## boss keeps up with the crowd that comes with more players.
 @export_range(0.0, 2.0, 0.05, "or_greater") var health_per_extra_player: float = 0.0
 @export_range(0.1, 5.0, 0.05, "or_greater", "suffix:x") var speed_multiplier: float = 1.0
-## How hard it is to land a shot on it: 1 is a walker, below 1 is harder (a crawler is low).
+## How hard it is to land a shot on it: 1 is a walker, below 1 sizes down the hit zones of a
+## zombie that stands. A crawler's zones are fitted to its body on the ground, not shrunk by it.
 @export_range(0.0, 1.0, 0.01) var hit_chance: float = 1.0
 ## A hit in the `weak` zone (the lit bulb of the headliner) does this many times the damage.
 @export_range(0.1, 5.0, 0.05, "or_greater", "suffix:x") var weak_multiplier: float = 1.0

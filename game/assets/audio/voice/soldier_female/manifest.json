@@ -1,0 +1,2072 @@
+{
+  "round_start_1.ogg": {
+    "event": "round_start",
+    "text": "[exhales] Okay... here we go again. Stay sharp, everybody!",
+    "characters": 58,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1959,
+    "source": "text-to-speech",
+    "seconds": 4.9,
+    "lufs_before": -17.3
+  },
+  "round_start_2.ogg": {
+    "event": "round_start",
+    "text": "[determined] Lights are up, gates are shut. Let's see what crawls out tonight.",
+    "characters": 78,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1960,
+    "source": "text-to-speech",
+    "seconds": 4.9,
+    "lufs_before": -18.1
+  },
+  "round_start_3.ogg": {
+    "event": "round_start",
+    "text": "[tense] Here they come. Here they come! Hold the line!",
+    "characters": 54,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1961,
+    "source": "text-to-speech",
+    "seconds": 3.45,
+    "lufs_before": -14.4
+  },
+  "round_start_4.ogg": {
+    "event": "round_start",
+    "text": "Alright, round's on. Don't get cocky, and don't get dead.",
+    "characters": 57,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1962,
+    "source": "text-to-speech",
+    "seconds": 4.45,
+    "lufs_before": -19.0
+  },
+  "round_start_5.ogg": {
+    "event": "round_start",
+    "text": "[muttering] Oh, great. More of 'em. Of course there's more of 'em.",
+    "characters": 66,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1963,
+    "source": "text-to-speech",
+    "seconds": 4.14,
+    "lufs_before": -25.5
+  },
+  "round_clear_1.ogg": {
+    "event": "round_clear",
+    "text": "[sighs] Alright... that's the last of 'em. For now. Everybody still breathing? Tell me everybody's still breathing.",
+    "characters": 115,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1964,
+    "source": "text-to-speech",
+    "seconds": 8.33,
+    "lufs_before": -17.9
+  },
+  "round_clear_2.ogg": {
+    "event": "round_clear",
+    "text": "[relieved laugh] Heh, still standing. Barely, but still standing. Let's patch that fence while we can.",
+    "characters": 102,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1965,
+    "source": "text-to-speech",
+    "seconds": 6.68,
+    "lufs_before": -18.9
+  },
+  "round_clear_3.ogg": {
+    "event": "round_clear",
+    "text": "[exhales slowly] Quiet. Too quiet. I don't trust it, but I'll take it. Load up, people.",
+    "characters": 87,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1966,
+    "source": "text-to-speech",
+    "seconds": 7.38,
+    "lufs_before": -18.9
+  },
+  "round_clear_4.ogg": {
+    "event": "round_clear",
+    "text": "[tired] Oh man, my hands are shaking. Okay. Okay, breathe. Next one's gonna be worse, isn't it?",
+    "characters": 95,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1967,
+    "source": "text-to-speech",
+    "seconds": 8.15,
+    "lufs_before": -23.4
+  },
+  "round_clear_5.ogg": {
+    "event": "round_clear",
+    "text": "[breathing hard] Phew... okay, okay. [tired laugh] Gotta catch my breath real quick. These things just don't quit!",
+    "characters": 114,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1968,
+    "source": "text-to-speech",
+    "seconds": 7.66,
+    "lufs_before": -21.3
+  },
+  "reload_1.ogg": {
+    "event": "reload",
+    "text": "Reloading!",
+    "characters": 10,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1969,
+    "source": "text-to-speech",
+    "seconds": 0.99,
+    "lufs_before": -14.6
+  },
+  "reload_2.ogg": {
+    "event": "reload",
+    "text": "Reloading, cover me!",
+    "characters": 20,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1970,
+    "source": "text-to-speech",
+    "seconds": 1.61,
+    "lufs_before": -12.4
+  },
+  "reload_3.ogg": {
+    "event": "reload",
+    "text": "[grunts] Changing mags, changing mags!",
+    "characters": 38,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1971,
+    "source": "text-to-speech",
+    "seconds": 2.85,
+    "lufs_before": -14.4
+  },
+  "reload_4.ogg": {
+    "event": "reload",
+    "text": "Gotta reload, gotta reload, hold 'em off!",
+    "characters": 41,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1972,
+    "source": "text-to-speech",
+    "seconds": 3.04,
+    "lufs_before": -12.8
+  },
+  "reload_5.ogg": {
+    "event": "reload",
+    "text": "[breathing hard] Reloading... come on, come on.",
+    "characters": 47,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1973,
+    "source": "text-to-speech",
+    "seconds": 3.82,
+    "lufs_before": -16.8
+  },
+  "reload_6.ogg": {
+    "event": "reload",
+    "text": "Reloading! Somebody keep 'em off me!",
+    "characters": 36,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1974,
+    "source": "text-to-speech",
+    "seconds": 2.64,
+    "lufs_before": -13.1
+  },
+  "reload_7.ogg": {
+    "event": "reload",
+    "text": "[urgent] I'm reloading, I'm reloading!",
+    "characters": 38,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1975,
+    "source": "text-to-speech",
+    "seconds": 2.14,
+    "lufs_before": -13.0
+  },
+  "reload_8.ogg": {
+    "event": "reload",
+    "text": "Hang on, just a sec, reloading!",
+    "characters": 31,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1976,
+    "source": "text-to-speech",
+    "seconds": 2.62,
+    "lufs_before": -15.4
+  },
+  "reload_9.ogg": {
+    "event": "reload",
+    "text": "[muttering] Come on, come on, load, you stupid thing.",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1977,
+    "source": "text-to-speech",
+    "seconds": 3.46,
+    "lufs_before": -22.8
+  },
+  "low_ammo_1.ogg": {
+    "event": "low_ammo",
+    "text": "[worried] I'm running low here, almost out!",
+    "characters": 43,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1978,
+    "source": "text-to-speech",
+    "seconds": 2.77,
+    "lufs_before": -18.3
+  },
+  "low_ammo_2.ogg": {
+    "event": "low_ammo",
+    "text": "Ammo's getting thin, guys. Don't waste any.",
+    "characters": 43,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1979,
+    "source": "text-to-speech",
+    "seconds": 3.14,
+    "lufs_before": -18.3
+  },
+  "low_ammo_3.ogg": {
+    "event": "low_ammo",
+    "text": "[muttering] Last few rounds. Make 'em count.",
+    "characters": 44,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1980,
+    "source": "text-to-speech",
+    "seconds": 2.68,
+    "lufs_before": -27.7
+  },
+  "low_ammo_4.ogg": {
+    "event": "low_ammo",
+    "text": "Ah, jeez, I'm nearly dry over here!",
+    "characters": 35,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1981,
+    "source": "text-to-speech",
+    "seconds": 3.2,
+    "lufs_before": -18.8
+  },
+  "low_ammo_5.ogg": {
+    "event": "low_ammo",
+    "text": "[tense] Low on ammo! Anybody got a spare mag?",
+    "characters": 45,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1982,
+    "source": "text-to-speech",
+    "seconds": 2.9,
+    "lufs_before": -14.1
+  },
+  "dry_1.ogg": {
+    "event": "dry",
+    "text": "[frustrated] No, no, no, I'm out!",
+    "characters": 33,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1983,
+    "source": "text-to-speech",
+    "seconds": 2.65,
+    "lufs_before": -15.5
+  },
+  "dry_2.ogg": {
+    "event": "dry",
+    "text": "Dry! I'm dry, I'm dry!",
+    "characters": 22,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1984,
+    "source": "text-to-speech",
+    "seconds": 2.79,
+    "lufs_before": -15.5
+  },
+  "dry_3.ogg": {
+    "event": "dry",
+    "text": "[panicked] Come on, come on... nothing! I'm outta ammo!",
+    "characters": 55,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1985,
+    "source": "text-to-speech",
+    "seconds": 3.7,
+    "lufs_before": -15.0
+  },
+  "dry_4.ogg": {
+    "event": "dry",
+    "text": "Ah, damn it, empty! Switching, switching!",
+    "characters": 41,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1986,
+    "source": "text-to-speech",
+    "seconds": 4.23,
+    "lufs_before": -16.3
+  },
+  "dry_5.ogg": {
+    "event": "dry",
+    "text": "[groans] Of course. Of course it's empty.",
+    "characters": 41,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1987,
+    "source": "text-to-speech",
+    "seconds": 3.92,
+    "lufs_before": -20.9
+  },
+  "kill_1.ogg": {
+    "event": "kill",
+    "text": "[grunts] Got one!",
+    "characters": 17,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1988,
+    "source": "text-to-speech",
+    "seconds": 1.67,
+    "lufs_before": -17.1
+  },
+  "kill_2.ogg": {
+    "event": "kill",
+    "text": "Yes! Stay down!",
+    "characters": 15,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1989,
+    "source": "text-to-speech",
+    "seconds": 1.95,
+    "lufs_before": -15.4
+  },
+  "kill_3.ogg": {
+    "event": "kill",
+    "text": "[breathing hard] That's one less.",
+    "characters": 33,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1990,
+    "source": "text-to-speech",
+    "seconds": 2.72,
+    "lufs_before": -17.3
+  },
+  "kill_4.ogg": {
+    "event": "kill",
+    "text": "Ha! Right between the eyes!",
+    "characters": 27,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1991,
+    "source": "text-to-speech",
+    "seconds": 2.43,
+    "lufs_before": -16.4
+  },
+  "kill_5.ogg": {
+    "event": "kill",
+    "text": "Down you go!",
+    "characters": 12,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1992,
+    "source": "text-to-speech",
+    "seconds": 1.21,
+    "lufs_before": -12.8
+  },
+  "kill_6.ogg": {
+    "event": "kill",
+    "text": "[through gritted teeth] And stay dead this time.",
+    "characters": 48,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1993,
+    "source": "text-to-speech",
+    "seconds": 2.35,
+    "lufs_before": -22.3
+  },
+  "kill_7.ogg": {
+    "event": "kill",
+    "text": "Eat that, ugly!",
+    "characters": 15,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1994,
+    "source": "text-to-speech",
+    "seconds": 1.59,
+    "lufs_before": -16.4
+  },
+  "kill_8.ogg": {
+    "event": "kill",
+    "text": "[laughs] Got him!",
+    "characters": 17,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1995,
+    "source": "text-to-speech",
+    "seconds": 1.78,
+    "lufs_before": -15.8
+  },
+  "kill_9.ogg": {
+    "event": "kill",
+    "text": "Another one down!",
+    "characters": 17,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1996,
+    "source": "text-to-speech",
+    "seconds": 1.58,
+    "lufs_before": -13.8
+  },
+  "kill_10.ogg": {
+    "event": "kill",
+    "text": "Nice, nice. Next!",
+    "characters": 17,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1997,
+    "source": "text-to-speech",
+    "seconds": 2.21,
+    "lufs_before": -18.3
+  },
+  "streak_1.ogg": {
+    "event": "streak",
+    "text": "[shouting] Yes! Yes! That's what I'm talking about! Who else wants some?!",
+    "characters": 73,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1998,
+    "source": "text-to-speech",
+    "seconds": 4.55,
+    "lufs_before": -15.6
+  },
+  "streak_2.ogg": {
+    "event": "streak",
+    "text": "[laughs] Look at 'em drop! Come on, don't be shy, line up!",
+    "characters": 58,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 1999,
+    "source": "text-to-speech",
+    "seconds": 4.89,
+    "lufs_before": -19.1
+  },
+  "streak_3.ogg": {
+    "event": "streak",
+    "text": "[excited] Whoo! I'm on fire here! Nobody touch my spot!",
+    "characters": 55,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2000,
+    "source": "text-to-speech",
+    "seconds": 3.79,
+    "lufs_before": -15.8
+  },
+  "streak_4.ogg": {
+    "event": "streak",
+    "text": "[panting, grinning] Ha ha! Keep 'em coming! I'm just getting warmed up!",
+    "characters": 71,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2001,
+    "source": "text-to-speech",
+    "seconds": 5.0,
+    "lufs_before": -17.6
+  },
+  "streak_5.ogg": {
+    "event": "streak",
+    "text": "[shouting] Boom! Boom! Boom! Is that all you've got?!",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2002,
+    "source": "text-to-speech",
+    "seconds": 3.62,
+    "lufs_before": -13.6
+  },
+  "streak_6.ogg": {
+    "event": "streak",
+    "text": "[breathless laugh] Oh, that felt good. Do that again, do that again!",
+    "characters": 68,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2003,
+    "source": "text-to-speech",
+    "seconds": 4.49,
+    "lufs_before": -18.3
+  },
+  "streak_7.ogg": {
+    "event": "streak",
+    "text": "[excited, shouting] HA! Get some! [laughs] Come on, who's next?! I got plenty more where that came from!",
+    "characters": 104,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2004,
+    "source": "text-to-speech",
+    "seconds": 5.73,
+    "lufs_before": -15.9
+  },
+  "close_call_1.ogg": {
+    "event": "close_call",
+    "text": "[gasps] Whoa! Too close, way too close!",
+    "characters": 39,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2005,
+    "source": "text-to-speech",
+    "seconds": 3.56,
+    "lufs_before": -18.0
+  },
+  "close_call_2.ogg": {
+    "event": "close_call",
+    "text": "[breathing hard] Jeez, that one nearly had me. Back off, back off!",
+    "characters": 66,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2006,
+    "source": "text-to-speech",
+    "seconds": 5.73,
+    "lufs_before": -15.4
+  },
+  "close_call_3.ogg": {
+    "event": "close_call",
+    "text": "Okay, I'm hurt, I'm hurt, I need a second here!",
+    "characters": 47,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2007,
+    "source": "text-to-speech",
+    "seconds": 4.19,
+    "lufs_before": -16.5
+  },
+  "close_call_4.ogg": {
+    "event": "close_call",
+    "text": "[strained] I can't take much more of this. Watch my back, somebody!",
+    "characters": 67,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2008,
+    "source": "text-to-speech",
+    "seconds": 3.86,
+    "lufs_before": -15.8
+  },
+  "close_call_5.ogg": {
+    "event": "close_call",
+    "text": "[shaky] Oh, that's not good, that's not good at all.",
+    "characters": 52,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2009,
+    "source": "text-to-speech",
+    "seconds": 3.64,
+    "lufs_before": -21.5
+  },
+  "hurt_1.ogg": {
+    "event": "hurt",
+    "text": "[pained grunt] Ugh!",
+    "characters": 19,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2010,
+    "source": "text-to-speech",
+    "seconds": 1.58,
+    "lufs_before": -16.8
+  },
+  "hurt_2.ogg": {
+    "event": "hurt",
+    "text": "[sharp inhale] Agh!",
+    "characters": 19,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2011,
+    "source": "text-to-speech",
+    "seconds": 1.46,
+    "lufs_before": -17.4
+  },
+  "hurt_3.ogg": {
+    "event": "hurt",
+    "text": "[grunts] Hhh... ah!",
+    "characters": 19,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2012,
+    "source": "text-to-speech",
+    "seconds": 2.76,
+    "lufs_before": -18.2
+  },
+  "hurt_4.ogg": {
+    "event": "hurt",
+    "text": "[hissing in pain] Ah, damn!",
+    "characters": 27,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2013,
+    "source": "text-to-speech",
+    "seconds": 2.19,
+    "lufs_before": -17.3
+  },
+  "hurt_5.ogg": {
+    "event": "hurt",
+    "text": "[gasps] Gah!",
+    "characters": 12,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2014,
+    "source": "text-to-speech",
+    "seconds": 1.25,
+    "lufs_before": -17.7
+  },
+  "hurt_6.ogg": {
+    "event": "hurt",
+    "text": "[grunting] Ngh! Get off me!",
+    "characters": 27,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2015,
+    "source": "text-to-speech",
+    "seconds": 2.83,
+    "lufs_before": -15.4
+  },
+  "hurt_7.ogg": {
+    "event": "hurt",
+    "text": "[groans in pain] Ah, son of a... ugh!",
+    "characters": 37,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2016,
+    "source": "text-to-speech",
+    "seconds": 3.18,
+    "lufs_before": -17.7
+  },
+  "hurt_8.ogg": {
+    "event": "hurt",
+    "text": "[pained] Ow! Ow, that hurts!",
+    "characters": 28,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2017,
+    "source": "text-to-speech",
+    "seconds": 2.35,
+    "lufs_before": -21.0
+  },
+  "downed_1.ogg": {
+    "event": "downed",
+    "text": "[weak, gasping] No... no, no... I'm down... somebody... help...",
+    "characters": 63,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2018,
+    "source": "text-to-speech",
+    "seconds": 5.04,
+    "lufs_before": -24.5
+  },
+  "downed_2.ogg": {
+    "event": "downed",
+    "text": "[groaning, wheezing] Aah... I can't get up. Help me. Please!",
+    "characters": 60,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2019,
+    "source": "text-to-speech",
+    "seconds": 6.4,
+    "lufs_before": -18.2
+  },
+  "downed_3.ogg": {
+    "event": "downed",
+    "text": "[faint] Not like this... not like this...",
+    "characters": 41,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2020,
+    "source": "text-to-speech",
+    "seconds": 2.6,
+    "lufs_before": -33.0
+  },
+  "downed_4.ogg": {
+    "event": "downed",
+    "text": "[pained, fading] I'm hit bad... somebody get me up...",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2021,
+    "source": "text-to-speech",
+    "seconds": 3.05,
+    "lufs_before": -21.2
+  },
+  "revived_1.ogg": {
+    "event": "revived",
+    "text": "[gasping, coughing] Thanks. Thank you. I owe you one.",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2022,
+    "source": "text-to-speech",
+    "seconds": 5.24,
+    "lufs_before": -18.8
+  },
+  "revived_2.ogg": {
+    "event": "revived",
+    "text": "[breathing hard] Whoa... okay, I'm up. I'm up. Good looking out!",
+    "characters": 64,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2023,
+    "source": "text-to-speech",
+    "seconds": 5.46,
+    "lufs_before": -17.3
+  },
+  "revived_3.ogg": {
+    "event": "revived",
+    "text": "[coughs] Jeez, I thought that was it for me. Thanks for the pull!",
+    "characters": 65,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2024,
+    "source": "text-to-speech",
+    "seconds": 4.58,
+    "lufs_before": -19.3
+  },
+  "revived_4.ogg": {
+    "event": "revived",
+    "text": "[wheezing] Oh, wow. Thank you. Seriously. Let's go, let's go!",
+    "characters": 61,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2025,
+    "source": "text-to-speech",
+    "seconds": 5.56,
+    "lufs_before": -18.3
+  },
+  "revived_5.ogg": {
+    "event": "revived",
+    "text": "[groans, then laughs weakly] You came back for me. Heh. I won't forget that.",
+    "characters": 76,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2026,
+    "source": "text-to-speech",
+    "seconds": 5.6,
+    "lufs_before": -22.9
+  },
+  "teammate_down_1.ogg": {
+    "event": "teammate_down",
+    "text": "[shouting] Man down! We got somebody down!",
+    "characters": 42,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2027,
+    "source": "text-to-speech",
+    "seconds": 2.52,
+    "lufs_before": -12.9
+  },
+  "teammate_down_2.ogg": {
+    "event": "teammate_down",
+    "text": "Oh no, no, they're down! Somebody get over there!",
+    "characters": 49,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2028,
+    "source": "text-to-speech",
+    "seconds": 3.72,
+    "lufs_before": -12.8
+  },
+  "teammate_down_3.ogg": {
+    "event": "teammate_down",
+    "text": "[urgent] Hang on, I'm coming! Hold on!",
+    "characters": 38,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2029,
+    "source": "text-to-speech",
+    "seconds": 2.46,
+    "lufs_before": -14.0
+  },
+  "teammate_down_4.ogg": {
+    "event": "teammate_down",
+    "text": "[alarmed] They got one of us! I'm going in, cover me!",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2030,
+    "source": "text-to-speech",
+    "seconds": 3.07,
+    "lufs_before": -14.4
+  },
+  "teammate_down_5.ogg": {
+    "event": "teammate_down",
+    "text": "Stay with me, stay with me! I'll get you up!",
+    "characters": 44,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2031,
+    "source": "text-to-speech",
+    "seconds": 2.87,
+    "lufs_before": -16.2
+  },
+  "buy_weapon_1.ogg": {
+    "event": "buy_weapon",
+    "text": "[pleased] Oh, now we're talking. Come to mama.",
+    "characters": 46,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2032,
+    "source": "text-to-speech",
+    "seconds": 3.59,
+    "lufs_before": -19.8
+  },
+  "buy_weapon_2.ogg": {
+    "event": "buy_weapon",
+    "text": "Ha, that's more like it. Let's see what this baby can do.",
+    "characters": 57,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2033,
+    "source": "text-to-speech",
+    "seconds": 3.93,
+    "lufs_before": -17.2
+  },
+  "buy_weapon_3.ogg": {
+    "event": "buy_weapon",
+    "text": "[impressed] Nice. Real nice. Feels good in my hands.",
+    "characters": 52,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2034,
+    "source": "text-to-speech",
+    "seconds": 4.0,
+    "lufs_before": -21.5
+  },
+  "buy_weapon_4.ogg": {
+    "event": "buy_weapon",
+    "text": "Alright, that's a proper piece. Let's put it to work.",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2035,
+    "source": "text-to-speech",
+    "seconds": 3.56,
+    "lufs_before": -19.3
+  },
+  "buy_weapon_5.ogg": {
+    "event": "buy_weapon",
+    "text": "[chuckles] Now I'm dangerous.",
+    "characters": 29,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2036,
+    "source": "text-to-speech",
+    "seconds": 2.74,
+    "lufs_before": -18.2
+  },
+  "buy_big_1.ogg": {
+    "event": "buy_big",
+    "text": "[excited] Oh, that cost a fortune, but boy, it's worth every penny!",
+    "characters": 67,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2037,
+    "source": "text-to-speech",
+    "seconds": 4.84,
+    "lufs_before": -18.8
+  },
+  "buy_big_2.ogg": {
+    "event": "buy_big",
+    "text": "[laughs] Spent it all! Hope this thing's as good as it looks!",
+    "characters": 61,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2038,
+    "source": "text-to-speech",
+    "seconds": 4.37,
+    "lufs_before": -18.1
+  },
+  "buy_big_3.ogg": {
+    "event": "buy_big",
+    "text": "[grinning] Now THAT is a gun. Everybody back up, big girl coming through!",
+    "characters": 73,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2039,
+    "source": "text-to-speech",
+    "seconds": 5.31,
+    "lufs_before": -16.7
+  },
+  "buy_big_4.ogg": {
+    "event": "buy_big",
+    "text": "[laughs] Wallet's empty, but I've never felt so safe.",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2040,
+    "source": "text-to-speech",
+    "seconds": 4.33,
+    "lufs_before": -18.9
+  },
+  "door_1.ogg": {
+    "event": "door",
+    "text": "[grunts] Door's open! Watch the new angle!",
+    "characters": 42,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2041,
+    "source": "text-to-speech",
+    "seconds": 3.21,
+    "lufs_before": -14.7
+  },
+  "door_2.ogg": {
+    "event": "door",
+    "text": "Alright, that opens things up. Eyes front, people.",
+    "characters": 50,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2042,
+    "source": "text-to-speech",
+    "seconds": 3.39,
+    "lufs_before": -15.8
+  },
+  "door_3.ogg": {
+    "event": "door",
+    "text": "[wary] Okay... let's see what's behind door number one.",
+    "characters": 55,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2043,
+    "source": "text-to-speech",
+    "seconds": 3.95,
+    "lufs_before": -20.5
+  },
+  "door_4.ogg": {
+    "event": "door",
+    "text": "Door's open! More room to run, more room to get flanked.",
+    "characters": 56,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2044,
+    "source": "text-to-speech",
+    "seconds": 4.16,
+    "lufs_before": -16.2
+  },
+  "door_5.ogg": {
+    "event": "door",
+    "text": "[low] Easy now. Easy. Don't know what's in there.",
+    "characters": 49,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2045,
+    "source": "text-to-speech",
+    "seconds": 3.53,
+    "lufs_before": -22.5
+  },
+  "power_on_1.ogg": {
+    "event": "power_on",
+    "text": "[relieved] Yes! Lights are on! Power's back, baby!",
+    "characters": 50,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2046,
+    "source": "text-to-speech",
+    "seconds": 3.74,
+    "lufs_before": -16.6
+  },
+  "power_on_2.ogg": {
+    "event": "power_on",
+    "text": "[exhales] There she goes. Generator's humming again.",
+    "characters": 52,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2047,
+    "source": "text-to-speech",
+    "seconds": 3.77,
+    "lufs_before": -18.4
+  },
+  "power_on_3.ogg": {
+    "event": "power_on",
+    "text": "[laughs] Come on, come on, stay lit. I hate the dark.",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2048,
+    "source": "text-to-speech",
+    "seconds": 4.54,
+    "lufs_before": -19.9
+  },
+  "power_on_4.ogg": {
+    "event": "power_on",
+    "text": "Power's up! Keep her fed, or we're toast.",
+    "characters": 41,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2049,
+    "source": "text-to-speech",
+    "seconds": 3.11,
+    "lufs_before": -16.3
+  },
+  "power_on_5.ogg": {
+    "event": "power_on",
+    "text": "[chuckles] Nothing like a little light to cheer a girl up.",
+    "characters": 58,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2050,
+    "source": "text-to-speech",
+    "seconds": 3.48,
+    "lufs_before": -19.4
+  },
+  "power_low_1.ogg": {
+    "event": "power_low",
+    "text": "[worried] Generator's coughing! Somebody get it some fuel!",
+    "characters": 58,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2051,
+    "source": "text-to-speech",
+    "seconds": 3.25,
+    "lufs_before": -16.5
+  },
+  "power_low_2.ogg": {
+    "event": "power_low",
+    "text": "Uh-oh, the lights are flickering. Fuel, we need fuel!",
+    "characters": 53,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2052,
+    "source": "text-to-speech",
+    "seconds": 4.35,
+    "lufs_before": -16.8
+  },
+  "power_low_3.ogg": {
+    "event": "power_low",
+    "text": "[tense] If that thing dies, we're in the dark. Feed it, feed it!",
+    "characters": 64,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2053,
+    "source": "text-to-speech",
+    "seconds": 4.23,
+    "lufs_before": -17.0
+  },
+  "power_low_4.ogg": {
+    "event": "power_low",
+    "text": "[groans] Aw, no. Power's gone. Everybody stay close!",
+    "characters": 52,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2054,
+    "source": "text-to-speech",
+    "seconds": 5.56,
+    "lufs_before": -17.6
+  },
+  "grenade_1.ogg": {
+    "event": "grenade",
+    "text": "[shouting] Grenade out! Get down!",
+    "characters": 33,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2055,
+    "source": "text-to-speech",
+    "seconds": 1.86,
+    "lufs_before": -12.6
+  },
+  "grenade_2.ogg": {
+    "event": "grenade",
+    "text": "Frag out! Heads down!",
+    "characters": 21,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2056,
+    "source": "text-to-speech",
+    "seconds": 1.84,
+    "lufs_before": -13.6
+  },
+  "grenade_3.ogg": {
+    "event": "grenade",
+    "text": "[grunts] Catch! Think fast!",
+    "characters": 27,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2057,
+    "source": "text-to-speech",
+    "seconds": 2.38,
+    "lufs_before": -16.7
+  },
+  "grenade_4.ogg": {
+    "event": "grenade",
+    "text": "Throwing! Throwing! Cover your ears!",
+    "characters": 36,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2058,
+    "source": "text-to-speech",
+    "seconds": 3.0,
+    "lufs_before": -14.2
+  },
+  "grenade_5.ogg": {
+    "event": "grenade",
+    "text": "[shouting] Here's a present for you!",
+    "characters": 36,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2059,
+    "source": "text-to-speech",
+    "seconds": 1.72,
+    "lufs_before": -14.9
+  },
+  "boss_arrive_1.ogg": {
+    "event": "boss_arrive",
+    "text": "[stunned, whispering] Oh no. Oh, that's big. That is really, really big.",
+    "characters": 72,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2060,
+    "source": "text-to-speech",
+    "seconds": 5.65,
+    "lufs_before": -24.7
+  },
+  "boss_arrive_2.ogg": {
+    "event": "boss_arrive",
+    "text": "[shouting] Look at the size of that thing! Everybody focus fire, focus fire!",
+    "characters": 76,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2061,
+    "source": "text-to-speech",
+    "seconds": 4.64,
+    "lufs_before": -14.8
+  },
+  "boss_arrive_3.ogg": {
+    "event": "boss_arrive",
+    "text": "[breathless] Okay, new plan. Run. Maybe run. No, shoot first, then run.",
+    "characters": 71,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2062,
+    "source": "text-to-speech",
+    "seconds": 5.54,
+    "lufs_before": -17.7
+  },
+  "boss_arrive_4.ogg": {
+    "event": "boss_arrive",
+    "text": "[nervous laugh] You've gotta be kidding me. What do they feed that thing?",
+    "characters": 73,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2063,
+    "source": "text-to-speech",
+    "seconds": 4.22,
+    "lufs_before": -22.0
+  },
+  "boss_arrive_5.ogg": {
+    "event": "boss_arrive",
+    "text": "[low, grim] Here's the big one. Stay together, and don't stop shooting.",
+    "characters": 71,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2064,
+    "source": "text-to-speech",
+    "seconds": 4.24,
+    "lufs_before": -23.0
+  },
+  "boss_dead_1.ogg": {
+    "event": "boss_dead",
+    "text": "[shouting, triumphant] Yes! Go down! Go down, you big ugly... yes!",
+    "characters": 66,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2065,
+    "source": "text-to-speech",
+    "seconds": 4.55,
+    "lufs_before": -16.1
+  },
+  "boss_dead_2.ogg": {
+    "event": "boss_dead",
+    "text": "[panting, laughing] Is it dead? Tell me it's dead. Oh, thank God it's dead.",
+    "characters": 75,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2066,
+    "source": "text-to-speech",
+    "seconds": 6.38,
+    "lufs_before": -18.0
+  },
+  "boss_dead_3.ogg": {
+    "event": "boss_dead",
+    "text": "[breathless laugh] We did it! We actually did it! I can't believe that worked!",
+    "characters": 78,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2067,
+    "source": "text-to-speech",
+    "seconds": 5.24,
+    "lufs_before": -18.5
+  },
+  "boss_dead_4.ogg": {
+    "event": "boss_dead",
+    "text": "[exhaling] Whew. Okay. That one I'm gonna feel in the morning.",
+    "characters": 62,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2068,
+    "source": "text-to-speech",
+    "seconds": 5.37,
+    "lufs_before": -21.5
+  },
+  "idle_1.ogg": {
+    "event": "idle",
+    "text": "[quiet, thoughtful] You ever think about how this place used to be a drive-in? People came to watch movies and eat popcorn. Now look at us.",
+    "characters": 139,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2069,
+    "source": "text-to-speech",
+    "seconds": 7.07,
+    "lufs_before": -21.3
+  },
+  "idle_2.ogg": {
+    "event": "idle",
+    "text": "[sighs] Anyone else hear that? ...No? Just me. Great. I'm losing it.",
+    "characters": 68,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2070,
+    "source": "text-to-speech",
+    "seconds": 6.26,
+    "lufs_before": -23.9
+  },
+  "idle_3.ogg": {
+    "event": "idle",
+    "text": "[tired] Sorry, I was humming. Habit. My mother used to hum when things got bad.",
+    "characters": 79,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2071,
+    "source": "text-to-speech",
+    "seconds": 6.22,
+    "lufs_before": -20.3
+  },
+  "idle_4.ogg": {
+    "event": "idle",
+    "text": "[low] Man, what I wouldn't give for a hot coffee and a bed that doesn't smell like gasoline.",
+    "characters": 92,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2072,
+    "source": "text-to-speech",
+    "seconds": 5.67,
+    "lufs_before": -22.7
+  },
+  "idle_5.ogg": {
+    "event": "idle",
+    "text": "[tired chuckle] Funny thing is, I used to hate quiet. Now it scares me more than the noise.",
+    "characters": 91,
+    "model_id": "eleven_v4",
+    "voice": "Sarah",
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_settings": {
+      "stability": 0.0,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "output_format": "mp3_44100_128",
+    "seed": 2073,
+    "source": "text-to-speech",
+    "seconds": 6.66,
+    "lufs_before": -21.1
+  }
+}

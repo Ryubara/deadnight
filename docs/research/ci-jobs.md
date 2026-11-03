@@ -15,6 +15,7 @@ PRs that are backing us up", with 21 open pull requests, the account's 20 concur
 | `pr` (`pull_request_target`) | `pr-rules` (the title, description, docs and commits checks, as steps) | every push and every edit of the description |
 | `pr-status` | `labels` | the push, and once when `ci` ends (not when it was cancelled) |
 | `docs` | `mkdocs` (pages build), `deploy` | a push to `main` only |
+| `bots-nightly` | `plan`, `soak` (a matrix job of ten nights for each cell), `report` | 03:17 UTC every day and by hand; never on a pull request ([the bot soak](bots.md#the-nightly-soak-and-the-parity-batch)) |
 
 ## Which files start which job
 
@@ -27,7 +28,7 @@ passes its answers on: `godot`, `web`, `docs`, `markdown`, `workflows`, `backend
 - `backend` runs the platform backend's own tests (`npm run typecheck`, `npm test` of `spikes/backend`, Node 24, with a
   Postgres 17 service so the two store tests do not skip; a skipped test fails the step) when `spikes/backend/**` other
   than Markdown, or `ci.yml`, changed, and on every push to `main` (#558). It waits for `conventions` only, so it runs
-  beside the three Godot shards and never lengthens the critical path (about a minute against 5 to 6 minutes for a
+  beside the six Godot shards and never lengthens the critical path (about a minute against 5 to 6 minutes for a
   shard), and `build-ok` waits for it. Before it, nothing ran `node --test`: `godot` only installs the packages so the
   lobby's real-socket test can start the backend, so a backend change that broke a lobby, presence or ticket rule
   merged green.

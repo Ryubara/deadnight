@@ -34,6 +34,21 @@ DOOR_ITEMS = {
     "Door_Road": "door_road",
 }
 
+# The perk machines: node name, the perk (a `PerkMachine` look), the shop item, where it stands, its yaw and the block
+# (x0, x1, z0, z1) that holds its place. Yaw 90 faces +x, 180 faces -z, 270 faces -x.
+PERK_MACHINES = [
+    ("PerkRescue", "swift_rescue", "tonic_swift_rescue", (-15.2, 11.0), 90, (-15.7, -14.55, 10.2, 11.8)),
+    ("PerkLoad", "quick_load", "tonic_quick_load", (5.35, 30.5), 270, (4.85, 5.85, 29.7, 31.3)),
+    ("PerkShot", "double_shot", "tonic_double_shot", (24.0, 37.2), 180, (23.2, 24.8, 36.7, 37.7)),
+    ("PerkShock", "reload_shock", "tonic_reload_shock", (-20.0, 37.2), 180, (-20.8, -19.2, 36.7, 37.7)),
+]
+
+
+def spot_in_front(x: float, z: float, yaw: float, dist: float) -> tuple[float, float, float]:
+    """The point `dist` metres in front of a prop at (x, z) turned by `yaw` (its front is +Z before it turns)."""
+    return (x + math.sin(math.radians(yaw)) * dist, 0, z + math.cos(math.radians(yaw)) * dist)
+
+
 # Bodies and the camera rig, mirrored from the player (PlayerTuning: pivot 1.55, shoulder 0.75, arm 2.8, margin 0.25).
 # A passage is sized for the camera, not the capsule: the shoulder offset is applied after the spring arm, so the
 # camera sits SHOULDER m to one side of the player and needs CAMERA_CLEAR m of air beyond that.
@@ -77,6 +92,10 @@ SWITCHES = [
 PROJECTOR_LENS = (0.0, 5.11, 24.37)
 SCREEN_CENTRE = (0.0, 10.0)
 SCREEN_FACE_Z = -47.4
+# The ticket plaza behind the road door ends here, at the lot's wall (#686); the perk machine stands against it.
+PLAZA_END = 58.0
+WRECK_X = -9.0
+PERK_MACHINE_AT = (0.0, PLAZA_END - 0.8)  # the machine's middle; its spot is 1.2 m in front of it
 # The fuel can stands: (name, the shop door of the area, where, the way its front faces in degrees of yaw). A player
 # buys a can (the shop's `fuel_can`) from the spot 1.1 m in front of one (docs/design/map.md, The fuel cans).
 FUEL_STANDS = [
@@ -94,6 +113,52 @@ FIELD_CORE_Z = (-52, -38, -22, -10, -4)
 # and the field's posts all reach it, and these are the only cuts (searched on a 0.5 m grid) that leave each piece at 6.
 STAND_CUT_X = -4
 STAND_CUT = 1
+# The field's lamp posts (x, y, z), numbered from 1 in this order. Lamp9 on were placed by hand in the editor (the
+# maintainer's, Deadnight #703: out round the field, the back lot and the yard, with a hair of height from where they
+# were set on the ground) and Lamp1 and Lamp2 were moved a little: the numbers are theirs and are not to be tidied.
+FIELD_LAMPS = [
+    (-4.6, 0, -35.269028),
+    (4.6, 0, -35.334103),
+    (-4.6, 0, -22),
+    (4.6, 0, -22),
+    (-4.6, 0, -10),
+    (4.6, 0, -10),
+    (-22.5, 0, -28),
+    (22.5, 0, -28),
+    (40.056038, 0, -15.007768),
+    (55.15084, -0.03557825, -44.58985),
+    (56.373283, -0.03557825, -15.066178),
+    (-0.059612513, -0.028946877, 14.621942),
+    (-18.370749, -0.028946877, 16.652119),
+    (-40.099564, -0.028946877, 24.078869),
+    (-44.5698, -0.02993524, -1.2040081),
+    (-21.597113, 0.5631504, -1.2040081),
+    (-18.370749, -0.028946877, 34.69148),
+    (65.46086, 0.5631523, -21.896639),
+    (65.46086, -0.03557825, -45.896637),
+    (35.46086, -0.02894497, -55.896637),
+    (-65.5698, -0.0343498, -22.204008),
+    (-65.5698, -0.03989458, -46.20401),
+    (-35.541065, -0.037663937, -56.080067),
+    (-44.5698, -0.038969874, -37.20401),
+    (-44.5698, -0.02903986, -18.20401),
+    (-27.569801, -0.031407893, -11.20401),
+    (-56.5698, -0.03959632, -6.20401),
+    (22.056038, 0, -8.007768),
+]
+# The south fence leaves a wider opening between the field and the stand (the maintainer's, #703): it ends this far
+# from the middle on each side (the west piece at -16.2052, the east at 16.2051).
+FENCE_S_END = (-16.2052, 16.2051)
+# The ground and the roof that the maintainer's new lamps and the prize crane's lamp reach are cut where a search
+# (every cut on a 0.5 or 1 m grid, every crane place, `tests/world/test_lot_light_cap.gd`'s count of lights) left
+# no tile with more than 6 lights, and the fewest tiles. No cut lies within 1.3 m of a shop spot or a fuel stand's
+# standing point (`test_lot_fuel.gd` wants the stand a metre inside one tile). The midway has six tiles, the back lot
+# and the yard three each, the stand's roof six.
+MIDWAY_CUT_X = (-16, -8, 16)
+MIDWAY_CUT_Z = (8, 19, 30, 38)
+BACK_LOT_CUT_Z = (-4, 10, 24, 38)
+YARD_CUT_Z = (-4, 12, 25, 38)
+STAND_ROOF_CUT_Z = (-4.4, STAND_CUT, 4.6, 8.4)
 SCREEN_AFTERGLOW = 0.3  # the screen still glows when the generator is dead (docs/design/map.md, Light and dark)
 
 # The night look (docs/research/night-environment.md). Compatibility renderer only: a sky shader, exponential fog,
@@ -118,7 +183,7 @@ MATS = [
     "concession_ground", "concession_wall", "concession_roof", "concession_prop",
     "midway_ground", "midway_wall", "booth_ground", "booth_wall", "booth_prop",
     "yard_ground", "yard_wall", "yard_prop", "yard_gen", "backlot_ground", "backlot_wall", "backlot_prop", "neon",
-    "road_ground", "road_wall", "road_kiosk", "road_line", "door", "roadblock", "breach_ground", "line_paint",
+    "road_ground", "road_wall", "road_kiosk", "road_line", "door", "breach_ground", "line_paint",
     "plaque", "ammo_crate", "ammo_band",
 ]  # fmt: skip
 # Parking lines: a painted stripe between neighbouring stalls of a row, as long as a stall (one MultiMesh, one draw).
@@ -622,6 +687,7 @@ def build() -> None:
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/lot_neon_sign.tscn" id="neon_sign"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/machines/recut_machine.tscn" id="recut_machine"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/machines/soda_fountain.tscn" id="soda_fountain"]')
+    lines.append('[ext_resource type="PackedScene" path="res://world/machines/perk_machine.tscn" id="perk_machine"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/screen_fx.tscn" id="screen_fx"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/projector_beam.tscn" id="beam"]')
     lines.append('[ext_resource type="PackedScene" path="res://world/drive_in/glow_pane.tscn" id="pane"]')
@@ -679,8 +745,8 @@ def build() -> None:
     for tag, bx, bz in breaches:
         breach(field, tag, bx, bz)
     # Fence between the field and the yard / back lot, with the two purchase gates (doors listed below).
-    wall(field, "FenceS_W", "x", -4, -62, -10, fence_h, "field_fence", [(-40, 4, 0, 2.6)])
-    wall(field, "FenceS_E", "x", -4, 10, 62, fence_h, "field_fence", [(40, 4, 0, 2.6)])
+    wall(field, "FenceS_W", "x", -4, -62, FENCE_S_END[0], fence_h, "field_fence", [(-40, 4, 0, 2.6)])
+    wall(field, "FenceS_E", "x", -4, FENCE_S_END[1], 62, fence_h, "field_fence", [(40, 4, 0, 2.6)])
 
     rows = group("Rows", field)
     rng = random.Random(1958)
@@ -733,9 +799,9 @@ def build() -> None:
     for i, (px, pz, ry) in enumerate([(-52, -14, 70), (54, -14, 100), (40, -44, 20), (-38, -12, 95)], start=1):
         instance(props, f"Wreck{i}", "wreck", (px, 0, pz), ry)
     lamps_f = lamps(field, "screen_lot")
-    field_lamps = [(-4.6, -34), (4.6, -34), (-4.6, -22), (4.6, -22), (-4.6, -10), (4.6, -10), (-22.5, -28), (22.5, -28)]
-    for i, (lx, lz) in enumerate(field_lamps, start=1):
-        instance(lamps_f, f"Lamp{i}", "lamp", (lx, 0, lz))
+    field_lamps_xz = [(x, z) for x, _, z in FIELD_LAMPS]
+    for i, at in enumerate(FIELD_LAMPS, start=1):
+        instance(lamps_f, f"Lamp{i}", "lamp", at)
     omni(lamps_f, "ScreenGlow", (0, 7, -44), 1.4, 34, "#aebfe8", afterglow=SCREEN_AFTERGLOW)
     # The projected picture (the face, the spill below it) follows the screen's lamp (LotScreen).
     instance(
@@ -743,8 +809,10 @@ def build() -> None:
         props={"light_path": 'NodePath("../Lamps/ScreenGlow")', "panel_path": 'NodePath("../ScreenPanel")'},
     )  # fmt: skip
     spawns = group("PlayerSpawns", field)
-    for i, sx in enumerate((-6, -2, 2, 6), start=1):
-        marker(spawns, f"Player{i}", (sx, 0, -43))
+    # Eight places (the room's seats, `NightHost.MAX_PLAYERS`): the first four on the apron's row, the next four a row
+    # of 3 m south of it, so a night of one to eight takes them in order and no two stand closer than 3 m.
+    for i, (sx, sz) in enumerate([(x, -43) for x in (-6, -2, 2, 6)] + [(x, -40) for x in (-6, -2, 2, 6)], start=1):
+        marker(spawns, f"Player{i}", (sx, 0, sz))
     zs = group("ZombieSpawns", field)
     for tag, bx, bz in breaches:
         # Outside the fence, on the apron: the dead come to the boards from the dark.
@@ -772,7 +840,7 @@ def build() -> None:
     wall(con, "WallW", "z", -10, -4, 8, 4.0, "concession_wall")
     wall(con, "WallE", "z", 10, -4, 8, 4.0, "concession_wall")
     for i, (xa, xb) in enumerate(itertools.pairwise((-10.4, STAND_CUT_X, 10.4))):
-        for j, (za, zb) in enumerate(itertools.pairwise((-4.4, STAND_CUT, 8.4))):
+        for j, (za, zb) in enumerate(itertools.pairwise(STAND_ROOF_CUT_Z)):
             box(con, f"Roof{i}_{j}", (xb - xa, 0.3, zb - za), ((xa + xb) / 2, 4.15, (za + zb) / 2), "concession_roof")
     block(con, "Counter", -5, 5, 1, 3, 1.0, "concession_prop")
     # The prize crane is not part of the scene: it moves between four places, so `CraneView` draws it.
@@ -805,7 +873,7 @@ def build() -> None:
 
     # --- Midway: the courtyard behind the stand, the hub the other areas hang off ------------------------------
     mid = group("Midway", ".")
-    floor_tiles(mid, "Ground", -16, 16, 8, 38, "midway_ground")
+    cut_tiles(mid, "Ground", MIDWAY_CUT_X, MIDWAY_CUT_Z, "midway_ground")
     floor_tiles(mid, "AlleyW", -16, -10, -4, 8, "midway_ground")
     floor_tiles(mid, "AlleyE", 10, 16, -4, 8, "midway_ground")
     wall(mid, "FenceW", "z", -16, -4, 38, 2.6, "midway_wall", [(MIDWAY_LINK_Z, MIDWAY_LINK, 0, 2.6)])
@@ -863,7 +931,7 @@ def build() -> None:
 
     # --- Generator yard (east) ----------------------------------------------------------------------------------------
     yard = group("GeneratorYard", ".")
-    floor_tiles(yard, "Ground", 16, 62, -4, 38, "yard_ground")
+    cut_tiles(yard, "Ground", (16, 62), YARD_CUT_Z, "yard_ground")
     wall(yard, "FenceE", "z", 62, -4, 38, PERIMETER_H, "yard_wall")
     wall(yard, "FenceS", "x", 38, 16, 62, 2.4, "yard_wall")
     # The generator cage: 8 x 6 m, open on the west and east sides, roofless.
@@ -891,7 +959,7 @@ def build() -> None:
 
     # --- Back lot (west) --------------------------------------------------------------------------------------------
     back = group("BackLot", ".")
-    floor_tiles(back, "Ground", -62, -16, -4, 38, "backlot_ground")
+    cut_tiles(back, "Ground", (-62, -16), BACK_LOT_CUT_Z, "backlot_ground")
     wall(back, "FenceW", "z", -62, -4, 38, PERIMETER_H, "backlot_wall")
     wall(back, "FenceS", "x", 38, -62, -16, 2.4, "backlot_wall")
     wrecks = group("Wrecks", back)
@@ -921,17 +989,16 @@ def build() -> None:
     marker(bz, "SpawnS", (-30, 0, 36))
     label(back, "Label", "6  BACK LOT  (dark)", (-39, 0.6, 12), 110)
 
-    # --- Road: ticket plaza, the gate, the way into town -------------------------------------------------------------
+    # --- Road: the ticket plaza behind the last door, closed off at its south end (#686) -------------------------------
+    # The lot used to run on into a road (a 124 m strip of asphalt, a roadblock, two wrecks) that was never finished and
+    # showed. It is gone: the plaza is all that is behind the road door, shut at PLAZA_END by the lot's own wall with
+    # junk stacked against it, and it holds the lot's own perk machine at the middle of that wall.
     road = group("Road", ".")
-    floor_tiles(road, "Plaza", -16, 16, 38, 52, "road_ground")
-    floor_tiles(road, "Asphalt", -62, 62, 52, 64, "road_ground")
+    floor_tiles(road, "Plaza", -16, 16, 38, PLAZA_END, "road_ground")
     wall(road, "FenceS", "x", 38, -16, 16, 2.6, "road_wall", [(0, 4, 0, 2.6)])
-    wall(road, "SideW", "z", -16, 38, 52, 2.6, "road_wall")
-    wall(road, "SideE", "z", 16, 38, 52, 2.6, "road_wall")
-    wall(road, "BarrierS", "x", 64, -62, 62, 1.6, "road_wall")
-    wall(road, "EndW", "z", -62, 52, 64, 1.6, "road_wall")
-    wall(road, "EndE", "z", 62, 52, 64, 1.6, "road_wall")
-    box(road, "RoadblockTown", (8, 2.6, 3), (58, 1.3, 58), "roadblock")
+    wall(road, "SideW", "z", -16, 38, PLAZA_END, PERIMETER_H, "road_wall")
+    wall(road, "SideE", "z", 16, 38, PLAZA_END, PERIMETER_H, "road_wall")
+    wall(road, "FenceEnd", "x", PLAZA_END, -16, 16, PERIMETER_H, "road_wall")
     for sx in (-1, 1):
         tag = "W" if sx < 0 else "E"
         block(road, f"Kiosk{tag}", sx * 6 - 1.2, sx * 6 + 1.2, 44, 46.4, 2.4, "road_kiosk")
@@ -939,10 +1006,12 @@ def build() -> None:
     for i, px in enumerate((-9, 9)):
         box(road, f"CanopyPost{i}", (0.4, 3.6, 0.4), (px, 1.8, 47.8), "road_wall")
     box(road, "CentreLine", (0.3, 0.02, 12), (0, 0.01, 46), "road_line", collide=False)
-    # The road's broken centre line: 3 m dashes every 6 m.
-    painted_lines(road, "RoadDashes", "road_line", (0.15, 3.0), [(x + 1.5, 58.0, 90.0) for x in range(-60, 60, 6)])
-    instance(road, "Wreck", "wreck", (-32.0, 0, 58.0), 0)  # its headlights (below) are at its front, z 55.8
-    instance(road, "WreckB", "wreck", (22.3, 0, 60.0), 90)
+    # The perk machine (drawn by `SodaFountain` in ShopProps): this block is its collision and its place in the walking
+    # mesh. It runs to the wall (no slot behind it, `test_lot_gaps.gd`).
+    block(road, "PerkMachine", -1.2, 1.2, PLAZA_END - 1.4, PLAZA_END - 0.2, 1.6, "road_wall", visible=False)
+    # A wreck parked nose-in at the wall, west of the machine: its headlights (the `battery` circuit) are the last light
+    # on the lot when the tank is dry, and they shine up the plaza.
+    instance(road, "Wreck", "wreck", (WRECK_X, 0, PLAZA_END - 0.2 - 2.15), 0)
     rl = lamps(road, "back_lot")
     omni(rl, "Kiosk", (0, 3.0, 44), 1.0, 8, "#a8c4ff")
     # The entrance's bulbs and lamps burn with the kiosk's lamp, on the back lot's circuit (ModelGlow): the marquee's
@@ -959,18 +1028,18 @@ def build() -> None:
              "model_path": f'NodePath("../../TicketBooth{tag}")', "amber_energy": "2.5"},
         )  # fmt: skip
     hl = lamps(road, "battery", "Headlights")
-    spot(hl, "WreckHeadlightL", (-31, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
-    spot(hl, "WreckHeadlightR", (-33, 1.0, 55.8), 0, 0, 2.5, 18, 28, "#fff2cc")
+    wreck_nose = PLAZA_END - 0.2 - 2.15 - 2.2  # the nose of the wreck, 2.2 m from its middle towards the plaza
+    spot(hl, "WreckHeadlightL", (WRECK_X + 1, 1.0, wreck_nose), 0, 0, 2.5, 18, 28, "#fff2cc")
+    spot(hl, "WreckHeadlightR", (WRECK_X - 1, 1.0, wreck_nose), 0, 0, 2.5, 18, 28, "#fff2cc")
     rz = group("ZombieSpawns", road)
-    marker(rz, "SpawnW", (-56, 0, 58))
-    marker(rz, "SpawnE", (50, 0, 62))
     marker(rz, "SpawnPlaza", (-14, 0, 50))
-    label(road, "Label", "7  THE ROAD", (0, 0.6, 58), 150)
-    label(road, "LabelPlaza", "TICKET PLAZA", (0, 0.6, 41), 90)
+    marker(rz, "SpawnPlazaE", (13.5, 0, 55))
+    marker(rz, "SpawnPlazaSW", (-13.5, 0, 55))
+    label(road, "Label", "7  TICKET PLAZA", (0, 0.6, 52), 110)
 
     # --- The drive-in's own props (tools/world/drivein_props.py): speaker posts, the counter, booths, the marquee ---
     drivein_props.write_scenes()
-    n_posts = drivein_props.place(instance, group, node, lines, car_slots, gaps, screen_c, field_lamps)
+    n_posts = drivein_props.place(instance, group, node, lines, car_slots, gaps, screen_c, field_lamps_xz)
 
     # --- Shop spots: wall weapons, the prize crane and the ammunition lockers ---------------------------------------
     # The weapons on the walls sell what the rules' tuning prices (weapon_shotgun, weapon_rifle); the crane is
@@ -1005,6 +1074,21 @@ def build() -> None:
     shop_spot("SpotReCut", "upgrade", "upgrade_weapon", (3.5, 0, 25.9), 180)
     instance("ShopProps", "Soda", "soda_fountain", (8.2, 0, 4.9), 180)
     shop_spot("SpotSoda", "perk", "tonic_hearty", (8.2, 0, 3.7), 180)
+    # The five other perk machines (`PerkMachine`, docs/design/perks.md), one to an area so the perks arrive with the
+    # doors: faster revives in the midway (the stand's door), the quick reload in the booth, the double shot in the
+    # yard, the reload shock in the back lot (the third holster is the ticket plaza's, below). Each stands over a hidden
+    # block that holds its place in the walking mesh, faces the room and has its spot 1.2 m in front.
+    for name, perk, item, (mx, mz), yaw, bx in PERK_MACHINES:
+        instance("ShopProps", name, "perk_machine", (mx, 0, mz), yaw, props={"perk": f'&"{perk}"'})
+        block("ShopProps", f"{name}Block", *bx, 2.1, "ammo_crate", visible=False)
+        shop_spot(f"Spot{name}", "perk", item, spot_in_front(mx, mz, yaw, 1.2), yaw)
+    # The ticket plaza's machine, the road door's own (#686, #687): the Third Holster, the dearest perk behind the dearest
+    # door. It stands over the plaza's hidden `Road/PerkMachine` block, facing the door, its spot 1.2 m in front.
+    instance(
+        "ShopProps", "PlazaPerk", "perk_machine", (PERK_MACHINE_AT[0], 0, PERK_MACHINE_AT[1]), 180,
+        props={"perk": '&"third_holster"'},
+    )  # fmt: skip
+    shop_spot("SpotPlazaPerk", "perk", "tonic_third_holster", (PERK_MACHINE_AT[0], 0, PERK_MACHINE_AT[1] - 1.2), 180)
     # Lockers: the avenue (the first one, in the open), the stand, the midway, the yard and the back lot.
     ammo_locker("LockerField", (3.1, -31.0), 270)
     ammo_locker("LockerStand", (9.45, -1.8), 270)

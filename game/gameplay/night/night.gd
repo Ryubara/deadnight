@@ -91,6 +91,9 @@ var bots: NightBots
 ## The match settings, set before `start`: the night's zombie intensity, alive cap and break. After
 ## `start_remote` they are the ones the server's WELCOME carried.
 var match_settings := MatchSettings.new()
+## The map's scene, set before `start`, for a night that is not on the registry's choice (a test, a
+## capture); empty builds the map the match settings name (`NightWorld.scene`).
+var scene: PackedScene
 ## `start_remote` only: the map to build before the server's WELCOME says which it is on (the lobby
 ## the player joined knows it); empty is the default map. A WELCOME that names another one has the
 ## world built again on that map.
@@ -173,10 +176,13 @@ func start(
 		await get_tree().process_frame
 		await get_tree().process_frame
 	world = NightWorld.new()
+	world.scene = scene
 	add_child(world)
 	await world.build(MapRegistry.of(match_settings.map))
 	loading.emit(BUILD_SHARE, "Setting up")
-	server = NightServer.new(world, p_seed, night_tuning, p_rules_tuning, match_settings)
+	# A map with its own rules overlay plays by it, over the shared table (or over the table given).
+	var table := p_rules_tuning if p_rules_tuning != null else load(GameRules.DEFAULT_TUNING_PATH)
+	server = NightServer.new(world, p_seed, night_tuning, world.rules_for(table), match_settings)
 	rules_tuning = server.rules.tuning
 	link = LoopbackLink.new(server, 0, PLAYER_ID)
 	bot_orders.sender = link.send
@@ -184,7 +190,7 @@ func start(
 	state.player_id = PLAYER_ID
 	_track_challenges()
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
 	_equip_sync = WeaponEquipSync.new(state, server.body_of)
 	link.delivered.connect(_on_delivered)
 	looks.changed.connect(_dress_bodies)
@@ -268,7 +274,7 @@ func start_remote(
 		_make_autopilot()
 	var open_doors: Array = welcome["snapshot"].get("doors_open", [])
 	if hud != null:
-		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks)
+		_hud_binding = NightHudBinding.new(hud, state, rules_tuning, looks, world.layout.words())
 		hud.state.load_snapshot(welcome["snapshot"])
 	match_settings = MatchSettings.from_snapshot(welcome["snapshot"])
 	# Our own body holds what the server says; the drawn avatars of the others are not `Player`s.
@@ -470,6 +476,7 @@ func _add_sounds() -> void:
 	grenades.name = "GrenadeSounds"
 	add_child(grenades)
 	grenades.setup(state)
+	grenades.where_is = view.grenade_position
 	var lot := WorldSounds.new()
 	lot.name = "WorldSounds"
 	add_child(lot)
@@ -478,6 +485,7 @@ func _add_sounds() -> void:
 	lot.setup(state, tuning.fuel, tuning.economy, generator, _post_point, _crane_point)
 	var voice := SoldierVoice.new()
 	voice.name = "SoldierVoice"
+	voice.looks = looks
 	add_child(voice)
 	voice.setup(state)
 
@@ -699,6 +707,7 @@ func _add_throw_preview(def: GrenadeDef) -> void:
 	add_child(preview)
 	_throw_cast = WorldCast.new(get_world_3d().direct_space_state)
 	preview.setup(def, _throw_cast.callable())
+	preview.zombies = func() -> Array[Dictionary]: return state.zombies
 	preview.hand_reach = night_tuning.grenade_hand_reach
 	preview.release_over = night_tuning.grenade_release_over
 	preview.release_under = night_tuning.grenade_release_under
@@ -723,7 +732,9 @@ func _human_command() -> NightCommand:
 func _ping_request(aim: NightCommand) -> Dictionary:
 	var landed := Vector3.INF
 	var cast := PhysicsRayQueryParameters3D.create(
-		aim.origin, aim.origin + aim.dir * PingAim.REACH, CameraProbe.PLAYER_MASK
+		aim.origin,
+		aim.origin + aim.dir * PingAim.REACH,
+		CameraProbe.PLAYER_MASK | PhysicsLayers.BODY
 	)
 	var hit := get_world_3d().direct_space_state.intersect_ray(cast)
 	if not hit.is_empty():

@@ -53,8 +53,8 @@ Added in `tools/audio/night_recipes.py`, rendered by the same `generate.py` (whi
   Measured seam (last sample to first, against the largest step inside the file): crickets 0.0027 (0.578), highway
   0.0000 (0.034), projector 0.011 (0.074), score 0.003 (0.020): all under the in-file steps, so no click.
 - **Crickets:** a pulse is a 16 ms Hann-windowed sine with a quiet second harmonic, three to a chirp 24 ms apart; the
-  chirp rate is rounded to a whole number per loop; each insect's loudness follows a slow wandering curve, so they
-  sing in bursts instead of droning.
+  chirp rate is rounded to a whole number per loop (1.0 to 2.1 a second each since #781, from 2.0 to 4.2); each
+  insect's loudness follows a slow wandering curve, so they sing in bursts instead of droning.
 - **Highway:** a ring-filtered rumble under a slow swell, plus six passes (3.5 to 6.5 s, a sine-squared swell) of
   band-passed noise whose centre falls from about 850 Hz to about 450 Hz (the doppler of a car going by) over a faint
   low saw for the engine.
@@ -125,12 +125,11 @@ Added in `tools/audio/weapon_recipes.py` (synthesised) and `tools/audio/elevenla
   after, rifle: `rifle_before` against `rifle_after` in the pull request's spectrogram.
 - **Variation costs voices, so the groups have limits.** Tails 4, impacts 6; the SMG's tail has a 0.22 s cooldown.
   Thirteen SMG shots a second still start the report every time.
-- **Reload steps from the clip's frames.** `clips.json` lists the events in frames at 24 a second (the revolver and
-  SMG's `mag_out` 6 and `mag_in` 22; the rifle's `round_in` 20, 32, 44 and `lever` 56; the shotgun's `break_open` 6,
-  `shells_in` 26, `snap_shut` 34). The sounds read those frames (`ClipEvents`) on a `SoundSchedule` the node steps, so a
-  test checks every step 1 ms either side of its frame with no wall time. Not scaled to the weapon's `reload_time`: the
-  animation plays at its own speed, and the rifle's lever (2.33 s) lands after the simulation's 2.2 s reload ends, as the
-  picture does.
+- **Reload steps from the reload's motion (#683).** The steps are events of the weapon's `ReloadMotion`
+  (`gameplay/player/reload/<id>.tres`) at shares of the reload, so they stretch over the weapon's own `reload_time` as
+  the motion does and sound on the moment it draws them; `WeaponSounds.RELOAD` gives each step its sound. They play
+  on a `SoundSchedule` the node steps, so a test checks every step 1 ms either side with no wall time. Before #683 they
+  read the authored `Reload_<Class>` clips' frames (`ClipEvents`, now gone), which the night never played.
 - **World impact versus flesh.** The server sends the pellets' end points in `shot_fired` and the zombie hits in a
   `damage_dealt` right after, so a pellet that ended short of the weapon's range is held until the next step and each
   hit claims the nearest end within 1.5 m; what is left struck the lot. A shotgun's eight pellets ricochet at most
@@ -173,6 +172,19 @@ analysed with `tools/audio/analyze.py capture`.
   the lot), which sets the player's `max_db` to its own level, so the trim is what you hear up close; far away nothing
   changes. The generator's loops move their `max_db` with their level. Measured by playing each gun alone at 1.7 m at
   three offsets (`game/tests/captures/audio_gun_levels.tscn`): the peaks follow the offsets once the cap is on.
+- **A pooled player kept the last sound's cap (#752).** `cap_near_level` set `max_db` only for a capped sound, so the
+  dead's voices, boards, door and the till took the cap of whatever used their slot before (a gun's trim): the same
+  voice read 2.5 to 15 dB lower after the guns than played alone (`zombie_growl_boss` -6.8 to -20.2 dBFS, `board_tear`
+  -4.1 to -19.2) and moved with the gun trims. It now sets `max_db` on every play (`ENGINE_MAX_DB`, the engine's +3 dB,
+  for a sound with no cap). Every other property a play can set was already set on every play (3D: stream, bus,
+  `volume_db`, `pitch_scale`, `unit_size`, `max_distance`, the filter cutoff, position; flat: stream, bus,
+  `volume_db`, `pitch_scale`; beds: stream, bus, `volume_db`, and `stream_paused` on release), and
+  `test_near_cap.gd` checks the cap of every sound in the catalog after a rifle shot on the same slot. Measured with
+  `tests/captures/audio_headroom.tscn --own=none --all-variants`: each sound's peak is now the same alone and after the
+  guns, within 1.6 dB (the pitch draw). The close sounds' loudest files (`board_last`, `grenade_blast` -1.0,
+  `door_open` -1.2 dBFS alone) left no room for a shot landing on them: that was #753, solved with a near cap on each
+  ([gun-audio](gun-audio.md#close-sounds-under-gunfire)); the sharp ones (boards, door, debris blocker) were then
+  limited in their recipes to come back over the beds ([#762](gun-audio.md#the-sharp-sounds-limited-in-their-recipe-762)).
 - **No flesh hits at the fence.** Most of the tour's shots (38 ricochets against 3 impacts on a zombie) hit the boards
   or the lot: the dead stand behind the fence. The flesh and headshot impacts are covered by the tests; a capture in the
   open field would show more.
@@ -300,6 +312,77 @@ while the whole bed moves only 0.3 to 0.4 LU. The break is not louder, it is the
 fade-out at 5 s, so a break plays about 2 s of it at full level (a special round's 15 s plays it whole). A quicker fade
 is a one-number change (`AudioService.BED_FADE_IN_DB_PER_S`) if the maintainer wants the music heard in full.
 
+## The crickets, cut again (#781)
+
+The maintainer: "We need to lower cricket sounds by 50%, and reduce the rate at which they play by 50% as well." The
+crickets were already cut once (#382, -2.5 dB, above) and were still too much. Now `bed_crickets` is **-26 dB** and the
+file has half the chirps a second.
+
+**The base is the original -16 dB, and "half" is half as loud to the ear.** The first reading here took "50% quieter"
+from the level after #382 (-18.5) and as half the amplitude (-6 dB, to -24.5); the maintainer corrected both: the 50%
+is from the original level (-16, before the cut above), and they chose half as loud to the ear. Perceived loudness
+halves for every 10 dB (the usual rule of thumb: about 2^(dB/10), the sone scale), so half as loud is -10 dB, -16 to -26.
+Half the amplitude is only -6.02 dB, which the ear hears as about 0.65 of the loudness, not 0.5. The chirp rate stays
+half the original (12.71 of 25.38 a second).
+
+**Why the first cut was not enough.** It was a number checked against numbers. #382's proof was a loudness table of the
+crickets under the score; the one comparison with the highway read the crickets 2.6 LU *under* it, so by the meter they
+were already quiet. But the crickets sing at 3.4 to 5.7 kHz and the highway bed has almost nothing there (-93.7 dBFS
+against the crickets' -44.3: 49.5 dB), so the highway never masks them: what decides whether they are noticed is the
+quiet night, not the other beds, and the meter's broadband gap says nothing about it. 2.5 dB is also about the smallest
+step an ear notices, and the cut touched one of two things: the level, never the density (25 chirps a second scheduled
+over the eight, 14 of them sung, in the highest band the ear is most sensitive to). Nobody put a quiet stretch of the
+night in front of the cut and asked whether the chirping still stood out. Check next time: a bed that is a narrow tone
+is judged in its own band against what is in that band, and by what it does (rate, bursts) as well as by how loud.
+
+Numbers in the paragraph above that are read at -18.5 (the highway gap of 2.6 LU, the crickets' -44.3 dBFS band) are the
+state the maintainer reacted to; the tables below put the original -16 beside the result.
+
+**The rate.** The recipe keeps the draw it always made (`CRICKET_DRAW_HZ`, 2.0 to 4.2 chirps a second each, and the draws
+of every later value) and keeps `CRICKET_RATE_SCALE` = 0.5 of the chirps: the same eight insects (pitch, bursts, place),
+every other chirp gone, so each now sings 1.0 to 2.1 a second and a whole number of chirps in the 24 s loop (it still
+loops cleanly). With the scale at 1.0 the recipe renders the old file bit for bit. Narrowing the draw to
+`uniform(1.0, 2.1)` was tried first and drew another set of eight (10.8 chirps a second, not half of 25.4: a different
+random stream, not the same crickets). **The file is normalised to its peak**: with half the chirps overlapping less, the
+same -3 dBFS peak made each chirp 2 dB louder, so the entry's peak is now -5 dBFS (`CRICKET_PEAK_DB`) and the loudest
+chirp in the file is as loud as before; `volume_db` is then the whole cut of a chirp (-10.0 dB from the original).
+
+Measured with `tools/audio/cricket_levels.py` (the catalog's `volume_db` laid over the decoded file; ebur128 from the
+pinned ffmpeg; the highway at its -18 dB; `check` pins the rate range and the whole chirps a loop):
+
+| What | Original (-16 dB) | After (-26 dB) |
+| --- | ---: | ---: |
+| Chirps a second, all eight, scheduled by the recipe | 25.38 | 12.71 |
+| Chirps a second sung (a chirp is dropped when its cricket is not singing) | 14.42 | 7.21 |
+| Each cricket, chirps a second | 2.00 to 4.08 | 1.00 to 2.04 |
+| Chirps a second told apart in the file (a lower bound, chirps overlap) | 8.08 | 5.00 |
+| Loudest chirp (band envelope), dB | -27.8 | -37.8 (-10.0) |
+| Crickets in 3.4 to 5.7 kHz, dBFS rms | -41.8 | -53.8 (-12.0) |
+| Crickets alone, 24 s | -38.2 LUFS | -49.9 LUFS (-11.7) |
+| Crickets against the highway bed, integrated | -0.1 LU | -11.8 LU |
+| Crickets against the highway bed, in the crickets' band | +52.0 dB | +40.0 dB |
+| Crickets + highway | -35.1 LUFS (+3.0 over the highway alone) | -37.9 LUFS (+0.2) |
+| Score minus crickets, trims | -4.1 dB (the score at -22) | +5.9 dB (the score at -20.1) |
+
+The crickets are still heard over the highway in the sense that matters: in their own band they stand 40.0 dB over it
+(nothing there masks them), and at the unit distance they sit 18.7 dB under one's own footstep on wood (-53.4 against
+-34.7). On the quiet night (below) they are 12 dB down in their band and the chirps come half as often. The second map has
+no crickets.
+
+**A quiet stretch of the night** (`game/tests/captures/audio_quiet_night.tscn`: the lot at dusk, the rules paused in the
+intro, so only the beds play, 30 s through Movie Maker; `cricket_levels.py capture` reads its `night.wav`), 4 to 30 s,
+through the real service and buses, at the original level and now:
+
+| The whole mix | Original (-16 dB) | After (-26 dB) |
+| --- | ---: | ---: |
+| Mix, integrated | -35.0 LUFS | -36.4 LUFS |
+| Crickets' band 3.4 to 5.7 kHz, dBFS rms | -43.6 | -55.6 |
+| Loudest chirp in the band, dB | -29.7 | -39.7 |
+| Chirps a second told apart | 8.12 | 5.12 |
+
+The mix moves only 1.4 LU (the highway is most of its energy) and the crickets' band 12 dB: the cut is in the crickets,
+not in the night. The spectrogram of the two nights is attached to the pull request.
+
 ## The soldier's voice (#384)
 
 The player's character talks like a person in the moment: 115 takes of 21 moments ("Reloading, cover me!", "Jeez, that one
@@ -420,3 +503,56 @@ The wall figure combines the 9 dB occlusion trim, the lowered cutoff and the ext
   (`test_night_occlusion.gd`).
 - The sting's duck (and the rear cue and occlusion low-pass) do not work in the browser. The bus volume does, so the duck
   could be a bus volume on the web; not done.
+
+## The female soldier's voice (#679)
+
+The same 20 moments and 115 takes as the male soldier, in a female voice, for the character choice
+([#678](https://github.com/Ryubara/deadnight/issues/678)). `SoldierVoiceCatalog` builds both sets from the one moments
+table and the one mix (male `vox_<event>_<n>` from `voice/soldier/`, female `voxf_<event>_<n>` from
+`voice/soldier_female/`); a player speaks with the `voice` of their frame entry (`female`, else male).
+
+| What | Value |
+| --- | --- |
+| Service | ElevenLabs text to speech, **Free tier** (a new account, 10,000 characters a month), `mp3_44100_128` |
+| Model, voice | `eleven_v4`; **Sarah**, the premade `EXAVITQu4vr4xnSDxMaL` ("Mature, Reassuring, Confident", young, American) |
+| Settings | the male soldier's: `stability` 0.0, `similarity_boost` 0.8, `style` 0.6 |
+| Recipe | `tools/audio/elevenlabs_voice.py --voice female` reads `tools/audio/soldier_voice_female.json`; same `plan`, `generate`, `encode`, `check`, `credits` |
+| Output | `game/assets/audio/voice/soldier_female/<moment>_<n>.ogg`, `manifest.json`, `LICENSE.md` (Free tier: attribution, no commercial licence) |
+
+- **Why Sarah.** On the Free tier the API serves the premade voices only (the account lists 21: Brian, Adam, Roger,
+  Harry and others male; Sarah, Laura, Jessica, Alice, Matilda, Bella, Lily female). A soldier who talks under stress
+  needs a steady, confident voice that the low stability can then move: Sarah ("mature, reassuring, confident"), not
+  Laura ("sassy, quirky"), Jessica ("playful, bright") or Lily ("velvety actress"). A different premade voice is one
+  line in the json and a re-run.
+- **The lines.** The male set, kept where it fits a woman as it is (most lines: "Reloading, cover me!", "I'm dry, I'm
+  dry!") and changed where it named a man ("Come to papa" is "Come to mama", "cheer a guy up" is "cheer a girl up",
+  "big boy coming through" is "big girl", "Thanks, man" is "Thanks"). The two takes the maintainer approved for the male
+  voice (`round_clear_5`, `streak_7` here) were not samples for her, so every one of her 115 lines was requested.
+- **Levelled like the male takes**, by the same recipe (-20 LUFS, peak limit -1 dBFS). Measured on the decoded files
+  with `tools/audio/analyze.py report` and BS.1770 loudness (`pyloudnorm`):
+
+| 115 takes each | Male | Female |
+| --- | ---: | ---: |
+| Integrated loudness, mean (min to max) | -20.19 LUFS (-20.89 to -19.93) | -20.16 LUFS (-20.68 to -19.89) |
+| Spread (standard deviation) | 0.12 LU | 0.11 LU |
+| Per moment, female minus male | | -0.10 to +0.11 LU |
+| Peak, mean (highest) | -3.5 dBFS (-1.0) | -4.5 dBFS (-0.8) |
+| Clipped samples | 0 | 0 |
+| Length, mean (longest) | 3.75 s (8.5) | 3.85 s (8.3) |
+| Spectral centroid, mean | 3,341 Hz | 3,103 Hz |
+
+  Her takes sit within 0.1 LU of his in every moment and peak a little lower on average; the same
+  `VOICE_DB` (-4 dB) and `LOCAL_DB` (-2 dB) trim therefore holds, and the night-capture numbers above apply to both.
+
+- **Check.** Every take was transcribed (Scribe): 0 of 115 flagged (no tag spoken, no line missing words), so no retake.
+- **Characters.** 6,457 of the 10,000 for the month were used for all of it, 3,543 left (read from
+  `/v1/user/subscription` after the last request). That is the only reliable number: **the account's counter lags the
+  requests by minutes**. It read 3,419 right after generation, 6,333 after the transcripts and 6,457 a little later.
+  The 115 lines are 5,953 characters written and 4,919 without tags; the male set billed 5,054 for 4,674 spoken, so
+  hers was about 5,300 and the Scribe check about 1,150 (the male one cost 976). The split is an estimate, the total
+  is measured. The next retake budget is 3,543, enough for about 60 average lines.
+- **Cost of two sets in the game.** The catalog now holds 230 voice takes; the warm-up and the background preload load
+  every sound, so both sets are loaded (4.5 MB of Ogg each). Loading only the voice a night uses is a follow-up for the
+  character choice (#678), which knows who speaks.
+- **Not heard.** No agent listens; the numbers above are the proof, and the maintainer's ears decide whether Sarah
+  wants another dB or another voice.

@@ -12,6 +12,7 @@ from __future__ import annotations
 import dsp
 import numpy as np
 from dsp import SAMPLE_RATE
+from limiter import limit_crest
 from recipes import Entry, _jv, _metal_click, _rasp, _thud
 
 # ---- helpers for loops ------------------------------------------------------------------------------------------
@@ -59,33 +60,50 @@ def _slow(rng: np.random.Generator, seconds: float, hz: float) -> np.ndarray:
 # ---- the ambient bed --------------------------------------------------------------------------------------------
 
 CRICKET_SECONDS = 24.0
+# The chirps a second each cricket is drawn at, and the share of them it keeps: the maintainer halved the rate (#781), so
+# the eight are the same insects (pitch, bursts, place) with every other chirp gone, and each now sings 1.0 to 2.1 a second.
+CRICKET_DRAW_HZ = (2.0, 4.2)
+CRICKET_RATE_SCALE = 0.5
+CRICKET_RATE_HZ = (CRICKET_DRAW_HZ[0] * CRICKET_RATE_SCALE, CRICKET_DRAW_HZ[1] * CRICKET_RATE_SCALE)
+CRICKET_PEAK_DB = -5.0
 HIGHWAY_SECONDS = 32.0
 PROJECTOR_SECONDS = 12.0  # 288 frames at 24 a second
 PROJECTOR_FPS = 24
 SCORE_SECONDS = 32.0
 
 
-def night_crickets(rng: np.random.Generator) -> np.ndarray:
-    """Eight crickets in a field: each chirps three pulses at its own pitch and rate, and sings in bursts."""
+def night_crickets(rng: np.random.Generator, plan: list[tuple[float, int, int]] | None = None) -> np.ndarray:
+    """Eight crickets in a field: each chirps three pulses at its own pitch and rate, and sings in bursts.
+
+    `plan`, when given, collects each cricket's (pitch in Hz, chirps in the loop, chirps sung) for `cricket_levels.py`."""
     n = dsp.samples(CRICKET_SECONDS)
     mix = np.zeros(n)
     pulse_n = dsp.samples(0.016)
     window = np.hanning(pulse_n)
     for _ in range(8):
         freq = rng.uniform(3700, 5300)
-        rate = round(rng.uniform(2.0, 4.2) * CRICKET_SECONDS) / CRICKET_SECONDS  # a whole number of chirps in the loop
+        drawn = round(rng.uniform(*CRICKET_DRAW_HZ) * CRICKET_SECONDS)  # chirps before the cut, a whole number a loop
+        chirps = round(drawn * CRICKET_RATE_SCALE)
+        rate = chirps / CRICKET_SECONDS
         singing = np.clip((_slow(rng, CRICKET_SECONDS, 0.35) - 0.4) * 2.6, 0.0, 1.0)
         pan_gain = rng.uniform(0.35, 1.0)
         pulse = np.sin(2 * np.pi * freq * np.arange(pulse_n) / SAMPLE_RATE) * window
         pulse += 0.25 * np.sin(2 * np.pi * freq * 2 * np.arange(pulse_n) / SAMPLE_RATE) * window
-        phase = rng.uniform(0, 1 / rate)
-        for k in range(round(rate * CRICKET_SECONDS)):
+        phase = rng.uniform(0, CRICKET_SECONDS / drawn)
+        loudness = rng.uniform(0.7, 1.0, drawn)  # one draw per chirp there was, so the later crickets stay the same
+        sung = 0
+        for k in range(chirps):
             at = phase + k / rate
-            level = singing[int(at * SAMPLE_RATE) % n] * pan_gain * rng.uniform(0.7, 1.0)
+            level = (
+                singing[int(at * SAMPLE_RATE) % n] * pan_gain * loudness[min(round(k / CRICKET_RATE_SCALE), drawn - 1)]
+            )
             if level < 0.02:
                 continue
+            sung += 1
             for p in range(3):
                 _wrap_add(mix, pulse, at + p * 0.024, level * (1.0 - 0.18 * p))
+        if plan is not None:
+            plan.append((float(freq), chirps, sung))
     air = _ring_noise(rng, CRICKET_SECONDS, 300, 2500, -6.0) * 0.012
     return mix * 0.5 + air
 
@@ -180,6 +198,13 @@ def score(rng: np.random.Generator) -> np.ndarray:
 
 # ---- boards at the fence ----------------------------------------------------------------------------------------
 
+# The highest sample of each sharp sound, over its loudest 400 ms, in dB (`limiter.limit_crest`): without it the crack
+# was 20 dB over the body and the body, at the level the crack is allowed close up (#753), was too quiet (#762).
+BOARD_TEAR_CREST_DB = 13.0
+BOARD_LAST_CREST_DB = 10.0
+BOARD_REPAIR_CREST_DB = 8.0
+DOOR_OPEN_CREST_DB = 12.0
+
 
 def _creak(rng: np.random.Generator, seconds: float, lo: float, hi: float) -> np.ndarray:
     """Wood and nails giving way: a stick-slip pitch (a stuttering pulse train) through a wooden resonance."""
@@ -218,7 +243,7 @@ def board_tear(rng: np.random.Generator) -> np.ndarray:
     at = creak_s * 0.92
     mix = dsp.place(mix, _crack(rng, _jv(rng, 420, 0.1)), at, 1.0)
     mix = dsp.place(mix, _thud(rng, _jv(rng, 130, 0.1), 0.12), at + 0.17, 0.55)
-    return dsp.fade(mix, 0.004, 0.06)
+    return dsp.fade(limit_crest(mix, BOARD_TEAR_CREST_DB), 0.004, 0.06)
 
 
 def board_last(rng: np.random.Generator) -> np.ndarray:
@@ -232,7 +257,7 @@ def board_last(rng: np.random.Generator) -> np.ndarray:
     for k, delay in enumerate((0.2, 0.34, 0.44)):
         mix = dsp.place(mix, _thud(rng, _jv(rng, 150 + 25 * k, 0.1), 0.08), at + delay, 0.6 - 0.15 * k)
         mix = dsp.place(mix, _crack(rng, _jv(rng, 600, 0.1), 0.4)[: dsp.samples(0.1)], at + delay, 0.3)
-    return dsp.fade(mix, 0.004, 0.08)
+    return dsp.fade(limit_crest(mix, BOARD_LAST_CREST_DB), 0.004, 0.08)
 
 
 def board_repair(rng: np.random.Generator) -> np.ndarray:
@@ -248,7 +273,7 @@ def board_repair(rng: np.random.Generator) -> np.ndarray:
         mix = dsp.place(mix, wood * 1.0 + slap * 0.6, at, 0.75 + 0.15 * i)
         mix = dsp.place(mix, nail, at, 0.3 + 0.1 * i)
         at += rng.uniform(0.17, 0.23)
-    return dsp.fade(mix, 0.0008, 0.05)
+    return dsp.fade(limit_crest(mix, BOARD_REPAIR_CREST_DB), 0.0008, 0.05)
 
 
 # ---- doors -----------------------------------------------------------------------------------------------------
@@ -262,7 +287,7 @@ def door_open(rng: np.random.Generator) -> np.ndarray:
     mix = dsp.place(mix, creak, 0.2, 0.5)
     mix = dsp.place(mix, _thud(rng, _jv(rng, 70, 0.1), 0.25), 1.05, 0.7)
     mix = dsp.place(mix, _rasp(rng, 0.25, 500, 1200), 0.95, 0.15)
-    return dsp.fade(mix, 0.002, 0.1)
+    return dsp.fade(limit_crest(mix, DOOR_OPEN_CREST_DB), 0.002, 0.1)
 
 
 # ---- melee ------------------------------------------------------------------------------------------------------
@@ -316,14 +341,16 @@ def till_ring(rng: np.random.Generator) -> np.ndarray:
 # ---- registry ---------------------------------------------------------------------------------------------------
 
 REGISTRY: list[Entry] = [
-    Entry("ambience", "crickets", 1, night_crickets, -3.0, loop=True),
+    # -5 dBFS, not -3: with half the chirps overlapping, the file normalises up 2 dB, so this keeps each chirp as loud in the
+    # file as it was and the catalog's volume_db is the whole cut of a chirp (#781).
+    Entry("ambience", "crickets", 1, night_crickets, CRICKET_PEAK_DB, loop=True),
     Entry("ambience", "highway", 1, night_highway, -3.0, loop=True),
     Entry("ambience", "projector", 1, night_projector, -3.0, loop=True),
     Entry("music", "score", 1, score, -3.0, loop=True),
-    Entry("world", "board_tear", 3, board_tear, -2.0),
-    Entry("world", "board_last", 2, board_last, -1.0),
-    Entry("world", "board_repair", 3, board_repair, -3.0),
-    Entry("world", "door_open", 2, door_open, -3.0),
+    Entry("world", "board_tear", 3, board_tear, -10.5),
+    Entry("world", "board_last", 2, board_last, -8.2),
+    Entry("world", "board_repair", 3, board_repair, -9.5),
+    Entry("world", "door_open", 2, door_open, -8.9),
     Entry("melee", "swing", 3, melee_swing, -5.0),
     Entry("melee", "hit", 2, melee_hit, -3.0),
     Entry("shop", "till", 2, till_ring, -3.0),

@@ -20,7 +20,7 @@ const GRAVEL_PATTERN := "gravel"
 const RAY_UP := 0.4
 const RAY_DOWN := 0.8
 ## Physics layer of the lot's ground (the default layer, where every box of the greybox sits).
-const GROUND_MASK := 1
+const GROUND_MASK := PhysicsLayers.WORLD | PhysicsLayers.BODY
 
 ## The surface found for each collider, by instance id: a floor's material does not change.
 var _cache: Dictionary[int, StringName] = {}

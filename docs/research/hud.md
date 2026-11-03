@@ -94,6 +94,41 @@ see [the slice](../design/slice.md#the-hud). Things the binding taught:
 - `HudFeed.ITEM_NAMES` has no entry for `door_yard`: buying the generator yard is announced as "BOUGHT SOMETHING".
 - At 1920 x 1080 the circuit labels under the generator bar touch each other ("SCREENSNACKSBOOTBACK LOT").
 
+## Weapon slots (#682)
+
+- **Silhouettes from the models, by a flat material override.** A `SubViewport` (own world, transparent background,
+  `UPDATE_ONCE`) with an orthogonal camera from the model's `-Z` side, every `MeshInstance3D` given one unshaded white
+  `material_override`, gives a clean cut-out the part tints. The weapon glbs have the barrel along `-X` and the grip on
+  the origin, so from `-Z` the barrel points right; the melee models stand on their end (`+Y`), so the view first turns
+  the model about Z until its longer side from the origin points right (`WeaponSilhouettes._turn_to_the_right`). Bounds
+  are summed by the chain of transforms, not `global_transform`, because a part binds (and builds) before it is in the
+  tree: `global_transform` printed `!is_inside_tree()` and returned identity.
+- **The touch corner was already full.** The first capture on a phone put the strip under the Fire and Melee buttons;
+  `test_touch_layout`'s kept cards did not list it, because it did not exist when they were chosen. Every new HUD part
+  goes into `KEPT_PARTS` there, and a capture on a phone shows what the test cannot (a world marker over it, the
+  stick's resting ring over the card above it: the ring moved up 60 units).
+- **Cells are whole units.** Three cells of 79.33 units rounded up to 80 and ran 2 units past the card above; the
+  width is floored.
+- **The key and the slot are two tests.** The matrix proves the key reaches the command and the night (rows
+  `weapon_slot_1` to `_3`, keyboard only: a pad and a phone swap with one button); `test_weapon_slots.gd` proves what the
+  server does with a pick (in hand, empty slot, mid-reload, replaced weapon, wire bits).
+
+## Perk badges and the self-revive (#707)
+
+- **A part placed from another part's rectangle waits for the layout.** The badges follow the health card, which moves
+  when the touch layer puts the slot strip under it. Placing them in `item_rect_changed` of the card read a stale
+  position (the card's column, anchored at the bottom, is placed after its children): the badges stayed 70 units low.
+  `Hud._place_perks` runs deferred, once, from the card's, its column's and its own `item_rect_changed`.
+- **The frame's bits are the single source.** The badges carry no memory: `HudState.perks` is set from the frame every
+  tick and a no-op when the same, so a purchase, a down that takes the perks, a late join and a left hand all agree.
+  A test buys at the real machine with the real press of use and reads the badges; another downs the player with and
+  without a teammate on their feet.
+- **The ring said BLEEDING OUT too.** The DOWN card was the issue's subject, but the ring over the view (`HudRevive`)
+  also drew the frozen clock and `HOLD ON FOR A REVIVE` during the self-revive; it now shows the perk's own count filling.
+  Any new state that stops a clock needs every part that shows the clock looked at (search `"bleed"`).
+- **Badges are drawn, not textured.** Six flat shapes in `_draw` on the machines' own colours (`PerkMachine.LOOKS`, the
+  soda fountain's constants): no import, no asset, and a retinted machine retints its badge.
+
 ## Ammunition and equipment from the weapons
 
 The ammo card and the equipment slot are fed by the weapons' events and the frame (`HudLoadout`), with no change to the
@@ -107,7 +142,9 @@ weapons.
   not the card; the next `weapon_equipped` of a swap re-read it. A test that bought rounds and asserted the card,
   instead of one that only fired and reloaded, would have caught it (`test_night_hud_ammo.gd`). The rule that
   follows: a readout of a number the server owns reads it from the frame, and events only make it quicker.
-- **Equipment is the weapon put away last.** The design page calls it "a flare, a trap" and nothing in the game is one,
+- **Equipment is the weapon put away last** (the health card's line was removed in #682: the
+  [slot strip](#weapon-slots-682) shows what is carried, and `equipment_name` stays in the state for tools). The design
+  page calls it "a flare, a trap" and nothing in the game is one,
   so the slot shows the other weapon of a swap. A weapon with no ammunition (the crowbar, known from
   `WeaponDef.is_melee`) shows `--` on the card. With three weapons carried only the last two are in view. The slot
   first showed the rounds it has left too (`REVOLVER x6`); the maintainer called that readout redundant on 2026-11-01

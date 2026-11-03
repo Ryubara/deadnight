@@ -96,18 +96,33 @@ static func far_meshes(model: Node) -> Dictionary:
 	return out
 
 
-## The mesh names a look shows (headwear that covers the head hides the hair).
+## The mesh names a look shows (headwear that covers the head hides the hair). The female Soldier
+## (#678, the `body` slot) shows her variant of every part that has one (`<slot>__<part>__female`:
+## her face, torso and legs), so every outfit fits both.
 static func visible_meshes(look: Dictionary) -> Array[String]:
 	var cat := catalog()
 	var lk := normalized(look)
 	var headwear: Dictionary = cat.slots.headwear.parts[lk.parts.headwear]
+	var variant := body_variant(lk)
 	var out: Array[String] = []
 	for slot: String in lk.parts:
 		var part: Dictionary = cat.slots[slot].parts[lk.parts[slot]]
 		if part.mesh == null or (slot == "hair" and headwear.get("hides_hair", false)):
 			continue
-		out.append(String(part.mesh))
+		if variant != "" and part.has(variant):
+			out.append(String(part[variant].mesh))
+		else:
+			out.append(String(part.mesh))
 	return out
+
+
+## The variant key a look's character wears ("female"), or "" for the Soldier as built.
+static func body_variant(look: Dictionary) -> String:
+	var body: Dictionary = catalog().get("body", {})
+	if body.is_empty():
+		return ""
+	var picked := String(look.get("parts", {}).get(body.slot, ""))
+	return picked if picked == String(body.variant) else ""
 
 
 ## Shows the look's parts, hides the rest and gives every part one material with the look's

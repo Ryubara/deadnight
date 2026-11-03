@@ -1,6 +1,7 @@
 class_name WeaponCarry
 extends RefCounted
-## What a player carries (#410): at most `WeaponCatalog.CARRY_LIMIT` weapons, melee ones included.
+## What a player carries (#410): at most `WeaponCatalog.CARRY_LIMIT` weapons (one more with the
+## third-weapon perk, `PerkEffects.carry_limit`), melee ones included.
 ## A weapon bought or taken from the crane with the hands full replaces the weapon in hand, which is
 ## disposed of, not dropped: it goes back into the pool, so the wall sells it and the crane gives it
 ## again. `PlayerState.weapons` is the list, in shop ids, the oldest first. The combat server keeps
@@ -13,7 +14,7 @@ static func take(
 	rules: GameRules, player: PlayerState, shop_id: StringName, held: StringName
 ) -> StringName:
 	var released := &""
-	if player.weapons.size() >= WeaponCatalog.CARRY_LIMIT:
+	if player.weapons.size() >= PerkEffects.carry_limit(rules, player.id):
 		released = _in_hand(player, held)
 		player.weapons.erase(released)
 		_forget_recut(player, WeaponCatalog.catalog_id(released))
@@ -43,3 +44,15 @@ static func _forget_recut(player: PlayerState, weapon_id: StringName) -> void:
 	if player.upgraded.has(weapon_id):
 		player.upgraded.erase(weapon_id)
 		player.recuts_lost += 1
+
+
+## The weapons past the limit are given up, the last taken first (a player who lost the third-weapon
+## perk). Returns the shop ids released, in the order they went; the caller tells the combat server.
+static func trim(rules: GameRules, player: PlayerState) -> Array[StringName]:
+	var released: Array[StringName] = []
+	var limit := PerkEffects.carry_limit(rules, player.id)
+	while player.weapons.size() > limit:
+		var shop_id: StringName = player.weapons.pop_back()
+		_forget_recut(player, WeaponCatalog.catalog_id(shop_id))
+		released.append(shop_id)
+	return released

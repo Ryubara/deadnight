@@ -19,6 +19,7 @@ carries a `Face` the same way, at the centre of its striking face, -Z out of the
 """
 
 import argparse
+import importlib.util
 import json
 import math
 import sys
@@ -72,12 +73,17 @@ def lever_rifle(b):
     b.box((-1.17, 0, 0.094), (0.03, 0.012, 0.03), K, bevel=0)
     b.box((-0.45, 0, 0.08), (0.04, 0.04, 0.02), D, bevel=0)
     b.box((-0.45, 0, 0.098), (0.012, 0.054, 0.022), K, bevel=0, detail=True)
-    # The lever: a trigger guard that runs back into a finger loop under the wrist, on a pivot pin.
+    # The lever (`lever_rifle_lever`, its own node) turns on this pivot pin.
+    b.cyl((-0.21, -0.05, -0.045), (-0.21, 0.05, -0.045), 0.012, K, segs=8, bevel=0, detail=True)
+    b.bar([(-0.06, -0.058), (-0.056, -0.09), (-0.044, -0.102)], 0.016, 0.014, K)  # trigger
+
+
+def lever_rifle_lever(b):
+    """The lever: a trigger guard that runs back into a finger loop under the wrist. Turns on the pivot pin
+    (`NODES`), the loop swinging down and forward to work the action (Deadnight #683)."""
     b.bar([(-0.22, -0.06), (-0.19, -0.11), (-0.08, -0.125), (0.0, -0.115), (0.03, -0.09)], 0.03, 0.022, G)
     b.arc((0.06, -0.13), 0.055, 150, 420, 9, 0.03, 0.022, G)
     b.bar([(0.087, -0.083), (0.06, -0.052)], 0.03, 0.022, G)
-    b.cyl((-0.21, -0.05, -0.045), (-0.21, 0.05, -0.045), 0.012, K, segs=8, bevel=0, detail=True)
-    b.bar([(-0.06, -0.058), (-0.056, -0.09), (-0.044, -0.102)], 0.016, 0.014, K)  # trigger
 
 
 def double_shotgun(b):
@@ -98,22 +104,26 @@ def double_shotgun(b):
         b.cyl((-0.255, y, 0.035), (-0.285, y, 0.035), 0.042, G, segs=12, bevel=0.008)  # fences
         b.bar([(-0.03, 0.055), (-0.015, 0.09), (0.012, 0.1)], 0.02, 0.024, D, y=y * 1.3)  # hammers
     b.box((0.005, 0, 0.07), (0.07, 0.03, 0.016), D, bevel=0, rot=(0, -0.15, 0))  # top lever
-    # Barrels side by side, a rib on top and below, black bores and a bead sight.
+    # The barrels and the forend (`double_shotgun_barrels`, their own node) break open on this hinge pin.
+    b.cyl((-0.23, -0.068, -0.03), (-0.23, 0.068, -0.03), 0.015, D, segs=8, bevel=0, detail=True)  # hinge pin
+    # Trigger guard and two triggers; the guard hangs deep enough for the Soldier's thick finger (#460).
+    b.bar([(-0.12, -0.06), (-0.10, -0.12), (-0.02, -0.132), (0.04, -0.11), (0.07, -0.052)], 0.026, 0.018, G)
+    b.bar([(-0.065, -0.058), (-0.06, -0.094)], 0.014, 0.014, K)
+    b.bar([(-0.025, -0.058), (-0.02, -0.094)], 0.014, 0.014, K)
+
+
+def double_shotgun_barrels(b):
+    """The barrels side by side (a rib on top and below, black bores, a bead sight) and the splinter forend with its
+    iron and latch: one node that breaks open on the hinge pin, the muzzles dropping (Deadnight #683)."""
     for y in (-0.036, 0.036):
         b.cyl((-0.28, y, 0.035), (-1.08, y, 0.035), 0.036, D)
         b.cyl((-1.08, y, 0.035), (-1.084, y, 0.035), 0.022, K, bevel=0, detail=True)
     b.box((-0.68, 0, 0.074), (0.8, 0.024, 0.012), K, bevel=0)  # top rib
     b.box((-0.68, 0, 0.0), (0.8, 0.024, 0.024), D, bevel=0)  # bottom rib
     b.box((-1.065, 0, 0.086), (0.016, 0.016, 0.016), G, bevel=0, detail=True)  # bead
-    # Splinter forend with its iron and latch.
     b.prism([(-0.30, 0.015), (-0.60, 0.015), (-0.62, -0.01), (-0.60, -0.05), (-0.30, -0.055)], -0.058, 0.058, W)
     b.box((-0.29, 0, -0.02), (0.03, 0.12, 0.072), G, bevel=0.008)
     b.box((-0.46, 0, -0.056), (0.05, 0.03, 0.012), G, bevel=0, detail=True)
-    b.cyl((-0.23, -0.068, -0.03), (-0.23, 0.068, -0.03), 0.015, D, segs=8, bevel=0, detail=True)  # hinge pin
-    # Trigger guard and two triggers; the guard hangs deep enough for the Soldier's thick finger (#460).
-    b.bar([(-0.12, -0.06), (-0.10, -0.12), (-0.02, -0.132), (0.04, -0.11), (0.07, -0.052)], 0.026, 0.018, G)
-    b.bar([(-0.065, -0.058), (-0.06, -0.094)], 0.014, 0.014, K)
-    b.bar([(-0.025, -0.058), (-0.02, -0.094)], 0.014, 0.014, K)
 
 
 def baseball_bat(b):
@@ -220,12 +230,7 @@ def revolver(b):
     b.box((-0.038, 0, 0.004), (0.106, 0.036, 0.018), G, bevel=0.004)
     b.box((0.012, 0, 0.042), (0.024, 0.04, 0.094), G, bevel=0.005)
     b.box((0.006, 0, 0.092), (0.012, 0.012, 0.006), K, bevel=0, detail=True)  # rear sight notch
-    # Cylinder and its flutes.
-    b.cyl((-0.074, 0, 0.043), (-0.004, 0, 0.043), 0.033, D, segs=12, bevel=0.005)
-    for i in range(6):
-        a = math.radians(30 + 60 * i)
-        b.box((-0.039, 0.031 * math.cos(a), 0.043 + 0.031 * math.sin(a)), (0.042, 0.012, 0.006), K, bevel=0,
-              rot=(a + math.pi / 2, 0, 0), detail=True)  # fmt: skip
+    # The cylinder (`revolver_cylinder`, its own node) swings out to the left on its crane.
     # Grip: wood panels on a steel backstrap, a butt cap, a screw each side.
     b.prism([(-0.004, 0.0), (0.028, 0.002), (0.044, -0.03), (0.068, -0.094), (0.032, -0.1), (0.016, -0.056),
              (-0.002, -0.02)], -0.0195, 0.0195, W, bevel=0.005)  # fmt: skip
@@ -236,6 +241,15 @@ def revolver(b):
     b.bar([(0.012, 0.074), (0.03, 0.09), (0.05, 0.092)], 0.014, 0.014, K)
     b.bar([(-0.046, 0.0), (-0.046, -0.028), (-0.028, -0.042), (-0.004, -0.038), (0.006, -0.016)], 0.012, 0.008, G)
     b.bar([(-0.02, -0.002), (-0.023, -0.022), (-0.015, -0.032)], 0.008, 0.008, K)
+
+
+def revolver_cylinder(b):
+    """The cylinder and its flutes: swings out to the gun's left (-Y) on the crane under it (Deadnight #683)."""
+    b.cyl((-0.074, 0, 0.043), (-0.004, 0, 0.043), 0.033, D, segs=12, bevel=0.005)
+    for i in range(6):
+        a = math.radians(30 + 60 * i)
+        b.box((-0.039, 0.031 * math.cos(a), 0.043 + 0.031 * math.sin(a)), (0.042, 0.012, 0.006), K, bevel=0,
+              rot=(a + math.pi / 2, 0, 0), detail=True)  # fmt: skip
 
 
 def tommy_gun(b):
@@ -269,11 +283,8 @@ def tommy_gun(b):
     b.box((-0.365, 0, 0.03), (0.07, 0.04, 0.03), D, bevel=0)
     b.prism([(-0.335, 0.03), (-0.395, 0.03), (-0.402, -0.01), (-0.405, -0.09), (-0.39, -0.11), (-0.35, -0.106),
              (-0.338, -0.084), (-0.343, -0.05), (-0.33, -0.01)], -0.026, 0.026, W, bevel=0.008)  # fmt: skip
-    # The drum: a short wide cylinder across Y, a hub, a winding key.
-    b.cyl((-0.125, -0.036, -0.09), (-0.125, 0.036, -0.09), 0.09, D, segs=16, bevel=0.01)
-    b.cyl((-0.125, -0.041, -0.09), (-0.125, 0.041, -0.09), 0.032, G, segs=10, bevel=0)
-    b.box((-0.125, -0.045, -0.09), (0.05, 0.008, 0.014), K, bevel=0, detail=True)  # winding key
-    b.box((-0.125, 0, -0.018), (0.06, 0.05, 0.02), D, bevel=0)  # the drum's seat under the receiver
+    # The drum (`tommy_gun_drum`, its own node) comes off this seat under the receiver.
+    b.box((-0.125, 0, -0.018), (0.06, 0.05, 0.02), D, bevel=0)
     # Pistol grip, trigger guard, trigger.
     b.prism([(-0.006, -0.02), (0.04, -0.02), (0.075, -0.13), (0.072, -0.145), (0.034, -0.145), (0.005, -0.06)],
             -0.024, 0.024, W, bevel=0.008)  # fmt: skip
@@ -286,16 +297,20 @@ def tommy_gun(b):
     b.box((0.312, 0, 0.007), (0.016, 0.064, 0.122), K, bevel=0.004, rot=(0, -0.15, 0))
 
 
+def tommy_gun_drum(b):
+    """The drum: a short wide cylinder across Y, a hub, a winding key. Its own node, so the reload takes it off and
+    puts a full one on (Deadnight #683)."""
+    b.cyl((-0.125, -0.036, -0.09), (-0.125, 0.036, -0.09), 0.09, D, segs=16, bevel=0.01)
+    b.cyl((-0.125, -0.041, -0.09), (-0.125, 0.041, -0.09), 0.032, G, segs=10, bevel=0)
+    b.box((-0.125, -0.045, -0.09), (0.05, 0.008, 0.014), K, bevel=0, detail=True)  # winding key
+
+
 def flare_gun(b):
     """A 1950s signal pistol (the flare gun, #285): a short, wide barrel with a big black bore, a muzzle ring, a
     break-open frame hinged under the barrel, all in the palette's red so it reads as a signal and not a sidearm,
     black grip plates and a grey hammer. Drawn at a real 0.25 m with the cross-sections about 1.5 times real; the
     origin is the grip, behind the trigger."""
-    bore = 0.045
-    b.cyl((-0.03, 0, bore), (-0.178, 0, bore), 0.03, R, segs=12, bevel=0.005)  # barrel
-    b.cyl((-0.17, 0, bore), (-0.19, 0, bore), 0.035, R, segs=12, bevel=0.004)  # muzzle ring
-    b.cyl((-0.19, 0, bore), (-0.193, 0, bore), 0.022, K, segs=12, bevel=0)  # the bore, wide enough to read far off
-    b.box((-0.1, 0, 0.078), (0.12, 0.012, 0.008), R, bevel=0, detail=True)  # sight rib
+    # The barrel (`flare_gun_barrel`, its own node) breaks open on the hinge under it.
     # Frame: the breech block, the hinge under the barrel, the latch on top.
     b.box((-0.008, 0, 0.042), (0.06, 0.05, 0.078), R, bevel=0.006)
     b.cyl((-0.04, -0.028, 0.012), (-0.04, 0.028, 0.012), 0.009, G, segs=8, bevel=0)  # hinge pin
@@ -310,6 +325,16 @@ def flare_gun(b):
     b.bar([(0.01, 0.07), (0.028, 0.088), (0.048, 0.09)], 0.016, 0.016, G)
     b.bar([(-0.04, 0.005), (-0.042, -0.024), (-0.025, -0.04), (-0.002, -0.035), (0.006, -0.012)], 0.014, 0.009, R)
     b.bar([(-0.016, 0.004), (-0.02, -0.018), (-0.012, -0.028)], 0.009, 0.009, K)
+
+
+def flare_gun_barrel(b):
+    """The short wide barrel, its muzzle ring, the big black bore and the sight rib: breaks open on the hinge under
+    it, the muzzle dropping (Deadnight #683)."""
+    bore = 0.045
+    b.cyl((-0.03, 0, bore), (-0.178, 0, bore), 0.03, R, segs=12, bevel=0.005)  # barrel
+    b.cyl((-0.17, 0, bore), (-0.19, 0, bore), 0.035, R, segs=12, bevel=0.004)  # muzzle ring
+    b.cyl((-0.19, 0, bore), (-0.193, 0, bore), 0.022, K, segs=12, bevel=0)  # the bore, wide enough to read far off
+    b.box((-0.1, 0, 0.078), (0.12, 0.012, 0.008), R, bevel=0, detail=True)  # sight rib
 
 
 def grenade(b):
@@ -346,10 +371,61 @@ def grenade_pin(b):
     b.arc((0.0, 0.215), 0.055, -90, 270, 10, 0.018, 0.018, G2, y=-0.1)
 
 
+# ---- the reload's ammunition: what the left hand brings from the belt (Deadnight #683) ----------------------------
+# Each is drawn along X like its gun (the point or the open end toward -X), in the gun's drawing units, and exported
+# at the gun's chunk to `<gun>/<gun>_ammo.glb` (`AMMO`). The game holds it in the left hand at the gun's size.
+
+
+def shotgun_shells(b):
+    """Two red paper shells side by side with brass heads, the size of the barrels' bores (Deadnight #683)."""
+    for y in (-0.03, 0.03):
+        b.cyl((-0.045, y, 0.0), (0.03, y, 0.0), 0.026, R, segs=10, bevel=0.004)
+        b.cyl((0.03, y, 0.0), (0.05, y, 0.0), 0.029, Y, segs=10, bevel=0.003)  # brass head and rim
+
+
+def rifle_round(b):
+    """One rifle cartridge: a brass case with a shoulder and a grey bullet, drawn chunky so it reads in the fist."""
+    b.cyl((-0.01, 0, 0.0), (0.05, 0, 0.0), 0.016, Y, segs=8, bevel=0.003)
+    b.cyl((-0.03, 0, 0.0), (-0.01, 0, 0.0), 0.012, Y, segs=8, bevel=0, radius1=0.016)  # shoulder
+    b.cyl((-0.055, 0, 0.0), (-0.03, 0, 0.0), 0.006, G, segs=8, bevel=0, radius1=0.012)  # bullet
+
+
+def revolver_speedloader(b):
+    """A speedloader: a dark knob holding six brass rounds in the cylinder's circle, the rounds forward (-X)."""
+    b.cyl((0.0, 0, 0.0), (0.028, 0, 0.0), 0.034, D, segs=12, bevel=0.004)
+    b.cyl((0.028, 0, 0.0), (0.045, 0, 0.0), 0.016, K, segs=8, bevel=0.003)  # the knob
+    for i in range(6):
+        a = 6.283185 * i / 6
+        y, z = 0.022 * math.cos(a), 0.022 * math.sin(a)
+        b.cyl((-0.03, y, z), (0.0, y, z), 0.009, Y, segs=6, bevel=0)
+
+
+def flare_shell(b):
+    """A signal cartridge: a fat red case with a brass base, the size of the flare gun's wide bore."""
+    b.cyl((-0.06, 0, 0.0), (0.03, 0, 0.0), 0.023, R, segs=10, bevel=0.004)
+    b.cyl((0.03, 0, 0.0), (0.045, 0, 0.0), 0.027, Y, segs=10, bevel=0.003)
+
+
+# gun: (builder, centre): the centre (drawing units) is the piece's origin, where the left hand holds it.
+AMMO = {
+    "double_shotgun": (shotgun_shells, (0.0, 0.0, 0.0)),
+    "lever_rifle": (rifle_round, (0.0, 0.0, 0.0)),
+    "revolver": (revolver_speedloader, (0.0, 0.0, 0.0)),
+    "tommy_gun": (None, (-0.125, 0.0, -0.09)),  # a full drum: the gun's own `Drum` part (tommy_gun_drum)
+    "flare_gun": (flare_shell, (0.0, 0.0, 0.0)),
+}
+
+
 # Weapons made of more than one node: {weapon: {node: (builder, pivot)}}. Each node is joined on its own, its origin
 # at the pivot (where it turns or slides from), parented to the weapon's main node so it keeps the weapon's origin.
 NODES = {
     "grenade": {"Spoon": (grenade_spoon, (0.075, 0.0, 0.235)), "Pin": (grenade_pin, (0.0, 0.0, 0.215))},
+    # The reload's moving parts (Deadnight #683): each turns or slides about its pivot (the game's ReloadMotion).
+    "lever_rifle": {"Lever": (lever_rifle_lever, (-0.21, 0.0, -0.045))},  # the lever's pivot pin
+    "double_shotgun": {"Barrels": (double_shotgun_barrels, (-0.23, 0.0, -0.03))},  # the hinge pin
+    "revolver": {"Cylinder": (revolver_cylinder, (-0.039, -0.024, 0.012))},  # the crane, under and left of it
+    "tommy_gun": {"Drum": (tommy_gun_drum, (-0.125, 0.0, -0.09))},  # the drum's centre
+    "flare_gun": {"Barrel": (flare_gun_barrel, (-0.04, 0.0, 0.012))},  # the hinge pin
 }
 
 
@@ -477,6 +553,68 @@ WEAPONS = {
 }
 
 
+# Where the spent case leaves (#786): the centre of the ejection port, in drawing units like MUZZLES. The `Eject` empty
+# keeps the weapon's axes, so its local +Y points out of the gun's right side (+Y in Blender), which is the
+# node's -Z in Godot. A gun with no port (a revolver, the energy weapons) has none.
+EJECTS = {}
+EJECT = "Eject"
+
+
+def add_eject(o, name, chunk):
+    if name not in EJECTS:
+        return None
+    m = bpy.data.objects.new(EJECT, None)
+    m.empty_display_type = "ARROWS"
+    m.empty_display_size = 0.04
+    bpy.context.scene.collection.objects.link(m)
+    m.parent = o
+    m.location = Vector(EJECTS[name]) * Vector(chunk)
+    return m
+
+
+# ---- one module a weapon (#786, docs/research/weapon-models.md#one-module-a-weapon) ----------------------------------
+# A weapon added after the first ten lives in `weapon_specs/<id>.py`: its builders and one `SPEC` dict, so the model
+# batches never edit the same lines of this file. Keys: `build` (the builder) and optionally `chunk` (default 1, 1, 1),
+# `nodes` ({node: (builder, pivot)}), `muzzle`, `eject` (points), `grip` and `support` ((origin, up, front)),
+# `trigger` (a point) and `ammo` ((builder, centre)): the same values as the tables above, in drawing units.
+SPEC_DIR = Path(__file__).resolve().parent / "weapon_specs"
+SPEC_TABLES = {
+    "nodes": NODES,
+    "muzzle": MUZZLES,
+    "eject": EJECTS,
+    "grip": GRIPS,
+    "trigger": TRIGGERS,
+    "support": SUPPORTS,
+    "ammo": AMMO,
+}
+
+
+def load_specs(folder=SPEC_DIR):
+    """Add every `weapon_specs/<id>.py` (not those whose name starts with `_`) to the tables; returns the ids."""
+    ids = []
+    for path in sorted(folder.glob("*.py")) if folder.is_dir() else []:
+        if path.name.startswith("_"):
+            continue
+        name = path.stem
+        module_spec = importlib.util.spec_from_file_location(f"weapon_specs.{name}", path)
+        module = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(module)
+        spec = module.SPEC
+        if name in WEAPONS:
+            raise SystemExit(f"{path}: {name} is already a weapon")
+        unknown = set(spec) - {"build", "chunk", *SPEC_TABLES}
+        if unknown:
+            raise SystemExit(f"{path}: unknown SPEC keys {sorted(unknown)}")
+        if "ammo" in spec and spec["ammo"][0] is None:
+            raise SystemExit(f"{path}: the ammo needs its own builder (reuse the node's)")
+        WEAPONS[name] = (spec["build"], tuple(spec.get("chunk", (1.0, 1.0, 1.0))))
+        for key, table in SPEC_TABLES.items():
+            if key in spec:
+                table[name] = spec[key]
+        ids.append(name)
+    return ids
+
+
 def stats(o, offset=(0.0, 0.0, 0.0)):
     """Triangles, loose parts (after welding coincident vertices), bounding box (moved by `offset`)."""
     me = o.data
@@ -552,6 +690,9 @@ def main():
                 kids.append(k)
             muzzle = add_muzzle(o, name, chunk) or add_muzzle(o, name, chunk, FACES, FACE)
             sockets = add_sockets(o, name, chunk)
+            eject = add_eject(o, name, chunk)
+            if eject:
+                sockets.append(eject)
             tris, parts, mn, mx = stats(o)
             for k in kids:
                 kt, kp, kmn, kmx = stats(k, offset=k.location)
@@ -581,7 +722,22 @@ def main():
             for k in sockets:
                 bpy.data.objects.remove(k)
             bpy.data.objects.remove(o)
+        if name in AMMO:
+            build, centre = AMMO[name]
+            chunk = WEAPONS[name][1]
+            b = wl.Builder(f"{name}_ammo", "near", mat, chunk)
+            (build or tommy_gun_drum)(b)
+            o = b.join()
+            o.data.transform(Matrix.Translation(-Vector(centre) * Vector(chunk)))
+            tris, parts, mn, mx = stats(o)
+            path = args.out / name / f"{name}_ammo.glb"
+            export(o, path)
+            size = [round(mx[i] - mn[i], 3) for i in range(3)]
+            report[f"{name}/ammo"] = {"tris": tris, "parts": parts, "size": size}
+            print(f"WEAPON {name} ammo: {tris} tris, {parts} parts, size {size}, file {path}")
+            bpy.data.objects.remove(o)
     print("REPORT " + json.dumps(report))
 
 
+load_specs()
 main()

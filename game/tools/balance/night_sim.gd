@@ -72,6 +72,8 @@ var _result: Dictionary = {
 	"runs": 0,
 }
 var _earned_mark: int = 0
+var _kills_mark: int = 0
+var _heads_mark: int = 0
 var _spent_mark: int = 0
 var _over: bool = false
 
@@ -145,6 +147,10 @@ func _move_zombies() -> Dictionary:
 	var engaged := {}
 	var pace := 1.0 + (1.0 - _lit_share()) * (rules.tuning.rounds.dark_speed_multiplier - 1.0)
 	for zombie: SimZombie in _zombies.values():
+		if zombie.stun > 0.0:
+			# Held still by a shock (the shock perk): no step, no blow.
+			zombie.stun -= step
+			continue
 		if zombie.distance > 0.0:
 			zombie.distance -= zombie.speed * pace * step
 			continue
@@ -211,7 +217,7 @@ func _mend(player: SimPlayer, engaged: Dictionary) -> void:
 				break
 		# The real revive: the rules' own channel time and share of health, sent as the action a
 		# teammate's hold on use ends in.
-		if helper != null and player.revive >= rules.tuning.health.revive_seconds:
+		if helper != null and player.revive >= PerkEffects.revive_seconds(rules, helper.id):
 			player.last_hit = _clock
 			_handle(rules.apply(RulesAction.revive(helper.id, player.id)))
 		return
@@ -248,6 +254,8 @@ func _shoot(player: SimPlayer) -> void:
 		return
 	var melee := SimWeapons.is_melee(weapon)
 	var interval := SimWeapons.interval(weapon)
+	if not melee:
+		interval *= PerkEffects.fire_interval_scale(rules, player.id)
 	while player.carry >= interval and not _over:
 		var zombie := _pick_melee(player) if melee else _pick_target(player)
 		if zombie == null:
@@ -262,11 +270,35 @@ func _shoot(player: SimPlayer) -> void:
 		arm.mag -= 1
 		if arm.mag <= 0:
 			if arm.reserve > 0:
-				player.reload_left = SimWeapons.reload_seconds(weapon)
+				player.reload_left = (
+					SimWeapons.reload_seconds(weapon)
+					* PerkEffects.reload_time_scale(rules, player.id)
+				)
+				_shock(player)
 			else:
 				_out_of_rounds(player)
 			player.carry = 0.0
 			return
+
+
+## The shock perk: a reload gives off a shock that hurts and holds the dead within its radius (a
+## zombie's `distance` is how far it is from the players). The wait between shocks is the tuning's.
+func _shock(player: SimPlayer) -> void:
+	if player.shock_wait > _clock or not PerkEffects.has(rules, player.id, ShopItem.Effect.SHOCK):
+		return
+	var spec := rules.tuning.perks
+	player.shock_wait = _clock + spec.shock_cooldown
+	var victims: Array = []
+	var ids := _zombies.keys()
+	ids.sort()
+	for zombie_id: int in ids:
+		var zombie: SimZombie = _zombies[zombie_id]
+		if zombie.distance > spec.shock_radius:
+			continue
+		zombie.stun = spec.shock_stun_seconds
+		victims.append({"zombie_id": zombie_id, "damage": spec.shock_damage, "leg_damage": 0.0})
+	if not victims.is_empty():
+		_handle(rules.apply(RulesAction.explosion(player.id, victims)))
 
 
 ## Takes the weapon that does the most to this target if it beats the one in hand by `SWITCH_GAIN`
@@ -439,12 +471,31 @@ func _handle(events: Array[Dictionary]) -> void:
 					revived.downed = false
 					revived.dead = false
 					revived.health = rules.health_of(revived.id)
+			&"perks_lost":
+				var lost: SimPlayer = _players.get(event["player_id"])
+				if lost != null:
+					_lose_perks(lost)
 			&"player_died":
 				var dead: SimPlayer = _players.get(event["player_id"])
 				if dead != null:
 					dead.dead = true
 			&"game_over":
 				_over = true
+
+
+## A player went down and lost tonics: the most health and the weapons the rules took away.
+func _lose_perks(player: SimPlayer) -> void:
+	var owned: PlayerState = rules.players[player.id]
+	player.max_health = owned.max_health
+	var carried: Array[StringName] = []
+	for shop_id in owned.weapons:
+		carried.append(WeaponCatalog.catalog_id(shop_id))
+	for weapon_id in player.arms.keys():
+		if not carried.has(weapon_id):
+			player.arms.erase(weapon_id)
+	if not player.arms.has(player.weapon):
+		player.weapon = SimWeapons.best_armed(player.arms, _health())
+		player.reload_left = 0.0
 
 
 func _spawned(event: Dictionary) -> void:
@@ -456,7 +507,9 @@ func _spawned(event: Dictionary) -> void:
 	zombie.damage = event["damage"]
 	zombie.knockback = event["knockback"]
 	zombie.telegraph = event["telegraph_seconds"]
-	zombie.hit_chance = event["hit_chance"]
+	# A crawling look is shot at through zones fitted to its body on the ground, so it is no harder to
+	# hit than a walker (`ZombieProfile.hit_scale`, #694): the type's chance sized an upright set.
+	zombie.hit_chance = 1.0 if ZombieModels.crawls(event["look"]) else event["hit_chance"]
 	zombie.barrier_speed = event["barrier_speed"]
 	zombie.barrier = BARRIER_SECONDS if zombie.barrier_speed > 0.0 else 0.0
 	zombie.distance = _rng.randf_range(SPAWN_DISTANCE_MIN, SPAWN_DISTANCE_MAX)
@@ -480,6 +533,8 @@ func _removed(event: Dictionary) -> void:
 func _open_round(event: Dictionary) -> void:
 	_round_start_clock = _clock
 	_earned_mark = _total("points_earned")
+	_kills_mark = _total("kills")
+	_heads_mark = _total("headshot_kills")
 	_spent_mark = _total("points_spent")
 	for player: SimPlayer in _players.values():
 		player.damage_taken = 0.0
@@ -505,6 +560,9 @@ func _close_round(cleared: bool) -> void:
 	_round["pressure"] = pressure / float(_players.size())
 	_round["duration"] = _clock - _round_start_clock
 	_round["earned"] = float(_total("points_earned") - _earned_mark) / float(_players.size())
+	# Zombies killed in the round (all players together), and the share of them shot in the head.
+	_round["kills"] = _total("kills") - _kills_mark
+	_round["head_kills"] = _total("headshot_kills") - _heads_mark
 	_round["cleared"] = cleared
 	_round = {}
 
@@ -716,7 +774,7 @@ func _weakest(player: SimPlayer) -> StringName:
 ## the blow every player has, so a weapon that does less than that is not worth a slot or a price.
 func _worth_taking(player: SimPlayer, shop_id: StringName) -> bool:
 	var given_up := player.knife
-	if player.arms.size() >= WeaponCatalog.CARRY_LIMIT:
+	if player.arms.size() >= PerkEffects.carry_limit(rules, player.id):
 		given_up = player.arms[_weakest(player)]
 	return (
 		SimWeapons.worth_of(SimWeapons.def(shop_id), _health())
@@ -809,6 +867,8 @@ class SimPlayer:
 	var stun: float = 0.0
 	var last_hit: float = -100.0
 	var revive: float = 0.0
+	## The clock at which the shock perk may fire again.
+	var shock_wait: float = 0.0
 	var regen_delay: float = 5.0
 	var damage_taken: float = 0.0
 	## The lowest share of health the player reached this round.
@@ -863,6 +923,8 @@ class SimZombie:
 	var barrier: float = 0.0
 	var barrier_speed: float = 1.0
 	var swing: float = 0.0
+	## Seconds a shock still holds it.
+	var stun: float = 0.0
 	var damage: float = 20.0
 	var knockback: float = 0.0
 	var telegraph: float = 0.0

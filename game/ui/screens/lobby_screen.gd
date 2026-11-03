@@ -105,11 +105,14 @@ static func show_preview(from: TogetherApi, seen: Dictionary) -> void:
 
 ## The line under a code that has not been joined: waiting, in progress, or full.
 static func preview_text(seen: Dictionary) -> String:
-	var count := "%d of %d here" % [int(seen.get("players", 0)), int(seen.get("maxPlayers", 4))]
+	var count := (
+		"%d of %d here"
+		% [int(seen.get("players", 0)), int(seen.get("maxPlayers", NightHost.MAX_PLAYERS))]
+	)
 	if seen.get("full", false):
 		return (
 			"That night is full (%d of %d)."
-			% [int(seen.get("players", 0)), int(seen.get("maxPlayers", 4))]
+			% [int(seen.get("players", 0)), int(seen.get("maxPlayers", NightHost.MAX_PLAYERS))]
 		)
 	if seen.get("state") == "started":
 		var round_number: Variant = seen.get("round")
@@ -123,7 +126,7 @@ static func preview_text(seen: Dictionary) -> String:
 ## What the lobby says to the player whose backend id is `me`.
 static func status_text(held: Dictionary, me: String) -> String:
 	var members: Array = held.get("members", [])
-	var max_players := int(held.get("maxPlayers", 4))
+	var max_players := int(held.get("maxPlayers", NightHost.MAX_PLAYERS))
 	var is_host: bool = held.get("hostId") == me
 	if held.get("state") == "started":
 		var host := _host_name(held)
@@ -509,7 +512,12 @@ func bots_shown() -> int:
 		return 0
 	var wanted := rules.settings().bots if _rules_editable else lobby_rules().bots
 	var people: int = (lobby.get("members", []) as Array).size()
-	return maxi(mini(wanted, int(lobby.get("maxPlayers", 4)) - people), 0)
+	return maxi(mini(wanted, int(lobby.get("maxPlayers", NightHost.MAX_PLAYERS)) - people), 0)
+
+
+## How well the bots of this room play, as the host's panel (or the lobby's rules) say.
+func bots_skill() -> int:
+	return rules.settings().bot_skill if _rules_editable else lobby_rules().bot_skill
 
 
 ## The rules on the panel as the web probe reads them: `2x|Auto|20 s`.
@@ -566,15 +574,15 @@ func _show_seats() -> void:
 	var names: Array = []
 	var hosts: Array = []
 	var away: Array = []
-	var max_players := 4
+	var max_players := NightHost.MAX_PLAYERS
 	if mode == Mode.LIVE:
-		max_players = int(lobby.get("maxPlayers", 4))
+		max_players = int(lobby.get("maxPlayers", NightHost.MAX_PLAYERS))
 		for member: Dictionary in lobby.get("members", []):
 			names.append(str(member["name"]))
 			hosts.append(bool(member.get("host", false)))
 			away.append(bool(member.get("away", false)))
 	else:
-		max_players = int(preview.get("maxPlayers", 4))
+		max_players = int(preview.get("maxPlayers", NightHost.MAX_PLAYERS))
 		for who: Variant in preview.get("names", []):
 			names.append(str(who))
 			hosts.append(names.size() == 1)
@@ -588,7 +596,7 @@ func _show_seats() -> void:
 		(row["box"] as Control).visible = i < max_players
 		(row["number"] as Label).text = str(i + 1)
 		if i >= names.size() and i >= bot_from and i < max_players:
-			(row["name"] as Label).text = NightBots.name_for(i + 1)
+			(row["name"] as Label).text = NightBots.name_for(i + 1, bots_skill())
 			(row["name"] as Label).modulate.a = 1.0
 			(row["tag"] as Label).text = "BOT"
 		elif i < names.size():

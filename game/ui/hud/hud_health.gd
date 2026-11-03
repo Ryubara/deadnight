@@ -1,9 +1,9 @@
 class_name HudHealth
 extends HudTicket
 ## Health as a bar of ticks under its number, on a card as wide as the column. Down, the bar is
-## replaced by a red DOWN tag and what to hope for; the bar turns hot orange under a third. Beneath
-## it, the equipment (the weapon put away last, by name, cut with an ellipsis when long; its rounds
-## are not shown, the ammo card says the rounds). The grenade count sits at the right of the label.
+## replaced by a red DOWN tag and what to hope for; the bar turns hot orange under a third. The
+## grenade count sits at the right of the label. The weapons are not here: the slot strip above
+## the ammo card shows what is carried (`HudSlots`).
 
 ## Letter spacing of the top row: tighter than a caption, so it fits HEALTH 100 and the grenades.
 const TRACKING := 1.0
@@ -11,13 +11,8 @@ const BAR_HEIGHT := 20.0
 const TICKS := 10
 const TICK_GAP := 4.0
 const WIDTH := HudStyle.COLUMN
-## Room kept at the end of the weapon's name.
-const JOIN_SLACK := 6.0
 
 var shown_downed := false
-var equipment_text: String:
-	get:
-		return _equipment.text
 var grenade_text: String:
 	get:
 		return _grenades.text
@@ -35,9 +30,6 @@ var _label := HudStyle.clip(
 var _bar := Control.new()
 var _down := HudStyle.label("DOWN", HudStyle.MEDIUM, tokens.danger, true)
 var _hint := HudStyle.label("HOLD ON FOR A REVIVE", HudStyle.SMALL, tokens.ink_muted)
-var _equipment := HudStyle.clip(
-	HudStyle.label("", HudStyle.SMALL, tokens.ink, false, HudStyle.TRACK_CAPTION)
-)
 var _grenades := HudStyle.label("", HudStyle.SMALL, tokens.ink, false, TRACKING)
 var _top := HBoxContainer.new()
 
@@ -58,7 +50,6 @@ func _init() -> void:
 	body.add_child(_bar)
 	body.add_child(_down)
 	body.add_child(_hint)
-	body.add_child(_equipment)
 
 
 func topics() -> Array[StringName]:
@@ -74,18 +65,18 @@ func refresh() -> void:
 	_hint.visible = shown_downed
 	HudStyle.set_text(_label, "HEALTH %d" % ceili(state.health))
 	HudStyle.set_text(_grenades, "GRENADES x%d" % state.grenades)
-	HudStyle.set_text(_equipment, _gear_text())
 	_grenades.add_theme_color_override(
 		&"font_color", tokens.ink if state.grenades > 0 else tokens.ink_disabled
 	)
-	_equipment.visible = not shown_downed
 	var warned := shown_downed or fraction() <= _t.health_low_fraction
 	accent = tokens.danger if shown_downed else (tokens.hot if warned else tokens.accent)
 	_bar.queue_redraw()
 	queue_redraw()
 
 
-## What the card says while down: DOWN and the clock, being pulled up, or DEAD until the round ends.
+## What the card says while down: DOWN and the clock, the revive perk getting the holder up alone
+## (its seconds, while the bleed-out clock stands still), being pulled up, or DEAD until the round
+## ends.
 func _say_down() -> void:
 	var me: Dictionary = state.team.get(state.local_player_id, {})
 	if me.is_empty() or not shown_downed:
@@ -93,22 +84,15 @@ func _say_down() -> void:
 	if bool(me["dead"]):
 		HudStyle.set_text(_down, "DEAD")
 		HudStyle.set_text(_hint, "BACK NEXT ROUND")
+	elif float(me["self_revive"]) > 0.0:
+		HudStyle.set_text(_down, "DOWN")
+		HudStyle.set_text(_hint, "GETTING YOURSELF UP  %d S" % ceili(float(me["self_revive"])))
 	elif int(me["reviver"]) != 0:
 		HudStyle.set_text(_down, "DOWN")
 		HudStyle.set_text(_hint, "BEING PULLED UP")
 	else:
 		HudStyle.set_text(_down, "DOWN")
 		HudStyle.set_text(_hint, "BLEEDING OUT  %d S" % ceili(float(me["bleed"])))
-
-
-## The weapon put away, cut to the card's width.
-func _gear_text() -> String:
-	if state.equipment_name == "":
-		return ""
-	var font := _equipment.get_theme_font(&"font")
-	return HudStyle.trimmed(
-		font, state.equipment_name.to_upper(), HudStyle.SMALL, _bar_width() - JOIN_SLACK
-	)
 
 
 ## The width of the card's content: the bar's.

@@ -11,6 +11,12 @@ var roam: Dictionary = {}
 ## The flares burning now, as `{point, radius, until, shooter}` (the clock of the bots, all the same
 ## step): the dead within a flare's radius walk to it, so a bot judging a revive counts them as far.
 var lures: Array[Dictionary] = []
+## The claims on the links to buy (`BotErrands._link`): the nearest free bot to a link holds it.
+## Keyed by the link id's hash, with the same lease and steal margin as a body's claim.
+var links := BotClaims.new()
+## The claims on the last zombies of a round that are hunted (`BotHunt`): the nearest free bot to a
+## zombie holds it, keyed by the zombie's id.
+var hunts := BotClaims.new()
 ## Whose turn it is to go on an errand (one bot at a time).
 var turn := BotTurn.new()
 ## Whether the errands go one bot at a time (off only to measure what the turn costs).
@@ -36,5 +42,7 @@ func active_lures(now: float) -> Array[Dictionary]:
 ## A bot left the team (its seat was taken by a person, or it was removed): what it held is open.
 func release(bot: int) -> void:
 	claims.release(bot)
+	links.release(bot)
+	hunts.release(bot)
 	roam.erase(bot)
 	turn.release(bot)

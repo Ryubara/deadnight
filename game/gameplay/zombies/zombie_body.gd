@@ -28,6 +28,11 @@ var velocity := Vector3.ZERO
 var path := PackedVector3Array()
 var path_index: int = 0
 var repath_left: float = 0.0
+## Metres between the end of the last path it asked for and its target (the map's way stops short of
+## a target it has no way to), and the seconds it has been chasing with a way that stops short and
+## far from the target (`ZombieSim.STRAND_SECONDS`).
+var path_gap: float = 0.0
+var stranded_for: float = 0.0
 var retarget_left: float = 0.0
 ## Seconds a blast holds it in its stagger (longer than the profile's own), while STAGGER lasts.
 var stun_seconds: float = 0.0
@@ -61,6 +66,19 @@ func look() -> StringName:
 
 func is_alive() -> bool:
 	return mode != Mode.DYING
+
+
+## The zombie as the weapons shoot at it (`Hitbox.ray_at`): where it stands, the size and set of
+## its hit zones.
+func hit_target() -> Dictionary:
+	return {
+		"id": id,
+		"pos": position,
+		"yaw": yaw,
+		"scale": profile.hit_scale(),
+		"weak": profile.weak,
+		"pose": ZombiePose.hit_set(look(), mode, tearing, move_speed),
+	}
 
 
 ## What a client draws from: plain values, the same ones the wire format carries.

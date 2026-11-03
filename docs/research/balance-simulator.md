@@ -14,13 +14,15 @@ then the charts; `--compare <folder>` draws a before and after).
 
 ## Measured
 
-- **Speed.** One solo night costs 0.05 to 0.15 s (a step of 0.25 s of game time, a few thousand `apply`
-  calls); four players about 4 times that. 500 nights of all nine cells (3 skills by 1, 2, 4 players) take
-  about 3 minutes on 16 cores with nine processes. The CI gate (five cells, 60 nights, seed 4000) takes 40 s as a
-  whole suite in CI; it took 1 min 53 s when it ran the batch twice, one cell after another ("about 30 s" was never
-  true there). The five cells now run on worker threads (`WorkerThreadPool`), each with its own copy of the tuning,
-  and the shipped batch is run once in `before()`. Nights are node-free `RefCounted` objects, so the only shared state
-  is the weapon cache, filled first by `SimWeapons.warm()`; a test pins that threaded cells equal serial ones.
+- **Speed.** One solo night costs 0.05 to 0.15 s (a step of 0.25 s of game time, a few thousand `apply` calls); four
+  players about 4 times that and eight about 7 times (a night of eight is 0.9 s, 120 nights a cell in 110 s on one
+  process, #690). 500 nights of all nine cells (3 skills by 1, 2, 4 players) take about 3 minutes on 16 cores with nine
+  processes. The CI gate (five cells, 60 nights, seed 4000; a sixth, average by 8, since #690, takes about 47 s on its
+  thread and so sets the time) took 40 s as a whole suite in CI; it took 1 min 53 s when it ran the batch twice, one
+  cell after another ("about 30 s" was never true there). The cells now run on worker threads (`WorkerThreadPool`),
+  each with its own copy of the tuning, and the shipped batch is run once in `before()`. Nights are node-free
+  `RefCounted` objects, so the only shared state is the weapon cache, filled first by `SimWeapons.warm()`; a test pins
+  that threaded cells equal serial ones.
 - **Determinism.** Same seed, same night, on every run (tested). A batch is therefore reproducible, and a
   CI range that passes once passes always; only a change to the rules, the tuning or the model moves it.
 - **A fixed player is a cliff.** With one fixed skill per level, every night of a cell ended in the same
@@ -181,6 +183,136 @@ floor moved to 8, flagged for the maintainer). All the numbers are in
 [the rounds page](../design/rounds.md#the-bosses-25-tougher-688). A boss's health is the one number this page's
 simulator and the real server read from the same file, so the rise needs no separate model change.
 
+## The bots against the model (#231)
+
+The nightly bot soak ([the bots page](bots.md#phase-7-validation-at-scale-and-tuning)) plays whole nights of bots in the
+real server and sets each profile beside the cell of the same skill and team size (`balance_cli.gd`, 300 nights, read
+with the same cap as the bots). `SimSkill` was **not** changed: what the bots measured is what they are held to, not what
+the model is fitted to, because the gate of `BalanceTargets` reads the model. Measured on the code after #766, eight
+nights a cell: the Veteran's curve is the strong cell's (Kolmogorov 0.00 to 0.05, median round 16 at a cap of 16), the
+Regular's median is within a round of the average cell's and its curve is not (0.34 to 0.89: seven or eight of eight
+nights reach the cap), and the Rookie is two rounds better than the weak cell alone and four or five in a team. Landing
+percentages and head shares against the model's `accuracy` and `head_rate` (0.45 and 0.68, 0.65 and 0.81, 0.82 and 0.85):
+Rookie 49 to 60% and 62 to 68%, Regular 74 to 76% and 72 to 76%, Veteran 81 to 84% and 73 to 83%.
+
+What the comparison showed about the model: its weak boss night is a cliff (68% of two-player and 81% of four-player nights
+ended in round 5 before #766) that a bot, which steps and reloads, passes more smoothly, which is why one number of the
+Rookie (`careful_below` and `safe_below` 0, so it does not back away when hurt) moves its first boss night between
+97% and 53% of passes. The curve gate of 0.2 is hard to meet for a cliff and a slope however close their medians are;
+read it with the medians.
+
+## The headshot retune (#745)
+
+The hit zones that follow the bodies ([hit zones](hit-zones.md), #694) made the chibi head half the figure, so a bot
+that aims at the chest lands 64 to 88% of its hits on the head and avoids more blows. `SimSkill` still carried the
+numbers of the old 0.22 m head ball. This task set `SimSkill` to what the bots read and retuned the game around it,
+with the zones, the shape of the multipliers and the boss left as they were.
+
+**What the bots read** (`test_bot_bands.gd`: eight seeds, 110 s each; three runs, two on this machine and one on the
+CI runner):
+
+| Level | Head share of hits | Dodge | `SimSkill` head rate before / after | `SimSkill` dodge before / after |
+| --- | --- | --- | --- | --- |
+| weak (Rookie) | 0.64 to 0.72 (CI 0.66) | 0.15 to 0.21 (CI 0.16) | 0.06 / **0.68** | 0.12 / **0.17** |
+| average (Regular) | 0.78 to 0.84 (CI 0.82) | 0.47 to 0.68 (CI 0.47) | 0.15 / **0.81** | 0.30 / **0.55** |
+| strong (Veteran) | 0.81 to 0.88 (CI 0.81) | 0.73 to 0.91 (CI 0.79) | 0.30 / **0.85** | 0.50 / **0.80** |
+
+The bands test follows `SimSkill` again (head share within 0.1, dodge within 0.2: the width of the spread above, since
+two runs of the same commands are not bit-identical and a Veteran's dodge is read from about 30 blows a run). The
+dodge is the share of the blows that came due on the bot and did not hurt it: the bots step out of reach, as the early
+retreat of [phase 3](bots.md) was meant to make them, and they kill faster on the new zones.
+
+**What it did to the gate.** Medians of the gate's six cells (60 nights, seed 4000; weak solo, average 1, 2, 4 and 8,
+strong solo), ranges 4 to 9, 8 to 14, 11 to 16, 12 to 17, 14 to 20, 12 to 18:
+
+| Step | Medians | Gate |
+| --- | --- | --- |
+| `main` with #694 (the old `SimSkill`) | 4 / 9 / 14 / 16 / 18 / 18 | passes |
+| `SimSkill` set to the bots, nothing else | 5 / 15 / 17 / 20 / 20 / 20 | four cells too easy |
+| the head share alone (dodge as before) | 5 / 15 / - / - / - / 20 | |
+| the dodge alone (head rate as before) | 4 / 12 / - / - / - / 20 | |
+| every head multiplier cut to a third (x1.5, x1.35, x1.15) | 5 / 15 / 15 / 19 / 20 / 20 | still too easy |
+| the headshot kill 100 to 70 and the headshot hit 8 to 5 | 5 / 10 / 15 / 20 / 20 / 20 | average solo back, the rest too easy |
+| and health growth 1.09 / 1.11 / 1.13 / 1.16 after round 8 | strong 20 / 20 / 20 / 17 (average 4: 19 / 18 / 17 / 16) | 1.16 passes with the headliner at 14.5 |
+| **shipped**: kill 70, growth 1.15, brute x3, the simulator's crawler hit chance 1.0 | **5 / 10 / 15 / 16 / 18 / 18** | **passes, no misses** |
+
+What each lever is worth:
+
+- **The multipliers are not the lever.** On top of the retuned numbers, x1.75 instead of x2.5 costs one to two rounds
+  in the larger cells and every head bonus at x1.0 two to three (the gate still passes). They stay: the pistol and
+  rifle x2.5, SMG x2, shotgun x1.5 (the table in [weapons](../design/weapons.md)), so a round-1 zombie still falls to
+  one headshot.
+- **Points were.** A headshot kill paid 100 against 60 and most kills are headshots now (the simulator's kills went
+  from 13 / 26 / 41% headshots to 81 / 90 / 93% for weak, average and strong), so a kill paid about a third more (70
+  on average, 96 now) and the re-cut and the wall weapons came sooner: an average solo night earned 13,700 points,
+  then 20,100. The headshot kill pays **70** (the old mix of a quarter at 100 and the rest at 60); the hit pay (8 and
+  4) stayed.
+- **Late health was the other.** Strong players and companies are not stopped by the first rounds, so the climb after
+  round 8 went from 7% to **15%** a round; the knee and the first rounds are as they were (round 1 still takes 50).
+- **The brute** (health x2.5 to **x3**): its time to kill had fallen under the gate's 3 s. The headliner's x16.25
+  (#688) stays, which caps the growth: at 1.16 its time to kill reads 30.3 s against a limit of 30.
+- **The crawler** is shot through zones that are its body on the ground, so it is no harder to hit than a walker
+  (`ZombieProfile.hit_scale`). The simulator used the type's `hit_chance` 0.6 for it and now uses 1.0 for a crawling
+  look (the type's data and its tests are untouched). Its time to kill, average solo, went from 0.96 s to 0.41 s.
+  **Recommendation: leave it.** At x0.7 health and a body on the ground it is the easiest type to kill, but it is at
+  most a tenth of a round: with its health at x1.0 its time to kill is 0.67 s and no median of the four cells run
+  moves (weak 1, average 1 and 4, strong 1; 300 nights, seed 1000), so a harder crawler is a design wish (its health,
+  not a smaller zone), not a balance need.
+
+**Before and after, kills.** 300 nights a cell, seed 1000, three skills by one, two and four players (`NightSim` now
+counts `kills` and `head_kills` by round: `BalanceBatch.kills_in`). A round's kills are its zombie count, which the
+retune did not touch, so the kills a night makes are the rounds it reaches:
+
+| Cell | Median round before / after | Mean round | Kills a night | Headshots of the kills | Points earned |
+| --- | --- | --- | --- | --- | --- |
+| weak, 1 | 4 / 5 | 4.3 / 5.6 | 25 / 38 | 13% / 81% | 2,194 / 3,698 |
+| weak, 2 | 5 / 5 | 5.1 / 6.3 | 51 / 82 | 12% / 80% | 2,405 / 4,059 |
+| weak, 4 | 5 / 5 | 5.9 / 7.2 | 118 / 191 | 12% / 81% | 2,927 / 4,816 |
+| average, 1 | 10 / 15 | 9.9 / 12.6 | 127 / 182 | 26% / 90% | 13,724 / 20,107 |
+| average, 2 | 15 / 15 | 12.9 / 14.4 | 309 / 367 | 23% / 90% | 16,002 / 19,690 |
+| average, 4 | 16 / 17 | 15.7 / 16.6 | 782 / 843 | 22% / 90% | 20,224 / 22,534 |
+| strong, 1 | 18 / 19 | 16.7 / 18.0 | 324 / 377 | 41% / 93% | 36,078 / 38,868 |
+| strong, 2 | 20 / 20 | 19.0 / 19.8 | 653 / 739 | 38% / 92% | 35,069 / 37,398 |
+| strong, 4 | 20 / 22 | 19.8 / 21.5 | 1,244 / 1,547 | 36% / 93% | 33,120 / 39,321 |
+
+Average solo, by round:
+
+| Round | 1 to 4 | 5 (boss) | 6 | 8 | 10 (stampede) | 12 | 14 | 15 (boss) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Kills in the round, before / after | 4, 5, 7, 8.9 / 4, 5, 7, 9.0 | 4.6 / 4.9 | 12.0 / 12.0 | 16.3 / 16.6 | 20.8 / 21.1 | 27.0 / 26.7 | 31.9 / 32.2 | 11.5 / 10.3 |
+| Nights of 300 that reach it | 300 / 300 | 294 / 300 | 204 / 271 | 182 / 270 | 151 / 238 | 111 / 191 | 104 / 184 | 92 / 164 |
+| Die in it | 0% / 0% | 31% / 10% | 1% / 0% | 12% / 7% | 25% / 19% | 1% / 2% | 12% / 11% | 59% / 79% |
+
+**The honest summary: a night is inside the gate and a little easier than before.** The gate (60 nights, seed 4000)
+reads 5 / 10 / 15 / 16 / 18 / 18, inside every range and shaped as before. The bigger report reads the average solo
+median at 15 (mean 12.6), a round over its range on that sample, and strong players at 19: the first boss night kills
+10% of average solo nights (31% before) and the second 79% (59%). Making the middle harder runs into the stampede,
+which the gate holds to 40% of the nights that reach it: a health step of 9.5 or 10 (from 8) brought the 300-night
+average solo median to 10 and the gate's stampede deaths to 59 and 62% (a step of 9: median 12, deaths 45%), and no
+runner health or pay change fixed both. The stampede and the second boss night are where this model says the
+head-heavy night is decided, so a next retune (or a smaller head zone) starts there.
+
+**Recommendation to the maintainer: keep the zones, or shrink the head zone.** Kept, the game is balanced and
+playable, but a headshot is no longer a choice: 90% of kills are headshots at every level, the multiplier is a flat
+damage bonus, the pay premium had to go, and the bots' head share hardly separates the levels (0.68, 0.81, 0.85, where
+it was 0.06, 0.15, 0.30). A smaller head zone (the skull and face, not the whole chibi head) would make aim worth
+something again; the headshot kill could then go back toward 100, the climb toward 7%, and `SimSkill`'s head rates
+would be read again from `test_bot_bands.gd`; the fit tool `tools/hit_fit/` already makes the zones.
+
+**Tooling added.** `balance_cli.gd --skill-set=head_rate=0.7` replaces a number of the level for a try (the sweeps
+above ran on it), and the cell has `kills` and `head_kills` by round.
+
+## The weapons now reach their nominal rate (#708)
+
+The simulator always shot a weapon at its nominal interval (`SimWeapons.interval`, with the leftover of a step
+carried in `NightSim`), but the real `WeaponState` clamped its cooldown at zero and so rounded every interval up to
+whole 60 Hz ticks: the SMG (0.075 s, 4.5 ticks) fired every fifth, 360 shots in 30 s against 400 nominal, the revolver
+106 against 107. `WeaponState` now carries the leftover of the tick in which the wait ran out into the next shot (never
+more than one shot a tick, nothing banked while idle). Because the model already assumed the nominal rate, the
+simulator's table is **unchanged** (60 nights a cell, seed 4000, six cells, identical to the last digit before and
+after); the change moves the real game, and the SMG most (up to 11%). The bot-band tests (`test_bot_bands.gd`) read the
+real server and are the check on it. Test: `tests/weapons/test_weapon_fire_rate.gd`.
+
 ## Using it
 
 ```text
@@ -193,3 +325,39 @@ balance_cli.gd --shopping=weapon_rifle --set=economy.start_points=20000       (w
 ```
 
 A Godot `--import` must have run since the last new `class_name` script.
+
+## The perks (#687)
+
+The six perks are played by the same `buy` the night uses and the effects are read from `PerkEffects`: the wait between
+shots and the reload per player, a revive held for the helper's own time, the shock as a blast on every dead thing in
+reach when a reload starts (with its cooldown and a hold), the carry limit, and what a down takes. What it showed, the
+prices, the limit and the loss are in [Perks: what the simulator said](perks.md). Two things for the next change to the
+model: **a solo night's median round is not a stable number on a hundred nights** (the same seed gave 13 and 10 on 100
+and 150 nights), so compare the mean round and the share of nights that reach round 10 and 14; and **a perk's value
+shows in a team**, not a solo night (the loss on a down is the same 11.8 solo with all three settings and 18.6 to 20.2
+for four).
+
+## The double-barrel (#684)
+
+The pump shotgun (6 shells, 19 a pellet, 0.8 s, 2.4 s reload) became a double-barrel (2 shells, 22 a pellet, 0.3 s
+between barrels, 1.8 s reload, reserve 16 of 32 at most). A first try at 21 a pellet and a 2.0 s reload fell under
+the submachine gun in the weapon pick against round 10's health (`test_sim_weapons`), and the average
+four-player round-15 reach fell from 91% to 64%; 22 and 1.8 s give the pump's kills a second against that health.
+150 nights a cell, seed 1, `tools/balance/run_report.py --brief`, before (the pump) and after:
+
+| Skill, players | Median round before / after | Mean round before / after | Reach r15 before / after |
+| --- | --- | --- | --- |
+| weak, 1 | 4 / 4 | 4.3 / 4.3 | 0% / 0% |
+| weak, 2 | 5 / 5 | 5.3 / 5.4 | 0% / 0% |
+| weak, 4 | 5 / 5 | 6.0 / 6.3 | 0% / 1% |
+| average, 1 | 10 / 10 | 10.6 / 10.4 | 25% / 20% |
+| average, 2 | 13 / 13 | 12.5 / 12.6 | 41% / 36% |
+| average, 4 | 15 / 15 | 15.5 / 14.8 | 91% / 77% |
+| strong, 1 | 16 / 16 | 15.8 / 15.4 | 72% / 66% |
+| strong, 2 | 17 / 19 | 17.2 / 17.8 | 94% / 86% |
+| strong, 4 | 19 / 20 | 18.7 / 19.9 | 100% / 100% |
+
+Every median is the same or a round better; the means of the average and strong one-to-two player cells are a few
+tenths lower (a magazine of two leaves a player waiting under two seconds in a crowd more often), inside what 150
+nights a cell moves. A weapon's magazine and reload time reach the model through `WeaponDef` alone (`SimWeapons`,
+`SimArm.reload` is compared with `WeaponState` in a test), so no model code changed.

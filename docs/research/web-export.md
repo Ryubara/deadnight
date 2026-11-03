@@ -283,21 +283,35 @@ waits for the deployment to be `SUCCESS`. Both deploys use the one `RAILWAY_TOKE
 a client of one protocol version is turned away by a server of another for that time
 ([Multiplayer](multiplayer.md)).
 
-### The deployed build is the head of main
+### The deployed build is newer than the one it replaces
 
 The runs of two quick merges finish in any order, and the concurrency group `deploy-web` only serializes the deploys. On
 2026-11-02 `main 85325be` (#507) was live at 08:05:05Z and `main 7c12a41` (#525, one merge earlier) deployed over it at
-08:06:21Z, which put the hand grips back out of the game (#552). So `deploy` and `deploy-server` (which now has its own
-group `deploy-server`) run `deploy/check_head.sh "$GITHUB_SHA"` first, when they start, after the wait in their group:
-it reads the head of `main` from the GitHub API and, when the run's commit is another one, prints a notice ("not the head
-of main (xxxxxxx); a newer run deploys the head"), sets `skip` and ends the job green without touching Railway. The run
-of the head deploys itself. If the API cannot be read three times the check warns and deploys, as before. `bash deploy/test_check_head.sh`
-tests it without GitHub (`DEPLOY_MAIN_HEAD` stands in for the API); the `conventions` job runs it.
+08:06:21Z, which put the hand grips back out of the game (#552). The first fix skipped every build that was not the head
+of `main`; but a run takes 10 to 25 minutes and merges land every few minutes, so no run was the head when it reached
+its deploy and nothing deployed for hours (#732). The question is now asked of the service: `deploy/check_head.sh
+"$GITHUB_SHA" <service>` runs first in `deploy` (service `web`) and `deploy-server` (service `deadnight-server`), when
+they start, after the wait in their group, from a checkout with the whole history (`fetch-depth: 0`). It reads the commit
+the service runs (the last word of the `cliMessage` of its newest `SUCCESS` deployment: `main 1a2b3c4`, `game server
+1a2b3c4`) with the `railway` CLI and the project token, and then:
 
-Two consequences. A run that fails its tests deploys nothing, and the older run that would have deployed has skipped
-itself, so after a red merge the live build stays on the last good one until the next green merge (or **Actions, ci, Run
-workflow**, once main is green). And re-running the `deploy` job of an *earlier* run now skips (it is not the head): to
-redeploy the head, run the workflow on `main`; to go back to an earlier build, roll back in Railway (below).
+| The run's commit, against the live one | Result |
+| --- | --- |
+| ahead of it (the live commit is its ancestor), even when `main` moved on since | deploys |
+| the same commit | deploys again (a re-run repairs a service) |
+| an ancestor of it (older) | skips with a notice; the newer build stays (#552) |
+| on another line of history (the live one is a branch deployed by hand) | deploys |
+| the live commit cannot be read or is not in the checkout | the head of `main` decides, as in #552: the head deploys, a build behind it skips; if main cannot be read either, it warns and deploys |
+
+`bash deploy/test_check_head.sh` tests every row without GitHub or Railway (`DEPLOY_LIVE_SHA` and `DEPLOY_MAIN_HEAD`
+stand in for the CLI and the API, and a stub `railway` for its JSON); the `conventions` job runs it.
+
+Consequences. A run that fails its tests deploys nothing, but the next green run is ahead of the live commit and deploys,
+whatever the order the runs finish in. GitHub keeps one waiting job per concurrency group, so a waiting deploy can be
+replaced by a newer-arriving one that is an older commit; then the replaced (newer) commit is not deployed by its own
+run, and the live build is the newest *deployed* green commit until the next green merge, or **Actions, ci, Run
+workflow** on `main`. Re-running the `deploy` job of an earlier run skips when a newer commit is live; to go back to an
+earlier build, roll back in Railway (below).
 
 ### Setting it up (once, the maintainer)
 
@@ -379,6 +393,15 @@ server.
 Chrome profile, with the machine's GPU. Play now builds the lot and warms up everything the night draws behind a loading
 screen, which takes about 31 s there (24 s before): `smoke.py` waits up to 150 s for it. The numbers are in
 [First-use hitches](first-use-hitches.md).
+
+## A view of the lot in the browser
+
+`tools/web_smoke/lot_views.py` (#686) shows what a place on the lot looks like in the page: it exports a copy of the
+project that starts on the greybox's capture rig (`world/drive_in/capture_rig.tscn`), loads
+`index.html?view=plaza&doors=open` once per view in a fresh headless Chrome and saves a screenshot when the rig sets
+`window.lotViewReady`. The rig reads the page's query (`JavaScriptBridge.eval`) as the same `--key=value` words it
+reads from the command line, so a view is one name on the desktop and in the browser. Run it under `gds quiet`, with
+Playwright 1.64.1, the pinned Godot and a work folder; it takes a few minutes, most of them the export.
 
 ## Audio in the browser
 
@@ -474,7 +497,8 @@ issue #534)**; the desktop keeps the engine's own calls and a tab keeps the engi
 - **Ctrl+C** copies what the focused field has selected, or the text a screen offered, through a native `copy` event
   (the same hidden box takes the focus for the key's default action).
 - **Share in Discord.** `discord-bridge.js` offers `window.deadnightDiscord.share`, the SDK's `shareLink`
-  (no OAuth scope; the answer is `{success, didCopyLink, didSendMessage}`), with the room's code in the message and as
+  (no OAuth scope, but only an **authenticated** Activity may call it, [#627](#share-in-discord-the-activity-must-authenticate-627);
+  the answer is `{success, didCopyLink, didSendMessage}`), with the room's code in the message and as
   `custom_id` (the SDK reads it back from the page address as `customId`; nothing joins by it yet). Discord's own window
   sends the code, so it needs no clipboard at all. `openInviteDialog` invites to the channel, not to a room code. What
   the button shows is in [Share in Discord, what Discord answered (#627)](#share-in-discord-what-discord-answered-627).
@@ -561,14 +585,121 @@ runs the real `discord-share.js` on a stand-in SDK that answers the way each cli
 button and reads the lobby 0.3 s, 1.5 s and 4 s later. Against `main`'s build every mode fails (the sentence is the
 hint from the first frame, the probe line is empty); against this build all hold.
 
-Not run: Discord's real clients (desktop, browser, phone). What Discord's iframe grants is not in its docs; the line
-above says it. What the real client answers to `shareLink` was never seen before #627: the probe line of the lobby now
-carries it. A real long press on a phone is not covered (its keyboard is the engine's text box).
+Not run: Discord's real clients (desktop, browser, phone); the next section is what the real press showed. What
+Discord's iframe grants is not in its docs; the line above says it. What the real client answers to `shareLink` was
+never seen before #627: the probe line of the lobby now carries it. A real long press on a phone is not covered
+(its keyboard is the engine's text box).
+
+### Share in Discord: the Activity must authenticate (#627)
+
+The first fix (above) made the lobby report what Discord answers, and the next press in the real Discord Activity
+reported it:
+
+```text
+share: refused after 17 ms; error rpc 4006: Not authenticated or invalid scope; Discord's frame:
+{"evt":"ERROR","data":{"code":4006,"message":"Not authenticated or invalid scope"}}; invite window: failed (4006 Not
+authenticated or invalid scope)
+```
+
+**Cause.** The bridge called `authorize` (which gives the sign-in code) and never called `authenticate`. Discord's
+client refuses `shareLink` and `openInviteDialog` (both "No scopes required" in its reference) with RPC error 4006
+until the Activity's session has been authenticated with an access token. The one error carries two meanings in its
+message, "not authenticated *or* invalid scope"; the reference's table of required scopes (below) shows that neither
+command has a scope, and the two commands failed together with the same words, so the common cause is the session. The
+sign-in itself had worked all along: the backend logged `POST /auth/discord` as 200 with `DISCORD_MODE=live`, and the
+backend already returned the player's `access_token` "because the Embedded App SDK needs it for authenticate()"
+(`spikes/backend/src/app.ts`); nothing used it.
+
+**The flow Discord documents** ([Building an Activity](https://docs.discord.com/developers/activities/building-an-activity);
+[How Activities work](https://docs.discord.com/developers/activities/how-activities-work), steps 3 to 5):
+
+1. `sdk.ready()`;
+2. `authorize({client_id, response_type: "code", state: "", prompt: "none", scope: [...]})` opens the OAuth modal when
+   the player has not granted the scopes, and returns a `code`;
+3. **the server** swaps the code for an access token (`POST https://discord.com/api/oauth2/token` with the client id and
+   the **client secret**; the secret never reaches the client);
+4. `authenticate({access_token})` with that token: the client then has an authenticated session with the scopes of the
+   token. "Attempting to use commands or subscribe to events outside your granted scope will result in errors."
+
+What each command needs, from the Embedded App SDK reference (a "Required Scopes" line for every command; read
+2026-11-03) and the SDK's code (`@discord/embedded-app-sdk` 2.5.0):
+
+| Command | Scopes | Note |
+| --- | --- | --- |
+| `authorize`, `authenticate`, `ready`, `captureLog` | none | the way in |
+| `shareLink`, `openInviteDialog` | none | but the session must be authenticated (RPC 4006 otherwise) |
+| `getChannelPermissions` | `guilds.members.read` | whether the player may create invites |
+| `getChannel` | `guilds` (`dm_channels.read` for group DMs, by Discord's approval) | |
+| `setActivity` | `rpc.activities.write` | rich presence; not used |
+| `getRelationships` | `relationships.read` | Social SDK terms; not used |
+| `userSettingsGetLocale` | `identify` | |
+
+So no scope has to be added: the bridge asks for `identify` and `guilds.members.read` (the nickname), which the token
+carries; `rpc.activities.write` and `applications.commands` are for features we do not have. `authenticate` returns the
+scopes granted, which `window.deadnightDiscord.authJson()` keeps. The SDK names 4006 `INVALID_PERMISSIONS`
+(`RPCErrorCodes`); Discord's own sample ERROR payload uses the same code and message.
+
+`openInviteDialog` has conditions of its own (the SDK's comments): it throws `INVALID_CHANNEL` (4005) in a DM or group DM
+(`guildId` is null) and `INVALID_PERMISSIONS` (4006) when the player lacks `CREATE_INSTANT_INVITE`. So 4006 on the invite
+window alone could be a permission; here both windows failed together, and before any `authenticate`.
+
+**Developer Portal and server settings.** None changes. Sign-in already works, which needs the Activity's URL mappings
+(`/` to the web service, the backend and the game server), the client secret on the backend (`DISCORD_CLIENT_SECRET`) and
+`DISCORD_MODE=live`. Nothing in the reference ties `shareLink` to the Activity's launch or instance settings, to desktop
+or mobile, to DMs or a guild, or to a user gesture; only `openInviteDialog` is limited by context (above). If
+`authenticate` is ever refused for a token the backend just got (`sign-in: failed (4009 ...)` on the lobby's line), the
+application's OAuth2 settings (redirect list, scopes) are where to look.
+
+**The fix.**
+
+- `TogetherApi.sign_in` hands the `access_token` of `POST /auth/discord` to `window.deadnightDiscord.authenticate(token)`
+  (never printed, never stored by the game) and does not wait for the answer.
+- `discord-share.js` runs the SDK's `authenticate` and keeps `auth` (`none`, `pending`, `ok`, `unread` for an answer the
+  SDK cannot read, `failed` with Discord's code and message). A share pressed while it is `pending` waits for it (5 s at
+  most), so a quick press is never refused by our own order. The `open` verdict counts from the moment the command is sent.
+- The lobby says "this Activity is not signed in with Discord yet" when Discord refuses with 4006 and the sign-in is
+  `none` (a guest) or `failed`; the probe line carries `sign-in: ok|none|failed (...)`.
+- A backend test checks that `/auth/discord` returns the player's own token and never the client secret.
+
+**Why the first fix missed it.** Its harness answered `shareLink` with what a client *can* answer (a window, a close,
+silence, an error) and never ran the SDK's handshake: it replaced `discord-bridge.js` with a stub, so `authorize`,
+`authenticate` and the rule that commands need a session were not in the run, and its stand-in client accepted every
+command. "Not a scope" was read off the reference's "No scopes required", which says nothing about the session.
+
+**A second cause, found by CI.** On the slow runner the same press still failed with `sign-in: none`: the game's first
+`POST /auth/discord` failed in transport (`network`, no request reached the backend; seen on this machine with
+`ACTIVITY_CPU_THROTTLE=3`, the Chromium log showed no failed request and the harness server logged
+`SSLV3_ALERT_CERTIFICATE_UNKNOWN` on some connections, so the exact link is not proved), and the game then signed in
+as a guest: no nickname, no token, no `authenticate`. Any flaky first request on a phone could do the same. Now both
+sign-in requests (Discord, guest) are sent up to three times while they fail in transport (a code Discord took answers
+401, which is not retried), and `ACTIVITY_CPU_THROTTLE=N` makes `activity.py` reproduce a slow device. Also fixed on
+the way: the bridge is a module the page adds after load, so a game that asked before it ran read "no
+`deadnightDiscord`" as "failed"; it now waits (30 s at most), and the head include sets the error when the module
+cannot load.
+
+**The harness now reproduces it.** `tools/web_smoke/activity.py --share --real-bridge [DIR] --local-backend
+--host-mode strict|reject-token|refuse-authorize` bundles the real bridge with the real SDK (esbuild, the versions of
+`deploy/web/Dockerfile`), serves it in the Activity's frame and puts `fake_discord_client.js` in the page around it: a
+Discord client that speaks the SDK's frames, answers `AUTHORIZE` with a code the local backend (stub sign-in) swaps
+for a token, accepts that token in `AUTHENTICATE`, and **refuses every other command with the 4006 frame until then**.
+What is observed and what is modelled: the 4006 frame is the real client's; that the session is the cause is the
+documented flow and the reading above, which only a press in Discord can confirm. Pointed at `main`'s bridge the run
+ends with the maintainer's line (`share: refused after 91 ms; error rpc 4006: Not authenticated or invalid scope; ...;
+invite window: failed (4006 ...)`); with this change `strict` ends `shared`, the client having received `AUTHORIZE,
+AUTHENTICATE, SHARE_LINK` and refused nothing, and `reject-token` and `refuse-authorize` end with the lobby saying the
+Activity is not signed in, with Discord's 4006 and the sign-in state on the line. CI runs the three (the `web` job)
+and the bridge's own node test (`deploy/web/test_discord_share.mjs`).
+
+Not run: Discord's real clients.
 
 ## Sources
 
 - [Exporting for the Web](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)
 - [Playwright for Python](https://playwright.dev/python/docs/intro)
-- [Embedded App SDK: commands](https://docs.discord.com/developers/developer-tools/embedded-app-sdk) (`shareLink`, `openInviteDialog`)
+- [Embedded App SDK: commands](https://docs.discord.com/developers/developer-tools/embedded-app-sdk)
+  (`shareLink`, `openInviteDialog`, the Required Scopes table)
+- [Building an Activity](https://docs.discord.com/developers/activities/building-an-activity)
+  (authorize, the server's token exchange, authenticate)
+- [How Activities work](https://docs.discord.com/developers/activities/how-activities-work)
 - [Permissions-Policy: clipboard-write](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy/clipboard-write)
 - [Audio streams (Godot): playback type, samples and their limits](https://docs.godotengine.org/en/stable/tutorials/audio/audio_streams.html)

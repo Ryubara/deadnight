@@ -24,8 +24,15 @@ var sent: Array[Dictionary] = []
 var shot_ticks: Array[int] = []
 var tick_count := 0
 var round_number := 1
+## The dead alive and still to spawn, as the frame says; -1 for those in `zombies`.
+var remaining := -1
 var health := 100.0
+## The bot's full health: said in a `player_healed` event on the first step and when it changes
+## (the frame does not carry it).
+var max_health := 100.0
 var downed := false
+## The standing order the frame carries (`BotOrders.to_frame`), when a test gives one.
+var orders := {}
 ## Whether the rig answers a pulled trigger with a shot (turn off to watch the aim alone).
 var shooting := true
 ## Whether the ground is lit everywhere.
@@ -35,6 +42,7 @@ var _sight: Callable = Callable()
 var _ammo := 8
 var _cooldown := 0.0
 var _rng_seed: int
+var _said_max_health := 100.0
 
 
 func _init(
@@ -80,6 +88,20 @@ func put_zombie(id: int, at: Vector3, mode := ZombieBody.Mode.CHASE) -> ZombieBo
 ## One tick: the server's side (the frame and the shot answered), then the bot's.
 func step(extra_events: Array = []) -> NightCommand:
 	tick_count += 1
+	if max_health != _said_max_health:
+		_said_max_health = max_health
+		extra_events = (
+			extra_events
+			+ [
+				{
+					"type": &"player_healed",
+					"player_id": ME,
+					"health": health,
+					"max_health": max_health,
+					"reason": &"tonic",
+				}
+			]
+		)
 	_cooldown = maxf(_cooldown - STEP, 0.0)
 	var events: Array = [_frame()]
 	events.append_array(extra_events)
@@ -101,11 +123,19 @@ func run(count: int) -> void:
 
 
 func _frame() -> Dictionary:
+	var frame := _frame_body()
+	if not orders.is_empty():
+		frame[BotOrders.FRAME_KEY] = orders
+	return frame
+
+
+func _frame_body() -> Dictionary:
 	return {
 		"type": &"frame",
 		"tick": tick_count,
 		"phase": GameRules.Phase.ACTIVE,
 		"round": round_number,
+		"remaining": zombies.size() if remaining < 0 else remaining,
 		"zombies": ZombieCodec.encode(zombies),
 		"players":
 		{

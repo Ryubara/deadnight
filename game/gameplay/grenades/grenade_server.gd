@@ -32,7 +32,9 @@ extends RefCounted
 ##   grenade_thrown: grenade_id, thrower_id, seq, position, velocity, fuse_left, underarm, cooked
 ##   grenade_dropped: grenade_id, thrower_id, position, velocity (zero), fuse_left, cooked (the
 ##     grenade of a player who went down or left)
-##   grenade_bounced: grenade_id, point, speed, wall
+##   grenade_bounced: grenade_id, point, speed, wall, zombie_id (-1 off the world)
+##   grenade_struck: grenade_id, zombie_id, state (the grenade's `to_dict` at the end of the step in
+##     which a zombie stopped it: a client flies its copy without the dead, and takes this as truth)
 ##   grenade_exploded: grenade_id, thrower_id, point, core_radius, radius, in_hand
 ##   blast_hit: grenade_id, target_id, damage, leg_damage, exposure, distance, impulse, stun
 ##   player_blasted: grenade_id, player_id, damage, distance, impulse, stun, own (the thrower's)
@@ -252,7 +254,11 @@ func _dispatch(action: Dictionary) -> void:
 		GrenadeAction.TARGETS:
 			_targets.clear()
 			for target: Dictionary in action["list"]:
-				_targets[target["id"]] = {"pos": target["pos"], "yaw": target.get("yaw", 0.0)}
+				_targets[target["id"]] = {
+					"pos": target["pos"],
+					"yaw": target.get("yaw", 0.0),
+					"scale": target.get("scale", 1.0),
+				}
 		GrenadeAction.PLAYERS:
 			_players.clear()
 			for player: Dictionary in action["list"]:
@@ -415,8 +421,10 @@ func _tick(delta: float) -> void:
 			_explode(0, player_id, cook["hand"], true)
 	var flying: Array[GrenadeState] = []
 	var cast := world_cast if world_cast.is_valid() else _open_ground
+	var bodies := _bodies_in_the_way
 	for grenade_state in _grenades:
-		grenade_state.step(delta, cast)
+		grenade_state.step(delta, cast, bodies)
+		var struck := -1
 		for contact in grenade_state.contacts:
 			_emit(
 				&"grenade_bounced",
@@ -425,6 +433,18 @@ func _tick(delta: float) -> void:
 					"point": contact["point"],
 					"speed": contact["speed"],
 					"wall": contact["wall"],
+					"zombie_id": contact["zombie_id"],
+				}
+			)
+			if contact["zombie_id"] >= 0:
+				struck = contact["zombie_id"]
+		if struck >= 0:
+			_emit(
+				&"grenade_struck",
+				{
+					"grenade_id": grenade_state.id,
+					"zombie_id": struck,
+					"state": grenade_state.to_dict(),
 				}
 			)
 		if grenade_state.is_spent():
@@ -432,6 +452,11 @@ func _tick(delta: float) -> void:
 		else:
 			flying.append(grenade_state)
 	_grenades = flying
+
+
+## The zombies on a segment of a flight, as the grenade's `bodies` (`ZombieBump`).
+func _bodies_in_the_way(from: Vector3, to: Vector3) -> Dictionary:
+	return ZombieBump.nearest(from, to, _targets)
 
 
 ## The flight's world when none was given: nothing is ever in the way.

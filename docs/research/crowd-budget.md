@@ -246,6 +246,42 @@ Checked on the deployed service: with this branch deployed to `deadnight-server`
 client (`game/tests/captures/rooms_online_probe.tscn`) signed four guests in on the deployed backend, each starting a
 night of its own: three were welcomed by the server and the fourth got `no_server` from the backend.
 
+### Rooms of eight on Railway (#712)
+
+The decision above was measured with four players a room. A room now seats eight ([multiplayer](multiplayer.md)), and
+the local bench said three rooms of eight were tighter (a loaded machine). Measured on `deadnight-server` itself:
+`crowd_server_bench.tscn --stagger=1` as the service's start command for one deployment (the image is the game
+server's own, so the same Godot build and the same container), `--players=8` standing players a room, 1200 ticks a run,
+**three runs of each setting one after the other in the same container**. The container: AMD EPYC 9655P, 48 vCPUs shown,
+a limit of 8 (`cpu.max` 800000 100000), `us-west2`. p95 of the process tick in ms, the three runs, and the ticks over
+16.7 ms of 1200:
+
+| Rooms x alive, players a room | Mean tick | p95 | p99 | Over 16.7 ms | Memory | Out, all players |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 x 40, 8 | 3.4 to 3.9 | 6.7 to 8.0 | 8.6 to 9.5 | 0, 0, 1 | 284 MB | 72 KB/s |
+| 1 x 120, 8 | 5.2 to 6.1 | 10.0 to 12.2 | 11.4 to 16.2 | 0, 8, 0 | 284 MB | 138 KB/s |
+| 2 x 40, 8 | 5.8 to 6.6 | 7.6 to 8.8 | 8.7 to 10.4 | 0, 0, 0 | 287 MB | 145 KB/s |
+| 2 x 60, 8 | 7.0 to 7.2 | 8.7 to 9.1 | 10.0 to 10.6 | 0, 1, 0 | 287 MB | 186 KB/s |
+| **3 x 40, 8 (the worst `ROOM_CAPACITY` 3 allows)** | **8.4 to 9.3** | **11.5 to 13.3** | **13.7 to 15.3** | **5, 2, 2** | **312 MB** | **217 KB/s** |
+| 3 x 40, 4 (the earlier decision's load) | 6.0 to 6.2 | 8.7 to 8.9 | 9.9 to 10.6 | 1, 1, 1 | 298 MB | 108 KB/s |
+| 4 x 40, 8 | 11.1 to 11.8 | 13.6 to 15.6 | 15.4 to 19.4 | 12, 8, 40 | 345 MB | 289 KB/s |
+
+- **Three rooms of eight fit.** The p95 is 11.5 to 13.3 ms against the 16.7 ms tick and at most 5 ticks of 1200 (0.4
+  percent) go over, with 120 alive (`ALIVE_BUDGET`) shared by 24 people. Eight players a room cost about **1.4 times**
+  the process tick of four (mean 8.4 to 9.3 ms against 6.0 to 6.2; p95 11.5 to 13.3 against 8.7 to 8.9): the
+  snapshots to twice the people and the zombies' targets over more of them. The step alone is 8.7 to 9.9 ms at p95;
+  building and sending the snapshots is the rest (2.0 to 2.2 ms a sending tick).
+- **`ROOM_CAPACITY` 3 and `ALIVE_BUDGET` 120 stay.** Nothing to change in the settings.
+- **Four rooms of eight are the edge:** p95 13.6 to 15.6 ms and 8 to 40 ticks over (up to 3.3 percent). That is the
+  tick a player feels as a hitch now and then, so four stays out, as the open question below already said for four
+  players. Memory is not the limit (about 28 MB a room, 345 MB at four).
+- The local run (a loaded machine, three rooms of eight, mean 12.1 ms, 158 ticks over) was worse than Railway's: it is
+  the machine's noise, and Railway's container is the number to size by.
+- The bytes out grow with people times their share: 217 KB/s for 24 people at 120 alive, 9 KB/s a person.
+- Not measured: the processor Railway gives the service can change (the earlier decision took 1.7 times from an older
+  Xeon for one room: 3 rooms of eight would be about 20 ms there, over the tick), moving players, shots and a room being
+  built while others run.
+
 ### Open question for the maintainer: more than three rooms costs money or work
 
 Not changed, because each option costs something. The container has 8 vCPUs and the process uses one.

@@ -92,10 +92,13 @@ The rules say what a zombie is (`ZombieType`, carried by `zombie_spawn_requested
   height: the walker stands 1.77 m, the brute 2.09 m, the headliner 2.56 m, which is what the hit zones are sized for.
   Until the headliner's pull request the night drew them at the file's size (about 1.36 m for a walker), so the zones
   stood a third above the bodies; the captures had always applied the scale and hid it.
-- **Hit zones take the zombie's size.** `Hitbox.shapes(position, yaw, scale)` sizes the whole set about the feet; the
-  scale is the look's height (brute 1.18, runner 1.07) times the type's `hit_chance` (the crawler's 0.6 makes it low
-  and small). The server sends it with each target (`"scale"`), the lag compensator keeps it, and the bot aims at the
-  height the look stands at. Grenade blasts still use the walker's zones.
+- **Hit zones take the zombie's size and pose.** `Hitbox.shapes(position, yaw, scale, weak, set)` sizes the set about
+  the feet; the scale is the look's height (brute 1.18, runner 1.07) times the type's `hit_chance` when it stands (a
+  crawler's zones are its body on the ground, so its 0.6 does not shrink them again), and the set is the look's, in
+  the pose its mode and speed put it in (`ZombiePose`: moving, running, sprinting, striking, staggering, tearing,
+  roaring), fitted to the skinned mesh ([hit zones](hit-zones.md)). The server sends both with each target
+  (`"scale"`, `"pose"`, from `ZombieBody.hit_target`), the lag compensator keeps them, and the bots aim at the height
+  the look stands at (a crawler's is low). Grenade blasts still use the six standing shapes.
 - `barrier_speed` is carried on the profile and read at the fence's boards ([below](#the-fences-boards)).
 
 ## The fence's boards
@@ -355,6 +358,31 @@ bot's errand to a bought door is judged on the map the purchase left.
 Proof: `game/tests/night/test_spawns_wait_for_the_map.gd` (no spawns in the new room straight after the purchase or in
 600 ticks without frames; they join with frames; every door of the shop in order gives its area's markers to the dead).
 
+### Dead stranded in a pocket of the mesh (#770)
+
+The nightly soak's Follow nights ended three times by its "a round of eight minutes" stop with one dead walker alive:
+`mode CHASE`, no gate, `y -0.5`, standing for minutes 15 m from the person it chased, at (4.0, -52.8), (-66.2, 14.8)
+and (27.5, -60.5). The same query as in the section above says why: `map_get_path` from there is **two points**, the
+second at the pocket's edge (4.0, -53), and a grid of the lot's mesh finds stretches (the strip behind the screen, z
+below -53, and the strips beside the fence) that the walking mesh does not join to the field. The spawn points are
+joined to it, so how a dead one gets in is not proved (the sim moves the dead without colliding with walls: a crowd's
+push or a cut corner near a spawn point can take one across a wall's line); once in, it walks to the end of a path
+that goes nowhere and stays, and nothing a bot does reaches it: the pocket is a pocket for a bot too. A night is not
+repeatable by seed (the bake finishes on a physics frame), so it was read from the trace of the nights that broke
+(`bots_soak.tscn --tail=180`: one line every few seconds of a long round with every zombie's place, mode, target and
+path).
+
+The fix is on the zombie side. `ZombieSim` counts, for a chasing zombie with no gate and no lure, the seconds in which
+the path it was given ends `STRAND_GAP` (3 m) or more short of its target and the target is `STRAND_FAR` (12 m) or
+more away; at `STRAND_SECONDS` (12 s) it says `zombie_stranded` and `ZombieDirector` puts it back on a spawn point
+(`ZombieSim.relocate`: it rises as a new one does, with no path). A zombie near its target (a car roof, a prop), at
+its boards or with a way to the target is never counted. `director.relocated` counts them (the soak's nights report
+it).
+
+Proof: `game/tests/zombies/test_zombie_strand.gd` (the counting, on a pathing that stops short) and
+`game/tests/night/test_zombie_stranded.gd` (in the real lot: a zombie put in the pocket at (4.0, -0.5, -52.8) reaches the
+person; without the fix it stands there).
+
 ## Left open
 
 - Browser and weak-machine measurement of the full scene: done in the browser (Chrome with a GPU, and the processor
@@ -368,9 +396,46 @@ Proof: `game/tests/night/test_spawns_wait_for_the_map.gd` (no spawns in the new 
   the director's, still open. A body with other bone names needs the rig-sharing retarget player.
 - Hit reactions by zone, crawlers, window break-ins: the animation set is #40's.
 - The navmesh is baked ahead of time from the greybox's CSG boxes, one for each set of doors ([Doors](#doors)); only a
-  lot nothing was saved for is baked at run time (half a second in the browser). Heights are flat: a zombie
-  keeps the height it spawned at.
+  lot nothing was saved for is baked at run time (half a second in the browser). Heights follow the path ([Climbing](#climbing)).
 - Spawn point choice ignores whether an area is open (the rules' design): `spawn_points` is whatever the caller gives.
+
+## Climbing
+
+Players said the dead had trouble going upstairs (#681). On the booth's ramp (25 degrees, 2 m wide, the roost's one way
+up) a pack sent at a person on the roost climbed nothing: **0 of 6 at the top in 40 s**, from the ramp's foot and from the
+booth door, and 0 of 16 for a bigger pack; the small map's two stairs the same (0 of 6 each).
+
+- **Cause:** the sim kept every zombie at the height it spawned at ("the lot is flat"), but the lot is not. A zombie
+  walked the path's x and z at y = 0 while the ramp rose over it. Each repath (4 a second) snapped that ground-level
+  position to the *nearest* point of the mesh, and a little way up the ramp (z 25) the nearest point was the floor beside
+  and under it (1.1 m off) rather than the ramp surface (1.8 m over its head). The path from the floor led back to the
+  ramp's foot, so every zombie of the pack shuffled between z 23 and 25 for as long as the run lasted. The earlier tests
+  never saw it: the bots' ramp test walks a physics body, the walk soaks use players, and the sim's own tests ran on a
+  flat field.
+- **Fix:** `ZombieSim._settle_on_ground` reads the floor off the path (the segment ending at the zombie's waypoint, by
+  where it stands along it), takes off the baker's offset (`NavmeshPathing.GROUND_OFFSET`, 0.4 m: flat ground measures
+  0.35, the roost 0.45, the ramp 0.4 to 0.5) and moves the zombie there at `climb_speed` (6 m/s, so a 45 degree stair is
+  fine). A straight-line path (`ZombiePathing` base, the tests') has no offset (`NAN`) and keeps the height as before.
+  With a true height the repath snaps to the right layer.
+- **What a height changes elsewhere:** zombies more than `separation_height` (1 m) apart in height do not push each
+  other (the ramp over the floor beside it shared one x/z); and a swing needs the person within `reach_height` (2 m) of
+  the zombie's height, or the dead under the roost's floor would hit the person standing over their heads.
+- **Measured** (`tests/zombies/test_zombie_climb.gd`, six at 2.4 m/s, two abreast, the person on the roost; time until the
+  last zombie stands on the roost): ramp from its foot 5.6 s (first 2.5 s), from the booth door 6.3 s, sixteen from the
+  door 8.0 s; small map stair A 11.7 s, stair B 8.8 s. The longest any of them went without rising: 0.32 s. Before: never
+  (the test's control walks the same mesh with the heights left out, and the same file failed on `main`).
+- **Left open:** the views draw the zombie at its snapshot height, so a zombie on a ramp walks the ramp, but its feet
+  are placed within about 0.1 m of the surface (the baker rounds heights to a quarter of a cell).
+
+## The navigation map is not synchronised on a thread (#733, #736)
+
+The server's dead path over the world's navigation map, so `NightWorld.build` turns
+`NavigationServer3D.map_set_use_async_iterations` off for it. With the default on, a run that sold every link in one
+loop (three saved meshes swapped into the region in one go) sometimes ended on a map lacking the last doors: the
+dead's paths stopped 3 m short of the players, the upper floor and the side room cut off, and they stood still. It
+failed a CI shard of `test_smallmap_windows` (7 of 12 windows torn) and about one run in two of
+`test_smallmap_bot_night`'s four bots. Six runs of `tests/world/smallmap` passed after it. The suite
+`test_smallmap_windows` asserts the setting and that a path from every window ends at the hall.
 
 ## Reproduce
 

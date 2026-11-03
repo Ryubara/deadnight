@@ -136,8 +136,10 @@ in progress is let go of only by a rule.
 The maintainer approved all eight as built ("Go for it"). Each is a field of the tuning resource or a small change, so it
 can be retuned in the inspector.
 
-1. **Solo self-revive**: none. A lone player who goes down ends the night.
-2. **A revive perk or tonic**: none for now; a later tonic (#281) can add one.
+1. **Solo self-revive**: none, **except with the revive perk** (#687): a downed player with the Swift Rescue Lemonade and
+   nobody on their feet gets themselves up after 4 s, three times a night ([perks](perks.md#rules)). Without it a lone
+   player who goes down ends the night.
+2. **A revive perk or tonic**: the Swift Rescue Lemonade (#687): the reviver holds for half the time.
 3. **Crawl and a sidearm while downed**: neither. The optional `Downed_Crawl` clip (#536) stays unused.
 4. **A hit on the reviver** does not reset or slow the hold. A second blow downs them, which breaks it.
 5. **Points for the reviver** (`reviver_points`): 0.

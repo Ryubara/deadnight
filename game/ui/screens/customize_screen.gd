@@ -1,7 +1,7 @@
 class_name CustomizeScreen
 extends UIScreen
-## The wardrobe: a lit turntable with the character on it, a picker for each part and colour, the
-## eight presets, Randomize and Save.
+## The wardrobe: a lit turntable with the character on it, the character (him or her, #678), a
+## picker for each part and colour, the presets of that character, Randomize and Save.
 ##
 ## The screen edits a working copy of the look; Save writes it (`LookStore`) and Back leaves
 ## without saving. Every change shows on the turntable at once. Locked options are drawn greyed
@@ -12,7 +12,7 @@ extends UIScreen
 ## and keeps the working look until the player leaves the tab (`commit`).
 ##
 ## Route to it with `UIRouter.push("res://ui/screens/customize_screen.tscn")`. Tests and captures
-## drive it through `apply_preset`, `randomize`, `choose`, `save` and the strips themselves.
+## drive it through `apply_preset`, `randomize`, `choose`, `choose_body`, `save` and the strips.
 
 ## Emitted when the working look changes, so a stage somewhere else can show it.
 signal look_changed(look: CharacterLook)
@@ -41,6 +41,9 @@ var _rng := RandomNumberGenerator.new()
 var _strips := {}
 var _selectors := {}
 var _preset_selector: UIOptionSelector
+var _body_selector: UIOptionSelector
+## The presets the preset row offers (indices into `LookCatalog.presets()`): the character's own.
+var _preset_ids: Array[int] = []
 var _preview: LookPreview
 var _hint: UILabel
 var _status: UILabel
@@ -63,7 +66,7 @@ func _ready() -> void:
 	look = saved.duplicate_look()
 	_build()
 	_sync_all()
-	initial_focus = _preset_selector.get_path()
+	initial_focus = _body_selector.get_path()
 
 
 ## Puts the look of preset `index` on the character.
@@ -72,9 +75,16 @@ func apply_preset(index: int) -> void:
 	_sync_all()
 
 
-## Rolls a look from the options this player may wear.
+## Rolls a look from the options this player may wear, for the character they chose.
 func randomize() -> void:
-	look = CharacterLook.randomized(_rng, unlocks)
+	look = CharacterLook.randomized(_rng, unlocks, look.body())
+	_sync_all()
+
+
+## Makes the working look `body`'s (`CharacterLook.set_body`: a cut of the other character's
+## becomes this one's own), as the Character row does.
+func choose_body(body: StringName) -> void:
+	look.set_body(body)
 	_sync_all()
 
 
@@ -112,6 +122,16 @@ func strip(key: String) -> ChoiceStrip:
 ## The selector of a part slot.
 func selector(slot: StringName) -> UIOptionSelector:
 	return _selectors[slot]
+
+
+## The Character row's selector (Male, Female).
+func body_selector() -> UIOptionSelector:
+	return _body_selector
+
+
+## The Preset row's selector: the character's presets, then "Custom".
+func preset_selector() -> UIOptionSelector:
+	return _preset_selector
 
 
 func preview() -> LookPreview:
@@ -167,7 +187,7 @@ func _build_embedded() -> void:
 ## Up and down walk the pickers row by row, then on to the footer; left to the engine, the nearest
 ## control in that direction could be a footer button on the other side of the screen.
 func _link_focus() -> void:
-	var chain: Array[Control] = [_preset_selector]
+	var chain: Array[Control] = [_body_selector, _preset_selector]
 	for slot in LookCatalog.choosable_part_slots():
 		chain.append(_selectors[slot])
 	for slot in LookCatalog.colour_slots():
@@ -214,15 +234,23 @@ func _build_pickers() -> Control:
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(rows)
 
+	var body_row := UIRow.new()
+	body_row.title = LookCatalog.PART_TITLES[LookCatalog.BODY_SLOT]
+	body_row.hint = "Every outfit fits both."
+	_body_selector = UIOptionSelector.new()
+	var bodies := PackedStringArray()
+	for option: Dictionary in LookCatalog.options(LookCatalog.BODY_SLOT):
+		bodies.append(option["label"])
+	_body_selector.options = bodies
+	_body_selector.selected_changed.connect(_on_body_selected)
+	body_row.set_control(_body_selector)
+	_selectors[LookCatalog.BODY_SLOT] = _body_selector
+	rows.add_child(body_row)
+
 	var preset_row := UIRow.new()
 	preset_row.title = "Preset"
-	preset_row.hint = "Eight ready-made looks."
+	preset_row.hint = "Ready-made looks."
 	_preset_selector = UIOptionSelector.new()
-	var names := PackedStringArray()
-	for preset: Dictionary in LookCatalog.presets():
-		names.append(preset["name"])
-	names.append(CUSTOM_LABEL)
-	_preset_selector.options = names
 	_preset_selector.selected_changed.connect(_on_preset_selected)
 	preset_row.set_control(_preset_selector)
 	rows.add_child(preset_row)
@@ -242,15 +270,34 @@ func _build_part_row(slot: StringName) -> UIRow:
 	var row := UIRow.new()
 	row.title = LookCatalog.PART_TITLES[slot]
 	var chooser := UIOptionSelector.new()
-	var names := PackedStringArray()
-	for option: Dictionary in LookCatalog.options(slot):
-		var locked := not unlocks.is_unlocked(slot, option["id"], option["gate"])
-		names.append(option["label"] + (" (locked)" if locked else ""))
-	chooser.options = names
 	chooser.selected_changed.connect(_on_part_selected.bind(slot))
 	row.set_control(chooser)
 	_selectors[slot] = chooser
 	return row
+
+
+## The names of a part row's options as the look's character calls them (her face choices differ).
+func _part_names(slot: StringName) -> PackedStringArray:
+	var names := PackedStringArray()
+	var list := LookCatalog.options(slot)
+	for i in list.size():
+		var option: Dictionary = list[i]
+		var locked := not unlocks.is_unlocked(slot, option["id"], option["gate"])
+		names.append(LookCatalog.label(slot, i, look.body()) + (" (locked)" if locked else ""))
+	return names
+
+
+## The preset row's entries: this character's presets, then "Custom".
+func _sync_preset_options() -> void:
+	_preset_ids.clear()
+	var names := PackedStringArray()
+	var presets := LookCatalog.presets()
+	for i in presets.size():
+		if presets[i]["parts"].get(LookCatalog.BODY_SLOT, LookCatalog.MALE) == look.body():
+			_preset_ids.append(i)
+			names.append(presets[i]["name"])
+	names.append(CUSTOM_LABEL)
+	_preset_selector.options = names
 
 
 func _build_colour_row(slot: StringName) -> UIRow:
@@ -315,7 +362,10 @@ func _build_footer(with_back := true) -> HBoxContainer:
 ## Puts every control, the preview and the captions in step with `look`.
 func _sync_all() -> void:
 	_building = true
+	_body_selector.select(LookCatalog.option_index(LookCatalog.BODY_SLOT, look.body()), false)
+	_sync_preset_options()
 	for slot in LookCatalog.choosable_part_slots():
+		(_selectors[slot] as UIOptionSelector).options = _part_names(slot)
 		(_selectors[slot] as UIOptionSelector).select(
 			LookCatalog.option_index(slot, look.parts[slot]), false
 		)
@@ -329,9 +379,9 @@ func _sync_all() -> void:
 
 
 func _sync_preset_selector() -> void:
-	var index := LookCatalog.presets().size()
-	for i in LookCatalog.presets().size():
-		if CharacterLook.from_preset(i).equals(look):
+	var index := _preset_ids.size()
+	for i in _preset_ids.size():
+		if CharacterLook.from_preset(_preset_ids[i]).equals(look):
 			index = i
 			break
 	_preset_selector.select(index, false)
@@ -355,9 +405,17 @@ func _refresh_status() -> void:
 
 
 func _on_preset_selected(index: int) -> void:
-	if index >= LookCatalog.presets().size():
+	if index >= _preset_ids.size():
 		return
-	apply_preset(index)
+	apply_preset(_preset_ids[index])
+
+
+func _on_body_selected(index: int) -> void:
+	if _building:
+		return
+	var option: Dictionary = LookCatalog.options(LookCatalog.BODY_SLOT)[index]
+	choose_body(option["id"])
+	_hint.text = option["label"]
 
 
 func _on_part_selected(index: int, slot: StringName) -> void:
@@ -378,7 +436,7 @@ func _on_part_selected(index: int, slot: StringName) -> void:
 	_sync_preset_selector()
 	_refresh_preview()
 	_refresh_status()
-	_hint.text = option["label"]
+	_hint.text = LookCatalog.label(slot, index, look.body())
 
 
 func _on_chosen(index: int, key: String) -> void:

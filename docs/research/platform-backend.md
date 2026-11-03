@@ -141,16 +141,21 @@ what happens underneath:
    `POST /internal/matches/:id/end`. `capacity` (rooms a process takes, `ROOM_CAPACITY`, 3) is what it reports in the
    heartbeat; a fourth match is refused `FULL` and the backend does not give it a ticket (`no_server`) once the
    heartbeats are full. The rooms of a process share one tick, so they are sized together from a measurement on Railway
-   ([rooms in one process](crowd-budget.md#rooms-in-one-process-561)): `ROOM_CAPACITY` 3 and `ALIVE_BUDGET` 120 (the most
+   ([rooms in one process](crowd-budget.md#rooms-in-one-process-561), and
+   [with eight players a room](crowd-budget.md#rooms-of-eight-on-railway-712)): `ROOM_CAPACITY` 3 and `ALIVE_BUDGET` 120
+   (the most
    alive in all the rooms together, each cut to its share; a room with a browser in it stands 40 whatever it says),
-   and `MAX_ALIVE` for a cap on any one room.
+   and `MAX_ALIVE` for a cap on any one room. Bots are limited the same way, whatever the host's Bots setting asks
+   (`BotLimits`): `MAX_BOTS` (0 to 7, default 7) caps one room, `BOT_BUDGET` (default none) shares a number of bots
+   among the open rooms, and `BOTS_OFF=1` is the kill-switch: no room seats a bot, and a restart is the only thing it
+   needs. The measured cost of three bots is [in the bot research](bots.md#server-cost).
 
 Environment of the services (names only; the secrets are Railway variables, never in the repository):
 
 | Service | Variables |
 | --- | --- |
 | `backend` | `SESSION_SECRET`, `TICKET_SECRET`, `GAME_SERVER_SECRET` (all different, 32+ characters), `DATABASE_URL` (the Postgres reference), `DISCORD_MODE`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `GUEST_SIGN_IN=1`, `CORS_ORIGINS` |
-| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` (3), `ALIVE_BUDGET` (120), optionally `MAX_ALIVE` |
+| `deadnight-server` | `BACKEND_URL`, `GAME_SERVER_SECRET` and `TICKET_SECRET` (references to the backend's), `PUBLIC_URL` (`wss://` its public domain), `ACTIVITY_PATH=/server`, `ROOM_CAPACITY` (3), `ALIVE_BUDGET` (120), optionally `MAX_ALIVE`, `MAX_BOTS`, `BOT_BUDGET`, `BOTS_OFF` |
 
 A path variable set from Git Bash on Windows is rewritten (`/server` became `C:/Program Files/Git/server`): set them with
 `MSYS_NO_PATHCONV=1` or from PowerShell.
@@ -203,6 +208,11 @@ host calls `POST /lobbies/:id/start`, and every member polls `GET /lobbies/:id` 
 - **The view** (`GET /lobbies/:id`, members only) has `members` as `[{userId, name, seat, host, away}]` in the order people
   came (seats close up when someone leaves), `hostId`, `state` (`open` or `started`), `players` (the game server's count
   once started), `round` (the night's round, null until the game server has said one), `matchId` and the usual code.
+- **Seats.** A lobby holds 1 to `MAX_PLAYERS` = 8 (`src/lobbies.ts`, the game server's `NightHost.MAX_PLAYERS`; #690): the
+  default for a lobby made without `maxPlayers` and for Quick join, and the most `POST /lobbies` takes (`400` above). The
+  seats are people and bots together: the host's `bots` setting (0 to 7) fills the open ones on the game server. A
+  lobby's own `MAX_SEATS_EVER` (32) stays the guard on a started night's member list. The tests (`lobby.test.ts`) fill a
+  default room with eight, turn the ninth away with `409 full` and refuse a limit of nine.
 - **Start is the host's only** (`403 not_host`; a second one is `409 already_started`; every server busy is
   `503 no_server` and the lobby stays open). Members get a ticket only after it (`409 not_started` before).
 - **Host handover.** A host who leaves, or who is dropped, passes the role to the next seat. The last member out closes
@@ -288,7 +298,7 @@ travel with the ticket, so the game server needs no second channel:
    `403 not_host`, `409 already_started` and `400 bad_settings` otherwise, and nothing changes.
 1. `POST /lobbies/:id/start` takes `{"settings": {"count_multiplier", "max_alive", "break_seconds"}}` from the
    host (without it, the ones set while waiting; without those, today's game). The backend (`src/settings.ts`)
-   accepts exactly those three keys, and optionally `bots` (a whole 0 to 3; left out it means none and is kept left out,
+   accepts exactly those three keys, and optionally `bots` (a whole 0 to 7; left out it means none and is kept left out,
    so a client from before it still passes) and `map` (an id of `PLAYABLE_MAPS`: the maps the game can play; a map that
    is listed but not built is refused), inside the game's bounds (0.25 to 5; a whole 0 to 120; 0 or 1 to 120) and answers
    `400 bad_settings` otherwise, leaving the lobby open. They are fixed when the match starts; the lobby view shows
@@ -363,6 +373,10 @@ mappings for the backend and each game server.
   `shareLink` answers when its window is closed, rejects with a plain `{code, message}` object, and never settles on a
   reply the SDK cannot parse, so the button shows the hint only while Discord has not refused and the lobby's probe
   line quotes its answer (#627). [Web export](web-export.md#share-in-discord-what-discord-answered-627).
+  Discord's client answers every command, `shareLink` among them, with RPC 4006 "Not authenticated or invalid
+  scope" until the Activity has run `authenticate`: the sign-in code from `authorize` is swapped for a token here
+  (`POST /auth/discord` returns it as `access_token`, the client secret stays on the backend) and the game gives
+  the token back to the bridge ([#627](web-export.md#share-in-discord-the-activity-must-authenticate-627)).
 - Discord's proxy compresses the backend's answers (`Content-Encoding: gzip`), and Godot's `HTTPRequest` then decodes a
   body the browser has decoded already and fails, which the game reads as "Could not reach the game's servers": every
   call through `/api` failed while the backend logged a 200 or 201. `HttpJson` sets `accept_gzip = false`.

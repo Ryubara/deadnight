@@ -13,7 +13,7 @@ extends RefCounted
 
 ## The physics layers the walls, jambs and floors are on (the window blockers are on layer 2 alone
 ## and are let through: a window is a gap for sound).
-const WALL_MASK := 3
+const WALL_MASK := PhysicsLayers.WORLD | PhysicsLayers.BOARDS | PhysicsLayers.BODY
 ## The nearest the listener is taken to a window (metres), so the ratio of the distances is finite.
 const MIN_DISTANCE := 0.05
 ## The most things outside the walls (fences, the ground) a ray goes through before it is a wall.

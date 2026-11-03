@@ -21,6 +21,7 @@ const OBJECTIVE := &"objective"
 var drawn: Callable = func(_player_id: int) -> Node3D: return null
 
 var _hud_state: HudState
+var _words: MapWords
 var _state: ClientState
 var _head := RemoteAvatars.PLAYER_TUNING.height + NAME_LIFT
 ## Every door of the lot and the points it is used from, the door that has to be open before it, and
@@ -39,6 +40,7 @@ func _init() -> void:
 func setup(hud_state: HudState, state: ClientState, world: NightWorld, tuning: RulesTuning) -> void:
 	_hud_state = hud_state
 	_state = state
+	_words = world.layout.words() if world.layout != null else null
 	for door_id in world.door_ids():
 		_door_points[door_id] = world.door_points(door_id)
 		var item := tuning.economy.item(door_id)
@@ -143,7 +145,7 @@ func _door(camera: Camera3D, door_id: StringName, here: Vector3, important: bool
 		OBJECTIVE,
 		found["screen"],
 		here.distance_to(at),
-		NightHudBinding.DOOR_NAMES.get(door_id, ""),
+		NightHudBinding.door_name(door_id, _words),
 		important
 	)
 

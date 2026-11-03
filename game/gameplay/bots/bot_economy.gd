@@ -7,11 +7,12 @@ extends RefCounted
 ## The order is the simulator's player (`NightSim._shop`): the rounds the bot cannot fight without
 ## (below one magazine of reserve, bought at once, in a round too), the rounds of a short reserve
 ## (`BotProfile.ammo_floor_mags` magazines), then the things it is saving for in the order of
-## `BotProfile.shopping` (doors, wall weapons, the crane, the re-cut, the hearty tonic), and last
+## `BotProfile.shopping` (doors, wall weapons, the crane, the re-cut, the tonics), and last
 ## topping the reserves up with what is left once the next thing on the list is paid for. An item
 ## on the list is passed over when it is not affordable, unless the profile saves for it. Tonics
-## that do nothing for health are never bought. Grenades come last: a bot with fewer than
-## `BotProfile.grenades_wanted` buys a rack's worth once the next thing on the list is paid for.
+## are perks (`docs/design/perks.md`): one with no effect is never bought. Grenades come last: a bot
+## with fewer than `BotProfile.grenades_wanted` buys a rack's worth once the next thing on the list
+## is paid for.
 ##
 ## Keeping back a reserve: a fuel can from round `RESERVE_FUEL_FROM` on, so a plan item never leaves
 ## the bot unable to feed the generator.
@@ -37,6 +38,14 @@ const PING := &"ping"
 const AMMO_PING := &"ammo_ping"
 ## Metres within which a marked spot counts as the shop's locker.
 const LOCKER_SNAP := 1.0
+## Metres of walking a metre of height stands for when a door's stand is chosen: a link set in a
+## stair has a stand on each side, one a flight up, and the flat-nearest was a walk round the
+## whole map for a bot on the other floor.
+const RISE_WEIGHT := 8.0
+## The most sources of rounds asked for their walk at one choice (the nearest by the straight line
+## first), and the metres of walk the stand the bot is heading to is credited with.
+const WALK_LOOKS := 4
+const HEADING_CREDIT := 6.0
 
 ## Sustained damage a second of each catalogue weapon, worked out once (the definitions are fixed).
 static var _dps: Dictionary = {}
@@ -87,6 +96,9 @@ class View:
 	var doors_open: Array = []
 	## What the bot has bought, by shop item id (the client's count).
 	var bought: Dictionary = {}
+	## The tonics the bot has now, as the frame's bits (`PerkEffects.mask_of`): a perk lost when it
+	## went down is bought again.
+	var perks := 0
 	## Where the crane stands (its place in the rules' list) and whether it can take a play.
 	var crane_spot := 0
 	var crane_ready := true
@@ -101,6 +113,12 @@ class View:
 	var now := 0.0
 	## `Callable(stand: Vector3) -> bool`: true for a place the bot found it cannot walk to lately.
 	var avoid := Callable()
+	## `Callable(stand: Vector3) -> float`: the metres of walk to a stand on the mesh as it is
+	## (`INF` for none), or unset when the bot has no legs to ask (the straight line then).
+	var walk := Callable()
+	## The ammunition stand the bot is already walking to (`Vector3.INF` for none): it is kept
+	## unless another is clearly nearer, so a trip does not turn on every think.
+	var heading := Vector3.INF
 
 	func is_avoided(stand: Vector3) -> bool:
 		return avoid.is_valid() and bool(avoid.call(stand))
@@ -133,11 +151,11 @@ func candidates(view: View) -> Array[Buy]:
 	var marked := _ammo_ping(view)
 	if marked != null:
 		found.append(marked)
-	for weapon in _useful(view.arms):
+	for weapon in useful(view.arms):
 		var urgent := _ammo(view, weapon, 1, URGENT, 0)
 		if urgent != null:
 			found.append(urgent)
-	for weapon in _useful(view.arms):
+	for weapon in useful(view.arms):
 		var floor_buy := _ammo(view, weapon, _profile.ammo_floor_mags, FLOOR, 0)
 		if floor_buy != null:
 			found.append(floor_buy)
@@ -154,7 +172,7 @@ func candidates(view: View) -> Array[Buy]:
 		elif _profile.saves_for.has(item_id):
 			break
 	last_next = next
-	for weapon in _useful(view.arms):
+	for weapon in useful(view.arms):
 		var top := _ammo(view, weapon, 0, TOP_OFF, next)
 		if top != null:
 			found.append(top)
@@ -174,7 +192,7 @@ func choose(view: View) -> Buy:
 ## table's order.
 func plan(_view: View = null) -> Array[StringName]:
 	var ids: Array[StringName] = []
-	for item_id in _profile.shopping:
+	for item_id in _shop.shopping if not _shop.shopping.is_empty() else _profile.shopping:
 		ids.append(item_id)
 	for door_id in _shop.doors:
 		if not ids.has(door_id):
@@ -231,7 +249,7 @@ func _door(view: View, item: ShopItem) -> Buy:
 		return null
 	if not _shop.unlocked_doors(view.doors_open).has(item.id):
 		return null
-	var stand := _nearest_point(view, _shop.door_stands.get(item.id, []))
+	var stand := _nearest_point(view, _shop.door_stands.get(item.id, []), RISE_WEIGHT)
 	if stand == Vector3.INF:
 		return null
 	return _buy(view, item, stand, &"door", PLAN)
@@ -284,9 +302,15 @@ func _recut(view: View, item: ShopItem) -> Buy:
 	return _buy(view, item, stand, &"recut", PLAN)
 
 
-## A tonic is bought once, and only one that does something for health.
+## A tonic is bought while the bot has not got it, up to the limit, and only one that does
+## something (`ShopItem.effect`): a perk lost when the bot went down is bought again.
 func _tonic(view: View, item: ShopItem) -> Buy:
-	if not view.is_calm() or item.health_bonus <= 0.0 or int(view.bought.get(item.id, 0)) > 0:
+	if not view.is_calm() or item.effect == ShopItem.Effect.NONE:
+		return null
+	var bit := _shop.tonic_order().find(item.id)
+	if bit >= 0 and (view.perks & (1 << bit)) != 0:
+		return null
+	if PerkEffects.mask_count(view.perks) >= _shop.economy.max_tonics:
 		return null
 	var stand := _nearest(view, _shop.spots_of(item.id))
 	if stand == Vector3.INF:
@@ -317,7 +341,7 @@ func _ammo_ping(view: View) -> Buy:
 	var stand := _locker_at(view, view.ammo_marked)
 	if stand == Vector3.INF:
 		return null
-	for weapon in _useful(view.arms):
+	for weapon in useful(view.arms):
 		if not _locker_sells(view, weapon):
 			continue
 		var buy := _ammo(view, weapon, _profile.ammo_floor_mags, AMMO_PING, 0, stand)
@@ -407,17 +431,44 @@ func _wants_rounds(view: View, def: WeaponDef, reserve: int, mags: int, why: Str
 
 
 ## Where rounds for `weapon` are sold: the wall of a weapon the bot owns, or a locker (which sells
-## for the weapon in hand, so only when this is the one in hand or the hand holds a blade).
+## for the weapon in hand, so only when this is the one in hand or the hand holds a blade). The
+## nearest by the walk, not the straight line: a locker behind a fence is a long way round.
 func _ammo_stand(view: View, weapon: StringName) -> Vector3:
-	var walls: Array[Dictionary] = []
+	var sources: Array[Dictionary] = []
 	for spot in _shop.spots_by_kind(&"wall"):
 		if WeaponCatalog.catalog_id(spot["shop_id"]) == weapon:
-			walls.append(spot)
-	if not walls.is_empty():
-		return _nearest(view, walls)
+			sources.append(spot)
 	if _locker_sells(view, weapon):
-		return _nearest(view, _shop.spots_by_kind(&"ammo"))
-	return Vector3.INF
+		sources.append_array(_shop.spots_by_kind(&"ammo"))
+	return nearest_by_walk(view, sources)
+
+
+## The position of the spot with the shortest walk from the bot, among the `WALK_LOOKS` nearest by
+## the straight line that it can walk to; the straight line decides when the bot cannot ask (a
+## test without legs) and `Vector3.INF` when there is none. A stand the bot is already heading to
+## counts `HEADING_CREDIT` metres nearer.
+static func nearest_by_walk(view: View, spots: Array[Dictionary]) -> Vector3:
+	var near: Array[Dictionary] = []
+	for spot in spots:
+		if not view.is_avoided(spot["position"]):
+			near.append(spot)
+	near.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			return _apart(view.here, a["position"]) < _apart(view.here, b["position"])
+	)
+	var best := Vector3.INF
+	var best_walk := INF
+	for spot in near.slice(0, WALK_LOOKS):
+		var at: Vector3 = spot["position"]
+		var walk := _apart(view.here, at)
+		if view.walk.is_valid():
+			walk = float(view.walk.call(at))
+		if _apart(view.heading, at) < LOCKER_SNAP:
+			walk -= HEADING_CREDIT
+		if walk < best_walk:
+			best_walk = walk
+			best = at
+	return best
 
 
 ## Whether a locker sells rounds for `weapon`: it sells for the weapon in hand, and a blade in hand
@@ -429,7 +480,7 @@ func _locker_sells(view: View, weapon: StringName) -> bool:
 
 ## The carried firearms worth rounds, best first: at least `USEFUL_SHARE` of the best one's
 ## sustained damage a second (the simulator's rule).
-func _useful(arms: Dictionary) -> Array[StringName]:
+static func useful(arms: Dictionary) -> Array[StringName]:
 	var best := 0.0
 	for id: StringName in arms:
 		best = maxf(best, _rate(id))
@@ -501,15 +552,19 @@ static func nearest_to(points: Array, from: Vector3) -> Vector3:
 
 
 ## The point nearest to the bot (flat) that it can walk to, or `Vector3.INF`.
-static func _nearest_point(view: View, points: Array) -> Vector3:
+static func _nearest_point(view: View, points: Array, rise := 0.0) -> Vector3:
 	var spots: Array[Dictionary] = []
 	for point: Vector3 in points:
 		spots.append({"position": point})
-	return _nearest(view, spots)
+	return _nearest(view, spots, rise)
+
+
+static func _apart(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length() if a.is_finite() and b.is_finite() else INF
 
 
 ## The position of the spot nearest to the bot (flat) that it can walk to, or `Vector3.INF`.
-static func _nearest(view: View, spots: Array[Dictionary]) -> Vector3:
+static func _nearest(view: View, spots: Array[Dictionary], rise := 0.0) -> Vector3:
 	var from := view.here
 	var best := Vector3.INF
 	var best_apart := INF
@@ -517,6 +572,7 @@ static func _nearest(view: View, spots: Array[Dictionary]) -> Vector3:
 		if view.is_avoided(spot["position"]):
 			continue
 		var apart := Vector2(from.x - spot["position"].x, from.z - spot["position"].z).length()
+		apart += rise * absf(from.y - spot["position"].y)
 		if apart < best_apart:
 			best_apart = apart
 			best = spot["position"]
